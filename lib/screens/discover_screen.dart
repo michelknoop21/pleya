@@ -28,7 +28,6 @@ import '../providers/hidden_libraries_provider.dart';
 import '../providers/playback_state_provider.dart';
 import '../providers/watch_state_store.dart';
 import '../widgets/hub_section.dart';
-import '../widgets/top_ten_row.dart';
 import '../widgets/app_menu.dart';
 import '../widgets/clickable_cursor.dart';
 import '../widgets/loading_indicator_box.dart';
@@ -1122,23 +1121,17 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 // Recommendation Hubs (Trending, Top in Genre, etc.)
                 for (int i = 0; i < _hubs.length; i++)
                   SliverToBoxAdapter(
-                    // "Top / popular / trending" hubs render as a ranked Top-10
-                    // row with big outlined numerals. Not on TV — there the
-                    // HubSection owns locked d-pad focus, which we must not lose.
-                    child: !PlatformDetector.isTV() && TopTenRow.matches(_hubs[i])
-                        ? TopTenRow(hub: _hubs[i], onRefresh: _discover.updateItem)
-                        : HubSection(
-                            key: i < _orderedHubKeys.length ? _orderedHubKeys[i] : null,
-                            hub: _hubs[i],
-                            icon: _getHubIcon(_hubs[i].title),
-                            showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
-                            onRefresh: _discover.updateItem,
-                            // Hub index is i + 1 if continue watching exists, otherwise i
-                            onVerticalNavigation: (isUp) =>
-                                _handleVerticalNavigation(_onDeck.isNotEmpty ? i + 1 : i, isUp),
-                            onNavigateUp: (i == 0 && _onDeck.isEmpty) ? _focusTopBoundary : null,
-                            onNavigateToSidebar: _navigateToSidebar,
-                          ),
+                    child: HubSection(
+                      key: i < _orderedHubKeys.length ? _orderedHubKeys[i] : null,
+                      hub: _hubs[i],
+                      icon: _getHubIcon(_hubs[i].title),
+                      showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
+                      onRefresh: _discover.updateItem,
+                      // Hub index is i + 1 if continue watching exists, otherwise i
+                      onVerticalNavigation: (isUp) => _handleVerticalNavigation(_onDeck.isNotEmpty ? i + 1 : i, isUp),
+                      onNavigateUp: (i == 0 && _onDeck.isEmpty) ? _focusTopBoundary : null,
+                      onNavigateToSidebar: _navigateToSidebar,
+                    ),
                   ),
 
                 // Show loading skeleton for hubs while they're loading

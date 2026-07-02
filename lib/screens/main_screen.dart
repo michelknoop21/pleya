@@ -27,7 +27,6 @@ import '../utils/video_player_navigation.dart';
 import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
 import '../widgets/overlay_sheet.dart';
-import '../widgets/netflix_top_nav.dart';
 import '../mixins/tab_visibility_aware.dart';
 import '../navigation/navigation_tabs.dart';
 import '../navigation/profile_navigation_scope.dart';
@@ -224,8 +223,6 @@ class _MainScreenState extends State<MainScreen>
   final GlobalKey<State<SettingsScreen>> _settingsKey = GlobalKey();
   final GlobalKey<SideNavigationRailState> _sideNavKey = GlobalKey();
 
-  // Netflix desktop top-nav: solid/blurred once content scrolls past the top.
-  bool _topNavSolid = false;
 
   // Focus management for sidebar/content switching
   final FocusScopeNode _sidebarFocusScope = FocusScopeNode(debugLabel: 'Sidebar');
@@ -1592,72 +1589,7 @@ class _MainScreenState extends State<MainScreen>
   Widget build(BuildContext context) {
     final useSideNav = PlatformDetector.shouldUseSideNavigation(context);
 
-    // Desktop (non-TV): Netflix-style top bar instead of the side rail. TV
-    // keeps the side rail with all its locked d-pad focus machinery untouched.
-    if (useSideNav && !PlatformDetector.isTV()) {
-      return _buildDesktopTopNavLayout(context);
-    }
-
     return _buildContent(context, useSideNav);
-  }
-
-  Widget _buildDesktopTopNavLayout(BuildContext context) {
-    final tabs = _getVisibleTabs(
-      _isOffline,
-    ).where((t) => t.id != NavigationTabId.search && t.id != NavigationTabId.settings).toList();
-
-    return OverlaySheetHost(
-      onOpenChanged: _handleOverlaySheetOpenChanged,
-      canPop: false,
-      onSystemBack: () {
-        if (BackKeyCoordinator.consumeIfHandled()) return;
-        _handleMainBack();
-      },
-      child: ScaffoldMessenger(
-        key: ProfileNavigationScope.of(context).mainScaffoldMessengerKey,
-        child: Scaffold(
-          body: Focus(
-            onKeyEvent: (node, event) {
-              final fullscreenResult = _handleFullscreenShortcut(event);
-              if (fullscreenResult == KeyEventResult.handled) return fullscreenResult;
-              final searchResult = _handleSearchShortcut(event);
-              if (searchResult == KeyEventResult.handled) return searchResult;
-              return _handleBackKey(event);
-            },
-            child: Stack(
-              children: [
-                // Content fills the viewport; the transparent bar floats over
-                // the billboard. NotificationListener toggles the solid tint.
-                Positioned.fill(
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: (n) {
-                      if (n.metrics.axis != Axis.vertical) return false;
-                      final solid = n.metrics.pixels > 40;
-                      if (solid != _topNavSolid) setState(() => _topNavSolid = solid);
-                      return false;
-                    },
-                    child: _buildTickerAwareStack(),
-                  ),
-                ),
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: NetflixTopNav(
-                    tabs: tabs,
-                    currentTab: _currentTab,
-                    solid: _topNavSolid,
-                    onSelectTab: _selectTab,
-                    onSearch: () => _selectTab(NavigationTabId.search),
-                    onProfile: _openSettings,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildContent(BuildContext context, bool useSideNav) {
