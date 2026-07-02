@@ -318,6 +318,12 @@ class TranslationsScreensEn {
 	/// en: 'Switch Profile'
 	String get switchProfile => 'Switch Profile';
 
+	/// en: 'Who's watching?'
+	String get whoIsWatching => 'Who\'s watching?';
+
+	/// en: 'Manage profiles'
+	String get manageProfiles => 'Manage profiles';
+
 	/// en: 'Subtitle Styling'
 	String get subtitleStyling => 'Subtitle Styling';
 
@@ -4578,6 +4584,8 @@ extension on Translations {
 			'common.pressBackAgainToExit' => 'Press back again to exit',
 			'screens.licenses' => 'Licenses',
 			'screens.switchProfile' => 'Switch Profile',
+			'screens.whoIsWatching' => 'Who\'s watching?',
+			'screens.manageProfiles' => 'Manage profiles',
 			'screens.subtitleStyling' => 'Subtitle Styling',
 			'screens.mpvConfig' => 'mpv.conf',
 			'screens.logs' => 'Logs',
@@ -5023,10 +5031,10 @@ extension on Translations {
 			'messages.noResultsFound' => 'No results found',
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sleep timer set for ${label}',
 			'messages.noItemsAvailable' => 'No items available',
-			'messages.failedToCreatePlayQueueNoItems' => 'Failed to create play queue - no items',
-			'messages.failedPlayback' => ({required Object action, required Object error}) => 'Failed to ${action}: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'messages.failedToCreatePlayQueueNoItems' => 'Failed to create play queue - no items',
+			'messages.failedPlayback' => ({required Object action, required Object error}) => 'Failed to ${action}: ${error}',
 			'messages.switchingToCompatiblePlayer' => 'Switching to compatible player...',
 			'messages.serverLimitTitle' => 'Playback failed',
 			'messages.serverLimitBody' => 'Server error (HTTP 500). A bandwidth/transcoding limit likely rejected this session. Ask the owner to adjust it.',
@@ -5537,10 +5545,10 @@ extension on Translations {
 			'companionRemote.pairing.connecting' => 'Connecting...',
 			'companionRemote.pairing.searchingForDevices' => 'Looking for devices...',
 			'companionRemote.pairing.noDevicesFound' => 'No devices found on your network',
-			'companionRemote.pairing.noDevicesHint' => 'Open PlexFlixNetwork on desktop and use the same WiFi',
-			'companionRemote.pairing.availableDevices' => 'Available Devices',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.noDevicesHint' => 'Open PlexFlixNetwork on desktop and use the same WiFi',
+			'companionRemote.pairing.availableDevices' => 'Available Devices',
 			'companionRemote.pairing.manualConnection' => 'Manual Connection',
 			'companionRemote.pairing.cryptoInitFailed' => 'Couldn\'t start secure connection. Sign in to Plex first.',
 			'companionRemote.pairing.validationHostRequired' => 'Please enter host address',

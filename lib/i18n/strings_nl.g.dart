@@ -186,6 +186,8 @@ class _TranslationsScreensNl extends TranslationsScreensEn {
 	// Translations
 	@override String get licenses => 'Licenties';
 	@override String get switchProfile => 'Wissel van profiel';
+	@override String get whoIsWatching => 'Wie is er aan het kijken?';
+	@override String get manageProfiles => 'Profielen beheren';
 	@override String get subtitleStyling => 'Ondertitel opmaak';
 	@override String get mpvConfig => 'mpv.conf';
 	@override String get logs => 'Logbestanden';
@@ -1991,6 +1993,8 @@ extension on TranslationsNl {
 			'common.pressBackAgainToExit' => 'Druk nogmaals op terug om af te sluiten',
 			'screens.licenses' => 'Licenties',
 			'screens.switchProfile' => 'Wissel van profiel',
+			'screens.whoIsWatching' => 'Wie is er aan het kijken?',
+			'screens.manageProfiles' => 'Profielen beheren',
 			'screens.subtitleStyling' => 'Ondertitel opmaak',
 			'screens.mpvConfig' => 'mpv.conf',
 			'screens.logs' => 'Logbestanden',
@@ -2436,10 +2440,10 @@ extension on TranslationsNl {
 			'messages.serverLimitTitle' => 'Afspelen mislukt',
 			'messages.serverLimitBody' => 'Serverfout (HTTP 500). Waarschijnlijk weigerde een bandbreedte-/transcodeerlimiet deze sessie. Vraag de eigenaar dit aan te passen.',
 			'messages.logsUploaded' => 'Logs geüpload',
-			'messages.logsUploadFailed' => 'Uploaden van logs mislukt',
-			'messages.logId' => 'Log-ID',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logsUploadFailed' => 'Uploaden van logs mislukt',
+			'messages.logId' => 'Log-ID',
 			'subtitlingStyling.text' => 'Tekst',
 			'subtitlingStyling.border' => 'Rand',
 			'subtitlingStyling.background' => 'Achtergrond',
@@ -2950,10 +2954,10 @@ extension on TranslationsNl {
 			'companionRemote.pairing.connectionTimedOut' => 'Verbinding verlopen. Gebruik hetzelfde netwerk op beide apparaten.',
 			'companionRemote.pairing.sessionNotFound' => 'Apparaat niet gevonden. Zorg dat PlexFlixNetwork op de host draait.',
 			'companionRemote.pairing.authFailed' => 'Authenticatie mislukt. Beide apparaten hebben hetzelfde Plex-account nodig.',
-			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kan niet verbinden: ${error}',
-			'companionRemote.remote.disconnectConfirm' => 'Wil je de verbinding met de externe sessie verbreken?',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kan niet verbinden: ${error}',
+			'companionRemote.remote.disconnectConfirm' => 'Wil je de verbinding met de externe sessie verbreken?',
 			'companionRemote.remote.reconnecting' => 'Opnieuw verbinden...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Poging ${current} van 5',
 			'companionRemote.remote.retryNow' => 'Nu opnieuw proberen',

@@ -71,6 +71,8 @@
   "screens": {
     "licenses": "Licenties",
     "switchProfile": "Wissel van profiel",
+    "whoIsWatching": "Wie is er aan het kijken?",
+    "manageProfiles": "Profielen beheren",
     "subtitleStyling": "Ondertitel opmaak",
     "mpvConfig": "mpv.conf",
     "logs": "Logbestanden"

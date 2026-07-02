@@ -71,6 +71,8 @@
   "screens": {
     "licenses": "Licenses",
     "switchProfile": "Switch Profile",
+    "whoIsWatching": "Who's watching?",
+    "manageProfiles": "Manage profiles",
     "subtitleStyling": "Subtitle Styling",
     "mpvConfig": "mpv.conf",
     "logs": "Logs"

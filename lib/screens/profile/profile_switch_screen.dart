@@ -120,6 +120,18 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
           // notification — combined with the stream, that doubles the
           // build cost on each profile-switch.
           final activeId = context.select<ActiveProfileProvider, String?>((p) => p.activeId);
+
+          // Launch gate: Netflix "Who's watching?" avatar grid. The in-app
+          // manage flow keeps the detailed list (with per-profile menus).
+          if (widget.requireSelection && view.profiles.isNotEmpty) {
+            return Stack(
+              children: [
+                _buildSelectionGate(view, activeId),
+                if (_switching) const ProfileSwitchingOverlay(),
+              ],
+            );
+          }
+
           return Stack(
             children: [
               FocusedScrollScaffold(
@@ -200,6 +212,68 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
 
   List<Widget> _buildSections(ProfilesView view, String? activeId) {
     return [_profileList(view.profiles, view, activeId, autofocusFirst: true)];
+  }
+
+  /// Netflix "Who's watching?" gate: centered display-font title, a wrap of
+  /// large rounded avatars (name below, white ring on hover/focus), and a
+  /// ghost "Manage profiles" button. Selection-only — no per-tile menus.
+  Widget _buildSelectionGate(ProfilesView view, String? activeId) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                t.screens.whoIsWatching,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontFamily: 'ArchivoBlack',
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 40),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 26,
+                runSpacing: 26,
+                children: [
+                  for (var i = 0; i < view.profiles.length; i++)
+                    _GateTile(
+                      profile: view.profiles[i],
+                      autofocus: i == 0,
+                      focusNode: _profileFocusNode(view.profiles[i]),
+                      onSelect: _switching ? null : () => _switchTo(view.profiles[i]),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 40),
+              OutlinedButton(
+                onPressed: _switching ? null : () => _openManageProfiles(),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  side: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+                child: Text(t.screens.manageProfiles.toUpperCase(), style: const TextStyle(letterSpacing: 1.5)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Opens the full profile-management list (the non-selection variant).
+  void _openManageProfiles() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ProfileSwitchScreen()),
+    );
   }
 
   SliverList _profileList(List<Profile> profiles, ProfilesView view, String? activeId, {required bool autofocusFirst}) {
@@ -378,6 +452,80 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
     } finally {
       setStateIfMounted(() => _switching = false);
     }
+  }
+}
+
+/// Netflix "Who's watching?" grid tile: large rounded avatar with the name
+/// below and a white ring on hover/focus.
+class _GateTile extends StatefulWidget {
+  final Profile profile;
+  final bool autofocus;
+  final FocusNode focusNode;
+  final VoidCallback? onSelect;
+
+  const _GateTile({required this.profile, required this.autofocus, required this.focusNode, this.onSelect});
+
+  @override
+  State<_GateTile> createState() => _GateTileState();
+}
+
+class _GateTileState extends State<_GateTile> {
+  bool _hovering = false;
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final highlight = _hovering || _focused;
+    const avatarSize = 120.0;
+    return FocusableActionDetector(
+      focusNode: widget.focusNode,
+      autofocus: widget.autofocus,
+      mouseCursor: SystemMouseCursors.click,
+      onShowHoverHighlight: (v) => setState(() => _hovering = v),
+      onShowFocusHighlight: (v) => setState(() => _focused = v),
+      actions: {
+        ActivateIntent: CallbackAction<ActivateIntent>(onInvoke: (_) {
+          widget.onSelect?.call();
+          return null;
+        }),
+      },
+      child: GestureDetector(
+        onTap: widget.onSelect,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: avatarSize,
+              height: avatarSize,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: highlight ? Colors.white : Colors.transparent, width: 3),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: ProfileAvatar(profile: widget.profile, size: avatarSize),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: avatarSize + 20,
+              child: Text(
+                widget.profile.displayName,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: highlight ? Colors.white : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
