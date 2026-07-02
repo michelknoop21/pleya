@@ -45,7 +45,7 @@ String _redactHost(String host) {
 }
 
 class PlexAuthService {
-  static const String _appName = 'Plezy';
+  static const String _appName = 'PlexFlixNetwork';
   static const String _plexApiBase = 'https://plex.tv/api/v2';
   static const String _clientsApi = 'https://clients.plex.tv/api/v2';
 
