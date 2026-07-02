@@ -55,7 +55,6 @@ import '../i18n/strings.g.dart';
 import '../utils/app_logger.dart';
 import '../utils/debouncer.dart';
 import '../utils/dialogs.dart';
-import '../utils/formatters.dart';
 import '../utils/media_navigation_helper.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/video_player_navigation.dart';
@@ -1606,6 +1605,29 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 ),
               ),
 
+              // Netflix left-to-right scrim: darkens the text side of the
+              // billboard so the title/synopsis stay legible over the art.
+              if (alignLeft)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Builder(
+                      builder: (context) {
+                        final bgColor = Theme.of(context).scaffoldBackgroundColor;
+                        return DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [bgColor.withValues(alpha: 0.92), bgColor.withValues(alpha: 0.55), Colors.transparent],
+                              stops: const [0.0, 0.32, 0.62],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+
               // Content with responsive alignment
               Positioned(
                 bottom: isTv
@@ -1691,22 +1713,37 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               ),
                             ),
 
-                          // Metadata as dot-separated text with content type
+                          // Metadata, Netflix-style: green "XX% match" derived
+                          // from the rating, then content type / age / year.
                           if (heroItem.year != null || heroItem.contentRating != null || heroItem.rating != null) ...[
                             const SizedBox(height: 16),
-                            Text(
-                              [
-                                contentTypeLabel,
-                                if (heroItem.rating != null) '★ ${formatRating(heroItem.rating!)}',
-                                if (heroItem.contentRating != null) formatContentRating(heroItem.contentRating!),
-                                if (heroItem.year != null) heroItem.year.toString(),
-                              ].join(' • '),
-                              style: TextStyle(
-                                color: colorScheme.onSurface,
-                                fontSize: isTv ? 18 : 14,
-                                fontWeight: .w600,
-                              ),
-                              textAlign: alignLeft ? TextAlign.left : TextAlign.center,
+                            Wrap(
+                              alignment: alignLeft ? WrapAlignment.start : WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 10,
+                              children: [
+                                if (heroItem.rating != null)
+                                  Text(
+                                    '${(heroItem.rating! * 10).round()}% match',
+                                    style: TextStyle(
+                                      color: const Color(0xFF46D369),
+                                      fontSize: isTv ? 18 : 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                Text(
+                                  [
+                                    contentTypeLabel,
+                                    if (heroItem.contentRating != null) formatContentRating(heroItem.contentRating!),
+                                    if (heroItem.year != null) heroItem.year.toString(),
+                                  ].join(' • '),
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface,
+                                    fontSize: isTv ? 18 : 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
 
