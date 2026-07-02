@@ -66,6 +66,7 @@ end
 
 desc "iOS → TestFlight"
 lane :ios_beta do
+  ensure_build_number
   sh("cd #{PROJECT_ROOT} && flutter build ios --config-only --release")
   build_app(
     workspace: File.join(PROJECT_ROOT, "ios/Runner.xcworkspace"),
@@ -79,6 +80,7 @@ end
 
 desc "tvOS → TestFlight"
 lane :tvos_beta do
+  ensure_build_number
   sh("cd #{PROJECT_ROOT} && flutter pub get")
   build_app(
     workspace: File.join(PROJECT_ROOT, "tvos/Runner.xcworkspace"),
@@ -93,6 +95,7 @@ end
 
 desc "macOS → TestFlight (pkg)"
 lane :macos_beta do
+  ensure_build_number
   sh("cd #{PROJECT_ROOT} && flutter build macos --config-only --release")
 
   out_dir = File.join(PROJECT_ROOT, "build/fastlane/macos")

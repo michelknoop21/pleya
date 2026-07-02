@@ -30,8 +30,19 @@ fastlane ios_beta                        # zonder build-number bump
 ## Signing
 
 Automatic signing met cloud-managed certificaten: de lanes geven
-`-allowProvisioningUpdates` + de API-key aan xcodebuild, dus er hoeft geen
-distributiecertificaat handmatig in de keychain te staan.
+`-allowProvisioningUpdates` + de API-key aan xcodebuild.
+
+**macOS extra stap (eenmalig, ook nodig voor de headless launchd-job):** de
+`macos_beta` lane hertekent de CocoaPods resource-bundles met *Apple
+Distribution* (anders ITMS-90284). `codesign` moet dan zonder pop-up bij de
+private key kunnen. Zet daarom eenmalig de keychain partition-list:
+
+```bash
+security set-key-partition-list -S apple-tool:,apple:,codesign: \
+  -s -k <mac-inlogwachtwoord> ~/Library/Keychains/login.keychain-db
+```
+
+Zonder deze stap faalt codesign met `errSecInternalComponent`.
 
 ## Vereisten in App Store Connect
 

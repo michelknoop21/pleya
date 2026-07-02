@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# TestFlight release: bump build number, commit+push, build & upload.
+# TestFlight release: build & upload, commit het (auto-bepaalde) buildnummer.
 # Gebruik: scripts/testflight_release.sh [beta|ios_beta|tvos_beta|macos_beta]
-# Draait ook headless via launchd (zie docs/TESTFLIGHT.md).
+# Het buildnummer wordt in de Fastfile bepaald (hoogste TestFlight-build +1),
+# dus dit script bumpt niet zelf. Draait ook headless via launchd (zie docs/TESTFLIGHT.md).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -15,17 +16,13 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
-# Bump build number in pubspec.yaml (bijv. 2.8.0+120 -> 2.8.0+121)
-current=$(grep -m1 '^version:' pubspec.yaml | sed 's/version:[[:space:]]*//')
-build_name="${current%+*}"
-build_number="${current#*+}"
-new_number=$((build_number + 1))
-sed -i '' "s/^version: .*/version: ${build_name}+${new_number}/" pubspec.yaml
-echo "$LOG_PREFIX build number ${build_number} -> ${new_number}"
-
-git add pubspec.yaml
-git commit -m "chore: bump build number to ${new_number} for TestFlight"
-git push origin HEAD || echo "$LOG_PREFIX WAARSCHUWING: push faalde, commit staat lokaal" >&2
-
 fastlane "$LANE"
+
+# fastlane heeft pubspec.yaml op het nieuwe buildnummer gezet — leg dat vast.
+new_number=$(grep -m1 '^version:' pubspec.yaml | sed 's/.*+//')
+if ! git diff --quiet pubspec.yaml; then
+  git add pubspec.yaml
+  git commit -m "chore: bump build number to ${new_number} for TestFlight"
+  git push origin HEAD || echo "$LOG_PREFIX WAARSCHUWING: push faalde, commit staat lokaal" >&2
+fi
 echo "$LOG_PREFIX klaar: lane ${LANE}, build ${new_number}"
