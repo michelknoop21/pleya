@@ -1,30 +1,55 @@
 {
-  "fill" : {
-    "solid" : "#0B0B0B"
+  "fill": {
+    "solid": "srgb:0.043,0.043,0.043,1.000"
   },
-  "groups" : [
+  "groups": [
     {
-      "layers" : [
+      "blur-material": null,
+      "layers": [
         {
-          "glass" : false,
-          "hidden" : false,
-          "image-name" : "pfn-icon.png",
-          "name" : "pfn-icon",
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
+          "blend-mode-specializations": [
+            {
+              "appearance": "dark",
+              "value": "normal"
+            }
+          ],
+          "fill-specializations": [
+            {
+              "value": "none"
+            },
+            {
+              "appearance": "dark",
+              "value": "none"
+            }
+          ],
+          "glass": true,
+          "hidden": false,
+          "image-name": "plezy-cropped.svg",
+          "name": "plezy-cropped",
+          "position": {
+            "scale": 2,
+            "translation-in-points": [
               0,
               0
             ]
           }
         }
-      ]
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      }
     }
   ],
-  "supported-platforms" : {
-    "circles" : [
+  "supported-platforms": {
+    "circles": [
       "watchOS"
     ],
-    "squares" : "shared"
+    "squares": "shared"
   }
 }

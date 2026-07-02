@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 32 358.32 399.86">
+  <!-- Netflix-style ribbon P monogram -->
+  <g fill="#E50914">
+    <!-- left stem -->
+    <rect x="70" y="70" width="66" height="300"/>
+    <!-- bowl of the P -->
+    <path d="M136 70 h95 a80 80 0 0 1 0 160 h-95 v-56 h88 a24 24 0 0 0 0-48 h-88 z"/>
+    <!-- diagonal ribbon fold, darker red for depth -->
+    <path d="M136 70 l150 300 h-70 L70 132 v-62 z" fill="#B00610" opacity="0.55"/>
+  </g>
+</svg>
