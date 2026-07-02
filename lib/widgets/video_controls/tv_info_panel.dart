@@ -220,8 +220,8 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
           child: SafeArea(
             bottom: false,
             child: Container(
-              margin: const EdgeInsets.all(16),
-              constraints: const BoxConstraints(maxWidth: 1100, maxHeight: 460),
+              margin: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+              constraints: const BoxConstraints(maxWidth: 880, maxHeight: 460),
               decoration: BoxDecoration(
                 color: TvPanelTheme.surface,
                 borderRadius: BorderRadius.circular(18),

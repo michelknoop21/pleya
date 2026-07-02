@@ -103,7 +103,12 @@ class TvPanelRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (trailingWidget != null) ...[const SizedBox(width: 12), trailingWidget],
+            // Cap the trailing (value / chevron) width so a long value ellipsizes
+            // inside the row instead of overflowing past the panel's clipped edge.
+            if (trailingWidget != null) ...[
+              const SizedBox(width: 12),
+              ConstrainedBox(constraints: const BoxConstraints(maxWidth: 280), child: trailingWidget),
+            ],
           ],
         ),
       ),
