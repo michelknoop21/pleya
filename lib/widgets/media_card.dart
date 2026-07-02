@@ -29,6 +29,8 @@ import 'media_context_menu.dart';
 import 'media_card_list_layout.dart';
 import 'backend_badge.dart';
 import 'optimized_media_image.dart';
+import 'hover_boxart_overlay.dart';
+import '../utils/platform_detector.dart';
 
 const _failedPosterUrlCacheLimit = 512;
 final _failedPosterUrls = <String>{};
@@ -242,6 +244,23 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
             episodePosterModeOverride: widget.episodePosterModeOverride,
           );
 
+    // Netflix desktop hover-expand: grid posters on desktop grow into an
+    // elevated boxart overlay with quick actions. Additive and behind a
+    // settings flag; mobile/TV get the untouched card.
+    final enableHover =
+        viewMode == ViewMode.grid &&
+        item is MediaItem &&
+        !PlatformDetector.isTV() &&
+        PlatformDetector.isDesktop(context) &&
+        SettingsService.instance.read(SettingsService.hoverExpandCards);
+
+    final wrappedCard = enableHover
+        ? HoverBoxartOverlay(
+            overlayBuilder: (ctx, close) => _buildHoverOverlayContent(ctx, item, localPosterPath, close),
+            child: cardWidget,
+          )
+        : cardWidget;
+
     // MediaContextMenu as a non-widget helper — only wrap with its key for
     // programmatic context menu access; gesture callbacks are on InkWell directly.
     return MediaContextMenu(
@@ -253,7 +272,99 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
       onTap: () => _handleTap(context, item),
       isInContinueWatching: widget.isInContinueWatching,
       collectionId: widget.collectionId,
-      child: cardWidget,
+      child: wrappedCard,
+    );
+  }
+
+  /// Content of the Netflix desktop hover-expand overlay: a 16:9 art crop with
+  /// the title, then a row of round quick-action buttons (Play, My List, more)
+  /// and the match/meta line. Reuses this card's own handlers so behaviour
+  /// stays consistent with a normal tap / context menu.
+  Widget _buildHoverOverlayContent(BuildContext context, Object item, String? localPosterPath, VoidCallback close) {
+    final t = tokens(context);
+    final title = item is MediaPlaylist ? item.title : (item as MediaItem).displayTitle;
+
+    Widget roundButton(IconData icon, VoidCallback onTap, {bool filled = false}) {
+      return InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: filled ? Colors.white : Colors.transparent,
+            border: Border.all(color: Colors.white.withValues(alpha: filled ? 1 : 0.55), width: 1.5),
+          ),
+          child: AppIcon(icon, fill: 1, size: 17, color: filled ? Colors.black : Colors.white),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: t.surface,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 40, offset: Offset(0, 18))],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _buildPosterImage(
+                  context,
+                  item,
+                  isOffline: widget.isOffline,
+                  localPosterPath: localPosterPath,
+                  mixedHubContext: widget.mixedHubContext,
+                  episodePosterModeOverride: widget.episodePosterModeOverride,
+                  knownWidth: 300,
+                  knownHeight: 169,
+                ),
+                Positioned(
+                  left: 12,
+                  right: 12,
+                  bottom: 8,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      shadows: [Shadow(color: Colors.black, blurRadius: 8)],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Row(
+              children: [
+                roundButton(Symbols.play_arrow_rounded, () {
+                  close();
+                  _handleTap(context, item);
+                }, filled: true),
+                const SizedBox(width: 8),
+                roundButton(Symbols.add_rounded, () => showContextMenuFromTap()),
+                const Spacer(),
+                roundButton(Symbols.expand_more_rounded, () {
+                  close();
+                  if (item is MediaItem) _navigateToFocusedDetail(context, item, isOffline: widget.isOffline);
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

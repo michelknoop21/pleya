@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import '../theme/mono_tokens.dart';
 
 /// Reusable media progress bar widget for displaying watch progress
 ///
 /// Shows a linear progress indicator based on viewOffset and duration.
-/// Uses theme defaults when colors are not provided.
+/// Defaults to the brand accent (Netflix-red) for the played portion.
 class MediaProgressBar extends StatelessWidget {
   final int viewOffset; // Progress position in milliseconds
   final int duration; // Total duration in milliseconds
@@ -26,8 +27,8 @@ class MediaProgressBar extends StatelessWidget {
 
     return LinearProgressIndicator(
       value: progress.clamp(0.0, 1.0),
-      backgroundColor: backgroundColor ?? Theme.of(context).colorScheme.surfaceContainerHighest,
-      valueColor: AlwaysStoppedAnimation<Color>(valueColor ?? Theme.of(context).colorScheme.primary),
+      backgroundColor: backgroundColor ?? Colors.white.withValues(alpha: 0.2),
+      valueColor: AlwaysStoppedAnimation<Color>(valueColor ?? tokens(context).accent),
       minHeight: minHeight ?? 4,
     );
   }

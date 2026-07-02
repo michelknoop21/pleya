@@ -341,6 +341,9 @@ class SettingsService extends BaseSharedPreferencesService {
   static const seekTimeLarge = IntPref('seek_time_large', defaultValue: 30);
   static const rewindOnResume = IntPref('rewind_on_resume');
   static const showHeroSection = BoolPref('show_hero_section', defaultValue: true);
+  // Desktop-only Netflix-style hover-expand card (boxart overlay with quick
+  // actions). Defaults on; ignored on non-desktop platforms.
+  static const hoverExpandCards = BoolPref('hover_expand_cards', defaultValue: true);
   static const tvFullCardLayout = BoolPref('tv_full_card_layout', defaultValue: false);
   static const focusGlow = BoolPref('focus_glow', defaultValue: true);
   static const useGlobalHubs = BoolPref('use_global_hubs', defaultValue: true);
@@ -783,6 +786,7 @@ class SettingsService extends BaseSharedPreferencesService {
     preferredAudioCodec,
     viewMode,
     showHeroSection,
+    hoverExpandCards,
     continueWatchingAction,
     episodeAction,
     seekTimeSmall,
