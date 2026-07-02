@@ -623,6 +623,10 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	@override String get pipButton => 'Beeld-in-beeld modus';
 	@override String get aspectRatioButton => 'Beeldverhouding';
 	@override String get ambientLighting => 'Omgevingsverlichting';
+	@override String get ambientIntensitySubtle => 'Subtiel';
+	@override String get ambientIntensityBalanced => 'Evenwichtig';
+	@override String get ambientIntensityBright => 'Fel';
+	@override late final _TranslationsVideoControlsTvPanelNl tvPanel = _TranslationsVideoControlsTvPanelNl._(_root);
 	@override String get fullscreenButton => 'Volledig scherm activeren';
 	@override String get exitFullscreenButton => 'Volledig scherm verlaten';
 	@override String get alwaysOnTopButton => 'Altijd bovenop';
@@ -1677,6 +1681,20 @@ class _TranslationsHotkeysActionsNl extends TranslationsHotkeysActionsEn {
 	@override String get screenshot => 'Schermafbeelding maken';
 }
 
+// Path: videoControls.tvPanel
+class _TranslationsVideoControlsTvPanelNl extends TranslationsVideoControlsTvPanelEn {
+	_TranslationsVideoControlsTvPanelNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get information => 'Informatie';
+	@override String get audio => 'Geluid';
+	@override String get tracks => 'Sporen';
+	@override String get options => 'Opties';
+	@override String get more => 'Meer…';
+}
+
 // Path: videoControls.pipErrors
 class _TranslationsVideoControlsPipErrorsNl extends TranslationsVideoControlsPipErrorsEn {
 	_TranslationsVideoControlsPipErrorsNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -2366,6 +2384,14 @@ extension on TranslationsNl {
 			'videoControls.pipButton' => 'Beeld-in-beeld modus',
 			'videoControls.aspectRatioButton' => 'Beeldverhouding',
 			'videoControls.ambientLighting' => 'Omgevingsverlichting',
+			'videoControls.ambientIntensitySubtle' => 'Subtiel',
+			'videoControls.ambientIntensityBalanced' => 'Evenwichtig',
+			'videoControls.ambientIntensityBright' => 'Fel',
+			'videoControls.tvPanel.information' => 'Informatie',
+			'videoControls.tvPanel.audio' => 'Geluid',
+			'videoControls.tvPanel.tracks' => 'Sporen',
+			'videoControls.tvPanel.options' => 'Opties',
+			'videoControls.tvPanel.more' => 'Meer…',
 			'videoControls.fullscreenButton' => 'Volledig scherm activeren',
 			'videoControls.exitFullscreenButton' => 'Volledig scherm verlaten',
 			'videoControls.alwaysOnTopButton' => 'Altijd bovenop',
@@ -2434,6 +2460,8 @@ extension on TranslationsNl {
 			'messages.seasonsLoadFailed' => 'Kan seizoenen niet laden',
 			'messages.noEpisodesFound' => 'Geen afleveringen gevonden in eerste seizoen',
 			'messages.noEpisodesFoundGeneral' => 'Geen afleveringen gevonden',
+			_ => null,
+		} ?? switch (path) {
 			'messages.episodesLoadFailed' => 'Kan afleveringen niet laden',
 			'messages.noResultsFound' => 'Geen resultaten gevonden',
 			'messages.sleepTimerSet' => ({required Object label}) => 'Slaap timer ingesteld voor ${label}',
@@ -2442,8 +2470,6 @@ extension on TranslationsNl {
 			'messages.failedPlayback' => ({required Object action, required Object error}) => 'Afspelen van ${action} mislukt: ${error}',
 			'messages.switchingToCompatiblePlayer' => 'Overschakelen naar compatibele speler...',
 			'messages.serverLimitTitle' => 'Afspelen mislukt',
-			_ => null,
-		} ?? switch (path) {
 			'messages.serverLimitBody' => 'Serverfout (HTTP 500). Waarschijnlijk weigerde een bandbreedte-/transcodeerlimiet deze sessie. Vraag de eigenaar dit aan te passen.',
 			'messages.logsUploaded' => 'Logs geüpload',
 			'messages.logsUploadFailed' => 'Uploaden van logs mislukt',
@@ -2948,6 +2974,8 @@ extension on TranslationsNl {
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Verbinden...',
 			'companionRemote.pairing.searchingForDevices' => 'Apparaten zoeken...',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.noDevicesFound' => 'Geen apparaten gevonden op je netwerk',
 			'companionRemote.pairing.noDevicesHint' => 'Open PlexFlixNetwork op desktop en gebruik dezelfde WiFi',
 			'companionRemote.pairing.availableDevices' => 'Beschikbare apparaten',
@@ -2956,8 +2984,6 @@ extension on TranslationsNl {
 			'companionRemote.pairing.validationHostRequired' => 'Voer het hostadres in',
 			'companionRemote.pairing.validationHostFormat' => 'Formaat moet IP:poort zijn (bijv. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Verbinding verlopen. Gebruik hetzelfde netwerk op beide apparaten.',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.sessionNotFound' => 'Apparaat niet gevonden. Zorg dat PlexFlixNetwork op de host draait.',
 			'companionRemote.pairing.authFailed' => 'Authenticatie mislukt. Beide apparaten hebben hetzelfde Plex-account nodig.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kan niet verbinden: ${error}',

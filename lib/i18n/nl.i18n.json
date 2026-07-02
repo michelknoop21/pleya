@@ -464,6 +464,16 @@
     "pipButton": "Beeld-in-beeld modus",
     "aspectRatioButton": "Beeldverhouding",
     "ambientLighting": "Omgevingsverlichting",
+    "ambientIntensitySubtle": "Subtiel",
+    "ambientIntensityBalanced": "Evenwichtig",
+    "ambientIntensityBright": "Fel",
+    "tvPanel": {
+      "information": "Informatie",
+      "audio": "Geluid",
+      "tracks": "Sporen",
+      "options": "Opties",
+      "more": "Meer…"
+    },
     "fullscreenButton": "Volledig scherm activeren",
     "exitFullscreenButton": "Volledig scherm verlaten",
     "alwaysOnTopButton": "Altijd bovenop",

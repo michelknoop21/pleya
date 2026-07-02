@@ -313,6 +313,9 @@ extension _VideoPlayerBuildMethods on VideoPlayerScreenState {
                         onToggleAmbientLighting: _ambientLightingService?.isSupported == true
                             ? _toggleAmbientLighting
                             : null,
+                        onSetAmbientIntensity: _ambientLightingService?.isSupported == true
+                            ? _setAmbientIntensity
+                            : null,
                         toastController: _toastController,
                       ),
                     );

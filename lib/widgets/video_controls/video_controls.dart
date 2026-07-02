@@ -78,6 +78,7 @@ import 'widgets/track_chapter_controls.dart';
 import 'widgets/performance_overlay/performance_overlay.dart';
 import 'mobile_video_controls.dart';
 import 'desktop_video_controls.dart';
+import 'tv_info_panel.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/shader_preset.dart';
@@ -315,6 +316,10 @@ class PlexVideoControls extends StatefulWidget {
   /// Called to toggle ambient lighting (passed to settings sheet)
   final VoidCallback? onToggleAmbientLighting;
 
+  /// Sets ambient lighting intensity ('off'|'subtle'|'balanced'|'bright').
+  /// Non-null only when ambient lighting is supported. Used by the TV info panel.
+  final ValueChanged<String>? onSetAmbientIntensity;
+
   /// Toast controller for VLC-style in-player notifications (rate changes, backend switch).
   final PlayerToastController toastController;
 
@@ -374,6 +379,7 @@ class PlexVideoControls extends StatefulWidget {
     this.onJumpToLive,
     this.isAmbientLightingEnabled = false,
     this.onToggleAmbientLighting,
+    this.onSetAmbientIntensity,
   });
 
   @override
@@ -498,6 +504,9 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
   final PipService _pipService = PipService();
   AppLifecycleListener? _edgeAdjustmentLifecycleListener;
 
+  // Infuse-style swipe-down TV info panel (TV platforms only).
+  bool _tvInfoPanelVisible = false;
+
   @override
   void initState() {
     super.initState();
@@ -588,6 +597,28 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
   }
 
   void _setControlsState(VoidCallback fn) => setStateIfMounted(fn);
+
+  /// Open the Infuse-style TV info panel (swipe-down). Controls are hidden while
+  /// it is up; the panel owns its own focus scope.
+  void _showTvInfoPanel() {
+    if (_tvInfoPanelVisible) return;
+    // Set the flag before hiding controls so the focus-reclaim path
+    // (_onChromeChanged → _reclaimFocusAfterControlsHide, which fires
+    // synchronously during hide()) sees the panel is open and stays out of the
+    // way — otherwise it fights the panel's pill for focus.
+    _tvInfoPanelVisible = true;
+    if (_showControls) _hideControls();
+    _setControlsState(() {});
+  }
+
+  void _hideTvInfoPanel() {
+    if (!_tvInfoPanelVisible) return;
+    _setControlsState(() => _tvInfoPanelVisible = false);
+    // Reclaim focus for the hidden-controls key handler so the remote keeps working.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_focusNode.hasFocus) _focusNode.requestFocus();
+    });
+  }
 
   void _configureChromeController() {
     widget.chromeController.configure(hideDelay: _hideDelay, hasFirstFrame: widget.hasFirstFrame?.value ?? true);
@@ -983,6 +1014,25 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
                         opacity: (!_autoHidePerformanceOverlay || _showControls) ? 1.0 : 0.0,
                         duration: const Duration(milliseconds: 200),
                         child: IgnorePointer(child: PlayerPerformanceOverlay(player: widget.player)),
+                      ),
+                    ),
+                  // Infuse-style swipe-down info panel (TV only). Sits above the
+                  // controls stack; the video keeps playing behind it.
+                  if (_tvInfoPanelVisible && PlatformDetector.isTV())
+                    Positioned.fill(
+                      child: TvInfoPanel(
+                        player: widget.player,
+                        metadata: widget.metadata,
+                        trackControlsState: _buildTrackControlsState(
+                          playbackState: context.read<PlaybackStateProvider>(),
+                          onToggleAlwaysOnTop: null,
+                        ),
+                        chapters: _chapters,
+                        onSeekToChapter: widget.onSeekRequested,
+                        isAmbientEnabled: widget.isAmbientLightingEnabled,
+                        ambientSupported: widget.onSetAmbientIntensity != null,
+                        onSetAmbientIntensity: (mode) => widget.onSetAmbientIntensity?.call(mode),
+                        onClose: _hideTvInfoPanel,
                       ),
                     ),
                   if (_isScreenLocked)

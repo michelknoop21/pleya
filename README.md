@@ -101,7 +101,7 @@ Package managers:
 
 [^1]: Not available on Linux.
 [^2]: Plex only.
-[^3]: Not available on iOS or tvOS.
+[^3]: Not available on iOS (iPhone/iPad). Supported on tvOS.
 [^4]: Android, iOS, and macOS.
 [^5]: Windows, Android, and tvOS.
 [^6]: Android TV only.

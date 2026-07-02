@@ -435,6 +435,9 @@ class SettingsService extends BaseSharedPreferencesService {
     defaultValue: VisualEffectsSetting.auto,
   );
   static const ambientLighting = BoolPref('ambient_lighting');
+
+  /// Ambient lighting glow intensity: 'subtle' | 'balanced' | 'bright'.
+  static const ambientLightingIntensity = StringPref('ambient_lighting_intensity', defaultValue: 'balanced');
   static const audioPassthrough = _AudioPassthroughPref();
   static const audioNormalization = BoolPref('audio_normalization');
   static const liveTvDefaultFavorites = BoolPref('live_tv_default_favorites');
@@ -839,6 +842,7 @@ class SettingsService extends BaseSharedPreferencesService {
     forceTvMode,
     visualEffects,
     ambientLighting,
+    ambientLightingIntensity,
     audioPassthrough,
     audioNormalization,
     themeMode,

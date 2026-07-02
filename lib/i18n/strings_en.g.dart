@@ -1466,6 +1466,17 @@ class TranslationsVideoControlsEn {
 	/// en: 'Ambient lighting'
 	String get ambientLighting => 'Ambient lighting';
 
+	/// en: 'Subtle'
+	String get ambientIntensitySubtle => 'Subtle';
+
+	/// en: 'Balanced'
+	String get ambientIntensityBalanced => 'Balanced';
+
+	/// en: 'Bright'
+	String get ambientIntensityBright => 'Bright';
+
+	late final TranslationsVideoControlsTvPanelEn tvPanel = TranslationsVideoControlsTvPanelEn.internal(_root);
+
 	/// en: 'Enter fullscreen'
 	String get fullscreenButton => 'Enter fullscreen';
 
@@ -4016,6 +4027,30 @@ class TranslationsHotkeysActionsEn {
 	String get screenshot => 'Take Screenshot';
 }
 
+// Path: videoControls.tvPanel
+class TranslationsVideoControlsTvPanelEn {
+	TranslationsVideoControlsTvPanelEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Information'
+	String get information => 'Information';
+
+	/// en: 'Audio'
+	String get audio => 'Audio';
+
+	/// en: 'Tracks'
+	String get tracks => 'Tracks';
+
+	/// en: 'Options'
+	String get options => 'Options';
+
+	/// en: 'More…'
+	String get more => 'More…';
+}
+
 // Path: videoControls.pipErrors
 class TranslationsVideoControlsPipErrorsEn {
 	TranslationsVideoControlsPipErrorsEn.internal(this._root);
@@ -4967,6 +5002,14 @@ extension on Translations {
 			'videoControls.pipButton' => 'Picture-in-Picture mode',
 			'videoControls.aspectRatioButton' => 'Aspect ratio',
 			'videoControls.ambientLighting' => 'Ambient lighting',
+			'videoControls.ambientIntensitySubtle' => 'Subtle',
+			'videoControls.ambientIntensityBalanced' => 'Balanced',
+			'videoControls.ambientIntensityBright' => 'Bright',
+			'videoControls.tvPanel.information' => 'Information',
+			'videoControls.tvPanel.audio' => 'Audio',
+			'videoControls.tvPanel.tracks' => 'Tracks',
+			'videoControls.tvPanel.options' => 'Options',
+			'videoControls.tvPanel.more' => 'More…',
 			'videoControls.fullscreenButton' => 'Enter fullscreen',
 			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
 			'videoControls.alwaysOnTopButton' => 'Always on top',
@@ -5029,6 +5072,8 @@ extension on Translations {
 			'messages.libraryScanFailed' => ({required Object error}) => 'Failed to scan library: ${error}',
 			'messages.metadataRefreshing' => ({required Object title}) => 'Refreshing metadata for "${title}"...',
 			'messages.metadataRefreshStarted' => ({required Object title}) => 'Metadata refresh started for "${title}"',
+			_ => null,
+		} ?? switch (path) {
 			'messages.metadataRefreshFailed' => ({required Object error}) => 'Failed to refresh metadata: ${error}',
 			'messages.logoutConfirm' => 'Are you sure you want to logout?',
 			'messages.noSeasonsFound' => 'No seasons found',
@@ -5037,8 +5082,6 @@ extension on Translations {
 			'messages.noEpisodesFoundGeneral' => 'No episodes found',
 			'messages.episodesLoadFailed' => 'Couldn\'t load episodes',
 			'messages.noResultsFound' => 'No results found',
-			_ => null,
-		} ?? switch (path) {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sleep timer set for ${label}',
 			'messages.noItemsAvailable' => 'No items available',
 			'messages.failedToCreatePlayQueueNoItems' => 'Failed to create play queue - no items',
@@ -5543,6 +5586,8 @@ extension on Translations {
 			'companionRemote.session.serverRunning' => 'Remote server active',
 			'companionRemote.session.serverStopped' => 'Remote server stopped',
 			'companionRemote.session.serverRunningDescription' => 'Mobile devices on your network can connect to this app',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.session.serverStoppedDescription' => 'Start the server to allow mobile devices to connect',
 			'companionRemote.session.usePhoneToControl' => 'Use your mobile device to control this app',
 			'companionRemote.session.startServer' => 'Start Server',
@@ -5551,8 +5596,6 @@ extension on Translations {
 			'companionRemote.pairing.discoveryDescription' => 'PlexFlixNetwork devices with the same Plex account appear here',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Connecting...',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.searchingForDevices' => 'Looking for devices...',
 			'companionRemote.pairing.noDevicesFound' => 'No devices found on your network',
 			'companionRemote.pairing.noDevicesHint' => 'Open PlexFlixNetwork on desktop and use the same WiFi',

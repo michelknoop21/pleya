@@ -55,26 +55,34 @@ class PlexImageCacheManager extends ce_cache.DefaultCacheManager {
 /// CE closes each factory-created client after a download. Wrap the app-wide
 /// shared client so image requests reuse its platform transport without
 /// transferring ownership of its lifecycle, and cap artwork fan-out globally.
+///
+/// CE creates one client per download and always calls [close] in a finally.
+/// Crucially, on a non-200/202 status it throws *before ever reading the body
+/// stream* (default_cache_manager `_downloadFile`), so tying the permit release
+/// to the body draining leaks a permit on every 404/500. A handful of missing
+/// or server-rejected posters would then exhaust the global limiter and freeze
+/// ALL artwork until an app restart. [close] is the guaranteed backstop: it
+/// releases the permit whether or not the body was ever consumed.
 class _SharedHttpClient extends http.BaseClient {
   final http.Client _inner;
+  _RequestPermit? _permit;
+  bool _released = false;
 
   _SharedHttpClient(this._inner);
 
+  void _release() {
+    if (_released) return;
+    _released = true;
+    _permit?.release();
+  }
+
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    final permit = await _artworkRequestLimiter.acquire();
-    var released = false;
-
-    void release() {
-      if (released) return;
-      released = true;
-      permit.release();
-    }
-
+    _permit = await _artworkRequestLimiter.acquire();
     try {
       final response = await _inner.send(request);
       return http.StreamedResponse(
-        _releaseWhenDone(response.stream, release),
+        _releaseWhenDone(response.stream, _release),
         response.statusCode,
         contentLength: response.contentLength,
         request: response.request,
@@ -84,13 +92,16 @@ class _SharedHttpClient extends http.BaseClient {
         reasonPhrase: response.reasonPhrase,
       );
     } catch (_) {
-      release();
+      _release();
       rethrow;
     }
   }
 
   @override
-  void close() {}
+  void close() {
+    // Backstop for the error-status path where the body stream is never read.
+    _release();
+  }
 }
 
 Stream<List<int>> _releaseWhenDone(Stream<List<int>> stream, void Function() release) async* {

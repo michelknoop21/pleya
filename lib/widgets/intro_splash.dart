@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/device_performance.dart';
+import '../utils/platform_detector.dart';
 
 /// Plays the PlexFlixNetwork startup intro (red wordmark zoom-in + sheen) once
 /// per app process, then reveals [child]. Tap to skip. Honors reduced-motion
@@ -23,7 +24,12 @@ class _IntroGateState extends State<IntroGate> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    final reduceMotion = WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.reduceMotion;
+    // The custom tvOS engine reports reduceMotion=true before accessibility
+    // features are populated, which wrongly skipped the intro on Apple TV.
+    // tvOS has no per-app reduce-motion toggle we need to honor here, and the
+    // splash is brief + tap-to-skip, so ignore the flag on Apple TV.
+    final reduceMotion = !PlatformDetector.isAppleTV() &&
+        WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.reduceMotion;
     _skip = IntroGate._played || reduceMotion || DevicePerformance.isReduced;
     IntroGate._played = true;
 
