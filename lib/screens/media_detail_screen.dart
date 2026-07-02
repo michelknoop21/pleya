@@ -4165,6 +4165,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         const desiredLogoWidth = 400.0;
         const actionHeight = 48.0;
         final chips = <Widget>[
+          // Netflix-style green "XX% match" derived from the rating.
+          if (metadata.rating != null)
+            Text(
+              '${(metadata.rating! * 10).round()}% match',
+              style: const TextStyle(color: Color(0xFF46D369), fontWeight: FontWeight.w700, fontSize: 14),
+            ),
           if (metadata.year != null) _buildMetadataChip('${metadata.year}'),
           if (metadata case PlexMediaItem(:final editionTitle?)) _buildMetadataChip(editionTitle),
           if (metadata.contentRating != null) _buildMetadataChip(formatContentRating(metadata.contentRating!)),
