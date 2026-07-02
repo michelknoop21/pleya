@@ -90,6 +90,7 @@ dev_dependencies:
   dart_code_linter: ^4.0.2
   drift_dev: ^2.28.3
   shared_preferences_platform_interface: ^2.4.0
+  flutter_launcher_icons: ^0.14.4
   path_provider_platform_interface: ^2.1.0
   plugin_platform_interface: ^2.1.0
   freezed: ^3.2.5
@@ -137,8 +138,7 @@ flutter:
   assets:
     - assets/plezy.png
     - assets/plezy_adaptive_foreground.svg
-    - assets/branding/pfn_wordmark.svg
-    - assets/branding/pfn_monogram.svg
+    - assets/branding/
     - assets/plex_chevron.svg
     - assets/jellyfin_icon.svg
     - assets/trakt_circlemark.svg
