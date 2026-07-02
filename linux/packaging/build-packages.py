@@ -91,12 +91,12 @@ def get_version() -> str:
 def generate_icons():
     """Generate icons at multiple sizes using ImageMagick."""
     print("Generating icons...")
-    source = PROJECT_ROOT / "assets/plezy.png"
+    source = PROJECT_ROOT / "assets/branding/pfn_logo.png"
 
     for size in ICON_SIZES:
         dest_dir = SCRIPT_DIR / f"icons/{size}x{size}"
         dest_dir.mkdir(parents=True, exist_ok=True)
-        dest = dest_dir / "plezy.png"
+        dest = dest_dir / "pfn.png"
 
         # Try magick (ImageMagick 7) first, then convert (ImageMagick 6)
         for cmd in ["magick", "convert"]:
@@ -118,7 +118,7 @@ def get_file_mappings() -> list[str]:
 
     for size in ICON_SIZES:
         mappings.append(
-            f"{SCRIPT_DIR}/icons/{size}x{size}/plezy.png=/usr/share/icons/hicolor/{size}x{size}/apps/plezy.png"
+            f"{SCRIPT_DIR}/icons/{size}x{size}/pfn.png=/usr/share/icons/hicolor/{size}x{size}/apps/pfn.png"
         )
 
     return mappings
