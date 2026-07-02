@@ -117,6 +117,8 @@
     "gridView": "Grid",
     "listView": "List",
     "showHeroSection": "Show Hero Section",
+    "hoverExpandCards": "Hover-expand cards",
+    "hoverExpandCardsDescription": "Grow a preview card with quick actions when hovering a poster",
     "continueWatchingAction": "Continue Watching Action",
     "continueWatchingPlay": "Play",
     "continueWatchingDetails": "Open Details",

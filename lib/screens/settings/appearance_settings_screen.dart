@@ -73,6 +73,13 @@ class AppearanceSettingsScreen extends StatelessWidget {
             title: t.settings.showHeroSection,
             subtitle: t.settings.showHeroSectionDescription,
           ),
+        if (PlatformDetector.isDesktop(context))
+          SettingSwitchTile(
+            pref: SettingsService.hoverExpandCards,
+            icon: Symbols.pageview_rounded,
+            title: t.settings.hoverExpandCards,
+            subtitle: t.settings.hoverExpandCardsDescription,
+          ),
         _continueWatchingActionSelector(),
         SettingSwitchTile(
           pref: SettingsService.useGlobalHubs,

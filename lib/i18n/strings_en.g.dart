@@ -462,6 +462,12 @@ class TranslationsSettingsEn {
 	/// en: 'Show Hero Section'
 	String get showHeroSection => 'Show Hero Section';
 
+	/// en: 'Hover-expand cards'
+	String get hoverExpandCards => 'Hover-expand cards';
+
+	/// en: 'Grow a preview card with quick actions when hovering a poster'
+	String get hoverExpandCardsDescription => 'Grow a preview card with quick actions when hovering a poster';
+
 	/// en: 'Continue Watching Action'
 	String get continueWatchingAction => 'Continue Watching Action';
 
@@ -4626,6 +4632,8 @@ extension on Translations {
 			'settings.gridView' => 'Grid',
 			'settings.listView' => 'List',
 			'settings.showHeroSection' => 'Show Hero Section',
+			'settings.hoverExpandCards' => 'Hover-expand cards',
+			'settings.hoverExpandCardsDescription' => 'Grow a preview card with quick actions when hovering a poster',
 			'settings.continueWatchingAction' => 'Continue Watching Action',
 			'settings.continueWatchingPlay' => 'Play',
 			'settings.continueWatchingDetails' => 'Open Details',
@@ -5029,10 +5037,10 @@ extension on Translations {
 			'messages.noEpisodesFoundGeneral' => 'No episodes found',
 			'messages.episodesLoadFailed' => 'Couldn\'t load episodes',
 			'messages.noResultsFound' => 'No results found',
-			'messages.sleepTimerSet' => ({required Object label}) => 'Sleep timer set for ${label}',
-			'messages.noItemsAvailable' => 'No items available',
 			_ => null,
 		} ?? switch (path) {
+			'messages.sleepTimerSet' => ({required Object label}) => 'Sleep timer set for ${label}',
+			'messages.noItemsAvailable' => 'No items available',
 			'messages.failedToCreatePlayQueueNoItems' => 'Failed to create play queue - no items',
 			'messages.failedPlayback' => ({required Object action, required Object error}) => 'Failed to ${action}: ${error}',
 			'messages.switchingToCompatiblePlayer' => 'Switching to compatible player...',
@@ -5543,10 +5551,10 @@ extension on Translations {
 			'companionRemote.pairing.discoveryDescription' => 'PlexFlixNetwork devices with the same Plex account appear here',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Connecting...',
-			'companionRemote.pairing.searchingForDevices' => 'Looking for devices...',
-			'companionRemote.pairing.noDevicesFound' => 'No devices found on your network',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.searchingForDevices' => 'Looking for devices...',
+			'companionRemote.pairing.noDevicesFound' => 'No devices found on your network',
 			'companionRemote.pairing.noDevicesHint' => 'Open PlexFlixNetwork on desktop and use the same WiFi',
 			'companionRemote.pairing.availableDevices' => 'Available Devices',
 			'companionRemote.pairing.manualConnection' => 'Manual Connection',

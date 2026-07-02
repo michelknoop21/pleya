@@ -117,6 +117,8 @@
     "gridView": "Raster",
     "listView": "Lijst",
     "showHeroSection": "Toon hoofdsectie",
+    "hoverExpandCards": "Kaarten uitklappen bij hover",
+    "hoverExpandCardsDescription": "Toon een voorbeeldkaart met snelknoppen als je over een poster zweeft",
     "continueWatchingAction": "Actie voor Doorgaan met kijken",
     "continueWatchingPlay": "Afspelen",
     "continueWatchingDetails": "Details openen",

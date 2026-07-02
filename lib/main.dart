@@ -25,6 +25,7 @@ import 'profiles/profile_registry.dart';
 import 'mixins/mounted_set_state_mixin.dart';
 import 'profiles/plex_home_service.dart';
 import 'screens/auth_screen.dart';
+import 'widgets/intro_splash.dart';
 import 'screens/profile/pin_entry_dialog.dart';
 import 'screens/profile/profile_switch_screen.dart';
 import 'services/storage_service.dart';
@@ -910,7 +911,7 @@ class _AppShell extends StatelessWidget {
                       key: rootScaffoldMessengerKey,
                       child: Scaffold(
                         backgroundColor: Colors.transparent,
-                        body: _AppleTvScale(child: child),
+                        body: IntroGate(child: _AppleTvScale(child: child)),
                       ),
                     ),
                   ),
