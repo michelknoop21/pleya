@@ -2,29 +2,36 @@ import 'package:flutter/material.dart';
 import 'gapped_track_shape.dart';
 import 'mono_tokens.dart';
 
+/// PlexFlix brand accent (Netflix-style red). Applied sparingly.
+const Color kAccent = Color(0xFFE50914);
+
 ThemeData monoTheme({required bool dark, bool oled = false}) {
-  // neutral greys tuned for crisp contrast
-  final ({Color bg, Color surface, Color outline, Color text, Color textMuted}) c;
+  // Netflix-2026 palette. Dark is the design target (#141414); OLED stays pure
+  // black; light remains functional with a neutral re-tint only.
+  final ({Color bg, Color surface, Color surfaceElevated, Color outline, Color text, Color textMuted}) c;
   if (oled) {
     c = (
       bg: const Color(0xFF000000), // Pure black for OLED
-      surface: const Color(0xFF0A0A0A), // Very dark gray
+      surface: const Color(0xFF141414), // Netflix dark as the elevated tier
+      surfaceElevated: const Color(0xFF2F2F2F),
       outline: const Color(0x1FFFFFFF),
-      text: const Color(0xFFEDEDED),
-      textMuted: const Color(0x99EDEDED),
+      text: const Color(0xFFFFFFFF),
+      textMuted: const Color(0xB3FFFFFF),
     );
   } else if (dark) {
     c = (
-      bg: const Color(0xFF0E0F12),
-      surface: const Color(0xFF15171C),
+      bg: const Color(0xFF141414),
+      surface: const Color(0xFF1F1F1F),
+      surfaceElevated: const Color(0xFF2F2F2F),
       outline: const Color(0x1FFFFFFF),
-      text: const Color(0xFFEDEDED),
-      textMuted: const Color(0x99EDEDED),
+      text: const Color(0xFFFFFFFF),
+      textMuted: const Color(0xB3FFFFFF),
     );
   } else {
     c = (
       bg: const Color(0xFFF7F7F8),
       surface: const Color(0xFFFFFFFF),
+      surfaceElevated: const Color(0xFFEDEDED),
       outline: const Color(0x19000000),
       text: const Color(0xFF111111),
       textMuted: const Color(0x99111111),
@@ -36,17 +43,22 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     (states) => states.contains(WidgetState.disabled) ? MouseCursor.defer : SystemMouseCursors.click,
   );
 
+  // Netflix Play/More-Info buttons: square-ish corners (radius 4), primary is
+  // white-on-black. Secondary actions get a translucent grey fill elsewhere.
   final buttonStyle = ButtonStyle(
     mouseCursor: clickableCursor,
     padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 18, vertical: 14)),
     elevation: const WidgetStatePropertyAll(0),
     backgroundColor: WidgetStatePropertyAll(c.text),
     foregroundColor: WidgetStatePropertyAll(isDark ? c.bg : Colors.white),
-    shape: const WidgetStatePropertyAll(StadiumBorder()),
+    shape: const WidgetStatePropertyAll(
+      RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
+    ),
   );
 
   final base = ThemeData(
     useMaterial3: true,
+    fontFamily: 'Inter',
     brightness: isDark ? Brightness.dark : Brightness.light,
     colorScheme: ColorScheme(
       brightness: isDark ? Brightness.dark : Brightness.light,
@@ -160,9 +172,11 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
         slow: const Duration(milliseconds: 300),
         bg: c.bg,
         surface: c.surface,
+        surfaceElevated: c.surfaceElevated,
         outline: c.outline,
         text: c.text,
         textMuted: c.textMuted,
+        accent: kAccent,
         splashFactory: NoSplash.splashFactory,
       ),
     ],

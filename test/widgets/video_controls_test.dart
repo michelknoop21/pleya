@@ -26,9 +26,11 @@ const _testTokens = MonoTokens(
   slow: Duration(milliseconds: 1),
   bg: Colors.black,
   surface: Colors.black,
+  surfaceElevated: Color(0xFF2F2F2F),
   outline: Colors.white24,
   text: Colors.white,
   textMuted: Colors.white70,
+  accent: Color(0xFFE50914),
   splashFactory: NoSplash.splashFactory,
 );
 

@@ -13,9 +13,14 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
   final Duration slow;
   final Color bg;
   final Color surface;
+  final Color surfaceElevated;
   final Color outline;
   final Color text;
   final Color textMuted;
+
+  /// Brand accent (PlexFlix red). Used sparingly: progress bars, badges,
+  /// wordmark, selection highlights — not as general primary.
+  final Color accent;
   final InteractiveInkFeatureFactory? splashFactory;
 
   const MonoTokens({
@@ -27,9 +32,11 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
     required this.slow,
     required this.bg,
     required this.surface,
+    required this.surfaceElevated,
     required this.outline,
     required this.text,
     required this.textMuted,
+    required this.accent,
     required this.splashFactory,
   });
 
@@ -43,9 +50,11 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
     Duration? slow,
     Color? bg,
     Color? surface,
+    Color? surfaceElevated,
     Color? outline,
     Color? text,
     Color? textMuted,
+    Color? accent,
     InteractiveInkFeatureFactory? splashFactory,
   }) => MonoTokens(
     radiusSm: radiusSm ?? this.radiusSm,
@@ -56,9 +65,11 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
     slow: slow ?? this.slow,
     bg: bg ?? this.bg,
     surface: surface ?? this.surface,
+    surfaceElevated: surfaceElevated ?? this.surfaceElevated,
     outline: outline ?? this.outline,
     text: text ?? this.text,
     textMuted: textMuted ?? this.textMuted,
+    accent: accent ?? this.accent,
     splashFactory: splashFactory ?? this.splashFactory,
   );
 
@@ -81,9 +92,11 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
       ),
       bg: lerpC(bg, other.bg),
       surface: lerpC(surface, other.surface),
+      surfaceElevated: lerpC(surfaceElevated, other.surfaceElevated),
       outline: lerpC(outline, other.outline),
       text: lerpC(text, other.text),
       textMuted: lerpC(textMuted, other.textMuted),
+      accent: lerpC(accent, other.accent),
       splashFactory: other.splashFactory,
     );
   }
