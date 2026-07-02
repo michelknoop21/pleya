@@ -682,13 +682,21 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                 decoration: const BoxDecoration(),
                 child: Stack(
                   children: [
+                    // TV: dark left-to-right gradient scrim (Netflix-TV nav) so
+                    // the rail reads over the billboard without a hard panel.
+                    // Non-TV: solid surface panel.
                     Positioned.fill(
-                      child: AnimatedOpacity(
-                        opacity: PlatformDetector.isTV() ? 0.0 : 1.0,
-                        duration: t.normal,
-                        curve: Curves.easeOutCubic,
-                        child: ColoredBox(color: t.surface),
-                      ),
+                      child: PlatformDetector.isTV()
+                          ? const DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [Color(0xE6000000), Color(0x00000000)],
+                                ),
+                              ),
+                            )
+                          : ColoredBox(color: t.surface),
                     ),
                     IgnorePointer(
                       ignoring: isCollapsed,

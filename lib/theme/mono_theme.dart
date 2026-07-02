@@ -138,10 +138,15 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
       textColor: c.text,
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: c.bg,
+      // Netflix mobile: near-black translucent (BackdropFilter blur is applied
+      // by the bar wrapper). Selected = full white, unselected = 60%.
+      backgroundColor: isDark ? const Color(0xE60F0F0F) : c.bg.withValues(alpha: 0.92),
       elevation: 0,
       indicatorColor: Colors.transparent,
-      labelTextStyle: WidgetStatePropertyAll(TextStyle(color: c.textMuted, fontSize: 11)),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        final active = states.contains(WidgetState.selected);
+        return TextStyle(color: active ? c.text : c.text.withValues(alpha: 0.6), fontSize: 11);
+      }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         final active = states.contains(WidgetState.selected);
         return IconThemeData(opacity: active ? 1 : 0.6, size: 22, color: c.text);
