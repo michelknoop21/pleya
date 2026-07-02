@@ -56,7 +56,21 @@ class _HoverBoxartOverlayState extends State<HoverBoxartOverlay> {
     _timer = Timer(widget.hoverDelay, _showOverlay);
   }
 
+  // Leaving the source card cancels a pending show. If the overlay is already
+  // up, schedule a short-grace removal — entering the overlay cancels it (so
+  // moving the cursor onto the card's caption area, which the overlay doesn't
+  // cover, doesn't leave a stuck preview).
   void _cancelShow() {
+    _timer?.cancel();
+    if (_entry != null) _scheduleRemove();
+  }
+
+  void _scheduleRemove() {
+    _timer?.cancel();
+    _timer = Timer(const Duration(milliseconds: 120), _removeOverlay);
+  }
+
+  void _cancelRemove() {
     _timer?.cancel();
   }
 
@@ -81,7 +95,8 @@ class _HoverBoxartOverlayState extends State<HoverBoxartOverlay> {
             followerAnchor: Alignment.topCenter,
             offset: Offset(dx + scaledW / 2 - size.width / 2, -22),
             child: MouseRegion(
-              onExit: (_) => _removeOverlay(),
+              onEnter: (_) => _cancelRemove(),
+              onExit: (_) => _scheduleRemove(),
               child: Material(
                 color: Colors.transparent,
                 child: _GrowIn(child: widget.overlayBuilder(context, _removeOverlay)),
@@ -105,7 +120,10 @@ class _HoverBoxartOverlayState extends State<HoverBoxartOverlay> {
     return CompositedTransformTarget(
       link: _link,
       child: MouseRegion(
-        onEnter: (_) => _scheduleShow(),
+        onEnter: (_) {
+          _cancelRemove(); // cursor returned to the card — keep the preview
+          _scheduleShow();
+        },
         onExit: (_) => _cancelShow(),
         child: widget.child,
       ),

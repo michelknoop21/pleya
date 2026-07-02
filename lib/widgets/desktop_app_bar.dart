@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../utils/desktop_window_padding.dart';
 import '../services/fullscreen_state_manager.dart';
+import '../navigation/top_nav_scope.dart';
 import 'app_bar_back_button.dart';
+import 'netflix_top_nav.dart';
 
 /// Configuration class for common app bar properties.
 /// Reduces duplication between different app bar implementations.
@@ -126,6 +128,26 @@ class DesktopSliverAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // When the desktop Netflix top nav owns the chrome, this bar shows the
+    // wordmark + tabs (in place of the page title) so there's one bar, not two.
+    final navActive = TopNavScope.isActive(context);
+    if (navActive) {
+      return SliverAppBar(
+        title: const DesktopTitleBarPadding(child: NetflixNavLeading()),
+        titleSpacing: 0,
+        actions: DesktopAppBarSections.buildActionsSection(actions),
+        automaticallyImplyLeading: false,
+        elevation: 0,
+        backgroundColor: const Color(0xF0141414),
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        floating: true,
+        pinned: true,
+        snap: false,
+        bottom: bottom,
+      );
+    }
+
     final effectiveLeading = DesktopAppBarSections.buildLeadingSection(
       leading: leading,
       automaticallyImplyLeading: automaticallyImplyLeading,

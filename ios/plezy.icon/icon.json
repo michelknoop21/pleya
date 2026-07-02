@@ -1,49 +1,24 @@
 {
   "fill" : {
-    "solid" : "gray:0.94630,1.00000"
+    "solid" : "#0B0B0B"
   },
   "groups" : [
     {
-      "blur-material" : null,
       "layers" : [
         {
-          "blend-mode-specializations" : [
-            {
-              "appearance" : "dark",
-              "value" : "normal"
-            }
-          ],
-          "fill-specializations" : [
-            {
-              "value" : "none"
-            },
-            {
-              "appearance" : "dark",
-              "value" : "none"
-            }
-          ],
-          "glass" : true,
+          "glass" : false,
           "hidden" : false,
-          "image-name" : "plezy-cropped.svg",
-          "name" : "plezy-cropped",
+          "image-name" : "pfn-icon.png",
+          "name" : "pfn-icon",
           "position" : {
-            "scale" : 2,
+            "scale" : 1,
             "translation-in-points" : [
               0,
               0
             ]
           }
         }
-      ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
-      },
-      "specular" : true,
-      "translucency" : {
-        "enabled" : false,
-        "value" : 0.5
-      }
+      ]
     }
   ],
   "supported-platforms" : {

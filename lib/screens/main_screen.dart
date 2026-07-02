@@ -27,6 +27,7 @@ import '../utils/video_player_navigation.dart';
 import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
 import '../widgets/overlay_sheet.dart';
+import '../navigation/top_nav_scope.dart';
 import '../mixins/tab_visibility_aware.dart';
 import '../navigation/navigation_tabs.dart';
 import '../navigation/profile_navigation_scope.dart';
@@ -1589,7 +1590,47 @@ class _MainScreenState extends State<MainScreen>
   Widget build(BuildContext context) {
     final useSideNav = PlatformDetector.shouldUseSideNavigation(context);
 
+    // Desktop (non-TV): Netflix top nav. Each screen renders the wordmark +
+    // tabs inside its OWN top bar via TopNavScope (no side rail, no second
+    // bar). TV keeps the side rail with its locked d-pad focus untouched.
+    if (useSideNav && !PlatformDetector.isTV()) {
+      return _buildDesktopTopNav(context);
+    }
+
     return _buildContent(context, useSideNav);
+  }
+
+  Widget _buildDesktopTopNav(BuildContext context) {
+    final tabs = _getVisibleTabs(_isOffline).where((t) => t.id != NavigationTabId.settings).toList();
+    return OverlaySheetHost(
+      onOpenChanged: _handleOverlaySheetOpenChanged,
+      canPop: false,
+      onSystemBack: () {
+        if (BackKeyCoordinator.consumeIfHandled()) return;
+        _handleMainBack();
+      },
+      child: ScaffoldMessenger(
+        key: ProfileNavigationScope.of(context).mainScaffoldMessengerKey,
+        child: Scaffold(
+          body: Focus(
+            onKeyEvent: (node, event) {
+              final fullscreenResult = _handleFullscreenShortcut(event);
+              if (fullscreenResult == KeyEventResult.handled) return fullscreenResult;
+              final searchResult = _handleSearchShortcut(event);
+              if (searchResult == KeyEventResult.handled) return searchResult;
+              return _handleBackKey(event);
+            },
+            child: TopNavScope(
+              active: true,
+              currentTab: _currentTab,
+              tabs: tabs,
+              onSelectTab: _selectTab,
+              child: _buildTickerAwareStack(),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildContent(BuildContext context, bool useSideNav) {

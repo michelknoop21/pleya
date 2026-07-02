@@ -59,6 +59,9 @@ import '../utils/provider_extensions.dart';
 import '../utils/video_player_navigation.dart';
 import '../utils/layout_constants.dart';
 import '../utils/platform_detector.dart';
+import '../navigation/top_nav_scope.dart';
+import '../widgets/netflix_top_nav.dart';
+import '../widgets/top_ten_row.dart';
 import '../theme/mono_tokens.dart';
 import 'auth_screen.dart';
 import 'libraries/content_state_builder.dart';
@@ -915,7 +918,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
-              if (!PlatformDetector.isTV())
+              // Desktop Netflix nav (wordmark + tabs) replaces the page title,
+              // staying transparent over the billboard. Falls back to the title.
+              if (TopNavScope.isActive(context))
+                Flexible(child: NetflixNavLeading())
+              else if (!PlatformDetector.isTV())
                 Text(
                   t.discover.title,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(color: foregroundColor, fontWeight: .bold),
@@ -1121,17 +1128,23 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 // Recommendation Hubs (Trending, Top in Genre, etc.)
                 for (int i = 0; i < _hubs.length; i++)
                   SliverToBoxAdapter(
-                    child: HubSection(
-                      key: i < _orderedHubKeys.length ? _orderedHubKeys[i] : null,
-                      hub: _hubs[i],
-                      icon: _getHubIcon(_hubs[i].title),
-                      showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
-                      onRefresh: _discover.updateItem,
-                      // Hub index is i + 1 if continue watching exists, otherwise i
-                      onVerticalNavigation: (isUp) => _handleVerticalNavigation(_onDeck.isNotEmpty ? i + 1 : i, isUp),
-                      onNavigateUp: (i == 0 && _onDeck.isEmpty) ? _focusTopBoundary : null,
-                      onNavigateToSidebar: _navigateToSidebar,
-                    ),
+                    // Ranked Top-10 row (big outlined numerals) for genuine
+                    // top-10/trending hubs, non-TV only (TV keeps HubSection's
+                    // locked d-pad focus).
+                    child: !PlatformDetector.isTV() && TopTenRow.matches(_hubs[i])
+                        ? TopTenRow(hub: _hubs[i], onRefresh: _discover.updateItem)
+                        : HubSection(
+                            key: i < _orderedHubKeys.length ? _orderedHubKeys[i] : null,
+                            hub: _hubs[i],
+                            icon: _getHubIcon(_hubs[i].title),
+                            showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
+                            onRefresh: _discover.updateItem,
+                            // Hub index is i + 1 if continue watching exists, otherwise i
+                            onVerticalNavigation: (isUp) =>
+                                _handleVerticalNavigation(_onDeck.isNotEmpty ? i + 1 : i, isUp),
+                            onNavigateUp: (i == 0 && _onDeck.isEmpty) ? _focusTopBoundary : null,
+                            onNavigateToSidebar: _navigateToSidebar,
+                          ),
                   ),
 
                 // Show loading skeleton for hubs while they're loading
