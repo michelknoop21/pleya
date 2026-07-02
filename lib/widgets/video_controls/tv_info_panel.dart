@@ -148,9 +148,12 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
     final serverId = state.serverId;
     if (serverId == null) return;
     // The search sheet lives in the overlay-sheet system; close the panel so the
-    // two overlays don't stack.
+    // two overlays don't stack. Resolve the controller BEFORE closing — once the
+    // panel is removed our own context is defunct and maybeOf() would return
+    // null (so the sheet would never open).
+    final controller = OverlaySheetController.maybeOf(context);
     widget.onClose();
-    OverlaySheetController.maybeOf(context)?.show(
+    controller?.show(
       builder: (_) => SubtitleSearchSheet(
         ratingKey: state.ratingKey,
         serverId: serverId,

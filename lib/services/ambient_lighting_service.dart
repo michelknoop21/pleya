@@ -89,11 +89,14 @@ class AmbientLightingService {
   /// effect is live, hot-swap it in the mpv shader chain.
   Future<void> refreshIntensity() async {
     if (!_enabled || _shaderPath == null) return;
+    final oldPath = _shaderPath!;
     try {
-      final oldPath = _shaderPath!;
-      _shaderPath = await _writeShaderToTemp(_generateShader());
+      final newPath = await _writeShaderToTemp(_generateShader());
       await _player.command(['change-list', 'glsl-shaders', 'remove', oldPath]);
-      await _player.command(['change-list', 'glsl-shaders', 'append', _shaderPath!]);
+      await _player.command(['change-list', 'glsl-shaders', 'append', newPath]);
+      // Only adopt the new path once mpv actually holds it, so a mid-swap
+      // failure can't leave _shaderPath pointing at a shader mpv never installed.
+      _shaderPath = newPath;
     } catch (e, st) {
       appLogger.w('AmbientLightingService: Failed to refresh intensity', error: e, stackTrace: st);
     }

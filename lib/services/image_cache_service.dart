@@ -65,24 +65,26 @@ class PlexImageCacheManager extends ce_cache.DefaultCacheManager {
 /// releases the permit whether or not the body was ever consumed.
 class _SharedHttpClient extends http.BaseClient {
   final http.Client _inner;
-  _RequestPermit? _permit;
-  bool _released = false;
+
+  // One permit per in-flight request. Tracked as a set so a client that is
+  // (against CE's usual one-per-download pattern) reused for multiple sends
+  // never overwrites and leaks an earlier permit.
+  final Set<_RequestPermit> _permits = {};
 
   _SharedHttpClient(this._inner);
 
-  void _release() {
-    if (_released) return;
-    _released = true;
-    _permit?.release();
+  void _releaseOne(_RequestPermit permit) {
+    if (_permits.remove(permit)) permit.release();
   }
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    _permit = await _artworkRequestLimiter.acquire();
+    final permit = await _artworkRequestLimiter.acquire();
+    _permits.add(permit);
     try {
       final response = await _inner.send(request);
       return http.StreamedResponse(
-        _releaseWhenDone(response.stream, _release),
+        _releaseWhenDone(response.stream, () => _releaseOne(permit)),
         response.statusCode,
         contentLength: response.contentLength,
         request: response.request,
@@ -92,15 +94,20 @@ class _SharedHttpClient extends http.BaseClient {
         reasonPhrase: response.reasonPhrase,
       );
     } catch (_) {
-      _release();
+      _releaseOne(permit);
       rethrow;
     }
   }
 
   @override
   void close() {
-    // Backstop for the error-status path where the body stream is never read.
-    _release();
+    // Backstop: CE throws on a non-200/202 status BEFORE reading the body, so
+    // the stream-drain release never fires. CE always calls close() per
+    // download, so release any still-held permit here — otherwise a few
+    // 404/500 posters would exhaust the limiter and freeze all artwork.
+    for (final permit in _permits.toList()) {
+      _releaseOne(permit);
+    }
   }
 }
 
