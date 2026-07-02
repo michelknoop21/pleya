@@ -66,14 +66,64 @@ end
 desc "macOS → TestFlight (pkg)"
 lane :macos_beta do
   sh("cd #{PROJECT_ROOT} && flutter build macos --config-only --release")
-  build_mac_app(
-    workspace: File.join(PROJECT_ROOT, "macos/Runner.xcworkspace"),
-    scheme: "Runner",
-    export_method: "app-store",
-    output_directory: File.join(PROJECT_ROOT, "build/fastlane/macos"),
-    xcargs: auth_xcargs,
-  )
-  upload_beta(app_platform: "osx")
+
+  out_dir = File.join(PROJECT_ROOT, "build/fastlane/macos")
+  archive_path = File.join(out_dir, "PlexFlixNetwork.xcarchive")
+  FileUtils.mkdir_p(out_dir)
+
+  # Release signeert ad-hoc ("-") voor de DMG-flow; voor App Store export
+  # moet de archive met team + echte identity gesigneerd worden.
+  sh("xcodebuild archive " \
+     "-workspace #{File.join(PROJECT_ROOT, 'macos/Runner.xcworkspace')} " \
+     "-scheme Runner -configuration Release " \
+     "-destination 'generic/platform=macOS' " \
+     "-archivePath #{archive_path} " \
+     "#{auth_xcargs} " \
+     "CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=XL9KN38ATX CODE_SIGN_IDENTITY='Apple Development'")
+
+  # Sparkle (DMG-updater, via auto_updater plugin) zit in de bundle. App Store
+  # validatie eist dat elk executable daarin gesandboxed is; runtime staat
+  # Sparkle toch uit (SUEnableAutomaticChecks=false), dus alleen bijtekenen.
+  ent = File.join(out_dir, "sparkle-sandbox.entitlements")
+  File.write(ent, <<~PLIST)
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+    <dict>
+      <key>com.apple.security.app-sandbox</key><true/>
+      <key>com.apple.security.inherit</key><true/>
+    </dict>
+    </plist>
+  PLIST
+  sparkle = "#{archive_path}/Products/Applications/PlexFlixNetwork.app/Contents/Frameworks/Sparkle.framework"
+  [
+    "#{sparkle}/Versions/B/Autoupdate",
+    "#{sparkle}/Versions/B/Updater.app",
+    "#{sparkle}/Versions/B/XPCServices/Downloader.xpc",
+    "#{sparkle}/Versions/B/XPCServices/Installer.xpc",
+  ].each do |nested|
+    sh("codesign --force --entitlements #{ent} --sign 'Apple Development' #{nested}")
+  end
+  sh("codesign --force --sign 'Apple Development' #{sparkle}")
+
+  export_plist = File.join(out_dir, "ExportOptions.plist")
+  File.write(export_plist, <<~PLIST)
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+    <dict>
+      <key>method</key><string>app-store-connect</string>
+      <key>teamID</key><string>XL9KN38ATX</string>
+      <key>signingStyle</key><string>automatic</string>
+    </dict>
+    </plist>
+  PLIST
+  sh("xcodebuild -exportArchive -archivePath #{archive_path} " \
+     "-exportPath #{out_dir} -exportOptionsPlist #{export_plist} #{auth_xcargs}")
+
+  pkg = Dir[File.join(out_dir, "*.pkg")].first
+  UI.user_error!("Geen pkg gevonden in #{out_dir}") unless pkg
+  upload_beta(app_platform: "osx", pkg: pkg)
 end
 
 desc "Alle platforms → TestFlight; gaat door als één platform faalt"
