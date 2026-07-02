@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Plezy"
+    "title": "PlexFlixNetwork"
   },
   "auth": {
     "signIn": "サインイン",
@@ -86,7 +86,7 @@
   },
   "settings": {
     "title": "設定",
-    "supportDeveloper": "Plezy を支援",
+    "supportDeveloper": "PlexFlixNetwork を支援",
     "supportDeveloperDescription": "Liberapay で寄付して開発を支援",
     "language": "言語",
     "theme": "テーマ",
@@ -196,7 +196,7 @@
     "importSettingsConfirm": "現在の設定を置き換えます。続行しますか？",
     "importSettingsSuccess": "設定をインポートしました",
     "importSettingsFailed": "設定をインポートできませんでした",
-    "importSettingsInvalidFile": "このファイルは有効なPlezyの設定エクスポートではありません",
+    "importSettingsInvalidFile": "このファイルは有効なPlexFlixNetworkの設定エクスポートではありません",
     "importSettingsNoUser": "設定をインポートする前にサインインしてください",
     "shortcutsReset": "ショートカットをデフォルトにリセットしました",
     "about": "アプリについて",
@@ -277,7 +277,7 @@
     "forceTvMode": "TVモードを強制",
     "forceTvModeDescription": "TVレイアウトを強制します。自動検出しないデバイス向けです。再起動が必要です。",
     "startInFullscreen": "全画面表示で起動",
-    "startInFullscreenDescription": "起動時にPlezyを全画面モードで開きます",
+    "startInFullscreenDescription": "起動時にPlexFlixNetworkを全画面モードで開きます",
     "exitFullscreenOnPlayerClose": "プレイヤーを閉じたときに全画面を終了",
     "exitFullscreenOnPlayerCloseDescription": "ビデオプレイヤーを閉じたときに自動的に全画面モードを終了します",
     "autoHidePerformanceOverlay": "パフォーマンスオーバーレイを自動非表示",
@@ -285,7 +285,7 @@
     "showNavBarLabels": "ナビゲーションバーラベルを表示",
     "showNavBarLabelsDescription": "ナビゲーションバーアイコンの下にテキストラベルを表示",
     "startupSection": "起動時のセクション",
-    "startupSectionDescription": "起動時に Plezy が開くセクションを選択します",
+    "startupSectionDescription": "起動時に PlexFlixNetwork が開くセクションを選択します",
     "liveTvDefaultFavorites": "お気に入りチャンネルをデフォルトに",
     "liveTvDefaultFavoritesDescription": "ライブTV を開いたときにお気に入りチャンネルのみ表示",
     "display": "ディスプレイ",
@@ -585,7 +585,7 @@
     "confirmAction": "操作の確認"
   },
   "profiles": {
-    "addPlezyProfile": "Plezyプロファイルを追加",
+    "addPlezyProfile": "PlexFlixNetworkプロファイルを追加",
     "switchingProfile": "プロファイルを切り替え中…",
     "deleteThisProfileTitle": "このプロファイルを削除しますか？",
     "deleteThisProfileMessage": "${displayName}を削除します。接続には影響しません。",
@@ -653,7 +653,7 @@
     "sessionExpiredMany": "${count} 台のサーバーのセッションの有効期限が切れました",
     "signInAgain": "再度サインイン",
     "editJellyfinTitle": "Jellyfin接続を編集",
-    "editJellyfinIntro": "${serverName} のURLを追加または削除します。Plezyは到達可能なURLのうち最も低遅延のものを使用します。"
+    "editJellyfinIntro": "${serverName} のURLを追加または削除します。PlexFlixNetworkは到達可能なURLのうち最も低遅延のものを使用します。"
   },
   "discover": {
     "title": "探す",
@@ -1095,19 +1095,19 @@
       "minimize": "最小化"
     },
     "pairing": {
-      "discoveryDescription": "同じPlexアカウントのPlezyデバイスがここに表示されます",
+      "discoveryDescription": "同じPlexアカウントのPlexFlixNetworkデバイスがここに表示されます",
       "hostAddressHint": "192.168.1.100:48632",
       "connecting": "接続中...",
       "searchingForDevices": "デバイスを検索中...",
       "noDevicesFound": "ネットワーク上にデバイスが見つかりません",
-      "noDevicesHint": "デスクトップでPlezyを開き、同じWiFiを使用してください",
+      "noDevicesHint": "デスクトップでPlexFlixNetworkを開き、同じWiFiを使用してください",
       "availableDevices": "利用可能なデバイス",
       "manualConnection": "手動接続",
       "cryptoInitFailed": "安全な接続を開始できませんでした。先にPlexにサインインしてください。",
       "validationHostRequired": "ホストアドレスを入力してください",
       "validationHostFormat": "形式はIP:ポートである必要があります（例: 192.168.1.100:48632）",
       "connectionTimedOut": "接続がタイムアウトしました。両方のデバイスで同じネットワークを使用してください。",
-      "sessionNotFound": "デバイスが見つかりません。ホストでPlezyが実行中か確認してください。",
+      "sessionNotFound": "デバイスが見つかりません。ホストでPlexFlixNetworkが実行中か確認してください。",
       "authFailed": "認証に失敗しました。両方のデバイスで同じPlexアカウントが必要です。",
       "failedToConnect": "接続に失敗しました: ${error}"
     },
@@ -1316,11 +1316,11 @@
     "connected": "接続済み",
     "connectedAs": "@${username} として接続済み",
     "disconnectConfirm": "Trakt アカウントを切断しますか?",
-    "disconnectConfirmBody": "PlezyはTraktへのイベント送信を停止します。いつでも再接続できます。",
+    "disconnectConfirmBody": "PlexFlixNetworkはTraktへのイベント送信を停止します。いつでも再接続できます。",
     "scrobble": "リアルタイムのスクロブル",
     "scrobbleDescription": "再生中に再生・一時停止・停止イベントを Trakt に送信します。",
     "watchedSync": "視聴済みステータスを同期",
-    "watchedSyncDescription": "Plezy で項目を視聴済みにすると、Trakt でも視聴済みになります。"
+    "watchedSyncDescription": "PlexFlixNetwork で項目を視聴済みにすると、Trakt でも視聴済みになります。"
   },
   "trackers": {
     "title": "トラッカー",
@@ -1330,7 +1330,7 @@
     "scrobble": "進捗を自動で記録",
     "scrobbleDescription": "エピソードや映画を見終えたときにリストを更新します。",
     "disconnectConfirm": "${service} の接続を解除しますか？",
-    "disconnectConfirmBody": "Plezyは${service}の更新を停止します。いつでも再接続できます。",
+    "disconnectConfirmBody": "PlexFlixNetworkは${service}の更新を停止します。いつでも再接続できます。",
     "connectFailed": "${service} に接続できませんでした。もう一度お試しください。",
     "services": {
       "mal": "MyAnimeList",
@@ -1338,7 +1338,7 @@
       "simkl": "Simkl"
     },
     "deviceCode": {
-      "title": "${service} で Plezy を有効化",
+      "title": "${service} で PlexFlixNetwork を有効化",
       "body": "${url} にアクセスしてこのコードを入力:",
       "openToActivate": "${service} を開いて有効化",
       "waitingForAuthorization": "認証を待っています…",

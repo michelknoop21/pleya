@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Plezy"
+    "title": "PlexFlixNetwork"
   },
   "auth": {
     "signIn": "Log ind",
@@ -86,7 +86,7 @@
   },
   "settings": {
     "title": "Indstillinger",
-    "supportDeveloper": "Støt Plezy",
+    "supportDeveloper": "Støt PlexFlixNetwork",
     "supportDeveloperDescription": "Doner via Liberapay for at finansiere udviklingen",
     "language": "Sprog",
     "theme": "Tema",
@@ -196,7 +196,7 @@
     "importSettingsConfirm": "Dette vil erstatte dine nuværende indstillinger. Fortsæt?",
     "importSettingsSuccess": "Indstillinger importeret",
     "importSettingsFailed": "Kunne ikke importere indstillinger",
-    "importSettingsInvalidFile": "Denne fil er ikke en gyldig Plezy-indstillingseksport",
+    "importSettingsInvalidFile": "Denne fil er ikke en gyldig PlexFlixNetwork-indstillingseksport",
     "importSettingsNoUser": "Log ind før import af indstillinger",
     "shortcutsReset": "Genveje nulstillet til standard",
     "about": "Om",
@@ -277,7 +277,7 @@
     "forceTvMode": "Gennemtving TV-tilstand",
     "forceTvModeDescription": "Tving TV-layout. Til enheder, der ikke registreres automatisk. Kræver genstart.",
     "startInFullscreen": "Start i fuldskærm",
-    "startInFullscreenDescription": "Åbn Plezy i fuldskærmstilstand ved opstart",
+    "startInFullscreenDescription": "Åbn PlexFlixNetwork i fuldskærmstilstand ved opstart",
     "exitFullscreenOnPlayerClose": "Forlad fuldskærm ved lukning af afspiller",
     "exitFullscreenOnPlayerCloseDescription": "Afslut automatisk fuldskærm, når videoafspilleren lukkes",
     "autoHidePerformanceOverlay": "Skjul ydelses-overlay automatisk",
@@ -285,7 +285,7 @@
     "showNavBarLabels": "Vis navigationsbarlabels",
     "showNavBarLabelsDescription": "Vis tekstlabels under navigationsbarikoner",
     "startupSection": "Startsektion",
-    "startupSectionDescription": "Vælg hvilken sektion Plezy åbner ved start",
+    "startupSectionDescription": "Vælg hvilken sektion PlexFlixNetwork åbner ved start",
     "liveTvDefaultFavorites": "Standard til favoritkanaler",
     "liveTvDefaultFavoritesDescription": "Vis kun favoritkanaler ved åbning af Live TV",
     "display": "Skærm",
@@ -585,7 +585,7 @@
     "confirmAction": "Bekræft handling"
   },
   "profiles": {
-    "addPlezyProfile": "Tilføj Plezy-profil",
+    "addPlezyProfile": "Tilføj PlexFlixNetwork-profil",
     "switchingProfile": "Skifter profil…",
     "deleteThisProfileTitle": "Slet denne profil?",
     "deleteThisProfileMessage": "Fjern ${displayName}. Forbindelser påvirkes ikke.",
@@ -653,7 +653,7 @@
     "sessionExpiredMany": "Sessionen er udløbet for ${count} servere",
     "signInAgain": "Log ind igen",
     "editJellyfinTitle": "Rediger Jellyfin-forbindelse",
-    "editJellyfinIntro": "Tilføj eller fjern URL'er for ${serverName}. Plezy bruger den tilgængelige URL med lavest latenstid."
+    "editJellyfinIntro": "Tilføj eller fjern URL'er for ${serverName}. PlexFlixNetwork bruger den tilgængelige URL med lavest latenstid."
   },
   "discover": {
     "title": "Opdag",
@@ -1095,19 +1095,19 @@
       "minimize": "Minimér"
     },
     "pairing": {
-      "discoveryDescription": "Plezy-enheder med samme Plex-konto vises her",
+      "discoveryDescription": "PlexFlixNetwork-enheder med samme Plex-konto vises her",
       "hostAddressHint": "192.168.1.100:48632",
       "connecting": "Opretter forbindelse...",
       "searchingForDevices": "Søger efter enheder...",
       "noDevicesFound": "Ingen enheder fundet på dit netværk",
-      "noDevicesHint": "Åbn Plezy på desktop, og brug samme WiFi",
+      "noDevicesHint": "Åbn PlexFlixNetwork på desktop, og brug samme WiFi",
       "availableDevices": "Tilgængelige enheder",
       "manualConnection": "Manuel forbindelse",
       "cryptoInitFailed": "Kunne ikke starte sikker forbindelse. Log ind på Plex først.",
       "validationHostRequired": "Angiv venligst værtsadresse",
       "validationHostFormat": "Format skal være IP:port (f.eks. 192.168.1.100:48632)",
       "connectionTimedOut": "Forbindelsen fik timeout. Brug samme netværk på begge enheder.",
-      "sessionNotFound": "Enhed ikke fundet. Sørg for, at Plezy kører på værten.",
+      "sessionNotFound": "Enhed ikke fundet. Sørg for, at PlexFlixNetwork kører på værten.",
       "authFailed": "Godkendelse mislykkedes. Begge enheder skal bruge samme Plex-konto.",
       "failedToConnect": "Kunne ikke oprette forbindelse: ${error}"
     },
@@ -1316,11 +1316,11 @@
     "connected": "Forbundet",
     "connectedAs": "Forbundet som @${username}",
     "disconnectConfirm": "Frakobl Trakt-konto?",
-    "disconnectConfirmBody": "Plezy stopper med at sende hændelser til Trakt. Du kan tilslutte igen når som helst.",
+    "disconnectConfirmBody": "PlexFlixNetwork stopper med at sende hændelser til Trakt. Du kan tilslutte igen når som helst.",
     "scrobble": "Realtids-scrobbling",
     "scrobbleDescription": "Send afspil-, pause- og stop-begivenheder til Trakt under afspilning.",
     "watchedSync": "Synkroniser sét-status",
-    "watchedSyncDescription": "Når du markerer ting som sét i Plezy, markeres de også på Trakt."
+    "watchedSyncDescription": "Når du markerer ting som sét i PlexFlixNetwork, markeres de også på Trakt."
   },
   "trackers": {
     "title": "Trackere",
@@ -1330,7 +1330,7 @@
     "scrobble": "Registrer fremgang automatisk",
     "scrobbleDescription": "Opdater din liste når du er færdig med et afsnit eller en film.",
     "disconnectConfirm": "Afbryd ${service}?",
-    "disconnectConfirmBody": "Plezy stopper med at opdatere ${service}. Tilslut igen når som helst.",
+    "disconnectConfirmBody": "PlexFlixNetwork stopper med at opdatere ${service}. Tilslut igen når som helst.",
     "connectFailed": "Kunne ikke forbinde til ${service}. Prøv igen.",
     "services": {
       "mal": "MyAnimeList",
@@ -1338,7 +1338,7 @@
       "simkl": "Simkl"
     },
     "deviceCode": {
-      "title": "Aktiver Plezy på ${service}",
+      "title": "Aktiver PlexFlixNetwork på ${service}",
       "body": "Besøg ${url} og indtast denne kode:",
       "openToActivate": "Åbn ${service} for at aktivere",
       "waitingForAuthorization": "Venter på godkendelse…",

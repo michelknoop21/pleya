@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Plezy"
+    "title": "PlexFlixNetwork"
   },
   "auth": {
     "signIn": "Войти",
@@ -86,7 +86,7 @@
   },
   "settings": {
     "title": "Настройки",
-    "supportDeveloper": "Поддержать Plezy",
+    "supportDeveloper": "Поддержать PlexFlixNetwork",
     "supportDeveloperDescription": "Пожертвуйте через Liberapay на развитие",
     "language": "Язык",
     "theme": "Тема",
@@ -196,7 +196,7 @@
     "importSettingsConfirm": "Это заменит ваши текущие настройки. Продолжить?",
     "importSettingsSuccess": "Настройки импортированы",
     "importSettingsFailed": "Не удалось импортировать настройки",
-    "importSettingsInvalidFile": "Этот файл не является действительным экспортом настроек Plezy",
+    "importSettingsInvalidFile": "Этот файл не является действительным экспортом настроек PlexFlixNetwork",
     "importSettingsNoUser": "Войдите в систему перед импортом настроек",
     "shortcutsReset": "Горячие клавиши сброшены по умолчанию",
     "about": "О приложении",
@@ -277,7 +277,7 @@
     "forceTvMode": "Принудительный режим ТВ",
     "forceTvModeDescription": "Принудительно включить ТВ-интерфейс. Для устройств без автоопределения. Требуется перезапуск.",
     "startInFullscreen": "Запускать в полноэкранном режиме",
-    "startInFullscreenDescription": "Открывать Plezy в полноэкранном режиме при запуске",
+    "startInFullscreenDescription": "Открывать PlexFlixNetwork в полноэкранном режиме при запуске",
     "exitFullscreenOnPlayerClose": "Выходить из полноэкранного режима при закрытии плеера",
     "exitFullscreenOnPlayerCloseDescription": "Автоматически выходить из полноэкранного режима при закрытии видеоплеера",
     "autoHidePerformanceOverlay": "Автоскрытие оверлея производительности",
@@ -285,7 +285,7 @@
     "showNavBarLabels": "Показывать подписи панели навигации",
     "showNavBarLabelsDescription": "Отображать текстовые подписи под иконками панели навигации",
     "startupSection": "Начальный раздел",
-    "startupSectionDescription": "Выберите, какой раздел Plezy открывает при запуске",
+    "startupSectionDescription": "Выберите, какой раздел PlexFlixNetwork открывает при запуске",
     "liveTvDefaultFavorites": "Избранные каналы по умолчанию",
     "liveTvDefaultFavoritesDescription": "Показывать только избранные каналы при открытии ТВ",
     "display": "Экран",
@@ -585,7 +585,7 @@
     "confirmAction": "Подтвердить действие"
   },
   "profiles": {
-    "addPlezyProfile": "Добавить профиль Plezy",
+    "addPlezyProfile": "Добавить профиль PlexFlixNetwork",
     "switchingProfile": "Переключение профиля…",
     "deleteThisProfileTitle": "Удалить этот профиль?",
     "deleteThisProfileMessage": "Удалить ${displayName}. Подключения не изменятся.",
@@ -653,7 +653,7 @@
     "sessionExpiredMany": "Сессия истекла для ${count} серверов",
     "signInAgain": "Войти снова",
     "editJellyfinTitle": "Изменить подключение Jellyfin",
-    "editJellyfinIntro": "Добавьте или удалите URL для ${serverName}. Plezy будет использовать доступный URL с минимальной задержкой."
+    "editJellyfinIntro": "Добавьте или удалите URL для ${serverName}. PlexFlixNetwork будет использовать доступный URL с минимальной задержкой."
   },
   "discover": {
     "title": "Обзор",
@@ -1095,19 +1095,19 @@
       "minimize": "Свернуть"
     },
     "pairing": {
-      "discoveryDescription": "Устройства Plezy с тем же аккаунтом Plex появятся здесь",
+      "discoveryDescription": "Устройства PlexFlixNetwork с тем же аккаунтом Plex появятся здесь",
       "hostAddressHint": "192.168.1.100:48632",
       "connecting": "Подключение...",
       "searchingForDevices": "Поиск устройств...",
       "noDevicesFound": "Устройства в вашей сети не найдены",
-      "noDevicesHint": "Откройте Plezy на компьютере и используйте тот же WiFi",
+      "noDevicesHint": "Откройте PlexFlixNetwork на компьютере и используйте тот же WiFi",
       "availableDevices": "Доступные устройства",
       "manualConnection": "Ручное подключение",
       "cryptoInitFailed": "Не удалось запустить защищенное подключение. Сначала войдите в Plex.",
       "validationHostRequired": "Введите адрес хоста",
       "validationHostFormat": "Формат должен быть IP:порт (например, 192.168.1.100:48632)",
       "connectionTimedOut": "Время подключения истекло. Используйте одну сеть на обоих устройствах.",
-      "sessionNotFound": "Устройство не найдено. Убедитесь, что Plezy запущен на хосте.",
+      "sessionNotFound": "Устройство не найдено. Убедитесь, что PlexFlixNetwork запущен на хосте.",
       "authFailed": "Аутентификация не удалась. На обоих устройствах нужен один аккаунт Plex.",
       "failedToConnect": "Не удалось подключиться: ${error}"
     },
@@ -1316,11 +1316,11 @@
     "connected": "Подключено",
     "connectedAs": "Подключено как @${username}",
     "disconnectConfirm": "Отключить аккаунт Trakt?",
-    "disconnectConfirmBody": "Plezy перестанет отправлять события в Trakt. Можно подключить снова в любое время.",
+    "disconnectConfirmBody": "PlexFlixNetwork перестанет отправлять события в Trakt. Можно подключить снова в любое время.",
     "scrobble": "Скробблинг в реальном времени",
     "scrobbleDescription": "Отправлять события воспроизведения, паузы и остановки в Trakt во время просмотра.",
     "watchedSync": "Синхронизация статуса просмотра",
-    "watchedSyncDescription": "Когда вы отмечаете элементы как просмотренные в Plezy, они отмечаются и в Trakt."
+    "watchedSyncDescription": "Когда вы отмечаете элементы как просмотренные в PlexFlixNetwork, они отмечаются и в Trakt."
   },
   "trackers": {
     "title": "Трекеры",
@@ -1330,7 +1330,7 @@
     "scrobble": "Автоматически отслеживать прогресс",
     "scrobbleDescription": "Обновляет список, когда вы заканчиваете эпизод или фильм.",
     "disconnectConfirm": "Отключить ${service}?",
-    "disconnectConfirmBody": "Plezy перестанет обновлять ${service}. Подключите снова в любое время.",
+    "disconnectConfirmBody": "PlexFlixNetwork перестанет обновлять ${service}. Подключите снова в любое время.",
     "connectFailed": "Не удалось подключиться к ${service}. Попробуйте ещё раз.",
     "services": {
       "mal": "MyAnimeList",
@@ -1338,7 +1338,7 @@
       "simkl": "Simkl"
     },
     "deviceCode": {
-      "title": "Активируйте Plezy в ${service}",
+      "title": "Активируйте PlexFlixNetwork в ${service}",
       "body": "Перейдите на ${url} и введите этот код:",
       "openToActivate": "Открыть ${service} для активации",
       "waitingForAuthorization": "Ожидание авторизации…",

@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Plezy"
+    "title": "PlexFlixNetwork"
   },
   "auth": {
     "signIn": "Logga in",
@@ -86,7 +86,7 @@
   },
   "settings": {
     "title": "Inställningar",
-    "supportDeveloper": "Stöd Plezy",
+    "supportDeveloper": "Stöd PlexFlixNetwork",
     "supportDeveloperDescription": "Donera via Liberapay för att finansiera utvecklingen",
     "language": "Språk",
     "theme": "Tema",
@@ -196,7 +196,7 @@
     "importSettingsConfirm": "Detta ersätter dina nuvarande inställningar. Fortsätta?",
     "importSettingsSuccess": "Inställningar importerade",
     "importSettingsFailed": "Kunde inte importera inställningar",
-    "importSettingsInvalidFile": "Denna fil är inte en giltig Plezy-export",
+    "importSettingsInvalidFile": "Denna fil är inte en giltig PlexFlixNetwork-export",
     "importSettingsNoUser": "Logga in innan du importerar inställningar",
     "shortcutsReset": "Genvägar återställda till standard",
     "about": "Om",
@@ -277,7 +277,7 @@
     "forceTvMode": "Tvinga TV-läge",
     "forceTvModeDescription": "Tvinga TV-layout. För enheter som inte upptäcks automatiskt. Kräver omstart.",
     "startInFullscreen": "Starta i helskärm",
-    "startInFullscreenDescription": "Öppna Plezy i helskärm vid start",
+    "startInFullscreenDescription": "Öppna PlexFlixNetwork i helskärm vid start",
     "exitFullscreenOnPlayerClose": "Avsluta helskärm vid stängning av spelare",
     "exitFullscreenOnPlayerCloseDescription": "Avslutar automatiskt helskärmsläge när videospelaren stängs",
     "autoHidePerformanceOverlay": "Dölj prestandaöverlagring automatiskt",
@@ -285,7 +285,7 @@
     "showNavBarLabels": "Visa navigeringsfältets etiketter",
     "showNavBarLabelsDescription": "Visa textetiketter under navigeringsfältets ikoner",
     "startupSection": "Startsektion",
-    "startupSectionDescription": "Välj vilken sektion Plezy öppnar vid start",
+    "startupSectionDescription": "Välj vilken sektion PlexFlixNetwork öppnar vid start",
     "liveTvDefaultFavorites": "Standard till favoritkanaler",
     "liveTvDefaultFavoritesDescription": "Visa bara favoritkanaler när du öppnar Live TV",
     "display": "Skärm",
@@ -585,7 +585,7 @@
     "confirmAction": "Bekräfta åtgärd"
   },
   "profiles": {
-    "addPlezyProfile": "Lägg till Plezy-profil",
+    "addPlezyProfile": "Lägg till PlexFlixNetwork-profil",
     "switchingProfile": "Byter profil…",
     "deleteThisProfileTitle": "Ta bort denna profil?",
     "deleteThisProfileMessage": "Ta bort ${displayName}. Anslutningar påverkas inte.",
@@ -653,7 +653,7 @@
     "sessionExpiredMany": "Sessionen har gått ut för ${count} servrar",
     "signInAgain": "Logga in igen",
     "editJellyfinTitle": "Redigera Jellyfin-anslutning",
-    "editJellyfinIntro": "Lägg till eller ta bort URL:er för ${serverName}. Plezy använder den nåbara URL:en med lägst latens."
+    "editJellyfinIntro": "Lägg till eller ta bort URL:er för ${serverName}. PlexFlixNetwork använder den nåbara URL:en med lägst latens."
   },
   "discover": {
     "title": "Upptäck",
@@ -1095,19 +1095,19 @@
       "minimize": "Minimera"
     },
     "pairing": {
-      "discoveryDescription": "Plezy-enheter med samma Plex-konto visas här",
+      "discoveryDescription": "PlexFlixNetwork-enheter med samma Plex-konto visas här",
       "hostAddressHint": "192.168.1.100:48632",
       "connecting": "Ansluter...",
       "searchingForDevices": "Söker efter enheter...",
       "noDevicesFound": "Inga enheter hittades i ditt nätverk",
-      "noDevicesHint": "Öppna Plezy på desktop och använd samma WiFi",
+      "noDevicesHint": "Öppna PlexFlixNetwork på desktop och använd samma WiFi",
       "availableDevices": "Tillgängliga enheter",
       "manualConnection": "Manuell anslutning",
       "cryptoInitFailed": "Kunde inte starta säker anslutning. Logga in på Plex först.",
       "validationHostRequired": "Ange värdadress",
       "validationHostFormat": "Format måste vara IP:port (t.ex. 192.168.1.100:48632)",
       "connectionTimedOut": "Anslutningen tog för lång tid. Använd samma nätverk på båda enheter.",
-      "sessionNotFound": "Enhet hittades inte. Kontrollera att Plezy körs på värden.",
+      "sessionNotFound": "Enhet hittades inte. Kontrollera att PlexFlixNetwork körs på värden.",
       "authFailed": "Autentisering misslyckades. Båda enheter behöver samma Plex-konto.",
       "failedToConnect": "Kunde inte ansluta: ${error}"
     },
@@ -1316,11 +1316,11 @@
     "connected": "Ansluten",
     "connectedAs": "Ansluten som @${username}",
     "disconnectConfirm": "Koppla från Trakt-konto?",
-    "disconnectConfirmBody": "Plezy slutar skicka händelser till Trakt. Du kan återansluta när som helst.",
+    "disconnectConfirmBody": "PlexFlixNetwork slutar skicka händelser till Trakt. Du kan återansluta när som helst.",
     "scrobble": "Realtids-scrobbling",
     "scrobbleDescription": "Skicka uppspelnings-, paus- och stopphändelser till Trakt under uppspelning.",
     "watchedSync": "Synkronisera tittad-status",
-    "watchedSyncDescription": "När du markerar något som tittat i Plezy markeras det också på Trakt."
+    "watchedSyncDescription": "När du markerar något som tittat i PlexFlixNetwork markeras det också på Trakt."
   },
   "trackers": {
     "title": "Spårare",
@@ -1330,7 +1330,7 @@
     "scrobble": "Spåra framsteg automatiskt",
     "scrobbleDescription": "Uppdaterar din lista när du är klar med ett avsnitt eller en film.",
     "disconnectConfirm": "Koppla från ${service}?",
-    "disconnectConfirmBody": "Plezy slutar uppdatera ${service}. Återanslut när som helst.",
+    "disconnectConfirmBody": "PlexFlixNetwork slutar uppdatera ${service}. Återanslut när som helst.",
     "connectFailed": "Kunde inte ansluta till ${service}. Försök igen.",
     "services": {
       "mal": "MyAnimeList",
@@ -1338,7 +1338,7 @@
       "simkl": "Simkl"
     },
     "deviceCode": {
-      "title": "Aktivera Plezy på ${service}",
+      "title": "Aktivera PlexFlixNetwork på ${service}",
       "body": "Besök ${url} och ange den här koden:",
       "openToActivate": "Öppna ${service} för att aktivera",
       "waitingForAuthorization": "Väntar på auktorisering…",

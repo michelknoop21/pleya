@@ -1,5 +1,5 @@
 name: plezy
-description: "A beautiful Plex and Jellyfin client for Flutter"
+description: "PlexFlixNetwork — a Netflix-style Plex and Jellyfin client for Flutter"
 publish_to: "none"
 version: 2.8.0+119
 
@@ -137,6 +137,8 @@ flutter:
   assets:
     - assets/plezy.png
     - assets/plezy_adaptive_foreground.svg
+    - assets/branding/pfn_wordmark.svg
+    - assets/branding/pfn_monogram.svg
     - assets/plex_chevron.svg
     - assets/jellyfin_icon.svg
     - assets/trakt_circlemark.svg

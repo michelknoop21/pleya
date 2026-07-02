@@ -94,7 +94,7 @@ class _TranslationsAppJa extends TranslationsAppEn {
 	final TranslationsJa _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Plezy';
+	@override String get title => 'PlexFlixNetwork';
 }
 
 // Path: auth
@@ -215,7 +215,7 @@ class _TranslationsSettingsJa extends TranslationsSettingsEn {
 
 	// Translations
 	@override String get title => '設定';
-	@override String get supportDeveloper => 'Plezy を支援';
+	@override String get supportDeveloper => 'PlexFlixNetwork を支援';
 	@override String get supportDeveloperDescription => 'Liberapay で寄付して開発を支援';
 	@override String get language => '言語';
 	@override String get theme => 'テーマ';
@@ -325,7 +325,7 @@ class _TranslationsSettingsJa extends TranslationsSettingsEn {
 	@override String get importSettingsConfirm => '現在の設定を置き換えます。続行しますか？';
 	@override String get importSettingsSuccess => '設定をインポートしました';
 	@override String get importSettingsFailed => '設定をインポートできませんでした';
-	@override String get importSettingsInvalidFile => 'このファイルは有効なPlezyの設定エクスポートではありません';
+	@override String get importSettingsInvalidFile => 'このファイルは有効なPlexFlixNetworkの設定エクスポートではありません';
 	@override String get importSettingsNoUser => '設定をインポートする前にサインインしてください';
 	@override String get shortcutsReset => 'ショートカットをデフォルトにリセットしました';
 	@override String get about => 'アプリについて';
@@ -406,7 +406,7 @@ class _TranslationsSettingsJa extends TranslationsSettingsEn {
 	@override String get forceTvMode => 'TVモードを強制';
 	@override String get forceTvModeDescription => 'TVレイアウトを強制します。自動検出しないデバイス向けです。再起動が必要です。';
 	@override String get startInFullscreen => '全画面表示で起動';
-	@override String get startInFullscreenDescription => '起動時にPlezyを全画面モードで開きます';
+	@override String get startInFullscreenDescription => '起動時にPlexFlixNetworkを全画面モードで開きます';
 	@override String get exitFullscreenOnPlayerClose => 'プレイヤーを閉じたときに全画面を終了';
 	@override String get exitFullscreenOnPlayerCloseDescription => 'ビデオプレイヤーを閉じたときに自動的に全画面モードを終了します';
 	@override String get autoHidePerformanceOverlay => 'パフォーマンスオーバーレイを自動非表示';
@@ -414,7 +414,7 @@ class _TranslationsSettingsJa extends TranslationsSettingsEn {
 	@override String get showNavBarLabels => 'ナビゲーションバーラベルを表示';
 	@override String get showNavBarLabelsDescription => 'ナビゲーションバーアイコンの下にテキストラベルを表示';
 	@override String get startupSection => '起動時のセクション';
-	@override String get startupSectionDescription => '起動時に Plezy が開くセクションを選択します';
+	@override String get startupSectionDescription => '起動時に PlexFlixNetwork が開くセクションを選択します';
 	@override String get liveTvDefaultFavorites => 'お気に入りチャンネルをデフォルトに';
 	@override String get liveTvDefaultFavoritesDescription => 'ライブTV を開いたときにお気に入りチャンネルのみ表示';
 	@override String get display => 'ディスプレイ';
@@ -778,7 +778,7 @@ class _TranslationsProfilesJa extends TranslationsProfilesEn {
 	final TranslationsJa _root; // ignore: unused_field
 
 	// Translations
-	@override String get addPlezyProfile => 'Plezyプロファイルを追加';
+	@override String get addPlezyProfile => 'PlexFlixNetworkプロファイルを追加';
 	@override String get switchingProfile => 'プロファイルを切り替え中…';
 	@override String get deleteThisProfileTitle => 'このプロファイルを削除しますか？';
 	@override String deleteThisProfileMessage({required Object displayName}) => '${displayName}を削除します。接続には影響しません。';
@@ -853,7 +853,7 @@ class _TranslationsConnectionsJa extends TranslationsConnectionsEn {
 	@override String sessionExpiredMany({required Object count}) => '${count} 台のサーバーのセッションの有効期限が切れました';
 	@override String get signInAgain => '再度サインイン';
 	@override String get editJellyfinTitle => 'Jellyfin接続を編集';
-	@override String editJellyfinIntro({required Object serverName}) => '${serverName} のURLを追加または削除します。Plezyは到達可能なURLのうち最も低遅延のものを使用します。';
+	@override String editJellyfinIntro({required Object serverName}) => '${serverName} のURLを追加または削除します。PlexFlixNetworkは到達可能なURLのうち最も低遅延のものを使用します。';
 }
 
 // Path: discover
@@ -1572,11 +1572,11 @@ class _TranslationsTraktJa extends TranslationsTraktEn {
 	@override String get connected => '接続済み';
 	@override String connectedAs({required Object username}) => '@${username} として接続済み';
 	@override String get disconnectConfirm => 'Trakt アカウントを切断しますか?';
-	@override String get disconnectConfirmBody => 'PlezyはTraktへのイベント送信を停止します。いつでも再接続できます。';
+	@override String get disconnectConfirmBody => 'PlexFlixNetworkはTraktへのイベント送信を停止します。いつでも再接続できます。';
 	@override String get scrobble => 'リアルタイムのスクロブル';
 	@override String get scrobbleDescription => '再生中に再生・一時停止・停止イベントを Trakt に送信します。';
 	@override String get watchedSync => '視聴済みステータスを同期';
-	@override String get watchedSyncDescription => 'Plezy で項目を視聴済みにすると、Trakt でも視聴済みになります。';
+	@override String get watchedSyncDescription => 'PlexFlixNetwork で項目を視聴済みにすると、Trakt でも視聴済みになります。';
 }
 
 // Path: trackers
@@ -1593,7 +1593,7 @@ class _TranslationsTrackersJa extends TranslationsTrackersEn {
 	@override String get scrobble => '進捗を自動で記録';
 	@override String get scrobbleDescription => 'エピソードや映画を見終えたときにリストを更新します。';
 	@override String disconnectConfirm({required Object service}) => '${service} の接続を解除しますか？';
-	@override String disconnectConfirmBody({required Object service}) => 'Plezyは${service}の更新を停止します。いつでも再接続できます。';
+	@override String disconnectConfirmBody({required Object service}) => 'PlexFlixNetworkは${service}の更新を停止します。いつでも再接続できます。';
 	@override String connectFailed({required Object service}) => '${service} に接続できませんでした。もう一度お試しください。';
 	@override late final _TranslationsTrackersServicesJa services = _TranslationsTrackersServicesJa._(_root);
 	@override late final _TranslationsTrackersDeviceCodeJa deviceCode = _TranslationsTrackersDeviceCodeJa._(_root);
@@ -1790,19 +1790,19 @@ class _TranslationsCompanionRemotePairingJa extends TranslationsCompanionRemoteP
 	final TranslationsJa _root; // ignore: unused_field
 
 	// Translations
-	@override String get discoveryDescription => '同じPlexアカウントのPlezyデバイスがここに表示されます';
+	@override String get discoveryDescription => '同じPlexアカウントのPlexFlixNetworkデバイスがここに表示されます';
 	@override String get hostAddressHint => '192.168.1.100:48632';
 	@override String get connecting => '接続中...';
 	@override String get searchingForDevices => 'デバイスを検索中...';
 	@override String get noDevicesFound => 'ネットワーク上にデバイスが見つかりません';
-	@override String get noDevicesHint => 'デスクトップでPlezyを開き、同じWiFiを使用してください';
+	@override String get noDevicesHint => 'デスクトップでPlexFlixNetworkを開き、同じWiFiを使用してください';
 	@override String get availableDevices => '利用可能なデバイス';
 	@override String get manualConnection => '手動接続';
 	@override String get cryptoInitFailed => '安全な接続を開始できませんでした。先にPlexにサインインしてください。';
 	@override String get validationHostRequired => 'ホストアドレスを入力してください';
 	@override String get validationHostFormat => '形式はIP:ポートである必要があります（例: 192.168.1.100:48632）';
 	@override String get connectionTimedOut => '接続がタイムアウトしました。両方のデバイスで同じネットワークを使用してください。';
-	@override String get sessionNotFound => 'デバイスが見つかりません。ホストでPlezyが実行中か確認してください。';
+	@override String get sessionNotFound => 'デバイスが見つかりません。ホストでPlexFlixNetworkが実行中か確認してください。';
 	@override String get authFailed => '認証に失敗しました。両方のデバイスで同じPlexアカウントが必要です。';
 	@override String failedToConnect({required Object error}) => '接続に失敗しました: ${error}';
 }
@@ -1877,7 +1877,7 @@ class _TranslationsTrackersDeviceCodeJa extends TranslationsTrackersDeviceCodeEn
 	final TranslationsJa _root; // ignore: unused_field
 
 	// Translations
-	@override String title({required Object service}) => '${service} で Plezy を有効化';
+	@override String title({required Object service}) => '${service} で PlexFlixNetwork を有効化';
 	@override String body({required Object url}) => '${url} にアクセスしてこのコードを入力:';
 	@override String openToActivate({required Object service}) => '${service} を開いて有効化';
 	@override String get waitingForAuthorization => '認証を待っています…';
@@ -1926,7 +1926,7 @@ class _TranslationsTrackersLibraryFilterJa extends TranslationsTrackersLibraryFi
 extension on TranslationsJa {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
-			'app.title' => 'Plezy',
+			'app.title' => 'PlexFlixNetwork',
 			'auth.signIn' => 'サインイン',
 			'auth.signInWithPlex' => 'Plexでサインイン',
 			'auth.showQRCode' => 'QRコードを表示',
@@ -2002,7 +2002,7 @@ extension on TranslationsJa {
 			'update.latestVersion' => '最新バージョンです',
 			'update.checkFailed' => 'アップデートの確認に失敗しました',
 			'settings.title' => '設定',
-			'settings.supportDeveloper' => 'Plezy を支援',
+			'settings.supportDeveloper' => 'PlexFlixNetwork を支援',
 			'settings.supportDeveloperDescription' => 'Liberapay で寄付して開発を支援',
 			'settings.language' => '言語',
 			'settings.theme' => 'テーマ',
@@ -2112,7 +2112,7 @@ extension on TranslationsJa {
 			'settings.importSettingsConfirm' => '現在の設定を置き換えます。続行しますか？',
 			'settings.importSettingsSuccess' => '設定をインポートしました',
 			'settings.importSettingsFailed' => '設定をインポートできませんでした',
-			'settings.importSettingsInvalidFile' => 'このファイルは有効なPlezyの設定エクスポートではありません',
+			'settings.importSettingsInvalidFile' => 'このファイルは有効なPlexFlixNetworkの設定エクスポートではありません',
 			'settings.importSettingsNoUser' => '設定をインポートする前にサインインしてください',
 			'settings.shortcutsReset' => 'ショートカットをデフォルトにリセットしました',
 			'settings.about' => 'アプリについて',
@@ -2193,7 +2193,7 @@ extension on TranslationsJa {
 			'settings.forceTvMode' => 'TVモードを強制',
 			'settings.forceTvModeDescription' => 'TVレイアウトを強制します。自動検出しないデバイス向けです。再起動が必要です。',
 			'settings.startInFullscreen' => '全画面表示で起動',
-			'settings.startInFullscreenDescription' => '起動時にPlezyを全画面モードで開きます',
+			'settings.startInFullscreenDescription' => '起動時にPlexFlixNetworkを全画面モードで開きます',
 			'settings.exitFullscreenOnPlayerClose' => 'プレイヤーを閉じたときに全画面を終了',
 			'settings.exitFullscreenOnPlayerCloseDescription' => 'ビデオプレイヤーを閉じたときに自動的に全画面モードを終了します',
 			'settings.autoHidePerformanceOverlay' => 'パフォーマンスオーバーレイを自動非表示',
@@ -2201,7 +2201,7 @@ extension on TranslationsJa {
 			'settings.showNavBarLabels' => 'ナビゲーションバーラベルを表示',
 			'settings.showNavBarLabelsDescription' => 'ナビゲーションバーアイコンの下にテキストラベルを表示',
 			'settings.startupSection' => '起動時のセクション',
-			'settings.startupSectionDescription' => '起動時に Plezy が開くセクションを選択します',
+			'settings.startupSectionDescription' => '起動時に PlexFlixNetwork が開くセクションを選択します',
 			'settings.liveTvDefaultFavorites' => 'お気に入りチャンネルをデフォルトに',
 			'settings.liveTvDefaultFavoritesDescription' => 'ライブTV を開いたときにお気に入りチャンネルのみ表示',
 			'settings.display' => 'ディスプレイ',
@@ -2471,7 +2471,7 @@ extension on TranslationsJa {
 			'mpvConfig.confirmDeletePreset' => 'このプリセットを削除してもよろしいですか？',
 			'mpvConfig.configPlaceholder' => 'gpu-api=vulkan\nhwdec=auto\n# comment',
 			'dialog.confirmAction' => '操作の確認',
-			'profiles.addPlezyProfile' => 'Plezyプロファイルを追加',
+			'profiles.addPlezyProfile' => 'PlexFlixNetworkプロファイルを追加',
 			'profiles.switchingProfile' => 'プロファイルを切り替え中…',
 			'profiles.deleteThisProfileTitle' => 'このプロファイルを削除しますか？',
 			'profiles.deleteThisProfileMessage' => ({required Object displayName}) => '${displayName}を削除します。接続には影響しません。',
@@ -2537,7 +2537,7 @@ extension on TranslationsJa {
 			'connections.sessionExpiredMany' => ({required Object count}) => '${count} 台のサーバーのセッションの有効期限が切れました',
 			'connections.signInAgain' => '再度サインイン',
 			'connections.editJellyfinTitle' => 'Jellyfin接続を編集',
-			'connections.editJellyfinIntro' => ({required Object serverName}) => '${serverName} のURLを追加または削除します。Plezyは到達可能なURLのうち最も低遅延のものを使用します。',
+			'connections.editJellyfinIntro' => ({required Object serverName}) => '${serverName} のURLを追加または削除します。PlexFlixNetworkは到達可能なURLのうち最も低遅延のものを使用します。',
 			'discover.title' => '探す',
 			'discover.switchProfile' => 'プロフィール切替',
 			'discover.noContentAvailable' => 'コンテンツがありません',
@@ -2936,19 +2936,19 @@ extension on TranslationsJa {
 			'companionRemote.session.startServer' => 'サーバーを起動',
 			'companionRemote.session.stopServer' => 'サーバーを停止',
 			'companionRemote.session.minimize' => '最小化',
-			'companionRemote.pairing.discoveryDescription' => '同じPlexアカウントのPlezyデバイスがここに表示されます',
+			'companionRemote.pairing.discoveryDescription' => '同じPlexアカウントのPlexFlixNetworkデバイスがここに表示されます',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '接続中...',
 			'companionRemote.pairing.searchingForDevices' => 'デバイスを検索中...',
 			'companionRemote.pairing.noDevicesFound' => 'ネットワーク上にデバイスが見つかりません',
-			'companionRemote.pairing.noDevicesHint' => 'デスクトップでPlezyを開き、同じWiFiを使用してください',
+			'companionRemote.pairing.noDevicesHint' => 'デスクトップでPlexFlixNetworkを開き、同じWiFiを使用してください',
 			'companionRemote.pairing.availableDevices' => '利用可能なデバイス',
 			'companionRemote.pairing.manualConnection' => '手動接続',
 			'companionRemote.pairing.cryptoInitFailed' => '安全な接続を開始できませんでした。先にPlexにサインインしてください。',
 			'companionRemote.pairing.validationHostRequired' => 'ホストアドレスを入力してください',
 			'companionRemote.pairing.validationHostFormat' => '形式はIP:ポートである必要があります（例: 192.168.1.100:48632）',
 			'companionRemote.pairing.connectionTimedOut' => '接続がタイムアウトしました。両方のデバイスで同じネットワークを使用してください。',
-			'companionRemote.pairing.sessionNotFound' => 'デバイスが見つかりません。ホストでPlezyが実行中か確認してください。',
+			'companionRemote.pairing.sessionNotFound' => 'デバイスが見つかりません。ホストでPlexFlixNetworkが実行中か確認してください。',
 			'companionRemote.pairing.authFailed' => '認証に失敗しました。両方のデバイスで同じPlexアカウントが必要です。',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '接続に失敗しました: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'リモートセッションから切断しますか？',
@@ -3140,11 +3140,11 @@ extension on TranslationsJa {
 			'trakt.connected' => '接続済み',
 			'trakt.connectedAs' => ({required Object username}) => '@${username} として接続済み',
 			'trakt.disconnectConfirm' => 'Trakt アカウントを切断しますか?',
-			'trakt.disconnectConfirmBody' => 'PlezyはTraktへのイベント送信を停止します。いつでも再接続できます。',
+			'trakt.disconnectConfirmBody' => 'PlexFlixNetworkはTraktへのイベント送信を停止します。いつでも再接続できます。',
 			'trakt.scrobble' => 'リアルタイムのスクロブル',
 			'trakt.scrobbleDescription' => '再生中に再生・一時停止・停止イベントを Trakt に送信します。',
 			'trakt.watchedSync' => '視聴済みステータスを同期',
-			'trakt.watchedSyncDescription' => 'Plezy で項目を視聴済みにすると、Trakt でも視聴済みになります。',
+			'trakt.watchedSyncDescription' => 'PlexFlixNetwork で項目を視聴済みにすると、Trakt でも視聴済みになります。',
 			'trackers.title' => 'トラッカー',
 			'trackers.hubSubtitle' => '視聴進捗をTraktや他のサービスと同期します。',
 			'trackers.notConnected' => '未接続',
@@ -3152,12 +3152,12 @@ extension on TranslationsJa {
 			'trackers.scrobble' => '進捗を自動で記録',
 			'trackers.scrobbleDescription' => 'エピソードや映画を見終えたときにリストを更新します。',
 			'trackers.disconnectConfirm' => ({required Object service}) => '${service} の接続を解除しますか？',
-			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Plezyは${service}の更新を停止します。いつでも再接続できます。',
+			'trackers.disconnectConfirmBody' => ({required Object service}) => 'PlexFlixNetworkは${service}の更新を停止します。いつでも再接続できます。',
 			'trackers.connectFailed' => ({required Object service}) => '${service} に接続できませんでした。もう一度お試しください。',
 			'trackers.services.mal' => 'MyAnimeList',
 			'trackers.services.anilist' => 'AniList',
 			'trackers.services.simkl' => 'Simkl',
-			'trackers.deviceCode.title' => ({required Object service}) => '${service} で Plezy を有効化',
+			'trackers.deviceCode.title' => ({required Object service}) => '${service} で PlexFlixNetwork を有効化',
 			'trackers.deviceCode.body' => ({required Object url}) => '${url} にアクセスしてこのコードを入力:',
 			'trackers.deviceCode.openToActivate' => ({required Object service}) => '${service} を開いて有効化',
 			'trackers.deviceCode.waitingForAuthorization' => '認証を待っています…',
