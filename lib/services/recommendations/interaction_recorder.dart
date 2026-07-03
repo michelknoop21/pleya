@@ -40,6 +40,9 @@ class InteractionRecorder {
         _clientResolver = clientResolver;
 
   void start() {
+    // No active profile → nothing to attribute interactions to; stay inert so
+    // we never persist taste rows under an empty profile id.
+    if (_profileId.isEmpty) return;
     _sub ??= WatchStateNotifier().stream.listen(_onEvent, onError: (Object e, StackTrace s) {
       appLogger.w('InteractionRecorder: stream error', error: e, stackTrace: s);
     });

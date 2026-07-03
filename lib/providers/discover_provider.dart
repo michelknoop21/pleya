@@ -249,8 +249,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       _hubsState = DiscoverLoadState.loaded;
       _loadedHubServerIds = fetchedHubs.succeededServerIds;
       safeNotifyListeners();
-      unawaited(_loadBecauseYouWatched());
-      unawaited(_loadPersonalizedRows());
+      unawaited(_loadRecommendationRows());
     } catch (e) {
       appLogger.e('Failed to load discover content', error: e);
       if (isDisposed) return;
@@ -332,6 +331,9 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       appLogger.d('DiscoverProvider: ${_onDeck.length} on-deck items, ${_hubs.length} hubs after merging $ids');
       safeNotifyListeners();
       unawaited(_syncSystemShelf(_onDeck));
+      // A reconnected server can add items that now duplicate (or should feed)
+      // the recommendation rows; rebuild them against the merged state.
+      unawaited(_loadRecommendationRows());
     } catch (e) {
       // Keep the loaded state — stale rows beat an error flash.
       appLogger.w('DiscoverProvider: delta load failed for $ids', error: e);
@@ -343,11 +345,28 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// related hub on the owning server. Fully fault-tolerant: any failure or
   /// empty step simply leaves rows out (or keeps the previous set). Recomputed
   /// on full loads only, entirely off the counted aggregation paths.
+  /// Runs the two post-load recommendation surfaces in order: seed rows first
+  /// so the personalized rows below them can exclude the seed items (both read
+  /// `_seedHubs`/`_hubs`), avoiding the same title appearing in adjacent rows.
+  Future<void> _loadRecommendationRows() async {
+    try {
+      await _loadBecauseYouWatched();
+    } catch (e) {
+      appLogger.w('DiscoverProvider: seed rows failed', error: e);
+    }
+    await _loadPersonalizedRows();
+  }
+
   Future<void> _loadBecauseYouWatched() async {
     try {
       final clients = _multiServer.serverManager.onlineClients.values.toList();
       if (clients.isEmpty) return;
       final generation = _loadGeneration;
+      // Don't re-surface items already shown in Continue Watching or the hubs.
+      final alreadyShown = <String>{
+        for (final item in _onDeck) item.globalKey,
+        for (final hub in _hubs) for (final item in hub.items) item.globalKey,
+      };
       final recents = await Future.wait([
         for (final client in clients)
           client.fetchRecentlyWatched(limit: 5).catchError((Object _) => const <MediaItem>[]),
@@ -369,7 +388,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       final rows = seeds.isEmpty
           ? const <MediaHub?>[]
           : await Future.wait([
-              for (final seed in seeds) _relatedRowForSeed(seed).catchError((Object _) => null),
+              for (final seed in seeds) _relatedRowForSeed(seed, alreadyShown).catchError((Object _) => null),
             ]);
       if (isDisposed || generation != _loadGeneration) return;
 
@@ -387,7 +406,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   /// Resolves a single "Because you watched X" row for [seed] from the owning
   /// server's related hub, or null when nothing usable comes back.
-  Future<MediaHub?> _relatedRowForSeed(MediaItem seed) async {
+  Future<MediaHub?> _relatedRowForSeed(MediaItem seed, Set<String> alreadyShown) async {
     final serverId = seed.serverId;
     final seedTitle = seed.title;
     if (serverId == null || seedTitle == null) return null;
@@ -395,7 +414,9 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     if (client == null) return null;
     final relatedHubs = await client.fetchRelatedHubs(seed.id);
     for (final hub in relatedHubs) {
-      final items = hub.items.where((item) => item.globalKey != seed.globalKey).toList();
+      final items = hub.items
+          .where((item) => item.globalKey != seed.globalKey && !alreadyShown.contains(item.globalKey))
+          .toList();
       if (items.isEmpty) continue;
       return hub.copyWith(
         identifier: 'home.becauseyouwatched',

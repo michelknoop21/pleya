@@ -45,6 +45,7 @@ class MediaProgressBar extends StatelessWidget {
                 child: ColoredBox(color: backgroundColor ?? Colors.white.withValues(alpha: 0.2)),
               ),
               FractionallySizedBox(
+                alignment: AlignmentDirectional.centerStart,
                 widthFactor: value,
                 heightFactor: 1,
                 child: DecoratedBox(

@@ -59,9 +59,10 @@ class AffinityVector {
     return best;
   }
 
-  /// Mean of the two strongest matches — rewards items hitting multiple
-  /// preferred genres without letting one dominant genre do all the work.
-  double meanTop2Of(String dim, Iterable<String>? features) {
+  /// Strongest match plus a bonus for a second match — rewards items hitting
+  /// multiple preferred genres without letting one dominant genre do all the
+  /// work, and never scores a broader match below a single-genre one.
+  double top2Of(String dim, Iterable<String>? features) {
     if (features == null) return 0;
     var first = 0.0, second = 0.0;
     for (final f in features) {
@@ -73,8 +74,8 @@ class AffinityVector {
         second = v;
       }
     }
-    if (first == 0) return 0;
-    return second == 0 ? first : (first + second) / 2;
+    if (first <= 0) return first; // no positive match (may be a mild negative)
+    return first + 0.5 * (second > 0 ? second : 0);
   }
 
   /// Top features of a dimension above [threshold], strongest first.
@@ -117,17 +118,20 @@ class AffinityVector {
       if (e.year != null) bump('decade', decadeOf(e.year!), decayed);
     }
 
-    // Normalize each dimension to its strongest |weight| so scores stay
-    // comparable regardless of history size; clamp to [-1, 1].
+    // Normalize each dimension by its strongest POSITIVE weight so likes keep
+    // their scale; a strong dislike then just clamps toward -1 instead of
+    // shrinking every like below the row/threshold cutoffs. Fall back to
+    // max-abs when a dimension has no positive signal at all.
     for (final map in dims.values) {
-      var maxAbs = 0.0;
+      var maxPos = 0.0, maxAbs = 0.0;
       for (final v in map.values) {
-        final a = v.abs();
-        if (a > maxAbs) maxAbs = a;
+        if (v > maxPos) maxPos = v;
+        if (v.abs() > maxAbs) maxAbs = v.abs();
       }
-      if (maxAbs > 0) {
+      final divisor = maxPos > 0 ? maxPos : maxAbs;
+      if (divisor > 0) {
         for (final k in map.keys) {
-          map[k] = (map[k]! / maxAbs).clamp(-1.0, 1.0);
+          map[k] = (map[k]! / divisor).clamp(-1.0, 1.0);
         }
       }
     }
@@ -173,7 +177,7 @@ double recommendationScore(MediaItem item, AffinityVector a, {required int nowMs
   final roleNames = [for (final r in item.roles?.take(5) ?? const <MediaRole>[]) r.tag];
 
   var score =
-      3.0 * a.meanTop2Of('genre', item.genres) +
+      3.0 * a.top2Of('genre', item.genres) +
       2.0 * a.maxOf('actor', roleNames) +
       1.5 * a.maxOf('director', item.directors) +
       1.0 * a.of('decade', item.year != null ? decadeOf(item.year!) : null) +
@@ -192,9 +196,11 @@ double recommendationScore(MediaItem item, AffinityVector a, {required int nowMs
     if (ageDays >= 0 && ageDays < 30) score += 0.4 * (1 - ageDays / 30);
   }
 
-  // Deterministic exploration jitter: stable within a day, rotates daily.
+  // Deterministic exploration jitter in [0, 0.05): stable within a day,
+  // rotates daily. abs() because Dart's % keeps the (possibly negative) sign
+  // of Object.hash.
   final dayBucket = nowMs ~/ Duration.millisecondsPerDay;
-  score += 0.05 * ((Object.hash(item.globalKey, dayBucket) % 1000) / 1000);
+  score += 0.05 * ((Object.hash(item.globalKey, dayBucket).abs() % 1000) / 1000);
 
   // Already-seen downrank dominates: recommendations are for discovery.
   if (item.isWatched) score -= 3.0;

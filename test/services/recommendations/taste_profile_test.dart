@@ -62,6 +62,17 @@ void main() {
       expect(AffinityVector.build([for (var i = 0; i < 10; i++) _ev(weight: 1)], nowMs: _nowMs).isWarm, isTrue);
     });
 
+    test('a strong dislike does not suppress a liked genre below threshold', () {
+      // Skips Horror hard, mildly likes Comedy. Comedy must stay a top feature.
+      final a = AffinityVector.build([
+        for (var i = 0; i < 5; i++) TasteEvent(weight: -0.8, occurredAtMs: _nowMs, genres: const ['Horror']),
+        for (var i = 0; i < 3; i++) TasteEvent(weight: 0.8, occurredAtMs: _nowMs, genres: const ['Comedy']),
+      ], nowMs: _nowMs);
+      expect(a.of('genre', 'comedy'), closeTo(1.0, 1e-9)); // normalized to strongest positive
+      expect(a.of('genre', 'horror'), lessThan(0));
+      expect(a.topFeatures('genre', threshold: 0.5), contains('comedy'));
+    });
+
     test('decadeOf buckets years', () {
       expect(decadeOf(1997), '1990s');
       expect(decadeOf(2000), '2000s');
@@ -107,6 +118,17 @@ void main() {
       final onTaste = recommendationScore(movie(id: 'a', genres: ['Sci-Fi']), taste, nowMs: _nowMs);
       final offTaste = recommendationScore(movie(id: 'b', genres: ['Romance']), taste, nowMs: _nowMs);
       expect(onTaste, greaterThan(offTaste));
+    });
+
+    test('matching two liked genres scores at least as high as one', () {
+      // Breadth must never be penalized (top2Of regression guard).
+      final twoGenre = AffinityVector.build([
+        for (var i = 0; i < 6; i++) TasteEvent(weight: 1.0, occurredAtMs: _nowMs, genres: const ['Sci-Fi']),
+        for (var i = 0; i < 5; i++) TasteEvent(weight: 1.0, occurredAtMs: _nowMs, genres: const ['Thriller']),
+      ], nowMs: _nowMs);
+      final one = recommendationScore(movie(id: 'a', genres: ['Sci-Fi']), twoGenre, nowMs: _nowMs);
+      final both = recommendationScore(movie(id: 'b', genres: ['Sci-Fi', 'Thriller']), twoGenre, nowMs: _nowMs);
+      expect(both, greaterThanOrEqualTo(one));
     });
 
     test('watched item is heavily downranked', () {
