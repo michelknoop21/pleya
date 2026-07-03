@@ -94,7 +94,7 @@ class _TranslationsAppNb extends TranslationsAppEn {
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'PlexFlixNetwork';
+	@override String get title => 'Pleya';
 }
 
 // Path: auth
@@ -215,7 +215,7 @@ class _TranslationsSettingsNb extends TranslationsSettingsEn {
 
 	// Translations
 	@override String get title => 'Innstillinger';
-	@override String get supportDeveloper => 'Støtt PlexFlixNetwork';
+	@override String get supportDeveloper => 'Støtt Pleya';
 	@override String get supportDeveloperDescription => 'Doner via Liberapay for å finansiere utviklingen';
 	@override String get language => 'Språk';
 	@override String get theme => 'Tema';
@@ -325,7 +325,7 @@ class _TranslationsSettingsNb extends TranslationsSettingsEn {
 	@override String get importSettingsConfirm => 'Dette vil erstatte nåværende innstillinger. Fortsette?';
 	@override String get importSettingsSuccess => 'Innstillinger importert';
 	@override String get importSettingsFailed => 'Kunne ikke importere innstillinger';
-	@override String get importSettingsInvalidFile => 'Denne filen er ikke en gyldig PlexFlixNetwork-innstillingseksport';
+	@override String get importSettingsInvalidFile => 'Denne filen er ikke en gyldig Pleya-innstillingseksport';
 	@override String get importSettingsNoUser => 'Logg inn før import av innstillinger';
 	@override String get shortcutsReset => 'Snarveier tilbakestilt til standard';
 	@override String get about => 'Om';
@@ -406,7 +406,7 @@ class _TranslationsSettingsNb extends TranslationsSettingsEn {
 	@override String get forceTvMode => 'Tving TV-modus';
 	@override String get forceTvModeDescription => 'Tving TV-oppsett. For enheter som ikke oppdages automatisk. Krever omstart.';
 	@override String get startInFullscreen => 'Start i fullskjerm';
-	@override String get startInFullscreenDescription => 'Åpne PlexFlixNetwork i fullskjermmodus ved oppstart';
+	@override String get startInFullscreenDescription => 'Åpne Pleya i fullskjermmodus ved oppstart';
 	@override String get exitFullscreenOnPlayerClose => 'Avslutt fullskjerm ved lukking av avspiller';
 	@override String get exitFullscreenOnPlayerCloseDescription => 'Avslutt fullskjerm automatisk når videospilleren lukkes';
 	@override String get autoHidePerformanceOverlay => 'Skjul ytelsesoverlegg automatisk';
@@ -414,7 +414,7 @@ class _TranslationsSettingsNb extends TranslationsSettingsEn {
 	@override String get showNavBarLabels => 'Vis navigasjonsfeltlabeler';
 	@override String get showNavBarLabelsDescription => 'Vis tekstlabeler under navigasjonsfeltikoner';
 	@override String get startupSection => 'Oppstartsseksjon';
-	@override String get startupSectionDescription => 'Velg hvilken seksjon PlexFlixNetwork åpner ved oppstart';
+	@override String get startupSectionDescription => 'Velg hvilken seksjon Pleya åpner ved oppstart';
 	@override String get liveTvDefaultFavorites => 'Standard til favorittkanaler';
 	@override String get liveTvDefaultFavoritesDescription => 'Vis kun favorittkanaler når du åpner Live TV';
 	@override String get display => 'Skjerm';
@@ -778,7 +778,7 @@ class _TranslationsProfilesNb extends TranslationsProfilesEn {
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
-	@override String get addPlezyProfile => 'Legg til PlexFlixNetwork-profil';
+	@override String get addPlezyProfile => 'Legg til Pleya-profil';
 	@override String get switchingProfile => 'Bytter profil…';
 	@override String get deleteThisProfileTitle => 'Slett denne profilen?';
 	@override String deleteThisProfileMessage({required Object displayName}) => 'Fjern ${displayName}. Tilkoblinger påvirkes ikke.';
@@ -853,7 +853,7 @@ class _TranslationsConnectionsNb extends TranslationsConnectionsEn {
 	@override String sessionExpiredMany({required Object count}) => 'Økten er utløpt for ${count} servere';
 	@override String get signInAgain => 'Logg inn igjen';
 	@override String get editJellyfinTitle => 'Rediger Jellyfin-tilkobling';
-	@override String editJellyfinIntro({required Object serverName}) => 'Legg til eller fjern URL-er for ${serverName}. PlexFlixNetwork bruker den tilgjengelige URL-en med lavest forsinkelse.';
+	@override String editJellyfinIntro({required Object serverName}) => 'Legg til eller fjern URL-er for ${serverName}. Pleya bruker den tilgjengelige URL-en med lavest forsinkelse.';
 }
 
 // Path: discover
@@ -1572,11 +1572,11 @@ class _TranslationsTraktNb extends TranslationsTraktEn {
 	@override String get connected => 'Tilkoblet';
 	@override String connectedAs({required Object username}) => 'Tilkoblet som @${username}';
 	@override String get disconnectConfirm => 'Koble fra Trakt-konto?';
-	@override String get disconnectConfirmBody => 'PlexFlixNetwork slutter å sende hendelser til Trakt. Du kan koble til igjen når som helst.';
+	@override String get disconnectConfirmBody => 'Pleya slutter å sende hendelser til Trakt. Du kan koble til igjen når som helst.';
 	@override String get scrobble => 'Sanntids-scrobbling';
 	@override String get scrobbleDescription => 'Send avspillings-, pause- og stopphendelser til Trakt under avspilling.';
 	@override String get watchedSync => 'Synkroniser sett-status';
-	@override String get watchedSyncDescription => 'Når du markerer noe som sett i PlexFlixNetwork, markeres det også på Trakt.';
+	@override String get watchedSyncDescription => 'Når du markerer noe som sett i Pleya, markeres det også på Trakt.';
 }
 
 // Path: trackers
@@ -1593,7 +1593,7 @@ class _TranslationsTrackersNb extends TranslationsTrackersEn {
 	@override String get scrobble => 'Registrer fremdrift automatisk';
 	@override String get scrobbleDescription => 'Oppdater listen din når du er ferdig med en episode eller film.';
 	@override String disconnectConfirm({required Object service}) => 'Koble fra ${service}?';
-	@override String disconnectConfirmBody({required Object service}) => 'PlexFlixNetwork slutter å oppdatere ${service}. Koble til igjen når som helst.';
+	@override String disconnectConfirmBody({required Object service}) => 'Pleya slutter å oppdatere ${service}. Koble til igjen når som helst.';
 	@override String connectFailed({required Object service}) => 'Kunne ikke koble til ${service}. Prøv igjen.';
 	@override late final _TranslationsTrackersServicesNb services = _TranslationsTrackersServicesNb._(_root);
 	@override late final _TranslationsTrackersDeviceCodeNb deviceCode = _TranslationsTrackersDeviceCodeNb._(_root);
@@ -1790,19 +1790,19 @@ class _TranslationsCompanionRemotePairingNb extends TranslationsCompanionRemoteP
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
-	@override String get discoveryDescription => 'PlexFlixNetwork-enheter med samme Plex-konto vises her';
+	@override String get discoveryDescription => 'Pleya-enheter med samme Plex-konto vises her';
 	@override String get hostAddressHint => '192.168.1.100:48632';
 	@override String get connecting => 'Kobler til...';
 	@override String get searchingForDevices => 'Søker etter enheter...';
 	@override String get noDevicesFound => 'Ingen enheter funnet på nettverket ditt';
-	@override String get noDevicesHint => 'Åpne PlexFlixNetwork på desktop og bruk samme WiFi';
+	@override String get noDevicesHint => 'Åpne Pleya på desktop og bruk samme WiFi';
 	@override String get availableDevices => 'Tilgjengelige enheter';
 	@override String get manualConnection => 'Manuell tilkobling';
 	@override String get cryptoInitFailed => 'Kunne ikke starte sikker tilkobling. Logg inn på Plex først.';
 	@override String get validationHostRequired => 'Vennligst oppgi vertsadresse';
 	@override String get validationHostFormat => 'Format må være IP:port (f.eks. 192.168.1.100:48632)';
 	@override String get connectionTimedOut => 'Tilkoblingen fikk tidsavbrudd. Bruk samme nettverk på begge enheter.';
-	@override String get sessionNotFound => 'Enhet ikke funnet. Sørg for at PlexFlixNetwork kjører på verten.';
+	@override String get sessionNotFound => 'Enhet ikke funnet. Sørg for at Pleya kjører på verten.';
 	@override String get authFailed => 'Autentisering mislyktes. Begge enheter må bruke samme Plex-konto.';
 	@override String failedToConnect({required Object error}) => 'Kunne ikke koble til: ${error}';
 }
@@ -1877,7 +1877,7 @@ class _TranslationsTrackersDeviceCodeNb extends TranslationsTrackersDeviceCodeEn
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
-	@override String title({required Object service}) => 'Aktiver PlexFlixNetwork på ${service}';
+	@override String title({required Object service}) => 'Aktiver Pleya på ${service}';
 	@override String body({required Object url}) => 'Besøk ${url} og skriv inn denne koden:';
 	@override String openToActivate({required Object service}) => 'Åpne ${service} for å aktivere';
 	@override String get waitingForAuthorization => 'Venter på godkjenning…';
@@ -1926,7 +1926,7 @@ class _TranslationsTrackersLibraryFilterNb extends TranslationsTrackersLibraryFi
 extension on TranslationsNb {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
-			'app.title' => 'PlexFlixNetwork',
+			'app.title' => 'Pleya',
 			'auth.signIn' => 'Logg på',
 			'auth.signInWithPlex' => 'Logg inn med Plex',
 			'auth.showQRCode' => 'Vis QR-kode',
@@ -2002,7 +2002,7 @@ extension on TranslationsNb {
 			'update.latestVersion' => 'Du har den nyeste versjonen',
 			'update.checkFailed' => 'Kunne ikke se etter oppdateringer',
 			'settings.title' => 'Innstillinger',
-			'settings.supportDeveloper' => 'Støtt PlexFlixNetwork',
+			'settings.supportDeveloper' => 'Støtt Pleya',
 			'settings.supportDeveloperDescription' => 'Doner via Liberapay for å finansiere utviklingen',
 			'settings.language' => 'Språk',
 			'settings.theme' => 'Tema',
@@ -2112,7 +2112,7 @@ extension on TranslationsNb {
 			'settings.importSettingsConfirm' => 'Dette vil erstatte nåværende innstillinger. Fortsette?',
 			'settings.importSettingsSuccess' => 'Innstillinger importert',
 			'settings.importSettingsFailed' => 'Kunne ikke importere innstillinger',
-			'settings.importSettingsInvalidFile' => 'Denne filen er ikke en gyldig PlexFlixNetwork-innstillingseksport',
+			'settings.importSettingsInvalidFile' => 'Denne filen er ikke en gyldig Pleya-innstillingseksport',
 			'settings.importSettingsNoUser' => 'Logg inn før import av innstillinger',
 			'settings.shortcutsReset' => 'Snarveier tilbakestilt til standard',
 			'settings.about' => 'Om',
@@ -2193,7 +2193,7 @@ extension on TranslationsNb {
 			'settings.forceTvMode' => 'Tving TV-modus',
 			'settings.forceTvModeDescription' => 'Tving TV-oppsett. For enheter som ikke oppdages automatisk. Krever omstart.',
 			'settings.startInFullscreen' => 'Start i fullskjerm',
-			'settings.startInFullscreenDescription' => 'Åpne PlexFlixNetwork i fullskjermmodus ved oppstart',
+			'settings.startInFullscreenDescription' => 'Åpne Pleya i fullskjermmodus ved oppstart',
 			'settings.exitFullscreenOnPlayerClose' => 'Avslutt fullskjerm ved lukking av avspiller',
 			'settings.exitFullscreenOnPlayerCloseDescription' => 'Avslutt fullskjerm automatisk når videospilleren lukkes',
 			'settings.autoHidePerformanceOverlay' => 'Skjul ytelsesoverlegg automatisk',
@@ -2201,7 +2201,7 @@ extension on TranslationsNb {
 			'settings.showNavBarLabels' => 'Vis navigasjonsfeltlabeler',
 			'settings.showNavBarLabelsDescription' => 'Vis tekstlabeler under navigasjonsfeltikoner',
 			'settings.startupSection' => 'Oppstartsseksjon',
-			'settings.startupSectionDescription' => 'Velg hvilken seksjon PlexFlixNetwork åpner ved oppstart',
+			'settings.startupSectionDescription' => 'Velg hvilken seksjon Pleya åpner ved oppstart',
 			'settings.liveTvDefaultFavorites' => 'Standard til favorittkanaler',
 			'settings.liveTvDefaultFavoritesDescription' => 'Vis kun favorittkanaler når du åpner Live TV',
 			'settings.display' => 'Skjerm',
@@ -2471,7 +2471,7 @@ extension on TranslationsNb {
 			'mpvConfig.confirmDeletePreset' => 'Er du sikker på at du vil slette denne forhåndsinnstillingen?',
 			'mpvConfig.configPlaceholder' => 'gpu-api=vulkan\nhwdec=auto\n# kommentar',
 			'dialog.confirmAction' => 'Bekreft handling',
-			'profiles.addPlezyProfile' => 'Legg til PlexFlixNetwork-profil',
+			'profiles.addPlezyProfile' => 'Legg til Pleya-profil',
 			'profiles.switchingProfile' => 'Bytter profil…',
 			'profiles.deleteThisProfileTitle' => 'Slett denne profilen?',
 			'profiles.deleteThisProfileMessage' => ({required Object displayName}) => 'Fjern ${displayName}. Tilkoblinger påvirkes ikke.',
@@ -2537,7 +2537,7 @@ extension on TranslationsNb {
 			'connections.sessionExpiredMany' => ({required Object count}) => 'Økten er utløpt for ${count} servere',
 			'connections.signInAgain' => 'Logg inn igjen',
 			'connections.editJellyfinTitle' => 'Rediger Jellyfin-tilkobling',
-			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Legg til eller fjern URL-er for ${serverName}. PlexFlixNetwork bruker den tilgjengelige URL-en med lavest forsinkelse.',
+			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Legg til eller fjern URL-er for ${serverName}. Pleya bruker den tilgjengelige URL-en med lavest forsinkelse.',
 			'discover.title' => 'Oppdag',
 			'discover.switchProfile' => 'Bytt profil',
 			'discover.noContentAvailable' => 'Ingen innhold tilgjengelig',
@@ -2936,19 +2936,19 @@ extension on TranslationsNb {
 			'companionRemote.session.startServer' => 'Start server',
 			'companionRemote.session.stopServer' => 'Stopp server',
 			'companionRemote.session.minimize' => 'Minimer',
-			'companionRemote.pairing.discoveryDescription' => 'PlexFlixNetwork-enheter med samme Plex-konto vises her',
+			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheter med samme Plex-konto vises her',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Kobler til...',
 			'companionRemote.pairing.searchingForDevices' => 'Søker etter enheter...',
 			'companionRemote.pairing.noDevicesFound' => 'Ingen enheter funnet på nettverket ditt',
-			'companionRemote.pairing.noDevicesHint' => 'Åpne PlexFlixNetwork på desktop og bruk samme WiFi',
+			'companionRemote.pairing.noDevicesHint' => 'Åpne Pleya på desktop og bruk samme WiFi',
 			'companionRemote.pairing.availableDevices' => 'Tilgjengelige enheter',
 			'companionRemote.pairing.manualConnection' => 'Manuell tilkobling',
 			'companionRemote.pairing.cryptoInitFailed' => 'Kunne ikke starte sikker tilkobling. Logg inn på Plex først.',
 			'companionRemote.pairing.validationHostRequired' => 'Vennligst oppgi vertsadresse',
 			'companionRemote.pairing.validationHostFormat' => 'Format må være IP:port (f.eks. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Tilkoblingen fikk tidsavbrudd. Bruk samme nettverk på begge enheter.',
-			'companionRemote.pairing.sessionNotFound' => 'Enhet ikke funnet. Sørg for at PlexFlixNetwork kjører på verten.',
+			'companionRemote.pairing.sessionNotFound' => 'Enhet ikke funnet. Sørg for at Pleya kjører på verten.',
 			'companionRemote.pairing.authFailed' => 'Autentisering mislyktes. Begge enheter må bruke samme Plex-konto.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kunne ikke koble til: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Vil du koble fra fjernøkten?',
@@ -3140,11 +3140,11 @@ extension on TranslationsNb {
 			'trakt.connected' => 'Tilkoblet',
 			'trakt.connectedAs' => ({required Object username}) => 'Tilkoblet som @${username}',
 			'trakt.disconnectConfirm' => 'Koble fra Trakt-konto?',
-			'trakt.disconnectConfirmBody' => 'PlexFlixNetwork slutter å sende hendelser til Trakt. Du kan koble til igjen når som helst.',
+			'trakt.disconnectConfirmBody' => 'Pleya slutter å sende hendelser til Trakt. Du kan koble til igjen når som helst.',
 			'trakt.scrobble' => 'Sanntids-scrobbling',
 			'trakt.scrobbleDescription' => 'Send avspillings-, pause- og stopphendelser til Trakt under avspilling.',
 			'trakt.watchedSync' => 'Synkroniser sett-status',
-			'trakt.watchedSyncDescription' => 'Når du markerer noe som sett i PlexFlixNetwork, markeres det også på Trakt.',
+			'trakt.watchedSyncDescription' => 'Når du markerer noe som sett i Pleya, markeres det også på Trakt.',
 			'trackers.title' => 'Trackere',
 			'trackers.hubSubtitle' => 'Synkroniser seerfremdrift med Trakt og andre tjenester.',
 			'trackers.notConnected' => 'Ikke tilkoblet',
@@ -3152,12 +3152,12 @@ extension on TranslationsNb {
 			'trackers.scrobble' => 'Registrer fremdrift automatisk',
 			'trackers.scrobbleDescription' => 'Oppdater listen din når du er ferdig med en episode eller film.',
 			'trackers.disconnectConfirm' => ({required Object service}) => 'Koble fra ${service}?',
-			'trackers.disconnectConfirmBody' => ({required Object service}) => 'PlexFlixNetwork slutter å oppdatere ${service}. Koble til igjen når som helst.',
+			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya slutter å oppdatere ${service}. Koble til igjen når som helst.',
 			'trackers.connectFailed' => ({required Object service}) => 'Kunne ikke koble til ${service}. Prøv igjen.',
 			'trackers.services.mal' => 'MyAnimeList',
 			'trackers.services.anilist' => 'AniList',
 			'trackers.services.simkl' => 'Simkl',
-			'trackers.deviceCode.title' => ({required Object service}) => 'Aktiver PlexFlixNetwork på ${service}',
+			'trackers.deviceCode.title' => ({required Object service}) => 'Aktiver Pleya på ${service}',
 			'trackers.deviceCode.body' => ({required Object url}) => 'Besøk ${url} og skriv inn denne koden:',
 			'trackers.deviceCode.openToActivate' => ({required Object service}) => 'Åpne ${service} for å aktivere',
 			'trackers.deviceCode.waitingForAuthorization' => 'Venter på godkjenning…',

@@ -41,7 +41,7 @@ class PlexConfig {
       baseUrl: baseUrl,
       token: token,
       clientIdentifier: clientIdentifier,
-      product: product ?? 'PlexFlixNetwork',
+      product: product ?? 'Pleya',
       version: packageInfo.version,
       platform: platform ?? 'Flutter',
       device: device,

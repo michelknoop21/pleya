@@ -560,8 +560,8 @@ class PlexClient
       final headers = <String, String>{'X-Plex-Token': token};
       if (clientIdentifier != null) {
         headers['X-Plex-Client-Identifier'] = clientIdentifier;
-        headers['X-Plex-Product'] = 'PlexFlixNetwork';
-        headers['X-Plex-Device-Name'] = 'PlexFlixNetwork';
+        headers['X-Plex-Product'] = 'Pleya';
+        headers['X-Plex-Device-Name'] = 'Pleya';
       }
 
       final response = await client.get('/', headers: headers);
@@ -3714,6 +3714,37 @@ class PlexClient
   Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async {
     final items = await _getContinueWatching(count: count);
     return items.map((m) => PlexMappers.mediaItem(m)).toList();
+  }
+
+  /// `/library/all` sorted by `lastViewedAt` is user-scoped per token, so
+  /// this avoids the accountID ambiguity of `/status/sessions/history/all`.
+  /// Watched-only filtering happens client-side on the small result window.
+  @override
+  Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5}) async {
+    try {
+      // type=1 movies, type=2 shows — merged by last-viewed recency.
+      final responses = await Future.wait([
+        for (final type in const ['1', '2'])
+          _getWithFailover(
+            '/library/all',
+            queryParameters: {
+              'type': type,
+              'sort': 'lastViewedAt:desc',
+              'X-Plex-Container-Size': limit,
+              'includeGuids': 1,
+            },
+          ),
+      ]);
+      final items = [
+        for (final response in responses)
+          for (final dto in _extractMetadataList(response)) PlexMappers.mediaItem(dto),
+      ].where((item) => item.lastViewedAt != null && item.isWatched).toList();
+      items.sort((a, b) => (b.lastViewedAt ?? 0).compareTo(a.lastViewedAt ?? 0));
+      return items.take(limit).toList();
+    } catch (e, st) {
+      appLogger.w('PlexClient: recently watched fetch failed (treating as empty)', error: e, stackTrace: st);
+      return const [];
+    }
   }
 
   @override

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/device_performance.dart';
 import '../utils/platform_detector.dart';
 
-/// Plays the PlexFlixNetwork startup intro (red wordmark zoom-in + sheen) once
+/// Plays the Pleya startup intro (red wordmark zoom-in + sheen) once
 /// per app process, then reveals [child]. Tap to skip. Honors reduced-motion
 /// and the reduced performance tier by skipping the animation entirely.
 class IntroGate extends StatefulWidget {
@@ -113,15 +113,16 @@ class _IntroMark extends StatelessWidget {
               transform: GradientTranslation(dx, 0),
             ).createShader(rect);
           },
-          child: const Text(
-            'PLEXFLIX',
-            style: TextStyle(
-              fontFamily: 'ArchivoBlack',
-              fontSize: 72,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -3,
-              color: Color(0xFFE50914),
-              shadows: [Shadow(color: Color(0x55E50914), blurRadius: 40)],
+          // The actual logo lockup, with a warm red glow behind it.
+          child: Container(
+            decoration: const BoxDecoration(
+              boxShadow: [BoxShadow(color: Color(0x33F42B1F), blurRadius: 60, spreadRadius: 8)],
+            ),
+            child: Image.asset(
+              'assets/branding/pleya_wordmark.png',
+              width: 340,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
             ),
           ),
         ),

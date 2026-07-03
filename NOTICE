@@ -1,0 +1,17 @@
+Pleya
+Copyright (C) 2026 Michel Knoop
+
+This program is a modified version ("fork") of Plezy, Copyright (C) edde746
+(https://github.com/edde746/plezy), and is distributed under the terms of the
+GNU General Public License version 3 as published by the Free Software
+Foundation. See the LICENSE file for the full license text.
+
+The name "Pleya" and the Pleya logo/wordmark are branding of this fork and are
+not part of the GPL-licensed source. "Plex", "Jellyfin", "Trakt", "Simkl",
+"MyAnimeList" and "AniList" are trademarks of their respective owners; Pleya is
+an independent client and is not endorsed by or affiliated with them.
+
+This product uses libmpv (https://mpv.io/) for media playback. libmpv is
+licensed under the GNU Lesser General Public License / GNU General Public
+License; see the in-app "Open Source Licenses" screen for bundled dependency
+licenses.

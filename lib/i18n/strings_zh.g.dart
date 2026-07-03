@@ -94,7 +94,7 @@ class _TranslationsAppZh extends TranslationsAppEn {
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'PlexFlixNetwork';
+	@override String get title => 'Pleya';
 }
 
 // Path: auth
@@ -215,7 +215,7 @@ class _TranslationsSettingsZh extends TranslationsSettingsEn {
 
 	// Translations
 	@override String get title => '设置';
-	@override String get supportDeveloper => '支持 PlexFlixNetwork';
+	@override String get supportDeveloper => '支持 Pleya';
 	@override String get supportDeveloperDescription => '通过 Liberapay 捐赠支持开发';
 	@override String get language => '语言';
 	@override String get theme => '主题';
@@ -325,7 +325,7 @@ class _TranslationsSettingsZh extends TranslationsSettingsEn {
 	@override String get importSettingsConfirm => '这将替换您当前的设置。继续吗？';
 	@override String get importSettingsSuccess => '设置已导入';
 	@override String get importSettingsFailed => '无法导入设置';
-	@override String get importSettingsInvalidFile => '此文件不是有效的 PlexFlixNetwork 设置导出';
+	@override String get importSettingsInvalidFile => '此文件不是有效的 Pleya 设置导出';
 	@override String get importSettingsNoUser => '导入设置前请先登录';
 	@override String get shortcutsReset => '快捷键已重置为默认值';
 	@override String get about => '关于';
@@ -406,7 +406,7 @@ class _TranslationsSettingsZh extends TranslationsSettingsEn {
 	@override String get forceTvMode => '强制 TV 模式';
 	@override String get forceTvModeDescription => '强制 TV 布局。适用于无法自动检测的设备。需要重启。';
 	@override String get startInFullscreen => '以全屏模式启动';
-	@override String get startInFullscreenDescription => '启动时以全屏模式打开 PlexFlixNetwork';
+	@override String get startInFullscreenDescription => '启动时以全屏模式打开 Pleya';
 	@override String get exitFullscreenOnPlayerClose => '关闭播放器时退出全屏';
 	@override String get exitFullscreenOnPlayerCloseDescription => '关闭视频播放器时自动退出全屏模式';
 	@override String get autoHidePerformanceOverlay => '自动隐藏性能叠加层';
@@ -414,7 +414,7 @@ class _TranslationsSettingsZh extends TranslationsSettingsEn {
 	@override String get showNavBarLabels => '显示导航栏标签';
 	@override String get showNavBarLabelsDescription => '在导航栏图标下方显示文字标签';
 	@override String get startupSection => '启动页面';
-	@override String get startupSectionDescription => '选择 PlexFlixNetwork 启动时打开的页面';
+	@override String get startupSectionDescription => '选择 Pleya 启动时打开的页面';
 	@override String get liveTvDefaultFavorites => '默认显示收藏频道';
 	@override String get liveTvDefaultFavoritesDescription => '打开直播电视时仅显示收藏频道';
 	@override String get display => '显示';
@@ -778,7 +778,7 @@ class _TranslationsProfilesZh extends TranslationsProfilesEn {
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get addPlezyProfile => '添加 PlexFlixNetwork 配置文件';
+	@override String get addPlezyProfile => '添加 Pleya 配置文件';
 	@override String get switchingProfile => '切换配置文件中…';
 	@override String get deleteThisProfileTitle => '删除此配置文件？';
 	@override String deleteThisProfileMessage({required Object displayName}) => '移除 ${displayName}。连接不会受影响。';
@@ -853,7 +853,7 @@ class _TranslationsConnectionsZh extends TranslationsConnectionsEn {
 	@override String sessionExpiredMany({required Object count}) => '${count} 个服务器的会话已过期';
 	@override String get signInAgain => '重新登录';
 	@override String get editJellyfinTitle => '编辑 Jellyfin 连接';
-	@override String editJellyfinIntro({required Object serverName}) => '添加或移除 ${serverName} 的 URL。PlexFlixNetwork 会使用可访问且延迟最低的 URL。';
+	@override String editJellyfinIntro({required Object serverName}) => '添加或移除 ${serverName} 的 URL。Pleya 会使用可访问且延迟最低的 URL。';
 }
 
 // Path: discover
@@ -1572,11 +1572,11 @@ class _TranslationsTraktZh extends TranslationsTraktEn {
 	@override String get connected => '已连接';
 	@override String connectedAs({required Object username}) => '已以 @${username} 身份连接';
 	@override String get disconnectConfirm => '断开 Trakt 账户？';
-	@override String get disconnectConfirmBody => 'PlexFlixNetwork 将停止向 Trakt 发送事件。你可随时重新连接。';
+	@override String get disconnectConfirmBody => 'Pleya 将停止向 Trakt 发送事件。你可随时重新连接。';
 	@override String get scrobble => '实时 Scrobble';
 	@override String get scrobbleDescription => '在播放时向 Trakt 发送播放、暂停和停止事件。';
 	@override String get watchedSync => '同步已观看状态';
-	@override String get watchedSyncDescription => '在 PlexFlixNetwork 中将内容标记为已观看时，也会在 Trakt 上标记为已观看。';
+	@override String get watchedSyncDescription => '在 Pleya 中将内容标记为已观看时，也会在 Trakt 上标记为已观看。';
 }
 
 // Path: trackers
@@ -1593,7 +1593,7 @@ class _TranslationsTrackersZh extends TranslationsTrackersEn {
 	@override String get scrobble => '自动记录进度';
 	@override String get scrobbleDescription => '观看完一集或一部电影后更新你的列表。';
 	@override String disconnectConfirm({required Object service}) => '断开 ${service} 连接？';
-	@override String disconnectConfirmBody({required Object service}) => 'PlexFlixNetwork 将停止更新 ${service}。可随时重新连接。';
+	@override String disconnectConfirmBody({required Object service}) => 'Pleya 将停止更新 ${service}。可随时重新连接。';
 	@override String connectFailed({required Object service}) => '无法连接到 ${service}。请重试。';
 	@override late final _TranslationsTrackersServicesZh services = _TranslationsTrackersServicesZh._(_root);
 	@override late final _TranslationsTrackersDeviceCodeZh deviceCode = _TranslationsTrackersDeviceCodeZh._(_root);
@@ -1790,19 +1790,19 @@ class _TranslationsCompanionRemotePairingZh extends TranslationsCompanionRemoteP
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get discoveryDescription => '使用同一 Plex 账号的 PlexFlixNetwork 设备会显示在这里';
+	@override String get discoveryDescription => '使用同一 Plex 账号的 Pleya 设备会显示在这里';
 	@override String get hostAddressHint => '192.168.1.100:48632';
 	@override String get connecting => '正在连接...';
 	@override String get searchingForDevices => '正在搜索设备...';
 	@override String get noDevicesFound => '未在网络上找到设备';
-	@override String get noDevicesHint => '在桌面端打开 PlexFlixNetwork 并使用同一 WiFi';
+	@override String get noDevicesHint => '在桌面端打开 Pleya 并使用同一 WiFi';
 	@override String get availableDevices => '可用设备';
 	@override String get manualConnection => '手动连接';
 	@override String get cryptoInitFailed => '无法启动安全连接。请先登录 Plex。';
 	@override String get validationHostRequired => '请输入主机地址';
 	@override String get validationHostFormat => '格式必须为IP:端口（例如 192.168.1.100:48632）';
 	@override String get connectionTimedOut => '连接超时。请在两台设备上使用同一网络。';
-	@override String get sessionNotFound => '未找到设备。请确认 PlexFlixNetwork 正在主机上运行。';
+	@override String get sessionNotFound => '未找到设备。请确认 Pleya 正在主机上运行。';
 	@override String get authFailed => '认证失败。两台设备需要使用同一 Plex 账号。';
 	@override String failedToConnect({required Object error}) => '连接失败：${error}';
 }
@@ -1877,7 +1877,7 @@ class _TranslationsTrackersDeviceCodeZh extends TranslationsTrackersDeviceCodeEn
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String title({required Object service}) => '在 ${service} 上激活 PlexFlixNetwork';
+	@override String title({required Object service}) => '在 ${service} 上激活 Pleya';
 	@override String body({required Object url}) => '访问 ${url} 并输入此代码：';
 	@override String openToActivate({required Object service}) => '打开 ${service} 以激活';
 	@override String get waitingForAuthorization => '等待授权…';
@@ -1926,7 +1926,7 @@ class _TranslationsTrackersLibraryFilterZh extends TranslationsTrackersLibraryFi
 extension on TranslationsZh {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
-			'app.title' => 'PlexFlixNetwork',
+			'app.title' => 'Pleya',
 			'auth.signIn' => '登录',
 			'auth.signInWithPlex' => '使用 Plex 登录',
 			'auth.showQRCode' => '显示二维码',
@@ -2002,7 +2002,7 @@ extension on TranslationsZh {
 			'update.latestVersion' => '已安装的版本是可用的最新版本',
 			'update.checkFailed' => '无法检查更新',
 			'settings.title' => '设置',
-			'settings.supportDeveloper' => '支持 PlexFlixNetwork',
+			'settings.supportDeveloper' => '支持 Pleya',
 			'settings.supportDeveloperDescription' => '通过 Liberapay 捐赠支持开发',
 			'settings.language' => '语言',
 			'settings.theme' => '主题',
@@ -2112,7 +2112,7 @@ extension on TranslationsZh {
 			'settings.importSettingsConfirm' => '这将替换您当前的设置。继续吗？',
 			'settings.importSettingsSuccess' => '设置已导入',
 			'settings.importSettingsFailed' => '无法导入设置',
-			'settings.importSettingsInvalidFile' => '此文件不是有效的 PlexFlixNetwork 设置导出',
+			'settings.importSettingsInvalidFile' => '此文件不是有效的 Pleya 设置导出',
 			'settings.importSettingsNoUser' => '导入设置前请先登录',
 			'settings.shortcutsReset' => '快捷键已重置为默认值',
 			'settings.about' => '关于',
@@ -2193,7 +2193,7 @@ extension on TranslationsZh {
 			'settings.forceTvMode' => '强制 TV 模式',
 			'settings.forceTvModeDescription' => '强制 TV 布局。适用于无法自动检测的设备。需要重启。',
 			'settings.startInFullscreen' => '以全屏模式启动',
-			'settings.startInFullscreenDescription' => '启动时以全屏模式打开 PlexFlixNetwork',
+			'settings.startInFullscreenDescription' => '启动时以全屏模式打开 Pleya',
 			'settings.exitFullscreenOnPlayerClose' => '关闭播放器时退出全屏',
 			'settings.exitFullscreenOnPlayerCloseDescription' => '关闭视频播放器时自动退出全屏模式',
 			'settings.autoHidePerformanceOverlay' => '自动隐藏性能叠加层',
@@ -2201,7 +2201,7 @@ extension on TranslationsZh {
 			'settings.showNavBarLabels' => '显示导航栏标签',
 			'settings.showNavBarLabelsDescription' => '在导航栏图标下方显示文字标签',
 			'settings.startupSection' => '启动页面',
-			'settings.startupSectionDescription' => '选择 PlexFlixNetwork 启动时打开的页面',
+			'settings.startupSectionDescription' => '选择 Pleya 启动时打开的页面',
 			'settings.liveTvDefaultFavorites' => '默认显示收藏频道',
 			'settings.liveTvDefaultFavoritesDescription' => '打开直播电视时仅显示收藏频道',
 			'settings.display' => '显示',
@@ -2471,7 +2471,7 @@ extension on TranslationsZh {
 			'mpvConfig.confirmDeletePreset' => '确定要删除此预设吗？',
 			'mpvConfig.configPlaceholder' => 'gpu-api=vulkan\nhwdec=auto\n# comment',
 			'dialog.confirmAction' => '确认操作',
-			'profiles.addPlezyProfile' => '添加 PlexFlixNetwork 配置文件',
+			'profiles.addPlezyProfile' => '添加 Pleya 配置文件',
 			'profiles.switchingProfile' => '切换配置文件中…',
 			'profiles.deleteThisProfileTitle' => '删除此配置文件？',
 			'profiles.deleteThisProfileMessage' => ({required Object displayName}) => '移除 ${displayName}。连接不会受影响。',
@@ -2537,7 +2537,7 @@ extension on TranslationsZh {
 			'connections.sessionExpiredMany' => ({required Object count}) => '${count} 个服务器的会话已过期',
 			'connections.signInAgain' => '重新登录',
 			'connections.editJellyfinTitle' => '编辑 Jellyfin 连接',
-			'connections.editJellyfinIntro' => ({required Object serverName}) => '添加或移除 ${serverName} 的 URL。PlexFlixNetwork 会使用可访问且延迟最低的 URL。',
+			'connections.editJellyfinIntro' => ({required Object serverName}) => '添加或移除 ${serverName} 的 URL。Pleya 会使用可访问且延迟最低的 URL。',
 			'discover.title' => '发现',
 			'discover.switchProfile' => '切换用户',
 			'discover.noContentAvailable' => '没有可用内容',
@@ -2936,19 +2936,19 @@ extension on TranslationsZh {
 			'companionRemote.session.startServer' => '启动服务器',
 			'companionRemote.session.stopServer' => '停止服务器',
 			'companionRemote.session.minimize' => '最小化',
-			'companionRemote.pairing.discoveryDescription' => '使用同一 Plex 账号的 PlexFlixNetwork 设备会显示在这里',
+			'companionRemote.pairing.discoveryDescription' => '使用同一 Plex 账号的 Pleya 设备会显示在这里',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '正在连接...',
 			'companionRemote.pairing.searchingForDevices' => '正在搜索设备...',
 			'companionRemote.pairing.noDevicesFound' => '未在网络上找到设备',
-			'companionRemote.pairing.noDevicesHint' => '在桌面端打开 PlexFlixNetwork 并使用同一 WiFi',
+			'companionRemote.pairing.noDevicesHint' => '在桌面端打开 Pleya 并使用同一 WiFi',
 			'companionRemote.pairing.availableDevices' => '可用设备',
 			'companionRemote.pairing.manualConnection' => '手动连接',
 			'companionRemote.pairing.cryptoInitFailed' => '无法启动安全连接。请先登录 Plex。',
 			'companionRemote.pairing.validationHostRequired' => '请输入主机地址',
 			'companionRemote.pairing.validationHostFormat' => '格式必须为IP:端口（例如 192.168.1.100:48632）',
 			'companionRemote.pairing.connectionTimedOut' => '连接超时。请在两台设备上使用同一网络。',
-			'companionRemote.pairing.sessionNotFound' => '未找到设备。请确认 PlexFlixNetwork 正在主机上运行。',
+			'companionRemote.pairing.sessionNotFound' => '未找到设备。请确认 Pleya 正在主机上运行。',
 			'companionRemote.pairing.authFailed' => '认证失败。两台设备需要使用同一 Plex 账号。',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '连接失败：${error}',
 			'companionRemote.remote.disconnectConfirm' => '是否要断开远程会话的连接？',
@@ -3140,11 +3140,11 @@ extension on TranslationsZh {
 			'trakt.connected' => '已连接',
 			'trakt.connectedAs' => ({required Object username}) => '已以 @${username} 身份连接',
 			'trakt.disconnectConfirm' => '断开 Trakt 账户？',
-			'trakt.disconnectConfirmBody' => 'PlexFlixNetwork 将停止向 Trakt 发送事件。你可随时重新连接。',
+			'trakt.disconnectConfirmBody' => 'Pleya 将停止向 Trakt 发送事件。你可随时重新连接。',
 			'trakt.scrobble' => '实时 Scrobble',
 			'trakt.scrobbleDescription' => '在播放时向 Trakt 发送播放、暂停和停止事件。',
 			'trakt.watchedSync' => '同步已观看状态',
-			'trakt.watchedSyncDescription' => '在 PlexFlixNetwork 中将内容标记为已观看时，也会在 Trakt 上标记为已观看。',
+			'trakt.watchedSyncDescription' => '在 Pleya 中将内容标记为已观看时，也会在 Trakt 上标记为已观看。',
 			'trackers.title' => '追踪器',
 			'trackers.hubSubtitle' => '与 Trakt 和其他服务同步观看进度。',
 			'trackers.notConnected' => '未连接',
@@ -3152,12 +3152,12 @@ extension on TranslationsZh {
 			'trackers.scrobble' => '自动记录进度',
 			'trackers.scrobbleDescription' => '观看完一集或一部电影后更新你的列表。',
 			'trackers.disconnectConfirm' => ({required Object service}) => '断开 ${service} 连接？',
-			'trackers.disconnectConfirmBody' => ({required Object service}) => 'PlexFlixNetwork 将停止更新 ${service}。可随时重新连接。',
+			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya 将停止更新 ${service}。可随时重新连接。',
 			'trackers.connectFailed' => ({required Object service}) => '无法连接到 ${service}。请重试。',
 			'trackers.services.mal' => 'MyAnimeList',
 			'trackers.services.anilist' => 'AniList',
 			'trackers.services.simkl' => 'Simkl',
-			'trackers.deviceCode.title' => ({required Object service}) => '在 ${service} 上激活 PlexFlixNetwork',
+			'trackers.deviceCode.title' => ({required Object service}) => '在 ${service} 上激活 Pleya',
 			'trackers.deviceCode.body' => ({required Object url}) => '访问 ${url} 并输入此代码：',
 			'trackers.deviceCode.openToActivate' => ({required Object service}) => '打开 ${service} 以激活',
 			'trackers.deviceCode.waitingForAuthorization' => '等待授权…',

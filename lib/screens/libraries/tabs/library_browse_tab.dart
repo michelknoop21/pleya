@@ -1537,7 +1537,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
         CachedNetworkImageProvider(
           imageUrl,
           cacheManager: PlexImageCacheManager.instance,
-          headers: const {'User-Agent': 'PlexFlixNetwork'},
+          headers: const {'User-Agent': 'Pleya'},
           maxHeight: memHeight,
         ),
         context,

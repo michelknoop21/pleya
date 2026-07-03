@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../navigation/top_nav_scope.dart';
 
-/// Netflix desktop nav content: wordmark + text tabs. Rendered inside each
+/// Desktop nav content: wordmark + text tabs. Rendered inside each
 /// screen's existing top bar (via [TopNavScope]) so there is never a second
 /// stacked bar. Reads the active tab + selection callback from [TopNavScope].
-class NetflixNavLeading extends StatelessWidget {
-  const NetflixNavLeading({super.key});
+class TopNavLeading extends StatelessWidget {
+  const TopNavLeading({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -39,14 +39,13 @@ class _Wordmark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Text.rich(
-      TextSpan(
-        style: TextStyle(fontFamily: 'ArchivoBlack', fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.6),
-        children: [
-          TextSpan(text: 'PLEXFLIX', style: TextStyle(color: Color(0xFFE50914))),
-          TextSpan(text: 'NETWORK', style: TextStyle(color: Colors.white)),
-        ],
-      ),
+    // The actual logo lockup (red-amber P + white "leya"), cropped from the
+    // brand artwork with transparency so it sits on the dark chrome.
+    return Image.asset(
+      'assets/branding/pleya_wordmark.png',
+      height: 26,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
     );
   }
 }

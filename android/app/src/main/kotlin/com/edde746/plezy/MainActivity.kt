@@ -539,7 +539,7 @@ class MainActivity : FlutterActivity() {
             } else {
               val path = if (filePath.startsWith("file://")) filePath.removePrefix("file://") else filePath
               fileName = File(path).name
-              uri = FileProvider.getUriForFile(this, "com.edde746.plezy.fileprovider", File(path))
+              uri = FileProvider.getUriForFile(this, "nl.michelknoop.pleya.fileprovider", File(path))
               grantRead = true
             }
 

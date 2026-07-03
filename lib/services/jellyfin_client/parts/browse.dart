@@ -1391,6 +1391,22 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
   }
 
   @override
+  Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5}) async {
+    final items = await _safeFetchItemsArray('/Items', {
+      'userId': connection.userId,
+      'Recursive': 'true',
+      'IncludeItemTypes': 'Movie,Series',
+      'Filters': 'IsPlayed',
+      'SortBy': 'DatePlayed',
+      'SortOrder': 'Descending',
+      'Limit': limit.toString(),
+      'Fields': _browseFields,
+      ...jellyfinImageQueryParameters,
+    });
+    return _mapItems(items);
+  }
+
+  @override
   Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async {
     final response = await _http.get(
       '/Items/${_segment(id)}/Similar',

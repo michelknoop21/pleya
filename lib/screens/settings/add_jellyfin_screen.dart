@@ -431,14 +431,14 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
     if (authServiceFactory != null) return await authServiceFactory();
     final pkg = await PackageInfo.fromPlatform();
     final deviceName = await _resolveDeviceName();
-    return JellyfinConnectionAuthService(clientName: 'PlexFlixNetwork', clientVersion: pkg.version, deviceName: deviceName);
+    return JellyfinConnectionAuthService(clientName: 'Pleya', clientVersion: pkg.version, deviceName: deviceName);
   }
 
   Future<String> _resolveDeviceName() async {
     // PackageInfo doesn't expose a device name; fall back to a generic label.
     // Jellyfin only shows this in the admin "Devices" list — fine to keep
     // simple until we add proper device_info_plus integration.
-    return 'PlexFlixNetwork';
+    return 'Pleya';
   }
 
   @override

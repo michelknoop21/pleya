@@ -94,7 +94,7 @@ class _TranslationsAppFr extends TranslationsAppEn {
 	final TranslationsFr _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'PlexFlixNetwork';
+	@override String get title => 'Pleya';
 }
 
 // Path: auth
@@ -215,7 +215,7 @@ class _TranslationsSettingsFr extends TranslationsSettingsEn {
 
 	// Translations
 	@override String get title => 'Paramètres';
-	@override String get supportDeveloper => 'Soutenir PlexFlixNetwork';
+	@override String get supportDeveloper => 'Soutenir Pleya';
 	@override String get supportDeveloperDescription => 'Faites un don via Liberapay pour financer le développement';
 	@override String get language => 'Langue';
 	@override String get theme => 'Thème';
@@ -325,7 +325,7 @@ class _TranslationsSettingsFr extends TranslationsSettingsEn {
 	@override String get importSettingsConfirm => 'Cela remplacera vos paramètres actuels. Continuer ?';
 	@override String get importSettingsSuccess => 'Paramètres importés';
 	@override String get importSettingsFailed => 'Impossible d\'importer les paramètres';
-	@override String get importSettingsInvalidFile => 'Ce fichier n\'est pas un export PlexFlixNetwork valide';
+	@override String get importSettingsInvalidFile => 'Ce fichier n\'est pas un export Pleya valide';
 	@override String get importSettingsNoUser => 'Connectez-vous avant d\'importer les paramètres';
 	@override String get shortcutsReset => 'Raccourcis réinitialisés aux valeurs par défaut';
 	@override String get about => 'À propos';
@@ -406,7 +406,7 @@ class _TranslationsSettingsFr extends TranslationsSettingsEn {
 	@override String get forceTvMode => 'Forcer le mode TV';
 	@override String get forceTvModeDescription => 'Forcer l\'interface TV. Pour appareils non détectés automatiquement. Redémarrage requis.';
 	@override String get startInFullscreen => 'Démarrer en plein écran';
-	@override String get startInFullscreenDescription => 'Ouvrir PlexFlixNetwork en mode plein écran au lancement';
+	@override String get startInFullscreenDescription => 'Ouvrir Pleya en mode plein écran au lancement';
 	@override String get exitFullscreenOnPlayerClose => 'Quitter le plein écran à la fermeture du lecteur';
 	@override String get exitFullscreenOnPlayerCloseDescription => 'Quitter automatiquement le plein écran lors de la fermeture du lecteur vidéo';
 	@override String get autoHidePerformanceOverlay => 'Masquer auto. superposition performances';
@@ -414,7 +414,7 @@ class _TranslationsSettingsFr extends TranslationsSettingsEn {
 	@override String get showNavBarLabels => 'Afficher les libellés de la barre de navigation';
 	@override String get showNavBarLabelsDescription => 'Afficher les libellés sous les icônes de la barre de navigation';
 	@override String get startupSection => 'Section de démarrage';
-	@override String get startupSectionDescription => 'Choisissez la section que PlexFlixNetwork ouvre au démarrage';
+	@override String get startupSectionDescription => 'Choisissez la section que Pleya ouvre au démarrage';
 	@override String get liveTvDefaultFavorites => 'Chaînes favorites par défaut';
 	@override String get liveTvDefaultFavoritesDescription => 'Afficher uniquement les chaînes favorites à l\'ouverture de la TV en direct';
 	@override String get display => 'Affichage';
@@ -778,7 +778,7 @@ class _TranslationsProfilesFr extends TranslationsProfilesEn {
 	final TranslationsFr _root; // ignore: unused_field
 
 	// Translations
-	@override String get addPlezyProfile => 'Ajouter un profil PlexFlixNetwork';
+	@override String get addPlezyProfile => 'Ajouter un profil Pleya';
 	@override String get switchingProfile => 'Changement de profil…';
 	@override String get deleteThisProfileTitle => 'Supprimer ce profil ?';
 	@override String deleteThisProfileMessage({required Object displayName}) => 'Supprimer ${displayName}. Les connexions ne sont pas affectées.';
@@ -853,7 +853,7 @@ class _TranslationsConnectionsFr extends TranslationsConnectionsEn {
 	@override String sessionExpiredMany({required Object count}) => 'Session expirée pour ${count} serveurs';
 	@override String get signInAgain => 'Se reconnecter';
 	@override String get editJellyfinTitle => 'Modifier la connexion Jellyfin';
-	@override String editJellyfinIntro({required Object serverName}) => 'Ajoutez ou supprimez des URL pour ${serverName}. PlexFlixNetwork utilisera l\'URL joignable avec la latence la plus faible.';
+	@override String editJellyfinIntro({required Object serverName}) => 'Ajoutez ou supprimez des URL pour ${serverName}. Pleya utilisera l\'URL joignable avec la latence la plus faible.';
 }
 
 // Path: discover
@@ -1572,11 +1572,11 @@ class _TranslationsTraktFr extends TranslationsTraktEn {
 	@override String get connected => 'Connecté';
 	@override String connectedAs({required Object username}) => 'Connecté en tant que @${username}';
 	@override String get disconnectConfirm => 'Déconnecter le compte Trakt ?';
-	@override String get disconnectConfirmBody => 'PlexFlixNetwork cessera d\'envoyer des événements à Trakt. Vous pouvez reconnecter à tout moment.';
+	@override String get disconnectConfirmBody => 'Pleya cessera d\'envoyer des événements à Trakt. Vous pouvez reconnecter à tout moment.';
 	@override String get scrobble => 'Scrobbling en temps réel';
 	@override String get scrobbleDescription => 'Envoyer les événements de lecture, pause et arrêt à Trakt pendant la lecture.';
 	@override String get watchedSync => 'Synchroniser le statut « vu »';
-	@override String get watchedSyncDescription => 'Lorsque vous marquez un élément comme vu dans PlexFlixNetwork, il l\'est aussi sur Trakt.';
+	@override String get watchedSyncDescription => 'Lorsque vous marquez un élément comme vu dans Pleya, il l\'est aussi sur Trakt.';
 }
 
 // Path: trackers
@@ -1593,7 +1593,7 @@ class _TranslationsTrackersFr extends TranslationsTrackersEn {
 	@override String get scrobble => 'Suivre la progression automatiquement';
 	@override String get scrobbleDescription => 'Mettre à jour votre liste lorsque vous terminez un épisode ou un film.';
 	@override String disconnectConfirm({required Object service}) => 'Déconnecter ${service} ?';
-	@override String disconnectConfirmBody({required Object service}) => 'PlexFlixNetwork cessera de mettre à jour ${service}. Reconnectez à tout moment.';
+	@override String disconnectConfirmBody({required Object service}) => 'Pleya cessera de mettre à jour ${service}. Reconnectez à tout moment.';
 	@override String connectFailed({required Object service}) => 'Échec de la connexion à ${service}. Réessayez.';
 	@override late final _TranslationsTrackersServicesFr services = _TranslationsTrackersServicesFr._(_root);
 	@override late final _TranslationsTrackersDeviceCodeFr deviceCode = _TranslationsTrackersDeviceCodeFr._(_root);
@@ -1790,19 +1790,19 @@ class _TranslationsCompanionRemotePairingFr extends TranslationsCompanionRemoteP
 	final TranslationsFr _root; // ignore: unused_field
 
 	// Translations
-	@override String get discoveryDescription => 'Les appareils PlexFlixNetwork avec le même compte Plex apparaissent ici';
+	@override String get discoveryDescription => 'Les appareils Pleya avec le même compte Plex apparaissent ici';
 	@override String get hostAddressHint => '192.168.1.100:48632';
 	@override String get connecting => 'Connexion...';
 	@override String get searchingForDevices => 'Recherche d\'appareils...';
 	@override String get noDevicesFound => 'Aucun appareil trouvé sur votre réseau';
-	@override String get noDevicesHint => 'Ouvrez PlexFlixNetwork sur ordinateur et utilisez le même WiFi';
+	@override String get noDevicesHint => 'Ouvrez Pleya sur ordinateur et utilisez le même WiFi';
 	@override String get availableDevices => 'Appareils disponibles';
 	@override String get manualConnection => 'Connexion manuelle';
 	@override String get cryptoInitFailed => 'Impossible de démarrer la connexion sécurisée. Connectez-vous d\'abord à Plex.';
 	@override String get validationHostRequired => 'Veuillez entrer l\'adresse de l\'hôte';
 	@override String get validationHostFormat => 'Le format doit être IP:port (ex. 192.168.1.100:48632)';
 	@override String get connectionTimedOut => 'Connexion expirée. Utilisez le même réseau sur les deux appareils.';
-	@override String get sessionNotFound => 'Appareil introuvable. Assurez-vous que PlexFlixNetwork fonctionne sur l\'hôte.';
+	@override String get sessionNotFound => 'Appareil introuvable. Assurez-vous que Pleya fonctionne sur l\'hôte.';
 	@override String get authFailed => 'Échec de l\'authentification. Les deux appareils doivent utiliser le même compte Plex.';
 	@override String failedToConnect({required Object error}) => 'Échec de la connexion : ${error}';
 }
@@ -1877,7 +1877,7 @@ class _TranslationsTrackersDeviceCodeFr extends TranslationsTrackersDeviceCodeEn
 	final TranslationsFr _root; // ignore: unused_field
 
 	// Translations
-	@override String title({required Object service}) => 'Activer PlexFlixNetwork sur ${service}';
+	@override String title({required Object service}) => 'Activer Pleya sur ${service}';
 	@override String body({required Object url}) => 'Rendez-vous sur ${url} et entrez ce code :';
 	@override String openToActivate({required Object service}) => 'Ouvrir ${service} pour activer';
 	@override String get waitingForAuthorization => 'En attente d\'autorisation…';
@@ -1926,7 +1926,7 @@ class _TranslationsTrackersLibraryFilterFr extends TranslationsTrackersLibraryFi
 extension on TranslationsFr {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
-			'app.title' => 'PlexFlixNetwork',
+			'app.title' => 'Pleya',
 			'auth.signIn' => 'Se connecter',
 			'auth.signInWithPlex' => 'S\'inscrire avec Plex',
 			'auth.showQRCode' => 'Afficher le QR Code',
@@ -2002,7 +2002,7 @@ extension on TranslationsFr {
 			'update.latestVersion' => 'Vous utilisez la dernière version',
 			'update.checkFailed' => 'Échec de la vérification des mises à jour',
 			'settings.title' => 'Paramètres',
-			'settings.supportDeveloper' => 'Soutenir PlexFlixNetwork',
+			'settings.supportDeveloper' => 'Soutenir Pleya',
 			'settings.supportDeveloperDescription' => 'Faites un don via Liberapay pour financer le développement',
 			'settings.language' => 'Langue',
 			'settings.theme' => 'Thème',
@@ -2112,7 +2112,7 @@ extension on TranslationsFr {
 			'settings.importSettingsConfirm' => 'Cela remplacera vos paramètres actuels. Continuer ?',
 			'settings.importSettingsSuccess' => 'Paramètres importés',
 			'settings.importSettingsFailed' => 'Impossible d\'importer les paramètres',
-			'settings.importSettingsInvalidFile' => 'Ce fichier n\'est pas un export PlexFlixNetwork valide',
+			'settings.importSettingsInvalidFile' => 'Ce fichier n\'est pas un export Pleya valide',
 			'settings.importSettingsNoUser' => 'Connectez-vous avant d\'importer les paramètres',
 			'settings.shortcutsReset' => 'Raccourcis réinitialisés aux valeurs par défaut',
 			'settings.about' => 'À propos',
@@ -2193,7 +2193,7 @@ extension on TranslationsFr {
 			'settings.forceTvMode' => 'Forcer le mode TV',
 			'settings.forceTvModeDescription' => 'Forcer l\'interface TV. Pour appareils non détectés automatiquement. Redémarrage requis.',
 			'settings.startInFullscreen' => 'Démarrer en plein écran',
-			'settings.startInFullscreenDescription' => 'Ouvrir PlexFlixNetwork en mode plein écran au lancement',
+			'settings.startInFullscreenDescription' => 'Ouvrir Pleya en mode plein écran au lancement',
 			'settings.exitFullscreenOnPlayerClose' => 'Quitter le plein écran à la fermeture du lecteur',
 			'settings.exitFullscreenOnPlayerCloseDescription' => 'Quitter automatiquement le plein écran lors de la fermeture du lecteur vidéo',
 			'settings.autoHidePerformanceOverlay' => 'Masquer auto. superposition performances',
@@ -2201,7 +2201,7 @@ extension on TranslationsFr {
 			'settings.showNavBarLabels' => 'Afficher les libellés de la barre de navigation',
 			'settings.showNavBarLabelsDescription' => 'Afficher les libellés sous les icônes de la barre de navigation',
 			'settings.startupSection' => 'Section de démarrage',
-			'settings.startupSectionDescription' => 'Choisissez la section que PlexFlixNetwork ouvre au démarrage',
+			'settings.startupSectionDescription' => 'Choisissez la section que Pleya ouvre au démarrage',
 			'settings.liveTvDefaultFavorites' => 'Chaînes favorites par défaut',
 			'settings.liveTvDefaultFavoritesDescription' => 'Afficher uniquement les chaînes favorites à l\'ouverture de la TV en direct',
 			'settings.display' => 'Affichage',
@@ -2471,7 +2471,7 @@ extension on TranslationsFr {
 			'mpvConfig.confirmDeletePreset' => 'Êtes-vous sûr de vouloir supprimer ce préréglage ?',
 			'mpvConfig.configPlaceholder' => 'gpu-api=vulkan\nhwdec=auto\n# comment',
 			'dialog.confirmAction' => 'Confirmer l\'action',
-			'profiles.addPlezyProfile' => 'Ajouter un profil PlexFlixNetwork',
+			'profiles.addPlezyProfile' => 'Ajouter un profil Pleya',
 			'profiles.switchingProfile' => 'Changement de profil…',
 			'profiles.deleteThisProfileTitle' => 'Supprimer ce profil ?',
 			'profiles.deleteThisProfileMessage' => ({required Object displayName}) => 'Supprimer ${displayName}. Les connexions ne sont pas affectées.',
@@ -2537,7 +2537,7 @@ extension on TranslationsFr {
 			'connections.sessionExpiredMany' => ({required Object count}) => 'Session expirée pour ${count} serveurs',
 			'connections.signInAgain' => 'Se reconnecter',
 			'connections.editJellyfinTitle' => 'Modifier la connexion Jellyfin',
-			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Ajoutez ou supprimez des URL pour ${serverName}. PlexFlixNetwork utilisera l\'URL joignable avec la latence la plus faible.',
+			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Ajoutez ou supprimez des URL pour ${serverName}. Pleya utilisera l\'URL joignable avec la latence la plus faible.',
 			'discover.title' => 'Découvrez',
 			'discover.switchProfile' => 'Changer de profil',
 			'discover.noContentAvailable' => 'Aucun contenu disponible',
@@ -2936,19 +2936,19 @@ extension on TranslationsFr {
 			'companionRemote.session.startServer' => 'Démarrer le serveur',
 			'companionRemote.session.stopServer' => 'Arrêter le serveur',
 			'companionRemote.session.minimize' => 'Réduire',
-			'companionRemote.pairing.discoveryDescription' => 'Les appareils PlexFlixNetwork avec le même compte Plex apparaissent ici',
+			'companionRemote.pairing.discoveryDescription' => 'Les appareils Pleya avec le même compte Plex apparaissent ici',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Connexion...',
 			'companionRemote.pairing.searchingForDevices' => 'Recherche d\'appareils...',
 			'companionRemote.pairing.noDevicesFound' => 'Aucun appareil trouvé sur votre réseau',
-			'companionRemote.pairing.noDevicesHint' => 'Ouvrez PlexFlixNetwork sur ordinateur et utilisez le même WiFi',
+			'companionRemote.pairing.noDevicesHint' => 'Ouvrez Pleya sur ordinateur et utilisez le même WiFi',
 			'companionRemote.pairing.availableDevices' => 'Appareils disponibles',
 			'companionRemote.pairing.manualConnection' => 'Connexion manuelle',
 			'companionRemote.pairing.cryptoInitFailed' => 'Impossible de démarrer la connexion sécurisée. Connectez-vous d\'abord à Plex.',
 			'companionRemote.pairing.validationHostRequired' => 'Veuillez entrer l\'adresse de l\'hôte',
 			'companionRemote.pairing.validationHostFormat' => 'Le format doit être IP:port (ex. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Connexion expirée. Utilisez le même réseau sur les deux appareils.',
-			'companionRemote.pairing.sessionNotFound' => 'Appareil introuvable. Assurez-vous que PlexFlixNetwork fonctionne sur l\'hôte.',
+			'companionRemote.pairing.sessionNotFound' => 'Appareil introuvable. Assurez-vous que Pleya fonctionne sur l\'hôte.',
 			'companionRemote.pairing.authFailed' => 'Échec de l\'authentification. Les deux appareils doivent utiliser le même compte Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Échec de la connexion : ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Voulez-vous vous déconnecter de la session distante ?',
@@ -3140,11 +3140,11 @@ extension on TranslationsFr {
 			'trakt.connected' => 'Connecté',
 			'trakt.connectedAs' => ({required Object username}) => 'Connecté en tant que @${username}',
 			'trakt.disconnectConfirm' => 'Déconnecter le compte Trakt ?',
-			'trakt.disconnectConfirmBody' => 'PlexFlixNetwork cessera d\'envoyer des événements à Trakt. Vous pouvez reconnecter à tout moment.',
+			'trakt.disconnectConfirmBody' => 'Pleya cessera d\'envoyer des événements à Trakt. Vous pouvez reconnecter à tout moment.',
 			'trakt.scrobble' => 'Scrobbling en temps réel',
 			'trakt.scrobbleDescription' => 'Envoyer les événements de lecture, pause et arrêt à Trakt pendant la lecture.',
 			'trakt.watchedSync' => 'Synchroniser le statut « vu »',
-			'trakt.watchedSyncDescription' => 'Lorsque vous marquez un élément comme vu dans PlexFlixNetwork, il l\'est aussi sur Trakt.',
+			'trakt.watchedSyncDescription' => 'Lorsque vous marquez un élément comme vu dans Pleya, il l\'est aussi sur Trakt.',
 			'trackers.title' => 'Trackers',
 			'trackers.hubSubtitle' => 'Synchronisez la progression de visionnage avec Trakt et d\'autres services.',
 			'trackers.notConnected' => 'Non connecté',
@@ -3152,12 +3152,12 @@ extension on TranslationsFr {
 			'trackers.scrobble' => 'Suivre la progression automatiquement',
 			'trackers.scrobbleDescription' => 'Mettre à jour votre liste lorsque vous terminez un épisode ou un film.',
 			'trackers.disconnectConfirm' => ({required Object service}) => 'Déconnecter ${service} ?',
-			'trackers.disconnectConfirmBody' => ({required Object service}) => 'PlexFlixNetwork cessera de mettre à jour ${service}. Reconnectez à tout moment.',
+			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya cessera de mettre à jour ${service}. Reconnectez à tout moment.',
 			'trackers.connectFailed' => ({required Object service}) => 'Échec de la connexion à ${service}. Réessayez.',
 			'trackers.services.mal' => 'MyAnimeList',
 			'trackers.services.anilist' => 'AniList',
 			'trackers.services.simkl' => 'Simkl',
-			'trackers.deviceCode.title' => ({required Object service}) => 'Activer PlexFlixNetwork sur ${service}',
+			'trackers.deviceCode.title' => ({required Object service}) => 'Activer Pleya sur ${service}',
 			'trackers.deviceCode.body' => ({required Object url}) => 'Rendez-vous sur ${url} et entrez ce code :',
 			'trackers.deviceCode.openToActivate' => ({required Object service}) => 'Ouvrir ${service} pour activer',
 			'trackers.deviceCode.waitingForAuthorization' => 'En attente d\'autorisation…',

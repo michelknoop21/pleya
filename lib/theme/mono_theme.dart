@@ -3,17 +3,29 @@ import 'package:flutter/material.dart';
 import 'gapped_track_shape.dart';
 import 'mono_tokens.dart';
 
-/// PlexFlix brand accent (Netflix-style red). Applied sparingly.
-const Color kAccent = Color(0xFFE50914);
+/// Pleya brand red (sampled from the logo's P). Applied sparingly.
+const Color kAccent = Color(0xFFF42B1F);
+
+/// Pleya brand amber (the logo's play-triangle/gradient tail). Secondary
+/// accent for small highlights that sit next to [kAccent].
+const Color kAccentAlt = Color(0xFFF68F16);
+
+/// The logo's P gradient (red → amber, top-left to bottom-right). Used for
+/// brand moments: wordmark, badges, progress fills, splash.
+const Gradient kBrandGradient = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [kAccent, kAccentAlt],
+);
 
 ThemeData monoTheme({required bool dark, bool oled = false}) {
-  // Netflix-2026 palette. Dark is the design target (#141414); OLED stays pure
+  // Cinematic dark palette. Dark is the design target (#141414); OLED stays pure
   // black; light remains functional with a neutral re-tint only.
   final ({Color bg, Color surface, Color surfaceElevated, Color outline, Color text, Color textMuted}) c;
   if (oled) {
     c = (
       bg: const Color(0xFF000000), // Pure black for OLED
-      surface: const Color(0xFF141414), // Netflix dark as the elevated tier
+      surface: const Color(0xFF141414), // Deep charcoal as the elevated tier
       surfaceElevated: const Color(0xFF2F2F2F),
       outline: const Color(0x1FFFFFFF),
       text: const Color(0xFFFFFFFF),
@@ -44,7 +56,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     (states) => states.contains(WidgetState.disabled) ? MouseCursor.defer : SystemMouseCursors.click,
   );
 
-  // Netflix Play/More-Info buttons: square-ish corners (radius 4), primary is
+  // Play/More-Info buttons: square-ish corners (radius 4), primary is
   // white-on-black. Secondary actions get a translucent grey fill elsewhere.
   final buttonStyle = ButtonStyle(
     mouseCursor: clickableCursor,
@@ -60,7 +72,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
   final base = ThemeData(
     useMaterial3: true,
     fontFamily: 'Inter',
-    // Netflix-style fade-through page transitions. Cupertino stays on iOS
+    // Fade-through page transitions. Cupertino stays on iOS
     // (native back-swipe); Android/desktop cross-fade.
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {

@@ -35,7 +35,7 @@
     <uses-feature android:name="android.hardware.type.automotive" android:required="false" />
 
     <application
-        android:label="PlexFlixNetwork"
+        android:label="Pleya"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/tv_banner"
@@ -80,7 +80,7 @@
         <!-- FileProvider for sharing downloaded files with external players -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.edde746.plezy.fileprovider"
+            android:authorities="nl.michelknoop.pleya.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

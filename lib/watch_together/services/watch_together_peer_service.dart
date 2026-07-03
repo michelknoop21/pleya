@@ -22,7 +22,10 @@ export '../../services/base_peer_service.dart' show PeerError, PeerErrorType;
 /// - Sending/receiving sync messages through the relay server
 /// - Reconnection on WebSocket drops
 class WatchTogetherPeerService with KeepaliveMixin {
-  static const String defaultBaseUrl = 'https://ice.plezy.app';
+  // Relay/signalling server for Watch Together. Override with your own via
+  // --dart-define=PLEYA_ICE_BASE=... ; falls back to the shared instance.
+  static const String defaultBaseUrl =
+      String.fromEnvironment('PLEYA_ICE_BASE', defaultValue: 'https://ice.plezy.app');
 
   final String _baseUrl;
 

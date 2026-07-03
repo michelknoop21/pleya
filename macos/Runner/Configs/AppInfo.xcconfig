@@ -5,10 +5,10 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = PlexFlixNetwork
+PRODUCT_NAME = Pleya
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = nl.michelknoop.plexflixnetwork
+PRODUCT_BUNDLE_IDENTIFIER = nl.michelknoop.pleya
 
 // Signing team
 DEVELOPMENT_TEAM = XL9KN38ATX

@@ -501,7 +501,7 @@ mixin _JellyfinPlaybackMethods on MediaServerCacheMixin {
           'AllowVideoStreamCopy': ?allowVideoStreamCopy,
           'AllowAudioStreamCopy': ?allowAudioStreamCopy,
           'DeviceProfile': <String, Object?>{
-            'Name': 'PlexFlixNetwork',
+            'Name': 'Pleya',
             'MaxStreamingBitrate': ?maxStreamingBitrate,
             'CodecProfiles': const <Map<String, Object?>>[],
             // Comma-separated codec lists are order-sensitive — first entry

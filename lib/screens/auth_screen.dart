@@ -232,7 +232,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           mainAxisAlignment: .center,
                           crossAxisAlignment: .center,
                           children: [
-                            Image.asset('assets/branding/pfn_logo.png', width: 132, height: 132),
+                            Image.asset('assets/branding/pleya_logo.png', width: 132, height: 132),
                             const SizedBox(height: 24),
                             Text(
                               t.app.title,
@@ -261,7 +261,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       mainAxisSize: .min,
                       crossAxisAlignment: .stretch,
                       children: [
-                        Image.asset('assets/branding/pfn_logo.png', width: 132, height: 132),
+                        Image.asset('assets/branding/pleya_logo.png', width: 132, height: 132),
                         const SizedBox(height: 24),
                         Text(
                           t.app.title,

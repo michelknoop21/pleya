@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "PlexFlixNetwork"
+    "title": "Pleya"
   },
   "auth": {
     "signIn": "Sign in",
@@ -88,7 +88,7 @@
   },
   "settings": {
     "title": "Settings",
-    "supportDeveloper": "Support PlexFlixNetwork",
+    "supportDeveloper": "Support Pleya",
     "supportDeveloperDescription": "Donate via Liberapay to fund development",
     "language": "Language",
     "theme": "Theme",
@@ -206,7 +206,7 @@
     "importSettingsConfirm": "This will replace your current settings. Continue?",
     "importSettingsSuccess": "Settings imported",
     "importSettingsFailed": "Could not import settings",
-    "importSettingsInvalidFile": "This file isn't a valid PlexFlixNetwork settings export",
+    "importSettingsInvalidFile": "This file isn't a valid Pleya settings export",
     "importSettingsNoUser": "Sign in before importing settings",
     "shortcutsReset": "Shortcuts reset to defaults",
     "about": "About",
@@ -287,7 +287,7 @@
     "forceTvMode": "Force TV mode",
     "forceTvModeDescription": "Force TV layout. For devices that don't auto-detect. Requires restart.",
     "startInFullscreen": "Start in fullscreen",
-    "startInFullscreenDescription": "Open PlexFlixNetwork in fullscreen mode at launch",
+    "startInFullscreenDescription": "Open Pleya in fullscreen mode at launch",
     "exitFullscreenOnPlayerClose": "Exit fullscreen on player close",
     "exitFullscreenOnPlayerCloseDescription": "Automatically exit fullscreen when closing the video player",
     "autoHidePerformanceOverlay": "Auto-Hide Performance Overlay",
@@ -295,7 +295,7 @@
     "showNavBarLabels": "Show Navigation Bar Labels",
     "showNavBarLabelsDescription": "Display text labels under navigation bar icons",
     "startupSection": "Startup Section",
-    "startupSectionDescription": "Choose which section PlexFlixNetwork opens to when it starts",
+    "startupSectionDescription": "Choose which section Pleya opens to when it starts",
     "liveTvDefaultFavorites": "Default to Favorite Channels",
     "liveTvDefaultFavoritesDescription": "Show only favorite channels when opening Live TV",
     "display": "Display",
@@ -615,7 +615,7 @@
     "confirmAction": "Confirm Action"
   },
   "profiles": {
-    "addPlezyProfile": "Add PlexFlixNetwork profile",
+    "addPlezyProfile": "Add Pleya profile",
     "switchingProfile": "Switching profile…",
     "deleteThisProfileTitle": "Delete this profile?",
     "deleteThisProfileMessage": "Remove ${displayName}. Connections aren't affected.",
@@ -683,7 +683,7 @@
     "sessionExpiredMany": "Session expired for ${count} servers",
     "signInAgain": "Sign in again",
     "editJellyfinTitle": "Edit Jellyfin connection",
-    "editJellyfinIntro": "Add or remove URLs for ${serverName}. PlexFlixNetwork will use the reachable URL with the lowest latency."
+    "editJellyfinIntro": "Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency."
   },
   "discover": {
     "title": "Discover",
@@ -1129,19 +1129,19 @@
       "minimize": "Minimize"
     },
     "pairing": {
-      "discoveryDescription": "PlexFlixNetwork devices with the same Plex account appear here",
+      "discoveryDescription": "Pleya devices with the same Plex account appear here",
       "hostAddressHint": "192.168.1.100:48632",
       "connecting": "Connecting...",
       "searchingForDevices": "Looking for devices...",
       "noDevicesFound": "No devices found on your network",
-      "noDevicesHint": "Open PlexFlixNetwork on desktop and use the same WiFi",
+      "noDevicesHint": "Open Pleya on desktop and use the same WiFi",
       "availableDevices": "Available Devices",
       "manualConnection": "Manual Connection",
       "cryptoInitFailed": "Couldn't start secure connection. Sign in to Plex first.",
       "validationHostRequired": "Please enter host address",
       "validationHostFormat": "Format must be IP:port (e.g., 192.168.1.100:48632)",
       "connectionTimedOut": "Connection timed out. Use the same network on both devices.",
-      "sessionNotFound": "Device not found. Make sure PlexFlixNetwork is running on the host.",
+      "sessionNotFound": "Device not found. Make sure Pleya is running on the host.",
       "authFailed": "Authentication failed. Both devices need the same Plex account.",
       "failedToConnect": "Failed to connect: ${error}"
     },
@@ -1357,11 +1357,11 @@
     "connected": "Connected",
     "connectedAs": "Connected as @${username}",
     "disconnectConfirm": "Disconnect Trakt account?",
-    "disconnectConfirmBody": "PlexFlixNetwork will stop sending events to Trakt. You can reconnect any time.",
+    "disconnectConfirmBody": "Pleya will stop sending events to Trakt. You can reconnect any time.",
     "scrobble": "Real-time scrobbling",
     "scrobbleDescription": "Send play, pause, and stop events to Trakt during playback.",
     "watchedSync": "Sync watched status",
-    "watchedSyncDescription": "When you mark items watched in PlexFlixNetwork, mark them on Trakt."
+    "watchedSyncDescription": "When you mark items watched in Pleya, mark them on Trakt."
   },
   "trackers": {
     "title": "Trackers",
@@ -1371,7 +1371,7 @@
     "scrobble": "Track progress automatically",
     "scrobbleDescription": "Update your list when you finish an episode or movie.",
     "disconnectConfirm": "Disconnect ${service}?",
-    "disconnectConfirmBody": "PlexFlixNetwork will stop updating ${service}. Reconnect any time.",
+    "disconnectConfirmBody": "Pleya will stop updating ${service}. Reconnect any time.",
     "connectFailed": "Couldn't connect to ${service}. Try again.",
     "services": {
       "mal": "MyAnimeList",
@@ -1379,7 +1379,7 @@
       "simkl": "Simkl"
     },
     "deviceCode": {
-      "title": "Activate PlexFlixNetwork on ${service}",
+      "title": "Activate Pleya on ${service}",
       "body": "Visit ${url} and enter this code:",
       "openToActivate": "Open ${service} to activate",
       "waitingForAuthorization": "Waiting for authorization…",

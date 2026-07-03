@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "PlexFlixNetwork"
+    "title": "Pleya"
   },
   "auth": {
     "signIn": "Logg på",
@@ -86,7 +86,7 @@
   },
   "settings": {
     "title": "Innstillinger",
-    "supportDeveloper": "Støtt PlexFlixNetwork",
+    "supportDeveloper": "Støtt Pleya",
     "supportDeveloperDescription": "Doner via Liberapay for å finansiere utviklingen",
     "language": "Språk",
     "theme": "Tema",
@@ -196,7 +196,7 @@
     "importSettingsConfirm": "Dette vil erstatte nåværende innstillinger. Fortsette?",
     "importSettingsSuccess": "Innstillinger importert",
     "importSettingsFailed": "Kunne ikke importere innstillinger",
-    "importSettingsInvalidFile": "Denne filen er ikke en gyldig PlexFlixNetwork-innstillingseksport",
+    "importSettingsInvalidFile": "Denne filen er ikke en gyldig Pleya-innstillingseksport",
     "importSettingsNoUser": "Logg inn før import av innstillinger",
     "shortcutsReset": "Snarveier tilbakestilt til standard",
     "about": "Om",
@@ -277,7 +277,7 @@
     "forceTvMode": "Tving TV-modus",
     "forceTvModeDescription": "Tving TV-oppsett. For enheter som ikke oppdages automatisk. Krever omstart.",
     "startInFullscreen": "Start i fullskjerm",
-    "startInFullscreenDescription": "Åpne PlexFlixNetwork i fullskjermmodus ved oppstart",
+    "startInFullscreenDescription": "Åpne Pleya i fullskjermmodus ved oppstart",
     "exitFullscreenOnPlayerClose": "Avslutt fullskjerm ved lukking av avspiller",
     "exitFullscreenOnPlayerCloseDescription": "Avslutt fullskjerm automatisk når videospilleren lukkes",
     "autoHidePerformanceOverlay": "Skjul ytelsesoverlegg automatisk",
@@ -285,7 +285,7 @@
     "showNavBarLabels": "Vis navigasjonsfeltlabeler",
     "showNavBarLabelsDescription": "Vis tekstlabeler under navigasjonsfeltikoner",
     "startupSection": "Oppstartsseksjon",
-    "startupSectionDescription": "Velg hvilken seksjon PlexFlixNetwork åpner ved oppstart",
+    "startupSectionDescription": "Velg hvilken seksjon Pleya åpner ved oppstart",
     "liveTvDefaultFavorites": "Standard til favorittkanaler",
     "liveTvDefaultFavoritesDescription": "Vis kun favorittkanaler når du åpner Live TV",
     "display": "Skjerm",
@@ -585,7 +585,7 @@
     "confirmAction": "Bekreft handling"
   },
   "profiles": {
-    "addPlezyProfile": "Legg til PlexFlixNetwork-profil",
+    "addPlezyProfile": "Legg til Pleya-profil",
     "switchingProfile": "Bytter profil…",
     "deleteThisProfileTitle": "Slett denne profilen?",
     "deleteThisProfileMessage": "Fjern ${displayName}. Tilkoblinger påvirkes ikke.",
@@ -653,7 +653,7 @@
     "sessionExpiredMany": "Økten er utløpt for ${count} servere",
     "signInAgain": "Logg inn igjen",
     "editJellyfinTitle": "Rediger Jellyfin-tilkobling",
-    "editJellyfinIntro": "Legg til eller fjern URL-er for ${serverName}. PlexFlixNetwork bruker den tilgjengelige URL-en med lavest forsinkelse."
+    "editJellyfinIntro": "Legg til eller fjern URL-er for ${serverName}. Pleya bruker den tilgjengelige URL-en med lavest forsinkelse."
   },
   "discover": {
     "title": "Oppdag",
@@ -1095,19 +1095,19 @@
       "minimize": "Minimer"
     },
     "pairing": {
-      "discoveryDescription": "PlexFlixNetwork-enheter med samme Plex-konto vises her",
+      "discoveryDescription": "Pleya-enheter med samme Plex-konto vises her",
       "hostAddressHint": "192.168.1.100:48632",
       "connecting": "Kobler til...",
       "searchingForDevices": "Søker etter enheter...",
       "noDevicesFound": "Ingen enheter funnet på nettverket ditt",
-      "noDevicesHint": "Åpne PlexFlixNetwork på desktop og bruk samme WiFi",
+      "noDevicesHint": "Åpne Pleya på desktop og bruk samme WiFi",
       "availableDevices": "Tilgjengelige enheter",
       "manualConnection": "Manuell tilkobling",
       "cryptoInitFailed": "Kunne ikke starte sikker tilkobling. Logg inn på Plex først.",
       "validationHostRequired": "Vennligst oppgi vertsadresse",
       "validationHostFormat": "Format må være IP:port (f.eks. 192.168.1.100:48632)",
       "connectionTimedOut": "Tilkoblingen fikk tidsavbrudd. Bruk samme nettverk på begge enheter.",
-      "sessionNotFound": "Enhet ikke funnet. Sørg for at PlexFlixNetwork kjører på verten.",
+      "sessionNotFound": "Enhet ikke funnet. Sørg for at Pleya kjører på verten.",
       "authFailed": "Autentisering mislyktes. Begge enheter må bruke samme Plex-konto.",
       "failedToConnect": "Kunne ikke koble til: ${error}"
     },
@@ -1316,11 +1316,11 @@
     "connected": "Tilkoblet",
     "connectedAs": "Tilkoblet som @${username}",
     "disconnectConfirm": "Koble fra Trakt-konto?",
-    "disconnectConfirmBody": "PlexFlixNetwork slutter å sende hendelser til Trakt. Du kan koble til igjen når som helst.",
+    "disconnectConfirmBody": "Pleya slutter å sende hendelser til Trakt. Du kan koble til igjen når som helst.",
     "scrobble": "Sanntids-scrobbling",
     "scrobbleDescription": "Send avspillings-, pause- og stopphendelser til Trakt under avspilling.",
     "watchedSync": "Synkroniser sett-status",
-    "watchedSyncDescription": "Når du markerer noe som sett i PlexFlixNetwork, markeres det også på Trakt."
+    "watchedSyncDescription": "Når du markerer noe som sett i Pleya, markeres det også på Trakt."
   },
   "trackers": {
     "title": "Trackere",
@@ -1330,7 +1330,7 @@
     "scrobble": "Registrer fremdrift automatisk",
     "scrobbleDescription": "Oppdater listen din når du er ferdig med en episode eller film.",
     "disconnectConfirm": "Koble fra ${service}?",
-    "disconnectConfirmBody": "PlexFlixNetwork slutter å oppdatere ${service}. Koble til igjen når som helst.",
+    "disconnectConfirmBody": "Pleya slutter å oppdatere ${service}. Koble til igjen når som helst.",
     "connectFailed": "Kunne ikke koble til ${service}. Prøv igjen.",
     "services": {
       "mal": "MyAnimeList",
@@ -1338,7 +1338,7 @@
       "simkl": "Simkl"
     },
     "deviceCode": {
-      "title": "Aktiver PlexFlixNetwork på ${service}",
+      "title": "Aktiver Pleya på ${service}",
       "body": "Besøk ${url} og skriv inn denne koden:",
       "openToActivate": "Åpne ${service} for å aktivere",
       "waitingForAuthorization": "Venter på godkjenning…",

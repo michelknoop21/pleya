@@ -6,7 +6,7 @@ import TVServices
 
   final class SystemShelfPlugin: NSObject, FlutterPlugin {
     private static let channelName = "com.plezy/system_shelf"
-    private static let appGroupIdentifier = "group.com.edde746.plezy"
+    private static let appGroupIdentifier = "group.nl.michelknoop.pleya"
     private static let cacheDataKey = "PlezySystemShelfCacheData"
     private static var pendingDeepLink: String?
     private static var methodChannel: FlutterMethodChannel?

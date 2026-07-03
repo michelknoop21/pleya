@@ -79,6 +79,9 @@ const bool _enableSentry = bool.fromEnvironment('ENABLE_SENTRY', defaultValue: f
 const String gitCommit = String.fromEnvironment('GIT_COMMIT');
 const String _sentryEnvironment = String.fromEnvironment('SENTRY_ENVIRONMENT');
 const String _sentryDist = String.fromEnvironment('SENTRY_DIST');
+// Crash reporting DSN. Empty by default so no data is ever sent to a
+// third-party project; supply your own via --dart-define=SENTRY_DSN=...
+const String _sentryDsn = String.fromEnvironment('SENTRY_DSN');
 
 // Workaround for Flutter bug #177992: iPadOS 26.1+ misinterprets fake touch events
 // at (0,0) as barrier taps, causing modals to dismiss immediately.
@@ -120,14 +123,14 @@ Future<void> main() async {
   // the plugins we use.
   _registerTvosPlatformPlugins();
 
-  if (_enableSentry) {
+  if (_enableSentry && _sentryDsn.isNotEmpty) {
     final packageInfo = await PackageInfo.fromPlatform();
 
     await SentryFlutter.init((options) {
-      options.dsn = 'https://6a1a6ef8c72140099b2798973c1bfb2f@bugs.plezy.app/1';
+      options.dsn = _sentryDsn;
       options.release = gitCommit.isNotEmpty
-          ? 'plezy@${gitCommit.substring(0, 7)}'
-          : 'plezy@${packageInfo.version}+${packageInfo.buildNumber}';
+          ? 'pleya@${gitCommit.substring(0, 7)}'
+          : 'pleya@${packageInfo.version}+${packageInfo.buildNumber}';
       if (_sentryEnvironment.isNotEmpty) options.environment = _sentryEnvironment;
       if (_sentryDist.isNotEmpty) options.dist = _sentryDist;
       options.tracesSampleRate = 0;
@@ -216,7 +219,7 @@ Future<void> _bootstrapApp() async {
     renderer = ' [${await const MethodChannel('com.plezy/theme').invokeMethod<String>('getRenderer')}]';
   }
   appLogger.i(
-    'PlexFlixNetwork v${packageInfo.version}+${packageInfo.buildNumber}$commitSuffix$renderer'
+    'Pleya v${packageInfo.version}+${packageInfo.buildNumber}$commitSuffix$renderer'
     ' [effects: ${DevicePerformance.describeSync()}]',
   );
 
@@ -910,7 +913,7 @@ class _AppShell extends StatelessWidget {
                       key: rootScaffoldMessengerKey,
                       child: Scaffold(
                         backgroundColor: Colors.transparent,
-                        body: IntroGate(child: _AppleTvScale(child: child)),
+                        body: _AppleTvScale(child: IntroGate(child: child ?? const SizedBox.shrink())),
                       ),
                     ),
                   ),
@@ -1338,7 +1341,7 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Stack(
         children: [
-          Center(child: Image.asset('assets/branding/pfn_logo.png', width: 288, height: 288)),
+          Center(child: Image.asset('assets/branding/pleya_logo.png', width: 288, height: 288)),
           Positioned(
             left: 0,
             right: 0,

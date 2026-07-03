@@ -2,7 +2,7 @@ import Foundation
 import TVServices
 
 private enum TopShelfShared {
-  static let appGroupIdentifier = "group.com.edde746.plezy"
+  static let appGroupIdentifier = "group.nl.michelknoop.pleya"
   static let cacheDataKey = "PlezySystemShelfCacheData"
 
   static var sharedDefaults: UserDefaults? {

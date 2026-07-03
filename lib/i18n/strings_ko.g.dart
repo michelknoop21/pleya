@@ -94,7 +94,7 @@ class _TranslationsAppKo extends TranslationsAppEn {
 	final TranslationsKo _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'PlexFlixNetwork';
+	@override String get title => 'Pleya';
 }
 
 // Path: auth
@@ -215,7 +215,7 @@ class _TranslationsSettingsKo extends TranslationsSettingsEn {
 
 	// Translations
 	@override String get title => '설정';
-	@override String get supportDeveloper => 'PlexFlixNetwork 후원하기';
+	@override String get supportDeveloper => 'Pleya 후원하기';
 	@override String get supportDeveloperDescription => 'Liberapay로 후원하여 개발 지원';
 	@override String get language => '언어';
 	@override String get theme => '테마';
@@ -325,7 +325,7 @@ class _TranslationsSettingsKo extends TranslationsSettingsEn {
 	@override String get importSettingsConfirm => '현재 설정을 대체합니다. 계속하시겠습니까?';
 	@override String get importSettingsSuccess => '설정 가져오기 완료';
 	@override String get importSettingsFailed => '설정을 가져올 수 없습니다';
-	@override String get importSettingsInvalidFile => '유효한 PlexFlixNetwork 설정 내보내기 파일이 아닙니다';
+	@override String get importSettingsInvalidFile => '유효한 Pleya 설정 내보내기 파일이 아닙니다';
 	@override String get importSettingsNoUser => '설정을 가져오기 전에 로그인하세요';
 	@override String get shortcutsReset => '단축키가 기본값으로 재설정되었습니다';
 	@override String get about => '정보';
@@ -406,7 +406,7 @@ class _TranslationsSettingsKo extends TranslationsSettingsEn {
 	@override String get forceTvMode => 'TV 모드 강제 사용';
 	@override String get forceTvModeDescription => 'TV 레이아웃을 강제합니다. 자동 감지되지 않는 기기용입니다. 재시작이 필요합니다.';
 	@override String get startInFullscreen => '전체화면으로 시작';
-	@override String get startInFullscreenDescription => '실행 시 PlexFlixNetwork를 전체화면 모드로 엽니다';
+	@override String get startInFullscreenDescription => '실행 시 Pleya를 전체화면 모드로 엽니다';
 	@override String get exitFullscreenOnPlayerClose => '플레이어 닫을 때 전체화면 종료';
 	@override String get exitFullscreenOnPlayerCloseDescription => '비디오 플레이어를 닫을 때 자동으로 전체화면을 종료합니다';
 	@override String get autoHidePerformanceOverlay => '성능 오버레이 자동 숨기기';
@@ -414,7 +414,7 @@ class _TranslationsSettingsKo extends TranslationsSettingsEn {
 	@override String get showNavBarLabels => '내비게이션 바 라벨 표시';
 	@override String get showNavBarLabelsDescription => '내비게이션 바 아이콘 아래에 텍스트 라벨을 표시합니다';
 	@override String get startupSection => '시작 섹션';
-	@override String get startupSectionDescription => 'PlexFlixNetwork 실행 시 열릴 섹션을 선택합니다';
+	@override String get startupSectionDescription => 'Pleya 실행 시 열릴 섹션을 선택합니다';
 	@override String get liveTvDefaultFavorites => '즐겨찾기 채널 기본 설정';
 	@override String get liveTvDefaultFavoritesDescription => '라이브 TV를 열 때 즐겨찾기 채널만 표시';
 	@override String get display => '디스플레이';
@@ -778,7 +778,7 @@ class _TranslationsProfilesKo extends TranslationsProfilesEn {
 	final TranslationsKo _root; // ignore: unused_field
 
 	// Translations
-	@override String get addPlezyProfile => 'PlexFlixNetwork 프로필 추가';
+	@override String get addPlezyProfile => 'Pleya 프로필 추가';
 	@override String get switchingProfile => '프로필 전환 중…';
 	@override String get deleteThisProfileTitle => '이 프로필을 삭제하시겠습니까?';
 	@override String deleteThisProfileMessage({required Object displayName}) => '${displayName}을(를) 제거합니다. 연결에는 영향이 없습니다.';
@@ -853,7 +853,7 @@ class _TranslationsConnectionsKo extends TranslationsConnectionsEn {
 	@override String sessionExpiredMany({required Object count}) => '${count} 개의 서버에서 세션이 만료되었습니다';
 	@override String get signInAgain => '다시 로그인';
 	@override String get editJellyfinTitle => 'Jellyfin 연결 편집';
-	@override String editJellyfinIntro({required Object serverName}) => '${serverName}의 URL을 추가하거나 제거하세요. PlexFlixNetwork는 연결 가능한 URL 중 지연 시간이 가장 낮은 URL을 사용합니다.';
+	@override String editJellyfinIntro({required Object serverName}) => '${serverName}의 URL을 추가하거나 제거하세요. Pleya는 연결 가능한 URL 중 지연 시간이 가장 낮은 URL을 사용합니다.';
 }
 
 // Path: discover
@@ -1572,11 +1572,11 @@ class _TranslationsTraktKo extends TranslationsTraktEn {
 	@override String get connected => '연결됨';
 	@override String connectedAs({required Object username}) => '@${username}(으)로 연결됨';
 	@override String get disconnectConfirm => 'Trakt 계정 연결을 끊으시겠습니까?';
-	@override String get disconnectConfirmBody => 'PlexFlixNetwork가 Trakt로 이벤트 전송을 중지합니다. 언제든 다시 연결할 수 있습니다.';
+	@override String get disconnectConfirmBody => 'Pleya가 Trakt로 이벤트 전송을 중지합니다. 언제든 다시 연결할 수 있습니다.';
 	@override String get scrobble => '실시간 스크로블';
 	@override String get scrobbleDescription => '재생 중 재생, 일시정지, 정지 이벤트를 Trakt로 전송합니다.';
 	@override String get watchedSync => '시청 상태 동기화';
-	@override String get watchedSyncDescription => 'PlexFlixNetwork에서 시청 완료로 표시한 항목이 Trakt에도 시청 완료로 표시됩니다.';
+	@override String get watchedSyncDescription => 'Pleya에서 시청 완료로 표시한 항목이 Trakt에도 시청 완료로 표시됩니다.';
 }
 
 // Path: trackers
@@ -1593,7 +1593,7 @@ class _TranslationsTrackersKo extends TranslationsTrackersEn {
 	@override String get scrobble => '진행률 자동 추적';
 	@override String get scrobbleDescription => '에피소드나 영화를 시청하면 목록을 업데이트합니다.';
 	@override String disconnectConfirm({required Object service}) => '${service} 연결을 해제하시겠습니까?';
-	@override String disconnectConfirmBody({required Object service}) => 'PlexFlixNetwork가 ${service} 업데이트를 중지합니다. 언제든 다시 연결할 수 있습니다.';
+	@override String disconnectConfirmBody({required Object service}) => 'Pleya가 ${service} 업데이트를 중지합니다. 언제든 다시 연결할 수 있습니다.';
 	@override String connectFailed({required Object service}) => '${service}에 연결할 수 없습니다. 다시 시도하세요.';
 	@override late final _TranslationsTrackersServicesKo services = _TranslationsTrackersServicesKo._(_root);
 	@override late final _TranslationsTrackersDeviceCodeKo deviceCode = _TranslationsTrackersDeviceCodeKo._(_root);
@@ -1790,19 +1790,19 @@ class _TranslationsCompanionRemotePairingKo extends TranslationsCompanionRemoteP
 	final TranslationsKo _root; // ignore: unused_field
 
 	// Translations
-	@override String get discoveryDescription => '같은 Plex 계정의 PlexFlixNetwork 기기가 여기에 표시됩니다';
+	@override String get discoveryDescription => '같은 Plex 계정의 Pleya 기기가 여기에 표시됩니다';
 	@override String get hostAddressHint => '192.168.1.100:48632';
 	@override String get connecting => '연결 중...';
 	@override String get searchingForDevices => '기기 검색 중...';
 	@override String get noDevicesFound => '네트워크에서 기기를 찾을 수 없습니다';
-	@override String get noDevicesHint => '데스크톱에서 PlexFlixNetwork를 열고 같은 WiFi를 사용하세요';
+	@override String get noDevicesHint => '데스크톱에서 Pleya를 열고 같은 WiFi를 사용하세요';
 	@override String get availableDevices => '사용 가능한 기기';
 	@override String get manualConnection => '수동 연결';
 	@override String get cryptoInitFailed => '보안 연결을 시작할 수 없습니다. 먼저 Plex에 로그인하세요.';
 	@override String get validationHostRequired => '호스트 주소를 입력하세요';
 	@override String get validationHostFormat => '형식은 IP:포트여야 합니다 (예: 192.168.1.100:48632)';
 	@override String get connectionTimedOut => '연결 시간이 초과되었습니다. 두 기기에서 같은 네트워크를 사용하세요.';
-	@override String get sessionNotFound => '기기를 찾을 수 없습니다. 호스트에서 PlexFlixNetwork가 실행 중인지 확인하세요.';
+	@override String get sessionNotFound => '기기를 찾을 수 없습니다. 호스트에서 Pleya가 실행 중인지 확인하세요.';
 	@override String get authFailed => '인증에 실패했습니다. 두 기기 모두 같은 Plex 계정이 필요합니다.';
 	@override String failedToConnect({required Object error}) => '연결 실패: ${error}';
 }
@@ -1877,7 +1877,7 @@ class _TranslationsTrackersDeviceCodeKo extends TranslationsTrackersDeviceCodeEn
 	final TranslationsKo _root; // ignore: unused_field
 
 	// Translations
-	@override String title({required Object service}) => '${service}에서 PlexFlixNetwork 활성화';
+	@override String title({required Object service}) => '${service}에서 Pleya 활성화';
 	@override String body({required Object url}) => '${url}을 방문하여 이 코드를 입력하세요:';
 	@override String openToActivate({required Object service}) => '활성화하려면 ${service} 열기';
 	@override String get waitingForAuthorization => '인증을 기다리는 중…';
@@ -1926,7 +1926,7 @@ class _TranslationsTrackersLibraryFilterKo extends TranslationsTrackersLibraryFi
 extension on TranslationsKo {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
-			'app.title' => 'PlexFlixNetwork',
+			'app.title' => 'Pleya',
 			'auth.signIn' => '로그인',
 			'auth.signInWithPlex' => 'Plex 계정으로 로그인',
 			'auth.showQRCode' => 'QR 코드',
@@ -2002,7 +2002,7 @@ extension on TranslationsKo {
 			'update.latestVersion' => '최신 버전을 사용 중입니다',
 			'update.checkFailed' => '업데이트 확인 실패',
 			'settings.title' => '설정',
-			'settings.supportDeveloper' => 'PlexFlixNetwork 후원하기',
+			'settings.supportDeveloper' => 'Pleya 후원하기',
 			'settings.supportDeveloperDescription' => 'Liberapay로 후원하여 개발 지원',
 			'settings.language' => '언어',
 			'settings.theme' => '테마',
@@ -2112,7 +2112,7 @@ extension on TranslationsKo {
 			'settings.importSettingsConfirm' => '현재 설정을 대체합니다. 계속하시겠습니까?',
 			'settings.importSettingsSuccess' => '설정 가져오기 완료',
 			'settings.importSettingsFailed' => '설정을 가져올 수 없습니다',
-			'settings.importSettingsInvalidFile' => '유효한 PlexFlixNetwork 설정 내보내기 파일이 아닙니다',
+			'settings.importSettingsInvalidFile' => '유효한 Pleya 설정 내보내기 파일이 아닙니다',
 			'settings.importSettingsNoUser' => '설정을 가져오기 전에 로그인하세요',
 			'settings.shortcutsReset' => '단축키가 기본값으로 재설정되었습니다',
 			'settings.about' => '정보',
@@ -2193,7 +2193,7 @@ extension on TranslationsKo {
 			'settings.forceTvMode' => 'TV 모드 강제 사용',
 			'settings.forceTvModeDescription' => 'TV 레이아웃을 강제합니다. 자동 감지되지 않는 기기용입니다. 재시작이 필요합니다.',
 			'settings.startInFullscreen' => '전체화면으로 시작',
-			'settings.startInFullscreenDescription' => '실행 시 PlexFlixNetwork를 전체화면 모드로 엽니다',
+			'settings.startInFullscreenDescription' => '실행 시 Pleya를 전체화면 모드로 엽니다',
 			'settings.exitFullscreenOnPlayerClose' => '플레이어 닫을 때 전체화면 종료',
 			'settings.exitFullscreenOnPlayerCloseDescription' => '비디오 플레이어를 닫을 때 자동으로 전체화면을 종료합니다',
 			'settings.autoHidePerformanceOverlay' => '성능 오버레이 자동 숨기기',
@@ -2201,7 +2201,7 @@ extension on TranslationsKo {
 			'settings.showNavBarLabels' => '내비게이션 바 라벨 표시',
 			'settings.showNavBarLabelsDescription' => '내비게이션 바 아이콘 아래에 텍스트 라벨을 표시합니다',
 			'settings.startupSection' => '시작 섹션',
-			'settings.startupSectionDescription' => 'PlexFlixNetwork 실행 시 열릴 섹션을 선택합니다',
+			'settings.startupSectionDescription' => 'Pleya 실행 시 열릴 섹션을 선택합니다',
 			'settings.liveTvDefaultFavorites' => '즐겨찾기 채널 기본 설정',
 			'settings.liveTvDefaultFavoritesDescription' => '라이브 TV를 열 때 즐겨찾기 채널만 표시',
 			'settings.display' => '디스플레이',
@@ -2471,7 +2471,7 @@ extension on TranslationsKo {
 			'mpvConfig.confirmDeletePreset' => '이 프리셋을 삭제 하시겠습니까?',
 			'mpvConfig.configPlaceholder' => 'gpu-api=vulkan\nhwdec=auto\n# comment',
 			'dialog.confirmAction' => '확인',
-			'profiles.addPlezyProfile' => 'PlexFlixNetwork 프로필 추가',
+			'profiles.addPlezyProfile' => 'Pleya 프로필 추가',
 			'profiles.switchingProfile' => '프로필 전환 중…',
 			'profiles.deleteThisProfileTitle' => '이 프로필을 삭제하시겠습니까?',
 			'profiles.deleteThisProfileMessage' => ({required Object displayName}) => '${displayName}을(를) 제거합니다. 연결에는 영향이 없습니다.',
@@ -2537,7 +2537,7 @@ extension on TranslationsKo {
 			'connections.sessionExpiredMany' => ({required Object count}) => '${count} 개의 서버에서 세션이 만료되었습니다',
 			'connections.signInAgain' => '다시 로그인',
 			'connections.editJellyfinTitle' => 'Jellyfin 연결 편집',
-			'connections.editJellyfinIntro' => ({required Object serverName}) => '${serverName}의 URL을 추가하거나 제거하세요. PlexFlixNetwork는 연결 가능한 URL 중 지연 시간이 가장 낮은 URL을 사용합니다.',
+			'connections.editJellyfinIntro' => ({required Object serverName}) => '${serverName}의 URL을 추가하거나 제거하세요. Pleya는 연결 가능한 URL 중 지연 시간이 가장 낮은 URL을 사용합니다.',
 			'discover.title' => '발견',
 			'discover.switchProfile' => '사용자 전환',
 			'discover.noContentAvailable' => '사용 가능한 콘텐츠가 없습니다',
@@ -2936,19 +2936,19 @@ extension on TranslationsKo {
 			'companionRemote.session.startServer' => '서버 시작',
 			'companionRemote.session.stopServer' => '서버 중지',
 			'companionRemote.session.minimize' => '최소화',
-			'companionRemote.pairing.discoveryDescription' => '같은 Plex 계정의 PlexFlixNetwork 기기가 여기에 표시됩니다',
+			'companionRemote.pairing.discoveryDescription' => '같은 Plex 계정의 Pleya 기기가 여기에 표시됩니다',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '연결 중...',
 			'companionRemote.pairing.searchingForDevices' => '기기 검색 중...',
 			'companionRemote.pairing.noDevicesFound' => '네트워크에서 기기를 찾을 수 없습니다',
-			'companionRemote.pairing.noDevicesHint' => '데스크톱에서 PlexFlixNetwork를 열고 같은 WiFi를 사용하세요',
+			'companionRemote.pairing.noDevicesHint' => '데스크톱에서 Pleya를 열고 같은 WiFi를 사용하세요',
 			'companionRemote.pairing.availableDevices' => '사용 가능한 기기',
 			'companionRemote.pairing.manualConnection' => '수동 연결',
 			'companionRemote.pairing.cryptoInitFailed' => '보안 연결을 시작할 수 없습니다. 먼저 Plex에 로그인하세요.',
 			'companionRemote.pairing.validationHostRequired' => '호스트 주소를 입력하세요',
 			'companionRemote.pairing.validationHostFormat' => '형식은 IP:포트여야 합니다 (예: 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => '연결 시간이 초과되었습니다. 두 기기에서 같은 네트워크를 사용하세요.',
-			'companionRemote.pairing.sessionNotFound' => '기기를 찾을 수 없습니다. 호스트에서 PlexFlixNetwork가 실행 중인지 확인하세요.',
+			'companionRemote.pairing.sessionNotFound' => '기기를 찾을 수 없습니다. 호스트에서 Pleya가 실행 중인지 확인하세요.',
 			'companionRemote.pairing.authFailed' => '인증에 실패했습니다. 두 기기 모두 같은 Plex 계정이 필요합니다.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '연결 실패: ${error}',
 			'companionRemote.remote.disconnectConfirm' => '원격 세션 연결을 해제하시겠습니까?',
@@ -3140,11 +3140,11 @@ extension on TranslationsKo {
 			'trakt.connected' => '연결됨',
 			'trakt.connectedAs' => ({required Object username}) => '@${username}(으)로 연결됨',
 			'trakt.disconnectConfirm' => 'Trakt 계정 연결을 끊으시겠습니까?',
-			'trakt.disconnectConfirmBody' => 'PlexFlixNetwork가 Trakt로 이벤트 전송을 중지합니다. 언제든 다시 연결할 수 있습니다.',
+			'trakt.disconnectConfirmBody' => 'Pleya가 Trakt로 이벤트 전송을 중지합니다. 언제든 다시 연결할 수 있습니다.',
 			'trakt.scrobble' => '실시간 스크로블',
 			'trakt.scrobbleDescription' => '재생 중 재생, 일시정지, 정지 이벤트를 Trakt로 전송합니다.',
 			'trakt.watchedSync' => '시청 상태 동기화',
-			'trakt.watchedSyncDescription' => 'PlexFlixNetwork에서 시청 완료로 표시한 항목이 Trakt에도 시청 완료로 표시됩니다.',
+			'trakt.watchedSyncDescription' => 'Pleya에서 시청 완료로 표시한 항목이 Trakt에도 시청 완료로 표시됩니다.',
 			'trackers.title' => '트래커',
 			'trackers.hubSubtitle' => '시청 진행률을 Trakt 및 다른 서비스와 동기화합니다.',
 			'trackers.notConnected' => '연결되지 않음',
@@ -3152,12 +3152,12 @@ extension on TranslationsKo {
 			'trackers.scrobble' => '진행률 자동 추적',
 			'trackers.scrobbleDescription' => '에피소드나 영화를 시청하면 목록을 업데이트합니다.',
 			'trackers.disconnectConfirm' => ({required Object service}) => '${service} 연결을 해제하시겠습니까?',
-			'trackers.disconnectConfirmBody' => ({required Object service}) => 'PlexFlixNetwork가 ${service} 업데이트를 중지합니다. 언제든 다시 연결할 수 있습니다.',
+			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya가 ${service} 업데이트를 중지합니다. 언제든 다시 연결할 수 있습니다.',
 			'trackers.connectFailed' => ({required Object service}) => '${service}에 연결할 수 없습니다. 다시 시도하세요.',
 			'trackers.services.mal' => 'MyAnimeList',
 			'trackers.services.anilist' => 'AniList',
 			'trackers.services.simkl' => 'Simkl',
-			'trackers.deviceCode.title' => ({required Object service}) => '${service}에서 PlexFlixNetwork 활성화',
+			'trackers.deviceCode.title' => ({required Object service}) => '${service}에서 Pleya 활성화',
 			'trackers.deviceCode.body' => ({required Object url}) => '${url}을 방문하여 이 코드를 입력하세요:',
 			'trackers.deviceCode.openToActivate' => ({required Object service}) => '활성화하려면 ${service} 열기',
 			'trackers.deviceCode.waitingForAuthorization' => '인증을 기다리는 중…',

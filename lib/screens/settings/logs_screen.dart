@@ -138,7 +138,7 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
 
     try {
       final response = await httpClient.post(
-        'https://ice.plezy.app/logs',
+        '${const String.fromEnvironment('PLEYA_ICE_BASE', defaultValue: 'https://ice.plezy.app')}/logs',
         body: logText,
         headers: {'Content-Type': 'text/plain'},
       );

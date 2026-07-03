@@ -315,7 +315,7 @@ class OptimizedMediaImage extends StatelessWidget {
       imageUrl,
       cacheKey: effectiveCacheKey,
       cacheManager: PlexImageCacheManager.instance,
-      headers: const {'User-Agent': 'PlexFlixNetwork'},
+      headers: const {'User-Agent': 'Pleya'},
     );
 
     return Image(

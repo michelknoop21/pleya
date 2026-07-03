@@ -12,7 +12,7 @@ class TvPanelTheme {
   static const Color surface = Color(0xF0141414);
   static const Color activePill = Colors.white;
   static const Color inactivePill = Color(0x33FFFFFF);
-  static const Color accent = Color(0xFFE50914);
+  static const Color accent = Color(0xFFF42B1F);
   static const Color textMuted = Color(0xB3FFFFFF);
   static const Color textFaint = Color(0x80FFFFFF);
 }

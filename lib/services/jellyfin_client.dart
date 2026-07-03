@@ -126,9 +126,9 @@ class JellyfinClient
       // Tests / non-platform contexts — keep the fallback version.
     }
     final authHeader = buildJellyfinAuthHeader(
-      clientName: 'PlexFlixNetwork',
+      clientName: 'Pleya',
       clientVersion: version,
-      deviceName: 'PlexFlixNetwork',
+      deviceName: 'Pleya',
       deviceId: connection.deviceId,
       accessToken: connection.accessToken,
     );

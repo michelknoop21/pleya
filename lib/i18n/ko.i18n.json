@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "PlexFlixNetwork"
+    "title": "Pleya"
   },
   "auth": {
     "signIn": "로그인",
@@ -86,7 +86,7 @@
   },
   "settings": {
     "title": "설정",
-    "supportDeveloper": "PlexFlixNetwork 후원하기",
+    "supportDeveloper": "Pleya 후원하기",
     "supportDeveloperDescription": "Liberapay로 후원하여 개발 지원",
     "language": "언어",
     "theme": "테마",
@@ -196,7 +196,7 @@
     "importSettingsConfirm": "현재 설정을 대체합니다. 계속하시겠습니까?",
     "importSettingsSuccess": "설정 가져오기 완료",
     "importSettingsFailed": "설정을 가져올 수 없습니다",
-    "importSettingsInvalidFile": "유효한 PlexFlixNetwork 설정 내보내기 파일이 아닙니다",
+    "importSettingsInvalidFile": "유효한 Pleya 설정 내보내기 파일이 아닙니다",
     "importSettingsNoUser": "설정을 가져오기 전에 로그인하세요",
     "shortcutsReset": "단축키가 기본값으로 재설정되었습니다",
     "about": "정보",
@@ -277,7 +277,7 @@
     "forceTvMode": "TV 모드 강제 사용",
     "forceTvModeDescription": "TV 레이아웃을 강제합니다. 자동 감지되지 않는 기기용입니다. 재시작이 필요합니다.",
     "startInFullscreen": "전체화면으로 시작",
-    "startInFullscreenDescription": "실행 시 PlexFlixNetwork를 전체화면 모드로 엽니다",
+    "startInFullscreenDescription": "실행 시 Pleya를 전체화면 모드로 엽니다",
     "exitFullscreenOnPlayerClose": "플레이어 닫을 때 전체화면 종료",
     "exitFullscreenOnPlayerCloseDescription": "비디오 플레이어를 닫을 때 자동으로 전체화면을 종료합니다",
     "autoHidePerformanceOverlay": "성능 오버레이 자동 숨기기",
@@ -285,7 +285,7 @@
     "showNavBarLabels": "내비게이션 바 라벨 표시",
     "showNavBarLabelsDescription": "내비게이션 바 아이콘 아래에 텍스트 라벨을 표시합니다",
     "startupSection": "시작 섹션",
-    "startupSectionDescription": "PlexFlixNetwork 실행 시 열릴 섹션을 선택합니다",
+    "startupSectionDescription": "Pleya 실행 시 열릴 섹션을 선택합니다",
     "liveTvDefaultFavorites": "즐겨찾기 채널 기본 설정",
     "liveTvDefaultFavoritesDescription": "라이브 TV를 열 때 즐겨찾기 채널만 표시",
     "display": "디스플레이",
@@ -585,7 +585,7 @@
     "confirmAction": "확인"
   },
   "profiles": {
-    "addPlezyProfile": "PlexFlixNetwork 프로필 추가",
+    "addPlezyProfile": "Pleya 프로필 추가",
     "switchingProfile": "프로필 전환 중…",
     "deleteThisProfileTitle": "이 프로필을 삭제하시겠습니까?",
     "deleteThisProfileMessage": "${displayName}을(를) 제거합니다. 연결에는 영향이 없습니다.",
@@ -653,7 +653,7 @@
     "sessionExpiredMany": "${count} 개의 서버에서 세션이 만료되었습니다",
     "signInAgain": "다시 로그인",
     "editJellyfinTitle": "Jellyfin 연결 편집",
-    "editJellyfinIntro": "${serverName}의 URL을 추가하거나 제거하세요. PlexFlixNetwork는 연결 가능한 URL 중 지연 시간이 가장 낮은 URL을 사용합니다."
+    "editJellyfinIntro": "${serverName}의 URL을 추가하거나 제거하세요. Pleya는 연결 가능한 URL 중 지연 시간이 가장 낮은 URL을 사용합니다."
   },
   "discover": {
     "title": "발견",
@@ -1095,19 +1095,19 @@
       "minimize": "최소화"
     },
     "pairing": {
-      "discoveryDescription": "같은 Plex 계정의 PlexFlixNetwork 기기가 여기에 표시됩니다",
+      "discoveryDescription": "같은 Plex 계정의 Pleya 기기가 여기에 표시됩니다",
       "hostAddressHint": "192.168.1.100:48632",
       "connecting": "연결 중...",
       "searchingForDevices": "기기 검색 중...",
       "noDevicesFound": "네트워크에서 기기를 찾을 수 없습니다",
-      "noDevicesHint": "데스크톱에서 PlexFlixNetwork를 열고 같은 WiFi를 사용하세요",
+      "noDevicesHint": "데스크톱에서 Pleya를 열고 같은 WiFi를 사용하세요",
       "availableDevices": "사용 가능한 기기",
       "manualConnection": "수동 연결",
       "cryptoInitFailed": "보안 연결을 시작할 수 없습니다. 먼저 Plex에 로그인하세요.",
       "validationHostRequired": "호스트 주소를 입력하세요",
       "validationHostFormat": "형식은 IP:포트여야 합니다 (예: 192.168.1.100:48632)",
       "connectionTimedOut": "연결 시간이 초과되었습니다. 두 기기에서 같은 네트워크를 사용하세요.",
-      "sessionNotFound": "기기를 찾을 수 없습니다. 호스트에서 PlexFlixNetwork가 실행 중인지 확인하세요.",
+      "sessionNotFound": "기기를 찾을 수 없습니다. 호스트에서 Pleya가 실행 중인지 확인하세요.",
       "authFailed": "인증에 실패했습니다. 두 기기 모두 같은 Plex 계정이 필요합니다.",
       "failedToConnect": "연결 실패: ${error}"
     },
@@ -1316,11 +1316,11 @@
     "connected": "연결됨",
     "connectedAs": "@${username}(으)로 연결됨",
     "disconnectConfirm": "Trakt 계정 연결을 끊으시겠습니까?",
-    "disconnectConfirmBody": "PlexFlixNetwork가 Trakt로 이벤트 전송을 중지합니다. 언제든 다시 연결할 수 있습니다.",
+    "disconnectConfirmBody": "Pleya가 Trakt로 이벤트 전송을 중지합니다. 언제든 다시 연결할 수 있습니다.",
     "scrobble": "실시간 스크로블",
     "scrobbleDescription": "재생 중 재생, 일시정지, 정지 이벤트를 Trakt로 전송합니다.",
     "watchedSync": "시청 상태 동기화",
-    "watchedSyncDescription": "PlexFlixNetwork에서 시청 완료로 표시한 항목이 Trakt에도 시청 완료로 표시됩니다."
+    "watchedSyncDescription": "Pleya에서 시청 완료로 표시한 항목이 Trakt에도 시청 완료로 표시됩니다."
   },
   "trackers": {
     "title": "트래커",
@@ -1330,7 +1330,7 @@
     "scrobble": "진행률 자동 추적",
     "scrobbleDescription": "에피소드나 영화를 시청하면 목록을 업데이트합니다.",
     "disconnectConfirm": "${service} 연결을 해제하시겠습니까?",
-    "disconnectConfirmBody": "PlexFlixNetwork가 ${service} 업데이트를 중지합니다. 언제든 다시 연결할 수 있습니다.",
+    "disconnectConfirmBody": "Pleya가 ${service} 업데이트를 중지합니다. 언제든 다시 연결할 수 있습니다.",
     "connectFailed": "${service}에 연결할 수 없습니다. 다시 시도하세요.",
     "services": {
       "mal": "MyAnimeList",
@@ -1338,7 +1338,7 @@
       "simkl": "Simkl"
     },
     "deviceCode": {
-      "title": "${service}에서 PlexFlixNetwork 활성화",
+      "title": "${service}에서 Pleya 활성화",
       "body": "${url}을 방문하여 이 코드를 입력하세요:",
       "openToActivate": "활성화하려면 ${service} 열기",
       "waitingForAuthorization": "인증을 기다리는 중…",

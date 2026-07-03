@@ -3,7 +3,7 @@ import '../utils/desktop_window_padding.dart';
 import '../services/fullscreen_state_manager.dart';
 import '../navigation/top_nav_scope.dart';
 import 'app_bar_back_button.dart';
-import 'netflix_top_nav.dart';
+import 'top_nav_bar.dart';
 
 /// Configuration class for common app bar properties.
 /// Reduces duplication between different app bar implementations.
@@ -133,7 +133,7 @@ class DesktopSliverAppBar extends StatelessWidget {
     final navActive = TopNavScope.isActive(context);
     if (navActive) {
       return SliverAppBar(
-        title: const DesktopTitleBarPadding(child: NetflixNavLeading()),
+        title: const DesktopTitleBarPadding(child: TopNavLeading()),
         titleSpacing: 0,
         actions: DesktopAppBarSections.buildActionsSection(actions),
         automaticallyImplyLeading: false,

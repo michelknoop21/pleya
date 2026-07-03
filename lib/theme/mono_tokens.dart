@@ -18,7 +18,7 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
   final Color text;
   final Color textMuted;
 
-  /// Brand accent (PlexFlix red). Used sparingly: progress bars, badges,
+  /// Brand accent (coral). Used sparingly: progress bars, badges,
   /// wordmark, selection highlights — not as general primary.
   final Color accent;
   final InteractiveInkFeatureFactory? splashFactory;

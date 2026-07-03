@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "PlexFlixNetwork"
+    "title": "Pleya"
   },
   "auth": {
     "signIn": "Inloggen",
@@ -88,7 +88,7 @@
   },
   "settings": {
     "title": "Instellingen",
-    "supportDeveloper": "Steun PlexFlixNetwork",
+    "supportDeveloper": "Steun Pleya",
     "supportDeveloperDescription": "Doneer via Liberapay om de ontwikkeling te steunen",
     "language": "Taal",
     "theme": "Thema",
@@ -200,7 +200,7 @@
     "importSettingsConfirm": "Hiermee worden je huidige instellingen vervangen. Doorgaan?",
     "importSettingsSuccess": "Instellingen geïmporteerd",
     "importSettingsFailed": "Kon instellingen niet importeren",
-    "importSettingsInvalidFile": "Dit bestand is geen geldige PlexFlixNetwork-export",
+    "importSettingsInvalidFile": "Dit bestand is geen geldige Pleya-export",
     "importSettingsNoUser": "Meld je aan voordat je instellingen importeert",
     "shortcutsReset": "Sneltoetsen gereset naar standaard",
     "about": "Over",
@@ -281,7 +281,7 @@
     "forceTvMode": "TV-modus forceren",
     "forceTvModeDescription": "Forceer TV-indeling. Voor apparaten zonder autodetectie. Herstart vereist.",
     "startInFullscreen": "Starten in volledig scherm",
-    "startInFullscreenDescription": "Open PlexFlixNetwork bij het starten in volledig scherm",
+    "startInFullscreenDescription": "Open Pleya bij het starten in volledig scherm",
     "exitFullscreenOnPlayerClose": "Volledig scherm verlaten bij sluiten speler",
     "exitFullscreenOnPlayerCloseDescription": "Verlaat automatisch volledig scherm wanneer de videospeler wordt gesloten",
     "autoHidePerformanceOverlay": "Prestatie-overlay automatisch verbergen",
@@ -289,7 +289,7 @@
     "showNavBarLabels": "Navigatiebalk labels tonen",
     "showNavBarLabelsDescription": "Tekstlabels onder de pictogrammen van de navigatiebalk weergeven",
     "startupSection": "Opstartsectie",
-    "startupSectionDescription": "Kies welke sectie PlexFlixNetwork opent bij het opstarten",
+    "startupSectionDescription": "Kies welke sectie Pleya opent bij het opstarten",
     "liveTvDefaultFavorites": "Standaard favoriete zenders",
     "liveTvDefaultFavoritesDescription": "Toon alleen favoriete zenders bij het openen van Live TV",
     "display": "Weergave",
@@ -609,7 +609,7 @@
     "confirmAction": "Bevestig actie"
   },
   "profiles": {
-    "addPlezyProfile": "PlexFlixNetwork-profiel toevoegen",
+    "addPlezyProfile": "Pleya-profiel toevoegen",
     "switchingProfile": "Profiel wisselen…",
     "deleteThisProfileTitle": "Dit profiel verwijderen?",
     "deleteThisProfileMessage": "Verwijder ${displayName}. Verbindingen blijven ongewijzigd.",
@@ -677,7 +677,7 @@
     "sessionExpiredMany": "Sessie verlopen voor ${count} servers",
     "signInAgain": "Opnieuw aanmelden",
     "editJellyfinTitle": "Jellyfin-verbinding bewerken",
-    "editJellyfinIntro": "Voeg URL's voor ${serverName} toe of verwijder ze. PlexFlixNetwork gebruikt de bereikbare URL met de laagste latentie."
+    "editJellyfinIntro": "Voeg URL's voor ${serverName} toe of verwijder ze. Pleya gebruikt de bereikbare URL met de laagste latentie."
   },
   "discover": {
     "title": "Ontdekken",
@@ -1120,19 +1120,19 @@
       "minimize": "Minimaliseren"
     },
     "pairing": {
-      "discoveryDescription": "PlexFlixNetwork-apparaten met hetzelfde Plex-account verschijnen hier",
+      "discoveryDescription": "Pleya-apparaten met hetzelfde Plex-account verschijnen hier",
       "hostAddressHint": "192.168.1.100:48632",
       "connecting": "Verbinden...",
       "searchingForDevices": "Apparaten zoeken...",
       "noDevicesFound": "Geen apparaten gevonden op je netwerk",
-      "noDevicesHint": "Open PlexFlixNetwork op desktop en gebruik dezelfde WiFi",
+      "noDevicesHint": "Open Pleya op desktop en gebruik dezelfde WiFi",
       "availableDevices": "Beschikbare apparaten",
       "manualConnection": "Handmatige verbinding",
       "cryptoInitFailed": "Kon beveiligde verbinding niet starten. Log eerst in bij Plex.",
       "validationHostRequired": "Voer het hostadres in",
       "validationHostFormat": "Formaat moet IP:poort zijn (bijv. 192.168.1.100:48632)",
       "connectionTimedOut": "Verbinding verlopen. Gebruik hetzelfde netwerk op beide apparaten.",
-      "sessionNotFound": "Apparaat niet gevonden. Zorg dat PlexFlixNetwork op de host draait.",
+      "sessionNotFound": "Apparaat niet gevonden. Zorg dat Pleya op de host draait.",
       "authFailed": "Authenticatie mislukt. Beide apparaten hebben hetzelfde Plex-account nodig.",
       "failedToConnect": "Kan niet verbinden: ${error}"
     },
@@ -1348,11 +1348,11 @@
     "connected": "Verbonden",
     "connectedAs": "Verbonden als @${username}",
     "disconnectConfirm": "Trakt-account loskoppelen?",
-    "disconnectConfirmBody": "PlexFlixNetwork stopt met gebeurtenissen naar Trakt sturen. Je kunt altijd opnieuw verbinden.",
+    "disconnectConfirmBody": "Pleya stopt met gebeurtenissen naar Trakt sturen. Je kunt altijd opnieuw verbinden.",
     "scrobble": "Realtime scrobbling",
     "scrobbleDescription": "Verstuur play-, pauze- en stopgebeurtenissen tijdens afspelen naar Trakt.",
     "watchedSync": "Bekeken-status synchroniseren",
-    "watchedSyncDescription": "Wanneer je items als bekeken markeert in PlexFlixNetwork, worden ze ook op Trakt gemarkeerd."
+    "watchedSyncDescription": "Wanneer je items als bekeken markeert in Pleya, worden ze ook op Trakt gemarkeerd."
   },
   "trackers": {
     "title": "Trackers",
@@ -1362,7 +1362,7 @@
     "scrobble": "Voortgang automatisch volgen",
     "scrobbleDescription": "Werk je lijst bij wanneer je een aflevering of film afrondt.",
     "disconnectConfirm": "${service} loskoppelen?",
-    "disconnectConfirmBody": "PlexFlixNetwork stopt met ${service} bijwerken. Je kunt altijd opnieuw verbinden.",
+    "disconnectConfirmBody": "Pleya stopt met ${service} bijwerken. Je kunt altijd opnieuw verbinden.",
     "connectFailed": "Kan niet verbinden met ${service}. Probeer opnieuw.",
     "services": {
       "mal": "MyAnimeList",
@@ -1370,7 +1370,7 @@
       "simkl": "Simkl"
     },
     "deviceCode": {
-      "title": "PlexFlixNetwork activeren op ${service}",
+      "title": "Pleya activeren op ${service}",
       "body": "Ga naar ${url} en voer deze code in:",
       "openToActivate": "Open ${service} om te activeren",
       "waitingForAuthorization": "Wachten op autorisatie…",
