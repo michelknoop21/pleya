@@ -19,7 +19,18 @@ export const WAITLIST_WEBHOOK_URL = '';
 export const WAITLIST_FALLBACK_EMAIL = 'info@michelknoop.nl';
 
 /** Upstream open-source project Pleya is based on (GPL-3.0 attribution). */
-export const SOURCE_REPO_URL = 'https://github.com/edde746/plezy';
+export const UPSTREAM_REPO_URL = 'https://github.com/edde746/plezy';
+
+/**
+ * Public repository with Pleya's own (modified) source code. GPL-3.0 §6
+ * requires the corresponding source of THIS fork to be available — linking
+ * only upstream is not sufficient once builds are distributed. Fill this with
+ * the public fork URL; until then the footer points at the shipped NOTICE.
+ */
+export const FORK_SOURCE_URL = '';
+
+/** Effective "Source" link target: the public fork when available. */
+export const SOURCE_REPO_URL = FORK_SOURCE_URL.trim().length > 0 ? FORK_SOURCE_URL : '/NOTICE.txt';
 
 /** Whether a real TestFlight link is available yet. */
 export const betaLinkReady = PUBLIC_TESTFLIGHT_URL.trim().length > 0;

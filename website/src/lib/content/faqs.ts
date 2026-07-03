@@ -58,7 +58,7 @@ export const faqs: Faq[] = [
     id: "open-source",
     question: "Is Pleya open source?",
     answer:
-      'Pleya is a fork built on the open-source Plezy project, which is licensed under the GPL-3.0. In keeping with that license we credit and link the upstream source in the footer.',
+      'Yes. Pleya is free software under the GPL-3.0, built as a fork of the open-source Plezy project. The full license ships with this site, and the source code of Pleya itself is available via the Source link in the footer.',
   },
 ];
 
