@@ -9,6 +9,8 @@ import '../widgets/server_activities_button.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import '../focus/focusable_action_bar.dart';
+import '../focus/focusable_button.dart';
+import '../focus/focus_theme.dart';
 import '../focus/input_mode_tracker.dart';
 import '../focus/key_event_utils.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
@@ -53,7 +55,6 @@ import '../mixins/refreshable.dart';
 import '../mixins/tab_visibility_aware.dart';
 import '../i18n/strings.g.dart';
 import '../utils/app_logger.dart';
-import '../utils/debouncer.dart';
 import '../utils/dialogs.dart';
 import '../utils/media_navigation_helper.dart';
 import '../utils/provider_extensions.dart';
@@ -116,7 +117,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   final ValueNotifier<MediaItem?> _spotlightItem = ValueNotifier(null);
   // Settle delay so d-pad scrubbing across a row doesn't fetch/decode a
   // full-screen backdrop for every intermediate item.
-  final Debouncer _spotlightDebouncer = Debouncer(const Duration(milliseconds: 150));
   bool _isTabVisible = true;
 
   // Track initial load so we can focus hero when content first appears
@@ -131,6 +131,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   // Hero and app bar focus
   late FocusNode _heroFocusNode;
+  // TV Netflix-style billboard action buttons (Play / More info).
+  final FocusNode _tvHeroPlayFocusNode = FocusNode(debugLabel: 'tv_hero_play');
+  final FocusNode _tvHeroInfoFocusNode = FocusNode(debugLabel: 'tv_hero_info');
   final _actionBarKey = GlobalKey<FocusableActionBarState>();
   final _serverActivitiesButtonKey = GlobalKey<ServerActivitiesButtonState>();
   final _userMenuKey = GlobalKey<AppMenuButtonState<String>>();
@@ -217,16 +220,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       if (hub.items.any((item) => item.globalKey == current.globalKey)) return current;
     }
     return _defaultSpotlightItem;
-  }
-
-  void _setSpotlightItem(MediaItem item) {
-    // Same-key check lives inside the callback: an A→B→A scrub must cancel
-    // the pending B, not early-return and let it fire.
-    _spotlightDebouncer.run(() {
-      if (!mounted) return;
-      if (_spotlightItem.value?.globalKey == item.globalKey) return;
-      _spotlightItem.value = item;
-    });
   }
 
   void _scrollToTop() {
@@ -365,6 +358,17 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     MainScreenFocusScope.of(context, listen: false)?.focusSidebar();
   }
 
+  /// Focus the TV billboard's primary (Play) action. Falls back to the top app
+  /// bar when no billboard item is present (buttons not mounted).
+  void _focusTvHeroPlay() {
+    if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
+    if (_effectiveSpotlightItem != null && _tvHeroPlayFocusNode.canRequestFocus) {
+      _tvHeroPlayFocusNode.requestFocus();
+    } else {
+      _focusTopActions();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -410,7 +414,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (!_initialLoadComplete) {
       if (PlatformDetector.isTV() && (_onDeck.isNotEmpty || _hubs.isNotEmpty)) {
         _initialLoadComplete = true;
-        _focusTvBrowseRailWhenReady();
+        // Netflix-style: land focus on the billboard Play button when a
+        // spotlight item exists; otherwise fall back to the content rail.
+        if (_effectiveSpotlightItem != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _focusTvHeroPlay();
+          });
+        } else {
+          _focusTvBrowseRailWhenReady();
+        }
       } else if (!PlatformDetector.isTV() && _onDeck.isNotEmpty) {
         _initialLoadComplete = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -476,13 +489,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     WidgetsBinding.instance.removeObserver(this);
     _autoScrollTimer?.cancel();
     _indicatorTimer?.cancel();
-    _spotlightDebouncer.dispose();
     _spotlightItem.dispose();
     _indicatorProgress.dispose();
     _heroController.dispose();
     _scrollController.dispose();
     _heroFocusNode.removeListener(_onHeroFocusChanged);
     _heroFocusNode.dispose();
+    _tvHeroPlayFocusNode.dispose();
+    _tvHeroInfoFocusNode.dispose();
     super.dispose();
   }
 
@@ -1205,13 +1219,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
           );
     final spotlightTop = (size.height * 0.075).clamp(64.0 * scale, 120.0 * scale).toDouble();
-    final minimumSpotlightBottom = railHeight + (8 * scale);
-    final baseSpotlightBottom = (size.height * 0.48).clamp(160.0, 820.0).toDouble();
-    final desiredSpotlightBottom = minimumSpotlightBottom > baseSpotlightBottom
-        ? minimumSpotlightBottom
-        : baseSpotlightBottom;
     final maxSpotlightBottom = (size.height - spotlightTop - (96 * scale)).clamp(0.0, double.infinity).toDouble();
-    final spotlightBottom = desiredSpotlightBottom > maxSpotlightBottom ? maxSpotlightBottom : desiredSpotlightBottom;
     final spotlightLeft = (24 * scale).clamp(18.0, 40.0).toDouble();
 
     return Material(
@@ -1232,15 +1240,22 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   valueListenable: _spotlightItem,
                   builder: (context, _, _) {
                     final spotlight = _effectiveSpotlightItem;
+                    // Netflix-style billboard: full hero treatment (large logo,
+                    // metadata, summary) with focusable Play / More-info actions
+                    // anchored just above the content rail. The billboard is a
+                    // fixed featured item, decoupled from row focus.
                     return TvSpotlightBackground(
                       item: spotlight,
                       client: _getMediaClientForItem(spotlight),
                       hideSpoilers: hideSpoilers,
                       contentTop: spotlightTop,
-                      contentBottom: spotlightBottom,
+                      contentBottom: (railHeight + 28 * scale).clamp(0.0, maxSpotlightBottom).toDouble(),
                       contentLeft: spotlightLeft + foregroundLeft,
-                      compact: true,
+                      compact: false,
                       showPrimaryAction: false,
+                      deepBottomScrim: true,
+                      kenBurns: true,
+                      actions: spotlight == null ? null : _buildTvHeroActions(context, spotlight, scale),
                     );
                   },
                 ),
@@ -1285,16 +1300,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 key: _tvBrowseRailKey,
                 hubs: browseHubs,
                 showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
-                iconForHub: (hub, _) =>
-                    hub.id == 'continue_watching' ? Symbols.play_circle_rounded : _getHubIcon(hub.title),
-                onFocusedItemChanged: _setSpotlightItem,
+                // Text-only Netflix-style headers (no leading icons). Billboard
+                // stays fixed on the featured item, so the rail no longer drives
+                // the spotlight from row focus.
                 onRefresh: _discover.updateItem,
                 onRemoveFromContinueWatching: _discover.refreshContinueWatching,
                 isContinueWatchingHub: (hub) => hub.isContinueWatchingHub,
                 usesContinueWatchingAction: (hub) => hub.usesContinueWatchingAction,
                 loadMoreItems: (hub) =>
                     hub.id == 'continue_watching' ? _discover.loadAllContinueWatching() : Future.value(hub.items),
-                onNavigateUp: _focusTopActions,
+                onNavigateUp: _focusTvHeroPlay,
                 onNavigateToSidebar: _navigateToSidebar,
                 tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
                 selectSuppressionGestureSignal: PlatformDetector.isAppleTV()
@@ -1313,6 +1328,114 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           if (_switchingProfile) const ProfileSwitchingOverlay(),
         ],
       ),
+    );
+  }
+
+  /// Netflix-style billboard actions for the TV home hero: a primary
+  /// Play/Resume pill and a secondary More-info pill, focus-wired to the rail
+  /// (down), the app bar (up), and the sidebar (left/back).
+  Widget _buildTvHeroActions(BuildContext context, MediaItem rawBillboard, double scale) {
+    // Bridge the store patch so resume state / progress never lags the on-deck
+    // snapshot (mirrors _buildSmartPlayButton).
+    final billboard = context.withFreshWatchState(rawBillboard);
+    final resume = billboard.hasActiveProgress;
+    final progress = resume && billboard.durationMs != null && billboard.viewOffsetMs != null
+        ? (billboard.viewOffsetMs! / billboard.durationMs!).clamp(0.0, 1.0).toDouble()
+        : null;
+    return Row(
+      mainAxisSize: .min,
+      children: [
+        FocusableButton(
+          focusNode: _tvHeroPlayFocusNode,
+          autoScroll: false,
+          // Solid-white focused pill fully covers the wrapper's background-focus
+          // fill, so useBackgroundFocus suppresses the default white ring.
+          useBackgroundFocus: true,
+          onPressed: () => navigateToMediaItem(context, billboard, playDirectly: true),
+          onNavigateDown: () => _focusTvBrowseRailWhenReady(immediate: true),
+          onNavigateUp: _focusTopActions,
+          onNavigateLeft: _navigateToSidebar,
+          onBack: _navigateToSidebar,
+          child: _tvHeroPill(
+            context,
+            focusNode: _tvHeroPlayFocusNode,
+            icon: Symbols.play_arrow_rounded,
+            label: resume ? t.common.resume : t.common.play,
+            scale: scale,
+            progress: progress,
+          ),
+        ),
+        SizedBox(width: 16 * scale),
+        FocusableButton(
+          focusNode: _tvHeroInfoFocusNode,
+          autoScroll: false,
+          useBackgroundFocus: true,
+          onPressed: () => navigateToMediaItem(context, billboard),
+          onNavigateDown: () => _focusTvBrowseRailWhenReady(immediate: true),
+          onNavigateUp: _focusTopActions,
+          onBack: _navigateToSidebar,
+          child: _tvHeroPill(
+            context,
+            focusNode: _tvHeroInfoFocusNode,
+            icon: Symbols.info_rounded,
+            label: t.mediaMenu.viewDetails,
+            scale: scale,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// A Netflix-style billboard pill. Inverts on focus (solid white + dark
+  /// content) and optionally embeds a resume progress bar.
+  Widget _tvHeroPill(
+    BuildContext context, {
+    required FocusNode focusNode,
+    required IconData icon,
+    required String label,
+    required double scale,
+    double? progress,
+  }) {
+    return ListenableBuilder(
+      listenable: focusNode,
+      builder: (context, _) {
+        final cs = Theme.of(context).colorScheme;
+        final showFocus = focusNode.hasFocus && InputModeTracker.isKeyboardMode(context);
+        final fg = showFocus ? cs.surface : cs.onSurface;
+        final bg = showFocus ? cs.onSurface : cs.onSurface.withValues(alpha: 0.24);
+        return AnimatedContainer(
+          duration: FocusTheme.getAnimationDuration(context),
+          curve: Curves.easeOutCubic,
+          padding: .symmetric(horizontal: 28 * scale, vertical: 15 * scale),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(100)),
+          child: Row(
+            mainAxisSize: .min,
+            children: [
+              AppIcon(icon, fill: 1, size: 27 * scale, color: fg),
+              SizedBox(width: 10 * scale),
+              if (progress != null) ...[
+                Container(
+                  width: 56 * scale,
+                  height: 8 * scale,
+                  decoration: BoxDecoration(
+                    color: fg.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(4 * scale),
+                  ),
+                  child: FractionallySizedBox(
+                    alignment: .centerLeft,
+                    widthFactor: progress,
+                    child: Container(
+                      decoration: BoxDecoration(color: fg, borderRadius: BorderRadius.circular(4 * scale)),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10 * scale),
+              ],
+              Text(label, style: TextStyle(color: fg, fontSize: 21 * scale, fontWeight: .w600)),
+            ],
+          ),
+        );
+      },
     );
   }
 

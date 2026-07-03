@@ -32,6 +32,15 @@ class TvSpotlightBackground extends StatelessWidget {
   final bool compact;
   final bool showPrimaryAction;
   final bool showInfo;
+
+  /// Melt the bottom of the backdrop into the scaffold background so a docked
+  /// content rail blends in (Netflix billboard). Off by default so backdrop-only
+  /// consumers (e.g. media detail) keep the lighter gradient.
+  final bool deepBottomScrim;
+
+  /// Slow one-shot "settle" zoom on the backdrop art per item. Skipped on the
+  /// reduced-performance tier.
+  final bool kenBurns;
   final String? Function(String? artworkPath)? localArtworkPathResolver;
 
   const TvSpotlightBackground({
@@ -47,6 +56,8 @@ class TvSpotlightBackground extends StatelessWidget {
     this.compact = false,
     this.showPrimaryAction = true,
     this.showInfo = true,
+    this.deepBottomScrim = false,
+    this.kenBurns = false,
     this.localArtworkPathResolver,
   });
 
@@ -68,16 +79,32 @@ class TvSpotlightBackground extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (media != null) _buildArtwork(context, media) else ColoredBox(color: bgColor),
+            if (media != null) _animatedArtwork(media, _buildArtwork(context, media)) else ColoredBox(color: bgColor),
             _buildHorizontalScrim(bgColor),
             DecoratedBox(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.black.withValues(alpha: 0.45), Colors.transparent, bgColor.withValues(alpha: 0.96)],
-                  stops: const [0.0, 0.38, 1.0],
-                ),
+                gradient: deepBottomScrim
+                    ? LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.45),
+                          Colors.transparent,
+                          bgColor.withValues(alpha: 0.90),
+                          bgColor,
+                        ],
+                        stops: const [0.0, 0.30, 0.78, 1.0],
+                      )
+                    : LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.45),
+                          Colors.transparent,
+                          bgColor.withValues(alpha: 0.96),
+                        ],
+                        stops: const [0.0, 0.38, 1.0],
+                      ),
               ),
             ),
             if (media != null && showInfo)
@@ -105,6 +132,22 @@ class TvSpotlightBackground extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Wraps the backdrop in a slow one-shot settle-zoom. Keyed per item by the
+  /// enclosing AnimatedSwitcher, so each swap restarts from 1.0. No-op on the
+  /// reduced tier or when [kenBurns] is off.
+  Widget _animatedArtwork(MediaItem media, Widget child) {
+    if (!kenBurns || DevicePerformance.isReduced) return child;
+    return ClipRect(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 1.0, end: 1.06),
+        duration: const Duration(seconds: 10),
+        curve: Curves.easeOut,
+        child: RepaintBoundary(child: child),
+        builder: (context, scale, inner) => Transform.scale(scale: scale, child: inner),
       ),
     );
   }
@@ -203,6 +246,20 @@ class TvSpotlightBackground extends StatelessWidget {
         _buildLogoOrTitle(context, media, title),
         SizedBox(height: _sectionGap(scale)),
         _buildMetadataLine(context, media),
+        if (!compact && (media.genres?.isNotEmpty ?? false)) ...[
+          SizedBox(height: 6 * scale),
+          Text(
+            media.genres!.take(3).join('  •  '),
+            maxLines: 1,
+            overflow: .ellipsis,
+            style: TextStyle(
+              color: colorScheme.onSurface.withValues(alpha: 0.66),
+              fontSize: _metadataFontSize(scale),
+              fontWeight: .w500,
+              letterSpacing: 0.1,
+            ),
+          ),
+        ],
         if (summary != null && summary.isNotEmpty) ...[
           SizedBox(height: _sectionGap(scale)),
           Text(

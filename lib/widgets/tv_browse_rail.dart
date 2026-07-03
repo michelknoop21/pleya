@@ -87,7 +87,7 @@ class TvBrowseRailLayout {
 
   static double hubStripGapForScale(double _) => 0;
 
-  static double nextHubPeekHeightForScale(double scale) => 30 * scale;
+  static double nextHubPeekHeightForScale(double scale) => 36 * scale;
 
   static double hubSectionHeightFor({required double scale, required double activeRailHeight}) {
     return hubStripHeightForScale(scale) + hubStripGapForScale(scale) + activeRailHeight;
@@ -296,7 +296,10 @@ enum TvRailTrailing { none, loading, error, viewAll }
 
 class TvBrowseRail extends StatefulWidget {
   final List<MediaHub> hubs;
-  final IconData Function(MediaHub hub, int index) iconForHub;
+
+  /// Optional per-hub leading icon. When null, headers render text-only
+  /// (Netflix-style home). Other callers still pass an icon.
+  final IconData Function(MediaHub hub, int index)? iconForHub;
 
   /// Whether to show each hub's originating server name in its header. Used when
   /// the loaded hubs span more than one connected server so their origin stays
@@ -344,7 +347,7 @@ class TvBrowseRail extends StatefulWidget {
   const TvBrowseRail({
     super.key,
     required this.hubs,
-    required this.iconForHub,
+    this.iconForHub,
     this.showServerName = false,
     this.onFocusedItemChanged,
     this.onFocusedHubItemChanged,
@@ -1192,8 +1195,9 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     required double scale,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
-    final titleColor = isActive ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.54);
+    final titleColor = isActive ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.60);
     final iconColor = isActive ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.42);
+    final iconData = widget.iconForHub?.call(hub, hubIndex);
     final showServerName = widget.showServerName && hub.serverName != null;
     final serverColor = colorScheme.primary.withValues(alpha: isActive ? 0.7 : 0.4);
     final serverStyle = Theme.of(
@@ -1207,8 +1211,10 @@ class TvBrowseRailState extends State<TvBrowseRail> {
           alignment: .centerLeft,
           child: Row(
             children: [
-              AppIcon(widget.iconForHub(hub, hubIndex), fill: 1, size: 20 * scale, color: iconColor),
-              SizedBox(width: 8 * scale),
+              if (iconData != null) ...[
+                AppIcon(iconData, fill: 1, size: 20 * scale, color: iconColor),
+                SizedBox(width: 8 * scale),
+              ],
               Expanded(
                 child: Row(
                   children: [

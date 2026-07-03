@@ -178,17 +178,12 @@ void main() {
       fullCardLayout: settings.read(SettingsService.tvFullCardLayout),
       tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
     );
-    final minimumSpotlightBottom = railHeight + (8 * scale);
-    final baseSpotlightBottom = (720 * 0.48).clamp(160.0, 820.0).toDouble();
-    final desiredSpotlightBottom = minimumSpotlightBottom > baseSpotlightBottom
-        ? minimumSpotlightBottom
-        : baseSpotlightBottom;
+    // Netflix billboard: content is anchored just above the rail
+    // (railHeight + 28*scale), clamped so the region stays valid.
     final maxSpotlightBottom = (720 - ((720 * 0.075).clamp(64.0 * scale, 120.0 * scale)) - (96 * scale))
         .clamp(0.0, double.infinity)
         .toDouble();
-    final expectedSpotlightBottom = desiredSpotlightBottom > maxSpotlightBottom
-        ? maxSpotlightBottom
-        : desiredSpotlightBottom;
+    final expectedSpotlightBottom = (railHeight + 28 * scale).clamp(0.0, maxSpotlightBottom).toDouble();
     expect(spotlightBackground.contentBottom, closeTo(expectedSpotlightBottom, 0.001));
 
     // The rail no longer receives the bleed via constructor (a per-flip param
