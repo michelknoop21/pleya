@@ -63,6 +63,8 @@ import '../utils/layout_constants.dart';
 import '../utils/platform_detector.dart';
 import '../navigation/top_nav_scope.dart';
 import '../widgets/top_nav_bar.dart';
+import '../services/fullscreen_state_manager.dart';
+import '../utils/desktop_window_padding.dart';
 import '../widgets/top_ten_row.dart';
 import '../theme/mono_theme.dart' show kAccentAlt;
 import '../theme/mono_tokens.dart';
@@ -910,10 +912,25 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   Widget _buildOverlaidAppBar() {
+    // Rebuild on fullscreen toggle so the macOS traffic-light inset updates
+    // (the singleton is a ChangeNotifier; nothing else in this subtree listens).
+    return ListenableBuilder(
+      listenable: FullscreenStateManager(),
+      builder: (context, _) => _buildOverlaidAppBarBody(),
+    );
+  }
+
+  Widget _buildOverlaidAppBarBody() {
     final statusBarHeight = MediaQuery.paddingOf(context).top;
     final colorScheme = Theme.of(context).colorScheme;
     final overlayColor = colorScheme.brightness == Brightness.dark ? Colors.black : colorScheme.surface;
     final foregroundColor = colorScheme.onSurface;
+    // macOS floats the window controls over the content; clear them so the
+    // wordmark doesn't sit under the traffic lights (only in windowed mode —
+    // they auto-hide in fullscreen). Other platforms keep the 16px inset.
+    final leftInset = Platform.isMacOS && !FullscreenStateManager().isFullscreen
+        ? DesktopWindowPadding.macOSLeft
+        : 16.0;
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -929,21 +946,28 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         ),
       ),
       child: Padding(
-        padding: .only(top: statusBarHeight, left: 16, right: 16, bottom: 8),
+        padding: .only(top: statusBarHeight, left: leftInset, right: 16, bottom: 8),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
               // Desktop Netflix nav (wordmark + tabs) replaces the page title,
               // staying transparent over the billboard. Falls back to the title.
-              if (TopNavScope.isActive(context))
-                Flexible(child: TopNavLeading())
-              else if (!PlatformDetector.isTV())
-                Text(
-                  t.discover.title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(color: foregroundColor, fontWeight: .bold),
-                ),
-              const Spacer(),
+              // Expanded (not Flexible + Spacer) fills all space up to the
+              // actions so the action cluster stays flush to the right edge.
+              Expanded(
+                child: TopNavScope.isActive(context)
+                    ? const TopNavLeading()
+                    : PlatformDetector.isTV()
+                    ? const SizedBox.shrink()
+                    : Text(
+                        t.discover.title,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: foregroundColor,
+                          fontWeight: .bold,
+                        ),
+                      ),
+              ),
               Consumer2<WatchTogetherProvider, CompanionRemoteProvider>(
                 builder: (context, watchTogether, companionRemote, _) {
                   final isDesktop = PlatformDetector.shouldActAsRemoteHost(context);
@@ -1635,19 +1659,36 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           final size = MediaQuery.sizeOf(context);
                           final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
                           final containerAspect = screenWidth / heroHeight;
+                          // Effective art height: full 16:9 on wide billboards,
+                          // floored at the box height on tall (mobile) ones.
+                          // Drives both the fetch and the decode budget so a
+                          // width-bound cover isn't upscaled from a short decode.
+                          // Match screenWidth (used by containerAspect + the
+                          // mem-cache displayWidth) so request, decode budget,
+                          // and box width stay aligned even if content is ever
+                          // narrower than the window.
+                          final artHeight = (screenWidth * 9 / 16).clamp(heroHeight, double.infinity).toDouble();
                           final imageUrl = MediaImageHelper.getOptimizedImageUrl(
                             client: heroClient,
                             thumbPath:
                                 heroItem.heroArt(containerAspectRatio: containerAspect) ?? heroItem.grandparentArtPath,
                             maxWidth: size.width,
-                            maxHeight: size.height * 0.7,
+                            // Plex crops server-side (minSize=1) from the CENTER,
+                            // so a box-shaped request bakes in a centered crop
+                            // that lops heads off the top before Flutter's
+                            // Alignment.topCenter can act. Request the full 16:9
+                            // frame on wide (desktop/TV) billboards so the client
+                            // top-anchors the crop — but never below the box
+                            // height, or a tall (mobile portrait) billboard would
+                            // upscale a too-short image and blur.
+                            maxHeight: artHeight,
                             devicePixelRatio: dpr,
                             imageType: ImageType.art,
                           );
 
                           final (_, memHeight) = MediaImageHelper.getMemCacheDimensions(
                             displayWidth: (screenWidth * dpr).round(),
-                            displayHeight: (heroHeight * dpr).round(),
+                            displayHeight: (artHeight * dpr).round(),
                             imageType: ImageType.art,
                           );
 
