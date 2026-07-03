@@ -57,6 +57,7 @@ import '../utils/layout_constants.dart';
 import '../providers/download_provider.dart';
 import '../providers/offline_watch_provider.dart';
 import '../providers/watch_state_store.dart';
+import '../theme/mono_theme.dart' show kAccentAlt;
 import '../theme/mono_tokens.dart';
 import '../utils/app_logger.dart';
 import '../utils/formatters.dart';
@@ -4237,11 +4238,11 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         const desiredLogoWidth = 400.0;
         const actionHeight = 48.0;
         final chips = <Widget>[
-          // Netflix-style green "XX% match" derived from the rating.
+          // Amber "XX% match" derived from the rating.
           if (metadata.rating != null)
             Text(
               '${(metadata.rating! * 10).round()}% match',
-              style: const TextStyle(color: Color(0xFF46D369), fontWeight: FontWeight.w700, fontSize: 14),
+              style: const TextStyle(color: kAccentAlt, fontWeight: FontWeight.w700, fontSize: 14),
             ),
           if (metadata.year != null) _buildMetadataChip('${metadata.year}'),
           if (metadata case PlexMediaItem(:final editionTitle?)) _buildMetadataChip(editionTitle),

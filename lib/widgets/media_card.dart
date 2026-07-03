@@ -17,6 +17,7 @@ import '../providers/watch_state_store.dart';
 import '../services/device_performance.dart';
 import '../services/download_storage_service.dart';
 import '../services/settings_service.dart';
+import 'new_content_badge.dart';
 import 'settings_builder.dart';
 import 'watched_indicator.dart';
 import '../utils/content_utils.dart';
@@ -447,6 +448,8 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
                   ),
                 ),
                 if (item is MediaItem) WatchedIndicator(item: item),
+                if (item is MediaItem)
+                  Positioned(top: 6, left: 6, child: NewContentBadge(item: item)),
               ],
             ),
           ),
@@ -482,6 +485,8 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
             ),
           ),
           if (item is MediaItem) WatchedIndicator(item: item),
+          if (item is MediaItem)
+            Positioned(top: 6, left: 6, child: NewContentBadge(item: item)),
         ],
       ),
     );
@@ -748,6 +753,8 @@ class _MediaCardList extends StatelessWidget {
                       ),
                     ),
                     if (item is MediaItem) WatchedIndicator(item: item as MediaItem),
+                    if (item is MediaItem)
+                      Positioned(top: 6, left: 6, child: NewContentBadge(item: item as MediaItem)),
                   ],
                 ),
               ),

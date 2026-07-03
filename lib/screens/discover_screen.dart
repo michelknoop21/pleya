@@ -60,8 +60,9 @@ import '../utils/video_player_navigation.dart';
 import '../utils/layout_constants.dart';
 import '../utils/platform_detector.dart';
 import '../navigation/top_nav_scope.dart';
-import '../widgets/netflix_top_nav.dart';
+import '../widgets/top_nav_bar.dart';
 import '../widgets/top_ten_row.dart';
+import '../theme/mono_theme.dart' show kAccentAlt;
 import '../theme/mono_tokens.dart';
 import 'auth_screen.dart';
 import 'libraries/content_state_builder.dart';
@@ -921,7 +922,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               // Desktop Netflix nav (wordmark + tabs) replaces the page title,
               // staying transparent over the billboard. Falls back to the title.
               if (TopNavScope.isActive(context))
-                Flexible(child: NetflixNavLeading())
+                Flexible(child: TopNavLeading())
               else if (!PlatformDetector.isTV())
                 Text(
                   t.discover.title,
@@ -1719,8 +1720,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               ),
                             ),
 
-                          // Metadata, Netflix-style: green "XX% match" derived
-                          // from the rating, then content type / age / year.
+                          // Metadata: amber "XX% match" derived from the
+                          // rating, then content type / age / year.
                           if (heroItem.year != null || heroItem.contentRating != null || heroItem.rating != null) ...[
                             const SizedBox(height: 16),
                             Wrap(
@@ -1732,7 +1733,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                                   Text(
                                     '${(heroItem.rating! * 10).round()}% match',
                                     style: TextStyle(
-                                      color: const Color(0xFF46D369),
+                                      color: kAccentAlt,
                                       fontSize: isTv ? 18 : 14,
                                       fontWeight: FontWeight.w700,
                                     ),
