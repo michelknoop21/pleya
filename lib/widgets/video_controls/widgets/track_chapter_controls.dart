@@ -105,7 +105,7 @@ class TrackChapterControls extends StatelessWidget {
   Function(MediaItem)? get onQueueItemSelected => trackControlsState.onQueueItemSelected;
 
   /// Handle key event for button navigation
-  KeyEventResult _handleButtonKeyEvent(FocusNode _, KeyEvent event, int index, int totalButtons) {
+  KeyEventResult _handleButtonKeyEvent(FocusNode _, KeyEvent event, int index) {
     if (!event.isActionable) {
       return KeyEventResult.ignored;
     }
@@ -124,13 +124,16 @@ class TrackChapterControls extends StatelessWidget {
       return KeyEventResult.handled;
     }
 
-    // RIGHT arrow - move to next button
+    // RIGHT arrow - move to next button. The focus-node list is fixed-size and
+    // shared, so we can't trust its length; instead check whether the next node
+    // is actually mounted to a rendered button (context != null). This is
+    // immune to conditional buttons (AirPlay, screen-lock) being added later.
     if (key == LogicalKeyboardKey.arrowRight) {
-      if (index < totalButtons - 1 && focusNodes != null && focusNodes!.length > index + 1) {
-        focusNodes![index + 1].requestFocus();
-        return KeyEventResult.handled;
+      final next = index + 1;
+      if (focusNodes != null && next < focusNodes!.length && focusNodes![next].context != null) {
+        focusNodes![next].requestFocus();
       }
-      // At end, consume to prevent bubbling
+      // At end (or no next button), consume to prevent bubbling.
       return KeyEventResult.handled;
     }
 
@@ -166,9 +169,7 @@ class TrackChapterControls extends StatelessWidget {
       semanticLabel: semanticLabel,
       isActive: isActive,
       focusNode: focusNodes != null && focusNodes!.length > buttonIndex ? focusNodes![buttonIndex] : null,
-      onKeyEvent: focusNodes != null
-          ? (node, event) => _handleButtonKeyEvent(node, event, buttonIndex, _getButtonCount(isMobile, isDesktop))
-          : null,
+      onKeyEvent: focusNodes != null ? (node, event) => _handleButtonKeyEvent(node, event, buttonIndex) : null,
       onFocusChange: onFocusChange,
       onPressed: onPressed,
     );
@@ -462,20 +463,6 @@ class TrackChapterControls extends StatelessWidget {
         );
       },
     );
-  }
-
-  /// Calculate total button count for navigation
-  int _getButtonCount(bool isMobile, bool isDesktop) {
-    int count = 1; // Settings button always shown
-    count++; // Audio & subtitles button always shown
-    if (chapters.isNotEmpty && !hideChaptersAndQueue) count++;
-    if (showQueueButton && onQueueItemSelected != null && !hideChaptersAndQueue) count++;
-    if (onTogglePIPMode != null) count++;
-    if (onCycleBoxFitMode != null) count++;
-    if (isMobile && !PlatformDetector.isTV()) count++; // Rotation lock (not on TV)
-    if (isDesktop && onToggleAlwaysOnTop != null) count++; // Always on top
-    if (isDesktop) count++; // Fullscreen
-    return count;
   }
 
   IconData _getBoxFitIcon(int mode) {

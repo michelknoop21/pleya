@@ -87,6 +87,10 @@ class TvPanelRow extends StatelessWidget {
       borderRadius: 10,
       autoScroll: true,
       useBackgroundFocus: true,
+      // Rows already show a background highlight on focus; the default scale-up
+      // pushes the trailing value past the panel's clip edge, truncating it
+      // mid-word ("Letterbo…"). Disable scaling here.
+      disableScale: true,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(

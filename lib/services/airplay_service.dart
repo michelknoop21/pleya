@@ -3,14 +3,16 @@ import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 
 import '../utils/app_logger.dart';
+import '../utils/platform_detector.dart';
 
 /// Presents the native iOS AirPlay route picker (`AVRoutePickerView`). iOS only;
 /// tvOS/macOS route audio/video through the system already and desktop has no
-/// equivalent, so [isAvailable] is false there.
+/// equivalent, so [isAvailable] is false there. Flutter reports Apple TV as iOS,
+/// so tvOS is excluded explicitly.
 class AirPlayService {
   static const MethodChannel _channel = MethodChannel('com.pleya/airplay');
 
-  static bool get isAvailable => Platform.isIOS;
+  static bool get isAvailable => Platform.isIOS && !PlatformDetector.isAppleTV();
 
   /// Opens the system AirPlay picker. No-op (returns false) off iOS.
   static Future<bool> showRoutePicker() async {
