@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
@@ -7,7 +9,9 @@ import '../../../media/media_item.dart';
 import '../../../media/media_version.dart';
 import '../../../mpv/mpv.dart';
 import '../../../media/media_source_info.dart';
+import '../../../services/airplay_service.dart';
 import '../../../services/sleep_timer_service.dart';
+import '../../../utils/haptics.dart';
 import '../../../utils/platform_detector.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../widgets/overlay_sheet.dart';
@@ -343,6 +347,26 @@ class TrackChapterControls extends StatelessWidget {
               isMobile: isMobile,
               isDesktop: isDesktop,
               onPressed: onTogglePIPMode,
+            ),
+          );
+          buttonIndex++;
+        }
+
+        // AirPlay route picker (iOS only — native AVRoutePickerView).
+        if (AirPlayService.isAvailable) {
+          final currentIndex = buttonIndex;
+          buttons.add(
+            _buildTrackButton(
+              buttonIndex: currentIndex,
+              icon: Symbols.airplay,
+              tooltip: t.videoControls.airplayButton,
+              semanticLabel: t.videoControls.airplayButton,
+              isMobile: isMobile,
+              isDesktop: isDesktop,
+              onPressed: () {
+                Haptics.light();
+                unawaited(AirPlayService.showRoutePicker());
+              },
             ),
           );
           buttonIndex++;

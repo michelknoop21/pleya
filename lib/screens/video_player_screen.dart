@@ -269,6 +269,11 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
 
   // Transcode / quality state
   late TranscodeQualityPreset _selectedQualityPreset;
+
+  /// Set when the user picks "Try lower quality" on a playback error; forces the
+  /// next [_initializePlayer] to start one preset down instead of recomputing
+  /// from defaults. Cleared once consumed.
+  TranscodeQualityPreset? _forcedQualityOverride;
   int? _selectedAudioStreamId;
   AudioTrack? _preferredAudioTrack;
   SubtitleTrack? _preferredSubtitleTrack;
@@ -678,13 +683,18 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         // saved startup quality. Backends that cannot transcode always start at
         // Original even if the user picked a lower default quality.
         _serverSupportsTranscoding = genericClient.capabilities.videoTranscoding;
-        if (widget.selectedQualityPreset == null) {
+        final forcedPreset = _forcedQualityOverride;
+        if (forcedPreset != null && _serverSupportsTranscoding) {
+          // Error-recovery fallback wins over the saved default for this reload.
+          _selectedQualityPreset = forcedPreset;
+        } else if (widget.selectedQualityPreset == null) {
           _selectedQualityPreset = _serverSupportsTranscoding
               ? settingsService.read(SettingsService.defaultQualityPreset)
               : TranscodeQualityPreset.original;
         } else {
           _selectedQualityPreset = widget.selectedQualityPreset!;
         }
+        _forcedQualityOverride = null;
         final playbackResolver = PlaybackSourceResolver(
           serverManager: context.read<MultiServerProvider>().serverManager,
           database: context.read<AppDatabase>(),
@@ -834,8 +844,9 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         await currentPlayer.setProperty('sub-delay', offsetSeconds.toString());
       }
 
-      if (settingsService.read(SettingsService.audioNormalization)) {
-        await currentPlayer.setAudioNormalization(true);
+      final normalizationMode = settingsService.read(SettingsService.audioNormalizationMode);
+      if (normalizationMode.isEnabled) {
+        await currentPlayer.setAudioNormalization(normalizationMode);
       }
 
       if (PlatformDetector.isDesktopOS()) {

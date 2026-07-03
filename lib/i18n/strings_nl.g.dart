@@ -443,6 +443,9 @@ class _TranslationsSearchNl extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => 'Probeer een andere zoekterm';
 	@override String get searchYourMedia => 'Zoek in je media';
 	@override String get enterTitleActorOrKeyword => 'Voer een titel, acteur of trefwoord in';
+	@override String get recentSearches => 'Recent gezocht';
+	@override String get clearHistory => 'Wissen';
+	@override late final _TranslationsSearchFiltersNl filters = _TranslationsSearchFiltersNl._(_root);
 }
 
 // Path: hotkeys
@@ -656,6 +659,7 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	@override String get subtitleDownloaded => 'Ondertitel gedownload';
 	@override String get subtitleDownloadFailed => 'Ondertitel downloaden mislukt';
 	@override String get searchLanguages => 'Talen zoeken...';
+	@override String get airplayButton => 'AirPlay';
 }
 
 // Path: userStatus
@@ -891,6 +895,7 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get tvShow => 'TV Serie';
 	@override String minutesLeft({required Object minutes}) => '${minutes} min over';
 	@override String get moreLikeThis => 'Meer zoals dit';
+	@override String becauseYouWatched({required Object title}) => 'Omdat je ${title} gekeken hebt';
 }
 
 // Path: errors
@@ -1382,6 +1387,9 @@ class _TranslationsVideoSettingsNl extends TranslationsVideoSettingsEn {
 	@override String get performanceOverlay => 'Prestatie-overlay';
 	@override String get audioPassthrough => 'Audio-doorvoer';
 	@override String get audioNormalization => 'Volume normaliseren';
+	@override String get audioNormalizationTitle => 'Geluidssterkte';
+	@override late final _TranslationsVideoSettingsAudioNormalizationModesNl audioNormalizationModes = _TranslationsVideoSettingsAudioNormalizationModesNl._(_root);
+	@override String get tryLowerQuality => 'Probeer lagere kwaliteit';
 }
 
 // Path: performanceOverlay
@@ -1647,6 +1655,20 @@ class _TranslationsAddServerNl extends TranslationsAddServerEn {
 	@override String get borrowFromAnotherProfileSubtitle => 'Hergebruik de verbinding van een ander profiel. PIN-beveiligde profielen vereisen een PIN.';
 }
 
+// Path: search.filters
+class _TranslationsSearchFiltersNl extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'Alles';
+	@override String get movies => 'Films';
+	@override String get shows => 'Series';
+	@override String get episodes => 'Afleveringen';
+	@override String get people => 'Personen';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsNl extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -1878,6 +1900,18 @@ class _TranslationsCompanionRemoteErrorsNl extends TranslationsCompanionRemoteEr
 	@override String get failedToConnectAnyAddress => 'Kan met geen enkel adres verbinden';
 	@override String connectionLostAfterAttempts({required Object attempts}) => 'Verbinding verloren na ${attempts} pogingen';
 	@override String get connectionLost => 'Verbinding verloren';
+}
+
+// Path: videoSettings.audioNormalizationModes
+class _TranslationsVideoSettingsAudioNormalizationModesNl extends TranslationsVideoSettingsAudioNormalizationModesEn {
+	_TranslationsVideoSettingsAudioNormalizationModesNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'Uit';
+	@override String get normalize => 'Normaliseren';
+	@override String get night => 'Nachtmodus';
 }
 
 // Path: trackers.services
@@ -2243,6 +2277,13 @@ extension on TranslationsNl {
 			'search.tryDifferentTerm' => 'Probeer een andere zoekterm',
 			'search.searchYourMedia' => 'Zoek in je media',
 			'search.enterTitleActorOrKeyword' => 'Voer een titel, acteur of trefwoord in',
+			'search.recentSearches' => 'Recent gezocht',
+			'search.clearHistory' => 'Wissen',
+			'search.filters.all' => 'Alles',
+			'search.filters.movies' => 'Films',
+			'search.filters.shows' => 'Series',
+			'search.filters.episodes' => 'Afleveringen',
+			'search.filters.people' => 'Personen',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Stel sneltoets in voor ${actionName}',
 			'hotkeys.clearShortcut' => 'Wis sneltoets',
 			'hotkeys.noShortcutSet' => 'Geen sneltoets ingesteld',
@@ -2427,6 +2468,7 @@ extension on TranslationsNl {
 			'videoControls.subtitleDownloaded' => 'Ondertitel gedownload',
 			'videoControls.subtitleDownloadFailed' => 'Ondertitel downloaden mislukt',
 			'videoControls.searchLanguages' => 'Talen zoeken...',
+			'videoControls.airplayButton' => 'AirPlay',
 			'userStatus.admin' => 'Beheerder',
 			'userStatus.restricted' => 'Beperkt',
 			'userStatus.protected' => 'Beschermd',
@@ -2452,6 +2494,8 @@ extension on TranslationsNl {
 			'messages.libraryScanning' => ({required Object title}) => 'Scannen "${title}"...',
 			'messages.libraryScanStarted' => ({required Object title}) => 'Bibliotheek scan gestart voor "${title}"',
 			'messages.libraryScanFailed' => ({required Object error}) => 'Kon bibliotheek niet scannen: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'messages.metadataRefreshing' => ({required Object title}) => 'Metadata vernieuwen voor "${title}"...',
 			'messages.metadataRefreshStarted' => ({required Object title}) => 'Metadata vernieuwen gestart voor "${title}"',
 			'messages.metadataRefreshFailed' => ({required Object error}) => 'Kon metadata niet vernieuwen: ${error}',
@@ -2460,8 +2504,6 @@ extension on TranslationsNl {
 			'messages.seasonsLoadFailed' => 'Kan seizoenen niet laden',
 			'messages.noEpisodesFound' => 'Geen afleveringen gevonden in eerste seizoen',
 			'messages.noEpisodesFoundGeneral' => 'Geen afleveringen gevonden',
-			_ => null,
-		} ?? switch (path) {
 			'messages.episodesLoadFailed' => 'Kan afleveringen niet laden',
 			'messages.noResultsFound' => 'Geen resultaten gevonden',
 			'messages.sleepTimerSet' => ({required Object label}) => 'Slaap timer ingesteld voor ${label}',
@@ -2592,6 +2634,7 @@ extension on TranslationsNl {
 			'discover.tvShow' => 'TV Serie',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min over',
 			'discover.moreLikeThis' => 'Meer zoals dit',
+			'discover.becauseYouWatched' => ({required Object title}) => 'Omdat je ${title} gekeken hebt',
 			'errors.searchFailed' => ({required Object error}) => 'Zoeken mislukt: ${error}',
 			'errors.connectionTimeout' => ({required Object context}) => 'Verbinding time-out tijdens laden ${context}',
 			'errors.connectionFailed' => 'Kan geen verbinding maken met mediaserver',
@@ -2965,6 +3008,8 @@ extension on TranslationsNl {
 			'companionRemote.session.serverRunning' => 'Externe server actief',
 			'companionRemote.session.serverStopped' => 'Externe server gestopt',
 			'companionRemote.session.serverRunningDescription' => 'Mobiele apparaten op je netwerk kunnen met deze app verbinden',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.session.serverStoppedDescription' => 'Start de server om mobiele apparaten te laten verbinden',
 			'companionRemote.session.usePhoneToControl' => 'Gebruik je mobiele apparaat om deze app te bedienen',
 			'companionRemote.session.startServer' => 'Server starten',
@@ -2974,8 +3019,6 @@ extension on TranslationsNl {
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Verbinden...',
 			'companionRemote.pairing.searchingForDevices' => 'Apparaten zoeken...',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.noDevicesFound' => 'Geen apparaten gevonden op je netwerk',
 			'companionRemote.pairing.noDevicesHint' => 'Open PlexFlixNetwork op desktop en gebruik dezelfde WiFi',
 			'companionRemote.pairing.availableDevices' => 'Beschikbare apparaten',
@@ -3030,6 +3073,11 @@ extension on TranslationsNl {
 			'videoSettings.performanceOverlay' => 'Prestatie-overlay',
 			'videoSettings.audioPassthrough' => 'Audio-doorvoer',
 			'videoSettings.audioNormalization' => 'Volume normaliseren',
+			'videoSettings.audioNormalizationTitle' => 'Geluidssterkte',
+			'videoSettings.audioNormalizationModes.off' => 'Uit',
+			'videoSettings.audioNormalizationModes.normalize' => 'Normaliseren',
+			'videoSettings.audioNormalizationModes.night' => 'Nachtmodus',
+			'videoSettings.tryLowerQuality' => 'Probeer lagere kwaliteit',
 			'performanceOverlay.color' => 'Kleur',
 			'performanceOverlay.performance' => 'Prestaties',
 			'performanceOverlay.buffer' => 'Buffer',

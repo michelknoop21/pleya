@@ -85,26 +85,46 @@ void showLoadingDialog(BuildContext context) {
 }
 
 /// Shows the server-side 500 modal (bandwidth/transcoding limit rejection).
-Future<void> showServerLimitDialog(BuildContext context) async {
-  await showScopedDialog<void>(
+///
+/// When [canTryLowerQuality] is set, offers a "Try lower quality" action;
+/// returns `true` if the user picked it (caller restarts one preset down),
+/// `false` if they closed the dialog.
+Future<bool> showServerLimitDialog(BuildContext context, {bool canTryLowerQuality = false}) async {
+  final result = await showScopedDialog<bool>(
     context: context,
     barrierDismissible: false,
     builder: (ctx) => AlertDialog(
       title: Text(t.messages.serverLimitTitle),
       content: Text(t.messages.serverLimitBody),
       actions: [
-        FocusableButton(
-          autofocus: true,
-          onPressed: () => Navigator.of(ctx).pop(),
-          child: FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            style: FilledButton.styleFrom(padding: _buttonPadding, shape: _buttonShape),
-            child: Text(t.common.close),
+        if (canTryLowerQuality)
+          FocusableButton(
+            autofocus: true,
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: FilledButton.styleFrom(padding: _buttonPadding, shape: _buttonShape),
+              child: Text(t.videoSettings.tryLowerQuality),
+            ),
           ),
+        FocusableButton(
+          autofocus: !canTryLowerQuality,
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: canTryLowerQuality
+              ? TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(t.common.close),
+                )
+              : FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  style: FilledButton.styleFrom(padding: _buttonPadding, shape: _buttonShape),
+                  child: Text(t.common.close),
+                ),
         ),
       ],
     ),
   );
+  return result ?? false;
 }
 
 /// Shows a delete confirmation dialog.

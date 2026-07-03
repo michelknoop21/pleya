@@ -306,7 +306,16 @@
     "hint": "Zoek films, series, muziek...",
     "tryDifferentTerm": "Probeer een andere zoekterm",
     "searchYourMedia": "Zoek in je media",
-    "enterTitleActorOrKeyword": "Voer een titel, acteur of trefwoord in"
+    "enterTitleActorOrKeyword": "Voer een titel, acteur of trefwoord in",
+    "recentSearches": "Recent gezocht",
+    "clearHistory": "Wissen",
+    "filters": {
+      "all": "Alles",
+      "movies": "Films",
+      "shows": "Series",
+      "episodes": "Afleveringen",
+      "people": "Personen"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "Stel sneltoets in voor ${actionName}",
@@ -510,7 +519,8 @@
     "noTracksAvailable": "Geen tracks beschikbaar",
     "subtitleDownloaded": "Ondertitel gedownload",
     "subtitleDownloadFailed": "Ondertitel downloaden mislukt",
-    "searchLanguages": "Talen zoeken..."
+    "searchLanguages": "Talen zoeken...",
+    "airplayButton": "AirPlay"
   },
   "userStatus": {
     "admin": "Beheerder",
@@ -689,7 +699,8 @@
     "movie": "Film",
     "tvShow": "TV Serie",
     "minutesLeft": "${minutes} min over",
-    "moreLikeThis": "Meer zoals dit"
+    "moreLikeThis": "Meer zoals dit",
+    "becauseYouWatched": "Omdat je ${title} gekeken hebt"
   },
   "errors": {
     "searchFailed": "Zoeken mislukt: ${error}",
@@ -1173,7 +1184,14 @@
     "audioOutput": "Audio-uitvoer",
     "performanceOverlay": "Prestatie-overlay",
     "audioPassthrough": "Audio-doorvoer",
-    "audioNormalization": "Volume normaliseren"
+    "audioNormalization": "Volume normaliseren",
+    "audioNormalizationTitle": "Geluidssterkte",
+    "audioNormalizationModes": {
+      "off": "Uit",
+      "normalize": "Normaliseren",
+      "night": "Nachtmodus"
+    },
+    "tryLowerQuality": "Probeer lagere kwaliteit"
   },
   "performanceOverlay": {
     "color": "Kleur",

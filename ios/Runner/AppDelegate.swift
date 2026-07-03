@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
 import AVFoundation
+import AVKit
 import MediaPlayer
 
 @main
@@ -9,6 +10,8 @@ import MediaPlayer
   private var originalBrightness: CGFloat?
   private var volumeView: MPVolumeView?
   private weak var volumeSlider: UISlider?
+  private var airPlayChannel: FlutterMethodChannel?
+  private var airPlayRoutePicker: AVRoutePickerView?
 
   override func application(
     _ application: UIApplication,
@@ -38,6 +41,47 @@ import MediaPlayer
 
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "DeviceAdjustmentChannel") {
       registerDeviceAdjustmentChannel(messenger: registrar.messenger())
+    }
+
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AirPlayChannel") {
+      registerAirPlayChannel(messenger: registrar.messenger())
+    }
+  }
+
+  private func registerAirPlayChannel(messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(name: "com.plezy/airplay", binaryMessenger: messenger)
+    channel.setMethodCallHandler { [weak self] call, result in
+      DispatchQueue.main.async {
+        self?.handleAirPlayCall(call, result: result)
+      }
+    }
+    airPlayChannel = channel
+  }
+
+  private func handleAirPlayCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    switch call.method {
+    case "showRoutePicker":
+      // AVRoutePickerView owns the system picker; it exposes no public present
+      // API, so add it offscreen and forward a tap to its internal button.
+      guard let window = activeWindow else {
+        result(FlutterError(code: "NO_WINDOW", message: "No active window", details: nil))
+        return
+      }
+      let picker = airPlayRoutePicker ?? AVRoutePickerView(frame: .zero)
+      picker.prioritizesVideoDevices = true
+      if picker.superview == nil {
+        picker.isHidden = true
+        window.addSubview(picker)
+      }
+      airPlayRoutePicker = picker
+      if let button = picker.subviews.compactMap({ $0 as? UIButton }).first {
+        button.sendActions(for: .touchUpInside)
+        result(true)
+      } else {
+        result(FlutterError(code: "NO_PICKER_BUTTON", message: "Route picker button unavailable", details: nil))
+      }
+    default:
+      result(FlutterMethodNotImplemented)
     }
   }
 

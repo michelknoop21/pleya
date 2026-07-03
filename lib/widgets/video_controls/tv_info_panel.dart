@@ -219,9 +219,19 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
           },
           child: SafeArea(
             bottom: false,
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-              constraints: const BoxConstraints(maxWidth: 880, maxHeight: 460),
+            child: Builder(
+              builder: (context) {
+              // tvOS overscan insets are zeroed app-wide (see main.dart), so the
+              // outer ~5% of the surface can be cut on TVs that still overscan.
+              // Keep the panel — and its top pill bar / focused rows — inside a
+              // title-safe margin so no text lands just past the visible edge.
+              final size = MediaQuery.sizeOf(context);
+              final hMargin = (size.width * 0.055).clamp(40.0, 96.0);
+              final vMargin = (size.height * 0.06).clamp(20.0, 64.0);
+              final maxPanelHeight = (size.height - vMargin * 2).clamp(240.0, 460.0);
+              return Container(
+              margin: EdgeInsets.symmetric(horizontal: hMargin, vertical: vMargin),
+              constraints: BoxConstraints(maxWidth: 880, maxHeight: maxPanelHeight),
               decoration: BoxDecoration(
                 color: TvPanelTheme.surface,
                 borderRadius: BorderRadius.circular(18),
@@ -236,6 +246,8 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
                   Flexible(child: _showSync ? _buildSyncView() : _buildTabContent()),
                 ],
               ),
+            );
+            },
             ),
           ),
         ),

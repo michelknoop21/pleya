@@ -131,16 +131,19 @@ class TvAudioTab extends StatelessWidget {
             );
 
             rows.add(
-              ValueListenableBuilder<bool>(
-                valueListenable: SettingsService.instance.listenable(SettingsService.audioNormalization),
-                builder: (context, normalize, _) => TvPanelRow(
+              ValueListenableBuilder<AudioNormalizationMode>(
+                valueListenable: SettingsService.instance.listenable(SettingsService.audioNormalizationMode),
+                builder: (context, mode, _) => TvPanelRow(
                   icon: Symbols.graphic_eq_rounded,
-                  title: t.videoSettings.audioNormalization,
-                  value: normalize ? t.common.ok : t.common.off,
-                  highlighted: normalize,
+                  title: t.videoSettings.audioNormalizationTitle,
+                  value: _audioNormalizationLabel(mode),
+                  highlighted: mode.isEnabled,
+                  // Tap cycles Off → Normalize → Night, same as the mobile sheet.
                   onSelect: () async {
-                    await SettingsService.instance.write(SettingsService.audioNormalization, !normalize);
-                    await player.setAudioNormalization(!normalize);
+                    const order = AudioNormalizationMode.values;
+                    final next = order[(mode.index + 1) % order.length];
+                    await SettingsService.instance.write(SettingsService.audioNormalizationMode, next);
+                    await player.setAudioNormalization(next);
                   },
                 ),
               ),
@@ -155,6 +158,12 @@ class TvAudioTab extends StatelessWidget {
       },
     );
   }
+
+  String _audioNormalizationLabel(AudioNormalizationMode mode) => switch (mode) {
+    AudioNormalizationMode.off => t.videoSettings.audioNormalizationModes.off,
+    AudioNormalizationMode.normalize => t.videoSettings.audioNormalizationModes.normalize,
+    AudioNormalizationMode.night => t.videoSettings.audioNormalizationModes.night,
+  };
 
   int? _selectedSourceAudioId() {
     final explicit = state.selectedAudioStreamId;

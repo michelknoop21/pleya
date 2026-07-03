@@ -54,6 +54,7 @@ import '../../services/scrub_preview_source.dart';
 import '../../services/settings_service.dart';
 import '../../utils/codec_utils.dart';
 import '../../utils/formatters.dart';
+import '../../utils/haptics.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/player_utils.dart';
 import '../../theme/mono_tokens.dart';

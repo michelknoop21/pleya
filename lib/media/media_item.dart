@@ -415,6 +415,23 @@ sealed class MediaItem with _$MediaItem {
     return userData is Map<String, dynamic> ? userData['UnplayedItemCount'] as int? : null;
   }
 
+  /// Primary-image BlurHash for a poster placeholder, when the backend ships
+  /// one. Jellyfin includes `ImageBlurHashes` in its item API; Plex has none.
+  /// Returns null for Plex and for items fetched without blurhash metadata.
+  String? get posterBlurHash {
+    final hashes = raw?['ImageBlurHashes'];
+    if (hashes is! Map) return null;
+    final primary = hashes['Primary'];
+    if (primary is! Map || primary.isEmpty) return null;
+    final tags = raw?['ImageTags'];
+    if (tags is Map) {
+      final tag = tags['Primary'];
+      if (tag is String && primary[tag] is String) return primary[tag] as String;
+    }
+    final first = primary.values.first;
+    return first is String ? first : null;
+  }
+
   /// Copy with the watched flag applied so [isWatched] reflects it for every
   /// kind: containers need their leaf counts patched, not just [viewCount].
   MediaItem withWatchedFlag(bool isWatched) {

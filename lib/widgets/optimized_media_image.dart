@@ -12,6 +12,7 @@ import '../media/media_server_client.dart';
 import '../services/device_performance.dart';
 import '../services/image_cache_service.dart';
 import '../utils/app_logger.dart';
+import '../utils/blurhash.dart';
 import '../utils/media_image_helper.dart';
 import '../utils/obfuscation_utils.dart';
 
@@ -48,6 +49,10 @@ class OptimizedMediaImage extends StatelessWidget {
   final ImageType imageType;
   final String? localFilePath;
 
+  /// Backend-provided BlurHash (Jellyfin only) rendered as the loading
+  /// placeholder instead of a flat surface tile. Ignored when null.
+  final String? blurHash;
+
   const OptimizedMediaImage._({
     super.key,
     this.client,
@@ -65,6 +70,7 @@ class OptimizedMediaImage extends StatelessWidget {
     this.fallbackIcon,
     this.imageType = ImageType.poster,
     this.localFilePath,
+    this.blurHash,
   });
 
   /// Generic constructor for optimized images.
@@ -85,6 +91,7 @@ class OptimizedMediaImage extends StatelessWidget {
     IconData? fallbackIcon,
     ImageType imageType,
     String? localFilePath,
+    String? blurHash,
   }) = OptimizedMediaImage._;
 
   /// Named constructor for poster images with default fallback icon.
@@ -104,6 +111,7 @@ class OptimizedMediaImage extends StatelessWidget {
     Alignment alignment = Alignment.center,
     IconData? fallbackIcon,
     String? localFilePath,
+    String? blurHash,
   }) : this._(
          key: key,
          client: client,
@@ -121,6 +129,7 @@ class OptimizedMediaImage extends StatelessWidget {
          fallbackIcon: fallbackIcon ?? Symbols.movie_rounded,
          imageType: ImageType.poster,
          localFilePath: localFilePath,
+         blurHash: blurHash,
        );
 
   /// Named constructor for episode thumbnails.
@@ -140,6 +149,7 @@ class OptimizedMediaImage extends StatelessWidget {
     Alignment alignment = Alignment.center,
     IconData? fallbackIcon,
     String? localFilePath,
+    String? blurHash,
   }) : this._(
          key: key,
          client: client,
@@ -157,6 +167,7 @@ class OptimizedMediaImage extends StatelessWidget {
          fallbackIcon: fallbackIcon ?? Symbols.video_library_rounded,
          imageType: ImageType.thumb,
          localFilePath: localFilePath,
+         blurHash: blurHash,
        );
 
   /// Named constructor for playlist images.
@@ -355,6 +366,14 @@ class OptimizedMediaImage extends StatelessWidget {
   }
 
   Widget _buildPlaceholder(BuildContext context, String imageUrl) {
+    // BlurHash (Jellyfin) wins over a caller-supplied shimmer/surface
+    // placeholder — it's a truer preview of the poster while it loads.
+    if (blurHash != null && blurHash!.isNotEmpty) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [_surfacePlaceholder(context, fillParent: true), BlurHashPlaceholder(blurHash!)],
+      );
+    }
     if (placeholder != null) return placeholder!(context, imageUrl);
     return _surfacePlaceholder(context, icon: fallbackIcon, iconColor: Colors.white54);
   }

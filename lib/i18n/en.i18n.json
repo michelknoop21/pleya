@@ -312,7 +312,16 @@
     "hint": "Search movies, shows, music...",
     "tryDifferentTerm": "Try a different search term",
     "searchYourMedia": "Search your media",
-    "enterTitleActorOrKeyword": "Enter a title, actor, or keyword"
+    "enterTitleActorOrKeyword": "Enter a title, actor, or keyword",
+    "recentSearches": "Recent searches",
+    "clearHistory": "Clear",
+    "filters": {
+      "all": "All",
+      "movies": "Movies",
+      "shows": "Shows",
+      "episodes": "Episodes",
+      "people": "People"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "Set Shortcut for ${actionName}",
@@ -516,7 +525,8 @@
     "noTracksAvailable": "No tracks available",
     "subtitleDownloaded": "Subtitle downloaded",
     "subtitleDownloadFailed": "Failed to download subtitle",
-    "searchLanguages": "Search languages..."
+    "searchLanguages": "Search languages...",
+    "airplayButton": "AirPlay"
   },
   "userStatus": {
     "admin": "Admin",
@@ -695,7 +705,8 @@
     "movie": "Movie",
     "tvShow": "TV Show",
     "minutesLeft": "${minutes} min left",
-    "moreLikeThis": "More Like This"
+    "moreLikeThis": "More Like This",
+    "becauseYouWatched": "Because you watched ${title}"
   },
   "errors": {
     "searchFailed": "Search failed: ${error}",
@@ -1182,7 +1193,14 @@
     "audioOutput": "Audio Output",
     "performanceOverlay": "Performance Overlay",
     "audioPassthrough": "Audio Passthrough",
-    "audioNormalization": "Normalize Loudness"
+    "audioNormalization": "Normalize Loudness",
+    "audioNormalizationTitle": "Loudness",
+    "audioNormalizationModes": {
+      "off": "Off",
+      "normalize": "Normalize",
+      "night": "Night mode"
+    },
+    "tryLowerQuality": "Try lower quality"
   },
   "performanceOverlay": {
     "color": "Color",

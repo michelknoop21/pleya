@@ -1052,6 +1052,14 @@ class TranslationsSearchEn {
 
 	/// en: 'Enter a title, actor, or keyword'
 	String get enterTitleActorOrKeyword => 'Enter a title, actor, or keyword';
+
+	/// en: 'Recent searches'
+	String get recentSearches => 'Recent searches';
+
+	/// en: 'Clear'
+	String get clearHistory => 'Clear';
+
+	late final TranslationsSearchFiltersEn filters = TranslationsSearchFiltersEn.internal(_root);
 }
 
 // Path: hotkeys
@@ -1562,6 +1570,9 @@ class TranslationsVideoControlsEn {
 
 	/// en: 'Search languages...'
 	String get searchLanguages => 'Search languages...';
+
+	/// en: 'AirPlay'
+	String get airplayButton => 'AirPlay';
 }
 
 // Path: userStatus
@@ -2123,6 +2134,9 @@ class TranslationsDiscoverEn {
 
 	/// en: 'More Like This'
 	String get moreLikeThis => 'More Like This';
+
+	/// en: 'Because you watched ${title}'
+	String becauseYouWatched({required Object title}) => 'Because you watched ${title}';
 }
 
 // Path: errors
@@ -3303,6 +3317,14 @@ class TranslationsVideoSettingsEn {
 
 	/// en: 'Normalize Loudness'
 	String get audioNormalization => 'Normalize Loudness';
+
+	/// en: 'Loudness'
+	String get audioNormalizationTitle => 'Loudness';
+
+	late final TranslationsVideoSettingsAudioNormalizationModesEn audioNormalizationModes = TranslationsVideoSettingsAudioNormalizationModesEn.internal(_root);
+
+	/// en: 'Try lower quality'
+	String get tryLowerQuality => 'Try lower quality';
 }
 
 // Path: performanceOverlay
@@ -3943,6 +3965,30 @@ class TranslationsAddServerEn {
 	String get borrowFromAnotherProfileSubtitle => 'Reuse another profile\'s connection. PIN-protected profiles require a PIN.';
 }
 
+// Path: search.filters
+class TranslationsSearchFiltersEn {
+	TranslationsSearchFiltersEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'All'
+	String get all => 'All';
+
+	/// en: 'Movies'
+	String get movies => 'Movies';
+
+	/// en: 'Shows'
+	String get shows => 'Shows';
+
+	/// en: 'Episodes'
+	String get episodes => 'Episodes';
+
+	/// en: 'People'
+	String get people => 'People';
+}
+
 // Path: hotkeys.actions
 class TranslationsHotkeysActionsEn {
 	TranslationsHotkeysActionsEn.internal(this._root);
@@ -4444,6 +4490,24 @@ class TranslationsCompanionRemoteErrorsEn {
 	String get connectionLost => 'Connection lost';
 }
 
+// Path: videoSettings.audioNormalizationModes
+class TranslationsVideoSettingsAudioNormalizationModesEn {
+	TranslationsVideoSettingsAudioNormalizationModesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Off'
+	String get off => 'Off';
+
+	/// en: 'Normalize'
+	String get normalize => 'Normalize';
+
+	/// en: 'Night mode'
+	String get night => 'Night mode';
+}
+
 // Path: trackers.services
 class TranslationsTrackersServicesEn {
 	TranslationsTrackersServicesEn.internal(this._root);
@@ -4861,6 +4925,13 @@ extension on Translations {
 			'search.tryDifferentTerm' => 'Try a different search term',
 			'search.searchYourMedia' => 'Search your media',
 			'search.enterTitleActorOrKeyword' => 'Enter a title, actor, or keyword',
+			'search.recentSearches' => 'Recent searches',
+			'search.clearHistory' => 'Clear',
+			'search.filters.all' => 'All',
+			'search.filters.movies' => 'Movies',
+			'search.filters.shows' => 'Shows',
+			'search.filters.episodes' => 'Episodes',
+			'search.filters.people' => 'People',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Set Shortcut for ${actionName}',
 			'hotkeys.clearShortcut' => 'Clear shortcut',
 			'hotkeys.noShortcutSet' => 'No shortcut set',
@@ -5045,6 +5116,7 @@ extension on Translations {
 			'videoControls.subtitleDownloaded' => 'Subtitle downloaded',
 			'videoControls.subtitleDownloadFailed' => 'Failed to download subtitle',
 			'videoControls.searchLanguages' => 'Search languages...',
+			'videoControls.airplayButton' => 'AirPlay',
 			'userStatus.admin' => 'Admin',
 			'userStatus.restricted' => 'Restricted',
 			'userStatus.protected' => 'Protected',
@@ -5064,6 +5136,8 @@ extension on Translations {
 			'messages.noProfilesAvailable' => 'No profiles available',
 			'messages.contactAdminForProfiles' => 'Contact your server administrator to add profiles',
 			'messages.unableToDetermineLibrarySection' => 'Unable to determine library section for this item',
+			_ => null,
+		} ?? switch (path) {
 			'messages.logsCleared' => 'Logs cleared',
 			'messages.logsCopied' => 'Logs copied to clipboard',
 			'messages.noLogsAvailable' => 'No logs available',
@@ -5072,8 +5146,6 @@ extension on Translations {
 			'messages.libraryScanFailed' => ({required Object error}) => 'Failed to scan library: ${error}',
 			'messages.metadataRefreshing' => ({required Object title}) => 'Refreshing metadata for "${title}"...',
 			'messages.metadataRefreshStarted' => ({required Object title}) => 'Metadata refresh started for "${title}"',
-			_ => null,
-		} ?? switch (path) {
 			'messages.metadataRefreshFailed' => ({required Object error}) => 'Failed to refresh metadata: ${error}',
 			'messages.logoutConfirm' => 'Are you sure you want to logout?',
 			'messages.noSeasonsFound' => 'No seasons found',
@@ -5210,6 +5282,7 @@ extension on Translations {
 			'discover.tvShow' => 'TV Show',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min left',
 			'discover.moreLikeThis' => 'More Like This',
+			'discover.becauseYouWatched' => ({required Object title}) => 'Because you watched ${title}',
 			'errors.searchFailed' => ({required Object error}) => 'Search failed: ${error}',
 			'errors.connectionTimeout' => ({required Object context}) => 'Connection timeout while loading ${context}',
 			'errors.connectionFailed' => 'Unable to connect to media server',
@@ -5577,6 +5650,8 @@ extension on Translations {
 			'shaders.deleteShader' => 'Delete Shader',
 			'shaders.deleteShaderConfirm' => ({required Object name}) => 'Delete "${name}"?',
 			'companionRemote.title' => 'Companion Remote',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.connectedTo' => ({required Object name}) => 'Connected to ${name}',
 			'companionRemote.unknownDevice' => 'Unknown Device',
 			'companionRemote.session.startingServer' => 'Starting remote server...',
@@ -5586,8 +5661,6 @@ extension on Translations {
 			'companionRemote.session.serverRunning' => 'Remote server active',
 			'companionRemote.session.serverStopped' => 'Remote server stopped',
 			'companionRemote.session.serverRunningDescription' => 'Mobile devices on your network can connect to this app',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.session.serverStoppedDescription' => 'Start the server to allow mobile devices to connect',
 			'companionRemote.session.usePhoneToControl' => 'Use your mobile device to control this app',
 			'companionRemote.session.startServer' => 'Start Server',
@@ -5651,6 +5724,11 @@ extension on Translations {
 			'videoSettings.performanceOverlay' => 'Performance Overlay',
 			'videoSettings.audioPassthrough' => 'Audio Passthrough',
 			'videoSettings.audioNormalization' => 'Normalize Loudness',
+			'videoSettings.audioNormalizationTitle' => 'Loudness',
+			'videoSettings.audioNormalizationModes.off' => 'Off',
+			'videoSettings.audioNormalizationModes.normalize' => 'Normalize',
+			'videoSettings.audioNormalizationModes.night' => 'Night mode',
+			'videoSettings.tryLowerQuality' => 'Try lower quality',
 			'performanceOverlay.color' => 'Color',
 			'performanceOverlay.performance' => 'Performance',
 			'performanceOverlay.buffer' => 'Buffer',

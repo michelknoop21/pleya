@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../focus/input_mode_tracker.dart';
 import '../../../media/media_library.dart';
 import '../../../utils/app_logger.dart';
+import '../../../utils/haptics.dart';
 import '../../../mixins/library_tab_state.dart';
 import '../../../mixins/refreshable.dart';
 import '../content_state_builder.dart';
@@ -268,7 +269,13 @@ abstract class BaseLibraryTabState<T, W extends BaseLibraryTab<T>> extends State
       emptyIcon: emptyIcon,
       emptyMessage: emptyMessage,
       onRetry: loadItems,
-      builder: (items) => RefreshIndicator(onRefresh: loadItems, child: buildContent(items)),
+      builder: (items) => RefreshIndicator(
+        onRefresh: () {
+          Haptics.light();
+          return loadItems();
+        },
+        child: buildContent(items),
+      ),
     );
   }
 }

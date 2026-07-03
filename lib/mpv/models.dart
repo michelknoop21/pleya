@@ -26,6 +26,29 @@ sealed class PlayerError with _$PlayerError {
 
 enum PlayerLogLevel { none, fatal, error, warn, info, verbose, debug, trace }
 
+/// Loudness handling applied via mpv's `af` loudnorm filter.
+/// - [off]: no filter, original dynamics.
+/// - [normalize]: streaming-style target (I=-14), tames overall loudness.
+/// - [night]: compresses dynamic range harder (lower LRA, higher target floor)
+///   so quiet dialogue stays audible without loud effects spiking — for
+///   late-night listening. Mirrored on Android by the ExoPlayer effect, which
+///   only supports on/off, so [night] there behaves like [normalize].
+enum AudioNormalizationMode {
+  off,
+  normalize,
+  night;
+
+  /// mpv `af` filter string for this mode ('' disables filtering).
+  String get mpvFilter => switch (this) {
+    AudioNormalizationMode.off => '',
+    AudioNormalizationMode.normalize => 'loudnorm=I=-14:TP=-3:LRA=4',
+    AudioNormalizationMode.night => 'loudnorm=I=-16:TP=-2:LRA=2',
+  };
+
+  /// Whether any loudness filtering is active (Android native on/off).
+  bool get isEnabled => this != AudioNormalizationMode.off;
+}
+
 @freezed
 sealed class AudioTrack with _$AudioTrack {
   const AudioTrack._();

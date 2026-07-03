@@ -7,10 +7,12 @@ import 'package:rate_limiter/rate_limiter.dart';
 import '../focus/focusable_text_field.dart';
 import '../i18n/strings.g.dart';
 import '../media/media_item.dart';
+import '../media/media_kind.dart';
 import '../mixins/controller_disposer_mixin.dart';
 import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
 import '../providers/multi_server_provider.dart';
+import '../services/settings_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
 import '../utils/snackbar_helper.dart';
@@ -21,6 +23,13 @@ import '../widgets/focusable_media_card.dart';
 import '../utils/focus_utils.dart';
 import 'libraries/state_messages.dart';
 import 'main_screen.dart';
+
+/// Client-side result type filter. Only kinds that [searchAcrossServers]
+/// actually returns (movies, shows, episodes) — no "people" row, search
+/// results carry no person items.
+enum _SearchFilter { all, movies, shows, episodes }
+
+const int _searchHistoryLimit = 15;
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -46,13 +55,48 @@ class _SearchScreenState extends State<SearchScreen>
   late final Debounce _searchDebounce;
   String _lastSearchedQuery = '';
   String? _focusResultsForQuery;
+  _SearchFilter _activeFilter = _SearchFilter.all;
+  List<String> _history = const [];
 
   @override
   void initState() {
     super.initState();
     _searchDebounce = debounce(_performSearch, const Duration(milliseconds: 500));
     _searchController.addListener(_onSearchChanged);
+    _history = SettingsService.instance.read(SettingsService.searchHistory);
     FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
+  }
+
+  /// Filtered view of [_searchResults] for the active type chip.
+  List<MediaItem> get _filteredResults {
+    return switch (_activeFilter) {
+      _SearchFilter.all => _searchResults,
+      _SearchFilter.movies => _searchResults.where((i) => i.kind == MediaKind.movie).toList(),
+      _SearchFilter.shows => _searchResults.where((i) => i.kind == MediaKind.show).toList(),
+      _SearchFilter.episodes => _searchResults.where((i) => i.kind == MediaKind.episode).toList(),
+    };
+  }
+
+  void _addToHistory(String query) {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return;
+    final next = [trimmed, ..._history.where((q) => q.toLowerCase() != trimmed.toLowerCase())];
+    if (next.length > _searchHistoryLimit) next.removeRange(_searchHistoryLimit, next.length);
+    _history = next;
+    SettingsService.instance.write(SettingsService.searchHistory, next);
+  }
+
+  void _clearHistory() {
+    _history = const [];
+    SettingsService.instance.write(SettingsService.searchHistory, const []);
+    setStateIfMounted(() {});
+  }
+
+  void _runHistoryQuery(String query) {
+    _searchController.text = query;
+    _searchController.selection = TextSelection.collapsed(offset: query.length);
+    _searchDebounce.cancel();
+    _performSearch(query);
   }
 
   @override
@@ -119,7 +163,9 @@ class _SearchScreenState extends State<SearchScreen>
           _searchResults = neutral;
           _isSearching = false;
           _lastSearchedQuery = query.trim();
+          _activeFilter = _SearchFilter.all;
         });
+        if (neutral.isNotEmpty) _addToHistory(query);
         _maybeFocusResultsAfterSubmit(query, neutral);
       }
     } catch (e) {
@@ -221,11 +267,12 @@ class _SearchScreenState extends State<SearchScreen>
   Widget _buildResultsList(BuildContext context) {
     final multiServer = context.watch<MultiServerProvider>();
     final showServerName = multiServer.totalServerCount > 1;
+    final results = _filteredResults;
     return SliverPadding(
       padding: const EdgeInsets.all(16),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
-          final item = _searchResults[index];
+          final item = results[index];
           return FocusableMediaCard(
             key: Key(item.globalKey),
             item: item,
@@ -238,7 +285,72 @@ class _SearchScreenState extends State<SearchScreen>
             onNavigateUp: index == 0 ? focusSearchInput : null,
             showServerName: showServerName,
           );
-        }, childCount: _searchResults.length),
+        }, childCount: results.length),
+      ),
+    );
+  }
+
+  /// Type filter chips shown above the results. A filter with no matches in the
+  /// current result set is hidden so the row only offers useful narrowing.
+  Widget _buildFilterChips(BuildContext context) {
+    bool has(MediaKind k) => _searchResults.any((i) => i.kind == k);
+    final chips = <Widget>[
+      _filterChip(context, _SearchFilter.all, t.search.filters.all),
+      if (has(MediaKind.movie)) _filterChip(context, _SearchFilter.movies, t.search.filters.movies),
+      if (has(MediaKind.show)) _filterChip(context, _SearchFilter.shows, t.search.filters.shows),
+      if (has(MediaKind.episode)) _filterChip(context, _SearchFilter.episodes, t.search.filters.episodes),
+    ];
+    // Only "All" available → nothing to filter, hide the row entirely.
+    if (chips.length <= 1) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+      child: Wrap(spacing: 8, runSpacing: 8, children: chips),
+    );
+  }
+
+  Widget _filterChip(BuildContext context, _SearchFilter filter, String label) {
+    return FilterChip(
+      label: Text(label),
+      selected: _activeFilter == filter,
+      onSelected: (_) => setStateIfMounted(() => _activeFilter = filter),
+    );
+  }
+
+  /// Recent-searches empty state: tappable chips that re-run a past query.
+  /// Doubles as the TV recent-search row (chips are focusable for d-pad).
+  Widget _buildRecentSearches(BuildContext context) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      sliver: SliverToBoxAdapter(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    t.search.recentSearches,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                TextButton(onPressed: _clearHistory, child: Text(t.search.clearHistory)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final query in _history)
+                  ActionChip(
+                    avatar: const AppIcon(Symbols.history_rounded, fill: 1, size: 18),
+                    label: Text(query),
+                    onPressed: () => _runHistoryQuery(query),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -289,14 +401,17 @@ class _SearchScreenState extends State<SearchScreen>
             if (_isSearching)
               LoadingIndicatorBox.sliver
             else if (!_hasSearched)
-              SliverFillRemaining(
-                child: StateMessageWidget(
-                  message: t.search.searchYourMedia,
-                  subtitle: t.search.enterTitleActorOrKeyword,
-                  icon: Symbols.search_rounded,
-                  iconSize: 80,
-                ),
-              )
+              if (_history.isNotEmpty)
+                _buildRecentSearches(context)
+              else
+                SliverFillRemaining(
+                  child: StateMessageWidget(
+                    message: t.search.searchYourMedia,
+                    subtitle: t.search.enterTitleActorOrKeyword,
+                    icon: Symbols.search_rounded,
+                    iconSize: 80,
+                  ),
+                )
             else if (_searchResults.isEmpty)
               SliverFillRemaining(
                 child: StateMessageWidget(
@@ -306,8 +421,10 @@ class _SearchScreenState extends State<SearchScreen>
                   iconSize: 80,
                 ),
               )
-            else
+            else ...[
+              SliverToBoxAdapter(child: _buildFilterChips(context)),
               _buildResultsList(context),
+            ],
           ],
         ),
       ),

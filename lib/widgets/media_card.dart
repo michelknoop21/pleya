@@ -14,6 +14,7 @@ import '../media/media_playlist.dart';
 import '../mixins/context_menu_tap_mixin.dart';
 import '../providers/download_provider.dart';
 import '../providers/watch_state_store.dart';
+import '../services/device_performance.dart';
 import '../services/download_storage_service.dart';
 import '../services/settings_service.dart';
 import 'settings_builder.dart';
@@ -91,6 +92,16 @@ class MediaCard extends StatefulWidget {
 }
 
 class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard> {
+  /// Per-instance Hero tag flown poster → detail backdrop. Unique per card
+  /// instance so the same item appearing in multiple rows never shares a tag
+  /// (which would crash the Hero flight). Not used on TV (d-pad focus flow
+  /// already owns the spotlight transition).
+  late final Object _heroTag = UniqueKey();
+
+  bool get _heroEligible => widget.item is MediaItem && !PlatformDetector.isTV();
+
+  Widget _wrapPosterHero(Widget poster) => _heroEligible ? Hero(tag: _heroTag, child: poster) : poster;
+
   /// Public method to trigger tap action (for keyboard/gamepad SELECT)
   void handleTap() {
     _handleTap(context, _effectiveItemForAction(context));
@@ -167,6 +178,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
       onRefresh: widget.onRefresh,
       isOffline: widget.isOffline,
       playDirectly: widget.usesContinueWatchingAction,
+      heroTag: _heroEligible ? _heroTag : null,
     );
 
     if (!context.mounted) return;
@@ -317,15 +329,17 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _buildPosterImage(
-                  context,
-                  item,
-                  isOffline: widget.isOffline,
-                  localPosterPath: localPosterPath,
-                  mixedHubContext: widget.mixedHubContext,
-                  episodePosterModeOverride: widget.episodePosterModeOverride,
-                  knownWidth: 300,
-                  knownHeight: 169,
+                _wrapPosterHero(
+                  _buildPosterImage(
+                    context,
+                    item,
+                    isOffline: widget.isOffline,
+                    localPosterPath: localPosterPath,
+                    mixedHubContext: widget.mixedHubContext,
+                    episodePosterModeOverride: widget.episodePosterModeOverride,
+                    knownWidth: 300,
+                    knownHeight: 169,
+                  ),
                 ),
                 Positioned(
                   left: 12,
@@ -420,15 +434,17 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _buildPosterImage(
-                  context,
-                  item,
-                  isOffline: widget.isOffline,
-                  localPosterPath: localPosterPath,
-                  mixedHubContext: widget.mixedHubContext,
-                  episodePosterModeOverride: widget.episodePosterModeOverride,
-                  knownWidth: width,
-                  knownHeight: height,
+                _wrapPosterHero(
+                  _buildPosterImage(
+                    context,
+                    item,
+                    isOffline: widget.isOffline,
+                    localPosterPath: localPosterPath,
+                    mixedHubContext: widget.mixedHubContext,
+                    episodePosterModeOverride: widget.episodePosterModeOverride,
+                    knownWidth: width,
+                    knownHeight: height,
+                  ),
                 ),
                 if (item is MediaItem) WatchedIndicator(item: item),
               ],
@@ -452,15 +468,17 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(tokens(context).radiusSm),
-            child: _buildPosterImage(
-              context,
-              item,
-              isOffline: widget.isOffline,
-              localPosterPath: localPosterPath,
-              mixedHubContext: widget.mixedHubContext,
-              episodePosterModeOverride: widget.episodePosterModeOverride,
-              knownWidth: posterHeight != null ? posterWidth : null,
-              knownHeight: posterHeight,
+            child: _wrapPosterHero(
+              _buildPosterImage(
+                context,
+                item,
+                isOffline: widget.isOffline,
+                localPosterPath: localPosterPath,
+                mixedHubContext: widget.mixedHubContext,
+                episodePosterModeOverride: widget.episodePosterModeOverride,
+                knownWidth: posterHeight != null ? posterWidth : null,
+                knownHeight: posterHeight,
+              ),
             ),
           ),
           if (item is MediaItem) WatchedIndicator(item: item),
@@ -893,6 +911,7 @@ Widget _buildPosterImage(
         placeholder: _buildPosterLoadingPlaceholder,
         fallbackIcon: fallbackIcon,
         localFilePath: localPosterPath,
+        blurHash: item.posterBlurHash,
       );
     } else {
       image = OptimizedMediaImage.poster(
@@ -915,9 +934,11 @@ Widget _buildPosterImage(
                   fit: BoxFit.cover,
                   placeholder: _buildPosterLoadingPlaceholder,
                   fallbackIcon: fallbackIcon,
+                  blurHash: item.posterBlurHash,
                 );
               },
         localFilePath: localPosterPath,
+        blurHash: item.posterBlurHash,
       );
     }
 
@@ -1073,21 +1094,68 @@ class _ClickableTextState extends State<_ClickableText> {
   }
 }
 
-/// Static skeleton placeholder with a fixed semi-transparent fill.
-class SkeletonLoader extends StatelessWidget {
+/// Skeleton placeholder with a subtle shimmer sweep on the full effects tier;
+/// static semi-transparent fill on the reduced tier.
+class SkeletonLoader extends StatefulWidget {
   final Widget? child;
   final BorderRadius? borderRadius;
 
   const SkeletonLoader({super.key, this.child, this.borderRadius});
 
   @override
+  State<SkeletonLoader> createState() => _SkeletonLoaderState();
+}
+
+class _SkeletonLoaderState extends State<SkeletonLoader> with SingleTickerProviderStateMixin {
+  AnimationController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!DevicePerformance.isReduced) {
+      _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.075),
-        borderRadius: borderRadius ?? BorderRadius.circular(tokens(context).radiusSm),
-      ),
-      child: child,
+    final base = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.075);
+    final radius = widget.borderRadius ?? BorderRadius.circular(tokens(context).radiusSm);
+    final controller = _controller;
+
+    if (controller == null) {
+      return Container(
+        decoration: BoxDecoration(color: base, borderRadius: radius),
+        child: widget.child,
+      );
+    }
+
+    final highlight = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.14);
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, child) {
+        // Sweep center travels -0.3 → 1.3 so the band fully enters and exits.
+        final t = -0.3 + controller.value * 1.6;
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            gradient: LinearGradient(
+              begin: .centerLeft,
+              end: .centerRight,
+              colors: [base, highlight, base],
+              stops: [(t - 0.25).clamp(0.0, 1.0), t.clamp(0.0, 1.0), (t + 0.25).clamp(0.0, 1.0)],
+            ),
+          ),
+          child: child,
+        );
+      },
+      child: widget.child,
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 import '../media/ids.dart';
 import 'dart:io';
 
@@ -6,6 +7,7 @@ import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../navigation/profile_navigation_scope.dart';
+import '../services/device_performance.dart';
 import '../services/image_cache_service.dart';
 import 'package:flutter/services.dart';
 import 'package:plezy/utils/platform_detector.dart';
@@ -195,6 +197,10 @@ class MediaDetailScreen extends StatefulWidget {
   final String? initialSeasonId;
   final String? initialEpisodeId;
 
+  /// Hero tag flown from the tapped poster (pointer platforms only). Null on TV
+  /// and from entry points without a source poster (deep links, context menu).
+  final Object? heroTag;
+
   const MediaDetailScreen({
     super.key,
     required this.metadata,
@@ -202,6 +208,7 @@ class MediaDetailScreen extends StatefulWidget {
     this.initialSeasonIndex,
     this.initialSeasonId,
     this.initialEpisodeId,
+    this.heroTag,
   });
 
   @override
@@ -214,6 +221,7 @@ PageRoute<bool> mediaDetailRoute({
   int? initialSeasonIndex,
   String? initialSeasonId,
   String? initialEpisodeId,
+  Object? heroTag,
 }) {
   final page = MediaDetailScreen(
     metadata: metadata,
@@ -221,6 +229,7 @@ PageRoute<bool> mediaDetailRoute({
     initialSeasonIndex: initialSeasonIndex,
     initialSeasonId: initialSeasonId,
     initialEpisodeId: initialEpisodeId,
+    heroTag: heroTag,
   );
   if (!PlatformDetector.isTV()) return MaterialPageRoute<bool>(builder: (_) => page);
 
@@ -3115,8 +3124,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
           child: Focus(
             onKeyEvent: _handleMediaDetailBackKey,
             child: Scaffold(
+              // Transparent so the frosted backdrop shows behind the scroll.
+              // Falls back to the theme background on the reduced tier / TV.
+              backgroundColor: _frostedBackdropEnabled(isTv) ? Colors.transparent : null,
               body: Stack(
                 children: [
+                  if (_frostedBackdropEnabled(isTv)) Positioned.fill(child: _buildFrostedBackdrop(context, metadata)),
                   CustomScrollView(
                     primary: true,
                     slivers: [
@@ -4065,14 +4078,72 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     return _getRelatedHubIcon(hub);
   }
 
+  /// Frosted full-bleed backdrop behind the whole detail scroll. Off on the
+  /// reduced-performance tier (a full-screen blur is expensive on old Apple TVs)
+  /// and on TV, where the hero already fills the screen.
+  bool _frostedBackdropEnabled(bool isTv) => !isTv && !DevicePerformance.isReduced;
+
+  Widget _buildFrostedBackdrop(BuildContext context, MediaItem metadata) {
+    final bg = Theme.of(context).scaffoldBackgroundColor;
+    final size = MediaQuery.sizeOf(context);
+    final containerAspect = size.width / size.height;
+    final artPaths = metadata.heroArtCandidates(containerAspectRatio: containerAspect);
+    if (artPaths.isEmpty) return ColoredBox(color: bg);
+
+    final client = _getArtworkMediaClient(context);
+    final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
+    final (_, memHeight) = MediaImageHelper.getMemCacheDimensions(
+      displayWidth: (size.width * dpr).round(),
+      displayHeight: (size.height * dpr).round(),
+      imageType: ImageType.art,
+    );
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+          child: _buildHeroNetworkArtwork(
+            context,
+            client: client,
+            artworkPaths: artPaths,
+            mediaSize: size,
+            dpr: dpr,
+            memCacheHeight: memHeight,
+          ),
+        ),
+        // Heavy scrim keeps body text readable over the busy art; it also masks
+        // the seam where the hero's opaque gradient bottom meets this layer.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [bg.withValues(alpha: 0.72), bg.withValues(alpha: 0.9), bg],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildHeroHeader(BuildContext context, MediaItem metadata, Size size, double headerHeight) {
+    // Hero flight from the tapped poster: the backdrop grows out of the poster
+    // rect on push. Tag is set only on pointer platforms (see MediaCard).
+    Widget wrapHero(Widget backdrop) {
+      final tag = widget.heroTag;
+      return tag == null ? backdrop : Hero(tag: tag, child: backdrop);
+    }
+
     return Stack(
       children: [
         // Background Art (fixed height, no parallax)
         SizedBox(
           height: headerHeight,
           width: double.infinity,
-          child: Builder(
+          child: wrapHero(
+            Builder(
             builder: (context) {
               final containerAspect = size.width / headerHeight;
               final heroArtPaths = metadata.heroArtCandidates(containerAspectRatio: containerAspect);
@@ -4107,6 +4178,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                 ),
               );
             },
+          ),
           ),
         ),
 

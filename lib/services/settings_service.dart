@@ -9,6 +9,7 @@ import 'image_cache_service.dart';
 import 'package:plezy/utils/app_logger.dart';
 import '../i18n/strings.g.dart';
 import '../models/mpv_config_models.dart';
+import '../mpv/models.dart' show AudioNormalizationMode;
 import '../models/external_player_models.dart';
 import 'base_shared_preferences_service.dart';
 import 'device_performance.dart';
@@ -334,6 +335,8 @@ class SettingsService extends BaseSharedPreferencesService {
   static const crashReporting = BoolPref('crash_reporting', defaultValue: true);
   static const enableHardwareDecoding = BoolPref('enable_hardware_decoding', defaultValue: true);
   static const enableHDR = BoolPref('enable_hdr', defaultValue: true);
+  /// Recent search queries, most-recent first, capped at 15 by the search UI.
+  static const searchHistory = StringListPref('search_history');
   static const preferredVideoCodec = StringPref('preferred_video_codec', defaultValue: 'auto');
   static const preferredAudioCodec = StringPref('preferred_audio_codec', defaultValue: 'auto');
   static const viewMode = EnumPref<ViewMode>('view_mode', values: ViewMode.values, defaultValue: ViewMode.grid);
@@ -440,6 +443,16 @@ class SettingsService extends BaseSharedPreferencesService {
   static const ambientLightingIntensity = StringPref('ambient_lighting_intensity', defaultValue: 'balanced');
   static const audioPassthrough = _AudioPassthroughPref();
   static const audioNormalization = BoolPref('audio_normalization');
+
+  /// Loudness mode: Off / Normalize / Night. Supersedes the legacy on/off
+  /// [audioNormalization] bool, whose value seeds the default so existing users
+  /// keep normalization on until they pick a mode explicitly.
+  static final audioNormalizationMode = EnumPref<AudioNormalizationMode>(
+    'audio_normalization_mode',
+    values: AudioNormalizationMode.values,
+    defaultValueProvider: () =>
+        instance.read(audioNormalization) ? AudioNormalizationMode.normalize : AudioNormalizationMode.off,
+  );
   static const liveTvDefaultFavorites = BoolPref('live_tv_default_favorites');
   static const matchRefreshRate = BoolPref('match_refresh_rate');
   static const matchDynamicRange = BoolPref('match_dynamic_range');

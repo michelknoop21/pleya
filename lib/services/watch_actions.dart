@@ -8,6 +8,7 @@ import '../media/media_item.dart';
 import '../media/media_server_client.dart';
 import '../providers/offline_mode_provider.dart';
 import '../providers/offline_watch_provider.dart';
+import '../utils/haptics.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/watch_state_notifier.dart';
 import 'trackers/tracker_coordinator.dart';
@@ -41,6 +42,7 @@ class WatchActions {
     required bool watched,
     bool? offline,
   }) async {
+    Haptics.selection();
     final isOffline = offline ?? context.read<OfflineModeProvider>().isOffline;
     final serverId = item.serverId;
 
