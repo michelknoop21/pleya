@@ -278,6 +278,10 @@ class UserProfileProvider extends ChangeNotifier with DisposableChangeNotifierMi
     return _resolveActivePlexUserToken();
   }
 
+  /// The active Home user's Plex token, used by the seerr integration for
+  /// one-tap Plex login and silent re-auth. Null on Jellyfin-only setups.
+  Future<String?> currentPlexUserToken() => _resolveActivePlexUserToken();
+
   @visibleForTesting
   String? get debugWatchedProfileConnectionProfileId => _watchedProfileConnectionProfileId;
 

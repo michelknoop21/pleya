@@ -218,12 +218,29 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
             ),
           );
 
+    // Request via Jellyseerr/Overseerr — only when a server is configured, the
+    // item is a movie/show, and we're online (needs a TMDB-id lookup).
+    final seerrConfigured = context.watch<SeerrProvider>().isConfigured;
+    final requestAction = (seerrConfigured && !widget.isOffline && (metadata.isMovie || metadata.isShow))
+        ? FocusableAction(
+            debugLabel: 'detail_request',
+            onPressed: () => unawaited(_handleRequestPressed(metadata)),
+            builder: (context, state) => iconActionButton(
+              state,
+              onPressed: () => unawaited(_handleRequestPressed(metadata)),
+              icon: const AppIcon(Symbols.playlist_add_rounded, fill: 1),
+              tooltip: t.seerr.request,
+            ),
+          )
+        : null;
+
     final allActions = <FocusableAction>[
       playAction,
       ?trailerAction,
       ?shuffleAction,
       ?downloadAction,
       watchedAction,
+      ?requestAction,
       ?moreActionsAction,
     ];
 
@@ -254,7 +271,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
         return compact;
       }
 
-      final medium = <FocusableAction>[playAction, ?downloadAction, watchedAction, ?moreActionsAction];
+      final medium = <FocusableAction>[playAction, ?downloadAction, watchedAction, ?requestAction, ?moreActionsAction];
       if (!maxWidth.isFinite || estimatedRowWidth(medium) <= maxWidth) return medium;
 
       final compact = <FocusableAction>[playAction, watchedAction, ?moreActionsAction];
@@ -286,6 +303,34 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
         return actionBar(compactActionsFor(maxWidth));
       },
     );
+  }
+
+  /// Resolve the item's TMDB id and open the seerr request sheet. The id
+  /// lookup happens on press (not preemptively) so the detail screen stays
+  /// cheap; a missing id just surfaces a non-fatal error.
+  Future<void> _handleRequestPressed(MediaItem metadata) async {
+    if (!context.read<SeerrProvider>().isConfigured) return;
+    final client = _getMediaClientForMetadata(context);
+    if (client == null) return;
+    ExternalIds ids;
+    try {
+      ids = await client.fetchExternalIds(metadata.id);
+    } catch (_) {
+      ids = const ExternalIds();
+    }
+    if (!mounted) return;
+    final tmdb = ids.tmdb;
+    if (tmdb == null) {
+      showErrorSnackBar(context, t.seerr.errorGeneric);
+      return;
+    }
+    final media = SeerrMedia(
+      tmdbId: tmdb,
+      mediaType: metadata.isMovie ? 'movie' : 'tv',
+      title: metadata.displayTitle,
+    );
+    final requested = await SeerrRequestSheet.show(context, media: media);
+    if (requested == true && mounted) showSuccessSnackBar(context, t.seerr.requestSuccess);
   }
 
   Future<void> _handleWatchedTogglePressed(MediaItem metadata) async {

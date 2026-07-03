@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -8,6 +10,13 @@ import '../focus/focusable_text_field.dart';
 import '../i18n/strings.g.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
+import '../models/seerr/seerr_media.dart';
+import '../providers/seerr_provider.dart';
+import '../services/seerr/seerr_constants.dart';
+import '../widgets/focusable_list_tile.dart';
+import '../widgets/loading_indicator_box.dart';
+import '../widgets/seerr_request_sheet.dart';
+import '../widgets/seerr_status_badge.dart';
 import '../mixins/controller_disposer_mixin.dart';
 import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
@@ -57,6 +66,12 @@ class _SearchScreenState extends State<SearchScreen>
   String? _focusResultsForQuery;
   _SearchFilter _activeFilter = _SearchFilter.all;
   List<String> _history = const [];
+
+  // Jellyseerr/Overseerr fallback: an explicit, one-shot search the user
+  // triggers when a title isn't in their library (never per-keystroke).
+  List<SeerrMedia> _seerrResults = const [];
+  bool _seerrSearching = false;
+  bool _seerrSearched = false;
 
   @override
   void initState() {
@@ -147,6 +162,9 @@ class _SearchScreenState extends State<SearchScreen>
     setStateIfMounted(() {
       _isSearching = true;
       _hasSearched = true;
+      _seerrResults = const [];
+      _seerrSearched = false;
+      _seerrSearching = false;
     });
 
     try {
@@ -177,6 +195,65 @@ class _SearchScreenState extends State<SearchScreen>
         showErrorSnackBar(context, t.errors.searchFailed(error: e));
       }
     }
+  }
+
+  /// One-shot Jellyseerr/Overseerr search for the current query. Explicit
+  /// (user-triggered) so we never fire a request per keystroke.
+  Future<void> _searchSeerr() async {
+    final client = context.read<SeerrProvider>().client;
+    final query = _searchController.text.trim();
+    if (client == null || query.isEmpty || _seerrSearching) return;
+    setStateIfMounted(() {
+      _seerrSearching = true;
+      _seerrSearched = true;
+    });
+    try {
+      final page = await client.search(query);
+      // Drop the result if the query changed while the request was in flight,
+      // so stale Seerr results can't repaint under a newer query.
+      if (!mounted || _searchController.text.trim() != query) return;
+      setStateIfMounted(() {
+        _seerrResults = page.items;
+        _seerrSearching = false;
+      });
+    } catch (e) {
+      if (!mounted || _searchController.text.trim() != query) return;
+      setStateIfMounted(() => _seerrSearching = false);
+      showErrorSnackBar(context, t.seerr.errorNetwork);
+    }
+  }
+
+  Widget _buildSeerrFallback(BuildContext context) {
+    final theme = Theme.of(context);
+    final children = <Widget>[
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: FocusableListTile(
+          leading: const AppIcon(Symbols.travel_explore_rounded, fill: 1),
+          title: Text(t.seerr.searchOnSeerr),
+          trailing: _seerrSearching
+              ? const LoadingIndicatorBox(size: 18)
+              : const AppIcon(Symbols.chevron_right_rounded, fill: 1),
+          onTap: _seerrSearching ? null : _searchSeerr,
+        ),
+      ),
+      if (_seerrSearched && !_seerrSearching && _seerrResults.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(t.seerr.noResults, style: theme.textTheme.bodyMedium),
+        ),
+      for (final media in _seerrResults)
+        FocusableListTile(
+          leading: AppIcon(media.isMovie ? Symbols.movie_rounded : Symbols.tv_rounded, fill: 1),
+          title: Text(media.title),
+          subtitle: media.year != null ? Text(media.year!) : null,
+          trailing: media.status != SeerrMediaStatus.unknown
+              ? SeerrStatusBadge(status: media.status, compact: true)
+              : const AppIcon(Symbols.playlist_add_rounded, fill: 1),
+          onTap: () => unawaited(SeerrRequestSheet.show(context, media: media)),
+        ),
+    ];
+    return SliverList(delegate: SliverChildListDelegate(children));
   }
 
   /// OSK "Search" / hardware Enter on TV: jump to results, or force the
@@ -418,16 +495,30 @@ class _SearchScreenState extends State<SearchScreen>
                   ),
                 )
             else if (_searchResults.isEmpty)
-              SliverFillRemaining(
-                child: StateView.empty(
-                  title: t.messages.noResultsFound,
-                  message: t.search.tryDifferentTerm,
-                  icon: Symbols.search_off_rounded,
+              if (context.watch<SeerrProvider>().isConfigured) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                    child: Text(
+                      t.messages.noResultsFound,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 ),
-              )
+                _buildSeerrFallback(context),
+              ] else
+                SliverFillRemaining(
+                  child: StateView.empty(
+                    title: t.messages.noResultsFound,
+                    message: t.search.tryDifferentTerm,
+                    icon: Symbols.search_off_rounded,
+                  ),
+                )
             else ...[
               SliverToBoxAdapter(child: _buildFilterChips(context)),
               _buildResultsList(context),
+              if (context.watch<SeerrProvider>().isConfigured) _buildSeerrFallback(context),
             ],
           ],
         ),

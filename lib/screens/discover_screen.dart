@@ -74,6 +74,8 @@ import 'main_screen.dart';
 import 'settings/settings_screen.dart';
 import '../watch_together/watch_together.dart';
 import '../providers/companion_remote_provider.dart';
+import '../providers/seerr_provider.dart';
+import 'seerr/seerr_discover_screen.dart';
 import '../widgets/companion_remote/remote_session_dialog.dart';
 import 'companion_remote/mobile_remote_screen.dart';
 
@@ -982,6 +984,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                         iconColor: foregroundColor,
                         onPressed: _discover.load,
                       ),
+                      // Jellyseerr/Overseerr discover — only when configured.
+                      if (context.watch<SeerrProvider>().isConfigured)
+                        FocusableAction(
+                          icon: Symbols.playlist_add_rounded,
+                          iconColor: foregroundColor,
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const SeerrDiscoverScreen()),
+                          ),
+                        ),
                       // Watch Together
                       FocusableAction(
                         onPressed: () =>
