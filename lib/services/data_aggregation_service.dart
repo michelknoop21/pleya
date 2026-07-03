@@ -113,6 +113,14 @@ class DataAggregationService {
       }).toList();
     }
 
+    // Watched movies without active progress don't belong in Continue
+    // Watching — some servers keep them in the hub while scrobble processing
+    // settles, and out-of-band watches (another client) land here too.
+    // Movies only: a series row is the server's next-episode substitution.
+    filteredOnDeck = filteredOnDeck
+        .where((item) => item.kind != MediaKind.movie || item.isUnwatchedOrInProgress)
+        .toList();
+
     // Sort by most recently viewed, falling back to addedAt for unwatched items.
     // Same key as JellyfinClient's continue-watching merge (MediaItem.recencySortKey)
     // so per-server and cross-server ordering can't drift apart.

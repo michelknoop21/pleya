@@ -18,15 +18,16 @@ import 'package:plezy/utils/watch_state_notifier.dart';
 
 import '../test_helpers/prefs.dart';
 
-MediaItem _item(String id, {String? parentId, String serverId = 'server_1'}) => MediaItem(
-  id: id,
-  backend: MediaBackend.plex,
-  kind: MediaKind.episode,
-  title: id,
-  serverId: serverId,
-  serverName: 'Server',
-  parentId: parentId,
-);
+MediaItem _item(String id, {String? parentId, String serverId = 'server_1', MediaKind kind = MediaKind.episode}) =>
+    MediaItem(
+      id: id,
+      backend: MediaBackend.plex,
+      kind: kind,
+      title: id,
+      serverId: serverId,
+      serverName: 'Server',
+      parentId: parentId,
+    );
 
 MediaHub _hub(
   String id, {
@@ -214,6 +215,43 @@ void main() {
 
     expect(sawImmediateRemoval, isTrue);
     expect(provider.onDeck.map((i) => i.id), ['ep-2']);
+  });
+
+  test('watched movie leaves the row immediately and a stale refetch cannot bring it back', () async {
+    final movie = _item('movie-1', kind: MediaKind.movie);
+    // The refetch keeps returning the movie (scrobble race on the server).
+    aggregation.onDeckResult = () => [movie, _item('ep-1')];
+    await provider.load();
+
+    WatchStateNotifier().notifyWatched(item: movie);
+    await pumpEventQueue();
+
+    expect(provider.onDeck.map((i) => i.id), ['ep-1']);
+  });
+
+  test('watched episode keeps the series row for the refetch to advance', () async {
+    aggregation.onDeckResult = () => [_item('ep-1')];
+    await provider.load();
+
+    WatchStateNotifier().notifyWatched(item: _item('ep-1'));
+    await pumpEventQueue();
+
+    expect(provider.onDeck.map((i) => i.id), ['ep-1']);
+  });
+
+  test('restarting a watched movie lifts the suppression', () async {
+    final movie = _item('movie-1', kind: MediaKind.movie);
+    aggregation.onDeckResult = () => [movie];
+    await provider.load();
+
+    WatchStateNotifier().notifyWatched(item: movie);
+    await pumpEventQueue();
+    expect(provider.onDeck, isEmpty);
+
+    WatchStateNotifier().notifyProgress(item: movie, viewOffset: 60000, duration: 7200000);
+    await pumpEventQueue();
+
+    expect(provider.onDeck.map((i) => i.id), ['movie-1']);
   });
 
   test('library order change re-sorts hubs without any refetch', () async {

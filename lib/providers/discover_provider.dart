@@ -2,14 +2,17 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../i18n/strings.g.dart';
 import '../media/ids.dart';
 import '../media/media_hub.dart';
 import '../media/media_item.dart';
+import '../media/media_kind.dart';
 import '../media/media_server_client.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../mixins/event_aware.dart';
 import '../services/settings_service.dart';
 import '../services/data_aggregation_service.dart';
+import '../services/recommendations/hub_dedup.dart';
 import '../services/system_shelf_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
@@ -69,6 +72,16 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   List<MediaItem> _onDeck = [];
   List<MediaHub> _hubs = [];
+
+  /// Global keys of watched movies filtered out of every on-deck apply until
+  /// the server stops returning them — beats the scrobble race
+  /// deterministically (see [_onWatchStateChanged] / [_applyOnDeck]).
+  final Set<String> _suppressedOnDeckKeys = {};
+
+  /// "Because you watched X" recommendation rows (up to 3, one per recent
+  /// seed). Kept outside [_hubs] so library-order sorting, delta merges, and
+  /// hub filtering can't touch them.
+  List<MediaHub> _seedHubs = [];
   bool _hasMoreContinueWatching = false;
   DiscoverLoadState _onDeckState = DiscoverLoadState.initial;
   DiscoverLoadState _hubsState = DiscoverLoadState.initial;
@@ -100,7 +113,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   List<MediaItem>? _pendingSystemShelfItems;
 
   List<MediaItem> get onDeck => _onDeck;
-  List<MediaHub> get hubs => _hubs;
+  List<MediaHub> get hubs => _seedHubs.isEmpty ? _hubs : [..._seedHubs, ..._hubs];
   bool get hasMoreContinueWatching => _hasMoreContinueWatching;
 
   /// Raw load failure (unlocalized); the screen wraps it for display.
@@ -211,13 +224,14 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       if (isDisposed) return;
 
       final filteredHubs = _filterDiscoverHubs(fetchedHubs.hubs);
-      sortMediaHubsByLibraryOrder(filteredHubs, _libraries.libraries);
+      _orderDiscoverHubs(filteredHubs);
 
       appLogger.d('DiscoverProvider: ${_onDeck.length} on-deck items, ${filteredHubs.length} hubs');
-      _hubs = filteredHubs;
+      _hubs = _dedupeDiscoverHubs(filteredHubs);
       _hubsState = DiscoverLoadState.loaded;
       _loadedHubServerIds = fetchedHubs.succeededServerIds;
       safeNotifyListeners();
+      unawaited(_loadBecauseYouWatched());
     } catch (e) {
       appLogger.e('Failed to load discover content', error: e);
       if (isDisposed) return;
@@ -291,8 +305,8 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
           ..._hubs.where((hub) => hub.serverId == null || !succeededHubIds.contains(hub.serverId)),
           ..._filterDiscoverHubs(freshHubs.hubs),
         ];
-        sortMediaHubsByLibraryOrder(mergedHubs, _libraries.libraries);
-        _hubs = mergedHubs;
+        _orderDiscoverHubs(mergedHubs);
+        _hubs = _dedupeDiscoverHubs(mergedHubs);
         _loadedHubServerIds = {..._loadedHubServerIds, ...succeededHubIds};
       }
 
@@ -303,6 +317,71 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       // Keep the loaded state — stale rows beat an error flash.
       appLogger.w('DiscoverProvider: delta load failed for $ids', error: e);
     }
+  }
+
+  /// Build up to three "Because you watched X" rows from the most recently
+  /// watched, distinct titles across all online servers, each paired with its
+  /// related hub on the owning server. Fully fault-tolerant: any failure or
+  /// empty step simply leaves rows out (or keeps the previous set). Recomputed
+  /// on full loads only, entirely off the counted aggregation paths.
+  Future<void> _loadBecauseYouWatched() async {
+    try {
+      final clients = _multiServer.serverManager.onlineClients.values.toList();
+      if (clients.isEmpty) return;
+      final generation = _loadGeneration;
+      final recents = await Future.wait([
+        for (final client in clients)
+          client.fetchRecentlyWatched(limit: 5).catchError((Object _) => const <MediaItem>[]),
+      ]);
+
+      // Most-recent-first, then keep up to 3 distinct show/movie seeds so the
+      // rows don't all come from the same binge.
+      final merged = recents.expand((items) => items).toList()
+        ..sort((a, b) => b.recencySortKey.compareTo(a.recencySortKey));
+      final seeds = <MediaItem>[];
+      final usedIdentities = <String>{};
+      for (final item in merged) {
+        if (item.serverId == null || item.title == null) continue;
+        final identity = (item.grandparentTitle ?? item.title ?? item.id).toLowerCase();
+        if (!usedIdentities.add(identity)) continue;
+        seeds.add(item);
+        if (seeds.length >= 3) break;
+      }
+      if (seeds.isEmpty || isDisposed) return;
+
+      final rows = await Future.wait([
+        for (final seed in seeds) _relatedRowForSeed(seed).catchError((Object _) => null),
+      ]);
+      if (isDisposed || generation != _loadGeneration) return;
+
+      final newSeedHubs = [for (final row in rows) ?row];
+      if (newSeedHubs.isEmpty) return;
+      _seedHubs = newSeedHubs;
+      safeNotifyListeners();
+    } catch (e) {
+      appLogger.w('DiscoverProvider: because-you-watched rows failed (leaving them out)', error: e);
+    }
+  }
+
+  /// Resolves a single "Because you watched X" row for [seed] from the owning
+  /// server's related hub, or null when nothing usable comes back.
+  Future<MediaHub?> _relatedRowForSeed(MediaItem seed) async {
+    final serverId = seed.serverId;
+    final seedTitle = seed.title;
+    if (serverId == null || seedTitle == null) return null;
+    final client = _multiServer.getClientForServer(ServerId(serverId));
+    if (client == null) return null;
+    final relatedHubs = await client.fetchRelatedHubs(seed.id);
+    for (final hub in relatedHubs) {
+      final items = hub.items.where((item) => item.globalKey != seed.globalKey).toList();
+      if (items.isEmpty) continue;
+      return hub.copyWith(
+        identifier: 'home.becauseyouwatched',
+        title: t.discover.becauseYouWatched(title: seedTitle),
+        items: items,
+      );
+    }
+    return null;
   }
 
   /// Playback-progress hubs duplicate the top Continue Watching row.
@@ -396,6 +475,14 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   }
 
   void _applyOnDeck(List<MediaItem> fetched) {
+    if (_suppressedOnDeckKeys.isNotEmpty) {
+      // Self-cleaning: once the server stops returning a suppressed item, its
+      // scrobble has landed and the suppression is no longer needed.
+      _suppressedOnDeckKeys.retainAll({for (final item in fetched) item.globalKey});
+      if (_suppressedOnDeckKeys.isNotEmpty) {
+        fetched = fetched.where((item) => !_suppressedOnDeckKeys.contains(item.globalKey)).toList();
+      }
+    }
     final hasMore = fetched.length > continueWatchingPreviewLimit;
     _onDeck = hasMore ? fetched.take(continueWatchingPreviewLimit).toList() : fetched;
     _hasMoreContinueWatching = hasMore;
@@ -416,7 +503,9 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   }
 
   Set<String>? get _watchedGlobalKeys {
-    final keys = <String>{};
+    // Suppressed movies are no longer in _onDeck but must keep receiving
+    // events: a rewatch (unwatched/progress) has to lift the suppression.
+    final keys = <String>{..._suppressedOnDeckKeys};
     for (final item in _onDeck) {
       final serverId = item.serverId;
       if (serverId == null) return null;
@@ -429,14 +518,34 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   }
 
   void _onWatchStateChanged(WatchStateEvent event) {
-    if (event.changeType == WatchStateChangeType.removedFromContinueWatching) {
-      final remaining = _onDeck.where((item) => item.id != event.itemId).toList();
-      if (remaining.length != _onDeck.length) {
-        _onDeck = remaining;
-        safeNotifyListeners();
-      }
+    switch (event.changeType) {
+      case WatchStateChangeType.removedFromContinueWatching:
+        _removeFromOnDeck(event.globalKey);
+      case WatchStateChangeType.watched when event.mediaType == MediaKind.movie.id && event.isNowWatched != false:
+        // A finished movie leaves the row for good; suppress its key so the
+        // background refetch can't race the server's scrobble processing and
+        // bring it back with stale in-progress metadata. Episodes are left to
+        // the refetch: the server swaps in the next episode of the series.
+        _suppressedOnDeckKeys.add(event.globalKey);
+        _removeFromOnDeck(event.globalKey);
+      case WatchStateChangeType.unwatched:
+        _suppressedOnDeckKeys.remove(event.globalKey);
+      case WatchStateChangeType.progressUpdate:
+        // A rewatch must resurface immediately, but a trailing near-complete
+        // progress event (isNowWatched) must not undo the watched suppression.
+        if (event.isNowWatched != true) _suppressedOnDeckKeys.remove(event.globalKey);
+      default:
+        break;
     }
     unawaited(refreshContinueWatching());
+  }
+
+  void _removeFromOnDeck(String globalKey) {
+    final remaining = _onDeck.where((item) => item.globalKey != globalKey).toList();
+    if (remaining.length != _onDeck.length) {
+      _onDeck = remaining;
+      safeNotifyListeners();
+    }
   }
 
   void _onHiddenLibrariesChanged() {
@@ -455,12 +564,30 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     if (_hubs.isEmpty) return;
 
     final sortedHubs = List<MediaHub>.from(_hubs);
-    if (!sortMediaHubsByLibraryOrder(sortedHubs, _libraries.libraries)) return;
+    // Re-order only (items are already de-duplicated); a reorder introduces no
+    // new cross-row duplicates so we skip the dedup pass here.
+    final byLibrary = sortMediaHubsByLibraryOrder(sortedHubs, _libraries.libraries);
+    final byPriority = sortMediaHubsByPriority(sortedHubs);
+    if (!byLibrary && !byPriority) return;
     _hubs = sortedHubs;
     safeNotifyListeners();
   }
 
   List<String> _libraryOrderKeys() => [for (final library in _libraries.libraries) library.globalKey];
+
+  /// Orders discover hubs by library order, then lifts personalized/next-up/
+  /// fresh rows toward the top via [hubPriorityClass]. Mutates in place.
+  void _orderDiscoverHubs(List<MediaHub> hubs) {
+    sortMediaHubsByLibraryOrder(hubs, _libraries.libraries);
+    sortMediaHubsByPriority(hubs);
+  }
+
+  /// Removes cross-row duplicate items (an item shown in too many hubs), seeded
+  /// with the Continue Watching keys so those aren't echoed throughout the feed.
+  List<MediaHub> _dedupeDiscoverHubs(List<MediaHub> hubs) {
+    final continueWatchingKeys = {for (final item in _onDeck) item.globalKey};
+    return dedupeAcrossHubs(hubs, alreadyShownKeys: continueWatchingKeys);
+  }
 
   // --- Platform launcher shelf ----------------------------------------------
 
