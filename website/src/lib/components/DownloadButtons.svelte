@@ -2,129 +2,52 @@
   import AppleIcon from "~icons/simple-icons/apple";
   import GooglePlayIcon from "~icons/simple-icons/googleplay";
   import LinuxIcon from "~icons/simple-icons/linux";
-  import AmazonIcon from "~icons/cib/amazon";
-  import ChevronDownIcon from "~icons/heroicons/chevron-down-solid";
   import WindowsIcon from "./WindowsIcon.svelte";
+  import { PUBLIC_TESTFLIGHT_URL, betaLinkReady } from "$lib/config";
 
-  const linuxArchitectures = [
-    {
-      label: "x64 (Intel/AMD)",
-      formats: [
-        { label: ".deb (Debian/Ubuntu)", url: "https://github.com/edde746/plezy/releases/latest/download/plezy-linux-x64.deb" },
-        { label: ".rpm (Fedora/RHEL)", url: "https://github.com/edde746/plezy/releases/latest/download/plezy-linux-x64.rpm" },
-        { label: ".pkg.tar.zst (Arch)", url: "https://github.com/edde746/plezy/releases/latest/download/plezy-linux-x64.pkg.tar.zst" },
-        { label: ".tar.gz (Portable)", url: "https://github.com/edde746/plezy/releases/latest/download/plezy-linux-x64.tar.gz" },
-      ],
-    },
-    {
-      label: "ARM64",
-      formats: [
-        { label: ".deb (Debian/Ubuntu)", url: "https://github.com/edde746/plezy/releases/latest/download/plezy-linux-arm64.deb" },
-        { label: ".rpm (Fedora/RHEL)", url: "https://github.com/edde746/plezy/releases/latest/download/plezy-linux-arm64.rpm" },
-        { label: ".pkg.tar.zst (Arch)", url: "https://github.com/edde746/plezy/releases/latest/download/plezy-linux-arm64.pkg.tar.zst" },
-        { label: ".tar.gz (Portable)", url: "https://github.com/edde746/plezy/releases/latest/download/plezy-linux-arm64.tar.gz" },
-      ],
-    },
+  const comingSoon = [
+    { label: "Android", icon: GooglePlayIcon },
+    { label: "Windows", icon: WindowsIcon },
+    { label: "Linux", icon: LinuxIcon },
   ];
-
-  let linuxOpen = $state(false);
-  let hovered = $state(false);
-  let showDropdown = $derived(linuxOpen || hovered);
 </script>
 
-<svelte:window onclick={() => { linuxOpen = false; }} />
-
 <div class="download-buttons">
-  <!-- Primary row -->
-  <div class="store-buttons">
+  <!-- Primary: TestFlight beta CTA for Apple platforms -->
+  {#if betaLinkReady}
     <a
-      href="https://apps.apple.com/us/app/id6754315964"
+      href={PUBLIC_TESTFLIGHT_URL}
       target="_blank"
       rel="noopener noreferrer"
-      class="store-button"
+      class="beta-cta"
     >
       <AppleIcon />
-      App Store
+      <span class="beta-cta-text">
+        <span class="beta-cta-title">Join the beta</span>
+        <span class="beta-cta-sub">iPhone · Apple TV · macOS</span>
+      </span>
     </a>
-
-    <a
-      href="https://play.google.com/store/apps/details?id=com.edde746.plezy"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="store-button"
-    >
-      <GooglePlayIcon />
-      Google Play
-    </a>
-
-    <a
-      href="https://www.amazon.com/gp/product/B0GK65CVS1"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="store-button"
-    >
-      <AmazonIcon />
-      Fire TV
-    </a>
-  </div>
-
-  <!-- Desktop row -->
-  <div class="desktop-buttons">
-    <a
-      href="https://github.com/edde746/plezy/releases/latest/download/plezy-windows-installer.exe"
-      class="desktop-button"
-    >
-      <WindowsIcon />
-      Windows
-    </a>
-
-    <a
-      href="https://github.com/edde746/plezy/releases/latest/download/plezy-macos.dmg"
-      class="desktop-button"
-    >
+  {:else}
+    <button type="button" class="beta-cta" disabled aria-disabled="true">
       <AppleIcon />
-      macOS
-    </a>
+      <span class="beta-cta-text">
+        <span class="beta-cta-title">Join the beta — coming soon</span>
+        <span class="beta-cta-sub">iPhone · Apple TV · macOS</span>
+      </span>
+    </button>
+  {/if}
 
-    <!-- Linux dropdown -->
-    <div
-      class="linux-control"
-      role="group"
-      onpointerenter={(e) => { if (e.pointerType === 'mouse') hovered = true; }}
-      onpointerleave={(e) => { if (e.pointerType === 'mouse') hovered = false; }}
-    >
-      <button
-        type="button"
-        onclick={(e) => { e.stopPropagation(); linuxOpen = !linuxOpen; }}
-        aria-expanded={showDropdown}
-        aria-haspopup="true"
-        class="desktop-button linux-button"
-        class:active={showDropdown}
-      >
-        <LinuxIcon />
-        Linux
-        <span class="chevron" class:open={showDropdown}>
-          <ChevronDownIcon />
+  <!-- Other platforms: not yet available -->
+  <div class="soon-row">
+    <span class="soon-label">More platforms coming</span>
+    <div class="soon-chips">
+      {#each comingSoon as platform}
+        {@const Icon = platform.icon}
+        <span class="soon-chip">
+          <Icon />
+          {platform.label}
         </span>
-      </button>
-
-      <div
-        role="menu"
-        class="linux-menu"
-        class:open={showDropdown}
-      >
-        {#each linuxArchitectures as arch, i}
-          {#if i > 0}
-            <div class="linux-separator"></div>
-          {/if}
-          <div class="linux-arch-label">{arch.label}</div>
-          {#each arch.formats as format}
-            <a href={format.url} role="menuitem" onclick={() => { linuxOpen = false; }} class="linux-menu-item">
-              {format.label}
-            </a>
-          {/each}
-        {/each}
-      </div>
+      {/each}
     </div>
   </div>
 </div>
@@ -133,138 +56,99 @@
   .download-buttons {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.25rem;
   }
 
-  .store-buttons,
-  .desktop-buttons {
-    display: flex;
-    flex-wrap: wrap;
-  }
-
-  .store-buttons {
-    gap: 0.75rem;
-  }
-
-  .desktop-buttons {
-    gap: 0.625rem;
-  }
-
-  .store-button,
-  .desktop-button {
+  .beta-cta {
     display: inline-flex;
     align-items: center;
-    border-radius: 9999px;
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-    transition: background-color 150ms ease, color 150ms ease;
-  }
-
-  .store-button {
-    gap: 0.625rem;
-    padding: 0.75rem 1.25rem;
-    color: #111827;
-    background: #fff;
-    font-weight: 600;
-  }
-
-  .store-button:hover {
-    background: #f3f4f6;
-  }
-
-  .store-button :global(svg) {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
-
-  .desktop-button {
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border: 1px solid var(--color-border);
-    background: color-mix(in srgb, var(--color-surface) 80%, transparent);
-  }
-
-  .desktop-button:hover,
-  .linux-button.active {
-    background: var(--color-surface-hover);
-  }
-
-  .desktop-button :global(svg) {
-    width: 0.875rem;
-    height: 0.875rem;
-    opacity: 0.7;
-  }
-
-  .linux-control {
-    position: relative;
-  }
-
-  .linux-button {
-    cursor: default;
-  }
-
-  .chevron {
-    width: 0.75rem;
-    height: 0.75rem;
-    transition: transform 300ms ease;
-  }
-
-  .chevron.open {
-    transform: rotate(180deg);
-  }
-
-  .chevron :global(svg) {
-    width: 0.75rem;
-    height: 0.75rem;
-    opacity: 1;
-  }
-
-  .linux-menu {
-    position: absolute;
-    bottom: 100%;
-    left: 0;
-    z-index: 10;
-    width: 14rem;
-    margin-bottom: 0.5rem;
-    overflow: hidden;
-    border: 1px solid var(--color-border);
+    gap: 0.875rem;
+    align-self: flex-start;
+    min-height: 3.5rem;
+    padding: 0.75rem 1.5rem;
     border-radius: 1rem;
-    background: var(--color-surface);
-    box-shadow:
-      0 20px 25px -5px rgb(0 0 0 / 0.1),
-      0 8px 10px -6px rgb(0 0 0 / 0.1);
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 150ms ease, visibility 150ms ease;
+    background: var(--gradient-brand);
+    color: #fff;
+    text-align: left;
+    transition: filter 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+    box-shadow: 0 8px 30px -10px var(--color-accent-glow);
   }
 
-  .linux-menu.open {
-    opacity: 1;
-    visibility: visible;
+  .beta-cta:hover:not(:disabled) {
+    filter: brightness(1.08);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 40px -12px var(--color-accent-glow);
   }
 
-  .linux-separator {
-    border-top: 1px solid var(--color-border);
+  .beta-cta:active:not(:disabled) {
+    transform: translateY(0);
   }
 
-  .linux-arch-label {
-    padding: 0.625rem 1rem 0.25rem;
-    color: var(--color-text-muted);
+  .beta-cta:disabled {
+    cursor: default;
+    filter: saturate(0.55) brightness(0.8);
+    box-shadow: none;
+  }
+
+  .beta-cta :global(svg) {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex-shrink: 0;
+  }
+
+  .beta-cta-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+
+  .beta-cta-title {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .beta-cta-sub {
+    font-size: 0.75rem;
+    font-weight: 500;
+    opacity: 0.85;
+    letter-spacing: 0.01em;
+  }
+
+  .soon-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+
+  .soon-label {
+    color: var(--color-text-faint);
     font-size: 0.75rem;
     font-weight: 600;
-    letter-spacing: 0.025em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
   }
 
-  .linux-menu-item {
-    display: block;
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-    transition: background-color 150ms ease;
+  .soon-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
-  .linux-menu-item:hover {
-    background: var(--color-surface-hover);
+  .soon-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    border: 1px solid var(--color-border);
+    border-radius: 9999px;
+    color: var(--color-text-faint);
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  .soon-chip :global(svg) {
+    width: 0.875rem;
+    height: 0.875rem;
+    opacity: 0.7;
   }
 </style>

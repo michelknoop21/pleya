@@ -1,56 +1,50 @@
 <script lang="ts">
   import ScrollReveal from "./ScrollReveal.svelte";
-  import AppleIcon from "~icons/simple-icons/apple";
-  import GooglePlayIcon from "~icons/simple-icons/googleplay";
-  import LinuxIcon from "~icons/simple-icons/linux";
-  import AniListIcon from "~icons/simple-icons/anilist";
-  import MyAnimeListIcon from "~icons/simple-icons/myanimelist";
-  import SimklIcon from "~icons/simple-icons/simkl";
+  import PlexIcon from "~icons/simple-icons/plex";
+  import JellyfinIcon from "~icons/simple-icons/jellyfin";
   import TraktIcon from "~icons/simple-icons/trakt";
-  import WindowsIcon from "./WindowsIcon.svelte";
+  import LockIcon from "~icons/heroicons/lock-closed-solid";
+  import TvIcon from "~icons/heroicons/tv-solid";
 </script>
 
 <section id="features" class="features-section">
   <ScrollReveal>
     <p class="section-label">Features</p>
-    <h2 class="section-heading">Everything you need to stream</h2>
+    <h2 class="section-heading">Made for people who love their library</h2>
     <p class="section-description">
-      Built for people who care about quality as much as convenience.
+      Every detail tuned for quality, speed, and privacy — the way streaming your own media should feel.
     </p>
   </ScrollReveal>
 
   <div class="bento-grid">
-    <!-- HERO: Wide Codec Support — 2col × 2row -->
+    <!-- HERO: On-device recommendations — 2col × 2row -->
     <ScrollReveal class="bento-codec">
       <div class="glass-card feature-card codec-card">
         <div class="card-content">
-          <h3 class="card-title large">Wide Codec Support</h3>
+          <h3 class="card-title large">Recommendations that never leave your device</h3>
           <p class="card-copy codec-copy">
-            Play without transcoding. Your server does less work — you get better quality.
+            Pleya learns what you love and lines up what to watch next — all computed locally.
+            Your taste profile stays on your phone. Nothing is uploaded, tracked, or sold.
           </p>
         </div>
-        <!-- Codec wall with accent highlights on key codecs -->
+        <!-- Local taste tokens -->
         <div class="codec-wall" aria-hidden="true">
-          <span class="codec-accent">HEVC</span>
-          <span class="codec-accent-80">AV1</span>
-          <span class="codec-text-70">H.264</span>
-          <span class="codec-text-70">VP9</span>
-          <span class="codec-accent-60">AAC</span>
-          <span class="codec-text-50">FLAC</span>
-          <span class="codec-text-50">OPUS</span>
-          <span class="codec-text-50">EAC3</span>
-          <span class="codec-text-40">DTS</span>
-          <span class="codec-text-40">MPEG-4</span>
-          <span class="codec-text-30">VP8</span>
-          <span class="codec-text-30">ALAC</span>
-          <span class="codec-text-30">TrueHD</span>
-          <span class="codec-text-20">MPEG-2</span>
-          <span class="codec-text-20">VC-1</span>
-          <span class="codec-text-20">AC3</span>
-          <span class="codec-text-15">PCM</span>
-          <span class="codec-text-10">Vorbis</span>
-          <span class="codec-text-10">MP3</span>
-          <span class="codec-text-10">WMA</span>
+          <span class="codec-accent">Because you watched…</span>
+          <span class="codec-accent-80">Slow burn</span>
+          <span class="codec-text-70">Neo-noir</span>
+          <span class="codec-text-70">A24</span>
+          <span class="codec-accent-60">Sci-fi epics</span>
+          <span class="codec-text-50">Studio Ghibli</span>
+          <span class="codec-text-50">Heist</span>
+          <span class="codec-text-50">Coming-of-age</span>
+          <span class="codec-text-40">Documentary</span>
+          <span class="codec-text-40">Directed by Villeneuve</span>
+          <span class="codec-text-30">Under 100 min</span>
+          <span class="codec-text-30">90s cult classics</span>
+          <span class="codec-text-20">Rewatch worthy</span>
+          <span class="codec-text-20">Finish the season</span>
+          <span class="codec-text-15">On-device</span>
+          <span class="codec-text-10">Private</span>
         </div>
         <div class="codec-fade"></div>
       </div>
@@ -61,59 +55,53 @@
       <div class="glass-card feature-card hdr-card">
         <!-- Subtle warm glow -->
         <div class="hdr-glow"></div>
-        <p class="card-eyebrow">Display</p>
+        <p class="card-eyebrow">Picture</p>
         <div class="card-bottom">
           <p class="hdr-title">
             HDR10+
           </p>
-          <p class="hdr-subtitle">Dolby Vision</p>
+          <p class="hdr-subtitle">Dolby Vision &amp; true-to-source color</p>
         </div>
       </div>
     </ScrollReveal>
 
-    <!-- Advanced Subtitles -->
+    <!-- Direct Play -->
     <ScrollReveal delay={100} class="bento-sub">
       <div class="glass-card feature-card sub-card">
-        <!-- Fake subtitle lines -->
+        <!-- Signal lines -->
         <div class="subtitle-lines" aria-hidden="true">
           <div class="subtitle-line wide"></div>
           <div class="subtitle-line short"></div>
         </div>
         <div>
-          <p class="card-title">Subtitles</p>
-          <p class="card-caption">SSA/ASS &middot; SRT &middot; PGS</p>
+          <p class="card-title">Direct Play</p>
+          <p class="card-caption">No transcoding &middot; your server does less</p>
         </div>
       </div>
     </ScrollReveal>
 
-    <!-- Cross-Platform — 1col × 2row tall -->
+    <!-- Plex & Jellyfin — 1col × 2row tall -->
     <ScrollReveal delay={80} class="bento-cross">
       <div class="glass-card feature-card cross-card">
-        <p class="card-title with-gap">Cross-Platform</p>
+        <p class="card-title with-gap">Plex &amp; Jellyfin</p>
         <div class="platform-list">
           <div class="platform-row">
             <div class="platform-icon-box">
-              <AppleIcon />
+              <PlexIcon />
             </div>
-            <span>iOS &middot; macOS</span>
+            <span>Plex</span>
           </div>
           <div class="platform-row">
             <div class="platform-icon-box">
-              <GooglePlayIcon />
+              <JellyfinIcon />
             </div>
-            <span>Android</span>
+            <span>Jellyfin</span>
           </div>
           <div class="platform-row">
             <div class="platform-icon-box">
-              <WindowsIcon />
+              <LockIcon />
             </div>
-            <span>Windows</span>
-          </div>
-          <div class="platform-row">
-            <div class="platform-icon-box">
-              <LinuxIcon />
-            </div>
-            <span>Linux</span>
+            <span>Quick Connect</span>
           </div>
         </div>
       </div>
@@ -122,7 +110,7 @@
     <!-- Offline Downloads -->
     <ScrollReveal delay={150} class="bento-offline">
       <div class="glass-card feature-card offline-card">
-        <p class="card-title">Offline</p>
+        <p class="card-title">Offline downloads</p>
         <!-- Download progress visual -->
         <div class="progress-block" aria-hidden="true">
           <div class="progress-track">
@@ -153,47 +141,33 @@
       </div>
     </ScrollReveal>
 
-    <!-- Tracker Sync -->
+    <!-- Trakt Sync -->
     <ScrollReveal delay={210} class="bento-trackers">
       <div class="glass-card feature-card tracker-card">
         <div class="tracker-copy">
-          <p class="card-title">Tracker Sync</p>
-          <p class="card-caption">Progress, ratings, and watch history</p>
+          <p class="card-title">Trakt sync</p>
+          <p class="card-caption">Bring your watch history and ratings along</p>
         </div>
-        <div class="tracker-grid" aria-label="Supported trackers">
+        <div class="tracker-grid" aria-label="Trakt integration">
           <div class="tracker-pill trakt">
             <TraktIcon />
             <span>Trakt</span>
-          </div>
-          <div class="tracker-pill mal">
-            <MyAnimeListIcon />
-            <span>MAL</span>
-          </div>
-          <div class="tracker-pill anilist">
-            <AniListIcon />
-            <span>AniList</span>
-          </div>
-          <div class="tracker-pill simkl">
-            <SimklIcon />
-            <span>Simkl</span>
           </div>
         </div>
       </div>
     </ScrollReveal>
 
-    <!-- Much More — full width banner -->
+    <!-- tvOS living-room experience — full width banner -->
     <ScrollReveal delay={270} class="bento-more">
       <div class="glass-card feature-card more-card">
         <div>
-          <p class="card-title">& much more</p>
+          <p class="card-title">A Netflix-style experience on Apple TV</p>
           <p class="more-description">
-            Skip intros, chapter support, gestures, and new features added regularly.
+            A cinematic, remote-friendly interface built for the couch — big art, smooth rows, and instant playback.
           </p>
         </div>
-        <div class="dot-row" aria-hidden="true">
-          <div class="dot strong"></div>
-          <div class="dot medium"></div>
-          <div class="dot faint"></div>
+        <div class="tv-badge" aria-hidden="true">
+          <TvIcon />
         </div>
       </div>
     </ScrollReveal>
@@ -515,21 +489,6 @@
     background: color-mix(in srgb, #ed1c24 12%, transparent);
   }
 
-  .tracker-pill.mal {
-    color: #2e51a2;
-    background: color-mix(in srgb, #2e51a2 18%, transparent);
-  }
-
-  .tracker-pill.anilist {
-    color: #02a9ff;
-    background: color-mix(in srgb, #02a9ff 14%, transparent);
-  }
-
-  .tracker-pill.simkl {
-    color: #dbdbe0;
-    background: color-mix(in srgb, #dbdbe0 8%, transparent);
-  }
-
   .more-card {
     display: flex;
     align-items: center;
@@ -544,27 +503,21 @@
     line-height: 1rem;
   }
 
-  .dot-row {
+  .tv-badge {
     display: flex;
-    gap: 0.375rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.875rem;
+    background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+    color: var(--color-accent-2);
   }
 
-  .dot {
-    width: 0.375rem;
-    height: 0.375rem;
-    border-radius: 9999px;
-  }
-
-  .dot.strong {
-    background: color-mix(in srgb, var(--color-accent) 60%, transparent);
-  }
-
-  .dot.medium {
-    background: color-mix(in srgb, var(--color-accent) 40%, transparent);
-  }
-
-  .dot.faint {
-    background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  .tv-badge :global(svg) {
+    width: 1.375rem;
+    height: 1.375rem;
   }
 
   .codec-wall {

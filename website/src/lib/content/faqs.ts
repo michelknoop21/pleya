@@ -7,51 +7,58 @@ export type Faq = {
 
 export const faqs: Faq[] = [
   {
-    id: "plex-pass",
-    question: "Do I need Plex Pass to stream remotely?",
+    id: "what-is-pleya",
+    question: "What is Pleya?",
     answer:
-      "No. The remote viewing checks are done client-side in the official Plex apps, not on your server. Plezy connects directly to your server's API, so there are no such checks.",
+      "Pleya is a beautiful, cinematic client for your own Plex and Jellyfin media servers. It focuses on quality playback, a fast interface, and privacy — including on-device recommendations that surface what to watch next without any of your taste data leaving your device.",
   },
   {
-    id: "jellyfin",
-    question: "Does Plezy support Jellyfin?",
+    id: "plex-and-jellyfin",
+    question: "Does Pleya work with both Plex and Jellyfin?",
     answer:
-      "Yes! Plezy works with Jellyfin servers alongside Plex. You can sign in with either your Jellyfin username and password or use Quick Connect for a one-tap login from another device. Most of Plezy's features — direct play, HDR, subtitles, offline downloads — work the same way on both.",
+      "Yes. Pleya connects to Plex and Jellyfin servers alike. For Plex you sign in with your Plex account; for Jellyfin you can use your username and password or Quick Connect for a one-tap login from another device. Core features — direct play, HDR, subtitles, offline downloads — work the same way on both.",
   },
   {
-    id: "free",
-    question: "Is Plezy free?",
+    id: "beta",
+    question: "Is Pleya available yet?",
     answer:
-      "Plezy is open-source and free to download from GitHub. The App Store and Play Store versions are paid (one-time purchase, price varies by region). The charge helps cover developer account fees, test devices, and the time spent developing and maintaining the app.<br><br>There's no free trial because the app stores don't natively support trials for paid apps. The only way to offer one would be to make the app free and use in-app purchases — which means integrating StoreKit and Google Play Billing, gating features behind a paywall, and adding a layer of complexity that doesn't make sense for a simple one-time purchase. If you'd like to try before you buy, you can sideload the binaries from GitHub or try it on desktop first.",
+      "Pleya is currently in a private TestFlight beta for iPhone, Apple TV, and macOS. It isn't in the App Store or any other store yet. Join the beta (or the waitlist) on this page and you'll be notified as new builds and platforms roll out.",
+  },
+  {
+    id: "pricing",
+    question: "How much does Pleya cost?",
+    answer:
+      "Pleya is free during the beta. Final pricing hasn't been decided yet — we'll announce it well before Pleya leaves beta, and beta testers will hear first.",
   },
   {
     id: "apple-tv",
-    question: "Does Plezy work on Apple TV?",
-    answer: "Yes, Plezy is available for tvOS on the App Store.",
+    question: "Does Pleya work on Apple TV?",
+    answer:
+      "Yes. Pleya has a dedicated, Netflix-style tvOS interface built for the living room and the remote. It's part of the current TestFlight beta alongside iPhone and macOS.",
   },
   {
-    id: "android-tv",
-    question: "Does Plezy work on Android TV / Shield?",
-    answer: "Yes! The app is available for Android TV including the Shield.",
+    id: "recommendations-private",
+    question: "Are the recommendations private?",
+    answer:
+      "Completely. Pleya builds your taste profile on your device and keeps it there. Recommendations are computed locally — nothing about what you watch is uploaded, tracked, or shared.",
   },
   {
     id: "watch-together",
     question: "How does Watch Together work?",
     answer:
-      "Watch Together uses a WebSocket relay to sync playback between users. The other person needs access to the same media on the same server. Only playback sync messages are exchanged - nothing about your server is shared.",
+      "Watch Together uses a lightweight relay to sync playback between people watching the same media on the same server. Only playback sync messages are exchanged — nothing about your server is shared.",
   },
   {
     id: "video-player",
-    question: "What video player does Plezy use?",
+    question: "What video player does Pleya use?",
     answer:
-      'mpv on most platforms, with ExoPlayer available on Android for HDR support and better performance. ExoPlayer also has libass support via <a href="https://github.com/peerless2012/libass-android" target="_blank" rel="noopener">libass-android</a>.',
-    schemaAnswer:
-      "mpv on most platforms, with ExoPlayer available on Android for HDR support and better performance. ExoPlayer also has libass support via libass-android.",
+      "Pleya uses mpv for playback on Apple platforms, with direct play whenever possible so your server doesn't have to transcode. On Android, ExoPlayer is used for HDR support and better performance.",
   },
   {
-    id: "plex-block",
-    question: "Will Plex block this app?",
-    answer: "Unlikely. We use the officially documented Plex API with their recommended authentication method.",
+    id: "open-source",
+    question: "Is Pleya open source?",
+    answer:
+      'Pleya is a fork built on the open-source Plezy project, which is licensed under the GPL-3.0. In keeping with that license we credit and link the upstream source in the footer.',
   },
 ];
 

@@ -4,13 +4,13 @@
 </script>
 
 <svelte:head>
-  <title>{page.status} - Plezy</title>
+  <title>{page.status} - Pleya</title>
   <meta name="robots" content="noindex" />
 </svelte:head>
 
 <div class="error-page">
   <div class="error-card">
-    <span class="error-logo"><Logo /></span>
+    <span class="error-logo"><Logo alt="Pleya" /></span>
 
     <h1 class="error-code">{page.status}</h1>
     <p class="error-message">{page.error?.message || 'Page not found'}</p>
@@ -45,7 +45,7 @@
     margin-bottom: 1.5rem;
   }
 
-  .error-logo :global(svg) {
+  .error-logo :global(img) {
     width: 4rem;
     height: 4rem;
   }

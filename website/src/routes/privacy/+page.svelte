@@ -3,40 +3,43 @@
 </script>
 
 <svelte:head>
-  <title>Privacy Policy - Plezy</title>
-  <meta name="description" content="Learn how Plezy handles your data when connecting to Plex and Jellyfin. Our privacy policy covers authentication, crash diagnostics, local network information, and data storage practices." />
-  <link rel="canonical" href="https://plezy.app/privacy" />
+  <title>Privacy Policy - Pleya</title>
+  <meta name="description" content="Learn how Pleya handles your data when connecting to Plex and Jellyfin. Our privacy policy covers authentication, crash diagnostics, local network information, and data storage practices." />
+  <link rel="canonical" href="https://pleya.app/privacy" />
 
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="Plezy" />
-  <meta property="og:title" content="Privacy Policy - Plezy" />
-  <meta property="og:description" content="Learn how Plezy handles your data. Our privacy policy covers authentication, crash diagnostics, local network information, and data storage practices." />
-  <meta property="og:url" content="https://plezy.app/privacy" />
-  <meta property="og:image" content="https://plezy.app/og/plezy-social.png" />
+  <meta property="og:site_name" content="Pleya" />
+  <meta property="og:title" content="Privacy Policy - Pleya" />
+  <meta property="og:description" content="Learn how Pleya handles your data. Our privacy policy covers authentication, crash diagnostics, local network information, and data storage practices." />
+  <meta property="og:url" content="https://pleya.app/privacy" />
+  <meta property="og:image" content="https://pleya.app/og/pleya-social.png" />
 
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Privacy Policy - Plezy" />
-  <meta name="twitter:description" content="Learn how Plezy handles your data. Our privacy policy covers authentication, crash diagnostics, local network information, and data storage practices." />
-  <meta name="twitter:image" content="https://plezy.app/og/plezy-social.png" />
+  <meta name="twitter:title" content="Privacy Policy - Pleya" />
+  <meta name="twitter:description" content="Learn how Pleya handles your data. Our privacy policy covers authentication, crash diagnostics, local network information, and data storage practices." />
+  <meta name="twitter:image" content="https://pleya.app/og/pleya-social.png" />
 </svelte:head>
 
 <article class="privacy-article">
   <a href="/" class="back-link">
-    <span class="back-logo"><Logo /></span>
-    <span>Back to Plezy</span>
+    <span class="back-logo"><Logo alt="Pleya" /></span>
+    <span>Back to Pleya</span>
   </a>
 
   <h1 class="privacy-heading">Privacy Policy</h1>
-  <p class="last-updated">Last Updated: May 2, 2026</p>
+  <p class="last-updated">Last Updated: July 3, 2026</p>
 
   <div class="prose">
     <h2>Introduction</h2>
-    <p>Plezy ("we", "our", or "the app") is a third-party client for Plex and Jellyfin that allows you to access and stream content from your media server. This privacy policy explains how we handle your information when you use our app.</p>
+    <p>Pleya ("we", "our", or "the app") is a third-party client for Plex and Jellyfin that allows you to access and stream content from your media server. This privacy policy explains how we handle your information when you use our app.</p>
+
+    <h2>Your Recommendations Stay on Your Device</h2>
+    <p>Pleya builds personalized recommendations by analyzing your library and viewing activity <strong>entirely on your device</strong>. Your taste profile is computed and stored locally &mdash; it is never uploaded to us or any third party, and we do not use it to track or profile you across services. This processing powers the "for you" suggestions inside the app and nothing more.</p>
 
     <h2>Information We Collect</h2>
 
     <h3>Authentication Information</h3>
-    <p>When you sign in to Plezy, we collect and process the following information depending on which service you connect:</p>
+    <p>When you sign in to Pleya, we collect and process the following information depending on which service you connect:</p>
     <ul>
       <li>Plex: authentication tokens, account username, and server connection information</li>
       <li>Jellyfin: server URL, access token, username, and user ID</li>
@@ -50,7 +53,7 @@
       <li>Device model, OS version, and app version</li>
       <li>Diagnostic breadcrumbs (e.g. playback events leading up to a crash)</li>
     </ul>
-    <p>This data is sent to our self-hosted error tracking server (bugs.plezy.app). Sensitive information such as authentication tokens and server URLs is automatically stripped before transmission.</p>
+    <p>This data is sent to our self-hosted error tracking server (bugs.pleya.app). Sensitive information such as authentication tokens and server URLs is automatically stripped before transmission.</p>
 
     <h3>Local Network Information</h3>
     <p>To connect to your media server on your local network, we may access:</p>
@@ -80,14 +83,14 @@
     <ul>
       <li>Authentication tokens are stored securely on your device using platform-specific secure storage mechanisms</li>
       <li>App preferences are stored locally on your device</li>
-      <li>Crash and diagnostic data is sent to our self-hosted error tracking server (bugs.plezy.app) &mdash; no third-party services receive this data</li>
+      <li>Crash and diagnostic data is sent to our self-hosted error tracking server (bugs.pleya.app) &mdash; no third-party services receive this data</li>
       <li>All other communication is directly between your device and your media server, or with Plex's authentication services when signing in with Plex</li>
     </ul>
 
     <h2>Third-Party Services</h2>
 
     <h3>Plex</h3>
-    <p>Plezy uses Plex's authentication and media services. When you use this app:</p>
+    <p>Pleya uses Plex's authentication and media services. When you use this app:</p>
     <ul>
       <li>You authenticate directly with Plex's servers</li>
       <li>Your media streaming occurs between your device and your Plex Media Server</li>
@@ -96,11 +99,11 @@
     <p>We do not control and are not responsible for Plex's data practices.</p>
 
     <h3>Jellyfin</h3>
-    <p>Plezy can connect to your self-hosted Jellyfin server. When you use this app with Jellyfin:</p>
+    <p>Pleya can connect to your self-hosted Jellyfin server. When you use this app with Jellyfin:</p>
     <ul>
       <li>You authenticate directly with your Jellyfin server using your username and password, or via Quick Connect</li>
       <li>Your media streaming occurs between your device and your Jellyfin server</li>
-      <li>No third party (including Plezy) is involved in Jellyfin authentication or playback</li>
+      <li>No third party (including Pleya) is involved in Jellyfin authentication or playback</li>
     </ul>
     <p>Because Jellyfin is self-hosted, your Jellyfin server's privacy practices are determined by whoever operates it. More information about the Jellyfin project is available at <a href="https://jellyfin.org" target="_blank" rel="noopener noreferrer">jellyfin.org</a>.</p>
 
@@ -134,7 +137,7 @@
     </ul>
 
     <h2>Children's Privacy</h2>
-    <p>Plezy does not knowingly collect personal information from children under 13. The app relies on authentication with Plex or Jellyfin servers, and users must comply with the terms of service and age requirements of whichever service they connect to.</p>
+    <p>Pleya does not knowingly collect personal information from children under 13. The app relies on authentication with Plex or Jellyfin servers, and users must comply with the terms of service and age requirements of whichever service they connect to.</p>
 
     <h2>Changes to This Privacy Policy</h2>
     <p>We may update this privacy policy from time to time. We will notify users of any material changes by updating the "Last Updated" date at the top of this policy.</p>
@@ -159,7 +162,7 @@
     </ul>
 
     <h2>Your Consent</h2>
-    <p>By using Plezy, you consent to this privacy policy and the processing of your information as described herein.</p>
+    <p>By using Pleya, you consent to this privacy policy and the processing of your information as described herein.</p>
   </div>
 </article>
 
@@ -186,7 +189,7 @@
     color: var(--color-text);
   }
 
-  .back-logo :global(svg) {
+  .back-logo :global(img) {
     width: 1.5rem;
     height: 1.5rem;
   }

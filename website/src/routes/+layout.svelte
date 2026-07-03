@@ -1,23 +1,22 @@
 <script lang="ts">
 	import './layout.css';
-	import favicon from '$lib/assets/favicon.svg';
+	import favicon from '$lib/assets/favicon.png';
 
 	let { children } = $props();
 
 	const siteSchema = {
 		"@context": "https://schema.org",
 		"@type": "WebSite",
-		"name": "Plezy",
-		"url": "https://plezy.app"
+		"name": "Pleya",
+		"url": "https://pleya.app"
 	};
 
 	const orgSchema = {
 		"@context": "https://schema.org",
 		"@type": "Organization",
-		"name": "Plezy",
-		"url": "https://plezy.app",
-		"logo": "https://plezy.app/og/plezy-social.png",
-		"sameAs": ["https://github.com/edde746/plezy"]
+		"name": "Pleya",
+		"url": "https://pleya.app",
+		"logo": "https://pleya.app/og/pleya-social.png"
 	};
 </script>
 
