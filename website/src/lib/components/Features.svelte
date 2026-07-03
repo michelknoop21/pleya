@@ -12,18 +12,18 @@
     <p class="section-label">Features</p>
     <h2 class="section-heading">Made for people who love their library</h2>
     <p class="section-description">
-      Every detail tuned for quality, speed, and privacy — the way streaming your own media should feel.
+      Every detail tuned for quality, speed, and privacy, the way streaming your own media should feel.
     </p>
   </ScrollReveal>
 
   <div class="bento-grid">
-    <!-- HERO: On-device recommendations — 2col × 2row -->
+    <!-- HERO: On-device recommendations (2col × 2row -->
     <ScrollReveal class="bento-codec">
       <div class="glass-card feature-card codec-card">
         <div class="card-content">
           <h3 class="card-title large">Recommendations that never leave your device</h3>
           <p class="card-copy codec-copy">
-            Pleya learns what you love and lines up what to watch next — all computed locally.
+            Pleya learns what you love and lines up what to watch next, all computed locally.
             Your taste profile stays on your phone. Nothing is uploaded, tracked, or sold.
           </p>
         </div>
@@ -80,7 +80,7 @@
       </div>
     </ScrollReveal>
 
-    <!-- Plex & Jellyfin — 1col × 2row tall -->
+    <!-- Plex & Jellyfin (1col x 2row tall) -->
     <ScrollReveal delay={80} class="bento-cross">
       <div class="glass-card feature-card cross-card">
         <p class="card-title with-gap">Plex &amp; Jellyfin</p>
@@ -157,13 +157,13 @@
       </div>
     </ScrollReveal>
 
-    <!-- tvOS living-room experience — full width banner -->
+    <!-- tvOS living-room experience (full width banner -->
     <ScrollReveal delay={270} class="bento-more">
       <div class="glass-card feature-card more-card">
         <div>
           <p class="card-title">A Netflix-style experience on Apple TV</p>
           <p class="more-description">
-            A cinematic, remote-friendly interface built for the couch — big art, smooth rows, and instant playback.
+            A cinematic, remote-friendly interface built for the couch: big art, smooth rows, and instant playback.
           </p>
         </div>
         <div class="tv-badge" aria-hidden="true">
@@ -588,7 +588,7 @@
     gap: 1rem;
   }
 
-  /* Named areas for precise placement — :global because classes are on child components */
+  /* Named areas for precise placement (:global because classes are on child components */
   .bento-grid :global(.bento-codec) {
     grid-column: 1 / 3;
     grid-row: 1 / 3;

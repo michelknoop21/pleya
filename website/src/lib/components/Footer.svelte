@@ -1,6 +1,6 @@
 <script lang="ts">
   import Logo from './Logo.svelte';
-  import { SOURCE_REPO_URL, UPSTREAM_REPO_URL } from '$lib/config';
+  import { SOURCE_REPO_URL } from '$lib/config';
 
   const year = new Date().getFullYear();
 </script>
@@ -28,8 +28,8 @@
     <div class="footer-meta">
       <p class="footer-copy">© {year} Michel Knoop</p>
       <p class="footer-credit">
-        Free software under the <a href="/LICENSE.txt" target="_blank" rel="noopener noreferrer">GPL-3.0</a> — based on
-        <a href={UPSTREAM_REPO_URL} target="_blank" rel="noopener noreferrer">Plezy</a>.
+        Free software · <a href="/LICENSE.txt" target="_blank" rel="noopener noreferrer">GPL-3.0</a> ·
+        <a href="/NOTICE.txt" target="_blank" rel="noopener noreferrer">Notices</a>
       </p>
     </div>
   </div>

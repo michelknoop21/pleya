@@ -10,13 +10,13 @@ export const faqs: Faq[] = [
     id: "what-is-pleya",
     question: "What is Pleya?",
     answer:
-      "Pleya is a beautiful, cinematic client for your own Plex and Jellyfin media servers. It focuses on quality playback, a fast interface, and privacy — including on-device recommendations that surface what to watch next without any of your taste data leaving your device.",
+      "Pleya is a beautiful, cinematic client for your own Plex and Jellyfin media servers. It focuses on quality playback, a fast interface, and privacy, including on-device recommendations that surface what to watch next without any of your taste data leaving your device.",
   },
   {
     id: "plex-and-jellyfin",
     question: "Does Pleya work with both Plex and Jellyfin?",
     answer:
-      "Yes. Pleya connects to Plex and Jellyfin servers alike. For Plex you sign in with your Plex account; for Jellyfin you can use your username and password or Quick Connect for a one-tap login from another device. Core features — direct play, HDR, subtitles, offline downloads — work the same way on both.",
+      "Yes. Pleya connects to Plex and Jellyfin servers alike. For Plex you sign in with your Plex account; for Jellyfin you can use your username and password or Quick Connect for a one-tap login from another device. Core features like direct play, HDR, subtitles and offline downloads work the same way on both.",
   },
   {
     id: "beta",
@@ -28,7 +28,7 @@ export const faqs: Faq[] = [
     id: "pricing",
     question: "How much does Pleya cost?",
     answer:
-      "Pleya is free during the beta. Final pricing hasn't been decided yet — we'll announce it well before Pleya leaves beta, and beta testers will hear first.",
+      "Pleya is free during the beta. Final pricing hasn't been decided yet; we'll announce it well before Pleya leaves beta, and beta testers will hear first.",
   },
   {
     id: "apple-tv",
@@ -40,13 +40,13 @@ export const faqs: Faq[] = [
     id: "recommendations-private",
     question: "Are the recommendations private?",
     answer:
-      "Completely. Pleya builds your taste profile on your device and keeps it there. Recommendations are computed locally — nothing about what you watch is uploaded, tracked, or shared.",
+      "Completely. Pleya builds your taste profile on your device and keeps it there. Recommendations are computed locally, so nothing about what you watch is uploaded, tracked, or shared.",
   },
   {
     id: "watch-together",
     question: "How does Watch Together work?",
     answer:
-      "Watch Together uses a lightweight relay to sync playback between people watching the same media on the same server. Only playback sync messages are exchanged — nothing about your server is shared.",
+      "Watch Together uses a lightweight relay to sync playback between people watching the same media on the same server. Only playback sync messages are exchanged, and nothing about your server is shared.",
   },
   {
     id: "video-player",
@@ -58,7 +58,7 @@ export const faqs: Faq[] = [
     id: "open-source",
     question: "Is Pleya open source?",
     answer:
-      'Yes. Pleya is free software under the GPL-3.0, built as a fork of the open-source Plezy project. The full license ships with this site, and the source code of Pleya itself is available via the Source link in the footer.',
+      "Yes. Pleya is free software under the GPL-3.0. The full license and third-party notices ship with the app and this site, and Pleya's own source code is linked from the footer.",
   },
 ];
 

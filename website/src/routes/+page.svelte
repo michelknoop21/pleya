@@ -7,8 +7,8 @@
   import NoiseOverlay from '$lib/components/NoiseOverlay.svelte';
   import { faqSchemaMainEntity } from '$lib/content/faqs';
 
-  const title = "Pleya — Your library, the cinematic way";
-  const description = "Pleya is a cinematic, fast, and private client for Plex and Jellyfin. Now in TestFlight beta for iPhone, Apple TV, and macOS — with on-device recommendations, HDR, Dolby Vision, and direct play.";
+  const title = "Pleya: Your library, the cinematic way";
+  const description = "Pleya is a cinematic, fast, and private client for Plex and Jellyfin. Now in TestFlight beta for iPhone, Apple TV, and macOS, with on-device recommendations, HDR, Dolby Vision, and direct play.";
   const url = "https://pleya.app/";
   const image = "https://pleya.app/og/pleya-social.png";
 

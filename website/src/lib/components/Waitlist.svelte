@@ -21,7 +21,7 @@
     if (!email.trim()) return;
 
     if (!hasWebhook) {
-      // No backend configured — hand off to the visitor's mail client.
+      // No backend configured, hand off to the visitor's mail client.
       window.location.href = mailtoHref(email);
       status = 'done';
       return;
@@ -46,7 +46,7 @@
   {#if status === 'done'}
     <p class="waitlist-success" role="status">
       <CheckIcon />
-      <span>You're on the list — we'll email you when Pleya opens up.</span>
+      <span>You're on the list. We'll email you when Pleya opens up.</span>
     </p>
   {:else}
     <form

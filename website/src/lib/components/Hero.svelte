@@ -32,13 +32,13 @@
 
     <p class="hero-description fade-in" style="animation-delay: 200ms;">
       Pleya turns your Plex or Jellyfin server into a rich, cinema-like
-      experience — fast, private, and gorgeous on every screen. Your taste stays
+      experience: fast, private, and gorgeous on every screen. Your taste stays
       yours: recommendations are computed on your device and never leave it.
     </p>
 
     <p class="platform-line fade-in" style="animation-delay: 260ms;">
       <span class="beta-badge">Beta</span>
-      Now on iPhone, Apple TV &amp; macOS — more platforms coming.
+      Now on iPhone, Apple TV &amp; macOS. More platforms coming.
     </p>
 
     <div class="hero-cta fade-in" style="animation-delay: 340ms;">

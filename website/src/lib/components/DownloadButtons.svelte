@@ -31,7 +31,7 @@
     <button type="button" class="beta-cta" disabled aria-disabled="true">
       <AppleIcon />
       <span class="beta-cta-text">
-        <span class="beta-cta-title">Join the beta — coming soon</span>
+        <span class="beta-cta-title">Join the beta · coming soon</span>
         <span class="beta-cta-sub">iPhone · Apple TV · macOS</span>
       </span>
     </button>

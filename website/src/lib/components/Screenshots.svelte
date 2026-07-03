@@ -22,7 +22,7 @@
       <p class="section-label">Preview</p>
       <h2 class="section-heading">See it in action</h2>
       <p class="section-description">
-        A cinematic home for your library — a featured hero, continue-watching at a glance,
+        A cinematic home for your library: a featured hero, continue-watching at a glance,
         and rich detail screens. Here it is running on iPhone.
       </p>
     </ScrollReveal>
