@@ -27,7 +27,7 @@
           "image-name" : "pleya-cropped.png",
           "name" : "pleya-cropped",
           "position" : {
-            "scale" : 2,
+            "scale" : 1,
             "translation-in-points" : [
               0,
               0
