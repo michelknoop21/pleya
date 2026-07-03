@@ -98,10 +98,12 @@ class InteractionRecorder {
     var item = await client.fetchItem(event.itemId);
     if (item == null) return null;
 
-    // Episodes rarely carry show-level genres/cast; roll up to the series so
-    // taste reflects the show, not the single episode. One extra fetch max.
+    // Episodes rarely carry show-level genres/cast/crew; roll up to the series
+    // so taste reflects the show, not the single episode. One extra fetch max.
+    final episodeMetaSparse =
+        (item.genres?.isEmpty ?? true) && (item.roles?.isEmpty ?? true) && (item.directors?.isEmpty ?? true);
     String? seriesKey;
-    if (item.kind == MediaKind.episode && (item.genres?.isEmpty ?? true)) {
+    if (item.kind == MediaKind.episode && episodeMetaSparse) {
       final grandparentId = item.grandparentId;
       if (grandparentId != null) {
         seriesKey = serverIdOrNull(item.serverId) != null

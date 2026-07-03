@@ -366,19 +366,22 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
         seeds.add(item);
         if (seeds.length >= 3) break;
       }
-      if (seeds.isEmpty || isDisposed) return;
-
-      final rows = await Future.wait([
-        for (final seed in seeds) _relatedRowForSeed(seed).catchError((Object _) => null),
-      ]);
+      final rows = seeds.isEmpty
+          ? const <MediaHub?>[]
+          : await Future.wait([
+              for (final seed in seeds) _relatedRowForSeed(seed).catchError((Object _) => null),
+            ]);
       if (isDisposed || generation != _loadGeneration) return;
 
       final newSeedHubs = [for (final row in rows) ?row];
-      if (newSeedHubs.isEmpty) return;
+      // Assign even when empty so cleared history / changed watch state drops
+      // stale "Because you watched…" rows instead of stranding them.
+      if (_seedHubs.isEmpty && newSeedHubs.isEmpty) return;
       _seedHubs = newSeedHubs;
       safeNotifyListeners();
     } catch (e) {
-      appLogger.w('DiscoverProvider: because-you-watched rows failed (leaving them out)', error: e);
+      // Transient failure: keep whatever rows were already shown.
+      appLogger.w('DiscoverProvider: because-you-watched rows failed (keeping previous)', error: e);
     }
   }
 
@@ -409,27 +412,32 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   Future<void> _loadPersonalizedRows() async {
     final service = recommendations;
     if (service == null) return;
+    final generation = _loadGeneration;
     try {
-      final generation = _loadGeneration;
       final clients = _multiServer.serverManager.onlineClients.values.toList();
-      if (clients.isEmpty) return;
 
-      // Items already on screen (Continue Watching + loaded hubs) are free
-      // candidates and also the exclusion set so rows don't echo them.
+      // Items already on screen (Continue Watching + loaded hubs + seed rows)
+      // are free candidates and, via [excludeKeys], must not be echoed by the
+      // personalized rows below them.
       final onScreen = <MediaItem>[
         ..._onDeck,
         for (final hub in _hubs) ...hub.items,
         for (final hub in _seedHubs) ...hub.items,
       ];
-      final excludeKeys = {for (final item in _onDeck) item.globalKey};
+      final excludeKeys = {for (final item in onScreen) item.globalKey};
 
-      final rows = await service.buildRows(clients, hubItems: onScreen, excludeKeys: excludeKeys);
+      final rows = clients.isEmpty
+          ? const <MediaHub>[]
+          : await service.buildRows(clients, hubItems: onScreen, excludeKeys: excludeKeys);
       if (isDisposed || generation != _loadGeneration) return;
-      if (rows.isEmpty) return;
+      // Assign even when empty so disabling personalization or losing history
+      // clears any previously-shown rows instead of stranding them.
+      if (_personalizedHubs.isEmpty && rows.isEmpty) return;
       _personalizedHubs = rows;
       safeNotifyListeners();
     } catch (e) {
-      appLogger.w('DiscoverProvider: personalized rows failed (leaving them out)', error: e);
+      // Transient failure: keep whatever rows were already shown.
+      appLogger.w('DiscoverProvider: personalized rows failed (keeping previous)', error: e);
     }
   }
 

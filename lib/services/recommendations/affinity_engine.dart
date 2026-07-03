@@ -21,8 +21,13 @@ class AffinityEngine {
     final currentCount = await _db.countMediaInteractions(profileId);
     if (currentCount == 0) return AffinityVector.empty;
 
+    // Count alone is insufficient: at the retention cap the count stays pinned
+    // while rows rotate, so also require the newest interaction to be no later
+    // than when the snapshot was computed.
+    final latestAt = await _db.latestInteractionAt(profileId);
     final snapshot = await _db.getAffinitySnapshot(profileId);
-    if (snapshot != null && snapshot.eventCount == currentCount) {
+    final fresh = snapshot != null && snapshot.eventCount == currentCount && latestAt <= snapshot.computedAt;
+    if (fresh) {
       try {
         return AffinityVector.fromJson(jsonDecode(snapshot.vectorJson) as Map<String, dynamic>);
       } catch (e) {

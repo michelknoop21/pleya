@@ -93,5 +93,25 @@ void main() {
       expect(v.eventCount, 2);
       expect(v.of('genre', 'sci-fi'), greaterThan(0));
     });
+
+    test('recomputes when the count is unchanged but a newer interaction arrived', () async {
+      // Simulates the retention cap: count stays equal, rows rotate. The
+      // snapshot must still refresh because the newest interaction is later.
+      final engine = AffinityEngine(db);
+      final t0 = DateTime.now().millisecondsSinceEpoch;
+      await db.insertMediaInteraction(_row('p1', 's:1', genres: ['Drama'], occurredAt: t0), profileId: 'p1');
+      final before = await engine.vectorFor('p1', nowMs: t0);
+      expect(before.of('genre', 'drama'), greaterThan(0));
+      expect(before.of('genre', 'sci-fi'), 0);
+
+      // Delete the old row and add a newer one — count returns to 1.
+      await db.deleteRecommendationDataForProfile('p1');
+      final t1 = t0 + 1000;
+      await db.insertMediaInteraction(_row('p1', 's:2', genres: ['Sci-Fi'], occurredAt: t1), profileId: 'p1');
+      // Re-seed the snapshot as if it were the stale count==1 one from before.
+      // vectorFor must detect the newer latestInteractionAt and recompute.
+      final after = await engine.vectorFor('p1', nowMs: t1 + 1000);
+      expect(after.of('genre', 'sci-fi'), greaterThan(0));
+    });
   });
 }

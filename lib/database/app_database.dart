@@ -269,6 +269,18 @@ class AppDatabase extends _$AppDatabase {
     return row.read(count) ?? 0;
   }
 
+  /// Timestamp of the most recent interaction, or 0 when there are none. Used
+  /// alongside the row count to detect a stale affinity snapshot even when the
+  /// count is pinned at the retention cap (rows rotate but count stays equal).
+  Future<int> latestInteractionAt(String profileId) async {
+    final maxAt = mediaInteractions.occurredAt.max();
+    final query = selectOnly(mediaInteractions)
+      ..addColumns([maxAt])
+      ..where(mediaInteractions.profileId.equals(profileId));
+    final row = await query.getSingle();
+    return row.read(maxAt) ?? 0;
+  }
+
   Future<void> upsertAffinitySnapshot(AffinitySnapshotsCompanion entry) =>
       into(affinitySnapshots).insertOnConflictUpdate(entry);
 
