@@ -174,6 +174,8 @@ class TvSpotlightBackground extends StatelessWidget {
           Image.file(
             File(localPath),
             fit: BoxFit.cover,
+            // Top-anchor so tall backdrops don't clip faces/titles off the top.
+            alignment: Alignment.topCenter,
             errorBuilder: (context, error, stackTrace) =>
                 ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
           ),
@@ -207,6 +209,8 @@ class TvSpotlightBackground extends StatelessWidget {
         imageUrl: imageUrl,
         cacheManager: PlexImageCacheManager.instance,
         fit: BoxFit.cover,
+        // Top-anchor so tall backdrops don't clip faces/titles off the top.
+        alignment: Alignment.topCenter,
         memCacheHeight: memHeight,
         // Explicit fades: the package defaults (500ms in / 1000ms out) double
         // up with the AnimatedSwitcher cross-fade above on every swap.

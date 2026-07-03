@@ -1656,6 +1656,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               imageUrl: imageUrl,
                               cacheManager: PlexImageCacheManager.instance,
                               fit: BoxFit.cover,
+                              // Top-anchor the crop: hero art is taller than the
+                              // wide billboard, so a centered cover clips faces/
+                              // titles off the top. The bottom (under the scrim
+                              // and title overlay) is the safe side to lose.
+                              alignment: Alignment.topCenter,
                               memCacheHeight: memHeight,
                               placeholder: (context, url) =>
                                   ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
