@@ -26,14 +26,14 @@
     />
 
     <h1 class="hero-title fade-in" style="animation-delay: 100ms;">
-      <span class="title-line">A beautiful client for</span>
-      <span class="title-line gradient-text">Plex &amp; Jellyfin</span>
+      <span class="title-line">Your library,</span>
+      <span class="title-line gradient-text">the cinematic way</span>
     </h1>
 
     <p class="hero-description fade-in" style="animation-delay: 200ms;">
-      A cinematic home for your media library — fast, private, and gorgeous on
-      every screen. Your taste stays yours: recommendations are computed on your
-      device and never leave it.
+      Pleya turns your Plex or Jellyfin server into a rich, cinema-like
+      experience — fast, private, and gorgeous on every screen. Your taste stays
+      yours: recommendations are computed on your device and never leave it.
     </p>
 
     <p class="platform-line fade-in" style="animation-delay: 260ms;">
