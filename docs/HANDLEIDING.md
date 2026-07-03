@@ -1,14 +1,14 @@
-# PlexFlixNetwork — Handleiding voor gebruikers
+# Pleya — Handleiding voor gebruikers
 
 **Versie 2.8.0 · 2 juli 2026**
 
-PlexFlixNetwork is een app om films en series van je eigen Plex- of Jellyfin-server te kijken, in een interface die aanvoelt als een moderne streamingdienst. Deze handleiding beschrijft alles wat je als kijker kunt zien en doen.
+Pleya is een app om films en series van je eigen Plex- of Jellyfin-server te kijken, in een interface die aanvoelt als een moderne streamingdienst. Deze handleiding beschrijft alles wat je als kijker kunt zien en doen.
 
 ---
 
 ## Inhoudsopgave
 
-1. [Wat is PlexFlixNetwork?](#1-wat-is-plexflixnetwork)
+1. [Wat is Pleya?](#1-wat-is-pleya)
 2. [De eerste keer starten](#2-de-eerste-keer-starten)
 3. [Profielen — "Wie is er aan het kijken?"](#3-profielen--wie-is-er-aan-het-kijken)
 4. [Het startscherm (Home)](#4-het-startscherm-home)
@@ -27,9 +27,9 @@ PlexFlixNetwork is een app om films en series van je eigen Plex- of Jellyfin-ser
 
 ---
 
-## 1. Wat is PlexFlixNetwork?
+## 1. Wat is Pleya?
 
-PlexFlixNetwork is een kijk-app voor **Plex** en **Jellyfin**. De app bevat zelf geen films of series: je verbindt hem met een mediaserver (van jezelf, of van iemand die zijn server met je deelt) en kijkt vervolgens alles uit die bibliotheek — thuis of onderweg.
+Pleya is een kijk-app voor **Plex** en **Jellyfin**. De app bevat zelf geen films of series: je verbindt hem met een mediaserver (van jezelf, of van iemand die zijn server met je deelt) en kijkt vervolgens alles uit die bibliotheek — thuis of onderweg.
 
 De app werkt op telefoon en tablet (iPhone, iPad, Android), computer (Mac, Windows, Linux) en televisie (Apple TV, Android TV). Overal zie je dezelfde donkere, filmische interface: een groot uitgelicht item bovenaan, rijen met posters, profielen per gezinslid en een rode voortgangsbalk onder alles wat je half hebt gekeken.
 
@@ -48,7 +48,7 @@ Wat je ermee kunt:
 
 ### De intro
 
-Bij het opstarten zie je kort het rode **PLEXFLIX**-logo. Tik op het scherm om de animatie over te slaan.
+Bij het opstarten zie je kort het coral **PLEYA**-logo. Tik op het scherm om de animatie over te slaan.
 
 ### Verbinden met een server
 
@@ -130,7 +130,7 @@ Bij het uitgelichte item zie je een groen percentage (bijvoorbeeld *87% match*).
 | Apparaat | Navigatie |
 |----------|-----------|
 | **Telefoon/tablet** | Balk onderaan met tabs: **Home**, **Media**, **Live TV**, **Search**, **Downloads**. Houd **Media** lang ingedrukt om snel een bibliotheek te kiezen. |
-| **Computer** | Balk bovenaan met het PLEXFLIX-logo en dezelfde tabs als tekst. |
+| **Computer** | Balk bovenaan met het PLEYA-logo en dezelfde tabs als tekst. |
 | **Televisie** | Uitklapbare balk aan de linkerkant, te bedienen met de afstandsbediening. |
 
 De tab **Live TV** verschijnt alleen als je server live-televisie aanbiedt. **Instellingen** vind je op mobiel via het profielmenu; op desktop en TV staat hij in de navigatie.
@@ -379,7 +379,7 @@ Open **Instellingen** via de navigatie (desktop/TV) of het profielmenu (mobiel).
 
 ## 13. Stap voor stap: van installatie tot eerste film
 
-1. Installeer en open PlexFlixNetwork.
+1. Installeer en open Pleya.
 2. Kies **Inloggen met Plex** en log in via de browser (of kies **Connect to Jellyfin** en vul serveradres + inloggegevens in).
 3. Wacht tot je servers zijn toegevoegd.
 4. Kies of maak je profiel op het **Wie is er aan het kijken?**-scherm.
@@ -495,7 +495,7 @@ Dat kan gewoon; de server bepaalt hoeveel gelijktijdige streams hij aankan.
 
 | Term | Betekenis |
 |------|-----------|
-| **Plex / Jellyfin** | Software waarmee je thuis je eigen "streamingdienst" draait; PlexFlixNetwork is de kijk-app die daarmee verbindt |
+| **Plex / Jellyfin** | Software waarmee je thuis je eigen "streamingdienst" draait; Pleya is de kijk-app die daarmee verbindt |
 | **Server** | De computer/NAS waarop Plex of Jellyfin draait en waar de media staan |
 | **Bibliotheek** | Een verzameling op de server, zoals "Films" of "Series" (tab **Media**) |
 | **Hub / rij** | Een horizontale rij titels op het startscherm (bijv. Verder kijken) |

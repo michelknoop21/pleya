@@ -1,4 +1,4 @@
-platform :tvos, '14.0'
+platform :tvos, '17.5'
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
 project 'Runner', {
@@ -82,6 +82,8 @@ post_install do |installer|
       # so the link step doesn't look for a slice that doesn't exist.
       config.build_settings['EXCLUDED_ARCHS[sdk=appletvsimulator*]'] = 'x86_64'
       config.build_settings['OTHER_LDFLAGS'] = '$(inherited) -framework Flutter' if tvos_depends_on_flutter?(target)
+      config.build_settings['TVOS_DEPLOYMENT_TARGET'] = '17.5'
     end
   end
+  installer.pods_project.root_object.attributes['LastUpgradeCheck'] = '2630'
 end

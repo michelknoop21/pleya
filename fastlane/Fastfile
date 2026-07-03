@@ -16,6 +16,12 @@ def asc_api_key
   )
 end
 
+# Flutter shelt uit naar `pod`; fastlane's eigen GEM_HOME/GEM_PATH/RUBYOPT
+# breken CocoaPods (Gem::MissingSpecError) — strip die voor flutter-calls.
+def flutter_sh(cmd)
+  sh("cd #{PROJECT_ROOT} && env -u GEM_HOME -u GEM_PATH -u RUBYOPT -u RUBYLIB -u BUNDLE_GEMFILE -u BUNDLE_BIN_PATH #{cmd}")
+end
+
 # Cloud-signing flags voor xcodebuild: automatic signing werkt dan headless
 # en maakt zonodig Apple Distribution certs + App Store profielen aan.
 def auth_xcargs
@@ -67,7 +73,7 @@ end
 desc "iOS → TestFlight"
 lane :ios_beta do
   ensure_build_number
-  sh("cd #{PROJECT_ROOT} && flutter build ios --config-only --release")
+  flutter_sh("flutter build ios --config-only --release")
   build_app(
     workspace: File.join(PROJECT_ROOT, "ios/Runner.xcworkspace"),
     scheme: "Runner",
@@ -81,7 +87,7 @@ end
 desc "tvOS → TestFlight"
 lane :tvos_beta do
   ensure_build_number
-  sh("cd #{PROJECT_ROOT} && flutter pub get")
+  flutter_sh("flutter pub get")
   build_app(
     workspace: File.join(PROJECT_ROOT, "tvos/Runner.xcworkspace"),
     scheme: "Runner",
@@ -96,10 +102,10 @@ end
 desc "macOS → TestFlight (pkg)"
 lane :macos_beta do
   ensure_build_number
-  sh("cd #{PROJECT_ROOT} && flutter build macos --config-only --release")
+  flutter_sh("flutter build macos --config-only --release")
 
   out_dir = File.join(PROJECT_ROOT, "build/fastlane/macos")
-  archive_path = File.join(out_dir, "PlexFlixNetwork.xcarchive")
+  archive_path = File.join(out_dir, "Pleya.xcarchive")
   FileUtils.mkdir_p(out_dir)
 
   # Release signeert ad-hoc ("-") voor de DMG-flow; voor App Store export
@@ -126,7 +132,7 @@ lane :macos_beta do
     </dict>
     </plist>
   PLIST
-  sparkle = "#{archive_path}/Products/Applications/PlexFlixNetwork.app/Contents/Frameworks/Sparkle.framework"
+  sparkle = "#{archive_path}/Products/Applications/Pleya.app/Contents/Frameworks/Sparkle.framework"
   [
     "#{sparkle}/Versions/B/Autoupdate",
     "#{sparkle}/Versions/B/Updater.app",
@@ -145,7 +151,7 @@ lane :macos_beta do
     api_key: asc_api_key,
     output_path: File.join(PROJECT_ROOT, "build/fastlane/certs"),
   )
-  Dir["#{archive_path}/Products/Applications/PlexFlixNetwork.app/Contents/Resources/*.bundle"].each do |bundle|
+  Dir["#{archive_path}/Products/Applications/Pleya.app/Contents/Resources/*.bundle"].each do |bundle|
     sh("codesign --force --sign 'Apple Distribution' #{bundle}")
   end
 

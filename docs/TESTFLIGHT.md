@@ -9,9 +9,9 @@ Automatische TestFlight-uploads voor iOS, tvOS en macOS naar interne testers
 - `scripts/testflight_release.sh [lane]` — bumpt het build number in `pubspec.yaml`,
   commit+pusht dat, en draait daarna de fastlane lane (default `beta`).
 - launchd draait dit **maandelijks** (1e van de maand, 14:00) via
-  `~/Library/LaunchAgents/nl.michelknoop.plexflixnetwork.testflight.plist`,
+  `~/Library/LaunchAgents/nl.michelknoop.pleya.testflight.plist`,
   zodat builds nooit de 90-dagen TestFlight-limiet halen.
-- Log: `~/Library/Logs/plexflixnetwork-testflight.log`
+- Log: `~/Library/Logs/pleya-testflight.log`
 
 ## Credentials
 
@@ -46,7 +46,7 @@ Zonder deze stap faalt codesign met `errSecInternalComponent`.
 
 ## Vereisten in App Store Connect
 
-- App-record voor `nl.michelknoop.plexflixnetwork` met de platforms iOS, tvOS
+- App-record voor `nl.michelknoop.pleya` met de platforms iOS, tvOS
   en macOS toegevoegd.
 - Interne testers: App Store Connect → Users and Access (max 100), daarna in
   TestFlight aan de interne groep toevoegen. Nieuwe builds worden bij testers
