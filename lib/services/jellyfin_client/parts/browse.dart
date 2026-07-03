@@ -1128,6 +1128,30 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
         'EnableTotalRecordCount': 'false',
         ...jellyfinImageQueryParameters,
       }, retry: _homeHubRetry),
+      // Same wave, no extra round-trip: quality + serendipity rows the
+      // Jellyfin web home never surfaces.
+      _safeFetchItemsArray('/Items', {
+        'userId': connection.userId,
+        'Recursive': 'true',
+        'IncludeItemTypes': 'Movie,Series',
+        'SortBy': 'CommunityRating',
+        'SortOrder': 'Descending',
+        'Limit': limit.toString(),
+        'Fields': _browseFields,
+        'EnableTotalRecordCount': 'false',
+        ...jellyfinImageQueryParameters,
+      }, retry: _homeHubRetry),
+      _safeFetchItemsArray('/Items', {
+        'userId': connection.userId,
+        'Recursive': 'true',
+        'IncludeItemTypes': 'Movie,Series',
+        'SortBy': 'Random',
+        'Filters': 'IsUnplayed',
+        'Limit': limit.toString(),
+        'Fields': _browseFields,
+        'EnableTotalRecordCount': 'false',
+        ...jellyfinImageQueryParameters,
+      }, retry: _homeHubRetry),
     ]);
 
     return [
@@ -1157,6 +1181,26 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
         title: t.discover.recentlyAdded,
         type: 'mixed',
         items: results.first,
+        previewLimit: limit,
+        serverId: serverId,
+        serverName: serverName,
+      ),
+      JellyfinMappers.syntheticHub(
+        mapItem: _mapItem,
+        identifier: 'home.toprated',
+        title: t.discover.topRated,
+        type: 'mixed',
+        items: results[3],
+        previewLimit: limit,
+        serverId: serverId,
+        serverName: serverName,
+      ),
+      JellyfinMappers.syntheticHub(
+        mapItem: _mapItem,
+        identifier: 'home.somethingdifferent',
+        title: t.discover.somethingDifferent,
+        type: 'mixed',
+        items: results[4],
         previewLimit: limit,
         serverId: serverId,
         serverName: serverName,
@@ -1344,6 +1388,49 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
           },
           offset: offset,
           requestedSize: pageSize,
+          abort: abort,
+        );
+      case 'toprated':
+        return _safeFetchMediaPage(
+          '/Items',
+          {
+            'userId': connection.userId,
+            'Recursive': 'true',
+            'IncludeItemTypes': 'Movie,Series',
+            'SortBy': 'CommunityRating',
+            'SortOrder': 'Descending',
+            'StartIndex': offset.toString(),
+            'Limit': effectiveLimit,
+            'Fields': _browseFields,
+            'ParentId': ?parentId,
+            'EnableTotalRecordCount': 'true',
+            ...jellyfinImageQueryParameters,
+          },
+          offset: offset,
+          requestedSize: pageSize,
+          abort: abort,
+        );
+      case 'somethingdifferent':
+        // Random sort re-shuffles per request, so expose one bounded page
+        // instead of pretending stable pagination exists.
+        if (offset > 0) return LibraryPage<MediaItem>(items: const [], totalCount: offset, offset: offset);
+        return _safeFetchMediaPage(
+          '/Items',
+          {
+            'userId': connection.userId,
+            'Recursive': 'true',
+            'IncludeItemTypes': 'Movie,Series',
+            'SortBy': 'Random',
+            'Filters': 'IsUnplayed',
+            'Limit': effectiveLimit,
+            'Fields': _browseFields,
+            'ParentId': ?parentId,
+            'EnableTotalRecordCount': 'false',
+            ...jellyfinImageQueryParameters,
+          },
+          offset: offset,
+          requestedSize: pageSize,
+          singlePage: true,
           abort: abort,
         );
       default:

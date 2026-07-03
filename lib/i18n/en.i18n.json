@@ -706,7 +706,12 @@
     "tvShow": "TV Show",
     "minutesLeft": "${minutes} min left",
     "moreLikeThis": "More Like This",
-    "becauseYouWatched": "Because you watched ${title}"
+    "becauseYouWatched": "Because you watched ${title}",
+    "topRated": "Top Rated",
+    "somethingDifferent": "Something Different",
+    "topPicksForYou": "Top Picks for You",
+    "becauseYouLike": "Because you like ${genre}",
+    "hiddenGems": "Hidden Gems"
   },
   "errors": {
     "searchFailed": "Search failed: ${error}",

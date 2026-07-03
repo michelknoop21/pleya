@@ -2137,6 +2137,21 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Because you watched ${title}'
 	String becauseYouWatched({required Object title}) => 'Because you watched ${title}';
+
+	/// en: 'Top Rated'
+	String get topRated => 'Top Rated';
+
+	/// en: 'Something Different'
+	String get somethingDifferent => 'Something Different';
+
+	/// en: 'Top Picks for You'
+	String get topPicksForYou => 'Top Picks for You';
+
+	/// en: 'Because you like ${genre}'
+	String becauseYouLike({required Object genre}) => 'Because you like ${genre}';
+
+	/// en: 'Hidden Gems'
+	String get hiddenGems => 'Hidden Gems';
 }
 
 // Path: errors
@@ -5283,6 +5298,11 @@ extension on Translations {
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min left',
 			'discover.moreLikeThis' => 'More Like This',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Because you watched ${title}',
+			'discover.topRated' => 'Top Rated',
+			'discover.somethingDifferent' => 'Something Different',
+			'discover.topPicksForYou' => 'Top Picks for You',
+			'discover.becauseYouLike' => ({required Object genre}) => 'Because you like ${genre}',
+			'discover.hiddenGems' => 'Hidden Gems',
 			'errors.searchFailed' => ({required Object error}) => 'Search failed: ${error}',
 			'errors.connectionTimeout' => ({required Object context}) => 'Connection timeout while loading ${context}',
 			'errors.connectionFailed' => 'Unable to connect to media server',
@@ -5645,13 +5665,13 @@ extension on Translations {
 			'shaders.mode' => 'Mode',
 			'shaders.importShader' => 'Import Shader',
 			'shaders.customShaderDescription' => 'Custom GLSL shader',
+			_ => null,
+		} ?? switch (path) {
 			'shaders.shaderImported' => 'Shader imported',
 			'shaders.shaderImportFailed' => 'Failed to import shader',
 			'shaders.deleteShader' => 'Delete Shader',
 			'shaders.deleteShaderConfirm' => ({required Object name}) => 'Delete "${name}"?',
 			'companionRemote.title' => 'Companion Remote',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.connectedTo' => ({required Object name}) => 'Connected to ${name}',
 			'companionRemote.unknownDevice' => 'Unknown Device',
 			'companionRemote.session.startingServer' => 'Starting remote server...',

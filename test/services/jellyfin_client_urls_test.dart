@@ -1521,8 +1521,8 @@ void main() {
       final auth = headers['Authorization'];
       expect(auth, isNotNull);
       expect(auth, startsWith('MediaBrowser '));
-      expect(auth, contains('Client="Plezy"'));
-      expect(auth, contains('Device="Plezy"'));
+      expect(auth, contains('Client="Pleya"'));
+      expect(auth, contains('Device="Pleya"'));
       expect(auth, contains('DeviceId="dev-xyz"'));
       expect(auth, contains(RegExp(r'Version="[^"]+"')));
       expect(auth, contains('Token="tok-abc"'));

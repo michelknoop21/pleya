@@ -896,6 +896,11 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String minutesLeft({required Object minutes}) => '${minutes} min over';
 	@override String get moreLikeThis => 'Meer zoals dit';
 	@override String becauseYouWatched({required Object title}) => 'Omdat je ${title} gekeken hebt';
+	@override String get topRated => 'Hoogst gewaardeerd';
+	@override String get somethingDifferent => 'Eens iets anders';
+	@override String get topPicksForYou => 'Aanbevolen voor jou';
+	@override String becauseYouLike({required Object genre}) => 'Omdat je van ${genre} houdt';
+	@override String get hiddenGems => 'Verborgen parels';
 }
 
 // Path: errors
@@ -2635,6 +2640,11 @@ extension on TranslationsNl {
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min over',
 			'discover.moreLikeThis' => 'Meer zoals dit',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Omdat je ${title} gekeken hebt',
+			'discover.topRated' => 'Hoogst gewaardeerd',
+			'discover.somethingDifferent' => 'Eens iets anders',
+			'discover.topPicksForYou' => 'Aanbevolen voor jou',
+			'discover.becauseYouLike' => ({required Object genre}) => 'Omdat je van ${genre} houdt',
+			'discover.hiddenGems' => 'Verborgen parels',
 			'errors.searchFailed' => ({required Object error}) => 'Zoeken mislukt: ${error}',
 			'errors.connectionTimeout' => ({required Object context}) => 'Verbinding time-out tijdens laden ${context}',
 			'errors.connectionFailed' => 'Kan geen verbinding maken met mediaserver',
@@ -3003,13 +3013,13 @@ extension on TranslationsNl {
 			'companionRemote.unknownDevice' => 'Onbekend apparaat',
 			'companionRemote.session.startingServer' => 'Externe server starten...',
 			'companionRemote.session.failedToCreate' => 'Kan externe server niet starten:',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.session.hostAddress' => 'Hostadres',
 			'companionRemote.session.connected' => 'Verbonden',
 			'companionRemote.session.serverRunning' => 'Externe server actief',
 			'companionRemote.session.serverStopped' => 'Externe server gestopt',
 			'companionRemote.session.serverRunningDescription' => 'Mobiele apparaten op je netwerk kunnen met deze app verbinden',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.session.serverStoppedDescription' => 'Start de server om mobiele apparaten te laten verbinden',
 			'companionRemote.session.usePhoneToControl' => 'Gebruik je mobiele apparaat om deze app te bedienen',
 			'companionRemote.session.startServer' => 'Server starten',
