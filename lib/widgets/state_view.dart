@@ -61,44 +61,52 @@ class StateView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = tokens(context);
+    final theme = Theme.of(context);
+    // The app theme always installs [MonoTokens]; fall back to theme-derived
+    // values so a bare [MaterialApp] (e.g. in widget tests) doesn't crash.
+    final t = theme.extension<MonoTokens>();
+    final space = t?.space ?? 12.0;
+    final radiusSm = t?.radiusSm ?? 8.0;
+    final text = t?.text ?? theme.colorScheme.onSurface;
+    final textMuted = t?.textMuted ?? theme.colorScheme.onSurfaceVariant;
+    final surfaceElevated = t?.surfaceElevated ?? theme.colorScheme.surfaceContainerHighest;
     final iconSize = compact ? 32.0 : 48.0;
 
     final content = Column(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, size: iconSize, color: t.textMuted),
-        SizedBox(height: t.space),
+        Icon(icon, size: iconSize, color: textMuted),
+        SizedBox(height: space),
         Text(
           title,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: t.text),
+          style: theme.textTheme.titleMedium?.copyWith(color: text),
         ),
         if (message != null) ...[
-          SizedBox(height: t.space / 2),
+          SizedBox(height: space / 2),
           Text(
             message!,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: t.textMuted),
+            style: theme.textTheme.bodyMedium?.copyWith(color: textMuted),
           ),
         ],
         if (onRetry != null) ...[
-          SizedBox(height: t.space * 1.5),
+          SizedBox(height: space * 1.5),
           FocusableButton(
             onPressed: onRetry,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
-                color: t.surfaceElevated,
-                borderRadius: BorderRadius.circular(t.radiusSm),
+                color: surfaceElevated,
+                borderRadius: BorderRadius.circular(radiusSm),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Symbols.refresh_rounded, size: 18, color: t.text),
+                  Icon(Symbols.refresh_rounded, size: 18, color: text),
                   const SizedBox(width: 8),
-                  Text(retryLabel, style: TextStyle(color: t.text, fontWeight: FontWeight.w600)),
+                  Text(retryLabel, style: TextStyle(color: text, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -108,7 +116,7 @@ class StateView extends StatelessWidget {
     );
 
     return Padding(
-      padding: EdgeInsets.all(compact ? t.space : t.space * 2),
+      padding: EdgeInsets.all(compact ? space : space * 2),
       child: compact ? content : Center(child: content),
     );
   }

@@ -21,7 +21,7 @@ import '../widgets/ios_status_bar_tap_scroll_to_top.dart';
 import '../widgets/media_grid_delegate.dart';
 import '../widgets/sliver_cross_axis_layout_builder.dart';
 import '../widgets/desktop_app_bar.dart';
-import '../widgets/loading_indicator_box.dart';
+import '../widgets/skeletons.dart';
 import '../widgets/overlay_sheet.dart';
 import '../focus/focusable_action_bar.dart';
 import '../focus/key_event_utils.dart';
@@ -502,7 +502,10 @@ class _HubDetailScreenState extends State<HubDetailScreen>
                 if (_errorMessage != null)
                   SliverErrorState(message: _errorMessage!, onRetry: _loadMoreItems)
                 else if (_filteredItems.isEmpty && _isLoading)
-                  LoadingIndicatorBox.sliver
+                  SliverPadding(
+                    padding: const EdgeInsets.all(8),
+                    sliver: SliverList.builder(itemCount: 8, itemBuilder: (context, index) => const SkeletonListTile()),
+                  )
                 else if (_filteredItems.isEmpty)
                   SliverFillRemaining(child: Center(child: Text(t.hubDetail.noItemsFound)))
                 else

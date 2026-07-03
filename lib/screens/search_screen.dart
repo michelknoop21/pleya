@@ -17,11 +17,11 @@ import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
 import '../utils/snackbar_helper.dart';
 import '../widgets/desktop_app_bar.dart';
-import '../widgets/loading_indicator_box.dart';
 import '../widgets/pill_input_decoration.dart';
 import '../widgets/focusable_media_card.dart';
+import '../widgets/skeletons.dart';
+import '../widgets/state_view.dart';
 import '../utils/focus_utils.dart';
-import 'libraries/state_messages.dart';
 import 'main_screen.dart';
 
 /// Client-side result type filter. Only kinds that [searchAcrossServers]
@@ -399,26 +399,30 @@ class _SearchScreenState extends State<SearchScreen>
               ),
             ),
             if (_isSearching)
-              LoadingIndicatorBox.sliver
+              SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverList.builder(
+                  itemCount: 6,
+                  itemBuilder: (context, index) => const SkeletonListTile(),
+                ),
+              )
             else if (!_hasSearched)
               if (_history.isNotEmpty)
                 _buildRecentSearches(context)
               else
                 SliverFillRemaining(
-                  child: StateMessageWidget(
-                    message: t.search.searchYourMedia,
-                    subtitle: t.search.enterTitleActorOrKeyword,
+                  child: StateView.empty(
+                    title: t.search.searchYourMedia,
+                    message: t.search.enterTitleActorOrKeyword,
                     icon: Symbols.search_rounded,
-                    iconSize: 80,
                   ),
                 )
             else if (_searchResults.isEmpty)
               SliverFillRemaining(
-                child: StateMessageWidget(
-                  message: t.messages.noResultsFound,
-                  subtitle: t.search.tryDifferentTerm,
+                child: StateView.empty(
+                  title: t.messages.noResultsFound,
+                  message: t.search.tryDifferentTerm,
                   icon: Symbols.search_off_rounded,
-                  iconSize: 80,
                 ),
               )
             else ...[

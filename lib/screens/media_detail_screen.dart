@@ -22,8 +22,6 @@ import '../focus/focusable_action_bar.dart';
 import '../focus/focusable_wrapper.dart';
 import '../focus/key_event_utils.dart';
 import '../focus/input_mode_tracker.dart';
-import '../focus/card_focus_scope.dart';
-import '../widgets/focus_builders.dart';
 import '../media/library_query.dart';
 import '../media/media_hub.dart';
 import '../utils/provider_extensions.dart';
@@ -58,7 +56,6 @@ import '../providers/download_provider.dart';
 import '../providers/offline_watch_provider.dart';
 import '../providers/watch_state_store.dart';
 import '../theme/mono_theme.dart' show kAccentAlt;
-import '../theme/mono_tokens.dart';
 import '../utils/app_logger.dart';
 import '../utils/formatters.dart';
 import '../utils/scroll_utils.dart';
@@ -69,7 +66,9 @@ import '../widgets/app_bar_back_button.dart';
 import '../utils/desktop_window_padding.dart';
 import '../widgets/horizontal_scroll_with_arrows.dart';
 import '../widgets/media_context_menu.dart';
+import '../widgets/pressable.dart';
 import 'libraries/state_messages.dart';
+import '../widgets/state_view.dart';
 import '../widgets/overlay_sheet.dart';
 import '../widgets/placeholder_container.dart';
 import '../mixins/watch_state_aware.dart';
@@ -82,6 +81,8 @@ import '../utils/global_key_utils.dart';
 import '../widgets/episode_card.dart';
 import '../widgets/fitting_title_text.dart';
 import 'actor_media_screen.dart';
+import 'media_detail/cast_section.dart';
+import 'media_detail/extras_section.dart';
 import '../widgets/focusable_tab_chip.dart';
 import '../widgets/hub_section.dart';
 import '../widgets/ios_status_bar_tap_scroll_to_top.dart';
@@ -2561,25 +2562,20 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   );
 
   Widget _sectionEmpty(BuildContext context, String message) {
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Center(
-        child: Text(message, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey)),
-      ),
-    );
+    return Center(child: StateView.empty(title: message, compact: true));
   }
 
   /// Retryable error for a section whose fetch threw (vs. [_sectionEmpty], which
-  /// means a successful-but-empty result). Reuses the app-wide [ErrorStateWidget]
+  /// means a successful-but-empty result). Reuses the app-wide [StateView]
   /// so the Retry button is dpad-focusable.
   Widget _sectionError(String message, VoidCallback onRetry) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: ErrorStateWidget(
-        message: message,
+    return Center(
+      child: StateView.error(
+        title: message,
         icon: Symbols.error_outline_rounded,
         onRetry: onRetry,
         retryLabel: t.common.retry,
+        compact: true,
       ),
     );
   }
@@ -4394,93 +4390,15 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   }
 
   Widget _buildCastSectionContent(MediaItem metadata) {
-    final cardWidth = _getResponsiveCardWidth();
-    const innerPadding = 3.0;
-    final imageSize = cardWidth;
-    // image + inner padding + text area + outer list padding + focus scale headroom
-    final containerHeight = imageSize + innerPadding * 2 + 58 + 10;
-
-    final theme = Theme.of(context);
-    final actorNameStyle = theme.textTheme.bodyMedium?.copyWith(fontWeight: .w600);
-    final actorRoleStyle = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-
-    return Focus(
+    return CastSection(
+      metadata: metadata,
+      cardWidth: _getResponsiveCardWidth(),
+      client: getServerBoundMediaClient(context),
       focusNode: _castFocusNode,
       onKeyEvent: _handleCastKeyEvent,
-      child: ListenableBuilder(
-        listenable: _castFocusNode,
-        builder: (context, _) {
-          final hasFocus = _castFocusNode.hasFocus;
-
-          return SizedBox(
-            height: containerHeight,
-            child: HorizontalScrollWithArrows(
-              controller: _castScrollController,
-              builder: (scrollController) => ListView.builder(
-                controller: scrollController,
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                itemCount: metadata.roles!.length,
-                itemBuilder: (context, index) {
-                  final actor = metadata.roles![index];
-                  final isFocused = hasFocus && index == _focusedCastIndex;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: FocusBuilders.buildLockedFocusWrapper(
-                      context: context,
-                      isFocused: isFocused,
-                      borderRadius: tokens(context).radiusSm,
-                      onTap: () => _navigateToActorMedia(actor),
-                      delegateFocusBorder: true,
-                      child: Padding(
-                        padding: const EdgeInsets.all(innerPadding),
-                        child: SizedBox(
-                          width: cardWidth,
-                          child: Column(
-                            crossAxisAlignment: .start,
-                            children: [
-                              CardFocusBorder(
-                                borderRadius: tokens(context).radiusSm,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(tokens(context).radiusSm),
-                                  child: OptimizedMediaImage(
-                                    client: getServerBoundMediaClient(context),
-                                    imagePath: actor.thumbPath,
-                                    width: imageSize,
-                                    height: imageSize,
-                                    fit: BoxFit.cover,
-                                    imageType: ImageType.avatar,
-                                    fallbackIcon: Symbols.person_rounded,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: .start,
-                                  children: [
-                                    Text(actor.tag, style: actorNameStyle, maxLines: 2, overflow: .ellipsis),
-                                    if (actor.role != null) ...[
-                                      const SizedBox(height: 2),
-                                      Text(actor.role!, style: actorRoleStyle, maxLines: 1, overflow: .ellipsis),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          );
-        },
-      ),
+      scrollController: _castScrollController,
+      focusedIndex: _focusedCastIndex,
+      onActorTap: _navigateToActorMedia,
     );
   }
 
@@ -4492,56 +4410,15 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   }
 
   Widget _buildExtrasSectionContent() {
-    final cardWidth = _getResponsiveCardWidth();
-    // 16:9 aspect ratio for clip thumbnails (cardWidth includes 8px padding on each side)
-    final posterHeight = (cardWidth - 16) * (9 / 16);
-    final containerHeight = posterHeight + 52;
-
-    return Focus(
+    return ExtrasSection(
+      extras: _extras!,
+      cardWidth: _getResponsiveCardWidth(),
       focusNode: _extrasFocusNode,
       onKeyEvent: _handleExtrasKeyEvent,
-      child: ListenableBuilder(
-        listenable: _extrasFocusNode,
-        builder: (context, _) {
-          final hasFocus = _extrasFocusNode.hasFocus;
-
-          return SizedBox(
-            height: containerHeight,
-            child: HorizontalScrollWithArrows(
-              controller: _extrasScrollController,
-              builder: (scrollController) => ListView.builder(
-                controller: scrollController,
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                itemCount: _extras!.length,
-                itemBuilder: (context, index) {
-                  final extra = _extras![index];
-                  final isFocused = hasFocus && index == _focusedExtraIndex;
-                  final cardKey = _extraCardKeys.putIfAbsent(index, () => GlobalKey<MediaCardState>());
-
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: FocusBuilders.buildLockedFocusWrapper(
-                      context: context,
-                      isFocused: isFocused,
-                      onTap: () => navigateToVideoPlayer(context, metadata: extra),
-                      delegateFocusBorder: true,
-                      child: MediaCard(
-                        key: cardKey,
-                        item: extra,
-                        width: cardWidth,
-                        height: posterHeight,
-                        forceGridMode: true,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          );
-        },
-      ),
+      scrollController: _extrasScrollController,
+      focusedIndex: _focusedExtraIndex,
+      cardKeyFor: (index) => _extraCardKeys.putIfAbsent(index, () => GlobalKey<MediaCardState>()),
+      onExtraTap: (extra) => navigateToVideoPlayer(context, metadata: extra),
     );
   }
 

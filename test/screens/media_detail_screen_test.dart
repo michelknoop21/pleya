@@ -33,6 +33,7 @@ import 'package:plezy/utils/media_server_http_client.dart';
 import 'package:plezy/utils/platform_detector.dart';
 import 'package:plezy/utils/watch_state_notifier.dart';
 import 'package:plezy/widgets/episode_card.dart';
+import 'package:plezy/widgets/media_progress_bar.dart';
 import 'package:plezy/widgets/tv_browse_rail.dart';
 import 'package:provider/provider.dart';
 
@@ -722,7 +723,7 @@ void main() {
     bool episodeRowHasProgress(WidgetTester tester, String title) {
       final card = episodeCardFor(title);
       expect(card, findsOneWidget, reason: 'episode row "$title" should be visible');
-      return tester.any(find.descendant(of: card, matching: find.byType(LinearProgressIndicator)));
+      return tester.any(find.descendant(of: card, matching: find.byType(MediaProgressBar)));
     }
 
     Future<void> emit(WidgetTester tester, void Function() send) async {

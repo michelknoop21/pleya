@@ -11,6 +11,7 @@ import '../utils/dialogs.dart';
 import '../utils/global_key_utils.dart';
 import 'clickable_cursor.dart';
 import 'download_status_icon.dart';
+import 'state_view.dart';
 
 /// Represents a node in the download tree
 class DownloadTreeNode {
@@ -108,7 +109,7 @@ class _DownloadTreeViewState extends State<DownloadTreeView> {
     final flattenedNodes = _flattenTree(tree);
 
     if (flattenedNodes.isEmpty) {
-      return Center(child: Text(t.downloads.noDownloadsTree));
+      return StateView.empty(title: t.downloads.noDownloadsTree, icon: Symbols.download_rounded);
     }
 
     return ListView.builder(

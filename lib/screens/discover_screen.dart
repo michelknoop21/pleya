@@ -30,7 +30,8 @@ import '../providers/watch_state_store.dart';
 import '../widgets/hub_section.dart';
 import '../widgets/app_menu.dart';
 import '../widgets/clickable_cursor.dart';
-import '../widgets/loading_indicator_box.dart';
+import '../widgets/skeletons.dart';
+import '../widgets/state_view.dart';
 import '../widgets/profile_switching_overlay.dart';
 import 'profile/profile_switch_screen.dart';
 import '../connection/connection_registry.dart';
@@ -1098,7 +1099,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   );
                 },
               ),
-              if (_isLoading) LoadingIndicatorBox.sliver,
+              if (_isLoading)
+                const SliverToBoxAdapter(
+                  child: Column(children: [SkeletonHubRow(), SkeletonHubRow(), SkeletonHubRow()]),
+                ),
               if (_errorMessage != null) SliverErrorState(message: _errorMessage!, onRetry: _discover.load),
               if (!_isLoading && _errorMessage == null) ...[
                 // On Deck / Continue Watching
@@ -1150,57 +1154,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
                 // Show loading skeleton for hubs while they're loading
                 if (_areHubsLoading && _hubs.isEmpty)
-                  for (int i = 0; i < 3; i++)
-                    SliverToBoxAdapter(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: .start,
-                          children: [
-                            Container(
-                              width: 200,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceContainerHighest,
-                                borderRadius: const BorderRadius.all(Radius.circular(4)),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              height: 200,
-                              child: ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: 5,
-                                itemBuilder: (context, index) {
-                                  return Container(
-                                    margin: const EdgeInsets.only(right: 12),
-                                    width: 140,
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                      borderRadius: BorderRadius.circular(tokens(context).radiusSm),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  for (int i = 0; i < 3; i++) const SliverToBoxAdapter(child: SkeletonHubRow()),
 
                 if (_onDeck.isEmpty && _hubs.isEmpty && !_areHubsLoading)
                   SliverFillRemaining(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: .center,
-                        children: [
-                          const AppIcon(Symbols.movie_rounded, fill: 1, size: 64, color: Colors.grey),
-                          const SizedBox(height: 16),
-                          Text(t.discover.noContentAvailable),
-                          const SizedBox(height: 8),
-                          Text(t.discover.addMediaToLibraries, style: const TextStyle(color: Colors.grey)),
-                        ],
-                      ),
+                    child: StateView.empty(
+                      title: t.discover.noContentAvailable,
+                      message: t.discover.addMediaToLibraries,
+                      icon: Symbols.movie_rounded,
                     ),
                   ),
 

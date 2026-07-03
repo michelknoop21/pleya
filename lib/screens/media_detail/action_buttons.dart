@@ -101,25 +101,30 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
 
     final gap = isTv ? 8.0 * tvScale : 12.0;
 
+    // Pressable adds the press-down scale; the buttons below keep owning the
+    // tap (they win the gesture arena as the deeper recognizer).
     Widget playButton(FocusableActionBuildState state) {
-      return SizedBox(
-        height: actionSize,
-        child: FilledButton(
-          onPressed: onPlayPressed,
-          style: actionButtonStyle(
-            showFocus: state.showFocus,
-            padding: .symmetric(horizontal: isTv ? 17 * tvScale : 16, vertical: isTv ? 9 * tvScale : 0),
+      return Pressable(
+        onTap: onPlayPressed,
+        child: SizedBox(
+          height: actionSize,
+          child: FilledButton(
+            onPressed: onPlayPressed,
+            style: actionButtonStyle(
+              showFocus: state.showFocus,
+              padding: .symmetric(horizontal: isTv ? 17 * tvScale : 16, vertical: isTv ? 9 * tvScale : 0),
+            ),
+            child: playButtonLabel.isNotEmpty
+                ? Row(
+                    mainAxisSize: .min,
+                    children: [
+                      playButtonIcon,
+                      SizedBox(width: isTv ? 7 * tvScale : 8),
+                      Text(playButtonLabel, style: playTextStyle),
+                    ],
+                  )
+                : playButtonIcon,
           ),
-          child: playButtonLabel.isNotEmpty
-              ? Row(
-                  mainAxisSize: .min,
-                  children: [
-                    playButtonIcon,
-                    SizedBox(width: isTv ? 7 * tvScale : 8),
-                    Text(playButtonLabel, style: playTextStyle),
-                  ],
-                )
-              : playButtonIcon,
         ),
       );
     }
@@ -131,12 +136,15 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       String? tooltip,
       Color? foregroundColor,
     }) {
-      return IconButton.filledTonal(
-        onPressed: onPressed,
-        icon: icon,
-        tooltip: tooltip,
-        iconSize: isTv ? 21 * tvScale : 20,
-        style: actionButtonStyle(foregroundColor: foregroundColor, showFocus: state.showFocus),
+      return Pressable(
+        onTap: onPressed,
+        child: IconButton.filledTonal(
+          onPressed: onPressed,
+          icon: icon,
+          tooltip: tooltip,
+          iconSize: isTv ? 21 * tvScale : 20,
+          style: actionButtonStyle(foregroundColor: foregroundColor, showFocus: state.showFocus),
+        ),
       );
     }
 
@@ -308,12 +316,15 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     double tvScale, {
     bool showFocus = false,
   }) {
-    return IconButton.filledTonal(
-      onPressed: () => unawaited(_handleWatchedTogglePressed(metadata)),
-      icon: AppIcon(metadata.isWatched ? Symbols.remove_done_rounded : Symbols.check_rounded, fill: 1),
-      tooltip: metadata.isWatched ? t.tooltips.markAsUnwatched : t.tooltips.markAsWatched,
-      iconSize: PlatformDetector.isTV() ? 21 * tvScale : 20,
-      style: actionButtonStyle(showFocus: showFocus),
+    return Pressable(
+      onTap: () => unawaited(_handleWatchedTogglePressed(metadata)),
+      child: IconButton.filledTonal(
+        onPressed: () => unawaited(_handleWatchedTogglePressed(metadata)),
+        icon: AppIcon(metadata.isWatched ? Symbols.remove_done_rounded : Symbols.check_rounded, fill: 1),
+        tooltip: metadata.isWatched ? t.tooltips.markAsUnwatched : t.tooltips.markAsWatched,
+        iconSize: PlatformDetector.isTV() ? 21 * tvScale : 20,
+        style: actionButtonStyle(showFocus: showFocus),
+      ),
     );
   }
 
@@ -331,18 +342,25 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
       onPlayTrailer: onPlayTrailer,
       child: Builder(
-        builder: (buttonContext) => IconButton.filledTonal(
-          onPressed: () {
+        builder: (buttonContext) {
+          void openMenu() {
             final renderBox = buttonContext.findRenderObject() as RenderBox?;
             if (renderBox != null) {
               final position = renderBox.localToGlobal(renderBox.size.center(Offset.zero));
               _contextMenuKey.currentState?.showContextMenu(buttonContext, position: position);
             }
-          },
-          icon: const AppIcon(Symbols.more_vert_rounded, fill: 1),
-          iconSize: PlatformDetector.isTV() ? 21 * tvScale : 20,
-          style: actionButtonStyle(showFocus: showFocus),
-        ),
+          }
+
+          return Pressable(
+            onTap: openMenu,
+            child: IconButton.filledTonal(
+              onPressed: openMenu,
+              icon: const AppIcon(Symbols.more_vert_rounded, fill: 1),
+              iconSize: PlatformDetector.isTV() ? 21 * tvScale : 20,
+              style: actionButtonStyle(showFocus: showFocus),
+            ),
+          );
+        },
       ),
     );
   }
