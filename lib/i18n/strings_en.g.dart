@@ -1863,7 +1863,7 @@ class TranslationsProfilesEn {
 	// Translations
 
 	/// en: 'Add Pleya profile'
-	String get addPlezyProfile => 'Add Pleya profile';
+	String get addPleyaProfile => 'Add Pleya profile';
 
 	/// en: 'Switching profile…'
 	String get switchingProfile => 'Switching profile…';
@@ -5218,7 +5218,7 @@ extension on Translations {
 			'mpvConfig.confirmDeletePreset' => 'Are you sure you want to delete this preset?',
 			'mpvConfig.configPlaceholder' => 'gpu-api=vulkan\nhwdec=auto\n# comment',
 			'dialog.confirmAction' => 'Confirm Action',
-			'profiles.addPlezyProfile' => 'Add Pleya profile',
+			'profiles.addPleyaProfile' => 'Add Pleya profile',
 			'profiles.switchingProfile' => 'Switching profile…',
 			'profiles.deleteThisProfileTitle' => 'Delete this profile?',
 			'profiles.deleteThisProfileMessage' => ({required Object displayName}) => 'Remove ${displayName}. Connections aren\'t affected.',

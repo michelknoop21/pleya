@@ -585,7 +585,7 @@
     "confirmAction": "Confirmar Ação"
   },
   "profiles": {
-    "addPlezyProfile": "Adicionar perfil Pleya",
+    "addPleyaProfile": "Adicionar perfil Pleya",
     "switchingProfile": "Mudando perfil…",
     "deleteThisProfileTitle": "Excluir este perfil?",
     "deleteThisProfileMessage": "Remover ${displayName}. As conexões não serão afetadas.",

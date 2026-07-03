@@ -585,7 +585,7 @@
     "confirmAction": "Bekræft handling"
   },
   "profiles": {
-    "addPlezyProfile": "Tilføj Pleya-profil",
+    "addPleyaProfile": "Tilføj Pleya-profil",
     "switchingProfile": "Skifter profil…",
     "deleteThisProfileTitle": "Slet denne profil?",
     "deleteThisProfileMessage": "Fjern ${displayName}. Forbindelser påvirkes ikke.",

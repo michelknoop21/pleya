@@ -307,7 +307,7 @@ class SettingsExportService {
 
     try {
       return await FilePickerService.instance.saveFile(
-        dialogTitle: 'Export Plezy settings',
+        dialogTitle: 'Export Pleya settings',
         fileName: fileName,
         bytes: bytes,
         type: FileType.custom,

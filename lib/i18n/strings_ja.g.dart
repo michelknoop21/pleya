@@ -778,7 +778,7 @@ class _TranslationsProfilesJa extends TranslationsProfilesEn {
 	final TranslationsJa _root; // ignore: unused_field
 
 	// Translations
-	@override String get addPlezyProfile => 'Pleyaプロファイルを追加';
+	@override String get addPleyaProfile => 'Pleyaプロファイルを追加';
 	@override String get switchingProfile => 'プロファイルを切り替え中…';
 	@override String get deleteThisProfileTitle => 'このプロファイルを削除しますか？';
 	@override String deleteThisProfileMessage({required Object displayName}) => '${displayName}を削除します。接続には影響しません。';
@@ -2471,7 +2471,7 @@ extension on TranslationsJa {
 			'mpvConfig.confirmDeletePreset' => 'このプリセットを削除してもよろしいですか？',
 			'mpvConfig.configPlaceholder' => 'gpu-api=vulkan\nhwdec=auto\n# comment',
 			'dialog.confirmAction' => '操作の確認',
-			'profiles.addPlezyProfile' => 'Pleyaプロファイルを追加',
+			'profiles.addPleyaProfile' => 'Pleyaプロファイルを追加',
 			'profiles.switchingProfile' => 'プロファイルを切り替え中…',
 			'profiles.deleteThisProfileTitle' => 'このプロファイルを削除しますか？',
 			'profiles.deleteThisProfileMessage' => ({required Object displayName}) => '${displayName}を削除します。接続には影響しません。',

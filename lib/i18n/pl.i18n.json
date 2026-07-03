@@ -585,7 +585,7 @@
     "confirmAction": "Potwierdź działanie"
   },
   "profiles": {
-    "addPlezyProfile": "Dodaj profil Pleya",
+    "addPleyaProfile": "Dodaj profil Pleya",
     "switchingProfile": "Przełączanie profilu…",
     "deleteThisProfileTitle": "Usunąć ten profil?",
     "deleteThisProfileMessage": "Usuń ${displayName}. Połączenia nie zostaną zmienione.",

@@ -161,7 +161,7 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
                         child: OutlinedButton.icon(
                           onPressed: _switching ? null : _addLocalProfile,
                           icon: const AppIcon(Symbols.person_add_rounded, fill: 1),
-                          label: Text(t.profiles.addPlezyProfile),
+                          label: Text(t.profiles.addPleyaProfile),
                         ),
                       ),
                     ),

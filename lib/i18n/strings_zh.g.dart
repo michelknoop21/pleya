@@ -778,7 +778,7 @@ class _TranslationsProfilesZh extends TranslationsProfilesEn {
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get addPlezyProfile => '添加 Pleya 配置文件';
+	@override String get addPleyaProfile => '添加 Pleya 配置文件';
 	@override String get switchingProfile => '切换配置文件中…';
 	@override String get deleteThisProfileTitle => '删除此配置文件？';
 	@override String deleteThisProfileMessage({required Object displayName}) => '移除 ${displayName}。连接不会受影响。';
@@ -2471,7 +2471,7 @@ extension on TranslationsZh {
 			'mpvConfig.confirmDeletePreset' => '确定要删除此预设吗？',
 			'mpvConfig.configPlaceholder' => 'gpu-api=vulkan\nhwdec=auto\n# comment',
 			'dialog.confirmAction' => '确认操作',
-			'profiles.addPlezyProfile' => '添加 Pleya 配置文件',
+			'profiles.addPleyaProfile' => '添加 Pleya 配置文件',
 			'profiles.switchingProfile' => '切换配置文件中…',
 			'profiles.deleteThisProfileTitle' => '删除此配置文件？',
 			'profiles.deleteThisProfileMessage' => ({required Object displayName}) => '移除 ${displayName}。连接不会受影响。',

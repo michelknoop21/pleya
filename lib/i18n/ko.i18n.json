@@ -585,7 +585,7 @@
     "confirmAction": "확인"
   },
   "profiles": {
-    "addPlezyProfile": "Pleya 프로필 추가",
+    "addPleyaProfile": "Pleya 프로필 추가",
     "switchingProfile": "프로필 전환 중…",
     "deleteThisProfileTitle": "이 프로필을 삭제하시겠습니까?",
     "deleteThisProfileMessage": "${displayName}을(를) 제거합니다. 연결에는 영향이 없습니다.",

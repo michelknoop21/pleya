@@ -585,7 +585,7 @@
     "confirmAction": "Потвърждение на действие"
   },
   "profiles": {
-    "addPlezyProfile": "Добави Pleya профил",
+    "addPleyaProfile": "Добави Pleya профил",
     "switchingProfile": "Смяна на профил…",
     "deleteThisProfileTitle": "Да се изтрие ли този профил?",
     "deleteThisProfileMessage": "Премахване на ${displayName}. Връзките не се засягат.",

@@ -585,7 +585,7 @@
     "confirmAction": "Bekräfta åtgärd"
   },
   "profiles": {
-    "addPlezyProfile": "Lägg till Pleya-profil",
+    "addPleyaProfile": "Lägg till Pleya-profil",
     "switchingProfile": "Byter profil…",
     "deleteThisProfileTitle": "Ta bort denna profil?",
     "deleteThisProfileMessage": "Ta bort ${displayName}. Anslutningar påverkas inte.",
