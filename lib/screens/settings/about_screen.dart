@@ -17,7 +17,7 @@ class AboutScreen extends StatelessWidget {
   // policy URLs are supplied at build time.
   static const String _upstreamUrl = 'https://github.com/edde746/plezy';
   static const String _sourceUrl =
-      String.fromEnvironment('SOURCE_REPO_URL', defaultValue: 'https://github.com/michelknoop/pleya');
+      String.fromEnvironment('SOURCE_REPO_URL', defaultValue: 'https://github.com/michelknoop21/pleya');
   static const String _privacyUrl =
       String.fromEnvironment('PRIVACY_POLICY_URL', defaultValue: 'https://pleya.app/privacy');
 

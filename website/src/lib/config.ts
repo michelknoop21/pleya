@@ -27,7 +27,7 @@ export const UPSTREAM_REPO_URL = 'https://github.com/edde746/plezy';
  * only upstream is not sufficient once builds are distributed. Fill this with
  * the public fork URL; until then the footer points at the shipped NOTICE.
  */
-export const FORK_SOURCE_URL = '';
+export const FORK_SOURCE_URL = 'https://github.com/michelknoop21/pleya';
 
 /** Effective "Source" link target: the public fork when available. */
 export const SOURCE_REPO_URL = FORK_SOURCE_URL.trim().length > 0 ? FORK_SOURCE_URL : '/NOTICE.txt';
