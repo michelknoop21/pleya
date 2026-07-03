@@ -28,7 +28,7 @@ class _CachedUrl {
 class DiscordRPCService {
   static const String _applicationId = '1453773470306402439';
   static const String _posterUploadUrl =
-      '${String.fromEnvironment('PLEYA_ICE_BASE', defaultValue: 'https://ice.plezy.app')}/posters';
+      '${String.fromEnvironment('PLEYA_ICE_BASE', defaultValue: 'https://ice.pleya.app')}/posters';
   static const Duration _posterCacheTtl = Duration(hours: 3);
   static const int _maxPosterUploadBytes = 5 * 1024 * 1024;
 
@@ -332,7 +332,7 @@ class DiscordRPCService {
         return hostedUrl;
       }
     } catch (e) {
-      appLogger.d('Failed to upload thumbnail to Plezy poster host', error: e);
+      appLogger.d('Failed to upload thumbnail to Pleya poster host', error: e);
     }
     return null;
   }

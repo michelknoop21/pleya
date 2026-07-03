@@ -127,17 +127,15 @@ dependency_overrides:
       ref: 1d8cd83
 
 sentry:
-  org: plezy
-  project: plezy
-  url: https://bugs.plezy.app
+  org: pleya
+  project: pleya
+  url: https://bugs.pleya.app
   upload_sources: true
   commits: false
 
 flutter:
   uses-material-design: true
   assets:
-    - assets/plezy.png
-    - assets/plezy_adaptive_foreground.svg
     - assets/branding/
     - assets/plex_chevron.svg
     - assets/jellyfin_icon.svg

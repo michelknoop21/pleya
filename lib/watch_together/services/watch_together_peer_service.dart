@@ -25,7 +25,7 @@ class WatchTogetherPeerService with KeepaliveMixin {
   // Relay/signalling server for Watch Together. Override with your own via
   // --dart-define=PLEYA_ICE_BASE=... ; falls back to the shared instance.
   static const String defaultBaseUrl =
-      String.fromEnvironment('PLEYA_ICE_BASE', defaultValue: 'https://ice.plezy.app');
+      String.fromEnvironment('PLEYA_ICE_BASE', defaultValue: 'https://ice.pleya.app');
 
   final String _baseUrl;
 
