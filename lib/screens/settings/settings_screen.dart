@@ -21,8 +21,10 @@ import '../../providers/libraries_provider.dart';
 import '../../services/donation_service.dart';
 import '../../services/download_storage_service.dart';
 import '../../services/file_picker_service.dart';
+import '../../services/icloud_sync_service.dart';
 import '../../services/saf_storage_service.dart';
 import '../../services/settings_export_service.dart';
+import '../../providers/seerr_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/trackers_provider.dart';
 import '../../providers/trakt_account_provider.dart';
@@ -48,6 +50,7 @@ import 'keyboard_shortcuts_screen.dart';
 import 'logs_screen.dart';
 import 'playback_settings_screen.dart';
 import '../profile/profile_switch_screen.dart';
+import 'seerr_settings_screen.dart';
 import 'trackers_settings_screen.dart';
 import '../../widgets/loading_indicator_box.dart';
 
@@ -66,6 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   static const _kAppearance = 'appearance';
   static const _kPlayback = 'playback';
   static const _kTrackers = 'trackers';
+  static const _kRequests = 'requests';
   static const _kDownloadLocation = 'download_location';
   static const _kDownloadOnWifiOnly = 'download_on_wifi_only';
   static const _kAutoRemoveWatchedDownloads = 'auto_remove_watched_downloads';
@@ -82,6 +86,14 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   static const _kWatchTogetherRelay = 'watch_together_relay';
   static const _kExportSettings = 'export_settings';
   static const _kImportSettings = 'import_settings';
+  static const _kIcloudSync = 'icloud_sync';
+
+  /// iCloud settings-sync tile is Apple-only (tvOS reports as iOS).
+  static bool get _icloudSyncPlatform => Platform.isIOS || Platform.isMacOS;
+
+  /// Whether iCloud is signed in. null = not yet resolved (tile stays enabled
+  /// optimistically until the check returns).
+  bool? _icloudAvailable;
 
   KeyboardShortcutsService? _keyboardService;
   late final bool _keyboardShortcutsSupported = KeyboardShortcutsService.isPlatformSupported();
@@ -103,6 +115,11 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     if (_keyboardShortcutsSupported) {
       KeyboardShortcutsService.getInstance().then((s) {
         setStateIfMounted(() => _keyboardService = s);
+      });
+    }
+    if (_icloudSyncPlatform) {
+      ICloudSyncService.instance?.isAvailable().then((available) {
+        setStateIfMounted(() => _icloudAvailable = available);
       });
     }
   }
@@ -152,6 +169,8 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
                 _buildPlaybackTile(),
 
                 _buildTrackersTile(),
+
+                _buildRequestsTile(),
 
                 _buildConnectionsSection(),
 
@@ -243,6 +262,20 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           title: t.settings.trackers,
           subtitle: subtitle,
           destinationBuilder: (_) => const TrackersSettingsScreen(),
+        );
+      },
+    );
+  }
+
+  Widget _buildRequestsTile() {
+    return Consumer<SeerrProvider>(
+      builder: (context, seerr, _) {
+        return SettingNavigationTile(
+          focusNode: _focusTracker.get(_kRequests),
+          icon: Symbols.playlist_add_rounded,
+          title: t.settings.requests,
+          subtitle: seerr.isConfigured ? (seerr.host ?? t.settings.requests) : t.settings.requestsDescription,
+          destinationBuilder: (_) => const SeerrSettingsScreen(),
         );
       },
     );
@@ -470,8 +503,39 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
           onTap: _showImportSettingsDialog,
         ),
+        if (_icloudSyncPlatform) _buildIcloudSyncTile(),
       ],
     );
+  }
+
+  Widget _buildIcloudSyncTile() {
+    final unavailable = _icloudAvailable == false;
+    return SettingSwitchTile(
+      focusNode: _focusTracker.get(_kIcloudSync),
+      pref: settings.SettingsService.icloudSyncEnabled,
+      icon: Symbols.cloud_sync_rounded,
+      title: t.settings.icloudSync,
+      subtitle: unavailable ? t.settings.icloudSyncUnavailable : t.settings.icloudSyncDescription,
+      enabled: !unavailable,
+      onAfterWrite: _handleIcloudSyncToggle,
+    );
+  }
+
+  Future<void> _handleIcloudSyncToggle(bool enabled) async {
+    final svc = ICloudSyncService.instance;
+    if (svc == null) return;
+    try {
+      if (enabled) {
+        await svc.enable();
+      } else {
+        await svc.disable();
+      }
+    } catch (_) {
+      // Revert the toggle and surface the failure — the write already landed,
+      // so undo it so the UI matches the actual (off) state.
+      await _settingsService.write(settings.SettingsService.icloudSyncEnabled, false);
+      if (mounted) showErrorSnackBar(context, t.settings.icloudSyncEnableFailed);
+    }
   }
 
   Widget _buildAutoCheckUpdatesOnStartupTile() => SettingSwitchTile(
@@ -725,6 +789,10 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         if (_keyboardService != null) _keyboardService!.refreshFromStorage(),
       ]);
       unawaited(librariesProvider.refresh());
+
+      // Import wrote straight to prefs, bypassing write() and its KVS mirror —
+      // push the imported values so they reach the user's other devices.
+      unawaited(ICloudSyncService.instance?.pushAllIfEnabled() ?? Future.value());
 
       if (!mounted) return;
       showSuccessSnackBar(context, t.settings.importSettingsSuccess);

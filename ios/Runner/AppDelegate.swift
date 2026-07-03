@@ -46,6 +46,10 @@ import MediaPlayer
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AirPlayChannel") {
       registerAirPlayChannel(messenger: registrar.messenger())
     }
+
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ICloudKvsPlugin") {
+      ICloudKvsPlugin.register(with: registrar)
+    }
   }
 
   private func registerAirPlayChannel(messenger: FlutterBinaryMessenger) {

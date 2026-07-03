@@ -83,6 +83,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsMetadataEditEn metadataEdit = TranslationsMetadataEditEn.internal(_root);
 	late final TranslationsMatchScreenEn matchScreen = TranslationsMatchScreenEn.internal(_root);
 	late final TranslationsServerTasksEn serverTasks = TranslationsServerTasksEn.internal(_root);
+	late final TranslationsSeerrEn seerr = TranslationsSeerrEn.internal(_root);
 	late final TranslationsTraktEn trakt = TranslationsTraktEn.internal(_root);
 	late final TranslationsTrackersEn trackers = TranslationsTrackersEn.internal(_root);
 	late final TranslationsAddServerEn addServer = TranslationsAddServerEn.internal(_root);
@@ -735,6 +736,18 @@ class TranslationsSettingsEn {
 	/// en: 'Sign in before importing settings'
 	String get importSettingsNoUser => 'Sign in before importing settings';
 
+	/// en: 'Sync Settings via iCloud'
+	String get icloudSync => 'Sync Settings via iCloud';
+
+	/// en: 'Keep your preferences in sync across your Apple devices'
+	String get icloudSyncDescription => 'Keep your preferences in sync across your Apple devices';
+
+	/// en: 'Sign in to iCloud on this device to sync settings'
+	String get icloudSyncUnavailable => 'Sign in to iCloud on this device to sync settings';
+
+	/// en: 'Could not turn on iCloud settings sync'
+	String get icloudSyncEnableFailed => 'Could not turn on iCloud settings sync';
+
 	/// en: 'Shortcuts reset to defaults'
 	String get shortcutsReset => 'Shortcuts reset to defaults';
 
@@ -887,6 +900,12 @@ class TranslationsSettingsEn {
 
 	/// en: 'Sync progress to Trakt, MyAnimeList, AniList, and Simkl'
 	String get trackersDescription => 'Sync progress to Trakt, MyAnimeList, AniList, and Simkl';
+
+	/// en: 'Requests'
+	String get requests => 'Requests';
+
+	/// en: 'Request movies and shows via Jellyseerr or Overseerr'
+	String get requestsDescription => 'Request movies and shows via Jellyseerr or Overseerr';
 
 	/// en: 'Companion Remote Server'
 	String get companionRemoteServer => 'Companion Remote Server';
@@ -3813,6 +3832,243 @@ class TranslationsServerTasksEn {
 	String get noTasks => 'No tasks running';
 }
 
+// Path: seerr
+class TranslationsSeerrEn {
+	TranslationsSeerrEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Requests'
+	String get title => 'Requests';
+
+	/// en: 'Request movies and shows from your Jellyseerr or Overseerr server.'
+	String get hubSubtitle => 'Request movies and shows from your Jellyseerr or Overseerr server.';
+
+	/// en: 'Not configured'
+	String get notConfigured => 'Not configured';
+
+	/// en: 'Server URL'
+	String get serverUrl => 'Server URL';
+
+	/// en: 'https://requests.example.com'
+	String get serverUrlHint => 'https://requests.example.com';
+
+	/// en: 'Sign-in method'
+	String get authMode => 'Sign-in method';
+
+	/// en: 'Sign in with Plex'
+	String get authPlex => 'Sign in with Plex';
+
+	/// en: 'One-tap using your existing Plex login.'
+	String get authPlexSubtitle => 'One-tap using your existing Plex login.';
+
+	/// en: 'Email and password'
+	String get authLocal => 'Email and password';
+
+	/// en: 'API key'
+	String get authApiKey => 'API key';
+
+	/// en: 'Email'
+	String get email => 'Email';
+
+	/// en: 'Password'
+	String get password => 'Password';
+
+	/// en: 'API key'
+	String get apiKey => 'API key';
+
+	/// en: 'From Settings → General on your server'
+	String get apiKeyHint => 'From Settings → General on your server';
+
+	/// en: 'API-key mode files requests as the admin user. Sign in with Plex for per-user attribution.'
+	String get adminAttributionNote => 'API-key mode files requests as the admin user. Sign in with Plex for per-user attribution.';
+
+	/// en: 'Tip: this is easier to set up on your phone or computer.'
+	String get setupOnDesktopNote => 'Tip: this is easier to set up on your phone or computer.';
+
+	/// en: 'Test connection'
+	String get testConnection => 'Test connection';
+
+	/// en: 'Save'
+	String get save => 'Save';
+
+	/// en: 'Disconnect'
+	String get disconnect => 'Disconnect';
+
+	/// en: 'Disconnect requests server?'
+	String get disconnectConfirm => 'Disconnect requests server?';
+
+	/// en: 'Pleya will stop sending requests. You can reconnect any time.'
+	String get disconnectConfirmBody => 'Pleya will stop sending requests. You can reconnect any time.';
+
+	/// en: 'Signed in as ${name}'
+	String connectedAs({required Object name}) => 'Signed in as ${name}';
+
+	/// en: 'Server version ${version}'
+	String serverVersion({required Object version}) => 'Server version ${version}';
+
+	/// en: 'Administrator'
+	String get permissionAdmin => 'Administrator';
+
+	/// en: 'Can approve requests'
+	String get permissionManage => 'Can approve requests';
+
+	/// en: 'Can request'
+	String get permissionRequest => 'Can request';
+
+	/// en: 'Request'
+	String get request => 'Request';
+
+	/// en: 'Requested'
+	String get requested => 'Requested';
+
+	/// en: 'Request'
+	String get requestAgain => 'Request';
+
+	/// en: 'Processing'
+	String get processing => 'Processing';
+
+	/// en: 'Partially available'
+	String get partiallyAvailable => 'Partially available';
+
+	/// en: 'Available'
+	String get available => 'Available';
+
+	/// en: 'Pending'
+	String get pending => 'Pending';
+
+	/// en: 'Approved'
+	String get approved => 'Approved';
+
+	/// en: 'Declined'
+	String get declined => 'Declined';
+
+	/// en: 'Failed'
+	String get failed => 'Failed';
+
+	/// en: 'Completed'
+	String get completed => 'Completed';
+
+	/// en: 'Request "${title}"?'
+	String requestConfirm({required Object title}) => 'Request "${title}"?';
+
+	/// en: 'Request movie'
+	String get requestMovie => 'Request movie';
+
+	/// en: 'Requested'
+	String get requestSuccess => 'Requested';
+
+	/// en: 'Request failed. Try again.'
+	String get requestFailed => 'Request failed. Try again.';
+
+	/// en: 'Select seasons'
+	String get selectSeasons => 'Select seasons';
+
+	/// en: 'Season ${number}'
+	String season({required Object number}) => 'Season ${number}';
+
+	/// en: 'All seasons'
+	String get allSeasons => 'All seasons';
+
+	/// en: 'Request in 4K'
+	String get fourK => 'Request in 4K';
+
+	/// en: '${remaining} of ${limit} requests left'
+	String quotaRemaining({required Object remaining, required Object limit}) => '${remaining} of ${limit} requests left';
+
+	/// en: 'Unlimited requests'
+	String get quotaUnlimited => 'Unlimited requests';
+
+	/// en: 'Advanced options'
+	String get advancedOptions => 'Advanced options';
+
+	/// en: 'Server'
+	String get server => 'Server';
+
+	/// en: 'Quality profile'
+	String get qualityProfile => 'Quality profile';
+
+	/// en: 'Root folder'
+	String get rootFolder => 'Root folder';
+
+	/// en: 'My requests'
+	String get myRequests => 'My requests';
+
+	/// en: 'All requests'
+	String get allRequests => 'All requests';
+
+	/// en: 'All'
+	String get filterAll => 'All';
+
+	/// en: 'Pending'
+	String get filterPending => 'Pending';
+
+	/// en: 'Approved'
+	String get filterApproved => 'Approved';
+
+	/// en: 'Available'
+	String get filterAvailable => 'Available';
+
+	/// en: 'Approve'
+	String get approve => 'Approve';
+
+	/// en: 'Decline'
+	String get decline => 'Decline';
+
+	/// en: 'Edit'
+	String get edit => 'Edit';
+
+	/// en: 'Cancel request'
+	String get cancelRequest => 'Cancel request';
+
+	/// en: 'Cancel this request?'
+	String get cancelRequestConfirm => 'Cancel this request?';
+
+	/// en: 'Discover on Requests'
+	String get discoverTitle => 'Discover on Requests';
+
+	/// en: 'Trending'
+	String get trending => 'Trending';
+
+	/// en: 'Popular movies'
+	String get popularMovies => 'Popular movies';
+
+	/// en: 'Popular shows'
+	String get popularTv => 'Popular shows';
+
+	/// en: 'Upcoming'
+	String get upcoming => 'Upcoming';
+
+	/// en: 'Recommendations'
+	String get recommendations => 'Recommendations';
+
+	/// en: 'Load more'
+	String get loadMore => 'Load more';
+
+	/// en: 'Not in your library? Search on Jellyseerr / Overseerr'
+	String get searchOnSeerr => 'Not in your library? Search on Jellyseerr / Overseerr';
+
+	/// en: 'Search on Requests'
+	String get searchOnSeerrShort => 'Search on Requests';
+
+	/// en: 'No results found.'
+	String get noResults => 'No results found.';
+
+	/// en: 'Sign-in failed. Check your credentials.'
+	String get errorAuth => 'Sign-in failed. Check your credentials.';
+
+	/// en: 'You don't have permission for that.'
+	String get errorForbidden => 'You don\'t have permission for that.';
+
+	/// en: 'Couldn't reach the server. Check the URL.'
+	String get errorNetwork => 'Couldn\'t reach the server. Check the URL.';
+
+	/// en: 'Something went wrong. Try again.'
+	String get errorGeneric => 'Something went wrong. Try again.';
+}
+
 // Path: trakt
 class TranslationsTraktEn {
 	TranslationsTraktEn.internal(this._root);
@@ -4843,6 +5099,10 @@ extension on Translations {
 			'settings.importSettingsFailed' => 'Could not import settings',
 			'settings.importSettingsInvalidFile' => 'This file isn\'t a valid Pleya settings export',
 			'settings.importSettingsNoUser' => 'Sign in before importing settings',
+			'settings.icloudSync' => 'Sync Settings via iCloud',
+			'settings.icloudSyncDescription' => 'Keep your preferences in sync across your Apple devices',
+			'settings.icloudSyncUnavailable' => 'Sign in to iCloud on this device to sync settings',
+			'settings.icloudSyncEnableFailed' => 'Could not turn on iCloud settings sync',
 			'settings.shortcutsReset' => 'Shortcuts reset to defaults',
 			'settings.about' => 'About',
 			'settings.aboutDescription' => 'App information and licenses',
@@ -4894,6 +5154,8 @@ extension on Translations {
 			'settings.traktDescription' => 'Sync watch history with Trakt',
 			'settings.trackers' => 'Trackers',
 			'settings.trackersDescription' => 'Sync progress to Trakt, MyAnimeList, AniList, and Simkl',
+			'settings.requests' => 'Requests',
+			'settings.requestsDescription' => 'Request movies and shows via Jellyseerr or Overseerr',
 			'settings.companionRemoteServer' => 'Companion Remote Server',
 			'settings.companionRemoteServerDescription' => 'Allow mobile devices on your network to control this app',
 			'settings.autoPip' => 'Auto Picture-in-Picture',
@@ -5151,14 +5413,14 @@ extension on Translations {
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Auto-removed: ${title}',
 			'messages.removedFromContinueWatching' => 'Removed from Continue Watching',
 			'messages.errorLoading' => ({required Object error}) => 'Error: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'messages.fileInfoNotAvailable' => 'File information not available',
 			'messages.errorLoadingFileInfo' => ({required Object error}) => 'Error loading file info: ${error}',
 			'messages.errorLoadingSeries' => 'Error loading series',
 			'messages.musicNotSupported' => 'Music playback is not yet supported',
 			'messages.noDescriptionAvailable' => 'No description available',
 			'messages.noProfilesAvailable' => 'No profiles available',
-			_ => null,
-		} ?? switch (path) {
 			'messages.contactAdminForProfiles' => 'Contact your server administrator to add profiles',
 			'messages.unableToDetermineLibrarySection' => 'Unable to determine library section for this item',
 			'messages.logsCleared' => 'Logs cleared',
@@ -5665,14 +5927,14 @@ extension on Translations {
 			'shaders.title' => 'Shaders',
 			'shaders.noShaderDescription' => 'No video enhancement',
 			'shaders.nvscalerDescription' => 'NVIDIA image scaling for sharper video',
+			_ => null,
+		} ?? switch (path) {
 			'shaders.artcnnVariantNeutral' => 'Neutral',
 			'shaders.artcnnVariantDenoise' => 'Denoise',
 			'shaders.artcnnVariantDenoiseSharpen' => 'Denoise + Sharpen',
 			'shaders.qualityFast' => 'Fast',
 			'shaders.qualityHQ' => 'High Quality',
 			'shaders.mode' => 'Mode',
-			_ => null,
-		} ?? switch (path) {
 			'shaders.importShader' => 'Import Shader',
 			'shaders.customShaderDescription' => 'Custom GLSL shader',
 			'shaders.shaderImported' => 'Shader imported',
@@ -5897,6 +6159,82 @@ extension on Translations {
 			'serverTasks.title' => 'Server Tasks',
 			'serverTasks.failedToLoad' => 'Failed to load tasks',
 			'serverTasks.noTasks' => 'No tasks running',
+			'seerr.title' => 'Requests',
+			'seerr.hubSubtitle' => 'Request movies and shows from your Jellyseerr or Overseerr server.',
+			'seerr.notConfigured' => 'Not configured',
+			'seerr.serverUrl' => 'Server URL',
+			'seerr.serverUrlHint' => 'https://requests.example.com',
+			'seerr.authMode' => 'Sign-in method',
+			'seerr.authPlex' => 'Sign in with Plex',
+			'seerr.authPlexSubtitle' => 'One-tap using your existing Plex login.',
+			'seerr.authLocal' => 'Email and password',
+			'seerr.authApiKey' => 'API key',
+			'seerr.email' => 'Email',
+			'seerr.password' => 'Password',
+			'seerr.apiKey' => 'API key',
+			'seerr.apiKeyHint' => 'From Settings → General on your server',
+			'seerr.adminAttributionNote' => 'API-key mode files requests as the admin user. Sign in with Plex for per-user attribution.',
+			'seerr.setupOnDesktopNote' => 'Tip: this is easier to set up on your phone or computer.',
+			'seerr.testConnection' => 'Test connection',
+			'seerr.save' => 'Save',
+			'seerr.disconnect' => 'Disconnect',
+			'seerr.disconnectConfirm' => 'Disconnect requests server?',
+			'seerr.disconnectConfirmBody' => 'Pleya will stop sending requests. You can reconnect any time.',
+			'seerr.connectedAs' => ({required Object name}) => 'Signed in as ${name}',
+			'seerr.serverVersion' => ({required Object version}) => 'Server version ${version}',
+			'seerr.permissionAdmin' => 'Administrator',
+			'seerr.permissionManage' => 'Can approve requests',
+			'seerr.permissionRequest' => 'Can request',
+			'seerr.request' => 'Request',
+			'seerr.requested' => 'Requested',
+			'seerr.requestAgain' => 'Request',
+			'seerr.processing' => 'Processing',
+			'seerr.partiallyAvailable' => 'Partially available',
+			'seerr.available' => 'Available',
+			'seerr.pending' => 'Pending',
+			'seerr.approved' => 'Approved',
+			'seerr.declined' => 'Declined',
+			'seerr.failed' => 'Failed',
+			'seerr.completed' => 'Completed',
+			'seerr.requestConfirm' => ({required Object title}) => 'Request "${title}"?',
+			'seerr.requestMovie' => 'Request movie',
+			'seerr.requestSuccess' => 'Requested',
+			'seerr.requestFailed' => 'Request failed. Try again.',
+			'seerr.selectSeasons' => 'Select seasons',
+			'seerr.season' => ({required Object number}) => 'Season ${number}',
+			'seerr.allSeasons' => 'All seasons',
+			'seerr.fourK' => 'Request in 4K',
+			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => '${remaining} of ${limit} requests left',
+			'seerr.quotaUnlimited' => 'Unlimited requests',
+			'seerr.advancedOptions' => 'Advanced options',
+			'seerr.server' => 'Server',
+			'seerr.qualityProfile' => 'Quality profile',
+			'seerr.rootFolder' => 'Root folder',
+			'seerr.myRequests' => 'My requests',
+			'seerr.allRequests' => 'All requests',
+			'seerr.filterAll' => 'All',
+			'seerr.filterPending' => 'Pending',
+			'seerr.filterApproved' => 'Approved',
+			'seerr.filterAvailable' => 'Available',
+			'seerr.approve' => 'Approve',
+			'seerr.decline' => 'Decline',
+			'seerr.edit' => 'Edit',
+			'seerr.cancelRequest' => 'Cancel request',
+			'seerr.cancelRequestConfirm' => 'Cancel this request?',
+			'seerr.discoverTitle' => 'Discover on Requests',
+			'seerr.trending' => 'Trending',
+			'seerr.popularMovies' => 'Popular movies',
+			'seerr.popularTv' => 'Popular shows',
+			'seerr.upcoming' => 'Upcoming',
+			'seerr.recommendations' => 'Recommendations',
+			'seerr.loadMore' => 'Load more',
+			'seerr.searchOnSeerr' => 'Not in your library? Search on Jellyseerr / Overseerr',
+			'seerr.searchOnSeerrShort' => 'Search on Requests',
+			'seerr.noResults' => 'No results found.',
+			'seerr.errorAuth' => 'Sign-in failed. Check your credentials.',
+			'seerr.errorForbidden' => 'You don\'t have permission for that.',
+			'seerr.errorNetwork' => 'Couldn\'t reach the server. Check the URL.',
+			'seerr.errorGeneric' => 'Something went wrong. Try again.',
 			'trakt.title' => 'Trakt',
 			'trakt.connected' => 'Connected',
 			'trakt.connectedAs' => ({required Object username}) => 'Connected as @${username}',

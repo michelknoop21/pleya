@@ -13,6 +13,7 @@ import '../mpv/models.dart' show AudioNormalizationMode;
 import '../models/external_player_models.dart';
 import 'base_shared_preferences_service.dart';
 import 'device_performance.dart';
+import 'icloud_sync_service.dart';
 export 'base_shared_preferences_service.dart'
     show Pref, BoolPref, IntPref, DoublePref, StringPref, NullableStringPref, StringListPref, EnumPref, JsonPref;
 import '../models/transcode_quality_preset.dart';
@@ -333,6 +334,11 @@ class SettingsService extends BaseSharedPreferencesService {
 
   static const enableDebugLogging = BoolPref('enable_debug_logging', onWrite: setLoggerLevel);
   static const crashReporting = BoolPref('crash_reporting', defaultValue: true);
+
+  /// Sync user settings across Apple devices via iCloud (NSUbiquitousKeyValueStore).
+  /// Deliberately excluded from [_resettablePrefs] and denylisted from export/sync
+  /// so it never fights itself across devices or survives a settings reset toggled off.
+  static const icloudSyncEnabled = BoolPref('icloud_sync_enabled');
   static const enableHardwareDecoding = BoolPref('enable_hardware_decoding', defaultValue: true);
   static const enableHDR = BoolPref('enable_hdr', defaultValue: true);
   /// Recent search queries, most-recent first, capped at 15 by the search UI.
@@ -893,6 +899,9 @@ class SettingsService extends BaseSharedPreferencesService {
       ),
     ]);
     refreshListenables();
+    // Reset bypasses write(), so the KVS mirror is stale — push the cleared
+    // state so removals propagate to other devices (no-op when sync is off).
+    await ICloudSyncService.instance?.pushAllIfEnabled();
   }
 
   /// Push current stored values into every active listenable. Use after bulk

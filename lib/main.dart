@@ -32,6 +32,7 @@ import 'services/device_performance.dart';
 import 'services/macos_window_service.dart';
 import 'services/native_window_service.dart';
 import 'services/fullscreen_state_manager.dart';
+import 'services/icloud_sync_service.dart';
 import 'services/settings_service.dart';
 import 'utils/platform_detector.dart';
 import 'services/apple_tv_remote_touch_service.dart';
@@ -224,6 +225,21 @@ Future<void> _bootstrapApp() async {
   );
 
   await DownloadStorageService.instance.initialize(settings);
+
+  // iCloud settings sync (Apple platforms only; no-op elsewhere). Installs the
+  // local-write mirror hook and, when enabled, merges remote settings at boot.
+  await ICloudSyncService.start(
+    settings: settings,
+    storage: storage,
+    onRemoteChangesApplied: () {
+      // Setting values and theme already refresh through their listenables
+      // (SettingsService.refreshListenables fired by the sync service); reload
+      // the global locale so a remotely-changed language takes effect now.
+      // ponytail: library/keyboard providers re-read on next navigation — wire
+      // a full provider reload here if a device test shows stale library state.
+      unawaited(LocaleSettings.setLocale(settings.read(SettingsService.appLocale)));
+    },
+  );
 
   FullscreenStateManager().startMonitoring();
 
