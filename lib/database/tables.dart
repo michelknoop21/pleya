@@ -260,3 +260,62 @@ class OfflineWatchProgress extends Table {
   /// Last sync error message
   TextColumn get lastError => text().nullable()();
 }
+
+/// Append-only local log of watch interactions used by the on-device
+/// recommendation engine. Taste features are denormalized at write time so
+/// scoring never re-fetches metadata. All data stays on-device, per profile.
+@DataClassName('MediaInteractionRow')
+@TableIndex(name: 'idx_interactions_profile_time', columns: {#profileId, #occurredAt})
+class MediaInteractions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// Profile this interaction belongs to
+  TextColumn get profileId => text()();
+
+  /// Global key (serverId:ratingKey) of the interacted item
+  TextColumn get globalKey => text()();
+
+  /// Media kind id: 'movie', 'episode', 'show'
+  TextColumn get mediaKind => text()();
+
+  /// Event type: 'completed', 'partial', 'abandoned', 'skipped'
+  TextColumn get eventType => text()();
+
+  /// Signed taste weight resolved at write time (e.g. completed 1.0,
+  /// abandoned -0.4, removed-from-continue-watching -0.3)
+  RealColumn get eventWeight => real()();
+
+  /// Timestamp of the interaction (milliseconds since epoch)
+  IntColumn get occurredAt => integer()();
+
+  /// Denormalized taste features captured at event time (JSON arrays)
+  TextColumn get genresJson => text().withDefault(const Constant('[]'))();
+  TextColumn get actorsJson => text().withDefault(const Constant('[]'))();
+  TextColumn get directorsJson => text().withDefault(const Constant('[]'))();
+  TextColumn get moodsJson => text().withDefault(const Constant('[]'))();
+  TextColumn get studio => text().nullable()();
+  IntColumn get year => integer().nullable()();
+  RealColumn get communityRating => real().nullable()();
+
+  /// Grandparent (series) global key for episode events
+  TextColumn get seriesKey => text().nullable()();
+}
+
+/// One cached taste/affinity vector per profile — a recomputed derivative of
+/// [MediaInteractions], never a source of truth.
+@DataClassName('AffinitySnapshotRow')
+class AffinitySnapshots extends Table {
+  TextColumn get profileId => text()();
+
+  /// JSON map of dimension -> {feature: weight}, per-dimension normalized
+  TextColumn get vectorJson => text()();
+
+  /// Number of interaction rows the vector was computed from
+  IntColumn get eventCount => integer()();
+
+  /// Timestamp of computation (milliseconds since epoch)
+  IntColumn get computedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {profileId};
+}

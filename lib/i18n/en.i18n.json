@@ -306,7 +306,9 @@
     "player": "Player",
     "subtitlesAndConfig": "Subtitles & Configuration",
     "seekAndTiming": "Seek & Timing",
-    "behavior": "Behavior"
+    "behavior": "Behavior",
+    "personalizedRecommendations": "Personalized recommendations",
+    "personalizedRecommendationsDescription": "Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device."
   },
   "search": {
     "hint": "Search movies, shows, music...",

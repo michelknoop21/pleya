@@ -344,6 +344,9 @@ class SettingsService extends BaseSharedPreferencesService {
   static const seekTimeLarge = IntPref('seek_time_large', defaultValue: 30);
   static const rewindOnResume = IntPref('rewind_on_resume');
   static const showHeroSection = BoolPref('show_hero_section', defaultValue: true);
+  // On-device personalized recommendation rows (Top Picks, Because you like…,
+  // Hidden Gems). Learns locally per profile; nothing leaves the device.
+  static const personalizedRecommendations = BoolPref('personalized_recommendations', defaultValue: true);
   // Desktop-only Netflix-style hover-expand card (boxart overlay with quick
   // actions). Defaults on; ignored on non-desktop platforms.
   static const hoverExpandCards = BoolPref('hover_expand_cards', defaultValue: true);

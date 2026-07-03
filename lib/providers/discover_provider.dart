@@ -13,6 +13,7 @@ import '../mixins/event_aware.dart';
 import '../services/settings_service.dart';
 import '../services/data_aggregation_service.dart';
 import '../services/recommendations/hub_dedup.dart';
+import '../services/recommendations/recommendation_service.dart';
 import '../services/system_shelf_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
@@ -41,7 +42,13 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   static const int continueWatchingPreviewLimit = 20;
   static const int _continueWatchingProbeLimit = continueWatchingPreviewLimit + 1;
 
-  DiscoverProvider(this._multiServer, this._hiddenLibraries, this._libraries, {required this.isProfileBinding}) {
+  DiscoverProvider(
+    this._multiServer,
+    this._hiddenLibraries,
+    this._libraries, {
+    required this.isProfileBinding,
+    this.recommendations,
+  }) {
     // Late server connects (reconnect after outage, slow wave) refresh
     // discover the same way they refresh libraries. Removed in [dispose] so a
     // profile switch can't leave a stale listener on the app-global provider.
@@ -68,6 +75,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// (main_screen primes another load once binding settles).
   final bool Function() isProfileBinding;
 
+  /// Optional on-device personalization. Null in tests and when no profile is
+  /// bound; when present it supplies "Top Picks"/"Because you like…" rows,
+  /// built off the counted aggregation paths so the fetch contract holds.
+  final RecommendationService? recommendations;
+
   StreamSubscription<WatchStateEvent>? _watchStateSubscription;
 
   List<MediaItem> _onDeck = [];
@@ -82,6 +94,10 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// seed). Kept outside [_hubs] so library-order sorting, delta merges, and
   /// hub filtering can't touch them.
   List<MediaHub> _seedHubs = [];
+
+  /// On-device personalized rows (Top Picks, Because you like…, Hidden Gems).
+  /// Like [_seedHubs], held outside [_hubs] and recomputed only on full loads.
+  List<MediaHub> _personalizedHubs = [];
   bool _hasMoreContinueWatching = false;
   DiscoverLoadState _onDeckState = DiscoverLoadState.initial;
   DiscoverLoadState _hubsState = DiscoverLoadState.initial;
@@ -113,7 +129,9 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   List<MediaItem>? _pendingSystemShelfItems;
 
   List<MediaItem> get onDeck => _onDeck;
-  List<MediaHub> get hubs => _seedHubs.isEmpty ? _hubs : [..._seedHubs, ..._hubs];
+  List<MediaHub> get hubs => (_seedHubs.isEmpty && _personalizedHubs.isEmpty)
+      ? _hubs
+      : [..._seedHubs, ..._personalizedHubs, ..._hubs];
   bool get hasMoreContinueWatching => _hasMoreContinueWatching;
 
   /// Raw load failure (unlocalized); the screen wraps it for display.
@@ -232,6 +250,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       _loadedHubServerIds = fetchedHubs.succeededServerIds;
       safeNotifyListeners();
       unawaited(_loadBecauseYouWatched());
+      unawaited(_loadPersonalizedRows());
     } catch (e) {
       appLogger.e('Failed to load discover content', error: e);
       if (isDisposed) return;
@@ -382,6 +401,36 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       );
     }
     return null;
+  }
+
+  /// Build the on-device personalized rows (Top Picks, Because you like…,
+  /// Hidden Gems). No-op when personalization is unavailable/disabled. Runs
+  /// post-load off the counted aggregation paths, guarded on [_loadGeneration].
+  Future<void> _loadPersonalizedRows() async {
+    final service = recommendations;
+    if (service == null) return;
+    try {
+      final generation = _loadGeneration;
+      final clients = _multiServer.serverManager.onlineClients.values.toList();
+      if (clients.isEmpty) return;
+
+      // Items already on screen (Continue Watching + loaded hubs) are free
+      // candidates and also the exclusion set so rows don't echo them.
+      final onScreen = <MediaItem>[
+        ..._onDeck,
+        for (final hub in _hubs) ...hub.items,
+        for (final hub in _seedHubs) ...hub.items,
+      ];
+      final excludeKeys = {for (final item in _onDeck) item.globalKey};
+
+      final rows = await service.buildRows(clients, hubItems: onScreen, excludeKeys: excludeKeys);
+      if (isDisposed || generation != _loadGeneration) return;
+      if (rows.isEmpty) return;
+      _personalizedHubs = rows;
+      safeNotifyListeners();
+    } catch (e) {
+      appLogger.w('DiscoverProvider: personalized rows failed (leaving them out)', error: e);
+    }
   }
 
   /// Playback-progress hubs duplicate the top Continue Watching row.

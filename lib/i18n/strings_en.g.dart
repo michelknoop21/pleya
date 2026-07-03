@@ -1031,6 +1031,12 @@ class TranslationsSettingsEn {
 
 	/// en: 'Behavior'
 	String get behavior => 'Behavior';
+
+	/// en: 'Personalized recommendations'
+	String get personalizedRecommendations => 'Personalized recommendations';
+
+	/// en: 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.'
+	String get personalizedRecommendationsDescription => 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.';
 }
 
 // Path: search
@@ -4936,6 +4942,8 @@ extension on Translations {
 			'settings.subtitlesAndConfig' => 'Subtitles & Configuration',
 			'settings.seekAndTiming' => 'Seek & Timing',
 			'settings.behavior' => 'Behavior',
+			'settings.personalizedRecommendations' => 'Personalized recommendations',
+			'settings.personalizedRecommendationsDescription' => 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.',
 			'search.hint' => 'Search movies, shows, music...',
 			'search.tryDifferentTerm' => 'Try a different search term',
 			'search.searchYourMedia' => 'Search your media',
@@ -5149,10 +5157,10 @@ extension on Translations {
 			'messages.musicNotSupported' => 'Music playback is not yet supported',
 			'messages.noDescriptionAvailable' => 'No description available',
 			'messages.noProfilesAvailable' => 'No profiles available',
-			'messages.contactAdminForProfiles' => 'Contact your server administrator to add profiles',
-			'messages.unableToDetermineLibrarySection' => 'Unable to determine library section for this item',
 			_ => null,
 		} ?? switch (path) {
+			'messages.contactAdminForProfiles' => 'Contact your server administrator to add profiles',
+			'messages.unableToDetermineLibrarySection' => 'Unable to determine library section for this item',
 			'messages.logsCleared' => 'Logs cleared',
 			'messages.logsCopied' => 'Logs copied to clipboard',
 			'messages.noLogsAvailable' => 'No logs available',
@@ -5663,10 +5671,10 @@ extension on Translations {
 			'shaders.qualityFast' => 'Fast',
 			'shaders.qualityHQ' => 'High Quality',
 			'shaders.mode' => 'Mode',
-			'shaders.importShader' => 'Import Shader',
-			'shaders.customShaderDescription' => 'Custom GLSL shader',
 			_ => null,
 		} ?? switch (path) {
+			'shaders.importShader' => 'Import Shader',
+			'shaders.customShaderDescription' => 'Custom GLSL shader',
 			'shaders.shaderImported' => 'Shader imported',
 			'shaders.shaderImportFailed' => 'Failed to import shader',
 			'shaders.deleteShader' => 'Delete Shader',

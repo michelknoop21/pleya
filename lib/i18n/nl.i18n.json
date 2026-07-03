@@ -300,7 +300,9 @@
     "player": "Speler",
     "subtitlesAndConfig": "Ondertitels en configuratie",
     "seekAndTiming": "Zoeken en timing",
-    "behavior": "Gedrag"
+    "behavior": "Gedrag",
+    "personalizedRecommendations": "Persoonlijke aanbevelingen",
+    "personalizedRecommendationsDescription": "Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat."
   },
   "search": {
     "hint": "Zoek films, series, muziek...",

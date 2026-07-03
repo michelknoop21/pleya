@@ -430,6 +430,8 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get subtitlesAndConfig => 'Ondertitels en configuratie';
 	@override String get seekAndTiming => 'Zoeken en timing';
 	@override String get behavior => 'Gedrag';
+	@override String get personalizedRecommendations => 'Persoonlijke aanbevelingen';
+	@override String get personalizedRecommendationsDescription => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.';
 }
 
 // Path: search
@@ -2278,6 +2280,8 @@ extension on TranslationsNl {
 			'settings.subtitlesAndConfig' => 'Ondertitels en configuratie',
 			'settings.seekAndTiming' => 'Zoeken en timing',
 			'settings.behavior' => 'Gedrag',
+			'settings.personalizedRecommendations' => 'Persoonlijke aanbevelingen',
+			'settings.personalizedRecommendationsDescription' => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.',
 			'search.hint' => 'Zoek films, series, muziek...',
 			'search.tryDifferentTerm' => 'Probeer een andere zoekterm',
 			'search.searchYourMedia' => 'Zoek in je media',
@@ -2497,10 +2501,10 @@ extension on TranslationsNl {
 			'messages.logsCopied' => 'Logs gekopieerd naar klembord',
 			'messages.noLogsAvailable' => 'Geen logs beschikbaar',
 			'messages.libraryScanning' => ({required Object title}) => 'Scannen "${title}"...',
-			'messages.libraryScanStarted' => ({required Object title}) => 'Bibliotheek scan gestart voor "${title}"',
-			'messages.libraryScanFailed' => ({required Object error}) => 'Kon bibliotheek niet scannen: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'messages.libraryScanStarted' => ({required Object title}) => 'Bibliotheek scan gestart voor "${title}"',
+			'messages.libraryScanFailed' => ({required Object error}) => 'Kon bibliotheek niet scannen: ${error}',
 			'messages.metadataRefreshing' => ({required Object title}) => 'Metadata vernieuwen voor "${title}"...',
 			'messages.metadataRefreshStarted' => ({required Object title}) => 'Metadata vernieuwen gestart voor "${title}"',
 			'messages.metadataRefreshFailed' => ({required Object error}) => 'Kon metadata niet vernieuwen: ${error}',
@@ -3011,10 +3015,10 @@ extension on TranslationsNl {
 			'companionRemote.title' => 'Afstandsbediening',
 			'companionRemote.connectedTo' => ({required Object name}) => 'Verbonden met ${name}',
 			'companionRemote.unknownDevice' => 'Onbekend apparaat',
-			'companionRemote.session.startingServer' => 'Externe server starten...',
-			'companionRemote.session.failedToCreate' => 'Kan externe server niet starten:',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.session.startingServer' => 'Externe server starten...',
+			'companionRemote.session.failedToCreate' => 'Kan externe server niet starten:',
 			'companionRemote.session.hostAddress' => 'Hostadres',
 			'companionRemote.session.connected' => 'Verbonden',
 			'companionRemote.session.serverRunning' => 'Externe server actief',
