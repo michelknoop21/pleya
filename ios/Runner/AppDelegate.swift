@@ -49,7 +49,7 @@ import MediaPlayer
   }
 
   private func registerAirPlayChannel(messenger: FlutterBinaryMessenger) {
-    let channel = FlutterMethodChannel(name: "com.plezy/airplay", binaryMessenger: messenger)
+    let channel = FlutterMethodChannel(name: "com.pleya/airplay", binaryMessenger: messenger)
     channel.setMethodCallHandler { [weak self] call, result in
       DispatchQueue.main.async {
         self?.handleAirPlayCall(call, result: result)
@@ -86,7 +86,7 @@ import MediaPlayer
   }
 
   private func registerDeviceAdjustmentChannel(messenger: FlutterBinaryMessenger) {
-    let channel = FlutterMethodChannel(name: "com.plezy/device_adjustment", binaryMessenger: messenger)
+    let channel = FlutterMethodChannel(name: "com.pleya/device_adjustment", binaryMessenger: messenger)
     channel.setMethodCallHandler { [weak self] call, result in
       DispatchQueue.main.async {
         self?.handleDeviceAdjustmentCall(call, result: result)

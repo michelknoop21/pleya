@@ -2,8 +2,8 @@ import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:plezy/utils/media_image_helper.dart';
-import 'package:plezy/widgets/optimized_media_image.dart';
+import 'package:pleya/utils/media_image_helper.dart';
+import 'package:pleya/widgets/optimized_media_image.dart';
 
 void main() {
   testWidgets('network images use decode resize without disk cache resize', (tester) async {

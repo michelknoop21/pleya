@@ -34,14 +34,14 @@ static void assMessageCallback(int level, const char* fmt, va_list args, void* d
 
 // --- Ass (library) ---
 
-JNIEXPORT jlong JNICALL Java_com_edde746_plezy_libass_Ass_nativeAssInit(JNIEnv* env, jclass clazz) {
+JNIEXPORT jlong JNICALL Java_nl_michelknoop_pleya_libass_Ass_nativeAssInit(JNIEnv* env, jclass clazz) {
   ASS_Library* assLibrary = ass_library_init();
   ass_set_message_cb(assLibrary, assMessageCallback, NULL);
   ass_set_extract_fonts(assLibrary, 1);
   return (jlong)assLibrary;
 }
 
-JNIEXPORT void JNICALL Java_com_edde746_plezy_libass_Ass_nativeAssAddFont(
+JNIEXPORT void JNICALL Java_nl_michelknoop_pleya_libass_Ass_nativeAssAddFont(
     JNIEnv* env, jclass clazz, jlong ass, jstring name, jbyteArray byteArray) {
   jsize length = (*env)->GetArrayLength(env, byteArray);
   jbyte* bytePtr = (*env)->GetByteArrayElements(env, byteArray, NULL);
@@ -56,7 +56,7 @@ JNIEXPORT void JNICALL Java_com_edde746_plezy_libass_Ass_nativeAssAddFont(
   }
 }
 
-JNIEXPORT void JNICALL Java_com_edde746_plezy_libass_Ass_nativeAssDeinit(JNIEnv* env, jclass clazz, jlong ass) {
+JNIEXPORT void JNICALL Java_nl_michelknoop_pleya_libass_Ass_nativeAssDeinit(JNIEnv* env, jclass clazz, jlong ass) {
   if (ass) {
     ass_library_done((ASS_Library*)ass);
   }
@@ -65,7 +65,7 @@ JNIEXPORT void JNICALL Java_com_edde746_plezy_libass_Ass_nativeAssDeinit(JNIEnv*
 // --- AssTrack ---
 
 JNIEXPORT jlong JNICALL
-Java_com_edde746_plezy_libass_AssTrack_nativeAssTrackInit(JNIEnv* env, jclass clazz, jlong ass) {
+Java_nl_michelknoop_pleya_libass_AssTrack_nativeAssTrackInit(JNIEnv* env, jclass clazz, jlong ass) {
   ASS_Track* track = ass_new_track((ASS_Library*)ass);
   if (track != NULL) {
     if (ass_track_set_feature(track, ASS_FEATURE_FAST_BLUR, 1) != 0) {
@@ -92,18 +92,18 @@ static void processTrackBytes(
   (*env)->ReleaseByteArrayElements(env, buffer, elements, 0);
 }
 
-JNIEXPORT void JNICALL Java_com_edde746_plezy_libass_AssTrack_nativeAssTrackReadBuffer(
+JNIEXPORT void JNICALL Java_nl_michelknoop_pleya_libass_AssTrack_nativeAssTrackReadBuffer(
     JNIEnv* env, jclass clazz, jlong track, jbyteArray buffer, jint offset, jint length) {
   processTrackBytes(env, track, buffer, offset, length, 0, 0, 0);
 }
 
-JNIEXPORT void JNICALL Java_com_edde746_plezy_libass_AssTrack_nativeAssTrackReadChunk(
+JNIEXPORT void JNICALL Java_nl_michelknoop_pleya_libass_AssTrack_nativeAssTrackReadChunk(
     JNIEnv* env, jclass clazz, jlong track, jlong start, jlong duration, jbyteArray buffer, jint offset, jint length) {
   processTrackBytes(env, track, buffer, offset, length, start, duration, 1);
 }
 
 JNIEXPORT void JNICALL
-Java_com_edde746_plezy_libass_AssTrack_nativeAssTrackDeinit(JNIEnv* env, jclass clazz, jlong track) {
+Java_nl_michelknoop_pleya_libass_AssTrack_nativeAssTrackDeinit(JNIEnv* env, jclass clazz, jlong track) {
   if (!track) return;
   ass_free_track((ASS_Track*)track);
 }
@@ -111,7 +111,7 @@ Java_com_edde746_plezy_libass_AssTrack_nativeAssTrackDeinit(JNIEnv* env, jclass 
 // Earliest event Start strictly after afterMs, or -1. Lets the render pipeline
 // pre-render (cache-warm) the next upcoming event during idle stretches so
 // heavy typesetting doesn't pay its cache-cold rasterization at appearance.
-JNIEXPORT jlong JNICALL Java_com_edde746_plezy_libass_AssTrack_nativeAssTrackNextEventStart(
+JNIEXPORT jlong JNICALL Java_nl_michelknoop_pleya_libass_AssTrack_nativeAssTrackNextEventStart(
     JNIEnv* env, jclass clazz, jlong track, jlong afterMs) {
   if (!track) return -1;
   ASS_Track* t = (ASS_Track*)track;
@@ -127,7 +127,7 @@ JNIEXPORT jlong JNICALL Java_com_edde746_plezy_libass_AssTrack_nativeAssTrackNex
 // or -1. A cache-warming prefetch is only invisible while no boundary passes:
 // the render pipeline uses this to ensure nothing on screen is due to change
 // before the event it is about to warm.
-JNIEXPORT jlong JNICALL Java_com_edde746_plezy_libass_AssTrack_nativeAssTrackNextEventChange(
+JNIEXPORT jlong JNICALL Java_nl_michelknoop_pleya_libass_AssTrack_nativeAssTrackNextEventChange(
     JNIEnv* env, jclass clazz, jlong track, jlong afterMs) {
   if (!track) return -1;
   ASS_Track* t = (ASS_Track*)track;
@@ -179,7 +179,7 @@ static char* ensureFontsConf(void) {
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_edde746_plezy_libass_AssRender_nativeAssRenderInit(JNIEnv* env, jclass clazz, jlong ass) {
+Java_nl_michelknoop_pleya_libass_AssRender_nativeAssRenderInit(JNIEnv* env, jclass clazz, jlong ass) {
   ASS_Renderer* assRenderer = ass_renderer_init((ASS_Library*)ass);
   if (assRenderer == NULL) return 0;
   unsigned threads = ass_set_threads(assRenderer, 0);
@@ -194,44 +194,44 @@ Java_com_edde746_plezy_libass_AssRender_nativeAssRenderInit(JNIEnv* env, jclass 
   return (jlong)assRenderer;
 }
 
-JNIEXPORT void JNICALL Java_com_edde746_plezy_libass_AssRender_nativeAssRenderSetFontScale(
+JNIEXPORT void JNICALL Java_nl_michelknoop_pleya_libass_AssRender_nativeAssRenderSetFontScale(
     JNIEnv* env, jclass clazz, jlong render, jfloat scale) {
   if (!render) return;
   ass_set_font_scale((ASS_Renderer*)render, scale);
 }
 
-JNIEXPORT void JNICALL Java_com_edde746_plezy_libass_AssRender_nativeAssRenderSetCacheLimit(
+JNIEXPORT void JNICALL Java_nl_michelknoop_pleya_libass_AssRender_nativeAssRenderSetCacheLimit(
     JNIEnv* env, jclass clazz, jlong render, jint glyphMax, jint bitmapMaxSize) {
   if (!render) return;
   ass_set_cache_limits((ASS_Renderer*)render, glyphMax, bitmapMaxSize);
 }
 
-JNIEXPORT void JNICALL Java_com_edde746_plezy_libass_AssRender_nativeAssRenderSetFrameSize(
+JNIEXPORT void JNICALL Java_nl_michelknoop_pleya_libass_AssRender_nativeAssRenderSetFrameSize(
     JNIEnv* env, jclass clazz, jlong render, jint width, jint height) {
   if (!render) return;
   ass_set_frame_size((ASS_Renderer*)render, width, height);
 }
 
-JNIEXPORT void JNICALL Java_com_edde746_plezy_libass_AssRender_nativeAssRenderSetStorageSize(
+JNIEXPORT void JNICALL Java_nl_michelknoop_pleya_libass_AssRender_nativeAssRenderSetStorageSize(
     JNIEnv* env, jclass clazz, jlong render, jint width, jint height) {
   if (!render) return;
   ass_set_storage_size((ASS_Renderer*)render, width, height);
 }
 
-JNIEXPORT void JNICALL Java_com_edde746_plezy_libass_AssRender_nativeAssRenderSetMargins(
+JNIEXPORT void JNICALL Java_nl_michelknoop_pleya_libass_AssRender_nativeAssRenderSetMargins(
     JNIEnv* env, jclass clazz, jlong render, jint top, jint bottom, jint left, jint right) {
   if (!render) return;
   ass_set_margins((ASS_Renderer*)render, top, bottom, left, right);
 }
 
-JNIEXPORT void JNICALL Java_com_edde746_plezy_libass_AssRender_nativeAssRenderSetUseMargins(
+JNIEXPORT void JNICALL Java_nl_michelknoop_pleya_libass_AssRender_nativeAssRenderSetUseMargins(
     JNIEnv* env, jclass clazz, jlong render, jboolean use) {
   if (!render) return;
   ass_set_use_margins((ASS_Renderer*)render, use ? 1 : 0);
 }
 
 JNIEXPORT void JNICALL
-Java_com_edde746_plezy_libass_AssRender_nativeAssRenderDeinit(JNIEnv* env, jclass clazz, jlong render) {
+Java_nl_michelknoop_pleya_libass_AssRender_nativeAssRenderDeinit(JNIEnv* env, jclass clazz, jlong render) {
   if (render) {
     ass_renderer_done((ASS_Renderer*)render);
   }
@@ -336,7 +336,7 @@ static jint writeAtlasHeader(
 // the header was written. On changed == 0 the header carries (atlasWidth=0, quadCount=0,
 // changed, hasOutput) without touching the atlas/vertex buffers — hasOutput lets Kotlin
 // distinguish "reuse the previous atlas" from "blank, clear the GL surface."
-JNIEXPORT jint JNICALL Java_com_edde746_plezy_libass_AssRender_nativeAssRenderFrameAtlas(
+JNIEXPORT jint JNICALL Java_nl_michelknoop_pleya_libass_AssRender_nativeAssRenderFrameAtlas(
     JNIEnv* env, jclass clazz, jlong render, jlong track, jlong time, jobject atlasBuf, jint atlasMaxW, jint atlasMaxH,
     jobject vertexBuf, jintArray headerBuf) {
   if (!render || !track || !atlasBuf || !vertexBuf || !headerBuf || atlasMaxW <= 0 || atlasMaxH <= 0) return 0;
@@ -686,7 +686,7 @@ static EGLint gFtPresentName = EGL_DISPLAY_PRESENT_TIME_ANDROID;
 // Probes the extension on the currently-current draw surface and enables capture.
 // Re-resolves the display/surface each call so surface recreation is handled.
 // Returns one of the FT_* codes above.
-JNIEXPORT jint JNICALL Java_com_edde746_plezy_libass_AssFrameTimestamps_nativeInit(JNIEnv* env, jclass clazz) {
+JNIEXPORT jint JNICALL Java_nl_michelknoop_pleya_libass_AssFrameTimestamps_nativeInit(JNIEnv* env, jclass clazz) {
   gFtSurface = EGL_NO_SURFACE;
   EGLDisplay dpy = eglGetCurrentDisplay();
   EGLSurface surf = eglGetCurrentSurface(EGL_DRAW);
@@ -738,7 +738,7 @@ JNIEXPORT jint JNICALL Java_com_edde746_plezy_libass_AssFrameTimestamps_nativeIn
 
 // Frame id the next eglSwapBuffers will produce; call immediately before it.
 JNIEXPORT jlong JNICALL
-Java_com_edde746_plezy_libass_AssFrameTimestamps_nativeGetNextFrameId(JNIEnv* env, jclass clazz) {
+Java_nl_michelknoop_pleya_libass_AssFrameTimestamps_nativeGetNextFrameId(JNIEnv* env, jclass clazz) {
   if (pEglGetNextFrameId == NULL || gFtSurface == EGL_NO_SURFACE) return -1;
   EGLuint64KHR id = 0;
   if (!pEglGetNextFrameId(gFtDisplay, gFtSurface, &id)) return -1;
@@ -748,7 +748,7 @@ Java_com_edde746_plezy_libass_AssFrameTimestamps_nativeGetNextFrameId(JNIEnv* en
 // Present (or composition) time for frameId (System.nanoTime() domain), or the
 // PENDING(-2)/INVALID(-1) sentinels. Reported a few frames after the swap.
 JNIEXPORT jlong JNICALL
-Java_com_edde746_plezy_libass_AssFrameTimestamps_nativeGetDisplayPresentTime(JNIEnv* env, jclass clazz, jlong frameId) {
+Java_nl_michelknoop_pleya_libass_AssFrameTimestamps_nativeGetDisplayPresentTime(JNIEnv* env, jclass clazz, jlong frameId) {
   if (pEglGetFrameTimestamps == NULL || gFtSurface == EGL_NO_SURFACE) return EGL_TIMESTAMP_INVALID_ANDROID;
   const EGLint names[1] = {gFtPresentName};
   EGLnsecsANDROID values[1] = {0};

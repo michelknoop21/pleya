@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/utils/plex_cache_parser.dart';
+import 'package:pleya/utils/plex_cache_parser.dart';
 
 void main() {
   group('PlexCacheParser.extractMetadataList', () {

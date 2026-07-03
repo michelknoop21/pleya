@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/utils/media_server_http_client.dart';
+import 'package:pleya/utils/media_server_http_client.dart';
 
 void main() {
   group('MediaServerHttpClient.buildUri', () {

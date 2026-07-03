@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/media/media_server_client.dart';
-import 'package:plezy/media/playback_report_metadata.dart';
-import 'package:plezy/services/playback_report_session.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/playback_report_metadata.dart';
+import 'package:pleya/services/playback_report_session.dart';
 
 class _RecordingClient implements MediaServerClient {
   final calls = <String>[];

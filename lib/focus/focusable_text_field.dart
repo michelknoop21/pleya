@@ -36,7 +36,7 @@ void _logTvTextInput(String message) {
 }
 
 class _NativeTvTextInputFocusBridge {
-  static const _channel = MethodChannel('com.plezy/text_input');
+  static const _channel = MethodChannel('com.pleya/text_input');
   static final Set<Object> _focusedTokens = <Object>{};
   static bool _lastSentFocused = false;
 

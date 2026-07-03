@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/database/app_database.dart';
-import 'package:plezy/services/recommendations/affinity_engine.dart';
+import 'package:pleya/database/app_database.dart';
+import 'package:pleya/services/recommendations/affinity_engine.dart';
 
 MediaInteractionsCompanion _row(
   String profile,

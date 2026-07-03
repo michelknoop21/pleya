@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/media/media_hub.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/services/recommendations/hub_dedup.dart';
-import 'package:plezy/utils/media_hub_ordering.dart';
+import 'package:pleya/media/media_hub.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/services/recommendations/hub_dedup.dart';
+import 'package:pleya/utils/media_hub_ordering.dart';
 
 MediaItem _item(String id) => MediaItem.plex(id: id, kind: MediaKind.movie, serverId: 's1', title: 'Movie $id');
 

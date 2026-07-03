@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:plezy/widgets/bottom_sheet_header.dart';
+import 'package:pleya/widgets/bottom_sheet_header.dart';
 
 void main() {
   testWidgets('back arrow aligns with regular leading icons', (tester) async {

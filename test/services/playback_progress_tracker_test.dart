@@ -1,20 +1,20 @@
 import 'dart:async';
-import 'package:plezy/media/ids.dart';
+import 'package:pleya/media/ids.dart';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/database/app_database.dart';
-import 'package:plezy/media/media_backend.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/media/media_source_info.dart';
-import 'package:plezy/media/playback_report_metadata.dart';
-import 'package:plezy/mpv/mpv.dart';
-import 'package:plezy/services/multi_server_manager.dart';
-import 'package:plezy/services/offline_watch_sync_service.dart';
-import 'package:plezy/services/playback_progress_tracker.dart';
-import 'package:plezy/services/plex_client.dart';
-import 'package:plezy/utils/watch_state_notifier.dart';
+import 'package:pleya/database/app_database.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_source_info.dart';
+import 'package:pleya/media/playback_report_metadata.dart';
+import 'package:pleya/mpv/mpv.dart';
+import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/offline_watch_sync_service.dart';
+import 'package:pleya/services/playback_progress_tracker.dart';
+import 'package:pleya/services/plex_client.dart';
+import 'package:pleya/utils/watch_state_notifier.dart';
 
 import '../test_helpers/prefs.dart';
 

@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/models/shader_preset.dart';
-import 'package:plezy/providers/shader_provider.dart';
-import 'package:plezy/services/base_shared_preferences_service.dart';
-import 'package:plezy/services/settings_service.dart';
+import 'package:pleya/models/shader_preset.dart';
+import 'package:pleya/providers/shader_provider.dart';
+import 'package:pleya/services/base_shared_preferences_service.dart';
+import 'package:pleya/services/settings_service.dart';
 
 import '../test_helpers/prefs.dart';
 

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/utils/blurhash.dart';
+import 'package:pleya/utils/blurhash.dart';
 
 void main() {
   test('decodes a valid blurhash to opaque RGBA pixels', () {

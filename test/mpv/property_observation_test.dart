@@ -1,9 +1,9 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/mpv/player/platform/player_android.dart';
-import 'package:plezy/mpv/player/player_base.dart';
-import 'package:plezy/mpv/player/player_native.dart';
-import 'package:plezy/services/settings_service.dart';
+import 'package:pleya/mpv/player/platform/player_android.dart';
+import 'package:pleya/mpv/player/player_base.dart';
+import 'package:pleya/mpv/player/player_native.dart';
+import 'package:pleya/services/settings_service.dart';
 
 import '../test_helpers/prefs.dart';
 

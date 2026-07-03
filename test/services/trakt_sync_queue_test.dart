@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/models/trakt/trakt_ids.dart';
-import 'package:plezy/services/trakt/trakt_constants.dart';
-import 'package:plezy/services/trakt/trakt_sync_queue.dart';
+import 'package:pleya/models/trakt/trakt_ids.dart';
+import 'package:pleya/services/trakt/trakt_constants.dart';
+import 'package:pleya/services/trakt/trakt_sync_queue.dart';
 
 void main() {
   test('TraktSyncQueueItem preserves library context in JSON', () {

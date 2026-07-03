@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:plezy/utils/dialogs.dart';
+import 'package:pleya/utils/dialogs.dart';
 
 void main() {
   testWidgets('toggle label stays on one line in narrow option picker dialog', (tester) async {

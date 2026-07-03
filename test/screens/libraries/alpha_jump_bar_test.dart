@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/media/library_first_character.dart';
-import 'package:plezy/screens/libraries/alpha_jump_bar.dart';
+import 'package:pleya/media/library_first_character.dart';
+import 'package:pleya/screens/libraries/alpha_jump_bar.dart';
 
 void main() {
   const alphabetCharacters = [

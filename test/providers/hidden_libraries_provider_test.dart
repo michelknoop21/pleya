@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/providers/hidden_libraries_provider.dart';
-import 'package:plezy/services/base_shared_preferences_service.dart';
-import 'package:plezy/services/storage_service.dart';
+import 'package:pleya/providers/hidden_libraries_provider.dart';
+import 'package:pleya/services/base_shared_preferences_service.dart';
+import 'package:pleya/services/storage_service.dart';
 
 import '../test_helpers/prefs.dart';
 

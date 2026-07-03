@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/services/trackers/fribb_mapping_store.dart';
+import 'package:pleya/services/trackers/fribb_mapping_store.dart';
 
 void main() {
   group('parseFribbIndex', () {

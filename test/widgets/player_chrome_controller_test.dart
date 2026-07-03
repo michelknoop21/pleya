@@ -2,7 +2,7 @@ import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/widgets/video_controls/player_chrome_controller.dart';
+import 'package:pleya/widgets/video_controls/player_chrome_controller.dart';
 
 void main() {
   group('PlayerChromeController', () {

@@ -5,12 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:plezy/focus/input_mode_tracker.dart';
-import 'package:plezy/profiles/profile.dart';
-import 'package:plezy/screens/settings/add_jellyfin_screen.dart';
-import 'package:plezy/services/jellyfin_auth_service.dart';
-import 'package:plezy/services/jellyfin_lan_discovery_service.dart';
-import 'package:plezy/utils/platform_detector.dart';
+import 'package:pleya/focus/input_mode_tracker.dart';
+import 'package:pleya/profiles/profile.dart';
+import 'package:pleya/screens/settings/add_jellyfin_screen.dart';
+import 'package:pleya/services/jellyfin_auth_service.dart';
+import 'package:pleya/services/jellyfin_lan_discovery_service.dart';
+import 'package:pleya/utils/platform_detector.dart';
 
 import '../../test_helpers/prefs.dart';
 

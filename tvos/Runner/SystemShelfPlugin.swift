@@ -5,9 +5,9 @@ import TVServices
   import Flutter
 
   final class SystemShelfPlugin: NSObject, FlutterPlugin {
-    private static let channelName = "com.plezy/system_shelf"
+    private static let channelName = "com.pleya/system_shelf"
     private static let appGroupIdentifier = "group.nl.michelknoop.plexflixnetwork"
-    private static let cacheDataKey = "PlezySystemShelfCacheData"
+    private static let cacheDataKey = "PleyaSystemShelfCacheData"
     private static var pendingDeepLink: String?
     private static var methodChannel: FlutterMethodChannel?
 
@@ -28,7 +28,7 @@ import TVServices
     }
 
     private static func contentId(from url: URL) -> String? {
-      guard url.scheme == "plezy", url.host == "play" else { return nil }
+      guard url.scheme == "pleya", url.host == "play" else { return nil }
       let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
       return components?.queryItems?.first { $0.name == "content_id" }?.value
     }

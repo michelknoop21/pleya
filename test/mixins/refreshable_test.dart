@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/mixins/refreshable.dart';
+import 'package:pleya/mixins/refreshable.dart';
 
 class _RefreshProbe extends StatefulWidget {
   const _RefreshProbe({this.onState});

@@ -1,13 +1,13 @@
 import 'dart:io';
-import 'package:plezy/media/ids.dart';
+import 'package:pleya/media/ids.dart';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
-import 'package:plezy/database/app_database.dart';
-import 'package:plezy/database/download_operations.dart';
-import 'package:plezy/models/download_models.dart';
+import 'package:pleya/database/app_database.dart';
+import 'package:pleya/database/download_operations.dart';
+import 'package:pleya/models/download_models.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 void main() {
@@ -115,7 +115,7 @@ class _AppDatabaseTestSuite {
       test('retried v14 migration tolerates existing indices', () async {
         await db.close();
         final tempDir = await Directory.systemTemp.createTemp('plezy_db_migration_test_');
-        final file = File('${tempDir.path}/plezy_downloads.db');
+        final file = File('${tempDir.path}/pleya_downloads.db');
         AppDatabase? seeded;
         AppDatabase? reopened;
 
@@ -166,8 +166,8 @@ class _AppDatabaseTestSuite {
       });
 
       test('no-op when source does not exist', () async {
-        final source = File('${tempDir.path}/Documents/plezy_downloads.db');
-        final target = File('${tempDir.path}/AppData/plezy_downloads.db');
+        final source = File('${tempDir.path}/Documents/pleya_downloads.db');
+        final target = File('${tempDir.path}/AppData/pleya_downloads.db');
         await target.parent.create(recursive: true);
 
         await migrateLegacyDesktopDatabase(sourceOverride: source, target: target);
@@ -177,8 +177,8 @@ class _AppDatabaseTestSuite {
       });
 
       test('rename happy path moves the file and preserves content', () async {
-        final source = File('${tempDir.path}/Documents/plezy_downloads.db');
-        final target = File('${tempDir.path}/AppData/plezy_downloads.db');
+        final source = File('${tempDir.path}/Documents/pleya_downloads.db');
+        final target = File('${tempDir.path}/AppData/pleya_downloads.db');
         await source.parent.create(recursive: true);
         await target.parent.create(recursive: true);
         await source.writeAsBytes([1, 2, 3, 4, 5]);
@@ -194,8 +194,8 @@ class _AppDatabaseTestSuite {
         // Simulate Windows ERROR_NOT_SAME_DEVICE by throwing the same
         // exception shape `File.rename` would emit when source and target
         // live on different volumes.
-        final source = File('${tempDir.path}/Documents/plezy_downloads.db');
-        final target = File('${tempDir.path}/AppData/plezy_downloads.db');
+        final source = File('${tempDir.path}/Documents/pleya_downloads.db');
+        final target = File('${tempDir.path}/AppData/pleya_downloads.db');
         await source.parent.create(recursive: true);
         await target.parent.create(recursive: true);
         await source.writeAsBytes([9, 8, 7]);
@@ -216,10 +216,10 @@ class _AppDatabaseTestSuite {
       });
 
       test('copy failure leaves source intact and never throws', () async {
-        final source = File('${tempDir.path}/Documents/plezy_downloads.db');
+        final source = File('${tempDir.path}/Documents/pleya_downloads.db');
         // Point target at a non-existent directory so copy fails. The
         // helper must swallow the error — splash boot must never see it.
-        final target = File('${tempDir.path}/does-not-exist/AppData/plezy_downloads.db');
+        final target = File('${tempDir.path}/does-not-exist/AppData/pleya_downloads.db');
         await source.parent.create(recursive: true);
         await source.writeAsBytes([0xAA, 0xBB]);
 
@@ -239,7 +239,7 @@ class _AppDatabaseTestSuite {
 
       test('documents directory lookup failure is a silent no-op', () async {
         final previousPathProvider = PathProviderPlatform.instance;
-        final target = File('${tempDir.path}/AppData/plezy_downloads.db');
+        final target = File('${tempDir.path}/AppData/pleya_downloads.db');
         PathProviderPlatform.instance = _ThrowingDocumentsPathProvider();
 
         try {

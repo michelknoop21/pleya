@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../media/ids.dart';
-import 'package:plezy/widgets/app_icon.dart';
+import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import '../../focus/focusable_button.dart';
 import '../../focus/input_mode_tracker.dart';

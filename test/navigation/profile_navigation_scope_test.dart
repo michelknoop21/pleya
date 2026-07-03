@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/navigation/profile_navigation_scope.dart';
+import 'package:pleya/navigation/profile_navigation_scope.dart';
 
 void main() {
   testWidgets('ProfileNavigationRegistry pops and detaches the active profile navigator', (tester) async {

@@ -14,7 +14,7 @@ import 'package:flutter/gestures.dart'
         PointerUpEvent,
         kDoubleTapTimeout;
 import 'package:flutter/material.dart';
-import 'package:plezy/widgets/app_icon.dart';
+import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:rate_limiter/rate_limiter.dart';
 import 'package:flutter/services.dart'

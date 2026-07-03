@@ -1,6 +1,6 @@
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/watch_together/services/clock_sync.dart';
+import 'package:pleya/watch_together/services/clock_sync.dart';
 
 void main() {
   // Drives ClockSync with a virtual clock anchored to fakeAsync's elapsed time.

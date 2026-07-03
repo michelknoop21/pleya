@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/media/library_query.dart';
-import 'package:plezy/media/media_backend.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/media/media_server_client.dart';
-import 'package:plezy/media/media_version.dart';
-import 'package:plezy/utils/download_version_utils.dart';
-import 'package:plezy/media/episode_collection.dart';
+import 'package:pleya/media/library_query.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/media_version.dart';
+import 'package:pleya/utils/download_version_utils.dart';
+import 'package:pleya/media/episode_collection.dart';
 
 MediaItem _season(String id, {int index = 1, int? leafCount, int? viewedLeafCount}) => MediaItem(
   id: id,

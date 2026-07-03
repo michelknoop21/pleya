@@ -76,7 +76,7 @@ val downloadLibdovi by tasks.registering {
 }
 
 android {
-  namespace = "com.edde746.plezy"
+  namespace = "nl.michelknoop.pleya"
   compileSdk = flutter.compileSdkVersion
   ndkVersion = flutter.ndkVersion
 

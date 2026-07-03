@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:plezy/media/ids.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/media/library_query.dart';
-import 'package:plezy/media/media_backend.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/media/media_playlist.dart';
-import 'package:plezy/providers/playback_state_provider.dart';
-import 'package:plezy/services/jellyfin_client.dart';
-import 'package:plezy/services/jellyfin_sequential_launcher.dart';
-import 'package:plezy/services/media_list_playback_launcher.dart';
-import 'package:plezy/services/playlist_items_loader.dart';
-import 'package:plezy/utils/media_server_http_client.dart';
+import 'package:pleya/media/library_query.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_playlist.dart';
+import 'package:pleya/providers/playback_state_provider.dart';
+import 'package:pleya/services/jellyfin_client.dart';
+import 'package:pleya/services/jellyfin_sequential_launcher.dart';
+import 'package:pleya/services/media_list_playback_launcher.dart';
+import 'package:pleya/services/playlist_items_loader.dart';
+import 'package:pleya/utils/media_server_http_client.dart';
 
 /// Recording fake that satisfies [JellyfinClient] via `implements` +
 /// `noSuchMethod`. The launcher only needs the

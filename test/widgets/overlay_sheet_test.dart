@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/widgets/overlay_sheet.dart';
+import 'package:pleya/widgets/overlay_sheet.dart';
 
 void main() {
   testWidgets('scrollable sheet does not attach to parent primary controller', (tester) async {

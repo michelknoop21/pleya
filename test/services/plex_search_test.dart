@@ -1,14 +1,14 @@
 import 'dart:convert';
-import 'package:plezy/media/ids.dart';
+import 'package:pleya/media/ids.dart';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:plezy/database/app_database.dart';
-import 'package:plezy/models/plex/plex_config.dart';
-import 'package:plezy/services/plex_api_cache.dart';
-import 'package:plezy/services/plex_client.dart';
+import 'package:pleya/database/app_database.dart';
+import 'package:pleya/models/plex/plex_config.dart';
+import 'package:pleya/services/plex_api_cache.dart';
+import 'package:pleya/services/plex_client.dart';
 
 http.Response _json(Object body) => http.Response(jsonEncode(body), 200, headers: {'content-type': 'application/json'});
 

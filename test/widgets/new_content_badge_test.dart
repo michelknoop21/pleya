@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/widgets/new_content_badge.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/widgets/new_content_badge.dart';
 
 void main() {
   const nowMs = 1_700_000_000_000; // fixed "now" for determinism

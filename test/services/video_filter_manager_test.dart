@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/mpv/mpv.dart';
-import 'package:plezy/services/ambient_lighting_service.dart';
-import 'package:plezy/services/video_filter_manager.dart';
+import 'package:pleya/mpv/mpv.dart';
+import 'package:pleya/services/ambient_lighting_service.dart';
+import 'package:pleya/services/video_filter_manager.dart';
 
 void main() {
   test('zoom scale snaps to whole percentages', () {

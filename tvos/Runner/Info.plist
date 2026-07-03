@@ -29,7 +29,7 @@
 			<string>nl.michelknoop.plexflixnetwork.play</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>plezy</string>
+				<string>pleya</string>
 			</array>
 		</dict>
 	</array>

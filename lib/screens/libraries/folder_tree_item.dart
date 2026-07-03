@@ -3,7 +3,7 @@ import 'dart:ui';
 import '../../media/ids.dart';
 
 import 'package:flutter/material.dart';
-import 'package:plezy/widgets/app_icon.dart';
+import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import '../../focus/focusable_button.dart';
 import '../../providers/watch_state_store.dart';

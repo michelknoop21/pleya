@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/providers/trackers_provider.dart';
-import 'package:plezy/services/base_shared_preferences_service.dart';
-import 'package:plezy/services/trackers/tracker_account_store.dart';
-import 'package:plezy/services/trackers/tracker_constants.dart';
-import 'package:plezy/services/trackers/tracker_session.dart';
+import 'package:pleya/providers/trackers_provider.dart';
+import 'package:pleya/services/base_shared_preferences_service.dart';
+import 'package:pleya/services/trackers/tracker_account_store.dart';
+import 'package:pleya/services/trackers/tracker_constants.dart';
+import 'package:pleya/services/trackers/tracker_session.dart';
 
 import '../test_helpers/prefs.dart';
 

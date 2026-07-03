@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/models/companion_remote/remote_command.dart';
-import 'package:plezy/models/mpv_config_models.dart';
-import 'package:plezy/models/trakt/trakt_ids.dart';
-import 'package:plezy/watch_together/models/watch_session.dart';
-import 'package:plezy/watch_together/services/recent_rooms_service.dart';
+import 'package:pleya/models/companion_remote/remote_command.dart';
+import 'package:pleya/models/mpv_config_models.dart';
+import 'package:pleya/models/trakt/trakt_ids.dart';
+import 'package:pleya/watch_together/models/watch_session.dart';
+import 'package:pleya/watch_together/services/recent_rooms_service.dart';
 
 void main() {
   group('JSON model round trips', () {

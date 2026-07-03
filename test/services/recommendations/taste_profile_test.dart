@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/media/media_role.dart';
-import 'package:plezy/services/recommendations/taste_profile.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_role.dart';
+import 'package:pleya/services/recommendations/taste_profile.dart';
 
 const _day = Duration.millisecondsPerDay;
 const _nowMs = 1700000000000;

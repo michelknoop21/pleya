@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/services/live_seek_accumulator.dart';
+import 'package:pleya/services/live_seek_accumulator.dart';
 
 void main() {
   group('LiveSeekAccumulator', () {

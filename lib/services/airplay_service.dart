@@ -8,7 +8,7 @@ import '../utils/app_logger.dart';
 /// tvOS/macOS route audio/video through the system already and desktop has no
 /// equivalent, so [isAvailable] is false there.
 class AirPlayService {
-  static const MethodChannel _channel = MethodChannel('com.plezy/airplay');
+  static const MethodChannel _channel = MethodChannel('com.pleya/airplay');
 
   static bool get isAvailable => Platform.isIOS;
 

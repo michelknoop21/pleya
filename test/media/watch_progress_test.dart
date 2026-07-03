@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/media/watch_progress.dart';
+import 'package:pleya/media/watch_progress.dart';
 
 void main() {
   group('isWatchedProgress', () {

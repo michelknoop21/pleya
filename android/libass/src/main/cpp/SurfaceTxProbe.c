@@ -299,7 +299,7 @@ static void onComplete(void* context, ASurfaceTransactionStats* stats) {
   pthread_mutex_unlock(&gJobLock);
 }
 
-JNIEXPORT void JNICALL Java_com_edde746_plezy_exoplayer_SurfaceTxProbe_nativeAttach(
+JNIEXPORT void JNICALL Java_nl_michelknoop_pleya_exoplayer_SurfaceTxProbe_nativeAttach(
     JNIEnv* env, jclass clazz, jobject jtransaction, jlong tag, jint source) {
   if (!ensureProbeInit(env, clazz)) return;
   int slot = __atomic_fetch_add(&gTagSeq, 1, __ATOMIC_RELAXED) & (TAG_RING_SIZE - 1);

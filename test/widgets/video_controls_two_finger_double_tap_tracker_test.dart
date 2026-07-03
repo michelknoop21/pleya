@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/widgets/video_controls/helpers/two_finger_double_tap_tracker.dart';
+import 'package:pleya/widgets/video_controls/helpers/two_finger_double_tap_tracker.dart';
 
 void main() {
   late DateTime now;

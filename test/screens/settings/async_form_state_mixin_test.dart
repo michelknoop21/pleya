@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/screens/settings/async_form_state_mixin.dart';
+import 'package:pleya/screens/settings/async_form_state_mixin.dart';
 
 class _Host extends StatefulWidget {
   const _Host();

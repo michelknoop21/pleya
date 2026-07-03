@@ -1,10 +1,10 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/mpv/mpv.dart';
-import 'package:plezy/services/keyboard_shortcuts_service.dart';
-import 'package:plezy/services/settings_service.dart';
-import 'package:plezy/services/video_filter_manager.dart';
+import 'package:pleya/mpv/mpv.dart';
+import 'package:pleya/services/keyboard_shortcuts_service.dart';
+import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/video_filter_manager.dart';
 
 import '../test_helpers/prefs.dart';
 

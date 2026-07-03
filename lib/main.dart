@@ -216,7 +216,7 @@ Future<void> _bootstrapApp() async {
   final commitSuffix = gitCommit.isNotEmpty ? ' (${gitCommit.substring(0, 7)})' : '';
   String renderer = '';
   if (Platform.isAndroid) {
-    renderer = ' [${await const MethodChannel('com.plezy/theme').invokeMethod<String>('getRenderer')}]';
+    renderer = ' [${await const MethodChannel('com.pleya/theme').invokeMethod<String>('getRenderer')}]';
   }
   appLogger.i(
     'Pleya v${packageInfo.version}+${packageInfo.buildNumber}$commitSuffix$renderer'

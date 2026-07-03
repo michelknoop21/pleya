@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/media/media_hub.dart';
+import 'package:pleya/media/media_hub.dart';
 
 MediaHub _hub({required String id, String? identifier}) {
   return MediaHub(id: id, identifier: identifier, title: 'Hub', type: 'mixed', items: const []);
