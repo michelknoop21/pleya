@@ -55,6 +55,7 @@ import '../mixins/refreshable.dart';
 import '../mixins/tab_visibility_aware.dart';
 import '../i18n/strings.g.dart';
 import '../utils/app_logger.dart';
+import '../utils/debouncer.dart';
 import '../utils/dialogs.dart';
 import '../utils/media_navigation_helper.dart';
 import '../utils/provider_extensions.dart';
@@ -74,8 +75,6 @@ import 'main_screen.dart';
 import 'settings/settings_screen.dart';
 import '../watch_together/watch_together.dart';
 import '../providers/companion_remote_provider.dart';
-import '../providers/seerr_provider.dart';
-import 'seerr/seerr_discover_screen.dart';
 import '../widgets/companion_remote/remote_session_dialog.dart';
 import 'companion_remote/mobile_remote_screen.dart';
 
@@ -119,6 +118,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // ValueNotifier (not setState) so a spotlight swap rebuilds only the
   // TvSpotlightBackground subtree, never the rail/rows.
   final ValueNotifier<MediaItem?> _spotlightItem = ValueNotifier(null);
+  // Settle delay so d-pad scrubbing across a row doesn't fetch/decode a
+  // full-screen backdrop for every intermediate item.
+  final Debouncer _spotlightDebouncer = Debouncer(const Duration(milliseconds: 150));
   // Settle delay so d-pad scrubbing across a row doesn't fetch/decode a
   // full-screen backdrop for every intermediate item.
   bool _isTabVisible = true;
@@ -224,6 +226,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       if (hub.items.any((item) => item.globalKey == current.globalKey)) return current;
     }
     return _defaultSpotlightItem;
+  }
+
+  void _setSpotlightItem(MediaItem item) {
+    // Same-key check lives inside the callback: an A→B→A scrub must cancel
+    // the pending B, not early-return and let it fire.
+    _spotlightDebouncer.run(() {
+      if (!mounted) return;
+      if (_spotlightItem.value?.globalKey == item.globalKey) return;
+      _spotlightItem.value = item;
+    });
   }
 
   void _scrollToTop() {
@@ -493,6 +505,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     WidgetsBinding.instance.removeObserver(this);
     _autoScrollTimer?.cancel();
     _indicatorTimer?.cancel();
+    _spotlightDebouncer.dispose();
     _spotlightItem.dispose();
     _indicatorProgress.dispose();
     _heroController.dispose();
@@ -984,16 +997,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                         iconColor: foregroundColor,
                         onPressed: _discover.load,
                       ),
-                      // Jellyseerr/Overseerr discover — only when configured.
-                      if (context.watch<SeerrProvider>().isConfigured)
-                        FocusableAction(
-                          icon: Symbols.playlist_add_rounded,
-                          iconColor: foregroundColor,
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const SeerrDiscoverScreen()),
-                          ),
-                        ),
                       // Watch Together
                       FocusableAction(
                         onPressed: () =>
@@ -1336,9 +1339,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 key: _tvBrowseRailKey,
                 hubs: browseHubs,
                 showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
-                // Text-only Netflix-style headers (no leading icons). Billboard
-                // stays fixed on the featured item, so the rail no longer drives
-                // the spotlight from row focus.
+                // Netflix-style: the focused row item becomes the billboard
+                // after a short dwell (debounced in _setSpotlightItem).
+                onFocusedItemChanged: _setSpotlightItem,
                 onRefresh: _discover.updateItem,
                 onRemoveFromContinueWatching: _discover.refreshContinueWatching,
                 isContinueWatchingHub: (hub) => hub.isContinueWatchingHub,

@@ -179,8 +179,10 @@ void main() {
     expect(nextFocusNode.hasPrimaryFocus, isTrue);
   });
 
-  testWidgets('tvOS focus opens virtual keyboard', (tester) async {
-    TvDetectionService.debugSetAppleTVOverride(true);
+  testWidgets('Android TV focus opens virtual keyboard', (tester) async {
+    TvDetectionService.debugSetAppleTVOverride(null);
+    await TvDetectionService.getInstance(forceTv: true);
+    TvDetectionService.setForceTVSync(true);
     await _setTvSurfaceSize(tester);
     final controller = TextEditingController();
     final fieldFocusNode = FocusNode(debugLabel: 'search_field');
@@ -202,7 +204,9 @@ void main() {
   });
 
   testWidgets('hidden TV text field does not auto-open virtual keyboard', (tester) async {
-    TvDetectionService.debugSetAppleTVOverride(true);
+    TvDetectionService.debugSetAppleTVOverride(null);
+    await TvDetectionService.getInstance(forceTv: true);
+    TvDetectionService.setForceTVSync(true);
     await _setTvSurfaceSize(tester);
     final controller = TextEditingController(text: 'query');
     final fieldFocusNode = FocusNode(debugLabel: 'hidden_search_field');
@@ -235,7 +239,9 @@ void main() {
   });
 
   testWidgets('TV virtual keyboard closes when its owning field unmounts', (tester) async {
-    TvDetectionService.debugSetAppleTVOverride(true);
+    TvDetectionService.debugSetAppleTVOverride(null);
+    await TvDetectionService.getInstance(forceTv: true);
+    TvDetectionService.setForceTVSync(true);
     await _setTvSurfaceSize(tester);
     final controller = TextEditingController();
     final fieldFocusNode = FocusNode(debugLabel: 'search_field');
@@ -267,7 +273,9 @@ void main() {
   });
 
   testWidgets('TV virtual keyboard does not immediately reopen after dismissal', (tester) async {
-    TvDetectionService.debugSetAppleTVOverride(true);
+    TvDetectionService.debugSetAppleTVOverride(null);
+    await TvDetectionService.getInstance(forceTv: true);
+    TvDetectionService.setForceTVSync(true);
     await _setTvSurfaceSize(tester);
     final controller = TextEditingController();
     final fieldFocusNode = FocusNode(debugLabel: 'search_field');
@@ -507,7 +515,7 @@ void main() {
     TvDetectionService.debugSetAppleTVOverride(null);
     await TvDetectionService.getInstance(forceTv: true);
     TvDetectionService.setForceTVSync(true);
-    const channel = MethodChannel('com.plezy/text_input');
+    const channel = MethodChannel('com.pleya/text_input');
     final calls = <MethodCall>[];
     final gamepadFocusStates = <bool>[];
     GamepadService.debugNativeTextInputFocusHandler = (focused) async {
@@ -623,7 +631,7 @@ void main() {
     expect(find.byType(Dialog), findsNothing);
   });
 
-  testWidgets('tvOS engine-synthesized select is handled by the virtual keyboard', (tester) async {
+  testWidgets('Android TV engine-synthesized select is handled by the virtual keyboard', (tester) async {
     // The custom Flutter tvOS engine emits Siri Remote center-dpad presses
     // as `LogicalKeyboardKey.select` with `deviceType=keyboard` (via the
     // legacy `flutter/keyevent` Android DPAD_CENTER path). On Apple TV this
@@ -631,7 +639,9 @@ void main() {
     // `isPhysicalKeyboardEnter` matched select+keyboard and routed through
     // `_submitTextInput`, which silently triggered form submit on every
     // dpad center press (e.g. immediate validation error on empty fields).
-    TvDetectionService.debugSetAppleTVOverride(true);
+    TvDetectionService.debugSetAppleTVOverride(null);
+    await TvDetectionService.getInstance(forceTv: true);
+    TvDetectionService.setForceTVSync(true);
     await _setTvSurfaceSize(tester);
     final controller = TextEditingController(text: 'query');
     final fieldFocusNode = FocusNode(debugLabel: 'search_field');
@@ -660,8 +670,10 @@ void main() {
     expect(find.byType(Dialog), findsOneWidget);
   });
 
-  testWidgets('tvOS text field handles physical keyboard text editing through virtual keyboard', (tester) async {
-    TvDetectionService.debugSetAppleTVOverride(true);
+  testWidgets('Android TV text field handles physical keyboard text editing through virtual keyboard', (tester) async {
+    TvDetectionService.debugSetAppleTVOverride(null);
+    await TvDetectionService.getInstance(forceTv: true);
+    TvDetectionService.setForceTVSync(true);
     await _setTvSurfaceSize(tester);
     final controller = TextEditingController();
     final fieldFocusNode = FocusNode(debugLabel: 'search_field');
@@ -881,6 +893,81 @@ void main() {
 
     expect(controller.text, 'a\n');
     expect(find.byType(Dialog), findsNothing);
+  });
+
+  testWidgets('Apple TV native text entry returns text and submits', (tester) async {
+    TvDetectionService.debugSetAppleTVOverride(true);
+    await _setTvSurfaceSize(tester);
+    const channel = MethodChannel('com.pleya/native_text_entry');
+    final calls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return <String, dynamic>{'text': 'secret', 'submitted': true};
+    });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null),
+    );
+
+    final controller = TextEditingController(text: 'old');
+    final fieldFocusNode = FocusNode(debugLabel: 'pw_field');
+    String? submitted;
+    addTearDown(controller.dispose);
+    addTearDown(fieldFocusNode.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FocusableTextField(
+            controller: controller,
+            focusNode: fieldFocusNode,
+            obscureText: true,
+            onSubmitted: (value) => submitted = value,
+          ),
+        ),
+      ),
+    );
+
+    fieldFocusNode.requestFocus();
+    await tester.pumpAndSettle();
+
+    final editCall = calls.firstWhere((call) => call.method == 'edit');
+    final args = editCall.arguments as Map;
+    expect(args['obscure'], isTrue);
+    expect(args['text'], 'old');
+    expect(controller.text, 'secret');
+    expect(submitted, 'secret');
+    // The native path presents the system keyboard, not a Flutter dialog.
+    expect(find.byType(Dialog), findsNothing);
+  });
+
+  testWidgets('Apple TV native text entry falls back to virtual keyboard on error', (tester) async {
+    TvDetectionService.debugSetAppleTVOverride(true);
+    await _setTvSurfaceSize(tester);
+    const channel = MethodChannel('com.pleya/native_text_entry');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+      throw PlatformException(code: 'UNAVAILABLE', message: 'no responder');
+    });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null),
+    );
+
+    final controller = TextEditingController();
+    final fieldFocusNode = FocusNode(debugLabel: 'search_field');
+    addTearDown(controller.dispose);
+    addTearDown(fieldFocusNode.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FocusableTextField(controller: controller, focusNode: fieldFocusNode),
+        ),
+      ),
+    );
+
+    fieldFocusNode.requestFocus();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Dialog), findsOneWidget);
   });
 }
 

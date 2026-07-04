@@ -22,6 +22,20 @@ def flutter_sh(cmd)
   sh("cd #{PROJECT_ROOT} && env -u GEM_HOME -u GEM_PATH -u RUBYOPT -u RUBYLIB -u BUNDLE_GEMFILE -u BUNDLE_BIN_PATH #{cmd}")
 end
 
+# Flutter genereert de umbrella-SPM-package (ios/Flutter/ephemeral/, gitignored)
+# op iOS 13.0, maar background_downloader eist 14.0. Xcode resolvet Swift-packages
+# vóór Flutter's eigen updateMinimumDeployment draait, dus forceer het manifest
+# hier op de app-deploymenttarget — anders faalt build_app op
+# "requires minimum platform version 14.0 ... but this target supports 13.0".
+def patch_spm_min_ios
+  manifest = File.join(PROJECT_ROOT,
+    "ios/Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage/Package.swift")
+  return unless File.exist?(manifest)
+  content = File.read(manifest)
+  patched = content.sub('.iOS("13.0")', '.iOS("15.5")')
+  File.write(manifest, patched) if patched != content
+end
+
 # Cloud-signing flags voor xcodebuild: automatic signing werkt dan headless
 # en maakt zonodig Apple Distribution certs + App Store profielen aan.
 def auth_xcargs
@@ -74,6 +88,7 @@ desc "iOS → TestFlight"
 lane :ios_beta do
   ensure_build_number
   flutter_sh("flutter build ios --config-only --release")
+  patch_spm_min_ios
   build_app(
     workspace: File.join(PROJECT_ROOT, "ios/Runner.xcworkspace"),
     scheme: "Runner",

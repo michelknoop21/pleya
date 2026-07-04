@@ -165,6 +165,9 @@ import wakelock_plus
     if let r = self.registrar(forPlugin: "ICloudKvsPlugin") {
       ICloudKvsPlugin.register(with: r)
     }
+    if let r = self.registrar(forPlugin: "NativeTextEntryPlugin") {
+      NativeTextEntryPlugin.register(with: r)
+    }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
