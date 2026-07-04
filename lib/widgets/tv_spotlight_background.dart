@@ -110,7 +110,7 @@ class TvSpotlightBackground extends StatelessWidget {
             if (media != null && showInfo)
               Positioned(
                 left: contentLeft ?? TvLayoutConstants.horizontalInset,
-                right: MediaQuery.sizeOf(context).width * 0.43,
+                right: MediaQuery.sizeOf(context).width * 0.34,
                 top: contentTop,
                 bottom: contentBottom,
                 child: LayoutBuilder(
@@ -268,7 +268,7 @@ class TvSpotlightBackground extends StatelessWidget {
           SizedBox(height: _sectionGap(scale)),
           Text(
             summary,
-            maxLines: compact ? 3 : 4,
+            maxLines: 3,
             overflow: .ellipsis,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurface.withValues(alpha: 0.78),
@@ -437,11 +437,11 @@ class TvSpotlightBackground extends StatelessWidget {
   double _logoHeight(double scale) =>
       (compact ? TvLayoutConstants.compactHeroLogoHeight : TvLayoutConstants.heroLogoHeight) * scale;
 
-  double _titleFontSize(double scale) => (compact ? 44 : 54) * scale;
+  double _titleFontSize(double scale) => (compact ? 44 : 66) * scale;
 
-  double _metadataFontSize(double scale) => (compact ? 16 : 18) * scale;
+  double _metadataFontSize(double scale) => (compact ? 16 : 20) * scale;
 
-  double _summaryFontSize(double scale) => (compact ? 18 : 20) * scale;
+  double _summaryFontSize(double scale) => (compact ? 18 : 22) * scale;
 
   Widget _buildPrimaryAction(BuildContext context, MediaItem media) {
     final scale = _scale(context);

@@ -61,8 +61,8 @@ class TvLayoutConstants {
   static const double shelfHorizontalInset = 56;
   static const double shelfVerticalGap = 32;
   static const double heroContentMaxWidth = 760;
-  static const double heroLogoWidth = 520;
-  static const double heroLogoHeight = 150;
+  static const double heroLogoWidth = 700;
+  static const double heroLogoHeight = 200;
   static const double compactHeroLogoWidth = 420;
   static const double compactHeroLogoHeight = 112;
 
