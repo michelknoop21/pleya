@@ -57,9 +57,13 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen>
 
   String _mapError(Object e) {
     if (e is SeerrException) {
-      if (e.isAuth) return t.seerr.errorAuth;
-      if (e.isForbidden) return t.seerr.errorForbidden;
       if (e.isNetwork) return t.seerr.errorNetwork;
+      if (e.isForbidden) return t.seerr.errorForbidden;
+      if (e.isAuth) return t.seerr.errorAuth;
+      // Surface the real Overseerr/Jellyseerr reason (server message, or the
+      // bare "HTTP <code>" when the body carries none) instead of a generic
+      // message — otherwise "Something went wrong" hides why the login failed.
+      return e.message;
     }
     return t.seerr.errorGeneric;
   }

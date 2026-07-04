@@ -12,6 +12,7 @@ import '../../widgets/app_icon.dart';
 import '../../widgets/focusable_filter_chip.dart';
 import '../../widgets/focusable_list_tile.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
+import '../../widgets/seerr_poster_card.dart';
 import '../../widgets/seerr_status_badge.dart';
 
 /// Jellyseerr / Overseerr requests-management screen.
@@ -190,11 +191,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
             for (final (value, icon, label) in chips)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: FocusableFilterChip(
-                  icon: icon,
-                  label: label,
-                  onPressed: () => _onFilter(value),
-                ),
+                child: FocusableFilterChip(icon: icon, label: label, onPressed: () => _onFilter(value)),
               ),
           ],
         ),
@@ -206,7 +203,10 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     if (_loading && _items.isEmpty) {
       return const [
         SliverToBoxAdapter(
-          child: Padding(padding: EdgeInsets.all(48), child: Center(child: CircularProgressIndicator())),
+          child: Padding(
+            padding: EdgeInsets.all(48),
+            child: Center(child: CircularProgressIndicator()),
+          ),
         ),
       ];
     }
@@ -261,12 +261,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
 /// One request row: media icon, season pills, availability badge, lifecycle
 /// status, requester, and discrete focusable action buttons.
 class _SeerrRequestRow extends StatelessWidget {
-  const _SeerrRequestRow({
-    required this.request,
-    this.onApprove,
-    this.onDecline,
-    this.onCancel,
-  });
+  const _SeerrRequestRow({required this.request, this.onApprove, this.onDecline, this.onCancel});
 
   final SeerrRequest request;
   final VoidCallback? onApprove;
@@ -277,21 +272,45 @@ class _SeerrRequestRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isTv = request.mediaType == 'tv';
+    final title = request.mediaTitle ?? (isTv ? t.discover.tvShow : t.discover.movie);
+    final posterUrl = SeerrConstants.tmdbPosterUrl(request.posterPath);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: AppIcon(isTv ? Icons.tv : Icons.movie, size: 22, color: theme.colorScheme.onSurfaceVariant),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(
+              width: 54,
+              height: 81,
+              child: request.posterPath == null
+                  ? ColoredBox(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      child: Center(
+                        child: AppIcon(
+                          isTv ? Icons.tv : Icons.movie,
+                          size: 24,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    )
+                  : SeerrPosterImage(url: posterUrl),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  request.mediaYear == null ? title : '$title (${request.mediaYear})',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 6),
                 Wrap(
                   spacing: 8,
                   runSpacing: 6,
@@ -307,9 +326,7 @@ class _SeerrRequestRow extends StatelessWidget {
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: [
-                      for (final n in request.seasons) _plainPill(theme, t.seerr.season(number: n)),
-                    ],
+                    children: [for (final n in request.seasons) _plainPill(theme, t.seerr.season(number: n))],
                   ),
                 ],
                 if (request.requestedByName != null && request.requestedByName!.isNotEmpty) ...[
@@ -340,15 +357,9 @@ class _SeerrRequestRow extends StatelessWidget {
         if (onApprove != null)
           _actionButton(onApprove!, FilledButton(onPressed: onApprove, child: Text(t.seerr.approve))),
         if (onDecline != null)
-          _actionButton(
-            onDecline!,
-            OutlinedButton(onPressed: onDecline, child: Text(t.seerr.decline)),
-          ),
+          _actionButton(onDecline!, OutlinedButton(onPressed: onDecline, child: Text(t.seerr.decline))),
         if (onCancel != null)
-          _actionButton(
-            onCancel!,
-            TextButton(onPressed: onCancel, child: Text(t.seerr.cancelRequest)),
-          ),
+          _actionButton(onCancel!, TextButton(onPressed: onCancel, child: Text(t.seerr.cancelRequest))),
       ],
     );
   }
@@ -372,7 +383,10 @@ class _SeerrRequestRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: color.withValues(alpha: 0.6)),
       ),
-      child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
@@ -383,10 +397,7 @@ class _SeerrRequestRow extends StatelessWidget {
         color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(
-        text,
-        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-      ),
+      child: Text(text, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
     );
   }
 }

@@ -23,7 +23,10 @@ class AppleTvRemoteTouchService {
   static const String _channelName = 'flutter/gamepadtouchevent';
   static const double defaultSwipeThreshold = 180;
   static const double defaultAxisSwitchDominanceRatio = 1.5;
-  static const Duration defaultSwipeRepeatInterval = Duration(milliseconds: 140);
+  // Min time between accepted swipe-moves. Too low and one continuous trackpad
+  // swipe skips several items; 190ms keeps single deliberate swipes responsive
+  // while stopping the focus from over-running. Tune on-device if it feels slow.
+  static const Duration defaultSwipeRepeatInterval = Duration(milliseconds: 190);
   static const Duration defaultClickAfterDirectionSuppression = Duration(milliseconds: 220);
 
   static final AppleTvRemoteTouchService instance = AppleTvRemoteTouchService();
@@ -59,6 +62,8 @@ class AppleTvRemoteTouchService {
   int _suppressedNativeSelectDowns = 0;
   bool _nativeSelectPressed = false;
   bool _selectPressedFromClick = false;
+  final Map<LogicalKeyboardKey, DateTime> _lastSyntheticDirectionalAt = {};
+  final Map<LogicalKeyboardKey, int> _suppressedNativeDirectionalDowns = {};
 
   AppleTvRemoteTouchService({
     BasicMessageChannel<dynamic>? channel,
@@ -107,6 +112,8 @@ class AppleTvRemoteTouchService {
     _unregisterNativeKeyHandler();
     _duplicateInputGuard.clear();
     _resetNativeSelectBurstState();
+    _lastSyntheticDirectionalAt.clear();
+    _suppressedNativeDirectionalDowns.clear();
     _releaseSelectFromClick(source: 'stop');
     _resetTouch();
     _listening = false;
@@ -119,6 +126,9 @@ class AppleTvRemoteTouchService {
       return true;
     }
     if (_shouldConsumeNativeSelectDuplicate(event)) {
+      return true;
+    }
+    if (_shouldConsumeNativeDirectionalDuplicate(event)) {
       return true;
     }
     if (event is KeyDownEvent && _isDirectionalKey(event.logicalKey)) {
@@ -396,6 +406,51 @@ class AppleTvRemoteTouchService {
     return false;
   }
 
+  bool _shouldConsumeNativeDirectionalDuplicate(KeyEvent event) {
+    final key = event.logicalKey;
+    if (!_isDirectionalKey(key)) return false;
+
+    final now = _now();
+    _pruneSyntheticDirectionalState(now);
+
+    if (event is KeyDownEvent) {
+      final lastSyntheticAt = _lastSyntheticDirectionalAt[key];
+      if (lastSyntheticAt != null && now.difference(lastSyntheticAt).abs() <= duplicateSuppressionWindow) {
+        _suppressedNativeDirectionalDowns[key] = (_suppressedNativeDirectionalDowns[key] ?? 0) + 1;
+        final age = now.difference(lastSyntheticAt).abs().inMilliseconds;
+        _log(
+          'consume native ${_eventTypeName(event)} logical=${_keyName(key)} '
+          'reason=recent-synthetic-direction age=${age}ms',
+        );
+        return true;
+      }
+      return false;
+    }
+
+    if (event is KeyUpEvent) {
+      final suppressedDowns = _suppressedNativeDirectionalDowns[key] ?? 0;
+      if (suppressedDowns <= 0) return false;
+      if (suppressedDowns == 1) {
+        _suppressedNativeDirectionalDowns.remove(key);
+      } else {
+        _suppressedNativeDirectionalDowns[key] = suppressedDowns - 1;
+      }
+      _log(
+        'consume native ${_eventTypeName(event)} logical=${_keyName(key)} '
+        'reason=suppressed-native-direction-down',
+      );
+      return true;
+    }
+
+    return false;
+  }
+
+  void _pruneSyntheticDirectionalState(DateTime now) {
+    _lastSyntheticDirectionalAt.removeWhere(
+      (_, timestamp) => now.difference(timestamp).abs() > duplicateSuppressionWindow,
+    );
+  }
+
   void _resetNativeSelectBurstState() {
     _lastAcceptedNativeSelectDownAt = null;
     _lastAcceptedNativeSelectUpAt = null;
@@ -414,6 +469,10 @@ class AppleTvRemoteTouchService {
     _log('emit key=${_keyName(logicalKey)} source=$source${detail == null ? '' : ' $detail'}');
     if (_isDirectionalKey(logicalKey)) {
       _lastDirectionalInputAt = _now();
+      if (source == 'swipe') {
+        _lastSyntheticDirectionalAt[logicalKey] = _lastDirectionalInputAt!;
+        _pruneSyntheticDirectionalState(_lastDirectionalInputAt!);
+      }
     }
     _simulateKeyPress(logicalKey);
     return true;

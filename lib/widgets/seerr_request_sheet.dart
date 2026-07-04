@@ -111,6 +111,13 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
   bool _isSeasonRequestable(SeerrSeason s) =>
       s.status == SeerrMediaStatus.unknown; // not pending/processing/available
 
+  // Movies: block a duplicate request the server would reject with 409.
+  bool get _isMovieRequestable =>
+      !widget.media.status.isAvailable && !widget.media.status.isRequested;
+
+  bool get _canSubmit =>
+      !_submitting && (_isTv ? _selectedSeasons.isNotEmpty : _isMovieRequestable);
+
   String _mapError(SeerrException e) {
     if (e.isForbidden) return t.seerr.errorForbidden;
     if (e.isNetwork) return t.seerr.errorNetwork;
@@ -138,7 +145,11 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       if (mounted) {
         setState(() {
           _submitting = false;
-          _error = e.isForbidden ? t.seerr.errorForbidden : t.seerr.requestFailed;
+          _error = e.isNetwork
+              ? t.seerr.errorNetwork
+              : e.isForbidden
+              ? t.seerr.errorForbidden
+              : (e.message.startsWith('HTTP') ? t.seerr.requestFailed : e.message);
         });
       }
     }
@@ -189,9 +200,9 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
           child: FocusableButton(
             autofocus: true,
             useBackgroundFocus: true,
-            onPressed: _submitting || (_isTv && _selectedSeasons.isEmpty) ? null : _submit,
+            onPressed: _canSubmit ? _submit : null,
             child: FilledButton.icon(
-              onPressed: _submitting || (_isTv && _selectedSeasons.isEmpty) ? null : _submit,
+              onPressed: _canSubmit ? _submit : null,
               icon: _submitting ? const LoadingIndicatorBox() : const AppIcon(Symbols.download_rounded, fill: 1),
               label: Text(_isTv ? t.seerr.request : t.seerr.requestMovie),
             ),

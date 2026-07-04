@@ -1,6 +1,7 @@
 import 'dart:async';
 import '../media/ids.dart';
 import 'dart:io' show Platform;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HardwareKeyboard, LogicalKeyboardKey;
@@ -55,7 +56,6 @@ import '../mixins/refreshable.dart';
 import '../mixins/tab_visibility_aware.dart';
 import '../i18n/strings.g.dart';
 import '../utils/app_logger.dart';
-import '../utils/debouncer.dart';
 import '../utils/dialogs.dart';
 import '../utils/media_navigation_helper.dart';
 import '../utils/provider_extensions.dart';
@@ -89,6 +89,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     with Refreshable, FullRefreshable, TabVisibilityAware, FocusableTab, WidgetsBindingObserver {
   static const Duration _heroAutoScrollDuration = Duration(seconds: 8);
   static const Duration _indicatorUpdateInterval = Duration(milliseconds: 200);
+  // Home rows are a touch shorter than the shared compact scale so the billboard
+  // hero gets more screen height (Netflix-style: big hero, one row peeking).
+  // ponytail: single knob — lower for an even taller hero, raise to restore.
+  static const double _tvHomeRailTallPosterScale = 0.72;
+  static const double _tvHeroContentTopFraction = 0.075;
+  static const double _tvHeroContentBottomFraction = 0.32;
+  static const double _tvHeroRailGap = 28;
+  static const double _tvHeroMinInfoHeight = 96;
 
   /// Data + refresh policy live in [DiscoverProvider]; this state keeps only
   /// UI concerns (hero carousel, focus, spotlight). The proxy getters keep
@@ -114,17 +122,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   int _currentHeroIndex = 0;
   Timer? _autoScrollTimer;
   Timer? _indicatorTimer;
+  Timer? _tvHeroManualPauseTimer;
   final ValueNotifier<double> _indicatorProgress = ValueNotifier(0.0);
   bool _isAutoScrollPaused = false;
   bool _heroFocusPausedAutoScroll = false;
   // ValueNotifier (not setState) so a spotlight swap rebuilds only the
   // TvSpotlightBackground subtree, never the rail/rows.
   final ValueNotifier<MediaItem?> _spotlightItem = ValueNotifier(null);
-  // Settle delay so d-pad scrubbing across a row doesn't fetch/decode a
-  // full-screen backdrop for every intermediate item.
-  final Debouncer _spotlightDebouncer = Debouncer(const Duration(milliseconds: 150));
-  // Settle delay so d-pad scrubbing across a row doesn't fetch/decode a
-  // full-screen backdrop for every intermediate item.
   bool _isTabVisible = true;
 
   // Track initial load so we can focus hero when content first appears
@@ -195,6 +199,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   MediaItem? get _defaultSpotlightItem {
     if (_latestMovies.isNotEmpty) return _latestMovies.first;
+    // Movies-empty libraries (e.g. show-only servers — latest movies is
+    // films-only) still have Continue Watching + hubs; fall back to those so
+    // the TV billboard is never blank while the rail shows content. _onDeck is
+    // the first row on TV, so it precedes the generic hubs.
+    if (_onDeck.isNotEmpty) return _onDeck.first;
     for (final hub in _hubs) {
       if (hub.items.isNotEmpty) return hub.items.first;
     }
@@ -229,16 +238,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       if (hub.items.any((item) => item.globalKey == current.globalKey)) return current;
     }
     return _defaultSpotlightItem;
-  }
-
-  void _setSpotlightItem(MediaItem item) {
-    // Same-key check lives inside the callback: an A→B→A scrub must cancel
-    // the pending B, not early-return and let it fire.
-    _spotlightDebouncer.run(() {
-      if (!mounted) return;
-      if (_spotlightItem.value?.globalKey == item.globalKey) return;
-      _spotlightItem.value = item;
-    });
   }
 
   void _scrollToTop() {
@@ -394,6 +393,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     WidgetsBinding.instance.addObserver(this);
     _heroFocusNode = FocusNode(debugLabel: 'hero_section');
     _heroFocusNode.addListener(_onHeroFocusChanged);
+    _tvHeroPlayFocusNode.addListener(_onTvHeroActionFocusChanged);
+    _tvHeroInfoFocusNode.addListener(_onTvHeroActionFocusChanged);
     _discover = context.read<DiscoverProvider>();
     _seenLoadGeneration = _discover.loadGeneration;
     _discover.addListener(_onDiscoverChanged);
@@ -425,7 +426,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       _heroController.jumpToPage(0);
     }
     // Focus hero when fresh content lands, but only if no modal route is on top
-    if (isNewLoad && !PlatformDetector.isTV() && _latestMovies.isNotEmpty && (ModalRoute.of(context)?.isCurrent ?? false)) {
+    if (isNewLoad &&
+        !PlatformDetector.isTV() &&
+        _latestMovies.isNotEmpty &&
+        (ModalRoute.of(context)?.isCurrent ?? false)) {
       _heroFocusNode.requestFocus();
     }
 
@@ -471,6 +475,39 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     }
   }
 
+  void _onTvHeroActionFocusChanged() {
+    if (!PlatformDetector.isTV()) return;
+    if (_tvHeroPlayFocusNode.hasFocus || _tvHeroInfoFocusNode.hasFocus) {
+      _autoScrollTimer?.cancel();
+      _stopIndicatorProgress();
+    } else if (_isTabVisible && !_isAutoScrollPaused) {
+      _startAutoScroll();
+    }
+  }
+
+  void _moveTvHero(int delta) {
+    if (_latestMovies.length < 2) return;
+    final current = _effectiveSpotlightItem;
+    final currentIndex = current == null ? -1 : _latestMovies.indexWhere((m) => m.globalKey == current.globalKey);
+    final baseIndex = currentIndex == -1 ? _currentHeroIndex.clamp(0, _latestMovies.length - 1).toInt() : currentIndex;
+    final nextIndex = (baseIndex + delta) % _latestMovies.length;
+    final normalizedIndex = nextIndex < 0 ? nextIndex + _latestMovies.length : nextIndex;
+    setState(() => _currentHeroIndex = normalizedIndex);
+    _spotlightItem.value = _latestMovies[normalizedIndex];
+    _pauseTvHeroAutoScrollForManualNavigation();
+  }
+
+  void _pauseTvHeroAutoScrollForManualNavigation() {
+    if (!PlatformDetector.isTV()) return;
+    _autoScrollTimer?.cancel();
+    _tvHeroManualPauseTimer?.cancel();
+    _tvHeroManualPauseTimer = Timer(_heroAutoScrollDuration, () {
+      if (!mounted || !_isTabVisible || _isAutoScrollPaused) return;
+      if (_tvHeroPlayFocusNode.hasFocus || _tvHeroInfoFocusNode.hasFocus) return;
+      _startAutoScroll();
+    });
+  }
+
   /// Handle key events for the hero section.
   KeyEventResult _handleHeroKeyEvent(FocusNode node, KeyEvent event) {
     final backResult = handleBackKeyAction(event, _navigateToSidebar);
@@ -508,13 +545,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     WidgetsBinding.instance.removeObserver(this);
     _autoScrollTimer?.cancel();
     _indicatorTimer?.cancel();
-    _spotlightDebouncer.dispose();
+    _tvHeroManualPauseTimer?.cancel();
     _spotlightItem.dispose();
     _indicatorProgress.dispose();
     _heroController.dispose();
     _scrollController.dispose();
     _heroFocusNode.removeListener(_onHeroFocusChanged);
     _heroFocusNode.dispose();
+    _tvHeroPlayFocusNode.removeListener(_onTvHeroActionFocusChanged);
+    _tvHeroInfoFocusNode.removeListener(_onTvHeroActionFocusChanged);
     _tvHeroPlayFocusNode.dispose();
     _tvHeroInfoFocusNode.dispose();
     super.dispose();
@@ -539,8 +578,22 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   void _startAutoScroll() {
     _autoScrollTimer?.cancel();
-    if (PlatformDetector.isTV()) return;
     if (_isAutoScrollPaused) return;
+
+    if (PlatformDetector.isTV()) {
+      // TV billboard cycles through the newest releases. Timer is created up
+      // front (content loads async); each tick bails until items are present
+      // and while the hero actions are focused, so the Play/Info target never
+      // shifts under the user mid-press.
+      _autoScrollTimer = Timer.periodic(_heroAutoScrollDuration, (timer) {
+        if (!mounted || _isAutoScrollPaused || _latestMovies.length < 2) return;
+        if (_tvHeroPlayFocusNode.hasFocus || _tvHeroInfoFocusNode.hasFocus) return;
+        final current = _spotlightItem.value ?? _defaultSpotlightItem;
+        final idx = current == null ? -1 : _latestMovies.indexWhere((m) => m.globalKey == current.globalKey);
+        _spotlightItem.value = _latestMovies[(idx + 1) % _latestMovies.length];
+      });
+      return;
+    }
 
     _startIndicatorProgress();
     _autoScrollTimer = Timer.periodic(_heroAutoScrollDuration, (timer) {
@@ -932,10 +985,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Widget _buildOverlaidAppBar() {
     // Rebuild on fullscreen toggle so the macOS traffic-light inset updates
     // (the singleton is a ChangeNotifier; nothing else in this subtree listens).
-    return ListenableBuilder(
-      listenable: FullscreenStateManager(),
-      builder: (context, _) => _buildOverlaidAppBarBody(),
-    );
+    return ListenableBuilder(listenable: FullscreenStateManager(), builder: (context, _) => _buildOverlaidAppBarBody());
   }
 
   Widget _buildOverlaidAppBarBody() {
@@ -980,10 +1030,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     ? const SizedBox.shrink()
                     : Text(
                         t.discover.title,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: foregroundColor,
-                          fontWeight: .bold,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleLarge?.copyWith(color: foregroundColor, fontWeight: .bold),
                       ),
               ),
               Consumer2<WatchTogetherProvider, CompanionRemoteProvider>(
@@ -1258,10 +1307,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             density: svc.read(SettingsService.libraryDensity),
             episodePosterMode: svc.read(SettingsService.episodePosterMode),
             fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
-            tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
+            tallPosterScale: _tvHomeRailTallPosterScale,
           );
-    final spotlightTop = (size.height * 0.075).clamp(64.0 * scale, 120.0 * scale).toDouble();
-    final maxSpotlightBottom = (size.height - spotlightTop - (96 * scale)).clamp(0.0, double.infinity).toDouble();
+    final spotlightTop = (size.height * _tvHeroContentTopFraction).clamp(64.0 * scale, 120.0 * scale).toDouble();
+    final railSafetyBottom = browseHubs.isEmpty ? 0.0 : railHeight + (_tvHeroRailGap * scale);
+    final targetBillboardBottom = size.height * _tvHeroContentBottomFraction;
+    final maxSpotlightBottom = (size.height - spotlightTop - (_tvHeroMinInfoHeight * scale))
+        .clamp(0.0, double.infinity)
+        .toDouble();
+    final spotlightBottom = math.max(targetBillboardBottom, railSafetyBottom).clamp(0.0, maxSpotlightBottom).toDouble();
     final spotlightLeft = (24 * scale).clamp(18.0, 40.0).toDouble();
 
     return Material(
@@ -1291,7 +1345,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       client: _getMediaClientForItem(spotlight),
                       hideSpoilers: hideSpoilers,
                       contentTop: spotlightTop,
-                      contentBottom: (railHeight + 28 * scale).clamp(0.0, maxSpotlightBottom).toDouble(),
+                      contentBottom: spotlightBottom,
                       contentLeft: spotlightLeft + foregroundLeft,
                       compact: false,
                       showPrimaryAction: false,
@@ -1342,9 +1396,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 key: _tvBrowseRailKey,
                 hubs: browseHubs,
                 showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
-                // Netflix-style: the focused row item becomes the billboard
-                // after a short dwell (debounced in _setSpotlightItem).
-                onFocusedItemChanged: _setSpotlightItem,
+                // Billboard is a fixed featured item (newest released) that
+                // auto-rotates, decoupled from row focus — otherwise focusing the
+                // Continue Watching row hijacks the hero. See _defaultSpotlightItem.
+                // To restore focus-follow, re-add a debounced setter and pass it
+                // to onFocusedItemChanged (the rail param is still available).
                 onRefresh: _discover.updateItem,
                 onRemoveFromContinueWatching: _discover.refreshContinueWatching,
                 isContinueWatchingHub: (hub) => hub.isContinueWatchingHub,
@@ -1353,7 +1409,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     hub.id == 'continue_watching' ? _discover.loadAllContinueWatching() : Future.value(hub.items),
                 onNavigateUp: _focusTvHeroPlay,
                 onNavigateToSidebar: _navigateToSidebar,
-                tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
+                tallPosterScale: _tvHomeRailTallPosterScale,
                 selectSuppressionGestureSignal: PlatformDetector.isAppleTV()
                     ? AppleTvRemoteTouchService.instance.touchActiveListenable
                     : null,
@@ -1396,7 +1452,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           onPressed: () => navigateToMediaItem(context, billboard, playDirectly: true),
           onNavigateDown: () => _focusTvBrowseRailWhenReady(immediate: true),
           onNavigateUp: _focusTopActions,
-          onNavigateLeft: _navigateToSidebar,
+          onNavigateLeft: () => _moveTvHero(-1),
+          onNavigateRight: () => _moveTvHero(1),
           onBack: _navigateToSidebar,
           child: _tvHeroPill(
             context,
@@ -1415,6 +1472,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           onPressed: () => navigateToMediaItem(context, billboard),
           onNavigateDown: () => _focusTvBrowseRailWhenReady(immediate: true),
           onNavigateUp: _focusTopActions,
+          onNavigateLeft: () => _moveTvHero(-1),
+          onNavigateRight: () => _moveTvHero(1),
           onBack: _navigateToSidebar,
           child: _tvHeroPill(
             context,
@@ -1473,7 +1532,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 ),
                 SizedBox(width: 10 * scale),
               ],
-              Text(label, style: TextStyle(color: fg, fontSize: 21 * scale, fontWeight: .w600)),
+              Text(
+                label,
+                style: TextStyle(color: fg, fontSize: 21 * scale, fontWeight: .w600),
+              ),
             ],
           ),
         );
@@ -1784,7 +1846,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                             gradient: LinearGradient(
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
-                              colors: [bgColor.withValues(alpha: 0.92), bgColor.withValues(alpha: 0.55), Colors.transparent],
+                              colors: [
+                                bgColor.withValues(alpha: 0.92),
+                                bgColor.withValues(alpha: 0.55),
+                                Colors.transparent,
+                              ],
                               stops: const [0.0, 0.32, 0.62],
                             ),
                           ),

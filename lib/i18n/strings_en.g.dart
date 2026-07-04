@@ -4011,6 +4011,12 @@ class TranslationsSeerrEn {
 	/// en: 'Available'
 	String get filterAvailable => 'Available';
 
+	/// en: 'Movies'
+	String get filterMovies => 'Movies';
+
+	/// en: 'Shows'
+	String get filterShows => 'Shows';
+
 	/// en: 'Approve'
 	String get approve => 'Approve';
 
@@ -4043,6 +4049,9 @@ class TranslationsSeerrEn {
 
 	/// en: 'Recommendations'
 	String get recommendations => 'Recommendations';
+
+	/// en: 'Cast'
+	String get cast => 'Cast';
 
 	/// en: 'Load more'
 	String get loadMore => 'Load more';
@@ -6216,6 +6225,8 @@ extension on Translations {
 			'seerr.filterPending' => 'Pending',
 			'seerr.filterApproved' => 'Approved',
 			'seerr.filterAvailable' => 'Available',
+			'seerr.filterMovies' => 'Movies',
+			'seerr.filterShows' => 'Shows',
 			'seerr.approve' => 'Approve',
 			'seerr.decline' => 'Decline',
 			'seerr.edit' => 'Edit',
@@ -6227,6 +6238,7 @@ extension on Translations {
 			'seerr.popularTv' => 'Popular shows',
 			'seerr.upcoming' => 'Upcoming',
 			'seerr.recommendations' => 'Recommendations',
+			'seerr.cast' => 'Cast',
 			'seerr.loadMore' => 'Load more',
 			'seerr.searchOnSeerr' => 'Not in your library? Search on Jellyseerr / Overseerr',
 			'seerr.searchOnSeerrShort' => 'Search on Requests',

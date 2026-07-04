@@ -20,8 +20,20 @@ class SeerrConstants {
   /// TMDB poster size used across request/discover surfaces.
   static const String tmdbImageBase = 'https://image.tmdb.org/t/p/w342';
 
+  /// Wide backdrop used on the seerr media detail hero.
+  static const String tmdbBackdropBase = 'https://image.tmdb.org/t/p/w1280';
+
+  /// Cast profile photos.
+  static const String tmdbProfileBase = 'https://image.tmdb.org/t/p/w185';
+
   static String tmdbPosterUrl(String? posterPath) =>
       (posterPath == null || posterPath.isEmpty) ? '' : '$tmdbImageBase$posterPath';
+
+  static String tmdbBackdropUrl(String? backdropPath) =>
+      (backdropPath == null || backdropPath.isEmpty) ? '' : '$tmdbBackdropBase$backdropPath';
+
+  static String tmdbProfileUrl(String? profilePath) =>
+      (profilePath == null || profilePath.isEmpty) ? '' : '$tmdbProfileBase$profilePath';
 
   /// Normalize a user-entered server URL: strip a trailing slash and tolerate a
   /// pasted `/api/v1` suffix (we always append the prefix ourselves).

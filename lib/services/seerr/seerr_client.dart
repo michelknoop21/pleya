@@ -19,7 +19,11 @@ class SeerrException implements Exception {
   factory SeerrException.auth() => const SeerrException('Not authenticated', isAuth: true);
   factory SeerrException.forbidden() => const SeerrException('Not permitted', isForbidden: true);
   factory SeerrException.network(String m) => SeerrException(m, isNetwork: true);
-  factory SeerrException.http(int code, Object? body) => SeerrException('HTTP $code');
+  factory SeerrException.http(int code, Object? body) {
+    // Overseerr/Jellyseerr return {"message": ...} on failure — surface it.
+    final msg = body is Map ? body['message']?.toString() : null;
+    return SeerrException(msg != null && msg.isNotEmpty ? msg : 'HTTP $code');
+  }
 
   @override
   String toString() => message;
@@ -30,6 +34,9 @@ typedef SeerrMediaPage = ({List<SeerrMedia> items, int page, int totalPages});
 
 /// A user's remaining request quota.
 typedef SeerrQuota = ({int? movieRemaining, int? movieLimit, int? tvRemaining, int? tvLimit});
+
+/// A TMDB genre (id + display name) from `/genres/movie` or `/genres/tv`.
+typedef SeerrGenre = ({int id, String name});
 
 /// HTTP client for one Jellyseerr / Overseerr server, bound to a [SeerrSession].
 ///
@@ -133,15 +140,42 @@ class SeerrClient {
   Future<SeerrMediaPage> search(String query, {int page = 1}) =>
       _mediaPage('/search', {'query': query, 'page': page});
 
-  Future<SeerrMediaPage> discoverMovies({int page = 1}) => _mediaPage('/discover/movies', {'page': page});
-  Future<SeerrMediaPage> discoverTv({int page = 1}) => _mediaPage('/discover/tv', {'page': page});
+  Future<SeerrMediaPage> discoverMovies({int page = 1, int? genre}) =>
+      _mediaPage('/discover/movies', {'page': page, 'genre': ?genre});
+  Future<SeerrMediaPage> discoverTv({int page = 1, int? genre}) =>
+      _mediaPage('/discover/tv', {'page': page, 'genre': ?genre});
   Future<SeerrMediaPage> discoverTrending({int page = 1}) => _mediaPage('/discover/trending', {'page': page});
   Future<SeerrMediaPage> discoverUpcomingMovies({int page = 1}) =>
       _mediaPage('/discover/movies/upcoming', {'page': page});
   Future<SeerrMediaPage> discoverUpcomingTv({int page = 1}) => _mediaPage('/discover/tv/upcoming', {'page': page});
 
+  /// `GET /genres/movie` / `GET /genres/tv` — the TMDB genre list for filtering
+  /// discover. Returns an empty list on any parse/transport hiccup.
+  Future<List<SeerrGenre>> getMovieGenres() => _genres('/genres/movie');
+  Future<List<SeerrGenre>> getTvGenres() => _genres('/genres/tv');
+
+  Future<List<SeerrGenre>> _genres(String path) async {
+    final resp = await _send(() => _http.get(path, headers: _authHeaders()));
+    final data = resp.data;
+    if (data is! List) return const [];
+    final out = <SeerrGenre>[];
+    for (final g in data) {
+      if (g is! Map) continue;
+      final id = _int(g['id']);
+      final name = g['name']?.toString();
+      if (id != null && name != null && name.isNotEmpty) out.add((id: id, name: name));
+    }
+    return out;
+  }
+
   Future<Map<String, dynamic>> getMovie(int tmdbId) => _detail('/movie/$tmdbId');
   Future<Map<String, dynamic>> getTv(int tmdbId) => _detail('/tv/$tmdbId');
+
+  /// Typed movie/tv detail for the media detail screen (hero, genres, cast, …).
+  Future<SeerrMediaDetail> getMediaDetail({required int tmdbId, required bool isMovie}) async {
+    final json = isMovie ? await getMovie(tmdbId) : await getTv(tmdbId);
+    return SeerrMediaDetail.fromJson(json, mediaType: isMovie ? 'movie' : 'tv');
+  }
 
   Future<SeerrMediaPage> getRecommendations({required int tmdbId, required bool isMovie, int page = 1}) =>
       _mediaPage('/${isMovie ? 'movie' : 'tv'}/$tmdbId/recommendations', {'page': page});

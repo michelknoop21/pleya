@@ -15,7 +15,7 @@ void main() {
 
       expect(harness.keys, [LogicalKeyboardKey.arrowLeft]);
 
-      harness.advance(const Duration(milliseconds: 141));
+      harness.advance(const Duration(milliseconds: 191));
       await harness.send('move', x: 260, y: 490);
 
       expect(harness.keys, [LogicalKeyboardKey.arrowLeft, LogicalKeyboardKey.arrowLeft]);
@@ -36,7 +36,7 @@ void main() {
       await harness.send('started', x: 500, y: 500);
       await harness.send('move', x: 380, y: 500);
 
-      harness.advance(const Duration(milliseconds: 141));
+      harness.advance(const Duration(milliseconds: 191));
       await harness.send('move', x: 380, y: 370);
 
       expect(harness.keys, [LogicalKeyboardKey.arrowLeft]);
@@ -48,7 +48,7 @@ void main() {
       await harness.send('started', x: 500, y: 500);
       await harness.send('move', x: 380, y: 500);
 
-      harness.advance(const Duration(milliseconds: 141));
+      harness.advance(const Duration(milliseconds: 191));
       await harness.send('move', x: 260, y: 370);
 
       expect(harness.keys, [LogicalKeyboardKey.arrowLeft, LogicalKeyboardKey.arrowLeft]);
@@ -60,7 +60,7 @@ void main() {
       await harness.send('started', x: 500, y: 500);
       await harness.send('move', x: 380, y: 500);
 
-      harness.advance(const Duration(milliseconds: 141));
+      harness.advance(const Duration(milliseconds: 191));
       await harness.send('move', x: 500, y: 370);
 
       expect(harness.keys, [LogicalKeyboardKey.arrowLeft, LogicalKeyboardKey.arrowRight]);
@@ -72,7 +72,7 @@ void main() {
       await harness.send('started', x: 500, y: 500);
       await harness.send('move', x: 380, y: 500);
 
-      harness.advance(const Duration(milliseconds: 141));
+      harness.advance(const Duration(milliseconds: 191));
       await harness.send('move', x: 380, y: 300);
 
       expect(harness.keys, [LogicalKeyboardKey.arrowLeft, LogicalKeyboardKey.arrowUp]);
@@ -247,6 +247,58 @@ void main() {
       expect(harness.keyUps, isEmpty);
     });
 
+    test('synthetic swipe followed by matching native arrow down and up moves once', () async {
+      final harness = _Harness();
+
+      await harness.send('started', x: 500, y: 500);
+      await harness.send('move', x: 380, y: 500);
+
+      expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowLeft)), isTrue);
+      expect(harness.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowLeft)), isTrue);
+
+      expect(harness.keys, [LogicalKeyboardKey.arrowLeft]);
+    });
+
+    test('synthetic swipe does not suppress a different native direction', () async {
+      final harness = _Harness();
+
+      await harness.send('started', x: 500, y: 500);
+      await harness.send('move', x: 380, y: 500);
+
+      expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isFalse);
+      expect(harness.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowRight)), isFalse);
+    });
+
+    test('native-only directional press still passes through', () async {
+      final harness = _Harness();
+
+      expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowDown)), isFalse);
+      expect(harness.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowDown)), isFalse);
+    });
+
+    test('suppressed directional down consumes matching key up only once', () async {
+      final harness = _Harness();
+
+      await harness.send('started', x: 500, y: 500);
+      await harness.send('move', x: 380, y: 500);
+
+      expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowLeft)), isTrue);
+      expect(harness.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowLeft)), isTrue);
+      expect(harness.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowLeft)), isFalse);
+    });
+
+    test('delayed native directional press after swipe still passes through', () async {
+      final harness = _Harness();
+
+      await harness.send('started', x: 500, y: 500);
+      await harness.send('move', x: 380, y: 500);
+      harness.advance(const Duration(milliseconds: 121));
+
+      expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowLeft)), isFalse);
+      expect(harness.service.handleNativeKeyEvent(_keyRepeat(LogicalKeyboardKey.arrowLeft)), isFalse);
+      expect(harness.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.arrowLeft)), isFalse);
+    });
+
     test('cancelled touch does not emit select on a later ended message', () async {
       final harness = _Harness();
 
@@ -318,4 +370,8 @@ KeyDownEvent _keyDown(LogicalKeyboardKey logicalKey) {
 
 KeyUpEvent _keyUp(LogicalKeyboardKey logicalKey) {
   return KeyUpEvent(physicalKey: PhysicalKeyboardKey.enter, logicalKey: logicalKey, timeStamp: Duration.zero);
+}
+
+KeyRepeatEvent _keyRepeat(LogicalKeyboardKey logicalKey) {
+  return KeyRepeatEvent(physicalKey: PhysicalKeyboardKey.enter, logicalKey: logicalKey, timeStamp: Duration.zero);
 }

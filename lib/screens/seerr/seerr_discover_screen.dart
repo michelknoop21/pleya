@@ -1,37 +1,48 @@
 import 'dart:async';
 
-import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
-import '../../focus/focusable_wrapper.dart';
+import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
+import '../../mixins/controller_disposer_mixin.dart';
 import '../../models/seerr/seerr_media.dart';
 import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
-import '../../services/seerr/seerr_constants.dart';
+import '../../services/settings_service.dart';
+import '../../utils/debouncer.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/platform_detector.dart';
+import '../../widgets/app_icon.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
-import '../../widgets/seerr_request_sheet.dart';
-import '../../widgets/seerr_status_badge.dart';
+import '../../widgets/media_grid_delegate.dart';
+import '../../widgets/pill_input_decoration.dart';
+import '../../widgets/seerr_poster_card.dart';
+import '../../widgets/settings_builder.dart';
 import '../../widgets/skeletons.dart';
+import '../../widgets/sliver_cross_axis_layout_builder.dart';
 import '../../widgets/state_view.dart';
+import 'seerr_media_detail_screen.dart';
+import 'seerr_requests_screen.dart';
 
-/// Jellyseerr / Overseerr ("seerr") discover browse screen.
+/// Jellyseerr / Overseerr ("seerr") discover + search screen.
 ///
-/// Shows a stack of horizontal poster rows (Trending, Popular movies, Popular
-/// TV, Upcoming movies). Each row owns its own pagination: reaching the trailing
-/// "Load more" tile (via focus or tap) appends the next page. Availability
-/// badges come straight from each [SeerrMedia.status] (no extra calls). Tapping
-/// a poster opens the request flow via [SeerrRequestSheet.show].
+/// A search field sits above a stack of horizontal poster rows (Trending,
+/// Popular movies, Popular TV, Upcoming). Typing runs a debounced search and
+/// swaps the rows for a results grid. Each row owns its own pagination: reaching
+/// the trailing "Load more" tile (via focus or tap) appends the next page.
+/// Availability badges come straight from each [SeerrMedia.status]. Tapping a
+/// poster opens the graphical [SeerrMediaDetailScreen].
 ///
-/// Deliberately does *not* reuse [HubSection]/[FocusableMediaCard]: those are
-/// bound to the app's own [MediaItem]/[MediaHub] types, whereas seerr results
-/// are [SeerrMedia]. We reuse the lower-level focus + layout primitives
-/// (`FocusableWrapper`, `FocusedScrollScaffold`, `TvLayoutConstants`,
-/// `SkeletonHubRow`, `StateView`) instead.
+/// Reuses the shared [SeerrPosterCard] / [SeerrLoadMoreTile] widgets plus the
+/// lower-level focus + layout primitives (`FocusedScrollScaffold`,
+/// `TvLayoutConstants`, `SkeletonHubRow`, `StateView`).
+/// Discover/search type filter. `all` shows the mixed shelves; `movies` / `tv`
+/// narrow the shelves (and enable genre chips in discover, client-side type
+/// filtering in search).
+enum _SeerrType { all, movies, tv }
+
 class SeerrDiscoverScreen extends StatefulWidget {
   const SeerrDiscoverScreen({super.key});
 
@@ -39,21 +50,61 @@ class SeerrDiscoverScreen extends StatefulWidget {
   State<SeerrDiscoverScreen> createState() => _SeerrDiscoverScreenState();
 }
 
-class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> {
+class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with ControllerDisposerMixin {
   SeerrClient? _client;
   late final List<_SeerrRow> _rows;
+  late final TextEditingController _searchController;
+  final _searchFocusNode = FocusNode(debugLabel: 'SeerrSearchInput');
+  final _searchDebounce = Debouncer(const Duration(milliseconds: 400));
+
+  String _query = '';
+  List<SeerrMedia> _searchResults = const [];
+  bool _searching = false;
+  bool _searchErrored = false;
+
+  // Filters.
+  _SeerrType _type = _SeerrType.all;
+  List<SeerrGenre> _movieGenres = const [];
+  List<SeerrGenre> _tvGenres = const [];
+  int? _genreId;
+  _SeerrRow? _genreRow; // single paginated grid when a genre is active
 
   @override
   void initState() {
     super.initState();
     _client = context.read<SeerrProvider>().client;
+    _searchController = createTextEditingController();
     _rows = [
-      _SeerrRow(title: t.seerr.trending, fetch: (c, p) => c.discoverTrending(page: p)),
-      _SeerrRow(title: t.seerr.popularMovies, fetch: (c, p) => c.discoverMovies(page: p)),
-      _SeerrRow(title: t.seerr.popularTv, fetch: (c, p) => c.discoverTv(page: p)),
-      _SeerrRow(title: t.seerr.upcoming, fetch: (c, p) => c.discoverUpcomingMovies(page: p)),
+      _SeerrRow(title: t.seerr.trending, showIn: const {_SeerrType.all}, fetch: (c, p) => c.discoverTrending(page: p)),
+      _SeerrRow(
+        title: t.seerr.popularMovies,
+        showIn: const {_SeerrType.all, _SeerrType.movies},
+        fetch: (c, p) => c.discoverMovies(page: p),
+      ),
+      _SeerrRow(
+        title: t.seerr.popularTv,
+        showIn: const {_SeerrType.all, _SeerrType.tv},
+        fetch: (c, p) => c.discoverTv(page: p),
+      ),
+      _SeerrRow(
+        title: t.seerr.upcoming,
+        showIn: const {_SeerrType.all, _SeerrType.movies},
+        fetch: (c, p) => c.discoverUpcomingMovies(page: p),
+      ),
+      _SeerrRow(
+        title: t.seerr.upcoming,
+        showIn: const {_SeerrType.tv},
+        fetch: (c, p) => c.discoverUpcomingTv(page: p),
+      ),
     ];
     unawaited(_loadAll());
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
   }
 
   Future<void> _loadAll() async {
@@ -112,10 +163,131 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> {
     await _loadAll();
   }
 
+  void _onSearchChanged(String value) {
+    final query = value.trim();
+    if (query == _query) return;
+    _query = query;
+    if (query.isEmpty) {
+      _searchDebounce.cancel();
+      setState(() {
+        _searchResults = const [];
+        _searching = false;
+        _searchErrored = false;
+      });
+      return;
+    }
+    setState(() => _searching = true);
+    _searchDebounce.run(() => unawaited(_runSearch(query)));
+  }
+
+  Future<void> _runSearch(String query) async {
+    final client = _client;
+    if (client == null) return;
+    try {
+      final page = await client.search(query);
+      // Drop the result if the query moved on while the request was in flight.
+      if (!mounted || _query != query) return;
+      setState(() {
+        _searchResults = page.items;
+        _searching = false;
+        _searchErrored = false;
+      });
+    } catch (_) {
+      if (!mounted || _query != query) return;
+      setState(() {
+        _searching = false;
+        _searchErrored = true;
+      });
+    }
+  }
+
   bool get _allLoaded => _rows.every((r) => !r.loadingFirst);
   bool get _allErrored => _rows.every((r) => r.errored);
   bool get _anyNetworkError => _rows.any((r) => r.errored && r.network);
   bool get _allEmpty => _rows.every((r) => r.items.isEmpty);
+
+  void _openDetail(SeerrMedia media) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => SeerrMediaDetailScreen(media: media)));
+  }
+
+  void _openRequests() {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SeerrRequestsScreen()));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Filters
+  // ---------------------------------------------------------------------------
+
+  /// Search results narrowed to the active type chip (Overseerr `/search` has no
+  /// type param, so we filter client-side).
+  List<SeerrMedia> get _filteredSearchResults {
+    switch (_type) {
+      case _SeerrType.all:
+        return _searchResults;
+      case _SeerrType.movies:
+        return _searchResults.where((m) => m.isMovie).toList();
+      case _SeerrType.tv:
+        return _searchResults.where((m) => !m.isMovie).toList();
+    }
+  }
+
+  void _onTypeSelected(_SeerrType type) {
+    setState(() {
+      _type = (_type == type) ? _SeerrType.all : type;
+      _genreId = null;
+      _genreRow = null;
+    });
+    if (_type != _SeerrType.all) unawaited(_ensureGenres(_type));
+  }
+
+  Future<void> _ensureGenres(_SeerrType type) async {
+    final client = _client;
+    if (client == null) return;
+    if (type == _SeerrType.movies && _movieGenres.isNotEmpty) return;
+    if (type == _SeerrType.tv && _tvGenres.isNotEmpty) return;
+    try {
+      final genres = type == _SeerrType.movies ? await client.getMovieGenres() : await client.getTvGenres();
+      if (!mounted) return;
+      setState(() {
+        if (type == _SeerrType.movies) {
+          _movieGenres = genres;
+        } else {
+          _tvGenres = genres;
+        }
+      });
+    } catch (_) {
+      // Genres are an optional refinement — a failure just hides the chip row.
+    }
+  }
+
+  void _onGenreSelected(int id) {
+    setState(() {
+      _genreId = (_genreId == id) ? null : id;
+      _genreRow = null;
+    });
+    final gid = _genreId;
+    if (gid != null) unawaited(_loadGenreRow(gid));
+  }
+
+  Future<void> _loadGenreRow(int genreId) async {
+    final client = _client;
+    if (client == null) return;
+    final type = _type;
+    final row = _SeerrRow(
+      title: '',
+      fetch: (c, p) => type == _SeerrType.movies
+          ? c.discoverMovies(page: p, genre: genreId)
+          : c.discoverTv(page: p, genre: genreId),
+    );
+    setState(() => _genreRow = row);
+    await _loadFirst(row, client);
+  }
+
+  List<SeerrGenre> get _activeGenres => switch (_type) {
+    _SeerrType.movies => _movieGenres,
+    _SeerrType.tv => _tvGenres,
+    _SeerrType.all => const [],
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -135,11 +307,214 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> {
 
     return FocusedScrollScaffold(
       title: Text(t.seerr.discoverTitle),
-      slivers: _buildSlivers(),
+      actions: [
+        IconButton(
+          tooltip: t.seerr.myRequests,
+          icon: const AppIcon(Symbols.inbox_rounded, fill: 1),
+          onPressed: _openRequests,
+        ),
+      ],
+      slivers: [
+        SliverToBoxAdapter(child: _buildSearchField()),
+        SliverToBoxAdapter(child: _buildFilterBar()),
+        ..._query.isEmpty ? _buildDiscoverSlivers() : _buildSearchSlivers(),
+      ],
     );
   }
 
-  List<Widget> _buildSlivers() {
+  /// Type chips (Movies / Shows), plus a horizontal genre-chip row when a type
+  /// is active in discover mode. Mirrors the search screen's filter-chip style.
+  Widget _buildFilterBar() {
+    final inset = PlatformDetector.isTV() ? TvLayoutConstants.horizontalInset : 12.0;
+    final showGenres = _query.isEmpty && _type != _SeerrType.all && _activeGenres.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(left: inset, right: inset, bottom: 8),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilterChip(
+                label: Text(t.seerr.filterMovies),
+                selected: _type == _SeerrType.movies,
+                onSelected: (_) => _onTypeSelected(_SeerrType.movies),
+              ),
+              FilterChip(
+                label: Text(t.seerr.filterShows),
+                selected: _type == _SeerrType.tv,
+                onSelected: (_) => _onTypeSelected(_SeerrType.tv),
+              ),
+            ],
+          ),
+        ),
+        if (showGenres)
+          SizedBox(
+            height: 52,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.only(left: inset, right: inset, bottom: 8),
+              itemCount: _activeGenres.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final g = _activeGenres[index];
+                return Center(
+                  child: FilterChip(
+                    label: Text(g.name),
+                    selected: _genreId == g.id,
+                    onSelected: (_) => _onGenreSelected(g.id),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// A poster grid shared by search results and the genre-filtered discover
+  /// view, with a trailing "load more" tile when [hasMore].
+  Widget _buildGridSliver(
+    List<SeerrMedia> items, {
+    bool hasMore = false,
+    bool loadingMore = false,
+    VoidCallback? onLoadMore,
+  }) {
+    // Reuse the app's grid geometry so column count follows the library
+    // density setting and poster width matches the rest of the app. The seerr
+    // card is taller than a bare poster (it reserves its own title/year block),
+    // so we pin the cells to the resolved width but keep the seerr aspect.
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
+      sliver: SettingsBuilder(
+        prefs: const [SettingsService.libraryDensity],
+        builder: (context) {
+          final density = SettingsService.instance.read(SettingsService.libraryDensity);
+          return SliverCrossAxisLayoutBuilder(
+            builder: (context, crossAxisExtent) {
+              final geometry = MediaGridGeometry.resolve(
+                context: context,
+                crossAxisExtent: crossAxisExtent,
+                density: density,
+                usePaddingAware: true,
+                horizontalPadding: 16,
+              );
+              final w = geometry.itemWidth;
+              final cellHeight = w * 3 / 2 + seerrCardTextExtent;
+              return SliverGrid(
+                gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: w,
+                  mainAxisSpacing: geometry.spacing,
+                  crossAxisSpacing: geometry.spacing,
+                  childAspectRatio: w / cellHeight,
+                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  if (index >= items.length) {
+                    return SeerrLoadMoreTile(loading: loadingMore, onActivate: onLoadMore ?? () {}, width: w);
+                  }
+                  final media = items[index];
+                  return SeerrPosterCard(media: media, width: w, onTap: () => _openDetail(media));
+                }, childCount: items.length + (hasMore ? 1 : 0)),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _onSearchChanged('');
+  }
+
+  Widget _buildSearchField() {
+    final isTv = PlatformDetector.isTV();
+    final inset = isTv ? TvLayoutConstants.horizontalInset : 12.0;
+    final field = FocusableTextField(
+      controller: _searchController,
+      focusNode: _searchFocusNode,
+      onChanged: _onSearchChanged,
+      textInputAction: TextInputAction.search,
+      tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
+      // Match the working search_screen field: submit dismisses the keyboard on
+      // TV, and Back either clears the query or lets the scaffold pop.
+      onEditingComplete: isTv ? _searchFocusNode.unfocus : null,
+      onBack: () {
+        if (_searchController.text.isNotEmpty) {
+          _clearSearch();
+        } else {
+          _searchFocusNode.unfocus();
+        }
+      },
+      decoration: pillInputDecoration(
+        context,
+        hintText: t.seerr.searchOnSeerrShort,
+        prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
+        suffixIcon: _query.isEmpty
+            ? null
+            : IconButton(
+                icon: const AppIcon(Symbols.close_rounded, fill: 1),
+                onPressed: _clearSearch,
+              ),
+      ),
+    );
+    return Padding(
+      padding: EdgeInsets.fromLTRB(inset, 8, inset, 8),
+      // On TV the AppBar action is unreachable (the app bar is excluded from
+      // focus), so surface a focusable inbox button beside the search field.
+      child: isTv
+          ? Row(
+              children: [
+                Expanded(child: field),
+                const SizedBox(width: 12),
+                IconButton.filledTonal(
+                  tooltip: t.seerr.myRequests,
+                  icon: const AppIcon(Symbols.inbox_rounded, fill: 1),
+                  onPressed: _openRequests,
+                ),
+              ],
+            )
+          : field,
+    );
+  }
+
+  List<Widget> _buildSearchSlivers() {
+    if (_searching) {
+      return [
+        const SliverPadding(
+          padding: EdgeInsets.only(top: 48),
+          sliver: SliverToBoxAdapter(child: Center(child: CircularProgressIndicator())),
+        ),
+      ];
+    }
+    if (_searchErrored) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: StateView.error(title: t.seerr.errorNetwork, icon: Symbols.cloud_off_rounded, onRetry: () => _runSearch(_query)),
+        ),
+      ];
+    }
+    final results = _filteredSearchResults;
+    if (results.isEmpty) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: StateView.empty(title: t.seerr.noResults, icon: Symbols.search_off_rounded),
+        ),
+      ];
+    }
+    return [_buildGridSliver(results)];
+  }
+
+  List<Widget> _buildDiscoverSlivers() {
+    // A genre is active → one filtered grid instead of the mixed shelves.
+    if (_type != _SeerrType.all && _genreId != null) {
+      return _buildGenreGridSlivers();
+    }
+
     // Fatal: every row failed to load its first page.
     if (_allLoaded && _allErrored) {
       return [
@@ -167,6 +542,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> {
 
     final slivers = <Widget>[];
     for (final row in _rows) {
+      if (!row.showIn.contains(_type)) continue;
       if (row.loadingFirst) {
         slivers.add(SliverToBoxAdapter(child: _RowHeaderSkeleton(title: row.title)));
         continue;
@@ -176,11 +552,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> {
       if (row.items.isEmpty) continue;
       slivers.add(
         SliverToBoxAdapter(
-          child: _SeerrRowView(
-            row: row,
-            onTapItem: _openRequest,
-            onLoadMore: () => _loadMore(row),
-          ),
+          child: _SeerrRowView(row: row, onTapItem: _openDetail, onLoadMore: () => _loadMore(row)),
         ),
       );
     }
@@ -188,15 +560,61 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> {
     return slivers;
   }
 
-  Future<void> _openRequest(SeerrMedia media) => SeerrRequestSheet.show(context, media: media);
+  /// The single grid shown when a genre chip is active.
+  List<Widget> _buildGenreGridSlivers() {
+    final row = _genreRow;
+    if (row == null || row.loadingFirst) {
+      return const [
+        SliverPadding(
+          padding: EdgeInsets.only(top: 48),
+          sliver: SliverToBoxAdapter(child: Center(child: CircularProgressIndicator())),
+        ),
+      ];
+    }
+    if (row.errored) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: StateView.error(
+            title: row.network ? t.seerr.errorNetwork : t.seerr.errorGeneric,
+            icon: Symbols.cloud_off_rounded,
+            onRetry: () {
+              final gid = _genreId;
+              if (gid != null) unawaited(_loadGenreRow(gid));
+            },
+            retryLabel: t.common.retry,
+          ),
+        ),
+      ];
+    }
+    if (row.items.isEmpty) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: StateView.empty(title: t.seerr.noResults, icon: Symbols.movie_rounded),
+        ),
+      ];
+    }
+    return [
+      _buildGridSliver(
+        row.items,
+        hasMore: row.hasMore,
+        loadingMore: row.loadingMore,
+        onLoadMore: () => _loadMore(row),
+      ),
+    ];
+  }
 }
 
 /// Mutable per-row pagination state.
 class _SeerrRow {
-  _SeerrRow({required this.title, required this.fetch});
+  _SeerrRow({required this.title, required this.fetch, this.showIn = const {_SeerrType.all}});
 
   final String title;
   final Future<SeerrMediaPage> Function(SeerrClient client, int page) fetch;
+
+  /// Which type-filter selections this shelf appears under.
+  final Set<_SeerrType> showIn;
 
   List<SeerrMedia> items = const [];
   int page = 0;
@@ -223,9 +641,17 @@ class _SeerrRow {
 // Row view
 // -----------------------------------------------------------------------------
 
-double get _posterWidth => PlatformDetector.isTV() ? 150 : 120;
-double get _posterHeight => _posterWidth * 3 / 2; // TMDB posters are 2:3.
-double get _rowInset => PlatformDetector.isTV() ? TvLayoutConstants.horizontalInset : 16;
+double get _rowInset => PlatformDetector.isTV() ? TvLayoutConstants.shelfHorizontalInset : 12;
+
+/// Shelf/row header styled like the app's HubSection headers: `titleLarge`,
+/// bumped to 26/w700 on TV for legibility across the room.
+TextStyle? _rowHeaderStyle(BuildContext context) {
+  final base = Theme.of(context).textTheme.titleLarge;
+  if (PlatformDetector.isTV()) {
+    return base?.copyWith(fontSize: 26, fontWeight: FontWeight.w700);
+  }
+  return base?.copyWith(fontWeight: FontWeight.w700);
+}
 
 /// A single horizontal poster row with a header and an optional trailing
 /// "Load more" tile.
@@ -238,21 +664,17 @@ class _SeerrRowView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // poster + gap + two title lines + year.
-    final rowHeight = _posterHeight + 56;
+    final rowHeight = seerrPosterHeight + seerrCardTextExtent;
+    final topGap = PlatformDetector.isTV() ? TvLayoutConstants.shelfVerticalGap / 2 : 8.0;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 12),
+      padding: EdgeInsets.only(top: topGap, bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: EdgeInsets.symmetric(horizontal: _rowInset),
-            child: Text(
-              row.title,
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
+            child: Text(row.title, style: _rowHeaderStyle(context)),
           ),
           const SizedBox(height: 8),
           SizedBox(
@@ -264,157 +686,14 @@ class _SeerrRowView extends StatelessWidget {
               separatorBuilder: (_, _) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 if (index >= row.items.length) {
-                  return _LoadMoreTile(loading: row.loadingMore, onActivate: onLoadMore);
+                  return SeerrLoadMoreTile(loading: row.loadingMore, onActivate: onLoadMore);
                 }
                 final media = row.items[index];
-                return _SeerrPosterCard(media: media, onTap: () => onTapItem(media));
+                return SeerrPosterCard(media: media, onTap: () => onTapItem(media));
               },
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// A focusable poster card: image + availability badge + title/year.
-class _SeerrPosterCard extends StatelessWidget {
-  const _SeerrPosterCard({required this.media, required this.onTap});
-
-  final SeerrMedia media;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return FocusableWrapper(
-      onSelect: onTap,
-      borderRadius: 8,
-      semanticLabel: media.title,
-      child: GestureDetector(
-        onTap: onTap,
-        child: SizedBox(
-          width: _posterWidth,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Stack(
-                  children: [
-                    SizedBox(
-                      width: _posterWidth,
-                      height: _posterHeight,
-                      child: _PosterImage(url: media.posterUrl),
-                    ),
-                    if (media.status != SeerrMediaStatus.unknown)
-                      Positioned(
-                        top: 6,
-                        left: 6,
-                        child: SeerrStatusBadge(status: media.status, compact: true),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                media.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              if (media.year != null)
-                Text(
-                  media.year!,
-                  style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PosterImage extends StatelessWidget {
-  const _PosterImage({required this.url});
-
-  final String url;
-
-  @override
-  Widget build(BuildContext context) {
-    if (url.isEmpty) return const _PosterPlaceholder();
-    return CachedNetworkImage(
-      imageUrl: url,
-      fit: BoxFit.cover,
-      placeholder: (context, _) => const _PosterPlaceholder(),
-      errorWidget: (context, _, _) => const _PosterPlaceholder(),
-    );
-  }
-}
-
-class _PosterPlaceholder extends StatelessWidget {
-  const _PosterPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return ColoredBox(
-      color: scheme.surfaceContainerHighest,
-      child: Center(child: Icon(Symbols.movie_rounded, color: scheme.onSurfaceVariant, size: 32)),
-    );
-  }
-}
-
-/// Trailing focusable tile that loads the next page. Loads on activation and
-/// also opportunistically when it gains focus (d-pad reaches the row's end).
-class _LoadMoreTile extends StatelessWidget {
-  const _LoadMoreTile({required this.loading, required this.onActivate});
-
-  final bool loading;
-  final VoidCallback onActivate;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return FocusableWrapper(
-      onSelect: onActivate,
-      onFocusChange: (focused) {
-        if (focused) onActivate();
-      },
-      borderRadius: 8,
-      semanticLabel: t.seerr.loadMore,
-      child: GestureDetector(
-        onTap: onActivate,
-        child: SizedBox(
-          width: _posterWidth,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: _posterWidth,
-                height: _posterHeight,
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: loading
-                      ? const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2))
-                      : Icon(Symbols.add_circle_rounded, color: scheme.onSurfaceVariant, size: 36),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                t.seerr.loadMore,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -428,7 +707,6 @@ class _RowHeaderSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 12),
       child: Column(
@@ -436,13 +714,10 @@ class _RowHeaderSkeleton extends StatelessWidget {
         children: [
           Padding(
             padding: EdgeInsets.symmetric(horizontal: _rowInset),
-            child: Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
+            child: Text(title, style: _rowHeaderStyle(context)),
           ),
           const SizedBox(height: 8),
-          SkeletonHubRow(cardWidth: _posterWidth, rowHeight: _posterHeight + 16),
+          SkeletonHubRow(cardWidth: seerrPosterWidth, rowHeight: seerrPosterHeight + 16),
         ],
       ),
     );

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:drift/native.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:flutter/material.dart';
@@ -176,14 +178,17 @@ void main() {
       density: LibraryDensity.max,
       episodePosterMode: settings.read(SettingsService.episodePosterMode),
       fullCardLayout: settings.read(SettingsService.tvFullCardLayout),
-      tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
+      tallPosterScale: 0.72,
     );
-    // Netflix billboard: content is anchored just above the rail
-    // (railHeight + 28*scale), clamped so the region stays valid.
+    // Netflix billboard: prefer a stable 32% bottom inset, only letting rail
+    // height push it up when needed to keep actions above the docked rail.
     final maxSpotlightBottom = (720 - ((720 * 0.075).clamp(64.0 * scale, 120.0 * scale)) - (96 * scale))
         .clamp(0.0, double.infinity)
         .toDouble();
-    final expectedSpotlightBottom = (railHeight + 28 * scale).clamp(0.0, maxSpotlightBottom).toDouble();
+    final expectedSpotlightBottom = math
+        .max(720 * 0.32, railHeight + 28 * scale)
+        .clamp(0.0, maxSpotlightBottom)
+        .toDouble();
     expect(spotlightBackground.contentBottom, closeTo(expectedSpotlightBottom, 0.001));
 
     // The rail no longer receives the bleed via constructor (a per-flip param

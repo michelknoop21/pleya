@@ -12,6 +12,7 @@ class SeerrMedia {
   final String title;
   final String? year;
   final String? posterPath;
+  final String? backdropPath;
   final String? overview;
   final SeerrMediaStatus status;
 
@@ -21,12 +22,14 @@ class SeerrMedia {
     required this.title,
     this.year,
     this.posterPath,
+    this.backdropPath,
     this.overview,
     this.status = SeerrMediaStatus.unknown,
   });
 
   bool get isMovie => mediaType == 'movie';
   String get posterUrl => SeerrConstants.tmdbPosterUrl(posterPath);
+  String get backdropUrl => SeerrConstants.tmdbBackdropUrl(backdropPath);
 
   static int? _asInt(Object? v) => v is int ? v : (v is num ? v.toInt() : int.tryParse('${v ?? ''}'));
 
@@ -53,6 +56,7 @@ class SeerrMedia {
       title: (json['title'] ?? json['name'] ?? json['originalTitle'] ?? json['originalName'] ?? '').toString(),
       year: _yearFrom(json['releaseDate'] ?? json['firstAirDate']),
       posterPath: json['posterPath']?.toString(),
+      backdropPath: json['backdropPath']?.toString(),
       overview: json['overview']?.toString(),
       status: SeerrMediaStatus.fromValue(statusVal),
     );
@@ -69,8 +73,86 @@ class SeerrMedia {
       title: (json['title'] ?? json['name'] ?? '').toString(),
       year: _yearFrom(json['releaseDate'] ?? json['firstAirDate']),
       posterPath: json['posterPath']?.toString(),
+      backdropPath: json['backdropPath']?.toString(),
       overview: json['overview']?.toString(),
       status: SeerrMediaStatus.fromValue(statusVal),
+    );
+  }
+}
+
+/// A single cast member from a movie/tv detail response (`credits.cast`).
+class SeerrCastMember {
+  final String name;
+  final String? character;
+  final String? profilePath;
+
+  const SeerrCastMember({required this.name, this.character, this.profilePath});
+
+  String get profileUrl => SeerrConstants.tmdbProfileUrl(profilePath);
+}
+
+/// The richer view of a movie/tv detail response: [SeerrMedia] plus the extra
+/// fields the detail screen renders (genres, runtime, rating, cast). Parsed
+/// leniently — anything missing simply renders as empty.
+class SeerrMediaDetail {
+  final SeerrMedia media;
+  final List<String> genres;
+  final int? runtimeMinutes;
+  final double? voteAverage;
+  final List<SeerrCastMember> cast;
+
+  const SeerrMediaDetail({
+    required this.media,
+    this.genres = const [],
+    this.runtimeMinutes,
+    this.voteAverage,
+    this.cast = const [],
+  });
+
+  factory SeerrMediaDetail.fromJson(Map<String, dynamic> json, {required String mediaType}) {
+    final genres = <String>[];
+    final rawGenres = json['genres'];
+    if (rawGenres is List) {
+      for (final g in rawGenres) {
+        if (g is Map && g['name'] != null) genres.add(g['name'].toString());
+      }
+    }
+
+    // Movies carry `runtime`; TV carries `episodeRunTime` as a list of ints.
+    int? runtime = SeerrMedia._asInt(json['runtime']);
+    if (runtime == null || runtime == 0) {
+      final ert = json['episodeRunTime'];
+      if (ert is List && ert.isNotEmpty) runtime = SeerrMedia._asInt(ert.first);
+    }
+    if (runtime == 0) runtime = null;
+
+    final voteRaw = json['voteAverage'] ?? json['vote_average'];
+    final vote = voteRaw is num ? voteRaw.toDouble() : double.tryParse('${voteRaw ?? ''}');
+
+    final cast = <SeerrCastMember>[];
+    final credits = json['credits'];
+    final rawCast = credits is Map ? credits['cast'] : null;
+    if (rawCast is List) {
+      for (final c in rawCast) {
+        if (c is! Map) continue;
+        final name = c['name']?.toString();
+        if (name == null || name.isEmpty) continue;
+        cast.add(
+          SeerrCastMember(
+            name: name,
+            character: c['character']?.toString(),
+            profilePath: c['profilePath']?.toString(),
+          ),
+        );
+      }
+    }
+
+    return SeerrMediaDetail(
+      media: SeerrMedia.fromDetail(json, mediaType: mediaType),
+      genres: genres,
+      runtimeMinutes: runtime,
+      voteAverage: vote != null && vote > 0 ? vote : null,
+      cast: cast,
     );
   }
 }
