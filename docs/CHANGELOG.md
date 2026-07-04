@@ -2,6 +2,27 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-07-04] — Jellyseerr/Overseerr-requests, tvOS-hero + native keyboard, discover-hero
+
+### Added
+- **Jellyseerr/Overseerr-integratie** (`lib/services/seerr/`, `lib/providers/seerr_provider.dart`, `lib/screens/seerr/`, `lib/widgets/seerr_request_sheet.dart`): films/series aanvragen vanuit de app, met discover-scherm, media-detail, poster-cards en instellingen. Auth via apiKey/plex/local modes met silent re-auth.
+- **tvOS native systeem-toetsenbord** (iPhone-continuity) + hero die de focus volgt; grotere billboard-hero op home (Netflix-effect).
+- **Discover-hero** toont de nieuwste uitgekomen films over alle servers i.p.v. "verder kijken" (release-date-sortering, films-only, form-factor-specifieke afbeeldingen).
+- **iCloud settings-sync** via `NSUbiquitousKeyValueStore`.
+
+### Changed
+- **TestFlight build-number-coördinatie** herschreven naar per-platform onafhankelijke builds (`fastlane/Fastfile`): iOS/tvOS/macOS delen hetzelfde nummer via pubspec-versie, maar kunnen los gebouwd worden.
+- **Seerr-foutmeldingen** surfacen nu de echte server-respons i.p.v. generieke tekst (`seerr_client.dart`), zodat login-fouten diagnosticeerbaar zijn.
+
+### Fixed
+- **Plex-login 415** (`lib/utils/media_server_http_client.dart`): `http.Request.body` zette bij ontbrekende content-type standaard `text/plain; charset=utf-8`, waardoor Seerr `/auth/plex` met 415 "unsupported media type" weigerde. Content-type wordt nu vóór de body gezet zodat `application/json` blijft staan. Geldt voor alle json-body POSTs. Commit `826dfa7`.
+- **tvOS native keyboard reopen-loop**: opent nu op select i.p.v. focus.
+- **tvOS**: zoom/stretch-knop weer bereikbaar, AirPlay-knop weg op Apple TV.
+- **macOS iCloud-KVS-plugin**: `registrar.messenger` als property i.p.v. functie-call (FlutterMethodChannel-init).
+
+### Notes
+- **Deploy**: iOS build 139 / tvOS build 140 naar TestFlight; per-platform build-nummers actief.
+
 ## [2026-07-03] — Rebrand naar Pleya + on-device aanbevelingen + UX-polish
 
 ### Changed
