@@ -436,14 +436,15 @@ class MediaServerHttpClient {
       return;
     }
 
-    request.body = jsonEncode(body);
-    // http.BaseRequest's headers map is case-sensitive; Jellyfin returns 415
-    // if both `Content-Type` (from defaults) and `content-type` (added below)
-    // end up coexisting, so check both casings before adding.
-    final hasContentType = request.headers.keys.any((k) => k.toLowerCase() == 'content-type');
-    if (!hasContentType) {
+    // Set content-type BEFORE the body: http.Request.body's setter defaults an
+    // absent content-type to `text/plain; charset=utf-8`, which Seerr rejects
+    // with 415 on /auth/plex. Setting json first makes the setter leave it
+    // as-is. http's headers map is case-insensitive, so containsKey matches a
+    // default `Content-Type` regardless of casing.
+    if (!request.headers.containsKey('content-type')) {
       request.headers['content-type'] = 'application/json';
     }
+    request.body = jsonEncode(body);
   }
 
   /// Decode the response body: lenient UTF-8, then JSON parse if applicable.
