@@ -928,6 +928,9 @@ void main() {
     );
 
     fieldFocusNode.requestFocus();
+    await tester.pump();
+    // Apple TV opens the native keyboard on explicit select, not on focus.
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await tester.pumpAndSettle();
 
     final editCall = calls.firstWhere((call) => call.method == 'edit');
@@ -965,6 +968,9 @@ void main() {
     );
 
     fieldFocusNode.requestFocus();
+    await tester.pump();
+    // Apple TV opens the native keyboard on explicit select, not on focus.
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await tester.pumpAndSettle();
 
     expect(find.byType(Dialog), findsOneWidget);

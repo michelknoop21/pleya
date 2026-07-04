@@ -798,6 +798,13 @@ class _FocusableTextInputHostState extends State<_FocusableTextInputHost> {
       'usesTvKeyboard=${widget.input._hasTvKeyboard} visible=$visible',
     );
 
+    // Apple TV opens the native system keyboard only on explicit select, never
+    // on focus. Its UITextField first-responder handoff makes this Flutter field
+    // lose and regain focus during a session, which would otherwise retrigger
+    // auto-open the moment the keyboard closes — flickering it back open and
+    // trapping the user (can't reach Test/Save). See _openAppleTvNativeEntry.
+    if (PlatformDetector.isAppleTV()) return;
+
     if (!focused) {
       _suppressTvKeyboardForCurrentFocus = false;
       if (!_tvKeyboardOpen && !_tvKeyboardOpenScheduled) {
