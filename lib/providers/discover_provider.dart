@@ -85,6 +85,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   List<MediaItem> _onDeck = [];
   List<MediaHub> _hubs = [];
 
+  /// Newest *released* movies for the home hero — release-date ordered, never
+  /// watch-progress or added-date ordered. Refreshed only by a full [load]
+  /// (it's a global "newest films" list; delta merges skip it).
+  List<MediaItem> _latestMovies = [];
+
   /// Global keys of watched movies filtered out of every on-deck apply until
   /// the server stops returning them — beats the scrobble race
   /// deterministically (see [_onWatchStateChanged] / [_applyOnDeck]).
@@ -129,6 +134,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   List<MediaItem>? _pendingSystemShelfItems;
 
   List<MediaItem> get onDeck => _onDeck;
+  List<MediaItem> get latestMovies => _latestMovies;
   List<MediaHub> get hubs => (_seedHubs.isEmpty && _personalizedHubs.isEmpty)
       ? _hubs
       : [..._seedHubs, ..._personalizedHubs, ..._hubs];
@@ -228,6 +234,12 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
         useGlobalHubs: useGlobalHubs,
         includePlaybackHubs: false,
       );
+      // Newest released films for the hero — fetched in parallel, awaited
+      // separately so the hero renders as soon as it lands.
+      final latestMoviesFuture = aggregation.getLatestMoviesFromAllServers(
+        limit: 12,
+        hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
+      );
 
       final fetchedOnDeck = await onDeckFuture;
       if (isDisposed) return;
@@ -237,6 +249,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       _loadGeneration++;
       safeNotifyListeners();
       unawaited(_syncSystemShelf(_onDeck));
+
+      final fetchedLatestMovies = await latestMoviesFuture;
+      if (isDisposed) return;
+      _latestMovies = fetchedLatestMovies.items;
+      safeNotifyListeners();
 
       final fetchedHubs = await hubsFuture;
       if (isDisposed) return;

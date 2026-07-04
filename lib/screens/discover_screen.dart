@@ -97,6 +97,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   int _seenLoadGeneration = 0;
 
   List<MediaItem> get _onDeck => _discover.onDeck;
+  // Hero source: newest released films (release-date ordered), not on-deck.
+  List<MediaItem> get _latestMovies => _discover.latestMovies;
   List<MediaHub> get _hubs => _discover.hubs;
   bool get _hasMoreContinueWatching => _discover.hasMoreContinueWatching;
   bool get _isLoading => _discover.isLoading;
@@ -189,10 +191,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return keys;
   }
 
-  bool get _isHeroSectionVisible => _onDeck.isNotEmpty && context.settingsRead(SettingsService.showHeroSection);
+  bool get _isHeroSectionVisible => _latestMovies.isNotEmpty && context.settingsRead(SettingsService.showHeroSection);
 
   MediaItem? get _defaultSpotlightItem {
-    if (_onDeck.isNotEmpty) return _onDeck.first;
+    if (_latestMovies.isNotEmpty) return _latestMovies.first;
     for (final hub in _hubs) {
       if (hub.items.isNotEmpty) return hub.items.first;
     }
@@ -221,6 +223,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   MediaItem? get _effectiveSpotlightItem {
     final current = _spotlightItem.value;
     if (current == null) return _defaultSpotlightItem;
+    if (_latestMovies.any((item) => item.globalKey == current.globalKey)) return current;
     if (_onDeck.any((item) => item.globalKey == current.globalKey)) return current;
     for (final hub in _hubs) {
       if (hub.items.any((item) => item.globalKey == current.globalKey)) return current;
@@ -408,7 +411,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final generation = _discover.loadGeneration;
     final isNewLoad = generation != _seenLoadGeneration;
     _seenLoadGeneration = generation;
-    final heroOutOfBounds = _currentHeroIndex >= _onDeck.length;
+    final heroOutOfBounds = _currentHeroIndex >= _latestMovies.length;
 
     setState(() {
       if (isNewLoad || heroOutOfBounds) {
@@ -418,17 +421,17 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     });
     _applyPendingTvBrowseRailFocus();
 
-    if ((isNewLoad || heroOutOfBounds) && _heroController.hasClients && _onDeck.isNotEmpty) {
+    if ((isNewLoad || heroOutOfBounds) && _heroController.hasClients && _latestMovies.isNotEmpty) {
       _heroController.jumpToPage(0);
     }
     // Focus hero when fresh content lands, but only if no modal route is on top
-    if (isNewLoad && !PlatformDetector.isTV() && _onDeck.isNotEmpty && (ModalRoute.of(context)?.isCurrent ?? false)) {
+    if (isNewLoad && !PlatformDetector.isTV() && _latestMovies.isNotEmpty && (ModalRoute.of(context)?.isCurrent ?? false)) {
       _heroFocusNode.requestFocus();
     }
 
     // On initial load, focus content so the user doesn't start on the toolbar
     if (!_initialLoadComplete) {
-      if (PlatformDetector.isTV() && (_onDeck.isNotEmpty || _hubs.isNotEmpty)) {
+      if (PlatformDetector.isTV() && (_latestMovies.isNotEmpty || _onDeck.isNotEmpty || _hubs.isNotEmpty)) {
         _initialLoadComplete = true;
         // Netflix-style: land focus on the billboard Play button when a
         // spotlight item exists; otherwise fall back to the content rail.
@@ -440,7 +443,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         } else {
           _focusTvBrowseRailWhenReady();
         }
-      } else if (!PlatformDetector.isTV() && _onDeck.isNotEmpty) {
+      } else if (!PlatformDetector.isTV() && _latestMovies.isNotEmpty) {
         _initialLoadComplete = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
@@ -487,13 +490,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         }
       },
       onRight: () {
-        if (_currentHeroIndex < _onDeck.length - 1) {
+        if (_currentHeroIndex < _latestMovies.length - 1) {
           _heroController.nextPage(duration: tokens(context).slow, curve: Curves.easeInOut);
         }
       },
       onSelect: () {
-        if (_onDeck.isNotEmpty && _currentHeroIndex < _onDeck.length) {
-          navigateToMediaItem(context, _onDeck[_currentHeroIndex], playDirectly: true);
+        if (_latestMovies.isNotEmpty && _currentHeroIndex < _latestMovies.length) {
+          navigateToMediaItem(context, _latestMovies[_currentHeroIndex], playDirectly: true);
         }
       },
     )(node, event);
@@ -541,16 +544,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
     _startIndicatorProgress();
     _autoScrollTimer = Timer.periodic(_heroAutoScrollDuration, (timer) {
-      if (_onDeck.isEmpty || !_heroController.hasClients || _isAutoScrollPaused) {
+      if (_latestMovies.isEmpty || !_heroController.hasClients || _isAutoScrollPaused) {
         return;
       }
 
       // Validate current index is within bounds before calculating next page
-      if (_currentHeroIndex >= _onDeck.length) {
+      if (_currentHeroIndex >= _latestMovies.length) {
         _currentHeroIndex = 0;
       }
 
-      final nextPage = (_currentHeroIndex + 1) % _onDeck.length;
+      final nextPage = (_currentHeroIndex + 1) % _latestMovies.length;
       _heroController.animateToPage(nextPage, duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
       // Wait for page transition to complete before resetting progress
       Future.delayed(const Duration(milliseconds: 500), () {
@@ -631,7 +634,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   // Helper method to calculate visible dot range (max 5 dots)
   ({int start, int end}) _getVisibleDotRange() {
-    final totalDots = _onDeck.length;
+    final totalDots = _latestMovies.length;
     if (totalDots <= 5) {
       return (start: 0, end: totalDots - 1);
     }
@@ -646,7 +649,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   // Helper method to determine dot size based on position
   double _getDotSize(int dotIndex, int start, int end) {
-    final totalDots = _onDeck.length;
+    final totalDots = _latestMovies.length;
 
     // If we have 5 or fewer dots, all are full size (8px)
     if (totalDots <= 5) {
@@ -1140,10 +1143,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           CustomScrollView(
             controller: _scrollController,
             slivers: [
-              // Hero Section (Continue Watching) - at top of screen
+              // Hero Section (newest released films) - at top of screen
               Builder(
                 builder: (context) {
-                  if (_onDeck.isNotEmpty && showHeroSection) {
+                  if (_latestMovies.isNotEmpty && showHeroSection) {
                     return _buildHeroSection();
                   }
                   // Add top padding when hero is not shown
@@ -1481,12 +1484,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Widget _buildHeroSection() {
     final statusBarHeight = MediaQuery.paddingOf(context).top;
     final useSideNav = PlatformDetector.shouldUseSideNavigation(context);
-    final isTv = PlatformDetector.isTV();
-    final heroHeight = isTv
-        ? MediaQuery.sizeOf(context).height * 0.82
-        : useSideNav
-        ? MediaQuery.sizeOf(context).height * 0.75
-        : 500 + statusBarHeight;
+    // TV runs through _buildTvContent, so this section is phone/tablet/desktop.
+    // ~75vh everywhere, clamped per form factor.
+    final h = MediaQuery.sizeOf(context).height;
+    final heroHeight = useSideNav
+        ? (h * 0.75).clamp(480.0, 900.0) // desktop / tablet
+        : (h * 0.75).clamp(420.0, 680.0) + statusBarHeight; // phone
     return SliverToBoxAdapter(
       child: Focus(
         focusNode: _heroFocusNode,
@@ -1498,10 +1501,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             children: [
               PageView.builder(
                 controller: _heroController,
-                itemCount: _onDeck.length,
+                itemCount: _latestMovies.length,
                 onPageChanged: (index) {
                   // Validate index is within bounds before updating
-                  if (index >= 0 && index < _onDeck.length) {
+                  if (index >= 0 && index < _latestMovies.length) {
                     setState(() {
                       _currentHeroIndex = index;
                     });
@@ -1509,7 +1512,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   }
                 },
                 itemBuilder: (context, index) {
-                  return _buildHeroItem(_onDeck[index], heroHeight);
+                  return _buildHeroItem(_latestMovies[index], heroHeight);
                 },
               ),
               // Page indicators with animated progress and pause/play button
@@ -1609,6 +1612,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isLargeScreen = ScreenBreakpoints.isWideTabletOrLarger(screenWidth);
     final isTv = PlatformDetector.isTV();
+    // Phone hero uses a portrait 2:3 poster; wide/desktop/TV keep 16:9 backdrop.
+    final portrait = !isTv && !isLargeScreen;
     final alignLeft = isTv || isLargeScreen;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -1648,7 +1653,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               // Background Image with fade/zoom animation and parallax
               if (heroItem.artPath != null ||
                   heroItem.backgroundSquarePath != null ||
-                  heroItem.grandparentArtPath != null)
+                  heroItem.grandparentArtPath != null ||
+                  (portrait && heroItem.posterThumb() != null))
                 ClipRect(
                   child: AnimatedBuilder(
                     animation: _scrollController,
@@ -1682,11 +1688,19 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           // mem-cache displayWidth) so request, decode budget,
                           // and box width stay aligned even if content is ever
                           // narrower than the window.
-                          final artHeight = (screenWidth * 9 / 16).clamp(heroHeight, double.infinity).toDouble();
+                          // Portrait phone hero: the poster fills the tall box,
+                          // so the art height is just the box height. Wide/TV
+                          // billboards request the full 16:9 frame (floored at
+                          // the box height) so the client top-anchors the crop.
+                          final artHeight = portrait
+                              ? heroHeight
+                              : (screenWidth * 9 / 16).clamp(heroHeight, double.infinity).toDouble();
                           final imageUrl = MediaImageHelper.getOptimizedImageUrl(
                             client: heroClient,
-                            thumbPath:
-                                heroItem.heroArt(containerAspectRatio: containerAspect) ?? heroItem.grandparentArtPath,
+                            thumbPath: portrait
+                                ? heroItem.posterThumb()
+                                : heroItem.heroArt(containerAspectRatio: containerAspect) ??
+                                      heroItem.grandparentArtPath,
                             maxWidth: size.width,
                             // Plex crops server-side (minSize=1) from the CENTER,
                             // so a box-shaped request bakes in a centered crop

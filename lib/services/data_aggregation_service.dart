@@ -136,6 +136,91 @@ class DataAggregationService {
     return (items: items, succeededServerIds: succeededServerIds);
   }
 
+  /// Newest *released* movies across all servers, for the home hero.
+  ///
+  /// [fetchRecentlyAdded] only supplies the candidate pool; selection and
+  /// ordering are release-date based, never added-date based. The server
+  /// endpoint sorts by *added*, so we over-fetch (pool cap 100 per server) and
+  /// re-sort hard on release date — otherwise a small pool would silently make
+  /// this "recently added" instead of "newest released". Movies only, no series
+  /// fallback: no films → empty list (the hero hides).
+  Future<OnDeckAggregationResult> getLatestMoviesFromAllServers({
+    int? limit,
+    Set<String>? hiddenLibraryKeys,
+    Set<String>? serverIds,
+  }) async {
+    final clients = _clientsFor(serverIds);
+    if (clients.isEmpty) {
+      appLogger.w('No online servers available for fetching latest movies');
+      return (items: const <MediaItem>[], succeededServerIds: const <String>{});
+    }
+
+    final futures = clients.entries.map((entry) async {
+      try {
+        // ponytail: 100 = candidate pool, not the output cap.
+        final items = await entry.value.fetchRecentlyAdded(limit: 100);
+        return (serverId: entry.key, items: items);
+      } catch (e, st) {
+        appLogger.e('Failed latest-movies fetch from ${entry.key}', error: e, stackTrace: st);
+        return (serverId: null, items: <MediaItem>[]);
+      }
+    });
+    final results = await Future.wait(futures);
+    final succeededServerIds = {
+      for (final result in results)
+        if (result.serverId != null) result.serverId!,
+    };
+
+    var candidates = results.expand((result) => result.items).toList();
+
+    // Filter out items from hidden libraries.
+    if (hiddenLibraryKeys != null && hiddenLibraryKeys.isNotEmpty) {
+      candidates = candidates.where((item) {
+        if (item.libraryId == null || item.serverId == null) return true;
+        final globalKey = buildGlobalKey(ServerId(item.serverId!), item.libraryId!);
+        return !hiddenLibraryKeys.contains(globalKey);
+      }).toList();
+    }
+
+    // Hard films-only: no series, no series fallback.
+    candidates = candidates.where((item) => item.kind == MediaKind.movie).toList();
+
+    // Release date descending. Items without a release date fall back to
+    // addedAt per item and sink below every dated film — addedAt is a
+    // last-resort tie-break, never the primary sort.
+    candidates.sort((a, b) {
+      final da = _releaseDate(a);
+      final db = _releaseDate(b);
+      if (da != null && db != null) return db.compareTo(da);
+      if (da != null) return -1;
+      if (db != null) return 1;
+      return (b.addedAt ?? 0).compareTo(a.addedAt ?? 0);
+    });
+
+    // Lightweight cross-server dedup on shared identity (guid) then globalKey.
+    final seen = <String>{};
+    final deduped = <MediaItem>[];
+    for (final item in candidates) {
+      final key = item.guid ?? item.globalKey;
+      if (!seen.add(key)) continue;
+      deduped.add(item);
+    }
+
+    final cap = limit ?? 12;
+    final items = cap < deduped.length ? deduped.sublist(0, cap) : deduped;
+
+    appLogger.i('Fetched ${items.length} latest movies from all servers');
+    return (items: items, succeededServerIds: succeededServerIds);
+  }
+
+  /// Parsed release date, or null when the item has no usable
+  /// `originallyAvailableAt` (those items sink to the bottom via addedAt).
+  DateTime? _releaseDate(MediaItem item) {
+    final raw = item.originallyAvailableAt;
+    if (raw == null || raw.isEmpty) return null;
+    return DateTime.tryParse(raw);
+  }
+
   /// Merge an [existing] Continue Watching list with [fresh] rows from
   /// newly-online servers: same recency ordering and cross-server identity
   /// dedup as [getOnDeckFromAllServers], applied to the union.
