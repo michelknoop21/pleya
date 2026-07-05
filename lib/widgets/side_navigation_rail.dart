@@ -112,46 +112,76 @@ class NavigationRailItem extends StatelessWidget {
           canRequestFocus: false,
           onTap: onTap,
           borderRadius: borderRadius,
-          child: Container(
-            decoration: BoxDecoration(
-              color: () {
-                if (isCollapsed) return isFocused ? t.text.withValues(alpha: 0.12) : null;
-                if (isFocused) return t.text.withValues(alpha: showSelectedBackground ? 0.15 : 0.12);
-                if (showSelectedBackground) return t.text.withValues(alpha: 0.1);
-                return null;
-              }(),
-              borderRadius: borderRadius,
-            ),
-            clipBehavior: Clip.hardEdge,
-            child: UnconstrainedBox(
-              alignment: .centerLeft,
-              constrainedAxis: Axis.vertical,
-              clipBehavior: Clip.hardEdge,
-              child: SizedBox(
-                width: SideNavigationRailState.expandedWidth - 24,
-                child: Padding(
-                  padding: .symmetric(vertical: 12, horizontal: horizontalPadding),
-                  child: Row(
-                    children: [
-                      AppIcon(
-                        isSelected && selectedIcon != null ? selectedIcon! : icon,
-                        fill: 1,
-                        size: iconSize,
-                        color: isSelected ? t.text : t.textMuted,
+          child: Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: () {
+                    if (isCollapsed) return isFocused ? t.text.withValues(alpha: 0.12) : null;
+                    if (isFocused) return t.accent.withValues(alpha: showSelectedBackground ? 0.18 : 0.12);
+                    if (showSelectedBackground) return t.accent.withValues(alpha: 0.12);
+                    return null;
+                  }(),
+                  borderRadius: borderRadius,
+                ),
+                clipBehavior: Clip.hardEdge,
+                child: UnconstrainedBox(
+                  alignment: .centerLeft,
+                  constrainedAxis: Axis.vertical,
+                  clipBehavior: Clip.hardEdge,
+                  child: SizedBox(
+                    width: SideNavigationRailState.expandedWidth - 24,
+                    child: Padding(
+                      padding: .symmetric(vertical: 12, horizontal: horizontalPadding),
+                      child: Row(
+                        children: [
+                          DecoratedBox(
+                            decoration: isSelected
+                                ? BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    boxShadow: [BoxShadow(color: t.accent.withValues(alpha: 0.5), blurRadius: 14)],
+                                  )
+                                : const BoxDecoration(),
+                            child: AppIcon(
+                              isSelected && selectedIcon != null ? selectedIcon! : icon,
+                              fill: 1,
+                              size: iconSize,
+                              color: isSelected ? t.accent : t.textMuted,
+                            ),
+                          ),
+                          const SizedBox(width: 11),
+                          Expanded(
+                            child: () {
+                              if (useSimpleLayout) return label;
+                              final opacity = isCollapsed ? 0.0 : 1.0;
+                              return AnimatedOpacity(opacity: opacity, duration: t.fast, child: label);
+                            }(),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 11),
-                      Expanded(
-                        child: () {
-                          if (useSimpleLayout) return label;
-                          final opacity = isCollapsed ? 0.0 : 1.0;
-                          return AnimatedOpacity(opacity: opacity, duration: t.fast, child: label);
-                        }(),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
+              // Red→amber accent bar on the active item.
+              if (showSelectedBackground)
+                Positioned(
+                  left: 0,
+                  top: 8,
+                  bottom: 8,
+                  child: Container(
+                    width: 3,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [t.accent, t.accentAlt],
+                      ),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -939,7 +969,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                 decoration: BoxDecoration(
                   color: () {
                     if (isCollapsed) return isLibrariesFocused ? t.text.withValues(alpha: 0.08) : null;
-                    if (showLibrariesSelectedBackground) return t.text.withValues(alpha: 0.1);
+                    if (showLibrariesSelectedBackground) return t.accent.withValues(alpha: 0.12);
                     if (isLibrariesFocused) return t.text.withValues(alpha: 0.08);
                     return null;
                   }(),
@@ -960,7 +990,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                             Symbols.video_library_rounded,
                             fill: 1,
                             size: 22,
-                            color: widget.selectedTab == NavigationTabId.libraries ? t.text : t.textMuted,
+                            color: widget.selectedTab == NavigationTabId.libraries ? t.accent : t.textMuted,
                           ),
                           const SizedBox(width: 11),
                           Expanded(
@@ -974,7 +1004,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                   fontWeight: widget.selectedTab == NavigationTabId.libraries
                                       ? FontWeight.w600
                                       : FontWeight.w400,
-                                  color: widget.selectedTab == NavigationTabId.libraries ? t.text : t.textMuted,
+                                  color: widget.selectedTab == NavigationTabId.libraries ? t.accent : t.textMuted,
                                 ),
                               ),
                             ),
