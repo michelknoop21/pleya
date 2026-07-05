@@ -9,7 +9,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'connection/connection.dart';
 import 'connection/connection_bootstrap.dart';
@@ -1295,7 +1294,7 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
     if (_serverStatus.isEmpty) return const SizedBox.shrink();
     final textTheme = Theme.of(context).textTheme;
     final dimColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
-    const coralColor = Color(0xFFE5A00D);
+    const coralColor = Color(0xFFE5140F); // brand accent red
     const successColor = Color(0xFF4CAF50);
     const failColor = Color(0xFFEF5350);
 
@@ -1333,12 +1332,18 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    const coralColor = Color(0xFFE5A00D);
     return ColoredBox(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Stack(
         children: [
-          Center(child: SvgPicture.asset('assets/plezy_adaptive_foreground.svg', width: 288, height: 288)),
+          Center(
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                boxShadow: [BoxShadow(color: Color(0x33E5140F), blurRadius: 90, spreadRadius: 10)],
+              ),
+              child: Image.asset('assets/branding/pleya_wordmark.png', width: 300),
+            ),
+          ),
           Positioned(
             left: 0,
             right: 0,
@@ -1351,10 +1356,20 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
             top: MediaQuery.sizeOf(context).height * 0.5 + 180,
             child: Center(
               child: _serverStatus.isEmpty
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: coralColor),
+                  ? SizedBox(
+                      width: 160,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: ShaderMask(
+                          shaderCallback: (r) =>
+                              const LinearGradient(colors: [Color(0xFFE5140F), Color(0xFFFFB020)]).createShader(r),
+                          child: const LinearProgressIndicator(
+                            minHeight: 4,
+                            backgroundColor: Color(0x22FFFFFF),
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     )
                   : _buildServerStatusList(context),
             ),
