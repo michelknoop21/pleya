@@ -93,17 +93,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // hero gets more screen height (Netflix-style: big hero, one row peeking).
   // ponytail: single knob — lower for an even taller hero, raise to restore.
   // Netflix-style home: the hero billboard owns ~70% of the viewport and the
-  // "Continue watching" rail ~30%. Both poster scales are sized so the tallest
-  // hub fits within [_tvHomeRailMaxHeightFraction]. Continue Watching defaults
-  // to wide episode thumbnails, so the wide scale matters as much as the tall
-  // one; the discover layout also hard-clamps the rail's reserved space to that
-  // fraction as a safety net.
+  // "Continue watching" rail ~30%. Both poster scales are sized so the rail
+  // stays compact (Continue Watching defaults to wide episode thumbnails, so the
+  // wide scale matters as much as the tall one). The hero content — including its
+  // action buttons — always reserves `railHeight + gap` at the bottom, so the
+  // buttons never slide behind the rail.
   static const double _tvHomeRailTallPosterScale = 0.50;
   static const double _tvHomeRailWidePosterScale = 0.74;
-  static const double _tvHomeRailMaxHeightFraction = 0.30;
   static const double _tvHeroContentTopFraction = 0.075;
   static const double _tvHeroContentBottomFraction = 0.32;
-  static const double _tvHeroRailGap = 28;
+  static const double _tvHeroRailGap = 48;
   static const double _tvHeroMinInfoHeight = 96;
 
   /// Data + refresh policy live in [DiscoverProvider]; this state keeps only
@@ -1340,12 +1339,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             widePosterScale: _tvHomeRailWidePosterScale,
           );
     final spotlightTop = (size.height * _tvHeroContentTopFraction).clamp(64.0 * scale, 120.0 * scale).toDouble();
-    // Netflix-style 70/30: the "Continue watching" rail may reserve at most 30%
-    // of the viewport, so the hero billboard always keeps ≥70%. The rail's own
-    // poster scale (_tvHomeRailTallPosterScale) is tuned to physically fit here.
-    final railSafetyBottom = browseHubs.isEmpty
-        ? 0.0
-        : math.min(railHeight + (_tvHeroRailGap * scale), size.height * _tvHomeRailMaxHeightFraction);
+    // Reserve the full rail height plus a gap below the hero content so the hero
+    // action buttons always sit above the "Continue watching" rail (never behind
+    // it). The rail is kept compact via the home poster scales, so this still
+    // leaves the hero its ~70%.
+    final railSafetyBottom = browseHubs.isEmpty ? 0.0 : railHeight + (_tvHeroRailGap * scale);
     final targetBillboardBottom = size.height * _tvHeroContentBottomFraction;
     final maxSpotlightBottom = (size.height - spotlightTop - (_tvHeroMinInfoHeight * scale))
         .clamp(0.0, double.infinity)
