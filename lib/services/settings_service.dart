@@ -457,7 +457,7 @@ class SettingsService extends BaseSharedPreferencesService {
   static final defaultBoxFitMode = IntPref('default_box_fit_mode', transform: (v) => v.clamp(0, 2));
   static final displaySwitchDelay = IntPref('display_switch_delay', transform: (v) => v.clamp(0, 10));
 
-  static ThemeMode _tvAwareThemeModeDefault() => TvDetectionService.isTVSync() ? ThemeMode.oled : ThemeMode.system;
+  static ThemeMode _tvAwareThemeModeDefault() => TvDetectionService.isTVSync() ? ThemeMode.oled : ThemeMode.dark;
   static const themeMode = EnumPref<ThemeMode>(
     'theme_mode',
     values: ThemeMode.values,

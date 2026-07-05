@@ -9,7 +9,7 @@ import '../theme/mono_theme.dart';
 class ThemeProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
   settings.SettingsService? _settingsService;
   ValueNotifier<settings.ThemeMode>? _themeModeListenable;
-  settings.ThemeMode _themeMode = settings.ThemeMode.system;
+  settings.ThemeMode _themeMode = settings.ThemeMode.dark;
   late Brightness _systemBrightness;
 
   ThemeProvider() {
