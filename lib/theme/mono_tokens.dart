@@ -16,6 +16,8 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
   final Color outline;
   final Color text;
   final Color textMuted;
+  final Color accent; // brand red
+  final Color accentAlt; // brand amber
   final InteractiveInkFeatureFactory? splashFactory;
 
   const MonoTokens({
@@ -30,8 +32,17 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
     required this.outline,
     required this.text,
     required this.textMuted,
+    required this.accent,
+    required this.accentAlt,
     required this.splashFactory,
   });
+
+  /// 135° red→amber brand gradient.
+  LinearGradient get accentGradient => LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [accent, accentAlt],
+  );
 
   @override
   MonoTokens copyWith({
@@ -46,6 +57,8 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
     Color? outline,
     Color? text,
     Color? textMuted,
+    Color? accent,
+    Color? accentAlt,
     InteractiveInkFeatureFactory? splashFactory,
   }) => MonoTokens(
     radiusSm: radiusSm ?? this.radiusSm,
@@ -59,6 +72,8 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
     outline: outline ?? this.outline,
     text: text ?? this.text,
     textMuted: textMuted ?? this.textMuted,
+    accent: accent ?? this.accent,
+    accentAlt: accentAlt ?? this.accentAlt,
     splashFactory: splashFactory ?? this.splashFactory,
   );
 
@@ -84,6 +99,8 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
       outline: lerpC(outline, other.outline),
       text: lerpC(text, other.text),
       textMuted: lerpC(textMuted, other.textMuted),
+      accent: lerpC(accent, other.accent),
+      accentAlt: lerpC(accentAlt, other.accentAlt),
       splashFactory: other.splashFactory,
     );
   }

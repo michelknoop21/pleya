@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'gapped_track_shape.dart';
 import 'mono_tokens.dart';
 
+/// Brand accent: red → amber. Single source of truth for the app-wide accent.
+const kAccent = Color(0xFFE5140F);
+const kAccentAlt = Color(0xFFFFB020);
+
 ThemeData monoTheme({required bool dark, bool oled = false}) {
   // neutral greys tuned for crisp contrast
   final ({Color bg, Color surface, Color outline, Color text, Color textMuted}) c;
@@ -50,10 +54,10 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     brightness: isDark ? Brightness.dark : Brightness.light,
     colorScheme: ColorScheme(
       brightness: isDark ? Brightness.dark : Brightness.light,
-      primary: c.text,
-      onPrimary: isDark ? c.bg : Colors.white,
-      secondary: c.text,
-      onSecondary: c.bg,
+      primary: kAccent,
+      onPrimary: Colors.white,
+      secondary: kAccentAlt,
+      onSecondary: Colors.black,
       surface: c.surface,
       onSurface: c.text,
       error: const Color(0xFFB00020),
@@ -129,10 +133,13 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
       backgroundColor: c.bg,
       elevation: 0,
       indicatorColor: Colors.transparent,
-      labelTextStyle: WidgetStatePropertyAll(TextStyle(color: c.textMuted, fontSize: 11)),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        final active = states.contains(WidgetState.selected);
+        return TextStyle(color: active ? kAccent : c.textMuted, fontSize: 11, fontWeight: active ? .w600 : .w400);
+      }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         final active = states.contains(WidgetState.selected);
-        return IconThemeData(opacity: active ? 1 : 0.6, size: 22, color: c.text);
+        return IconThemeData(opacity: active ? 1 : 0.6, size: 22, color: active ? kAccent : c.text);
       }),
     ),
     // Floating snackbars auto-offset above the Scaffold's bottom NavigationBar,
@@ -163,6 +170,8 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
         outline: c.outline,
         text: c.text,
         textMuted: c.textMuted,
+        accent: kAccent,
+        accentAlt: kAccentAlt,
         splashFactory: NoSplash.splashFactory,
       ),
     ],
