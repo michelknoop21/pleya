@@ -1283,9 +1283,9 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
         _statusMessage,
         key: ValueKey(_statusMessage),
         textAlign: TextAlign.center,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+        // Splash always renders on a dark brand background, so keep text light
+        // regardless of the app's light/dark theme.
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.7)),
       ),
     );
   }
@@ -1293,7 +1293,7 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
   Widget _buildServerStatusList(BuildContext context) {
     if (_serverStatus.isEmpty) return const SizedBox.shrink();
     final textTheme = Theme.of(context).textTheme;
-    final dimColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
+    final dimColor = Colors.white.withValues(alpha: 0.6);
     const coralColor = Color(0xFFE5140F); // brand accent red
     const successColor = Color(0xFF4CAF50);
     const failColor = Color(0xFFEF5350);
@@ -1333,7 +1333,7 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: Theme.of(context).scaffoldBackgroundColor,
+      color: const Color(0xFF0B0B0B), // dark brand background; logo is designed for dark
       child: Stack(
         children: [
           Center(
