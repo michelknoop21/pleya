@@ -707,6 +707,12 @@ LazyDatabase _openConnection() {
       await file.parent.create(recursive: true);
     }
 
+    // Rebrand rename: pick up the pre-Pleya database in the same folder so
+    // existing installs keep their downloads/profiles after the update.
+    if (!await file.exists()) {
+      await migrateRenamedDatabaseFile(targetPath: file.path);
+    }
+
     // Migrate from old location on desktop (was in Documents subfolder)
     if (!Platform.isAndroid && !Platform.isIOS && !await file.exists()) {
       await migrateLegacyDesktopDatabase(target: file);
@@ -723,6 +729,30 @@ LazyDatabase _openConnection() {
       },
     );
   });
+}
+
+/// Rename the pre-rebrand `plezy_downloads.db` (plus its WAL/SHM siblings)
+/// sitting next to [targetPath] so existing users keep their data after the
+/// Plezy → Pleya rename. Best-effort: any failure is logged and swallowed —
+/// worst case drift creates a fresh DB, same as before this migration existed.
+Future<void> migrateRenamedDatabaseFile({required String targetPath}) async {
+  final dir = p.dirname(targetPath);
+  final oldBase = p.join(dir, 'plezy_downloads.db');
+  try {
+    if (!await File(oldBase).exists()) return;
+    // Siblings first so a crash mid-way never leaves a renamed main file
+    // paired with stale foreign WAL contents.
+    for (final suffix in ['-wal', '-shm', '-journal']) {
+      final sibling = File('$oldBase$suffix');
+      if (await sibling.exists()) {
+        await sibling.rename('$targetPath$suffix');
+      }
+    }
+    await File(oldBase).rename(targetPath);
+    appLogger.i('Renamed legacy DB $oldBase → $targetPath');
+  } catch (e, st) {
+    appLogger.e('Rebrand DB rename failed; a fresh DB will be created', error: e, stackTrace: st);
+  }
 }
 
 /// Move the legacy desktop DB from `Documents/` to `ApplicationSupport/`.
@@ -746,7 +776,9 @@ Future<void> migrateLegacyDesktopDatabase({
       oldFile = sourceOverride;
     } else {
       final oldFolder = await getApplicationDocumentsDirectory();
-      oldFile = File(p.join(oldFolder.path, 'pleya_downloads.db'));
+      // The legacy Documents location predates the Pleya rebrand, so the
+      // file there only ever carries the old name.
+      oldFile = File(p.join(oldFolder.path, 'plezy_downloads.db'));
     }
     if (!await oldFile.exists()) return;
   } catch (e, st) {

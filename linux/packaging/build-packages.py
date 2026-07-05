@@ -91,12 +91,12 @@ def get_version() -> str:
 def generate_icons():
     """Generate icons at multiple sizes using ImageMagick."""
     print("Generating icons...")
-    source = PROJECT_ROOT / "assets/branding/pfn_logo.png"
+    source = PROJECT_ROOT / "assets/plezy.png"
 
     for size in ICON_SIZES:
         dest_dir = SCRIPT_DIR / f"icons/{size}x{size}"
         dest_dir.mkdir(parents=True, exist_ok=True)
-        dest = dest_dir / "pfn.png"
+        dest = dest_dir / "pleya.png"
 
         # Try magick (ImageMagick 7) first, then convert (ImageMagick 6)
         for cmd in ["magick", "convert"]:
@@ -112,13 +112,13 @@ def get_file_mappings() -> list[str]:
     """Get file mappings for fpm."""
     mappings = [
         f"{BUILD_DIR}/=/opt/plezy/",
-        f"{SCRIPT_DIR}/com.edde746.plezy.desktop=/usr/share/applications/com.edde746.plezy.desktop",
+        f"{SCRIPT_DIR}/nl.michelknoop.pleya.desktop=/usr/share/applications/nl.michelknoop.pleya.desktop",
         f"{SCRIPT_DIR}/plezy.sh=/usr/bin/plezy",
     ]
 
     for size in ICON_SIZES:
         mappings.append(
-            f"{SCRIPT_DIR}/icons/{size}x{size}/pfn.png=/usr/share/icons/hicolor/{size}x{size}/apps/pfn.png"
+            f"{SCRIPT_DIR}/icons/{size}x{size}/pleya.png=/usr/share/icons/hicolor/{size}x{size}/apps/pleya.png"
         )
 
     return mappings

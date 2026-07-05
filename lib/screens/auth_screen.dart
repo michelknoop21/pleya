@@ -231,15 +231,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         child: Column(
                           mainAxisAlignment: .center,
                           crossAxisAlignment: .center,
-                          children: [
-                            Image.asset('assets/branding/pleya_logo.png', width: 132, height: 132),
-                            const SizedBox(height: 24),
-                            Text(
-                              t.app.title,
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: .bold),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                          children: [_buildBrandHeader(context)],
                         ),
                       ),
                       const SizedBox(width: 48),
@@ -261,14 +253,8 @@ class _AuthScreenState extends State<AuthScreen> {
                       mainAxisSize: .min,
                       crossAxisAlignment: .stretch,
                       children: [
-                        Image.asset('assets/branding/pleya_logo.png', width: 132, height: 132),
-                        const SizedBox(height: 24),
-                        Text(
-                          t.app.title,
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: .bold),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 48),
+                        _buildBrandHeader(context),
+                        const SizedBox(height: 40),
                         _buildAuthBody(),
                       ],
                     ),
@@ -303,6 +289,67 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
+  /// Brand block per the app-intro mockup: logo mark with red glow, the
+  /// PLEYA wordmark and the tagline.
+  Widget _buildBrandHeader(BuildContext context) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    return Column(
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: const [
+              BoxShadow(color: Color(0xB3E5140F), blurRadius: 40, offset: Offset(0, 16), spreadRadius: -16),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Image.asset('assets/branding/pleya_logo.png', width: 96, height: 96),
+          ),
+        ),
+        const SizedBox(height: 22),
+        Text(
+          'PLEYA',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: textColor, fontSize: 24, fontWeight: .w800, letterSpacing: 9.6),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Your media. Your way.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, letterSpacing: 1, color: textColor.withValues(alpha: 0.6)),
+        ),
+      ],
+    );
+  }
+
+  /// Local red→amber gradient CTA (brand accent). Kept local so the neutral
+  /// global button theme is unaffected elsewhere.
+  Widget _gradientCta({required VoidCallback? onPressed, required Widget child}) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: onPressed == null
+            ? null
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFE5140F), Color(0xFFFFB020)],
+              ),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+        child: child,
+      ),
+    );
+  }
+
   Widget _buildInitialButtons(BuildContext context, VoidCallback startBrowser, VoidCallback startQr, bool busy) {
     final isTV = PlatformDetector.isTV();
     final isAppleTV = PlatformDetector.isAppleTV();
@@ -314,9 +361,8 @@ class _AuthScreenState extends State<AuthScreen> {
           FocusableButton(
             autofocus: true,
             onPressed: busy ? null : startQr,
-            child: ElevatedButton(
+            child: _gradientCta(
               onPressed: busy ? null : startQr,
-              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
               child: Row(
                 mainAxisAlignment: .center,
                 mainAxisSize: .min,
@@ -342,11 +388,17 @@ class _AuthScreenState extends State<AuthScreen> {
         ] else ...[
           FocusableButton(
             onPressed: busy ? null : startBrowser,
-            child: ElevatedButton.icon(
+            child: _gradientCta(
               onPressed: busy ? null : startBrowser,
-              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-              icon: const BackendBadge(backend: MediaBackend.plex, size: 18),
-              label: Text(t.auth.signInWithPlex),
+              child: Row(
+                mainAxisAlignment: .center,
+                mainAxisSize: .min,
+                children: [
+                  const BackendBadge(backend: MediaBackend.plex, size: 18),
+                  const SizedBox(width: 8),
+                  Text(t.auth.signInWithPlex),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -380,7 +432,11 @@ class _AuthScreenState extends State<AuthScreen> {
           onPressed: _connectToJellyfin,
           child: OutlinedButton.icon(
             onPressed: _connectToJellyfin,
-            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              foregroundColor: const Color(0xFFFFB020),
+              side: const BorderSide(color: Color(0xFFFFB020)),
+            ),
             icon: const BackendBadge(backend: MediaBackend.jellyfin, size: 18),
             label: Text(t.auth.connectToJellyfin),
           ),

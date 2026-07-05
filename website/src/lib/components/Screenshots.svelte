@@ -53,7 +53,7 @@
     width: min(900px, 90vw);
     height: 500px;
     transform: translateX(-50%);
-    background: radial-gradient(ellipse at center, rgba(244, 43, 31, 0.16), transparent 68%);
+    background: radial-gradient(ellipse at center, rgba(229, 20, 15, 0.16), transparent 68%);
     filter: blur(28px);
     pointer-events: none;
     z-index: 0;
@@ -72,7 +72,7 @@
     letter-spacing: 0.14em;
     font-size: 0.8rem;
     font-weight: 700;
-    color: var(--accent, #f42b1f);
+    color: var(--accent, #e5140f);
     margin: 0 0 0.75rem;
   }
 

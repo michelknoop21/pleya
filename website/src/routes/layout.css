@@ -6,14 +6,14 @@
   --color-surface-hover: #262626;
   --color-border: #2c2c2c;
 
-  /* Pleya brand: red → amber signature gradient */
-  --color-red: #f42b1f;
-  --color-amber: #f68f16;
-  --color-accent: #f42b1f;
-  --color-accent-2: #f68f16;
-  --color-accent-dim: #f42b1f;
-  --color-accent-glow: rgba(244, 43, 31, 0.22);
-  --gradient-brand: linear-gradient(135deg, #f42b1f, #f68f16);
+  /* Pleya brand: red → amber signature gradient (sampled from thick-P mark) */
+  --color-red: #e5140f;
+  --color-amber: #ffb020;
+  --color-accent: #e5140f;
+  --color-accent-2: #ffb020;
+  --color-accent-dim: #e5140f;
+  --color-accent-glow: rgba(229, 20, 15, 0.22);
+  --gradient-brand: linear-gradient(135deg, #e5140f, #ffb020);
 
   --color-text: #f5f5f5;
   --color-text-muted: rgba(255, 255, 255, 0.7);

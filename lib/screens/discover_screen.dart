@@ -1020,19 +1020,36 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           child: Row(
             children: [
               // Desktop Netflix nav (wordmark + tabs) replaces the page title,
-              // staying transparent over the billboard. Falls back to the title.
-              // Expanded (not Flexible + Spacer) fills all space up to the
-              // actions so the action cluster stays flush to the right edge.
+              // staying transparent over the billboard. Expanded fills space up
+              // to the actions so the action cluster stays flush right.
+              // Phone/tablet (bottom nav) fall back to the brand mark + wordmark
+              // per the navigation mockup; the sidebar already carries the brand
+              // on desktop, so side-nav keeps the plain title.
               Expanded(
                 child: TopNavScope.isActive(context)
                     ? const TopNavLeading()
                     : PlatformDetector.isTV()
                     ? const SizedBox.shrink()
-                    : Text(
+                    : PlatformDetector.shouldUseSideNavigation(context)
+                    ? Text(
                         t.discover.title,
                         style: Theme.of(
                           context,
                         ).textTheme.titleLarge?.copyWith(color: foregroundColor, fontWeight: .bold),
+                      )
+                    : Row(
+                        mainAxisSize: .min,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.asset('assets/branding/pleya_logo.png', width: 28, height: 28),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'PLEYA',
+                            style: TextStyle(color: foregroundColor, fontSize: 14, fontWeight: .w800, letterSpacing: 3.6),
+                          ),
+                        ],
                       ),
               ),
               Consumer2<WatchTogetherProvider, CompanionRemoteProvider>(
@@ -1138,8 +1155,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       // Server Tasks — Plex-only (`/activities` API has no
                       // Jellyfin equivalent), hide the button entirely on
                       // Jellyfin-only profiles so the chrome doesn't show
-                      // a permanently empty popover.
+                      // a permanently empty popover. Excluded on TV: the panel
+                      // is a pointer/hover popover that can't be focused with
+                      // the remote, so it read as a dead button on Apple TV
+                      // (isDesktop is true there because isMobile excludes TV).
                       if (PlatformDetector.isDesktop(context) &&
+                          !PlatformDetector.isTV() &&
                           context.select<MultiServerProvider, bool>((p) => p.hasOnlinePlexServers))
                         FocusableAction(
                           onPressed: () => _serverActivitiesButtonKey.currentState?.togglePanel(),

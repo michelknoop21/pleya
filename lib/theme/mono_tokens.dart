@@ -18,9 +18,12 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
   final Color text;
   final Color textMuted;
 
-  /// Brand accent (coral). Used sparingly: progress bars, badges,
+  /// Brand accent (red). Used sparingly: progress bars, badges,
   /// wordmark, selection highlights — not as general primary.
   final Color accent;
+
+  /// Secondary brand accent (amber). Pairs with [accent] in [accentGradient].
+  final Color accentAlt;
   final InteractiveInkFeatureFactory? splashFactory;
 
   const MonoTokens({
@@ -37,8 +40,16 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
     required this.text,
     required this.textMuted,
     required this.accent,
+    required this.accentAlt,
     required this.splashFactory,
   });
+
+  /// 135° red→amber brand gradient.
+  LinearGradient get accentGradient => LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [accent, accentAlt],
+  );
 
   @override
   MonoTokens copyWith({
@@ -55,6 +66,7 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
     Color? text,
     Color? textMuted,
     Color? accent,
+    Color? accentAlt,
     InteractiveInkFeatureFactory? splashFactory,
   }) => MonoTokens(
     radiusSm: radiusSm ?? this.radiusSm,
@@ -70,6 +82,7 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
     text: text ?? this.text,
     textMuted: textMuted ?? this.textMuted,
     accent: accent ?? this.accent,
+    accentAlt: accentAlt ?? this.accentAlt,
     splashFactory: splashFactory ?? this.splashFactory,
   );
 
@@ -97,6 +110,7 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
       text: lerpC(text, other.text),
       textMuted: lerpC(textMuted, other.textMuted),
       accent: lerpC(accent, other.accent),
+      accentAlt: lerpC(accentAlt, other.accentAlt),
       splashFactory: other.splashFactory,
     );
   }

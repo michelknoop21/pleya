@@ -1023,7 +1023,12 @@ class SetupScreen extends StatefulWidget {
   State<SetupScreen> createState() => _SetupScreenState();
 }
 
-class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
+class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin, SingleTickerProviderStateMixin {
+  /// Drives the slow red glow pulse behind the splash logo mark.
+  late final AnimationController _glowController = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 3),
+  )..repeat(reverse: true);
   String _statusMessage = '';
   bool _enteringOffline = false;
 
@@ -1291,6 +1296,7 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
 
   @override
   void dispose() {
+    _glowController.dispose();
     _statusSub?.cancel();
     _connectProgressSub?.cancel();
     super.dispose();
@@ -1303,9 +1309,9 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
         _statusMessage,
         key: ValueKey(_statusMessage),
         textAlign: TextAlign.center,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+        // Splash always renders on a dark brand background, so keep text light
+        // regardless of the app's light/dark theme.
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.7)),
       ),
     );
   }
@@ -1313,8 +1319,8 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
   Widget _buildServerStatusList(BuildContext context) {
     if (_serverStatus.isEmpty) return const SizedBox.shrink();
     final textTheme = Theme.of(context).textTheme;
-    final dimColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
-    const coralColor = Color(0xFFE5A00D);
+    final dimColor = Colors.white.withValues(alpha: 0.6);
+    const coralColor = Color(0xFFE5140F); // brand accent red
     const successColor = Color(0xFF4CAF50);
     const failColor = Color(0xFFEF5350);
 
@@ -1350,34 +1356,112 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
     );
   }
 
+  /// Pulsing red glow behind the logo mark, per the app-intro mockup.
+  Widget _buildLogoMark() {
+    return SizedBox(
+      width: 230,
+      height: 230,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          AnimatedBuilder(
+            animation: _glowController,
+            builder: (context, child) {
+              final t = Curves.easeInOut.transform(_glowController.value);
+              return Opacity(
+                opacity: 0.5 + 0.5 * t,
+                child: Transform.scale(scale: 0.92 + 0.13 * t, child: child),
+              );
+            },
+            child: const DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [Color(0x66E5140F), Color(0x00E5140F)], stops: [0, 0.68]),
+              ),
+              child: SizedBox(width: 230, height: 230),
+            ),
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: const [BoxShadow(color: Color(0xCCE5140F), blurRadius: 50, offset: Offset(0, 20), spreadRadius: -18)],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: Image.asset('assets/branding/pleya_logo.png', width: 132, height: 132),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    const coralColor = Color(0xFFE5A00D);
-    return ColoredBox(
-      color: Theme.of(context).scaffoldBackgroundColor,
+    return DecoratedBox(
+      // Dark brand background with a faint red radial from the top — the
+      // splash always renders dark regardless of theme; the logo is designed
+      // for dark.
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0, -1.1),
+          radius: 1.3,
+          colors: [Color(0xFF26100D), Color(0xFF0A0808)],
+        ),
+      ),
       child: Stack(
         children: [
-          Center(child: Image.asset('assets/branding/pleya_logo.png', width: 288, height: 288)),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: MediaQuery.sizeOf(context).height * 0.5 - 170,
-            child: _buildStatusText(context),
+          Center(
+            child: Column(
+              mainAxisSize: .min,
+              children: [
+                _buildLogoMark(),
+                const SizedBox(height: 18),
+                ShaderMask(
+                  shaderCallback: (r) =>
+                      const LinearGradient(colors: [Colors.white, Color(0xFFF2D9CD)]).createShader(r),
+                  child: const Text(
+                    'PLEYA',
+                    style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: .w800, letterSpacing: 11),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'YOUR MEDIA. YOUR WAY.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    letterSpacing: 3.4,
+                    color: Colors.white.withValues(alpha: 0.4),
+                  ),
+                ),
+              ],
+            ),
           ),
           Positioned(
             left: 0,
             right: 0,
-            top: MediaQuery.sizeOf(context).height * 0.5 + 180,
+            bottom: 88,
             child: Center(
               child: _serverStatus.isEmpty
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: coralColor),
+                  ? SizedBox(
+                      width: 120,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: ShaderMask(
+                          shaderCallback: (r) =>
+                              const LinearGradient(colors: [Color(0xFFE5140F), Color(0xFFFFB020)]).createShader(r),
+                          child: const LinearProgressIndicator(
+                            minHeight: 3,
+                            backgroundColor: Color(0x14FFFFFF),
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     )
                   : _buildServerStatusList(context),
             ),
           ),
+          Positioned(left: 0, right: 0, bottom: 48, child: _buildStatusText(context)),
         ],
       ),
     );

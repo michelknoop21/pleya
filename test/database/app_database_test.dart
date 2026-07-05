@@ -152,6 +152,41 @@ class _AppDatabaseTestSuite {
     // FileSystemException out of _openConnection and strand the splash.
     // ============================================================
 
+    group('rebrand DB file rename', () {
+      late Directory tempDir;
+
+      setUp(() async {
+        tempDir = await Directory.systemTemp.createTemp('pleya_rename_migration_test_');
+      });
+
+      tearDown(() async {
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      test('renames plezy_downloads.db and WAL siblings to pleya name', () async {
+        final old = File('${tempDir.path}/plezy_downloads.db');
+        await old.writeAsBytes([1, 2, 3]);
+        await File('${old.path}-wal').writeAsBytes([4]);
+        await File('${old.path}-shm').writeAsBytes([5]);
+        final target = '${tempDir.path}/pleya_downloads.db';
+
+        await migrateRenamedDatabaseFile(targetPath: target);
+
+        expect(await old.exists(), isFalse);
+        expect(await File(target).readAsBytes(), [1, 2, 3]);
+        expect(await File('$target-wal').readAsBytes(), [4]);
+        expect(await File('$target-shm').readAsBytes(), [5]);
+      });
+
+      test('no-op when old file does not exist', () async {
+        final target = '${tempDir.path}/pleya_downloads.db';
+        await expectLater(migrateRenamedDatabaseFile(targetPath: target), completes);
+        expect(await File(target).exists(), isFalse);
+      });
+    });
+
     group('legacy desktop DB migration', () {
       late Directory tempDir;
 

@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'gapped_track_shape.dart';
 import 'mono_tokens.dart';
 
-/// Pleya brand red (sampled from the logo's P). Applied sparingly.
-const Color kAccent = Color(0xFFF42B1F);
+/// Pleya brand red (sampled from the thick-P logo). Applied sparingly.
+const Color kAccent = Color(0xFFE5140F);
 
 /// Pleya brand amber (the logo's play-triangle/gradient tail). Secondary
 /// accent for small highlights that sit next to [kAccent].
-const Color kAccentAlt = Color(0xFFF68F16);
+const Color kAccentAlt = Color(0xFFFFB020);
 
 /// The logo's P gradient (red → amber, top-left to bottom-right). Used for
 /// brand moments: wordmark, badges, progress fills, splash.
@@ -86,10 +86,10 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     brightness: isDark ? Brightness.dark : Brightness.light,
     colorScheme: ColorScheme(
       brightness: isDark ? Brightness.dark : Brightness.light,
-      primary: c.text,
-      onPrimary: isDark ? c.bg : Colors.white,
-      secondary: c.text,
-      onSecondary: c.bg,
+      primary: kAccent,
+      onPrimary: Colors.white,
+      secondary: kAccentAlt,
+      onSecondary: Colors.black,
       surface: c.surface,
       onSurface: c.text,
       error: const Color(0xFFB00020),
@@ -173,7 +173,12 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
       }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         final active = states.contains(WidgetState.selected);
-        return IconThemeData(opacity: active ? 1 : 0.6, size: 22, color: c.text);
+        return IconThemeData(
+          opacity: active ? 1 : 0.6,
+          size: 22,
+          color: c.text,
+          shadows: active ? [Shadow(color: kAccent.withValues(alpha: 0.55), blurRadius: 8)] : null,
+        );
       }),
     ),
     // Floating snackbars auto-offset above the Scaffold's bottom NavigationBar,
@@ -222,6 +227,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
         text: c.text,
         textMuted: c.textMuted,
         accent: kAccent,
+        accentAlt: kAccentAlt,
         splashFactory: NoSplash.splashFactory,
       ),
     ],

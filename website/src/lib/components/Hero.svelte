@@ -59,7 +59,7 @@
     align-items: center;
     overflow: hidden;
     background:
-      radial-gradient(120% 90% at 80% 0%, rgba(244, 43, 31, 0.1), transparent 55%),
+      radial-gradient(120% 90% at 80% 0%, rgba(229, 20, 15, 0.1), transparent 55%),
       radial-gradient(90% 80% at 100% 100%, rgba(246, 143, 22, 0.08), transparent 60%),
       var(--color-bg);
   }
