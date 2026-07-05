@@ -80,7 +80,11 @@ class SeerrPosterCard extends StatelessWidget {
                       media.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, height: 1.1),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        height: 1.1,
+                      ),
                     ),
                     if (media.year != null)
                       Text(

@@ -15,6 +15,7 @@ import '../../utils/debouncer.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/app_icon.dart';
+import '../../widgets/focusable_filter_chip.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/media_grid_delegate.dart';
 import '../../widgets/pill_input_decoration.dart';
@@ -336,15 +337,15 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
             spacing: 8,
             runSpacing: 8,
             children: [
-              FilterChip(
-                label: Text(t.seerr.filterMovies),
+              FocusableFilterChip(
+                label: t.seerr.filterMovies,
                 selected: _type == _SeerrType.movies,
-                onSelected: (_) => _onTypeSelected(_SeerrType.movies),
+                onPressed: () => _onTypeSelected(_SeerrType.movies),
               ),
-              FilterChip(
-                label: Text(t.seerr.filterShows),
+              FocusableFilterChip(
+                label: t.seerr.filterShows,
                 selected: _type == _SeerrType.tv,
-                onSelected: (_) => _onTypeSelected(_SeerrType.tv),
+                onPressed: () => _onTypeSelected(_SeerrType.tv),
               ),
             ],
           ),
@@ -360,10 +361,10 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
               itemBuilder: (context, index) {
                 final g = _activeGenres[index];
                 return Center(
-                  child: FilterChip(
-                    label: Text(g.name),
+                  child: FocusableFilterChip(
+                    label: g.name,
                     selected: _genreId == g.id,
-                    onSelected: (_) => _onGenreSelected(g.id),
+                    onPressed: () => _onGenreSelected(g.id),
                   ),
                 );
               },

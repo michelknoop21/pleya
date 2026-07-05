@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../../focus/focusable_button.dart';
@@ -7,6 +8,8 @@ import '../../models/seerr/seerr_request.dart';
 import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
 import '../../services/seerr/seerr_constants.dart';
+import '../../theme/mono_theme.dart';
+import '../../theme/mono_tokens.dart';
 import '../../utils/dialogs.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/focusable_filter_chip.dart';
@@ -177,10 +180,10 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
 
   Widget _filterRow() {
     final chips = <(String, IconData, String)>[
-      ('all', Icons.apps, t.seerr.filterAll),
-      ('pending', Icons.hourglass_empty, t.seerr.filterPending),
-      ('approved', Icons.check_circle, t.seerr.filterApproved),
-      ('available', Icons.download_done, t.seerr.filterAvailable),
+      ('all', Symbols.apps_rounded, t.seerr.filterAll),
+      ('pending', Symbols.hourglass_empty_rounded, t.seerr.filterPending),
+      ('approved', Symbols.check_circle_rounded, t.seerr.filterApproved),
+      ('available', Symbols.download_done_rounded, t.seerr.filterAvailable),
     ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(_hInset, 8, _hInset, 12),
@@ -238,7 +241,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
           child: FocusableListTile(
             leading: _loadingMore
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : const AppIcon(Icons.expand_more),
+                : const AppIcon(Symbols.expand_more_rounded),
             title: Text(t.seerr.loadMore),
             onTap: _loadingMore ? null : () => _load(),
           ),
@@ -281,7 +284,7 @@ class _SeerrRequestRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.all(Radius.circular(tokens(context).radiusSm)),
             child: SizedBox(
               width: 54,
               height: 81,
@@ -290,7 +293,7 @@ class _SeerrRequestRow extends StatelessWidget {
                       color: theme.colorScheme.surfaceContainerHighest,
                       child: Center(
                         child: AppIcon(
-                          isTv ? Icons.tv : Icons.movie,
+                          isTv ? Symbols.tv_rounded : Symbols.movie_rounded,
                           size: 24,
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -370,18 +373,17 @@ class _SeerrRequestRow extends StatelessWidget {
 
   Widget _lifecycleChip(ThemeData theme) {
     final (color, label) = switch (request.status) {
-      SeerrRequestStatus.pending => (const Color(0xFFF59E0B), t.seerr.pending),
-      SeerrRequestStatus.approved => (const Color(0xFF22C55E), t.seerr.approved),
+      SeerrRequestStatus.pending => (kAccentAlt, t.seerr.pending),
+      SeerrRequestStatus.approved => (kSuccess, t.seerr.approved),
       SeerrRequestStatus.declined => (theme.colorScheme.error, t.seerr.declined),
-      SeerrRequestStatus.completed => (const Color(0xFF22C55E), t.seerr.completed),
+      SeerrRequestStatus.completed => (kSuccess, t.seerr.completed),
       SeerrRequestStatus.failed => (theme.colorScheme.error, t.seerr.failed),
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.6)),
+        color: color.withValues(alpha: 0.16),
+        borderRadius: const BorderRadius.all(Radius.circular(100)),
       ),
       child: Text(
         label,
@@ -392,10 +394,10 @@ class _SeerrRequestRow extends StatelessWidget {
 
   Widget _plainPill(ThemeData theme, String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: const BorderRadius.all(Radius.circular(100)),
       ),
       child: Text(text, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
     );

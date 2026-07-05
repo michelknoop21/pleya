@@ -12,6 +12,7 @@ import '../../providers/seerr_provider.dart';
 import '../../providers/user_profile_provider.dart';
 import '../../services/seerr/seerr_client.dart';
 import '../../services/seerr/seerr_constants.dart';
+import '../../theme/mono_theme.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
@@ -391,7 +392,7 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen>
       ),
       child: Row(
         children: [
-          const AppIcon(Symbols.check_circle_rounded, fill: 1, color: Colors.green),
+          const AppIcon(Symbols.check_circle_rounded, fill: 1, color: kSuccess),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
