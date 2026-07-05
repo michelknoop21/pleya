@@ -5300,6 +5300,1209 @@ class ProfileConnectionsCompanion
   }
 }
 
+class $MediaInteractionsTable extends MediaInteractions
+    with TableInfo<$MediaInteractionsTable, MediaInteractionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MediaInteractionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _profileIdMeta = const VerificationMeta(
+    'profileId',
+  );
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+    'profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _globalKeyMeta = const VerificationMeta(
+    'globalKey',
+  );
+  @override
+  late final GeneratedColumn<String> globalKey = GeneratedColumn<String>(
+    'global_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _mediaKindMeta = const VerificationMeta(
+    'mediaKind',
+  );
+  @override
+  late final GeneratedColumn<String> mediaKind = GeneratedColumn<String>(
+    'media_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _eventTypeMeta = const VerificationMeta(
+    'eventType',
+  );
+  @override
+  late final GeneratedColumn<String> eventType = GeneratedColumn<String>(
+    'event_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _eventWeightMeta = const VerificationMeta(
+    'eventWeight',
+  );
+  @override
+  late final GeneratedColumn<double> eventWeight = GeneratedColumn<double>(
+    'event_weight',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _occurredAtMeta = const VerificationMeta(
+    'occurredAt',
+  );
+  @override
+  late final GeneratedColumn<int> occurredAt = GeneratedColumn<int>(
+    'occurred_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _genresJsonMeta = const VerificationMeta(
+    'genresJson',
+  );
+  @override
+  late final GeneratedColumn<String> genresJson = GeneratedColumn<String>(
+    'genres_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _actorsJsonMeta = const VerificationMeta(
+    'actorsJson',
+  );
+  @override
+  late final GeneratedColumn<String> actorsJson = GeneratedColumn<String>(
+    'actors_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _directorsJsonMeta = const VerificationMeta(
+    'directorsJson',
+  );
+  @override
+  late final GeneratedColumn<String> directorsJson = GeneratedColumn<String>(
+    'directors_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _moodsJsonMeta = const VerificationMeta(
+    'moodsJson',
+  );
+  @override
+  late final GeneratedColumn<String> moodsJson = GeneratedColumn<String>(
+    'moods_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _studioMeta = const VerificationMeta('studio');
+  @override
+  late final GeneratedColumn<String> studio = GeneratedColumn<String>(
+    'studio',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _yearMeta = const VerificationMeta('year');
+  @override
+  late final GeneratedColumn<int> year = GeneratedColumn<int>(
+    'year',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _communityRatingMeta = const VerificationMeta(
+    'communityRating',
+  );
+  @override
+  late final GeneratedColumn<double> communityRating = GeneratedColumn<double>(
+    'community_rating',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _seriesKeyMeta = const VerificationMeta(
+    'seriesKey',
+  );
+  @override
+  late final GeneratedColumn<String> seriesKey = GeneratedColumn<String>(
+    'series_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    profileId,
+    globalKey,
+    mediaKind,
+    eventType,
+    eventWeight,
+    occurredAt,
+    genresJson,
+    actorsJson,
+    directorsJson,
+    moodsJson,
+    studio,
+    year,
+    communityRating,
+    seriesKey,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'media_interactions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MediaInteractionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('profile_id')) {
+      context.handle(
+        _profileIdMeta,
+        profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_profileIdMeta);
+    }
+    if (data.containsKey('global_key')) {
+      context.handle(
+        _globalKeyMeta,
+        globalKey.isAcceptableOrUnknown(data['global_key']!, _globalKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_globalKeyMeta);
+    }
+    if (data.containsKey('media_kind')) {
+      context.handle(
+        _mediaKindMeta,
+        mediaKind.isAcceptableOrUnknown(data['media_kind']!, _mediaKindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mediaKindMeta);
+    }
+    if (data.containsKey('event_type')) {
+      context.handle(
+        _eventTypeMeta,
+        eventType.isAcceptableOrUnknown(data['event_type']!, _eventTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventTypeMeta);
+    }
+    if (data.containsKey('event_weight')) {
+      context.handle(
+        _eventWeightMeta,
+        eventWeight.isAcceptableOrUnknown(
+          data['event_weight']!,
+          _eventWeightMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_eventWeightMeta);
+    }
+    if (data.containsKey('occurred_at')) {
+      context.handle(
+        _occurredAtMeta,
+        occurredAt.isAcceptableOrUnknown(data['occurred_at']!, _occurredAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_occurredAtMeta);
+    }
+    if (data.containsKey('genres_json')) {
+      context.handle(
+        _genresJsonMeta,
+        genresJson.isAcceptableOrUnknown(data['genres_json']!, _genresJsonMeta),
+      );
+    }
+    if (data.containsKey('actors_json')) {
+      context.handle(
+        _actorsJsonMeta,
+        actorsJson.isAcceptableOrUnknown(data['actors_json']!, _actorsJsonMeta),
+      );
+    }
+    if (data.containsKey('directors_json')) {
+      context.handle(
+        _directorsJsonMeta,
+        directorsJson.isAcceptableOrUnknown(
+          data['directors_json']!,
+          _directorsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('moods_json')) {
+      context.handle(
+        _moodsJsonMeta,
+        moodsJson.isAcceptableOrUnknown(data['moods_json']!, _moodsJsonMeta),
+      );
+    }
+    if (data.containsKey('studio')) {
+      context.handle(
+        _studioMeta,
+        studio.isAcceptableOrUnknown(data['studio']!, _studioMeta),
+      );
+    }
+    if (data.containsKey('year')) {
+      context.handle(
+        _yearMeta,
+        year.isAcceptableOrUnknown(data['year']!, _yearMeta),
+      );
+    }
+    if (data.containsKey('community_rating')) {
+      context.handle(
+        _communityRatingMeta,
+        communityRating.isAcceptableOrUnknown(
+          data['community_rating']!,
+          _communityRatingMeta,
+        ),
+      );
+    }
+    if (data.containsKey('series_key')) {
+      context.handle(
+        _seriesKeyMeta,
+        seriesKey.isAcceptableOrUnknown(data['series_key']!, _seriesKeyMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  MediaInteractionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MediaInteractionRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      profileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_id'],
+      )!,
+      globalKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}global_key'],
+      )!,
+      mediaKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}media_kind'],
+      )!,
+      eventType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_type'],
+      )!,
+      eventWeight: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}event_weight'],
+      )!,
+      occurredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}occurred_at'],
+      )!,
+      genresJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}genres_json'],
+      )!,
+      actorsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actors_json'],
+      )!,
+      directorsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}directors_json'],
+      )!,
+      moodsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}moods_json'],
+      )!,
+      studio: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}studio'],
+      ),
+      year: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}year'],
+      ),
+      communityRating: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}community_rating'],
+      ),
+      seriesKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}series_key'],
+      ),
+    );
+  }
+
+  @override
+  $MediaInteractionsTable createAlias(String alias) {
+    return $MediaInteractionsTable(attachedDatabase, alias);
+  }
+}
+
+class MediaInteractionRow extends DataClass
+    implements Insertable<MediaInteractionRow> {
+  final int id;
+
+  /// Profile this interaction belongs to
+  final String profileId;
+
+  /// Global key (serverId:ratingKey) of the interacted item
+  final String globalKey;
+
+  /// Media kind id: 'movie', 'episode', 'show'
+  final String mediaKind;
+
+  /// Event type: 'completed', 'partial', 'abandoned', 'skipped'
+  final String eventType;
+
+  /// Signed taste weight resolved at write time (e.g. completed 1.0,
+  /// abandoned -0.4, removed-from-continue-watching -0.3)
+  final double eventWeight;
+
+  /// Timestamp of the interaction (milliseconds since epoch)
+  final int occurredAt;
+
+  /// Denormalized taste features captured at event time (JSON arrays)
+  final String genresJson;
+  final String actorsJson;
+  final String directorsJson;
+  final String moodsJson;
+  final String? studio;
+  final int? year;
+  final double? communityRating;
+
+  /// Grandparent (series) global key for episode events
+  final String? seriesKey;
+  const MediaInteractionRow({
+    required this.id,
+    required this.profileId,
+    required this.globalKey,
+    required this.mediaKind,
+    required this.eventType,
+    required this.eventWeight,
+    required this.occurredAt,
+    required this.genresJson,
+    required this.actorsJson,
+    required this.directorsJson,
+    required this.moodsJson,
+    this.studio,
+    this.year,
+    this.communityRating,
+    this.seriesKey,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['profile_id'] = Variable<String>(profileId);
+    map['global_key'] = Variable<String>(globalKey);
+    map['media_kind'] = Variable<String>(mediaKind);
+    map['event_type'] = Variable<String>(eventType);
+    map['event_weight'] = Variable<double>(eventWeight);
+    map['occurred_at'] = Variable<int>(occurredAt);
+    map['genres_json'] = Variable<String>(genresJson);
+    map['actors_json'] = Variable<String>(actorsJson);
+    map['directors_json'] = Variable<String>(directorsJson);
+    map['moods_json'] = Variable<String>(moodsJson);
+    if (!nullToAbsent || studio != null) {
+      map['studio'] = Variable<String>(studio);
+    }
+    if (!nullToAbsent || year != null) {
+      map['year'] = Variable<int>(year);
+    }
+    if (!nullToAbsent || communityRating != null) {
+      map['community_rating'] = Variable<double>(communityRating);
+    }
+    if (!nullToAbsent || seriesKey != null) {
+      map['series_key'] = Variable<String>(seriesKey);
+    }
+    return map;
+  }
+
+  MediaInteractionsCompanion toCompanion(bool nullToAbsent) {
+    return MediaInteractionsCompanion(
+      id: Value(id),
+      profileId: Value(profileId),
+      globalKey: Value(globalKey),
+      mediaKind: Value(mediaKind),
+      eventType: Value(eventType),
+      eventWeight: Value(eventWeight),
+      occurredAt: Value(occurredAt),
+      genresJson: Value(genresJson),
+      actorsJson: Value(actorsJson),
+      directorsJson: Value(directorsJson),
+      moodsJson: Value(moodsJson),
+      studio: studio == null && nullToAbsent
+          ? const Value.absent()
+          : Value(studio),
+      year: year == null && nullToAbsent ? const Value.absent() : Value(year),
+      communityRating: communityRating == null && nullToAbsent
+          ? const Value.absent()
+          : Value(communityRating),
+      seriesKey: seriesKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(seriesKey),
+    );
+  }
+
+  factory MediaInteractionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MediaInteractionRow(
+      id: serializer.fromJson<int>(json['id']),
+      profileId: serializer.fromJson<String>(json['profileId']),
+      globalKey: serializer.fromJson<String>(json['globalKey']),
+      mediaKind: serializer.fromJson<String>(json['mediaKind']),
+      eventType: serializer.fromJson<String>(json['eventType']),
+      eventWeight: serializer.fromJson<double>(json['eventWeight']),
+      occurredAt: serializer.fromJson<int>(json['occurredAt']),
+      genresJson: serializer.fromJson<String>(json['genresJson']),
+      actorsJson: serializer.fromJson<String>(json['actorsJson']),
+      directorsJson: serializer.fromJson<String>(json['directorsJson']),
+      moodsJson: serializer.fromJson<String>(json['moodsJson']),
+      studio: serializer.fromJson<String?>(json['studio']),
+      year: serializer.fromJson<int?>(json['year']),
+      communityRating: serializer.fromJson<double?>(json['communityRating']),
+      seriesKey: serializer.fromJson<String?>(json['seriesKey']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'profileId': serializer.toJson<String>(profileId),
+      'globalKey': serializer.toJson<String>(globalKey),
+      'mediaKind': serializer.toJson<String>(mediaKind),
+      'eventType': serializer.toJson<String>(eventType),
+      'eventWeight': serializer.toJson<double>(eventWeight),
+      'occurredAt': serializer.toJson<int>(occurredAt),
+      'genresJson': serializer.toJson<String>(genresJson),
+      'actorsJson': serializer.toJson<String>(actorsJson),
+      'directorsJson': serializer.toJson<String>(directorsJson),
+      'moodsJson': serializer.toJson<String>(moodsJson),
+      'studio': serializer.toJson<String?>(studio),
+      'year': serializer.toJson<int?>(year),
+      'communityRating': serializer.toJson<double?>(communityRating),
+      'seriesKey': serializer.toJson<String?>(seriesKey),
+    };
+  }
+
+  MediaInteractionRow copyWith({
+    int? id,
+    String? profileId,
+    String? globalKey,
+    String? mediaKind,
+    String? eventType,
+    double? eventWeight,
+    int? occurredAt,
+    String? genresJson,
+    String? actorsJson,
+    String? directorsJson,
+    String? moodsJson,
+    Value<String?> studio = const Value.absent(),
+    Value<int?> year = const Value.absent(),
+    Value<double?> communityRating = const Value.absent(),
+    Value<String?> seriesKey = const Value.absent(),
+  }) => MediaInteractionRow(
+    id: id ?? this.id,
+    profileId: profileId ?? this.profileId,
+    globalKey: globalKey ?? this.globalKey,
+    mediaKind: mediaKind ?? this.mediaKind,
+    eventType: eventType ?? this.eventType,
+    eventWeight: eventWeight ?? this.eventWeight,
+    occurredAt: occurredAt ?? this.occurredAt,
+    genresJson: genresJson ?? this.genresJson,
+    actorsJson: actorsJson ?? this.actorsJson,
+    directorsJson: directorsJson ?? this.directorsJson,
+    moodsJson: moodsJson ?? this.moodsJson,
+    studio: studio.present ? studio.value : this.studio,
+    year: year.present ? year.value : this.year,
+    communityRating: communityRating.present
+        ? communityRating.value
+        : this.communityRating,
+    seriesKey: seriesKey.present ? seriesKey.value : this.seriesKey,
+  );
+  MediaInteractionRow copyWithCompanion(MediaInteractionsCompanion data) {
+    return MediaInteractionRow(
+      id: data.id.present ? data.id.value : this.id,
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
+      globalKey: data.globalKey.present ? data.globalKey.value : this.globalKey,
+      mediaKind: data.mediaKind.present ? data.mediaKind.value : this.mediaKind,
+      eventType: data.eventType.present ? data.eventType.value : this.eventType,
+      eventWeight: data.eventWeight.present
+          ? data.eventWeight.value
+          : this.eventWeight,
+      occurredAt: data.occurredAt.present
+          ? data.occurredAt.value
+          : this.occurredAt,
+      genresJson: data.genresJson.present
+          ? data.genresJson.value
+          : this.genresJson,
+      actorsJson: data.actorsJson.present
+          ? data.actorsJson.value
+          : this.actorsJson,
+      directorsJson: data.directorsJson.present
+          ? data.directorsJson.value
+          : this.directorsJson,
+      moodsJson: data.moodsJson.present ? data.moodsJson.value : this.moodsJson,
+      studio: data.studio.present ? data.studio.value : this.studio,
+      year: data.year.present ? data.year.value : this.year,
+      communityRating: data.communityRating.present
+          ? data.communityRating.value
+          : this.communityRating,
+      seriesKey: data.seriesKey.present ? data.seriesKey.value : this.seriesKey,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MediaInteractionRow(')
+          ..write('id: $id, ')
+          ..write('profileId: $profileId, ')
+          ..write('globalKey: $globalKey, ')
+          ..write('mediaKind: $mediaKind, ')
+          ..write('eventType: $eventType, ')
+          ..write('eventWeight: $eventWeight, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('genresJson: $genresJson, ')
+          ..write('actorsJson: $actorsJson, ')
+          ..write('directorsJson: $directorsJson, ')
+          ..write('moodsJson: $moodsJson, ')
+          ..write('studio: $studio, ')
+          ..write('year: $year, ')
+          ..write('communityRating: $communityRating, ')
+          ..write('seriesKey: $seriesKey')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    profileId,
+    globalKey,
+    mediaKind,
+    eventType,
+    eventWeight,
+    occurredAt,
+    genresJson,
+    actorsJson,
+    directorsJson,
+    moodsJson,
+    studio,
+    year,
+    communityRating,
+    seriesKey,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MediaInteractionRow &&
+          other.id == this.id &&
+          other.profileId == this.profileId &&
+          other.globalKey == this.globalKey &&
+          other.mediaKind == this.mediaKind &&
+          other.eventType == this.eventType &&
+          other.eventWeight == this.eventWeight &&
+          other.occurredAt == this.occurredAt &&
+          other.genresJson == this.genresJson &&
+          other.actorsJson == this.actorsJson &&
+          other.directorsJson == this.directorsJson &&
+          other.moodsJson == this.moodsJson &&
+          other.studio == this.studio &&
+          other.year == this.year &&
+          other.communityRating == this.communityRating &&
+          other.seriesKey == this.seriesKey);
+}
+
+class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
+  final Value<int> id;
+  final Value<String> profileId;
+  final Value<String> globalKey;
+  final Value<String> mediaKind;
+  final Value<String> eventType;
+  final Value<double> eventWeight;
+  final Value<int> occurredAt;
+  final Value<String> genresJson;
+  final Value<String> actorsJson;
+  final Value<String> directorsJson;
+  final Value<String> moodsJson;
+  final Value<String?> studio;
+  final Value<int?> year;
+  final Value<double?> communityRating;
+  final Value<String?> seriesKey;
+  const MediaInteractionsCompanion({
+    this.id = const Value.absent(),
+    this.profileId = const Value.absent(),
+    this.globalKey = const Value.absent(),
+    this.mediaKind = const Value.absent(),
+    this.eventType = const Value.absent(),
+    this.eventWeight = const Value.absent(),
+    this.occurredAt = const Value.absent(),
+    this.genresJson = const Value.absent(),
+    this.actorsJson = const Value.absent(),
+    this.directorsJson = const Value.absent(),
+    this.moodsJson = const Value.absent(),
+    this.studio = const Value.absent(),
+    this.year = const Value.absent(),
+    this.communityRating = const Value.absent(),
+    this.seriesKey = const Value.absent(),
+  });
+  MediaInteractionsCompanion.insert({
+    this.id = const Value.absent(),
+    required String profileId,
+    required String globalKey,
+    required String mediaKind,
+    required String eventType,
+    required double eventWeight,
+    required int occurredAt,
+    this.genresJson = const Value.absent(),
+    this.actorsJson = const Value.absent(),
+    this.directorsJson = const Value.absent(),
+    this.moodsJson = const Value.absent(),
+    this.studio = const Value.absent(),
+    this.year = const Value.absent(),
+    this.communityRating = const Value.absent(),
+    this.seriesKey = const Value.absent(),
+  }) : profileId = Value(profileId),
+       globalKey = Value(globalKey),
+       mediaKind = Value(mediaKind),
+       eventType = Value(eventType),
+       eventWeight = Value(eventWeight),
+       occurredAt = Value(occurredAt);
+  static Insertable<MediaInteractionRow> custom({
+    Expression<int>? id,
+    Expression<String>? profileId,
+    Expression<String>? globalKey,
+    Expression<String>? mediaKind,
+    Expression<String>? eventType,
+    Expression<double>? eventWeight,
+    Expression<int>? occurredAt,
+    Expression<String>? genresJson,
+    Expression<String>? actorsJson,
+    Expression<String>? directorsJson,
+    Expression<String>? moodsJson,
+    Expression<String>? studio,
+    Expression<int>? year,
+    Expression<double>? communityRating,
+    Expression<String>? seriesKey,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (profileId != null) 'profile_id': profileId,
+      if (globalKey != null) 'global_key': globalKey,
+      if (mediaKind != null) 'media_kind': mediaKind,
+      if (eventType != null) 'event_type': eventType,
+      if (eventWeight != null) 'event_weight': eventWeight,
+      if (occurredAt != null) 'occurred_at': occurredAt,
+      if (genresJson != null) 'genres_json': genresJson,
+      if (actorsJson != null) 'actors_json': actorsJson,
+      if (directorsJson != null) 'directors_json': directorsJson,
+      if (moodsJson != null) 'moods_json': moodsJson,
+      if (studio != null) 'studio': studio,
+      if (year != null) 'year': year,
+      if (communityRating != null) 'community_rating': communityRating,
+      if (seriesKey != null) 'series_key': seriesKey,
+    });
+  }
+
+  MediaInteractionsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? profileId,
+    Value<String>? globalKey,
+    Value<String>? mediaKind,
+    Value<String>? eventType,
+    Value<double>? eventWeight,
+    Value<int>? occurredAt,
+    Value<String>? genresJson,
+    Value<String>? actorsJson,
+    Value<String>? directorsJson,
+    Value<String>? moodsJson,
+    Value<String?>? studio,
+    Value<int?>? year,
+    Value<double?>? communityRating,
+    Value<String?>? seriesKey,
+  }) {
+    return MediaInteractionsCompanion(
+      id: id ?? this.id,
+      profileId: profileId ?? this.profileId,
+      globalKey: globalKey ?? this.globalKey,
+      mediaKind: mediaKind ?? this.mediaKind,
+      eventType: eventType ?? this.eventType,
+      eventWeight: eventWeight ?? this.eventWeight,
+      occurredAt: occurredAt ?? this.occurredAt,
+      genresJson: genresJson ?? this.genresJson,
+      actorsJson: actorsJson ?? this.actorsJson,
+      directorsJson: directorsJson ?? this.directorsJson,
+      moodsJson: moodsJson ?? this.moodsJson,
+      studio: studio ?? this.studio,
+      year: year ?? this.year,
+      communityRating: communityRating ?? this.communityRating,
+      seriesKey: seriesKey ?? this.seriesKey,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (profileId.present) {
+      map['profile_id'] = Variable<String>(profileId.value);
+    }
+    if (globalKey.present) {
+      map['global_key'] = Variable<String>(globalKey.value);
+    }
+    if (mediaKind.present) {
+      map['media_kind'] = Variable<String>(mediaKind.value);
+    }
+    if (eventType.present) {
+      map['event_type'] = Variable<String>(eventType.value);
+    }
+    if (eventWeight.present) {
+      map['event_weight'] = Variable<double>(eventWeight.value);
+    }
+    if (occurredAt.present) {
+      map['occurred_at'] = Variable<int>(occurredAt.value);
+    }
+    if (genresJson.present) {
+      map['genres_json'] = Variable<String>(genresJson.value);
+    }
+    if (actorsJson.present) {
+      map['actors_json'] = Variable<String>(actorsJson.value);
+    }
+    if (directorsJson.present) {
+      map['directors_json'] = Variable<String>(directorsJson.value);
+    }
+    if (moodsJson.present) {
+      map['moods_json'] = Variable<String>(moodsJson.value);
+    }
+    if (studio.present) {
+      map['studio'] = Variable<String>(studio.value);
+    }
+    if (year.present) {
+      map['year'] = Variable<int>(year.value);
+    }
+    if (communityRating.present) {
+      map['community_rating'] = Variable<double>(communityRating.value);
+    }
+    if (seriesKey.present) {
+      map['series_key'] = Variable<String>(seriesKey.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MediaInteractionsCompanion(')
+          ..write('id: $id, ')
+          ..write('profileId: $profileId, ')
+          ..write('globalKey: $globalKey, ')
+          ..write('mediaKind: $mediaKind, ')
+          ..write('eventType: $eventType, ')
+          ..write('eventWeight: $eventWeight, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('genresJson: $genresJson, ')
+          ..write('actorsJson: $actorsJson, ')
+          ..write('directorsJson: $directorsJson, ')
+          ..write('moodsJson: $moodsJson, ')
+          ..write('studio: $studio, ')
+          ..write('year: $year, ')
+          ..write('communityRating: $communityRating, ')
+          ..write('seriesKey: $seriesKey')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AffinitySnapshotsTable extends AffinitySnapshots
+    with TableInfo<$AffinitySnapshotsTable, AffinitySnapshotRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AffinitySnapshotsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _profileIdMeta = const VerificationMeta(
+    'profileId',
+  );
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+    'profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _vectorJsonMeta = const VerificationMeta(
+    'vectorJson',
+  );
+  @override
+  late final GeneratedColumn<String> vectorJson = GeneratedColumn<String>(
+    'vector_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _eventCountMeta = const VerificationMeta(
+    'eventCount',
+  );
+  @override
+  late final GeneratedColumn<int> eventCount = GeneratedColumn<int>(
+    'event_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _computedAtMeta = const VerificationMeta(
+    'computedAt',
+  );
+  @override
+  late final GeneratedColumn<int> computedAt = GeneratedColumn<int>(
+    'computed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    profileId,
+    vectorJson,
+    eventCount,
+    computedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'affinity_snapshots';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AffinitySnapshotRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('profile_id')) {
+      context.handle(
+        _profileIdMeta,
+        profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_profileIdMeta);
+    }
+    if (data.containsKey('vector_json')) {
+      context.handle(
+        _vectorJsonMeta,
+        vectorJson.isAcceptableOrUnknown(data['vector_json']!, _vectorJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_vectorJsonMeta);
+    }
+    if (data.containsKey('event_count')) {
+      context.handle(
+        _eventCountMeta,
+        eventCount.isAcceptableOrUnknown(data['event_count']!, _eventCountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventCountMeta);
+    }
+    if (data.containsKey('computed_at')) {
+      context.handle(
+        _computedAtMeta,
+        computedAt.isAcceptableOrUnknown(data['computed_at']!, _computedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_computedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {profileId};
+  @override
+  AffinitySnapshotRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AffinitySnapshotRow(
+      profileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_id'],
+      )!,
+      vectorJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vector_json'],
+      )!,
+      eventCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}event_count'],
+      )!,
+      computedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}computed_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AffinitySnapshotsTable createAlias(String alias) {
+    return $AffinitySnapshotsTable(attachedDatabase, alias);
+  }
+}
+
+class AffinitySnapshotRow extends DataClass
+    implements Insertable<AffinitySnapshotRow> {
+  final String profileId;
+
+  /// JSON map of dimension -> {feature: weight}, per-dimension normalized
+  final String vectorJson;
+
+  /// Number of interaction rows the vector was computed from
+  final int eventCount;
+
+  /// Timestamp of computation (milliseconds since epoch)
+  final int computedAt;
+  const AffinitySnapshotRow({
+    required this.profileId,
+    required this.vectorJson,
+    required this.eventCount,
+    required this.computedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['profile_id'] = Variable<String>(profileId);
+    map['vector_json'] = Variable<String>(vectorJson);
+    map['event_count'] = Variable<int>(eventCount);
+    map['computed_at'] = Variable<int>(computedAt);
+    return map;
+  }
+
+  AffinitySnapshotsCompanion toCompanion(bool nullToAbsent) {
+    return AffinitySnapshotsCompanion(
+      profileId: Value(profileId),
+      vectorJson: Value(vectorJson),
+      eventCount: Value(eventCount),
+      computedAt: Value(computedAt),
+    );
+  }
+
+  factory AffinitySnapshotRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AffinitySnapshotRow(
+      profileId: serializer.fromJson<String>(json['profileId']),
+      vectorJson: serializer.fromJson<String>(json['vectorJson']),
+      eventCount: serializer.fromJson<int>(json['eventCount']),
+      computedAt: serializer.fromJson<int>(json['computedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'profileId': serializer.toJson<String>(profileId),
+      'vectorJson': serializer.toJson<String>(vectorJson),
+      'eventCount': serializer.toJson<int>(eventCount),
+      'computedAt': serializer.toJson<int>(computedAt),
+    };
+  }
+
+  AffinitySnapshotRow copyWith({
+    String? profileId,
+    String? vectorJson,
+    int? eventCount,
+    int? computedAt,
+  }) => AffinitySnapshotRow(
+    profileId: profileId ?? this.profileId,
+    vectorJson: vectorJson ?? this.vectorJson,
+    eventCount: eventCount ?? this.eventCount,
+    computedAt: computedAt ?? this.computedAt,
+  );
+  AffinitySnapshotRow copyWithCompanion(AffinitySnapshotsCompanion data) {
+    return AffinitySnapshotRow(
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
+      vectorJson: data.vectorJson.present
+          ? data.vectorJson.value
+          : this.vectorJson,
+      eventCount: data.eventCount.present
+          ? data.eventCount.value
+          : this.eventCount,
+      computedAt: data.computedAt.present
+          ? data.computedAt.value
+          : this.computedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AffinitySnapshotRow(')
+          ..write('profileId: $profileId, ')
+          ..write('vectorJson: $vectorJson, ')
+          ..write('eventCount: $eventCount, ')
+          ..write('computedAt: $computedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(profileId, vectorJson, eventCount, computedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AffinitySnapshotRow &&
+          other.profileId == this.profileId &&
+          other.vectorJson == this.vectorJson &&
+          other.eventCount == this.eventCount &&
+          other.computedAt == this.computedAt);
+}
+
+class AffinitySnapshotsCompanion extends UpdateCompanion<AffinitySnapshotRow> {
+  final Value<String> profileId;
+  final Value<String> vectorJson;
+  final Value<int> eventCount;
+  final Value<int> computedAt;
+  final Value<int> rowid;
+  const AffinitySnapshotsCompanion({
+    this.profileId = const Value.absent(),
+    this.vectorJson = const Value.absent(),
+    this.eventCount = const Value.absent(),
+    this.computedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AffinitySnapshotsCompanion.insert({
+    required String profileId,
+    required String vectorJson,
+    required int eventCount,
+    required int computedAt,
+    this.rowid = const Value.absent(),
+  }) : profileId = Value(profileId),
+       vectorJson = Value(vectorJson),
+       eventCount = Value(eventCount),
+       computedAt = Value(computedAt);
+  static Insertable<AffinitySnapshotRow> custom({
+    Expression<String>? profileId,
+    Expression<String>? vectorJson,
+    Expression<int>? eventCount,
+    Expression<int>? computedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (profileId != null) 'profile_id': profileId,
+      if (vectorJson != null) 'vector_json': vectorJson,
+      if (eventCount != null) 'event_count': eventCount,
+      if (computedAt != null) 'computed_at': computedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AffinitySnapshotsCompanion copyWith({
+    Value<String>? profileId,
+    Value<String>? vectorJson,
+    Value<int>? eventCount,
+    Value<int>? computedAt,
+    Value<int>? rowid,
+  }) {
+    return AffinitySnapshotsCompanion(
+      profileId: profileId ?? this.profileId,
+      vectorJson: vectorJson ?? this.vectorJson,
+      eventCount: eventCount ?? this.eventCount,
+      computedAt: computedAt ?? this.computedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (profileId.present) {
+      map['profile_id'] = Variable<String>(profileId.value);
+    }
+    if (vectorJson.present) {
+      map['vector_json'] = Variable<String>(vectorJson.value);
+    }
+    if (eventCount.present) {
+      map['event_count'] = Variable<int>(eventCount.value);
+    }
+    if (computedAt.present) {
+      map['computed_at'] = Variable<int>(computedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AffinitySnapshotsCompanion(')
+          ..write('profileId: $profileId, ')
+          ..write('vectorJson: $vectorJson, ')
+          ..write('eventCount: $eventCount, ')
+          ..write('computedAt: $computedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5316,6 +6519,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ProfilesTable profiles = $ProfilesTable(this);
   late final $ProfileConnectionsTable profileConnections =
       $ProfileConnectionsTable(this);
+  late final $MediaInteractionsTable mediaInteractions =
+      $MediaInteractionsTable(this);
+  late final $AffinitySnapshotsTable affinitySnapshots =
+      $AffinitySnapshotsTable(this);
   late final Index idxDownloadedMediaStatus = Index(
     'idx_downloaded_media_status',
     'CREATE INDEX idx_downloaded_media_status ON downloaded_media (status)',
@@ -5368,6 +6575,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_profile_connections_profile_id',
     'CREATE INDEX idx_profile_connections_profile_id ON profile_connections (profile_id)',
   );
+  late final Index idxInteractionsProfileTime = Index(
+    'idx_interactions_profile_time',
+    'CREATE INDEX idx_interactions_profile_time ON media_interactions (profile_id, occurred_at)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5382,6 +6593,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     connections,
     profiles,
     profileConnections,
+    mediaInteractions,
+    affinitySnapshots,
     idxDownloadedMediaStatus,
     idxDownloadedMediaServer,
     idxDownloadedMediaParent,
@@ -5395,6 +6608,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxProfilesKind,
     idxProfileConnectionsConnectionId,
     idxProfileConnectionsProfileId,
+    idxInteractionsProfileTime,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -8243,6 +9457,615 @@ typedef $$ProfileConnectionsTableProcessedTableManager =
       ProfileConnectionRow,
       PrefetchHooks Function({bool connectionId})
     >;
+typedef $$MediaInteractionsTableCreateCompanionBuilder =
+    MediaInteractionsCompanion Function({
+      Value<int> id,
+      required String profileId,
+      required String globalKey,
+      required String mediaKind,
+      required String eventType,
+      required double eventWeight,
+      required int occurredAt,
+      Value<String> genresJson,
+      Value<String> actorsJson,
+      Value<String> directorsJson,
+      Value<String> moodsJson,
+      Value<String?> studio,
+      Value<int?> year,
+      Value<double?> communityRating,
+      Value<String?> seriesKey,
+    });
+typedef $$MediaInteractionsTableUpdateCompanionBuilder =
+    MediaInteractionsCompanion Function({
+      Value<int> id,
+      Value<String> profileId,
+      Value<String> globalKey,
+      Value<String> mediaKind,
+      Value<String> eventType,
+      Value<double> eventWeight,
+      Value<int> occurredAt,
+      Value<String> genresJson,
+      Value<String> actorsJson,
+      Value<String> directorsJson,
+      Value<String> moodsJson,
+      Value<String?> studio,
+      Value<int?> year,
+      Value<double?> communityRating,
+      Value<String?> seriesKey,
+    });
+
+class $$MediaInteractionsTableFilterComposer
+    extends Composer<_$AppDatabase, $MediaInteractionsTable> {
+  $$MediaInteractionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get globalKey => $composableBuilder(
+    column: $table.globalKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mediaKind => $composableBuilder(
+    column: $table.mediaKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get eventWeight => $composableBuilder(
+    column: $table.eventWeight,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get genresJson => $composableBuilder(
+    column: $table.genresJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorsJson => $composableBuilder(
+    column: $table.actorsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get directorsJson => $composableBuilder(
+    column: $table.directorsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get moodsJson => $composableBuilder(
+    column: $table.moodsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get studio => $composableBuilder(
+    column: $table.studio,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get communityRating => $composableBuilder(
+    column: $table.communityRating,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get seriesKey => $composableBuilder(
+    column: $table.seriesKey,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$MediaInteractionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $MediaInteractionsTable> {
+  $$MediaInteractionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get globalKey => $composableBuilder(
+    column: $table.globalKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mediaKind => $composableBuilder(
+    column: $table.mediaKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get eventWeight => $composableBuilder(
+    column: $table.eventWeight,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get genresJson => $composableBuilder(
+    column: $table.genresJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actorsJson => $composableBuilder(
+    column: $table.actorsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get directorsJson => $composableBuilder(
+    column: $table.directorsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get moodsJson => $composableBuilder(
+    column: $table.moodsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get studio => $composableBuilder(
+    column: $table.studio,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get communityRating => $composableBuilder(
+    column: $table.communityRating,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get seriesKey => $composableBuilder(
+    column: $table.seriesKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$MediaInteractionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MediaInteractionsTable> {
+  $$MediaInteractionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get profileId =>
+      $composableBuilder(column: $table.profileId, builder: (column) => column);
+
+  GeneratedColumn<String> get globalKey =>
+      $composableBuilder(column: $table.globalKey, builder: (column) => column);
+
+  GeneratedColumn<String> get mediaKind =>
+      $composableBuilder(column: $table.mediaKind, builder: (column) => column);
+
+  GeneratedColumn<String> get eventType =>
+      $composableBuilder(column: $table.eventType, builder: (column) => column);
+
+  GeneratedColumn<double> get eventWeight => $composableBuilder(
+    column: $table.eventWeight,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get genresJson => $composableBuilder(
+    column: $table.genresJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get actorsJson => $composableBuilder(
+    column: $table.actorsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get directorsJson => $composableBuilder(
+    column: $table.directorsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get moodsJson =>
+      $composableBuilder(column: $table.moodsJson, builder: (column) => column);
+
+  GeneratedColumn<String> get studio =>
+      $composableBuilder(column: $table.studio, builder: (column) => column);
+
+  GeneratedColumn<int> get year =>
+      $composableBuilder(column: $table.year, builder: (column) => column);
+
+  GeneratedColumn<double> get communityRating => $composableBuilder(
+    column: $table.communityRating,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get seriesKey =>
+      $composableBuilder(column: $table.seriesKey, builder: (column) => column);
+}
+
+class $$MediaInteractionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $MediaInteractionsTable,
+          MediaInteractionRow,
+          $$MediaInteractionsTableFilterComposer,
+          $$MediaInteractionsTableOrderingComposer,
+          $$MediaInteractionsTableAnnotationComposer,
+          $$MediaInteractionsTableCreateCompanionBuilder,
+          $$MediaInteractionsTableUpdateCompanionBuilder,
+          (
+            MediaInteractionRow,
+            BaseReferences<
+              _$AppDatabase,
+              $MediaInteractionsTable,
+              MediaInteractionRow
+            >,
+          ),
+          MediaInteractionRow,
+          PrefetchHooks Function()
+        > {
+  $$MediaInteractionsTableTableManager(
+    _$AppDatabase db,
+    $MediaInteractionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MediaInteractionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MediaInteractionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MediaInteractionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> profileId = const Value.absent(),
+                Value<String> globalKey = const Value.absent(),
+                Value<String> mediaKind = const Value.absent(),
+                Value<String> eventType = const Value.absent(),
+                Value<double> eventWeight = const Value.absent(),
+                Value<int> occurredAt = const Value.absent(),
+                Value<String> genresJson = const Value.absent(),
+                Value<String> actorsJson = const Value.absent(),
+                Value<String> directorsJson = const Value.absent(),
+                Value<String> moodsJson = const Value.absent(),
+                Value<String?> studio = const Value.absent(),
+                Value<int?> year = const Value.absent(),
+                Value<double?> communityRating = const Value.absent(),
+                Value<String?> seriesKey = const Value.absent(),
+              }) => MediaInteractionsCompanion(
+                id: id,
+                profileId: profileId,
+                globalKey: globalKey,
+                mediaKind: mediaKind,
+                eventType: eventType,
+                eventWeight: eventWeight,
+                occurredAt: occurredAt,
+                genresJson: genresJson,
+                actorsJson: actorsJson,
+                directorsJson: directorsJson,
+                moodsJson: moodsJson,
+                studio: studio,
+                year: year,
+                communityRating: communityRating,
+                seriesKey: seriesKey,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String profileId,
+                required String globalKey,
+                required String mediaKind,
+                required String eventType,
+                required double eventWeight,
+                required int occurredAt,
+                Value<String> genresJson = const Value.absent(),
+                Value<String> actorsJson = const Value.absent(),
+                Value<String> directorsJson = const Value.absent(),
+                Value<String> moodsJson = const Value.absent(),
+                Value<String?> studio = const Value.absent(),
+                Value<int?> year = const Value.absent(),
+                Value<double?> communityRating = const Value.absent(),
+                Value<String?> seriesKey = const Value.absent(),
+              }) => MediaInteractionsCompanion.insert(
+                id: id,
+                profileId: profileId,
+                globalKey: globalKey,
+                mediaKind: mediaKind,
+                eventType: eventType,
+                eventWeight: eventWeight,
+                occurredAt: occurredAt,
+                genresJson: genresJson,
+                actorsJson: actorsJson,
+                directorsJson: directorsJson,
+                moodsJson: moodsJson,
+                studio: studio,
+                year: year,
+                communityRating: communityRating,
+                seriesKey: seriesKey,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$MediaInteractionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $MediaInteractionsTable,
+      MediaInteractionRow,
+      $$MediaInteractionsTableFilterComposer,
+      $$MediaInteractionsTableOrderingComposer,
+      $$MediaInteractionsTableAnnotationComposer,
+      $$MediaInteractionsTableCreateCompanionBuilder,
+      $$MediaInteractionsTableUpdateCompanionBuilder,
+      (
+        MediaInteractionRow,
+        BaseReferences<
+          _$AppDatabase,
+          $MediaInteractionsTable,
+          MediaInteractionRow
+        >,
+      ),
+      MediaInteractionRow,
+      PrefetchHooks Function()
+    >;
+typedef $$AffinitySnapshotsTableCreateCompanionBuilder =
+    AffinitySnapshotsCompanion Function({
+      required String profileId,
+      required String vectorJson,
+      required int eventCount,
+      required int computedAt,
+      Value<int> rowid,
+    });
+typedef $$AffinitySnapshotsTableUpdateCompanionBuilder =
+    AffinitySnapshotsCompanion Function({
+      Value<String> profileId,
+      Value<String> vectorJson,
+      Value<int> eventCount,
+      Value<int> computedAt,
+      Value<int> rowid,
+    });
+
+class $$AffinitySnapshotsTableFilterComposer
+    extends Composer<_$AppDatabase, $AffinitySnapshotsTable> {
+  $$AffinitySnapshotsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get vectorJson => $composableBuilder(
+    column: $table.vectorJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get eventCount => $composableBuilder(
+    column: $table.eventCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get computedAt => $composableBuilder(
+    column: $table.computedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AffinitySnapshotsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AffinitySnapshotsTable> {
+  $$AffinitySnapshotsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get vectorJson => $composableBuilder(
+    column: $table.vectorJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get eventCount => $composableBuilder(
+    column: $table.eventCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get computedAt => $composableBuilder(
+    column: $table.computedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AffinitySnapshotsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AffinitySnapshotsTable> {
+  $$AffinitySnapshotsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get profileId =>
+      $composableBuilder(column: $table.profileId, builder: (column) => column);
+
+  GeneratedColumn<String> get vectorJson => $composableBuilder(
+    column: $table.vectorJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get eventCount => $composableBuilder(
+    column: $table.eventCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get computedAt => $composableBuilder(
+    column: $table.computedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$AffinitySnapshotsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AffinitySnapshotsTable,
+          AffinitySnapshotRow,
+          $$AffinitySnapshotsTableFilterComposer,
+          $$AffinitySnapshotsTableOrderingComposer,
+          $$AffinitySnapshotsTableAnnotationComposer,
+          $$AffinitySnapshotsTableCreateCompanionBuilder,
+          $$AffinitySnapshotsTableUpdateCompanionBuilder,
+          (
+            AffinitySnapshotRow,
+            BaseReferences<
+              _$AppDatabase,
+              $AffinitySnapshotsTable,
+              AffinitySnapshotRow
+            >,
+          ),
+          AffinitySnapshotRow,
+          PrefetchHooks Function()
+        > {
+  $$AffinitySnapshotsTableTableManager(
+    _$AppDatabase db,
+    $AffinitySnapshotsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AffinitySnapshotsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AffinitySnapshotsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AffinitySnapshotsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> profileId = const Value.absent(),
+                Value<String> vectorJson = const Value.absent(),
+                Value<int> eventCount = const Value.absent(),
+                Value<int> computedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AffinitySnapshotsCompanion(
+                profileId: profileId,
+                vectorJson: vectorJson,
+                eventCount: eventCount,
+                computedAt: computedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String profileId,
+                required String vectorJson,
+                required int eventCount,
+                required int computedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AffinitySnapshotsCompanion.insert(
+                profileId: profileId,
+                vectorJson: vectorJson,
+                eventCount: eventCount,
+                computedAt: computedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AffinitySnapshotsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AffinitySnapshotsTable,
+      AffinitySnapshotRow,
+      $$AffinitySnapshotsTableFilterComposer,
+      $$AffinitySnapshotsTableOrderingComposer,
+      $$AffinitySnapshotsTableAnnotationComposer,
+      $$AffinitySnapshotsTableCreateCompanionBuilder,
+      $$AffinitySnapshotsTableUpdateCompanionBuilder,
+      (
+        AffinitySnapshotRow,
+        BaseReferences<
+          _$AppDatabase,
+          $AffinitySnapshotsTable,
+          AffinitySnapshotRow
+        >,
+      ),
+      AffinitySnapshotRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8265,4 +10088,8 @@ class $AppDatabaseManager {
       $$ProfilesTableTableManager(_db, _db.profiles);
   $$ProfileConnectionsTableTableManager get profileConnections =>
       $$ProfileConnectionsTableTableManager(_db, _db.profileConnections);
+  $$MediaInteractionsTableTableManager get mediaInteractions =>
+      $$MediaInteractionsTableTableManager(_db, _db.mediaInteractions);
+  $$AffinitySnapshotsTableTableManager get affinitySnapshots =>
+      $$AffinitySnapshotsTableTableManager(_db, _db.affinitySnapshots);
 }

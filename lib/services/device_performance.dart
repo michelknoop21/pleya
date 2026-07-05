@@ -20,7 +20,7 @@ class DevicePerformance {
   DevicePerformance._();
 
   static DevicePerformance? _instance;
-  static const MethodChannel _deviceChannel = MethodChannel('com.plezy/device');
+  static const MethodChannel _deviceChannel = MethodChannel('com.pleya/device');
 
   /// ~2.2 GiB: above what 2 GB boxes report (≤ ~1.95 GiB after kernel
   /// reservations), below 3 GB Shield-class devices (~2.8 GiB).

@@ -68,7 +68,7 @@ void main() {
   test('ExoPlayer registers the core properties (plus its cache extra)', () async {
     final player = PlayerAndroid();
     final observations = await capturedObservations(
-      channelName: 'com.plezy/exo_player',
+      channelName: 'com.pleya/exo_player',
       initialize: () => player.requestAudioFocus(), // forces _ensureInitialized
       dispose: () => player.dispose(),
     );
@@ -86,7 +86,7 @@ void main() {
   test('mpv registers the core properties (plus its track/device extras)', () async {
     final player = PlayerNative();
     final observations = await capturedObservations(
-      channelName: 'com.plezy/mpv_player',
+      channelName: 'com.pleya/mpv_player',
       initialize: () => player.setLogLevel('warn'), // forces _ensureInitialized
       dispose: () => player.dispose(),
     );

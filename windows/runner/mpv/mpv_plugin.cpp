@@ -31,14 +31,14 @@ MpvPlayerPlugin::MpvPlayerPlugin(flutter::PluginRegistrarWindows* registrar)
     : registrar_(registrar), platform_thread_id_(::GetCurrentThreadId()) {
   // Create method channel.
   method_channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(), "com.plezy/mpv_player", &flutter::StandardMethodCodec::GetInstance());
+      registrar->messenger(), "com.pleya/mpv_player", &flutter::StandardMethodCodec::GetInstance());
 
   method_channel_->SetMethodCallHandler(
       [this](const auto& call, auto result) { HandleMethodCall(call, std::move(result)); });
 
   // Create event channel.
   event_channel_ = std::make_unique<flutter::EventChannel<flutter::EncodableValue>>(
-      registrar->messenger(), "com.plezy/mpv_player/events", &flutter::StandardMethodCodec::GetInstance());
+      registrar->messenger(), "com.pleya/mpv_player/events", &flutter::StandardMethodCodec::GetInstance());
 
   auto handler = std::make_unique<flutter::StreamHandlerFunctions<flutter::EncodableValue>>(
       [this](

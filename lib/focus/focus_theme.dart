@@ -5,16 +5,18 @@ import '../theme/mono_tokens.dart';
 class FocusTheme {
   FocusTheme._();
 
-  static const double focusScale = 1.02;
-  static const double fullCardFocusScale = 1.03;
+  static const double focusScale = 1.05;
+  static const double fullCardFocusScale = 1.06;
   static const double focusBorderWidth = 2.5;
-  static const double defaultBorderRadius = 8.0;
+  static const double defaultBorderRadius = 6.0;
   static const double focusGlowInnerBlurRadius = 18;
   static const double focusGlowOuterBlurRadius = 34;
   static const double focusGlowSpreadRadius = 1.5;
 
+  /// Netflix-TV focus ring is always crisp white, independent of the theme's
+  /// (near-white) primary — pinned so it never drifts on palette changes.
   static Color getFocusBorderColor(BuildContext context) {
-    return Theme.of(context).colorScheme.primary;
+    return Colors.white;
   }
 
   static Duration getAnimationDuration(BuildContext context) {

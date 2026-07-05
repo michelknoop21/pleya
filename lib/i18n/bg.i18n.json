@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Plezy"
+    "title": "Pleya"
   },
   "auth": {
     "signIn": "Вход",
@@ -86,7 +86,7 @@
   },
   "settings": {
     "title": "Настройки",
-    "supportDeveloper": "Подкрепи Plezy",
+    "supportDeveloper": "Подкрепи Pleya",
     "supportDeveloperDescription": "Дарение чрез Liberapay за финансиране на разработката",
     "language": "Език",
     "theme": "Тема",
@@ -196,7 +196,7 @@
     "importSettingsConfirm": "Това ще замени текущите ви настройки. Продължавате ли?",
     "importSettingsSuccess": "Настройките са импортирани",
     "importSettingsFailed": "Настройките не можаха да бъдат импортирани",
-    "importSettingsInvalidFile": "Този файл не е валиден експорт на настройки от Plezy",
+    "importSettingsInvalidFile": "Този файл не е валиден експорт на настройки от Pleya",
     "importSettingsNoUser": "Влезте, преди да импортирате настройки",
     "shortcutsReset": "Клавишните комбинации са нулирани до подразбиране",
     "about": "Относно",
@@ -277,7 +277,7 @@
     "forceTvMode": "Принуди TV режим",
     "forceTvModeDescription": "Принуди ТВ оформление. За устройства, които не се разпознават автоматично. Изисква рестарт.",
     "startInFullscreen": "Стартирай на цял екран",
-    "startInFullscreenDescription": "Отваряй Plezy в режим цял екран при стартиране",
+    "startInFullscreenDescription": "Отваряй Pleya в режим цял екран при стартиране",
     "exitFullscreenOnPlayerClose": "Изход от цял екран при затваряне на плейъра",
     "exitFullscreenOnPlayerCloseDescription": "Автоматично излиза от режим цял екран при затваряне на видео плейъра",
     "autoHidePerformanceOverlay": "Автоматично скриване на оверлея за производителност",
@@ -285,7 +285,7 @@
     "showNavBarLabels": "Показвай етикети в навигационната лента",
     "showNavBarLabelsDescription": "Показвай текстови етикети под иконите в навигационната лента",
     "startupSection": "Начален раздел",
-    "startupSectionDescription": "Изберете кой раздел да отваря Plezy при стартиране",
+    "startupSectionDescription": "Изберете кой раздел да отваря Pleya при стартиране",
     "liveTvDefaultFavorites": "По подразбиране към любими канали",
     "liveTvDefaultFavoritesDescription": "Показвай само любими канали при отваряне на телевизия на живо",
     "display": "Дисплей",
@@ -585,7 +585,7 @@
     "confirmAction": "Потвърждение на действие"
   },
   "profiles": {
-    "addPlezyProfile": "Добави Plezy профил",
+    "addPleyaProfile": "Добави Pleya профил",
     "switchingProfile": "Смяна на профил…",
     "deleteThisProfileTitle": "Да се изтрие ли този профил?",
     "deleteThisProfileMessage": "Премахване на ${displayName}. Връзките не се засягат.",
@@ -653,7 +653,7 @@
     "sessionExpiredMany": "Сесиите за ${count} сървъра са изтекли",
     "signInAgain": "Влез отново",
     "editJellyfinTitle": "Редактиране на Jellyfin връзка",
-    "editJellyfinIntro": "Добавете или премахнете URL адреси за ${serverName}. Plezy ще използва достъпния URL адрес с най-ниска латентност."
+    "editJellyfinIntro": "Добавете или премахнете URL адреси за ${serverName}. Pleya ще използва достъпния URL адрес с най-ниска латентност."
   },
   "discover": {
     "title": "Открий",
@@ -1095,19 +1095,19 @@
       "minimize": "Минимизирай"
     },
     "pairing": {
-      "discoveryDescription": "Plezy устройства със същия Plex акаунт се показват тук",
+      "discoveryDescription": "Pleya устройства със същия Plex акаунт се показват тук",
       "hostAddressHint": "192.168.1.100:48632",
       "connecting": "Свързване...",
       "searchingForDevices": "Търсене на устройства...",
       "noDevicesFound": "Не са намерени устройства във вашата мрежа",
-      "noDevicesHint": "Отворете Plezy на настолен компютър и използвайте същия WiFi",
+      "noDevicesHint": "Отворете Pleya на настолен компютър и използвайте същия WiFi",
       "availableDevices": "Налични устройства",
       "manualConnection": "Ръчно свързване",
       "cryptoInitFailed": "Не може да се стартира защитена връзка. Първо влезте в Plex.",
       "validationHostRequired": "Моля, въведете адрес на хоста",
       "validationHostFormat": "Форматът трябва да е IP:port (напр. 192.168.1.100:48632)",
       "connectionTimedOut": "Връзката изтече. Използвайте една и съща мрежа на двете устройства.",
-      "sessionNotFound": "Устройството не е намерено. Уверете се, че Plezy работи на хоста.",
+      "sessionNotFound": "Устройството не е намерено. Уверете се, че Pleya работи на хоста.",
       "authFailed": "Удостоверяването е неуспешно. Двете устройства трябва да използват същия Plex акаунт.",
       "failedToConnect": "Неуспешно свързване: ${error}"
     },
@@ -1316,11 +1316,11 @@
     "connected": "Свързан",
     "connectedAs": "Свързан като @${username}",
     "disconnectConfirm": "Да се прекъсне ли Trakt акаунтът?",
-    "disconnectConfirmBody": "Plezy ще спре да изпраща събития към Trakt. Можете да се свържете отново по всяко време.",
+    "disconnectConfirmBody": "Pleya ще спре да изпраща събития към Trakt. Можете да се свържете отново по всяко време.",
     "scrobble": "Скроблиране в реално време",
     "scrobbleDescription": "Изпращай събития за пускане, пауза и спиране към Trakt по време на възпроизвеждане.",
     "watchedSync": "Синхронизирай статус гледано",
-    "watchedSyncDescription": "Когато маркирате елементи като гледани в Plezy, маркирай ги и в Trakt."
+    "watchedSyncDescription": "Когато маркирате елементи като гледани в Pleya, маркирай ги и в Trakt."
   },
   "trackers": {
     "title": "Тракери",
@@ -1330,7 +1330,7 @@
     "scrobble": "Проследявай прогреса автоматично",
     "scrobbleDescription": "Обновявай списъка си, когато завършиш епизод или филм.",
     "disconnectConfirm": "Да се прекъсне ли ${service}?",
-    "disconnectConfirmBody": "Plezy ще спре да обновява ${service}. Можете да се свържете отново по всяко време.",
+    "disconnectConfirmBody": "Pleya ще спре да обновява ${service}. Можете да се свържете отново по всяко време.",
     "connectFailed": "Неуспешно свързване с ${service}. Опитайте отново.",
     "services": {
       "mal": "MyAnimeList",
@@ -1338,7 +1338,7 @@
       "simkl": "Simkl"
     },
     "deviceCode": {
-      "title": "Активиране на Plezy в ${service}",
+      "title": "Активиране на Pleya в ${service}",
       "body": "Посетете ${url} и въведете този код:",
       "openToActivate": "Отворете ${service}, за да активирате",
       "waitingForAuthorization": "Изчакване на оторизация…",

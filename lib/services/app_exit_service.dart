@@ -6,7 +6,7 @@ import '../utils/platform_detector.dart';
 
 class AppExitService {
   static const bool _tvosBuild = bool.fromEnvironment('TVOS_BUILD');
-  static const MethodChannel _channel = MethodChannel('com.plezy/app_exit');
+  static const MethodChannel _channel = MethodChannel('com.pleya/app_exit');
 
   /// Requests that the host platform closes or backgrounds the app.
   ///

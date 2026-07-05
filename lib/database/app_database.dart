@@ -50,6 +50,8 @@ enum OfflineActionType {
     Connections,
     Profiles,
     ProfileConnections,
+    MediaInteractions,
+    AffinitySnapshots,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -61,7 +63,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration {
@@ -221,8 +223,74 @@ class AppDatabase extends _$AppDatabase {
             () => m.addColumn(syncRules, syncRules.includeSpecials),
           );
         }
+        if (from < 17) {
+          appLogger.i('Creating recommendation tables (v17 migration)');
+          await _ignoreAlreadyExists('MediaInteractions table', () => m.createTable(mediaInteractions));
+          await _ignoreAlreadyExists('AffinitySnapshots table', () => m.createTable(affinitySnapshots));
+          await _ignoreAlreadyExists('MediaInteractions index', () => m.createIndex(idxInteractionsProfileTime));
+        }
       },
     );
+  }
+
+  // --- Recommendation engine (MediaInteractions / AffinitySnapshots) --------
+
+  /// Records one interaction row and prunes history beyond the retention
+  /// window (365 days / 5000 rows per profile) in the same call.
+  Future<void> insertMediaInteraction(MediaInteractionsCompanion entry, {required String profileId}) async {
+    await into(mediaInteractions).insert(entry);
+    final cutoff = DateTime.now().subtract(const Duration(days: 365)).millisecondsSinceEpoch;
+    await (delete(
+      mediaInteractions,
+    )..where((t) => t.profileId.equals(profileId) & t.occurredAt.isSmallerThanValue(cutoff))).go();
+    // Row-count cap: delete the oldest rows past 5000.
+    final excess = await customSelect(
+      'SELECT id FROM media_interactions WHERE profile_id = ? ORDER BY occurred_at DESC LIMIT -1 OFFSET 5000',
+      variables: [Variable.withString(profileId)],
+      readsFrom: {mediaInteractions},
+    ).get();
+    if (excess.isNotEmpty) {
+      final ids = excess.map((row) => row.read<int>('id')).toList();
+      await (delete(mediaInteractions)..where((t) => t.id.isIn(ids))).go();
+    }
+  }
+
+  /// All interactions for a profile, oldest first.
+  Future<List<MediaInteractionRow>> getMediaInteractions(String profileId) => (select(
+    mediaInteractions,
+  )..where((t) => t.profileId.equals(profileId))..orderBy([(t) => OrderingTerm.asc(t.occurredAt)])).get();
+
+  Future<int> countMediaInteractions(String profileId) async {
+    final count = countAll();
+    final query = selectOnly(mediaInteractions)
+      ..addColumns([count])
+      ..where(mediaInteractions.profileId.equals(profileId));
+    final row = await query.getSingle();
+    return row.read(count) ?? 0;
+  }
+
+  /// Timestamp of the most recent interaction, or 0 when there are none. Used
+  /// alongside the row count to detect a stale affinity snapshot even when the
+  /// count is pinned at the retention cap (rows rotate but count stays equal).
+  Future<int> latestInteractionAt(String profileId) async {
+    final maxAt = mediaInteractions.occurredAt.max();
+    final query = selectOnly(mediaInteractions)
+      ..addColumns([maxAt])
+      ..where(mediaInteractions.profileId.equals(profileId));
+    final row = await query.getSingle();
+    return row.read(maxAt) ?? 0;
+  }
+
+  Future<void> upsertAffinitySnapshot(AffinitySnapshotsCompanion entry) =>
+      into(affinitySnapshots).insertOnConflictUpdate(entry);
+
+  Future<AffinitySnapshotRow?> getAffinitySnapshot(String profileId) =>
+      (select(affinitySnapshots)..where((t) => t.profileId.equals(profileId))).getSingleOrNull();
+
+  /// Wipes all taste data for a profile (profile deletion or user request).
+  Future<void> deleteRecommendationDataForProfile(String profileId) async {
+    await (delete(mediaInteractions)..where((t) => t.profileId.equals(profileId))).go();
+    await (delete(affinitySnapshots)..where((t) => t.profileId.equals(profileId))).go();
   }
 
   Future<void> _ignoreAlreadyExists(String label, Future<void> Function() operation) async {
@@ -633,10 +701,16 @@ LazyDatabase _openConnection() {
         ? await getApplicationDocumentsDirectory()
         : await getApplicationSupportDirectory();
 
-    final file = File(p.join(dbFolder.path, 'plezy_downloads.db'));
+    final file = File(p.join(dbFolder.path, 'pleya_downloads.db'));
 
     if (!await file.parent.exists()) {
       await file.parent.create(recursive: true);
+    }
+
+    // Rebrand rename: pick up the pre-Pleya database in the same folder so
+    // existing installs keep their downloads/profiles after the update.
+    if (!await file.exists()) {
+      await migrateRenamedDatabaseFile(targetPath: file.path);
     }
 
     // Migrate from old location on desktop (was in Documents subfolder)
@@ -655,6 +729,30 @@ LazyDatabase _openConnection() {
       },
     );
   });
+}
+
+/// Rename the pre-rebrand `plezy_downloads.db` (plus its WAL/SHM siblings)
+/// sitting next to [targetPath] so existing users keep their data after the
+/// Plezy → Pleya rename. Best-effort: any failure is logged and swallowed —
+/// worst case drift creates a fresh DB, same as before this migration existed.
+Future<void> migrateRenamedDatabaseFile({required String targetPath}) async {
+  final dir = p.dirname(targetPath);
+  final oldBase = p.join(dir, 'plezy_downloads.db');
+  try {
+    if (!await File(oldBase).exists()) return;
+    // Siblings first so a crash mid-way never leaves a renamed main file
+    // paired with stale foreign WAL contents.
+    for (final suffix in ['-wal', '-shm', '-journal']) {
+      final sibling = File('$oldBase$suffix');
+      if (await sibling.exists()) {
+        await sibling.rename('$targetPath$suffix');
+      }
+    }
+    await File(oldBase).rename(targetPath);
+    appLogger.i('Renamed legacy DB $oldBase → $targetPath');
+  } catch (e, st) {
+    appLogger.e('Rebrand DB rename failed; a fresh DB will be created', error: e, stackTrace: st);
+  }
 }
 
 /// Move the legacy desktop DB from `Documents/` to `ApplicationSupport/`.
@@ -678,6 +776,8 @@ Future<void> migrateLegacyDesktopDatabase({
       oldFile = sourceOverride;
     } else {
       final oldFolder = await getApplicationDocumentsDirectory();
+      // The legacy Documents location predates the Pleya rebrand, so the
+      // file there only ever carries the old name.
       oldFile = File(p.join(oldFolder.path, 'plezy_downloads.db'));
     }
     if (!await oldFile.exists()) return;

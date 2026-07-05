@@ -36,7 +36,7 @@ void _logTvTextInput(String message) {
 }
 
 class _NativeTvTextInputFocusBridge {
-  static const _channel = MethodChannel('com.plezy/text_input');
+  static const _channel = MethodChannel('com.pleya/text_input');
   static final Set<Object> _focusedTokens = <Object>{};
   static bool _lastSentFocused = false;
 
@@ -82,6 +82,90 @@ class _NativeTvTextInputFocusBridge {
       _logTvTextInput('NativeFocusBridge platform send failed focused=$focused');
       // Focus reporting is a best-effort native routing hint.
     }
+  }
+}
+
+/// Result of a native Apple TV text-entry session.
+class _AppleTvTextEntryResult {
+  const _AppleTvTextEntryResult(this.text, this.submitted);
+  final String text;
+  final bool submitted;
+}
+
+/// Client for the native tvOS text-entry plugin (see NativeTextEntryPlugin.swift).
+/// Distinct from [_NativeTvTextInputFocusBridge], which deliberately bails on
+/// Apple TV — this one is the Apple TV path.
+class _AppleTvNativeTextEntry {
+  final MethodChannel _channel = const MethodChannel('com.pleya/native_text_entry');
+
+  ValueChanged<String>? onTextChanged;
+
+  _AppleTvNativeTextEntry() {
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'textChanged') {
+        onTextChanged?.call(call.arguments as String? ?? '');
+      }
+    });
+  }
+
+  Future<_AppleTvTextEntryResult> edit({
+    required String text,
+    String? hint,
+    required bool obscure,
+    required String keyboardType,
+    required String action,
+    required bool autocorrect,
+    required String capitalization,
+  }) async {
+    final result = await _channel.invokeMapMethod<String, dynamic>('edit', {
+      'text': text,
+      'hint': hint,
+      'obscure': obscure,
+      'keyboardType': keyboardType,
+      'action': action,
+      'autocorrect': autocorrect,
+      'capitalization': capitalization,
+    });
+    return _AppleTvTextEntryResult(
+      (result?['text'] as String?) ?? text,
+      (result?['submitted'] as bool?) ?? false,
+    );
+  }
+}
+
+String _keyboardTypeToNativeString(TextInputType? type) {
+  if (type == TextInputType.url) return 'url';
+  if (type == TextInputType.emailAddress) return 'email';
+  if (type == TextInputType.number) return 'number';
+  if (type == TextInputType.phone) return 'phone';
+  return 'text';
+}
+
+String _textInputActionToNativeString(TextInputAction? action) {
+  switch (action) {
+    case TextInputAction.go:
+      return 'go';
+    case TextInputAction.search:
+      return 'search';
+    case TextInputAction.send:
+      return 'send';
+    case TextInputAction.next:
+      return 'next';
+    default:
+      return 'done';
+  }
+}
+
+String _capitalizationToNativeString(TextCapitalization capitalization) {
+  switch (capitalization) {
+    case TextCapitalization.words:
+      return 'words';
+    case TextCapitalization.sentences:
+      return 'sentences';
+    case TextCapitalization.characters:
+      return 'characters';
+    case TextCapitalization.none:
+      return 'none';
   }
 }
 
@@ -714,6 +798,13 @@ class _FocusableTextInputHostState extends State<_FocusableTextInputHost> {
       'usesTvKeyboard=${widget.input._hasTvKeyboard} visible=$visible',
     );
 
+    // Apple TV opens the native system keyboard only on explicit select, never
+    // on focus. Its UITextField first-responder handoff makes this Flutter field
+    // lose and regain focus during a session, which would otherwise retrigger
+    // auto-open the moment the keyboard closes — flickering it back open and
+    // trapping the user (can't reach Test/Save). See _openAppleTvNativeEntry.
+    if (PlatformDetector.isAppleTV()) return;
+
     if (!focused) {
       _suppressTvKeyboardForCurrentFocus = false;
       if (!_tvKeyboardOpen && !_tvKeyboardOpenScheduled) {
@@ -773,6 +864,14 @@ class _FocusableTextInputHostState extends State<_FocusableTextInputHost> {
     // so only static configuration may be snapshotted here — the callbacks
     // must resolve against widget.input at invoke time.
     final input = widget.input;
+    if (PlatformDetector.isAppleTV()) {
+      unawaited(_openAppleTvNativeEntry(input));
+    } else {
+      _openFlutterTvKeyboard(input);
+    }
+  }
+
+  void _openFlutterTvKeyboard(_FocusableTextInputBase input) {
     final keyboard = showTvVirtualKeyboard(
       context: context,
       controller: input.controller,
@@ -802,20 +901,74 @@ class _FocusableTextInputHostState extends State<_FocusableTextInputHost> {
       return;
     }
     _tvKeyboardHandle = keyboard;
-    unawaited(
-      keyboard.closed.whenComplete(() {
-        _tvKeyboardHandle = null;
-        if (!mounted) return;
-        _tvKeyboardOpen = false;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          if (_installedFocusNode?.hasFocus != true) {
-            _suppressTvKeyboardAutoOpen = false;
+    unawaited(keyboard.closed.whenComplete(_handleTvKeyboardClosed));
+  }
+
+  Future<void> _openAppleTvNativeEntry(_FocusableTextInputBase input) async {
+    final entry = _AppleTvNativeTextEntry();
+    entry.onTextChanged = (text) {
+      if (!mounted) return;
+      input.controller.text = text;
+      // Resolve callbacks against widget.input at invoke time (see comment in
+      // _openTvKeyboard), so a rebuilt field still gets its onChanged.
+      widget.input.onChanged?.call(text);
+    };
+    // State-clearing: mark native focus so the gamepad service stops
+    // intercepting. The tvOS pause() PlatformException is swallowed in
+    // gamepad_service.dart.
+    unawaited(GamepadService.setNativeTextInputFocused(true));
+    var fellBack = false;
+    try {
+      final result = await entry.edit(
+        text: input.controller.text,
+        hint: _keyboardHint(input.decoration),
+        obscure: input.obscureText,
+        keyboardType: _keyboardTypeToNativeString(input.keyboardType),
+        action: _textInputActionToNativeString(input.textInputAction),
+        autocorrect: input.autocorrect,
+        capitalization: _capitalizationToNativeString(input.textCapitalization),
+      );
+      if (mounted) {
+        input.controller.text = result.text;
+        if (result.submitted) {
+          final current = widget.input;
+          if (current.onSubmitted != null) {
+            current.onSubmitted!(result.text);
+          } else {
+            current._handleTvKeyboardAction();
           }
-          _syncTvKeyboardAutoOpen();
-        });
-      }),
-    );
+        }
+      }
+    } on MissingPluginException {
+      // Tests and non-tvOS embedders don't register the channel.
+      fellBack = true;
+      _openFlutterTvKeyboard(input);
+    } on PlatformException {
+      fellBack = true;
+      _openFlutterTvKeyboard(input);
+    } finally {
+      entry.onTextChanged = null;
+      unawaited(GamepadService.setNativeTextInputFocused(false));
+      // On fallback, _openFlutterTvKeyboard now owns the lifecycle — don't
+      // tear down the just-opened dialog's bookkeeping.
+      if (!fellBack) {
+        _tvKeyboardOpen = false;
+        _handleTvKeyboardClosed();
+      }
+    }
+  }
+
+  void _handleTvKeyboardClosed() {
+    _tvKeyboardHandle = null;
+    if (!mounted) return;
+    _tvKeyboardOpen = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_installedFocusNode?.hasFocus != true) {
+        _suppressTvKeyboardAutoOpen = false;
+      }
+      _syncTvKeyboardAutoOpen();
+    });
   }
 
   void _setNativeTextInputFocused(bool focused) {

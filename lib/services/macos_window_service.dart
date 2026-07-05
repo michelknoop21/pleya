@@ -33,7 +33,7 @@ abstract class MacOSWindowDelegate {
 /// - Fullscreen enter/exit (for video controls)
 /// - Delegate registration (for FullscreenStateManager updates)
 class MacOSWindowService {
-  static const _channel = MethodChannel('com.plezy/window_utils');
+  static const _channel = MethodChannel('com.pleya/window_utils');
   static bool _initialized = false;
   static bool _delegateEnabled = false;
   static final List<MacOSWindowDelegate> _delegates = [];
