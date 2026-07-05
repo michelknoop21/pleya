@@ -314,7 +314,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       final rail = _tvBrowseRailKey.currentState;
       if (rail != null) {
         _pendingTvBrowseRailFocus = false;
-        _setTvRailRevealed(true);
         rail.requestFocus();
         if (suppressSelectUntilKeyUp) rail.suppressSelectUntilKeyUp();
         return;
@@ -331,7 +330,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       final rail = _tvBrowseRailKey.currentState;
       if (rail == null) return;
       _pendingTvBrowseRailFocus = false;
-      _setTvRailRevealed(true);
       rail.requestFocus();
       if (suppressSelectUntilKeyUp) rail.suppressSelectUntilKeyUp();
     });
@@ -501,8 +499,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   void _onTvHeroActionFocusChanged() {
     if (!PlatformDetector.isTV()) return;
     if (_tvHeroPlayFocusNode.hasFocus || _tvHeroInfoFocusNode.hasFocus) {
-      // Focus returned to the hero — collapse the rail back to its peek.
-      _setTvRailRevealed(false);
       _autoScrollTimer?.cancel();
       _stopIndicatorProgress();
     } else if (_isTabVisible && !_isAutoScrollPaused) {
@@ -1452,8 +1448,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 duration: const Duration(milliseconds: 320),
                 curve: Curves.easeOutCubic,
                 offset: Offset(0, _tvRailRevealed || railHeight <= 0 ? 0.0 : 1 - (railPeek / railHeight)),
-                child: TvBrowseRail(
-                  key: _tvBrowseRailKey,
+                // Reveal follows actual rail-subtree focus, not just the explicit
+                // navigate-down call site — so restored focus, sidebar→content, or
+                // internal traversal into the rail also reveals it.
+                child: Focus(
+                  canRequestFocus: false,
+                  skipTraversal: true,
+                  onFocusChange: (hasFocus) => _setTvRailRevealed(hasFocus),
+                  child: TvBrowseRail(
+                    key: _tvBrowseRailKey,
                 hubs: browseHubs,
                 showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
                 // Billboard is a fixed featured item (newest released) that
@@ -1470,9 +1473,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 onNavigateUp: _focusTvHeroPlay,
                 onNavigateToSidebar: _navigateToSidebar,
                 tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
-                  selectSuppressionGestureSignal: PlatformDetector.isAppleTV()
-                      ? AppleTvRemoteTouchService.instance.touchActiveListenable
-                      : null,
+                    selectSuppressionGestureSignal: PlatformDetector.isAppleTV()
+                        ? AppleTvRemoteTouchService.instance.touchActiveListenable
+                        : null,
+                  ),
                 ),
               ),
             ),
