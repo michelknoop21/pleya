@@ -99,8 +99,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // buttons never slide behind the rail — the hero simply takes whatever height
   // the rail leaves.
   static const double _tvHeroContentTopFraction = 0.075;
-  static const double _tvHeroContentBottomFraction = 0.32;
-  static const double _tvHeroRailGap = 48;
+  // How much of the browse rail peeks at the bottom of the home screen when the
+  // hero is focused (fraction of viewport height): enough for the hub label and
+  // the poster tops. Focusing the rail slides the rest up into view.
+  static const double _tvHomeRailPeekFraction = 0.16;
+  static const double _tvHeroRailGap = 32;
   static const double _tvHeroMinInfoHeight = 96;
 
   /// Data + refresh policy live in [DiscoverProvider]; this state keeps only
@@ -139,6 +142,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // Track initial load so we can focus hero when content first appears
   bool _initialLoadComplete = false;
   bool _pendingTvBrowseRailFocus = false;
+
+  // tvOS "Netflix landing": at rest the hero fills the screen and the browse
+  // rail only peeks at the bottom. Focusing the rail reveals it (slides up over
+  // the hero); focusing the hero actions hides it again.
+  bool _tvRailRevealed = false;
 
   // Hub navigation keys
   GlobalKey<HubSectionState>? _continueWatchingHubKey;
@@ -306,6 +314,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       final rail = _tvBrowseRailKey.currentState;
       if (rail != null) {
         _pendingTvBrowseRailFocus = false;
+        _setTvRailRevealed(true);
         rail.requestFocus();
         if (suppressSelectUntilKeyUp) rail.suppressSelectUntilKeyUp();
         return;
@@ -322,6 +331,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       final rail = _tvBrowseRailKey.currentState;
       if (rail == null) return;
       _pendingTvBrowseRailFocus = false;
+      _setTvRailRevealed(true);
       rail.requestFocus();
       if (suppressSelectUntilKeyUp) rail.suppressSelectUntilKeyUp();
     });
@@ -340,6 +350,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   void _applyPendingTvBrowseRailFocus() {
     if (_pendingTvBrowseRailFocus) _focusTvBrowseRailWhenReady();
+  }
+
+  /// Reveal (rail slides up over the hero) or hide (only peeks) the TV browse
+  /// rail. Driven by focus: the rail focusing reveals it, a hero action focusing
+  /// hides it.
+  void _setTvRailRevealed(bool revealed) {
+    if (!mounted || _tvRailRevealed == revealed) return;
+    setState(() => _tvRailRevealed = revealed);
   }
 
   /// Handle vertical navigation between hubs
@@ -483,6 +501,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   void _onTvHeroActionFocusChanged() {
     if (!PlatformDetector.isTV()) return;
     if (_tvHeroPlayFocusNode.hasFocus || _tvHeroInfoFocusNode.hasFocus) {
+      // Focus returned to the hero — collapse the rail back to its peek.
+      _setTvRailRevealed(false);
       _autoScrollTimer?.cancel();
       _stopIndicatorProgress();
     } else if (_isTabVisible && !_isAutoScrollPaused) {
@@ -1336,16 +1356,18 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
           );
     final spotlightTop = (size.height * _tvHeroContentTopFraction).clamp(64.0 * scale, 120.0 * scale).toDouble();
-    // Reserve the full rail height plus a gap below the hero content so the hero
-    // action buttons always sit above the "Continue watching" rail (never behind
-    // it). The rail is kept compact via the home poster scales, so this still
-    // leaves the hero its ~70%.
-    final railSafetyBottom = browseHubs.isEmpty ? 0.0 : railHeight + (_tvHeroRailGap * scale);
-    final targetBillboardBottom = size.height * _tvHeroContentBottomFraction;
+    // Netflix landing: at rest the rail only peeks at the bottom (poster tops +
+    // hub label), so the hero owns most of the screen. Focusing the rail reveals
+    // it (see [_tvRailRevealed]); the reveal is a translate, so the hero content
+    // keeps its resting position and the rail simply slides up over it.
+    final railPeek = browseHubs.isEmpty
+        ? 0.0
+        : math.min(railHeight, size.height * _tvHomeRailPeekFraction);
+    final railSafetyBottom = browseHubs.isEmpty ? 0.0 : railPeek + (_tvHeroRailGap * scale);
     final maxSpotlightBottom = (size.height - spotlightTop - (_tvHeroMinInfoHeight * scale))
         .clamp(0.0, double.infinity)
         .toDouble();
-    final spotlightBottom = math.max(targetBillboardBottom, railSafetyBottom).clamp(0.0, maxSpotlightBottom).toDouble();
+    final spotlightBottom = railSafetyBottom.clamp(0.0, maxSpotlightBottom).toDouble();
     final spotlightLeft = (24 * scale).clamp(18.0, 40.0).toDouble();
 
     return Material(
@@ -1422,8 +1444,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               left: 0,
               right: 0,
               bottom: 0,
-              child: TvBrowseRail(
-                key: _tvBrowseRailKey,
+              // At rest the rail is slid down so only [railPeek] shows (poster
+              // tops + hub label); focusing it slides the full rail up over the
+              // hero's lower edge (Netflix landing). Slide fraction is relative to
+              // the rail's own height, so no fixed height is forced on it.
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeOutCubic,
+                offset: Offset(0, _tvRailRevealed || railHeight <= 0 ? 0.0 : 1 - (railPeek / railHeight)),
+                child: TvBrowseRail(
+                  key: _tvBrowseRailKey,
                 hubs: browseHubs,
                 showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
                 // Billboard is a fixed featured item (newest released) that
@@ -1440,9 +1470,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 onNavigateUp: _focusTvHeroPlay,
                 onNavigateToSidebar: _navigateToSidebar,
                 tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
-                selectSuppressionGestureSignal: PlatformDetector.isAppleTV()
-                    ? AppleTvRemoteTouchService.instance.touchActiveListenable
-                    : null,
+                  selectSuppressionGestureSignal: PlatformDetector.isAppleTV()
+                      ? AppleTvRemoteTouchService.instance.touchActiveListenable
+                      : null,
+                ),
               ),
             ),
           Builder(
