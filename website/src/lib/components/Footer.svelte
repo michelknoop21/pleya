@@ -11,7 +11,7 @@
       <!-- Logo + name -->
       <div class="footer-brand">
         <span class="footer-logo"><Logo /></span>
-        <span>Plezy</span>
+        <span>Pleya</span>
       </div>
 
       <!-- Links -->
@@ -55,8 +55,8 @@
     font-weight: 500;
   }
 
-  .footer-logo :global(svg) {
-    width: 1.75rem;
+  .footer-logo :global(img) {
+    width: auto;
     height: 1.75rem;
   }
 

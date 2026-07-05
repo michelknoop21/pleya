@@ -19,30 +19,30 @@
 </script>
 
 <svelte:head>
-  <title>Open in Plezy</title>
-  <meta name="description" content="Open this QR code with the Plezy app." />
+  <title>Open in Pleya</title>
+  <meta name="description" content="Open this QR code with the Pleya app." />
   <meta name="robots" content="noindex, nofollow" />
   <link rel="canonical" href="https://plezy.app/scan" />
 
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="Plezy" />
-  <meta property="og:title" content="Open in Plezy" />
-  <meta property="og:description" content="Open this QR code with the Plezy app." />
+  <meta property="og:site_name" content="Pleya" />
+  <meta property="og:title" content="Open in Pleya" />
+  <meta property="og:description" content="Open this QR code with the Pleya app." />
   <meta property="og:url" content="https://plezy.app/scan" />
-  <meta property="og:image" content="https://plezy.app/og/plezy-social.png" />
+  <meta property="og:image" content="https://plezy.app/og/pleya-social.png" />
 
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Open in Plezy" />
-  <meta name="twitter:description" content="Open this QR code with the Plezy app." />
-  <meta name="twitter:image" content="https://plezy.app/og/plezy-social.png" />
+  <meta name="twitter:title" content="Open in Pleya" />
+  <meta name="twitter:description" content="Open this QR code with the Pleya app." />
+  <meta name="twitter:image" content="https://plezy.app/og/pleya-social.png" />
 </svelte:head>
 
 <div class="scan-page">
   <div class="scan-card">
     <span class="scan-logo"><Logo /></span>
 
-    <h1 class="scan-heading">Scan in Plezy</h1>
-    <p class="scan-description">To use this feature, scan this QR code with the Plezy app.</p>
+    <h1 class="scan-heading">Scan in Pleya</h1>
+    <p class="scan-description">To use this feature, scan this QR code with the Pleya app.</p>
 
     <div class="store-buttons">
       {#if platform !== "android"}
@@ -93,8 +93,8 @@
     margin-bottom: 1.5rem;
   }
 
-  .scan-logo :global(svg) {
-    width: 4rem;
+  .scan-logo :global(img) {
+    width: auto;
     height: 4rem;
   }
 

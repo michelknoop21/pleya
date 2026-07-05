@@ -35,31 +35,31 @@
   ];
 
   const phoneShots = [
-    { image: phoneHomeImage, alt: 'Plezy home screen' },
-    { image: phoneLibraryImage, alt: 'Plezy library view' },
-    { image: phoneMdImage, alt: 'Plezy media details' },
-    { image: phoneSearchImage, alt: 'Plezy search' },
+    { image: phoneHomeImage, alt: 'Pleya home screen' },
+    { image: phoneLibraryImage, alt: 'Pleya library view' },
+    { image: phoneMdImage, alt: 'Pleya media details' },
+    { image: phoneSearchImage, alt: 'Pleya search' },
   ];
 
   const tabletShots = [
-    { image: tabletHomeImage, alt: 'Plezy on tablet - home' },
-    { image: tabletLibraryImage, alt: 'Plezy on tablet - library' },
-    { image: tabletMdImage, alt: 'Plezy on tablet - media details' },
-    { image: tabletPlayerImage, alt: 'Plezy on tablet - video player' },
+    { image: tabletHomeImage, alt: 'Pleya on tablet - home' },
+    { image: tabletLibraryImage, alt: 'Pleya on tablet - library' },
+    { image: tabletMdImage, alt: 'Pleya on tablet - media details' },
+    { image: tabletPlayerImage, alt: 'Pleya on tablet - video player' },
   ];
 
   const desktopShots = [
-    { image: desktopHomeImage, alt: 'Plezy on desktop - home' },
-    { image: desktopLibraryImage, alt: 'Plezy on desktop - library' },
-    { image: desktopMdImage, alt: 'Plezy on desktop - media details' },
-    { image: desktopPlayerImage, alt: 'Plezy on desktop - video player' },
+    { image: desktopHomeImage, alt: 'Pleya on desktop - home' },
+    { image: desktopLibraryImage, alt: 'Pleya on desktop - library' },
+    { image: desktopMdImage, alt: 'Pleya on desktop - media details' },
+    { image: desktopPlayerImage, alt: 'Pleya on desktop - video player' },
   ];
 
   const tvShots = [
-    { image: tvHomeImage, alt: 'Plezy on TV - home' },
-    { image: tvLibraryImage, alt: 'Plezy on TV - library' },
-    { image: tvMdImage, alt: 'Plezy on TV - media details' },
-    { image: tvPlayerImage, alt: 'Plezy on TV - video player' },
+    { image: tvHomeImage, alt: 'Pleya on TV - home' },
+    { image: tvLibraryImage, alt: 'Pleya on TV - library' },
+    { image: tvMdImage, alt: 'Pleya on TV - media details' },
+    { image: tvPlayerImage, alt: 'Pleya on TV - video player' },
   ];
 
   const screenshots: Record<

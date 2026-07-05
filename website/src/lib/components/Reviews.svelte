@@ -78,7 +78,7 @@
       upvotes: 50,
     },
     {
-      text: "If you're having troubles with the default plex app just ditch it and switch to this. Plezy is faster, and easier to use. Worth the $5",
+      text: "If you're having troubles with the default plex app just ditch it and switch to this. Pleya is faster, and easier to use. Worth the $5",
       name: "boyknight53",
       source: "App Store",
       icon: AppleIcon,
@@ -134,7 +134,7 @@
       <p class="section-label">Reviews</p>
       <h2 class="section-heading">Loved by users</h2>
       <p class="section-description">
-        See what people are saying about their experience with Plezy.
+        See what people are saying about their experience with Pleya.
       </p>
     </ScrollReveal>
   </div>

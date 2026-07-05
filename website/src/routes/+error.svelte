@@ -4,7 +4,7 @@
 </script>
 
 <svelte:head>
-  <title>{page.status} - Plezy</title>
+  <title>{page.status} - Pleya</title>
   <meta name="robots" content="noindex" />
 </svelte:head>
 
@@ -45,8 +45,8 @@
     margin-bottom: 1.5rem;
   }
 
-  .error-logo :global(svg) {
-    width: 4rem;
+  .error-logo :global(img) {
+    width: auto;
     height: 4rem;
   }
 

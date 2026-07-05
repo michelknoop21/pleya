@@ -20,7 +20,7 @@
     <div class="hero-copy">
       <div class="brand-row fade-in" style="animation-delay: 0ms;">
         <span class="brand-logo"><Logo /></span>
-        <span class="brand-name">Plezy</span>
+        <span class="brand-name">Pleya</span>
       </div>
 
       <h1
@@ -61,7 +61,7 @@
         <div class="main-phone">
           <enhanced:img
             src={homeImage}
-            alt="Plezy home screen"
+            alt="Pleya home screen"
             class="phone-image"
             fetchpriority="high"
             sizes="(min-width: 768px) 300px, (min-width: 640px) 280px, 224px"
@@ -92,7 +92,7 @@
     user-select: none;
   }
 
-  .hero-watermark :global(svg) {
+  .hero-watermark :global(img) {
     width: 100%;
     height: auto;
   }
@@ -136,8 +136,8 @@
     margin-bottom: 1.25rem;
   }
 
-  .brand-logo :global(svg) {
-    width: 2.5rem;
+  .brand-logo :global(img) {
+    width: auto;
     height: 2.5rem;
   }
 
@@ -161,7 +161,7 @@
 
   .gradient-text {
     color: transparent;
-    background: linear-gradient(to right, var(--color-accent-dim), var(--color-accent));
+    background: linear-gradient(to right, var(--color-accent), var(--color-accent-alt));
     -webkit-background-clip: text;
     background-clip: text;
   }

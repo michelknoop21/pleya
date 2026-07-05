@@ -10,16 +10,16 @@
 
   const { data } = $props();
 
-  const title = "Plezy - A Beautiful Plex & Jellyfin Client";
-  const description = "Plezy is a beautiful client for Plex and Jellyfin, available on iOS, Android, Android TV, tvOS, Windows, macOS, and Linux. HDR, Dolby Vision, offline downloads, and more.";
+  const title = "Pleya - A Beautiful Plex & Jellyfin Client";
+  const description = "Pleya is a beautiful client for Plex and Jellyfin, available on iOS, Android, Android TV, tvOS, Windows, macOS, and Linux. HDR, Dolby Vision, offline downloads, and more.";
   const url = "https://plezy.app/";
-  const image = "https://plezy.app/og/plezy-social.png";
+  const image = "https://plezy.app/og/pleya-social.png";
 
   const softwareAppSchema = $derived.by(() => {
     const schema: Record<string, unknown> = {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      "name": "Plezy",
+      "name": "Pleya",
       "description": description,
       "url": "https://plezy.app",
       "applicationCategory": "MultimediaApplication",
@@ -80,7 +80,7 @@
   <link rel="canonical" href={url} />
 
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="Plezy" />
+  <meta property="og:site_name" content="Pleya" />
   <meta property="og:title" content={title} />
   <meta property="og:description" content={description} />
   <meta property="og:url" content={url} />

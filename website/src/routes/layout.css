@@ -3,9 +3,10 @@
   --color-surface: #15171c;
   --color-surface-hover: #1a1c22;
   --color-border: #2a2d35;
-  --color-accent: #ff6b45;
-  --color-accent-glow: #ff6b4533;
-  --color-accent-dim: #ab543a;
+  --color-accent: #E5140F;
+  --color-accent-glow: #E5140F33;
+  --color-accent-dim: #a10d0a;
+  --color-accent-alt: #FFB020;
   --color-text: #ededed;
   --color-text-muted: #9ca3af;
 
