@@ -172,43 +172,58 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
     final theme = Theme.of(context);
     final muted = theme.colorScheme.onSurface.withValues(alpha: 0.7);
     final quotaText = _quotaText();
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (quotaText != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Text(quotaText, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
-          ),
-        if (_isTv) ..._buildSeasonList(theme),
-        if (provider.canRequest4k)
-          FocusableListTile(
-            leading: const AppIcon(Symbols.high_quality_rounded, fill: 1),
-            title: Text(t.seerr.fourK),
-            trailing: Switch(value: _is4k, onChanged: (v) => setState(() => _is4k = v)),
-            onTap: () => setState(() => _is4k = !_is4k),
-          ),
-        if (provider.isAdmin && _servers.isNotEmpty) ..._buildAdvanced(theme),
-        if (_error != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
-          ),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: FocusableButton(
-            autofocus: true,
-            useBackgroundFocus: true,
-            onPressed: _canSubmit ? _submit : null,
-            child: FilledButton.icon(
-              onPressed: _canSubmit ? _submit : null,
-              icon: _submitting ? const LoadingIndicatorBox() : const AppIcon(Symbols.download_rounded, fill: 1),
-              label: Text(_isTv ? t.seerr.request : t.seerr.requestMovie),
+    // Cap the sheet so a long season list (20+ seasons) scrolls inside the sheet
+    // instead of pushing the Request button off-screen. The button and error
+    // stay pinned below the scroll area so they're always reachable.
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.72;
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              children: [
+                if (quotaText != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: Text(quotaText, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
+                  ),
+                if (_isTv) ..._buildSeasonList(theme),
+                if (provider.canRequest4k)
+                  FocusableListTile(
+                    leading: const AppIcon(Symbols.high_quality_rounded, fill: 1),
+                    title: Text(t.seerr.fourK),
+                    trailing: Switch(value: _is4k, onChanged: (v) => setState(() => _is4k = v)),
+                    onTap: () => setState(() => _is4k = !_is4k),
+                  ),
+                if (provider.isAdmin && _servers.isNotEmpty) ..._buildAdvanced(theme),
+              ],
             ),
           ),
-        ),
-      ],
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: FocusableButton(
+              autofocus: true,
+              useBackgroundFocus: true,
+              onPressed: _canSubmit ? _submit : null,
+              child: FilledButton.icon(
+                onPressed: _canSubmit ? _submit : null,
+                icon: _submitting ? const LoadingIndicatorBox() : const AppIcon(Symbols.download_rounded, fill: 1),
+                label: Text(_isTv ? t.seerr.request : t.seerr.requestMovie),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
