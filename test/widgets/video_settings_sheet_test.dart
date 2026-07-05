@@ -25,6 +25,7 @@ const _testTokens = MonoTokens(
   text: Colors.white,
   textMuted: Color(0xFFAAAAAA),
   accent: Color(0xFFF42B1F),
+  accentAlt: Color(0xFFFFB020),
   splashFactory: NoSplash.splashFactory,
 );
 

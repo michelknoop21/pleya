@@ -52,6 +52,9 @@ final class _LibraryItemRow extends _LibraryNavRow {
 class NavigationRailItem extends StatelessWidget {
   final IconData icon;
   final IconData? selectedIcon;
+
+  /// Solid mockup nav glyph; falls back to [icon]/[selectedIcon] when null.
+  final String? svgAsset;
   final Widget label;
   final bool isSelected;
   final bool isFocused;
@@ -72,6 +75,7 @@ class NavigationRailItem extends StatelessWidget {
     super.key,
     required this.icon,
     this.selectedIcon,
+    this.svgAsset,
     required this.label,
     required this.isSelected,
     required this.isFocused,
@@ -145,9 +149,9 @@ class NavigationRailItem extends StatelessWidget {
                                     boxShadow: [BoxShadow(color: t.accent.withValues(alpha: 0.5), blurRadius: 14)],
                                   )
                                 : const BoxDecoration(),
-                            child: AppIcon(
-                              isSelected && selectedIcon != null ? selectedIcon! : icon,
-                              fill: 1,
+                            child: NavGlyph(
+                              svgAsset: svgAsset,
+                              icon: isSelected && selectedIcon != null ? selectedIcon! : icon,
                               size: iconSize,
                               color: isSelected ? t.text : t.textMuted,
                             ),
@@ -768,6 +772,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                     _buildNavItem(
                                       icon: Symbols.home_rounded,
                                       selectedIcon: Symbols.home_rounded,
+                                      svgAsset: NavGlyphs.home,
                                       label: Translations.of(context).common.home,
                                       isSelected: widget.selectedTab == NavigationTabId.discover,
                                       isFocused: _focusTracker.isFocused(_kHome),
@@ -789,6 +794,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                       _buildNavItem(
                                         icon: Symbols.live_tv_rounded,
                                         selectedIcon: Symbols.live_tv_rounded,
+                                        svgAsset: NavGlyphs.liveTv,
                                         label: Translations.of(context).navigation.liveTv,
                                         isSelected: widget.selectedTab == NavigationTabId.liveTv,
                                         isFocused: _focusTracker.isFocused('liveTv'),
@@ -801,6 +807,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                     _buildNavItem(
                                       icon: Symbols.search_rounded,
                                       selectedIcon: Symbols.search_rounded,
+                                      svgAsset: NavGlyphs.search,
                                       label: Translations.of(context).common.search,
                                       isSelected: widget.selectedTab == NavigationTabId.search,
                                       isFocused: _focusTracker.isFocused(_kSearch),
@@ -814,6 +821,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                       _buildNavItem(
                                         icon: Symbols.playlist_add_rounded,
                                         selectedIcon: Symbols.playlist_add_rounded,
+                                        svgAsset: NavGlyphs.requests,
                                         label: Translations.of(context).seerr.title,
                                         isSelected: widget.selectedTab == NavigationTabId.requests,
                                         isFocused: _focusTracker.isFocused(_kRequests),
@@ -830,6 +838,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                     _buildNavItem(
                                       icon: Symbols.download_rounded,
                                       selectedIcon: Symbols.download_rounded,
+                                      svgAsset: NavGlyphs.downloads,
                                       label: Translations.of(context).navigation.downloads,
                                       isSelected: widget.selectedTab == NavigationTabId.downloads,
                                       isFocused: _focusTracker.isFocused(_kDownloads),
@@ -842,6 +851,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                   _buildNavItem(
                                     icon: Symbols.settings_rounded,
                                     selectedIcon: Symbols.settings_rounded,
+                                    svgAsset: NavGlyphs.settings,
                                     label: Translations.of(context).common.settings,
                                     isSelected: widget.selectedTab == NavigationTabId.settings,
                                     isFocused: _focusTracker.isFocused(_kSettings),
@@ -927,6 +937,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
   Widget _buildNavItem({
     required IconData icon,
     required IconData selectedIcon,
+    String? svgAsset,
     required String label,
     required bool isSelected,
     required bool isFocused,
@@ -941,6 +952,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     return NavigationRailItem(
       icon: icon,
       selectedIcon: selectedIcon,
+      svgAsset: svgAsset,
       label: Text(
         label,
         style: TextStyle(

@@ -11,9 +11,10 @@ import '../utils/platform_detector.dart';
 /// selected and unselected icons stay vertically aligned.
 class _TabIcon extends StatelessWidget {
   final IconData icon;
+  final String? svgAsset;
   final bool selected;
 
-  const _TabIcon({required this.icon, required this.selected});
+  const _TabIcon({required this.icon, this.svgAsset, required this.selected});
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +33,7 @@ class _TabIcon extends StatelessWidget {
                 )
               : null,
         ),
-        AppIcon(icon, fill: 1),
+        NavGlyph(svgAsset: svgAsset, icon: icon, size: 24),
       ],
     );
   }
@@ -46,14 +47,23 @@ class NavigationTab {
   final NavigationTabId id;
   final bool onlineOnly;
   final IconData icon;
+
+  /// Solid mockup nav glyph; falls back to [icon] when null.
+  final String? svgAsset;
   final String Function() getLabel;
 
-  const NavigationTab({required this.id, required this.onlineOnly, required this.icon, required this.getLabel});
+  const NavigationTab({
+    required this.id,
+    required this.onlineOnly,
+    required this.icon,
+    this.svgAsset,
+    required this.getLabel,
+  });
 
   NavigationDestination toDestination() {
     return NavigationDestination(
-      icon: _TabIcon(icon: icon, selected: false),
-      selectedIcon: _TabIcon(icon: icon, selected: true),
+      icon: _TabIcon(icon: icon, svgAsset: svgAsset, selected: false),
+      selectedIcon: _TabIcon(icon: icon, svgAsset: svgAsset, selected: true),
       label: getLabel(),
     );
   }
@@ -110,33 +120,66 @@ String _getRequestsLabel() => t.seerr.title;
 String _getDownloadsLabel() => t.navigation.downloads;
 String _getSettingsLabel() => t.common.settings;
 
+/// Solid nav glyphs from the sidebar-v2 mockup.
+class NavGlyphs {
+  static const home = 'assets/icons/nav/home.svg';
+  static const library = 'assets/icons/nav/library.svg';
+  static const liveTv = 'assets/icons/nav/live_tv.svg';
+  static const search = 'assets/icons/nav/search.svg';
+  static const requests = 'assets/icons/nav/requests.svg';
+  static const downloads = 'assets/icons/nav/downloads.svg';
+  static const settings = 'assets/icons/nav/settings.svg';
+}
+
 /// All navigation tabs in display order
 const allNavigationTabs = [
-  NavigationTab(id: NavigationTabId.discover, onlineOnly: true, icon: Symbols.home_rounded, getLabel: _getHomeLabel),
+  NavigationTab(
+    id: NavigationTabId.discover,
+    onlineOnly: true,
+    icon: Symbols.home_rounded,
+    svgAsset: NavGlyphs.home,
+    getLabel: _getHomeLabel,
+  ),
   NavigationTab(
     id: NavigationTabId.libraries,
     onlineOnly: true,
     icon: Symbols.video_library_rounded,
+    svgAsset: NavGlyphs.library,
     getLabel: _getLibrariesLabel,
   ),
-  NavigationTab(id: NavigationTabId.liveTv, onlineOnly: true, icon: Symbols.live_tv_rounded, getLabel: _getLiveTvLabel),
-  NavigationTab(id: NavigationTabId.search, onlineOnly: true, icon: Symbols.search_rounded, getLabel: _getSearchLabel),
+  NavigationTab(
+    id: NavigationTabId.liveTv,
+    onlineOnly: true,
+    icon: Symbols.live_tv_rounded,
+    svgAsset: NavGlyphs.liveTv,
+    getLabel: _getLiveTvLabel,
+  ),
+  NavigationTab(
+    id: NavigationTabId.search,
+    onlineOnly: true,
+    icon: Symbols.search_rounded,
+    svgAsset: NavGlyphs.search,
+    getLabel: _getSearchLabel,
+  ),
   NavigationTab(
     id: NavigationTabId.requests,
     onlineOnly: true,
     icon: Symbols.playlist_add_rounded,
+    svgAsset: NavGlyphs.requests,
     getLabel: _getRequestsLabel,
   ),
   NavigationTab(
     id: NavigationTabId.downloads,
     onlineOnly: false,
     icon: Symbols.download_rounded,
+    svgAsset: NavGlyphs.downloads,
     getLabel: _getDownloadsLabel,
   ),
   NavigationTab(
     id: NavigationTabId.settings,
     onlineOnly: false,
     icon: Symbols.settings_rounded,
+    svgAsset: NavGlyphs.settings,
     getLabel: _getSettingsLabel,
   ),
 ];

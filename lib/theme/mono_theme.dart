@@ -10,6 +10,10 @@ const Color kAccent = Color(0xFFE5140F);
 /// accent for small highlights that sit next to [kAccent].
 const Color kAccentAlt = Color(0xFFFFB020);
 
+/// Success/available green, tuned to sit calmly on the dark theme (not the raw
+/// Material green). Used for Seerr "available"/"partially available" states.
+const Color kSuccess = Color(0xFF3DD68C);
+
 /// The logo's P gradient (red → amber, top-left to bottom-right). Used for
 /// brand moments: wordmark, badges, progress fills, splash.
 const Gradient kBrandGradient = LinearGradient(
@@ -169,7 +173,11 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
       indicatorColor: Colors.transparent,
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         final active = states.contains(WidgetState.selected);
-        return TextStyle(color: active ? c.text : c.text.withValues(alpha: 0.6), fontSize: 11);
+        return TextStyle(
+          color: active ? c.text : c.textMuted,
+          fontSize: 11,
+          fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+        );
       }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         final active = states.contains(WidgetState.selected);

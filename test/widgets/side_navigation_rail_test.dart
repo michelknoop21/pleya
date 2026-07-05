@@ -37,6 +37,7 @@ const _testTokens = MonoTokens(
   text: Colors.white,
   textMuted: Colors.white70,
   accent: Color(0xFFF42B1F),
+  accentAlt: Color(0xFFFFB020),
   splashFactory: NoSplash.splashFactory,
 );
 
@@ -66,12 +67,11 @@ BoxDecoration? _railItemDecoration(WidgetTester tester, Finder item) {
       as BoxDecoration?;
 }
 
-AnimatedOpacity _railSurfaceOpacity(WidgetTester tester) {
-  return tester
-      .widgetList<AnimatedOpacity>(
-        find.descendant(of: find.byType(SideNavigationRail), matching: find.byType(AnimatedOpacity)),
-      )
-      .singleWhere((widget) => widget.child is ColoredBox);
+/// The rail's surface is now a plain [ColoredBox] (non-TV, opaque) or a
+/// gradient scrim (TV, no solid panel), so "surface opacity" is expressed as
+/// presence/absence of the opaque surface fill rather than an animated opacity.
+bool _hasOpaqueSurface(WidgetTester tester) {
+  return find.byWidgetPredicate((w) => w is ColoredBox && w.color == _testTokens.surface).evaluate().isNotEmpty;
 }
 
 Future<void> _pumpBasicRail(
@@ -187,7 +187,7 @@ void main() {
     final rail = find.descendant(of: find.byType(SideNavigationRail), matching: find.byType(AnimatedContainer)).first;
     expect(tester.getSize(rail).width, SideNavigationRailState.tvCollapsedWidth);
 
-    final firstIconCenter = tester.getCenter(find.byType(AppIcon).first).dx;
+    final firstIconCenter = tester.getCenter(find.byType(NavGlyph).first).dx;
     expect(firstIconCenter - tester.getTopLeft(rail).dx, closeTo(SideNavigationRailState.tvCollapsedWidth / 2, 0.1));
 
     final selectedItem = find.byType(NavigationRailItem).first;
@@ -196,7 +196,7 @@ void main() {
     );
     expect((selectedItemContainer.decoration as BoxDecoration?)?.color, isNull);
 
-    expect(_railSurfaceOpacity(tester).opacity, 0.0);
+    expect(_hasOpaqueSurface(tester), isFalse);
   });
 
   testWidgets('closed non-TV rail keeps an opaque surface', (tester) async {
@@ -204,7 +204,7 @@ void main() {
 
     final rail = find.descendant(of: find.byType(SideNavigationRail), matching: find.byType(AnimatedContainer)).first;
     expect(tester.getSize(rail).width, SideNavigationRailState.collapsedWidth);
-    expect(_railSurfaceOpacity(tester).opacity, 1.0);
+    expect(_hasOpaqueSurface(tester), isTrue);
   });
 
   testWidgets('expanded TV rail keeps a transparent surface', (tester) async {
@@ -252,14 +252,14 @@ void main() {
     final rail = find.descendant(of: find.byType(SideNavigationRail), matching: find.byType(AnimatedContainer)).first;
     expect(tester.getSize(rail).width, SideNavigationRailState.expandedWidth);
 
-    expect(_railSurfaceOpacity(tester).opacity, 0.0);
+    expect(_hasOpaqueSurface(tester), isFalse);
   });
 
   testWidgets('expanded rail keeps selected background outside sidebar keyboard focus', (tester) async {
     await _pumpBasicRail(tester, alwaysExpanded: true);
 
     final selectedItem = find.byType(NavigationRailItem).first;
-    expect(_railItemDecoration(tester, selectedItem)?.color, _testTokens.text.withValues(alpha: 0.1));
+    expect(_railItemDecoration(tester, selectedItem)?.color, _testTokens.text.withValues(alpha: 0.06));
   });
 
   testWidgets('D-pad sidebar focus hides selected item background after focus moves', (tester) async {
