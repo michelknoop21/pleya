@@ -92,7 +92,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // Home rows are a touch shorter than the shared compact scale so the billboard
   // hero gets more screen height (Netflix-style: big hero, one row peeking).
   // ponytail: single knob — lower for an even taller hero, raise to restore.
-  static const double _tvHomeRailTallPosterScale = 0.72;
+  // Netflix-style home: the hero billboard owns ~70% of the viewport and the
+  // "Continue watching" rail ~30%. Both poster scales are sized so the tallest
+  // hub fits within [_tvHomeRailMaxHeightFraction]. Continue Watching defaults
+  // to wide episode thumbnails, so the wide scale matters as much as the tall
+  // one; the discover layout also hard-clamps the rail's reserved space to that
+  // fraction as a safety net.
+  static const double _tvHomeRailTallPosterScale = 0.50;
+  static const double _tvHomeRailWidePosterScale = 0.74;
+  static const double _tvHomeRailMaxHeightFraction = 0.30;
   static const double _tvHeroContentTopFraction = 0.075;
   static const double _tvHeroContentBottomFraction = 0.32;
   static const double _tvHeroRailGap = 28;
@@ -1329,9 +1337,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             episodePosterMode: svc.read(SettingsService.episodePosterMode),
             fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
             tallPosterScale: _tvHomeRailTallPosterScale,
+            widePosterScale: _tvHomeRailWidePosterScale,
           );
     final spotlightTop = (size.height * _tvHeroContentTopFraction).clamp(64.0 * scale, 120.0 * scale).toDouble();
-    final railSafetyBottom = browseHubs.isEmpty ? 0.0 : railHeight + (_tvHeroRailGap * scale);
+    // Netflix-style 70/30: the "Continue watching" rail may reserve at most 30%
+    // of the viewport, so the hero billboard always keeps ≥70%. The rail's own
+    // poster scale (_tvHomeRailTallPosterScale) is tuned to physically fit here.
+    final railSafetyBottom = browseHubs.isEmpty
+        ? 0.0
+        : math.min(railHeight + (_tvHeroRailGap * scale), size.height * _tvHomeRailMaxHeightFraction);
     final targetBillboardBottom = size.height * _tvHeroContentBottomFraction;
     final maxSpotlightBottom = (size.height - spotlightTop - (_tvHeroMinInfoHeight * scale))
         .clamp(0.0, double.infinity)
@@ -1431,6 +1445,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 onNavigateUp: _focusTvHeroPlay,
                 onNavigateToSidebar: _navigateToSidebar,
                 tallPosterScale: _tvHomeRailTallPosterScale,
+                widePosterScale: _tvHomeRailWidePosterScale,
                 selectSuppressionGestureSignal: PlatformDetector.isAppleTV()
                     ? AppleTvRemoteTouchService.instance.touchActiveListenable
                     : null,
