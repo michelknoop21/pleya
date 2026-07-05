@@ -39,13 +39,26 @@ class _Wordmark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The actual logo lockup (red-amber P + white "leya"), cropped from the
-    // brand artwork with transparency so it sits on the dark chrome.
-    return Image.asset(
-      'assets/branding/pleya_wordmark.png',
-      height: 26,
-      fit: BoxFit.contain,
-      filterQuality: FilterQuality.medium,
+    // Thick-P mark + PLEYA wordmark, matching the sidebar/mobile brand lockup,
+    // sitting on the dark nav chrome.
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(7),
+          child: Image.asset(
+            'assets/branding/pleya_logo.png',
+            width: 26,
+            height: 26,
+            filterQuality: FilterQuality.medium,
+          ),
+        ),
+        const SizedBox(width: 9),
+        const Text(
+          'PLEYA',
+          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: .w800, letterSpacing: 3.4),
+        ),
+      ],
     );
   }
 }
