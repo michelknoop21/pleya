@@ -1,17 +1,19 @@
 <script lang="ts">
   import ScrollReveal from './ScrollReveal.svelte';
-  import discoverNormal from '$lib/assets/screenshots/discover-normal.png';
-  import discoverSeverance from '$lib/assets/screenshots/discover-severance.png';
-  import discoverPrada from '$lib/assets/screenshots/discover-prada.png';
-  import detailGot from '$lib/assets/screenshots/detail-got.png';
-  import episodesGot from '$lib/assets/screenshots/episodes-got.png';
+  import homeHero from '$lib/assets/screenshots/home-hero-motu.webp';
+  import homeContinue from '$lib/assets/screenshots/home-continue.webp';
+  import detailBosch from '$lib/assets/screenshots/detail-bosch.webp';
+  import episodesBosch from '$lib/assets/screenshots/episodes-bosch.webp';
+  import detailThor from '$lib/assets/screenshots/detail-thor.webp';
+  import discoverRequests from '$lib/assets/screenshots/discover-requests.webp';
 
   const shots = [
-    { src: discoverSeverance, alt: 'Pleya home screen with a cinematic featured hero' },
-    { src: discoverNormal, alt: 'Continue watching with resume progress on the Pleya home screen' },
-    { src: detailGot, alt: 'Pleya show detail screen with ratings, cast and episodes' },
-    { src: discoverPrada, alt: 'Featured title billboard on the Pleya home screen' },
-    { src: episodesGot, alt: 'Season and episode browser in Pleya' },
+    { src: homeHero, alt: 'Pleya home screen with a cinematic featured hero' },
+    { src: homeContinue, alt: 'Continue watching and personalized rows on the Pleya home screen' },
+    { src: detailBosch, alt: 'Pleya show detail screen with ratings, cast and episodes' },
+    { src: episodesBosch, alt: 'Season and episode browser in Pleya' },
+    { src: detailThor, alt: 'Pleya movie detail screen with ratings and playback options' },
+    { src: discoverRequests, alt: 'Discover and request new titles from within Pleya' },
   ];
 </script>
 
@@ -31,7 +33,7 @@
       {#each shots as shot, i (shot.src)}
         <ScrollReveal delay={i * 70} class="phone-reveal">
           <div class="phone" role="listitem" class:raised={i % 2 === 1}>
-            <img src={shot.src} alt={shot.alt} loading="lazy" width="828" height="1799" />
+            <img src={shot.src} alt={shot.alt} loading="lazy" width="828" height="1800" />
           </div>
         </ScrollReveal>
       {/each}
