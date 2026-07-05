@@ -3,7 +3,40 @@ import 'package:plezy/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../i18n/strings.g.dart';
+import '../theme/mono_theme.dart';
 import '../utils/platform_detector.dart';
+
+/// Bottom-nav icon with a red→amber brand dot above the active tab,
+/// mirroring the navigation mockup. The dot slot is always reserved so
+/// selected and unselected icons stay vertically aligned.
+class _TabIcon extends StatelessWidget {
+  final IconData icon;
+  final bool selected;
+
+  const _TabIcon({required this.icon, required this.selected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: .min,
+      children: [
+        Container(
+          width: 5,
+          height: 5,
+          margin: const EdgeInsets.only(bottom: 3),
+          decoration: selected
+              ? BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(colors: [kAccent, kAccentAlt]),
+                  boxShadow: [BoxShadow(color: kAccent.withValues(alpha: 0.9), blurRadius: 8)],
+                )
+              : null,
+        ),
+        AppIcon(icon, fill: 1),
+      ],
+    );
+  }
+}
 
 /// Navigation tab identifiers
 enum NavigationTabId { discover, libraries, liveTv, search, downloads, settings }
@@ -18,7 +51,11 @@ class NavigationTab {
   const NavigationTab({required this.id, required this.onlineOnly, required this.icon, required this.getLabel});
 
   NavigationDestination toDestination() {
-    return NavigationDestination(icon: AppIcon(icon, fill: 1), selectedIcon: AppIcon(icon, fill: 1), label: getLabel());
+    return NavigationDestination(
+      icon: _TabIcon(icon: icon, selected: false),
+      selectedIcon: _TabIcon(icon: icon, selected: true),
+      label: getLabel(),
+    );
   }
 
   /// Get the index for a tab ID in the visible tabs list

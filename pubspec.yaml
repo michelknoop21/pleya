@@ -137,7 +137,6 @@ flutter:
   assets:
     - assets/plezy.png
     - assets/branding/pleya_logo.png
-    - assets/branding/pleya_wordmark.png
     - assets/plex_chevron.svg
     - assets/jellyfin_icon.svg
     - assets/trakt_circlemark.svg

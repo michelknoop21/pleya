@@ -231,15 +231,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         child: Column(
                           mainAxisAlignment: .center,
                           crossAxisAlignment: .center,
-                          children: [
-                            Image.asset('assets/plezy.png', width: 120, height: 120),
-                            const SizedBox(height: 24),
-                            Text(
-                              t.app.title,
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: .bold),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                          children: [_buildBrandHeader(context)],
                         ),
                       ),
                       const SizedBox(width: 48),
@@ -261,14 +253,8 @@ class _AuthScreenState extends State<AuthScreen> {
                       mainAxisSize: .min,
                       crossAxisAlignment: .stretch,
                       children: [
-                        Image.asset('assets/plezy.png', width: 120, height: 120),
-                        const SizedBox(height: 24),
-                        Text(
-                          t.app.title,
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: .bold),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 48),
+                        _buildBrandHeader(context),
+                        const SizedBox(height: 40),
                         _buildAuthBody(),
                       ],
                     ),
@@ -300,6 +286,40 @@ class _AuthScreenState extends State<AuthScreen> {
       onTokenReceived: _connectToAllServersAndNavigate,
       autoStartQrOnTV: false,
       initialButtonsBuilder: _buildInitialButtons,
+    );
+  }
+
+  /// Brand block per the app-intro mockup: logo mark with red glow, the
+  /// PLEYA wordmark and the tagline.
+  Widget _buildBrandHeader(BuildContext context) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    return Column(
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: const [
+              BoxShadow(color: Color(0xB3E5140F), blurRadius: 40, offset: Offset(0, 16), spreadRadius: -16),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Image.asset('assets/branding/pleya_logo.png', width: 96, height: 96),
+          ),
+        ),
+        const SizedBox(height: 22),
+        Text(
+          'PLEYA',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: textColor, fontSize: 24, fontWeight: .w800, letterSpacing: 9.6),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Your media. Your way.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, letterSpacing: 1, color: textColor.withValues(alpha: 0.6)),
+        ),
+      ],
     );
   }
 

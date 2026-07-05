@@ -916,11 +916,29 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
+              // Phone/tablet (bottom nav): brand mark + wordmark per the
+              // navigation mockup. Desktop keeps the plain title — the
+              // sidebar already carries the brand there.
               if (!PlatformDetector.isTV())
-                Text(
-                  t.discover.title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(color: foregroundColor, fontWeight: .bold),
-                ),
+                if (PlatformDetector.shouldUseSideNavigation(context))
+                  Text(
+                    t.discover.title,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(color: foregroundColor, fontWeight: .bold),
+                  )
+                else
+                  Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset('assets/branding/pleya_logo.png', width: 28, height: 28),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'PLEYA',
+                        style: TextStyle(color: foregroundColor, fontSize: 14, fontWeight: .w800, letterSpacing: 3.6),
+                      ),
+                    ],
+                  ),
               const Spacer(),
               Consumer2<WatchTogetherProvider, CompanionRemoteProvider>(
                 builder: (context, watchTogether, companionRemote, _) {
@@ -1025,8 +1043,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       // Server Tasks — Plex-only (`/activities` API has no
                       // Jellyfin equivalent), hide the button entirely on
                       // Jellyfin-only profiles so the chrome doesn't show
-                      // a permanently empty popover.
+                      // a permanently empty popover. Excluded on TV: the panel
+                      // is a pointer/hover popover that can't be focused with
+                      // the remote, so it read as a dead button on Apple TV
+                      // (isDesktop is true there because isMobile excludes TV).
                       if (PlatformDetector.isDesktop(context) &&
+                          !PlatformDetector.isTV() &&
                           context.select<MultiServerProvider, bool>((p) => p.hasOnlinePlexServers))
                         FocusableAction(
                           onPressed: () => _serverActivitiesButtonKey.currentState?.togglePanel(),

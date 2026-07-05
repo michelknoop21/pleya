@@ -119,7 +119,9 @@ class NavigationRailItem extends StatelessWidget {
                   color: () {
                     if (isCollapsed) return isFocused ? t.text.withValues(alpha: 0.12) : null;
                     if (isFocused) return t.accent.withValues(alpha: showSelectedBackground ? 0.18 : 0.12);
-                    if (showSelectedBackground) return t.accent.withValues(alpha: 0.12);
+                    // Netflix-style active row: subtle neutral wash, the
+                    // red→amber bar carries the accent.
+                    if (showSelectedBackground) return t.text.withValues(alpha: 0.06);
                     return null;
                   }(),
                   borderRadius: borderRadius,
@@ -146,7 +148,7 @@ class NavigationRailItem extends StatelessWidget {
                               isSelected && selectedIcon != null ? selectedIcon! : icon,
                               fill: 1,
                               size: iconSize,
-                              color: isSelected ? t.accent : t.textMuted,
+                              color: isSelected ? t.text : t.textMuted,
                             ),
                           ),
                           const SizedBox(width: 11),
@@ -729,6 +731,11 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                         child: Column(
                           children: [
                             SizedBox(height: _getTopPadding(context)),
+                            _buildBrandHeader(
+                              isCollapsed: isCollapsed,
+                              horizontalPadding: horizontalPadding,
+                              itemHorizontalPadding: itemHorizontalPadding,
+                            ),
                             Expanded(
                               child: ListView(
                                 padding: .symmetric(horizontal: horizontalPadding),
@@ -828,6 +835,59 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
           ),
         );
       },
+    );
+  }
+
+  /// Brand row per the navigation mockup: logo mark with the PLEYA wordmark
+  /// that fades in when the rail expands.
+  Widget _buildBrandHeader({
+    required bool isCollapsed,
+    required double horizontalPadding,
+    required double itemHorizontalPadding,
+  }) {
+    final t = tokens(context);
+    const logoSize = 36.0;
+    // Align the logo's center with the 22px nav icon column below it.
+    final leftPadding = (horizontalPadding + itemHorizontalPadding - (logoSize - _defaultIconSize) / 2).clamp(
+      0.0,
+      double.infinity,
+    );
+    return Padding(
+      padding: EdgeInsets.fromLTRB(leftPadding, 4, 0, 18),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: UnconstrainedBox(
+          alignment: .centerLeft,
+          constrainedAxis: Axis.vertical,
+          clipBehavior: Clip.hardEdge,
+          child: SizedBox(
+            width: expandedWidth - 24,
+            child: Row(
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(9),
+                    boxShadow: [BoxShadow(color: t.accent.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 4), spreadRadius: -6)],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(9),
+                    child: Image.asset('assets/branding/pleya_logo.png', width: logoSize, height: logoSize),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                AnimatedOpacity(
+                  opacity: isCollapsed ? 0.0 : 1.0,
+                  duration: t.fast,
+                  child: Text(
+                    'PLEYA',
+                    style: TextStyle(fontSize: 16, fontWeight: .w800, letterSpacing: 4.8, color: t.text),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -969,7 +1029,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                 decoration: BoxDecoration(
                   color: () {
                     if (isCollapsed) return isLibrariesFocused ? t.text.withValues(alpha: 0.08) : null;
-                    if (showLibrariesSelectedBackground) return t.accent.withValues(alpha: 0.12);
+                    if (showLibrariesSelectedBackground) return t.text.withValues(alpha: 0.06);
                     if (isLibrariesFocused) return t.text.withValues(alpha: 0.08);
                     return null;
                   }(),
@@ -990,7 +1050,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                             Symbols.video_library_rounded,
                             fill: 1,
                             size: 22,
-                            color: widget.selectedTab == NavigationTabId.libraries ? t.accent : t.textMuted,
+                            color: widget.selectedTab == NavigationTabId.libraries ? t.text : t.textMuted,
                           ),
                           const SizedBox(width: 11),
                           Expanded(
@@ -1004,7 +1064,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                   fontWeight: widget.selectedTab == NavigationTabId.libraries
                                       ? FontWeight.w600
                                       : FontWeight.w400,
-                                  color: widget.selectedTab == NavigationTabId.libraries ? t.accent : t.textMuted,
+                                  color: widget.selectedTab == NavigationTabId.libraries ? t.text : t.textMuted,
                                 ),
                               ),
                             ),

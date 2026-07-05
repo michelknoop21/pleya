@@ -133,13 +133,20 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
       backgroundColor: c.bg,
       elevation: 0,
       indicatorColor: Colors.transparent,
+      // Netflix-style active tab: icon and label go full-contrast with a red
+      // glow; the red→amber dot above the icon carries the brand accent.
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         final active = states.contains(WidgetState.selected);
-        return TextStyle(color: active ? kAccent : c.textMuted, fontSize: 11, fontWeight: active ? .w600 : .w400);
+        return TextStyle(color: active ? c.text : c.textMuted, fontSize: 11, fontWeight: active ? .w600 : .w400);
       }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         final active = states.contains(WidgetState.selected);
-        return IconThemeData(opacity: active ? 1 : 0.6, size: 22, color: active ? kAccent : c.text);
+        return IconThemeData(
+          opacity: active ? 1 : 0.6,
+          size: 22,
+          color: c.text,
+          shadows: active ? [Shadow(color: kAccent.withValues(alpha: 0.55), blurRadius: 8)] : null,
+        );
       }),
     ),
     // Floating snackbars auto-offset above the Scaffold's bottom NavigationBar,
