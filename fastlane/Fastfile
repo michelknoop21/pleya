@@ -48,29 +48,34 @@ def auth_xcargs
     "-authenticationKeyIssuerID #{ENV.fetch('ASC_ISSUER_ID')}"
 end
 
-# Bepaalt het volgende buildnummer: hoogste op TestFlight (alle platforms) + 1,
-# of het pubspec-nummer als dat al hoger is. Schrijft het terug naar pubspec
-# (tvOS leest pubspec direct; iOS/macOS via flutter --config-only).
-# Gememoized zodat `fastlane beta` alle drie platforms hetzelfde nummer geeft.
-def ensure_build_number
-  $ensured_build_number ||= begin
-    api_key = asc_api_key
-    remote = %w[ios appletvos osx].map do |pf|
-      begin
-        latest_testflight_build_number(api_key: api_key, platform: pf, initial_build_number: 0).to_i
-      rescue => e
-        UI.important("Geen TestFlight build number voor #{pf}: #{e.message}")
-        0
-      end
-    end.max
+# Bepaalt het buildnummer voor één platform en houdt platforms in de pas.
+#
+# Elk platform heeft op TestFlight z'n eigen build-train, dus hetzelfde nummer
+# mag op iOS én tvOS. We hergebruiken daarom het pubspec-nummer zolang dát
+# platform het nog niet heeft; alleen als het al op dít platform staat bumpen we
+# naar (eigen hoogste + 1). Zo krijgen iOS/tvOS/macOS binnen één release
+# hetzelfde nummer — ook als de lanes in aparte fastlane-runs draaien i.p.v. via
+# `beta` (geen gedeelde memoization tussen processen).
+#
+# platform: "ios" | "appletvos" | "osx".
+def ensure_build_number(platform)
+  ($ensured_build_number ||= {})[platform] ||= begin
+    own = begin
+      latest_testflight_build_number(api_key: asc_api_key, platform: platform, initial_build_number: 0).to_i
+    rescue => e
+      UI.important("Geen TestFlight build number voor #{platform}: #{e.message}")
+      0
+    end
     pubspec = File.join(PROJECT_ROOT, "pubspec.yaml")
     content = File.read(pubspec)
     build_name, local = content[/^version:\s*(\S+)/, 1].split("+")
     local = local.to_i
-    next_number = [remote + 1, local].max
+    # local > own → nummer nog niet op dit platform → hergebruik (blijft gelijk
+    # aan een reeds-geüpload ander platform). Anders bumpen we langs dit platform.
+    next_number = local > own ? local : own + 1
     if next_number != local
       File.write(pubspec, content.sub(/^version: .*/, "version: #{build_name}+#{next_number}"))
-      UI.message("Build number #{local} → #{next_number} (hoogste op TestFlight: #{remote})")
+      UI.message("Build number #{local} → #{next_number} (#{platform} hoogste op TestFlight: #{own})")
     end
     next_number
   end
@@ -86,7 +91,7 @@ end
 
 desc "iOS → TestFlight"
 lane :ios_beta do
-  ensure_build_number
+  ensure_build_number("ios")
   flutter_sh("flutter build ios --config-only --release")
   patch_spm_min_ios
   build_app(
@@ -101,7 +106,7 @@ end
 
 desc "tvOS → TestFlight"
 lane :tvos_beta do
-  ensure_build_number
+  ensure_build_number("appletvos")
   flutter_sh("flutter pub get")
   build_app(
     workspace: File.join(PROJECT_ROOT, "tvos/Runner.xcworkspace"),
@@ -116,7 +121,7 @@ end
 
 desc "macOS → TestFlight (pkg)"
 lane :macos_beta do
-  ensure_build_number
+  ensure_build_number("osx")
   flutter_sh("flutter build macos --config-only --release")
 
   out_dir = File.join(PROJECT_ROOT, "build/fastlane/macos")

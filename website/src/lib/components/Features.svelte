@@ -5,6 +5,8 @@
   import TraktIcon from "~icons/simple-icons/trakt";
   import LockIcon from "~icons/heroicons/lock-closed-solid";
   import TvIcon from "~icons/heroicons/tv-solid";
+  import RequestIcon from "~icons/heroicons/plus-circle-solid";
+  import CloudIcon from "~icons/heroicons/cloud-solid";
 </script>
 
 <section id="features" class="features-section">
@@ -103,6 +105,12 @@
             </div>
             <span>Quick Connect</span>
           </div>
+          <div class="platform-row">
+            <div class="platform-icon-box">
+              <CloudIcon />
+            </div>
+            <span>iCloud settings sync</span>
+          </div>
         </div>
       </div>
     </ScrollReveal>
@@ -157,17 +165,34 @@
       </div>
     </ScrollReveal>
 
-    <!-- tvOS living-room experience (full width banner -->
+    <!-- tvOS living-room experience -->
     <ScrollReveal delay={270} class="bento-more">
       <div class="glass-card feature-card more-card">
         <div>
           <p class="card-title">A Netflix-style experience on Apple TV</p>
           <p class="more-description">
-            A cinematic, remote-friendly interface built for the couch: big art, smooth rows, and instant playback.
+            A cinematic, remote-friendly interface built for the couch: a full-bleed billboard hero that
+            follows what you're browsing, smooth rows, and instant playback.
           </p>
         </div>
         <div class="tv-badge" aria-hidden="true">
           <TvIcon />
+        </div>
+      </div>
+    </ScrollReveal>
+
+    <!-- Request anything (Jellyseerr / Overseerr -->
+    <ScrollReveal delay={300} class="bento-requests">
+      <div class="glass-card feature-card more-card">
+        <div>
+          <p class="card-title">Request anything</p>
+          <p class="more-description">
+            Connect Jellyseerr or Overseerr to request new movies and shows right from the app, then
+            watch each request move from pending to available.
+          </p>
+        </div>
+        <div class="tv-badge" aria-hidden="true">
+          <RequestIcon />
         </div>
       </div>
     </ScrollReveal>
@@ -618,7 +643,11 @@
     grid-row: 3 / 4;
   }
   .bento-grid :global(.bento-more) {
-    grid-column: 1 / 5;
+    grid-column: 1 / 3;
+    grid-row: 4 / 5;
+  }
+  .bento-grid :global(.bento-requests) {
+    grid-column: 3 / 5;
     grid-row: 4 / 5;
   }
 
@@ -633,7 +662,8 @@
     .bento-grid :global(.bento-offline),
     .bento-grid :global(.bento-watch),
     .bento-grid :global(.bento-trackers),
-    .bento-grid :global(.bento-more) {
+    .bento-grid :global(.bento-more),
+    .bento-grid :global(.bento-requests) {
       grid-column: 1 / -1;
       grid-row: auto;
     }

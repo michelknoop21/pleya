@@ -43,6 +43,12 @@ export const faqs: Faq[] = [
       "Completely. Pleya builds your taste profile on your device and keeps it there. Recommendations are computed locally, so nothing about what you watch is uploaded, tracked, or shared.",
   },
   {
+    id: "requests",
+    question: "Can I request new movies and shows?",
+    answer:
+      "Yes, if you run Jellyseerr or Overseerr. Connect your requests server in Pleya and you can browse, search and request movies and shows without leaving the app, then follow each request as it moves from pending to available. Without a Jellyseerr or Overseerr server this feature simply stays hidden.",
+  },
+  {
     id: "watch-together",
     question: "How does Watch Together work?",
     answer:

@@ -18,9 +18,9 @@ final class ICloudKvsPlugin: NSObject, FlutterPlugin {
 
   static func register(with registrar: FlutterPluginRegistrar) {
     let instance = ICloudKvsPlugin()
-    let channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger())
+    let channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger)
     registrar.addMethodCallDelegate(instance, channel: channel)
-    let events = FlutterEventChannel(name: eventChannelName, binaryMessenger: registrar.messenger())
+    let events = FlutterEventChannel(name: eventChannelName, binaryMessenger: registrar.messenger)
     events.setStreamHandler(instance)
     instance.startObserving()
   }

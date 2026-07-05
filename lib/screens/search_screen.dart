@@ -12,11 +12,10 @@ import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../models/seerr/seerr_media.dart';
 import '../providers/seerr_provider.dart';
-import '../services/seerr/seerr_constants.dart';
 import '../widgets/focusable_list_tile.dart';
 import '../widgets/loading_indicator_box.dart';
-import '../widgets/seerr_request_sheet.dart';
-import '../widgets/seerr_status_badge.dart';
+import '../widgets/seerr_poster_card.dart';
+import 'seerr/seerr_media_detail_screen.dart';
 import '../mixins/controller_disposer_mixin.dart';
 import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
@@ -242,18 +241,26 @@ class _SearchScreenState extends State<SearchScreen>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(t.seerr.noResults, style: theme.textTheme.bodyMedium),
         ),
-      for (final media in _seerrResults)
-        FocusableListTile(
-          leading: AppIcon(media.isMovie ? Symbols.movie_rounded : Symbols.tv_rounded, fill: 1),
-          title: Text(media.title),
-          subtitle: media.year != null ? Text(media.year!) : null,
-          trailing: media.status != SeerrMediaStatus.unknown
-              ? SeerrStatusBadge(status: media.status, compact: true)
-              : const AppIcon(Symbols.playlist_add_rounded, fill: 1),
-          onTap: () => unawaited(SeerrRequestSheet.show(context, media: media)),
+      if (_seerrResults.isNotEmpty)
+        SizedBox(
+          height: seerrPosterHeight + seerrCardTextExtent,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            itemCount: _seerrResults.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final media = _seerrResults[index];
+              return SeerrPosterCard(media: media, onTap: () => _openSeerrDetail(media));
+            },
+          ),
         ),
     ];
     return SliverList(delegate: SliverChildListDelegate(children));
+  }
+
+  void _openSeerrDetail(SeerrMedia media) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => SeerrMediaDetailScreen(media: media)));
   }
 
   /// OSK "Search" / hardware Enter on TV: jump to results, or force the
@@ -447,6 +454,12 @@ class _SearchScreenState extends State<SearchScreen>
                   controller: _searchController,
                   focusNode: _searchFocusNode,
                   textInputAction: TextInputAction.search,
+                  // Don't auto-open the TV keyboard the instant the field
+                  // autofocuses: the field losing/regaining focus around the
+                  // keyboard route races the auto-reopen guard and traps the
+                  // user in the keyboard. Open on explicit select instead —
+                  // same fix already applied to the Seerr search field.
+                  tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
                   onNavigateLeft: _navigateToSidebar,
                   onNavigateDown: _searchResults.isNotEmpty && !_isSearching
                       ? _firstResultFocusNode.requestFocus

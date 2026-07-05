@@ -20,19 +20,19 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>nl.michelknoop.plexflixnetwork.play</string>
+			<string>nl.michelknoop.pleya.play</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>pleya</string>
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>GCSupportedGameControllers</key>
 	<array>
 		<dict>

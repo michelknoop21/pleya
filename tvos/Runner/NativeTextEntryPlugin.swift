@@ -51,7 +51,7 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin, UITextFieldDelegate 
       return
     }
 
-    let field = UITextField(frame: .zero)
+    let field = MenuDismissTextField(frame: .zero)
     field.text = args["text"] as? String ?? ""
     field.delegate = self
     field.alpha = 0.0
@@ -169,6 +169,19 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin, UITextFieldDelegate 
     case "none": return .none
     default: return .sentences
     }
+  }
+}
+
+/// tvOS routes a Menu/Back press to the first responder first. As the active
+/// text field we intercept it here, resign (→ textFieldDidEndEditing →
+/// finish(submitted:false)) and consume the press so Flutter never pops a route.
+private final class MenuDismissTextField: UITextField {
+  override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+    if presses.contains(where: { $0.type == .menu }) {
+      resignFirstResponder()
+      return
+    }
+    super.pressesBegan(presses, with: event)
   }
 }
 

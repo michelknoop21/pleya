@@ -157,7 +157,6 @@ import MediaPlayer
     if let volumeSlider = volumeSlider { return volumeSlider }
 
     let volumeView = self.volumeView ?? MPVolumeView(frame: CGRect(x: -1000, y: -1000, width: 1, height: 1))
-    volumeView.showsRouteButton = false
     volumeView.showsVolumeSlider = true
     volumeView.alpha = 0.01
     volumeView.isUserInteractionEnabled = false
@@ -182,20 +181,16 @@ import MediaPlayer
   }
 
   private var activeWindow: UIWindow? {
-    if #available(iOS 13.0, *) {
-      for scene in UIApplication.shared.connectedScenes {
-        guard let windowScene = scene as? UIWindowScene else { continue }
-        if let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }) {
-          return keyWindow
-        }
+    for scene in UIApplication.shared.connectedScenes {
+      guard let windowScene = scene as? UIWindowScene else { continue }
+      if let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }) {
+        return keyWindow
       }
-      for scene in UIApplication.shared.connectedScenes {
-        guard let windowScene = scene as? UIWindowScene, let window = windowScene.windows.first else { continue }
-        return window
-      }
-      return nil
     }
-
-    return UIApplication.shared.windows.first(where: { $0.isKeyWindow }) ?? UIApplication.shared.windows.first
+    for scene in UIApplication.shared.connectedScenes {
+      guard let windowScene = scene as? UIWindowScene, let window = windowScene.windows.first else { continue }
+      return window
+    }
+    return nil
   }
 }

@@ -6,7 +6,7 @@ import TVServices
 
   final class SystemShelfPlugin: NSObject, FlutterPlugin {
     private static let channelName = "com.pleya/system_shelf"
-    private static let appGroupIdentifier = "group.nl.michelknoop.plexflixnetwork"
+    private static let appGroupIdentifier = "group.nl.michelknoop.pleya"
     private static let cacheDataKey = "PleyaSystemShelfCacheData"
     private static var pendingDeepLink: String?
     private static var methodChannel: FlutterMethodChannel?
