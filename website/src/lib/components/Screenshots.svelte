@@ -17,18 +17,23 @@
   const shots = [
     { src: introSplash, alt: 'Pleya launch screen with the animated logo' },
     { src: introWelcome, alt: 'Sign in with Plex or connect to Jellyfin on the Pleya welcome screen' },
+    { src: discoverSeverance, alt: 'Pleya home screen with a cinematic Severance featured hero' },
+    { src: episodesGot, alt: 'Season and episode browser in Pleya' },
     { src: homeHero, alt: 'Pleya home screen with a cinematic featured hero' },
     { src: homeContinue, alt: 'Continue watching and personalized rows on the Pleya home screen' },
     { src: detailBosch, alt: 'Pleya show detail screen with ratings, cast and episodes' },
     { src: episodesBosch, alt: 'Season and episode browser in Pleya' },
     { src: detailThor, alt: 'Pleya movie detail screen with ratings and playback options' },
     { src: discoverRequests, alt: 'Discover and request new titles from within Pleya' },
-    { src: discoverSeverance, alt: 'Pleya home screen with a cinematic Severance featured hero' },
     { src: discoverNormal, alt: 'Continue watching with resume progress on the Pleya home screen' },
     { src: detailGot, alt: 'Pleya show detail screen with ratings, cast and episodes' },
-    { src: episodesGot, alt: 'Season and episode browser in Pleya' },
     { src: discoverPrada, alt: 'Featured title billboard on the Pleya home screen' },
   ];
+
+  let rail: HTMLDivElement;
+  function nudge(dir: number) {
+    rail?.scrollBy({ left: dir * rail.clientWidth * 0.8, behavior: 'smooth' });
+  }
 </script>
 
 <section id="screenshots" class="screenshots-section">
@@ -43,15 +48,20 @@
       </p>
     </ScrollReveal>
 
-    <div class="phone-rail" role="list">
-      {#each shots as shot, i (shot.src)}
-        <ScrollReveal delay={i * 70} class="phone-reveal">
-          <div class="phone" role="listitem" class:raised={i % 2 === 1}>
-            <img src={shot.src} alt={shot.alt} loading="lazy" width="828" height="1800" />
-          </div>
-        </ScrollReveal>
-      {/each}
+    <div class="rail-wrap">
+      <button class="rail-nav prev" type="button" aria-label="Vorige schermen" on:click={() => nudge(-1)}>‹</button>
+      <div class="phone-rail" role="list" bind:this={rail}>
+        {#each shots as shot, i (shot.src)}
+          <ScrollReveal delay={i * 70} class="phone-reveal">
+            <div class="phone" role="listitem" class:raised={i % 2 === 1}>
+              <img src={shot.src} alt={shot.alt} loading="lazy" width="828" height="1800" />
+            </div>
+          </ScrollReveal>
+        {/each}
+      </div>
+      <button class="rail-nav next" type="button" aria-label="Volgende schermen" on:click={() => nudge(1)}>›</button>
     </div>
+    <p class="rail-hint">Sleep of gebruik de pijlen — {shots.length} schermen</p>
   </div>
 </section>
 
@@ -107,6 +117,78 @@
     font-size: 1.05rem;
     line-height: 1.6;
     margin: 0 0 3rem;
+  }
+
+  .rail-wrap {
+    position: relative;
+  }
+
+  /* Edge fades hint that the rail continues past the viewport. */
+  .rail-wrap::before,
+  .rail-wrap::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4rem;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .rail-wrap::before {
+    left: 0;
+    background: linear-gradient(90deg, var(--color-bg, #0a0a0a), transparent);
+  }
+  .rail-wrap::after {
+    right: 0;
+    background: linear-gradient(270deg, var(--color-bg, #0a0a0a), transparent);
+  }
+
+  .rail-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    width: 2.75rem;
+    height: 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 9999px;
+    background: rgba(20, 16, 16, 0.72);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, transform 0.15s;
+  }
+  .rail-nav:hover {
+    background: rgba(229, 20, 15, 0.85);
+    border-color: transparent;
+  }
+  .rail-nav:active {
+    transform: translateY(-50%) scale(0.94);
+  }
+  .rail-nav.prev {
+    left: 0.25rem;
+  }
+  .rail-nav.next {
+    right: 0.25rem;
+  }
+
+  .rail-hint {
+    margin: 0.75rem 0 0;
+    text-align: center;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  @media (hover: none) {
+    /* Touch: swiping is obvious, hide the arrows but keep the hint + fades. */
+    .rail-nav {
+      display: none;
+    }
   }
 
   .phone-rail {
