@@ -28,13 +28,17 @@ const double seerrCardTextExtent = 54;
 /// recommendations row all render identical cards. Tapping is left to the
 /// caller (usually: open [SeerrMediaDetailScreen]).
 class SeerrPosterCard extends StatelessWidget {
-  const SeerrPosterCard({super.key, required this.media, required this.onTap, this.width});
+  const SeerrPosterCard({super.key, required this.media, required this.onTap, this.width, this.focusNode});
 
   final SeerrMedia media;
   final VoidCallback onTap;
 
   /// Override the shared [seerrPosterWidth] (e.g. inside a fixed-size grid).
   final double? width;
+
+  /// Optional external focus node (e.g. so a search field can jump focus onto
+  /// the first result card).
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +47,7 @@ class SeerrPosterCard extends StatelessWidget {
     final h = w * 3 / 2;
     return FocusableWrapper(
       onSelect: onTap,
+      focusNode: focusNode,
       borderRadius: t.radiusSm,
       semanticLabel: media.title,
       child: Pressable(
@@ -57,13 +62,13 @@ class SeerrPosterCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(t.radiusSm),
                 child: Stack(
                   children: [
-                    SizedBox(width: w, height: h, child: SeerrPosterImage(url: media.posterUrl)),
+                    SizedBox(
+                      width: w,
+                      height: h,
+                      child: SeerrPosterImage(url: media.posterUrl),
+                    ),
                     if (media.status != SeerrMediaStatus.unknown)
-                      Positioned(
-                        top: 6,
-                        left: 6,
-                        child: SeerrStatusBadge(status: media.status, compact: true),
-                      ),
+                      Positioned(top: 6, left: 6, child: SeerrStatusBadge(status: media.status, compact: true)),
                   ],
                 ),
               ),
@@ -80,20 +85,16 @@ class SeerrPosterCard extends StatelessWidget {
                       media.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        height: 1.1,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, fontSize: 13, height: 1.1),
                     ),
                     if (media.year != null)
                       Text(
                         media.year!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: t.textMuted,
-                          fontSize: 11,
-                          height: 1.1,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: t.textMuted, fontSize: 11, height: 1.1),
                       ),
                   ],
                 ),

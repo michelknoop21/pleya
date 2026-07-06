@@ -33,6 +33,11 @@ class TvSpotlightBackground extends StatelessWidget {
   final bool showPrimaryAction;
   final bool showInfo;
 
+  /// Fades the info block (logo/title/metadata/summary/actions) in and out
+  /// without touching the backdrop. Used by the TV home to hide the billboard
+  /// text once the browse rail is revealed while the artwork keeps showing.
+  final double infoOpacity;
+
   /// Melt the bottom of the backdrop into the scaffold background so a docked
   /// content rail blends in (Netflix billboard). Off by default so backdrop-only
   /// consumers (e.g. media detail) keep the lighter gradient.
@@ -56,6 +61,7 @@ class TvSpotlightBackground extends StatelessWidget {
     this.compact = false,
     this.showPrimaryAction = true,
     this.showInfo = true,
+    this.infoOpacity = 1.0,
     this.deepBottomScrim = false,
     this.kenBurns = false,
     this.localArtworkPathResolver,
@@ -113,21 +119,37 @@ class TvSpotlightBackground extends StatelessWidget {
                 right: MediaQuery.sizeOf(context).width * 0.34,
                 top: contentTop,
                 bottom: contentBottom,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (!constraints.hasBoundedHeight || constraints.maxHeight <= 0 || constraints.maxWidth <= 0) {
-                      return Align(alignment: .bottomLeft, child: _buildInfo(context, media));
-                    }
+                child: AnimatedOpacity(
+                  opacity: infoOpacity,
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOut,
+                  // ExcludeFocus (not just IgnorePointer): when faded out the
+                  // Play/More-info buttons must also leave the D-pad focus tree,
+                  // or traversal could land on invisible controls.
+                  child: ExcludeFocus(
+                    excluding: infoOpacity == 0,
+                    child: IgnorePointer(
+                      ignoring: infoOpacity == 0,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          if (!constraints.hasBoundedHeight ||
+                              constraints.maxHeight <= 0 ||
+                              constraints.maxWidth <= 0) {
+                            return Align(alignment: .bottomLeft, child: _buildInfo(context, media));
+                          }
 
-                    return Align(
-                      alignment: .bottomLeft,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: .bottomLeft,
-                        child: SizedBox(width: constraints.maxWidth, child: _buildInfo(context, media)),
+                          return Align(
+                            alignment: .bottomLeft,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: .bottomLeft,
+                              child: SizedBox(width: constraints.maxWidth, child: _buildInfo(context, media)),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               ),
           ],

@@ -420,6 +420,7 @@ class TvBrowseRailState extends State<TvBrowseRail> {
   bool _suppressSelectUntilKeyUp = false;
   bool _hasUserChangedHub = false;
   bool _hasUserChangedItem = false;
+  bool _didInitialFlush = false;
 
   MediaHub? get _activeHub => widget.hubs.isEmpty ? null : widget.hubs[_hubIndex.clamp(0, widget.hubs.length - 1)];
 
@@ -1004,6 +1005,19 @@ class TvBrowseRailState extends State<TvBrowseRail> {
   @override
   Widget build(BuildContext context) {
     if (_activeHub == null) return const SizedBox.shrink();
+    // ponytail: one-shot repaint-flush. The reveal wrapper (AnimatedSlide) is a
+    // paint-time transform, so poster frames decoded after it settles aren't
+    // recomposited until a horizontal scroll invalidates the row viewport —
+    // leaving row 0 blank until the user nudges L/R. Forcing one repaint after
+    // the first content frame flushes them (same effect as the scroll, without
+    // scrolling). If on-device this proves insufficient → reveal back to a
+    // relayout-based animation.
+    if (!_didInitialFlush) {
+      _didInitialFlush = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    }
     return SettingsBuilder(
       prefs: const [
         SettingsService.libraryDensity,

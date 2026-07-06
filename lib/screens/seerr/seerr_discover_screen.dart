@@ -8,6 +8,7 @@ import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
 import '../../models/seerr/seerr_media.dart';
+import '../../navigation/main_screen_scope.dart';
 import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
 import '../../services/settings_service.dart';
@@ -56,6 +57,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   late final List<_SeerrRow> _rows;
   late final TextEditingController _searchController;
   final _searchFocusNode = FocusNode(debugLabel: 'SeerrSearchInput');
+  final _firstResultFocusNode = FocusNode(debugLabel: 'SeerrSearchFirstResult');
   final _searchDebounce = Debouncer(const Duration(milliseconds: 400));
 
   String _query = '';
@@ -76,7 +78,11 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     _client = context.read<SeerrProvider>().client;
     _searchController = createTextEditingController();
     _rows = [
-      _SeerrRow(title: t.seerr.trending, showIn: const {_SeerrType.all}, fetch: (c, p) => c.discoverTrending(page: p)),
+      _SeerrRow(
+        title: t.seerr.trending,
+        showIn: const {_SeerrType.all},
+        fetch: (c, p) => c.discoverTrending(page: p),
+      ),
       _SeerrRow(
         title: t.seerr.popularMovies,
         showIn: const {_SeerrType.all, _SeerrType.movies},
@@ -105,6 +111,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   void dispose() {
     _searchDebounce.dispose();
     _searchFocusNode.dispose();
+    _firstResultFocusNode.dispose();
     super.dispose();
   }
 
@@ -276,9 +283,8 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     final type = _type;
     final row = _SeerrRow(
       title: '',
-      fetch: (c, p) => type == _SeerrType.movies
-          ? c.discoverMovies(page: p, genre: genreId)
-          : c.discoverTv(page: p, genre: genreId),
+      fetch: (c, p) =>
+          type == _SeerrType.movies ? c.discoverMovies(page: p, genre: genreId) : c.discoverTv(page: p, genre: genreId),
     );
     setState(() => _genreRow = row);
     await _loadFirst(row, client);
@@ -381,6 +387,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     bool hasMore = false,
     bool loadingMore = false,
     VoidCallback? onLoadMore,
+    FocusNode? firstItemFocusNode,
   }) {
     // Reuse the app's grid geometry so column count follows the library
     // density setting and poster width matches the rest of the app. The seerr
@@ -415,7 +422,12 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
                     return SeerrLoadMoreTile(loading: loadingMore, onActivate: onLoadMore ?? () {}, width: w);
                   }
                   final media = items[index];
-                  return SeerrPosterCard(media: media, width: w, onTap: () => _openDetail(media));
+                  return SeerrPosterCard(
+                    media: media,
+                    width: w,
+                    focusNode: index == 0 ? firstItemFocusNode : null,
+                    onTap: () => _openDetail(media),
+                  );
                 }, childCount: items.length + (hasMore ? 1 : 0)),
               );
             },
@@ -430,6 +442,27 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     _onSearchChanged('');
   }
 
+  void _navigateToSidebar() {
+    final scope = MainScreenFocusScope.of(context, listen: false);
+    if (scope != null) {
+      scope.focusSidebar();
+    } else {
+      // No main-screen scope (modal/test/lifecycle edge): fall back to plain
+      // reverse traversal rather than stranding focus in the search field.
+      FocusScope.of(context).previousFocus();
+    }
+  }
+
+  /// TV: hand focus to the first result if there is one, otherwise fall back to
+  /// the sidebar. Never leaves focus in limbo (which traps the D-pad).
+  void _focusFirstResultOrSidebar() {
+    if (_filteredSearchResults.isNotEmpty && !_searching) {
+      _firstResultFocusNode.requestFocus();
+    } else {
+      _navigateToSidebar();
+    }
+  }
+
   Widget _buildSearchField() {
     final isTv = PlatformDetector.isTV();
     final inset = isTv ? TvLayoutConstants.horizontalInset : 12.0;
@@ -439,14 +472,20 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       onChanged: _onSearchChanged,
       textInputAction: TextInputAction.search,
       tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
-      // Match the working search_screen field: submit dismisses the keyboard on
-      // TV, and Back either clears the query or lets the scaffold pop.
-      onEditingComplete: isTv ? _searchFocusNode.unfocus : null,
+      // Mirror the working search_screen field: always route focus to a
+      // reachable target (first result or sidebar) — never a bare unfocus(),
+      // which strands the D-pad with nothing focused and traps the user.
+      onEditingComplete: isTv ? _focusFirstResultOrSidebar : null,
+      onNavigateLeft: _navigateToSidebar,
+      // Only intercept Down when there are results to jump to. In discover mode
+      // (no query) leave it null so the field's built-in down-traversal reaches
+      // the filter chips / discover rows below — matches search_screen.dart.
+      onNavigateDown: (_filteredSearchResults.isNotEmpty && !_searching) ? _firstResultFocusNode.requestFocus : null,
       onBack: () {
         if (_searchController.text.isNotEmpty) {
           _clearSearch();
         } else {
-          _searchFocusNode.unfocus();
+          _navigateToSidebar();
         }
       },
       decoration: pillInputDecoration(
@@ -455,10 +494,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
         suffixIcon: _query.isEmpty
             ? null
-            : IconButton(
-                icon: const AppIcon(Symbols.close_rounded, fill: 1),
-                onPressed: _clearSearch,
-              ),
+            : IconButton(icon: const AppIcon(Symbols.close_rounded, fill: 1), onPressed: _clearSearch),
       ),
     );
     return Padding(
@@ -494,7 +530,11 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       return [
         SliverFillRemaining(
           hasScrollBody: false,
-          child: StateView.error(title: t.seerr.errorNetwork, icon: Symbols.cloud_off_rounded, onRetry: () => _runSearch(_query)),
+          child: StateView.error(
+            title: t.seerr.errorNetwork,
+            icon: Symbols.cloud_off_rounded,
+            onRetry: () => _runSearch(_query),
+          ),
         ),
       ];
     }
@@ -507,7 +547,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         ),
       ];
     }
-    return [_buildGridSliver(results)];
+    return [_buildGridSliver(results, firstItemFocusNode: _firstResultFocusNode)];
   }
 
   List<Widget> _buildDiscoverSlivers() {
@@ -597,12 +637,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       ];
     }
     return [
-      _buildGridSliver(
-        row.items,
-        hasMore: row.hasMore,
-        loadingMore: row.loadingMore,
-        onLoadMore: () => _loadMore(row),
-      ),
+      _buildGridSliver(row.items, hasMore: row.hasMore, loadingMore: row.loadingMore, onLoadMore: () => _loadMore(row)),
     ];
   }
 }

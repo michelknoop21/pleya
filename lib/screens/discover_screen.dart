@@ -356,6 +356,19 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   void _setTvRailRevealed(bool revealed) {
     if (!mounted || _tvRailRevealed == revealed) return;
     setState(() => _tvRailRevealed = revealed);
+    if (revealed) {
+      // Rail focus drives the hero now — stop auto-rotate so it doesn't fight
+      // the focus-follow.
+      _autoScrollTimer?.cancel();
+      _stopIndicatorProgress();
+    } else {
+      // Focus left the rail (back to hero): restore the featured item and resume.
+      // Skip the restart when a route is pushed over us (e.g. opening a detail
+      // from a rail item) so the timer doesn't churn the hidden hero.
+      _spotlightItem.value = _defaultSpotlightItem;
+      final isCurrent = ModalRoute.of(context)?.isCurrent ?? false;
+      if (_isTabVisible && !_isAutoScrollPaused && isCurrent) _startAutoScroll();
+    }
   }
 
   /// Handle vertical navigation between hubs
@@ -609,6 +622,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       _autoScrollTimer = Timer.periodic(_heroAutoScrollDuration, (timer) {
         if (!mounted || _isAutoScrollPaused || _latestMovies.length < 2) return;
         if (_tvHeroPlayFocusNode.hasFocus || _tvHeroInfoFocusNode.hasFocus) return;
+        // Rail revealed → the hero follows rail focus; don't let auto-rotate
+        // mutate the spotlight out from under it (order-independent guard so a
+        // stray timer restart can't fight focus-follow).
+        if (_tvRailRevealed) return;
         final current = _spotlightItem.value ?? _defaultSpotlightItem;
         final idx = current == null ? -1 : _latestMovies.indexWhere((m) => m.globalKey == current.globalKey);
         _spotlightItem.value = _latestMovies[(idx + 1) % _latestMovies.length];
@@ -1068,7 +1085,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           const SizedBox(width: 10),
                           Text(
                             'PLEYA',
-                            style: TextStyle(color: foregroundColor, fontSize: 14, fontWeight: .w800, letterSpacing: 3.6),
+                            style: TextStyle(
+                              color: foregroundColor,
+                              fontSize: 14,
+                              fontWeight: .w800,
+                              letterSpacing: 3.6,
+                            ),
                           ),
                         ],
                       ),
@@ -1356,9 +1378,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     // hub label), so the hero owns most of the screen. Focusing the rail reveals
     // it (see [_tvRailRevealed]); the reveal is a translate, so the hero content
     // keeps its resting position and the rail simply slides up over it.
-    final railPeek = browseHubs.isEmpty
-        ? 0.0
-        : math.min(railHeight, size.height * _tvHomeRailPeekFraction);
+    final railPeek = browseHubs.isEmpty ? 0.0 : math.min(railHeight, size.height * _tvHomeRailPeekFraction);
     final railSafetyBottom = browseHubs.isEmpty ? 0.0 : railPeek + (_tvHeroRailGap * scale);
     final maxSpotlightBottom = (size.height - spotlightTop - (_tvHeroMinInfoHeight * scale))
         .clamp(0.0, double.infinity)
@@ -1399,6 +1419,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       showPrimaryAction: false,
                       deepBottomScrim: true,
                       kenBurns: true,
+                      // Rail revealed → fade the info block + actions away so only
+                      // the (focus-following) backdrop remains behind the rows.
+                      infoOpacity: _tvRailRevealed ? 0.0 : 1.0,
                       actions: spotlight == null ? null : _buildTvHeroActions(context, spotlight, scale),
                     );
                   },
@@ -1457,22 +1480,23 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   onFocusChange: (hasFocus) => _setTvRailRevealed(hasFocus),
                   child: TvBrowseRail(
                     key: _tvBrowseRailKey,
-                hubs: browseHubs,
-                showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
-                // Billboard is a fixed featured item (newest released) that
-                // auto-rotates, decoupled from row focus — otherwise focusing the
-                // Continue Watching row hijacks the hero. See _defaultSpotlightItem.
-                // To restore focus-follow, re-add a debounced setter and pass it
-                // to onFocusedItemChanged (the rail param is still available).
-                onRefresh: _discover.updateItem,
-                onRemoveFromContinueWatching: _discover.refreshContinueWatching,
-                isContinueWatchingHub: (hub) => hub.isContinueWatchingHub,
-                usesContinueWatchingAction: (hub) => hub.usesContinueWatchingAction,
-                loadMoreItems: (hub) =>
-                    hub.id == 'continue_watching' ? _discover.loadAllContinueWatching() : Future.value(hub.items),
-                onNavigateUp: _focusTvHeroPlay,
-                onNavigateToSidebar: _navigateToSidebar,
-                tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
+                    hubs: browseHubs,
+                    showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
+                    // Hero follows rail focus: as the user moves through rows the
+                    // billboard becomes the focused item. Only the
+                    // ValueListenableBuilder on _spotlightItem rebuilds, not the rows.
+                    // Auto-rotate is paused while the rail is revealed (see
+                    // _setTvRailRevealed) so it doesn't fight the focus-follow.
+                    onFocusedItemChanged: (item) => _spotlightItem.value = item,
+                    onRefresh: _discover.updateItem,
+                    onRemoveFromContinueWatching: _discover.refreshContinueWatching,
+                    isContinueWatchingHub: (hub) => hub.isContinueWatchingHub,
+                    usesContinueWatchingAction: (hub) => hub.usesContinueWatchingAction,
+                    loadMoreItems: (hub) =>
+                        hub.id == 'continue_watching' ? _discover.loadAllContinueWatching() : Future.value(hub.items),
+                    onNavigateUp: _focusTvHeroPlay,
+                    onNavigateToSidebar: _navigateToSidebar,
+                    tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
                     selectSuppressionGestureSignal: PlatformDetector.isAppleTV()
                         ? AppleTvRemoteTouchService.instance.touchActiveListenable
                         : null,
