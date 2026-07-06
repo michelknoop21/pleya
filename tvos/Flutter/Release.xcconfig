@@ -6,3 +6,7 @@
 // ObjC category access, so link it explicitly.
 OTHER_LDFLAGS = $(inherited) -framework AVKit
 EXCLUDED_ARCHS[sdk=appletvsimulator*] = x86_64
+
+// Point the Runner target at the local tvOS Flutter engine so `import Flutter` resolves.
+FRAMEWORK_SEARCH_PATHS[sdk=appletvsimulator*] = $(inherited) $(FLUTTER_LOCAL_ENGINE)/out/tvos_debug_sim_unopt_arm64
+FRAMEWORK_SEARCH_PATHS[sdk=appletvos*] = $(inherited) $(FLUTTER_LOCAL_ENGINE)/out/tvos_release

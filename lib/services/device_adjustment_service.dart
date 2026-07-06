@@ -12,7 +12,7 @@ import '../utils/app_logger.dart';
 class DeviceAdjustmentService {
   DeviceAdjustmentService({MethodChannel? channel}) : _channel = channel ?? const MethodChannel(_channelName);
 
-  static const String _channelName = 'com.plezy/device_adjustment';
+  static const String _channelName = 'com.pleya/device_adjustment';
   static final DeviceAdjustmentService instance = DeviceAdjustmentService();
 
   final MethodChannel _channel;

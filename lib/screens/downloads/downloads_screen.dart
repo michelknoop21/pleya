@@ -18,7 +18,7 @@ import '../../widgets/focusable_media_card.dart';
 import '../../widgets/media_grid_delegate.dart';
 import '../../widgets/download_tree_view.dart';
 import '../main_screen.dart';
-import '../libraries/state_messages.dart';
+import '../../widgets/state_view.dart';
 import '../../i18n/strings.g.dart';
 import 'sync_rules_screen.dart';
 
@@ -335,11 +335,10 @@ class _DownloadsGridContentState extends State<_DownloadsGridContent> {
   }
 
   Widget _buildEmptyState() {
-    return EmptyStateWidget(
-      message: t.downloads.noDownloads,
-      subtitle: t.downloads.noDownloadsDescription,
+    return StateView.empty(
+      title: t.downloads.noDownloads,
+      message: t.downloads.noDownloadsDescription,
       icon: Symbols.download_rounded,
-      iconSize: 80,
     );
   }
 }

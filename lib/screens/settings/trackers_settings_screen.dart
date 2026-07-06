@@ -6,6 +6,9 @@ import 'package:provider/provider.dart';
 import '../../i18n/strings.g.dart';
 import '../../providers/trackers_provider.dart';
 import '../../providers/trakt_account_provider.dart';
+import '../../services/trakt/trakt_constants.dart';
+import '../../services/trackers/mal/mal_constants.dart';
+import '../../services/trackers/simkl/simkl_constants.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import 'tracker_settings_screen.dart';
@@ -32,10 +35,13 @@ class TrackersSettingsScreen extends StatelessWidget {
                 ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
-            _trakt(),
-            _mal(),
+            // Only surface trackers whose API credentials are configured for
+            // this build (see *_constants.dart). AniList authenticates via the
+            // relay proxy and needs no bundled client ID.
+            if (TraktConstants.isConfigured) _trakt(),
+            if (MalConstants.isConfigured) _mal(),
             _anilist(),
-            _simkl(),
+            if (SimklConstants.isConfigured) _simkl(),
             const SizedBox(height: 24),
           ]),
         ),

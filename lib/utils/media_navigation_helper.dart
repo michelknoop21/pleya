@@ -155,6 +155,7 @@ Future<MediaNavigationResult> navigateToMediaItem(
   void Function(String)? onRefresh,
   bool isOffline = false,
   bool playDirectly = false,
+  Object? heroTag,
 }) async {
   if (item is MediaPlaylist) {
     await Navigator.push(context, MaterialPageRoute(builder: (context) => PlaylistDetailScreen(playlist: item)));
@@ -208,7 +209,7 @@ Future<MediaNavigationResult> navigateToMediaItem(
     case MediaKind.clip:
     case MediaKind.episode:
       if (mi.kind == MediaKind.episode && shouldOpenEpisodeDetails) {
-        return navigateToMediaItemDetails(context, mi, onRefresh: onRefresh, isOffline: isOffline);
+        return navigateToMediaItemDetails(context, mi, onRefresh: onRefresh, isOffline: isOffline, heroTag: heroTag);
       }
       final result = await navigateToVideoPlayer(context, metadata: mi, isOffline: isOffline);
       if (result == true && context.mounted) {
@@ -224,13 +225,13 @@ Future<MediaNavigationResult> navigateToMediaItem(
         }
         return MediaNavigationResult.navigated;
       }
-      return navigateToMediaItemDetails(context, mi, isOffline: isOffline, onRefresh: onRefresh);
+      return navigateToMediaItemDetails(context, mi, isOffline: isOffline, onRefresh: onRefresh, heroTag: heroTag);
 
     case MediaKind.season:
-      return navigateToMediaItemDetails(context, mi, isOffline: isOffline, onRefresh: onRefresh);
+      return navigateToMediaItemDetails(context, mi, isOffline: isOffline, onRefresh: onRefresh, heroTag: heroTag);
 
     default:
-      return navigateToMediaItemDetails(context, mi, isOffline: isOffline, onRefresh: onRefresh);
+      return navigateToMediaItemDetails(context, mi, isOffline: isOffline, onRefresh: onRefresh, heroTag: heroTag);
   }
 }
 
@@ -240,6 +241,7 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
   bool isOffline = false,
   void Function(String)? onRefresh,
   MediaItem? metadataOverride,
+  Object? heroTag,
 }) async {
   final target = mediaDetailNavigationTargetFor(mi, metadataOverride: metadataOverride);
   final result = await Navigator.push<bool>(
@@ -250,6 +252,7 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
       initialSeasonIndex: target.initialSeasonIndex,
       initialSeasonId: target.initialSeasonId,
       initialEpisodeId: target.initialEpisodeId,
+      heroTag: heroTag,
     ),
   );
   if (result == true && context.mounted) {

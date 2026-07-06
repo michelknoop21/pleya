@@ -490,6 +490,8 @@ class MpvPlayerCoreBase: NSObject {
     let logEnabled = cachedDvConversionLogEnabled
     cacheLock.unlock()
 
+    // Env-var names are a wire contract with the prebuilt libmpv fork, which
+    // reads PLEZY_DV_* internally — do not rename until that binary is rebuilt.
     setenv("PLEZY_DV_CONVERSION_MODE", mode, 1)
     setenv("PLEZY_DV_CONVERSION_LOG", logEnabled ? "1" : "0", 1)
   }

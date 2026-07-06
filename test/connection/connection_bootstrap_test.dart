@@ -2,14 +2,14 @@ import 'dart:convert';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/connection/connection.dart';
-import 'package:plezy/connection/connection_bootstrap.dart';
-import 'package:plezy/connection/connection_registry.dart';
-import 'package:plezy/database/app_database.dart';
-import 'package:plezy/models/plex/plex_home_user.dart';
-import 'package:plezy/profiles/profile_registry.dart';
-import 'package:plezy/services/server_registry.dart';
-import 'package:plezy/services/storage_service.dart';
+import 'package:pleya/connection/connection.dart';
+import 'package:pleya/connection/connection_bootstrap.dart';
+import 'package:pleya/connection/connection_registry.dart';
+import 'package:pleya/database/app_database.dart';
+import 'package:pleya/models/plex/plex_home_user.dart';
+import 'package:pleya/profiles/profile_registry.dart';
+import 'package:pleya/services/server_registry.dart';
+import 'package:pleya/services/storage_service.dart';
 
 import '../test_helpers/prefs.dart';
 

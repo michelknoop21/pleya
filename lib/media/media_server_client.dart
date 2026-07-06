@@ -245,6 +245,10 @@ abstract class MediaServerClient {
   /// internally; the neutral name matches the Continue Watching UI surface.
   Future<List<MediaItem>> fetchContinueWatching({int? count = 20});
 
+  /// Most recently fully-watched movies/shows, newest first. Seeds the
+  /// "Because you watched X" recommendations row.
+  Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5});
+
   /// Curated home-screen hubs across all libraries (Plex Discover; Jellyfin
   /// synthesizes `Latest` plus optional `Resume` + `NextUp`).
   Future<List<MediaHub>> fetchGlobalHubs({int limit = defaultHubPreviewLimit, bool includePlaybackHubs = true});

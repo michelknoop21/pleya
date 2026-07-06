@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/utils/plex_library_section_utils.dart';
+import 'package:pleya/utils/plex_library_section_utils.dart';
 
 void main() {
   group('plexLibrarySectionIdFromString', () {

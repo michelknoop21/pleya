@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/i18n/strings.g.dart';
-import 'package:plezy/media/media_backend.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/media/play_queue.dart';
-import 'package:plezy/mpv/mpv.dart';
-import 'package:plezy/providers/playback_state_provider.dart';
-import 'package:plezy/services/settings_service.dart';
-import 'package:plezy/theme/mono_tokens.dart';
-import 'package:plezy/widgets/video_controls/sheets/queue_sheet.dart';
-import 'package:plezy/widgets/video_controls/widgets/content_strip.dart';
-import 'package:plezy/widgets/video_controls/widgets/media_selector_thumbnail.dart';
+import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/play_queue.dart';
+import 'package:pleya/mpv/mpv.dart';
+import 'package:pleya/providers/playback_state_provider.dart';
+import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/theme/mono_tokens.dart';
+import 'package:pleya/widgets/video_controls/sheets/queue_sheet.dart';
+import 'package:pleya/widgets/video_controls/widgets/content_strip.dart';
+import 'package:pleya/widgets/video_controls/widgets/media_selector_thumbnail.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -25,9 +25,12 @@ const _testTokens = MonoTokens(
   slow: Duration(milliseconds: 1),
   bg: Colors.black,
   surface: Colors.black,
+  surfaceElevated: const Color(0xFF2F2F2F),
   outline: Colors.white24,
   text: Colors.white,
   textMuted: Colors.white70,
+  accent: Color(0xFFF42B1F),
+  accentAlt: Color(0xFFFFB020),
   splashFactory: NoSplash.splashFactory,
 );
 

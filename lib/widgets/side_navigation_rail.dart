@@ -3,7 +3,7 @@ import '../media/ids.dart';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
-import 'package:plezy/widgets/app_icon.dart';
+import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -20,6 +20,7 @@ import '../utils/platform_detector.dart';
 import '../utils/scroll_utils.dart';
 import '../utils/library_grouping.dart';
 import '../providers/multi_server_provider.dart';
+import '../providers/seerr_provider.dart';
 import '../services/fullscreen_state_manager.dart';
 import '../theme/mono_tokens.dart';
 import '../widgets/backend_badge.dart';
@@ -51,6 +52,9 @@ final class _LibraryItemRow extends _LibraryNavRow {
 class NavigationRailItem extends StatelessWidget {
   final IconData icon;
   final IconData? selectedIcon;
+
+  /// Solid mockup nav glyph; falls back to [icon]/[selectedIcon] when null.
+  final String? svgAsset;
   final Widget label;
   final bool isSelected;
   final bool isFocused;
@@ -71,6 +75,7 @@ class NavigationRailItem extends StatelessWidget {
     super.key,
     required this.icon,
     this.selectedIcon,
+    this.svgAsset,
     required this.label,
     required this.isSelected,
     required this.isFocused,
@@ -112,46 +117,78 @@ class NavigationRailItem extends StatelessWidget {
           canRequestFocus: false,
           onTap: onTap,
           borderRadius: borderRadius,
-          child: Container(
-            decoration: BoxDecoration(
-              color: () {
-                if (isCollapsed) return isFocused ? t.text.withValues(alpha: 0.12) : null;
-                if (isFocused) return t.text.withValues(alpha: showSelectedBackground ? 0.15 : 0.12);
-                if (showSelectedBackground) return t.text.withValues(alpha: 0.1);
-                return null;
-              }(),
-              borderRadius: borderRadius,
-            ),
-            clipBehavior: Clip.hardEdge,
-            child: UnconstrainedBox(
-              alignment: .centerLeft,
-              constrainedAxis: Axis.vertical,
-              clipBehavior: Clip.hardEdge,
-              child: SizedBox(
-                width: SideNavigationRailState.expandedWidth - 24,
-                child: Padding(
-                  padding: .symmetric(vertical: 12, horizontal: horizontalPadding),
-                  child: Row(
-                    children: [
-                      AppIcon(
-                        isSelected && selectedIcon != null ? selectedIcon! : icon,
-                        fill: 1,
-                        size: iconSize,
-                        color: isSelected ? t.text : t.textMuted,
+          child: Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: () {
+                    if (isCollapsed) return isFocused ? t.text.withValues(alpha: 0.12) : null;
+                    if (isFocused) return t.accent.withValues(alpha: showSelectedBackground ? 0.18 : 0.12);
+                    // Netflix-style active row: subtle neutral wash, the
+                    // red→amber bar carries the accent.
+                    if (showSelectedBackground) return t.text.withValues(alpha: 0.06);
+                    return null;
+                  }(),
+                  borderRadius: borderRadius,
+                ),
+                clipBehavior: Clip.hardEdge,
+                child: UnconstrainedBox(
+                  alignment: .centerLeft,
+                  constrainedAxis: Axis.vertical,
+                  clipBehavior: Clip.hardEdge,
+                  child: SizedBox(
+                    width: SideNavigationRailState.expandedWidth - 24,
+                    child: Padding(
+                      padding: .symmetric(vertical: 12, horizontal: horizontalPadding),
+                      child: Row(
+                        children: [
+                          DecoratedBox(
+                            decoration: isSelected
+                                ? BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    boxShadow: [BoxShadow(color: t.accent.withValues(alpha: 0.5), blurRadius: 14)],
+                                  )
+                                : const BoxDecoration(),
+                            child: NavGlyph(
+                              svgAsset: svgAsset,
+                              icon: isSelected && selectedIcon != null ? selectedIcon! : icon,
+                              size: iconSize,
+                              color: isSelected ? t.text : t.textMuted,
+                            ),
+                          ),
+                          const SizedBox(width: 11),
+                          Expanded(
+                            child: () {
+                              if (useSimpleLayout) return label;
+                              final opacity = isCollapsed ? 0.0 : 1.0;
+                              return AnimatedOpacity(opacity: opacity, duration: reduceMotion(context, t.fast), child: label);
+                            }(),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 11),
-                      Expanded(
-                        child: () {
-                          if (useSimpleLayout) return label;
-                          final opacity = isCollapsed ? 0.0 : 1.0;
-                          return AnimatedOpacity(opacity: opacity, duration: t.fast, child: label);
-                        }(),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
+              // Red→amber accent bar on the active item.
+              if (showSelectedBackground)
+                Positioned(
+                  left: 0,
+                  top: 8,
+                  bottom: 8,
+                  child: Container(
+                    width: 3,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [t.accent, t.accentAlt],
+                      ),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -233,6 +270,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
   static const _kHome = 'home';
   static const _kLibraries = 'libraries';
   static const _kSearch = 'search';
+  static const _kRequests = 'requests';
   static const _kDownloads = 'downloads';
   static const _kSettings = 'settings';
   static const _kReconnect = 'reconnect';
@@ -377,6 +415,8 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
         return _kLibraries;
       case NavigationTabId.search:
         return _kSearch;
+      case NavigationTabId.requests:
+        return _kRequests;
       case NavigationTabId.downloads:
         return _showDownloads ? _kDownloads : null;
       case NavigationTabId.settings:
@@ -413,11 +453,13 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     required List<_LibraryNavRow> hiddenRows,
     required bool hasHiddenLibraries,
     required bool hasLiveTv,
+    required bool hasSeerr,
   }) {
     return {
       _kHome,
       _kLibraries,
       _kSearch,
+      if (hasSeerr) _kRequests,
       if (_showDownloads) _kDownloads,
       _kSettings,
       _kReconnect,
@@ -490,6 +532,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     List<_LibraryNavRow> hiddenRows, {
     required bool hasHiddenLibraries,
     required bool hasLiveTv,
+    required bool hasSeerr,
   }) {
     return [
       if (widget.isOfflineMode && widget.onReconnect != null) _kReconnect,
@@ -505,6 +548,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
         ],
         if (hasLiveTv) 'liveTv',
         _kSearch,
+        if (hasSeerr) _kRequests,
       ],
       if (_showDownloads) _kDownloads,
       _kSettings,
@@ -579,6 +623,23 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     }
   }
 
+  String _getLibrarySvg(String type) {
+    switch (type.toLowerCase()) {
+      case 'movie':
+        return NavGlyphs.libMovie;
+      case 'show':
+        return NavGlyphs.libShow;
+      case 'artist':
+        return NavGlyphs.libMusic;
+      case 'photo':
+        return NavGlyphs.libPhoto;
+      case 'mixed':
+        return NavGlyphs.libMixed;
+      default:
+        return NavGlyphs.libFolder;
+    }
+  }
+
   /// Calculate top padding for macOS traffic lights
   double _getTopPadding(BuildContext context) {
     double basePadding = MediaQuery.paddingOf(context).top + 16;
@@ -620,6 +681,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     final horizontalPadding = horizontalPaddingForContext(context, isCollapsed: isCollapsed);
     final itemHorizontalPadding = itemHorizontalPaddingForContext(context, isCollapsed: isCollapsed);
     final hasLiveTv = context.watch<MultiServerProvider>().hasLiveTv;
+    final hasSeerr = context.watch<SeerrProvider?>()?.isConfigured ?? false;
 
     // Listen to fullscreen + groupLibrariesByServer setting so the rail
     // rebuilds when the user toggles "Group libraries by server" in Appearance.
@@ -651,6 +713,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
             hiddenRows: hiddenRows,
             hasHiddenLibraries: hiddenLibraries.isNotEmpty,
             hasLiveTv: hasLiveTv,
+            hasSeerr: hasSeerr,
           ),
         );
         final focusOrder = _buildFocusOrder(
@@ -658,6 +721,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
           hiddenRows,
           hasHiddenLibraries: hiddenLibraries.isNotEmpty,
           hasLiveTv: hasLiveTv,
+          hasSeerr: hasSeerr,
         );
         _debugAssertUniqueFocusOrder(focusOrder);
         return TapRegion(
@@ -675,20 +739,28 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
               behavior: HitTestBehavior.opaque,
               onTap: isCollapsed ? _expandForTouch : null,
               child: AnimatedContainer(
-                duration: t.normal,
+                duration: reduceMotion(context, t.normal),
                 curve: Curves.easeOutCubic,
                 width: isCollapsed ? effectiveCollapsedWidth : expandedWidth,
                 clipBehavior: Clip.hardEdge,
                 decoration: const BoxDecoration(),
                 child: Stack(
                   children: [
+                    // TV: dark left-to-right gradient scrim (Netflix-TV nav) so
+                    // the rail reads over the billboard without a hard panel.
+                    // Non-TV: solid surface panel.
                     Positioned.fill(
-                      child: AnimatedOpacity(
-                        opacity: PlatformDetector.isTV() ? 0.0 : 1.0,
-                        duration: t.normal,
-                        curve: Curves.easeOutCubic,
-                        child: ColoredBox(color: t.surface),
-                      ),
+                      child: PlatformDetector.isTV()
+                          ? const DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [Color(0xE6000000), Color(0x00000000)],
+                                ),
+                              ),
+                            )
+                          : ColoredBox(color: t.surface),
                     ),
                     IgnorePointer(
                       ignoring: isCollapsed,
@@ -699,6 +771,11 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                         child: Column(
                           children: [
                             SizedBox(height: _getTopPadding(context)),
+                            _buildBrandHeader(
+                              isCollapsed: isCollapsed,
+                              horizontalPadding: horizontalPadding,
+                              itemHorizontalPadding: itemHorizontalPadding,
+                            ),
                             Expanded(
                               child: ListView(
                                 padding: .symmetric(horizontal: horizontalPadding),
@@ -712,6 +789,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                     _buildNavItem(
                                       icon: Symbols.home_rounded,
                                       selectedIcon: Symbols.home_rounded,
+                                      svgAsset: NavGlyphs.home,
                                       label: Translations.of(context).common.home,
                                       isSelected: widget.selectedTab == NavigationTabId.discover,
                                       isFocused: _focusTracker.isFocused(_kHome),
@@ -733,6 +811,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                       _buildNavItem(
                                         icon: Symbols.live_tv_rounded,
                                         selectedIcon: Symbols.live_tv_rounded,
+                                        svgAsset: NavGlyphs.liveTv,
                                         label: Translations.of(context).navigation.liveTv,
                                         isSelected: widget.selectedTab == NavigationTabId.liveTv,
                                         isFocused: _focusTracker.isFocused('liveTv'),
@@ -745,6 +824,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                     _buildNavItem(
                                       icon: Symbols.search_rounded,
                                       selectedIcon: Symbols.search_rounded,
+                                      svgAsset: NavGlyphs.search,
                                       label: Translations.of(context).common.search,
                                       isSelected: widget.selectedTab == NavigationTabId.search,
                                       isFocused: _focusTracker.isFocused(_kSearch),
@@ -753,6 +833,21 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                       isCollapsed: isCollapsed,
                                     ),
                                     const SizedBox(height: 8),
+                                    // Requests (Jellyseerr/Overseerr) — only when configured.
+                                    if (hasSeerr) ...[
+                                      _buildNavItem(
+                                        icon: Symbols.playlist_add_rounded,
+                                        selectedIcon: Symbols.playlist_add_rounded,
+                                        svgAsset: NavGlyphs.requests,
+                                        label: Translations.of(context).seerr.title,
+                                        isSelected: widget.selectedTab == NavigationTabId.requests,
+                                        isFocused: _focusTracker.isFocused(_kRequests),
+                                        onTap: () => widget.onDestinationSelected(NavigationTabId.requests),
+                                        focusNode: _focusTracker.get(_kRequests),
+                                        isCollapsed: isCollapsed,
+                                      ),
+                                      const SizedBox(height: 8),
+                                    ],
                                   ],
                                   // Downloads (hidden on Apple TV — no user
                                   // file storage)
@@ -760,6 +855,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                     _buildNavItem(
                                       icon: Symbols.download_rounded,
                                       selectedIcon: Symbols.download_rounded,
+                                      svgAsset: NavGlyphs.downloads,
                                       label: Translations.of(context).navigation.downloads,
                                       isSelected: widget.selectedTab == NavigationTabId.downloads,
                                       isFocused: _focusTracker.isFocused(_kDownloads),
@@ -772,6 +868,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                   _buildNavItem(
                                     icon: Symbols.settings_rounded,
                                     selectedIcon: Symbols.settings_rounded,
+                                    svgAsset: NavGlyphs.settings,
                                     label: Translations.of(context).common.settings,
                                     isSelected: widget.selectedTab == NavigationTabId.settings,
                                     isFocused: _focusTracker.isFocused(_kSettings),
@@ -801,9 +898,63 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     );
   }
 
+  /// Brand row per the navigation mockup: logo mark with the PLEYA wordmark
+  /// that fades in when the rail expands.
+  Widget _buildBrandHeader({
+    required bool isCollapsed,
+    required double horizontalPadding,
+    required double itemHorizontalPadding,
+  }) {
+    final t = tokens(context);
+    const logoSize = 36.0;
+    // Align the logo's center with the 22px nav icon column below it.
+    final leftPadding = (horizontalPadding + itemHorizontalPadding - (logoSize - _defaultIconSize) / 2).clamp(
+      0.0,
+      double.infinity,
+    );
+    return Padding(
+      padding: EdgeInsets.fromLTRB(leftPadding, 4, 0, 18),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: UnconstrainedBox(
+          alignment: .centerLeft,
+          constrainedAxis: Axis.vertical,
+          clipBehavior: Clip.hardEdge,
+          child: SizedBox(
+            width: expandedWidth - 24,
+            child: Row(
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(9),
+                    boxShadow: [BoxShadow(color: t.accent.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 4), spreadRadius: -6)],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(9),
+                    child: Image.asset('assets/branding/pleya_logo.png', width: logoSize, height: logoSize),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                AnimatedOpacity(
+                  opacity: isCollapsed ? 0.0 : 1.0,
+                  duration: reduceMotion(context, t.fast),
+                  child: Text(
+                    'PLEYA',
+                    style: TextStyle(fontSize: 16, fontWeight: .w800, letterSpacing: 4.8, color: t.text),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildNavItem({
     required IconData icon,
     required IconData selectedIcon,
+    String? svgAsset,
     required String label,
     required bool isSelected,
     required bool isFocused,
@@ -818,6 +969,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     return NavigationRailItem(
       icon: icon,
       selectedIcon: selectedIcon,
+      svgAsset: svgAsset,
       label: Text(
         label,
         style: TextStyle(
@@ -939,7 +1091,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                 decoration: BoxDecoration(
                   color: () {
                     if (isCollapsed) return isLibrariesFocused ? t.text.withValues(alpha: 0.08) : null;
-                    if (showLibrariesSelectedBackground) return t.text.withValues(alpha: 0.1);
+                    if (showLibrariesSelectedBackground) return t.text.withValues(alpha: 0.06);
                     if (isLibrariesFocused) return t.text.withValues(alpha: 0.08);
                     return null;
                   }(),
@@ -966,7 +1118,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                           Expanded(
                             child: AnimatedOpacity(
                               opacity: isCollapsed ? 0.0 : 1.0,
-                              duration: tokens(context).fast,
+                              duration: reduceMotion(context, tokens(context).fast),
                               child: Text(
                                 Translations.of(context).navigation.libraries,
                                 style: TextStyle(
@@ -981,7 +1133,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                           ),
                           AnimatedOpacity(
                             opacity: isCollapsed ? 0.0 : 1.0,
-                            duration: tokens(context).fast,
+                            duration: reduceMotion(context, tokens(context).fast),
                             child: AppIcon(
                               _librariesExpanded ? Symbols.expand_less_rounded : Symbols.expand_more_rounded,
                               fill: 1,
@@ -1001,7 +1153,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
 
         TweenAnimationBuilder<double>(
           tween: Tween(end: (_librariesExpanded && !isCollapsed) ? 1.0 : 0.0),
-          duration: tokens(context).normal,
+          duration: reduceMotion(context, tokens(context).normal),
           curve: Curves.easeOutCubic,
           builder: (context, value, child) {
             return ClipRect(
@@ -1205,6 +1357,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     return Padding(
       padding: const EdgeInsets.only(left: 12),
       child: NavigationRailItem(
+        svgAsset: _getLibrarySvg(library.kind.id),
         icon: _getLibraryIcon(library.kind.id),
         selectedIcon: _getLibraryIcon(library.kind.id),
         label: Column(

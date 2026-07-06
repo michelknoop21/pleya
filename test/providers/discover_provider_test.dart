@@ -1,32 +1,33 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/media/ids.dart';
-import 'package:plezy/media/media_backend.dart';
-import 'package:plezy/media/media_hub.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/media/media_library.dart';
-import 'package:plezy/media/media_server_client.dart';
-import 'package:plezy/media/server_capabilities.dart';
-import 'package:plezy/providers/discover_provider.dart';
-import 'package:plezy/providers/hidden_libraries_provider.dart';
-import 'package:plezy/providers/libraries_provider.dart';
-import 'package:plezy/providers/multi_server_provider.dart';
-import 'package:plezy/services/data_aggregation_service.dart';
-import 'package:plezy/services/multi_server_manager.dart';
-import 'package:plezy/services/settings_service.dart';
-import 'package:plezy/utils/watch_state_notifier.dart';
+import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_hub.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_library.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/providers/discover_provider.dart';
+import 'package:pleya/providers/hidden_libraries_provider.dart';
+import 'package:pleya/providers/libraries_provider.dart';
+import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/services/data_aggregation_service.dart';
+import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/utils/watch_state_notifier.dart';
 
 import '../test_helpers/prefs.dart';
 
-MediaItem _item(String id, {String? parentId, String serverId = 'server_1'}) => MediaItem(
-  id: id,
-  backend: MediaBackend.plex,
-  kind: MediaKind.episode,
-  title: id,
-  serverId: serverId,
-  serverName: 'Server',
-  parentId: parentId,
-);
+MediaItem _item(String id, {String? parentId, String serverId = 'server_1', MediaKind kind = MediaKind.episode}) =>
+    MediaItem(
+      id: id,
+      backend: MediaBackend.plex,
+      kind: kind,
+      title: id,
+      serverId: serverId,
+      serverName: 'Server',
+      parentId: parentId,
+    );
 
 MediaHub _hub(
   String id, {
@@ -214,6 +215,43 @@ void main() {
 
     expect(sawImmediateRemoval, isTrue);
     expect(provider.onDeck.map((i) => i.id), ['ep-2']);
+  });
+
+  test('watched movie leaves the row immediately and a stale refetch cannot bring it back', () async {
+    final movie = _item('movie-1', kind: MediaKind.movie);
+    // The refetch keeps returning the movie (scrobble race on the server).
+    aggregation.onDeckResult = () => [movie, _item('ep-1')];
+    await provider.load();
+
+    WatchStateNotifier().notifyWatched(item: movie);
+    await pumpEventQueue();
+
+    expect(provider.onDeck.map((i) => i.id), ['ep-1']);
+  });
+
+  test('watched episode keeps the series row for the refetch to advance', () async {
+    aggregation.onDeckResult = () => [_item('ep-1')];
+    await provider.load();
+
+    WatchStateNotifier().notifyWatched(item: _item('ep-1'));
+    await pumpEventQueue();
+
+    expect(provider.onDeck.map((i) => i.id), ['ep-1']);
+  });
+
+  test('restarting a watched movie lifts the suppression', () async {
+    final movie = _item('movie-1', kind: MediaKind.movie);
+    aggregation.onDeckResult = () => [movie];
+    await provider.load();
+
+    WatchStateNotifier().notifyWatched(item: movie);
+    await pumpEventQueue();
+    expect(provider.onDeck, isEmpty);
+
+    WatchStateNotifier().notifyProgress(item: movie, viewOffset: 60000, duration: 7200000);
+    await pumpEventQueue();
+
+    expect(provider.onDeck.map((i) => i.id), ['movie-1']);
   });
 
   test('library order change re-sorts hubs without any refetch', () async {

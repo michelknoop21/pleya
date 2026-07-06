@@ -1,0 +1,7 @@
+services:
+  pleya:
+    build: .
+    container_name: pleya
+    restart: unless-stopped
+    ports:
+      - "8830:80"

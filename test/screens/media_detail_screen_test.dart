@@ -1,39 +1,40 @@
 import 'dart:async';
 import 'package:drift/native.dart';
-import 'package:plezy/media/ids.dart';
+import 'package:pleya/media/ids.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:plezy/database/app_database.dart';
-import 'package:plezy/i18n/strings.g.dart';
-import 'package:plezy/media/library_query.dart';
-import 'package:plezy/media/media_backend.dart';
-import 'package:plezy/media/media_hub.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/media/media_server_client.dart';
-import 'package:plezy/media/server_capabilities.dart';
-import 'package:plezy/providers/download_provider.dart';
-import 'package:plezy/providers/multi_server_provider.dart';
-import 'package:plezy/providers/watch_state_store.dart';
-import 'package:plezy/screens/media_detail_screen.dart';
-import 'package:plezy/services/data_aggregation_service.dart';
-import 'package:plezy/services/download_manager_service.dart';
-import 'package:plezy/services/download_storage_service.dart';
-import 'package:plezy/services/jellyfin_api_cache.dart';
-import 'package:plezy/services/multi_server_manager.dart';
-import 'package:plezy/services/plex_api_cache.dart';
-import 'package:plezy/services/settings_service.dart';
-import 'package:plezy/theme/mono_theme.dart';
-import 'package:plezy/utils/layout_constants.dart';
-import 'package:plezy/utils/media_server_http_client.dart';
-import 'package:plezy/utils/platform_detector.dart';
-import 'package:plezy/utils/watch_state_notifier.dart';
-import 'package:plezy/widgets/episode_card.dart';
-import 'package:plezy/widgets/tv_browse_rail.dart';
+import 'package:pleya/database/app_database.dart';
+import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/library_query.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_hub.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/providers/download_provider.dart';
+import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/providers/watch_state_store.dart';
+import 'package:pleya/screens/media_detail_screen.dart';
+import 'package:pleya/services/data_aggregation_service.dart';
+import 'package:pleya/services/download_manager_service.dart';
+import 'package:pleya/services/download_storage_service.dart';
+import 'package:pleya/services/jellyfin_api_cache.dart';
+import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/plex_api_cache.dart';
+import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/utils/layout_constants.dart';
+import 'package:pleya/utils/media_server_http_client.dart';
+import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/utils/watch_state_notifier.dart';
+import 'package:pleya/widgets/episode_card.dart';
+import 'package:pleya/widgets/media_progress_bar.dart';
+import 'package:pleya/widgets/tv_browse_rail.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -722,7 +723,7 @@ void main() {
     bool episodeRowHasProgress(WidgetTester tester, String title) {
       final card = episodeCardFor(title);
       expect(card, findsOneWidget, reason: 'episode row "$title" should be visible');
-      return tester.any(find.descendant(of: card, matching: find.byType(LinearProgressIndicator)));
+      return tester.any(find.descendant(of: card, matching: find.byType(MediaProgressBar)));
     }
 
     Future<void> emit(WidgetTester tester, void Function() send) async {

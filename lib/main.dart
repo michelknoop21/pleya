@@ -9,7 +9,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'connection/connection.dart';
 import 'connection/connection_bootstrap.dart';
@@ -25,6 +24,7 @@ import 'profiles/profile_registry.dart';
 import 'mixins/mounted_set_state_mixin.dart';
 import 'profiles/plex_home_service.dart';
 import 'screens/auth_screen.dart';
+import 'widgets/intro_splash.dart';
 import 'screens/profile/pin_entry_dialog.dart';
 import 'screens/profile/profile_switch_screen.dart';
 import 'services/storage_service.dart';
@@ -32,6 +32,7 @@ import 'services/device_performance.dart';
 import 'services/macos_window_service.dart';
 import 'services/native_window_service.dart';
 import 'services/fullscreen_state_manager.dart';
+import 'services/icloud_sync_service.dart';
 import 'services/settings_service.dart';
 import 'utils/platform_detector.dart';
 import 'services/apple_tv_remote_touch_service.dart';
@@ -79,6 +80,9 @@ const bool _enableSentry = bool.fromEnvironment('ENABLE_SENTRY', defaultValue: f
 const String gitCommit = String.fromEnvironment('GIT_COMMIT');
 const String _sentryEnvironment = String.fromEnvironment('SENTRY_ENVIRONMENT');
 const String _sentryDist = String.fromEnvironment('SENTRY_DIST');
+// Crash reporting DSN. Empty by default so no data is ever sent to a
+// third-party project; supply your own via --dart-define=SENTRY_DSN=...
+const String _sentryDsn = String.fromEnvironment('SENTRY_DSN');
 
 // Workaround for Flutter bug #177992: iPadOS 26.1+ misinterprets fake touch events
 // at (0,0) as barrier taps, causing modals to dismiss immediately.
@@ -120,14 +124,14 @@ Future<void> main() async {
   // the plugins we use.
   _registerTvosPlatformPlugins();
 
-  if (_enableSentry) {
+  if (_enableSentry && _sentryDsn.isNotEmpty) {
     final packageInfo = await PackageInfo.fromPlatform();
 
     await SentryFlutter.init((options) {
-      options.dsn = 'https://6a1a6ef8c72140099b2798973c1bfb2f@bugs.plezy.app/1';
+      options.dsn = _sentryDsn;
       options.release = gitCommit.isNotEmpty
-          ? 'plezy@${gitCommit.substring(0, 7)}'
-          : 'plezy@${packageInfo.version}+${packageInfo.buildNumber}';
+          ? 'pleya@${gitCommit.substring(0, 7)}'
+          : 'pleya@${packageInfo.version}+${packageInfo.buildNumber}';
       if (_sentryEnvironment.isNotEmpty) options.environment = _sentryEnvironment;
       if (_sentryDist.isNotEmpty) options.dist = _sentryDist;
       options.tracesSampleRate = 0;
@@ -213,14 +217,29 @@ Future<void> _bootstrapApp() async {
   final commitSuffix = gitCommit.isNotEmpty ? ' (${gitCommit.substring(0, 7)})' : '';
   String renderer = '';
   if (Platform.isAndroid) {
-    renderer = ' [${await const MethodChannel('com.plezy/theme').invokeMethod<String>('getRenderer')}]';
+    renderer = ' [${await const MethodChannel('com.pleya/theme').invokeMethod<String>('getRenderer')}]';
   }
   appLogger.i(
-    'Plezy v${packageInfo.version}+${packageInfo.buildNumber}$commitSuffix$renderer'
+    'Pleya v${packageInfo.version}+${packageInfo.buildNumber}$commitSuffix$renderer'
     ' [effects: ${DevicePerformance.describeSync()}]',
   );
 
   await DownloadStorageService.instance.initialize(settings);
+
+  // iCloud settings sync (Apple platforms only; no-op elsewhere). Installs the
+  // local-write mirror hook and, when enabled, merges remote settings at boot.
+  await ICloudSyncService.start(
+    settings: settings,
+    storage: storage,
+    onRemoteChangesApplied: () {
+      // Setting values and theme already refresh through their listenables
+      // (SettingsService.refreshListenables fired by the sync service); reload
+      // the global locale so a remotely-changed language takes effect now.
+      // ponytail: library/keyboard providers re-read on next navigation — wire
+      // a full provider reload here if a device test shows stale library state.
+      unawaited(LocaleSettings.setLocale(settings.read(SettingsService.appLocale)));
+    },
+  );
 
   FullscreenStateManager().startMonitoring();
 
@@ -910,7 +929,7 @@ class _AppShell extends StatelessWidget {
                       key: rootScaffoldMessengerKey,
                       child: Scaffold(
                         backgroundColor: Colors.transparent,
-                        body: _AppleTvScale(child: child),
+                        body: _AppleTvScale(child: IntroGate(child: child ?? const SizedBox.shrink())),
                       ),
                     ),
                   ),
@@ -1004,7 +1023,12 @@ class SetupScreen extends StatefulWidget {
   State<SetupScreen> createState() => _SetupScreenState();
 }
 
-class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
+class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin, SingleTickerProviderStateMixin {
+  /// Drives the slow red glow pulse behind the splash logo mark.
+  late final AnimationController _glowController = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 3),
+  )..repeat(reverse: true);
   String _statusMessage = '';
   bool _enteringOffline = false;
 
@@ -1272,6 +1296,7 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
 
   @override
   void dispose() {
+    _glowController.dispose();
     _statusSub?.cancel();
     _connectProgressSub?.cancel();
     super.dispose();
@@ -1284,9 +1309,9 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
         _statusMessage,
         key: ValueKey(_statusMessage),
         textAlign: TextAlign.center,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+        // Splash always renders on a dark brand background, so keep text light
+        // regardless of the app's light/dark theme.
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.7)),
       ),
     );
   }
@@ -1294,8 +1319,8 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
   Widget _buildServerStatusList(BuildContext context) {
     if (_serverStatus.isEmpty) return const SizedBox.shrink();
     final textTheme = Theme.of(context).textTheme;
-    final dimColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
-    const coralColor = Color(0xFFE5A00D);
+    final dimColor = Colors.white.withValues(alpha: 0.6);
+    const coralColor = Color(0xFFE5140F); // brand accent red
     const successColor = Color(0xFF4CAF50);
     const failColor = Color(0xFFEF5350);
 
@@ -1331,34 +1356,112 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
     );
   }
 
+  /// Pulsing red glow behind the logo mark, per the app-intro mockup.
+  Widget _buildLogoMark() {
+    return SizedBox(
+      width: 230,
+      height: 230,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          AnimatedBuilder(
+            animation: _glowController,
+            builder: (context, child) {
+              final t = Curves.easeInOut.transform(_glowController.value);
+              return Opacity(
+                opacity: 0.5 + 0.5 * t,
+                child: Transform.scale(scale: 0.92 + 0.13 * t, child: child),
+              );
+            },
+            child: const DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [Color(0x66E5140F), Color(0x00E5140F)], stops: [0, 0.68]),
+              ),
+              child: SizedBox(width: 230, height: 230),
+            ),
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: const [BoxShadow(color: Color(0xCCE5140F), blurRadius: 50, offset: Offset(0, 20), spreadRadius: -18)],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: Image.asset('assets/branding/pleya_logo.png', width: 132, height: 132),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    const coralColor = Color(0xFFE5A00D);
-    return ColoredBox(
-      color: Theme.of(context).scaffoldBackgroundColor,
+    return DecoratedBox(
+      // Dark brand background with a faint red radial from the top — the
+      // splash always renders dark regardless of theme; the logo is designed
+      // for dark.
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0, -1.1),
+          radius: 1.3,
+          colors: [Color(0xFF26100D), Color(0xFF0A0808)],
+        ),
+      ),
       child: Stack(
         children: [
-          Center(child: SvgPicture.asset('assets/plezy_adaptive_foreground.svg', width: 288, height: 288)),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: MediaQuery.sizeOf(context).height * 0.5 - 170,
-            child: _buildStatusText(context),
+          Center(
+            child: Column(
+              mainAxisSize: .min,
+              children: [
+                _buildLogoMark(),
+                const SizedBox(height: 18),
+                ShaderMask(
+                  shaderCallback: (r) =>
+                      const LinearGradient(colors: [Colors.white, Color(0xFFF2D9CD)]).createShader(r),
+                  child: const Text(
+                    'PLEYA',
+                    style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: .w800, letterSpacing: 11),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'YOUR MEDIA. YOUR WAY.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    letterSpacing: 3.4,
+                    color: Colors.white.withValues(alpha: 0.4),
+                  ),
+                ),
+              ],
+            ),
           ),
           Positioned(
             left: 0,
             right: 0,
-            top: MediaQuery.sizeOf(context).height * 0.5 + 180,
+            bottom: 88,
             child: Center(
               child: _serverStatus.isEmpty
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: coralColor),
+                  ? SizedBox(
+                      width: 120,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: ShaderMask(
+                          shaderCallback: (r) =>
+                              const LinearGradient(colors: [Color(0xFFE5140F), Color(0xFFFFB020)]).createShader(r),
+                          child: const LinearProgressIndicator(
+                            minHeight: 3,
+                            backgroundColor: Color(0x14FFFFFF),
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     )
                   : _buildServerStatusList(context),
             ),
           ),
+          Positioned(left: 0, right: 0, bottom: 48, child: _buildStatusText(context)),
         ],
       ),
     );

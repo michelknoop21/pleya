@@ -5,7 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:plezy/widgets/app_icon.dart';
+import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:path/path.dart' as path;
 
@@ -18,6 +18,7 @@ import '../../../mpv/mpv.dart';
 import '../../../providers/shader_provider.dart';
 import '../../../services/file_picker_service.dart';
 import '../../../services/settings_service.dart';
+import '../../settings_builder.dart';
 import '../../../services/shader_service.dart';
 import '../../../services/sleep_timer_service.dart';
 import '../../../services/video_filter_manager.dart';
@@ -244,6 +245,19 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
       _dvConversionMode = mode;
     });
     OverlaySheetController.of(context).close();
+  }
+
+  String _audioNormalizationLabel(AudioNormalizationMode mode) => switch (mode) {
+    AudioNormalizationMode.off => t.videoSettings.audioNormalizationModes.off,
+    AudioNormalizationMode.normalize => t.videoSettings.audioNormalizationModes.normalize,
+    AudioNormalizationMode.night => t.videoSettings.audioNormalizationModes.night,
+  };
+
+  void _cycleAudioNormalization(AudioNormalizationMode current) {
+    const order = AudioNormalizationMode.values;
+    final next = order[(current.index + 1) % order.length];
+    SettingsService.instance.write(SettingsService.audioNormalizationMode, next);
+    unawaited(widget.player.setAudioNormalization(next));
   }
 
   void _navigateTo(_SettingsView view) {
@@ -556,12 +570,16 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
             onAfterWrite: widget.player.setAudioPassthrough,
           ),
 
-        // Audio Normalization
-        _SettingsToggleItem(
-          pref: SettingsService.audioNormalization,
-          icon: Symbols.graphic_eq_rounded,
-          title: t.videoSettings.audioNormalization,
-          onAfterWrite: widget.player.setAudioNormalization,
+        // Audio Normalization — Off / Normalize / Night (tap cycles).
+        SettingValueBuilder<AudioNormalizationMode>(
+          pref: SettingsService.audioNormalizationMode,
+          builder: (context, mode, _) => _SettingsMenuItem(
+            icon: Symbols.graphic_eq_rounded,
+            title: t.videoSettings.audioNormalizationTitle,
+            valueText: _audioNormalizationLabel(mode),
+            isHighlighted: mode.isEnabled,
+            onTap: () => _cycleAudioNormalization(mode),
+          ),
         ),
 
         // Shader Preset (MPV only)
@@ -621,7 +639,7 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
             leading: AppIcon(Symbols.swap_horiz_rounded, fill: 1, color: tokens(context).textMuted),
             title: const Text('Trigger MPV Fallback'),
             onTap: () {
-              const MethodChannel('com.plezy/exo_player').invokeMethod('triggerFallback');
+              const MethodChannel('com.pleya/exo_player').invokeMethod('triggerFallback');
               OverlaySheetController.of(context).close();
             },
           ),

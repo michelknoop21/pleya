@@ -33,8 +33,13 @@ class MediaImageHelper {
   static const int _widthRoundingFactor = 40;
   static const int _heightRoundingFactor = 60;
 
-  static const int _maxTranscodedWidth = 1920;
-  static const int _maxTranscodedHeight = 1080;
+  // Full-bleed backdrops (hero/spotlight) cover large retina desktop/TV
+  // panels, so cap at 1440p rather than 1080p — a 1080p backdrop upscales
+  // ~1.7× on a 2560px retina Mac and reads as grainy. Phones request far less
+  // than this, and the reduced tier has its own 720p cap, so only big screens
+  // pay the extra bytes.
+  static const int _maxTranscodedWidth = 2560;
+  static const int _maxTranscodedHeight = 1440;
 
   static const int _minTranscodedWidth = 160;
   static const int _minTranscodedHeight = 240;
@@ -237,7 +242,7 @@ class MediaImageHelper {
       // Match the reduced-tier fetch cap so oversized originals (failed
       // transcodes, external images) can't decode past the art budget.
       ImageType.art when DevicePerformance.isReduced => (_reducedMaxArtWidth, _reducedMaxArtHeight),
-      ImageType.art => (1920, 1080),
+      ImageType.art => (2560, 1440),
       ImageType.logo => (600, 300),
       ImageType.avatar => (300, 300),
     };

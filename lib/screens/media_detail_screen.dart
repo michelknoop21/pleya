@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 import '../media/ids.dart';
 import 'dart:io';
 
@@ -6,10 +7,11 @@ import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../navigation/profile_navigation_scope.dart';
+import '../services/device_performance.dart';
 import '../services/image_cache_service.dart';
 import 'package:flutter/services.dart';
-import 'package:plezy/utils/platform_detector.dart';
-import 'package:plezy/widgets/app_icon.dart';
+import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import '../widgets/collapsible_text.dart';
@@ -20,8 +22,7 @@ import '../focus/focusable_action_bar.dart';
 import '../focus/focusable_wrapper.dart';
 import '../focus/key_event_utils.dart';
 import '../focus/input_mode_tracker.dart';
-import '../focus/card_focus_scope.dart';
-import '../widgets/focus_builders.dart';
+import '../media/item_watcher.dart';
 import '../media/library_query.dart';
 import '../media/media_hub.dart';
 import '../utils/provider_extensions.dart';
@@ -53,9 +54,15 @@ import '../widgets/settings_builder.dart';
 import '../utils/grid_size_calculator.dart';
 import '../utils/layout_constants.dart';
 import '../providers/download_provider.dart';
+import '../providers/multi_server_provider.dart';
+import 'media_detail/watched_by_row.dart';
 import '../providers/offline_watch_provider.dart';
+import '../providers/seerr_provider.dart';
 import '../providers/watch_state_store.dart';
-import '../theme/mono_tokens.dart';
+import '../models/seerr/seerr_media.dart';
+import '../utils/external_ids.dart';
+import '../widgets/seerr_request_sheet.dart';
+import '../theme/mono_theme.dart' show kAccentAlt;
 import '../utils/app_logger.dart';
 import '../utils/formatters.dart';
 import '../utils/scroll_utils.dart';
@@ -66,7 +73,9 @@ import '../widgets/app_bar_back_button.dart';
 import '../utils/desktop_window_padding.dart';
 import '../widgets/horizontal_scroll_with_arrows.dart';
 import '../widgets/media_context_menu.dart';
+import '../widgets/pressable.dart';
 import 'libraries/state_messages.dart';
+import '../widgets/state_view.dart';
 import '../widgets/overlay_sheet.dart';
 import '../widgets/placeholder_container.dart';
 import '../mixins/watch_state_aware.dart';
@@ -79,6 +88,8 @@ import '../utils/global_key_utils.dart';
 import '../widgets/episode_card.dart';
 import '../widgets/fitting_title_text.dart';
 import 'actor_media_screen.dart';
+import 'media_detail/cast_section.dart';
+import 'media_detail/extras_section.dart';
 import '../widgets/focusable_tab_chip.dart';
 import '../widgets/hub_section.dart';
 import '../widgets/ios_status_bar_tap_scroll_to_top.dart';
@@ -195,6 +206,10 @@ class MediaDetailScreen extends StatefulWidget {
   final String? initialSeasonId;
   final String? initialEpisodeId;
 
+  /// Hero tag flown from the tapped poster (pointer platforms only). Null on TV
+  /// and from entry points without a source poster (deep links, context menu).
+  final Object? heroTag;
+
   const MediaDetailScreen({
     super.key,
     required this.metadata,
@@ -202,6 +217,7 @@ class MediaDetailScreen extends StatefulWidget {
     this.initialSeasonIndex,
     this.initialSeasonId,
     this.initialEpisodeId,
+    this.heroTag,
   });
 
   @override
@@ -214,6 +230,7 @@ PageRoute<bool> mediaDetailRoute({
   int? initialSeasonIndex,
   String? initialSeasonId,
   String? initialEpisodeId,
+  Object? heroTag,
 }) {
   final page = MediaDetailScreen(
     metadata: metadata,
@@ -221,6 +238,7 @@ PageRoute<bool> mediaDetailRoute({
     initialSeasonIndex: initialSeasonIndex,
     initialSeasonId: initialSeasonId,
     initialEpisodeId: initialEpisodeId,
+    heroTag: heroTag,
   );
   if (!PlatformDetector.isTV()) return MaterialPageRoute<bool>(builder: (_) => page);
 
@@ -252,6 +270,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   int _episodesLoadGeneration = 0;
   bool _showEpisodesDirectly = false;
   MediaItem? _fullMetadata;
+  List<ItemWatcher>? _watchers;
   MediaItem? _onDeckEpisode;
   bool _isLoadingMetadata = true;
   List<MediaItem>? _extras;
@@ -1360,6 +1379,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       // backends; safe to call unconditionally.
       unawaited(_loadExtras());
       unawaited(_loadRelatedHubs());
+      unawaited(_loadWatchers());
     } catch (e) {
       // Fallback to passed metadata on error
       if (!mounted) return;
@@ -1878,6 +1898,33 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       // Silently fail - extras section won't appear if fetch fails
       markLoaded();
     }
+  }
+
+  /// Plex-only "Watched by …" row. Reads the server-wide history, which needs
+  /// the server-owner token, so it's gated on server ownership and silently
+  /// skips for Jellyfin / shared / non-owned servers.
+  Future<void> _loadWatchers() async {
+    if (widget.isOffline) return;
+    if (!_metadata.isMovie && !_metadata.isShow) return;
+
+    final serverId = serverIdOrNull(_metadata.serverId);
+    if (serverId == null) return;
+    final plexClient = getServerBoundPlexClient(context);
+    if (plexClient == null) return; // Jellyfin / not registered
+
+    final manager = context.read<MultiServerProvider>().serverManager;
+    if (!manager.isOwnerOrAdmin(serverId)) return; // owner-token endpoint only
+    final ownerToken = manager.getPlexServer(serverId)?.accessToken;
+    // The history endpoint 403s on a non-owner token; without a real owner
+    // token the call would silently fall back to the (possibly restricted)
+    // client token — skip rather than fail quietly or poison the roster cache.
+    if (ownerToken == null || ownerToken.isEmpty) return;
+
+    final watchers = await plexClient.fetchItemWatchers(_metadata.id, authToken: ownerToken);
+    // Assign unconditionally (mounted-guarded): an empty result clears any
+    // stale row from a prior load; the render sites hide on empty.
+    if (!mounted) return;
+    setState(() => _watchers = watchers);
   }
 
   /// Load related hubs (collections, similar, "more from" director/actor).
@@ -2551,25 +2598,20 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   );
 
   Widget _sectionEmpty(BuildContext context, String message) {
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Center(
-        child: Text(message, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey)),
-      ),
-    );
+    return Center(child: StateView.empty(title: message, compact: true));
   }
 
   /// Retryable error for a section whose fetch threw (vs. [_sectionEmpty], which
-  /// means a successful-but-empty result). Reuses the app-wide [ErrorStateWidget]
+  /// means a successful-but-empty result). Reuses the app-wide [StateView]
   /// so the Retry button is dpad-focusable.
   Widget _sectionError(String message, VoidCallback onRetry) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: ErrorStateWidget(
-        message: message,
+    return Center(
+      child: StateView.error(
+        title: message,
         icon: Symbols.error_outline_rounded,
         onRetry: onRetry,
         retryLabel: t.common.retry,
+        compact: true,
       ),
     );
   }
@@ -3115,8 +3157,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
           child: Focus(
             onKeyEvent: _handleMediaDetailBackKey,
             child: Scaffold(
+              // Transparent so the frosted backdrop shows behind the scroll.
+              // Falls back to the theme background on the reduced tier / TV.
+              backgroundColor: _frostedBackdropEnabled(isTv) ? Colors.transparent : null,
               body: Stack(
                 children: [
+                  if (_frostedBackdropEnabled(isTv)) Positioned.fill(child: _buildFrostedBackdrop(context, metadata)),
                   CustomScrollView(
                     primary: true,
                     slivers: [
@@ -3252,6 +3298,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                                   onVerticalNavigation: (isUp) => _handleRelatedHubNavigation(i, isUp),
                                 ),
                                 SizedBox(height: isTv ? 28 : 8),
+                              ],
+
+                              // "Watched by …" row (Plex, owned servers only).
+                              if (_watchers != null && _watchers!.isNotEmpty) ...[
+                                WatchedByRow(watchers: _watchers!, selfAccountId: 1),
+                                const SizedBox(height: 24),
                               ],
 
                               // Additional info — wrapped in Focus so DPAD DOWN from the
@@ -3564,6 +3616,11 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                     ],
                     SizedBox(height: actionGap),
                     SizedBox(height: actionHeight, child: _buildActionButtons(metadata)),
+                    // "Watched by …" row (Plex, owned servers only).
+                    if (_watchers != null && _watchers!.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      WatchedByRow(watchers: _watchers!, selfAccountId: 1, avatarSize: 36),
+                    ],
                   ],
                 ),
               ),
@@ -4065,14 +4122,72 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     return _getRelatedHubIcon(hub);
   }
 
+  /// Frosted full-bleed backdrop behind the whole detail scroll. Off on the
+  /// reduced-performance tier (a full-screen blur is expensive on old Apple TVs)
+  /// and on TV, where the hero already fills the screen.
+  bool _frostedBackdropEnabled(bool isTv) => !isTv && !DevicePerformance.isReduced;
+
+  Widget _buildFrostedBackdrop(BuildContext context, MediaItem metadata) {
+    final bg = Theme.of(context).scaffoldBackgroundColor;
+    final size = MediaQuery.sizeOf(context);
+    final containerAspect = size.width / size.height;
+    final artPaths = metadata.heroArtCandidates(containerAspectRatio: containerAspect);
+    if (artPaths.isEmpty) return ColoredBox(color: bg);
+
+    final client = _getArtworkMediaClient(context);
+    final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
+    final (_, memHeight) = MediaImageHelper.getMemCacheDimensions(
+      displayWidth: (size.width * dpr).round(),
+      displayHeight: (size.height * dpr).round(),
+      imageType: ImageType.art,
+    );
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+          child: _buildHeroNetworkArtwork(
+            context,
+            client: client,
+            artworkPaths: artPaths,
+            mediaSize: size,
+            dpr: dpr,
+            memCacheHeight: memHeight,
+          ),
+        ),
+        // Heavy scrim keeps body text readable over the busy art; it also masks
+        // the seam where the hero's opaque gradient bottom meets this layer.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [bg.withValues(alpha: 0.72), bg.withValues(alpha: 0.9), bg],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildHeroHeader(BuildContext context, MediaItem metadata, Size size, double headerHeight) {
+    // Hero flight from the tapped poster: the backdrop grows out of the poster
+    // rect on push. Tag is set only on pointer platforms (see MediaCard).
+    Widget wrapHero(Widget backdrop) {
+      final tag = widget.heroTag;
+      return tag == null ? backdrop : Hero(tag: tag, child: backdrop);
+    }
+
     return Stack(
       children: [
         // Background Art (fixed height, no parallax)
         SizedBox(
           height: headerHeight,
           width: double.infinity,
-          child: Builder(
+          child: wrapHero(
+            Builder(
             builder: (context) {
               final containerAspect = size.width / headerHeight;
               final heroArtPaths = metadata.heroArtCandidates(containerAspectRatio: containerAspect);
@@ -4107,6 +4222,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                 ),
               );
             },
+          ),
           ),
         ),
 
@@ -4165,6 +4281,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         const desiredLogoWidth = 400.0;
         const actionHeight = 48.0;
         final chips = <Widget>[
+          // Amber "XX% match" derived from the rating.
+          if (metadata.rating != null)
+            Text(
+              '${(metadata.rating! * 10).round()}% match',
+              style: const TextStyle(color: kAccentAlt, fontWeight: FontWeight.w700, fontSize: 14),
+            ),
           if (metadata.year != null) _buildMetadataChip('${metadata.year}'),
           if (metadata case PlexMediaItem(:final editionTitle?)) _buildMetadataChip(editionTitle),
           if (metadata.contentRating != null) _buildMetadataChip(formatContentRating(metadata.contentRating!)),
@@ -4315,93 +4437,15 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   }
 
   Widget _buildCastSectionContent(MediaItem metadata) {
-    final cardWidth = _getResponsiveCardWidth();
-    const innerPadding = 3.0;
-    final imageSize = cardWidth;
-    // image + inner padding + text area + outer list padding + focus scale headroom
-    final containerHeight = imageSize + innerPadding * 2 + 58 + 10;
-
-    final theme = Theme.of(context);
-    final actorNameStyle = theme.textTheme.bodyMedium?.copyWith(fontWeight: .w600);
-    final actorRoleStyle = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-
-    return Focus(
+    return CastSection(
+      metadata: metadata,
+      cardWidth: _getResponsiveCardWidth(),
+      client: getServerBoundMediaClient(context),
       focusNode: _castFocusNode,
       onKeyEvent: _handleCastKeyEvent,
-      child: ListenableBuilder(
-        listenable: _castFocusNode,
-        builder: (context, _) {
-          final hasFocus = _castFocusNode.hasFocus;
-
-          return SizedBox(
-            height: containerHeight,
-            child: HorizontalScrollWithArrows(
-              controller: _castScrollController,
-              builder: (scrollController) => ListView.builder(
-                controller: scrollController,
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                itemCount: metadata.roles!.length,
-                itemBuilder: (context, index) {
-                  final actor = metadata.roles![index];
-                  final isFocused = hasFocus && index == _focusedCastIndex;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: FocusBuilders.buildLockedFocusWrapper(
-                      context: context,
-                      isFocused: isFocused,
-                      borderRadius: tokens(context).radiusSm,
-                      onTap: () => _navigateToActorMedia(actor),
-                      delegateFocusBorder: true,
-                      child: Padding(
-                        padding: const EdgeInsets.all(innerPadding),
-                        child: SizedBox(
-                          width: cardWidth,
-                          child: Column(
-                            crossAxisAlignment: .start,
-                            children: [
-                              CardFocusBorder(
-                                borderRadius: tokens(context).radiusSm,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(tokens(context).radiusSm),
-                                  child: OptimizedMediaImage(
-                                    client: getServerBoundMediaClient(context),
-                                    imagePath: actor.thumbPath,
-                                    width: imageSize,
-                                    height: imageSize,
-                                    fit: BoxFit.cover,
-                                    imageType: ImageType.avatar,
-                                    fallbackIcon: Symbols.person_rounded,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: .start,
-                                  children: [
-                                    Text(actor.tag, style: actorNameStyle, maxLines: 2, overflow: .ellipsis),
-                                    if (actor.role != null) ...[
-                                      const SizedBox(height: 2),
-                                      Text(actor.role!, style: actorRoleStyle, maxLines: 1, overflow: .ellipsis),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          );
-        },
-      ),
+      scrollController: _castScrollController,
+      focusedIndex: _focusedCastIndex,
+      onActorTap: _navigateToActorMedia,
     );
   }
 
@@ -4413,56 +4457,15 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   }
 
   Widget _buildExtrasSectionContent() {
-    final cardWidth = _getResponsiveCardWidth();
-    // 16:9 aspect ratio for clip thumbnails (cardWidth includes 8px padding on each side)
-    final posterHeight = (cardWidth - 16) * (9 / 16);
-    final containerHeight = posterHeight + 52;
-
-    return Focus(
+    return ExtrasSection(
+      extras: _extras!,
+      cardWidth: _getResponsiveCardWidth(),
       focusNode: _extrasFocusNode,
       onKeyEvent: _handleExtrasKeyEvent,
-      child: ListenableBuilder(
-        listenable: _extrasFocusNode,
-        builder: (context, _) {
-          final hasFocus = _extrasFocusNode.hasFocus;
-
-          return SizedBox(
-            height: containerHeight,
-            child: HorizontalScrollWithArrows(
-              controller: _extrasScrollController,
-              builder: (scrollController) => ListView.builder(
-                controller: scrollController,
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                itemCount: _extras!.length,
-                itemBuilder: (context, index) {
-                  final extra = _extras![index];
-                  final isFocused = hasFocus && index == _focusedExtraIndex;
-                  final cardKey = _extraCardKeys.putIfAbsent(index, () => GlobalKey<MediaCardState>());
-
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: FocusBuilders.buildLockedFocusWrapper(
-                      context: context,
-                      isFocused: isFocused,
-                      onTap: () => navigateToVideoPlayer(context, metadata: extra),
-                      delegateFocusBorder: true,
-                      child: MediaCard(
-                        key: cardKey,
-                        item: extra,
-                        width: cardWidth,
-                        height: posterHeight,
-                        forceGridMode: true,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          );
-        },
-      ),
+      scrollController: _extrasScrollController,
+      focusedIndex: _focusedExtraIndex,
+      cardKeyFor: (index) => _extraCardKeys.putIfAbsent(index, () => GlobalKey<MediaCardState>()),
+      onExtraTap: (extra) => navigateToVideoPlayer(context, metadata: extra),
     );
   }
 

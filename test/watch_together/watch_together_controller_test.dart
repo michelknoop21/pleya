@@ -1,9 +1,9 @@
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/watch_together/models/playback_state.dart';
-import 'package:plezy/watch_together/models/sync_message.dart';
-import 'package:plezy/watch_together/models/watch_session.dart';
-import 'package:plezy/watch_together/services/watch_together_controller.dart';
+import 'package:pleya/watch_together/models/playback_state.dart';
+import 'package:pleya/watch_together/models/sync_message.dart';
+import 'package:pleya/watch_together/models/watch_session.dart';
+import 'package:pleya/watch_together/services/watch_together_controller.dart';
 
 import '../test_helpers/watch_together_fakes.dart';
 

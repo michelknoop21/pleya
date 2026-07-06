@@ -80,6 +80,10 @@ extension _PlexVideoControlsKeyEventMethods on _PlexVideoControlsState {
     // performs its normal action. Single cancel point for keys.
     if (event.isActionable) _cancelAutoSkipFromUserInteraction();
 
+    // While the TV info panel is open it owns the focus scope and all keys;
+    // let the event fall through to it (and its back handler).
+    if (_tvInfoPanelVisible) return false;
+
     // When an overlay sheet is open (e.g. subtitle search with text fields),
     // don't consume key events — let text input work normally.
     if (OverlaySheetController.maybeOf(context)?.isOpen ?? false) {
@@ -190,6 +194,9 @@ extension _PlexVideoControlsKeyEventMethods on _PlexVideoControlsState {
   }
 
   KeyEventResult _handleControlsKeyEvent(KeyEvent event, bool isMobile) {
+    // While the TV info panel is open, its own FocusScope handles every key.
+    // Stay out of the way so directional/select/back reach the panel.
+    if (_tvInfoPanelVisible) return KeyEventResult.ignored;
     // On Windows/Linux with navigation off, ESC only exits fullscreen —
     // never exits the player. Consume all back key events and check
     // actual window state asynchronously.
@@ -294,6 +301,13 @@ extension _PlexVideoControlsKeyEventMethods on _PlexVideoControlsState {
     // LEFT/RIGHT focuses timeline for seeking, UP/DOWN focuses play/pause.
     if (!isMobile && _isDirectionalKey(key) && (_videoPlayerNavigationEnabled || PlatformDetector.isTV())) {
       if (!_showControls) {
+        // On TV, swipe-down (arrowDown) while controls are hidden opens the
+        // Infuse-style info panel instead of the controls (arrowUp keeps its
+        // ContentStrip behavior via the controls path).
+        if (PlatformDetector.isTV() && key == LogicalKeyboardKey.arrowDown && event is KeyDownEvent) {
+          _showTvInfoPanel();
+          return KeyEventResult.handled;
+        }
         final isHorizontal = key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight;
         if (isHorizontal) {
           _showControlsWithTimelineFocus();

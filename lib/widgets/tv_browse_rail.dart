@@ -87,7 +87,7 @@ class TvBrowseRailLayout {
 
   static double hubStripGapForScale(double _) => 0;
 
-  static double nextHubPeekHeightForScale(double scale) => 30 * scale;
+  static double nextHubPeekHeightForScale(double scale) => 36 * scale;
 
   static double hubSectionHeightFor({required double scale, required double activeRailHeight}) {
     return hubStripHeightForScale(scale) + hubStripGapForScale(scale) + activeRailHeight;
@@ -296,7 +296,10 @@ enum TvRailTrailing { none, loading, error, viewAll }
 
 class TvBrowseRail extends StatefulWidget {
   final List<MediaHub> hubs;
-  final IconData Function(MediaHub hub, int index) iconForHub;
+
+  /// Optional per-hub leading icon. When null, headers render text-only
+  /// (Netflix-style home). Other callers still pass an icon.
+  final IconData Function(MediaHub hub, int index)? iconForHub;
 
   /// Whether to show each hub's originating server name in its header. Used when
   /// the loaded hubs span more than one connected server so their origin stays
@@ -344,7 +347,7 @@ class TvBrowseRail extends StatefulWidget {
   const TvBrowseRail({
     super.key,
     required this.hubs,
-    required this.iconForHub,
+    this.iconForHub,
     this.showServerName = false,
     this.onFocusedItemChanged,
     this.onFocusedHubItemChanged,
@@ -417,6 +420,7 @@ class TvBrowseRailState extends State<TvBrowseRail> {
   bool _suppressSelectUntilKeyUp = false;
   bool _hasUserChangedHub = false;
   bool _hasUserChangedItem = false;
+  bool _didInitialFlush = false;
 
   MediaHub? get _activeHub => widget.hubs.isEmpty ? null : widget.hubs[_hubIndex.clamp(0, widget.hubs.length - 1)];
 
@@ -1001,6 +1005,19 @@ class TvBrowseRailState extends State<TvBrowseRail> {
   @override
   Widget build(BuildContext context) {
     if (_activeHub == null) return const SizedBox.shrink();
+    // ponytail: one-shot repaint-flush. The reveal wrapper (AnimatedSlide) is a
+    // paint-time transform, so poster frames decoded after it settles aren't
+    // recomposited until a horizontal scroll invalidates the row viewport —
+    // leaving row 0 blank until the user nudges L/R. Forcing one repaint after
+    // the first content frame flushes them (same effect as the scroll, without
+    // scrolling). If on-device this proves insufficient → reveal back to a
+    // relayout-based animation.
+    if (!_didInitialFlush) {
+      _didInitialFlush = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    }
     return SettingsBuilder(
       prefs: const [
         SettingsService.libraryDensity,
@@ -1192,8 +1209,9 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     required double scale,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
-    final titleColor = isActive ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.54);
+    final titleColor = isActive ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.60);
     final iconColor = isActive ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.42);
+    final iconData = widget.iconForHub?.call(hub, hubIndex);
     final showServerName = widget.showServerName && hub.serverName != null;
     final serverColor = colorScheme.primary.withValues(alpha: isActive ? 0.7 : 0.4);
     final serverStyle = Theme.of(
@@ -1207,8 +1225,10 @@ class TvBrowseRailState extends State<TvBrowseRail> {
           alignment: .centerLeft,
           child: Row(
             children: [
-              AppIcon(widget.iconForHub(hub, hubIndex), fill: 1, size: 20 * scale, color: iconColor),
-              SizedBox(width: 8 * scale),
+              if (iconData != null) ...[
+                AppIcon(iconData, fill: 1, size: 20 * scale, color: iconColor),
+                SizedBox(width: 8 * scale),
+              ],
               Expanded(
                 child: Row(
                   children: [

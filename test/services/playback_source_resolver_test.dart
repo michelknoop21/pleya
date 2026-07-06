@@ -1,16 +1,16 @@
 import 'package:drift/native.dart';
-import 'package:plezy/media/ids.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/database/app_database.dart';
-import 'package:plezy/media/media_backend.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/media/media_server_client.dart';
-import 'package:plezy/models/transcode_quality_preset.dart';
-import 'package:plezy/services/multi_server_manager.dart';
-import 'package:plezy/services/playback_context.dart';
-import 'package:plezy/services/playback_initialization_types.dart';
-import 'package:plezy/services/playback_source_resolver.dart';
+import 'package:pleya/database/app_database.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/models/transcode_quality_preset.dart';
+import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/playback_context.dart';
+import 'package:pleya/services/playback_initialization_types.dart';
+import 'package:pleya/services/playback_source_resolver.dart';
 
 class _PlaybackClient implements MediaServerClient {
   _PlaybackClient({this.clientBackend = MediaBackend.plex, PlaybackInitializationResult? result})

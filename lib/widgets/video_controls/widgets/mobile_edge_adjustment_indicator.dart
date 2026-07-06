@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:plezy/widgets/app_icon.dart';
+import 'package:pleya/widgets/app_icon.dart';
 
 import '../helpers/mobile_edge_adjustment_tracker.dart';
 

@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../media/media_item.dart';
 import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
+import '../services/device_performance.dart';
 import '../services/settings_service.dart';
 import '../theme/mono_tokens.dart';
 import 'app_icon.dart';
@@ -87,23 +88,36 @@ class WatchedIndicator extends StatelessWidget {
       bottomRight: Radius.circular(size.barRadius),
     );
 
+    final showCheck = item.isWatched && !hasActiveProgress;
+    final check = Container(
+      padding: EdgeInsets.all(size.checkPadding),
+      decoration: BoxDecoration(
+        color: tokens(context).text,
+        shape: BoxShape.circle,
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 4)],
+      ),
+      child: AppIcon(Symbols.check_rounded, fill: 1, color: tokens(context).bg, size: size.checkIconSize),
+    );
+
     return Stack(
       children: [
-        // Watched checkmark
-        if (item.isWatched && !hasActiveProgress)
-          Positioned(
-            top: size.checkInset,
-            right: size.checkInset,
-            child: Container(
-              padding: EdgeInsets.all(size.checkPadding),
-              decoration: BoxDecoration(
-                color: tokens(context).text,
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 4)],
-              ),
-              child: AppIcon(Symbols.check_rounded, fill: 1, color: tokens(context).bg, size: size.checkIconSize),
-            ),
-          ),
+        // Watched checkmark — pops in/out when the watch state flips. On the
+        // reduced tier the switcher is skipped so the mark appears instantly.
+        Positioned(
+          top: size.checkInset,
+          right: size.checkInset,
+          child: DevicePerformance.isReduced
+              ? (showCheck ? check : const SizedBox.shrink())
+              : AnimatedSwitcher(
+                  duration: tokens(context).fast,
+                  switchInCurve: Curves.easeOutBack,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+                  child: showCheck
+                      ? KeyedSubtree(key: const ValueKey('watched-check'), child: check)
+                      : const SizedBox.shrink(key: ValueKey('watched-none')),
+                ),
+        ),
         // Unwatched count for shows/seasons
         if (showCount &&
             !item.isWatched &&

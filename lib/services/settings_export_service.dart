@@ -81,6 +81,14 @@ class SettingsExportService {
     'selected_library_key',
     // Internal migration flags
     'buffer_size_migrated_to_auto',
+    'pleya_legacy_prefs_migrated_v1',
+    // The iCloud-sync toggle itself must not sync (would fight across devices).
+    'icloud_sync_enabled',
+    // Jellyseerr/Overseerr session: vault-encrypted with a device-local key
+    // (credential_vault_key_v1, denied above), so the blob is unusable on
+    // another device. Deny it so export/iCloud doesn't ship a dead payload or
+    // write an unscoped `seerr_session` the active profile never loads.
+    'seerr_session',
   };
 
   /// Prefix denylist. A key is excluded if it starts with any of these.
@@ -101,15 +109,39 @@ class SettingsExportService {
   ];
 
   /// Literal prefix used by [StorageService._userPrefix] for any scoped key.
-  static const String _userPrefixRoot = 'user_';
+  static const String userPrefixRoot = 'user_';
 
-  static bool _isExportable(String strippedKey) {
+  static bool isExportable(String strippedKey) {
     if (_denyKeys.contains(strippedKey)) return false;
     for (final prefix in _denyPrefixes) {
       if (strippedKey.startsWith(prefix)) return false;
     }
     return true;
   }
+
+  /// Resolves a full prefs key to the base key used in the export/KVS format
+  /// for [currentUserUuid], or null if the key should not sync — because it's
+  /// scoped to another user, or it's denylisted. Shared by [buildExportMap]
+  /// and [ICloudSyncService] so both apply identical eligibility + scoping.
+  static String? syncBaseKey(String fullKey, {String? currentUserUuid}) {
+    final currentUserPrefix = (currentUserUuid != null && currentUserUuid.isNotEmpty)
+        ? '$userPrefixRoot${currentUserUuid}_'
+        : null;
+    String baseKey;
+    if (currentUserPrefix != null && fullKey.startsWith(currentUserPrefix)) {
+      baseKey = fullKey.substring(currentUserPrefix.length);
+    } else if (fullKey.startsWith(userPrefixRoot)) {
+      return null;
+    } else {
+      baseKey = fullKey;
+    }
+    return isExportable(baseKey) ? baseKey : null;
+  }
+
+  /// Inverse of [syncBaseKey]: the full prefs key a base key writes back to for
+  /// [currentUserUuid], re-applying the user prefix to user-scoped base keys.
+  static String syncTargetKey(String baseKey, String currentUserUuid) =>
+      isUserScopedBaseKey(baseKey) ? '$userPrefixRoot${currentUserUuid}_$baseKey' : baseKey;
 
   /// Builds the export map from the given prefs. Pure and testable.
   ///
@@ -122,25 +154,12 @@ class SettingsExportService {
     String appVersion = '',
   }) {
     final prefsOut = <String, Map<String, dynamic>>{};
-    final currentUserPrefix = (currentUserUuid != null && currentUserUuid.isNotEmpty)
-        ? '$_userPrefixRoot${currentUserUuid}_'
-        : null;
 
     for (final fullKey in prefs.keys) {
-      String baseKey;
-      if (currentUserPrefix != null && fullKey.startsWith(currentUserPrefix)) {
-        baseKey = fullKey.substring(currentUserPrefix.length);
-      } else if (fullKey.startsWith(_userPrefixRoot)) {
-        // Scoped to some other user — skip so we only export the active user.
-        continue;
-      } else {
-        baseKey = fullKey;
-      }
+      final baseKey = syncBaseKey(fullKey, currentUserUuid: currentUserUuid);
+      if (baseKey == null) continue; // other user's scope or denylisted
 
-      if (!_isExportable(baseKey)) continue;
-
-      final value = prefs.get(fullKey);
-      final entry = _encodeValue(value);
+      final entry = encodeValue(prefs.get(fullKey));
       if (entry == null) continue;
       prefsOut[baseKey] = entry;
     }
@@ -154,7 +173,7 @@ class SettingsExportService {
     };
   }
 
-  static Map<String, dynamic>? _encodeValue(Object? value) {
+  static Map<String, dynamic>? encodeValue(Object? value) {
     if (value is bool) return {'type': _typeBool, 'value': value};
     if (value is int) return {'type': _typeInt, 'value': value};
     if (value is double) return {'type': _typeDouble, 'value': value};
@@ -197,7 +216,7 @@ class SettingsExportService {
 
     for (final entry in rawPrefs.entries) {
       final baseKey = entry.key.toString();
-      if (!_isExportable(baseKey)) {
+      if (!isExportable(baseKey)) {
         skipped++;
         continue;
       }
@@ -215,9 +234,9 @@ class SettingsExportService {
         continue;
       }
 
-      final targetKey = _isUserScopedBaseKey(baseKey) ? '$userPrefix$baseKey' : baseKey;
+      final targetKey = isUserScopedBaseKey(baseKey) ? '$userPrefix$baseKey' : baseKey;
 
-      final ok = await _writeTyped(prefs, targetKey, type, value);
+      final ok = await writeTyped(prefs, targetKey, type, value);
       if (ok) {
         imported++;
       } else {
@@ -231,14 +250,14 @@ class SettingsExportService {
 
   /// Base keys that [StorageService] persists under the user prefix. These need
   /// to be re-scoped to the current user on import.
-  static bool _isUserScopedBaseKey(String baseKey) {
+  static bool isUserScopedBaseKey(String baseKey) {
     const exact = {'hidden_libraries', 'library_filters', 'library_order'};
     if (exact.contains(baseKey)) return true;
     const prefixes = ['library_filters_', 'library_sort_', 'library_grouping_', 'library_tab_'];
     return prefixes.any(baseKey.startsWith);
   }
 
-  static Future<bool> _writeTyped(SharedPreferencesWithCache prefs, String key, String type, Object? value) async {
+  static Future<bool> writeTyped(SharedPreferencesWithCache prefs, String key, String type, Object? value) async {
     try {
       switch (type) {
         case _typeBool:
@@ -275,7 +294,7 @@ class SettingsExportService {
     final y = padNumber(now.year, 4);
     final m = padNumber(now.month, 2);
     final d = padNumber(now.day, 2);
-    return 'plezy-settings-$y$m$d.$fileExtension';
+    return 'pleya-settings-$y$m$d.$fileExtension';
   }
 
   /// Serializes the current user's settings and writes them to a location of
@@ -307,7 +326,7 @@ class SettingsExportService {
 
     try {
       return await FilePickerService.instance.saveFile(
-        dialogTitle: 'Export Plezy settings',
+        dialogTitle: 'Export Pleya settings',
         fileName: fileName,
         bytes: bytes,
         type: FileType.custom,

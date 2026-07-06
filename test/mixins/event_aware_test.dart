@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'package:plezy/media/ids.dart';
+import 'package:pleya/media/ids.dart';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/mixins/event_aware.dart';
-import 'package:plezy/utils/base_notifier.dart';
-import 'package:plezy/utils/global_key_utils.dart';
-import 'package:plezy/utils/hierarchical_event_mixin.dart';
+import 'package:pleya/mixins/event_aware.dart';
+import 'package:pleya/utils/base_notifier.dart';
+import 'package:pleya/utils/global_key_utils.dart';
+import 'package:pleya/utils/hierarchical_event_mixin.dart';
 
 class _FakeEvent with HierarchicalEventMixin {
   _FakeEvent({required this.serverId, required this.itemId, this.parentChain = const []});

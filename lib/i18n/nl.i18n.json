@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Plezy"
+    "title": "Pleya"
   },
   "auth": {
     "signIn": "Inloggen",
@@ -71,6 +71,8 @@
   "screens": {
     "licenses": "Licenties",
     "switchProfile": "Wissel van profiel",
+    "whoIsWatching": "Wie is er aan het kijken?",
+    "manageProfiles": "Profielen beheren",
     "subtitleStyling": "Ondertitel opmaak",
     "mpvConfig": "mpv.conf",
     "logs": "Logbestanden"
@@ -86,7 +88,7 @@
   },
   "settings": {
     "title": "Instellingen",
-    "supportDeveloper": "Steun Plezy",
+    "supportDeveloper": "Steun Pleya",
     "supportDeveloperDescription": "Doneer via Liberapay om de ontwikkeling te steunen",
     "language": "Taal",
     "theme": "Thema",
@@ -115,6 +117,8 @@
     "gridView": "Raster",
     "listView": "Lijst",
     "showHeroSection": "Toon hoofdsectie",
+    "hoverExpandCards": "Kaarten uitklappen bij hover",
+    "hoverExpandCardsDescription": "Toon een voorbeeldkaart met snelknoppen als je over een poster zweeft",
     "continueWatchingAction": "Actie voor Doorgaan met kijken",
     "continueWatchingPlay": "Afspelen",
     "continueWatchingDetails": "Details openen",
@@ -196,7 +200,7 @@
     "importSettingsConfirm": "Hiermee worden je huidige instellingen vervangen. Doorgaan?",
     "importSettingsSuccess": "Instellingen geïmporteerd",
     "importSettingsFailed": "Kon instellingen niet importeren",
-    "importSettingsInvalidFile": "Dit bestand is geen geldige Plezy-export",
+    "importSettingsInvalidFile": "Dit bestand is geen geldige Pleya-export",
     "importSettingsNoUser": "Meld je aan voordat je instellingen importeert",
     "shortcutsReset": "Sneltoetsen gereset naar standaard",
     "about": "Over",
@@ -277,7 +281,7 @@
     "forceTvMode": "TV-modus forceren",
     "forceTvModeDescription": "Forceer TV-indeling. Voor apparaten zonder autodetectie. Herstart vereist.",
     "startInFullscreen": "Starten in volledig scherm",
-    "startInFullscreenDescription": "Open Plezy bij het starten in volledig scherm",
+    "startInFullscreenDescription": "Open Pleya bij het starten in volledig scherm",
     "exitFullscreenOnPlayerClose": "Volledig scherm verlaten bij sluiten speler",
     "exitFullscreenOnPlayerCloseDescription": "Verlaat automatisch volledig scherm wanneer de videospeler wordt gesloten",
     "autoHidePerformanceOverlay": "Prestatie-overlay automatisch verbergen",
@@ -285,7 +289,7 @@
     "showNavBarLabels": "Navigatiebalk labels tonen",
     "showNavBarLabelsDescription": "Tekstlabels onder de pictogrammen van de navigatiebalk weergeven",
     "startupSection": "Opstartsectie",
-    "startupSectionDescription": "Kies welke sectie Plezy opent bij het opstarten",
+    "startupSectionDescription": "Kies welke sectie Pleya opent bij het opstarten",
     "liveTvDefaultFavorites": "Standaard favoriete zenders",
     "liveTvDefaultFavoritesDescription": "Toon alleen favoriete zenders bij het openen van Live TV",
     "display": "Weergave",
@@ -296,13 +300,24 @@
     "player": "Speler",
     "subtitlesAndConfig": "Ondertitels en configuratie",
     "seekAndTiming": "Zoeken en timing",
-    "behavior": "Gedrag"
+    "behavior": "Gedrag",
+    "personalizedRecommendations": "Persoonlijke aanbevelingen",
+    "personalizedRecommendationsDescription": "Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat."
   },
   "search": {
     "hint": "Zoek films, series, muziek...",
     "tryDifferentTerm": "Probeer een andere zoekterm",
     "searchYourMedia": "Zoek in je media",
-    "enterTitleActorOrKeyword": "Voer een titel, acteur of trefwoord in"
+    "enterTitleActorOrKeyword": "Voer een titel, acteur of trefwoord in",
+    "recentSearches": "Recent gezocht",
+    "clearHistory": "Wissen",
+    "filters": {
+      "all": "Alles",
+      "movies": "Films",
+      "shows": "Series",
+      "episodes": "Afleveringen",
+      "people": "Personen"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "Stel sneltoets in voor ${actionName}",
@@ -460,6 +475,16 @@
     "pipButton": "Beeld-in-beeld modus",
     "aspectRatioButton": "Beeldverhouding",
     "ambientLighting": "Omgevingsverlichting",
+    "ambientIntensitySubtle": "Subtiel",
+    "ambientIntensityBalanced": "Evenwichtig",
+    "ambientIntensityBright": "Fel",
+    "tvPanel": {
+      "information": "Informatie",
+      "audio": "Geluid",
+      "tracks": "Sporen",
+      "options": "Opties",
+      "more": "Meer…"
+    },
     "fullscreenButton": "Volledig scherm activeren",
     "exitFullscreenButton": "Volledig scherm verlaten",
     "alwaysOnTopButton": "Altijd bovenop",
@@ -496,7 +521,8 @@
     "noTracksAvailable": "Geen tracks beschikbaar",
     "subtitleDownloaded": "Ondertitel gedownload",
     "subtitleDownloadFailed": "Ondertitel downloaden mislukt",
-    "searchLanguages": "Talen zoeken..."
+    "searchLanguages": "Talen zoeken...",
+    "airplayButton": "AirPlay"
   },
   "userStatus": {
     "admin": "Beheerder",
@@ -585,7 +611,7 @@
     "confirmAction": "Bevestig actie"
   },
   "profiles": {
-    "addPlezyProfile": "Plezy-profiel toevoegen",
+    "addPleyaProfile": "Pleya-profiel toevoegen",
     "switchingProfile": "Profiel wisselen…",
     "deleteThisProfileTitle": "Dit profiel verwijderen?",
     "deleteThisProfileMessage": "Verwijder ${displayName}. Verbindingen blijven ongewijzigd.",
@@ -653,7 +679,7 @@
     "sessionExpiredMany": "Sessie verlopen voor ${count} servers",
     "signInAgain": "Opnieuw aanmelden",
     "editJellyfinTitle": "Jellyfin-verbinding bewerken",
-    "editJellyfinIntro": "Voeg URL's voor ${serverName} toe of verwijder ze. Plezy gebruikt de bereikbare URL met de laagste latentie."
+    "editJellyfinIntro": "Voeg URL's voor ${serverName} toe of verwijder ze. Pleya gebruikt de bereikbare URL met de laagste latentie."
   },
   "discover": {
     "title": "Ontdekken",
@@ -675,7 +701,17 @@
     "movie": "Film",
     "tvShow": "TV Serie",
     "minutesLeft": "${minutes} min over",
-    "moreLikeThis": "Meer zoals dit"
+    "moreLikeThis": "Meer zoals dit",
+    "becauseYouWatched": "Omdat je ${title} gekeken hebt",
+    "topRated": "Hoogst gewaardeerd",
+    "somethingDifferent": "Eens iets anders",
+    "topPicksForYou": "Aanbevolen voor jou",
+    "becauseYouLike": "Omdat je van ${genre} houdt",
+    "hiddenGems": "Verborgen parels",
+    "watchedBy": "Bekeken door ${names}",
+    "watchedByYou": "Jij",
+    "watchedByAnd": "en",
+    "watchedByOthers": "${count} anderen"
   },
   "errors": {
     "searchFailed": "Zoeken mislukt: ${error}",
@@ -1095,19 +1131,19 @@
       "minimize": "Minimaliseren"
     },
     "pairing": {
-      "discoveryDescription": "Plezy-apparaten met hetzelfde Plex-account verschijnen hier",
+      "discoveryDescription": "Pleya-apparaten met hetzelfde Plex-account verschijnen hier",
       "hostAddressHint": "192.168.1.100:48632",
       "connecting": "Verbinden...",
       "searchingForDevices": "Apparaten zoeken...",
       "noDevicesFound": "Geen apparaten gevonden op je netwerk",
-      "noDevicesHint": "Open Plezy op desktop en gebruik dezelfde WiFi",
+      "noDevicesHint": "Open Pleya op desktop en gebruik dezelfde WiFi",
       "availableDevices": "Beschikbare apparaten",
       "manualConnection": "Handmatige verbinding",
       "cryptoInitFailed": "Kon beveiligde verbinding niet starten. Log eerst in bij Plex.",
       "validationHostRequired": "Voer het hostadres in",
       "validationHostFormat": "Formaat moet IP:poort zijn (bijv. 192.168.1.100:48632)",
       "connectionTimedOut": "Verbinding verlopen. Gebruik hetzelfde netwerk op beide apparaten.",
-      "sessionNotFound": "Apparaat niet gevonden. Zorg dat Plezy op de host draait.",
+      "sessionNotFound": "Apparaat niet gevonden. Zorg dat Pleya op de host draait.",
       "authFailed": "Authenticatie mislukt. Beide apparaten hebben hetzelfde Plex-account nodig.",
       "failedToConnect": "Kan niet verbinden: ${error}"
     },
@@ -1159,7 +1195,14 @@
     "audioOutput": "Audio-uitvoer",
     "performanceOverlay": "Prestatie-overlay",
     "audioPassthrough": "Audio-doorvoer",
-    "audioNormalization": "Volume normaliseren"
+    "audioNormalization": "Volume normaliseren",
+    "audioNormalizationTitle": "Geluidssterkte",
+    "audioNormalizationModes": {
+      "off": "Uit",
+      "normalize": "Normaliseren",
+      "night": "Nachtmodus"
+    },
+    "tryLowerQuality": "Probeer lagere kwaliteit"
   },
   "performanceOverlay": {
     "color": "Kleur",
@@ -1316,11 +1359,11 @@
     "connected": "Verbonden",
     "connectedAs": "Verbonden als @${username}",
     "disconnectConfirm": "Trakt-account loskoppelen?",
-    "disconnectConfirmBody": "Plezy stopt met gebeurtenissen naar Trakt sturen. Je kunt altijd opnieuw verbinden.",
+    "disconnectConfirmBody": "Pleya stopt met gebeurtenissen naar Trakt sturen. Je kunt altijd opnieuw verbinden.",
     "scrobble": "Realtime scrobbling",
     "scrobbleDescription": "Verstuur play-, pauze- en stopgebeurtenissen tijdens afspelen naar Trakt.",
     "watchedSync": "Bekeken-status synchroniseren",
-    "watchedSyncDescription": "Wanneer je items als bekeken markeert in Plezy, worden ze ook op Trakt gemarkeerd."
+    "watchedSyncDescription": "Wanneer je items als bekeken markeert in Pleya, worden ze ook op Trakt gemarkeerd."
   },
   "trackers": {
     "title": "Trackers",
@@ -1330,7 +1373,7 @@
     "scrobble": "Voortgang automatisch volgen",
     "scrobbleDescription": "Werk je lijst bij wanneer je een aflevering of film afrondt.",
     "disconnectConfirm": "${service} loskoppelen?",
-    "disconnectConfirmBody": "Plezy stopt met ${service} bijwerken. Je kunt altijd opnieuw verbinden.",
+    "disconnectConfirmBody": "Pleya stopt met ${service} bijwerken. Je kunt altijd opnieuw verbinden.",
     "connectFailed": "Kan niet verbinden met ${service}. Probeer opnieuw.",
     "services": {
       "mal": "MyAnimeList",
@@ -1338,7 +1381,7 @@
       "simkl": "Simkl"
     },
     "deviceCode": {
-      "title": "Plezy activeren op ${service}",
+      "title": "Pleya activeren op ${service}",
       "body": "Ga naar ${url} en voer deze code in:",
       "openToActivate": "Open ${service} om te activeren",
       "waitingForAuthorization": "Wachten op autorisatie…",

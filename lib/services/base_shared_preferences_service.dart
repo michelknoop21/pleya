@@ -48,7 +48,7 @@ abstract class BaseSharedPreferencesService {
       await migrateLegacySharedPreferencesToSharedPreferencesAsyncIfNecessary(
         legacySharedPreferencesInstance: legacy,
         sharedPreferencesAsyncOptions: const SharedPreferencesOptions(),
-        migrationCompletedKey: 'plezy_legacy_prefs_migrated_v1',
+        migrationCompletedKey: 'pleya_legacy_prefs_migrated_v1',
       );
       return SharedPreferencesWithCache.create(cacheOptions: const SharedPreferencesWithCacheOptions());
     }();
@@ -98,12 +98,19 @@ abstract class BaseSharedPreferencesService {
   /// Read a value typed by [pref]; falls back to its `defaultValue`.
   T read<T>(Pref<T> pref) => pref.readFrom(this);
 
+  /// Invoked with the pref key at the end of every [write]. The single
+  /// choke-point for settings writes — [ICloudSyncService] uses it to mirror
+  /// eligible keys to iCloud. Not called for direct `prefs.setX(...)` writes
+  /// (import/reset/remote-apply), which push through [pushAll] instead.
+  static void Function(String key)? onKeyWritten;
+
   /// Write a value typed by [pref]. Pushes the post-transform value into any
   /// listenable previously vended for this key so widgets rebuild automatically.
   Future<void> write<T>(Pref<T> pref, T value) async {
     await pref.writeTo(this, value);
     final n = _listenables[pref.key];
     if (n != null) (n as ValueNotifier<T>).value = read(pref);
+    onKeyWritten?.call(pref.key);
   }
 
   /// Lazy per-key [ValueNotifier]. Use with [ValueListenableBuilder] to rebuild

@@ -8,8 +8,8 @@ import '../player_base.dart';
 
 /// Android implementation using ExoPlayer with ASS subtitle support via libass-android.
 class PlayerAndroid extends PlayerBase {
-  static const _methodChannel = MethodChannel('com.plezy/exo_player');
-  static const _eventChannel = EventChannel('com.plezy/exo_player/events');
+  static const _methodChannel = MethodChannel('com.pleya/exo_player');
+  static const _eventChannel = EventChannel('com.pleya/exo_player/events');
 
   int? _bufferSizeBytes;
   bool _tunnelingEnabled = true;
@@ -284,8 +284,10 @@ class PlayerAndroid extends PlayerBase {
   }
 
   @override
-  Future<void> setAudioNormalization(bool enabled) async {
+  Future<void> setAudioNormalization(AudioNormalizationMode mode) async {
     if (disposed) return;
+    // The native ExoPlayer effect is on/off only; night maps to enabled.
+    final enabled = mode.isEnabled;
     _audioNormalizationEnabled = enabled;
     final initFuture = _initFuture;
     if (initialized) {
@@ -297,8 +299,9 @@ class PlayerAndroid extends PlayerBase {
       }
     }
     // Keep the mpv af property flowing through setMpvProperty so the plugin's
-    // pendingMpvProperties replay applies loudnorm if exo falls back to mpv.
-    await super.setAudioNormalization(enabled);
+    // pendingMpvProperties replay applies the loudnorm filter if exo falls back
+    // to mpv (night's aggressive filter included).
+    await super.setAudioNormalization(mode);
   }
 
   @override

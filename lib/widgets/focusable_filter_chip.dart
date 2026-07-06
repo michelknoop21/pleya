@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:plezy/widgets/app_icon.dart';
+import 'package:pleya/widgets/app_icon.dart';
 
 import '../focus/focusable_chip_mixin.dart';
 import '../focus/input_mode_tracker.dart';
@@ -10,9 +10,13 @@ import 'focus_builders.dart';
 /// Unlike FocusableWrapper which uses scale + border, this widget
 /// uses a background color change to indicate focus state.
 class FocusableFilterChip extends StatefulWidget {
-  final IconData icon;
+  final IconData? icon;
   final String label;
   final VoidCallback onPressed;
+
+  /// When true, renders an accent-tinted "active" state (used for toggle
+  /// filters like type/genre). Focus styling always takes precedence.
+  final bool selected;
 
   /// Optional external focus node for programmatic focus control.
   final FocusNode? focusNode;
@@ -34,9 +38,10 @@ class FocusableFilterChip extends StatefulWidget {
 
   const FocusableFilterChip({
     super.key,
-    required this.icon,
+    this.icon,
     required this.label,
     required this.onPressed,
+    this.selected = false,
     this.focusNode,
     this.onNavigateDown,
     this.onNavigateUp,
@@ -95,9 +100,20 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
     // Only show focus effects during keyboard/d-pad navigation
     final showFocus = isFocused && InputModeTracker.isKeyboardMode(context);
 
-    // Use primary color when focused, surface color when not
-    final backgroundColor = showFocus ? colorScheme.primary : colorScheme.surfaceContainerHighest;
-    final foregroundColor = showFocus ? colorScheme.onPrimary : colorScheme.onSurfaceVariant;
+    // Focus wins; otherwise an accent tint marks the selected/active state and
+    // the neutral surface is the resting state.
+    final Color backgroundColor;
+    final Color foregroundColor;
+    if (showFocus) {
+      backgroundColor = colorScheme.primary;
+      foregroundColor = colorScheme.onPrimary;
+    } else if (widget.selected) {
+      backgroundColor = colorScheme.primary.withValues(alpha: 0.16);
+      foregroundColor = colorScheme.primary;
+    } else {
+      backgroundColor = colorScheme.surfaceContainerHighest;
+      foregroundColor = colorScheme.onSurfaceVariant;
+    }
 
     return FocusBuilders.buildFocusableChip(
       context: context,
@@ -109,13 +125,15 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
       child: Row(
         mainAxisSize: .min,
         children: [
-          AppIcon(icon, fill: 1, size: 16, color: foregroundColor),
-          const SizedBox(width: 6),
+          if (icon != null) ...[
+            AppIcon(icon, fill: 1, size: 16, color: foregroundColor),
+            const SizedBox(width: 6),
+          ],
           Text(widget.label, style: Theme.of(context).textTheme.labelMedium?.copyWith(color: foregroundColor)),
         ],
       ),
     );
   }
 
-  IconData get icon => widget.icon;
+  IconData? get icon => widget.icon;
 }

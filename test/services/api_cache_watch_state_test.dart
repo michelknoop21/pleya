@@ -1,10 +1,10 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/database/app_database.dart';
-import 'package:plezy/media/ids.dart';
-import 'package:plezy/services/jellyfin_api_cache.dart';
-import 'package:plezy/services/plex_api_cache.dart';
+import 'package:pleya/database/app_database.dart';
+import 'package:pleya/media/ids.dart';
+import 'package:pleya/services/jellyfin_api_cache.dart';
+import 'package:pleya/services/plex_api_cache.dart';
 
 /// Pins the per-backend `applyWatchState` cache mutations. The two
 /// implementations are duplicated by design (see ApiCache.applyWatchState's

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/focus/input_mode_tracker.dart';
-import 'package:plezy/media/media_backend.dart';
-import 'package:plezy/media/media_library.dart';
-import 'package:plezy/screens/libraries/tabs/base_library_tab.dart';
-import 'package:plezy/utils/platform_detector.dart';
+import 'package:pleya/focus/input_mode_tracker.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_library.dart';
+import 'package:pleya/screens/libraries/tabs/base_library_tab.dart';
+import 'package:pleya/utils/platform_detector.dart';
 
 const _library = MediaLibrary(id: '1', backend: MediaBackend.plex, title: 'Movies');
 

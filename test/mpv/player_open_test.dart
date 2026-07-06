@@ -4,10 +4,10 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/mpv/mpv.dart';
-import 'package:plezy/mpv/player/platform/player_android.dart';
-import 'package:plezy/mpv/player/player_native.dart';
-import 'package:plezy/services/settings_service.dart';
+import 'package:pleya/mpv/mpv.dart';
+import 'package:pleya/mpv/player/platform/player_android.dart';
+import 'package:pleya/mpv/player/player_native.dart';
+import 'package:pleya/services/settings_service.dart';
 
 import '../test_helpers/prefs.dart';
 
@@ -23,8 +23,8 @@ void main() {
   group('player open', () {
     test('ExoPlayer clears stale Dart track state before opening new media', () async {
       await _withMockChannels(
-        methodChannelName: 'com.plezy/exo_player',
-        eventChannelName: 'com.plezy/exo_player/events',
+        methodChannelName: 'com.pleya/exo_player',
+        eventChannelName: 'com.pleya/exo_player/events',
         testBody: () async {
           final player = PlayerAndroid();
           try {
@@ -49,8 +49,8 @@ void main() {
       final calls = <MethodCall>[];
 
       await _withMockChannels(
-        methodChannelName: 'com.plezy/exo_player',
-        eventChannelName: 'com.plezy/exo_player/events',
+        methodChannelName: 'com.pleya/exo_player',
+        eventChannelName: 'com.pleya/exo_player/events',
         methodHandler: (call) {
           calls.add(call);
           switch (call.method) {
@@ -99,8 +99,8 @@ void main() {
 
     test('ExoPlayer backend switch clears stale tracks before fallback tracks arrive', () async {
       await _withMockChannels(
-        methodChannelName: 'com.plezy/exo_player',
-        eventChannelName: 'com.plezy/exo_player/events',
+        methodChannelName: 'com.pleya/exo_player',
+        eventChannelName: 'com.pleya/exo_player/events',
         testBody: () async {
           final player = PlayerAndroid();
           try {
@@ -138,8 +138,8 @@ void main() {
       final calls = <MethodCall>[];
 
       await _withMockChannels(
-        methodChannelName: 'com.plezy/exo_player',
-        eventChannelName: 'com.plezy/exo_player/events',
+        methodChannelName: 'com.pleya/exo_player',
+        eventChannelName: 'com.pleya/exo_player/events',
         methodHandler: (call) {
           calls.add(call);
           switch (call.method) {
@@ -184,8 +184,8 @@ void main() {
       final calls = <MethodCall>[];
 
       await _withMockChannels(
-        methodChannelName: 'com.plezy/exo_player',
-        eventChannelName: 'com.plezy/exo_player/events',
+        methodChannelName: 'com.pleya/exo_player',
+        eventChannelName: 'com.pleya/exo_player/events',
         methodHandler: (call) {
           calls.add(call);
           switch (call.method) {
@@ -236,8 +236,8 @@ void main() {
       late PlayerAndroid player;
 
       await _withMockChannels(
-        methodChannelName: 'com.plezy/exo_player',
-        eventChannelName: 'com.plezy/exo_player/events',
+        methodChannelName: 'com.pleya/exo_player',
+        eventChannelName: 'com.pleya/exo_player/events',
         methodHandler: (call) {
           calls.add(call);
           switch (call.method) {
@@ -281,8 +281,8 @@ void main() {
       final calls = <MethodCall>[];
 
       await _withMockChannels(
-        methodChannelName: 'com.plezy/exo_player',
-        eventChannelName: 'com.plezy/exo_player/events',
+        methodChannelName: 'com.pleya/exo_player',
+        eventChannelName: 'com.pleya/exo_player/events',
         methodHandler: (call) {
           calls.add(call);
           switch (call.method) {
@@ -310,8 +310,8 @@ void main() {
 
     test('MPV clears stale Dart track state before opening new media', () async {
       await _withMockChannels(
-        methodChannelName: 'com.plezy/mpv_player',
-        eventChannelName: 'com.plezy/mpv_player/events',
+        methodChannelName: 'com.pleya/mpv_player',
+        eventChannelName: 'com.pleya/mpv_player/events',
         testBody: () async {
           final player = PlayerNative();
           try {
@@ -336,8 +336,8 @@ void main() {
       final calls = <MethodCall>[];
 
       await _withMockChannels(
-        methodChannelName: 'com.plezy/mpv_player',
-        eventChannelName: 'com.plezy/mpv_player/events',
+        methodChannelName: 'com.pleya/mpv_player',
+        eventChannelName: 'com.pleya/mpv_player/events',
         methodHandler: (call) {
           calls.add(call);
           switch (call.method) {
@@ -374,8 +374,8 @@ void main() {
       final calls = <MethodCall>[];
 
       await _withMockChannels(
-        methodChannelName: 'com.plezy/mpv_player',
-        eventChannelName: 'com.plezy/mpv_player/events',
+        methodChannelName: 'com.pleya/mpv_player',
+        eventChannelName: 'com.pleya/mpv_player/events',
         methodHandler: (call) {
           calls.add(call);
           switch (call.method) {
@@ -417,8 +417,8 @@ void main() {
 
     test('MPV preserves external subtitle metadata for loadfile sidecars', () async {
       await _withMockChannels(
-        methodChannelName: 'com.plezy/mpv_player',
-        eventChannelName: 'com.plezy/mpv_player/events',
+        methodChannelName: 'com.pleya/mpv_player',
+        eventChannelName: 'com.pleya/mpv_player/events',
         testBody: () async {
           final player = PlayerNative();
           try {
@@ -461,8 +461,8 @@ void main() {
       final calls = <MethodCall>[];
 
       await _withMockChannels(
-        methodChannelName: 'com.plezy/mpv_player',
-        eventChannelName: 'com.plezy/mpv_player/events',
+        methodChannelName: 'com.pleya/mpv_player',
+        eventChannelName: 'com.pleya/mpv_player/events',
         methodHandler: (call) {
           calls.add(call);
           switch (call.method) {
@@ -495,8 +495,8 @@ void main() {
       final calls = <MethodCall>[];
 
       await _withMockChannels(
-        methodChannelName: 'com.plezy/mpv_player',
-        eventChannelName: 'com.plezy/mpv_player/events',
+        methodChannelName: 'com.pleya/mpv_player',
+        eventChannelName: 'com.pleya/mpv_player/events',
         methodHandler: (call) {
           calls.add(call);
           switch (call.method) {
@@ -527,8 +527,8 @@ void main() {
 
     test('MPV exposes file-loaded events through PlayerStreams', () async {
       await _withMockChannels(
-        methodChannelName: 'com.plezy/mpv_player',
-        eventChannelName: 'com.plezy/mpv_player/events',
+        methodChannelName: 'com.pleya/mpv_player',
+        eventChannelName: 'com.pleya/mpv_player/events',
         testBody: () async {
           final player = PlayerNative();
           try {
@@ -548,8 +548,8 @@ void main() {
       final calls = <MethodCall>[];
 
       await _withMockChannels(
-        methodChannelName: 'com.plezy/mpv_player',
-        eventChannelName: 'com.plezy/mpv_player/events',
+        methodChannelName: 'com.pleya/mpv_player',
+        eventChannelName: 'com.pleya/mpv_player/events',
         methodHandler: (call) {
           calls.add(call);
           switch (call.method) {
@@ -591,8 +591,8 @@ void main() {
       final calls = <MethodCall>[];
 
       await _withMockChannels(
-        methodChannelName: 'com.plezy/mpv_player',
-        eventChannelName: 'com.plezy/mpv_player/events',
+        methodChannelName: 'com.pleya/mpv_player',
+        eventChannelName: 'com.pleya/mpv_player/events',
         methodHandler: (call) {
           calls.add(call);
           switch (call.method) {
@@ -631,8 +631,8 @@ void main() {
       final calls = <MethodCall>[];
 
       await _withMockChannels(
-        methodChannelName: 'com.plezy/mpv_player',
-        eventChannelName: 'com.plezy/mpv_player/events',
+        methodChannelName: 'com.pleya/mpv_player',
+        eventChannelName: 'com.pleya/mpv_player/events',
         methodHandler: (call) {
           calls.add(call);
           return Future.value(null);
@@ -653,8 +653,8 @@ void main() {
       final calls = <MethodCall>[];
 
       await _withMockChannels(
-        methodChannelName: 'com.plezy/mpv_player',
-        eventChannelName: 'com.plezy/mpv_player/events',
+        methodChannelName: 'com.pleya/mpv_player',
+        eventChannelName: 'com.pleya/mpv_player/events',
         methodHandler: (call) {
           calls.add(call);
           return Future.value(null);

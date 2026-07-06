@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/theme/mono_theme.dart';
-import 'package:plezy/widgets/unwatched_count_badge.dart';
+import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/widgets/unwatched_count_badge.dart';
 
 void main() {
   Future<void> pumpBadge(WidgetTester tester, int count) {

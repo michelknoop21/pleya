@@ -6,12 +6,14 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 import '../models/hotkey_model.dart';
 import 'image_cache_service.dart';
-import 'package:plezy/utils/app_logger.dart';
+import 'package:pleya/utils/app_logger.dart';
 import '../i18n/strings.g.dart';
 import '../models/mpv_config_models.dart';
+import '../mpv/models.dart' show AudioNormalizationMode;
 import '../models/external_player_models.dart';
 import 'base_shared_preferences_service.dart';
 import 'device_performance.dart';
+import 'icloud_sync_service.dart';
 export 'base_shared_preferences_service.dart'
     show Pref, BoolPref, IntPref, DoublePref, StringPref, NullableStringPref, StringListPref, EnumPref, JsonPref;
 import '../models/transcode_quality_preset.dart';
@@ -332,8 +334,15 @@ class SettingsService extends BaseSharedPreferencesService {
 
   static const enableDebugLogging = BoolPref('enable_debug_logging', onWrite: setLoggerLevel);
   static const crashReporting = BoolPref('crash_reporting', defaultValue: true);
+
+  /// Sync user settings across Apple devices via iCloud (NSUbiquitousKeyValueStore).
+  /// Deliberately excluded from [_resettablePrefs] and denylisted from export/sync
+  /// so it never fights itself across devices or survives a settings reset toggled off.
+  static const icloudSyncEnabled = BoolPref('icloud_sync_enabled');
   static const enableHardwareDecoding = BoolPref('enable_hardware_decoding', defaultValue: true);
   static const enableHDR = BoolPref('enable_hdr', defaultValue: true);
+  /// Recent search queries, most-recent first, capped at 15 by the search UI.
+  static const searchHistory = StringListPref('search_history');
   static const preferredVideoCodec = StringPref('preferred_video_codec', defaultValue: 'auto');
   static const preferredAudioCodec = StringPref('preferred_audio_codec', defaultValue: 'auto');
   static const viewMode = EnumPref<ViewMode>('view_mode', values: ViewMode.values, defaultValue: ViewMode.grid);
@@ -341,6 +350,12 @@ class SettingsService extends BaseSharedPreferencesService {
   static const seekTimeLarge = IntPref('seek_time_large', defaultValue: 30);
   static const rewindOnResume = IntPref('rewind_on_resume');
   static const showHeroSection = BoolPref('show_hero_section', defaultValue: true);
+  // On-device personalized recommendation rows (Top Picks, Because you like…,
+  // Hidden Gems). Learns locally per profile; nothing leaves the device.
+  static const personalizedRecommendations = BoolPref('personalized_recommendations', defaultValue: true);
+  // Desktop-only Netflix-style hover-expand card (boxart overlay with quick
+  // actions). Defaults on; ignored on non-desktop platforms.
+  static const hoverExpandCards = BoolPref('hover_expand_cards', defaultValue: true);
   static const tvFullCardLayout = BoolPref('tv_full_card_layout', defaultValue: false);
   static const focusGlow = BoolPref('focus_glow', defaultValue: true);
   static const useGlobalHubs = BoolPref('use_global_hubs', defaultValue: true);
@@ -432,8 +447,21 @@ class SettingsService extends BaseSharedPreferencesService {
     defaultValue: VisualEffectsSetting.auto,
   );
   static const ambientLighting = BoolPref('ambient_lighting');
+
+  /// Ambient lighting glow intensity: 'subtle' | 'balanced' | 'bright'.
+  static const ambientLightingIntensity = StringPref('ambient_lighting_intensity', defaultValue: 'balanced');
   static const audioPassthrough = _AudioPassthroughPref();
   static const audioNormalization = BoolPref('audio_normalization');
+
+  /// Loudness mode: Off / Normalize / Night. Supersedes the legacy on/off
+  /// [audioNormalization] bool, whose value seeds the default so existing users
+  /// keep normalization on until they pick a mode explicitly.
+  static final audioNormalizationMode = EnumPref<AudioNormalizationMode>(
+    'audio_normalization_mode',
+    values: AudioNormalizationMode.values,
+    defaultValueProvider: () =>
+        instance.read(audioNormalization) ? AudioNormalizationMode.normalize : AudioNormalizationMode.off,
+  );
   static const liveTvDefaultFavorites = BoolPref('live_tv_default_favorites');
   static const matchRefreshRate = BoolPref('match_refresh_rate');
   static const matchDynamicRange = BoolPref('match_dynamic_range');
@@ -457,7 +485,9 @@ class SettingsService extends BaseSharedPreferencesService {
   static final defaultBoxFitMode = IntPref('default_box_fit_mode', transform: (v) => v.clamp(0, 2));
   static final displaySwitchDelay = IntPref('display_switch_delay', transform: (v) => v.clamp(0, 10));
 
-  static ThemeMode _tvAwareThemeModeDefault() => TvDetectionService.isTVSync() ? ThemeMode.oled : ThemeMode.system;
+  // Dark-first (D3): TV stays OLED, everything else defaults to the #141414
+  // dark palette rather than following the system brightness.
+  static ThemeMode _tvAwareThemeModeDefault() => TvDetectionService.isTVSync() ? ThemeMode.oled : ThemeMode.dark;
   static const themeMode = EnumPref<ThemeMode>(
     'theme_mode',
     values: ThemeMode.values,
@@ -783,6 +813,7 @@ class SettingsService extends BaseSharedPreferencesService {
     preferredAudioCodec,
     viewMode,
     showHeroSection,
+    hoverExpandCards,
     continueWatchingAction,
     episodeAction,
     seekTimeSmall,
@@ -833,6 +864,7 @@ class SettingsService extends BaseSharedPreferencesService {
     forceTvMode,
     visualEffects,
     ambientLighting,
+    ambientLightingIntensity,
     audioPassthrough,
     audioNormalization,
     themeMode,
@@ -867,6 +899,9 @@ class SettingsService extends BaseSharedPreferencesService {
       ),
     ]);
     refreshListenables();
+    // Reset bypasses write(), so the KVS mirror is stale — push the cleared
+    // state so removals propagate to other devices (no-op when sync is off).
+    await ICloudSyncService.instance?.pushAllIfEnabled();
   }
 
   /// Push current stored values into every active listenable. Use after bulk

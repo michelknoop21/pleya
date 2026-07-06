@@ -83,6 +83,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsMetadataEditEn metadataEdit = TranslationsMetadataEditEn.internal(_root);
 	late final TranslationsMatchScreenEn matchScreen = TranslationsMatchScreenEn.internal(_root);
 	late final TranslationsServerTasksEn serverTasks = TranslationsServerTasksEn.internal(_root);
+	late final TranslationsSeerrEn seerr = TranslationsSeerrEn.internal(_root);
 	late final TranslationsTraktEn trakt = TranslationsTraktEn.internal(_root);
 	late final TranslationsTrackersEn trackers = TranslationsTrackersEn.internal(_root);
 	late final TranslationsAddServerEn addServer = TranslationsAddServerEn.internal(_root);
@@ -96,8 +97,8 @@ class TranslationsAppEn {
 
 	// Translations
 
-	/// en: 'Plezy'
-	String get title => 'Plezy';
+	/// en: 'Pleya'
+	String get title => 'Pleya';
 }
 
 // Path: auth
@@ -318,6 +319,12 @@ class TranslationsScreensEn {
 	/// en: 'Switch Profile'
 	String get switchProfile => 'Switch Profile';
 
+	/// en: 'Who's watching?'
+	String get whoIsWatching => 'Who\'s watching?';
+
+	/// en: 'Manage profiles'
+	String get manageProfiles => 'Manage profiles';
+
 	/// en: 'Subtitle Styling'
 	String get subtitleStyling => 'Subtitle Styling';
 
@@ -369,8 +376,8 @@ class TranslationsSettingsEn {
 	/// en: 'Settings'
 	String get title => 'Settings';
 
-	/// en: 'Support Plezy'
-	String get supportDeveloper => 'Support Plezy';
+	/// en: 'Support Pleya'
+	String get supportDeveloper => 'Support Pleya';
 
 	/// en: 'Donate via Liberapay to fund development'
 	String get supportDeveloperDescription => 'Donate via Liberapay to fund development';
@@ -455,6 +462,12 @@ class TranslationsSettingsEn {
 
 	/// en: 'Show Hero Section'
 	String get showHeroSection => 'Show Hero Section';
+
+	/// en: 'Hover-expand cards'
+	String get hoverExpandCards => 'Hover-expand cards';
+
+	/// en: 'Grow a preview card with quick actions when hovering a poster'
+	String get hoverExpandCardsDescription => 'Grow a preview card with quick actions when hovering a poster';
 
 	/// en: 'Continue Watching Action'
 	String get continueWatchingAction => 'Continue Watching Action';
@@ -717,11 +730,23 @@ class TranslationsSettingsEn {
 	/// en: 'Could not import settings'
 	String get importSettingsFailed => 'Could not import settings';
 
-	/// en: 'This file isn't a valid Plezy settings export'
-	String get importSettingsInvalidFile => 'This file isn\'t a valid Plezy settings export';
+	/// en: 'This file isn't a valid Pleya settings export'
+	String get importSettingsInvalidFile => 'This file isn\'t a valid Pleya settings export';
 
 	/// en: 'Sign in before importing settings'
 	String get importSettingsNoUser => 'Sign in before importing settings';
+
+	/// en: 'Sync Settings via iCloud'
+	String get icloudSync => 'Sync Settings via iCloud';
+
+	/// en: 'Keep your preferences in sync across your Apple devices'
+	String get icloudSyncDescription => 'Keep your preferences in sync across your Apple devices';
+
+	/// en: 'Sign in to iCloud on this device to sync settings'
+	String get icloudSyncUnavailable => 'Sign in to iCloud on this device to sync settings';
+
+	/// en: 'Could not turn on iCloud settings sync'
+	String get icloudSyncEnableFailed => 'Could not turn on iCloud settings sync';
 
 	/// en: 'Shortcuts reset to defaults'
 	String get shortcutsReset => 'Shortcuts reset to defaults';
@@ -876,6 +901,12 @@ class TranslationsSettingsEn {
 	/// en: 'Sync progress to Trakt, MyAnimeList, AniList, and Simkl'
 	String get trackersDescription => 'Sync progress to Trakt, MyAnimeList, AniList, and Simkl';
 
+	/// en: 'Requests'
+	String get requests => 'Requests';
+
+	/// en: 'Request movies and shows via Jellyseerr or Overseerr'
+	String get requestsDescription => 'Request movies and shows via Jellyseerr or Overseerr';
+
 	/// en: 'Companion Remote Server'
 	String get companionRemoteServer => 'Companion Remote Server';
 
@@ -960,8 +991,8 @@ class TranslationsSettingsEn {
 	/// en: 'Start in fullscreen'
 	String get startInFullscreen => 'Start in fullscreen';
 
-	/// en: 'Open Plezy in fullscreen mode at launch'
-	String get startInFullscreenDescription => 'Open Plezy in fullscreen mode at launch';
+	/// en: 'Open Pleya in fullscreen mode at launch'
+	String get startInFullscreenDescription => 'Open Pleya in fullscreen mode at launch';
 
 	/// en: 'Exit fullscreen on player close'
 	String get exitFullscreenOnPlayerClose => 'Exit fullscreen on player close';
@@ -984,8 +1015,8 @@ class TranslationsSettingsEn {
 	/// en: 'Startup Section'
 	String get startupSection => 'Startup Section';
 
-	/// en: 'Choose which section Plezy opens to when it starts'
-	String get startupSectionDescription => 'Choose which section Plezy opens to when it starts';
+	/// en: 'Choose which section Pleya opens to when it starts'
+	String get startupSectionDescription => 'Choose which section Pleya opens to when it starts';
 
 	/// en: 'Default to Favorite Channels'
 	String get liveTvDefaultFavorites => 'Default to Favorite Channels';
@@ -1019,6 +1050,12 @@ class TranslationsSettingsEn {
 
 	/// en: 'Behavior'
 	String get behavior => 'Behavior';
+
+	/// en: 'Personalized recommendations'
+	String get personalizedRecommendations => 'Personalized recommendations';
+
+	/// en: 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.'
+	String get personalizedRecommendationsDescription => 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.';
 }
 
 // Path: search
@@ -1040,6 +1077,14 @@ class TranslationsSearchEn {
 
 	/// en: 'Enter a title, actor, or keyword'
 	String get enterTitleActorOrKeyword => 'Enter a title, actor, or keyword';
+
+	/// en: 'Recent searches'
+	String get recentSearches => 'Recent searches';
+
+	/// en: 'Clear'
+	String get clearHistory => 'Clear';
+
+	late final TranslationsSearchFiltersEn filters = TranslationsSearchFiltersEn.internal(_root);
 }
 
 // Path: hotkeys
@@ -1454,6 +1499,17 @@ class TranslationsVideoControlsEn {
 	/// en: 'Ambient lighting'
 	String get ambientLighting => 'Ambient lighting';
 
+	/// en: 'Subtle'
+	String get ambientIntensitySubtle => 'Subtle';
+
+	/// en: 'Balanced'
+	String get ambientIntensityBalanced => 'Balanced';
+
+	/// en: 'Bright'
+	String get ambientIntensityBright => 'Bright';
+
+	late final TranslationsVideoControlsTvPanelEn tvPanel = TranslationsVideoControlsTvPanelEn.internal(_root);
+
 	/// en: 'Enter fullscreen'
 	String get fullscreenButton => 'Enter fullscreen';
 
@@ -1539,6 +1595,9 @@ class TranslationsVideoControlsEn {
 
 	/// en: 'Search languages...'
 	String get searchLanguages => 'Search languages...';
+
+	/// en: 'AirPlay'
+	String get airplayButton => 'AirPlay';
 }
 
 // Path: userStatus
@@ -1822,8 +1881,8 @@ class TranslationsProfilesEn {
 
 	// Translations
 
-	/// en: 'Add Plezy profile'
-	String get addPlezyProfile => 'Add Plezy profile';
+	/// en: 'Add Pleya profile'
+	String get addPleyaProfile => 'Add Pleya profile';
 
 	/// en: 'Switching profile…'
 	String get switchingProfile => 'Switching profile…';
@@ -2029,8 +2088,8 @@ class TranslationsConnectionsEn {
 	/// en: 'Edit Jellyfin connection'
 	String get editJellyfinTitle => 'Edit Jellyfin connection';
 
-	/// en: 'Add or remove URLs for ${serverName}. Plezy will use the reachable URL with the lowest latency.'
-	String editJellyfinIntro({required Object serverName}) => 'Add or remove URLs for ${serverName}. Plezy will use the reachable URL with the lowest latency.';
+	/// en: 'Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency.'
+	String editJellyfinIntro({required Object serverName}) => 'Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency.';
 }
 
 // Path: discover
@@ -2100,6 +2159,36 @@ class TranslationsDiscoverEn {
 
 	/// en: 'More Like This'
 	String get moreLikeThis => 'More Like This';
+
+	/// en: 'Because you watched ${title}'
+	String becauseYouWatched({required Object title}) => 'Because you watched ${title}';
+
+	/// en: 'Top Rated'
+	String get topRated => 'Top Rated';
+
+	/// en: 'Something Different'
+	String get somethingDifferent => 'Something Different';
+
+	/// en: 'Top Picks for You'
+	String get topPicksForYou => 'Top Picks for You';
+
+	/// en: 'Because you like ${genre}'
+	String becauseYouLike({required Object genre}) => 'Because you like ${genre}';
+
+	/// en: 'Hidden Gems'
+	String get hiddenGems => 'Hidden Gems';
+
+	/// en: 'Watched by ${names}'
+	String watchedBy({required Object names}) => 'Watched by ${names}';
+
+	/// en: 'You'
+	String get watchedByYou => 'You';
+
+	/// en: 'and'
+	String get watchedByAnd => 'and';
+
+	/// en: '${count} others'
+	String watchedByOthers({required Object count}) => '${count} others';
 }
 
 // Path: errors
@@ -3280,6 +3369,14 @@ class TranslationsVideoSettingsEn {
 
 	/// en: 'Normalize Loudness'
 	String get audioNormalization => 'Normalize Loudness';
+
+	/// en: 'Loudness'
+	String get audioNormalizationTitle => 'Loudness';
+
+	late final TranslationsVideoSettingsAudioNormalizationModesEn audioNormalizationModes = TranslationsVideoSettingsAudioNormalizationModesEn.internal(_root);
+
+	/// en: 'Try lower quality'
+	String get tryLowerQuality => 'Try lower quality';
 }
 
 // Path: performanceOverlay
@@ -3747,6 +3844,252 @@ class TranslationsServerTasksEn {
 	String get noTasks => 'No tasks running';
 }
 
+// Path: seerr
+class TranslationsSeerrEn {
+	TranslationsSeerrEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Requests'
+	String get title => 'Requests';
+
+	/// en: 'Request movies and shows from your Jellyseerr or Overseerr server.'
+	String get hubSubtitle => 'Request movies and shows from your Jellyseerr or Overseerr server.';
+
+	/// en: 'Not configured'
+	String get notConfigured => 'Not configured';
+
+	/// en: 'Server URL'
+	String get serverUrl => 'Server URL';
+
+	/// en: 'https://requests.example.com'
+	String get serverUrlHint => 'https://requests.example.com';
+
+	/// en: 'Sign-in method'
+	String get authMode => 'Sign-in method';
+
+	/// en: 'Sign in with Plex'
+	String get authPlex => 'Sign in with Plex';
+
+	/// en: 'One-tap using your existing Plex login.'
+	String get authPlexSubtitle => 'One-tap using your existing Plex login.';
+
+	/// en: 'Email and password'
+	String get authLocal => 'Email and password';
+
+	/// en: 'API key'
+	String get authApiKey => 'API key';
+
+	/// en: 'Email'
+	String get email => 'Email';
+
+	/// en: 'Password'
+	String get password => 'Password';
+
+	/// en: 'API key'
+	String get apiKey => 'API key';
+
+	/// en: 'From Settings → General on your server'
+	String get apiKeyHint => 'From Settings → General on your server';
+
+	/// en: 'API-key mode files requests as the admin user. Sign in with Plex for per-user attribution.'
+	String get adminAttributionNote => 'API-key mode files requests as the admin user. Sign in with Plex for per-user attribution.';
+
+	/// en: 'Tip: this is easier to set up on your phone or computer.'
+	String get setupOnDesktopNote => 'Tip: this is easier to set up on your phone or computer.';
+
+	/// en: 'Test connection'
+	String get testConnection => 'Test connection';
+
+	/// en: 'Save'
+	String get save => 'Save';
+
+	/// en: 'Disconnect'
+	String get disconnect => 'Disconnect';
+
+	/// en: 'Disconnect requests server?'
+	String get disconnectConfirm => 'Disconnect requests server?';
+
+	/// en: 'Pleya will stop sending requests. You can reconnect any time.'
+	String get disconnectConfirmBody => 'Pleya will stop sending requests. You can reconnect any time.';
+
+	/// en: 'Signed in as ${name}'
+	String connectedAs({required Object name}) => 'Signed in as ${name}';
+
+	/// en: 'Server version ${version}'
+	String serverVersion({required Object version}) => 'Server version ${version}';
+
+	/// en: 'Administrator'
+	String get permissionAdmin => 'Administrator';
+
+	/// en: 'Can approve requests'
+	String get permissionManage => 'Can approve requests';
+
+	/// en: 'Can request'
+	String get permissionRequest => 'Can request';
+
+	/// en: 'Request'
+	String get request => 'Request';
+
+	/// en: 'Requested'
+	String get requested => 'Requested';
+
+	/// en: 'Request'
+	String get requestAgain => 'Request';
+
+	/// en: 'Processing'
+	String get processing => 'Processing';
+
+	/// en: 'Partially available'
+	String get partiallyAvailable => 'Partially available';
+
+	/// en: 'Available'
+	String get available => 'Available';
+
+	/// en: 'Pending'
+	String get pending => 'Pending';
+
+	/// en: 'Approved'
+	String get approved => 'Approved';
+
+	/// en: 'Declined'
+	String get declined => 'Declined';
+
+	/// en: 'Failed'
+	String get failed => 'Failed';
+
+	/// en: 'Completed'
+	String get completed => 'Completed';
+
+	/// en: 'Request "${title}"?'
+	String requestConfirm({required Object title}) => 'Request "${title}"?';
+
+	/// en: 'Request movie'
+	String get requestMovie => 'Request movie';
+
+	/// en: 'Requested'
+	String get requestSuccess => 'Requested';
+
+	/// en: 'Request failed. Try again.'
+	String get requestFailed => 'Request failed. Try again.';
+
+	/// en: 'Select seasons'
+	String get selectSeasons => 'Select seasons';
+
+	/// en: 'Season ${number}'
+	String season({required Object number}) => 'Season ${number}';
+
+	/// en: 'All seasons'
+	String get allSeasons => 'All seasons';
+
+	/// en: 'Request in 4K'
+	String get fourK => 'Request in 4K';
+
+	/// en: '${remaining} of ${limit} requests left'
+	String quotaRemaining({required Object remaining, required Object limit}) => '${remaining} of ${limit} requests left';
+
+	/// en: 'Unlimited requests'
+	String get quotaUnlimited => 'Unlimited requests';
+
+	/// en: 'Advanced options'
+	String get advancedOptions => 'Advanced options';
+
+	/// en: 'Server'
+	String get server => 'Server';
+
+	/// en: 'Quality profile'
+	String get qualityProfile => 'Quality profile';
+
+	/// en: 'Root folder'
+	String get rootFolder => 'Root folder';
+
+	/// en: 'My requests'
+	String get myRequests => 'My requests';
+
+	/// en: 'All requests'
+	String get allRequests => 'All requests';
+
+	/// en: 'All'
+	String get filterAll => 'All';
+
+	/// en: 'Pending'
+	String get filterPending => 'Pending';
+
+	/// en: 'Approved'
+	String get filterApproved => 'Approved';
+
+	/// en: 'Available'
+	String get filterAvailable => 'Available';
+
+	/// en: 'Movies'
+	String get filterMovies => 'Movies';
+
+	/// en: 'Shows'
+	String get filterShows => 'Shows';
+
+	/// en: 'Approve'
+	String get approve => 'Approve';
+
+	/// en: 'Decline'
+	String get decline => 'Decline';
+
+	/// en: 'Edit'
+	String get edit => 'Edit';
+
+	/// en: 'Cancel request'
+	String get cancelRequest => 'Cancel request';
+
+	/// en: 'Cancel this request?'
+	String get cancelRequestConfirm => 'Cancel this request?';
+
+	/// en: 'Discover on Requests'
+	String get discoverTitle => 'Discover on Requests';
+
+	/// en: 'Trending'
+	String get trending => 'Trending';
+
+	/// en: 'Popular movies'
+	String get popularMovies => 'Popular movies';
+
+	/// en: 'Popular shows'
+	String get popularTv => 'Popular shows';
+
+	/// en: 'Upcoming'
+	String get upcoming => 'Upcoming';
+
+	/// en: 'Recommendations'
+	String get recommendations => 'Recommendations';
+
+	/// en: 'Cast'
+	String get cast => 'Cast';
+
+	/// en: 'Load more'
+	String get loadMore => 'Load more';
+
+	/// en: 'Not in your library? Search on Jellyseerr / Overseerr'
+	String get searchOnSeerr => 'Not in your library? Search on Jellyseerr / Overseerr';
+
+	/// en: 'Search on Requests'
+	String get searchOnSeerrShort => 'Search on Requests';
+
+	/// en: 'No results found.'
+	String get noResults => 'No results found.';
+
+	/// en: 'Sign-in failed. Check your credentials.'
+	String get errorAuth => 'Sign-in failed. Check your credentials.';
+
+	/// en: 'You don't have permission for that.'
+	String get errorForbidden => 'You don\'t have permission for that.';
+
+	/// en: 'Couldn't reach the server. Check the URL.'
+	String get errorNetwork => 'Couldn\'t reach the server. Check the URL.';
+
+	/// en: 'Something went wrong. Try again.'
+	String get errorGeneric => 'Something went wrong. Try again.';
+}
+
 // Path: trakt
 class TranslationsTraktEn {
 	TranslationsTraktEn.internal(this._root);
@@ -3767,8 +4110,8 @@ class TranslationsTraktEn {
 	/// en: 'Disconnect Trakt account?'
 	String get disconnectConfirm => 'Disconnect Trakt account?';
 
-	/// en: 'Plezy will stop sending events to Trakt. You can reconnect any time.'
-	String get disconnectConfirmBody => 'Plezy will stop sending events to Trakt. You can reconnect any time.';
+	/// en: 'Pleya will stop sending events to Trakt. You can reconnect any time.'
+	String get disconnectConfirmBody => 'Pleya will stop sending events to Trakt. You can reconnect any time.';
 
 	/// en: 'Real-time scrobbling'
 	String get scrobble => 'Real-time scrobbling';
@@ -3779,8 +4122,8 @@ class TranslationsTraktEn {
 	/// en: 'Sync watched status'
 	String get watchedSync => 'Sync watched status';
 
-	/// en: 'When you mark items watched in Plezy, mark them on Trakt.'
-	String get watchedSyncDescription => 'When you mark items watched in Plezy, mark them on Trakt.';
+	/// en: 'When you mark items watched in Pleya, mark them on Trakt.'
+	String get watchedSyncDescription => 'When you mark items watched in Pleya, mark them on Trakt.';
 }
 
 // Path: trackers
@@ -3812,8 +4155,8 @@ class TranslationsTrackersEn {
 	/// en: 'Disconnect ${service}?'
 	String disconnectConfirm({required Object service}) => 'Disconnect ${service}?';
 
-	/// en: 'Plezy will stop updating ${service}. Reconnect any time.'
-	String disconnectConfirmBody({required Object service}) => 'Plezy will stop updating ${service}. Reconnect any time.';
+	/// en: 'Pleya will stop updating ${service}. Reconnect any time.'
+	String disconnectConfirmBody({required Object service}) => 'Pleya will stop updating ${service}. Reconnect any time.';
 
 	/// en: 'Couldn't connect to ${service}. Try again.'
 	String connectFailed({required Object service}) => 'Couldn\'t connect to ${service}. Try again.';
@@ -3920,6 +4263,30 @@ class TranslationsAddServerEn {
 	String get borrowFromAnotherProfileSubtitle => 'Reuse another profile\'s connection. PIN-protected profiles require a PIN.';
 }
 
+// Path: search.filters
+class TranslationsSearchFiltersEn {
+	TranslationsSearchFiltersEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'All'
+	String get all => 'All';
+
+	/// en: 'Movies'
+	String get movies => 'Movies';
+
+	/// en: 'Shows'
+	String get shows => 'Shows';
+
+	/// en: 'Episodes'
+	String get episodes => 'Episodes';
+
+	/// en: 'People'
+	String get people => 'People';
+}
+
 // Path: hotkeys.actions
 class TranslationsHotkeysActionsEn {
 	TranslationsHotkeysActionsEn.internal(this._root);
@@ -4002,6 +4369,30 @@ class TranslationsHotkeysActionsEn {
 
 	/// en: 'Take Screenshot'
 	String get screenshot => 'Take Screenshot';
+}
+
+// Path: videoControls.tvPanel
+class TranslationsVideoControlsTvPanelEn {
+	TranslationsVideoControlsTvPanelEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Information'
+	String get information => 'Information';
+
+	/// en: 'Audio'
+	String get audio => 'Audio';
+
+	/// en: 'Tracks'
+	String get tracks => 'Tracks';
+
+	/// en: 'Options'
+	String get options => 'Options';
+
+	/// en: 'More…'
+	String get more => 'More…';
 }
 
 // Path: videoControls.pipErrors
@@ -4234,8 +4625,8 @@ class TranslationsCompanionRemotePairingEn {
 
 	// Translations
 
-	/// en: 'Plezy devices with the same Plex account appear here'
-	String get discoveryDescription => 'Plezy devices with the same Plex account appear here';
+	/// en: 'Pleya devices with the same Plex account appear here'
+	String get discoveryDescription => 'Pleya devices with the same Plex account appear here';
 
 	/// en: '192.168.1.100:48632'
 	String get hostAddressHint => '192.168.1.100:48632';
@@ -4249,8 +4640,8 @@ class TranslationsCompanionRemotePairingEn {
 	/// en: 'No devices found on your network'
 	String get noDevicesFound => 'No devices found on your network';
 
-	/// en: 'Open Plezy on desktop and use the same WiFi'
-	String get noDevicesHint => 'Open Plezy on desktop and use the same WiFi';
+	/// en: 'Open Pleya on desktop and use the same WiFi'
+	String get noDevicesHint => 'Open Pleya on desktop and use the same WiFi';
 
 	/// en: 'Available Devices'
 	String get availableDevices => 'Available Devices';
@@ -4270,8 +4661,8 @@ class TranslationsCompanionRemotePairingEn {
 	/// en: 'Connection timed out. Use the same network on both devices.'
 	String get connectionTimedOut => 'Connection timed out. Use the same network on both devices.';
 
-	/// en: 'Device not found. Make sure Plezy is running on the host.'
-	String get sessionNotFound => 'Device not found. Make sure Plezy is running on the host.';
+	/// en: 'Device not found. Make sure Pleya is running on the host.'
+	String get sessionNotFound => 'Device not found. Make sure Pleya is running on the host.';
 
 	/// en: 'Authentication failed. Both devices need the same Plex account.'
 	String get authFailed => 'Authentication failed. Both devices need the same Plex account.';
@@ -4397,6 +4788,24 @@ class TranslationsCompanionRemoteErrorsEn {
 	String get connectionLost => 'Connection lost';
 }
 
+// Path: videoSettings.audioNormalizationModes
+class TranslationsVideoSettingsAudioNormalizationModesEn {
+	TranslationsVideoSettingsAudioNormalizationModesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Off'
+	String get off => 'Off';
+
+	/// en: 'Normalize'
+	String get normalize => 'Normalize';
+
+	/// en: 'Night mode'
+	String get night => 'Night mode';
+}
+
 // Path: trackers.services
 class TranslationsTrackersServicesEn {
 	TranslationsTrackersServicesEn.internal(this._root);
@@ -4423,8 +4832,8 @@ class TranslationsTrackersDeviceCodeEn {
 
 	// Translations
 
-	/// en: 'Activate Plezy on ${service}'
-	String title({required Object service}) => 'Activate Plezy on ${service}';
+	/// en: 'Activate Pleya on ${service}'
+	String title({required Object service}) => 'Activate Pleya on ${service}';
 
 	/// en: 'Visit ${url} and enter this code:'
 	String body({required Object url}) => 'Visit ${url} and enter this code:';
@@ -4513,7 +4922,7 @@ class TranslationsTrackersLibraryFilterEn {
 extension on Translations {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
-			'app.title' => 'Plezy',
+			'app.title' => 'Pleya',
 			'auth.signIn' => 'Sign in',
 			'auth.signInWithPlex' => 'Sign in with Plex',
 			'auth.showQRCode' => 'Show QR Code',
@@ -4578,6 +4987,8 @@ extension on Translations {
 			'common.pressBackAgainToExit' => 'Press back again to exit',
 			'screens.licenses' => 'Licenses',
 			'screens.switchProfile' => 'Switch Profile',
+			'screens.whoIsWatching' => 'Who\'s watching?',
+			'screens.manageProfiles' => 'Manage profiles',
 			'screens.subtitleStyling' => 'Subtitle Styling',
 			'screens.mpvConfig' => 'mpv.conf',
 			'screens.logs' => 'Logs',
@@ -4589,7 +5000,7 @@ extension on Translations {
 			'update.latestVersion' => 'You are on the latest version',
 			'update.checkFailed' => 'Failed to check for updates',
 			'settings.title' => 'Settings',
-			'settings.supportDeveloper' => 'Support Plezy',
+			'settings.supportDeveloper' => 'Support Pleya',
 			'settings.supportDeveloperDescription' => 'Donate via Liberapay to fund development',
 			'settings.language' => 'Language',
 			'settings.theme' => 'Theme',
@@ -4618,6 +5029,8 @@ extension on Translations {
 			'settings.gridView' => 'Grid',
 			'settings.listView' => 'List',
 			'settings.showHeroSection' => 'Show Hero Section',
+			'settings.hoverExpandCards' => 'Hover-expand cards',
+			'settings.hoverExpandCardsDescription' => 'Grow a preview card with quick actions when hovering a poster',
 			'settings.continueWatchingAction' => 'Continue Watching Action',
 			'settings.continueWatchingPlay' => 'Play',
 			'settings.continueWatchingDetails' => 'Open Details',
@@ -4705,8 +5118,12 @@ extension on Translations {
 			'settings.importSettingsConfirm' => 'This will replace your current settings. Continue?',
 			'settings.importSettingsSuccess' => 'Settings imported',
 			'settings.importSettingsFailed' => 'Could not import settings',
-			'settings.importSettingsInvalidFile' => 'This file isn\'t a valid Plezy settings export',
+			'settings.importSettingsInvalidFile' => 'This file isn\'t a valid Pleya settings export',
 			'settings.importSettingsNoUser' => 'Sign in before importing settings',
+			'settings.icloudSync' => 'Sync Settings via iCloud',
+			'settings.icloudSyncDescription' => 'Keep your preferences in sync across your Apple devices',
+			'settings.icloudSyncUnavailable' => 'Sign in to iCloud on this device to sync settings',
+			'settings.icloudSyncEnableFailed' => 'Could not turn on iCloud settings sync',
 			'settings.shortcutsReset' => 'Shortcuts reset to defaults',
 			'settings.about' => 'About',
 			'settings.aboutDescription' => 'App information and licenses',
@@ -4758,6 +5175,8 @@ extension on Translations {
 			'settings.traktDescription' => 'Sync watch history with Trakt',
 			'settings.trackers' => 'Trackers',
 			'settings.trackersDescription' => 'Sync progress to Trakt, MyAnimeList, AniList, and Simkl',
+			'settings.requests' => 'Requests',
+			'settings.requestsDescription' => 'Request movies and shows via Jellyseerr or Overseerr',
 			'settings.companionRemoteServer' => 'Companion Remote Server',
 			'settings.companionRemoteServerDescription' => 'Allow mobile devices on your network to control this app',
 			'settings.autoPip' => 'Auto Picture-in-Picture',
@@ -4786,7 +5205,7 @@ extension on Translations {
 			'settings.forceTvMode' => 'Force TV mode',
 			'settings.forceTvModeDescription' => 'Force TV layout. For devices that don\'t auto-detect. Requires restart.',
 			'settings.startInFullscreen' => 'Start in fullscreen',
-			'settings.startInFullscreenDescription' => 'Open Plezy in fullscreen mode at launch',
+			'settings.startInFullscreenDescription' => 'Open Pleya in fullscreen mode at launch',
 			'settings.exitFullscreenOnPlayerClose' => 'Exit fullscreen on player close',
 			'settings.exitFullscreenOnPlayerCloseDescription' => 'Automatically exit fullscreen when closing the video player',
 			'settings.autoHidePerformanceOverlay' => 'Auto-Hide Performance Overlay',
@@ -4794,7 +5213,7 @@ extension on Translations {
 			'settings.showNavBarLabels' => 'Show Navigation Bar Labels',
 			'settings.showNavBarLabelsDescription' => 'Display text labels under navigation bar icons',
 			'settings.startupSection' => 'Startup Section',
-			'settings.startupSectionDescription' => 'Choose which section Plezy opens to when it starts',
+			'settings.startupSectionDescription' => 'Choose which section Pleya opens to when it starts',
 			'settings.liveTvDefaultFavorites' => 'Default to Favorite Channels',
 			'settings.liveTvDefaultFavoritesDescription' => 'Show only favorite channels when opening Live TV',
 			'settings.display' => 'Display',
@@ -4806,10 +5225,19 @@ extension on Translations {
 			'settings.subtitlesAndConfig' => 'Subtitles & Configuration',
 			'settings.seekAndTiming' => 'Seek & Timing',
 			'settings.behavior' => 'Behavior',
+			'settings.personalizedRecommendations' => 'Personalized recommendations',
+			'settings.personalizedRecommendationsDescription' => 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.',
 			'search.hint' => 'Search movies, shows, music...',
 			'search.tryDifferentTerm' => 'Try a different search term',
 			'search.searchYourMedia' => 'Search your media',
 			'search.enterTitleActorOrKeyword' => 'Enter a title, actor, or keyword',
+			'search.recentSearches' => 'Recent searches',
+			'search.clearHistory' => 'Clear',
+			'search.filters.all' => 'All',
+			'search.filters.movies' => 'Movies',
+			'search.filters.shows' => 'Shows',
+			'search.filters.episodes' => 'Episodes',
+			'search.filters.people' => 'People',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Set Shortcut for ${actionName}',
 			'hotkeys.clearShortcut' => 'Clear shortcut',
 			'hotkeys.noShortcutSet' => 'No shortcut set',
@@ -4951,6 +5379,14 @@ extension on Translations {
 			'videoControls.pipButton' => 'Picture-in-Picture mode',
 			'videoControls.aspectRatioButton' => 'Aspect ratio',
 			'videoControls.ambientLighting' => 'Ambient lighting',
+			'videoControls.ambientIntensitySubtle' => 'Subtle',
+			'videoControls.ambientIntensityBalanced' => 'Balanced',
+			'videoControls.ambientIntensityBright' => 'Bright',
+			'videoControls.tvPanel.information' => 'Information',
+			'videoControls.tvPanel.audio' => 'Audio',
+			'videoControls.tvPanel.tracks' => 'Tracks',
+			'videoControls.tvPanel.options' => 'Options',
+			'videoControls.tvPanel.more' => 'More…',
 			'videoControls.fullscreenButton' => 'Enter fullscreen',
 			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
 			'videoControls.alwaysOnTopButton' => 'Always on top',
@@ -4986,6 +5422,7 @@ extension on Translations {
 			'videoControls.subtitleDownloaded' => 'Subtitle downloaded',
 			'videoControls.subtitleDownloadFailed' => 'Failed to download subtitle',
 			'videoControls.searchLanguages' => 'Search languages...',
+			'videoControls.airplayButton' => 'AirPlay',
 			'userStatus.admin' => 'Admin',
 			'userStatus.restricted' => 'Restricted',
 			'userStatus.protected' => 'Protected',
@@ -4997,6 +5434,8 @@ extension on Translations {
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Auto-removed: ${title}',
 			'messages.removedFromContinueWatching' => 'Removed from Continue Watching',
 			'messages.errorLoading' => ({required Object error}) => 'Error: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'messages.fileInfoNotAvailable' => 'File information not available',
 			'messages.errorLoadingFileInfo' => ({required Object error}) => 'Error loading file info: ${error}',
 			'messages.errorLoadingSeries' => 'Error loading series',
@@ -5025,8 +5464,6 @@ extension on Translations {
 			'messages.noItemsAvailable' => 'No items available',
 			'messages.failedToCreatePlayQueueNoItems' => 'Failed to create play queue - no items',
 			'messages.failedPlayback' => ({required Object action, required Object error}) => 'Failed to ${action}: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'messages.switchingToCompatiblePlayer' => 'Switching to compatible player...',
 			'messages.serverLimitTitle' => 'Playback failed',
 			'messages.serverLimitBody' => 'Server error (HTTP 500). A bandwidth/transcoding limit likely rejected this session. Ask the owner to adjust it.',
@@ -5064,7 +5501,7 @@ extension on Translations {
 			'mpvConfig.confirmDeletePreset' => 'Are you sure you want to delete this preset?',
 			'mpvConfig.configPlaceholder' => 'gpu-api=vulkan\nhwdec=auto\n# comment',
 			'dialog.confirmAction' => 'Confirm Action',
-			'profiles.addPlezyProfile' => 'Add Plezy profile',
+			'profiles.addPleyaProfile' => 'Add Pleya profile',
 			'profiles.switchingProfile' => 'Switching profile…',
 			'profiles.deleteThisProfileTitle' => 'Delete this profile?',
 			'profiles.deleteThisProfileMessage' => ({required Object displayName}) => 'Remove ${displayName}. Connections aren\'t affected.',
@@ -5130,7 +5567,7 @@ extension on Translations {
 			'connections.sessionExpiredMany' => ({required Object count}) => 'Session expired for ${count} servers',
 			'connections.signInAgain' => 'Sign in again',
 			'connections.editJellyfinTitle' => 'Edit Jellyfin connection',
-			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Add or remove URLs for ${serverName}. Plezy will use the reachable URL with the lowest latency.',
+			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency.',
 			'discover.title' => 'Discover',
 			'discover.switchProfile' => 'Switch Profile',
 			'discover.noContentAvailable' => 'No content available',
@@ -5151,6 +5588,16 @@ extension on Translations {
 			'discover.tvShow' => 'TV Show',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min left',
 			'discover.moreLikeThis' => 'More Like This',
+			'discover.becauseYouWatched' => ({required Object title}) => 'Because you watched ${title}',
+			'discover.topRated' => 'Top Rated',
+			'discover.somethingDifferent' => 'Something Different',
+			'discover.topPicksForYou' => 'Top Picks for You',
+			'discover.becauseYouLike' => ({required Object genre}) => 'Because you like ${genre}',
+			'discover.hiddenGems' => 'Hidden Gems',
+			'discover.watchedBy' => ({required Object names}) => 'Watched by ${names}',
+			'discover.watchedByYou' => 'You',
+			'discover.watchedByAnd' => 'and',
+			'discover.watchedByOthers' => ({required Object count}) => '${count} others',
 			'errors.searchFailed' => ({required Object error}) => 'Search failed: ${error}',
 			'errors.connectionTimeout' => ({required Object context}) => 'Connection timeout while loading ${context}',
 			'errors.connectionFailed' => 'Unable to connect to media server',
@@ -5501,6 +5948,8 @@ extension on Translations {
 			'downloads.syncRuleSignInRequired' => 'Sign in required',
 			'downloads.syncRuleNotAvailableForProfile' => 'Not available for current profile',
 			'downloads.syncRuleUnknownServer' => 'Unknown server',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.syncRuleListCreated' => 'Sync rule created',
 			'shaders.title' => 'Shaders',
 			'shaders.noShaderDescription' => 'No video enhancement',
@@ -5532,21 +5981,19 @@ extension on Translations {
 			'companionRemote.session.startServer' => 'Start Server',
 			'companionRemote.session.stopServer' => 'Stop Server',
 			'companionRemote.session.minimize' => 'Minimize',
-			'companionRemote.pairing.discoveryDescription' => 'Plezy devices with the same Plex account appear here',
+			'companionRemote.pairing.discoveryDescription' => 'Pleya devices with the same Plex account appear here',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Connecting...',
 			'companionRemote.pairing.searchingForDevices' => 'Looking for devices...',
 			'companionRemote.pairing.noDevicesFound' => 'No devices found on your network',
-			'companionRemote.pairing.noDevicesHint' => 'Open Plezy on desktop and use the same WiFi',
+			'companionRemote.pairing.noDevicesHint' => 'Open Pleya on desktop and use the same WiFi',
 			'companionRemote.pairing.availableDevices' => 'Available Devices',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.manualConnection' => 'Manual Connection',
 			'companionRemote.pairing.cryptoInitFailed' => 'Couldn\'t start secure connection. Sign in to Plex first.',
 			'companionRemote.pairing.validationHostRequired' => 'Please enter host address',
 			'companionRemote.pairing.validationHostFormat' => 'Format must be IP:port (e.g., 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Connection timed out. Use the same network on both devices.',
-			'companionRemote.pairing.sessionNotFound' => 'Device not found. Make sure Plezy is running on the host.',
+			'companionRemote.pairing.sessionNotFound' => 'Device not found. Make sure Pleya is running on the host.',
 			'companionRemote.pairing.authFailed' => 'Authentication failed. Both devices need the same Plex account.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Failed to connect: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Do you want to disconnect from the remote session?',
@@ -5592,6 +6039,11 @@ extension on Translations {
 			'videoSettings.performanceOverlay' => 'Performance Overlay',
 			'videoSettings.audioPassthrough' => 'Audio Passthrough',
 			'videoSettings.audioNormalization' => 'Normalize Loudness',
+			'videoSettings.audioNormalizationTitle' => 'Loudness',
+			'videoSettings.audioNormalizationModes.off' => 'Off',
+			'videoSettings.audioNormalizationModes.normalize' => 'Normalize',
+			'videoSettings.audioNormalizationModes.night' => 'Night mode',
+			'videoSettings.tryLowerQuality' => 'Try lower quality',
 			'performanceOverlay.color' => 'Color',
 			'performanceOverlay.performance' => 'Performance',
 			'performanceOverlay.buffer' => 'Buffer',
@@ -5732,15 +6184,94 @@ extension on Translations {
 			'serverTasks.title' => 'Server Tasks',
 			'serverTasks.failedToLoad' => 'Failed to load tasks',
 			'serverTasks.noTasks' => 'No tasks running',
+			'seerr.title' => 'Requests',
+			'seerr.hubSubtitle' => 'Request movies and shows from your Jellyseerr or Overseerr server.',
+			'seerr.notConfigured' => 'Not configured',
+			'seerr.serverUrl' => 'Server URL',
+			'seerr.serverUrlHint' => 'https://requests.example.com',
+			'seerr.authMode' => 'Sign-in method',
+			'seerr.authPlex' => 'Sign in with Plex',
+			'seerr.authPlexSubtitle' => 'One-tap using your existing Plex login.',
+			'seerr.authLocal' => 'Email and password',
+			'seerr.authApiKey' => 'API key',
+			'seerr.email' => 'Email',
+			'seerr.password' => 'Password',
+			'seerr.apiKey' => 'API key',
+			'seerr.apiKeyHint' => 'From Settings → General on your server',
+			'seerr.adminAttributionNote' => 'API-key mode files requests as the admin user. Sign in with Plex for per-user attribution.',
+			'seerr.setupOnDesktopNote' => 'Tip: this is easier to set up on your phone or computer.',
+			'seerr.testConnection' => 'Test connection',
+			'seerr.save' => 'Save',
+			'seerr.disconnect' => 'Disconnect',
+			'seerr.disconnectConfirm' => 'Disconnect requests server?',
+			'seerr.disconnectConfirmBody' => 'Pleya will stop sending requests. You can reconnect any time.',
+			'seerr.connectedAs' => ({required Object name}) => 'Signed in as ${name}',
+			'seerr.serverVersion' => ({required Object version}) => 'Server version ${version}',
+			'seerr.permissionAdmin' => 'Administrator',
+			'seerr.permissionManage' => 'Can approve requests',
+			'seerr.permissionRequest' => 'Can request',
+			'seerr.request' => 'Request',
+			'seerr.requested' => 'Requested',
+			'seerr.requestAgain' => 'Request',
+			'seerr.processing' => 'Processing',
+			'seerr.partiallyAvailable' => 'Partially available',
+			'seerr.available' => 'Available',
+			'seerr.pending' => 'Pending',
+			'seerr.approved' => 'Approved',
+			'seerr.declined' => 'Declined',
+			'seerr.failed' => 'Failed',
+			'seerr.completed' => 'Completed',
+			'seerr.requestConfirm' => ({required Object title}) => 'Request "${title}"?',
+			'seerr.requestMovie' => 'Request movie',
+			'seerr.requestSuccess' => 'Requested',
+			'seerr.requestFailed' => 'Request failed. Try again.',
+			'seerr.selectSeasons' => 'Select seasons',
+			'seerr.season' => ({required Object number}) => 'Season ${number}',
+			'seerr.allSeasons' => 'All seasons',
+			'seerr.fourK' => 'Request in 4K',
+			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => '${remaining} of ${limit} requests left',
+			'seerr.quotaUnlimited' => 'Unlimited requests',
+			'seerr.advancedOptions' => 'Advanced options',
+			'seerr.server' => 'Server',
+			'seerr.qualityProfile' => 'Quality profile',
+			'seerr.rootFolder' => 'Root folder',
+			'seerr.myRequests' => 'My requests',
+			'seerr.allRequests' => 'All requests',
+			'seerr.filterAll' => 'All',
+			'seerr.filterPending' => 'Pending',
+			'seerr.filterApproved' => 'Approved',
+			'seerr.filterAvailable' => 'Available',
+			'seerr.filterMovies' => 'Movies',
+			'seerr.filterShows' => 'Shows',
+			'seerr.approve' => 'Approve',
+			'seerr.decline' => 'Decline',
+			'seerr.edit' => 'Edit',
+			'seerr.cancelRequest' => 'Cancel request',
+			'seerr.cancelRequestConfirm' => 'Cancel this request?',
+			'seerr.discoverTitle' => 'Discover on Requests',
+			'seerr.trending' => 'Trending',
+			'seerr.popularMovies' => 'Popular movies',
+			'seerr.popularTv' => 'Popular shows',
+			'seerr.upcoming' => 'Upcoming',
+			'seerr.recommendations' => 'Recommendations',
+			'seerr.cast' => 'Cast',
+			'seerr.loadMore' => 'Load more',
+			'seerr.searchOnSeerr' => 'Not in your library? Search on Jellyseerr / Overseerr',
+			'seerr.searchOnSeerrShort' => 'Search on Requests',
+			'seerr.noResults' => 'No results found.',
+			'seerr.errorAuth' => 'Sign-in failed. Check your credentials.',
+			'seerr.errorForbidden' => 'You don\'t have permission for that.',
+			'seerr.errorNetwork' => 'Couldn\'t reach the server. Check the URL.',
+			'seerr.errorGeneric' => 'Something went wrong. Try again.',
 			'trakt.title' => 'Trakt',
 			'trakt.connected' => 'Connected',
 			'trakt.connectedAs' => ({required Object username}) => 'Connected as @${username}',
 			'trakt.disconnectConfirm' => 'Disconnect Trakt account?',
-			'trakt.disconnectConfirmBody' => 'Plezy will stop sending events to Trakt. You can reconnect any time.',
+			'trakt.disconnectConfirmBody' => 'Pleya will stop sending events to Trakt. You can reconnect any time.',
 			'trakt.scrobble' => 'Real-time scrobbling',
 			'trakt.scrobbleDescription' => 'Send play, pause, and stop events to Trakt during playback.',
 			'trakt.watchedSync' => 'Sync watched status',
-			'trakt.watchedSyncDescription' => 'When you mark items watched in Plezy, mark them on Trakt.',
+			'trakt.watchedSyncDescription' => 'When you mark items watched in Pleya, mark them on Trakt.',
 			'trackers.title' => 'Trackers',
 			'trackers.hubSubtitle' => 'Sync watch progress with Trakt and other services.',
 			'trackers.notConnected' => 'Not connected',
@@ -5748,12 +6279,12 @@ extension on Translations {
 			'trackers.scrobble' => 'Track progress automatically',
 			'trackers.scrobbleDescription' => 'Update your list when you finish an episode or movie.',
 			'trackers.disconnectConfirm' => ({required Object service}) => 'Disconnect ${service}?',
-			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Plezy will stop updating ${service}. Reconnect any time.',
+			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya will stop updating ${service}. Reconnect any time.',
 			'trackers.connectFailed' => ({required Object service}) => 'Couldn\'t connect to ${service}. Try again.',
 			'trackers.services.mal' => 'MyAnimeList',
 			'trackers.services.anilist' => 'AniList',
 			'trackers.services.simkl' => 'Simkl',
-			'trackers.deviceCode.title' => ({required Object service}) => 'Activate Plezy on ${service}',
+			'trackers.deviceCode.title' => ({required Object service}) => 'Activate Pleya on ${service}',
 			'trackers.deviceCode.body' => ({required Object url}) => 'Visit ${url} and enter this code:',
 			'trackers.deviceCode.openToActivate' => ({required Object service}) => 'Open ${service} to activate',
 			'trackers.deviceCode.waitingForAuthorization' => 'Waiting for authorization…',

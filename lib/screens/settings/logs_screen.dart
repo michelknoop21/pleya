@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:plezy/utils/media_server_http_client.dart';
+import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
@@ -138,7 +138,7 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
 
     try {
       final response = await httpClient.post(
-        'https://ice.plezy.app/logs',
+        '${const String.fromEnvironment('PLEYA_ICE_BASE', defaultValue: 'https://ice.pleya.app')}/logs',
         body: logText,
         headers: {'Content-Type': 'text/plain'},
       );

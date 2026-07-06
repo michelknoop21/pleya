@@ -94,7 +94,7 @@ class _TranslationsAppBg extends TranslationsAppEn {
 	final TranslationsBg _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Plezy';
+	@override String get title => 'Pleya';
 }
 
 // Path: auth
@@ -215,7 +215,7 @@ class _TranslationsSettingsBg extends TranslationsSettingsEn {
 
 	// Translations
 	@override String get title => 'Настройки';
-	@override String get supportDeveloper => 'Подкрепи Plezy';
+	@override String get supportDeveloper => 'Подкрепи Pleya';
 	@override String get supportDeveloperDescription => 'Дарение чрез Liberapay за финансиране на разработката';
 	@override String get language => 'Език';
 	@override String get theme => 'Тема';
@@ -325,7 +325,7 @@ class _TranslationsSettingsBg extends TranslationsSettingsEn {
 	@override String get importSettingsConfirm => 'Това ще замени текущите ви настройки. Продължавате ли?';
 	@override String get importSettingsSuccess => 'Настройките са импортирани';
 	@override String get importSettingsFailed => 'Настройките не можаха да бъдат импортирани';
-	@override String get importSettingsInvalidFile => 'Този файл не е валиден експорт на настройки от Plezy';
+	@override String get importSettingsInvalidFile => 'Този файл не е валиден експорт на настройки от Pleya';
 	@override String get importSettingsNoUser => 'Влезте, преди да импортирате настройки';
 	@override String get shortcutsReset => 'Клавишните комбинации са нулирани до подразбиране';
 	@override String get about => 'Относно';
@@ -406,7 +406,7 @@ class _TranslationsSettingsBg extends TranslationsSettingsEn {
 	@override String get forceTvMode => 'Принуди TV режим';
 	@override String get forceTvModeDescription => 'Принуди ТВ оформление. За устройства, които не се разпознават автоматично. Изисква рестарт.';
 	@override String get startInFullscreen => 'Стартирай на цял екран';
-	@override String get startInFullscreenDescription => 'Отваряй Plezy в режим цял екран при стартиране';
+	@override String get startInFullscreenDescription => 'Отваряй Pleya в режим цял екран при стартиране';
 	@override String get exitFullscreenOnPlayerClose => 'Изход от цял екран при затваряне на плейъра';
 	@override String get exitFullscreenOnPlayerCloseDescription => 'Автоматично излиза от режим цял екран при затваряне на видео плейъра';
 	@override String get autoHidePerformanceOverlay => 'Автоматично скриване на оверлея за производителност';
@@ -414,7 +414,7 @@ class _TranslationsSettingsBg extends TranslationsSettingsEn {
 	@override String get showNavBarLabels => 'Показвай етикети в навигационната лента';
 	@override String get showNavBarLabelsDescription => 'Показвай текстови етикети под иконите в навигационната лента';
 	@override String get startupSection => 'Начален раздел';
-	@override String get startupSectionDescription => 'Изберете кой раздел да отваря Plezy при стартиране';
+	@override String get startupSectionDescription => 'Изберете кой раздел да отваря Pleya при стартиране';
 	@override String get liveTvDefaultFavorites => 'По подразбиране към любими канали';
 	@override String get liveTvDefaultFavoritesDescription => 'Показвай само любими канали при отваряне на телевизия на живо';
 	@override String get display => 'Дисплей';
@@ -778,7 +778,7 @@ class _TranslationsProfilesBg extends TranslationsProfilesEn {
 	final TranslationsBg _root; // ignore: unused_field
 
 	// Translations
-	@override String get addPlezyProfile => 'Добави Plezy профил';
+	@override String get addPleyaProfile => 'Добави Pleya профил';
 	@override String get switchingProfile => 'Смяна на профил…';
 	@override String get deleteThisProfileTitle => 'Да се изтрие ли този профил?';
 	@override String deleteThisProfileMessage({required Object displayName}) => 'Премахване на ${displayName}. Връзките не се засягат.';
@@ -853,7 +853,7 @@ class _TranslationsConnectionsBg extends TranslationsConnectionsEn {
 	@override String sessionExpiredMany({required Object count}) => 'Сесиите за ${count} сървъра са изтекли';
 	@override String get signInAgain => 'Влез отново';
 	@override String get editJellyfinTitle => 'Редактиране на Jellyfin връзка';
-	@override String editJellyfinIntro({required Object serverName}) => 'Добавете или премахнете URL адреси за ${serverName}. Plezy ще използва достъпния URL адрес с най-ниска латентност.';
+	@override String editJellyfinIntro({required Object serverName}) => 'Добавете или премахнете URL адреси за ${serverName}. Pleya ще използва достъпния URL адрес с най-ниска латентност.';
 }
 
 // Path: discover
@@ -1572,11 +1572,11 @@ class _TranslationsTraktBg extends TranslationsTraktEn {
 	@override String get connected => 'Свързан';
 	@override String connectedAs({required Object username}) => 'Свързан като @${username}';
 	@override String get disconnectConfirm => 'Да се прекъсне ли Trakt акаунтът?';
-	@override String get disconnectConfirmBody => 'Plezy ще спре да изпраща събития към Trakt. Можете да се свържете отново по всяко време.';
+	@override String get disconnectConfirmBody => 'Pleya ще спре да изпраща събития към Trakt. Можете да се свържете отново по всяко време.';
 	@override String get scrobble => 'Скроблиране в реално време';
 	@override String get scrobbleDescription => 'Изпращай събития за пускане, пауза и спиране към Trakt по време на възпроизвеждане.';
 	@override String get watchedSync => 'Синхронизирай статус гледано';
-	@override String get watchedSyncDescription => 'Когато маркирате елементи като гледани в Plezy, маркирай ги и в Trakt.';
+	@override String get watchedSyncDescription => 'Когато маркирате елементи като гледани в Pleya, маркирай ги и в Trakt.';
 }
 
 // Path: trackers
@@ -1593,7 +1593,7 @@ class _TranslationsTrackersBg extends TranslationsTrackersEn {
 	@override String get scrobble => 'Проследявай прогреса автоматично';
 	@override String get scrobbleDescription => 'Обновявай списъка си, когато завършиш епизод или филм.';
 	@override String disconnectConfirm({required Object service}) => 'Да се прекъсне ли ${service}?';
-	@override String disconnectConfirmBody({required Object service}) => 'Plezy ще спре да обновява ${service}. Можете да се свържете отново по всяко време.';
+	@override String disconnectConfirmBody({required Object service}) => 'Pleya ще спре да обновява ${service}. Можете да се свържете отново по всяко време.';
 	@override String connectFailed({required Object service}) => 'Неуспешно свързване с ${service}. Опитайте отново.';
 	@override late final _TranslationsTrackersServicesBg services = _TranslationsTrackersServicesBg._(_root);
 	@override late final _TranslationsTrackersDeviceCodeBg deviceCode = _TranslationsTrackersDeviceCodeBg._(_root);
@@ -1790,19 +1790,19 @@ class _TranslationsCompanionRemotePairingBg extends TranslationsCompanionRemoteP
 	final TranslationsBg _root; // ignore: unused_field
 
 	// Translations
-	@override String get discoveryDescription => 'Plezy устройства със същия Plex акаунт се показват тук';
+	@override String get discoveryDescription => 'Pleya устройства със същия Plex акаунт се показват тук';
 	@override String get hostAddressHint => '192.168.1.100:48632';
 	@override String get connecting => 'Свързване...';
 	@override String get searchingForDevices => 'Търсене на устройства...';
 	@override String get noDevicesFound => 'Не са намерени устройства във вашата мрежа';
-	@override String get noDevicesHint => 'Отворете Plezy на настолен компютър и използвайте същия WiFi';
+	@override String get noDevicesHint => 'Отворете Pleya на настолен компютър и използвайте същия WiFi';
 	@override String get availableDevices => 'Налични устройства';
 	@override String get manualConnection => 'Ръчно свързване';
 	@override String get cryptoInitFailed => 'Не може да се стартира защитена връзка. Първо влезте в Plex.';
 	@override String get validationHostRequired => 'Моля, въведете адрес на хоста';
 	@override String get validationHostFormat => 'Форматът трябва да е IP:port (напр. 192.168.1.100:48632)';
 	@override String get connectionTimedOut => 'Връзката изтече. Използвайте една и съща мрежа на двете устройства.';
-	@override String get sessionNotFound => 'Устройството не е намерено. Уверете се, че Plezy работи на хоста.';
+	@override String get sessionNotFound => 'Устройството не е намерено. Уверете се, че Pleya работи на хоста.';
 	@override String get authFailed => 'Удостоверяването е неуспешно. Двете устройства трябва да използват същия Plex акаунт.';
 	@override String failedToConnect({required Object error}) => 'Неуспешно свързване: ${error}';
 }
@@ -1877,7 +1877,7 @@ class _TranslationsTrackersDeviceCodeBg extends TranslationsTrackersDeviceCodeEn
 	final TranslationsBg _root; // ignore: unused_field
 
 	// Translations
-	@override String title({required Object service}) => 'Активиране на Plezy в ${service}';
+	@override String title({required Object service}) => 'Активиране на Pleya в ${service}';
 	@override String body({required Object url}) => 'Посетете ${url} и въведете този код:';
 	@override String openToActivate({required Object service}) => 'Отворете ${service}, за да активирате';
 	@override String get waitingForAuthorization => 'Изчакване на оторизация…';
@@ -1926,7 +1926,7 @@ class _TranslationsTrackersLibraryFilterBg extends TranslationsTrackersLibraryFi
 extension on TranslationsBg {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
-			'app.title' => 'Plezy',
+			'app.title' => 'Pleya',
 			'auth.signIn' => 'Вход',
 			'auth.signInWithPlex' => 'Вход с Plex',
 			'auth.showQRCode' => 'Покажи QR код',
@@ -2002,7 +2002,7 @@ extension on TranslationsBg {
 			'update.latestVersion' => 'Използвате най-новата версия',
 			'update.checkFailed' => 'Неуспешна проверка за актуализации',
 			'settings.title' => 'Настройки',
-			'settings.supportDeveloper' => 'Подкрепи Plezy',
+			'settings.supportDeveloper' => 'Подкрепи Pleya',
 			'settings.supportDeveloperDescription' => 'Дарение чрез Liberapay за финансиране на разработката',
 			'settings.language' => 'Език',
 			'settings.theme' => 'Тема',
@@ -2112,7 +2112,7 @@ extension on TranslationsBg {
 			'settings.importSettingsConfirm' => 'Това ще замени текущите ви настройки. Продължавате ли?',
 			'settings.importSettingsSuccess' => 'Настройките са импортирани',
 			'settings.importSettingsFailed' => 'Настройките не можаха да бъдат импортирани',
-			'settings.importSettingsInvalidFile' => 'Този файл не е валиден експорт на настройки от Plezy',
+			'settings.importSettingsInvalidFile' => 'Този файл не е валиден експорт на настройки от Pleya',
 			'settings.importSettingsNoUser' => 'Влезте, преди да импортирате настройки',
 			'settings.shortcutsReset' => 'Клавишните комбинации са нулирани до подразбиране',
 			'settings.about' => 'Относно',
@@ -2193,7 +2193,7 @@ extension on TranslationsBg {
 			'settings.forceTvMode' => 'Принуди TV режим',
 			'settings.forceTvModeDescription' => 'Принуди ТВ оформление. За устройства, които не се разпознават автоматично. Изисква рестарт.',
 			'settings.startInFullscreen' => 'Стартирай на цял екран',
-			'settings.startInFullscreenDescription' => 'Отваряй Plezy в режим цял екран при стартиране',
+			'settings.startInFullscreenDescription' => 'Отваряй Pleya в режим цял екран при стартиране',
 			'settings.exitFullscreenOnPlayerClose' => 'Изход от цял екран при затваряне на плейъра',
 			'settings.exitFullscreenOnPlayerCloseDescription' => 'Автоматично излиза от режим цял екран при затваряне на видео плейъра',
 			'settings.autoHidePerformanceOverlay' => 'Автоматично скриване на оверлея за производителност',
@@ -2201,7 +2201,7 @@ extension on TranslationsBg {
 			'settings.showNavBarLabels' => 'Показвай етикети в навигационната лента',
 			'settings.showNavBarLabelsDescription' => 'Показвай текстови етикети под иконите в навигационната лента',
 			'settings.startupSection' => 'Начален раздел',
-			'settings.startupSectionDescription' => 'Изберете кой раздел да отваря Plezy при стартиране',
+			'settings.startupSectionDescription' => 'Изберете кой раздел да отваря Pleya при стартиране',
 			'settings.liveTvDefaultFavorites' => 'По подразбиране към любими канали',
 			'settings.liveTvDefaultFavoritesDescription' => 'Показвай само любими канали при отваряне на телевизия на живо',
 			'settings.display' => 'Дисплей',
@@ -2471,7 +2471,7 @@ extension on TranslationsBg {
 			'mpvConfig.confirmDeletePreset' => 'Сигурни ли сте, че искате да изтриете този пресет?',
 			'mpvConfig.configPlaceholder' => 'gpu-api=vulkan\nhwdec=auto\n# comment',
 			'dialog.confirmAction' => 'Потвърждение на действие',
-			'profiles.addPlezyProfile' => 'Добави Plezy профил',
+			'profiles.addPleyaProfile' => 'Добави Pleya профил',
 			'profiles.switchingProfile' => 'Смяна на профил…',
 			'profiles.deleteThisProfileTitle' => 'Да се изтрие ли този профил?',
 			'profiles.deleteThisProfileMessage' => ({required Object displayName}) => 'Премахване на ${displayName}. Връзките не се засягат.',
@@ -2537,7 +2537,7 @@ extension on TranslationsBg {
 			'connections.sessionExpiredMany' => ({required Object count}) => 'Сесиите за ${count} сървъра са изтекли',
 			'connections.signInAgain' => 'Влез отново',
 			'connections.editJellyfinTitle' => 'Редактиране на Jellyfin връзка',
-			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Добавете или премахнете URL адреси за ${serverName}. Plezy ще използва достъпния URL адрес с най-ниска латентност.',
+			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Добавете или премахнете URL адреси за ${serverName}. Pleya ще използва достъпния URL адрес с най-ниска латентност.',
 			'discover.title' => 'Открий',
 			'discover.switchProfile' => 'Смяна на профил',
 			'discover.noContentAvailable' => 'Няма налично съдържание',
@@ -2936,19 +2936,19 @@ extension on TranslationsBg {
 			'companionRemote.session.startServer' => 'Стартирай сървър',
 			'companionRemote.session.stopServer' => 'Спри сървър',
 			'companionRemote.session.minimize' => 'Минимизирай',
-			'companionRemote.pairing.discoveryDescription' => 'Plezy устройства със същия Plex акаунт се показват тук',
+			'companionRemote.pairing.discoveryDescription' => 'Pleya устройства със същия Plex акаунт се показват тук',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Свързване...',
 			'companionRemote.pairing.searchingForDevices' => 'Търсене на устройства...',
 			'companionRemote.pairing.noDevicesFound' => 'Не са намерени устройства във вашата мрежа',
-			'companionRemote.pairing.noDevicesHint' => 'Отворете Plezy на настолен компютър и използвайте същия WiFi',
+			'companionRemote.pairing.noDevicesHint' => 'Отворете Pleya на настолен компютър и използвайте същия WiFi',
 			'companionRemote.pairing.availableDevices' => 'Налични устройства',
 			'companionRemote.pairing.manualConnection' => 'Ръчно свързване',
 			'companionRemote.pairing.cryptoInitFailed' => 'Не може да се стартира защитена връзка. Първо влезте в Plex.',
 			'companionRemote.pairing.validationHostRequired' => 'Моля, въведете адрес на хоста',
 			'companionRemote.pairing.validationHostFormat' => 'Форматът трябва да е IP:port (напр. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Връзката изтече. Използвайте една и съща мрежа на двете устройства.',
-			'companionRemote.pairing.sessionNotFound' => 'Устройството не е намерено. Уверете се, че Plezy работи на хоста.',
+			'companionRemote.pairing.sessionNotFound' => 'Устройството не е намерено. Уверете се, че Pleya работи на хоста.',
 			'companionRemote.pairing.authFailed' => 'Удостоверяването е неуспешно. Двете устройства трябва да използват същия Plex акаунт.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Неуспешно свързване: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Искате ли да прекъснете връзката с дистанционната сесия?',
@@ -3140,11 +3140,11 @@ extension on TranslationsBg {
 			'trakt.connected' => 'Свързан',
 			'trakt.connectedAs' => ({required Object username}) => 'Свързан като @${username}',
 			'trakt.disconnectConfirm' => 'Да се прекъсне ли Trakt акаунтът?',
-			'trakt.disconnectConfirmBody' => 'Plezy ще спре да изпраща събития към Trakt. Можете да се свържете отново по всяко време.',
+			'trakt.disconnectConfirmBody' => 'Pleya ще спре да изпраща събития към Trakt. Можете да се свържете отново по всяко време.',
 			'trakt.scrobble' => 'Скроблиране в реално време',
 			'trakt.scrobbleDescription' => 'Изпращай събития за пускане, пауза и спиране към Trakt по време на възпроизвеждане.',
 			'trakt.watchedSync' => 'Синхронизирай статус гледано',
-			'trakt.watchedSyncDescription' => 'Когато маркирате елементи като гледани в Plezy, маркирай ги и в Trakt.',
+			'trakt.watchedSyncDescription' => 'Когато маркирате елементи като гледани в Pleya, маркирай ги и в Trakt.',
 			'trackers.title' => 'Тракери',
 			'trackers.hubSubtitle' => 'Синхронизирай прогреса на гледане с Trakt и други услуги.',
 			'trackers.notConnected' => 'Не е свързан',
@@ -3152,12 +3152,12 @@ extension on TranslationsBg {
 			'trackers.scrobble' => 'Проследявай прогреса автоматично',
 			'trackers.scrobbleDescription' => 'Обновявай списъка си, когато завършиш епизод или филм.',
 			'trackers.disconnectConfirm' => ({required Object service}) => 'Да се прекъсне ли ${service}?',
-			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Plezy ще спре да обновява ${service}. Можете да се свържете отново по всяко време.',
+			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya ще спре да обновява ${service}. Можете да се свържете отново по всяко време.',
 			'trackers.connectFailed' => ({required Object service}) => 'Неуспешно свързване с ${service}. Опитайте отново.',
 			'trackers.services.mal' => 'MyAnimeList',
 			'trackers.services.anilist' => 'AniList',
 			'trackers.services.simkl' => 'Simkl',
-			'trackers.deviceCode.title' => ({required Object service}) => 'Активиране на Plezy в ${service}',
+			'trackers.deviceCode.title' => ({required Object service}) => 'Активиране на Pleya в ${service}',
 			'trackers.deviceCode.body' => ({required Object url}) => 'Посетете ${url} и въведете този код:',
 			'trackers.deviceCode.openToActivate' => ({required Object service}) => 'Отворете ${service}, за да активирате',
 			'trackers.deviceCode.waitingForAuthorization' => 'Изчакване на оторизация…',

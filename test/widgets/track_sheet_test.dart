@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/i18n/strings.g.dart';
-import 'package:plezy/media/media_source_info.dart';
-import 'package:plezy/mpv/mpv.dart';
-import 'package:plezy/theme/mono_tokens.dart';
-import 'package:plezy/widgets/video_controls/models/track_controls_state.dart';
-import 'package:plezy/widgets/video_controls/sheets/track_sheet.dart';
+import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/media_source_info.dart';
+import 'package:pleya/mpv/mpv.dart';
+import 'package:pleya/theme/mono_tokens.dart';
+import 'package:pleya/widgets/video_controls/models/track_controls_state.dart';
+import 'package:pleya/widgets/video_controls/sheets/track_sheet.dart';
 
 const _testTokens = MonoTokens(
   radiusSm: 8,
@@ -16,9 +16,12 @@ const _testTokens = MonoTokens(
   slow: Duration(milliseconds: 1),
   bg: Colors.black,
   surface: Colors.black,
+  surfaceElevated: Color(0xFF2F2F2F),
   outline: Colors.white24,
   text: Colors.white,
   textMuted: Colors.white70,
+  accent: Color(0xFFF42B1F),
+  accentAlt: Color(0xFFFFB020),
   splashFactory: NoSplash.splashFactory,
 );
 

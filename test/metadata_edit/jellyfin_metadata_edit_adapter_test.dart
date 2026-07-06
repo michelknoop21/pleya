@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:plezy/connection/connection.dart';
-import 'package:plezy/media/media_backend.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/metadata_edit/jellyfin_metadata_edit_adapter.dart';
-import 'package:plezy/services/jellyfin_client.dart';
+import 'package:pleya/connection/connection.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/metadata_edit/jellyfin_metadata_edit_adapter.dart';
+import 'package:pleya/services/jellyfin_client.dart';
 
 void main() {
   test('load fails when the full editable Jellyfin DTO is unavailable', () async {

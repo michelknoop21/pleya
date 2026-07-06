@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/focus/focus_glow_overlay.dart';
-import 'package:plezy/focus/focus_theme.dart';
-import 'package:plezy/focus/input_mode_tracker.dart';
-import 'package:plezy/media/media_backend.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/services/settings_service.dart';
-import 'package:plezy/theme/mono_theme.dart';
-import 'package:plezy/utils/layout_constants.dart';
-import 'package:plezy/utils/platform_detector.dart';
-import 'package:plezy/widgets/focusable_media_card.dart';
-import 'package:plezy/widgets/media_card.dart';
-import 'package:plezy/widgets/media_grid_delegate.dart';
+import 'package:pleya/focus/focus_glow_overlay.dart';
+import 'package:pleya/focus/focus_theme.dart';
+import 'package:pleya/focus/input_mode_tracker.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/utils/layout_constants.dart';
+import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/focusable_media_card.dart';
+import 'package:pleya/widgets/media_card.dart';
+import 'package:pleya/widgets/media_grid_delegate.dart';
 
 import '../test_helpers/prefs.dart';
 

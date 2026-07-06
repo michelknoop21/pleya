@@ -16,8 +16,8 @@ import 'settings_service.dart' show EpisodePosterMode;
 ///
 /// Android uses the Watch Next row. tvOS uses the app's Top Shelf extension.
 class SystemShelfService {
-  static const MethodChannel _androidChannel = MethodChannel('com.plezy/watch_next');
-  static const MethodChannel _tvosChannel = MethodChannel('com.plezy/system_shelf');
+  static const MethodChannel _androidChannel = MethodChannel('com.pleya/watch_next');
+  static const MethodChannel _tvosChannel = MethodChannel('com.pleya/system_shelf');
   static const bool _tvosBuild = bool.fromEnvironment('TVOS_BUILD');
 
   static final SystemShelfService _instance = SystemShelfService._internal();
@@ -147,14 +147,14 @@ class SystemShelfService {
     }
   }
 
-  /// Build a content ID. Format: plezy_{serverId}_{ratingKey}
+  /// Build a content ID. Format: pleya_{serverId}_{ratingKey}
   static String _buildContentId(ServerId? serverId, String ratingKey) {
-    return 'plezy_${serverId ?? 'unknown'}_$ratingKey';
+    return 'pleya_${serverId ?? 'unknown'}_$ratingKey';
   }
 
   /// Parse a content ID back to (serverId, ratingKey), or null if invalid.
   static (ServerId serverId, String ratingKey)? parseContentId(String contentId) {
-    if (!contentId.startsWith('plezy_')) return null;
+    if (!contentId.startsWith('pleya_')) return null;
     final parts = contentId.substring(6).split('_');
     if (parts.length < 2) return null;
     return (ServerId(parts.first), parts.sublist(1).join('_'));

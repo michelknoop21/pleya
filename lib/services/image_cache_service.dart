@@ -55,26 +55,36 @@ class PlexImageCacheManager extends ce_cache.DefaultCacheManager {
 /// CE closes each factory-created client after a download. Wrap the app-wide
 /// shared client so image requests reuse its platform transport without
 /// transferring ownership of its lifecycle, and cap artwork fan-out globally.
+///
+/// CE creates one client per download and always calls [close] in a finally.
+/// Crucially, on a non-200/202 status it throws *before ever reading the body
+/// stream* (default_cache_manager `_downloadFile`), so tying the permit release
+/// to the body draining leaks a permit on every 404/500. A handful of missing
+/// or server-rejected posters would then exhaust the global limiter and freeze
+/// ALL artwork until an app restart. [close] is the guaranteed backstop: it
+/// releases the permit whether or not the body was ever consumed.
 class _SharedHttpClient extends http.BaseClient {
   final http.Client _inner;
 
+  // One permit per in-flight request. Tracked as a set so a client that is
+  // (against CE's usual one-per-download pattern) reused for multiple sends
+  // never overwrites and leaks an earlier permit.
+  final Set<_RequestPermit> _permits = {};
+
   _SharedHttpClient(this._inner);
+
+  void _releaseOne(_RequestPermit permit) {
+    if (_permits.remove(permit)) permit.release();
+  }
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final permit = await _artworkRequestLimiter.acquire();
-    var released = false;
-
-    void release() {
-      if (released) return;
-      released = true;
-      permit.release();
-    }
-
+    _permits.add(permit);
     try {
       final response = await _inner.send(request);
       return http.StreamedResponse(
-        _releaseWhenDone(response.stream, release),
+        _releaseWhenDone(response.stream, () => _releaseOne(permit)),
         response.statusCode,
         contentLength: response.contentLength,
         request: response.request,
@@ -84,13 +94,21 @@ class _SharedHttpClient extends http.BaseClient {
         reasonPhrase: response.reasonPhrase,
       );
     } catch (_) {
-      release();
+      _releaseOne(permit);
       rethrow;
     }
   }
 
   @override
-  void close() {}
+  void close() {
+    // Backstop: CE throws on a non-200/202 status BEFORE reading the body, so
+    // the stream-drain release never fires. CE always calls close() per
+    // download, so release any still-held permit here — otherwise a few
+    // 404/500 posters would exhaust the limiter and freeze all artwork.
+    for (final permit in _permits.toList()) {
+      _releaseOne(permit);
+    }
+  }
 }
 
 Stream<List<int>> _releaseWhenDone(Stream<List<int>> stream, void Function() release) async* {

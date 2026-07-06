@@ -1,4 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+/// Navigation glyph that renders a solid mockup SVG (via [SvgTheme.currentColor],
+/// same pattern as the tracker logos) when [svgAsset] is set, and otherwise
+/// falls back to a Material Symbol. Keeps size/color parity between both paths so
+/// nav items look identical whichever glyph they use.
+class NavGlyph extends StatelessWidget {
+  final String? svgAsset;
+  final IconData? icon;
+  final double? size;
+  final Color? color;
+
+  const NavGlyph({super.key, this.svgAsset, this.icon, this.size, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    if (svgAsset != null) {
+      final c = color ?? IconTheme.of(context).color ?? Theme.of(context).colorScheme.onSurface;
+      return SvgPicture.asset(svgAsset!, width: size, height: size, theme: SvgTheme(currentColor: c));
+    }
+    return AppIcon(icon, fill: 1, size: size, color: color);
+  }
+}
 
 /// Wrapper around [Icon] that centralizes our Material Symbols defaults.
 /// Defaults: fill=1 (filled) and weight=700 (bold). Update [AppIconDefaults]

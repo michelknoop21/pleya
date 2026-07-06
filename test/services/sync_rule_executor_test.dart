@@ -1,21 +1,21 @@
 import 'package:drift/native.dart';
-import 'package:plezy/media/ids.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:plezy/connection/connection.dart';
-import 'package:plezy/database/app_database.dart';
-import 'package:plezy/media/library_query.dart';
-import 'package:plezy/media/media_backend.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/media/media_server_client.dart';
-import 'package:plezy/media/server_capabilities.dart';
-import 'package:plezy/models/download_models.dart';
-import 'package:plezy/services/jellyfin_api_cache.dart';
-import 'package:plezy/services/jellyfin_client.dart';
-import 'package:plezy/services/multi_server_manager.dart';
-import 'package:plezy/services/sync_rule_executor.dart';
+import 'package:pleya/connection/connection.dart';
+import 'package:pleya/database/app_database.dart';
+import 'package:pleya/media/library_query.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/models/download_models.dart';
+import 'package:pleya/services/jellyfin_api_cache.dart';
+import 'package:pleya/services/jellyfin_client.dart';
+import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/sync_rule_executor.dart';
 
 import '../test_helpers/prefs.dart';
 

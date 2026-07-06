@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:plezy/widgets/app_icon.dart';
+import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
@@ -431,14 +431,14 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
     if (authServiceFactory != null) return await authServiceFactory();
     final pkg = await PackageInfo.fromPlatform();
     final deviceName = await _resolveDeviceName();
-    return JellyfinConnectionAuthService(clientName: 'Plezy', clientVersion: pkg.version, deviceName: deviceName);
+    return JellyfinConnectionAuthService(clientName: 'Pleya', clientVersion: pkg.version, deviceName: deviceName);
   }
 
   Future<String> _resolveDeviceName() async {
     // PackageInfo doesn't expose a device name; fall back to a generic label.
     // Jellyfin only shows this in the admin "Devices" list — fine to keep
     // simple until we add proper device_info_plus integration.
-    return 'Plezy';
+    return 'Pleya';
   }
 
   @override

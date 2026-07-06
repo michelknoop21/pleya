@@ -149,4 +149,28 @@ extension _VideoPlayerShaderMethods on VideoPlayerScreenState {
 
     if (mounted) _setPlayerState(() {});
   }
+
+  /// Set ambient lighting intensity from the TV info panel.
+  /// [mode] is 'off' | 'subtle' | 'balanced' | 'bright'. 'off' disables the
+  /// effect; the others persist the intensity and enable (or live-refresh) it.
+  Future<void> _setAmbientIntensity(String mode) async {
+    final ambientLighting = _ambientLightingService;
+    if (ambientLighting == null || !ambientLighting.isSupported) return;
+
+    if (mode == 'off') {
+      if (ambientLighting.isEnabled) await _toggleAmbientLighting();
+      return;
+    }
+
+    final settings = await SettingsService.getInstance();
+    await settings.write(SettingsService.ambientLightingIntensity, mode);
+
+    if (ambientLighting.isEnabled) {
+      await ambientLighting.refreshIntensity();
+      if (mounted) _setPlayerState(() {});
+    } else {
+      // Enables with the new intensity baked into the freshly generated shader.
+      await _toggleAmbientLighting();
+    }
+  }
 }

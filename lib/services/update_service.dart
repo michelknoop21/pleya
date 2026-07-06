@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:auto_updater/auto_updater.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:logger/logger.dart';
-import 'package:plezy/utils/media_server_http_client.dart';
+import 'package:pleya/utils/media_server_http_client.dart';
 import 'base_shared_preferences_service.dart';
 
 /// Service to check for new versions on GitHub
@@ -14,8 +14,10 @@ import 'base_shared_preferences_service.dart';
 /// On all other platforms: falls back to GitHub API check + browser link dialog.
 class UpdateService {
   static final Logger _logger = Logger();
-  static const String _githubRepo = 'edde746/plezy';
-  static const String _feedUrl = 'https://cdn.jsdelivr.net/gh/edde746/plezy@appcast/appcast.xml';
+  // Update source. Supply your own via --dart-define; empty means the
+  // update check stays inert instead of pulling another project's releases.
+  static const String _githubRepo = String.fromEnvironment('UPDATE_GITHUB_REPO');
+  static const String _feedUrl = String.fromEnvironment('UPDATE_FEED_URL');
 
   static const String _keySkippedVersion = 'update_skipped_version';
   static const String _keyLastCheckTime = 'update_last_check_time';
@@ -27,7 +29,8 @@ class UpdateService {
 
   /// Check if update checking is enabled via build flag
   static bool get isUpdateCheckEnabled {
-    return const bool.fromEnvironment('ENABLE_UPDATE_CHECK', defaultValue: false);
+    return const bool.fromEnvironment('ENABLE_UPDATE_CHECK', defaultValue: false) &&
+        (_githubRepo.isNotEmpty || _feedUrl.isNotEmpty);
   }
 
   /// Whether the native auto_updater (Sparkle/WinSparkle) should be used.

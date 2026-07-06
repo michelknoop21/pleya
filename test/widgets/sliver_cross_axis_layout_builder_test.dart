@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/widgets/sliver_cross_axis_layout_builder.dart';
+import 'package:pleya/widgets/sliver_cross_axis_layout_builder.dart';
 
 void main() {
   testWidgets('builder runs on width change and widget update, never from scrolling', (tester) async {

@@ -1,15 +1,26 @@
 :root {
-  --color-bg: #0e0f12;
-  --color-surface: #15171c;
-  --color-surface-hover: #1a1c22;
-  --color-border: #2a2d35;
-  --color-accent: #ff6b45;
-  --color-accent-glow: #ff6b4533;
-  --color-accent-dim: #ab543a;
-  --color-text: #ededed;
-  --color-text-muted: #9ca3af;
+  /* Cinematic OLED base, pure black billboard */
+  --color-bg: #000000;
+  --color-bg-elevated: #141414;
+  --color-surface: #1f1f1f;
+  --color-surface-hover: #262626;
+  --color-border: #2c2c2c;
 
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* Pleya brand: red → amber signature gradient (sampled from thick-P mark) */
+  --color-red: #e5140f;
+  --color-amber: #ffb020;
+  --color-accent: #e5140f;
+  --color-accent-2: #ffb020;
+  --color-accent-dim: #e5140f;
+  --color-accent-glow: rgba(229, 20, 15, 0.22);
+  --gradient-brand: linear-gradient(135deg, #e5140f, #ffb020);
+
+  --color-text: #f5f5f5;
+  --color-text-muted: rgba(255, 255, 255, 0.7);
+  --color-text-faint: rgba(255, 255, 255, 0.45);
+
+  --font-sans: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: 'Bricolage Grotesque', var(--font-sans);
 
   --animate-fade-in-up: fade-in-up 0.6s ease-out both;
   --animate-pulse-glow: pulse-glow 3s ease-in-out infinite;
@@ -47,6 +58,14 @@ body {
   background-color: var(--color-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-wrap: pretty;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  text-wrap: balance;
 }
 
 a {

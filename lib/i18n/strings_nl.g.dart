@@ -94,7 +94,7 @@ class _TranslationsAppNl extends TranslationsAppEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Plezy';
+	@override String get title => 'Pleya';
 }
 
 // Path: auth
@@ -186,6 +186,8 @@ class _TranslationsScreensNl extends TranslationsScreensEn {
 	// Translations
 	@override String get licenses => 'Licenties';
 	@override String get switchProfile => 'Wissel van profiel';
+	@override String get whoIsWatching => 'Wie is er aan het kijken?';
+	@override String get manageProfiles => 'Profielen beheren';
 	@override String get subtitleStyling => 'Ondertitel opmaak';
 	@override String get mpvConfig => 'mpv.conf';
 	@override String get logs => 'Logbestanden';
@@ -215,7 +217,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 
 	// Translations
 	@override String get title => 'Instellingen';
-	@override String get supportDeveloper => 'Steun Plezy';
+	@override String get supportDeveloper => 'Steun Pleya';
 	@override String get supportDeveloperDescription => 'Doneer via Liberapay om de ontwikkeling te steunen';
 	@override String get language => 'Taal';
 	@override String get theme => 'Thema';
@@ -244,6 +246,8 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get gridView => 'Raster';
 	@override String get listView => 'Lijst';
 	@override String get showHeroSection => 'Toon hoofdsectie';
+	@override String get hoverExpandCards => 'Kaarten uitklappen bij hover';
+	@override String get hoverExpandCardsDescription => 'Toon een voorbeeldkaart met snelknoppen als je over een poster zweeft';
 	@override String get continueWatchingAction => 'Actie voor Doorgaan met kijken';
 	@override String get continueWatchingPlay => 'Afspelen';
 	@override String get continueWatchingDetails => 'Details openen';
@@ -325,7 +329,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get importSettingsConfirm => 'Hiermee worden je huidige instellingen vervangen. Doorgaan?';
 	@override String get importSettingsSuccess => 'Instellingen geïmporteerd';
 	@override String get importSettingsFailed => 'Kon instellingen niet importeren';
-	@override String get importSettingsInvalidFile => 'Dit bestand is geen geldige Plezy-export';
+	@override String get importSettingsInvalidFile => 'Dit bestand is geen geldige Pleya-export';
 	@override String get importSettingsNoUser => 'Meld je aan voordat je instellingen importeert';
 	@override String get shortcutsReset => 'Sneltoetsen gereset naar standaard';
 	@override String get about => 'Over';
@@ -406,7 +410,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get forceTvMode => 'TV-modus forceren';
 	@override String get forceTvModeDescription => 'Forceer TV-indeling. Voor apparaten zonder autodetectie. Herstart vereist.';
 	@override String get startInFullscreen => 'Starten in volledig scherm';
-	@override String get startInFullscreenDescription => 'Open Plezy bij het starten in volledig scherm';
+	@override String get startInFullscreenDescription => 'Open Pleya bij het starten in volledig scherm';
 	@override String get exitFullscreenOnPlayerClose => 'Volledig scherm verlaten bij sluiten speler';
 	@override String get exitFullscreenOnPlayerCloseDescription => 'Verlaat automatisch volledig scherm wanneer de videospeler wordt gesloten';
 	@override String get autoHidePerformanceOverlay => 'Prestatie-overlay automatisch verbergen';
@@ -414,7 +418,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get showNavBarLabels => 'Navigatiebalk labels tonen';
 	@override String get showNavBarLabelsDescription => 'Tekstlabels onder de pictogrammen van de navigatiebalk weergeven';
 	@override String get startupSection => 'Opstartsectie';
-	@override String get startupSectionDescription => 'Kies welke sectie Plezy opent bij het opstarten';
+	@override String get startupSectionDescription => 'Kies welke sectie Pleya opent bij het opstarten';
 	@override String get liveTvDefaultFavorites => 'Standaard favoriete zenders';
 	@override String get liveTvDefaultFavoritesDescription => 'Toon alleen favoriete zenders bij het openen van Live TV';
 	@override String get display => 'Weergave';
@@ -426,6 +430,8 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get subtitlesAndConfig => 'Ondertitels en configuratie';
 	@override String get seekAndTiming => 'Zoeken en timing';
 	@override String get behavior => 'Gedrag';
+	@override String get personalizedRecommendations => 'Persoonlijke aanbevelingen';
+	@override String get personalizedRecommendationsDescription => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.';
 }
 
 // Path: search
@@ -439,6 +445,9 @@ class _TranslationsSearchNl extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => 'Probeer een andere zoekterm';
 	@override String get searchYourMedia => 'Zoek in je media';
 	@override String get enterTitleActorOrKeyword => 'Voer een titel, acteur of trefwoord in';
+	@override String get recentSearches => 'Recent gezocht';
+	@override String get clearHistory => 'Wissen';
+	@override late final _TranslationsSearchFiltersNl filters = _TranslationsSearchFiltersNl._(_root);
 }
 
 // Path: hotkeys
@@ -619,6 +628,10 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	@override String get pipButton => 'Beeld-in-beeld modus';
 	@override String get aspectRatioButton => 'Beeldverhouding';
 	@override String get ambientLighting => 'Omgevingsverlichting';
+	@override String get ambientIntensitySubtle => 'Subtiel';
+	@override String get ambientIntensityBalanced => 'Evenwichtig';
+	@override String get ambientIntensityBright => 'Fel';
+	@override late final _TranslationsVideoControlsTvPanelNl tvPanel = _TranslationsVideoControlsTvPanelNl._(_root);
 	@override String get fullscreenButton => 'Volledig scherm activeren';
 	@override String get exitFullscreenButton => 'Volledig scherm verlaten';
 	@override String get alwaysOnTopButton => 'Altijd bovenop';
@@ -648,6 +661,7 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	@override String get subtitleDownloaded => 'Ondertitel gedownload';
 	@override String get subtitleDownloadFailed => 'Ondertitel downloaden mislukt';
 	@override String get searchLanguages => 'Talen zoeken...';
+	@override String get airplayButton => 'AirPlay';
 }
 
 // Path: userStatus
@@ -778,7 +792,7 @@ class _TranslationsProfilesNl extends TranslationsProfilesEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get addPlezyProfile => 'Plezy-profiel toevoegen';
+	@override String get addPleyaProfile => 'Pleya-profiel toevoegen';
 	@override String get switchingProfile => 'Profiel wisselen…';
 	@override String get deleteThisProfileTitle => 'Dit profiel verwijderen?';
 	@override String deleteThisProfileMessage({required Object displayName}) => 'Verwijder ${displayName}. Verbindingen blijven ongewijzigd.';
@@ -853,7 +867,7 @@ class _TranslationsConnectionsNl extends TranslationsConnectionsEn {
 	@override String sessionExpiredMany({required Object count}) => 'Sessie verlopen voor ${count} servers';
 	@override String get signInAgain => 'Opnieuw aanmelden';
 	@override String get editJellyfinTitle => 'Jellyfin-verbinding bewerken';
-	@override String editJellyfinIntro({required Object serverName}) => 'Voeg URL\'s voor ${serverName} toe of verwijder ze. Plezy gebruikt de bereikbare URL met de laagste latentie.';
+	@override String editJellyfinIntro({required Object serverName}) => 'Voeg URL\'s voor ${serverName} toe of verwijder ze. Pleya gebruikt de bereikbare URL met de laagste latentie.';
 }
 
 // Path: discover
@@ -883,6 +897,16 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get tvShow => 'TV Serie';
 	@override String minutesLeft({required Object minutes}) => '${minutes} min over';
 	@override String get moreLikeThis => 'Meer zoals dit';
+	@override String becauseYouWatched({required Object title}) => 'Omdat je ${title} gekeken hebt';
+	@override String get topRated => 'Hoogst gewaardeerd';
+	@override String get somethingDifferent => 'Eens iets anders';
+	@override String get topPicksForYou => 'Aanbevolen voor jou';
+	@override String becauseYouLike({required Object genre}) => 'Omdat je van ${genre} houdt';
+	@override String get hiddenGems => 'Verborgen parels';
+	@override String watchedBy({required Object names}) => 'Bekeken door ${names}';
+	@override String get watchedByYou => 'Jij';
+	@override String get watchedByAnd => 'en';
+	@override String watchedByOthers({required Object count}) => '${count} anderen';
 }
 
 // Path: errors
@@ -1374,6 +1398,9 @@ class _TranslationsVideoSettingsNl extends TranslationsVideoSettingsEn {
 	@override String get performanceOverlay => 'Prestatie-overlay';
 	@override String get audioPassthrough => 'Audio-doorvoer';
 	@override String get audioNormalization => 'Volume normaliseren';
+	@override String get audioNormalizationTitle => 'Geluidssterkte';
+	@override late final _TranslationsVideoSettingsAudioNormalizationModesNl audioNormalizationModes = _TranslationsVideoSettingsAudioNormalizationModesNl._(_root);
+	@override String get tryLowerQuality => 'Probeer lagere kwaliteit';
 }
 
 // Path: performanceOverlay
@@ -1572,11 +1599,11 @@ class _TranslationsTraktNl extends TranslationsTraktEn {
 	@override String get connected => 'Verbonden';
 	@override String connectedAs({required Object username}) => 'Verbonden als @${username}';
 	@override String get disconnectConfirm => 'Trakt-account loskoppelen?';
-	@override String get disconnectConfirmBody => 'Plezy stopt met gebeurtenissen naar Trakt sturen. Je kunt altijd opnieuw verbinden.';
+	@override String get disconnectConfirmBody => 'Pleya stopt met gebeurtenissen naar Trakt sturen. Je kunt altijd opnieuw verbinden.';
 	@override String get scrobble => 'Realtime scrobbling';
 	@override String get scrobbleDescription => 'Verstuur play-, pauze- en stopgebeurtenissen tijdens afspelen naar Trakt.';
 	@override String get watchedSync => 'Bekeken-status synchroniseren';
-	@override String get watchedSyncDescription => 'Wanneer je items als bekeken markeert in Plezy, worden ze ook op Trakt gemarkeerd.';
+	@override String get watchedSyncDescription => 'Wanneer je items als bekeken markeert in Pleya, worden ze ook op Trakt gemarkeerd.';
 }
 
 // Path: trackers
@@ -1593,7 +1620,7 @@ class _TranslationsTrackersNl extends TranslationsTrackersEn {
 	@override String get scrobble => 'Voortgang automatisch volgen';
 	@override String get scrobbleDescription => 'Werk je lijst bij wanneer je een aflevering of film afrondt.';
 	@override String disconnectConfirm({required Object service}) => '${service} loskoppelen?';
-	@override String disconnectConfirmBody({required Object service}) => 'Plezy stopt met ${service} bijwerken. Je kunt altijd opnieuw verbinden.';
+	@override String disconnectConfirmBody({required Object service}) => 'Pleya stopt met ${service} bijwerken. Je kunt altijd opnieuw verbinden.';
 	@override String connectFailed({required Object service}) => 'Kan niet verbinden met ${service}. Probeer opnieuw.';
 	@override late final _TranslationsTrackersServicesNl services = _TranslationsTrackersServicesNl._(_root);
 	@override late final _TranslationsTrackersDeviceCodeNl deviceCode = _TranslationsTrackersDeviceCodeNl._(_root);
@@ -1639,6 +1666,20 @@ class _TranslationsAddServerNl extends TranslationsAddServerEn {
 	@override String get borrowFromAnotherProfileSubtitle => 'Hergebruik de verbinding van een ander profiel. PIN-beveiligde profielen vereisen een PIN.';
 }
 
+// Path: search.filters
+class _TranslationsSearchFiltersNl extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'Alles';
+	@override String get movies => 'Films';
+	@override String get shows => 'Series';
+	@override String get episodes => 'Afleveringen';
+	@override String get people => 'Personen';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsNl extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -1671,6 +1712,20 @@ class _TranslationsHotkeysActionsNl extends TranslationsHotkeysActionsEn {
 	@override String get shaderToggle => 'Shaders aan/uit';
 	@override String get skipMarker => 'Intro/aftiteling overslaan';
 	@override String get screenshot => 'Schermafbeelding maken';
+}
+
+// Path: videoControls.tvPanel
+class _TranslationsVideoControlsTvPanelNl extends TranslationsVideoControlsTvPanelEn {
+	_TranslationsVideoControlsTvPanelNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get information => 'Informatie';
+	@override String get audio => 'Geluid';
+	@override String get tracks => 'Sporen';
+	@override String get options => 'Opties';
+	@override String get more => 'Meer…';
 }
 
 // Path: videoControls.pipErrors
@@ -1790,19 +1845,19 @@ class _TranslationsCompanionRemotePairingNl extends TranslationsCompanionRemoteP
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get discoveryDescription => 'Plezy-apparaten met hetzelfde Plex-account verschijnen hier';
+	@override String get discoveryDescription => 'Pleya-apparaten met hetzelfde Plex-account verschijnen hier';
 	@override String get hostAddressHint => '192.168.1.100:48632';
 	@override String get connecting => 'Verbinden...';
 	@override String get searchingForDevices => 'Apparaten zoeken...';
 	@override String get noDevicesFound => 'Geen apparaten gevonden op je netwerk';
-	@override String get noDevicesHint => 'Open Plezy op desktop en gebruik dezelfde WiFi';
+	@override String get noDevicesHint => 'Open Pleya op desktop en gebruik dezelfde WiFi';
 	@override String get availableDevices => 'Beschikbare apparaten';
 	@override String get manualConnection => 'Handmatige verbinding';
 	@override String get cryptoInitFailed => 'Kon beveiligde verbinding niet starten. Log eerst in bij Plex.';
 	@override String get validationHostRequired => 'Voer het hostadres in';
 	@override String get validationHostFormat => 'Formaat moet IP:poort zijn (bijv. 192.168.1.100:48632)';
 	@override String get connectionTimedOut => 'Verbinding verlopen. Gebruik hetzelfde netwerk op beide apparaten.';
-	@override String get sessionNotFound => 'Apparaat niet gevonden. Zorg dat Plezy op de host draait.';
+	@override String get sessionNotFound => 'Apparaat niet gevonden. Zorg dat Pleya op de host draait.';
 	@override String get authFailed => 'Authenticatie mislukt. Beide apparaten hebben hetzelfde Plex-account nodig.';
 	@override String failedToConnect({required Object error}) => 'Kan niet verbinden: ${error}';
 }
@@ -1858,6 +1913,18 @@ class _TranslationsCompanionRemoteErrorsNl extends TranslationsCompanionRemoteEr
 	@override String get connectionLost => 'Verbinding verloren';
 }
 
+// Path: videoSettings.audioNormalizationModes
+class _TranslationsVideoSettingsAudioNormalizationModesNl extends TranslationsVideoSettingsAudioNormalizationModesEn {
+	_TranslationsVideoSettingsAudioNormalizationModesNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'Uit';
+	@override String get normalize => 'Normaliseren';
+	@override String get night => 'Nachtmodus';
+}
+
 // Path: trackers.services
 class _TranslationsTrackersServicesNl extends TranslationsTrackersServicesEn {
 	_TranslationsTrackersServicesNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -1877,7 +1944,7 @@ class _TranslationsTrackersDeviceCodeNl extends TranslationsTrackersDeviceCodeEn
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String title({required Object service}) => 'Plezy activeren op ${service}';
+	@override String title({required Object service}) => 'Pleya activeren op ${service}';
 	@override String body({required Object url}) => 'Ga naar ${url} en voer deze code in:';
 	@override String openToActivate({required Object service}) => 'Open ${service} om te activeren';
 	@override String get waitingForAuthorization => 'Wachten op autorisatie…';
@@ -1926,7 +1993,7 @@ class _TranslationsTrackersLibraryFilterNl extends TranslationsTrackersLibraryFi
 extension on TranslationsNl {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
-			'app.title' => 'Plezy',
+			'app.title' => 'Pleya',
 			'auth.signIn' => 'Inloggen',
 			'auth.signInWithPlex' => 'Inloggen met Plex',
 			'auth.showQRCode' => 'Toon QR-code',
@@ -1991,6 +2058,8 @@ extension on TranslationsNl {
 			'common.pressBackAgainToExit' => 'Druk nogmaals op terug om af te sluiten',
 			'screens.licenses' => 'Licenties',
 			'screens.switchProfile' => 'Wissel van profiel',
+			'screens.whoIsWatching' => 'Wie is er aan het kijken?',
+			'screens.manageProfiles' => 'Profielen beheren',
 			'screens.subtitleStyling' => 'Ondertitel opmaak',
 			'screens.mpvConfig' => 'mpv.conf',
 			'screens.logs' => 'Logbestanden',
@@ -2002,7 +2071,7 @@ extension on TranslationsNl {
 			'update.latestVersion' => 'Je hebt de nieuwste versie',
 			'update.checkFailed' => 'Kon niet controleren op updates',
 			'settings.title' => 'Instellingen',
-			'settings.supportDeveloper' => 'Steun Plezy',
+			'settings.supportDeveloper' => 'Steun Pleya',
 			'settings.supportDeveloperDescription' => 'Doneer via Liberapay om de ontwikkeling te steunen',
 			'settings.language' => 'Taal',
 			'settings.theme' => 'Thema',
@@ -2031,6 +2100,8 @@ extension on TranslationsNl {
 			'settings.gridView' => 'Raster',
 			'settings.listView' => 'Lijst',
 			'settings.showHeroSection' => 'Toon hoofdsectie',
+			'settings.hoverExpandCards' => 'Kaarten uitklappen bij hover',
+			'settings.hoverExpandCardsDescription' => 'Toon een voorbeeldkaart met snelknoppen als je over een poster zweeft',
 			'settings.continueWatchingAction' => 'Actie voor Doorgaan met kijken',
 			'settings.continueWatchingPlay' => 'Afspelen',
 			'settings.continueWatchingDetails' => 'Details openen',
@@ -2112,7 +2183,7 @@ extension on TranslationsNl {
 			'settings.importSettingsConfirm' => 'Hiermee worden je huidige instellingen vervangen. Doorgaan?',
 			'settings.importSettingsSuccess' => 'Instellingen geïmporteerd',
 			'settings.importSettingsFailed' => 'Kon instellingen niet importeren',
-			'settings.importSettingsInvalidFile' => 'Dit bestand is geen geldige Plezy-export',
+			'settings.importSettingsInvalidFile' => 'Dit bestand is geen geldige Pleya-export',
 			'settings.importSettingsNoUser' => 'Meld je aan voordat je instellingen importeert',
 			'settings.shortcutsReset' => 'Sneltoetsen gereset naar standaard',
 			'settings.about' => 'Over',
@@ -2193,7 +2264,7 @@ extension on TranslationsNl {
 			'settings.forceTvMode' => 'TV-modus forceren',
 			'settings.forceTvModeDescription' => 'Forceer TV-indeling. Voor apparaten zonder autodetectie. Herstart vereist.',
 			'settings.startInFullscreen' => 'Starten in volledig scherm',
-			'settings.startInFullscreenDescription' => 'Open Plezy bij het starten in volledig scherm',
+			'settings.startInFullscreenDescription' => 'Open Pleya bij het starten in volledig scherm',
 			'settings.exitFullscreenOnPlayerClose' => 'Volledig scherm verlaten bij sluiten speler',
 			'settings.exitFullscreenOnPlayerCloseDescription' => 'Verlaat automatisch volledig scherm wanneer de videospeler wordt gesloten',
 			'settings.autoHidePerformanceOverlay' => 'Prestatie-overlay automatisch verbergen',
@@ -2201,7 +2272,7 @@ extension on TranslationsNl {
 			'settings.showNavBarLabels' => 'Navigatiebalk labels tonen',
 			'settings.showNavBarLabelsDescription' => 'Tekstlabels onder de pictogrammen van de navigatiebalk weergeven',
 			'settings.startupSection' => 'Opstartsectie',
-			'settings.startupSectionDescription' => 'Kies welke sectie Plezy opent bij het opstarten',
+			'settings.startupSectionDescription' => 'Kies welke sectie Pleya opent bij het opstarten',
 			'settings.liveTvDefaultFavorites' => 'Standaard favoriete zenders',
 			'settings.liveTvDefaultFavoritesDescription' => 'Toon alleen favoriete zenders bij het openen van Live TV',
 			'settings.display' => 'Weergave',
@@ -2213,10 +2284,19 @@ extension on TranslationsNl {
 			'settings.subtitlesAndConfig' => 'Ondertitels en configuratie',
 			'settings.seekAndTiming' => 'Zoeken en timing',
 			'settings.behavior' => 'Gedrag',
+			'settings.personalizedRecommendations' => 'Persoonlijke aanbevelingen',
+			'settings.personalizedRecommendationsDescription' => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.',
 			'search.hint' => 'Zoek films, series, muziek...',
 			'search.tryDifferentTerm' => 'Probeer een andere zoekterm',
 			'search.searchYourMedia' => 'Zoek in je media',
 			'search.enterTitleActorOrKeyword' => 'Voer een titel, acteur of trefwoord in',
+			'search.recentSearches' => 'Recent gezocht',
+			'search.clearHistory' => 'Wissen',
+			'search.filters.all' => 'Alles',
+			'search.filters.movies' => 'Films',
+			'search.filters.shows' => 'Series',
+			'search.filters.episodes' => 'Afleveringen',
+			'search.filters.people' => 'Personen',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Stel sneltoets in voor ${actionName}',
 			'hotkeys.clearShortcut' => 'Wis sneltoets',
 			'hotkeys.noShortcutSet' => 'Geen sneltoets ingesteld',
@@ -2358,6 +2438,14 @@ extension on TranslationsNl {
 			'videoControls.pipButton' => 'Beeld-in-beeld modus',
 			'videoControls.aspectRatioButton' => 'Beeldverhouding',
 			'videoControls.ambientLighting' => 'Omgevingsverlichting',
+			'videoControls.ambientIntensitySubtle' => 'Subtiel',
+			'videoControls.ambientIntensityBalanced' => 'Evenwichtig',
+			'videoControls.ambientIntensityBright' => 'Fel',
+			'videoControls.tvPanel.information' => 'Informatie',
+			'videoControls.tvPanel.audio' => 'Geluid',
+			'videoControls.tvPanel.tracks' => 'Sporen',
+			'videoControls.tvPanel.options' => 'Opties',
+			'videoControls.tvPanel.more' => 'Meer…',
 			'videoControls.fullscreenButton' => 'Volledig scherm activeren',
 			'videoControls.exitFullscreenButton' => 'Volledig scherm verlaten',
 			'videoControls.alwaysOnTopButton' => 'Altijd bovenop',
@@ -2393,6 +2481,7 @@ extension on TranslationsNl {
 			'videoControls.subtitleDownloaded' => 'Ondertitel gedownload',
 			'videoControls.subtitleDownloadFailed' => 'Ondertitel downloaden mislukt',
 			'videoControls.searchLanguages' => 'Talen zoeken...',
+			'videoControls.airplayButton' => 'AirPlay',
 			'userStatus.admin' => 'Beheerder',
 			'userStatus.restricted' => 'Beperkt',
 			'userStatus.protected' => 'Beschermd',
@@ -2416,6 +2505,8 @@ extension on TranslationsNl {
 			'messages.logsCopied' => 'Logs gekopieerd naar klembord',
 			'messages.noLogsAvailable' => 'Geen logs beschikbaar',
 			'messages.libraryScanning' => ({required Object title}) => 'Scannen "${title}"...',
+			_ => null,
+		} ?? switch (path) {
 			'messages.libraryScanStarted' => ({required Object title}) => 'Bibliotheek scan gestart voor "${title}"',
 			'messages.libraryScanFailed' => ({required Object error}) => 'Kon bibliotheek niet scannen: ${error}',
 			'messages.metadataRefreshing' => ({required Object title}) => 'Metadata vernieuwen voor "${title}"...',
@@ -2438,8 +2529,6 @@ extension on TranslationsNl {
 			'messages.logsUploaded' => 'Logs geüpload',
 			'messages.logsUploadFailed' => 'Uploaden van logs mislukt',
 			'messages.logId' => 'Log-ID',
-			_ => null,
-		} ?? switch (path) {
 			'subtitlingStyling.text' => 'Tekst',
 			'subtitlingStyling.border' => 'Rand',
 			'subtitlingStyling.background' => 'Achtergrond',
@@ -2471,7 +2560,7 @@ extension on TranslationsNl {
 			'mpvConfig.confirmDeletePreset' => 'Weet je zeker dat je deze voorinstelling wilt verwijderen?',
 			'mpvConfig.configPlaceholder' => 'gpu-api=vulkan\nhwdec=auto\n# comment',
 			'dialog.confirmAction' => 'Bevestig actie',
-			'profiles.addPlezyProfile' => 'Plezy-profiel toevoegen',
+			'profiles.addPleyaProfile' => 'Pleya-profiel toevoegen',
 			'profiles.switchingProfile' => 'Profiel wisselen…',
 			'profiles.deleteThisProfileTitle' => 'Dit profiel verwijderen?',
 			'profiles.deleteThisProfileMessage' => ({required Object displayName}) => 'Verwijder ${displayName}. Verbindingen blijven ongewijzigd.',
@@ -2537,7 +2626,7 @@ extension on TranslationsNl {
 			'connections.sessionExpiredMany' => ({required Object count}) => 'Sessie verlopen voor ${count} servers',
 			'connections.signInAgain' => 'Opnieuw aanmelden',
 			'connections.editJellyfinTitle' => 'Jellyfin-verbinding bewerken',
-			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Voeg URL\'s voor ${serverName} toe of verwijder ze. Plezy gebruikt de bereikbare URL met de laagste latentie.',
+			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Voeg URL\'s voor ${serverName} toe of verwijder ze. Pleya gebruikt de bereikbare URL met de laagste latentie.',
 			'discover.title' => 'Ontdekken',
 			'discover.switchProfile' => 'Wissel van profiel',
 			'discover.noContentAvailable' => 'Geen inhoud beschikbaar',
@@ -2558,6 +2647,16 @@ extension on TranslationsNl {
 			'discover.tvShow' => 'TV Serie',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min over',
 			'discover.moreLikeThis' => 'Meer zoals dit',
+			'discover.becauseYouWatched' => ({required Object title}) => 'Omdat je ${title} gekeken hebt',
+			'discover.topRated' => 'Hoogst gewaardeerd',
+			'discover.somethingDifferent' => 'Eens iets anders',
+			'discover.topPicksForYou' => 'Aanbevolen voor jou',
+			'discover.becauseYouLike' => ({required Object genre}) => 'Omdat je van ${genre} houdt',
+			'discover.hiddenGems' => 'Verborgen parels',
+			'discover.watchedBy' => ({required Object names}) => 'Bekeken door ${names}',
+			'discover.watchedByYou' => 'Jij',
+			'discover.watchedByAnd' => 'en',
+			'discover.watchedByOthers' => ({required Object count}) => '${count} anderen',
 			'errors.searchFailed' => ({required Object error}) => 'Zoeken mislukt: ${error}',
 			'errors.connectionTimeout' => ({required Object context}) => 'Verbinding time-out tijdens laden ${context}',
 			'errors.connectionFailed' => 'Kan geen verbinding maken met mediaserver',
@@ -2920,6 +3019,8 @@ extension on TranslationsNl {
 			'shaders.shaderImported' => 'Shader geïmporteerd',
 			'shaders.shaderImportFailed' => 'Shader importeren mislukt',
 			'shaders.deleteShader' => 'Shader verwijderen',
+			_ => null,
+		} ?? switch (path) {
 			'shaders.deleteShaderConfirm' => ({required Object name}) => '"${name}" verwijderen?',
 			'companionRemote.title' => 'Afstandsbediening',
 			'companionRemote.connectedTo' => ({required Object name}) => 'Verbonden met ${name}',
@@ -2936,24 +3037,22 @@ extension on TranslationsNl {
 			'companionRemote.session.startServer' => 'Server starten',
 			'companionRemote.session.stopServer' => 'Server stoppen',
 			'companionRemote.session.minimize' => 'Minimaliseren',
-			'companionRemote.pairing.discoveryDescription' => 'Plezy-apparaten met hetzelfde Plex-account verschijnen hier',
+			'companionRemote.pairing.discoveryDescription' => 'Pleya-apparaten met hetzelfde Plex-account verschijnen hier',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Verbinden...',
 			'companionRemote.pairing.searchingForDevices' => 'Apparaten zoeken...',
 			'companionRemote.pairing.noDevicesFound' => 'Geen apparaten gevonden op je netwerk',
-			'companionRemote.pairing.noDevicesHint' => 'Open Plezy op desktop en gebruik dezelfde WiFi',
+			'companionRemote.pairing.noDevicesHint' => 'Open Pleya op desktop en gebruik dezelfde WiFi',
 			'companionRemote.pairing.availableDevices' => 'Beschikbare apparaten',
 			'companionRemote.pairing.manualConnection' => 'Handmatige verbinding',
 			'companionRemote.pairing.cryptoInitFailed' => 'Kon beveiligde verbinding niet starten. Log eerst in bij Plex.',
 			'companionRemote.pairing.validationHostRequired' => 'Voer het hostadres in',
 			'companionRemote.pairing.validationHostFormat' => 'Formaat moet IP:poort zijn (bijv. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Verbinding verlopen. Gebruik hetzelfde netwerk op beide apparaten.',
-			'companionRemote.pairing.sessionNotFound' => 'Apparaat niet gevonden. Zorg dat Plezy op de host draait.',
+			'companionRemote.pairing.sessionNotFound' => 'Apparaat niet gevonden. Zorg dat Pleya op de host draait.',
 			'companionRemote.pairing.authFailed' => 'Authenticatie mislukt. Beide apparaten hebben hetzelfde Plex-account nodig.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kan niet verbinden: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Wil je de verbinding met de externe sessie verbreken?',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.remote.reconnecting' => 'Opnieuw verbinden...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Poging ${current} van 5',
 			'companionRemote.remote.retryNow' => 'Nu opnieuw proberen',
@@ -2996,6 +3095,11 @@ extension on TranslationsNl {
 			'videoSettings.performanceOverlay' => 'Prestatie-overlay',
 			'videoSettings.audioPassthrough' => 'Audio-doorvoer',
 			'videoSettings.audioNormalization' => 'Volume normaliseren',
+			'videoSettings.audioNormalizationTitle' => 'Geluidssterkte',
+			'videoSettings.audioNormalizationModes.off' => 'Uit',
+			'videoSettings.audioNormalizationModes.normalize' => 'Normaliseren',
+			'videoSettings.audioNormalizationModes.night' => 'Nachtmodus',
+			'videoSettings.tryLowerQuality' => 'Probeer lagere kwaliteit',
 			'performanceOverlay.color' => 'Kleur',
 			'performanceOverlay.performance' => 'Prestaties',
 			'performanceOverlay.buffer' => 'Buffer',
@@ -3140,11 +3244,11 @@ extension on TranslationsNl {
 			'trakt.connected' => 'Verbonden',
 			'trakt.connectedAs' => ({required Object username}) => 'Verbonden als @${username}',
 			'trakt.disconnectConfirm' => 'Trakt-account loskoppelen?',
-			'trakt.disconnectConfirmBody' => 'Plezy stopt met gebeurtenissen naar Trakt sturen. Je kunt altijd opnieuw verbinden.',
+			'trakt.disconnectConfirmBody' => 'Pleya stopt met gebeurtenissen naar Trakt sturen. Je kunt altijd opnieuw verbinden.',
 			'trakt.scrobble' => 'Realtime scrobbling',
 			'trakt.scrobbleDescription' => 'Verstuur play-, pauze- en stopgebeurtenissen tijdens afspelen naar Trakt.',
 			'trakt.watchedSync' => 'Bekeken-status synchroniseren',
-			'trakt.watchedSyncDescription' => 'Wanneer je items als bekeken markeert in Plezy, worden ze ook op Trakt gemarkeerd.',
+			'trakt.watchedSyncDescription' => 'Wanneer je items als bekeken markeert in Pleya, worden ze ook op Trakt gemarkeerd.',
 			'trackers.title' => 'Trackers',
 			'trackers.hubSubtitle' => 'Synchroniseer kijkvoortgang met Trakt en andere diensten.',
 			'trackers.notConnected' => 'Niet verbonden',
@@ -3152,12 +3256,12 @@ extension on TranslationsNl {
 			'trackers.scrobble' => 'Voortgang automatisch volgen',
 			'trackers.scrobbleDescription' => 'Werk je lijst bij wanneer je een aflevering of film afrondt.',
 			'trackers.disconnectConfirm' => ({required Object service}) => '${service} loskoppelen?',
-			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Plezy stopt met ${service} bijwerken. Je kunt altijd opnieuw verbinden.',
+			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya stopt met ${service} bijwerken. Je kunt altijd opnieuw verbinden.',
 			'trackers.connectFailed' => ({required Object service}) => 'Kan niet verbinden met ${service}. Probeer opnieuw.',
 			'trackers.services.mal' => 'MyAnimeList',
 			'trackers.services.anilist' => 'AniList',
 			'trackers.services.simkl' => 'Simkl',
-			'trackers.deviceCode.title' => ({required Object service}) => 'Plezy activeren op ${service}',
+			'trackers.deviceCode.title' => ({required Object service}) => 'Pleya activeren op ${service}',
 			'trackers.deviceCode.body' => ({required Object url}) => 'Ga naar ${url} en voer deze code in:',
 			'trackers.deviceCode.openToActivate' => ({required Object service}) => 'Open ${service} om te activeren',
 			'trackers.deviceCode.waitingForAuthorization' => 'Wachten op autorisatie…',

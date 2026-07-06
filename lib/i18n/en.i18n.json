@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Plezy"
+    "title": "Pleya"
   },
   "auth": {
     "signIn": "Sign in",
@@ -71,6 +71,8 @@
   "screens": {
     "licenses": "Licenses",
     "switchProfile": "Switch Profile",
+    "whoIsWatching": "Who's watching?",
+    "manageProfiles": "Manage profiles",
     "subtitleStyling": "Subtitle Styling",
     "mpvConfig": "mpv.conf",
     "logs": "Logs"
@@ -86,7 +88,7 @@
   },
   "settings": {
     "title": "Settings",
-    "supportDeveloper": "Support Plezy",
+    "supportDeveloper": "Support Pleya",
     "supportDeveloperDescription": "Donate via Liberapay to fund development",
     "language": "Language",
     "theme": "Theme",
@@ -115,6 +117,8 @@
     "gridView": "Grid",
     "listView": "List",
     "showHeroSection": "Show Hero Section",
+    "hoverExpandCards": "Hover-expand cards",
+    "hoverExpandCardsDescription": "Grow a preview card with quick actions when hovering a poster",
     "continueWatchingAction": "Continue Watching Action",
     "continueWatchingPlay": "Play",
     "continueWatchingDetails": "Open Details",
@@ -202,8 +206,12 @@
     "importSettingsConfirm": "This will replace your current settings. Continue?",
     "importSettingsSuccess": "Settings imported",
     "importSettingsFailed": "Could not import settings",
-    "importSettingsInvalidFile": "This file isn't a valid Plezy settings export",
+    "importSettingsInvalidFile": "This file isn't a valid Pleya settings export",
     "importSettingsNoUser": "Sign in before importing settings",
+    "icloudSync": "Sync Settings via iCloud",
+    "icloudSyncDescription": "Keep your preferences in sync across your Apple devices",
+    "icloudSyncUnavailable": "Sign in to iCloud on this device to sync settings",
+    "icloudSyncEnableFailed": "Could not turn on iCloud settings sync",
     "shortcutsReset": "Shortcuts reset to defaults",
     "about": "About",
     "aboutDescription": "App information and licenses",
@@ -255,6 +263,8 @@
     "traktDescription": "Sync watch history with Trakt",
     "trackers": "Trackers",
     "trackersDescription": "Sync progress to Trakt, MyAnimeList, AniList, and Simkl",
+    "requests": "Requests",
+    "requestsDescription": "Request movies and shows via Jellyseerr or Overseerr",
     "companionRemoteServer": "Companion Remote Server",
     "companionRemoteServerDescription": "Allow mobile devices on your network to control this app",
     "autoPip": "Auto Picture-in-Picture",
@@ -283,7 +293,7 @@
     "forceTvMode": "Force TV mode",
     "forceTvModeDescription": "Force TV layout. For devices that don't auto-detect. Requires restart.",
     "startInFullscreen": "Start in fullscreen",
-    "startInFullscreenDescription": "Open Plezy in fullscreen mode at launch",
+    "startInFullscreenDescription": "Open Pleya in fullscreen mode at launch",
     "exitFullscreenOnPlayerClose": "Exit fullscreen on player close",
     "exitFullscreenOnPlayerCloseDescription": "Automatically exit fullscreen when closing the video player",
     "autoHidePerformanceOverlay": "Auto-Hide Performance Overlay",
@@ -291,7 +301,7 @@
     "showNavBarLabels": "Show Navigation Bar Labels",
     "showNavBarLabelsDescription": "Display text labels under navigation bar icons",
     "startupSection": "Startup Section",
-    "startupSectionDescription": "Choose which section Plezy opens to when it starts",
+    "startupSectionDescription": "Choose which section Pleya opens to when it starts",
     "liveTvDefaultFavorites": "Default to Favorite Channels",
     "liveTvDefaultFavoritesDescription": "Show only favorite channels when opening Live TV",
     "display": "Display",
@@ -302,13 +312,24 @@
     "player": "Player",
     "subtitlesAndConfig": "Subtitles & Configuration",
     "seekAndTiming": "Seek & Timing",
-    "behavior": "Behavior"
+    "behavior": "Behavior",
+    "personalizedRecommendations": "Personalized recommendations",
+    "personalizedRecommendationsDescription": "Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device."
   },
   "search": {
     "hint": "Search movies, shows, music...",
     "tryDifferentTerm": "Try a different search term",
     "searchYourMedia": "Search your media",
-    "enterTitleActorOrKeyword": "Enter a title, actor, or keyword"
+    "enterTitleActorOrKeyword": "Enter a title, actor, or keyword",
+    "recentSearches": "Recent searches",
+    "clearHistory": "Clear",
+    "filters": {
+      "all": "All",
+      "movies": "Movies",
+      "shows": "Shows",
+      "episodes": "Episodes",
+      "people": "People"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "Set Shortcut for ${actionName}",
@@ -466,6 +487,16 @@
     "pipButton": "Picture-in-Picture mode",
     "aspectRatioButton": "Aspect ratio",
     "ambientLighting": "Ambient lighting",
+    "ambientIntensitySubtle": "Subtle",
+    "ambientIntensityBalanced": "Balanced",
+    "ambientIntensityBright": "Bright",
+    "tvPanel": {
+      "information": "Information",
+      "audio": "Audio",
+      "tracks": "Tracks",
+      "options": "Options",
+      "more": "More…"
+    },
     "fullscreenButton": "Enter fullscreen",
     "exitFullscreenButton": "Exit fullscreen",
     "alwaysOnTopButton": "Always on top",
@@ -502,7 +533,8 @@
     "noTracksAvailable": "No tracks available",
     "subtitleDownloaded": "Subtitle downloaded",
     "subtitleDownloadFailed": "Failed to download subtitle",
-    "searchLanguages": "Search languages..."
+    "searchLanguages": "Search languages...",
+    "airplayButton": "AirPlay"
   },
   "userStatus": {
     "admin": "Admin",
@@ -591,7 +623,7 @@
     "confirmAction": "Confirm Action"
   },
   "profiles": {
-    "addPlezyProfile": "Add Plezy profile",
+    "addPleyaProfile": "Add Pleya profile",
     "switchingProfile": "Switching profile…",
     "deleteThisProfileTitle": "Delete this profile?",
     "deleteThisProfileMessage": "Remove ${displayName}. Connections aren't affected.",
@@ -659,7 +691,7 @@
     "sessionExpiredMany": "Session expired for ${count} servers",
     "signInAgain": "Sign in again",
     "editJellyfinTitle": "Edit Jellyfin connection",
-    "editJellyfinIntro": "Add or remove URLs for ${serverName}. Plezy will use the reachable URL with the lowest latency."
+    "editJellyfinIntro": "Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency."
   },
   "discover": {
     "title": "Discover",
@@ -681,7 +713,17 @@
     "movie": "Movie",
     "tvShow": "TV Show",
     "minutesLeft": "${minutes} min left",
-    "moreLikeThis": "More Like This"
+    "moreLikeThis": "More Like This",
+    "becauseYouWatched": "Because you watched ${title}",
+    "topRated": "Top Rated",
+    "somethingDifferent": "Something Different",
+    "topPicksForYou": "Top Picks for You",
+    "becauseYouLike": "Because you like ${genre}",
+    "hiddenGems": "Hidden Gems",
+    "watchedBy": "Watched by ${names}",
+    "watchedByYou": "You",
+    "watchedByAnd": "and",
+    "watchedByOthers": "${count} others"
   },
   "errors": {
     "searchFailed": "Search failed: ${error}",
@@ -1104,19 +1146,19 @@
       "minimize": "Minimize"
     },
     "pairing": {
-      "discoveryDescription": "Plezy devices with the same Plex account appear here",
+      "discoveryDescription": "Pleya devices with the same Plex account appear here",
       "hostAddressHint": "192.168.1.100:48632",
       "connecting": "Connecting...",
       "searchingForDevices": "Looking for devices...",
       "noDevicesFound": "No devices found on your network",
-      "noDevicesHint": "Open Plezy on desktop and use the same WiFi",
+      "noDevicesHint": "Open Pleya on desktop and use the same WiFi",
       "availableDevices": "Available Devices",
       "manualConnection": "Manual Connection",
       "cryptoInitFailed": "Couldn't start secure connection. Sign in to Plex first.",
       "validationHostRequired": "Please enter host address",
       "validationHostFormat": "Format must be IP:port (e.g., 192.168.1.100:48632)",
       "connectionTimedOut": "Connection timed out. Use the same network on both devices.",
-      "sessionNotFound": "Device not found. Make sure Plezy is running on the host.",
+      "sessionNotFound": "Device not found. Make sure Pleya is running on the host.",
       "authFailed": "Authentication failed. Both devices need the same Plex account.",
       "failedToConnect": "Failed to connect: ${error}"
     },
@@ -1168,7 +1210,14 @@
     "audioOutput": "Audio Output",
     "performanceOverlay": "Performance Overlay",
     "audioPassthrough": "Audio Passthrough",
-    "audioNormalization": "Normalize Loudness"
+    "audioNormalization": "Normalize Loudness",
+    "audioNormalizationTitle": "Loudness",
+    "audioNormalizationModes": {
+      "off": "Off",
+      "normalize": "Normalize",
+      "night": "Night mode"
+    },
+    "tryLowerQuality": "Try lower quality"
   },
   "performanceOverlay": {
     "color": "Color",
@@ -1320,16 +1369,97 @@
     "failedToLoad": "Failed to load tasks",
     "noTasks": "No tasks running"
   },
+  "seerr": {
+    "title": "Requests",
+    "hubSubtitle": "Request movies and shows from your Jellyseerr or Overseerr server.",
+    "notConfigured": "Not configured",
+    "serverUrl": "Server URL",
+    "serverUrlHint": "https://requests.example.com",
+    "authMode": "Sign-in method",
+    "authPlex": "Sign in with Plex",
+    "authPlexSubtitle": "One-tap using your existing Plex login.",
+    "authLocal": "Email and password",
+    "authApiKey": "API key",
+    "email": "Email",
+    "password": "Password",
+    "apiKey": "API key",
+    "apiKeyHint": "From Settings → General on your server",
+    "adminAttributionNote": "API-key mode files requests as the admin user. Sign in with Plex for per-user attribution.",
+    "setupOnDesktopNote": "Tip: this is easier to set up on your phone or computer.",
+    "testConnection": "Test connection",
+    "save": "Save",
+    "disconnect": "Disconnect",
+    "disconnectConfirm": "Disconnect requests server?",
+    "disconnectConfirmBody": "Pleya will stop sending requests. You can reconnect any time.",
+    "connectedAs": "Signed in as ${name}",
+    "serverVersion": "Server version ${version}",
+    "permissionAdmin": "Administrator",
+    "permissionManage": "Can approve requests",
+    "permissionRequest": "Can request",
+    "request": "Request",
+    "requested": "Requested",
+    "requestAgain": "Request",
+    "processing": "Processing",
+    "partiallyAvailable": "Partially available",
+    "available": "Available",
+    "pending": "Pending",
+    "approved": "Approved",
+    "declined": "Declined",
+    "failed": "Failed",
+    "completed": "Completed",
+    "requestConfirm": "Request \"${title}\"?",
+    "requestMovie": "Request movie",
+    "requestSuccess": "Requested",
+    "requestFailed": "Request failed. Try again.",
+    "selectSeasons": "Select seasons",
+    "season": "Season ${number}",
+    "allSeasons": "All seasons",
+    "fourK": "Request in 4K",
+    "quotaRemaining": "${remaining} of ${limit} requests left",
+    "quotaUnlimited": "Unlimited requests",
+    "advancedOptions": "Advanced options",
+    "server": "Server",
+    "qualityProfile": "Quality profile",
+    "rootFolder": "Root folder",
+    "myRequests": "My requests",
+    "allRequests": "All requests",
+    "filterAll": "All",
+    "filterPending": "Pending",
+    "filterApproved": "Approved",
+    "filterAvailable": "Available",
+    "filterMovies": "Movies",
+    "filterShows": "Shows",
+    "approve": "Approve",
+    "decline": "Decline",
+    "edit": "Edit",
+    "cancelRequest": "Cancel request",
+    "cancelRequestConfirm": "Cancel this request?",
+    "discoverTitle": "Discover on Requests",
+    "trending": "Trending",
+    "popularMovies": "Popular movies",
+    "popularTv": "Popular shows",
+    "upcoming": "Upcoming",
+    "recommendations": "Recommendations",
+    "cast": "Cast",
+    "loadMore": "Load more",
+    "searchOnSeerr": "Not in your library? Search on Jellyseerr / Overseerr",
+    "searchOnSeerrShort": "Search on Requests",
+    "noResults": "No results found.",
+    "errorAuth": "Sign-in failed. Check your credentials.",
+    "errorForbidden": "You don't have permission for that.",
+    "errorNetwork": "Couldn't reach the server. Check the URL.",
+    "errorGeneric": "Something went wrong. Try again."
+  },
   "trakt": {
     "title": "Trakt",
     "connected": "Connected",
     "connectedAs": "Connected as @${username}",
     "disconnectConfirm": "Disconnect Trakt account?",
-    "disconnectConfirmBody": "Plezy will stop sending events to Trakt. You can reconnect any time.",
+    "disconnectConfirmBody": "Pleya will stop sending events to Trakt. You can reconnect any time.",
     "scrobble": "Real-time scrobbling",
     "scrobbleDescription": "Send play, pause, and stop events to Trakt during playback.",
     "watchedSync": "Sync watched status",
-    "watchedSyncDescription": "When you mark items watched in Plezy, mark them on Trakt."
+    "watchedSyncDescription": "When you mark items watched in Pleya, mark them on Trakt."
   },
   "trackers": {
     "title": "Trackers",
@@ -1339,7 +1469,7 @@
     "scrobble": "Track progress automatically",
     "scrobbleDescription": "Update your list when you finish an episode or movie.",
     "disconnectConfirm": "Disconnect ${service}?",
-    "disconnectConfirmBody": "Plezy will stop updating ${service}. Reconnect any time.",
+    "disconnectConfirmBody": "Pleya will stop updating ${service}. Reconnect any time.",
     "connectFailed": "Couldn't connect to ${service}. Try again.",
     "services": {
       "mal": "MyAnimeList",
@@ -1347,7 +1477,7 @@
       "simkl": "Simkl"
     },
     "deviceCode": {
-      "title": "Activate Plezy on ${service}",
+      "title": "Activate Pleya on ${service}",
       "body": "Visit ${url} and enter this code:",
       "openToActivate": "Open ${service} to activate",
       "waitingForAuthorization": "Waiting for authorization…",

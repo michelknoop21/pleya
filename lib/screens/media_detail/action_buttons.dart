@@ -101,25 +101,30 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
 
     final gap = isTv ? 8.0 * tvScale : 12.0;
 
+    // Pressable adds the press-down scale; the buttons below keep owning the
+    // tap (they win the gesture arena as the deeper recognizer).
     Widget playButton(FocusableActionBuildState state) {
-      return SizedBox(
-        height: actionSize,
-        child: FilledButton(
-          onPressed: onPlayPressed,
-          style: actionButtonStyle(
-            showFocus: state.showFocus,
-            padding: .symmetric(horizontal: isTv ? 17 * tvScale : 16, vertical: isTv ? 9 * tvScale : 0),
+      return Pressable(
+        onTap: onPlayPressed,
+        child: SizedBox(
+          height: actionSize,
+          child: FilledButton(
+            onPressed: onPlayPressed,
+            style: actionButtonStyle(
+              showFocus: state.showFocus,
+              padding: .symmetric(horizontal: isTv ? 17 * tvScale : 16, vertical: isTv ? 9 * tvScale : 0),
+            ),
+            child: playButtonLabel.isNotEmpty
+                ? Row(
+                    mainAxisSize: .min,
+                    children: [
+                      playButtonIcon,
+                      SizedBox(width: isTv ? 7 * tvScale : 8),
+                      Text(playButtonLabel, style: playTextStyle),
+                    ],
+                  )
+                : playButtonIcon,
           ),
-          child: playButtonLabel.isNotEmpty
-              ? Row(
-                  mainAxisSize: .min,
-                  children: [
-                    playButtonIcon,
-                    SizedBox(width: isTv ? 7 * tvScale : 8),
-                    Text(playButtonLabel, style: playTextStyle),
-                  ],
-                )
-              : playButtonIcon,
         ),
       );
     }
@@ -131,12 +136,15 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       String? tooltip,
       Color? foregroundColor,
     }) {
-      return IconButton.filledTonal(
-        onPressed: onPressed,
-        icon: icon,
-        tooltip: tooltip,
-        iconSize: isTv ? 21 * tvScale : 20,
-        style: actionButtonStyle(foregroundColor: foregroundColor, showFocus: state.showFocus),
+      return Pressable(
+        onTap: onPressed,
+        child: IconButton.filledTonal(
+          onPressed: onPressed,
+          icon: icon,
+          tooltip: tooltip,
+          iconSize: isTv ? 21 * tvScale : 20,
+          style: actionButtonStyle(foregroundColor: foregroundColor, showFocus: state.showFocus),
+        ),
       );
     }
 
@@ -210,12 +218,29 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
             ),
           );
 
+    // Request via Jellyseerr/Overseerr — only when a server is configured, the
+    // item is a movie/show, and we're online (needs a TMDB-id lookup).
+    final seerrConfigured = context.watch<SeerrProvider>().isConfigured;
+    final requestAction = (seerrConfigured && !widget.isOffline && (metadata.isMovie || metadata.isShow))
+        ? FocusableAction(
+            debugLabel: 'detail_request',
+            onPressed: () => unawaited(_handleRequestPressed(metadata)),
+            builder: (context, state) => iconActionButton(
+              state,
+              onPressed: () => unawaited(_handleRequestPressed(metadata)),
+              icon: const AppIcon(Symbols.playlist_add_rounded, fill: 1),
+              tooltip: t.seerr.request,
+            ),
+          )
+        : null;
+
     final allActions = <FocusableAction>[
       playAction,
       ?trailerAction,
       ?shuffleAction,
       ?downloadAction,
       watchedAction,
+      ?requestAction,
       ?moreActionsAction,
     ];
 
@@ -246,7 +271,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
         return compact;
       }
 
-      final medium = <FocusableAction>[playAction, ?downloadAction, watchedAction, ?moreActionsAction];
+      final medium = <FocusableAction>[playAction, ?downloadAction, watchedAction, ?requestAction, ?moreActionsAction];
       if (!maxWidth.isFinite || estimatedRowWidth(medium) <= maxWidth) return medium;
 
       final compact = <FocusableAction>[playAction, watchedAction, ?moreActionsAction];
@@ -280,6 +305,34 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     );
   }
 
+  /// Resolve the item's TMDB id and open the seerr request sheet. The id
+  /// lookup happens on press (not preemptively) so the detail screen stays
+  /// cheap; a missing id just surfaces a non-fatal error.
+  Future<void> _handleRequestPressed(MediaItem metadata) async {
+    if (!context.read<SeerrProvider>().isConfigured) return;
+    final client = _getMediaClientForMetadata(context);
+    if (client == null) return;
+    ExternalIds ids;
+    try {
+      ids = await client.fetchExternalIds(metadata.id);
+    } catch (_) {
+      ids = const ExternalIds();
+    }
+    if (!mounted) return;
+    final tmdb = ids.tmdb;
+    if (tmdb == null) {
+      showErrorSnackBar(context, t.seerr.errorGeneric);
+      return;
+    }
+    final media = SeerrMedia(
+      tmdbId: tmdb,
+      mediaType: metadata.isMovie ? 'movie' : 'tv',
+      title: metadata.displayTitle,
+    );
+    final requested = await SeerrRequestSheet.show(context, media: media);
+    if (requested == true && mounted) showSuccessSnackBar(context, t.seerr.requestSuccess);
+  }
+
   Future<void> _handleWatchedTogglePressed(MediaItem metadata) async {
     try {
       final isWatched = metadata.isWatched;
@@ -308,12 +361,15 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     double tvScale, {
     bool showFocus = false,
   }) {
-    return IconButton.filledTonal(
-      onPressed: () => unawaited(_handleWatchedTogglePressed(metadata)),
-      icon: AppIcon(metadata.isWatched ? Symbols.remove_done_rounded : Symbols.check_rounded, fill: 1),
-      tooltip: metadata.isWatched ? t.tooltips.markAsUnwatched : t.tooltips.markAsWatched,
-      iconSize: PlatformDetector.isTV() ? 21 * tvScale : 20,
-      style: actionButtonStyle(showFocus: showFocus),
+    return Pressable(
+      onTap: () => unawaited(_handleWatchedTogglePressed(metadata)),
+      child: IconButton.filledTonal(
+        onPressed: () => unawaited(_handleWatchedTogglePressed(metadata)),
+        icon: AppIcon(metadata.isWatched ? Symbols.remove_done_rounded : Symbols.check_rounded, fill: 1),
+        tooltip: metadata.isWatched ? t.tooltips.markAsUnwatched : t.tooltips.markAsWatched,
+        iconSize: PlatformDetector.isTV() ? 21 * tvScale : 20,
+        style: actionButtonStyle(showFocus: showFocus),
+      ),
     );
   }
 
@@ -331,18 +387,25 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
       onPlayTrailer: onPlayTrailer,
       child: Builder(
-        builder: (buttonContext) => IconButton.filledTonal(
-          onPressed: () {
+        builder: (buttonContext) {
+          void openMenu() {
             final renderBox = buttonContext.findRenderObject() as RenderBox?;
             if (renderBox != null) {
               final position = renderBox.localToGlobal(renderBox.size.center(Offset.zero));
               _contextMenuKey.currentState?.showContextMenu(buttonContext, position: position);
             }
-          },
-          icon: const AppIcon(Symbols.more_vert_rounded, fill: 1),
-          iconSize: PlatformDetector.isTV() ? 21 * tvScale : 20,
-          style: actionButtonStyle(showFocus: showFocus),
-        ),
+          }
+
+          return Pressable(
+            onTap: openMenu,
+            child: IconButton.filledTonal(
+              onPressed: openMenu,
+              icon: const AppIcon(Symbols.more_vert_rounded, fill: 1),
+              iconSize: PlatformDetector.isTV() ? 21 * tvScale : 20,
+              style: actionButtonStyle(showFocus: showFocus),
+            ),
+          );
+        },
       ),
     );
   }

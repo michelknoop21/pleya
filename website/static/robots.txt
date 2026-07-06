@@ -2,4 +2,4 @@
 User-agent: *
 Disallow:
 
-Sitemap: https://plezy.app/sitemap.xml
+Sitemap: https://pleya.app/sitemap.xml

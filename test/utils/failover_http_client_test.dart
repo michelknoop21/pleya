@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:plezy/exceptions/media_server_exceptions.dart';
-import 'package:plezy/utils/failover_http_client.dart';
+import 'package:pleya/exceptions/media_server_exceptions.dart';
+import 'package:pleya/utils/failover_http_client.dart';
 
 /// Pins the shared failover semantics both backends now ride on (see the
 /// class doc): GET-only single-step cascades, generation stamping, two-phase

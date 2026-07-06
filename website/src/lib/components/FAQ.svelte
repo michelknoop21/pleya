@@ -28,7 +28,7 @@
   <ScrollReveal>
     <p class="section-label">FAQ</p>
     <h2 class="section-heading">Common questions</h2>
-    <p class="section-description">Everything you need to know about Plezy.</p>
+    <p class="section-description">Everything you need to know about Pleya.</p>
   </ScrollReveal>
 
   <div class="faq-list">

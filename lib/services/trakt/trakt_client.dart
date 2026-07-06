@@ -78,6 +78,26 @@ class TraktClient {
     return res is List ? res : const [];
   }
 
+  /// Personalized recommendations for the authenticated user.
+  /// [type] is `movies` or `shows`. Returns raw Trakt item objects.
+  Future<List<dynamic>> getRecommendations(String type, {int limit = 30}) async {
+    final res = await _request('GET', '/recommendations/$type?limit=$limit&ignore_collected=false');
+    return res is List ? res : const [];
+  }
+
+  /// Globally trending [type] (`movies`/`shows`). Each entry wraps the item
+  /// under a `movie`/`show` key alongside a watcher count.
+  Future<List<dynamic>> getTrending(String type, {int limit = 30}) async {
+    final res = await _request('GET', '/$type/trending?limit=$limit');
+    return res is List ? res : const [];
+  }
+
+  /// Globally popular [type] (`movies`/`shows`). Entries are bare item objects.
+  Future<List<dynamic>> getPopular(String type, {int limit = 30}) async {
+    final res = await _request('GET', '/$type/popular?limit=$limit');
+    return res is List ? res : const [];
+  }
+
   /// Refresh the access token. Coalesces concurrent calls so
   /// duplicate POSTs don't race when multiple in-flight requests hit 401.
   Future<TrackerSession> refresh() async {

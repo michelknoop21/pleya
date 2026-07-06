@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 
 MonoTokens tokens(BuildContext context) => Theme.of(context).extension<MonoTokens>()!;
 
+/// Zero-duration when the user has "reduce motion" enabled (OS toggle), else [d].
+/// Lets animations crossfade/snap instead of moving for accessibility.
+Duration reduceMotion(BuildContext context, Duration d) =>
+    MediaQuery.disableAnimationsOf(context) ? Duration.zero : d;
+
 @immutable
 class MonoTokens extends ThemeExtension<MonoTokens> {
   final double radiusSm;
@@ -13,9 +18,17 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
   final Duration slow;
   final Color bg;
   final Color surface;
+  final Color surfaceElevated;
   final Color outline;
   final Color text;
   final Color textMuted;
+
+  /// Brand accent (red). Used sparingly: progress bars, badges,
+  /// wordmark, selection highlights — not as general primary.
+  final Color accent;
+
+  /// Secondary brand accent (amber). Pairs with [accent] in [accentGradient].
+  final Color accentAlt;
   final InteractiveInkFeatureFactory? splashFactory;
 
   const MonoTokens({
@@ -27,11 +40,21 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
     required this.slow,
     required this.bg,
     required this.surface,
+    required this.surfaceElevated,
     required this.outline,
     required this.text,
     required this.textMuted,
+    required this.accent,
+    required this.accentAlt,
     required this.splashFactory,
   });
+
+  /// 135° red→amber brand gradient.
+  LinearGradient get accentGradient => LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [accent, accentAlt],
+  );
 
   @override
   MonoTokens copyWith({
@@ -43,9 +66,12 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
     Duration? slow,
     Color? bg,
     Color? surface,
+    Color? surfaceElevated,
     Color? outline,
     Color? text,
     Color? textMuted,
+    Color? accent,
+    Color? accentAlt,
     InteractiveInkFeatureFactory? splashFactory,
   }) => MonoTokens(
     radiusSm: radiusSm ?? this.radiusSm,
@@ -56,9 +82,12 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
     slow: slow ?? this.slow,
     bg: bg ?? this.bg,
     surface: surface ?? this.surface,
+    surfaceElevated: surfaceElevated ?? this.surfaceElevated,
     outline: outline ?? this.outline,
     text: text ?? this.text,
     textMuted: textMuted ?? this.textMuted,
+    accent: accent ?? this.accent,
+    accentAlt: accentAlt ?? this.accentAlt,
     splashFactory: splashFactory ?? this.splashFactory,
   );
 
@@ -81,9 +110,12 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
       ),
       bg: lerpC(bg, other.bg),
       surface: lerpC(surface, other.surface),
+      surfaceElevated: lerpC(surfaceElevated, other.surfaceElevated),
       outline: lerpC(outline, other.outline),
       text: lerpC(text, other.text),
       textMuted: lerpC(textMuted, other.textMuted),
+      accent: lerpC(accent, other.accent),
+      accentAlt: lerpC(accentAlt, other.accentAlt),
       splashFactory: other.splashFactory,
     );
   }

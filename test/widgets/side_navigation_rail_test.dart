@@ -1,24 +1,24 @@
 import 'dart:ui' show PointerDeviceKind;
-import 'package:plezy/media/ids.dart';
+import 'package:pleya/media/ids.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/i18n/strings.g.dart';
-import 'package:plezy/media/media_backend.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/media/media_library.dart';
-import 'package:plezy/navigation/navigation_tabs.dart';
-import 'package:plezy/providers/hidden_libraries_provider.dart';
-import 'package:plezy/providers/libraries_provider.dart';
-import 'package:plezy/providers/multi_server_provider.dart';
-import 'package:plezy/services/data_aggregation_service.dart';
-import 'package:plezy/services/multi_server_manager.dart';
-import 'package:plezy/services/settings_service.dart';
-import 'package:plezy/theme/mono_tokens.dart';
-import 'package:plezy/utils/platform_detector.dart';
-import 'package:plezy/widgets/app_icon.dart';
-import 'package:plezy/widgets/side_navigation_rail.dart';
+import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_library.dart';
+import 'package:pleya/navigation/navigation_tabs.dart';
+import 'package:pleya/providers/hidden_libraries_provider.dart';
+import 'package:pleya/providers/libraries_provider.dart';
+import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/services/data_aggregation_service.dart';
+import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/theme/mono_tokens.dart';
+import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/app_icon.dart';
+import 'package:pleya/widgets/side_navigation_rail.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -32,9 +32,12 @@ const _testTokens = MonoTokens(
   slow: Duration(milliseconds: 1),
   bg: Colors.black,
   surface: Colors.black,
+  surfaceElevated: Color(0xFF2F2F2F),
   outline: Colors.white24,
   text: Colors.white,
   textMuted: Colors.white70,
+  accent: Color(0xFFF42B1F),
+  accentAlt: Color(0xFFFFB020),
   splashFactory: NoSplash.splashFactory,
 );
 
@@ -64,12 +67,11 @@ BoxDecoration? _railItemDecoration(WidgetTester tester, Finder item) {
       as BoxDecoration?;
 }
 
-AnimatedOpacity _railSurfaceOpacity(WidgetTester tester) {
-  return tester
-      .widgetList<AnimatedOpacity>(
-        find.descendant(of: find.byType(SideNavigationRail), matching: find.byType(AnimatedOpacity)),
-      )
-      .singleWhere((widget) => widget.child is ColoredBox);
+/// The rail's surface is now a plain [ColoredBox] (non-TV, opaque) or a
+/// gradient scrim (TV, no solid panel), so "surface opacity" is expressed as
+/// presence/absence of the opaque surface fill rather than an animated opacity.
+bool _hasOpaqueSurface(WidgetTester tester) {
+  return find.byWidgetPredicate((w) => w is ColoredBox && w.color == _testTokens.surface).evaluate().isNotEmpty;
 }
 
 Future<void> _pumpBasicRail(
@@ -185,7 +187,7 @@ void main() {
     final rail = find.descendant(of: find.byType(SideNavigationRail), matching: find.byType(AnimatedContainer)).first;
     expect(tester.getSize(rail).width, SideNavigationRailState.tvCollapsedWidth);
 
-    final firstIconCenter = tester.getCenter(find.byType(AppIcon).first).dx;
+    final firstIconCenter = tester.getCenter(find.byType(NavGlyph).first).dx;
     expect(firstIconCenter - tester.getTopLeft(rail).dx, closeTo(SideNavigationRailState.tvCollapsedWidth / 2, 0.1));
 
     final selectedItem = find.byType(NavigationRailItem).first;
@@ -194,7 +196,7 @@ void main() {
     );
     expect((selectedItemContainer.decoration as BoxDecoration?)?.color, isNull);
 
-    expect(_railSurfaceOpacity(tester).opacity, 0.0);
+    expect(_hasOpaqueSurface(tester), isFalse);
   });
 
   testWidgets('closed non-TV rail keeps an opaque surface', (tester) async {
@@ -202,7 +204,7 @@ void main() {
 
     final rail = find.descendant(of: find.byType(SideNavigationRail), matching: find.byType(AnimatedContainer)).first;
     expect(tester.getSize(rail).width, SideNavigationRailState.collapsedWidth);
-    expect(_railSurfaceOpacity(tester).opacity, 1.0);
+    expect(_hasOpaqueSurface(tester), isTrue);
   });
 
   testWidgets('expanded TV rail keeps a transparent surface', (tester) async {
@@ -250,14 +252,14 @@ void main() {
     final rail = find.descendant(of: find.byType(SideNavigationRail), matching: find.byType(AnimatedContainer)).first;
     expect(tester.getSize(rail).width, SideNavigationRailState.expandedWidth);
 
-    expect(_railSurfaceOpacity(tester).opacity, 0.0);
+    expect(_hasOpaqueSurface(tester), isFalse);
   });
 
   testWidgets('expanded rail keeps selected background outside sidebar keyboard focus', (tester) async {
     await _pumpBasicRail(tester, alwaysExpanded: true);
 
     final selectedItem = find.byType(NavigationRailItem).first;
-    expect(_railItemDecoration(tester, selectedItem)?.color, _testTokens.text.withValues(alpha: 0.1));
+    expect(_railItemDecoration(tester, selectedItem)?.color, _testTokens.text.withValues(alpha: 0.06));
   });
 
   testWidgets('D-pad sidebar focus hides selected item background after focus moves', (tester) async {

@@ -94,7 +94,7 @@ class _TranslationsAppPl extends TranslationsAppEn {
 	final TranslationsPl _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Plezy';
+	@override String get title => 'Pleya';
 }
 
 // Path: auth
@@ -215,7 +215,7 @@ class _TranslationsSettingsPl extends TranslationsSettingsEn {
 
 	// Translations
 	@override String get title => 'Ustawienia';
-	@override String get supportDeveloper => 'Wesprzyj Plezy';
+	@override String get supportDeveloper => 'Wesprzyj Pleya';
 	@override String get supportDeveloperDescription => 'Wspomóż rozwój darowizną na Liberapay';
 	@override String get language => 'Język';
 	@override String get theme => 'Motyw';
@@ -325,7 +325,7 @@ class _TranslationsSettingsPl extends TranslationsSettingsEn {
 	@override String get importSettingsConfirm => 'Bieżące ustawienia zostaną zastąpione. Kontynuować?';
 	@override String get importSettingsSuccess => 'Ustawienia zaimportowane';
 	@override String get importSettingsFailed => 'Nie można zaimportować ustawień';
-	@override String get importSettingsInvalidFile => 'Ten plik nie jest prawidłowym eksportem Plezy';
+	@override String get importSettingsInvalidFile => 'Ten plik nie jest prawidłowym eksportem Pleya';
 	@override String get importSettingsNoUser => 'Zaloguj się przed importem ustawień';
 	@override String get shortcutsReset => 'Skróty przywrócone do domyślnych';
 	@override String get about => 'O aplikacji';
@@ -406,7 +406,7 @@ class _TranslationsSettingsPl extends TranslationsSettingsEn {
 	@override String get forceTvMode => 'Wymuś tryb TV';
 	@override String get forceTvModeDescription => 'Wymuś układ TV. Dla urządzeń bez autodetekcji. Wymaga restartu.';
 	@override String get startInFullscreen => 'Uruchom na pełnym ekranie';
-	@override String get startInFullscreenDescription => 'Otwiera Plezy w trybie pełnoekranowym przy uruchomieniu';
+	@override String get startInFullscreenDescription => 'Otwiera Pleya w trybie pełnoekranowym przy uruchomieniu';
 	@override String get exitFullscreenOnPlayerClose => 'Wyjdź z pełnego ekranu przy zamykaniu odtwarzacza';
 	@override String get exitFullscreenOnPlayerCloseDescription => 'Automatycznie wychodzi z trybu pełnoekranowego po zamknięciu odtwarzacza wideo';
 	@override String get autoHidePerformanceOverlay => 'Automatycznie ukrywaj nakładkę wydajności';
@@ -414,7 +414,7 @@ class _TranslationsSettingsPl extends TranslationsSettingsEn {
 	@override String get showNavBarLabels => 'Pokaż etykiety paska nawigacji';
 	@override String get showNavBarLabelsDescription => 'Wyświetl tekstowe etykiety pod ikonami paska nawigacji';
 	@override String get startupSection => 'Sekcja startowa';
-	@override String get startupSectionDescription => 'Wybierz, którą sekcję Plezy otwiera przy uruchomieniu';
+	@override String get startupSectionDescription => 'Wybierz, którą sekcję Pleya otwiera przy uruchomieniu';
 	@override String get liveTvDefaultFavorites => 'Domyślnie ulubione kanały';
 	@override String get liveTvDefaultFavoritesDescription => 'Pokaż tylko ulubione kanały po otwarciu telewizji na żywo';
 	@override String get display => 'Ekran';
@@ -778,7 +778,7 @@ class _TranslationsProfilesPl extends TranslationsProfilesEn {
 	final TranslationsPl _root; // ignore: unused_field
 
 	// Translations
-	@override String get addPlezyProfile => 'Dodaj profil Plezy';
+	@override String get addPleyaProfile => 'Dodaj profil Pleya';
 	@override String get switchingProfile => 'Przełączanie profilu…';
 	@override String get deleteThisProfileTitle => 'Usunąć ten profil?';
 	@override String deleteThisProfileMessage({required Object displayName}) => 'Usuń ${displayName}. Połączenia nie zostaną zmienione.';
@@ -853,7 +853,7 @@ class _TranslationsConnectionsPl extends TranslationsConnectionsEn {
 	@override String sessionExpiredMany({required Object count}) => 'Sesja wygasła dla ${count} serwerów';
 	@override String get signInAgain => 'Zaloguj się ponownie';
 	@override String get editJellyfinTitle => 'Edytuj połączenie Jellyfin';
-	@override String editJellyfinIntro({required Object serverName}) => 'Dodaj lub usuń adresy URL dla ${serverName}. Plezy użyje osiągalnego URL-a o najniższym opóźnieniu.';
+	@override String editJellyfinIntro({required Object serverName}) => 'Dodaj lub usuń adresy URL dla ${serverName}. Pleya użyje osiągalnego URL-a o najniższym opóźnieniu.';
 }
 
 // Path: discover
@@ -1572,11 +1572,11 @@ class _TranslationsTraktPl extends TranslationsTraktEn {
 	@override String get connected => 'Połączono';
 	@override String connectedAs({required Object username}) => 'Połączono jako @${username}';
 	@override String get disconnectConfirm => 'Rozłączyć konto Trakt?';
-	@override String get disconnectConfirmBody => 'Plezy przestanie wysyłać zdarzenia do Trakt. Możesz połączyć ponownie w dowolnym momencie.';
+	@override String get disconnectConfirmBody => 'Pleya przestanie wysyłać zdarzenia do Trakt. Możesz połączyć ponownie w dowolnym momencie.';
 	@override String get scrobble => 'Scrobbling w czasie rzeczywistym';
 	@override String get scrobbleDescription => 'Wysyłaj zdarzenia odtwarzania, pauzy i zatrzymania do Trakt podczas odtwarzania.';
 	@override String get watchedSync => 'Synchronizuj status obejrzane';
-	@override String get watchedSyncDescription => 'Gdy oznaczysz pozycje jako obejrzane w Plezy, zostaną też oznaczone w Trakt.';
+	@override String get watchedSyncDescription => 'Gdy oznaczysz pozycje jako obejrzane w Pleya, zostaną też oznaczone w Trakt.';
 }
 
 // Path: trackers
@@ -1593,7 +1593,7 @@ class _TranslationsTrackersPl extends TranslationsTrackersEn {
 	@override String get scrobble => 'Automatycznie śledź postęp';
 	@override String get scrobbleDescription => 'Aktualizuj swoją listę po ukończeniu odcinka lub filmu.';
 	@override String disconnectConfirm({required Object service}) => 'Odłączyć ${service}?';
-	@override String disconnectConfirmBody({required Object service}) => 'Plezy przestanie aktualizować ${service}. Połącz ponownie w dowolnym momencie.';
+	@override String disconnectConfirmBody({required Object service}) => 'Pleya przestanie aktualizować ${service}. Połącz ponownie w dowolnym momencie.';
 	@override String connectFailed({required Object service}) => 'Nie udało się połączyć z ${service}. Spróbuj ponownie.';
 	@override late final _TranslationsTrackersServicesPl services = _TranslationsTrackersServicesPl._(_root);
 	@override late final _TranslationsTrackersDeviceCodePl deviceCode = _TranslationsTrackersDeviceCodePl._(_root);
@@ -1790,19 +1790,19 @@ class _TranslationsCompanionRemotePairingPl extends TranslationsCompanionRemoteP
 	final TranslationsPl _root; // ignore: unused_field
 
 	// Translations
-	@override String get discoveryDescription => 'Urządzenia Plezy z tym samym kontem Plex pojawią się tutaj';
+	@override String get discoveryDescription => 'Urządzenia Pleya z tym samym kontem Plex pojawią się tutaj';
 	@override String get hostAddressHint => '192.168.1.100:48632';
 	@override String get connecting => 'Łączenie...';
 	@override String get searchingForDevices => 'Szukanie urządzeń...';
 	@override String get noDevicesFound => 'Nie znaleziono urządzeń w sieci';
-	@override String get noDevicesHint => 'Otwórz Plezy na komputerze i użyj tego samego WiFi';
+	@override String get noDevicesHint => 'Otwórz Pleya na komputerze i użyj tego samego WiFi';
 	@override String get availableDevices => 'Dostępne urządzenia';
 	@override String get manualConnection => 'Połączenie ręczne';
 	@override String get cryptoInitFailed => 'Nie udało się uruchomić bezpiecznego połączenia. Najpierw zaloguj się do Plex.';
 	@override String get validationHostRequired => 'Wprowadź adres hosta';
 	@override String get validationHostFormat => 'Format musi być IP:port (np. 192.168.1.100:48632)';
 	@override String get connectionTimedOut => 'Limit czasu połączenia. Użyj tej samej sieci na obu urządzeniach.';
-	@override String get sessionNotFound => 'Nie znaleziono urządzenia. Upewnij się, że Plezy działa na hoście.';
+	@override String get sessionNotFound => 'Nie znaleziono urządzenia. Upewnij się, że Pleya działa na hoście.';
 	@override String get authFailed => 'Uwierzytelnianie nie powiodło się. Oba urządzenia muszą używać tego samego konta Plex.';
 	@override String failedToConnect({required Object error}) => 'Nie udało się połączyć: ${error}';
 }
@@ -1877,7 +1877,7 @@ class _TranslationsTrackersDeviceCodePl extends TranslationsTrackersDeviceCodeEn
 	final TranslationsPl _root; // ignore: unused_field
 
 	// Translations
-	@override String title({required Object service}) => 'Aktywuj Plezy w ${service}';
+	@override String title({required Object service}) => 'Aktywuj Pleya w ${service}';
 	@override String body({required Object url}) => 'Odwiedź ${url} i wpisz ten kod:';
 	@override String openToActivate({required Object service}) => 'Otwórz ${service}, aby aktywować';
 	@override String get waitingForAuthorization => 'Oczekiwanie na autoryzację…';
@@ -1926,7 +1926,7 @@ class _TranslationsTrackersLibraryFilterPl extends TranslationsTrackersLibraryFi
 extension on TranslationsPl {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
-			'app.title' => 'Plezy',
+			'app.title' => 'Pleya',
 			'auth.signIn' => 'Zaloguj się',
 			'auth.signInWithPlex' => 'Zaloguj się przez Plex',
 			'auth.showQRCode' => 'Pokaż kod QR',
@@ -2002,7 +2002,7 @@ extension on TranslationsPl {
 			'update.latestVersion' => 'Masz najnowszą wersję',
 			'update.checkFailed' => 'Nie udało się sprawdzić aktualizacji',
 			'settings.title' => 'Ustawienia',
-			'settings.supportDeveloper' => 'Wesprzyj Plezy',
+			'settings.supportDeveloper' => 'Wesprzyj Pleya',
 			'settings.supportDeveloperDescription' => 'Wspomóż rozwój darowizną na Liberapay',
 			'settings.language' => 'Język',
 			'settings.theme' => 'Motyw',
@@ -2112,7 +2112,7 @@ extension on TranslationsPl {
 			'settings.importSettingsConfirm' => 'Bieżące ustawienia zostaną zastąpione. Kontynuować?',
 			'settings.importSettingsSuccess' => 'Ustawienia zaimportowane',
 			'settings.importSettingsFailed' => 'Nie można zaimportować ustawień',
-			'settings.importSettingsInvalidFile' => 'Ten plik nie jest prawidłowym eksportem Plezy',
+			'settings.importSettingsInvalidFile' => 'Ten plik nie jest prawidłowym eksportem Pleya',
 			'settings.importSettingsNoUser' => 'Zaloguj się przed importem ustawień',
 			'settings.shortcutsReset' => 'Skróty przywrócone do domyślnych',
 			'settings.about' => 'O aplikacji',
@@ -2193,7 +2193,7 @@ extension on TranslationsPl {
 			'settings.forceTvMode' => 'Wymuś tryb TV',
 			'settings.forceTvModeDescription' => 'Wymuś układ TV. Dla urządzeń bez autodetekcji. Wymaga restartu.',
 			'settings.startInFullscreen' => 'Uruchom na pełnym ekranie',
-			'settings.startInFullscreenDescription' => 'Otwiera Plezy w trybie pełnoekranowym przy uruchomieniu',
+			'settings.startInFullscreenDescription' => 'Otwiera Pleya w trybie pełnoekranowym przy uruchomieniu',
 			'settings.exitFullscreenOnPlayerClose' => 'Wyjdź z pełnego ekranu przy zamykaniu odtwarzacza',
 			'settings.exitFullscreenOnPlayerCloseDescription' => 'Automatycznie wychodzi z trybu pełnoekranowego po zamknięciu odtwarzacza wideo',
 			'settings.autoHidePerformanceOverlay' => 'Automatycznie ukrywaj nakładkę wydajności',
@@ -2201,7 +2201,7 @@ extension on TranslationsPl {
 			'settings.showNavBarLabels' => 'Pokaż etykiety paska nawigacji',
 			'settings.showNavBarLabelsDescription' => 'Wyświetl tekstowe etykiety pod ikonami paska nawigacji',
 			'settings.startupSection' => 'Sekcja startowa',
-			'settings.startupSectionDescription' => 'Wybierz, którą sekcję Plezy otwiera przy uruchomieniu',
+			'settings.startupSectionDescription' => 'Wybierz, którą sekcję Pleya otwiera przy uruchomieniu',
 			'settings.liveTvDefaultFavorites' => 'Domyślnie ulubione kanały',
 			'settings.liveTvDefaultFavoritesDescription' => 'Pokaż tylko ulubione kanały po otwarciu telewizji na żywo',
 			'settings.display' => 'Ekran',
@@ -2471,7 +2471,7 @@ extension on TranslationsPl {
 			'mpvConfig.confirmDeletePreset' => 'Czy na pewno chcesz usunąć ten preset?',
 			'mpvConfig.configPlaceholder' => 'gpu-api=vulkan\nhwdec=auto\n# comment',
 			'dialog.confirmAction' => 'Potwierdź działanie',
-			'profiles.addPlezyProfile' => 'Dodaj profil Plezy',
+			'profiles.addPleyaProfile' => 'Dodaj profil Pleya',
 			'profiles.switchingProfile' => 'Przełączanie profilu…',
 			'profiles.deleteThisProfileTitle' => 'Usunąć ten profil?',
 			'profiles.deleteThisProfileMessage' => ({required Object displayName}) => 'Usuń ${displayName}. Połączenia nie zostaną zmienione.',
@@ -2537,7 +2537,7 @@ extension on TranslationsPl {
 			'connections.sessionExpiredMany' => ({required Object count}) => 'Sesja wygasła dla ${count} serwerów',
 			'connections.signInAgain' => 'Zaloguj się ponownie',
 			'connections.editJellyfinTitle' => 'Edytuj połączenie Jellyfin',
-			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Dodaj lub usuń adresy URL dla ${serverName}. Plezy użyje osiągalnego URL-a o najniższym opóźnieniu.',
+			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Dodaj lub usuń adresy URL dla ${serverName}. Pleya użyje osiągalnego URL-a o najniższym opóźnieniu.',
 			'discover.title' => 'Odkryj',
 			'discover.switchProfile' => 'Zmień profil',
 			'discover.noContentAvailable' => 'Brak dostępnych treści',
@@ -2936,19 +2936,19 @@ extension on TranslationsPl {
 			'companionRemote.session.startServer' => 'Uruchom serwer',
 			'companionRemote.session.stopServer' => 'Zatrzymaj serwer',
 			'companionRemote.session.minimize' => 'Minimalizuj',
-			'companionRemote.pairing.discoveryDescription' => 'Urządzenia Plezy z tym samym kontem Plex pojawią się tutaj',
+			'companionRemote.pairing.discoveryDescription' => 'Urządzenia Pleya z tym samym kontem Plex pojawią się tutaj',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Łączenie...',
 			'companionRemote.pairing.searchingForDevices' => 'Szukanie urządzeń...',
 			'companionRemote.pairing.noDevicesFound' => 'Nie znaleziono urządzeń w sieci',
-			'companionRemote.pairing.noDevicesHint' => 'Otwórz Plezy na komputerze i użyj tego samego WiFi',
+			'companionRemote.pairing.noDevicesHint' => 'Otwórz Pleya na komputerze i użyj tego samego WiFi',
 			'companionRemote.pairing.availableDevices' => 'Dostępne urządzenia',
 			'companionRemote.pairing.manualConnection' => 'Połączenie ręczne',
 			'companionRemote.pairing.cryptoInitFailed' => 'Nie udało się uruchomić bezpiecznego połączenia. Najpierw zaloguj się do Plex.',
 			'companionRemote.pairing.validationHostRequired' => 'Wprowadź adres hosta',
 			'companionRemote.pairing.validationHostFormat' => 'Format musi być IP:port (np. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Limit czasu połączenia. Użyj tej samej sieci na obu urządzeniach.',
-			'companionRemote.pairing.sessionNotFound' => 'Nie znaleziono urządzenia. Upewnij się, że Plezy działa na hoście.',
+			'companionRemote.pairing.sessionNotFound' => 'Nie znaleziono urządzenia. Upewnij się, że Pleya działa na hoście.',
 			'companionRemote.pairing.authFailed' => 'Uwierzytelnianie nie powiodło się. Oba urządzenia muszą używać tego samego konta Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Nie udało się połączyć: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Czy chcesz się rozłączyć od sesji zdalnej?',
@@ -3140,11 +3140,11 @@ extension on TranslationsPl {
 			'trakt.connected' => 'Połączono',
 			'trakt.connectedAs' => ({required Object username}) => 'Połączono jako @${username}',
 			'trakt.disconnectConfirm' => 'Rozłączyć konto Trakt?',
-			'trakt.disconnectConfirmBody' => 'Plezy przestanie wysyłać zdarzenia do Trakt. Możesz połączyć ponownie w dowolnym momencie.',
+			'trakt.disconnectConfirmBody' => 'Pleya przestanie wysyłać zdarzenia do Trakt. Możesz połączyć ponownie w dowolnym momencie.',
 			'trakt.scrobble' => 'Scrobbling w czasie rzeczywistym',
 			'trakt.scrobbleDescription' => 'Wysyłaj zdarzenia odtwarzania, pauzy i zatrzymania do Trakt podczas odtwarzania.',
 			'trakt.watchedSync' => 'Synchronizuj status obejrzane',
-			'trakt.watchedSyncDescription' => 'Gdy oznaczysz pozycje jako obejrzane w Plezy, zostaną też oznaczone w Trakt.',
+			'trakt.watchedSyncDescription' => 'Gdy oznaczysz pozycje jako obejrzane w Pleya, zostaną też oznaczone w Trakt.',
 			'trackers.title' => 'Trackery',
 			'trackers.hubSubtitle' => 'Synchronizuj postęp oglądania z Trakt i innymi usługami.',
 			'trackers.notConnected' => 'Nie połączono',
@@ -3152,12 +3152,12 @@ extension on TranslationsPl {
 			'trackers.scrobble' => 'Automatycznie śledź postęp',
 			'trackers.scrobbleDescription' => 'Aktualizuj swoją listę po ukończeniu odcinka lub filmu.',
 			'trackers.disconnectConfirm' => ({required Object service}) => 'Odłączyć ${service}?',
-			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Plezy przestanie aktualizować ${service}. Połącz ponownie w dowolnym momencie.',
+			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya przestanie aktualizować ${service}. Połącz ponownie w dowolnym momencie.',
 			'trackers.connectFailed' => ({required Object service}) => 'Nie udało się połączyć z ${service}. Spróbuj ponownie.',
 			'trackers.services.mal' => 'MyAnimeList',
 			'trackers.services.anilist' => 'AniList',
 			'trackers.services.simkl' => 'Simkl',
-			'trackers.deviceCode.title' => ({required Object service}) => 'Aktywuj Plezy w ${service}',
+			'trackers.deviceCode.title' => ({required Object service}) => 'Aktywuj Pleya w ${service}',
 			'trackers.deviceCode.body' => ({required Object url}) => 'Odwiedź ${url} i wpisz ten kod:',
 			'trackers.deviceCode.openToActivate' => ({required Object service}) => 'Otwórz ${service}, aby aktywować',
 			'trackers.deviceCode.waitingForAuthorization' => 'Oczekiwanie na autoryzację…',

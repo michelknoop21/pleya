@@ -89,22 +89,35 @@ def get_version() -> str:
 
 
 def generate_icons():
-    """Generate icons at multiple sizes using ImageMagick."""
+    """Provide hicolor icons at each size.
+
+    The canonical PNGs are produced by scripts/gen_brand_assets.py straight into
+    icons/{size}x{size}/pleya.png (the P-mark on a #0B0B0B tile). If they are
+    present we use them as-is; otherwise fall back to resizing the mark on dark.
+    """
     print("Generating icons...")
-    source = PROJECT_ROOT / "assets/plezy.png"
+    source = PROJECT_ROOT / "assets/branding/pleya_mark.png"
+
+    if all((SCRIPT_DIR / f"icons/{s}x{s}/pleya.png").exists() for s in ICON_SIZES):
+        print("Using pre-generated brand icons (run scripts/gen_brand_assets.py to refresh)")
+        return
 
     for size in ICON_SIZES:
         dest_dir = SCRIPT_DIR / f"icons/{size}x{size}"
         dest_dir.mkdir(parents=True, exist_ok=True)
-        dest = dest_dir / "plezy.png"
+        dest = dest_dir / "pleya.png"
 
-        # Try magick (ImageMagick 7) first, then convert (ImageMagick 6)
+        # Try magick (ImageMagick 7) first, then convert (ImageMagick 6): mark on #0B0B0B.
         for cmd in ["magick", "convert"]:
             if shutil.which(cmd):
-                subprocess.run([cmd, str(source), "-resize", f"{size}x{size}", str(dest)], check=True)
+                subprocess.run(
+                    [cmd, "-size", f"{size}x{size}", "canvas:#0B0B0B",
+                     "(", str(source), "-resize", f"{int(size * 0.8)}x{int(size * 0.8)}", ")",
+                     "-gravity", "center", "-composite", str(dest)],
+                    check=True)
                 break
         else:
-            print(f"Warning: ImageMagick not found, copying original icon for {size}x{size}")
+            print(f"Warning: ImageMagick not found, copying mark for {size}x{size}")
             shutil.copy(source, dest)
 
 
@@ -112,13 +125,13 @@ def get_file_mappings() -> list[str]:
     """Get file mappings for fpm."""
     mappings = [
         f"{BUILD_DIR}/=/opt/plezy/",
-        f"{SCRIPT_DIR}/com.edde746.plezy.desktop=/usr/share/applications/com.edde746.plezy.desktop",
+        f"{SCRIPT_DIR}/nl.michelknoop.pleya.desktop=/usr/share/applications/nl.michelknoop.pleya.desktop",
         f"{SCRIPT_DIR}/plezy.sh=/usr/bin/plezy",
     ]
 
     for size in ICON_SIZES:
         mappings.append(
-            f"{SCRIPT_DIR}/icons/{size}x{size}/plezy.png=/usr/share/icons/hicolor/{size}x{size}/apps/plezy.png"
+            f"{SCRIPT_DIR}/icons/{size}x{size}/pleya.png=/usr/share/icons/hicolor/{size}x{size}/apps/pleya.png"
         )
 
     return mappings

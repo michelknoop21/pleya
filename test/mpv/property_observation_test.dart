@@ -1,9 +1,9 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/mpv/player/platform/player_android.dart';
-import 'package:plezy/mpv/player/player_base.dart';
-import 'package:plezy/mpv/player/player_native.dart';
-import 'package:plezy/services/settings_service.dart';
+import 'package:pleya/mpv/player/platform/player_android.dart';
+import 'package:pleya/mpv/player/player_base.dart';
+import 'package:pleya/mpv/player/player_native.dart';
+import 'package:pleya/services/settings_service.dart';
 
 import '../test_helpers/prefs.dart';
 
@@ -68,7 +68,7 @@ void main() {
   test('ExoPlayer registers the core properties (plus its cache extra)', () async {
     final player = PlayerAndroid();
     final observations = await capturedObservations(
-      channelName: 'com.plezy/exo_player',
+      channelName: 'com.pleya/exo_player',
       initialize: () => player.requestAudioFocus(), // forces _ensureInitialized
       dispose: () => player.dispose(),
     );
@@ -86,7 +86,7 @@ void main() {
   test('mpv registers the core properties (plus its track/device extras)', () async {
     final player = PlayerNative();
     final observations = await capturedObservations(
-      channelName: 'com.plezy/mpv_player',
+      channelName: 'com.pleya/mpv_player',
       initialize: () => player.setLogLevel('warn'), // forces _ensureInitialized
       dispose: () => player.dispose(),
     );

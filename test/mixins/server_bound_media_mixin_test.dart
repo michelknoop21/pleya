@@ -1,10 +1,10 @@
 import 'package:flutter/widgets.dart';
-import 'package:plezy/media/ids.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/media/media_backend.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/mixins/server_bound_media_mixin.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/mixins/server_bound_media_mixin.dart';
 
 /// Probe widget exposing the mixin's surface so tests can read its getters
 /// and call its helpers against a real BuildContext.

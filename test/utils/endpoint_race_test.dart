@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/utils/endpoint_race.dart';
+import 'package:pleya/utils/endpoint_race.dart';
 
 typedef _Result = ({String url, bool ok});
 

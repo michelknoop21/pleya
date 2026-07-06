@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/widgets/video_controls/helpers/mobile_edge_adjustment_tracker.dart';
+import 'package:pleya/widgets/video_controls/helpers/mobile_edge_adjustment_tracker.dart';
 
 void main() {
   const size = Size(1000, 600);

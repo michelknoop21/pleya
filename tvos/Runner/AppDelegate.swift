@@ -5,7 +5,7 @@ import universal_gamepad
 import os_media_controls
 import wakelock_plus
 
-@objc class PlezyFlutterViewController: FlutterViewController {
+@objc class PleyaFlutterViewController: FlutterViewController {
   private lazy var tvRemoteChannel = FlutterBasicMessageChannel(
     name: "flutter/gamepadtouchevent",
     binaryMessenger: binaryMessenger,
@@ -57,7 +57,7 @@ import wakelock_plus
     }
 
     let subtype = event.subtype
-    print("PlezyTvRemote: remote control event subtype=\(remoteControlSubtypeName(subtype))")
+    print("PleyaTvRemote: remote control event subtype=\(remoteControlSubtypeName(subtype))")
     switch subtype {
     case .remoteControlPlay, .remoteControlPause, .remoteControlTogglePlayPause:
       sendPlayPauseEvent(source: "remote_control", detail: remoteControlSubtypeName(subtype))
@@ -80,7 +80,7 @@ import wakelock_plus
   }
 
   private func sendPlayPauseEvent(source: String, detail: String) {
-    print("PlezyTvRemote: intercepted play/pause source=\(source) detail=\(detail)")
+    print("PleyaTvRemote: intercepted play/pause source=\(source) detail=\(detail)")
     tvRemoteChannel.sendMessage(["type": "play_pause", "source": source, "detail": detail])
   }
 
@@ -161,6 +161,12 @@ import wakelock_plus
     }
     if let r = self.registrar(forPlugin: "SystemShelfPlugin") {
       SystemShelfPlugin.register(with: r)
+    }
+    if let r = self.registrar(forPlugin: "ICloudKvsPlugin") {
+      ICloudKvsPlugin.register(with: r)
+    }
+    if let r = self.registrar(forPlugin: "NativeTextEntryPlugin") {
+      NativeTextEntryPlugin.register(with: r)
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)

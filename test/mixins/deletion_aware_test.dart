@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:plezy/media/ids.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/mixins/deletion_aware.dart';
-import 'package:plezy/utils/deletion_notifier.dart';
+import 'package:pleya/mixins/deletion_aware.dart';
+import 'package:pleya/utils/deletion_notifier.dart';
 
 class _Probe extends StatefulWidget {
   const _Probe({this.onState, this.serverIdOverride, this.globalKeysOverride, required this.itemIdsOverride});

@@ -87,6 +87,7 @@ extension _PlexVideoControlsPlaybackInputMethods on _PlexVideoControlsState {
   }
 
   Future<void> _playOrPause() async {
+    Haptics.light();
     if (!widget.player.state.playing && _rewindOnResume > 0) {
       final target = widget.player.state.position - Duration(seconds: _rewindOnResume);
       final clamped = clampSeekPosition(widget.player, target);
@@ -517,6 +518,7 @@ extension _PlexVideoControlsPlaybackInputMethods on _PlexVideoControlsState {
 
   /// Show animated visual feedback for skip gesture
   void _showSkipFeedback({required bool isForward}) {
+    Haptics.selection();
     // Cancel BOTH timers: a skip landing during the fade-out window must not
     // leave the old hide timer pending, or it kills the fresh pill and zeroes
     // the accumulated count mid-display.
@@ -596,6 +598,7 @@ extension _PlexVideoControlsPlaybackInputMethods on _PlexVideoControlsState {
   void _handleLongPressStart() {
     if (!widget.canControl || widget.isLive) return;
 
+    Haptics.light();
     _setControlsState(() {
       _isLongPressing = true;
       _rateBeforeLongPress = widget.player.state.rate;
@@ -607,6 +610,7 @@ extension _PlexVideoControlsPlaybackInputMethods on _PlexVideoControlsState {
   /// Handle long-press end - restore original speed
   void _handleLongPressEnd() {
     if (!_isLongPressing) return;
+    Haptics.light();
     // Swallow the rate-restore emission so the stream-driven toast doesn't
     // flash as the rate snaps back to the prior value.
     _suppressRateToastUntil = DateTime.now().add(const Duration(milliseconds: 250));

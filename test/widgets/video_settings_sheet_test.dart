@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/mpv/models.dart';
-import 'package:plezy/mpv/player/player.dart';
-import 'package:plezy/mpv/player/player_state.dart';
-import 'package:plezy/mpv/player/player_streams.dart';
-import 'package:plezy/services/settings_service.dart';
-import 'package:plezy/theme/mono_tokens.dart';
-import 'package:plezy/utils/platform_detector.dart';
-import 'package:plezy/widgets/video_controls/sheets/video_settings_sheet.dart';
+import 'package:pleya/mpv/models.dart';
+import 'package:pleya/mpv/player/player.dart';
+import 'package:pleya/mpv/player/player_state.dart';
+import 'package:pleya/mpv/player/player_streams.dart';
+import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/theme/mono_tokens.dart';
+import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/video_controls/sheets/video_settings_sheet.dart';
 
 import '../test_helpers/prefs.dart';
 
@@ -20,9 +20,12 @@ const _testTokens = MonoTokens(
   slow: Duration(milliseconds: 300),
   bg: Colors.black,
   surface: Color(0xFF111111),
+  surfaceElevated: Color(0xFF2F2F2F),
   outline: Color(0xFF333333),
   text: Colors.white,
   textMuted: Color(0xFFAAAAAA),
+  accent: Color(0xFFF42B1F),
+  accentAlt: Color(0xFFFFB020),
   splashFactory: NoSplash.splashFactory,
 );
 

@@ -6,9 +6,12 @@
 class SimklConstants {
   SimklConstants._();
 
-  /// Registered Simkl app client ID. Extractable from the binary; same threat
-  /// model as the Plex token already in SharedPreferences.
-  static const String clientId = 'ac97718a469c33eab948b63f92226106157e58fdcdd70c1b5857f1779b1d3a6a';
+  /// Registered Simkl app client ID, injected at build time via
+  /// --dart-define=SIMKL_CLIENT_ID=... Empty ships no third-party identity.
+  static const String clientId = String.fromEnvironment('SIMKL_CLIENT_ID');
+
+  /// Whether Simkl integration has been configured for this build.
+  static bool get isConfigured => clientId.isNotEmpty;
 
   static const String apiBase = 'https://api.simkl.com';
 

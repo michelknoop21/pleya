@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/screens/video_player/completion_latch.dart';
+import 'package:pleya/screens/video_player/completion_latch.dart';
 
 void main() {
   CompletionLatch latch() => CompletionLatch(rearmWindowMs: 2000);

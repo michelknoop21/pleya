@@ -1,23 +1,23 @@
 import 'dart:convert';
-import 'package:plezy/media/ids.dart';
+import 'package:pleya/media/ids.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:plezy/media/media_backend.dart';
-import 'package:plezy/media/media_item.dart';
-import 'package:plezy/media/media_kind.dart';
-import 'package:plezy/media/media_server_client.dart';
-import 'package:plezy/models/trackers/anime_lists_mapping.dart';
-import 'package:plezy/models/trackers/fribb_mapping_row.dart';
-import 'package:plezy/services/trackers/anime_lists_mapping_store.dart';
-import 'package:plezy/services/trackers/anilist/anilist_tracker.dart';
-import 'package:plezy/services/trackers/fribb_mapping_store.dart';
-import 'package:plezy/services/trackers/mal/mal_tracker.dart';
-import 'package:plezy/services/trackers/simkl/simkl_tracker.dart';
-import 'package:plezy/services/trackers/tracker_coordinator.dart';
-import 'package:plezy/services/trackers/tracker_session.dart';
-import 'package:plezy/utils/external_ids.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/models/trackers/anime_lists_mapping.dart';
+import 'package:pleya/models/trackers/fribb_mapping_row.dart';
+import 'package:pleya/services/trackers/anime_lists_mapping_store.dart';
+import 'package:pleya/services/trackers/anilist/anilist_tracker.dart';
+import 'package:pleya/services/trackers/fribb_mapping_store.dart';
+import 'package:pleya/services/trackers/mal/mal_tracker.dart';
+import 'package:pleya/services/trackers/simkl/simkl_tracker.dart';
+import 'package:pleya/services/trackers/tracker_coordinator.dart';
+import 'package:pleya/services/trackers/tracker_session.dart';
+import 'package:pleya/utils/external_ids.dart';
 
 class _FakeMediaServerClient implements MediaServerClient {
   @override

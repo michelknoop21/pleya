@@ -1,5 +1,8 @@
 <script lang="ts">
   import Logo from './Logo.svelte';
+  import { SOURCE_REPO_URL } from '$lib/config';
+
+  const year = new Date().getFullYear();
 </script>
 
 <footer class="site-footer">
@@ -10,15 +13,24 @@
     <div class="footer-content">
       <!-- Logo + name -->
       <div class="footer-brand">
-        <span class="footer-logo"><Logo /></span>
-        <span>Plezy</span>
+        <span class="footer-logo"><Logo alt="Pleya" /></span>
+        <span>Pleya</span>
       </div>
 
       <!-- Links -->
       <nav class="footer-nav">
-        <a href="https://github.com/edde746/plezy" target="_blank" rel="noopener noreferrer">GitHub</a>
         <a href="/privacy">Privacy Policy</a>
+        <a href={SOURCE_REPO_URL} target="_blank" rel="noopener noreferrer">Source</a>
+        <a href="/LICENSE.txt" target="_blank" rel="noopener noreferrer">License</a>
       </nav>
+    </div>
+
+    <div class="footer-meta">
+      <p class="footer-copy">© {year} Michel Knoop</p>
+      <p class="footer-credit">
+        Free software · <a href="/LICENSE.txt" target="_blank" rel="noopener noreferrer">GPL-3.0</a> ·
+        <a href="/NOTICE.txt" target="_blank" rel="noopener noreferrer">Notices</a>
+      </p>
     </div>
   </div>
 </footer>
@@ -44,7 +56,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    gap: 2rem;
+    gap: 1.5rem;
   }
 
   .footer-brand {
@@ -52,10 +64,10 @@
     align-items: center;
     gap: 0.625rem;
     color: var(--color-text-muted);
-    font-weight: 500;
+    font-weight: 600;
   }
 
-  .footer-logo :global(svg) {
+  .footer-logo :global(img) {
     width: 1.75rem;
     height: 1.75rem;
   }
@@ -77,6 +89,28 @@
     color: var(--color-text);
   }
 
+  .footer-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    margin-top: 2rem;
+    color: var(--color-text-faint);
+    font-size: 0.8125rem;
+    text-align: center;
+  }
+
+  .footer-credit a {
+    color: var(--color-text-muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color 150ms ease;
+  }
+
+  .footer-credit a:hover {
+    color: var(--color-text);
+  }
+
   @media (min-width: 640px) {
     .site-footer {
       padding-block: 4rem;
@@ -88,6 +122,11 @@
 
     .footer-content {
       flex-direction: row;
+    }
+
+    .footer-meta {
+      flex-direction: row;
+      justify-content: space-between;
     }
   }
 </style>

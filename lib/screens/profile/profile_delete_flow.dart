@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../connection/connection_registry.dart';
+import '../../database/app_database.dart';
 import '../../i18n/strings.g.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../profiles/profile.dart';
@@ -42,10 +43,12 @@ Future<void> deleteProfile(BuildContext context, Profile profile) async {
   final connRegistry = context.read<ConnectionRegistry>();
   final profileRegistry = context.read<ProfileRegistry>();
   final downloadProvider = context.read<DownloadProvider>();
+  final database = context.read<AppDatabase>();
   final active = context.read<ActiveProfileProvider>();
   final wasActive = active.activeId == profile.id;
 
   await downloadProvider.deleteDownloadsForProfile(profile.id);
+  await database.deleteRecommendationDataForProfile(profile.id);
   await removeAllProfileConnectionsAndCleanup(
     profileId: profile.id,
     profileConnections: pcRegistry,

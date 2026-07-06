@@ -5,6 +5,8 @@ import 'package:path/path.dart' as path;
 
 import '../mpv/player/player.dart';
 import '../utils/app_logger.dart';
+import '../utils/platform_detector.dart';
+import 'settings_service.dart';
 
 /// Generates and manages an ambient lighting GLSL shader that fills letterbox/pillarbox
 /// bars with a blurred, dimmed version of the video edges.
@@ -21,13 +23,21 @@ class AmbientLightingService {
   String? _shaderPath;
   bool _enabled = false;
 
-  /// Brightness multiplier for the blurred background (0.0-1.0).
-  static const double _brightness = 0.5;
-
   AmbientLightingService(this._player);
 
+  /// Brightness multiplier for the blurred background (0.0-1.0), driven by the
+  /// ambient lighting intensity preference (subtle / balanced / bright).
+  double get _brightness => switch (SettingsService.instance.read(SettingsService.ambientLightingIntensity)) {
+    'subtle' => 0.3,
+    'bright' => 0.8,
+    _ => 0.5,
+  };
+
   bool get isEnabled => _enabled;
-  bool get isSupported => _player.playerType == 'mpv' && !Platform.isIOS;
+
+  // tvOS reports as Platform.isIOS but bundles Libplacebo, so GLSL works there;
+  // only iPhone/iPad stay excluded.
+  bool get isSupported => _player.playerType == 'mpv' && (!Platform.isIOS || PlatformDetector.isAppleTV());
 
   /// Enable ambient lighting effect.
   ///
@@ -37,7 +47,8 @@ class AmbientLightingService {
     if (!isSupported) return;
 
     try {
-      _shaderPath ??= await _writeShaderToTemp(_generateShader());
+      // Always rewrite: the shader bakes in the current intensity preference.
+      _shaderPath = await _writeShaderToTemp(_generateShader());
 
       appLogger.d('AmbientLightingService: Shader path: $_shaderPath');
 
@@ -71,6 +82,23 @@ class AmbientLightingService {
       appLogger.d('AmbientLightingService: Disabled');
     } catch (e, st) {
       appLogger.w('AmbientLightingService: Failed to disable', error: e, stackTrace: st);
+    }
+  }
+
+  /// Regenerate the shader after an intensity preference change and, when the
+  /// effect is live, hot-swap it in the mpv shader chain.
+  Future<void> refreshIntensity() async {
+    if (!_enabled || _shaderPath == null) return;
+    final oldPath = _shaderPath!;
+    try {
+      final newPath = await _writeShaderToTemp(_generateShader());
+      await _player.command(['change-list', 'glsl-shaders', 'remove', oldPath]);
+      await _player.command(['change-list', 'glsl-shaders', 'append', newPath]);
+      // Only adopt the new path once mpv actually holds it, so a mid-swap
+      // failure can't leave _shaderPath pointing at a shader mpv never installed.
+      _shaderPath = newPath;
+    } catch (e, st) {
+      appLogger.w('AmbientLightingService: Failed to refresh intensity', error: e, stackTrace: st);
     }
   }
 

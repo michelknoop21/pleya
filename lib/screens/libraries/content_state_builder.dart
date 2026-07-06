@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import '../../i18n/strings.g.dart';
-import 'state_messages.dart';
+import '../../widgets/state_view.dart';
 
-/// Sliver wrapper around [ErrorStateWidget] for use in `CustomScrollView.slivers`.
+/// Sliver wrapper around [StateView.error] for use in `CustomScrollView.slivers`.
 class SliverErrorState extends StatelessWidget {
   final String message;
   final VoidCallback? onRetry;
@@ -13,8 +13,8 @@ class SliverErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SliverFillRemaining(
-    child: ErrorStateWidget(
-      message: message,
+    child: StateView.error(
+      title: message,
       icon: Symbols.error_outline_rounded,
       onRetry: onRetry,
       retryLabel: retryLabel ?? t.common.retry,
@@ -22,7 +22,7 @@ class SliverErrorState extends StatelessWidget {
   );
 }
 
-/// Sliver wrapper around [EmptyStateWidget] for use in `CustomScrollView.slivers`.
+/// Sliver wrapper around [StateView.empty] for use in `CustomScrollView.slivers`.
 class SliverEmptyState extends StatelessWidget {
   final String message;
   final IconData? icon;
@@ -32,7 +32,7 @@ class SliverEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SliverFillRemaining(
-    child: EmptyStateWidget(message: message, icon: icon, subtitle: subtitle),
+    child: StateView.empty(title: message, icon: icon ?? Symbols.inbox_rounded, message: subtitle),
   );
 }
 
@@ -80,8 +80,8 @@ class ContentStateBuilder<T> extends StatelessWidget {
 
     // Error state (only show error if items list is empty)
     if (errorMessage != null && items.isEmpty) {
-      return ErrorStateWidget(
-        message: errorMessage!,
+      return StateView.error(
+        title: errorMessage!,
         icon: Symbols.error_outline_rounded,
         onRetry: onRetry,
         retryLabel: t.common.retry,
@@ -90,7 +90,7 @@ class ContentStateBuilder<T> extends StatelessWidget {
 
     // Empty state
     if (items.isEmpty) {
-      return EmptyStateWidget(message: emptyMessage, icon: emptyIcon);
+      return StateView.empty(title: emptyMessage, icon: emptyIcon);
     }
 
     // Content state - delegate to builder

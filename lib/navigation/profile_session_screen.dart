@@ -13,10 +13,17 @@ import '../providers/hidden_libraries_provider.dart';
 import '../providers/libraries_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/playback_state_provider.dart';
+import '../providers/seerr_provider.dart';
 import '../providers/trakt_account_provider.dart';
 import '../providers/trackers_provider.dart';
+import '../providers/user_profile_provider.dart';
 import '../providers/watch_state_store.dart';
+import '../database/app_database.dart';
+import '../i18n/strings.g.dart';
 import '../screens/main_screen.dart';
+import '../services/recommendations/interaction_recorder.dart';
+import '../services/recommendations/personalized_rows_builder.dart';
+import '../services/recommendations/recommendation_service.dart';
 import '../services/storage_service.dart';
 import '../utils/app_logger.dart';
 import '../watch_together/providers/watch_together_provider.dart';
@@ -113,6 +120,18 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                 },
               ),
               ChangeNotifierProvider(
+                create: (context) {
+                  final provider = SeerrProvider();
+                  provider.attachPlexTokenResolver(() => context.read<UserProfileProvider>().currentPlexUserToken());
+                  unawaited(
+                    provider.onActiveProfileChanged(activeId).catchError((Object e, StackTrace s) {
+                      appLogger.w('Seerr profile hydrate failed', error: e, stackTrace: s);
+                    }),
+                  );
+                  return provider;
+                },
+              ),
+              ChangeNotifierProvider(
                 create: (context) =>
                     HiddenLibrariesProvider(storageService: context.read<StorageService>(), profileId: activeId),
                 lazy: true,
@@ -123,6 +142,28 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   multiServer: context.read<MultiServerProvider>(),
                 ),
               ),
+              // On-device recommendation learning + serving, scoped to this
+              // profile (torn down with the KeyedSubtree on profile switch).
+              Provider<RecommendationService>(
+                create: (context) => RecommendationService(
+                  profileId: activeId ?? '',
+                  database: context.read<AppDatabase>(),
+                  titles: PersonalizedRowTitles(
+                    topPicks: t.discover.topPicksForYou,
+                    becauseYouLike: (genre) => t.discover.becauseYouLike(genre: genre),
+                    hiddenGems: t.discover.hiddenGems,
+                  ),
+                ),
+              ),
+              Provider<InteractionRecorder>(
+                lazy: false,
+                create: (context) => InteractionRecorder(
+                  database: context.read<AppDatabase>(),
+                  profileId: activeId ?? '',
+                  clientResolver: context.read<MultiServerProvider>().getClientForServer,
+                )..start(),
+                dispose: (_, recorder) => recorder.dispose(),
+              ),
               ChangeNotifierProvider(
                 create: (context) {
                   final activeProfile = context.read<ActiveProfileProvider>();
@@ -131,6 +172,7 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                     context.read<HiddenLibrariesProvider>(),
                     context.read<LibrariesProvider>(),
                     isProfileBinding: () => activeProfile.isBinding,
+                    recommendations: activeId == null ? null : context.read<RecommendationService>(),
                   );
                 },
               ),

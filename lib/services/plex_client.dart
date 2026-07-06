@@ -10,6 +10,7 @@ import '../media/library_first_character.dart';
 import '../media/library_query.dart';
 import '../media/live_tv_support.dart';
 import '../media/media_backend.dart';
+import '../media/item_watcher.dart';
 import '../media/media_hub.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
@@ -239,6 +240,11 @@ class PlexClient
   /// concurrent callers (e.g. the post-connect warm-up racing the first
   /// playback).
   Future<bool>? _serverTranscoderPending;
+
+  /// Server account roster (`accountID` → name/thumb) from `/accounts`.
+  /// Cached per client-instance — the roster changes rarely. `null` = not
+  /// fetched yet; only populated on a successful fetch so failures retry.
+  Map<int, ({String name, String? thumb})>? _serverAccountsCache;
 
   /// Libraries parsed from /media/providers (includes individually shared items)
   List<PlexLibraryDto> _providerLibraries = const [];
@@ -560,8 +566,8 @@ class PlexClient
       final headers = <String, String>{'X-Plex-Token': token};
       if (clientIdentifier != null) {
         headers['X-Plex-Client-Identifier'] = clientIdentifier;
-        headers['X-Plex-Product'] = 'Plezy';
-        headers['X-Plex-Device-Name'] = 'Plezy';
+        headers['X-Plex-Product'] = 'Pleya';
+        headers['X-Plex-Device-Name'] = 'Pleya';
       }
 
       final response = await client.get('/', headers: headers);
@@ -3714,6 +3720,121 @@ class PlexClient
   Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async {
     final items = await _getContinueWatching(count: count);
     return items.map((m) => PlexMappers.mediaItem(m)).toList();
+  }
+
+  /// `/library/all` sorted by `lastViewedAt` is user-scoped per token, so
+  /// this avoids the accountID ambiguity of `/status/sessions/history/all`.
+  /// Watched-only filtering happens client-side on the small result window.
+  @override
+  Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5}) async {
+    try {
+      // type=1 movies, type=2 shows — merged by last-viewed recency.
+      final responses = await Future.wait([
+        for (final type in const ['1', '2'])
+          _getWithFailover(
+            '/library/all',
+            queryParameters: {
+              'type': type,
+              'sort': 'lastViewedAt:desc',
+              'X-Plex-Container-Size': limit,
+              'includeGuids': 1,
+            },
+          ),
+      ]);
+      final items = [
+        for (final response in responses)
+          for (final dto in _extractMetadataList(response)) PlexMappers.mediaItem(dto),
+      ].where((item) => item.lastViewedAt != null && item.isWatched).toList();
+      items.sort((a, b) => (b.lastViewedAt ?? 0).compareTo(a.lastViewedAt ?? 0));
+      return items.take(limit).toList();
+    } catch (e, st) {
+      appLogger.w('PlexClient: recently watched fetch failed (treating as empty)', error: e, stackTrace: st);
+      return const [];
+    }
+  }
+
+  /// Server account roster from `/accounts` (`accountID` → name + avatar).
+  /// Requires the server-owner token — pass it via [authToken] when the active
+  /// client token is a restricted managed-user token. Cached per instance.
+  /// Returns `{}` on any failure (non-owner, offline, parse error).
+  Future<Map<int, ({String name, String? thumb})>> fetchServerAccounts({String? authToken}) async {
+    final cached = _serverAccountsCache;
+    if (cached != null) return cached;
+    try {
+      final response = await _getWithFailover(
+        '/accounts',
+        headers: authToken == null ? null : {'X-Plex-Token': authToken},
+      );
+      final container = _getMediaContainer(response);
+      final accounts = (container?['Account'] as List?) ?? const [];
+      final map = <int, ({String name, String? thumb})>{};
+      for (final raw in accounts) {
+        if (raw is! Map<String, dynamic>) continue;
+        final id = flexibleInt(raw['id']);
+        if (id == null) continue;
+        final name = (raw['name'] as String?)?.trim() ?? '';
+        final thumb = (raw['thumb'] as String?)?.trim();
+        map[id] = (name: name, thumb: thumb == null || thumb.isEmpty ? null : thumb);
+      }
+      // Only cache a populated roster — a transient empty/partial /accounts
+      // response must not poison later owner-token calls into "User N".
+      if (map.isNotEmpty) _serverAccountsCache = map;
+      return map;
+    } catch (e, st) {
+      appLogger.d('PlexClient: /accounts fetch failed (treating as empty)', error: e, stackTrace: st);
+      return const {};
+    }
+  }
+
+  /// Server users who have watched [ratingKey], newest first. Reads the
+  /// server-wide history (`/status/sessions/history/all`) — owner-token only,
+  /// so pass the owner token via [authToken] and gate the call on server
+  /// ownership at the call site. Returns `[]` on any failure or no data.
+  Future<List<ItemWatcher>> fetchItemWatchers(String ratingKey, {String? authToken}) async {
+    try {
+      final response = await _getWithFailover(
+        '/status/sessions/history/all',
+        queryParameters: {'metadataItemID': ratingKey, 'sort': 'viewedAt:desc'},
+        headers: authToken == null ? null : {'X-Plex-Token': authToken},
+      );
+      final container = _getMediaContainer(response);
+      final rows = (container?['Metadata'] as List?) ?? const [];
+
+      // Distinct accountID → latest viewedAt. Client-side item guard in case
+      // the server ignores metadataItemID: match the row against the requested
+      // key at movie (ratingKey) or show (parent/grandparent) level.
+      final byAccount = <int, int>{};
+      for (final raw in rows) {
+        if (raw is! Map<String, dynamic>) continue;
+        final keys = [raw['ratingKey'], raw['parentRatingKey'], raw['grandparentRatingKey']]
+            .map((k) => k?.toString())
+            .toList();
+        if (!keys.contains(ratingKey)) continue;
+        final accountId = flexibleInt(raw['accountID']);
+        if (accountId == null) continue;
+        final viewedAt = flexibleInt(raw['viewedAt']) ?? 0;
+        final existing = byAccount[accountId];
+        if (existing == null || viewedAt > existing) byAccount[accountId] = viewedAt;
+      }
+      if (byAccount.isEmpty) return const [];
+
+      final accounts = await fetchServerAccounts(authToken: authToken);
+      final watchers = <ItemWatcher>[
+        for (final entry in byAccount.entries)
+          ItemWatcher(
+            accountId: entry.key,
+            displayName: accounts[entry.key]?.name.isNotEmpty == true
+                ? accounts[entry.key]!.name
+                : 'User ${entry.key}',
+            thumbUrl: accounts[entry.key]?.thumb,
+            viewedAt: entry.value,
+          ),
+      ]..sort((a, b) => b.viewedAt.compareTo(a.viewedAt));
+      return watchers;
+    } catch (e, st) {
+      appLogger.d('PlexClient: item watchers fetch failed (treating as empty)', error: e, stackTrace: st);
+      return const [];
+    }
   }
 
   @override

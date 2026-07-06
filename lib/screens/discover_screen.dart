@@ -1,14 +1,17 @@
 import 'dart:async';
 import '../media/ids.dart';
 import 'dart:io' show Platform;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HardwareKeyboard, LogicalKeyboardKey;
-import 'package:plezy/widgets/app_icon.dart';
+import 'package:pleya/widgets/app_icon.dart';
 import '../widgets/server_activities_button.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import '../focus/focusable_action_bar.dart';
+import '../focus/focusable_button.dart';
+import '../focus/focus_theme.dart';
 import '../focus/input_mode_tracker.dart';
 import '../focus/key_event_utils.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
@@ -30,7 +33,8 @@ import '../providers/watch_state_store.dart';
 import '../widgets/hub_section.dart';
 import '../widgets/app_menu.dart';
 import '../widgets/clickable_cursor.dart';
-import '../widgets/loading_indicator_box.dart';
+import '../widgets/skeletons.dart';
+import '../widgets/state_view.dart';
 import '../widgets/profile_switching_overlay.dart';
 import 'profile/profile_switch_screen.dart';
 import '../connection/connection_registry.dart';
@@ -52,14 +56,16 @@ import '../mixins/refreshable.dart';
 import '../mixins/tab_visibility_aware.dart';
 import '../i18n/strings.g.dart';
 import '../utils/app_logger.dart';
-import '../utils/debouncer.dart';
 import '../utils/dialogs.dart';
-import '../utils/formatters.dart';
 import '../utils/media_navigation_helper.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/video_player_navigation.dart';
 import '../utils/layout_constants.dart';
 import '../utils/platform_detector.dart';
+import '../services/fullscreen_state_manager.dart';
+import '../utils/desktop_window_padding.dart';
+import '../widgets/top_ten_row.dart';
+import '../theme/mono_theme.dart' show kAccentAlt;
 import '../theme/mono_tokens.dart';
 import 'auth_screen.dart';
 import 'libraries/content_state_builder.dart';
@@ -81,6 +87,22 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     with Refreshable, FullRefreshable, TabVisibilityAware, FocusableTab, WidgetsBindingObserver {
   static const Duration _heroAutoScrollDuration = Duration(seconds: 8);
   static const Duration _indicatorUpdateInterval = Duration(milliseconds: 200);
+  // Home rows are a touch shorter than the shared compact scale so the billboard
+  // hero gets more screen height (Netflix-style: big hero, one row peeking).
+  // ponytail: single knob — lower for an even taller hero, raise to restore.
+  // Home "Continue watching" rail uses the same poster size as every other TV
+  // rail (compactTallPosterScale) and the same libraryDensity setting, so the
+  // cards match the rest of the app and scale with the density preference. The
+  // hero content always reserves `railHeight + gap` below it, so its action
+  // buttons never slide behind the rail — the hero simply takes whatever height
+  // the rail leaves.
+  static const double _tvHeroContentTopFraction = 0.075;
+  // How much of the browse rail peeks at the bottom of the home screen when the
+  // hero is focused (fraction of viewport height): enough for the hub label and
+  // the poster tops. Focusing the rail slides the rest up into view.
+  static const double _tvHomeRailPeekFraction = 0.16;
+  static const double _tvHeroRailGap = 32;
+  static const double _tvHeroMinInfoHeight = 96;
 
   /// Data + refresh policy live in [DiscoverProvider]; this state keeps only
   /// UI concerns (hero carousel, focus, spotlight). The proxy getters keep
@@ -89,6 +111,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   int _seenLoadGeneration = 0;
 
   List<MediaItem> get _onDeck => _discover.onDeck;
+  // Hero source: newest released films (release-date ordered), not on-deck.
+  List<MediaItem> get _latestMovies => _discover.latestMovies;
   List<MediaHub> get _hubs => _discover.hubs;
   bool get _hasMoreContinueWatching => _discover.hasMoreContinueWatching;
   bool get _isLoading => _discover.isLoading;
@@ -104,20 +128,23 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   int _currentHeroIndex = 0;
   Timer? _autoScrollTimer;
   Timer? _indicatorTimer;
+  Timer? _tvHeroManualPauseTimer;
   final ValueNotifier<double> _indicatorProgress = ValueNotifier(0.0);
   bool _isAutoScrollPaused = false;
   bool _heroFocusPausedAutoScroll = false;
   // ValueNotifier (not setState) so a spotlight swap rebuilds only the
   // TvSpotlightBackground subtree, never the rail/rows.
   final ValueNotifier<MediaItem?> _spotlightItem = ValueNotifier(null);
-  // Settle delay so d-pad scrubbing across a row doesn't fetch/decode a
-  // full-screen backdrop for every intermediate item.
-  final Debouncer _spotlightDebouncer = Debouncer(const Duration(milliseconds: 150));
   bool _isTabVisible = true;
 
   // Track initial load so we can focus hero when content first appears
   bool _initialLoadComplete = false;
   bool _pendingTvBrowseRailFocus = false;
+
+  // tvOS "Netflix landing": at rest the hero fills the screen and the browse
+  // rail only peeks at the bottom. Focusing the rail reveals it (slides up over
+  // the hero); focusing the hero actions hides it again.
+  bool _tvRailRevealed = false;
 
   // Hub navigation keys
   GlobalKey<HubSectionState>? _continueWatchingHubKey;
@@ -127,6 +154,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   // Hero and app bar focus
   late FocusNode _heroFocusNode;
+  // TV Netflix-style billboard action buttons (Play / More info).
+  final FocusNode _tvHeroPlayFocusNode = FocusNode(debugLabel: 'tv_hero_play');
+  final FocusNode _tvHeroInfoFocusNode = FocusNode(debugLabel: 'tv_hero_info');
   final _actionBarKey = GlobalKey<FocusableActionBarState>();
   final _serverActivitiesButtonKey = GlobalKey<ServerActivitiesButtonState>();
   final _userMenuKey = GlobalKey<AppMenuButtonState<String>>();
@@ -176,9 +206,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return keys;
   }
 
-  bool get _isHeroSectionVisible => _onDeck.isNotEmpty && context.settingsRead(SettingsService.showHeroSection);
+  bool get _isHeroSectionVisible => _latestMovies.isNotEmpty && context.settingsRead(SettingsService.showHeroSection);
 
   MediaItem? get _defaultSpotlightItem {
+    if (_latestMovies.isNotEmpty) return _latestMovies.first;
+    // Movies-empty libraries (e.g. show-only servers — latest movies is
+    // films-only) still have Continue Watching + hubs; fall back to those so
+    // the TV billboard is never blank while the rail shows content. _onDeck is
+    // the first row on TV, so it precedes the generic hubs.
     if (_onDeck.isNotEmpty) return _onDeck.first;
     for (final hub in _hubs) {
       if (hub.items.isNotEmpty) return hub.items.first;
@@ -208,21 +243,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   MediaItem? get _effectiveSpotlightItem {
     final current = _spotlightItem.value;
     if (current == null) return _defaultSpotlightItem;
+    if (_latestMovies.any((item) => item.globalKey == current.globalKey)) return current;
     if (_onDeck.any((item) => item.globalKey == current.globalKey)) return current;
     for (final hub in _hubs) {
       if (hub.items.any((item) => item.globalKey == current.globalKey)) return current;
     }
     return _defaultSpotlightItem;
-  }
-
-  void _setSpotlightItem(MediaItem item) {
-    // Same-key check lives inside the callback: an A→B→A scrub must cancel
-    // the pending B, not early-return and let it fire.
-    _spotlightDebouncer.run(() {
-      if (!mounted) return;
-      if (_spotlightItem.value?.globalKey == item.globalKey) return;
-      _spotlightItem.value = item;
-    });
   }
 
   void _scrollToTop() {
@@ -322,6 +348,27 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (_pendingTvBrowseRailFocus) _focusTvBrowseRailWhenReady();
   }
 
+  /// Reveal (rail slides up over the hero) or hide (only peeks) the TV browse
+  /// rail. Driven by focus: the rail focusing reveals it, a hero action focusing
+  /// hides it.
+  void _setTvRailRevealed(bool revealed) {
+    if (!mounted || _tvRailRevealed == revealed) return;
+    setState(() => _tvRailRevealed = revealed);
+    if (revealed) {
+      // Rail focus drives the hero now — stop auto-rotate so it doesn't fight
+      // the focus-follow.
+      _autoScrollTimer?.cancel();
+      _stopIndicatorProgress();
+    } else {
+      // Focus left the rail (back to hero): restore the featured item and resume.
+      // Skip the restart when a route is pushed over us (e.g. opening a detail
+      // from a rail item) so the timer doesn't churn the hidden hero.
+      _spotlightItem.value = _defaultSpotlightItem;
+      final isCurrent = ModalRoute.of(context)?.isCurrent ?? false;
+      if (_isTabVisible && !_isAutoScrollPaused && isCurrent) _startAutoScroll();
+    }
+  }
+
   /// Handle vertical navigation between hubs
   /// Returns true if the navigation was handled
   bool _handleVerticalNavigation(int hubIndex, bool isUp) {
@@ -361,12 +408,25 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     MainScreenFocusScope.of(context, listen: false)?.focusSidebar();
   }
 
+  /// Focus the TV billboard's primary (Play) action. Falls back to the top app
+  /// bar when no billboard item is present (buttons not mounted).
+  void _focusTvHeroPlay() {
+    if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
+    if (_effectiveSpotlightItem != null && _tvHeroPlayFocusNode.canRequestFocus) {
+      _tvHeroPlayFocusNode.requestFocus();
+    } else {
+      _focusTopActions();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _heroFocusNode = FocusNode(debugLabel: 'hero_section');
     _heroFocusNode.addListener(_onHeroFocusChanged);
+    _tvHeroPlayFocusNode.addListener(_onTvHeroActionFocusChanged);
+    _tvHeroInfoFocusNode.addListener(_onTvHeroActionFocusChanged);
     _discover = context.read<DiscoverProvider>();
     _seenLoadGeneration = _discover.loadGeneration;
     _discover.addListener(_onDiscoverChanged);
@@ -384,7 +444,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final generation = _discover.loadGeneration;
     final isNewLoad = generation != _seenLoadGeneration;
     _seenLoadGeneration = generation;
-    final heroOutOfBounds = _currentHeroIndex >= _onDeck.length;
+    final heroOutOfBounds = _currentHeroIndex >= _latestMovies.length;
 
     setState(() {
       if (isNewLoad || heroOutOfBounds) {
@@ -394,20 +454,32 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     });
     _applyPendingTvBrowseRailFocus();
 
-    if ((isNewLoad || heroOutOfBounds) && _heroController.hasClients && _onDeck.isNotEmpty) {
+    if ((isNewLoad || heroOutOfBounds) && _heroController.hasClients && _latestMovies.isNotEmpty) {
       _heroController.jumpToPage(0);
     }
     // Focus hero when fresh content lands, but only if no modal route is on top
-    if (isNewLoad && !PlatformDetector.isTV() && _onDeck.isNotEmpty && (ModalRoute.of(context)?.isCurrent ?? false)) {
+    if (isNewLoad &&
+        !PlatformDetector.isTV() &&
+        _latestMovies.isNotEmpty &&
+        (ModalRoute.of(context)?.isCurrent ?? false)) {
       _heroFocusNode.requestFocus();
     }
 
     // On initial load, focus content so the user doesn't start on the toolbar
     if (!_initialLoadComplete) {
-      if (PlatformDetector.isTV() && (_onDeck.isNotEmpty || _hubs.isNotEmpty)) {
+      if (PlatformDetector.isTV() && (_latestMovies.isNotEmpty || _onDeck.isNotEmpty || _hubs.isNotEmpty)) {
         _initialLoadComplete = true;
-        _focusTvBrowseRailWhenReady();
-      } else if (!PlatformDetector.isTV() && _onDeck.isNotEmpty) {
+        // Netflix-style: land focus on the billboard Play button when a
+        // spotlight item exists; otherwise fall back to the content rail.
+        if (_effectiveSpotlightItem != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _focusTvHeroPlay();
+          });
+        } else {
+          _focusTvBrowseRailWhenReady();
+        }
+      } else if (!PlatformDetector.isTV() && _latestMovies.isNotEmpty) {
         _initialLoadComplete = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
@@ -435,6 +507,39 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     }
   }
 
+  void _onTvHeroActionFocusChanged() {
+    if (!PlatformDetector.isTV()) return;
+    if (_tvHeroPlayFocusNode.hasFocus || _tvHeroInfoFocusNode.hasFocus) {
+      _autoScrollTimer?.cancel();
+      _stopIndicatorProgress();
+    } else if (_isTabVisible && !_isAutoScrollPaused) {
+      _startAutoScroll();
+    }
+  }
+
+  void _moveTvHero(int delta) {
+    if (_latestMovies.length < 2) return;
+    final current = _effectiveSpotlightItem;
+    final currentIndex = current == null ? -1 : _latestMovies.indexWhere((m) => m.globalKey == current.globalKey);
+    final baseIndex = currentIndex == -1 ? _currentHeroIndex.clamp(0, _latestMovies.length - 1).toInt() : currentIndex;
+    final nextIndex = (baseIndex + delta) % _latestMovies.length;
+    final normalizedIndex = nextIndex < 0 ? nextIndex + _latestMovies.length : nextIndex;
+    setState(() => _currentHeroIndex = normalizedIndex);
+    _spotlightItem.value = _latestMovies[normalizedIndex];
+    _pauseTvHeroAutoScrollForManualNavigation();
+  }
+
+  void _pauseTvHeroAutoScrollForManualNavigation() {
+    if (!PlatformDetector.isTV()) return;
+    _autoScrollTimer?.cancel();
+    _tvHeroManualPauseTimer?.cancel();
+    _tvHeroManualPauseTimer = Timer(_heroAutoScrollDuration, () {
+      if (!mounted || !_isTabVisible || _isAutoScrollPaused) return;
+      if (_tvHeroPlayFocusNode.hasFocus || _tvHeroInfoFocusNode.hasFocus) return;
+      _startAutoScroll();
+    });
+  }
+
   /// Handle key events for the hero section.
   KeyEventResult _handleHeroKeyEvent(FocusNode node, KeyEvent event) {
     final backResult = handleBackKeyAction(event, _navigateToSidebar);
@@ -454,13 +559,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         }
       },
       onRight: () {
-        if (_currentHeroIndex < _onDeck.length - 1) {
+        if (_currentHeroIndex < _latestMovies.length - 1) {
           _heroController.nextPage(duration: tokens(context).slow, curve: Curves.easeInOut);
         }
       },
       onSelect: () {
-        if (_onDeck.isNotEmpty && _currentHeroIndex < _onDeck.length) {
-          navigateToMediaItem(context, _onDeck[_currentHeroIndex], playDirectly: true);
+        if (_latestMovies.isNotEmpty && _currentHeroIndex < _latestMovies.length) {
+          navigateToMediaItem(context, _latestMovies[_currentHeroIndex], playDirectly: true);
         }
       },
     )(node, event);
@@ -472,13 +577,17 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     WidgetsBinding.instance.removeObserver(this);
     _autoScrollTimer?.cancel();
     _indicatorTimer?.cancel();
-    _spotlightDebouncer.dispose();
+    _tvHeroManualPauseTimer?.cancel();
     _spotlightItem.dispose();
     _indicatorProgress.dispose();
     _heroController.dispose();
     _scrollController.dispose();
     _heroFocusNode.removeListener(_onHeroFocusChanged);
     _heroFocusNode.dispose();
+    _tvHeroPlayFocusNode.removeListener(_onTvHeroActionFocusChanged);
+    _tvHeroInfoFocusNode.removeListener(_onTvHeroActionFocusChanged);
+    _tvHeroPlayFocusNode.dispose();
+    _tvHeroInfoFocusNode.dispose();
     super.dispose();
   }
 
@@ -501,21 +610,39 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   void _startAutoScroll() {
     _autoScrollTimer?.cancel();
-    if (PlatformDetector.isTV()) return;
     if (_isAutoScrollPaused) return;
+
+    if (PlatformDetector.isTV()) {
+      // TV billboard cycles through the newest releases. Timer is created up
+      // front (content loads async); each tick bails until items are present
+      // and while the hero actions are focused, so the Play/Info target never
+      // shifts under the user mid-press.
+      _autoScrollTimer = Timer.periodic(_heroAutoScrollDuration, (timer) {
+        if (!mounted || _isAutoScrollPaused || _latestMovies.length < 2) return;
+        if (_tvHeroPlayFocusNode.hasFocus || _tvHeroInfoFocusNode.hasFocus) return;
+        // Rail revealed → the hero follows rail focus; don't let auto-rotate
+        // mutate the spotlight out from under it (order-independent guard so a
+        // stray timer restart can't fight focus-follow).
+        if (_tvRailRevealed) return;
+        final current = _spotlightItem.value ?? _defaultSpotlightItem;
+        final idx = current == null ? -1 : _latestMovies.indexWhere((m) => m.globalKey == current.globalKey);
+        _spotlightItem.value = _latestMovies[(idx + 1) % _latestMovies.length];
+      });
+      return;
+    }
 
     _startIndicatorProgress();
     _autoScrollTimer = Timer.periodic(_heroAutoScrollDuration, (timer) {
-      if (_onDeck.isEmpty || !_heroController.hasClients || _isAutoScrollPaused) {
+      if (_latestMovies.isEmpty || !_heroController.hasClients || _isAutoScrollPaused) {
         return;
       }
 
       // Validate current index is within bounds before calculating next page
-      if (_currentHeroIndex >= _onDeck.length) {
+      if (_currentHeroIndex >= _latestMovies.length) {
         _currentHeroIndex = 0;
       }
 
-      final nextPage = (_currentHeroIndex + 1) % _onDeck.length;
+      final nextPage = (_currentHeroIndex + 1) % _latestMovies.length;
       _heroController.animateToPage(nextPage, duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
       // Wait for page transition to complete before resetting progress
       Future.delayed(const Duration(milliseconds: 500), () {
@@ -596,7 +723,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   // Helper method to calculate visible dot range (max 5 dots)
   ({int start, int end}) _getVisibleDotRange() {
-    final totalDots = _onDeck.length;
+    final totalDots = _latestMovies.length;
     if (totalDots <= 5) {
       return (start: 0, end: totalDots - 1);
     }
@@ -611,7 +738,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   // Helper method to determine dot size based on position
   double _getDotSize(int dotIndex, int start, int end) {
-    final totalDots = _onDeck.length;
+    final totalDots = _latestMovies.length;
 
     // If we have 5 or fewer dots, all are full size (8px)
     if (totalDots <= 5) {
@@ -892,10 +1019,22 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   Widget _buildOverlaidAppBar() {
+    // Rebuild on fullscreen toggle so the macOS traffic-light inset updates
+    // (the singleton is a ChangeNotifier; nothing else in this subtree listens).
+    return ListenableBuilder(listenable: FullscreenStateManager(), builder: (context, _) => _buildOverlaidAppBarBody());
+  }
+
+  Widget _buildOverlaidAppBarBody() {
     final statusBarHeight = MediaQuery.paddingOf(context).top;
     final colorScheme = Theme.of(context).colorScheme;
     final overlayColor = colorScheme.brightness == Brightness.dark ? Colors.black : colorScheme.surface;
     final foregroundColor = colorScheme.onSurface;
+    // macOS floats the window controls over the content; clear them so the
+    // wordmark doesn't sit under the traffic lights (only in windowed mode —
+    // they auto-hide in fullscreen). Other platforms keep the 16px inset.
+    final leftInset = Platform.isMacOS && !FullscreenStateManager().isFullscreen
+        ? DesktopWindowPadding.macOSLeft
+        : 16.0;
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -911,17 +1050,47 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         ),
       ),
       child: Padding(
-        padding: .only(top: statusBarHeight, left: 16, right: 16, bottom: 8),
+        padding: .only(top: statusBarHeight, left: leftInset, right: 16, bottom: 8),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
-              if (!PlatformDetector.isTV())
-                Text(
-                  t.discover.title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(color: foregroundColor, fontWeight: .bold),
-                ),
-              const Spacer(),
+              // Desktop Netflix nav (wordmark + tabs) replaces the page title,
+              // staying transparent over the billboard. Expanded fills space up
+              // to the actions so the action cluster stays flush right.
+              // Phone/tablet (bottom nav) fall back to the brand mark + wordmark
+              // per the navigation mockup; the sidebar already carries the brand
+              // on desktop, so side-nav keeps the plain title.
+              Expanded(
+                child: PlatformDetector.isTV()
+                    ? const SizedBox.shrink()
+                    : PlatformDetector.shouldUseSideNavigation(context)
+                    ? Text(
+                        t.discover.title,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleLarge?.copyWith(color: foregroundColor, fontWeight: .bold),
+                      )
+                    : Row(
+                        mainAxisSize: .min,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.asset('assets/branding/pleya_logo.png', width: 28, height: 28),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'PLEYA',
+                            style: TextStyle(
+                              color: foregroundColor,
+                              fontSize: 14,
+                              fontWeight: .w800,
+                              letterSpacing: 3.6,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
               Consumer2<WatchTogetherProvider, CompanionRemoteProvider>(
                 builder: (context, watchTogether, companionRemote, _) {
                   final isDesktop = PlatformDetector.shouldActAsRemoteHost(context);
@@ -1025,8 +1194,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       // Server Tasks — Plex-only (`/activities` API has no
                       // Jellyfin equivalent), hide the button entirely on
                       // Jellyfin-only profiles so the chrome doesn't show
-                      // a permanently empty popover.
+                      // a permanently empty popover. Excluded on TV: the panel
+                      // is a pointer/hover popover that can't be focused with
+                      // the remote, so it read as a dead button on Apple TV
+                      // (isDesktop is true there because isMobile excludes TV).
                       if (PlatformDetector.isDesktop(context) &&
+                          !PlatformDetector.isTV() &&
                           context.select<MultiServerProvider, bool>((p) => p.hasOnlinePlexServers))
                         FocusableAction(
                           onPressed: () => _serverActivitiesButtonKey.currentState?.togglePanel(),
@@ -1079,10 +1252,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           CustomScrollView(
             controller: _scrollController,
             slivers: [
-              // Hero Section (Continue Watching) - at top of screen
+              // Hero Section (newest released films) - at top of screen
               Builder(
                 builder: (context) {
-                  if (_onDeck.isNotEmpty && showHeroSection) {
+                  if (_latestMovies.isNotEmpty && showHeroSection) {
                     return _buildHeroSection();
                   }
                   // Add top padding when hero is not shown
@@ -1091,7 +1264,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   );
                 },
               ),
-              if (_isLoading) LoadingIndicatorBox.sliver,
+              if (_isLoading)
+                const SliverToBoxAdapter(
+                  child: Column(children: [SkeletonHubRow(), SkeletonHubRow(), SkeletonHubRow()]),
+                ),
               if (_errorMessage != null) SliverErrorState(message: _errorMessage!, onRetry: _discover.load),
               if (!_isLoading && _errorMessage == null) ...[
                 // On Deck / Continue Watching
@@ -1122,72 +1298,35 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 // Recommendation Hubs (Trending, Top in Genre, etc.)
                 for (int i = 0; i < _hubs.length; i++)
                   SliverToBoxAdapter(
-                    child: HubSection(
-                      key: i < _orderedHubKeys.length ? _orderedHubKeys[i] : null,
-                      hub: _hubs[i],
-                      icon: _getHubIcon(_hubs[i].title),
-                      showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
-                      onRefresh: _discover.updateItem,
-                      // Hub index is i + 1 if continue watching exists, otherwise i
-                      onVerticalNavigation: (isUp) => _handleVerticalNavigation(_onDeck.isNotEmpty ? i + 1 : i, isUp),
-                      onNavigateUp: (i == 0 && _onDeck.isEmpty) ? _focusTopBoundary : null,
-                      onNavigateToSidebar: _navigateToSidebar,
-                    ),
+                    // Ranked Top-10 row (big outlined numerals) for genuine
+                    // top-10/trending hubs, non-TV only (TV keeps HubSection's
+                    // locked d-pad focus).
+                    child: !PlatformDetector.isTV() && TopTenRow.matches(_hubs[i])
+                        ? TopTenRow(hub: _hubs[i], onRefresh: _discover.updateItem)
+                        : HubSection(
+                            key: i < _orderedHubKeys.length ? _orderedHubKeys[i] : null,
+                            hub: _hubs[i],
+                            icon: _getHubIcon(_hubs[i].title),
+                            showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
+                            onRefresh: _discover.updateItem,
+                            // Hub index is i + 1 if continue watching exists, otherwise i
+                            onVerticalNavigation: (isUp) =>
+                                _handleVerticalNavigation(_onDeck.isNotEmpty ? i + 1 : i, isUp),
+                            onNavigateUp: (i == 0 && _onDeck.isEmpty) ? _focusTopBoundary : null,
+                            onNavigateToSidebar: _navigateToSidebar,
+                          ),
                   ),
 
                 // Show loading skeleton for hubs while they're loading
                 if (_areHubsLoading && _hubs.isEmpty)
-                  for (int i = 0; i < 3; i++)
-                    SliverToBoxAdapter(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: .start,
-                          children: [
-                            Container(
-                              width: 200,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceContainerHighest,
-                                borderRadius: const BorderRadius.all(Radius.circular(4)),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              height: 200,
-                              child: ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: 5,
-                                itemBuilder: (context, index) {
-                                  return Container(
-                                    margin: const EdgeInsets.only(right: 12),
-                                    width: 140,
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                      borderRadius: BorderRadius.circular(tokens(context).radiusSm),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  for (int i = 0; i < 3; i++) const SliverToBoxAdapter(child: SkeletonHubRow()),
 
                 if (_onDeck.isEmpty && _hubs.isEmpty && !_areHubsLoading)
                   SliverFillRemaining(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: .center,
-                        children: [
-                          const AppIcon(Symbols.movie_rounded, fill: 1, size: 64, color: Colors.grey),
-                          const SizedBox(height: 16),
-                          Text(t.discover.noContentAvailable),
-                          const SizedBox(height: 8),
-                          Text(t.discover.addMediaToLibraries, style: const TextStyle(color: Colors.grey)),
-                        ],
-                      ),
+                    child: StateView.empty(
+                      title: t.discover.noContentAvailable,
+                      message: t.discover.addMediaToLibraries,
+                      icon: Symbols.movie_rounded,
                     ),
                   ),
 
@@ -1230,14 +1369,17 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
             tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
           );
-    final spotlightTop = (size.height * 0.075).clamp(64.0 * scale, 120.0 * scale).toDouble();
-    final minimumSpotlightBottom = railHeight + (8 * scale);
-    final baseSpotlightBottom = (size.height * 0.48).clamp(160.0, 820.0).toDouble();
-    final desiredSpotlightBottom = minimumSpotlightBottom > baseSpotlightBottom
-        ? minimumSpotlightBottom
-        : baseSpotlightBottom;
-    final maxSpotlightBottom = (size.height - spotlightTop - (96 * scale)).clamp(0.0, double.infinity).toDouble();
-    final spotlightBottom = desiredSpotlightBottom > maxSpotlightBottom ? maxSpotlightBottom : desiredSpotlightBottom;
+    final spotlightTop = (size.height * _tvHeroContentTopFraction).clamp(64.0 * scale, 120.0 * scale).toDouble();
+    // Netflix landing: at rest the rail only peeks at the bottom (poster tops +
+    // hub label), so the hero owns most of the screen. Focusing the rail reveals
+    // it (see [_tvRailRevealed]); the reveal is a translate, so the hero content
+    // keeps its resting position and the rail simply slides up over it.
+    final railPeek = browseHubs.isEmpty ? 0.0 : math.min(railHeight, size.height * _tvHomeRailPeekFraction);
+    final railSafetyBottom = browseHubs.isEmpty ? 0.0 : railPeek + (_tvHeroRailGap * scale);
+    final maxSpotlightBottom = (size.height - spotlightTop - (_tvHeroMinInfoHeight * scale))
+        .clamp(0.0, double.infinity)
+        .toDouble();
+    final spotlightBottom = railSafetyBottom.clamp(0.0, maxSpotlightBottom).toDouble();
     final spotlightLeft = (24 * scale).clamp(18.0, 40.0).toDouble();
 
     return Material(
@@ -1258,6 +1400,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   valueListenable: _spotlightItem,
                   builder: (context, _, _) {
                     final spotlight = _effectiveSpotlightItem;
+                    // Netflix-style billboard: full hero treatment (large logo,
+                    // metadata, summary) with focusable Play / More-info actions
+                    // anchored just above the content rail. The billboard is a
+                    // fixed featured item, decoupled from row focus.
                     return TvSpotlightBackground(
                       item: spotlight,
                       client: _getMediaClientForItem(spotlight),
@@ -1265,8 +1411,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       contentTop: spotlightTop,
                       contentBottom: spotlightBottom,
                       contentLeft: spotlightLeft + foregroundLeft,
-                      compact: true,
+                      compact: false,
                       showPrimaryAction: false,
+                      deepBottomScrim: true,
+                      kenBurns: true,
+                      // Rail revealed → fade the info block + actions away so only
+                      // the (focus-following) backdrop remains behind the rows.
+                      infoOpacity: _tvRailRevealed ? 0.0 : 1.0,
+                      actions: spotlight == null ? null : _buildTvHeroActions(context, spotlight, scale),
                     );
                   },
                 ),
@@ -1307,25 +1459,45 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               left: 0,
               right: 0,
               bottom: 0,
-              child: TvBrowseRail(
-                key: _tvBrowseRailKey,
-                hubs: browseHubs,
-                showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
-                iconForHub: (hub, _) =>
-                    hub.id == 'continue_watching' ? Symbols.play_circle_rounded : _getHubIcon(hub.title),
-                onFocusedItemChanged: _setSpotlightItem,
-                onRefresh: _discover.updateItem,
-                onRemoveFromContinueWatching: _discover.refreshContinueWatching,
-                isContinueWatchingHub: (hub) => hub.isContinueWatchingHub,
-                usesContinueWatchingAction: (hub) => hub.usesContinueWatchingAction,
-                loadMoreItems: (hub) =>
-                    hub.id == 'continue_watching' ? _discover.loadAllContinueWatching() : Future.value(hub.items),
-                onNavigateUp: _focusTopActions,
-                onNavigateToSidebar: _navigateToSidebar,
-                tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
-                selectSuppressionGestureSignal: PlatformDetector.isAppleTV()
-                    ? AppleTvRemoteTouchService.instance.touchActiveListenable
-                    : null,
+              // At rest the rail is slid down so only [railPeek] shows (poster
+              // tops + hub label); focusing it slides the full rail up over the
+              // hero's lower edge (Netflix landing). Slide fraction is relative to
+              // the rail's own height, so no fixed height is forced on it.
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeOutCubic,
+                offset: Offset(0, _tvRailRevealed || railHeight <= 0 ? 0.0 : 1 - (railPeek / railHeight)),
+                // Reveal follows actual rail-subtree focus, not just the explicit
+                // navigate-down call site — so restored focus, sidebar→content, or
+                // internal traversal into the rail also reveals it.
+                child: Focus(
+                  canRequestFocus: false,
+                  skipTraversal: true,
+                  onFocusChange: (hasFocus) => _setTvRailRevealed(hasFocus),
+                  child: TvBrowseRail(
+                    key: _tvBrowseRailKey,
+                    hubs: browseHubs,
+                    showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
+                    // Hero follows rail focus: as the user moves through rows the
+                    // billboard becomes the focused item. Only the
+                    // ValueListenableBuilder on _spotlightItem rebuilds, not the rows.
+                    // Auto-rotate is paused while the rail is revealed (see
+                    // _setTvRailRevealed) so it doesn't fight the focus-follow.
+                    onFocusedItemChanged: (item) => _spotlightItem.value = item,
+                    onRefresh: _discover.updateItem,
+                    onRemoveFromContinueWatching: _discover.refreshContinueWatching,
+                    isContinueWatchingHub: (hub) => hub.isContinueWatchingHub,
+                    usesContinueWatchingAction: (hub) => hub.usesContinueWatchingAction,
+                    loadMoreItems: (hub) =>
+                        hub.id == 'continue_watching' ? _discover.loadAllContinueWatching() : Future.value(hub.items),
+                    onNavigateUp: _focusTvHeroPlay,
+                    onNavigateToSidebar: _navigateToSidebar,
+                    tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
+                    selectSuppressionGestureSignal: PlatformDetector.isAppleTV()
+                        ? AppleTvRemoteTouchService.instance.touchActiveListenable
+                        : null,
+                  ),
+                ),
               ),
             ),
           Builder(
@@ -1342,15 +1514,129 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
+  /// Netflix-style billboard actions for the TV home hero: a primary
+  /// Play/Resume pill and a secondary More-info pill, focus-wired to the rail
+  /// (down), the app bar (up), and the sidebar (left/back).
+  Widget _buildTvHeroActions(BuildContext context, MediaItem rawBillboard, double scale) {
+    // Bridge the store patch so resume state / progress never lags the on-deck
+    // snapshot (mirrors _buildSmartPlayButton).
+    final billboard = context.withFreshWatchState(rawBillboard);
+    final resume = billboard.hasActiveProgress;
+    final progress = resume && billboard.durationMs != null && billboard.viewOffsetMs != null
+        ? (billboard.viewOffsetMs! / billboard.durationMs!).clamp(0.0, 1.0).toDouble()
+        : null;
+    return Row(
+      mainAxisSize: .min,
+      children: [
+        FocusableButton(
+          focusNode: _tvHeroPlayFocusNode,
+          autoScroll: false,
+          // Solid-white focused pill fully covers the wrapper's background-focus
+          // fill, so useBackgroundFocus suppresses the default white ring.
+          useBackgroundFocus: true,
+          onPressed: () => navigateToMediaItem(context, billboard, playDirectly: true),
+          onNavigateDown: () => _focusTvBrowseRailWhenReady(immediate: true),
+          onNavigateUp: _focusTopActions,
+          onNavigateLeft: () => _moveTvHero(-1),
+          onNavigateRight: () => _moveTvHero(1),
+          onBack: _navigateToSidebar,
+          child: _tvHeroPill(
+            context,
+            focusNode: _tvHeroPlayFocusNode,
+            icon: Symbols.play_arrow_rounded,
+            label: resume ? t.common.resume : t.common.play,
+            scale: scale,
+            progress: progress,
+          ),
+        ),
+        SizedBox(width: 16 * scale),
+        FocusableButton(
+          focusNode: _tvHeroInfoFocusNode,
+          autoScroll: false,
+          useBackgroundFocus: true,
+          onPressed: () => navigateToMediaItem(context, billboard),
+          onNavigateDown: () => _focusTvBrowseRailWhenReady(immediate: true),
+          onNavigateUp: _focusTopActions,
+          onNavigateLeft: () => _moveTvHero(-1),
+          onNavigateRight: () => _moveTvHero(1),
+          onBack: _navigateToSidebar,
+          child: _tvHeroPill(
+            context,
+            focusNode: _tvHeroInfoFocusNode,
+            icon: Symbols.info_rounded,
+            label: t.mediaMenu.viewDetails,
+            scale: scale,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// A Netflix-style billboard pill. Inverts on focus (solid white + dark
+  /// content) and optionally embeds a resume progress bar.
+  Widget _tvHeroPill(
+    BuildContext context, {
+    required FocusNode focusNode,
+    required IconData icon,
+    required String label,
+    required double scale,
+    double? progress,
+  }) {
+    return ListenableBuilder(
+      listenable: focusNode,
+      builder: (context, _) {
+        final cs = Theme.of(context).colorScheme;
+        final showFocus = focusNode.hasFocus && InputModeTracker.isKeyboardMode(context);
+        final fg = showFocus ? cs.surface : cs.onSurface;
+        final bg = showFocus ? cs.onSurface : cs.onSurface.withValues(alpha: 0.24);
+        return AnimatedContainer(
+          duration: FocusTheme.getAnimationDuration(context),
+          curve: Curves.easeOutCubic,
+          padding: .symmetric(horizontal: 28 * scale, vertical: 15 * scale),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(100)),
+          child: Row(
+            mainAxisSize: .min,
+            children: [
+              AppIcon(icon, fill: 1, size: 27 * scale, color: fg),
+              SizedBox(width: 10 * scale),
+              if (progress != null) ...[
+                Container(
+                  width: 56 * scale,
+                  height: 8 * scale,
+                  decoration: BoxDecoration(
+                    color: fg.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(4 * scale),
+                  ),
+                  child: FractionallySizedBox(
+                    alignment: .centerLeft,
+                    widthFactor: progress,
+                    child: Container(
+                      decoration: BoxDecoration(color: fg, borderRadius: BorderRadius.circular(4 * scale)),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10 * scale),
+              ],
+              Text(
+                label,
+                style: TextStyle(color: fg, fontSize: 21 * scale, fontWeight: .w600),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildHeroSection() {
     final statusBarHeight = MediaQuery.paddingOf(context).top;
     final useSideNav = PlatformDetector.shouldUseSideNavigation(context);
-    final isTv = PlatformDetector.isTV();
-    final heroHeight = isTv
-        ? MediaQuery.sizeOf(context).height * 0.82
-        : useSideNav
-        ? MediaQuery.sizeOf(context).height * 0.75
-        : 500 + statusBarHeight;
+    // TV runs through _buildTvContent, so this section is phone/tablet/desktop.
+    // ~75vh everywhere, clamped per form factor.
+    final h = MediaQuery.sizeOf(context).height;
+    final heroHeight = useSideNav
+        ? (h * 0.75).clamp(480.0, 900.0) // desktop / tablet
+        : (h * 0.75).clamp(420.0, 680.0) + statusBarHeight; // phone
     return SliverToBoxAdapter(
       child: Focus(
         focusNode: _heroFocusNode,
@@ -1362,10 +1648,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             children: [
               PageView.builder(
                 controller: _heroController,
-                itemCount: _onDeck.length,
+                itemCount: _latestMovies.length,
                 onPageChanged: (index) {
                   // Validate index is within bounds before updating
-                  if (index >= 0 && index < _onDeck.length) {
+                  if (index >= 0 && index < _latestMovies.length) {
                     setState(() {
                       _currentHeroIndex = index;
                     });
@@ -1373,7 +1659,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   }
                 },
                 itemBuilder: (context, index) {
-                  return _buildHeroItem(_onDeck[index], heroHeight);
+                  return _buildHeroItem(_latestMovies[index], heroHeight);
                 },
               ),
               // Page indicators with animated progress and pause/play button
@@ -1473,6 +1759,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isLargeScreen = ScreenBreakpoints.isWideTabletOrLarger(screenWidth);
     final isTv = PlatformDetector.isTV();
+    // Phone hero uses a portrait 2:3 poster; wide/desktop/TV keep 16:9 backdrop.
+    final portrait = !isTv && !isLargeScreen;
     final alignLeft = isTv || isLargeScreen;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -1512,7 +1800,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               // Background Image with fade/zoom animation and parallax
               if (heroItem.artPath != null ||
                   heroItem.backgroundSquarePath != null ||
-                  heroItem.grandparentArtPath != null)
+                  heroItem.grandparentArtPath != null ||
+                  (portrait && heroItem.posterThumb() != null))
                 ClipRect(
                   child: AnimatedBuilder(
                     animation: _scrollController,
@@ -1538,19 +1827,44 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           final size = MediaQuery.sizeOf(context);
                           final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
                           final containerAspect = screenWidth / heroHeight;
+                          // Effective art height: full 16:9 on wide billboards,
+                          // floored at the box height on tall (mobile) ones.
+                          // Drives both the fetch and the decode budget so a
+                          // width-bound cover isn't upscaled from a short decode.
+                          // Match screenWidth (used by containerAspect + the
+                          // mem-cache displayWidth) so request, decode budget,
+                          // and box width stay aligned even if content is ever
+                          // narrower than the window.
+                          // Portrait phone hero: the poster fills the tall box,
+                          // so the art height is just the box height. Wide/TV
+                          // billboards request the full 16:9 frame (floored at
+                          // the box height) so the client top-anchors the crop.
+                          final artHeight = portrait
+                              ? heroHeight
+                              : (screenWidth * 9 / 16).clamp(heroHeight, double.infinity).toDouble();
                           final imageUrl = MediaImageHelper.getOptimizedImageUrl(
                             client: heroClient,
-                            thumbPath:
-                                heroItem.heroArt(containerAspectRatio: containerAspect) ?? heroItem.grandparentArtPath,
+                            thumbPath: portrait
+                                ? heroItem.posterThumb()
+                                : heroItem.heroArt(containerAspectRatio: containerAspect) ??
+                                      heroItem.grandparentArtPath,
                             maxWidth: size.width,
-                            maxHeight: size.height * 0.7,
+                            // Plex crops server-side (minSize=1) from the CENTER,
+                            // so a box-shaped request bakes in a centered crop
+                            // that lops heads off the top before Flutter's
+                            // Alignment.topCenter can act. Request the full 16:9
+                            // frame on wide (desktop/TV) billboards so the client
+                            // top-anchors the crop — but never below the box
+                            // height, or a tall (mobile portrait) billboard would
+                            // upscale a too-short image and blur.
+                            maxHeight: artHeight,
                             devicePixelRatio: dpr,
                             imageType: ImageType.art,
                           );
 
                           final (_, memHeight) = MediaImageHelper.getMemCacheDimensions(
                             displayWidth: (screenWidth * dpr).round(),
-                            displayHeight: (heroHeight * dpr).round(),
+                            displayHeight: (artHeight * dpr).round(),
                             imageType: ImageType.art,
                           );
 
@@ -1559,6 +1873,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               imageUrl: imageUrl,
                               cacheManager: PlexImageCacheManager.instance,
                               fit: BoxFit.cover,
+                              // Top-anchor the crop: hero art is taller than the
+                              // wide billboard, so a centered cover clips faces/
+                              // titles off the top. The bottom (under the scrim
+                              // and title overlay) is the safe side to lose.
+                              alignment: Alignment.topCenter,
                               memCacheHeight: memHeight,
                               placeholder: (context, url) =>
                                   ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
@@ -1598,6 +1917,33 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   ),
                 ),
               ),
+
+              // Netflix left-to-right scrim: darkens the text side of the
+              // billboard so the title/synopsis stay legible over the art.
+              if (alignLeft)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Builder(
+                      builder: (context) {
+                        final bgColor = Theme.of(context).scaffoldBackgroundColor;
+                        return DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [
+                                bgColor.withValues(alpha: 0.92),
+                                bgColor.withValues(alpha: 0.55),
+                                Colors.transparent,
+                              ],
+                              stops: const [0.0, 0.32, 0.62],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
 
               // Content with responsive alignment
               Positioned(
@@ -1684,22 +2030,37 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               ),
                             ),
 
-                          // Metadata as dot-separated text with content type
+                          // Metadata: amber "XX% match" derived from the
+                          // rating, then content type / age / year.
                           if (heroItem.year != null || heroItem.contentRating != null || heroItem.rating != null) ...[
                             const SizedBox(height: 16),
-                            Text(
-                              [
-                                contentTypeLabel,
-                                if (heroItem.rating != null) '★ ${formatRating(heroItem.rating!)}',
-                                if (heroItem.contentRating != null) formatContentRating(heroItem.contentRating!),
-                                if (heroItem.year != null) heroItem.year.toString(),
-                              ].join(' • '),
-                              style: TextStyle(
-                                color: colorScheme.onSurface,
-                                fontSize: isTv ? 18 : 14,
-                                fontWeight: .w600,
-                              ),
-                              textAlign: alignLeft ? TextAlign.left : TextAlign.center,
+                            Wrap(
+                              alignment: alignLeft ? WrapAlignment.start : WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 10,
+                              children: [
+                                if (heroItem.rating != null)
+                                  Text(
+                                    '${(heroItem.rating! * 10).round()}% match',
+                                    style: TextStyle(
+                                      color: kAccentAlt,
+                                      fontSize: isTv ? 18 : 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                Text(
+                                  [
+                                    contentTypeLabel,
+                                    if (heroItem.contentRating != null) formatContentRating(heroItem.contentRating!),
+                                    if (heroItem.year != null) heroItem.year.toString(),
+                                  ].join(' • '),
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface,
+                                    fontSize: isTv ? 18 : 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
 

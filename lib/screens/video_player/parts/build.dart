@@ -70,7 +70,31 @@ extension _VideoPlayerBuildMethods on VideoPlayerScreenState {
     );
   }
 
+  /// Next preset down the shared quality ladder, or null when transcoding is
+  /// unavailable or we're already at the lowest rung. Powers the error-modal
+  /// "Try lower quality" recovery.
+  TranscodeQualityPreset? _lowerQualityFallback() {
+    if (!_serverSupportsTranscoding) return null;
+    final order = TranscodeQualityPreset.displayOrder;
+    final idx = order.indexOf(_selectedQualityPreset);
+    if (idx < 0 || idx + 1 >= order.length) return null;
+    return order[idx + 1];
+  }
+
+  void _retryWithLowerQuality(TranscodeQualityPreset preset) {
+    _forcedQualityOverride = preset;
+    final playerToDispose = player;
+    player = null;
+    if (playerToDispose != null) unawaited(playerToDispose.dispose());
+    _setPlayerState(() {
+      _playerInitializationError = null;
+      _isPlayerInitialized = false;
+    });
+    unawaited(_initializePlayer());
+  }
+
   Widget _buildInitializationError(String message) {
+    final lowerPreset = _lowerQualityFallback();
     return Scaffold(
       backgroundColor: Colors.black,
       body: Center(
@@ -128,6 +152,19 @@ extension _VideoPlayerBuildMethods on VideoPlayerScreenState {
                     ),
                   ],
                 ),
+                // Recovery for server bandwidth / transcode-limit rejections:
+                // restart one quality preset lower.
+                if (lowerPreset != null) ...[
+                  const SizedBox(height: 12),
+                  FocusableButton(
+                    onPressed: () => _retryWithLowerQuality(lowerPreset),
+                    child: TextButton.icon(
+                      onPressed: () => _retryWithLowerQuality(lowerPreset),
+                      icon: const AppIcon(Symbols.hd_rounded, fill: 1, size: 20),
+                      label: Text(t.videoSettings.tryLowerQuality),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -312,6 +349,9 @@ extension _VideoPlayerBuildMethods on VideoPlayerScreenState {
                         isAmbientLightingEnabled: _ambientLightingService?.isEnabled ?? false,
                         onToggleAmbientLighting: _ambientLightingService?.isSupported == true
                             ? _toggleAmbientLighting
+                            : null,
+                        onSetAmbientIntensity: _ambientLightingService?.isSupported == true
+                            ? _setAmbientIntensity
                             : null,
                         toastController: _toastController,
                       ),

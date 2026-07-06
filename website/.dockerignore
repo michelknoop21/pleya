@@ -1,0 +1,6 @@
+node_modules
+.svelte-kit
+.git
+.DS_Store
+src
+static

@@ -4,9 +4,9 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:plezy/services/trackers/tracker_exceptions.dart';
-import 'package:plezy/services/trackers/tracker_session.dart';
-import 'package:plezy/services/trakt/trakt_client.dart';
+import 'package:pleya/services/trackers/tracker_exceptions.dart';
+import 'package:pleya/services/trackers/tracker_session.dart';
+import 'package:pleya/services/trakt/trakt_client.dart';
 
 int _now() => DateTime.now().millisecondsSinceEpoch ~/ 1000;
 

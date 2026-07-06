@@ -1,30 +1,54 @@
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'gapped_track_shape.dart';
 import 'mono_tokens.dart';
 
+/// Pleya brand red (sampled from the thick-P logo). Applied sparingly.
+const Color kAccent = Color(0xFFE5140F);
+
+/// Pleya brand amber (the logo's play-triangle/gradient tail). Secondary
+/// accent for small highlights that sit next to [kAccent].
+const Color kAccentAlt = Color(0xFFFFB020);
+
+/// Success/available green, tuned to sit calmly on the dark theme (not the raw
+/// Material green). Used for Seerr "available"/"partially available" states.
+const Color kSuccess = Color(0xFF3DD68C);
+
+/// The logo's P gradient (red → amber, top-left to bottom-right). Used for
+/// brand moments: wordmark, badges, progress fills, splash.
+const Gradient kBrandGradient = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [kAccent, kAccentAlt],
+);
+
 ThemeData monoTheme({required bool dark, bool oled = false}) {
-  // neutral greys tuned for crisp contrast
-  final ({Color bg, Color surface, Color outline, Color text, Color textMuted}) c;
+  // Cinematic dark palette. Dark is the design target (#141414); OLED stays pure
+  // black; light remains functional with a neutral re-tint only.
+  final ({Color bg, Color surface, Color surfaceElevated, Color outline, Color text, Color textMuted}) c;
   if (oled) {
     c = (
       bg: const Color(0xFF000000), // Pure black for OLED
-      surface: const Color(0xFF0A0A0A), // Very dark gray
+      surface: const Color(0xFF141414), // Deep charcoal as the elevated tier
+      surfaceElevated: const Color(0xFF2F2F2F),
       outline: const Color(0x1FFFFFFF),
-      text: const Color(0xFFEDEDED),
-      textMuted: const Color(0x99EDEDED),
+      text: const Color(0xFFFFFFFF),
+      textMuted: const Color(0xB3FFFFFF),
     );
   } else if (dark) {
     c = (
-      bg: const Color(0xFF0E0F12),
-      surface: const Color(0xFF15171C),
+      bg: const Color(0xFF141414),
+      surface: const Color(0xFF1F1F1F),
+      surfaceElevated: const Color(0xFF2F2F2F),
       outline: const Color(0x1FFFFFFF),
-      text: const Color(0xFFEDEDED),
-      textMuted: const Color(0x99EDEDED),
+      text: const Color(0xFFFFFFFF),
+      textMuted: const Color(0xB3FFFFFF),
     );
   } else {
     c = (
       bg: const Color(0xFFF7F7F8),
       surface: const Color(0xFFFFFFFF),
+      surfaceElevated: const Color(0xFFEDEDED),
       outline: const Color(0x19000000),
       text: const Color(0xFF111111),
       textMuted: const Color(0x99111111),
@@ -36,24 +60,40 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     (states) => states.contains(WidgetState.disabled) ? MouseCursor.defer : SystemMouseCursors.click,
   );
 
+  // Play/More-Info buttons: square-ish corners (radius 4), primary is
+  // white-on-black. Secondary actions get a translucent grey fill elsewhere.
   final buttonStyle = ButtonStyle(
     mouseCursor: clickableCursor,
     padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 18, vertical: 14)),
     elevation: const WidgetStatePropertyAll(0),
     backgroundColor: WidgetStatePropertyAll(c.text),
     foregroundColor: WidgetStatePropertyAll(isDark ? c.bg : Colors.white),
-    shape: const WidgetStatePropertyAll(StadiumBorder()),
+    shape: const WidgetStatePropertyAll(
+      RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
+    ),
   );
 
   final base = ThemeData(
     useMaterial3: true,
+    fontFamily: 'Inter',
+    // Fade-through page transitions. Cupertino stays on iOS
+    // (native back-swipe); Android/desktop cross-fade.
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.macOS: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+      },
+    ),
     brightness: isDark ? Brightness.dark : Brightness.light,
     colorScheme: ColorScheme(
       brightness: isDark ? Brightness.dark : Brightness.light,
-      primary: c.text,
-      onPrimary: isDark ? c.bg : Colors.white,
-      secondary: c.text,
-      onSecondary: c.bg,
+      primary: kAccent,
+      onPrimary: Colors.white,
+      secondary: kAccentAlt,
+      onSecondary: Colors.black,
       surface: c.surface,
       onSurface: c.text,
       error: const Color(0xFFB00020),
@@ -126,13 +166,27 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
       textColor: c.text,
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: c.bg,
+      // Netflix mobile: near-black translucent (BackdropFilter blur is applied
+      // by the bar wrapper). Selected = full white, unselected = 60%.
+      backgroundColor: isDark ? const Color(0xE60F0F0F) : c.bg.withValues(alpha: 0.92),
       elevation: 0,
       indicatorColor: Colors.transparent,
-      labelTextStyle: WidgetStatePropertyAll(TextStyle(color: c.textMuted, fontSize: 11)),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        final active = states.contains(WidgetState.selected);
+        return TextStyle(
+          color: active ? c.text : c.textMuted,
+          fontSize: 11,
+          fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+        );
+      }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         final active = states.contains(WidgetState.selected);
-        return IconThemeData(opacity: active ? 1 : 0.6, size: 22, color: c.text);
+        return IconThemeData(
+          opacity: active ? 1 : 0.6,
+          size: 22,
+          color: c.text,
+          shadows: active ? [Shadow(color: kAccent.withValues(alpha: 0.55), blurRadius: 8)] : null,
+        );
       }),
     ),
     // Floating snackbars auto-offset above the Scaffold's bottom NavigationBar,
@@ -144,8 +198,24 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
       contentTextStyle: TextStyle(color: c.text),
       actionTextColor: c.text,
       elevation: 6,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(6))),
       insetPadding: const EdgeInsets.all(16),
+    ),
+    // Netflix sheets/dialogs: elevated surface (#1F1F1F in dark) with small
+    // corners.
+    dialogTheme: DialogThemeData(
+      backgroundColor: c.surface,
+      surfaceTintColor: Colors.transparent,
+      elevation: 8,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: c.surface,
+      surfaceTintColor: Colors.transparent,
+      elevation: 8,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
     ),
   );
 
@@ -160,9 +230,12 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
         slow: const Duration(milliseconds: 300),
         bg: c.bg,
         surface: c.surface,
+        surfaceElevated: c.surfaceElevated,
         outline: c.outline,
         text: c.text,
         textMuted: c.textMuted,
+        accent: kAccent,
+        accentAlt: kAccentAlt,
         splashFactory: NoSplash.splashFactory,
       ),
     ],

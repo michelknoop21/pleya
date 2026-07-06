@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/screens/main_screen.dart';
-import 'package:plezy/widgets/side_navigation_rail.dart';
+import 'package:pleya/screens/main_screen.dart';
+import 'package:pleya/widgets/side_navigation_rail.dart';
 
 void main() {
   test('side navigation pushes stable foreground off-screen while temporarily expanded', () {

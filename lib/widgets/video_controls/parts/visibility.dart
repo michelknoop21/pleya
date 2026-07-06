@@ -285,6 +285,9 @@ extension _PlexVideoControlsVisibilityMethods on _PlexVideoControlsState {
   }
 
   void _reclaimFocusAfterControlsHide() {
+    // The TV info panel owns focus while open — never yank it back to the
+    // player's Focus node.
+    if (_tvInfoPanelVisible) return;
     final sheetOpen = OverlaySheetController.maybeOf(context)?.isOpen ?? false;
     if (sheetOpen) return;
     _focusNode.requestFocus();
@@ -298,6 +301,7 @@ extension _PlexVideoControlsVisibilityMethods on _PlexVideoControlsState {
   void _requestFocusTarget(PlayerChromeFocusTarget target) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !widget.chromeController.controlsVisible) return;
+      if (_tvInfoPanelVisible) return;
       // Never steal focus from an open sheet (same rule as
       // _reclaimFocusAfterControlsHide).
       if (OverlaySheetController.maybeOf(context)?.isOpen ?? false) return;

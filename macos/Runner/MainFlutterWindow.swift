@@ -37,10 +37,14 @@ class MainFlutterWindow: NSWindow {
     WindowUtilsPlugin.installWindowDelegate()
     WindowUtilsPlugin.syncWindowChrome()
 
+    // iCloud key-value settings sync
+    ICloudKvsPlugin.register(
+      with: flutterViewController.registrar(forPlugin: "ICloudKvsPlugin"))
+
     RegisterGeneratedPlugins(registry: flutterViewController)
 
     // Enable window position/size persistence
-    self.setFrameAutosaveName("com.edde746.plezy.MainWindow")
+    self.setFrameAutosaveName("nl.michelknoop.pleya.MainWindow")
     WindowUtilsPlugin.syncWindowChrome()
 
     super.awakeFromNib()

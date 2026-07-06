@@ -1,9 +1,11 @@
 <h1>
-  <img src="assets/plezy.png" alt="Plezy Logo" height="24" style="vertical-align: middle;" />
-  Plezy
+  <img src="assets/pleya.png" alt="Pleya Logo" height="24" style="vertical-align: middle;" />
+  Pleya
 </h1>
 
-A modern client for Plex and Jellyfin on desktop, mobile, and TV. Built with Flutter for native performance and a clean interface.
+A premium client for Plex and Jellyfin on desktop, mobile, and TV. Built with Flutter for native performance and a clean interface.
+
+> Pleya is a fork of [Plezy](https://github.com/edde746/plezy) (© edde746), distributed under the GNU General Public License v3.0. See [NOTICE](NOTICE) and [LICENSE](LICENSE).
 
 <p>
   <a href="https://plezy.app">Website</a> ·
@@ -101,7 +103,7 @@ Package managers:
 
 [^1]: Not available on Linux.
 [^2]: Plex only.
-[^3]: Not available on iOS or tvOS.
+[^3]: Not available on iOS (iPhone/iPad). Supported on tvOS.
 [^4]: Android, iOS, and macOS.
 [^5]: Windows, Android, and tvOS.
 [^6]: Android TV only.

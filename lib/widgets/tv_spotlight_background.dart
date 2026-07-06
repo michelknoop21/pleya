@@ -32,6 +32,20 @@ class TvSpotlightBackground extends StatelessWidget {
   final bool compact;
   final bool showPrimaryAction;
   final bool showInfo;
+
+  /// Fades the info block (logo/title/metadata/summary/actions) in and out
+  /// without touching the backdrop. Used by the TV home to hide the billboard
+  /// text once the browse rail is revealed while the artwork keeps showing.
+  final double infoOpacity;
+
+  /// Melt the bottom of the backdrop into the scaffold background so a docked
+  /// content rail blends in (Netflix billboard). Off by default so backdrop-only
+  /// consumers (e.g. media detail) keep the lighter gradient.
+  final bool deepBottomScrim;
+
+  /// Slow one-shot "settle" zoom on the backdrop art per item. Skipped on the
+  /// reduced-performance tier.
+  final bool kenBurns;
   final String? Function(String? artworkPath)? localArtworkPathResolver;
 
   const TvSpotlightBackground({
@@ -47,6 +61,9 @@ class TvSpotlightBackground extends StatelessWidget {
     this.compact = false,
     this.showPrimaryAction = true,
     this.showInfo = true,
+    this.infoOpacity = 1.0,
+    this.deepBottomScrim = false,
+    this.kenBurns = false,
     this.localArtworkPathResolver,
   });
 
@@ -68,43 +85,91 @@ class TvSpotlightBackground extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (media != null) _buildArtwork(context, media) else ColoredBox(color: bgColor),
+            if (media != null) _animatedArtwork(media, _buildArtwork(context, media)) else ColoredBox(color: bgColor),
             _buildHorizontalScrim(bgColor),
             DecoratedBox(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.black.withValues(alpha: 0.45), Colors.transparent, bgColor.withValues(alpha: 0.96)],
-                  stops: const [0.0, 0.38, 1.0],
-                ),
+                gradient: deepBottomScrim
+                    ? LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.45),
+                          Colors.transparent,
+                          bgColor.withValues(alpha: 0.90),
+                          bgColor,
+                        ],
+                        stops: const [0.0, 0.30, 0.78, 1.0],
+                      )
+                    : LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.45),
+                          Colors.transparent,
+                          bgColor.withValues(alpha: 0.96),
+                        ],
+                        stops: const [0.0, 0.38, 1.0],
+                      ),
               ),
             ),
             if (media != null && showInfo)
               Positioned(
                 left: contentLeft ?? TvLayoutConstants.horizontalInset,
-                right: MediaQuery.sizeOf(context).width * 0.43,
+                right: MediaQuery.sizeOf(context).width * 0.34,
                 top: contentTop,
                 bottom: contentBottom,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (!constraints.hasBoundedHeight || constraints.maxHeight <= 0 || constraints.maxWidth <= 0) {
-                      return Align(alignment: .bottomLeft, child: _buildInfo(context, media));
-                    }
+                child: AnimatedOpacity(
+                  opacity: infoOpacity,
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOut,
+                  // ExcludeFocus (not just IgnorePointer): when faded out the
+                  // Play/More-info buttons must also leave the D-pad focus tree,
+                  // or traversal could land on invisible controls.
+                  child: ExcludeFocus(
+                    excluding: infoOpacity == 0,
+                    child: IgnorePointer(
+                      ignoring: infoOpacity == 0,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          if (!constraints.hasBoundedHeight ||
+                              constraints.maxHeight <= 0 ||
+                              constraints.maxWidth <= 0) {
+                            return Align(alignment: .bottomLeft, child: _buildInfo(context, media));
+                          }
 
-                    return Align(
-                      alignment: .bottomLeft,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: .bottomLeft,
-                        child: SizedBox(width: constraints.maxWidth, child: _buildInfo(context, media)),
+                          return Align(
+                            alignment: .bottomLeft,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: .bottomLeft,
+                              child: SizedBox(width: constraints.maxWidth, child: _buildInfo(context, media)),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Wraps the backdrop in a slow one-shot settle-zoom. Keyed per item by the
+  /// enclosing AnimatedSwitcher, so each swap restarts from 1.0. No-op on the
+  /// reduced tier or when [kenBurns] is off.
+  Widget _animatedArtwork(MediaItem media, Widget child) {
+    if (!kenBurns || DevicePerformance.isReduced) return child;
+    return ClipRect(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 1.0, end: 1.06),
+        duration: const Duration(seconds: 10),
+        curve: Curves.easeOut,
+        child: RepaintBoundary(child: child),
+        builder: (context, scale, inner) => Transform.scale(scale: scale, child: inner),
       ),
     );
   }
@@ -131,6 +196,8 @@ class TvSpotlightBackground extends StatelessWidget {
           Image.file(
             File(localPath),
             fit: BoxFit.cover,
+            // Top-anchor so tall backdrops don't clip faces/titles off the top.
+            alignment: Alignment.topCenter,
             errorBuilder: (context, error, stackTrace) =>
                 ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
           ),
@@ -164,6 +231,8 @@ class TvSpotlightBackground extends StatelessWidget {
         imageUrl: imageUrl,
         cacheManager: PlexImageCacheManager.instance,
         fit: BoxFit.cover,
+        // Top-anchor so tall backdrops don't clip faces/titles off the top.
+        alignment: Alignment.topCenter,
         memCacheHeight: memHeight,
         // Explicit fades: the package defaults (500ms in / 1000ms out) double
         // up with the AnimatedSwitcher cross-fade above on every swap.
@@ -203,11 +272,25 @@ class TvSpotlightBackground extends StatelessWidget {
         _buildLogoOrTitle(context, media, title),
         SizedBox(height: _sectionGap(scale)),
         _buildMetadataLine(context, media),
+        if (!compact && (media.genres?.isNotEmpty ?? false)) ...[
+          SizedBox(height: 6 * scale),
+          Text(
+            media.genres!.take(3).join('  •  '),
+            maxLines: 1,
+            overflow: .ellipsis,
+            style: TextStyle(
+              color: colorScheme.onSurface.withValues(alpha: 0.66),
+              fontSize: _metadataFontSize(scale),
+              fontWeight: .w500,
+              letterSpacing: 0.1,
+            ),
+          ),
+        ],
         if (summary != null && summary.isNotEmpty) ...[
           SizedBox(height: _sectionGap(scale)),
           Text(
             summary,
-            maxLines: compact ? 3 : 4,
+            maxLines: 3,
             overflow: .ellipsis,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurface.withValues(alpha: 0.78),
@@ -376,11 +459,11 @@ class TvSpotlightBackground extends StatelessWidget {
   double _logoHeight(double scale) =>
       (compact ? TvLayoutConstants.compactHeroLogoHeight : TvLayoutConstants.heroLogoHeight) * scale;
 
-  double _titleFontSize(double scale) => (compact ? 44 : 54) * scale;
+  double _titleFontSize(double scale) => (compact ? 44 : 66) * scale;
 
-  double _metadataFontSize(double scale) => (compact ? 16 : 18) * scale;
+  double _metadataFontSize(double scale) => (compact ? 16 : 20) * scale;
 
-  double _summaryFontSize(double scale) => (compact ? 18 : 20) * scale;
+  double _summaryFontSize(double scale) => (compact ? 18 : 22) * scale;
 
   Widget _buildPrimaryAction(BuildContext context, MediaItem media) {
     final scale = _scale(context);

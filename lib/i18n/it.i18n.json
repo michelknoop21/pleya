@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Plezy"
+    "title": "Pleya"
   },
   "auth": {
     "signIn": "Accedi",
@@ -86,7 +86,7 @@
   },
   "settings": {
     "title": "Impostazioni",
-    "supportDeveloper": "Supporta Plezy",
+    "supportDeveloper": "Supporta Pleya",
     "supportDeveloperDescription": "Dona tramite Liberapay per finanziare lo sviluppo",
     "language": "Lingua",
     "theme": "Tema",
@@ -196,7 +196,7 @@
     "importSettingsConfirm": "Questa azione sostituirà le impostazioni attuali. Continuare?",
     "importSettingsSuccess": "Impostazioni importate",
     "importSettingsFailed": "Impossibile importare le impostazioni",
-    "importSettingsInvalidFile": "Questo file non è un'esportazione Plezy valida",
+    "importSettingsInvalidFile": "Questo file non è un'esportazione Pleya valida",
     "importSettingsNoUser": "Accedi prima di importare le impostazioni",
     "shortcutsReset": "Scorciatoie ripristinate alle impostazioni predefinite",
     "about": "Informazioni",
@@ -277,7 +277,7 @@
     "forceTvMode": "Forza modalità TV",
     "forceTvModeDescription": "Forza layout TV. Per dispositivi non rilevati automaticamente. Richiede riavvio.",
     "startInFullscreen": "Avvia a schermo intero",
-    "startInFullscreenDescription": "Apri Plezy a schermo intero all'avvio",
+    "startInFullscreenDescription": "Apri Pleya a schermo intero all'avvio",
     "exitFullscreenOnPlayerClose": "Esci dallo schermo intero alla chiusura del player",
     "exitFullscreenOnPlayerCloseDescription": "Esci automaticamente dallo schermo intero quando il lettore video viene chiuso",
     "autoHidePerformanceOverlay": "Nascondi automaticamente overlay prestazioni",
@@ -285,7 +285,7 @@
     "showNavBarLabels": "Mostra etichette barra di navigazione",
     "showNavBarLabelsDescription": "Mostra le etichette sotto le icone della barra di navigazione",
     "startupSection": "Sezione di avvio",
-    "startupSectionDescription": "Scegli quale sezione apre Plezy all'avvio",
+    "startupSectionDescription": "Scegli quale sezione apre Pleya all'avvio",
     "liveTvDefaultFavorites": "Canali preferiti predefiniti",
     "liveTvDefaultFavoritesDescription": "Mostra solo i canali preferiti all'apertura della TV dal vivo",
     "display": "Schermo",
@@ -585,7 +585,7 @@
     "confirmAction": "Conferma azione"
   },
   "profiles": {
-    "addPlezyProfile": "Aggiungi profilo Plezy",
+    "addPleyaProfile": "Aggiungi profilo Pleya",
     "switchingProfile": "Cambio profilo…",
     "deleteThisProfileTitle": "Eliminare questo profilo?",
     "deleteThisProfileMessage": "Rimuovi ${displayName}. Le connessioni non sono interessate.",
@@ -653,7 +653,7 @@
     "sessionExpiredMany": "Sessione scaduta per ${count} server",
     "signInAgain": "Accedi di nuovo",
     "editJellyfinTitle": "Modifica connessione Jellyfin",
-    "editJellyfinIntro": "Aggiungi o rimuovi URL per ${serverName}. Plezy userà l'URL raggiungibile con la latenza più bassa."
+    "editJellyfinIntro": "Aggiungi o rimuovi URL per ${serverName}. Pleya userà l'URL raggiungibile con la latenza più bassa."
   },
   "discover": {
     "title": "Esplora",
@@ -1095,19 +1095,19 @@
       "minimize": "Riduci"
     },
     "pairing": {
-      "discoveryDescription": "I dispositivi Plezy con lo stesso account Plex appaiono qui",
+      "discoveryDescription": "I dispositivi Pleya con lo stesso account Plex appaiono qui",
       "hostAddressHint": "192.168.1.100:48632",
       "connecting": "Connessione...",
       "searchingForDevices": "Ricerca dispositivi...",
       "noDevicesFound": "Nessun dispositivo trovato nella tua rete",
-      "noDevicesHint": "Apri Plezy su desktop e usa lo stesso WiFi",
+      "noDevicesHint": "Apri Pleya su desktop e usa lo stesso WiFi",
       "availableDevices": "Dispositivi disponibili",
       "manualConnection": "Connessione manuale",
       "cryptoInitFailed": "Impossibile avviare la connessione sicura. Accedi prima a Plex.",
       "validationHostRequired": "Inserisci l'indirizzo host",
       "validationHostFormat": "Il formato deve essere IP:porta (es. 192.168.1.100:48632)",
       "connectionTimedOut": "Connessione scaduta. Usa la stessa rete su entrambi i dispositivi.",
-      "sessionNotFound": "Dispositivo non trovato. Assicurati che Plezy sia in esecuzione sull'host.",
+      "sessionNotFound": "Dispositivo non trovato. Assicurati che Pleya sia in esecuzione sull'host.",
       "authFailed": "Autenticazione non riuscita. Entrambi i dispositivi devono usare lo stesso account Plex.",
       "failedToConnect": "Connessione fallita: ${error}"
     },
@@ -1316,11 +1316,11 @@
     "connected": "Connesso",
     "connectedAs": "Connesso come @${username}",
     "disconnectConfirm": "Disconnettere l'account Trakt?",
-    "disconnectConfirmBody": "Plezy smetterà di inviare eventi a Trakt. Puoi riconnetterti quando vuoi.",
+    "disconnectConfirmBody": "Pleya smetterà di inviare eventi a Trakt. Puoi riconnetterti quando vuoi.",
     "scrobble": "Scrobbling in tempo reale",
     "scrobbleDescription": "Invia eventi di riproduzione, pausa e arresto a Trakt durante la riproduzione.",
     "watchedSync": "Sincronizza stato visualizzato",
-    "watchedSyncDescription": "Quando segni elementi come visti in Plezy, vengono segnati anche su Trakt."
+    "watchedSyncDescription": "Quando segni elementi come visti in Pleya, vengono segnati anche su Trakt."
   },
   "trackers": {
     "title": "Tracker",
@@ -1330,7 +1330,7 @@
     "scrobble": "Traccia i progressi automaticamente",
     "scrobbleDescription": "Aggiorna la tua lista quando finisci un episodio o un film.",
     "disconnectConfirm": "Disconnettere ${service}?",
-    "disconnectConfirmBody": "Plezy smetterà di aggiornare ${service}. Riconnetti quando vuoi.",
+    "disconnectConfirmBody": "Pleya smetterà di aggiornare ${service}. Riconnetti quando vuoi.",
     "connectFailed": "Impossibile connettersi a ${service}. Riprova.",
     "services": {
       "mal": "MyAnimeList",
@@ -1338,7 +1338,7 @@
       "simkl": "Simkl"
     },
     "deviceCode": {
-      "title": "Attiva Plezy su ${service}",
+      "title": "Attiva Pleya su ${service}",
       "body": "Visita ${url} e inserisci questo codice:",
       "openToActivate": "Apri ${service} per attivare",
       "waitingForAuthorization": "In attesa di autorizzazione…",

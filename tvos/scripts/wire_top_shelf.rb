@@ -59,6 +59,7 @@ def ensure_shell_script(target, name, script)
 
   phase.shell_path = '/bin/sh'
   phase.shell_script = script
+  phase.always_out_of_date = '1'
   phase
 end
 
@@ -73,7 +74,7 @@ ensure_file(extension_group, 'TopShelfExtension.entitlements')
 
 extension_target = project.targets.find { |t| t.name == 'TopShelfExtension' }
 unless extension_target
-  extension_target = project.new_target(:app_extension, 'TopShelfExtension', :tvos, '14.0')
+  extension_target = project.new_target(:app_extension, 'TopShelfExtension', :tvos, '17.5')
 end
 extension_target.product_type = 'com.apple.product-type.app-extension'
 
@@ -149,7 +150,7 @@ extension_target.build_configurations.each do |config|
   settings['SUPPORTED_PLATFORMS'] = 'appletvos appletvsimulator'
   settings['SWIFT_VERSION'] = '5.0'
   settings['TARGETED_DEVICE_FAMILY'] = '3'
-  settings['TVOS_DEPLOYMENT_TARGET'] = '14.0'
+  settings['TVOS_DEPLOYMENT_TARGET'] = '17.5'
 end
 
 ensure_shell_script(

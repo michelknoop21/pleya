@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/widgets/collapsible_text.dart';
+import 'package:pleya/widgets/collapsible_text.dart';
 
 void main() {
   testWidgets('select expands overflowing focused text', (tester) async {

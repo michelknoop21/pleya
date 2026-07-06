@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:plezy/widgets/app_icon.dart';
+import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import '../theme/mono_tokens.dart';
 import '../utils/platform_detector.dart';
@@ -101,25 +101,23 @@ class _HorizontalScrollWithArrowsState extends State<HorizontalScrollWithArrows>
   void _scrollRight() => _animateScroll(1);
 
   Widget _buildArrowButton({
-    required double position,
+    required bool isLeft,
     required IconData icon,
     required VoidCallback onPressed,
     required bool canScroll,
   }) {
     return Positioned(
-      left: position < 0 ? null : position,
-      right: position < 0 ? -position : null,
+      left: isLeft ? 0 : null,
+      right: isLeft ? null : 0,
       top: 0,
       bottom: 0,
-      child: Center(
-        child: AnimatedOpacity(
-          opacity: (_isHovering && canScroll) ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: IgnorePointer(
-            ignoring: !(_isHovering && canScroll),
-            child: _NavigationArrow(icon: icon, onPressed: onPressed),
-          ),
+      child: AnimatedOpacity(
+        opacity: (_isHovering && canScroll) ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        child: IgnorePointer(
+          ignoring: !(_isHovering && canScroll),
+          child: _NavigationArrow(icon: icon, onPressed: onPressed, isLeft: isLeft, scrimColor: tokens(context).bg),
         ),
       ),
     );
@@ -145,13 +143,13 @@ class _HorizontalScrollWithArrowsState extends State<HorizontalScrollWithArrows>
           children: [
             child,
             _buildArrowButton(
-              position: 8,
+              isLeft: true,
               icon: Symbols.chevron_left_rounded,
               onPressed: _scrollLeft,
               canScroll: _canScrollLeft,
             ),
             _buildArrowButton(
-              position: -8,
+              isLeft: false,
               icon: Symbols.chevron_right_rounded,
               onPressed: _scrollRight,
               canScroll: _canScrollRight,
@@ -163,39 +161,53 @@ class _HorizontalScrollWithArrowsState extends State<HorizontalScrollWithArrows>
   }
 }
 
+/// Netflix-style edge scrim: a row-height gradient fading from the page
+/// background at the edge to transparent, with a centered chevron. Fades in on
+/// row hover (handled by the parent's AnimatedOpacity).
 class _NavigationArrow extends StatefulWidget {
   final IconData icon;
   final VoidCallback onPressed;
+  final bool isLeft;
+  final Color scrimColor;
 
-  const _NavigationArrow({required this.icon, required this.onPressed});
+  const _NavigationArrow({
+    required this.icon,
+    required this.onPressed,
+    required this.isLeft,
+    required this.scrimColor,
+  });
 
   @override
   State<_NavigationArrow> createState() => _NavigationArrowState();
 }
 
 class _NavigationArrowState extends State<_NavigationArrow> {
-  bool _isPressed = false;
+  bool _isHovering = false;
 
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
       child: GestureDetector(
-        onTapDown: (_) => setState(() => _isPressed = true),
-        onTapUp: (_) {
-          setState(() => _isPressed = false);
-          widget.onPressed();
-        },
-        onTapCancel: () => setState(() => _isPressed = false),
+        onTap: widget.onPressed,
         child: Container(
-          width: 48,
-          height: 48,
+          width: 56,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.black.withValues(alpha: _isPressed ? 0.9 : 0.7),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 8, spreadRadius: 0)],
+            gradient: LinearGradient(
+              begin: widget.isLeft ? Alignment.centerLeft : Alignment.centerRight,
+              end: widget.isLeft ? Alignment.centerRight : Alignment.centerLeft,
+              colors: [widget.scrimColor.withValues(alpha: 0.85), widget.scrimColor.withValues(alpha: 0.0)],
+            ),
           ),
-          child: AppIcon(widget.icon, fill: 1, color: Colors.white, size: 32),
+          child: AppIcon(
+            widget.icon,
+            fill: 1,
+            color: Colors.white,
+            size: _isHovering ? 40 : 32,
+          ),
         ),
       ),
     );

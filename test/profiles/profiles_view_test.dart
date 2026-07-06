@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/profiles/profile.dart';
-import 'package:plezy/profiles/profile_connection.dart';
-import 'package:plezy/profiles/profiles_view.dart';
+import 'package:pleya/profiles/profile.dart';
+import 'package:pleya/profiles/profile_connection.dart';
+import 'package:pleya/profiles/profiles_view.dart';
 
 void main() {
   group('visibleProfileConnections', () {

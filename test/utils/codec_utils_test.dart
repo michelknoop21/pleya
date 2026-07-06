@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plezy/utils/codec_utils.dart';
+import 'package:pleya/utils/codec_utils.dart';
 
 void main() {
   group('CodecUtils.getSubtitleExtension', () {

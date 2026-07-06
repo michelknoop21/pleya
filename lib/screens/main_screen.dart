@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 import '../media/ids.dart';
 import '../navigation/main_screen_scope.dart';
 import 'dart:io' show Platform, exit;
@@ -34,6 +35,7 @@ import '../profiles/active_profile_provider.dart';
 import '../profiles/plex_home_service.dart';
 import '../providers/download_provider.dart';
 import '../providers/multi_server_provider.dart';
+import '../providers/seerr_provider.dart';
 import '../providers/hidden_libraries_provider.dart';
 import '../providers/libraries_provider.dart';
 import '../providers/playback_state_provider.dart';
@@ -57,6 +59,7 @@ import 'libraries/library_quick_picker_sheet.dart';
 import 'libraries/libraries_screen.dart';
 import 'livetv/live_tv_screen.dart';
 import 'search_screen.dart';
+import 'seerr/seerr_discover_screen.dart';
 import 'downloads/downloads_screen.dart';
 import 'settings/settings_screen.dart';
 import 'profile/profile_switch_screen.dart';
@@ -199,8 +202,10 @@ class _MainScreenState extends State<MainScreen>
 
   OfflineModeProvider? _offlineModeProvider;
   MultiServerProvider? _multiServerProvider;
+  SeerrProvider? _seerrProvider;
   RouteObserver<PageRoute<dynamic>>? _profileRouteObserver;
   bool _lastHasLiveTv = false;
+  bool _lastHasSeerr = false;
 
   /// Whether a reconnection attempt is in progress
   bool _isReconnecting = false;
@@ -221,6 +226,7 @@ class _MainScreenState extends State<MainScreen>
   final GlobalKey<State<DownloadsScreen>> _downloadsKey = GlobalKey();
   final GlobalKey<State<SettingsScreen>> _settingsKey = GlobalKey();
   final GlobalKey<SideNavigationRailState> _sideNavKey = GlobalKey();
+
 
   // Focus management for sidebar/content switching
   final FocusScopeNode _sidebarFocusScope = FocusScopeNode(debugLabel: 'Sidebar');
@@ -291,6 +297,11 @@ class _MainScreenState extends State<MainScreen>
       _lastHasLiveTv = context.read<MultiServerProvider>().hasLiveTv;
     } catch (_) {
       _lastHasLiveTv = false;
+    }
+    try {
+      _lastHasSeerr = context.read<SeerrProvider>().isConfigured;
+    } catch (_) {
+      _lastHasSeerr = false;
     }
     _currentTab = _defaultTabForMode(_isOffline);
     _lastOnlineTabId = _isOffline ? null : NavigationTabId.discover;
@@ -746,6 +757,15 @@ class _MainScreenState extends State<MainScreen>
       _multiServerProvider!.addListener(_handleLiveTvChanged);
     }
 
+    // Listen for the Jellyseerr/Overseerr session appearing/disappearing so the
+    // Requests tab shows up (or hides) live.
+    final seerr = context.read<SeerrProvider>();
+    if (seerr != _seerrProvider) {
+      _seerrProvider?.removeListener(_handleSeerrChanged);
+      _seerrProvider = seerr;
+      _seerrProvider!.addListener(_handleSeerrChanged);
+    }
+
     // Wire up Companion Remote command routing (host devices only, once)
     if (!_companionRemoteSetup && PlatformDetector.shouldActAsRemoteHost(context)) {
       _companionRemoteSetup = true;
@@ -822,6 +842,7 @@ class _MainScreenState extends State<MainScreen>
     }
     _offlineModeProvider?.removeListener(_handleOfflineStatusChanged);
     _multiServerProvider?.removeListener(_handleLiveTvChanged);
+    _seerrProvider?.removeListener(_handleSeerrChanged);
     if (_bindingSettleListener != null) {
       _activeProfileForListener?.removeListener(_bindingSettleListener!);
     }
@@ -917,6 +938,7 @@ class _MainScreenState extends State<MainScreen>
           ),
           NavigationTabId.liveTv => LiveTvScreen(key: _liveTvKey),
           NavigationTabId.search => SearchScreen(key: _searchKey),
+          NavigationTabId.requests => const SeerrDiscoverScreen(),
           NavigationTabId.downloads => DownloadsScreen(key: _downloadsKey),
           NavigationTabId.settings => SettingsScreen(key: _settingsKey),
         },
@@ -934,6 +956,7 @@ class _MainScreenState extends State<MainScreen>
   NavigationTabId _defaultTabForMode(bool isOffline) => NavigationTab.resolveDefaultTab(
     isOffline: isOffline,
     hasLiveTv: _hasLiveTv,
+    hasSeerr: _hasSeerr,
     preferredStartup: SettingsService.instanceOrNull?.read(SettingsService.startupSection),
   );
 
@@ -990,6 +1013,19 @@ class _MainScreenState extends State<MainScreen>
     if (pending != null && _getVisibleTabs(_isOffline).any((t) => t.id == pending)) {
       _selectTab(pending);
     }
+  }
+
+  void _handleSeerrChanged() {
+    final hasSeerr = _seerrProvider?.isConfigured ?? false;
+    if (hasSeerr == _lastHasSeerr) return;
+    _lastHasSeerr = hasSeerr;
+    if (!mounted) return;
+
+    setState(() {
+      _screens = _buildScreens(_isOffline);
+      _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
+    });
+    _updateTvosMenuPassthrough();
   }
 
   void _handleOfflineStatusChanged() {
@@ -1502,9 +1538,13 @@ class _MainScreenState extends State<MainScreen>
   /// Updated by _handleLiveTvChanged when the provider notifies.
   bool get _hasLiveTv => _lastHasLiveTv;
 
+  /// Whether the Requests (Jellyseerr/Overseerr) tab is currently visible.
+  /// Synchronized value so the screens list and nav bar always agree.
+  bool get _hasSeerr => _lastHasSeerr;
+
   /// Get navigation tabs filtered by offline mode
   List<NavigationTab> _getVisibleTabs(bool isOffline) {
-    return NavigationTab.getVisibleTabs(isOffline: isOffline, hasLiveTv: _hasLiveTv);
+    return NavigationTab.getVisibleTabs(isOffline: isOffline, hasLiveTv: _hasLiveTv, hasSeerr: _hasSeerr);
   }
 
   List<NavigationTab> _getBottomNavigationTabs(BuildContext context) {
@@ -1523,6 +1563,7 @@ class _MainScreenState extends State<MainScreen>
       NavigationTabId.libraries => _librariesKey,
       NavigationTabId.liveTv => _liveTvKey,
       NavigationTabId.search => _searchKey,
+      NavigationTabId.requests => null,
       NavigationTabId.downloads => _downloadsKey,
       NavigationTabId.settings => _settingsKey,
     };
@@ -1542,10 +1583,16 @@ class _MainScreenState extends State<MainScreen>
       destinations: tabs.map((tab) => tab.toDestination()).toList(),
     );
 
-    final librariesIndex = tabs.indexWhere((tab) => tab.id == NavigationTabId.libraries);
-    if (librariesIndex < 0 || tabs.isEmpty) return navigationBar;
+    // Netflix mobile: frosted near-black bar. Blur the content scrolling
+    // behind it; the translucent color comes from navigationBarTheme.
+    Widget frosted(Widget bar) => ClipRect(
+      child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18), child: bar),
+    );
 
-    return LayoutBuilder(
+    final librariesIndex = tabs.indexWhere((tab) => tab.id == NavigationTabId.libraries);
+    if (librariesIndex < 0 || tabs.isEmpty) return frosted(navigationBar);
+
+    return frosted(LayoutBuilder(
       builder: (context, constraints) {
         if (!constraints.hasBoundedWidth) return navigationBar;
 
@@ -1574,13 +1621,12 @@ class _MainScreenState extends State<MainScreen>
           ],
         );
       },
-    );
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     final useSideNav = PlatformDetector.shouldUseSideNavigation(context);
-
     return _buildContent(context, useSideNav);
   }
 

@@ -48,8 +48,17 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
 
   Future<void> _showServerLimitDialog() async {
     if (!mounted) return;
-    await showServerLimitDialog(context);
-    if (mounted) unawaited(_handleBackButton());
+    // Offer a one-step-lower restart when the server can transcode and we're
+    // not already at the lowest preset — a common recovery for shared-server
+    // bandwidth / transcode-limit rejections.
+    final lowerPreset = _lowerQualityFallback();
+    final tryLower = await showServerLimitDialog(context, canTryLowerQuality: lowerPreset != null);
+    if (!mounted) return;
+    if (tryLower && lowerPreset != null) {
+      _retryWithLowerQuality(lowerPreset);
+      return;
+    }
+    unawaited(_handleBackButton());
   }
 
   /// Handle notification when native player switched from ExoPlayer to MPV

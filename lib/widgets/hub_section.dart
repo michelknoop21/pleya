@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:plezy/widgets/app_icon.dart';
+import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import '../focus/dpad_navigator.dart';
 import '../focus/focus_theme.dart';
@@ -102,6 +102,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
   int _focusedIndex = 0;
 
   double _itemExtent = 0;
+  bool _headerHovering = false;
   double _leadingPaddingFor(bool isTv) => widget.inset
       ? 0.0
       : isTv
@@ -413,7 +414,10 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                 ? EdgeInsets.symmetric(vertical: isTv ? 6 : 2)
                 : EdgeInsets.fromLTRB(leadingPadding - 4, isTv ? 6 : 2, 8, isTv ? 8 : 2),
             child: ExcludeFocus(
-              child: InkWell(
+              child: MouseRegion(
+                onEnter: (_) => setState(() => _headerHovering = true),
+                onExit: (_) => setState(() => _headerHovering = false),
+                child: InkWell(
                 mouseCursor: widget.hub.more ? SystemMouseCursors.click : MouseCursor.defer,
                 onTap: widget.hub.more ? () => _navigateToHubDetail(context) : null,
                 borderRadius: BorderRadius.circular(tokens(context).radiusSm),
@@ -446,11 +450,26 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                         ),
                       ],
                       if (widget.hub.more && !isKeyboardMode) ...[
-                        const SizedBox(width: 4),
-                        AppIcon(Symbols.chevron_right_rounded, fill: 1, size: isTv ? 26 : 20),
+                        const SizedBox(width: 6),
+                        // Netflix "Explore all >" — text reveals on hover (desktop),
+                        // chevron always shows on TV.
+                        if (!isTv)
+                          AnimatedOpacity(
+                            opacity: _headerHovering ? 1 : 0,
+                            duration: tokens(context).fast,
+                            child: Text(
+                              t.common.viewAll,
+                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                color: const Color(0xFF54B9C5),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        AppIcon(Symbols.chevron_right_rounded, fill: 1, size: isTv ? 26 : 18),
                       ],
                     ],
                   ),
+                ),
                 ),
               ),
             ),
