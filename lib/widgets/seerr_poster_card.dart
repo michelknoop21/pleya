@@ -7,7 +7,9 @@ import '../focus/focusable_wrapper.dart';
 import '../i18n/strings.g.dart';
 import '../models/seerr/seerr_media.dart';
 import '../services/seerr/seerr_constants.dart';
+import '../services/settings_service.dart';
 import '../theme/mono_tokens.dart';
+import '../utils/grid_size_calculator.dart';
 import '../utils/platform_detector.dart';
 import 'pressable.dart';
 import 'seerr_status_badge.dart';
@@ -16,6 +18,15 @@ import 'seerr_status_badge.dart';
 /// fallback, recommendations). TV gets slightly larger touch/focus targets.
 double get seerrPosterWidth => PlatformDetector.isTV() ? 150 : 120;
 double get seerrPosterHeight => seerrPosterWidth * 3 / 2; // TMDB posters are 2:3.
+
+/// Density-aware poster size: follows the Settings → Appearance size slider
+/// (`libraryDensity`) via the same [GridSizeCalculator] the native grids use, so
+/// seerr horizontal rows scale with the rest of the app instead of a fixed size.
+double seerrPosterWidthOf(BuildContext context) => GridSizeCalculator.getMaxCrossAxisExtent(
+  context,
+  SettingsService.instance.read(SettingsService.libraryDensity),
+);
+double seerrPosterHeightOf(BuildContext context) => seerrPosterWidthOf(context) * 3 / 2;
 
 /// Fixed height of the text block under every poster (gap + two title lines +
 /// year). One shared constant so rows and grids budget identical space and all
@@ -44,7 +55,7 @@ class SeerrPosterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = tokens(context);
-    final w = width ?? seerrPosterWidth;
+    final w = width ?? seerrPosterWidthOf(context);
     final h = w * 3 / 2;
     return FocusableWrapper(
       onSelect: onTap,
@@ -158,7 +169,7 @@ class SeerrLoadMoreTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final radius = tokens(context).radiusSm;
-    final w = width ?? seerrPosterWidth;
+    final w = width ?? seerrPosterWidthOf(context);
     return FocusableWrapper(
       onSelect: onActivate,
       onFocusChange: (focused) {

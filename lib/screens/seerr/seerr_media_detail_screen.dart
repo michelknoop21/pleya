@@ -11,6 +11,7 @@ import '../../models/seerr/seerr_media.dart';
 import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
 import '../../services/seerr/seerr_constants.dart';
+import '../../services/settings_service.dart';
 import '../../theme/mono_theme.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
@@ -451,16 +452,19 @@ class _CastCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    // Avatar follows the size slider (libraryDensity), like the native cast row.
+    final f = LibraryDensity.factor(SettingsService.instance.read(SettingsService.libraryDensity));
+    final img = 72 + f * 32; // 72→104
     return SizedBox(
-      width: 80,
+      width: img + 8,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(tokens(context).radiusSm),
             child: SizedBox(
-              width: 72,
-              height: 72,
+              width: img,
+              height: img,
               child: member.profileUrl.isEmpty
                   ? ColoredBox(
                       color: scheme.surfaceContainerHighest,
@@ -523,7 +527,7 @@ class _PosterRow extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           SizedBox(
-            height: seerrPosterHeight + seerrCardTextExtent,
+            height: seerrPosterHeightOf(context) + seerrCardTextExtent,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.symmetric(horizontal: inset),

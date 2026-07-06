@@ -8,6 +8,7 @@ import '../../models/seerr/seerr_request.dart';
 import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
 import '../../services/seerr/seerr_constants.dart';
+import '../../services/settings_service.dart';
 import '../../theme/mono_theme.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/dialogs.dart';
@@ -278,6 +279,11 @@ class _SeerrRequestRow extends StatelessWidget {
     final title = request.mediaTitle ?? (isTv ? t.discover.tvShow : t.discover.movie);
     final posterUrl = SeerrConstants.tmdbPosterUrl(request.posterPath);
 
+    // Compact list thumbnail that follows the size slider (libraryDensity).
+    final f = LibraryDensity.factor(SettingsService.instance.read(SettingsService.libraryDensity));
+    final thumbW = 44 + f * 28; // 44→72
+    final thumbH = thumbW * 1.5;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -286,8 +292,8 @@ class _SeerrRequestRow extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.all(Radius.circular(tokens(context).radiusSm)),
             child: SizedBox(
-              width: 54,
-              height: 81,
+              width: thumbW,
+              height: thumbH,
               child: request.posterPath == null
                   ? ColoredBox(
                       color: theme.colorScheme.surfaceContainerHighest,

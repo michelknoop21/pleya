@@ -700,7 +700,7 @@ class _SeerrRowView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rowHeight = seerrPosterHeight + seerrCardTextExtent;
+    final rowHeight = seerrPosterHeightOf(context) + seerrCardTextExtent;
     final topGap = PlatformDetector.isTV() ? TvLayoutConstants.shelfVerticalGap / 2 : 8.0;
 
     return Padding(

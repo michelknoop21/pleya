@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../media/media_hub.dart';
+import '../services/settings_service.dart';
 import '../theme/mono_tokens.dart';
 import '../utils/grid_size_calculator.dart';
 import '../utils/platform_detector.dart';
@@ -37,9 +38,15 @@ class TopTenRow extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Poster width from the grid calculator, clamped; height is a fixed
-        // 2:3 so the row never overflows.
-        final cardWidth = GridSizeCalculator.getCellWidth(constraints.maxWidth, context, 1).clamp(92.0, 190.0);
+        // Poster width from the grid calculator, following the size slider
+        // (libraryDensity) like the rest of the app; clamped so the ranked row
+        // stays compact. Height is a fixed 2:3 so the row never overflows.
+        final density = SettingsService.instance.read(SettingsService.libraryDensity);
+        final cardWidth = GridSizeCalculator.getCellWidth(
+          constraints.maxWidth,
+          context,
+          density,
+        ).clamp(92.0, 190.0);
         final cardHeight = cardWidth * 1.5;
         final numeralWidth = cardWidth * 0.7;
         final rowHeight = cardHeight;

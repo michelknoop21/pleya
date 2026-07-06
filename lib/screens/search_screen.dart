@@ -243,7 +243,7 @@ class _SearchScreenState extends State<SearchScreen>
         ),
       if (_seerrResults.isNotEmpty)
         SizedBox(
-          height: seerrPosterHeight + seerrCardTextExtent,
+          height: seerrPosterHeightOf(context) + seerrCardTextExtent,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),

@@ -166,9 +166,12 @@ mixin FocusableChipStateMixin<T extends StatefulWidget> on State<T> {
     if (key.isRightKey) {
       if (callbacks.onNavigateRight != null) {
         callbacks.onNavigateRight!();
+        return KeyEventResult.handled;
       }
-      // Always consume RIGHT to prevent focus escape
-      return KeyEventResult.handled;
+      // No callback - let default traversal move to the next chip (symmetric
+      // with LEFT above). Consuming RIGHT unconditionally would trap focus on
+      // the first chip of a row.
+      return KeyEventResult.ignored;
     }
 
     if (key.isDownKey && callbacks.onNavigateDown != null) {
