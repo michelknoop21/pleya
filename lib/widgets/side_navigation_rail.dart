@@ -161,7 +161,11 @@ class NavigationRailItem extends StatelessWidget {
                             child: () {
                               if (useSimpleLayout) return label;
                               final opacity = isCollapsed ? 0.0 : 1.0;
-                              return AnimatedOpacity(opacity: opacity, duration: reduceMotion(context, t.fast), child: label);
+                              return AnimatedOpacity(
+                                opacity: opacity,
+                                duration: reduceMotion(context, t.fast),
+                                child: label,
+                              );
                             }(),
                           ),
                         ],
@@ -236,8 +240,6 @@ class SideNavigationRail extends StatefulWidget {
 }
 
 class SideNavigationRailState extends State<SideNavigationRail> with MountedSetStateMixin {
-  bool _librariesExpanded = true;
-
   bool _isHovered = false;
   bool _isTouchExpanded = false;
   bool _lastReportedInteractionExpanded = false;
@@ -268,18 +270,15 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
   }
 
   static const _kHome = 'home';
-  static const _kLibraries = 'libraries';
   static const _kSearch = 'search';
   static const _kRequests = 'requests';
   static const _kDownloads = 'downloads';
   static const _kSettings = 'settings';
   static const _kReconnect = 'reconnect';
   static const _kFullscreen = 'fullscreen';
-  static const _kHiddenLibraries = 'hiddenLibraries';
   static const _kServerHeaderPrefix = 'serverHeader';
   static const _kLibraryItemPrefix = 'library';
 
-  bool _hiddenLibrariesExpanded = false;
   final Set<String> _collapsedServerGroupKeys = {};
 
   // Unified focus state tracker for all nav items (main + libraries)
@@ -404,15 +403,11 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
         return _kHome;
       case NavigationTabId.libraries:
         final libKey = widget.selectedLibraryKey;
-        if (libKey != null && _librariesExpanded) {
+        if (libKey != null) {
           final visibleKey = '$_kLibraryItemPrefix:${_LibraryNavSection.visible.name}:$libKey';
           if (_mountedFocusNodeFor(visibleKey) != null) return visibleKey;
-          if (_hiddenLibrariesExpanded) {
-            final hiddenKey = '$_kLibraryItemPrefix:${_LibraryNavSection.hidden.name}:$libKey';
-            if (_mountedFocusNodeFor(hiddenKey) != null) return hiddenKey;
-          }
         }
-        return _kLibraries;
+        return _kHome;
       case NavigationTabId.search:
         return _kSearch;
       case NavigationTabId.requests:
@@ -450,24 +445,19 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
   /// Build the set of valid focus keys (main nav + currently rendered library rows).
   Set<String> _buildValidFocusKeys({
     required List<_LibraryNavRow> visibleRows,
-    required List<_LibraryNavRow> hiddenRows,
-    required bool hasHiddenLibraries,
     required bool hasLiveTv,
     required bool hasSeerr,
   }) {
     return {
       _kHome,
-      _kLibraries,
       _kSearch,
       if (hasSeerr) _kRequests,
       if (_showDownloads) _kDownloads,
       _kSettings,
       _kReconnect,
-      if (hasHiddenLibraries) _kHiddenLibraries,
       if (_showFullscreenToggle) _kFullscreen,
       if (hasLiveTv) 'liveTv',
       ..._focusKeysForLibraryRows(visibleRows),
-      if (_hiddenLibrariesExpanded) ..._focusKeysForLibraryRows(hiddenRows),
     };
   }
 
@@ -527,25 +517,12 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
   }
 
   /// Ordered list of focusable keys matching visual top-to-bottom order.
-  List<String> _buildFocusOrder(
-    List<_LibraryNavRow> visibleRows,
-    List<_LibraryNavRow> hiddenRows, {
-    required bool hasHiddenLibraries,
-    required bool hasLiveTv,
-    required bool hasSeerr,
-  }) {
+  List<String> _buildFocusOrder(List<_LibraryNavRow> visibleRows, {required bool hasLiveTv, required bool hasSeerr}) {
     return [
       if (widget.isOfflineMode && widget.onReconnect != null) _kReconnect,
       if (!widget.isOfflineMode) ...[
         _kHome,
-        _kLibraries,
-        if (_librariesExpanded) ...[
-          ..._focusKeysForLibraryRows(visibleRows),
-          if (hasHiddenLibraries) ...[
-            _kHiddenLibraries,
-            if (_hiddenLibrariesExpanded) ..._focusKeysForLibraryRows(hiddenRows),
-          ],
-        ],
+        ..._focusKeysForLibraryRows(visibleRows),
         if (hasLiveTv) 'liveTv',
         _kSearch,
         if (hasSeerr) _kRequests,
@@ -702,27 +679,10 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
           section: _LibraryNavSection.visible,
           showServerHeaders: showServerHeaders,
         );
-        final hiddenRows = _buildLibraryRows(
-          hiddenLibraries,
-          section: _LibraryNavSection.hidden,
-          showServerHeaders: showServerHeaders,
-        );
         _focusTracker.pruneExcept(
-          _buildValidFocusKeys(
-            visibleRows: visibleRows,
-            hiddenRows: hiddenRows,
-            hasHiddenLibraries: hiddenLibraries.isNotEmpty,
-            hasLiveTv: hasLiveTv,
-            hasSeerr: hasSeerr,
-          ),
+          _buildValidFocusKeys(visibleRows: visibleRows, hasLiveTv: hasLiveTv, hasSeerr: hasSeerr),
         );
-        final focusOrder = _buildFocusOrder(
-          visibleRows,
-          hiddenRows,
-          hasHiddenLibraries: hiddenLibraries.isNotEmpty,
-          hasLiveTv: hasLiveTv,
-          hasSeerr: hasSeerr,
-        );
+        final focusOrder = _buildFocusOrder(visibleRows, hasLiveTv: hasLiveTv, hasSeerr: hasSeerr);
         _debugAssertUniqueFocusOrder(focusOrder);
         return TapRegion(
           onTapOutside: (_) {
@@ -798,14 +758,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                       isCollapsed: isCollapsed,
                                     ),
                                     const SizedBox(height: 8),
-                                    _buildLibrariesSection(
-                                      visibleRows,
-                                      hiddenRows,
-                                      hiddenLibraries.length,
-                                      t,
-                                      isCollapsed: isCollapsed,
-                                      itemHorizontalPadding: itemHorizontalPadding,
-                                    ),
+                                    _buildLibrariesFlat(visibleRows, t, isCollapsed: isCollapsed),
                                     const SizedBox(height: 8),
                                     if (context.watch<MultiServerProvider>().hasLiveTv) ...[
                                       _buildNavItem(
@@ -927,7 +880,14 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                 DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(9),
-                    boxShadow: [BoxShadow(color: t.accent.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 4), spreadRadius: -6)],
+                    boxShadow: [
+                      BoxShadow(
+                        color: t.accent.withValues(alpha: 0.5),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                        spreadRadius: -6,
+                      ),
+                    ],
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(9),
@@ -1042,163 +1002,22 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     );
   }
 
-  Widget _buildLibrariesSection(
-    List<_LibraryNavRow> visibleRows,
-    List<_LibraryNavRow> hiddenRows,
-    int hiddenLibraryCount,
-    dynamic t, {
-    bool isCollapsed = false,
-    required double itemHorizontalPadding,
-  }) {
-    final librariesProvider = context.watch<LibrariesProvider>();
-    final isLoading = librariesProvider.isLoading;
-    final isLibrariesSelected = widget.selectedTab == NavigationTabId.libraries && widget.selectedLibraryKey == null;
-    final isLibrariesFocused = _focusTracker.isFocused(_kLibraries);
-    final showLibrariesSelectedBackground = isLibrariesSelected && !widget.isSidebarFocused;
-    final allEmpty = visibleRows.isEmpty && hiddenLibraryCount == 0;
-
-    return Column(
-      crossAxisAlignment: .start,
-      children: [
-        Focus(
-          focusNode: _focusTracker.get(_kLibraries),
-          onKeyEvent: (node, event) {
-            if (event is! KeyDownEvent) return KeyEventResult.ignored;
-            if (event.logicalKey.isSelectKey) {
-              setState(() {
-                _librariesExpanded = !_librariesExpanded;
-              });
-              return KeyEventResult.handled;
-            }
-            // RIGHT arrow navigates to content area
-            if (event.logicalKey == LogicalKeyboardKey.arrowRight && widget.onNavigateToContent != null) {
-              widget.onNavigateToContent!();
-              return KeyEventResult.handled;
-            }
-            return KeyEventResult.ignored;
-          },
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              canRequestFocus: false,
-              onTap: () {
-                setState(() {
-                  _librariesExpanded = !_librariesExpanded;
-                });
-              },
-              borderRadius: BorderRadius.circular(tokens(context).radiusMd),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: () {
-                    if (isCollapsed) return isLibrariesFocused ? t.text.withValues(alpha: 0.08) : null;
-                    if (showLibrariesSelectedBackground) return t.text.withValues(alpha: 0.06);
-                    if (isLibrariesFocused) return t.text.withValues(alpha: 0.08);
-                    return null;
-                  }(),
-                  borderRadius: BorderRadius.circular(tokens(context).radiusMd),
-                ),
-                clipBehavior: Clip.hardEdge,
-                child: UnconstrainedBox(
-                  alignment: .centerLeft,
-                  constrainedAxis: Axis.vertical,
-                  clipBehavior: Clip.hardEdge,
-                  child: SizedBox(
-                    width: expandedWidth - 24,
-                    child: Padding(
-                      padding: .symmetric(vertical: 12, horizontal: itemHorizontalPadding),
-                      child: Row(
-                        children: [
-                          AppIcon(
-                            Symbols.video_library_rounded,
-                            fill: 1,
-                            size: 22,
-                            color: widget.selectedTab == NavigationTabId.libraries ? t.text : t.textMuted,
-                          ),
-                          const SizedBox(width: 11),
-                          Expanded(
-                            child: AnimatedOpacity(
-                              opacity: isCollapsed ? 0.0 : 1.0,
-                              duration: reduceMotion(context, tokens(context).fast),
-                              child: Text(
-                                Translations.of(context).navigation.libraries,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: widget.selectedTab == NavigationTabId.libraries
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                  color: widget.selectedTab == NavigationTabId.libraries ? t.text : t.textMuted,
-                                ),
-                              ),
-                            ),
-                          ),
-                          AnimatedOpacity(
-                            opacity: isCollapsed ? 0.0 : 1.0,
-                            duration: reduceMotion(context, tokens(context).fast),
-                            child: AppIcon(
-                              _librariesExpanded ? Symbols.expand_less_rounded : Symbols.expand_more_rounded,
-                              fill: 1,
-                              size: 20,
-                              color: t.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+  /// Visible libraries pinned directly onto the rail as individual items (no
+  /// collapsible "Media" header). Hidden libraries are managed in Settings →
+  /// library visibility. In collapsed mode the items render icon-only, clipped
+  /// by the rail width just like the other nav items.
+  Widget _buildLibrariesFlat(List<_LibraryNavRow> visibleRows, dynamic t, {bool isCollapsed = false}) {
+    final isLoading = context.watch<LibrariesProvider>().isLoading;
+    if (isLoading) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Center(
+          child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: t.textMuted)),
         ),
-
-        TweenAnimationBuilder<double>(
-          tween: Tween(end: (_librariesExpanded && !isCollapsed) ? 1.0 : 0.0),
-          duration: reduceMotion(context, tokens(context).normal),
-          curve: Curves.easeOutCubic,
-          builder: (context, value, child) {
-            return ClipRect(
-              child: Align(alignment: .topCenter, heightFactor: value, child: child),
-            );
-          },
-          child: ExcludeFocus(
-            excluding: !_librariesExpanded || isCollapsed,
-            child: Column(
-              mainAxisSize: .min,
-              crossAxisAlignment: .start,
-              children: [
-                const SizedBox(height: 4),
-                if (isLoading)
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: t.textMuted),
-                      ),
-                    ),
-                  )
-                else if (allEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      Translations.of(context).libraries.noLibrariesFound,
-                      style: TextStyle(fontSize: 12, color: t.textMuted),
-                    ),
-                  )
-                else ...[
-                  if (visibleRows.isNotEmpty) _buildLibraryGroupedColumn(visibleRows, t),
-                  if (hiddenLibraryCount > 0) ...[
-                    _buildHiddenLibrariesHeader(hiddenLibraryCount, t),
-                    if (_hiddenLibrariesExpanded) _buildLibraryGroupedColumn(hiddenRows, t),
-                  ],
-                ],
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
+      );
+    }
+    if (visibleRows.isEmpty) return const SizedBox.shrink();
+    return _buildLibraryGroupedColumn(visibleRows, t, isCollapsed: isCollapsed);
   }
 
   /// Get set of library names that appear more than once (not globally unique)
@@ -1210,7 +1029,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     return nameCounts.entries.where((e) => e.value > 1).map((e) => e.key).toSet();
   }
 
-  Widget _buildLibraryGroupedColumn(List<_LibraryNavRow> rows, dynamic t) {
+  Widget _buildLibraryGroupedColumn(List<_LibraryNavRow> rows, dynamic t, {bool isCollapsed = false}) {
     return Column(
       crossAxisAlignment: .start,
       children: rows.map((row) {
@@ -1220,19 +1039,27 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
             ServerId(serverId),
             serverName,
             t,
+            isCollapsed: isCollapsed,
           ),
           _LibraryItemRow(:final section, :final library, :final showServerName) => _buildLibraryItem(
             section,
             library,
             t,
             showServerName: showServerName,
+            isCollapsed: isCollapsed,
           ),
         };
       }).toList(),
     );
   }
 
-  Widget _buildServerHeader(_LibraryNavSection section, ServerId serverId, String serverName, dynamic t) {
+  Widget _buildServerHeader(
+    _LibraryNavSection section,
+    ServerId serverId,
+    String serverName,
+    dynamic t, {
+    bool isCollapsed = false,
+  }) {
     // Resolve backend per server so the badge matches the brand. Falls back
     // to the generic `dns` icon if the client isn't registered yet (rare —
     // can happen during a profile switch before the manager rehydrates).
@@ -1248,6 +1075,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
       isExpanded: !_collapsedServerGroupKeys.contains(_serverGroupStateKey(section, serverId)),
       onToggle: () => _toggleServerCollapse(section, serverId),
       t: t,
+      isCollapsed: isCollapsed,
     );
   }
 
@@ -1258,20 +1086,6 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
         _collapsedServerGroupKeys.remove(groupKey);
       }
     });
-  }
-
-  Widget _buildHiddenLibrariesHeader(int count, dynamic t) {
-    return _buildCollapsibleHeader(
-      focusKey: _kHiddenLibraries,
-      icon: Symbols.visibility_off_rounded,
-      iconSize: 16,
-      label: Translations.of(context).libraries.hiddenLibrariesCount(count: count),
-      labelStyle: TextStyle(fontSize: 12, fontWeight: .w500, color: t.textMuted),
-      verticalPadding: 8,
-      isExpanded: _hiddenLibrariesExpanded,
-      onToggle: () => setState(() => _hiddenLibrariesExpanded = !_hiddenLibrariesExpanded),
-      t: t,
-    );
   }
 
   Widget _buildCollapsibleHeader({
@@ -1285,12 +1099,14 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     required bool isExpanded,
     required VoidCallback onToggle,
     required dynamic t,
+    bool isCollapsed = false,
   }) {
     final isFocused = _focusTracker.isFocused(focusKey);
     final radius = BorderRadius.circular(tokens(context).radiusSm);
-    // Match library-item indent: outer Padding(left: 12) + inner horizontal 17.
+    // Match library-item indent when expanded; drop it when collapsed so the
+    // icon lines up with the icon-only Home/Search rows on the narrow rail.
     return Padding(
-      padding: const EdgeInsets.only(left: 12),
+      padding: EdgeInsets.only(left: isCollapsed ? 0 : 12),
       child: Focus(
         focusNode: _focusTracker.get(focusKey),
         onKeyEvent: (node, event) {
@@ -1347,16 +1163,25 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     );
   }
 
-  Widget _buildLibraryItem(_LibraryNavSection section, MediaLibrary library, dynamic t, {bool showServerName = false}) {
+  Widget _buildLibraryItem(
+    _LibraryNavSection section,
+    MediaLibrary library,
+    dynamic t, {
+    bool showServerName = false,
+    bool isCollapsed = false,
+  }) {
     final isSelected =
         widget.selectedTab == NavigationTabId.libraries && widget.selectedLibraryKey == library.globalKey;
     final focusKey = _libraryItemFocusKey(section, library);
     final isFocused = _focusTracker.isFocused(focusKey);
     final focusNode = _focusTracker.get(focusKey);
 
+    // Drop the sub-item indent when collapsed so the library icon aligns with
+    // the icon-only Home/Search rows on the narrow rail.
     return Padding(
-      padding: const EdgeInsets.only(left: 12),
+      padding: EdgeInsets.only(left: isCollapsed ? 0 : 12),
       child: NavigationRailItem(
+        isCollapsed: isCollapsed,
         svgAsset: _getLibrarySvg(library.kind.id),
         icon: _getLibraryIcon(library.kind.id),
         selectedIcon: _getLibraryIcon(library.kind.id),

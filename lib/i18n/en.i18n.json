@@ -265,6 +265,8 @@
     "trackersDescription": "Sync progress to Trakt, MyAnimeList, AniList, and Simkl",
     "requests": "Requests",
     "requestsDescription": "Request movies and shows via Jellyseerr or Overseerr",
+    "libraryVisibility": "Library Visibility",
+    "libraryVisibilityDescription": "Choose which libraries appear in the menu",
     "companionRemoteServer": "Companion Remote Server",
     "companionRemoteServerDescription": "Allow mobile devices on your network to control this app",
     "autoPip": "Auto Picture-in-Picture",

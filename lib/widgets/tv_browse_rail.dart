@@ -790,6 +790,16 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     _notifyActiveHubChanged();
     _scrollToItemAfterLayout(animate: false);
     _scrollActiveHubToTop();
+    _flushReveal();
+  }
+
+  /// Force one repaint after the next frame so poster frames that decode under
+  /// the reveal transform get recomposited without needing an L/R nudge. The
+  /// initial flush is one-shot; lazy-built rows re-run it on activation.
+  void _flushReveal() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   void _scrollActiveHubToTop({bool animate = true}) {
@@ -858,6 +868,7 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     if (hubChanged) _notifyActiveHubChanged();
     _scrollActiveHubToTop();
     _scrollToItemAfterLayout(animate: false);
+    _flushReveal();
   }
 
   void _rememberFocus(MediaHub hub) {
@@ -1014,9 +1025,7 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     // relayout-based animation.
     if (!_didInitialFlush) {
       _didInitialFlush = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() {});
-      });
+      _flushReveal();
     }
     return SettingsBuilder(
       prefs: const [

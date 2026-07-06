@@ -907,6 +907,12 @@ class TranslationsSettingsEn {
 	/// en: 'Request movies and shows via Jellyseerr or Overseerr'
 	String get requestsDescription => 'Request movies and shows via Jellyseerr or Overseerr';
 
+	/// en: 'Library Visibility'
+	String get libraryVisibility => 'Library Visibility';
+
+	/// en: 'Choose which libraries appear in the menu'
+	String get libraryVisibilityDescription => 'Choose which libraries appear in the menu';
+
 	/// en: 'Companion Remote Server'
 	String get companionRemoteServer => 'Companion Remote Server';
 
@@ -5177,6 +5183,8 @@ extension on Translations {
 			'settings.trackersDescription' => 'Sync progress to Trakt, MyAnimeList, AniList, and Simkl',
 			'settings.requests' => 'Requests',
 			'settings.requestsDescription' => 'Request movies and shows via Jellyseerr or Overseerr',
+			'settings.libraryVisibility' => 'Library Visibility',
+			'settings.libraryVisibilityDescription' => 'Choose which libraries appear in the menu',
 			'settings.companionRemoteServer' => 'Companion Remote Server',
 			'settings.companionRemoteServerDescription' => 'Allow mobile devices on your network to control this app',
 			'settings.autoPip' => 'Auto Picture-in-Picture',
@@ -5432,10 +5440,10 @@ extension on Translations {
 			'messages.markedAsWatchedOffline' => 'Marked as watched (will sync when online)',
 			'messages.markedAsUnwatchedOffline' => 'Marked as unwatched (will sync when online)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Auto-removed: ${title}',
-			'messages.removedFromContinueWatching' => 'Removed from Continue Watching',
-			'messages.errorLoading' => ({required Object error}) => 'Error: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'messages.removedFromContinueWatching' => 'Removed from Continue Watching',
+			'messages.errorLoading' => ({required Object error}) => 'Error: ${error}',
 			'messages.fileInfoNotAvailable' => 'File information not available',
 			'messages.errorLoadingFileInfo' => ({required Object error}) => 'Error loading file info: ${error}',
 			'messages.errorLoadingSeries' => 'Error loading series',
@@ -5946,10 +5954,10 @@ extension on Translations {
 			'downloads.syncRuleAvailable' => 'Available',
 			'downloads.syncRuleOffline' => 'Offline',
 			'downloads.syncRuleSignInRequired' => 'Sign in required',
-			'downloads.syncRuleNotAvailableForProfile' => 'Not available for current profile',
-			'downloads.syncRuleUnknownServer' => 'Unknown server',
 			_ => null,
 		} ?? switch (path) {
+			'downloads.syncRuleNotAvailableForProfile' => 'Not available for current profile',
+			'downloads.syncRuleUnknownServer' => 'Unknown server',
 			'downloads.syncRuleListCreated' => 'Sync rule created',
 			'shaders.title' => 'Shaders',
 			'shaders.noShaderDescription' => 'No video enhancement',

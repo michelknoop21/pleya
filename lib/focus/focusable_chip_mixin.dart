@@ -171,8 +171,8 @@ mixin FocusableChipStateMixin<T extends StatefulWidget> on State<T> {
       return KeyEventResult.handled;
     }
 
-    if (key.isDownKey) {
-      callbacks.onNavigateDown?.call();
+    if (key.isDownKey && callbacks.onNavigateDown != null) {
+      callbacks.onNavigateDown!();
       return KeyEventResult.handled;
     }
 

@@ -433,7 +433,7 @@ void main() {
     expect(selectedTab, NavigationTabId.settings);
   });
 
-  testWidgets('D-pad down from a hidden server header focuses that hidden server library', (tester) async {
+  testWidgets('hidden libraries are excluded from the rail; visible ones are pinned and reachable', (tester) async {
     await SettingsService.getInstance();
 
     final visibleServerALibrary = _library(
@@ -501,17 +501,20 @@ void main() {
     sideNavKey.currentState!.focusActiveItem();
     await tester.pumpAndSettle();
 
-    // Home -> Libraries -> Server A header -> visible A -> Server B header -> visible B -> Hidden Libraries.
-    for (var i = 0; i < 6; i++) {
+    // Libraries are pinned flat (no "Media" expand button). With server grouping
+    // the visible order is: Home -> Server A header -> visible A. The hidden
+    // library is managed in Settings and never appears in the rail.
+    await _press(tester, LogicalKeyboardKey.arrowDown); // Server A header
+    await _press(tester, LogicalKeyboardKey.arrowDown); // visible Server A library
+    await _press(tester, LogicalKeyboardKey.enter);
+
+    expect(selectedLibraryKey, visibleServerALibrary.globalKey);
+
+    // Walking the whole rail never surfaces the hidden library.
+    for (var i = 0; i < 10; i++) {
       await _press(tester, LogicalKeyboardKey.arrowDown);
+      await _press(tester, LogicalKeyboardKey.enter);
+      expect(selectedLibraryKey, isNot(hiddenServerALibrary.globalKey));
     }
-    await _press(tester, LogicalKeyboardKey.enter);
-
-    // Hidden Libraries -> hidden Server A header -> hidden Server A library.
-    await _press(tester, LogicalKeyboardKey.arrowDown);
-    await _press(tester, LogicalKeyboardKey.arrowDown);
-    await _press(tester, LogicalKeyboardKey.enter);
-
-    expect(selectedLibraryKey, hiddenServerALibrary.globalKey);
   });
 }

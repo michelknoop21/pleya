@@ -2,6 +2,7 @@ import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../focus/card_focus_scope.dart';
 import '../focus/focusable_wrapper.dart';
 import '../i18n/strings.g.dart';
 import '../models/seerr/seerr_media.dart';
@@ -49,6 +50,7 @@ class SeerrPosterCard extends StatelessWidget {
       onSelect: onTap,
       focusNode: focusNode,
       borderRadius: t.radiusSm,
+      delegateFocusBorder: true,
       semanticLabel: media.title,
       child: Pressable(
         onTap: onTap,
@@ -58,18 +60,21 @@ class SeerrPosterCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(t.radiusSm),
-                child: Stack(
-                  children: [
-                    SizedBox(
-                      width: w,
-                      height: h,
-                      child: SeerrPosterImage(url: media.posterUrl),
-                    ),
-                    if (media.status != SeerrMediaStatus.unknown)
-                      Positioned(top: 6, left: 6, child: SeerrStatusBadge(status: media.status, compact: true)),
-                  ],
+              CardFocusBorder(
+                borderRadius: t.radiusSm,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(t.radiusSm),
+                  child: Stack(
+                    children: [
+                      SizedBox(
+                        width: w,
+                        height: h,
+                        child: SeerrPosterImage(url: media.posterUrl),
+                      ),
+                      if (media.status != SeerrMediaStatus.unknown)
+                        Positioned(top: 6, left: 6, child: SeerrStatusBadge(status: media.status, compact: true)),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 6),
@@ -160,6 +165,7 @@ class SeerrLoadMoreTile extends StatelessWidget {
         if (focused) onActivate();
       },
       borderRadius: radius,
+      delegateFocusBorder: true,
       semanticLabel: t.seerr.loadMore,
       child: Pressable(
         onTap: onActivate,
@@ -168,17 +174,20 @@ class SeerrLoadMoreTile extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: w,
-                height: w * 3 / 2,
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(radius),
-                ),
-                child: Center(
-                  child: loading
-                      ? const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2))
-                      : Icon(Symbols.add_circle_rounded, color: scheme.onSurfaceVariant, size: 36),
+              CardFocusBorder(
+                borderRadius: radius,
+                child: Container(
+                  width: w,
+                  height: w * 3 / 2,
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(radius),
+                  ),
+                  child: Center(
+                    child: loading
+                        ? const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2))
+                        : Icon(Symbols.add_circle_rounded, color: scheme.onSurfaceVariant, size: 36),
+                  ),
                 ),
               ),
               const SizedBox(height: 6),

@@ -47,6 +47,7 @@ import 'about_screen.dart';
 import 'add_connection_screen.dart';
 import 'appearance_settings_screen.dart';
 import 'keyboard_shortcuts_screen.dart';
+import 'library_visibility_screen.dart';
 import 'logs_screen.dart';
 import 'playback_settings_screen.dart';
 import '../profile/profile_switch_screen.dart';
@@ -69,6 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   static const _kAppearance = 'appearance';
   static const _kPlayback = 'playback';
   static const _kTrackers = 'trackers';
+  static const _kLibraryVisibility = 'library_visibility';
   static const _kRequests = 'requests';
   static const _kDownloadLocation = 'download_location';
   static const _kDownloadOnWifiOnly = 'download_on_wifi_only';
@@ -166,6 +168,8 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
 
                 _buildAppearanceTile(),
 
+                _buildLibraryVisibilityTile(),
+
                 _buildPlaybackTile(),
 
                 _buildTrackersTile(),
@@ -233,6 +237,16 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           );
         },
       ),
+    );
+  }
+
+  Widget _buildLibraryVisibilityTile() {
+    return SettingNavigationTile(
+      focusNode: _focusTracker.get(_kLibraryVisibility),
+      icon: Symbols.video_library_rounded,
+      title: t.settings.libraryVisibility,
+      subtitle: t.settings.libraryVisibilityDescription,
+      destinationBuilder: (context) => const LibraryVisibilityScreen(),
     );
   }
 

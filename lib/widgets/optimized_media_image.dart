@@ -15,6 +15,7 @@ import '../utils/app_logger.dart';
 import '../utils/blurhash.dart';
 import '../utils/media_image_helper.dart';
 import '../utils/obfuscation_utils.dart';
+import '../utils/platform_detector.dart';
 
 /// Tracks recent image load failures to log a periodic summary instead of
 /// spamming per-image. Resets after [_logInterval] so recurring issues
@@ -342,7 +343,11 @@ class OptimizedMediaImage extends StatelessWidget {
         if (wasSynchronouslyLoaded) return child;
         // Reduced tier: swap in directly — each in-flight fade is a tile-sized
         // saveLayer, and grid scrolling runs many of them concurrently.
-        if (DevicePerformance.isReduced) {
+        // TV: the AnimatedSwitcher is a paint-time swap that defers compositing
+        // under the rail's reveal transform, leaving lazy rows blank until an
+        // L/R nudge. A plain child-swap dirties the RenderImage and composites
+        // correctly under the transform.
+        if (DevicePerformance.isReduced || PlatformDetector.isTV()) {
           return frame != null ? child : _buildPlaceholder(context, imageUrl);
         }
         return AnimatedSwitcher(
