@@ -19,8 +19,8 @@
       src={wordmark}
       alt="Pleya"
       class="hero-wordmark fade-in"
-      width="1004"
-      height="496"
+      width="1452"
+      height="659"
       fetchpriority="high"
       style="animation-delay: 0ms;"
     />
