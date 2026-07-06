@@ -22,6 +22,7 @@ import '../focus/focusable_action_bar.dart';
 import '../focus/focusable_wrapper.dart';
 import '../focus/key_event_utils.dart';
 import '../focus/input_mode_tracker.dart';
+import '../media/item_watcher.dart';
 import '../media/library_query.dart';
 import '../media/media_hub.dart';
 import '../utils/provider_extensions.dart';
@@ -53,6 +54,8 @@ import '../widgets/settings_builder.dart';
 import '../utils/grid_size_calculator.dart';
 import '../utils/layout_constants.dart';
 import '../providers/download_provider.dart';
+import '../providers/multi_server_provider.dart';
+import 'media_detail/watched_by_row.dart';
 import '../providers/offline_watch_provider.dart';
 import '../providers/seerr_provider.dart';
 import '../providers/watch_state_store.dart';
@@ -267,6 +270,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   int _episodesLoadGeneration = 0;
   bool _showEpisodesDirectly = false;
   MediaItem? _fullMetadata;
+  List<ItemWatcher>? _watchers;
   MediaItem? _onDeckEpisode;
   bool _isLoadingMetadata = true;
   List<MediaItem>? _extras;
@@ -1375,6 +1379,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       // backends; safe to call unconditionally.
       unawaited(_loadExtras());
       unawaited(_loadRelatedHubs());
+      unawaited(_loadWatchers());
     } catch (e) {
       // Fallback to passed metadata on error
       if (!mounted) return;
@@ -1893,6 +1898,33 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       // Silently fail - extras section won't appear if fetch fails
       markLoaded();
     }
+  }
+
+  /// Plex-only "Watched by …" row. Reads the server-wide history, which needs
+  /// the server-owner token, so it's gated on server ownership and silently
+  /// skips for Jellyfin / shared / non-owned servers.
+  Future<void> _loadWatchers() async {
+    if (widget.isOffline) return;
+    if (!_metadata.isMovie && !_metadata.isShow) return;
+
+    final serverId = serverIdOrNull(_metadata.serverId);
+    if (serverId == null) return;
+    final plexClient = getServerBoundPlexClient(context);
+    if (plexClient == null) return; // Jellyfin / not registered
+
+    final manager = context.read<MultiServerProvider>().serverManager;
+    if (!manager.isOwnerOrAdmin(serverId)) return; // owner-token endpoint only
+    final ownerToken = manager.getPlexServer(serverId)?.accessToken;
+    // The history endpoint 403s on a non-owner token; without a real owner
+    // token the call would silently fall back to the (possibly restricted)
+    // client token — skip rather than fail quietly or poison the roster cache.
+    if (ownerToken == null || ownerToken.isEmpty) return;
+
+    final watchers = await plexClient.fetchItemWatchers(_metadata.id, authToken: ownerToken);
+    // Assign unconditionally (mounted-guarded): an empty result clears any
+    // stale row from a prior load; the render sites hide on empty.
+    if (!mounted) return;
+    setState(() => _watchers = watchers);
   }
 
   /// Load related hubs (collections, similar, "more from" director/actor).
@@ -3268,6 +3300,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                                 SizedBox(height: isTv ? 28 : 8),
                               ],
 
+                              // "Watched by …" row (Plex, owned servers only).
+                              if (_watchers != null && _watchers!.isNotEmpty) ...[
+                                WatchedByRow(watchers: _watchers!, selfAccountId: 1),
+                                const SizedBox(height: 24),
+                              ],
+
                               // Additional info — wrapped in Focus so DPAD DOWN from the
                               // last focusable section lands here and scrolls it into view.
                               if (_hasInfoRows)
@@ -3578,6 +3616,11 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                     ],
                     SizedBox(height: actionGap),
                     SizedBox(height: actionHeight, child: _buildActionButtons(metadata)),
+                    // "Watched by …" row (Plex, owned servers only).
+                    if (_watchers != null && _watchers!.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      WatchedByRow(watchers: _watchers!, selfAccountId: 1, avatarSize: 36),
+                    ],
                   ],
                 ),
               ),

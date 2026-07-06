@@ -903,6 +903,10 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get topPicksForYou => 'Aanbevolen voor jou';
 	@override String becauseYouLike({required Object genre}) => 'Omdat je van ${genre} houdt';
 	@override String get hiddenGems => 'Verborgen parels';
+	@override String watchedBy({required Object names}) => 'Bekeken door ${names}';
+	@override String get watchedByYou => 'Jij';
+	@override String get watchedByAnd => 'en';
+	@override String watchedByOthers({required Object count}) => '${count} anderen';
 }
 
 // Path: errors
@@ -2649,6 +2653,10 @@ extension on TranslationsNl {
 			'discover.topPicksForYou' => 'Aanbevolen voor jou',
 			'discover.becauseYouLike' => ({required Object genre}) => 'Omdat je van ${genre} houdt',
 			'discover.hiddenGems' => 'Verborgen parels',
+			'discover.watchedBy' => ({required Object names}) => 'Bekeken door ${names}',
+			'discover.watchedByYou' => 'Jij',
+			'discover.watchedByAnd' => 'en',
+			'discover.watchedByOthers' => ({required Object count}) => '${count} anderen',
 			'errors.searchFailed' => ({required Object error}) => 'Zoeken mislukt: ${error}',
 			'errors.connectionTimeout' => ({required Object context}) => 'Verbinding time-out tijdens laden ${context}',
 			'errors.connectionFailed' => 'Kan geen verbinding maken met mediaserver',
@@ -3011,12 +3019,12 @@ extension on TranslationsNl {
 			'shaders.shaderImported' => 'Shader geïmporteerd',
 			'shaders.shaderImportFailed' => 'Shader importeren mislukt',
 			'shaders.deleteShader' => 'Shader verwijderen',
+			_ => null,
+		} ?? switch (path) {
 			'shaders.deleteShaderConfirm' => ({required Object name}) => '"${name}" verwijderen?',
 			'companionRemote.title' => 'Afstandsbediening',
 			'companionRemote.connectedTo' => ({required Object name}) => 'Verbonden met ${name}',
 			'companionRemote.unknownDevice' => 'Onbekend apparaat',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.session.startingServer' => 'Externe server starten...',
 			'companionRemote.session.failedToCreate' => 'Kan externe server niet starten:',
 			'companionRemote.session.hostAddress' => 'Hostadres',

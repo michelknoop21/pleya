@@ -707,7 +707,11 @@
     "somethingDifferent": "Eens iets anders",
     "topPicksForYou": "Aanbevolen voor jou",
     "becauseYouLike": "Omdat je van ${genre} houdt",
-    "hiddenGems": "Verborgen parels"
+    "hiddenGems": "Verborgen parels",
+    "watchedBy": "Bekeken door ${names}",
+    "watchedByYou": "Jij",
+    "watchedByAnd": "en",
+    "watchedByOthers": "${count} anderen"
   },
   "errors": {
     "searchFailed": "Zoeken mislukt: ${error}",

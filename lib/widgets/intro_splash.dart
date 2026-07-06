@@ -113,30 +113,26 @@ class _IntroMark extends StatelessWidget {
               transform: GradientTranslation(dx, 0),
             ).createShader(rect);
           },
-          // The new thick-P mark + PLEYA wordmark lockup, matching the setup
-          // splash, with a warm red glow behind the mark.
+          // The "Pleya" wordmark lockup — the thick-P mark IS the word's P —
+          // with the tagline below and a warm red glow behind it.
           child: Column(
             mainAxisSize: .min,
             children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: const [BoxShadow(color: Color(0x66E5140F), blurRadius: 60, spreadRadius: 4)],
+              Container(
+                decoration: const BoxDecoration(
+                  boxShadow: [BoxShadow(color: Color(0x33E5140F), blurRadius: 60, spreadRadius: 8)],
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: Image.asset(
-                    'assets/branding/pleya_logo.png',
-                    width: 148,
-                    height: 148,
-                    filterQuality: FilterQuality.medium,
-                  ),
+                child: Image.asset(
+                  'assets/branding/pleya_wordmark.png',
+                  width: 340,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.medium,
                 ),
               ),
-              const SizedBox(height: 22),
-              const Text(
-                'PLEYA',
-                style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: .w800, letterSpacing: 12),
+              const SizedBox(height: 14),
+              Text(
+                'YOUR MEDIA. YOUR WAY.',
+                style: TextStyle(fontSize: 12, letterSpacing: 3.6, color: Colors.white.withValues(alpha: 0.4)),
               ),
             ],
           ),

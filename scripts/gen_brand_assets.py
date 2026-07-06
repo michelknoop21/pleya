@@ -117,12 +117,6 @@ def save(img, path):
 for plat in ("ios", "macos"):
     save(mark_canvas(1024, 1024, 0.74), f"{ROOT}/{plat}/pleya.icon/Assets/pleya-cropped.png")
 
-# ---- macOS legacy AppIcon.appiconset (overschaduwd door .icon, maar consistent) ----
-MAC = f"{ROOT}/macos/Runner/Assets.xcassets/AppIcon.appiconset"
-if os.path.isdir(MAC):
-    for s in (16, 32, 64, 128, 256, 512, 1024):
-        save(mark_canvas(s, s, 0.80, BG).convert("RGBA"), f"{MAC}/app_icon_{s}.png")
-
 # ---- Android ----
 A = f"{ROOT}/android/app/src/main/res"
 launcher = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}

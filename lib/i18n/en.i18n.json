@@ -719,7 +719,11 @@
     "somethingDifferent": "Something Different",
     "topPicksForYou": "Top Picks for You",
     "becauseYouLike": "Because you like ${genre}",
-    "hiddenGems": "Hidden Gems"
+    "hiddenGems": "Hidden Gems",
+    "watchedBy": "Watched by ${names}",
+    "watchedByYou": "You",
+    "watchedByAnd": "and",
+    "watchedByOthers": "${count} others"
   },
   "errors": {
     "searchFailed": "Search failed: ${error}",

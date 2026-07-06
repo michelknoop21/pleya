@@ -2177,6 +2177,18 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Hidden Gems'
 	String get hiddenGems => 'Hidden Gems';
+
+	/// en: 'Watched by ${names}'
+	String watchedBy({required Object names}) => 'Watched by ${names}';
+
+	/// en: 'You'
+	String get watchedByYou => 'You';
+
+	/// en: 'and'
+	String get watchedByAnd => 'and';
+
+	/// en: '${count} others'
+	String watchedByOthers({required Object count}) => '${count} others';
 }
 
 // Path: errors
@@ -5582,6 +5594,10 @@ extension on Translations {
 			'discover.topPicksForYou' => 'Top Picks for You',
 			'discover.becauseYouLike' => ({required Object genre}) => 'Because you like ${genre}',
 			'discover.hiddenGems' => 'Hidden Gems',
+			'discover.watchedBy' => ({required Object names}) => 'Watched by ${names}',
+			'discover.watchedByYou' => 'You',
+			'discover.watchedByAnd' => 'and',
+			'discover.watchedByOthers' => ({required Object count}) => '${count} others',
 			'errors.searchFailed' => ({required Object error}) => 'Search failed: ${error}',
 			'errors.connectionTimeout' => ({required Object context}) => 'Connection timeout while loading ${context}',
 			'errors.connectionFailed' => 'Unable to connect to media server',
@@ -5932,12 +5948,12 @@ extension on Translations {
 			'downloads.syncRuleSignInRequired' => 'Sign in required',
 			'downloads.syncRuleNotAvailableForProfile' => 'Not available for current profile',
 			'downloads.syncRuleUnknownServer' => 'Unknown server',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.syncRuleListCreated' => 'Sync rule created',
 			'shaders.title' => 'Shaders',
 			'shaders.noShaderDescription' => 'No video enhancement',
 			'shaders.nvscalerDescription' => 'NVIDIA image scaling for sharper video',
-			_ => null,
-		} ?? switch (path) {
 			'shaders.artcnnVariantNeutral' => 'Neutral',
 			'shaders.artcnnVariantDenoise' => 'Denoise',
 			'shaders.artcnnVariantDenoiseSharpen' => 'Denoise + Sharpen',

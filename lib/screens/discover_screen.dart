@@ -62,8 +62,6 @@ import '../utils/provider_extensions.dart';
 import '../utils/video_player_navigation.dart';
 import '../utils/layout_constants.dart';
 import '../utils/platform_detector.dart';
-import '../navigation/top_nav_scope.dart';
-import '../widgets/top_nav_bar.dart';
 import '../services/fullscreen_state_manager.dart';
 import '../utils/desktop_window_padding.dart';
 import '../widgets/top_ten_row.dart';
@@ -1064,9 +1062,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               // per the navigation mockup; the sidebar already carries the brand
               // on desktop, so side-nav keeps the plain title.
               Expanded(
-                child: TopNavScope.isActive(context)
-                    ? const TopNavLeading()
-                    : PlatformDetector.isTV()
+                child: PlatformDetector.isTV()
                     ? const SizedBox.shrink()
                     : PlatformDetector.shouldUseSideNavigation(context)
                     ? Text(
