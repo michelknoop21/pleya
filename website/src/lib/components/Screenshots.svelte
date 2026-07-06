@@ -1,5 +1,7 @@
 <script lang="ts">
   import ScrollReveal from './ScrollReveal.svelte';
+  import introSplash from '$lib/assets/screenshots/intro-splash.webp';
+  import introWelcome from '$lib/assets/screenshots/intro-welcome.webp';
   import homeHero from '$lib/assets/screenshots/home-hero-motu.webp';
   import homeContinue from '$lib/assets/screenshots/home-continue.webp';
   import detailBosch from '$lib/assets/screenshots/detail-bosch.webp';
@@ -8,6 +10,8 @@
   import discoverRequests from '$lib/assets/screenshots/discover-requests.webp';
 
   const shots = [
+    { src: introSplash, alt: 'Pleya launch screen with the animated logo' },
+    { src: introWelcome, alt: 'Sign in with Plex or connect to Jellyfin on the Pleya welcome screen' },
     { src: homeHero, alt: 'Pleya home screen with a cinematic featured hero' },
     { src: homeContinue, alt: 'Continue watching and personalized rows on the Pleya home screen' },
     { src: detailBosch, alt: 'Pleya show detail screen with ratings, cast and episodes' },
@@ -24,8 +28,8 @@
       <p class="section-label">Preview</p>
       <h2 class="section-heading">See it in action</h2>
       <p class="section-description">
-        A cinematic home for your library: a featured hero, continue-watching at a glance,
-        and rich detail screens. Here it is running on iPhone.
+        From first launch and a one-tap sign-in to a cinematic home for your library —
+        featured hero, continue-watching, and rich detail screens. Here it is running on iPhone.
       </p>
     </ScrollReveal>
 
