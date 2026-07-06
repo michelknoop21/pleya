@@ -141,6 +141,8 @@ lane :macos_beta do
   # Sparkle (DMG-updater, via auto_updater plugin) zit in de bundle. App Store
   # validatie eist dat elk executable daarin gesandboxed is; runtime staat
   # Sparkle toch uit (SUEnableAutomaticChecks=false), dus alleen bijtekenen.
+  # De sandbox-entitlements worden NA de export op de pkg toegepast — de export
+  # her-signeert Frameworks met Apple Distribution en zou het hier alsnog strippen.
   ent = File.join(out_dir, "sparkle-sandbox.entitlements")
   File.write(ent, <<~PLIST)
     <?xml version="1.0" encoding="UTF-8"?>
@@ -152,16 +154,6 @@ lane :macos_beta do
     </dict>
     </plist>
   PLIST
-  sparkle = "#{archive_path}/Products/Applications/Pleya.app/Contents/Frameworks/Sparkle.framework"
-  [
-    "#{sparkle}/Versions/B/Autoupdate",
-    "#{sparkle}/Versions/B/Updater.app",
-    "#{sparkle}/Versions/B/XPCServices/Downloader.xpc",
-    "#{sparkle}/Versions/B/XPCServices/Installer.xpc",
-  ].each do |nested|
-    sh("codesign --force --entitlements #{ent} --sign 'Apple Development' #{nested}")
-  end
-  sh("codesign --force --sign 'Apple Development' #{sparkle}")
 
   # De export her-signeert de app en Frameworks, maar slaat de CocoaPods
   # resource-bundles in Contents/Resources over (ITMS-90284). Die moeten met
@@ -184,6 +176,7 @@ lane :macos_beta do
       <key>method</key><string>app-store-connect</string>
       <key>teamID</key><string>XL9KN38ATX</string>
       <key>signingStyle</key><string>automatic</string>
+      <key>uploadSymbols</key><false/>
     </dict>
     </plist>
   PLIST
@@ -192,7 +185,55 @@ lane :macos_beta do
 
   pkg = Dir[File.join(out_dir, "*.pkg")].first
   UI.user_error!("Geen pkg gevonden in #{out_dir}") unless pkg
-  upload_beta(app_platform: "osx", pkg: pkg)
+
+  # De export strip de sandbox-entitlement weer van de Sparkle-helpers. Fix het
+  # NA de export: pkg uitpakken, helpers + framework + app bottom-up her-signeren
+  # met Apple Distribution (dezelfde identity die de export gebruikte), en de
+  # installer-pkg opnieuw signeren met de Mac Installer Distribution cert.
+  expanded = File.join(out_dir, "pkg-expanded")
+  FileUtils.rm_rf(expanded)
+  sh("pkgutil --expand-full #{pkg} #{expanded}")
+
+  app = Dir["#{expanded}/**/Pleya.app"].first
+  UI.user_error!("Geen Pleya.app gevonden in uitgepakte pkg") unless app
+
+  # App-entitlements (incl. app-sandbox + resolved waarden) bewaren voor de app-resign.
+  app_ent = File.join(out_dir, "app.entitlements")
+  sh("codesign -d --entitlements #{app_ent} --xml #{app}")
+
+  sparkle = "#{app}/Contents/Frameworks/Sparkle.framework"
+  [
+    "#{sparkle}/Versions/B/Autoupdate",
+    "#{sparkle}/Versions/B/Updater.app",
+    "#{sparkle}/Versions/B/XPCServices/Downloader.xpc",
+    "#{sparkle}/Versions/B/XPCServices/Installer.xpc",
+  ].each do |nested|
+    sh("codesign --force --entitlements #{ent} --sign 'Apple Distribution' #{nested}")
+  end
+  sh("codesign --force --sign 'Apple Distribution' #{sparkle}")
+  sh("codesign --force --entitlements #{app_ent} --sign 'Apple Distribution' #{app}")
+
+  # Sanity: app-sandbox moet nu op de helper staan, app blijft Apple Distribution.
+  helper_ent = `codesign -d --entitlements - #{sparkle}/Versions/B/Autoupdate 2>&1`
+  unless helper_ent.include?("com.apple.security.app-sandbox")
+    UI.user_error!("Sparkle-helper mist app-sandbox entitlement na resign")
+  end
+  sh("codesign -dv --verbose=4 #{app}")
+
+  # Component-pkg herbouwen en installer opnieuw signeren met de Mac Installer cert.
+  installer_identity = `security find-identity -v -p basic`.lines
+    .map { |l| l[/"(3rd Party Mac Developer Installer:[^"]+)"/, 1] }
+    .compact.first
+  UI.user_error!("Geen Mac Installer Distribution cert in keychain") unless installer_identity
+
+  patched_pkg = File.join(out_dir, "Pleya-patched.pkg")
+  signed_pkg = File.join(out_dir, "Pleya-signed.pkg")
+  FileUtils.rm_f([patched_pkg, signed_pkg])
+  sh("pkgutil --flatten #{expanded} #{patched_pkg}")
+  sh("productsign --sign '#{installer_identity}' #{patched_pkg} #{signed_pkg}")
+  sh("pkgutil --check-signature #{signed_pkg}")
+
+  upload_beta(app_platform: "osx", pkg: signed_pkg)
 end
 
 desc "Alle platforms → TestFlight; gaat door als één platform faalt"
