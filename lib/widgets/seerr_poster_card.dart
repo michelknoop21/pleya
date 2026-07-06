@@ -13,6 +13,7 @@ import '../utils/grid_size_calculator.dart';
 import '../utils/platform_detector.dart';
 import 'pressable.dart';
 import 'seerr_status_badge.dart';
+import 'tv_browse_rail.dart';
 
 /// Poster dimensions shared by every seerr surface (discover rows, grid, search
 /// fallback, recommendations). TV gets slightly larger touch/focus targets.
@@ -27,6 +28,24 @@ double seerrPosterWidthOf(BuildContext context) => GridSizeCalculator.getMaxCros
   SettingsService.instance.read(SettingsService.libraryDensity),
 );
 double seerrPosterHeightOf(BuildContext context) => seerrPosterWidthOf(context) * 3 / 2;
+
+/// Width of a seerr poster card inside a horizontal row, sized like the rest of
+/// the home screen so seerr shelves don't render oversized. [availableWidth] must
+/// be the row's real width (from a LayoutBuilder). The home screen uses two
+/// different renderers, so match whichever is active: on TV the Netflix-style
+/// [TvBrowseRail] (via [TvBrowseRailLayout.tallPosterCardWidth]); elsewhere the
+/// `HubSection` rows (via [GridSizeCalculator.getCellWidth]).
+double seerrRowCardWidthOf(BuildContext context, double availableWidth) {
+  final density = SettingsService.instance.read(SettingsService.libraryDensity);
+  if (PlatformDetector.isTV()) {
+    return TvBrowseRailLayout.tallPosterCardWidth(
+      viewportSize: MediaQuery.sizeOf(context),
+      availableWidth: availableWidth,
+      density: density,
+    );
+  }
+  return GridSizeCalculator.getCellWidth(availableWidth, context, density);
+}
 
 /// Fixed height of the text block under every poster (gap + two title lines +
 /// year). One shared constant so rows and grids budget identical space and all

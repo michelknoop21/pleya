@@ -118,6 +118,27 @@ class TvBrowseRailLayout {
     return fittedWidth.clamp(minWidth, maxWidth).toDouble();
   }
 
+  /// Resting (unfocused) tall-poster card width for a plain horizontal shelf, so
+  /// non-rail TV surfaces (e.g. the seerr Discover rows) match the home rail's
+  /// poster size instead of using the desktop `HubSection` formula. Reuses the
+  /// exact [cardWidthFor] the rail itself uses for tall posters.
+  static double tallPosterCardWidth({
+    required Size viewportSize,
+    required double availableWidth,
+    required int density,
+  }) {
+    final scale = scaleForSize(viewportSize);
+    final railEdgePadding = FocusTheme.focusBorderWidth * 2 * scale + (12 * scale);
+    return cardWidthFor(
+      availableWidth: availableWidth,
+      density: density,
+      useWideLayout: false,
+      scale: scale,
+      horizontalPadding: railEdgePadding * 2,
+      itemGap: 0,
+    );
+  }
+
   static TvBrowseRailLayoutMetrics metricsForHub({
     required MediaHub hub,
     required double availableWidth,
@@ -798,7 +819,36 @@ class TvBrowseRailState extends State<TvBrowseRail> {
   /// initial flush is one-shot; lazy-built rows re-run it on activation.
   void _flushReveal() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      setState(() {});
+      _nudgeActiveRowForReveal();
+    });
+  }
+
+  /// A plain repaint (the setState above) does not recomposite poster frames
+  /// that decoded under the reveal transform — only a change in the row's
+  /// horizontal scroll offset does, which is why posters appear after an L/R
+  /// nudge but stay blank on a mere rebuild. Replicate that nudge in code: jump
+  /// the active row 1px and back across two frames — imperceptible, but it
+  /// dirties the row viewport so the freshly-revealed posters composite.
+  void _nudgeActiveRowForReveal() {
+    final hub = _activeHub;
+    if (hub == null) return;
+    final key = _hubKey(hub);
+    final controller = _scrollControllers[key];
+    if (controller == null || controller.positions.length != 1) return;
+    final position = controller.position;
+    final maxExtent = position.maxScrollExtent;
+    if (!position.pixels.isFinite || !maxExtent.isFinite || maxExtent <= 0) return;
+    final origin = position.pixels;
+    final probe = origin < maxExtent ? origin + 1.0 : origin - 1.0;
+    position.jumpTo(probe);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final c = _scrollControllers[key];
+      if (c == null || c.positions.length != 1) return;
+      // Only restore if nothing else moved the row in the meantime.
+      if ((c.position.pixels - probe).abs() < 0.5) c.position.jumpTo(origin);
     });
   }
 

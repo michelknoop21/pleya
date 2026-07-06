@@ -29,11 +29,6 @@ import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import androidx.core.content.FileProvider
-import nl.michelknoop.pleya.exoplayer.ExoPlayerPlugin
-import nl.michelknoop.pleya.mpv.MpvPlayerPlugin
-import nl.michelknoop.pleya.shared.DeviceQuirks
-import nl.michelknoop.pleya.shared.ThemeHelper
-import nl.michelknoop.pleya.watchnext.WatchNextPlugin
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.FlutterTextureView
 import io.flutter.embedding.android.RenderMode
@@ -43,6 +38,11 @@ import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import kotlin.math.roundToInt
+import nl.michelknoop.pleya.exoplayer.ExoPlayerPlugin
+import nl.michelknoop.pleya.mpv.MpvPlayerPlugin
+import nl.michelknoop.pleya.shared.DeviceQuirks
+import nl.michelknoop.pleya.shared.ThemeHelper
+import nl.michelknoop.pleya.watchnext.WatchNextPlugin
 
 class MainActivity : FlutterActivity() {
 

@@ -747,8 +747,8 @@ Java_nl_michelknoop_pleya_libass_AssFrameTimestamps_nativeGetNextFrameId(JNIEnv*
 
 // Present (or composition) time for frameId (System.nanoTime() domain), or the
 // PENDING(-2)/INVALID(-1) sentinels. Reported a few frames after the swap.
-JNIEXPORT jlong JNICALL
-Java_nl_michelknoop_pleya_libass_AssFrameTimestamps_nativeGetDisplayPresentTime(JNIEnv* env, jclass clazz, jlong frameId) {
+JNIEXPORT jlong JNICALL Java_nl_michelknoop_pleya_libass_AssFrameTimestamps_nativeGetDisplayPresentTime(
+    JNIEnv* env, jclass clazz, jlong frameId) {
   if (pEglGetFrameTimestamps == NULL || gFtSurface == EGL_NO_SURFACE) return EGL_TIMESTAMP_INVALID_ANDROID;
   const EGLint names[1] = {gFtPresentName};
   EGLnsecsANDROID values[1] = {0};

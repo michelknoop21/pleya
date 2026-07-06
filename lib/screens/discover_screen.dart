@@ -236,6 +236,20 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         ),
       );
     }
+    // Recently Added rail directly under Continue Watching — same set that feeds
+    // the hero, surfaced as a browsable row.
+    if (_latestMovies.isNotEmpty) {
+      hubs.add(
+        MediaHub(
+          id: 'latest_movies',
+          title: t.discover.recentlyAdded,
+          type: 'movie',
+          identifier: '_latest_movies_',
+          size: _latestMovies.length,
+          items: _latestMovies,
+        ),
+      );
+    }
     hubs.addAll(_hubs.where((hub) => hub.items.isNotEmpty));
     return hubs;
   }
@@ -412,7 +426,28 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   /// bar when no billboard item is present (buttons not mounted).
   void _focusTvHeroPlay() {
     if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
-    if (_effectiveSpotlightItem != null && _tvHeroPlayFocusNode.canRequestFocus) {
+    if (_effectiveSpotlightItem == null) {
+      _focusTopActions();
+      return;
+    }
+    // While the rail is revealed the hero info is faded out and its actions sit
+    // under an ExcludeFocus (see TvSpotlightBackground), so the Play node can't
+    // take focus yet. Drop the reveal first, then focus once the rebuild
+    // re-enables the node — otherwise UP from the top row falls through to the
+    // app bar and the hero becomes unreachable.
+    if (_tvRailRevealed) {
+      _setTvRailRevealed(false);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_tvHeroPlayFocusNode.canRequestFocus) {
+          _tvHeroPlayFocusNode.requestFocus();
+        } else {
+          _focusTopActions();
+        }
+      });
+      return;
+    }
+    if (_tvHeroPlayFocusNode.canRequestFocus) {
       _tvHeroPlayFocusNode.requestFocus();
     } else {
       _focusTopActions();

@@ -7,18 +7,20 @@ import UIKit
   import Flutter
 #endif
 
-/// Presents native tvOS text entry by making a zero-alpha `UITextField` the
-/// first responder — tvOS then shows its fullscreen system keyboard, which is
-/// exactly what triggers the "type with iPhone" Continuity prompt. Live edits
-/// stream back to Dart via `textChanged`; the final value returns from `edit`.
+/// Presents native tvOS text entry as a `UIAlertController` with a text field —
+/// a proper modal that owns the tvOS focus engine, so the on-screen keyboard is
+/// navigable with the remote (and still offers the "type with iPhone" Continuity
+/// prompt). Live edits stream back to Dart via `textChanged`; the final value
+/// returns from `edit`.
 ///
-/// One session at a time (`BUSY` otherwise). Menu-dismiss returns the current
+/// One session at a time (`BUSY` otherwise). Cancel/Menu returns the current
 /// text with `submitted=false`; Done returns it with `submitted=true`.
 final class NativeTextEntryPlugin: NSObject, FlutterPlugin, UITextFieldDelegate {
   private static let channelName = "com.pleya/native_text_entry"
 
   private var channel: FlutterMethodChannel?
   private var textField: UITextField?
+  private var alert: UIAlertController?
   private var pendingResult: FlutterResult?
 
   static func register(with registrar: FlutterPluginRegistrar) {
@@ -46,40 +48,48 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin, UITextFieldDelegate 
   }
 
   private func begin(args: [String: Any], result: @escaping FlutterResult) {
-    guard let view = Self.rootView() else {
+    guard let presenter = Self.rootViewController() else {
       result(FlutterError(code: "UNAVAILABLE", message: "No root view controller", details: nil))
       return
     }
 
-    let field = MenuDismissTextField(frame: .zero)
-    field.text = args["text"] as? String ?? ""
-    field.delegate = self
-    field.alpha = 0.0
-    field.isSecureTextEntry = (args["obscure"] as? Bool) ?? false
-    field.keyboardType = Self.keyboardType(args["keyboardType"] as? String)
-    field.returnKeyType = Self.returnKeyType(args["action"] as? String)
-    field.autocorrectionType = ((args["autocorrect"] as? Bool) ?? true) ? .yes : .no
-    field.autocapitalizationType = Self.capitalization(args["capitalization"] as? String)
-    if let hint = args["hint"] as? String {
-      field.placeholder = hint
+    // A UIAlertController with a text field is the idiomatic tvOS text entry: a
+    // proper modal that captures the focus engine, so the on-screen keyboard is
+    // actually navigable. The old zero-alpha first-responder trick left the
+    // Flutter view competing for the remote, so the keyboard stayed dead.
+    let alert = UIAlertController(title: args["hint"] as? String, message: nil, preferredStyle: .alert)
+    alert.addTextField { [weak self] field in
+      guard let self = self else { return }
+      field.text = args["text"] as? String ?? ""
+      field.delegate = self
+      field.isSecureTextEntry = (args["obscure"] as? Bool) ?? false
+      field.keyboardType = Self.keyboardType(args["keyboardType"] as? String)
+      field.returnKeyType = Self.returnKeyType(args["action"] as? String)
+      field.autocorrectionType = ((args["autocorrect"] as? Bool) ?? true) ? .yes : .no
+      field.autocapitalizationType = Self.capitalization(args["capitalization"] as? String)
+      if let hint = args["hint"] as? String {
+        field.placeholder = hint
+      }
+      self.textField = field
+      NotificationCenter.default.addObserver(
+        self,
+        selector: #selector(self.textDidChange(_:)),
+        name: UITextField.textDidChangeNotification,
+        object: field)
     }
+    let done = UIAlertAction(title: "Done", style: .default) { [weak self] _ in
+      self?.finish(submitted: true)
+    }
+    let cancel = UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
+      self?.finish(submitted: false)
+    }
+    alert.addAction(done)
+    alert.addAction(cancel)
+    alert.preferredAction = done
 
-    view.addSubview(field)
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(textDidChange(_:)),
-      name: UITextField.textDidChangeNotification,
-      object: field)
-
-    textField = field
+    self.alert = alert
     pendingResult = result
-
-    if !field.becomeFirstResponder() {
-      cleanup()
-      pendingResult = nil
-      result(
-        FlutterError(code: "UNAVAILABLE", message: "Text field could not become first responder", details: nil))
-    }
+    presenter.present(alert, animated: true)
   }
 
   // MARK: - UITextFieldDelegate
@@ -87,11 +97,6 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin, UITextFieldDelegate 
   func textFieldShouldReturn(_ textField: UITextField) -> Bool {
     finish(submitted: true)
     return true
-  }
-
-  func textFieldDidEndEditing(_ textField: UITextField) {
-    // Menu-dismiss resigns the responder without a Done — keep the text, no submit.
-    finish(submitted: false)
   }
 
   @objc private func textDidChange(_ note: Notification) {
@@ -110,14 +115,10 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin, UITextFieldDelegate 
   private func cleanup() {
     if let field = textField {
       NotificationCenter.default.removeObserver(self, name: UITextField.textDidChangeNotification, object: field)
-      field.resignFirstResponder()
-      field.removeFromSuperview()
     }
     textField = nil
-    // Restore the view controller's first-responder role so
-    // PleyaFlutterViewController resumes intercepting play/pause. There is no
-    // viewDidAppear cycle on this path, so we must do it explicitly.
-    Self.rootViewController()?.becomeFirstResponder()
+    alert?.dismiss(animated: true)
+    alert = nil
   }
 
   // MARK: - Lookups
@@ -135,10 +136,6 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin, UITextFieldDelegate 
       if let root = windowScene.windows.first?.rootViewController { return root }
     }
     return nil
-  }
-
-  private static func rootView() -> UIView? {
-    rootViewController()?.view
   }
 
   private static func keyboardType(_ value: String?) -> UIKeyboardType {
@@ -171,20 +168,3 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin, UITextFieldDelegate 
     }
   }
 }
-
-/// tvOS routes a Menu/Back press to the first responder first. As the active
-/// text field we intercept it here, resign (→ textFieldDidEndEditing →
-/// finish(submitted:false)) and consume the press so Flutter never pops a route.
-private final class MenuDismissTextField: UITextField {
-  override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-    if presses.contains(where: { $0.type == .menu }) {
-      resignFirstResponder()
-      return
-    }
-    super.pressesBegan(presses, with: event)
-  }
-}
-
-// ponytail: if the zero-alpha field shows no keyboard on a real device (see
-// verification step 2), swap begin() for a UIAlertController + addTextField —
-// same Dart API, no channel changes.

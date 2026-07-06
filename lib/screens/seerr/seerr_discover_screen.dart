@@ -700,7 +700,6 @@ class _SeerrRowView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rowHeight = seerrPosterHeightOf(context) + seerrCardTextExtent;
     final topGap = PlatformDetector.isTV() ? TvLayoutConstants.shelfVerticalGap / 2 : 8.0;
 
     return Padding(
@@ -713,21 +712,26 @@ class _SeerrRowView extends StatelessWidget {
             child: Text(row.title, style: _rowHeaderStyle(context)),
           ),
           const SizedBox(height: 8),
-          SizedBox(
-            height: rowHeight,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.symmetric(horizontal: _rowInset),
-              itemCount: row.items.length + (row.hasMore ? 1 : 0),
-              separatorBuilder: (_, _) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                if (index >= row.items.length) {
-                  return SeerrLoadMoreTile(loading: row.loadingMore, onActivate: onLoadMore);
-                }
-                final media = row.items[index];
-                return SeerrPosterCard(media: media, onTap: () => onTapItem(media));
-              },
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cardWidth = seerrRowCardWidthOf(context, constraints.maxWidth);
+              return SizedBox(
+                height: cardWidth * 3 / 2 + seerrCardTextExtent,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.symmetric(horizontal: _rowInset),
+                  itemCount: row.items.length + (row.hasMore ? 1 : 0),
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    if (index >= row.items.length) {
+                      return SeerrLoadMoreTile(loading: row.loadingMore, onActivate: onLoadMore, width: cardWidth);
+                    }
+                    final media = row.items[index];
+                    return SeerrPosterCard(media: media, onTap: () => onTapItem(media), width: cardWidth);
+                  },
+                ),
+              );
+            },
           ),
         ],
       ),

@@ -17,14 +17,14 @@ import androidx.media3.common.util.GlProgram
 import androidx.media3.common.util.GlUtil
 import androidx.media3.common.util.Size
 import androidx.media3.common.util.UnstableApi
-import nl.michelknoop.pleya.libass.AssAtlasFrame
-import nl.michelknoop.pleya.libass.AssFrameTimestamps
-import nl.michelknoop.pleya.libass.media.AssHandler
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.LockSupport
+import nl.michelknoop.pleya.libass.AssAtlasFrame
+import nl.michelknoop.pleya.libass.AssFrameTimestamps
+import nl.michelknoop.pleya.libass.media.AssHandler
 
 /**
  * Atlas-rendering pipeline behind [AssSubtitleSurfaceView].

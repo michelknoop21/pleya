@@ -58,7 +58,11 @@ class BottomSheetPageScaffold extends StatelessWidget {
           closeFocusNode: closeFocusNode,
         ),
         if (showHeaderDivider) Divider(color: Theme.of(context).dividerColor, height: 1),
-        if (shrinkWrap) child else Expanded(child: child),
+        // Flexible (not raw) so a shrink-wrapped child is bounded to the sheet
+        // height minus the header: its own inner Flexible/scroll area then
+        // shrinks instead of pushing pinned footers (e.g. a Request button)
+        // off-screen. Loose fit still lets the sheet shrink-wrap small content.
+        if (shrinkWrap) Flexible(child: child) else Expanded(child: child),
       ],
     );
 

@@ -8,14 +8,14 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import nl.michelknoop.pleya.libass.media.AssHandler
-import nl.michelknoop.pleya.mpv.MpvPlayerCore
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import nl.michelknoop.pleya.libass.media.AssHandler
+import nl.michelknoop.pleya.mpv.MpvPlayerCore
 
 class ExoPlayerPlugin :
   FlutterPlugin,

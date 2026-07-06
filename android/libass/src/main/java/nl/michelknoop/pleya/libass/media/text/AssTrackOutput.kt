@@ -6,9 +6,9 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.extractor.TrackOutput
+import java.util.regex.Pattern
 import nl.michelknoop.pleya.libass.media.AssHandler
 import nl.michelknoop.pleya.libass.media.extractor.AssMatroskaExtractor
-import java.util.regex.Pattern
 
 /**
  * This class is only used by the overlay renderer. It's needed to get the start time of the subtitles.

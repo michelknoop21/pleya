@@ -526,18 +526,23 @@ class _PosterRow extends StatelessWidget {
             child: Text(title, style: _sectionHeaderStyle(context)),
           ),
           const SizedBox(height: 8),
-          SizedBox(
-            height: seerrPosterHeightOf(context) + seerrCardTextExtent,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.symmetric(horizontal: inset),
-              itemCount: items.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final media = items[index];
-                return SeerrPosterCard(media: media, onTap: () => onTapItem(media));
-              },
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cardWidth = seerrRowCardWidthOf(context, constraints.maxWidth);
+              return SizedBox(
+                height: cardWidth * 3 / 2 + seerrCardTextExtent,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.symmetric(horizontal: inset),
+                  itemCount: items.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final media = items[index];
+                    return SeerrPosterCard(media: media, onTap: () => onTapItem(media), width: cardWidth);
+                  },
+                ),
+              );
+            },
           ),
         ],
       ),

@@ -60,6 +60,8 @@ import androidx.media3.extractor.ts.TsExtractor
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.SubtitleView
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicLong
 import nl.michelknoop.pleya.libass.media.AssHandler
 import nl.michelknoop.pleya.libass.media.parser.AssSubtitleParserFactory
 import nl.michelknoop.pleya.libass.media.widget.AssSubtitleSurfaceView
@@ -67,8 +69,6 @@ import nl.michelknoop.pleya.shared.AudioFocusManager
 import nl.michelknoop.pleya.shared.DeviceQuirks
 import nl.michelknoop.pleya.shared.FlutterOverlayHelper
 import nl.michelknoop.pleya.shared.FrameRateManager
-import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicLong
 import org.chromium.net.CronetEngine
 import org.chromium.net.CronetProvider
 

@@ -13,14 +13,14 @@ import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
-import nl.michelknoop.pleya.shared.AudioFocusManager
-import nl.michelknoop.pleya.shared.FlutterOverlayHelper
-import nl.michelknoop.pleya.shared.FrameRateManager
-import nl.michelknoop.pleya.shared.PlayerDelegate
 import dev.jdtech.mpv.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import nl.michelknoop.pleya.shared.AudioFocusManager
+import nl.michelknoop.pleya.shared.FlutterOverlayHelper
+import nl.michelknoop.pleya.shared.FrameRateManager
+import nl.michelknoop.pleya.shared.PlayerDelegate
 
 class MpvPlayerCore(private val activity: Activity) : SurfaceHolder.Callback {
 

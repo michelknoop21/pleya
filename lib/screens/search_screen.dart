@@ -242,18 +242,23 @@ class _SearchScreenState extends State<SearchScreen>
           child: Text(t.seerr.noResults, style: theme.textTheme.bodyMedium),
         ),
       if (_seerrResults.isNotEmpty)
-        SizedBox(
-          height: seerrPosterHeightOf(context) + seerrCardTextExtent,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            itemCount: _seerrResults.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final media = _seerrResults[index];
-              return SeerrPosterCard(media: media, onTap: () => _openSeerrDetail(media));
-            },
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final cardWidth = seerrRowCardWidthOf(context, constraints.maxWidth);
+            return SizedBox(
+              height: cardWidth * 3 / 2 + seerrCardTextExtent,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                itemCount: _seerrResults.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final media = _seerrResults[index];
+                  return SeerrPosterCard(media: media, onTap: () => _openSeerrDetail(media), width: cardWidth);
+                },
+              ),
+            );
+          },
         ),
     ];
     return SliverList(delegate: SliverChildListDelegate(children));
