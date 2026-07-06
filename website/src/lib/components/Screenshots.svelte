@@ -8,6 +8,11 @@
   import episodesBosch from '$lib/assets/screenshots/episodes-bosch.webp';
   import detailThor from '$lib/assets/screenshots/detail-thor.webp';
   import discoverRequests from '$lib/assets/screenshots/discover-requests.webp';
+  import discoverSeverance from '$lib/assets/screenshots/discover-severance.webp';
+  import discoverNormal from '$lib/assets/screenshots/discover-normal.webp';
+  import discoverPrada from '$lib/assets/screenshots/discover-prada.webp';
+  import detailGot from '$lib/assets/screenshots/detail-got.webp';
+  import episodesGot from '$lib/assets/screenshots/episodes-got.webp';
 
   const shots = [
     { src: introSplash, alt: 'Pleya launch screen with the animated logo' },
@@ -18,6 +23,11 @@
     { src: episodesBosch, alt: 'Season and episode browser in Pleya' },
     { src: detailThor, alt: 'Pleya movie detail screen with ratings and playback options' },
     { src: discoverRequests, alt: 'Discover and request new titles from within Pleya' },
+    { src: discoverSeverance, alt: 'Pleya home screen with a cinematic Severance featured hero' },
+    { src: discoverNormal, alt: 'Continue watching with resume progress on the Pleya home screen' },
+    { src: detailGot, alt: 'Pleya show detail screen with ratings, cast and episodes' },
+    { src: episodesGot, alt: 'Season and episode browser in Pleya' },
+    { src: discoverPrada, alt: 'Featured title billboard on the Pleya home screen' },
   ];
 </script>
 
