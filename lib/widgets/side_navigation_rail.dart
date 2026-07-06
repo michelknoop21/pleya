@@ -161,7 +161,7 @@ class NavigationRailItem extends StatelessWidget {
                             child: () {
                               if (useSimpleLayout) return label;
                               final opacity = isCollapsed ? 0.0 : 1.0;
-                              return AnimatedOpacity(opacity: opacity, duration: t.fast, child: label);
+                              return AnimatedOpacity(opacity: opacity, duration: reduceMotion(context, t.fast), child: label);
                             }(),
                           ),
                         ],
@@ -623,6 +623,23 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     }
   }
 
+  String _getLibrarySvg(String type) {
+    switch (type.toLowerCase()) {
+      case 'movie':
+        return NavGlyphs.libMovie;
+      case 'show':
+        return NavGlyphs.libShow;
+      case 'artist':
+        return NavGlyphs.libMusic;
+      case 'photo':
+        return NavGlyphs.libPhoto;
+      case 'mixed':
+        return NavGlyphs.libMixed;
+      default:
+        return NavGlyphs.libFolder;
+    }
+  }
+
   /// Calculate top padding for macOS traffic lights
   double _getTopPadding(BuildContext context) {
     double basePadding = MediaQuery.paddingOf(context).top + 16;
@@ -722,7 +739,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
               behavior: HitTestBehavior.opaque,
               onTap: isCollapsed ? _expandForTouch : null,
               child: AnimatedContainer(
-                duration: t.normal,
+                duration: reduceMotion(context, t.normal),
                 curve: Curves.easeOutCubic,
                 width: isCollapsed ? effectiveCollapsedWidth : expandedWidth,
                 clipBehavior: Clip.hardEdge,
@@ -920,7 +937,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                 const SizedBox(width: 12),
                 AnimatedOpacity(
                   opacity: isCollapsed ? 0.0 : 1.0,
-                  duration: t.fast,
+                  duration: reduceMotion(context, t.fast),
                   child: Text(
                     'PLEYA',
                     style: TextStyle(fontSize: 16, fontWeight: .w800, letterSpacing: 4.8, color: t.text),
@@ -1101,7 +1118,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                           Expanded(
                             child: AnimatedOpacity(
                               opacity: isCollapsed ? 0.0 : 1.0,
-                              duration: tokens(context).fast,
+                              duration: reduceMotion(context, tokens(context).fast),
                               child: Text(
                                 Translations.of(context).navigation.libraries,
                                 style: TextStyle(
@@ -1116,7 +1133,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                           ),
                           AnimatedOpacity(
                             opacity: isCollapsed ? 0.0 : 1.0,
-                            duration: tokens(context).fast,
+                            duration: reduceMotion(context, tokens(context).fast),
                             child: AppIcon(
                               _librariesExpanded ? Symbols.expand_less_rounded : Symbols.expand_more_rounded,
                               fill: 1,
@@ -1136,7 +1153,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
 
         TweenAnimationBuilder<double>(
           tween: Tween(end: (_librariesExpanded && !isCollapsed) ? 1.0 : 0.0),
-          duration: tokens(context).normal,
+          duration: reduceMotion(context, tokens(context).normal),
           curve: Curves.easeOutCubic,
           builder: (context, value, child) {
             return ClipRect(
@@ -1340,6 +1357,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     return Padding(
       padding: const EdgeInsets.only(left: 12),
       child: NavigationRailItem(
+        svgAsset: _getLibrarySvg(library.kind.id),
         icon: _getLibraryIcon(library.kind.id),
         selectedIcon: _getLibraryIcon(library.kind.id),
         label: Column(

@@ -1,5 +1,5 @@
 <h1>
-  <img src="assets/plezy.png" alt="Pleya Logo" height="24" style="vertical-align: middle;" />
+  <img src="assets/pleya.png" alt="Pleya Logo" height="24" style="vertical-align: middle;" />
   Pleya
 </h1>
 

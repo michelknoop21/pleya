@@ -129,6 +129,14 @@ class NavGlyphs {
   static const requests = 'assets/icons/nav/requests.svg';
   static const downloads = 'assets/icons/nav/downloads.svg';
   static const settings = 'assets/icons/nav/settings.svg';
+
+  // Library-row glyphs (same solid style, one icon language across the rail).
+  static const libMovie = 'assets/icons/nav/movie.svg';
+  static const libShow = 'assets/icons/nav/show.svg';
+  static const libMusic = 'assets/icons/nav/music.svg';
+  static const libPhoto = 'assets/icons/nav/photo.svg';
+  static const libMixed = 'assets/icons/nav/mixed.svg';
+  static const libFolder = 'assets/icons/nav/folder.svg';
 }
 
 /// All navigation tabs in display order

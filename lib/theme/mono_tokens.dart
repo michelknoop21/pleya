@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 
 MonoTokens tokens(BuildContext context) => Theme.of(context).extension<MonoTokens>()!;
 
+/// Zero-duration when the user has "reduce motion" enabled (OS toggle), else [d].
+/// Lets animations crossfade/snap instead of moving for accessibility.
+Duration reduceMotion(BuildContext context, Duration d) =>
+    MediaQuery.disableAnimationsOf(context) ? Duration.zero : d;
+
 @immutable
 class MonoTokens extends ThemeExtension<MonoTokens> {
   final double radiusSm;
