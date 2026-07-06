@@ -3,6 +3,8 @@
   import Waitlist from "./Waitlist.svelte";
   import Logo from "./Logo.svelte";
   import wordmark from "$lib/assets/pleya_wordmark.png";
+  import phoneHome from "$lib/assets/screenshots/home-hero-motu.webp";
+  import phoneContinue from "$lib/assets/screenshots/home-continue.webp";
 </script>
 
 <section id="home" class="hero-section">
@@ -14,7 +16,8 @@
   <!-- Ambient red → amber glow -->
   <div class="ambient-glow" aria-hidden="true"></div>
 
-  <div class="hero-content">
+  <div class="hero-grid">
+   <div class="hero-content">
     <img
       src={wordmark}
       alt="Pleya"
@@ -47,6 +50,16 @@
 
     <div class="hero-waitlist fade-in" style="animation-delay: 420ms;">
       <Waitlist />
+    </div>
+   </div>
+
+    <div class="hero-visual fade-in" aria-hidden="true" style="animation-delay: 300ms;">
+      <div class="phone phone-back">
+        <img src={phoneContinue} alt="" width="828" height="1800" loading="eager" />
+      </div>
+      <div class="phone phone-front">
+        <img src={phoneHome} alt="" width="828" height="1800" loading="eager" />
+      </div>
     </div>
   </div>
 </section>
@@ -91,12 +104,61 @@
     pointer-events: none;
   }
 
-  .hero-content {
+  .hero-grid {
     position: relative;
     width: 100%;
     max-width: 72rem;
     margin-inline: auto;
     padding: 6rem 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  .hero-content {
+    position: relative;
+    min-width: 0;
+  }
+
+  /* Two overlapping phones showing the home screen. Desktop-only:
+     the Screenshots rail already covers phones on mobile. */
+  .hero-visual {
+    display: none;
+    position: relative;
+    height: 34rem;
+  }
+
+  .hero-visual .phone {
+    position: absolute;
+    top: 50%;
+    width: 15rem;
+    padding: 0.4rem;
+    border-radius: 2rem;
+    background: linear-gradient(160deg, #2a2a2a, #0d0d0d);
+    box-shadow:
+      0 2px 0 rgba(255, 255, 255, 0.06) inset,
+      0 40px 80px -30px rgba(0, 0, 0, 0.9);
+  }
+
+  .hero-visual .phone img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 1.65rem;
+  }
+
+  .hero-visual .phone-back {
+    left: 30%;
+    transform: translateY(-50%) rotate(5deg);
+    z-index: 1;
+    opacity: 0.92;
+  }
+
+  .hero-visual .phone-front {
+    left: 2%;
+    transform: translateY(-52%) rotate(-4deg);
+    z-index: 2;
   }
 
   .fade-in {
@@ -178,8 +240,13 @@
   }
 
   @media (min-width: 1024px) {
-    .hero-content {
+    .hero-grid {
+      grid-template-columns: 1.05fr 0.95fr;
       padding-inline: 3rem;
+    }
+
+    .hero-visual {
+      display: block;
     }
 
     .hero-description {
