@@ -33,8 +33,7 @@ class SeerrSettingsScreen extends StatefulWidget {
   State<SeerrSettingsScreen> createState() => _SeerrSettingsScreenState();
 }
 
-class _SeerrSettingsScreenState extends State<SeerrSettingsScreen>
-    with AsyncFormStateMixin, ControllerDisposerMixin {
+class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFormStateMixin, ControllerDisposerMixin {
   late final _urlController = createTextEditingController();
   late final _emailController = createTextEditingController();
   late final _passwordController = createTextEditingController();

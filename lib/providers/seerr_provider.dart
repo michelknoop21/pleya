@@ -77,11 +77,7 @@ class SeerrProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
     String? password,
     String? plexToken,
   }) async {
-    final provisional = SeerrSession(
-      baseUrl: SeerrConstants.normalizeBaseUrl(baseUrl),
-      authMode: mode,
-      apiKey: apiKey,
-    );
+    final provisional = SeerrSession(baseUrl: SeerrConstants.normalizeBaseUrl(baseUrl), authMode: mode, apiKey: apiKey);
     final client = SeerrClient(provisional, plexTokenProvider: _resolvePlexToken);
     try {
       final status = await client.getStatus(force: true);

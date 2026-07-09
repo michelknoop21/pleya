@@ -57,11 +57,7 @@ Uint8List? decodeBlurHashRgba(String blurHash, {int width = 32, int height = 32,
   for (var i = 0; i < colors.length; i++) {
     if (i == 0) {
       final value = _decode83(blurHash, 2, 6);
-      colors[i] = [
-        _srgbToLinear((value >> 16) & 255),
-        _srgbToLinear((value >> 8) & 255),
-        _srgbToLinear(value & 255),
-      ];
+      colors[i] = [_srgbToLinear((value >> 16) & 255), _srgbToLinear((value >> 8) & 255), _srgbToLinear(value & 255)];
     } else {
       final value = _decode83(blurHash, 4 + i * 2, 6 + i * 2);
       final quantR = (value / (19 * 19)).floor();
@@ -82,8 +78,7 @@ Uint8List? decodeBlurHashRgba(String blurHash, {int width = 32, int height = 32,
       var r = 0.0, g = 0.0, b = 0.0;
       for (var j = 0; j < numY; j++) {
         for (var i = 0; i < numX; i++) {
-          final basis =
-              math.cos((math.pi * x * i) / width) * math.cos((math.pi * y * j) / height);
+          final basis = math.cos((math.pi * x * i) / width) * math.cos((math.pi * y * j) / height);
           final color = colors[i + j * numX];
           r += color[0] * basis;
           g += color[1] * basis;

@@ -137,9 +137,7 @@ class TvVideoTab extends StatelessWidget {
 
     // Playback speed (hidden for live / no control)
     if (canControl && !isLive) {
-      rows.add(
-        _SpeedRow(player: player, focusNode: topNode, onNavigateUp: topUp, onSelect: _cycleSpeed),
-      );
+      rows.add(_SpeedRow(player: player, focusNode: topNode, onNavigateUp: topUp, onSelect: _cycleSpeed));
       topNode = null;
       topUp = null;
     }

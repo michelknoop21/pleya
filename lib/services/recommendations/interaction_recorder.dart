@@ -35,17 +35,20 @@ class InteractionRecorder {
     required AppDatabase database,
     required String profileId,
     required MediaServerClient? Function(ServerId serverId) clientResolver,
-  })  : _db = database,
-        _profileId = profileId,
-        _clientResolver = clientResolver;
+  }) : _db = database,
+       _profileId = profileId,
+       _clientResolver = clientResolver;
 
   void start() {
     // No active profile → nothing to attribute interactions to; stay inert so
     // we never persist taste rows under an empty profile id.
     if (_profileId.isEmpty) return;
-    _sub ??= WatchStateNotifier().stream.listen(_onEvent, onError: (Object e, StackTrace s) {
-      appLogger.w('InteractionRecorder: stream error', error: e, stackTrace: s);
-    });
+    _sub ??= WatchStateNotifier().stream.listen(
+      _onEvent,
+      onError: (Object e, StackTrace s) {
+        appLogger.w('InteractionRecorder: stream error', error: e, stackTrace: s);
+      },
+    );
   }
 
   Future<void> dispose() async {
@@ -109,9 +112,7 @@ class InteractionRecorder {
     if (item.kind == MediaKind.episode && episodeMetaSparse) {
       final grandparentId = item.grandparentId;
       if (grandparentId != null) {
-        seriesKey = serverIdOrNull(item.serverId) != null
-            ? '${item.serverId}:$grandparentId'
-            : grandparentId;
+        seriesKey = serverIdOrNull(item.serverId) != null ? '${item.serverId}:$grandparentId' : grandparentId;
         final show = await client.fetchItem(grandparentId);
         if (show != null) item = show;
       }

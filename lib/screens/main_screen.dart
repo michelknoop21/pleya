@@ -227,7 +227,6 @@ class _MainScreenState extends State<MainScreen>
   final GlobalKey<State<SettingsScreen>> _settingsKey = GlobalKey();
   final GlobalKey<SideNavigationRailState> _sideNavKey = GlobalKey();
 
-
   // Focus management for sidebar/content switching
   final FocusScopeNode _sidebarFocusScope = FocusScopeNode(debugLabel: 'Sidebar');
   final FocusScopeNode _contentFocusScope = FocusScopeNode(debugLabel: 'Content');
@@ -1592,36 +1591,38 @@ class _MainScreenState extends State<MainScreen>
     final librariesIndex = tabs.indexWhere((tab) => tab.id == NavigationTabId.libraries);
     if (librariesIndex < 0 || tabs.isEmpty) return frosted(navigationBar);
 
-    return frosted(LayoutBuilder(
-      builder: (context, constraints) {
-        if (!constraints.hasBoundedWidth) return navigationBar;
+    return frosted(
+      LayoutBuilder(
+        builder: (context, constraints) {
+          if (!constraints.hasBoundedWidth) return navigationBar;
 
-        final itemWidth = constraints.maxWidth / tabs.length;
-        final isRtl = Directionality.of(context) == TextDirection.rtl;
-        final left = isRtl ? constraints.maxWidth - (itemWidth * (librariesIndex + 1)) : itemWidth * librariesIndex;
+          final itemWidth = constraints.maxWidth / tabs.length;
+          final isRtl = Directionality.of(context) == TextDirection.rtl;
+          final left = isRtl ? constraints.maxWidth - (itemWidth * (librariesIndex + 1)) : itemWidth * librariesIndex;
 
-        return Stack(
-          children: [
-            navigationBar,
-            Positioned(
-              left: left,
-              top: 0,
-              bottom: 0,
-              width: itemWidth,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                excludeFromSemantics: true,
-                onLongPress: () {
-                  Feedback.forLongPress(context);
-                  _showLibraryQuickPicker(context);
-                },
-                child: const SizedBox.expand(),
+          return Stack(
+            children: [
+              navigationBar,
+              Positioned(
+                left: left,
+                top: 0,
+                bottom: 0,
+                width: itemWidth,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  excludeFromSemantics: true,
+                  onLongPress: () {
+                    Feedback.forLongPress(context);
+                    _showLibraryQuickPicker(context);
+                  },
+                  child: const SizedBox.expand(),
+                ),
               ),
-            ),
-          ],
-        );
-      },
-    ));
+            ],
+          );
+        },
+      ),
+    );
   }
 
   @override

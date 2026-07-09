@@ -110,13 +110,7 @@ class TvAudioTab extends StatelessWidget {
             // Options
             rows.add(TvPanelSectionHeader(label: t.videoControls.tvPanel.options));
 
-            rows.add(
-              _MaxVolumeRow(
-                focusNode: nodeFor(),
-                onNavigateUp: upFor(),
-                onSelect: _cycleMaxVolume,
-              ),
-            );
+            rows.add(_MaxVolumeRow(focusNode: nodeFor(), onNavigateUp: upFor(), onSelect: _cycleMaxVolume));
             first = false;
 
             rows.add(
@@ -318,7 +312,9 @@ class TvSubtitlesTab extends StatelessWidget {
               TvPanelRow(
                 icon: Symbols.sync_rounded,
                 title: t.videoSettings.subtitleSync,
-                value: state.subtitleSyncOffset != 0 ? '${(state.subtitleSyncOffset / 1000).toStringAsFixed(1)}s' : null,
+                value: state.subtitleSyncOffset != 0
+                    ? '${(state.subtitleSyncOffset / 1000).toStringAsFixed(1)}s'
+                    : null,
                 highlighted: state.subtitleSyncOffset != 0,
                 showChevron: true,
                 onSelect: onOpenSubtitleSync,

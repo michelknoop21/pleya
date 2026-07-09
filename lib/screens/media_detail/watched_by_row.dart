@@ -20,13 +20,7 @@ class WatchedByRow extends StatelessWidget {
   final TextStyle? textStyle;
   final double avatarSize;
 
-  const WatchedByRow({
-    super.key,
-    required this.watchers,
-    this.selfAccountId,
-    this.textStyle,
-    this.avatarSize = 30,
-  });
+  const WatchedByRow({super.key, required this.watchers, this.selfAccountId, this.textStyle, this.avatarSize = 30});
 
   static const _maxAvatars = 4;
 
@@ -52,8 +46,7 @@ class WatchedByRow extends StatelessWidget {
     );
   }
 
-  String _nameFor(ItemWatcher w) =>
-      w.accountId == selfAccountId ? t.discover.watchedByYou : w.displayName;
+  String _nameFor(ItemWatcher w) => w.accountId == selfAccountId ? t.discover.watchedByYou : w.displayName;
 
   String _namesSentence() {
     // Self first, so "You" is never buried in the "and N others" overflow;
@@ -112,12 +105,12 @@ class WatchedByRow extends StatelessWidget {
 
   // Thin surface ring so overlapping avatars stay visually separated.
   Widget _ringed(ThemeData theme, Widget child) => Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: theme.colorScheme.surface, width: 2),
-        ),
-        child: child,
-      );
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: Border.all(color: theme.colorScheme.surface, width: 2),
+    ),
+    child: child,
+  );
 }
 
 class _WatcherAvatar extends StatelessWidget {
@@ -148,13 +141,13 @@ class _WatcherAvatar extends StatelessWidget {
   }
 
   Widget _initials(ThemeData theme) => Container(
-        color: colorForName(watcher.displayName, theme),
-        alignment: .center,
-        child: Text(
-          initialOf(watcher.displayName),
-          style: TextStyle(color: Colors.white, fontSize: size * 0.42, fontWeight: .w600, height: 1.0),
-        ),
-      );
+    color: colorForName(watcher.displayName, theme),
+    alignment: .center,
+    child: Text(
+      initialOf(watcher.displayName),
+      style: TextStyle(color: Colors.white, fontSize: size * 0.42, fontWeight: .w600, height: 1.0),
+    ),
+  );
 }
 
 class _OverflowBubble extends StatelessWidget {

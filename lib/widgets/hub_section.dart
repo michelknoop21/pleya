@@ -418,58 +418,58 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                 onEnter: (_) => setState(() => _headerHovering = true),
                 onExit: (_) => setState(() => _headerHovering = false),
                 child: InkWell(
-                mouseCursor: widget.hub.more ? SystemMouseCursors.click : MouseCursor.defer,
-                onTap: widget.hub.more ? () => _navigateToHubDetail(context) : null,
-                borderRadius: BorderRadius.circular(tokens(context).radiusSm),
-                child: Padding(
-                  padding: widget.inset
-                      ? const EdgeInsets.symmetric(vertical: 2)
-                      : const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  child: Row(
-                    mainAxisSize: .min,
-                    children: [
-                      AppIcon(widget.icon, fill: 1, size: isTv ? 28 : null),
-                      SizedBox(width: isTv ? 12 : 8),
-                      Flexible(
-                        child: Text(widget.hub.title, style: titleStyle, overflow: .ellipsis, maxLines: 1),
-                      ),
-                      if (widget.showServerName && widget.hub.serverName != null) ...[
-                        const SizedBox(width: 8),
-                        Text(
-                          '•',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
-                          ),
+                  mouseCursor: widget.hub.more ? SystemMouseCursors.click : MouseCursor.defer,
+                  onTap: widget.hub.more ? () => _navigateToHubDetail(context) : null,
+                  borderRadius: BorderRadius.circular(tokens(context).radiusSm),
+                  child: Padding(
+                    padding: widget.inset
+                        ? const EdgeInsets.symmetric(vertical: 2)
+                        : const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Row(
+                      mainAxisSize: .min,
+                      children: [
+                        AppIcon(widget.icon, fill: 1, size: isTv ? 28 : null),
+                        SizedBox(width: isTv ? 12 : 8),
+                        Flexible(
+                          child: Text(widget.hub.title, style: titleStyle, overflow: .ellipsis, maxLines: 1),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          widget.hub.serverName!,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ],
-                      if (widget.hub.more && !isKeyboardMode) ...[
-                        const SizedBox(width: 6),
-                        // Netflix "Explore all >" — text reveals on hover (desktop),
-                        // chevron always shows on TV.
-                        if (!isTv)
-                          AnimatedOpacity(
-                            opacity: _headerHovering ? 1 : 0,
-                            duration: tokens(context).fast,
-                            child: Text(
-                              t.common.viewAll,
-                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                color: const Color(0xFF54B9C5),
-                                fontWeight: FontWeight.w600,
-                              ),
+                        if (widget.showServerName && widget.hub.serverName != null) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            '•',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
                             ),
                           ),
-                        AppIcon(Symbols.chevron_right_rounded, fill: 1, size: isTv ? 26 : 18),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.hub.serverName!,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                        if (widget.hub.more && !isKeyboardMode) ...[
+                          const SizedBox(width: 6),
+                          // Netflix "Explore all >" — text reveals on hover (desktop),
+                          // chevron always shows on TV.
+                          if (!isTv)
+                            AnimatedOpacity(
+                              opacity: _headerHovering ? 1 : 0,
+                              duration: tokens(context).fast,
+                              child: Text(
+                                t.common.viewAll,
+                                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: const Color(0xFF54B9C5),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          AppIcon(Symbols.chevron_right_rounded, fill: 1, size: isTv ? 26 : 18),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
                 ),
               ),
             ),

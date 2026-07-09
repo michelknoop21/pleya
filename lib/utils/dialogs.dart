@@ -111,10 +111,7 @@ Future<bool> showServerLimitDialog(BuildContext context, {bool canTryLowerQualit
           autofocus: !canTryLowerQuality,
           onPressed: () => Navigator.of(ctx).pop(false),
           child: canTryLowerQuality
-              ? TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  child: Text(t.common.close),
-                )
+              ? TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.common.close))
               : FilledButton(
                   onPressed: () => Navigator.of(ctx).pop(false),
                   style: FilledButton.styleFrom(padding: _buttonPadding, shape: _buttonShape),

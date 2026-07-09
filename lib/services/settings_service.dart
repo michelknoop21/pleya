@@ -341,6 +341,7 @@ class SettingsService extends BaseSharedPreferencesService {
   static const icloudSyncEnabled = BoolPref('icloud_sync_enabled');
   static const enableHardwareDecoding = BoolPref('enable_hardware_decoding', defaultValue: true);
   static const enableHDR = BoolPref('enable_hdr', defaultValue: true);
+
   /// Recent search queries, most-recent first, capped at 15 by the search UI.
   static const searchHistory = StringListPref('search_history');
   static const preferredVideoCodec = StringPref('preferred_video_codec', defaultValue: 'auto');

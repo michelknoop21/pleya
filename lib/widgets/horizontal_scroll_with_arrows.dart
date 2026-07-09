@@ -170,12 +170,7 @@ class _NavigationArrow extends StatefulWidget {
   final bool isLeft;
   final Color scrimColor;
 
-  const _NavigationArrow({
-    required this.icon,
-    required this.onPressed,
-    required this.isLeft,
-    required this.scrimColor,
-  });
+  const _NavigationArrow({required this.icon, required this.onPressed, required this.isLeft, required this.scrimColor});
 
   @override
   State<_NavigationArrow> createState() => _NavigationArrowState();
@@ -202,12 +197,7 @@ class _NavigationArrowState extends State<_NavigationArrow> {
               colors: [widget.scrimColor.withValues(alpha: 0.85), widget.scrimColor.withValues(alpha: 0.0)],
             ),
           ),
-          child: AppIcon(
-            widget.icon,
-            fill: 1,
-            color: Colors.white,
-            size: _isHovering ? 40 : 32,
-          ),
+          child: AppIcon(widget.icon, fill: 1, color: Colors.white, size: _isHovering ? 40 : 32),
         ),
       ),
     );

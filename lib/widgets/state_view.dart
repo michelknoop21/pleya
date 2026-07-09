@@ -97,16 +97,16 @@ class StateView extends StatelessWidget {
             onPressed: onRetry,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: surfaceElevated,
-                borderRadius: BorderRadius.circular(radiusSm),
-              ),
+              decoration: BoxDecoration(color: surfaceElevated, borderRadius: BorderRadius.circular(radiusSm)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Symbols.refresh_rounded, size: 18, color: text),
                   const SizedBox(width: 8),
-                  Text(retryLabel, style: TextStyle(color: text, fontWeight: FontWeight.w600)),
+                  Text(
+                    retryLabel,
+                    style: TextStyle(color: text, fontWeight: FontWeight.w600),
+                  ),
                 ],
               ),
             ),

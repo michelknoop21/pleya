@@ -108,15 +108,12 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
     }
   }
 
-  bool _isSeasonRequestable(SeerrSeason s) =>
-      s.status == SeerrMediaStatus.unknown; // not pending/processing/available
+  bool _isSeasonRequestable(SeerrSeason s) => s.status == SeerrMediaStatus.unknown; // not pending/processing/available
 
   // Movies: block a duplicate request the server would reject with 409.
-  bool get _isMovieRequestable =>
-      !widget.media.status.isAvailable && !widget.media.status.isRequested;
+  bool get _isMovieRequestable => !widget.media.status.isAvailable && !widget.media.status.isRequested;
 
-  bool get _canSubmit =>
-      !_submitting && (_isTv ? _selectedSeasons.isNotEmpty : _isMovieRequestable);
+  bool get _canSubmit => !_submitting && (_isTv ? _selectedSeasons.isNotEmpty : _isMovieRequestable);
 
   String _mapError(SeerrException e) {
     if (e.isForbidden) return t.seerr.errorForbidden;
@@ -163,7 +160,10 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       icon: Symbols.playlist_add_rounded,
       shrinkWrap: true,
       child: _loading
-          ? const Padding(padding: EdgeInsets.all(32), child: Center(child: LoadingIndicatorBox()))
+          ? const Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(child: LoadingIndicatorBox()),
+            )
           : _buildBody(context, provider),
     );
   }

@@ -17,7 +17,12 @@ class NavGlyph extends StatelessWidget {
   Widget build(BuildContext context) {
     if (svgAsset != null) {
       final c = color ?? IconTheme.of(context).color ?? Theme.of(context).colorScheme.onSurface;
-      return SvgPicture.asset(svgAsset!, width: size, height: size, theme: SvgTheme(currentColor: c));
+      return SvgPicture.asset(
+        svgAsset!,
+        width: size,
+        height: size,
+        theme: SvgTheme(currentColor: c),
+      );
     }
     return AppIcon(icon, fill: 1, size: size, color: color);
   }

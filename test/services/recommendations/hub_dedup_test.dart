@@ -7,13 +7,8 @@ import 'package:pleya/utils/media_hub_ordering.dart';
 
 MediaItem _item(String id) => MediaItem.plex(id: id, kind: MediaKind.movie, serverId: 's1', title: 'Movie $id');
 
-MediaHub _hub(String id, List<String> itemIds, {String? identifier, String title = 'Hub'}) => MediaHub(
-      id: id,
-      identifier: identifier,
-      title: title,
-      type: 'movie',
-      items: [for (final i in itemIds) _item(i)],
-    );
+MediaHub _hub(String id, List<String> itemIds, {String? identifier, String title = 'Hub'}) =>
+    MediaHub(id: id, identifier: identifier, title: title, type: 'movie', items: [for (final i in itemIds) _item(i)]);
 
 void main() {
   group('dedupeAcrossHubs', () {
@@ -40,7 +35,9 @@ void main() {
     });
 
     test('keeps original instance when nothing removed', () {
-      final hubs = [_hub('h1', ['a', 'b', 'c'])];
+      final hubs = [
+        _hub('h1', ['a', 'b', 'c']),
+      ];
       final out = dedupeAcrossHubs(hubs, minHubItems: 3);
       expect(identical(out.first, hubs.first), isTrue);
     });

@@ -71,8 +71,7 @@ class ICloudSyncService {
     VoidCallback? onRemoteChangesApplied,
   }) async {
     if (!_supported || _instance != null) return;
-    final svc = ICloudSyncService._(settings, storage.activeUserScope)
-      ..onRemoteChangesApplied = onRemoteChangesApplied;
+    final svc = ICloudSyncService._(settings, storage.activeUserScope)..onRemoteChangesApplied = onRemoteChangesApplied;
     _instance = svc;
     BaseSharedPreferencesService.onKeyWritten = svc._onLocalWrite;
     if (svc._enabled) await svc._activate();
@@ -118,9 +117,10 @@ class ICloudSyncService {
   }
 
   void _subscribe() {
-    _eventSub ??= _events
-        .receiveBroadcastStream()
-        .listen(_onRemoteEvent, onError: (Object e) => appLogger.w('iCloud KVS event error', error: e));
+    _eventSub ??= _events.receiveBroadcastStream().listen(
+      _onRemoteEvent,
+      onError: (Object e) => appLogger.w('iCloud KVS event error', error: e),
+    );
   }
 
   // ---- Remote → local -------------------------------------------------------

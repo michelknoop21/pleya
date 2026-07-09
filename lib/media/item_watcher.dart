@@ -12,10 +12,5 @@ class ItemWatcher {
   /// Last-viewed epoch seconds; used to order most-recent-first.
   final int viewedAt;
 
-  const ItemWatcher({
-    required this.accountId,
-    required this.displayName,
-    this.thumbUrl,
-    required this.viewedAt,
-  });
+  const ItemWatcher({required this.accountId, required this.displayName, this.thumbUrl, required this.viewedAt});
 }

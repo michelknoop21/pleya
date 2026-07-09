@@ -135,9 +135,8 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   List<MediaItem> get onDeck => _onDeck;
   List<MediaItem> get latestMovies => _latestMovies;
-  List<MediaHub> get hubs => (_seedHubs.isEmpty && _personalizedHubs.isEmpty)
-      ? _hubs
-      : [..._seedHubs, ..._personalizedHubs, ..._hubs];
+  List<MediaHub> get hubs =>
+      (_seedHubs.isEmpty && _personalizedHubs.isEmpty) ? _hubs : [..._seedHubs, ..._personalizedHubs, ..._hubs];
   bool get hasMoreContinueWatching => _hasMoreContinueWatching;
 
   /// Raw load failure (unlocalized); the screen wraps it for display.
@@ -382,7 +381,8 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       // Don't re-surface items already shown in Continue Watching or the hubs.
       final alreadyShown = <String>{
         for (final item in _onDeck) item.globalKey,
-        for (final hub in _hubs) for (final item in hub.items) item.globalKey,
+        for (final hub in _hubs)
+          for (final item in hub.items) item.globalKey,
       };
       final recents = await Future.wait([
         for (final client in clients)

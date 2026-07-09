@@ -5,8 +5,7 @@ MonoTokens tokens(BuildContext context) => Theme.of(context).extension<MonoToken
 
 /// Zero-duration when the user has "reduce motion" enabled (OS toggle), else [d].
 /// Lets animations crossfade/snap instead of moving for accessibility.
-Duration reduceMotion(BuildContext context, Duration d) =>
-    MediaQuery.disableAnimationsOf(context) ? Duration.zero : d;
+Duration reduceMotion(BuildContext context, Duration d) => MediaQuery.disableAnimationsOf(context) ? Duration.zero : d;
 
 @immutable
 class MonoTokens extends ThemeExtension<MonoTokens> {
@@ -50,11 +49,8 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
   });
 
   /// 135° red→amber brand gradient.
-  LinearGradient get accentGradient => LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [accent, accentAlt],
-  );
+  LinearGradient get accentGradient =>
+      LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [accent, accentAlt]);
 
   @override
   MonoTokens copyWith({

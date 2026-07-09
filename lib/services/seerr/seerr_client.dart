@@ -89,7 +89,11 @@ class SeerrClient {
       () => _http.post('/auth/local', body: {'email': email, 'password': password}, headers: const {}),
     );
     _throwIfError(resp);
-    _session = _session.copyWith(cookie: _extractCookie(resp.headers) ?? _session.cookie, email: email, password: password);
+    _session = _session.copyWith(
+      cookie: _extractCookie(resp.headers) ?? _session.cookie,
+      email: email,
+      password: password,
+    );
     _applyUser(resp.data);
     _emit();
     return _session;
@@ -137,8 +141,7 @@ class SeerrClient {
   // Discover / search / detail
   // ---------------------------------------------------------------------------
 
-  Future<SeerrMediaPage> search(String query, {int page = 1}) =>
-      _mediaPage('/search', {'query': query, 'page': page});
+  Future<SeerrMediaPage> search(String query, {int page = 1}) => _mediaPage('/search', {'query': query, 'page': page});
 
   Future<SeerrMediaPage> discoverMovies({int page = 1, int? genre}) =>
       _mediaPage('/discover/movies', {'page': page, 'genre': ?genre});
@@ -269,10 +272,7 @@ class SeerrClient {
   }
 
   Future<void> updateRequest(int id, {List<int>? seasons, bool? is4k}) async {
-    final body = <String, dynamic>{
-      'seasons': ?seasons,
-      'is4k': ?is4k,
-    };
+    final body = <String, dynamic>{'seasons': ?seasons, 'is4k': ?is4k};
     final resp = await _send(() => _http.put('/request/$id', body: body, headers: _authHeaders()));
     _throwIfError(resp);
   }
@@ -359,7 +359,8 @@ class SeerrClient {
     if (data is! Map) return;
     _session = _session.copyWith(
       userId: _int(data['id']) ?? _session.userId,
-      displayName: (data['displayName'] ?? data['username'] ?? data['plexUsername'])?.toString() ?? _session.displayName,
+      displayName:
+          (data['displayName'] ?? data['username'] ?? data['plexUsername'])?.toString() ?? _session.displayName,
       permissions: _int(data['permissions']) ?? _session.permissions,
     );
   }

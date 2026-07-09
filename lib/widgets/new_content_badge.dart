@@ -50,18 +50,10 @@ class NewContentBadge extends StatelessWidget {
     if (label == null) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        gradient: kBrandGradient,
-        borderRadius: BorderRadius.circular(4),
-      ),
+      decoration: BoxDecoration(gradient: kBrandGradient, borderRadius: BorderRadius.circular(4)),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 9,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.4,
-        ),
+        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.4),
       ),
     );
   }

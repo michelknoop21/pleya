@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/models/plex/plex_home_user.dart';
 import 'package:pleya/profiles/plex_home_service.dart';
 import 'package:pleya/profiles/profile.dart';
@@ -112,5 +113,20 @@ void main() {
       ),
       isFalse,
     );
+  });
+
+  group('auth i18n strings', () {
+    test('recovery and help text strings are defined', () {
+      expect(t.auth.chooseHowToSignIn, isNotEmpty);
+      expect(t.auth.chooseHowToSignInDescription, isNotEmpty);
+      expect(t.auth.tryAgain, isNotEmpty);
+      expect(t.serverSelection.noServersFoundTitle, isNotEmpty);
+      expect(t.serverSelection.noServersFoundDescription, isNotEmpty);
+      expect(t.serverSelection.noServersFoundTryJellyfin, isNotEmpty);
+      expect(t.serverSelection.noServersFoundRetryPlex, isNotEmpty);
+      expect(t.serverSelection.networkErrorTitle, isNotEmpty);
+      expect(t.serverSelection.networkErrorDescription, isNotEmpty);
+      expect(t.serverSelection.failedToLoadServersDescription, isNotEmpty);
+    });
   });
 }

@@ -12,17 +12,16 @@ MediaInteractionsCompanion _row(
   double weight = 1.0,
   List<String> genres = const [],
   int? occurredAt,
-}) =>
-    MediaInteractionsCompanion.insert(
-      profileId: profile,
-      globalKey: globalKey,
-      mediaKind: 'movie',
-      eventType: 'completed',
-      eventWeight: weight,
-      // Default to "now" so retention pruning (365d) doesn't drop the row.
-      occurredAt: occurredAt ?? DateTime.now().millisecondsSinceEpoch,
-      genresJson: Value(jsonEncode(genres)),
-    );
+}) => MediaInteractionsCompanion.insert(
+  profileId: profile,
+  globalKey: globalKey,
+  mediaKind: 'movie',
+  eventType: 'completed',
+  eventWeight: weight,
+  // Default to "now" so retention pruning (365d) doesn't drop the row.
+  occurredAt: occurredAt ?? DateTime.now().millisecondsSinceEpoch,
+  genresJson: Value(jsonEncode(genres)),
+);
 
 void main() {
   late AppDatabase db;
@@ -99,7 +98,10 @@ void main() {
       // snapshot must still refresh because the newest interaction is later.
       final engine = AffinityEngine(db);
       final t0 = DateTime.now().millisecondsSinceEpoch;
-      await db.insertMediaInteraction(_row('p1', 's:1', genres: ['Drama'], occurredAt: t0), profileId: 'p1');
+      await db.insertMediaInteraction(
+        _row('p1', 's:1', genres: ['Drama'], occurredAt: t0),
+        profileId: 'p1',
+      );
       final before = await engine.vectorFor('p1', nowMs: t0);
       expect(before.of('genre', 'drama'), greaterThan(0));
       expect(before.of('genre', 'sci-fi'), 0);
@@ -107,7 +109,10 @@ void main() {
       // Delete the old row and add a newer one — count returns to 1.
       await db.deleteRecommendationDataForProfile('p1');
       final t1 = t0 + 1000;
-      await db.insertMediaInteraction(_row('p1', 's:2', genres: ['Sci-Fi'], occurredAt: t1), profileId: 'p1');
+      await db.insertMediaInteraction(
+        _row('p1', 's:2', genres: ['Sci-Fi'], occurredAt: t1),
+        profileId: 'p1',
+      );
       // Re-seed the snapshot as if it were the stale count==1 one from before.
       // vectorFor must detect the newer latestInteractionAt and recompute.
       final after = await engine.vectorFor('p1', nowMs: t1 + 1000);

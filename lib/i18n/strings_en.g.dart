@@ -153,6 +153,15 @@ class TranslationsAuthEn {
 
 	/// en: 'Quick Connect expired. Try again.'
 	String get quickConnectExpired => 'Quick Connect expired. Try again.';
+
+	/// en: 'Choose how to sign in'
+	String get chooseHowToSignIn => 'Choose how to sign in';
+
+	/// en: 'Pleya connects to your Plex or Jellyfin media server. Pick one to get started.'
+	String get chooseHowToSignInDescription => 'Pleya connects to your Plex or Jellyfin media server. Pick one to get started.';
+
+	/// en: 'Try again'
+	String get tryAgain => 'Try again';
 }
 
 // Path: common
@@ -2414,8 +2423,29 @@ class TranslationsServerSelectionEn {
 	/// en: 'No servers found for ${username} (${email})'
 	String noServersFoundForAccount({required Object username, required Object email}) => 'No servers found for ${username} (${email})';
 
+	/// en: 'No media servers found'
+	String get noServersFoundTitle => 'No media servers found';
+
+	/// en: 'Your Plex account doesn't have access to any servers yet. Ask the server owner to share their library with you, or connect a Jellyfin server instead.'
+	String get noServersFoundDescription => 'Your Plex account doesn\'t have access to any servers yet. Ask the server owner to share their library with you, or connect a Jellyfin server instead.';
+
+	/// en: 'Connect a Jellyfin server'
+	String get noServersFoundTryJellyfin => 'Connect a Jellyfin server';
+
+	/// en: 'Try a different Plex account'
+	String get noServersFoundRetryPlex => 'Try a different Plex account';
+
 	/// en: 'Failed to load servers: ${error}'
 	String failedToLoadServers({required Object error}) => 'Failed to load servers: ${error}';
+
+	/// en: 'Something went wrong while loading your servers. Check your internet connection and try again.'
+	String get failedToLoadServersDescription => 'Something went wrong while loading your servers. Check your internet connection and try again.';
+
+	/// en: 'Can't reach the server'
+	String get networkErrorTitle => 'Can\'t reach the server';
+
+	/// en: 'Pleya couldn't connect to the internet. Check your network and try again.'
+	String get networkErrorDescription => 'Pleya couldn\'t connect to the internet. Check your network and try again.';
 }
 
 // Path: hubDetail
@@ -4944,6 +4974,9 @@ extension on Translations {
 			'auth.quickConnectWaiting' => 'Waiting for approval…',
 			'auth.quickConnectCancel' => 'Cancel',
 			'auth.quickConnectExpired' => 'Quick Connect expired. Try again.',
+			'auth.chooseHowToSignIn' => 'Choose how to sign in',
+			'auth.chooseHowToSignInDescription' => 'Pleya connects to your Plex or Jellyfin media server. Pick one to get started.',
+			'auth.tryAgain' => 'Try again',
 			'common.cancel' => 'Cancel',
 			'common.save' => 'Save',
 			'common.close' => 'Close',
@@ -5437,11 +5470,11 @@ extension on Translations {
 			'userStatus.current' => 'CURRENT',
 			'messages.markedAsWatched' => 'Marked as watched',
 			'messages.markedAsUnwatched' => 'Marked as unwatched',
+			_ => null,
+		} ?? switch (path) {
 			'messages.markedAsWatchedOffline' => 'Marked as watched (will sync when online)',
 			'messages.markedAsUnwatchedOffline' => 'Marked as unwatched (will sync when online)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Auto-removed: ${title}',
-			_ => null,
-		} ?? switch (path) {
 			'messages.removedFromContinueWatching' => 'Removed from Continue Watching',
 			'messages.errorLoading' => ({required Object error}) => 'Error: ${error}',
 			'messages.fileInfoNotAvailable' => 'File information not available',
@@ -5702,7 +5735,14 @@ extension on Translations {
 			'about.viewLicensesDescription' => 'View licenses of third-party libraries',
 			'serverSelection.allServerConnectionsFailed' => 'Couldn\'t connect to any servers. Check your network.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'No servers found for ${username} (${email})',
+			'serverSelection.noServersFoundTitle' => 'No media servers found',
+			'serverSelection.noServersFoundDescription' => 'Your Plex account doesn\'t have access to any servers yet. Ask the server owner to share their library with you, or connect a Jellyfin server instead.',
+			'serverSelection.noServersFoundTryJellyfin' => 'Connect a Jellyfin server',
+			'serverSelection.noServersFoundRetryPlex' => 'Try a different Plex account',
 			'serverSelection.failedToLoadServers' => ({required Object error}) => 'Failed to load servers: ${error}',
+			'serverSelection.failedToLoadServersDescription' => 'Something went wrong while loading your servers. Check your internet connection and try again.',
+			'serverSelection.networkErrorTitle' => 'Can\'t reach the server',
+			'serverSelection.networkErrorDescription' => 'Pleya couldn\'t connect to the internet. Check your network and try again.',
 			'hubDetail.title' => 'Title',
 			'hubDetail.releaseYear' => 'Release Year',
 			'hubDetail.dateAdded' => 'Date Added',
@@ -5944,6 +5984,8 @@ extension on Translations {
 			'downloads.syncRuleRemoved' => 'Sync rule removed',
 			'downloads.syncedNewEpisodes' => ({required Object count, required Object title}) => 'Synced ${count} new episodes for ${title}',
 			'downloads.activeSyncRules' => 'Sync rules',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.noSyncRules' => 'No sync rules',
 			'downloads.manageSyncRule' => 'Manage sync',
 			'downloads.editEpisodeCount' => 'Episode count',
@@ -5954,8 +5996,6 @@ extension on Translations {
 			'downloads.syncRuleAvailable' => 'Available',
 			'downloads.syncRuleOffline' => 'Offline',
 			'downloads.syncRuleSignInRequired' => 'Sign in required',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.syncRuleNotAvailableForProfile' => 'Not available for current profile',
 			'downloads.syncRuleUnknownServer' => 'Unknown server',
 			'downloads.syncRuleListCreated' => 'Sync rule created',

@@ -16,10 +16,14 @@ class AboutScreen extends StatelessWidget {
   // offer below are required by the licence; the public source and privacy
   // policy URLs are supplied at build time.
   static const String _upstreamUrl = 'https://github.com/edde746/plezy';
-  static const String _sourceUrl =
-      String.fromEnvironment('SOURCE_REPO_URL', defaultValue: 'https://github.com/michelknoop21/pleya');
-  static const String _privacyUrl =
-      String.fromEnvironment('PRIVACY_POLICY_URL', defaultValue: 'https://pleya.app/privacy');
+  static const String _sourceUrl = String.fromEnvironment(
+    'SOURCE_REPO_URL',
+    defaultValue: 'https://github.com/michelknoop21/pleya',
+  );
+  static const String _privacyUrl = String.fromEnvironment(
+    'PRIVACY_POLICY_URL',
+    defaultValue: 'https://pleya.app/privacy',
+  );
 
   Future<void> _open(String url) async {
     final uri = Uri.tryParse(url);

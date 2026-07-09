@@ -119,6 +119,9 @@ class _TranslationsAuthNl extends TranslationsAuthEn {
 	@override String get quickConnectWaiting => 'Wachten op goedkeuring…';
 	@override String get quickConnectCancel => 'Annuleren';
 	@override String get quickConnectExpired => 'Quick Connect is verlopen. Probeer opnieuw.';
+	@override String get chooseHowToSignIn => 'Kies hoe je inlogt';
+	@override String get chooseHowToSignInDescription => 'Pleya verbindt met je Plex- of Jellyfin-mediaserver. Kies er een om te beginnen.';
+	@override String get tryAgain => 'Opnieuw proberen';
 }
 
 // Path: common
@@ -1006,7 +1009,14 @@ class _TranslationsServerSelectionNl extends TranslationsServerSelectionEn {
 	// Translations
 	@override String get allServerConnectionsFailed => 'Kon met geen enkele server verbinden. Controleer je netwerk.';
 	@override String noServersFoundForAccount({required Object username, required Object email}) => 'Geen servers gevonden voor ${username} (${email})';
+	@override String get noServersFoundTitle => 'Geen mediaservers gevonden';
+	@override String get noServersFoundDescription => 'Je Plex-account heeft nog geen toegang tot servers. Vraag de server-eigenaar om zijn bibliotheek met je te delen, of verbind in plaats daarvan een Jellyfin-server.';
+	@override String get noServersFoundTryJellyfin => 'Verbind een Jellyfin-server';
+	@override String get noServersFoundRetryPlex => 'Probeer een ander Plex-account';
 	@override String failedToLoadServers({required Object error}) => 'Kon servers niet laden: ${error}';
+	@override String get failedToLoadServersDescription => 'Er ging iets mis bij het laden van je servers. Controleer je internetverbinding en probeer opnieuw.';
+	@override String get networkErrorTitle => 'Kan de server niet bereiken';
+	@override String get networkErrorDescription => 'Pleya kon geen verbinding maken met internet. Controleer je netwerk en probeer opnieuw.';
 }
 
 // Path: hubDetail
@@ -2009,6 +2019,9 @@ extension on TranslationsNl {
 			'auth.quickConnectWaiting' => 'Wachten op goedkeuring…',
 			'auth.quickConnectCancel' => 'Annuleren',
 			'auth.quickConnectExpired' => 'Quick Connect is verlopen. Probeer opnieuw.',
+			'auth.chooseHowToSignIn' => 'Kies hoe je inlogt',
+			'auth.chooseHowToSignInDescription' => 'Pleya verbindt met je Plex- of Jellyfin-mediaserver. Kies er een om te beginnen.',
+			'auth.tryAgain' => 'Opnieuw proberen',
 			'common.cancel' => 'Annuleren',
 			'common.save' => 'Opslaan',
 			'common.close' => 'Sluiten',
@@ -2502,11 +2515,11 @@ extension on TranslationsNl {
 			'messages.contactAdminForProfiles' => 'Neem contact op met je serverbeheerder om profielen toe te voegen',
 			'messages.unableToDetermineLibrarySection' => 'Kan bibliotheeksectie voor dit item niet bepalen',
 			'messages.logsCleared' => 'Logs gewist',
+			_ => null,
+		} ?? switch (path) {
 			'messages.logsCopied' => 'Logs gekopieerd naar klembord',
 			'messages.noLogsAvailable' => 'Geen logs beschikbaar',
 			'messages.libraryScanning' => ({required Object title}) => 'Scannen "${title}"...',
-			_ => null,
-		} ?? switch (path) {
 			'messages.libraryScanStarted' => ({required Object title}) => 'Bibliotheek scan gestart voor "${title}"',
 			'messages.libraryScanFailed' => ({required Object error}) => 'Kon bibliotheek niet scannen: ${error}',
 			'messages.metadataRefreshing' => ({required Object title}) => 'Metadata vernieuwen voor "${title}"...',
@@ -2753,7 +2766,14 @@ extension on TranslationsNl {
 			'about.viewLicensesDescription' => 'Bekijk licenties van third-party bibliotheken',
 			'serverSelection.allServerConnectionsFailed' => 'Kon met geen enkele server verbinden. Controleer je netwerk.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'Geen servers gevonden voor ${username} (${email})',
+			'serverSelection.noServersFoundTitle' => 'Geen mediaservers gevonden',
+			'serverSelection.noServersFoundDescription' => 'Je Plex-account heeft nog geen toegang tot servers. Vraag de server-eigenaar om zijn bibliotheek met je te delen, of verbind in plaats daarvan een Jellyfin-server.',
+			'serverSelection.noServersFoundTryJellyfin' => 'Verbind een Jellyfin-server',
+			'serverSelection.noServersFoundRetryPlex' => 'Probeer een ander Plex-account',
 			'serverSelection.failedToLoadServers' => ({required Object error}) => 'Kon servers niet laden: ${error}',
+			'serverSelection.failedToLoadServersDescription' => 'Er ging iets mis bij het laden van je servers. Controleer je internetverbinding en probeer opnieuw.',
+			'serverSelection.networkErrorTitle' => 'Kan de server niet bereiken',
+			'serverSelection.networkErrorDescription' => 'Pleya kon geen verbinding maken met internet. Controleer je netwerk en probeer opnieuw.',
 			'hubDetail.title' => 'Titel',
 			'hubDetail.releaseYear' => 'Uitgavejaar',
 			'hubDetail.dateAdded' => 'Datum toegevoegd',
@@ -3009,6 +3029,8 @@ extension on TranslationsNl {
 			'shaders.noShaderDescription' => 'Geen videoverbetering',
 			'shaders.nvscalerDescription' => 'NVIDIA-beeldschaling voor scherpere video',
 			'shaders.artcnnVariantNeutral' => 'Neutraal',
+			_ => null,
+		} ?? switch (path) {
 			'shaders.artcnnVariantDenoise' => 'Ruisonderdrukking',
 			'shaders.artcnnVariantDenoiseSharpen' => 'Ruisonderdrukking + verscherpen',
 			'shaders.qualityFast' => 'Snel',
@@ -3019,8 +3041,6 @@ extension on TranslationsNl {
 			'shaders.shaderImported' => 'Shader geïmporteerd',
 			'shaders.shaderImportFailed' => 'Shader importeren mislukt',
 			'shaders.deleteShader' => 'Shader verwijderen',
-			_ => null,
-		} ?? switch (path) {
 			'shaders.deleteShaderConfirm' => ({required Object name}) => '"${name}" verwijderen?',
 			'companionRemote.title' => 'Afstandsbediening',
 			'companionRemote.connectedTo' => ({required Object name}) => 'Verbonden met ${name}',

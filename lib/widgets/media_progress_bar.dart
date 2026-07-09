@@ -41,18 +41,13 @@ class MediaProgressBar extends StatelessWidget {
           height: height,
           child: Stack(
             children: [
-              Positioned.fill(
-                child: ColoredBox(color: backgroundColor ?? Colors.white.withValues(alpha: 0.2)),
-              ),
+              Positioned.fill(child: ColoredBox(color: backgroundColor ?? Colors.white.withValues(alpha: 0.2))),
               FractionallySizedBox(
                 alignment: AlignmentDirectional.centerStart,
                 widthFactor: value,
                 heightFactor: 1,
                 child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: valueColor,
-                    gradient: valueColor == null ? kBrandGradient : null,
-                  ),
+                  decoration: BoxDecoration(color: valueColor, gradient: valueColor == null ? kBrandGradient : null),
                 ),
               ),
             ],

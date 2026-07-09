@@ -75,11 +75,7 @@ class NavigationTab {
   }
 
   /// Get tabs filtered by offline mode and feature availability
-  static List<NavigationTab> getVisibleTabs({
-    required bool isOffline,
-    bool hasLiveTv = false,
-    bool hasSeerr = false,
-  }) {
+  static List<NavigationTab> getVisibleTabs({required bool isOffline, bool hasLiveTv = false, bool hasSeerr = false}) {
     return allNavigationTabs.where((tab) {
       if (isOffline && tab.onlineOnly) return false;
       if (tab.id == NavigationTabId.liveTv && !hasLiveTv) return false;

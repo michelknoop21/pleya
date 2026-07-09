@@ -324,11 +324,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       showErrorSnackBar(context, t.seerr.errorGeneric);
       return;
     }
-    final media = SeerrMedia(
-      tmdbId: tmdb,
-      mediaType: metadata.isMovie ? 'movie' : 'tv',
-      title: metadata.displayTitle,
-    );
+    final media = SeerrMedia(tmdbId: tmdb, mediaType: metadata.isMovie ? 'movie' : 'tv', title: metadata.displayTitle);
     final requested = await SeerrRequestSheet.show(context, media: media);
     if (requested == true && mounted) showSuccessSnackBar(context, t.seerr.requestSuccess);
   }

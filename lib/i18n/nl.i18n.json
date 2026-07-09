@@ -17,7 +17,10 @@
     "quickConnectInstructions": "Open Quick Connect in Jellyfin en voer deze code in.",
     "quickConnectWaiting": "Wachten op goedkeuring…",
     "quickConnectCancel": "Annuleren",
-    "quickConnectExpired": "Quick Connect is verlopen. Probeer opnieuw."
+    "quickConnectExpired": "Quick Connect is verlopen. Probeer opnieuw.",
+    "chooseHowToSignIn": "Kies hoe je inlogt",
+    "chooseHowToSignInDescription": "Pleya verbindt met je Plex- of Jellyfin-mediaserver. Kies er een om te beginnen.",
+    "tryAgain": "Opnieuw proberen"
   },
   "common": {
     "cancel": "Annuleren",
@@ -824,7 +827,14 @@
   "serverSelection": {
     "allServerConnectionsFailed": "Kon met geen enkele server verbinden. Controleer je netwerk.",
     "noServersFoundForAccount": "Geen servers gevonden voor ${username} (${email})",
-    "failedToLoadServers": "Kon servers niet laden: ${error}"
+    "noServersFoundTitle": "Geen mediaservers gevonden",
+    "noServersFoundDescription": "Je Plex-account heeft nog geen toegang tot servers. Vraag de server-eigenaar om zijn bibliotheek met je te delen, of verbind in plaats daarvan een Jellyfin-server.",
+    "noServersFoundTryJellyfin": "Verbind een Jellyfin-server",
+    "noServersFoundRetryPlex": "Probeer een ander Plex-account",
+    "failedToLoadServers": "Kon servers niet laden: ${error}",
+    "failedToLoadServersDescription": "Er ging iets mis bij het laden van je servers. Controleer je internetverbinding en probeer opnieuw.",
+    "networkErrorTitle": "Kan de server niet bereiken",
+    "networkErrorDescription": "Pleya kon geen verbinding maken met internet. Controleer je netwerk en probeer opnieuw."
   },
   "hubDetail": {
     "title": "Titel",

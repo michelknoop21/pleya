@@ -389,11 +389,29 @@ void main() {
               'MediaContainer': {
                 'Metadata': [
                   // Added most recently but oldest release → must sort last of the dated films.
-                  {'ratingKey': 'old-film', 'type': 'movie', 'title': 'Old Film', 'originallyAvailableAt': '2010-01-01', 'addedAt': 900},
+                  {
+                    'ratingKey': 'old-film',
+                    'type': 'movie',
+                    'title': 'Old Film',
+                    'originallyAvailableAt': '2010-01-01',
+                    'addedAt': 900,
+                  },
                   // A series must be dropped entirely (no fallback).
-                  {'ratingKey': 'a-show', 'type': 'show', 'title': 'A Show', 'originallyAvailableAt': '2025-01-01', 'addedAt': 800},
+                  {
+                    'ratingKey': 'a-show',
+                    'type': 'show',
+                    'title': 'A Show',
+                    'originallyAvailableAt': '2025-01-01',
+                    'addedAt': 800,
+                  },
                   // Newest release → first.
-                  {'ratingKey': 'new-film', 'type': 'movie', 'title': 'New Film', 'originallyAvailableAt': '2024-06-01', 'addedAt': 100},
+                  {
+                    'ratingKey': 'new-film',
+                    'type': 'movie',
+                    'title': 'New Film',
+                    'originallyAvailableAt': '2024-06-01',
+                    'addedAt': 100,
+                  },
                   // No release date → sinks below every dated film via addedAt.
                   {'ratingKey': 'dateless', 'type': 'movie', 'title': 'Dateless', 'addedAt': 999},
                 ],

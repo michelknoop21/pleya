@@ -460,8 +460,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
                     ),
                   ),
                   if (item is MediaItem) WatchedIndicator(item: item),
-                  if (item is MediaItem)
-                    Positioned(top: 6, left: 6, child: NewContentBadge(item: item)),
+                  if (item is MediaItem) Positioned(top: 6, left: 6, child: NewContentBadge(item: item)),
                 ],
               ),
             ),
@@ -498,8 +497,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
             ),
           ),
           if (item is MediaItem) WatchedIndicator(item: item),
-          if (item is MediaItem)
-            Positioned(top: 6, left: 6, child: NewContentBadge(item: item)),
+          if (item is MediaItem) Positioned(top: 6, left: 6, child: NewContentBadge(item: item)),
         ],
       ),
     );

@@ -28,10 +28,8 @@ HeroFlightShuttleBuilder posterHeroFlightShuttle({required double posterRadius, 
     final heroChild = (toHeroContext.widget as Hero).child;
     return AnimatedBuilder(
       animation: animation,
-      builder: (context, child) => ClipRRect(
-        borderRadius: BorderRadius.circular(lerpDouble(begin, end, animation.value)!),
-        child: child,
-      ),
+      builder: (context, child) =>
+          ClipRRect(borderRadius: BorderRadius.circular(lerpDouble(begin, end, animation.value)!), child: child),
       child: heroChild,
     );
   };
