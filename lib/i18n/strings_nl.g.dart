@@ -39,6 +39,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	TranslationsNl $copyWith({TranslationMetadata<AppLocale, Translations>? meta}) => TranslationsNl(meta: meta ?? this.$meta);
 
 	// Translations
+	@override late final _TranslationsStatesNl states = _TranslationsStatesNl._(_root);
 	@override late final _TranslationsAppNl app = _TranslationsAppNl._(_root);
 	@override late final _TranslationsAuthNl auth = _TranslationsAuthNl._(_root);
 	@override late final _TranslationsCommonNl common = _TranslationsCommonNl._(_root);
@@ -85,6 +86,19 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTraktNl trakt = _TranslationsTraktNl._(_root);
 	@override late final _TranslationsTrackersNl trackers = _TranslationsTrackersNl._(_root);
 	@override late final _TranslationsAddServerNl addServer = _TranslationsAddServerNl._(_root);
+}
+
+// Path: states
+class _TranslationsStatesNl extends TranslationsStatesEn {
+	_TranslationsStatesNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => 'Nog niets hier';
+	@override String get errorTitle => 'Er ging iets mis';
+	@override String get offlineTitle => 'Je bent offline';
+	@override String get offlineMessage => 'Maak opnieuw verbinding om dit te laden.';
 }
 
 // Path: app
@@ -2013,6 +2027,10 @@ class _TranslationsTrackersLibraryFilterNl extends TranslationsTrackersLibraryFi
 extension on TranslationsNl {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
+			'states.emptyTitle' => 'Nog niets hier',
+			'states.errorTitle' => 'Er ging iets mis',
+			'states.offlineTitle' => 'Je bent offline',
+			'states.offlineMessage' => 'Maak opnieuw verbinding om dit te laden.',
 			'app.title' => 'Pleya',
 			'auth.signIn' => 'Inloggen',
 			'auth.signInWithPlex' => 'Inloggen met Plex',
@@ -2521,12 +2539,12 @@ extension on TranslationsNl {
 			'messages.errorLoadingFileInfo' => ({required Object error}) => 'Fout bij laden bestand info: ${error}',
 			'messages.errorLoadingSeries' => 'Fout bij laden serie',
 			'messages.musicNotSupported' => 'Muziek afspelen wordt nog niet ondersteund',
+			_ => null,
+		} ?? switch (path) {
 			'messages.noDescriptionAvailable' => 'Geen beschrijving beschikbaar',
 			'messages.noProfilesAvailable' => 'Geen profielen beschikbaar',
 			'messages.contactAdminForProfiles' => 'Neem contact op met je serverbeheerder om profielen toe te voegen',
 			'messages.unableToDetermineLibrarySection' => 'Kan bibliotheeksectie voor dit item niet bepalen',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logsCleared' => 'Logs gewist',
 			'messages.logsCopied' => 'Logs gekopieerd naar klembord',
 			'messages.noLogsAvailable' => 'Geen logs beschikbaar',
@@ -3035,12 +3053,12 @@ extension on TranslationsNl {
 			'downloads.noSyncRules' => 'Geen synchronisatieregels',
 			'downloads.manageSyncRule' => 'Synchronisatie beheren',
 			'downloads.editEpisodeCount' => 'Aantal afleveringen',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.editSyncFilter' => 'Synchronisatiefilter',
 			'downloads.syncAllItems' => 'Alle items synchroniseren',
 			'downloads.syncUnwatchedItems' => 'Ongekeken items synchroniseren',
 			'downloads.syncRuleServerContext' => ({required Object server, required Object status}) => 'Server: ${server} • ${status}',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.syncRuleAvailable' => 'Beschikbaar',
 			'downloads.syncRuleOffline' => 'Offline',
 			'downloads.syncRuleSignInRequired' => 'Inloggen vereist',

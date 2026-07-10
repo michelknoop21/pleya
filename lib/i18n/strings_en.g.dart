@@ -40,6 +40,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	Translations $copyWith({TranslationMetadata<AppLocale, Translations>? meta}) => Translations(meta: meta ?? this.$meta);
 
 	// Translations
+	late final TranslationsStatesEn states = TranslationsStatesEn.internal(_root);
 	late final TranslationsAppEn app = TranslationsAppEn.internal(_root);
 	late final TranslationsAuthEn auth = TranslationsAuthEn.internal(_root);
 	late final TranslationsCommonEn common = TranslationsCommonEn.internal(_root);
@@ -87,6 +88,27 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsTraktEn trakt = TranslationsTraktEn.internal(_root);
 	late final TranslationsTrackersEn trackers = TranslationsTrackersEn.internal(_root);
 	late final TranslationsAddServerEn addServer = TranslationsAddServerEn.internal(_root);
+}
+
+// Path: states
+class TranslationsStatesEn {
+	TranslationsStatesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Nothing here yet'
+	String get emptyTitle => 'Nothing here yet';
+
+	/// en: 'Something went wrong'
+	String get errorTitle => 'Something went wrong';
+
+	/// en: 'You're offline'
+	String get offlineTitle => 'You\'re offline';
+
+	/// en: 'Reconnect to load this content.'
+	String get offlineMessage => 'Reconnect to load this content.';
 }
 
 // Path: app
@@ -4988,6 +5010,10 @@ class TranslationsTrackersLibraryFilterEn {
 extension on Translations {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
+			'states.emptyTitle' => 'Nothing here yet',
+			'states.errorTitle' => 'Something went wrong',
+			'states.offlineTitle' => 'You\'re offline',
+			'states.offlineMessage' => 'Reconnect to load this content.',
 			'app.title' => 'Pleya',
 			'auth.signIn' => 'Sign in',
 			'auth.signInWithPlex' => 'Sign in with Plex',
@@ -5496,12 +5522,12 @@ extension on Translations {
 			'videoControls.searchLanguages' => 'Search languages...',
 			'videoControls.airplayButton' => 'AirPlay',
 			'userStatus.admin' => 'Admin',
+			_ => null,
+		} ?? switch (path) {
 			'userStatus.restricted' => 'Restricted',
 			'userStatus.protected' => 'Protected',
 			'userStatus.current' => 'CURRENT',
 			'messages.markedAsWatched' => 'Marked as watched',
-			_ => null,
-		} ?? switch (path) {
 			'messages.markedAsUnwatched' => 'Marked as unwatched',
 			'messages.markedAsWatchedOffline' => 'Marked as watched (will sync when online)',
 			'messages.markedAsUnwatchedOffline' => 'Marked as unwatched (will sync when online)',
@@ -6010,12 +6036,12 @@ extension on Translations {
 			'downloads.unwatchedOnly' => 'Unwatched only',
 			'downloads.nextNUnwatched' => ({required Object count}) => 'Next ${count} unwatched',
 			'downloads.customAmount' => 'Custom amount...',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.includeSpecials' => 'Include Specials',
 			'downloads.howManyEpisodes' => 'How many episodes?',
 			'downloads.itemsQueued' => ({required Object count}) => '${count} items queued for download',
 			'downloads.keepSynced' => 'Keep synced',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.downloadOnce' => 'Download once',
 			'downloads.keepNUnwatched' => ({required Object count}) => 'Keep ${count} unwatched',
 			'downloads.editSyncRule' => 'Edit sync rule',

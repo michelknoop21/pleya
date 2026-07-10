@@ -1,4 +1,10 @@
 {
+  "states": {
+    "emptyTitle": "Nog niets hier",
+    "errorTitle": "Er ging iets mis",
+    "offlineTitle": "Je bent offline",
+    "offlineMessage": "Maak opnieuw verbinding om dit te laden."
+  },
   "app": {
     "title": "Pleya"
   },
