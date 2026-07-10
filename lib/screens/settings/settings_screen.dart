@@ -297,6 +297,82 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         keywords: const ['version', 'license', 'versie', 'licentie'],
         destinationBuilder: (_) => const AboutScreen(),
       ),
+      _SettingsSearchEntry(
+        icon: Symbols.add_link_rounded,
+        title: t.connections.addConnection,
+        keywords: const ['server', 'plex', 'jellyfin', 'connection', 'verbinding'],
+        onTap: (context) {
+          final active = context.read<ActiveProfileProvider>().active;
+          Navigator.push(context, MaterialPageRoute(builder: (_) => AddConnectionScreen(targetProfile: active)));
+        },
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.group_rounded,
+        title: t.profiles.sectionTitle,
+        keywords: const ['profile', 'user', 'pin', 'gebruiker', 'profiel'],
+        onTap: (context) => Navigator.of(
+          context,
+          rootNavigator: true,
+        ).push(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen())),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.article_rounded,
+        title: t.settings.viewLogs,
+        subtitle: t.settings.viewLogsDescription,
+        keywords: const ['log', 'logs', 'debug', 'diagnostiek'],
+        destinationBuilder: (_) => const LogsScreen(),
+      ),
+      if (!Platform.isIOS)
+        _SettingsSearchEntry(
+          icon: Symbols.folder_rounded,
+          title: t.settings.downloads,
+          keywords: const ['download', 'offline', 'storage', 'opslag', 'locatie'],
+          onTap: (_) => _showDownloadLocationDialog(),
+        ),
+      _SettingsSearchEntry(
+        icon: Symbols.dns_rounded,
+        title: t.settings.watchTogetherRelay,
+        subtitle: t.settings.watchTogetherRelayDescription,
+        keywords: const ['relay', 'watch together', 'url', 'server'],
+        onTap: (_) => _showRelayUrlDialog(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.cleaning_services_rounded,
+        title: t.settings.clearCache,
+        subtitle: t.settings.clearCacheDescription,
+        keywords: const ['cache', 'clear', 'wissen', 'opschonen'],
+        onTap: (_) => _showClearCacheDialog(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.restore_rounded,
+        title: t.settings.resetSettings,
+        subtitle: t.settings.resetSettingsDescription,
+        keywords: const ['reset', 'restore', 'herstel', 'standaard'],
+        onTap: (_) => _showResetSettingsDialog(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.upload_rounded,
+        title: t.settings.exportSettings,
+        subtitle: t.settings.exportSettingsDescription,
+        keywords: const ['backup', 'export', 'settings', 'instellingen'],
+        onTap: (_) => _handleExportSettings(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.download_rounded,
+        title: t.settings.importSettings,
+        subtitle: t.settings.importSettingsDescription,
+        keywords: const ['backup', 'import', 'restore', 'instellingen'],
+        onTap: (_) => _showImportSettingsDialog(),
+      ),
+      if (UpdateService.isUpdateCheckEnabled)
+        _SettingsSearchEntry(
+          icon: Symbols.system_update_rounded,
+          title: t.settings.checkForUpdates,
+          keywords: const ['update', 'upgrade', 'versie', 'bijwerken'],
+          onTap: (_) => UpdateService.useNativeUpdater
+              ? UpdateService.checkForUpdatesNative(inBackground: false)
+              : _checkForUpdates(),
+        ),
     ];
   }
 
