@@ -65,8 +65,8 @@ import '../utils/platform_detector.dart';
 import '../services/fullscreen_state_manager.dart';
 import '../utils/desktop_window_padding.dart';
 import '../widgets/top_ten_row.dart';
-import '../theme/mono_theme.dart' show kAccentAlt;
 import '../theme/mono_tokens.dart';
+import '../utils/formatters.dart' show formatDurationTextual;
 import 'auth_screen.dart';
 import 'libraries/content_state_builder.dart';
 import 'main_screen.dart';
@@ -96,13 +96,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // hero content always reserves `railHeight + gap` below it, so its action
   // buttons never slide behind the rail — the hero simply takes whatever height
   // the rail leaves.
-  static const double _tvHeroContentTopFraction = 0.075;
-  // How much of the browse rail peeks at the bottom of the home screen when the
-  // hero is focused (fraction of viewport height): enough for the hub label and
-  // the poster tops. Focusing the rail slides the rest up into view.
-  static const double _tvHomeRailPeekFraction = 0.16;
-  static const double _tvHeroRailGap = 32;
-  static const double _tvHeroMinInfoHeight = 96;
+  // Layout constants live in [MonoTokens] (tvHeroContentTopFraction,
+  // tvHomeRailPeekFraction, tvHeroRailGap, tvHeroMinInfoHeight).
 
   /// Data + refresh policy live in [DiscoverProvider]; this state keeps only
   /// UI concerns (hero carousel, focus, spotlight). The proxy getters keep
@@ -1404,14 +1399,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
             tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
           );
-    final spotlightTop = (size.height * _tvHeroContentTopFraction).clamp(64.0 * scale, 120.0 * scale).toDouble();
+    final spotlightTop = (size.height * MonoTokens.tvHeroContentTopFraction)
+        .clamp(64.0 * scale, 120.0 * scale)
+        .toDouble();
     // Netflix landing: at rest the rail only peeks at the bottom (poster tops +
     // hub label), so the hero owns most of the screen. Focusing the rail reveals
     // it (see [_tvRailRevealed]); the reveal is a translate, so the hero content
     // keeps its resting position and the rail simply slides up over it.
-    final railPeek = browseHubs.isEmpty ? 0.0 : math.min(railHeight, size.height * _tvHomeRailPeekFraction);
-    final railSafetyBottom = browseHubs.isEmpty ? 0.0 : railPeek + (_tvHeroRailGap * scale);
-    final maxSpotlightBottom = (size.height - spotlightTop - (_tvHeroMinInfoHeight * scale))
+    final railPeek = browseHubs.isEmpty ? 0.0 : math.min(railHeight, size.height * MonoTokens.tvHomeRailPeekFraction);
+    final railSafetyBottom = browseHubs.isEmpty ? 0.0 : railPeek + (MonoTokens.tvHeroRailGap * scale);
+    final maxSpotlightBottom = (size.height - spotlightTop - (MonoTokens.tvHeroMinInfoHeight * scale))
         .clamp(0.0, double.infinity)
         .toDouble();
     final spotlightBottom = railSafetyBottom.clamp(0.0, maxSpotlightBottom).toDouble();
@@ -1790,15 +1787,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final colorScheme = theme.colorScheme;
     final heroLogoWidth = isTv ? TvLayoutConstants.heroLogoWidth : 400.0;
     final heroLogoHeight = isTv ? TvLayoutConstants.heroLogoHeight : 120.0;
+    // No ad-hoc glow/shadow on the title: the scrim gradient already provides
+    // contrast against the artwork.
     final heroTitleStyle = theme.textTheme.displaySmall?.copyWith(
       color: colorScheme.onSurface,
       fontWeight: .bold,
       fontSize: isTv ? 52 : null,
-      shadows: [Shadow(color: colorScheme.surface.withValues(alpha: 0.8), blurRadius: 8)],
     );
-
-    // Determine content type label for chip
-    final contentTypeLabel = heroItem.isMovie ? t.discover.movie : t.discover.tvShow;
 
     // Spoiler protection
     final hideSpoilers = SettingsService.instance.read(SettingsService.hideSpoilers);
@@ -2054,39 +2049,26 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               ),
                             ),
 
-                          // Metadata: amber "XX% match" derived from the
-                          // rating, then content type / age / year.
-                          if (heroItem.year != null || heroItem.contentRating != null || heroItem.rating != null) ...[
-                            const SizedBox(height: 16),
-                            Wrap(
-                              alignment: alignLeft ? WrapAlignment.start : WrapAlignment.center,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              spacing: 10,
-                              children: [
-                                if (heroItem.rating != null)
-                                  Text(
-                                    '${(heroItem.rating! * 10).round()}% match',
-                                    style: TextStyle(
-                                      color: kAccentAlt,
-                                      fontSize: isTv ? 18 : 14,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                Text(
-                                  [
-                                    contentTypeLabel,
-                                    if (heroItem.contentRating != null) formatContentRating(heroItem.contentRating!),
-                                    if (heroItem.year != null) heroItem.year.toString(),
-                                  ].join(' • '),
-                                  style: TextStyle(
-                                    color: colorScheme.onSurface,
-                                    fontSize: isTv ? 18 : 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                          // One plain muted meta line: year · genre · duration.
+                          // No chips/badges — just quiet supporting text.
+                          ...() {
+                            final metaParts = <String>[
+                              if (heroItem.year != null) heroItem.year.toString(),
+                              if (heroItem.genres?.isNotEmpty == true) heroItem.genres!.first,
+                              if (heroItem.durationMs != null) formatDurationTextual(heroItem.durationMs!),
+                            ];
+                            if (metaParts.isEmpty) return const <Widget>[];
+                            return [
+                              const SizedBox(height: 16),
+                              Text(
+                                metaParts.join(' • '),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                  fontSize: isTv ? 18 : 14,
                                 ),
-                              ],
-                            ),
-                          ],
+                              ),
+                            ];
+                          }(),
 
                           // On small screens: show button before summary
                           if (!alignLeft) ...[const SizedBox(height: 20), _buildSmartPlayButton(heroItem)],

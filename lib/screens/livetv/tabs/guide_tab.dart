@@ -8,6 +8,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../../../focus/dpad_navigator.dart';
+import '../../../focus/focus_theme.dart';
 import '../../../focus/input_mode_tracker.dart';
 import '../../../focus/key_event_utils.dart';
 import '../../../i18n/strings.g.dart';
@@ -29,6 +30,7 @@ import '../../../widgets/app_menu.dart';
 import '../../../widgets/clickable_cursor.dart';
 import '../../../widgets/overlay_sheet.dart';
 import '../../../widgets/optimized_media_image.dart';
+import '../../../theme/mono_theme.dart';
 import '../program_details_sheet.dart';
 import '../../../widgets/skeletons.dart';
 
@@ -1010,7 +1012,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
       left: left,
       top: 0,
       height: gridHeight,
-      child: IgnorePointer(child: Container(width: 2, color: Colors.red)),
+      child: IgnorePointer(child: Container(width: 2, color: kAccent)),
     );
   }
 
@@ -1412,38 +1414,21 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
     final isRecordingScheduled = _isRecordingScheduled(program);
 
     Color materialColor;
-    if (isFocused) {
-      materialColor = theme.colorScheme.primary.withValues(alpha: 0.15);
-    } else if (isCurrentlyAiring) {
+    if (isFocused || isCurrentlyAiring) {
       materialColor = theme.colorScheme.onSurface.withValues(alpha: 0.12);
     } else {
       materialColor = theme.colorScheme.onSurface.withValues(alpha: 0.05);
     }
 
-    Color titleColor;
-    if (isFocused) {
-      titleColor = theme.colorScheme.primary;
-    } else if (isCurrentlyAiring) {
-      titleColor = theme.colorScheme.onSurface;
-    } else {
-      titleColor = theme.colorScheme.onSurface;
-    }
-
-    Color subtitleColor;
-    if (isFocused) {
-      subtitleColor = theme.colorScheme.primary.withValues(alpha: 0.7);
-    } else if (isCurrentlyAiring) {
-      subtitleColor = theme.colorScheme.onSurfaceVariant;
-    } else {
-      subtitleColor = theme.colorScheme.onSurfaceVariant;
-    }
+    final titleColor = theme.colorScheme.onSurface;
+    final subtitleColor = theme.colorScheme.onSurfaceVariant;
 
     return Opacity(
       opacity: isPast ? 0.5 : 1.0,
       child: Material(
         color: isFocused ? materialColor : Colors.transparent,
         shape: RoundedRectangleBorder(
-          side: isFocused ? BorderSide(color: theme.colorScheme.primary, width: 2) : BorderSide.none,
+          side: isFocused ? BorderSide(color: FocusTheme.getFocusBorderColor(context), width: 2) : BorderSide.none,
         ),
         child: InkWell(
           mouseCursor: SystemMouseCursors.click,
@@ -1475,7 +1460,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
                       Row(
                         children: [
                           if (isRecordingScheduled) ...[
-                            _RecordingDot(color: Colors.red, tooltip: t.liveTv.recordingScheduled),
+                            _RecordingDot(color: kAccent, tooltip: t.liveTv.recordingScheduled),
                             const SizedBox(width: 5),
                           ],
                           Expanded(

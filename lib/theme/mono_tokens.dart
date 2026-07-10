@@ -9,6 +9,18 @@ Duration reduceMotion(BuildContext context, Duration d) => MediaQuery.disableAni
 
 @immutable
 class MonoTokens extends ThemeExtension<MonoTokens> {
+  // TV home hero layout (moved from DiscoverScreen — values unchanged).
+  // Fraction of viewport height above the hero/spotlight content block.
+  static const double tvHeroContentTopFraction = 0.075;
+  // How much of the browse rail peeks at the bottom of the TV home screen when
+  // the hero is focused (fraction of viewport height): enough for the hub
+  // label and the poster tops. Focusing the rail slides the rest up into view.
+  static const double tvHomeRailPeekFraction = 0.16;
+  // Gap between the hero content and the peeking rail (logical px, pre-scale).
+  static const double tvHeroRailGap = 32;
+  // Minimum height reserved for the hero info block (logical px, pre-scale).
+  static const double tvHeroMinInfoHeight = 96;
+
   final double radiusSm;
   final double radiusMd;
   final double space;

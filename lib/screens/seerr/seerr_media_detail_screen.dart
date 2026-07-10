@@ -319,8 +319,8 @@ class _HeroContent extends StatelessWidget {
   }
 }
 
-/// Hero metadata as pill chips, matching the app detail screen: an amber
-/// "XX% match" derived from the vote, then year / runtime / genre chips.
+/// Hero metadata as one flat text line (match · year · runtime · genres),
+/// matching the app-wide "meta is text, not chips" rule.
 class _MetaChips extends StatelessWidget {
   const _MetaChips({required this.media, required this.detail});
 
@@ -329,37 +329,24 @@ class _MetaChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final isTv = PlatformDetector.isTV();
     final vote = detail?.voteAverage;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        if (vote != null)
-          Text(
-            '${(vote * 10).round()}% match',
-            style: TextStyle(color: kAccentAlt, fontWeight: FontWeight.w700, fontSize: isTv ? 16 : 14),
-          ),
-        if (media.year != null) _chip(context, media.year!),
-        if (detail?.runtimeMinutes != null) _chip(context, _formatRuntime(detail!.runtimeMinutes!)),
-        for (final g in (detail?.genres ?? const <String>[]).take(3)) _chip(context, g),
-      ],
-    );
-  }
-
-  Widget _chip(BuildContext context, String text) {
-    final cs = Theme.of(context).colorScheme;
-    final isTv = PlatformDetector.isTV();
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: isTv ? 14 : 12, vertical: isTv ? 8 : 6),
-      decoration: BoxDecoration(
-        color: cs.secondaryContainer.withValues(alpha: 0.8),
-        borderRadius: const BorderRadius.all(Radius.circular(100)),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(color: cs.onSecondaryContainer, fontSize: isTv ? 16 : 13, fontWeight: FontWeight.w600),
+    final parts = <String>[
+      if (vote != null) '${(vote * 10).round()}% match',
+      if (media.year != null) media.year!,
+      if (detail?.runtimeMinutes != null) _formatRuntime(detail!.runtimeMinutes!),
+      if ((detail?.genres ?? const <String>[]).isNotEmpty) detail!.genres.take(3).join(', '),
+    ];
+    if (parts.isEmpty) return const SizedBox.shrink();
+    return Text(
+      parts.join(' · '),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+        fontSize: isTv ? 16 : 13,
+        fontWeight: FontWeight.w500,
       ),
     );
   }

@@ -31,7 +31,7 @@ class SeerrStatusBadge extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 10, vertical: compact ? 2 : 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.16),
-        borderRadius: const BorderRadius.all(Radius.circular(100)),
+        borderRadius: const BorderRadius.all(Radius.circular(4)),
       ),
       child: Text(
         label,

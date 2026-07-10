@@ -12,6 +12,7 @@ import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../models/seerr/seerr_media.dart';
 import '../providers/seerr_provider.dart';
+import '../widgets/focusable_filter_chip.dart';
 import '../widgets/focusable_list_tile.dart';
 import '../widgets/loading_indicator_box.dart';
 import '../widgets/seerr_poster_card.dart';
@@ -398,10 +399,10 @@ class _SearchScreenState extends State<SearchScreen>
   }
 
   Widget _filterChip(BuildContext context, _SearchFilter filter, String label) {
-    return FilterChip(
-      label: Text(label),
+    return FocusableFilterChip(
+      label: label,
       selected: _activeFilter == filter,
-      onSelected: (_) => setStateIfMounted(() => _activeFilter = filter),
+      onPressed: () => setStateIfMounted(() => _activeFilter = filter),
     );
   }
 

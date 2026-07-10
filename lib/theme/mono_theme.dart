@@ -179,12 +179,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
       }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         final active = states.contains(WidgetState.selected);
-        return IconThemeData(
-          opacity: active ? 1 : 0.6,
-          size: 22,
-          color: c.text,
-          shadows: active ? [Shadow(color: kAccent.withValues(alpha: 0.55), blurRadius: 8)] : null,
-        );
+        return IconThemeData(opacity: active ? 1 : 0.6, size: 22, color: c.text);
       }),
     ),
     // Floating snackbars auto-offset above the Scaffold's bottom NavigationBar,
