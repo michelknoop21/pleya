@@ -62,7 +62,6 @@ import '../providers/watch_state_store.dart';
 import '../models/seerr/seerr_media.dart';
 import '../utils/external_ids.dart';
 import '../widgets/seerr_request_sheet.dart';
-import '../theme/mono_theme.dart' show kAccentAlt;
 import '../utils/app_logger.dart';
 import '../utils/formatters.dart';
 import '../utils/scroll_utils.dart';
@@ -875,7 +874,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     final isTv = PlatformDetector.isTV();
     final textWidget = Text(
       text,
-      style: TextStyle(color: colorScheme.onSecondaryContainer, fontSize: isTv ? 16 : 13, fontWeight: .w600),
+      style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: isTv ? 16 : 13, fontWeight: .w600),
     );
 
     final hasLeading = leading != null || icon != null;
@@ -883,8 +882,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     return Container(
       padding: .symmetric(horizontal: isTv ? 14 : 12, vertical: isTv ? 8 : 6),
       decoration: BoxDecoration(
-        color: colorScheme.secondaryContainer.withValues(alpha: 0.8),
-        borderRadius: const BorderRadius.all(Radius.circular(100)),
+        border: Border.all(color: colorScheme.outline),
+        borderRadius: const BorderRadius.all(Radius.circular(4)),
       ),
       child: hasLeading
           ? Row(
@@ -893,7 +892,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                 if (leading != null)
                   leading
                 else
-                  AppIcon(icon!, fill: 1, color: colorScheme.onSecondaryContainer, size: isTv ? 20 : 16),
+                  AppIcon(icon!, fill: 1, color: colorScheme.onSurfaceVariant, size: isTv ? 20 : 16),
                 SizedBox(width: isTv ? 6 : 4),
                 textWidget,
               ],
@@ -4286,7 +4285,11 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
           if (metadata.rating != null)
             Text(
               '${(metadata.rating! * 10).round()}% match',
-              style: const TextStyle(color: kAccentAlt, fontWeight: FontWeight.w700, fontSize: 14),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
             ),
           if (metadata.year != null) _buildMetadataChip('${metadata.year}'),
           if (metadata case PlexMediaItem(:final editionTitle?)) _buildMetadataChip(editionTitle),

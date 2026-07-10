@@ -12,7 +12,6 @@ import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
 import '../../services/seerr/seerr_constants.dart';
 import '../../services/settings_service.dart';
-import '../../theme/mono_theme.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/platform_detector.dart';

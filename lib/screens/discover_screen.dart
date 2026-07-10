@@ -23,7 +23,6 @@ import '../media/media_item_types.dart';
 import '../media/media_server_client.dart';
 import '../media/media_hub.dart';
 import '../utils/media_image_helper.dart';
-import '../utils/content_utils.dart';
 import '../widgets/optimized_media_image.dart' show blurArtwork;
 import '../providers/discover_provider.dart';
 import '../providers/multi_server_provider.dart';
@@ -2051,24 +2050,22 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
                           // One plain muted meta line: year · genre · duration.
                           // No chips/badges — just quiet supporting text.
-                          ...() {
-                            final metaParts = <String>[
-                              if (heroItem.year != null) heroItem.year.toString(),
-                              if (heroItem.genres?.isNotEmpty == true) heroItem.genres!.first,
-                              if (heroItem.durationMs != null) formatDurationTextual(heroItem.durationMs!),
-                            ];
-                            if (metaParts.isEmpty) return const <Widget>[];
-                            return [
-                              const SizedBox(height: 16),
-                              Text(
-                                metaParts.join(' • '),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurface.withValues(alpha: 0.7),
-                                  fontSize: isTv ? 18 : 14,
-                                ),
+                          if (heroItem.year != null ||
+                              heroItem.genres?.isNotEmpty == true ||
+                              heroItem.durationMs != null) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              [
+                                if (heroItem.year != null) heroItem.year.toString(),
+                                if (heroItem.genres?.isNotEmpty == true) heroItem.genres!.first,
+                                if (heroItem.durationMs != null) formatDurationTextual(heroItem.durationMs!),
+                              ].join(' • '),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                fontSize: isTv ? 18 : 14,
                               ),
-                            ];
-                          }(),
+                            ),
+                          ],
 
                           // On small screens: show button before summary
                           if (!alignLeft) ...[const SizedBox(height: 20), _buildSmartPlayButton(heroItem)],

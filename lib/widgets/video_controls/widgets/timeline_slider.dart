@@ -6,6 +6,7 @@ import '../../../i18n/strings.g.dart';
 import '../../../focus/focusable_wrapper.dart';
 import '../../../focus/input_mode_tracker.dart';
 import '../../../services/scrub_preview_source.dart';
+import '../../../theme/mono_theme.dart' show kAccent;
 import '../../../utils/formatters.dart';
 import '../helpers/eager_horizontal_drag_recognizer.dart';
 import '../painters/buffer_range_painter.dart';
@@ -382,7 +383,7 @@ class _TimelineSliderState extends State<TimelineSlider> {
                       min: 0.0,
                       max: max,
                       onChanged: _noopSliderChanged,
-                      activeColor: Colors.white,
+                      activeColor: kAccent,
                       inactiveColor: Colors.transparent,
                     ),
                   ),

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../theme/mono_theme.dart' show kBrandGradient;
+import '../theme/mono_theme.dart' show kAccent;
 import '../theme/mono_tokens.dart';
 
 /// Reusable media progress bar widget for displaying watch progress
 ///
 /// Shows a linear progress indicator based on viewOffset and duration.
-/// Defaults to the brand accent for the played portion, animating smoothly
+/// Defaults to solid accent red for the played portion, animating smoothly
 /// when the value changes (e.g. after resuming playback).
 class MediaProgressBar extends StatelessWidget {
   final int viewOffset; // Progress position in milliseconds
@@ -29,8 +29,8 @@ class MediaProgressBar extends StatelessWidget {
     final t = tokens(context);
     final height = minHeight ?? 4;
 
-    // Played portion uses the logo's red→amber gradient (or a caller-supplied
-    // solid color); animates smoothly when the value changes.
+    // Played portion is solid accent red (or a caller-supplied color);
+    // animates smoothly when the value changes.
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(end: progress),
       duration: t.normal,
@@ -46,9 +46,7 @@ class MediaProgressBar extends StatelessWidget {
                 alignment: AlignmentDirectional.centerStart,
                 widthFactor: value,
                 heightFactor: 1,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(color: valueColor, gradient: valueColor == null ? kBrandGradient : null),
-                ),
+                child: DecoratedBox(decoration: BoxDecoration(color: valueColor ?? kAccent)),
               ),
             ],
           ),

@@ -90,9 +90,14 @@ class _EpisodeCardState extends State<EpisodeCard> with ContextMenuTapMixin<Epis
         Row(
           mainAxisSize: .min,
           children: [
-            const Padding(
-              padding: .only(top: 2),
-              child: Icon(Symbols.star_rounded, size: 12, fill: 1, color: Colors.amber),
+            Padding(
+              padding: const .only(top: 2),
+              child: Icon(
+                Symbols.star_rounded,
+                size: 12,
+                fill: 1,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(width: 2),
             Text(
@@ -264,13 +269,13 @@ class _EpisodeCardState extends State<EpisodeCard> with ContextMenuTapMixin<Epis
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.primaryContainer,
-                                        borderRadius: const BorderRadius.all(Radius.circular(3)),
+                                        border: Border.all(color: Theme.of(context).colorScheme.outline),
+                                        borderRadius: const BorderRadius.all(Radius.circular(4)),
                                       ),
                                       child: Text(
                                         'E${episode.index}',
                                         style: TextStyle(
-                                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                                           fontSize: 11,
                                           fontWeight: .w600,
                                         ),

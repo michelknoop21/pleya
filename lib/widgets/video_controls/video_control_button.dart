@@ -78,7 +78,7 @@ class VideoControlButton extends StatelessWidget {
         semanticLabel: semanticLabel,
         borderRadius: 20, // Circular for icon buttons
         autoScroll: false, // Video controls don't scroll
-        useBackgroundFocus: true, // Use background highlight for video controls
+        // App-wide focus language: the standard white ring, same as posters/nav.
         child: result,
       );
     }
