@@ -8,6 +8,7 @@ import '../../utils/library_grouping.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/backend_badge.dart';
 import '../../widgets/focusable_list_tile.dart';
+import '../../widgets/skeletons.dart';
 
 class LibraryQuickPickerSheet extends StatelessWidget {
   final List<MediaLibrary> libraries;
@@ -142,7 +143,10 @@ class LibraryQuickPickerSheet extends StatelessWidget {
           ),
         ),
         if (isLoading && libraries.isEmpty)
-          const Padding(padding: .symmetric(vertical: 32), child: CircularProgressIndicator())
+          const Padding(
+            padding: .symmetric(vertical: 8),
+            child: Column(children: [SkeletonListTile(), SkeletonListTile(), SkeletonListTile()]),
+          )
         else if (libraries.isEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),

@@ -20,6 +20,7 @@ import '../widgets/focused_scroll_scaffold.dart';
 import '../widgets/pill_input_decoration.dart';
 import '../widgets/optimized_media_image.dart';
 import '../widgets/loading_indicator_box.dart';
+import '../widgets/skeletons.dart';
 
 /// Fix / apply a metadata match on a movie or show. Plex-only feature; the
 /// underlying [PlexClient.findMatches]/[PlexClient.applyMatch] endpoints
@@ -130,7 +131,11 @@ class _PlexMatchScreenState extends State<PlexMatchScreen> with ControllerDispos
           sliver: SliverToBoxAdapter(child: _buildSearchForm(context)),
         ),
         if (_isSearching || _results == null)
-          const SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator()))
+          SliverList.builder(
+            itemCount: 6,
+            itemBuilder: (_, _) =>
+                const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: SkeletonListTile()),
+          )
         else if (_results!.isEmpty)
           SliverFillRemaining(
             hasScrollBody: false,

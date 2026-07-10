@@ -30,6 +30,7 @@ import '../../../widgets/clickable_cursor.dart';
 import '../../../widgets/overlay_sheet.dart';
 import '../../../widgets/optimized_media_image.dart';
 import '../program_details_sheet.dart';
+import '../../../widgets/skeletons.dart';
 
 class GuideTab extends StatefulWidget {
   final List<LiveTvChannel> channels;
@@ -869,7 +870,10 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
     final theme = Theme.of(context);
 
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: List.generate(6, (_) => const SkeletonListTile()),
+      );
     }
 
     return OverlaySheetHost(

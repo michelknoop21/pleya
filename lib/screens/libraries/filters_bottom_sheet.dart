@@ -12,6 +12,7 @@ import '../../widgets/focusable_list_tile.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../utils/provider_extensions.dart';
 import '../../i18n/strings.g.dart';
+import '../../widgets/skeletons.dart';
 
 class FiltersBottomSheet extends StatefulWidget {
   final List<MediaFilter> filters;
@@ -203,7 +204,10 @@ class _FiltersBottomSheetState extends State<FiltersBottomSheet> {
     if (_isLoadingValues) {
       return Focus(
         autofocus: InputModeTracker.isKeyboardMode(context),
-        child: const Center(child: CircularProgressIndicator()),
+        child: ListView(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          children: List.generate(6, (_) => const SkeletonListTile()),
+        ),
       );
     }
 

@@ -29,6 +29,7 @@ import '../../../widgets/horizontal_scroll_with_arrows.dart';
 import '../../../widgets/optimized_media_image.dart';
 import '../live_tv_actions_mixin.dart';
 import '../live_tv_show_schedule_screen.dart';
+import '../../../widgets/skeletons.dart';
 
 class WhatsOnTab extends StatefulWidget {
   final List<LiveTvChannel> channels;
@@ -171,7 +172,7 @@ class WhatsOnTabState extends State<WhatsOnTab> with LiveTvActionsMixin<WhatsOnT
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return ListView(children: const [SkeletonHubRow(), SkeletonHubRow(), SkeletonHubRow()]);
     }
 
     if (_hubs.isEmpty) {

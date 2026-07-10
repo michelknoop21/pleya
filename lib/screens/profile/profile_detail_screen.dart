@@ -36,6 +36,7 @@ import 'pin_entry_dialog.dart';
 import 'pin_status_row.dart';
 import 'profile_delete_flow.dart';
 import 'profile_name_field.dart';
+import '../../widgets/skeletons.dart';
 
 /// Manage one [Profile] — rename, change PIN, list/add/remove
 /// connections, set the default connection.
@@ -293,8 +294,8 @@ class _ConnectionsList extends StatelessWidget {
         final pcs = snapshot.data ?? const <ProfileConnection>[];
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
-            padding: .symmetric(vertical: 20),
-            child: Center(child: CircularProgressIndicator()),
+            padding: .symmetric(vertical: 8),
+            child: Column(children: [SkeletonListTile(), SkeletonListTile()]),
           );
         }
         return StreamBuilder<Map<String, List<PlexHomeUser>>>(

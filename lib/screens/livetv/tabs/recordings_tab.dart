@@ -20,6 +20,7 @@ import '../../../utils/formatters.dart';
 import '../../../widgets/app_icon.dart';
 import '../../../widgets/overlay_sheet.dart';
 import '../livetv_recording_actions.dart';
+import '../../../widgets/skeletons.dart';
 
 class RecordingsTab extends StatefulWidget {
   final VoidCallback? onNavigateUp;
@@ -210,7 +211,10 @@ class RecordingsTabState extends State<RecordingsTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: List.generate(6, (_) => const SkeletonListTile()),
+      );
     }
     if (_serverRecordings.isEmpty && _adminBlocked) {
       return Center(child: _EmptyMessage(text: t.liveTv.dvrAdminRequired));

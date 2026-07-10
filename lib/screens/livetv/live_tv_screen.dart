@@ -28,6 +28,7 @@ import 'reorder_favorites_sheet.dart';
 import 'tabs/guide_tab.dart';
 import 'tabs/recordings_tab.dart';
 import 'tabs/whats_on_tab.dart';
+import '../../widgets/skeletons.dart';
 
 enum LiveTvTab { guide, whatsOn, recordings }
 
@@ -610,7 +611,10 @@ class _LiveTvScreenState extends State<LiveTvScreen>
 
   Widget _buildLiveTvBody(ThemeData theme, bool useSideNav) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: List.generate(6, (_) => const SkeletonListTile()),
+      );
     }
     if (_error != null) {
       return Center(
