@@ -12,9 +12,22 @@ void main() {
       expect(friendlyError(error), 'Unable to connect to media server');
     });
 
-    test('MediaServerHttpException with context uses mapHttpErrorToMessage', () {
+    test('MediaServerHttpException timeout with context names the context', () {
       final error = MediaServerHttpException(type: MediaServerHttpErrorType.connectionTimeout);
       expect(friendlyError(error, context: 'library'), contains('library'));
+    });
+
+    test('unknown-type MediaServerHttpException never surfaces its raw .message', () {
+      // MediaServerHttpException.from() puts error.toString() into .message for
+      // the unknown catch-all — friendlyError must not leak it, even with context.
+      final error = MediaServerHttpException(
+        type: MediaServerHttpErrorType.unknown,
+        message: 'token=super-secret-internal-detail',
+      );
+      final withContext = friendlyError(error, context: 'playlists');
+      expect(withContext, isNot(contains('super-secret-internal-detail')));
+      expect(withContext, contains('playlists'));
+      expect(friendlyError(error), isNot(contains('super-secret-internal-detail')));
     });
 
     test('SocketException maps to connection message', () {

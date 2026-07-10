@@ -33,10 +33,20 @@ String mapUnexpectedErrorToMessage(dynamic error, {required String context}) {
 /// never shown — users get a next action, not a stack-trace fragment.
 String friendlyError(Object error, {String? context}) {
   if (error is MediaServerHttpException) {
-    if (context != null) return mapHttpErrorToMessage(error, context: context);
-    if (error.isTransient) return t.errors.connectionFailed;
-    appLogger.e('Server error', error: error);
-    return t.errors.somethingWentWrongTryAgain;
+    // Only the transient types map to a curated message. Other types (notably
+    // `unknown`, whose `.message` is the original `error.toString()`) must NOT
+    // surface their raw message — that's exactly the leak this helper prevents.
+    // The raw exception still goes to the log.
+    switch (error.type) {
+      case MediaServerHttpErrorType.connectionTimeout:
+      case MediaServerHttpErrorType.receiveTimeout:
+        return context != null ? t.errors.connectionTimeout(context: context) : t.errors.connectionFailed;
+      case MediaServerHttpErrorType.connectionError:
+        return t.errors.connectionFailed;
+      default:
+        appLogger.e('Server error${context != null ? ' loading $context' : ''}', error: error);
+        return context != null ? t.errors.couldNotLoad(context: context) : t.errors.somethingWentWrongTryAgain;
+    }
   }
   if (error is SocketException || error is HandshakeException || error is HttpException) {
     return t.errors.connectionFailed;
