@@ -151,7 +151,10 @@ class NavigationRailItem extends StatelessWidget {
                           const SizedBox(width: 11),
                           Expanded(
                             child: () {
-                              if (useSimpleLayout) return label;
+                              // Simple-layout items (library sub-rows) still must
+                              // hide their label when the rail collapses, otherwise
+                              // the text bleeds through the narrow clipped rail.
+                              if (useSimpleLayout && !isCollapsed) return label;
                               final opacity = isCollapsed ? 0.0 : 1.0;
                               return AnimatedOpacity(
                                 opacity: opacity,
