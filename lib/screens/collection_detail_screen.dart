@@ -19,6 +19,7 @@ import 'base_media_list_detail_screen.dart';
 import 'focusable_detail_screen_mixin.dart';
 import '../mixins/grid_focus_node_mixin.dart';
 import '../services/playlist_items_loader.dart';
+import '../utils/error_message_utils.dart';
 
 /// Screen to display the contents of a collection
 class CollectionDetailScreen extends StatefulWidget {
@@ -108,7 +109,7 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
       appLogger.e('Failed to load collection items', error: e);
       if (!mounted) return;
       setState(() {
-        errorMessage = t.collections.failedToLoadItems(error: e.toString());
+        errorMessage = t.collections.failedToLoadItems(error: friendlyError(e));
         isLoading = false;
       });
     }
@@ -175,7 +176,7 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
     } catch (e) {
       appLogger.e('Failed to queue collection download', error: e);
       if (mounted) {
-        showErrorSnackBar(context, t.messages.errorLoading(error: e.toString()));
+        showErrorSnackBar(context, friendlyError(e));
       }
     }
   }
@@ -225,7 +226,7 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
     } catch (e) {
       appLogger.e('Failed to delete collection', error: e);
       if (mounted) {
-        showErrorSnackBar(context, t.collections.deleteFailedWithError(error: e.toString()));
+        showErrorSnackBar(context, t.collections.deleteFailedWithError(error: friendlyError(e)));
       }
     }
   }

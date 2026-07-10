@@ -28,6 +28,7 @@ import '../../widgets/ios_status_bar_tap_scroll_to_top.dart';
 import '../base_media_list_detail_screen.dart';
 import '../focusable_detail_screen_mixin.dart';
 import '../../mixins/grid_focus_node_mixin.dart';
+import '../../utils/error_message_utils.dart';
 
 /// Screen to display the contents of a playlist
 class PlaylistDetailScreen extends StatefulWidget {
@@ -257,7 +258,7 @@ class _PlaylistDetailScreenState extends BaseMediaListDetailScreen<PlaylistDetai
       appLogger.w('Failed to finish loading playlist items', error: e, stackTrace: st);
       if (mounted && generation == _playlistLoadGeneration) {
         setState(() {
-          _playlistContinuationErrorMessage = t.messages.errorLoading(error: e.toString());
+          _playlistContinuationErrorMessage = friendlyError(e);
         });
       }
     } finally {
@@ -338,7 +339,7 @@ class _PlaylistDetailScreenState extends BaseMediaListDetailScreen<PlaylistDetai
       }
     } catch (e) {
       if (mounted) {
-        showErrorSnackBar(context, t.messages.errorLoading(error: e.toString()));
+        showErrorSnackBar(context, friendlyError(e));
       }
     }
   }

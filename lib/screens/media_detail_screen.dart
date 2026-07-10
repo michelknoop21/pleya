@@ -96,6 +96,7 @@ import '../widgets/ios_status_bar_tap_scroll_to_top.dart';
 import '../widgets/loading_indicator_box.dart';
 import '../widgets/tv_browse_rail.dart';
 import '../widgets/tv_spotlight_background.dart';
+import '../utils/error_message_utils.dart';
 
 part 'media_detail/action_buttons.dart';
 
@@ -3079,7 +3080,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       }
     } catch (e) {
       if (mounted) {
-        showErrorSnackBar(context, t.messages.errorLoading(error: e.toString()));
+        showErrorSnackBar(context, friendlyError(e));
       }
     }
   }

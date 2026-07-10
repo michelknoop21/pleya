@@ -314,7 +314,7 @@ extension _VideoPlayerLiveTvMethods on VideoPlayerScreenState {
         _setPlayerState(() => _hasFirstFrame.value = true);
       }
       appLogger.e('Failed to switch channel', error: e);
-      if (mounted) showErrorSnackBar(context, e.toString());
+      if (mounted) showErrorSnackBar(context, friendlyError(e));
     } finally {
       _playbackTransition = _PlaybackTransition.idle;
     }

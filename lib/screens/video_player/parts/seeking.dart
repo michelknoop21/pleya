@@ -157,7 +157,7 @@ extension _VideoPlayerSeekingMethods on VideoPlayerScreenState {
     } catch (e, st) {
       appLogger.w('Failed to restart Plex transcode at ${target.inSeconds}s', error: e, stackTrace: st);
       if (mounted) {
-        showErrorSnackBar(context, t.messages.errorLoading(error: e.toString()));
+        showErrorSnackBar(context, friendlyError(e));
       }
     } finally {
       _playbackTransition = _PlaybackTransition.idle;

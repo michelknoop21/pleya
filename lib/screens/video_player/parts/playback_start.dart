@@ -86,7 +86,7 @@ extension _VideoPlayerPlaybackStartMethods on VideoPlayerScreenState {
         appLogger.e('Failed to start live TV playback', error: e, stackTrace: st);
         unawaited(_sendLiveTimeline('stopped'));
         if (mounted) {
-          showErrorSnackBar(context, e.toString());
+          showErrorSnackBar(context, friendlyError(e));
           unawaited(_handleBackButton());
         }
       }
@@ -368,7 +368,7 @@ extension _VideoPlayerPlaybackStartMethods on VideoPlayerScreenState {
       appLogger.e('Failed to start playback', error: e, stackTrace: st);
       if (mounted) {
         _hasFirstFrame.value = true; // Hide spinner on error
-        showErrorSnackBar(context, t.messages.errorLoading(error: e.toString()));
+        showErrorSnackBar(context, friendlyError(e));
       }
     }
   }

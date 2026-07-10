@@ -31,6 +31,7 @@ import 'libraries/content_state_builder.dart';
 import '../mixins/refreshable.dart';
 import '../i18n/strings.g.dart';
 import 'focusable_detail_screen_mixin.dart';
+import '../utils/error_message_utils.dart';
 
 /// Screen to display full content of a recommendation hub
 class HubDetailScreen extends StatefulWidget {
@@ -313,7 +314,7 @@ class _HubDetailScreenState extends State<HubDetailScreen>
       appLogger.e('Failed to load hub content', error: e);
       if (!mounted) return;
       setState(() {
-        _errorMessage = t.messages.errorLoading(error: e.toString());
+        _errorMessage = friendlyError(e);
         _isLoading = false;
       });
     }
@@ -347,7 +348,7 @@ class _HubDetailScreenState extends State<HubDetailScreen>
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _isLoadingMore = false;
-        _continuationErrorMessage = t.messages.errorLoading(error: e.toString());
+        _continuationErrorMessage = friendlyError(e);
       });
     }
   }
@@ -391,7 +392,7 @@ class _HubDetailScreenState extends State<HubDetailScreen>
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _isLoadingMore = false;
-        _continuationErrorMessage = t.messages.errorLoading(error: e.toString());
+        _continuationErrorMessage = friendlyError(e);
         _continuationOffset = offset;
         _continuationTotal = total;
       });

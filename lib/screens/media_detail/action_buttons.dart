@@ -345,7 +345,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       }
     } catch (e) {
       if (mounted) {
-        showErrorSnackBar(context, t.messages.errorLoading(error: e.toString()));
+        showErrorSnackBar(context, friendlyError(e));
       }
     }
   }

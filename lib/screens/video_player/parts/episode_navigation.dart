@@ -194,7 +194,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       );
     } catch (e) {
       if (mounted) {
-        showErrorSnackBar(context, t.messages.errorLoading(error: e.toString()));
+        showErrorSnackBar(context, friendlyError(e));
       }
     }
   }
@@ -537,7 +537,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       if (isItemChange) _showChromeForSwappedItem();
       appLogger.e('Failed to reload media in-place during $reason', error: e);
       if (mounted) {
-        showErrorSnackBar(context, t.messages.errorLoading(error: e.toString()));
+        showErrorSnackBar(context, friendlyError(e));
       }
       return true;
     } finally {
