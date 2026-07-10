@@ -932,6 +932,8 @@ class _TranslationsErrorsNl extends TranslationsErrorsEn {
 	@override String failedToSwitchProfile({required Object displayName}) => 'Kon niet wisselen naar ${displayName}';
 	@override String failedToDeleteProfile({required Object displayName}) => 'Kon ${displayName} niet verwijderen';
 	@override String get failedToRate => 'Beoordeling kon niet worden bijgewerkt';
+	@override String get somethingWentWrongTryAgain => 'Er ging iets mis. Probeer het opnieuw.';
+	@override String couldNotLoad({required Object context}) => 'Kon ${context} niet laden. Probeer het opnieuw.';
 }
 
 // Path: libraries
@@ -2683,6 +2685,8 @@ extension on TranslationsNl {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Kon niet wisselen naar ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Kon ${displayName} niet verwijderen',
 			'errors.failedToRate' => 'Beoordeling kon niet worden bijgewerkt',
+			'errors.somethingWentWrongTryAgain' => 'Er ging iets mis. Probeer het opnieuw.',
+			'errors.couldNotLoad' => ({required Object context}) => 'Kon ${context} niet laden. Probeer het opnieuw.',
 			'libraries.title' => 'Bibliotheken',
 			'libraries.fallbackTitle' => 'Bibliotheek',
 			'libraries.scanLibraryFiles' => 'Scan bibliotheek bestanden',
@@ -3027,10 +3031,10 @@ extension on TranslationsNl {
 			'downloads.syncRuleListCreated' => 'Synchronisatieregel aangemaakt',
 			'shaders.title' => 'Shaders',
 			'shaders.noShaderDescription' => 'Geen videoverbetering',
-			'shaders.nvscalerDescription' => 'NVIDIA-beeldschaling voor scherpere video',
-			'shaders.artcnnVariantNeutral' => 'Neutraal',
 			_ => null,
 		} ?? switch (path) {
+			'shaders.nvscalerDescription' => 'NVIDIA-beeldschaling voor scherpere video',
+			'shaders.artcnnVariantNeutral' => 'Neutraal',
 			'shaders.artcnnVariantDenoise' => 'Ruisonderdrukking',
 			'shaders.artcnnVariantDenoiseSharpen' => 'Ruisonderdrukking + verscherpen',
 			'shaders.qualityFast' => 'Snel',

@@ -2252,6 +2252,12 @@ class TranslationsErrorsEn {
 
 	/// en: 'Couldn't update rating'
 	String get failedToRate => 'Couldn\'t update rating';
+
+	/// en: 'Something went wrong. Try again.'
+	String get somethingWentWrongTryAgain => 'Something went wrong. Try again.';
+
+	/// en: 'Couldn't load ${context}. Try again.'
+	String couldNotLoad({required Object context}) => 'Couldn\'t load ${context}. Try again.';
 }
 
 // Path: libraries
@@ -5652,6 +5658,8 @@ extension on Translations {
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Failed to switch to ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Failed to delete ${displayName}',
 			'errors.failedToRate' => 'Couldn\'t update rating',
+			'errors.somethingWentWrongTryAgain' => 'Something went wrong. Try again.',
+			'errors.couldNotLoad' => ({required Object context}) => 'Couldn\'t load ${context}. Try again.',
 			'libraries.title' => 'Libraries',
 			'libraries.fallbackTitle' => 'Library',
 			'libraries.scanLibraryFiles' => 'Scan Library Files',
@@ -5982,10 +5990,10 @@ extension on Translations {
 			'downloads.syncRuleCreated' => ({required Object count}) => 'Sync rule created — keeping ${count} unwatched episodes',
 			'downloads.syncRuleUpdated' => 'Sync rule updated',
 			'downloads.syncRuleRemoved' => 'Sync rule removed',
-			'downloads.syncedNewEpisodes' => ({required Object count, required Object title}) => 'Synced ${count} new episodes for ${title}',
-			'downloads.activeSyncRules' => 'Sync rules',
 			_ => null,
 		} ?? switch (path) {
+			'downloads.syncedNewEpisodes' => ({required Object count, required Object title}) => 'Synced ${count} new episodes for ${title}',
+			'downloads.activeSyncRules' => 'Sync rules',
 			'downloads.noSyncRules' => 'No sync rules',
 			'downloads.manageSyncRule' => 'Manage sync',
 			'downloads.editEpisodeCount' => 'Episode count',

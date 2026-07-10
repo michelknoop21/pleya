@@ -743,7 +743,9 @@
     "failedToVerifyToken": "Failed to verify token: ${error}",
     "failedToSwitchProfile": "Failed to switch to ${displayName}",
     "failedToDeleteProfile": "Failed to delete ${displayName}",
-    "failedToRate": "Couldn't update rating"
+    "failedToRate": "Couldn't update rating",
+    "somethingWentWrongTryAgain": "Something went wrong. Try again.",
+    "couldNotLoad": "Couldn't load ${context}. Try again."
   },
   "libraries": {
     "title": "Libraries",

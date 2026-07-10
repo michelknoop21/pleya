@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import '../i18n/strings.g.dart';
 import 'app_logger.dart';
 import '../exceptions/media_server_exceptions.dart';
@@ -17,8 +20,30 @@ String mapHttpErrorToMessage(MediaServerHttpException error, {required String co
   }
 }
 
-/// Generic fallback for unexpected errors.
+/// Generic fallback for unexpected errors. Never leaks raw `toString()` to
+/// the UI — the raw error goes to [appLogger] via [friendlyError].
 String mapUnexpectedErrorToMessage(dynamic error, {required String context}) {
-  appLogger.e('Unexpected error in $context', error: error);
-  return t.errors.failedToLoad(context: context, error: error.toString());
+  return friendlyError(error as Object, context: context);
+}
+
+/// Translate any caught error into a user-friendly, localized message.
+///
+/// Known network/transport failures map to specific messages; everything else
+/// falls back to a generic "something went wrong". The raw error is logged,
+/// never shown — users get a next action, not a stack-trace fragment.
+String friendlyError(Object error, {String? context}) {
+  if (error is MediaServerHttpException) {
+    if (context != null) return mapHttpErrorToMessage(error, context: context);
+    if (error.isTransient) return t.errors.connectionFailed;
+    appLogger.e('Server error', error: error);
+    return t.errors.somethingWentWrongTryAgain;
+  }
+  if (error is SocketException || error is HandshakeException || error is HttpException) {
+    return t.errors.connectionFailed;
+  }
+  if (error is TimeoutException) {
+    return context != null ? t.errors.connectionTimeout(context: context) : t.errors.connectionFailed;
+  }
+  appLogger.e('Unexpected error${context != null ? ' in $context' : ''}', error: error);
+  return context != null ? t.errors.couldNotLoad(context: context) : t.errors.somethingWentWrongTryAgain;
 }

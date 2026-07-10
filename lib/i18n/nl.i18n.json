@@ -729,7 +729,9 @@
     "failedToVerifyToken": "Kon token niet verifiëren: ${error}",
     "failedToSwitchProfile": "Kon niet wisselen naar ${displayName}",
     "failedToDeleteProfile": "Kon ${displayName} niet verwijderen",
-    "failedToRate": "Beoordeling kon niet worden bijgewerkt"
+    "failedToRate": "Beoordeling kon niet worden bijgewerkt",
+    "somethingWentWrongTryAgain": "Er ging iets mis. Probeer het opnieuw.",
+    "couldNotLoad": "Kon ${context} niet laden. Probeer het opnieuw."
   },
   "libraries": {
     "title": "Bibliotheken",
