@@ -200,6 +200,8 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
 
                   if (!PlatformDetector.isTV()) _buildBackupSection(),
 
+                  if (kDebugMode) _buildDebugSection(),
+
                   SettingNavigationTile(
                     focusNode: _focusTracker.get(_kAbout),
                     icon: Symbols.info_rounded,
@@ -369,9 +371,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           icon: Symbols.system_update_rounded,
           title: t.settings.checkForUpdates,
           keywords: const ['update', 'upgrade', 'versie', 'bijwerken'],
-          onTap: (_) => UpdateService.useNativeUpdater
-              ? UpdateService.checkForUpdatesNative(inBackground: false)
-              : _checkForUpdates(),
+          onTap: (_) => _handleCheckForUpdatesTap(),
         ),
     ];
   }
@@ -402,12 +402,12 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   }
 
   Widget _buildDonateTile() {
-    return ListTile(
+    return SettingNavigationTile(
       focusNode: _focusTracker.get(_kDonate),
-      leading: const AppIcon(Symbols.favorite_rounded, fill: 1),
-      title: Text(t.settings.supportDeveloper),
-      subtitle: Text(t.settings.supportDeveloperDescription),
-      trailing: const AppIcon(Symbols.open_in_new_rounded, fill: 1),
+      icon: Symbols.favorite_rounded,
+      title: t.settings.supportDeveloper,
+      subtitle: t.settings.supportDeveloperDescription,
+      trailingIcon: Symbols.open_in_new_rounded,
       onTap: () async {
         final url = Uri.parse(DonationService.donationUrl);
         if (await canLaunchUrl(url)) {
@@ -620,12 +620,11 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       crossAxisAlignment: .start,
       children: [
         SettingsSectionHeader(t.settings.advanced),
-        ListTile(
+        SettingNavigationTile(
           focusNode: _focusTracker.get(_kWatchTogetherRelay),
-          leading: const AppIcon(Symbols.dns_rounded, fill: 1),
-          title: Text(t.settings.watchTogetherRelay),
-          subtitle: Text(t.settings.watchTogetherRelayDescription),
-          trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
+          icon: Symbols.dns_rounded,
+          title: t.settings.watchTogetherRelay,
+          subtitle: t.settings.watchTogetherRelayDescription,
           onTap: () => _showRelayUrlDialog(),
         ),
         SettingSwitchTile(
@@ -649,44 +648,48 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           subtitle: t.settings.viewLogsDescription,
           destinationBuilder: (context) => const LogsScreen(),
         ),
-        ListTile(
+        SettingNavigationTile(
           focusNode: _focusTracker.get(_kClearCache),
-          leading: const AppIcon(Symbols.cleaning_services_rounded, fill: 1),
-          title: Text(t.settings.clearCache),
-          subtitle: Text(t.settings.clearCacheDescription),
-          trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
+          icon: Symbols.cleaning_services_rounded,
+          title: t.settings.clearCache,
+          subtitle: t.settings.clearCacheDescription,
           onTap: () => _showClearCacheDialog(),
         ),
-        ListTile(
+        SettingNavigationTile(
           focusNode: _focusTracker.get(_kResetSettings),
-          leading: const AppIcon(Symbols.restore_rounded, fill: 1),
-          title: Text(t.settings.resetSettings),
-          subtitle: Text(t.settings.resetSettingsDescription),
-          trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
+          icon: Symbols.restore_rounded,
+          title: t.settings.resetSettings,
+          subtitle: t.settings.resetSettingsDescription,
           onTap: () => _showResetSettingsDialog(),
         ),
-        if (kDebugMode)
-          ListTile(
-            leading: const AppIcon(Symbols.error_rounded, fill: 1),
-            title: const Text('Test Sentry'),
-            subtitle: const Text('Send a test error'),
-            trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
-            onTap: () {
-              throw Exception("Example exception");
-            },
-          ),
-        if (kDebugMode)
-          ListTile(
-            leading: const AppIcon(Symbols.timer_rounded, fill: 1),
-            title: const Text('Test ANR'),
-            subtitle: const Text('Block the main thread for 10 seconds'),
-            trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
-            onTap: () {
-              showSnackBar(context, 'Blocking main thread...');
-              final end = DateTime.now().add(const Duration(seconds: 10));
-              while (DateTime.now().isBefore(end)) {}
-            },
-          ),
+      ],
+    );
+  }
+
+  /// Debug-only tools, shown as a separate section at the bottom of the list.
+  Widget _buildDebugSection() {
+    return Column(
+      crossAxisAlignment: .start,
+      children: [
+        const SettingsSectionHeader('Debug'),
+        SettingNavigationTile(
+          icon: Symbols.error_rounded,
+          title: 'Test Sentry',
+          subtitle: 'Send a test error',
+          onTap: () {
+            throw Exception("Example exception");
+          },
+        ),
+        SettingNavigationTile(
+          icon: Symbols.timer_rounded,
+          title: 'Test ANR',
+          subtitle: 'Block the main thread for 10 seconds',
+          onTap: () {
+            showSnackBar(context, 'Blocking main thread...');
+            final end = DateTime.now().add(const Duration(seconds: 10));
+            while (DateTime.now().isBefore(end)) {}
+          },
+        ),
       ],
     );
   }
@@ -696,20 +699,18 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       crossAxisAlignment: .start,
       children: [
         SettingsSectionHeader(t.settings.backup),
-        ListTile(
+        SettingNavigationTile(
           focusNode: _focusTracker.get(_kExportSettings),
-          leading: const AppIcon(Symbols.upload_rounded, fill: 1),
-          title: Text(t.settings.exportSettings),
-          subtitle: Text(t.settings.exportSettingsDescription),
-          trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
+          icon: Symbols.upload_rounded,
+          title: t.settings.exportSettings,
+          subtitle: t.settings.exportSettingsDescription,
           onTap: _handleExportSettings,
         ),
-        ListTile(
+        SettingNavigationTile(
           focusNode: _focusTracker.get(_kImportSettings),
-          leading: const AppIcon(Symbols.download_rounded, fill: 1),
-          title: Text(t.settings.importSettings),
-          subtitle: Text(t.settings.importSettingsDescription),
-          trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
+          icon: Symbols.download_rounded,
+          title: t.settings.importSettings,
+          subtitle: t.settings.importSettingsDescription,
           onTap: _showImportSettingsDialog,
         ),
         if (_icloudSyncPlatform) _buildIcloudSyncTile(),
@@ -761,12 +762,11 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         crossAxisAlignment: .start,
         children: [
           SettingsSectionHeader(t.settings.updates),
-          ListTile(
+          SettingNavigationTile(
             focusNode: _focusTracker.get(_kCheckForUpdates),
-            leading: const AppIcon(Symbols.system_update_rounded, fill: 1),
-            title: Text(t.settings.checkForUpdates),
-            trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
-            onTap: () => UpdateService.checkForUpdatesNative(inBackground: false),
+            icon: Symbols.system_update_rounded,
+            title: t.settings.checkForUpdates,
+            onTap: _handleCheckForUpdatesTap,
           ),
           _buildAutoCheckUpdatesOnStartupTile(),
         ],
@@ -791,15 +791,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           trailing: _isCheckingForUpdate
               ? const LoadingIndicatorBox(size: 24)
               : const AppIcon(Symbols.chevron_right_rounded, fill: 1),
-          onTap: _isCheckingForUpdate
-              ? null
-              : () {
-                  if (hasUpdate) {
-                    _showUpdateDialog();
-                  } else {
-                    _checkForUpdates();
-                  }
-                },
+          onTap: _isCheckingForUpdate ? null : _handleCheckForUpdatesTap,
         ),
         _buildAutoCheckUpdatesOnStartupTile(),
       ],
@@ -1016,6 +1008,22 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     }
   }
 
+  /// Shared dispatch for the update tile and the search entry: native check,
+  /// open the dialog when an update is already known, otherwise run a guarded
+  /// check.
+  void _handleCheckForUpdatesTap() {
+    if (UpdateService.useNativeUpdater) {
+      UpdateService.checkForUpdatesNative(inBackground: false);
+      return;
+    }
+    if (_isCheckingForUpdate) return;
+    if (_updateInfo != null && _updateInfo!['hasUpdate'] == true) {
+      _showUpdateDialog();
+    } else {
+      _checkForUpdates();
+    }
+  }
+
   Future<void> _checkForUpdates() async {
     setState(() => _isCheckingForUpdate = true);
 
@@ -1030,6 +1038,10 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
 
         if (updateInfo == null || updateInfo['hasUpdate'] != true) {
           showAppSnackBar(context, t.update.latestVersion);
+        } else if (_searchQuery.isNotEmpty) {
+          // The update-available tile is hidden while search results are
+          // shown, so surface the found update directly.
+          _showUpdateDialog();
         }
       }
     } catch (e) {

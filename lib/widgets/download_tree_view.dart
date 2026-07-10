@@ -7,6 +7,7 @@ import '../i18n/strings.g.dart';
 import '../media/media_item.dart';
 import '../media/media_item_types.dart';
 import '../models/download_models.dart';
+import '../theme/mono_theme.dart';
 import '../utils/dialogs.dart';
 import '../utils/global_key_utils.dart';
 import 'clickable_cursor.dart';
@@ -746,7 +747,7 @@ class _DownloadTreeItemState extends State<_DownloadTreeItem> {
                 const SizedBox(height: 4),
                 Text(
                   widget.node.downloadProgress!.errorMessage!,
-                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.red.withValues(alpha: 0.8)),
+                  style: theme.textTheme.bodySmall?.copyWith(color: kAccent),
                   maxLines: 2,
                   overflow: .ellipsis,
                 ),

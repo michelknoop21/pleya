@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' show ImageFilter;
 import '../media/ids.dart';
 import '../navigation/main_screen_scope.dart';
+import '../theme/mono_theme.dart' show kAccent;
 import 'dart:io' show Platform, exit;
 
 export '../navigation/main_screen_scope.dart'
@@ -1589,7 +1590,7 @@ class _MainScreenState extends State<MainScreen>
     );
 
     final librariesIndex = tabs.indexWhere((tab) => tab.id == NavigationTabId.libraries);
-    if (librariesIndex < 0 || tabs.isEmpty) return frosted(navigationBar);
+    if (tabs.isEmpty) return frosted(navigationBar);
 
     return frosted(
       LayoutBuilder(
@@ -1598,26 +1599,41 @@ class _MainScreenState extends State<MainScreen>
 
           final itemWidth = constraints.maxWidth / tabs.length;
           final isRtl = Directionality.of(context) == TextDirection.rtl;
-          final left = isRtl ? constraints.maxWidth - (itemWidth * (librariesIndex + 1)) : itemWidth * librariesIndex;
+
+          double itemLeft(int index) => isRtl ? constraints.maxWidth - (itemWidth * (index + 1)) : itemWidth * index;
 
           return Stack(
             children: [
               navigationBar,
-              Positioned(
-                left: left,
-                top: 0,
-                bottom: 0,
-                width: itemWidth,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  excludeFromSemantics: true,
-                  onLongPress: () {
-                    Feedback.forLongPress(context);
-                    _showLibraryQuickPicker(context);
-                  },
-                  child: const SizedBox.expand(),
+              // Solid red indicator bar above the active icon.
+              if (selectedIndex >= 0)
+                Positioned(
+                  left: itemLeft(selectedIndex) + (itemWidth - 18) / 2,
+                  top: 0,
+                  width: 18,
+                  height: 3,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(color: kAccent, borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
                 ),
-              ),
+              if (librariesIndex >= 0)
+                Positioned(
+                  left: itemLeft(librariesIndex),
+                  top: 0,
+                  bottom: 0,
+                  width: itemWidth,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    excludeFromSemantics: true,
+                    onLongPress: () {
+                      Feedback.forLongPress(context);
+                      _showLibraryQuickPicker(context);
+                    },
+                    child: const SizedBox.expand(),
+                  ),
+                ),
             ],
           );
         },

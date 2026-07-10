@@ -16,8 +16,12 @@ import '../../widgets/app_icon.dart';
 import '../../widgets/focusable_filter_chip.dart';
 import '../../widgets/focusable_list_tile.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
+import '../../focus/focusable_wrapper.dart';
+import '../../models/seerr/seerr_media.dart';
+import '../../widgets/pressable.dart';
 import '../../widgets/seerr_poster_card.dart';
 import '../../widgets/seerr_status_badge.dart';
+import 'seerr_media_detail_screen.dart';
 
 /// Jellyseerr / Overseerr requests-management screen.
 ///
@@ -272,20 +276,42 @@ class _SeerrRequestRow extends StatelessWidget {
   final VoidCallback? onDecline;
   final VoidCallback? onCancel;
 
+  /// The tapped row opens the graphical media detail — the same screen the
+  /// discover posters open — so a request is never a dead end.
+  void _openDetail(BuildContext context) {
+    final tmdbId = request.tmdbId;
+    if (tmdbId == null) return;
+    final media = SeerrMedia(
+      tmdbId: tmdbId,
+      mediaType: request.mediaType,
+      title: request.mediaTitle ?? '',
+      year: request.mediaYear?.toString(),
+      posterPath: request.posterPath,
+      backdropPath: request.backdropPath,
+      status: request.mediaStatus,
+    );
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => SeerrMediaDetailScreen(media: media)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isTv = request.mediaType == 'tv';
     final title = request.mediaTitle ?? (isTv ? t.discover.tvShow : t.discover.movie);
     final posterUrl = SeerrConstants.tmdbPosterUrl(request.posterPath);
+    final canOpen = request.tmdbId != null;
 
     // Compact list thumbnail that follows the size slider (libraryDensity).
     final f = LibraryDensity.factor(SettingsService.instance.read(SettingsService.libraryDensity));
     final thumbW = 44 + f * 28; // 44→72
     final thumbH = thumbW * 1.5;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    final card = Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.all(Radius.circular(tokens(context).radiusSm)),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -325,19 +351,15 @@ class _SeerrRequestRow extends StatelessWidget {
                   runSpacing: 6,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    SeerrStatusBadge(status: request.mediaStatus, compact: true),
+                    // Availability only when it says more than the lifecycle chip
+                    // (otherwise two near-identical amber pills sit side by side).
+                    if (request.mediaStatus == SeerrMediaStatus.partiallyAvailable ||
+                        request.mediaStatus == SeerrMediaStatus.available)
+                      SeerrStatusBadge(status: request.mediaStatus, compact: true),
                     _lifecycleChip(theme),
-                    if (request.is4k) _plainPill(theme, '4K'),
+                    if (request.is4k || request.seasons.isNotEmpty) _plainPill(theme, _qualitySeasonsLabel()),
                   ],
                 ),
-                if (request.seasons.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [for (final n in request.seasons) _plainPill(theme, t.seerr.season(number: n))],
-                  ),
-                ],
                 if (request.requestedByName != null && request.requestedByName!.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(
@@ -353,6 +375,14 @@ class _SeerrRequestRow extends StatelessWidget {
             _actions(context),
           ],
         ],
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: FocusableWrapper(
+        onSelect: canOpen ? () => _openDetail(context) : null,
+        child: Pressable(onTap: canOpen ? () => _openDetail(context) : null, child: card),
       ),
     );
   }
@@ -377,6 +407,11 @@ class _SeerrRequestRow extends StatelessWidget {
     return FocusableButton(onPressed: onPressed, child: child);
   }
 
+  String _qualitySeasonsLabel() {
+    final parts = <String>[if (request.is4k) '4K', for (final n in request.seasons) t.seerr.season(number: n)];
+    return parts.join(' · ');
+  }
+
   Widget _lifecycleChip(ThemeData theme) {
     final (color, label) = switch (request.status) {
       SeerrRequestStatus.pending => (kAccentAlt, t.seerr.pending),
@@ -389,7 +424,7 @@ class _SeerrRequestRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.16),
-        borderRadius: const BorderRadius.all(Radius.circular(100)),
+        borderRadius: const BorderRadius.all(Radius.circular(4)),
       ),
       child: Text(
         label,
@@ -403,7 +438,7 @@ class _SeerrRequestRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: const BorderRadius.all(Radius.circular(100)),
+        borderRadius: const BorderRadius.all(Radius.circular(4)),
       ),
       child: Text(text, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
     );

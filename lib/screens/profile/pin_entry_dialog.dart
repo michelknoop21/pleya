@@ -133,7 +133,7 @@ class _PinEntryDialogState extends State<PinEntryDialog> with SingleTickerProvid
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: colorScheme.surface.withValues(alpha: 0.96),
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           mainAxisSize: .min,
@@ -161,7 +161,7 @@ class _PinEntryDialogState extends State<PinEntryDialog> with SingleTickerProvid
   Widget _buildTitle(ThemeData theme) {
     return Row(
       children: [
-        AppIcon(Symbols.lock_outline_rounded, fill: 1, size: 24, color: theme.colorScheme.primary),
+        AppIcon(Symbols.lock_outline_rounded, fill: 1, size: 24, color: theme.colorScheme.onSurface),
         const SizedBox(width: 12),
         Expanded(child: Text(widget.userName, overflow: .ellipsis)),
       ],
@@ -510,8 +510,8 @@ class _TvPinInputState extends State<_TvPinInput> with ControllerDisposerMixin {
   Widget _buildKey(BuildContext context, _PinKey key, int row, int column) {
     final colorScheme = Theme.of(context).colorScheme;
     final selected = row == _row && column == _column;
-    final background = selected ? colorScheme.primary : colorScheme.surfaceContainerHighest.withValues(alpha: 0.88);
-    final foreground = selected ? colorScheme.onPrimary : colorScheme.onSurface;
+    final background = selected ? colorScheme.onSurface : colorScheme.surfaceContainerHighest.withValues(alpha: 0.88);
+    final foreground = selected ? colorScheme.surface : colorScheme.onSurface;
 
     return ClickableCursor(
       child: GestureDetector(
@@ -527,7 +527,7 @@ class _TvPinInputState extends State<_TvPinInput> with ControllerDisposerMixin {
           width: _keySize,
           height: _keySize,
           alignment: .center,
-          decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(4)),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: _buildKeyContent(context, key, foreground),

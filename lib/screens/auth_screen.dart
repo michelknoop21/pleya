@@ -306,23 +306,15 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  /// Brand block per the app-intro mockup: logo mark with red glow, the
-  /// PLEYA wordmark and the tagline.
+  /// Brand block per the app-intro mockup: logo mark, the PLEYA wordmark and
+  /// the tagline.
   Widget _buildBrandHeader(BuildContext context) {
     final textColor = Theme.of(context).colorScheme.onSurface;
     return Column(
       children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: const [
-              BoxShadow(color: Color(0xB3E5140F), blurRadius: 40, offset: Offset(0, 16), spreadRadius: -16),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: Image.asset('assets/branding/pleya_logo.png', width: 96, height: 96),
-          ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Image.asset('assets/branding/pleya_logo.png', width: 96, height: 96),
         ),
         const SizedBox(height: 22),
         Text(
@@ -359,30 +351,12 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  /// Local red→amber gradient CTA (brand accent). Kept local so the neutral
-  /// global button theme is unaffected elsewhere.
-  Widget _gradientCta({required VoidCallback? onPressed, required Widget child}) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: onPressed == null
-            ? null
-            : const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFE5140F), Color(0xFFFFB020)],
-              ),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-        ),
-        child: child,
-      ),
+  /// Primary CTA using the global FilledButton theme (white-on-black, radius 4).
+  Widget _primaryCta({required VoidCallback? onPressed, required Widget child}) {
+    return FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+      child: child,
     );
   }
 
@@ -397,7 +371,7 @@ class _AuthScreenState extends State<AuthScreen> {
           FocusableButton(
             autofocus: true,
             onPressed: busy ? null : startQr,
-            child: _gradientCta(
+            child: _primaryCta(
               onPressed: busy ? null : startQr,
               child: Row(
                 mainAxisAlignment: .center,
@@ -424,7 +398,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ] else ...[
           FocusableButton(
             onPressed: busy ? null : startBrowser,
-            child: _gradientCta(
+            child: _primaryCta(
               onPressed: busy ? null : startBrowser,
               child: Row(
                 mainAxisAlignment: .center,
@@ -468,11 +442,7 @@ class _AuthScreenState extends State<AuthScreen> {
           onPressed: _connectToJellyfin,
           child: OutlinedButton.icon(
             onPressed: _connectToJellyfin,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              foregroundColor: const Color(0xFFFFB020),
-              side: const BorderSide(color: Color(0xFFFFB020)),
-            ),
+            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
             icon: const BackendBadge(backend: MediaBackend.jellyfin, size: 18),
             label: Text(t.auth.connectToJellyfin),
           ),

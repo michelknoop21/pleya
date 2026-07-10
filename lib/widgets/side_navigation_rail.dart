@@ -125,7 +125,7 @@ class NavigationRailItem extends StatelessWidget {
                     if (isCollapsed) return isFocused ? t.text.withValues(alpha: 0.12) : null;
                     if (isFocused) return t.accent.withValues(alpha: showSelectedBackground ? 0.18 : 0.12);
                     // Netflix-style active row: subtle neutral wash, the
-                    // red→amber bar carries the accent.
+                    // red bar carries the accent.
                     if (showSelectedBackground) return t.text.withValues(alpha: 0.06);
                     return null;
                   }(),
@@ -142,19 +142,11 @@ class NavigationRailItem extends StatelessWidget {
                       padding: .symmetric(vertical: 12, horizontal: horizontalPadding),
                       child: Row(
                         children: [
-                          DecoratedBox(
-                            decoration: isSelected
-                                ? BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    boxShadow: [BoxShadow(color: t.accent.withValues(alpha: 0.5), blurRadius: 14)],
-                                  )
-                                : const BoxDecoration(),
-                            child: NavGlyph(
-                              svgAsset: svgAsset,
-                              icon: isSelected && selectedIcon != null ? selectedIcon! : icon,
-                              size: iconSize,
-                              color: isSelected ? t.text : t.textMuted,
-                            ),
+                          NavGlyph(
+                            svgAsset: svgAsset,
+                            icon: isSelected && selectedIcon != null ? selectedIcon! : icon,
+                            size: iconSize,
+                            color: isSelected ? t.text : t.textMuted,
                           ),
                           const SizedBox(width: 11),
                           Expanded(
@@ -174,7 +166,7 @@ class NavigationRailItem extends StatelessWidget {
                   ),
                 ),
               ),
-              // Red→amber accent bar on the active item.
+              // Solid red accent bar on the active item.
               if (showSelectedBackground)
                 Positioned(
                   left: 0,
@@ -182,14 +174,7 @@ class NavigationRailItem extends StatelessWidget {
                   bottom: 8,
                   child: Container(
                     width: 3,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [t.accent, t.accentAlt],
-                      ),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                    decoration: BoxDecoration(color: t.accent, borderRadius: BorderRadius.circular(2)),
                   ),
                 ),
             ],
