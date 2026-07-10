@@ -32,7 +32,7 @@ import 'settings/add_jellyfin_screen.dart';
 /// Recovery-oriented auth failure states. When set, the auth screen shows
 /// a structured recovery widget instead of a bare error string, giving the
 /// user a clear next action instead of a technical dead end.
-enum _AuthRecoveryState { noServersFound, networkError, genericError }
+enum _AuthRecoveryState { noServersFound, networkError }
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -43,7 +43,6 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   bool _isAuthenticating = false;
-  String? _errorMessage;
   _AuthRecoveryState? _recoveryState;
   // Reuse a one-shot service for the debug-token verify path; the Plex
   // PIN/QR flow inside [PlexPinAuthFlow] owns its own service instance.
@@ -99,7 +98,6 @@ class _AuthScreenState extends State<AuthScreen> {
 
     setState(() {
       _isAuthenticating = true;
-      _errorMessage = null;
       _recoveryState = null;
     });
 
@@ -189,7 +187,6 @@ class _AuthScreenState extends State<AuthScreen> {
       setState(() {
         _isAuthenticating = false;
         _recoveryState = _AuthRecoveryState.networkError;
-        _errorMessage = t.serverSelection.failedToLoadServers(error: e);
       });
     } finally {
       svc.dispose();
@@ -296,10 +293,8 @@ class _AuthScreenState extends State<AuthScreen> {
     if (_recoveryState != null) {
       return _AuthRecoveryView(
         state: _recoveryState!,
-        errorMessage: _errorMessage,
         onRetry: () => setState(() {
           _recoveryState = null;
-          _errorMessage = null;
         }),
         onConnectJellyfin: _connectToJellyfin,
       );
@@ -496,14 +491,6 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
         ],
-        if (_errorMessage != null) ...[
-          const SizedBox(height: 16),
-          Text(
-            _errorMessage!,
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
-            textAlign: TextAlign.center,
-          ),
-        ],
       ],
     );
   }
@@ -532,16 +519,10 @@ bool shouldPromptForInitialProfileSelection({
 /// and concrete next actions (retry, try Jellyfin, or re-authenticate).
 class _AuthRecoveryView extends StatelessWidget {
   final _AuthRecoveryState state;
-  final String? errorMessage;
   final VoidCallback onRetry;
   final VoidCallback onConnectJellyfin;
 
-  const _AuthRecoveryView({
-    required this.state,
-    required this.onRetry,
-    required this.onConnectJellyfin,
-    this.errorMessage,
-  });
+  const _AuthRecoveryView({required this.state, required this.onRetry, required this.onConnectJellyfin});
 
   @override
   Widget build(BuildContext context) {
@@ -554,10 +535,6 @@ class _AuthRecoveryView extends StatelessWidget {
       _AuthRecoveryState.networkError => (
         t.serverSelection.networkErrorTitle,
         t.serverSelection.networkErrorDescription,
-      ),
-      _AuthRecoveryState.genericError => (
-        t.serverSelection.networkErrorTitle,
-        errorMessage ?? t.serverSelection.failedToLoadServersDescription,
       ),
     };
 
