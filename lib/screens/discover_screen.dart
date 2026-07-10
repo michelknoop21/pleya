@@ -1464,18 +1464,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           ),
           if (_isLoading || (_areHubsLoading && browseHubs.isEmpty)) const Center(child: CircularProgressIndicator()),
           if (_errorMessage != null)
-            Center(
-              child: Column(
-                mainAxisSize: .min,
-                children: [
-                  const AppIcon(Symbols.error_outline_rounded, fill: 1, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text(_errorMessage!),
-                  const SizedBox(height: 16),
-                  FilledButton(onPressed: _discover.load, child: Text(t.common.retry)),
-                ],
-              ),
-            ),
+            StateView.error(title: _errorMessage!, icon: Symbols.error_outline_rounded, onRetry: _discover.load),
           if (!_isLoading && _errorMessage == null && browseHubs.isEmpty && !_areHubsLoading)
             Center(
               child: Column(
