@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import '../connection/connection.dart';
 import '../connection/connection_registry.dart';
@@ -28,6 +29,11 @@ import 'auth/plex_pin_auth_flow.dart';
 import 'profile/profile_switch_screen.dart';
 import 'settings/add_jellyfin_screen.dart';
 
+/// Recovery-oriented auth failure states. When set, the auth screen shows
+/// a structured recovery widget instead of a bare error string, giving the
+/// user a clear next action instead of a technical dead end.
+enum _AuthRecoveryState { noServersFound, networkError, genericError }
+
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -38,6 +44,7 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   bool _isAuthenticating = false;
   String? _errorMessage;
+  _AuthRecoveryState? _recoveryState;
   // Reuse a one-shot service for the debug-token verify path; the Plex
   // PIN/QR flow inside [PlexPinAuthFlow] owns its own service instance.
   PlexAuthService? _verifyOnlyService;
@@ -93,6 +100,7 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() {
       _isAuthenticating = true;
       _errorMessage = null;
+      _recoveryState = null;
     });
 
     final connectionRegistry = context.read<ConnectionRegistry>();
@@ -113,7 +121,7 @@ class _AuthScreenState extends State<AuthScreen> {
         if (!mounted) return;
         setState(() {
           _isAuthenticating = false;
-          _errorMessage = t.serverSelection.noServersFoundForAccount(username: username, email: email);
+          _recoveryState = _AuthRecoveryState.noServersFound;
         });
         return;
       }
@@ -180,6 +188,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (!mounted) return;
       setState(() {
         _isAuthenticating = false;
+        _recoveryState = _AuthRecoveryState.networkError;
         _errorMessage = t.serverSelection.failedToLoadServers(error: e);
       });
     } finally {
@@ -231,7 +240,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         child: Column(
                           mainAxisAlignment: .center,
                           crossAxisAlignment: .center,
-                          children: [_buildBrandHeader(context)],
+                          children: [_buildBrandHeader(context), const SizedBox(height: 24), _buildHelpText(context)],
                         ),
                       ),
                       const SizedBox(width: 48),
@@ -252,7 +261,13 @@ class _AuthScreenState extends State<AuthScreen> {
                     child: Column(
                       mainAxisSize: .min,
                       crossAxisAlignment: .stretch,
-                      children: [_buildBrandHeader(context), const SizedBox(height: 40), _buildAuthBody()],
+                      children: [
+                        _buildBrandHeader(context),
+                        const SizedBox(height: 16),
+                        _buildHelpText(context),
+                        const SizedBox(height: 32),
+                        _buildAuthBody(),
+                      ],
                     ),
                   ),
           ),
@@ -276,6 +291,17 @@ class _AuthScreenState extends State<AuthScreen> {
             ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
           ),
         ],
+      );
+    }
+    if (_recoveryState != null) {
+      return _AuthRecoveryView(
+        state: _recoveryState!,
+        errorMessage: _errorMessage,
+        onRetry: () => setState(() {
+          _recoveryState = null;
+          _errorMessage = null;
+        }),
+        onConnectJellyfin: _connectToJellyfin,
       );
     }
     return PlexPinAuthFlow(
@@ -314,6 +340,25 @@ class _AuthScreenState extends State<AuthScreen> {
           'Your media. Your way.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 12, letterSpacing: 1, color: textColor.withValues(alpha: 0.6)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHelpText(BuildContext context) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    return Column(
+      children: [
+        Text(
+          t.auth.chooseHowToSignIn,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: textColor, fontSize: 16, fontWeight: .w600),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          t.auth.chooseHowToSignInDescription,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, color: textColor.withValues(alpha: 0.6)),
         ),
       ],
     );
@@ -479,6 +524,85 @@ bool shouldPromptForInitialProfileSelection({
   required bool requireProfileSelectionOnOpen,
 }) {
   return requireProfileSelectionOnOpen || (activeProfile == null && (hasProfiles || accountHasHomeUsers));
+}
+
+/// Recovery-oriented error view shown when the initial Plex sign-in succeeds
+/// but yields no usable servers, or when the server-fetch call fails. Instead
+/// of a bare error string, the user gets a title, a plain-language explanation,
+/// and concrete next actions (retry, try Jellyfin, or re-authenticate).
+class _AuthRecoveryView extends StatelessWidget {
+  final _AuthRecoveryState state;
+  final String? errorMessage;
+  final VoidCallback onRetry;
+  final VoidCallback onConnectJellyfin;
+
+  const _AuthRecoveryView({
+    required this.state,
+    required this.onRetry,
+    required this.onConnectJellyfin,
+    this.errorMessage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final (title, description) = switch (state) {
+      _AuthRecoveryState.noServersFound => (
+        t.serverSelection.noServersFoundTitle,
+        t.serverSelection.noServersFoundDescription,
+      ),
+      _AuthRecoveryState.networkError => (
+        t.serverSelection.networkErrorTitle,
+        t.serverSelection.networkErrorDescription,
+      ),
+      _AuthRecoveryState.genericError => (
+        t.serverSelection.networkErrorTitle,
+        errorMessage ?? t.serverSelection.failedToLoadServersDescription,
+      ),
+    };
+
+    return Column(
+      mainAxisSize: .min,
+      crossAxisAlignment: .stretch,
+      children: [
+        Icon(Symbols.cloud_off_rounded, size: 48, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+        const SizedBox(height: 16),
+        Text(title, textAlign: TextAlign.center, style: theme.textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Text(
+          description,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
+        ),
+        const SizedBox(height: 24),
+        FocusableButton(
+          autofocus: true,
+          onPressed: onRetry,
+          child: FilledButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Symbols.refresh_rounded),
+            label: Text(t.auth.tryAgain),
+          ),
+        ),
+        if (state == _AuthRecoveryState.noServersFound) ...[
+          const SizedBox(height: 12),
+          FocusableButton(
+            onPressed: onConnectJellyfin,
+            child: OutlinedButton.icon(
+              onPressed: onConnectJellyfin,
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                foregroundColor: const Color(0xFFFFB020),
+                side: const BorderSide(color: Color(0xFFFFB020)),
+              ),
+              icon: const BackendBadge(backend: MediaBackend.jellyfin, size: 18),
+              label: Text(t.serverSelection.noServersFoundTryJellyfin),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 }
 
 /// Stateful so the [TextEditingController] is disposed when the dialog

@@ -17,7 +17,10 @@
     "quickConnectInstructions": "Open Quick Connect in Jellyfin and enter this code.",
     "quickConnectWaiting": "Waiting for approval…",
     "quickConnectCancel": "Cancel",
-    "quickConnectExpired": "Quick Connect expired. Try again."
+    "quickConnectExpired": "Quick Connect expired. Try again.",
+    "chooseHowToSignIn": "Choose how to sign in",
+    "chooseHowToSignInDescription": "Pleya connects to your Plex or Jellyfin media server. Pick one to get started.",
+    "tryAgain": "Try again"
   },
   "common": {
     "cancel": "Cancel",
@@ -838,7 +841,14 @@
   "serverSelection": {
     "allServerConnectionsFailed": "Couldn't connect to any servers. Check your network.",
     "noServersFoundForAccount": "No servers found for ${username} (${email})",
-    "failedToLoadServers": "Failed to load servers: ${error}"
+    "noServersFoundTitle": "No media servers found",
+    "noServersFoundDescription": "Your Plex account doesn't have access to any servers yet. Ask the server owner to share their library with you, or connect a Jellyfin server instead.",
+    "noServersFoundTryJellyfin": "Connect a Jellyfin server",
+    "noServersFoundRetryPlex": "Try a different Plex account",
+    "failedToLoadServers": "Failed to load servers: ${error}",
+    "failedToLoadServersDescription": "Something went wrong while loading your servers. Check your internet connection and try again.",
+    "networkErrorTitle": "Can't reach the server",
+    "networkErrorDescription": "Pleya couldn't connect to the internet. Check your network and try again."
   },
   "hubDetail": {
     "title": "Title",
