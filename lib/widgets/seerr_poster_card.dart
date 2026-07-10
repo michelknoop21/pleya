@@ -23,11 +23,8 @@ double get seerrPosterHeight => seerrPosterWidth * 3 / 2; // TMDB posters are 2:
 /// Density-aware poster size: follows the Settings → Appearance size slider
 /// (`libraryDensity`) via the same [GridSizeCalculator] the native grids use, so
 /// seerr horizontal rows scale with the rest of the app instead of a fixed size.
-double seerrPosterWidthOf(BuildContext context) => GridSizeCalculator.getMaxCrossAxisExtent(
-  context,
-  SettingsService.instance.read(SettingsService.libraryDensity),
-);
-double seerrPosterHeightOf(BuildContext context) => seerrPosterWidthOf(context) * 3 / 2;
+double seerrPosterWidthOf(BuildContext context) =>
+    GridSizeCalculator.getMaxCrossAxisExtent(context, SettingsService.instance.read(SettingsService.libraryDensity));
 
 /// Width of a seerr poster card inside a horizontal row, sized like the rest of
 /// the home screen so seerr shelves don't render oversized. [availableWidth] must
