@@ -28,8 +28,8 @@ class _IntroGateState extends State<IntroGate> with SingleTickerProviderStateMix
     // features are populated, which wrongly skipped the intro on Apple TV.
     // tvOS has no per-app reduce-motion toggle we need to honor here, and the
     // splash is brief + tap-to-skip, so ignore the flag on Apple TV.
-    final reduceMotion = !PlatformDetector.isAppleTV() &&
-        WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.reduceMotion;
+    final reduceMotion =
+        !PlatformDetector.isAppleTV() && WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.reduceMotion;
     _skip = IntroGate._played || reduceMotion || DevicePerformance.isReduced;
     IntroGate._played = true;
 

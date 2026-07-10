@@ -43,7 +43,16 @@ int hubPriorityClass(MediaHub hub) {
   final haystack = '${hub.identifier ?? ''} ${hub.id} ${hub.title}'.toLowerCase();
   bool has(List<String> keys) => keys.any(haystack.contains);
 
-  if (has(['becauseyouwatched', 'because you watched', 'foryou', 'for you', 'top picks', 'toppicks', 'recommend', 'suggest'])) {
+  if (has([
+    'becauseyouwatched',
+    'because you watched',
+    'foryou',
+    'for you',
+    'top picks',
+    'toppicks',
+    'recommend',
+    'suggest',
+  ])) {
     return 0;
   }
   if (hub.usesContinueWatchingAction || has(['nextup', 'next up', 'ondeck', 'on deck', 'continue'])) {

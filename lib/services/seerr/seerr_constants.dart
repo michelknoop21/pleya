@@ -122,6 +122,5 @@ class SeerrPermission {
   static const int anyRequest4k = request4k | request4kMovie | request4kTv;
 
   /// True when [permissions] grants [flag] (or is ADMIN).
-  static bool has(int permissions, int flag) =>
-      (permissions & admin) != 0 || (permissions & flag) != 0;
+  static bool has(int permissions, int flag) => (permissions & admin) != 0 || (permissions & flag) != 0;
 }

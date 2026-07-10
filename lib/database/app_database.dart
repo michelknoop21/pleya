@@ -256,9 +256,11 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// All interactions for a profile, oldest first.
-  Future<List<MediaInteractionRow>> getMediaInteractions(String profileId) => (select(
-    mediaInteractions,
-  )..where((t) => t.profileId.equals(profileId))..orderBy([(t) => OrderingTerm.asc(t.occurredAt)])).get();
+  Future<List<MediaInteractionRow>> getMediaInteractions(String profileId) =>
+      (select(mediaInteractions)
+            ..where((t) => t.profileId.equals(profileId))
+            ..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]))
+          .get();
 
   Future<int> countMediaInteractions(String profileId) async {
     final count = countAll();

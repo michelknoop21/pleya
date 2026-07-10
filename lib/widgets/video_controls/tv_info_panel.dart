@@ -221,33 +221,33 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
             bottom: false,
             child: Builder(
               builder: (context) {
-              // tvOS overscan insets are zeroed app-wide (see main.dart), so the
-              // outer ~5% of the surface can be cut on TVs that still overscan.
-              // Keep the panel — and its top pill bar / focused rows — inside a
-              // title-safe margin so no text lands just past the visible edge.
-              final size = MediaQuery.sizeOf(context);
-              final hMargin = (size.width * 0.055).clamp(40.0, 96.0);
-              final vMargin = (size.height * 0.06).clamp(20.0, 64.0);
-              final maxPanelHeight = (size.height - vMargin * 2).clamp(240.0, 460.0);
-              return Container(
-              margin: EdgeInsets.symmetric(horizontal: hMargin, vertical: vMargin),
-              constraints: BoxConstraints(maxWidth: 880, maxHeight: maxPanelHeight),
-              decoration: BoxDecoration(
-                color: TvPanelTheme.surface,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 40, offset: Offset(0, 12))],
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildPillBar(),
-                  const Divider(height: 1, color: Color(0x1AFFFFFF)),
-                  Flexible(child: _showSync ? _buildSyncView() : _buildTabContent()),
-                ],
-              ),
-            );
-            },
+                // tvOS overscan insets are zeroed app-wide (see main.dart), so the
+                // outer ~5% of the surface can be cut on TVs that still overscan.
+                // Keep the panel — and its top pill bar / focused rows — inside a
+                // title-safe margin so no text lands just past the visible edge.
+                final size = MediaQuery.sizeOf(context);
+                final hMargin = (size.width * 0.055).clamp(40.0, 96.0);
+                final vMargin = (size.height * 0.06).clamp(20.0, 64.0);
+                final maxPanelHeight = (size.height - vMargin * 2).clamp(240.0, 460.0);
+                return Container(
+                  margin: EdgeInsets.symmetric(horizontal: hMargin, vertical: vMargin),
+                  constraints: BoxConstraints(maxWidth: 880, maxHeight: maxPanelHeight),
+                  decoration: BoxDecoration(
+                    color: TvPanelTheme.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 40, offset: Offset(0, 12))],
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildPillBar(),
+                      const Divider(height: 1, color: Color(0x1AFFFFFF)),
+                      Flexible(child: _showSync ? _buildSyncView() : _buildTabContent()),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -361,7 +361,10 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
                 onPressed: _closeSync,
                 icon: const AppIcon(Symbols.arrow_back_rounded, fill: 1, color: Colors.white),
               ),
-              Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+              Text(
+                title,
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+              ),
             ],
           ),
         ),

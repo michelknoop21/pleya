@@ -62,7 +62,9 @@ class SkeletonListTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: .start,
         children: [
-          SkeletonLoader(child: SizedBox(width: posterWidth, height: posterHeight)),
+          SkeletonLoader(
+            child: SizedBox(width: posterWidth, height: posterHeight),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

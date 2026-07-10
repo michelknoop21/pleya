@@ -496,10 +496,7 @@ class _SearchScreenState extends State<SearchScreen>
             if (_isSearching)
               SliverPadding(
                 padding: const EdgeInsets.all(16),
-                sliver: SliverList.builder(
-                  itemCount: 6,
-                  itemBuilder: (context, index) => const SkeletonListTile(),
-                ),
+                sliver: SliverList.builder(itemCount: 6, itemBuilder: (context, index) => const SkeletonListTile()),
               )
             else if (!_hasSearched)
               if (_history.isNotEmpty)

@@ -140,10 +140,8 @@ class _GrowIn extends StatefulWidget {
 }
 
 class _GrowInState extends State<_GrowIn> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 180),
-  )..forward();
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 180))
+    ..forward();
 
   @override
   void dispose() {

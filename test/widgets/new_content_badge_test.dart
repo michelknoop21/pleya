@@ -11,32 +11,17 @@ void main() {
 
   group('newBadgeLabel', () {
     test('recently-added unwatched movie -> NEW', () {
-      final item = MediaItem.plex(
-        id: 'm1',
-        kind: MediaKind.movie,
-        addedAt: nowSec - twoDaysSec,
-        viewCount: 0,
-      );
+      final item = MediaItem.plex(id: 'm1', kind: MediaKind.movie, addedAt: nowSec - twoDaysSec, viewCount: 0);
       expect(newBadgeLabel(item, nowMs: nowMs), 'NEW');
     });
 
     test('recently-added but already watched movie -> null', () {
-      final item = MediaItem.plex(
-        id: 'm2',
-        kind: MediaKind.movie,
-        addedAt: nowSec - twoDaysSec,
-        viewCount: 1,
-      );
+      final item = MediaItem.plex(id: 'm2', kind: MediaKind.movie, addedAt: nowSec - twoDaysSec, viewCount: 1);
       expect(newBadgeLabel(item, nowMs: nowMs), isNull);
     });
 
     test('old movie -> null even if unwatched', () {
-      final item = MediaItem.plex(
-        id: 'm3',
-        kind: MediaKind.movie,
-        addedAt: nowSec - twentyDaysSec,
-        viewCount: 0,
-      );
+      final item = MediaItem.plex(id: 'm3', kind: MediaKind.movie, addedAt: nowSec - twentyDaysSec, viewCount: 0);
       expect(newBadgeLabel(item, nowMs: nowMs), isNull);
     });
 
@@ -68,22 +53,12 @@ void main() {
     });
 
     test('future addedAt (clock skew) -> null', () {
-      final item = MediaItem.plex(
-        id: 'm5',
-        kind: MediaKind.movie,
-        addedAt: nowSec + twoDaysSec,
-        viewCount: 0,
-      );
+      final item = MediaItem.plex(id: 'm5', kind: MediaKind.movie, addedAt: nowSec + twoDaysSec, viewCount: 0);
       expect(newBadgeLabel(item, nowMs: nowMs), isNull);
     });
 
     test('addedAt already in milliseconds is handled', () {
-      final item = MediaItem.plex(
-        id: 'm6',
-        kind: MediaKind.movie,
-        addedAt: nowMs - twoDaysSec * 1000,
-        viewCount: 0,
-      );
+      final item = MediaItem.plex(id: 'm6', kind: MediaKind.movie, addedAt: nowMs - twoDaysSec * 1000, viewCount: 0);
       expect(newBadgeLabel(item, nowMs: nowMs), 'NEW');
     });
   });

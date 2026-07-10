@@ -3806,9 +3806,11 @@ class PlexClient
       final byAccount = <int, int>{};
       for (final raw in rows) {
         if (raw is! Map<String, dynamic>) continue;
-        final keys = [raw['ratingKey'], raw['parentRatingKey'], raw['grandparentRatingKey']]
-            .map((k) => k?.toString())
-            .toList();
+        final keys = [
+          raw['ratingKey'],
+          raw['parentRatingKey'],
+          raw['grandparentRatingKey'],
+        ].map((k) => k?.toString()).toList();
         if (!keys.contains(ratingKey)) continue;
         final accountId = flexibleInt(raw['accountID']);
         if (accountId == null) continue;
@@ -3823,9 +3825,7 @@ class PlexClient
         for (final entry in byAccount.entries)
           ItemWatcher(
             accountId: entry.key,
-            displayName: accounts[entry.key]?.name.isNotEmpty == true
-                ? accounts[entry.key]!.name
-                : 'User ${entry.key}',
+            displayName: accounts[entry.key]?.name.isNotEmpty == true ? accounts[entry.key]!.name : 'User ${entry.key}',
             thumbUrl: accounts[entry.key]?.thumb,
             viewedAt: entry.value,
           ),

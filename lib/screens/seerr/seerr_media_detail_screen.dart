@@ -107,9 +107,7 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
   }
 
   void _openMedia(SeerrMedia media) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => SeerrMediaDetailScreen(media: media)),
-    );
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => SeerrMediaDetailScreen(media: media)));
   }
 
   @override
@@ -123,8 +121,12 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
   List<Widget> _buildSlivers() {
     if (_loading && _detail == null) {
       return [
-        SliverToBoxAdapter(child: _HeroHeader(media: widget.media, detail: null, onRequest: _openRequest)),
-        const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(24), child: _DetailSkeleton())),
+        SliverToBoxAdapter(
+          child: _HeroHeader(media: widget.media, detail: null, onRequest: _openRequest),
+        ),
+        const SliverToBoxAdapter(
+          child: Padding(padding: EdgeInsets.all(24), child: _DetailSkeleton()),
+        ),
       ];
     }
 
@@ -145,7 +147,9 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
     final detail = _detail;
     final inset = PlatformDetector.isTV() ? TvLayoutConstants.horizontalInset : 12.0;
     final slivers = <Widget>[
-      SliverToBoxAdapter(child: _HeroHeader(media: _base, detail: detail, onRequest: _openRequest)),
+      SliverToBoxAdapter(
+        child: _HeroHeader(media: _base, detail: detail, onRequest: _openRequest),
+      ),
     ];
 
     if ((_base.overview ?? '').isNotEmpty) {
@@ -160,7 +164,11 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
     }
 
     if (detail != null && detail.cast.isNotEmpty) {
-      slivers.add(SliverToBoxAdapter(child: _CastRow(cast: detail.cast, inset: inset)));
+      slivers.add(
+        SliverToBoxAdapter(
+          child: _CastRow(cast: detail.cast, inset: inset),
+        ),
+      );
     }
 
     if (_recommendations.isNotEmpty) {
@@ -379,10 +387,7 @@ class _RequestButton extends StatelessWidget {
     // App action-button styling: default Material radius, bold label, TV-scaled.
     final style = FilledButton.styleFrom(
       textStyle: TextStyle(fontSize: isTv ? 17 * tvScale : 16, fontWeight: FontWeight.w700),
-      padding: EdgeInsets.symmetric(
-        horizontal: isTv ? 20 * tvScale : 20,
-        vertical: isTv ? 12 * tvScale : 12,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: isTv ? 20 * tvScale : 20, vertical: isTv ? 12 * tvScale : 12),
     );
     return FocusableButton(
       autofocus: true,
@@ -557,9 +562,7 @@ class _DetailSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SkeletonHubRow(cardWidth: seerrPosterWidth, rowHeight: seerrPosterHeight + 16),
-      ],
+      children: [SkeletonHubRow(cardWidth: seerrPosterWidth, rowHeight: seerrPosterHeight + 16)],
     );
   }
 }

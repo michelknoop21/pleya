@@ -1384,7 +1384,9 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin, Si
           DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(30),
-              boxShadow: const [BoxShadow(color: Color(0xCCE5140F), blurRadius: 50, offset: Offset(0, 20), spreadRadius: -18)],
+              boxShadow: const [
+                BoxShadow(color: Color(0xCCE5140F), blurRadius: 50, offset: Offset(0, 20), spreadRadius: -18),
+              ],
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(30),
@@ -1428,11 +1430,7 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin, Si
                 const SizedBox(height: 8),
                 Text(
                   'YOUR MEDIA. YOUR WAY.',
-                  style: TextStyle(
-                    fontSize: 11,
-                    letterSpacing: 3.4,
-                    color: Colors.white.withValues(alpha: 0.4),
-                  ),
+                  style: TextStyle(fontSize: 11, letterSpacing: 3.4, color: Colors.white.withValues(alpha: 0.4)),
                 ),
               ],
             ),

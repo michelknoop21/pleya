@@ -9,11 +9,7 @@ class PersonalizedRowTitles {
   final String Function(String genre) becauseYouLike;
   final String hiddenGems;
 
-  const PersonalizedRowTitles({
-    required this.topPicks,
-    required this.becauseYouLike,
-    required this.hiddenGems,
-  });
+  const PersonalizedRowTitles({required this.topPicks, required this.becauseYouLike, required this.hiddenGems});
 }
 
 /// Builds synthesized home rows from a taste vector and a candidate pool.
@@ -51,14 +47,14 @@ List<MediaHub> buildPersonalizedRows(
   final rows = <MediaHub>[];
 
   MediaHub row(String id, String title, List<MediaItem> items) => MediaHub(
-        id: id,
-        identifier: id,
-        title: title,
-        type: 'mixed',
-        items: items.take(rowSize).toList(),
-        size: items.length,
-        serverId: items.isNotEmpty ? items.first.serverId : null,
-      );
+    id: id,
+    identifier: id,
+    title: title,
+    type: 'mixed',
+    items: items.take(rowSize).toList(),
+    size: items.length,
+    serverId: items.isNotEmpty ? items.first.serverId : null,
+  );
 
   // Top Picks
   rows.add(row('home.toppicks', titles.topPicks, byScore));
@@ -68,7 +64,10 @@ List<MediaHub> buildPersonalizedRows(
     final usedInGenreRows = <String>{};
     for (final genre in taste.topFeatures('genre', threshold: 0.5, limit: 2)) {
       final matches = byScore
-          .where((i) => (i.genres ?? const []).any((g) => g.trim().toLowerCase() == genre) && usedInGenreRows.add(i.globalKey))
+          .where(
+            (i) =>
+                (i.genres ?? const []).any((g) => g.trim().toLowerCase() == genre) && usedInGenreRows.add(i.globalKey),
+          )
           .toList();
       if (matches.length >= minRowItems) {
         rows.add(row('home.becauselike.$genre', titles.becauseYouLike(_titleCase(genre)), matches));

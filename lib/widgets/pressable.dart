@@ -14,13 +14,7 @@ class Pressable extends StatefulWidget {
   final double pressedScale;
   final bool haptic;
 
-  const Pressable({
-    super.key,
-    required this.child,
-    this.onTap,
-    this.pressedScale = 0.97,
-    this.haptic = true,
-  });
+  const Pressable({super.key, required this.child, this.onTap, this.pressedScale = 0.97, this.haptic = true});
 
   @override
   State<Pressable> createState() => _PressableState();
@@ -47,12 +41,7 @@ class _PressableState extends State<Pressable> {
               if (widget.haptic) Haptics.light();
               widget.onTap!();
             },
-      child: AnimatedScale(
-        scale: scale,
-        duration: tokens(context).fast,
-        curve: Curves.easeOut,
-        child: widget.child,
-      ),
+      child: AnimatedScale(scale: scale, duration: tokens(context).fast, curve: Curves.easeOut, child: widget.child),
     );
   }
 }

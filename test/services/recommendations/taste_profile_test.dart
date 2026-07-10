@@ -15,16 +15,15 @@ TasteEvent _ev({
   List<String> directors = const [],
   String? studio,
   int? year,
-}) =>
-    TasteEvent(
-      weight: weight,
-      occurredAtMs: _nowMs - ageDays * _day,
-      genres: genres,
-      actors: actors,
-      directors: directors,
-      studio: studio,
-      year: year,
-    );
+}) => TasteEvent(
+  weight: weight,
+  occurredAtMs: _nowMs - ageDays * _day,
+  genres: genres,
+  actors: actors,
+  directors: directors,
+  studio: studio,
+  year: year,
+);
 
 void main() {
   group('AffinityVector.build', () {
@@ -80,7 +79,9 @@ void main() {
     });
 
     test('round-trips through json', () {
-      final a = AffinityVector.build([_ev(weight: 1.0, genres: ['Sci-Fi'], year: 1999)], nowMs: _nowMs);
+      final a = AffinityVector.build([
+        _ev(weight: 1.0, genres: ['Sci-Fi'], year: 1999),
+      ], nowMs: _nowMs);
       final b = AffinityVector.fromJson(a.toJson());
       expect(b.of('genre', 'sci-fi'), closeTo(a.of('genre', 'sci-fi'), 1e-9));
       expect(b.of('decade', '1990s'), closeTo(a.of('decade', '1990s'), 1e-9));
@@ -101,22 +102,29 @@ void main() {
       double? rating,
       int viewCount = 0,
       int? addedAt,
-    }) =>
-        MediaItem.plex(
-          id: id,
-          kind: MediaKind.movie,
-          serverId: 's1',
-          title: 'M',
-          genres: genres,
-          year: year,
-          rating: rating,
-          viewCount: viewCount,
-          addedAt: addedAt,
-        );
+    }) => MediaItem.plex(
+      id: id,
+      kind: MediaKind.movie,
+      serverId: 's1',
+      title: 'M',
+      genres: genres,
+      year: year,
+      rating: rating,
+      viewCount: viewCount,
+      addedAt: addedAt,
+    );
 
     test('on-taste genre scores higher than off-taste', () {
-      final onTaste = recommendationScore(movie(id: 'a', genres: ['Sci-Fi']), taste, nowMs: _nowMs);
-      final offTaste = recommendationScore(movie(id: 'b', genres: ['Romance']), taste, nowMs: _nowMs);
+      final onTaste = recommendationScore(
+        movie(id: 'a', genres: ['Sci-Fi']),
+        taste,
+        nowMs: _nowMs,
+      );
+      final offTaste = recommendationScore(
+        movie(id: 'b', genres: ['Romance']),
+        taste,
+        nowMs: _nowMs,
+      );
       expect(onTaste, greaterThan(offTaste));
     });
 
@@ -126,20 +134,44 @@ void main() {
         for (var i = 0; i < 6; i++) TasteEvent(weight: 1.0, occurredAtMs: _nowMs, genres: const ['Sci-Fi']),
         for (var i = 0; i < 5; i++) TasteEvent(weight: 1.0, occurredAtMs: _nowMs, genres: const ['Thriller']),
       ], nowMs: _nowMs);
-      final one = recommendationScore(movie(id: 'a', genres: ['Sci-Fi']), twoGenre, nowMs: _nowMs);
-      final both = recommendationScore(movie(id: 'b', genres: ['Sci-Fi', 'Thriller']), twoGenre, nowMs: _nowMs);
+      final one = recommendationScore(
+        movie(id: 'a', genres: ['Sci-Fi']),
+        twoGenre,
+        nowMs: _nowMs,
+      );
+      final both = recommendationScore(
+        movie(id: 'b', genres: ['Sci-Fi', 'Thriller']),
+        twoGenre,
+        nowMs: _nowMs,
+      );
       expect(both, greaterThanOrEqualTo(one));
     });
 
     test('watched item is heavily downranked', () {
-      final unseen = recommendationScore(movie(id: 'a', genres: ['Sci-Fi'], viewCount: 0), taste, nowMs: _nowMs);
-      final seen = recommendationScore(movie(id: 'a', genres: ['Sci-Fi'], viewCount: 1), taste, nowMs: _nowMs);
+      final unseen = recommendationScore(
+        movie(id: 'a', genres: ['Sci-Fi'], viewCount: 0),
+        taste,
+        nowMs: _nowMs,
+      );
+      final seen = recommendationScore(
+        movie(id: 'a', genres: ['Sci-Fi'], viewCount: 1),
+        taste,
+        nowMs: _nowMs,
+      );
       expect(unseen - seen, closeTo(3.0, 0.2));
     });
 
     test('higher rating scores higher, all else equal', () {
-      final hi = recommendationScore(movie(id: 'a', genres: ['Sci-Fi'], rating: 9), taste, nowMs: _nowMs);
-      final lo = recommendationScore(movie(id: 'a', genres: ['Sci-Fi'], rating: 3), taste, nowMs: _nowMs);
+      final hi = recommendationScore(
+        movie(id: 'a', genres: ['Sci-Fi'], rating: 9),
+        taste,
+        nowMs: _nowMs,
+      );
+      final lo = recommendationScore(
+        movie(id: 'a', genres: ['Sci-Fi'], rating: 3),
+        taste,
+        nowMs: _nowMs,
+      );
       expect(hi, greaterThan(lo));
     });
 
@@ -153,7 +185,11 @@ void main() {
         roles: const [MediaRole(tag: 'Actor A')],
       );
       final s = recommendationScore(withActor, taste, nowMs: _nowMs);
-      final withoutActor = recommendationScore(movie(id: 'z', genres: ['Sci-Fi']), taste, nowMs: _nowMs);
+      final withoutActor = recommendationScore(
+        movie(id: 'z', genres: ['Sci-Fi']),
+        taste,
+        nowMs: _nowMs,
+      );
       expect(s, greaterThan(withoutActor));
     });
   });

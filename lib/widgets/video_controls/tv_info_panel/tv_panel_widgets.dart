@@ -131,7 +131,12 @@ class TvPanelSectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 6),
       child: Text(
         label.toUpperCase(),
-        style: const TextStyle(color: TvPanelTheme.textFaint, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.0),
+        style: const TextStyle(
+          color: TvPanelTheme.textFaint,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.0,
+        ),
       ),
     );
   }

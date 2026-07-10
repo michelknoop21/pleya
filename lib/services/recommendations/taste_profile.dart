@@ -140,9 +140,7 @@ class AffinityVector {
 
   Map<String, dynamic> toJson() => {
     'eventCount': eventCount,
-    'dims': {
-      for (final e in dims.entries) e.key: e.value,
-    },
+    'dims': {for (final e in dims.entries) e.key: e.value},
   };
 
   static AffinityVector fromJson(Map<String, dynamic> json) {

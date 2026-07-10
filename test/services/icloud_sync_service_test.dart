@@ -91,7 +91,10 @@ void main() {
 
     var applied = 0;
     svc.onRemoteChangesApplied = () => applied++;
-    await svc.debugHandleEvent({'reason': 0, 'changedKeys': ['subtitle_font_size']});
+    await svc.debugHandleEvent({
+      'reason': 0,
+      'changedKeys': ['subtitle_font_size'],
+    });
     await pumpEventQueue();
 
     expect(settings.read(SettingsService.subtitleFontSize), 60);
@@ -109,7 +112,10 @@ void main() {
 
     // Peer removed the key; changedKeys names it but getAll no longer has it.
     kvs.remove('subtitle_font_size');
-    await svc.debugHandleEvent({'reason': 0, 'changedKeys': ['subtitle_font_size']});
+    await svc.debugHandleEvent({
+      'reason': 0,
+      'changedKeys': ['subtitle_font_size'],
+    });
     await pumpEventQueue();
 
     expect(settings.prefs.getInt('subtitle_font_size'), isNull);
@@ -144,7 +150,10 @@ void main() {
     // Channel read fails while a change notification names the key — must not
     // be read as "removed remotely".
     failGetAll = true;
-    await svc.debugHandleEvent({'reason': 0, 'changedKeys': ['subtitle_font_size']});
+    await svc.debugHandleEvent({
+      'reason': 0,
+      'changedKeys': ['subtitle_font_size'],
+    });
     await pumpEventQueue();
 
     expect(settings.read(SettingsService.subtitleFontSize), 44);

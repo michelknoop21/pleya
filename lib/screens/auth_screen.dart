@@ -252,11 +252,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     child: Column(
                       mainAxisSize: .min,
                       crossAxisAlignment: .stretch,
-                      children: [
-                        _buildBrandHeader(context),
-                        const SizedBox(height: 40),
-                        _buildAuthBody(),
-                      ],
+                      children: [_buildBrandHeader(context), const SizedBox(height: 40), _buildAuthBody()],
                     ),
                   ),
           ),

@@ -31,10 +31,9 @@ class TopTenRow extends StatelessWidget {
     if (items.isEmpty) return const SizedBox.shrink();
 
     final isTv = PlatformDetector.isTV();
-    final titleStyle = Theme.of(context).textTheme.titleLarge?.copyWith(
-      fontSize: isTv ? 26 : null,
-      fontWeight: FontWeight.w700,
-    );
+    final titleStyle = Theme.of(
+      context,
+    ).textTheme.titleLarge?.copyWith(fontSize: isTv ? 26 : null, fontWeight: FontWeight.w700);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -42,11 +41,7 @@ class TopTenRow extends StatelessWidget {
         // (libraryDensity) like the rest of the app; clamped so the ranked row
         // stays compact. Height is a fixed 2:3 so the row never overflows.
         final density = SettingsService.instance.read(SettingsService.libraryDensity);
-        final cardWidth = GridSizeCalculator.getCellWidth(
-          constraints.maxWidth,
-          context,
-          density,
-        ).clamp(92.0, 190.0);
+        final cardWidth = GridSizeCalculator.getCellWidth(constraints.maxWidth, context, density).clamp(92.0, 190.0);
         final cardHeight = cardWidth * 1.5;
         final numeralWidth = cardWidth * 0.7;
         final rowHeight = cardHeight;

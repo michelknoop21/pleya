@@ -19,14 +19,9 @@ class CandidatePool {
 
   /// Fetches (or returns cached) candidate items across [clients], plus any
   /// [extra] items already loaded elsewhere (e.g. the discover hubs) for free.
-  Future<List<MediaItem>> candidates(
-    List<MediaServerClient> clients, {
-    List<MediaItem> extra = const [],
-  }) async {
+  Future<List<MediaItem>> candidates(List<MediaServerClient> clients, {List<MediaItem> extra = const []}) async {
     final now = _nowMs();
-    final results = await Future.wait([
-      for (final client in clients) _forClient(client, now),
-    ]);
+    final results = await Future.wait([for (final client in clients) _forClient(client, now)]);
 
     // Merge server pools + free extras, de-duplicated by global key.
     final seen = <String>{};

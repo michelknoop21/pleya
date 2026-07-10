@@ -125,10 +125,7 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
           // manage flow keeps the detailed list (with per-profile menus).
           if (widget.requireSelection && view.profiles.isNotEmpty) {
             return Stack(
-              children: [
-                _buildSelectionGate(view, activeId),
-                if (_switching) const ProfileSwitchingOverlay(),
-              ],
+              children: [_buildSelectionGate(view, activeId), if (_switching) const ProfileSwitchingOverlay()],
             );
           }
 
@@ -271,9 +268,7 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
 
   /// Opens the full profile-management list (the non-selection variant).
   void _openManageProfiles() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ProfileSwitchScreen()),
-    );
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen()));
   }
 
   SliverList _profileList(List<Profile> profiles, ProfilesView view, String? activeId, {required bool autofocusFirst}) {
@@ -485,10 +480,12 @@ class _GateTileState extends State<_GateTile> {
       onShowHoverHighlight: (v) => setState(() => _hovering = v),
       onShowFocusHighlight: (v) => setState(() => _focused = v),
       actions: {
-        ActivateIntent: CallbackAction<ActivateIntent>(onInvoke: (_) {
-          widget.onSelect?.call();
-          return null;
-        }),
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            widget.onSelect?.call();
+            return null;
+          },
+        ),
       },
       child: GestureDetector(
         onTap: widget.onSelect,

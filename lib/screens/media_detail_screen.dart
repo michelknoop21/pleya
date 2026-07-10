@@ -4188,41 +4188,41 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
           width: double.infinity,
           child: wrapHero(
             Builder(
-            builder: (context) {
-              final containerAspect = size.width / headerHeight;
-              final heroArtPaths = metadata.heroArtCandidates(containerAspectRatio: containerAspect);
-              if (heroArtPaths.isEmpty) return const PlaceholderContainer();
+              builder: (context) {
+                final containerAspect = size.width / headerHeight;
+                final heroArtPaths = metadata.heroArtCandidates(containerAspectRatio: containerAspect);
+                if (heroArtPaths.isEmpty) return const PlaceholderContainer();
 
-              final localArtwork = _buildOfflineArtworkIfAvailable(
-                context,
-                artworkPaths: heroArtPaths,
-                fit: BoxFit.cover,
-                imageType: ImageType.art,
-                errorWidget: (context, url, error) => const PlaceholderContainer(),
-              );
-              if (localArtwork != null) return localArtwork;
-
-              final client = _getArtworkMediaClient(context);
-              final mqSize = MediaQuery.sizeOf(context);
-              final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
-              final (_, memHeight) = MediaImageHelper.getMemCacheDimensions(
-                displayWidth: (mqSize.width * dpr).round(),
-                displayHeight: (headerHeight * dpr).round(),
-                imageType: ImageType.art,
-              );
-
-              return blurArtwork(
-                _buildHeroNetworkArtwork(
+                final localArtwork = _buildOfflineArtworkIfAvailable(
                   context,
-                  client: client,
                   artworkPaths: heroArtPaths,
-                  mediaSize: mqSize,
-                  dpr: dpr,
-                  memCacheHeight: memHeight,
-                ),
-              );
-            },
-          ),
+                  fit: BoxFit.cover,
+                  imageType: ImageType.art,
+                  errorWidget: (context, url, error) => const PlaceholderContainer(),
+                );
+                if (localArtwork != null) return localArtwork;
+
+                final client = _getArtworkMediaClient(context);
+                final mqSize = MediaQuery.sizeOf(context);
+                final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
+                final (_, memHeight) = MediaImageHelper.getMemCacheDimensions(
+                  displayWidth: (mqSize.width * dpr).round(),
+                  displayHeight: (headerHeight * dpr).round(),
+                  imageType: ImageType.art,
+                );
+
+                return blurArtwork(
+                  _buildHeroNetworkArtwork(
+                    context,
+                    client: client,
+                    artworkPaths: heroArtPaths,
+                    mediaSize: mqSize,
+                    dpr: dpr,
+                    memCacheHeight: memHeight,
+                  ),
+                );
+              },
+            ),
           ),
         ),
 

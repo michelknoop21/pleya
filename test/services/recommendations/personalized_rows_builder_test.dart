@@ -19,21 +19,20 @@ MediaItem _movie({
   double? rating,
   int viewCount = 0,
   int? addedAtDaysAgo,
-}) =>
-    MediaItem.plex(
-      id: id,
-      kind: MediaKind.movie,
-      serverId: 's1',
-      title: id,
-      genres: genres,
-      rating: rating,
-      viewCount: viewCount,
-      addedAt: addedAtDaysAgo == null ? null : (_nowMs - addedAtDaysAgo * _day) ~/ 1000,
-    );
+}) => MediaItem.plex(
+  id: id,
+  kind: MediaKind.movie,
+  serverId: 's1',
+  title: id,
+  genres: genres,
+  rating: rating,
+  viewCount: viewCount,
+  addedAt: addedAtDaysAgo == null ? null : (_nowMs - addedAtDaysAgo * _day) ~/ 1000,
+);
 
 AffinityVector _warmSciFiTaste() => AffinityVector.build([
-      for (var i = 0; i < 12; i++) TasteEvent(weight: 1.0, occurredAtMs: _nowMs, genres: const ['Sci-Fi']),
-    ], nowMs: _nowMs);
+  for (var i = 0; i < 12; i++) TasteEvent(weight: 1.0, occurredAtMs: _nowMs, genres: const ['Sci-Fi']),
+], nowMs: _nowMs);
 
 void main() {
   test('empty pool yields no rows', () {
@@ -50,7 +49,9 @@ void main() {
   });
 
   test('warm taste emits a Because-you-like genre row', () {
-    final pool = [for (var i = 0; i < 6; i++) _movie(id: 'sf$i', genres: const ['Sci-Fi'], rating: 7)];
+    final pool = [
+      for (var i = 0; i < 6; i++) _movie(id: 'sf$i', genres: const ['Sci-Fi'], rating: 7),
+    ];
     final rows = buildPersonalizedRows(_warmSciFiTaste(), pool, titles: _titles, nowMs: _nowMs);
     final genreRow = rows.firstWhere((r) => r.id.startsWith('home.becauselike'), orElse: () => throw 'missing');
     expect(genreRow.title, 'Because you like Sci-fi');
@@ -68,7 +69,10 @@ void main() {
 
   test('excludeKeys drops already-shown items', () {
     final shown = _movie(id: 'dup', genres: const ['Sci-Fi'], rating: 8);
-    final pool = [shown, for (var i = 0; i < 6; i++) _movie(id: 'x$i', genres: const ['Sci-Fi'], rating: 8)];
+    final pool = [
+      shown,
+      for (var i = 0; i < 6; i++) _movie(id: 'x$i', genres: const ['Sci-Fi'], rating: 8),
+    ];
     final rows = buildPersonalizedRows(
       _warmSciFiTaste(),
       pool,
@@ -89,7 +93,9 @@ void main() {
   });
 
   test('fresh low-rated items do not form Hidden Gems', () {
-    final pool = [for (var i = 0; i < 6; i++) _movie(id: 'new$i', genres: const ['Sci-Fi'], rating: 5, addedAtDaysAgo: 2)];
+    final pool = [
+      for (var i = 0; i < 6; i++) _movie(id: 'new$i', genres: const ['Sci-Fi'], rating: 5, addedAtDaysAgo: 2),
+    ];
     final rows = buildPersonalizedRows(_warmSciFiTaste(), pool, titles: _titles, nowMs: _nowMs);
     expect(rows.any((r) => r.id == 'home.hiddengems'), isFalse);
   });

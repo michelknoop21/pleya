@@ -68,9 +68,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     elevation: const WidgetStatePropertyAll(0),
     backgroundColor: WidgetStatePropertyAll(c.text),
     foregroundColor: WidgetStatePropertyAll(isDark ? c.bg : Colors.white),
-    shape: const WidgetStatePropertyAll(
-      RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
-    ),
+    shape: const WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(4)))),
   );
 
   final base = ThemeData(
@@ -213,9 +211,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
       backgroundColor: c.surface,
       surfaceTintColor: Colors.transparent,
       elevation: 8,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
     ),
   );
 

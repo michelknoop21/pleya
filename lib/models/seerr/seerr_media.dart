@@ -138,11 +138,7 @@ class SeerrMediaDetail {
         final name = c['name']?.toString();
         if (name == null || name.isEmpty) continue;
         cast.add(
-          SeerrCastMember(
-            name: name,
-            character: c['character']?.toString(),
-            profilePath: c['profilePath']?.toString(),
-          ),
+          SeerrCastMember(name: name, character: c['character']?.toString(), profilePath: c['profilePath']?.toString()),
         );
       }
     }

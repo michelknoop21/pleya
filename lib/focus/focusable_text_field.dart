@@ -126,10 +126,7 @@ class _AppleTvNativeTextEntry {
       'autocorrect': autocorrect,
       'capitalization': capitalization,
     });
-    return _AppleTvTextEntryResult(
-      (result?['text'] as String?) ?? text,
-      (result?['submitted'] as bool?) ?? false,
-    );
+    return _AppleTvTextEntryResult((result?['text'] as String?) ?? text, (result?['submitted'] as bool?) ?? false);
   }
 }
 
