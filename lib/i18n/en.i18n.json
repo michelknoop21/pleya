@@ -96,6 +96,7 @@
     "checkFailed": "Failed to check for updates"
   },
   "settings": {
+    "searchHint": "Search settings",
     "urlLabel": "URL",
     "title": "Settings",
     "supportDeveloper": "Support Pleya",

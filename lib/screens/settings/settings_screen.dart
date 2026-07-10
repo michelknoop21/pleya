@@ -100,6 +100,11 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   KeyboardShortcutsService? _keyboardService;
   late final bool _keyboardShortcutsSupported = KeyboardShortcutsService.isPlatformSupported();
 
+  // Settings search (desktop/mobile only; TV OSK-search is a separate track).
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  bool get _searchEnabled => !PlatformDetector.isTV();
+
   // Update checking state
   bool _isCheckingForUpdate = false;
   Map<String, dynamic>? _updateInfo;
@@ -128,6 +133,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
 
   @override
   void dispose() {
+    _searchController.dispose();
     _focusTracker.dispose();
     super.dispose();
   }
@@ -162,47 +168,160 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           primary: false,
           slivers: [
             ExcludeFocus(child: CustomAppBar(title: Text(t.settings.title), pinned: true)),
-            SliverList(
-              delegate: SliverChildListDelegate([
-                if (DonationService.isEnabled) _buildDonateTile(),
+            if (_searchEnabled) SliverToBoxAdapter(child: _buildSearchField()),
+            if (_searchQuery.isNotEmpty)
+              _buildSearchResults()
+            else
+              SliverList(
+                delegate: SliverChildListDelegate([
+                  if (DonationService.isEnabled) _buildDonateTile(),
 
-                _buildAppearanceTile(),
+                  _buildAppearanceTile(),
 
-                _buildLibraryVisibilityTile(),
+                  _buildLibraryVisibilityTile(),
 
-                _buildPlaybackTile(),
+                  _buildPlaybackTile(),
 
-                _buildTrackersTile(),
+                  _buildTrackersTile(),
 
-                _buildRequestsTile(),
+                  _buildRequestsTile(),
 
-                _buildConnectionsSection(),
+                  _buildConnectionsSection(),
 
-                _buildProfilesSection(),
+                  _buildProfilesSection(),
 
-                if (!PlatformDetector.isAppleTV()) _buildDownloadsSection(),
+                  if (!PlatformDetector.isAppleTV()) _buildDownloadsSection(),
 
-                if (_keyboardShortcutsSupported) ...[_buildKeyboardShortcutsSection()],
+                  if (_keyboardShortcutsSupported) ...[_buildKeyboardShortcutsSection()],
 
-                _buildAdvancedSection(),
+                  _buildAdvancedSection(),
 
-                if (UpdateService.isUpdateCheckEnabled) ...[_buildUpdateSection()],
+                  if (UpdateService.isUpdateCheckEnabled) ...[_buildUpdateSection()],
 
-                if (!PlatformDetector.isTV()) _buildBackupSection(),
+                  if (!PlatformDetector.isTV()) _buildBackupSection(),
 
-                SettingNavigationTile(
-                  focusNode: _focusTracker.get(_kAbout),
-                  icon: Symbols.info_rounded,
-                  title: t.settings.about,
-                  subtitle: t.settings.aboutDescription,
-                  destinationBuilder: (context) => const AboutScreen(),
-                ),
-                const SizedBox(height: 24),
-              ]),
-            ),
+                  SettingNavigationTile(
+                    focusNode: _focusTracker.get(_kAbout),
+                    icon: Symbols.info_rounded,
+                    title: t.settings.about,
+                    subtitle: t.settings.aboutDescription,
+                    destinationBuilder: (context) => const AboutScreen(),
+                  ),
+                  const SizedBox(height: 24),
+                ]),
+              ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSearchField() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: FocusableTextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: t.settings.searchHint,
+          prefixIcon: const AppIcon(Symbols.search_rounded),
+          suffixIcon: _searchQuery.isEmpty
+              ? null
+              : IconButton(
+                  icon: const AppIcon(Symbols.close_rounded),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                ),
+          border: const OutlineInputBorder(),
+          isDense: true,
+        ),
+        onChanged: (value) => setState(() => _searchQuery = value.trim()),
+      ),
+    );
+  }
+
+  /// Static index of navigable settings sub-screens, filtered by the search
+  /// query. Titles/subtitles reuse the same [t] strings as the tiles; tapping a
+  /// result navigates to the same destination screen. Platform gating mirrors
+  /// the tile list so hidden destinations never surface in search.
+  List<_SettingsSearchEntry> _buildSearchIndex() {
+    return [
+      _SettingsSearchEntry(
+        icon: Symbols.palette_rounded,
+        title: t.settings.appearance,
+        keywords: const ['theme', 'dark', 'light', 'density', 'thema', 'kleur'],
+        destinationBuilder: (_) => const AppearanceSettingsScreen(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.video_library_rounded,
+        title: t.settings.libraryVisibility,
+        subtitle: t.settings.libraryVisibilityDescription,
+        destinationBuilder: (_) => const LibraryVisibilityScreen(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.play_circle_rounded,
+        title: t.settings.videoPlayback,
+        subtitle: t.settings.videoPlaybackDescription,
+        keywords: const ['subtitle', 'audio', 'skip intro', 'ondertitel', 'afspelen'],
+        destinationBuilder: (_) => const PlaybackSettingsScreen(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.sync_rounded,
+        title: t.settings.trackers,
+        subtitle: t.settings.trackersDescription,
+        keywords: const ['trakt', 'mal', 'anilist', 'simkl'],
+        destinationBuilder: (_) => const TrackersSettingsScreen(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.playlist_add_rounded,
+        title: t.settings.requests,
+        subtitle: t.settings.requestsDescription,
+        keywords: const ['jellyseerr', 'overseerr', 'seerr'],
+        destinationBuilder: (_) => const SeerrSettingsScreen(),
+      ),
+      if (_keyboardShortcutsSupported && _keyboardService != null)
+        _SettingsSearchEntry(
+          icon: Symbols.keyboard_rounded,
+          title: t.settings.keyboardShortcuts,
+          keywords: const ['hotkey', 'shortcut', 'sneltoets'],
+          onTap: (context) => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => KeyboardShortcutsScreen(keyboardService: _keyboardService!)),
+          ),
+        ),
+      _SettingsSearchEntry(
+        icon: Symbols.info_rounded,
+        title: t.settings.about,
+        subtitle: t.settings.aboutDescription,
+        keywords: const ['version', 'license', 'versie', 'licentie'],
+        destinationBuilder: (_) => const AboutScreen(),
+      ),
+    ];
+  }
+
+  Widget _buildSearchResults() {
+    final query = _searchQuery.toLowerCase();
+    final results = _buildSearchIndex().where((e) => e.matches(query)).toList();
+    if (results.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Center(child: Text(t.messages.noResultsFound)),
+        ),
+      );
+    }
+    return SliverList(
+      delegate: SliverChildBuilderDelegate((context, index) {
+        final entry = results[index];
+        return SettingNavigationTile(
+          icon: entry.icon,
+          title: entry.title,
+          subtitle: entry.subtitle,
+          destinationBuilder: entry.destinationBuilder,
+          onTap: entry.onTap == null ? null : () => entry.onTap!(context),
+        );
+      }, childCount: results.length),
     );
   }
 
@@ -912,4 +1031,43 @@ class _RelayUrlDialogState extends State<_RelayUrlDialog> {
       ],
     );
   }
+}
+
+/// Pure predicate for the settings search: does an entry with this [title],
+/// [subtitle] and [keywords] match [lowerQuery] (already lower-cased)? Extracted
+/// as a top-level function so it can be unit-tested without pumping the screen.
+@visibleForTesting
+bool settingsSearchMatches({
+  required String title,
+  String? subtitle,
+  List<String> keywords = const [],
+  required String lowerQuery,
+}) {
+  if (lowerQuery.isEmpty) return false;
+  return title.toLowerCase().contains(lowerQuery) ||
+      (subtitle?.toLowerCase().contains(lowerQuery) ?? false) ||
+      keywords.any((k) => k.toLowerCase().contains(lowerQuery));
+}
+
+/// One searchable settings destination. Exactly one of [destinationBuilder] /
+/// [onTap] is set — the tile navigates the same way the original tile did.
+class _SettingsSearchEntry {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final List<String> keywords;
+  final WidgetBuilder? destinationBuilder;
+  final void Function(BuildContext)? onTap;
+
+  const _SettingsSearchEntry({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.keywords = const [],
+    this.destinationBuilder,
+    this.onTap,
+  }) : assert(destinationBuilder != null || onTap != null);
+
+  bool matches(String lowerQuery) =>
+      settingsSearchMatches(title: title, subtitle: subtitle, keywords: keywords, lowerQuery: lowerQuery);
 }

@@ -96,6 +96,7 @@
     "checkFailed": "Kon niet controleren op updates"
   },
   "settings": {
+    "searchHint": "Zoek in instellingen",
     "urlLabel": "URL",
     "title": "Instellingen",
     "supportDeveloper": "Steun Pleya",

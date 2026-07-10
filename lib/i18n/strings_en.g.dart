@@ -404,6 +404,9 @@ class TranslationsSettingsEn {
 
 	// Translations
 
+	/// en: 'Search settings'
+	String get searchHint => 'Search settings';
+
 	/// en: 'URL'
 	String get urlLabel => 'URL';
 
@@ -5094,6 +5097,7 @@ extension on Translations {
 			'update.viewRelease' => 'View Release',
 			'update.latestVersion' => 'You are on the latest version',
 			'update.checkFailed' => 'Failed to check for updates',
+			'settings.searchHint' => 'Search settings',
 			'settings.urlLabel' => 'URL',
 			'settings.title' => 'Settings',
 			'settings.supportDeveloper' => 'Support Pleya',
@@ -5521,9 +5525,9 @@ extension on Translations {
 			'videoControls.subtitleDownloadFailed' => 'Failed to download subtitle',
 			'videoControls.searchLanguages' => 'Search languages...',
 			'videoControls.airplayButton' => 'AirPlay',
-			'userStatus.admin' => 'Admin',
 			_ => null,
 		} ?? switch (path) {
+			'userStatus.admin' => 'Admin',
 			'userStatus.restricted' => 'Restricted',
 			'userStatus.protected' => 'Protected',
 			'userStatus.current' => 'CURRENT',
@@ -6035,9 +6039,9 @@ extension on Translations {
 			'downloads.allEpisodes' => 'All episodes',
 			'downloads.unwatchedOnly' => 'Unwatched only',
 			'downloads.nextNUnwatched' => ({required Object count}) => 'Next ${count} unwatched',
-			'downloads.customAmount' => 'Custom amount...',
 			_ => null,
 		} ?? switch (path) {
+			'downloads.customAmount' => 'Custom amount...',
 			'downloads.includeSpecials' => 'Include Specials',
 			'downloads.howManyEpisodes' => 'How many episodes?',
 			'downloads.itemsQueued' => ({required Object count}) => '${count} items queued for download',
