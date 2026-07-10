@@ -12,6 +12,7 @@ import '../screens/video_player_screen.dart';
 import '../utils/app_logger.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/video_player_navigation.dart';
+import '../i18n/strings.g.dart';
 
 /// Navigate to the video player for a live TV channel — the single live
 /// entry for both backends. The player starts the backend-neutral
@@ -28,13 +29,13 @@ Future<void> navigateToLiveTv(
 }) async {
   final serverInfo = liveTvServerInfoForChannel(multiServer, channel);
   if (serverInfo == null) {
-    showErrorSnackBar(context, 'Live TV server is not available.');
+    showErrorSnackBar(context, t.liveTv.serverNotAvailable);
     return;
   }
 
   final client = multiServer.getClientForServer(ServerId(serverInfo.serverId));
   if (client == null) {
-    showErrorSnackBar(context, 'Live TV server is not connected.');
+    showErrorSnackBar(context, t.liveTv.serverNotConnected);
     return;
   }
 

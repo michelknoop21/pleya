@@ -16,6 +16,7 @@ import '../mixins/refreshable.dart';
 import '../mixins/item_updatable.dart';
 import '../i18n/strings.g.dart';
 import 'libraries/content_state_builder.dart';
+import '../utils/error_message_utils.dart';
 
 /// Abstract base class for screens displaying media lists (collections/playlists)
 /// Provides common state management and playback functionality
@@ -171,7 +172,7 @@ mixin StandardItemLoader<T extends StatefulWidget> on BaseMediaListDetailScreen<
 
   /// Get error message for failed load (can be overridden)
   String getLoadErrorMessage(Object error) {
-    return 'Failed to load items: ${error.toString()}';
+    return friendlyError(error);
   }
 
   /// Get log message for successful load (can be overridden)

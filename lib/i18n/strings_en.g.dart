@@ -382,6 +382,9 @@ class TranslationsSettingsEn {
 
 	// Translations
 
+	/// en: 'URL'
+	String get urlLabel => 'URL';
+
 	/// en: 'Settings'
 	String get title => 'Settings';
 
@@ -2413,6 +2416,21 @@ class TranslationsAboutEn {
 
 	/// en: 'View licenses of third-party libraries'
 	String get viewLicensesDescription => 'View licenses of third-party libraries';
+
+	/// en: 'Source code'
+	String get sourceCode => 'Source code';
+
+	/// en: 'Corresponding source for this build (GPL-3.0)'
+	String get sourceCodeDescription => 'Corresponding source for this build (GPL-3.0)';
+
+	/// en: 'Based on Plezy'
+	String get basedOnPlezy => 'Based on Plezy';
+
+	/// en: 'Upstream project'
+	String get upstreamProject => 'Upstream project';
+
+	/// en: 'Privacy policy'
+	String get privacyPolicy => 'Privacy policy';
 }
 
 // Path: serverSelection
@@ -2542,6 +2560,12 @@ class TranslationsLiveTvEn {
 	final Translations _root; // ignore: unused_field
 
 	// Translations
+
+	/// en: 'Live TV server is not available.'
+	String get serverNotAvailable => 'Live TV server is not available.';
+
+	/// en: 'Live TV server is not connected.'
+	String get serverNotConnected => 'Live TV server is not connected.';
 
 	/// en: 'Live TV'
 	String get title => 'Live TV';
@@ -5044,6 +5068,7 @@ extension on Translations {
 			'update.viewRelease' => 'View Release',
 			'update.latestVersion' => 'You are on the latest version',
 			'update.checkFailed' => 'Failed to check for updates',
+			'settings.urlLabel' => 'URL',
 			'settings.title' => 'Settings',
 			'settings.supportDeveloper' => 'Support Pleya',
 			'settings.supportDeveloperDescription' => 'Donate via Liberapay to fund development',
@@ -5475,9 +5500,9 @@ extension on Translations {
 			'userStatus.protected' => 'Protected',
 			'userStatus.current' => 'CURRENT',
 			'messages.markedAsWatched' => 'Marked as watched',
-			'messages.markedAsUnwatched' => 'Marked as unwatched',
 			_ => null,
 		} ?? switch (path) {
+			'messages.markedAsUnwatched' => 'Marked as unwatched',
 			'messages.markedAsWatchedOffline' => 'Marked as watched (will sync when online)',
 			'messages.markedAsUnwatchedOffline' => 'Marked as unwatched (will sync when online)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Auto-removed: ${title}',
@@ -5741,6 +5766,11 @@ extension on Translations {
 			'about.versionLabel' => ({required Object version}) => 'Version ${version}',
 			'about.appDescription' => 'A beautiful Plex and Jellyfin client for Flutter',
 			'about.viewLicensesDescription' => 'View licenses of third-party libraries',
+			'about.sourceCode' => 'Source code',
+			'about.sourceCodeDescription' => 'Corresponding source for this build (GPL-3.0)',
+			'about.basedOnPlezy' => 'Based on Plezy',
+			'about.upstreamProject' => 'Upstream project',
+			'about.privacyPolicy' => 'Privacy policy',
 			'serverSelection.allServerConnectionsFailed' => 'Couldn\'t connect to any servers. Check your network.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'No servers found for ${username} (${email})',
 			'serverSelection.noServersFoundTitle' => 'No media servers found',
@@ -5766,6 +5796,8 @@ extension on Translations {
 			'navigation.libraries' => 'Libraries',
 			'navigation.downloads' => 'Downloads',
 			'navigation.liveTv' => 'Live TV',
+			'liveTv.serverNotAvailable' => 'Live TV server is not available.',
+			'liveTv.serverNotConnected' => 'Live TV server is not connected.',
 			'liveTv.title' => 'Live TV',
 			'liveTv.guide' => 'Guide',
 			'liveTv.noChannels' => 'No channels available',
@@ -5982,6 +6014,8 @@ extension on Translations {
 			'downloads.howManyEpisodes' => 'How many episodes?',
 			'downloads.itemsQueued' => ({required Object count}) => '${count} items queued for download',
 			'downloads.keepSynced' => 'Keep synced',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.downloadOnce' => 'Download once',
 			'downloads.keepNUnwatched' => ({required Object count}) => 'Keep ${count} unwatched',
 			'downloads.editSyncRule' => 'Edit sync rule',
@@ -5990,8 +6024,6 @@ extension on Translations {
 			'downloads.syncRuleCreated' => ({required Object count}) => 'Sync rule created — keeping ${count} unwatched episodes',
 			'downloads.syncRuleUpdated' => 'Sync rule updated',
 			'downloads.syncRuleRemoved' => 'Sync rule removed',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.syncedNewEpisodes' => ({required Object count, required Object title}) => 'Synced ${count} new episodes for ${title}',
 			'downloads.activeSyncRules' => 'Sync rules',
 			'downloads.noSyncRules' => 'No sync rules',

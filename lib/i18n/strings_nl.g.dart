@@ -219,6 +219,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get urlLabel => 'URL';
 	@override String get title => 'Instellingen';
 	@override String get supportDeveloper => 'Steun Pleya';
 	@override String get supportDeveloperDescription => 'Doneer via Liberapay om de ontwikkeling te steunen';
@@ -1000,6 +1001,11 @@ class _TranslationsAboutNl extends TranslationsAboutEn {
 	@override String versionLabel({required Object version}) => 'Versie ${version}';
 	@override String get appDescription => 'Een mooie Plex- en Jellyfin-client voor Flutter';
 	@override String get viewLicensesDescription => 'Bekijk licenties van third-party bibliotheken';
+	@override String get sourceCode => 'Broncode';
+	@override String get sourceCodeDescription => 'Bijbehorende broncode van deze build (GPL-3.0)';
+	@override String get basedOnPlezy => 'Gebaseerd op Plezy';
+	@override String get upstreamProject => 'Upstream-project';
+	@override String get privacyPolicy => 'Privacybeleid';
 }
 
 // Path: serverSelection
@@ -1079,6 +1085,8 @@ class _TranslationsLiveTvNl extends TranslationsLiveTvEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get serverNotAvailable => 'Live TV-server is niet beschikbaar.';
+	@override String get serverNotConnected => 'Live TV-server is niet verbonden.';
 	@override String get title => 'Live TV';
 	@override String get guide => 'Gids';
 	@override String get noChannels => 'Geen zenders beschikbaar';
@@ -2085,6 +2093,7 @@ extension on TranslationsNl {
 			'update.viewRelease' => 'Bekijk release',
 			'update.latestVersion' => 'Je hebt de nieuwste versie',
 			'update.checkFailed' => 'Kon niet controleren op updates',
+			'settings.urlLabel' => 'URL',
 			'settings.title' => 'Instellingen',
 			'settings.supportDeveloper' => 'Steun Pleya',
 			'settings.supportDeveloperDescription' => 'Doneer via Liberapay om de ontwikkeling te steunen',
@@ -2516,9 +2525,9 @@ extension on TranslationsNl {
 			'messages.noProfilesAvailable' => 'Geen profielen beschikbaar',
 			'messages.contactAdminForProfiles' => 'Neem contact op met je serverbeheerder om profielen toe te voegen',
 			'messages.unableToDetermineLibrarySection' => 'Kan bibliotheeksectie voor dit item niet bepalen',
-			'messages.logsCleared' => 'Logs gewist',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logsCleared' => 'Logs gewist',
 			'messages.logsCopied' => 'Logs gekopieerd naar klembord',
 			'messages.noLogsAvailable' => 'Geen logs beschikbaar',
 			'messages.libraryScanning' => ({required Object title}) => 'Scannen "${title}"...',
@@ -2768,6 +2777,11 @@ extension on TranslationsNl {
 			'about.versionLabel' => ({required Object version}) => 'Versie ${version}',
 			'about.appDescription' => 'Een mooie Plex- en Jellyfin-client voor Flutter',
 			'about.viewLicensesDescription' => 'Bekijk licenties van third-party bibliotheken',
+			'about.sourceCode' => 'Broncode',
+			'about.sourceCodeDescription' => 'Bijbehorende broncode van deze build (GPL-3.0)',
+			'about.basedOnPlezy' => 'Gebaseerd op Plezy',
+			'about.upstreamProject' => 'Upstream-project',
+			'about.privacyPolicy' => 'Privacybeleid',
 			'serverSelection.allServerConnectionsFailed' => 'Kon met geen enkele server verbinden. Controleer je netwerk.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'Geen servers gevonden voor ${username} (${email})',
 			'serverSelection.noServersFoundTitle' => 'Geen mediaservers gevonden',
@@ -2793,6 +2807,8 @@ extension on TranslationsNl {
 			'navigation.libraries' => 'Media',
 			'navigation.downloads' => 'Downloads',
 			'navigation.liveTv' => 'Live TV',
+			'liveTv.serverNotAvailable' => 'Live TV-server is niet beschikbaar.',
+			'liveTv.serverNotConnected' => 'Live TV-server is niet verbonden.',
 			'liveTv.title' => 'Live TV',
 			'liveTv.guide' => 'Gids',
 			'liveTv.noChannels' => 'Geen zenders beschikbaar',
@@ -3023,6 +3039,8 @@ extension on TranslationsNl {
 			'downloads.syncAllItems' => 'Alle items synchroniseren',
 			'downloads.syncUnwatchedItems' => 'Ongekeken items synchroniseren',
 			'downloads.syncRuleServerContext' => ({required Object server, required Object status}) => 'Server: ${server} • ${status}',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.syncRuleAvailable' => 'Beschikbaar',
 			'downloads.syncRuleOffline' => 'Offline',
 			'downloads.syncRuleSignInRequired' => 'Inloggen vereist',
@@ -3031,8 +3049,6 @@ extension on TranslationsNl {
 			'downloads.syncRuleListCreated' => 'Synchronisatieregel aangemaakt',
 			'shaders.title' => 'Shaders',
 			'shaders.noShaderDescription' => 'Geen videoverbetering',
-			_ => null,
-		} ?? switch (path) {
 			'shaders.nvscalerDescription' => 'NVIDIA-beeldschaling voor scherpere video',
 			'shaders.artcnnVariantNeutral' => 'Neutraal',
 			'shaders.artcnnVariantDenoise' => 'Ruisonderdrukking',

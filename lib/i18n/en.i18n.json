@@ -90,6 +90,7 @@
     "checkFailed": "Failed to check for updates"
   },
   "settings": {
+    "urlLabel": "URL",
     "title": "Settings",
     "supportDeveloper": "Support Pleya",
     "supportDeveloperDescription": "Donate via Liberapay to fund development",
@@ -838,7 +839,12 @@
     "openSourceLicenses": "Open Source Licenses",
     "versionLabel": "Version ${version}",
     "appDescription": "A beautiful Plex and Jellyfin client for Flutter",
-    "viewLicensesDescription": "View licenses of third-party libraries"
+    "viewLicensesDescription": "View licenses of third-party libraries",
+    "sourceCode": "Source code",
+    "sourceCodeDescription": "Corresponding source for this build (GPL-3.0)",
+    "basedOnPlezy": "Based on Plezy",
+    "upstreamProject": "Upstream project",
+    "privacyPolicy": "Privacy policy"
   },
   "serverSelection": {
     "allServerConnectionsFailed": "Couldn't connect to any servers. Check your network.",
@@ -876,6 +882,8 @@
     "liveTv": "Live TV"
   },
   "liveTv": {
+    "serverNotAvailable": "Live TV server is not available.",
+    "serverNotConnected": "Live TV server is not connected.",
     "title": "Live TV",
     "guide": "Guide",
     "noChannels": "No channels available",

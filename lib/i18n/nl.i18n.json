@@ -90,6 +90,7 @@
     "checkFailed": "Kon niet controleren op updates"
   },
   "settings": {
+    "urlLabel": "URL",
     "title": "Instellingen",
     "supportDeveloper": "Steun Pleya",
     "supportDeveloperDescription": "Doneer via Liberapay om de ontwikkeling te steunen",
@@ -824,7 +825,12 @@
     "openSourceLicenses": "Open Source licenties",
     "versionLabel": "Versie ${version}",
     "appDescription": "Een mooie Plex- en Jellyfin-client voor Flutter",
-    "viewLicensesDescription": "Bekijk licenties van third-party bibliotheken"
+    "viewLicensesDescription": "Bekijk licenties van third-party bibliotheken",
+    "sourceCode": "Broncode",
+    "sourceCodeDescription": "Bijbehorende broncode van deze build (GPL-3.0)",
+    "basedOnPlezy": "Gebaseerd op Plezy",
+    "upstreamProject": "Upstream-project",
+    "privacyPolicy": "Privacybeleid"
   },
   "serverSelection": {
     "allServerConnectionsFailed": "Kon met geen enkele server verbinden. Controleer je netwerk.",
@@ -862,6 +868,8 @@
     "liveTv": "Live TV"
   },
   "liveTv": {
+    "serverNotAvailable": "Live TV-server is niet beschikbaar.",
+    "serverNotConnected": "Live TV-server is niet verbonden.",
     "title": "Live TV",
     "guide": "Gids",
     "noChannels": "Geen zenders beschikbaar",

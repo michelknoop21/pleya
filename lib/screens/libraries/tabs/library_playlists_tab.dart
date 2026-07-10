@@ -19,6 +19,7 @@ import '../../../widgets/sliver_cross_axis_layout_builder.dart';
 import '../../../i18n/strings.g.dart';
 import '../../main_screen.dart';
 import 'base_library_tab.dart';
+import '../../../utils/error_message_utils.dart';
 
 /// Playlists tab for library screen
 /// Shows playlists that contain items from the current library
@@ -101,7 +102,7 @@ class _LibraryPlaylistsTabState extends BaseLibraryTabState<MediaPlaylist, Libra
       appLogger.e('Error loading $errorContext', error: e, stackTrace: st);
       if (!mounted) return;
       setState(() {
-        errorMessage = 'Failed to load $errorContext: ${e.toString()}';
+        errorMessage = friendlyError(e, context: errorContext);
         isLoading = false;
       });
     }

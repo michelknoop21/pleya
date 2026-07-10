@@ -19,6 +19,7 @@ import '../../../widgets/sliver_cross_axis_layout_builder.dart';
 import '../../../i18n/strings.g.dart';
 import '../../main_screen.dart';
 import 'base_library_tab.dart';
+import '../../../utils/error_message_utils.dart';
 
 /// Collections tab for library screen.
 /// Plex scopes collections to the library; Jellyfin exposes a shared BoxSets root.
@@ -99,7 +100,7 @@ class _LibraryCollectionsTabState extends BaseLibraryTabState<MediaItem, Library
       appLogger.e('Error loading $errorContext', error: e, stackTrace: st);
       if (!mounted) return;
       setState(() {
-        errorMessage = 'Failed to load $errorContext: ${e.toString()}';
+        errorMessage = friendlyError(e, context: errorContext);
         isLoading = false;
       });
     }

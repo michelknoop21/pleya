@@ -7,6 +7,7 @@ import '../../../utils/haptics.dart';
 import '../../../mixins/library_tab_state.dart';
 import '../../../mixins/refreshable.dart';
 import '../content_state_builder.dart';
+import '../../../utils/error_message_utils.dart';
 
 /// Base class for library tab screens that provides common state management
 /// and lifecycle handling for tabs that display library content.
@@ -252,7 +253,7 @@ abstract class BaseLibraryTabState<T, W extends BaseLibraryTab<T>> extends State
 
       appLogger.e('Error loading $errorContext', error: e);
       setState(() {
-        _errorMessage = 'Failed to load $errorContext: ${e.toString()}';
+        _errorMessage = friendlyError(e, context: errorContext);
         _isLoading = false;
       });
     }

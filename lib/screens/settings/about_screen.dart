@@ -91,23 +91,23 @@ class AboutScreen extends StatelessWidget {
                       children: [
                         ListTile(
                           leading: const AppIcon(Symbols.code_rounded, fill: 1),
-                          title: const Text('Source code'),
-                          subtitle: const Text('Corresponding source for this build (GPL-3.0)'),
+                          title: Text(t.about.sourceCode),
+                          subtitle: Text(t.about.sourceCodeDescription),
                           trailing: const AppIcon(Symbols.open_in_new_rounded, fill: 1),
                           onTap: () => _open(_sourceUrl),
                         ),
                         const Divider(height: 1),
                         ListTile(
                           leading: const AppIcon(Symbols.fork_right_rounded, fill: 1),
-                          title: const Text('Based on Plezy'),
-                          subtitle: const Text('Upstream project'),
+                          title: Text(t.about.basedOnPlezy),
+                          subtitle: Text(t.about.upstreamProject),
                           trailing: const AppIcon(Symbols.open_in_new_rounded, fill: 1),
                           onTap: () => _open(_upstreamUrl),
                         ),
                         const Divider(height: 1),
                         ListTile(
                           leading: const AppIcon(Symbols.privacy_tip_rounded, fill: 1),
-                          title: const Text('Privacy policy'),
+                          title: Text(t.about.privacyPolicy),
                           trailing: const AppIcon(Symbols.open_in_new_rounded, fill: 1),
                           onTap: () => _open(_privacyUrl),
                         ),

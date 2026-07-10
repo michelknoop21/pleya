@@ -900,7 +900,7 @@ class _RelayUrlDialogState extends State<_RelayUrlDialog> {
       title: Text(t.settings.watchTogetherRelay),
       content: FocusableTextField(
         controller: _controller,
-        decoration: InputDecoration(labelText: 'URL', hintText: t.settings.watchTogetherRelayHint),
+        decoration: InputDecoration(labelText: t.settings.urlLabel, hintText: t.settings.watchTogetherRelayHint),
         autofocus: true,
         textInputAction: TextInputAction.done,
         onEditingComplete: () => _saveFocusNode.requestFocus(),
