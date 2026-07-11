@@ -69,6 +69,7 @@ import 'utils/media_server_http_client.dart';
 import 'utils/orientation_helper.dart';
 import 'utils/watch_state_notifier.dart';
 import 'i18n/strings.g.dart';
+import 'services/secure_folder_service.dart';
 import 'focus/input_mode_tracker.dart';
 import 'focus/key_event_utils.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -737,6 +738,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
           create: (context) {
             _serverManager.onJellyfinConnectionUpdated = context.read<ConnectionRegistry>().upsert;
             _serverManager.onPleyaShareConnectionUpdated = context.read<ConnectionRegistry>().upsert;
+            SecureFolderService.instance.onConnectionUpdated = context.read<ConnectionRegistry>().upsert;
             return MultiServerProvider(_serverManager, _aggregationService);
           },
         ),

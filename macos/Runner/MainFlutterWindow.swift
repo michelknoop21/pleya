@@ -33,6 +33,10 @@ class MainFlutterWindow: NSWindow {
     // Register window utils plugin for dynamic titlebar/fullscreen control from Dart
     WindowUtilsPlugin.register(
       with: flutterViewController.registrar(forPlugin: "WindowUtilsPlugin"))
+
+    // Security-scoped folder picker (local folder sources under the sandbox)
+    SecureFolderPlugin.register(
+      with: flutterViewController.registrar(forPlugin: "SecureFolderPlugin"))
     WindowUtilsPlugin.setWindow(self)
     WindowUtilsPlugin.installWindowDelegate()
     WindowUtilsPlugin.syncWindowChrome()

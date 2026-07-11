@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
 import '../../services/saf_storage_service.dart';
+import '../../services/secure_folder_service.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../connection/connection.dart';
 import '../../profiles/profile.dart';
@@ -30,6 +31,7 @@ class AddLocalFolderScreen extends StatefulWidget {
 
 class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
   String? _directoryUri;
+  String? _bookmarkData;
   String _displayName = '';
   String _libraryType = 'movies';
   bool _saving = false;
@@ -138,10 +140,21 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
   bool _canSave() => _directoryUri != null && _displayName.trim().isNotEmpty && !_saving;
 
   Future<void> _pickDirectory() async {
-    final uri = await SafStorageService.instance.pickDirectory();
+    String? uri;
+    String? bookmark;
+    if (SecureFolderService.isRequired) {
+      // iOS/macOS: the sandbox only honors reads through a security-scoped
+      // bookmark, which the generic picker throws away.
+      final picked = await SecureFolderService.instance.pickFolder();
+      uri = picked?.path;
+      bookmark = picked?.bookmark;
+    } else {
+      uri = await SafStorageService.instance.pickDirectory();
+    }
     if (uri != null) {
       setState(() {
         _directoryUri = uri;
+        _bookmarkData = bookmark;
         if (_displayName.isEmpty) {
           _displayName = t.addLocalFolder.cardTitle;
         }
@@ -153,15 +166,26 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
     if (!_canSave()) return;
     setState(() => _saving = true);
     try {
+      // Read test up front: a folder we can't actually list would otherwise
+      // save fine and just show a silently empty library.
+      if (await SafStorageService.instance.list(_directoryUri!) == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.addLocalFolder.saveError)));
+        }
+        return;
+      }
+
       final id = 'local-${DateTime.now().millisecondsSinceEpoch}';
       final connection = LocalFolderConnection(
         id: id,
         directoryUri: _directoryUri!,
         displayName: _displayName.trim(),
         libraryType: _libraryType,
+        bookmarkData: _bookmarkData,
         createdAt: DateTime.now(),
       );
 
+      if (!mounted) return;
       // Altijd aan een profiel binden: een ongebonden lokale map is in het
       // profielbeheer onzichtbaar en zou daardoor niet te verwijderen zijn.
       final profile = widget.targetProfile ?? context.read<ActiveProfileProvider>().active;

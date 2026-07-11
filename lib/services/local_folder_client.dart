@@ -28,6 +28,7 @@ import '../media/server_capabilities.dart';
 import '../services/api_cache.dart';
 import '../services/playback_initialization_types.dart';
 import '../services/saf_storage_service.dart';
+import '../services/secure_folder_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/external_ids.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
@@ -717,7 +718,9 @@ class LocalFolderClient implements MediaServerClient {
     await _loadWatchState();
 
     try {
-      final rootUri = connection.directoryUri;
+      // iOS/macOS: open the security scope from the stored bookmark first —
+      // without it the sandbox denies every read and the library stays empty.
+      final rootUri = await SecureFolderService.instance.ensureAccess(connection);
       final children = await SafStorageService.instance.list(rootUri);
       if (children == null) return [];
 
