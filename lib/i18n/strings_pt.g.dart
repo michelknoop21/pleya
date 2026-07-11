@@ -1696,6 +1696,10 @@ class _TranslationsPleyaSharePt extends TranslationsPleyaShareEn {
 	@override String paired({required Object name}) => 'Ligado a ${name}';
 	@override String get pairUnreachable => 'Host inacessível. Verifique o endereço e a rede.';
 	@override String get addFolder => 'Adicionar pasta local';
+	@override String get notificationTitle => 'A partilhar conteúdos';
+	@override String get notificationText => 'Outros dispositivos Pleya podem transmitir as suas pastas locais';
+	@override String get hostDescriptionAndroid => 'Outros dispositivos Pleya nesta rede podem navegar, transmitir e transferir as suas pastas locais. A partilha continua em segundo plano com uma notificação.';
+	@override String get scanningSubnet => 'A analisar a rede…';
 }
 
 // Path: hotkeys.actions
@@ -3305,6 +3309,10 @@ extension on TranslationsPt {
 			'pleyaShare.paired' => ({required Object name}) => 'Ligado a ${name}',
 			'pleyaShare.pairUnreachable' => 'Host inacessível. Verifique o endereço e a rede.',
 			'pleyaShare.addFolder' => 'Adicionar pasta local',
+			'pleyaShare.notificationTitle' => 'A partilhar conteúdos',
+			'pleyaShare.notificationText' => 'Outros dispositivos Pleya podem transmitir as suas pastas locais',
+			'pleyaShare.hostDescriptionAndroid' => 'Outros dispositivos Pleya nesta rede podem navegar, transmitir e transferir as suas pastas locais. A partilha continua em segundo plano com uma notificação.',
+			'pleyaShare.scanningSubnet' => 'A analisar a rede…',
 			_ => null,
 		};
 	}

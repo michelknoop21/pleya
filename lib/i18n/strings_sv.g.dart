@@ -1696,6 +1696,10 @@ class _TranslationsPleyaShareSv extends TranslationsPleyaShareEn {
 	@override String paired({required Object name}) => 'Ansluten till ${name}';
 	@override String get pairUnreachable => 'Värden kan inte nås. Kontrollera adressen och nätverket.';
 	@override String get addFolder => 'Lägg till lokal mapp';
+	@override String get notificationTitle => 'Delar medier';
+	@override String get notificationText => 'Andra Pleya-enheter kan strömma dina lokala mappar';
+	@override String get hostDescriptionAndroid => 'Andra Pleya-enheter i det här nätverket kan bläddra, strömma och ladda ner dina lokala mappar. Delningen fortsätter i bakgrunden med en avisering.';
+	@override String get scanningSubnet => 'Skannar nätverket…';
 }
 
 // Path: hotkeys.actions
@@ -3305,6 +3309,10 @@ extension on TranslationsSv {
 			'pleyaShare.paired' => ({required Object name}) => 'Ansluten till ${name}',
 			'pleyaShare.pairUnreachable' => 'Värden kan inte nås. Kontrollera adressen och nätverket.',
 			'pleyaShare.addFolder' => 'Lägg till lokal mapp',
+			'pleyaShare.notificationTitle' => 'Delar medier',
+			'pleyaShare.notificationText' => 'Andra Pleya-enheter kan strömma dina lokala mappar',
+			'pleyaShare.hostDescriptionAndroid' => 'Andra Pleya-enheter i det här nätverket kan bläddra, strömma och ladda ner dina lokala mappar. Delningen fortsätter i bakgrunden med en avisering.',
+			'pleyaShare.scanningSubnet' => 'Skannar nätverket…',
 			_ => null,
 		};
 	}

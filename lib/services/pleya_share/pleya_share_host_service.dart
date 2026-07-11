@@ -9,8 +9,10 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../media/media_item.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/udp_broadcast_sockets.dart';
+import '../../i18n/strings.g.dart';
 import '../local_folder_client.dart';
 import 'pleya_share_byte_source.dart';
+import 'pleya_share_foreground.dart';
 import 'pleya_share_pairing.dart';
 import 'pleya_share_protocol.dart';
 
@@ -100,8 +102,13 @@ class PleyaShareHostService extends ChangeNotifier {
 
     regeneratePairCode(notify: false);
     await _startBeacon();
-    // The server dies when the OS suspends the app; keep the screen awake
-    // for as long as sharing is on (released again in [stop]).
+    // Android: a native foreground service (notification + wifi/wake locks)
+    // keeps the server alive in the background. Elsewhere the OS suspends
+    // backgrounded apps, so keep the screen awake while sharing is on.
+    await PleyaShareForeground.start(
+      title: t.pleyaShare.notificationTitle,
+      text: t.pleyaShare.notificationText,
+    );
     try {
       await WakelockPlus.enable();
     } catch (_) {}
@@ -120,6 +127,7 @@ class PleyaShareHostService extends ChangeNotifier {
     _challenges.clear();
     _pairCode = null;
     _pairSalt = null;
+    await PleyaShareForeground.stop();
     try {
       await WakelockPlus.disable();
     } catch (_) {}

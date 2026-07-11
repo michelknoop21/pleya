@@ -1696,6 +1696,10 @@ class _TranslationsPleyaShareDe extends TranslationsPleyaShareEn {
 	@override String paired({required Object name}) => 'Verbunden mit ${name}';
 	@override String get pairUnreachable => 'Host nicht erreichbar. Prüfe Adresse und Netzwerk.';
 	@override String get addFolder => 'Lokalen Ordner hinzufügen';
+	@override String get notificationTitle => 'Medien werden geteilt';
+	@override String get notificationText => 'Andere Pleya-Geräte können deine lokalen Ordner streamen';
+	@override String get hostDescriptionAndroid => 'Andere Pleya-Geräte in diesem Netzwerk können deine lokalen Ordner durchsuchen, streamen und herunterladen. Das Teilen läuft mit einer Benachrichtigung im Hintergrund weiter.';
+	@override String get scanningSubnet => 'Netzwerk wird gescannt…';
 }
 
 // Path: hotkeys.actions
@@ -3305,6 +3309,10 @@ extension on TranslationsDe {
 			'pleyaShare.paired' => ({required Object name}) => 'Verbunden mit ${name}',
 			'pleyaShare.pairUnreachable' => 'Host nicht erreichbar. Prüfe Adresse und Netzwerk.',
 			'pleyaShare.addFolder' => 'Lokalen Ordner hinzufügen',
+			'pleyaShare.notificationTitle' => 'Medien werden geteilt',
+			'pleyaShare.notificationText' => 'Andere Pleya-Geräte können deine lokalen Ordner streamen',
+			'pleyaShare.hostDescriptionAndroid' => 'Andere Pleya-Geräte in diesem Netzwerk können deine lokalen Ordner durchsuchen, streamen und herunterladen. Das Teilen läuft mit einer Benachrichtigung im Hintergrund weiter.',
+			'pleyaShare.scanningSubnet' => 'Netzwerk wird gescannt…',
 			_ => null,
 		};
 	}

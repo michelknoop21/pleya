@@ -1696,6 +1696,10 @@ class _TranslationsPleyaShareZh extends TranslationsPleyaShareEn {
 	@override String paired({required Object name}) => '已连接到 ${name}';
 	@override String get pairUnreachable => '无法连接主机。请检查地址和网络。';
 	@override String get addFolder => '添加本地文件夹';
+	@override String get notificationTitle => '正在共享媒体';
+	@override String get notificationText => '其他 Pleya 设备可以串流你的本地文件夹';
+	@override String get hostDescriptionAndroid => '此网络上的其他 Pleya 设备可以浏览、串流和下载你的本地文件夹。共享会在后台继续运行并显示通知。';
+	@override String get scanningSubnet => '正在扫描网络…';
 }
 
 // Path: hotkeys.actions
@@ -3305,6 +3309,10 @@ extension on TranslationsZh {
 			'pleyaShare.paired' => ({required Object name}) => '已连接到 ${name}',
 			'pleyaShare.pairUnreachable' => '无法连接主机。请检查地址和网络。',
 			'pleyaShare.addFolder' => '添加本地文件夹',
+			'pleyaShare.notificationTitle' => '正在共享媒体',
+			'pleyaShare.notificationText' => '其他 Pleya 设备可以串流你的本地文件夹',
+			'pleyaShare.hostDescriptionAndroid' => '此网络上的其他 Pleya 设备可以浏览、串流和下载你的本地文件夹。共享会在后台继续运行并显示通知。',
+			'pleyaShare.scanningSubnet' => '正在扫描网络…',
 			_ => null,
 		};
 	}

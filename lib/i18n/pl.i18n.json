@@ -1437,6 +1437,10 @@
     "pairFailed": "Parowanie nie powiodło się. Sprawdź kod i spróbuj ponownie.",
     "paired": "Połączono z $name",
     "pairUnreachable": "Host jest nieosiągalny. Sprawdź adres i sieć.",
-    "addFolder": "Dodaj folder lokalny"
+    "addFolder": "Dodaj folder lokalny",
+    "notificationTitle": "Udostępnianie multimediów",
+    "notificationText": "Inne urządzenia Pleya mogą streamować twoje lokalne foldery",
+    "hostDescriptionAndroid": "Inne urządzenia Pleya w tej sieci mogą przeglądać, odtwarzać i pobierać twoje lokalne foldery. Udostępnianie działa dalej w tle z powiadomieniem.",
+    "scanningSubnet": "Skanowanie sieci…"
   }
 }

@@ -1696,6 +1696,10 @@ class _TranslationsPleyaShareFr extends TranslationsPleyaShareEn {
 	@override String paired({required Object name}) => 'Connecté à ${name}';
 	@override String get pairUnreachable => 'Hôte injoignable. Vérifiez l\'adresse et le réseau.';
 	@override String get addFolder => 'Ajouter un dossier local';
+	@override String get notificationTitle => 'Partage de médias actif';
+	@override String get notificationText => 'Les autres appareils Pleya peuvent diffuser vos dossiers locaux';
+	@override String get hostDescriptionAndroid => 'Les autres appareils Pleya de ce réseau peuvent parcourir, diffuser et télécharger vos dossiers locaux. Le partage continue en arrière-plan avec une notification.';
+	@override String get scanningSubnet => 'Analyse du réseau…';
 }
 
 // Path: hotkeys.actions
@@ -3305,6 +3309,10 @@ extension on TranslationsFr {
 			'pleyaShare.paired' => ({required Object name}) => 'Connecté à ${name}',
 			'pleyaShare.pairUnreachable' => 'Hôte injoignable. Vérifiez l\'adresse et le réseau.',
 			'pleyaShare.addFolder' => 'Ajouter un dossier local',
+			'pleyaShare.notificationTitle' => 'Partage de médias actif',
+			'pleyaShare.notificationText' => 'Les autres appareils Pleya peuvent diffuser vos dossiers locaux',
+			'pleyaShare.hostDescriptionAndroid' => 'Les autres appareils Pleya de ce réseau peuvent parcourir, diffuser et télécharger vos dossiers locaux. Le partage continue en arrière-plan avec une notification.',
+			'pleyaShare.scanningSubnet' => 'Analyse du réseau…',
 			_ => null,
 		};
 	}

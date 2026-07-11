@@ -1696,6 +1696,10 @@ class _TranslationsPleyaShareNb extends TranslationsPleyaShareEn {
 	@override String paired({required Object name}) => 'Koblet til ${name}';
 	@override String get pairUnreachable => 'Verten er ikke tilgjengelig. Sjekk adressen og nettverket.';
 	@override String get addFolder => 'Legg til lokal mappe';
+	@override String get notificationTitle => 'Deler medier';
+	@override String get notificationText => 'Andre Pleya-enheter kan strømme de lokale mappene dine';
+	@override String get hostDescriptionAndroid => 'Andre Pleya-enheter på dette nettverket kan bla i, strømme og laste ned de lokale mappene dine. Delingen fortsetter i bakgrunnen med et varsel.';
+	@override String get scanningSubnet => 'Skanner nettverket…';
 }
 
 // Path: hotkeys.actions
@@ -3305,6 +3309,10 @@ extension on TranslationsNb {
 			'pleyaShare.paired' => ({required Object name}) => 'Koblet til ${name}',
 			'pleyaShare.pairUnreachable' => 'Verten er ikke tilgjengelig. Sjekk adressen og nettverket.',
 			'pleyaShare.addFolder' => 'Legg til lokal mappe',
+			'pleyaShare.notificationTitle' => 'Deler medier',
+			'pleyaShare.notificationText' => 'Andre Pleya-enheter kan strømme de lokale mappene dine',
+			'pleyaShare.hostDescriptionAndroid' => 'Andre Pleya-enheter på dette nettverket kan bla i, strømme og laste ned de lokale mappene dine. Delingen fortsetter i bakgrunnen med et varsel.',
+			'pleyaShare.scanningSubnet' => 'Skanner nettverket…',
 			_ => null,
 		};
 	}

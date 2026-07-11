@@ -1437,6 +1437,10 @@
     "pairFailed": "Falha no emparelhamento. Verifique o código e tente novamente.",
     "paired": "Ligado a $name",
     "pairUnreachable": "Host inacessível. Verifique o endereço e a rede.",
-    "addFolder": "Adicionar pasta local"
+    "addFolder": "Adicionar pasta local",
+    "notificationTitle": "A partilhar conteúdos",
+    "notificationText": "Outros dispositivos Pleya podem transmitir as suas pastas locais",
+    "hostDescriptionAndroid": "Outros dispositivos Pleya nesta rede podem navegar, transmitir e transferir as suas pastas locais. A partilha continua em segundo plano com uma notificação.",
+    "scanningSubnet": "A analisar a rede…"
   }
 }

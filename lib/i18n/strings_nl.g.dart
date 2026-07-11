@@ -1763,6 +1763,10 @@ class _TranslationsPleyaShareNl extends TranslationsPleyaShareEn {
 	@override String paired({required Object name}) => 'Verbonden met ${name}';
 	@override String get pairUnreachable => 'Host niet bereikbaar. Controleer het adres en het netwerk.';
 	@override String get addFolder => 'Lokale map toevoegen';
+	@override String get notificationTitle => 'Media wordt gedeeld';
+	@override String get notificationText => 'Andere Pleya-apparaten kunnen je lokale mappen streamen';
+	@override String get hostDescriptionAndroid => 'Andere Pleya-apparaten op dit netwerk kunnen je lokale mappen bekijken, streamen en downloaden. Delen blijft op de achtergrond draaien met een melding.';
+	@override String get scanningSubnet => 'Netwerk scannen…';
 }
 
 // Path: search.filters
@@ -3479,6 +3483,10 @@ extension on TranslationsNl {
 			'pleyaShare.paired' => ({required Object name}) => 'Verbonden met ${name}',
 			'pleyaShare.pairUnreachable' => 'Host niet bereikbaar. Controleer het adres en het netwerk.',
 			'pleyaShare.addFolder' => 'Lokale map toevoegen',
+			'pleyaShare.notificationTitle' => 'Media wordt gedeeld',
+			'pleyaShare.notificationText' => 'Andere Pleya-apparaten kunnen je lokale mappen streamen',
+			'pleyaShare.hostDescriptionAndroid' => 'Andere Pleya-apparaten op dit netwerk kunnen je lokale mappen bekijken, streamen en downloaden. Delen blijft op de achtergrond draaien met een melding.',
+			'pleyaShare.scanningSubnet' => 'Netwerk scannen…',
 			_ => null,
 		};
 	}

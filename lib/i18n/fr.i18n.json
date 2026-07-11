@@ -1437,6 +1437,10 @@
     "pairFailed": "Échec de l'appairage. Vérifiez le code et réessayez.",
     "paired": "Connecté à $name",
     "pairUnreachable": "Hôte injoignable. Vérifiez l'adresse et le réseau.",
-    "addFolder": "Ajouter un dossier local"
+    "addFolder": "Ajouter un dossier local",
+    "notificationTitle": "Partage de médias actif",
+    "notificationText": "Les autres appareils Pleya peuvent diffuser vos dossiers locaux",
+    "hostDescriptionAndroid": "Les autres appareils Pleya de ce réseau peuvent parcourir, diffuser et télécharger vos dossiers locaux. Le partage continue en arrière-plan avec une notification.",
+    "scanningSubnet": "Analyse du réseau…"
   }
 }

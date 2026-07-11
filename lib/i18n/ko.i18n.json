@@ -1437,6 +1437,10 @@
     "pairFailed": "페어링에 실패했습니다. 코드를 확인하고 다시 시도하세요.",
     "paired": "$name에 연결됨",
     "pairUnreachable": "호스트에 연결할 수 없습니다. 주소와 네트워크를 확인하세요.",
-    "addFolder": "로컬 폴더 추가"
+    "addFolder": "로컬 폴더 추가",
+    "notificationTitle": "미디어 공유 중",
+    "notificationText": "다른 Pleya 기기가 로컬 폴더를 스트리밍할 수 있습니다",
+    "hostDescriptionAndroid": "이 네트워크의 다른 Pleya 기기가 로컬 폴더를 탐색, 스트리밍, 다운로드할 수 있습니다. 공유는 알림과 함께 백그라운드에서 계속됩니다.",
+    "scanningSubnet": "네트워크 검색 중…"
   }
 }

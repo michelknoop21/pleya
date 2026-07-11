@@ -1610,6 +1610,10 @@
     "pairFailed": "Pairing failed. Check the code and try again.",
     "paired": "Connected to $name",
     "pairUnreachable": "Host not reachable. Check the address and network.",
-    "addFolder": "Add a local folder"
+    "addFolder": "Add a local folder",
+    "notificationTitle": "Sharing media",
+    "notificationText": "Other Pleya devices can stream your local folders",
+    "hostDescriptionAndroid": "Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running in the background with a notification.",
+    "scanningSubnet": "Scanning the network…"
   }
 }

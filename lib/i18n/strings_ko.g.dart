@@ -1696,6 +1696,10 @@ class _TranslationsPleyaShareKo extends TranslationsPleyaShareEn {
 	@override String paired({required Object name}) => '${name}에 연결됨';
 	@override String get pairUnreachable => '호스트에 연결할 수 없습니다. 주소와 네트워크를 확인하세요.';
 	@override String get addFolder => '로컬 폴더 추가';
+	@override String get notificationTitle => '미디어 공유 중';
+	@override String get notificationText => '다른 Pleya 기기가 로컬 폴더를 스트리밍할 수 있습니다';
+	@override String get hostDescriptionAndroid => '이 네트워크의 다른 Pleya 기기가 로컬 폴더를 탐색, 스트리밍, 다운로드할 수 있습니다. 공유는 알림과 함께 백그라운드에서 계속됩니다.';
+	@override String get scanningSubnet => '네트워크 검색 중…';
 }
 
 // Path: hotkeys.actions
@@ -3305,6 +3309,10 @@ extension on TranslationsKo {
 			'pleyaShare.paired' => ({required Object name}) => '${name}에 연결됨',
 			'pleyaShare.pairUnreachable' => '호스트에 연결할 수 없습니다. 주소와 네트워크를 확인하세요.',
 			'pleyaShare.addFolder' => '로컬 폴더 추가',
+			'pleyaShare.notificationTitle' => '미디어 공유 중',
+			'pleyaShare.notificationText' => '다른 Pleya 기기가 로컬 폴더를 스트리밍할 수 있습니다',
+			'pleyaShare.hostDescriptionAndroid' => '이 네트워크의 다른 Pleya 기기가 로컬 폴더를 탐색, 스트리밍, 다운로드할 수 있습니다. 공유는 알림과 함께 백그라운드에서 계속됩니다.',
+			'pleyaShare.scanningSubnet' => '네트워크 검색 중…',
 			_ => null,
 		};
 	}

@@ -1437,6 +1437,10 @@
     "pairFailed": "Error al emparejar. Comprueba el código e inténtalo de nuevo.",
     "paired": "Conectado a $name",
     "pairUnreachable": "Host no accesible. Comprueba la dirección y la red.",
-    "addFolder": "Añadir carpeta local"
+    "addFolder": "Añadir carpeta local",
+    "notificationTitle": "Compartiendo medios",
+    "notificationText": "Otros dispositivos Pleya pueden transmitir tus carpetas locales",
+    "hostDescriptionAndroid": "Otros dispositivos Pleya en esta red pueden explorar, transmitir y descargar tus carpetas locales. Compartir sigue funcionando en segundo plano con una notificación.",
+    "scanningSubnet": "Escaneando la red…"
   }
 }

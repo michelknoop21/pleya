@@ -1512,6 +1512,10 @@
     "pairFailed": "Koppelen mislukt. Controleer de code en probeer opnieuw.",
     "paired": "Verbonden met $name",
     "pairUnreachable": "Host niet bereikbaar. Controleer het adres en het netwerk.",
-    "addFolder": "Lokale map toevoegen"
+    "addFolder": "Lokale map toevoegen",
+    "notificationTitle": "Media wordt gedeeld",
+    "notificationText": "Andere Pleya-apparaten kunnen je lokale mappen streamen",
+    "hostDescriptionAndroid": "Andere Pleya-apparaten op dit netwerk kunnen je lokale mappen bekijken, streamen en downloaden. Delen blijft op de achtergrond draaien met een melding.",
+    "scanningSubnet": "Netwerk scannen…"
   }
 }

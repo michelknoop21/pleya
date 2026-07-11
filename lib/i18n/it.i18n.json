@@ -1437,6 +1437,10 @@
     "pairFailed": "Associazione non riuscita. Controlla il codice e riprova.",
     "paired": "Connesso a $name",
     "pairUnreachable": "Host non raggiungibile. Controlla l'indirizzo e la rete.",
-    "addFolder": "Aggiungi cartella locale"
+    "addFolder": "Aggiungi cartella locale",
+    "notificationTitle": "Condivisione contenuti attiva",
+    "notificationText": "Gli altri dispositivi Pleya possono riprodurre le tue cartelle locali",
+    "hostDescriptionAndroid": "Gli altri dispositivi Pleya su questa rete possono sfogliare, riprodurre e scaricare le tue cartelle locali. La condivisione continua in background con una notifica.",
+    "scanningSubnet": "Scansione della rete…"
   }
 }

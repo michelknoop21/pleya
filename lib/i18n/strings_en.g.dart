@@ -4504,6 +4504,18 @@ class TranslationsPleyaShareEn {
 
 	/// en: 'Add a local folder'
 	String get addFolder => 'Add a local folder';
+
+	/// en: 'Sharing media'
+	String get notificationTitle => 'Sharing media';
+
+	/// en: 'Other Pleya devices can stream your local folders'
+	String get notificationText => 'Other Pleya devices can stream your local folders';
+
+	/// en: 'Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running in the background with a notification.'
+	String get hostDescriptionAndroid => 'Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running in the background with a notification.';
+
+	/// en: 'Scanning the network…'
+	String get scanningSubnet => 'Scanning the network…';
 }
 
 // Path: search.filters
@@ -6648,6 +6660,10 @@ extension on Translations {
 			'pleyaShare.paired' => ({required Object name}) => 'Connected to ${name}',
 			'pleyaShare.pairUnreachable' => 'Host not reachable. Check the address and network.',
 			'pleyaShare.addFolder' => 'Add a local folder',
+			'pleyaShare.notificationTitle' => 'Sharing media',
+			'pleyaShare.notificationText' => 'Other Pleya devices can stream your local folders',
+			'pleyaShare.hostDescriptionAndroid' => 'Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running in the background with a notification.',
+			'pleyaShare.scanningSubnet' => 'Scanning the network…',
 			_ => null,
 		};
 	}

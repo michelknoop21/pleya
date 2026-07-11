@@ -1437,6 +1437,10 @@
     "pairFailed": "配对失败。请检查配对码后重试。",
     "paired": "已连接到 $name",
     "pairUnreachable": "无法连接主机。请检查地址和网络。",
-    "addFolder": "添加本地文件夹"
+    "addFolder": "添加本地文件夹",
+    "notificationTitle": "正在共享媒体",
+    "notificationText": "其他 Pleya 设备可以串流你的本地文件夹",
+    "hostDescriptionAndroid": "此网络上的其他 Pleya 设备可以浏览、串流和下载你的本地文件夹。共享会在后台继续运行并显示通知。",
+    "scanningSubnet": "正在扫描网络…"
   }
 }

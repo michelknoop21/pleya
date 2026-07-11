@@ -1696,6 +1696,10 @@ class _TranslationsPleyaShareEs extends TranslationsPleyaShareEn {
 	@override String paired({required Object name}) => 'Conectado a ${name}';
 	@override String get pairUnreachable => 'Host no accesible. Comprueba la dirección y la red.';
 	@override String get addFolder => 'Añadir carpeta local';
+	@override String get notificationTitle => 'Compartiendo medios';
+	@override String get notificationText => 'Otros dispositivos Pleya pueden transmitir tus carpetas locales';
+	@override String get hostDescriptionAndroid => 'Otros dispositivos Pleya en esta red pueden explorar, transmitir y descargar tus carpetas locales. Compartir sigue funcionando en segundo plano con una notificación.';
+	@override String get scanningSubnet => 'Escaneando la red…';
 }
 
 // Path: hotkeys.actions
@@ -3305,6 +3309,10 @@ extension on TranslationsEs {
 			'pleyaShare.paired' => ({required Object name}) => 'Conectado a ${name}',
 			'pleyaShare.pairUnreachable' => 'Host no accesible. Comprueba la dirección y la red.',
 			'pleyaShare.addFolder' => 'Añadir carpeta local',
+			'pleyaShare.notificationTitle' => 'Compartiendo medios',
+			'pleyaShare.notificationText' => 'Otros dispositivos Pleya pueden transmitir tus carpetas locales',
+			'pleyaShare.hostDescriptionAndroid' => 'Otros dispositivos Pleya en esta red pueden explorar, transmitir y descargar tus carpetas locales. Compartir sigue funcionando en segundo plano con una notificación.',
+			'pleyaShare.scanningSubnet' => 'Escaneando la red…',
 			_ => null,
 		};
 	}

@@ -1696,6 +1696,10 @@ class _TranslationsPleyaShareRu extends TranslationsPleyaShareEn {
 	@override String paired({required Object name}) => 'Подключено к ${name}';
 	@override String get pairUnreachable => 'Хост недоступен. Проверьте адрес и сеть.';
 	@override String get addFolder => 'Добавить локальную папку';
+	@override String get notificationTitle => 'Идёт общий доступ к медиа';
+	@override String get notificationText => 'Другие устройства Pleya могут стримить ваши локальные папки';
+	@override String get hostDescriptionAndroid => 'Другие устройства Pleya в этой сети могут просматривать, воспроизводить и скачивать ваши локальные папки. Общий доступ продолжает работать в фоне с уведомлением.';
+	@override String get scanningSubnet => 'Сканирование сети…';
 }
 
 // Path: hotkeys.actions
@@ -3305,6 +3309,10 @@ extension on TranslationsRu {
 			'pleyaShare.paired' => ({required Object name}) => 'Подключено к ${name}',
 			'pleyaShare.pairUnreachable' => 'Хост недоступен. Проверьте адрес и сеть.',
 			'pleyaShare.addFolder' => 'Добавить локальную папку',
+			'pleyaShare.notificationTitle' => 'Идёт общий доступ к медиа',
+			'pleyaShare.notificationText' => 'Другие устройства Pleya могут стримить ваши локальные папки',
+			'pleyaShare.hostDescriptionAndroid' => 'Другие устройства Pleya в этой сети могут просматривать, воспроизводить и скачивать ваши локальные папки. Общий доступ продолжает работать в фоне с уведомлением.',
+			'pleyaShare.scanningSubnet' => 'Сканирование сети…',
 			_ => null,
 		};
 	}

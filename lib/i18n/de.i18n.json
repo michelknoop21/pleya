@@ -1437,6 +1437,10 @@
     "pairFailed": "Kopplung fehlgeschlagen. Prüfe den Code und versuche es erneut.",
     "paired": "Verbunden mit $name",
     "pairUnreachable": "Host nicht erreichbar. Prüfe Adresse und Netzwerk.",
-    "addFolder": "Lokalen Ordner hinzufügen"
+    "addFolder": "Lokalen Ordner hinzufügen",
+    "notificationTitle": "Medien werden geteilt",
+    "notificationText": "Andere Pleya-Geräte können deine lokalen Ordner streamen",
+    "hostDescriptionAndroid": "Andere Pleya-Geräte in diesem Netzwerk können deine lokalen Ordner durchsuchen, streamen und herunterladen. Das Teilen läuft mit einer Benachrichtigung im Hintergrund weiter.",
+    "scanningSubnet": "Netzwerk wird gescannt…"
   }
 }

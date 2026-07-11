@@ -31,6 +31,7 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
   Future<List<DiscoveredShareHost>>? _discovery;
   int _selectedPort = PleyaShareProtocol.sharePort;
   bool _busy = false;
+  bool _scanningSubnet = false;
 
   @override
   void initState() {
@@ -46,7 +47,23 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
   }
 
   void _refresh() {
-    setState(() => _discovery = PleyaShareChannel.discoverHosts());
+    setState(() {
+      _scanningSubnet = false;
+      _discovery = _discover();
+    });
+  }
+
+  /// Beacons + gateway-probe first; when that comes up empty (hotspot AP
+  /// isolation with a third-device host) fall through to a full subnet scan.
+  Future<List<DiscoveredShareHost>> _discover() async {
+    final viaBeacons = await PleyaShareChannel.discoverHosts();
+    if (viaBeacons.isNotEmpty) return viaBeacons;
+    if (mounted) setState(() => _scanningSubnet = true);
+    try {
+      return await PleyaShareChannel.scanSubnet();
+    } finally {
+      if (mounted) setState(() => _scanningSubnet = false);
+    }
   }
 
   void _selectHost(DiscoveredShareHost host) {
@@ -149,7 +166,10 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
                         children: [
                           const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                           const SizedBox(width: 12),
-                          Text(t.pleyaShare.searching, style: theme.textTheme.bodySmall),
+                          Text(
+                            _scanningSubnet ? t.pleyaShare.scanningSubnet : t.pleyaShare.searching,
+                            style: theme.textTheme.bodySmall,
+                          ),
                         ],
                       ),
                     );

@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -67,7 +67,7 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      t.pleyaShare.hostDescription,
+                      Platform.isAndroid ? t.pleyaShare.hostDescriptionAndroid : t.pleyaShare.hostDescription,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       ),

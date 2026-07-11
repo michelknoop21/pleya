@@ -42,6 +42,7 @@ import nl.michelknoop.pleya.exoplayer.ExoPlayerPlugin
 import nl.michelknoop.pleya.mpv.MpvPlayerPlugin
 import nl.michelknoop.pleya.shared.DeviceQuirks
 import nl.michelknoop.pleya.shared.ThemeHelper
+import nl.michelknoop.pleya.share.PleyaShareService
 import nl.michelknoop.pleya.watchnext.WatchNextPlugin
 
 class MainActivity : FlutterActivity() {
@@ -81,6 +82,7 @@ class MainActivity : FlutterActivity() {
   private val EXTERNAL_PLAYER_CHANNEL = "com.pleya/external_player"
   private val THEME_CHANNEL = "com.pleya/theme"
   private val DEVICE_CHANNEL = "com.pleya/device"
+  private val SHARE_SERVICE_CHANNEL = "com.pleya/share_service"
   private val DEVICE_ADJUSTMENT_CHANNEL = "com.pleya/device_adjustment"
   private val TEXT_INPUT_CHANNEL = "com.pleya/text_input"
   private val APP_EXIT_CHANNEL = "com.pleya/app_exit"
@@ -455,6 +457,24 @@ class MainActivity : FlutterActivity() {
     super.configureFlutterEngine(flutterEngine)
     flutterEngine.plugins.add(MpvPlayerPlugin())
     flutterEngine.plugins.add(ExoPlayerPlugin())
+
+    MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SHARE_SERVICE_CHANNEL).setMethodCallHandler { call, result ->
+      when (call.method) {
+        "start" -> {
+          PleyaShareService.start(
+            this,
+            call.argument<String>("title") ?: "Pleya Share",
+            call.argument<String>("text") ?: "",
+          )
+          result.success(null)
+        }
+        "stop" -> {
+          PleyaShareService.stop(this)
+          result.success(null)
+        }
+        else -> result.notImplemented()
+      }
+    }
 
     MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEVICE_CHANNEL).setMethodCallHandler { call, result ->
       when (call.method) {

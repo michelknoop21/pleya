@@ -78,6 +78,17 @@ class PleyaShareChannel {
         yield (base: base, ip: host.ip, port: host.port);
       }
     }
+    // Last resort: the subnet gateways. On a personal hotspot the host IS the
+    // gateway (iOS hotspot: 172.20.10.1) and AP isolation eats the beacons.
+    for (final ip in await _localGatewayCandidates()) {
+      final host = await probeHost(ip, connection.port);
+      if (host != null) {
+        final base = 'http://${host.ip}:${host.port}';
+        if (seen.add(base)) {
+          yield (base: base, ip: host.ip, port: host.port);
+        }
+      }
+    }
   }
 
   /// Move a freshly confirmed IP to the front of [connection.lastKnownIps]
@@ -240,6 +251,102 @@ class PleyaShareChannel {
     return _discoveryInFlight ??= _discoverHosts(timeout: timeout).whenComplete(() => _discoveryInFlight = null);
   }
 
+  /// Derive `.1` gateway candidates from this device's own IPv4 addresses.
+  /// Pure and testable; excludes the device's own addresses.
+  static List<String> gatewayCandidatesFrom(List<String> ownIps) {
+    final candidates = <String>{};
+    for (final ip in ownIps) {
+      final parts = ip.split('.');
+      if (parts.length != 4) continue;
+      final gateway = '${parts[0]}.${parts[1]}.${parts[2]}.1';
+      if (!ownIps.contains(gateway)) candidates.add(gateway);
+    }
+    return candidates.toList();
+  }
+
+  static Future<List<String>> _localGatewayCandidates() async {
+    try {
+      final interfaces = await NetworkInterface.list(
+        includeLinkLocal: false,
+        includeLoopback: false,
+        type: InternetAddressType.IPv4,
+      );
+      final ownIps = [
+        for (final iface in interfaces)
+          for (final addr in iface.addresses) addr.address,
+      ];
+      return gatewayCandidatesFrom(ownIps);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Unicast /info probe — works where UDP broadcast is filtered (hotspot
+  /// AP isolation). Returns null when [ip] isn't a Pleya Share host.
+  static Future<DiscoveredShareHost?> probeHost(String ip, int port, {Duration timeout = const Duration(milliseconds: 500)}) async {
+    final http = HttpClient()..connectionTimeout = timeout;
+    try {
+      final request = await http.getUrl(Uri.parse('http://$ip:$port/info'));
+      final response = await request.close().timeout(timeout + const Duration(milliseconds: 500));
+      final text = await utf8.decoder.bind(response).join();
+      if (response.statusCode != HttpStatus.ok) return null;
+      final info = jsonDecode(text) as Map<String, dynamic>;
+      if (info['app'] != PleyaShareProtocol.beaconApp) return null;
+      return DiscoveredShareHost(
+        name: info['name'] as String? ?? 'Pleya',
+        ip: ip,
+        port: port,
+        seenAt: DateTime.now(),
+      );
+    } catch (_) {
+      return null;
+    } finally {
+      http.close(force: true);
+    }
+  }
+
+  /// Sweep every /24 this device sits in with unicast /info probes. For
+  /// networks whose AP isolation blocks broadcast AND where the host is not
+  /// the gateway. ~3s worst case (concurrency 48, 400ms per probe).
+  static Future<List<DiscoveredShareHost>> scanSubnet({int port = PleyaShareProtocol.sharePort}) async {
+    final List<String> ownIps;
+    try {
+      final interfaces = await NetworkInterface.list(
+        includeLinkLocal: false,
+        includeLoopback: false,
+        type: InternetAddressType.IPv4,
+      );
+      ownIps = [
+        for (final iface in interfaces)
+          for (final addr in iface.addresses) addr.address,
+      ];
+    } catch (_) {
+      return const [];
+    }
+    final targets = <String>{};
+    for (final ip in ownIps) {
+      final parts = ip.split('.');
+      if (parts.length != 4) continue;
+      final prefix = '${parts[0]}.${parts[1]}.${parts[2]}';
+      for (var i = 1; i <= 254; i++) {
+        final candidate = '$prefix.$i';
+        if (!ownIps.contains(candidate)) targets.add(candidate);
+      }
+    }
+    final found = <DiscoveredShareHost>[];
+    final queue = targets.toList();
+    Future<void> worker() async {
+      while (queue.isNotEmpty) {
+        final ip = queue.removeLast();
+        final host = await probeHost(ip, port, timeout: const Duration(milliseconds: 400));
+        if (host != null) found.add(host);
+      }
+    }
+
+    await Future.wait([for (var i = 0; i < 48; i++) worker()]);
+    return found;
+  }
+
   static Future<List<DiscoveredShareHost>> _discoverHosts({required Duration timeout}) async {
     final hosts = <String, DiscoveredShareHost>{};
     RawDatagramSocket? socket;
@@ -269,6 +376,13 @@ class PleyaShareChannel {
       appLogger.d('PleyaShare: discovery failed', error: e);
     } finally {
       socket?.close();
+    }
+    // Hotspot fallback: AP isolation drops beacons, but the hotspot device is
+    // always the gateway — probe the .1 of every subnet we're on directly.
+    for (final ip in await _localGatewayCandidates()) {
+      if (hosts.containsKey(ip)) continue;
+      final probed = await probeHost(ip, PleyaShareProtocol.sharePort);
+      if (probed != null) hosts[ip] = probed;
     }
     return hosts.values.toList();
   }

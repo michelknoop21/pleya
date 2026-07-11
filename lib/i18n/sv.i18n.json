@@ -1437,6 +1437,10 @@
     "pairFailed": "Parkopplingen misslyckades. Kontrollera koden och försök igen.",
     "paired": "Ansluten till $name",
     "pairUnreachable": "Värden kan inte nås. Kontrollera adressen och nätverket.",
-    "addFolder": "Lägg till lokal mapp"
+    "addFolder": "Lägg till lokal mapp",
+    "notificationTitle": "Delar medier",
+    "notificationText": "Andra Pleya-enheter kan strömma dina lokala mappar",
+    "hostDescriptionAndroid": "Andra Pleya-enheter i det här nätverket kan bläddra, strömma och ladda ner dina lokala mappar. Delningen fortsätter i bakgrunden med en avisering.",
+    "scanningSubnet": "Skannar nätverket…"
   }
 }

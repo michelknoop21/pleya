@@ -1696,6 +1696,10 @@ class _TranslationsPleyaShareBg extends TranslationsPleyaShareEn {
 	@override String paired({required Object name}) => 'Свързано с ${name}';
 	@override String get pairUnreachable => 'Хостът е недостъпен. Проверете адреса и мрежата.';
 	@override String get addFolder => 'Добавяне на локална папка';
+	@override String get notificationTitle => 'Споделяне на медия';
+	@override String get notificationText => 'Други устройства Pleya могат да стриймват локалните ви папки';
+	@override String get hostDescriptionAndroid => 'Други устройства Pleya в тази мрежа могат да разглеждат, стриймват и изтеглят локалните ви папки. Споделянето продължава във фонов режим с известие.';
+	@override String get scanningSubnet => 'Сканиране на мрежата…';
 }
 
 // Path: hotkeys.actions
@@ -3305,6 +3309,10 @@ extension on TranslationsBg {
 			'pleyaShare.paired' => ({required Object name}) => 'Свързано с ${name}',
 			'pleyaShare.pairUnreachable' => 'Хостът е недостъпен. Проверете адреса и мрежата.',
 			'pleyaShare.addFolder' => 'Добавяне на локална папка',
+			'pleyaShare.notificationTitle' => 'Споделяне на медия',
+			'pleyaShare.notificationText' => 'Други устройства Pleya могат да стриймват локалните ви папки',
+			'pleyaShare.hostDescriptionAndroid' => 'Други устройства Pleya в тази мрежа могат да разглеждат, стриймват и изтеглят локалните ви папки. Споделянето продължава във фонов режим с известие.',
+			'pleyaShare.scanningSubnet' => 'Сканиране на мрежата…',
 			_ => null,
 		};
 	}

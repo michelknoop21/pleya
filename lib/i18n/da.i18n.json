@@ -1437,6 +1437,10 @@
     "pairFailed": "Parring mislykkedes. Tjek koden, og prøv igen.",
     "paired": "Forbundet til $name",
     "pairUnreachable": "Værten kan ikke nås. Tjek adressen og netværket.",
-    "addFolder": "Tilføj lokal mappe"
+    "addFolder": "Tilføj lokal mappe",
+    "notificationTitle": "Deler medier",
+    "notificationText": "Andre Pleya-enheder kan streame dine lokale mapper",
+    "hostDescriptionAndroid": "Andre Pleya-enheder på dette netværk kan gennemse, streame og downloade dine lokale mapper. Delingen fortsætter i baggrunden med en notifikation.",
+    "scanningSubnet": "Scanner netværket…"
   }
 }

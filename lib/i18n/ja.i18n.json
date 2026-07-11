@@ -1437,6 +1437,10 @@
     "pairFailed": "ペアリングに失敗しました。コードを確認してもう一度お試しください。",
     "paired": "$name に接続しました",
     "pairUnreachable": "ホストに接続できません。アドレスとネットワークを確認してください。",
-    "addFolder": "ローカルフォルダーを追加"
+    "addFolder": "ローカルフォルダーを追加",
+    "notificationTitle": "メディアを共有中",
+    "notificationText": "他のPleyaデバイスがローカルフォルダーをストリーミングできます",
+    "hostDescriptionAndroid": "このネットワーク上の他のPleyaデバイスが、ローカルフォルダーの閲覧・ストリーミング・ダウンロードを行えます。共有は通知とともにバックグラウンドで継続されます。",
+    "scanningSubnet": "ネットワークをスキャン中…"
   }
 }

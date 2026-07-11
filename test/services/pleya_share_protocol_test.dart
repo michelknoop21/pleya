@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/services/pleya_share/pleya_share_channel.dart';
 import 'package:pleya/services/pleya_share/pleya_share_pairing.dart';
 import 'package:pleya/services/pleya_share/pleya_share_protocol.dart';
 
@@ -138,6 +139,23 @@ void main() {
       for (var i = 0; i < 50; i++) {
         expect(PleyaSharePairing.generatePairCode(), matches(RegExp(r'^\d{6}$')));
       }
+    });
+  });
+
+  group('gatewayCandidatesFrom', () {
+    test('derives .1 per /24, deduped, excluding own addresses', () {
+      expect(
+        PleyaShareChannel.gatewayCandidatesFrom(['172.20.10.4', '172.20.10.9', '192.168.1.23']),
+        ['172.20.10.1', '192.168.1.1'],
+      );
+    });
+
+    test('own address on .1 is excluded (device itself is the gateway)', () {
+      expect(PleyaShareChannel.gatewayCandidatesFrom(['192.168.43.1']), isEmpty);
+    });
+
+    test('garbage input yields nothing', () {
+      expect(PleyaShareChannel.gatewayCandidatesFrom(['not-an-ip', '']), isEmpty);
     });
   });
 

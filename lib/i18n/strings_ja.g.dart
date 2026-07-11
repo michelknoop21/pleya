@@ -1696,6 +1696,10 @@ class _TranslationsPleyaShareJa extends TranslationsPleyaShareEn {
 	@override String paired({required Object name}) => '${name} に接続しました';
 	@override String get pairUnreachable => 'ホストに接続できません。アドレスとネットワークを確認してください。';
 	@override String get addFolder => 'ローカルフォルダーを追加';
+	@override String get notificationTitle => 'メディアを共有中';
+	@override String get notificationText => '他のPleyaデバイスがローカルフォルダーをストリーミングできます';
+	@override String get hostDescriptionAndroid => 'このネットワーク上の他のPleyaデバイスが、ローカルフォルダーの閲覧・ストリーミング・ダウンロードを行えます。共有は通知とともにバックグラウンドで継続されます。';
+	@override String get scanningSubnet => 'ネットワークをスキャン中…';
 }
 
 // Path: hotkeys.actions
@@ -3305,6 +3309,10 @@ extension on TranslationsJa {
 			'pleyaShare.paired' => ({required Object name}) => '${name} に接続しました',
 			'pleyaShare.pairUnreachable' => 'ホストに接続できません。アドレスとネットワークを確認してください。',
 			'pleyaShare.addFolder' => 'ローカルフォルダーを追加',
+			'pleyaShare.notificationTitle' => 'メディアを共有中',
+			'pleyaShare.notificationText' => '他のPleyaデバイスがローカルフォルダーをストリーミングできます',
+			'pleyaShare.hostDescriptionAndroid' => 'このネットワーク上の他のPleyaデバイスが、ローカルフォルダーの閲覧・ストリーミング・ダウンロードを行えます。共有は通知とともにバックグラウンドで継続されます。',
+			'pleyaShare.scanningSubnet' => 'ネットワークをスキャン中…',
 			_ => null,
 		};
 	}
