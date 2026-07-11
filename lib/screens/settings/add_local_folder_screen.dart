@@ -9,7 +9,8 @@ import '../../widgets/focused_scroll_scaffold.dart';
 import '../../connection/connection.dart';
 import '../../profiles/profile.dart';
 import '../../profiles/profile_connection.dart';
-import '../../services/multi_server_manager.dart';
+import '../../providers/multi_server_provider.dart';
+
 import 'connection_persistence.dart';
 
 /// Screen for adding a local folder as a media source.
@@ -170,7 +171,7 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
         connection: connection,
         bindToProfile: bindToProfile,
         addToManager: () async {
-          final manager = context.read<MultiServerManager>();
+          final manager = context.read<MultiServerProvider>().serverManager;
           return manager.addLocalSource(connection);
         },
         visibleServerId: connection.id,
