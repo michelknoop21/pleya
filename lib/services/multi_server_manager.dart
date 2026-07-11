@@ -11,6 +11,7 @@ import '../services/api_cache.dart';
 import 'jellyfin_client.dart';
 import 'jellyfin_endpoint_discovery.dart';
 import 'local_folder_client.dart';
+import 'pleya_share/pleya_share_client.dart';
 import 'plex_client.dart';
 import '../models/plex/plex_config.dart';
 import '../utils/app_logger.dart';
@@ -640,6 +641,39 @@ class MultiServerManager {
       return false;
     }
   }
+
+  /// Add a paired Pleya Share host as a media source. Health follows the
+  /// host's reachability; the client itself falls back to its persisted
+  /// catalog when the host is offline.
+  Future<bool> addPleyaShareSource(PleyaShareConnection connection) async {
+    try {
+      final cache = ApiCache.forBackend(MediaBackend.plex);
+      final client = PleyaShareClient(connection: connection, cache: cache);
+      final oldClient = _clients[connection.id];
+      if (oldClient != null) _closeClient(oldClient);
+      _clients[connection.id] = client;
+      _serverStatus[connection.id] = true;
+      _statusController.add(Map.from(_serverStatus));
+      _connectProgressController.add((serverId: connection.id, online: true));
+      appLogger.i('Added Pleya Share source: ${connection.hostName}');
+      return true;
+    } catch (e, stackTrace) {
+      appLogger.e('Failed to add Pleya Share source ${connection.hostName}', error: e, stackTrace: stackTrace);
+      return false;
+    }
+  }
+
+  /// Tear down a Pleya Share source's runtime client.
+  void removePleyaShareSource(PleyaShareConnection connection) {
+    final client = _clients.remove(connection.id);
+    if (client != null) _closeClient(client);
+    _serverStatus.remove(connection.id);
+    _statusController.add(Map.from(_serverStatus));
+  }
+
+  /// All registered local folder clients — the sources Pleya Share hosting
+  /// serves to guests.
+  List<LocalFolderClient> get localFolderClients => _clients.values.whereType<LocalFolderClient>().toList();
 
   /// Tear down a local folder source's runtime client.
   void removeLocalSource(LocalFolderConnection connection) {

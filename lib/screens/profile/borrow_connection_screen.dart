@@ -214,6 +214,7 @@ class _BorrowConnectionScreenState extends State<BorrowConnectionScreen> {
         case JellyfinConnection():
           await _borrowJellyfin(cand);
         case LocalFolderConnection():
+        case PleyaShareConnection():
           break;
       }
     } finally {

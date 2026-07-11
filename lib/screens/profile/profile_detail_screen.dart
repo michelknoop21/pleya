@@ -161,6 +161,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Controll
       PlexAccountConnection(:final servers) => servers.map((s) => s.clientIdentifier).toSet(),
       JellyfinConnection(:final serverMachineId) => {serverMachineId},
       LocalFolderConnection(:final id) => {id},
+      PleyaShareConnection(:final id) => {id},
     };
   }
 

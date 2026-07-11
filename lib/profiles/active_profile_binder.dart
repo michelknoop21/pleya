@@ -322,6 +322,8 @@ class ActiveProfileBinder {
           expected.add(serverMachineId);
         case LocalFolderConnection(:final id):
           expected.add(id);
+        case PleyaShareConnection(:final id):
+          expected.add(id);
         case null:
           break;
       }
@@ -488,6 +490,9 @@ class ActiveProfileBinder {
         case LocalFolderConnection():
           expected.add(conn.id);
           futures.add(_bindLocalFolder(conn));
+        case PleyaShareConnection():
+          expected.add(conn.id);
+          futures.add(_bindPleyaShare(conn));
       }
     }
     final results = await Future.wait(futures);
@@ -870,6 +875,14 @@ class ActiveProfileBinder {
 
   Future<_ProfileBindResult> _bindLocalFolder(LocalFolderConnection conn) async {
     final ok = await serverManager.addLocalSource(conn);
+    if (ok) {
+      return _ProfileBindResult.visible({conn.id});
+    }
+    return _ProfileBindResult(visibleServerIds: const {}, expectedServerIds: {conn.id});
+  }
+
+  Future<_ProfileBindResult> _bindPleyaShare(PleyaShareConnection conn) async {
+    final ok = await serverManager.addPleyaShareSource(conn);
     if (ok) {
       return _ProfileBindResult.visible({conn.id});
     }

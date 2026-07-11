@@ -706,6 +706,10 @@ class LocalFolderClient implements MediaServerClient {
   // Scanning & parsing
   // ---------------------------------------------------------------------------
 
+  /// All scanned items, scanning on first call. Used by Pleya Share hosting
+  /// to serialize this source's full catalog for a guest device.
+  Future<List<MediaItem>> scanAllItems() => _scanLibrary(connection.id);
+
   /// Scan the configured directory and populate [_itemCache].
   Future<List<MediaItem>> _scanLibrary(String libraryId) async {
     if (_itemCache.isNotEmpty) return _itemCache.values.toList();

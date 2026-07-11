@@ -46,6 +46,17 @@ Future<void> removeProfileConnectionAndCleanup({
       await storage.clearLibraryPreferencesForServerEverywhere(serverId);
     }
   }
+
+  // Zelfde verhaal voor een Pleya Share-koppeling: ongerefereerd = unpair.
+  if (connection is PleyaShareConnection &&
+      (await profileConnections.listForConnection(connection.id)).isEmpty) {
+    await connections.remove(connection.id);
+    serverManager?.removePleyaShareSource(connection);
+    final serverId = ServerId.tryParse(connection.id);
+    if (serverId != null) {
+      await storage.clearLibraryPreferencesForServerEverywhere(serverId);
+    }
+  }
 }
 
 Future<void> removeAllProfileConnectionsAndCleanup({
@@ -213,6 +224,9 @@ Set<ServerId> _serverIdsForConnection(Connection connection) {
       if (ServerId.tryParse(serverMachineId) case final serverId?) serverId,
     },
     LocalFolderConnection(:final id) => {
+      if (ServerId.tryParse(id) case final serverId?) serverId,
+    },
+    PleyaShareConnection(:final id) => {
       if (ServerId.tryParse(id) case final serverId?) serverId,
     },
   };

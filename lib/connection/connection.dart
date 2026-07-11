@@ -8,25 +8,30 @@ import '../services/plex_auth_service.dart';
 enum ConnectionKind {
   plex,
   jellyfin,
-  local;
+  local,
+  pleyaShare;
 
   String get id => switch (this) {
     ConnectionKind.plex => 'plex',
     ConnectionKind.jellyfin => 'jellyfin',
     ConnectionKind.local => 'local',
+    ConnectionKind.pleyaShare => 'pleyaShare',
   };
 
   static ConnectionKind fromId(String id) => switch (id) {
     'plex' => ConnectionKind.plex,
     'jellyfin' => ConnectionKind.jellyfin,
     'local' => ConnectionKind.local,
+    'pleyaShare' => ConnectionKind.pleyaShare,
     _ => throw ArgumentError('Unknown ConnectionKind id: $id'),
   };
 
   MediaBackend get backend => switch (this) {
     ConnectionKind.plex => MediaBackend.plex,
     ConnectionKind.jellyfin => MediaBackend.jellyfin,
-    ConnectionKind.local => MediaBackend.local,
+    // Pleya Share items are proxied local files; they behave as local media
+    // throughout the UI (no ratings/playlists/transcoding).
+    ConnectionKind.local || ConnectionKind.pleyaShare => MediaBackend.local,
   };
 }
 
@@ -468,6 +473,116 @@ class LocalFolderConnection extends Connection {
       displayName: json['displayName'] as String? ?? 'Local Folder',
       libraryType: json['libraryType'] as String? ?? 'mixed',
       bookmarkData: json['bookmarkData'] as String?,
+      status: status,
+      createdAt: createdAt,
+      lastAuthenticatedAt: lastAuthenticatedAt,
+    );
+  }
+}
+
+/// A paired Pleya Share host — another Pleya device (or the standalone
+/// server) that streams its local folders to this device over the LAN.
+class PleyaShareConnection extends Connection {
+  @override
+  final String id;
+
+  @override
+  final ConnectionStatus status;
+
+  @override
+  final DateTime createdAt;
+
+  @override
+  final DateTime? lastAuthenticatedAt;
+
+  /// Host's advertised device name (e.g. "Michel's iPhone").
+  final String hostName;
+
+  /// Pairing identity issued by the host during code pairing.
+  final String pairId;
+
+  /// Long-lived reconnect secret (base64). Concealed via the credential
+  /// vault when persisted.
+  final String pairSecret;
+
+  /// Last known LAN IPs of the host, most recent first. Discovery beacons
+  /// refresh this at runtime.
+  final List<String> lastKnownIps;
+
+  /// Host HTTP port.
+  final int port;
+
+  PleyaShareConnection({
+    required this.id,
+    required this.hostName,
+    required this.pairId,
+    required this.pairSecret,
+    required this.lastKnownIps,
+    required this.port,
+    this.status = ConnectionStatus.online,
+    required this.createdAt,
+    this.lastAuthenticatedAt,
+  });
+
+  @override
+  ConnectionKind get kind => ConnectionKind.pleyaShare;
+
+  @override
+  @override
+  String get displayName => hostName;
+
+  @override
+  String get displayLabel => hostName;
+
+  @override
+  String? get displaySubtitle => 'Pleya Share · ${lastKnownIps.isNotEmpty ? lastKnownIps.first : '?'}:$port';
+
+  PleyaShareConnection copyWith({
+    String? hostName,
+    String? pairSecret,
+    List<String>? lastKnownIps,
+    int? port,
+    ConnectionStatus? status,
+    DateTime? lastAuthenticatedAt,
+  }) {
+    return PleyaShareConnection(
+      id: id,
+      hostName: hostName ?? this.hostName,
+      pairId: pairId,
+      pairSecret: pairSecret ?? this.pairSecret,
+      lastKnownIps: lastKnownIps ?? this.lastKnownIps,
+      port: port ?? this.port,
+      status: status ?? this.status,
+      createdAt: createdAt,
+      lastAuthenticatedAt: lastAuthenticatedAt ?? this.lastAuthenticatedAt,
+    );
+  }
+
+  @override
+  Map<String, Object?> toConfigJson() {
+    return {
+      'hostName': hostName,
+      'pairId': pairId,
+      'pairSecret': pairSecret,
+      'lastKnownIps': lastKnownIps,
+      'port': port,
+    };
+  }
+
+  factory PleyaShareConnection.fromConfigJson({
+    required String id,
+    required Map<String, Object?> json,
+    required ConnectionStatus status,
+    required DateTime createdAt,
+    DateTime? lastAuthenticatedAt,
+  }) {
+    return PleyaShareConnection(
+      id: id,
+      hostName: json['hostName'] as String? ?? 'Pleya Share',
+      pairId: json['pairId'] as String? ?? '',
+      pairSecret: json['pairSecret'] as String? ?? '',
+      lastKnownIps: (json['lastKnownIps'] as List?)?.cast<String>() ?? const [],
+      port: (json['port'] as num?)?.toInt() ?? 48634,
       status: status,
       createdAt: createdAt,
       lastAuthenticatedAt: lastAuthenticatedAt,
