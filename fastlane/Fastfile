@@ -186,6 +186,10 @@ lane :macos_beta do
     </dict>
     </plist>
   PLIST
+  # Oude pkg's weg vóór de export: de glob hieronder pakte anders alfabetisch
+  # de stale Pleya-signed.pkg van een vorige run i.p.v. de verse export
+  # (→ tweemaal een 158-upload-rejectie terwijl de archive al 160 was).
+  FileUtils.rm_f(Dir[File.join(out_dir, "*.pkg")])
   sh("xcodebuild -exportArchive -archivePath #{archive_path} " \
      "-exportPath #{out_dir} -exportOptionsPlist #{export_plist} #{auth_xcargs}")
 
