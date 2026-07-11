@@ -8,6 +8,7 @@ import '../../services/saf_storage_service.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../connection/connection.dart';
 import '../../profiles/profile.dart';
+import '../../profiles/active_profile_provider.dart';
 import '../../profiles/profile_connection.dart';
 import '../../providers/multi_server_provider.dart';
 
@@ -161,7 +162,9 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
         createdAt: DateTime.now(),
       );
 
-      final profile = widget.targetProfile;
+      // Altijd aan een profiel binden: een ongebonden lokale map is in het
+      // profielbeheer onzichtbaar en zou daardoor niet te verwijderen zijn.
+      final profile = widget.targetProfile ?? context.read<ActiveProfileProvider>().active;
       final bindToProfile = profile != null
           ? ProfileConnection(profileId: profile.id, connectionId: connection.id, userIdentifier: connection.id)
           : null;

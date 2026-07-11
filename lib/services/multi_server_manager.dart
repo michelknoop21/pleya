@@ -641,6 +641,15 @@ class MultiServerManager {
     }
   }
 
+  /// Tear down a local folder source's runtime client.
+  void removeLocalSource(LocalFolderConnection connection) {
+    final client = _clients.remove(connection.id);
+    if (client != null) _closeClient(client);
+    _serverStatus.remove(connection.id);
+    _statusController.add(Map.from(_serverStatus));
+    appLogger.i('Removed local folder source: ${connection.displayName}');
+  }
+
   void _wireJellyfinConnectionUpdates(JellyfinClient client) {
     client.onConnectionUpdated = (updated) async {
       if (_jellyfinByCompoundId[updated.id] != client) {

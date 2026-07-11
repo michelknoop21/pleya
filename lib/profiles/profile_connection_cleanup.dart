@@ -33,6 +33,19 @@ Future<void> removeProfileConnectionAndCleanup({
       serverManager: serverManager,
     );
   }
+
+  // Een lokale map heeft geen account achter zich: zodra geen enkel profiel er
+  // nog naar verwijst, verwijderen we de bron zelf én de runtime-client, anders
+  // blijft hij in content opduiken.
+  if (connection is LocalFolderConnection &&
+      (await profileConnections.listForConnection(connection.id)).isEmpty) {
+    await connections.remove(connection.id);
+    serverManager?.removeLocalSource(connection);
+    final serverId = ServerId.tryParse(connection.id);
+    if (serverId != null) {
+      await storage.clearLibraryPreferencesForServerEverywhere(serverId);
+    }
+  }
 }
 
 Future<void> removeAllProfileConnectionsAndCleanup({
