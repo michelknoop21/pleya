@@ -1,0 +1,17 @@
+# Pleya Share server op een NAS. Pas de volumes en PLEYA_MEDIA aan.
+services:
+  pleya-share:
+    build: .
+    container_name: pleya-share
+    restart: unless-stopped
+    network_mode: host # nodig voor UDP-discovery-beacons op het LAN
+    environment:
+      PLEYA_NAME: "NAS"
+      # path[:type[:naam]] — types: movies | tvshows | mixed
+      PLEYA_MEDIA: "/media/films:movies:Films,/media/series:tvshows:Series"
+      # Optioneel: vaste 6-cijferige koppelcode (anders staat er één in de log)
+      # PLEYA_CODE: "123456"
+    volumes:
+      - /volume1/video/films:/media/films:ro
+      - /volume1/video/series:/media/series:ro
+      - ./data:/data

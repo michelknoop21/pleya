@@ -1,0 +1,11 @@
+name: pleya_share_server
+description: Headless Pleya Share host — serve local media folders to Pleya clients on the LAN (Docker/NAS).
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  crypto: ^3.0.0
+  cryptography: ^2.7.0
