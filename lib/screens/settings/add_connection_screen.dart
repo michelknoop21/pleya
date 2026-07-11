@@ -12,6 +12,7 @@ import '../profile/borrow_connection_screen.dart';
 import 'add_jellyfin_screen.dart';
 import 'add_local_folder_screen.dart';
 import 'add_plex_account_screen.dart';
+import 'pleya_share_join_screen.dart';
 
 /// Picker shown when the user taps "Add connection".
 ///
@@ -51,6 +52,12 @@ class AddConnectionScreen extends StatelessWidget {
         title: t.addLocalFolder.cardTitle,
         subtitle: t.addLocalFolder.cardSubtitle,
         builder: (_) => AddLocalFolderScreen(targetProfile: targetProfile),
+      ),
+      _BackendOption(
+        backend: MediaBackend.local,
+        title: t.pleyaShare.cardTitle,
+        subtitle: t.pleyaShare.cardSubtitle,
+        builder: (_) => PleyaShareJoinScreen(targetProfile: targetProfile),
       ),
     ];
     return FocusedScrollScaffold(

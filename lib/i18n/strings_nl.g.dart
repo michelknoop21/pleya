@@ -87,6 +87,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTrackersNl trackers = _TranslationsTrackersNl._(_root);
 	@override late final _TranslationsAddServerNl addServer = _TranslationsAddServerNl._(_root);
 	@override late final _TranslationsAddLocalFolderNl addLocalFolder = _TranslationsAddLocalFolderNl._(_root);
+	@override late final _TranslationsPleyaShareNl pleyaShare = _TranslationsPleyaShareNl._(_root);
 }
 
 // Path: states
@@ -1723,6 +1724,38 @@ class _TranslationsAddLocalFolderNl extends TranslationsAddLocalFolderEn {
 	@override String get nameHint => 'bijv. Mijn Films';
 	@override String get save => 'Map toevoegen';
 	@override String get saveError => 'Lokale map toevoegen mislukt';
+}
+
+// Path: pleyaShare
+class _TranslationsPleyaShareNl extends TranslationsPleyaShareEn {
+	_TranslationsPleyaShareNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get cardTitle => 'Pleya Share';
+	@override String get cardSubtitle => 'Verbind met een ander Pleya-apparaat dat media deelt';
+	@override String get hostTitle => 'Mijn media delen';
+	@override String get hostDescription => 'Andere Pleya-apparaten op dit netwerk kunnen je lokale mappen bekijken, streamen en downloaden. Houd dit scherm open tijdens het delen.';
+	@override String get hostToggle => 'Lokale mappen delen';
+	@override String get noLocalFolders => 'Voeg eerst een lokale map toe — er is nog niets om te delen.';
+	@override String get pairCodeLabel => 'Koppelcode';
+	@override String get pairCodeHint => 'Voer deze code in op het andere apparaat. De code verandert na elke geslaagde koppeling.';
+	@override String get regenerateCode => 'Nieuwe code';
+	@override String get pairedDevices => 'Gekoppelde apparaten';
+	@override String get noGuests => 'Nog geen apparaten gekoppeld';
+	@override String get revokeGuest => 'Apparaat verwijderen';
+	@override String get joinTitle => 'Verbinden met Pleya Share';
+	@override String get joinDescription => 'Kies een host op je netwerk of voer het adres in, en typ daarna de 6-cijferige code die op dat apparaat staat.';
+	@override String get hostsFound => 'Hosts op je netwerk';
+	@override String get searching => 'Zoeken naar hosts…';
+	@override String get noHostsFound => 'Geen hosts gevonden. Zet delen aan op het andere apparaat en controleer of beide op hetzelfde netwerk zitten.';
+	@override String get refresh => 'Opnieuw zoeken';
+	@override String get manualHost => 'Hostadres (IP)';
+	@override String get codeLabel => '6-cijferige code';
+	@override String get connect => 'Verbinden';
+	@override String get pairFailed => 'Koppelen mislukt. Controleer de code en probeer opnieuw.';
+	@override String paired({required Object name}) => 'Verbonden met ${name}';
 }
 
 // Path: search.filters
@@ -3409,6 +3442,29 @@ extension on TranslationsNl {
 			'addLocalFolder.nameHint' => 'bijv. Mijn Films',
 			'addLocalFolder.save' => 'Map toevoegen',
 			'addLocalFolder.saveError' => 'Lokale map toevoegen mislukt',
+			'pleyaShare.cardTitle' => 'Pleya Share',
+			'pleyaShare.cardSubtitle' => 'Verbind met een ander Pleya-apparaat dat media deelt',
+			'pleyaShare.hostTitle' => 'Mijn media delen',
+			'pleyaShare.hostDescription' => 'Andere Pleya-apparaten op dit netwerk kunnen je lokale mappen bekijken, streamen en downloaden. Houd dit scherm open tijdens het delen.',
+			'pleyaShare.hostToggle' => 'Lokale mappen delen',
+			'pleyaShare.noLocalFolders' => 'Voeg eerst een lokale map toe — er is nog niets om te delen.',
+			'pleyaShare.pairCodeLabel' => 'Koppelcode',
+			'pleyaShare.pairCodeHint' => 'Voer deze code in op het andere apparaat. De code verandert na elke geslaagde koppeling.',
+			'pleyaShare.regenerateCode' => 'Nieuwe code',
+			'pleyaShare.pairedDevices' => 'Gekoppelde apparaten',
+			'pleyaShare.noGuests' => 'Nog geen apparaten gekoppeld',
+			'pleyaShare.revokeGuest' => 'Apparaat verwijderen',
+			'pleyaShare.joinTitle' => 'Verbinden met Pleya Share',
+			'pleyaShare.joinDescription' => 'Kies een host op je netwerk of voer het adres in, en typ daarna de 6-cijferige code die op dat apparaat staat.',
+			'pleyaShare.hostsFound' => 'Hosts op je netwerk',
+			'pleyaShare.searching' => 'Zoeken naar hosts…',
+			'pleyaShare.noHostsFound' => 'Geen hosts gevonden. Zet delen aan op het andere apparaat en controleer of beide op hetzelfde netwerk zitten.',
+			'pleyaShare.refresh' => 'Opnieuw zoeken',
+			'pleyaShare.manualHost' => 'Hostadres (IP)',
+			'pleyaShare.codeLabel' => '6-cijferige code',
+			'pleyaShare.connect' => 'Verbinden',
+			'pleyaShare.pairFailed' => 'Koppelen mislukt. Controleer de code en probeer opnieuw.',
+			'pleyaShare.paired' => ({required Object name}) => 'Verbonden met ${name}',
 			_ => null,
 		};
 	}

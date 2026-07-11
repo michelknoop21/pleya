@@ -1579,5 +1579,30 @@
     "nameHint": "e.g. My Movies",
     "save": "Add folder",
     "saveError": "Failed to add local folder"
+  },
+  "pleyaShare": {
+    "cardTitle": "Pleya Share",
+    "cardSubtitle": "Connect to another Pleya device sharing its media",
+    "hostTitle": "Share my media",
+    "hostDescription": "Other Pleya devices on this network can browse, stream, and download your local folders. Keep this screen open while sharing.",
+    "hostToggle": "Share local folders",
+    "noLocalFolders": "Add a local folder first — there is nothing to share yet.",
+    "pairCodeLabel": "Pairing code",
+    "pairCodeHint": "Enter this code on the other device. The code changes after each successful pairing.",
+    "regenerateCode": "New code",
+    "pairedDevices": "Paired devices",
+    "noGuests": "No devices paired yet",
+    "revokeGuest": "Remove device",
+    "joinTitle": "Connect to Pleya Share",
+    "joinDescription": "Pick a host found on your network or enter its address, then type the 6-digit code shown on that device.",
+    "hostsFound": "Hosts on your network",
+    "searching": "Searching for hosts…",
+    "noHostsFound": "No hosts found. Make sure sharing is turned on and both devices are on the same network.",
+    "refresh": "Search again",
+    "manualHost": "Host address (IP)",
+    "codeLabel": "6-digit code",
+    "connect": "Connect",
+    "pairFailed": "Pairing failed. Check the code and try again.",
+    "paired": "Connected to $name"
   }
 }

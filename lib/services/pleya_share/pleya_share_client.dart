@@ -83,10 +83,7 @@ class PleyaShareClient implements MediaServerClient {
 
   /// Rewrite host-side identity fields to this guest connection so routing,
   /// caching, and the download resolver all address this client.
-  MediaItem _localize(MediaItem item) => item.copyWith(
-    serverId: connection.id,
-    serverName: connection.hostName,
-  );
+  MediaItem _localize(MediaItem item) => item.copyWith(serverId: connection.id, serverName: connection.hostName);
 
   void _rebuildLibraries() {
     final byLibrary = <String, MediaLibrary>{};
@@ -459,11 +456,11 @@ class PleyaShareClient implements MediaServerClient {
   // ── Watch state ──
 
   Future<void> _pushWatchState(String itemId, {required int progressMs, required bool watched}) async {
-    final ok = await channel.request('POST', '/watch', body: {
-      'itemId': itemId,
-      'progressMs': progressMs,
-      'watched': watched,
-    });
+    final ok = await channel.request(
+      'POST',
+      '/watch',
+      body: {'itemId': itemId, 'progressMs': progressMs, 'watched': watched},
+    );
     if (ok == null) {
       appLogger.d('PleyaShareClient: watch update for $itemId not delivered (host offline)');
     }
@@ -520,12 +517,8 @@ class PleyaShareClient implements MediaServerClient {
   Future<List<MediaItem>> fetchPlaylistItems(String id, {int offset = 0, int limit = 100}) async => [];
 
   @override
-  Future<LibraryPage<MediaItem>> fetchPlaylistPage(
-    String id, {
-    int? start,
-    int? size,
-    AbortController? abort,
-  }) async => LibraryPage(items: [], totalCount: 0);
+  Future<LibraryPage<MediaItem>> fetchPlaylistPage(String id, {int? start, int? size, AbortController? abort}) async =>
+      LibraryPage(items: [], totalCount: 0);
 
   @override
   Future<MediaPlaylist?> createPlaylist({required String title, required List<MediaItem> items}) async => null;
@@ -690,9 +683,7 @@ class PleyaShareClient implements MediaServerClient {
     final version = MediaVersion(
       id: item.id,
       container: container,
-      parts: [
-        MediaPart(id: item.id, streamPath: url, sizeBytes: null, container: container, streams: const []),
-      ],
+      parts: [MediaPart(id: item.id, streamPath: url, sizeBytes: null, container: container, streams: const [])],
     );
 
     final mediaInfo = MediaSourceInfo(

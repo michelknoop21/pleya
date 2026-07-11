@@ -37,8 +37,7 @@ class PleyaShareChannel {
 
   /// Absolute stream URL for [itemId], usable by mpv and the download
   /// pipeline. Only valid after [ensureConnected].
-  String streamUrl(String itemId) =>
-      '$_baseUrl/stream/${PleyaShareProtocol.encodeItemId(itemId)}?token=$_token';
+  String streamUrl(String itemId) => '$_baseUrl/stream/${PleyaShareProtocol.encodeItemId(itemId)}?token=$_token';
 
   Future<bool> ensureConnected() async {
     if (_baseUrl != null && _token != null) return true;
@@ -76,10 +75,11 @@ class PleyaShareChannel {
     if (base == null) return false;
     try {
       final clientNonce = PleyaSharePairing.randomBytes(32);
-      final start = await _rawJson('POST', Uri.parse('$base/auth/start'), body: {
-        'pairId': connection.pairId,
-        'clientNonce': base64Encode(clientNonce),
-      });
+      final start = await _rawJson(
+        'POST',
+        Uri.parse('$base/auth/start'),
+        body: {'pairId': connection.pairId, 'clientNonce': base64Encode(clientNonce)},
+      );
       final hostNonce = base64Decode(start['hostNonce'] as String);
       final secret = base64Decode(connection.pairSecret);
       final authTag = PleyaSharePairing.computeAuthTag(
@@ -88,11 +88,11 @@ class PleyaShareChannel {
         clientNonce: clientNonce,
         context: 'reconnect',
       );
-      final complete = await _rawJson('POST', Uri.parse('$base/auth/complete'), body: {
-        'pairId': connection.pairId,
-        'clientNonce': base64Encode(clientNonce),
-        'authTag': authTag,
-      });
+      final complete = await _rawJson(
+        'POST',
+        Uri.parse('$base/auth/complete'),
+        body: {'pairId': connection.pairId, 'clientNonce': base64Encode(clientNonce), 'authTag': authTag},
+      );
       final sessionKey = await PleyaSharePairing.deriveSessionKey(secret, hostNonce, clientNonce);
       final payload = await PleyaSharePairing.decryptPayload(sessionKey, complete['payload'] as String);
       _token = payload['token'] as String?;
@@ -109,9 +109,7 @@ class PleyaShareChannel {
     if (!await ensureConnected()) return null;
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
-        final uri = Uri.parse('$_baseUrl$path').replace(
-          queryParameters: {'token': _token!},
-        );
+        final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: {'token': _token!});
         return await _rawJson(method, uri, body: body);
       } on _HttpStatusException catch (e) {
         if (e.statusCode == HttpStatus.unauthorized && attempt == 0) {
@@ -170,9 +168,11 @@ class PleyaShareChannel {
         ),
       );
       final clientNonce = PleyaSharePairing.randomBytes(32);
-      final start = await channel._rawJson('POST', Uri.parse('$base/pair/start'), body: {
-        'clientNonce': base64Encode(clientNonce),
-      });
+      final start = await channel._rawJson(
+        'POST',
+        Uri.parse('$base/pair/start'),
+        body: {'clientNonce': base64Encode(clientNonce)},
+      );
       final hostNonce = base64Decode(start['hostNonce'] as String);
       final salt = base64Decode(start['salt'] as String);
       final pairingKey = await PleyaSharePairing.derivePairingKey(code, salt);
@@ -182,11 +182,11 @@ class PleyaShareChannel {
         clientNonce: clientNonce,
         context: 'pair',
       );
-      final complete = await channel._rawJson('POST', Uri.parse('$base/pair/complete'), body: {
-        'clientNonce': base64Encode(clientNonce),
-        'authTag': authTag,
-        'deviceName': deviceName,
-      });
+      final complete = await channel._rawJson(
+        'POST',
+        Uri.parse('$base/pair/complete'),
+        body: {'clientNonce': base64Encode(clientNonce), 'authTag': authTag, 'deviceName': deviceName},
+      );
       final sessionKey = await PleyaSharePairing.deriveSessionKey(pairingKey, hostNonce, clientNonce);
       final payload = await PleyaSharePairing.decryptPayload(sessionKey, complete['payload'] as String);
       final hostName = payload['name'] as String? ?? 'Pleya Share';
@@ -205,13 +205,15 @@ class PleyaShareChannel {
   }
 
   /// Listen for Pleya Share beacons for [timeout] and return unique hosts.
-  static Future<List<DiscoveredShareHost>> discoverHosts({
-    Duration timeout = const Duration(seconds: 4),
-  }) async {
+  static Future<List<DiscoveredShareHost>> discoverHosts({Duration timeout = const Duration(seconds: 4)}) async {
     final hosts = <String, DiscoveredShareHost>{};
     RawDatagramSocket? socket;
     try {
-      socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, PleyaShareProtocol.discoveryPort, reusePort: !Platform.isAndroid && !Platform.isWindows);
+      socket = await RawDatagramSocket.bind(
+        InternetAddress.anyIPv4,
+        PleyaShareProtocol.discoveryPort,
+        reusePort: !Platform.isAndroid && !Platform.isWindows,
+      );
       socket.broadcastEnabled = true;
       final subscription = socket.listenDatagrams((datagram) {
         try {

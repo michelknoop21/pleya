@@ -1481,5 +1481,30 @@
     "nameHint": "bijv. Mijn Films",
     "save": "Map toevoegen",
     "saveError": "Lokale map toevoegen mislukt"
+  },
+  "pleyaShare": {
+    "cardTitle": "Pleya Share",
+    "cardSubtitle": "Verbind met een ander Pleya-apparaat dat media deelt",
+    "hostTitle": "Mijn media delen",
+    "hostDescription": "Andere Pleya-apparaten op dit netwerk kunnen je lokale mappen bekijken, streamen en downloaden. Houd dit scherm open tijdens het delen.",
+    "hostToggle": "Lokale mappen delen",
+    "noLocalFolders": "Voeg eerst een lokale map toe — er is nog niets om te delen.",
+    "pairCodeLabel": "Koppelcode",
+    "pairCodeHint": "Voer deze code in op het andere apparaat. De code verandert na elke geslaagde koppeling.",
+    "regenerateCode": "Nieuwe code",
+    "pairedDevices": "Gekoppelde apparaten",
+    "noGuests": "Nog geen apparaten gekoppeld",
+    "revokeGuest": "Apparaat verwijderen",
+    "joinTitle": "Verbinden met Pleya Share",
+    "joinDescription": "Kies een host op je netwerk of voer het adres in, en typ daarna de 6-cijferige code die op dat apparaat staat.",
+    "hostsFound": "Hosts op je netwerk",
+    "searching": "Zoeken naar hosts…",
+    "noHostsFound": "Geen hosts gevonden. Zet delen aan op het andere apparaat en controleer of beide op hetzelfde netwerk zitten.",
+    "refresh": "Opnieuw zoeken",
+    "manualHost": "Hostadres (IP)",
+    "codeLabel": "6-cijferige code",
+    "connect": "Verbinden",
+    "pairFailed": "Koppelen mislukt. Controleer de code en probeer opnieuw.",
+    "paired": "Verbonden met $name"
   }
 }

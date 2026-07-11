@@ -41,11 +41,7 @@ class PleyaSharePairing {
     required List<int> clientNonce,
     required String context,
   }) {
-    final msg = <int>[
-      ...utf8.encode('pleya-share-auth-v1|$context|'),
-      ...hostNonce,
-      ...clientNonce,
-    ];
+    final msg = <int>[...utf8.encode('pleya-share-auth-v1|$context|'), ...hostNonce, ...clientNonce];
     return crypto.Hmac(crypto.sha256, key).convert(msg).toString();
   }
 
@@ -73,11 +69,7 @@ class PleyaSharePairing {
   /// AES-256-GCM with a random 12-byte nonce prepended to the ciphertext.
   static Future<String> encryptPayload(List<int> sessionKey, Map<String, Object?> payload) async {
     final nonce = randomBytes(12);
-    final box = await _aesGcm.encrypt(
-      utf8.encode(jsonEncode(payload)),
-      secretKey: SecretKey(sessionKey),
-      nonce: nonce,
-    );
+    final box = await _aesGcm.encrypt(utf8.encode(jsonEncode(payload)), secretKey: SecretKey(sessionKey), nonce: nonce);
     return base64Encode([...nonce, ...box.cipherText, ...box.mac.bytes]);
   }
 

@@ -45,6 +45,7 @@ import '../../profiles/profile.dart';
 import '../../profiles/profile_registry.dart';
 import 'about_screen.dart';
 import 'add_connection_screen.dart';
+import 'pleya_share_host_screen.dart';
 import 'appearance_settings_screen.dart';
 import 'keyboard_shortcuts_screen.dart';
 import 'library_visibility_screen.dart';
@@ -511,6 +512,14 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           onTap: () {
             final active = context.read<ActiveProfileProvider>().active;
             Navigator.push(context, MaterialPageRoute(builder: (_) => AddConnectionScreen(targetProfile: active)));
+          },
+        ),
+        SettingNavigationTile(
+          icon: Symbols.share_rounded,
+          title: t.pleyaShare.hostTitle,
+          subtitle: t.pleyaShare.hostDescription,
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const PleyaShareHostScreen()));
           },
         ),
       ],

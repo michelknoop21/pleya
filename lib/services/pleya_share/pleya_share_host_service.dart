@@ -82,10 +82,7 @@ class PleyaShareHostService extends ChangeNotifier {
   /// Guests with a live session token (seen since host start).
   Set<String> get activePairIds => _tokens.values.toSet();
 
-  Future<void> start({
-    required List<LocalFolderClient> Function() clients,
-    required String deviceName,
-  }) async {
+  Future<void> start({required List<LocalFolderClient> Function() clients, required String deviceName}) async {
     if (isRunning) return;
     _clientsResolver = clients;
     _deviceName = deviceName;
@@ -453,10 +450,7 @@ class PleyaShareHostService extends ChangeNotifier {
       if (raw == null) return {};
       final decoded = jsonDecode(raw) as Map<String, dynamic>;
       return decoded.map(
-        (k, v) => MapEntry(k, (
-          progressMs: (v['p'] as num?)?.toInt() ?? 0,
-          watched: v['w'] as bool? ?? false,
-        )),
+        (k, v) => MapEntry(k, (progressMs: (v['p'] as num?)?.toInt() ?? 0, watched: v['w'] as bool? ?? false)),
       );
     } catch (_) {
       return {};

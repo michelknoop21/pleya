@@ -89,6 +89,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsTrackersEn trackers = TranslationsTrackersEn.internal(_root);
 	late final TranslationsAddServerEn addServer = TranslationsAddServerEn.internal(_root);
 	late final TranslationsAddLocalFolderEn addLocalFolder = TranslationsAddLocalFolderEn.internal(_root);
+	late final TranslationsPleyaShareEn pleyaShare = TranslationsPleyaShareEn.internal(_root);
 }
 
 // Path: states
@@ -4406,6 +4407,84 @@ class TranslationsAddLocalFolderEn {
 	String get saveError => 'Failed to add local folder';
 }
 
+// Path: pleyaShare
+class TranslationsPleyaShareEn {
+	TranslationsPleyaShareEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Pleya Share'
+	String get cardTitle => 'Pleya Share';
+
+	/// en: 'Connect to another Pleya device sharing its media'
+	String get cardSubtitle => 'Connect to another Pleya device sharing its media';
+
+	/// en: 'Share my media'
+	String get hostTitle => 'Share my media';
+
+	/// en: 'Other Pleya devices on this network can browse, stream, and download your local folders. Keep this screen open while sharing.'
+	String get hostDescription => 'Other Pleya devices on this network can browse, stream, and download your local folders. Keep this screen open while sharing.';
+
+	/// en: 'Share local folders'
+	String get hostToggle => 'Share local folders';
+
+	/// en: 'Add a local folder first — there is nothing to share yet.'
+	String get noLocalFolders => 'Add a local folder first — there is nothing to share yet.';
+
+	/// en: 'Pairing code'
+	String get pairCodeLabel => 'Pairing code';
+
+	/// en: 'Enter this code on the other device. The code changes after each successful pairing.'
+	String get pairCodeHint => 'Enter this code on the other device. The code changes after each successful pairing.';
+
+	/// en: 'New code'
+	String get regenerateCode => 'New code';
+
+	/// en: 'Paired devices'
+	String get pairedDevices => 'Paired devices';
+
+	/// en: 'No devices paired yet'
+	String get noGuests => 'No devices paired yet';
+
+	/// en: 'Remove device'
+	String get revokeGuest => 'Remove device';
+
+	/// en: 'Connect to Pleya Share'
+	String get joinTitle => 'Connect to Pleya Share';
+
+	/// en: 'Pick a host found on your network or enter its address, then type the 6-digit code shown on that device.'
+	String get joinDescription => 'Pick a host found on your network or enter its address, then type the 6-digit code shown on that device.';
+
+	/// en: 'Hosts on your network'
+	String get hostsFound => 'Hosts on your network';
+
+	/// en: 'Searching for hosts…'
+	String get searching => 'Searching for hosts…';
+
+	/// en: 'No hosts found. Make sure sharing is turned on and both devices are on the same network.'
+	String get noHostsFound => 'No hosts found. Make sure sharing is turned on and both devices are on the same network.';
+
+	/// en: 'Search again'
+	String get refresh => 'Search again';
+
+	/// en: 'Host address (IP)'
+	String get manualHost => 'Host address (IP)';
+
+	/// en: '6-digit code'
+	String get codeLabel => '6-digit code';
+
+	/// en: 'Connect'
+	String get connect => 'Connect';
+
+	/// en: 'Pairing failed. Check the code and try again.'
+	String get pairFailed => 'Pairing failed. Check the code and try again.';
+
+	/// en: 'Connected to $name'
+	String paired({required Object name}) => 'Connected to ${name}';
+}
+
 // Path: search.filters
 class TranslationsSearchFiltersEn {
 	TranslationsSearchFiltersEn.internal(this._root);
@@ -6518,6 +6597,29 @@ extension on Translations {
 			'addLocalFolder.nameHint' => 'e.g. My Movies',
 			'addLocalFolder.save' => 'Add folder',
 			'addLocalFolder.saveError' => 'Failed to add local folder',
+			'pleyaShare.cardTitle' => 'Pleya Share',
+			'pleyaShare.cardSubtitle' => 'Connect to another Pleya device sharing its media',
+			'pleyaShare.hostTitle' => 'Share my media',
+			'pleyaShare.hostDescription' => 'Other Pleya devices on this network can browse, stream, and download your local folders. Keep this screen open while sharing.',
+			'pleyaShare.hostToggle' => 'Share local folders',
+			'pleyaShare.noLocalFolders' => 'Add a local folder first — there is nothing to share yet.',
+			'pleyaShare.pairCodeLabel' => 'Pairing code',
+			'pleyaShare.pairCodeHint' => 'Enter this code on the other device. The code changes after each successful pairing.',
+			'pleyaShare.regenerateCode' => 'New code',
+			'pleyaShare.pairedDevices' => 'Paired devices',
+			'pleyaShare.noGuests' => 'No devices paired yet',
+			'pleyaShare.revokeGuest' => 'Remove device',
+			'pleyaShare.joinTitle' => 'Connect to Pleya Share',
+			'pleyaShare.joinDescription' => 'Pick a host found on your network or enter its address, then type the 6-digit code shown on that device.',
+			'pleyaShare.hostsFound' => 'Hosts on your network',
+			'pleyaShare.searching' => 'Searching for hosts…',
+			'pleyaShare.noHostsFound' => 'No hosts found. Make sure sharing is turned on and both devices are on the same network.',
+			'pleyaShare.refresh' => 'Search again',
+			'pleyaShare.manualHost' => 'Host address (IP)',
+			'pleyaShare.codeLabel' => '6-digit code',
+			'pleyaShare.connect' => 'Connect',
+			'pleyaShare.pairFailed' => 'Pairing failed. Check the code and try again.',
+			'pleyaShare.paired' => ({required Object name}) => 'Connected to ${name}',
 			_ => null,
 		};
 	}
