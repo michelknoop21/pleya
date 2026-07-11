@@ -189,13 +189,16 @@ lane :macos_beta do
   # De export strip de sandbox-entitlement weer van de Sparkle-helpers. Fix het
   # NA de export: pkg uitpakken, helpers + framework + app bottom-up her-signeren
   # met Apple Distribution (dezelfde identity die de export gebruikte), en de
-  # installer-pkg opnieuw signeren met de Mac Installer Distribution cert.
+  # installer-pkg herbouwen met `productbuild --component`.
+  #
+  # Belangrijk: NIET `pkgutil --expand-full` — die dereferenced de framework-
+  # symlinks (Versions/Current, Resources) tot echte directories, waardoor de
+  # her-geflatte pkg een Bom-vs-Payload-mismatch krijgt → ITMS-90229 op elk
+  # framework. extract_pkg_app.sh pakt de Payload symlink-behoudend uit en
+  # `productbuild --component` behoudt die layout in de nieuwe pkg.
   expanded = File.join(out_dir, "pkg-expanded")
-  FileUtils.rm_rf(expanded)
-  sh("pkgutil --expand-full #{pkg} #{expanded}")
-
-  app = Dir["#{expanded}/**/Pleya.app"].first
-  UI.user_error!("Geen Pleya.app gevonden in uitgepakte pkg") unless app
+  app = sh("#{File.join(PROJECT_ROOT, 'scripts/extract_pkg_app.sh')} #{pkg} #{expanded}").strip
+  UI.user_error!("Geen Pleya.app gevonden in uitgepakte pkg") if app.empty? || !File.directory?(app)
 
   # App-entitlements (incl. app-sandbox + resolved waarden) bewaren voor de app-resign.
   app_ent = File.join(out_dir, "app.entitlements")
@@ -220,17 +223,19 @@ lane :macos_beta do
   end
   sh("codesign -dv --verbose=4 #{app}")
 
-  # Component-pkg herbouwen en installer opnieuw signeren met de Mac Installer cert.
+  # Installer-pkg herbouwen met `productbuild --component` (behoudt de framework-
+  # symlink-layout) en direct signeren met de Mac Installer Distribution cert.
+  # De Sparkle-helpers zijn hierboven al gesigneerd, dus de sandbox-entitlement
+  # blijft staan.
   installer_identity = `security find-identity -v -p basic`.lines
     .map { |l| l[/"(3rd Party Mac Developer Installer:[^"]+)"/, 1] }
     .compact.first
   UI.user_error!("Geen Mac Installer Distribution cert in keychain") unless installer_identity
 
-  patched_pkg = File.join(out_dir, "Pleya-patched.pkg")
   signed_pkg = File.join(out_dir, "Pleya-signed.pkg")
-  FileUtils.rm_f([patched_pkg, signed_pkg])
-  sh("pkgutil --flatten #{expanded} #{patched_pkg}")
-  sh("productsign --sign '#{installer_identity}' #{patched_pkg} #{signed_pkg}")
+  FileUtils.rm_f(signed_pkg)
+  sh("productbuild --component #{app} /Applications " \
+     "--sign '#{installer_identity}' #{signed_pkg}")
   sh("pkgutil --check-signature #{signed_pkg}")
 
   upload_beta(app_platform: "osx", pkg: signed_pkg)
