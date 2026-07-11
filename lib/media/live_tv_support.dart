@@ -91,6 +91,9 @@ enum FavoriteChannelPersistenceMode {
 
   /// Writes must only include the favorites owned by this server/source.
   serverSlice,
+
+  /// No favorite persistence (backends without live TV).
+  none,
 }
 
 class LiveTvStreamResolution {

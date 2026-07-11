@@ -1395,5 +1395,21 @@
     "connectToJellyfinCardSubtitleScoped": "Zaloguj się do serwera Jellyfin. Powiązane z ${name}.",
     "borrowFromAnotherProfile": "Pożycz z innego profilu",
     "borrowFromAnotherProfileSubtitle": "Użyj połączenia z innego profilu. Profile chronione PIN wymagają PIN-u."
+  },
+  "addLocalFolder": {
+    "cardTitle": "Local Folder",
+    "cardSubtitle": "Browse media files from a folder on your device",
+    "title": "Add Local Folder",
+    "description": "Select a folder on your device containing movies or TV shows. Pleya will scan the folder structure and list your media.",
+    "libraryType": "Library type",
+    "typeMovies": "Movies",
+    "typeTvShows": "TV Shows",
+    "typeMixed": "Mixed",
+    "directory": "Directory",
+    "chooseDirectory": "Choose a directory…",
+    "nameLabel": "Display name",
+    "nameHint": "e.g. My Movies",
+    "save": "Add folder",
+    "saveError": "Failed to add local folder"
   }
 }

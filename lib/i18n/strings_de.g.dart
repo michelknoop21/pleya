@@ -85,6 +85,7 @@ class TranslationsDe extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTraktDe trakt = _TranslationsTraktDe._(_root);
 	@override late final _TranslationsTrackersDe trackers = _TranslationsTrackersDe._(_root);
 	@override late final _TranslationsAddServerDe addServer = _TranslationsAddServerDe._(_root);
+	@override late final _TranslationsAddLocalFolderDe addLocalFolder = _TranslationsAddLocalFolderDe._(_root);
 }
 
 // Path: app
@@ -1637,6 +1638,29 @@ class _TranslationsAddServerDe extends TranslationsAddServerEn {
 	@override String connectToJellyfinCardSubtitleScoped({required Object name}) => 'Bei einem Jellyfin-Server anmelden. Wird mit ${name} verknüpft.';
 	@override String get borrowFromAnotherProfile => 'Von einem anderen Profil ausleihen';
 	@override String get borrowFromAnotherProfileSubtitle => 'Verbindung eines anderen Profils wiederverwenden. PIN-geschützte Profile erfordern eine PIN.';
+}
+
+// Path: addLocalFolder
+class _TranslationsAddLocalFolderDe extends TranslationsAddLocalFolderEn {
+	_TranslationsAddLocalFolderDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get cardTitle => 'Local Folder';
+	@override String get cardSubtitle => 'Browse media files from a folder on your device';
+	@override String get title => 'Add Local Folder';
+	@override String get description => 'Select a folder on your device containing movies or TV shows. Pleya will scan the folder structure and list your media.';
+	@override String get libraryType => 'Library type';
+	@override String get typeMovies => 'Movies';
+	@override String get typeTvShows => 'TV Shows';
+	@override String get typeMixed => 'Mixed';
+	@override String get directory => 'Directory';
+	@override String get chooseDirectory => 'Choose a directory…';
+	@override String get nameLabel => 'Display name';
+	@override String get nameHint => 'e.g. My Movies';
+	@override String get save => 'Add folder';
+	@override String get saveError => 'Failed to add local folder';
 }
 
 // Path: hotkeys.actions
@@ -3207,6 +3231,20 @@ extension on TranslationsDe {
 			'addServer.connectToJellyfinCardSubtitleScoped' => ({required Object name}) => 'Bei einem Jellyfin-Server anmelden. Wird mit ${name} verknüpft.',
 			'addServer.borrowFromAnotherProfile' => 'Von einem anderen Profil ausleihen',
 			'addServer.borrowFromAnotherProfileSubtitle' => 'Verbindung eines anderen Profils wiederverwenden. PIN-geschützte Profile erfordern eine PIN.',
+			'addLocalFolder.cardTitle' => 'Local Folder',
+			'addLocalFolder.cardSubtitle' => 'Browse media files from a folder on your device',
+			'addLocalFolder.title' => 'Add Local Folder',
+			'addLocalFolder.description' => 'Select a folder on your device containing movies or TV shows. Pleya will scan the folder structure and list your media.',
+			'addLocalFolder.libraryType' => 'Library type',
+			'addLocalFolder.typeMovies' => 'Movies',
+			'addLocalFolder.typeTvShows' => 'TV Shows',
+			'addLocalFolder.typeMixed' => 'Mixed',
+			'addLocalFolder.directory' => 'Directory',
+			'addLocalFolder.chooseDirectory' => 'Choose a directory…',
+			'addLocalFolder.nameLabel' => 'Display name',
+			'addLocalFolder.nameHint' => 'e.g. My Movies',
+			'addLocalFolder.save' => 'Add folder',
+			'addLocalFolder.saveError' => 'Failed to add local folder',
 			_ => null,
 		};
 	}

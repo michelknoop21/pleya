@@ -180,6 +180,32 @@ class ServerCapabilities {
     folderGrouping: true,
   );
 
+  /// Defaults for a local folder source (no server, no transcoding).
+  ///
+  /// Only [folderGrouping] is true — the scanner exposes a folder hierarchy.
+  /// Everything else (live TV, hubs, playlists, ratings, transcoding) is off.
+  static const ServerCapabilities local = ServerCapabilities(
+    serverSidePlayQueue: false,
+    serverSidePlaylists: false,
+    liveTv: false,
+    liveTvDvr: false,
+    subtitleSearch: false,
+    videoTranscoding: false,
+    serverSideSync: false,
+    richHubs: false,
+    numericUserRating: false,
+    continueWatchingRemoval: false,
+    externalSubtitleSearch: false,
+    trackPreferencePersistence: false,
+    endpointFailover: false,
+    offlineWatchQueue: false,
+    discordRpc: false,
+    richMetadataEdit: false,
+    alphaBar: AlphaBarMode.none,
+    scrubThumbnails: false,
+    folderGrouping: true,
+  );
+
   ServerCapabilities copyWith({
     bool? serverSidePlayQueue,
     bool? serverSidePlaylists,

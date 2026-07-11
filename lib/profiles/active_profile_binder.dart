@@ -320,6 +320,8 @@ class ActiveProfileBinder {
           expected.addAll(servers.map((server) => server.clientIdentifier));
         case JellyfinConnection(:final serverMachineId):
           expected.add(serverMachineId);
+        case LocalFolderConnection(:final id):
+          expected.add(id);
         case null:
           break;
       }
@@ -483,6 +485,9 @@ class ActiveProfileBinder {
         case JellyfinConnection():
           expected.add(conn.serverMachineId);
           futures.add(_bindJellyfin(conn));
+        case LocalFolderConnection():
+          expected.add(conn.id);
+          futures.add(_bindLocalFolder(conn));
       }
     }
     final results = await Future.wait(futures);
@@ -861,6 +866,14 @@ class ActiveProfileBinder {
       return _ProfileBindResult.visible({conn.serverMachineId});
     }
     return _ProfileBindResult(visibleServerIds: const {}, expectedServerIds: {conn.serverMachineId});
+  }
+
+  Future<_ProfileBindResult> _bindLocalFolder(LocalFolderConnection conn) async {
+    final ok = await serverManager.addLocalSource(conn);
+    if (ok) {
+      return _ProfileBindResult.visible({conn.id});
+    }
+    return _ProfileBindResult(visibleServerIds: const {}, expectedServerIds: {conn.id});
   }
 
   Future<PlexAuthService> _ensureAuth() async {

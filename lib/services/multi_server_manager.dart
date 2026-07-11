@@ -5,9 +5,12 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 
 import '../connection/connection.dart';
+import '../media/media_backend.dart';
 import '../media/media_server_client.dart';
+import '../services/api_cache.dart';
 import 'jellyfin_client.dart';
 import 'jellyfin_endpoint_discovery.dart';
+import 'local_folder_client.dart';
 import 'plex_client.dart';
 import '../models/plex/plex_config.dart';
 import '../utils/app_logger.dart';
@@ -615,6 +618,25 @@ class MultiServerManager {
       return healthy;
     } catch (e, stackTrace) {
       appLogger.e('Failed to add Jellyfin server ${connection.serverName}', error: e, stackTrace: stackTrace);
+      return false;
+    }
+  }
+
+  /// Add a local folder source. Always "online" — no health check needed.
+  Future<bool> addLocalSource(LocalFolderConnection connection) async {
+    try {
+      final cache = ApiCache.forBackend(MediaBackend.plex);
+      final client = LocalFolderClient(connection: connection, cache: cache);
+      final oldClient = _clients[connection.id];
+      if (oldClient != null) _closeClient(oldClient);
+      _clients[connection.id] = client;
+      _serverStatus[connection.id] = true;
+      _statusController.add(Map.from(_serverStatus));
+      _connectProgressController.add((serverId: connection.id, online: true));
+      appLogger.i('Added local folder source: ${connection.displayName}');
+      return true;
+    } catch (e, stackTrace) {
+      appLogger.e('Failed to add local folder source ${connection.displayName}', error: e, stackTrace: stackTrace);
       return false;
     }
   }

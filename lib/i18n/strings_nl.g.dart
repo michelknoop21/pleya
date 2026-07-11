@@ -86,6 +86,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTraktNl trakt = _TranslationsTraktNl._(_root);
 	@override late final _TranslationsTrackersNl trackers = _TranslationsTrackersNl._(_root);
 	@override late final _TranslationsAddServerNl addServer = _TranslationsAddServerNl._(_root);
+	@override late final _TranslationsAddLocalFolderNl addLocalFolder = _TranslationsAddLocalFolderNl._(_root);
 }
 
 // Path: states
@@ -1699,6 +1700,29 @@ class _TranslationsAddServerNl extends TranslationsAddServerEn {
 	@override String connectToJellyfinCardSubtitleScoped({required Object name}) => 'Log in op een Jellyfin-server. Wordt gekoppeld aan ${name}.';
 	@override String get borrowFromAnotherProfile => 'Lenen van een ander profiel';
 	@override String get borrowFromAnotherProfileSubtitle => 'Hergebruik de verbinding van een ander profiel. PIN-beveiligde profielen vereisen een PIN.';
+}
+
+// Path: addLocalFolder
+class _TranslationsAddLocalFolderNl extends TranslationsAddLocalFolderEn {
+	_TranslationsAddLocalFolderNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get cardTitle => 'Lokale Map';
+	@override String get cardSubtitle => 'Blader door mediabestanden uit een map op je apparaat';
+	@override String get title => 'Lokale Map Toevoegen';
+	@override String get description => 'Selecteer een map op je apparaat met films of series. Pleya scant de mapstructuur en toont je media.';
+	@override String get libraryType => 'Bibliotheektype';
+	@override String get typeMovies => 'Films';
+	@override String get typeTvShows => 'Series';
+	@override String get typeMixed => 'Gemengd';
+	@override String get directory => 'Map';
+	@override String get chooseDirectory => 'Kies een map…';
+	@override String get nameLabel => 'Weergavenaam';
+	@override String get nameHint => 'bijv. Mijn Films';
+	@override String get save => 'Map toevoegen';
+	@override String get saveError => 'Lokale map toevoegen mislukt';
 }
 
 // Path: search.filters
@@ -3371,6 +3395,20 @@ extension on TranslationsNl {
 			'addServer.connectToJellyfinCardSubtitleScoped' => ({required Object name}) => 'Log in op een Jellyfin-server. Wordt gekoppeld aan ${name}.',
 			'addServer.borrowFromAnotherProfile' => 'Lenen van een ander profiel',
 			'addServer.borrowFromAnotherProfileSubtitle' => 'Hergebruik de verbinding van een ander profiel. PIN-beveiligde profielen vereisen een PIN.',
+			'addLocalFolder.cardTitle' => 'Lokale Map',
+			'addLocalFolder.cardSubtitle' => 'Blader door mediabestanden uit een map op je apparaat',
+			'addLocalFolder.title' => 'Lokale Map Toevoegen',
+			'addLocalFolder.description' => 'Selecteer een map op je apparaat met films of series. Pleya scant de mapstructuur en toont je media.',
+			'addLocalFolder.libraryType' => 'Bibliotheektype',
+			'addLocalFolder.typeMovies' => 'Films',
+			'addLocalFolder.typeTvShows' => 'Series',
+			'addLocalFolder.typeMixed' => 'Gemengd',
+			'addLocalFolder.directory' => 'Map',
+			'addLocalFolder.chooseDirectory' => 'Kies een map…',
+			'addLocalFolder.nameLabel' => 'Weergavenaam',
+			'addLocalFolder.nameHint' => 'bijv. Mijn Films',
+			'addLocalFolder.save' => 'Map toevoegen',
+			'addLocalFolder.saveError' => 'Lokale map toevoegen mislukt',
 			_ => null,
 		};
 	}

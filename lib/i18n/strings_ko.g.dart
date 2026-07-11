@@ -85,6 +85,7 @@ class TranslationsKo extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTraktKo trakt = _TranslationsTraktKo._(_root);
 	@override late final _TranslationsTrackersKo trackers = _TranslationsTrackersKo._(_root);
 	@override late final _TranslationsAddServerKo addServer = _TranslationsAddServerKo._(_root);
+	@override late final _TranslationsAddLocalFolderKo addLocalFolder = _TranslationsAddLocalFolderKo._(_root);
 }
 
 // Path: app
@@ -1637,6 +1638,29 @@ class _TranslationsAddServerKo extends TranslationsAddServerEn {
 	@override String connectToJellyfinCardSubtitleScoped({required Object name}) => 'Jellyfin 서버에 로그인합니다. ${name}에 연결됩니다.';
 	@override String get borrowFromAnotherProfile => '다른 프로필에서 빌리기';
 	@override String get borrowFromAnotherProfileSubtitle => '다른 프로필의 연결을 재사용합니다. PIN으로 보호된 프로필에는 PIN이 필요합니다.';
+}
+
+// Path: addLocalFolder
+class _TranslationsAddLocalFolderKo extends TranslationsAddLocalFolderEn {
+	_TranslationsAddLocalFolderKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get cardTitle => 'Local Folder';
+	@override String get cardSubtitle => 'Browse media files from a folder on your device';
+	@override String get title => 'Add Local Folder';
+	@override String get description => 'Select a folder on your device containing movies or TV shows. Pleya will scan the folder structure and list your media.';
+	@override String get libraryType => 'Library type';
+	@override String get typeMovies => 'Movies';
+	@override String get typeTvShows => 'TV Shows';
+	@override String get typeMixed => 'Mixed';
+	@override String get directory => 'Directory';
+	@override String get chooseDirectory => 'Choose a directory…';
+	@override String get nameLabel => 'Display name';
+	@override String get nameHint => 'e.g. My Movies';
+	@override String get save => 'Add folder';
+	@override String get saveError => 'Failed to add local folder';
 }
 
 // Path: hotkeys.actions
@@ -3207,6 +3231,20 @@ extension on TranslationsKo {
 			'addServer.connectToJellyfinCardSubtitleScoped' => ({required Object name}) => 'Jellyfin 서버에 로그인합니다. ${name}에 연결됩니다.',
 			'addServer.borrowFromAnotherProfile' => '다른 프로필에서 빌리기',
 			'addServer.borrowFromAnotherProfileSubtitle' => '다른 프로필의 연결을 재사용합니다. PIN으로 보호된 프로필에는 PIN이 필요합니다.',
+			'addLocalFolder.cardTitle' => 'Local Folder',
+			'addLocalFolder.cardSubtitle' => 'Browse media files from a folder on your device',
+			'addLocalFolder.title' => 'Add Local Folder',
+			'addLocalFolder.description' => 'Select a folder on your device containing movies or TV shows. Pleya will scan the folder structure and list your media.',
+			'addLocalFolder.libraryType' => 'Library type',
+			'addLocalFolder.typeMovies' => 'Movies',
+			'addLocalFolder.typeTvShows' => 'TV Shows',
+			'addLocalFolder.typeMixed' => 'Mixed',
+			'addLocalFolder.directory' => 'Directory',
+			'addLocalFolder.chooseDirectory' => 'Choose a directory…',
+			'addLocalFolder.nameLabel' => 'Display name',
+			'addLocalFolder.nameHint' => 'e.g. My Movies',
+			'addLocalFolder.save' => 'Add folder',
+			'addLocalFolder.saveError' => 'Failed to add local folder',
 			_ => null,
 		};
 	}

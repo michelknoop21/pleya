@@ -1465,5 +1465,21 @@
     "connectToJellyfinCardSubtitleScoped": "Log in op een Jellyfin-server. Wordt gekoppeld aan ${name}.",
     "borrowFromAnotherProfile": "Lenen van een ander profiel",
     "borrowFromAnotherProfileSubtitle": "Hergebruik de verbinding van een ander profiel. PIN-beveiligde profielen vereisen een PIN."
+  },
+  "addLocalFolder": {
+    "cardTitle": "Lokale Map",
+    "cardSubtitle": "Blader door mediabestanden uit een map op je apparaat",
+    "title": "Lokale Map Toevoegen",
+    "description": "Selecteer een map op je apparaat met films of series. Pleya scant de mapstructuur en toont je media.",
+    "libraryType": "Bibliotheektype",
+    "typeMovies": "Films",
+    "typeTvShows": "Series",
+    "typeMixed": "Gemengd",
+    "directory": "Map",
+    "chooseDirectory": "Kies een map…",
+    "nameLabel": "Weergavenaam",
+    "nameHint": "bijv. Mijn Films",
+    "save": "Map toevoegen",
+    "saveError": "Lokale map toevoegen mislukt"
   }
 }

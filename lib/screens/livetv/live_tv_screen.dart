@@ -495,6 +495,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
         FavoriteChannelPersistenceMode.sharedFullList => byStore[storeKey] ?? const <FavoriteChannel>[],
         FavoriteChannelPersistenceMode.serverSlice =>
           (byStore[storeKey] ?? const <FavoriteChannel>[]).where((f) => f.source == source).toList(),
+        FavoriteChannelPersistenceMode.none => const <FavoriteChannel>[],
       };
       unawaited(client.liveTv.setFavoriteChannels(channels));
     }

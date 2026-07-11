@@ -7,22 +7,26 @@ import '../services/plex_auth_service.dart';
 /// (e.g. database column values).
 enum ConnectionKind {
   plex,
-  jellyfin;
+  jellyfin,
+  local;
 
   String get id => switch (this) {
     ConnectionKind.plex => 'plex',
     ConnectionKind.jellyfin => 'jellyfin',
+    ConnectionKind.local => 'local',
   };
 
   static ConnectionKind fromId(String id) => switch (id) {
     'plex' => ConnectionKind.plex,
     'jellyfin' => ConnectionKind.jellyfin,
+    'local' => ConnectionKind.local,
     _ => throw ArgumentError('Unknown ConnectionKind id: $id'),
   };
 
   MediaBackend get backend => switch (this) {
     ConnectionKind.plex => MediaBackend.plex,
     ConnectionKind.jellyfin => MediaBackend.jellyfin,
+    ConnectionKind.local => MediaBackend.local,
   };
 }
 
@@ -357,6 +361,113 @@ class JellyfinConnection extends Connection {
       accessToken: json['accessToken'] as String? ?? '',
       deviceId: json['deviceId'] as String? ?? '',
       isAdministrator: json['isAdministrator'] as bool? ?? false,
+      status: status,
+      createdAt: createdAt,
+      lastAuthenticatedAt: lastAuthenticatedAt,
+    );
+  }
+}
+
+/// A local folder connection — a directory on the device (Android SAF URI)
+/// scanned as a media library. No auth tokens, no network. Always "online".
+class LocalFolderConnection extends Connection {
+  @override
+  final String id;
+
+  @override
+  final ConnectionStatus status;
+
+  @override
+  final DateTime createdAt;
+
+  @override
+  final DateTime? lastAuthenticatedAt;
+
+  /// Platform-specific directory URI. On Android this is a `content://` SAF URI
+  /// with persistable permission. On iOS this is a file path (security-scoped
+  /// bookmark data stored in [bookmarkData]).
+  final String directoryUri;
+
+  /// User-given display name for this folder source (e.g. "My Movies").
+  final String displayName;
+
+  /// Library type hint: "movies", "tvshows", or "mixed". Drives how the
+  /// scanner interprets folder structure.
+  final String libraryType;
+
+  /// iOS-only: base64-encoded security-scoped bookmark for persistent access.
+  /// Null on Android.
+  final String? bookmarkData;
+
+  LocalFolderConnection({
+    required this.id,
+    required this.directoryUri,
+    required this.displayName,
+    this.libraryType = 'mixed',
+    this.bookmarkData,
+    this.status = ConnectionStatus.online,
+    required this.createdAt,
+    this.lastAuthenticatedAt,
+  });
+
+  @override
+  ConnectionKind get kind => ConnectionKind.local;
+
+  @override
+  String get displayLabel => displayName;
+
+  @override
+  String? get displaySubtitle => libraryType == 'movies'
+      ? 'Local · Movies'
+      : libraryType == 'tvshows'
+      ? 'Local · TV Shows'
+      : 'Local · Mixed';
+
+  LocalFolderConnection copyWith({
+    String? id,
+    String? directoryUri,
+    String? displayName,
+    String? libraryType,
+    String? bookmarkData,
+    ConnectionStatus? status,
+    DateTime? createdAt,
+    DateTime? lastAuthenticatedAt,
+  }) {
+    return LocalFolderConnection(
+      id: id ?? this.id,
+      directoryUri: directoryUri ?? this.directoryUri,
+      displayName: displayName ?? this.displayName,
+      libraryType: libraryType ?? this.libraryType,
+      bookmarkData: bookmarkData ?? this.bookmarkData,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      lastAuthenticatedAt: lastAuthenticatedAt ?? this.lastAuthenticatedAt,
+    );
+  }
+
+  @override
+  Map<String, Object?> toConfigJson() {
+    return {
+      'directoryUri': directoryUri,
+      'displayName': displayName,
+      'libraryType': libraryType,
+      'bookmarkData': bookmarkData,
+    };
+  }
+
+  factory LocalFolderConnection.fromConfigJson({
+    required String id,
+    required Map<String, Object?> json,
+    required ConnectionStatus status,
+    required DateTime createdAt,
+    DateTime? lastAuthenticatedAt,
+  }) {
+    return LocalFolderConnection(
+      id: id,
+      directoryUri: json['directoryUri'] as String? ?? '',
+      displayName: json['displayName'] as String? ?? 'Local Folder',
+      libraryType: json['libraryType'] as String? ?? 'mixed',
+      bookmarkData: json['bookmarkData'] as String?,
       status: status,
       createdAt: createdAt,
       lastAuthenticatedAt: lastAuthenticatedAt,

@@ -68,6 +68,7 @@ abstract class LibraryAlphaBarStrategy {
         isShared: isShared,
       ),
       MediaBackend.jellyfin => const JellyfinAlphaBarStrategy(),
+      MediaBackend.local => const NoAlphaBarStrategy(),
     };
   }
 }
@@ -212,4 +213,40 @@ class JellyfinAlphaBarStrategy implements LibraryAlphaBarStrategy {
     final next = (currentJellyfinPrefix == letter) ? null : letter;
     onJellyfinPrefixChange(next);
   }
+}
+
+/// No-op strategy for backends without alpha-jump support (local folders).
+class NoAlphaBarStrategy implements LibraryAlphaBarStrategy {
+  const NoAlphaBarStrategy();
+
+  @override
+  bool shouldShow({
+    required int totalItemCount,
+    required int loadedCharacterCount,
+    required String? sortKey,
+    required bool isFolderGrouping,
+    required String? jellyfinAlphaPrefix,
+    required bool isPhone,
+  }) => false;
+
+  @override
+  Future<({List<LibraryFirstCharacter> chars, AlphaJumpHelper helper})> loadCharacters({
+    required Map<String, String> filters,
+    required int? typeId,
+    required bool descending,
+  }) async {
+    return (chars: <LibraryFirstCharacter>[], helper: AlphaJumpHelper(const []));
+  }
+
+  @override
+  String currentLetter(int index, AlphaJumpHelper helper, {String? jellyfinAlphaPrefix}) => '';
+
+  @override
+  void onLetterPressed(
+    int targetIndex,
+    AlphaJumpHelper helper, {
+    required String? currentJellyfinPrefix,
+    required void Function(int index) onPlexJump,
+    required void Function(String? nextPrefix) onJellyfinPrefixChange,
+  }) {}
 }

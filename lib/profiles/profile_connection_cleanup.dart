@@ -199,5 +199,8 @@ Set<ServerId> _serverIdsForConnection(Connection connection) {
     JellyfinConnection(:final serverMachineId) => {
       if (ServerId.tryParse(serverMachineId) case final serverId?) serverId,
     },
+    LocalFolderConnection(:final id) => {
+      if (ServerId.tryParse(id) case final serverId?) serverId,
+    },
   };
 }

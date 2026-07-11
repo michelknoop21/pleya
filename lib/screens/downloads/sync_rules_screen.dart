@@ -159,6 +159,10 @@ class _SyncRuleTileState extends State<_SyncRuleTile> {
           if (serverMachineId == rule.serverId && serverName.isNotEmpty) {
             return _RuleServerInfo(label: serverName, isKnown: true);
           }
+        case LocalFolderConnection(:final id, :final displayName):
+          if (id == rule.serverId && displayName.isNotEmpty) {
+            return _RuleServerInfo(label: displayName, isKnown: true);
+          }
       }
     }
 
