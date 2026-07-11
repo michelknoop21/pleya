@@ -1411,5 +1411,32 @@
     "nameHint": "e.g. My Movies",
     "save": "Add folder",
     "saveError": "Failed to add local folder"
+  },
+  "pleyaShare": {
+    "cardTitle": "Pleya Share",
+    "cardSubtitle": "Conéctate a otro dispositivo Pleya que comparte sus medios",
+    "hostTitle": "Compartir mis medios",
+    "hostDescription": "Otros dispositivos Pleya en esta red pueden explorar, transmitir y descargar tus carpetas locales. Mantén esta pantalla abierta mientras compartes.",
+    "hostToggle": "Compartir carpetas locales",
+    "noLocalFolders": "Añade primero una carpeta local — aún no hay nada que compartir.",
+    "pairCodeLabel": "Código de emparejamiento",
+    "pairCodeHint": "Introduce este código en el otro dispositivo. El código cambia tras cada emparejamiento correcto.",
+    "regenerateCode": "Nuevo código",
+    "pairedDevices": "Dispositivos emparejados",
+    "noGuests": "Aún no hay dispositivos emparejados",
+    "revokeGuest": "Eliminar dispositivo",
+    "joinTitle": "Conectar con Pleya Share",
+    "joinDescription": "Elige un host encontrado en tu red o introduce su dirección, y luego escribe el código de 6 dígitos que aparece en ese dispositivo.",
+    "hostsFound": "Hosts en tu red",
+    "searching": "Buscando hosts…",
+    "noHostsFound": "No se encontraron hosts. Asegúrate de que compartir esté activado y de que ambos dispositivos estén en la misma red.",
+    "refresh": "Buscar de nuevo",
+    "manualHost": "Dirección del host (IP)",
+    "codeLabel": "Código de 6 dígitos",
+    "connect": "Conectar",
+    "pairFailed": "Error al emparejar. Comprueba el código e inténtalo de nuevo.",
+    "paired": "Conectado a $name",
+    "pairUnreachable": "Host no accesible. Comprueba la dirección y la red.",
+    "addFolder": "Añadir carpeta local"
   }
 }

@@ -86,6 +86,7 @@ class TranslationsKo extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTrackersKo trackers = _TranslationsTrackersKo._(_root);
 	@override late final _TranslationsAddServerKo addServer = _TranslationsAddServerKo._(_root);
 	@override late final _TranslationsAddLocalFolderKo addLocalFolder = _TranslationsAddLocalFolderKo._(_root);
+	@override late final _TranslationsPleyaShareKo pleyaShare = _TranslationsPleyaShareKo._(_root);
 }
 
 // Path: app
@@ -1661,6 +1662,40 @@ class _TranslationsAddLocalFolderKo extends TranslationsAddLocalFolderEn {
 	@override String get nameHint => 'e.g. My Movies';
 	@override String get save => 'Add folder';
 	@override String get saveError => 'Failed to add local folder';
+}
+
+// Path: pleyaShare
+class _TranslationsPleyaShareKo extends TranslationsPleyaShareEn {
+	_TranslationsPleyaShareKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get cardTitle => 'Pleya Share';
+	@override String get cardSubtitle => '미디어를 공유 중인 다른 Pleya 기기에 연결';
+	@override String get hostTitle => '내 미디어 공유';
+	@override String get hostDescription => '이 네트워크의 다른 Pleya 기기가 로컬 폴더를 탐색, 스트리밍, 다운로드할 수 있습니다. 공유하는 동안 이 화면을 열어 두세요.';
+	@override String get hostToggle => '로컬 폴더 공유';
+	@override String get noLocalFolders => '먼저 로컬 폴더를 추가하세요 — 아직 공유할 항목이 없습니다.';
+	@override String get pairCodeLabel => '페어링 코드';
+	@override String get pairCodeHint => '다른 기기에서 이 코드를 입력하세요. 페어링이 성공하면 코드가 변경됩니다.';
+	@override String get regenerateCode => '새 코드';
+	@override String get pairedDevices => '페어링된 기기';
+	@override String get noGuests => '아직 페어링된 기기가 없습니다';
+	@override String get revokeGuest => '기기 제거';
+	@override String get joinTitle => 'Pleya Share에 연결';
+	@override String get joinDescription => '네트워크에서 발견된 호스트를 선택하거나 주소를 입력한 다음, 해당 기기에 표시된 6자리 코드를 입력하세요.';
+	@override String get hostsFound => '네트워크의 호스트';
+	@override String get searching => '호스트 검색 중…';
+	@override String get noHostsFound => '호스트를 찾을 수 없습니다. 공유가 켜져 있고 두 기기가 같은 네트워크에 있는지 확인하세요.';
+	@override String get refresh => '다시 검색';
+	@override String get manualHost => '호스트 주소(IP)';
+	@override String get codeLabel => '6자리 코드';
+	@override String get connect => '연결';
+	@override String get pairFailed => '페어링에 실패했습니다. 코드를 확인하고 다시 시도하세요.';
+	@override String paired({required Object name}) => '${name}에 연결됨';
+	@override String get pairUnreachable => '호스트에 연결할 수 없습니다. 주소와 네트워크를 확인하세요.';
+	@override String get addFolder => '로컬 폴더 추가';
 }
 
 // Path: hotkeys.actions
@@ -3245,6 +3280,31 @@ extension on TranslationsKo {
 			'addLocalFolder.nameHint' => 'e.g. My Movies',
 			'addLocalFolder.save' => 'Add folder',
 			'addLocalFolder.saveError' => 'Failed to add local folder',
+			'pleyaShare.cardTitle' => 'Pleya Share',
+			'pleyaShare.cardSubtitle' => '미디어를 공유 중인 다른 Pleya 기기에 연결',
+			'pleyaShare.hostTitle' => '내 미디어 공유',
+			'pleyaShare.hostDescription' => '이 네트워크의 다른 Pleya 기기가 로컬 폴더를 탐색, 스트리밍, 다운로드할 수 있습니다. 공유하는 동안 이 화면을 열어 두세요.',
+			'pleyaShare.hostToggle' => '로컬 폴더 공유',
+			'pleyaShare.noLocalFolders' => '먼저 로컬 폴더를 추가하세요 — 아직 공유할 항목이 없습니다.',
+			'pleyaShare.pairCodeLabel' => '페어링 코드',
+			'pleyaShare.pairCodeHint' => '다른 기기에서 이 코드를 입력하세요. 페어링이 성공하면 코드가 변경됩니다.',
+			'pleyaShare.regenerateCode' => '새 코드',
+			'pleyaShare.pairedDevices' => '페어링된 기기',
+			'pleyaShare.noGuests' => '아직 페어링된 기기가 없습니다',
+			'pleyaShare.revokeGuest' => '기기 제거',
+			'pleyaShare.joinTitle' => 'Pleya Share에 연결',
+			'pleyaShare.joinDescription' => '네트워크에서 발견된 호스트를 선택하거나 주소를 입력한 다음, 해당 기기에 표시된 6자리 코드를 입력하세요.',
+			'pleyaShare.hostsFound' => '네트워크의 호스트',
+			'pleyaShare.searching' => '호스트 검색 중…',
+			'pleyaShare.noHostsFound' => '호스트를 찾을 수 없습니다. 공유가 켜져 있고 두 기기가 같은 네트워크에 있는지 확인하세요.',
+			'pleyaShare.refresh' => '다시 검색',
+			'pleyaShare.manualHost' => '호스트 주소(IP)',
+			'pleyaShare.codeLabel' => '6자리 코드',
+			'pleyaShare.connect' => '연결',
+			'pleyaShare.pairFailed' => '페어링에 실패했습니다. 코드를 확인하고 다시 시도하세요.',
+			'pleyaShare.paired' => ({required Object name}) => '${name}에 연결됨',
+			'pleyaShare.pairUnreachable' => '호스트에 연결할 수 없습니다. 주소와 네트워크를 확인하세요.',
+			'pleyaShare.addFolder' => '로컬 폴더 추가',
 			_ => null,
 		};
 	}

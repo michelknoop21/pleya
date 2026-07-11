@@ -138,6 +138,9 @@ class _TranslationsAuthNl extends TranslationsAuthEn {
 	@override String get chooseHowToSignIn => 'Kies hoe je inlogt';
 	@override String get chooseHowToSignInDescription => 'Pleya verbindt met je Plex- of Jellyfin-mediaserver. Kies er een om te beginnen.';
 	@override String get tryAgain => 'Opnieuw proberen';
+	@override String get plexTokenLabel => 'Plex-authenticatietoken';
+	@override String get plexTokenHint => 'Voer je plex.tv-token in';
+	@override String get serviceNotReady => 'Authenticatieservice is nog niet klaar. Probeer het zo opnieuw.';
 }
 
 // Path: common
@@ -194,6 +197,8 @@ class _TranslationsCommonNl extends TranslationsCommonEn {
 	@override String get fullscreen => 'Volledig scherm';
 	@override String get exitFullscreen => 'Volledig scherm verlaten';
 	@override String get pressBackAgainToExit => 'Druk nogmaals op terug om af te sluiten';
+	@override String decreaseValue({required Object label}) => '${label} verlagen';
+	@override String increaseValue({required Object label}) => '${label} verhogen';
 }
 
 // Path: screens
@@ -1756,6 +1761,8 @@ class _TranslationsPleyaShareNl extends TranslationsPleyaShareEn {
 	@override String get connect => 'Verbinden';
 	@override String get pairFailed => 'Koppelen mislukt. Controleer de code en probeer opnieuw.';
 	@override String paired({required Object name}) => 'Verbonden met ${name}';
+	@override String get pairUnreachable => 'Host niet bereikbaar. Controleer het adres en het netwerk.';
+	@override String get addFolder => 'Lokale map toevoegen';
 }
 
 // Path: search.filters
@@ -2108,6 +2115,9 @@ extension on TranslationsNl {
 			'auth.chooseHowToSignIn' => 'Kies hoe je inlogt',
 			'auth.chooseHowToSignInDescription' => 'Pleya verbindt met je Plex- of Jellyfin-mediaserver. Kies er een om te beginnen.',
 			'auth.tryAgain' => 'Opnieuw proberen',
+			'auth.plexTokenLabel' => 'Plex-authenticatietoken',
+			'auth.plexTokenHint' => 'Voer je plex.tv-token in',
+			'auth.serviceNotReady' => 'Authenticatieservice is nog niet klaar. Probeer het zo opnieuw.',
 			'common.cancel' => 'Annuleren',
 			'common.save' => 'Opslaan',
 			'common.close' => 'Sluiten',
@@ -2155,6 +2165,8 @@ extension on TranslationsNl {
 			'common.fullscreen' => 'Volledig scherm',
 			'common.exitFullscreen' => 'Volledig scherm verlaten',
 			'common.pressBackAgainToExit' => 'Druk nogmaals op terug om af te sluiten',
+			'common.decreaseValue' => ({required Object label}) => '${label} verlagen',
+			'common.increaseValue' => ({required Object label}) => '${label} verhogen',
 			'screens.licenses' => 'Licenties',
 			'screens.switchProfile' => 'Wissel van profiel',
 			'screens.whoIsWatching' => 'Wie is er aan het kijken?',
@@ -2592,13 +2604,13 @@ extension on TranslationsNl {
 			'messages.markedAsWatchedOffline' => 'Gemarkeerd als gekeken (sync wanneer online)',
 			'messages.markedAsUnwatchedOffline' => 'Gemarkeerd als ongekeken (sync wanneer online)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Automatisch verwijderd: ${title}',
+			_ => null,
+		} ?? switch (path) {
 			'messages.removedFromContinueWatching' => 'Verwijderd uit Doorgaan met kijken',
 			'messages.errorLoading' => ({required Object error}) => 'Fout: ${error}',
 			'messages.fileInfoNotAvailable' => 'Bestand informatie niet beschikbaar',
 			'messages.errorLoadingFileInfo' => ({required Object error}) => 'Fout bij laden bestand info: ${error}',
 			'messages.errorLoadingSeries' => 'Fout bij laden serie',
-			_ => null,
-		} ?? switch (path) {
 			'messages.musicNotSupported' => 'Muziek afspelen wordt nog niet ondersteund',
 			'messages.noDescriptionAvailable' => 'Geen beschrijving beschikbaar',
 			'messages.noProfilesAvailable' => 'Geen profielen beschikbaar',
@@ -3106,13 +3118,13 @@ extension on TranslationsNl {
 			'downloads.removeSyncRuleConfirm' => ({required Object title}) => 'Synchronisatie van "${title}" stoppen? Gedownloade afleveringen worden behouden.',
 			'downloads.syncRuleCreated' => ({required Object count}) => 'Synchronisatieregel aangemaakt — ${count} onbekeken afleveringen behouden',
 			'downloads.syncRuleUpdated' => 'Synchronisatieregel bijgewerkt',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.syncRuleRemoved' => 'Synchronisatieregel verwijderd',
 			'downloads.syncedNewEpisodes' => ({required Object count, required Object title}) => '${count} nieuwe afleveringen gesynchroniseerd voor ${title}',
 			'downloads.activeSyncRules' => 'Synchronisatieregels',
 			'downloads.noSyncRules' => 'Geen synchronisatieregels',
 			'downloads.manageSyncRule' => 'Synchronisatie beheren',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.editEpisodeCount' => 'Aantal afleveringen',
 			'downloads.editSyncFilter' => 'Synchronisatiefilter',
 			'downloads.syncAllItems' => 'Alle items synchroniseren',
@@ -3465,6 +3477,8 @@ extension on TranslationsNl {
 			'pleyaShare.connect' => 'Verbinden',
 			'pleyaShare.pairFailed' => 'Koppelen mislukt. Controleer de code en probeer opnieuw.',
 			'pleyaShare.paired' => ({required Object name}) => 'Verbonden met ${name}',
+			'pleyaShare.pairUnreachable' => 'Host niet bereikbaar. Controleer het adres en het netwerk.',
+			'pleyaShare.addFolder' => 'Lokale map toevoegen',
 			_ => null,
 		};
 	}

@@ -636,7 +636,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
           if (!downloadProvider.hasSyncRule(key)) continue;
           final result = await downloadProvider.executeSyncRuleFor(key, _serverManager);
           if (result != null && result.queuedCount > 0) {
-            final title = result.title ?? 'Unknown';
+            final title = result.title ?? t.common.unknown;
             showMainSnackBar(t.downloads.syncedNewEpisodes(count: '1', title: '$title (${result.queuedCount})'));
           }
         }
@@ -736,6 +736,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(
           create: (context) {
             _serverManager.onJellyfinConnectionUpdated = context.read<ConnectionRegistry>().upsert;
+            _serverManager.onPleyaShareConnectionUpdated = context.read<ConnectionRegistry>().upsert;
             return MultiServerProvider(_serverManager, _aggregationService);
           },
         ),

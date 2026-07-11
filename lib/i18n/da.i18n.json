@@ -1411,5 +1411,32 @@
     "nameHint": "e.g. My Movies",
     "save": "Add folder",
     "saveError": "Failed to add local folder"
+  },
+  "pleyaShare": {
+    "cardTitle": "Pleya Share",
+    "cardSubtitle": "Forbind til en anden Pleya-enhed, der deler sine medier",
+    "hostTitle": "Del mine medier",
+    "hostDescription": "Andre Pleya-enheder på dette netværk kan gennemse, streame og downloade dine lokale mapper. Hold denne skærm åben, mens du deler.",
+    "hostToggle": "Del lokale mapper",
+    "noLocalFolders": "Tilføj først en lokal mappe — der er ikke noget at dele endnu.",
+    "pairCodeLabel": "Parringskode",
+    "pairCodeHint": "Indtast denne kode på den anden enhed. Koden skifter efter hver vellykket parring.",
+    "regenerateCode": "Ny kode",
+    "pairedDevices": "Parrede enheder",
+    "noGuests": "Ingen enheder parret endnu",
+    "revokeGuest": "Fjern enhed",
+    "joinTitle": "Forbind til Pleya Share",
+    "joinDescription": "Vælg en vært fundet på dit netværk eller indtast dens adresse, og indtast derefter den 6-cifrede kode, der vises på den enhed.",
+    "hostsFound": "Værter på dit netværk",
+    "searching": "Søger efter værter…",
+    "noHostsFound": "Ingen værter fundet. Sørg for, at deling er slået til, og at begge enheder er på samme netværk.",
+    "refresh": "Søg igen",
+    "manualHost": "Værtsadresse (IP)",
+    "codeLabel": "6-cifret kode",
+    "connect": "Forbind",
+    "pairFailed": "Parring mislykkedes. Tjek koden, og prøv igen.",
+    "paired": "Forbundet til $name",
+    "pairUnreachable": "Værten kan ikke nås. Tjek adressen og netværket.",
+    "addFolder": "Tilføj lokal mappe"
   }
 }

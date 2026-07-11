@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../media/media_item.dart';
 import '../../utils/app_logger.dart';
@@ -99,6 +100,11 @@ class PleyaShareHostService extends ChangeNotifier {
 
     regeneratePairCode(notify: false);
     await _startBeacon();
+    // The server dies when the OS suspends the app; keep the screen awake
+    // for as long as sharing is on (released again in [stop]).
+    try {
+      await WakelockPlus.enable();
+    } catch (_) {}
     appLogger.i('PleyaShare: hosting on port ${server.port}');
     notifyListeners();
   }
@@ -114,6 +120,9 @@ class PleyaShareHostService extends ChangeNotifier {
     _challenges.clear();
     _pairCode = null;
     _pairSalt = null;
+    try {
+      await WakelockPlus.disable();
+    } catch (_) {}
     appLogger.i('PleyaShare: hosting stopped');
     notifyListeners();
   }
@@ -223,7 +232,7 @@ class PleyaShareHostService extends ChangeNotifier {
       }
       return _status(request, HttpStatus.notFound);
     } catch (e, st) {
-      appLogger.w('PleyaShare: request failed ${request.uri}', error: e, stackTrace: st);
+      appLogger.w('PleyaShare: request failed ${request.method} ${request.uri.path}', error: e, stackTrace: st);
       return _status(request, HttpStatus.internalServerError);
     }
   }
@@ -246,9 +255,15 @@ class PleyaShareHostService extends ChangeNotifier {
     }
   }
 
+  static const _maxOpenChallenges = 32;
+
   void _pruneChallenges() {
     final now = DateTime.now();
     _challenges.removeWhere((_, c) => now.difference(c.issued) > _challengeTtl);
+    // Client-chosen keys — cap the map so a LAN peer can't grow it unbounded.
+    while (_challenges.length >= _maxOpenChallenges) {
+      _challenges.remove(_challenges.keys.first);
+    }
   }
 
   Future<Map<String, dynamic>> _body(HttpRequest request) async {
@@ -435,10 +450,14 @@ class PleyaShareHostService extends ChangeNotifier {
     final itemId = body['itemId'] as String?;
     if (itemId == null) return _status(request, HttpStatus.badRequest);
     final state = await _loadWatchState(pairId);
-    state[itemId] = (
-      progressMs: (body['progressMs'] as num?)?.toInt() ?? 0,
-      watched: body['watched'] as bool? ?? false,
-    );
+    final progressMs = (body['progressMs'] as num?)?.toInt() ?? 0;
+    var watched = body['watched'] as bool? ?? false;
+    // Progress mid-rewatch reports watched:false with progress > 0; that must
+    // not clear an earlier watched flag (explicit unwatch sends progress 0).
+    if (!watched && progressMs > 0) {
+      watched = state[itemId]?.watched ?? false;
+    }
+    state[itemId] = (progressMs: progressMs, watched: watched);
     await _persistWatchState(pairId, state);
     return _json(request, {'ok': true});
   }

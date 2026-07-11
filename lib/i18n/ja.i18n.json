@@ -1411,5 +1411,32 @@
     "nameHint": "e.g. My Movies",
     "save": "Add folder",
     "saveError": "Failed to add local folder"
+  },
+  "pleyaShare": {
+    "cardTitle": "Pleya Share",
+    "cardSubtitle": "メディアを共有している別のPleyaデバイスに接続",
+    "hostTitle": "メディアを共有",
+    "hostDescription": "このネットワーク上の他のPleyaデバイスが、ローカルフォルダーの閲覧・ストリーミング・ダウンロードを行えます。共有中はこの画面を開いたままにしてください。",
+    "hostToggle": "ローカルフォルダーを共有",
+    "noLocalFolders": "まずローカルフォルダーを追加してください — まだ共有するものがありません。",
+    "pairCodeLabel": "ペアリングコード",
+    "pairCodeHint": "このコードをもう一方のデバイスで入力してください。コードはペアリング成功後に変わります。",
+    "regenerateCode": "新しいコード",
+    "pairedDevices": "ペアリング済みデバイス",
+    "noGuests": "ペアリング済みのデバイスはありません",
+    "revokeGuest": "デバイスを削除",
+    "joinTitle": "Pleya Shareに接続",
+    "joinDescription": "ネットワークで見つかったホストを選ぶかアドレスを入力し、相手のデバイスに表示された6桁のコードを入力してください。",
+    "hostsFound": "ネットワーク上のホスト",
+    "searching": "ホストを検索中…",
+    "noHostsFound": "ホストが見つかりません。共有がオンで、両方のデバイスが同じネットワークにあることを確認してください。",
+    "refresh": "再検索",
+    "manualHost": "ホストアドレス（IP）",
+    "codeLabel": "6桁のコード",
+    "connect": "接続",
+    "pairFailed": "ペアリングに失敗しました。コードを確認してもう一度お試しください。",
+    "paired": "$name に接続しました",
+    "pairUnreachable": "ホストに接続できません。アドレスとネットワークを確認してください。",
+    "addFolder": "ローカルフォルダーを追加"
   }
 }

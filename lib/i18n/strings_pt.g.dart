@@ -86,6 +86,7 @@ class TranslationsPt extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTrackersPt trackers = _TranslationsTrackersPt._(_root);
 	@override late final _TranslationsAddServerPt addServer = _TranslationsAddServerPt._(_root);
 	@override late final _TranslationsAddLocalFolderPt addLocalFolder = _TranslationsAddLocalFolderPt._(_root);
+	@override late final _TranslationsPleyaSharePt pleyaShare = _TranslationsPleyaSharePt._(_root);
 }
 
 // Path: app
@@ -1661,6 +1662,40 @@ class _TranslationsAddLocalFolderPt extends TranslationsAddLocalFolderEn {
 	@override String get nameHint => 'e.g. My Movies';
 	@override String get save => 'Add folder';
 	@override String get saveError => 'Failed to add local folder';
+}
+
+// Path: pleyaShare
+class _TranslationsPleyaSharePt extends TranslationsPleyaShareEn {
+	_TranslationsPleyaSharePt._(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get cardTitle => 'Pleya Share';
+	@override String get cardSubtitle => 'Ligar a outro dispositivo Pleya que partilha os seus conteúdos';
+	@override String get hostTitle => 'Partilhar os meus conteúdos';
+	@override String get hostDescription => 'Outros dispositivos Pleya nesta rede podem navegar, transmitir e transferir as suas pastas locais. Mantenha este ecrã aberto durante a partilha.';
+	@override String get hostToggle => 'Partilhar pastas locais';
+	@override String get noLocalFolders => 'Adicione primeiro uma pasta local — ainda não há nada para partilhar.';
+	@override String get pairCodeLabel => 'Código de emparelhamento';
+	@override String get pairCodeHint => 'Introduza este código no outro dispositivo. O código muda após cada emparelhamento bem-sucedido.';
+	@override String get regenerateCode => 'Novo código';
+	@override String get pairedDevices => 'Dispositivos emparelhados';
+	@override String get noGuests => 'Ainda não há dispositivos emparelhados';
+	@override String get revokeGuest => 'Remover dispositivo';
+	@override String get joinTitle => 'Ligar ao Pleya Share';
+	@override String get joinDescription => 'Escolha um host encontrado na sua rede ou introduza o endereço e depois digite o código de 6 dígitos mostrado nesse dispositivo.';
+	@override String get hostsFound => 'Hosts na sua rede';
+	@override String get searching => 'À procura de hosts…';
+	@override String get noHostsFound => 'Nenhum host encontrado. Confirme que a partilha está ativa e que ambos os dispositivos estão na mesma rede.';
+	@override String get refresh => 'Procurar novamente';
+	@override String get manualHost => 'Endereço do host (IP)';
+	@override String get codeLabel => 'Código de 6 dígitos';
+	@override String get connect => 'Ligar';
+	@override String get pairFailed => 'Falha no emparelhamento. Verifique o código e tente novamente.';
+	@override String paired({required Object name}) => 'Ligado a ${name}';
+	@override String get pairUnreachable => 'Host inacessível. Verifique o endereço e a rede.';
+	@override String get addFolder => 'Adicionar pasta local';
 }
 
 // Path: hotkeys.actions
@@ -3245,6 +3280,31 @@ extension on TranslationsPt {
 			'addLocalFolder.nameHint' => 'e.g. My Movies',
 			'addLocalFolder.save' => 'Add folder',
 			'addLocalFolder.saveError' => 'Failed to add local folder',
+			'pleyaShare.cardTitle' => 'Pleya Share',
+			'pleyaShare.cardSubtitle' => 'Ligar a outro dispositivo Pleya que partilha os seus conteúdos',
+			'pleyaShare.hostTitle' => 'Partilhar os meus conteúdos',
+			'pleyaShare.hostDescription' => 'Outros dispositivos Pleya nesta rede podem navegar, transmitir e transferir as suas pastas locais. Mantenha este ecrã aberto durante a partilha.',
+			'pleyaShare.hostToggle' => 'Partilhar pastas locais',
+			'pleyaShare.noLocalFolders' => 'Adicione primeiro uma pasta local — ainda não há nada para partilhar.',
+			'pleyaShare.pairCodeLabel' => 'Código de emparelhamento',
+			'pleyaShare.pairCodeHint' => 'Introduza este código no outro dispositivo. O código muda após cada emparelhamento bem-sucedido.',
+			'pleyaShare.regenerateCode' => 'Novo código',
+			'pleyaShare.pairedDevices' => 'Dispositivos emparelhados',
+			'pleyaShare.noGuests' => 'Ainda não há dispositivos emparelhados',
+			'pleyaShare.revokeGuest' => 'Remover dispositivo',
+			'pleyaShare.joinTitle' => 'Ligar ao Pleya Share',
+			'pleyaShare.joinDescription' => 'Escolha um host encontrado na sua rede ou introduza o endereço e depois digite o código de 6 dígitos mostrado nesse dispositivo.',
+			'pleyaShare.hostsFound' => 'Hosts na sua rede',
+			'pleyaShare.searching' => 'À procura de hosts…',
+			'pleyaShare.noHostsFound' => 'Nenhum host encontrado. Confirme que a partilha está ativa e que ambos os dispositivos estão na mesma rede.',
+			'pleyaShare.refresh' => 'Procurar novamente',
+			'pleyaShare.manualHost' => 'Endereço do host (IP)',
+			'pleyaShare.codeLabel' => 'Código de 6 dígitos',
+			'pleyaShare.connect' => 'Ligar',
+			'pleyaShare.pairFailed' => 'Falha no emparelhamento. Verifique o código e tente novamente.',
+			'pleyaShare.paired' => ({required Object name}) => 'Ligado a ${name}',
+			'pleyaShare.pairUnreachable' => 'Host inacessível. Verifique o endereço e a rede.',
+			'pleyaShare.addFolder' => 'Adicionar pasta local',
 			_ => null,
 		};
 	}

@@ -24,6 +24,10 @@ class DiscoveredShareHost {
 class PleyaShareChannel {
   PleyaShareConnection connection;
 
+  /// Invoked when the host's reachable IP changes (new DHCP lease found via
+  /// discovery) so the owner can persist the updated [connection].
+  void Function(PleyaShareConnection updated)? onConnectionUpdated;
+
   String? _baseUrl;
   String? _token;
   final HttpClient _http = HttpClient()..connectionTimeout = const Duration(seconds: 4);
@@ -47,11 +51,6 @@ class PleyaShareChannel {
     return await _authenticate();
   }
 
-  void invalidate() {
-    _token = null;
-    _baseUrl = null;
-  }
-
   Future<String?> _findReachableBase() async {
     for (final ip in connection.lastKnownIps) {
       final base = 'http://$ip:${connection.port}';
@@ -64,10 +63,20 @@ class PleyaShareChannel {
     final discovered = await discoverHosts(timeout: const Duration(seconds: 3));
     for (final host in discovered) {
       if (host.name == connection.hostName || connection.lastKnownIps.isEmpty) {
+        _rememberIp(host.ip, host.port);
         return 'http://${host.ip}:${host.port}';
       }
     }
     return null;
+  }
+
+  /// Move a freshly confirmed IP to the front of [connection.lastKnownIps]
+  /// and notify the owner so future launches try it first.
+  void _rememberIp(String ip, int port) {
+    if (connection.lastKnownIps.firstOrNull == ip && connection.port == port) return;
+    final ips = [ip, ...connection.lastKnownIps.where((existing) => existing != ip)].take(5).toList();
+    connection = connection.copyWith(lastKnownIps: ips, port: port);
+    onConnectionUpdated?.call(connection);
   }
 
   Future<bool> _authenticate() async {
@@ -109,8 +118,9 @@ class PleyaShareChannel {
     if (!await ensureConnected()) return null;
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
-        final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: {'token': _token!});
-        return await _rawJson(method, uri, body: body);
+        // Bearer header keeps the token out of URIs (and thus host logs);
+        // only /stream URLs handed to mpv use the query form.
+        return await _rawJson(method, Uri.parse('$_baseUrl$path'), body: body, bearer: _token);
       } on _HttpStatusException catch (e) {
         if (e.statusCode == HttpStatus.unauthorized && attempt == 0) {
           _token = null;
@@ -129,8 +139,11 @@ class PleyaShareChannel {
     return null;
   }
 
-  Future<Map<String, dynamic>> _rawJson(String method, Uri uri, {Map<String, Object?>? body}) async {
+  Future<Map<String, dynamic>> _rawJson(String method, Uri uri, {Map<String, Object?>? body, String? bearer}) async {
     final request = await _http.openUrl(method, uri);
+    if (bearer != null) {
+      request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $bearer');
+    }
     if (body != null) {
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(body));
@@ -153,20 +166,19 @@ class PleyaShareChannel {
     required String code,
     required String deviceName,
   }) async {
-    final http = HttpClient()..connectionTimeout = const Duration(seconds: 5);
+    final channel = PleyaShareChannel(
+      PleyaShareConnection(
+        id: 'pending',
+        hostName: '',
+        pairId: '',
+        pairSecret: '',
+        lastKnownIps: [ip],
+        port: port,
+        createdAt: DateTime.now(),
+      ),
+    );
     try {
       final base = 'http://$ip:$port';
-      final channel = PleyaShareChannel(
-        PleyaShareConnection(
-          id: 'pending',
-          hostName: '',
-          pairId: '',
-          pairSecret: '',
-          lastKnownIps: [ip],
-          port: port,
-          createdAt: DateTime.now(),
-        ),
-      );
       final clientNonce = PleyaSharePairing.randomBytes(32);
       final start = await channel._rawJson(
         'POST',
@@ -199,13 +211,26 @@ class PleyaShareChannel {
         port: port,
         createdAt: DateTime.now(),
       );
+    } on _HttpStatusException catch (e) {
+      throw PleyaSharePairException(wrongCode: e.statusCode == HttpStatus.forbidden);
+    } on PleyaSharePairException {
+      rethrow;
+    } catch (_) {
+      throw const PleyaSharePairException(wrongCode: false);
     } finally {
-      http.close(force: true);
+      channel.close();
     }
   }
 
+  static Future<List<DiscoveredShareHost>>? _discoveryInFlight;
+
   /// Listen for Pleya Share beacons for [timeout] and return unique hosts.
-  static Future<List<DiscoveredShareHost>> discoverHosts({Duration timeout = const Duration(seconds: 4)}) async {
+  static Future<List<DiscoveredShareHost>> discoverHosts({Duration timeout = const Duration(seconds: 4)}) {
+    // Port 48633 can only be bound once per process — share one in-flight scan.
+    return _discoveryInFlight ??= _discoverHosts(timeout: timeout).whenComplete(() => _discoveryInFlight = null);
+  }
+
+  static Future<List<DiscoveredShareHost>> _discoverHosts({required Duration timeout}) async {
     final hosts = <String, DiscoveredShareHost>{};
     RawDatagramSocket? socket;
     try {
@@ -242,4 +267,11 @@ class PleyaShareChannel {
 class _HttpStatusException implements Exception {
   final int statusCode;
   const _HttpStatusException(this.statusCode);
+}
+
+/// Thrown by [PleyaShareChannel.pair]; [wrongCode] distinguishes a rejected
+/// code (403) from an unreachable/incompatible host.
+class PleyaSharePairException implements Exception {
+  final bool wrongCode;
+  const PleyaSharePairException({required this.wrongCode});
 }

@@ -113,7 +113,8 @@ class PleyaShareServer {
   }
 
   void _sendBeacon() {
-    final beacon = utf8.encode(jsonEncode({'app': beaconApp, 'v': version, 'name': name, 'port': port}));
+    final advertisedPort = boundPort ?? port;
+    final beacon = utf8.encode(jsonEncode({'app': beaconApp, 'v': version, 'name': name, 'port': advertisedPort}));
     try {
       _beaconSocket?.send(beacon, InternetAddress('255.255.255.255'), discoveryPort);
     } catch (_) {}
@@ -203,6 +204,9 @@ class PleyaShareServer {
   void _pruneChallenges() {
     final now = DateTime.now();
     _challenges.removeWhere((_, c) => now.difference(c.issued) > _challengeTtl);
+    while (_challenges.length >= 32) {
+      _challenges.remove(_challenges.keys.first);
+    }
   }
 
   Future<void> _pairStart(HttpRequest request) async {
@@ -247,7 +251,7 @@ class PleyaShareServer {
     _guests[pairId] = {
       'pairId': pairId,
       'secret': base64Encode(pairSecret),
-      'name': (body['deviceName'] as String?)?.trim() ?? 'Pleya',
+      'name': ((body['deviceName'] as String?)?.trim().isNotEmpty ?? false) ? (body['deviceName'] as String).trim() : 'Pleya',
       'addedAt': DateTime.now().millisecondsSinceEpoch,
     };
     _persistGuests();
@@ -326,6 +330,10 @@ class PleyaShareServer {
       if (state != null) {
         json['viewOffsetMs'] = (state['p'] as num?)?.toInt() ?? 0;
         json['viewCount'] = (state['w'] as bool? ?? false) ? 1 : 0;
+      } else {
+        // Same normalization as the in-app host: never leak host-side state.
+        json.remove('viewOffsetMs');
+        json['viewCount'] = 0;
       }
       items.add(json);
     }
@@ -337,7 +345,12 @@ class PleyaShareServer {
     final itemId = body['itemId'] as String?;
     if (itemId == null) return _status(request, HttpStatus.badRequest);
     final state = _loadWatch(pairId);
-    state[itemId] = {'p': (body['progressMs'] as num?)?.toInt() ?? 0, 'w': body['watched'] as bool? ?? false};
+    final progressMs = (body['progressMs'] as num?)?.toInt() ?? 0;
+    var watched = body['watched'] as bool? ?? false;
+    if (!watched && progressMs > 0) {
+      watched = state[itemId]?['w'] as bool? ?? false;
+    }
+    state[itemId] = {'p': progressMs, 'w': watched};
     _persistWatch(pairId, state);
     return _json(request, {'ok': true});
   }

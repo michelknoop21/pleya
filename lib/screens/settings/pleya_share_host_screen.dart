@@ -1,17 +1,20 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
-import 'package:qr_flutter/qr_flutter.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../services/pleya_share/pleya_share_device_name.dart';
 import '../../services/pleya_share/pleya_share_host_service.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
+import 'add_local_folder_screen.dart';
 
-/// Host side of Pleya Share: toggle sharing, show the pairing code + QR,
-/// and manage paired guest devices.
+/// Host side of Pleya Share: toggle sharing, show the pairing code, and
+/// manage paired guest devices. The service holds the wakelock while
+/// sharing is on.
 class PleyaShareHostScreen extends StatefulWidget {
   const PleyaShareHostScreen({super.key});
 
@@ -23,21 +26,6 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
   final _service = PleyaShareHostService.instance;
   bool _busy = false;
 
-  @override
-  void initState() {
-    super.initState();
-    if (_service.isRunning) WakelockPlus.enable();
-  }
-
-  @override
-  void dispose() {
-    // The server keeps running when the user navigates away, but without the
-    // wakelock iOS/Android will eventually suspend it; the screen tells the
-    // user to keep it open.
-    if (!_service.isRunning) WakelockPlus.disable();
-    super.dispose();
-  }
-
   Future<void> _toggle(bool enable) async {
     if (_busy) return;
     setState(() => _busy = true);
@@ -46,20 +34,24 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
         final manager = context.read<MultiServerProvider>().serverManager;
         final name = await pleyaShareDeviceName();
         await _service.start(clients: () => manager.localFolderClients, deviceName: name);
-        await WakelockPlus.enable();
       } else {
         await _service.stop();
-        await WakelockPlus.disable();
       }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
+  Future<void> _addFolder() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddLocalFolderScreen()));
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasFolders = context.read<MultiServerProvider>().serverManager.localFolderClients.isNotEmpty;
+    // watch: re-enables the toggle the moment a local folder source appears.
+    final hasFolders = context.watch<MultiServerProvider>().serverManager.localFolderClients.isNotEmpty;
     return FocusedScrollScaffold(
       title: Text(t.pleyaShare.hostTitle),
       slivers: [
@@ -81,16 +73,32 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    SwitchListTile(
-                      title: Text(t.pleyaShare.hostToggle),
-                      value: running,
-                      onChanged: hasFolders && !_busy ? _toggle : null,
+                    FocusableWrapper(
+                      disableScale: true,
+                      borderRadius: 12,
+                      onSelect: hasFolders && !_busy ? () => _toggle(!running) : null,
+                      child: SwitchListTile(
+                        title: Text(t.pleyaShare.hostToggle),
+                        value: running,
+                        onChanged: hasFolders && !_busy ? _toggle : null,
+                      ),
                     ),
                     if (!hasFolders) ...[
                       const SizedBox(height: 8),
                       Text(
                         t.pleyaShare.noLocalFolders,
                         style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+                      ),
+                      const SizedBox(height: 12),
+                      FocusableWrapper(
+                        disableScale: true,
+                        borderRadius: 20,
+                        onSelect: _addFolder,
+                        child: OutlinedButton.icon(
+                          onPressed: _addFolder,
+                          icon: const Icon(Symbols.create_new_folder_rounded, fill: 1),
+                          label: Text(t.pleyaShare.addFolder),
+                        ),
                       ),
                     ],
                     if (running && code != null) ...[
@@ -108,17 +116,6 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                          child: QrImageView(
-                            data: 'pleya-share://pair?v=1&code=$code&port=${_service.port}',
-                            size: 160,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
                       Text(
                         t.pleyaShare.pairCodeHint,
                         textAlign: TextAlign.center,
@@ -128,10 +125,15 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
                       ),
                       const SizedBox(height: 8),
                       Center(
-                        child: TextButton.icon(
-                          onPressed: _service.regeneratePairCode,
-                          icon: const Icon(Symbols.refresh_rounded),
-                          label: Text(t.pleyaShare.regenerateCode),
+                        child: FocusableWrapper(
+                          disableScale: true,
+                          borderRadius: 20,
+                          onSelect: _service.regeneratePairCode,
+                          child: TextButton.icon(
+                            onPressed: _service.regeneratePairCode,
+                            icon: const Icon(Symbols.refresh_rounded),
+                            label: Text(t.pleyaShare.regenerateCode),
+                          ),
                         ),
                       ),
                     ],
@@ -147,14 +149,19 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
                       )
                     else
                       for (final guest in _service.pairedGuests)
-                        Card(
-                          child: ListTile(
-                            leading: const Icon(Symbols.devices_rounded, fill: 1),
-                            title: Text(guest.deviceName),
-                            trailing: IconButton(
-                              tooltip: t.pleyaShare.revokeGuest,
-                              icon: Icon(Symbols.link_off_rounded, color: theme.colorScheme.error),
-                              onPressed: () => _service.revokeGuest(guest.pairId),
+                        FocusableWrapper(
+                          disableScale: true,
+                          borderRadius: 12,
+                          onSelect: () => _service.revokeGuest(guest.pairId),
+                          child: Card(
+                            child: ListTile(
+                              leading: const Icon(Symbols.devices_rounded, fill: 1),
+                              title: Text(guest.deviceName),
+                              trailing: IconButton(
+                                tooltip: t.pleyaShare.revokeGuest,
+                                icon: Icon(Symbols.link_off_rounded, color: theme.colorScheme.error),
+                                onPressed: () => _service.revokeGuest(guest.pairId),
+                              ),
                             ),
                           ),
                         ),

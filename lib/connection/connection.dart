@@ -528,7 +528,6 @@ class PleyaShareConnection extends Connection {
   ConnectionKind get kind => ConnectionKind.pleyaShare;
 
   @override
-  @override
   String get displayName => hostName;
 
   @override

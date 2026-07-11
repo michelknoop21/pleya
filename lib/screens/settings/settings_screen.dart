@@ -303,11 +303,18 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       _SettingsSearchEntry(
         icon: Symbols.add_link_rounded,
         title: t.connections.addConnection,
-        keywords: const ['server', 'plex', 'jellyfin', 'connection', 'verbinding'],
+        keywords: const ['server', 'plex', 'jellyfin', 'connection', 'verbinding', 'share', 'pair', 'koppelen'],
         onTap: (context) {
           final active = context.read<ActiveProfileProvider>().active;
           Navigator.push(context, MaterialPageRoute(builder: (_) => AddConnectionScreen(targetProfile: active)));
         },
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.share_rounded,
+        title: t.pleyaShare.hostTitle,
+        subtitle: t.pleyaShare.hostToggle,
+        keywords: const ['share', 'delen', 'pair', 'koppelen', 'host', 'pleya share'],
+        destinationBuilder: (_) => const PleyaShareHostScreen(),
       ),
       _SettingsSearchEntry(
         icon: Symbols.group_rounded,

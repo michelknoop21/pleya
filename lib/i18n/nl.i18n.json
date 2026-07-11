@@ -26,7 +26,10 @@
     "quickConnectExpired": "Quick Connect is verlopen. Probeer opnieuw.",
     "chooseHowToSignIn": "Kies hoe je inlogt",
     "chooseHowToSignInDescription": "Pleya verbindt met je Plex- of Jellyfin-mediaserver. Kies er een om te beginnen.",
-    "tryAgain": "Opnieuw proberen"
+    "tryAgain": "Opnieuw proberen",
+    "plexTokenLabel": "Plex-authenticatietoken",
+    "plexTokenHint": "Voer je plex.tv-token in",
+    "serviceNotReady": "Authenticatieservice is nog niet klaar. Probeer het zo opnieuw."
   },
   "common": {
     "cancel": "Annuleren",
@@ -75,7 +78,9 @@
     "loading": "Laden...",
     "fullscreen": "Volledig scherm",
     "exitFullscreen": "Volledig scherm verlaten",
-    "pressBackAgainToExit": "Druk nogmaals op terug om af te sluiten"
+    "pressBackAgainToExit": "Druk nogmaals op terug om af te sluiten",
+    "decreaseValue": "$label verlagen",
+    "increaseValue": "$label verhogen"
   },
   "screens": {
     "licenses": "Licenties",
@@ -1505,6 +1510,8 @@
     "codeLabel": "6-cijferige code",
     "connect": "Verbinden",
     "pairFailed": "Koppelen mislukt. Controleer de code en probeer opnieuw.",
-    "paired": "Verbonden met $name"
+    "paired": "Verbonden met $name",
+    "pairUnreachable": "Host niet bereikbaar. Controleer het adres en het netwerk.",
+    "addFolder": "Lokale map toevoegen"
   }
 }

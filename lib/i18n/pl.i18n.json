@@ -1411,5 +1411,32 @@
     "nameHint": "e.g. My Movies",
     "save": "Add folder",
     "saveError": "Failed to add local folder"
+  },
+  "pleyaShare": {
+    "cardTitle": "Pleya Share",
+    "cardSubtitle": "Połącz się z innym urządzeniem Pleya udostępniającym multimedia",
+    "hostTitle": "Udostępnij moje multimedia",
+    "hostDescription": "Inne urządzenia Pleya w tej sieci mogą przeglądać, odtwarzać i pobierać twoje lokalne foldery. Podczas udostępniania nie zamykaj tego ekranu.",
+    "hostToggle": "Udostępniaj lokalne foldery",
+    "noLocalFolders": "Najpierw dodaj folder lokalny — nie ma jeszcze nic do udostępnienia.",
+    "pairCodeLabel": "Kod parowania",
+    "pairCodeHint": "Wpisz ten kod na drugim urządzeniu. Kod zmienia się po każdym udanym parowaniu.",
+    "regenerateCode": "Nowy kod",
+    "pairedDevices": "Sparowane urządzenia",
+    "noGuests": "Brak sparowanych urządzeń",
+    "revokeGuest": "Usuń urządzenie",
+    "joinTitle": "Połącz z Pleya Share",
+    "joinDescription": "Wybierz hosta znalezionego w sieci lub wpisz jego adres, a następnie wprowadź 6-cyfrowy kod wyświetlony na tamtym urządzeniu.",
+    "hostsFound": "Hosty w twojej sieci",
+    "searching": "Szukanie hostów…",
+    "noHostsFound": "Nie znaleziono hostów. Upewnij się, że udostępnianie jest włączone i oba urządzenia są w tej samej sieci.",
+    "refresh": "Szukaj ponownie",
+    "manualHost": "Adres hosta (IP)",
+    "codeLabel": "Kod 6-cyfrowy",
+    "connect": "Połącz",
+    "pairFailed": "Parowanie nie powiodło się. Sprawdź kod i spróbuj ponownie.",
+    "paired": "Połączono z $name",
+    "pairUnreachable": "Host jest nieosiągalny. Sprawdź adres i sieć.",
+    "addFolder": "Dodaj folder lokalny"
   }
 }

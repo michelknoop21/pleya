@@ -835,7 +835,7 @@ class LocalFolderClient implements MediaServerClient {
           libraryTitle: connection.displayName,
           serverId: connection.id,
           serverName: connection.displayName,
-          addedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          addedAt: _addedAt(epFile),
           mediaVersions: [
             MediaVersion(
               id: epFile.uri,
@@ -911,7 +911,7 @@ class LocalFolderClient implements MediaServerClient {
       libraryTitle: connection.displayName,
       serverId: connection.id,
       serverName: connection.displayName,
-      addedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      addedAt: _addedAt(file),
       mediaVersions: [
         MediaVersion(
           id: file.uri,
@@ -933,6 +933,12 @@ class LocalFolderClient implements MediaServerClient {
   void _cacheItem(MediaItem item) {
     _itemCache[item.id] = item;
   }
+
+  /// File modification time (seconds) so "Recently Added" reflects the actual
+  /// library instead of the scan moment; falls back to now for SAF entries
+  /// without a timestamp.
+  int _addedAt(SafDocumentFile file) =>
+      file.lastModified > 0 ? file.lastModified ~/ 1000 : DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
   // ---------------------------------------------------------------------------
   // Filtering & sorting

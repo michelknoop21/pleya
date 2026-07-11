@@ -7,6 +7,7 @@ import '../../profiles/active_profile_provider.dart';
 import '../../profiles/profile.dart';
 import '../../profiles/profile_connection.dart';
 import '../../providers/multi_server_provider.dart';
+import '../../focus/focusable_wrapper.dart';
 import '../../services/pleya_share/pleya_share_channel.dart';
 import '../../services/pleya_share/pleya_share_device_name.dart';
 import '../../services/pleya_share/pleya_share_protocol.dart';
@@ -28,6 +29,7 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
   final _hostController = TextEditingController();
   final _codeController = TextEditingController();
   Future<List<DiscoveredShareHost>>? _discovery;
+  int _selectedPort = PleyaShareProtocol.sharePort;
   bool _busy = false;
 
   @override
@@ -47,6 +49,13 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
     setState(() => _discovery = PleyaShareChannel.discoverHosts());
   }
 
+  void _selectHost(DiscoveredShareHost host) {
+    setState(() {
+      _hostController.text = host.ip;
+      _selectedPort = host.port;
+    });
+  }
+
   bool get _canConnect =>
       !_busy && _hostController.text.trim().isNotEmpty && RegExp(r'^\d{6}$').hasMatch(_codeController.text.trim());
 
@@ -57,7 +66,7 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
       final deviceName = await pleyaShareDeviceName();
       final connection = await PleyaShareChannel.pair(
         ip: _hostController.text.trim(),
-        port: PleyaShareProtocol.sharePort,
+        port: _selectedPort,
         code: _codeController.text.trim(),
         deviceName: deviceName,
       );
@@ -84,9 +93,15 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
         ).showSnackBar(SnackBar(content: Text(t.pleyaShare.paired(name: connection.hostName))));
         Navigator.of(context).pop(true);
       }
+    } on PleyaSharePairException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.wrongCode ? t.pleyaShare.pairFailed : t.pleyaShare.pairUnreachable)));
+      }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.pleyaShare.pairFailed)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.pleyaShare.pairUnreachable)));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -112,10 +127,15 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
               Row(
                 children: [
                   Expanded(child: Text(t.pleyaShare.hostsFound, style: theme.textTheme.titleSmall)),
-                  TextButton.icon(
-                    onPressed: _refresh,
-                    icon: const Icon(Symbols.refresh_rounded, size: 18),
-                    label: Text(t.pleyaShare.refresh),
+                  FocusableWrapper(
+                    disableScale: true,
+                    borderRadius: 20,
+                    onSelect: _refresh,
+                    child: TextButton.icon(
+                      onPressed: _refresh,
+                      icon: const Icon(Symbols.refresh_rounded, size: 18),
+                      label: Text(t.pleyaShare.refresh),
+                    ),
                   ),
                 ],
               ),
@@ -149,13 +169,18 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
                   return Column(
                     children: [
                       for (final host in hosts)
-                        Card(
-                          child: ListTile(
-                            leading: const Icon(Symbols.share_rounded, fill: 1),
-                            title: Text(host.name),
-                            subtitle: Text('${host.ip}:${host.port}'),
-                            selected: _hostController.text.trim() == host.ip,
-                            onTap: () => setState(() => _hostController.text = host.ip),
+                        FocusableWrapper(
+                          disableScale: true,
+                          borderRadius: 12,
+                          onSelect: () => _selectHost(host),
+                          child: Card(
+                            child: ListTile(
+                              leading: const Icon(Symbols.devices_rounded, fill: 1),
+                              title: Text(host.name),
+                              subtitle: Text('${host.ip}:${host.port}'),
+                              selected: _hostController.text.trim() == host.ip,
+                              onTap: () => _selectHost(host),
+                            ),
                           ),
                         ),
                     ],
@@ -168,9 +193,9 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
               const SizedBox(height: 8),
               TextField(
                 controller: _hostController,
-                decoration: InputDecoration(hintText: '192.168.1.23', border: const OutlineInputBorder()),
+                decoration: const InputDecoration(hintText: '192.168.1.23', border: OutlineInputBorder()),
                 keyboardType: TextInputType.url,
-                onChanged: (_) => setState(() {}),
+                onChanged: (_) => setState(() => _selectedPort = PleyaShareProtocol.sharePort),
               ),
               const SizedBox(height: 16),
 
@@ -185,12 +210,17 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
               ),
               const SizedBox(height: 16),
 
-              FilledButton.icon(
-                onPressed: _canConnect ? _connect : null,
-                icon: _busy
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Symbols.link_rounded, fill: 1),
-                label: Text(t.pleyaShare.connect),
+              FocusableWrapper(
+                disableScale: true,
+                borderRadius: 20,
+                onSelect: _canConnect ? _connect : null,
+                child: FilledButton.icon(
+                  onPressed: _canConnect ? _connect : null,
+                  icon: _busy
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Symbols.link_rounded, fill: 1),
+                  label: Text(t.pleyaShare.connect),
+                ),
               ),
             ]),
           ),

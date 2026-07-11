@@ -26,7 +26,10 @@
     "quickConnectExpired": "Quick Connect expired. Try again.",
     "chooseHowToSignIn": "Choose how to sign in",
     "chooseHowToSignInDescription": "Pleya connects to your Plex or Jellyfin media server. Pick one to get started.",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "plexTokenLabel": "Plex auth token",
+    "plexTokenHint": "Enter your plex.tv token",
+    "serviceNotReady": "Authentication service is not ready yet. Try again in a moment."
   },
   "common": {
     "cancel": "Cancel",
@@ -75,7 +78,9 @@
     "loading": "Loading...",
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit fullscreen",
-    "pressBackAgainToExit": "Press back again to exit"
+    "pressBackAgainToExit": "Press back again to exit",
+    "decreaseValue": "Decrease $label",
+    "increaseValue": "Increase $label"
   },
   "screens": {
     "licenses": "Licenses",
@@ -1603,6 +1608,8 @@
     "codeLabel": "6-digit code",
     "connect": "Connect",
     "pairFailed": "Pairing failed. Check the code and try again.",
-    "paired": "Connected to $name"
+    "paired": "Connected to $name",
+    "pairUnreachable": "Host not reachable. Check the address and network.",
+    "addFolder": "Add a local folder"
   }
 }

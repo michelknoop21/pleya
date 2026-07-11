@@ -1411,5 +1411,32 @@
     "nameHint": "e.g. My Movies",
     "save": "Add folder",
     "saveError": "Failed to add local folder"
+  },
+  "pleyaShare": {
+    "cardTitle": "Pleya Share",
+    "cardSubtitle": "Anslut till en annan Pleya-enhet som delar sina medier",
+    "hostTitle": "Dela mina medier",
+    "hostDescription": "Andra Pleya-enheter i det här nätverket kan bläddra, strömma och ladda ner dina lokala mappar. Håll den här skärmen öppen medan du delar.",
+    "hostToggle": "Dela lokala mappar",
+    "noLocalFolders": "Lägg först till en lokal mapp — det finns inget att dela ännu.",
+    "pairCodeLabel": "Parkopplingskod",
+    "pairCodeHint": "Ange koden på den andra enheten. Koden byts efter varje lyckad parkoppling.",
+    "regenerateCode": "Ny kod",
+    "pairedDevices": "Parkopplade enheter",
+    "noGuests": "Inga enheter parkopplade ännu",
+    "revokeGuest": "Ta bort enhet",
+    "joinTitle": "Anslut till Pleya Share",
+    "joinDescription": "Välj en värd som hittats i nätverket eller ange dess adress, och skriv sedan den 6-siffriga koden som visas på den enheten.",
+    "hostsFound": "Värdar i ditt nätverk",
+    "searching": "Söker efter värdar…",
+    "noHostsFound": "Inga värdar hittades. Kontrollera att delning är på och att båda enheterna är i samma nätverk.",
+    "refresh": "Sök igen",
+    "manualHost": "Värdadress (IP)",
+    "codeLabel": "6-siffrig kod",
+    "connect": "Anslut",
+    "pairFailed": "Parkopplingen misslyckades. Kontrollera koden och försök igen.",
+    "paired": "Ansluten till $name",
+    "pairUnreachable": "Värden kan inte nås. Kontrollera adressen och nätverket.",
+    "addFolder": "Lägg till lokal mapp"
   }
 }

@@ -1411,5 +1411,32 @@
     "nameHint": "e.g. My Movies",
     "save": "Add folder",
     "saveError": "Failed to add local folder"
+  },
+  "pleyaShare": {
+    "cardTitle": "Pleya Share",
+    "cardSubtitle": "Mit einem anderen Pleya-Gerät verbinden, das Medien teilt",
+    "hostTitle": "Meine Medien teilen",
+    "hostDescription": "Andere Pleya-Geräte in diesem Netzwerk können deine lokalen Ordner durchsuchen, streamen und herunterladen. Lass diesen Bildschirm während des Teilens geöffnet.",
+    "hostToggle": "Lokale Ordner teilen",
+    "noLocalFolders": "Füge zuerst einen lokalen Ordner hinzu — es gibt noch nichts zu teilen.",
+    "pairCodeLabel": "Kopplungscode",
+    "pairCodeHint": "Gib diesen Code auf dem anderen Gerät ein. Der Code ändert sich nach jeder erfolgreichen Kopplung.",
+    "regenerateCode": "Neuer Code",
+    "pairedDevices": "Gekoppelte Geräte",
+    "noGuests": "Noch keine Geräte gekoppelt",
+    "revokeGuest": "Gerät entfernen",
+    "joinTitle": "Mit Pleya Share verbinden",
+    "joinDescription": "Wähle einen im Netzwerk gefundenen Host oder gib seine Adresse ein und tippe dann den 6-stelligen Code vom anderen Gerät ein.",
+    "hostsFound": "Hosts in deinem Netzwerk",
+    "searching": "Suche nach Hosts…",
+    "noHostsFound": "Keine Hosts gefunden. Stelle sicher, dass das Teilen aktiviert ist und beide Geräte im selben Netzwerk sind.",
+    "refresh": "Erneut suchen",
+    "manualHost": "Host-Adresse (IP)",
+    "codeLabel": "6-stelliger Code",
+    "connect": "Verbinden",
+    "pairFailed": "Kopplung fehlgeschlagen. Prüfe den Code und versuche es erneut.",
+    "paired": "Verbunden mit $name",
+    "pairUnreachable": "Host nicht erreichbar. Prüfe Adresse und Netzwerk.",
+    "addFolder": "Lokalen Ordner hinzufügen"
   }
 }

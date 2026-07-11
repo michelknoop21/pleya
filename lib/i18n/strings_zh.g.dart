@@ -86,6 +86,7 @@ class TranslationsZh extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTrackersZh trackers = _TranslationsTrackersZh._(_root);
 	@override late final _TranslationsAddServerZh addServer = _TranslationsAddServerZh._(_root);
 	@override late final _TranslationsAddLocalFolderZh addLocalFolder = _TranslationsAddLocalFolderZh._(_root);
+	@override late final _TranslationsPleyaShareZh pleyaShare = _TranslationsPleyaShareZh._(_root);
 }
 
 // Path: app
@@ -1661,6 +1662,40 @@ class _TranslationsAddLocalFolderZh extends TranslationsAddLocalFolderEn {
 	@override String get nameHint => 'e.g. My Movies';
 	@override String get save => 'Add folder';
 	@override String get saveError => 'Failed to add local folder';
+}
+
+// Path: pleyaShare
+class _TranslationsPleyaShareZh extends TranslationsPleyaShareEn {
+	_TranslationsPleyaShareZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get cardTitle => 'Pleya Share';
+	@override String get cardSubtitle => '连接到另一台正在共享媒体的 Pleya 设备';
+	@override String get hostTitle => '共享我的媒体';
+	@override String get hostDescription => '此网络上的其他 Pleya 设备可以浏览、串流和下载你的本地文件夹。共享期间请保持此屏幕打开。';
+	@override String get hostToggle => '共享本地文件夹';
+	@override String get noLocalFolders => '请先添加本地文件夹 — 目前没有可共享的内容。';
+	@override String get pairCodeLabel => '配对码';
+	@override String get pairCodeHint => '在另一台设备上输入此配对码。每次配对成功后配对码都会更换。';
+	@override String get regenerateCode => '新配对码';
+	@override String get pairedDevices => '已配对设备';
+	@override String get noGuests => '尚未配对任何设备';
+	@override String get revokeGuest => '移除设备';
+	@override String get joinTitle => '连接 Pleya Share';
+	@override String get joinDescription => '选择在网络中发现的主机或输入其地址，然后输入该设备上显示的 6 位配对码。';
+	@override String get hostsFound => '网络中的主机';
+	@override String get searching => '正在搜索主机…';
+	@override String get noHostsFound => '未找到主机。请确认共享已开启且两台设备在同一网络。';
+	@override String get refresh => '重新搜索';
+	@override String get manualHost => '主机地址（IP）';
+	@override String get codeLabel => '6 位配对码';
+	@override String get connect => '连接';
+	@override String get pairFailed => '配对失败。请检查配对码后重试。';
+	@override String paired({required Object name}) => '已连接到 ${name}';
+	@override String get pairUnreachable => '无法连接主机。请检查地址和网络。';
+	@override String get addFolder => '添加本地文件夹';
 }
 
 // Path: hotkeys.actions
@@ -3245,6 +3280,31 @@ extension on TranslationsZh {
 			'addLocalFolder.nameHint' => 'e.g. My Movies',
 			'addLocalFolder.save' => 'Add folder',
 			'addLocalFolder.saveError' => 'Failed to add local folder',
+			'pleyaShare.cardTitle' => 'Pleya Share',
+			'pleyaShare.cardSubtitle' => '连接到另一台正在共享媒体的 Pleya 设备',
+			'pleyaShare.hostTitle' => '共享我的媒体',
+			'pleyaShare.hostDescription' => '此网络上的其他 Pleya 设备可以浏览、串流和下载你的本地文件夹。共享期间请保持此屏幕打开。',
+			'pleyaShare.hostToggle' => '共享本地文件夹',
+			'pleyaShare.noLocalFolders' => '请先添加本地文件夹 — 目前没有可共享的内容。',
+			'pleyaShare.pairCodeLabel' => '配对码',
+			'pleyaShare.pairCodeHint' => '在另一台设备上输入此配对码。每次配对成功后配对码都会更换。',
+			'pleyaShare.regenerateCode' => '新配对码',
+			'pleyaShare.pairedDevices' => '已配对设备',
+			'pleyaShare.noGuests' => '尚未配对任何设备',
+			'pleyaShare.revokeGuest' => '移除设备',
+			'pleyaShare.joinTitle' => '连接 Pleya Share',
+			'pleyaShare.joinDescription' => '选择在网络中发现的主机或输入其地址，然后输入该设备上显示的 6 位配对码。',
+			'pleyaShare.hostsFound' => '网络中的主机',
+			'pleyaShare.searching' => '正在搜索主机…',
+			'pleyaShare.noHostsFound' => '未找到主机。请确认共享已开启且两台设备在同一网络。',
+			'pleyaShare.refresh' => '重新搜索',
+			'pleyaShare.manualHost' => '主机地址（IP）',
+			'pleyaShare.codeLabel' => '6 位配对码',
+			'pleyaShare.connect' => '连接',
+			'pleyaShare.pairFailed' => '配对失败。请检查配对码后重试。',
+			'pleyaShare.paired' => ({required Object name}) => '已连接到 ${name}',
+			'pleyaShare.pairUnreachable' => '无法连接主机。请检查地址和网络。',
+			'pleyaShare.addFolder' => '添加本地文件夹',
 			_ => null,
 		};
 	}

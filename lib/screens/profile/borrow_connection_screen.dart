@@ -142,6 +142,9 @@ class _BorrowConnectionScreenState extends State<BorrowConnectionScreen> {
       if (targetConnIds.contains(pc.connectionId)) continue;
       final conn = connById[pc.connectionId];
       if (conn == null) continue;
+      // Local folders and Pleya Share pairings are device-bound; the borrow
+      // flow has no path for them, so a candidate row would do nothing.
+      if (conn is LocalFolderConnection || conn is PleyaShareConnection) continue;
       final source = allProfiles.firstWhere(
         (p) => p.id == pc.profileId,
         orElse: () => widget.targetProfile, // sentinel — skipped below

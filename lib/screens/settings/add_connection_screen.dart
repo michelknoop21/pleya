@@ -58,6 +58,7 @@ class AddConnectionScreen extends StatelessWidget {
         title: t.pleyaShare.cardTitle,
         subtitle: t.pleyaShare.cardSubtitle,
         builder: (_) => PleyaShareJoinScreen(targetProfile: targetProfile),
+        icon: Symbols.devices_rounded,
       ),
     ];
     return FocusedScrollScaffold(
@@ -74,7 +75,9 @@ class AddConnectionScreen extends StatelessWidget {
               for (var i = 0; i < options.length; i++) ...[
                 if (i > 0) const SizedBox(height: 12),
                 _BackendCard(
-                  leading: BackendBadge(backend: options[i].backend, size: 28),
+                  leading: options[i].icon != null
+                      ? AppIcon(options[i].icon!, fill: 1, size: 28)
+                      : BackendBadge(backend: options[i].backend, size: 28),
                   title: options[i].title,
                   subtitle: options[i].subtitle,
                   onTap: () async {
@@ -116,7 +119,17 @@ class _BackendOption {
   final String subtitle;
   final WidgetBuilder builder;
 
-  const _BackendOption({required this.backend, required this.title, required this.subtitle, required this.builder});
+  /// Overrides the backend badge — used by Pleya Share, which shares
+  /// [MediaBackend.local] but needs its own visual identity in this picker.
+  final IconData? icon;
+
+  const _BackendOption({
+    required this.backend,
+    required this.title,
+    required this.subtitle,
+    required this.builder,
+    this.icon,
+  });
 }
 
 class _BackendCard extends StatelessWidget {

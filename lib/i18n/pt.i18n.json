@@ -1411,5 +1411,32 @@
     "nameHint": "e.g. My Movies",
     "save": "Add folder",
     "saveError": "Failed to add local folder"
+  },
+  "pleyaShare": {
+    "cardTitle": "Pleya Share",
+    "cardSubtitle": "Ligar a outro dispositivo Pleya que partilha os seus conteúdos",
+    "hostTitle": "Partilhar os meus conteúdos",
+    "hostDescription": "Outros dispositivos Pleya nesta rede podem navegar, transmitir e transferir as suas pastas locais. Mantenha este ecrã aberto durante a partilha.",
+    "hostToggle": "Partilhar pastas locais",
+    "noLocalFolders": "Adicione primeiro uma pasta local — ainda não há nada para partilhar.",
+    "pairCodeLabel": "Código de emparelhamento",
+    "pairCodeHint": "Introduza este código no outro dispositivo. O código muda após cada emparelhamento bem-sucedido.",
+    "regenerateCode": "Novo código",
+    "pairedDevices": "Dispositivos emparelhados",
+    "noGuests": "Ainda não há dispositivos emparelhados",
+    "revokeGuest": "Remover dispositivo",
+    "joinTitle": "Ligar ao Pleya Share",
+    "joinDescription": "Escolha um host encontrado na sua rede ou introduza o endereço e depois digite o código de 6 dígitos mostrado nesse dispositivo.",
+    "hostsFound": "Hosts na sua rede",
+    "searching": "À procura de hosts…",
+    "noHostsFound": "Nenhum host encontrado. Confirme que a partilha está ativa e que ambos os dispositivos estão na mesma rede.",
+    "refresh": "Procurar novamente",
+    "manualHost": "Endereço do host (IP)",
+    "codeLabel": "Código de 6 dígitos",
+    "connect": "Ligar",
+    "pairFailed": "Falha no emparelhamento. Verifique o código e tente novamente.",
+    "paired": "Ligado a $name",
+    "pairUnreachable": "Host inacessível. Verifique o endereço e a rede.",
+    "addFolder": "Adicionar pasta local"
   }
 }

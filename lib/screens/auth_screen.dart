@@ -578,7 +578,7 @@ class _DebugTokenDialogState extends State<_DebugTokenDialog> with ControllerDis
     }
     final svc = widget.verifyService;
     if (svc == null) {
-      setState(() => _errorMessage = 'Auth service not ready');
+      setState(() => _errorMessage = t.auth.serviceNotReady);
       return;
     }
     final navigator = Navigator.of(context);
@@ -617,8 +617,8 @@ class _DebugTokenDialogState extends State<_DebugTokenDialog> with ControllerDis
           FocusableTextFormField(
             controller: _tokenController,
             decoration: InputDecoration(
-              labelText: 'Plex Auth Token',
-              hintText: 'Enter your Plex.tv token',
+              labelText: t.auth.plexTokenLabel,
+              hintText: t.auth.plexTokenHint,
               errorText: _errorMessage,
               border: const OutlineInputBorder(),
             ),

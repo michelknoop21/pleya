@@ -186,6 +186,15 @@ class TranslationsAuthEn {
 
 	/// en: 'Try again'
 	String get tryAgain => 'Try again';
+
+	/// en: 'Plex auth token'
+	String get plexTokenLabel => 'Plex auth token';
+
+	/// en: 'Enter your plex.tv token'
+	String get plexTokenHint => 'Enter your plex.tv token';
+
+	/// en: 'Authentication service is not ready yet. Try again in a moment.'
+	String get serviceNotReady => 'Authentication service is not ready yet. Try again in a moment.';
 }
 
 // Path: common
@@ -336,6 +345,12 @@ class TranslationsCommonEn {
 
 	/// en: 'Press back again to exit'
 	String get pressBackAgainToExit => 'Press back again to exit';
+
+	/// en: 'Decrease $label'
+	String decreaseValue({required Object label}) => 'Decrease ${label}';
+
+	/// en: 'Increase $label'
+	String increaseValue({required Object label}) => 'Increase ${label}';
 }
 
 // Path: screens
@@ -4483,6 +4498,12 @@ class TranslationsPleyaShareEn {
 
 	/// en: 'Connected to $name'
 	String paired({required Object name}) => 'Connected to ${name}';
+
+	/// en: 'Host not reachable. Check the address and network.'
+	String get pairUnreachable => 'Host not reachable. Check the address and network.';
+
+	/// en: 'Add a local folder'
+	String get addFolder => 'Add a local folder';
 }
 
 // Path: search.filters
@@ -5167,6 +5188,9 @@ extension on Translations {
 			'auth.chooseHowToSignIn' => 'Choose how to sign in',
 			'auth.chooseHowToSignInDescription' => 'Pleya connects to your Plex or Jellyfin media server. Pick one to get started.',
 			'auth.tryAgain' => 'Try again',
+			'auth.plexTokenLabel' => 'Plex auth token',
+			'auth.plexTokenHint' => 'Enter your plex.tv token',
+			'auth.serviceNotReady' => 'Authentication service is not ready yet. Try again in a moment.',
 			'common.cancel' => 'Cancel',
 			'common.save' => 'Save',
 			'common.close' => 'Close',
@@ -5214,6 +5238,8 @@ extension on Translations {
 			'common.fullscreen' => 'Fullscreen',
 			'common.exitFullscreen' => 'Exit fullscreen',
 			'common.pressBackAgainToExit' => 'Press back again to exit',
+			'common.decreaseValue' => ({required Object label}) => 'Decrease ${label}',
+			'common.increaseValue' => ({required Object label}) => 'Increase ${label}',
 			'screens.licenses' => 'Licenses',
 			'screens.switchProfile' => 'Switch Profile',
 			'screens.whoIsWatching' => 'Who\'s watching?',
@@ -5651,13 +5677,13 @@ extension on Translations {
 			'videoControls.downloadedSubtitle' => 'Downloaded',
 			'videoControls.noSubtitlesAvailable' => 'No subtitles available',
 			'videoControls.noAudioTracksAvailable' => 'No audio tracks available',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.noTracksAvailable' => 'No tracks available',
 			'videoControls.subtitleDownloaded' => 'Subtitle downloaded',
 			'videoControls.subtitleDownloadFailed' => 'Failed to download subtitle',
 			'videoControls.searchLanguages' => 'Search languages...',
 			'videoControls.airplayButton' => 'AirPlay',
-			_ => null,
-		} ?? switch (path) {
 			'userStatus.admin' => 'Admin',
 			'userStatus.restricted' => 'Restricted',
 			'userStatus.protected' => 'Protected',
@@ -6165,13 +6191,13 @@ extension on Translations {
 			'downloads.noDownloadsTree' => 'No downloads',
 			'downloads.pauseAll' => 'Pause all',
 			'downloads.resumeAll' => 'Resume all',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.deleteAll' => 'Delete all',
 			'downloads.selectVersion' => 'Select Version',
 			'downloads.allEpisodes' => 'All episodes',
 			'downloads.unwatchedOnly' => 'Unwatched only',
 			'downloads.nextNUnwatched' => ({required Object count}) => 'Next ${count} unwatched',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.customAmount' => 'Custom amount...',
 			'downloads.includeSpecials' => 'Include Specials',
 			'downloads.howManyEpisodes' => 'How many episodes?',
@@ -6620,6 +6646,8 @@ extension on Translations {
 			'pleyaShare.connect' => 'Connect',
 			'pleyaShare.pairFailed' => 'Pairing failed. Check the code and try again.',
 			'pleyaShare.paired' => ({required Object name}) => 'Connected to ${name}',
+			'pleyaShare.pairUnreachable' => 'Host not reachable. Check the address and network.',
+			'pleyaShare.addFolder' => 'Add a local folder',
 			_ => null,
 		};
 	}

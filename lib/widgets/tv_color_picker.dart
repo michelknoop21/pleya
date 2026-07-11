@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../focus/dpad_navigator.dart';
+import '../i18n/strings.g.dart';
 import '../focus/focus_theme.dart';
 import '../focus/focusable_text_field.dart';
 import '../focus/input_mode_tracker.dart';
@@ -317,7 +318,7 @@ class _ColorChannelRowState extends State<_ColorChannelRow> with KeyRepeatHelper
             _ChannelButton(
               icon: Symbols.remove_rounded,
               onPressed: canDecrement ? _decrement : null,
-              semanticLabel: 'Decrease ${widget.label}',
+              semanticLabel: t.common.decreaseValue(label: widget.label),
             ),
             const SizedBox(width: 8),
             Container(
@@ -329,7 +330,7 @@ class _ColorChannelRowState extends State<_ColorChannelRow> with KeyRepeatHelper
             _ChannelButton(
               icon: Symbols.add_rounded,
               onPressed: canIncrement ? _increment : null,
-              semanticLabel: 'Increase ${widget.label}',
+              semanticLabel: t.common.increaseValue(label: widget.label),
             ),
           ],
         ),

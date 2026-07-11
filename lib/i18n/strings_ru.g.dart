@@ -86,6 +86,7 @@ class TranslationsRu extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTrackersRu trackers = _TranslationsTrackersRu._(_root);
 	@override late final _TranslationsAddServerRu addServer = _TranslationsAddServerRu._(_root);
 	@override late final _TranslationsAddLocalFolderRu addLocalFolder = _TranslationsAddLocalFolderRu._(_root);
+	@override late final _TranslationsPleyaShareRu pleyaShare = _TranslationsPleyaShareRu._(_root);
 }
 
 // Path: app
@@ -1661,6 +1662,40 @@ class _TranslationsAddLocalFolderRu extends TranslationsAddLocalFolderEn {
 	@override String get nameHint => 'e.g. My Movies';
 	@override String get save => 'Add folder';
 	@override String get saveError => 'Failed to add local folder';
+}
+
+// Path: pleyaShare
+class _TranslationsPleyaShareRu extends TranslationsPleyaShareEn {
+	_TranslationsPleyaShareRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get cardTitle => 'Pleya Share';
+	@override String get cardSubtitle => 'Подключитесь к другому устройству Pleya, которое делится медиа';
+	@override String get hostTitle => 'Поделиться моими медиа';
+	@override String get hostDescription => 'Другие устройства Pleya в этой сети могут просматривать, воспроизводить и скачивать ваши локальные папки. Держите этот экран открытым во время общего доступа.';
+	@override String get hostToggle => 'Делиться локальными папками';
+	@override String get noLocalFolders => 'Сначала добавьте локальную папку — пока нечем делиться.';
+	@override String get pairCodeLabel => 'Код сопряжения';
+	@override String get pairCodeHint => 'Введите этот код на другом устройстве. Код меняется после каждого успешного сопряжения.';
+	@override String get regenerateCode => 'Новый код';
+	@override String get pairedDevices => 'Сопряжённые устройства';
+	@override String get noGuests => 'Пока нет сопряжённых устройств';
+	@override String get revokeGuest => 'Удалить устройство';
+	@override String get joinTitle => 'Подключиться к Pleya Share';
+	@override String get joinDescription => 'Выберите хост, найденный в вашей сети, или введите его адрес, затем введите 6-значный код с того устройства.';
+	@override String get hostsFound => 'Хосты в вашей сети';
+	@override String get searching => 'Поиск хостов…';
+	@override String get noHostsFound => 'Хосты не найдены. Убедитесь, что общий доступ включён и оба устройства в одной сети.';
+	@override String get refresh => 'Искать снова';
+	@override String get manualHost => 'Адрес хоста (IP)';
+	@override String get codeLabel => '6-значный код';
+	@override String get connect => 'Подключиться';
+	@override String get pairFailed => 'Сопряжение не удалось. Проверьте код и попробуйте снова.';
+	@override String paired({required Object name}) => 'Подключено к ${name}';
+	@override String get pairUnreachable => 'Хост недоступен. Проверьте адрес и сеть.';
+	@override String get addFolder => 'Добавить локальную папку';
 }
 
 // Path: hotkeys.actions
@@ -3245,6 +3280,31 @@ extension on TranslationsRu {
 			'addLocalFolder.nameHint' => 'e.g. My Movies',
 			'addLocalFolder.save' => 'Add folder',
 			'addLocalFolder.saveError' => 'Failed to add local folder',
+			'pleyaShare.cardTitle' => 'Pleya Share',
+			'pleyaShare.cardSubtitle' => 'Подключитесь к другому устройству Pleya, которое делится медиа',
+			'pleyaShare.hostTitle' => 'Поделиться моими медиа',
+			'pleyaShare.hostDescription' => 'Другие устройства Pleya в этой сети могут просматривать, воспроизводить и скачивать ваши локальные папки. Держите этот экран открытым во время общего доступа.',
+			'pleyaShare.hostToggle' => 'Делиться локальными папками',
+			'pleyaShare.noLocalFolders' => 'Сначала добавьте локальную папку — пока нечем делиться.',
+			'pleyaShare.pairCodeLabel' => 'Код сопряжения',
+			'pleyaShare.pairCodeHint' => 'Введите этот код на другом устройстве. Код меняется после каждого успешного сопряжения.',
+			'pleyaShare.regenerateCode' => 'Новый код',
+			'pleyaShare.pairedDevices' => 'Сопряжённые устройства',
+			'pleyaShare.noGuests' => 'Пока нет сопряжённых устройств',
+			'pleyaShare.revokeGuest' => 'Удалить устройство',
+			'pleyaShare.joinTitle' => 'Подключиться к Pleya Share',
+			'pleyaShare.joinDescription' => 'Выберите хост, найденный в вашей сети, или введите его адрес, затем введите 6-значный код с того устройства.',
+			'pleyaShare.hostsFound' => 'Хосты в вашей сети',
+			'pleyaShare.searching' => 'Поиск хостов…',
+			'pleyaShare.noHostsFound' => 'Хосты не найдены. Убедитесь, что общий доступ включён и оба устройства в одной сети.',
+			'pleyaShare.refresh' => 'Искать снова',
+			'pleyaShare.manualHost' => 'Адрес хоста (IP)',
+			'pleyaShare.codeLabel' => '6-значный код',
+			'pleyaShare.connect' => 'Подключиться',
+			'pleyaShare.pairFailed' => 'Сопряжение не удалось. Проверьте код и попробуйте снова.',
+			'pleyaShare.paired' => ({required Object name}) => 'Подключено к ${name}',
+			'pleyaShare.pairUnreachable' => 'Хост недоступен. Проверьте адрес и сеть.',
+			'pleyaShare.addFolder' => 'Добавить локальную папку',
 			_ => null,
 		};
 	}

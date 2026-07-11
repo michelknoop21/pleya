@@ -86,6 +86,7 @@ class TranslationsPl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTrackersPl trackers = _TranslationsTrackersPl._(_root);
 	@override late final _TranslationsAddServerPl addServer = _TranslationsAddServerPl._(_root);
 	@override late final _TranslationsAddLocalFolderPl addLocalFolder = _TranslationsAddLocalFolderPl._(_root);
+	@override late final _TranslationsPleyaSharePl pleyaShare = _TranslationsPleyaSharePl._(_root);
 }
 
 // Path: app
@@ -1661,6 +1662,40 @@ class _TranslationsAddLocalFolderPl extends TranslationsAddLocalFolderEn {
 	@override String get nameHint => 'e.g. My Movies';
 	@override String get save => 'Add folder';
 	@override String get saveError => 'Failed to add local folder';
+}
+
+// Path: pleyaShare
+class _TranslationsPleyaSharePl extends TranslationsPleyaShareEn {
+	_TranslationsPleyaSharePl._(TranslationsPl root) : this._root = root, super.internal(root);
+
+	final TranslationsPl _root; // ignore: unused_field
+
+	// Translations
+	@override String get cardTitle => 'Pleya Share';
+	@override String get cardSubtitle => 'Połącz się z innym urządzeniem Pleya udostępniającym multimedia';
+	@override String get hostTitle => 'Udostępnij moje multimedia';
+	@override String get hostDescription => 'Inne urządzenia Pleya w tej sieci mogą przeglądać, odtwarzać i pobierać twoje lokalne foldery. Podczas udostępniania nie zamykaj tego ekranu.';
+	@override String get hostToggle => 'Udostępniaj lokalne foldery';
+	@override String get noLocalFolders => 'Najpierw dodaj folder lokalny — nie ma jeszcze nic do udostępnienia.';
+	@override String get pairCodeLabel => 'Kod parowania';
+	@override String get pairCodeHint => 'Wpisz ten kod na drugim urządzeniu. Kod zmienia się po każdym udanym parowaniu.';
+	@override String get regenerateCode => 'Nowy kod';
+	@override String get pairedDevices => 'Sparowane urządzenia';
+	@override String get noGuests => 'Brak sparowanych urządzeń';
+	@override String get revokeGuest => 'Usuń urządzenie';
+	@override String get joinTitle => 'Połącz z Pleya Share';
+	@override String get joinDescription => 'Wybierz hosta znalezionego w sieci lub wpisz jego adres, a następnie wprowadź 6-cyfrowy kod wyświetlony na tamtym urządzeniu.';
+	@override String get hostsFound => 'Hosty w twojej sieci';
+	@override String get searching => 'Szukanie hostów…';
+	@override String get noHostsFound => 'Nie znaleziono hostów. Upewnij się, że udostępnianie jest włączone i oba urządzenia są w tej samej sieci.';
+	@override String get refresh => 'Szukaj ponownie';
+	@override String get manualHost => 'Adres hosta (IP)';
+	@override String get codeLabel => 'Kod 6-cyfrowy';
+	@override String get connect => 'Połącz';
+	@override String get pairFailed => 'Parowanie nie powiodło się. Sprawdź kod i spróbuj ponownie.';
+	@override String paired({required Object name}) => 'Połączono z ${name}';
+	@override String get pairUnreachable => 'Host jest nieosiągalny. Sprawdź adres i sieć.';
+	@override String get addFolder => 'Dodaj folder lokalny';
 }
 
 // Path: hotkeys.actions
@@ -3245,6 +3280,31 @@ extension on TranslationsPl {
 			'addLocalFolder.nameHint' => 'e.g. My Movies',
 			'addLocalFolder.save' => 'Add folder',
 			'addLocalFolder.saveError' => 'Failed to add local folder',
+			'pleyaShare.cardTitle' => 'Pleya Share',
+			'pleyaShare.cardSubtitle' => 'Połącz się z innym urządzeniem Pleya udostępniającym multimedia',
+			'pleyaShare.hostTitle' => 'Udostępnij moje multimedia',
+			'pleyaShare.hostDescription' => 'Inne urządzenia Pleya w tej sieci mogą przeglądać, odtwarzać i pobierać twoje lokalne foldery. Podczas udostępniania nie zamykaj tego ekranu.',
+			'pleyaShare.hostToggle' => 'Udostępniaj lokalne foldery',
+			'pleyaShare.noLocalFolders' => 'Najpierw dodaj folder lokalny — nie ma jeszcze nic do udostępnienia.',
+			'pleyaShare.pairCodeLabel' => 'Kod parowania',
+			'pleyaShare.pairCodeHint' => 'Wpisz ten kod na drugim urządzeniu. Kod zmienia się po każdym udanym parowaniu.',
+			'pleyaShare.regenerateCode' => 'Nowy kod',
+			'pleyaShare.pairedDevices' => 'Sparowane urządzenia',
+			'pleyaShare.noGuests' => 'Brak sparowanych urządzeń',
+			'pleyaShare.revokeGuest' => 'Usuń urządzenie',
+			'pleyaShare.joinTitle' => 'Połącz z Pleya Share',
+			'pleyaShare.joinDescription' => 'Wybierz hosta znalezionego w sieci lub wpisz jego adres, a następnie wprowadź 6-cyfrowy kod wyświetlony na tamtym urządzeniu.',
+			'pleyaShare.hostsFound' => 'Hosty w twojej sieci',
+			'pleyaShare.searching' => 'Szukanie hostów…',
+			'pleyaShare.noHostsFound' => 'Nie znaleziono hostów. Upewnij się, że udostępnianie jest włączone i oba urządzenia są w tej samej sieci.',
+			'pleyaShare.refresh' => 'Szukaj ponownie',
+			'pleyaShare.manualHost' => 'Adres hosta (IP)',
+			'pleyaShare.codeLabel' => 'Kod 6-cyfrowy',
+			'pleyaShare.connect' => 'Połącz',
+			'pleyaShare.pairFailed' => 'Parowanie nie powiodło się. Sprawdź kod i spróbuj ponownie.',
+			'pleyaShare.paired' => ({required Object name}) => 'Połączono z ${name}',
+			'pleyaShare.pairUnreachable' => 'Host jest nieosiągalny. Sprawdź adres i sieć.',
+			'pleyaShare.addFolder' => 'Dodaj folder lokalny',
 			_ => null,
 		};
 	}

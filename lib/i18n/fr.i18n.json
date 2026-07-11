@@ -1411,5 +1411,32 @@
     "nameHint": "e.g. My Movies",
     "save": "Add folder",
     "saveError": "Failed to add local folder"
+  },
+  "pleyaShare": {
+    "cardTitle": "Pleya Share",
+    "cardSubtitle": "Se connecter à un autre appareil Pleya qui partage ses médias",
+    "hostTitle": "Partager mes médias",
+    "hostDescription": "Les autres appareils Pleya de ce réseau peuvent parcourir, diffuser et télécharger vos dossiers locaux. Gardez cet écran ouvert pendant le partage.",
+    "hostToggle": "Partager les dossiers locaux",
+    "noLocalFolders": "Ajoutez d'abord un dossier local — il n'y a encore rien à partager.",
+    "pairCodeLabel": "Code d'appairage",
+    "pairCodeHint": "Saisissez ce code sur l'autre appareil. Le code change après chaque appairage réussi.",
+    "regenerateCode": "Nouveau code",
+    "pairedDevices": "Appareils appairés",
+    "noGuests": "Aucun appareil appairé pour l'instant",
+    "revokeGuest": "Supprimer l'appareil",
+    "joinTitle": "Se connecter à Pleya Share",
+    "joinDescription": "Choisissez un hôte trouvé sur votre réseau ou saisissez son adresse, puis tapez le code à 6 chiffres affiché sur cet appareil.",
+    "hostsFound": "Hôtes sur votre réseau",
+    "searching": "Recherche d'hôtes…",
+    "noHostsFound": "Aucun hôte trouvé. Vérifiez que le partage est activé et que les deux appareils sont sur le même réseau.",
+    "refresh": "Rechercher à nouveau",
+    "manualHost": "Adresse de l'hôte (IP)",
+    "codeLabel": "Code à 6 chiffres",
+    "connect": "Se connecter",
+    "pairFailed": "Échec de l'appairage. Vérifiez le code et réessayez.",
+    "paired": "Connecté à $name",
+    "pairUnreachable": "Hôte injoignable. Vérifiez l'adresse et le réseau.",
+    "addFolder": "Ajouter un dossier local"
   }
 }

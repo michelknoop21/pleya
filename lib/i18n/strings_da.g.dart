@@ -86,6 +86,7 @@ class TranslationsDa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTrackersDa trackers = _TranslationsTrackersDa._(_root);
 	@override late final _TranslationsAddServerDa addServer = _TranslationsAddServerDa._(_root);
 	@override late final _TranslationsAddLocalFolderDa addLocalFolder = _TranslationsAddLocalFolderDa._(_root);
+	@override late final _TranslationsPleyaShareDa pleyaShare = _TranslationsPleyaShareDa._(_root);
 }
 
 // Path: app
@@ -1661,6 +1662,40 @@ class _TranslationsAddLocalFolderDa extends TranslationsAddLocalFolderEn {
 	@override String get nameHint => 'e.g. My Movies';
 	@override String get save => 'Add folder';
 	@override String get saveError => 'Failed to add local folder';
+}
+
+// Path: pleyaShare
+class _TranslationsPleyaShareDa extends TranslationsPleyaShareEn {
+	_TranslationsPleyaShareDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get cardTitle => 'Pleya Share';
+	@override String get cardSubtitle => 'Forbind til en anden Pleya-enhed, der deler sine medier';
+	@override String get hostTitle => 'Del mine medier';
+	@override String get hostDescription => 'Andre Pleya-enheder på dette netværk kan gennemse, streame og downloade dine lokale mapper. Hold denne skærm åben, mens du deler.';
+	@override String get hostToggle => 'Del lokale mapper';
+	@override String get noLocalFolders => 'Tilføj først en lokal mappe — der er ikke noget at dele endnu.';
+	@override String get pairCodeLabel => 'Parringskode';
+	@override String get pairCodeHint => 'Indtast denne kode på den anden enhed. Koden skifter efter hver vellykket parring.';
+	@override String get regenerateCode => 'Ny kode';
+	@override String get pairedDevices => 'Parrede enheder';
+	@override String get noGuests => 'Ingen enheder parret endnu';
+	@override String get revokeGuest => 'Fjern enhed';
+	@override String get joinTitle => 'Forbind til Pleya Share';
+	@override String get joinDescription => 'Vælg en vært fundet på dit netværk eller indtast dens adresse, og indtast derefter den 6-cifrede kode, der vises på den enhed.';
+	@override String get hostsFound => 'Værter på dit netværk';
+	@override String get searching => 'Søger efter værter…';
+	@override String get noHostsFound => 'Ingen værter fundet. Sørg for, at deling er slået til, og at begge enheder er på samme netværk.';
+	@override String get refresh => 'Søg igen';
+	@override String get manualHost => 'Værtsadresse (IP)';
+	@override String get codeLabel => '6-cifret kode';
+	@override String get connect => 'Forbind';
+	@override String get pairFailed => 'Parring mislykkedes. Tjek koden, og prøv igen.';
+	@override String paired({required Object name}) => 'Forbundet til ${name}';
+	@override String get pairUnreachable => 'Værten kan ikke nås. Tjek adressen og netværket.';
+	@override String get addFolder => 'Tilføj lokal mappe';
 }
 
 // Path: hotkeys.actions
@@ -3245,6 +3280,31 @@ extension on TranslationsDa {
 			'addLocalFolder.nameHint' => 'e.g. My Movies',
 			'addLocalFolder.save' => 'Add folder',
 			'addLocalFolder.saveError' => 'Failed to add local folder',
+			'pleyaShare.cardTitle' => 'Pleya Share',
+			'pleyaShare.cardSubtitle' => 'Forbind til en anden Pleya-enhed, der deler sine medier',
+			'pleyaShare.hostTitle' => 'Del mine medier',
+			'pleyaShare.hostDescription' => 'Andre Pleya-enheder på dette netværk kan gennemse, streame og downloade dine lokale mapper. Hold denne skærm åben, mens du deler.',
+			'pleyaShare.hostToggle' => 'Del lokale mapper',
+			'pleyaShare.noLocalFolders' => 'Tilføj først en lokal mappe — der er ikke noget at dele endnu.',
+			'pleyaShare.pairCodeLabel' => 'Parringskode',
+			'pleyaShare.pairCodeHint' => 'Indtast denne kode på den anden enhed. Koden skifter efter hver vellykket parring.',
+			'pleyaShare.regenerateCode' => 'Ny kode',
+			'pleyaShare.pairedDevices' => 'Parrede enheder',
+			'pleyaShare.noGuests' => 'Ingen enheder parret endnu',
+			'pleyaShare.revokeGuest' => 'Fjern enhed',
+			'pleyaShare.joinTitle' => 'Forbind til Pleya Share',
+			'pleyaShare.joinDescription' => 'Vælg en vært fundet på dit netværk eller indtast dens adresse, og indtast derefter den 6-cifrede kode, der vises på den enhed.',
+			'pleyaShare.hostsFound' => 'Værter på dit netværk',
+			'pleyaShare.searching' => 'Søger efter værter…',
+			'pleyaShare.noHostsFound' => 'Ingen værter fundet. Sørg for, at deling er slået til, og at begge enheder er på samme netværk.',
+			'pleyaShare.refresh' => 'Søg igen',
+			'pleyaShare.manualHost' => 'Værtsadresse (IP)',
+			'pleyaShare.codeLabel' => '6-cifret kode',
+			'pleyaShare.connect' => 'Forbind',
+			'pleyaShare.pairFailed' => 'Parring mislykkedes. Tjek koden, og prøv igen.',
+			'pleyaShare.paired' => ({required Object name}) => 'Forbundet til ${name}',
+			'pleyaShare.pairUnreachable' => 'Værten kan ikke nås. Tjek adressen og netværket.',
+			'pleyaShare.addFolder' => 'Tilføj lokal mappe',
 			_ => null,
 		};
 	}

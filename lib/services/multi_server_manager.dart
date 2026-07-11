@@ -30,6 +30,7 @@ import 'storage_service.dart';
 /// Jellyfin `JellyfinConnection`) and instantiate the matching client.
 class MultiServerManager {
   FutureOr<void> Function(JellyfinConnection connection)? onJellyfinConnectionUpdated;
+  FutureOr<void> Function(PleyaShareConnection connection)? onPleyaShareConnectionUpdated;
 
   final Map<String, MediaServerClient> _clients = {};
 
@@ -649,6 +650,13 @@ class MultiServerManager {
     try {
       final cache = ApiCache.forBackend(MediaBackend.plex);
       final client = PleyaShareClient(connection: connection, cache: cache);
+      client.channel.onConnectionUpdated = (updated) {
+        final persist = onPleyaShareConnectionUpdated;
+        if (persist == null) return;
+        Future.sync(() => persist(updated)).catchError((Object e, StackTrace st) {
+          appLogger.w('Failed to persist Pleya Share connection update', error: e, stackTrace: st);
+        });
+      };
       final oldClient = _clients[connection.id];
       if (oldClient != null) _closeClient(oldClient);
       _clients[connection.id] = client;

@@ -143,7 +143,7 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
       setState(() {
         _directoryUri = uri;
         if (_displayName.isEmpty) {
-          _displayName = 'Local Folder';
+          _displayName = t.addLocalFolder.cardTitle;
         }
       });
     }

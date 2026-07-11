@@ -55,6 +55,13 @@ class PleyaShareClient implements MediaServerClient {
   PleyaShareClient({required this.connection, required this.cache}) : channel = PleyaShareChannel(connection);
 
   static const _syncInterval = Duration(minutes: 2);
+
+  /// After a failed sync, don't retry the network for this long — every
+  /// browse call funnels through [_ensureSynced] and a full reconnect attempt
+  /// (stale IPs + discovery) costs seconds.
+  static const _offlineRetryInterval = Duration(seconds: 20);
+  DateTime? _lastSyncFailure;
+
   String get _cachePrefsKey => 'pleya_share_catalog_${connection.id}';
 
   // ── Catalog sync ──
@@ -63,12 +70,18 @@ class PleyaShareClient implements MediaServerClient {
     if (!force && _itemCache.isNotEmpty && _lastSync != null && DateTime.now().difference(_lastSync!) < _syncInterval) {
       return;
     }
-    final response = await channel.request('GET', '/library');
-    if (response == null) {
-      // Host unreachable — fall back to the last persisted catalog.
+    if (!force && _lastSyncFailure != null && DateTime.now().difference(_lastSyncFailure!) < _offlineRetryInterval) {
       if (_itemCache.isEmpty) await _loadPersistedCatalog();
       return;
     }
+    final response = await channel.request('GET', '/library');
+    if (response == null) {
+      // Host unreachable — fall back to the last persisted catalog.
+      _lastSyncFailure = DateTime.now();
+      if (_itemCache.isEmpty) await _loadPersistedCatalog();
+      return;
+    }
+    _lastSyncFailure = null;
     final items = (response['items'] as List? ?? const [])
         .map((raw) => MediaItem.fromJson(raw as Map<String, dynamic>))
         .map(_localize)
@@ -218,7 +231,7 @@ class PleyaShareClient implements MediaServerClient {
     }
     final sorted = _applySort(filtered, query);
     final total = sorted.length;
-    final offset = query.offset.clamp(0, total > 0 ? total : 1);
+    final offset = query.offset.clamp(0, total);
     final paged = sorted.skip(offset).take(query.limit).toList();
     return LibraryPage(items: paged, totalCount: total, offset: offset);
   }
@@ -674,7 +687,9 @@ class PleyaShareClient implements MediaServerClient {
   @override
   Future<PlaybackInitializationResult> getPlaybackInitialization(PlaybackInitializationOptions options) async {
     final item = options.metadata;
-    if (!await channel.ensureConnected()) {
+    // /ping via request() refreshes the session on 401 (host restart wipes
+    // tokens) so the stream URL below never carries a stale token.
+    if (await channel.request('GET', '/ping') == null) {
       throw StateError('Pleya Share host "${connection.hostName}" is unreachable');
     }
     final url = channel.streamUrl(item.id);
@@ -710,7 +725,7 @@ class PleyaShareClient implements MediaServerClient {
 
   @override
   Future<DownloadResolution> resolveDownload(MediaItem item, {int mediaIndex = 0}) async {
-    if (!await channel.ensureConnected()) {
+    if (await channel.request('GET', '/ping') == null) {
       throw StateError('Pleya Share host "${connection.hostName}" is unreachable');
     }
     return DownloadResolution(videoUrl: channel.streamUrl(item.id), mediaSourceId: item.id);
@@ -721,7 +736,7 @@ class PleyaShareClient implements MediaServerClient {
 
   @override
   Future<String?> resolveExternalPlaybackUrl(MediaItem item, {int mediaIndex = 0, String? mediaSourceId}) async {
-    if (!await channel.ensureConnected()) return null;
+    if (await channel.request('GET', '/ping') == null) return null;
     return channel.streamUrl(item.id);
   }
 

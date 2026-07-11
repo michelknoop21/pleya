@@ -1411,5 +1411,32 @@
     "nameHint": "e.g. My Movies",
     "save": "Add folder",
     "saveError": "Failed to add local folder"
+  },
+  "pleyaShare": {
+    "cardTitle": "Pleya Share",
+    "cardSubtitle": "连接到另一台正在共享媒体的 Pleya 设备",
+    "hostTitle": "共享我的媒体",
+    "hostDescription": "此网络上的其他 Pleya 设备可以浏览、串流和下载你的本地文件夹。共享期间请保持此屏幕打开。",
+    "hostToggle": "共享本地文件夹",
+    "noLocalFolders": "请先添加本地文件夹 — 目前没有可共享的内容。",
+    "pairCodeLabel": "配对码",
+    "pairCodeHint": "在另一台设备上输入此配对码。每次配对成功后配对码都会更换。",
+    "regenerateCode": "新配对码",
+    "pairedDevices": "已配对设备",
+    "noGuests": "尚未配对任何设备",
+    "revokeGuest": "移除设备",
+    "joinTitle": "连接 Pleya Share",
+    "joinDescription": "选择在网络中发现的主机或输入其地址，然后输入该设备上显示的 6 位配对码。",
+    "hostsFound": "网络中的主机",
+    "searching": "正在搜索主机…",
+    "noHostsFound": "未找到主机。请确认共享已开启且两台设备在同一网络。",
+    "refresh": "重新搜索",
+    "manualHost": "主机地址（IP）",
+    "codeLabel": "6 位配对码",
+    "connect": "连接",
+    "pairFailed": "配对失败。请检查配对码后重试。",
+    "paired": "已连接到 $name",
+    "pairUnreachable": "无法连接主机。请检查地址和网络。",
+    "addFolder": "添加本地文件夹"
   }
 }

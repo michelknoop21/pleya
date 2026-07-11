@@ -339,7 +339,9 @@ class _ConnectionsList extends StatelessWidget {
                       if (byId[pc.connectionId] case final conn?)
                         Card(
                           child: ListTile(
-                            leading: BackendBadge(backend: conn.backend, size: 24),
+                            leading: conn is PleyaShareConnection
+                                ? Icon(Symbols.devices_rounded, fill: 1, size: 24, color: theme.colorScheme.primary)
+                                : BackendBadge(backend: conn.backend, size: 24),
                             title: Text(conn.displayLabel),
                             subtitle: _ConnectionSubtitle.build(conn: conn, pc: pc, homeCache: homeCache, theme: theme),
                             trailing: FocusablePopupMenuButton<String>(
@@ -393,7 +395,12 @@ class _ConnectionSubtitle {
       }
     }
     if (pc.isDefault) parts.add(t.profiles.connectionDefault);
-    if (parts.isEmpty) return null;
+    // Local folders / Pleya Share hosts have no Plex-home context; show the
+    // connection's own subtitle (kind + location) so the row is identifiable.
+    if (parts.isEmpty) {
+      final subtitle = conn.displaySubtitle;
+      return subtitle == null ? null : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis);
+    }
     return Text(parts.join(' · '));
   }
 }
