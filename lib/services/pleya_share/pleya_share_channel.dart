@@ -45,29 +45,39 @@ class PleyaShareChannel {
 
   Future<bool> ensureConnected() async {
     if (_baseUrl != null && _token != null) return true;
-    final base = await _findReachableBase();
-    if (base == null) return false;
-    _baseUrl = base;
-    return await _authenticate();
+    // /info only proves "some Pleya Share host" — after DHCP reuse another
+    // device may answer on a cached IP. Only a successful pairId auth proves
+    // it's OUR host, so try every candidate and commit on auth success.
+    await for (final candidate in _candidateBases()) {
+      _baseUrl = candidate.base;
+      if (await _authenticate()) {
+        _rememberIp(candidate.ip, candidate.port);
+        return true;
+      }
+    }
+    _baseUrl = null;
+    return false;
   }
 
-  Future<String?> _findReachableBase() async {
+  Stream<({String base, String ip, int port})> _candidateBases() async* {
+    final seen = <String>{};
     for (final ip in connection.lastKnownIps) {
       final base = 'http://$ip:${connection.port}';
       try {
         final info = await _rawJson('GET', Uri.parse('$base/info'));
-        if (info['app'] == PleyaShareProtocol.beaconApp) return base;
+        if (info['app'] == PleyaShareProtocol.beaconApp && seen.add(base)) {
+          yield (base: base, ip: ip, port: connection.port);
+        }
       } catch (_) {}
     }
     // Fall back to discovery beacons — the host may have a new DHCP lease.
     final discovered = await discoverHosts(timeout: const Duration(seconds: 3));
     for (final host in discovered) {
-      if (host.name == connection.hostName || connection.lastKnownIps.isEmpty) {
-        _rememberIp(host.ip, host.port);
-        return 'http://${host.ip}:${host.port}';
+      final base = 'http://${host.ip}:${host.port}';
+      if (seen.add(base)) {
+        yield (base: base, ip: host.ip, port: host.port);
       }
     }
-    return null;
   }
 
   /// Move a freshly confirmed IP to the front of [connection.lastKnownIps]
