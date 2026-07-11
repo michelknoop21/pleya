@@ -121,8 +121,13 @@ end
 
 desc "macOS → TestFlight (pkg)"
 lane :macos_beta do
-  ensure_build_number("osx")
+  build_number = ensure_build_number("osx")
   flutter_sh("flutter build macos --config-only --release")
+  # Buildnummer/-naam expliciet aan xcodebuild meegeven: DerivedData herprocesst
+  # de Info.plist niet altijd als alleen de ephemeral xcconfig wijzigt → stale
+  # CFBundleVersion in de archive (158-upload-rejectie terwijl de xcconfig al
+  # 160 zei). Command-line xcodebuild-args overrulen elke cache.
+  build_name = File.read(File.join(PROJECT_ROOT, "pubspec.yaml"))[/^version:\s*(\S+)/, 1].split("+").first
 
   out_dir = File.join(PROJECT_ROOT, "build/fastlane/macos")
   archive_path = File.join(out_dir, "Pleya.xcarchive")
@@ -136,7 +141,8 @@ lane :macos_beta do
      "-destination 'generic/platform=macOS' " \
      "-archivePath #{archive_path} " \
      "#{auth_xcargs} " \
-     "CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=XL9KN38ATX CODE_SIGN_IDENTITY='Apple Development'")
+     "CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=XL9KN38ATX CODE_SIGN_IDENTITY='Apple Development' " \
+     "FLUTTER_BUILD_NAME=#{build_name} FLUTTER_BUILD_NUMBER=#{build_number}")
 
   # Sparkle (DMG-updater, via auto_updater plugin) zit in de bundle. App Store
   # validatie eist dat elk executable daarin gesandboxed is; runtime staat
