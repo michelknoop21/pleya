@@ -169,10 +169,20 @@ class PleyaShareClient implements MediaServerClient {
     _itemCache.clear();
   }
 
+  HealthStatus? _lastHealth;
+
   @override
   Future<HealthStatus> checkHealth() async {
     final response = await channel.request('GET', '/ping');
-    return response != null ? HealthStatus.online : HealthStatus.offline;
+    final health = response != null ? HealthStatus.online : HealthStatus.offline;
+    if (health == HealthStatus.online && _lastHealth == HealthStatus.offline) {
+      // Host just came back — refill the catalog right away so libraries and
+      // hubs are populated by the time the status stream wakes the providers.
+      _lastSyncFailure = null;
+      unawaited(_ensureSynced(force: true));
+    }
+    _lastHealth = health;
+    return health;
   }
 
   @override

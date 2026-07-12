@@ -660,9 +660,19 @@ class MultiServerManager {
       final oldClient = _clients[connection.id];
       if (oldClient != null) _closeClient(oldClient);
       _clients[connection.id] = client;
+      // Optimistically online (the persisted catalog keeps browsing usable);
+      // the async ping corrects the badge and starts polling when the host
+      // is actually away.
       _serverStatus[connection.id] = true;
       _statusController.add(Map.from(_serverStatus));
       _connectProgressController.add((serverId: connection.id, online: true));
+      unawaited(
+        client.checkHealth().then((health) {
+          if (_clients[connection.id] != client) return;
+          _applyHealth(ServerId(connection.id), health);
+          _ensureSharePolling();
+        }),
+      );
       appLogger.i('Added Pleya Share source: ${connection.hostName}');
       return true;
     } catch (e, stackTrace) {
@@ -677,6 +687,36 @@ class MultiServerManager {
     if (client != null) _closeClient(client);
     _serverStatus.remove(connection.id);
     _statusController.add(Map.from(_serverStatus));
+    _ensureSharePolling();
+  }
+
+  Timer? _sharePollTimer;
+
+  /// Keep retrying offline Pleya Share hosts while the app is open. The
+  /// resume/connectivity health sweeps only fire on those events; this timer
+  /// covers "host comes online while the guest sits idle". One /ping (plus
+  /// candidate discovery inside ensureConnected) per offline host per tick;
+  /// stops itself as soon as every share host is reachable again.
+  void _ensureSharePolling() {
+    final offlineShares = _clients.entries
+        .where((e) => e.value is PleyaShareClient && !(_serverStatus[e.key] ?? false))
+        .toList();
+    if (offlineShares.isEmpty) {
+      _sharePollTimer?.cancel();
+      _sharePollTimer = null;
+      return;
+    }
+    _sharePollTimer ??= Timer.periodic(const Duration(seconds: 45), (_) async {
+      final entries = _clients.entries
+          .where((e) => e.value is PleyaShareClient && !(_serverStatus[e.key] ?? false))
+          .toList();
+      for (final entry in entries) {
+        final health = await entry.value.checkHealth();
+        if (_clients[entry.key] != entry.value) continue;
+        _applyHealth(ServerId(entry.key), health);
+      }
+      _ensureSharePolling();
+    });
   }
 
   /// All registered local folder clients — the sources Pleya Share hosting
@@ -814,6 +854,7 @@ class MultiServerManager {
     });
 
     await Future.wait(healthChecks);
+    _ensureSharePolling();
   }
 
   /// Start monitoring network connectivity for all servers
@@ -1175,6 +1216,8 @@ class MultiServerManager {
 
   /// Dispose resources
   void dispose() {
+    _sharePollTimer?.cancel();
+    _sharePollTimer = null;
     disconnectAll();
     if (!_statusController.isClosed) {
       _statusController.close();
