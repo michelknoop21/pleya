@@ -653,7 +653,10 @@
     "sessionExpiredMany": "Sessionen har gått ut för ${count} servrar",
     "signInAgain": "Logga in igen",
     "editJellyfinTitle": "Redigera Jellyfin-anslutning",
-    "editJellyfinIntro": "Lägg till eller ta bort URL:er för ${serverName}. Pleya använder den nåbara URL:en med lägst latens."
+    "editJellyfinIntro": "Lägg till eller ta bort URL:er för ${serverName}. Pleya använder den nåbara URL:en med lägst latens.",
+    "localSources": "Källor på den här enheten",
+    "removeSource": "Ta bort källa",
+    "removeSourceConfirm": "Ta bort \"$name\" från den här enheten? Nedladdningar behålls."
   },
   "discover": {
     "title": "Upptäck",

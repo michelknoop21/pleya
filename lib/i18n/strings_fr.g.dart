@@ -856,6 +856,9 @@ class _TranslationsConnectionsFr extends TranslationsConnectionsEn {
 	@override String get signInAgain => 'Se reconnecter';
 	@override String get editJellyfinTitle => 'Modifier la connexion Jellyfin';
 	@override String editJellyfinIntro({required Object serverName}) => 'Ajoutez ou supprimez des URL pour ${serverName}. Pleya utilisera l\'URL joignable avec la latence la plus faible.';
+	@override String get localSources => 'Sources sur cet appareil';
+	@override String get removeSource => 'Supprimer la source';
+	@override String removeSourceConfirm({required Object name}) => 'Supprimer « ${name} » de cet appareil ? Les téléchargements sont conservés.';
 }
 
 // Path: discover
@@ -2601,6 +2604,9 @@ extension on TranslationsFr {
 			'connections.signInAgain' => 'Se reconnecter',
 			'connections.editJellyfinTitle' => 'Modifier la connexion Jellyfin',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Ajoutez ou supprimez des URL pour ${serverName}. Pleya utilisera l\'URL joignable avec la latence la plus faible.',
+			'connections.localSources' => 'Sources sur cet appareil',
+			'connections.removeSource' => 'Supprimer la source',
+			'connections.removeSourceConfirm' => ({required Object name}) => 'Supprimer « ${name} » de cet appareil ? Les téléchargements sont conservés.',
 			'discover.title' => 'Découvrez',
 			'discover.switchProfile' => 'Changer de profil',
 			'discover.noContentAvailable' => 'Aucun contenu disponible',
@@ -3012,11 +3018,11 @@ extension on TranslationsFr {
 			'companionRemote.pairing.validationHostFormat' => 'Le format doit être IP:port (ex. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Connexion expirée. Utilisez le même réseau sur les deux appareils.',
 			'companionRemote.pairing.sessionNotFound' => 'Appareil introuvable. Assurez-vous que Pleya fonctionne sur l\'hôte.',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.authFailed' => 'Échec de l\'authentification. Les deux appareils doivent utiliser le même compte Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Échec de la connexion : ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Voulez-vous vous déconnecter de la session distante ?',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.remote.reconnecting' => 'Reconnexion...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Tentative ${current} sur 5',
 			'companionRemote.remote.retryNow' => 'Réessayer maintenant',

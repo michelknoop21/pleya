@@ -856,6 +856,9 @@ class _TranslationsConnectionsKo extends TranslationsConnectionsEn {
 	@override String get signInAgain => '다시 로그인';
 	@override String get editJellyfinTitle => 'Jellyfin 연결 편집';
 	@override String editJellyfinIntro({required Object serverName}) => '${serverName}의 URL을 추가하거나 제거하세요. Pleya는 연결 가능한 URL 중 지연 시간이 가장 낮은 URL을 사용합니다.';
+	@override String get localSources => '이 기기의 소스';
+	@override String get removeSource => '소스 제거';
+	@override String removeSourceConfirm({required Object name}) => '"${name}"을(를) 이 기기에서 제거할까요? 다운로드한 항목은 유지됩니다.';
 }
 
 // Path: discover
@@ -2601,6 +2604,9 @@ extension on TranslationsKo {
 			'connections.signInAgain' => '다시 로그인',
 			'connections.editJellyfinTitle' => 'Jellyfin 연결 편집',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => '${serverName}의 URL을 추가하거나 제거하세요. Pleya는 연결 가능한 URL 중 지연 시간이 가장 낮은 URL을 사용합니다.',
+			'connections.localSources' => '이 기기의 소스',
+			'connections.removeSource' => '소스 제거',
+			'connections.removeSourceConfirm' => ({required Object name}) => '"${name}"을(를) 이 기기에서 제거할까요? 다운로드한 항목은 유지됩니다.',
 			'discover.title' => '발견',
 			'discover.switchProfile' => '사용자 전환',
 			'discover.noContentAvailable' => '사용 가능한 콘텐츠가 없습니다',
@@ -3012,11 +3018,11 @@ extension on TranslationsKo {
 			'companionRemote.pairing.validationHostFormat' => '형식은 IP:포트여야 합니다 (예: 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => '연결 시간이 초과되었습니다. 두 기기에서 같은 네트워크를 사용하세요.',
 			'companionRemote.pairing.sessionNotFound' => '기기를 찾을 수 없습니다. 호스트에서 Pleya가 실행 중인지 확인하세요.',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.authFailed' => '인증에 실패했습니다. 두 기기 모두 같은 Plex 계정이 필요합니다.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '연결 실패: ${error}',
 			'companionRemote.remote.disconnectConfirm' => '원격 세션 연결을 해제하시겠습니까?',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.remote.reconnecting' => '재연결 중...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => '${current}/5 시도 중',
 			'companionRemote.remote.retryNow' => '지금 재시도',

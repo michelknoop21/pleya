@@ -59,6 +59,41 @@ Future<void> removeProfileConnectionAndCleanup({
   }
 }
 
+/// Remove [connection] from the device entirely: every profile binding plus —
+/// for device-bound sources (local folders, Pleya Share) — the connection row,
+/// runtime client, and library prefs. Also handles orphan rows that were never
+/// bound to a profile (added without an active profile, or bound to a
+/// since-vanished virtual Plex Home profile).
+Future<void> removeConnectionCompletely({
+  required Connection connection,
+  required ProfileConnectionRegistry profileConnections,
+  required ConnectionRegistry connections,
+  required StorageService storage,
+  MultiServerManager? serverManager,
+}) async {
+  for (final row in await profileConnections.listForConnection(connection.id)) {
+    await removeProfileConnectionAndCleanup(
+      profileId: row.profileId,
+      connection: connection,
+      profileConnections: profileConnections,
+      connections: connections,
+      storage: storage,
+      serverManager: serverManager,
+    );
+  }
+  // Orphan (no bindings) — the per-profile path never ran; clean up directly.
+  if (await connections.get(connection.id) != null &&
+      (connection is LocalFolderConnection || connection is PleyaShareConnection)) {
+    await connections.remove(connection.id);
+    if (connection is LocalFolderConnection) serverManager?.removeLocalSource(connection);
+    if (connection is PleyaShareConnection) serverManager?.removePleyaShareSource(connection);
+    final serverId = ServerId.tryParse(connection.id);
+    if (serverId != null) {
+      await storage.clearLibraryPreferencesForServerEverywhere(serverId);
+    }
+  }
+}
+
 Future<void> removeAllProfileConnectionsAndCleanup({
   required String profileId,
   required ProfileConnectionRegistry profileConnections,

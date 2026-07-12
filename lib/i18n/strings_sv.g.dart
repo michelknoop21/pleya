@@ -856,6 +856,9 @@ class _TranslationsConnectionsSv extends TranslationsConnectionsEn {
 	@override String get signInAgain => 'Logga in igen';
 	@override String get editJellyfinTitle => 'Redigera Jellyfin-anslutning';
 	@override String editJellyfinIntro({required Object serverName}) => 'Lägg till eller ta bort URL:er för ${serverName}. Pleya använder den nåbara URL:en med lägst latens.';
+	@override String get localSources => 'Källor på den här enheten';
+	@override String get removeSource => 'Ta bort källa';
+	@override String removeSourceConfirm({required Object name}) => 'Ta bort "${name}" från den här enheten? Nedladdningar behålls.';
 }
 
 // Path: discover
@@ -2601,6 +2604,9 @@ extension on TranslationsSv {
 			'connections.signInAgain' => 'Logga in igen',
 			'connections.editJellyfinTitle' => 'Redigera Jellyfin-anslutning',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Lägg till eller ta bort URL:er för ${serverName}. Pleya använder den nåbara URL:en med lägst latens.',
+			'connections.localSources' => 'Källor på den här enheten',
+			'connections.removeSource' => 'Ta bort källa',
+			'connections.removeSourceConfirm' => ({required Object name}) => 'Ta bort "${name}" från den här enheten? Nedladdningar behålls.',
 			'discover.title' => 'Upptäck',
 			'discover.switchProfile' => 'Byt profil',
 			'discover.noContentAvailable' => 'Inget innehåll tillgängligt',
@@ -3012,11 +3018,11 @@ extension on TranslationsSv {
 			'companionRemote.pairing.validationHostFormat' => 'Format måste vara IP:port (t.ex. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Anslutningen tog för lång tid. Använd samma nätverk på båda enheter.',
 			'companionRemote.pairing.sessionNotFound' => 'Enhet hittades inte. Kontrollera att Pleya körs på värden.',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.authFailed' => 'Autentisering misslyckades. Båda enheter behöver samma Plex-konto.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kunde inte ansluta: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Vill du koppla från fjärrsessionen?',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.remote.reconnecting' => 'Återansluter...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Försök ${current} av 5',
 			'companionRemote.remote.retryNow' => 'Försök nu',

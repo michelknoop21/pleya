@@ -856,6 +856,9 @@ class _TranslationsConnectionsJa extends TranslationsConnectionsEn {
 	@override String get signInAgain => '再度サインイン';
 	@override String get editJellyfinTitle => 'Jellyfin接続を編集';
 	@override String editJellyfinIntro({required Object serverName}) => '${serverName} のURLを追加または削除します。Pleyaは到達可能なURLのうち最も低遅延のものを使用します。';
+	@override String get localSources => 'このデバイスのソース';
+	@override String get removeSource => 'ソースを削除';
+	@override String removeSourceConfirm({required Object name}) => '「${name}」をこのデバイスから削除しますか？ダウンロード済みの項目は保持されます。';
 }
 
 // Path: discover
@@ -2601,6 +2604,9 @@ extension on TranslationsJa {
 			'connections.signInAgain' => '再度サインイン',
 			'connections.editJellyfinTitle' => 'Jellyfin接続を編集',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => '${serverName} のURLを追加または削除します。Pleyaは到達可能なURLのうち最も低遅延のものを使用します。',
+			'connections.localSources' => 'このデバイスのソース',
+			'connections.removeSource' => 'ソースを削除',
+			'connections.removeSourceConfirm' => ({required Object name}) => '「${name}」をこのデバイスから削除しますか？ダウンロード済みの項目は保持されます。',
 			'discover.title' => '探す',
 			'discover.switchProfile' => 'プロフィール切替',
 			'discover.noContentAvailable' => 'コンテンツがありません',
@@ -3012,11 +3018,11 @@ extension on TranslationsJa {
 			'companionRemote.pairing.validationHostFormat' => '形式はIP:ポートである必要があります（例: 192.168.1.100:48632）',
 			'companionRemote.pairing.connectionTimedOut' => '接続がタイムアウトしました。両方のデバイスで同じネットワークを使用してください。',
 			'companionRemote.pairing.sessionNotFound' => 'デバイスが見つかりません。ホストでPleyaが実行中か確認してください。',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.authFailed' => '認証に失敗しました。両方のデバイスで同じPlexアカウントが必要です。',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '接続に失敗しました: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'リモートセッションから切断しますか？',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.remote.reconnecting' => '再接続中...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => '試行 ${current}/5',
 			'companionRemote.remote.retryNow' => '今すぐ再試行',

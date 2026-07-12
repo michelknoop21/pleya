@@ -653,7 +653,10 @@
     "sessionExpiredMany": "${count} 개의 서버에서 세션이 만료되었습니다",
     "signInAgain": "다시 로그인",
     "editJellyfinTitle": "Jellyfin 연결 편집",
-    "editJellyfinIntro": "${serverName}의 URL을 추가하거나 제거하세요. Pleya는 연결 가능한 URL 중 지연 시간이 가장 낮은 URL을 사용합니다."
+    "editJellyfinIntro": "${serverName}의 URL을 추가하거나 제거하세요. Pleya는 연결 가능한 URL 중 지연 시간이 가장 낮은 URL을 사용합니다.",
+    "localSources": "이 기기의 소스",
+    "removeSource": "소스 제거",
+    "removeSourceConfirm": "\"$name\"을(를) 이 기기에서 제거할까요? 다운로드한 항목은 유지됩니다."
   },
   "discover": {
     "title": "발견",

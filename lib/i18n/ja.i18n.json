@@ -653,7 +653,10 @@
     "sessionExpiredMany": "${count} 台のサーバーのセッションの有効期限が切れました",
     "signInAgain": "再度サインイン",
     "editJellyfinTitle": "Jellyfin接続を編集",
-    "editJellyfinIntro": "${serverName} のURLを追加または削除します。Pleyaは到達可能なURLのうち最も低遅延のものを使用します。"
+    "editJellyfinIntro": "${serverName} のURLを追加または削除します。Pleyaは到達可能なURLのうち最も低遅延のものを使用します。",
+    "localSources": "このデバイスのソース",
+    "removeSource": "ソースを削除",
+    "removeSourceConfirm": "「$name」をこのデバイスから削除しますか？ダウンロード済みの項目は保持されます。"
   },
   "discover": {
     "title": "探す",

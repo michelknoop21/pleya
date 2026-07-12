@@ -653,7 +653,10 @@
     "sessionExpiredMany": "Сесиите за ${count} сървъра са изтекли",
     "signInAgain": "Влез отново",
     "editJellyfinTitle": "Редактиране на Jellyfin връзка",
-    "editJellyfinIntro": "Добавете или премахнете URL адреси за ${serverName}. Pleya ще използва достъпния URL адрес с най-ниска латентност."
+    "editJellyfinIntro": "Добавете или премахнете URL адреси за ${serverName}. Pleya ще използва достъпния URL адрес с най-ниска латентност.",
+    "localSources": "Източници на това устройство",
+    "removeSource": "Премахване на източник",
+    "removeSourceConfirm": "Да се премахне ли \"$name\" от това устройство? Изтеглените файлове се запазват."
   },
   "discover": {
     "title": "Открий",

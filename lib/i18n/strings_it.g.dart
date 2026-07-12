@@ -856,6 +856,9 @@ class _TranslationsConnectionsIt extends TranslationsConnectionsEn {
 	@override String get signInAgain => 'Accedi di nuovo';
 	@override String get editJellyfinTitle => 'Modifica connessione Jellyfin';
 	@override String editJellyfinIntro({required Object serverName}) => 'Aggiungi o rimuovi URL per ${serverName}. Pleya userà l\'URL raggiungibile con la latenza più bassa.';
+	@override String get localSources => 'Sorgenti su questo dispositivo';
+	@override String get removeSource => 'Rimuovi sorgente';
+	@override String removeSourceConfirm({required Object name}) => 'Rimuovere "${name}" da questo dispositivo? I download vengono conservati.';
 }
 
 // Path: discover
@@ -2601,6 +2604,9 @@ extension on TranslationsIt {
 			'connections.signInAgain' => 'Accedi di nuovo',
 			'connections.editJellyfinTitle' => 'Modifica connessione Jellyfin',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Aggiungi o rimuovi URL per ${serverName}. Pleya userà l\'URL raggiungibile con la latenza più bassa.',
+			'connections.localSources' => 'Sorgenti su questo dispositivo',
+			'connections.removeSource' => 'Rimuovi sorgente',
+			'connections.removeSourceConfirm' => ({required Object name}) => 'Rimuovere "${name}" da questo dispositivo? I download vengono conservati.',
 			'discover.title' => 'Esplora',
 			'discover.switchProfile' => 'Cambia profilo',
 			'discover.noContentAvailable' => 'Nessun contenuto disponibile',
@@ -3012,11 +3018,11 @@ extension on TranslationsIt {
 			'companionRemote.pairing.validationHostFormat' => 'Il formato deve essere IP:porta (es. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Connessione scaduta. Usa la stessa rete su entrambi i dispositivi.',
 			'companionRemote.pairing.sessionNotFound' => 'Dispositivo non trovato. Assicurati che Pleya sia in esecuzione sull\'host.',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.authFailed' => 'Autenticazione non riuscita. Entrambi i dispositivi devono usare lo stesso account Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Connessione fallita: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Vuoi disconnetterti dalla sessione remota?',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.remote.reconnecting' => 'Riconnessione...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Tentativo ${current} di 5',
 			'companionRemote.remote.retryNow' => 'Riprova ora',

@@ -695,7 +695,10 @@
     "sessionExpiredMany": "Sessie verlopen voor ${count} servers",
     "signInAgain": "Opnieuw aanmelden",
     "editJellyfinTitle": "Jellyfin-verbinding bewerken",
-    "editJellyfinIntro": "Voeg URL's voor ${serverName} toe of verwijder ze. Pleya gebruikt de bereikbare URL met de laagste latentie."
+    "editJellyfinIntro": "Voeg URL's voor ${serverName} toe of verwijder ze. Pleya gebruikt de bereikbare URL met de laagste latentie.",
+    "localSources": "Bronnen op dit apparaat",
+    "removeSource": "Bron verwijderen",
+    "removeSourceConfirm": "\"$name\" verwijderen van dit apparaat? Gedownloade items blijven staan."
   },
   "discover": {
     "title": "Ontdekken",

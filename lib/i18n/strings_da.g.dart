@@ -856,6 +856,9 @@ class _TranslationsConnectionsDa extends TranslationsConnectionsEn {
 	@override String get signInAgain => 'Log ind igen';
 	@override String get editJellyfinTitle => 'Rediger Jellyfin-forbindelse';
 	@override String editJellyfinIntro({required Object serverName}) => 'Tilføj eller fjern URL\'er for ${serverName}. Pleya bruger den tilgængelige URL med lavest latenstid.';
+	@override String get localSources => 'Kilder på denne enhed';
+	@override String get removeSource => 'Fjern kilde';
+	@override String removeSourceConfirm({required Object name}) => 'Fjern "${name}" fra denne enhed? Downloads bevares.';
 }
 
 // Path: discover
@@ -2601,6 +2604,9 @@ extension on TranslationsDa {
 			'connections.signInAgain' => 'Log ind igen',
 			'connections.editJellyfinTitle' => 'Rediger Jellyfin-forbindelse',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Tilføj eller fjern URL\'er for ${serverName}. Pleya bruger den tilgængelige URL med lavest latenstid.',
+			'connections.localSources' => 'Kilder på denne enhed',
+			'connections.removeSource' => 'Fjern kilde',
+			'connections.removeSourceConfirm' => ({required Object name}) => 'Fjern "${name}" fra denne enhed? Downloads bevares.',
 			'discover.title' => 'Opdag',
 			'discover.switchProfile' => 'Skift profil',
 			'discover.noContentAvailable' => 'Intet indhold tilgængeligt',
@@ -3012,11 +3018,11 @@ extension on TranslationsDa {
 			'companionRemote.pairing.validationHostFormat' => 'Format skal være IP:port (f.eks. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Forbindelsen fik timeout. Brug samme netværk på begge enheder.',
 			'companionRemote.pairing.sessionNotFound' => 'Enhed ikke fundet. Sørg for, at Pleya kører på værten.',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.authFailed' => 'Godkendelse mislykkedes. Begge enheder skal bruge samme Plex-konto.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kunne ikke oprette forbindelse: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Vil du afbryde fra fjernsessionen?',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.remote.reconnecting' => 'Genopretter forbindelse...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Forsøg ${current} af 5',
 			'companionRemote.remote.retryNow' => 'Prøv igen nu',

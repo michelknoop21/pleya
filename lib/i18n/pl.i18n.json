@@ -653,7 +653,10 @@
     "sessionExpiredMany": "Sesja wygasła dla ${count} serwerów",
     "signInAgain": "Zaloguj się ponownie",
     "editJellyfinTitle": "Edytuj połączenie Jellyfin",
-    "editJellyfinIntro": "Dodaj lub usuń adresy URL dla ${serverName}. Pleya użyje osiągalnego URL-a o najniższym opóźnieniu."
+    "editJellyfinIntro": "Dodaj lub usuń adresy URL dla ${serverName}. Pleya użyje osiągalnego URL-a o najniższym opóźnieniu.",
+    "localSources": "Źródła na tym urządzeniu",
+    "removeSource": "Usuń źródło",
+    "removeSourceConfirm": "Usunąć \"$name\" z tego urządzenia? Pobrane pliki zostaną zachowane."
   },
   "discover": {
     "title": "Odkryj",

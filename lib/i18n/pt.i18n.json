@@ -653,7 +653,10 @@
     "sessionExpiredMany": "Sessão expirada para ${count} servidores",
     "signInAgain": "Entrar novamente",
     "editJellyfinTitle": "Editar conexão Jellyfin",
-    "editJellyfinIntro": "Adicione ou remova URLs de ${serverName}. O Pleya usará a URL acessível com a menor latência."
+    "editJellyfinIntro": "Adicione ou remova URLs de ${serverName}. O Pleya usará a URL acessível com a menor latência.",
+    "localSources": "Fontes neste dispositivo",
+    "removeSource": "Remover fonte",
+    "removeSourceConfirm": "Remover \"$name\" deste dispositivo? As transferências são mantidas."
   },
   "discover": {
     "title": "Descobrir",

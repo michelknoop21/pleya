@@ -56,6 +56,17 @@ PlexAccountConnection _plex() {
   );
 }
 
+
+LocalFolderConnection _localFolder({String id = 'local-1'}) {
+  return LocalFolderConnection(
+    id: id,
+    directoryUri: '/tmp/media',
+    displayName: 'Films lokaal',
+    libraryType: 'movies',
+    createdAt: DateTime.fromMillisecondsSinceEpoch(1_000_000),
+  );
+}
+
 void main() {
   late AppDatabase db;
   late ConnectionRegistry connections;
@@ -221,6 +232,46 @@ void main() {
       expect(storage.getHiddenLibraries(), isEmpty);
       await storage.setActiveProfileId('p2');
       expect(storage.getHiddenLibraries(), {'plex-machine:movies'});
+    });
+  });
+
+  group('removeConnectionCompletely', () {
+    Future<void> removeCompletely(Connection conn) => removeConnectionCompletely(
+      connection: conn,
+      profileConnections: profileConnections,
+      connections: connections,
+      storage: storage,
+    );
+
+    test('orphan local folder (no profile bindings) is removed', () async {
+      final conn = _localFolder();
+      await connections.upsert(conn);
+      await removeCompletely(conn);
+      expect(await connections.get(conn.id), isNull);
+    });
+
+    test('local folder bound to one profile removes binding and row', () async {
+      final conn = _localFolder();
+      await connections.upsert(conn);
+      await profileConnections.upsert(
+        ProfileConnection(profileId: 'profile-a', connectionId: conn.id, userIdentifier: conn.id),
+      );
+      await removeCompletely(conn);
+      expect(await connections.get(conn.id), isNull);
+      expect(await profileConnections.listForConnection(conn.id), isEmpty);
+    });
+
+    test('local folder bound to two profiles removes everything', () async {
+      final conn = _localFolder();
+      await connections.upsert(conn);
+      for (final profile in ['profile-a', 'profile-b']) {
+        await profileConnections.upsert(
+          ProfileConnection(profileId: profile, connectionId: conn.id, userIdentifier: conn.id),
+        );
+      }
+      await removeCompletely(conn);
+      expect(await connections.get(conn.id), isNull);
+      expect(await profileConnections.listForConnection(conn.id), isEmpty);
     });
   });
 }

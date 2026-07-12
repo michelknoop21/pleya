@@ -709,7 +709,10 @@
     "sessionExpiredMany": "Session expired for ${count} servers",
     "signInAgain": "Sign in again",
     "editJellyfinTitle": "Edit Jellyfin connection",
-    "editJellyfinIntro": "Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency."
+    "editJellyfinIntro": "Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency.",
+    "localSources": "Sources on this device",
+    "removeSource": "Remove source",
+    "removeSourceConfirm": "Remove \"$name\" from this device? Downloaded items are kept."
   },
   "discover": {
     "title": "Discover",

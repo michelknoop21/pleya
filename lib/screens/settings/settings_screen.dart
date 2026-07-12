@@ -40,6 +40,14 @@ import '../../widgets/dialog_action_button.dart';
 import '../../widgets/setting_tile.dart';
 import '../../widgets/settings_builder.dart';
 import '../../widgets/settings_section.dart';
+import '../../connection/connection.dart';
+import '../../connection/connection_registry.dart';
+import '../../profiles/profile_connection_cleanup.dart';
+import '../../profiles/profile_connection_registry.dart';
+import '../../profiles/active_profile_binder.dart';
+import '../../providers/multi_server_provider.dart';
+import '../../services/storage_service.dart';
+import '../../focus/focusable_wrapper.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../profiles/profile.dart';
 import '../../profiles/profile_registry.dart';
@@ -529,8 +537,88 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
             Navigator.push(context, MaterialPageRoute(builder: (_) => const PleyaShareHostScreen()));
           },
         ),
+        _buildLocalSourcesList(),
       ],
     );
+  }
+
+  /// Device-bound sources (local folders, Pleya Share hosts), removable here
+  /// regardless of profile bindings — this is also the escape hatch for rows
+  /// orphaned by a vanished (virtual Plex Home) profile or a profile-less add.
+  Widget _buildLocalSourcesList() {
+    return StreamBuilder<List<Connection>>(
+      stream: context.read<ConnectionRegistry>().watchConnections(),
+      builder: (context, snapshot) {
+        final theme = Theme.of(context);
+        final sources = (snapshot.data ?? const <Connection>[])
+            .where((c) => c is LocalFolderConnection || c is PleyaShareConnection)
+            .toList();
+        if (sources.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(t.connections.localSources, style: theme.textTheme.titleSmall),
+            ),
+            for (final source in sources)
+              FocusableWrapper(
+                disableScale: true,
+                borderRadius: 12,
+                onSelect: () => _removeLocalSource(source),
+                child: Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: ListTile(
+                    leading: Icon(
+                      source is PleyaShareConnection ? Symbols.devices_rounded : Symbols.folder_rounded,
+                      fill: 1,
+                      color: theme.colorScheme.primary,
+                    ),
+                    title: Text(source.displayLabel),
+                    subtitle: source.displaySubtitle == null
+                        ? null
+                        : Text(source.displaySubtitle!, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    trailing: IconButton(
+                      tooltip: t.connections.removeSource,
+                      icon: Icon(Symbols.delete_outline_rounded, color: theme.colorScheme.error),
+                      onPressed: () => _removeLocalSource(source),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _removeLocalSource(Connection source) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: t.connections.removeSource,
+      message: t.connections.removeSourceConfirm(name: source.displayLabel),
+      confirmText: t.common.delete,
+      isDestructive: true,
+    );
+    if (!confirmed || !mounted) return;
+    final profileConnections = context.read<ProfileConnectionRegistry>();
+    final connections = context.read<ConnectionRegistry>();
+    final serverManager = context.read<MultiServerProvider>().serverManager;
+    final storage = await StorageService.getInstance();
+    await removeConnectionCompletely(
+      connection: source,
+      profileConnections: profileConnections,
+      connections: connections,
+      storage: storage,
+      serverManager: serverManager,
+    );
+    if (!mounted) return;
+    await context.read<HiddenLibrariesProvider?>()?.refresh();
+    if (!mounted) return;
+    final activeId = context.read<ActiveProfileProvider>().active?.id;
+    if (activeId != null) {
+      unawaited(context.read<ActiveProfileBinder>().rebindIfActive(activeId));
+    }
   }
 
   Widget _buildProfilesSection() {

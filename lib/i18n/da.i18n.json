@@ -653,7 +653,10 @@
     "sessionExpiredMany": "Sessionen er udløbet for ${count} servere",
     "signInAgain": "Log ind igen",
     "editJellyfinTitle": "Rediger Jellyfin-forbindelse",
-    "editJellyfinIntro": "Tilføj eller fjern URL'er for ${serverName}. Pleya bruger den tilgængelige URL med lavest latenstid."
+    "editJellyfinIntro": "Tilføj eller fjern URL'er for ${serverName}. Pleya bruger den tilgængelige URL med lavest latenstid.",
+    "localSources": "Kilder på denne enhed",
+    "removeSource": "Fjern kilde",
+    "removeSourceConfirm": "Fjern \"$name\" fra denne enhed? Downloads bevares."
   },
   "discover": {
     "title": "Opdag",

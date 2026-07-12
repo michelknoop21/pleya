@@ -653,7 +653,10 @@
     "sessionExpiredMany": "${count} 个服务器的会话已过期",
     "signInAgain": "重新登录",
     "editJellyfinTitle": "编辑 Jellyfin 连接",
-    "editJellyfinIntro": "添加或移除 ${serverName} 的 URL。Pleya 会使用可访问且延迟最低的 URL。"
+    "editJellyfinIntro": "添加或移除 ${serverName} 的 URL。Pleya 会使用可访问且延迟最低的 URL。",
+    "localSources": "此设备上的来源",
+    "removeSource": "移除来源",
+    "removeSourceConfirm": "从此设备移除“$name”？已下载的内容将保留。"
   },
   "discover": {
     "title": "发现",

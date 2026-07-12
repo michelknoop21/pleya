@@ -2150,6 +2150,15 @@ class TranslationsConnectionsEn {
 
 	/// en: 'Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency.'
 	String editJellyfinIntro({required Object serverName}) => 'Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency.';
+
+	/// en: 'Sources on this device'
+	String get localSources => 'Sources on this device';
+
+	/// en: 'Remove source'
+	String get removeSource => 'Remove source';
+
+	/// en: 'Remove "$name" from this device? Downloaded items are kept.'
+	String removeSourceConfirm({required Object name}) => 'Remove "${name}" from this device? Downloaded items are kept.';
 }
 
 // Path: discover
@@ -5839,6 +5848,9 @@ extension on Translations {
 			'connections.signInAgain' => 'Sign in again',
 			'connections.editJellyfinTitle' => 'Edit Jellyfin connection',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency.',
+			'connections.localSources' => 'Sources on this device',
+			'connections.removeSource' => 'Remove source',
+			'connections.removeSourceConfirm' => ({required Object name}) => 'Remove "${name}" from this device? Downloaded items are kept.',
 			'discover.title' => 'Discover',
 			'discover.switchProfile' => 'Switch Profile',
 			'discover.noContentAvailable' => 'No content available',
@@ -6200,11 +6212,11 @@ extension on Translations {
 			'downloads.queuedFilesTooltip' => ({required Object files}) => 'Queued ${files}',
 			'downloads.downloadingTooltip' => 'Downloading...',
 			'downloads.downloadingFilesTooltip' => ({required Object files}) => 'Downloading ${files}',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.noDownloadsTree' => 'No downloads',
 			'downloads.pauseAll' => 'Pause all',
 			'downloads.resumeAll' => 'Resume all',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.deleteAll' => 'Delete all',
 			'downloads.selectVersion' => 'Select Version',
 			'downloads.allEpisodes' => 'All episodes',

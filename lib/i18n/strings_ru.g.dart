@@ -856,6 +856,9 @@ class _TranslationsConnectionsRu extends TranslationsConnectionsEn {
 	@override String get signInAgain => 'Войти снова';
 	@override String get editJellyfinTitle => 'Изменить подключение Jellyfin';
 	@override String editJellyfinIntro({required Object serverName}) => 'Добавьте или удалите URL для ${serverName}. Pleya будет использовать доступный URL с минимальной задержкой.';
+	@override String get localSources => 'Источники на этом устройстве';
+	@override String get removeSource => 'Удалить источник';
+	@override String removeSourceConfirm({required Object name}) => 'Удалить «${name}» с этого устройства? Загрузки сохранятся.';
 }
 
 // Path: discover
@@ -2601,6 +2604,9 @@ extension on TranslationsRu {
 			'connections.signInAgain' => 'Войти снова',
 			'connections.editJellyfinTitle' => 'Изменить подключение Jellyfin',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Добавьте или удалите URL для ${serverName}. Pleya будет использовать доступный URL с минимальной задержкой.',
+			'connections.localSources' => 'Источники на этом устройстве',
+			'connections.removeSource' => 'Удалить источник',
+			'connections.removeSourceConfirm' => ({required Object name}) => 'Удалить «${name}» с этого устройства? Загрузки сохранятся.',
 			'discover.title' => 'Обзор',
 			'discover.switchProfile' => 'Сменить профиль',
 			'discover.noContentAvailable' => 'Контент недоступен',
@@ -3012,11 +3018,11 @@ extension on TranslationsRu {
 			'companionRemote.pairing.validationHostFormat' => 'Формат должен быть IP:порт (например, 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Время подключения истекло. Используйте одну сеть на обоих устройствах.',
 			'companionRemote.pairing.sessionNotFound' => 'Устройство не найдено. Убедитесь, что Pleya запущен на хосте.',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.authFailed' => 'Аутентификация не удалась. На обоих устройствах нужен один аккаунт Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Не удалось подключиться: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Отключиться от удалённой сессии?',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.remote.reconnecting' => 'Переподключение...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Попытка ${current} из 5',
 			'companionRemote.remote.retryNow' => 'Повторить сейчас',

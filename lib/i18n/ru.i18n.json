@@ -653,7 +653,10 @@
     "sessionExpiredMany": "Сессия истекла для ${count} серверов",
     "signInAgain": "Войти снова",
     "editJellyfinTitle": "Изменить подключение Jellyfin",
-    "editJellyfinIntro": "Добавьте или удалите URL для ${serverName}. Pleya будет использовать доступный URL с минимальной задержкой."
+    "editJellyfinIntro": "Добавьте или удалите URL для ${serverName}. Pleya будет использовать доступный URL с минимальной задержкой.",
+    "localSources": "Источники на этом устройстве",
+    "removeSource": "Удалить источник",
+    "removeSourceConfirm": "Удалить «$name» с этого устройства? Загрузки сохранятся."
   },
   "discover": {
     "title": "Обзор",

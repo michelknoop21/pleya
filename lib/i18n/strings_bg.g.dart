@@ -856,6 +856,9 @@ class _TranslationsConnectionsBg extends TranslationsConnectionsEn {
 	@override String get signInAgain => 'Влез отново';
 	@override String get editJellyfinTitle => 'Редактиране на Jellyfin връзка';
 	@override String editJellyfinIntro({required Object serverName}) => 'Добавете или премахнете URL адреси за ${serverName}. Pleya ще използва достъпния URL адрес с най-ниска латентност.';
+	@override String get localSources => 'Източници на това устройство';
+	@override String get removeSource => 'Премахване на източник';
+	@override String removeSourceConfirm({required Object name}) => 'Да се премахне ли "${name}" от това устройство? Изтеглените файлове се запазват.';
 }
 
 // Path: discover
@@ -2601,6 +2604,9 @@ extension on TranslationsBg {
 			'connections.signInAgain' => 'Влез отново',
 			'connections.editJellyfinTitle' => 'Редактиране на Jellyfin връзка',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Добавете или премахнете URL адреси за ${serverName}. Pleya ще използва достъпния URL адрес с най-ниска латентност.',
+			'connections.localSources' => 'Източници на това устройство',
+			'connections.removeSource' => 'Премахване на източник',
+			'connections.removeSourceConfirm' => ({required Object name}) => 'Да се премахне ли "${name}" от това устройство? Изтеглените файлове се запазват.',
 			'discover.title' => 'Открий',
 			'discover.switchProfile' => 'Смяна на профил',
 			'discover.noContentAvailable' => 'Няма налично съдържание',
@@ -3012,11 +3018,11 @@ extension on TranslationsBg {
 			'companionRemote.pairing.validationHostFormat' => 'Форматът трябва да е IP:port (напр. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Връзката изтече. Използвайте една и съща мрежа на двете устройства.',
 			'companionRemote.pairing.sessionNotFound' => 'Устройството не е намерено. Уверете се, че Pleya работи на хоста.',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.authFailed' => 'Удостоверяването е неуспешно. Двете устройства трябва да използват същия Plex акаунт.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Неуспешно свързване: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Искате ли да прекъснете връзката с дистанционната сесия?',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.remote.reconnecting' => 'Повторно свързване...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Опит ${current} от 5',
 			'companionRemote.remote.retryNow' => 'Опитай сега',

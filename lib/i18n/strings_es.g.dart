@@ -856,6 +856,9 @@ class _TranslationsConnectionsEs extends TranslationsConnectionsEn {
 	@override String get signInAgain => 'Iniciar sesión de nuevo';
 	@override String get editJellyfinTitle => 'Editar conexión de Jellyfin';
 	@override String editJellyfinIntro({required Object serverName}) => 'Añade o elimina URL para ${serverName}. Pleya usará la URL accesible con menor latencia.';
+	@override String get localSources => 'Fuentes en este dispositivo';
+	@override String get removeSource => 'Eliminar fuente';
+	@override String removeSourceConfirm({required Object name}) => '¿Eliminar "${name}" de este dispositivo? Las descargas se conservan.';
 }
 
 // Path: discover
@@ -2601,6 +2604,9 @@ extension on TranslationsEs {
 			'connections.signInAgain' => 'Iniciar sesión de nuevo',
 			'connections.editJellyfinTitle' => 'Editar conexión de Jellyfin',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Añade o elimina URL para ${serverName}. Pleya usará la URL accesible con menor latencia.',
+			'connections.localSources' => 'Fuentes en este dispositivo',
+			'connections.removeSource' => 'Eliminar fuente',
+			'connections.removeSourceConfirm' => ({required Object name}) => '¿Eliminar "${name}" de este dispositivo? Las descargas se conservan.',
 			'discover.title' => 'Descubrir',
 			'discover.switchProfile' => 'Cambiar Perfil',
 			'discover.noContentAvailable' => 'No hay contenido disponible',
@@ -3012,11 +3018,11 @@ extension on TranslationsEs {
 			'companionRemote.pairing.validationHostFormat' => 'El formato debe ser IP:puerto (ej. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Tiempo de conexión agotado. Usa la misma red en ambos dispositivos.',
 			'companionRemote.pairing.sessionNotFound' => 'Dispositivo no encontrado. Asegúrate de que Pleya esté en ejecución en el host.',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.authFailed' => 'Autenticación fallida. Ambos dispositivos necesitan la misma cuenta Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Error al conectar: ${error}',
 			'companionRemote.remote.disconnectConfirm' => '¿Quieres desconectarte de la sesión remota?',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.remote.reconnecting' => 'Reconectando...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Intento ${current} de 5',
 			'companionRemote.remote.retryNow' => 'Reintentar ahora',

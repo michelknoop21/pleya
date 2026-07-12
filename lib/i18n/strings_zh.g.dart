@@ -856,6 +856,9 @@ class _TranslationsConnectionsZh extends TranslationsConnectionsEn {
 	@override String get signInAgain => '重新登录';
 	@override String get editJellyfinTitle => '编辑 Jellyfin 连接';
 	@override String editJellyfinIntro({required Object serverName}) => '添加或移除 ${serverName} 的 URL。Pleya 会使用可访问且延迟最低的 URL。';
+	@override String get localSources => '此设备上的来源';
+	@override String get removeSource => '移除来源';
+	@override String removeSourceConfirm({required Object name}) => '从此设备移除“${name}”？已下载的内容将保留。';
 }
 
 // Path: discover
@@ -2601,6 +2604,9 @@ extension on TranslationsZh {
 			'connections.signInAgain' => '重新登录',
 			'connections.editJellyfinTitle' => '编辑 Jellyfin 连接',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => '添加或移除 ${serverName} 的 URL。Pleya 会使用可访问且延迟最低的 URL。',
+			'connections.localSources' => '此设备上的来源',
+			'connections.removeSource' => '移除来源',
+			'connections.removeSourceConfirm' => ({required Object name}) => '从此设备移除“${name}”？已下载的内容将保留。',
 			'discover.title' => '发现',
 			'discover.switchProfile' => '切换用户',
 			'discover.noContentAvailable' => '没有可用内容',
@@ -3012,11 +3018,11 @@ extension on TranslationsZh {
 			'companionRemote.pairing.validationHostFormat' => '格式必须为IP:端口（例如 192.168.1.100:48632）',
 			'companionRemote.pairing.connectionTimedOut' => '连接超时。请在两台设备上使用同一网络。',
 			'companionRemote.pairing.sessionNotFound' => '未找到设备。请确认 Pleya 正在主机上运行。',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.authFailed' => '认证失败。两台设备需要使用同一 Plex 账号。',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '连接失败：${error}',
 			'companionRemote.remote.disconnectConfirm' => '是否要断开远程会话的连接？',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.remote.reconnecting' => '重新连接中...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => '第 ${current} 次尝试，共 5 次',
 			'companionRemote.remote.retryNow' => '立即重试',

@@ -894,6 +894,9 @@ class _TranslationsConnectionsNl extends TranslationsConnectionsEn {
 	@override String get signInAgain => 'Opnieuw aanmelden';
 	@override String get editJellyfinTitle => 'Jellyfin-verbinding bewerken';
 	@override String editJellyfinIntro({required Object serverName}) => 'Voeg URL\'s voor ${serverName} toe of verwijder ze. Pleya gebruikt de bereikbare URL met de laagste latentie.';
+	@override String get localSources => 'Bronnen op dit apparaat';
+	@override String get removeSource => 'Bron verwijderen';
+	@override String removeSourceConfirm({required Object name}) => '"${name}" verwijderen van dit apparaat? Gedownloade items blijven staan.';
 }
 
 // Path: discover
@@ -2744,6 +2747,9 @@ extension on TranslationsNl {
 			'connections.signInAgain' => 'Opnieuw aanmelden',
 			'connections.editJellyfinTitle' => 'Jellyfin-verbinding bewerken',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Voeg URL\'s voor ${serverName} toe of verwijder ze. Pleya gebruikt de bereikbare URL met de laagste latentie.',
+			'connections.localSources' => 'Bronnen op dit apparaat',
+			'connections.removeSource' => 'Bron verwijderen',
+			'connections.removeSourceConfirm' => ({required Object name}) => '"${name}" verwijderen van dit apparaat? Gedownloade items blijven staan.',
 			'discover.title' => 'Ontdekken',
 			'discover.switchProfile' => 'Wissel van profiel',
 			'discover.noContentAvailable' => 'Geen inhoud beschikbaar',
@@ -3119,11 +3125,11 @@ extension on TranslationsNl {
 			'downloads.keepNUnwatched' => ({required Object count}) => '${count} onbekeken behouden',
 			'downloads.editSyncRule' => 'Synchronisatieregel bewerken',
 			'downloads.removeSyncRule' => 'Synchronisatieregel verwijderen',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.removeSyncRuleConfirm' => ({required Object title}) => 'Synchronisatie van "${title}" stoppen? Gedownloade afleveringen worden behouden.',
 			'downloads.syncRuleCreated' => ({required Object count}) => 'Synchronisatieregel aangemaakt — ${count} onbekeken afleveringen behouden',
 			'downloads.syncRuleUpdated' => 'Synchronisatieregel bijgewerkt',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.syncRuleRemoved' => 'Synchronisatieregel verwijderd',
 			'downloads.syncedNewEpisodes' => ({required Object count, required Object title}) => '${count} nieuwe afleveringen gesynchroniseerd voor ${title}',
 			'downloads.activeSyncRules' => 'Synchronisatieregels',

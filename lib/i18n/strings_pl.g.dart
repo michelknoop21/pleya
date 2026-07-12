@@ -856,6 +856,9 @@ class _TranslationsConnectionsPl extends TranslationsConnectionsEn {
 	@override String get signInAgain => 'Zaloguj się ponownie';
 	@override String get editJellyfinTitle => 'Edytuj połączenie Jellyfin';
 	@override String editJellyfinIntro({required Object serverName}) => 'Dodaj lub usuń adresy URL dla ${serverName}. Pleya użyje osiągalnego URL-a o najniższym opóźnieniu.';
+	@override String get localSources => 'Źródła na tym urządzeniu';
+	@override String get removeSource => 'Usuń źródło';
+	@override String removeSourceConfirm({required Object name}) => 'Usunąć "${name}" z tego urządzenia? Pobrane pliki zostaną zachowane.';
 }
 
 // Path: discover
@@ -2601,6 +2604,9 @@ extension on TranslationsPl {
 			'connections.signInAgain' => 'Zaloguj się ponownie',
 			'connections.editJellyfinTitle' => 'Edytuj połączenie Jellyfin',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Dodaj lub usuń adresy URL dla ${serverName}. Pleya użyje osiągalnego URL-a o najniższym opóźnieniu.',
+			'connections.localSources' => 'Źródła na tym urządzeniu',
+			'connections.removeSource' => 'Usuń źródło',
+			'connections.removeSourceConfirm' => ({required Object name}) => 'Usunąć "${name}" z tego urządzenia? Pobrane pliki zostaną zachowane.',
 			'discover.title' => 'Odkryj',
 			'discover.switchProfile' => 'Zmień profil',
 			'discover.noContentAvailable' => 'Brak dostępnych treści',
@@ -3012,11 +3018,11 @@ extension on TranslationsPl {
 			'companionRemote.pairing.validationHostFormat' => 'Format musi być IP:port (np. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Limit czasu połączenia. Użyj tej samej sieci na obu urządzeniach.',
 			'companionRemote.pairing.sessionNotFound' => 'Nie znaleziono urządzenia. Upewnij się, że Pleya działa na hoście.',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.authFailed' => 'Uwierzytelnianie nie powiodło się. Oba urządzenia muszą używać tego samego konta Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Nie udało się połączyć: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Czy chcesz się rozłączyć od sesji zdalnej?',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.remote.reconnecting' => 'Ponowne łączenie...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Próba ${current} z 5',
 			'companionRemote.remote.retryNow' => 'Ponów teraz',
