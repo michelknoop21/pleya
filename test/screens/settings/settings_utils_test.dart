@@ -7,10 +7,15 @@ import 'package:pleya/utils/platform_detector.dart';
 void main() {
   tearDown(() {
     TvDetectionService.debugSetAppleTVOverride(null);
+    TvDetectionService.setForceTVSync(false);
   });
 
   testWidgets('settings text input survives TV keyboard back dismissal', (tester) async {
-    TvDetectionService.debugSetAppleTVOverride(true);
+    // Android TV: the Flutter TV keyboard is used there (Apple TV routes to
+    // the native text-entry session and never opens this dialog).
+    TvDetectionService.debugSetAppleTVOverride(null);
+    await TvDetectionService.getInstance(forceTv: true);
+    TvDetectionService.setForceTVSync(true);
     await tester.binding.setSurfaceSize(const Size(1280, 720));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     late BuildContext hostContext;

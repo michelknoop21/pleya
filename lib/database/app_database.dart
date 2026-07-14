@@ -316,11 +316,15 @@ class AppDatabase extends _$AppDatabase {
     return value == null ? column.isNull() : column.equals(value);
   }
 
-  /// Get all pending offline watch actions for sync
+  /// Get all pending offline watch actions for sync.
+  ///
+  /// NULL-profile rows (pre-profile-era) are always included: on multi-profile
+  /// installs they are never adopted, and filtering them out would strand that
+  /// watch progress forever.
   Future<List<OfflineWatchProgressItem>> getPendingWatchActions({String? profileId}) {
     final query = select(offlineWatchProgress)..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
     if (profileId != null) {
-      query.where((t) => t.profileId.equals(profileId));
+      query.where((t) => t.profileId.equals(profileId) | t.profileId.isNull());
     }
     return query.get();
   }
@@ -404,7 +408,10 @@ class AppDatabase extends _$AppDatabase {
 
     final result = <String, List<OfflineWatchProgressItem>>{};
     for (final action in rows) {
-      if (clientScopeIdsByGlobalKey != null && clientScopeIdsByGlobalKey.containsKey(action.globalKey)) {
+      if (clientScopeIdsByGlobalKey != null) {
+        // Keys absent from the map get the same treatment as an explicit null
+        // scope — bypassing the filter would leak another user-scope's
+        // actions into this resolution (mirrors the single-key path).
         final expectedScope = clientScopeIdsByGlobalKey[action.globalKey];
         if (!_clientScopeValuesMatch(action.clientScopeId, expectedScope)) continue;
       }
@@ -439,7 +446,8 @@ class AppDatabase extends _$AppDatabase {
     // Group by globalKey and take the latest (first due to ordering)
     final result = <String, OfflineWatchProgressItem>{};
     for (final action in allActions) {
-      if (clientScopeIdsByGlobalKey != null && clientScopeIdsByGlobalKey.containsKey(action.globalKey)) {
+      if (clientScopeIdsByGlobalKey != null) {
+        // Absent keys are filtered as null-scope, same as getWatchActionsForKeys.
         final expectedScope = clientScopeIdsByGlobalKey[action.globalKey];
         if (!_clientScopeValuesMatch(action.clientScopeId, expectedScope)) continue;
       }
@@ -581,6 +589,14 @@ class AppDatabase extends _$AppDatabase {
     }
     final count = await query.map((row) => row.read(offlineWatchProgress.id.count())).getSingle();
     return count ?? 0;
+  }
+
+  /// Give actions that exhausted their retry budget a fresh one — called when
+  /// connectivity is restored (a genuinely new sync environment).
+  Future<void> resetExhaustedSyncAttempts(int maxSyncAttempts) async {
+    await (update(offlineWatchProgress)..where((t) => t.syncAttempts.isBiggerOrEqualValue(maxSyncAttempts))).write(
+      const OfflineWatchProgressCompanion(syncAttempts: Value(0)),
+    );
   }
 
   /// Clear all pending watch actions (e.g., after logout)

@@ -10,7 +10,7 @@ import 'scanner.dart';
 ///
 ///   GET  /info · POST /pair/start · POST /pair/complete
 ///   POST /auth/start · POST /auth/complete
-///   GET  /library · GET /stream/<b64url(path)> (Range) · POST /watch · GET /ping
+///   GET  /library · GET `/stream/<b64url(path)>` (Range) · POST /watch · GET /ping
 ///
 /// State (paired guests, per-guest watch state) lives as JSON files in
 /// [dataDir]. Discovery beacons broadcast on UDP 48633.

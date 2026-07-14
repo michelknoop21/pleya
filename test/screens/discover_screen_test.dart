@@ -19,6 +19,7 @@ import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/mixins/refreshable.dart';
 import 'package:pleya/mixins/tab_visibility_aware.dart';
 import 'package:pleya/profiles/active_profile_provider.dart';
+import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/profiles/plex_home_service.dart';
 import 'package:pleya/profiles/profile.dart';
 import 'package:pleya/profiles/profile_connection.dart';
@@ -178,15 +179,16 @@ void main() {
       density: LibraryDensity.max,
       episodePosterMode: settings.read(SettingsService.episodePosterMode),
       fullCardLayout: settings.read(SettingsService.tvFullCardLayout),
-      tallPosterScale: 0.72,
+      tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
     );
-    // Netflix billboard: prefer a stable 32% bottom inset, only letting rail
-    // height push it up when needed to keep actions above the docked rail.
-    final maxSpotlightBottom = (720 - ((720 * 0.075).clamp(64.0 * scale, 120.0 * scale)) - (96 * scale))
+    // Netflix landing: the rail only peeks at the bottom; the hero owns the
+    // rest of the screen (mirrors the spotlightBottom math in DiscoverScreen).
+    final spotlightTop = (720 * MonoTokens.tvHeroContentTopFraction).clamp(64.0 * scale, 120.0 * scale).toDouble();
+    final railPeek = math.min(railHeight, 720 * MonoTokens.tvHomeRailPeekFraction);
+    final maxSpotlightBottom = (720 - spotlightTop - (MonoTokens.tvHeroMinInfoHeight * scale))
         .clamp(0.0, double.infinity)
         .toDouble();
-    final expectedSpotlightBottom = math
-        .max(720 * 0.32, railHeight + 28 * scale)
+    final expectedSpotlightBottom = (railPeek + MonoTokens.tvHeroRailGap * scale)
         .clamp(0.0, maxSpotlightBottom)
         .toDouble();
     expect(spotlightBackground.contentBottom, closeTo(expectedSpotlightBottom, 0.001));
@@ -259,6 +261,12 @@ class _FakeMediaServerClient implements MediaServerClient {
   @override
   Future<List<MediaHub>> fetchGlobalHubs({int limit = defaultHubPreviewLimit, bool includePlaybackHubs = true}) async =>
       hubs;
+
+  @override
+  Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async => const [];
+
+  @override
+  Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5}) async => const [];
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -3212,6 +3212,9 @@ class TranslationsDownloadsEn {
 	/// en: 'Server error: file may exceed the remote bitrate limit'
 	String get serverErrorBitrate => 'Server error: file may exceed the remote bitrate limit';
 
+	/// en: 'Not enough storage space on this device'
+	String get storageFull => 'Not enough storage space on this device';
+
 	/// en: '${count} episodes queued for download'
 	String episodesQueued({required Object count}) => '${count} episodes queued for download';
 
@@ -4065,6 +4068,9 @@ class TranslationsSeerrEn {
 	/// en: 'Available'
 	String get available => 'Available';
 
+	/// en: 'Already requested'
+	String get alreadyRequested => 'Already requested';
+
 	/// en: 'Pending'
 	String get pending => 'Pending';
 
@@ -4103,6 +4109,12 @@ class TranslationsSeerrEn {
 
 	/// en: 'Request in 4K'
 	String get fourK => 'Request in 4K';
+
+	/// en: '4K'
+	String get fourKBadge => '4K';
+
+	/// en: '${percent}% match'
+	String percentMatch({required Object percent}) => '${percent}% match';
 
 	/// en: '${remaining} of ${limit} requests left'
 	String quotaRemaining({required Object remaining, required Object limit}) => '${remaining} of ${limit} requests left';
@@ -6195,6 +6207,7 @@ extension on Translations {
 			'downloads.downloadQueued' => 'Download queued',
 			'downloads.downloadResumed' => 'Download resumed',
 			'downloads.serverErrorBitrate' => 'Server error: file may exceed the remote bitrate limit',
+			'downloads.storageFull' => 'Not enough storage space on this device',
 			'downloads.episodesQueued' => ({required Object count}) => '${count} episodes queued for download',
 			'downloads.downloadDeleted' => 'Download deleted',
 			'downloads.deleteConfirm' => ({required Object title}) => 'Delete "${title}" from this device?',
@@ -6211,9 +6224,9 @@ extension on Translations {
 			'downloads.queuedTooltip' => 'Queued',
 			'downloads.queuedFilesTooltip' => ({required Object files}) => 'Queued ${files}',
 			'downloads.downloadingTooltip' => 'Downloading...',
-			'downloads.downloadingFilesTooltip' => ({required Object files}) => 'Downloading ${files}',
 			_ => null,
 		} ?? switch (path) {
+			'downloads.downloadingFilesTooltip' => ({required Object files}) => 'Downloading ${files}',
 			'downloads.noDownloadsTree' => 'No downloads',
 			'downloads.pauseAll' => 'Pause all',
 			'downloads.resumeAll' => 'Resume all',
@@ -6515,6 +6528,7 @@ extension on Translations {
 			'seerr.processing' => 'Processing',
 			'seerr.partiallyAvailable' => 'Partially available',
 			'seerr.available' => 'Available',
+			'seerr.alreadyRequested' => 'Already requested',
 			'seerr.pending' => 'Pending',
 			'seerr.approved' => 'Approved',
 			'seerr.declined' => 'Declined',
@@ -6528,6 +6542,8 @@ extension on Translations {
 			'seerr.season' => ({required Object number}) => 'Season ${number}',
 			'seerr.allSeasons' => 'All seasons',
 			'seerr.fourK' => 'Request in 4K',
+			'seerr.fourKBadge' => '4K',
+			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
 			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => '${remaining} of ${limit} requests left',
 			'seerr.quotaUnlimited' => 'Unlimited requests',
 			'seerr.advancedOptions' => 'Advanced options',

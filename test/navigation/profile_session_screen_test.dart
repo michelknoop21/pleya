@@ -74,6 +74,7 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          Provider<AppDatabase>.value(value: db),
           Provider<StorageService>.value(value: storage),
           ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfile),
           ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
@@ -184,16 +185,8 @@ class _ProfileProbeShellState extends State<_ProfileProbeShell> {
 }
 
 class _FakePlexHomeService extends PlexHomeService {
-  _FakePlexHomeService({
-    required ConnectionRegistry connections,
-    required ProfileConnectionRegistry profileConnections,
-    required StorageService storage,
-  }) : super(
-         connections: connections,
-         profileConnections: profileConnections,
-         storage: storage,
-         plexHomeUserFetcher: (_) async => const [],
-       );
+  _FakePlexHomeService({required super.connections, required super.profileConnections, required StorageService storage})
+    : super(storage: storage, plexHomeUserFetcher: (_) async => const []);
 
   @override
   Map<String, List<PlexHomeUser>> get current => const {};

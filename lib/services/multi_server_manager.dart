@@ -11,6 +11,7 @@ import '../services/api_cache.dart';
 import 'jellyfin_client.dart';
 import 'jellyfin_endpoint_discovery.dart';
 import 'local_folder_client.dart';
+import 'secure_folder_service.dart';
 import 'pleya_share/pleya_share_client.dart';
 import 'plex_client.dart';
 import '../models/plex/plex_config.dart';
@@ -691,6 +692,7 @@ class MultiServerManager {
   }
 
   Timer? _sharePollTimer;
+  bool _sharePollInProgress = false;
 
   /// Keep retrying offline Pleya Share hosts while the app is open. The
   /// resume/connectivity health sweeps only fire on those events; this timer
@@ -707,13 +709,22 @@ class MultiServerManager {
       return;
     }
     _sharePollTimer ??= Timer.periodic(const Duration(seconds: 45), (_) async {
-      final entries = _clients.entries
-          .where((e) => e.value is PleyaShareClient && !(_serverStatus[e.key] ?? false))
-          .toList();
-      for (final entry in entries) {
-        final health = await entry.value.checkHealth();
-        if (_clients[entry.key] != entry.value) continue;
-        _applyHealth(ServerId(entry.key), health);
+      // Re-entrancy guard: a sweep slower than the tick interval (discovery
+      // inside ensureConnected can take seconds per host) must not overlap
+      // the next tick's sweep.
+      if (_sharePollInProgress) return;
+      _sharePollInProgress = true;
+      try {
+        final entries = _clients.entries
+            .where((e) => e.value is PleyaShareClient && !(_serverStatus[e.key] ?? false))
+            .toList();
+        for (final entry in entries) {
+          final health = await entry.value.checkHealth();
+          if (_clients[entry.key] != entry.value) continue;
+          _applyHealth(ServerId(entry.key), health);
+        }
+      } finally {
+        _sharePollInProgress = false;
       }
       _ensureSharePolling();
     });
@@ -727,6 +738,9 @@ class MultiServerManager {
   void removeLocalSource(LocalFolderConnection connection) {
     final client = _clients.remove(connection.id);
     if (client != null) _closeClient(client);
+    // Drop the cached security-scope path so a re-added folder with the same
+    // id resolves its bookmark fresh instead of reusing a dead scope.
+    SecureFolderService.instance.forget(connection.id);
     _serverStatus.remove(connection.id);
     _statusController.add(Map.from(_serverStatus));
     appLogger.i('Removed local folder source: ${connection.displayName}');
@@ -1061,8 +1075,13 @@ class MultiServerManager {
   /// Used by the manual reconnect button when the cached URL may be stale
   /// (e.g. after a network change while the app was backgrounded).
   Future<void> reconnectOfflineServers({bool forceRediscovery = false}) async {
-    // Coalesce concurrent calls — return the in-flight future if one exists
-    if (_activeReconnect != null) return _activeReconnect!;
+    // Coalesce concurrent calls — but a force call must not silently degrade
+    // to a running non-force sweep (the user pressed "reconnect" exactly
+    // because cached endpoints are stale). Wait it out, then run force.
+    if (_activeReconnect != null) {
+      if (!forceRediscovery) return _activeReconnect!;
+      await _activeReconnect;
+    }
 
     _activeReconnect = _doReconnectOfflineServers(forceRediscovery: forceRediscovery);
     try {

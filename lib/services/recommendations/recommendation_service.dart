@@ -21,11 +21,10 @@ class RecommendationService {
   RecommendationService({
     required this.profileId,
     required AppDatabase database,
-    required PersonalizedRowTitles titles,
+    required this._titles,
     CandidatePool? candidatePool,
   }) : _affinity = AffinityEngine(database),
-       _candidates = candidatePool ?? CandidatePool(),
-       _titles = titles;
+       _candidates = candidatePool ?? CandidatePool();
 
   bool get _enabled => SettingsService.instanceOrNull?.read(SettingsService.personalizedRecommendations) ?? true;
 

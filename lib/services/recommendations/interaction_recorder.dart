@@ -31,13 +31,8 @@ class InteractionRecorder {
   /// re-watch of the same item never re-fetches metadata.
   final Map<String, _Features> _featureCache = {};
 
-  InteractionRecorder({
-    required AppDatabase database,
-    required String profileId,
-    required MediaServerClient? Function(ServerId serverId) clientResolver,
-  }) : _db = database,
-       _profileId = profileId,
-       _clientResolver = clientResolver;
+  InteractionRecorder({required AppDatabase database, required this._profileId, required this._clientResolver})
+    : _db = database;
 
   void start() {
     // No active profile → nothing to attribute interactions to; stay inert so

@@ -62,6 +62,9 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
 
   String _query = '';
   List<SeerrMedia> _searchResults = const [];
+  int _searchPage = 1;
+  int _searchTotalPages = 1;
+  bool _searchLoadingMore = false;
   bool _searching = false;
   bool _searchErrored = false;
 
@@ -197,6 +200,8 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       if (!mounted || _query != query) return;
       setState(() {
         _searchResults = page.items;
+        _searchPage = page.page;
+        _searchTotalPages = page.totalPages;
         _searching = false;
         _searchErrored = false;
       });
@@ -206,6 +211,26 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         _searching = false;
         _searchErrored = true;
       });
+    }
+  }
+
+  Future<void> _loadMoreSearch() async {
+    final client = _client;
+    final query = _query;
+    if (client == null || _searchLoadingMore || _searchPage >= _searchTotalPages) return;
+    setState(() => _searchLoadingMore = true);
+    try {
+      final page = await client.search(query, page: _searchPage + 1);
+      if (!mounted || _query != query) return;
+      setState(() {
+        _searchResults = [..._searchResults, ...page.items];
+        _searchPage = page.page;
+        _searchTotalPages = page.totalPages;
+        _searchLoadingMore = false;
+      });
+    } catch (_) {
+      if (!mounted || _query != query) return;
+      setState(() => _searchLoadingMore = false);
     }
   }
 
@@ -547,7 +572,15 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         ),
       ];
     }
-    return [_buildGridSliver(results, firstItemFocusNode: _firstResultFocusNode)];
+    return [
+      _buildGridSliver(
+        results,
+        hasMore: _searchPage < _searchTotalPages,
+        loadingMore: _searchLoadingMore,
+        onLoadMore: _loadMoreSearch,
+        firstItemFocusNode: _firstResultFocusNode,
+      ),
+    ];
   }
 
   List<Widget> _buildDiscoverSlivers() {

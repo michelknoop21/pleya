@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/navigation/profile_navigation_scope.dart';
@@ -18,7 +19,7 @@ void main() {
     );
 
     registry.attachNavigator(firstKey);
-    firstKey.currentState!.push(MaterialPageRoute<void>(builder: (_) => const Text('second')));
+    unawaited(firstKey.currentState!.push(MaterialPageRoute<void>(builder: (_) => const Text('second'))));
     await tester.pumpAndSettle();
     expect(find.text('second'), findsOneWidget);
 

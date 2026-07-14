@@ -30,13 +30,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvVirtualKeyboard');
-    expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonB);
-    await tester.pumpAndSettle();
-
+    // Apple TV never auto-opens a keyboard on focus (native entry opens on
+    // explicit select only), so focus starts on the name field itself.
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'AddLocalProfile:Name');
+    expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsNothing);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
@@ -95,12 +92,7 @@ void main() {
     await tester.tap(find.text('Open new profile'));
     await tester.pumpAndSettle();
     expect(find.text(t.profiles.newProfile), findsOneWidget);
-    expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonB);
-    await tester.pumpAndSettle();
-
-    expect(find.text(t.profiles.newProfile), findsOneWidget);
+    // Apple TV: no auto-opened keyboard panel, so back pops the page directly.
     expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsNothing);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonB);

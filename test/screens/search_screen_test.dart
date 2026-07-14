@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
@@ -66,6 +67,11 @@ void main() {
   testWidgets('TV OSK search key moves focus to the first result', (tester) async {
     final (client, key) = await _pumpTvSearchScreen(tester);
     await tester.pumpAndSettle();
+    // afterFirstFocus: the panel does not auto-open on the initial focus; an
+    // explicit select on the field opens it.
+    expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsNothing);
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
     expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
 
     final state = key.currentState!;
@@ -91,6 +97,9 @@ void main() {
 
   testWidgets('TV OSK search key before the debounce fires searches immediately', (tester) async {
     final (client, key) = await _pumpTvSearchScreen(tester);
+    await tester.pumpAndSettle();
+    // afterFirstFocus: open the panel with an explicit select first.
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
 

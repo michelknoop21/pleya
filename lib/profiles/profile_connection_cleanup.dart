@@ -37,8 +37,7 @@ Future<void> removeProfileConnectionAndCleanup({
   // Een lokale map heeft geen account achter zich: zodra geen enkel profiel er
   // nog naar verwijst, verwijderen we de bron zelf én de runtime-client, anders
   // blijft hij in content opduiken.
-  if (connection is LocalFolderConnection &&
-      (await profileConnections.listForConnection(connection.id)).isEmpty) {
+  if (connection is LocalFolderConnection && (await profileConnections.listForConnection(connection.id)).isEmpty) {
     await connections.remove(connection.id);
     serverManager?.removeLocalSource(connection);
     final serverId = ServerId.tryParse(connection.id);
@@ -48,8 +47,7 @@ Future<void> removeProfileConnectionAndCleanup({
   }
 
   // Zelfde verhaal voor een Pleya Share-koppeling: ongerefereerd = unpair.
-  if (connection is PleyaShareConnection &&
-      (await profileConnections.listForConnection(connection.id)).isEmpty) {
+  if (connection is PleyaShareConnection && (await profileConnections.listForConnection(connection.id)).isEmpty) {
     await connections.remove(connection.id);
     serverManager?.removePleyaShareSource(connection);
     final serverId = ServerId.tryParse(connection.id);
@@ -252,17 +250,10 @@ Future<bool> _isServerReferenced(
 Set<ServerId> _serverIdsForConnection(Connection connection) {
   return switch (connection) {
     PlexAccountConnection(:final servers) => {
-      for (final server in servers)
-        if (ServerId.tryParse(server.clientIdentifier) case final serverId?) serverId,
+      for (final server in servers) ?ServerId.tryParse(server.clientIdentifier),
     },
-    JellyfinConnection(:final serverMachineId) => {
-      if (ServerId.tryParse(serverMachineId) case final serverId?) serverId,
-    },
-    LocalFolderConnection(:final id) => {
-      if (ServerId.tryParse(id) case final serverId?) serverId,
-    },
-    PleyaShareConnection(:final id) => {
-      if (ServerId.tryParse(id) case final serverId?) serverId,
-    },
+    JellyfinConnection(:final serverMachineId) => {?ServerId.tryParse(serverMachineId)},
+    LocalFolderConnection(:final id) => {?ServerId.tryParse(id)},
+    PleyaShareConnection(:final id) => {?ServerId.tryParse(id)},
   };
 }

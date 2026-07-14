@@ -162,8 +162,10 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pumpAndSettle();
 
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvVirtualKeyboard');
-    expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
+    // Apple TV never auto-opens the Flutter keyboard on (re)focus — the
+    // native text-entry session opens on explicit select only.
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'AddJellyfin:Url');
+    expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsNothing);
   });
 
   testWidgets('D-pad moves from URL through Change to credentials after server is found', (tester) async {

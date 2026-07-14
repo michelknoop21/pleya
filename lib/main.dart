@@ -1072,6 +1072,7 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin, Si
         final profileConnections = context.read<ProfileConnectionRegistry>();
         final profileRegistry = context.read<ProfileRegistry>();
         final activeProfiles = context.read<ActiveProfileProvider>();
+        final serverManager = context.read<MultiServerProvider>().serverManager;
         final bootstrap = ConnectionBootstrap(
           storage: storage,
           connectionRegistry: connRegistry,
@@ -1083,7 +1084,7 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin, Si
           profileConnections: profileConnections,
           connections: connRegistry,
           storage: storage,
-          serverManager: context.read<MultiServerProvider>().serverManager,
+          serverManager: serverManager,
         );
         if (pruned > 0) {
           appLogger.i('Setup: pruned $pruned unreferenced Jellyfin connection${pruned == 1 ? '' : 's'}');

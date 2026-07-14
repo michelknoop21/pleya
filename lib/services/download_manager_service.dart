@@ -105,6 +105,10 @@ class DownloadManagerService {
 
   // Prevents concurrent _processQueue calls
   bool _isProcessingQueue = false;
+
+  // Queue keys skipped this sweep because their server is offline; cleared at
+  // the start of every sweep so they retry once connectivity returns.
+  final Set<String> _offlineSkippedKeys = {};
   bool _isRepairingArtwork = false;
   bool _disposed = false;
   bool _loggedDownloadsUnsupported = false;
@@ -1063,6 +1067,8 @@ class DownloadManagerService {
     if (_isProcessingQueue) return;
     _isProcessingQueue = true;
     _fallbackClient = client;
+    // Fresh sweep: retry items skipped for an offline server last time.
+    _offlineSkippedKeys.clear();
 
     try {
       await _initializeFileDownloader();
@@ -1073,15 +1079,18 @@ class DownloadManagerService {
           break;
         }
 
-        final nextItem = await _database.getNextQueueItem();
+        final nextItem = await _database.getNextQueueItem(excludeKeys: _offlineSkippedKeys);
         if (nextItem == null) break;
 
-        // Resolve the correct client for the item's server/scope — skip if unavailable.
+        // Resolve the correct client for the item's server/scope — skip past
+        // it (don't stall the queue) so other servers' downloads still run.
         final itemClient = await _getClientForDownloadKey(nextItem.mediaGlobalKey);
         if (itemClient == null) {
           appLogger.d('Skipping queued download ${nextItem.mediaGlobalKey}: server offline');
-          break;
+          _offlineSkippedKeys.add(nextItem.mediaGlobalKey);
+          continue;
         }
+        _offlineSkippedKeys.remove(nextItem.mediaGlobalKey);
         final enqueued = await _prepareAndEnqueueDownload(nextItem.mediaGlobalKey, itemClient, nextItem);
         if (enqueued) {
           _consecutiveQueueFailures = 0;
@@ -1601,11 +1610,17 @@ class DownloadManagerService {
         errorMessage.contains('Network is unreachable') ||
         errorMessage.contains('Connection refused');
     final isServerError = errorMessage.contains('500 Internal Server Error');
+    // Disk-full never recovers by retrying — three full re-downloads would
+    // just burn bandwidth before failing anyway.
+    final isDiskFull =
+        errorMessage.contains('ENOSPC') ||
+        errorMessage.contains('No space left on device') ||
+        errorMessage.contains('insufficient space');
 
     final client = await _getClientForDownloadKey(globalKey);
     final hadProgress = existing.downloadedBytes > 0;
 
-    if (!isNetworkError && !isServerError && retryCount < _maxAppRetries && client != null) {
+    if (!isNetworkError && !isServerError && !isDiskFull && retryCount < _maxAppRetries && client != null) {
       // App-level auto-retry: schedule a fresh download after a delay.
       // Each new task gets 5 native retries with Range-based resume.
       appLogger.w(
@@ -1626,7 +1641,11 @@ class DownloadManagerService {
       if (isNetworkError) {
         appLogger.w('Network error for $globalKey, failing permanently (no auto-retry): $errorMessage');
       }
-      final userMessage = isServerError ? t.downloads.serverErrorBitrate : errorMessage;
+      final userMessage = isServerError
+          ? t.downloads.serverErrorBitrate
+          : isDiskFull
+          ? t.downloads.storageFull
+          : errorMessage;
       await _onDownloadPermanentlyFailed(globalKey, taskId, userMessage);
     }
   }

@@ -38,8 +38,21 @@ import 'package:saf_util/saf_util_platform_interface.dart';
 
 /// Video file extensions recognised by the local scanner.
 const _videoExtensions = {
-  '.mkv', '.mp4', '.avi', '.mov', '.webm', '.m4v', '.ts', '.m2ts',
-  '.wmv', '.flv', '.mpg', '.mpeg', '.vob', '.3gp', '.ogv',
+  '.mkv',
+  '.mp4',
+  '.avi',
+  '.mov',
+  '.webm',
+  '.m4v',
+  '.ts',
+  '.m2ts',
+  '.wmv',
+  '.flv',
+  '.mpg',
+  '.mpeg',
+  '.vob',
+  '.3gp',
+  '.ogv',
 };
 
 /// Regex to extract title + year from movie filenames like "Movie Name (2024).mkv"
@@ -191,7 +204,7 @@ class LocalFolderClient implements MediaServerClient {
     AbortController? abort,
   }) async {
     final items = await _scanLibrary(libraryId);
-    var filtered = _applyFilters(items, query);
+    final filtered = _applyFilters(items, query);
     final sorted = _applySort(filtered, query);
     final total = sorted.length;
     final offset = query.offset.clamp(0, total > 0 ? total : 1);
@@ -239,7 +252,10 @@ class LocalFolderClient implements MediaServerClient {
   }
 
   @override
-  Future<List<MediaItem>> fetchLibraryFolders(String libraryId, {void Function(List<MediaItem> itemsSoFar)? onPage}) async {
+  Future<List<MediaItem>> fetchLibraryFolders(
+    String libraryId, {
+    void Function(List<MediaItem> itemsSoFar)? onPage,
+  }) async {
     final items = await _scanLibrary(libraryId);
     final folders = items.where((item) => item.kind == MediaKind.folder || item.kind == MediaKind.show).toList();
     onPage?.call(folders);
@@ -315,7 +331,9 @@ class LocalFolderClient implements MediaServerClient {
 
   @override
   Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async {
-    final all = _itemCache.values.where((item) => item.kind == MediaKind.movie || item.kind == MediaKind.episode).toList();
+    final all = _itemCache.values
+        .where((item) => item.kind == MediaKind.movie || item.kind == MediaKind.episode)
+        .toList();
     all.sort((a, b) => (b.addedAt ?? 0).compareTo(a.addedAt ?? 0));
     return all.take(limit).toList();
   }
@@ -340,10 +358,7 @@ class LocalFolderClient implements MediaServerClient {
 
   @override
   Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5}) async {
-    return _itemCache.values
-        .where((item) => item.isWatched)
-        .take(limit)
-        .toList();
+    return _itemCache.values.where((item) => item.isWatched).take(limit).toList();
   }
 
   @override
@@ -474,12 +489,8 @@ class LocalFolderClient implements MediaServerClient {
   Future<List<MediaItem>> fetchPlaylistItems(String id, {int offset = 0, int limit = 100}) async => [];
 
   @override
-  Future<LibraryPage<MediaItem>> fetchPlaylistPage(
-    String id, {
-    int? start,
-    int? size,
-    AbortController? abort,
-  }) async => LibraryPage(items: [], totalCount: 0);
+  Future<LibraryPage<MediaItem>> fetchPlaylistPage(String id, {int? start, int? size, AbortController? abort}) async =>
+      LibraryPage(items: [], totalCount: 0);
 
   @override
   Future<MediaPlaylist?> createPlaylist({required String title, required List<MediaItem> items}) async => null;
@@ -548,10 +559,7 @@ class LocalFolderClient implements MediaServerClient {
 
   @override
   Future<MediaFileInfo?> getFileInfo(MediaItem item) async {
-    return MediaFileInfo(
-      container: _extension(item.id),
-      filePath: item.id,
-    );
+    return MediaFileInfo(container: _extension(item.id), filePath: item.id);
   }
 
   @override
@@ -588,7 +596,10 @@ class LocalFolderClient implements MediaServerClient {
   Future<MediaSourceInfo?> fetchCachedMediaSourceInfo(String itemId) async => null;
 
   @override
-  Future<ScrubPreviewSource?> createScrubPreviewSource({required MediaItem item, required MediaSourceInfo mediaSource}) async => null;
+  Future<ScrubPreviewSource?> createScrubPreviewSource({
+    required MediaItem item,
+    required MediaSourceInfo mediaSource,
+  }) async => null;
 
   // ---------------------------------------------------------------------------
   // Playback reporting
@@ -656,13 +667,7 @@ class LocalFolderClient implements MediaServerClient {
       id: fileUri,
       container: _extension(fileUri),
       parts: [
-        MediaPart(
-          id: fileUri,
-          streamPath: fileUri,
-          sizeBytes: null,
-          container: _extension(fileUri),
-          streams: const [],
-        ),
+        MediaPart(id: fileUri, streamPath: fileUri, sizeBytes: null, container: _extension(fileUri), streams: const []),
       ],
     );
 
@@ -722,7 +727,13 @@ class LocalFolderClient implements MediaServerClient {
       // without it the sandbox denies every read and the library stays empty.
       final rootUri = await SecureFolderService.instance.ensureAccess(connection);
       final children = await SafStorageService.instance.list(rootUri);
-      if (children == null) return [];
+      if (children == null) {
+        // Unreadable root: likely a stale/expired security scope. Drop the
+        // cached resolve so the next scan re-resolves the bookmark instead of
+        // permanently serving an empty library from a dead path.
+        SecureFolderService.instance.forget(connection.id);
+        return [];
+      }
 
       final isMovies = connection.libraryType == 'movies';
       final isTv = connection.libraryType == 'tvshows';
@@ -745,6 +756,12 @@ class LocalFolderClient implements MediaServerClient {
       _applyWatchStateToCache();
     } catch (e, st) {
       appLogger.w('LocalFolderClient: scan failed for $libraryId', error: e, stackTrace: st);
+      // A mid-scan failure would otherwise freeze a partial catalog for the
+      // whole session (the isNotEmpty guard above). Drop the partial cache and
+      // the resolved scope so the next call retries a full scan.
+      _itemCache.clear();
+      SecureFolderService.instance.forget(connection.id);
+      return const [];
     }
 
     return _itemCache.values.toList();
@@ -868,9 +885,7 @@ class LocalFolderClient implements MediaServerClient {
   }
 
   int epNumTotal(String showUri) {
-    return _itemCache.values
-        .where((item) => item.kind == MediaKind.episode && item.grandparentId == showUri)
-        .length;
+    return _itemCache.values.where((item) => item.kind == MediaKind.episode && item.grandparentId == showUri).length;
   }
 
   Future<void> _scanGenericFolder(SafDocumentFile folder, String libraryId) async {

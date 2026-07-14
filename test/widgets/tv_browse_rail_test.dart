@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/focus/dpad_navigator.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/focus/locked_hub_controller.dart';
@@ -466,6 +467,10 @@ void main() {
       ),
     );
     await tester.pump();
+    // Focus visuals (scale) only show in keyboard/D-pad input mode; a key
+    // event flips InputModeTracker into keyboard mode.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pumpAndSettle();
 
     final scale = TvBrowseRailLayout.scaleForSize(tester.view.physicalSize / tester.view.devicePixelRatio);
     final metrics = TvBrowseRailLayout.metricsForHub(
@@ -485,8 +490,10 @@ void main() {
     final borderContainer = tester.widget<AnimatedContainer>(cardFinder);
     final border = (borderContainer.foregroundDecoration as BoxDecoration).border as Border;
     final cardSize = tester.getSize(cardFinder);
+    // The focus scale wraps the glow overlay (CompositedTransformTarget);
+    // MediaCard's own Pressable also mounts an (idle) AnimatedScale below it.
     final focusScale = tester.widget<AnimatedScale>(
-      find.ancestor(of: cardFinder, matching: find.byType(AnimatedScale)).first,
+      find.ancestor(of: find.byType(CompositedTransformTarget), matching: find.byType(AnimatedScale)).first,
     );
 
     // The border stays in-card; the glow now renders in an overlay that follows
@@ -500,7 +507,7 @@ void main() {
       find.descendant(of: find.byType(CompositedTransformFollower), matching: find.byType(CustomPaint)),
       findsOneWidget,
     );
-    expect(focusScale.scale, closeTo(1.03, 0.0001));
+    expect(focusScale.scale, closeTo(FocusTheme.fullCardFocusScale, 0.0001));
     expect(cardSize.width, closeTo(metrics.cardWidth, 0.001));
     expect(cardSize.height, closeTo(metrics.posterHeight, 0.001));
   });

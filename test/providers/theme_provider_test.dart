@@ -13,8 +13,8 @@ void main() {
   group('ThemeProvider', () {
     test('exposes a non-null themeMode immediately and flips after init', () async {
       final p = ThemeProvider();
-      // The constructor synchronously sets _themeMode to system.
-      expect(p.themeMode, settings.ThemeMode.system);
+      // The constructor synchronously sets _themeMode to dark (pre-init default).
+      expect(p.themeMode, settings.ThemeMode.dark);
 
       // After init the value reflects what's persisted (default).
       // First-run default is computed by the EnumPref; it is one of the four

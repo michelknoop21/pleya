@@ -1,3 +1,5 @@
+import 'package:http/http.dart' as http;
+
 import '../../models/seerr/seerr_media.dart';
 import '../../models/seerr/seerr_request.dart';
 import '../../utils/app_logger.dart';
@@ -45,8 +47,9 @@ typedef SeerrGenre = ({int id, String name});
 /// http` has no cookie jar, so we track it ourselves; on a 401 we silently
 /// re-authenticate (Plex token or stored local credentials) and retry once.
 class SeerrClient {
-  SeerrClient(this._session, {this.onSessionUpdated, this.plexTokenProvider})
+  SeerrClient(this._session, {this.onSessionUpdated, this.plexTokenProvider, http.Client? httpClient})
     : _http = MediaServerHttpClient(
+        client: httpClient,
         baseUrl: '${SeerrConstants.normalizeBaseUrl(_session.baseUrl)}${SeerrConstants.apiPrefix}',
         connectTimeout: SeerrConstants.requestTimeout,
         receiveTimeout: SeerrConstants.requestTimeout,

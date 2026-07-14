@@ -127,9 +127,11 @@ class OfflineWatchSyncService extends ChangeNotifier {
     _offlineModeSource = source;
     _offlineModeListener = () {
       if (!source.isOffline) {
-        // We just came online - trigger bidirectional sync
+        // We just came online - trigger bidirectional sync. A fresh network is
+        // a genuinely new environment, so actions that exhausted their retry
+        // budget get a new one instead of being stranded forever.
         appLogger.i('Connectivity restored - starting bidirectional watch sync');
-        _performBidirectionalSync();
+        unawaited(_database.resetExhaustedSyncAttempts(maxSyncAttempts).then((_) => _performBidirectionalSync()));
       }
     };
 
@@ -351,9 +353,12 @@ class OfflineWatchSyncService extends ChangeNotifier {
   Future<int> getPendingSyncCount() async {
     await _adoptLegacyWatchActionsForActiveProfile();
     final profileId = _activeProfileId;
+    // No maxSyncAttempts filter: actions that exhausted their retries are
+    // still unsynced — hiding them would show "0 pending" while local watch
+    // progress silently never reaches the server.
     return profileId == null || profileId.isEmpty
-        ? _database.getPendingSyncCount(maxSyncAttempts: maxSyncAttempts)
-        : _database.getPendingSyncCount(profileId: profileId, maxSyncAttempts: maxSyncAttempts);
+        ? _database.getPendingSyncCount()
+        : _database.getPendingSyncCount(profileId: profileId);
   }
 
   /// Sync all pending items to their respective servers.
@@ -540,25 +545,40 @@ class OfflineWatchSyncService extends ChangeNotifier {
         // Fall through to the synthetic item below.
       }
     }
-    item ??= MediaItem(
-      id: action.ratingKey,
-      backend: client.backend,
-      kind: MediaKind.unknown,
-      serverId: action.serverId,
-    );
+    final resolvedItem =
+        item ??
+        MediaItem(id: action.ratingKey, backend: client.backend, kind: MediaKind.unknown, serverId: action.serverId);
 
     switch (action.actionType) {
       case 'watched':
-        await client.markWatched(item);
-        await TrackerCoordinator.instance.markWatched(item, client);
+        await client.markWatched(resolvedItem);
+        await _scrobbleBestEffort(() => TrackerCoordinator.instance.markWatched(resolvedItem, client));
         break;
 
       case 'unwatched':
-        await client.markUnwatched(item);
-        await TrackerCoordinator.instance.markUnwatched(item, client);
+        await client.markUnwatched(resolvedItem);
+        await _scrobbleBestEffort(() => TrackerCoordinator.instance.markUnwatched(resolvedItem, client));
         break;
 
       case 'progress':
+        // Last-writer-wins guard: if another device produced newer watch state
+        // (marked watched, or viewed more recently than this queued offline
+        // action), replaying our stale viewOffset would clobber it. Best-effort:
+        // if the state fetch fails we proceed with the replay as before.
+        try {
+          final server = await client.fetchItem(action.ratingKey);
+          if (server != null) {
+            final serverViewedMs = (server.lastViewedAt ?? 0) * 1000;
+            final serverIsNewer =
+                ((server.viewCount ?? 0) > 0 && !action.shouldMarkWatched) || serverViewedMs > action.updatedAt;
+            if (serverIsNewer) {
+              appLogger.i('Skipping stale offline progress for ${action.ratingKey}: server state is newer');
+              return;
+            }
+          }
+        } catch (e) {
+          appLogger.d('Offline progress: pre-replay state check failed (continuing)', error: e);
+        }
         // Push resumable progress, or a completed offline playback. Jellyfin's
         // `/Sessions/Playing/Stopped` ignores events without an open session
         // row, so non-Plex backends still get a lightweight Started call.
@@ -592,10 +612,21 @@ class OfflineWatchSyncService extends ChangeNotifier {
         // emits the local watch event — an explicit markWatched would
         // double-scrobble via the Trakt plugin (#1287).
         if (action.shouldMarkWatched) {
-          await client.markWatchedFromPlaybackStop(item);
-          await TrackerCoordinator.instance.markWatched(item, client);
+          await client.markWatchedFromPlaybackStop(resolvedItem);
+          await _scrobbleBestEffort(() => TrackerCoordinator.instance.markWatched(resolvedItem, client));
         }
         break;
+    }
+  }
+
+  /// Tracker scrobbles are best-effort: a tracker-only failure must not
+  /// requeue the whole action — replaying it would re-report playback to the
+  /// media server and double-scrobble on the next attempt.
+  Future<void> _scrobbleBestEffort(Future<void> Function() scrobble) async {
+    try {
+      await scrobble();
+    } catch (e) {
+      appLogger.w('Offline sync: tracker scrobble failed (not retried)', error: e);
     }
   }
 

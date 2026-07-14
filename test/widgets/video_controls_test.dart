@@ -216,7 +216,7 @@ void main() {
 
   group('handlePromptDismissBackKey', () {
     test('ignores back keys when no prompt is visible', () {
-      var dismissCount = 0;
+      final dismissCount = 0;
 
       final result = handlePromptDismissBackKey(_keyUp(LogicalKeyboardKey.goBack), null);
 

@@ -45,6 +45,8 @@ Future<void> deleteProfile(BuildContext context, Profile profile) async {
   final downloadProvider = context.read<DownloadProvider>();
   final database = context.read<AppDatabase>();
   final active = context.read<ActiveProfileProvider>();
+  final storage = context.read<StorageService>();
+  final serverManager = context.read<MultiServerProvider>().serverManager;
   final wasActive = active.activeId == profile.id;
 
   await downloadProvider.deleteDownloadsForProfile(profile.id);
@@ -53,8 +55,8 @@ Future<void> deleteProfile(BuildContext context, Profile profile) async {
     profileId: profile.id,
     profileConnections: pcRegistry,
     connections: connRegistry,
-    storage: context.read<StorageService>(),
-    serverManager: context.read<MultiServerProvider>().serverManager,
+    storage: storage,
+    serverManager: serverManager,
   );
   await profileRegistry.remove(profile.id);
 

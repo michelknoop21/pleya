@@ -39,6 +39,11 @@ class SeerrConstants {
   /// pasted `/api/v1` suffix (we always append the prefix ourselves).
   static String normalizeBaseUrl(String raw) {
     var url = raw.trim();
+    // A pasted `host:5055` without scheme would fail every request; assume
+    // https (the common reverse-proxy setup) when none is given.
+    if (url.isNotEmpty && !url.contains('://')) {
+      url = 'https://$url';
+    }
     while (url.endsWith('/')) {
       url = url.substring(0, url.length - 1);
     }

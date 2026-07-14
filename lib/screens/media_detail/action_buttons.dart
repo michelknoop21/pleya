@@ -220,7 +220,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
 
     // Request via Jellyseerr/Overseerr — only when a server is configured, the
     // item is a movie/show, and we're online (needs a TMDB-id lookup).
-    final seerrConfigured = context.watch<SeerrProvider>().isConfigured;
+    final seerrConfigured = context.watch<SeerrProvider?>()?.isConfigured ?? false;
     final requestAction = (seerrConfigured && !widget.isOffline && (metadata.isMovie || metadata.isShow))
         ? FocusableAction(
             debugLabel: 'detail_request',
@@ -309,7 +309,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
   /// lookup happens on press (not preemptively) so the detail screen stays
   /// cheap; a missing id just surfaces a non-fatal error.
   Future<void> _handleRequestPressed(MediaItem metadata) async {
-    if (!context.read<SeerrProvider>().isConfigured) return;
+    if (!(context.read<SeerrProvider?>()?.isConfigured ?? false)) return;
     final client = _getMediaClientForMetadata(context);
     if (client == null) return;
     ExternalIds ids;

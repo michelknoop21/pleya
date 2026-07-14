@@ -13,6 +13,7 @@ import 'package:pleya/profiles/profile_connection.dart';
 import 'package:pleya/profiles/profile_connection_registry.dart';
 import 'package:pleya/profiles/profile_registry.dart';
 import 'package:pleya/screens/profile/profile_detail_screen.dart';
+import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:provider/provider.dart';
@@ -62,6 +63,7 @@ void main() {
           ],
           child: InputModeTracker(
             child: MaterialApp(
+              theme: monoTheme(dark: true),
               home: Builder(
                 builder: (context) => Scaffold(
                   body: Center(
@@ -85,12 +87,7 @@ void main() {
     await tester.tap(find.text('Open profile'));
     await tester.pumpAndSettle();
     expect(find.text(t.profiles.connectionsLabel), findsOneWidget);
-    expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonB);
-    await tester.pumpAndSettle();
-
-    expect(find.text(t.profiles.connectionsLabel), findsOneWidget);
+    // Apple TV: no auto-opened keyboard panel, so back pops the page directly.
     expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsNothing);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonB);

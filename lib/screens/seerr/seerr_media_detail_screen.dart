@@ -13,6 +13,7 @@ import '../../services/seerr/seerr_client.dart';
 import '../../services/seerr/seerr_constants.dart';
 import '../../services/settings_service.dart';
 import '../../theme/mono_tokens.dart';
+import '../../utils/formatters.dart' show formatDurationTextual;
 import '../../utils/layout_constants.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/app_icon.dart';
@@ -229,7 +230,7 @@ class _HeroHeader extends StatelessWidget {
         : CachedNetworkImage(
             imageUrl: media.backdropUrl,
             fit: BoxFit.cover,
-            errorWidget: (_, _, _) => ColoredBox(color: scheme.surfaceContainerHighest),
+            errorBuilder: (_, _, _) => ColoredBox(color: scheme.surfaceContainerHighest),
           );
 
     // Stack sizes to the non-positioned child (the padded content), so the total
@@ -332,9 +333,9 @@ class _MetaChips extends StatelessWidget {
     final isTv = PlatformDetector.isTV();
     final vote = detail?.voteAverage;
     final parts = <String>[
-      if (vote != null) '${(vote * 10).round()}% match',
+      if (vote != null) t.seerr.percentMatch(percent: (vote * 10).round()),
       if (media.year != null) media.year!,
-      if (detail?.runtimeMinutes != null) _formatRuntime(detail!.runtimeMinutes!),
+      if (detail?.runtimeMinutes != null) formatDurationTextual(detail!.runtimeMinutes! * 60000),
       if ((detail?.genres ?? const <String>[]).isNotEmpty) detail!.genres.take(3).join(', '),
     ];
     if (parts.isEmpty) return const SizedBox.shrink();
@@ -348,13 +349,6 @@ class _MetaChips extends StatelessWidget {
         fontWeight: FontWeight.w500,
       ),
     );
-  }
-
-  String _formatRuntime(int minutes) {
-    final h = minutes ~/ 60;
-    final m = minutes % 60;
-    if (h > 0) return m > 0 ? '${h}h ${m}m' : '${h}h';
-    return '${m}m';
   }
 }
 
@@ -464,7 +458,7 @@ class _CastCard extends StatelessWidget {
                   : CachedNetworkImage(
                       imageUrl: member.profileUrl,
                       fit: BoxFit.cover,
-                      errorWidget: (_, _, _) => ColoredBox(
+                      errorBuilder: (_, _, _) => ColoredBox(
                         color: scheme.surfaceContainerHighest,
                         child: Icon(Symbols.person_rounded, color: scheme.onSurfaceVariant),
                       ),

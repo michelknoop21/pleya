@@ -23,6 +23,10 @@ class SecureFolderService {
   /// Connection-ids whose bookmark has been resolved (scope open) this session.
   final Map<String, String> _resolvedPaths = {};
 
+  /// In-flight resolves per connection, so concurrent scans share one
+  /// resolveBookmark call instead of racing double persists.
+  final Map<String, Future<String>> _inFlight = {};
+
   /// Invoked when resolving returned a refreshed (stale) bookmark or a moved
   /// path, so the owner can persist the updated connection.
   FutureOr<void> Function(LocalFolderConnection updated)? onConnectionUpdated;
@@ -54,6 +58,13 @@ class SecureFolderService {
     if (!isRequired || bookmark == null || bookmark.isEmpty) {
       return connection.directoryUri;
     }
+    return _inFlight[connection.id] ??= _resolve(
+      connection,
+      bookmark,
+    ).whenComplete(() => _inFlight.remove(connection.id));
+  }
+
+  Future<String> _resolve(LocalFolderConnection connection, String bookmark) async {
     try {
       final result = await _channel.invokeMapMethod<String, Object?>('resolveBookmark', {'bookmark': bookmark});
       final path = result?['path'] as String? ?? connection.directoryUri;

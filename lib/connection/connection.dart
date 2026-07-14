@@ -394,6 +394,7 @@ class LocalFolderConnection extends Connection {
   final String directoryUri;
 
   /// User-given display name for this folder source (e.g. "My Movies").
+  @override
   final String displayName;
 
   /// Library type hint: "movies", "tvshows", or "mixed". Drives how the

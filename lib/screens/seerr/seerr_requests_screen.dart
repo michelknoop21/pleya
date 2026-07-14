@@ -71,6 +71,17 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
       if (mounted) setState(() => _loading = false);
       return;
     }
+    // A non-manager may only see their own requests; without a known userId
+    // a null requestedBy would return everyone's requests (privacy leak).
+    final requestedBy = provider.canManageRequests ? null : provider.session?.userId;
+    if (!provider.canManageRequests && requestedBy == null) {
+      setState(() {
+        _items = const [];
+        _loading = false;
+        _loadingMore = false;
+      });
+      return;
+    }
     final gen = ++_loadGen;
     final nextPage = reset ? 1 : _page + 1;
     setState(() {
@@ -82,11 +93,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
       }
     });
     try {
-      final result = await client.getRequests(
-        filter: _filter,
-        page: nextPage,
-        requestedBy: provider.canManageRequests ? null : provider.session?.userId,
-      );
+      final result = await client.getRequests(filter: _filter, page: nextPage, requestedBy: requestedBy);
       if (!mounted || gen != _loadGen) return;
       setState(() {
         _items = reset ? result.items : [..._items, ...result.items];
@@ -408,7 +415,10 @@ class _SeerrRequestRow extends StatelessWidget {
   }
 
   String _qualitySeasonsLabel() {
-    final parts = <String>[if (request.is4k) '4K', for (final n in request.seasons) t.seerr.season(number: n)];
+    final parts = <String>[
+      if (request.is4k) t.seerr.fourKBadge,
+      for (final n in request.seasons) t.seerr.season(number: n),
+    ];
     return parts.join(' · ');
   }
 

@@ -30,6 +30,8 @@ class PleyaShareChannel {
 
   String? _baseUrl;
   String? _token;
+  Future<bool>? _connecting;
+  int _consecutiveFailures = 0;
   final HttpClient _http = HttpClient()..connectionTimeout = const Duration(seconds: 4);
 
   PleyaShareChannel(this.connection);
@@ -43,8 +45,14 @@ class PleyaShareChannel {
   /// pipeline. Only valid after [ensureConnected].
   String streamUrl(String itemId) => '$_baseUrl/stream/${PleyaShareProtocol.encodeItemId(itemId)}?token=$_token';
 
-  Future<bool> ensureConnected() async {
-    if (_baseUrl != null && _token != null) return true;
+  Future<bool> ensureConnected() {
+    if (_baseUrl != null && _token != null) return Future.value(true);
+    // Concurrent callers share one connect: parallel candidate races would
+    // persist competing IPs and clobber each other's _baseUrl/_token.
+    return _connecting ??= _connect().whenComplete(() => _connecting = null);
+  }
+
+  Future<bool> _connect() async {
     // /info only proves "some Pleya Share host" — after DHCP reuse another
     // device may answer on a cached IP. Only a successful pairId auth proves
     // it's OUR host, so try every candidate and commit on auth success.
@@ -141,7 +149,9 @@ class PleyaShareChannel {
       try {
         // Bearer header keeps the token out of URIs (and thus host logs);
         // only /stream URLs handed to mpv use the query form.
-        return await _rawJson(method, Uri.parse('$_baseUrl$path'), body: body, bearer: _token);
+        final result = await _rawJson(method, Uri.parse('$_baseUrl$path'), body: body, bearer: _token);
+        _consecutiveFailures = 0;
+        return result;
       } on _HttpStatusException catch (e) {
         if (e.statusCode == HttpStatus.unauthorized && attempt == 0) {
           _token = null;
@@ -151,9 +161,15 @@ class PleyaShareChannel {
         appLogger.d('PleyaShare: $method $path → ${e.statusCode}');
         return null;
       } catch (e) {
+        // One transient failure keeps _baseUrl/_token intact — an in-flight
+        // streamUrl() builds from those fields, and nulling them here would
+        // hand mpv a "http://null/..." URL. Repeated failures mean the host
+        // moved: tear down so the next request re-races candidates.
         appLogger.d('PleyaShare: $method $path failed', error: e);
-        _baseUrl = null;
-        _token = null;
+        if (++_consecutiveFailures >= 2) {
+          _baseUrl = null;
+          _token = null;
+        }
         return null;
       }
     }
@@ -283,7 +299,11 @@ class PleyaShareChannel {
 
   /// Unicast /info probe — works where UDP broadcast is filtered (hotspot
   /// AP isolation). Returns null when [ip] isn't a Pleya Share host.
-  static Future<DiscoveredShareHost?> probeHost(String ip, int port, {Duration timeout = const Duration(milliseconds: 500)}) async {
+  static Future<DiscoveredShareHost?> probeHost(
+    String ip,
+    int port, {
+    Duration timeout = const Duration(milliseconds: 500),
+  }) async {
     final http = HttpClient()..connectionTimeout = timeout;
     try {
       final request = await http.getUrl(Uri.parse('http://$ip:$port/info'));
@@ -292,12 +312,7 @@ class PleyaShareChannel {
       if (response.statusCode != HttpStatus.ok) return null;
       final info = jsonDecode(text) as Map<String, dynamic>;
       if (info['app'] != PleyaShareProtocol.beaconApp) return null;
-      return DiscoveredShareHost(
-        name: info['name'] as String? ?? 'Pleya',
-        ip: ip,
-        port: port,
-        seenAt: DateTime.now(),
-      );
+      return DiscoveredShareHost(name: info['name'] as String? ?? 'Pleya', ip: ip, port: port, seenAt: DateTime.now());
     } catch (_) {
       return null;
     } finally {

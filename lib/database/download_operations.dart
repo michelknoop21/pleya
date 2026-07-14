@@ -125,13 +125,18 @@ extension DownloadDatabaseOperations on AppDatabase {
 
   /// Get next item from queue (highest priority, oldest first)
   /// Only returns items that are not paused
-  Future<DownloadQueueItem?> getNextQueueItem() async {
+  /// [excludeKeys]: queue rows to pass over this sweep (e.g. items whose
+  /// server is offline) so one unreachable server can't block the queue.
+  Future<DownloadQueueItem?> getNextQueueItem({Set<String> excludeKeys = const {}}) async {
     final query = select(
       downloadQueue,
     ).join([innerJoin(downloadedMedia, downloadedMedia.globalKey.equalsExp(downloadQueue.mediaGlobalKey))]);
 
+    query.where(downloadedMedia.status.equals(DownloadStatus.queued.index));
+    if (excludeKeys.isNotEmpty) {
+      query.where(downloadQueue.mediaGlobalKey.isNotIn(excludeKeys.toList()));
+    }
     query
-      ..where(downloadedMedia.status.equals(DownloadStatus.queued.index))
       ..orderBy([
         OrderingTerm(expression: downloadQueue.priority, mode: OrderingMode.desc),
         OrderingTerm(expression: downloadQueue.addedAt),

@@ -200,7 +200,7 @@ class _SearchScreenState extends State<SearchScreen>
   /// One-shot Jellyseerr/Overseerr search for the current query. Explicit
   /// (user-triggered) so we never fire a request per keystroke.
   Future<void> _searchSeerr() async {
-    final client = context.read<SeerrProvider>().client;
+    final client = context.read<SeerrProvider?>()?.client;
     final query = _searchController.text.trim();
     if (client == null || query.isEmpty || _seerrSearching) return;
     setStateIfMounted(() {
@@ -511,7 +511,7 @@ class _SearchScreenState extends State<SearchScreen>
                   ),
                 )
             else if (_searchResults.isEmpty)
-              if (context.watch<SeerrProvider>().isConfigured) ...[
+              if (context.watch<SeerrProvider?>()?.isConfigured ?? false) ...[
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
@@ -534,7 +534,7 @@ class _SearchScreenState extends State<SearchScreen>
             else ...[
               SliverToBoxAdapter(child: _buildFilterChips(context)),
               _buildResultsList(context),
-              if (context.watch<SeerrProvider>().isConfigured) _buildSeerrFallback(context),
+              if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),
             ],
           ],
         ),

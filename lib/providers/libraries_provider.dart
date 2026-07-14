@@ -15,9 +15,7 @@ enum LibrariesLoadState { initial, loading, loaded, error }
 /// Both SideNavigationRail and LibrariesScreen consume this provider
 /// instead of independently fetching library data.
 class LibrariesProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
-  LibrariesProvider({StorageService? storageService, MultiServerProvider? multiServer})
-    : _storageService = storageService,
-      _multiServer = multiServer {
+  LibrariesProvider({this._storageService, this._multiServer}) {
     // Reload libraries when a new server comes online. Servers bind in waves
     // on sign-in / profile switch and slow ones reconnect after the initial
     // load; without this they stay missing from the sidebar until a re-switch

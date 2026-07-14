@@ -152,7 +152,7 @@ class SeerrPosterImage extends StatelessWidget {
       imageUrl: url,
       fit: BoxFit.cover,
       placeholder: (context, _) => const SeerrPosterPlaceholder(),
-      errorWidget: (context, _, _) => const SeerrPosterPlaceholder(),
+      errorBuilder: (context, _, _) => const SeerrPosterPlaceholder(),
     );
   }
 }

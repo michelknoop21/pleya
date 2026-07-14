@@ -113,7 +113,21 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
   // Movies: block a duplicate request the server would reject with 409.
   bool get _isMovieRequestable => !widget.media.status.isAvailable && !widget.media.status.isRequested;
 
-  bool get _canSubmit => !_submitting && (_isTv ? _selectedSeasons.isNotEmpty : _isMovieRequestable);
+  /// Quota exhausted → the server would reject the request anyway; disable
+  /// submit instead of surfacing a raw 403 after the fact.
+  bool get _quotaExhausted {
+    final q = _quota;
+    if (q == null) return false;
+    final limit = _isTv ? q.tvLimit : q.movieLimit;
+    if (limit == null || limit == 0) return false;
+    return ((_isTv ? q.tvRemaining : q.movieRemaining) ?? limit) <= 0;
+  }
+
+  bool get _canSubmit =>
+      !_submitting &&
+      widget.media.tmdbId > 0 &&
+      !_quotaExhausted &&
+      (_isTv ? _selectedSeasons.isNotEmpty : _isMovieRequestable);
 
   String _mapError(SeerrException e) {
     if (e.isForbidden) return t.seerr.errorForbidden;
@@ -172,6 +186,23 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
     final theme = Theme.of(context);
     final muted = theme.colorScheme.onSurface.withValues(alpha: 0.7);
     final quotaText = _quotaText();
+    // Nothing requestable (already available/requested): show a clear message
+    // instead of a dead-end sheet with a permanently disabled button.
+    final nothingRequestable = _isTv ? !_seasons.any(_isSeasonRequestable) : !_isMovieRequestable;
+    if (nothingRequestable) {
+      final label = widget.media.status.isAvailable ? t.seerr.available : t.seerr.alreadyRequested;
+      return Padding(
+        padding: const EdgeInsets.all(32),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AppIcon(widget.media.status.isAvailable ? Symbols.check_circle_rounded : Symbols.schedule_rounded, fill: 1),
+            const SizedBox(width: 12),
+            Flexible(child: Text(label, style: theme.textTheme.titleSmall)),
+          ],
+        ),
+      );
+    }
     // Cap the sheet so a long season list (20+ seasons) scrolls inside the sheet
     // instead of pushing the Request button off-screen. The button and error
     // stay pinned below the scroll area so they're always reachable.
