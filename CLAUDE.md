@@ -28,6 +28,7 @@ Models use `freezed` + `json_serializable`; i18n uses `slang`. After editing any
 - **Adaptive UI + TV focus.** `lib/screens/` and `lib/widgets/` render across desktop/mobile/TV form factors; `lib/focus/` handles D-pad/remote focus traversal for TV. Navigation lives in `lib/navigation/`.
 
 ## Gotchas
+- **Tijdelijke overrides (rate-boost, background-pause, e.d.):** nooit los een "waarde-vóór"-veld bijhouden — een re-entrante start-handler (dubbele gesture/lifecycle-event) overschrijft de captured waarde met de al-geboden waarde en dan blijft de override permanent hangen. Gebruik `lib/utils/temporary_override.dart` (`TemporaryOverride<T>`: engage capture't éénmalig, release herstelt éénmalig), of minimaal een `if (alActief) return;`-guard op de start-handler én een reset op elk cancel/lifecycle-pad.
 - **Naming:** outward name is **Pleya**; package name is `pleya`; the repo dir is `plezy-main`. GPL-3.0 fork of [edde746/plezy](https://github.com/edde746/plezy). Use **Pleya** in any user-facing string/asset/doc — never "Plezy".
 - Many deps are pinned `edde746/*` git forks (see `pubspec.yaml`) — don't swap them for pub.dev versions.
 - Release/signing/TestFlight lanes live in `fastlane/` and `scripts/testflight_release.sh`; bundle ID is `nl.michelknoop.pleya`.

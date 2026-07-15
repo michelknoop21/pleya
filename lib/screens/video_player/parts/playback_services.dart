@@ -302,6 +302,7 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
         unawaited(_seekBackForRewind(currentPlayer));
         unawaited(_playWithPlaybackIntent(currentPlayer));
         _wasPlayingBeforeInactive = false;
+        _backgroundPauseCaptured = false;
         _updateMediaControlsPlaybackState();
       } else if (event is PauseEvent) {
         if (_frameRate.suppressesMediaPause) {
@@ -320,6 +321,7 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
           unawaited(_seekBackForRewind(currentPlayer));
           unawaited(_playWithPlaybackIntent(currentPlayer));
           _wasPlayingBeforeInactive = false;
+        _backgroundPauseCaptured = false;
         }
         _updateMediaControlsPlaybackState();
       } else if (event is SeekEvent) {
@@ -496,6 +498,7 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
     try {
       await _playWithPlaybackIntent(expectedPlayer);
       _wasPlayingBeforeInactive = false;
+        _backgroundPauseCaptured = false;
       appLogger.d('Video resumed after Apple audio session $reason');
     } catch (e) {
       appLogger.w('Failed to resume after Apple audio session $reason', error: e);

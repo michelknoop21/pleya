@@ -130,6 +130,7 @@ extension _VideoPlayerMediaControlsMethods on VideoPlayerScreenState {
         appLogger.w('Failed to resume playback after $resumeReason', error: e);
       } finally {
         _wasPlayingBeforeInactive = false;
+        _backgroundPauseCaptured = false;
       }
     }
 

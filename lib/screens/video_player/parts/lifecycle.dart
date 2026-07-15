@@ -93,7 +93,11 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     // Pause first so Android MPV does not keep decoding against a transient
     // background surface while the app is locking or hiding.
     if (shouldPauseForBackground) {
-      _wasPlayingBeforeInactive = currentPlayer.state.isActive;
+      // Capture once per background cycle — see _backgroundPauseCaptured.
+      if (!_backgroundPauseCaptured) {
+        _backgroundPauseCaptured = true;
+        _wasPlayingBeforeInactive = currentPlayer.state.isActive;
+      }
       if (_wasPlayingBeforeInactive) {
         try {
           await _pauseWithPlaybackIntent(currentPlayer);
@@ -148,6 +152,9 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
       _resumeMediaControlsAfterTvBackground('app_resumed');
       await _restoreMediaControlsAfterResume();
     }
+    // Re-arm the background-pause capture for the next background cycle —
+    // also when the restore above didn't run (not playing before background).
+    _backgroundPauseCaptured = false;
 
     _resumeLiveTimelineAfterBackgroundIfNeeded();
     _recordLifecycleState('resumed', action: 'complete');

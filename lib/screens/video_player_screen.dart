@@ -369,6 +369,10 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
 
   // App lifecycle state tracking
   bool _wasPlayingBeforeInactive = false;
+  // Guards _wasPlayingBeforeInactive against the second 'hidden' event that
+  // fires on the way back to foreground (paused → hidden → inactive → resumed):
+  // re-capturing there would clobber "was playing" with the paused state.
+  bool _backgroundPauseCaptured = false;
   bool _hiddenForBackground = false;
   bool _mediaControlsSuspendedForTvBackground = false;
   bool _resumeFromSuspendedMediaControlOnForeground = false;
