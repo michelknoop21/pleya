@@ -85,6 +85,11 @@ class SecureFolderService {
     }
   }
 
+  /// Human-readable reason of the most recent failed [listDirectory] call,
+  /// so the UI can show WHY a folder came back empty instead of a bare
+  /// empty state. Cleared on the next successful listing.
+  String? lastListError;
+
   /// Native directory enumeration for iOS/macOS. Returns raw entry maps
   /// (`uri`, `name`, `isDir`, `length`, `lastModified`) or null on failure.
   /// Unlike Dart's `Directory.list`, this reaches File Provider folders.
@@ -92,8 +97,14 @@ class SecureFolderService {
     if (!isRequired) return null;
     try {
       final raw = await _channel.invokeListMethod<Map<Object?, Object?>>('listDirectory', {'path': path});
+      lastListError = null;
       return raw;
+    } on PlatformException catch (e) {
+      lastListError = [e.message, e.details].whereType<Object>().join(' · ');
+      appLogger.w('SecureFolder: listDirectory failed for $path', error: e);
+      return null;
     } catch (e) {
+      lastListError = '$e';
       appLogger.w('SecureFolder: listDirectory failed for $path', error: e);
       return null;
     }

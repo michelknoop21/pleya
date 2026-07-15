@@ -4441,6 +4441,9 @@ class TranslationsAddLocalFolderEn {
 
 	/// en: 'Failed to add local folder'
 	String get saveError => 'Failed to add local folder';
+
+	/// en: '${count} items found in folder'
+	String entriesFound({required Object count}) => '${count} items found in folder';
 }
 
 // Path: pleyaShare
@@ -6663,6 +6666,7 @@ extension on Translations {
 			'addLocalFolder.nameHint' => 'e.g. My Movies',
 			'addLocalFolder.save' => 'Add folder',
 			'addLocalFolder.saveError' => 'Failed to add local folder',
+			'addLocalFolder.entriesFound' => ({required Object count}) => '${count} items found in folder',
 			'pleyaShare.cardTitle' => 'Pleya Share',
 			'pleyaShare.cardSubtitle' => 'Connect to another Pleya device sharing its media',
 			'pleyaShare.hostTitle' => 'Share my media',

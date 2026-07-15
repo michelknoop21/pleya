@@ -52,11 +52,29 @@ public class SecureFolderPlugin: NSObject, FlutterPlugin, UIDocumentPickerDelega
     }
   }
 
+  /// Resolve [path] against a retained scoped URL. The sandbox extension for a
+  /// File Provider folder is bound to the URL object that came out of the
+  /// bookmark — a fresh `URL(fileURLWithPath:)` to the same path is denied.
+  /// Subpaths (Serie/Seizoen) are derived from the scoped root per segment.
+  private func scopedURL(for path: String) -> URL? {
+    if let exact = accessedURLs[path] { return exact }
+    for (rootPath, rootURL) in accessedURLs {
+      let prefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
+      guard path.hasPrefix(prefix) else { continue }
+      var url = rootURL
+      for segment in path.dropFirst(prefix.count).split(separator: "/") {
+        url.appendPathComponent(String(segment))
+      }
+      return url
+    }
+    return nil
+  }
+
   /// Enumerate a directory via FileManager + a coordinated read. Unlike Dart's
   /// POSIX `Directory.list`, this works for File Provider folders (e.g. another
   /// app's shared storage like Infuse), which don't enumerate over raw readdir.
   private func listDirectory(_ path: String, result: @escaping FlutterResult) {
-    let url = URL(fileURLWithPath: path)
+    let url = scopedURL(for: path) ?? URL(fileURLWithPath: path)
     let keys: [URLResourceKey] = [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey]
     var coordError: NSError?
     var listError: Error?
@@ -84,7 +102,12 @@ public class SecureFolderPlugin: NSObject, FlutterPlugin, UIDocumentPickerDelega
       }
     }
     if let error = coordError ?? (listError as NSError?) {
-      result(FlutterError(code: "LIST_FAILED", message: error.localizedDescription, details: nil))
+      result(
+        FlutterError(
+          code: "LIST_FAILED",
+          message: error.localizedDescription,
+          details: "\(error.domain)#\(error.code)"
+        ))
       return
     }
     result(entries)
@@ -146,7 +169,14 @@ public class SecureFolderPlugin: NSObject, FlutterPlugin, UIDocumentPickerDelega
     do {
       var isStale = false
       let url = try URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &isStale)
-      if url.startAccessingSecurityScopedResource() { retainAccess(url) }
+      if url.startAccessingSecurityScopedResource() {
+        retainAccess(url)
+      } else if accessedURLs[url.path] == nil {
+        // No scope obtained and none open for this path: surface it instead of
+        // silently returning a path every later read will be denied on.
+        result(FlutterError(code: "SCOPE_DENIED", message: "startAccessingSecurityScopedResource failed", details: nil))
+        return
+      }
       var response: [String: Any] = ["path": url.path]
       if isStale, let fresh = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil) {
         response["bookmark"] = fresh.base64EncodedString()

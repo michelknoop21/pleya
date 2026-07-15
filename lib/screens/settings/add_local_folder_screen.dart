@@ -167,12 +167,22 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
     setState(() => _saving = true);
     try {
       // Read test up front: a folder we can't actually list would otherwise
-      // save fine and just show a silently empty library.
-      if (await SafStorageService.instance.list(_directoryUri!) == null) {
+      // save fine and just show a silently empty library. Surface the real
+      // reason (native error) and the entry count so a failing File Provider
+      // folder is diagnosable at link time instead of a silent empty library.
+      final entries = await SafStorageService.instance.list(_directoryUri!);
+      if (entries == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.addLocalFolder.saveError)));
+          final reason = SecureFolderService.instance.lastListError;
+          final message = reason == null ? t.addLocalFolder.saveError : '${t.addLocalFolder.saveError}\n$reason';
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
         }
         return;
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(t.addLocalFolder.entriesFound(count: '${entries.length}'))));
       }
 
       final id = 'local-${DateTime.now().millisecondsSinceEpoch}';

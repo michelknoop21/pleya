@@ -1590,7 +1590,8 @@
     "nameLabel": "Display name",
     "nameHint": "e.g. My Movies",
     "save": "Add folder",
-    "saveError": "Failed to add local folder"
+    "saveError": "Failed to add local folder",
+    "entriesFound": "${count} items found in folder"
   },
   "pleyaShare": {
     "cardTitle": "Pleya Share",

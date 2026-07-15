@@ -93,6 +93,10 @@ class LocalFolderClient implements MediaServerClient {
   /// In-memory library list (one library per configured root).
   late final List<MediaLibrary> _libraries;
 
+  /// Why the last scan produced nothing (native list error or unreadable
+  /// root) — shown in the library empty-state so failures aren't silent.
+  String? lastScanError;
+
   /// Watch state persisted to SharedPreferences as JSON map.
   final Map<String, bool> _watchedState = {};
   final Map<String, int> _progressState = {};
@@ -747,9 +751,11 @@ class LocalFolderClient implements MediaServerClient {
         // Unreadable root: likely a stale/expired security scope. Drop the
         // cached resolve so the next scan re-resolves the bookmark instead of
         // permanently serving an empty library from a dead path.
+        lastScanError = SecureFolderService.instance.lastListError ?? 'unreadable: $rootUri';
         SecureFolderService.instance.forget(connection.id);
         return [];
       }
+      lastScanError = children.isEmpty ? 'empty: $rootUri' : null;
 
       final isMovies = connection.libraryType == 'movies';
       final isTv = connection.libraryType == 'tvshows';
@@ -788,6 +794,7 @@ class LocalFolderClient implements MediaServerClient {
       _applyWatchStateToCache();
     } catch (e, st) {
       appLogger.w('LocalFolderClient: scan failed for $libraryId', error: e, stackTrace: st);
+      lastScanError = '$e';
       // A mid-scan failure would otherwise freeze a partial catalog for the
       // whole session (the isNotEmpty guard above). Drop the partial cache and
       // the resolved scope so the next call retries a full scan.

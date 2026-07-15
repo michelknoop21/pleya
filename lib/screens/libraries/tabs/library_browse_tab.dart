@@ -10,6 +10,7 @@ import '../../../media/library_query.dart';
 import '../../../media/media_backend.dart';
 import '../../../media/media_item.dart';
 import '../../../providers/multi_server_provider.dart';
+import '../../../services/local_folder_client.dart';
 import '../../../utils/media_server_http_client.dart';
 import '../../../exceptions/media_server_exceptions.dart';
 import '../../../focus/dpad_navigator.dart';
@@ -384,7 +385,14 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   IconData get emptyIcon => Symbols.folder_open_rounded;
 
   @override
-  String get emptyMessage => t.libraries.thisLibraryIsEmpty;
+  String get emptyMessage {
+    // A local folder that scanned empty carries the actual failure reason
+    // (scope denied, provider error) — show it instead of a bare empty state.
+    final client = context.getMediaClientForLibrary(widget.library);
+    final scanError = client is LocalFolderClient ? client.lastScanError : null;
+    if (scanError != null) return '${t.libraries.thisLibraryIsEmpty}\n$scanError';
+    return t.libraries.thisLibraryIsEmpty;
+  }
 
   @override
   String get errorContext => t.libraries.content;
