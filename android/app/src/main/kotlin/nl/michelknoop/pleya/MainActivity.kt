@@ -40,9 +40,9 @@ import java.io.File
 import kotlin.math.roundToInt
 import nl.michelknoop.pleya.exoplayer.ExoPlayerPlugin
 import nl.michelknoop.pleya.mpv.MpvPlayerPlugin
+import nl.michelknoop.pleya.share.PleyaShareService
 import nl.michelknoop.pleya.shared.DeviceQuirks
 import nl.michelknoop.pleya.shared.ThemeHelper
-import nl.michelknoop.pleya.share.PleyaShareService
 import nl.michelknoop.pleya.watchnext.WatchNextPlugin
 
 class MainActivity : FlutterActivity() {
@@ -464,7 +464,7 @@ class MainActivity : FlutterActivity() {
           PleyaShareService.start(
             this,
             call.argument<String>("title") ?: "Pleya Share",
-            call.argument<String>("text") ?: "",
+            call.argument<String>("text") ?: ""
           )
           result.success(null)
         }

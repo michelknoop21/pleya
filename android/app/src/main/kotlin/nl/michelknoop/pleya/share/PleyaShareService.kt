@@ -120,7 +120,7 @@ class PleyaShareService : Service() {
     manager.createNotificationChannel(
       NotificationChannel(CHANNEL_ID, "Pleya Share", NotificationManager.IMPORTANCE_LOW).apply {
         setShowBadge(false)
-      },
+      }
     )
   }
 
@@ -132,7 +132,8 @@ class PleyaShareService : Service() {
     val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       Notification.Builder(this, CHANNEL_ID)
     } else {
-      @Suppress("DEPRECATION") Notification.Builder(this)
+      @Suppress("DEPRECATION")
+      Notification.Builder(this)
     }
     return builder
       .setContentTitle(title)

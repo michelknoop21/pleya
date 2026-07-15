@@ -85,5 +85,14 @@ class SecureFolderService {
     }
   }
 
-  void forget(String connectionId) => _resolvedPaths.remove(connectionId);
+  void forget(String connectionId) {
+    final path = _resolvedPaths.remove(connectionId);
+    // Balance the native startAccessingSecurityScopedResource so the OS scope
+    // isn't leaked after a source is removed or re-resolved.
+    if (isRequired && path != null) {
+      _channel.invokeMethod<void>('stopAccess', {'path': path}).catchError((Object e) {
+        appLogger.w('SecureFolder: stopAccess failed', error: e);
+      });
+    }
+  }
 }
