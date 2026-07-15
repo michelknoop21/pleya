@@ -132,6 +132,25 @@ void main() {
       expect(notifications, 0);
     });
 
+    testWidgets('releasing the last hold re-arms auto-hide so controls never stick', (tester) async {
+      final controller = PlayerChromeController();
+      addTearDown(controller.dispose);
+      controller.configure(hideDelay: const Duration(milliseconds: 100));
+      controller.setPlaying(true);
+      controller.hold(PlayerChromeHold.promptInteraction);
+
+      // Held: tap-to-hide is refused and no timer runs.
+      expect(controller.hide(), isFalse);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(controller.controlsVisible, isTrue);
+
+      // Silent release (prompt teardown): the auto-hide timer MUST re-arm,
+      // otherwise the pause button stays on screen forever (issue: stuck chrome).
+      controller.release(PlayerChromeHold.promptInteraction, notify: false);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(controller.controlsVisible, isFalse);
+    });
+
     testWidgets('interaction region shows on hover and hides on exit', (tester) async {
       final controller = PlayerChromeController();
       addTearDown(controller.dispose);

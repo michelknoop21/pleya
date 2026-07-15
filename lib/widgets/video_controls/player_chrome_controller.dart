@@ -100,6 +100,8 @@ class PlayerChromeController extends ChangeNotifier implements ValueListenable<b
 
   bool hide({bool ignoreHolds = false}) {
     if (!_controlsVisible) return false;
+    // contentStrip implies a hold, so the strip cleanup below is only
+    // reachable via ignoreHolds — the check must come first.
     if (!ignoreHolds && _holds.isNotEmpty) return false;
     cancelAutoHide();
     _controlsVisible = false;

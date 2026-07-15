@@ -517,7 +517,12 @@ class _VideoPlayerPromptInteractionHoldState extends State<_VideoPlayerPromptInt
   @override
   void dispose() {
     _removeFocusListeners(widget.focusNodes);
-    widget.chromeController.release(PlayerChromeHold.promptInteraction, notify: false, restartAutoHide: false);
+    // restartAutoHide must stay true: the prompt can tear down while its
+    // button still has focus (countdown fires, PiP engages). Without re-arming
+    // the timer here the controls stay visible forever with no hide path.
+    // The controller cancels this timer in its own dispose, so route teardown
+    // is safe. notify stays false — no rebuilds mid-dispose.
+    widget.chromeController.release(PlayerChromeHold.promptInteraction, notify: false);
     super.dispose();
   }
 

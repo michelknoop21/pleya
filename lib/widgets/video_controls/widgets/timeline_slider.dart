@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
 import '../../../media/media_source_info.dart';
@@ -76,6 +77,12 @@ class TimelineSlider extends StatefulWidget {
 class _TimelineSliderState extends State<TimelineSlider> {
   double? _mousePosition;
   double? _dragValue;
+
+  /// Committed seek target shown after scrub release until the player's
+  /// reported position catches up. Prevents the thumb snapping back to the
+  /// pre-seek position while a (transcode) seek is still restarting.
+  double? _pendingSeekValue;
+  Timer? _pendingSeekFailsafe;
   int? _hoverTimeMs;
   int? _hoverLabelSecond;
   int? _hoverPixelBucket;
@@ -91,6 +98,7 @@ class _TimelineSliderState extends State<TimelineSlider> {
 
   @override
   void dispose() {
+    _pendingSeekFailsafe?.cancel();
     if (_scrubbing) widget.onScrubEnd?.call();
     super.dispose();
   }
@@ -98,6 +106,12 @@ class _TimelineSliderState extends State<TimelineSlider> {
   @override
   void didUpdateWidget(TimelineSlider oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Player caught up with the committed seek → hand display back to the
+    // live position. 5s tolerance covers keyframe snapping on seeks.
+    final pending = _pendingSeekValue;
+    if (pending != null && (widget.position.inMilliseconds - pending).abs() < 5000) {
+      _clearPendingSeek();
+    }
     if (oldWidget.enabled && !widget.enabled && _scrubbing) {
       // The gestures map is only registered while enabled, so the swap
       // disposes the recognizer without firing onCancel; finalize after this
@@ -108,8 +122,17 @@ class _TimelineSliderState extends State<TimelineSlider> {
     }
   }
 
+  void _clearPendingSeek() {
+    _pendingSeekFailsafe?.cancel();
+    _pendingSeekFailsafe = null;
+    if (_pendingSeekValue != null) {
+      setState(() => _pendingSeekValue = null);
+    }
+  }
+
   void _handleScrubStart(DragStartDetails details, BuildContext sliderContext) {
     if (widget.duration.inMilliseconds <= 0) return;
+    _clearPendingSeek();
     _scrubbing = true;
     widget.onScrubStart?.call();
     _applyScrub(details.localPosition.dx, sliderContext);
@@ -136,7 +159,16 @@ class _TimelineSliderState extends State<TimelineSlider> {
     if (!_scrubbing) return;
     _scrubbing = false;
     final value = _dragValue;
-    setState(() => _dragValue = null);
+    setState(() {
+      _dragValue = null;
+      // Keep showing the committed target until the player reports a nearby
+      // position (didUpdateWidget) — transcode restarts can take seconds.
+      _pendingSeekValue = value;
+    });
+    _pendingSeekFailsafe?.cancel();
+    _pendingSeekFailsafe = Timer(const Duration(seconds: 15), () {
+      if (mounted) _clearPendingSeek();
+    });
     try {
       if (value != null) widget.onSeekEnd(Duration(milliseconds: value.round()));
     } finally {
@@ -297,7 +329,7 @@ class _TimelineSliderState extends State<TimelineSlider> {
     final durationMs = widget.duration.inMilliseconds;
     final max = durationMs > 0 ? durationMs.toDouble() : 0.0;
     final displayValue = max > 0
-        ? (_dragValue ?? widget.position.inMilliseconds.toDouble()).clamp(0.0, max).toDouble()
+        ? (_dragValue ?? _pendingSeekValue ?? widget.position.inMilliseconds.toDouble()).clamp(0.0, max).toDouble()
         : 0.0;
     final displayPosition = Duration(milliseconds: displayValue.toInt());
     final hasTooltip =

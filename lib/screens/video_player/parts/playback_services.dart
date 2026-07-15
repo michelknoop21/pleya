@@ -98,6 +98,10 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
     _bufferingSubscription = currentPlayer.streams.buffering.listen((isBuffering) {
       _isBuffering.value = isBuffering;
     });
+    // Seed from current state: a buffering=false emitted during the
+    // cancel/re-subscribe window above would otherwise be lost and leave the
+    // spinner overlay stuck until the next buffering transition.
+    _isBuffering.value = currentPlayer.state.buffering;
 
     // When server comes back online while buffering, force mpv to reconnect
     // immediately instead of waiting for ffmpeg's exponential backoff.
