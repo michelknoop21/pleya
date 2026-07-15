@@ -85,6 +85,20 @@ class SecureFolderService {
     }
   }
 
+  /// Native directory enumeration for iOS/macOS. Returns raw entry maps
+  /// (`uri`, `name`, `isDir`, `length`, `lastModified`) or null on failure.
+  /// Unlike Dart's `Directory.list`, this reaches File Provider folders.
+  Future<List<Map<Object?, Object?>>?> listDirectory(String path) async {
+    if (!isRequired) return null;
+    try {
+      final raw = await _channel.invokeListMethod<Map<Object?, Object?>>('listDirectory', {'path': path});
+      return raw;
+    } catch (e) {
+      appLogger.w('SecureFolder: listDirectory failed for $path', error: e);
+      return null;
+    }
+  }
+
   void forget(String connectionId) {
     final path = _resolvedPaths.remove(connectionId);
     // Balance the native startAccessingSecurityScopedResource so the OS scope

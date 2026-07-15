@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:saf_util/saf_util.dart';
 import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
+import 'secure_folder_service.dart';
 import 'package:saf_util/saf_util_platform_interface.dart';
 
 /// Handles directory access for local media sources.
@@ -148,6 +149,25 @@ class SafStorageService {
       } catch (e) {
         appLogger.w('SAF list error', error: e);
         return null;
+      }
+    }
+    // iOS/macOS: enumerate natively so File Provider folders (another app's
+    // shared storage, e.g. Infuse) list correctly — Dart's POSIX Directory.list
+    // returns empty for those. Falls back to Directory.list on native failure.
+    if (SecureFolderService.isRequired) {
+      final native = await SecureFolderService.instance.listDirectory(uri);
+      if (native != null) {
+        return native
+            .map(
+              (m) => SafDocumentFile(
+                uri: m['uri'] as String,
+                name: m['name'] as String,
+                isDir: m['isDir'] as bool? ?? false,
+                length: (m['length'] as num?)?.toInt() ?? 0,
+                lastModified: (m['lastModified'] as num?)?.toInt() ?? 0,
+              ),
+            )
+            .toList();
       }
     }
     try {

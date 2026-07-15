@@ -41,9 +41,53 @@ public class SecureFolderPlugin: NSObject, FlutterPlugin, UIDocumentPickerDelega
         stopAccess(path)
       }
       result(nil)
+    case "listDirectory":
+      guard let args = call.arguments as? [String: Any], let path = args["path"] as? String else {
+        result(FlutterError(code: "INVALID_ARGUMENT", message: "path required", details: nil))
+        return
+      }
+      listDirectory(path, result: result)
     default:
       result(FlutterMethodNotImplemented)
     }
+  }
+
+  /// Enumerate a directory via FileManager + a coordinated read. Unlike Dart's
+  /// POSIX `Directory.list`, this works for File Provider folders (e.g. another
+  /// app's shared storage like Infuse), which don't enumerate over raw readdir.
+  private func listDirectory(_ path: String, result: @escaping FlutterResult) {
+    let url = URL(fileURLWithPath: path)
+    let keys: [URLResourceKey] = [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey]
+    var coordError: NSError?
+    var listError: Error?
+    var entries: [[String: Any]] = []
+    NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordError) { coordinatedURL in
+      do {
+        let contents = try FileManager.default.contentsOfDirectory(
+          at: coordinatedURL,
+          includingPropertiesForKeys: keys,
+          options: [.skipsHiddenFiles]
+        )
+        for entry in contents {
+          let values = try? entry.resourceValues(forKeys: Set(keys))
+          let modifiedMs = (values?.contentModificationDate?.timeIntervalSince1970 ?? 0) * 1000
+          entries.append([
+            "uri": entry.path,
+            "name": entry.lastPathComponent,
+            "isDir": values?.isDirectory ?? false,
+            "length": values?.fileSize ?? 0,
+            "lastModified": Int(modifiedMs),
+          ])
+        }
+      } catch {
+        listError = error
+      }
+    }
+    if let error = coordError ?? (listError as NSError?) {
+      result(FlutterError(code: "LIST_FAILED", message: error.localizedDescription, details: nil))
+      return
+    }
+    result(entries)
   }
 
   /// Retain [url] and keep its scope open for the app session. Idempotent per
