@@ -597,6 +597,10 @@ extension _PlexVideoControlsPlaybackInputMethods on _PlexVideoControlsState {
   /// Handle long-press start - activate 2x speed
   void _handleLongPressStart() {
     if (!widget.canControl || widget.isLive) return;
+    // Re-entrant start (overlapping gesture detectors / second finger) must
+    // not overwrite the captured pre-press rate with the boosted 2.0 — the
+    // release would then "restore" 2x and playback stays fast forever.
+    if (_isLongPressing) return;
 
     Haptics.light();
     _setControlsState(() {
