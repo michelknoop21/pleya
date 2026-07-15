@@ -73,44 +73,52 @@ public class SecureFolderPlugin: NSObject, FlutterPlugin, UIDocumentPickerDelega
   /// Enumerate a directory via FileManager + a coordinated read. Unlike Dart's
   /// POSIX `Directory.list`, this works for File Provider folders (e.g. another
   /// app's shared storage like Infuse), which don't enumerate over raw readdir.
+  ///
+  /// Runs on a background queue: NSFileCoordinator on the main thread can
+  /// deadlock against a File Provider extension that needs our runloop —
+  /// the channel call then never returns and the library spins forever.
   private func listDirectory(_ path: String, result: @escaping FlutterResult) {
     let url = scopedURL(for: path) ?? URL(fileURLWithPath: path)
-    let keys: [URLResourceKey] = [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey]
-    var coordError: NSError?
-    var listError: Error?
-    var entries: [[String: Any]] = []
-    NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordError) { coordinatedURL in
-      do {
-        let contents = try FileManager.default.contentsOfDirectory(
-          at: coordinatedURL,
-          includingPropertiesForKeys: keys,
-          options: [.skipsHiddenFiles]
-        )
-        for entry in contents {
-          let values = try? entry.resourceValues(forKeys: Set(keys))
-          let modifiedMs = (values?.contentModificationDate?.timeIntervalSince1970 ?? 0) * 1000
-          entries.append([
-            "uri": entry.path,
-            "name": entry.lastPathComponent,
-            "isDir": values?.isDirectory ?? false,
-            "length": values?.fileSize ?? 0,
-            "lastModified": Int(modifiedMs),
-          ])
+    DispatchQueue.global(qos: .userInitiated).async {
+      let keys: [URLResourceKey] = [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey]
+      var coordError: NSError?
+      var listError: Error?
+      var entries: [[String: Any]] = []
+      NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordError) { coordinatedURL in
+        do {
+          let contents = try FileManager.default.contentsOfDirectory(
+            at: coordinatedURL,
+            includingPropertiesForKeys: keys,
+            options: [.skipsHiddenFiles]
+          )
+          for entry in contents {
+            let values = try? entry.resourceValues(forKeys: Set(keys))
+            let modifiedMs = (values?.contentModificationDate?.timeIntervalSince1970 ?? 0) * 1000
+            entries.append([
+              "uri": entry.path,
+              "name": entry.lastPathComponent,
+              "isDir": values?.isDirectory ?? false,
+              "length": values?.fileSize ?? 0,
+              "lastModified": Int(modifiedMs),
+            ])
+          }
+        } catch {
+          listError = error
         }
-      } catch {
-        listError = error
+      }
+      DispatchQueue.main.async {
+        if let error = coordError ?? (listError as NSError?) {
+          result(
+            FlutterError(
+              code: "LIST_FAILED",
+              message: error.localizedDescription,
+              details: "\(error.domain)#\(error.code)"
+            ))
+          return
+        }
+        result(entries)
       }
     }
-    if let error = coordError ?? (listError as NSError?) {
-      result(
-        FlutterError(
-          code: "LIST_FAILED",
-          message: error.localizedDescription,
-          details: "\(error.domain)#\(error.code)"
-        ))
-      return
-    }
-    result(entries)
   }
 
   /// Retain [url] and keep its scope open for the app session. Idempotent per
@@ -166,24 +174,36 @@ public class SecureFolderPlugin: NSObject, FlutterPlugin, UIDocumentPickerDelega
   }
 
   private func resolveBookmark(_ data: Data, result: @escaping FlutterResult) {
-    do {
-      var isStale = false
-      let url = try URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &isStale)
-      if url.startAccessingSecurityScopedResource() {
-        retainAccess(url)
-      } else if accessedURLs[url.path] == nil {
-        // No scope obtained and none open for this path: surface it instead of
-        // silently returning a path every later read will be denied on.
-        result(FlutterError(code: "SCOPE_DENIED", message: "startAccessingSecurityScopedResource failed", details: nil))
-        return
+    // Background queue: bookmark resolution may talk to a File Provider
+    // extension and must not block the main runloop (deadlock risk).
+    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+      let reply: (Any?) -> Void = { value in DispatchQueue.main.async { result(value) } }
+      do {
+        var isStale = false
+        let url = try URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &isStale)
+        let accessing = url.startAccessingSecurityScopedResource()
+        DispatchQueue.main.async {
+          guard let self = self else { return }
+          if accessing {
+            self.retainAccess(url)
+          } else if self.accessedURLs[url.path] == nil {
+            // No scope obtained and none open for this path: surface it instead
+            // of silently returning a path every later read will be denied on.
+            result(
+              FlutterError(code: "SCOPE_DENIED", message: "startAccessingSecurityScopedResource failed", details: nil))
+            return
+          }
+          var response: [String: Any] = ["path": url.path]
+          if isStale,
+            let fresh = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
+          {
+            response["bookmark"] = fresh.base64EncodedString()
+          }
+          result(response)
+        }
+      } catch {
+        reply(FlutterError(code: "RESOLVE_FAILED", message: error.localizedDescription, details: nil))
       }
-      var response: [String: Any] = ["path": url.path]
-      if isStale, let fresh = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil) {
-        response["bookmark"] = fresh.base64EncodedString()
-      }
-      result(response)
-    } catch {
-      result(FlutterError(code: "RESOLVE_FAILED", message: error.localizedDescription, details: nil))
     }
   }
 

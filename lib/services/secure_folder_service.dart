@@ -96,9 +96,17 @@ class SecureFolderService {
   Future<List<Map<Object?, Object?>>?> listDirectory(String path) async {
     if (!isRequired) return null;
     try {
-      final raw = await _channel.invokeListMethod<Map<Object?, Object?>>('listDirectory', {'path': path});
+      // Belt-and-braces: a hung provider must surface as an error, never as an
+      // infinite spinner in the library.
+      final raw = await _channel
+          .invokeListMethod<Map<Object?, Object?>>('listDirectory', {'path': path})
+          .timeout(const Duration(seconds: 30));
       lastListError = null;
       return raw;
+    } on TimeoutException {
+      lastListError = 'timeout listing $path';
+      appLogger.w('SecureFolder: listDirectory timed out for $path');
+      return null;
     } on PlatformException catch (e) {
       lastListError = [e.message, e.details].whereType<Object>().join(' · ');
       appLogger.w('SecureFolder: listDirectory failed for $path', error: e);
