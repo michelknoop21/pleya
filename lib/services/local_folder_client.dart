@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../i18n/strings.g.dart';
 
 import '../connection/connection.dart';
 import '../media/download_resolution.dart';
@@ -61,6 +64,19 @@ final _moviePattern = RegExp(r'^(.+?)[\s._]*\((\d{4})\)|^(.+?)[\s._]+(\d{4})\b')
 
 /// Regex to extract SxxExx from episode filenames.
 final _episodePattern = RegExp(r'[Ss](\d{1,2})[Ee](\d{1,3})');
+
+/// Season+episode markers for loose (flat) episode files, most-specific first.
+/// Handles `S01E06`, `s1e6`, `se1.ep6`, `season 1 episode 6` and `1x06`. The
+/// capture groups are (season, episode); the show title is the text before the
+/// match. Anchored to a separator/start so a show name like "Roos" (has an 's')
+/// can't be mistaken for a season marker.
+final _looseEpisodePatterns = <RegExp>[
+  RegExp(r's(?:eason)?e?[\s._-]?(\d{1,2})[\s._-]*(?:ep?|episode)[\s._-]?(\d{1,3})', caseSensitive: false),
+  RegExp(r'(?:^|[\s._-])(\d{1,2})x(\d{1,3})(?:[\s._-]|$)', caseSensitive: false),
+];
+
+/// A loose episode file parsed from its filename.
+typedef LooseEpisode = ({String showTitle, int season, int episode});
 
 /// A [MediaServerClient] that scans a local directory tree as a media library.
 ///
@@ -738,6 +754,7 @@ class LocalFolderClient implements MediaServerClient {
       final isMovies = connection.libraryType == 'movies';
       final isTv = connection.libraryType == 'tvshows';
 
+      final looseVideos = <SafDocumentFile>[];
       for (final child in children) {
         if (child.isDir) {
           if (isMovies) {
@@ -748,8 +765,23 @@ class LocalFolderClient implements MediaServerClient {
             await _scanGenericFolder(child, libraryId);
           }
         } else if (_isVideoFile(child.name)) {
-          final item = _parseMovieFile(child, libraryId);
-          _cacheItem(item);
+          looseVideos.add(child);
+        }
+      }
+
+      if (isMovies) {
+        for (final file in looseVideos) {
+          _cacheItem(_parseMovieFile(file, libraryId));
+        }
+      } else {
+        // TV / mixed: group flat episode files (Show.se1.ep6.mkv) into synthetic
+        // shows so a season folder without Show/Season/ nesting still loads.
+        final leftovers = _buildSyntheticShows(looseVideos, libraryId);
+        // Mixed keeps non-episode loose files as movies; a TV library ignores them.
+        if (!isTv) {
+          for (final file in leftovers) {
+            _cacheItem(_parseMovieFile(file, libraryId));
+          }
         }
       }
 
@@ -886,6 +918,143 @@ class LocalFolderClient implements MediaServerClient {
 
   int epNumTotal(String showUri) {
     return _itemCache.values.where((item) => item.kind == MediaKind.episode && item.grandparentId == showUri).length;
+  }
+
+  /// Parse a flat episode filename into (show title, season, episode), or null
+  /// when no season/episode marker is present. Pure — unit-tested.
+  @visibleForTesting
+  static LooseEpisode? parseLooseEpisode(String fileName) {
+    var base = fileName;
+    final dot = base.lastIndexOf('.');
+    if (dot >= 0) base = base.substring(0, dot);
+    for (final pattern in _looseEpisodePatterns) {
+      final match = pattern.firstMatch(base);
+      if (match == null) continue;
+      final season = int.tryParse(match.group(1)!);
+      final episode = int.tryParse(match.group(2)!);
+      if (season == null || episode == null) continue;
+      final title = _cleanTitle(base.substring(0, match.start));
+      if (title.isEmpty) continue;
+      return (showTitle: title, season: season, episode: episode);
+    }
+    return null;
+  }
+
+  /// [_cleanName] without the file-extension strip (the caller already sliced
+  /// off the SxxEyy marker, so a trailing token isn't an extension).
+  static String _cleanTitle(String name) {
+    return name
+        .replaceAll('.', ' ')
+        .replaceAll('_', ' ')
+        .replaceAll('-', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  /// Group loose episode files into synthetic show → season → episode items.
+  /// Returns the files that did NOT parse as episodes (candidate movies).
+  List<SafDocumentFile> _buildSyntheticShows(List<SafDocumentFile> files, String libraryId) {
+    final leftovers = <SafDocumentFile>[];
+    final byShow = <String, List<({SafDocumentFile file, int season, int episode})>>{};
+    for (final file in files) {
+      final parsed = parseLooseEpisode(file.name);
+      if (parsed == null) {
+        leftovers.add(file);
+        continue;
+      }
+      byShow
+          .putIfAbsent(parsed.showTitle, () => [])
+          .add((file: file, season: parsed.season, episode: parsed.episode));
+    }
+    byShow.forEach((title, eps) => _cacheSyntheticShow(title, eps, libraryId));
+    return leftovers;
+  }
+
+  void _cacheSyntheticShow(
+    String title,
+    List<({SafDocumentFile file, int season, int episode})> eps,
+    String libraryId,
+  ) {
+    final showId = 'local-show:${connection.id}:$title';
+    final bySeason = <int, List<({SafDocumentFile file, int season, int episode})>>{};
+    for (final ep in eps) {
+      bySeason.putIfAbsent(ep.season, () => []).add(ep);
+    }
+
+    _cacheItem(
+      MediaItem(
+        id: showId,
+        backend: MediaBackend.local,
+        kind: MediaKind.show,
+        title: title,
+        libraryId: libraryId,
+        libraryTitle: connection.displayName,
+        serverId: connection.id,
+        serverName: connection.displayName,
+        addedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        childCount: bySeason.length,
+        leafCount: eps.length,
+      ),
+    );
+
+    bySeason.forEach((seasonNum, seasonEps) {
+      final seasonId = 'local-season:${connection.id}:$title:$seasonNum';
+      final seasonLabel = t.common.seasonNumber(number: seasonNum);
+      _cacheItem(
+        MediaItem(
+          id: seasonId,
+          backend: MediaBackend.local,
+          kind: MediaKind.season,
+          title: seasonLabel,
+          parentId: showId,
+          parentTitle: title,
+          index: seasonNum,
+          libraryId: libraryId,
+          libraryTitle: connection.displayName,
+          serverId: connection.id,
+          serverName: connection.displayName,
+          leafCount: seasonEps.length,
+          viewedLeafCount: 0,
+        ),
+      );
+
+      for (final ep in seasonEps) {
+        _cacheItem(
+          MediaItem(
+            id: ep.file.uri,
+            backend: MediaBackend.local,
+            kind: MediaKind.episode,
+            title: _cleanName(ep.file.name),
+            parentId: seasonId,
+            parentTitle: seasonLabel,
+            parentIndex: seasonNum,
+            grandparentId: showId,
+            grandparentTitle: title,
+            index: ep.episode,
+            libraryId: libraryId,
+            libraryTitle: connection.displayName,
+            serverId: connection.id,
+            serverName: connection.displayName,
+            addedAt: _addedAt(ep.file),
+            mediaVersions: [
+              MediaVersion(
+                id: ep.file.uri,
+                container: _extension(ep.file.name),
+                parts: [
+                  MediaPart(
+                    id: ep.file.uri,
+                    streamPath: ep.file.uri,
+                    sizeBytes: ep.file.length,
+                    container: _extension(ep.file.name),
+                    streams: const [],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      }
+    });
   }
 
   Future<void> _scanGenericFolder(SafDocumentFile folder, String libraryId) async {
