@@ -172,7 +172,10 @@ class PlexAuthService {
   /// claim doesn't hammer plex.tv every second for two minutes.
   Future<String?> pollPinUntilClaimed(
     int pinId, {
-    Duration timeout = const Duration(minutes: 2),
+    // Plex PINs are valid ~15 min; two minutes was tight for someone signing
+    // in on plex.tv for the first time (account creation, 2FA) and surfaced a
+    // scary "timed out" error mid-signup (App Review 2.1(a) confusion).
+    Duration timeout = const Duration(minutes: 5),
     bool Function()? shouldCancel,
   }) {
     return pollWithBackoff<String>(

@@ -13,7 +13,7 @@
     "signInWithPlex": "Sign in with Plex",
     "showQRCode": "Show QR Code",
     "authenticate": "Authenticate",
-    "authenticationTimeout": "Authentication timed out. Please try again.",
+    "authenticationTimeout": "Sign-in wasn't completed. Please try again.",
     "scanQRToSignIn": "Scan this QR code to sign in",
     "waitingForAuth": "Waiting for authentication...\nSign in from your browser.",
     "useBrowser": "Use browser",

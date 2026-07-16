@@ -107,6 +107,7 @@ class JellyfinEndpointDiscovery {
     Iterable<String>? baseUrlsToPersist,
     Iterable<String>? baseUrlsToValidate,
     Iterable<Iterable<String>>? baseUrlValidationGroups,
+    Duration? raceTimeout,
   }) async {
     final urls = normalizeBaseUrls(baseUrls);
     if (urls.isEmpty) {
@@ -130,6 +131,7 @@ class JellyfinEndpointDiscovery {
       preferredUrl: preferred,
       urlOf: (candidate) => candidate.url,
       failureLogFields: (candidate, result) => {'error': result.error, 'latencyMs': result.latencyMs},
+      raceTimeout: raceTimeout ?? MediaServerTimeouts.connectionRace,
       probe: (candidate, timeout) => _probeWithLatency(candidate.url, timeout: timeout),
       measure: (candidate) => _probeWithAverageLatency(candidate.url, attempts: 2),
       isSuccess: (result) => result.success,

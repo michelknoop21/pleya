@@ -22,6 +22,7 @@ import '../../profiles/profile_connection.dart';
 import '../../profiles/profile_registry.dart';
 import '../../services/jellyfin_auth_service.dart';
 import '../../services/jellyfin_endpoint_discovery.dart';
+import '../../utils/media_server_timeouts.dart';
 import '../../services/jellyfin_lan_discovery_service.dart';
 import '../../services/storage_service.dart';
 import '../../utils/app_logger.dart';
@@ -194,6 +195,9 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
           input.probeBaseUrls,
           baseUrlsToPersist: input.explicitBaseUrls,
           baseUrlValidationGroups: input.validationBaseUrlGroups,
+          // The user explicitly typed this URL: give a slow first hop (cold
+          // tunnel, waking disks) time instead of the 2s background budget.
+          raceTimeout: MediaServerTimeouts.jellyfinManualConnect,
         );
         final qcEnabled = await auth.isQuickConnectEnabled(endpoint.activeBaseUrl);
         if (!mounted) return false;

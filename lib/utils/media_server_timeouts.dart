@@ -48,6 +48,12 @@ class MediaServerTimeouts {
   /// `/System/Info/Public` and `/Users/Me`.
   static const jellyfinProbe = Duration(seconds: 8);
 
+  /// Probe/login timeout for a server URL the user just typed in. More
+  /// generous than [jellyfinProbe]: one slow first hop (cold tunnel, waking
+  /// disks) must not fail the explicit add-server flow. App Review hit
+  /// exactly this against the demo server (guideline 2.1(a) rejection).
+  static const jellyfinManualConnect = Duration(seconds: 25);
+
   /// Best-effort `/Sessions/Logout` timeout — short because the call is
   /// fire-and-forget; the token is removed locally regardless.
   static const jellyfinSignOut = Duration(seconds: 5);

@@ -145,8 +145,8 @@ class TranslationsAuthEn {
 	/// en: 'Authenticate'
 	String get authenticate => 'Authenticate';
 
-	/// en: 'Authentication timed out. Please try again.'
-	String get authenticationTimeout => 'Authentication timed out. Please try again.';
+	/// en: 'Sign-in wasn't completed. Please try again.'
+	String get authenticationTimeout => 'Sign-in wasn\'t completed. Please try again.';
 
 	/// en: 'Scan this QR code to sign in'
 	String get scanQRToSignIn => 'Scan this QR code to sign in';
@@ -5210,7 +5210,7 @@ extension on Translations {
 			'auth.signInWithPlex' => 'Sign in with Plex',
 			'auth.showQRCode' => 'Show QR Code',
 			'auth.authenticate' => 'Authenticate',
-			'auth.authenticationTimeout' => 'Authentication timed out. Please try again.',
+			'auth.authenticationTimeout' => 'Sign-in wasn\'t completed. Please try again.',
 			'auth.scanQRToSignIn' => 'Scan this QR code to sign in',
 			'auth.waitingForAuth' => 'Waiting for authentication...\nSign in from your browser.',
 			'auth.useBrowser' => 'Use browser',

@@ -78,6 +78,7 @@ class JellyfinConnectionAuthService implements ConnectionAuthService {
     Iterable<String>? baseUrlsToPersist,
     Iterable<String>? baseUrlsToValidate,
     Iterable<Iterable<String>>? baseUrlValidationGroups,
+    Duration? raceTimeout,
   }) {
     return _endpointDiscovery.raceEndpoints(
       baseUrls,
@@ -86,6 +87,7 @@ class JellyfinConnectionAuthService implements ConnectionAuthService {
       baseUrlsToPersist: baseUrlsToPersist,
       baseUrlsToValidate: baseUrlsToValidate,
       baseUrlValidationGroups: baseUrlValidationGroups,
+      raceTimeout: raceTimeout,
     );
   }
 
@@ -118,8 +120,10 @@ class JellyfinConnectionAuthService implements ConnectionAuthService {
         '/Users/AuthenticateByName',
         body: jsonEncode({'Username': username, 'Pw': password}),
         // Bound the auth POST so a hanging server can't freeze the auth
-        // screen indefinitely; mirrors the timeout on [probe].
-        timeout: MediaServerTimeouts.jellyfinProbe,
+        // screen indefinitely. Manual-connect budget: this call only happens
+        // after the user explicitly typed a URL, and one slow first hop must
+        // not fail the sign-in (App Review rejection 2.1(a)).
+        timeout: MediaServerTimeouts.jellyfinManualConnect,
       );
       if (response.statusCode == 401 || response.statusCode == 403) {
         throw MediaServerAuthException('Invalid username or password', statusCode: response.statusCode);
