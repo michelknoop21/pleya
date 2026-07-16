@@ -1206,10 +1206,17 @@ class LocalFolderClient implements MediaServerClient {
   // Helpers
   // ---------------------------------------------------------------------------
 
-  bool _isVideoFile(String name) {
-    final ext = _extension(name).toLowerCase();
-    return _videoExtensions.contains(ext);
+  /// Static + @visibleForTesting: this predicate silently gated every scan —
+  /// a dot-mismatch here made ALL 26 files in the reported folder invisible.
+  @visibleForTesting
+  static bool isVideoFile(String name) {
+    final dot = name.lastIndexOf('.');
+    if (dot < 0) return false;
+    // _videoExtensions entries carry the leading dot; keep it when comparing.
+    return _videoExtensions.contains(name.substring(dot).toLowerCase());
   }
+
+  bool _isVideoFile(String name) => isVideoFile(name);
 
   String _extension(String name) {
     final dot = name.lastIndexOf('.');

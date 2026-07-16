@@ -34,4 +34,14 @@ void main() {
       expect(LocalFolderClient.parseLooseEpisode('A Movie (2024).mkv'), isNull);
     });
   });
+
+  group('LocalFolderClient.isVideoFile', () {
+    test('recognises common video extensions (regression: 26 entries, 0 items)', () {
+      expect(LocalFolderClient.isVideoFile('Rooster.se1.ep6.mkv'), isTrue);
+      expect(LocalFolderClient.isVideoFile('movie.MP4'), isTrue);
+      expect(LocalFolderClient.isVideoFile('clip.webm'), isTrue);
+      expect(LocalFolderClient.isVideoFile('Rooster.se1.ep2.srt'), isFalse);
+      expect(LocalFolderClient.isVideoFile('noext'), isFalse);
+    });
+  });
 }
