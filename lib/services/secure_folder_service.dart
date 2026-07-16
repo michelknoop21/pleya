@@ -66,8 +66,14 @@ class SecureFolderService {
 
   Future<String> _resolve(LocalFolderConnection connection, String bookmark) async {
     try {
-      final result = await _channel.invokeMapMethod<String, Object?>('resolveBookmark', {'bookmark': bookmark});
+      appLogger.i('SecureFolder: resolving bookmark for ${connection.displayName}');
+      // Bookmark resolution can block indefinitely on an unresponsive File
+      // Provider extension — without a timeout the library spinner never ends.
+      final result = await _channel
+          .invokeMapMethod<String, Object?>('resolveBookmark', {'bookmark': bookmark})
+          .timeout(const Duration(seconds: 15));
       final path = result?['path'] as String? ?? connection.directoryUri;
+      appLogger.i('SecureFolder: bookmark resolved for ${connection.displayName} → $path');
       final freshBookmark = result?['bookmark'] as String?;
       _resolvedPaths[connection.id] = path;
       if (freshBookmark != null || path != connection.directoryUri) {
@@ -79,6 +85,10 @@ class SecureFolderService {
         }
       }
       return path;
+    } on TimeoutException {
+      lastListError = 'timeout resolving bookmark for ${connection.displayName}';
+      appLogger.w('SecureFolder: resolveBookmark timed out for ${connection.displayName}');
+      return connection.directoryUri;
     } catch (e) {
       appLogger.w('SecureFolder: resolveBookmark failed for ${connection.displayName}', error: e);
       return connection.directoryUri;

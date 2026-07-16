@@ -743,10 +743,13 @@ class LocalFolderClient implements MediaServerClient {
     await _loadWatchState();
 
     try {
+      appLogger.i('LocalFolderClient: scan start for ${connection.displayName} (${connection.libraryType})');
       // iOS/macOS: open the security scope from the stored bookmark first —
       // without it the sandbox denies every read and the library stays empty.
       final rootUri = await SecureFolderService.instance.ensureAccess(connection);
+      appLogger.i('LocalFolderClient: root access ok, listing $rootUri');
       final children = await SafStorageService.instance.list(rootUri);
+      appLogger.i('LocalFolderClient: listed ${children?.length ?? -1} entries for ${connection.displayName}');
       if (children == null) {
         // Unreadable root: likely a stale/expired security scope. Drop the
         // cached resolve so the next scan re-resolves the bookmark instead of
@@ -792,6 +795,7 @@ class LocalFolderClient implements MediaServerClient {
       }
 
       _applyWatchStateToCache();
+      appLogger.i('LocalFolderClient: scan done for ${connection.displayName} → ${_itemCache.length} items');
     } catch (e, st) {
       appLogger.w('LocalFolderClient: scan failed for $libraryId', error: e, stackTrace: st);
       lastScanError = '$e';
