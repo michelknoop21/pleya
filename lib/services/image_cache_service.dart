@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:io' show Directory;
 
 import 'package:cached_network_image_ce/cached_network_image.dart' show FileResponse;
 // CE's public conditional export hides the IO-only httpClientFactory parameter
@@ -13,6 +14,20 @@ import '../utils/media_server_http_client.dart';
 
 final _artworkHttpClient = MediaServerHttpClient(usePlexApiClient: true);
 final _artworkRequestLimiter = _RequestLimiter(6);
+
+/// Durable on-disk location for the artwork cache.
+///
+/// [getApplicationCacheDirectory] maps to iOS `Library/Caches`, which the OS
+/// purges under storage pressure — dropping the whole poster cache and forcing
+/// a re-download of every image on the next launch. Application Support is not
+/// auto-purged, so the cache survives restarts. A dedicated subfolder keeps the
+/// 3000-object pruning scoped to artwork.
+Future<Directory> _artworkCacheDirectory() async {
+  final base = await getApplicationSupportDirectory();
+  final dir = Directory('${base.path}/artwork_cache');
+  if (!await dir.exists()) await dir.create(recursive: true);
+  return dir;
+}
 
 Future<void> closeArtworkHttpClientGracefully({Duration drainTimeout = const Duration(seconds: 5)}) {
   return _artworkHttpClient.closeGracefully(drainTimeout: drainTimeout);
@@ -34,7 +49,7 @@ class PlexImageCacheManager extends ce_cache.DefaultCacheManager {
         stalePeriod: const Duration(days: 14),
         maxNrOfCacheObjects: 3000,
         httpClientFactory: () => _SharedHttpClient(_artworkHttpClient.inner),
-        cacheDirectoryProvider: getApplicationCacheDirectory,
+        cacheDirectoryProvider: _artworkCacheDirectory,
       );
 
   @override
