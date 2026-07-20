@@ -7,14 +7,25 @@ import '../media/media_item.dart';
 /// or an empty string skips the entry.
 typedef ArtworkUrlResolver = String? Function(String path);
 
-/// Stable storage key for artwork. Jellyfin image URLs carry `api_key` for
-/// fetching, but persisted DB rows and hashed local filenames must not contain
-/// long-lived tokens.
+/// Stable storage key for artwork. Jellyfin image URLs carry `api_key` and
+/// Plex transcode URLs carry `X-Plex-Token` (twice: as an outer param and
+/// inside the encoded `url=` param). Tokens rotate between sessions, so keys
+/// derived from the raw URL would miss the cache on every re-auth; persisted
+/// DB rows and hashed filenames must not contain long-lived tokens either.
 String artworkStorageKey(String pathOrUrl) {
   final uri = Uri.tryParse(pathOrUrl);
   if (uri == null || !uri.hasQuery) return pathOrUrl;
-  final params = Map<String, String>.from(uri.queryParameters)..remove('api_key');
-  return uri.replace(queryParameters: params.isEmpty ? null : params).toString();
+  final params = <String, String>{};
+  uri.queryParameters.forEach((key, value) {
+    final lower = key.toLowerCase();
+    if (lower == 'api_key' || lower == 'x-plex-token') return;
+    // Plex nests the source path (with its own token) inside `url=`.
+    params[key] = lower == 'url' ? artworkStorageKey(value) : value;
+  });
+  // replace(queryParameters: null) means "keep the original query", so strip
+  // the query manually when nothing survives.
+  if (params.isEmpty) return uri.removeFragment().toString().split('?').first;
+  return uri.replace(queryParameters: params).toString();
 }
 
 /// Build [DownloadArtworkSpec]s for the four standard [MediaItem] image

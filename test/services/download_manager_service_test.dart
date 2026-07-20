@@ -52,6 +52,25 @@ void main() {
       expect(artworkStorageKey(url), 'https://jf.example/Items/item-1/Images/Primary?tag=abc');
       expect(buildArtworkSpecs(_movie(thumbPath: url), (path) => path).single.localKey, isNot(contains('api_key')));
     });
+
+    test('removes X-Plex-Token, including inside the encoded url= param', () {
+      String plexUrl(String token) {
+        final encoded = Uri.encodeComponent('/library/metadata/1/thumb?X-Plex-Token=$token');
+        return 'https://plex.example/photo/:/transcode?width=300&height=450&minSize=1&upscale=1&url=$encoded&X-Plex-Token=$token';
+      }
+
+      final key = artworkStorageKey(plexUrl('token-a'));
+      expect(key, isNot(contains('token-a')));
+      expect(key, artworkStorageKey(plexUrl('token-b')));
+      expect(key, contains('width=300'));
+    });
+
+    test('different paths keep different keys', () {
+      expect(
+        artworkStorageKey('https://jf.example/Items/a/Images/Primary?api_key=t'),
+        isNot(artworkStorageKey('https://jf.example/Items/b/Images/Primary?api_key=t')),
+      );
+    });
   });
 
   group('lookupMetadata', () {

@@ -12,6 +12,7 @@ import '../mixins/disposable_change_notifier_mixin.dart';
 import '../mixins/event_aware.dart';
 import '../services/settings_service.dart';
 import '../services/data_aggregation_service.dart';
+import '../services/discover_snapshot.dart';
 import '../services/recommendations/hub_dedup.dart';
 import '../services/recommendations/recommendation_service.dart';
 import '../services/system_shelf_service.dart';
@@ -203,8 +204,14 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     // listening widgets dirty mid-build.
     await null;
     appLogger.d('DiscoverProvider: loading content from all servers');
-    _onDeckState = DiscoverLoadState.loading;
-    _hubsState = DiscoverLoadState.loading;
+    await _tryApplySnapshot();
+    // With a snapshot on screen, stay in the loaded state during the network
+    // refresh — flipping to loading would swap the rows for a skeleton.
+    final showingSnapshot = _onDeck.isNotEmpty || _hubs.isNotEmpty;
+    if (!showingSnapshot) {
+      _onDeckState = DiscoverLoadState.loading;
+      _hubsState = DiscoverLoadState.loading;
+    }
     _errorMessage = null;
     safeNotifyListeners();
 
@@ -266,14 +273,45 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       _loadedHubServerIds = fetchedHubs.succeededServerIds;
       safeNotifyListeners();
       unawaited(_loadRecommendationRows());
+      unawaited(
+        DiscoverSnapshot(
+          onDeck: _onDeck,
+          hubs: _hubs,
+          latestMovies: _latestMovies,
+        ).save().catchError((Object e) => appLogger.w('DiscoverProvider: snapshot save failed', error: e)),
+      );
     } catch (e) {
       appLogger.e('Failed to load discover content', error: e);
       if (isDisposed) return;
+      if (showingSnapshot) return; // Stale snapshot rows beat an error flash.
       _errorMessage = e.toString();
       _onDeckState = DiscoverLoadState.error;
       _hubsState = DiscoverLoadState.error;
       safeNotifyListeners();
     }
+  }
+
+  bool _snapshotChecked = false;
+
+  /// Cold-start path: publish the previous session's persisted home payload
+  /// before any network fetch so rows and posters (already in the image disk
+  /// cache) render instantly. Runs at most once, and only while nothing has
+  /// loaded yet.
+  Future<void> _tryApplySnapshot() async {
+    if (_snapshotChecked) return;
+    _snapshotChecked = true;
+    if (_onDeckState != DiscoverLoadState.initial || _onDeck.isNotEmpty || _hubs.isNotEmpty) return;
+    final snapshot = await DiscoverSnapshot.load();
+    if (snapshot == null || isDisposed) return;
+    if (snapshot.onDeck.isEmpty && snapshot.hubs.isEmpty) return;
+    appLogger.d('DiscoverProvider: showing snapshot (${snapshot.onDeck.length} on-deck, ${snapshot.hubs.length} hubs)');
+    _applyOnDeck(snapshot.onDeck);
+    _hubs = snapshot.hubs;
+    _latestMovies = snapshot.latestMovies;
+    _onDeckState = DiscoverLoadState.loaded;
+    _hubsState = DiscoverLoadState.loaded;
+    _loadGeneration++;
+    safeNotifyListeners();
   }
 
   /// Fetch Continue Watching + hubs from [serverIds] only (servers that came

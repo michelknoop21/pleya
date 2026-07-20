@@ -10,6 +10,7 @@ import 'package:pleya/widgets/app_icon.dart';
 
 import '../media/media_server_client.dart';
 import '../services/device_performance.dart';
+import '../services/download_artwork_helpers.dart';
 import '../services/image_cache_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/blurhash.dart';
@@ -397,6 +398,8 @@ class OptimizedMediaImage extends StatelessWidget {
     // so the URL hash alone uniquely identifies the bytes on disk. Including
     // mem-cache dimensions here would re-introduce churn on every pixel of
     // window resize and defeat getMemCacheDimensions' bucketing.
-    return 'plex_optimized_${sha1.convert(utf8.encode(imageUrl))}';
+    // Hash the token-free URL: auth tokens rotate between sessions and would
+    // otherwise invalidate the entire disk cache on every re-auth.
+    return 'plex_optimized_${sha1.convert(utf8.encode(artworkStorageKey(imageUrl)))}';
   }
 }

@@ -17,6 +17,7 @@ import '../focus/key_event_utils.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 
 import '../services/apple_tv_remote_touch_service.dart';
+import '../services/download_artwork_helpers.dart';
 import '../services/image_cache_service.dart';
 import '../media/media_item.dart';
 import '../media/media_item_types.dart';
@@ -1889,6 +1890,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           return blurArtwork(
                             CachedNetworkImage(
                               imageUrl: imageUrl,
+                              cacheKey: artworkStorageKey(imageUrl),
                               cacheManager: PlexImageCacheManager.instance,
                               fit: BoxFit.cover,
                               // Top-anchor the crop: hero art is taller than the
@@ -2014,6 +2016,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                                   return blurArtwork(
                                     CachedNetworkImage(
                                       imageUrl: logoUrl,
+                                      cacheKey: artworkStorageKey(logoUrl),
                                       cacheManager: PlexImageCacheManager.instance,
                                       filterQuality: FilterQuality.medium,
                                       fit: BoxFit.contain,
