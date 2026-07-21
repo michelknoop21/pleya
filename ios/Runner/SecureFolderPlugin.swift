@@ -47,6 +47,12 @@ public class SecureFolderPlugin: NSObject, FlutterPlugin, UIDocumentPickerDelega
         return
       }
       listDirectory(path, result: result)
+    case "resolvePlaybackPath":
+      guard let args = call.arguments as? [String: Any], let path = args["path"] as? String else {
+        result(FlutterError(code: "INVALID_ARGUMENT", message: "path required", details: nil))
+        return
+      }
+      resolvePlaybackPath(path, result: result)
     default:
       result(FlutterMethodNotImplemented)
     }
@@ -117,6 +123,35 @@ public class SecureFolderPlugin: NSObject, FlutterPlugin, UIDocumentPickerDelega
           return
         }
         result(entries)
+      }
+    }
+  }
+
+  /// Make [path] openable by libmpv at playback time. Files picked from another
+  /// app's File Provider (Infuse/Files/NAS) are denied unless (a) their scope is
+  /// active and (b) they are materialized on disk. Re-derive the scoped URL from
+  /// the retained root, start accessing it, and run a coordinated read to force
+  /// materialization; for a plain local scoped file the coordinated read is a
+  /// no-op. Returns the resolved path.
+  ///
+  /// A path not under any retained scope (e.g. Pleya's own download dir) is
+  /// returned as-is — those need no scope.
+  private func resolvePlaybackPath(_ path: String, result: @escaping FlutterResult) {
+    guard let url = scopedURL(for: path) else {
+      result(path)
+      return
+    }
+    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+      let accessing = url.startAccessingSecurityScopedResource()
+      var coordError: NSError?
+      NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordError) { _ in }
+      DispatchQueue.main.async {
+        // Keep the per-file scope open for the playback session. ponytail:
+        // bounded leak (one retained URL per distinct file played this session);
+        // stopAccess on the root path balances the root, per-file scopes drop at
+        // process exit. Add per-file stopAccess if this ever grows unbounded.
+        if accessing { self?.retainAccess(url) }
+        result(url.path)
       }
     }
   }

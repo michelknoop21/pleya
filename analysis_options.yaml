@@ -4,6 +4,9 @@ analyzer:
   exclude:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
+    # Standalone Dart package with its own pubspec/analysis; resolved and
+    # analyzed on its own, not as part of the Flutter app tree.
+    - "share_server/**"
   plugins:
     - dart_code_linter
 

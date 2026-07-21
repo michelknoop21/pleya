@@ -39,8 +39,35 @@ public class SecureFolderPlugin: NSObject, FlutterPlugin {
         return
       }
       listDirectory(path, result: result)
+    case "resolvePlaybackPath":
+      guard let args = call.arguments as? [String: Any], let path = args["path"] as? String else {
+        result(FlutterError(code: "INVALID_ARGUMENT", message: "path required", details: nil))
+        return
+      }
+      resolvePlaybackPath(path, result: result)
     default:
       result(FlutterMethodNotImplemented)
+    }
+  }
+
+  /// Make [path] openable by libmpv at playback time: re-derive the scoped URL
+  /// from the retained root, start accessing it, and run a coordinated read to
+  /// materialize File Provider items (a no-op for plain local scoped files).
+  /// A path under no retained scope (e.g. Pleya's own downloads) is returned
+  /// as-is. See the iOS plugin for the scope-lifetime note.
+  private func resolvePlaybackPath(_ path: String, result: @escaping FlutterResult) {
+    guard let url = scopedURL(for: path) else {
+      result(path)
+      return
+    }
+    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+      let accessing = url.startAccessingSecurityScopedResource()
+      var coordError: NSError?
+      NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordError) { _ in }
+      DispatchQueue.main.async {
+        if accessing { self?.retainAccess(url) }
+        result(url.path)
+      }
     }
   }
 

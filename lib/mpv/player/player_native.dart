@@ -4,6 +4,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 
 import '../../media/media_display_criteria.dart';
+import '../../services/secure_folder_service.dart';
 import '../models.dart';
 import 'player_base.dart';
 
@@ -209,6 +210,12 @@ class PlayerNative extends PlayerBase {
       if (fd != null) {
         uri = 'fdclose://$fd';
       }
+    } else if ((Platform.isIOS || Platform.isMacOS) && (uri.startsWith('/') || uri.startsWith('file://'))) {
+      // A local-folder file picked from another app (Infuse/Files/NAS via File
+      // Provider) needs its security scope re-opened and the file materialized
+      // before libmpv can open it by path. No-op for Pleya's own downloads.
+      final filePath = uri.startsWith('file://') ? Uri.parse(uri).toFilePath() : uri;
+      uri = await SecureFolderService.instance.resolvePlaybackPath(filePath);
     }
 
     final loadfileArgs = ['loadfile', uri, 'replace'];

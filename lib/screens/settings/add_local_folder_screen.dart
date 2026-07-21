@@ -33,7 +33,9 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
   String? _directoryUri;
   String? _bookmarkData;
   String _displayName = '';
-  String _libraryType = 'movies';
+  // Default to structure-agnostic scanning: a folder the user just points at
+  // plays regardless of movies/shows nesting. Movies/TV modes stay opt-in.
+  String _libraryType = 'mixed';
   bool _saving = false;
 
   @override
@@ -48,9 +50,7 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
             delegate: SliverChildListDelegate([
               Text(
                 t.addLocalFolder.description,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
               ),
               const SizedBox(height: 24),
 
@@ -91,11 +91,7 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
                       padding: const EdgeInsets.all(16),
                       child: Row(
                         children: [
-                          Icon(
-                            Symbols.folder_open_rounded,
-                            fill: 1,
-                            color: theme.colorScheme.primary,
-                          ),
+                          Icon(Symbols.folder_open_rounded, fill: 1, color: theme.colorScheme.primary),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -116,10 +112,7 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
               Text(t.addLocalFolder.nameLabel, style: theme.textTheme.titleSmall),
               const SizedBox(height: 8),
               TextField(
-                decoration: InputDecoration(
-                  hintText: t.addLocalFolder.nameHint,
-                  border: const OutlineInputBorder(),
-                ),
+                decoration: InputDecoration(hintText: t.addLocalFolder.nameHint, border: const OutlineInputBorder()),
                 onChanged: (value) => setState(() => _displayName = value),
               ),
               const SizedBox(height: 32),
@@ -217,9 +210,7 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
       if (added && mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(t.addLocalFolder.saveError)),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.addLocalFolder.saveError)));
       }
     } finally {
       if (mounted) setState(() => _saving = false);

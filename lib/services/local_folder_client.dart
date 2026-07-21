@@ -34,6 +34,7 @@ import '../services/saf_storage_service.dart';
 import '../services/secure_folder_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/external_ids.dart';
+import '../utils/global_key_utils.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import '../utils/watch_state_notifier.dart';
 import '../services/scrub_preview_source.dart';
@@ -650,7 +651,7 @@ class LocalFolderClient implements MediaServerClient {
     int? subtitleStreamIndex,
   }) async {
     await _loadWatchState();
-    final globalKey = '$connection.id:$itemId';
+    final globalKey = buildGlobalKey(ServerId(connection.id), itemId);
     _progressState[globalKey] = position.inMilliseconds;
     _watchedState[globalKey] = false;
     await _persistWatchState();
@@ -666,7 +667,7 @@ class LocalFolderClient implements MediaServerClient {
     PlaybackReportMetadata report = const PlaybackReportMetadata.live(),
   }) async {
     await _loadWatchState();
-    final globalKey = '$connection.id:$itemId';
+    final globalKey = buildGlobalKey(ServerId(connection.id), itemId);
     _progressState[globalKey] = position.inMilliseconds;
     if (duration != null && position.inMilliseconds > duration.inMilliseconds * watchedThreshold) {
       _watchedState[globalKey] = true;
@@ -786,11 +787,11 @@ class LocalFolderClient implements MediaServerClient {
         // TV / mixed: group flat episode files (Show.se1.ep6.mkv) into synthetic
         // shows so a season folder without Show/Season/ nesting still loads.
         final leftovers = _buildSyntheticShows(looseVideos, libraryId);
-        // Mixed keeps non-episode loose files as movies; a TV library ignores them.
-        if (!isTv) {
-          for (final file in leftovers) {
-            _cacheItem(_parseMovieFile(file, libraryId));
-          }
+        // Keep every remaining loose video as a playable item regardless of
+        // library type — a folder the user just points at must never silently
+        // drop files that don't match a naming convention.
+        for (final file in leftovers) {
+          _cacheItem(_parseMovieFile(file, libraryId));
         }
       }
 
@@ -954,12 +955,7 @@ class LocalFolderClient implements MediaServerClient {
   /// [_cleanName] without the file-extension strip (the caller already sliced
   /// off the SxxEyy marker, so a trailing token isn't an extension).
   static String _cleanTitle(String name) {
-    return name
-        .replaceAll('.', ' ')
-        .replaceAll('_', ' ')
-        .replaceAll('-', ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+    return name.replaceAll('.', ' ').replaceAll('_', ' ').replaceAll('-', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   /// Group loose episode files into synthetic show → season → episode items.
@@ -973,9 +969,7 @@ class LocalFolderClient implements MediaServerClient {
         leftovers.add(file);
         continue;
       }
-      byShow
-          .putIfAbsent(parsed.showTitle, () => [])
-          .add((file: file, season: parsed.season, episode: parsed.episode));
+      byShow.putIfAbsent(parsed.showTitle, () => []).add((file: file, season: parsed.season, episode: parsed.episode));
     }
     byShow.forEach((title, eps) => _cacheSyntheticShow(title, eps, libraryId));
     return leftovers;
@@ -1131,6 +1125,11 @@ class LocalFolderClient implements MediaServerClient {
   void _cacheItem(MediaItem item) {
     _itemCache[item.id] = item;
   }
+
+  /// Seed an item into the in-memory catalog without a folder scan — used by
+  /// watch-state round-trip tests.
+  @visibleForTesting
+  void cacheItemForTest(MediaItem item) => _cacheItem(item);
 
   /// File modification time (seconds) so "Recently Added" reflects the actual
   /// library instead of the scan moment; falls back to now for SAF entries

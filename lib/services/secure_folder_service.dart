@@ -128,6 +128,27 @@ class SecureFolderService {
     }
   }
 
+  /// iOS/macOS: make [path] readable by libmpv right before playback.
+  ///
+  /// A picked folder's security scope must be active when mpv opens a child
+  /// file, and File Provider items (Infuse/Files/NAS) must be materialized
+  /// first. The native side re-opens the per-file scope and runs a coordinated
+  /// read to trigger materialization, then returns a path mpv can open.
+  /// Returns [path] unchanged when not required or when the native call fails
+  /// (e.g. Pleya's own downloads, which need no scope).
+  Future<String> resolvePlaybackPath(String path) async {
+    if (!isRequired) return path;
+    try {
+      final resolved = await _channel
+          .invokeMethod<String>('resolvePlaybackPath', {'path': path})
+          .timeout(const Duration(seconds: 20));
+      return resolved ?? path;
+    } catch (e) {
+      appLogger.w('SecureFolder: resolvePlaybackPath failed for $path', error: e);
+      return path;
+    }
+  }
+
   void forget(String connectionId) {
     final path = _resolvedPaths.remove(connectionId);
     // Balance the native startAccessingSecurityScopedResource so the OS scope
