@@ -85,6 +85,22 @@ class PleyaShareHostService extends ChangeNotifier {
   /// Guests with a live session token (seen since host start).
   Set<String> get activePairIds => _tokens.values.toSet();
 
+  /// Base64 pairing salt for the QR deep link, or null when not sharing.
+  String? get pairSaltB64 => _pairSalt == null ? null : base64Encode(_pairSalt!);
+
+  /// Non-loopback IPv4 addresses guests can reach this host on (for the QR).
+  Future<List<String>> localIps() async {
+    try {
+      final interfaces = await NetworkInterface.list(type: InternetAddressType.IPv4, includeLoopback: false);
+      return [
+        for (final iface in interfaces)
+          for (final addr in iface.addresses) addr.address,
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
   Future<void> start({required List<LocalFolderClient> Function() clients, required String deviceName}) async {
     if (isRunning) return;
     _clientsResolver = clients;
@@ -105,10 +121,7 @@ class PleyaShareHostService extends ChangeNotifier {
     // Android: a native foreground service (notification + wifi/wake locks)
     // keeps the server alive in the background. Elsewhere the OS suspends
     // backgrounded apps, so keep the screen awake while sharing is on.
-    await PleyaShareForeground.start(
-      title: t.pleyaShare.notificationTitle,
-      text: t.pleyaShare.notificationText,
-    );
+    await PleyaShareForeground.start(title: t.pleyaShare.notificationTitle, text: t.pleyaShare.notificationText);
     try {
       await WakelockPlus.enable();
     } catch (_) {}

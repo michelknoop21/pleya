@@ -437,6 +437,8 @@ class SettingsService extends BaseSharedPreferencesService {
   static const showEpisodeNumberOnCards = BoolPref('show_episode_number_on_cards', defaultValue: true);
   static const showSeasonPostersOnTabs = BoolPref('show_season_posters_on_tabs');
   static const hideSpoilers = BoolPref('hide_spoilers');
+  // Mirror local-folder playback progress onto matched Plex/Jellyfin items.
+  static const syncLocalWatchState = BoolPref('sync_local_watch_state', defaultValue: true);
   static const showNavBarLabels = BoolPref('show_nav_bar_labels', defaultValue: true);
   static const globalShaderPreset = StringPref('global_shader_preset', defaultValue: 'none');
   static const requireProfileSelectionOnOpen = BoolPref('require_profile_selection_on_open');
@@ -858,6 +860,7 @@ class SettingsService extends BaseSharedPreferencesService {
     showEpisodeNumberOnCards,
     showSeasonPostersOnTabs,
     hideSpoilers,
+    syncLocalWatchState,
     showNavBarLabels,
     globalShaderPreset,
     requireProfileSelectionOnOpen,

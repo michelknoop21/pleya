@@ -52,6 +52,7 @@ import 'providers/offline_watch_provider.dart';
 import 'providers/shader_provider.dart';
 import 'utils/snackbar_helper.dart';
 import 'services/multi_server_manager.dart';
+import 'services/local_server_match_service.dart';
 import 'services/offline_watch_sync_service.dart';
 import 'services/data_aggregation_service.dart';
 import 'services/server_registry.dart';
@@ -510,6 +511,8 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     _downloadManager.recoveryFuture = _downloadManager.recoverInterruptedDownloads();
 
     _offlineWatchSyncService = OfflineWatchSyncService(database: _appDatabase, serverManager: _serverManager);
+    // Bridge local-folder playback progress to matched Plex/Jellyfin items.
+    LocalServerSyncBridge.initialize(manager: _serverManager, offlineSync: _offlineWatchSyncService);
 
     // Trakt sync service (subscribes to WatchStateNotifier, requires serverManager
     // to resolve PlexClients for GUID lookups).

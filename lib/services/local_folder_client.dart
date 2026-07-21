@@ -8,6 +8,7 @@ import '../i18n/strings.g.dart';
 
 import '../connection/connection.dart';
 import '../media/download_resolution.dart';
+import '../media/episode_collection.dart';
 import '../media/ids.dart';
 import '../media/library_filter_result.dart';
 import '../media/library_first_character.dart';
@@ -35,6 +36,7 @@ import '../services/secure_folder_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/external_ids.dart';
 import '../utils/global_key_utils.dart';
+import 'local_server_match_service.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import '../utils/watch_state_notifier.dart';
 import '../services/scrub_preview_source.dart';
@@ -269,7 +271,11 @@ class LocalFolderClient implements MediaServerClient {
 
   @override
   Future<List<MediaItem>> fetchChildren(String parentId) async {
-    return _itemCache.values.where((item) => item.parentId == parentId).toList();
+    final children = _itemCache.values.where((item) => item.parentId == parentId).toList();
+    // The scan caches files in directory-listing order; sort so seasons and
+    // episodes read in watch order (Plex/Jellyfin get this from the server).
+    sortEpisodesByWatchOrder(children);
+    return children;
   }
 
   @override
@@ -328,11 +334,8 @@ class LocalFolderClient implements MediaServerClient {
     final episodes = _itemCache.values
         .where((item) => item.kind == MediaKind.episode && item.grandparentId == seriesId)
         .toList();
-    episodes.sort((a, b) {
-      final aKey = '${a.parentIndex ?? 0}:${a.index ?? 0}';
-      final bKey = '${b.parentIndex ?? 0}:${b.index ?? 0}';
-      return aKey.compareTo(bKey);
-    });
+    // Numeric season→episode order; a string sort put "1:10" before "1:5".
+    sortEpisodesByWatchOrder(episodes);
     return episodes;
   }
 
@@ -655,6 +658,7 @@ class LocalFolderClient implements MediaServerClient {
     _progressState[globalKey] = position.inMilliseconds;
     _watchedState[globalKey] = false;
     await _persistWatchState();
+    _mirrorProgressToServer(itemId, position, duration);
   }
 
   @override
@@ -673,6 +677,20 @@ class LocalFolderClient implements MediaServerClient {
       _watchedState[globalKey] = true;
     }
     await _persistWatchState();
+    _mirrorProgressToServer(itemId, position, duration);
+  }
+
+  /// Push this local file's progress onto the matching Plex/Jellyfin item (if
+  /// the title is on a connected server), so watching locally keeps the
+  /// account's resume point correct. Fire-and-forget; safe no-op when disabled,
+  /// offline, or unmatched.
+  void _mirrorProgressToServer(String itemId, Duration position, Duration? duration) {
+    final bridge = LocalServerSyncBridge.instance;
+    final item = _itemCache[itemId];
+    if (bridge == null || item == null) return;
+    unawaited(
+      bridge.pushLocalProgress(item, viewOffsetMs: position.inMilliseconds, durationMs: duration?.inMilliseconds),
+    );
   }
 
   // ---------------------------------------------------------------------------
