@@ -487,6 +487,29 @@ class LocalFolderClient implements MediaServerClient {
   /// Cached catalog items (post-scan). Used by the local↔server sync bridge.
   List<MediaItem> get cachedItems => _itemCache.values.toList();
 
+  /// Overlay artwork/summary from the matched Plex/Jellyfin item so a local
+  /// file shows a real poster and description instead of a placeholder. URLs
+  /// are already absolute (resolved by the owning server client), so they load
+  /// directly. In-memory only — re-applied by the sync bridge after each scan.
+  void applyServerMetadata(
+    String itemId, {
+    String? thumbUrl,
+    String? artUrl,
+    String? logoUrl,
+    String? summary,
+    int? year,
+  }) {
+    final cached = _itemCache[itemId];
+    if (cached == null) return;
+    _itemCache[itemId] = cached.copyWith(
+      thumbPath: thumbUrl ?? cached.thumbPath,
+      artPath: artUrl ?? cached.artPath,
+      clearLogoPath: logoUrl ?? cached.clearLogoPath,
+      summary: summary ?? cached.summary,
+      year: year ?? cached.year,
+    );
+  }
+
   /// Apply watch state pulled from the matched Plex/Jellyfin item so continuing
   /// a title on the server updates the local view too. Merges to never lose
   /// newer local progress: progress = max(local, server), watched = OR.

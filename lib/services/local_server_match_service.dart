@@ -63,7 +63,9 @@ class LocalServerSyncBridge {
     bool titleMatches(String? a, String? b) => a != null && b != null && normalizeTitle(a) == normalizeTitle(b);
 
     List<MediaItem> qualifying;
-    if (local.kind == MediaKind.episode) {
+    if (local.kind == MediaKind.show) {
+      qualifying = candidates.where((c) => c.kind == MediaKind.show && titleMatches(c.title, local.title)).toList();
+    } else if (local.kind == MediaKind.episode) {
       qualifying = candidates.where((c) {
         return c.kind == MediaKind.episode &&
             c.parentIndex == local.parentIndex &&
@@ -111,7 +113,7 @@ class LocalServerSyncBridge {
             (r) => r.kind == MediaKind.show && normalizeTitle(r.title) == normalizeTitle(show),
           );
           candidates = [for (final s in shows) ...await client.fetchPlayableDescendants(s.id)];
-        } else if (local.kind == MediaKind.movie) {
+        } else if (local.kind == MediaKind.movie || local.kind == MediaKind.show) {
           final title = local.title;
           if (title == null || title.isEmpty) continue;
           candidates = await client.searchItems(title, limit: 20);
@@ -156,12 +158,14 @@ class LocalServerSyncBridge {
   /// copy the server's current progress/watched state into the local view, so a
   /// title continued on Plex/Jellyfin also resumes correctly locally. Merges
   /// (never lowers local progress). Safe no-op when disabled or offline.
-  Future<void> pullServerProgressToLocal() async {
+  Future<void> syncMatchedItemsFromServer() async {
     if (!await _enabled()) return;
     if (_manager.onlineClients.isEmpty) return;
     for (final localClient in _manager.localFolderClients) {
       final items = await localClient.scanAllItems();
-      for (final item in items.where((i) => i.kind.isPlayable)) {
+      // Playable items sync watch-state + artwork; shows get artwork only so
+      // the series poster/summary is real too.
+      for (final item in items.where((i) => i.kind.isPlayable || i.kind == MediaKind.show)) {
         try {
           final match = await resolve(item);
           if (match == null) continue;
@@ -169,10 +173,22 @@ class LocalServerSyncBridge {
           if (serverClient == null) continue;
           final serverItem = await serverClient.fetchItem(match.ratingKey);
           if (serverItem == null) continue;
-          await localClient.applyServerWatchState(
+          if (item.kind.isPlayable) {
+            await localClient.applyServerWatchState(
+              item.id,
+              viewOffsetMs: serverItem.viewOffsetMs,
+              watched: serverItem.isWatched,
+            );
+          }
+          // Overlay real artwork/summary from the matched server item.
+          String? abs(String? path) => (path == null || path.isEmpty) ? null : serverClient.thumbnailUrl(path);
+          localClient.applyServerMetadata(
             item.id,
-            viewOffsetMs: serverItem.viewOffsetMs,
-            watched: serverItem.isWatched,
+            thumbUrl: abs(serverItem.thumbPath),
+            artUrl: abs(serverItem.artPath),
+            logoUrl: abs(serverItem.clearLogoPath),
+            summary: serverItem.summary,
+            year: serverItem.year,
           );
         } catch (e) {
           appLogger.w('LocalServerSync: pull failed for "${item.title}"', error: e);
