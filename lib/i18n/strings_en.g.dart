@@ -4514,6 +4514,15 @@ class TranslationsPleyaShareEn {
 	/// en: '6-digit code'
 	String get codeLabel => '6-digit code';
 
+	/// en: 'Scan QR code'
+	String get scanQr => 'Scan QR code';
+
+	/// en: 'Point the camera at the QR code on the host device'
+	String get scanQrHint => 'Point the camera at the QR code on the host device';
+
+	/// en: 'Camera access is needed to scan the QR code.'
+	String get cameraPermissionDenied => 'Camera access is needed to scan the QR code.';
+
 	/// en: 'Connect'
 	String get connect => 'Connect';
 
@@ -6687,6 +6696,9 @@ extension on Translations {
 			'pleyaShare.refresh' => 'Search again',
 			'pleyaShare.manualHost' => 'Host address (IP)',
 			'pleyaShare.codeLabel' => '6-digit code',
+			'pleyaShare.scanQr' => 'Scan QR code',
+			'pleyaShare.scanQrHint' => 'Point the camera at the QR code on the host device',
+			'pleyaShare.cameraPermissionDenied' => 'Camera access is needed to scan the QR code.',
 			'pleyaShare.connect' => 'Connect',
 			'pleyaShare.pairFailed' => 'Pairing failed. Check the code and try again.',
 			'pleyaShare.paired' => ({required Object name}) => 'Connected to ${name}',

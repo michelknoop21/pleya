@@ -3,12 +3,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../services/pleya_share/pleya_share_device_name.dart';
 import '../../services/pleya_share/pleya_share_host_service.dart';
+import '../../services/pleya_share/pleya_share_uri.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import 'add_local_folder_screen.dart';
 
@@ -45,6 +47,28 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
   Future<void> _addFolder() async {
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddLocalFolderScreen()));
     if (mounted) setState(() {});
+  }
+
+  /// QR encoding the pair deep link (host IPs + port + code + salt) so a guest
+  /// can join by scanning instead of typing. Hidden until IPs resolve.
+  Widget _pairQr(String code) {
+    final salt = _service.pairSaltB64;
+    if (salt == null) return const SizedBox.shrink();
+    return FutureBuilder<List<String>>(
+      future: _service.localIps(),
+      builder: (context, snapshot) {
+        final ips = snapshot.data ?? const [];
+        if (ips.isEmpty) return const SizedBox.shrink();
+        final data = PleyaSharePairUri(ips: ips, port: _service.port, code: code, saltB64: salt).build();
+        return Center(
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+            child: QrImageView(data: data, size: 200, backgroundColor: Colors.white),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -115,6 +139,8 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      _pairQr(code),
                       const SizedBox(height: 8),
                       Text(
                         t.pleyaShare.pairCodeHint,

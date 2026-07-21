@@ -1761,6 +1761,9 @@ class _TranslationsPleyaShareNl extends TranslationsPleyaShareEn {
 	@override String get refresh => 'Opnieuw zoeken';
 	@override String get manualHost => 'Hostadres (IP)';
 	@override String get codeLabel => '6-cijferige code';
+	@override String get scanQr => 'QR-code scannen';
+	@override String get scanQrHint => 'Richt de camera op de QR-code op het host-apparaat';
+	@override String get cameraPermissionDenied => 'Camera-toegang is nodig om de QR-code te scannen.';
 	@override String get connect => 'Verbinden';
 	@override String get pairFailed => 'Koppelen mislukt. Controleer de code en probeer opnieuw.';
 	@override String paired({required Object name}) => 'Verbonden met ${name}';
@@ -3484,6 +3487,9 @@ extension on TranslationsNl {
 			'pleyaShare.refresh' => 'Opnieuw zoeken',
 			'pleyaShare.manualHost' => 'Hostadres (IP)',
 			'pleyaShare.codeLabel' => '6-cijferige code',
+			'pleyaShare.scanQr' => 'QR-code scannen',
+			'pleyaShare.scanQrHint' => 'Richt de camera op de QR-code op het host-apparaat',
+			'pleyaShare.cameraPermissionDenied' => 'Camera-toegang is nodig om de QR-code te scannen.',
 			'pleyaShare.connect' => 'Verbinden',
 			'pleyaShare.pairFailed' => 'Koppelen mislukt. Controleer de code en probeer opnieuw.',
 			'pleyaShare.paired' => ({required Object name}) => 'Verbonden met ${name}',

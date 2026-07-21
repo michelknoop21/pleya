@@ -11,8 +11,10 @@ import '../../focus/focusable_wrapper.dart';
 import '../../services/pleya_share/pleya_share_channel.dart';
 import '../../services/pleya_share/pleya_share_device_name.dart';
 import '../../services/pleya_share/pleya_share_protocol.dart';
+import '../../services/pleya_share/pleya_share_uri.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import 'connection_persistence.dart';
+import 'pleya_share_scan_screen.dart';
 
 /// Guest side of Pleya Share: discover hosts on the LAN (or enter an IP),
 /// enter the 6-digit code, pair, and register the host as a media source.
@@ -76,6 +78,21 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
   bool get _canConnect =>
       !_busy && _hostController.text.trim().isNotEmpty && RegExp(r'^\d{6}$').hasMatch(_codeController.text.trim());
 
+  /// Open the camera, and on a scanned host QR autofill the form and pair in
+  /// one step.
+  Future<void> _scan() async {
+    final result = await Navigator.of(
+      context,
+    ).push<PleyaSharePairUri>(MaterialPageRoute(builder: (_) => const PleyaShareScanScreen()));
+    if (result == null || !mounted || result.ips.isEmpty) return;
+    setState(() {
+      _hostController.text = result.ips.first;
+      _selectedPort = result.port;
+      _codeController.text = result.code;
+    });
+    await _connect();
+  }
+
   Future<void> _connect() async {
     if (!_canConnect) return;
     setState(() => _busy = true);
@@ -138,6 +155,13 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
               Text(
                 t.pleyaShare.joinDescription,
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
+              ),
+              const SizedBox(height: 16),
+
+              FilledButton.tonalIcon(
+                onPressed: _busy ? null : _scan,
+                icon: const Icon(Symbols.qr_code_scanner_rounded),
+                label: Text(t.pleyaShare.scanQr),
               ),
               const SizedBox(height: 24),
 
