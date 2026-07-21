@@ -152,6 +152,35 @@ class LocalServerSyncBridge {
     }
   }
 
+  /// Pull the other direction: for every local file that matches a server item,
+  /// copy the server's current progress/watched state into the local view, so a
+  /// title continued on Plex/Jellyfin also resumes correctly locally. Merges
+  /// (never lowers local progress). Safe no-op when disabled or offline.
+  Future<void> pullServerProgressToLocal() async {
+    if (!await _enabled()) return;
+    if (_manager.onlineClients.isEmpty) return;
+    for (final localClient in _manager.localFolderClients) {
+      final items = await localClient.scanAllItems();
+      for (final item in items.where((i) => i.kind.isPlayable)) {
+        try {
+          final match = await resolve(item);
+          if (match == null) continue;
+          final serverClient = _manager.getClient(match.serverId);
+          if (serverClient == null) continue;
+          final serverItem = await serverClient.fetchItem(match.ratingKey);
+          if (serverItem == null) continue;
+          await localClient.applyServerWatchState(
+            item.id,
+            viewOffsetMs: serverItem.viewOffsetMs,
+            watched: serverItem.isWatched,
+          );
+        } catch (e) {
+          appLogger.w('LocalServerSync: pull failed for "${item.title}"', error: e);
+        }
+      }
+    }
+  }
+
   Future<bool> _enabled() async {
     final settings = await SettingsService.getInstance();
     return settings.read(SettingsService.syncLocalWatchState);

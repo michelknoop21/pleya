@@ -484,6 +484,42 @@ class LocalFolderClient implements MediaServerClient {
     _itemCache[item.id] = updated;
   }
 
+  /// Cached catalog items (post-scan). Used by the local↔server sync bridge.
+  List<MediaItem> get cachedItems => _itemCache.values.toList();
+
+  /// Apply watch state pulled from the matched Plex/Jellyfin item so continuing
+  /// a title on the server updates the local view too. Merges to never lose
+  /// newer local progress: progress = max(local, server), watched = OR.
+  Future<void> applyServerWatchState(String itemId, {int? viewOffsetMs, bool? watched}) async {
+    await _loadWatchState();
+    final key = buildGlobalKey(ServerId(connection.id), itemId);
+    var changed = false;
+    if (viewOffsetMs != null && viewOffsetMs > (_progressState[key] ?? 0)) {
+      _progressState[key] = viewOffsetMs;
+      changed = true;
+    }
+    if (watched == true && _watchedState[key] != true) {
+      _watchedState[key] = true;
+      changed = true;
+    }
+    if (!changed) return;
+
+    final cached = _itemCache[itemId];
+    if (cached != null) {
+      final nowWatched = _watchedState[key] == true;
+      _itemCache[itemId] = cached.copyWith(
+        viewOffsetMs: _progressState[key],
+        viewCount: nowWatched ? 1 : cached.viewCount,
+      );
+      WatchStateNotifier().notifyWatched(
+        item: _itemCache[itemId]!,
+        isNowWatched: nowWatched,
+        cacheServerId: connection.id,
+      );
+    }
+    await _persistWatchState();
+  }
+
   @override
   Future<void> removeFromContinueWatching(MediaItem item) async {}
 

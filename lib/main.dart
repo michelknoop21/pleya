@@ -662,6 +662,9 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
         // App came back to foreground - trigger sync check
         _offlineWatchSyncService.onAppResumed();
         TraktSyncService.instance.flushQueue();
+        // Mirror server-side progress onto matched local files (the other
+        // direction; local→server pushes happen at playback time).
+        unawaited(LocalServerSyncBridge.instance?.pullServerProgressToLocal() ?? Future<void>.value());
         // Re-probe servers — mobile OS may have dropped TCP connections during doze/sleep.
         // On desktop, resumed fires on every window focus (alt-tab), so apply a cooldown
         // to avoid piling up network probes from rapid alt-tabbing.
