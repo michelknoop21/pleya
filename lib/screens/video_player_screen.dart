@@ -615,6 +615,13 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
           _recordLifecycleState('paused', action: 'skipped_for_pip');
           break;
         }
+        if (Platform.isIOS && !PlatformDetector.isTV()) {
+          // Background audio keeps playing (native vid=no) — keep the
+          // lock-screen media controls and let the wakelock stay managed by
+          // the OS; clearing controls here would kill the Now Playing card.
+          _recordLifecycleState('paused', action: 'background_audio');
+          break;
+        }
         // We don't support background playback
         if (_shouldSuspendMediaControlsForTvBackground) {
           unawaited(_suspendMediaControlsForTvBackground('paused'));

@@ -88,7 +88,13 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     }
 
     final isTv = PlatformDetector.isTV();
-    final shouldPauseForBackground = PlatformDetector.isHandheld(context) || isTv;
+    // iOS handhelds keep playing when backgrounded/locked: the native core
+    // switches to audio-only (MpvPlayerCore.enterBackground sets vid=no), so
+    // audio continues under lock and video restores on foreground. Pausing
+    // here would defeat that — and the pause/native-restore race left the
+    // player unresumable after unlock.
+    final iosBackgroundAudio = Platform.isIOS && !isTv;
+    final shouldPauseForBackground = !iosBackgroundAudio && (PlatformDetector.isHandheld(context) || isTv);
 
     // Pause first so Android MPV does not keep decoding against a transient
     // background surface while the app is locking or hiding.

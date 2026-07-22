@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../connection/connection.dart';
 import '../../media/download_resolution.dart';
+import '../../media/episode_collection.dart';
 import '../../media/ids.dart';
 import '../../media/library_filter_result.dart';
 import '../../media/library_first_character.dart';
@@ -301,7 +302,11 @@ class PleyaShareClient implements MediaServerClient {
   @override
   Future<List<MediaItem>> fetchChildren(String parentId) async {
     await _ensureSynced();
-    return _itemCache.values.where((item) => item.parentId == parentId).toList();
+    final children = _itemCache.values.where((item) => item.parentId == parentId).toList();
+    // The host serves items in scan order; sort so seasons and episodes read
+    // in watch order — same as LocalFolderClient.fetchChildren.
+    sortEpisodesByWatchOrder(children);
+    return children;
   }
 
   @override
