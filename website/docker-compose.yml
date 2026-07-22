@@ -5,3 +5,7 @@ services:
     restart: unless-stopped
     ports:
       - "8830:80"
+    volumes:
+      # Private downloads (APK's e.d.) — buiten de image zodat site-deploys
+      # ze niet weggooien. URL-pad bevat een geheim token.
+      - /volume1/docker/pleya/downloads:/downloads:ro
