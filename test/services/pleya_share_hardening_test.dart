@@ -10,6 +10,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/services/api_cache.dart';
 import 'package:pleya/services/local_folder_client.dart';
+import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/pleya_share/pleya_share_channel.dart';
 import 'package:pleya/services/pleya_share/pleya_share_client.dart';
@@ -66,6 +67,23 @@ void main() {
     HttpOverrides.global = savedOverrides;
     await db.close();
     tmp.deleteSync(recursive: true);
+  });
+
+  test('beacon interval slows to 15s while a guest is active, 3s when idle', () {
+    final now = DateTime(2026, 7, 22, 12);
+    host.lastGuestActivityForTest = null;
+    expect(host.beaconInterval(now: now), const Duration(seconds: 3));
+    host.lastGuestActivityForTest = now.subtract(const Duration(seconds: 30));
+    expect(host.beaconInterval(now: now), const Duration(seconds: 15));
+    host.lastGuestActivityForTest = now.subtract(const Duration(minutes: 2));
+    expect(host.beaconInterval(now: now), const Duration(seconds: 3));
+    host.lastGuestActivityForTest = null;
+  });
+
+  test('share poll backoff doubles and caps at 3 minutes', () {
+    expect(MultiServerManager.nextSharePollDelay(const Duration(seconds: 45)), const Duration(seconds: 90));
+    expect(MultiServerManager.nextSharePollDelay(const Duration(seconds: 90)), const Duration(minutes: 3));
+    expect(MultiServerManager.nextSharePollDelay(const Duration(minutes: 3)), const Duration(minutes: 3));
   });
 
   test('a legit in-flight pairing survives 40 spammed /pair/start challenges', () async {

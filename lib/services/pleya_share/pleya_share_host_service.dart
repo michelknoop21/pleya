@@ -189,9 +189,14 @@ class PleyaShareHostService extends ChangeNotifier {
     // keeps the server alive in the background. Elsewhere the OS suspends
     // backgrounded apps, so keep the screen awake while sharing is on.
     await PleyaShareForeground.start(title: t.pleyaShare.notificationTitle, text: t.pleyaShare.notificationText);
-    try {
-      await WakelockPlus.enable();
-    } catch (_) {}
+    // iOS (silent-audio keepalive) and Android (foreground service) keep the
+    // server alive with the screen off — forcing the screen on there just
+    // burns battery. Desktop/TV have no such path, so keep the wakelock.
+    if (!Platform.isIOS && !Platform.isAndroid) {
+      try {
+        await WakelockPlus.enable();
+      } catch (_) {}
+    }
     appLogger.i('PleyaShare: hosting on port ${server.port}');
     notifyListeners();
   }
@@ -213,9 +218,11 @@ class PleyaShareHostService extends ChangeNotifier {
     _pairCode = null;
     _pairSalt = null;
     await PleyaShareForeground.stop();
-    try {
-      await WakelockPlus.disable();
-    } catch (_) {}
+    if (!Platform.isIOS && !Platform.isAndroid) {
+      try {
+        await WakelockPlus.disable();
+      } catch (_) {}
+    }
     appLogger.i('PleyaShare: hosting stopped');
     notifyListeners();
   }
@@ -288,8 +295,30 @@ class PleyaShareHostService extends ChangeNotifier {
 
   // ── Discovery beacon ──
 
+  /// Last time an authorized guest hit any endpoint. Drives the adaptive
+  /// beacon interval below.
+  DateTime? _lastGuestActivity;
+
+  @visibleForTesting
+  set lastGuestActivityForTest(DateTime? value) => _lastGuestActivity = value;
+
+  /// Beacons every 3s while nobody is connected (fast discovery for a new
+  /// guest), but only every 15s once a guest has been active in the last
+  /// minute — paired guests reconnect via lastKnownIps/QR anyway, and each
+  /// broadcast costs radio wake-ups on a battery-powered host.
+  @visibleForTesting
+  Duration beaconInterval({DateTime? now}) {
+    final last = _lastGuestActivity;
+    final current = now ?? DateTime.now();
+    final active = last != null && current.difference(last) < const Duration(minutes: 1);
+    return active ? const Duration(seconds: 15) : const Duration(seconds: 3);
+  }
+
+  DateTime? _lastBeaconAt;
+
   Future<void> _startBeacon() async {
     _beaconSockets = await UdpBroadcastSockets.bind();
+    // 3s tick, but sends are throttled to the adaptive interval.
     _beaconTimer = Timer.periodic(const Duration(seconds: 3), (_) => _sendBeacon());
     _sendBeacon();
   }
@@ -297,6 +326,12 @@ class PleyaShareHostService extends ChangeNotifier {
   void _sendBeacon() {
     final sockets = _beaconSockets;
     if (sockets == null || sockets.isEmpty) return;
+    final now = DateTime.now();
+    final lastSent = _lastBeaconAt;
+    if (lastSent != null && now.difference(lastSent) < beaconInterval(now: now) - const Duration(milliseconds: 100)) {
+      return;
+    }
+    _lastBeaconAt = now;
     final beacon = jsonEncode({
       'app': PleyaShareProtocol.beaconApp,
       'v': PleyaShareProtocol.version,
@@ -359,7 +394,9 @@ class PleyaShareHostService extends ChangeNotifier {
       token = header.substring(7);
     }
     if (token == null) return null;
-    return _tokens[token];
+    final pairId = _tokens[token];
+    if (pairId != null) _lastGuestActivity = DateTime.now();
+    return pairId;
   }
 
   String _remoteIp(HttpRequest request) {

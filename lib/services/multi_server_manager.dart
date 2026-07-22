@@ -703,6 +703,27 @@ class MultiServerManager {
   /// covers "host comes online while the guest sits idle". One /ping (plus
   /// candidate discovery inside ensureConnected) per offline host per tick;
   /// stops itself as soon as every share host is reachable again.
+  /// Exponential backoff for the share poll: every tick runs a discovery
+  /// round (UDP bind + probes), which costs radio time — no point burning
+  /// battery every 45s when the host has been gone for an hour. Resets on
+  /// connectivity change / reconnect sweeps so recovery stays instant.
+  static Duration nextSharePollDelay(Duration previous) {
+    final doubled = previous * 2;
+    return doubled > const Duration(minutes: 3) ? const Duration(minutes: 3) : doubled;
+  }
+
+  static const _sharePollInitialDelay = Duration(seconds: 45);
+  Duration _sharePollDelay = _sharePollInitialDelay;
+
+  void resetSharePollBackoff() {
+    _sharePollDelay = _sharePollInitialDelay;
+    if (_sharePollTimer != null) {
+      _sharePollTimer?.cancel();
+      _sharePollTimer = null;
+      _ensureSharePolling();
+    }
+  }
+
   void _ensureSharePolling() {
     final offlineShares = _clients.entries
         .where((e) => e.value is PleyaShareClient && !(_serverStatus[e.key] ?? false))
@@ -710,9 +731,12 @@ class MultiServerManager {
     if (offlineShares.isEmpty) {
       _sharePollTimer?.cancel();
       _sharePollTimer = null;
+      _sharePollDelay = _sharePollInitialDelay;
       return;
     }
-    _sharePollTimer ??= Timer.periodic(const Duration(seconds: 45), (_) async {
+    _sharePollTimer ??= Timer(_sharePollDelay, () async {
+      _sharePollTimer = null;
+      _sharePollDelay = nextSharePollDelay(_sharePollDelay);
       // Re-entrancy guard: a sweep slower than the tick interval (discovery
       // inside ensureConnected can take seconds per host) must not overlap
       // the next tick's sweep.
@@ -915,6 +939,7 @@ class MultiServerManager {
 
             // Re-optimize all servers and re-probe offline ones
             _reoptimizeAllServers(reason: 'connectivity:${status.name}');
+            resetSharePollBackoff();
             checkServerHealth();
           });
         },
@@ -1084,6 +1109,7 @@ class MultiServerManager {
   /// Used by the manual reconnect button when the cached URL may be stale
   /// (e.g. after a network change while the app was backgrounded).
   Future<void> reconnectOfflineServers({bool forceRediscovery = false}) async {
+    resetSharePollBackoff();
     // Coalesce concurrent calls — but a force call must not silently degrade
     // to a running non-force sweep (the user pressed "reconnect" exactly
     // because cached endpoints are stale). Wait it out, then run force.
