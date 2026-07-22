@@ -7,6 +7,7 @@ import '../../utils/app_logger.dart';
 import '../../utils/udp_broadcast_sockets.dart';
 import 'pleya_share_pairing.dart';
 import 'pleya_share_protocol.dart';
+import 'pleya_share_relay_proxy.dart';
 
 /// A Pleya Share host seen via UDP discovery.
 class DiscoveredShareHost {
@@ -32,14 +33,22 @@ class PleyaShareChannel {
   String? _token;
   Future<bool>? _connecting;
   int _consecutiveFailures = 0;
+  PleyaShareRelayProxy? _relayProxy;
   final HttpClient _http = HttpClient()..connectionTimeout = const Duration(seconds: 4);
+
+  /// Relay base URL override for tests (defaults to ice.pleya.app).
+  static String? relayBaseUrlOverride;
 
   PleyaShareChannel(this.connection);
 
   String? get token => _token;
   String? get baseUrl => _baseUrl;
 
-  void close() => _http.close(force: true);
+  void close() {
+    _http.close(force: true);
+    _relayProxy?.stop();
+    _relayProxy = null;
+  }
 
   /// Absolute stream URL for [itemId], usable by mpv and the download
   /// pipeline. Only valid after [ensureConnected].
@@ -64,6 +73,29 @@ class PleyaShareChannel {
       }
     }
     _baseUrl = null;
+    // No LAN path — tunnel the same protocol through the internet relay.
+    // The proxy serves loopback HTTP, so auth and streamUrl work unchanged.
+    final relayHostId = connection.relayHostId;
+    if (relayHostId != null) {
+      await _relayProxy?.stop();
+      final proxy = PleyaShareRelayProxy(
+        relayHostId: relayHostId,
+        keyMaterial: base64Decode(connection.pairSecret),
+        pairId: connection.pairId,
+        baseUrl: relayBaseUrlOverride,
+      );
+      try {
+        await proxy.start();
+        _relayProxy = proxy;
+        _baseUrl = proxy.proxyBaseUrl;
+        if (await _authenticate()) return true;
+      } catch (e) {
+        appLogger.d('PleyaShare: relay fallback to ${connection.hostName} failed', error: e);
+      }
+      await proxy.stop();
+      _relayProxy = null;
+      _baseUrl = null;
+    }
     return false;
   }
 
@@ -169,6 +201,8 @@ class PleyaShareChannel {
         if (++_consecutiveFailures >= 2) {
           _baseUrl = null;
           _token = null;
+          unawaited(_relayProxy?.stop());
+          _relayProxy = null;
         }
         return null;
       }
@@ -194,6 +228,73 @@ class PleyaShareChannel {
   }
 
   // ── Pairing (used by the join screen) ──
+
+  /// Pair against the first reachable candidate IP. Candidates come from the
+  /// scanned QR plus this device's gateway guesses (hotspot: the host often IS
+  /// the gateway, e.g. 172.20.10.1, while the QR's first IP is a Wi-Fi address
+  /// the guest can't reach). Probes run in parallel; the pairing handshake
+  /// itself is only ever run against one host at a time so the one-time
+  /// challenge is never double-consumed. A wrong code aborts immediately.
+  static Future<PleyaShareConnection> pairAny({
+    required List<String> ips,
+    required int port,
+    required String code,
+    required String deviceName,
+    String? relayHostId,
+    String? saltB64,
+  }) async {
+    final candidates = <String>{...ips, ...await _localGatewayCandidates()}.toList();
+    // Two probe rounds: on iOS the first LAN packet triggers the local-network
+    // permission dialog and fails while it's up — round two runs after Allow.
+    var reachable = <String>[];
+    for (var round = 0; round < 2 && reachable.isEmpty; round++) {
+      if (round > 0) await Future<void>.delayed(const Duration(seconds: 2));
+      final probes = await Future.wait([
+        for (final ip in candidates) probeHost(ip, port, timeout: const Duration(milliseconds: 1500)),
+      ]);
+      reachable = [
+        for (final host in probes)
+          if (host != null) host.ip,
+      ];
+    }
+    // Probes can miss hosts that still accept TCP (odd firewalls) — fall back
+    // to trying every candidate directly.
+    PleyaSharePairException? lastError;
+    for (final ip in reachable.isNotEmpty ? reachable : candidates) {
+      try {
+        final connection = await pair(ip: ip, port: port, code: code, deviceName: deviceName);
+        // Keep the other advertised IPs as reconnect candidates.
+        final extras = [ip, ...ips.where((other) => other != ip)].take(5).toList();
+        return connection.copyWith(lastKnownIps: extras);
+      } on PleyaSharePairException catch (e) {
+        if (e.wrongCode) rethrow;
+        lastError = e;
+      }
+    }
+    // Different networks entirely (guest on 4G, host on Wi-Fi): pair through
+    // the internet relay using the code+salt from the QR as key material.
+    if (relayHostId != null && saltB64 != null) {
+      final pairingKey = await PleyaSharePairing.derivePairingKey(code, base64Decode(saltB64));
+      final proxy = PleyaShareRelayProxy(
+        relayHostId: relayHostId,
+        keyMaterial: pairingKey,
+        baseUrl: relayBaseUrlOverride,
+      );
+      try {
+        await proxy.start();
+        final connection = await pair(ip: '127.0.0.1', port: proxy.port, code: code, deviceName: deviceName);
+        return connection.copyWith(lastKnownIps: ips.take(5).toList(), relayHostId: relayHostId);
+      } on PleyaSharePairException catch (e) {
+        if (e.wrongCode) rethrow;
+        lastError = e;
+      } catch (e) {
+        appLogger.d('PleyaShare: relay pairing failed', error: e);
+      } finally {
+        await proxy.stop();
+      }
+    }
+    throw lastError ?? const PleyaSharePairException(wrongCode: false);
+  }
 
   /// Run the code-pairing flow against a host. Returns a ready-to-persist
   /// connection, or throws on wrong code / unreachable host.
@@ -246,6 +347,7 @@ class PleyaShareChannel {
         pairSecret: payload['pairSecret'] as String,
         lastKnownIps: [ip],
         port: port,
+        relayHostId: payload['relayHostId'] as String?,
         createdAt: DateTime.now(),
       );
     } on _HttpStatusException catch (e) {
@@ -364,6 +466,13 @@ class PleyaShareChannel {
 
   static Future<List<DiscoveredShareHost>> _discoverHosts({required Duration timeout}) async {
     final hosts = <String, DiscoveredShareHost>{};
+    // Hotspot fallback: AP isolation drops beacons, but the hotspot device is
+    // always the gateway — probe the .1 of every subnet we're on, concurrently
+    // with the UDP listen window so a probe hit doesn't wait out the timeout.
+    final gatewayProbes = _localGatewayCandidates().then((ips) async {
+      final probed = await Future.wait([for (final ip in ips) probeHost(ip, PleyaShareProtocol.sharePort)]);
+      return probed.whereType<DiscoveredShareHost>().toList();
+    });
     RawDatagramSocket? socket;
     try {
       socket = await RawDatagramSocket.bind(
@@ -392,12 +501,8 @@ class PleyaShareChannel {
     } finally {
       socket?.close();
     }
-    // Hotspot fallback: AP isolation drops beacons, but the hotspot device is
-    // always the gateway — probe the .1 of every subnet we're on directly.
-    for (final ip in await _localGatewayCandidates()) {
-      if (hosts.containsKey(ip)) continue;
-      final probed = await probeHost(ip, PleyaShareProtocol.sharePort);
-      if (probed != null) hosts[ip] = probed;
+    for (final probed in await gatewayProbes) {
+      hosts.putIfAbsent(probed.ip, () => probed);
     }
     return hosts.values.toList();
   }

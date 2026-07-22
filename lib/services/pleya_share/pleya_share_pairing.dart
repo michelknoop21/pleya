@@ -56,6 +56,18 @@ class PleyaSharePairing {
     return constantTimeEquals(expected, received);
   }
 
+  /// Key for E2E-encrypting relay frames, derived from the pairSecret
+  /// (reconnect) or the pairing key (first pairing). The relay server only
+  /// ever sees sealed frames plus room-routing metadata.
+  static Future<List<int>> deriveRelayKey(List<int> secret) async {
+    final derived = await _hkdf.deriveKey(
+      secretKey: SecretKey(secret),
+      nonce: utf8.encode('relay'),
+      info: utf8.encode('pleya-share-relay-v1'),
+    );
+    return derived.extractBytes();
+  }
+
   /// Session key for encrypting the pairing response payload.
   static Future<List<int>> deriveSessionKey(List<int> key, List<int> hostNonce, List<int> clientNonce) async {
     final derived = await _hkdf.deriveKey(

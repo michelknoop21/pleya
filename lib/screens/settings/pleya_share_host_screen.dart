@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -20,6 +21,17 @@ import 'add_local_folder_screen.dart';
 class PleyaShareHostScreen extends StatefulWidget {
   const PleyaShareHostScreen({super.key});
 
+  /// Hotspot-facing addresses first: when this host runs a personal hotspot
+  /// (iOS: 172.20.10.1) that is the IP a scanning guest can actually reach.
+  static List<String> orderIpsForPairing(List<String> ips) {
+    final ordered = [...ips];
+    ordered.sort((a, b) {
+      int rank(String ip) => ip.startsWith('172.20.10.') ? 0 : 1;
+      return rank(a).compareTo(rank(b));
+    });
+    return ordered;
+  }
+
   @override
   State<PleyaShareHostScreen> createState() => _PleyaShareHostScreenState();
 }
@@ -27,6 +39,23 @@ class PleyaShareHostScreen extends StatefulWidget {
 class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
   final _service = PleyaShareHostService.instance;
   bool _busy = false;
+  Timer? _ipRefresh;
+
+  @override
+  void initState() {
+    super.initState();
+    // Interfaces change while this screen is open (hotspot toggled on, Wi-Fi
+    // joined) — re-resolve so the QR always carries current, reachable IPs.
+    _ipRefresh = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted && _service.isRunning) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ipRefresh?.cancel();
+    super.dispose();
+  }
 
   Future<void> _toggle(bool enable) async {
     if (_busy) return;
@@ -57,9 +86,15 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
     return FutureBuilder<List<String>>(
       future: _service.localIps(),
       builder: (context, snapshot) {
-        final ips = snapshot.data ?? const [];
+        final ips = PleyaShareHostScreen.orderIpsForPairing(snapshot.data ?? const []);
         if (ips.isEmpty) return const SizedBox.shrink();
-        final data = PleyaSharePairUri(ips: ips, port: _service.port, code: code, saltB64: salt).build();
+        final data = PleyaSharePairUri(
+          ips: ips,
+          port: _service.port,
+          code: code,
+          saltB64: salt,
+          relayHostId: _service.relayHostId,
+        ).build();
         return Center(
           child: Container(
             padding: const EdgeInsets.all(12),

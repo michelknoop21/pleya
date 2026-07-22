@@ -12,7 +12,17 @@ class PleyaSharePairUri {
   final String code;
   final String saltB64;
 
-  const PleyaSharePairUri({required this.ips, required this.port, required this.code, required this.saltB64});
+  /// Host relay room id — lets the guest pair over the internet relay when
+  /// no advertised IP is reachable. Absent on pre-relay hosts.
+  final String? relayHostId;
+
+  const PleyaSharePairUri({
+    required this.ips,
+    required this.port,
+    required this.code,
+    required this.saltB64,
+    this.relayHostId,
+  });
 
   static const String scheme = 'pleya-share';
   static const String host = 'pair';
@@ -20,7 +30,13 @@ class PleyaSharePairUri {
   String build() => Uri(
     scheme: scheme,
     host: host,
-    queryParameters: {'ips': ips.join(','), 'port': '$port', 'code': code, 'salt': saltB64},
+    queryParameters: {
+      'ips': ips.join(','),
+      'port': '$port',
+      'code': code,
+      'salt': saltB64,
+      if (relayHostId != null) 'relay': relayHostId,
+    },
   ).toString();
 
   /// Parse a scanned string, or null when it isn't a valid pair link (so the
@@ -35,6 +51,13 @@ class PleyaSharePairUri {
     final ips = (q['ips'] ?? '').split(',').where((s) => s.isNotEmpty).toList();
     final port = int.tryParse(q['port'] ?? '') ?? PleyaShareProtocol.sharePort;
     if (ips.isEmpty) return null;
-    return PleyaSharePairUri(ips: ips, port: port, code: code, saltB64: salt);
+    final relay = q['relay'];
+    return PleyaSharePairUri(
+      ips: ips,
+      port: port,
+      code: code,
+      saltB64: salt,
+      relayHostId: relay == null || relay.isEmpty ? null : relay,
+    );
   }
 }

@@ -144,10 +144,10 @@ void main() {
 
   group('gatewayCandidatesFrom', () {
     test('derives .1 per /24, deduped, excluding own addresses', () {
-      expect(
-        PleyaShareChannel.gatewayCandidatesFrom(['172.20.10.4', '172.20.10.9', '192.168.1.23']),
-        ['172.20.10.1', '192.168.1.1'],
-      );
+      expect(PleyaShareChannel.gatewayCandidatesFrom(['172.20.10.4', '172.20.10.9', '192.168.1.23']), [
+        '172.20.10.1',
+        '192.168.1.1',
+      ]);
     });
 
     test('own address on .1 is excluded (device itself is the gateway)', () {

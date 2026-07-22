@@ -181,6 +181,9 @@ class PleyaShareClient implements MediaServerClient {
       _lastSyncFailure = null;
       unawaited(_ensureSynced(force: true));
     }
+    if (health == HealthStatus.online && _pendingWatch.isNotEmpty) {
+      unawaited(flushPendingWatch());
+    }
     _lastHealth = health;
     return health;
   }
@@ -478,14 +481,32 @@ class PleyaShareClient implements MediaServerClient {
 
   // ── Watch state ──
 
+  /// Watch updates that failed to reach the host; latest state per item.
+  /// Flushed before the next push and on the next successful health check so
+  /// progress made during a host blip isn't lost. In-memory only — the local
+  /// catalog already persists the state, so a restart just re-diverges until
+  /// the next play/progress event pushes again.
+  final Map<String, ({int progressMs, bool watched})> _pendingWatch = {};
+
   Future<void> _pushWatchState(String itemId, {required int progressMs, required bool watched}) async {
-    final ok = await channel.request(
-      'POST',
-      '/watch',
-      body: {'itemId': itemId, 'progressMs': progressMs, 'watched': watched},
-    );
-    if (ok == null) {
-      appLogger.d('PleyaShareClient: watch update for $itemId not delivered (host offline)');
+    _pendingWatch[itemId] = (progressMs: progressMs, watched: watched);
+    await flushPendingWatch();
+    if (_pendingWatch.containsKey(itemId)) {
+      appLogger.d('PleyaShareClient: watch update for $itemId not delivered (host offline), queued');
+    }
+  }
+
+  /// Retry queued watch updates; keeps whatever still fails.
+  Future<void> flushPendingWatch() async {
+    for (final entry in _pendingWatch.entries.toList()) {
+      final ok = await channel.request(
+        'POST',
+        '/watch',
+        body: {'itemId': entry.key, 'progressMs': entry.value.progressMs, 'watched': entry.value.watched},
+      );
+      if (ok == null) return; // Host unreachable — stop, keep the rest queued.
+      // Only clear if no newer state was queued for this item meanwhile.
+      if (_pendingWatch[entry.key] == entry.value) _pendingWatch.remove(entry.key);
     }
   }
 

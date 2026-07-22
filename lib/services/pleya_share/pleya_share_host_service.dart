@@ -15,6 +15,7 @@ import 'pleya_share_byte_source.dart';
 import 'pleya_share_foreground.dart';
 import 'pleya_share_pairing.dart';
 import 'pleya_share_protocol.dart';
+import 'pleya_share_relay_listener.dart';
 
 /// A paired guest device, persisted across host restarts.
 class PleyaShareGuest {
@@ -58,6 +59,11 @@ class PleyaShareHostService extends ChangeNotifier {
   HttpServer? _server;
   UdpBroadcastSocketSet? _beaconSockets;
   Timer? _beaconTimer;
+  PleyaShareRelayListener? _relayListener;
+  String? _relayHostId;
+
+  /// Relay base URL override for tests (defaults to ice.pleya.app).
+  String? relayBaseUrlOverride;
 
   List<LocalFolderClient> Function()? _clientsResolver;
   String _deviceName = 'Pleya';
@@ -87,6 +93,39 @@ class PleyaShareHostService extends ChangeNotifier {
 
   /// Base64 pairing salt for the QR deep link, or null when not sharing.
   String? get pairSaltB64 => _pairSalt == null ? null : base64Encode(_pairSalt!);
+
+  /// Stable relay room identity for this host, minted on first share and
+  /// persisted; guests store it so they can reach us over the internet when
+  /// no LAN path works.
+  String? get relayHostId => _relayHostId;
+
+  static const _relayHostIdPrefsKey = 'pleya_share_relay_host_id';
+
+  Future<String> _ensureRelayHostId() async {
+    if (_relayHostId != null) return _relayHostId!;
+    final prefs = await SharedPreferences.getInstance();
+    var id = prefs.getString(_relayHostIdPrefsKey);
+    if (id == null) {
+      id = base64UrlEncode(PleyaSharePairing.randomBytes(9)).replaceAll('=', '');
+      await prefs.setString(_relayHostIdPrefsKey, id);
+    }
+    return _relayHostId = id;
+  }
+
+  /// Relay-frame key material per envelope: the guest's stored secret for a
+  /// known pairId, or the current pairing key when the guest is code-pairing.
+  Future<List<int>?> _resolveRelayKey({String? pairId, required bool pairing}) async {
+    if (pairing) {
+      final code = _pairCode;
+      final salt = _pairSalt;
+      if (code == null || salt == null) return null;
+      return PleyaSharePairing.derivePairingKey(code, salt);
+    }
+    if (pairId == null) return null;
+    await _loadGuests();
+    final guest = _guests[pairId];
+    return guest == null ? null : base64Decode(guest.secretB64);
+  }
 
   /// Non-loopback IPv4 addresses guests can reach this host on (for the QR).
   Future<List<String>> localIps() async {
@@ -118,6 +157,16 @@ class PleyaShareHostService extends ChangeNotifier {
 
     regeneratePairCode(notify: false);
     await _startBeacon();
+    // Internet fallback: guests that can't reach us on the LAN tunnel the
+    // same HTTP protocol through the relay. Best-effort — retries while
+    // hosting when there's no connectivity.
+    _relayListener = PleyaShareRelayListener(
+      relayHostId: await _ensureRelayHostId(),
+      hostPort: server.port,
+      resolveKey: _resolveRelayKey,
+      baseUrl: relayBaseUrlOverride,
+    );
+    unawaited(_relayListener!.start());
     // Android: a native foreground service (notification + wifi/wake locks)
     // keeps the server alive in the background. Elsewhere the OS suspends
     // backgrounded apps, so keep the screen awake while sharing is on.
@@ -130,6 +179,8 @@ class PleyaShareHostService extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    await _relayListener?.stop();
+    _relayListener = null;
     _beaconTimer?.cancel();
     _beaconTimer = null;
     await _beaconSockets?.close();
@@ -276,7 +327,9 @@ class PleyaShareHostService extends ChangeNotifier {
     }
   }
 
-  static const _maxOpenChallenges = 32;
+  // High enough that a LAN peer spamming /pair/start can't cheaply evict a
+  // legitimate in-flight challenge; expiry (1 min TTL) does the real pruning.
+  static const _maxOpenChallenges = 128;
 
   void _pruneChallenges() {
     final now = DateTime.now();
@@ -356,6 +409,7 @@ class PleyaShareHostService extends ChangeNotifier {
       'pairSecret': base64Encode(pairSecret),
       'token': token,
       'name': _deviceName,
+      if (_relayHostId != null) 'relayHostId': _relayHostId,
     });
     notifyListeners();
     return _json(request, {'payload': payload});
@@ -406,7 +460,11 @@ class PleyaShareHostService extends ChangeNotifier {
     _limiter.reset(ip);
     final token = _issueToken(guest.pairId);
     final sessionKey = await PleyaSharePairing.deriveSessionKey(secret, challenge.hostNonce, clientNonce);
-    final payload = await PleyaSharePairing.encryptPayload(sessionKey, {'token': token, 'name': _deviceName});
+    final payload = await PleyaSharePairing.encryptPayload(sessionKey, {
+      'token': token,
+      'name': _deviceName,
+      if (_relayHostId != null) 'relayHostId': _relayHostId,
+    });
     return _json(request, {'payload': payload});
   }
 

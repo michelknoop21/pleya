@@ -86,24 +86,35 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
     ).push<PleyaSharePairUri>(MaterialPageRoute(builder: (_) => const PleyaShareScanScreen()));
     if (result == null || !mounted || result.ips.isEmpty) return;
     setState(() {
+      // Prefill so a failed attempt leaves a retryable form, but pair against
+      // ALL advertised IPs — on a hotspot the first one is often unreachable.
       _hostController.text = result.ips.first;
       _selectedPort = result.port;
       _codeController.text = result.code;
     });
-    await _connect();
+    await _connect(scanned: result);
   }
 
-  Future<void> _connect() async {
+  Future<void> _connect({PleyaSharePairUri? scanned}) async {
     if (!_canConnect) return;
     setState(() => _busy = true);
     try {
       final deviceName = await pleyaShareDeviceName();
-      final connection = await PleyaShareChannel.pair(
-        ip: _hostController.text.trim(),
-        port: _selectedPort,
-        code: _codeController.text.trim(),
-        deviceName: deviceName,
-      );
+      final connection = scanned != null
+          ? await PleyaShareChannel.pairAny(
+              ips: scanned.ips,
+              port: scanned.port,
+              code: scanned.code,
+              deviceName: deviceName,
+              relayHostId: scanned.relayHostId,
+              saltB64: scanned.saltB64,
+            )
+          : await PleyaShareChannel.pair(
+              ip: _hostController.text.trim(),
+              port: _selectedPort,
+              code: _codeController.text.trim(),
+              deviceName: deviceName,
+            );
       if (!mounted) return;
 
       final profile = widget.targetProfile ?? context.read<ActiveProfileProvider>().active;

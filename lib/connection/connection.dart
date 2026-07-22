@@ -513,6 +513,10 @@ class PleyaShareConnection extends Connection {
   /// Host HTTP port.
   final int port;
 
+  /// Host's relay room identity for internet fallback (null for hosts that
+  /// predate relay support).
+  final String? relayHostId;
+
   PleyaShareConnection({
     required this.id,
     required this.hostName,
@@ -520,6 +524,7 @@ class PleyaShareConnection extends Connection {
     required this.pairSecret,
     required this.lastKnownIps,
     required this.port,
+    this.relayHostId,
     this.status = ConnectionStatus.online,
     required this.createdAt,
     this.lastAuthenticatedAt,
@@ -542,6 +547,7 @@ class PleyaShareConnection extends Connection {
     String? pairSecret,
     List<String>? lastKnownIps,
     int? port,
+    String? relayHostId,
     ConnectionStatus? status,
     DateTime? lastAuthenticatedAt,
   }) {
@@ -552,6 +558,7 @@ class PleyaShareConnection extends Connection {
       pairSecret: pairSecret ?? this.pairSecret,
       lastKnownIps: lastKnownIps ?? this.lastKnownIps,
       port: port ?? this.port,
+      relayHostId: relayHostId ?? this.relayHostId,
       status: status ?? this.status,
       createdAt: createdAt,
       lastAuthenticatedAt: lastAuthenticatedAt ?? this.lastAuthenticatedAt,
@@ -566,6 +573,7 @@ class PleyaShareConnection extends Connection {
       'pairSecret': pairSecret,
       'lastKnownIps': lastKnownIps,
       'port': port,
+      if (relayHostId != null) 'relayHostId': relayHostId,
     };
   }
 
@@ -583,6 +591,7 @@ class PleyaShareConnection extends Connection {
       pairSecret: json['pairSecret'] as String? ?? '',
       lastKnownIps: (json['lastKnownIps'] as List?)?.cast<String>() ?? const [],
       port: (json['port'] as num?)?.toInt() ?? 48634,
+      relayHostId: json['relayHostId'] as String?,
       status: status,
       createdAt: createdAt,
       lastAuthenticatedAt: lastAuthenticatedAt,
