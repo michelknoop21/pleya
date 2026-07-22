@@ -150,7 +150,7 @@ class PleyaAwarePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             .setPskPassphrase(PASSPHRASE_PREFIX + serviceInfo)
                             .setPort(server.localPort)
                             .build()
-                        requestAwareNetwork(specifier) { /* responder side: nothing to dial */ }
+                        requestAwareNetwork(specifier) { _, _ -> /* responder side: nothing to dial */ }
                         // Accept exactly one socket per request on a worker.
                         executor.execute {
                             try {
