@@ -9,6 +9,9 @@ import '../../utils/app_logger.dart';
 import '../../utils/udp_broadcast_sockets.dart';
 import 'pleya_share_pairing.dart';
 import 'pleya_share_protocol.dart';
+import 'package:pleya_aware/pleya_aware.dart';
+
+import 'pleya_share_aware.dart';
 import 'pleya_share_relay_proxy.dart';
 
 /// A Pleya Share host seen via UDP discovery.
@@ -36,6 +39,7 @@ class PleyaShareChannel {
   Future<bool>? _connecting;
   int _consecutiveFailures = 0;
   PleyaShareRelayProxy? _relayProxy;
+  PleyaShareAwareProxy? _awareProxy;
   final HttpClient _http = HttpClient()..connectionTimeout = const Duration(seconds: 4);
 
   /// Relay base URL override for tests (defaults to ice.pleya.app).
@@ -47,6 +51,33 @@ class PleyaShareChannel {
   @visibleForTesting
   static bool discoveryDisabledForTest = false;
 
+  /// Indirection for the Wi-Fi Aware transport (test-injectable). Returns a
+  /// running loopback proxy to the matched Aware host, or null when Aware is
+  /// unsupported or no host is found. The HTTP auth handshake remains the
+  /// real identity check.
+  static Future<PleyaShareAwareProxy?> Function(String hostId) awareProxyProvider = defaultAwareProxyProvider;
+
+  static Future<PleyaShareAwareProxy?> defaultAwareProxyProvider(String hostId) async {
+    if (discoveryDisabledForTest) return null;
+    if (!await PleyaAware.isSupported()) return null;
+    try {
+      final hosts = await PleyaAware.discover();
+      // iOS advertises an endpoint name rather than our id — with exactly one
+      // host in range we try it and let auth decide.
+      final match = hosts.where((h) => h.serviceInfo == hostId).firstOrNull ?? (hosts.length == 1 ? hosts.first : null);
+      if (match == null) {
+        await PleyaAware.stopDiscovery();
+        return null;
+      }
+      final proxy = PleyaShareAwareProxy(host: match);
+      await proxy.start();
+      return proxy;
+    } catch (e) {
+      appLogger.d('PleyaShare: aware discovery failed', error: e);
+      return null;
+    }
+  }
+
   PleyaShareChannel(this.connection);
 
   String? get token => _token;
@@ -56,6 +87,8 @@ class PleyaShareChannel {
     _http.close(force: true);
     _relayProxy?.stop();
     _relayProxy = null;
+    _awareProxy?.stop();
+    _awareProxy = null;
   }
 
   /// Absolute stream URL for [itemId], usable by mpv and the download
@@ -81,9 +114,29 @@ class PleyaShareChannel {
       }
     }
     _baseUrl = null;
-    // No LAN path — tunnel the same protocol through the internet relay.
-    // The proxy serves loopback HTTP, so auth and streamUrl work unchanged.
+    // No LAN path. First try Wi-Fi Aware: direct peer-to-peer Wi-Fi, no
+    // router/hotspot/internet needed (additive; silently skipped when
+    // unsupported). Same loopback-HTTP trick as the relay.
     final relayHostId = connection.relayHostId;
+    if (relayHostId != null) {
+      await _awareProxy?.stop();
+      _awareProxy = null;
+      try {
+        final proxy = await awareProxyProvider(relayHostId);
+        if (proxy != null) {
+          _awareProxy = proxy;
+          _baseUrl = proxy.proxyBaseUrl;
+          if (await _authenticate()) return true;
+          await proxy.stop();
+          _awareProxy = null;
+          _baseUrl = null;
+        }
+      } catch (e) {
+        appLogger.d('PleyaShare: aware fallback failed', error: e);
+      }
+    }
+    // Then the internet relay. The proxy serves loopback HTTP, so auth and
+    // streamUrl work unchanged.
     if (relayHostId != null) {
       await _relayProxy?.stop();
       final proxy = PleyaShareRelayProxy(
@@ -208,6 +261,8 @@ class PleyaShareChannel {
           _token = null;
           unawaited(_relayProxy?.stop());
           _relayProxy = null;
+          unawaited(_awareProxy?.stop());
+          _awareProxy = null;
         }
         return null;
       } catch (e) {
@@ -221,6 +276,8 @@ class PleyaShareChannel {
           _token = null;
           unawaited(_relayProxy?.stop());
           _relayProxy = null;
+          unawaited(_awareProxy?.stop());
+          _awareProxy = null;
         }
         return null;
       }
@@ -287,6 +344,24 @@ class PleyaShareChannel {
       } on PleyaSharePairException catch (e) {
         if (e.wrongCode) rethrow;
         lastError = e;
+      }
+    }
+    // Routerless: try Wi-Fi Aware pairing before falling back to the relay.
+    if (relayHostId != null) {
+      PleyaShareAwareProxy? proxy;
+      try {
+        proxy = await awareProxyProvider(relayHostId);
+        if (proxy != null) {
+          final connection = await pair(ip: '127.0.0.1', port: proxy.port, code: code, deviceName: deviceName);
+          return connection.copyWith(lastKnownIps: ips.take(5).toList(), relayHostId: relayHostId);
+        }
+      } on PleyaSharePairException catch (e) {
+        if (e.wrongCode) rethrow;
+        lastError = e;
+      } catch (e) {
+        appLogger.d('PleyaShare: aware pairing failed', error: e);
+      } finally {
+        await proxy?.stop();
       }
     }
     // Different networks entirely (guest on 4G, host on Wi-Fi): pair through

@@ -1,0 +1,21 @@
+name: pleya_aware
+description: In-repo Wi-Fi Aware transport plugin for Pleya Share (Android WifiAwareManager, iOS 26 WiFiAware framework).
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: nl.michelknoop.pleya_aware
+        pluginClass: PleyaAwarePlugin
+      ios:
+        pluginClass: PleyaAwarePlugin

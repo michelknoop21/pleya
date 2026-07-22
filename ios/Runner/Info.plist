@@ -35,6 +35,16 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>WiFiAwareServices</key>
+	<dict>
+		<key>_pleya-share._tcp</key>
+		<dict>
+			<key>Publishable</key>
+			<true/>
+			<key>Subscribable</key>
+			<true/>
+		</dict>
+	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>This app needs to connect to your media servers on your local network.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

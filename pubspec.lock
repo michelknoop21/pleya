@@ -909,6 +909,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.6"
+  pleya_aware:
+    dependency: "direct main"
+    description:
+      path: "plugins/pleya_aware"
+      relative: true
+    source: path
+    version: "0.1.0"
   plugin_platform_interface:
     dependency: "direct dev"
     description:

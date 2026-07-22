@@ -39,6 +39,7 @@ Guest (PleyaShareClient) ──HTTP──▶ Host (PleyaShareHostService, poort 
 | Scenario | Pad |
 |---|---|
 | Zelfde Wi-Fi | beacons/direct IP |
+| Wi-Fi Aware (iOS 26+/Android 8+, additioneel) | routerloos P2P-Wi-Fi via plugins/pleya_aware; kandidaat tussen LAN en relay |
 | Personal hotspot | QR-IPs + gateway-probe (AP-isolation-proof) |
 | Kabel (ethernet-adapters, direct) | link-local 169.254.x.x in QR + beacons |
 | USB-C met USB-tethering op de host (Android, of iPhone→computer) | tether-interface; gateway-probes .1/.129/.254 |
@@ -52,6 +53,15 @@ met een computer als een van de twee kanten.
 Zonder internet start de app gewoon de bind-flow zolang er share/local-connections
 bestaan (`hasLanCapableConnections`, main.dart) — shares blijven zichtbaar en
 hervatten automatisch (join-row + `_ensureSharePolling`, 45s).
+
+## Wi-Fi Aware (additioneel transport)
+`plugins/pleya_aware` (in-repo plugin): Android WifiAwareManager (publish/subscribe,
+PSK-netwerk, socket over peer-IPv6) en iOS 26 WiFiAware-framework
+(NetworkListener/NetworkBrowser, `WiFiAwareServices` in Info.plist, eenmalige
+systeem-pairing via DeviceDiscoveryUI). Beide kanten zijn een pure byte-pipe naar
+de bestaande HTTP-stack (`pleya_share_aware.dart`). Volgorde: LAN -> Aware -> relay;
+`isSupported == false` slaat de stap stil over. iOS-kant vereist device-QA
+(Aware werkt niet in simulators); iPhone 12+ met iOS 26.
 
 ## Server-side vereiste (ice.pleya.app)
 Arbitraire rooms (`ps-<hostId>`, >2 peers), object-payloads pass-through in `sendTo`

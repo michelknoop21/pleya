@@ -57,6 +57,8 @@ PODS:
   - nanopb/encode (2.30910.0)
   - os_media_controls (0.2.4):
     - Flutter
+  - pleya_aware (0.1.0):
+    - Flutter
   - PromisesObjC (2.4.1)
   - universal_gamepad (0.1.0):
     - Flutter
@@ -66,6 +68,7 @@ DEPENDENCIES:
   - Flutter (from `Flutter`)
   - mobile_scanner (from `.symlinks/plugins/mobile_scanner/ios`)
   - os_media_controls (from `.symlinks/plugins/os_media_controls/ios`)
+  - pleya_aware (from `.symlinks/plugins/pleya_aware/ios`)
   - universal_gamepad (from `.symlinks/plugins/universal_gamepad/ios`)
 
 SPEC REPOS:
@@ -92,6 +95,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/mobile_scanner/ios"
   os_media_controls:
     :path: ".symlinks/plugins/os_media_controls/ios"
+  pleya_aware:
+    :path: ".symlinks/plugins/pleya_aware/ios"
   universal_gamepad:
     :path: ".symlinks/plugins/universal_gamepad/ios"
 
@@ -111,6 +116,7 @@ SPEC CHECKSUMS:
   mobile_scanner: 92e8812bf22a8f84131e2a7f9d0f44dad1a4742b
   nanopb: 438bc412db1928dac798aa6fd75726007be04262
   os_media_controls: 048eb9a75974191b2496d85575b6edcefc572d4e
+  pleya_aware: db15e14093418b7bc75d3f41a67ef692f278a24c
   PromisesObjC: 752c3227f599e3467650e47ea36f433eeb10c273
   universal_gamepad: 838bbb70d37d8c7c719038aa397214f2c4c4f866
 

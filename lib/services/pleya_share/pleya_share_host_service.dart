@@ -16,6 +16,7 @@ import 'pleya_share_byte_source.dart';
 import 'pleya_share_foreground.dart';
 import 'pleya_share_pairing.dart';
 import 'pleya_share_protocol.dart';
+import 'pleya_share_aware.dart';
 import 'pleya_share_relay_listener.dart';
 
 /// A paired guest device, persisted across host restarts.
@@ -61,6 +62,7 @@ class PleyaShareHostService extends ChangeNotifier {
   UdpBroadcastSocketSet? _beaconSockets;
   Timer? _beaconTimer;
   PleyaShareRelayListener? _relayListener;
+  PleyaShareAwareHost? _awareHost;
   String? _relayHostId;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   Timer? _connectivityDebounce;
@@ -184,6 +186,10 @@ class PleyaShareHostService extends ChangeNotifier {
       baseUrl: relayBaseUrlOverride,
     );
     unawaited(_relayListener!.start());
+    // Additive Wi-Fi Aware path: routerless peer-to-peer Wi-Fi (Android 8+,
+    // iOS 26+). No-op on unsupported devices; every existing path stays.
+    _awareHost = PleyaShareAwareHost(hostPort: server.port);
+    unawaited(_awareHost!.start(_relayHostId!));
     _startNetworkMonitoring();
     // Android: a native foreground service (notification + wifi/wake locks)
     // keeps the server alive in the background. Elsewhere the OS suspends
@@ -208,6 +214,8 @@ class PleyaShareHostService extends ChangeNotifier {
     _connectivitySub = null;
     await _relayListener?.stop();
     _relayListener = null;
+    await _awareHost?.stop();
+    _awareHost = null;
     _beaconTimer?.cancel();
     _beaconTimer = null;
     await _beaconSockets?.close();
