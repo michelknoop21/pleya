@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,7 +33,27 @@ class LocalServerSyncBridge {
   static LocalServerSyncBridge? get instance => _instance;
 
   static void initialize({required MultiServerManager manager, required OfflineWatchSyncService offlineSync}) {
-    _instance = LocalServerSyncBridge._(manager, offlineSync);
+    _instance?._statusSub?.cancel();
+    _instance = LocalServerSyncBridge._(manager, offlineSync).._listenForServersOnline();
+  }
+
+  // ignore: cancel_subscriptions — app-lifetime singleton; cancelled on re-initialize.
+  StreamSubscription<Map<String, bool>>? _statusSub;
+  DateTime? _lastAutoSync;
+  bool _syncing = false;
+
+  /// The app-resumed hook is the other sync trigger, but iOS never delivers
+  /// `resumed` on a cold start — so without this, local items show no poster
+  /// until the user backgrounds and returns. Sync as soon as any server
+  /// reports online, throttled so desktop's chatty status stream is cheap.
+  void _listenForServersOnline() {
+    _statusSub = _manager.statusStream.listen((status) {
+      if (!status.values.any((online) => online)) return;
+      final last = _lastAutoSync;
+      if (last != null && DateTime.now().difference(last) < const Duration(minutes: 2)) return;
+      _lastAutoSync = DateTime.now();
+      unawaited(syncMatchedItemsFromServer());
+    });
   }
 
   final MultiServerManager _manager;
@@ -159,8 +180,18 @@ class LocalServerSyncBridge {
   /// title continued on Plex/Jellyfin also resumes correctly locally. Merges
   /// (never lowers local progress). Safe no-op when disabled or offline.
   Future<void> syncMatchedItemsFromServer() async {
+    if (_syncing) return;
     if (!await _enabled()) return;
     if (_manager.onlineClients.isEmpty) return;
+    _syncing = true;
+    try {
+      await _syncMatchedItemsFromServer();
+    } finally {
+      _syncing = false;
+    }
+  }
+
+  Future<void> _syncMatchedItemsFromServer() async {
     for (final localClient in _manager.localFolderClients) {
       final items = await localClient.scanAllItems();
       // Playable items sync watch-state + artwork; shows get artwork only so
