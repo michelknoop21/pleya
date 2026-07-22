@@ -37,6 +37,7 @@ import '../utils/app_logger.dart';
 import '../utils/external_ids.dart';
 import '../utils/global_key_utils.dart';
 import 'local_server_match_service.dart';
+import 'server_matchable_client.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import '../utils/watch_state_notifier.dart';
 import '../services/scrub_preview_source.dart';
@@ -87,7 +88,7 @@ typedef LooseEpisode = ({String showTitle, int season, int episode});
 /// appears alongside Plex/Jellyfin servers in all browsing, search, and
 /// playback flows. Metadata is parsed from folder structure and filenames —
 /// no posters, cast, or server-side metadata.
-class LocalFolderClient implements MediaServerClient {
+class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   final LocalFolderConnection connection;
 
   /// In-memory scan cache: file URI → MediaItem.
@@ -491,6 +492,7 @@ class LocalFolderClient implements MediaServerClient {
   /// file shows a real poster and description instead of a placeholder. URLs
   /// are already absolute (resolved by the owning server client), so they load
   /// directly. In-memory only — re-applied by the sync bridge after each scan.
+  @override
   void applyServerMetadata(
     String itemId, {
     String? thumbUrl,
@@ -513,6 +515,7 @@ class LocalFolderClient implements MediaServerClient {
   /// Apply watch state pulled from the matched Plex/Jellyfin item so continuing
   /// a title on the server updates the local view too. Merges to never lose
   /// newer local progress: progress = max(local, server), watched = OR.
+  @override
   Future<void> applyServerWatchState(String itemId, {int? viewOffsetMs, bool? watched}) async {
     await _loadWatchState();
     final key = buildGlobalKey(ServerId(connection.id), itemId);
@@ -812,6 +815,7 @@ class LocalFolderClient implements MediaServerClient {
 
   /// All scanned items, scanning on first call. Used by Pleya Share hosting
   /// to serialize this source's full catalog for a guest device.
+  @override
   Future<List<MediaItem>> scanAllItems() => _scanLibrary(connection.id);
 
   /// Scan the configured directory and populate [_itemCache].

@@ -27,6 +27,8 @@ import '../../media/noop_live_tv_support.dart';
 import '../../media/playback_report_metadata.dart';
 import '../../media/server_capabilities.dart';
 import '../../services/api_cache.dart';
+import '../../services/local_server_match_service.dart';
+import '../../services/server_matchable_client.dart';
 import '../../services/playback_initialization_types.dart';
 import '../../services/scrub_preview_source.dart';
 import '../../utils/app_logger.dart';
@@ -42,7 +44,7 @@ import 'pleya_share_channel.dart';
 /// Range-supported `/stream/…` endpoint. Watch state is pushed to the host
 /// (which namespaces it per guest) and cached locally so browsing keeps
 /// working while the host is unreachable.
-class PleyaShareClient implements MediaServerClient {
+class PleyaShareClient implements MediaServerClient, ServerMatchableClient {
   final PleyaShareConnection connection;
   final PleyaShareChannel channel;
 
@@ -555,6 +557,71 @@ class PleyaShareClient implements MediaServerClient {
     await _persistPendingWatch();
   }
 
+  // ── ServerMatchableClient (sync bridge: Plex/Jellyfin match) ──
+
+  /// All shared items, for the sync bridge — same role as
+  /// LocalFolderClient.scanAllItems.
+  @override
+  Future<List<MediaItem>> scanAllItems() async {
+    await _ensureSynced();
+    return _itemCache.values.toList();
+  }
+
+  /// Overlay artwork/summary from the matched Plex/Jellyfin item so shared
+  /// items show a real poster instead of a placeholder. In-memory only, like
+  /// LocalFolderClient: the URLs embed the server token, which must not land
+  /// in plaintext prefs — the bridge re-applies after every sync.
+  @override
+  void applyServerMetadata(
+    String itemId, {
+    String? thumbUrl,
+    String? artUrl,
+    String? logoUrl,
+    String? summary,
+    int? year,
+  }) {
+    final cached = _itemCache[itemId];
+    if (cached == null) return;
+    _itemCache[itemId] = cached.copyWith(
+      thumbPath: thumbUrl ?? cached.thumbPath,
+      artPath: artUrl ?? cached.artPath,
+      clearLogoPath: logoUrl ?? cached.clearLogoPath,
+      summary: summary ?? cached.summary,
+      year: year ?? cached.year,
+    );
+  }
+
+  /// Watch state pulled from the matched Plex/Jellyfin item. Merges so newer
+  /// local progress is never lowered: progress = max, watched = OR.
+  @override
+  Future<void> applyServerWatchState(String itemId, {int? viewOffsetMs, bool? watched}) async {
+    final cached = _itemCache[itemId];
+    if (cached == null) return;
+    final mergedOffset = viewOffsetMs != null && viewOffsetMs > (cached.viewOffsetMs ?? 0)
+        ? viewOffsetMs
+        : cached.viewOffsetMs;
+    final nowWatched = watched == true || (cached.viewCount ?? 0) > 0;
+    if (mergedOffset == cached.viewOffsetMs && (nowWatched == ((cached.viewCount ?? 0) > 0))) return;
+    _itemCache[itemId] = cached.copyWith(viewOffsetMs: mergedOffset, viewCount: nowWatched ? 1 : cached.viewCount);
+    WatchStateNotifier().notifyWatched(
+      item: _itemCache[itemId]!,
+      isNowWatched: nowWatched,
+      cacheServerId: connection.id,
+    );
+    unawaited(_persistCatalog());
+  }
+
+  /// Mirror playback progress of a shared item onto the matching item on the
+  /// user's own Plex/Jellyfin server (episode-aware via the bridge matcher).
+  void _mirrorProgressToServer(String itemId, Duration position, Duration? duration) {
+    final bridge = LocalServerSyncBridge.instance;
+    final item = _itemCache[itemId];
+    if (bridge == null || item == null) return;
+    unawaited(
+      bridge.pushLocalProgress(item, viewOffsetMs: position.inMilliseconds, durationMs: duration?.inMilliseconds),
+    );
+  }
+
   void _updateCachedItem(String itemId, {int? progressMs, bool? watched}) {
     final cached = _itemCache[itemId];
     if (cached == null) return;
@@ -741,6 +808,7 @@ class PleyaShareClient implements MediaServerClient {
     int? subtitleStreamIndex,
   }) async {
     _updateCachedItem(itemId, progressMs: position.inMilliseconds);
+    _mirrorProgressToServer(itemId, position, duration);
     await _pushWatchState(itemId, progressMs: position.inMilliseconds, watched: false);
   }
 
@@ -755,6 +823,7 @@ class PleyaShareClient implements MediaServerClient {
   }) async {
     final watched = duration != null && position.inMilliseconds > duration.inMilliseconds * watchedThreshold;
     _updateCachedItem(itemId, progressMs: position.inMilliseconds, watched: watched ? true : null);
+    _mirrorProgressToServer(itemId, position, duration);
     await _pushWatchState(itemId, progressMs: position.inMilliseconds, watched: watched);
   }
 

@@ -196,6 +196,26 @@
         </div>
       </div>
     </ScrollReveal>
+
+    <!-- Pleya Share: device-to-device server (premium) -->
+    <ScrollReveal delay={330} class="bento-share">
+      <div class="glass-card feature-card more-card">
+        <div>
+          <p class="card-title">
+            Pleya Share <span class="premium-badge">Premium</span>
+          </p>
+          <p class="more-description">
+            Turn any phone, tablet, or computer into a mini media server. Pair another Pleya device
+            once with a QR code and stream your local files to it — over Wi-Fi, a personal hotspot,
+            or even a cable, no internet required. With internet on both sides it also works
+            remotely through Pleya's end-to-end encrypted relay, and multiple devices can stream
+            from one host at the same time. Watch progress and artwork stay in sync with your Plex
+            or Jellyfin account. Pleya Share will be part of Pleya's paid tier when pricing lands
+            after the beta.
+          </p>
+        </div>
+      </div>
+    </ScrollReveal>
   </div>
 </section>
 
@@ -609,7 +629,7 @@
   .bento-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
     gap: 1rem;
   }
 
@@ -650,6 +670,23 @@
     grid-column: 3 / 5;
     grid-row: 4 / 5;
   }
+  .bento-grid :global(.bento-share) {
+    grid-column: 1 / 5;
+    grid-row: 5 / 6;
+  }
+  .premium-badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-surface, #0b0b0f);
+    background: linear-gradient(120deg, #f5c76a, #e8a33d);
+    vertical-align: middle;
+  }
 
   /* Mobile: single column stack with HDR + Subtitles paired */
   @media (max-width: 639px) {
@@ -663,7 +700,8 @@
     .bento-grid :global(.bento-watch),
     .bento-grid :global(.bento-trackers),
     .bento-grid :global(.bento-more),
-    .bento-grid :global(.bento-requests) {
+    .bento-grid :global(.bento-requests),
+    .bento-grid :global(.bento-share) {
       grid-column: 1 / -1;
       grid-row: auto;
     }

@@ -117,7 +117,10 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
             );
       if (!mounted) return;
 
-      final profile = widget.targetProfile ?? context.read<ActiveProfileProvider>().active;
+      // Without a join row the binder never resumes this share on the next
+      // launch — fall back to the first known profile if none is active.
+      final activeProfiles = context.read<ActiveProfileProvider>();
+      final profile = widget.targetProfile ?? activeProfiles.active ?? activeProfiles.profiles.firstOrNull;
       final bindToProfile = profile != null
           ? ProfileConnection(profileId: profile.id, connectionId: connection.id, userIdentifier: connection.id)
           : null;
@@ -166,6 +169,23 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
               Text(
                 t.pleyaShare.joinDescription,
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
+              ),
+              const SizedBox(height: 8),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                shape: const Border(),
+                title: Text(t.pleyaShare.howItWorksTitle, style: theme.textTheme.titleSmall),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      t.pleyaShare.howItWorksBody,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
 

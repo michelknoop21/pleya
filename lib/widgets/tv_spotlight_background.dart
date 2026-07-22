@@ -441,6 +441,18 @@ class TvSpotlightBackground extends StatelessWidget {
     } else if (media.year != null) {
       addTextPart(media.year.toString());
     }
+    if (media.isWatched && !media.hasActiveProgress) {
+      addWidgetPart(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Symbols.check_circle_rounded, fill: 1, size: textStyle.fontSize, color: textStyle.color),
+            SizedBox(width: 4 * scale),
+            Text(t.discover.watched, maxLines: 1, style: textStyle),
+          ],
+        ),
+      );
+    }
 
     if (children.isEmpty) return const SizedBox.shrink();
 

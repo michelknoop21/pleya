@@ -137,9 +137,15 @@ class PleyaShareHostService extends ChangeNotifier {
   }
 
   /// Non-loopback IPv4 addresses guests can reach this host on (for the QR).
+  /// Link-local (169.254.x.x) is included: on a direct cable between two
+  /// devices (ethernet adapters, no router) that's the only address there is.
   Future<List<String>> localIps() async {
     try {
-      final interfaces = await NetworkInterface.list(type: InternetAddressType.IPv4, includeLoopback: false);
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLoopback: false,
+        includeLinkLocal: true,
+      );
       return [
         for (final iface in interfaces)
           for (final addr in iface.addresses) addr.address,
@@ -153,6 +159,7 @@ class PleyaShareHostService extends ChangeNotifier {
     if (isRunning) return;
     _clientsResolver = clients;
     _deviceName = deviceName;
+    invalidateScanCache();
     await _loadGuests();
     await _loadTokens();
 
@@ -538,13 +545,35 @@ class PleyaShareHostService extends ChangeNotifier {
 
   // ── Library / stream / watch ──
 
+  List<MediaItem>? _scanCache;
+  DateTime? _scanCacheAt;
+
+  /// Scan-result TTL: every /library AND /stream request needs the item
+  /// list, and with several guests streaming at once a full folder rescan
+  /// per request stacks up. 30s is fresh enough for a local library.
+  @visibleForTesting
+  static const scanCacheTtl = Duration(seconds: 30);
+
   Future<List<MediaItem>> _allItems() async {
+    final cached = _scanCache;
+    final cachedAt = _scanCacheAt;
+    if (cached != null && cachedAt != null && DateTime.now().difference(cachedAt) < scanCacheTtl) {
+      return cached;
+    }
     final clients = _clientsResolver?.call() ?? const [];
     final items = <MediaItem>[];
     for (final client in clients) {
       items.addAll(await client.scanAllItems());
     }
+    _scanCache = items;
+    _scanCacheAt = DateTime.now();
     return items;
+  }
+
+  /// Drop the scan cache (folder added/removed, or a test needs a rescan).
+  void invalidateScanCache() {
+    _scanCache = null;
+    _scanCacheAt = null;
   }
 
   Future<void> _handleLibrary(HttpRequest request, String pairId) async {

@@ -56,7 +56,6 @@ PlexAccountConnection _plex() {
   );
 }
 
-
 LocalFolderConnection _localFolder({String id = 'local-1'}) {
   return LocalFolderConnection(
     id: id,

@@ -206,7 +206,10 @@ class _LightRaysPainter extends CustomPainter {
 
       final paint = Paint()
         ..shader = RadialGradient(
-          colors: [const Color(0xFFE5140F).withValues(alpha: alpha), Colors.transparent],
+          colors: [
+            const Color(0xFFE5140F).withValues(alpha: alpha),
+            Colors.transparent,
+          ],
           stops: const [0.0, 1.0],
         ).createShader(Rect.fromCircle(center: center, radius: len));
 

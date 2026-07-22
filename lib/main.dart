@@ -434,6 +434,14 @@ bool shouldEnterOfflineModeAfterStartupBind({required bool bindingSucceeded, req
   return !bindingSucceeded && !hasOnlineServers;
 }
 
+/// Whether any connection works without internet (Pleya Share over
+/// LAN/hotspot/cable, or an on-device local folder). With one of these the
+/// startup flow must run the normal bind pass even when the connectivity
+/// check reports no network.
+@visibleForTesting
+bool hasLanCapableConnections(List<Connection> connections) =>
+    connections.any((c) => c.kind == ConnectionKind.pleyaShare || c.kind == ConnectionKind.local);
+
 /// Top-level PIN prompt used by [ActiveProfileBinder] when it runs above the
 /// profile-scoped widget tree. Routes through the app-global
 /// [rootNavigatorKey] so the dialog survives profile-session remounts. Returns
@@ -1157,8 +1165,12 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin, Si
 
     if (!mounted) return;
 
-    // No network — skip connection attempts and go straight to offline mode
-    if (!hasNetwork) {
+    // No network — skip connection attempts and go straight to offline mode.
+    // Exception: Pleya Share and local-folder sources are LAN/device-local
+    // and need no internet; with those present we run the normal bind flow
+    // (cloud servers simply fail) so shares stay visible and auto-resume on
+    // a hotspot/cable without internet.
+    if (!hasNetwork && !hasLanCapableConnections(allConnections)) {
       await _enterOfflineMode();
       return;
     }

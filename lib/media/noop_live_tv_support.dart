@@ -124,8 +124,10 @@ class NoopLiveTvSupport implements LiveTvSupport {
   Future<MediaGrabberDevice?> cancelGrabberDeviceScan(String deviceId) async => null;
 
   @override
-  Future<MediaGrabberDevice?> saveGrabberDeviceChannelMap(String deviceId, MediaGrabberChannelMapRequest request) async =>
-      null;
+  Future<MediaGrabberDevice?> saveGrabberDeviceChannelMap(
+    String deviceId,
+    MediaGrabberChannelMapRequest request,
+  ) async => null;
 
   @override
   Future<void> updateGrabberDevicePrefs(String deviceId, Map<String, Object?> prefs) async {}
@@ -143,8 +145,12 @@ class NoopLiveTvSupport implements LiveTvSupport {
   Future<List<LiveTvRegion>> fetchEpgRegions(String country, String epgId) async => [];
 
   @override
-  Future<LiveTvLineupResult> fetchEpgLineups(String country, String epgId, {String? postalCode, String? region}) async =>
-      LiveTvLineupResult(lineups: []);
+  Future<LiveTvLineupResult> fetchEpgLineups(
+    String country,
+    String epgId, {
+    String? postalCode,
+    String? region,
+  }) async => LiveTvLineupResult(lineups: []);
 
   @override
   Future<List<LiveTvChannel>> fetchEpgChannelsForLineup(String lineupUri) async => [];
@@ -153,8 +159,7 @@ class NoopLiveTvSupport implements LiveTvSupport {
   Future<List<LiveTvLineup>> fetchEpgChannelsForLineups(List<String> lineupUris) async => [];
 
   @override
-  Future<List<ChannelMapping>> computeEpgChannelMap({required String deviceUri, required String lineupUri}) async =>
-      [];
+  Future<List<ChannelMapping>> computeEpgChannelMap({required String deviceUri, required String lineupUri}) async => [];
 
   @override
   Future<LiveTvActivityResult<Map<String, dynamic>?>> findBestLineup({
@@ -166,10 +171,8 @@ class NoopLiveTvSupport implements LiveTvSupport {
   Future<List<SubscriptionTemplate>> getSubscriptionTemplate(String guid) async => [];
 
   @override
-  Future<List<MediaSubscription>> fetchRecordingRules({
-    bool includeGrabs = true,
-    bool includeStorage = true,
-  }) async => [];
+  Future<List<MediaSubscription>> fetchRecordingRules({bool includeGrabs = true, bool includeStorage = true}) async =>
+      [];
 
   @override
   Future<MediaSubscription?> fetchRecordingRule(

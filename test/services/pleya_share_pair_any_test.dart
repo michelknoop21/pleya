@@ -28,6 +28,7 @@ void main() {
   HttpOverrides? savedOverrides;
 
   setUp(() async {
+    PleyaShareChannel.discoveryDisabledForTest = true;
     savedOverrides = HttpOverrides.current;
     HttpOverrides.global = null;
     SharedPreferences.setMockInitialValues({});
@@ -89,11 +90,21 @@ void main() {
     expect(host.pairedGuests, isEmpty);
   });
 
-  test('orderIpsForPairing puts hotspot addresses first', () {
+  test('orderIpsForPairing: hotspot first, link-local (direct cable) last', () {
     expect(PleyaShareHostScreen.orderIpsForPairing(['192.168.1.10', '172.20.10.1', '10.0.0.5']), [
       '172.20.10.1',
       '192.168.1.10',
       '10.0.0.5',
     ]);
+    expect(PleyaShareHostScreen.orderIpsForPairing(['169.254.9.9', '192.168.1.10', '172.20.10.1']), [
+      '172.20.10.1',
+      '192.168.1.10',
+      '169.254.9.9',
+    ]);
+  });
+
+  test('gatewayCandidatesFrom skips link-local (no gateway on a direct cable)', () {
+    expect(PleyaShareChannel.gatewayCandidatesFrom(['169.254.12.34']), isEmpty);
+    expect(PleyaShareChannel.gatewayCandidatesFrom(['192.168.1.5', '169.254.12.34']), ['192.168.1.1']);
   });
 }

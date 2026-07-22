@@ -1431,7 +1431,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 child: ValueListenableBuilder<MediaItem?>(
                   valueListenable: _spotlightItem,
                   builder: (context, _, _) {
-                    final spotlight = _effectiveSpotlightItem;
+                    final rawSpotlight = _effectiveSpotlightItem;
+                    final spotlight = rawSpotlight == null ? null : context.withFreshWatchState(rawSpotlight);
                     // Netflix-style billboard: full hero treatment (large logo,
                     // metadata, summary) with focusable Play / More-info actions
                     // anchored just above the content rail. The billboard is a
@@ -1774,6 +1775,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   Widget _buildHeroItem(MediaItem heroItem, double heroHeight) {
+    // Fresh watch state so the hero shows (and live-updates) watched status.
+    heroItem = context.withFreshWatchState(heroItem);
     final heroClient = _getMediaClientForItem(heroItem);
     final isEpisode = heroItem.isEpisode;
     final showName = heroItem.grandparentTitle ?? heroItem.displayTitle;
@@ -2055,13 +2058,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           // No chips/badges — just quiet supporting text.
                           if (heroItem.year != null ||
                               heroItem.genres?.isNotEmpty == true ||
-                              heroItem.durationMs != null) ...[
+                              heroItem.durationMs != null ||
+                              heroItem.isWatched) ...[
                             const SizedBox(height: 16),
                             Text(
                               [
                                 if (heroItem.year != null) heroItem.year.toString(),
                                 if (heroItem.genres?.isNotEmpty == true) heroItem.genres!.first,
                                 if (heroItem.durationMs != null) formatDurationTextual(heroItem.durationMs!),
+                                if (heroItem.isWatched && !heroItem.hasActiveProgress) '\u2713 ${t.discover.watched}',
                               ].join(' • '),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: colorScheme.onSurface.withValues(alpha: 0.7),

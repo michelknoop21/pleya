@@ -35,12 +35,7 @@ class BackendBadge extends StatelessWidget {
         height: size,
         theme: SvgTheme(currentColor: tint),
       ),
-      MediaBackend.local => Icon(
-        Symbols.folder_rounded,
-        size: size,
-        fill: 1,
-        color: tint,
-      ),
+      MediaBackend.local => Icon(Symbols.folder_rounded, size: size, fill: 1, color: tint),
     };
   }
 }

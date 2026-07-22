@@ -23,10 +23,16 @@ class PleyaShareHostScreen extends StatefulWidget {
 
   /// Hotspot-facing addresses first: when this host runs a personal hotspot
   /// (iOS: 172.20.10.1) that is the IP a scanning guest can actually reach.
+  /// Link-local (direct-cable fallback) goes last so the common paths race
+  /// first — pairAny probes all of them anyway.
   static List<String> orderIpsForPairing(List<String> ips) {
     final ordered = [...ips];
     ordered.sort((a, b) {
-      int rank(String ip) => ip.startsWith('172.20.10.') ? 0 : 1;
+      int rank(String ip) => ip.startsWith('172.20.10.')
+          ? 0
+          : ip.startsWith('169.254.')
+          ? 2
+          : 1;
       return rank(a).compareTo(rank(b));
     });
     return ordered;
@@ -72,6 +78,23 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
       if (mounted) setState(() => _busy = false);
     }
   }
+
+  /// Compact in-app explainer so the server/client model is clear before
+  /// the user flips the toggle.
+  Widget _howItWorks(ThemeData theme) => ExpansionTile(
+    tilePadding: EdgeInsets.zero,
+    shape: const Border(),
+    title: Text(t.pleyaShare.howItWorksTitle, style: theme.textTheme.titleSmall),
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Text(
+          t.pleyaShare.howItWorksBody,
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.75)),
+        ),
+      ),
+    ],
+  );
 
   Future<void> _addFolder() async {
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddLocalFolderScreen()));
@@ -135,6 +158,8 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
                         color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    _howItWorks(theme),
                     const SizedBox(height: 16),
                     FocusableWrapper(
                       disableScale: true,

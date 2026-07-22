@@ -111,6 +111,7 @@ class PleyaShareRelayProxy {
     try {
       final body = request.method == 'POST' ? await utf8.decoder.bind(request).join() : null;
       final range = request.headers.value(HttpHeaders.rangeHeader);
+      final auth = request.headers.value(HttpHeaders.authorizationHeader);
       await _sendFrame(
         PleyaShareRelayFrame(
           id: id,
@@ -120,6 +121,9 @@ class PleyaShareRelayProxy {
             'p': request.uri.toString(),
             if (body != null && body.isNotEmpty) 'b': body,
             'range': ?range,
+            // Bearer session token — without forwarding it every
+            // authenticated call (e.g. /library) 401s over the relay.
+            'auth': ?auth,
           },
         ),
       );

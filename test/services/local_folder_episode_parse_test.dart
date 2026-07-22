@@ -22,10 +22,11 @@ void main() {
       expect(LocalFolderClient.parseLooseEpisode('Show.S02E05.mkv'), (showTitle: 'Show', season: 2, episode: 5));
       expect(LocalFolderClient.parseLooseEpisode('Show s3e12.mp4'), (showTitle: 'Show', season: 3, episode: 12));
       expect(LocalFolderClient.parseLooseEpisode('Show 2x08.mkv'), (showTitle: 'Show', season: 2, episode: 8));
-      expect(
-        LocalFolderClient.parseLooseEpisode('Show.season 1 episode 4.mkv'),
-        (showTitle: 'Show', season: 1, episode: 4),
-      );
+      expect(LocalFolderClient.parseLooseEpisode('Show.season 1 episode 4.mkv'), (
+        showTitle: 'Show',
+        season: 1,
+        episode: 4,
+      ));
     });
 
     test('does not mistake an s in the show name for a season marker', () {

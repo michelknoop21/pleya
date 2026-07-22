@@ -153,6 +153,8 @@ class PleyaShareRelayListener {
       final request = await _http.openUrl(method, Uri.parse('http://127.0.0.1:$hostPort$path'));
       final range = frame.fields['range'] as String?;
       if (range != null) request.headers.set(HttpHeaders.rangeHeader, range);
+      final auth = frame.fields['auth'] as String?;
+      if (auth != null) request.headers.set(HttpHeaders.authorizationHeader, auth);
       final body = frame.fields['b'] as String?;
       if (body != null) {
         request.headers.contentType = ContentType.json;

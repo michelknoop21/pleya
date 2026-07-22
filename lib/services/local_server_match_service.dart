@@ -4,8 +4,10 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../media/ids.dart';
+import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
+import '../media/media_server_client.dart';
 import '../utils/app_logger.dart';
 import 'multi_server_manager.dart';
 import 'offline_watch_sync_service.dart';
@@ -110,11 +112,21 @@ class LocalServerSyncBridge {
 
   // ── Resolution (network) ──
 
+  /// Real Plex/Jellyfin servers only — local folders and Pleya Share guests
+  /// (backend local) are never match candidates (an item would match itself)
+  /// and must not count as "online" for match decisions.
+  Iterable<MediaServerClient> get _matchableServers =>
+      _manager.onlineClients.values.where((c) => c.backend != MediaBackend.local);
+
   Future<ServerMatch?> resolve(MediaItem local) async {
     await _loadCache();
     final key = local.globalKey;
     if (_cache.containsKey(key)) return _cache[key];
 
+    // Don't cache a negative result when no real server was online during
+    // the search (e.g. LAN-only startup where Plex binds later) — that would
+    // permanently disable artwork/progress sync for this item.
+    if (_matchableServers.isEmpty) return null;
     final match = await _search(local);
     _cache[key] = match;
     await _persistCache();
@@ -122,7 +134,7 @@ class LocalServerSyncBridge {
   }
 
   Future<ServerMatch?> _search(MediaItem local) async {
-    final clients = _manager.onlineClients.values;
+    final clients = _matchableServers;
     for (final client in clients) {
       try {
         final List<MediaItem> candidates;
@@ -160,7 +172,7 @@ class LocalServerSyncBridge {
   /// feature is disabled, no confident match exists, or no servers are online.
   Future<void> pushLocalProgress(MediaItem local, {required int viewOffsetMs, int? durationMs}) async {
     if (!await _enabled()) return;
-    if (_manager.onlineClients.isEmpty) return;
+    if (_matchableServers.isEmpty) return;
     try {
       final match = await resolve(local);
       if (match == null) return;
@@ -182,7 +194,7 @@ class LocalServerSyncBridge {
   Future<void> syncMatchedItemsFromServer() async {
     if (_syncing) return;
     if (!await _enabled()) return;
-    if (_manager.onlineClients.isEmpty) return;
+    if (_matchableServers.isEmpty) return;
     _syncing = true;
     try {
       await _syncMatchedItemsFromServer();
@@ -192,7 +204,7 @@ class LocalServerSyncBridge {
   }
 
   Future<void> _syncMatchedItemsFromServer() async {
-    for (final localClient in _manager.localFolderClients) {
+    for (final localClient in _manager.serverMatchableClients) {
       final items = await localClient.scanAllItems();
       // Playable items sync watch-state + artwork; shows get artwork only so
       // the series poster/summary is real too.

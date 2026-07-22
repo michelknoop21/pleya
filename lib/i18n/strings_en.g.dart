@@ -2220,6 +2220,9 @@ class TranslationsDiscoverEn {
 	/// en: 'Movie'
 	String get movie => 'Movie';
 
+	/// en: 'Watched'
+	String get watched => 'Watched';
+
 	/// en: 'TV Show'
 	String get tvShow => 'TV Show';
 
@@ -4469,6 +4472,12 @@ class TranslationsPleyaShareEn {
 	/// en: 'Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running while your device is locked.'
 	String get hostDescriptionIos => 'Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running while your device is locked.';
 
+	/// en: 'How Pleya Share works'
+	String get howItWorksTitle => 'How Pleya Share works';
+
+	/// en: 'One device is the server: it shares its local folders. Other Pleya devices pair once with the QR code or the 6-digit code and can then browse, stream, and download from it. • Works over Wi-Fi, a personal hotspot, or an ethernet cable — no internet needed. • With internet on both devices, streaming also works remotely through the encrypted Pleya relay. • Paired devices reconnect automatically — pairing is needed only once. • Watch progress and artwork sync with your Plex or Jellyfin account when available.'
+	String get howItWorksBody => 'One device is the server: it shares its local folders. Other Pleya devices pair once with the QR code or the 6-digit code and can then browse, stream, and download from it.\n\n• Works over Wi-Fi, a personal hotspot, or an ethernet cable — no internet needed.\n• With internet on both devices, streaming also works remotely through the encrypted Pleya relay.\n• Paired devices reconnect automatically — pairing is needed only once.\n• Watch progress and artwork sync with your Plex or Jellyfin account when available.';
+
 	/// en: 'Share local folders'
 	String get hostToggle => 'Share local folders';
 
@@ -5895,6 +5904,7 @@ extension on Translations {
 			'discover.studio' => 'Studio',
 			'discover.rating' => 'Rating',
 			'discover.movie' => 'Movie',
+			'discover.watched' => 'Watched',
 			'discover.tvShow' => 'TV Show',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min left',
 			'discover.moreLikeThis' => 'More Like This',
@@ -6238,9 +6248,9 @@ extension on Translations {
 			'downloads.deletingWithProgress' => ({required Object title, required Object current, required Object total}) => 'Deleting ${title}... (${current} of ${total})',
 			'downloads.queuedTooltip' => 'Queued',
 			'downloads.queuedFilesTooltip' => ({required Object files}) => 'Queued ${files}',
-			'downloads.downloadingTooltip' => 'Downloading...',
 			_ => null,
 		} ?? switch (path) {
+			'downloads.downloadingTooltip' => 'Downloading...',
 			'downloads.downloadingFilesTooltip' => ({required Object files}) => 'Downloading ${files}',
 			'downloads.noDownloadsTree' => 'No downloads',
 			'downloads.pauseAll' => 'Pause all',
@@ -6684,6 +6694,8 @@ extension on Translations {
 			'pleyaShare.hostTitle' => 'Share my media',
 			'pleyaShare.hostDescription' => 'Other Pleya devices on this network can browse, stream, and download your local folders. Keep this screen open while sharing.',
 			'pleyaShare.hostDescriptionIos' => 'Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running while your device is locked.',
+			'pleyaShare.howItWorksTitle' => 'How Pleya Share works',
+			'pleyaShare.howItWorksBody' => 'One device is the server: it shares its local folders. Other Pleya devices pair once with the QR code or the 6-digit code and can then browse, stream, and download from it.\n\n• Works over Wi-Fi, a personal hotspot, or an ethernet cable — no internet needed.\n• With internet on both devices, streaming also works remotely through the encrypted Pleya relay.\n• Paired devices reconnect automatically — pairing is needed only once.\n• Watch progress and artwork sync with your Plex or Jellyfin account when available.',
 			'pleyaShare.hostToggle' => 'Share local folders',
 			'pleyaShare.noLocalFolders' => 'Add a local folder first — there is nothing to share yet.',
 			'pleyaShare.pairCodeLabel' => 'Pairing code',

@@ -30,6 +30,7 @@ void main() {
   HttpOverrides? savedOverrides;
 
   setUp(() async {
+    PleyaShareChannel.discoveryDisabledForTest = true;
     savedOverrides = HttpOverrides.current;
     HttpOverrides.global = null;
     SharedPreferences.setMockInitialValues({});
@@ -166,6 +167,8 @@ void main() {
 
     // Host comes back (guests persist); health check flushes the queue.
     await host.start(clients: () => [folderClient], deviceName: 'test-host');
+    // Parallel test isolates can steal 48634 — follow the host to its port.
+    client.channel.connection = client.channel.connection.copyWith(port: host.port);
     await client.checkHealth();
     // flushPendingWatch is fired unawaited from checkHealth — settle it.
     await client.flushPendingWatch();
@@ -194,7 +197,10 @@ void main() {
 
     // "App restart": fresh client on the same prefs, host back online.
     await host.start(clients: () => [folderClient], deviceName: 'test-host');
-    final client2 = PleyaShareClient(connection: connection, cache: ApiCache.forBackend(MediaBackend.local));
+    final client2 = PleyaShareClient(
+      connection: connection.copyWith(port: host.port),
+      cache: ApiCache.forBackend(MediaBackend.local),
+    );
     addTearDown(client2.channel.close);
     await client2.flushPendingWatch();
 

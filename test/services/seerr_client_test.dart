@@ -190,7 +190,10 @@ void main() {
         _session(),
         httpClient: MockClient((request) async {
           seen = request.url;
-          return _json({'results': [], 'pageInfo': {'pages': 1}}, 200);
+          return _json({
+            'results': [],
+            'pageInfo': {'pages': 1},
+          }, 200);
         }),
       );
       await client.getRequests(requestedBy: 42);

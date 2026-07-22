@@ -49,6 +49,12 @@ export const faqs: Faq[] = [
       "Yes, if you run Jellyseerr or Overseerr. Connect your requests server in Pleya and you can browse, search and request movies and shows without leaving the app, then follow each request as it moves from pending to available. Without a Jellyseerr or Overseerr server this feature simply stays hidden.",
   },
   {
+    id: "pleya-share",
+    question: "What is Pleya Share?",
+    answer:
+      "Pleya Share turns one of your devices into a mini media server for your other Pleya devices. Pair once with a QR code and stream local files over Wi-Fi, a personal hotspot, or a cable — no internet needed — or remotely through Pleya's end-to-end encrypted relay when both devices are online. Multiple devices can stream from one host at the same time, and watch progress and artwork sync with your Plex or Jellyfin account. Pleya Share is a premium feature: it will be part of Pleya's paid tier once pricing is announced after the beta.",
+  },
+  {
     id: "watch-together",
     question: "How does Watch Together work?",
     answer:

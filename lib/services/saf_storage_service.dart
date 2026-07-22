@@ -50,8 +50,7 @@ class SafStorageService {
 
   /// Create a subdirectory in a SAF directory
   /// Returns the URI of the created directory
-  Future<String?> createDirectory(String parentUri, String name) async =>
-      createNestedDirectories(parentUri, [name]);
+  Future<String?> createDirectory(String parentUri, String name) async => createNestedDirectories(parentUri, [name]);
 
   /// Traverse to a child file/directory under a directory.
   /// [names] is the path-component list from [parentUri] to the target;

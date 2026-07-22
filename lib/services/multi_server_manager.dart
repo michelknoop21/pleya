@@ -13,7 +13,9 @@ import 'jellyfin_endpoint_discovery.dart';
 import 'local_folder_client.dart';
 import 'secure_folder_service.dart';
 import 'pleya_share/pleya_share_client.dart';
+import 'pleya_share/pleya_share_host_service.dart';
 import 'plex_client.dart';
+import 'server_matchable_client.dart';
 import '../models/plex/plex_config.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_timeouts.dart';
@@ -627,6 +629,8 @@ class MultiServerManager {
 
   /// Add a local folder source. Always "online" — no health check needed.
   Future<bool> addLocalSource(LocalFolderConnection connection) async {
+    // A hosting session must see new folders immediately, not after the TTL.
+    PleyaShareHostService.instance.invalidateScanCache();
     try {
       final cache = ApiCache.forBackend(MediaBackend.plex);
       final client = LocalFolderClient(connection: connection, cache: cache);
@@ -734,8 +738,13 @@ class MultiServerManager {
   /// serves to guests.
   List<LocalFolderClient> get localFolderClients => _clients.values.whereType<LocalFolderClient>().toList();
 
+  /// Clients whose items the sync bridge matches against Plex/Jellyfin
+  /// (local folders + Pleya Share guests).
+  List<ServerMatchableClient> get serverMatchableClients => _clients.values.whereType<ServerMatchableClient>().toList();
+
   /// Tear down a local folder source's runtime client.
   void removeLocalSource(LocalFolderConnection connection) {
+    PleyaShareHostService.instance.invalidateScanCache();
     final client = _clients.remove(connection.id);
     if (client != null) _closeClient(client);
     // Drop the cached security-scope path so a re-added folder with the same

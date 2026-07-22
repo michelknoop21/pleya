@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import '../../connection/connection.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/udp_broadcast_sockets.dart';
@@ -38,6 +40,12 @@ class PleyaShareChannel {
 
   /// Relay base URL override for tests (defaults to ice.pleya.app).
   static String? relayBaseUrlOverride;
+
+  /// Tests run many hosts in parallel isolates on one machine; real UDP
+  /// beacons and gateway probes then leak other tests' hosts into the
+  /// candidate list. When true, only explicitly given IPs are used.
+  @visibleForTesting
+  static bool discoveryDisabledForTest = false;
 
   PleyaShareChannel(this.connection);
 
@@ -110,6 +118,7 @@ class PleyaShareChannel {
         }
       } catch (_) {}
     }
+    if (discoveryDisabledForTest) return;
     // Fall back to discovery beacons — the host may have a new DHCP lease.
     final discovered = await discoverHosts(timeout: const Duration(seconds: 3));
     for (final host in discovered) {
@@ -191,6 +200,15 @@ class PleyaShareChannel {
           continue;
         }
         appLogger.d('PleyaShare: $method $path → ${e.statusCode}');
+        // 502 = the local relay proxy lost its host. Count it like a
+        // transport failure so the dead tunnel gets torn down and the next
+        // request re-races LAN candidates / builds a fresh proxy.
+        if (e.statusCode == HttpStatus.badGateway && ++_consecutiveFailures >= 2) {
+          _baseUrl = null;
+          _token = null;
+          unawaited(_relayProxy?.stop());
+          _relayProxy = null;
+        }
         return null;
       } catch (e) {
         // One transient failure keeps _baseUrl/_token intact — an in-flight
@@ -243,7 +261,7 @@ class PleyaShareChannel {
     String? relayHostId,
     String? saltB64,
   }) async {
-    final candidates = <String>{...ips, ...await _localGatewayCandidates()}.toList();
+    final candidates = <String>{...ips, if (!discoveryDisabledForTest) ...await _localGatewayCandidates()}.toList();
     // Two probe rounds: on iOS the first LAN packet triggers the local-network
     // permission dialog and fails while it's up — round two runs after Allow.
     var reachable = <String>[];
@@ -370,10 +388,12 @@ class PleyaShareChannel {
   }
 
   /// Derive `.1` gateway candidates from this device's own IPv4 addresses.
-  /// Pure and testable; excludes the device's own addresses.
+  /// Pure and testable; excludes the device's own addresses. Link-local
+  /// (169.254.x.x, direct cable) has no gateway, so no `.1` guess there.
   static List<String> gatewayCandidatesFrom(List<String> ownIps) {
     final candidates = <String>{};
     for (final ip in ownIps) {
+      if (ip.startsWith('169.254.')) continue;
       final parts = ip.split('.');
       if (parts.length != 4) continue;
       final gateway = '${parts[0]}.${parts[1]}.${parts[2]}.1';
@@ -429,7 +449,9 @@ class PleyaShareChannel {
     final List<String> ownIps;
     try {
       final interfaces = await NetworkInterface.list(
-        includeLinkLocal: false,
+        // Direct cable: the only subnet may be the link-local one — sweep
+        // its own /24 like any other (the full /16 would be 65k probes).
+        includeLinkLocal: true,
         includeLoopback: false,
         type: InternetAddressType.IPv4,
       );

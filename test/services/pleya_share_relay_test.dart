@@ -96,6 +96,7 @@ void main() {
   HttpOverrides? savedOverrides;
 
   setUp(() async {
+    PleyaShareChannel.discoveryDisabledForTest = true;
     savedOverrides = HttpOverrides.current;
     HttpOverrides.global = null;
     SharedPreferences.setMockInitialValues({});
@@ -187,6 +188,48 @@ void main() {
     // Watch round-trip over relay.
     final watch = await channel.request('POST', '/watch', body: {'itemId': videoFile.path, 'progressMs': 1234});
     expect(watch!['ok'], true);
+  });
+
+  test('two guests stream concurrently through the same relay room', () async {
+    Future<PleyaShareChannel> pairViaRelay(String name) async {
+      final connection = await PleyaShareChannel.pairAny(
+        ips: ['10.255.255.1'],
+        port: host.port,
+        code: host.pairCode!,
+        deviceName: name,
+        relayHostId: host.relayHostId,
+        saltB64: host.pairSaltB64,
+      );
+      final channel = PleyaShareChannel(connection.copyWith(lastKnownIps: ['10.255.255.1']));
+      addTearDown(channel.close);
+      expect(await channel.ensureConnected(), isTrue);
+      return channel;
+    }
+
+    final a = await pairViaRelay('relay-a');
+    final b = await pairViaRelay('relay-b');
+
+    final http = HttpClient();
+    addTearDown(() => http.close(force: true));
+    Future<int> fetchAll(PleyaShareChannel channel) async {
+      final resp = await (await http.getUrl(Uri.parse(channel.streamUrl(videoFile.path)))).close();
+      return resp.fold<int>(0, (n, c) => n + c.length);
+    }
+
+    final sizes = await Future.wait([fetchAll(a), fetchAll(b)]);
+    expect(sizes, [200000, 200000]);
+
+    // Watch state stays per guest, ook via relay.
+    await a.request('POST', '/watch', body: {'itemId': videoFile.path, 'progressMs': 101});
+    await b.request('POST', '/watch', body: {'itemId': videoFile.path, 'progressMs': 202});
+    Future<int?> offsetFor(PleyaShareChannel channel) async {
+      final lib = await channel.request('GET', '/library');
+      final item = (lib!['items'] as List).cast<Map<String, dynamic>>().firstWhere((i) => i['id'] == videoFile.path);
+      return (item['viewOffsetMs'] as num?)?.toInt();
+    }
+
+    expect(await offsetFor(a), 101);
+    expect(await offsetFor(b), 202);
   });
 
   test('guest abort mid-stream cancels the host serve and the tunnel stays usable', () async {
