@@ -4,18 +4,21 @@ import 'package:flutter/services.dart';
 
 import '../../utils/app_logger.dart';
 
-/// Android-only bridge to the native foreground service that keeps the
-/// process (and thus the Dart HTTP server) alive while the app is
-/// backgrounded — with a persistent notification, a partial wakelock, and a
-/// high-perf wifi lock. No-op on every other platform (iOS suspends
-/// backgrounded apps regardless; there the host screen stays open).
+/// Bridge to the native keepalive that keeps the process (and thus the Dart
+/// HTTP server) alive while the app is backgrounded. Android: a foreground
+/// service with a persistent notification, partial wakelock, and high-perf
+/// wifi lock. iOS: a silent audio loop under the background-audio
+/// entitlement, so a hosting iPhone keeps serving guests when it locks.
+/// No-op elsewhere (desktop doesn't suspend backgrounded apps).
 class PleyaShareForeground {
   PleyaShareForeground._();
 
   static const _channel = MethodChannel('com.pleya/share_service');
 
+  static bool get _supported => Platform.isAndroid || Platform.isIOS;
+
   static Future<void> start({required String title, required String text}) async {
-    if (!Platform.isAndroid) return;
+    if (!_supported) return;
     try {
       await _channel.invokeMethod('start', {'title': title, 'text': text});
     } catch (e) {
@@ -24,7 +27,7 @@ class PleyaShareForeground {
   }
 
   static Future<void> stop() async {
-    if (!Platform.isAndroid) return;
+    if (!_supported) return;
     try {
       await _channel.invokeMethod('stop');
     } catch (e) {

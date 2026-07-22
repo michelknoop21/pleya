@@ -475,9 +475,14 @@ class PleyaShareChannel {
     });
     RawDatagramSocket? socket;
     try {
+      // reuseAddress matches companion-remote's LanDiscoveryService on the
+      // same port (48633), so whichever binds second doesn't fail outright
+      // on platforms without reusePort. A failed bind is non-fatal either
+      // way: the gateway probes below still find hotspot hosts.
       socket = await RawDatagramSocket.bind(
         InternetAddress.anyIPv4,
         PleyaShareProtocol.discoveryPort,
+        reuseAddress: true,
         reusePort: !Platform.isAndroid && !Platform.isWindows,
       );
       socket.broadcastEnabled = true;

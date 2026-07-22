@@ -12,6 +12,10 @@ import MediaPlayer
   private weak var volumeSlider: UISlider?
   private var airPlayChannel: FlutterMethodChannel?
   private var airPlayRoutePicker: AVRoutePickerView?
+  private var shareKeepaliveChannel: FlutterMethodChannel?
+  private var shareKeepaliveEngine: AVAudioEngine?
+  private var shareKeepaliveWanted = false
+  private var shareKeepaliveObservers: [NSObjectProtocol] = []
 
   override func application(
     _ application: UIApplication,
@@ -54,6 +58,110 @@ import MediaPlayer
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SecureFolderPlugin") {
       SecureFolderPlugin.register(with: registrar)
     }
+
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ShareServiceChannel") {
+      registerShareServiceChannel(messenger: registrar.messenger())
+    }
+  }
+
+  // MARK: - Pleya Share host keepalive
+
+  // iOS suspends backgrounded apps, which would kill the in-app Pleya Share
+  // HTTP server the moment the hosting iPhone locks — stopping playback on
+  // every guest. While sharing is on we loop a silent audio buffer under the
+  // existing background-audio entitlement so the process (and thus guest
+  // streams) keeps running with the screen locked.
+  private func registerShareServiceChannel(messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(name: "com.pleya/share_service", binaryMessenger: messenger)
+    shareKeepaliveChannel = channel
+    channel.setMethodCallHandler { [weak self] call, result in
+      switch call.method {
+      case "start":
+        self?.startShareKeepalive()
+        result(nil)
+      case "stop":
+        self?.stopShareKeepalive()
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  private func startShareKeepalive() {
+    shareKeepaliveWanted = true
+    installShareKeepaliveObservers()
+    startShareKeepaliveEngine()
+  }
+
+  // A phone call, Siri, or a media-services reset stops the engine; as long
+  // as sharing is on, restart it the moment the interruption ends so guests
+  // only see a blip instead of a dead host.
+  private func installShareKeepaliveObservers() {
+    guard shareKeepaliveObservers.isEmpty else { return }
+    let center = NotificationCenter.default
+    shareKeepaliveObservers.append(
+      center.addObserver(
+        forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
+      ) { [weak self] notification in
+        guard let self, self.shareKeepaliveWanted else { return }
+        let rawType = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+        if rawType.flatMap(AVAudioSession.InterruptionType.init(rawValue:)) == .ended {
+          self.restartShareKeepaliveEngine()
+        }
+      })
+    shareKeepaliveObservers.append(
+      center.addObserver(
+        forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main
+      ) { [weak self] _ in
+        guard let self, self.shareKeepaliveWanted else { return }
+        self.restartShareKeepaliveEngine()
+      })
+  }
+
+  private func restartShareKeepaliveEngine() {
+    shareKeepaliveEngine?.stop()
+    shareKeepaliveEngine = nil
+    startShareKeepaliveEngine()
+  }
+
+  private func startShareKeepaliveEngine() {
+    guard shareKeepaliveEngine == nil else { return }
+    do {
+      // mixWithOthers: the silent loop must never interrupt real playback
+      // (the host's own, or another app's).
+      let session = AVAudioSession.sharedInstance()
+      try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+      try session.setActive(true)
+
+      let engine = AVAudioEngine()
+      let player = AVAudioPlayerNode()
+      engine.attach(player)
+      guard let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1),
+        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 44100)
+      else { return }
+      buffer.frameLength = 44100  // one second of silence (zeroed buffer)
+      engine.connect(player, to: engine.mainMixerNode, format: format)
+      engine.mainMixerNode.outputVolume = 0
+      try engine.start()
+      player.scheduleBuffer(buffer, at: nil, options: .loops)
+      player.play()
+      shareKeepaliveEngine = engine
+    } catch {
+      print("Share keepalive failed: \(error)")
+    }
+  }
+
+  private func stopShareKeepalive() {
+    shareKeepaliveWanted = false
+    for observer in shareKeepaliveObservers {
+      NotificationCenter.default.removeObserver(observer)
+    }
+    shareKeepaliveObservers.removeAll()
+    shareKeepaliveEngine?.stop()
+    shareKeepaliveEngine = nil
+    // Restore the plain playback category the player expects.
+    try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
   }
 
   private func registerAirPlayChannel(messenger: FlutterBinaryMessenger) {

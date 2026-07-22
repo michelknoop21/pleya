@@ -873,6 +873,9 @@ class CompanionRemotePeerService with KeepaliveMixin {
     socket.add(encrypted);
   }
 
+  int _consecutiveDecryptFailures = 0;
+  static const _maxDecryptFailures = 3;
+
   Future<String?> _decryptIncoming(dynamic data) async {
     if (_sessionEncKey == null) return null;
     try {
@@ -885,9 +888,19 @@ class CompanionRemotePeerService with KeepaliveMixin {
         expectedCounter: _recvCounter,
       );
       _recvCounter++;
+      _consecutiveDecryptFailures = 0;
       return utf8.decode(decrypted);
     } catch (e) {
       appLogger.e('CompanionRemote: Decryption failed (counter=$_recvCounter)', error: e);
+      // A single dropped/reordered frame desyncs the AEAD counter forever:
+      // every later frame would fail while the session still looks
+      // connected. Tear the session down so the normal reconnect/handshake
+      // path re-establishes a working channel.
+      if (++_consecutiveDecryptFailures >= _maxDecryptFailures) {
+        appLogger.w('CompanionRemote: $_maxDecryptFailures decrypt failures — tearing down desynced session');
+        _consecutiveDecryptFailures = 0;
+        unawaited(disconnect());
+      }
       return null;
     }
   }
@@ -999,8 +1012,8 @@ class CompanionRemotePeerService with KeepaliveMixin {
     _recvCounter = 0;
     _isAuthenticated = false;
     _sendChain = null;
-    _failedAuthAttempts.clear();
-    _authLockouts.clear();
+    // Lockouts survive a disconnect on purpose: stopping/restarting the host
+    // session must not reset an attacker's brute-force lockout window.
 
     _connectionStateController.add(RemoteSessionStatus.disconnected);
   }

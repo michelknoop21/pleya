@@ -1598,6 +1598,7 @@
     "cardSubtitle": "Connect to another Pleya device sharing its media",
     "hostTitle": "Share my media",
     "hostDescription": "Other Pleya devices on this network can browse, stream, and download your local folders. Keep this screen open while sharing.",
+    "hostDescriptionIos": "Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running while your device is locked.",
     "hostToggle": "Share local folders",
     "noLocalFolders": "Add a local folder first — there is nothing to share yet.",
     "pairCodeLabel": "Pairing code",

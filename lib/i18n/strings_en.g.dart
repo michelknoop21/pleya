@@ -4466,6 +4466,9 @@ class TranslationsPleyaShareEn {
 	/// en: 'Other Pleya devices on this network can browse, stream, and download your local folders. Keep this screen open while sharing.'
 	String get hostDescription => 'Other Pleya devices on this network can browse, stream, and download your local folders. Keep this screen open while sharing.';
 
+	/// en: 'Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running while your device is locked.'
+	String get hostDescriptionIos => 'Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running while your device is locked.';
+
 	/// en: 'Share local folders'
 	String get hostToggle => 'Share local folders';
 
@@ -6680,6 +6683,7 @@ extension on Translations {
 			'pleyaShare.cardSubtitle' => 'Connect to another Pleya device sharing its media',
 			'pleyaShare.hostTitle' => 'Share my media',
 			'pleyaShare.hostDescription' => 'Other Pleya devices on this network can browse, stream, and download your local folders. Keep this screen open while sharing.',
+			'pleyaShare.hostDescriptionIos' => 'Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running while your device is locked.',
 			'pleyaShare.hostToggle' => 'Share local folders',
 			'pleyaShare.noLocalFolders' => 'Add a local folder first — there is nothing to share yet.',
 			'pleyaShare.pairCodeLabel' => 'Pairing code',

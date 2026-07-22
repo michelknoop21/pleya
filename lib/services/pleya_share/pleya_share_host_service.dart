@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -61,9 +62,14 @@ class PleyaShareHostService extends ChangeNotifier {
   Timer? _beaconTimer;
   PleyaShareRelayListener? _relayListener;
   String? _relayHostId;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  Timer? _connectivityDebounce;
 
   /// Relay base URL override for tests (defaults to ice.pleya.app).
   String? relayBaseUrlOverride;
+
+  @visibleForTesting
+  PleyaShareRelayListener? get relayListener => _relayListener;
 
   List<LocalFolderClient> Function()? _clientsResolver;
   String _deviceName = 'Pleya';
@@ -74,8 +80,11 @@ class PleyaShareHostService extends ChangeNotifier {
   final Map<String, PleyaShareGuest> _guests = {};
   bool _guestsLoaded = false;
 
-  /// Session token → pairId. In-memory only; guests re-auth after restart.
+  /// Session token → pairId. Persisted so a host restart (or app relaunch)
+  /// doesn't invalidate tokens baked into in-flight guest stream URLs —
+  /// mpv can't re-auth mid-stream the way JSON calls do on 401.
   final Map<String, String> _tokens = {};
+  static const _tokensPrefsKey = 'pleya_share_tokens';
 
   /// challenge key (pairId|clientNonce) → (hostNonce, issued).
   final Map<String, ({List<int> hostNonce, DateTime issued})> _challenges = {};
@@ -145,6 +154,7 @@ class PleyaShareHostService extends ChangeNotifier {
     _clientsResolver = clients;
     _deviceName = deviceName;
     await _loadGuests();
+    await _loadTokens();
 
     HttpServer server;
     try {
@@ -167,6 +177,7 @@ class PleyaShareHostService extends ChangeNotifier {
       baseUrl: relayBaseUrlOverride,
     );
     unawaited(_relayListener!.start());
+    _startNetworkMonitoring();
     // Android: a native foreground service (notification + wifi/wake locks)
     // keeps the server alive in the background. Elsewhere the OS suspends
     // backgrounded apps, so keep the screen awake while sharing is on.
@@ -179,6 +190,10 @@ class PleyaShareHostService extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    _connectivityDebounce?.cancel();
+    _connectivityDebounce = null;
+    await _connectivitySub?.cancel();
+    _connectivitySub = null;
     await _relayListener?.stop();
     _relayListener = null;
     _beaconTimer?.cancel();
@@ -187,7 +202,6 @@ class PleyaShareHostService extends ChangeNotifier {
     _beaconSockets = null;
     await _server?.close(force: true);
     _server = null;
-    _tokens.clear();
     _challenges.clear();
     _pairCode = null;
     _pairSalt = null;
@@ -208,6 +222,7 @@ class PleyaShareHostService extends ChangeNotifier {
   Future<void> revokeGuest(String pairId) async {
     _guests.remove(pairId);
     _tokens.removeWhere((_, v) => v == pairId);
+    await _persistTokens();
     await _persistGuests();
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -241,6 +256,27 @@ class PleyaShareHostService extends ChangeNotifier {
     } catch (e) {
       appLogger.w('PleyaShare: failed to persist guests', error: e);
     }
+  }
+
+  /// Wi-Fi→hotspot/ethernet switches leave the beacon sockets and the relay
+  /// WebSocket bound to a dead interface. Rebind/reconnect on connectivity
+  /// changes (debounced against flapping, same as MultiServerManager).
+  void _startNetworkMonitoring() {
+    _connectivitySub ??= Connectivity().onConnectivityChanged.listen((_) {
+      _connectivityDebounce?.cancel();
+      _connectivityDebounce = Timer(const Duration(seconds: 2), () async {
+        if (!isRunning) return;
+        appLogger.d('PleyaShare: connectivity changed — rebinding beacon + relay');
+        _beaconTimer?.cancel();
+        await _beaconSockets?.close();
+        try {
+          await _startBeacon();
+        } catch (e) {
+          appLogger.w('PleyaShare: beacon rebind failed', error: e);
+        }
+        await _relayListener?.reconnect();
+      });
+    });
   }
 
   // ── Discovery beacon ──
@@ -473,7 +509,31 @@ class PleyaShareHostService extends ChangeNotifier {
     _tokens.removeWhere((_, v) => v == pairId);
     final token = base64UrlEncode(PleyaSharePairing.randomBytes(32)).replaceAll('=', '');
     _tokens[token] = pairId;
+    unawaited(_persistTokens());
     return token;
+  }
+
+  Future<void> _loadTokens() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_tokensPrefsKey);
+      if (raw == null) return;
+      final decoded = (jsonDecode(raw) as Map<String, dynamic>).cast<String, String>();
+      // Only keep tokens of still-paired guests.
+      decoded.removeWhere((_, pairId) => !_guests.containsKey(pairId));
+      _tokens.addAll(decoded);
+    } catch (e) {
+      appLogger.w('PleyaShare: failed to load tokens', error: e);
+    }
+  }
+
+  Future<void> _persistTokens() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_tokensPrefsKey, jsonEncode(_tokens));
+    } catch (e) {
+      appLogger.w('PleyaShare: failed to persist tokens', error: e);
+    }
   }
 
   // ── Library / stream / watch ──

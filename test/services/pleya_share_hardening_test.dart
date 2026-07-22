@@ -107,6 +107,48 @@ void main() {
     expect(host.pairedGuests, hasLength(1));
   });
 
+  test('session tokens survive a host restart (stream URLs stay valid)', () async {
+    final http = HttpClient();
+    addTearDown(() => http.close(force: true));
+    // Pair the raw way so we hold the bearer token itself.
+    Future<(int, Map<String, dynamic>)> postJson(String path, Map<String, Object?> body) async {
+      final req = await http.postUrl(Uri.parse('http://127.0.0.1:${host.port}$path'));
+      req.headers.contentType = ContentType.json;
+      req.write(jsonEncode(body));
+      final resp = await req.close();
+      final text = await resp.transform(utf8.decoder).join();
+      return (resp.statusCode, text.isEmpty ? <String, dynamic>{} : jsonDecode(text) as Map<String, dynamic>);
+    }
+
+    final clientNonce = PleyaSharePairing.randomBytes(32);
+    final (_, start) = await postJson('/pair/start', {'clientNonce': base64Encode(clientNonce)});
+    final hostNonce = base64Decode(start['hostNonce'] as String);
+    final salt = base64Decode(start['salt'] as String);
+    final pairingKey = await PleyaSharePairing.derivePairingKey(host.pairCode!, salt);
+    final authTag = PleyaSharePairing.computeAuthTag(
+      key: pairingKey,
+      hostNonce: hostNonce,
+      clientNonce: clientNonce,
+      context: 'pair',
+    );
+    final (_, complete) = await postJson('/pair/complete', {
+      'clientNonce': base64Encode(clientNonce),
+      'authTag': authTag,
+      'deviceName': 'restart-guest',
+    });
+    final sessionKey = await PleyaSharePairing.deriveSessionKey(pairingKey, hostNonce, clientNonce);
+    final creds = await PleyaSharePairing.decryptPayload(sessionKey, complete['payload'] as String);
+    final token = creds['token'] as String;
+
+    await host.stop();
+    await host.start(clients: () => [folderClient], deviceName: 'test-host');
+
+    final libReq = await http.getUrl(Uri.parse('http://127.0.0.1:${host.port}/library?token=$token'));
+    final libResp = await libReq.close();
+    await libResp.drain<void>();
+    expect(libResp.statusCode, 200, reason: 'old token must survive host restart');
+  });
+
   test('watch updates queue while host is down and flush on recovery', () async {
     final connection = await PleyaShareChannel.pairAny(
       ips: ['127.0.0.1'],
@@ -134,5 +176,32 @@ void main() {
     expect(raw, isNotNull);
     final state = jsonDecode(raw!) as Map<String, dynamic>;
     expect((state[videoFile.path] as Map)['w'], true);
+  });
+
+  test('queued watch updates survive an app restart (new client instance)', () async {
+    final connection = await PleyaShareChannel.pairAny(
+      ips: ['127.0.0.1'],
+      port: host.port,
+      code: host.pairCode!,
+      deviceName: 'persist-guest',
+    );
+    final client1 = PleyaShareClient(connection: connection, cache: ApiCache.forBackend(MediaBackend.local));
+    final item = (await client1.fetchRecentlyAdded()).firstWhere((i) => i.id == videoFile.path);
+
+    await host.stop();
+    await client1.markWatched(item); // queued + persisted
+    client1.channel.close();
+
+    // "App restart": fresh client on the same prefs, host back online.
+    await host.start(clients: () => [folderClient], deviceName: 'test-host');
+    final client2 = PleyaShareClient(connection: connection, cache: ApiCache.forBackend(MediaBackend.local));
+    addTearDown(client2.channel.close);
+    await client2.flushPendingWatch();
+
+    final pairId = host.pairedGuests.single.pairId;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('pleya_share_watch_$pairId');
+    expect(raw, isNotNull, reason: 'queued update must be delivered by the new instance');
+    expect(((jsonDecode(raw!) as Map<String, dynamic>)[videoFile.path] as Map)['w'], true);
   });
 }

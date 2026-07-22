@@ -488,12 +488,50 @@ class PleyaShareClient implements MediaServerClient {
 
   /// Watch updates that failed to reach the host; latest state per item.
   /// Flushed before the next push and on the next successful health check so
-  /// progress made during a host blip isn't lost. In-memory only — the local
-  /// catalog already persists the state, so a restart just re-diverges until
-  /// the next play/progress event pushes again.
+  /// progress made during a host blip isn't lost. Persisted so an app kill
+  /// while the host is unreachable doesn't drop the queue.
   final Map<String, ({int progressMs, bool watched})> _pendingWatch = {};
+  bool _pendingWatchLoaded = false;
+
+  String get _pendingWatchPrefsKey => 'pleya_share_pendingwatch_${connection.id}';
+
+  Future<void> _loadPendingWatch() async {
+    if (_pendingWatchLoaded) return;
+    _pendingWatchLoaded = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_pendingWatchPrefsKey);
+      if (raw == null) return;
+      for (final entry in (jsonDecode(raw) as Map<String, dynamic>).entries) {
+        final value = entry.value as Map<String, dynamic>;
+        _pendingWatch.putIfAbsent(
+          entry.key,
+          () => (progressMs: (value['p'] as num?)?.toInt() ?? 0, watched: value['w'] as bool? ?? false),
+        );
+      }
+    } catch (e) {
+      appLogger.w('PleyaShareClient: failed to load pending watch queue', error: e);
+    }
+  }
+
+  Future<void> _persistPendingWatch() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_pendingWatch.isEmpty) {
+        await prefs.remove(_pendingWatchPrefsKey);
+      } else {
+        await prefs.setString(
+          _pendingWatchPrefsKey,
+          jsonEncode(_pendingWatch.map((k, v) => MapEntry(k, {'p': v.progressMs, 'w': v.watched}))),
+        );
+      }
+    } catch (e) {
+      appLogger.w('PleyaShareClient: failed to persist pending watch queue', error: e);
+    }
+  }
 
   Future<void> _pushWatchState(String itemId, {required int progressMs, required bool watched}) async {
+    await _loadPendingWatch();
     _pendingWatch[itemId] = (progressMs: progressMs, watched: watched);
     await flushPendingWatch();
     if (_pendingWatch.containsKey(itemId)) {
@@ -503,16 +541,18 @@ class PleyaShareClient implements MediaServerClient {
 
   /// Retry queued watch updates; keeps whatever still fails.
   Future<void> flushPendingWatch() async {
+    await _loadPendingWatch();
     for (final entry in _pendingWatch.entries.toList()) {
       final ok = await channel.request(
         'POST',
         '/watch',
         body: {'itemId': entry.key, 'progressMs': entry.value.progressMs, 'watched': entry.value.watched},
       );
-      if (ok == null) return; // Host unreachable — stop, keep the rest queued.
+      if (ok == null) break; // Host unreachable — stop, keep the rest queued.
       // Only clear if no newer state was queued for this item meanwhile.
       if (_pendingWatch[entry.key] == entry.value) _pendingWatch.remove(entry.key);
     }
+    await _persistPendingWatch();
   }
 
   void _updateCachedItem(String itemId, {int? progressMs, bool? watched}) {

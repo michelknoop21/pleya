@@ -37,6 +37,14 @@ class PleyaShareRelayProxy {
     _sealer = PleyaShareRelaySealer(await PleyaSharePairing.deriveRelayKey(keyMaterial));
     final socket = PleyaShareRelaySocket(baseUrl: baseUrl);
     socket.messages.listen(_onEnvelope);
+    // A dead relay socket must not leave in-flight HTTP requests hanging
+    // forever — end their frame streams so the handlers unwind.
+    socket.onClosed = () {
+      for (final pending in _pending.values) {
+        unawaited(pending.close());
+      }
+      _pending.clear();
+    };
     await socket.connect(
       room: PleyaShareRelay.roomId(relayHostId),
       peerId: 'ps-guest-${base64UrlEncode(PleyaSharePairing.randomBytes(9))}',
@@ -118,7 +126,13 @@ class PleyaShareRelayProxy {
 
       var chunksSinceAck = 0;
       var gotResp = false;
-      await for (final frame in frames.stream.timeout(const Duration(seconds: 30))) {
+      // Only the wait for the FIRST frame gets a timeout: after `resp` the
+      // pace is guest-driven (mpv reads, acks flow) and a paused player may
+      // legitimately go quiet for many minutes. A dead socket ends the
+      // stream via onClosed above instead.
+      final iterator = StreamIterator(frames.stream);
+      while (gotResp ? await iterator.moveNext() : await iterator.moveNext().timeout(const Duration(seconds: 30))) {
+        final frame = iterator.current;
         switch (frame.kind) {
           case 'resp':
             gotResp = true;
@@ -145,7 +159,12 @@ class PleyaShareRelayProxy {
       // Stream ended without 'end' (relay dropped) — close what we have.
       await request.response.close();
     } catch (e) {
+      // Player closed the connection (or the tunnel died) — tell the host to
+      // stop serving instead of letting it stream into the void.
       appLogger.d('PleyaShare: relay proxy request failed', error: e);
+      try {
+        await _sendFrame(PleyaShareRelayFrame(id: id, kind: 'cancel'));
+      } catch (_) {}
       try {
         request.response.statusCode = HttpStatus.badGateway;
         await request.response.close();

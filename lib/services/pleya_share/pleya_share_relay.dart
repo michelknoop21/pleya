@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../utils/app_logger.dart';
+import '../base_peer_service.dart';
 import 'pleya_share_pairing.dart';
 
 /// Relay transport for Pleya Share: lets a paired guest reach its host over
@@ -83,7 +84,10 @@ class PleyaShareRelaySealer {
 
 /// Thin wrapper over the Watch Together relay WebSocket protocol: join or
 /// create a room, sendTo peers, surface incoming `message` payloads.
-class PleyaShareRelaySocket {
+/// Keepalive pings (15s/30s, same policy as Watch Together) detect NAT/idle
+/// drops the socket would otherwise never notice; a pong timeout closes the
+/// socket so the owner's retry path takes over.
+class PleyaShareRelaySocket with KeepaliveMixin {
   final String baseUrl;
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
@@ -96,6 +100,22 @@ class PleyaShareRelaySocket {
 
   Stream<({String from, Map<String, dynamic> envelope})> get messages => _messages.stream;
   bool get isConnected => _channel != null;
+
+  @override
+  Duration get pingInterval => const Duration(seconds: 15);
+  @override
+  Duration get pongTimeout => const Duration(seconds: 30);
+
+  @override
+  void sendPing() => _send({'type': 'ping'});
+
+  @override
+  void onPongTimeout() {
+    appLogger.d('PleyaShare relay: pong timeout — closing socket');
+    try {
+      _channel?.sink.close();
+    } catch (_) {}
+  }
 
   /// Connect and create (host) or join (guest) [room] as [peerId]. Completes
   /// when the relay confirms, throws on relay error/timeout.
@@ -119,9 +139,11 @@ class PleyaShareRelaySocket {
     );
     _send({'type': create ? 'create' : 'join', 'sessionId': room, 'peerId': peerId});
     await setup.future.timeout(const Duration(seconds: 10));
+    startKeepalive();
   }
 
   void _handle(String raw, Completer<void> setup) {
+    resetPongTimer();
     try {
       final msg = jsonDecode(raw) as Map<String, dynamic>;
       switch (msg['type'] as String?) {
@@ -164,6 +186,7 @@ class PleyaShareRelaySocket {
   }
 
   void _teardown() {
+    stopKeepalive();
     _subscription?.cancel();
     _subscription = null;
     _channel = null;
@@ -172,6 +195,7 @@ class PleyaShareRelaySocket {
   }
 
   Future<void> close() async {
+    stopKeepalive();
     final channel = _channel;
     _channel = null;
     unawaited(_subscription?.cancel());

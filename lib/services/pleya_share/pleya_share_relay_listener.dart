@@ -29,6 +29,18 @@ class PleyaShareRelayListener {
   /// Pending acks per (peer, frame id) so streamed responses can flow-control.
   final Map<String, Completer<void>> _acks = {};
 
+  /// Streams the guest aborted (player closed the connection) — the serve
+  /// loop stops without sending further frames.
+  final Set<String> _cancelled = {};
+
+  /// How long a paused guest may sit between acks before the stream is
+  /// abandoned. Generous: a viewer pausing mid-episode must not kill the
+  /// tunnel. Overridable for tests.
+  Duration ackTimeout = const Duration(minutes: 5);
+
+  /// Delay before re-attempting the relay connection. Overridable for tests.
+  Duration retryDelay = const Duration(seconds: 15);
+
   PleyaShareRelayListener({required this.relayHostId, required this.hostPort, required this.resolveKey, this.baseUrl});
 
   bool get isConnected => _socket?.isConnected ?? false;
@@ -46,6 +58,22 @@ class PleyaShareRelayListener {
     _socket?.dispose();
     _socket = null;
     _http.close(force: true);
+  }
+
+  /// Force a fresh relay connection (e.g. after a network switch left the
+  /// socket bound to a dead interface).
+  Future<void> reconnect() async {
+    if (!_running) return;
+    _retry?.cancel();
+    _retry = null;
+    final socket = _socket;
+    _socket = null;
+    if (socket != null) {
+      socket.onClosed = null;
+      await socket.close();
+      socket.dispose();
+    }
+    await _ensureConnected();
   }
 
   Future<void> _ensureConnected() async {
@@ -73,7 +101,7 @@ class PleyaShareRelayListener {
     if (!_running) return;
     _socket = null;
     _retry?.cancel();
-    _retry = Timer(const Duration(seconds: 15), _ensureConnected);
+    _retry = Timer(retryDelay, _ensureConnected);
   }
 
   Future<void> _onEnvelope(({String from, Map<String, dynamic> envelope}) msg) async {
@@ -93,6 +121,9 @@ class PleyaShareRelayListener {
       case 'req':
         unawaited(_serve(msg.from, sealer, frame, pairId: pairId, pairing: pairing));
       case 'ack':
+        _acks.remove('${msg.from}|${frame.id}')?.complete();
+      case 'cancel':
+        _cancelled.add('${msg.from}|${frame.id}');
         _acks.remove('${msg.from}|${frame.id}')?.complete();
     }
   }
@@ -115,6 +146,7 @@ class PleyaShareRelayListener {
     bool pairing = false,
   }) async {
     Future<void> reply(PleyaShareRelayFrame f) => _send(to, sealer, f, pairId: pairId, pairing: pairing);
+    final cancelKey = '$to|${frame.id}';
     try {
       final method = frame.fields['m'] as String? ?? 'GET';
       final path = frame.fields['p'] as String? ?? '/';
@@ -152,23 +184,27 @@ class PleyaShareRelayListener {
         await reply(PleyaShareRelayFrame(id: frame.id, kind: 'data', fields: {'c': base64Encode(buffer.takeBytes())}));
         if (++sinceAck >= PleyaShareRelay.ackWindow) {
           sinceAck = 0;
-          final ack = _acks['$to|${frame.id}'] = Completer<void>();
-          await ack.future.timeout(const Duration(seconds: 30));
+          final ack = _acks[cancelKey] = Completer<void>();
+          await ack.future.timeout(ackTimeout);
         }
       }
 
       await for (final chunk in response) {
+        if (_cancelled.remove(cancelKey)) return; // Guest aborted — stop quietly.
         buffer.add(chunk);
         if (buffer.length >= PleyaShareRelay.chunkSize) await flush();
       }
+      if (_cancelled.remove(cancelKey)) return;
       await flush();
       await reply(PleyaShareRelayFrame(id: frame.id, kind: 'end'));
     } catch (e) {
       appLogger.d('PleyaShare: relay request failed', error: e);
-      _acks.remove('$to|${frame.id}');
+      _acks.remove(cancelKey);
       try {
         await reply(PleyaShareRelayFrame(id: frame.id, kind: 'err'));
       } catch (_) {}
+    } finally {
+      _cancelled.remove(cancelKey);
     }
   }
 }

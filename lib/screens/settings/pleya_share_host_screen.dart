@@ -126,7 +126,11 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      Platform.isAndroid ? t.pleyaShare.hostDescriptionAndroid : t.pleyaShare.hostDescription,
+                      Platform.isAndroid
+                          ? t.pleyaShare.hostDescriptionAndroid
+                          : Platform.isIOS
+                          ? t.pleyaShare.hostDescriptionIos
+                          : t.pleyaShare.hostDescription,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       ),

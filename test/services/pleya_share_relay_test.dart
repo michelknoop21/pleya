@@ -55,6 +55,8 @@ class _RelayStub {
             case 'sendTo':
               final target = _rooms[room]?[msg['to'] as String];
               target?.add(jsonEncode({'type': 'message', 'from': peerId, 'payload': msg['payload']}));
+            case 'ping':
+              socket.add(jsonEncode({'type': 'pong'}));
           }
         },
         onDone: () {
@@ -67,6 +69,17 @@ class _RelayStub {
         },
       );
     });
+  }
+
+  /// Kill every live WebSocket (simulates a NAT/idle drop) without stopping
+  /// the HTTP listener, so both sides can reconnect.
+  Future<void> killSockets() async {
+    for (final room in _rooms.values) {
+      for (final socket in room.values.toList()) {
+        await socket.close();
+      }
+    }
+    _rooms.clear();
   }
 
   Future<void> stop() async => _server?.close(force: true);
@@ -174,6 +187,64 @@ void main() {
     // Watch round-trip over relay.
     final watch = await channel.request('POST', '/watch', body: {'itemId': videoFile.path, 'progressMs': 1234});
     expect(watch!['ok'], true);
+  });
+
+  test('guest abort mid-stream cancels the host serve and the tunnel stays usable', () async {
+    final connection = await PleyaShareChannel.pairAny(
+      ips: ['10.255.255.1'],
+      port: host.port,
+      code: host.pairCode!,
+      deviceName: 'abort-guest',
+      relayHostId: host.relayHostId,
+      saltB64: host.pairSaltB64,
+    );
+    final channel = PleyaShareChannel(connection.copyWith(lastKnownIps: ['10.255.255.1']));
+    addTearDown(channel.close);
+    expect(await channel.ensureConnected(), isTrue);
+
+    // Start a full-file stream, read a first chunk, then slam the socket shut
+    // (what mpv does on stop/seek). The proxy sends `cancel` to the host.
+    final aborter = HttpClient();
+    final req = await aborter.getUrl(Uri.parse(channel.streamUrl(videoFile.path)));
+    final resp = await req.close();
+    await resp.first;
+    aborter.close(force: true);
+
+    // The tunnel must still be fully usable afterwards.
+    final ping = await channel.request('GET', '/ping');
+    expect(ping?['ok'], true);
+    final http = HttpClient();
+    addTearDown(() => http.close(force: true));
+    final full = await (await http.getUrl(Uri.parse(channel.streamUrl(videoFile.path)))).close();
+    expect(await full.fold<int>(0, (n, c) => n + c.length), 200000);
+  });
+
+  test('tunnel self-heals after the relay drops both sockets', () async {
+    host.relayListener!.retryDelay = const Duration(milliseconds: 200);
+    final connection = await PleyaShareChannel.pairAny(
+      ips: ['10.255.255.1'],
+      port: host.port,
+      code: host.pairCode!,
+      deviceName: 'heal-guest',
+      relayHostId: host.relayHostId,
+      saltB64: host.pairSaltB64,
+    );
+    final channel = PleyaShareChannel(connection.copyWith(lastKnownIps: ['10.255.255.1']));
+    addTearDown(channel.close);
+    expect(await channel.ensureConnected(), isTrue);
+    expect((await channel.request('GET', '/ping'))?['ok'], true);
+
+    await relay.killSockets();
+    await Future<void>.delayed(const Duration(milliseconds: 600)); // host rejoins
+
+    // First requests may fail while the guest tears down its dead proxy;
+    // within a few attempts the channel must be healthy again.
+    Map<String, dynamic>? ping;
+    for (var attempt = 0; attempt < 6 && ping == null; attempt++) {
+      ping = await channel.request('GET', '/ping');
+      if (ping == null) await Future<void>.delayed(const Duration(milliseconds: 300));
+    }
+    expect(ping?['ok'], true, reason: 'tunnel must recover after a relay socket drop');
   });
 
   test('sealed frames: tampering or wrong key is rejected', () async {
