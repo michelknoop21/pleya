@@ -41,8 +41,13 @@ Guest (PleyaShareClient) ──HTTP──▶ Host (PleyaShareHostService, poort 
 | Zelfde Wi-Fi | beacons/direct IP |
 | Personal hotspot | QR-IPs + gateway-probe (AP-isolation-proof) |
 | Kabel (ethernet-adapters, direct) | link-local 169.254.x.x in QR + beacons |
+| USB-C met USB-tethering op de host (Android, of iPhone→computer) | tether-interface; gateway-probes .1/.129/.254 |
 | Verschillende netwerken (internet) | E2E-encrypted relay |
 | Geen internet, geen host bereikbaar | persisted catalog (offline browsen) |
+
+**Beperking**: direct iPhone↔iPad via USB-C zonder tethering kan niet — iOS biedt
+apps daar geen IP-netwerk voor. Work-around: hotspot (draadloos) of USB-tethering
+met een computer als een van de twee kanten.
 
 Zonder internet start de app gewoon de bind-flow zolang er share/local-connections
 bestaan (`hasLanCapableConnections`, main.dart) — shares blijven zichtbaar en

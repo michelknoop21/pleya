@@ -396,8 +396,12 @@ class PleyaShareChannel {
       if (ip.startsWith('169.254.')) continue;
       final parts = ip.split('.');
       if (parts.length != 4) continue;
-      final gateway = '${parts[0]}.${parts[1]}.${parts[2]}.1';
-      if (!ownIps.contains(gateway)) candidates.add(gateway);
+      // .1 = routers/hotspots; .129 = Android USB-tethering convention;
+      // .254 = Windows ICS. Probes are cheap and parallel.
+      for (final last in const ['1', '129', '254']) {
+        final gateway = '${parts[0]}.${parts[1]}.${parts[2]}.$last';
+        if (!ownIps.contains(gateway)) candidates.add(gateway);
+      }
     }
     return candidates.toList();
   }

@@ -52,7 +52,7 @@ export const faqs: Faq[] = [
     id: "pleya-share",
     question: "What is Pleya Share?",
     answer:
-      "Pleya Share turns one of your devices into a mini media server for your other Pleya devices. Pair once with a QR code and stream local files over Wi-Fi, a personal hotspot, or a cable — no internet needed — or remotely through Pleya's end-to-end encrypted relay when both devices are online. Multiple devices can stream from one host at the same time, and watch progress and artwork sync with your Plex or Jellyfin account. Pleya Share is a premium feature: it will be part of Pleya's paid tier once pricing is announced after the beta.",
+      "Pleya Share turns one of your devices into a mini media server for your other Pleya devices. Pair once with a QR code and stream local files over Wi-Fi, a personal hotspot, or a cable, with no internet needed. A cable can be ethernet adapters, or USB-C with USB tethering enabled on the host (Android, or an iPhone connected to a computer); a direct iPhone-to-iPad USB link is not supported by iOS itself. When both devices are online, streaming also works remotely through Pleya's end-to-end encrypted relay. Multiple devices can stream from one host at the same time, and watch progress and artwork sync with your Plex or Jellyfin account. Pleya Share is a premium feature: it will be part of Pleya's paid tier once pricing is announced after the beta.",
   },
   {
     id: "watch-together",

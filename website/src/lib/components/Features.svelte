@@ -206,7 +206,7 @@
           </p>
           <p class="more-description">
             Turn any phone, tablet, or computer into a mini media server. Pair another Pleya device
-            once with a QR code and stream your local files to it — over Wi-Fi, a personal hotspot,
+            once with a QR code and stream your local files to it over Wi-Fi, a personal hotspot,
             or even a cable, no internet required. With internet on both sides it also works
             remotely through Pleya's end-to-end encrypted relay, and multiple devices can stream
             from one host at the same time. Watch progress and artwork stay in sync with your Plex

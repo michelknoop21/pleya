@@ -105,6 +105,15 @@ void main() {
 
   test('gatewayCandidatesFrom skips link-local (no gateway on a direct cable)', () {
     expect(PleyaShareChannel.gatewayCandidatesFrom(['169.254.12.34']), isEmpty);
-    expect(PleyaShareChannel.gatewayCandidatesFrom(['192.168.1.5', '169.254.12.34']), ['192.168.1.1']);
+    expect(PleyaShareChannel.gatewayCandidatesFrom(['192.168.1.5', '169.254.12.34']), containsAll(['192.168.1.1']));
+  });
+
+  test('gatewayCandidatesFrom covers USB-tethering conventions (.1/.129/.254)', () {
+    expect(
+      PleyaShareChannel.gatewayCandidatesFrom(['192.168.42.87']),
+      containsAll(['192.168.42.1', '192.168.42.129', '192.168.42.254']),
+    );
+    // Own address never becomes a candidate.
+    expect(PleyaShareChannel.gatewayCandidatesFrom(['192.168.42.129']), isNot(contains('192.168.42.129')));
   });
 }

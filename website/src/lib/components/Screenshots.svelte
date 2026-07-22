@@ -43,7 +43,7 @@
       <p class="section-label">Preview</p>
       <h2 class="section-heading">See it in action</h2>
       <p class="section-description">
-        From first launch and a one-tap sign-in to a cinematic home for your library —
+        From first launch and a one-tap sign-in to a cinematic home for your library:
         featured hero, continue-watching, and rich detail screens. Here it is running on iPhone.
       </p>
     </ScrollReveal>
@@ -61,7 +61,7 @@
       </div>
       <button class="rail-nav next" type="button" aria-label="Volgende schermen" on:click={() => nudge(1)}>›</button>
     </div>
-    <p class="rail-hint">Sleep of gebruik de pijlen — {shots.length} schermen</p>
+    <p class="rail-hint">Sleep of gebruik de pijlen ({shots.length} schermen)</p>
   </div>
 </section>
 
