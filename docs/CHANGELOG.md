@@ -2,6 +2,30 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-07-22/23] — Pleya Share device-naar-device compleet, Wi-Fi Aware, hero-resume-fix
+
+### Added
+- **Pleya Share verbindingslagen** (`lib/services/pleya_share/`): `pairAny` multi-IP QR-pairing (hotspot-proof, gateway-probes .1/.129/.254 voor USB-tethering), link-local (169.254.x) voor directe kabel, E2E-encrypted **relay-tunnel** (`pleya_share_relay*.dart`, zelfde relay als Watch Together; auth-header-forwarding, ping/pong, cancel-frames, 5min ack-timeout, zelfheling) en **Wi-Fi Aware** als additioneel routerloos transport (in-repo plugin `plugins/pleya_aware`: Android WifiAwareManager, iOS 26 WiFiAware-framework; byte-pipe naar de bestaande HTTP-stack via `pleya_share_aware.dart`). Volgorde: LAN → Aware → relay.
+- **iOS host-keepalive** (`ios/Runner/AppDelegate.swift`): stille-audio-loop + interruption-recovery zodat een vergrendelde iPhone blijft serveren; Android had al een foreground-service.
+- **Sync-brug voor share-items** (`server_matchable_client.dart`, `local_server_match_service.dart`): posters/metadata en bidirectionele voortgang (ook per aflevering) via Plex/Jellyfin-match, net als lokale mappen.
+- **Multi-client**: meerdere guests streamen tegelijk van één host (scan-cache 30s TTL); watch-state per guest.
+- Website: Pleya Share Premium-kaart + FAQ; geheime APK-downloads via NAS-volume (`/downloads/<token>/`).
+
+### Fixed
+- **Hero-resume** (`lib/utils/video_player_navigation.dart:navigateToVideoPlayer`): direct-play herfetcht het item wanneer `viewOffsetMs` ontbreekt — hero-items uit `/library/recentlyAdded` droegen geen per-user voortgang en startten op 0; detail deed al `fetchItem`, vandaar het verschil.
+- **iCloud-voortgang** (`icloud_sync_service.dart`): `local_progress_/local_watched_`-maps mergen (max/OR) i.p.v. last-writer-wins; >100KB values geskipt; Pleya Share-keys op de denylist (`settings_export_service.dart`).
+- iOS background-audio bij lock (Dart-pauze weggehaald, native `vid=no` doet audio-only), episode-sortering share-client, lokale posters bij koude start (statusStream-trigger), offline start bindt LAN-bronnen (`hasLanCapableConnections`, main.dart), join-row-fallback voor auto-resume, sessietokens persistent (host-herstart breekt streams niet), companion-remote AEAD-desync-teardown, 48633-bind-contentie.
+
+### Changed
+- Energie: wakelock alleen nog desktop/TV, adaptieve beacons (3s↔15s), share-poll-backoff 45s→180s.
+- Hero toont watched-status (checkmark, mobiel/desktop + tvOS, live via WatchStateStore).
+
+### Decisions
+- DEC-006 (byte-pipe/loopback-transportarchitectuur), DEC-007 (Wi-Fi Aware additioneel) — zie DECISIONS.md.
+
+### Notes
+- Deploy: TestFlight 182–186; signed APK op de geheime pleya.app-link. Device-QA nodig: host-lock-scenario's, Wi-Fi Aware (iOS 26-device), ice.pleya.app-relay-eisen (zie PLEYA_SHARE.md).
+
 ## [2026-07-04] — Jellyseerr/Overseerr-requests, tvOS-hero + native keyboard, discover-hero
 
 ### Added

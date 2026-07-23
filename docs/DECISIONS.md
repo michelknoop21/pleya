@@ -41,3 +41,19 @@ Append-only. Nummers zijn opeenvolgend; oude beslissingen worden niet verwijderd
 **Context:** Het oorspronkelijke plan was A+B+Trakt-inbound plus trailer-autoplay op de billboard.
 **Decision:** Trakt read-endpoints (`recommendations/trending/popular`) zijn toegevoegd, maar de mapping-naar-bibliotheek en de rijen zijn uitgesteld: Trakt is dormant zonder Michels keys en de fuzzy matching heeft live data nodig om te tunen. Ambient trailer-previews (singleton mpv-player) zijn uitgesteld omdat de mpv-lifecycle + TV-perf + audio-focus op device getest moeten worden en niet veilig ongetest vlak vóór een review te shippen zijn.
 **Consequences:** Beide zijn post-build follow-ups. De read-endpoints staan klaar zodra keys geconfigureerd zijn.
+
+## DEC-006: Pleya Share-transports als byte-pipes naar de bestaande HTTP-stack
+
+**Date:** 2026-07-22
+**Status:** accepted
+**Context:** Relay- en Wi-Fi Aware-verbindingen kunnen mpv/downloads geen gewone URL geven, en het share-protocol (pairing-crypto, Range/206, watch-state) opnieuw implementeren per transport zou dubbel werk en dubbele bugs betekenen.
+**Decision:** Elk nieuw transport bridged naar loopback-HTTP: de host vertaalt frames/streams naar `127.0.0.1:<hostPort>` (`pleya_share_relay_listener.dart`, `pleya_share_aware.dart`), de guest draait een loopback-proxy (`pleya_share_relay_proxy.dart`, `PleyaShareAwareProxy`). Relay-frames zijn AES-256-GCM-sealed (key uit pairSecret of code+salt); Aware is een pure byte-pipe (link-encryptie + HTTP-auth volstaan).
+**Consequences:** Protocol/auth/multi-client werken ongewijzigd op elk transport; nieuwe transports zijn ~200 regels bridge-code; in-process testbaar met stubs/fake streams. ice.pleya.app moet rooms >2 peers, ~90KB frames en object-payloads ondersteunen (nog te valideren).
+
+## DEC-007: Wi-Fi Aware als additioneel transport, nooit vervanging
+
+**Date:** 2026-07-22
+**Status:** accepted
+**Context:** Michel wil routerloos device-naar-device zonder internet; Apple ondersteunt Wi-Fi Aware sinds iOS 26 (EU-verplichting), Android sinds 8.0, maar oudere devices en simulators kunnen het niet.
+**Decision:** Aware toegevoegd als extra kandidaat tussen LAN en relay (`PleyaShareChannel.awareProxyProvider`); `isSupported == false` slaat de stap stil over. Alle bestaande paden (Wi-Fi, hotspot, kabel, USB-tethering, relay) blijven byte-voor-byte intact.
+**Consequences:** Geen regressierisico op bestaande verbindingen; iOS vereist eenmalige systeem-pairing (DeviceDiscoveryUI) en `WiFiAwareServices` in Info.plist; device-QA verplicht want simulators ondersteunen Aware niet.
