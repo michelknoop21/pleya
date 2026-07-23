@@ -1,5 +1,6 @@
 import 'dart:async';
 import '../media/ids.dart';
+import '../media/media_kind.dart';
 
 import 'package:flutter/material.dart';
 
@@ -161,6 +162,23 @@ Future<bool?> navigateToVideoPlayer(
   final mediaClient = serverId != null && (!isOffline || manager.isClientOnline(serverId))
       ? manager.getClient(serverId)
       : null;
+
+  // List surfaces like the discover hero come from endpoints that carry no
+  // per-user viewOffset (/library/recentlyAdded) — playing such an item raw
+  // would silently restart from 0. Refetch once so resume always works, same
+  // as navigateToWatchTogetherPlayback does. Fetch failure → play what we have.
+  if (resolveWatchState &&
+      !isOffline &&
+      mediaClient != null &&
+      metadata.viewOffsetMs == null &&
+      (metadata.kind == MediaKind.movie || metadata.kind == MediaKind.episode)) {
+    try {
+      metadata = await mediaClient.fetchItem(metadata.id) ?? metadata;
+      if (!context.mounted) return null;
+      metadata = context.readFreshWatchState(metadata);
+    } catch (_) {}
+  }
+  if (!context.mounted) return null;
 
   final mediaIndex = selectedMediaIndex ?? await savedMediaVersionIndexFor(metadata) ?? 0;
 

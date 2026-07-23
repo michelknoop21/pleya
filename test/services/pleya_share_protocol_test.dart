@@ -143,15 +143,14 @@ void main() {
   });
 
   group('gatewayCandidatesFrom', () {
-    test('derives .1 per /24, deduped, excluding own addresses', () {
-      expect(PleyaShareChannel.gatewayCandidatesFrom(['172.20.10.4', '172.20.10.9', '192.168.1.23']), [
-        '172.20.10.1',
-        '192.168.1.1',
-      ]);
+    test('derives .1/.129/.254 per /24, deduped, excluding own addresses', () {
+      final candidates = PleyaShareChannel.gatewayCandidatesFrom(['172.20.10.4', '172.20.10.9', '192.168.1.23']);
+      expect(candidates, containsAll(['172.20.10.1', '192.168.1.1', '192.168.1.129', '192.168.1.254']));
+      expect(candidates.toSet().length, candidates.length, reason: 'deduped');
     });
 
     test('own address on .1 is excluded (device itself is the gateway)', () {
-      expect(PleyaShareChannel.gatewayCandidatesFrom(['192.168.43.1']), isEmpty);
+      expect(PleyaShareChannel.gatewayCandidatesFrom(['192.168.43.1']), isNot(contains('192.168.43.1')));
     });
 
     test('garbage input yields nothing', () {

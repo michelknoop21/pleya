@@ -183,7 +183,18 @@ class ICloudSyncService {
         }
         final decoded = _decode(raw);
         if (decoded == null) continue;
-        final ok = await SettingsExportService.writeTyped(prefs, targetKey, decoded.$1, decoded.$2);
+        var value = decoded.$2;
+        // Local playback progress: merge instead of overwrite, so progress
+        // made on another device can never be rolled back by a stale writer
+        // (progress = max, watched = OR — same semantics as the server sync).
+        if (isLocalProgressKey(baseKey) && value is String) {
+          value = mergeProgressMaps(
+            prefs.getString(targetKey),
+            value,
+            watchedMap: baseKey.startsWith('local_watched_'),
+          );
+        }
+        final ok = await SettingsExportService.writeTyped(prefs, targetKey, decoded.$1, value);
         if (ok) changed = true;
       }
     } finally {
@@ -205,7 +216,44 @@ class ICloudSyncService {
     if (baseKey == null) return;
     final entry = SettingsExportService.encodeValue(_settings.prefs.get(fullKey));
     if (entry == null) return;
-    unawaited(_set(baseKey, json.encode(entry)));
+    final encoded = json.encode(entry);
+    // KVS quota is 1MB total: a huge local-library progress map must not
+    // starve every other setting. Skip oversized values; the map keeps
+    // syncing again as soon as it shrinks below the cap.
+    if (encoded.length > maxValueBytes) {
+      appLogger.w('iCloud sync: skipping $baseKey (${encoded.length} bytes > $maxValueBytes)');
+      return;
+    }
+    unawaited(_set(baseKey, encoded));
+  }
+
+  /// Per-value size cap (KVS totals 1MB across all keys).
+  static const int maxValueBytes = 100 * 1024;
+
+  static bool isLocalProgressKey(String baseKey) =>
+      baseKey.startsWith('local_progress_') || baseKey.startsWith('local_watched_');
+
+  /// Merge two JSON progress maps: progress = max, watched = OR. Unknown
+  /// items from both sides are kept; corrupt input falls back to [local].
+  static String mergeProgressMaps(String? local, String incoming, {required bool watchedMap}) {
+    try {
+      final localMap = local == null ? <String, dynamic>{} : json.decode(local) as Map<String, dynamic>;
+      final incomingMap = json.decode(incoming) as Map<String, dynamic>;
+      final merged = Map<String, dynamic>.from(localMap);
+      incomingMap.forEach((key, value) {
+        final existing = merged[key];
+        if (watchedMap) {
+          merged[key] = (existing == true) || (value == true);
+        } else {
+          final a = existing is num ? existing : 0;
+          final b = value is num ? value : 0;
+          merged[key] = a > b ? a : b;
+        }
+      });
+      return json.encode(merged);
+    } catch (_) {
+      return local ?? incoming;
+    }
   }
 
   /// Push every eligible local key to KVS and drop KVS keys that no longer

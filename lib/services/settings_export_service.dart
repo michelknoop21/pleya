@@ -106,6 +106,13 @@ class SettingsExportService {
     'simkl_',
     'plex_home_users_',
     'profile_last_used_',
+    // Pleya Share: catalogs are large (KVS quota), tokens/guests are
+    // security-sensitive, and share progress already syncs via the host.
+    'pleya_share_catalog_',
+    'pleya_share_pendingwatch_',
+    'pleya_share_tokens',
+    'pleya_share_guests',
+    'pleya_share_watch_',
   ];
 
   /// Literal prefix used by [StorageService._userPrefix] for any scoped key.
