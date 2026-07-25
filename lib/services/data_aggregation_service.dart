@@ -213,6 +213,68 @@ class DataAggregationService {
     return (items: items, succeededServerIds: succeededServerIds);
   }
 
+  /// Newest *added* shows across all servers, one tile per series.
+  ///
+  /// Mirrors [getLatestMoviesFromAllServers] except for the sort: for series
+  /// the release date is the show's first-aired year, which says nothing about
+  /// when it landed on the server, so `addedAt` is the primary key here.
+  Future<OnDeckAggregationResult> getLatestShowsFromAllServers({
+    int? limit,
+    Set<String>? hiddenLibraryKeys,
+    Set<String>? serverIds,
+  }) async {
+    final clients = _clientsFor(serverIds);
+    if (clients.isEmpty) {
+      appLogger.w('No online servers available for fetching latest shows');
+      return (items: const <MediaItem>[], succeededServerIds: const <String>{});
+    }
+
+    final results = await Future.wait(
+      clients.entries.map((entry) async {
+        try {
+          final items = await entry.value.fetchRecentlyAddedShows(limit: 50);
+          return (serverId: entry.key, items: items);
+        } catch (e, st) {
+          appLogger.e('Failed latest-shows fetch from ${entry.key}', error: e, stackTrace: st);
+          return (serverId: null, items: <MediaItem>[]);
+        }
+      }),
+    );
+    final succeededServerIds = {
+      for (final result in results)
+        if (result.serverId != null) result.serverId!,
+    };
+
+    var candidates = results.expand((result) => result.items).toList();
+
+    if (hiddenLibraryKeys != null && hiddenLibraryKeys.isNotEmpty) {
+      candidates = candidates.where((item) {
+        if (item.libraryId == null || item.serverId == null) return true;
+        final globalKey = buildGlobalKey(ServerId(item.serverId!), item.libraryId!);
+        return !hiddenLibraryKeys.contains(globalKey);
+      }).toList();
+    }
+
+    // Defensive: a backend that ignores the series-level filter must not leak
+    // episodes into a shows row.
+    candidates = candidates.where((item) => item.kind == MediaKind.show).toList();
+
+    candidates.sort((a, b) => (b.addedAt ?? 0).compareTo(a.addedAt ?? 0));
+
+    final seen = <String>{};
+    final deduped = <MediaItem>[];
+    for (final item in candidates) {
+      if (!seen.add(item.guid ?? item.globalKey)) continue;
+      deduped.add(item);
+    }
+
+    final cap = limit ?? 12;
+    final items = cap < deduped.length ? deduped.sublist(0, cap) : deduped;
+
+    appLogger.i('Fetched ${items.length} latest shows from all servers');
+    return (items: items, succeededServerIds: succeededServerIds);
+  }
+
   /// Parsed release date, or null when the item has no usable
   /// `originallyAvailableAt` (those items sink to the bottom via addedAt).
   DateTime? _releaseDate(MediaItem item) {

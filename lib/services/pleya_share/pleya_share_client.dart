@@ -386,6 +386,10 @@ class PleyaShareClient implements MediaServerClient, ServerMatchableClient {
     return _itemCache.values.where((item) => (item.title ?? '').toLowerCase().contains(q)).take(limit).toList();
   }
 
+  // ponytail: no series-level index here; the shows row just skips this backend.
+  @override
+  Future<List<MediaItem>> fetchRecentlyAddedShows({int limit = 50}) async => const [];
+
   @override
   Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async {
     await _ensureSynced();

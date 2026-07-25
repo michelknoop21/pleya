@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/media_kind.dart';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -428,6 +429,57 @@ void main() {
 
       expect(result.items.map((item) => item.id), ['new-film', 'old-film', 'dateless']);
       expect(result.succeededServerIds, {'plex-1'});
+    });
+
+    test('getLatestShowsFromAllServers sorts by addedAt, dedupes cross-server, drops episodes', () async {
+      final plex = PlexClient.forTesting(
+        config: PlexConfig(
+          baseUrl: 'https://plex.example.com',
+          token: 'token',
+          clientIdentifier: 'client-id',
+          product: 'Plezy',
+          version: 'test',
+        ),
+        serverId: ServerId('plex-1'),
+        serverName: 'Plex',
+        httpClient: MockClient((req) async {
+          if (req.url.path == '/library/all' && req.url.queryParameters['type'] == '2') {
+            return _json({
+              'MediaContainer': {
+                'Metadata': [
+                  {'ratingKey': 'show-old', 'type': 'show', 'title': 'Old Show', 'guid': 'guid-old', 'addedAt': 100},
+                  {'ratingKey': 'show-new', 'type': 'show', 'title': 'New Show', 'guid': 'guid-new', 'addedAt': 500},
+                  // Episode must never reach a shows row.
+                  {'ratingKey': 'ep', 'type': 'episode', 'title': 'Ep', 'addedAt': 999},
+                ],
+              },
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      addTearDown(plex.close);
+      manager.debugRegisterClientForTesting(plex);
+
+      final jellyfin = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((req) async {
+          if (req.url.path == '/Users/user-1/Items/Latest') {
+            // Same series as Plex's newest (shared guid) → deduped away.
+            return _json([
+              {'Id': 'jf-show', 'Type': 'Series', 'Name': 'New Show', 'ProviderIds': {}, 'DateCreated': null},
+            ]);
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      addTearDown(jellyfin.close);
+      manager.debugRegisterClientForTesting(jellyfin);
+
+      final result = await service.getLatestShowsFromAllServers(limit: 12);
+
+      expect(result.items.map((item) => item.id), ['show-new', 'show-old', 'jf-show']);
+      expect(result.items.every((item) => item.kind == MediaKind.show), isTrue);
     });
 
     test('per-library hubs skip playback rows and fetch in bounded batches', () async {

@@ -1052,6 +1052,30 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     return _mapItems(_itemsArray(data));
   }
 
+  /// `GroupItems` collapses new episodes into their Series, so this stays a
+  /// series-level list instead of an episode feed.
+  @override
+  Future<List<MediaItem>> fetchRecentlyAddedShows({int limit = 50}) async {
+    try {
+      final response = await _http.get(
+        '/Users/${_segment(connection.userId)}/Items/Latest',
+        queryParameters: {
+          'Limit': limit.toString(),
+          'Fields': _browseFields,
+          'IncludeItemTypes': 'Series',
+          'GroupItems': 'true',
+          ...jellyfinImageQueryParameters,
+        },
+      );
+      throwIfHttpError(response);
+      final data = response.data;
+      return _mapItems(data is List ? data.whereType<Map<String, dynamic>>() : _itemsArray(data));
+    } catch (e, st) {
+      appLogger.w('Jellyfin: recently added shows fetch failed (treating as empty)', error: e, stackTrace: st);
+      return const [];
+    }
+  }
+
   @override
   Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async {
     final results = await Future.wait([

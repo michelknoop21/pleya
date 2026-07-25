@@ -241,6 +241,10 @@ abstract class MediaServerClient {
   /// Recently-added items across all libraries.
   Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50});
 
+  /// Recently-added *shows*, one item per series (never episodes). Backends
+  /// without a series-level query return empty and simply drop out of the row.
+  Future<List<MediaItem>> fetchRecentlyAddedShows({int limit = 50}) async => const [];
+
   /// Items the user has started but not finished. Plex calls this "On Deck"
   /// internally; the neutral name matches the Continue Watching UI surface.
   Future<List<MediaItem>> fetchContinueWatching({int? count = 20});

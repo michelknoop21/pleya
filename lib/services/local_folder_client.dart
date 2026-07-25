@@ -354,6 +354,10 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
     return results;
   }
 
+  // ponytail: no series-level index here; the shows row just skips this backend.
+  @override
+  Future<List<MediaItem>> fetchRecentlyAddedShows({int limit = 50}) async => const [];
+
   @override
   Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async {
     final all = _itemCache.values

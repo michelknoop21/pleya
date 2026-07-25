@@ -3716,6 +3716,23 @@ class PlexClient
     return items.map((m) => PlexMappers.mediaItem(m)).toList();
   }
 
+  /// `/library/all?type=2` returns shows themselves, so a new episode of an
+  /// old series does not resurface it — unlike `/library/recentlyAdded`,
+  /// which is episode-level.
+  @override
+  Future<List<MediaItem>> fetchRecentlyAddedShows({int limit = 50}) async {
+    try {
+      final response = await _getWithFailover(
+        '/library/all',
+        queryParameters: {'type': '2', 'sort': 'addedAt:desc', 'X-Plex-Container-Size': limit, 'includeGuids': 1},
+      );
+      return [for (final dto in _extractMetadataList(response)) PlexMappers.mediaItem(dto)];
+    } catch (e, st) {
+      appLogger.w('PlexClient: recently added shows fetch failed (treating as empty)', error: e, stackTrace: st);
+      return const [];
+    }
+  }
+
   @override
   Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async {
     final items = await _getContinueWatching(count: count);

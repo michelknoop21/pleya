@@ -101,6 +101,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// hub filtering can't touch them.
   List<MediaHub> _seedHubs = [];
 
+  /// "Recently Added Shows" row, synthesised as a hub so the home-layout
+  /// screen can hide/reorder it like any other row. Held outside [_hubs] for
+  /// the same reason as [_seedHubs].
+  MediaHub? _latestShowsHub;
+
   /// On-device personalized rows (Top Picks, Because you like…, Hidden Gems).
   /// Like [_seedHubs], held outside [_hubs] and recomputed only on full loads.
   List<MediaHub> _personalizedHubs = [];
@@ -136,8 +141,9 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   List<MediaItem> get onDeck => _onDeck;
   List<MediaItem> get latestMovies => _latestMovies;
-  List<MediaHub> get hubs =>
-      (_seedHubs.isEmpty && _personalizedHubs.isEmpty) ? _hubs : [..._seedHubs, ..._personalizedHubs, ..._hubs];
+  List<MediaHub> get hubs => (_seedHubs.isEmpty && _personalizedHubs.isEmpty && _latestShowsHub == null)
+      ? _hubs
+      : [?_latestShowsHub, ..._seedHubs, ..._personalizedHubs, ..._hubs];
   bool get hasMoreContinueWatching => _hasMoreContinueWatching;
 
   /// Raw load failure (unlocalized); the screen wraps it for display.
@@ -247,6 +253,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
         hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
       );
 
+      final latestShowsFuture = aggregation.getLatestShowsFromAllServers(
+        limit: 12,
+        hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
+      );
+
       final fetchedOnDeck = await onDeckFuture;
       if (isDisposed) return;
       _applyOnDeck(fetchedOnDeck.items);
@@ -259,6 +270,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       final fetchedLatestMovies = await latestMoviesFuture;
       if (isDisposed) return;
       _latestMovies = fetchedLatestMovies.items;
+      safeNotifyListeners();
+
+      final fetchedLatestShows = await latestShowsFuture;
+      if (isDisposed) return;
+      _latestShowsHub = _buildLatestShowsHub(fetchedLatestShows.items);
       safeNotifyListeners();
 
       final fetchedHubs = await hubsFuture;
@@ -392,6 +408,22 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       // Keep the loaded state — stale rows beat an error flash.
       appLogger.w('DiscoverProvider: delta load failed for $ids', error: e);
     }
+  }
+
+  /// Cross-server "Recently Added Shows" row. Null when empty so the row
+  /// disappears instead of rendering a headline over nothing. [serverId] stays
+  /// null on purpose: the row spans servers, and `homeRowId` only needs the
+  /// identifier to stay stable across loads.
+  MediaHub? _buildLatestShowsHub(List<MediaItem> items) {
+    if (items.isEmpty) return null;
+    return MediaHub(
+      id: 'home.latestshows',
+      identifier: 'home.latestshows',
+      title: t.discover.latestShows,
+      type: 'show',
+      items: items,
+      size: items.length,
+    );
   }
 
   /// Build up to three "Because you watched X" rows from the most recently
