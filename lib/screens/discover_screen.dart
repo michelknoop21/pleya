@@ -109,10 +109,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   List<MediaItem> get _onDeck => _discover.onDeck;
   // Hero source: newest released films (release-date ordered), not on-deck.
   List<MediaItem> get _latestMovies => _discover.latestMovies;
-  late final HomeLayoutProvider _homeLayout;
+  HomeLayoutProvider? _homeLayout;
   // User layout (hide + reorder) applied here, the single choke point both the
   // mobile sliver loop and the TV rail read from.
-  List<MediaHub> get _hubs => _homeLayout.apply(_discover.hubs, _hubIdentity);
+  List<MediaHub> get _hubs => _homeLayout?.apply(_discover.hubs, _hubIdentity) ?? _discover.hubs;
   bool get _hasMoreContinueWatching => _discover.hasMoreContinueWatching;
   bool get _isLoading => _discover.isLoading;
   bool get _areHubsLoading => _discover.areHubsLoading;
@@ -462,13 +462,25 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _tvHeroPlayFocusNode.addListener(_onTvHeroActionFocusChanged);
     _tvHeroInfoFocusNode.addListener(_onTvHeroActionFocusChanged);
     _discover = context.read<DiscoverProvider>();
-    _homeLayout = context.read<HomeLayoutProvider>();
-    _homeLayout.addListener(_onHomeLayoutChanged);
     _seenLoadGeneration = _discover.loadGeneration;
     _discover.addListener(_onDiscoverChanged);
     _updateHubKeys();
     unawaited(_discover.load());
     _startAutoScroll();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Resolve with listen: true so this rebinds when the provider instance is
+    // swapped (profile switch / session subtree rebuild). Binding once in
+    // initState left us listening to a stale notifier: the settings screen
+    // wrote to the new one and home only caught up after an app restart.
+    final layout = Provider.of<HomeLayoutProvider>(context);
+    if (identical(layout, _homeLayout)) return;
+    _homeLayout?.removeListener(_onHomeLayoutChanged);
+    _homeLayout = layout..addListener(_onHomeLayoutChanged);
+    _updateHubKeys();
   }
 
   void _onHomeLayoutChanged() {
@@ -615,7 +627,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   @override
   void dispose() {
     _discover.removeListener(_onDiscoverChanged);
-    _homeLayout.removeListener(_onHomeLayoutChanged);
+    _homeLayout?.removeListener(_onHomeLayoutChanged);
     WidgetsBinding.instance.removeObserver(this);
     _autoScrollTimer?.cancel();
     _indicatorTimer?.cancel();
