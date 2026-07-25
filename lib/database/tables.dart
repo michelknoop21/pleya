@@ -58,6 +58,10 @@ class DownloadedMedia extends Table {
   TextColumn get errorMessage => text().nullable()();
   IntColumn get retryCount => integer().withDefault(const Constant(0))();
   TextColumn get bgTaskId => text().nullable()();
+
+  /// Paused by the system (connection lost / OS pause) rather than by the
+  /// user — such rows resume automatically once connectivity returns.
+  BoolColumn get autoPaused => boolean().withDefault(const Constant(false))();
   IntColumn get mediaIndex => integer().withDefault(const Constant(0))();
   TextColumn get mediaSourceId => text().nullable()();
 }

@@ -621,7 +621,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
           return IconButton.filledTonal(
             onPressed: () => unawaited(_handleDownloadButtonPressed(metadata)),
             icon: const AppIcon(Symbols.pause_circle_outline_rounded, fill: 1),
-            tooltip: t.downloads.resumeDownload,
+            tooltip: progress?.autoPaused == true ? t.downloads.waitingForNetwork : t.downloads.resumeDownload,
             iconSize: iconSize,
             style: actionButtonStyle(foregroundColor: Colors.amber, showFocus: showFocus),
           );

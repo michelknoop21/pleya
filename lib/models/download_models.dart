@@ -29,6 +29,9 @@ sealed class DownloadProgress with _$DownloadProgress {
     String? errorMessage,
     String? currentFile,
     String? thumbPath,
+    /// Paused by the system (lost connection / OS pause) instead of by the
+    /// user — resumes on its own once the network returns.
+    @Default(false) bool autoPaused,
   }) = _DownloadProgress;
 
   double get progressPercent => progress / 100.0;

@@ -28,6 +28,7 @@ import 'package:pleya/profiles/profile_registry.dart';
 import 'package:pleya/providers/companion_remote_provider.dart';
 import 'package:pleya/providers/discover_provider.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
+import 'package:pleya/providers/home_layout_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/screens/discover_screen.dart';
@@ -134,6 +135,7 @@ void main() {
           providers: [
             ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
             ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibrariesProvider),
+            ChangeNotifierProvider<HomeLayoutProvider>(create: (_) => HomeLayoutProvider()),
             ChangeNotifierProvider<LibrariesProvider>.value(value: librariesProvider),
             ChangeNotifierProvider<WatchTogetherProvider>.value(value: watchTogetherProvider),
             ChangeNotifierProvider<CompanionRemoteProvider>.value(value: companionRemoteProvider),

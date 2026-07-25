@@ -63,7 +63,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration {
@@ -228,6 +228,13 @@ class AppDatabase extends _$AppDatabase {
           await _ignoreAlreadyExists('MediaInteractions table', () => m.createTable(mediaInteractions));
           await _ignoreAlreadyExists('AffinitySnapshots table', () => m.createTable(affinitySnapshots));
           await _ignoreAlreadyExists('MediaInteractions index', () => m.createIndex(idxInteractionsProfileTime));
+        }
+        if (from < 18) {
+          appLogger.i('Adding autoPaused column to DownloadedMedia (v18 migration)');
+          await _ignoreAlreadyExists(
+            'DownloadedMedia.autoPaused column',
+            () => m.addColumn(downloadedMedia, downloadedMedia.autoPaused),
+          );
         }
       },
     );

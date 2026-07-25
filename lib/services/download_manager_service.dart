@@ -90,7 +90,13 @@ class DownloadManagerService {
   static const _downloadGroup = 'video_downloads';
   static const _maxAppRetries = 3;
   static const _nativeRetries = 5;
-  static const _autoRetryDelay = Duration(seconds: 30);
+  // Backoff per app-level retry attempt (network errors don't use this path —
+  // they wait for connectivity instead).
+  static const _autoRetryDelays = [Duration(seconds: 30), Duration(minutes: 2), Duration(minutes: 5)];
+
+  @visibleForTesting
+  static Duration autoRetryDelayFor(int retryCount) =>
+      _autoRetryDelays[retryCount.clamp(0, _autoRetryDelays.length - 1)];
   static const _progressDebounceDelay = Duration(seconds: 2);
   static const _videoExtensions = {'.mp4', '.ogv', '.mkv', '.m4v', '.avi'};
 
@@ -120,6 +126,11 @@ class DownloadManagerService {
   // App-level auto-retry timers for downloads that exhausted native retries.
   // Keyed by globalKey; each timer fires a fresh re-enqueue after a delay.
   final Map<String, Timer> _autoRetryTimers = {};
+
+  // Connectivity watcher: resumes auto-paused downloads when the network
+  // comes back. Only fires on an offline→online transition, never on a timer.
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  bool _wasOffline = false;
 
   // Circuit breaker: consecutive instant failures in _processQueue.
   // Stops the queue when all items fail with the same error (e.g. DNS).
@@ -428,13 +439,45 @@ class DownloadManagerService {
         );
 
     // Plex servers can reject concurrent media downloads.
-    await FileDownloader().configure(globalConfig: (Config.holdingQueue, (1, 1, 1)));
+    // Android: without runInForegroundIfFileLargerThan the download is a plain
+    // WorkManager job that doze/app-standby throttles once the app is
+    // backgrounded — media files always warrant the foreground service.
+    await FileDownloader().configure(
+      globalConfig: (Config.holdingQueue, (1, 1, 1)),
+      androidConfig: (Config.runInForegroundIfFileLargerThan, 1),
+    );
 
     await FileDownloader().trackTasks();
     // Deliver status updates from iOS background-to-foreground transitions
     await FileDownloader().resumeFromBackground();
 
+    _watchConnectivity();
+
     _fileDownloaderInitialized = true;
+  }
+
+  void _watchConnectivity() {
+    if (_connectivitySubscription != null) return;
+    // connectivity_plus can throw asynchronously (e.g. DBusServiceUnknownException
+    // on Linux without NetworkManager) — same guard as OfflineModeProvider.
+    runZonedGuarded(
+      () {
+        _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
+          final offline = results.isEmpty || results.every((r) => r == ConnectivityResult.none);
+          final cameOnline = _wasOffline && !offline;
+          _wasOffline = offline;
+          if (cameOnline) {
+            appLogger.i('Connectivity restored — resuming auto-paused downloads');
+            unawaited(
+              _resumeAutoPausedDownloads().catchError((Object e, StackTrace st) {
+                appLogger.e('Failed to resume auto-paused downloads', error: e, stackTrace: st);
+              }),
+            );
+          }
+        }, onError: (Object e) => appLogger.w('Connectivity stream error', error: e));
+      },
+      (error, stack) => appLogger.w('Connectivity monitoring unavailable', error: error),
+    );
   }
 
   /// Recover downloads that were interrupted when the app was killed.
@@ -701,6 +744,15 @@ class DownloadManagerService {
       appLogger.d('Skipping resumeQueuedDownloads — offline');
       return;
     }
+
+    // Downloads the system parked on a network error may have missed the
+    // connectivity transition (server unreachable while the device stayed
+    // online) — give them a second chance whenever a client shows up.
+    unawaited(
+      _resumeAutoPausedDownloads().catchError((Object e, StackTrace st) {
+        appLogger.e('Failed to resume auto-paused downloads', error: e, stackTrace: st);
+      }),
+    );
 
     // Attempt deferred supplementary downloads for recovered items
     unawaited(_processPendingSupplementaryDownloads(client));
@@ -1534,7 +1586,7 @@ class DownloadManagerService {
           if (_pausingKeys.contains(globalKey) || _cancellingKeys.contains(globalKey)) break;
           await _onDownloadCanceled(globalKey, update.task.taskId);
         case TaskStatus.paused:
-          appLogger.d('Download paused by system for $globalKey');
+          await _autoPauseDownload(globalKey, 'paused by system');
         case TaskStatus.waitingToRetry:
           appLogger.d('Download waiting to retry for $globalKey');
         case TaskStatus.enqueued:
@@ -1553,6 +1605,53 @@ class DownloadManagerService {
     }
   }
 
+  /// Park a download that the system interrupted (OS pause or lost connection).
+  /// Keeps `bgTaskId`, the partial file and the byte counters intact so the
+  /// resume-first paths can continue from the last byte instead of restarting.
+  Future<void> _autoPauseDownload(String globalKey, String reason) async {
+    _cancelDownloadTimers(globalKey);
+    final existing = await _database.getDownloadedMedia(globalKey);
+    appLogger.i('Auto-pausing download for $globalKey ($reason) at ${existing?.progress ?? 0}%');
+    await _transitionStatus(
+      globalKey,
+      DownloadStatus.paused,
+      progress: existing?.progress ?? 0,
+      autoPaused: true,
+    );
+    await _database.removeFromQueue(globalKey);
+  }
+
+  /// Resume-first: continue the existing native task if it still holds resume
+  /// data. Returns true when resumed, false when the caller must start over.
+  Future<bool> _tryResumeExistingTask(String globalKey) async {
+    if (!downloadsSupported) return false;
+    final bgTaskId = await _database.getBgTaskId(globalKey);
+    if (bgTaskId == null || bgTaskId.isEmpty) return false;
+    return _tryResumeNativeTask(globalKey, bgTaskId);
+  }
+
+  /// Resume every download the system auto-paused. Called on a connectivity
+  /// transition back to online.
+  Future<void> _resumeAutoPausedDownloads() async {
+    if (_disposed) return;
+    final rows = await _database.getAutoPausedDownloads();
+    for (final row in rows) {
+      if (_disposed) return;
+      if (row.status != DownloadStatus.paused.index) continue;
+      if (await _tryResumeExistingTask(row.globalKey)) continue;
+      // No resume data left — re-queue for a fresh download.
+      await _database.setAutoPaused(row.globalKey, false);
+      final client = await _getClientForDownloadKey(row.globalKey);
+      if (client == null) continue;
+      await _transitionStatus(row.globalKey, DownloadStatus.queued);
+      await _database.addToQueue(mediaGlobalKey: row.globalKey);
+      unawaited(_processQueue(client));
+    }
+  }
+
+  @visibleForTesting
+  Future<void> debugResumeAutoPausedDownloads() => _resumeAutoPausedDownloads();
+
   /// Handle a system-initiated cancel — re-queue unless already completed.
   Future<void> _onDownloadCanceled(String globalKey, String taskId) async {
     if (_completingKeys.contains(globalKey)) return;
@@ -1568,6 +1667,10 @@ class DownloadManagerService {
 
     _cancelDownloadTimers(globalKey);
     _pendingDownloadContext.remove(globalKey);
+
+    // Resume-first: a cancel that still has resume data continues from the
+    // last byte instead of throwing the partial file away.
+    if (await _tryResumeExistingTask(globalKey)) return;
 
     appLogger.w('Download cancelled by system for $globalKey, re-queuing');
     await _database.updateBgTaskId(globalKey, null);
@@ -1602,8 +1705,10 @@ class DownloadManagerService {
     _pendingDownloadContext.remove(globalKey);
     final retryCount = existing.retryCount;
 
-    // DNS/connection errors fail instantly and exhaust native retries in milliseconds,
-    // creating a retry storm. Treat them as permanent failures.
+    // DNS/connection errors fail instantly and exhaust native retries in
+    // milliseconds, so they must never feed the timer-based retry loop (retry
+    // storm). They're temporary though: park the row and wait for the
+    // connectivity listener to resume it.
     final isNetworkError =
         errorMessage.contains('Unable to resolve host') ||
         errorMessage.contains('No address associated with hostname') ||
@@ -1617,19 +1722,24 @@ class DownloadManagerService {
         errorMessage.contains('No space left on device') ||
         errorMessage.contains('insufficient space');
 
+    if (isNetworkError) {
+      await _autoPauseDownload(globalKey, 'network error: $errorMessage');
+      return;
+    }
+
     final client = await _getClientForDownloadKey(globalKey);
     final hadProgress = existing.downloadedBytes > 0;
 
-    if (!isNetworkError && !isServerError && !isDiskFull && retryCount < _maxAppRetries && client != null) {
-      // App-level auto-retry: schedule a fresh download after a delay.
-      // Each new task gets 5 native retries with Range-based resume.
+    if (!isServerError && !isDiskFull && retryCount < _maxAppRetries && client != null) {
+      // App-level auto-retry: resume (or re-download) after a backoff delay.
+      final delay = autoRetryDelayFor(retryCount);
       appLogger.w(
         'Download failed for $globalKey (attempt ${retryCount + 1}/$_maxAppRetries), '
-        'scheduling auto-retry in ${_autoRetryDelay.inSeconds}s: $errorMessage',
+        'scheduling auto-retry in ${delay.inSeconds}s: $errorMessage',
       );
       await _transitionStatus(globalKey, DownloadStatus.failed, errorMessage: errorMessage);
       await _database.removeFromQueue(globalKey);
-      _autoRetryTimers[globalKey] = Timer(_autoRetryDelay, () {
+      _autoRetryTimers[globalKey] = Timer(delay, () {
         _autoRetryTimers.remove(globalKey);
         _performAutoRetry(globalKey);
       });
@@ -1638,9 +1748,6 @@ class DownloadManagerService {
       // Instant failures (DNS, connection) would just cause the next item to fail too.
       if (hadProgress) unawaited(_processQueue(client));
     } else {
-      if (isNetworkError) {
-        appLogger.w('Network error for $globalKey, failing permanently (no auto-retry): $errorMessage');
-      }
       final userMessage = isServerError
           ? t.downloads.serverErrorBitrate
           : isDiskFull
@@ -1699,6 +1806,7 @@ class DownloadManagerService {
     }
 
     appLogger.i('Auto-retrying download for $globalKey');
+    if (await _tryResumeExistingTask(globalKey)) return; // bytes preserved
     await _cleanupStaleDownload(globalKey);
     await _transitionStatus(globalKey, DownloadStatus.queued);
     await _database.addToQueue(mediaGlobalKey: globalKey);
@@ -2013,6 +2121,7 @@ class DownloadManagerService {
     int progress, {
     String? errorMessage,
     String? currentFile,
+    bool autoPaused = false,
   }) {
     if (_disposed) return;
     _progressController.add(
@@ -2022,6 +2131,7 @@ class DownloadManagerService {
         progress: progress,
         errorMessage: errorMessage,
         currentFile: currentFile,
+        autoPaused: autoPaused,
       ),
     );
   }
@@ -2033,8 +2143,17 @@ class DownloadManagerService {
   /// 2. Emit progress to listeners
   ///
   /// Default progress is 0 for most statuses, 100 for completed.
-  Future<void> _transitionStatus(String globalKey, DownloadStatus status, {int? progress, String? errorMessage}) async {
+  /// [autoPaused] marks the row as system-paused (connection lost / OS pause);
+  /// every other transition clears the flag so it can't outlive the pause.
+  Future<void> _transitionStatus(
+    String globalKey,
+    DownloadStatus status, {
+    int? progress,
+    String? errorMessage,
+    bool autoPaused = false,
+  }) async {
     await _database.updateDownloadStatus(globalKey, status.index);
+    await _database.setAutoPaused(globalKey, autoPaused);
     if (status == DownloadStatus.failed && errorMessage != null) {
       await _database.updateDownloadError(globalKey, errorMessage);
     }
@@ -2043,6 +2162,7 @@ class DownloadManagerService {
       status,
       progress ?? (status == DownloadStatus.completed ? 100 : 0),
       errorMessage: errorMessage,
+      autoPaused: autoPaused,
     );
   }
 
@@ -2151,6 +2271,10 @@ class DownloadManagerService {
     if (_skipDownloadsUnsupported('download retry')) return;
 
     _autoRetryTimers.remove(globalKey)?.cancel();
+    if (await _tryResumeExistingTask(globalKey)) {
+      await _database.clearDownloadError(globalKey);
+      return;
+    }
     await _cleanupStaleDownload(globalKey);
     await _database.clearDownloadError(globalKey);
     await _transitionStatus(globalKey, DownloadStatus.queued);
@@ -2899,6 +3023,8 @@ class DownloadManagerService {
 
   void dispose() {
     _disposed = true;
+    unawaited(_connectivitySubscription?.cancel());
+    _connectivitySubscription = null;
     for (final timer in _progressDebounceTimers.values) {
       timer.cancel();
     }

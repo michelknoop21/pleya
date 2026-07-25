@@ -294,6 +294,7 @@ class DownloadProvider extends ChangeNotifier with DisposableChangeNotifierMixin
           downloadedBytes: item.downloadedBytes,
           totalBytes: item.totalBytes ?? 0,
           errorMessage: item.errorMessage,
+          autoPaused: item.autoPaused,
         );
 
         _artworkPaths[item.globalKey] = DownloadedArtwork(thumbPath: item.thumbPath);

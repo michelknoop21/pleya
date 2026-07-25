@@ -18,6 +18,8 @@ class StorageService extends BaseSharedPreferencesService {
   static const String _keyServersList = 'servers_list';
   static const String _keyServerOrder = 'server_order';
   static const String _keyActiveProfileId = 'active_app_profile_id';
+  static const String _keyHomeRowOrder = 'home_row_order';
+  static const String _keyHiddenHomeRows = 'hidden_home_rows';
 
   // Key prefixes for per-id storage
   static const String _prefixServerEndpoint = 'server_endpoint_';
@@ -342,6 +344,27 @@ class StorageService extends BaseSharedPreferencesService {
     }
     return legacy;
   }
+
+  // Home row layout (order + hidden rows on the discover/home screen).
+  // Keys are hub identities ('serverId:identifier'); see DiscoverScreen.
+  // ponytail: no legacy-key migration — these keys are new, empty = default order.
+  Future<void> saveHomeRowOrder(String? profileId, List<String> rowIds) async {
+    await _setStringList('${_homePrefix(profileId)}$_keyHomeRowOrder', rowIds);
+  }
+
+  List<String> getHomeRowOrder(String? profileId) {
+    return _getStringList('${_homePrefix(profileId)}$_keyHomeRowOrder') ?? const [];
+  }
+
+  Future<void> saveHiddenHomeRows(String? profileId, Set<String> rowIds) async {
+    await _setStringList('${_homePrefix(profileId)}$_keyHiddenHomeRows', rowIds.toList());
+  }
+
+  Set<String> getHiddenHomeRows(String? profileId) {
+    return (_getStringList('${_homePrefix(profileId)}$_keyHiddenHomeRows') ?? const []).toSet();
+  }
+
+  String _homePrefix(String? profileId) => profileId == null ? _userPrefix : _userPrefixForProfileId(profileId);
 
   // Current User UUID — read once by [ConnectionBootstrap._promoteActiveProfileFromLegacy]
   // on the upgrade run, then cleared. Replaced by

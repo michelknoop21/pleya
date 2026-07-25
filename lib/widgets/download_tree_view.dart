@@ -742,6 +742,15 @@ class _DownloadTreeItemState extends State<_DownloadTreeItem> {
                 ),
               ],
 
+              // System pause (lost connection) — resumes on its own
+              if (_effectiveStatus == DownloadStatus.paused && widget.node.downloadProgress?.autoPaused == true) ...[
+                const SizedBox(height: 4),
+                Text(
+                  t.downloads.waitingForNetwork,
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+                ),
+              ],
+
               // Error message for failed downloads
               if (_effectiveStatus == DownloadStatus.failed && widget.node.downloadProgress?.errorMessage != null) ...[
                 const SizedBox(height: 4),

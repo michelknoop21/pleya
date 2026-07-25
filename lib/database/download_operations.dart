@@ -271,6 +271,17 @@ extension DownloadDatabaseOperations on AppDatabase {
     )..where((t) => t.globalKey.equals(globalKey))).write(DownloadedMediaCompanion(bgTaskId: Value(taskId)));
   }
 
+  Future<void> setAutoPaused(String globalKey, bool value) async {
+    await (update(
+      downloadedMedia,
+    )..where((t) => t.globalKey.equals(globalKey))).write(DownloadedMediaCompanion(autoPaused: Value(value)));
+  }
+
+  /// Rows the system paused (lost connection / OS pause) that are still paused.
+  Future<List<DownloadedMediaItem>> getAutoPausedDownloads() {
+    return (select(downloadedMedia)..where((t) => t.autoPaused.equals(true))).get();
+  }
+
   Future<String?> getBgTaskId(String globalKey) async {
     final item = await getDownloadedMedia(globalKey);
     return item?.bgTaskId;

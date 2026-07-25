@@ -461,6 +461,128 @@ void main() {
       expect(row?.status, DownloadStatus.downloading.index);
       expect(row?.bgTaskId, 'current-task');
     });
+
+    test('system pause parks the row without discarding resume state', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      const globalKey = 'srv:item-1';
+      await db.insertDownload(
+        serverId: ServerId('srv'),
+        ratingKey: 'item-1',
+        globalKey: globalKey,
+        type: 'movie',
+        status: DownloadStatus.downloading.index,
+      );
+      await db.updateBgTaskId(globalKey, 'current-task');
+      await db.updateDownloadProgress(globalKey, 42, 420, 1000);
+      await db.addToQueue(mediaGlobalKey: globalKey);
+
+      final manager = DownloadManagerService(
+        database: db,
+        storageService: DownloadStorageService.instance,
+        clientResolver: (serverId, {clientScopeId}) => null,
+        downloadsSupportedOverride: false,
+      );
+      addTearDown(manager.dispose);
+
+      final emitted = <DownloadProgress>[];
+      final sub = manager.progressStream.listen(emitted.add);
+      addTearDown(sub.cancel);
+
+      await manager.debugHandleTaskStatus(
+        TaskStatusUpdate(_downloadTask('current-task', globalKey), TaskStatus.paused),
+      );
+
+      // The UI needs the flag to say "waiting for network" instead of "paused".
+      expect(emitted.last.status, DownloadStatus.paused);
+      expect(emitted.last.autoPaused, isTrue);
+      expect(emitted.last.progress, 42);
+
+      final row = await db.getDownloadedMedia(globalKey);
+      expect(row?.status, DownloadStatus.paused.index);
+      expect(row?.autoPaused, isTrue);
+      expect(row?.bgTaskId, 'current-task');
+      expect(row?.progress, 42);
+      expect(row?.downloadedBytes, 420);
+      expect(await db.getNextQueueItem(), isNull);
+    });
+
+    test('network failure auto-pauses instead of failing permanently', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      const globalKey = 'srv:item-1';
+      await db.insertDownload(
+        serverId: ServerId('srv'),
+        ratingKey: 'item-1',
+        globalKey: globalKey,
+        type: 'movie',
+        status: DownloadStatus.downloading.index,
+      );
+      await db.updateBgTaskId(globalKey, 'current-task');
+      await db.updateDownloadProgress(globalKey, 42, 420, 1000);
+
+      final manager = DownloadManagerService(
+        database: db,
+        storageService: DownloadStorageService.instance,
+        clientResolver: (serverId, {clientScopeId}) => null,
+        downloadsSupportedOverride: false,
+      );
+      addTearDown(manager.dispose);
+
+      await manager.debugHandleTaskStatus(
+        TaskStatusUpdate(
+          _downloadTask('current-task', globalKey),
+          TaskStatus.failed,
+          TaskConnectionException('Unable to resolve host "plex.example"'),
+        ),
+      );
+
+      final row = await db.getDownloadedMedia(globalKey);
+      expect(row?.status, DownloadStatus.paused.index);
+      expect(row?.autoPaused, isTrue);
+      expect(row?.bgTaskId, 'current-task');
+      expect(row?.progress, 42);
+      // No retry budget consumed — the download is waiting, not failing.
+      expect(row?.retryCount, 0);
+      expect(row?.errorMessage, isNull);
+    });
+
+    test('auto-retry delay backs off per attempt and then plateaus', () {
+      expect(DownloadManagerService.autoRetryDelayFor(0), const Duration(seconds: 30));
+      expect(DownloadManagerService.autoRetryDelayFor(1), const Duration(minutes: 2));
+      expect(DownloadManagerService.autoRetryDelayFor(2), const Duration(minutes: 5));
+      expect(DownloadManagerService.autoRetryDelayFor(9), const Duration(minutes: 5));
+    });
+
+    test('auto-paused rows are re-queued when no resume data survives', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      const globalKey = 'srv:item-1';
+      await db.insertDownload(
+        serverId: ServerId('srv'),
+        ratingKey: 'item-1',
+        globalKey: globalKey,
+        type: 'movie',
+        status: DownloadStatus.paused.index,
+      );
+      await db.setAutoPaused(globalKey, true);
+
+      final manager = DownloadManagerService(
+        database: db,
+        storageService: DownloadStorageService.instance,
+        clientResolver: (serverId, {clientScopeId}) =>
+            _ScopedJellyfinClient(serverId: ServerId('srv'), scopedServerId: 'srv'),
+        downloadsSupportedOverride: false,
+      );
+      addTearDown(manager.dispose);
+
+      await manager.debugResumeAutoPausedDownloads();
+
+      final row = await db.getDownloadedMedia(globalKey);
+      expect(row?.status, DownloadStatus.queued.index);
+      expect(row?.autoPaused, isFalse);
+      expect((await db.getNextQueueItem())?.mediaGlobalKey, globalKey);
+    });
   });
 }
 

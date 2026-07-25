@@ -56,6 +56,7 @@ import 'add_connection_screen.dart';
 import 'pleya_share_host_screen.dart';
 import 'appearance_settings_screen.dart';
 import 'keyboard_shortcuts_screen.dart';
+import 'home_layout_screen.dart';
 import 'library_visibility_screen.dart';
 import 'logs_screen.dart';
 import 'playback_settings_screen.dart';
@@ -80,6 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   static const _kPlayback = 'playback';
   static const _kTrackers = 'trackers';
   static const _kLibraryVisibility = 'library_visibility';
+  static const _kHomeLayout = 'home_layout';
   static const _kRequests = 'requests';
   static const _kDownloadLocation = 'download_location';
   static const _kDownloadOnWifiOnly = 'download_on_wifi_only';
@@ -188,6 +190,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
                   _buildAppearanceTile(),
 
                   _buildLibraryVisibilityTile(),
+                  _buildHomeLayoutTile(),
 
                   _buildPlaybackTile(),
 
@@ -269,6 +272,13 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         title: t.settings.libraryVisibility,
         subtitle: t.settings.libraryVisibilityDescription,
         destinationBuilder: (_) => const LibraryVisibilityScreen(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.dashboard_customize_rounded,
+        title: t.settings.homeLayout,
+        subtitle: t.settings.homeLayoutDescription,
+        keywords: const ['home', 'rows', 'order', 'reorder', 'hide', 'rijen', 'volgorde', 'verbergen', 'indeling'],
+        destinationBuilder: (_) => const HomeLayoutScreen(),
       ),
       _SettingsSearchEntry(
         icon: Symbols.play_circle_rounded,
@@ -458,6 +468,16 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       title: t.settings.libraryVisibility,
       subtitle: t.settings.libraryVisibilityDescription,
       destinationBuilder: (context) => const LibraryVisibilityScreen(),
+    );
+  }
+
+  Widget _buildHomeLayoutTile() {
+    return SettingNavigationTile(
+      focusNode: _focusTracker.get(_kHomeLayout),
+      icon: Symbols.dashboard_customize_rounded,
+      title: t.settings.homeLayout,
+      subtitle: t.settings.homeLayoutDescription,
+      destinationBuilder: (context) => const HomeLayoutScreen(),
     );
   }
 

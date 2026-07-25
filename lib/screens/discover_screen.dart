@@ -28,6 +28,7 @@ import '../widgets/optimized_media_image.dart' show blurArtwork;
 import '../providers/discover_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/hidden_libraries_provider.dart';
+import '../providers/home_layout_provider.dart';
 import '../providers/playback_state_provider.dart';
 import '../providers/watch_state_store.dart';
 import '../widgets/hub_section.dart';
@@ -108,7 +109,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   List<MediaItem> get _onDeck => _discover.onDeck;
   // Hero source: newest released films (release-date ordered), not on-deck.
   List<MediaItem> get _latestMovies => _discover.latestMovies;
-  List<MediaHub> get _hubs => _discover.hubs;
+  late final HomeLayoutProvider _homeLayout;
+  // User layout (hide + reorder) applied here, the single choke point both the
+  // mobile sliver loop and the TV rail read from.
+  List<MediaHub> get _hubs => _homeLayout.apply(_discover.hubs, _hubIdentity);
   bool get _hasMoreContinueWatching => _discover.hasMoreContinueWatching;
   bool get _isLoading => _discover.isLoading;
   bool get _areHubsLoading => _discover.areHubsLoading;
@@ -167,7 +171,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return context.tryGetMediaClientForServer(ServerId(serverId));
   }
 
-  String _hubIdentity(MediaHub hub) => '${hub.serverId ?? ''}:${hub.identifier ?? hub.id}';
+  String _hubIdentity(MediaHub hub) => homeRowId(hub);
 
   /// Rebuild the per-hub focus keys, keyed by hub *identity* rather than
   /// list position so a row's focus memory follows it when the provider
@@ -458,11 +462,18 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _tvHeroPlayFocusNode.addListener(_onTvHeroActionFocusChanged);
     _tvHeroInfoFocusNode.addListener(_onTvHeroActionFocusChanged);
     _discover = context.read<DiscoverProvider>();
+    _homeLayout = context.read<HomeLayoutProvider>();
+    _homeLayout.addListener(_onHomeLayoutChanged);
     _seenLoadGeneration = _discover.loadGeneration;
     _discover.addListener(_onDiscoverChanged);
     _updateHubKeys();
     unawaited(_discover.load());
     _startAutoScroll();
+  }
+
+  void _onHomeLayoutChanged() {
+    if (!mounted) return;
+    setState(_updateHubKeys);
   }
 
   /// Mirror provider changes into this state's UI concerns: rebuild, apply
@@ -604,6 +615,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   @override
   void dispose() {
     _discover.removeListener(_onDiscoverChanged);
+    _homeLayout.removeListener(_onHomeLayoutChanged);
     WidgetsBinding.instance.removeObserver(this);
     _autoScrollTimer?.cancel();
     _indicatorTimer?.cancel();

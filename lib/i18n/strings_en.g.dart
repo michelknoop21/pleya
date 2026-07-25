@@ -967,6 +967,15 @@ class TranslationsSettingsEn {
 	/// en: 'Choose which libraries appear in the menu'
 	String get libraryVisibilityDescription => 'Choose which libraries appear in the menu';
 
+	/// en: 'Home Layout'
+	String get homeLayout => 'Home Layout';
+
+	/// en: 'Reorder or hide the rows on the home screen'
+	String get homeLayoutDescription => 'Reorder or hide the rows on the home screen';
+
+	/// en: 'Open the home screen once so the rows can be loaded'
+	String get homeLayoutEmpty => 'Open the home screen once so the rows can be loaded';
+
 	/// en: 'Companion Remote Server'
 	String get companionRemoteServer => 'Companion Remote Server';
 
@@ -3208,6 +3217,9 @@ class TranslationsDownloadsEn {
 
 	/// en: 'Download queued'
 	String get downloadQueued => 'Download queued';
+
+	/// en: 'Waiting for network'
+	String get waitingForNetwork => 'Waiting for network';
 
 	/// en: 'Download resumed'
 	String get downloadResumed => 'Download resumed';
@@ -5493,6 +5505,9 @@ extension on Translations {
 			'settings.requestsDescription' => 'Request movies and shows via Jellyseerr or Overseerr',
 			'settings.libraryVisibility' => 'Library Visibility',
 			'settings.libraryVisibilityDescription' => 'Choose which libraries appear in the menu',
+			'settings.homeLayout' => 'Home Layout',
+			'settings.homeLayoutDescription' => 'Reorder or hide the rows on the home screen',
+			'settings.homeLayoutEmpty' => 'Open the home screen once so the rows can be loaded',
 			'settings.companionRemoteServer' => 'Companion Remote Server',
 			'settings.companionRemoteServerDescription' => 'Allow mobile devices on your network to control this app',
 			'settings.autoPip' => 'Auto Picture-in-Picture',
@@ -5731,11 +5746,11 @@ extension on Translations {
 			'videoControls.searchSubtitles' => 'Search Subtitles',
 			'videoControls.language' => 'Language',
 			'videoControls.noSubtitlesFound' => 'No subtitles found',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.downloadedSubtitle' => 'Downloaded',
 			'videoControls.noSubtitlesAvailable' => 'No subtitles available',
 			'videoControls.noAudioTracksAvailable' => 'No audio tracks available',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.noTracksAvailable' => 'No tracks available',
 			'videoControls.subtitleDownloaded' => 'Subtitle downloaded',
 			'videoControls.subtitleDownloadFailed' => 'Failed to download subtitle',
@@ -6230,6 +6245,7 @@ extension on Translations {
 			'downloads.deleteDownload' => 'Delete download',
 			'downloads.retryDownload' => 'Retry download',
 			'downloads.downloadQueued' => 'Download queued',
+			'downloads.waitingForNetwork' => 'Waiting for network',
 			'downloads.downloadResumed' => 'Download resumed',
 			'downloads.serverErrorBitrate' => 'Server error: file may exceed the remote bitrate limit',
 			'downloads.storageFull' => 'Not enough storage space on this device',
@@ -6244,12 +6260,12 @@ extension on Translations {
 			'downloads.syncingFile' => ({required Object file, required Object status}) => '${file} (syncing ${status})',
 			'downloads.downloadedFileClickToComplete' => ({required Object file}) => 'Downloaded ${file} - Click to complete',
 			'downloads.partialDownloadClickToComplete' => 'Partially downloaded - Click to complete',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.deleting' => 'Deleting...',
 			'downloads.deletingWithProgress' => ({required Object title, required Object current, required Object total}) => 'Deleting ${title}... (${current} of ${total})',
 			'downloads.queuedTooltip' => 'Queued',
 			'downloads.queuedFilesTooltip' => ({required Object files}) => 'Queued ${files}',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.downloadingTooltip' => 'Downloading...',
 			'downloads.downloadingFilesTooltip' => ({required Object files}) => 'Downloading ${files}',
 			'downloads.noDownloadsTree' => 'No downloads',
