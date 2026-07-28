@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' show ImageFilter;
 
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -46,6 +47,12 @@ class TvSpotlightBackground extends StatelessWidget {
   /// Slow one-shot "settle" zoom on the backdrop art per item. Skipped on the
   /// reduced-performance tier.
   final bool kenBurns;
+
+  /// Browse rail is slid up over the billboard. The info block shrinks to
+  /// logo + metadata (no genres/summary/actions) and the backdrop dims, so the
+  /// row labels stay readable and the artwork reads as atmosphere instead of
+  /// noise — while still telling you *which* title is focused.
+  final bool railRevealed;
   final String? Function(String? artworkPath)? localArtworkPathResolver;
 
   const TvSpotlightBackground({
@@ -64,8 +71,18 @@ class TvSpotlightBackground extends StatelessWidget {
     this.infoOpacity = 1.0,
     this.deepBottomScrim = false,
     this.kenBurns = false,
+    this.railRevealed = false,
     this.localArtworkPathResolver,
   });
+
+  /// How far the backdrop dims once the rail covers it (top → bottom).
+  static const double _railDimAlphaTop = 0.30;
+  static const double _railDimAlphaBottom = 0.70;
+
+  /// Blur applied when only a portrait poster is available — a sharp
+  /// `cover` crop of a poster on a 16:9 surface is a giant face, never a
+  /// backdrop.
+  static const double _posterFillBlurSigma = 40;
 
   double _scale(BuildContext context) => TvLayoutConstants.scaleOf(context);
 
@@ -87,6 +104,26 @@ class TvSpotlightBackground extends StatelessWidget {
           children: [
             if (media != null) _animatedArtwork(media, _buildArtwork(context, media)) else ColoredBox(color: bgColor),
             _buildHorizontalScrim(bgColor),
+            // Rail-reveal dim: matches the rail's own slide duration so the
+            // artwork recedes exactly as the rows arrive.
+            IgnorePointer(
+              child: AnimatedContainer(
+                duration: DevicePerformance.reducedDuration(const Duration(milliseconds: 280)),
+                curve: Curves.easeOut,
+                // Light on top, heavy at the bottom: the artwork keeps living
+                // behind the billboard info while the rows stay readable.
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      bgColor.withValues(alpha: railRevealed ? _railDimAlphaTop : 0.0),
+                      bgColor.withValues(alpha: railRevealed ? _railDimAlphaBottom : 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
             DecoratedBox(
               decoration: BoxDecoration(
                 gradient: deepBottomScrim
@@ -114,11 +151,13 @@ class TvSpotlightBackground extends StatelessWidget {
               ),
             ),
             if (media != null && showInfo)
+              // While browsing the info pins top-left (Netflix) so it never
+              // hides behind the revealed rail; at rest it sits above it.
               Positioned(
                 left: contentLeft ?? TvLayoutConstants.horizontalInset,
                 right: MediaQuery.sizeOf(context).width * 0.34,
-                top: contentTop,
-                bottom: contentBottom,
+                top: railRevealed ? (contentTop ?? 0) : contentTop,
+                bottom: railRevealed ? null : contentBottom,
                 child: AnimatedOpacity(
                   opacity: infoOpacity,
                   duration: const Duration(milliseconds: 280),
@@ -132,17 +171,18 @@ class TvSpotlightBackground extends StatelessWidget {
                       ignoring: infoOpacity == 0,
                       child: LayoutBuilder(
                         builder: (context, constraints) {
+                          final anchor = railRevealed ? Alignment.topLeft : Alignment.bottomLeft;
                           if (!constraints.hasBoundedHeight ||
                               constraints.maxHeight <= 0 ||
                               constraints.maxWidth <= 0) {
-                            return Align(alignment: .bottomLeft, child: _buildInfo(context, media));
+                            return Align(alignment: anchor, child: _buildInfo(context, media));
                           }
 
                           return Align(
-                            alignment: .bottomLeft,
+                            alignment: anchor,
                             child: FittedBox(
                               fit: BoxFit.scaleDown,
-                              alignment: .bottomLeft,
+                              alignment: anchor,
                               child: SizedBox(width: constraints.maxWidth, child: _buildInfo(context, media)),
                             ),
                           );
@@ -178,28 +218,33 @@ class TvSpotlightBackground extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
     final containerAspect = size.width / size.height;
+    // Landscape art only. thumbPath is a portrait poster and is handled
+    // separately below — cover-cropping it to 16:9 yields a giant face.
     final artCandidates = <String?>[
       media.heroArt(containerAspectRatio: containerAspect) ??
           media.grandparentArtPath ??
           media.artPath ??
-          media.backgroundSquarePath ??
-          media.thumbPath,
+          media.backgroundSquarePath,
       media.grandparentArtPath,
       media.artPath,
       media.backgroundSquarePath,
-      media.thumbPath,
     ];
+    final posterFill = artCandidates.every((path) => path == null || path.isEmpty);
+    if (posterFill) artCandidates.add(media.thumbPath);
     for (final candidate in artCandidates) {
       final localPath = localArtworkPathResolver?.call(candidate);
       if (localPath != null && File(localPath).existsSync()) {
-        return blurArtwork(
-          Image.file(
-            File(localPath),
-            fit: BoxFit.cover,
-            // Top-anchor so tall backdrops don't clip faces/titles off the top.
-            alignment: Alignment.topCenter,
-            errorBuilder: (context, error, stackTrace) =>
-                ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+        return _posterFill(
+          posterFill,
+          blurArtwork(
+            Image.file(
+              File(localPath),
+              fit: BoxFit.cover,
+              // Top-anchor so tall backdrops don't clip faces/titles off the top.
+              alignment: Alignment.topCenter,
+              errorBuilder: (context, error, stackTrace) =>
+                  ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+            ),
           ),
         );
       }
@@ -226,22 +271,37 @@ class TvSpotlightBackground extends StatelessWidget {
       imageType: ImageType.art,
     );
 
-    return blurArtwork(
-      CachedNetworkImage(
-        imageUrl: imageUrl,
-        cacheManager: PlexImageCacheManager.instance,
-        fit: BoxFit.cover,
-        // Top-anchor so tall backdrops don't clip faces/titles off the top.
-        alignment: Alignment.topCenter,
-        memCacheHeight: memHeight,
-        // Explicit fades: the package defaults (500ms in / 1000ms out) double
-        // up with the AnimatedSwitcher cross-fade above on every swap.
-        fadeInDuration: DevicePerformance.reducedDuration(const Duration(milliseconds: 200)),
-        fadeOutDuration: DevicePerformance.reducedDuration(const Duration(milliseconds: 200)),
-        placeholder: (context, url) => ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
-        errorBuilder: (context, error, stackTrace) =>
-            ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+    return _posterFill(
+      posterFill,
+      blurArtwork(
+        CachedNetworkImage(
+          imageUrl: imageUrl,
+          cacheManager: PlexImageCacheManager.instance,
+          fit: BoxFit.cover,
+          // Top-anchor so tall backdrops don't clip faces/titles off the top.
+          alignment: Alignment.topCenter,
+          memCacheHeight: memHeight,
+          // Explicit fades: the package defaults (500ms in / 1000ms out) double
+          // up with the AnimatedSwitcher cross-fade above on every swap.
+          fadeInDuration: DevicePerformance.reducedDuration(const Duration(milliseconds: 200)),
+          fadeOutDuration: DevicePerformance.reducedDuration(const Duration(milliseconds: 200)),
+          placeholder: (context, url) => ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+          errorBuilder: (context, error, stackTrace) =>
+              ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+        ),
       ),
+    );
+  }
+
+  /// Only a portrait poster available: blur it into an atmospheric fill
+  /// instead of showing a hugely magnified crop. `blurArtwork` is the
+  /// screenshot-obfuscation switch, not a design tool — hence the explicit
+  /// filter here.
+  Widget _posterFill(bool enabled, Widget child) {
+    if (!enabled || DevicePerformance.isReduced) return child;
+    return ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: _posterFillBlurSigma, sigmaY: _posterFillBlurSigma),
+      child: child,
     );
   }
 
@@ -272,7 +332,7 @@ class TvSpotlightBackground extends StatelessWidget {
         _buildLogoOrTitle(context, media, title),
         SizedBox(height: _sectionGap(scale)),
         _buildMetadataLine(context, media),
-        if (!compact && (media.genres?.isNotEmpty ?? false)) ...[
+        if (!railRevealed && !compact && (media.genres?.isNotEmpty ?? false)) ...[
           SizedBox(height: 6 * scale),
           Text(
             media.genres!.take(3).join('  •  '),
@@ -286,7 +346,10 @@ class TvSpotlightBackground extends StatelessWidget {
             ),
           ),
         ],
-        if (summary != null && summary.isNotEmpty) ...[
+        if (railRevealed) ...[
+          // Logo + metadata only: enough to identify the focused row item
+          // without competing with the posters right below it.
+        ] else if (summary != null && summary.isNotEmpty) ...[
           SizedBox(height: _sectionGap(scale)),
           Text(
             summary,
@@ -311,7 +374,7 @@ class TvSpotlightBackground extends StatelessWidget {
             ),
           ),
         ],
-        if (showPrimaryAction || actions != null) ...[
+        if (!railRevealed && (showPrimaryAction || actions != null)) ...[
           SizedBox(height: (compact ? 18 : 26) * scale),
           actions ?? _buildPrimaryAction(context, media),
         ],
@@ -466,10 +529,10 @@ class TvSpotlightBackground extends StatelessWidget {
   double _sectionGap(double scale) => (compact ? 10 : 16) * scale;
 
   double _logoWidth(double scale) =>
-      (compact ? TvLayoutConstants.compactHeroLogoWidth : TvLayoutConstants.heroLogoWidth) * scale;
+      ((compact || railRevealed) ? TvLayoutConstants.compactHeroLogoWidth : TvLayoutConstants.heroLogoWidth) * scale;
 
   double _logoHeight(double scale) =>
-      (compact ? TvLayoutConstants.compactHeroLogoHeight : TvLayoutConstants.heroLogoHeight) * scale;
+      ((compact || railRevealed) ? TvLayoutConstants.compactHeroLogoHeight : TvLayoutConstants.heroLogoHeight) * scale;
 
   double _titleFontSize(double scale) => (compact ? 44 : 66) * scale;
 

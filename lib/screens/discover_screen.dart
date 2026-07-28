@@ -134,6 +134,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // ValueNotifier (not setState) so a spotlight swap rebuilds only the
   // TvSpotlightBackground subtree, never the rail/rows.
   final ValueNotifier<MediaItem?> _spotlightItem = ValueNotifier(null);
+
+  /// Rail focus fires per D-pad step; without this every tile passed over
+  /// would trigger a cross-fade and a backdrop fetch.
+  Timer? _spotlightDebounce;
   bool _isTabVisible = true;
 
   // Track initial load so we can focus hero when content first appears
@@ -570,6 +574,19 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     }
   }
 
+  /// Settle the billboard on the item the user actually stopped on. Nulls
+  /// apply immediately — that's a focus leave, not a scroll-through.
+  void _setSpotlightDebounced(MediaItem? item) {
+    _spotlightDebounce?.cancel();
+    if (item == null) {
+      _spotlightItem.value = null;
+      return;
+    }
+    _spotlightDebounce = Timer(const Duration(milliseconds: 180), () {
+      if (mounted) _spotlightItem.value = item;
+    });
+  }
+
   void _moveTvHero(int delta) {
     if (_latestMovies.length < 2) return;
     final current = _effectiveSpotlightItem;
@@ -632,6 +649,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _autoScrollTimer?.cancel();
     _indicatorTimer?.cancel();
     _tvHeroManualPauseTimer?.cancel();
+    _spotlightDebounce?.cancel();
     _spotlightItem.dispose();
     _indicatorProgress.dispose();
     _heroController.dispose();
@@ -1472,9 +1490,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       showPrimaryAction: false,
                       deepBottomScrim: true,
                       kenBurns: true,
-                      // Rail revealed → fade the info block + actions away so only
-                      // the (focus-following) backdrop remains behind the rows.
-                      infoOpacity: _tvRailRevealed ? 0.0 : 1.0,
+                      // Rail revealed → the billboard shrinks to logo + metadata
+                      // for the focused row item and the backdrop dims; it never
+                      // disappears, so the artwork keeps identifying the selection.
+                      railRevealed: _tvRailRevealed,
                       actions: spotlight == null ? null : _buildTvHeroActions(context, spotlight, scale),
                     );
                   },
@@ -1529,7 +1548,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     // ValueListenableBuilder on _spotlightItem rebuilds, not the rows.
                     // Auto-rotate is paused while the rail is revealed (see
                     // _setTvRailRevealed) so it doesn't fight the focus-follow.
-                    onFocusedItemChanged: (item) => _spotlightItem.value = item,
+                    onFocusedItemChanged: _setSpotlightDebounced,
                     onRefresh: _discover.updateItem,
                     onRemoveFromContinueWatching: _discover.refreshContinueWatching,
                     isContinueWatchingHub: (hub) => hub.isContinueWatchingHub,
