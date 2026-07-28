@@ -230,6 +230,16 @@ class TvSubtitlesTab extends StatelessWidget {
             rows.add(TvPanelSectionHeader(label: t.videoControls.tvPanel.tracks));
 
             final useSourceSubs = state.canUseSourceSubtitles;
+            final playerSubtitleTracks = TrackFilterHelper.extractAndFilterTracks<SubtitleTrack>(
+              tracksSnapshot.data,
+              (t) => t?.subtitle ?? [],
+            );
+            logSubtitleLabelingDiagnostics(
+              surface: 'tv',
+              playerTracks: playerSubtitleTracks,
+              serverTracks: state.sourceSubtitleMetadata,
+              canUseSourceSubtitles: useSourceSubs,
+            );
             if (useSourceSubs) {
               final selectedId = _selectedSourceSubId();
               // Off
@@ -254,10 +264,7 @@ class TvSubtitlesTab extends StatelessWidget {
                 );
               }
             } else {
-              final tracks = TrackFilterHelper.extractAndFilterTracks<SubtitleTrack>(
-                tracksSnapshot.data,
-                (t) => t?.subtitle ?? [],
-              );
+              final tracks = playerSubtitleTracks;
               final selectedSub = selSnapshot.data?.subtitle;
               final isOff = selectedSub == null || selectedSub.id == 'no';
               rows.add(

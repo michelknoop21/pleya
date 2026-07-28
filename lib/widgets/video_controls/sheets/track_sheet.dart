@@ -380,6 +380,12 @@ class _SubtitleColumnState extends State<_SubtitleColumn> {
     final isOffSelected = selectedSub == null || selectedSub.id == 'no';
     final hasSecondary = widget.supportsSecondary && secondarySub != null;
 
+    logSubtitleLabelingDiagnostics(
+      surface: 'sheet',
+      playerTracks: widget.tracks,
+      serverTracks: widget.trackControlsState.sourceSubtitleMetadata,
+    );
+
     // +1 for "Off" row
     final itemCount = widget.tracks.length + 1;
 

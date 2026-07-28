@@ -1,5 +1,6 @@
 import '../media/media_source_info.dart';
 import '../mpv/mpv.dart';
+import 'app_logger.dart';
 import 'track_label_builder.dart';
 
 /// Placeholder titles that carry no information — servers hand these out for
@@ -26,13 +27,67 @@ MediaSubtitleTrack? matchServerSubtitle({
   required List<MediaSubtitleTrack> serverTracks,
 }) {
   if (track.isExternal) return null;
+  if (diagnoseSubtitleAlignment(playerTracks, serverTracks) != SubtitleAlignmentOutcome.aligned) return null;
   final embeddedPlayer = playerTracks.where((t) => !t.isExternal).toList();
   final embeddedServer = serverTracks.where((t) => !t.isExternal).toList();
-  if (embeddedServer.isEmpty || embeddedServer.length != embeddedPlayer.length) return null;
   final position = embeddedPlayer.indexWhere((t) => t.id == track.id);
   if (position < 0) return null;
-  if (_alignmentContradicts(embeddedPlayer, embeddedServer)) return null;
   return embeddedServer[position];
+}
+
+/// Why the two lists could or couldn't be lined up. Every non-[aligned] value
+/// is a path where [matchServerSubtitle] silently returns null, which is why
+/// it is reported separately — see [logSubtitleLabelingDiagnostics].
+enum SubtitleAlignmentOutcome { aligned, noServerData, countMismatch, contradiction }
+
+/// The alignment decision [matchServerSubtitle] makes, made inspectable.
+SubtitleAlignmentOutcome diagnoseSubtitleAlignment(
+  List<SubtitleTrack> playerTracks,
+  List<MediaSubtitleTrack> serverTracks,
+) {
+  final embeddedPlayer = playerTracks.where((t) => !t.isExternal).toList();
+  final embeddedServer = serverTracks.where((t) => !t.isExternal).toList();
+  if (embeddedServer.isEmpty) return SubtitleAlignmentOutcome.noServerData;
+  if (embeddedServer.length != embeddedPlayer.length) return SubtitleAlignmentOutcome.countMismatch;
+  if (_alignmentContradicts(embeddedPlayer, embeddedServer)) return SubtitleAlignmentOutcome.contradiction;
+  return SubtitleAlignmentOutcome.aligned;
+}
+
+String? _lastDiagnosticsSignature;
+
+/// One-line report of what the labeling saw, emitted only when the picture
+/// actually changes — the track menus rebuild constantly.
+///
+/// Logged at info level on purpose: debug-level lines are dropped unless the
+/// user turns debug logging on, and this needs to be readable in Settings →
+/// Logs straight away (the only practical way to inspect a TV build).
+void logSubtitleLabelingDiagnostics({
+  required String surface,
+  required List<SubtitleTrack> playerTracks,
+  required List<MediaSubtitleTrack> serverTracks,
+  bool? canUseSourceSubtitles,
+}) {
+  final outcome = diagnoseSubtitleAlignment(playerTracks, serverTracks);
+  final player = playerTracks
+      .map((t) => '${t.id}/${t.language ?? '-'}/${t.title ?? '-'}${t.isExternal ? '/ext' : ''}')
+      .join(', ');
+  // `key` is reduced to a flag: it carries a library path we don't want in logs.
+  final server = serverTracks
+      .map(
+        (t) =>
+            '${t.id}/${t.languageCode ?? '-'}/${t.language ?? '-'}/${t.displayTitle ?? '-'}'
+            '${(t.key?.isNotEmpty ?? false) ? '/key' : ''}${t.external ? '/ext' : ''}',
+      )
+      .join(', ');
+  final message =
+      'subtitle-labeling[$surface] outcome=${outcome.name} '
+      'source=${canUseSourceSubtitles ?? '-'} '
+      'player=${playerTracks.length}(${playerTracks.where((t) => !t.isExternal).length} embedded) '
+      'server=${serverTracks.length}(${serverTracks.where((t) => !t.isExternal).length} embedded) '
+      'playerTracks=[$player] serverTracks=[$server]';
+  if (message == _lastDiagnosticsSignature) return;
+  _lastDiagnosticsSignature = message;
+  appLogger.i(message);
 }
 
 /// Whether the positional alignment is provably wrong: any pair where both

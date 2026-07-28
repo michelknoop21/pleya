@@ -137,4 +137,54 @@ void main() {
       1,
     );
   });
+
+  group('diagnoseSubtitleAlignment', () {
+    test('reports noServerData when the server list holds no embedded streams', () {
+      expect(
+        diagnoseSubtitleAlignment(const [SubtitleTrack(id: '1')], const []),
+        SubtitleAlignmentOutcome.noServerData,
+      );
+      expect(
+        diagnoseSubtitleAlignment(const [SubtitleTrack(id: '1')], [_server(external: true)]),
+        SubtitleAlignmentOutcome.noServerData,
+      );
+    });
+
+    test('reports countMismatch on differing embedded counts', () {
+      expect(
+        diagnoseSubtitleAlignment(const [SubtitleTrack(id: '1'), SubtitleTrack(id: '2')], [_server()]),
+        SubtitleAlignmentOutcome.countMismatch,
+      );
+    });
+
+    test('reports contradiction when a tagged pair disagrees', () {
+      expect(
+        diagnoseSubtitleAlignment(const [SubtitleTrack(id: '1', language: 'fre')], [_server(languageCode: 'nld')]),
+        SubtitleAlignmentOutcome.contradiction,
+      );
+    });
+
+    test('reports aligned when the lists line up', () {
+      expect(
+        diagnoseSubtitleAlignment(const [SubtitleTrack(id: '1', language: 'nl')], [_server(languageCode: 'nld')]),
+        SubtitleAlignmentOutcome.aligned,
+      );
+    });
+
+    test('agrees with matchServerSubtitle on every outcome', () {
+      const player = [SubtitleTrack(id: '1'), SubtitleTrack(id: '2', language: 'fre')];
+      final cases = <List<MediaSubtitleTrack>>[
+        const [],
+        [_server(id: 1, languageCode: 'nld')],
+        [_server(id: 1, languageCode: 'nld'), _server(id: 2, languageCode: 'eng')],
+        [_server(id: 1, languageCode: 'nld'), _server(id: 2, languageCode: 'fra')],
+      ];
+
+      for (final serverTracks in cases) {
+        final aligned = diagnoseSubtitleAlignment(player, serverTracks) == SubtitleAlignmentOutcome.aligned;
+        final matched = matchServerSubtitle(track: player.first, playerTracks: player, serverTracks: serverTracks);
+        expect(matched != null, aligned, reason: 'server=${serverTracks.length}');
+      }
+    });
+  });
 }
