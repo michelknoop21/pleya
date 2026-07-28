@@ -583,8 +583,49 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       return;
     }
     _spotlightDebounce = Timer(const Duration(milliseconds: 180), () {
-      if (mounted) _spotlightItem.value = item;
+      if (!mounted) return;
+      _spotlightItem.value = _spotlightArtCache[item.globalKey] ?? item;
+      _enrichSpotlightArt(item);
     });
+  }
+
+  /// Row items come from list endpoints that often omit art/clearLogo the
+  /// server does have. Fetch the full item (the show, for episodes) once and
+  /// merge its art in, so the billboard shows real fitted artwork instead of
+  /// the blurred poster fallback. Failures cache too — no fetch storms.
+  final Map<String, MediaItem?> _spotlightArtCache = {};
+
+  bool _hasBillboardArt(MediaItem item) =>
+      (item.artPath?.isNotEmpty ?? false) ||
+      (item.grandparentArtPath?.isNotEmpty ?? false) ||
+      (item.backgroundSquarePath?.isNotEmpty ?? false);
+
+  Future<void> _enrichSpotlightArt(MediaItem item) async {
+    final key = item.globalKey;
+    if (_spotlightArtCache.containsKey(key)) return;
+    if (_hasBillboardArt(item) && (item.clearLogoPath?.isNotEmpty ?? false)) return;
+    _spotlightArtCache[key] = null; // in-flight / failed marker
+    try {
+      final client = _getMediaClientForItem(item);
+      if (client == null) return;
+      // For episodes prefer the show: that's where the hero art + logo live.
+      final fetchId = (item.isEpisode ? item.grandparentId : null) ?? item.id;
+      final full = await client.fetchItem(fetchId);
+      if (full == null) return;
+      final enriched = item.copyWith(
+        artPath: item.artPath ?? full.artPath,
+        grandparentArtPath: item.grandparentArtPath ?? full.artPath,
+        backgroundSquarePath: item.backgroundSquarePath ?? full.backgroundSquarePath,
+        clearLogoPath: item.clearLogoPath ?? full.clearLogoPath,
+      );
+      _spotlightArtCache[key] = enriched;
+      if (!mounted) return;
+      // Still the focused item? Swap in place — the AnimatedSwitcher
+      // crossfades from the blurred fill to the real artwork.
+      if (_spotlightItem.value?.globalKey == key) _spotlightItem.value = enriched;
+    } catch (_) {
+      // Cached null already prevents retries; art simply stays blurred.
+    }
   }
 
   void _moveTvHero(int delta) {
