@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -60,11 +61,16 @@ class VideoFilterManager {
   /// Callback invoked when boxFitMode changes, for external persistence
   final void Function(int mode)? onBoxFitModeChanged;
 
+  /// The user's configured `sub-pos`, read fresh on every apply. Used on
+  /// iOS/tvOS to keep subtitles inside the visible rect while zoomed.
+  final int Function()? subtitleBasePosition;
+
   VideoFilterManager({
     required this.player,
     int initialBoxFitMode = 0,
     Size? initialPlayerSize,
     this.onBoxFitModeChanged,
+    this.subtitleBasePosition,
   }) : _boxFitMode = initialBoxFitMode,
        _playerSize = initialPlayerSize {
     _debouncedUpdateVideoFilter = debounce(
@@ -93,6 +99,30 @@ class VideoFilterManager {
     final normalized = normalizeZoomScale(scale);
     if (normalized == 1.0) return 0.0;
     return math.log(normalized) / math.ln2;
+  }
+
+  /// The scale the Apple VO applies to the video layer, mirroring
+  /// `updateVideoGravityIfNeeded` in MpvPlayerCoreBase.swift. On iOS/tvOS zoom
+  /// and panscan are a centered Core Animation transform on the layer that also
+  /// carries the OSD, so mpv's own subtitle placement is unaware of it.
+  static double effectiveLayerScale({
+    required double zoomScale,
+    required bool coverMode,
+    required bool aspectOverrideActive,
+  }) {
+    var scale = normalizeZoomScale(zoomScale);
+    if (coverMode && !aspectOverrideActive) scale *= 1.0 + 0.33;
+    return scale;
+  }
+
+  /// Pull `sub-pos` inward so the subtitles land where the user asked for them
+  /// once [scale] has blown the layer up around its center: a point at fraction
+  /// p from the top ends up at 0.5 + (p - 0.5) * scale, so aim for the inverse.
+  static int subtitlePositionForScale(int basePosition, double scale) {
+    if (scale <= 1.0001) return basePosition;
+    final target = basePosition / 100;
+    final compensated = 0.5 + (target - 0.5) / scale;
+    return (compensated * 100).round().clamp(0, 100);
   }
 
   double setZoomScale(double scale) {
@@ -250,6 +280,18 @@ class VideoFilterManager {
       await _applyProperty('sub-ass-force-margins', coverMode || zoomScale > 1.0001 ? 'yes' : 'no');
       await _applyProperty('panscan', coverMode ? '1.0' : '0');
       await _applyProperty('video-zoom', videoZoomPropertyForScale(zoomScale).toString());
+
+      // iOS/tvOS scale the whole layer (video *and* OSD) outside of mpv, so
+      // mpv's subtitle placement would run off the bottom of the screen.
+      final basePosition = subtitleBasePosition?.call();
+      if (Platform.isIOS && basePosition != null) {
+        final scale = effectiveLayerScale(
+          zoomScale: zoomScale,
+          coverMode: coverMode,
+          aspectOverrideActive: boxFitMode == 2,
+        );
+        await _applyProperty('sub-pos', subtitlePositionForScale(basePosition, scale).toString());
+      }
     } catch (e) {
       appLogger.w('Failed to update video filter', error: e);
     }

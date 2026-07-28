@@ -457,6 +457,26 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     }
   }
 
+  /// Move focus from the billboard's Play pill to the More-info pill. Falls
+  /// back to advancing the hero carousel when the info node isn't mounted, so
+  /// RIGHT never becomes a dead key.
+  void _focusTvHeroInfoOrAdvance() {
+    if (_tvHeroInfoFocusNode.canRequestFocus) {
+      _tvHeroInfoFocusNode.requestFocus();
+    } else {
+      _moveTvHero(1);
+    }
+  }
+
+  /// Mirror of [_focusTvHeroInfoOrAdvance] for LEFT from the More-info pill.
+  void _focusTvHeroPlayOrAdvance() {
+    if (_tvHeroPlayFocusNode.canRequestFocus) {
+      _tvHeroPlayFocusNode.requestFocus();
+    } else {
+      _moveTvHero(-1);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1644,7 +1664,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           onNavigateDown: () => _focusTvBrowseRailWhenReady(immediate: true),
           onNavigateUp: _focusTopActions,
           onNavigateLeft: () => _moveTvHero(-1),
-          onNavigateRight: () => _moveTvHero(1),
+          onNavigateRight: _focusTvHeroInfoOrAdvance,
           onBack: _navigateToSidebar,
           child: _tvHeroPill(
             context,
@@ -1663,7 +1683,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           onPressed: () => navigateToMediaItem(context, billboard),
           onNavigateDown: () => _focusTvBrowseRailWhenReady(immediate: true),
           onNavigateUp: _focusTopActions,
-          onNavigateLeft: () => _moveTvHero(-1),
+          onNavigateLeft: _focusTvHeroPlayOrAdvance,
           onNavigateRight: () => _moveTvHero(1),
           onBack: _navigateToSidebar,
           child: _tvHeroPill(

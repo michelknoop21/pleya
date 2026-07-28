@@ -145,6 +145,41 @@ void main() {
     expect(aspectWrites, hasLength(1));
     expect(double.parse(aspectWrites.single.value), closeTo(1.0, 0.0001));
   });
+
+  test('subtitle position is untouched without layer scaling', () {
+    expect(VideoFilterManager.subtitlePositionForScale(100, 1.0), 100);
+    expect(VideoFilterManager.subtitlePositionForScale(90, 1.00005), 90);
+  });
+
+  test('subtitle position pulls inward proportionally to the layer scale', () {
+    // A bottom-aligned subtitle sits half a frame below center, so the scale
+    // divides that offset: 0.5 + 0.5 / scale.
+    expect(VideoFilterManager.subtitlePositionForScale(100, 1.33), 88);
+    expect(VideoFilterManager.subtitlePositionForScale(100, 2.0), 75);
+    expect(VideoFilterManager.subtitlePositionForScale(0, 2.0), 25);
+  });
+
+  test('subtitle position at center is scale invariant', () {
+    for (final scale in [1.0, 1.33, 2.0, 10.0]) {
+      expect(VideoFilterManager.subtitlePositionForScale(50, scale), 50);
+    }
+  });
+
+  test('effective layer scale mirrors the native zoom and panscan transform', () {
+    expect(
+      VideoFilterManager.effectiveLayerScale(zoomScale: 1.0, coverMode: false, aspectOverrideActive: false),
+      closeTo(1.0, 0.0001),
+    );
+    expect(
+      VideoFilterManager.effectiveLayerScale(zoomScale: 1.0, coverMode: true, aspectOverrideActive: false),
+      closeTo(1.33, 0.0001),
+    );
+    // Stretch mode overrides the aspect natively, so panscan is not applied.
+    expect(
+      VideoFilterManager.effectiveLayerScale(zoomScale: 1.5, coverMode: true, aspectOverrideActive: true),
+      closeTo(1.5, 0.0001),
+    );
+  });
 }
 
 class _RecordingPlayer implements Player {

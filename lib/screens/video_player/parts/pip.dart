@@ -40,6 +40,7 @@ extension _VideoPlayerPipMethods on VideoPlayerScreenState {
         initialBoxFitMode: settings.read(SettingsService.defaultBoxFitMode),
         initialPlayerSize: initialPlayerSize,
         onBoxFitModeChanged: (mode) => settings.write(SettingsService.defaultBoxFitMode, mode),
+        subtitleBasePosition: () => settings.read(SettingsService.subtitlePosition),
       );
       unawaited(_videoFilterManager!.updateVideoFilter());
     }
