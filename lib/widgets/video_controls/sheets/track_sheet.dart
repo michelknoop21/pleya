@@ -5,6 +5,7 @@ import '../../../media/media_source_info.dart';
 import '../../../mpv/mpv.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../utils/scroll_utils.dart';
+import '../../../utils/player_subtitle_labeling.dart';
 import '../../../utils/track_label_builder.dart';
 import '../../../widgets/app_icon.dart';
 import '../../../widgets/focusable_list_tile.dart';
@@ -426,12 +427,11 @@ class _SubtitleColumnState extends State<_SubtitleColumn> {
               final track = widget.tracks[index - 1];
               final isPrimary = !isOffSelected && track.id == selectedSub.id;
               final isSecondary = hasSecondary && track.id == secondarySub.id;
-              final label = TrackLabelBuilder.subtitleLabel(
-                title: track.title,
-                language: track.language,
-                codec: track.codec,
-                forced: track.isForced,
-                index: index - 1,
+              final label = labelForPlayerSubtitle(
+                track: track,
+                visibleIndex: index - 1,
+                playerTracks: widget.tracks,
+                serverTracks: widget.trackControlsState.sourceSubtitleMetadata,
               );
 
               Widget? badge;

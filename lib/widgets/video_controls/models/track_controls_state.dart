@@ -18,6 +18,11 @@ class TrackControlsState {
   final List<MediaAudioTrack> sourceAudioTracks;
   final int? selectedAudioStreamId;
   final List<MediaSubtitleTrack> sourceSubtitleTracks;
+
+  /// Every subtitle stream the server knows about, unfiltered by transcoding.
+  /// Used to label mpv's tracks during direct play, where the container tags
+  /// alone often lack a language.
+  final List<MediaSubtitleTrack> sourceSubtitleMetadata;
   final int? selectedSubtitleStreamId;
   final int? sourcePartId;
 
@@ -80,6 +85,7 @@ class TrackControlsState {
     this.sourceAudioTracks = const [],
     this.selectedAudioStreamId,
     this.sourceSubtitleTracks = const [],
+    this.sourceSubtitleMetadata = const [],
     this.selectedSubtitleStreamId,
     this.sourcePartId,
     this.sourceDurationMs,

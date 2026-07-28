@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../mpv/mpv.dart';
 import '../../../services/settings_service.dart';
+import '../../../utils/player_subtitle_labeling.dart';
 import '../../../utils/track_label_builder.dart';
 import '../models/track_controls_state.dart';
 import '../helpers/track_filter_helper.dart';
@@ -274,12 +275,11 @@ class TvSubtitlesTab extends StatelessWidget {
               first = false;
               for (var i = 0; i < tracks.length; i++) {
                 final track = tracks[i];
-                final label = TrackLabelBuilder.subtitleLabel(
-                  title: track.title,
-                  language: track.language,
-                  codec: track.codec,
-                  forced: track.isForced,
-                  index: i,
+                final label = labelForPlayerSubtitle(
+                  track: track,
+                  visibleIndex: i,
+                  playerTracks: tracks,
+                  serverTracks: state.sourceSubtitleMetadata,
                 );
                 rows.add(
                   TvPanelRow(

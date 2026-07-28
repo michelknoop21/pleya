@@ -221,6 +221,10 @@ class PlexVideoControls extends StatefulWidget {
   final List<MediaAudioTrack> sourceAudioTracks;
   final int? selectedAudioStreamId;
   final List<MediaSubtitleTrack> sourceSubtitleTracks;
+
+  /// Unfiltered server subtitle metadata, used to label the player's own tracks
+  /// during direct play.
+  final List<MediaSubtitleTrack> sourceSubtitleMetadata;
   final int? selectedSubtitleStreamId;
   final int? sourcePartId;
   final PlaybackSourceChangeCallback? onPlaybackSourceChanged;
@@ -340,6 +344,7 @@ class PlexVideoControls extends StatefulWidget {
     this.sourceAudioTracks = const [],
     this.selectedAudioStreamId,
     this.sourceSubtitleTracks = const [],
+    this.sourceSubtitleMetadata = const [],
     this.selectedSubtitleStreamId,
     this.sourcePartId,
     this.onPlaybackSourceChanged,
