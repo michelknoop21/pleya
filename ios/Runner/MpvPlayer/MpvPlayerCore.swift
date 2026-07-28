@@ -101,6 +101,15 @@ class MpvPlayerCore: MpvPlayerCoreBase {
       let screen = containerView.window?.screen ?? window?.screen ?? UIScreen.main
       let scale = screen.nativeScale > 0 ? screen.nativeScale : screen.scale
       videoLayer.contentsScale = scale
+
+      // Setting `frame` on a transformed layer is undefined; re-derive
+      // bounds/position so the zoom transform survives relayout.
+      let transform = videoLayer.affineTransform()
+      if transform != .identity {
+        videoLayer.setAffineTransform(.identity)
+        videoLayer.frame = containerView.bounds
+        videoLayer.setAffineTransform(transform)
+      }
     }
 
     #if os(iOS)

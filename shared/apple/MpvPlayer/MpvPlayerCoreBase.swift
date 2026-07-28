@@ -179,6 +179,7 @@ class MpvPlayerCoreBase: NSObject {
   private var cachedHeight = 0.0
   private var currentPanscan = 0.0
   private var aspectOverrideActive = false
+  private var currentVideoZoom = 0.0
 
   override init() {
     super.init()
@@ -807,6 +808,8 @@ class MpvPlayerCoreBase: NSObject {
         currentPanscan = Double(value) ?? 0
       case "video-aspect-override":
         aspectOverrideActive = value != "no" && value != "-1" && value != "0"
+      case "video-zoom":
+        currentVideoZoom = Double(value) ?? 0
       default:
         cacheLock.unlock()
         return
@@ -819,10 +822,25 @@ class MpvPlayerCoreBase: NSObject {
       } else {
         gravity = .resizeAspect
       }
+
+      // Gravity alone is invisible for 16:9 content on a 16:9 display, so
+      // panscan ("fill screen") and mpv's log2 video-zoom are mapped onto a
+      // centered layer scale as well. panscan 1.0 ≈ cropping 4:3 letterbox
+      // (factor ~1.33), matching mpv's semantics closely enough for a TV.
+      var scale = pow(2.0, currentVideoZoom)
+      if currentPanscan > 0, !aspectOverrideActive {
+        scale *= 1.0 + currentPanscan * 0.33
+      }
+      let transform =
+        scale == 1.0
+        ? CGAffineTransform.identity
+        : CGAffineTransform(scaleX: CGFloat(scale), y: CGFloat(scale))
       cacheLock.unlock()
 
       DispatchQueue.main.async { [weak self] in
-        self?.videoLayer?.videoGravity = gravity
+        guard let layer = self?.videoLayer else { return }
+        layer.videoGravity = gravity
+        layer.setAffineTransform(transform)
       }
     #endif
   }
