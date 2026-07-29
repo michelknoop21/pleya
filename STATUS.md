@@ -4,6 +4,12 @@ _Laatst bijgewerkt: 2026-07-29 (branch `test`, 16 commits vóór `main`)_
 
 ## Waar was ik
 
+Home-billboard op de telefoon. Drie waargenomen problemen (dubbele titel, aangesneden titelkunst, te dunne app-bar) bleken één oorzaak te hebben: de telefoon-hero vroeg expliciet `posterThumb()` op, dus de ingebakken titelkunst van de poster botste met de titel die de app er zelf overheen zet. De ontbrekende primitieve was het onderscheid tussen artwork dat een vak *vult* (frosted backdrop, tv-spotlight — daar wordt niets overheen getekend) en artwork dat de titeltypografie van de app moet *dragen*. Voor het tweede is de vorm van het vak irrelevant: de 16:9-backdrop wint altijd. `billboardArt()` geeft dat terug als `BillboardArt{path, isBackdrop}`; `heroArtCandidates` is ongewijzigd, dus de vullende call-sites gedragen zich als voorheen. Zonder backdrop valt het billboard terug op vierkante of posterart maar rendert die onscherp — nooit een leeg vlak, nooit een dubbele titel. Telefoon-hero van ~75vh naar ~52vh (bij 75vh is het vak 0,56 en snijdt `cover` twee derde van het 16:9-frame weg). Commit `2a5a03d`, iOS-build draait.
+
+**Visueel ongeverifieerd.** De 52vh en de blur-sigma zijn gerekend, niet gezien. Op de telefoon nalopen: één titel op de hero, hoogte nog "hero" genoeg, een item zónder backdrop toont een onscherpe wash met alleen de app-titel, en witte app-bar-iconen over fel artwork met de zwaardere veil (0,88/0,68/0,42 in donker).
+
+Daarvóór: ondertitel-labels op tvOS.
+
 Ondertitel-labels op tvOS. Build 193 bevat de fix die mpv-ondertitelsporen positioneel koppelt aan de serverstreams (`lib/utils/player_subtitle_labeling.dart`), zodat een spoor zonder containertag alsnog een taal krijgt. Op de Apple TV blijft het paneel toch "Uit / French (Forced) / French / Track 3" tonen: precies wat de containertags in hun eentje al opleveren, dus de koppeling draait niet. De helper faalt op drie punten zwijgend (geen serverdata, afwijkende aantallen, tegensprekende talen), wat statisch niet te onderscheiden is. Daarom is er nu diagnostiek: `SubtitleAlignmentOutcome` + `diagnoseSubtitleAlignment()` maken de uitvalsreden benoembaar, en `logSubtitleLabelingDiagnostics()` logt hem eenmalig per wijziging op infoniveau vanuit beide trackmenu's (tv-paneel en sheet). Commit `4d4839c`, tvOS build **194** staat op TestFlight.
 
 ## Volgende stap
