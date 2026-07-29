@@ -1714,7 +1714,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         final cs = Theme.of(context).colorScheme;
         final showFocus = focusNode.hasFocus && InputModeTracker.isKeyboardMode(context);
         final fg = showFocus ? cs.surface : cs.onSurface;
-        final bg = showFocus ? cs.onSurface : cs.onSurface.withValues(alpha: 0.24);
+        // Unfocused, the pill is a translucent tint of the text colour. On a
+        // dark surface that reads as a soft grey pill; on a light one it is
+        // near-black text on a 24%-black veil over bright artwork, which is
+        // the worst pairing on screen. Light mode fills the pill instead.
+        final isLight = cs.brightness == Brightness.light;
+        final bg = showFocus
+            ? cs.onSurface
+            : (isLight ? cs.surface.withValues(alpha: 0.92) : cs.onSurface.withValues(alpha: 0.24));
         return AnimatedContainer(
           duration: FocusTheme.getAnimationDuration(context),
           curve: Curves.easeOutCubic,

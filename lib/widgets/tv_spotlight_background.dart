@@ -103,7 +103,7 @@ class TvSpotlightBackground extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             if (media != null) _animatedArtwork(media, _buildArtwork(context, media)) else ColoredBox(color: bgColor),
-            _buildHorizontalScrim(bgColor),
+            _buildHorizontalScrim(bgColor, isLight: Theme.of(context).brightness == Brightness.light),
             // Rail-reveal dim: matches the rail's own slide duration so the
             // artwork recedes exactly as the rows arrive.
             IgnorePointer(
@@ -305,14 +305,23 @@ class TvSpotlightBackground extends StatelessWidget {
     );
   }
 
-  Widget _buildHorizontalScrim(Color bgColor) {
+  /// Left-to-right wash that carries the billboard text and the nav rail.
+  ///
+  /// The text is theme-coloured, so in light mode it is near-black over the
+  /// artwork — a 0.86 white wash still leaves a bright backdrop showing
+  /// through and the description drowns in it. Light mode therefore washes
+  /// harder and further before releasing the artwork; dark mode keeps its
+  /// original, already-legible ramp.
+  Widget _buildHorizontalScrim(Color bgColor, {required bool isLight}) {
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [bgColor.withValues(alpha: 0.86), bgColor.withValues(alpha: 0.32), Colors.transparent],
-          stops: const [0.0, 0.56, 1.0],
+          colors: isLight
+              ? [bgColor.withValues(alpha: 0.96), bgColor.withValues(alpha: 0.62), Colors.transparent]
+              : [bgColor.withValues(alpha: 0.86), bgColor.withValues(alpha: 0.32), Colors.transparent],
+          stops: isLight ? const [0.0, 0.62, 1.0] : const [0.0, 0.56, 1.0],
         ),
       ),
     );
@@ -321,6 +330,13 @@ class TvSpotlightBackground extends StatelessWidget {
   Widget _buildInfo(BuildContext context, MediaItem media) {
     final scale = _scale(context);
     final colorScheme = Theme.of(context).colorScheme;
+    // Dimmed text reads as "secondary" on a dark surface, but as "washed out"
+    // on a light one: black at 66% over bright artwork loses far more contrast
+    // than white at 66% over a dark backdrop. Light mode keeps more ink.
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final genreAlpha = isLight ? 0.82 : 0.66;
+    final summaryAlpha = isLight ? 0.94 : 0.78;
+    final spoilerAlpha = isLight ? 0.90 : 0.72;
     final shouldHideSpoiler = hideSpoilers && media.shouldHideSpoiler;
     final summary = shouldHideSpoiler ? null : media.summary;
     final title = media.grandparentTitle ?? media.displayTitle;
@@ -339,7 +355,7 @@ class TvSpotlightBackground extends StatelessWidget {
             maxLines: 1,
             overflow: .ellipsis,
             style: TextStyle(
-              color: colorScheme.onSurface.withValues(alpha: 0.66),
+              color: colorScheme.onSurface.withValues(alpha: genreAlpha),
               fontSize: _metadataFontSize(scale),
               fontWeight: .w500,
               letterSpacing: 0.1,
@@ -356,7 +372,7 @@ class TvSpotlightBackground extends StatelessWidget {
             maxLines: 3,
             overflow: .ellipsis,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: colorScheme.onSurface.withValues(alpha: 0.78),
+              color: colorScheme.onSurface.withValues(alpha: summaryAlpha),
               fontSize: _summaryFontSize(scale),
               height: compact ? 1.34 : 1.45,
             ),
@@ -368,7 +384,7 @@ class TvSpotlightBackground extends StatelessWidget {
             maxLines: 2,
             overflow: .ellipsis,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: colorScheme.onSurface.withValues(alpha: 0.72),
+              color: colorScheme.onSurface.withValues(alpha: spoilerAlpha),
               fontSize: _summaryFontSize(scale),
               height: compact ? 1.34 : 1.45,
             ),
