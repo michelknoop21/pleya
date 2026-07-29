@@ -57,3 +57,11 @@ Append-only. Nummers zijn opeenvolgend; oude beslissingen worden niet verwijderd
 **Context:** Michel wil routerloos device-naar-device zonder internet; Apple ondersteunt Wi-Fi Aware sinds iOS 26 (EU-verplichting), Android sinds 8.0, maar oudere devices en simulators kunnen het niet.
 **Decision:** Aware toegevoegd als extra kandidaat tussen LAN en relay (`PleyaShareChannel.awareProxyProvider`); `isSupported == false` slaat de stap stil over. Alle bestaande paden (Wi-Fi, hotspot, kabel, USB-tethering, relay) blijven byte-voor-byte intact.
 **Consequences:** Geen regressierisico op bestaande verbindingen; iOS vereist eenmalige systeem-pairing (DeviceDiscoveryUI) en `WiFiAwareServices` in Info.plist; device-QA verplicht want simulators ondersteunen Aware niet.
+
+## DEC-008: Ondertitelsporen positioneel koppelen aan serverstreams, met bewijsplicht
+
+**Date:** 2026-07-28
+**Status:** accepted
+**Context:** Bij direct play krijgt de UI alleen de containertags van mpv, dus een ondertitelspoor zonder taaltag viel terug op "Track 1" terwijl de server (Plex/Jellyfin) de taal wél kent. mpv-track-id's zijn niet gelijk aan server-stream-id's, dus koppelen op id kan niet.
+**Decision:** `matchServerSubtitle()` in `lib/utils/player_subtitle_labeling.dart` koppelt op **positie** onder de niet-externe sporen aan beide kanten, en weigert te koppelen zodra het bewijs ontbreekt: geen serverdata, afwijkende aantallen, of één paar waar beide kanten een taal noemen die niet overeenkomt (`_alignmentContradicts`). Een verkeerde taal leest slechter dan geen taal, dus bij twijfel wordt niets samengevoegd; containertags winnen altijd van serverdata.
+**Consequences:** De helper faalt per definitie stil, wat een verkeerd label voorkomt maar diagnose onmogelijk maakte toen hij op tvOS niet aansloeg. Daarom is `diagnoseSubtitleAlignment()` toegevoegd die de uitvalsreden benoemt, plus `logSubtitleLabelingDiagnostics()` die hem op **infoniveau** logt (debugniveau wordt in release gefilterd; Instellingen > Logs is de enige praktische inspectie op een TV). Let op de asymmetrie die dit kan triggeren: Plex vult `external` nooit, dus `isExternal` valt daar terug op "heeft een `key`" (`lib/media/media_source_info.dart`), waardoor de aantallen aan beide kanten uiteen kunnen lopen.

@@ -2,6 +2,25 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-07-24/29] — Ondertitel-labels, tvOS-hero en zoom, home-rijen, downloads-hervatten
+
+### Added
+- **Ondertitel-labels lenen serverdata** (`lib/utils/player_subtitle_labeling.dart`, nieuw): `matchServerSubtitle()` koppelt mpv-ondertitelsporen positioneel aan de serverstreams onder de niet-externe sporen en `labelForPlayerSubtitle()` leent daarvan `languageCode`/`displayTitle`. Bij direct play draagt de UI alleen wat de containertags bevatten, waardoor een ongetagd spoor tot "Track 1" verviel. Containertags winnen, externe sporen blijven ongemoeid, placeholders ("Unknown", "Onbekend", "und") worden gefilterd. Aangeroepen vanuit `sheets/track_sheet.dart` en `tv_info_panel/tv_audio_subtitle_tabs.dart`.
+- **Diagnostiek voor die koppeling** (zelfde bestand): `SubtitleAlignmentOutcome` + `diagnoseSubtitleAlignment()` benoemen de drie stille uitvalspaden (`noServerData`, `countMismatch`, `contradiction`); `logSubtitleLabelingDiagnostics()` logt uitkomst, aantallen en per-spoor metadata eenmalig per wijziging. Bewust op **infoniveau**: debug-regels worden gefilterd tenzij de gebruiker debug-logging aanzet, en Instellingen > Logs is de enige praktische manier om een tvOS-build te inspecteren. `key` wordt als vlag gelogd, niet als pad.
+- **Rij "Recently Added Shows"** op serie-niveau (`lib/providers/discover_provider.dart`, `data_aggregation_service.dart`, client-kant in `plex_client.dart` en `jellyfin_client/parts/browse.dart`).
+- **Downloads hervatten** na systeempauze, netwerkverlies en retry (`lib/services/download_manager_service.dart`, `lib/database/download_operations.dart`).
+
+### Fixed
+- **Beeldverhouding/zoom op iOS en tvOS** (`lib/services/video_filter_manager.dart`, `lib/screens/video_player/parts/pip.dart`): de instelling had daar geen effect.
+- **tvOS-hero**: details-knop weer bereikbaar via D-pad; ondertitels blijven in beeld bij zoom.
+- **Billboard** (`lib/widgets/tv_spotlight_background.dart`): haalt ontbrekend artwork/logo alsnog op en blijft leesbaar tijdens bladeren.
+- **Home-indeling** werkt direct in plaats van pas na herstart.
+
+### Notes
+- Deploy: TestFlight 187 t/m 194 (tvOS 194 bevat de diagnostiek).
+- **Open**: op de Apple TV toont het paneel nog steeds "Track 3", dus de koppeling draait daar niet. De diagnostische logregel in build 194 wijst de oorzaak aan; vervolgstap staat in [STATUS.md](../STATUS.md).
+- Bekende ruis: 3 pre-existing failures in `test/screens/video_player/player_prompt_overlays_test.dart` (falen ook op HEAD).
+
 ## [2026-07-22/23] — Pleya Share device-naar-device compleet, Wi-Fi Aware, hero-resume-fix
 
 ### Added
