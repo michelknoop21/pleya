@@ -646,6 +646,11 @@ sealed class MediaItem with _$MediaItem {
   }
 
   /// Returns hero art candidates in display-preference order.
+  ///
+  /// This is the *fill* preference: the artwork covers a box and nothing of
+  /// ours is drawn on top of it, so the shape that needs the least cropping
+  /// wins. Use [billboardArtCandidates] when the app draws its own title over
+  /// the artwork.
   List<String> heroArtCandidates({required double containerAspectRatio}) {
     final preferred = switch (kind) {
       MediaKind.episode when containerAspectRatio < 1.39 => [backgroundSquarePath, grandparentArtPath, artPath],
@@ -653,7 +658,43 @@ sealed class MediaItem with _$MediaItem {
       _ when containerAspectRatio < 1.39 => [backgroundSquarePath, artPath],
       _ => [artPath, backgroundSquarePath],
     };
+    return _dedupedPaths(preferred);
+  }
 
+  /// Best billboard art, or null when the item has no artwork at all.
+  BillboardArt? billboardArt() {
+    final backdrops = _dedupedPaths(switch (kind) {
+      MediaKind.episode => [grandparentArtPath, artPath],
+      _ => [artPath],
+    });
+    if (backdrops.isNotEmpty) {
+      return BillboardArt(path: backdrops.first, isBackdrop: true);
+    }
+
+    // No 16:9 frame exists. Square and poster art carry their own baked-in
+    // title treatment, so showing one sharp would double the title and crop
+    // through it. Fall back to one anyway — an empty billboard is worse — but
+    // the caller renders it blurred, as atmosphere, and lets the app's own
+    // typography carry the title alone.
+    final fills = billboardArtCandidates();
+    return fills.isEmpty ? null : BillboardArt(path: fills.first, isBackdrop: false);
+  }
+
+  /// Returns billboard art candidates in display-preference order.
+  ///
+  /// A billboard carries the app's own title typography (or clear logo) over
+  /// the artwork, so the 16:9 backdrop always wins — regardless of how tall
+  /// the box is. Square and poster art are last-resort fallbacks; see
+  /// [billboardArt] for how they are rendered.
+  List<String> billboardArtCandidates() {
+    final preferred = switch (kind) {
+      MediaKind.episode => [grandparentArtPath, artPath, backgroundSquarePath, grandparentThumbPath, thumbPath],
+      _ => [artPath, backgroundSquarePath, thumbPath],
+    };
+    return _dedupedPaths(preferred);
+  }
+
+  List<String> _dedupedPaths(List<String?> preferred) {
     final candidates = <String>[];
     for (final path in preferred) {
       if (path == null || path.isEmpty || candidates.contains(path)) continue;
@@ -661,6 +702,28 @@ sealed class MediaItem with _$MediaItem {
     }
     return candidates;
   }
+}
+
+/// Artwork chosen for a billboard, plus how it must be rendered.
+///
+/// [isBackdrop] is false when no 16:9 frame existed and the choice fell back
+/// to square or poster art. Such artwork usually carries its own title
+/// treatment, so the caller blurs it into a background wash instead of showing
+/// it sharp under the app's title.
+class BillboardArt {
+  const BillboardArt({required this.path, required this.isBackdrop});
+
+  final String path;
+  final bool isBackdrop;
+
+  @override
+  bool operator ==(Object other) => other is BillboardArt && other.path == path && other.isBackdrop == isBackdrop;
+
+  @override
+  int get hashCode => Object.hash(path, isBackdrop);
+
+  @override
+  String toString() => 'BillboardArt($path, isBackdrop: $isBackdrop)';
 }
 
 MediaKind _mediaKindFromJson(Object? raw) => MediaKind.fromString(raw as String?);

@@ -120,6 +120,67 @@ void main() {
     });
   });
 
+  group('MediaItem.billboardArtCandidates', () {
+    test('prefers the wide backdrop over square art regardless of box shape', () {
+      final movie = _movie(artPath: '/art', backgroundSquarePath: '/square');
+
+      // Regression: the phone billboard used to ask for the poster, so the
+      // artwork's own title treatment collided with the app's title and got
+      // cropped through. The backdrop wins on every form factor now.
+      expect(movie.billboardArtCandidates(), ['/art', '/square']);
+      expect(movie.billboardArt(), const BillboardArt(path: '/art', isBackdrop: true));
+    });
+
+    test('falls back to square art, then the poster, and marks it for blurring', () {
+      // No 16:9 frame exists, so the stand-in must not be drawn sharp: it
+      // carries its own title treatment. isBackdrop: false is what tells the
+      // billboard to blur it into a wash instead of leaving it empty.
+      final square = _movie(backgroundSquarePath: '/square');
+      expect(square.billboardArt(), const BillboardArt(path: '/square', isBackdrop: false));
+
+      final posterOnly = MediaItem(
+        id: 'm2',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Movie',
+        thumbPath: '/poster',
+        serverId: 's1',
+      );
+      expect(posterOnly.billboardArtCandidates(), ['/poster']);
+      expect(posterOnly.billboardArt(), const BillboardArt(path: '/poster', isBackdrop: false));
+    });
+
+    test('a backdrop always wins over square art, so it is never blurred', () {
+      final movie = _movie(artPath: '/art', backgroundSquarePath: '/square');
+
+      expect(movie.billboardArt()?.isBackdrop, isTrue);
+    });
+
+    test('returns nothing when the item has no artwork at all', () {
+      final bare = MediaItem(id: 'm3', backend: MediaBackend.plex, kind: MediaKind.movie, serverId: 's1');
+
+      expect(bare.billboardArtCandidates(), isEmpty);
+      expect(bare.billboardArt(), isNull);
+    });
+
+    test('episodes prefer show art over episode art', () {
+      final episode = MediaItem(
+        id: 'e1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.episode,
+        title: 'Episode',
+        grandparentTitle: 'Show',
+        grandparentArtPath: '/show-art',
+        artPath: '/episode-art',
+        backgroundSquarePath: '/square',
+        serverId: 's1',
+      );
+
+      expect(episode.billboardArtCandidates(), ['/show-art', '/episode-art', '/square']);
+      expect(episode.billboardArt(), const BillboardArt(path: '/show-art', isBackdrop: true));
+    });
+  });
+
   group('MediaItem.isPartiallyWatched', () {
     test('show with some leaves watched is partially watched', () {
       final show = MediaItem(

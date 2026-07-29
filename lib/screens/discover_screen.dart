@@ -2,6 +2,7 @@ import 'dart:async';
 import '../media/ids.dart';
 import 'dart:io' show Platform;
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HardwareKeyboard, LogicalKeyboardKey;
@@ -1177,11 +1178,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           end: Alignment.bottomCenter,
           // This bar is overlaid on the billboard artwork and its icons are
           // theme-coloured. In light mode the veil is white, so it has to be
-          // heavy enough to give that near-black ink something to sit on.
+          // heavy enough to give that near-black ink something to sit on. Dark
+          // needs nearly as much: white ink over a bright backdrop (snow, sky,
+          // a blown-out title card) disappeared at the old 0.7/0.5/0.3.
           colors: [
-            overlayColor.withValues(alpha: colorScheme.brightness == Brightness.dark ? 0.7 : 0.94),
-            overlayColor.withValues(alpha: colorScheme.brightness == Brightness.dark ? 0.5 : 0.80),
-            overlayColor.withValues(alpha: colorScheme.brightness == Brightness.dark ? 0.3 : 0.55),
+            overlayColor.withValues(alpha: colorScheme.brightness == Brightness.dark ? 0.88 : 0.94),
+            overlayColor.withValues(alpha: colorScheme.brightness == Brightness.dark ? 0.68 : 0.80),
+            overlayColor.withValues(alpha: colorScheme.brightness == Brightness.dark ? 0.42 : 0.55),
             Colors.transparent,
           ],
           stops: const [0.0, 0.3, 0.6, 1.0],
@@ -1770,11 +1773,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final statusBarHeight = MediaQuery.paddingOf(context).top;
     final useSideNav = PlatformDetector.shouldUseSideNavigation(context);
     // TV runs through _buildTvContent, so this section is phone/tablet/desktop.
-    // ~75vh everywhere, clamped per form factor.
     final h = MediaQuery.sizeOf(context).height;
+    // Desktop/tablet: ~75vh. Phone: ~52vh, because the billboard shows a 16:9
+    // backdrop and a 75vh box (aspect ~0.56) would crop away two thirds of its
+    // width. At ~52vh the box lands near 0.75, which keeps the frame readable
+    // while still filling the screen above the fold.
     final heroHeight = useSideNav
         ? (h * 0.75).clamp(480.0, 900.0) // desktop / tablet
-        : (h * 0.75).clamp(420.0, 680.0) + statusBarHeight; // phone
+        : (h * 0.52).clamp(320.0, 520.0) + statusBarHeight; // phone
     return SliverToBoxAdapter(
       child: Focus(
         focusNode: _heroFocusNode,
@@ -1902,9 +1908,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isLargeScreen = ScreenBreakpoints.isWideTabletOrLarger(screenWidth);
     final isTv = PlatformDetector.isTV();
-    // Phone hero uses a portrait 2:3 poster; wide/desktop/TV keep 16:9 backdrop.
-    final portrait = !isTv && !isLargeScreen;
     final alignLeft = isTv || isLargeScreen;
+    // The billboard always shows the 16:9 backdrop: the title is drawn in app
+    // typography, so a poster (with its own baked-in title art) would double up
+    // and get cropped through. Null only when the item has no artwork at all.
+    final billboardArt = heroItem.billboardArt();
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final heroLogoWidth = isTv ? TvLayoutConstants.heroLogoWidth : 400.0;
@@ -1943,10 +1951,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             clipBehavior: Clip.none,
             children: [
               // Background Image with fade/zoom animation and parallax
-              if (heroItem.artPath != null ||
-                  heroItem.backgroundSquarePath != null ||
-                  heroItem.grandparentArtPath != null ||
-                  (portrait && heroItem.posterThumb() != null))
+              if (billboardArt != null)
                 ClipRect(
                   child: AnimatedBuilder(
                     animation: _scrollController,
@@ -1971,28 +1976,18 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           // builds sized URLs.
                           final size = MediaQuery.sizeOf(context);
                           final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
-                          final containerAspect = screenWidth / heroHeight;
-                          // Effective art height: full 16:9 on wide billboards,
-                          // floored at the box height on tall (mobile) ones.
-                          // Drives both the fetch and the decode budget so a
-                          // width-bound cover isn't upscaled from a short decode.
-                          // Match screenWidth (used by containerAspect + the
+                          // Effective art height: the full 16:9 frame, floored
+                          // at the box height so a tall box never upscales a
+                          // too-short decode. Drives both the fetch and the
+                          // decode budget so a width-bound cover isn't upscaled
+                          // from a short decode. Match screenWidth (used by the
                           // mem-cache displayWidth) so request, decode budget,
                           // and box width stay aligned even if content is ever
                           // narrower than the window.
-                          // Portrait phone hero: the poster fills the tall box,
-                          // so the art height is just the box height. Wide/TV
-                          // billboards request the full 16:9 frame (floored at
-                          // the box height) so the client top-anchors the crop.
-                          final artHeight = portrait
-                              ? heroHeight
-                              : (screenWidth * 9 / 16).clamp(heroHeight, double.infinity).toDouble();
+                          final artHeight = (screenWidth * 9 / 16).clamp(heroHeight, double.infinity).toDouble();
                           final imageUrl = MediaImageHelper.getOptimizedImageUrl(
                             client: heroClient,
-                            thumbPath: portrait
-                                ? heroItem.posterThumb()
-                                : heroItem.heroArt(containerAspectRatio: containerAspect) ??
-                                      heroItem.grandparentArtPath,
+                            thumbPath: billboardArt.path,
                             maxWidth: size.width,
                             // Plex crops server-side (minSize=1) from the CENTER,
                             // so a box-shaped request bakes in a centered crop
@@ -2013,23 +2008,33 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                             imageType: ImageType.art,
                           );
 
+                          final image = CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            cacheKey: artworkStorageKey(imageUrl),
+                            cacheManager: PlexImageCacheManager.instance,
+                            fit: BoxFit.cover,
+                            // Top-anchor the crop: hero art is taller than the
+                            // wide billboard, so a centered cover clips faces/
+                            // titles off the top. The bottom (under the scrim
+                            // and title overlay) is the safe side to lose.
+                            alignment: Alignment.topCenter,
+                            memCacheHeight: memHeight,
+                            placeholder: (context, url) =>
+                                ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+                            errorBuilder: (context, error, stackTrace) =>
+                                ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+                          );
+
                           return blurArtwork(
-                            CachedNetworkImage(
-                              imageUrl: imageUrl,
-                              cacheKey: artworkStorageKey(imageUrl),
-                              cacheManager: PlexImageCacheManager.instance,
-                              fit: BoxFit.cover,
-                              // Top-anchor the crop: hero art is taller than the
-                              // wide billboard, so a centered cover clips faces/
-                              // titles off the top. The bottom (under the scrim
-                              // and title overlay) is the safe side to lose.
-                              alignment: Alignment.topCenter,
-                              memCacheHeight: memHeight,
-                              placeholder: (context, url) =>
-                                  ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
-                              errorBuilder: (context, error, stackTrace) =>
-                                  ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
-                            ),
+                            // No 16:9 frame existed, so this is square or
+                            // poster art standing in. Blur it into a wash: its
+                            // baked-in title treatment becomes atmosphere
+                            // instead of a second title fighting ours, and the
+                            // heavy crop stops mattering. Better than an empty
+                            // billboard, and honest about being a stand-in.
+                            billboardArt.isBackdrop
+                                ? image
+                                : ImageFiltered(imageFilter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28), child: image),
                           );
                         },
                       ),
