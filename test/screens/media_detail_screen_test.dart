@@ -312,7 +312,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     final summaryText = tester.widget<Text>(find.text(summary));
-    expect(summaryText.style?.color, theme.colorScheme.onSurface.withValues(alpha: 0.78));
+    // This block sits on the fullscreen spotlight artwork, which does not flip
+    // with the theme. Dimming that reads as "secondary" white-on-dark reads as
+    // washed out when it is near-black over bright artwork, so light mode has
+    // to keep noticeably more ink than dark's 0.78.
+    final color = summaryText.style?.color;
+    expect(color, isNotNull);
+    expect(color!.r, theme.colorScheme.onSurface.r);
+    expect(color.a, greaterThanOrEqualTo(0.9));
   });
 
   testWidgets('TV detail shows every season tab and prefetches adjacent first page', (tester) async {

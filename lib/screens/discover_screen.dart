@@ -1082,7 +1082,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         enabled: !_switchingProfile,
         icon: active != null
             ? ProfileAvatar(profile: active, size: 32)
-            : const AppIcon(Symbols.account_circle_rounded, fill: 1, size: 32, color: Colors.white),
+            // Theme ink, like every other action in this bar — a fixed white
+            // glyph disappears on the light theme's app bar.
+            : AppIcon(Symbols.account_circle_rounded, fill: 1, size: 32, color: tokens(context).text),
         tooltip: t.profiles.sectionTitle,
         anchorAlignment: AppMenuAnchorAlignment.end,
         onSelected: (value) => unawaited(_handleUserMenuAction(context, value)),
@@ -1173,10 +1175,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
+          // This bar is overlaid on the billboard artwork and its icons are
+          // theme-coloured. In light mode the veil is white, so it has to be
+          // heavy enough to give that near-black ink something to sit on.
           colors: [
-            overlayColor.withValues(alpha: 0.7),
-            overlayColor.withValues(alpha: 0.5),
-            overlayColor.withValues(alpha: 0.3),
+            overlayColor.withValues(alpha: colorScheme.brightness == Brightness.dark ? 0.7 : 0.94),
+            overlayColor.withValues(alpha: colorScheme.brightness == Brightness.dark ? 0.5 : 0.80),
+            overlayColor.withValues(alpha: colorScheme.brightness == Brightness.dark ? 0.3 : 0.55),
             Colors.transparent,
           ],
           stops: const [0.0, 0.3, 0.6, 1.0],
@@ -1869,7 +1874,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                                   width: dotSize,
                                   height: dotSize,
                                   decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                                    // Inactive dot, sitting on the billboard.
+                                    // 40% ink is a visible hint white-on-dark
+                                    // but disappears as black over artwork.
+                                    color: tokens(context).onArtworkInk(dark: 0.4, light: 0.62),
                                     borderRadius: BorderRadius.circular(dotSize / 2),
                                   ),
                                 );
@@ -1908,6 +1916,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       fontWeight: .bold,
       fontSize: isTv ? 52 : null,
     );
+    // Metadata line and synopsis sit on the artwork. 70% ink reads as
+    // "secondary" white-on-dark, but as washed-out black over bright artwork,
+    // so light mode keeps far more of it.
+    final heroMutedColor = tokens(context).onArtworkInk(dark: 0.7, light: 0.94);
 
     // Spoiler protection
     final hideSpoilers = SettingsService.instance.read(SettingsService.hideSpoilers);
@@ -2059,18 +2071,25 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   child: IgnorePointer(
                     child: Builder(
                       builder: (context) {
-                        final bgColor = Theme.of(context).scaffoldBackgroundColor;
+                        // The wash is the page background, so in light mode it
+                        // is white: it brightens the artwork instead of
+                        // dimming it, while the title/synopsis on top stay
+                        // near-black. Light therefore washes harder and holds
+                        // it further across before releasing the image. Dark
+                        // keeps its original ramp.
+                        final scrim = tokens(context);
+                        final bgColor = scrim.artworkScrim;
                         return DecoratedBox(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
                               colors: [
-                                bgColor.withValues(alpha: 0.92),
-                                bgColor.withValues(alpha: 0.55),
+                                bgColor.withValues(alpha: scrim.artworkScrimAlpha(dark: 0.92, light: 0.97)),
+                                bgColor.withValues(alpha: scrim.artworkScrimAlpha(dark: 0.55, light: 0.78)),
                                 Colors.transparent,
                               ],
-                              stops: const [0.0, 0.32, 0.62],
+                              stops: scrim.isLight ? const [0.0, 0.45, 0.80] : const [0.0, 0.32, 0.62],
                             ),
                           ),
                         );
@@ -2180,7 +2199,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                                 if (heroItem.isWatched && !heroItem.hasActiveProgress) '\u2713 ${t.discover.watched}',
                               ].join(' • '),
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                color: heroMutedColor,
                                 fontSize: isTv ? 18 : 14,
                               ),
                             ),
@@ -2198,7 +2217,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               textAlign: alignLeft ? TextAlign.left : TextAlign.center,
                               text: TextSpan(
                                 style: TextStyle(
-                                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                  color: heroMutedColor,
                                   fontSize: isTv ? 18 : 14,
                                   height: isTv ? 1.45 : 1.4,
                                 ),
@@ -2227,7 +2246,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               overflow: .ellipsis,
                               textAlign: alignLeft ? TextAlign.left : TextAlign.center,
                               style: TextStyle(
-                                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                color: heroMutedColor,
                                 fontSize: isTv ? 18 : 14,
                                 height: isTv ? 1.45 : 1.4,
                               ),

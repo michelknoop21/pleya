@@ -12,6 +12,7 @@ import '../../i18n/strings.g.dart';
 import '../../widgets/media_context_menu.dart';
 import '../../widgets/media_progress_bar.dart';
 import '../../widgets/optimized_media_image.dart';
+import '../../theme/mono_tokens.dart';
 
 /// Custom list item widget for playlist items
 /// Shows drag handle, poster, title/metadata, duration, and remove button
@@ -147,7 +148,7 @@ class _PlaylistItemCardState extends State<PlaylistItemCard> with ContextMenuTap
                       // Subtitle (episode info or type)
                       Text(
                         _buildSubtitle(item),
-                        style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                        style: TextStyle(fontSize: 13, color: tokens(context).textMuted),
                         maxLines: 1,
                         overflow: .ellipsis,
                       ),
@@ -160,6 +161,10 @@ class _PlaylistItemCardState extends State<PlaylistItemCard> with ContextMenuTap
                             viewOffset: item.viewOffsetMs!,
                             duration: item.durationMs!,
                             minHeight: 3,
+                            // This bar sits on the list surface, not on
+                            // artwork, so the default translucent-white track
+                            // would be invisible on the light theme.
+                            backgroundColor: tokens(context).text.withValues(alpha: 0.2),
                           ),
                         ),
                     ],
@@ -172,7 +177,7 @@ class _PlaylistItemCardState extends State<PlaylistItemCard> with ContextMenuTap
                 if (item.durationMs != null)
                   Text(
                     formatDurationTextual(item.durationMs!),
-                    style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                    style: TextStyle(fontSize: 13, color: tokens(context).textMuted),
                   ),
 
                 const SizedBox(width: 8),
@@ -189,7 +194,7 @@ class _PlaylistItemCardState extends State<PlaylistItemCard> with ContextMenuTap
                     icon: const AppIcon(Symbols.close_rounded, fill: 1, size: 20),
                     onPressed: widget.onRemove,
                     tooltip: t.playlists.removeItem,
-                    color: isRemoveButtonFocused ? colorScheme.primary : Colors.grey[400],
+                    color: isRemoveButtonFocused ? colorScheme.primary : tokens(context).textMuted,
                   ),
                 ),
               ],

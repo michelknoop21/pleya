@@ -225,6 +225,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
         outline: c.outline,
         text: c.text,
         textMuted: c.textMuted,
+        isLight: !isDark,
         accent: kAccent,
         accentAlt: kAccentAlt,
         splashFactory: NoSplash.splashFactory,

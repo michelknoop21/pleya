@@ -1268,8 +1268,12 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     required double scale,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
-    final titleColor = isActive ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.60);
-    final iconColor = isActive ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.42);
+    // These headers sit on the spotlight artwork. Dimming works white-on-dark;
+    // in light mode the same alphas leave near-black ink washed out over a
+    // bright backdrop, and 0.42 is effectively gone.
+    final t = tokens(context);
+    final titleColor = isActive ? colorScheme.onSurface : t.onArtworkInk(dark: 0.60, light: 0.85);
+    final iconColor = isActive ? colorScheme.onSurface : t.onArtworkInk(dark: 0.42, light: 0.72);
     final iconData = widget.iconForHub?.call(hub, hubIndex);
     final showServerName = widget.showServerName && hub.serverName != null;
     final serverColor = colorScheme.primary.withValues(alpha: isActive ? 0.7 : 0.4);
@@ -1646,10 +1650,10 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     final duration = FocusTheme.getAnimationDuration(context);
     final width = TvBrowseRailLayout.viewAllItemWidthForScale(scale);
     final height = TvBrowseRailLayout.viewAllPillHeightForScale(scale);
-    final foreground = isFocused ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.78);
+    final foreground = isFocused ? theme.colorScheme.primary : tokens(context).onArtworkInk(dark: 0.78, light: 0.95);
     final background = isFocused
         ? theme.colorScheme.primary.withValues(alpha: 0.2)
-        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.18);
+        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: tokens(context).isLight ? 0.82 : 0.18);
     return AnimatedScale(
       scale: isFocused ? 1.04 : 1.0,
       duration: duration,
@@ -1685,10 +1689,10 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     final duration = FocusTheme.getAnimationDuration(context);
     final width = TvBrowseRailLayout.viewAllItemWidthForScale(scale);
     final height = TvBrowseRailLayout.viewAllPillHeightForScale(scale);
-    final foreground = isFocused ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.78);
+    final foreground = isFocused ? theme.colorScheme.primary : tokens(context).onArtworkInk(dark: 0.78, light: 0.95);
     final background = isFocused
         ? theme.colorScheme.primary.withValues(alpha: 0.2)
-        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.42);
+        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: tokens(context).isLight ? 0.90 : 0.42);
 
     return ClickableCursor(
       child: GestureDetector(
@@ -1756,6 +1760,7 @@ class _RailBackgroundBleed extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final target = targetBleedLeft ?? MainScreenFocusScope.sideNavigationBleedOf(context);
+    final isLightTheme = tokens(context).isLight;
     return TweenAnimationBuilder<double>(
       tween: Tween(end: target),
       duration: FocusTheme.getAnimationDuration(context),
@@ -1765,7 +1770,14 @@ class _RailBackgroundBleed extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.transparent, backgroundColor.withValues(alpha: 0.7)],
+            // The only thing separating the rail contents from the spotlight
+            // artwork behind it. In light mode this wash is white, so it
+            // brightens the backdrop rather than dimming it while the labels
+            // on top stay near-black — it has to carry further.
+            colors: [
+              Colors.transparent,
+              backgroundColor.withValues(alpha: isLightTheme ? 0.92 : 0.7),
+            ],
           ),
         ),
       ),

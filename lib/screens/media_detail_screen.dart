@@ -3355,9 +3355,16 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
+                            // Carries the back button over the hero artwork;
+                            // in light mode the fade is white, so it needs to
+                            // hold longer for a near-black glyph to read.
                             colors: [
-                              theme.scaffoldBackgroundColor.withValues(alpha: 0.8),
-                              theme.scaffoldBackgroundColor.withValues(alpha: 0.5),
+                              theme.scaffoldBackgroundColor.withValues(
+                                alpha: theme.brightness == Brightness.light ? 0.95 : 0.8,
+                              ),
+                              theme.scaffoldBackgroundColor.withValues(
+                                alpha: theme.brightness == Brightness.light ? 0.75 : 0.5,
+                              ),
                               theme.scaffoldBackgroundColor.withValues(alpha: 0),
                             ],
                             stops: const [0.0, 0.3, 1.0],
@@ -3495,7 +3502,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     final theme = Theme.of(context);
     final description = _tvDetailDescription(metadata, hideSpoilers: hideSpoilers);
     final foregroundColor = _tvDetailForegroundColor(context);
-    final mutedForegroundColor = foregroundColor.withValues(alpha: 0.78);
+    // This block sits on the fullscreen spotlight artwork. Dimmed ink reads as
+    // secondary white-on-dark, but as washed-out black over bright artwork —
+    // light mode keeps more of it.
+    final mutedForegroundColor = foregroundColor.withValues(alpha: theme.brightness == Brightness.light ? 0.94 : 0.78);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -4129,6 +4139,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   Widget _buildFrostedBackdrop(BuildContext context, MediaItem metadata) {
     final bg = Theme.of(context).scaffoldBackgroundColor;
+    final isLight = Theme.of(context).brightness == Brightness.light;
     final size = MediaQuery.sizeOf(context);
     final containerAspect = size.width / size.height;
     final artPaths = metadata.heroArtCandidates(containerAspectRatio: containerAspect);
@@ -4163,7 +4174,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [bg.withValues(alpha: 0.72), bg.withValues(alpha: 0.9), bg],
+              // The whole detail body — theme-coloured text — scrolls over
+              // this. In light mode the haze is white and only brightens the
+              // blurred artwork, so it has to be much more opaque before that
+              // near-black text is legible.
+              colors: isLight
+                  ? [bg.withValues(alpha: 0.90), bg.withValues(alpha: 0.97), bg]
+                  : [bg.withValues(alpha: 0.72), bg.withValues(alpha: 0.9), bg],
               stops: const [0.0, 0.5, 1.0],
             ),
           ),

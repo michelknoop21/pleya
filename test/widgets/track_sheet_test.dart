@@ -20,6 +20,7 @@ const _testTokens = MonoTokens(
   outline: Colors.white24,
   text: Colors.white,
   textMuted: Colors.white70,
+  isLight: false,
   accent: Color(0xFFF42B1F),
   accentAlt: Color(0xFFFFB020),
   splashFactory: NoSplash.splashFactory,

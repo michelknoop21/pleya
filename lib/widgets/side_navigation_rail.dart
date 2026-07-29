@@ -122,11 +122,17 @@ class NavigationRailItem extends StatelessWidget {
               Container(
                 decoration: BoxDecoration(
                   color: () {
-                    if (isCollapsed) return isFocused ? t.text.withValues(alpha: 0.12) : null;
+                    // A neutral wash is white-on-dark in dark mode but
+                    // black-on-white in light mode, and black at 6% is
+                    // #F0F0F0 — indistinguishable from the rail. Light mode
+                    // needs a heavier wash to read as the same cue.
+                    if (isCollapsed) {
+                      return isFocused ? t.onArtworkInk(dark: 0.12, light: 0.22) : null;
+                    }
                     if (isFocused) return t.accent.withValues(alpha: showSelectedBackground ? 0.18 : 0.12);
                     // Netflix-style active row: subtle neutral wash, the
                     // red bar carries the accent.
-                    if (showSelectedBackground) return t.text.withValues(alpha: 0.06);
+                    if (showSelectedBackground) return t.onArtworkInk(dark: 0.06, light: 0.13);
                     return null;
                   }(),
                   borderRadius: borderRadius,
@@ -694,17 +700,30 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                 decoration: const BoxDecoration(),
                 child: Stack(
                   children: [
-                    // TV: dark left-to-right gradient scrim (Netflix-TV nav) so
-                    // the rail reads over the billboard without a hard panel.
+                    // TV: left-to-right gradient scrim (Netflix-TV nav) so the
+                    // rail reads over the billboard without a hard panel.
                     // Non-TV: solid surface panel.
+                    //
+                    // The labels on top are theme-coloured, so the scrim has to
+                    // follow: a black veil under near-black light-mode text is
+                    // unreadable. Dark keeps its original pure-black ramp;
+                    // light washes with the page background, harder and further
+                    // (the artwork stays bright, the ink does not).
                     Positioned.fill(
                       child: PlatformDetector.isTV()
-                          ? const DecoratedBox(
+                          ? DecoratedBox(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   begin: Alignment.centerLeft,
                                   end: Alignment.centerRight,
-                                  colors: [Color(0xE6000000), Color(0x00000000)],
+                                  colors: t.isLight
+                                      ? [
+                                          t.artworkScrim.withValues(alpha: 0.97),
+                                          t.artworkScrim.withValues(alpha: 0.70),
+                                          const Color(0x00000000),
+                                        ]
+                                      : const [Color(0xE6000000), Color(0x00000000)],
+                                  stops: t.isLight ? const [0.0, 0.62, 1.0] : null,
                                 ),
                               ),
                             )
@@ -1116,7 +1135,10 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
             onTap: onToggle,
             borderRadius: radius,
             child: Container(
-              decoration: BoxDecoration(color: isFocused ? t.text.withValues(alpha: 0.08) : null, borderRadius: radius),
+              decoration: BoxDecoration(
+                color: isFocused ? t.onArtworkInk(dark: 0.08, light: 0.16) : null,
+                borderRadius: radius,
+              ),
               clipBehavior: Clip.hardEdge,
               child: UnconstrainedBox(
                 alignment: .centerLeft,
@@ -1189,7 +1211,9 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
             if (showServerName)
               Text(
                 library.serverName!,
-                style: TextStyle(fontSize: 9, color: t.textMuted.withValues(alpha: 0.4)),
+                // 40% ink is a legible hint as white-on-dark, but as
+                // black-on-white it is #999 — under AA at this 9px size.
+                style: TextStyle(fontSize: 9, color: t.textMuted.withValues(alpha: t.isLight ? 0.72 : 0.4)),
                 overflow: .ellipsis,
               ),
           ],

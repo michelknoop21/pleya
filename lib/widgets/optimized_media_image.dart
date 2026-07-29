@@ -381,7 +381,10 @@ class OptimizedMediaImage extends StatelessWidget {
       );
     }
     if (placeholder != null) return placeholder!(context, imageUrl);
-    return _surfacePlaceholder(context, icon: fallbackIcon, iconColor: Colors.white54);
+    // No iconColor: the default (onSurfaceVariant) tracks the theme. A fixed
+    // white54 vanishes on the light theme's pale placeholder fill, which the
+    // error and fallback paths below already avoid.
+    return _surfacePlaceholder(context, icon: fallbackIcon);
   }
 
   Widget _buildErrorWidget(BuildContext context, dynamic _) => _surfacePlaceholder(

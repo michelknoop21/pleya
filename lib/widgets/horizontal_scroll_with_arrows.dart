@@ -197,7 +197,10 @@ class _NavigationArrowState extends State<_NavigationArrow> {
               colors: [widget.scrimColor.withValues(alpha: 0.85), widget.scrimColor.withValues(alpha: 0.0)],
             ),
           ),
-          child: AppIcon(widget.icon, fill: 1, color: Colors.white, size: _isHovering ? 40 : 32),
+          // The scrim behind this arrow is the page background, so the arrow
+          // has to be the page's ink — white on the light theme's near-white
+          // scrim is invisible.
+          child: AppIcon(widget.icon, fill: 1, color: tokens(context).text, size: _isHovering ? 40 : 32),
         ),
       ),
     );

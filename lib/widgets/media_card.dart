@@ -979,7 +979,11 @@ Widget _buildPosterImage(
   }
 
   return SkeletonLoader(
-    child: const Center(child: AppIcon(Symbols.movie_rounded, fill: 1, size: 40, color: Colors.white54)),
+    // The skeleton base is a very light wash in the light theme, so a fixed
+    // white54 glyph leaves the loading state looking empty.
+    child: Center(
+      child: AppIcon(Symbols.movie_rounded, fill: 1, size: 40, color: tokens(context).textMuted.withValues(alpha: 0.5)),
+    ),
   );
 }
 

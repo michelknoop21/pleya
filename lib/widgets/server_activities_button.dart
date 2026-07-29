@@ -342,7 +342,9 @@ class ServerActivitiesButtonState extends State<ServerActivitiesButton> {
   Widget build(BuildContext context) {
     return IconButton(
       key: _buttonKey,
-      icon: const AppIcon(Symbols.monitor_heart_rounded, color: Colors.white),
+      // Theme ink, matching the close button below — a fixed white glyph
+      // disappears on the light theme's app bar.
+      icon: AppIcon(Symbols.monitor_heart_rounded, color: Theme.of(context).colorScheme.onSurface),
       onPressed: togglePanel,
       tooltip: t.serverTasks.title,
     );

@@ -253,8 +253,16 @@ class _HeroHeader extends StatelessWidget {
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, surface.withValues(alpha: 0.6), surface],
-                      stops: const [0.0, 0.7, 1.0],
+                      // Using the page background is right, but the alphas are
+                      // not mode-neutral: in light mode this wash is white, so
+                      // it brightens the backdrop while the title overlapping
+                      // it stays near-black. Light holds the wash longer.
+                      colors: [
+                        Colors.transparent,
+                        surface.withValues(alpha: tokens(context).artworkScrimAlpha(dark: 0.6, light: 0.85)),
+                        surface,
+                      ],
+                      stops: tokens(context).isLight ? const [0.0, 0.55, 1.0] : const [0.0, 0.7, 1.0],
                     ),
                   ),
                 ),
