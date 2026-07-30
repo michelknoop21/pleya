@@ -818,7 +818,15 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
       }
       await currentPlayer.setProperty('sub-ass-override', settingsService.read(SettingsService.subAssOverride).name);
       await currentPlayer.setProperty('sub-ass-video-aspect-override', '1');
-      await currentPlayer.setProperty('sub-pos', settingsService.read(SettingsService.subtitlePosition).toString());
+      // sub-pos is owned by VideoFilterManager (crop/zoom compensation); a
+      // direct write here would go stale in its diff-cache. Only write it
+      // directly when no manager exists yet.
+      // (Android keeps the direct write: the manager skips sub-pos there.)
+      if (_videoFilterManager == null || Platform.isAndroid) {
+        await currentPlayer.setProperty('sub-pos', settingsService.read(SettingsService.subtitlePosition).toString());
+      } else {
+        _videoFilterManager!.debouncedUpdateVideoFilter();
+      }
 
       if (Platform.isIOS) {
         await currentPlayer.setProperty('audio-exclusive', 'yes');

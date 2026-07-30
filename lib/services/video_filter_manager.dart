@@ -61,9 +61,14 @@ class VideoFilterManager {
   /// Callback invoked when boxFitMode changes, for external persistence
   final void Function(int mode)? onBoxFitModeChanged;
 
-  /// The user's configured `sub-pos`, read fresh on every apply. Used on
-  /// iOS/tvOS to keep subtitles inside the visible rect while zoomed.
+  /// The user's configured `sub-pos`, read fresh on every apply. Used to keep
+  /// subtitles inside the visible rect while cropped or zoomed.
   final int Function()? subtitleBasePosition;
+
+  /// Whether the platform scales the whole layer (video *and* OSD) outside of
+  /// mpv (iOS/tvOS Core Animation transform). On other mpv backends the crop
+  /// happens inside mpv via panscan, so compensation is aspect-based instead.
+  final bool useLayerScaleCompensation;
 
   VideoFilterManager({
     required this.player,
@@ -71,8 +76,10 @@ class VideoFilterManager {
     Size? initialPlayerSize,
     this.onBoxFitModeChanged,
     this.subtitleBasePosition,
+    bool? useLayerScaleCompensation,
   }) : _boxFitMode = initialBoxFitMode,
-       _playerSize = initialPlayerSize {
+       _playerSize = initialPlayerSize,
+       useLayerScaleCompensation = useLayerScaleCompensation ?? Platform.isIOS {
     _debouncedUpdateVideoFilter = debounce(
       updateVideoFilter,
       const Duration(milliseconds: 50),
@@ -113,6 +120,17 @@ class VideoFilterManager {
     var scale = normalizeZoomScale(zoomScale);
     if (coverMode && !aspectOverrideActive) scale *= 1.0 + 0.33;
     return scale;
+  }
+
+  /// The factor by which cover mode (panscan=1) blows the video up to fill the
+  /// player: vertical crop only happens when the video is taller (relatively)
+  /// than the player, i.e. playerAspect > videoAspect. Wide content in a wider
+  /// window crops horizontally instead, so no vertical compensation is needed.
+  static double coverCropScale({required double playerAspect, required double videoAspect}) {
+    if (!playerAspect.isFinite || playerAspect <= 0 || !videoAspect.isFinite || videoAspect <= 0) {
+      return 1.0;
+    }
+    return math.max(1.0, playerAspect / videoAspect);
   }
 
   /// Pull `sub-pos` inward so the subtitles land where the user asked for them
@@ -281,16 +299,44 @@ class VideoFilterManager {
       await _applyProperty('panscan', coverMode ? '1.0' : '0');
       await _applyProperty('video-zoom', videoZoomPropertyForScale(zoomScale).toString());
 
-      // iOS/tvOS scale the whole layer (video *and* OSD) outside of mpv, so
-      // mpv's subtitle placement would run off the bottom of the screen.
+      // libass places subtitles relative to the video frame, so cropping (via
+      // layer transform on iOS/tvOS, panscan on mpv-native) pushes them off
+      // the visible area. Compensate by pulling sub-pos inward; contain mode
+      // resolves to scale 1.0 which resets to the user's base position.
       final basePosition = subtitleBasePosition?.call();
-      if (Platform.isIOS && basePosition != null) {
-        final scale = effectiveLayerScale(
-          zoomScale: zoomScale,
-          coverMode: coverMode,
-          aspectOverrideActive: boxFitMode == 2,
-        );
-        await _applyProperty('sub-pos', subtitlePositionForScale(basePosition, scale).toString());
+      if (basePosition != null) {
+        double? scale;
+        if (useLayerScaleCompensation) {
+          // iOS/tvOS scale the whole layer (video *and* OSD) outside of mpv.
+          scale = effectiveLayerScale(
+            zoomScale: zoomScale,
+            coverMode: coverMode,
+            aspectOverrideActive: boxFitMode == 2,
+          );
+        } else if (!Platform.isAndroid) {
+          // mpv-native (macOS/Windows/Linux): panscan crops inside mpv, and
+          // zoom scales around the center; both hide the bottom band.
+          var coverScale = 1.0;
+          if (coverMode) {
+            final dwidth = double.tryParse(await player.getProperty('dwidth') ?? '');
+            final dheight = double.tryParse(await player.getProperty('dheight') ?? '');
+            if (dwidth != null &&
+                dheight != null &&
+                dheight > 0 &&
+                playerSize != null &&
+                playerSize.width > 0 &&
+                playerSize.height > 0) {
+              coverScale = coverCropScale(
+                playerAspect: playerSize.width / playerSize.height,
+                videoAspect: dwidth / dheight,
+              );
+            }
+          }
+          scale = normalizeZoomScale(zoomScale) * coverScale;
+        }
+        if (scale != null) {
+          await _applyProperty('sub-pos', subtitlePositionForScale(basePosition, scale).toString());
+        }
       }
     } catch (e) {
       appLogger.w('Failed to update video filter', error: e);
