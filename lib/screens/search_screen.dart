@@ -30,6 +30,7 @@ import '../widgets/pill_input_decoration.dart';
 import '../widgets/focusable_media_card.dart';
 import '../widgets/skeletons.dart';
 import '../widgets/state_view.dart';
+import '../widgets/tv_virtual_keyboard.dart';
 import '../utils/focus_utils.dart';
 import 'main_screen.dart';
 
@@ -137,6 +138,14 @@ class _SearchScreenState extends State<SearchScreen>
         _isSearching = false;
         _lastSearchedQuery = '';
       });
+      return;
+    }
+
+    // A single character fans a query out to every server for a result set
+    // that's rarely useful; wait for at least two. Explicit submits and
+    // history chips bypass this listener, so short queries stay possible.
+    if (query.trim().length < 2) {
+      _searchDebounce.cancel();
       return;
     }
 
@@ -355,6 +364,72 @@ class _SearchScreenState extends State<SearchScreen>
     MainScreenFocusScope.of(context, listen: false)?.focusSidebar();
   }
 
+  /// Menu/back on the inline TV keyboard: mirror the text field's onBack —
+  /// clear a non-empty query first, exit to the sidebar when already empty.
+  void _handleTvKeyboardClose() {
+    if (_searchController.text.isNotEmpty) {
+      _searchController.clear();
+    } else {
+      _navigateToSidebar();
+    }
+  }
+
+  /// D-pad down past the keyboard's bottom row: land on whatever sits below —
+  /// filter chips, first result, recent-search chips, or the Seerr tile.
+  void _handleTvKeyboardNavigateDown() {
+    if (FocusScope.of(context).focusInDirection(TraversalDirection.down)) return;
+    if (_searchResults.isNotEmpty && !_isSearching) {
+      _firstResultFocusNode.requestFocus();
+    }
+  }
+
+  /// TV header: read-only query pill + always-visible inline keyboard. No
+  /// FocusableTextField here — nothing that can trigger the modal machinery.
+  List<Widget> _buildTvSearchHeader(BuildContext context) {
+    return [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+          child: ListenableBuilder(
+            listenable: _searchController,
+            builder: (context, _) {
+              final text = _searchController.text;
+              return InputDecorator(
+                decoration: pillInputDecoration(
+                  context,
+                  hintText: t.search.hint,
+                  prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
+                ),
+                isEmpty: text.isEmpty,
+                child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+              );
+            },
+          ),
+        ),
+      ),
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+          child: Center(
+            child: TvVirtualKeyboardPanel(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              hintText: t.search.hint,
+              textInputAction: TextInputAction.search,
+              autofocus: false,
+              showPreview: false,
+              showCancelKey: false,
+              dismissOnPhysicalKeyboardInput: false,
+              onSubmitted: (_) => _handleSearchSubmit(),
+              onClose: _handleTvKeyboardClose,
+              onNavigateDown: _handleTvKeyboardNavigateDown,
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
   Widget _buildResultsList(BuildContext context) {
     final multiServer = context.watch<MultiServerProvider>();
     final showServerName = multiServer.totalServerCount > 1;
@@ -454,47 +529,50 @@ class _SearchScreenState extends State<SearchScreen>
           primary: false,
           slivers: [
             DesktopSliverAppBar(title: Text(t.common.search), floating: true),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-                child: FocusableTextField(
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-                  textInputAction: TextInputAction.search,
-                  // Don't auto-open the TV keyboard the instant the field
-                  // autofocuses: the field losing/regaining focus around the
-                  // keyboard route races the auto-reopen guard and traps the
-                  // user in the keyboard. Open on explicit select instead —
-                  // same fix already applied to the Seerr search field.
-                  tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
-                  onNavigateLeft: _navigateToSidebar,
-                  onNavigateDown: _searchResults.isNotEmpty && !_isSearching
-                      ? _firstResultFocusNode.requestFocus
-                      : null,
-                  onEditingComplete: PlatformDetector.isTV() ? _handleSearchSubmit : null,
-                  onBack: () {
-                    if (_searchController.text.isNotEmpty) {
-                      _searchController.clear();
-                    } else {
-                      _navigateToSidebar();
-                    }
-                  },
-                  decoration: pillInputDecoration(
-                    context,
-                    hintText: t.search.hint,
-                    prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const AppIcon(Symbols.clear_rounded, fill: 1),
-                            onPressed: () {
-                              _searchController.clear();
-                            },
-                          )
+            if (PlatformDetector.isTV())
+              ..._buildTvSearchHeader(context)
+            else
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+                  child: FocusableTextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    textInputAction: TextInputAction.search,
+                    // Don't auto-open the TV keyboard the instant the field
+                    // autofocuses: the field losing/regaining focus around the
+                    // keyboard route races the auto-reopen guard and traps the
+                    // user in the keyboard. Open on explicit select instead —
+                    // same fix already applied to the Seerr search field.
+                    tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
+                    onNavigateLeft: _navigateToSidebar,
+                    onNavigateDown: _searchResults.isNotEmpty && !_isSearching
+                        ? _firstResultFocusNode.requestFocus
                         : null,
+                    onEditingComplete: PlatformDetector.isTV() ? _handleSearchSubmit : null,
+                    onBack: () {
+                      if (_searchController.text.isNotEmpty) {
+                        _searchController.clear();
+                      } else {
+                        _navigateToSidebar();
+                      }
+                    },
+                    decoration: pillInputDecoration(
+                      context,
+                      hintText: t.search.hint,
+                      prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const AppIcon(Symbols.clear_rounded, fill: 1),
+                              onPressed: () {
+                                _searchController.clear();
+                              },
+                            )
+                          : null,
+                    ),
                   ),
                 ),
               ),
-            ),
             if (_isSearching)
               SliverPadding(
                 padding: const EdgeInsets.all(16),

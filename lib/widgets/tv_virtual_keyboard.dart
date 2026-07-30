@@ -113,6 +113,14 @@ TvVirtualKeyboardHandle? showTvVirtualKeyboard({
   return TvVirtualKeyboardHandle._(navigator, route);
 }
 
+bool _isNumberKeyboardType(TextInputType? type) {
+  return type?.index == TextInputType.number.index || type?.index == TextInputType.phone.index;
+}
+
+bool _isMultilineInput(TextInputType? type, int? maxLines) {
+  return type?.index == TextInputType.multiline.index || (maxLines != null && maxLines != 1);
+}
+
 enum _TvKeyType { spacer, character, shift, symbols, space, newline, backspace, clear, cancel, done }
 
 class _TvKey {
@@ -126,7 +134,9 @@ class _TvKey {
   const _TvKey.action(this.label, this.type, {this.icon}) : value = '';
 }
 
-class _TvVirtualKeyboardDialog extends StatefulWidget {
+/// The modal wrapper around [TvVirtualKeyboardPanel]: a bottom-aligned Dialog
+/// that pops itself on cancel/back/submit. Pushed by [showTvVirtualKeyboard].
+class _TvVirtualKeyboardDialog extends StatelessWidget {
   final TextEditingController controller;
   final String? hintText;
   final TextInputType? keyboardType;
@@ -154,15 +164,121 @@ class _TvVirtualKeyboardDialog extends StatefulWidget {
   });
 
   @override
-  State<_TvVirtualKeyboardDialog> createState() => _TvVirtualKeyboardDialogState();
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final metrics = _tvKeyboardMetricsFor(
+      media.size,
+      columns: _isNumberKeyboardType(keyboardType) ? 3 : 12,
+      multiline: _isMultilineInput(keyboardType, maxLines),
+    );
+
+    return Dialog(
+      key: const Key('tv_virtual_keyboard_dialog'),
+      alignment: .bottomCenter,
+      insetPadding: .only(
+        left: metrics.edgeInset,
+        right: metrics.edgeInset,
+        top: media.padding.top + 48,
+        bottom: media.padding.bottom + metrics.bottomInset,
+      ),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: TvVirtualKeyboardPanel(
+        controller: controller,
+        hintText: hintText,
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        inputFormatters: inputFormatters,
+        obscureText: obscureText,
+        maxLength: maxLength,
+        maxLines: maxLines,
+        onChanged: onChanged,
+        // Pop first, deliver the result post-frame so the callback runs
+        // against the route underneath (matches the pre-refactor ordering).
+        onSubmitted: (text) {
+          Navigator.of(context).pop();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (onSubmitted != null) {
+              onSubmitted!(text);
+            } else {
+              onAction?.call();
+            }
+          });
+        },
+        onClose: () => Navigator.of(context).pop(),
+      ),
+    );
+  }
 }
 
-class _TvVirtualKeyboardDialogState extends State<_TvVirtualKeyboardDialog> with MountedSetStateMixin {
-  final _focusNode = FocusNode(debugLabel: 'TvVirtualKeyboard');
+/// The keyboard grid itself: focus handling, D-pad traversal, key activation,
+/// and text editing against [controller]. Usable both inside the modal dialog
+/// (default flags) and embedded inline in a page (search screen), where the
+/// host wires [onClose] / [onNavigateDown] / [onNavigateUp] and disables the
+/// preview, Cancel key, and physical-keyboard dismiss.
+class TvVirtualKeyboardPanel extends StatefulWidget {
+  final TextEditingController controller;
+  final String? hintText;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final List<TextInputFormatter>? inputFormatters;
+  final bool obscureText;
+  final int? maxLength;
+  final int? maxLines;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final VoidCallback? onAction;
+
+  /// External focus node; the panel creates its own when null.
+  final FocusNode? focusNode;
+  final bool autofocus;
+  final bool showPreview;
+
+  /// Fired on cancel/back paths (Cancel key, back key, physical-keyboard
+  /// dismiss). Submit never fires this — the host decides in [onSubmitted].
+  final VoidCallback? onClose;
+  final bool showCancelKey;
+
+  /// D-pad past the bottom/top row. When null the grid wraps (modal behavior).
+  final VoidCallback? onNavigateDown;
+  final VoidCallback? onNavigateUp;
+  final bool dismissOnPhysicalKeyboardInput;
+
+  const TvVirtualKeyboardPanel({
+    super.key,
+    required this.controller,
+    this.hintText,
+    this.keyboardType,
+    this.textInputAction,
+    this.inputFormatters,
+    this.obscureText = false,
+    this.maxLength,
+    this.maxLines,
+    this.onChanged,
+    this.onSubmitted,
+    this.onAction,
+    this.focusNode,
+    this.autofocus = true,
+    this.showPreview = true,
+    this.onClose,
+    this.showCancelKey = true,
+    this.onNavigateDown,
+    this.onNavigateUp,
+    this.dismissOnPhysicalKeyboardInput = true,
+  });
+
+  @override
+  State<TvVirtualKeyboardPanel> createState() => _TvVirtualKeyboardPanelState();
+}
+
+class _TvVirtualKeyboardPanelState extends State<TvVirtualKeyboardPanel> with MountedSetStateMixin {
+  FocusNode? _ownFocusNode;
   int _row = 0;
   int _column = 0;
   bool _shiftEnabled = false;
   bool _symbolsPage = false;
+
+  FocusNode get _focusNode => widget.focusNode ?? (_ownFocusNode ??= FocusNode(debugLabel: 'TvVirtualKeyboard'));
 
   List<List<_TvKey>> get _rows => _symbolsPage ? _buildSymbolRows() : _buildMainRows();
   int get _gridColumnCount => _isNumberKeyboard ? 3 : 12;
@@ -172,15 +288,17 @@ class _TvVirtualKeyboardDialogState extends State<_TvVirtualKeyboardDialog> with
     super.initState();
     _column = _firstFocusableColumn(_row) ?? 0;
     widget.controller.addListener(_handleTextChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _focusNode.requestFocus();
-    });
+    if (widget.autofocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focusNode.requestFocus();
+      });
+    }
   }
 
   @override
   void dispose() {
     widget.controller.removeListener(_handleTextChanged);
-    _focusNode.dispose();
+    _ownFocusNode?.dispose();
     super.dispose();
   }
 
@@ -188,15 +306,13 @@ class _TvVirtualKeyboardDialogState extends State<_TvVirtualKeyboardDialog> with
     setStateIfMounted(() {});
   }
 
-  bool get _isNumberKeyboard {
-    final type = widget.keyboardType;
-    return type?.index == TextInputType.number.index || type?.index == TextInputType.phone.index;
+  void _close() {
+    widget.onClose?.call();
   }
 
-  bool get _isMultiline {
-    final type = widget.keyboardType;
-    return type?.index == TextInputType.multiline.index || (widget.maxLines != null && widget.maxLines != 1);
-  }
+  bool get _isNumberKeyboard => _isNumberKeyboardType(widget.keyboardType);
+
+  bool get _isMultiline => _isMultilineInput(widget.keyboardType, widget.maxLines);
 
   List<List<_TvKey>> _buildMainRows() {
     if (_isNumberKeyboard) {
@@ -210,7 +326,9 @@ class _TvVirtualKeyboardDialogState extends State<_TvVirtualKeyboardDialog> with
           const _TvKey.action('Del', _TvKeyType.backspace, icon: Icons.backspace_outlined),
         ],
         [
-          _TvKey.action(t.common.cancel, _TvKeyType.cancel, icon: Icons.close_rounded),
+          widget.showCancelKey
+              ? _TvKey.action(t.common.cancel, _TvKeyType.cancel, icon: Icons.close_rounded)
+              : const _TvKey.spacer(),
           const _TvKey.character('.'),
           _TvKey.action(_doneLabel(), _TvKeyType.done, icon: _doneIcon()),
         ],
@@ -229,7 +347,7 @@ class _TvVirtualKeyboardDialogState extends State<_TvVirtualKeyboardDialog> with
           ? const _TvKey.action('Line', _TvKeyType.newline, icon: Icons.keyboard_return_rounded)
           : const _TvKey.character('&'),
       _TvKey.action(t.common.clear, _TvKeyType.clear, icon: Icons.clear_all_rounded),
-      _TvKey.action(t.common.cancel, _TvKeyType.cancel, icon: Icons.close_rounded),
+      if (widget.showCancelKey) _TvKey.action(t.common.cancel, _TvKeyType.cancel, icon: Icons.close_rounded),
       _TvKey.action(_doneLabel(), _TvKeyType.done, icon: _doneIcon()),
     ];
 
@@ -276,7 +394,7 @@ class _TvVirtualKeyboardDialogState extends State<_TvVirtualKeyboardDialog> with
         const _TvKey.character('_'),
         const _TvKey.character('/'),
         _TvKey.action(t.common.clear, _TvKeyType.clear, icon: Icons.clear_all_rounded),
-        _TvKey.action(t.common.cancel, _TvKeyType.cancel, icon: Icons.close_rounded),
+        if (widget.showCancelKey) _TvKey.action(t.common.cancel, _TvKeyType.cancel, icon: Icons.close_rounded),
         _TvKey.action(_doneLabel(), _TvKeyType.done, icon: _doneIcon()),
         const _TvKey.spacer(),
         const _TvKey.spacer(),
@@ -329,7 +447,7 @@ class _TvVirtualKeyboardDialogState extends State<_TvVirtualKeyboardDialog> with
     final key = event.logicalKey;
 
     if (key.isBackKey) {
-      if (event is KeyUpEvent) Navigator.of(context).pop();
+      if (event is KeyUpEvent) _close();
       return KeyEventResult.handled;
     }
 
@@ -420,7 +538,7 @@ class _TvVirtualKeyboardDialogState extends State<_TvVirtualKeyboardDialog> with
   }
 
   void _dismissForPhysicalKeyboardInput() {
-    Navigator.of(context).pop();
+    if (widget.dismissOnPhysicalKeyboardInput) _close();
   }
 
   void _moveHorizontal(int delta) {
@@ -438,7 +556,18 @@ class _TvVirtualKeyboardDialogState extends State<_TvVirtualKeyboardDialog> with
 
   void _moveVertical(int delta) {
     final rows = _rows;
-    final nextRow = (_row + delta) % rows.length;
+    final target = _row + delta;
+    // Past the bottom/top edge: hand off to the host instead of wrapping when
+    // it wired a navigation callback (inline mode).
+    if (target >= rows.length && widget.onNavigateDown != null) {
+      widget.onNavigateDown!();
+      return;
+    }
+    if (target < 0 && widget.onNavigateUp != null) {
+      widget.onNavigateUp!();
+      return;
+    }
+    final nextRow = target % rows.length;
     final nextColumn = _nearestFocusableColumn(nextRow, _column);
     setState(() {
       _row = nextRow;
@@ -506,7 +635,7 @@ class _TvVirtualKeyboardDialogState extends State<_TvVirtualKeyboardDialog> with
         _replace(TextEditingValue.empty);
         return;
       case _TvKeyType.cancel:
-        Navigator.of(context).pop();
+        _close();
         return;
       case _TvKeyType.done:
         _submit();
@@ -525,16 +654,11 @@ class _TvVirtualKeyboardDialogState extends State<_TvVirtualKeyboardDialog> with
 
   void _submit() {
     final text = widget.controller.text;
-    final onSubmitted = widget.onSubmitted;
-    final onAction = widget.onAction;
-    Navigator.of(context).pop();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (onSubmitted != null) {
-        onSubmitted(text);
-      } else {
-        onAction?.call();
-      }
-    });
+    if (widget.onSubmitted != null) {
+      widget.onSubmitted!(text);
+    } else {
+      widget.onAction?.call();
+    }
   }
 
   void _insert(String text) {
@@ -631,82 +755,36 @@ class _TvVirtualKeyboardDialogState extends State<_TvVirtualKeyboardDialog> with
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final metrics = _metricsFor(media.size);
+    final metrics = _tvKeyboardMetricsFor(media.size, columns: _gridColumnCount, multiline: _isMultiline);
     final colorScheme = Theme.of(context).colorScheme;
     final text = widget.controller.text;
 
-    return Dialog(
-      key: const Key('tv_virtual_keyboard_dialog'),
-      alignment: .bottomCenter,
-      insetPadding: .only(
-        left: metrics.edgeInset,
-        right: metrics.edgeInset,
-        top: media.padding.top + 48,
-        bottom: media.padding.bottom + metrics.bottomInset,
-      ),
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      child: Focus(
-        focusNode: _focusNode,
-        onKeyEvent: _handleKey,
-        child: Container(
-          key: const Key('tv_virtual_keyboard_panel'),
-          constraints: BoxConstraints(maxWidth: metrics.panelWidth),
-          padding: .all(metrics.panelPadding),
-          decoration: BoxDecoration(
-            color: colorScheme.surface.withValues(alpha: 0.96),
-            borderRadius: BorderRadius.circular(metrics.panelRadius),
-          ),
-          child: SizedBox(
-            width: metrics.gridWidth,
-            child: Column(
-              mainAxisSize: .min,
-              crossAxisAlignment: .stretch,
-              children: [
-                _buildPreview(context, text, metrics),
-                SizedBox(height: metrics.previewGap),
-                for (var row = 0; row < _rows.length; row++) ...[
-                  _buildRow(context, row, metrics),
-                  if (row != _rows.length - 1) SizedBox(height: metrics.rowGap),
-                ],
+    return Focus(
+      focusNode: _focusNode,
+      onKeyEvent: _handleKey,
+      child: Container(
+        key: const Key('tv_virtual_keyboard_panel'),
+        constraints: BoxConstraints(maxWidth: metrics.panelWidth),
+        padding: .all(metrics.panelPadding),
+        decoration: BoxDecoration(
+          color: colorScheme.surface.withValues(alpha: 0.96),
+          borderRadius: BorderRadius.circular(metrics.panelRadius),
+        ),
+        child: SizedBox(
+          width: metrics.gridWidth,
+          child: Column(
+            mainAxisSize: .min,
+            crossAxisAlignment: .stretch,
+            children: [
+              if (widget.showPreview) ...[_buildPreview(context, text, metrics), SizedBox(height: metrics.previewGap)],
+              for (var row = 0; row < _rows.length; row++) ...[
+                _buildRow(context, row, metrics),
+                if (row != _rows.length - 1) SizedBox(height: metrics.rowGap),
               ],
-            ),
+            ],
           ),
         ),
       ),
-    );
-  }
-
-  _TvKeyboardMetrics _metricsFor(Size size) {
-    final columns = _gridColumnCount;
-    var keySize = (size.height * 0.061).clamp(36.0, 52.0).toDouble();
-    var keyGap = (keySize * 0.09).clamp(3.0, 6.0).toDouble();
-    var panelPadding = (keySize * 0.24).clamp(8.0, 14.0).toDouble();
-    final edgeInset = (size.width * 0.035).clamp(20.0, 56.0).toDouble();
-
-    final availableWidth = size.width - edgeInset * 2 - panelPadding * 2;
-    final maxKeySize = (availableWidth - keyGap * (columns - 1)) / columns;
-    final widthBoundKeySize = maxKeySize.clamp(24.0, 52.0).toDouble();
-    if (keySize > widthBoundKeySize) keySize = widthBoundKeySize;
-    keyGap = (keySize * 0.09).clamp(3.0, 6.0).toDouble();
-    panelPadding = (keySize * 0.24).clamp(8.0, 14.0).toDouble();
-    final gridWidth = keySize * columns + keyGap * (columns - 1);
-    return _TvKeyboardMetrics(
-      keySize: keySize,
-      keyGap: keyGap,
-      rowGap: keyGap,
-      panelPadding: panelPadding,
-      edgeInset: edgeInset,
-      bottomInset: (size.height * 0.025).clamp(12.0, 28.0).toDouble(),
-      gridWidth: gridWidth,
-      panelWidth: gridWidth + panelPadding * 2,
-      panelRadius: (keySize * 0.55).clamp(18.0, 28.0).toDouble(),
-      keyRadius: (keySize * 0.28).clamp(10.0, 16.0).toDouble(),
-      previewHeight: (_isMultiline ? keySize * 1.45 : keySize).clamp(40.0, 76.0).toDouble(),
-      previewGap: (keySize * 0.18).clamp(6.0, 12.0).toDouble(),
-      previewRadius: (keySize * 0.36).clamp(12.0, 18.0).toDouble(),
-      iconSize: (keySize * 0.58).clamp(20.0, 30.0).toDouble(),
-      keyFontSize: (keySize * 0.52).clamp(17.0, 26.0).toDouble(),
     );
   }
 
@@ -816,6 +894,38 @@ class _TvVirtualKeyboardDialogState extends State<_TvVirtualKeyboardDialog> with
       ),
     );
   }
+}
+
+_TvKeyboardMetrics _tvKeyboardMetricsFor(Size size, {required int columns, required bool multiline}) {
+  var keySize = (size.height * 0.061).clamp(36.0, 52.0).toDouble();
+  var keyGap = (keySize * 0.09).clamp(3.0, 6.0).toDouble();
+  var panelPadding = (keySize * 0.24).clamp(8.0, 14.0).toDouble();
+  final edgeInset = (size.width * 0.035).clamp(20.0, 56.0).toDouble();
+
+  final availableWidth = size.width - edgeInset * 2 - panelPadding * 2;
+  final maxKeySize = (availableWidth - keyGap * (columns - 1)) / columns;
+  final widthBoundKeySize = maxKeySize.clamp(24.0, 52.0).toDouble();
+  if (keySize > widthBoundKeySize) keySize = widthBoundKeySize;
+  keyGap = (keySize * 0.09).clamp(3.0, 6.0).toDouble();
+  panelPadding = (keySize * 0.24).clamp(8.0, 14.0).toDouble();
+  final gridWidth = keySize * columns + keyGap * (columns - 1);
+  return _TvKeyboardMetrics(
+    keySize: keySize,
+    keyGap: keyGap,
+    rowGap: keyGap,
+    panelPadding: panelPadding,
+    edgeInset: edgeInset,
+    bottomInset: (size.height * 0.025).clamp(12.0, 28.0).toDouble(),
+    gridWidth: gridWidth,
+    panelWidth: gridWidth + panelPadding * 2,
+    panelRadius: (keySize * 0.55).clamp(18.0, 28.0).toDouble(),
+    keyRadius: (keySize * 0.28).clamp(10.0, 16.0).toDouble(),
+    previewHeight: (multiline ? keySize * 1.45 : keySize).clamp(40.0, 76.0).toDouble(),
+    previewGap: (keySize * 0.18).clamp(6.0, 12.0).toDouble(),
+    previewRadius: (keySize * 0.36).clamp(12.0, 18.0).toDouble(),
+    iconSize: (keySize * 0.58).clamp(20.0, 30.0).toDouble(),
+    keyFontSize: (keySize * 0.52).clamp(17.0, 26.0).toDouble(),
+  );
 }
 
 class _TvKeyboardMetrics {

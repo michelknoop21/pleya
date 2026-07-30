@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
@@ -67,18 +66,14 @@ void main() {
   testWidgets('TV OSK search key moves focus to the first result', (tester) async {
     final (client, key) = await _pumpTvSearchScreen(tester);
     await tester.pumpAndSettle();
-    // afterFirstFocus: the panel does not auto-open on the initial focus; an
-    // explicit select on the field opens it.
-    expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsNothing);
-    await tester.sendKeyEvent(LogicalKeyboardKey.select);
-    await tester.pumpAndSettle();
+    // Inline keyboard: always visible on the TV search page, no modal to open.
     expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
 
     final state = key.currentState!;
     (state as SearchInputFocusable).setSearchQuery('movie');
     // rate_limiter's Debounce compares DateTime.now() against the fake-clock
     // timer, so it never invokes under FakeAsync — run the search via
-    // refresh() (same _performSearch path) to get results behind the dialog.
+    // refresh() (same _performSearch path) to get results in place.
     (state as Refreshable).refresh();
     await tester.pumpAndSettle();
     expect(client.queries, ['movie']);
@@ -87,7 +82,8 @@ void main() {
     await tester.tap(_keyboardDoneKey());
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsNothing);
+    // The inline keyboard stays put; Done only jumps focus to the results.
+    expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'SearchFirstResult');
     expect(find.text('Movie 1'), findsOneWidget);
 
@@ -97,9 +93,6 @@ void main() {
 
   testWidgets('TV OSK search key before the debounce fires searches immediately', (tester) async {
     final (client, key) = await _pumpTvSearchScreen(tester);
-    await tester.pumpAndSettle();
-    // afterFirstFocus: open the panel with an explicit select first.
-    await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
 
@@ -111,7 +104,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(client.queries, ['movie']);
-    expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsNothing);
+    expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'SearchFirstResult');
   });
 }
