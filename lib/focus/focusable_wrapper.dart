@@ -271,9 +271,11 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
     }
   }
 
-  // Extra padding for focus decoration (scale + border extends beyond item bounds)
-  // Scale 1.02 adds ~1% on each side, plus 2.5px border = ~8px total padding needed
-  static const double _focusDecorationPadding = 8.0;
+  // Extra padding for focus decoration (scale + border extends beyond item bounds).
+  // TV cards scale 1.05: a ~400px-tall card overhangs ~10px per side, plus the
+  // 2.5px focus ring — 14 covers the tallest cards (seerr grid/rows) so the
+  // scrolled-to item never clips its decoration at the viewport top.
+  static const double _focusDecorationPadding = 14.0;
 
   void _scrollIntoView() {
     WidgetsBinding.instance.addPostFrameCallback((_) {

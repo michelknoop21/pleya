@@ -101,6 +101,11 @@ SeerrRowMetrics seerrRowMetricsOf(BuildContext context, double availableWidth) {
 /// [seerrPosterHeight] for the total card height / row height.
 const double seerrCardTextExtent = 54;
 
+/// TV: extra top padding above the seerr grid so the first row's focus-scaled
+/// card + ring stays inside the sliver's paint bounds. Half the scale overhang
+/// of the tallest plausible cell (≈400px → 400 × 0.025 + 2.5 ring), rounded up.
+const double seerrGridFocusTopPad = 14;
+
 /// A focusable seerr poster: artwork + availability badge + title/year.
 ///
 /// Extracted from the discover screen so discover, search and the media detail

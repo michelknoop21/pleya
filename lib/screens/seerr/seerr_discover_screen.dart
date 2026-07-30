@@ -419,8 +419,13 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     // density setting and poster width matches the rest of the app. The seerr
     // card is taller than a bare poster (it reserves its own title/year block),
     // so we pin the cells to the resolved width but keep the seerr aspect.
+    final isTv = PlatformDetector.isTV();
+    // TV: extra top padding so the first grid row has headroom for the
+    // focus-scaled card + ring (SliverGrid clips at its own bounds). Half the
+    // scale overhang of the tallest plausible cell + ring width, rounded up.
+    final topPad = isTv ? 8.0 + seerrGridFocusTopPad : 8.0;
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
+      padding: EdgeInsets.fromLTRB(8, topPad, 8, 24),
       sliver: SettingsBuilder(
         prefs: const [SettingsService.libraryDensity],
         builder: (context) {
@@ -434,18 +439,26 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
                 usePaddingAware: true,
                 horizontalPadding: 16,
               );
-              final w = geometry.itemWidth;
+              // TV: widen the gaps so a focus-scaled cell (+ ring) never paints
+              // over its neighbours or the next grid row. The wider gaps shrink
+              // the cells, so recompute the real cell width for the pinned
+              // column count and size the cards to exactly that — a card wider
+              // than its tile gets its top clipped by the grid (build 197 bug).
+              final cols = geometry.columnCount;
+              final scaleExtra = FocusTheme.focusScale - 1;
+              final ring = 2 * FocusTheme.focusBorderWidth;
+              // hReserve is based on the pre-shrink width, so it slightly
+              // overestimates the needed gap — safe (never overlaps).
+              final hReserve = isTv ? geometry.itemWidth * scaleExtra + ring : 0.0;
+              final hGap = geometry.spacing + hReserve;
+              final w = (crossAxisExtent - hGap * (cols - 1)) / cols;
               final cellHeight = w * 3 / 2 + seerrCardTextExtent;
-              // TV: pad spacing so a focus-scaled cell (+ ring) never paints
-              // over its neighbours or the next grid row.
-              final isTv = PlatformDetector.isTV();
-              final vReserve = isTv ? cellHeight * (FocusTheme.focusScale - 1) + 2 * FocusTheme.focusBorderWidth : 0.0;
-              final hReserve = isTv ? w * (FocusTheme.focusScale - 1) + 2 * FocusTheme.focusBorderWidth : 0.0;
+              final vReserve = isTv ? cellHeight * scaleExtra + ring : 0.0;
               return SliverGrid(
-                gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: w,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: cols,
                   mainAxisSpacing: geometry.spacing + vReserve,
-                  crossAxisSpacing: geometry.spacing + hReserve,
+                  crossAxisSpacing: hGap,
                   childAspectRatio: w / cellHeight,
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
