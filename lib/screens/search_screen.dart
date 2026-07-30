@@ -245,17 +245,18 @@ class _SearchScreenState extends State<SearchScreen>
       if (_seerrResults.isNotEmpty)
         LayoutBuilder(
           builder: (context, constraints) {
-            final cardWidth = seerrRowCardWidthOf(context, constraints.maxWidth);
+            final metrics = seerrRowMetricsOf(context, constraints.maxWidth);
             return SizedBox(
-              height: cardWidth * 3 / 2 + seerrCardTextExtent,
+              height: metrics.rowHeight + 12,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                clipBehavior: Clip.none,
+                padding: EdgeInsets.fromLTRB(16, 4 + metrics.focusReserve, 16, 8 + metrics.focusReserve),
                 itemCount: _seerrResults.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                separatorBuilder: (_, _) => SizedBox(width: metrics.itemGap),
                 itemBuilder: (context, index) {
                   final media = _seerrResults[index];
-                  return SeerrPosterCard(media: media, onTap: () => _openSeerrDetail(media), width: cardWidth);
+                  return SeerrPosterCard(media: media, onTap: () => _openSeerrDetail(media), width: metrics.cardWidth);
                 },
               ),
             );

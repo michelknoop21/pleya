@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../focus/card_focus_scope.dart';
+import '../focus/focus_theme.dart';
 import '../focus/focusable_wrapper.dart';
 import '../i18n/strings.g.dart';
 import '../models/seerr/seerr_media.dart';
@@ -42,6 +43,56 @@ double seerrRowCardWidthOf(BuildContext context, double availableWidth) {
     );
   }
   return GridSizeCalculator.getCellWidth(availableWidth, context, density);
+}
+
+/// Layout metrics for a horizontal seerr poster row. On TV the focused card
+/// scales up ([FocusTheme.focusScale]) and draws a focus ring, so the row must
+/// budget headroom above/below the card and a wider gap between cards —
+/// otherwise the scaled card clips against the row bounds and paints over its
+/// neighbours. [FocusableWrapper] scales the whole card (poster + text block),
+/// so the reserve is computed from the full card height.
+class SeerrRowMetrics {
+  const SeerrRowMetrics({
+    required this.cardWidth,
+    required this.cardHeight,
+    required this.focusReserve,
+    required this.itemGap,
+    required this.rowHeight,
+  });
+
+  /// Width of one card (same value as [seerrRowCardWidthOf]).
+  final double cardWidth;
+
+  /// Full card height: 2:3 poster plus the [seerrCardTextExtent] text block.
+  final double cardHeight;
+
+  /// Vertical headroom per side for the focus-scaled card + ring (0 off-TV).
+  final double focusReserve;
+
+  /// Gap between cards; wide enough on TV that the scaled card + ring never
+  /// overlaps its neighbour. Plain 12 off-TV.
+  final double itemGap;
+
+  /// Total row height: [cardHeight] plus the reserve on both sides.
+  final double rowHeight;
+}
+
+/// Computes the row metrics for the given available width — see
+/// [SeerrRowMetrics]. Use this instead of a bare [seerrRowCardWidthOf] +
+/// hardcoded gap/height wherever seerr cards live in a horizontal row.
+SeerrRowMetrics seerrRowMetricsOf(BuildContext context, double availableWidth) {
+  final cardWidth = seerrRowCardWidthOf(context, availableWidth);
+  final cardHeight = cardWidth * 3 / 2 + seerrCardTextExtent;
+  final isTv = PlatformDetector.isTV();
+  final focusReserve = isTv ? cardHeight * (FocusTheme.focusScale - 1) / 2 + FocusTheme.focusBorderWidth : 0.0;
+  final itemGap = isTv ? cardWidth * (FocusTheme.focusScale - 1) / 2 + FocusTheme.focusBorderWidth : 12.0;
+  return SeerrRowMetrics(
+    cardWidth: cardWidth,
+    cardHeight: cardHeight,
+    focusReserve: focusReserve,
+    itemGap: itemGap,
+    rowHeight: cardHeight + 2 * focusReserve,
+  );
 }
 
 /// Fixed height of the text block under every poster (gap + two title lines +

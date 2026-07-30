@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../focus/focus_theme.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
@@ -435,11 +436,16 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
               );
               final w = geometry.itemWidth;
               final cellHeight = w * 3 / 2 + seerrCardTextExtent;
+              // TV: pad spacing so a focus-scaled cell (+ ring) never paints
+              // over its neighbours or the next grid row.
+              final isTv = PlatformDetector.isTV();
+              final vReserve = isTv ? cellHeight * (FocusTheme.focusScale - 1) + 2 * FocusTheme.focusBorderWidth : 0.0;
+              final hReserve = isTv ? w * (FocusTheme.focusScale - 1) + 2 * FocusTheme.focusBorderWidth : 0.0;
               return SliverGrid(
                 gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                   maxCrossAxisExtent: w,
-                  mainAxisSpacing: geometry.spacing,
-                  crossAxisSpacing: geometry.spacing,
+                  mainAxisSpacing: geometry.spacing + vReserve,
+                  crossAxisSpacing: geometry.spacing + hReserve,
                   childAspectRatio: w / cellHeight,
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
@@ -747,20 +753,25 @@ class _SeerrRowView extends StatelessWidget {
           const SizedBox(height: 8),
           LayoutBuilder(
             builder: (context, constraints) {
-              final cardWidth = seerrRowCardWidthOf(context, constraints.maxWidth);
+              final metrics = seerrRowMetricsOf(context, constraints.maxWidth);
               return SizedBox(
-                height: cardWidth * 3 / 2 + seerrCardTextExtent,
+                height: metrics.rowHeight,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  padding: EdgeInsets.symmetric(horizontal: _rowInset),
+                  clipBehavior: Clip.none,
+                  padding: EdgeInsets.symmetric(horizontal: _rowInset, vertical: metrics.focusReserve),
                   itemCount: row.items.length + (row.hasMore ? 1 : 0),
-                  separatorBuilder: (_, _) => const SizedBox(width: 12),
+                  separatorBuilder: (_, _) => SizedBox(width: metrics.itemGap),
                   itemBuilder: (context, index) {
                     if (index >= row.items.length) {
-                      return SeerrLoadMoreTile(loading: row.loadingMore, onActivate: onLoadMore, width: cardWidth);
+                      return SeerrLoadMoreTile(
+                        loading: row.loadingMore,
+                        onActivate: onLoadMore,
+                        width: metrics.cardWidth,
+                      );
                     }
                     final media = row.items[index];
-                    return SeerrPosterCard(media: media, onTap: () => onTapItem(media), width: cardWidth);
+                    return SeerrPosterCard(media: media, onTap: () => onTapItem(media), width: metrics.cardWidth);
                   },
                 ),
               );

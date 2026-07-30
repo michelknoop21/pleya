@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../focus/focus_theme.dart';
 import '../media/media_hub.dart';
 import '../services/settings_service.dart';
 import '../theme/mono_tokens.dart';
@@ -44,15 +45,20 @@ class TopTenRow extends StatelessWidget {
         final cardWidth = GridSizeCalculator.getCellWidth(constraints.maxWidth, context, density).clamp(92.0, 190.0);
         final cardHeight = cardWidth * 1.5;
         final numeralWidth = cardWidth * 0.7;
-        final rowHeight = cardHeight;
+        // TV: the focused card scales up (FocusTheme.focusScale) and draws a
+        // ring, so budget headroom above/below and between entries — otherwise
+        // the scaled card clips against the row and paints over neighbours.
+        final focusReserve = isTv ? cardHeight * (FocusTheme.focusScale - 1) / 2 + FocusTheme.focusBorderWidth : 0.0;
+        final entryGap = isTv ? cardWidth * (FocusTheme.focusScale - 1) / 2 + FocusTheme.focusBorderWidth : 4.0;
+        final rowHeight = cardHeight + 2 * focusReserve;
 
         Widget entry(int index) {
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: EdgeInsets.symmetric(horizontal: entryGap, vertical: focusReserve),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                _RankNumeral(rank: index + 1, width: numeralWidth, height: rowHeight),
+                _RankNumeral(rank: index + 1, width: numeralWidth, height: cardHeight),
                 SizedBox(
                   width: cardWidth,
                   height: cardHeight,
@@ -73,6 +79,7 @@ class TopTenRow extends StatelessWidget {
         ListView buildList([ScrollController? controller]) => ListView.builder(
           controller: controller,
           scrollDirection: Axis.horizontal,
+          clipBehavior: Clip.none,
           padding: EdgeInsets.symmetric(horizontal: isTv ? 40 : 12),
           itemCount: items.length,
           itemBuilder: (context, index) => entry(index),
