@@ -37,6 +37,22 @@ tvOS → TestFlight
 
 macOS → TestFlight (pkg)
 
+### external
+
+```sh
+[bundle exec] fastlane external
+```
+
+Laatste build(s) naar external testgroep (Beta App Review bij eerste build van een versie)
+
+### add_testers
+
+```sh
+[bundle exec] fastlane add_testers
+```
+
+E-mailadressen toevoegen aan de external testgroep: fastlane add_testers emails:a@x.nl,b@y.nl
+
 ### beta
 
 ```sh

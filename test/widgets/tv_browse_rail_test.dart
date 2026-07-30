@@ -247,9 +247,36 @@ void main() {
 
       expect(full.height, lessThan(detailed.height));
       expect(full.useWideLayout, isTrue);
-      expect(detailed.itemGap, 0);
-      expect(full.itemGap, closeTo(12 * 0.85, 0.001));
+      // Gaps reserve the focus-scale growth (estimated from the 420-wide max
+      // card bound) plus the ring, so a focused card is never painted over by
+      // its right-hand neighbour.
+      const maxWideCardWidth = 420 * 0.85;
+      expect(detailed.itemGap, closeTo(maxWideCardWidth * (FocusTheme.focusScale - 1) / 2 + 2.5 * 0.85, 0.001));
+      expect(full.itemGap, closeTo(maxWideCardWidth * (FocusTheme.fullCardFocusScale - 1) / 2 + 2.5 * 0.85, 0.001));
       expect(full.posterHeight, closeTo(full.posterWidth * 9 / 16, 0.001));
+    });
+
+    test('rail height reserves proportional focus overflow above and below the cards', () {
+      final movie = MediaItem(id: 'movie_1', backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Movie');
+      final hub = MediaHub(id: 'movies', title: 'Movies', type: 'movie', items: [movie], size: 1);
+
+      for (final fullCardLayout in [false, true]) {
+        final metrics = TvBrowseRailLayout.metricsForHub(
+          hub: hub,
+          availableWidth: 1040,
+          density: LibraryDensity.defaultValue,
+          episodePosterMode: EpisodePosterMode.seriesPoster,
+          scale: 0.85,
+          fullCardLayout: fullCardLayout,
+        );
+        final focusScale = fullCardLayout ? FocusTheme.fullCardFocusScale : FocusTheme.focusScale;
+        final perSideOverflow = metrics.posterHeight * (focusScale - 1) / 2 + FocusTheme.focusBorderWidth * 0.85;
+        expect(metrics.focusExtra, closeTo(perSideOverflow, 0.001));
+        expect(metrics.height - metrics.containerHeight, greaterThanOrEqualTo(2 * perSideOverflow));
+        // Horizontal gap covers the actual card's scale growth plus the ring.
+        final focusGrowX = metrics.cardWidth * (focusScale - 1) / 2;
+        expect(metrics.itemGap, greaterThanOrEqualTo(focusGrowX + FocusTheme.focusBorderWidth * 0.85 - 0.001));
+      }
     });
 
     test('compact wide poster scale makes clips match compact episode thumbnails', () {

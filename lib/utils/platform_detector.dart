@@ -137,7 +137,10 @@ class TvDetectionService {
   }
 
   /// Synchronous access after initialization (returns false if not initialized)
-  static bool isTVSync() => _debugAppleTVOverride ?? _instance?._isTV ?? false;
+  // Consulteert ook de compile-time TVOS_BUILD-define (net als isAppleTVSync):
+  // de async _detect() kan later klaar zijn dan callers die dit bij opstart
+  // lezen (bv. InputModeTracker's mode-initializer).
+  static bool isTVSync() => _debugAppleTVOverride ?? (_tvosBuild || _instance?._isTV == true);
 
   /// Synchronous Apple TV check (returns false if not initialized or not tvOS).
   static bool isAppleTVSync() => _debugAppleTVOverride ?? (_tvosBuild || _instance?._isAppleTV == true);

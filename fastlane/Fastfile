@@ -89,6 +89,23 @@ def upload_beta(extra = {})
   }.merge(extra))
 end
 
+# External distributie: wacht op processing en zet de build klaar voor de
+# external groep (triggert Beta App Review bij de eerste build van een versie).
+# Groepsnaam via EXTERNAL_GROUP (default "External Testers") — groep moet al
+# bestaan in App Store Connect onder TestFlight → External Testing.
+EXTERNAL_GROUP = ENV.fetch("EXTERNAL_GROUP", "External Testers")
+
+def upload_external(extra = {})
+  upload_to_testflight({
+    api_key: asc_api_key,
+    distribute_external: true,
+    groups: [EXTERNAL_GROUP],
+    changelog: ENV["TESTFLIGHT_CHANGELOG"] || "Bugfixes en verbeteringen.",
+    # external distributie kan pas ná processing → hier wél wachten
+    skip_waiting_for_build_processing: false,
+  }.merge(extra))
+end
+
 desc "iOS → TestFlight"
 lane :ios_beta do
   ensure_build_number("ios")
@@ -249,6 +266,48 @@ lane :macos_beta do
   sh("pkgutil --check-signature #{signed_pkg}")
 
   upload_beta(app_platform: "osx", pkg: signed_pkg)
+end
+
+desc "Laatste build(s) naar external testgroep (Beta App Review bij eerste build van een versie)"
+lane :external do |options|
+  # platform: "ios" | "appletvos" | "osx"; zonder optie alle drie.
+  platforms = options[:platform] ? [options[:platform]] : %w[ios appletvos osx]
+  failures = []
+  platforms.each do |platform|
+    upload_external(
+      app_platform: platform,
+      # geen ipa/pkg meegeven → fastlane pakt de laatste geüploade build
+      distribute_only: true,
+    )
+  rescue => e
+    UI.error("external distributie #{platform} faalde: #{e.message}")
+    failures << platform
+  end
+  UI.user_error!("External distributie mislukt voor: #{failures.join(', ')}") unless failures.empty?
+end
+
+desc "E-mailadressen toevoegen aan de external testgroep: fastlane add_testers emails:a@x.nl,b@y.nl"
+lane :add_testers do |options|
+  emails = (options[:emails] || "").split(",").map(&:strip).reject(&:empty?)
+  UI.user_error!("Geef emails op: fastlane add_testers emails:a@x.nl,b@y.nl") if emails.empty?
+  # `pilot` in een Fastfile is een alias voor upload_to_testflight en kent geen
+  # tester-commando's — dus via Spaceship::ConnectAPI.
+  token = Spaceship::ConnectAPI::Token.create(
+    key_id: ENV.fetch("ASC_KEY_ID"),
+    issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+    key: Base64.decode64(ENV.fetch("ASC_KEY_CONTENT")),
+  )
+  Spaceship::ConnectAPI.token = token
+  app = Spaceship::ConnectAPI::App.find("nl.michelknoop.pleya")
+  UI.user_error!("App nl.michelknoop.pleya niet gevonden") unless app
+  group = app.get_beta_groups(filter: { name: EXTERNAL_GROUP }).first
+  UI.user_error!("Testgroep '#{EXTERNAL_GROUP}' bestaat niet — maak hem eerst aan in App Store Connect → TestFlight → External Testing") unless group
+  emails.each do |email|
+    group.post_bulk_beta_tester_assignments(beta_testers: [{ email: email }])
+    UI.success("#{email} toegevoegd aan '#{EXTERNAL_GROUP}'")
+  rescue => e
+    UI.error("#{email} toevoegen faalde: #{e.message}")
+  end
 end
 
 desc "Alle platforms → TestFlight; gaat door als één platform faalt"

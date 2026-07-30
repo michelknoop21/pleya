@@ -2,6 +2,18 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-07-30] — Fastlane external-testing lanes
+
+### Added
+- **Lane `external`** (`fastlane/Fastfile`): distribueert de laatste geüploade build naar de external TestFlight-groep via `upload_to_testflight` met `distribute_only: true` — bouwt niets, wacht op processing, triggert Beta App Review bij de eerste build van een versie. Per platform: `fastlane external platform:ios|appletvos|osx`; zonder optie alle drie, gaat door als één platform faalt. Changelog-tekst via `TESTFLIGHT_CHANGELOG` env-var.
+- **Lane `add_testers`** (`fastlane/Fastfile`): koppelt e-mailadressen aan de external groep. Via Spaceship (`group.post_bulk_beta_tester_assignments`) omdat `pilot` als Fastfile-actie een alias van `upload_to_testflight` is en geen tester-commando's kent. Faalt per adres i.p.v. de hele run af te breken; duidelijke fout als de groep niet bestaat.
+- Groepsnaam configureerbaar via `EXTERNAL_GROUP` env-var (default "External Testers").
+
+### Notes
+- **Handmatige stap**: groep "External Testers" eenmalig aanmaken in App Store Connect → TestFlight → External Testing.
+- Geverifieerd: `ruby -c` syntax OK, beide lanes zichtbaar in `fastlane lanes`; Spaceship-API gecontroleerd tegen de geïnstalleerde fastlane 2.236.1.
+- Interne flow (`beta`-lanes) ongewijzigd: `distribute_external: false` blijft de default.
+
 ## [2026-07-24/29] — Ondertitel-labels, tvOS-hero en zoom, home-rijen, downloads-hervatten
 
 ### Added

@@ -7,6 +7,35 @@ import UIKit
   import Flutter
 #endif
 
+/// Alert die de Menu/Back-press zelf onderschept. De press bereikt de alert
+/// nooit via de normale responder-chain (GameController + PleyaFlutterViewController
+/// consumeren hem eerder), dus zonder deze override is de dialog niet te sluiten.
+final class MenuDismissAlertController: UIAlertController {
+  var onMenuPressed: (() -> Void)?
+
+  override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+    if presses.contains(where: { $0.type == .menu }) {
+      onMenuPressed?()
+      return
+    }
+    super.pressesBegan(presses, with: event)
+  }
+
+  override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+    if presses.contains(where: { $0.type == .menu }) {
+      return
+    }
+    super.pressesEnded(presses, with: event)
+  }
+
+  override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+    if presses.contains(where: { $0.type == .menu }) {
+      return
+    }
+    super.pressesCancelled(presses, with: event)
+  }
+}
+
 /// Presents native tvOS text entry as a `UIAlertController` with a text field —
 /// a proper modal that owns the tvOS focus engine, so the on-screen keyboard is
 /// navigable with the remote (and still offers the "type with iPhone" Continuity
@@ -57,7 +86,10 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin, UITextFieldDelegate 
     // proper modal that captures the focus engine, so the on-screen keyboard is
     // actually navigable. The old zero-alpha first-responder trick left the
     // Flutter view competing for the remote, so the keyboard stayed dead.
-    let alert = UIAlertController(title: args["hint"] as? String, message: nil, preferredStyle: .alert)
+    let alert = MenuDismissAlertController(title: args["hint"] as? String, message: nil, preferredStyle: .alert)
+    alert.onMenuPressed = { [weak self] in
+      self?.finish(submitted: false)
+    }
     alert.addTextField { [weak self] field in
       guard let self = self else { return }
       field.text = args["text"] as? String ?? ""
@@ -119,6 +151,9 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin, UITextFieldDelegate 
     textField = nil
     alert?.dismiss(animated: true)
     alert = nil
+    // Geef de key-press-afhandeling terug aan Flutter, anders werkt play/pause
+    // (PleyaFlutterViewController.pressesBegan) niet meer na de dialog.
+    Self.rootViewController()?.becomeFirstResponder()
   }
 
   // MARK: - Lookups

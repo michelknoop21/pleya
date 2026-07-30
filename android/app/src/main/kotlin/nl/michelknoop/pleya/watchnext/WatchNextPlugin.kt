@@ -24,6 +24,9 @@ class WatchNextPlugin :
     private const val TAG = "WatchNextPlugin"
     private const val METHOD_CHANNEL = "com.pleya/watch_next"
 
+    /** Must match `android:scheme` in AndroidManifest.xml. */
+    const val DEEP_LINK_SCHEME = "pleya"
+
     private var pendingDeepLink: String? = null
 
     /**
@@ -32,7 +35,10 @@ class WatchNextPlugin :
      */
     fun handleIntent(intent: Intent?): String? {
       val data = intent?.data ?: return null
-      if (data.scheme == "plezy" && data.authority == "play") {
+      // Must match the intent filter in AndroidManifest.xml (scheme "pleya",
+      // host "play") and the URI built in WatchNextProvider. A mismatch here
+      // fails silently: the row renders, but tapping a tile does nothing.
+      if (data.scheme == DEEP_LINK_SCHEME && data.authority == "play") {
         return data.getQueryParameter("content_id")
       }
       return null

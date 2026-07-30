@@ -75,8 +75,6 @@ class TvBrowseRailLayout {
 
   static double railInteractionExpansionForScale(double scale) => (12 * scale).clamp(8, 18).toDouble();
 
-  static double itemGapForScale(double _) => 0;
-
   static double fullCardItemGapForScale(double scale) => (12 * scale).clamp(8, 18).toDouble();
 
   static double viewAllItemWidthForScale(double scale) => (104 * scale).clamp(88, 132).toDouble();
@@ -149,9 +147,8 @@ class TvBrowseRailLayout {
     double tallPosterScale = 1.0,
     double widePosterScale = 1.0,
   }) {
-    final focusExtra = FocusTheme.focusBorderWidth * 2 * scale;
-    final railEdgePadding = focusExtra + (12 * scale);
-    final itemGap = fullCardLayout ? fullCardItemGapForScale(scale) : itemGapForScale(scale);
+    final focusScale = fullCardLayout ? FocusTheme.fullCardFocusScale : FocusTheme.focusScale;
+    final railEdgePadding = FocusTheme.focusBorderWidth * 2 * scale + (12 * scale);
     final isPersonHub = TvBrowseRailLayout.isPersonHub(hub);
     final emptyEpisodeThumbnailHub =
         hub.items.isEmpty && hub.type == 'episode' && episodePosterMode == EpisodePosterMode.episodeThumbnail;
@@ -161,6 +158,14 @@ class TvBrowseRailLayout {
     final hasTall = !isPersonHub && hub.items.any((item) => !item.usesWideAspectRatio(episodePosterMode));
     final isMixedHub = hasWide && hasTall;
     final useWideLayout = hasWide && (!hasTall || episodePosterMode == EpisodePosterMode.episodeThumbnail);
+    // The ListView paints item i+1 over item i, so a focused card's scale
+    // growth and ring on its right edge get covered by the neighbour unless the
+    // gap reserves that overflow. The gap feeds cardWidthFor, so estimate the
+    // growth from the maxWidth bound (upper bound on the real card width).
+    final posterScaleFactor = useWideLayout ? widePosterScale : tallPosterScale;
+    final maxCardWidth = (useWideLayout ? 420 : 250) * scale * posterScaleFactor;
+    final focusGapX = maxCardWidth * (focusScale - 1) / 2 + FocusTheme.focusBorderWidth * scale;
+    final itemGap = fullCardLayout ? math.max(fullCardItemGapForScale(scale), focusGapX) : focusGapX;
     final baseCardWidth = cardWidthFor(
       availableWidth: availableWidth,
       density: density,
@@ -174,7 +179,11 @@ class TvBrowseRailLayout {
     final posterHeight = isPersonHub ? posterWidth : (useWideLayout ? posterWidth * 9 / 16 : posterWidth * 1.5);
     final labelHeight = fullCardLayout ? 0.0 : ((isPersonHub ? 58 : 42) * scale);
     final containerHeight = (posterHeight + labelHeight).ceilToDouble();
-    final height = containerHeight + focusExtra + (14 * scale);
+    // Per-side vertical overflow of a focused card: half the scale growth plus
+    // the ring. Reserved above and below so the scaled card never paints over
+    // the section beneath; the _RailClipper allows exactly this much spill.
+    final focusExtra = posterHeight * (focusScale - 1) / 2 + FocusTheme.focusBorderWidth * scale;
+    final height = containerHeight + focusExtra * 2 + (14 * scale);
 
     return TvBrowseRailLayoutMetrics(
       isPersonHub: isPersonHub,

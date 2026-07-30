@@ -5,7 +5,8 @@ Automatische TestFlight-uploads voor iOS, tvOS en macOS naar interne testers
 
 ## Hoe het werkt
 
-- `fastlane/Fastfile` — lanes `ios_beta`, `tvos_beta`, `macos_beta`, `beta` (alle drie).
+- `fastlane/Fastfile` — lanes `ios_beta`, `tvos_beta`, `macos_beta`, `beta` (alle drie),
+  plus `external` en `add_testers` voor external testing (zie hieronder).
 - `scripts/testflight_release.sh [lane]` — bumpt het build number in `pubspec.yaml`,
   commit+pusht dat, en draait daarna de fastlane lane (default `beta`).
 - launchd draait dit **maandelijks** (1e van de maand, 14:00) via
@@ -26,6 +27,28 @@ scripts/testflight_release.sh            # alles: bump + iOS + tvOS + macOS
 scripts/testflight_release.sh ios_beta   # alleen iOS
 fastlane ios_beta                        # zonder build-number bump
 ```
+
+## External testers
+
+Internal testers krijgen elke build direct (geen review). Voor testers búiten
+het team (tot 10.000) is er external testing — die builds gaan wél door Beta
+App Review bij de eerste build van een versie.
+
+**Eenmalig:** maak de groep aan in App Store Connect → TestFlight →
+External Testing. Naam moet matchen met `EXTERNAL_GROUP` (default
+"External Testers").
+
+```bash
+fastlane add_testers emails:a@x.nl,b@y.nl   # testers aan de groep koppelen
+fastlane external                            # laatste build → external groep (alle platforms)
+fastlane external platform:ios               # of: appletvos / osx
+TESTFLIGHT_CHANGELOG="..." fastlane external # eigen "What to Test"-tekst
+```
+
+`external` bouwt niets — het distribueert de laatste geüploade build
+(`distribute_only`) en wacht op processing. `add_testers` gebruikt Spaceship
+(`post_bulk_beta_tester_assignments`); `pilot` als lane-actie kent geen
+tester-commando's.
 
 ## Signing
 

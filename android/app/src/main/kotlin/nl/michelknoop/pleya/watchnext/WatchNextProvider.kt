@@ -153,7 +153,7 @@ class WatchNextProvider(private val context: Context) {
     }
 
     val intentUri = Uri.Builder()
-      .scheme("plezy")
+      .scheme(WatchNextPlugin.DEEP_LINK_SCHEME)
       .authority("play")
       .appendQueryParameter("content_id", item.contentId)
       .build()

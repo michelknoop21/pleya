@@ -1,8 +1,12 @@
 # STATUS — Pleya
 
-_Laatst bijgewerkt: 2026-07-29 (branch `test`, 16 commits vóór `main`)_
+_Laatst bijgewerkt: 2026-07-30 (branch `test`)_
 
 ## Waar was ik
+
+TestFlight external testing voorbereid. `fastlane/Fastfile` heeft twee nieuwe lanes: `external` (distribueert de laatste geüploade build naar de external groep via `distribute_only`, per platform aanroepbaar met `platform:ios|appletvos|osx`; triggert Beta App Review bij de eerste build van een versie) en `add_testers emails:a@x.nl,b@y.nl` (voegt testers toe via Spaceship `post_bulk_beta_tester_assignments` — `pilot` als lane-actie kent geen tester-commando's). Groepsnaam via `EXTERNAL_GROUP` env-var (default "External Testers"); **de groep moet nog handmatig aangemaakt worden** in App Store Connect → TestFlight → External Testing. Ongecommit; syntax en lane-registratie geverifieerd. Daarnaast staan er ongecommitte wijzigingen in `WatchNextPlugin.kt`/`WatchNextProvider.kt`/`TopShelfProvider.swift` uit de parallelle sessie (zie `docs/sessions/2026-07-30.md`).
+
+Daarvóór:
 
 Home-billboard op de telefoon. Drie waargenomen problemen (dubbele titel, aangesneden titelkunst, te dunne app-bar) bleken één oorzaak te hebben: de telefoon-hero vroeg expliciet `posterThumb()` op, dus de ingebakken titelkunst van de poster botste met de titel die de app er zelf overheen zet. De ontbrekende primitieve was het onderscheid tussen artwork dat een vak *vult* (frosted backdrop, tv-spotlight — daar wordt niets overheen getekend) en artwork dat de titeltypografie van de app moet *dragen*. Voor het tweede is de vorm van het vak irrelevant: de 16:9-backdrop wint altijd. `billboardArt()` geeft dat terug als `BillboardArt{path, isBackdrop}`; `heroArtCandidates` is ongewijzigd, dus de vullende call-sites gedragen zich als voorheen. Zonder backdrop valt het billboard terug op vierkante of posterart maar rendert die onscherp — nooit een leeg vlak, nooit een dubbele titel. Telefoon-hero van ~75vh naar ~52vh (bij 75vh is het vak 0,56 en snijdt `cover` twee derde van het 16:9-frame weg). Commit `2a5a03d`, iOS-build draait.
 
@@ -44,6 +48,10 @@ scripts/testflight_release.sh tvos_beta                      # TestFlight-upload
 
 ## Recente sessies
 
+### 2026-07-30
+- Fastlane external-testing lanes: `external` (distribute_only naar external groep) en `add_testers` (Spaceship). Groep "External Testers" nog aanmaken in App Store Connect.
+- Parallel: tvOS hero-eerste-load-fix, OLED-default, "Recent uitgebracht"-rij, hero-hoogte breed venster (commits `f93c125`, `205701c`, builds 196/197).
+
 ### 2026-07-28/29
 - Ondertitel-labels: positionele koppeling met serverstreams (build 193), daarna diagnostiek toegevoegd omdat de koppeling op tvOS niet aansloeg (build 194).
 - tvOS-hero: details-knop bereikbaar, ondertitels blijven in beeld bij zoom; beeldverhouding/zoom werkt nu echt op iOS/tvOS.
@@ -60,8 +68,5 @@ scripts/testflight_release.sh tvos_beta                      # TestFlight-upload
 ### 2026-07-22
 - Pleya Share compleet: pairAny (QR/hotspot), relay-tunnel, iOS keepalive, sessietoken-persistentie, multi-client + scan-cache, link-local/USB-kabel, offline bind + auto-resume, Plex-brug voor share-items, Wi-Fi Aware-transport, energie-optimalisaties, GUI-uitleg, website, geheime APK-download-link op de NAS.
 - TestFlight 182 t/m 185.
-
-### 2026-07-04
-- Jellyseerr/Overseerr-integratie, tvOS native keyboard + hero, discover-hero, iCloud settings-sync, per-platform build-nummers, Plex-login-415-fix.
 
 Zie [docs/DECISIONS.md](docs/DECISIONS.md) voor keuzes, [docs/CHANGELOG.md](docs/CHANGELOG.md) voor details en [docs/PLEYA_SHARE.md](docs/PLEYA_SHARE.md) voor de share-architectuur.

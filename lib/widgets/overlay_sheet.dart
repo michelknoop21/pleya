@@ -273,6 +273,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
         entry.completer.complete(null);
       }
     }
+    _unregisterFallbackKeyHandler();
     _sheetFocusScopeNode.dispose();
     _slideCurve.dispose();
     _animationController.dispose();
@@ -320,6 +321,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     if (!wasOpen) widget.onOpenChanged?.call(true);
 
     BackKeyUpSuppressor.clearSuppression();
+    _registerFallbackKeyHandler();
     _animationController.forward(from: 0);
     _autoFocus();
 
@@ -378,6 +380,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
         _isDragging = false;
         _sheetHorizontalAnchor = null;
       });
+      _unregisterFallbackKeyHandler();
       widget.onOpenChanged?.call(false);
     });
   }
@@ -395,7 +398,9 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
   }
 
   void _autoFocus() {
-    if (!InputModeTracker.isKeyboardMode(context)) return;
+    // Op TV altijd focussen: er is geen pointer, en de mode-tracker kan bij
+    // opstart nog kortstondig op pointer staan.
+    if (!InputModeTracker.isKeyboardMode(context) && !PlatformDetector.isTV()) return;
 
     // First post-frame: the FocusScope is now built and the node is attached.
     // Grab scope focus immediately so key events (especially back) are trapped.
@@ -430,7 +435,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
   }
 
   void _refocus() {
-    if (!InputModeTracker.isKeyboardMode(context)) return;
+    if (!InputModeTracker.isKeyboardMode(context) && !PlatformDetector.isTV()) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_isOpen) return;
@@ -487,6 +492,48 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     // The FocusScope traps traversal within the sheet; the screen-level
     // Focus catches any leaked nav keys.
     return KeyEventResult.ignored;
+  }
+
+  // Vangnet voor als de focus buiten de sheet-scope staat (of nooit binnenkwam):
+  // de sheet is geen route, dus zonder dit sluit Menu/escape hem niet en blijft
+  // de D-pad het onderliggende scherm besturen. Alleen actief terwijl open.
+  bool _fallbackHandlerRegistered = false;
+
+  void _registerFallbackKeyHandler() {
+    if (_fallbackHandlerRegistered) return;
+    _fallbackHandlerRegistered = true;
+    HardwareKeyboard.instance.addHandler(_fallbackKeyHandler);
+  }
+
+  void _unregisterFallbackKeyHandler() {
+    if (!_fallbackHandlerRegistered) return;
+    _fallbackHandlerRegistered = false;
+    HardwareKeyboard.instance.removeHandler(_fallbackKeyHandler);
+  }
+
+  bool _fallbackKeyHandler(KeyEvent event) {
+    if (!_isOpen || _isClosing || !mounted) return false;
+    // Focus binnen de sheet-scope → de scope's eigen onKeyEvent
+    // (_handleKeyEvent) handelt het event al af.
+    final primary = FocusManager.instance.primaryFocus;
+    if (primary != null && (primary == _sheetFocusScopeNode || primary.ancestors.contains(_sheetFocusScopeNode))) {
+      return false;
+    }
+    // Route bovenop de host (dialog boven de sheet): die handelt zijn eigen
+    // back/keys af.
+    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    if (BackKeyUpSuppressor.consumeIfSuppressed(event)) return true;
+    if (event.logicalKey.isBackKey) {
+      return handleBackKeyAction(event, _handleBack) == KeyEventResult.handled;
+    }
+    // Focus-trap: nav/select-press terwijl de focus ontsnapt is → focus terug
+    // in de sheet, en deze ene press inslikken zodat het onderliggende scherm
+    // niet meebeweegt.
+    if (event is KeyDownEvent && event.logicalKey.isNavigationKey) {
+      _refocus();
+      return true;
+    }
+    return false;
   }
 
   @override

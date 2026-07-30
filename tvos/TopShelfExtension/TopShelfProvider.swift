@@ -1,9 +1,20 @@
 import Foundation
 import TVServices
 
+/// Everything this extension shares with the app across the process boundary.
+///
+/// All three values have a counterpart the compiler cannot check for us, so
+/// they are kept together: a mismatch fails silently (an empty shelf, or a
+/// deep link tvOS refuses to open) rather than failing to build. The rebrand
+/// Plezy -> Pleya broke two of them at once.
+///
+/// - `appGroupIdentifier` and `cacheDataKey` must match
+///   `tvos/Runner/SystemShelfPlugin.swift`, which writes the payload.
+/// - `deepLinkScheme` must match `CFBundleURLSchemes` in `tvos/Runner/Info.plist`.
 private enum TopShelfShared {
   static let appGroupIdentifier = "group.nl.michelknoop.pleya"
-  static let cacheDataKey = "PlezySystemShelfCacheData"
+  static let cacheDataKey = "PleyaSystemShelfCacheData"
+  static let deepLinkScheme = "pleya"
 
   static var sharedDefaults: UserDefaults? {
     UserDefaults(suiteName: appGroupIdentifier)
@@ -163,7 +174,7 @@ final class TopShelfProvider: TVTopShelfContentProvider {
 
   private func deepLinkURL(contentId: String) -> URL? {
     var components = URLComponents()
-    components.scheme = "plezy"
+    components.scheme = TopShelfShared.deepLinkScheme
     components.host = "play"
     components.queryItems = [URLQueryItem(name: "content_id", value: contentId)]
     return components.url
