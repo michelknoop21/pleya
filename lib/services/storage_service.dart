@@ -573,9 +573,15 @@ class StorageService extends BaseSharedPreferencesService {
     await prefs.setString(key, jsonString);
   }
 
-  /// Save a string list as JSON array
+  /// Save a string list as JSON array.
+  ///
+  /// Fires [BaseSharedPreferencesService.onKeyWritten] by hand: these go
+  /// through `prefs.setString` rather than `write<T>`, so without this the
+  /// home layout / library order would only reach iCloud on the next full
+  /// `pushAll` (enable, import, reset) instead of on change.
   Future<void> _setStringList(String key, List<String> list) async {
     final jsonString = json.encode(list);
     await prefs.setString(key, jsonString);
+    BaseSharedPreferencesService.onKeyWritten?.call(key);
   }
 }

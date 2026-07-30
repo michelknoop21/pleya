@@ -65,8 +65,13 @@ class FocusableWrapper extends StatefulWidget {
   /// Optional external FocusNode for programmatic focus control.
   final FocusNode? focusNode;
 
-  /// Border radius for the focus indicator.
+  /// Border radius for the focus indicator. Ignored when [focusShape] is
+  /// [BoxShape.circle].
   final double borderRadius;
+
+  /// Shape of the focus indicator. Set to [BoxShape.circle] for round children
+  /// (icon buttons, avatars) so the ring follows the child instead of boxing it.
+  final BoxShape focusShape;
 
   /// Whether to scroll the widget into view when focused.
   final bool autoScroll;
@@ -138,6 +143,7 @@ class FocusableWrapper extends StatefulWidget {
     this.autofocus = false,
     this.focusNode,
     this.borderRadius = FocusTheme.defaultBorderRadius,
+    this.focusShape = BoxShape.rectangle,
     this.autoScroll = true,
     this.scrollAlignment = 0.5,
     this.useComfortableZone = false,
@@ -487,12 +493,17 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
             card = CardFocusScope(showFocus: showFocus, child: widget.child);
           } else {
             final focusDecoration = widget.useBackgroundFocus
-                ? FocusTheme.focusBackgroundDecoration(isFocused: showFocus, borderRadius: widget.borderRadius)
+                ? FocusTheme.focusBackgroundDecoration(
+                    isFocused: showFocus,
+                    borderRadius: widget.borderRadius,
+                    shape: widget.focusShape,
+                  )
                 : FocusTheme.focusDecoration(
                     context,
                     isFocused: showFocus,
                     borderRadius: widget.borderRadius,
                     color: widget.focusColor,
+                    shape: widget.focusShape,
                   );
             card = AnimatedContainer(
               duration: duration,

@@ -76,7 +76,9 @@ class VideoControlButton extends StatelessWidget {
         onFocusChange: onFocusChange,
         autofocus: autofocus,
         semanticLabel: semanticLabel,
-        borderRadius: 20, // Circular for icon buttons
+        // A real circle, not a radius-20 guess that only lands right while the
+        // button happens to be 40px.
+        focusShape: BoxShape.circle,
         autoScroll: false, // Video controls don't scroll
         // App-wide focus language: the standard white ring, same as posters/nav.
         child: result,

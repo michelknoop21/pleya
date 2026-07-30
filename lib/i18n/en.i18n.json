@@ -286,6 +286,8 @@
     "homeLayout": "Home Layout",
     "homeLayoutDescription": "Reorder or hide the rows on the home screen",
     "homeLayoutEmpty": "Open the home screen once so the rows can be loaded",
+    "homeLayoutMoveUp": "Move up",
+    "homeLayoutMoveDown": "Move down",
     "companionRemoteServer": "Companion Remote Server",
     "companionRemoteServerDescription": "Allow mobile devices on your network to control this app",
     "autoPip": "Auto Picture-in-Picture",

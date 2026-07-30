@@ -1122,13 +1122,21 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
     _guideFocusNode.requestFocus();
   }
 
-  Widget _timeNavFocusWrap({required Widget child, required int index, required ThemeData theme}) {
+  /// [circular] for round children (the chevron IconButtons) — a rounded-rect
+  /// highlight behind a circular button reads as a square box around it.
+  Widget _timeNavFocusWrap({
+    required Widget child,
+    required int index,
+    required ThemeData theme,
+    bool circular = false,
+  }) {
     final isFocused = _hasFocus && _focusZone == _GuideZone.timeNav && _timeNavIndex == index;
     if (!isFocused) return child;
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.primary.withValues(alpha: 0.15),
-        borderRadius: const BorderRadius.all(Radius.circular(8)),
+        shape: circular ? BoxShape.circle : BoxShape.rectangle,
+        borderRadius: circular ? null : const BorderRadius.all(Radius.circular(8)),
       ),
       child: child,
     );
@@ -1148,6 +1156,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
           _timeNavFocusWrap(
             index: 0,
             theme: theme,
+            circular: true,
             child: IconButton(
               icon: const AppIcon(Symbols.chevron_left_rounded),
               onPressed: () => _shiftTimeRange(-2),
@@ -1188,6 +1197,7 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
           _timeNavFocusWrap(
             index: 2,
             theme: theme,
+            circular: true,
             child: IconButton(
               icon: const AppIcon(Symbols.chevron_right_rounded),
               onPressed: () => _shiftTimeRange(2),

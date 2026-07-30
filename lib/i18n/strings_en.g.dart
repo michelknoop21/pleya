@@ -976,6 +976,12 @@ class TranslationsSettingsEn {
 	/// en: 'Open the home screen once so the rows can be loaded'
 	String get homeLayoutEmpty => 'Open the home screen once so the rows can be loaded';
 
+	/// en: 'Move up'
+	String get homeLayoutMoveUp => 'Move up';
+
+	/// en: 'Move down'
+	String get homeLayoutMoveDown => 'Move down';
+
 	/// en: 'Companion Remote Server'
 	String get companionRemoteServer => 'Companion Remote Server';
 
@@ -5514,6 +5520,8 @@ extension on Translations {
 			'settings.homeLayout' => 'Home Layout',
 			'settings.homeLayoutDescription' => 'Reorder or hide the rows on the home screen',
 			'settings.homeLayoutEmpty' => 'Open the home screen once so the rows can be loaded',
+			'settings.homeLayoutMoveUp' => 'Move up',
+			'settings.homeLayoutMoveDown' => 'Move down',
 			'settings.companionRemoteServer' => 'Companion Remote Server',
 			'settings.companionRemoteServerDescription' => 'Allow mobile devices on your network to control this app',
 			'settings.autoPip' => 'Auto Picture-in-Picture',
@@ -5750,10 +5758,10 @@ extension on Translations {
 			'videoControls.queue' => 'Queue',
 			'videoControls.noQueueItems' => 'No items in queue',
 			'videoControls.searchSubtitles' => 'Search Subtitles',
-			'videoControls.language' => 'Language',
-			'videoControls.noSubtitlesFound' => 'No subtitles found',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.language' => 'Language',
+			'videoControls.noSubtitlesFound' => 'No subtitles found',
 			'videoControls.downloadedSubtitle' => 'Downloaded',
 			'videoControls.noSubtitlesAvailable' => 'No subtitles available',
 			'videoControls.noAudioTracksAvailable' => 'No audio tracks available',
@@ -6264,10 +6272,10 @@ extension on Translations {
 			'downloads.cancelledDownloadMessage' => 'This download was cancelled. What would you like to do?',
 			'downloads.allEpisodesAlreadyDownloaded' => 'All episodes already downloaded',
 			'downloads.resumeDownload' => 'Resume download',
-			'downloads.cancelledDownload' => 'Cancelled download',
-			'downloads.syncingFile' => ({required Object file, required Object status}) => '${file} (syncing ${status})',
 			_ => null,
 		} ?? switch (path) {
+			'downloads.cancelledDownload' => 'Cancelled download',
+			'downloads.syncingFile' => ({required Object file, required Object status}) => '${file} (syncing ${status})',
 			'downloads.downloadedFileClickToComplete' => ({required Object file}) => 'Downloaded ${file} - Click to complete',
 			'downloads.partialDownloadClickToComplete' => 'Partially downloaded - Click to complete',
 			'downloads.deleting' => 'Deleting...',

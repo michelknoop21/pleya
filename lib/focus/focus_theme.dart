@@ -32,11 +32,16 @@ class FocusTheme {
     double borderRadius = defaultBorderRadius,
     double borderStrokeAlign = BorderSide.strokeAlignInside,
     Color? color,
+    BoxShape shape = BoxShape.rectangle,
   }) {
     final focusColor = color ?? getFocusBorderColor(context);
 
     return BoxDecoration(
-      borderRadius: BorderRadius.circular(borderRadius),
+      shape: shape,
+      // Flutter asserts when a circle carries a borderRadius, so the radius is
+      // meaningful for rectangles only. Circular children (round icon buttons,
+      // avatars) would otherwise get a 6px-rounded *square* ring around them.
+      borderRadius: shape == BoxShape.circle ? null : BorderRadius.circular(borderRadius),
       border: Border.all(
         color: isFocused ? focusColor : Colors.transparent,
         width: focusBorderWidth,
@@ -67,9 +72,14 @@ class FocusTheme {
 
   /// Build focus decoration with background color instead of border.
   /// Useful for video controls where it should match the native hover style.
-  static BoxDecoration focusBackgroundDecoration({required bool isFocused, double borderRadius = defaultBorderRadius}) {
+  static BoxDecoration focusBackgroundDecoration({
+    required bool isFocused,
+    double borderRadius = defaultBorderRadius,
+    BoxShape shape = BoxShape.rectangle,
+  }) {
     return BoxDecoration(
-      borderRadius: BorderRadius.circular(borderRadius),
+      shape: shape,
+      borderRadius: shape == BoxShape.circle ? null : BorderRadius.circular(borderRadius),
       color: isFocused ? Colors.white.withValues(alpha: 0.2) : Colors.transparent,
     );
   }

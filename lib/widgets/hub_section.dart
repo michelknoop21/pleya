@@ -515,10 +515,18 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                     final containerHeight = posterHeight + (isTv ? 48 : 33);
                     final focusBorderWidth = FocusTheme.focusBorderWidth;
                     final focusExtra = focusBorderWidth * 2; // border on both sides
-                    _itemExtent = cardWidth + focusExtra + 4;
+                    // A focused card scales up and draws its ring *outside* its
+                    // box, while the ListView paints item i+1 over item i. Too
+                    // small a gap and the next card covers the focused card's
+                    // ring, so size the gap to the actual overflow rather than
+                    // a fixed 2px: half the scale growth, plus the ring.
+                    final focusGrowX = cardWidth * (FocusTheme.focusScale - 1) / 2;
+                    final focusGrowY = posterHeight * (FocusTheme.focusScale - 1) / 2;
+                    final itemGap = isTv ? focusGrowX + focusBorderWidth : 2.0;
+                    _itemExtent = cardWidth + itemGap * 2;
 
                     return SizedBox(
-                      height: containerHeight + focusExtra + (isTv ? 12 : 4), // extra for scale + border top/bottom
+                      height: containerHeight + (isTv ? (focusGrowY + focusBorderWidth) * 2 : focusExtra + 4),
                       child: HorizontalScrollWithArrows(
                         controller: _scrollController,
                         builder: (scrollController) => ListView.builder(
@@ -536,8 +544,8 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                               return Padding(
                                 key: _itemKeyFor(index),
                                 padding: widget.inset
-                                    ? const EdgeInsets.only(right: 4)
-                                    : const EdgeInsets.symmetric(horizontal: 2),
+                                    ? EdgeInsets.only(right: itemGap * 2)
+                                    : EdgeInsets.symmetric(horizontal: itemGap),
                                 child: FocusBuilders.buildLockedFocusWrapper(
                                   context: context,
                                   isFocused: isItemFocused,
@@ -578,8 +586,8 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                             return Padding(
                               key: _itemKeyFor(index),
                               padding: widget.inset
-                                  ? const EdgeInsets.only(right: 4)
-                                  : const EdgeInsets.symmetric(horizontal: 2),
+                                  ? EdgeInsets.only(right: itemGap * 2)
+                                  : EdgeInsets.symmetric(horizontal: itemGap),
                               child: FocusBuilders.buildLockedFocusWrapper(
                                 context: context,
                                 isFocused: isItemFocused,

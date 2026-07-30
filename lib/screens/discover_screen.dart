@@ -546,6 +546,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     });
     _applyPendingTvBrowseRailFocus();
 
+    // Row endpoints omit art/clearLogo, so the first hero page would render a
+    // blurred poster until the user swipes. Prime the visible page + neighbours
+    // once per load, off the build phase.
+    if ((isNewLoad || heroOutOfBounds) && _latestMovies.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _ensureHeroArt(_currentHeroIndex);
+      });
+    }
+
     if ((isNewLoad || heroOutOfBounds) && _heroController.hasClients && _latestMovies.isNotEmpty) {
       _heroController.jumpToPage(0);
     }
@@ -631,10 +641,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   /// the blurred poster fallback. Failures cache too — no fetch storms.
   final Map<String, MediaItem?> _spotlightArtCache = {};
 
-  bool _hasBillboardArt(MediaItem item) =>
-      (item.artPath?.isNotEmpty ?? false) ||
-      (item.grandparentArtPath?.isNotEmpty ?? false) ||
-      (item.backgroundSquarePath?.isNotEmpty ?? false);
+  // Ask the same question the renderer asks: does this item already resolve to
+  // a real 16:9 backdrop? `backgroundSquarePath` counts as art but *not* as a
+  // backdrop, so counting it here would skip exactly the items that render as
+  // a blurred stand-in.
+  bool _hasBillboardArt(MediaItem item) => item.billboardArt()?.isBackdrop == true;
 
   Future<void> _enrichSpotlightArt(MediaItem item) async {
     final key = item.globalKey;
@@ -658,9 +669,25 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       if (!mounted) return;
       // Still the focused item? Swap in place — the AnimatedSwitcher
       // crossfades from the blurred fill to the real artwork.
-      if (_spotlightItem.value?.globalKey == key) _spotlightItem.value = enriched;
+      if (_spotlightItem.value?.globalKey == key) {
+        _spotlightItem.value = enriched;
+      } else if (_latestMovies.any((m) => m.globalKey == key)) {
+        // Phone hero: the PageView reads straight from _latestMovies through
+        // the cache, so a rebuild is what swaps the blurred poster for the
+        // real backdrop.
+        setState(() {});
+      }
     } catch (_) {
       // Cached null already prevents retries; art simply stays blurred.
+    }
+  }
+
+  /// Enrich the hero page at [index] plus its immediate neighbours, so a swipe
+  /// lands on already-fetched art. Bounded to 3 items — never the whole row.
+  void _ensureHeroArt(int index) {
+    for (var i = index - 1; i <= index + 1; i++) {
+      if (i < 0 || i >= _latestMovies.length) continue;
+      unawaited(_enrichSpotlightArt(_latestMovies[i]));
     }
   }
 
@@ -1791,13 +1818,19 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final useSideNav = PlatformDetector.shouldUseSideNavigation(context);
     // TV runs through _buildTvContent, so this section is phone/tablet/desktop.
     final h = MediaQuery.sizeOf(context).height;
-    // Desktop/tablet: ~75vh. Phone: ~52vh, because the billboard shows a 16:9
-    // backdrop and a 75vh box (aspect ~0.56) would crop away two thirds of its
-    // width. At ~52vh the box lands near 0.75, which keeps the frame readable
+    final w = MediaQuery.sizeOf(context).width;
+    // Desktop/tablet: ~75vh. Otherwise ~62vh, because on a narrow portrait
+    // screen the billboard shows a 16:9 backdrop and a 75vh box (aspect ~0.56)
+    // would crop away two thirds of its width; ~62vh keeps the frame readable
     // while still filling the screen above the fold.
+    //
+    // That reasoning inverts on a wide window (a Mac running the iOS build, an
+    // iPad in landscape): there the full 16:9 frame is *shorter* than 62vh is
+    // tall, so sizing off height alone leaves the hero looking stunted. Take
+    // the taller of the two, capped at 80vh so the row below stays in view.
     final heroHeight = useSideNav
         ? (h * 0.75).clamp(480.0, 900.0) // desktop / tablet
-        : (h * 0.52).clamp(320.0, 520.0) + statusBarHeight; // phone
+        : math.max((h * 0.62).clamp(360.0, 620.0), math.min(w * 9 / 16, h * 0.8)) + statusBarHeight;
     return SliverToBoxAdapter(
       child: Focus(
         focusNode: _heroFocusNode,
@@ -1817,10 +1850,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       _currentHeroIndex = index;
                     });
                     _resetAutoScrollTimer();
+                    _ensureHeroArt(index);
                   }
                 },
                 itemBuilder: (context, index) {
-                  return _buildHeroItem(_latestMovies[index], heroHeight);
+                  final item = _latestMovies[index];
+                  return _buildHeroItem(_spotlightArtCache[item.globalKey] ?? item, heroHeight);
                 },
               ),
               // Page indicators with animated progress and pause/play button

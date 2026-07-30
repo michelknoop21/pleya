@@ -258,7 +258,7 @@ class SettingsExportService {
   /// Base keys that [StorageService] persists under the user prefix. These need
   /// to be re-scoped to the current user on import.
   static bool isUserScopedBaseKey(String baseKey) {
-    const exact = {'hidden_libraries', 'library_filters', 'library_order'};
+    const exact = {'hidden_libraries', 'library_filters', 'library_order', 'home_row_order', 'hidden_home_rows'};
     if (exact.contains(baseKey)) return true;
     const prefixes = ['library_filters_', 'library_sort_', 'library_grouping_', 'library_tab_'];
     return prefixes.any(baseKey.startsWith);
