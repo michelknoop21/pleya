@@ -156,6 +156,23 @@ void main() {
       expect(movie.billboardArt()?.isBackdrop, isTrue);
     });
 
+    test('a narrow box prefers the square backdrop, shown sharp not blurred', () {
+      final movie = _movie(artPath: '/art', backgroundSquarePath: '/square');
+
+      // On a phone-portrait box the 16:9 backdrop centre-crops faces off the
+      // sides, so the square art (which carries no baked-in title) stands in as
+      // a real backdrop — sharp, not blurred.
+      expect(movie.billboardArt(containerAspectRatio: 0.78), const BillboardArt(path: '/square', isBackdrop: true));
+      // Wide box is unchanged: the 16:9 backdrop still wins.
+      expect(movie.billboardArt(containerAspectRatio: 1.6), const BillboardArt(path: '/art', isBackdrop: true));
+    });
+
+    test('a narrow box with no square art keeps the 16:9 backdrop', () {
+      final movie = _movie(artPath: '/art');
+
+      expect(movie.billboardArt(containerAspectRatio: 0.78), const BillboardArt(path: '/art', isBackdrop: true));
+    });
+
     test('returns nothing when the item has no artwork at all', () {
       final bare = MediaItem(id: 'm3', backend: MediaBackend.plex, kind: MediaKind.movie, serverId: 's1');
 

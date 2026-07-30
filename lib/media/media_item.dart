@@ -662,7 +662,20 @@ sealed class MediaItem with _$MediaItem {
   }
 
   /// Best billboard art, or null when the item has no artwork at all.
-  BillboardArt? billboardArt() {
+  ///
+  /// [containerAspectRatio] is the width/height of the box the art fills. On a
+  /// narrow (portrait) box a 16:9 backdrop must scale to the box height and
+  /// loses most of its width to a centre crop, slicing faces off the sides.
+  /// A square background art frames far better there and — unlike a poster —
+  /// carries no baked-in title, so it stands in as a real backdrop (rendered
+  /// sharp, not blurred). Wide boxes keep the 16:9 backdrop as before.
+  BillboardArt? billboardArt({double? containerAspectRatio}) {
+    if (containerAspectRatio != null && containerAspectRatio < 1.39) {
+      final square = backgroundSquarePath;
+      if (square != null && square.isNotEmpty) {
+        return BillboardArt(path: square, isBackdrop: true);
+      }
+    }
     final backdrops = _dedupedPaths(switch (kind) {
       MediaKind.episode => [grandparentArtPath, artPath],
       _ => [artPath],

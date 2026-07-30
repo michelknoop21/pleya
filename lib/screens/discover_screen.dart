@@ -1819,18 +1819,19 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     // TV runs through _buildTvContent, so this section is phone/tablet/desktop.
     final h = MediaQuery.sizeOf(context).height;
     final w = MediaQuery.sizeOf(context).width;
-    // Desktop/tablet: ~75vh. Otherwise ~62vh, because on a narrow portrait
-    // screen the billboard shows a 16:9 backdrop and a 75vh box (aspect ~0.56)
-    // would crop away two thirds of its width; ~62vh keeps the frame readable
-    // while still filling the screen above the fold.
+    // Desktop/tablet: ~75vh. Otherwise ~52vh, because on a narrow portrait
+    // screen the billboard shows a backdrop and a taller box crops it harder;
+    // ~52vh leaves the first row below (its header + a poster + the poster's
+    // title label) fully in view above the bottom tab bar, which a 62vh box
+    // pushed off screen.
     //
     // That reasoning inverts on a wide window (a Mac running the iOS build, an
-    // iPad in landscape): there the full 16:9 frame is *shorter* than 62vh is
+    // iPad in landscape): there the full 16:9 frame is *shorter* than 52vh is
     // tall, so sizing off height alone leaves the hero looking stunted. Take
     // the taller of the two, capped at 80vh so the row below stays in view.
     final heroHeight = useSideNav
         ? (h * 0.75).clamp(480.0, 900.0) // desktop / tablet
-        : math.max((h * 0.62).clamp(360.0, 620.0), math.min(w * 9 / 16, h * 0.8)) + statusBarHeight;
+        : math.max((h * 0.52).clamp(360.0, 560.0), math.min(w * 9 / 16, h * 0.8)) + statusBarHeight;
     return SliverToBoxAdapter(
       child: Focus(
         focusNode: _heroFocusNode,
@@ -1961,10 +1962,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final isLargeScreen = ScreenBreakpoints.isWideTabletOrLarger(screenWidth);
     final isTv = PlatformDetector.isTV();
     final alignLeft = isTv || isLargeScreen;
-    // The billboard always shows the 16:9 backdrop: the title is drawn in app
-    // typography, so a poster (with its own baked-in title art) would double up
-    // and get cropped through. Null only when the item has no artwork at all.
-    final billboardArt = heroItem.billboardArt();
+    // The billboard shows the 16:9 backdrop on a wide box; on a narrow (phone
+    // portrait) box it prefers the square background art, which crops far less
+    // horizontally. The title is drawn in app typography either way. Null only
+    // when the item has no artwork at all.
+    final billboardArt = heroItem.billboardArt(containerAspectRatio: screenWidth / heroHeight);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final heroLogoWidth = isTv ? TvLayoutConstants.heroLogoWidth : 400.0;
