@@ -877,6 +877,7 @@ class _TranslationsDiscoverDe extends TranslationsDiscoverEn {
 	@override String get nextUp => 'Als Nächstes';
 	@override String nextUpIn({required Object library}) => 'Als Nächstes in ${library}';
 	@override String get recentlyAdded => 'Kürzlich hinzugefügt';
+	@override String get recentlyReleased => 'Kürzlich erschienen';
 	@override String recentlyAddedIn({required Object library}) => 'Kürzlich hinzugefügt in ${library}';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => 'Übersicht';
@@ -2616,6 +2617,7 @@ extension on TranslationsDe {
 			'discover.nextUp' => 'Als Nächstes',
 			'discover.nextUpIn' => ({required Object library}) => 'Als Nächstes in ${library}',
 			'discover.recentlyAdded' => 'Kürzlich hinzugefügt',
+			'discover.recentlyReleased' => 'Kürzlich erschienen',
 			'discover.recentlyAddedIn' => ({required Object library}) => 'Kürzlich hinzugefügt in ${library}',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'Übersicht',
@@ -3017,9 +3019,9 @@ extension on TranslationsDe {
 			'companionRemote.pairing.validationHostRequired' => 'Bitte Host-Adresse eingeben',
 			'companionRemote.pairing.validationHostFormat' => 'Format muss IP:Port sein (z.B. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Verbindung hat Zeitlimit überschritten. Nutze auf beiden Geräten dasselbe Netzwerk.',
-			'companionRemote.pairing.sessionNotFound' => 'Gerät nicht gefunden. Stelle sicher, dass Pleya auf dem Host läuft.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.sessionNotFound' => 'Gerät nicht gefunden. Stelle sicher, dass Pleya auf dem Host läuft.',
 			'companionRemote.pairing.authFailed' => 'Authentifizierung fehlgeschlagen. Beide Geräte benötigen dasselbe Plex-Konto.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Verbindung fehlgeschlagen: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Möchtest du die Verbindung zur Fernsteuerungssitzung trennen?',

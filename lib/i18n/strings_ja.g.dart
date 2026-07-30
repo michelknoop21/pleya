@@ -877,6 +877,7 @@ class _TranslationsDiscoverJa extends TranslationsDiscoverEn {
 	@override String get nextUp => '次のエピソード';
 	@override String nextUpIn({required Object library}) => '${library}の次のエピソード';
 	@override String get recentlyAdded => '最近追加';
+	@override String get recentlyReleased => '最近公開';
 	@override String recentlyAddedIn({required Object library}) => '${library}に最近追加';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => 'あらすじ';
@@ -2616,6 +2617,7 @@ extension on TranslationsJa {
 			'discover.nextUp' => '次のエピソード',
 			'discover.nextUpIn' => ({required Object library}) => '${library}の次のエピソード',
 			'discover.recentlyAdded' => '最近追加',
+			'discover.recentlyReleased' => '最近公開',
 			'discover.recentlyAddedIn' => ({required Object library}) => '${library}に最近追加',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'あらすじ',
@@ -3017,9 +3019,9 @@ extension on TranslationsJa {
 			'companionRemote.pairing.validationHostRequired' => 'ホストアドレスを入力してください',
 			'companionRemote.pairing.validationHostFormat' => '形式はIP:ポートである必要があります（例: 192.168.1.100:48632）',
 			'companionRemote.pairing.connectionTimedOut' => '接続がタイムアウトしました。両方のデバイスで同じネットワークを使用してください。',
-			'companionRemote.pairing.sessionNotFound' => 'デバイスが見つかりません。ホストでPleyaが実行中か確認してください。',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.sessionNotFound' => 'デバイスが見つかりません。ホストでPleyaが実行中か確認してください。',
 			'companionRemote.pairing.authFailed' => '認証に失敗しました。両方のデバイスで同じPlexアカウントが必要です。',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '接続に失敗しました: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'リモートセッションから切断しますか？',

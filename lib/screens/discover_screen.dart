@@ -136,6 +136,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // TvSpotlightBackground subtree, never the rail/rows.
   final ValueNotifier<MediaItem?> _spotlightItem = ValueNotifier(null);
 
+  /// True once something other than the default pinned the spotlight (rail
+  /// focus, manual hero navigation, auto-rotate). While false the hero keeps
+  /// following [_defaultSpotlightItem] — a mount-time focus echo from the rail
+  /// must not pin Continue Watching before the latest movies land.
+  bool _spotlightUserDriven = false;
+
   /// Rail focus fires per D-pad step; without this every tile passed over
   /// would trigger a cross-fade and a backdrop fetch.
   Timer? _spotlightDebounce;
@@ -214,6 +220,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   MediaItem? get _defaultSpotlightItem {
     if (_latestMovies.isNotEmpty) return _latestMovies.first;
+    // Still loading: don't flash a Continue Watching item as the hero — the
+    // latest-movies row usually lands a beat after on-deck.
+    if (_areHubsLoading) return null;
     // Movies-empty libraries (e.g. show-only servers — latest movies is
     // films-only) still have Continue Watching + hubs; fall back to those so
     // the TV billboard is never blank while the rail shows content. _onDeck is
@@ -246,7 +255,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       hubs.add(
         MediaHub(
           id: 'latest_movies',
-          title: t.discover.recentlyAdded,
+          title: t.discover.recentlyReleased,
           type: 'movie',
           identifier: '_latest_movies_',
           size: _latestMovies.length,
@@ -259,6 +268,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   MediaItem? get _effectiveSpotlightItem {
+    // Until the user actually drives the spotlight (rail focus, manual hero
+    // navigation, auto-rotate), keep tracking the default so the hero upgrades
+    // itself the moment the latest-movies row arrives.
+    if (!_spotlightUserDriven) return _defaultSpotlightItem;
     final current = _spotlightItem.value;
     if (current == null) return _defaultSpotlightItem;
     if (_latestMovies.any((item) => item.globalKey == current.globalKey)) return current;
@@ -381,6 +394,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       // Focus left the rail (back to hero): restore the featured item and resume.
       // Skip the restart when a route is pushed over us (e.g. opening a detail
       // from a rail item) so the timer doesn't churn the hidden hero.
+      _spotlightUserDriven = false;
       _spotlightItem.value = _defaultSpotlightItem;
       final isCurrent = ModalRoute.of(context)?.isCurrent ?? false;
       if (_isTabVisible && !_isAutoScrollPaused && isCurrent) _startAutoScroll();
@@ -605,6 +619,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     }
     _spotlightDebounce = Timer(const Duration(milliseconds: 180), () {
       if (!mounted) return;
+      _spotlightUserDriven = true;
       _spotlightItem.value = _spotlightArtCache[item.globalKey] ?? item;
       _enrichSpotlightArt(item);
     });
@@ -657,6 +672,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final nextIndex = (baseIndex + delta) % _latestMovies.length;
     final normalizedIndex = nextIndex < 0 ? nextIndex + _latestMovies.length : nextIndex;
     setState(() => _currentHeroIndex = normalizedIndex);
+    _spotlightUserDriven = true;
     _spotlightItem.value = _latestMovies[normalizedIndex];
     _pauseTvHeroAutoScrollForManualNavigation();
   }
@@ -760,6 +776,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         if (_tvRailRevealed) return;
         final current = _spotlightItem.value ?? _defaultSpotlightItem;
         final idx = current == null ? -1 : _latestMovies.indexWhere((m) => m.globalKey == current.globalKey);
+        _spotlightUserDriven = true;
         _spotlightItem.value = _latestMovies[(idx + 1) % _latestMovies.length];
       });
       return;

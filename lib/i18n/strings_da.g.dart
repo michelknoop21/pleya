@@ -877,6 +877,7 @@ class _TranslationsDiscoverDa extends TranslationsDiscoverEn {
 	@override String get nextUp => 'Næste op';
 	@override String nextUpIn({required Object library}) => 'Næste op i ${library}';
 	@override String get recentlyAdded => 'Nyligt tilføjet';
+	@override String get recentlyReleased => 'Nyligt udgivet';
 	@override String recentlyAddedIn({required Object library}) => 'Nyligt tilføjet i ${library}';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => 'Oversigt';
@@ -2616,6 +2617,7 @@ extension on TranslationsDa {
 			'discover.nextUp' => 'Næste op',
 			'discover.nextUpIn' => ({required Object library}) => 'Næste op i ${library}',
 			'discover.recentlyAdded' => 'Nyligt tilføjet',
+			'discover.recentlyReleased' => 'Nyligt udgivet',
 			'discover.recentlyAddedIn' => ({required Object library}) => 'Nyligt tilføjet i ${library}',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'Oversigt',
@@ -3017,9 +3019,9 @@ extension on TranslationsDa {
 			'companionRemote.pairing.validationHostRequired' => 'Angiv venligst værtsadresse',
 			'companionRemote.pairing.validationHostFormat' => 'Format skal være IP:port (f.eks. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Forbindelsen fik timeout. Brug samme netværk på begge enheder.',
-			'companionRemote.pairing.sessionNotFound' => 'Enhed ikke fundet. Sørg for, at Pleya kører på værten.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.sessionNotFound' => 'Enhed ikke fundet. Sørg for, at Pleya kører på værten.',
 			'companionRemote.pairing.authFailed' => 'Godkendelse mislykkedes. Begge enheder skal bruge samme Plex-konto.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kunne ikke oprette forbindelse: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Vil du afbryde fra fjernsessionen?',

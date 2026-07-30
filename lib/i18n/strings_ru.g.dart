@@ -877,6 +877,7 @@ class _TranslationsDiscoverRu extends TranslationsDiscoverEn {
 	@override String get nextUp => 'Далее';
 	@override String nextUpIn({required Object library}) => 'Далее в ${library}';
 	@override String get recentlyAdded => 'Недавно добавленное';
+	@override String get recentlyReleased => 'Недавно вышедшие';
 	@override String recentlyAddedIn({required Object library}) => 'Недавно добавленное в ${library}';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => 'Обзор';
@@ -2616,6 +2617,7 @@ extension on TranslationsRu {
 			'discover.nextUp' => 'Далее',
 			'discover.nextUpIn' => ({required Object library}) => 'Далее в ${library}',
 			'discover.recentlyAdded' => 'Недавно добавленное',
+			'discover.recentlyReleased' => 'Недавно вышедшие',
 			'discover.recentlyAddedIn' => ({required Object library}) => 'Недавно добавленное в ${library}',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'Обзор',
@@ -3017,9 +3019,9 @@ extension on TranslationsRu {
 			'companionRemote.pairing.validationHostRequired' => 'Введите адрес хоста',
 			'companionRemote.pairing.validationHostFormat' => 'Формат должен быть IP:порт (например, 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Время подключения истекло. Используйте одну сеть на обоих устройствах.',
-			'companionRemote.pairing.sessionNotFound' => 'Устройство не найдено. Убедитесь, что Pleya запущен на хосте.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.sessionNotFound' => 'Устройство не найдено. Убедитесь, что Pleya запущен на хосте.',
 			'companionRemote.pairing.authFailed' => 'Аутентификация не удалась. На обоих устройствах нужен один аккаунт Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Не удалось подключиться: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Отключиться от удалённой сессии?',

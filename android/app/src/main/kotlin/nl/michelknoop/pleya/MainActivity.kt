@@ -228,7 +228,8 @@ class MainActivity : FlutterActivity() {
     // else renders.  This prevents a white flash between the native splash
     // screen and Flutter's first frame for non-default themes (e.g. OLED).
     val prefs = getSharedPreferences("plezy_prefs", Context.MODE_PRIVATE)
-    val savedTheme = prefs.getString("splash_theme", null)
+    // No stored choice yet (fresh install) → OLED, matching the Flutter default.
+    val savedTheme = prefs.getString("splash_theme", "oled")
     ThemeHelper.themeColor(savedTheme)?.let { window.decorView.setBackgroundColor(it) }
 
     super.onCreate(savedInstanceState)

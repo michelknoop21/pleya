@@ -877,6 +877,7 @@ class _TranslationsDiscoverBg extends TranslationsDiscoverEn {
 	@override String get nextUp => 'Следва';
 	@override String nextUpIn({required Object library}) => 'Следва в ${library}';
 	@override String get recentlyAdded => 'Наскоро добавени';
+	@override String get recentlyReleased => 'Наскоро издадени';
 	@override String recentlyAddedIn({required Object library}) => 'Наскоро добавени в ${library}';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => 'Обзор';
@@ -2616,6 +2617,7 @@ extension on TranslationsBg {
 			'discover.nextUp' => 'Следва',
 			'discover.nextUpIn' => ({required Object library}) => 'Следва в ${library}',
 			'discover.recentlyAdded' => 'Наскоро добавени',
+			'discover.recentlyReleased' => 'Наскоро издадени',
 			'discover.recentlyAddedIn' => ({required Object library}) => 'Наскоро добавени в ${library}',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'Обзор',
@@ -3017,9 +3019,9 @@ extension on TranslationsBg {
 			'companionRemote.pairing.validationHostRequired' => 'Моля, въведете адрес на хоста',
 			'companionRemote.pairing.validationHostFormat' => 'Форматът трябва да е IP:port (напр. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Връзката изтече. Използвайте една и съща мрежа на двете устройства.',
-			'companionRemote.pairing.sessionNotFound' => 'Устройството не е намерено. Уверете се, че Pleya работи на хоста.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.sessionNotFound' => 'Устройството не е намерено. Уверете се, че Pleya работи на хоста.',
 			'companionRemote.pairing.authFailed' => 'Удостоверяването е неуспешно. Двете устройства трябва да използват същия Plex акаунт.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Неуспешно свързване: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Искате ли да прекъснете връзката с дистанционната сесия?',

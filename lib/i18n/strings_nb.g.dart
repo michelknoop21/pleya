@@ -877,6 +877,7 @@ class _TranslationsDiscoverNb extends TranslationsDiscoverEn {
 	@override String get nextUp => 'Neste opp';
 	@override String nextUpIn({required Object library}) => 'Neste opp i ${library}';
 	@override String get recentlyAdded => 'Nylig lagt til';
+	@override String get recentlyReleased => 'Nylig utgitt';
 	@override String recentlyAddedIn({required Object library}) => 'Nylig lagt til i ${library}';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => 'Oversikt';
@@ -2616,6 +2617,7 @@ extension on TranslationsNb {
 			'discover.nextUp' => 'Neste opp',
 			'discover.nextUpIn' => ({required Object library}) => 'Neste opp i ${library}',
 			'discover.recentlyAdded' => 'Nylig lagt til',
+			'discover.recentlyReleased' => 'Nylig utgitt',
 			'discover.recentlyAddedIn' => ({required Object library}) => 'Nylig lagt til i ${library}',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'Oversikt',
@@ -3017,9 +3019,9 @@ extension on TranslationsNb {
 			'companionRemote.pairing.validationHostRequired' => 'Vennligst oppgi vertsadresse',
 			'companionRemote.pairing.validationHostFormat' => 'Format må være IP:port (f.eks. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Tilkoblingen fikk tidsavbrudd. Bruk samme nettverk på begge enheter.',
-			'companionRemote.pairing.sessionNotFound' => 'Enhet ikke funnet. Sørg for at Pleya kjører på verten.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.sessionNotFound' => 'Enhet ikke funnet. Sørg for at Pleya kjører på verten.',
 			'companionRemote.pairing.authFailed' => 'Autentisering mislyktes. Begge enheter må bruke samme Plex-konto.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kunne ikke koble til: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Vil du koble fra fjernøkten?',

@@ -877,6 +877,7 @@ class _TranslationsDiscoverZh extends TranslationsDiscoverEn {
 	@override String get nextUp => '接下来';
 	@override String nextUpIn({required Object library}) => '${library} 中接下来';
 	@override String get recentlyAdded => '最近添加';
+	@override String get recentlyReleased => '最近上映';
 	@override String recentlyAddedIn({required Object library}) => '${library} 中最近添加';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => '概述';
@@ -2616,6 +2617,7 @@ extension on TranslationsZh {
 			'discover.nextUp' => '接下来',
 			'discover.nextUpIn' => ({required Object library}) => '${library} 中接下来',
 			'discover.recentlyAdded' => '最近添加',
+			'discover.recentlyReleased' => '最近上映',
 			'discover.recentlyAddedIn' => ({required Object library}) => '${library} 中最近添加',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => '概述',
@@ -3017,9 +3019,9 @@ extension on TranslationsZh {
 			'companionRemote.pairing.validationHostRequired' => '请输入主机地址',
 			'companionRemote.pairing.validationHostFormat' => '格式必须为IP:端口（例如 192.168.1.100:48632）',
 			'companionRemote.pairing.connectionTimedOut' => '连接超时。请在两台设备上使用同一网络。',
-			'companionRemote.pairing.sessionNotFound' => '未找到设备。请确认 Pleya 正在主机上运行。',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.sessionNotFound' => '未找到设备。请确认 Pleya 正在主机上运行。',
 			'companionRemote.pairing.authFailed' => '认证失败。两台设备需要使用同一 Plex 账号。',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '连接失败：${error}',
 			'companionRemote.remote.disconnectConfirm' => '是否要断开远程会话的连接？',

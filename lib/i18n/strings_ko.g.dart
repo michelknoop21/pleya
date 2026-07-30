@@ -877,6 +877,7 @@ class _TranslationsDiscoverKo extends TranslationsDiscoverEn {
 	@override String get nextUp => '다음 에피소드';
 	@override String nextUpIn({required Object library}) => '${library}의 다음 에피소드';
 	@override String get recentlyAdded => '최근에 추가됨';
+	@override String get recentlyReleased => '최근 개봉';
 	@override String recentlyAddedIn({required Object library}) => '${library}에 최근에 추가됨';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => '개요';
@@ -2616,6 +2617,7 @@ extension on TranslationsKo {
 			'discover.nextUp' => '다음 에피소드',
 			'discover.nextUpIn' => ({required Object library}) => '${library}의 다음 에피소드',
 			'discover.recentlyAdded' => '최근에 추가됨',
+			'discover.recentlyReleased' => '최근 개봉',
 			'discover.recentlyAddedIn' => ({required Object library}) => '${library}에 최근에 추가됨',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => '개요',
@@ -3017,9 +3019,9 @@ extension on TranslationsKo {
 			'companionRemote.pairing.validationHostRequired' => '호스트 주소를 입력하세요',
 			'companionRemote.pairing.validationHostFormat' => '형식은 IP:포트여야 합니다 (예: 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => '연결 시간이 초과되었습니다. 두 기기에서 같은 네트워크를 사용하세요.',
-			'companionRemote.pairing.sessionNotFound' => '기기를 찾을 수 없습니다. 호스트에서 Pleya가 실행 중인지 확인하세요.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.sessionNotFound' => '기기를 찾을 수 없습니다. 호스트에서 Pleya가 실행 중인지 확인하세요.',
 			'companionRemote.pairing.authFailed' => '인증에 실패했습니다. 두 기기 모두 같은 Plex 계정이 필요합니다.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '연결 실패: ${error}',
 			'companionRemote.remote.disconnectConfirm' => '원격 세션 연결을 해제하시겠습니까?',

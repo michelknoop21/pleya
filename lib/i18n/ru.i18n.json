@@ -668,6 +668,7 @@
     "nextUp": "Далее",
     "nextUpIn": "Далее в ${library}",
     "recentlyAdded": "Недавно добавленное",
+    "recentlyReleased": "Недавно вышедшие",
     "recentlyAddedIn": "Недавно добавленное в ${library}",
     "playEpisode": "S${season}E${episode}",
     "overview": "Обзор",

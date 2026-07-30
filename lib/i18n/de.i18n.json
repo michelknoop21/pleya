@@ -668,6 +668,7 @@
     "nextUp": "Als Nächstes",
     "nextUpIn": "Als Nächstes in ${library}",
     "recentlyAdded": "Kürzlich hinzugefügt",
+    "recentlyReleased": "Kürzlich erschienen",
     "recentlyAddedIn": "Kürzlich hinzugefügt in ${library}",
     "playEpisode": "S${season}E${episode}",
     "overview": "Übersicht",

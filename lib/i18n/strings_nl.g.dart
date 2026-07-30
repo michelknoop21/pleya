@@ -915,6 +915,7 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get nextUp => 'Volgende';
 	@override String nextUpIn({required Object library}) => 'Volgende in ${library}';
 	@override String get recentlyAdded => 'Recent toegevoegd';
+	@override String get recentlyReleased => 'Recent uitgebracht';
 	@override String recentlyAddedIn({required Object library}) => 'Recent toegevoegd in ${library}';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => 'Overzicht';
@@ -2762,6 +2763,7 @@ extension on TranslationsNl {
 			'discover.nextUp' => 'Volgende',
 			'discover.nextUpIn' => ({required Object library}) => 'Volgende in ${library}',
 			'discover.recentlyAdded' => 'Recent toegevoegd',
+			'discover.recentlyReleased' => 'Recent uitgebracht',
 			'discover.recentlyAddedIn' => ({required Object library}) => 'Recent toegevoegd in ${library}',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'Overzicht',
@@ -3127,9 +3129,9 @@ extension on TranslationsNl {
 			'downloads.downloadOnce' => 'Eenmalig downloaden',
 			'downloads.keepNUnwatched' => ({required Object count}) => '${count} onbekeken behouden',
 			'downloads.editSyncRule' => 'Synchronisatieregel bewerken',
-			'downloads.removeSyncRule' => 'Synchronisatieregel verwijderen',
 			_ => null,
 		} ?? switch (path) {
+			'downloads.removeSyncRule' => 'Synchronisatieregel verwijderen',
 			'downloads.removeSyncRuleConfirm' => ({required Object title}) => 'Synchronisatie van "${title}" stoppen? Gedownloade afleveringen worden behouden.',
 			'downloads.syncRuleCreated' => ({required Object count}) => 'Synchronisatieregel aangemaakt — ${count} onbekeken afleveringen behouden',
 			'downloads.syncRuleUpdated' => 'Synchronisatieregel bijgewerkt',

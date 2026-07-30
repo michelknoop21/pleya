@@ -668,6 +668,7 @@
     "nextUp": "Neste opp",
     "nextUpIn": "Neste opp i ${library}",
     "recentlyAdded": "Nylig lagt til",
+    "recentlyReleased": "Nylig utgitt",
     "recentlyAddedIn": "Nylig lagt til i ${library}",
     "playEpisode": "S${season}E${episode}",
     "overview": "Oversikt",

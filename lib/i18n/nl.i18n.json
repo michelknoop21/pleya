@@ -710,6 +710,7 @@
     "nextUp": "Volgende",
     "nextUpIn": "Volgende in ${library}",
     "recentlyAdded": "Recent toegevoegd",
+    "recentlyReleased": "Recent uitgebracht",
     "recentlyAddedIn": "Recent toegevoegd in ${library}",
     "playEpisode": "S${season}E${episode}",
     "overview": "Overzicht",

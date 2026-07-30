@@ -668,6 +668,7 @@
     "nextUp": "次のエピソード",
     "nextUpIn": "${library}の次のエピソード",
     "recentlyAdded": "最近追加",
+    "recentlyReleased": "最近公開",
     "recentlyAddedIn": "${library}に最近追加",
     "playEpisode": "S${season}E${episode}",
     "overview": "あらすじ",

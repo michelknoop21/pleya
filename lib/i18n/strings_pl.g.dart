@@ -877,6 +877,7 @@ class _TranslationsDiscoverPl extends TranslationsDiscoverEn {
 	@override String get nextUp => 'Następny odcinek';
 	@override String nextUpIn({required Object library}) => 'Następny odcinek w ${library}';
 	@override String get recentlyAdded => 'Ostatnio dodane';
+	@override String get recentlyReleased => 'Ostatnio wydane';
 	@override String recentlyAddedIn({required Object library}) => 'Ostatnio dodane w ${library}';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => 'Opis';
@@ -2616,6 +2617,7 @@ extension on TranslationsPl {
 			'discover.nextUp' => 'Następny odcinek',
 			'discover.nextUpIn' => ({required Object library}) => 'Następny odcinek w ${library}',
 			'discover.recentlyAdded' => 'Ostatnio dodane',
+			'discover.recentlyReleased' => 'Ostatnio wydane',
 			'discover.recentlyAddedIn' => ({required Object library}) => 'Ostatnio dodane w ${library}',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'Opis',
@@ -3017,9 +3019,9 @@ extension on TranslationsPl {
 			'companionRemote.pairing.validationHostRequired' => 'Wprowadź adres hosta',
 			'companionRemote.pairing.validationHostFormat' => 'Format musi być IP:port (np. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Limit czasu połączenia. Użyj tej samej sieci na obu urządzeniach.',
-			'companionRemote.pairing.sessionNotFound' => 'Nie znaleziono urządzenia. Upewnij się, że Pleya działa na hoście.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.sessionNotFound' => 'Nie znaleziono urządzenia. Upewnij się, że Pleya działa na hoście.',
 			'companionRemote.pairing.authFailed' => 'Uwierzytelnianie nie powiodło się. Oba urządzenia muszą używać tego samego konta Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Nie udało się połączyć: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Czy chcesz się rozłączyć od sesji zdalnej?',

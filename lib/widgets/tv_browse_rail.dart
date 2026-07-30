@@ -492,7 +492,11 @@ class TvBrowseRailState extends State<TvBrowseRail> {
       if (selectedInitialItem) _scrollToItem(animate: false);
       _scrollActiveHubToTop(animate: false);
       _notifyActiveHubChanged();
-      _notifyFocusedItem();
+      // Only a rail that actually has (or is taking) focus — or that landed on
+      // a host-requested initial item — may drive the focused-item callback. A
+      // bare mount echo would otherwise pin the host's hero to row 0 before the
+      // user has focused anything.
+      if (widget.autofocus || _focusNode.hasFocus || selectedInitialItem) _notifyFocusedItem();
       if (widget.autofocus) _focusNode.requestFocus();
     });
   }
@@ -564,7 +568,10 @@ class TvBrowseRailState extends State<TvBrowseRail> {
       }
       if (!oldWidget.autofocus && widget.autofocus) _focusNode.requestFocus();
       if (activeHubChanged) _notifyActiveHubChanged();
-      _notifyFocusedItem();
+      // Re-emit only while focused (or on a host-requested initial item):
+      // every provider notify rebuilds this rail, and an unfocused re-emit
+      // would re-pin the host's hero.
+      if (widget.autofocus || _focusNode.hasFocus || selectedInitialItem) _notifyFocusedItem();
     });
   }
 

@@ -488,14 +488,8 @@ class SettingsService extends BaseSharedPreferencesService {
   static final defaultBoxFitMode = IntPref('default_box_fit_mode', transform: (v) => v.clamp(0, 2));
   static final displaySwitchDelay = IntPref('display_switch_delay', transform: (v) => v.clamp(0, 10));
 
-  // Dark-first (D3): TV stays OLED, everything else defaults to the #141414
-  // dark palette rather than following the system brightness.
-  static ThemeMode _tvAwareThemeModeDefault() => TvDetectionService.isTVSync() ? ThemeMode.oled : ThemeMode.dark;
-  static const themeMode = EnumPref<ThemeMode>(
-    'theme_mode',
-    values: ThemeMode.values,
-    defaultValueProvider: _tvAwareThemeModeDefault,
-  );
+  // Dark-first: OLED (true black) is the default on every platform, not just TV.
+  static const themeMode = EnumPref<ThemeMode>('theme_mode', values: ThemeMode.values, defaultValue: ThemeMode.oled);
   static const videoPlayerNavigationEnabled = BoolPref(
     'video_player_navigation_enabled',
     defaultValueProvider: TvDetectionService.isTVSync,

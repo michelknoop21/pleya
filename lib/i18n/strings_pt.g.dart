@@ -877,6 +877,7 @@ class _TranslationsDiscoverPt extends TranslationsDiscoverEn {
 	@override String get nextUp => 'A seguir';
 	@override String nextUpIn({required Object library}) => 'A seguir em ${library}';
 	@override String get recentlyAdded => 'Adicionados recentemente';
+	@override String get recentlyReleased => 'Lançados recentemente';
 	@override String recentlyAddedIn({required Object library}) => 'Adicionados recentemente em ${library}';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => 'Sinopse';
@@ -2616,6 +2617,7 @@ extension on TranslationsPt {
 			'discover.nextUp' => 'A seguir',
 			'discover.nextUpIn' => ({required Object library}) => 'A seguir em ${library}',
 			'discover.recentlyAdded' => 'Adicionados recentemente',
+			'discover.recentlyReleased' => 'Lançados recentemente',
 			'discover.recentlyAddedIn' => ({required Object library}) => 'Adicionados recentemente em ${library}',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'Sinopse',
@@ -3017,9 +3019,9 @@ extension on TranslationsPt {
 			'companionRemote.pairing.validationHostRequired' => 'Introduza o endereço do host',
 			'companionRemote.pairing.validationHostFormat' => 'O formato deve ser IP:porta (ex. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Conexão expirou. Use a mesma rede nos dois dispositivos.',
-			'companionRemote.pairing.sessionNotFound' => 'Dispositivo não encontrado. Verifique se Pleya está rodando no host.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.sessionNotFound' => 'Dispositivo não encontrado. Verifique se Pleya está rodando no host.',
 			'companionRemote.pairing.authFailed' => 'Falha na autenticação. Ambos os dispositivos precisam da mesma conta Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Falha ao conectar: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Deseja desconectar da sessão remota?',

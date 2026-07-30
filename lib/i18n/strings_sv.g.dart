@@ -877,6 +877,7 @@ class _TranslationsDiscoverSv extends TranslationsDiscoverEn {
 	@override String get nextUp => 'Nästa';
 	@override String nextUpIn({required Object library}) => 'Nästa i ${library}';
 	@override String get recentlyAdded => 'Nyligen tillagda';
+	@override String get recentlyReleased => 'Nyligen släppta';
 	@override String recentlyAddedIn({required Object library}) => 'Nyligen tillagda i ${library}';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => 'Översikt';
@@ -2616,6 +2617,7 @@ extension on TranslationsSv {
 			'discover.nextUp' => 'Nästa',
 			'discover.nextUpIn' => ({required Object library}) => 'Nästa i ${library}',
 			'discover.recentlyAdded' => 'Nyligen tillagda',
+			'discover.recentlyReleased' => 'Nyligen släppta',
 			'discover.recentlyAddedIn' => ({required Object library}) => 'Nyligen tillagda i ${library}',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'Översikt',
@@ -3017,9 +3019,9 @@ extension on TranslationsSv {
 			'companionRemote.pairing.validationHostRequired' => 'Ange värdadress',
 			'companionRemote.pairing.validationHostFormat' => 'Format måste vara IP:port (t.ex. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Anslutningen tog för lång tid. Använd samma nätverk på båda enheter.',
-			'companionRemote.pairing.sessionNotFound' => 'Enhet hittades inte. Kontrollera att Pleya körs på värden.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.sessionNotFound' => 'Enhet hittades inte. Kontrollera att Pleya körs på värden.',
 			'companionRemote.pairing.authFailed' => 'Autentisering misslyckades. Båda enheter behöver samma Plex-konto.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kunde inte ansluta: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Vill du koppla från fjärrsessionen?',

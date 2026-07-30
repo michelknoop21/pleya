@@ -877,6 +877,7 @@ class _TranslationsDiscoverIt extends TranslationsDiscoverEn {
 	@override String get nextUp => 'Prossimi';
 	@override String nextUpIn({required Object library}) => 'Prossimi in ${library}';
 	@override String get recentlyAdded => 'Aggiunti di recente';
+	@override String get recentlyReleased => 'Usciti di recente';
 	@override String recentlyAddedIn({required Object library}) => 'Aggiunti di recente in ${library}';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => 'Panoramica';
@@ -2616,6 +2617,7 @@ extension on TranslationsIt {
 			'discover.nextUp' => 'Prossimi',
 			'discover.nextUpIn' => ({required Object library}) => 'Prossimi in ${library}',
 			'discover.recentlyAdded' => 'Aggiunti di recente',
+			'discover.recentlyReleased' => 'Usciti di recente',
 			'discover.recentlyAddedIn' => ({required Object library}) => 'Aggiunti di recente in ${library}',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'Panoramica',
@@ -3017,9 +3019,9 @@ extension on TranslationsIt {
 			'companionRemote.pairing.validationHostRequired' => 'Inserisci l\'indirizzo host',
 			'companionRemote.pairing.validationHostFormat' => 'Il formato deve essere IP:porta (es. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Connessione scaduta. Usa la stessa rete su entrambi i dispositivi.',
-			'companionRemote.pairing.sessionNotFound' => 'Dispositivo non trovato. Assicurati che Pleya sia in esecuzione sull\'host.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.sessionNotFound' => 'Dispositivo non trovato. Assicurati che Pleya sia in esecuzione sull\'host.',
 			'companionRemote.pairing.authFailed' => 'Autenticazione non riuscita. Entrambi i dispositivi devono usare lo stesso account Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Connessione fallita: ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Vuoi disconnetterti dalla sessione remota?',

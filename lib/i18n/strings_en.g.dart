@@ -2205,6 +2205,9 @@ class TranslationsDiscoverEn {
 	/// en: 'Recently Added'
 	String get recentlyAdded => 'Recently Added';
 
+	/// en: 'Recently Released'
+	String get recentlyReleased => 'Recently Released';
+
 	/// en: 'Recently Added in ${library}'
 	String recentlyAddedIn({required Object library}) => 'Recently Added in ${library}';
 
@@ -5914,6 +5917,7 @@ extension on Translations {
 			'discover.nextUp' => 'Next Up',
 			'discover.nextUpIn' => ({required Object library}) => 'Next Up in ${library}',
 			'discover.recentlyAdded' => 'Recently Added',
+			'discover.recentlyReleased' => 'Recently Released',
 			'discover.recentlyAddedIn' => ({required Object library}) => 'Recently Added in ${library}',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'Overview',
@@ -6262,9 +6266,9 @@ extension on Translations {
 			'downloads.resumeDownload' => 'Resume download',
 			'downloads.cancelledDownload' => 'Cancelled download',
 			'downloads.syncingFile' => ({required Object file, required Object status}) => '${file} (syncing ${status})',
-			'downloads.downloadedFileClickToComplete' => ({required Object file}) => 'Downloaded ${file} - Click to complete',
 			_ => null,
 		} ?? switch (path) {
+			'downloads.downloadedFileClickToComplete' => ({required Object file}) => 'Downloaded ${file} - Click to complete',
 			'downloads.partialDownloadClickToComplete' => 'Partially downloaded - Click to complete',
 			'downloads.deleting' => 'Deleting...',
 			'downloads.deletingWithProgress' => ({required Object title, required Object current, required Object total}) => 'Deleting ${title}... (${current} of ${total})',

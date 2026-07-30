@@ -727,6 +727,7 @@
     "nextUp": "Next Up",
     "nextUpIn": "Next Up in ${library}",
     "recentlyAdded": "Recently Added",
+    "recentlyReleased": "Recently Released",
     "recentlyAddedIn": "Recently Added in ${library}",
     "playEpisode": "S${season}E${episode}",
     "overview": "Overview",

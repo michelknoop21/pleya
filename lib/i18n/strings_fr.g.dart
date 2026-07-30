@@ -877,6 +877,7 @@ class _TranslationsDiscoverFr extends TranslationsDiscoverEn {
 	@override String get nextUp => 'À suivre';
 	@override String nextUpIn({required Object library}) => 'À suivre dans ${library}';
 	@override String get recentlyAdded => 'Récemment ajouté';
+	@override String get recentlyReleased => 'Sorties récentes';
 	@override String recentlyAddedIn({required Object library}) => 'Récemment ajouté dans ${library}';
 	@override String playEpisode({required Object season, required Object episode}) => 'S${season}E${episode}';
 	@override String get overview => 'Aperçu';
@@ -2616,6 +2617,7 @@ extension on TranslationsFr {
 			'discover.nextUp' => 'À suivre',
 			'discover.nextUpIn' => ({required Object library}) => 'À suivre dans ${library}',
 			'discover.recentlyAdded' => 'Récemment ajouté',
+			'discover.recentlyReleased' => 'Sorties récentes',
 			'discover.recentlyAddedIn' => ({required Object library}) => 'Récemment ajouté dans ${library}',
 			'discover.playEpisode' => ({required Object season, required Object episode}) => 'S${season}E${episode}',
 			'discover.overview' => 'Aperçu',
@@ -3017,9 +3019,9 @@ extension on TranslationsFr {
 			'companionRemote.pairing.validationHostRequired' => 'Veuillez entrer l\'adresse de l\'hôte',
 			'companionRemote.pairing.validationHostFormat' => 'Le format doit être IP:port (ex. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Connexion expirée. Utilisez le même réseau sur les deux appareils.',
-			'companionRemote.pairing.sessionNotFound' => 'Appareil introuvable. Assurez-vous que Pleya fonctionne sur l\'hôte.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.sessionNotFound' => 'Appareil introuvable. Assurez-vous que Pleya fonctionne sur l\'hôte.',
 			'companionRemote.pairing.authFailed' => 'Échec de l\'authentification. Les deux appareils doivent utiliser le même compte Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Échec de la connexion : ${error}',
 			'companionRemote.remote.disconnectConfirm' => 'Voulez-vous vous déconnecter de la session distante ?',

@@ -668,6 +668,7 @@
     "nextUp": "接下来",
     "nextUpIn": "${library} 中接下来",
     "recentlyAdded": "最近添加",
+    "recentlyReleased": "最近上映",
     "recentlyAddedIn": "${library} 中最近添加",
     "playEpisode": "S${season}E${episode}",
     "overview": "概述",
