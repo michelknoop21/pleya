@@ -7,6 +7,7 @@ import '../../profiles/active_profile_provider.dart';
 import '../../profiles/profile.dart';
 import '../../profiles/profile_connection.dart';
 import '../../providers/multi_server_provider.dart';
+import '../../focus/focusable_text_field.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../services/pleya_share/pleya_share_channel.dart';
 import '../../services/pleya_share/pleya_share_device_name.dart';
@@ -30,6 +31,8 @@ class PleyaShareJoinScreen extends StatefulWidget {
 class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
   final _hostController = TextEditingController();
   final _codeController = TextEditingController();
+  final _hostFocus = FocusNode(debugLabel: 'PleyaShareJoinHost');
+  final _codeFocus = FocusNode(debugLabel: 'PleyaShareJoinCode');
   Future<List<DiscoveredShareHost>>? _discovery;
   int _selectedPort = PleyaShareProtocol.sharePort;
   bool _busy = false;
@@ -45,6 +48,8 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
   void dispose() {
     _hostController.dispose();
     _codeController.dispose();
+    _hostFocus.dispose();
+    _codeFocus.dispose();
     super.dispose();
   }
 
@@ -266,22 +271,32 @@ class _PleyaShareJoinScreenState extends State<PleyaShareJoinScreen> {
 
               Text(t.pleyaShare.manualHost, style: theme.textTheme.titleSmall),
               const SizedBox(height: 8),
-              TextField(
+              FocusableTextField(
                 controller: _hostController,
+                focusNode: _hostFocus,
+                tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
                 decoration: const InputDecoration(hintText: '192.168.1.23', border: OutlineInputBorder()),
                 keyboardType: TextInputType.url,
+                autocorrect: false,
+                enableSuggestions: false,
                 onChanged: (_) => setState(() => _selectedPort = PleyaShareProtocol.sharePort),
+                onNavigateDown: () => _codeFocus.requestFocus(),
               ),
               const SizedBox(height: 16),
 
               Text(t.pleyaShare.codeLabel, style: theme.textTheme.titleSmall),
               const SizedBox(height: 8),
-              TextField(
+              FocusableTextField(
                 controller: _codeController,
+                focusNode: _codeFocus,
+                tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
                 decoration: const InputDecoration(hintText: '123456', border: OutlineInputBorder()),
                 keyboardType: TextInputType.number,
+                autocorrect: false,
+                enableSuggestions: false,
                 maxLength: 6,
                 onChanged: (_) => setState(() {}),
+                onNavigateUp: () => _hostFocus.requestFocus(),
               ),
               const SizedBox(height: 16),
 

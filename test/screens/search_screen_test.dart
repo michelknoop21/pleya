@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -107,6 +109,149 @@ void main() {
     expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'SearchFirstResult');
   });
+
+  testWidgets('a slow earlier search cannot overwrite a newer one', (tester) async {
+    final client = _ProgrammableClient();
+    final key = await _pumpSearchScreen(tester, client);
+    final search = key.currentState! as SearchInputFocusable;
+
+    // "bat" goes out first and hangs; "batman" is typed on top and answers.
+    search.submitSearchQuery('bat');
+    await tester.pump();
+    search.submitSearchQuery('batman');
+    await tester.pump();
+
+    client.complete('batman', [_item('movie_batman', 'Batman')]);
+    await tester.pumpAndSettle();
+    expect(find.text('Batman'), findsOneWidget);
+
+    // The stale "bat" response lands last and must be dropped entirely.
+    client.complete('bat', [_item('movie_bat', 'Bat Documentary')]);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Batman'), findsOneWidget);
+    expect(find.text('Bat Documentary'), findsNothing);
+
+    // ...and typing "batman" again must not be short-circuited by a
+    // _lastSearchedQuery that the stale response corrupted.
+    client.queries.clear();
+    search.submitSearchQuery('batman');
+    await tester.pump();
+    expect(client.queries, ['batman']);
+
+    // Settle the last request so its per-server timeout timer isn't left armed.
+    client.complete('batman', const []);
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('a failing search renders an error state with retry, not "no results"', (tester) async {
+    final client = _ProgrammableClient();
+    final key = await _pumpSearchScreen(tester, client);
+    final search = key.currentState! as SearchInputFocusable;
+
+    search.submitSearchQuery('movie');
+    await tester.pump();
+    client.fail('movie', Exception('connection refused'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.search.errorTitle), findsOneWidget);
+    expect(find.text(t.search.errorNetwork), findsOneWidget);
+    expect(find.text(t.common.retry), findsOneWidget);
+    // The empty state would be actively misleading here.
+    expect(find.text(t.search.tryDifferentTerm), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('backspacing below two characters clears the results', (tester) async {
+    final client = _ProgrammableClient();
+    final key = await _pumpSearchScreen(tester, client);
+    final search = key.currentState! as SearchInputFocusable;
+
+    search.submitSearchQuery('abc');
+    await tester.pump();
+    client.complete('abc', [_item('movie_abc', 'ABC Movie')]);
+    await tester.pumpAndSettle();
+    expect(find.text('ABC Movie'), findsOneWidget);
+
+    // Backspace down to a single character: the old results no longer belong
+    // to what is in the field.
+    search.setSearchQuery('a');
+    await tester.pumpAndSettle();
+    expect(find.text('ABC Movie'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+}
+
+MediaItem _item(String id, String title) => MediaItem(
+  id: id,
+  backend: MediaBackend.plex,
+  kind: MediaKind.movie,
+  title: title,
+  serverId: 'server_1',
+  serverName: 'Server',
+);
+
+Future<GlobalKey<State<SearchScreen>>> _pumpSearchScreen(WidgetTester tester, MediaServerClient client) async {
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = const Size(1280, 900);
+  addTearDown(() {
+    tester.view.resetDevicePixelRatio();
+    tester.view.resetPhysicalSize();
+  });
+
+  final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+  final provider = MultiServerProvider(manager, DataAggregationService(manager));
+  addTearDown(provider.dispose);
+
+  final key = GlobalKey<State<SearchScreen>>();
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: ChangeNotifierProvider<MultiServerProvider>.value(
+        value: provider,
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: SearchScreen(key: key),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+  return key;
+}
+
+/// Client whose per-query futures the test completes by hand, so responses can
+/// be made to arrive out of order.
+class _ProgrammableClient implements MediaServerClient {
+  final List<String> queries = [];
+  final Map<String, Completer<List<MediaItem>>> _pending = {};
+
+  void complete(String query, List<MediaItem> items) => _pending.remove(query)?.complete(items);
+
+  void fail(String query, Object error) => _pending.remove(query)?.completeError(error);
+
+  @override
+  ServerId get serverId => ServerId('server_1');
+
+  @override
+  String? get serverName => 'Server';
+
+  @override
+  MediaBackend get backend => MediaBackend.plex;
+
+  @override
+  ServerCapabilities get capabilities => ServerCapabilities.plex;
+
+  @override
+  Future<List<MediaItem>> searchItems(String query, {int limit = 100}) {
+    queries.add(query);
+    return (_pending[query] ??= Completer<List<MediaItem>>()).future;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 Future<(_FakeMediaServerClient, GlobalKey<State<SearchScreen>>)> _pumpTvSearchScreen(WidgetTester tester) async {

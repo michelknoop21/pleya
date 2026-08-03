@@ -17,6 +17,7 @@ class _RefreshProbeState extends State<_RefreshProbe>
   int focusActiveTabCalls = 0;
   int focusSearchInputCalls = 0;
   String? lastSearchQuery;
+  final submittedQueries = <String>[];
   String? lastLibraryKey;
 
   @override
@@ -39,6 +40,12 @@ class _RefreshProbeState extends State<_RefreshProbe>
 
   @override
   void setSearchQuery(String query) => lastSearchQuery = query;
+
+  @override
+  void submitSearchQuery(String query) {
+    lastSearchQuery = query;
+    submittedQueries.add(query);
+  }
 
   @override
   void loadLibraryByKey(String libraryGlobalKey) => lastLibraryKey = libraryGlobalKey;

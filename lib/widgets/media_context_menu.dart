@@ -39,6 +39,7 @@ import '../utils/media_navigation_helper.dart';
 import '../utils/media_server_http_client.dart';
 import '../utils/platform_detector.dart';
 import '../utils/snackbar_helper.dart';
+import '../utils/media_server_timeouts.dart';
 import '../utils/dialogs.dart';
 import '../services/external_player_service.dart';
 import '../focus/focusable_button.dart';
@@ -819,24 +820,18 @@ class MediaContextMenuState extends State<MediaContextMenu> {
   }
 
   Future<void> _showFileInfo(BuildContext context) async {
-    var loadingShown = false;
-
     try {
       final client = _getMediaClientForItem();
-      if (context.mounted) {
-        showLoadingDialog(context);
-        loadingShown = true;
-      }
+      if (!context.mounted) return;
 
-      // Fetch file info
+      // Fetch file info behind a spinner the user can always back out of.
       final item = _mediaItem!;
-      final fileInfo = await client.getFileInfo(item);
-
-      // Close loading indicator
-      if (loadingShown && context.mounted) {
-        Navigator.pop(context);
-        loadingShown = false;
-      }
+      final fileInfo = await showCancellableLoadingDialog(
+        context: context,
+        task: client.getFileInfo(item),
+        timeout: MediaServerTimeouts.interactive,
+        timeoutMessage: t.common.timedOut,
+      );
 
       if (fileInfo != null && context.mounted) {
         // Show file info bottom sheet
@@ -849,11 +844,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
         showErrorSnackBar(context, t.messages.fileInfoNotAvailable);
       }
     } catch (e) {
-      // Close loading indicator if it's still open
-      if (loadingShown && context.mounted && Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-
+      // The helper closes its own dialog before rethrowing.
       if (context.mounted) {
         showErrorSnackBar(context, t.messages.errorLoadingFileInfo(error: friendlyError(e)));
       }

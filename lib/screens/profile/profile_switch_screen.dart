@@ -125,7 +125,10 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
           // manage flow keeps the detailed list (with per-profile menus).
           if (widget.requireSelection && view.profiles.isNotEmpty) {
             return Stack(
-              children: [_buildSelectionGate(view, activeId), if (_switching) const ProfileSwitchingOverlay()],
+              children: [
+                _buildSelectionGate(view, activeId),
+                if (_switching) ProfileSwitchingOverlay(onCancel: _cancelProfileSwitch),
+              ],
             );
           }
 
@@ -165,7 +168,7 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
                   ),
                 ],
               ),
-              if (_switching) const ProfileSwitchingOverlay(),
+              if (_switching) ProfileSwitchingOverlay(onCancel: _cancelProfileSwitch),
             ],
           );
         },
@@ -431,6 +434,12 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
 
   Future<void> _addLocalProfile() async {
     await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => const AddLocalProfileScreen()));
+  }
+
+  /// Drop the blocking overlay and return to profile selection. The rebind
+  /// keeps running; `_switchTo`'s finally block is a no-op by then.
+  void _cancelProfileSwitch() {
+    setStateIfMounted(() => _switching = false);
   }
 
   Future<void> _switchTo(Profile profile) async {

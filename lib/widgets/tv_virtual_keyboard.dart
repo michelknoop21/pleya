@@ -499,9 +499,30 @@ class _TvVirtualKeyboardPanelState extends State<TvVirtualKeyboardPanel> with Mo
         _insert(character);
         return KeyEventResult.handled;
       }
+
+      // Anything else on the way down is genuinely not ours.
+      return KeyEventResult.ignored;
     }
 
-    return KeyEventResult.handled;
+    // Swallow the key-up half of anything we acted on during key-down, so an
+    // ancestor doesn't see a dangling release and re-activate on it. Every
+    // other event — unmapped keys, and all key-ups we never claimed — must
+    // pass through: the panel is permanently focused on the search page, so
+    // blanket-handling here made every global TV shortcut dead on that screen.
+    if (event is KeyUpEvent && _consumesOnKeyDown(key, event)) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  /// Mirrors the key-down branch of [_handleKey]: true for keys that branch
+  /// consumes, so their key-up is swallowed as well.
+  bool _consumesOnKeyDown(LogicalKeyboardKey key, KeyEvent event) {
+    if (key == LogicalKeyboardKey.backspace || key == LogicalKeyboardKey.delete) return true;
+    if (event.isPhysicalKeyboardEnter || event.isTvSelectEvent) return true;
+    if (key.isUpKey || key.isDownKey || key.isLeftKey || key.isRightKey) return true;
+    final character = event.character;
+    return character != null && character.isNotEmpty && !key.isNavigationKey;
   }
 
   bool _handlePhysicalKeyboardTextInput(KeyEvent event) {

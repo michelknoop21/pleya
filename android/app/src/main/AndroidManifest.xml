@@ -78,6 +78,14 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="pleya" android:host="play"/>
             </intent-filter>
+            <!-- Assistant / Android TV global search: "search X in Pleya" -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEARCH"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.app.searchable"
+                android:resource="@xml/searchable" />
         </activity>
         <!-- FileProvider for sharing downloaded files with external players -->
         <provider

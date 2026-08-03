@@ -19,9 +19,11 @@ import '../widgets/rating_bottom_sheet.dart';
 
 import '../focus/dpad_navigator.dart';
 import '../focus/focusable_action_bar.dart';
+import '../focus/focusable_button.dart';
 import '../focus/focusable_wrapper.dart';
 import '../focus/key_event_utils.dart';
 import '../focus/input_mode_tracker.dart';
+import '../utils/media_server_timeouts.dart';
 import '../media/item_watcher.dart';
 import '../media/library_query.dart';
 import '../media/media_hub.dart';
@@ -286,6 +288,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   bool _watchStateChanged = false;
   final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0);
   bool _suppressBackAfterPop = false;
+  final FocusNode _loadingFocusNode = FocusNode(debugLabel: 'MediaDetailLoading');
   bool _tvDetailRevealed = false;
   bool _tvDetailRevealScheduled = false;
   bool _hasLoadedSeasons = false;
@@ -713,6 +716,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     return handleBackKeyNavigation(context, event, result: _watchStateChanged);
   }
 
+  /// Escape hatch out of the metadata loading state. Leaves the pending fetch
+  /// to finish (or not) on its own — the state guards are all `mounted`-checked.
+  void _cancelMetadataLoad() {
+    if (!mounted) return;
+    Navigator.pop(context, _watchStateChanged);
+  }
+
   void _popMediaDetailIfBackNotSuppressed() {
     if (_suppressBackAfterPop) {
       _suppressBackAfterPop = false;
@@ -795,6 +805,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   @override
   void dispose() {
     _routeObserver?.unsubscribe(this);
+    _loadingFocusNode.dispose();
     _scrollController.dispose();
     _scrollOffset.dispose();
     _extrasScrollController.dispose();
@@ -1337,7 +1348,9 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         return;
       }
 
-      final result = await client.fetchItemWithOnDeck(_metadata.id);
+      // Interactive budget, not the 120s background ceiling: the whole screen
+      // is a blocking spinner until this resolves.
+      final result = await client.fetchItemWithOnDeck(_metadata.id).timeout(MediaServerTimeouts.interactive);
       final metadata = result.item;
       final onDeckEpisode = result.onDeckEpisode;
 
@@ -3115,11 +3128,30 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
     // Show loading state while fetching full metadata
     if (_isLoadingMetadata) {
+      // The Focus needs its own node AND autofocus, otherwise nothing in this
+      // subtree ever holds focus and _handleMediaDetailBackKey is never
+      // reached — which combined with shouldBlockSystemBack left the user
+      // stuck here for the full network timeout.
       final loading = Focus(
+        focusNode: _loadingFocusNode,
+        autofocus: true,
         onKeyEvent: _handleMediaDetailBackKey,
         child: Scaffold(
           appBar: AppBar(),
-          body: const Center(child: CircularProgressIndicator()),
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 24),
+                FocusableButton(
+                  autofocus: true,
+                  onPressed: _cancelMetadataLoad,
+                  child: TextButton(onPressed: _cancelMetadataLoad, child: Text(t.common.cancel)),
+                ),
+              ],
+            ),
+          ),
         ),
       );
       final blockSystemBack = InputModeTracker.shouldBlockSystemBack(context);
@@ -3128,8 +3160,11 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       }
       return PopScope(
         canPop: false, // Prevent system back from double-popping on Android keyboard/TV
-        // ignore: no-empty-block - required callback, blocks system back on Android TV
-        onPopInvokedWithResult: (didPop, result) {},
+        onPopInvokedWithResult: (didPop, result) {
+          // Blocking system back is only about avoiding a double pop — it must
+          // still result in an actual pop, or this screen is a dead end.
+          if (!didPop) _cancelMetadataLoad();
+        },
         child: loading,
       );
     }

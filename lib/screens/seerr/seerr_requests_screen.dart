@@ -12,6 +12,7 @@ import '../../services/settings_service.dart';
 import '../../theme/mono_theme.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/dialogs.dart';
+import '../../utils/media_server_timeouts.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/focusable_filter_chip.dart';
 import '../../widgets/focusable_list_tile.dart';
@@ -133,17 +134,20 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     final client = provider.client;
     if (client == null) return;
     final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-    showLoadingDialog(context);
     String? errText;
     try {
-      await action(client);
+      await showCancellableLoadingDialog(
+        context: context,
+        timeout: MediaServerTimeouts.interactive,
+        timeoutMessage: t.common.timedOut,
+        task: action(client),
+      );
     } on SeerrException catch (e) {
       errText = _errorText(e);
     } catch (_) {
       errText = t.seerr.errorGeneric;
     }
-    if (mounted) navigator.pop(); // dismiss the busy dialog
+    if (!mounted) return;
     if (errText != null) {
       messenger.showSnackBar(SnackBar(content: Text(errText)));
       return;

@@ -10,7 +10,6 @@ import '../media/media_playlist.dart';
 import '../media/play_queue.dart';
 import '../providers/playback_state_provider.dart';
 import '../utils/app_logger.dart';
-import '../utils/dialogs.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/video_player_navigation.dart';
 import 'jellyfin_sequential_launcher.dart';
@@ -126,34 +125,29 @@ abstract class MediaListPlaybackLauncher {
     required String actionLabel,
     required Future<PlayQueueResult> Function(Future<void> Function() dismissLoading) execute,
   }) async {
-    BuildContext? loadingDialogContext;
-    var loadingVisible = false;
+    NavigatorState? navigator;
+    DialogRoute<void>? loadingRoute;
 
     if (showLoading && context.mounted) {
-      loadingVisible = true;
-      unawaited(
-        showScopedDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (dialogContext) {
-            loadingDialogContext = dialogContext;
-            return const Center(child: CircularProgressIndicator());
-          },
-        ),
+      final nav = Navigator.of(context, rootNavigator: false);
+      navigator = nav;
+      loadingRoute = DialogRoute<void>(
+        context: context,
+        barrierDismissible: false,
+        themes: InheritedTheme.capture(from: context, to: nav.context),
+        builder: (_) => const Center(child: CircularProgressIndicator()),
       );
+      unawaited(nav.push(loadingRoute));
     }
 
     Future<void> dismissLoading() async {
-      if (!showLoading || !loadingVisible) return;
-      final dialogContext = loadingDialogContext;
-      if (dialogContext == null) return;
-      // Only dismiss if the dialog is still the current route to avoid
-      // accidentally popping the player after navigation.
-      final route = ModalRoute.of(dialogContext);
-      if (route?.isCurrent ?? false) {
-        Navigator.of(dialogContext).pop();
-      }
-      loadingVisible = false;
+      final route = loadingRoute;
+      if (route == null) return;
+      loadingRoute = null;
+      // Remove *this* route by reference rather than popping whatever is on
+      // top. The old `route.isCurrent` guard silently did nothing whenever
+      // anything got pushed above the spinner, leaving it up forever.
+      if (route.isActive) navigator?.removeRoute(route);
     }
 
     try {

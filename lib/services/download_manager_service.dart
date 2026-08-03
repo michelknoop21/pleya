@@ -460,24 +460,21 @@ class DownloadManagerService {
     if (_connectivitySubscription != null) return;
     // connectivity_plus can throw asynchronously (e.g. DBusServiceUnknownException
     // on Linux without NetworkManager) — same guard as OfflineModeProvider.
-    runZonedGuarded(
-      () {
-        _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
-          final offline = results.isEmpty || results.every((r) => r == ConnectivityResult.none);
-          final cameOnline = _wasOffline && !offline;
-          _wasOffline = offline;
-          if (cameOnline) {
-            appLogger.i('Connectivity restored — resuming auto-paused downloads');
-            unawaited(
-              _resumeAutoPausedDownloads().catchError((Object e, StackTrace st) {
-                appLogger.e('Failed to resume auto-paused downloads', error: e, stackTrace: st);
-              }),
-            );
-          }
-        }, onError: (Object e) => appLogger.w('Connectivity stream error', error: e));
-      },
-      (error, stack) => appLogger.w('Connectivity monitoring unavailable', error: error),
-    );
+    runZonedGuarded(() {
+      _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
+        final offline = results.isEmpty || results.every((r) => r == ConnectivityResult.none);
+        final cameOnline = _wasOffline && !offline;
+        _wasOffline = offline;
+        if (cameOnline) {
+          appLogger.i('Connectivity restored — resuming auto-paused downloads');
+          unawaited(
+            _resumeAutoPausedDownloads().catchError((Object e, StackTrace st) {
+              appLogger.e('Failed to resume auto-paused downloads', error: e, stackTrace: st);
+            }),
+          );
+        }
+      }, onError: (Object e) => appLogger.w('Connectivity stream error', error: e));
+    }, (error, stack) => appLogger.w('Connectivity monitoring unavailable', error: error));
   }
 
   /// Recover downloads that were interrupted when the app was killed.
@@ -1612,12 +1609,7 @@ class DownloadManagerService {
     _cancelDownloadTimers(globalKey);
     final existing = await _database.getDownloadedMedia(globalKey);
     appLogger.i('Auto-pausing download for $globalKey ($reason) at ${existing?.progress ?? 0}%');
-    await _transitionStatus(
-      globalKey,
-      DownloadStatus.paused,
-      progress: existing?.progress ?? 0,
-      autoPaused: true,
-    );
+    await _transitionStatus(globalKey, DownloadStatus.paused, progress: existing?.progress ?? 0, autoPaused: true);
     await _database.removeFromQueue(globalKey);
   }
 

@@ -7,6 +7,7 @@ import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/media_server_client.dart';
 import '../utils/app_logger.dart';
+import '../utils/media_server_timeouts.dart';
 import '../utils/external_ids.dart';
 import '../utils/global_key_utils.dart';
 import '../utils/search_relevance.dart';
@@ -14,6 +15,7 @@ import 'multi_server_manager.dart';
 
 typedef OnDeckAggregationResult = ({List<MediaItem> items, Set<String> succeededServerIds});
 typedef HubAggregationResult = ({List<MediaHub> hubs, Set<String> succeededServerIds});
+typedef SearchAggregationResult = ({List<MediaItem> items, Set<String> succeededServerIds});
 
 /// Cross-server aggregation: fans calls out to every online client and
 /// merges the results. Single-server operations now go through the
@@ -560,14 +562,18 @@ class DataAggregationService {
   }
 
   /// Search across all online servers (Plex + Jellyfin). Returns neutral
-  /// [MediaItem]s.
-  Future<List<MediaItem>> searchAcrossServers(String query, {int? limit}) async {
+  /// [MediaItem]s plus the ids of the servers that actually answered.
+  ///
+  /// Per-server failures are contained (that server just contributes nothing),
+  /// but the caller needs to tell "every server failed" apart from "nobody has
+  /// a match" — otherwise a dead connection renders as a plain "no results".
+  Future<SearchAggregationResult> searchAcrossServers(String query, {int? limit}) async {
     if (query.trim().isEmpty) {
-      return [];
+      return (items: const <MediaItem>[], succeededServerIds: const <String>{});
     }
 
     final clients = _serverManager.onlineClients;
-    if (clients.isEmpty) return [];
+    if (clients.isEmpty) return (items: const <MediaItem>[], succeededServerIds: const <String>{});
 
     final resultLimit = limit ?? defaultMediaSearchLimit;
     final fetchLimit = resultLimit < defaultMediaSearchLimit ? defaultMediaSearchLimit : resultLimit;
@@ -575,19 +581,30 @@ class DataAggregationService {
     final futures = clients.entries.map((entry) async {
       final client = entry.value;
       try {
-        return await client.searchItems(query, limit: fetchLimit);
+        // Per-server budget. Errors were already contained, but a server that
+        // is marked online and simply never answers used to hold up the whole
+        // fan-out for the full receive timeout (×2 with endpoint failover) —
+        // minutes of skeletons while the healthy servers were long done. A
+        // timeout counts as a failure, not as "this server has no matches".
+        final items = await client.searchItems(query, limit: fetchLimit).timeout(MediaServerTimeouts.searchPerServer);
+        return (serverId: entry.key, items: items);
       } catch (e, st) {
         appLogger.e('Search failed on ${entry.key}', error: e, stackTrace: st);
-        return <MediaItem>[];
+        return (serverId: null, items: <MediaItem>[]);
       }
     });
 
-    final allResults = (await Future.wait(futures)).expand((l) => l).toList();
+    final perServer = await Future.wait(futures);
+    final succeededServerIds = {
+      for (final entry in perServer)
+        if (entry.serverId != null) entry.serverId!,
+    };
+    final allResults = perServer.expand((entry) => entry.items).toList();
     final result = rankMediaSearchResults(allResults, query, limit: resultLimit);
 
-    appLogger.i('Found ${result.length} search results across all servers');
+    appLogger.i('Found ${result.length} search results across ${succeededServerIds.length} servers');
 
-    return result;
+    return (items: result, succeededServerIds: succeededServerIds);
   }
 
   /// Group libraries by server (internal aggregation helper).

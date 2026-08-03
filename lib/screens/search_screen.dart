@@ -6,6 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import 'package:rate_limiter/rate_limiter.dart';
 
+import '../focus/focusable_button.dart';
 import '../focus/focusable_text_field.dart';
 import '../i18n/strings.g.dart';
 import '../media/media_item.dart';
@@ -22,6 +23,7 @@ import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
 import '../providers/multi_server_provider.dart';
 import '../services/settings_service.dart';
+import '../services/speech_search_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
 import '../utils/snackbar_helper.dart';
@@ -34,10 +36,30 @@ import '../widgets/tv_virtual_keyboard.dart';
 import '../utils/focus_utils.dart';
 import 'main_screen.dart';
 
-/// Client-side result type filter. Only kinds that [searchAcrossServers]
-/// actually returns (movies, shows, episodes) — no "people" row, search
-/// results carry no person items.
+/// Client-side result type filter over whatever [searchAcrossServers] returns.
+/// There is no "people" row — search results carry no person items. Note that
+/// the episodes chip is effectively Jellyfin-only: the Plex client searches
+/// with `searchTypes: 'movies,tv'` and never yields episode items.
 enum _SearchFilter { all, movies, shows, episodes }
+
+/// Why the last search produced nothing — so the UI can tell "we couldn't
+/// reach anything" apart from "your library really has no match".
+enum _SearchError { network, noServers }
+
+/// Marker for the no-connected-servers case so [_performSearch] can classify
+/// it without string-matching an exception message.
+class _NoServersAvailable implements Exception {
+  const _NoServersAvailable();
+  @override
+  String toString() => 'No servers available';
+}
+
+/// Servers were connected, but every single one failed or timed out.
+class _AllServersFailed implements Exception {
+  const _AllServersFailed();
+  @override
+  String toString() => 'All servers failed to answer the search';
+}
 
 const int _searchHistoryLimit = 15;
 
@@ -64,6 +86,12 @@ class _SearchScreenState extends State<SearchScreen>
   bool _hasSearched = false;
   late final Debounce _searchDebounce;
   String _lastSearchedQuery = '';
+  _SearchError? _searchError;
+  // TV only: phones and desktops already have a dictation key on the system
+  // keyboard, so a second mic affordance there would just be noise.
+  bool _voiceSearchSupported = false;
+  // Bumped per search; a completing request that isn't the latest is dropped.
+  int _searchGeneration = 0;
   String? _focusResultsForQuery;
   _SearchFilter _activeFilter = _SearchFilter.all;
   List<String> _history = const [];
@@ -81,6 +109,21 @@ class _SearchScreenState extends State<SearchScreen>
     _searchController.addListener(_onSearchChanged);
     _history = SettingsService.instance.read(SettingsService.searchHistory);
     FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
+    if (PlatformDetector.isTV()) {
+      unawaited(
+        SpeechSearchService.instance.isSupported().then((supported) {
+          setStateIfMounted(() => _voiceSearchSupported = supported);
+        }),
+      );
+    }
+  }
+
+  /// Hand off to the platform's dictation surface, then run whatever came back
+  /// as a full search — no letter-by-letter D-pad entry needed at all.
+  Future<void> _startVoiceSearch() async {
+    final spoken = await SpeechSearchService.instance.capture(prompt: t.search.hint);
+    if (!mounted || spoken == null) return;
+    submitSearchQuery(spoken);
   }
 
   /// Filtered view of [_searchResults] for the active type chip.
@@ -132,10 +175,12 @@ class _SearchScreenState extends State<SearchScreen>
     if (query.trim().isEmpty) {
       _searchDebounce.cancel();
       _focusResultsForQuery = null;
+      _searchGeneration++;
       setStateIfMounted(() {
         _searchResults = [];
         _hasSearched = false;
         _isSearching = false;
+        _searchError = null;
         _lastSearchedQuery = '';
       });
       return;
@@ -146,6 +191,17 @@ class _SearchScreenState extends State<SearchScreen>
     // history chips bypass this listener, so short queries stay possible.
     if (query.trim().length < 2) {
       _searchDebounce.cancel();
+      // Backspacing "abc" down to "a" must not leave the "abc" results on
+      // screen under a query that no longer produced them.
+      _focusResultsForQuery = null;
+      _searchGeneration++;
+      setStateIfMounted(() {
+        _searchResults = [];
+        _hasSearched = false;
+        _isSearching = false;
+        _searchError = null;
+        _lastSearchedQuery = '';
+      });
       return;
     }
 
@@ -157,20 +213,33 @@ class _SearchScreenState extends State<SearchScreen>
     _searchDebounce([query]);
   }
 
-  Future<void> _performSearch(String query) async {
+  Future<void> _performSearch(String rawQuery) async {
     if (!mounted) return;
+    // Always work with the trimmed form: `refresh()` and `updateItem()` used to
+    // pass the raw controller text, which then never matched _lastSearchedQuery
+    // and re-ran the same search on every metadata update.
+    final query = rawQuery.trim();
 
-    if (query.trim().isEmpty) {
+    if (query.isEmpty) {
       setStateIfMounted(() {
         _searchResults = [];
         _hasSearched = false;
+        _searchError = null;
       });
       return;
     }
 
+    // Staleness guard. Without it a slow "bat" landing after a fast "batman"
+    // overwrote both the results AND _lastSearchedQuery — and since
+    // _onSearchChanged short-circuits on _lastSearchedQuery, that state never
+    // corrected itself again.
+    final generation = ++_searchGeneration;
+    bool isStale() => generation != _searchGeneration;
+
     setStateIfMounted(() {
       _isSearching = true;
       _hasSearched = true;
+      _searchError = null;
       _seerrResults = const [];
       _seerrSearched = false;
       _seerrSearching = false;
@@ -181,29 +250,49 @@ class _SearchScreenState extends State<SearchScreen>
       final multiServerProvider = Provider.of<MultiServerProvider>(context, listen: false);
 
       if (!multiServerProvider.hasConnectedServers) {
-        throw Exception('No servers available');
+        throw const _NoServersAvailable();
       }
 
-      final neutral = await multiServerProvider.aggregationService.searchAcrossServers(query);
-      if (mounted) {
-        setStateIfMounted(() {
-          _searchResults = neutral;
-          _isSearching = false;
-          _lastSearchedQuery = query.trim();
-          _activeFilter = _SearchFilter.all;
-        });
-        if (neutral.isNotEmpty) _addToHistory(query);
-        _maybeFocusResultsAfterSubmit(query, neutral);
+      final aggregated = await multiServerProvider.aggregationService.searchAcrossServers(query);
+      if (!mounted || isStale()) return;
+      // Not one server answered → this is a connection failure, not an empty
+      // library. Reporting it as "no results" is what made a dead network look
+      // like a search that simply found nothing.
+      if (aggregated.succeededServerIds.isEmpty) {
+        throw const _AllServersFailed();
       }
+      final neutral = aggregated.items;
+      setStateIfMounted(() {
+        _searchResults = neutral;
+        _isSearching = false;
+        _lastSearchedQuery = query;
+        _activeFilter = _SearchFilter.all;
+      });
+      if (neutral.isNotEmpty) _addToHistory(query);
+      _maybeFocusResultsAfterSubmit(query, neutral);
     } catch (e) {
+      if (!mounted || isStale()) return;
       _focusResultsForQuery = null;
-      if (mounted) {
-        setStateIfMounted(() {
-          _isSearching = false;
-        });
-        showErrorSnackBar(context, t.errors.searchFailed(error: e));
-      }
+      setStateIfMounted(() {
+        _isSearching = false;
+        // Show the failure as a failure. Previously the stale results (or the
+        // "no results, try another term" empty state) stayed on screen, which
+        // reads as "your library doesn't have this" for what is really a
+        // connection problem.
+        _searchError = e is _NoServersAvailable ? _SearchError.noServers : _SearchError.network;
+        _searchResults = const [];
+        // Reset the filter too: keeping it would leave an active chip whose
+        // row is now hidden, i.e. an apparently empty list with no way back.
+        _activeFilter = _SearchFilter.all;
+        _lastSearchedQuery = '';
+      });
+      appLogger.d('Search failed for "$query"', error: e);
     }
+  }
+
+  /// Re-run the last query after an error-state retry.
+  void _retrySearch() {
+    _performSearch(_searchController.text);
   }
 
   /// One-shot Jellyseerr/Overseerr search for the current query. Explicit
@@ -335,6 +424,17 @@ class _SearchScreenState extends State<SearchScreen>
     _searchController.text = query;
   }
 
+  @override
+  void submitSearchQuery(String query) {
+    if (!mounted) return;
+    final trimmed = query.trim();
+    _searchController.text = trimmed;
+    _searchController.selection = TextSelection.collapsed(offset: trimmed.length);
+    _searchDebounce.cancel();
+    if (trimmed.isEmpty) return;
+    _performSearch(trimmed);
+  }
+
   // Public method to fully reload all content (for profile switches)
   @override
   void fullRefresh() {
@@ -347,6 +447,7 @@ class _SearchScreenState extends State<SearchScreen>
       _searchResults.clear();
       _isSearching = false;
       _hasSearched = false;
+      _searchError = null;
       _lastSearchedQuery = '';
     });
   }
@@ -377,8 +478,12 @@ class _SearchScreenState extends State<SearchScreen>
   /// D-pad down past the keyboard's bottom row: land on whatever sits below —
   /// filter chips, first result, recent-search chips, or the Seerr tile.
   void _handleTvKeyboardNavigateDown() {
+    // While searching, the results area is skeletons with nothing focusable —
+    // moving down would silently drop focus and strand the user. Keep focus on
+    // the keyboard until there is something real to land on.
+    if (_isSearching) return;
     if (FocusScope.of(context).focusInDirection(TraversalDirection.down)) return;
-    if (_searchResults.isNotEmpty && !_isSearching) {
+    if (_searchResults.isNotEmpty) {
       _firstResultFocusNode.requestFocus();
     }
   }
@@ -407,6 +512,22 @@ class _SearchScreenState extends State<SearchScreen>
           ),
         ),
       ),
+      if (_voiceSearchSupported)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+            child: Center(
+              child: FocusableButton(
+                onPressed: _startVoiceSearch,
+                child: TextButton.icon(
+                  onPressed: _startVoiceSearch,
+                  icon: const AppIcon(Symbols.mic_rounded, fill: 1),
+                  label: Text(t.search.voiceSearch),
+                ),
+              ),
+            ),
+          ),
+        ),
       SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
@@ -577,6 +698,21 @@ class _SearchScreenState extends State<SearchScreen>
               SliverPadding(
                 padding: const EdgeInsets.all(16),
                 sliver: SliverList.builder(itemCount: 6, itemBuilder: (context, index) => const SkeletonListTile()),
+              )
+            else if (_searchError != null)
+              SliverFillRemaining(
+                child: _searchError == _SearchError.noServers
+                    ? StateView.error(
+                        title: t.search.noServersTitle,
+                        message: t.search.noServersBody,
+                        icon: Symbols.dns_rounded,
+                      )
+                    : StateView.error(
+                        title: t.search.errorTitle,
+                        message: t.search.errorNetwork,
+                        icon: Symbols.wifi_off_rounded,
+                        onRetry: _retrySearch,
+                      ),
               )
             else if (!_hasSearched)
               if (_history.isNotEmpty)

@@ -1,4 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
+
+import 'package:fake_async/fake_async.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_kind.dart';
 
@@ -60,7 +66,7 @@ void main() {
     });
 
     test('searchAcrossServers and getOnDeckFromAllServers return empty when no clients', () async {
-      expect(await service.searchAcrossServers('hello'), isEmpty);
+      expect((await service.searchAcrossServers('hello')).items, isEmpty);
       final onDeck = await service.getOnDeckFromAllServers();
       expect(onDeck.items, isEmpty);
       expect(onDeck.succeededServerIds, isEmpty);
@@ -119,10 +125,38 @@ void main() {
 
       final results = await service.searchAcrossServers('The Boys', limit: 1);
 
-      expect(results.map((item) => item.id), ['jf-show']);
+      expect(results.items.map((item) => item.id), ['jf-show']);
+      expect(results.succeededServerIds, {'plex-1', 'srv-1'});
       expect(plexRequests.single.queryParameters['limit'], '100');
       expect(plexRequests.single.queryParameters['searchTypes'], 'movies,tv');
       expect(jellyfinRequests.single.queryParameters['Limit'], '100');
+    });
+
+    test('a hanging server does not hold back the healthy ones', () {
+      // FakeAsync so the per-server timeout elapses without a real 8s wait.
+      fakeAsync((async) {
+        final healthy = _StubSearchClient(id: 'healthy', items: [_stubItem('healthy-1', 'Healthy Result')]);
+        // Never completes — the "marked online but silently dead" server.
+        final hanging = _StubSearchClient(id: 'hanging', items: const [], hang: true);
+        manager.debugRegisterClientForTesting(healthy);
+        manager.debugRegisterClientForTesting(hanging);
+
+        SearchAggregationResult? result;
+        service.searchAcrossServers('anything').then((r) => result = r);
+
+        // Before the budget expires the fan-out is still waiting on the hang.
+        async.elapse(const Duration(seconds: 7));
+        async.flushMicrotasks();
+        expect(result, isNull);
+
+        // Once it does, the healthy server's results come through and the
+        // hanging server is reported as *not* succeeded.
+        async.elapse(const Duration(seconds: 2));
+        async.flushMicrotasks();
+        expect(result, isNotNull);
+        expect(result!.items.map((i) => i.id), ['healthy-1']);
+        expect(result!.succeededServerIds, {'healthy'});
+      });
     });
 
     test('getOnDeckFromAllServers forwards preview limit to clients', () async {
@@ -660,4 +694,47 @@ void main() {
       expect(captured.single.queryParameters['count'], defaultHubPreviewLimit.toString());
     });
   });
+}
+
+MediaItem _stubItem(String id, String title) => MediaItem(
+  id: id,
+  backend: MediaBackend.plex,
+  kind: MediaKind.movie,
+  title: title,
+  serverId: 'healthy',
+  serverName: 'Healthy',
+);
+
+/// Minimal search-only client. With [hang] it never answers, standing in for a
+/// server that is marked online but silently unreachable.
+class _StubSearchClient implements MediaServerClient {
+  _StubSearchClient({required this.id, required this.items, this.hang = false});
+
+  final String id;
+  final List<MediaItem> items;
+  final bool hang;
+
+  @override
+  ServerId get serverId => ServerId(id);
+
+  @override
+  String? get serverName => id;
+
+  @override
+  MediaBackend get backend => MediaBackend.plex;
+
+  @override
+  ServerCapabilities get capabilities => ServerCapabilities.plex;
+
+  @override
+  Future<List<MediaItem>> searchItems(String query, {int limit = 100}) {
+    if (hang) return Completer<List<MediaItem>>().future;
+    return Future.value(items);
+  }
+
+  @override
+  void close() {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

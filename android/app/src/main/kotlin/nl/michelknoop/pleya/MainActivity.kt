@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.app.AppOpsManager
 import android.app.PictureInPictureParams
+import android.app.SearchManager
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -18,6 +19,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.Process
 import android.provider.Settings
+import android.speech.RecognizerIntent
 import android.util.Log
 import android.util.Rational
 import android.view.InputDevice
@@ -51,6 +53,7 @@ class MainActivity : FlutterActivity() {
     private const val TAG = "MainActivity"
     private const val TEXT_INPUT_DIAGNOSTICS_ENABLED = false
     private const val EXTERNAL_PLAYER_REQUEST_CODE = 7461
+    private const val SPEECH_REQUEST_CODE = 7462
 
     // External player result APIs used by Jellyfin Android TV.
     private const val API_MX_RETURN_RESULT = "return_result"
@@ -87,9 +90,12 @@ class MainActivity : FlutterActivity() {
   private val TEXT_INPUT_CHANNEL = "com.pleya/text_input"
   private val APP_EXIT_CHANNEL = "com.pleya/app_exit"
   private val APP_FOREGROUND_CHANNEL = "com.pleya/app_foreground"
+  private val SPEECH_CHANNEL = "com.pleya/speech"
   private var watchNextPlugin: WatchNextPlugin? = null
   private var nativeTextInputFocused = false
   private var pendingExternalPlayerResult: MethodChannel.Result? = null
+  private var pendingSpeechResult: MethodChannel.Result? = null
+  private var pendingSearchQuery: String? = null
   private var originalWindowBrightness: Float? = null
 
   private inline fun logTextInputDiag(message: () -> String) {
@@ -291,12 +297,29 @@ class MainActivity : FlutterActivity() {
 
     // Handle Watch Next deep link from initial launch
     handleWatchNextIntent(intent)
+    handleSearchIntent(intent)
   }
 
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     // Handle Watch Next deep link when app is already running
     handleWatchNextIntent(intent)
+    handleSearchIntent(intent)
+  }
+
+  // ACTION_SEARCH from the Assistant ("search X in Pleya") or the leanback
+  // global search row. Forwarded to Dart, which opens the search tab and runs
+  // the query. Stashed when the engine isn't up yet so a cold launch still
+  // lands on the results.
+  private fun handleSearchIntent(intent: Intent?) {
+    if (intent?.action != Intent.ACTION_SEARCH) return
+    val query = intent.getStringExtra(SearchManager.QUERY)?.trim()?.takeIf { it.isNotEmpty() } ?: return
+    val messenger = flutterEngine?.dartExecutor?.binaryMessenger
+    if (messenger == null) {
+      pendingSearchQuery = query
+      return
+    }
+    MethodChannel(messenger, SPEECH_CHANNEL).invokeMethod("onSearchIntent", query)
   }
 
   override fun dispatchKeyEvent(event: KeyEvent): Boolean {
@@ -321,6 +344,20 @@ class MainActivity : FlutterActivity() {
       } else {
         pendingResult.success(buildExternalPlayerResult(resultCode, data))
       }
+      return
+    }
+
+    if (requestCode == SPEECH_REQUEST_CODE) {
+      val pendingResult = pendingSpeechResult
+      pendingSpeechResult = null
+      // Cancelled / no match both come back as a plain null — Dart treats that
+      // as "user said nothing", not as an error.
+      val spoken = if (resultCode == RESULT_OK) {
+        data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+      } else {
+        null
+      }
+      pendingResult?.success(spoken)
       return
     }
 
@@ -370,6 +407,8 @@ class MainActivity : FlutterActivity() {
   override fun onDestroy() {
     pendingExternalPlayerResult?.error("ACTIVITY_DESTROYED", "Activity was destroyed while external player was active", null)
     pendingExternalPlayerResult = null
+    pendingSpeechResult?.success(null)
+    pendingSpeechResult = null
     super.onDestroy()
   }
 
@@ -499,6 +538,50 @@ class MainActivity : FlutterActivity() {
             "methodChannel setNativeTextInputFocused old=$oldValue new=$nativeTextInputFocused ${describeImeState()}"
           }
           result.success(null)
+        }
+        else -> result.notImplemented()
+      }
+    }
+
+    // Voice search. Uses the system RecognizerIntent (an activity result), not
+    // SpeechRecognizer — that keeps us free of the RECORD_AUDIO permission and
+    // its runtime prompt, which is awkward to grant on a TV remote.
+    val speechChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SPEECH_CHANNEL)
+    speechChannel.setMethodCallHandler { call, result ->
+      when (call.method) {
+        // Dart calls this once it has a listener attached; replaying here is
+        // what makes a cold "search X in Pleya" launch land on results.
+        "drainPendingSearchIntent" -> {
+          val query = pendingSearchQuery
+          pendingSearchQuery = null
+          result.success(query)
+        }
+        "isSupported" -> {
+          val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+          result.success(intent.resolveActivity(packageManager) != null)
+        }
+        "capture" -> {
+          if (pendingSpeechResult != null) {
+            result.error("ALREADY_ACTIVE", "A speech session is already active", null)
+            return@setMethodCallHandler
+          }
+          val prompt = call.argument<String>("prompt")
+          val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            if (prompt != null) putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
+          }
+          if (intent.resolveActivity(packageManager) == null) {
+            result.error("UNAVAILABLE", "No speech recognizer on this device", null)
+            return@setMethodCallHandler
+          }
+          try {
+            pendingSpeechResult = result
+            startActivityForResult(intent, SPEECH_REQUEST_CODE)
+          } catch (e: Exception) {
+            pendingSpeechResult = null
+            result.error("LAUNCH_FAILED", e.message, null)
+          }
         }
         else -> result.notImplemented()
       }

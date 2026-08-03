@@ -88,17 +88,30 @@ class ActiveProfileProvider extends ChangeNotifier with DisposableChangeNotifier
   /// Pending completers are tracked so [dispose] can settle them — without
   /// that, awaiters (picker, user-profile refresh, post-bind hooks) hang
   /// indefinitely when the provider is torn down mid-rebind.
-  Future<bool> awaitBindingSettle() {
+  /// [timeout] is a hard ceiling on the wait: a binder that never reports done
+  /// (server hanging on a flaky connection) would otherwise leave every awaiter
+  /// — including the full-screen switching overlay — stuck forever. On timeout
+  /// this resolves to `false`, i.e. "treat as not settled successfully".
+  Future<bool> awaitBindingSettle({Duration timeout = const Duration(seconds: 20)}) {
     if (!_isBinding) return Future.value(_lastBindingSucceeded);
     final completer = Completer<bool>();
     _bindingSettleWaiters.add(completer);
+    Timer? timer;
     void listener() {
       if (_isBinding) return;
       removeListener(listener);
+      timer?.cancel();
       if (_bindingSettleWaiters.remove(completer) && !completer.isCompleted) {
         completer.complete(_lastBindingSucceeded);
       }
     }
+
+    timer = Timer(timeout, () {
+      removeListener(listener);
+      if (_bindingSettleWaiters.remove(completer) && !completer.isCompleted) {
+        completer.complete(false);
+      }
+    });
 
     addListener(listener);
     return completer.future;

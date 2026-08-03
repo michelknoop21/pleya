@@ -104,6 +104,41 @@ void main() {
     expect(controller.text, 'a');
     expect(closed, 0);
   });
+
+  testWidgets('an unmapped key falls through to ancestor handlers', (tester) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+
+    final seenByAncestor = <LogicalKeyboardKey>[];
+    TvDetectionService.debugSetAppleTVOverride(true);
+    await tester.binding.setSurfaceSize(const Size(1280, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Focus(
+            onKeyEvent: (_, event) {
+              if (event is KeyDownEvent) seenByAncestor.add(event.logicalKey);
+              return KeyEventResult.ignored;
+            },
+            child: Center(child: TvVirtualKeyboardPanel(controller: controller, showPreview: false)),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The panel is permanently focused on the search page. If it claimed every
+    // key, global TV shortcuts would be dead there — so anything it does not
+    // act on has to keep travelling up.
+    await tester.sendKeyEvent(LogicalKeyboardKey.f5);
+    await tester.pump();
+
+    expect(seenByAncestor, contains(LogicalKeyboardKey.f5));
+    // ...and it genuinely did not treat it as text.
+    expect(controller.text, isEmpty);
+  });
 }
 
 Future<void> _pumpPanel(

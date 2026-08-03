@@ -6,7 +6,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../focus/input_mode_tracker.dart';
 import '../../i18n/strings.g.dart';
 import '../../utils/app_logger.dart';
-import '../../utils/dialogs.dart';
 import '../../utils/snackbar_helper.dart';
 
 /// Shared "connect this tracker" launcher.
@@ -29,21 +28,31 @@ Future<void> launchTrackerConnect<T>(
   if (isBusyOrConnected) return;
 
   final autoLaunchBrowser = !InputModeTracker.isKeyboardMode(context);
-  var dialogOpen = false;
+  final navigator = Navigator.of(context, rootNavigator: false);
+  DialogRoute<void>? codeRoute;
+
+  // Removes exactly the code dialog, never "whatever is on top". The previous
+  // `Navigator.pop(context)` used the *screen's* context, so a snackbar-less
+  // race could pop the settings screen out from under the user instead.
+  void closeCodeDialog() {
+    final route = codeRoute;
+    if (route == null) return;
+    codeRoute = null;
+    if (route.isActive) navigator.removeRoute(route);
+  }
 
   final ok = await connect((payload) {
     if (!context.mounted) return;
-    dialogOpen = true;
-    showScopedDialog<void>(
+    codeRoute = DialogRoute<void>(
       context: context,
       barrierDismissible: false,
+      themes: InheritedTheme.capture(from: context, to: navigator.context),
       builder: (_) => buildDialog(payload, () {
-        // Flip synchronously so the post-await guard below is a no-op —
-        // `whenComplete` fires a microtask later and loses the race otherwise.
-        dialogOpen = false;
+        closeCodeDialog();
         onCancel();
       }),
-    ).whenComplete(() => dialogOpen = false);
+    );
+    unawaited(navigator.push(codeRoute!));
     if (autoLaunchBrowser) {
       unawaited(
         launchUrl(Uri.parse(urlFor(payload)), mode: LaunchMode.externalApplication).catchError((Object e) {
@@ -54,13 +63,10 @@ Future<void> launchTrackerConnect<T>(
     }
   });
 
+  // Always tear the dialog down, mounted or not: the route reference stays
+  // valid even when the originating screen is gone.
+  closeCodeDialog();
   if (!context.mounted) return;
-  // Close the dialog iff we showed one and it's still up (not already closed by
-  // the Cancel button). This is the ONLY site that dismisses the dialog —
-  // popping here and having the dialog self-pop would pop the screen behind.
-  if (dialogOpen) {
-    Navigator.of(context).pop();
-  }
   if (!ok) {
     showAppSnackBar(context, t.trackers.connectFailed(service: serviceName));
   }

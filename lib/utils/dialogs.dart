@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../focus/focusable_button.dart';
@@ -76,12 +78,135 @@ Future<bool> showConfirmDialog(
 
 /// Shows a non-dismissible loading-spinner dialog. Caller is responsible for
 /// closing it via `Navigator.pop(context)` when the work completes.
+///
+/// Prefer [showCancellableLoadingDialog]: it owns its own route, always cleans
+/// up, and gives the user a focusable way out.
 void showLoadingDialog(BuildContext context) {
   showScopedDialog<void>(
     context: context,
     barrierDismissible: false,
     builder: (_) => const Center(child: CircularProgressIndicator()),
   );
+}
+
+/// Runs [task] behind a blocking spinner that the user can always escape from.
+///
+/// Unlike [showLoadingDialog] this holds on to its own [Route] and removes
+/// exactly that route when it is done — so a dialog pushed on top of it can no
+/// longer turn the close into a silent no-op, and it can never pop somebody
+/// else's route. It also always ends: on cancel (focusable button or BACK), on
+/// [timeout], or when [task] settles.
+///
+/// Returns the task's value, or `null` when the user cancelled or the timeout
+/// fired. Errors from [task] are rethrown after the dialog is closed, so
+/// existing caller-side error handling keeps working.
+Future<T?> showCancellableLoadingDialog<T>({
+  required BuildContext context,
+  required Future<T> task,
+  Duration timeout = const Duration(seconds: 30),
+  VoidCallback? onCancel,
+  String? message,
+  String? timeoutMessage,
+}) async {
+  final navigator = Navigator.of(context, rootNavigator: false);
+  final messenger = ScaffoldMessenger.maybeOf(context);
+
+  final gate = Completer<T?>();
+  var timedOut = false;
+  var closed = false;
+
+  late final DialogRoute<void> route;
+  void close() {
+    if (closed) return;
+    closed = true;
+    // Unconditional: `route.isCurrent` would skip cleanup whenever anything
+    // got pushed on top, which is exactly how these dialogs got stuck before.
+    if (route.isActive) navigator.removeRoute(route);
+  }
+
+  void cancel() {
+    if (!gate.isCompleted) gate.complete(null);
+    onCancel?.call();
+  }
+
+  route = DialogRoute<void>(
+    context: context,
+    barrierDismissible: false,
+    themes: InheritedTheme.capture(from: context, to: navigator.context),
+    builder: (_) => _CancellableLoadingDialog(message: message, onCancel: cancel),
+  );
+
+  // Attach handlers before the await so a task that is already complete (or
+  // already failed) can never slip past the gate unobserved.
+  unawaited(
+    task.then(
+      (value) {
+        if (!gate.isCompleted) gate.complete(value);
+      },
+      onError: (Object error, StackTrace stack) {
+        if (!gate.isCompleted) gate.completeError(error, stack);
+      },
+    ),
+  );
+
+  final timer = Timer(timeout, () {
+    if (gate.isCompleted) return;
+    timedOut = true;
+    gate.complete(null);
+  });
+
+  unawaited(navigator.push(route));
+  try {
+    return await gate.future;
+  } finally {
+    timer.cancel();
+    close();
+    if (timedOut && timeoutMessage != null) {
+      messenger?.showSnackBar(SnackBar(content: Text(timeoutMessage)));
+    }
+  }
+}
+
+class _CancellableLoadingDialog extends StatelessWidget {
+  const _CancellableLoadingDialog({required this.message, required this.onCancel});
+
+  final String? message;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) onCancel();
+      },
+      child: Center(
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                if (message != null) ...[const SizedBox(height: 16), Text(message!, style: theme.textTheme.bodyMedium)],
+                const SizedBox(height: 16),
+                FocusableButton(
+                  autofocus: true,
+                  onPressed: onCancel,
+                  child: TextButton(
+                    onPressed: onCancel,
+                    style: TextButton.styleFrom(padding: _buttonPadding, shape: _buttonShape),
+                    child: Text(t.common.cancel),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Shows the server-side 500 modal (bandwidth/transcoding limit rejection).

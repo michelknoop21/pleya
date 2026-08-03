@@ -15,6 +15,7 @@ import '../../focus/key_event_utils.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/mounted_set_state_mixin.dart';
 import '../../utils/dialogs.dart';
+import '../../utils/media_server_timeouts.dart';
 import '../../main.dart' show gitCommit;
 import '../../utils/app_logger.dart';
 import '../../utils/formatters.dart';
@@ -134,17 +135,20 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
   Future<void> _uploadLogs() async {
     final logText = _formatAllLogs();
 
-    showLoadingDialog(context);
-
     try {
-      final response = await httpClient.post(
-        '${const String.fromEnvironment('PLEYA_ICE_BASE', defaultValue: 'https://ice.pleya.app')}/logs',
-        body: logText,
-        headers: {'Content-Type': 'text/plain'},
+      final response = await showCancellableLoadingDialog(
+        context: context,
+        timeout: MediaServerTimeouts.interactive,
+        timeoutMessage: t.common.timedOut,
+        task: httpClient.post(
+          '${const String.fromEnvironment('PLEYA_ICE_BASE', defaultValue: 'https://ice.pleya.app')}/logs',
+          body: logText,
+          headers: {'Content-Type': 'text/plain'},
+        ),
       );
 
-      if (!mounted) return;
-      Navigator.of(context).pop(); // dismiss loading
+      // null = cancelled or timed out; the helper already told the user.
+      if (response == null || !mounted) return;
 
       final data = response.data is String ? jsonDecode(response.data) : response.data;
       final id = (data as Map<String, dynamic>)['id'] as String;
@@ -183,7 +187,6 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
       );
     } catch (_) {
       if (!mounted) return;
-      Navigator.of(context).pop(); // dismiss loading
       showErrorSnackBar(context, t.messages.logsUploadFailed);
     }
   }

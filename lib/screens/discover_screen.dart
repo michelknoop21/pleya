@@ -1186,6 +1186,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     }
   }
 
+  /// Drop the blocking overlay without waiting for the rebind. The switch
+  /// itself keeps running in the background; the user just gets their UI back.
+  void _cancelProfileSwitch() {
+    if (mounted && _switchingProfile) setState(() => _switchingProfile = false);
+  }
+
   Future<void> _switchProfileFromMenu(Profile profile) async {
     if (_switchingProfile) return;
     setState(() => _switchingProfile = true);
@@ -1523,7 +1529,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           // initial/tab-switch focus lands on content (hero/hubs), not the toolbar.
           // Toolbar buttons are still reachable via explicit UP from hero section.
           Positioned(top: 0, left: 0, right: 0, child: ExcludeFocusTraversal(child: _buildOverlaidAppBar())),
-          if (_switchingProfile) const ProfileSwitchingOverlay(),
+          if (_switchingProfile) ProfileSwitchingOverlay(onCancel: _cancelProfileSwitch),
         ],
       ),
     );
@@ -1686,7 +1692,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   Positioned(top: 0, left: -animatedBleed, width: fullBleedWidth, child: child!),
             ),
           ),
-          if (_switchingProfile) const ProfileSwitchingOverlay(),
+          if (_switchingProfile) ProfileSwitchingOverlay(onCancel: _cancelProfileSwitch),
         ],
       ),
     );

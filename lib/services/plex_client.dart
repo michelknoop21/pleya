@@ -1300,6 +1300,10 @@ class PlexClient
         'includeExternalMedia': 1,
         'X-Plex-Container-Size': limit,
       },
+      // Search is interactive and cross-server: a failover attempt doubles the
+      // wait the user sits through, and the aggregation layer already caps
+      // each server at MediaServerTimeouts.searchPerServer anyway.
+      allowEndpointFailover: false,
     );
 
     final results = <PlexMetadataDto>[];

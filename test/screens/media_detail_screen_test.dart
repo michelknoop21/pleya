@@ -931,6 +931,90 @@ void main() {
       expect(episodeRowWatched(tester, 'Episode S1E1'), isTrue);
     });
   });
+
+  group('metadata loading is escapable', () {
+    // The loading state used to be a PopScope(canPop: false) with an empty
+    // callback around a Focus with no node and no focusable child — no back
+    // key, no button, nothing. On a hanging network that stranded the user
+    // until the (formerly 120s) receive timeout expired.
+    testWidgets('a hanging metadata fetch still offers a way back', (tester) async {
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final movie = MediaItem(
+        id: 'movie_1',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'Stuck Movie',
+        serverId: 'server_1',
+        serverName: 'Server',
+      );
+      final client = _HangingMetadataClient();
+      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+
+      var popped = false;
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: ChangeNotifierProvider<MultiServerProvider>.value(
+            value: provider,
+            child: MaterialApp(
+              theme: monoTheme(dark: true),
+              home: Navigator(
+                onDidRemovePage: (_) => popped = true,
+                pages: [
+                  MaterialPage<void>(
+                    child: withProfileNavigationScope(child: MediaDetailScreen(metadata: movie)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // Still loading — and the escape hatch is present and focusable.
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
+      final cancel = find.text(t.common.cancel);
+      expect(cancel, findsOneWidget);
+
+      await tester.tap(cancel);
+      await tester.pump();
+      expect(popped, isTrue);
+
+      // Let the abandoned request's timeout timer expire.
+      await tester.pump(const Duration(seconds: 30));
+    });
+  });
+}
+
+/// Never answers `fetchItemWithOnDeck`, standing in for the flaky-network case.
+class _HangingMetadataClient implements MediaServerClient {
+  @override
+  ServerId get serverId => ServerId('server_1');
+
+  @override
+  String? get serverName => 'Server';
+
+  @override
+  MediaBackend get backend => MediaBackend.jellyfin;
+
+  @override
+  ServerCapabilities get capabilities => ServerCapabilities.jellyfin;
+
+  @override
+  Future<({MediaItem? item, MediaItem? onDeckEpisode})> fetchItemWithOnDeck(String id) {
+    return Completer<({MediaItem? item, MediaItem? onDeckEpisode})>().future;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeMediaServerClient implements MediaServerClient {

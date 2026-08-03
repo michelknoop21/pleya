@@ -7,6 +7,16 @@ class MediaServerTimeouts {
 
   static const receive = Duration(seconds: 120);
 
+  /// Budget for a call the user is actively waiting on behind a blocking
+  /// spinner or dialog. [receive] is a background ceiling — 2 minutes of
+  /// frozen UI (doubled again by endpoint failover) is never the right answer
+  /// when someone is staring at a modal, so those call sites use this instead.
+  static const interactive = Duration(seconds: 15);
+
+  /// Per-server budget for cross-server search fan-out. One hanging server
+  /// must not hold back the results of the healthy ones.
+  static const searchPerServer = Duration(seconds: 8);
+
   /// Retry budget for home `/hubs` startup calls. These endpoints can be slow
   /// while Plex wakes idle disks, but should not block forever.
   static const homeHubAttemptTimeouts = [Duration(seconds: 10), Duration(seconds: 5), Duration(milliseconds: 2500)];

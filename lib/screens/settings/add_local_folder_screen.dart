@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../focus/focusable_text_field.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
 import '../../services/saf_storage_service.dart';
@@ -30,6 +31,8 @@ class AddLocalFolderScreen extends StatefulWidget {
 }
 
 class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
+  final _nameController = TextEditingController();
+  final _nameFocus = FocusNode(debugLabel: 'AddLocalFolderName');
   String? _directoryUri;
   String? _bookmarkData;
   String _displayName = '';
@@ -37,6 +40,13 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
   // plays regardless of movies/shows nesting. Movies/TV modes stay opt-in.
   String _libraryType = 'mixed';
   bool _saving = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _nameFocus.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,17 +121,25 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
               // Display name
               Text(t.addLocalFolder.nameLabel, style: theme.textTheme.titleSmall),
               const SizedBox(height: 8),
-              TextField(
+              FocusableTextField(
+                controller: _nameController,
+                focusNode: _nameFocus,
+                tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
                 decoration: InputDecoration(hintText: t.addLocalFolder.nameHint, border: const OutlineInputBorder()),
                 onChanged: (value) => setState(() => _displayName = value),
               ),
               const SizedBox(height: 32),
 
               // Save button
-              FilledButton.icon(
-                onPressed: _canSave() ? _save : null,
-                icon: const Icon(Symbols.check_rounded, fill: 1),
-                label: Text(t.addLocalFolder.save),
+              FocusableWrapper(
+                disableScale: true,
+                borderRadius: 20,
+                onSelect: _canSave() ? _save : null,
+                child: FilledButton.icon(
+                  onPressed: _canSave() ? _save : null,
+                  icon: const Icon(Symbols.check_rounded, fill: 1),
+                  label: Text(t.addLocalFolder.save),
+                ),
               ),
             ]),
           ),
@@ -150,6 +168,7 @@ class _AddLocalFolderScreenState extends State<AddLocalFolderScreen> {
         _bookmarkData = bookmark;
         if (_displayName.isEmpty) {
           _displayName = t.addLocalFolder.cardTitle;
+          _nameController.text = _displayName;
         }
       });
     }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Only used by searchable.xml (Assistant / global search). The in-app UI
+         is localized through slang, not through Android resources. -->
+    <string name="app_name">Pleya</string>
+    <string name="search_hint">Search movies, shows, music…</string>
+</resources>

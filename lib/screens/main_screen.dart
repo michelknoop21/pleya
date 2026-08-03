@@ -46,6 +46,7 @@ import '../services/api_cache.dart';
 import '../services/multi_server_manager.dart';
 import '../services/offline_watch_sync_service.dart';
 import '../services/settings_service.dart';
+import '../services/speech_search_service.dart';
 import '../providers/offline_mode_provider.dart';
 import '../services/companion_remote/companion_remote_host_controller.dart';
 import '../services/companion_remote/companion_remote_receiver.dart';
@@ -278,6 +279,8 @@ class _MainScreenState extends State<MainScreen>
   static const _backExitWindow = Duration(seconds: 3);
   DateTime? _lastBackPressAt;
 
+  StreamSubscription<String>? _externalSearchSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -285,6 +288,7 @@ class _MainScreenState extends State<MainScreen>
     _offlineUntilConnected = widget.isOfflineMode;
 
     WidgetsBinding.instance.addObserver(this);
+    _listenForExternalSearchQueries();
 
     if (PlatformDetector.isDesktopOS()) {
       windowManager.addListener(this);
@@ -809,16 +813,27 @@ class _MainScreenState extends State<MainScreen>
     receiver.onTabDownloads = () => _selectTab(NavigationTabId.downloads);
     receiver.onTabSettings = () => _selectTab(NavigationTabId.settings);
     receiver.onHome = () => _selectTab(NavigationTabId.discover);
-    receiver.onSearchAction = (query) {
-      _selectTab(NavigationTabId.search);
-      if (query != null && query.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_searchKey.currentState case final SearchInputFocusable searchable) {
-            searchable.setSearchQuery(query);
-          }
-        });
+    receiver.onSearchAction = _openSearchWithQuery;
+  }
+
+  /// Open the search tab and, when a finished query came with it (companion
+  /// remote, Assistant voice search), run it straight away.
+  void _openSearchWithQuery(String? query) {
+    _selectTab(NavigationTabId.search);
+    if (query == null || query.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_searchKey.currentState case final SearchInputFocusable searchable) {
+        searchable.submitSearchQuery(query);
       }
-    };
+    });
+  }
+
+  /// Android Assistant / TV global search ("search X in Pleya").
+  void _listenForExternalSearchQueries() {
+    unawaited(SpeechSearchService.instance.startListeningForSearchIntents());
+    _externalSearchSubscription = SpeechSearchService.instance.externalQueries.listen((query) {
+      if (mounted) _openSearchWithQuery(query);
+    });
   }
 
   Future<void> _autoStartCompanionRemoteServer() async {
@@ -867,6 +882,7 @@ class _MainScreenState extends State<MainScreen>
       receiver.onHome = null;
       receiver.onSearchAction = null;
     }
+    unawaited(_externalSearchSubscription?.cancel());
 
     super.dispose();
   }
