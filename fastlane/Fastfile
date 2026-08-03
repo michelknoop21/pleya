@@ -125,6 +125,17 @@ desc "tvOS → TestFlight"
 lane :tvos_beta do
   ensure_build_number("appletvos")
   flutter_sh("flutter pub get")
+  # tvOS bouwt op een eigen engine-fork (edde746/flutter-tvos) uit
+  # ~/.cache/flutter-tvos-engine, plus een projectkopie in tvos/Flutter/ephemeral/.
+  # Deze lane genereerde als enige zijn eigen config niet — ios_beta en
+  # macos_beta draaien `flutter build --config-only` — en leunde dus op
+  # artefacten van een eerdere build. Een verse clone, een `flutter clean` of
+  # een leeggeruimde cache brak de archive op "Unable to find module
+  # dependency: 'Flutter'", een fout die nergens naar de echte oorzaak wijst.
+  # fetch_engine.sh is idempotent (slaat de download over als de cache al klopt)
+  # en herschrijft Generated.xcconfig — daarom ná ensure_build_number, want het
+  # neemt het buildnummer uit pubspec.yaml over.
+  sh("cd #{PROJECT_ROOT} && tvos/scripts/fetch_engine.sh")
   build_app(
     workspace: File.join(PROJECT_ROOT, "tvos/Runner.xcworkspace"),
     scheme: "Runner",
