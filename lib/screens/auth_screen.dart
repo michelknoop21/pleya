@@ -303,6 +303,7 @@ class _AuthScreenState extends State<AuthScreen> {
       onTokenReceived: _connectToAllServersAndNavigate,
       autoStartQrOnTV: false,
       initialButtonsBuilder: _buildInitialButtons,
+      onSwitchToJellyfin: _connectToJellyfin,
     );
   }
 
@@ -360,93 +361,80 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildInitialButtons(BuildContext context, VoidCallback startBrowser, VoidCallback startQr, bool busy) {
+  /// Plex and Jellyfin are peers, not a primary and a fallback. The previous
+  /// layout put Jellyfin below an "or" divider as an outlined button, which
+  /// read as a degraded option — a Jellyfin-only user (an App Review reviewer
+  /// with a Jellyfin demo account, for one) would reach for "Sign in with Plex"
+  /// and dead-end on plex.tv. Both backends now use [_primaryCta]; "Show QR
+  /// Code" drops to secondary because it's a variant of the Plex route, not a
+  /// third backend.
+  Widget _buildInitialButtons(
+    BuildContext context,
+    VoidCallback startBrowser,
+    VoidCallback startQr,
+    bool busy,
+    VoidCallback clearError,
+  ) {
     final isTV = PlatformDetector.isTV();
     final isAppleTV = PlatformDetector.isAppleTV();
+    // Route away from Plex without leaving its error text behind on return.
+    void openJellyfin() {
+      clearError();
+      unawaited(_connectToJellyfin());
+    }
+
+    // The Plex entry point differs per form factor: TV leads with the QR code
+    // (no keyboard), everything else opens the in-app browser.
+    final plexAction = isTV ? startQr : startBrowser;
     return Column(
       mainAxisSize: .min,
       crossAxisAlignment: .stretch,
       children: [
-        if (isTV) ...[
-          FocusableButton(
-            autofocus: true,
-            onPressed: busy ? null : startQr,
-            child: _primaryCta(
-              onPressed: busy ? null : startQr,
-              child: Row(
-                mainAxisAlignment: .center,
-                mainAxisSize: .min,
-                children: [
-                  const BackendBadge(backend: MediaBackend.plex, size: 18),
-                  const SizedBox(width: 8),
-                  Text(t.auth.signInWithPlex),
-                ],
-              ),
+        FocusableButton(
+          autofocus: isTV,
+          onPressed: busy ? null : plexAction,
+          child: _primaryCta(
+            onPressed: busy ? null : plexAction,
+            child: Row(
+              mainAxisAlignment: .center,
+              mainAxisSize: .min,
+              children: [
+                const BackendBadge(backend: MediaBackend.plex, size: 18),
+                const SizedBox(width: 8),
+                Text(t.auth.signInWithPlex),
+              ],
             ),
           ),
-          if (!isAppleTV) ...[
-            const SizedBox(height: 12),
-            FocusableButton(
-              onPressed: busy ? null : startBrowser,
-              child: OutlinedButton(
-                onPressed: busy ? null : startBrowser,
-                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-                child: Text(t.auth.useBrowser),
-              ),
-            ),
-          ],
-        ] else ...[
-          FocusableButton(
-            onPressed: busy ? null : startBrowser,
-            child: _primaryCta(
-              onPressed: busy ? null : startBrowser,
-              child: Row(
-                mainAxisAlignment: .center,
-                mainAxisSize: .min,
-                children: [
-                  const BackendBadge(backend: MediaBackend.plex, size: 18),
-                  const SizedBox(width: 8),
-                  Text(t.auth.signInWithPlex),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          FocusableButton(
-            onPressed: busy ? null : startQr,
-            child: OutlinedButton(
-              onPressed: busy ? null : startQr,
-              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-              child: Text(t.auth.showQRCode),
-            ),
-          ),
-        ],
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(child: Divider(color: Theme.of(context).colorScheme.outlineVariant)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                t.auth.or,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-              ),
-            ),
-            Expanded(child: Divider(color: Theme.of(context).colorScheme.outlineVariant)),
-          ],
         ),
         const SizedBox(height: 12),
         FocusableButton(
-          onPressed: _connectToJellyfin,
-          child: OutlinedButton.icon(
-            onPressed: _connectToJellyfin,
-            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-            icon: const BackendBadge(backend: MediaBackend.jellyfin, size: 18),
-            label: Text(t.auth.connectToJellyfin),
+          onPressed: openJellyfin,
+          child: _primaryCta(
+            onPressed: openJellyfin,
+            child: Row(
+              mainAxisAlignment: .center,
+              mainAxisSize: .min,
+              children: [
+                const BackendBadge(backend: MediaBackend.jellyfin, size: 18),
+                const SizedBox(width: 8),
+                Text(t.auth.connectToJellyfin),
+              ],
+            ),
           ),
         ),
+        // Secondary variant of the Plex route: browser on TV, QR elsewhere.
+        // Apple TV has no usable external browser hand-off, so it gets neither.
+        if (!(isTV && isAppleTV)) ...[
+          const SizedBox(height: 12),
+          FocusableButton(
+            onPressed: busy ? null : (isTV ? startBrowser : startQr),
+            child: OutlinedButton(
+              onPressed: busy ? null : (isTV ? startBrowser : startQr),
+              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+              child: Text(isTV ? t.auth.useBrowser : t.auth.showQRCode),
+            ),
+          ),
+        ],
         if (kDebugMode) ...[
           const SizedBox(height: 12),
           FocusableButton(

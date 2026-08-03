@@ -8,7 +8,9 @@ import '../../exceptions/media_server_exceptions.dart';
 import '../../i18n/strings.g.dart';
 import '../../services/plex_auth_service.dart';
 import '../../focus/focusable_button.dart';
+import '../../media/media_backend.dart';
 import '../../theme/mono_tokens.dart';
+import '../../widgets/backend_badge.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/platform_detector.dart';
 
@@ -53,8 +55,24 @@ class PlexPinAuthFlow extends StatefulWidget {
   /// shows two buttons — "Sign in with Plex" (browser) and "Show QR Code".
   /// Pass a custom builder when the parent wants to integrate the buttons
   /// into a richer layout (extra Jellyfin button, debug button, branding).
-  final Widget Function(BuildContext context, VoidCallback startBrowser, VoidCallback startQr, bool busy)?
+  ///
+  /// `clearError` wipes any lingering Plex error text — call it from buttons
+  /// that route the user away from the Plex flow so a stale red message
+  /// doesn't hang around underneath an unrelated screen.
+  final Widget Function(
+    BuildContext context,
+    VoidCallback startBrowser,
+    VoidCallback startQr,
+    bool busy,
+    VoidCallback clearError,
+  )?
   initialButtonsBuilder;
+
+  /// When non-null, a timed-out sign-in offers a way out to the other backend
+  /// instead of dead-ending on red text. Kept as a callback so this widget
+  /// stays independent of [AuthScreen]; [AddPlexAccountScreen] passes nothing
+  /// and keeps its current behaviour.
+  final VoidCallback? onSwitchToJellyfin;
 
   const PlexPinAuthFlow({
     super.key,
@@ -64,6 +82,7 @@ class PlexPinAuthFlow extends StatefulWidget {
     this.autoStartQrOnTV = true,
     this.initialUseQr,
     this.initialButtonsBuilder,
+    this.onSwitchToJellyfin,
   });
 
   @override
@@ -77,6 +96,12 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
   String? _qrAuthUrl;
   int _attemptId = 0;
   String? _errorMessage;
+
+  /// True when the last attempt ended because the PIN was never claimed (as
+  /// opposed to a hard failure). That case is recoverable and almost always
+  /// means the user signed in somewhere it couldn't count — e.g. typing
+  /// Jellyfin credentials into plex.tv — so it gets actions, not just text.
+  bool _timedOut = false;
 
   @override
   void initState() {
@@ -114,6 +139,7 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
       _useQr = useQr;
       _isPolling = true;
       _errorMessage = null;
+      _timedOut = false;
       _qrAuthUrl = null;
     });
 
@@ -147,6 +173,7 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
           _isPolling = false;
           _qrAuthUrl = null;
           _errorMessage = t.auth.authenticationTimeout;
+          _timedOut = true;
         });
         return;
       }
@@ -175,6 +202,7 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
         _isPolling = false;
         _qrAuthUrl = null;
         _errorMessage = _authErrorMessage(e);
+        _timedOut = false;
       });
     }
   }
@@ -189,6 +217,62 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
   }
 
   bool _isCurrentAttempt(int attemptId) => mounted && attemptId == _attemptId;
+
+  void _clearError() {
+    if (_errorMessage == null && !_timedOut) return;
+    setState(() {
+      _errorMessage = null;
+      _timedOut = false;
+    });
+  }
+
+  void _switchToJellyfin() {
+    final onSwitch = widget.onSwitchToJellyfin;
+    if (onSwitch == null) return;
+    _clearError();
+    onSwitch();
+  }
+
+  /// Single rendering of the error state. On a timeout it's not just red text:
+  /// the user gets a retry and — when the parent offered one — a route to the
+  /// other backend, because "the PIN was never claimed" usually means they were
+  /// never going to succeed on Plex in the first place.
+  Widget _buildErrorBlock(ThemeData theme) {
+    return Column(
+      mainAxisSize: .min,
+      crossAxisAlignment: .stretch,
+      children: [
+        Text(
+          _errorMessage!,
+          style: TextStyle(color: theme.colorScheme.error),
+          textAlign: TextAlign.center,
+        ),
+        if (_timedOut) ...[
+          const SizedBox(height: 16),
+          FocusableButton(
+            onPressed: _retry,
+            child: FilledButton(
+              onPressed: _retry,
+              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+              child: Text(t.auth.tryAgain),
+            ),
+          ),
+          if (widget.onSwitchToJellyfin != null) ...[
+            const SizedBox(height: 8),
+            FocusableButton(
+              onPressed: _switchToJellyfin,
+              child: OutlinedButton.icon(
+                onPressed: _switchToJellyfin,
+                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                icon: const BackendBadge(backend: MediaBackend.jellyfin, size: 18),
+                label: Text(t.auth.usingJellyfinInstead),
+              ),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
 
   void _retry() {
     final useQr = _useQr;
@@ -215,20 +299,19 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
       mainAxisSize: .min,
       crossAxisAlignment: .stretch,
       children: [
-        builder(context, () => _start(useQr: false), () => _start(useQr: true), _authService == null),
-        if (_errorMessage != null) ...[
-          const SizedBox(height: 16),
-          Text(
-            _errorMessage!,
-            style: TextStyle(color: theme.colorScheme.error),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        builder(context, () => _start(useQr: false), () => _start(useQr: true), _authService == null, _clearError),
+        if (_errorMessage != null) ...[const SizedBox(height: 16), _buildErrorBlock(theme)],
       ],
     );
   }
 
-  Widget _defaultInitialButtons(BuildContext context, VoidCallback browser, VoidCallback qr, bool busy) {
+  Widget _defaultInitialButtons(
+    BuildContext context,
+    VoidCallback browser,
+    VoidCallback qr,
+    bool busy,
+    VoidCallback clearError,
+  ) {
     return Column(
       mainAxisSize: .min,
       crossAxisAlignment: .stretch,
@@ -282,14 +365,7 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
             child: Text(t.common.retry),
           ),
         ),
-        if (_errorMessage != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            _errorMessage!,
-            style: TextStyle(color: theme.colorScheme.error),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        if (_errorMessage != null) ...[const SizedBox(height: 12), _buildErrorBlock(theme)],
       ],
     );
   }
@@ -314,14 +390,7 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
             child: Text(t.common.retry),
           ),
         ),
-        if (_errorMessage != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            _errorMessage!,
-            style: TextStyle(color: theme.colorScheme.error),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        if (_errorMessage != null) ...[const SizedBox(height: 12), _buildErrorBlock(theme)],
       ],
     );
   }

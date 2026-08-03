@@ -214,8 +214,7 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
         if (!autoStart) _requestFocusAfterFrame(_usernameFocus);
         return autoStart;
       },
-      errorMapper: (e) =>
-          e is MediaServerUrlException ? e.message : t.addServer.couldNotReachServer(error: e.toString()),
+      errorMapper: (e) => e is MediaServerUrlException ? e.message : t.addServer.couldNotReachServer(error: _detail(e)),
     );
     // Sequenced after the probe's runAsync so busy stays set straight through
     // /QuickConnect/Initiate. Started from inside the probe body, the probe's
@@ -223,6 +222,15 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
     // fallback from the removed tile/button then landed on the URL field and
     // auto-opened the TV keyboard over the Quick Connect panel.
     if (autoStartQuickConnect == true && mounted) await _startQuickConnect();
+  }
+
+  /// Human-readable detail for an error that's about to be interpolated into
+  /// user-facing text. `toString()` on our own exceptions leaks the runtime
+  /// type ("MediaServerHttpException: ..."), which reads as a crash to anyone
+  /// who screenshots it.
+  static String _detail(Object e) {
+    if (e is MediaServerException && e.message.isNotEmpty) return e.message;
+    return e.toString();
   }
 
   Future<void> _signIn() async {
@@ -254,7 +262,7 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
       errorMapper: (e) {
         if (e is MediaServerAuthException) return e.message;
         appLogger.e('Add Jellyfin failed', error: e);
-        return t.addServer.signInFailed(error: e.toString());
+        return t.addServer.signInFailed(error: _detail(e));
       },
     );
   }
@@ -301,7 +309,7 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
       errorMapper: (e) {
         if (e is MediaServerAuthException) return e.message;
         appLogger.e('Jellyfin Quick Connect failed', error: e);
-        return t.addServer.quickConnectFailed(error: e.toString());
+        return t.addServer.quickConnectFailed(error: _detail(e));
       },
       shouldApplyState: () => attemptId == _qcAttemptId,
     );
@@ -461,10 +469,19 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
         else
           SliverPadding(
             padding: const EdgeInsets.all(16),
+            // FocusedScrollScaffold has no max-width of its own, so on a tablet
+            // the URL field and buttons stretch edge-to-edge. Match the 420 the
+            // Quick Connect panel below already uses, with a little more room
+            // for the two-line URL hint.
             sliver: SliverToBoxAdapter(
-              child: Form(
-                key: _formKey,
-                child: Column(crossAxisAlignment: .stretch, children: _buildBodyChildren(theme)),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(crossAxisAlignment: .stretch, children: _buildBodyChildren(theme)),
+                  ),
+                ),
               ),
             ),
           ),

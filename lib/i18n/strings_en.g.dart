@@ -184,6 +184,9 @@ class TranslationsAuthEn {
 	/// en: 'Pleya connects to your Plex or Jellyfin media server. Pick one to get started.'
 	String get chooseHowToSignInDescription => 'Pleya connects to your Plex or Jellyfin media server. Pick one to get started.';
 
+	/// en: 'Using a Jellyfin server? Connect to Jellyfin instead'
+	String get usingJellyfinInstead => 'Using a Jellyfin server? Connect to Jellyfin instead';
+
 	/// en: 'Try again'
 	String get tryAgain => 'Try again';
 
@@ -351,6 +354,9 @@ class TranslationsCommonEn {
 
 	/// en: 'Increase $label'
 	String increaseValue({required Object label}) => 'Increase ${label}';
+
+	/// en: 'This took too long. Please try again.'
+	String get timedOut => 'This took too long. Please try again.';
 }
 
 // Path: screens
@@ -1160,6 +1166,21 @@ class TranslationsSearchEn {
 	String get clearHistory => 'Clear';
 
 	late final TranslationsSearchFiltersEn filters = TranslationsSearchFiltersEn.internal(_root);
+
+	/// en: 'Search failed'
+	String get errorTitle => 'Search failed';
+
+	/// en: 'Couldn't reach your servers. Check your connection and try again.'
+	String get errorNetwork => 'Couldn\'t reach your servers. Check your connection and try again.';
+
+	/// en: 'No servers available'
+	String get noServersTitle => 'No servers available';
+
+	/// en: 'Add or connect a server to search your media.'
+	String get noServersBody => 'Add or connect a server to search your media.';
+
+	/// en: 'Voice search'
+	String get voiceSearch => 'Voice search';
 }
 
 // Path: hotkeys
@@ -5268,6 +5289,7 @@ extension on Translations {
 			'auth.quickConnectExpired' => 'Quick Connect expired. Try again.',
 			'auth.chooseHowToSignIn' => 'Choose how to sign in',
 			'auth.chooseHowToSignInDescription' => 'Pleya connects to your Plex or Jellyfin media server. Pick one to get started.',
+			'auth.usingJellyfinInstead' => 'Using a Jellyfin server? Connect to Jellyfin instead',
 			'auth.tryAgain' => 'Try again',
 			'auth.plexTokenLabel' => 'Plex auth token',
 			'auth.plexTokenHint' => 'Enter your plex.tv token',
@@ -5321,6 +5343,7 @@ extension on Translations {
 			'common.pressBackAgainToExit' => 'Press back again to exit',
 			'common.decreaseValue' => ({required Object label}) => 'Decrease ${label}',
 			'common.increaseValue' => ({required Object label}) => 'Increase ${label}',
+			'common.timedOut' => 'This took too long. Please try again.',
 			'screens.licenses' => 'Licenses',
 			'screens.switchProfile' => 'Switch Profile',
 			'screens.whoIsWatching' => 'Who\'s watching?',
@@ -5583,6 +5606,11 @@ extension on Translations {
 			'search.filters.shows' => 'Shows',
 			'search.filters.episodes' => 'Episodes',
 			'search.filters.people' => 'People',
+			'search.errorTitle' => 'Search failed',
+			'search.errorNetwork' => 'Couldn\'t reach your servers. Check your connection and try again.',
+			'search.noServersTitle' => 'No servers available',
+			'search.noServersBody' => 'Add or connect a server to search your media.',
+			'search.voiceSearch' => 'Voice search',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Set Shortcut for ${actionName}',
 			'hotkeys.clearShortcut' => 'Clear shortcut',
 			'hotkeys.noShortcutSet' => 'No shortcut set',
@@ -5751,6 +5779,8 @@ extension on Translations {
 			'videoControls.pipErrors.permissionDisabled' => 'Picture-in-picture is disabled. Enable it in system settings.',
 			'videoControls.pipErrors.notSupported' => 'Device doesn\'t support picture-in-picture mode',
 			'videoControls.pipErrors.voSwitchFailed' => 'Failed to switch video output for picture-in-picture',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.pipErrors.failed' => 'Picture-in-picture failed to start',
 			'videoControls.pipErrors.unknown' => ({required Object error}) => 'An error occurred: ${error}',
 			'videoControls.chapters' => 'Chapters',
@@ -5758,8 +5788,6 @@ extension on Translations {
 			'videoControls.queue' => 'Queue',
 			'videoControls.noQueueItems' => 'No items in queue',
 			'videoControls.searchSubtitles' => 'Search Subtitles',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.language' => 'Language',
 			'videoControls.noSubtitlesFound' => 'No subtitles found',
 			'videoControls.downloadedSubtitle' => 'Downloaded',
@@ -6265,6 +6293,8 @@ extension on Translations {
 			'downloads.downloadResumed' => 'Download resumed',
 			'downloads.serverErrorBitrate' => 'Server error: file may exceed the remote bitrate limit',
 			'downloads.storageFull' => 'Not enough storage space on this device',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.episodesQueued' => ({required Object count}) => '${count} episodes queued for download',
 			'downloads.downloadDeleted' => 'Download deleted',
 			'downloads.deleteConfirm' => ({required Object title}) => 'Delete "${title}" from this device?',
@@ -6272,8 +6302,6 @@ extension on Translations {
 			'downloads.cancelledDownloadMessage' => 'This download was cancelled. What would you like to do?',
 			'downloads.allEpisodesAlreadyDownloaded' => 'All episodes already downloaded',
 			'downloads.resumeDownload' => 'Resume download',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.cancelledDownload' => 'Cancelled download',
 			'downloads.syncingFile' => ({required Object file, required Object status}) => '${file} (syncing ${status})',
 			'downloads.downloadedFileClickToComplete' => ({required Object file}) => 'Downloaded ${file} - Click to complete',

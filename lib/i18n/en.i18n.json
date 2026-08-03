@@ -26,6 +26,7 @@
     "quickConnectExpired": "Quick Connect expired. Try again.",
     "chooseHowToSignIn": "Choose how to sign in",
     "chooseHowToSignInDescription": "Pleya connects to your Plex or Jellyfin media server. Pick one to get started.",
+    "usingJellyfinInstead": "Using a Jellyfin server? Connect to Jellyfin instead",
     "tryAgain": "Try again",
     "plexTokenLabel": "Plex auth token",
     "plexTokenHint": "Enter your plex.tv token",
@@ -80,7 +81,8 @@
     "exitFullscreen": "Exit fullscreen",
     "pressBackAgainToExit": "Press back again to exit",
     "decreaseValue": "Decrease $label",
-    "increaseValue": "Increase $label"
+    "increaseValue": "Increase $label",
+    "timedOut": "This took too long. Please try again."
   },
   "screens": {
     "licenses": "Licenses",
@@ -352,7 +354,12 @@
       "shows": "Shows",
       "episodes": "Episodes",
       "people": "People"
-    }
+    },
+    "errorTitle": "Search failed",
+    "errorNetwork": "Couldn't reach your servers. Check your connection and try again.",
+    "noServersTitle": "No servers available",
+    "noServersBody": "Add or connect a server to search your media.",
+    "voiceSearch": "Voice search"
   },
   "hotkeys": {
     "setShortcutFor": "Set Shortcut for ${actionName}",

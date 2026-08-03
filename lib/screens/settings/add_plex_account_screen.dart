@@ -175,7 +175,7 @@ class _AddPlexAccountScreenState extends State<AddPlexAccountScreen> with AsyncF
                   children: [
                     PlexPinAuthFlow(
                       onTokenReceived: _onTokenReceived,
-                      initialButtonsBuilder: (context, browser, qr, busy) => Column(
+                      initialButtonsBuilder: (context, browser, qr, busy, clearError) => Column(
                         mainAxisSize: .min,
                         crossAxisAlignment: .stretch,
                         children: [
