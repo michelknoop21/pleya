@@ -110,7 +110,8 @@ class _TranslationsAuthKo extends TranslationsAuthEn {
 	@override String get signInWithPlex => 'Plex 계정으로 로그인';
 	@override String get showQRCode => 'QR 코드';
 	@override String get authenticate => '인증';
-	@override String get authenticationTimeout => '인증 시간이 초과되었습니다. 다시 시도해 주세요.';
+	@override String get authenticationTimeout => '로그인이 완료되지 않았습니다. 다시 시도해 주세요.';
+	@override String get usingJellyfinInstead => 'Jellyfin 서버를 사용하시나요? Jellyfin에 연결하기';
 	@override String get scanQRToSignIn => 'QR 코드를 스캔하여 로그인';
 	@override String get waitingForAuth => '인증 대기 중...\n브라우저에서 로그인하세요.';
 	@override String get useBrowser => '브라우저 사용';
@@ -1998,7 +1999,8 @@ extension on TranslationsKo {
 			'auth.signInWithPlex' => 'Plex 계정으로 로그인',
 			'auth.showQRCode' => 'QR 코드',
 			'auth.authenticate' => '인증',
-			'auth.authenticationTimeout' => '인증 시간이 초과되었습니다. 다시 시도해 주세요.',
+			'auth.authenticationTimeout' => '로그인이 완료되지 않았습니다. 다시 시도해 주세요.',
+			'auth.usingJellyfinInstead' => 'Jellyfin 서버를 사용하시나요? Jellyfin에 연결하기',
 			'auth.scanQRToSignIn' => 'QR 코드를 스캔하여 로그인',
 			'auth.waitingForAuth' => '인증 대기 중...\n브라우저에서 로그인하세요.',
 			'auth.useBrowser' => '브라우저 사용',
@@ -2504,9 +2506,9 @@ extension on TranslationsKo {
 			'messages.serverLimitBody' => '서버 오류(HTTP 500). 대역폭/트랜스코딩 제한으로 세션이 거부된 것 같습니다. 소유자에게 조정을 요청하세요.',
 			'messages.logsUploaded' => '로그 업로드 완료',
 			'messages.logsUploadFailed' => '로그 업로드 실패',
-			'messages.logId' => '로그 ID',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logId' => '로그 ID',
 			'subtitlingStyling.text' => '텍스트',
 			'subtitlingStyling.border' => '테두리',
 			'subtitlingStyling.background' => '배경',
@@ -3018,9 +3020,9 @@ extension on TranslationsKo {
 			'companionRemote.pairing.cryptoInitFailed' => '보안 연결을 시작할 수 없습니다. 먼저 Plex에 로그인하세요.',
 			'companionRemote.pairing.validationHostRequired' => '호스트 주소를 입력하세요',
 			'companionRemote.pairing.validationHostFormat' => '형식은 IP:포트여야 합니다 (예: 192.168.1.100:48632)',
-			'companionRemote.pairing.connectionTimedOut' => '연결 시간이 초과되었습니다. 두 기기에서 같은 네트워크를 사용하세요.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connectionTimedOut' => '연결 시간이 초과되었습니다. 두 기기에서 같은 네트워크를 사용하세요.',
 			'companionRemote.pairing.sessionNotFound' => '기기를 찾을 수 없습니다. 호스트에서 Pleya가 실행 중인지 확인하세요.',
 			'companionRemote.pairing.authFailed' => '인증에 실패했습니다. 두 기기 모두 같은 Plex 계정이 필요합니다.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '연결 실패: ${error}',

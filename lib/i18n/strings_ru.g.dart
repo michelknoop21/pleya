@@ -110,7 +110,8 @@ class _TranslationsAuthRu extends TranslationsAuthEn {
 	@override String get signInWithPlex => 'Войти через Plex';
 	@override String get showQRCode => 'Показать QR-код';
 	@override String get authenticate => 'Аутентификация';
-	@override String get authenticationTimeout => 'Время аутентификации истекло. Попробуйте снова.';
+	@override String get authenticationTimeout => 'Вход не был завершён. Попробуйте снова.';
+	@override String get usingJellyfinInstead => 'Используете сервер Jellyfin? Подключитесь к Jellyfin';
 	@override String get scanQRToSignIn => 'Отсканируйте QR-код для входа';
 	@override String get waitingForAuth => 'Ожидание аутентификации...\nВойдите в браузере.';
 	@override String get useBrowser => 'Использовать браузер';
@@ -1998,7 +1999,8 @@ extension on TranslationsRu {
 			'auth.signInWithPlex' => 'Войти через Plex',
 			'auth.showQRCode' => 'Показать QR-код',
 			'auth.authenticate' => 'Аутентификация',
-			'auth.authenticationTimeout' => 'Время аутентификации истекло. Попробуйте снова.',
+			'auth.authenticationTimeout' => 'Вход не был завершён. Попробуйте снова.',
+			'auth.usingJellyfinInstead' => 'Используете сервер Jellyfin? Подключитесь к Jellyfin',
 			'auth.scanQRToSignIn' => 'Отсканируйте QR-код для входа',
 			'auth.waitingForAuth' => 'Ожидание аутентификации...\nВойдите в браузере.',
 			'auth.useBrowser' => 'Использовать браузер',
@@ -2504,9 +2506,9 @@ extension on TranslationsRu {
 			'messages.serverLimitBody' => 'Ошибка сервера (HTTP 500). Лимит пропускной способности/транскодирования, вероятно, отклонил сессию. Попросите владельца изменить настройки.',
 			'messages.logsUploaded' => 'Логи загружены',
 			'messages.logsUploadFailed' => 'Не удалось загрузить логи',
-			'messages.logId' => 'ID лога',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logId' => 'ID лога',
 			'subtitlingStyling.text' => 'Текст',
 			'subtitlingStyling.border' => 'Обводка',
 			'subtitlingStyling.background' => 'Фон',
@@ -3018,9 +3020,9 @@ extension on TranslationsRu {
 			'companionRemote.pairing.cryptoInitFailed' => 'Не удалось запустить защищенное подключение. Сначала войдите в Plex.',
 			'companionRemote.pairing.validationHostRequired' => 'Введите адрес хоста',
 			'companionRemote.pairing.validationHostFormat' => 'Формат должен быть IP:порт (например, 192.168.1.100:48632)',
-			'companionRemote.pairing.connectionTimedOut' => 'Время подключения истекло. Используйте одну сеть на обоих устройствах.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connectionTimedOut' => 'Время подключения истекло. Используйте одну сеть на обоих устройствах.',
 			'companionRemote.pairing.sessionNotFound' => 'Устройство не найдено. Убедитесь, что Pleya запущен на хосте.',
 			'companionRemote.pairing.authFailed' => 'Аутентификация не удалась. На обоих устройствах нужен один аккаунт Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Не удалось подключиться: ${error}',

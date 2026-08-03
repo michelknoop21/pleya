@@ -110,7 +110,8 @@ class _TranslationsAuthNb extends TranslationsAuthEn {
 	@override String get signInWithPlex => 'Logg inn med Plex';
 	@override String get showQRCode => 'Vis QR-kode';
 	@override String get authenticate => 'Autentiser';
-	@override String get authenticationTimeout => 'Autentiseringen ble tidsavbrutt. Prøv igjen.';
+	@override String get authenticationTimeout => 'Innloggingen ble ikke fullført. Prøv igjen.';
+	@override String get usingJellyfinInstead => 'Bruker du en Jellyfin-server? Koble til Jellyfin i stedet';
 	@override String get scanQRToSignIn => 'Skann denne QR-koden for å logge inn';
 	@override String get waitingForAuth => 'Venter på autentisering...\nLogg inn fra nettleseren.';
 	@override String get useBrowser => 'Bruk nettleser';
@@ -1998,7 +1999,8 @@ extension on TranslationsNb {
 			'auth.signInWithPlex' => 'Logg inn med Plex',
 			'auth.showQRCode' => 'Vis QR-kode',
 			'auth.authenticate' => 'Autentiser',
-			'auth.authenticationTimeout' => 'Autentiseringen ble tidsavbrutt. Prøv igjen.',
+			'auth.authenticationTimeout' => 'Innloggingen ble ikke fullført. Prøv igjen.',
+			'auth.usingJellyfinInstead' => 'Bruker du en Jellyfin-server? Koble til Jellyfin i stedet',
 			'auth.scanQRToSignIn' => 'Skann denne QR-koden for å logge inn',
 			'auth.waitingForAuth' => 'Venter på autentisering...\nLogg inn fra nettleseren.',
 			'auth.useBrowser' => 'Bruk nettleser',
@@ -2504,9 +2506,9 @@ extension on TranslationsNb {
 			'messages.serverLimitBody' => 'Serverfeil (HTTP 500). En båndbredde-/transkodingsgrense avviste trolig økten. Be eieren justere den.',
 			'messages.logsUploaded' => 'Logger lastet opp',
 			'messages.logsUploadFailed' => 'Kunne ikke laste opp logger',
-			'messages.logId' => 'Logg-ID',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logId' => 'Logg-ID',
 			'subtitlingStyling.text' => 'Tekst',
 			'subtitlingStyling.border' => 'Kantlinje',
 			'subtitlingStyling.background' => 'Bakgrunn',
@@ -3018,9 +3020,9 @@ extension on TranslationsNb {
 			'companionRemote.pairing.cryptoInitFailed' => 'Kunne ikke starte sikker tilkobling. Logg inn på Plex først.',
 			'companionRemote.pairing.validationHostRequired' => 'Vennligst oppgi vertsadresse',
 			'companionRemote.pairing.validationHostFormat' => 'Format må være IP:port (f.eks. 192.168.1.100:48632)',
-			'companionRemote.pairing.connectionTimedOut' => 'Tilkoblingen fikk tidsavbrudd. Bruk samme nettverk på begge enheter.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connectionTimedOut' => 'Tilkoblingen fikk tidsavbrudd. Bruk samme nettverk på begge enheter.',
 			'companionRemote.pairing.sessionNotFound' => 'Enhet ikke funnet. Sørg for at Pleya kjører på verten.',
 			'companionRemote.pairing.authFailed' => 'Autentisering mislyktes. Begge enheter må bruke samme Plex-konto.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kunne ikke koble til: ${error}',

@@ -124,7 +124,8 @@ class _TranslationsAuthNl extends TranslationsAuthEn {
 	@override String get signInWithPlex => 'Inloggen met Plex';
 	@override String get showQRCode => 'Toon QR-code';
 	@override String get authenticate => 'Authenticeren';
-	@override String get authenticationTimeout => 'Authenticatie verlopen. Probeer opnieuw.';
+	@override String get authenticationTimeout => 'Inloggen is niet voltooid. Probeer het opnieuw.';
+	@override String get usingJellyfinInstead => 'Gebruik je een Jellyfin-server? Verbind met Jellyfin';
 	@override String get scanQRToSignIn => 'Scan deze QR-code om in te loggen';
 	@override String get waitingForAuth => 'Wachten op authenticatie...\nMeld je aan via je browser.';
 	@override String get useBrowser => 'Gebruik browser';
@@ -2112,7 +2113,8 @@ extension on TranslationsNl {
 			'auth.signInWithPlex' => 'Inloggen met Plex',
 			'auth.showQRCode' => 'Toon QR-code',
 			'auth.authenticate' => 'Authenticeren',
-			'auth.authenticationTimeout' => 'Authenticatie verlopen. Probeer opnieuw.',
+			'auth.authenticationTimeout' => 'Inloggen is niet voltooid. Probeer het opnieuw.',
+			'auth.usingJellyfinInstead' => 'Gebruik je een Jellyfin-server? Verbind met Jellyfin',
 			'auth.scanQRToSignIn' => 'Scan deze QR-code om in te loggen',
 			'auth.waitingForAuth' => 'Wachten op authenticatie...\nMeld je aan via je browser.',
 			'auth.useBrowser' => 'Gebruik browser',
@@ -2614,9 +2616,9 @@ extension on TranslationsNl {
 			'messages.markedAsUnwatched' => 'Gemarkeerd als ongekeken',
 			'messages.markedAsWatchedOffline' => 'Gemarkeerd als gekeken (sync wanneer online)',
 			'messages.markedAsUnwatchedOffline' => 'Gemarkeerd als ongekeken (sync wanneer online)',
-			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Automatisch verwijderd: ${title}',
 			_ => null,
 		} ?? switch (path) {
+			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Automatisch verwijderd: ${title}',
 			'messages.removedFromContinueWatching' => 'Verwijderd uit Doorgaan met kijken',
 			'messages.errorLoading' => ({required Object error}) => 'Fout: ${error}',
 			'messages.fileInfoNotAvailable' => 'Bestand informatie niet beschikbaar',
@@ -3128,9 +3130,9 @@ extension on TranslationsNl {
 			'downloads.keepSynced' => 'Gesynchroniseerd houden',
 			'downloads.downloadOnce' => 'Eenmalig downloaden',
 			'downloads.keepNUnwatched' => ({required Object count}) => '${count} onbekeken behouden',
-			'downloads.editSyncRule' => 'Synchronisatieregel bewerken',
 			_ => null,
 		} ?? switch (path) {
+			'downloads.editSyncRule' => 'Synchronisatieregel bewerken',
 			'downloads.removeSyncRule' => 'Synchronisatieregel verwijderen',
 			'downloads.removeSyncRuleConfirm' => ({required Object title}) => 'Synchronisatie van "${title}" stoppen? Gedownloade afleveringen worden behouden.',
 			'downloads.syncRuleCreated' => ({required Object count}) => 'Synchronisatieregel aangemaakt — ${count} onbekeken afleveringen behouden',

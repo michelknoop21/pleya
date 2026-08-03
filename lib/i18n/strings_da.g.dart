@@ -110,7 +110,8 @@ class _TranslationsAuthDa extends TranslationsAuthEn {
 	@override String get signInWithPlex => 'Log ind med Plex';
 	@override String get showQRCode => 'Vis QR-kode';
 	@override String get authenticate => 'Godkend';
-	@override String get authenticationTimeout => 'Godkendelse fik timeout. Prøv igen.';
+	@override String get authenticationTimeout => 'Loginnet blev ikke fuldført. Prøv igen.';
+	@override String get usingJellyfinInstead => 'Bruger du en Jellyfin-server? Opret forbindelse til Jellyfin';
 	@override String get scanQRToSignIn => 'Scan denne QR-kode for at logge ind';
 	@override String get waitingForAuth => 'Venter på godkendelse...\nLog ind fra din browser.';
 	@override String get useBrowser => 'Brug browser';
@@ -1998,7 +1999,8 @@ extension on TranslationsDa {
 			'auth.signInWithPlex' => 'Log ind med Plex',
 			'auth.showQRCode' => 'Vis QR-kode',
 			'auth.authenticate' => 'Godkend',
-			'auth.authenticationTimeout' => 'Godkendelse fik timeout. Prøv igen.',
+			'auth.authenticationTimeout' => 'Loginnet blev ikke fuldført. Prøv igen.',
+			'auth.usingJellyfinInstead' => 'Bruger du en Jellyfin-server? Opret forbindelse til Jellyfin',
 			'auth.scanQRToSignIn' => 'Scan denne QR-kode for at logge ind',
 			'auth.waitingForAuth' => 'Venter på godkendelse...\nLog ind fra din browser.',
 			'auth.useBrowser' => 'Brug browser',
@@ -2504,9 +2506,9 @@ extension on TranslationsDa {
 			'messages.serverLimitBody' => 'Serverfejl (HTTP 500). En båndbredde-/transkodningsgrænse afviste nok sessionen. Bed ejeren om at justere den.',
 			'messages.logsUploaded' => 'Logs uploadet',
 			'messages.logsUploadFailed' => 'Kunne ikke uploade logs',
-			'messages.logId' => 'Log-ID',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logId' => 'Log-ID',
 			'subtitlingStyling.text' => 'Tekst',
 			'subtitlingStyling.border' => 'Kant',
 			'subtitlingStyling.background' => 'Baggrund',
@@ -3018,9 +3020,9 @@ extension on TranslationsDa {
 			'companionRemote.pairing.cryptoInitFailed' => 'Kunne ikke starte sikker forbindelse. Log ind på Plex først.',
 			'companionRemote.pairing.validationHostRequired' => 'Angiv venligst værtsadresse',
 			'companionRemote.pairing.validationHostFormat' => 'Format skal være IP:port (f.eks. 192.168.1.100:48632)',
-			'companionRemote.pairing.connectionTimedOut' => 'Forbindelsen fik timeout. Brug samme netværk på begge enheder.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connectionTimedOut' => 'Forbindelsen fik timeout. Brug samme netværk på begge enheder.',
 			'companionRemote.pairing.sessionNotFound' => 'Enhed ikke fundet. Sørg for, at Pleya kører på værten.',
 			'companionRemote.pairing.authFailed' => 'Godkendelse mislykkedes. Begge enheder skal bruge samme Plex-konto.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kunne ikke oprette forbindelse: ${error}',

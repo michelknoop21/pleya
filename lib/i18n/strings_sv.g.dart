@@ -110,7 +110,8 @@ class _TranslationsAuthSv extends TranslationsAuthEn {
 	@override String get signInWithPlex => 'Logga in med Plex';
 	@override String get showQRCode => 'Visa QR-kod';
 	@override String get authenticate => 'Autentisera';
-	@override String get authenticationTimeout => 'Autentisering tog för lång tid. Försök igen.';
+	@override String get authenticationTimeout => 'Inloggningen slutfördes inte. Försök igen.';
+	@override String get usingJellyfinInstead => 'Använder du en Jellyfin-server? Anslut till Jellyfin i stället';
 	@override String get scanQRToSignIn => 'Skanna QR-koden för att logga in';
 	@override String get waitingForAuth => 'Väntar på autentisering...\nLogga in från din webbläsare.';
 	@override String get useBrowser => 'Använd webbläsare';
@@ -1998,7 +1999,8 @@ extension on TranslationsSv {
 			'auth.signInWithPlex' => 'Logga in med Plex',
 			'auth.showQRCode' => 'Visa QR-kod',
 			'auth.authenticate' => 'Autentisera',
-			'auth.authenticationTimeout' => 'Autentisering tog för lång tid. Försök igen.',
+			'auth.authenticationTimeout' => 'Inloggningen slutfördes inte. Försök igen.',
+			'auth.usingJellyfinInstead' => 'Använder du en Jellyfin-server? Anslut till Jellyfin i stället',
 			'auth.scanQRToSignIn' => 'Skanna QR-koden för att logga in',
 			'auth.waitingForAuth' => 'Väntar på autentisering...\nLogga in från din webbläsare.',
 			'auth.useBrowser' => 'Använd webbläsare',
@@ -2504,9 +2506,9 @@ extension on TranslationsSv {
 			'messages.serverLimitBody' => 'Serverfel (HTTP 500). En bandbredds-/transkodningsgräns avvisade troligen sessionen. Be ägaren justera den.',
 			'messages.logsUploaded' => 'Loggar uppladdade',
 			'messages.logsUploadFailed' => 'Uppladdning av loggar misslyckades',
-			'messages.logId' => 'Logg-ID',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logId' => 'Logg-ID',
 			'subtitlingStyling.text' => 'Text',
 			'subtitlingStyling.border' => 'Kantlinje',
 			'subtitlingStyling.background' => 'Bakgrund',
@@ -3018,9 +3020,9 @@ extension on TranslationsSv {
 			'companionRemote.pairing.cryptoInitFailed' => 'Kunde inte starta säker anslutning. Logga in på Plex först.',
 			'companionRemote.pairing.validationHostRequired' => 'Ange värdadress',
 			'companionRemote.pairing.validationHostFormat' => 'Format måste vara IP:port (t.ex. 192.168.1.100:48632)',
-			'companionRemote.pairing.connectionTimedOut' => 'Anslutningen tog för lång tid. Använd samma nätverk på båda enheter.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connectionTimedOut' => 'Anslutningen tog för lång tid. Använd samma nätverk på båda enheter.',
 			'companionRemote.pairing.sessionNotFound' => 'Enhet hittades inte. Kontrollera att Pleya körs på värden.',
 			'companionRemote.pairing.authFailed' => 'Autentisering misslyckades. Båda enheter behöver samma Plex-konto.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kunde inte ansluta: ${error}',

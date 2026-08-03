@@ -110,7 +110,8 @@ class _TranslationsAuthZh extends TranslationsAuthEn {
 	@override String get signInWithPlex => '使用 Plex 登录';
 	@override String get showQRCode => '显示二维码';
 	@override String get authenticate => '验证';
-	@override String get authenticationTimeout => '验证超时。请重试。';
+	@override String get authenticationTimeout => '登录未完成。请重试。';
+	@override String get usingJellyfinInstead => '使用 Jellyfin 服务器？改为连接 Jellyfin';
 	@override String get scanQRToSignIn => '扫描二维码登录';
 	@override String get waitingForAuth => '正在等待认证...\n请在浏览器中登录。';
 	@override String get useBrowser => '使用浏览器';
@@ -1998,7 +1999,8 @@ extension on TranslationsZh {
 			'auth.signInWithPlex' => '使用 Plex 登录',
 			'auth.showQRCode' => '显示二维码',
 			'auth.authenticate' => '验证',
-			'auth.authenticationTimeout' => '验证超时。请重试。',
+			'auth.authenticationTimeout' => '登录未完成。请重试。',
+			'auth.usingJellyfinInstead' => '使用 Jellyfin 服务器？改为连接 Jellyfin',
 			'auth.scanQRToSignIn' => '扫描二维码登录',
 			'auth.waitingForAuth' => '正在等待认证...\n请在浏览器中登录。',
 			'auth.useBrowser' => '使用浏览器',
@@ -2504,9 +2506,9 @@ extension on TranslationsZh {
 			'messages.serverLimitBody' => '服务器错误 (HTTP 500)。带宽/转码限制可能拒绝了此会话。请让所有者调整。',
 			'messages.logsUploaded' => '日志已上传',
 			'messages.logsUploadFailed' => '上传日志失败',
-			'messages.logId' => '日志 ID',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logId' => '日志 ID',
 			'subtitlingStyling.text' => '文本',
 			'subtitlingStyling.border' => '边框',
 			'subtitlingStyling.background' => '背景',
@@ -3018,9 +3020,9 @@ extension on TranslationsZh {
 			'companionRemote.pairing.cryptoInitFailed' => '无法启动安全连接。请先登录 Plex。',
 			'companionRemote.pairing.validationHostRequired' => '请输入主机地址',
 			'companionRemote.pairing.validationHostFormat' => '格式必须为IP:端口（例如 192.168.1.100:48632）',
-			'companionRemote.pairing.connectionTimedOut' => '连接超时。请在两台设备上使用同一网络。',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connectionTimedOut' => '连接超时。请在两台设备上使用同一网络。',
 			'companionRemote.pairing.sessionNotFound' => '未找到设备。请确认 Pleya 正在主机上运行。',
 			'companionRemote.pairing.authFailed' => '认证失败。两台设备需要使用同一 Plex 账号。',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '连接失败：${error}',

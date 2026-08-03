@@ -110,7 +110,8 @@ class _TranslationsAuthPl extends TranslationsAuthEn {
 	@override String get signInWithPlex => 'Zaloguj się przez Plex';
 	@override String get showQRCode => 'Pokaż kod QR';
 	@override String get authenticate => 'Uwierzytelnienie';
-	@override String get authenticationTimeout => 'Upłynął czas uwierzytelniania. Spróbuj ponownie.';
+	@override String get authenticationTimeout => 'Logowanie nie zostało ukończone. Spróbuj ponownie.';
+	@override String get usingJellyfinInstead => 'Używasz serwera Jellyfin? Połącz się z Jellyfin';
 	@override String get scanQRToSignIn => 'Zeskanuj ten kod QR, aby się zalogować';
 	@override String get waitingForAuth => 'Oczekiwanie na uwierzytelnienie...\nZaloguj się w przeglądarce.';
 	@override String get useBrowser => 'Użyj przeglądarki';
@@ -1998,7 +1999,8 @@ extension on TranslationsPl {
 			'auth.signInWithPlex' => 'Zaloguj się przez Plex',
 			'auth.showQRCode' => 'Pokaż kod QR',
 			'auth.authenticate' => 'Uwierzytelnienie',
-			'auth.authenticationTimeout' => 'Upłynął czas uwierzytelniania. Spróbuj ponownie.',
+			'auth.authenticationTimeout' => 'Logowanie nie zostało ukończone. Spróbuj ponownie.',
+			'auth.usingJellyfinInstead' => 'Używasz serwera Jellyfin? Połącz się z Jellyfin',
 			'auth.scanQRToSignIn' => 'Zeskanuj ten kod QR, aby się zalogować',
 			'auth.waitingForAuth' => 'Oczekiwanie na uwierzytelnienie...\nZaloguj się w przeglądarce.',
 			'auth.useBrowser' => 'Użyj przeglądarki',
@@ -2504,9 +2506,9 @@ extension on TranslationsPl {
 			'messages.serverLimitBody' => 'Błąd serwera (HTTP 500). Limit przepustowości/transkodowania prawdopodobnie odrzucił tę sesję. Poproś właściciela o zmianę.',
 			'messages.logsUploaded' => 'Logi przesłane',
 			'messages.logsUploadFailed' => 'Nie udało się przesłać logów',
-			'messages.logId' => 'ID logu',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logId' => 'ID logu',
 			'subtitlingStyling.text' => 'Tekst',
 			'subtitlingStyling.border' => 'Obramowanie',
 			'subtitlingStyling.background' => 'Tło',
@@ -3018,9 +3020,9 @@ extension on TranslationsPl {
 			'companionRemote.pairing.cryptoInitFailed' => 'Nie udało się uruchomić bezpiecznego połączenia. Najpierw zaloguj się do Plex.',
 			'companionRemote.pairing.validationHostRequired' => 'Wprowadź adres hosta',
 			'companionRemote.pairing.validationHostFormat' => 'Format musi być IP:port (np. 192.168.1.100:48632)',
-			'companionRemote.pairing.connectionTimedOut' => 'Limit czasu połączenia. Użyj tej samej sieci na obu urządzeniach.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connectionTimedOut' => 'Limit czasu połączenia. Użyj tej samej sieci na obu urządzeniach.',
 			'companionRemote.pairing.sessionNotFound' => 'Nie znaleziono urządzenia. Upewnij się, że Pleya działa na hoście.',
 			'companionRemote.pairing.authFailed' => 'Uwierzytelnianie nie powiodło się. Oba urządzenia muszą używać tego samego konta Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Nie udało się połączyć: ${error}',

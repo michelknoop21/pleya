@@ -110,7 +110,8 @@ class _TranslationsAuthEs extends TranslationsAuthEn {
 	@override String get signInWithPlex => 'Inicia sesión con Plex';
 	@override String get showQRCode => 'Mostrar código QR';
 	@override String get authenticate => 'Autenticar';
-	@override String get authenticationTimeout => 'Tiempo de autenticación agotado. Por favor, intenta de nuevo.';
+	@override String get authenticationTimeout => 'No se completó el inicio de sesión. Inténtalo de nuevo.';
+	@override String get usingJellyfinInstead => '¿Usas un servidor Jellyfin? Conecta con Jellyfin';
 	@override String get scanQRToSignIn => 'Escanea este código QR para iniciar sesión';
 	@override String get waitingForAuth => 'Esperando autenticación...\nInicia sesión desde tu navegador.';
 	@override String get useBrowser => 'Usar navegador';
@@ -1998,7 +1999,8 @@ extension on TranslationsEs {
 			'auth.signInWithPlex' => 'Inicia sesión con Plex',
 			'auth.showQRCode' => 'Mostrar código QR',
 			'auth.authenticate' => 'Autenticar',
-			'auth.authenticationTimeout' => 'Tiempo de autenticación agotado. Por favor, intenta de nuevo.',
+			'auth.authenticationTimeout' => 'No se completó el inicio de sesión. Inténtalo de nuevo.',
+			'auth.usingJellyfinInstead' => '¿Usas un servidor Jellyfin? Conecta con Jellyfin',
 			'auth.scanQRToSignIn' => 'Escanea este código QR para iniciar sesión',
 			'auth.waitingForAuth' => 'Esperando autenticación...\nInicia sesión desde tu navegador.',
 			'auth.useBrowser' => 'Usar navegador',
@@ -2504,9 +2506,9 @@ extension on TranslationsEs {
 			'messages.serverLimitBody' => 'Error del servidor (HTTP 500). Un límite de ancho de banda/transcodificación probablemente rechazó esta sesión. Pide al propietario que lo ajuste.',
 			'messages.logsUploaded' => 'Registros subidos',
 			'messages.logsUploadFailed' => 'Error al subir registros',
-			'messages.logId' => 'ID de registro',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logId' => 'ID de registro',
 			'subtitlingStyling.text' => 'Texto',
 			'subtitlingStyling.border' => 'Borde',
 			'subtitlingStyling.background' => 'Fondo',
@@ -3018,9 +3020,9 @@ extension on TranslationsEs {
 			'companionRemote.pairing.cryptoInitFailed' => 'No se pudo iniciar la conexión segura. Inicia sesión en Plex primero.',
 			'companionRemote.pairing.validationHostRequired' => 'Ingresa la dirección del host',
 			'companionRemote.pairing.validationHostFormat' => 'El formato debe ser IP:puerto (ej. 192.168.1.100:48632)',
-			'companionRemote.pairing.connectionTimedOut' => 'Tiempo de conexión agotado. Usa la misma red en ambos dispositivos.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connectionTimedOut' => 'Tiempo de conexión agotado. Usa la misma red en ambos dispositivos.',
 			'companionRemote.pairing.sessionNotFound' => 'Dispositivo no encontrado. Asegúrate de que Pleya esté en ejecución en el host.',
 			'companionRemote.pairing.authFailed' => 'Autenticación fallida. Ambos dispositivos necesitan la misma cuenta Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Error al conectar: ${error}',

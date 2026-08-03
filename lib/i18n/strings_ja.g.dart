@@ -110,7 +110,8 @@ class _TranslationsAuthJa extends TranslationsAuthEn {
 	@override String get signInWithPlex => 'Plexでサインイン';
 	@override String get showQRCode => 'QRコードを表示';
 	@override String get authenticate => '認証';
-	@override String get authenticationTimeout => '認証がタイムアウトしました。もう一度お試しください。';
+	@override String get authenticationTimeout => 'サインインが完了しませんでした。もう一度お試しください。';
+	@override String get usingJellyfinInstead => 'Jellyfin サーバーをお使いですか？ Jellyfin に接続する';
 	@override String get scanQRToSignIn => 'このQRコードをスキャンしてサインイン';
 	@override String get waitingForAuth => '認証待ち...\nブラウザでサインインしてください。';
 	@override String get useBrowser => 'ブラウザを使用';
@@ -1998,7 +1999,8 @@ extension on TranslationsJa {
 			'auth.signInWithPlex' => 'Plexでサインイン',
 			'auth.showQRCode' => 'QRコードを表示',
 			'auth.authenticate' => '認証',
-			'auth.authenticationTimeout' => '認証がタイムアウトしました。もう一度お試しください。',
+			'auth.authenticationTimeout' => 'サインインが完了しませんでした。もう一度お試しください。',
+			'auth.usingJellyfinInstead' => 'Jellyfin サーバーをお使いですか？ Jellyfin に接続する',
 			'auth.scanQRToSignIn' => 'このQRコードをスキャンしてサインイン',
 			'auth.waitingForAuth' => '認証待ち...\nブラウザでサインインしてください。',
 			'auth.useBrowser' => 'ブラウザを使用',
@@ -2504,9 +2506,9 @@ extension on TranslationsJa {
 			'messages.serverLimitBody' => 'サーバーエラー（HTTP 500）。帯域幅/トランスコード制限により拒否された可能性があります。所有者に調整を依頼してください。',
 			'messages.logsUploaded' => 'ログをアップロードしました',
 			'messages.logsUploadFailed' => 'ログのアップロードに失敗しました',
-			'messages.logId' => 'ログID',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logId' => 'ログID',
 			'subtitlingStyling.text' => 'テキスト',
 			'subtitlingStyling.border' => '枠線',
 			'subtitlingStyling.background' => '背景',
@@ -3018,9 +3020,9 @@ extension on TranslationsJa {
 			'companionRemote.pairing.cryptoInitFailed' => '安全な接続を開始できませんでした。先にPlexにサインインしてください。',
 			'companionRemote.pairing.validationHostRequired' => 'ホストアドレスを入力してください',
 			'companionRemote.pairing.validationHostFormat' => '形式はIP:ポートである必要があります（例: 192.168.1.100:48632）',
-			'companionRemote.pairing.connectionTimedOut' => '接続がタイムアウトしました。両方のデバイスで同じネットワークを使用してください。',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connectionTimedOut' => '接続がタイムアウトしました。両方のデバイスで同じネットワークを使用してください。',
 			'companionRemote.pairing.sessionNotFound' => 'デバイスが見つかりません。ホストでPleyaが実行中か確認してください。',
 			'companionRemote.pairing.authFailed' => '認証に失敗しました。両方のデバイスで同じPlexアカウントが必要です。',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '接続に失敗しました: ${error}',

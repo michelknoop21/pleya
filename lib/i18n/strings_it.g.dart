@@ -110,7 +110,8 @@ class _TranslationsAuthIt extends TranslationsAuthEn {
 	@override String get signInWithPlex => 'Accedi con Plex';
 	@override String get showQRCode => 'Mostra QR Code';
 	@override String get authenticate => 'Autenticazione';
-	@override String get authenticationTimeout => 'Autenticazione scaduta. Riprova.';
+	@override String get authenticationTimeout => 'L\'accesso non è stato completato. Riprova.';
+	@override String get usingJellyfinInstead => 'Usi un server Jellyfin? Connettiti a Jellyfin';
 	@override String get scanQRToSignIn => 'Scansiona il QR code per accedere';
 	@override String get waitingForAuth => 'In attesa di autenticazione...\nAccedi dal browser.';
 	@override String get useBrowser => 'Usa browser';
@@ -1998,7 +1999,8 @@ extension on TranslationsIt {
 			'auth.signInWithPlex' => 'Accedi con Plex',
 			'auth.showQRCode' => 'Mostra QR Code',
 			'auth.authenticate' => 'Autenticazione',
-			'auth.authenticationTimeout' => 'Autenticazione scaduta. Riprova.',
+			'auth.authenticationTimeout' => 'L\'accesso non è stato completato. Riprova.',
+			'auth.usingJellyfinInstead' => 'Usi un server Jellyfin? Connettiti a Jellyfin',
 			'auth.scanQRToSignIn' => 'Scansiona il QR code per accedere',
 			'auth.waitingForAuth' => 'In attesa di autenticazione...\nAccedi dal browser.',
 			'auth.useBrowser' => 'Usa browser',
@@ -2504,9 +2506,9 @@ extension on TranslationsIt {
 			'messages.serverLimitBody' => 'Errore server (HTTP 500). Un limite di banda/transcodifica probabilmente ha rifiutato questa sessione. Chiedi al proprietario di modificarlo.',
 			'messages.logsUploaded' => 'Log caricati',
 			'messages.logsUploadFailed' => 'Caricamento log fallito',
-			'messages.logId' => 'ID log',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logId' => 'ID log',
 			'subtitlingStyling.text' => 'Testo',
 			'subtitlingStyling.border' => 'Bordo',
 			'subtitlingStyling.background' => 'Sfondo',
@@ -3018,9 +3020,9 @@ extension on TranslationsIt {
 			'companionRemote.pairing.cryptoInitFailed' => 'Impossibile avviare la connessione sicura. Accedi prima a Plex.',
 			'companionRemote.pairing.validationHostRequired' => 'Inserisci l\'indirizzo host',
 			'companionRemote.pairing.validationHostFormat' => 'Il formato deve essere IP:porta (es. 192.168.1.100:48632)',
-			'companionRemote.pairing.connectionTimedOut' => 'Connessione scaduta. Usa la stessa rete su entrambi i dispositivi.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connectionTimedOut' => 'Connessione scaduta. Usa la stessa rete su entrambi i dispositivi.',
 			'companionRemote.pairing.sessionNotFound' => 'Dispositivo non trovato. Assicurati che Pleya sia in esecuzione sull\'host.',
 			'companionRemote.pairing.authFailed' => 'Autenticazione non riuscita. Entrambi i dispositivi devono usare lo stesso account Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Connessione fallita: ${error}',

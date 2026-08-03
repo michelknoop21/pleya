@@ -110,7 +110,8 @@ class _TranslationsAuthBg extends TranslationsAuthEn {
 	@override String get signInWithPlex => 'Вход с Plex';
 	@override String get showQRCode => 'Покажи QR код';
 	@override String get authenticate => 'Удостовери';
-	@override String get authenticationTimeout => 'Времето за удостоверяване изтече. Моля, опитайте отново.';
+	@override String get authenticationTimeout => 'Влизането не беше завършено. Опитайте отново.';
+	@override String get usingJellyfinInstead => 'Използвате Jellyfin сървър? Свържете се с Jellyfin';
 	@override String get scanQRToSignIn => 'Сканирайте този QR код, за да влезете';
 	@override String get waitingForAuth => 'Изчакване на удостоверяване...\nВлезте от браузъра си.';
 	@override String get useBrowser => 'Използвай браузър';
@@ -1998,7 +1999,8 @@ extension on TranslationsBg {
 			'auth.signInWithPlex' => 'Вход с Plex',
 			'auth.showQRCode' => 'Покажи QR код',
 			'auth.authenticate' => 'Удостовери',
-			'auth.authenticationTimeout' => 'Времето за удостоверяване изтече. Моля, опитайте отново.',
+			'auth.authenticationTimeout' => 'Влизането не беше завършено. Опитайте отново.',
+			'auth.usingJellyfinInstead' => 'Използвате Jellyfin сървър? Свържете се с Jellyfin',
 			'auth.scanQRToSignIn' => 'Сканирайте този QR код, за да влезете',
 			'auth.waitingForAuth' => 'Изчакване на удостоверяване...\nВлезте от браузъра си.',
 			'auth.useBrowser' => 'Използвай браузър',
@@ -2504,9 +2506,9 @@ extension on TranslationsBg {
 			'messages.serverLimitBody' => 'Грешка на сървъра (HTTP 500). Вероятно лимит за пропускателна способност/транскодиране е отхвърлил тази сесия. Помолете собственика да го коригира.',
 			'messages.logsUploaded' => 'Логовете са качени',
 			'messages.logsUploadFailed' => 'Неуспешно качване на логовете',
-			'messages.logId' => 'ID на лога',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logId' => 'ID на лога',
 			'subtitlingStyling.text' => 'Текст',
 			'subtitlingStyling.border' => 'Рамка',
 			'subtitlingStyling.background' => 'Фон',
@@ -3018,9 +3020,9 @@ extension on TranslationsBg {
 			'companionRemote.pairing.cryptoInitFailed' => 'Не може да се стартира защитена връзка. Първо влезте в Plex.',
 			'companionRemote.pairing.validationHostRequired' => 'Моля, въведете адрес на хоста',
 			'companionRemote.pairing.validationHostFormat' => 'Форматът трябва да е IP:port (напр. 192.168.1.100:48632)',
-			'companionRemote.pairing.connectionTimedOut' => 'Връзката изтече. Използвайте една и съща мрежа на двете устройства.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connectionTimedOut' => 'Връзката изтече. Използвайте една и съща мрежа на двете устройства.',
 			'companionRemote.pairing.sessionNotFound' => 'Устройството не е намерено. Уверете се, че Pleya работи на хоста.',
 			'companionRemote.pairing.authFailed' => 'Удостоверяването е неуспешно. Двете устройства трябва да използват същия Plex акаунт.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Неуспешно свързване: ${error}',

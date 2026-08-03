@@ -110,7 +110,8 @@ class _TranslationsAuthFr extends TranslationsAuthEn {
 	@override String get signInWithPlex => 'S\'inscrire avec Plex';
 	@override String get showQRCode => 'Afficher le QR Code';
 	@override String get authenticate => 'S\'authentifier';
-	@override String get authenticationTimeout => 'Délai d\'authentification expiré. Veuillez réessayer.';
+	@override String get authenticationTimeout => 'La connexion n\'a pas été finalisée. Veuillez réessayer.';
+	@override String get usingJellyfinInstead => 'Vous utilisez un serveur Jellyfin ? Connectez-vous à Jellyfin';
 	@override String get scanQRToSignIn => 'Scannez ce QR code pour vous connecter';
 	@override String get waitingForAuth => 'En attente d\'authentification...\nConnectez-vous depuis votre navigateur.';
 	@override String get useBrowser => 'Utiliser le navigateur';
@@ -1998,7 +1999,8 @@ extension on TranslationsFr {
 			'auth.signInWithPlex' => 'S\'inscrire avec Plex',
 			'auth.showQRCode' => 'Afficher le QR Code',
 			'auth.authenticate' => 'S\'authentifier',
-			'auth.authenticationTimeout' => 'Délai d\'authentification expiré. Veuillez réessayer.',
+			'auth.authenticationTimeout' => 'La connexion n\'a pas été finalisée. Veuillez réessayer.',
+			'auth.usingJellyfinInstead' => 'Vous utilisez un serveur Jellyfin ? Connectez-vous à Jellyfin',
 			'auth.scanQRToSignIn' => 'Scannez ce QR code pour vous connecter',
 			'auth.waitingForAuth' => 'En attente d\'authentification...\nConnectez-vous depuis votre navigateur.',
 			'auth.useBrowser' => 'Utiliser le navigateur',
@@ -2504,9 +2506,9 @@ extension on TranslationsFr {
 			'messages.serverLimitBody' => 'Erreur serveur (HTTP 500). Une limite de bande passante/transcodage a probablement rejeté cette session. Demandez au propriétaire de l\'ajuster.',
 			'messages.logsUploaded' => 'Logs envoyés',
 			'messages.logsUploadFailed' => 'Échec de l\'envoi des logs',
-			'messages.logId' => 'ID du log',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logId' => 'ID du log',
 			'subtitlingStyling.text' => 'Texte',
 			'subtitlingStyling.border' => 'Bordure',
 			'subtitlingStyling.background' => 'Arrière-plan',
@@ -3018,9 +3020,9 @@ extension on TranslationsFr {
 			'companionRemote.pairing.cryptoInitFailed' => 'Impossible de démarrer la connexion sécurisée. Connectez-vous d\'abord à Plex.',
 			'companionRemote.pairing.validationHostRequired' => 'Veuillez entrer l\'adresse de l\'hôte',
 			'companionRemote.pairing.validationHostFormat' => 'Le format doit être IP:port (ex. 192.168.1.100:48632)',
-			'companionRemote.pairing.connectionTimedOut' => 'Connexion expirée. Utilisez le même réseau sur les deux appareils.',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.connectionTimedOut' => 'Connexion expirée. Utilisez le même réseau sur les deux appareils.',
 			'companionRemote.pairing.sessionNotFound' => 'Appareil introuvable. Assurez-vous que Pleya fonctionne sur l\'hôte.',
 			'companionRemote.pairing.authFailed' => 'Échec de l\'authentification. Les deux appareils doivent utiliser le même compte Plex.',
 			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Échec de la connexion : ${error}',
