@@ -1952,9 +1952,23 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
-  Widget _buildHeroItem(MediaItem heroItem, double heroHeight) {
-    // Fresh watch state so the hero shows (and live-updates) watched status.
-    heroItem = context.withFreshWatchState(heroItem);
+  Widget _buildHeroItem(MediaItem rawHeroItem, double heroHeight) {
+    // Builder so the watch-state subscription happens in a real build pass.
+    // The carousel feeds this through a SliverChildBuilderDelegate, whose
+    // itemBuilder runs during *layout* — `context.select` asserts there (only
+    // LayoutBuilder is exempt), and the State's own context would attach the
+    // dependency to DiscoverScreen instead of this item. Mirrors
+    // [_buildSmartPlayButton].
+    return Builder(
+      builder: (context) {
+        // Fresh watch state so the hero shows (and live-updates) watched status.
+        final heroItem = context.withFreshWatchState(rawHeroItem);
+        return _buildHeroItemContent(context, heroItem, heroHeight);
+      },
+    );
+  }
+
+  Widget _buildHeroItemContent(BuildContext context, MediaItem heroItem, double heroHeight) {
     final heroClient = _getMediaClientForItem(heroItem);
     final isEpisode = heroItem.isEpisode;
     final showName = heroItem.grandparentTitle ?? heroItem.displayTitle;
