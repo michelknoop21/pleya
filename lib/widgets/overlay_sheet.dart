@@ -133,6 +133,10 @@ class OverlaySheetController {
             maxHeight: isDesktop ? 400 : size.height * 0.75,
           );
         }();
+    // The route fallback has no _autoFocus equivalent — honor the caller's
+    // initialFocusNode here too, or the sheet opens with nothing focused and
+    // the D-pad is dead on hostless screens.
+    _scheduleFallbackFocus(initialFocusNode);
     return showModalBottomSheet<T>(
       context: context,
       builder: builder,
@@ -141,6 +145,13 @@ class OverlaySheetController {
       barrierColor: Colors.black54,
       isScrollControlled: isScrollControlled,
     );
+  }
+
+  static void _scheduleFallbackFocus(FocusNode? node) {
+    if (node == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (node.canRequestFocus) node.requestFocus();
+    });
   }
 
   /// Push a sub-page using the overlay system if available, otherwise fall
@@ -154,6 +165,7 @@ class OverlaySheetController {
     if (controller != null) {
       return controller.push<T>(builder: builder, initialFocusNode: initialFocusNode);
     }
+    _scheduleFallbackFocus(initialFocusNode);
     return showModalBottomSheet<T>(context: context, builder: builder);
   }
 

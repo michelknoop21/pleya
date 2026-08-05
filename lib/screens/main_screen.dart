@@ -1683,6 +1683,11 @@ class _MainScreenState extends State<MainScreen>
             canPop: false,
             child: Focus(
               onKeyEvent: (node, event) {
+                // While a sheet is open, closing it (and refocusing escaped
+                // nav keys) is the host's fallback handler's job. Acting here
+                // too made the same back press close the sheet AND jump focus
+                // to the sidebar underneath it.
+                if (_isOverlaySheetOpen) return KeyEventResult.ignored;
                 final fullscreenResult = _handleFullscreenShortcut(event);
                 if (fullscreenResult == KeyEventResult.handled) return fullscreenResult;
                 final searchResult = _handleSearchShortcut(event);

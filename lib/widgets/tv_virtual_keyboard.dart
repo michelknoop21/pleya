@@ -783,6 +783,7 @@ class _TvVirtualKeyboardPanelState extends State<TvVirtualKeyboardPanel> with Mo
     return Focus(
       focusNode: _focusNode,
       onKeyEvent: _handleKey,
+      onFocusChange: (_) => setStateIfMounted(() {}),
       child: Container(
         key: const Key('tv_virtual_keyboard_panel'),
         constraints: BoxConstraints(maxWidth: metrics.panelWidth),
@@ -857,7 +858,10 @@ class _TvVirtualKeyboardPanelState extends State<TvVirtualKeyboardPanel> with Mo
     }
 
     final colorScheme = Theme.of(context).colorScheme;
-    final selected = row == _row && column == _column;
+    // The cursor highlight only lights up while the panel actually has focus:
+    // a lit key under an unfocused panel reads as "press select to type" while
+    // the press really goes to whatever is focused elsewhere.
+    final selected = row == _row && column == _column && _focusNode.hasFocus;
     final active = key.type == _TvKeyType.shift && _shiftEnabled;
     final background = selected
         ? colorScheme.primary

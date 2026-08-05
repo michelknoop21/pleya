@@ -206,7 +206,11 @@ void main() {
 
   test('mpv-native zoom-only compensation uses the zoom scale', () async {
     final player = _RecordingPlayer();
-    final manager = VideoFilterManager(player: player, subtitleBasePosition: () => 100, useLayerScaleCompensation: false);
+    final manager = VideoFilterManager(
+      player: player,
+      subtitleBasePosition: () => 100,
+      useLayerScaleCompensation: false,
+    );
     addTearDown(manager.dispose);
 
     manager.setZoomScale(2.0);

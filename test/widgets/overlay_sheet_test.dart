@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 
@@ -134,5 +135,48 @@ void main() {
       expect(find.text('Open'), findsOneWidget, reason: 'screen not popped');
       expect(backs, 0, reason: 'onSystemBack not called while a sheet was open');
     });
+  });
+
+  testWidgets('back key closes the sheet even when focus escaped outside it', (tester) async {
+    final outsideNode = FocusNode(debugLabel: 'outside');
+    addTearDown(outsideNode.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(platform: TargetPlatform.android),
+        home: OverlaySheetHost(
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => Column(
+                children: [
+                  Focus(focusNode: outsideNode, child: const SizedBox(width: 10, height: 10)),
+                  ElevatedButton(
+                    onPressed: () => OverlaySheetController.of(context).show<void>(
+                      builder: (_) => const SizedBox(height: 120, child: Center(child: Text('SHEET'))),
+                    ),
+                    child: const Text('Open'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    expect(find.text('SHEET'), findsOneWidget);
+
+    // Focus escapes the sheet (the bug scenario: a background screen
+    // re-requested focus). The host's fallback handler must still close.
+    outsideNode.requestFocus();
+    await tester.pump();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(find.text('SHEET'), findsNothing, reason: 'sheet closed via escaped-focus fallback');
   });
 }

@@ -411,9 +411,15 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
           // Consume repeat events to prevent system sounds
           return finish(KeyEventResult.handled, 'select-long-press-repeat');
         } else if (event is KeyUpEvent) {
+          if (!_isSelectKeyDown) {
+            // We never saw this press's key-down (focus moved between down and
+            // up) — this release isn't ours to claim. Swallowing it here made
+            // the whole press vanish with no feedback.
+            return finish(KeyEventResult.ignored, 'select-up-without-down');
+          }
           final timerWasActive = _longPressTimer?.isActive ?? false;
           _longPressTimer?.cancel();
-          if (timerWasActive && _isSelectKeyDown) {
+          if (timerWasActive) {
             // Timer still active - short press
             widget.onSelect?.call();
           }
@@ -431,10 +437,15 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
       return finish(KeyEventResult.ignored, 'non-actionable');
     }
 
-    // Context menu key
+    // Context menu key. Only arm the select suppressor when something actually
+    // opens: arming with a no-op onLongPress left global suppression behind
+    // that ate the user's next select press.
     if (key.isContextMenuKey) {
+      if (widget.onLongPress == null) {
+        return finish(KeyEventResult.ignored, 'context-menu-unhandled');
+      }
       SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
-      widget.onLongPress?.call();
+      widget.onLongPress!.call();
       return finish(KeyEventResult.handled, 'context-menu');
     }
 

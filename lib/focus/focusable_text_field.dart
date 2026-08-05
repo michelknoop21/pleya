@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/apple_tv_native_text_entry.dart';
 import '../services/gamepad_service.dart';
 import '../utils/platform_detector.dart';
 import '../utils/text_input_diagnostics.dart';
@@ -82,51 +83,6 @@ class _NativeTvTextInputFocusBridge {
       _logTvTextInput('NativeFocusBridge platform send failed focused=$focused');
       // Focus reporting is a best-effort native routing hint.
     }
-  }
-}
-
-/// Result of a native Apple TV text-entry session.
-class _AppleTvTextEntryResult {
-  const _AppleTvTextEntryResult(this.text, this.submitted);
-  final String text;
-  final bool submitted;
-}
-
-/// Client for the native tvOS text-entry plugin (see NativeTextEntryPlugin.swift).
-/// Distinct from [_NativeTvTextInputFocusBridge], which deliberately bails on
-/// Apple TV — this one is the Apple TV path.
-class _AppleTvNativeTextEntry {
-  final MethodChannel _channel = const MethodChannel('com.pleya/native_text_entry');
-
-  ValueChanged<String>? onTextChanged;
-
-  _AppleTvNativeTextEntry() {
-    _channel.setMethodCallHandler((call) async {
-      if (call.method == 'textChanged') {
-        onTextChanged?.call(call.arguments as String? ?? '');
-      }
-    });
-  }
-
-  Future<_AppleTvTextEntryResult> edit({
-    required String text,
-    String? hint,
-    required bool obscure,
-    required String keyboardType,
-    required String action,
-    required bool autocorrect,
-    required String capitalization,
-  }) async {
-    final result = await _channel.invokeMapMethod<String, dynamic>('edit', {
-      'text': text,
-      'hint': hint,
-      'obscure': obscure,
-      'keyboardType': keyboardType,
-      'action': action,
-      'autocorrect': autocorrect,
-      'capitalization': capitalization,
-    });
-    return _AppleTvTextEntryResult((result?['text'] as String?) ?? text, (result?['submitted'] as bool?) ?? false);
   }
 }
 
@@ -902,21 +858,9 @@ class _FocusableTextInputHostState extends State<_FocusableTextInputHost> {
   }
 
   Future<void> _openAppleTvNativeEntry(_FocusableTextInputBase input) async {
-    final entry = _AppleTvNativeTextEntry();
-    entry.onTextChanged = (text) {
-      if (!mounted) return;
-      input.controller.text = text;
-      // Resolve callbacks against widget.input at invoke time (see comment in
-      // _openTvKeyboard), so a rebuilt field still gets its onChanged.
-      widget.input.onChanged?.call(text);
-    };
-    // State-clearing: mark native focus so the gamepad service stops
-    // intercepting. The tvOS pause() PlatformException is swallowed in
-    // gamepad_service.dart.
-    unawaited(GamepadService.setNativeTextInputFocused(true));
     var fellBack = false;
     try {
-      final result = await entry.edit(
+      final result = await AppleTvNativeTextEntry.instance.edit(
         text: input.controller.text,
         hint: _keyboardHint(input.decoration),
         obscure: input.obscureText,
@@ -924,6 +868,13 @@ class _FocusableTextInputHostState extends State<_FocusableTextInputHost> {
         action: _textInputActionToNativeString(input.textInputAction),
         autocorrect: input.autocorrect,
         capitalization: _capitalizationToNativeString(input.textCapitalization),
+        onTextChanged: (text) {
+          if (!mounted) return;
+          input.controller.text = text;
+          // Resolve callbacks against widget.input at invoke time (see comment
+          // in _openTvKeyboard), so a rebuilt field still gets its onChanged.
+          widget.input.onChanged?.call(text);
+        },
       );
       if (mounted) {
         input.controller.text = result.text;
@@ -940,12 +891,15 @@ class _FocusableTextInputHostState extends State<_FocusableTextInputHost> {
       // Tests and non-tvOS embedders don't register the channel.
       fellBack = true;
       _openFlutterTvKeyboard(input);
-    } on PlatformException {
+    } on PlatformException catch (e) {
+      if (e.code == AppleTvNativeTextEntry.busyCode) {
+        // A native session is already on screen — opening the Flutter keyboard
+        // now would stack a dialog behind the visible alert.
+        return;
+      }
       fellBack = true;
       _openFlutterTvKeyboard(input);
     } finally {
-      entry.onTextChanged = null;
-      unawaited(GamepadService.setNativeTextInputFocused(false));
       // On fallback, _openFlutterTvKeyboard now owns the lifecycle — don't
       // tear down the just-opened dialog's bookkeeping.
       if (!fellBack) {

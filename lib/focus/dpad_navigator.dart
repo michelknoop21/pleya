@@ -78,9 +78,19 @@ class _KeyUpSuppressor {
 
   /// Returns `true` (consumed) when the event belongs to the matched key
   /// category and suppression is active. Clears suppression on [KeyUpEvent].
+  ///
+  /// A matched [KeyDownEvent] also clears suppression but is NOT consumed: the
+  /// suppressor exists to eat the in-flight *release* of the press that armed
+  /// it, and a fresh key-down can never be that release. Consuming it silently
+  /// ate the user's next press whenever the armed key-up never arrived (e.g.
+  /// the press that armed was a different key, or focus moved mid-press).
   bool consumeIfSuppressed(KeyEvent event) {
     if (!_suppressed) return false;
     if (_keyMatcher(event.logicalKey)) {
+      if (event is KeyDownEvent) {
+        _suppressed = false;
+        return false;
+      }
       if (event is KeyUpEvent) _suppressed = false;
       return true;
     }

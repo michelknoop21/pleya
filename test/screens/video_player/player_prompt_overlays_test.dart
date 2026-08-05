@@ -81,6 +81,12 @@ void main() {
     expect(_promptPosition(tester).bottom, 100);
     expect(chromeController.hide(), isFalse);
     expect(_promptPosition(tester).bottom, 100);
+
+    // Tree teardown releases the hold, which deliberately re-arms the
+    // auto-hide timer (see the dispose comment in player_prompt_overlays.dart);
+    // cancel it before the binding's pending-timer check.
+    await tester.pumpWidget(_wrapPrompt(const SizedBox.shrink()));
+    chromeController.cancelAutoHide();
   });
 
   testWidgets('focused play next prompt holds chrome visible', (tester) async {
@@ -112,6 +118,10 @@ void main() {
 
     expect(chromeController.isHeld(PlayerChromeHold.promptInteraction), isTrue);
     expect(chromeController.hide(), isFalse);
+
+    // Same deliberate re-arm as above: drop the tree, then cancel the timer.
+    await tester.pumpWidget(_wrapPrompt(const SizedBox.shrink()));
+    chromeController.cancelAutoHide();
   });
 
   testWidgets('removing a held prompt releases hold without notifying during dispose', (tester) async {
@@ -146,6 +156,10 @@ void main() {
 
     expect(chromeController.isHeld(PlayerChromeHold.promptInteraction), isFalse);
     expect(notifications, 0);
+
+    // The dispose-release deliberately re-armed auto-hide; clear it so the
+    // binding's pending-timer invariant stays green.
+    chromeController.cancelAutoHide();
   });
 }
 
