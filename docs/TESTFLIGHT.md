@@ -75,6 +75,15 @@ Zonder deze stap faalt codesign met `errSecInternalComponent`.
   TestFlight aan de interne groep toevoegen. Nieuwe builds worden bij testers
   automatisch geïnstalleerd (TestFlight "Automatic Updates").
 
+## Troubleshooting
+
+| Symptoom | Oorzaak | Fix |
+|---|---|---|
+| **Élke** lane faalt binnen seconden op `DVTPlugInLoading: Failed to load code for plug-in com.apple.dt.IDESimulatorFoundation` | Xcode is bijgewerkt maar nooit handmatig gestart; de systeemcomponenten in `/Library/Developer/PrivateFrameworks/` lopen achter op Xcode.app | Start Xcode één keer uit Programma's en laat hem de componenten installeren. `xcodebuild -runFirstLaunch` werkt níet. Check: `pkgutil --pkg-info com.apple.pkg.XcodeSystemResources` moet dezelfde versie tonen als `xcodebuild -version`. Zie [DEC-010](DECISIONS.md#dec-010) |
+| `upload_to_testflight` breekt af na ~1 minuut, fastlane toont een foutsamenvatting zonder foutregel | Onderbroken upload — niet noodzakelijk een echte fout | Lane opnieuw draaien. Archief en IPA blijven behouden, dus een herhaling is snel |
+
+Draai lanes altijd met de uitvoer **direct naar een bestand** (`fastlane ios_beta > log.txt 2>&1`), niet via een pipe: bij `| tail` lees je de exitcode van `tail` en lijkt een mislukte run geslaagd.
+
 ## Let op (macOS)
 
 Voor Mac App Store/TestFlight is App Sandbox verplicht — die staat sinds deze

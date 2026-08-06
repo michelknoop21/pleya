@@ -1,10 +1,14 @@
 # STATUS — Pleya
 
-_Laatst bijgewerkt: 2026-07-30 (branch `test`)_
+_Laatst bijgewerkt: 2026-08-05 (branch `main`, gepusht)_
 
 ## Waar was ik
 
-TestFlight external testing voorbereid. `fastlane/Fastfile` heeft twee nieuwe lanes: `external` (distribueert de laatste geüploade build naar de external groep via `distribute_only`, per platform aanroepbaar met `platform:ios|appletvos|osx`; triggert Beta App Review bij de eerste build van een versie) en `add_testers emails:a@x.nl,b@y.nl` (voegt testers toe via Spaceship `post_bulk_beta_tester_assignments` — `pilot` als lane-actie kent geen tester-commando's). Groepsnaam via `EXTERNAL_GROUP` env-var (default "External Testers"); **de groep moet nog handmatig aangemaakt worden** in App Store Connect → TestFlight → External Testing. Ongecommit; syntax en lane-registratie geverifieerd. Daarnaast staan er ongecommitte wijzigingen in `WatchNextPlugin.kt`/`WatchNextProvider.kt`/`TopShelfProvider.swift` uit de parallelle sessie (zie `docs/sessions/2026-07-30.md`).
+Zoeken werkt nu op elk apparaat, inclusief inspreken met de Siri Remote. tvOS geeft apps geen microfoontoegang, dus dictatie loopt via het systeem-toetsenbord: het zoekveld op Apple TV was een kale `InputDecorator` zonder focus en dus niet eens selecteerbaar, en is nu een `FocusableButton` die op select de native alert opent — voorgevuld, met partials die live in de bestaande debounce lopen. Daaronder zaten twee globale focusbugs die het "kan soms niets selecteren"-gedrag verklaren: de context-menu-toets armde de `SelectKeyUpSuppressor` ook zonder handler (die at dan de volgende select-druk op), en een select-key-up die op een andere node landde werd geslikt in plaats van doorgegeven. Verder: recente-zoekopdrachten waren op Apple TV niet activeerbaar, "Wis geschiedenis" gooide een `TypeError` en deed op géén platform iets, en sheets op hostloze schermen openden zonder focus. Commit `3b193f8`; CI-gate volledig groen, 2792 tests groen; build **202** staat op TestFlight voor iOS, tvOS en macOS.
+
+Daarvóór:
+
+TestFlight external testing voorbereid. `fastlane/Fastfile` heeft twee nieuwe lanes: `external` (distribueert de laatste geüploade build naar de external groep via `distribute_only`, per platform aanroepbaar met `platform:ios|appletvos|osx`; triggert Beta App Review bij de eerste build van een versie) en `add_testers emails:a@x.nl,b@y.nl` (voegt testers toe via Spaceship `post_bulk_beta_tester_assignments` — `pilot` als lane-actie kent geen tester-commando's). Groepsnaam via `EXTERNAL_GROUP` env-var (default "External Testers"); **de groep moet nog handmatig aangemaakt worden** in App Store Connect → TestFlight → External Testing. Inmiddels gecommit en op `main`.
 
 Daarvóór:
 
@@ -18,7 +22,19 @@ Ondertitel-labels op tvOS. Build 193 bevat de fix die mpv-ondertitelsporen posit
 
 ## Volgende stap
 
-Build 194 op de Apple TV installeren, een item met meerdere ondertitelsporen afspelen, het ondertitelpaneel openen en in Instellingen > Logs zoeken op `subtitle-labeling`. Die ene regel noemt de uitkomst plus de aantallen en per-spoor metadata aan beide kanten. Daarna de bijbehorende fix:
+Build **202** op de Apple TV installeren en de zoekflow met de remote nalopen — dictatie en iPhone-continuity zijn niet simuleerbaar, dus dit is de enige manier om het af te tekenen:
+
+1. Zoekveld focussen → select → systeem-toetsenbord verschijnt met de huidige query erin
+2. Mic-knop op de Siri Remote indrukken → gesproken tekst verschijnt in het veld
+3. Menu → toetsenbord sluit, resultaten staan er, en play/pause + D-pad werken daarna nog
+4. Long-press op een resultaat (context-menu) en dáárna een gewone select → die moet nu werken (suppressor-fix)
+5. Back met een open sheet → sheet sluit zonder dat de focus naar de sidebar springt
+
+Op Android TV: mic-knop, en "zoek X in Pleya" via de Assistent vanuit een **volledig afgesloten** app (cold-start-fix).
+
+Daarna openstaand, uit een eerdere sessie:
+
+Ondertitelpaneel op de Apple TV toonde nog "Track 3". In Instellingen > Logs zoeken op `subtitle-labeling`; die ene regel noemt de uitkomst plus de aantallen en per-spoor metadata aan beide kanten. Daarna de bijbehorende fix:
 
 | `outcome=` | Oorzaak | Fix |
 |---|---|---|
@@ -31,7 +47,11 @@ Build 194 op de Apple TV installeren, een item met meerdere ondertitelsporen afs
 
 - [ ] **ice.pleya.app**: productie-relay nog niet gevalideerd tegen de Pleya Share-frame-eisen (client is stub-getest).
 - [ ] **Wi-Fi Aware iOS**: alleen compile-bewezen (Xcode 26.3/SDK 26.2); echte verbinding vereist iPhone 12+ op iOS 26.
-- [ ] **3 pre-existing testfailures** in `test/screens/video_player/player_prompt_overlays_test.dart` (falen ook op HEAD, niet door recent werk veroorzaakt).
+- [x] ~~3 pre-existing testfailures in `player_prompt_overlays_test.dart`~~ — opgelost 2026-08-05. Ze faalden op de pending-timer-invariant, niet op gedrag: `PlayerChromeController` armt de auto-hide-timer bewust opnieuw als een hold wordt vrijgegeven. De tests annuleren die timer nu na teardown.
+
+## Toolchain-valkuil
+
+Na een Xcode-update faalt **élke** build (ook fastlane) tot Xcode één keer handmatig is gestart — de systeemcomponenten in `/Library/Developer/PrivateFrameworks/` blijven anders achter bij Xcode.app. `xcodebuild -runFirstLaunch` lost het niet op. Check: `pkgutil --pkg-info com.apple.pkg.XcodeSystemResources` moet dezelfde versie tonen als `xcodebuild -version`. Zie [DEC-010](docs/DECISIONS.md#dec-010).
 
 ## Openstaand plan
 
@@ -40,13 +60,22 @@ Near-realtime sync van kijkvoortgang tussen apparaten: WebSocket-push van Plex/J
 ## Quick start
 
 ```bash
-cd /Users/michelknoop/.supacode/repos/plezy-main/test
-flutter test test/utils/player_subtitle_labeling_test.dart   # ondertitel-koppeling
-flutter analyze                                              # warnings = CI-failure
-scripts/testflight_release.sh tvos_beta                      # TestFlight-upload (~10 min)
+cd /Volumes/SSD/Projects/PlexFlixNetwork/plezy-main
+flutter test test/focus/ test/screens/search_screen_test.dart  # TV-focus en zoeken
+scripts/ci_checks.sh                                           # volledige CI-gate
+scripts/testflight_release.sh tvos_beta                        # TestFlight-upload (~10 min)
 ```
 
 ## Recente sessies
+
+### 2026-08-05
+- Zoeken op elk apparaat: Siri Remote-dictatie via het systeem-toetsenbord op Apple TV, plus zeven focus/selectie/popup-fixes waaronder twee globale (`SelectKeyUpSuppressor`, verweesde key-ups). Commit `3b193f8`, build 202 op iOS/tvOS/macOS.
+- Repo gesynchroniseerd: `main` 64 commits bijgewerkt naar `origin/main` en de lokale `test`-branch gemerged.
+- Xcode-toolchain hersteld (componenten stonden op 26.3 tegen Xcode 26.6) — zie [DEC-010](docs/DECISIONS.md#dec-010).
+
+### 2026-08-03
+- Voice search (Android `RecognizerIntent`), inline TV-zoektoetsenbord in plaats van pop-up, guard-test tegen kale `TextField`s.
+- App Review 2.1(a): geen dead-end meer bij inloggen, Plex en Jellyfin gelijkwaardig.
 
 ### 2026-07-30
 - Fastlane external-testing lanes: `external` (distribute_only naar external groep) en `add_testers` (Spaceship). Groep "External Testers" nog aanmaken in App Store Connect.
@@ -60,13 +89,5 @@ scripts/testflight_release.sh tvos_beta                      # TestFlight-upload
 
 ### 2026-07-25
 - Downloads hervatten na systeempauze, netwerkverlies en retry; home-indeling werkt direct in plaats van pas na herstart. TestFlight 187.
-
-### 2026-07-23
-- Hero-resume-bug: direct-play herfetcht items zonder viewOffset; iCloud-voortgang merge (max/OR) + share-keys op denylist.
-- Wi-Fi Aware release-compile-fix (Kotlin-lambda), TestFlight 185, APK ververst op geheime link.
-
-### 2026-07-22
-- Pleya Share compleet: pairAny (QR/hotspot), relay-tunnel, iOS keepalive, sessietoken-persistentie, multi-client + scan-cache, link-local/USB-kabel, offline bind + auto-resume, Plex-brug voor share-items, Wi-Fi Aware-transport, energie-optimalisaties, GUI-uitleg, website, geheime APK-download-link op de NAS.
-- TestFlight 182 t/m 185.
 
 Zie [docs/DECISIONS.md](docs/DECISIONS.md) voor keuzes, [docs/CHANGELOG.md](docs/CHANGELOG.md) voor details en [docs/PLEYA_SHARE.md](docs/PLEYA_SHARE.md) voor de share-architectuur.
