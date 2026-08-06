@@ -89,14 +89,17 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin {
     let entry = self.entry
     self.entry = nil
 
-    // Hand the remote back to Flutter only once the dismissal has completed —
-    // ending the session restores first responder, and doing that while the
-    // keyboard window is still tearing down loses the next press. Dismissing
-    // through the entry itself avoids re-deriving the presenter: by now
-    // UIRemoteKeyboardWindow can be the key window, so the lookup used at
-    // presentation time would hand back the wrong controller.
-    if let entry, entry.presentingViewController != nil {
-      entry.dismiss(animated: true) { NativeInputSession.end() }
+    // Dismiss through the *presenting* controller, never `entry.dismiss()`.
+    // While the system keyboard is up it is a presentation of `entry`, and
+    // UIKit routes `dismiss` to the receiver's presented controller — so
+    // `entry.dismiss()` closed the keyboard and left this overlay on screen
+    // for good, with the remote already handed back to Flutter underneath it.
+    //
+    // Hand that remote back only once the dismissal has completed: ending the
+    // session restores first responder, and doing that while the keyboard
+    // window is still tearing down loses the next press.
+    if let presenter = entry?.presentingViewController {
+      presenter.dismiss(animated: true) { NativeInputSession.end() }
     } else {
       NativeInputSession.end()
     }

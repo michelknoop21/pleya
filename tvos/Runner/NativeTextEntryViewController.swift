@@ -70,6 +70,7 @@ final class NativeTextEntryViewController: UIViewController, UITextFieldDelegate
   static let unavailableFailure = "KEYBOARD_UNAVAILABLE"
 
   private var didBeginEditing = false
+  private var didRequestKeyboard = false
   private var committed = false
   private var finished = false
   private var watchdog: Timer?
@@ -113,6 +114,18 @@ final class NativeTextEntryViewController: UIViewController, UITextFieldDelegate
 
   override func viewDidAppear(_ animated: Bool) {
     super.viewDidAppear(animated)
+
+    // tvOS raises its keyboard by presenting it *over* this controller, so
+    // this fires a second time when the keyboard closes. Asking for first
+    // responder again there would reopen it immediately and there would be no
+    // way out — the same reopen-loop DEC-009 documents for the Flutter
+    // keyboard. A second appearance means the user is done.
+    guard !didRequestKeyboard else {
+      finish(submitted: false, failure: nil)
+      return
+    }
+    didRequestKeyboard = true
+
     // Must be here, not in viewDidLoad: the field needs a window before tvOS
     // will raise the system keyboard for it.
     textField.becomeFirstResponder()
