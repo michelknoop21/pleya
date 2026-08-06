@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../utils/app_logger.dart';
 import '../utils/native_input_session.dart';
 import 'gamepad_service.dart';
-import 'settings_service.dart';
 
 /// Result of a native Apple TV text-entry session.
 class AppleTvTextEntryResult {
@@ -28,6 +28,11 @@ class AppleTvNativeTextEntry {
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'textChanged') {
         _activeOnTextChanged?.call(call.arguments as String? ?? '');
+      } else if (call.method == 'diagnostic') {
+        // Info level on purpose: debug is filtered out in release, and
+        // Instellingen > Logs is the only practical way to inspect this on a
+        // TV. This path cannot be exercised off-device.
+        appLogger.i('NativeTextEntry: ${call.arguments}');
       }
     });
   }
@@ -47,34 +52,20 @@ class AppleTvNativeTextEntry {
 
   ValueChanged<String>? _activeOnTextChanged;
   bool _sessionActive = false;
-  bool? _unavailable;
+  bool _unavailable = false;
 
-  /// Whether the native surface has been written off. Latched by the watchdog
-  /// codes so a device where this path is broken never shows the dead surface
-  /// again — every caller goes straight to its fallback. Only [deadCode]
-  /// survives a relaunch; see [_markUnavailable].
-  bool get isUnavailable {
-    final cached = _unavailable;
-    if (cached != null) return cached;
-    try {
-      final stored = SettingsService.instance.read(SettingsService.nativeTextEntryUnavailable);
-      _unavailable = stored;
-      return stored;
-    } on StateError {
-      // Settings aren't up yet (tests, earliest startup). Assume usable and
-      // re-read later rather than caching a guess.
-      return false;
-    }
-  }
+  /// Whether the native surface has been written off *for this app run*. Set by
+  /// the watchdog codes so a broken surface is never shown twice in a session;
+  /// every caller then takes its existing fallback.
+  ///
+  /// Deliberately not persisted. The watchdog can only guess from a timeout,
+  /// and a false positive — Siri stealing the moment, the app backgrounded —
+  /// would otherwise cost the user dictation permanently, on this device and
+  /// (via settings sync) on every other one.
+  bool get isUnavailable => _unavailable;
 
-  void _markUnavailable({required bool persist}) {
+  void _markUnavailable() {
     _unavailable = true;
-    if (!persist) return;
-    try {
-      SettingsService.instance.write(SettingsService.nativeTextEntryUnavailable, true);
-    } on StateError {
-      // No persistence available — the in-memory latch still holds for this run.
-    }
   }
 
   @visibleForTesting
@@ -132,11 +123,7 @@ class AppleTvNativeTextEntry {
       return AppleTvTextEntryResult((result?['text'] as String?) ?? text, (result?['submitted'] as bool?) ?? false);
     } on PlatformException catch (e) {
       if (e.code == deadCode || e.code == unavailableCode) {
-        // Only a dead surface is written off for good: presses arrived and
-        // nothing responded, which is structural. "Never came up" can just as
-        // well be a backgrounded app or Siri stealing the moment, so that one
-        // is retried on the next launch.
-        _markUnavailable(persist: e.code == deadCode);
+        _markUnavailable();
       }
       rethrow;
     } finally {

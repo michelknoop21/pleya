@@ -48,6 +48,26 @@ import wakelock_plus
     }
   }
 
+  /// Whether this press is the Menu/Back button.
+  ///
+  /// `press.type == .menu` is *not* enough. On tvOS 26 the delivered raw value
+  /// is 2041 while `UIPress.PressType.menu.rawValue` compiles to 5, so the
+  /// obvious comparison silently never matches — which is exactly why the
+  /// system keyboard could not be dismissed: the press was forwarded past the
+  /// escape hatch instead of triggering it. Measured on tvOS 26.2 (simulator):
+  /// select = 2040, menu = 2041. The symbolic case is kept first so this keeps
+  /// working if the runtime ever agrees with the SDK again, and the escape
+  /// keyCode covers a hardware keyboard (and the simulator's Escape).
+  private static let menuPressRawValue = 2041
+
+  private static func containsMenuPress(_ presses: Set<UIPress>) -> Bool {
+    presses.contains { press in
+      press.type == .menu
+        || press.type.rawValue == menuPressRawValue
+        || press.key?.keyCode == .keyboardEscape
+    }
+  }
+
   /// Keeps presses out of the engine while a native surface owns the remote.
   ///
   /// `super` is `FlutterViewController`, which routes into the keyboard manager
@@ -63,7 +83,7 @@ import wakelock_plus
   ) -> Bool {
     guard NativeInputSession.isActive else { return false }
 
-    if presses.contains(where: { $0.type == .menu }) {
+    if Self.containsMenuPress(presses) {
       if handlingMenu {
         NativeInputSession.onMenuPress?()
       }

@@ -89,10 +89,6 @@ class SettingsExportService {
     // another device. Deny it so export/iCloud doesn't ship a dead payload or
     // write an unscoped `seerr_session` the active profile never loads.
     'seerr_session',
-    // Verdict of the tvOS text-entry watchdog about *this* device's system
-    // keyboard. Syncing it would disable Siri Remote dictation on every other
-    // Apple TV in the house because one of them once failed to open it.
-    'native_text_entry_unavailable',
   };
 
   /// Prefix denylist. A key is excluded if it starts with any of these.

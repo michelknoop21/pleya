@@ -11,6 +11,21 @@ import 'gamepad_service.dart';
 
 enum _SwipeAxis { horizontal, vertical }
 
+/// Which input source owns directional navigation for the current gesture.
+///
+/// tvOS delivers one touch-surface swipe over two independent paths: its own
+/// swipe recognizer synthesizes `UIPress` arrows, and the engine separately
+/// streams the raw touch coordinates that [AppleTvRemoteTouchService] turns
+/// into arrows itself. Deduplicating those per key inside a short time window
+/// is not reliable — the recognizer has gesture latency, so its arrow lands
+/// outside the window on a busy frame and the focus takes two steps. It also
+/// resolves the swipe axis independently, so a diagonal swipe could emit one
+/// arrow per path in *different* directions.
+///
+/// Instead the first source to produce a direction owns the whole gesture and
+/// the other one is muted until the gesture ends.
+enum _DirectionalOwner { none, swipe, native }
+
 class AppleTvRemotePlayPauseAction {
   final String source;
   final String? detail;
@@ -29,6 +44,11 @@ class AppleTvRemoteTouchService {
   // while stopping the focus from over-running. Tune on-device if it feels slow.
   static const Duration defaultSwipeRepeatInterval = Duration(milliseconds: 190);
   static const Duration defaultClickAfterDirectionSuppression = Duration(milliseconds: 220);
+  // How long a gesture's directional owner stays latched after the finger
+  // lifts. tvOS' swipe recognizer regularly delivers its UIPress arrow only
+  // *after* touchesEnded, so without this the trailing arrow would add a
+  // second step to a gesture that already moved.
+  static const Duration defaultGestureOwnershipGrace = Duration(milliseconds: 250);
 
   static final AppleTvRemoteTouchService instance = AppleTvRemoteTouchService();
 
@@ -45,6 +65,7 @@ class AppleTvRemoteTouchService {
   final double axisSwitchDominanceRatio;
   final Duration swipeRepeatInterval;
   final Duration clickAfterDirectionSuppression;
+  final Duration gestureOwnershipGrace;
 
   bool _listening = false;
   bool _nativeKeyHandlerRegistered = false;
@@ -63,8 +84,8 @@ class AppleTvRemoteTouchService {
   int _suppressedNativeSelectDowns = 0;
   bool _nativeSelectPressed = false;
   bool _selectPressedFromClick = false;
-  final Map<LogicalKeyboardKey, DateTime> _lastSyntheticDirectionalAt = {};
-  final Map<LogicalKeyboardKey, int> _suppressedNativeDirectionalDowns = {};
+  _DirectionalOwner _directionalOwner = _DirectionalOwner.none;
+  DateTime? _directionalOwnerExpiresAt;
 
   AppleTvRemoteTouchService({
     BasicMessageChannel<dynamic>? channel,
@@ -79,6 +100,7 @@ class AppleTvRemoteTouchService {
     this.axisSwitchDominanceRatio = defaultAxisSwitchDominanceRatio,
     this.swipeRepeatInterval = defaultSwipeRepeatInterval,
     this.clickAfterDirectionSuppression = defaultClickAfterDirectionSuppression,
+    this.gestureOwnershipGrace = defaultGestureOwnershipGrace,
   }) : assert(axisSwitchDominanceRatio >= 1),
        _channel = channel ?? const BasicMessageChannel<dynamic>(_channelName, JSONMessageCodec()),
        _simulateKeyPress = simulateKeyPress ?? key_sim.simulateKeyPress,
@@ -113,8 +135,8 @@ class AppleTvRemoteTouchService {
     _unregisterNativeKeyHandler();
     _duplicateInputGuard.clear();
     _resetNativeSelectBurstState();
-    _lastSyntheticDirectionalAt.clear();
-    _suppressedNativeDirectionalDowns.clear();
+    _directionalOwner = _DirectionalOwner.none;
+    _directionalOwnerExpiresAt = null;
     _releaseSelectFromClick(source: 'stop');
     _resetTouch();
     _listening = false;
@@ -136,11 +158,11 @@ class AppleTvRemoteTouchService {
     if (_shouldConsumeNativeSelectDuplicate(event)) {
       return true;
     }
-    if (_shouldConsumeNativeDirectionalDuplicate(event)) {
-      return true;
-    }
-    if (event is KeyDownEvent && _isDirectionalKey(event.logicalKey)) {
-      _lastDirectionalInputAt = _now();
+    if (_isDirectionalKey(event.logicalKey)) {
+      // Track this even for events we go on to consume: a directional input
+      // from either path should still suppress a stray click that follows it.
+      if (event is! KeyUpEvent) _lastDirectionalInputAt = _now();
+      if (_shouldConsumeNativeDirectional(event)) return true;
     }
     return _duplicateInputGuard.handleNativeKeyEvent(event);
   }
@@ -223,11 +245,26 @@ class AppleTvRemoteTouchService {
     _anchorY = y;
     _lastSwipeAxis = null;
     _lastSwipeAt = null;
+    // A swipe claim still under its post-lift grace belongs to a gesture the
+    // accumulator already owned, so carry it into this one — consecutive fast
+    // swipes must not let the previous gesture's trailing native arrow in.
+    // Anything else (a directional-ring click) starts fresh.
+    if (_currentDirectionalOwner() == _DirectionalOwner.swipe) {
+      _directionalOwnerExpiresAt = null;
+    } else {
+      _directionalOwner = _DirectionalOwner.none;
+      _directionalOwnerExpiresAt = null;
+    }
   }
 
   void _moveTouch(double x, double y) {
     if (!_touchActive) {
       _log('ignore touch-move reason=no-active-touch x=${_formatDouble(x)} y=${_formatDouble(y)}');
+      return;
+    }
+
+    if (_currentDirectionalOwner() == _DirectionalOwner.native) {
+      _log('suppress swipe reason=gesture-owned-by-native x=${_formatDouble(x)} y=${_formatDouble(y)}');
       return;
     }
 
@@ -251,8 +288,20 @@ class AppleTvRemoteTouchService {
         : (deltaY >= 0 ? LogicalKeyboardKey.arrowUp : LogicalKeyboardKey.arrowDown);
 
     _emitKey(logicalKey, source: 'swipe', detail: 'dx=${_formatDouble(deltaX)} dy=${_formatDouble(deltaY)}');
-    _anchorX = x;
-    _anchorY = y;
+    // Advance the anchor by exactly one threshold along the axis we just
+    // emitted on, rather than snapping it to the finger. Snapping throws away
+    // whatever travel overshot the threshold, and how much overshoots depends
+    // on the sample and frame timing — so the same physical swipe yields a
+    // different number of steps run to run. Carrying the remainder keeps it at
+    // floor(distance / threshold). The other axis still snaps: it did not
+    // contribute a step.
+    if (axis == _SwipeAxis.horizontal) {
+      _anchorX = x + deltaX - swipeThreshold * (deltaX >= 0 ? 1 : -1);
+      _anchorY = y;
+    } else {
+      _anchorX = x;
+      _anchorY = y + deltaY - swipeThreshold * (deltaY >= 0 ? 1 : -1);
+    }
     _lastSwipeAxis = axis;
     _lastSwipeAt = now;
   }
@@ -437,49 +486,48 @@ class AppleTvRemoteTouchService {
     return false;
   }
 
-  bool _shouldConsumeNativeDirectionalDuplicate(KeyEvent event) {
-    final key = event.logicalKey;
-    if (!_isDirectionalKey(key)) return false;
-
-    final now = _now();
-    _pruneSyntheticDirectionalState(now);
-
-    if (event is KeyDownEvent) {
-      final lastSyntheticAt = _lastSyntheticDirectionalAt[key];
-      if (lastSyntheticAt != null && now.difference(lastSyntheticAt).abs() <= duplicateSuppressionWindow) {
-        _suppressedNativeDirectionalDowns[key] = (_suppressedNativeDirectionalDowns[key] ?? 0) + 1;
-        final age = now.difference(lastSyntheticAt).abs().inMilliseconds;
-        _log(
-          'consume native ${_eventTypeName(event)} logical=${_keyName(key)} '
-          'reason=recent-synthetic-direction age=${age}ms',
-        );
-        return true;
-      }
-      return false;
-    }
-
-    if (event is KeyUpEvent) {
-      final suppressedDowns = _suppressedNativeDirectionalDowns[key] ?? 0;
-      if (suppressedDowns <= 0) return false;
-      if (suppressedDowns == 1) {
-        _suppressedNativeDirectionalDowns.remove(key);
-      } else {
-        _suppressedNativeDirectionalDowns[key] = suppressedDowns - 1;
-      }
+  /// Consume a native directional event when the touch-surface accumulator
+  /// already owns this gesture, otherwise claim the gesture for the native
+  /// path and let the event through.
+  ///
+  /// Deliberately unconditional on key and event type: the two paths resolve
+  /// the swipe axis independently, so a diagonal swipe can produce a native
+  /// arrow on a *different* axis than the synthetic one. Matching only the
+  /// same key would let that through as a second, sideways move.
+  bool _shouldConsumeNativeDirectional(KeyEvent event) {
+    if (_currentDirectionalOwner() == _DirectionalOwner.swipe) {
       _log(
-        'consume native ${_eventTypeName(event)} logical=${_keyName(key)} '
-        'reason=suppressed-native-direction-down',
+        'consume native ${_eventTypeName(event)} logical=${_keyName(event.logicalKey)} '
+        'reason=gesture-owned-by-swipe',
       );
       return true;
     }
 
+    if (event is! KeyUpEvent) {
+      _claimDirectionalOwner(_DirectionalOwner.native);
+    }
     return false;
   }
 
-  void _pruneSyntheticDirectionalState(DateTime now) {
-    _lastSyntheticDirectionalAt.removeWhere(
-      (_, timestamp) => now.difference(timestamp).abs() > duplicateSuppressionWindow,
-    );
+  /// The owner of the current gesture, expiring a stale claim first.
+  _DirectionalOwner _currentDirectionalOwner() {
+    final expiresAt = _directionalOwnerExpiresAt;
+    if (expiresAt != null && _now().isAfter(expiresAt)) {
+      _directionalOwner = _DirectionalOwner.none;
+      _directionalOwnerExpiresAt = null;
+    }
+    return _directionalOwner;
+  }
+
+  void _claimDirectionalOwner(_DirectionalOwner owner) {
+    if (_directionalOwner != owner) {
+      _log('directional owner=${owner.name}');
+    }
+    _directionalOwner = owner;
+    // A claim made while the finger is down lasts until the touch ends, at
+    // which point [_resetTouch] arms the grace period. A claim made without an
+    // active touch (a click on the directional ring) only gets the grace.
+    _directionalOwnerExpiresAt = _touchActive ? null : _now().add(gestureOwnershipGrace);
   }
 
   void _resetNativeSelectBurstState() {
@@ -501,8 +549,7 @@ class AppleTvRemoteTouchService {
     if (_isDirectionalKey(logicalKey)) {
       _lastDirectionalInputAt = _now();
       if (source == 'swipe') {
-        _lastSyntheticDirectionalAt[logicalKey] = _lastDirectionalInputAt!;
-        _pruneSyntheticDirectionalState(_lastDirectionalInputAt!);
+        _claimDirectionalOwner(_DirectionalOwner.swipe);
       }
     }
     _simulateKeyPress(logicalKey);
@@ -516,6 +563,9 @@ class AppleTvRemoteTouchService {
     _touchActiveNotifier.value = false;
     _lastSwipeAxis = null;
     _lastSwipeAt = null;
+    if (_directionalOwner != _DirectionalOwner.none) {
+      _directionalOwnerExpiresAt = _now().add(gestureOwnershipGrace);
+    }
   }
 
   void _registerNativeKeyHandler() {

@@ -7,10 +7,10 @@ import UIKit
   import Flutter
 #endif
 
-/// Presents native tvOS text entry: a `NativeTextEntryViewController` whose
-/// text field takes first responder, so the system keyboard — the platform's
-/// only dictation surface — comes up directly. Live edits stream back to Dart
-/// via `textChanged`; the final value returns from `edit`.
+/// Native tvOS text entry: a `NativeTextEntryField` parked in the Flutter view
+/// takes first responder, so the system keyboard — the platform's only
+/// dictation surface — comes up directly. Live edits stream back to Dart via
+/// `textChanged`; the final value returns from `edit`.
 ///
 /// One session at a time (`BUSY` otherwise). Menu returns the current text with
 /// `submitted=false`; committing on the keyboard returns it with
@@ -20,7 +20,7 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin {
   private static let channelName = "com.pleya/native_text_entry"
 
   private var channel: FlutterMethodChannel?
-  private var entry: NativeTextEntryViewController?
+  private var entry: NativeTextEntryField?
   private var pendingResult: FlutterResult?
 
   static func register(with registrar: FlutterPluginRegistrar) {
@@ -31,6 +31,7 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin {
   }
 
   func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    NSLog("[NativeTextEntry] channel call %@", call.method)
     switch call.method {
     case "edit":
       guard pendingResult == nil, entry == nil else {
@@ -48,28 +49,18 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin {
   }
 
   private func begin(args: [String: Any], result: @escaping FlutterResult) {
-    guard let presenter = Self.rootViewController() else {
-      result(FlutterError(code: "UNAVAILABLE", message: "No root view controller", details: nil))
-      return
-    }
-    // Presenting onto a controller that is already presenting is a silent
-    // no-op in UIKit: the view would never load, so the watchdog below would
-    // never arm and this call's future would never complete — leaving the
-    // input gate closed app-wide until relaunch. Refuse up front instead.
-    guard presenter.presentedViewController == nil else {
-      result(FlutterError(code: "BUSY", message: "Another controller is already presented", details: nil))
+    guard let host = Self.rootViewController()?.viewIfLoaded, host.window != nil else {
+      result(FlutterError(code: "UNAVAILABLE", message: "No hosting view on screen", details: nil))
       return
     }
 
-    let entry = NativeTextEntryViewController()
-    // .overFullScreen, never .fullScreen: the latter removes the Flutter view
-    // from the hierarchy, which tears down the render surface and sends
-    // AppLifecycleState.paused to Dart — media controls, wakelock and server
-    // health checks all react to that. Opening a keyboard must not.
-    entry.modalPresentationStyle = .overFullScreen
+    let entry = NativeTextEntryField()
     Self.configure(entry.textField, from: args)
     entry.onTextChanged = { [weak self] text in
       self?.channel?.invokeMethod("textChanged", arguments: text)
+    }
+    entry.onDiagnostic = { [weak self] message in
+      self?.channel?.invokeMethod("diagnostic", arguments: message)
     }
     entry.onFinished = { [weak self] text, submitted, failure in
       self?.finish(text: text, submitted: submitted, failure: failure)
@@ -78,31 +69,21 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin {
     self.entry = entry
     pendingResult = result
 
-    NativeInputSession.begin { [weak entry] in entry?.cancelFromMenu() }
-    presenter.present(entry, animated: true)
+    NativeInputSession.begin { [weak entry] in entry?.cancel() }
+    // Nothing is presented: the field goes straight into the Flutter view and
+    // tvOS raises its own keyboard for it. See the note on NativeTextEntryField
+    // for why a presented view controller had to go.
+    entry.attach(to: host)
   }
 
   private func finish(text: String, submitted: Bool, failure: String?) {
     guard let result = pendingResult else { return }
     pendingResult = nil
+    entry = nil
 
-    let entry = self.entry
-    self.entry = nil
-
-    // Dismiss through the *presenting* controller, never `entry.dismiss()`.
-    // While the system keyboard is up it is a presentation of `entry`, and
-    // UIKit routes `dismiss` to the receiver's presented controller — so
-    // `entry.dismiss()` closed the keyboard and left this overlay on screen
-    // for good, with the remote already handed back to Flutter underneath it.
-    //
-    // Hand that remote back only once the dismissal has completed: ending the
-    // session restores first responder, and doing that while the keyboard
-    // window is still tearing down loses the next press.
-    if let presenter = entry?.presentingViewController {
-      presenter.dismiss(animated: true) { NativeInputSession.end() }
-    } else {
-      NativeInputSession.end()
-    }
+    // The field has already removed itself; handing the remote back is all
+    // that is left, and it cannot fail.
+    NativeInputSession.end()
 
     if let failure {
       result(FlutterError(code: failure, message: "Native text entry never became usable", details: nil))
