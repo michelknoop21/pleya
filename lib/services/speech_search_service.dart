@@ -16,8 +16,8 @@ typedef SpeechCaptureResult = ({String text, bool submitted});
 /// which is exactly the platform that needs this most.
 ///
 /// * **tvOS** reuses the existing `com.pleya/native_text_entry` channel. Its
-///   `UIAlertController` text field gets Siri dictation and "type with your
-///   iPhone" for free from the system, with no permissions to request.
+///   text field raises the system keyboard, which gets Siri Remote dictation
+///   and "type with your iPhone" for free, with no permissions to request.
 /// * **Android (incl. Android TV)** uses `com.pleya/speech`, which fires the
 ///   system `RecognizerIntent`. That is an activity result, so no
 ///   `RECORD_AUDIO` permission is involved.
@@ -73,8 +73,9 @@ class SpeechSearchService {
     bool supported;
     if (PlatformDetector.isAppleTV()) {
       // The native text-entry plugin is the dictation surface here; if it is
-      // registered at all, dictation is available.
-      supported = true;
+      // registered and hasn't been written off by the watchdog, dictation is
+      // available.
+      supported = !_nativeEntry.isUnavailable;
     } else if (Platform.isAndroid) {
       supported = await _invoke<bool>(_speech, 'isSupported') ?? false;
     } else {
@@ -116,9 +117,18 @@ class SpeechSearchService {
         _cachedSupport = false;
         return null;
       } on PlatformException catch (e) {
-        // BUSY: a session is already on screen — nothing to do.
-        appLogger.d('Speech search: native edit failed', error: e);
-        return null;
+        if (e.code == AppleTvNativeTextEntry.busyCode) {
+          // A session is already on screen — nothing to do.
+          appLogger.d('Speech search: native edit busy', error: e);
+          return null;
+        }
+        // Anything else means the surface failed, including the watchdog codes
+        // for one that never became usable. Let the caller fall back rather
+        // than silently doing nothing — that is how the dead dialog used to
+        // look like a hang.
+        _cachedSupport = false;
+        appLogger.w('Speech search: native edit failed', error: e);
+        rethrow;
       }
     }
 

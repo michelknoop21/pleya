@@ -894,7 +894,7 @@ class _FocusableTextInputHostState extends State<_FocusableTextInputHost> {
     } on PlatformException catch (e) {
       if (e.code == AppleTvNativeTextEntry.busyCode) {
         // A native session is already on screen — opening the Flutter keyboard
-        // now would stack a dialog behind the visible alert.
+        // now would stack a dialog behind the visible keyboard.
         return;
       }
       fellBack = true;

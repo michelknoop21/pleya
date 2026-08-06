@@ -23,6 +23,7 @@ import '../mixins/controller_disposer_mixin.dart';
 import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
 import '../providers/multi_server_provider.dart';
+import '../services/apple_tv_native_text_entry.dart';
 import '../services/settings_service.dart';
 import '../services/speech_search_service.dart';
 import '../utils/app_logger.dart';
@@ -91,9 +92,9 @@ class _SearchScreenState extends State<SearchScreen>
   // TV only: phones and desktops already have a dictation key on the system
   // keyboard, so a second mic affordance there would just be noise.
   bool _voiceSearchSupported = false;
-  // Apple TV: the native system-keyboard alert is the primary input (and the
+  // Apple TV: the native system keyboard is the primary input (and the
   // dictation surface). Only when that path is broken does the inline D-pad
-  // keyboard take over.
+  // keyboard take over — latched, so a device where it fails never sees it again.
   bool _nativeEntryUnavailable = false;
   // Bumped per search; a completing request that isn't the latest is dropped.
   int _searchGeneration = 0;
@@ -114,6 +115,7 @@ class _SearchScreenState extends State<SearchScreen>
     _searchController.addListener(_onSearchChanged);
     _history = SettingsService.instance.read(SettingsService.searchHistory);
     FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
+    _nativeEntryUnavailable = PlatformDetector.isAppleTV() && AppleTvNativeTextEntry.instance.isUnavailable;
     if (PlatformDetector.isTV()) {
       unawaited(
         SpeechSearchService.instance.isSupported().then((supported) {
@@ -124,9 +126,9 @@ class _SearchScreenState extends State<SearchScreen>
   }
 
   /// Hand off to the platform's dictation surface — no letter-by-letter D-pad
-  /// entry needed at all. On Apple TV that surface is the native
-  /// system-keyboard alert (the Siri Remote mic dictates into it) and partial
-  /// text streams back live, so results are already on screen when it closes.
+  /// entry needed at all. On Apple TV that surface is the system keyboard
+  /// itself (the Siri Remote mic dictates into it) and partial text streams
+  /// back live, so results are already on screen when it closes.
   Future<void> _openNativeSearchEntry() async {
     try {
       final result = await SpeechSearchService.instance.capture(
@@ -153,19 +155,20 @@ class _SearchScreenState extends State<SearchScreen>
       _searchController.selection = TextSelection.collapsed(offset: result.text.length);
       if (result.submitted) _handleSearchSubmit();
     } on PlatformException {
-      // Broken native surface (BUSY returns null instead): switch this screen
-      // to the inline D-pad keyboard so the user is never stuck.
+      // Broken native surface — including the watchdog's verdict that it never
+      // became usable (BUSY returns null instead). Switch this screen to the
+      // inline D-pad keyboard so the user is never stuck.
       if (mounted) _revealFallbackKeyboard();
     }
   }
 
-  /// Swap the Apple TV pill-plus-native-alert input for the inline D-pad
+  /// Swap the Apple TV pill-plus-system-keyboard input for the inline D-pad
   /// keyboard, and keep focus alive across the swap.
   void _revealFallbackKeyboard() {
     if (_nativeEntryUnavailable) return;
     setStateIfMounted(() {
       _nativeEntryUnavailable = true;
-      // The mic button opens the same broken alert — hide it too.
+      // The mic button opens the same broken surface — hide it too.
       _voiceSearchSupported = false;
     });
     FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
@@ -555,7 +558,7 @@ class _SearchScreenState extends State<SearchScreen>
   /// here — nothing that can trigger the modal machinery.
   ///
   /// On Apple TV the pill itself is the input: select opens the native
-  /// system-keyboard alert, which is also the Siri-Remote dictation surface,
+  /// system keyboard, which is also the Siri-Remote dictation surface,
   /// so the inline D-pad keyboard only renders as fallback when the native
   /// path is broken. Everywhere else the pill stays read-only and the inline
   /// keyboard is the input.
@@ -592,7 +595,10 @@ class _SearchScreenState extends State<SearchScreen>
               : pill,
         ),
       ),
-      if (_voiceSearchSupported)
+      // Apple TV gets no mic button: the mic is on the remote and dictates the
+      // moment the system keyboard is up, which selecting the pill already
+      // does. Android TV needs one — there the mic opens RecognizerIntent.
+      if (_voiceSearchSupported && !PlatformDetector.isAppleTV())
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),

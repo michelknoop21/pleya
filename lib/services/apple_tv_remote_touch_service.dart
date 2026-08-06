@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 
 import '../utils/app_logger.dart';
 import '../utils/key_event_simulator.dart' as key_sim;
+import '../utils/native_input_session.dart';
 import 'gamepad_service.dart';
 
 enum _SwipeAxis { horizontal, vertical }
@@ -125,6 +126,13 @@ class AppleTvRemoteTouchService {
       _log('consume native media key reason=direct-playback-action');
       return true;
     }
+    // The tvOS system keyboard owns the remote — anything that still leaks
+    // through stops here rather than moving focus behind it.
+    if (NativeInputSession.isActive) {
+      _releaseSelectForNativeSession();
+      _log('consume native key reason=native-input-session');
+      return true;
+    }
     if (_shouldConsumeNativeSelectDuplicate(event)) {
       return true;
     }
@@ -150,6 +158,15 @@ class AppleTvRemoteTouchService {
     }
 
     _logTouch(type, arguments);
+
+    // play_pause still gets through: it is a direct playback action, not
+    // navigation, and the native side forwards it during a session too.
+    if (NativeInputSession.isActive && type != 'play_pause') {
+      _log('ignore message reason=native-input-session type=$type');
+      _releaseSelectForNativeSession();
+      _resetTouch();
+      return;
+    }
 
     switch (type) {
       case 'started':
@@ -300,6 +317,20 @@ class AppleTvRemoteTouchService {
     _selectPressedFromClick = true;
     _log('emit keydown=${_keyName(LogicalKeyboardKey.enter)} source=click_s');
     _simulateKeyDown(LogicalKeyboardKey.enter);
+  }
+
+  /// Close out the select press that opened the native surface.
+  ///
+  /// The press arrives as `click_s` → key-down → the button opens the keyboard,
+  /// and the matching `click_e` then lands with the session already active and
+  /// gets dropped. Without this, `_selectPressedFromClick` stays true and
+  /// `_shouldConsumeNativeSelectDuplicate` eats the *next* real select as an
+  /// in-flight duplicate — so the first press after every session did nothing.
+  /// The synthetic key-up itself is swallowed by the gate in
+  /// [key_sim.simulateKeyUp]; only the bookkeeping matters here.
+  void _releaseSelectForNativeSession() {
+    if (!_selectPressedFromClick) return;
+    _releaseSelectFromClick(source: 'native-input-session');
   }
 
   void _releaseSelectFromClick({required String source}) {

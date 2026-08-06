@@ -33,6 +33,7 @@
 		E79A4474D308631AFA59CAE7 /* DeviceInfoPlusPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1F41676FEF1AB57076F8B9 /* DeviceInfoPlusPlugin.swift */; };
 		EA0F4264E7B912702C490109 /* MPVKit in Frameworks */ = {isa = PBXBuildFile; productRef = EA0F4263E7B912702C490108 /* MPVKit */; };
 		FE01A2B3C4D5E6F708192A3B /* NativeTextEntryPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE11223344556677889900AB /* NativeTextEntryPlugin.swift */; };
+		FE01A2B3C4D5E6F708192A3C /* NativeTextEntryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE11223344556677889900AC /* NativeTextEntryViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -107,6 +108,7 @@
 		F2F829B3F190657106F66379 /* TopShelfProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TopShelfProvider.swift; sourceTree = "<group>"; };
 		F9426EFA282CDA8E0E98EEE9 /* PackageInfoPlusPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PackageInfoPlusPlugin.swift; sourceTree = "<group>"; };
 		FE11223344556677889900AB /* NativeTextEntryPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NativeTextEntryPlugin.swift; sourceTree = "<group>"; };
+		FE11223344556677889900AC /* NativeTextEntryViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NativeTextEntryViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -241,6 +243,7 @@
 				937C0D45D6114EF1E957F5F6 /* Runner.entitlements */,
 				5619FB8F8DAA81B7457DAADF /* ICloudKvsPlugin.swift */,
 				FE11223344556677889900AB /* NativeTextEntryPlugin.swift */,
+				FE11223344556677889900AC /* NativeTextEntryViewController.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -493,6 +496,7 @@
 				D2A548D9DE1A0F319B30B74C /* SystemShelfPlugin.swift in Sources */,
 				5E6706124D3840AD39CA63F4 /* ICloudKvsPlugin.swift in Sources */,
 				FE01A2B3C4D5E6F708192A3B /* NativeTextEntryPlugin.swift in Sources */,
+				FE01A2B3C4D5E6F708192A3C /* NativeTextEntryViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

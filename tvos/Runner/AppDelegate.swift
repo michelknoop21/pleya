@@ -12,13 +12,27 @@ import wakelock_plus
     codec: FlutterJSONMessageCodec.sharedInstance()
   )
 
+  // Stepping aside for a native session is the whole fix: while one is up this
+  // controller must not hold first responder, or every press is delivered here
+  // and swallowed by the engine before the presented controller sees it.
   override var canBecomeFirstResponder: Bool {
-    true
+    !NativeInputSession.isActive
+  }
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(nativeInputSessionChanged),
+      name: NativeInputSession.didChange,
+      object: nil)
   }
 
   override func viewDidAppear(_ animated: Bool) {
     super.viewDidAppear(animated)
-    becomeFirstResponder()
+    if !NativeInputSession.isActive {
+      becomeFirstResponder()
+    }
   }
 
   override func viewWillDisappear(_ animated: Bool) {
@@ -26,16 +40,85 @@ import wakelock_plus
     super.viewWillDisappear(animated)
   }
 
+  @objc private func nativeInputSessionChanged() {
+    if NativeInputSession.isActive {
+      resignFirstResponder()
+    } else if isViewLoaded, view.window != nil {
+      becomeFirstResponder()
+    }
+  }
+
+  /// Keeps presses out of the engine while a native surface owns the remote.
+  ///
+  /// `super` is `FlutterViewController`, which routes into the keyboard manager
+  /// and only reaches the responder chain after an async Dart round-trip that
+  /// reports "unhandled" — which never happens, because Pleya's focus tree
+  /// handles every arrow and select. Swallowing outright would be just as bad:
+  /// the focus engine would never see the press either. So forward to `next`.
+  private func yieldPressToNativeSession(
+    _ presses: Set<UIPress>,
+    with event: UIPressesEvent?,
+    handlingMenu: Bool,
+    forward: (Set<UIPress>, UIPressesEvent?) -> Void
+  ) -> Bool {
+    guard NativeInputSession.isActive else { return false }
+
+    if presses.contains(where: { $0.type == .menu }) {
+      if handlingMenu {
+        NativeInputSession.onMenuPress?()
+      }
+      return true
+    }
+
+    NativeInputSession.noteForwardedPress()
+    forward(presses, event)
+    return true
+  }
+
   override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
     if handlePlayPausePress(presses) {
+      return
+    }
+    if yieldPressToNativeSession(
+      presses, with: event, handlingMenu: true,
+      forward: { presses, event in
+        next?.pressesBegan(presses, with: event)
+      })
+    {
       return
     }
 
     super.pressesBegan(presses, with: event)
   }
 
+  // The engine overrides pressesChanged too; without this, a held direction
+  // leaks into Flutter mid-session.
+  override func pressesChanged(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+    if containsPlayPausePress(presses) {
+      return
+    }
+    if yieldPressToNativeSession(
+      presses, with: event, handlingMenu: false,
+      forward: { presses, event in
+        next?.pressesChanged(presses, with: event)
+      })
+    {
+      return
+    }
+
+    super.pressesChanged(presses, with: event)
+  }
+
   override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
     if containsPlayPausePress(presses) {
+      return
+    }
+    if yieldPressToNativeSession(
+      presses, with: event, handlingMenu: false,
+      forward: { presses, event in
+        next?.pressesEnded(presses, with: event)
+      })
+    {
       return
     }
 
@@ -44,6 +127,14 @@ import wakelock_plus
 
   override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
     if containsPlayPausePress(presses) {
+      return
+    }
+    if yieldPressToNativeSession(
+      presses, with: event, handlingMenu: false,
+      forward: { presses, event in
+        next?.pressesCancelled(presses, with: event)
+      })
+    {
       return
     }
 

@@ -344,6 +344,11 @@ class SettingsService extends BaseSharedPreferencesService {
 
   /// Recent search queries, most-recent first, capped at 15 by the search UI.
   static const searchHistory = StringListPref('search_history');
+
+  /// Apple TV only: the native system-keyboard surface came up but never became
+  /// usable. Latched so a broken surface is never shown a second time — text
+  /// entry falls back to the in-app D-pad keyboard from then on.
+  static const nativeTextEntryUnavailable = BoolPref('native_text_entry_unavailable');
   static const preferredVideoCodec = StringPref('preferred_video_codec', defaultValue: 'auto');
   static const preferredAudioCodec = StringPref('preferred_audio_codec', defaultValue: 'auto');
   static const viewMode = EnumPref<ViewMode>('view_mode', values: ViewMode.values, defaultValue: ViewMode.grid);

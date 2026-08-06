@@ -2,6 +2,20 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-06] — Apple TV: geen onbedienbare tekstinvoer meer
+
+### Fixed
+- **De native tekstinvoer op tvOS was dood én niet te sluiten** (`tvos/Runner/AppDelegate.swift`, `NativeTextEntryPlugin.swift`). `PleyaFlutterViewController` neemt first responder in `viewDidAppear` en geeft die alleen terug in `viewWillDisappear` — wat bij een `.alert`-presentatie nooit vuurt. Alle presses landden dus bij Flutter, dat ze aan `super` doorgaf: de engine zet ze om in `flutter/keydata` en valt pas op de responder-chain terug als Dart de toets als onafgehandeld terugmeldt, wat met Pleya's focus-tree nooit gebeurt. De alert kreeg daardoor geen enkele press — ook de Menu-override erop draaide nooit. Nu staat de controller first responder af zodra een sessie loopt (`NativeInputSession`), gaan presses naar `next?` in plaats van naar de engine, is `pressesChanged` toegevoegd (ontbrak, terwijl de engine hem wél overschrijft) en zit het Menu-vangnet op de Flutter-controller zelf — het enige object dat gegarandeerd in het press-pad zit. Raakt naast zoeken ook login, server-URL en Seerr, die dezelfde surface gebruiken. Zie [DEC-011](DECISIONS.md#dec-011).
+- **Synthetische toetsen bleven de UI achter het toetsenbord besturen** (`lib/utils/native_input_session.dart` nieuw, `key_event_simulator.dart`, `gamepad_service.dart`, `apple_tv_remote_touch_service.dart`). `_nativeTextInputFocused` bestond al maar stond alleen in logregels; de enige echte gate was `_windowFocused`, en die is desktop-only en dus altijd `true` op tvOS. Alle drie de routes dispatchen rechtstreeks in de focus-tree, langs `HardwareKeyboard` heen, en verplaatsten de focus onzichtbaar terwijl het toetsenbord openstond. De gate zit nu op het gedeelde choke point én per service. Let op: `Gamepad.pause()` is op iOS/tvOS een no-op in de plugin, en de Siri Remote komt sowieso nooit langs `GamepadService` — die gate raakt alleen een gekoppelde MFi-controller.
+- **`SpeechSearchService.capture()` slikte elke `PlatformException` in** en gaf `null` terug, waardoor het zoekscherm nooit leerde dat de surface stuk was en de fallback-toets nooit verscheen. Alleen `BUSY` is nog een stille no-op; de rest gaat door naar de aanroeper.
+
+### Added
+- **Systeem-toetsenbord in plaats van een alert-venster** (`tvos/Runner/NativeTextEntryViewController.swift`, nieuw): één `UITextField` die in `viewDidAppear` first responder wordt, zodat tvOS meteen zijn eigen toetsenbord toont. Dat toetsenbord ís de dictatie-surface — de mic-knop op de Siri Remote typt erin — dus het tussenscherm dat je eerst moest bedienen is er niet meer. `textFieldDidEndEditing` sluit de sessie af, anders blijf je na het sluiten van het toetsenbord achter met een lege overlay.
+- **Watchdog tegen een dode surface**: komt het toetsenbord niet binnen 4 s op, dan sluit de view zichzelf met `KEYBOARD_DEAD` (er kwamen presses binnen zonder reactie) of `KEYBOARD_UNAVAILABLE`. Die codes latchen een fallback naar het inline D-pad-toetsenbord voor élke aanroeper. Alleen `KEYBOARD_DEAD` wordt persistent opgeslagen (`SettingsService.nativeTextEntryUnavailable`, uitgesloten van export/iCloud — het is een oordeel over dít toestel); `KEYBOARD_UNAVAILABLE` blijft in-memory zodat een eenmalige onderbreking je dictatie niet voorgoed kost.
+
+### Changed
+- De mic-knop in het zoekscherm is weg op Apple TV (`lib/screens/search_screen.dart`): de mic zit op de afstandsbediening en werkt zodra het toetsenbord openstaat, wat select op de zoekbalk al doet. Android TV houdt zijn knop — daar opent die `RecognizerIntent`.
+
 ## [2026-08-05] — Zoeken op elk apparaat: Siri Remote-dictatie en focus-hardening
 
 ### Added

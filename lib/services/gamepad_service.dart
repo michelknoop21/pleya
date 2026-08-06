@@ -345,6 +345,13 @@ class GamepadService with WindowListener {
       _logGamepadDiag('button ignored because window is not focused ${_describeGamepadButton(event)}');
       return;
     }
+    // A native text surface owns the remote. Note this only ever fires for a
+    // paired MFi controller — the Siri Remote never reaches this service — but
+    // that controller would otherwise drive the UI behind the keyboard.
+    if (_nativeTextInputFocused) {
+      _logGamepadDiag('button ignored for native text input ${_describeGamepadButton(event)}');
+      return;
+    }
 
     // Switch to keyboard mode on any button press
     if (event.pressed) {
@@ -447,6 +454,10 @@ class GamepadService with WindowListener {
       _logGamepadDiag('axis ignored because window is not focused ${_describeGamepadAxis(event)}');
       return;
     }
+    if (_nativeTextInputFocused) {
+      _logGamepadDiag('axis ignored for native text input ${_describeGamepadAxis(event)}');
+      return;
+    }
 
     // Switch to keyboard mode on significant axis input
     if (event.value.abs() > 0.3) {
@@ -466,6 +477,12 @@ class GamepadService with WindowListener {
   }
 
   void _moveFocus(TraversalDirection direction) {
+    // The repeat timer can outlive the press that started it, so gate here too
+    // rather than only on the incoming event.
+    if (_nativeTextInputFocused) {
+      _logGamepadDiag('moveFocus ignored for native text input direction=$direction');
+      return;
+    }
     // Convert direction to arrow key and simulate a key press
     // This allows widgets like HubSection that intercept key events to handle navigation
     final logicalKey = _directionToKey(direction);
