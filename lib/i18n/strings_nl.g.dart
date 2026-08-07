@@ -88,6 +88,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerNl addServer = _TranslationsAddServerNl._(_root);
 	@override late final _TranslationsAddLocalFolderNl addLocalFolder = _TranslationsAddLocalFolderNl._(_root);
 	@override late final _TranslationsPleyaShareNl pleyaShare = _TranslationsPleyaShareNl._(_root);
+	@override late final _TranslationsSeerrNl seerr = _TranslationsSeerrNl._(_root);
 }
 
 // Path: states
@@ -1782,6 +1783,97 @@ class _TranslationsPleyaShareNl extends TranslationsPleyaShareEn {
 	@override String get notificationText => 'Andere Pleya-apparaten kunnen je lokale mappen streamen';
 	@override String get hostDescriptionAndroid => 'Andere Pleya-apparaten op dit netwerk kunnen je lokale mappen bekijken, streamen en downloaden. Delen blijft op de achtergrond draaien met een melding.';
 	@override String get scanningSubnet => 'Netwerk scannen…';
+}
+
+// Path: seerr
+class _TranslationsSeerrNl extends TranslationsSeerrEn {
+	_TranslationsSeerrNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Aanvragen';
+	@override String get hubSubtitle => 'Vraag films en series aan op je Jellyseerr- of Overseerr-server.';
+	@override String get notConfigured => 'Niet ingesteld';
+	@override String get serverUrl => 'Server-URL';
+	@override String get serverUrlHint => 'https://aanvragen.voorbeeld.nl';
+	@override String get authMode => 'Inlogmethode';
+	@override String get authPlex => 'Inloggen met Plex';
+	@override String get authPlexSubtitle => 'Met één tik via je bestaande Plex-login.';
+	@override String get authLocal => 'E-mail en wachtwoord';
+	@override String get authApiKey => 'API-sleutel';
+	@override String get email => 'E-mail';
+	@override String get password => 'Wachtwoord';
+	@override String get apiKey => 'API-sleutel';
+	@override String get apiKeyHint => 'Te vinden onder Instellingen → Algemeen op je server';
+	@override String get adminAttributionNote => 'Met een API-sleutel komen aanvragen op naam van de beheerder. Log in met Plex om ze per gebruiker te registreren.';
+	@override String get setupOnDesktopNote => 'Tip: dit is makkelijker in te stellen op je telefoon of computer.';
+	@override String get testConnection => 'Verbinding testen';
+	@override String get save => 'Opslaan';
+	@override String get disconnect => 'Ontkoppelen';
+	@override String get disconnectConfirm => 'Aanvraagserver ontkoppelen?';
+	@override String get disconnectConfirmBody => 'Pleya stuurt geen aanvragen meer. Je kunt altijd opnieuw verbinden.';
+	@override String connectedAs({required Object name}) => 'Ingelogd als ${name}';
+	@override String serverVersion({required Object version}) => 'Serverversie ${version}';
+	@override String get permissionAdmin => 'Beheerder';
+	@override String get permissionManage => 'Mag aanvragen goedkeuren';
+	@override String get permissionRequest => 'Mag aanvragen';
+	@override String get request => 'Aanvragen';
+	@override String get requested => 'Aangevraagd';
+	@override String get requestAgain => 'Aanvragen';
+	@override String get processing => 'Bezig';
+	@override String get partiallyAvailable => 'Deels beschikbaar';
+	@override String get available => 'Beschikbaar';
+	@override String get alreadyRequested => 'Al aangevraagd';
+	@override String get pending => 'In afwachting';
+	@override String get approved => 'Goedgekeurd';
+	@override String get declined => 'Afgewezen';
+	@override String get failed => 'Mislukt';
+	@override String get completed => 'Afgerond';
+	@override String requestConfirm({required Object title}) => '"${title}" aanvragen?';
+	@override String get requestMovie => 'Film aanvragen';
+	@override String get requestSuccess => 'Aangevraagd';
+	@override String get requestFailed => 'Aanvragen mislukt. Probeer opnieuw.';
+	@override String get selectSeasons => 'Seizoenen kiezen';
+	@override String season({required Object number}) => 'Seizoen ${number}';
+	@override String get allSeasons => 'Alle seizoenen';
+	@override String get fourK => 'In 4K aanvragen';
+	@override String get fourKBadge => '4K';
+	@override String percentMatch({required Object percent}) => '${percent}% match';
+	@override String quotaRemaining({required Object remaining, required Object limit}) => 'Nog ${remaining} van ${limit} aanvragen';
+	@override String get quotaUnlimited => 'Onbeperkt aanvragen';
+	@override String get advancedOptions => 'Geavanceerde opties';
+	@override String get server => 'Server';
+	@override String get qualityProfile => 'Kwaliteitsprofiel';
+	@override String get rootFolder => 'Hoofdmap';
+	@override String get myRequests => 'Mijn aanvragen';
+	@override String get allRequests => 'Alle aanvragen';
+	@override String get filterAll => 'Alle';
+	@override String get filterPending => 'In afwachting';
+	@override String get filterApproved => 'Goedgekeurd';
+	@override String get filterAvailable => 'Beschikbaar';
+	@override String get filterMovies => 'Films';
+	@override String get filterShows => 'Series';
+	@override String get approve => 'Goedkeuren';
+	@override String get decline => 'Afwijzen';
+	@override String get edit => 'Bewerken';
+	@override String get cancelRequest => 'Aanvraag annuleren';
+	@override String get cancelRequestConfirm => 'Deze aanvraag annuleren?';
+	@override String get discoverTitle => 'Ontdekken via Aanvragen';
+	@override String get trending => 'Populair nu';
+	@override String get popularMovies => 'Populaire films';
+	@override String get popularTv => 'Populaire series';
+	@override String get upcoming => 'Binnenkort';
+	@override String get recommendations => 'Aanbevolen';
+	@override String get cast => 'Cast';
+	@override String get loadMore => 'Meer laden';
+	@override String get searchOnSeerr => 'Niet in je bibliotheek? Zoek op Jellyseerr / Overseerr';
+	@override String get searchOnSeerrShort => 'Zoeken via Aanvragen';
+	@override String get noResults => 'Geen resultaten gevonden.';
+	@override String get errorAuth => 'Inloggen mislukt. Controleer je gegevens.';
+	@override String get errorForbidden => 'Je hebt hier geen rechten voor.';
+	@override String get errorNetwork => 'Kan de server niet bereiken. Controleer de URL.';
+	@override String get errorGeneric => 'Er ging iets mis. Probeer opnieuw.';
 }
 
 // Path: search.filters
@@ -3563,6 +3655,88 @@ extension on TranslationsNl {
 			'pleyaShare.notificationText' => 'Andere Pleya-apparaten kunnen je lokale mappen streamen',
 			'pleyaShare.hostDescriptionAndroid' => 'Andere Pleya-apparaten op dit netwerk kunnen je lokale mappen bekijken, streamen en downloaden. Delen blijft op de achtergrond draaien met een melding.',
 			'pleyaShare.scanningSubnet' => 'Netwerk scannen…',
+			'seerr.title' => 'Aanvragen',
+			'seerr.hubSubtitle' => 'Vraag films en series aan op je Jellyseerr- of Overseerr-server.',
+			'seerr.notConfigured' => 'Niet ingesteld',
+			'seerr.serverUrl' => 'Server-URL',
+			'seerr.serverUrlHint' => 'https://aanvragen.voorbeeld.nl',
+			'seerr.authMode' => 'Inlogmethode',
+			'seerr.authPlex' => 'Inloggen met Plex',
+			'seerr.authPlexSubtitle' => 'Met één tik via je bestaande Plex-login.',
+			'seerr.authLocal' => 'E-mail en wachtwoord',
+			'seerr.authApiKey' => 'API-sleutel',
+			'seerr.email' => 'E-mail',
+			'seerr.password' => 'Wachtwoord',
+			'seerr.apiKey' => 'API-sleutel',
+			'seerr.apiKeyHint' => 'Te vinden onder Instellingen → Algemeen op je server',
+			'seerr.adminAttributionNote' => 'Met een API-sleutel komen aanvragen op naam van de beheerder. Log in met Plex om ze per gebruiker te registreren.',
+			'seerr.setupOnDesktopNote' => 'Tip: dit is makkelijker in te stellen op je telefoon of computer.',
+			'seerr.testConnection' => 'Verbinding testen',
+			'seerr.save' => 'Opslaan',
+			'seerr.disconnect' => 'Ontkoppelen',
+			'seerr.disconnectConfirm' => 'Aanvraagserver ontkoppelen?',
+			'seerr.disconnectConfirmBody' => 'Pleya stuurt geen aanvragen meer. Je kunt altijd opnieuw verbinden.',
+			'seerr.connectedAs' => ({required Object name}) => 'Ingelogd als ${name}',
+			'seerr.serverVersion' => ({required Object version}) => 'Serverversie ${version}',
+			'seerr.permissionAdmin' => 'Beheerder',
+			'seerr.permissionManage' => 'Mag aanvragen goedkeuren',
+			'seerr.permissionRequest' => 'Mag aanvragen',
+			'seerr.request' => 'Aanvragen',
+			'seerr.requested' => 'Aangevraagd',
+			'seerr.requestAgain' => 'Aanvragen',
+			'seerr.processing' => 'Bezig',
+			'seerr.partiallyAvailable' => 'Deels beschikbaar',
+			'seerr.available' => 'Beschikbaar',
+			'seerr.alreadyRequested' => 'Al aangevraagd',
+			'seerr.pending' => 'In afwachting',
+			'seerr.approved' => 'Goedgekeurd',
+			'seerr.declined' => 'Afgewezen',
+			'seerr.failed' => 'Mislukt',
+			'seerr.completed' => 'Afgerond',
+			'seerr.requestConfirm' => ({required Object title}) => '"${title}" aanvragen?',
+			'seerr.requestMovie' => 'Film aanvragen',
+			'seerr.requestSuccess' => 'Aangevraagd',
+			'seerr.requestFailed' => 'Aanvragen mislukt. Probeer opnieuw.',
+			'seerr.selectSeasons' => 'Seizoenen kiezen',
+			'seerr.season' => ({required Object number}) => 'Seizoen ${number}',
+			'seerr.allSeasons' => 'Alle seizoenen',
+			'seerr.fourK' => 'In 4K aanvragen',
+			'seerr.fourKBadge' => '4K',
+			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
+			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => 'Nog ${remaining} van ${limit} aanvragen',
+			'seerr.quotaUnlimited' => 'Onbeperkt aanvragen',
+			'seerr.advancedOptions' => 'Geavanceerde opties',
+			'seerr.server' => 'Server',
+			'seerr.qualityProfile' => 'Kwaliteitsprofiel',
+			'seerr.rootFolder' => 'Hoofdmap',
+			'seerr.myRequests' => 'Mijn aanvragen',
+			'seerr.allRequests' => 'Alle aanvragen',
+			'seerr.filterAll' => 'Alle',
+			'seerr.filterPending' => 'In afwachting',
+			'seerr.filterApproved' => 'Goedgekeurd',
+			'seerr.filterAvailable' => 'Beschikbaar',
+			'seerr.filterMovies' => 'Films',
+			'seerr.filterShows' => 'Series',
+			'seerr.approve' => 'Goedkeuren',
+			'seerr.decline' => 'Afwijzen',
+			'seerr.edit' => 'Bewerken',
+			'seerr.cancelRequest' => 'Aanvraag annuleren',
+			'seerr.cancelRequestConfirm' => 'Deze aanvraag annuleren?',
+			'seerr.discoverTitle' => 'Ontdekken via Aanvragen',
+			'seerr.trending' => 'Populair nu',
+			'seerr.popularMovies' => 'Populaire films',
+			'seerr.popularTv' => 'Populaire series',
+			'seerr.upcoming' => 'Binnenkort',
+			'seerr.recommendations' => 'Aanbevolen',
+			'seerr.cast' => 'Cast',
+			'seerr.loadMore' => 'Meer laden',
+			'seerr.searchOnSeerr' => 'Niet in je bibliotheek? Zoek op Jellyseerr / Overseerr',
+			'seerr.searchOnSeerrShort' => 'Zoeken via Aanvragen',
+			'seerr.noResults' => 'Geen resultaten gevonden.',
+			'seerr.errorAuth' => 'Inloggen mislukt. Controleer je gegevens.',
+			'seerr.errorForbidden' => 'Je hebt hier geen rechten voor.',
+			'seerr.errorNetwork' => 'Kan de server niet bereiken. Controleer de URL.',
+			'seerr.errorGeneric' => 'Er ging iets mis. Probeer opnieuw.',
 			_ => null,
 		};
 	}

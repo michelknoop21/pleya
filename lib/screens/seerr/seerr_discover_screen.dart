@@ -13,7 +13,9 @@ import '../../navigation/main_screen_scope.dart';
 import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
 import '../../services/settings_service.dart';
+import '../../utils/app_logger.dart';
 import '../../utils/debouncer.dart';
+import '../../utils/seerr_error_message.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/app_icon.dart';
@@ -135,14 +137,18 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         row.totalPages = page.totalPages;
         row.loadingFirst = false;
       });
-    } catch (e) {
+    } catch (e, st) {
       // Broad catch so a non-Seerr parse error can't leave the row stuck on its
       // skeleton forever (which would also wedge the whole-screen empty state).
+      // Logged because the row state only records *that* it failed: without
+      // this line a 401, a 403 and a 500 are indistinguishable after the fact,
+      // and the screen shows the same "try again" for all three.
+      appLogger.w('Seerr discover row "${row.title}" failed', error: e, stackTrace: st);
       if (!mounted) return;
       setState(() {
         row.loadingFirst = false;
         row.errored = true;
-        row.network = e is SeerrException && e.isNetwork;
+        row.errorKind = seerrErrorKindOf(e);
       });
     }
   }
@@ -235,10 +241,20 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     }
   }
 
-  bool get _allLoaded => _rows.every((r) => !r.loadingFirst);
-  bool get _allErrored => _rows.every((r) => r.errored);
-  bool get _anyNetworkError => _rows.any((r) => r.errored && r.network);
-  bool get _allEmpty => _rows.every((r) => r.items.isEmpty);
+  /// Only the rows the current filter shows. The whole-screen states have to
+  /// be judged on these: with "Shows" selected, two failing TV rows plus a
+  /// healthy (but hidden) movie row used to mean "not everything failed", so no
+  /// error was shown — and the render loop then skipped both empty rows,
+  /// leaving a blank page with nothing to retry.
+  Iterable<_SeerrRow> get _visibleRows => _rows.where((r) => r.showIn.contains(_type));
+
+  bool get _allLoaded => _visibleRows.every((r) => !r.loadingFirst);
+  bool get _allErrored => _visibleRows.isNotEmpty && _visibleRows.every((r) => r.errored);
+  bool get _allEmpty => _visibleRows.every((r) => r.items.isEmpty);
+
+  /// The failure to name when every visible row failed.
+  SeerrErrorKind get _dominantErrorKind =>
+      dominantSeerrErrorKind(_visibleRows.where((r) => r.errored).map((r) => r.errorKind));
 
   void _openDetail(SeerrMedia media) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => SeerrMediaDetailScreen(media: media)));
@@ -614,7 +630,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         SliverFillRemaining(
           hasScrollBody: false,
           child: StateView.error(
-            title: _anyNetworkError ? t.seerr.errorNetwork : t.seerr.errorGeneric,
+            title: seerrErrorMessage(_dominantErrorKind),
             icon: Symbols.cloud_off_rounded,
             onRetry: _retry,
             retryLabel: t.common.retry,
@@ -669,7 +685,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         SliverFillRemaining(
           hasScrollBody: false,
           child: StateView.error(
-            title: row.network ? t.seerr.errorNetwork : t.seerr.errorGeneric,
+            title: seerrErrorMessage(row.errorKind),
             icon: Symbols.cloud_off_rounded,
             onRetry: () {
               final gid = _genreId;
@@ -710,7 +726,7 @@ class _SeerrRow {
   bool loadingFirst = true;
   bool loadingMore = false;
   bool errored = false;
-  bool network = false;
+  SeerrErrorKind errorKind = SeerrErrorKind.generic;
 
   bool get hasMore => page < totalPages;
 
@@ -721,7 +737,7 @@ class _SeerrRow {
     loadingFirst = true;
     loadingMore = false;
     errored = false;
-    network = false;
+    errorKind = SeerrErrorKind.generic;
   }
 }
 
