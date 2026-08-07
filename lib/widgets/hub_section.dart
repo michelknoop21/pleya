@@ -95,6 +95,48 @@ class HubSection extends StatefulWidget {
 class HubSectionState extends State<HubSection> with MountedSetStateMixin {
   static const _longPressDuration = Duration(milliseconds: 500);
 
+  /// Episode cards are wider than poster cards by this much.
+  static const double _wideCardMultiplier = 1.5;
+
+  /// Added to the poster height to get the full card block on phone/tablet:
+  /// the title + subtitle labels under the artwork (33), the focus ring the
+  /// list reserves so a focused card isn't clipped, and 4 of slack.
+  static const double _cardBlockExtra = 33 + FocusTheme.focusBorderWidth * 2 + 4;
+
+  /// The icon + title row above the cards, including both of its paddings.
+  ///
+  /// Fixed rather than measured: it is a single line of [titleLarge] with
+  /// `maxLines: 1`, so it cannot grow. The value comes from a device
+  /// screenshot (a 402pt-wide phone put it at 38.5–41.5pt, depending on the
+  /// status bar inset assumed); the same measurement confirmed the artwork
+  /// height below to the tenth of a point, so only this term carries any
+  /// slack. Rounding up is the safe direction: a couple of points too much
+  /// leaves a sliver of the next rail showing, too little clips the card
+  /// labels.
+  static const double _headerHeight = 41;
+
+  /// Artwork height for one card in a phone/tablet rail [availableWidth] wide.
+  ///
+  /// Episode rails are 16:9 and therefore much shorter than the 2:3 poster
+  /// rails, which is why callers have to say which kind they mean.
+  static double posterHeightFor(BuildContext context, double availableWidth, {required bool wideLayout}) {
+    final density = SettingsService.instanceOrNull?.read(SettingsService.libraryDensity) ?? LibraryDensity.defaultValue;
+    final baseCardWidth = GridSizeCalculator.getCellWidth(availableWidth, context, density);
+    final cardWidth = wideLayout ? baseCardWidth * _wideCardMultiplier : baseCardWidth;
+    final posterWidth = cardWidth - 6; // 3px padding on each side
+    return wideLayout ? posterWidth * (9 / 16) : posterWidth * 1.5;
+  }
+
+  /// Total height one phone/tablet rail occupies: header, artwork and labels.
+  ///
+  /// The home hero sizes itself against this so the first rail lands exactly
+  /// at the fold instead of a fraction of the screen that happens to look
+  /// right on one device. It lives here, next to the layout it describes, and
+  /// [build] uses the same constants — otherwise the two drift apart the first
+  /// time a card size changes and the hero silently starts cropping the rail.
+  static double railHeight(BuildContext context, double availableWidth, {required bool wideLayout}) =>
+      _headerHeight + posterHeightFor(context, availableWidth, wideLayout: wideLayout) + _cardBlockExtra;
+
   late FocusNode _hubFocusNode;
   final ScrollController _scrollController = ScrollController();
 
@@ -504,8 +546,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                         episodePosterMode == EpisodePosterMode.episodeThumbnail && (isEpisodeOnlyHub || isMixedHub);
 
                     // Card dimensions based on hub type
-                    const wideCardMultiplier = 1.5;
-                    final cardWidth = useWideLayout ? baseCardWidth * wideCardMultiplier : baseCardWidth;
+                    final cardWidth = useWideLayout ? baseCardWidth * _wideCardMultiplier : baseCardWidth;
                     final posterWidth = cardWidth - 6; // 3px padding on each side
                     final posterHeight = useWideLayout
                         ? posterWidth *
@@ -514,7 +555,6 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
 
                     final containerHeight = posterHeight + (isTv ? 48 : 33);
                     final focusBorderWidth = FocusTheme.focusBorderWidth;
-                    final focusExtra = focusBorderWidth * 2; // border on both sides
                     // A focused card scales up and draws its ring *outside* its
                     // box, while the ListView paints item i+1 over item i. Too
                     // small a gap and the next card covers the focused card's
@@ -526,7 +566,12 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                     _itemExtent = cardWidth + itemGap * 2;
 
                     return SizedBox(
-                      height: containerHeight + (isTv ? (focusGrowY + focusBorderWidth) * 2 : focusExtra + 4),
+                      // Non-TV goes through [_cardBlockExtra] so [railHeight]
+                      // — which the home hero measures itself against — can
+                      // never disagree with what is actually laid out here.
+                      height: isTv
+                          ? containerHeight + (focusGrowY + focusBorderWidth) * 2
+                          : posterHeight + _cardBlockExtra,
                       child: HorizontalScrollWithArrows(
                         controller: _scrollController,
                         builder: (scrollController) => ListView.builder(

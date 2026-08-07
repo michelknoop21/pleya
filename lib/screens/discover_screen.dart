@@ -59,6 +59,7 @@ import '../mixins/tab_visibility_aware.dart';
 import '../i18n/strings.g.dart';
 import '../utils/app_logger.dart';
 import '../utils/dialogs.dart';
+import '../utils/home_hero_layout.dart';
 import '../utils/media_navigation_helper.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/video_player_navigation.dart';
@@ -1820,24 +1821,36 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   Widget _buildHeroSection() {
-    final statusBarHeight = MediaQuery.paddingOf(context).top;
-    final useSideNav = PlatformDetector.shouldUseSideNavigation(context);
+    return SliverLayoutBuilder(
+      builder: (context, constraints) => _buildHeroSectionSliver(constraints.viewportMainAxisExtent),
+    );
+  }
+
+  /// Height of the first rail below the hero, so the hero can fill exactly what
+  /// is left. Continue Watching is episodes (16:9, short); a hub of posters is
+  /// 2:3 and much taller, so the two can't share one number.
+  double _firstRailHeight(double width) {
+    final episodeMode = SettingsService.instance.read(SettingsService.episodePosterMode);
+    final firstRailItems = _onDeck.isNotEmpty ? _onDeck : (_hubs.isNotEmpty ? _hubs.first.items : const <MediaItem>[]);
+    // Mirrors HubSection: a rail goes wide when it holds any episode at all,
+    // whether it is episodes-only or mixed.
+    final wide =
+        episodeMode == EpisodePosterMode.episodeThumbnail &&
+        firstRailItems.any((i) => i.usesWideAspectRatio(episodeMode));
+    return HubSectionState.railHeight(context, width, wideLayout: wide);
+  }
+
+  Widget _buildHeroSectionSliver(double viewportExtent) {
     // TV runs through _buildTvContent, so this section is phone/tablet/desktop.
-    final h = MediaQuery.sizeOf(context).height;
     final w = MediaQuery.sizeOf(context).width;
-    // Desktop/tablet: ~75vh. Otherwise ~52vh, because on a narrow portrait
-    // screen the billboard shows a backdrop and a taller box crops it harder;
-    // ~52vh leaves the first row below (its header + a poster + the poster's
-    // title label) fully in view above the bottom tab bar, which a 62vh box
-    // pushed off screen.
-    //
-    // That reasoning inverts on a wide window (a Mac running the iOS build, an
-    // iPad in landscape): there the full 16:9 frame is *shorter* than 52vh is
-    // tall, so sizing off height alone leaves the hero looking stunted. Take
-    // the taller of the two, capped at 80vh so the row below stays in view.
-    final heroHeight = useSideNav
-        ? (h * 0.75).clamp(480.0, 900.0) // desktop / tablet
-        : math.max((h * 0.52).clamp(360.0, 560.0), math.min(w * 9 / 16, h * 0.8)) + statusBarHeight;
+    final heroHeight = homeHeroHeight(
+      useSideNav: PlatformDetector.shouldUseSideNavigation(context),
+      viewportExtent: viewportExtent,
+      screenHeight: MediaQuery.sizeOf(context).height,
+      screenWidth: w,
+      statusBarHeight: MediaQuery.paddingOf(context).top,
+      firstRailHeight: _firstRailHeight(w),
+    );
     return SliverToBoxAdapter(
       child: Focus(
         focusNode: _heroFocusNode,
