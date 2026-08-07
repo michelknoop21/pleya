@@ -76,12 +76,10 @@ import UIKit
     private func setup() {
       guard #available(iOS 15.0, *) else { return }
 
-      do {
-        try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
-        try AVAudioSession.sharedInstance().setActive(true)
-      } catch {
-        print("[MpvPipController] Failed to configure audio session: \(error)")
-      }
+      // Same session the rest of playback runs on — re-applying the category
+      // here without the multichannel opt-in would narrow the route to stereo
+      // for the remainder of the session.
+      AudioSessionPlugin.configure(multichannel: true)
 
       createPipController()
     }

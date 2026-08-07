@@ -337,6 +337,8 @@
     "player": "Player",
     "subtitlesAndConfig": "Subtitles & Configuration",
     "seekAndTiming": "Seek & Timing",
+    "audio": "Audio",
+    "audioSyncOffsetDescription": "Shift audio relative to video for every title",
     "behavior": "Behavior",
     "personalizedRecommendations": "Personalized recommendations",
     "personalizedRecommendationsDescription": "Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device."
@@ -1264,6 +1266,25 @@
     "audioOutput": "Audio Output",
     "performanceOverlay": "Performance Overlay",
     "audioPassthrough": "Audio Passthrough",
+    "audioOutputTitle": "Audio Output Mode",
+    "audioOutputModes": {
+      "auto": "Auto",
+      "passthrough": "Passthrough",
+      "pcm": "PCM (decode)"
+    },
+    "audioOutputModeDescriptions": {
+      "auto": "Follows the output: Dolby bitstream where supported, otherwise multichannel or stereo",
+      "passthrough": "Always send Dolby untouched to the receiver",
+      "pcm": "Always decode in the app"
+    },
+    "audioOutputRendering": {
+      "monoStereo": "Stereo",
+      "surround": "Surround",
+      "spatialAudio": "Spatial Audio",
+      "dolbyAudio": "Dolby Audio",
+      "dolbyAtmos": "Dolby Atmos"
+    },
+    "audioOutputNow": "now: ${mode}",
     "audioNormalization": "Normalize Loudness",
     "audioNormalizationTitle": "Loudness",
     "audioNormalizationModes": {
@@ -1616,7 +1637,7 @@
     "hostDescription": "Other Pleya devices on this network can browse, stream, and download your local folders. Keep this screen open while sharing.",
     "hostDescriptionIos": "Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running while your device is locked.",
     "howItWorksTitle": "How Pleya Share works",
-    "howItWorksBody": "One device is the server: it shares its local folders. Other Pleya devices pair once with the QR code or the 6-digit code and can then browse, stream, and download from it.\n\n\u2022 On newer devices (iOS 26+, most Android phones) devices also find each other directly via Wi-Fi Aware, with no hotspot or router at all.\n\u2022 Works over Wi-Fi, a personal hotspot, or a cable: ethernet adapters, or USB-C with USB tethering enabled on the host (Android, or iPhone to a computer). Direct iPhone-to-iPad over USB is not supported by iOS. No internet needed.\n\u2022 With internet on both devices, streaming also works remotely through the encrypted Pleya relay.\n\u2022 Paired devices reconnect automatically \u2014 pairing is needed only once.\n\u2022 Watch progress and artwork sync with your Plex or Jellyfin account when available.",
+    "howItWorksBody": "One device is the server: it shares its local folders. Other Pleya devices pair once with the QR code or the 6-digit code and can then browse, stream, and download from it.\n\n• On newer devices (iOS 26+, most Android phones) devices also find each other directly via Wi-Fi Aware, with no hotspot or router at all.\n• Works over Wi-Fi, a personal hotspot, or a cable: ethernet adapters, or USB-C with USB tethering enabled on the host (Android, or iPhone to a computer). Direct iPhone-to-iPad over USB is not supported by iOS. No internet needed.\n• With internet on both devices, streaming also works remotely through the encrypted Pleya relay.\n• Paired devices reconnect automatically — pairing is needed only once.\n• Watch progress and artwork sync with your Plex or Jellyfin account when available.",
     "hostToggle": "Share local folders",
     "noLocalFolders": "Add a local folder first — there is nothing to share yet.",
     "pairCodeLabel": "Pairing code",

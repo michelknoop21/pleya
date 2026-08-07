@@ -297,6 +297,7 @@ mixin _JellyfinPlaybackMethods on MediaServerCacheMixin {
             title: track.title,
             displayTitle: track.displayTitle,
             channels: track.channels,
+            profile: track.profile,
             selected: track.id == selectedStreamId,
             external: track.external,
           ),

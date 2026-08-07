@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/models/hotkey_model.dart';
+import 'package:pleya/services/audio_output_decision.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/trackers/tracker_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
@@ -87,6 +88,48 @@ void main() {
     });
   });
 
+  group('SettingsService audio output mode', () {
+    test('defaults to auto for a user who never touched passthrough', () async {
+      final settings = await SettingsService.getInstance();
+
+      expect(settings.read(SettingsService.audioOutputMode), AudioOutputMode.auto);
+    });
+
+    test('seeds from the legacy passthrough toggle when it was on', () async {
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.audioPassthrough, true);
+
+      // Someone who deliberately forced bitstreaming keeps it; auto could
+      // decide otherwise on their receiver, and that would read as a
+      // regression rather than an improvement.
+      expect(settings.read(SettingsService.audioOutputMode), AudioOutputMode.passthrough);
+    });
+
+    test('stays on auto when the legacy toggle was explicitly off', () async {
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.audioPassthrough, false);
+
+      expect(settings.read(SettingsService.audioOutputMode), AudioOutputMode.auto);
+    });
+
+    test('an explicit choice outranks the legacy seed', () async {
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.audioPassthrough, true);
+      await settings.write(SettingsService.audioOutputMode, AudioOutputMode.pcm);
+
+      expect(settings.read(SettingsService.audioOutputMode), AudioOutputMode.pcm);
+    });
+
+    test('resetting settings returns to the seeded default', () async {
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.audioOutputMode, AudioOutputMode.pcm);
+
+      await settings.resetAllSettings();
+
+      expect(settings.read(SettingsService.audioOutputMode), AudioOutputMode.auto);
+    });
+  });
+
   group('SettingsService episode action', () {
     test('defaults to play and resets to play', () async {
       final settings = await SettingsService.getInstance();
@@ -102,12 +145,15 @@ void main() {
   });
 
   group('SettingsService platform gates', () {
-    test('audio passthrough stays available on desktop but not Apple TV', () {
+    test('audio passthrough is available on desktop and on Apple TV', () {
       expect(PlatformDetector.supportsAudioPassthrough(), isTrue);
 
+      // Apple TV used to be excluded while the AVFoundation EAC3 path was
+      // unverified. It is the receiver case that Dolby passthrough exists for,
+      // so the exclusion is gone.
       TvDetectionService.debugSetAppleTVOverride(true);
 
-      expect(PlatformDetector.supportsAudioPassthrough(), isFalse);
+      expect(PlatformDetector.supportsAudioPassthrough(), isTrue);
     });
 
     test('forces external player off on Apple TV even when stored enabled', () async {

@@ -89,6 +89,9 @@ class MediaAudioTrack with _TrackLabelMixin {
   final String? title;
   final String? displayTitle;
   final int? channels;
+
+  /// Server-reported codec profile — the only place Atmos is named.
+  final String? profile;
   final bool selected;
   final bool external;
 
@@ -101,6 +104,7 @@ class MediaAudioTrack with _TrackLabelMixin {
     this.title,
     this.displayTitle,
     this.channels,
+    this.profile,
     required this.selected,
     this.external = false,
   });
@@ -114,6 +118,7 @@ class MediaAudioTrack with _TrackLabelMixin {
       languageCode: languageCode,
       codec: codec,
       channels: channels,
+      profile: profile,
       displayTitle: displayTitle,
       index: _fallbackLabelIndex,
     );

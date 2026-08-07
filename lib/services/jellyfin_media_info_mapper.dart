@@ -80,6 +80,7 @@ List<MediaAudioTrack> _withDefaultAudioSelection(List<MediaAudioTrack> tracks, i
         title: track.title,
         displayTitle: track.displayTitle,
         channels: track.channels,
+        profile: track.profile,
         selected: track.index == defaultStreamIndex,
         external: track.external,
       ),

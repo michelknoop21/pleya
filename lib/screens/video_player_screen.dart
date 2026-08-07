@@ -29,6 +29,7 @@ import '../services/live_seek_accumulator.dart';
 import '../services/plex_client.dart';
 import '../utils/session_identifier.dart';
 import '../database/app_database.dart';
+import '../media/media_stream.dart';
 import '../media/media_version.dart';
 import '../models/transcode_quality_preset.dart';
 import '../media/media_source_info.dart';
@@ -54,6 +55,7 @@ import '../services/playback_progress_tracker.dart';
 import '../services/playback_source_resolver.dart';
 import '../services/offline_watch_sync_service.dart';
 import '../services/display_mode_service.dart';
+import '../services/audio_output_coordinator.dart';
 import '../services/settings_service.dart';
 import '../services/sleep_timer_service.dart';
 import '../services/track_manager.dart';
@@ -310,6 +312,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   StreamSubscription<void>? _playbackRestartSubscription;
   StreamSubscription<void>? _backendSwitchedSubscription;
   TrackManager? _trackManager;
+  AudioOutputCoordinator? _audioOutput;
   StreamSubscription<PlayerLog>? _logSubscription;
   StreamSubscription<void>? _sleepTimerSubscription;
   StreamSubscription<bool>? _mediaControlsPlayingSubscription;
@@ -841,10 +844,13 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         );
       }
 
-      // Audio passthrough (desktop and Android TV; disabled on tvOS)
-      if (PlatformDetector.supportsAudioPassthrough()) {
-        await currentPlayer.setAudioPassthrough(settingsService.read(SettingsService.audioPassthrough));
-      }
+      // Audio output path: Dolby bitstream, multichannel PCM or stereo. Runs
+      // before loadfile because the Apple audio output samples the route once
+      // at init — a session widened afterwards no longer helps.
+      _audioOutput?.dispose();
+      final audioOutput = AudioOutputCoordinator(player: currentPlayer, settings: settingsService);
+      _audioOutput = audioOutput;
+      await audioOutput.prepare(audioCodec: _preferredAudioCodec());
 
       // HDR is controlled via custom hdr-enabled property on iOS/macOS/Windows
       if (Platform.isIOS || Platform.isMacOS || Platform.isWindows) {
@@ -1134,6 +1140,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     _appleTvPlayPauseSubscription?.cancel();
     _bufferingSubscription?.cancel();
     _trackManager?.dispose();
+    _audioOutput?.dispose();
     _positionSubscription?.cancel();
     _playbackRestartSubscription?.cancel();
     _backendSwitchedSubscription?.cancel();
@@ -1318,7 +1325,29 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     }
   }
 
-  Future<void> _onAudioTrackChanged(AudioTrack track) async => _trackManager?.onAudioTrackChanged(track);
+  /// Audio codec of the track playback will most likely land on, read from the
+  /// server metadata before mpv has reported any tracks.
+  ///
+  /// Only a hint, and a rough one — with several versions it reports the first
+  /// one that has audio, and offline items carry no versions at all. That is
+  /// fine: [AudioOutputCoordinator] watches the player's track selection and
+  /// corrects itself against the track mpv really picked. Getting the hint
+  /// right just saves an audible output reload on Dolby titles.
+  String? _preferredAudioCodec() {
+    for (final version in _currentMetadata.mediaVersions ?? const <MediaVersion>[]) {
+      for (final part in version.parts) {
+        final audio = part.streams.where((s) => s.kind == MediaStreamKind.audio);
+        if (audio.isEmpty) continue;
+        return audio.firstWhere((s) => s.selected, orElse: () => audio.first).codec;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _onAudioTrackChanged(AudioTrack track) async {
+    await _audioOutput?.onAudioTrackChanged(track);
+    await _trackManager?.onAudioTrackChanged(track);
+  }
 
   Future<void> _onSubtitleTrackChanged(SubtitleTrack track) async => _trackManager?.onSubtitleTrackChanged(track);
 

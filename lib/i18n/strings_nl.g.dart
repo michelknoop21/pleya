@@ -456,6 +456,8 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get player => 'Speler';
 	@override String get subtitlesAndConfig => 'Ondertitels en configuratie';
 	@override String get seekAndTiming => 'Zoeken en timing';
+	@override String get audio => 'Audio';
+	@override String get audioSyncOffsetDescription => 'Verschuif audio ten opzichte van beeld voor elke titel';
 	@override String get behavior => 'Gedrag';
 	@override String get personalizedRecommendations => 'Persoonlijke aanbevelingen';
 	@override String get personalizedRecommendationsDescription => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.';
@@ -1444,6 +1446,11 @@ class _TranslationsVideoSettingsNl extends TranslationsVideoSettingsEn {
 	@override String get audioOutput => 'Audio-uitvoer';
 	@override String get performanceOverlay => 'Prestatie-overlay';
 	@override String get audioPassthrough => 'Audio-doorvoer';
+	@override String get audioOutputTitle => 'Audio-uitvoermodus';
+	@override late final _TranslationsVideoSettingsAudioOutputModesNl audioOutputModes = _TranslationsVideoSettingsAudioOutputModesNl._(_root);
+	@override late final _TranslationsVideoSettingsAudioOutputModeDescriptionsNl audioOutputModeDescriptions = _TranslationsVideoSettingsAudioOutputModeDescriptionsNl._(_root);
+	@override late final _TranslationsVideoSettingsAudioOutputRenderingNl audioOutputRendering = _TranslationsVideoSettingsAudioOutputRenderingNl._(_root);
+	@override String audioOutputNow({required Object mode}) => 'nu: ${mode}';
 	@override String get audioNormalization => 'Volume normaliseren';
 	@override String get audioNormalizationTitle => 'Geluidssterkte';
 	@override late final _TranslationsVideoSettingsAudioNormalizationModesNl audioNormalizationModes = _TranslationsVideoSettingsAudioNormalizationModesNl._(_root);
@@ -2024,6 +2031,44 @@ class _TranslationsCompanionRemoteErrorsNl extends TranslationsCompanionRemoteEr
 	@override String get connectionLost => 'Verbinding verloren';
 }
 
+// Path: videoSettings.audioOutputModes
+class _TranslationsVideoSettingsAudioOutputModesNl extends TranslationsVideoSettingsAudioOutputModesEn {
+	_TranslationsVideoSettingsAudioOutputModesNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get auto => 'Automatisch';
+	@override String get passthrough => 'Doorvoeren';
+	@override String get pcm => 'PCM (decoderen)';
+}
+
+// Path: videoSettings.audioOutputModeDescriptions
+class _TranslationsVideoSettingsAudioOutputModeDescriptionsNl extends TranslationsVideoSettingsAudioOutputModeDescriptionsEn {
+	_TranslationsVideoSettingsAudioOutputModeDescriptionsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get auto => 'Volgt de uitgang: Dolby-bitstream waar dat kan, anders meerkanaals of stereo';
+	@override String get passthrough => 'Stuur Dolby altijd onbewerkt naar de ontvanger';
+	@override String get pcm => 'Decodeer altijd in de app';
+}
+
+// Path: videoSettings.audioOutputRendering
+class _TranslationsVideoSettingsAudioOutputRenderingNl extends TranslationsVideoSettingsAudioOutputRenderingEn {
+	_TranslationsVideoSettingsAudioOutputRenderingNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get monoStereo => 'Stereo';
+	@override String get surround => 'Surround';
+	@override String get spatialAudio => 'Spatial Audio';
+	@override String get dolbyAudio => 'Dolby Audio';
+	@override String get dolbyAtmos => 'Dolby Atmos';
+}
+
 // Path: videoSettings.audioNormalizationModes
 class _TranslationsVideoSettingsAudioNormalizationModesNl extends TranslationsVideoSettingsAudioNormalizationModesEn {
 	_TranslationsVideoSettingsAudioNormalizationModesNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -2409,6 +2454,8 @@ extension on TranslationsNl {
 			'settings.player' => 'Speler',
 			'settings.subtitlesAndConfig' => 'Ondertitels en configuratie',
 			'settings.seekAndTiming' => 'Zoeken en timing',
+			'settings.audio' => 'Audio',
+			'settings.audioSyncOffsetDescription' => 'Verschuif audio ten opzichte van beeld voor elke titel',
 			'settings.behavior' => 'Gedrag',
 			'settings.personalizedRecommendations' => 'Persoonlijke aanbevelingen',
 			'settings.personalizedRecommendationsDescription' => 'Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat.',
@@ -2614,10 +2661,10 @@ extension on TranslationsNl {
 			'userStatus.current' => 'HUIDIG',
 			'messages.markedAsWatched' => 'Gemarkeerd als gekeken',
 			'messages.markedAsUnwatched' => 'Gemarkeerd als ongekeken',
-			'messages.markedAsWatchedOffline' => 'Gemarkeerd als gekeken (sync wanneer online)',
-			'messages.markedAsUnwatchedOffline' => 'Gemarkeerd als ongekeken (sync wanneer online)',
 			_ => null,
 		} ?? switch (path) {
+			'messages.markedAsWatchedOffline' => 'Gemarkeerd als gekeken (sync wanneer online)',
+			'messages.markedAsUnwatchedOffline' => 'Gemarkeerd als ongekeken (sync wanneer online)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Automatisch verwijderd: ${title}',
 			'messages.removedFromContinueWatching' => 'Verwijderd uit Doorgaan met kijken',
 			'messages.errorLoading' => ({required Object error}) => 'Fout: ${error}',
@@ -3128,10 +3175,10 @@ extension on TranslationsNl {
 			'downloads.howManyEpisodes' => 'Hoeveel afleveringen?',
 			'downloads.itemsQueued' => ({required Object count}) => '${count} items in downloadwachtrij',
 			'downloads.keepSynced' => 'Gesynchroniseerd houden',
-			'downloads.downloadOnce' => 'Eenmalig downloaden',
-			'downloads.keepNUnwatched' => ({required Object count}) => '${count} onbekeken behouden',
 			_ => null,
 		} ?? switch (path) {
+			'downloads.downloadOnce' => 'Eenmalig downloaden',
+			'downloads.keepNUnwatched' => ({required Object count}) => '${count} onbekeken behouden',
 			'downloads.editSyncRule' => 'Synchronisatieregel bewerken',
 			'downloads.removeSyncRule' => 'Synchronisatieregel verwijderen',
 			'downloads.removeSyncRuleConfirm' => ({required Object title}) => 'Synchronisatie van "${title}" stoppen? Gedownloade afleveringen worden behouden.',
@@ -3240,6 +3287,19 @@ extension on TranslationsNl {
 			'videoSettings.audioOutput' => 'Audio-uitvoer',
 			'videoSettings.performanceOverlay' => 'Prestatie-overlay',
 			'videoSettings.audioPassthrough' => 'Audio-doorvoer',
+			'videoSettings.audioOutputTitle' => 'Audio-uitvoermodus',
+			'videoSettings.audioOutputModes.auto' => 'Automatisch',
+			'videoSettings.audioOutputModes.passthrough' => 'Doorvoeren',
+			'videoSettings.audioOutputModes.pcm' => 'PCM (decoderen)',
+			'videoSettings.audioOutputModeDescriptions.auto' => 'Volgt de uitgang: Dolby-bitstream waar dat kan, anders meerkanaals of stereo',
+			'videoSettings.audioOutputModeDescriptions.passthrough' => 'Stuur Dolby altijd onbewerkt naar de ontvanger',
+			'videoSettings.audioOutputModeDescriptions.pcm' => 'Decodeer altijd in de app',
+			'videoSettings.audioOutputRendering.monoStereo' => 'Stereo',
+			'videoSettings.audioOutputRendering.surround' => 'Surround',
+			'videoSettings.audioOutputRendering.spatialAudio' => 'Spatial Audio',
+			'videoSettings.audioOutputRendering.dolbyAudio' => 'Dolby Audio',
+			'videoSettings.audioOutputRendering.dolbyAtmos' => 'Dolby Atmos',
+			'videoSettings.audioOutputNow' => ({required Object mode}) => 'nu: ${mode}',
 			'videoSettings.audioNormalization' => 'Volume normaliseren',
 			'videoSettings.audioNormalizationTitle' => 'Geluidssterkte',
 			'videoSettings.audioNormalizationModes.off' => 'Uit',

@@ -21,14 +21,11 @@ import MediaPlayer
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // Configure audio session for media playback
-    do {
-      let session = AVAudioSession.sharedInstance()
-      try session.setCategory(.playback, mode: .default)
-      try session.setActive(true)
-    } catch {
-      print("Failed to configure audio session: \(error)")
-    }
+    // Configure audio session for media playback. `.moviePlayback` plus the
+    // multichannel opt-in is what makes the system offer more than two output
+    // channels; without it AirPods and most AirPlay routes report stereo and
+    // mpv downmixes before anything can be spatialized.
+    AudioSessionPlugin.configure(multichannel: true)
 
     application.beginReceivingRemoteControlEvents()
 
@@ -53,6 +50,10 @@ import MediaPlayer
 
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ICloudKvsPlugin") {
       ICloudKvsPlugin.register(with: registrar)
+    }
+
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AudioSessionPlugin") {
+      AudioSessionPlugin.register(with: registrar)
     }
 
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SecureFolderPlugin") {
@@ -129,10 +130,11 @@ import MediaPlayer
     guard shareKeepaliveEngine == nil else { return }
     do {
       // mixWithOthers: the silent loop must never interrupt real playback
-      // (the host's own, or another app's).
-      let session = AVAudioSession.sharedInstance()
-      try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-      try session.setActive(true)
+      // (the host's own, or another app's). Keep `.moviePlayback` and the
+      // multichannel opt-in while doing so — setting the category directly here
+      // used to drop both, so a host that watched something while sharing was
+      // on lost multichannel until sharing stopped.
+      AudioSessionPlugin.configure(multichannel: true, options: [.mixWithOthers])
 
       let engine = AVAudioEngine()
       let player = AVAudioPlayerNode()
@@ -160,8 +162,10 @@ import MediaPlayer
     shareKeepaliveObservers.removeAll()
     shareKeepaliveEngine?.stop()
     shareKeepaliveEngine = nil
-    // Restore the plain playback category the player expects.
-    try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+    // Restore the exact session the player expects. Resetting to `.default`
+    // here would silently drop the multichannel opt-in, so playback after a
+    // hosting session would fall back to stereo.
+    AudioSessionPlugin.configure(multichannel: true)
   }
 
   private func registerAirPlayChannel(messenger: FlutterBinaryMessenger) {

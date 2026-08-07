@@ -317,6 +317,8 @@
     "player": "Speler",
     "subtitlesAndConfig": "Ondertitels en configuratie",
     "seekAndTiming": "Zoeken en timing",
+    "audio": "Audio",
+    "audioSyncOffsetDescription": "Verschuif audio ten opzichte van beeld voor elke titel",
     "behavior": "Gedrag",
     "personalizedRecommendations": "Persoonlijke aanbevelingen",
     "personalizedRecommendationsDescription": "Leert je smaak op dit apparaat voor Aanbevolen voor jou en meer. Er verlaat niets je apparaat."
@@ -1232,6 +1234,25 @@
     "audioOutput": "Audio-uitvoer",
     "performanceOverlay": "Prestatie-overlay",
     "audioPassthrough": "Audio-doorvoer",
+    "audioOutputTitle": "Audio-uitvoermodus",
+    "audioOutputModes": {
+      "auto": "Automatisch",
+      "passthrough": "Doorvoeren",
+      "pcm": "PCM (decoderen)"
+    },
+    "audioOutputModeDescriptions": {
+      "auto": "Volgt de uitgang: Dolby-bitstream waar dat kan, anders meerkanaals of stereo",
+      "passthrough": "Stuur Dolby altijd onbewerkt naar de ontvanger",
+      "pcm": "Decodeer altijd in de app"
+    },
+    "audioOutputRendering": {
+      "monoStereo": "Stereo",
+      "surround": "Surround",
+      "spatialAudio": "Spatial Audio",
+      "dolbyAudio": "Dolby Audio",
+      "dolbyAtmos": "Dolby Atmos"
+    },
+    "audioOutputNow": "nu: ${mode}",
     "audioNormalization": "Volume normaliseren",
     "audioNormalizationTitle": "Geluidssterkte",
     "audioNormalizationModes": {

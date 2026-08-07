@@ -16,6 +16,9 @@ import '../../../models/transcode_quality_preset.dart';
 import '../../../media/media_version.dart';
 import '../../../mpv/mpv.dart';
 import '../../../providers/shader_provider.dart';
+import '../../../services/apple_audio_session_service.dart';
+import '../../../services/audio_output_coordinator.dart';
+import '../../../services/audio_output_decision.dart';
 import '../../../services/file_picker_service.dart';
 import '../../../services/settings_service.dart';
 import '../../settings_builder.dart';
@@ -23,6 +26,7 @@ import '../../../services/shader_service.dart';
 import '../../../services/sleep_timer_service.dart';
 import '../../../services/video_filter_manager.dart';
 import '../../../focus/focusable_wrapper.dart';
+import '../../../utils/audio_output_labels.dart';
 import '../../../utils/dialogs.dart';
 import '../../../utils/formatters.dart';
 import '../../../utils/platform_detector.dart';
@@ -252,6 +256,29 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
     AudioNormalizationMode.normalize => t.videoSettings.audioNormalizationModes.normalize,
     AudioNormalizationMode.night => t.videoSettings.audioNormalizationModes.night,
   };
+
+  /// "Auto (now: Dolby Atmos)" where the system reports a mode, plain
+  /// "Auto" where it does not (pre-17.2, or a route that can't say).
+  String _audioOutputLabel(AudioOutputMode mode, AppleAudioRoute route) {
+    final modeLabel = switch (mode) {
+      AudioOutputMode.auto => t.videoSettings.audioOutputModes.auto,
+      AudioOutputMode.passthrough => t.videoSettings.audioOutputModes.passthrough,
+      AudioOutputMode.pcm => t.videoSettings.audioOutputModes.pcm,
+    };
+    final rendering = audioRenderingLabel(route.renderingMode);
+    if (rendering == null) return modeLabel;
+    return '$modeLabel (${t.videoSettings.audioOutputNow(mode: rendering)})';
+  }
+
+  Future<void> _cycleAudioOutputMode(AudioOutputMode current) async {
+    const order = AudioOutputMode.values;
+    final next = order[(current.index + 1) % order.length];
+    // Awaited: the coordinator reads the setting synchronously, so firing it
+    // before the write lands would leave the running player on the old output
+    // path while the UI already showed the new mode.
+    await SettingsService.instance.write(SettingsService.audioOutputMode, next);
+    await AudioOutputCoordinator.current?.onModeChanged();
+  }
 
   void _cycleAudioNormalization(AudioNormalizationMode current) {
     const order = AudioNormalizationMode.values;
@@ -561,13 +588,24 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
             },
           ),
 
-        // Audio Passthrough (desktop and Android TV)
+        // Audio output — Auto / Passthrough / PCM (tap cycles). Auto also
+        // reports what the system is actually rendering, which is the only
+        // way to tell real Atmos from a spatialized downmix.
         if (PlatformDetector.supportsAudioPassthrough())
-          _SettingsToggleItem(
-            pref: SettingsService.audioPassthrough,
-            icon: Symbols.surround_sound_rounded,
-            title: t.videoSettings.audioPassthrough,
-            onAfterWrite: widget.player.setAudioPassthrough,
+          SettingValueBuilder<AudioOutputMode>(
+            pref: SettingsService.audioOutputMode,
+            builder: (context, mode, _) => StreamBuilder<AppleAudioRoute>(
+              stream: AppleAudioSessionService.instance.routeChanges,
+              initialData: AppleAudioSessionService.instance.lastKnown,
+              builder: (context, snapshot) => _SettingsMenuItem(
+                icon: Symbols.surround_sound_rounded,
+                title: t.videoSettings.audioOutputTitle,
+                valueText: _audioOutputLabel(mode, snapshot.data ?? AppleAudioRoute.unknown),
+                allowValueOverflow: true,
+                isHighlighted: mode != AudioOutputMode.pcm,
+                onTap: () => _cycleAudioOutputMode(mode),
+              ),
+            ),
           ),
 
         // Audio Normalization — Off / Normalize / Night (tap cycles).

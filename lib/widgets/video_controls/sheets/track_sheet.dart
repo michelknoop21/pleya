@@ -4,6 +4,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../media/media_source_info.dart';
 import '../../../mpv/mpv.dart';
 import '../../../i18n/strings.g.dart';
+import '../../../services/apple_audio_session_service.dart';
+import '../../../utils/audio_output_labels.dart';
 import '../../../utils/scroll_utils.dart';
 import '../../../utils/player_subtitle_labeling.dart';
 import '../../../utils/track_label_builder.dart';
@@ -312,34 +314,57 @@ class _AudioColumnState extends State<_AudioColumn> {
       children: [
         if (widget.showHeader) SheetColumnHeader(label: t.videoControls.audioLabel),
         Expanded(
-          child: ListView.builder(
-            controller: _initialScroll.controller,
-            itemCount: widget.tracks.length,
-            itemBuilder: (context, index) {
-              final track = widget.tracks[index];
-              final label = TrackLabelBuilder.audioLabel(
-                title: track.title,
-                language: track.language,
-                codec: track.codec,
-                channels: track.channelsCount,
-                index: index,
-              );
-              return TrackSelectionHelper.buildTrackTile<AudioTrack>(
-                context: context,
-                key: index == 0 ? _initialScroll.firstItemKey : null,
-                label: label,
-                isSelected: track.id == selectedId,
-                onTap: () {
-                  widget.player.selectAudioTrack(track);
-                  widget.onTrackChanged?.call(track);
-                  OverlaySheetController.of(context).close();
-                },
-              );
-            },
+          // The rendering mode belongs on the selected track and nowhere else:
+          // it says what the system is doing with *this* track right now, so
+          // it has to follow route changes rather than be baked into the list.
+          child: StreamBuilder<AppleAudioRoute>(
+            stream: AppleAudioSessionService.instance.routeChanges,
+            initialData: AppleAudioSessionService.instance.lastKnown,
+            builder: (context, routeSnapshot) => ListView.builder(
+              controller: _initialScroll.controller,
+              itemCount: widget.tracks.length,
+              itemBuilder: (context, index) {
+                final track = widget.tracks[index];
+                final label = _withRenderingMode(
+                  TrackLabelBuilder.audioLabel(
+                    title: track.title,
+                    language: track.language,
+                    codec: track.codec,
+                    channels: track.channelsCount,
+                    profile: track.profile,
+                    index: index,
+                  ),
+                  isSelected: track.id == selectedId,
+                  route: routeSnapshot.data ?? AppleAudioRoute.unknown,
+                );
+                return TrackSelectionHelper.buildTrackTile<AudioTrack>(
+                  context: context,
+                  key: index == 0 ? _initialScroll.firstItemKey : null,
+                  label: label,
+                  isSelected: track.id == selectedId,
+                  onTap: () {
+                    widget.player.selectAudioTrack(track);
+                    widget.onTrackChanged?.call(track);
+                    OverlaySheetController.of(context).close();
+                  },
+                );
+              },
+            ),
           ),
         ),
       ],
     );
+  }
+
+  /// Appends what the system reports it is rendering ("Dolby Atmos",
+  /// "Spatial Audio") to the selected track's detail line. Returns the label
+  /// untouched off Apple platforms, on routes that can't report, and for every
+  /// track that isn't the one playing.
+  TrackLabel _withRenderingMode(TrackLabel label, {required bool isSelected, required AppleAudioRoute route}) {
+    if (!isSelected) return label;
+    final rendering = audioRenderingLabel(route.renderingMode);
+    if (rendering == null) return label;
+    return TrackLabel(label.primary, label.secondary == null ? rendering : '${label.secondary} · $rendering');
   }
 }
 

@@ -1129,6 +1129,12 @@ class TranslationsSettingsEn {
 	/// en: 'Seek & Timing'
 	String get seekAndTiming => 'Seek & Timing';
 
+	/// en: 'Audio'
+	String get audio => 'Audio';
+
+	/// en: 'Shift audio relative to video for every title'
+	String get audioSyncOffsetDescription => 'Shift audio relative to video for every title';
+
 	/// en: 'Behavior'
 	String get behavior => 'Behavior';
 
@@ -3535,6 +3541,16 @@ class TranslationsVideoSettingsEn {
 	/// en: 'Audio Passthrough'
 	String get audioPassthrough => 'Audio Passthrough';
 
+	/// en: 'Audio Output Mode'
+	String get audioOutputTitle => 'Audio Output Mode';
+
+	late final TranslationsVideoSettingsAudioOutputModesEn audioOutputModes = TranslationsVideoSettingsAudioOutputModesEn.internal(_root);
+	late final TranslationsVideoSettingsAudioOutputModeDescriptionsEn audioOutputModeDescriptions = TranslationsVideoSettingsAudioOutputModeDescriptionsEn.internal(_root);
+	late final TranslationsVideoSettingsAudioOutputRenderingEn audioOutputRendering = TranslationsVideoSettingsAudioOutputRenderingEn.internal(_root);
+
+	/// en: 'now: ${mode}'
+	String audioOutputNow({required Object mode}) => 'now: ${mode}';
+
 	/// en: 'Normalize Loudness'
 	String get audioNormalization => 'Normalize Loudness';
 
@@ -5133,6 +5149,66 @@ class TranslationsCompanionRemoteErrorsEn {
 	String get connectionLost => 'Connection lost';
 }
 
+// Path: videoSettings.audioOutputModes
+class TranslationsVideoSettingsAudioOutputModesEn {
+	TranslationsVideoSettingsAudioOutputModesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Auto'
+	String get auto => 'Auto';
+
+	/// en: 'Passthrough'
+	String get passthrough => 'Passthrough';
+
+	/// en: 'PCM (decode)'
+	String get pcm => 'PCM (decode)';
+}
+
+// Path: videoSettings.audioOutputModeDescriptions
+class TranslationsVideoSettingsAudioOutputModeDescriptionsEn {
+	TranslationsVideoSettingsAudioOutputModeDescriptionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Follows the output: Dolby bitstream where supported, otherwise multichannel or stereo'
+	String get auto => 'Follows the output: Dolby bitstream where supported, otherwise multichannel or stereo';
+
+	/// en: 'Always send Dolby untouched to the receiver'
+	String get passthrough => 'Always send Dolby untouched to the receiver';
+
+	/// en: 'Always decode in the app'
+	String get pcm => 'Always decode in the app';
+}
+
+// Path: videoSettings.audioOutputRendering
+class TranslationsVideoSettingsAudioOutputRenderingEn {
+	TranslationsVideoSettingsAudioOutputRenderingEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Stereo'
+	String get monoStereo => 'Stereo';
+
+	/// en: 'Surround'
+	String get surround => 'Surround';
+
+	/// en: 'Spatial Audio'
+	String get spatialAudio => 'Spatial Audio';
+
+	/// en: 'Dolby Audio'
+	String get dolbyAudio => 'Dolby Audio';
+
+	/// en: 'Dolby Atmos'
+	String get dolbyAtmos => 'Dolby Atmos';
+}
+
 // Path: videoSettings.audioNormalizationModes
 class TranslationsVideoSettingsAudioNormalizationModesEn {
 	TranslationsVideoSettingsAudioNormalizationModesEn.internal(this._root);
@@ -5592,6 +5668,8 @@ extension on Translations {
 			'settings.player' => 'Player',
 			'settings.subtitlesAndConfig' => 'Subtitles & Configuration',
 			'settings.seekAndTiming' => 'Seek & Timing',
+			'settings.audio' => 'Audio',
+			'settings.audioSyncOffsetDescription' => 'Shift audio relative to video for every title',
 			'settings.behavior' => 'Behavior',
 			'settings.personalizedRecommendations' => 'Personalized recommendations',
 			'settings.personalizedRecommendationsDescription' => 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.',
@@ -5777,10 +5855,10 @@ extension on Translations {
 			'videoControls.pipErrors.androidVersion' => 'Requires Android 8.0 or newer',
 			'videoControls.pipErrors.iosVersion' => 'Requires iOS 15.0 or newer',
 			'videoControls.pipErrors.permissionDisabled' => 'Picture-in-picture is disabled. Enable it in system settings.',
-			'videoControls.pipErrors.notSupported' => 'Device doesn\'t support picture-in-picture mode',
-			'videoControls.pipErrors.voSwitchFailed' => 'Failed to switch video output for picture-in-picture',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.pipErrors.notSupported' => 'Device doesn\'t support picture-in-picture mode',
+			'videoControls.pipErrors.voSwitchFailed' => 'Failed to switch video output for picture-in-picture',
 			'videoControls.pipErrors.failed' => 'Picture-in-picture failed to start',
 			'videoControls.pipErrors.unknown' => ({required Object error}) => 'An error occurred: ${error}',
 			'videoControls.chapters' => 'Chapters',
@@ -6291,10 +6369,10 @@ extension on Translations {
 			'downloads.downloadQueued' => 'Download queued',
 			'downloads.waitingForNetwork' => 'Waiting for network',
 			'downloads.downloadResumed' => 'Download resumed',
-			'downloads.serverErrorBitrate' => 'Server error: file may exceed the remote bitrate limit',
-			'downloads.storageFull' => 'Not enough storage space on this device',
 			_ => null,
 		} ?? switch (path) {
+			'downloads.serverErrorBitrate' => 'Server error: file may exceed the remote bitrate limit',
+			'downloads.storageFull' => 'Not enough storage space on this device',
 			'downloads.episodesQueued' => ({required Object count}) => '${count} episodes queued for download',
 			'downloads.downloadDeleted' => 'Download deleted',
 			'downloads.deleteConfirm' => ({required Object title}) => 'Delete "${title}" from this device?',
@@ -6435,6 +6513,19 @@ extension on Translations {
 			'videoSettings.audioOutput' => 'Audio Output',
 			'videoSettings.performanceOverlay' => 'Performance Overlay',
 			'videoSettings.audioPassthrough' => 'Audio Passthrough',
+			'videoSettings.audioOutputTitle' => 'Audio Output Mode',
+			'videoSettings.audioOutputModes.auto' => 'Auto',
+			'videoSettings.audioOutputModes.passthrough' => 'Passthrough',
+			'videoSettings.audioOutputModes.pcm' => 'PCM (decode)',
+			'videoSettings.audioOutputModeDescriptions.auto' => 'Follows the output: Dolby bitstream where supported, otherwise multichannel or stereo',
+			'videoSettings.audioOutputModeDescriptions.passthrough' => 'Always send Dolby untouched to the receiver',
+			'videoSettings.audioOutputModeDescriptions.pcm' => 'Always decode in the app',
+			'videoSettings.audioOutputRendering.monoStereo' => 'Stereo',
+			'videoSettings.audioOutputRendering.surround' => 'Surround',
+			'videoSettings.audioOutputRendering.spatialAudio' => 'Spatial Audio',
+			'videoSettings.audioOutputRendering.dolbyAudio' => 'Dolby Audio',
+			'videoSettings.audioOutputRendering.dolbyAtmos' => 'Dolby Atmos',
+			'videoSettings.audioOutputNow' => ({required Object mode}) => 'now: ${mode}',
 			'videoSettings.audioNormalization' => 'Normalize Loudness',
 			'videoSettings.audioNormalizationTitle' => 'Loudness',
 			'videoSettings.audioNormalizationModes.off' => 'Off',

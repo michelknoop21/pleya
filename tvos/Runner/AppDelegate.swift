@@ -229,13 +229,10 @@ import wakelock_plus
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    do {
-      let session = AVAudioSession.sharedInstance()
-      try session.setCategory(.playback, mode: .default)
-      try session.setActive(true)
-    } catch {
-      print("Failed to configure audio session: \(error)")
-    }
+    // `.moviePlayback` plus the multichannel opt-in; without the latter the
+    // system caps the route at two channels and mpv downmixes before Dolby or
+    // spatial rendering can ever apply.
+    AudioSessionPlugin.configure(multichannel: true)
 
     application.beginReceivingRemoteControlEvents()
 
@@ -275,6 +272,9 @@ import wakelock_plus
     }
     if let r = self.registrar(forPlugin: "ICloudKvsPlugin") {
       ICloudKvsPlugin.register(with: r)
+    }
+    if let r = self.registrar(forPlugin: "AudioSessionPlugin") {
+      AudioSessionPlugin.register(with: r)
     }
     if let r = self.registrar(forPlugin: "NativeTextEntryPlugin") {
       NativeTextEntryPlugin.register(with: r)

@@ -17,6 +17,15 @@ class MediaStream {
   // Audio
   final int? channels;
 
+  /// Codec profile as the server reports it — Plex `audioProfile`, Jellyfin
+  /// `Profile`. This is where Atmos actually announces itself (`ec-3` with
+  /// profile `atmos` / `dd+atmos`), rather than in the codec or the title.
+  final String? profile;
+
+  /// Channel layout label, e.g. `5.1(side)`, `7.1`. Jellyfin reports it
+  /// directly; useful for distinguishing a real 7.1 bed from a 5.1 one.
+  final String? channelLayout;
+
   // Video
   final double? frameRate;
   final bool hdr;
@@ -42,6 +51,8 @@ class MediaStream {
     this.displayTitle,
     this.selected = false,
     this.channels,
+    this.profile,
+    this.channelLayout,
     this.frameRate,
     this.hdr = false,
     this.dolbyVision = false,

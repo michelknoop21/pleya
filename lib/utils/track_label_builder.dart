@@ -124,6 +124,7 @@ class TrackLabelBuilder {
     String? languageCode,
     String? codec,
     int? channels,
+    String? profile,
     String? displayTitle,
     required int index,
   }) {
@@ -131,6 +132,10 @@ class TrackLabelBuilder {
     if (codec != null && codec.isNotEmpty) tech.add(CodecUtils.formatAudioCodec(codec));
     final channelsLabel = CodecUtils.formatAudioChannels(channels);
     if (channelsLabel != null) tech.add(channelsLabel);
+    // Atmos only ever shows up in the codec profile, never in the codec. It
+    // sits alongside the bed layout rather than replacing it: a title with both
+    // a 5.1 and a 7.1 Atmos track would otherwise render two identical rows.
+    if (profile != null && profile.toLowerCase().contains('atmos')) tech.add('Atmos');
 
     return _compose(
       languageDisplay: resolveTrackLanguageDisplay(language: language, languageCode: languageCode),

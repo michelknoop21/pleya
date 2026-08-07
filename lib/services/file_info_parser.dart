@@ -165,6 +165,7 @@ class PlexFileInfoStreamReader implements FileInfoStreamReader {
       title: stream['title'] as String?,
       displayTitle: stream['displayTitle'] as String?,
       channels: stream['channels'] as int?,
+      profile: stream['audioProfile'] as String?,
       selected: flexibleBool(stream['selected']),
     );
   }
@@ -217,6 +218,7 @@ class JellyfinFileInfoStreamReader implements FileInfoStreamReader {
       title: f.title,
       displayTitle: f.displayTitle,
       channels: f.channels,
+      profile: s['Profile']?.toString(),
       selected: f.isDefault,
       external: f.isExternal,
     );
