@@ -35,6 +35,51 @@ The project includes automated CI checks that run on all pull requests:
 
 All these checks must pass before your changes can be merged.
 
+## tvOS testen in de simulator
+
+`scripts/tvos_sim.sh` draait de app in de tvOS-simulator en bedient hem, zodat
+TV-invoer niet per TestFlight-build geverifieerd hoeft te worden. Alleen
+dictatie is niet simuleerbaar (zie DEC-009); het toetsenbord, focus, Menu en de
+D-pad wél — en dat is precies waar de bugs zitten (zie DEC-011).
+
+```bash
+scripts/tvos_sim.sh doctor          # omgevingscheck: kan ik knoppen sturen?
+scripts/tvos_sim.sh build           # xcodebuild voor de simulator
+scripts/tvos_sim.sh run             # boot + install + launch
+scripts/tvos_sim.sh goto search     # deterministisch naar een tab
+scripts/tvos_sim.sh type "sintel"   # tekst typen (leestekens kloppen)
+scripts/tvos_sim.sh key menu        # up|down|left|right|select|menu|delete
+scripts/tvos_sim.sh shot            # screenshot, print het pad
+scripts/tvos_sim.sh logs NativeText # gefilterde app-log
+scripts/tvos_sim.sh check-keyboard  # regressietest: Menu sluit het toetsenbord
+```
+
+Punten die anders tijd kosten:
+
+- **Installeer `idb` voor invoer**:
+  `brew trust facebook/fb && brew install idb-companion && pip install fb-idb`.
+  idb injecteert HID-events rechtstreeks in de simulator: geen venster nodig,
+  het werkt met een vergrendeld scherm en het pikt je focus niet af, dus je kunt
+  gewoon doorwerken terwijl een test loopt. Zonder idb valt het script terug op
+  AppleScript, en dán moet het Mac-scherm ontgrendeld en wakker zijn: staat het
+  scherm uit, dan heeft Simulator geen venster en verdwijnen toetsaanslagen
+  geruisloos — geen foutmelding, ze doen gewoon niets. `doctor` zegt welke route
+  actief is.
+- **Navigeren door een TV-UI is niet 100% deterministisch.** `goto` drukt hooguit
+  twee keer Menu (méér zet de app op het tvOS-thuisscherm, waarna de volgende
+  select opgaat aan het heropenen) en `check-keyboard` heeft daarom één
+  herkansing. Bouw eigen scenario's met dezelfde marge.
+- **De log is een terugblik, geen stream.** "Staat het er al?" levert hits uit een
+  vorige run op; vergelijk met een nulmeting (zie `count_log`/`wait_for_more`).
+- **Screenshots kunnen niet in de repo landen.** Het simulator-proces mag daar
+  niet schrijven (TCC weigert met een misleidende permissiefout), dus ze gaan
+  naar `$TMPDIR`. Overrule met `TVOS_SIM_SHOT_DIR`.
+- **Dart-logs** verschijnen als `(Flutter) flutter:`, native `NSLog` als
+  `(Foundation)`. `appLogger.d` wordt gefilterd — log op info wat je wilt zien.
+- **Inloggen** doe je één keer per simulator-toestel; daarna blijft de sessie
+  staan. Zet `PLEYA_DEMO_URL` / `PLEYA_DEMO_USER` / `PLEYA_DEMO_PASS` in `.env`
+  (gitignored) en gebruik `scripts/tvos_sim.sh login`.
+
 ## Internationalization (i18n)
 
 This project uses `slang` for internationalization with JSON files.
