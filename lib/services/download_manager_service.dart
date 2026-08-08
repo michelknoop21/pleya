@@ -98,7 +98,7 @@ class DownloadManagerService {
   static Duration autoRetryDelayFor(int retryCount) =>
       _autoRetryDelays[retryCount.clamp(0, _autoRetryDelays.length - 1)];
   static const _progressDebounceDelay = Duration(seconds: 2);
-  static const _videoExtensions = {'.mp4', '.ogv', '.mkv', '.m4v', '.avi'};
+  static const _videoExtensions = {'.mp4', '.ogv', '.mkv', '.m4v', '.avi', '.iso'};
 
   // Keys currently being paused — prevents holding queue from promoting them
   final Set<String> _pausingKeys = {};

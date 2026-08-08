@@ -590,7 +590,9 @@
     "serverLimitBody": "Serverfout (HTTP 500). Waarschijnlijk weigerde een bandbreedte-/transcodeerlimiet deze sessie. Vraag de eigenaar dit aan te passen.",
     "logsUploaded": "Logs geüpload",
     "logsUploadFailed": "Uploaden van logs mislukt",
-    "logId": "Log-ID"
+    "logId": "Log-ID",
+    "dvdNotSupported": "Dvd-schijven worden op dit apparaat niet ondersteund.",
+    "discNotSupported": "Dit schijfformaat wordt op dit apparaat niet ondersteund."
   },
   "subtitlingStyling": {
     "text": "Tekst",

@@ -13,6 +13,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../mpv/mpv.dart';
+import '../mpv/disc_source.dart';
 import '../mpv/player/platform/player_android.dart';
 
 import '../services/scrub_preview_source.dart';

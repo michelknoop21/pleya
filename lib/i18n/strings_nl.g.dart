@@ -755,6 +755,8 @@ class _TranslationsMessagesNl extends TranslationsMessagesEn {
 	@override String get logsUploaded => 'Logs geüpload';
 	@override String get logsUploadFailed => 'Uploaden van logs mislukt';
 	@override String get logId => 'Log-ID';
+	@override String get dvdNotSupported => 'Dvd-schijven worden op dit apparaat niet ondersteund.';
+	@override String get discNotSupported => 'Dit schijfformaat wordt op dit apparaat niet ondersteund.';
 }
 
 // Path: subtitlingStyling
@@ -2794,6 +2796,8 @@ extension on TranslationsNl {
 			'messages.logsUploaded' => 'Logs geüpload',
 			'messages.logsUploadFailed' => 'Uploaden van logs mislukt',
 			'messages.logId' => 'Log-ID',
+			'messages.dvdNotSupported' => 'Dvd-schijven worden op dit apparaat niet ondersteund.',
+			'messages.discNotSupported' => 'Dit schijfformaat wordt op dit apparaat niet ondersteund.',
 			'subtitlingStyling.text' => 'Tekst',
 			'subtitlingStyling.border' => 'Rand',
 			'subtitlingStyling.background' => 'Achtergrond',
@@ -3265,10 +3269,10 @@ extension on TranslationsNl {
 			'downloads.customAmount' => 'Aangepast aantal...',
 			'downloads.includeSpecials' => 'Specials opnemen',
 			'downloads.howManyEpisodes' => 'Hoeveel afleveringen?',
-			'downloads.itemsQueued' => ({required Object count}) => '${count} items in downloadwachtrij',
-			'downloads.keepSynced' => 'Gesynchroniseerd houden',
 			_ => null,
 		} ?? switch (path) {
+			'downloads.itemsQueued' => ({required Object count}) => '${count} items in downloadwachtrij',
+			'downloads.keepSynced' => 'Gesynchroniseerd houden',
 			'downloads.downloadOnce' => 'Eenmalig downloaden',
 			'downloads.keepNUnwatched' => ({required Object count}) => '${count} onbekeken behouden',
 			'downloads.editSyncRule' => 'Synchronisatieregel bewerken',

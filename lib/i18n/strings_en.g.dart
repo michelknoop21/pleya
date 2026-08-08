@@ -1853,6 +1853,12 @@ class TranslationsMessagesEn {
 
 	/// en: 'Log ID'
 	String get logId => 'Log ID';
+
+	/// en: 'DVD discs aren't supported on this device.'
+	String get dvdNotSupported => 'DVD discs aren\'t supported on this device.';
+
+	/// en: 'This disc format isn't supported on this device.'
+	String get discNotSupported => 'This disc format isn\'t supported on this device.';
 }
 
 // Path: subtitlingStyling
@@ -5921,6 +5927,8 @@ extension on Translations {
 			'messages.logsUploaded' => 'Logs uploaded',
 			'messages.logsUploadFailed' => 'Failed to upload logs',
 			'messages.logId' => 'Log ID',
+			'messages.dvdNotSupported' => 'DVD discs aren\'t supported on this device.',
+			'messages.discNotSupported' => 'This disc format isn\'t supported on this device.',
 			'subtitlingStyling.text' => 'Text',
 			'subtitlingStyling.border' => 'Border',
 			'subtitlingStyling.background' => 'Background',
@@ -6367,10 +6375,10 @@ extension on Translations {
 			'downloads.deleteDownload' => 'Delete download',
 			'downloads.retryDownload' => 'Retry download',
 			'downloads.downloadQueued' => 'Download queued',
-			'downloads.waitingForNetwork' => 'Waiting for network',
-			'downloads.downloadResumed' => 'Download resumed',
 			_ => null,
 		} ?? switch (path) {
+			'downloads.waitingForNetwork' => 'Waiting for network',
+			'downloads.downloadResumed' => 'Download resumed',
 			'downloads.serverErrorBitrate' => 'Server error: file may exceed the remote bitrate limit',
 			'downloads.storageFull' => 'Not enough storage space on this device',
 			'downloads.episodesQueued' => ({required Object count}) => '${count} episodes queued for download',

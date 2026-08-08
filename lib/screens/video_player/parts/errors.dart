@@ -7,6 +7,11 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
     if (raw.contains('No client registered')) {
       return t.messages.errorLoading(error: 'Server is unavailable for the active profile');
     }
+    // A recognised disc this build cannot play. Say that, instead of letting
+    // mpv's "corrupt stream" reach the user for a perfectly fine DVD.
+    if (error is UnsupportedDiscException) {
+      return error.kind == DiscKind.dvd ? t.messages.dvdNotSupported : t.messages.discNotSupported;
+    }
     return t.messages.errorLoading(error: redacted);
   }
 
