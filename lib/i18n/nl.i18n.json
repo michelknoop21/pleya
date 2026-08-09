@@ -1262,7 +1262,8 @@
       "normalize": "Normaliseren",
       "night": "Nachtmodus"
     },
-    "tryLowerQuality": "Probeer lagere kwaliteit"
+    "tryLowerQuality": "Probeer lagere kwaliteit",
+    "audioPassthroughUnavailable": "Deze uitgang accepteert geen Dolby-bitstream — overgeschakeld op gedecodeerd geluid."
   },
   "performanceOverlay": {
     "color": "Kleur",

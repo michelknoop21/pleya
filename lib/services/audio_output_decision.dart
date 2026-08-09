@@ -73,9 +73,12 @@ AudioOutputDecision decideAudioOutput({
   required AppleAudioRoute route,
   required String? audioCodec,
   Set<String> bitstreamCodecs = appleBitstreamCodecs,
+  bool bitstreamBlocked = false,
 }) {
   final codec = normalizeAudioCodec(audioCodec);
-  final knownBitstreamable = codec != null && bitstreamCodecs.contains(codec);
+  // A route where bitstreaming was tried and failed is not a route to try it
+  // on again: that is how you get the same silence every episode.
+  final knownBitstreamable = !bitstreamBlocked && codec != null && bitstreamCodecs.contains(codec);
 
   final pcm = route.isMultichannelCapable ? AudioOutputDecision.pcmMultichannel : AudioOutputDecision.pcmStereo;
 
@@ -85,7 +88,8 @@ AudioOutputDecision decideAudioOutput({
     // `audio-spdif` list still gates it per track, so this only forfeits the
     // one case where we could have known better. Silently ignoring the setting
     // because metadata was missing would be worse.
-    AudioOutputMode.passthrough => knownBitstreamable || codec == null ? AudioOutputDecision.passthrough : pcm,
+    AudioOutputMode.passthrough =>
+      !bitstreamBlocked && (knownBitstreamable || codec == null) ? AudioOutputDecision.passthrough : pcm,
     // Auto never bitstreams. It used to, on the reasoning that real Atmos
     // beats a respatialized downmix — but that only holds if the far end
     // actually accepts the bitstream, and on an Apple TV over HDMI with an

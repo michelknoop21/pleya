@@ -3567,6 +3567,9 @@ class TranslationsVideoSettingsEn {
 
 	/// en: 'Try lower quality'
 	String get tryLowerQuality => 'Try lower quality';
+
+	/// en: 'This output can't take a Dolby bitstream — switched to decoded audio.'
+	String get audioPassthroughUnavailable => 'This output can\'t take a Dolby bitstream — switched to decoded audio.';
 }
 
 // Path: performanceOverlay
@@ -6540,6 +6543,7 @@ extension on Translations {
 			'videoSettings.audioNormalizationModes.normalize' => 'Normalize',
 			'videoSettings.audioNormalizationModes.night' => 'Night mode',
 			'videoSettings.tryLowerQuality' => 'Try lower quality',
+			'videoSettings.audioPassthroughUnavailable' => 'This output can\'t take a Dolby bitstream — switched to decoded audio.',
 			'performanceOverlay.color' => 'Color',
 			'performanceOverlay.performance' => 'Performance',
 			'performanceOverlay.buffer' => 'Buffer',

@@ -792,7 +792,13 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         _audioFocusFuture = currentPlayer.requestAudioFocus();
         _audioFocusFuture!.ignore();
       }
-      await currentPlayer.setProperty('msg-level', debugLoggingEnabled ? 'all=debug,ffmpeg/video=warn' : 'all=error');
+      // ad_spdif/ao at warn even when debug logging is off: that is where mpv
+      // reports the compressed renderer failing, and AudioOutputCoordinator
+      // needs to hear it to fall back to PCM instead of leaving silence.
+      await currentPlayer.setProperty(
+        'msg-level',
+        debugLoggingEnabled ? 'all=debug,ffmpeg/video=warn' : 'all=error,ad_spdif=warn,ao=warn',
+      );
       await currentPlayer.setLogLevel(debugLoggingEnabled ? 'v' : 'warn');
       await currentPlayer.setProperty('hwdec', _getHwdecValue(enableHardwareDecoding));
 
@@ -849,7 +855,13 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
       // before loadfile because the Apple audio output samples the route once
       // at init — a session widened afterwards no longer helps.
       _audioOutput?.dispose();
-      final audioOutput = AudioOutputCoordinator(player: currentPlayer, settings: settingsService);
+      final audioOutput = AudioOutputCoordinator(
+        player: currentPlayer,
+        settings: settingsService,
+        onPassthroughUnavailable: () {
+          if (mounted) showAppSnackBar(context, t.videoSettings.audioPassthroughUnavailable);
+        },
+      );
       _audioOutput = audioOutput;
       await audioOutput.prepare(audioCodec: _preferredAudioCodec());
 

@@ -201,4 +201,37 @@ void main() {
       expect(route.renderingMode, AppleRenderingMode.notApplicable);
     });
   });
+
+  group('a route where bitstreaming failed', () {
+    test('is never bitstreamed again, not even on an explicit request', () {
+      // Otherwise every episode repeats the same silence: the receiver's
+      // refusal does not change between titles.
+      expect(
+        decide(AudioOutputMode.passthrough, _hdmi, 'eac3'),
+        AudioOutputDecision.passthrough,
+        reason: 'sanity: unblocked still bitstreams',
+      );
+      expect(
+        decideAudioOutput(mode: AudioOutputMode.passthrough, route: _hdmi, audioCodec: 'eac3', bitstreamBlocked: true),
+        AudioOutputDecision.pcmMultichannel,
+      );
+    });
+
+    test('still gets the widest PCM the route allows', () {
+      // Falling back must not also cost the multichannel bed.
+      expect(
+        decideAudioOutput(mode: AudioOutputMode.passthrough, route: _hdmi, audioCodec: 'eac3', bitstreamBlocked: true),
+        AudioOutputDecision.pcmMultichannel,
+      );
+      expect(
+        decideAudioOutput(
+          mode: AudioOutputMode.passthrough,
+          route: _builtIn,
+          audioCodec: 'eac3',
+          bitstreamBlocked: true,
+        ),
+        AudioOutputDecision.pcmStereo,
+      );
+    });
+  });
 }

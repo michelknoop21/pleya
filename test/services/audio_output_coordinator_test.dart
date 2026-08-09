@@ -173,4 +173,33 @@ void main() {
       coordinator.dispose();
     });
   });
+
+  group('recognising mpv giving up on the bitstream', () {
+    test('matches the messages mpv actually emits', () {
+      // These come from the shipped libmpv binary; the fallback hangs on them,
+      // so a reworded upstream string must fail here loudly.
+      for (final line in [
+        'eac3 passthrough disabled after an earlier renderer failure',
+        'ac3 passthrough disabled after an earlier renderer failure',
+      ]) {
+        expect(AudioOutputCoordinator.isPassthroughFailureLog(line), isTrue, reason: line);
+      }
+    });
+
+    test('ignores ordinary log noise', () {
+      for (final line in [
+        // This one is a trap: it is mpv falling through from audiounit to the
+        // avfoundation AO, which is how the bitstream path is *supposed* to
+        // start. Treating it as a failure would disable passthrough on every
+        // single attempt.
+        'audiounit does not support spdif formats',
+        'Using hardware decoding (videotoolbox).',
+        'Audio device underrun detected.',
+        'VO: [avfoundation] 1920x1080 yuv420p',
+        '',
+      ]) {
+        expect(AudioOutputCoordinator.isPassthroughFailureLog(line), isFalse, reason: line);
+      }
+    });
+  });
 }

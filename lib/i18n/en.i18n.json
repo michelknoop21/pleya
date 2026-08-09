@@ -1294,7 +1294,8 @@
       "normalize": "Normalize",
       "night": "Night mode"
     },
-    "tryLowerQuality": "Try lower quality"
+    "tryLowerQuality": "Try lower quality",
+    "audioPassthroughUnavailable": "This output can't take a Dolby bitstream — switched to decoded audio."
   },
   "performanceOverlay": {
     "color": "Color",

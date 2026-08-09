@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
-import '../mpv/models.dart' show AudioTrack, TrackSelection;
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
+import '../mpv/models.dart' show AudioTrack, PlayerLog, TrackSelection;
 import '../mpv/player/player.dart';
 import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
@@ -27,7 +29,43 @@ import 'settings_service.dart';
 /// reload, which is audible, so changes are debounced and skipped while the
 /// player is buffering.
 class AudioOutputCoordinator {
-  AudioOutputCoordinator({required this.player, required this.settings});
+  AudioOutputCoordinator({required this.player, required this.settings, this.onPassthroughUnavailable});
+
+  /// Called once when a bitstream attempt is abandoned, so the player can say
+  /// so instead of silently degrading.
+  final void Function()? onPassthroughUnavailable;
+
+  /// Routes where bitstreaming was tried and demonstrably failed, keyed by
+  /// port. Static so it survives one title ending and the next starting; an
+  /// AVR that cannot take E-AC3 will not change its mind between episodes.
+  ///
+  /// Per route, not global: a receiver refusing a bitstream says nothing about
+  /// AirPods, and blocking both would throw away Atmos where it does work.
+  static final Set<String> _bitstreamBlocked = {};
+
+  @visibleForTesting
+  static void resetBitstreamBlocksForTest() => _bitstreamBlocked.clear();
+
+  /// mpv's own verdict that the compressed path did not come up. The renderer
+  /// failing is the one thing we cannot predict from the route, so this is the
+  /// signal the whole fallback hangs on.
+  ///
+  /// Deliberately narrow. "audiounit does not support spdif formats" is *not*
+  /// a failure — it is mpv falling through to the avfoundation AO, which is how
+  /// the bitstream path is meant to start. Matching it would kill passthrough
+  /// on every attempt.
+  static final RegExp _passthroughFailure = RegExp(
+    r'passthrough (disabled|failed)|renderer failure',
+    caseSensitive: false,
+  );
+
+  @visibleForTesting
+  static bool isPassthroughFailureLog(String text) => _passthroughFailure.hasMatch(text);
+
+  /// How long playback may sit still with a bitstream running before it counts
+  /// as a stall. Long enough to survive a slow start, short enough that nobody
+  /// reaches for the remote first.
+  static const _stallTimeout = Duration(seconds: 5);
 
   /// The coordinator for the playback session currently on screen, or null
   /// when nothing is playing.
@@ -64,6 +102,9 @@ class AudioOutputCoordinator {
 
   StreamSubscription<AppleAudioRoute>? _routeSub;
   StreamSubscription<TrackSelection>? _trackSub;
+  StreamSubscription<PlayerLog>? _logSub;
+  Timer? _stallWatchdog;
+  Duration? _lastSeenPosition;
   Timer? _settleTimer;
 
   /// Re-entrancy guard. A route change can arrive while the previous apply is
@@ -96,10 +137,6 @@ class AudioOutputCoordinator {
     current = this;
     _audioCodec = audioCodec;
     if (AppleAudioSessionService.isAvailable) {
-      // Once per app run, and before anything is playing: flipping the
-      // multichannel flag to read both sides of it would reload the audio
-      // output if a stream were already up.
-      await AppleAudioSessionService.instance.logChannelNegotiation();
       final route = await AppleAudioSessionService.instance.configure(multichannel: true);
       appLogger.i('Audio route at playback start: $route');
       // onError matters: on a host build without the plugin the EventChannel
@@ -118,7 +155,61 @@ class AudioOutputCoordinator {
     // server-default and language-preference paths it never runs at all.
     _trackSub ??= player.streams.track.listen(_onTrackSelectionChanged);
 
+    // mpv is the only party that knows the compressed renderer failed to come
+    // up; nothing about the route predicts it. Without this the failure is
+    // silence the user has to diagnose.
+    _logSub ??= player.streams.log.listen(_onPlayerLog);
+
     await _apply();
+  }
+
+  /// The route bitstreaming is remembered against. Port type alone would lump
+  /// every HDMI receiver together.
+  String get _routeKey {
+    final r = AppleAudioSessionService.instance.lastKnown;
+    return '${r.portType}/${r.portName}';
+  }
+
+  void _onPlayerLog(PlayerLog log) {
+    if (_disposed || _lastDecision != AudioOutputDecision.passthrough) return;
+    if (!isPassthroughFailureLog(log.text)) return;
+    _abandonBitstream('mpv reported: ${log.text.trim()}');
+  }
+
+  /// Gives up on bitstreaming for this route and gets sound back.
+  ///
+  /// Both failure modes end here: mpv saying so, and mpv saying nothing while
+  /// playback sits still. Remembering the route means the next episode starts
+  /// on a path that works instead of stalling again.
+  void _abandonBitstream(String reason) {
+    if (!_bitstreamBlocked.add(_routeKey)) return; // already handled for this route
+    appLogger.w('Bitstream unusable on $_routeKey, falling back to PCM — $reason');
+    _stallWatchdog?.cancel();
+    _stallWatchdog = null;
+    onPassthroughUnavailable?.call();
+    unawaited(_apply());
+  }
+
+  /// Watches for the renderer hanging silently. A stalled bitstream leaves the
+  /// position frozen while the player believes it is playing, which no log line
+  /// reports — this is what turns that into a recoverable second instead of a
+  /// dead player.
+  void _startStallWatchdog() {
+    _stallWatchdog?.cancel();
+    _lastSeenPosition = null;
+    _stallWatchdog = Timer.periodic(_stallTimeout, (_) {
+      if (_disposed || _lastDecision != AudioOutputDecision.passthrough) return;
+      final state = player.state;
+      if (!state.playing || state.buffering) {
+        _lastSeenPosition = null;
+        return;
+      }
+      final previous = _lastSeenPosition;
+      _lastSeenPosition = state.position;
+      if (previous != null && state.position == previous) {
+        _abandonBitstream('playback sat at ${state.position} for $_stallTimeout');
+      }
+    });
   }
 
   /// Re-evaluates after the user picks another audio track — a DTS track and
@@ -181,6 +272,7 @@ class AudioOutputCoordinator {
         route: route,
         audioCodec: _audioCodec,
         bitstreamCodecs: Platform.isIOS ? appleBitstreamCodecs : desktopBitstreamCodecs,
+        bitstreamBlocked: _bitstreamBlocked.contains(_routeKey),
       );
 
       // Channel negotiation is Apple-only: elsewhere mpv already gets the real
@@ -217,6 +309,12 @@ class AudioOutputCoordinator {
           await player.setAudioPassthrough(decision == AudioOutputDecision.passthrough);
         }
         _lastDecision = decision;
+        if (decision == AudioOutputDecision.passthrough) {
+          _startStallWatchdog();
+        } else {
+          _stallWatchdog?.cancel();
+          _stallWatchdog = null;
+        }
         appLogger.i('Audio output: ${decision.name} (mode: ${mode.name}, codec: $_audioCodec)');
       }
     } catch (e, st) {
@@ -232,7 +330,14 @@ class AudioOutputCoordinator {
   }
 
   /// Re-applies after the user changes the setting in the player.
-  Future<void> onModeChanged() => _apply();
+  ///
+  /// Clears this route's block first: picking the mode by hand is the user
+  /// asking to try again, and a remembered failure should never make that a
+  /// no-op they cannot explain.
+  Future<void> onModeChanged() {
+    _bitstreamBlocked.remove(_routeKey);
+    return _apply();
+  }
 
   void dispose() {
     _disposed = true;
@@ -243,5 +348,9 @@ class AudioOutputCoordinator {
     _routeSub = null;
     unawaited(_trackSub?.cancel());
     _trackSub = null;
+    unawaited(_logSub?.cancel());
+    _logSub = null;
+    _stallWatchdog?.cancel();
+    _stallWatchdog = null;
   }
 }

@@ -1458,6 +1458,7 @@ class _TranslationsVideoSettingsNl extends TranslationsVideoSettingsEn {
 	@override String get audioNormalizationTitle => 'Geluidssterkte';
 	@override late final _TranslationsVideoSettingsAudioNormalizationModesNl audioNormalizationModes = _TranslationsVideoSettingsAudioNormalizationModesNl._(_root);
 	@override String get tryLowerQuality => 'Probeer lagere kwaliteit';
+	@override String get audioPassthroughUnavailable => 'Deze uitgang accepteert geen Dolby-bitstream — overgeschakeld op gedecodeerd geluid.';
 }
 
 // Path: performanceOverlay
@@ -3402,6 +3403,7 @@ extension on TranslationsNl {
 			'videoSettings.audioNormalizationModes.normalize' => 'Normaliseren',
 			'videoSettings.audioNormalizationModes.night' => 'Nachtmodus',
 			'videoSettings.tryLowerQuality' => 'Probeer lagere kwaliteit',
+			'videoSettings.audioPassthroughUnavailable' => 'Deze uitgang accepteert geen Dolby-bitstream — overgeschakeld op gedecodeerd geluid.',
 			'performanceOverlay.color' => 'Kleur',
 			'performanceOverlay.performance' => 'Prestaties',
 			'performanceOverlay.buffer' => 'Buffer',
