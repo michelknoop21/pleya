@@ -86,13 +86,18 @@ AudioOutputDecision decideAudioOutput({
     // one case where we could have known better. Silently ignoring the setting
     // because metadata was missing would be worse.
     AudioOutputMode.passthrough => knownBitstreamable || codec == null ? AudioOutputDecision.passthrough : pcm,
-    // Bitstreaming beats PCM spatialization when both are on the table: real
-    // Atmos keeps its height objects, where a decoded-then-respatialized mix
-    // has already lost them. Unknown codecs stay on PCM here — auto should
-    // never guess its way into a silent track.
-    AudioOutputMode.auto =>
-      knownBitstreamable && (route.isDigitalPassthroughPort || route.spatialAudioEnabled)
-          ? AudioOutputDecision.passthrough
-          : pcm,
+    // Auto never bitstreams. It used to, on the reasoning that real Atmos
+    // beats a respatialized downmix — but that only holds if the far end
+    // actually accepts the bitstream, and on an Apple TV over HDMI with an
+    // E-AC3 track it does not: no sound, and the player stalls waiting on the
+    // audio renderer. The setting this replaced said exactly that ("keep
+    // opt-in everywhere, including Apple TV, until the AVFoundation EAC3 path
+    // is verified across real receiver setups"), and auto switched it on
+    // before that verification had happened.
+    //
+    // So bitstreaming stays something the user turns on deliberately, and the
+    // default can only pick a path that decodes. Auto still earns its keep: it
+    // widens to multichannel PCM wherever the route allows it.
+    AudioOutputMode.auto => pcm,
   };
 }

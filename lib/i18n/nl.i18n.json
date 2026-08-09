@@ -1243,7 +1243,7 @@
       "pcm": "PCM (decoderen)"
     },
     "audioOutputModeDescriptions": {
-      "auto": "Volgt de uitgang: Dolby-bitstream waar dat kan, anders meerkanaals of stereo",
+      "auto": "Verbreedt naar meerkanaals waar de uitgang dat toelaat; stuurt nooit een bitstream",
       "passthrough": "Stuur Dolby altijd onbewerkt naar de ontvanger",
       "pcm": "Decodeer altijd in de app"
     },

@@ -2144,7 +2144,7 @@ class _TranslationsVideoSettingsAudioOutputModeDescriptionsNl extends Translatio
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get auto => 'Volgt de uitgang: Dolby-bitstream waar dat kan, anders meerkanaals of stereo';
+	@override String get auto => 'Verbreedt naar meerkanaals waar de uitgang dat toelaat; stuurt nooit een bitstream';
 	@override String get passthrough => 'Stuur Dolby altijd onbewerkt naar de ontvanger';
 	@override String get pcm => 'Decodeer altijd in de app';
 }
@@ -3387,7 +3387,7 @@ extension on TranslationsNl {
 			'videoSettings.audioOutputModes.auto' => 'Automatisch',
 			'videoSettings.audioOutputModes.passthrough' => 'Doorvoeren',
 			'videoSettings.audioOutputModes.pcm' => 'PCM (decoderen)',
-			'videoSettings.audioOutputModeDescriptions.auto' => 'Volgt de uitgang: Dolby-bitstream waar dat kan, anders meerkanaals of stereo',
+			'videoSettings.audioOutputModeDescriptions.auto' => 'Verbreedt naar meerkanaals waar de uitgang dat toelaat; stuurt nooit een bitstream',
 			'videoSettings.audioOutputModeDescriptions.passthrough' => 'Stuur Dolby altijd onbewerkt naar de ontvanger',
 			'videoSettings.audioOutputModeDescriptions.pcm' => 'Decodeer altijd in de app',
 			'videoSettings.audioOutputRendering.monoStereo' => 'Stereo',

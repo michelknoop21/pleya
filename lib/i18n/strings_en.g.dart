@@ -5181,8 +5181,8 @@ class TranslationsVideoSettingsAudioOutputModeDescriptionsEn {
 
 	// Translations
 
-	/// en: 'Follows the output: Dolby bitstream where supported, otherwise multichannel or stereo'
-	String get auto => 'Follows the output: Dolby bitstream where supported, otherwise multichannel or stereo';
+	/// en: 'Widens to multichannel where the output allows it; never bitstreams'
+	String get auto => 'Widens to multichannel where the output allows it; never bitstreams';
 
 	/// en: 'Always send Dolby untouched to the receiver'
 	String get passthrough => 'Always send Dolby untouched to the receiver';
@@ -6525,7 +6525,7 @@ extension on Translations {
 			'videoSettings.audioOutputModes.auto' => 'Auto',
 			'videoSettings.audioOutputModes.passthrough' => 'Passthrough',
 			'videoSettings.audioOutputModes.pcm' => 'PCM (decode)',
-			'videoSettings.audioOutputModeDescriptions.auto' => 'Follows the output: Dolby bitstream where supported, otherwise multichannel or stereo',
+			'videoSettings.audioOutputModeDescriptions.auto' => 'Widens to multichannel where the output allows it; never bitstreams',
 			'videoSettings.audioOutputModeDescriptions.passthrough' => 'Always send Dolby untouched to the receiver',
 			'videoSettings.audioOutputModeDescriptions.pcm' => 'Always decode in the app',
 			'videoSettings.audioOutputRendering.monoStereo' => 'Stereo',

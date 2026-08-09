@@ -1275,7 +1275,7 @@
       "pcm": "PCM (decode)"
     },
     "audioOutputModeDescriptions": {
-      "auto": "Follows the output: Dolby bitstream where supported, otherwise multichannel or stereo",
+      "auto": "Widens to multichannel where the output allows it; never bitstreams",
       "passthrough": "Always send Dolby untouched to the receiver",
       "pcm": "Always decode in the app"
     },

@@ -66,33 +66,28 @@ void main() {
   });
 
   group('auto', () {
-    test('bitstreams Dolby to a receiver over HDMI', () {
-      expect(decide(AudioOutputMode.auto, _hdmi, 'eac3'), AudioOutputDecision.passthrough);
-      expect(decide(AudioOutputMode.auto, _hdmi, 'ac3'), AudioOutputDecision.passthrough);
+    test('never bitstreams, even where the codec and route would allow it', () {
+      // Regression: auto used to pick passthrough here. On a real Apple TV over
+      // HDMI with an E-AC3 track that produced silence and a stalled player, so
+      // bitstreaming is opt-in again.
+      expect(decide(AudioOutputMode.auto, _hdmi, 'eac3'), AudioOutputDecision.pcmMultichannel);
+      expect(decide(AudioOutputMode.auto, _hdmi, 'ac3'), AudioOutputDecision.pcmMultichannel);
+      expect(decide(AudioOutputMode.auto, _airPodsStereo, 'eac3'), AudioOutputDecision.pcmStereo);
+      expect(decide(AudioOutputMode.auto, _airPodsWide, 'eac3'), AudioOutputDecision.pcmMultichannel);
     });
 
-    test('bitstreams Dolby to a spatial-capable route, even a stereo-reporting one', () {
-      // The whole point of the Atmos path: the route says two channels, but
-      // the far end decodes the bitstream itself, so the objects survive.
-      expect(decide(AudioOutputMode.auto, _airPodsStereo, 'eac3'), AudioOutputDecision.passthrough);
-    });
-
-    test('prefers bitstreaming over PCM spatialization when both are possible', () {
-      expect(decide(AudioOutputMode.auto, _airPodsWide, 'eac3'), AudioOutputDecision.passthrough);
-    });
-
-    test('falls back to multichannel PCM for codecs the system cannot decode', () {
+    test('still widens to multichannel PCM where the route allows it', () {
+      // This is what auto is for now: the route, not the codec, decides.
       expect(decide(AudioOutputMode.auto, _airPodsWide, 'dts'), AudioOutputDecision.pcmMultichannel);
-      expect(decide(AudioOutputMode.auto, _airPodsWide, 'truehd'), AudioOutputDecision.pcmMultichannel);
       expect(decide(AudioOutputMode.auto, _hdmi, 'dts'), AudioOutputDecision.pcmMultichannel);
     });
 
-    test('falls back to stereo on a narrow, non-spatial route', () {
+    test('falls back to stereo on a narrow route', () {
       expect(decide(AudioOutputMode.auto, _builtIn, 'eac3'), AudioOutputDecision.pcmStereo);
       expect(decide(AudioOutputMode.auto, _builtIn, 'dts'), AudioOutputDecision.pcmStereo);
     });
 
-    test('never guesses its way into passthrough on an unknown codec', () {
+    test('an unknown codec changes nothing', () {
       expect(decide(AudioOutputMode.auto, _hdmi, null), AudioOutputDecision.pcmMultichannel);
       expect(decide(AudioOutputMode.auto, _airPodsStereo, null), AudioOutputDecision.pcmStereo);
     });
