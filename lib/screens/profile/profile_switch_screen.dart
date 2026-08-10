@@ -58,10 +58,21 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
   final Map<String, GlobalKey<AppMenuButtonState<_TileAction>>> _profileMenuKeys = {};
   bool _focusRequested = false;
   bool _switching = false;
+  bool _reportedStalledStream = false;
   Stream<ProfilesView>? _viewStream;
   StorageService? _viewStreamStorage;
   StorageService? _storage;
   Future<StorageService>? _storageFuture;
+
+  /// A first snapshot that never arrives — or one that keeps disagreeing with
+  /// [ActiveProfileProvider] — stops being "still loading" after this and
+  /// becomes a reported failure. Without the deadline a silent input is an
+  /// endless spinner, and under `requireSelection` there is nothing to press
+  /// but quit. Long enough that the ordinary settle (and the microsecond gap
+  /// after deleting the last profile) never trips it.
+  static const _settleDeadline = Duration(seconds: 5);
+  Timer? _settleTimer;
+  bool _settleDeadlinePassed = false;
 
   @override
   void didChangeDependencies() {
@@ -86,10 +97,44 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
       plexHome: context.read<PlexHomeService>(),
       storage: _storage,
     );
+    _settleTimer?.cancel();
+    _settleTimer = null;
+    _settleDeadlinePassed = false;
+    _armSettleDeadline();
+  }
+
+  /// Start the clock on an unsettled picker. No-op while one is already
+  /// running or the deadline has already been declared.
+  void _armSettleDeadline() {
+    if (_settleTimer != null || _settleDeadlinePassed) return;
+    _settleTimer = Timer(_settleDeadline, () {
+      setStateIfMounted(() => _settleDeadlinePassed = true);
+    });
+  }
+
+  /// The picker settled on something real: stop the deadline and re-arm both
+  /// it and the diagnostic log, so a later stall is caught and reported too.
+  void _markSettled() {
+    _settleTimer?.cancel();
+    _settleTimer = null;
+    _settleDeadlinePassed = false;
+    _reportedStalledStream = false;
+  }
+
+  /// Drop the current combined stream and subscribe to a fresh one. The old
+  /// subscription is cancelled by [StreamBuilder] when the stream identity
+  /// changes, which also re-runs the initial queries behind each input.
+  void _reloadProfiles() {
+    setState(() {
+      _viewStream = null;
+      _viewStreamStorage = null;
+      _reportedStalledStream = false;
+    });
   }
 
   @override
   void dispose() {
+    _settleTimer?.cancel();
     for (final node in _profileFocusNodes.values) {
       node.dispose();
     }
@@ -111,44 +156,95 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
       },
       child: StreamBuilder<ProfilesView>(
         stream: _viewStream,
-        initialData: ProfilesView.empty,
         builder: (context, snapshot) {
           final view = snapshot.data ?? ProfilesView.empty;
           _pruneProfileFocusResources(view.profiles.map((p) => p.id).toSet());
-          // `context.select` only rebuilds when `activeId` actually
+          // `context.select` only rebuilds when the selected value actually
           // changes. `context.watch` would rebuild on every provider
           // notification — combined with the stream, that doubles the
           // build cost on each profile-switch.
           final activeId = context.select<ActiveProfileProvider, String?>((p) => p.activeId);
+          final knownProfileCount = context.select<ActiveProfileProvider, int>((p) => p.profiles.length);
+
+          // Loading, empty and broken are three different things. Without the
+          // split they all render as "no profiles available", permanently and
+          // without feedback — and `watchProfilesView` stays silent until all
+          // four of its inputs have produced a value, so "not loaded yet" can
+          // last forever if one of them stalls.
+          //
+          // An empty stream while [ActiveProfileProvider] knows about profiles
+          // counts as unsettled too: the two track the same registries through
+          // separate subscriptions, so they disagree for a moment after e.g.
+          // deleting the last profile. Only a disagreement that outlives
+          // [_settleDeadline] is a real failure.
+          final contradictsProvider = view.profiles.isEmpty && knownProfileCount > 0;
+          final unsettled = !snapshot.hasData || contradictsProvider;
+          if (snapshot.hasError || (unsettled && _settleDeadlinePassed)) {
+            if (!_reportedStalledStream) {
+              _reportedStalledStream = true;
+              appLogger.w(
+                'Profile picker could not load profiles',
+                error: switch (snapshot) {
+                  _ when snapshot.hasError => snapshot.error,
+                  _ when snapshot.hasData => 'stream reported 0 profiles while provider holds $knownProfileCount',
+                  _ => 'no snapshot within ${_settleDeadline.inSeconds}s',
+                },
+                stackTrace: snapshot.stackTrace,
+              );
+            }
+            return _wrapWithOverlay(
+              _buildStatusScaffold(
+                ErrorStateWidget(
+                  message: t.states.errorTitle,
+                  icon: Symbols.person_off_rounded,
+                  onRetry: _reloadProfiles,
+                  retryLabel: t.common.retry,
+                ),
+              ),
+            );
+          }
+          if (unsettled) {
+            _armSettleDeadline();
+            return _wrapWithOverlay(_buildStatusScaffold(const Center(child: CircularProgressIndicator())));
+          }
+          _markSettled();
 
           // Launch gate: Netflix "Who's watching?" avatar grid. The in-app
           // manage flow keeps the detailed list (with per-profile menus).
           if (widget.requireSelection && view.profiles.isNotEmpty) {
-            return Stack(
-              children: [
-                _buildSelectionGate(view, activeId),
-                if (_switching) ProfileSwitchingOverlay(onCancel: _cancelProfileSwitch),
-              ],
-            );
+            return _wrapWithOverlay(_buildSelectionGate(view, activeId));
           }
 
-          return Stack(
-            children: [
-              FocusedScrollScaffold(
-                title: Text(t.screens.switchProfile),
-                automaticallyImplyLeading: !widget.requireSelection,
-                onBackPressed: widget.requireSelection ? () => unawaited(AppExitService.requestExit()) : null,
-                slivers: [
-                  if (view.profiles.isEmpty)
-                    SliverFillRemaining(
-                      child: EmptyStateWidget(
-                        message: t.messages.noProfilesAvailable,
-                        subtitle: t.messages.contactAdminForProfiles,
-                        icon: Symbols.person_off_rounded,
-                      ),
-                    )
-                  else
-                    ..._buildSections(view, activeId),
+          return _wrapWithOverlay(
+            FocusedScrollScaffold(
+              title: Text(t.screens.switchProfile),
+              automaticallyImplyLeading: !widget.requireSelection,
+              onBackPressed: widget.requireSelection ? () => unawaited(AppExitService.requestExit()) : null,
+              slivers: [
+                if (view.profiles.isEmpty)
+                  // The add button lives *inside* the empty state. As its own
+                  // sliver it sat below a viewport-filling SliverFillRemaining,
+                  // i.e. under the fold: on TV the initial focus scrolled it
+                  // into view, but desktop starts in pointer mode and nothing
+                  // does — so the screen looked blank until any arrow key.
+                  //
+                  // `hasScrollBody: false` keeps the block centred when there
+                  // is room and lets the sliver grow (and scroll) when there
+                  // isn't — a short landscape viewport or a large text scale
+                  // would otherwise overflow, since the child cannot scroll.
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: EmptyStateWidget(
+                      message: t.messages.noProfilesAvailable,
+                      subtitle: t.messages.contactAdminForProfiles,
+                      icon: Symbols.person_off_rounded,
+                      onAction: _switching ? null : _addLocalProfile,
+                      actionLabel: t.profiles.addPleyaProfile,
+                      actionIcon: Symbols.person_add_rounded,
+                    ),
+                  )
+                else ...[
+                  ..._buildSections(view, activeId),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                     sliver: SliverToBoxAdapter(
@@ -167,12 +263,32 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
                     ),
                   ),
                 ],
-              ),
-              if (_switching) ProfileSwitchingOverlay(onCancel: _cancelProfileSwitch),
-            ],
+              ],
+            ),
           );
         },
       ),
+    );
+  }
+
+  /// Every branch of [build] shares the switching overlay.
+  Widget _wrapWithOverlay(Widget child) {
+    return Stack(
+      children: [
+        child,
+        if (_switching) ProfileSwitchingOverlay(onCancel: _cancelProfileSwitch),
+      ],
+    );
+  }
+
+  /// Loading / error shell: same chrome (and same back-exits-the-app
+  /// behaviour under `requireSelection`) as the populated list.
+  Widget _buildStatusScaffold(Widget body) {
+    return FocusedScrollScaffold(
+      title: Text(t.screens.switchProfile),
+      automaticallyImplyLeading: !widget.requireSelection,
+      onBackPressed: widget.requireSelection ? () => unawaited(AppExitService.requestExit()) : null,
+      slivers: [SliverFillRemaining(child: body)],
     );
   }
 

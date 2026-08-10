@@ -4,6 +4,7 @@ import '../connection/connection.dart';
 import '../connection/connection_registry.dart';
 import '../models/plex/plex_home_user.dart';
 import '../services/storage_service.dart';
+import '../utils/app_logger.dart';
 import 'plex_home_service.dart';
 import 'profile.dart';
 import 'profile_connection.dart';
@@ -59,6 +60,14 @@ Stream<ProfilesView> watchProfilesView({
   required PlexHomeService plexHome,
   StorageService? storage,
 }) {
+  // Diagnostics, once per stream. A picker that stays blank has two very
+  // different causes and they look identical from the UI: one of the four
+  // inputs never produces a first value (nothing is ever emitted), or all
+  // four arrive but the merge yields nothing (e.g. an empty connection map
+  // makes profile_merge drop every Plex Home profile). Log both, on info —
+  // `appLogger.d` is filtered out of the in-app log.
+  var reportedEmpty = false;
+
   return _combineLatest4<
     List<Profile>,
     List<ProfileConnection>,
@@ -70,7 +79,24 @@ Stream<ProfilesView> watchProfilesView({
     profileConnections.watchAll(),
     connections.watchConnections(),
     plexHome.stream,
-    (locals, pcs, conns, homes) => _build(locals: locals, pcs: pcs, conns: conns, homes: homes, storage: storage),
+    (locals, pcs, conns, homes) {
+      final view = _build(locals: locals, pcs: pcs, conns: conns, homes: homes, storage: storage);
+      if (view.profiles.isEmpty && !reportedEmpty) {
+        reportedEmpty = true;
+        appLogger.i(
+          'profiles_view: first snapshot has no profiles',
+          error: {
+            'localProfiles': locals.length,
+            'profileConnections': pcs.length,
+            'connections': conns.length,
+            'plexHomeAccounts': homes.length,
+            'plexHomeUsers': homes.values.fold<int>(0, (sum, users) => sum + users.length),
+          },
+        );
+      }
+      return view;
+    },
+    slotNames: const ['profiles', 'profileConnections', 'connections', 'plexHome'],
   );
 }
 
@@ -99,32 +125,67 @@ Map<String, List<ProfileConnection>> _groupByProfile(List<ProfileConnection> pcs
   return out;
 }
 
+/// How long the combined stream may stay silent before it names the inputs
+/// that haven't produced a first value. Comfortably longer than a healthy
+/// cold start, short enough to be in the log before the user gives up.
+const _silentInputReportDelay = Duration(seconds: 3);
+
 /// Lightweight `combineLatest4` — emits the combined value once each input
 /// has produced a value, then on every subsequent tick from any input.
+///
+/// Because a single silent input suppresses every emission, [slotNames] is
+/// used to report which ones are still missing after
+/// [_silentInputReportDelay]; without that, "still loading" and "one stream
+/// died" are indistinguishable from the outside.
 Stream<R> _combineLatest4<A, B, C, D, R>(
   Stream<A> a,
   Stream<B> b,
   Stream<C> c,
   Stream<D> d,
-  R Function(A, B, C, D) combine,
-) {
+  R Function(A, B, C, D) combine, {
+  required List<String> slotNames,
+}) {
+  assert(slotNames.length == 4, 'one name per input, in order');
   late StreamController<R> controller;
   StreamSubscription<A>? subA;
   StreamSubscription<B>? subB;
   StreamSubscription<C>? subC;
   StreamSubscription<D>? subD;
+  Timer? silenceTimer;
   A? lastA;
   B? lastB;
   C? lastC;
   D? lastD;
   var hasA = false, hasB = false, hasC = false, hasD = false;
+  var emitted = false;
 
   void emit() {
-    if (hasA && hasB && hasC && hasD) controller.add(combine(lastA as A, lastB as B, lastC as C, lastD as D));
+    if (!(hasA && hasB && hasC && hasD)) return;
+    emitted = true;
+    silenceTimer?.cancel();
+    silenceTimer = null;
+    controller.add(combine(lastA as A, lastB as B, lastC as C, lastD as D));
   }
 
   controller = StreamController<R>(
     onListen: () {
+      silenceTimer = Timer(_silentInputReportDelay, () {
+        if (emitted) return;
+        final filled = [hasA, hasB, hasC, hasD];
+        appLogger.i(
+          'profiles_view: no snapshot after ${_silentInputReportDelay.inSeconds}s',
+          error: {
+            'received': [
+              for (var i = 0; i < slotNames.length; i++)
+                if (filled[i]) slotNames[i],
+            ],
+            'pending': [
+              for (var i = 0; i < slotNames.length; i++)
+                if (!filled[i]) slotNames[i],
+            ],
+          },
+        );
+      });
       subA = a.listen((v) {
         lastA = v;
         hasA = true;
@@ -147,6 +208,8 @@ Stream<R> _combineLatest4<A, B, C, D, R>(
       }, onError: controller.addError);
     },
     onCancel: () async {
+      silenceTimer?.cancel();
+      silenceTimer = null;
       await subA?.cancel();
       await subB?.cancel();
       await subC?.cancel();
