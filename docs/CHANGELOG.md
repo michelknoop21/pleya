@@ -2,6 +2,46 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-09] — Atmos: zelfcorrigerende passthrough, en de diagnose die twee sporen doodverklaarde
+
+### Fixed
+- **`auto` stuurde een bitstream naar een sink die hem niet nam** (`lib/services/audio_output_decision.dart`, commit `a0a2018`, build 211). Regressie uit build 207: op een Apple TV via HDMI met een E-AC3-track gaf de speler geen geluid en liep hij vast op de audiorenderer. De auto-beslissing koos op een digitale poort met een Dolby-codec voor passthrough zonder dat ooit was vastgesteld dat de andere kant hem accepteert. `auto` bitstreamt daarom voorlopig nooit meer; passthrough blijft een bewuste keuze van de gebruiker.
+
+### Added
+- **Passthrough die zichzelf corrigeert in plaats van stil te vallen** (`lib/services/audio_output_coordinator.dart`, `lib/screens/video_player_screen.dart`, commit `87844bb`, build 212). De ontbrekende schakel was geen code maar een signaal: mpv meldt zelf dat de compressed renderer faalt, maar `msg-level` stond op `all=error`, dus die waarschuwing bereikte de app nooit. Nu staan `ad_spdif` en `ao` op `warn` — ook zonder debug-logging — en luistert de coordinator op de bestaande logstream. Mislukt de bitstream, dan valt de app binnen een seconde terug op PCM, meldt dat, en onthoudt de route in een statische `_bitstreamBlocked` zodat de volgende aflevering niet opnieuw stalt. Een stall-watchdog dekt het geval waarin mpv niets zegt maar de positie stilstaat.
+- **`current-ao` en `audio-out-params/format` in de performance-HUD** (`lib/widgets/video_controls/widgets/performance_overlay/*`, `android/.../mpv/MpvPlayerCore.kt`). De enige in-app manier om te zien of de bitstream écht buiten komt: `avfoundation` + `spdif-eac3` betekent dat hij loopt, `audiounit` + `s16`/`float` betekent dat mpv decodeert, wat de instelling ook zegt. Toegevoegd aan het mpv-pad én het Android-mpv-fallbackpad.
+- **`server/README.md` en `server/deploy-nas.sh`**: de relay die `ice.pleya.app` bedient is nu deploybaar. Zie [DEC-014](DECISIONS.md#dec-014).
+
+### Changed
+- **`server/Caddyfile` en `server/docker-compose.yml` stonden nog op `ice.plezy.app`** — upstream's domein, dat naar een server van edde746 wijst. De rebrand had de app-kant omgezet naar `ice.pleya.app` maar de serverkant niet, en die hostnaam is nooit aangemaakt. Omgezet, `bugs`-container eruit, Caddy naar een `vps`-profile en `cloudflared` erbij.
+
+### Diagnose (nog geen fix)
+Een iOS-log van build 211 met Ted Lasso S4E1 verschoof het onderzoek beslissend:
+
+- **De bitstream-keten wérkt.** `Selected decoder: spdif_eac3` → `AO: [avfoundation] … spdif-eac3` → `EAC3 config: … JOC=yes`. De compressed stream mét Atmos-objecten bereikt de AVSampleBufferAudioRenderer. `audiounit does not support spdif formats` is de normale doorval, geen fout, en de route-check van de fork is expliciet `(diagnostic only)` — hij blokkeert niets.
+- **`audio-exclusive` is een dood spoor.** De AO-lijst in de meegeleverde libmpv is `audiounit, avfoundation, lavc, null, pcm`; `coreaudio` en `wasapi` — de enige twee consumenten van die optie — ontbreken.
+- **Een MPVKit-bisect is niet nodig**: de Atmos-sink in 1.0.16 is aantoonbaar functioneel.
+- **De app kan niet zien dát Atmos werkt.** Tijdens de lopende bitstream logt de fork `audio rendering mode: not-applicable`. De app leest exact dezelfde `AVAudioSession.renderingMode` (`AudioSessionPlugin.swift:137`) en `audioRenderingLabel()` mapt dat op `null`, dus de badge zwijgt precies wanneer hij iets zou moeten zeggen. `AudioOutputCoordinator.decision` bestaat, is gedocumenteerd "for the player's rendering badge", en heeft geen enkele lezer.
+- **Loudness-normalisatie en passthrough sluiten elkaar uit** en niets coördineert dat. Voor afspeelsnelheid bestaat die guard al (`player_native.dart:311-323`). Android TV arbitreert het conflict zelfs al, maar andersom: `ExoPlayerCore.kt:1952-1955` blokkeert direct output zodra normalisatie aanstaat, terwijl de coordinator `passthrough` blijft rapporteren — daar liegt de badge vandaag. Zie [DEC-013](DECISIONS.md#dec-013).
+
+### Nog te doen
+- **De meting op de Apple TV zelf ontbreekt nog.** Alle logs tot nu toe komen van de iPhone. Build 212 staat al op het toestel, dus de meting kan zonder nieuwe build.
+- Implementatie van DEC-013 (arbiter, badge uit de beslissing, `auto` op digitale poorten). Plan: `~/.claude/plans/pleya-v2-8-0-211-ios-smooth-frog.md`.
+
+## [2026-08-08] — Blu-ray ISO's en uitgepakte BDMV-mappen afspelen
+
+### Added
+- **Een `.iso` is geen stream maar een UDF-filesysteem**, dus mpv kon hem niet demuxen en een ISO was simpelweg onzichtbaar in de app (commit `de48dbb`). De zware helft bleek al aanwezig: de meegeleverde mpv is gebouwd met `-Dlibbluray=enabled`, linkt `bd_open`/`bd_get_main_title`, en `Libbluray.framework` zit in de bundle. Die libbluray bevat udfread en opent een `.iso` rechtstreeks zonder mounten — er was dus geen fork-rebuild nodig, alleen de Dart-kant die mpv vertelt dat dit een schijf is. `detectDiscSource()` (`lib/mpv/disc_source.dart`, nieuw) classificeert een pad als ISO, BDMV-map of gewoon bestand; `player_native.dart`, `local_folder_client.dart` en de speler-foutafhandeling sluiten daarop aan. 97 regels tests in `test/mpv/disc_source_test.dart`.
+
+## [2026-08-07] — Atmos-grondslag op Apple, en Seerr zegt wat er misging
+
+### Added
+- **Dolby Atmos en spatial audio op iOS en tvOS** (commit `87c5e04`, build 207). Op AirPods gaf de app stereo waar andere spelers Atmos gaven, en de oorzaak zat niet in mpv: de app riep nergens `setSupportsMultichannelContent(true)` aan. Zonder die opt-in rapporteert de route twee kanalen, ziet `ao_audiounit` `outputNumberOfChannels <= 2` en downmixt hard naar stereo — er valt dan niets meer te spatializen. Daarbovenop sloot `supportsAudioPassthrough()` iOS en Apple TV uit, dus het bitstream-pad lag óók dicht. Nieuw: `shared/apple/AudioSession/AudioSessionPlugin.swift` zet de sessie op `.moviePlayback` plus de multichannel-opt-in en publiceert route-, spatial- en renderingMode-wijzigingen; `AudioOutputCoordinator` en de pure `decideAudioOutput()` kwamen erbij met 385 regels tests.
+  - Let op: dezelfde commit introduceerde de auto-passthrough die in build 211 werd teruggedraaid, zie de entry van 2026-08-09.
+
+### Fixed
+- **Ontdekken toonde altijd "Something went wrong. Try again."** (commit `24f9054`). `SeerrClient` onderscheidt 401 en 403 netjes en de teksten `errorAuth`/`errorForbidden` bestonden al, maar het scherm keek alleen naar `isNetwork`. Een verlopen sessie of een ontbrekend recht las dus als "probeer opnieuw", terwijl opnieuw proberen daar per definitie niets aan verandert. De soort fout wordt nu geclassificeerd in `lib/utils/seerr_error_message.dart` en per rij bijgehouden; faalt alles, dan wint de meest specifieke melding.
+
 ## [2026-08-06] — Apple TV: focus maakt geen gekke sprongen meer
 
 ### Fixed
