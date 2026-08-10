@@ -83,6 +83,21 @@ class AppleTvNativeTextEntry {
   /// policy. Once the surface has been written off ([isUnavailable]) this
   /// throws [MissingPluginException] without going near the platform, so every
   /// caller takes the same fallback it already has for an unregistered plugin.
+  /// Second way out of a live session, for the back key that reached Dart
+  /// instead of the native escape hatch.
+  ///
+  /// Fire-and-forget: the session ends through the normal `edit` completion, so
+  /// there is nothing to await here. Cancelling twice is harmless — the plugin
+  /// drops the call once the entry is gone — and a build whose plugin predates
+  /// this method simply keeps the old behaviour instead of throwing.
+  void _requestCancel() {
+    unawaited(
+      _channel.invokeMethod<void>('cancel').catchError((Object e) {
+        appLogger.d('Native text entry cancel ignored: $e');
+      }),
+    );
+  }
+
   Future<AppleTvTextEntryResult> edit({
     required String text,
     String? hint,
@@ -108,7 +123,7 @@ class AppleTvNativeTextEntry {
     _activeOnTextChanged = onTextChanged;
     // Synchronous, before the await: an async flag would leave a window in
     // which the keyboard is already up and Dart is still dispatching keys.
-    NativeInputSession.begin();
+    NativeInputSession.begin(onRequestClose: _requestCancel);
     unawaited(GamepadService.setNativeTextInputFocused(true));
     try {
       final result = await _channel.invokeMapMethod<String, dynamic>('edit', {

@@ -19,9 +19,20 @@ import UIKit
 final class NativeTextEntryPlugin: NSObject, FlutterPlugin {
   private static let channelName = "com.pleya/native_text_entry"
 
+  /// tvOS needs a few frames to tear its keyboard down, and the press that
+  /// ended the session is still travelling through Flutter's focus tree while
+  /// it does. Whatever it lands on can ask for a new session, and the user sees
+  /// a keyboard that "will not close" — it closed and instantly reopened, which
+  /// is the reopen-loop DEC-009 and DEC-011 both document. Long enough to
+  /// swallow that echo, short enough that a deliberate second press still opens
+  /// the keyboard.
+  private static let reopenCooldown: TimeInterval = 0.5
+
   private var channel: FlutterMethodChannel?
   private var entry: NativeTextEntryField?
   private var pendingResult: FlutterResult?
+  /// Monotonic, so a clock change cannot turn the cooldown into a lockout.
+  private var lastSessionEndedAt: TimeInterval?
 
   static func register(with registrar: FlutterPluginRegistrar) {
     let instance = NativeTextEntryPlugin()
@@ -38,11 +49,27 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin {
         result(FlutterError(code: "BUSY", message: "A text entry session is already active", details: nil))
         return
       }
+      // Reported as BUSY on purpose: both Dart callers already treat that as
+      // "drop this quietly" — no fallback keyboard, no availability latch —
+      // which is exactly right for an echo of the press that just closed us.
+      if let ended = lastSessionEndedAt,
+        ProcessInfo.processInfo.systemUptime - ended < Self.reopenCooldown
+      {
+        NSLog("[NativeTextEntry] refusing edit within reopen cooldown")
+        result(FlutterError(code: "BUSY", message: "The keyboard is still closing", details: nil))
+        return
+      }
       guard let args = call.arguments as? [String: Any] else {
         result(FlutterError(code: "INVALID_ARGS", message: "Missing arguments", details: nil))
         return
       }
       begin(args: args, result: result)
+    case "cancel":
+      // Second exit for a back press that reached Dart instead of the escape
+      // hatch in AppDelegate. Cancelling nothing is not an error: the two paths
+      // race by design, and whichever arrives first should win quietly.
+      entry?.cancel()
+      result(nil)
     default:
       result(FlutterMethodNotImplemented)
     }
@@ -80,6 +107,9 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin {
     guard let result = pendingResult else { return }
     pendingResult = nil
     entry = nil
+    // Every ending, not just cancels: a submit hands focus back to the caller's
+    // field too, and an echo there would reopen just as readily.
+    lastSessionEndedAt = ProcessInfo.processInfo.systemUptime
 
     // The field has already removed itself; handing the remote back is all
     // that is left, and it cannot fail.

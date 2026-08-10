@@ -16,13 +16,39 @@ class NativeInputSession {
   NativeInputSession._();
 
   static bool _active = false;
+  static VoidCallback? _onRequestClose;
 
   static bool get isActive => _active;
 
-  static void begin() => _active = true;
+  /// [onRequestClose] is the way back out. The gate below swallows every key
+  /// that reaches Dart during a session, and that has to include the back key —
+  /// otherwise it moves focus behind the keyboard. But swallowing it outright
+  /// leaves the user with no exit whenever the native escape hatch misses the
+  /// press: the first Menu does nothing and they have to press again. So the
+  /// owner of the surface registers how to close itself, and a back key that
+  /// lands in Dart ends the session instead of vanishing.
+  static void begin({VoidCallback? onRequestClose}) {
+    _onRequestClose = onRequestClose;
+    _active = true;
+  }
 
-  static void end() => _active = false;
+  static void end() {
+    _onRequestClose = null;
+    _active = false;
+  }
+
+  /// Asks the active surface to close. False when nothing is listening, so the
+  /// caller can fall back to plain suppression rather than assume it worked.
+  static bool requestClose() {
+    final handler = _onRequestClose;
+    if (handler == null) return false;
+    handler();
+    return true;
+  }
 
   @visibleForTesting
-  static void debugReset() => _active = false;
+  static void debugReset() {
+    _onRequestClose = null;
+    _active = false;
+  }
 }

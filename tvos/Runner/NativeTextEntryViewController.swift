@@ -80,16 +80,28 @@ final class NativeTextEntryField: NSObject, UITextFieldDelegate {
   private static let watchdogTimeout: TimeInterval = 4
   /// How often to check whether the system keyboard is still up.
   private static let responderPollInterval: TimeInterval = 0.4
+  /// Roughly two seconds of trying before we stop waiting for the keyboard.
+  private static let maxDismissAttempts = 5
 
   private var didBeginEditing = false
   private var committed = false
   private var finished = false
   private var watchdog: Timer?
   private var responderPoll: Timer?
+  private var dismissAttempts = 0
+  private weak var host: UIView?
+  /// What was already on screen when we attached, so teardown only ever closes
+  /// the keyboard tvOS put up for *us*.
+  private weak var presentedBeforeAttach: UIViewController?
 
   // MARK: - Lifecycle
 
   func attach(to host: UIView) {
+    self.host = host
+    // Whatever was already presented before we asked for the keyboard is not
+    // ours to close. Anything that appears on top of this is.
+    presentedBeforeAttach = Self.topPresented(from: host)
+
     textField.delegate = self
     // Parked off-screen on purpose: tvOS draws its own full-screen keyboard, so
     // nothing of ours should be visible behind it. The field only has to be in
@@ -128,20 +140,64 @@ final class NativeTextEntryField: NSObject, UITextFieldDelegate {
     }
   }
 
-  /// The only teardown trigger that does not depend on tvOS choosing a
-  /// particular delegate callback: once the field stops being first responder,
-  /// the system keyboard is gone and the session is over no matter how it was
-  /// closed. Without this the session had no safety net at all after editing
-  /// began — which is precisely when users got stuck.
+  /// The safety net for a session that ends without tvOS calling a delegate
+  /// method we handle.
+  ///
+  /// It used to read "field is no longer first responder" as "the keyboard is
+  /// gone". That is inverted: on tvOS the keyboard is a presentation UIKit owns,
+  /// and losing first responder is exactly the state in which the keyboard is
+  /// *still up* and this field is the only thing that can take it down. Tearing
+  /// down there removed the field and dropped the last strong reference, which
+  /// is how users ended up watching the app navigate underneath a keyboard they
+  /// could not close. Nothing presented is the signal; not first responder only
+  /// tells us to go and close it.
   private func startResponderPoll() {
     responderPoll?.invalidate()
     responderPoll = Timer.scheduledTimer(withTimeInterval: Self.responderPollInterval, repeats: true) {
       [weak self] _ in
       guard let self else { return }
       guard !self.textField.isFirstResponder else { return }
+
+      if Self.topPresented(from: self.host) !== self.presentedBeforeAttach {
+        // Bounded: if the keyboard refuses to go after this long, finishing and
+        // handing Dart a result beats spinning forever on a surface we cannot
+        // move. `finish` makes one more dismissal attempt on the way out.
+        self.dismissAttempts += 1
+        guard self.dismissAttempts <= Self.maxDismissAttempts else {
+          self.diag("keyboard still presented after \(Self.maxDismissAttempts) attempts — giving up")
+          self.finish(submitted: self.committed, failure: nil)
+          return
+        }
+        self.diag("responder lost while keyboard still presented — dismissing (\(self.dismissAttempts))")
+        self.dismissSystemKeyboardIfPresented()
+        return
+      }
+
       self.diag("responder poll: keyboard gone")
       self.finish(submitted: self.committed, failure: nil)
     }
+  }
+
+  // MARK: - Dismissal
+
+  /// The controller currently sitting on top of the app, or nil when nothing is
+  /// presented. tvOS stacks its keyboard here; we never created it, so it is not
+  /// reachable through any reference of ours.
+  private static func topPresented(from view: UIView?) -> UIViewController? {
+    guard var top = view?.window?.rootViewController?.presentedViewController else { return nil }
+    while let next = top.presentedViewController { top = next }
+    return top
+  }
+
+  /// Close the keyboard tvOS put up for us — and only that. Anything that was
+  /// already presented when we attached belongs to someone else.
+  private func dismissSystemKeyboardIfPresented() {
+    guard let top = Self.topPresented(from: host), top !== presentedBeforeAttach else { return }
+    diag("dismissing keyboard presentation \(type(of: top))")
+    // Via the presenter, never the presented controller itself: `dismiss` routes
+    // to the receiver's *presented* child, so calling it on the keyboard would
+    // close whatever the keyboard is showing and leave the keyboard. DEC-011.
+    top.presentingViewController?.dismiss(animated: false)
   }
 
   // MARK: - UITextFieldDelegate
@@ -180,9 +236,24 @@ final class NativeTextEntryField: NSObject, UITextFieldDelegate {
     NotificationCenter.default.removeObserver(self)
 
     let text = textField.text ?? ""
-    // Unconditional: no presentation to unwind, nothing that can refuse.
     textField.resignFirstResponder()
-    textField.removeFromSuperview()
+    // Resigning is *not* enough. tvOS raises its keyboard by presenting a
+    // controller over the app, and once `textFieldDidEndEditing` has already
+    // fired — which it does with reason `.cancelled` when the user backs out
+    // with the remote — the field is no longer editing and the resign above is
+    // a no-op. Removing the field then leaves that presentation on screen with
+    // nothing owning it: letters select nothing, Menu falls through to Flutter,
+    // and you watch the app navigate underneath a keyboard you cannot close.
+    // Build 203 hit this and fixed it via `presentingViewController`; the
+    // rewrite to a parked field (no presented VC of our own) dropped that
+    // escape without replacing it. This is the replacement.
+    dismissSystemKeyboardIfPresented()
+    // Not in this runloop turn. Resigning starts an asynchronous dismissal, and
+    // yanking the field out of the tree now — moments before the plugin drops
+    // the last strong reference to us — destroys the object driving it. The
+    // closure holds the field alive until the transition has had its turn.
+    let field = textField
+    DispatchQueue.main.async { field.removeFromSuperview() }
     diag("finish submitted=\(submitted) failure=\(failure ?? "-")")
     onFinished?(text, submitted, failure)
   }
