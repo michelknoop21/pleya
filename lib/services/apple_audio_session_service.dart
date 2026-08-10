@@ -96,7 +96,20 @@ class AppleAudioRoute {
 
   /// Whether the route will take more than stereo. False here is what forces
   /// the PCM path down to stereo instead of asking mpv for 5.1/7.1.
-  bool get isMultichannelCapable => maximumOutputNumberOfChannels > 2;
+  ///
+  /// A wired digital port counts even when the channel count says two, because
+  /// on tvOS that count is not trustworthy. Measured on an Apple TV 4K wired to
+  /// an AV receiver, with tvOS audio set to Auto and the multichannel opt-in
+  /// accepted (`supportsMultichannelContent: true`), this route reported
+  /// `maximumOutputNumberOfChannels: 2` — while the same session told mpv
+  /// `supported output channel layouts: 3` moments later. Gating on the count
+  /// alone therefore pinned an Apple TV to stereo: not just no Atmos, but no
+  /// 5.1 either.
+  ///
+  /// Widening here is safe because nothing is forced: the coordinator offers
+  /// mpv `7.1,5.1,stereo` and mpv picks the first the output actually accepts,
+  /// so a genuinely stereo-only HDMI sink still lands on stereo.
+  bool get isMultichannelCapable => maximumOutputNumberOfChannels > 2 || isDigitalPassthroughPort;
 
   @override
   String toString() =>

@@ -200,6 +200,63 @@ void main() {
       expect(route.spatialAudioEnabled, isFalse);
       expect(route.renderingMode, AppleRenderingMode.notApplicable);
     });
+
+    test('trusts a wired digital port over a channel count of two', () {
+      // Measured on an Apple TV 4K wired to a receiver, tvOS audio on Auto:
+      // the opt-in was accepted yet the session still reported two channels,
+      // while it told mpv it supported three output layouts. Believing the
+      // count pinned the device to stereo — no Atmos and no 5.1.
+      final route = AppleAudioRoute.fromMap(const {
+        'maximumOutputNumberOfChannels': 2,
+        'outputNumberOfChannels': 2,
+        'supportsMultichannelContent': true,
+        'portType': 'HDMIOutput',
+        'portName': 'AppleTV',
+        'isDigitalOutput': true,
+      });
+
+      expect(route.isMultichannelCapable, isTrue);
+    });
+
+    test('a stereo count on a non-digital route still means stereo', () {
+      // The phone speaker and AirPods keep the old behaviour: nothing to
+      // widen to, so asking mpv for 5.1 would only cost an AO reload.
+      final route = AppleAudioRoute.fromMap(const {
+        'maximumOutputNumberOfChannels': 2,
+        'supportsMultichannelContent': true,
+        'portType': 'Speaker',
+        'isDigitalOutput': false,
+      });
+
+      expect(route.isMultichannelCapable, isFalse);
+    });
+  });
+
+  group('the measured Apple TV route', () {
+    /// Exactly what build 212 logged: HDMI to a receiver, opt-in accepted,
+    /// but a channel count of two.
+    const appleTvHdmi = AppleAudioRoute(
+      portType: 'HDMIOutput',
+      portName: 'AppleTV',
+      isDigitalPassthroughPort: true,
+      supportsMultichannelContent: true,
+    );
+
+    test('auto now widens to multichannel PCM instead of stereo', () {
+      expect(decide(AudioOutputMode.auto, appleTvHdmi, 'eac3'), AudioOutputDecision.pcmMultichannel);
+    });
+
+    test('an explicit PCM choice widens too', () {
+      expect(decide(AudioOutputMode.pcm, appleTvHdmi, 'eac3'), AudioOutputDecision.pcmMultichannel);
+    });
+
+    test('passthrough is unaffected — it never depended on the count', () {
+      expect(decide(AudioOutputMode.passthrough, appleTvHdmi, 'eac3'), AudioOutputDecision.passthrough);
+    });
+
+    test('a codec the Apple decoder cannot bitstream falls back wide, not narrow', () {
+      expect(decide(AudioOutputMode.passthrough, appleTvHdmi, 'truehd'), AudioOutputDecision.pcmMultichannel);
+    });
   });
 
   group('a route where bitstreaming failed', () {
