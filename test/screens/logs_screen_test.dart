@@ -16,6 +16,32 @@ class _SilentOutput extends LogOutput {
   void output(OutputEvent event) {}
 }
 
+/// device_info_plus talks over a platform channel with no implementation under
+/// test, and its model classes cast every field eagerly — so the mock has to be
+/// complete even though the header only reads osRelease and model. Tests run on
+/// the macOS host, hence the macOS shape.
+void installDeviceInfoMock() {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+    const MethodChannel('dev.fluttercommunity.plus/device_info'),
+    (call) async => <String, dynamic>{
+      'computerName': 'test-mac',
+      'hostName': 'test-mac.local',
+      'arch': 'arm64',
+      'model': 'Mac16,1',
+      'modelName': 'MacBook Pro',
+      'kernelVersion': 'Darwin 25.5.0',
+      'osRelease': '26.5',
+      'majorVersion': 26,
+      'minorVersion': 5,
+      'patchVersion': 0,
+      'activeCPUs': 10,
+      'memorySize': 17179869184,
+      'cpuFrequency': 0,
+      'systemGUID': null,
+    },
+  );
+}
+
 /// The log screen is opened precisely when a session has produced a lot to
 /// read, so it must not pay for entries that are off screen. It used to build
 /// every entry into one `RichText`, which meant a long diagnostic session had
@@ -32,29 +58,7 @@ void main() {
       buildNumber: '212',
       buildSignature: '',
     );
-    // device_info_plus talks over a platform channel with no implementation
-    // under test, and its model classes cast every field eagerly — so the mock
-    // has to be complete even though the header only reads osRelease and
-    // model. Tests run on the macOS host, hence the macOS shape.
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-      const MethodChannel('dev.fluttercommunity.plus/device_info'),
-      (call) async => <String, dynamic>{
-        'computerName': 'test-mac',
-        'hostName': 'test-mac.local',
-        'arch': 'arm64',
-        'model': 'Mac16,1',
-        'modelName': 'MacBook Pro',
-        'kernelVersion': 'Darwin 25.5.0',
-        'osRelease': '26.5',
-        'majorVersion': 26,
-        'minorVersion': 5,
-        'patchVersion': 0,
-        'activeCPUs': 10,
-        'memorySize': 17179869184,
-        'cpuFrequency': 0,
-        'systemGUID': null,
-      },
-    );
+    installDeviceInfoMock();
   });
 
   late Logger previousLogger;
@@ -97,5 +101,22 @@ void main() {
 
     expect(find.text(t.messages.noLogsAvailable), findsOneWidget);
     expect(find.byType(SelectableText), findsNothing);
+  });
+
+  testWidgets('still renders when the device probe fails', (tester) async {
+    // The header is built unawaited from initState, so an unguarded throw here
+    // used to surface as an unhandled async error and cost the version line too.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('dev.fluttercommunity.plus/device_info'),
+      (call) async => throw PlatformException(code: 'UNAVAILABLE'),
+    );
+    addTearDown(installDeviceInfoMock);
+
+    appLogger.i('entry after a failing probe');
+    await pumpLogs(tester);
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(SelectableText), findsWidgets);
   });
 }

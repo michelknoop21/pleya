@@ -43,13 +43,35 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
     _loadDeviceInfo();
   }
 
+  /// Builds the header that every uploaded log opens with.
+  ///
+  /// Both halves are guarded, and separately: this runs unawaited from
+  /// [initState], so anything thrown here becomes an unhandled async error and
+  /// takes the whole header with it — including the version line, which is the
+  /// part a bug report cannot do without. A plugin channel that answers oddly
+  /// on one platform should cost you the device line, nothing more.
   Future<void> _loadDeviceInfo() async {
-    final packageInfo = await PackageInfo.fromPlatform();
-    final deviceInfo = DeviceInfoPlugin();
     final buffer = StringBuffer();
-    final commitSuffix = gitCommit.isNotEmpty ? ' ${gitCommit.substring(0, 7)}' : '';
-    buffer.writeln('${t.app.title} v${packageInfo.version} (${packageInfo.buildNumber})$commitSuffix');
 
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final commitSuffix = gitCommit.isNotEmpty ? ' ${gitCommit.substring(0, 7)}' : '';
+      buffer.writeln('${t.app.title} v${packageInfo.version} (${packageInfo.buildNumber})$commitSuffix');
+    } catch (e) {
+      appLogger.d('Logs screen: package info unavailable: $e');
+    }
+
+    try {
+      await _appendDeviceLines(buffer);
+    } catch (e) {
+      appLogger.d('Logs screen: device info unavailable: $e');
+    }
+
+    setStateIfMounted(() => _deviceInfo = buffer.toString().trimRight());
+  }
+
+  Future<void> _appendDeviceLines(StringBuffer buffer) async {
+    final deviceInfo = DeviceInfoPlugin();
     if (Platform.isAndroid) {
       final info = await deviceInfo.androidInfo;
       buffer.writeln('Android ${info.version.release} (API ${info.version.sdkInt})');
@@ -71,8 +93,6 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
       final info = await deviceInfo.linuxInfo;
       buffer.writeln('Linux ${info.versionId ?? info.id}');
     }
-
-    setStateIfMounted(() => _deviceInfo = buffer.toString().trimRight());
   }
 
   @override
