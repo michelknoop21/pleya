@@ -217,57 +217,39 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
     );
   }
 
-  List<TextSpan> _buildLogSpans() {
-    final spans = <TextSpan>[];
-    if (_deviceInfo.isNotEmpty) {
-      spans.add(
+  /// Whether the device-info block occupies the first row of the list.
+  bool get _hasHeaderRow => _deviceInfo.isNotEmpty;
+
+  /// Spans for a single entry.
+  ///
+  /// Per entry rather than one tree for the whole buffer: the list below is
+  /// lazy, and a single `RichText` holding every entry has to lay out all of
+  /// them before the screen can paint. A long diagnostic session reaches tens
+  /// of thousands of spans, so the screen got slowest exactly when there was
+  /// most to read — and that is the moment you open it.
+  List<TextSpan> _spansForEntry(LogEntry log) {
+    final color = _getLevelColor(log.level);
+    return [
+      TextSpan(
+        text: '[${_formatTime(log.timestamp)}] ',
+        style: TextStyle(color: color.withValues(alpha: 0.6)),
+      ),
+      TextSpan(
+        text: '[${log.level.name.toUpperCase()}] ',
+        style: TextStyle(color: color, fontWeight: .bold),
+      ),
+      TextSpan(text: log.message),
+      if (log.error != null)
         TextSpan(
-          text: '$_deviceInfo\n',
-          style: TextStyle(color: Colors.grey.withValues(alpha: 0.6)),
+          text: '\n  Error: ${log.error}',
+          style: TextStyle(color: color),
         ),
-      );
-      spans.add(
+      if (log.stackTrace != null)
         TextSpan(
-          text: '---\n',
-          style: TextStyle(color: Colors.grey.withValues(alpha: 0.3)),
+          text: '\n  ${log.stackTrace.toString().replaceAll('\n', '\n  ')}',
+          style: TextStyle(color: Colors.grey.withValues(alpha: 0.7)),
         ),
-      );
-    }
-    for (var i = 0; i < _logs.length; i++) {
-      if (i > 0) spans.add(const TextSpan(text: '\n'));
-      final log = _logs[i];
-      final color = _getLevelColor(log.level);
-      spans.add(
-        TextSpan(
-          text: '[${_formatTime(log.timestamp)}] ',
-          style: TextStyle(color: color.withValues(alpha: 0.6)),
-        ),
-      );
-      spans.add(
-        TextSpan(
-          text: '[${log.level.name.toUpperCase()}] ',
-          style: TextStyle(color: color, fontWeight: .bold),
-        ),
-      );
-      spans.add(TextSpan(text: log.message));
-      if (log.error != null) {
-        spans.add(
-          TextSpan(
-            text: '\n  Error: ${log.error}',
-            style: TextStyle(color: color),
-          ),
-        );
-      }
-      if (log.stackTrace != null) {
-        spans.add(
-          TextSpan(
-            text: '\n  ${log.stackTrace.toString().replaceAll('\n', '\n  ')}',
-            style: TextStyle(color: Colors.grey.withValues(alpha: 0.7)),
-          ),
-        );
-      }
-    }
-    return spans;
+    ];
   }
 
   @override
@@ -330,17 +312,37 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
                 else
                   SliverPadding(
                     padding: const EdgeInsets.all(12),
-                    sliver: SliverToBoxAdapter(
-                      child: SelectableText.rich(
-                        TextSpan(
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                            height: 1.5,
-                          ),
-                          children: _buildLogSpans(),
-                        ),
-                      ),
+                    // One row per entry so only what is on screen gets built.
+                    // Selection no longer spans entries; the copy and upload
+                    // actions in the app bar cover taking the whole log.
+                    sliver: SliverList.builder(
+                      itemCount: _logs.length + (_hasHeaderRow ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        final logStyle = theme.textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                          height: 1.5,
+                        );
+                        if (_hasHeaderRow && index == 0) {
+                          return SelectableText.rich(
+                            TextSpan(
+                              style: logStyle,
+                              children: [
+                                TextSpan(
+                                  text: '$_deviceInfo\n',
+                                  style: TextStyle(color: Colors.grey.withValues(alpha: 0.6)),
+                                ),
+                                TextSpan(
+                                  text: '---',
+                                  style: TextStyle(color: Colors.grey.withValues(alpha: 0.3)),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        final log = _logs[index - (_hasHeaderRow ? 1 : 0)];
+                        return SelectableText.rich(TextSpan(style: logStyle, children: _spansForEntry(log)));
+                      },
                     ),
                   ),
               ],
