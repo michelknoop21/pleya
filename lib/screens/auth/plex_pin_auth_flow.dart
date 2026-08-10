@@ -68,11 +68,16 @@ class PlexPinAuthFlow extends StatefulWidget {
   )?
   initialButtonsBuilder;
 
-  /// When non-null, a timed-out sign-in offers a way out to the other backend
-  /// instead of dead-ending on red text. Kept as a callback so this widget
-  /// stays independent of [AuthScreen]; [AddPlexAccountScreen] passes nothing
-  /// and keeps its current behaviour.
+  /// When non-null, the sign-in offers a way out to the other backend — both
+  /// while the PIN is outstanding and after it times out. Kept as a callback
+  /// so this widget stays independent of [AuthScreen]; [AddPlexAccountScreen]
+  /// passes nothing and keeps its current behaviour.
   final VoidCallback? onSwitchToJellyfin;
+
+  /// Injection seam for widget tests that need to drive the polling UI
+  /// without reaching plex.tv. Production always gets [PlexAuthService.create].
+  @visibleForTesting
+  final Future<PlexAuthService> Function()? authServiceFactory;
 
   const PlexPinAuthFlow({
     super.key,
@@ -83,6 +88,7 @@ class PlexPinAuthFlow extends StatefulWidget {
     this.initialUseQr,
     this.initialButtonsBuilder,
     this.onSwitchToJellyfin,
+    this.authServiceFactory,
   });
 
   @override
@@ -111,7 +117,7 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
   }
 
   Future<void> _initService() async {
-    final svc = await PlexAuthService.create();
+    final svc = await (widget.authServiceFactory ?? PlexAuthService.create)();
     if (!mounted) {
       svc.dispose();
       return;
@@ -229,7 +235,18 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
   void _switchToJellyfin() {
     final onSwitch = widget.onSwitchToJellyfin;
     if (onSwitch == null) return;
-    _clearError();
+    // Abandon the Plex attempt first. The parent pushes the Jellyfin route on
+    // top of this widget, so it stays alive and polling; a PIN claimed after
+    // the user walked away would fire `onTokenReceived` and navigate out from
+    // under whatever they are typing. Bumping the attempt id makes
+    // `shouldCancel` true and orphans any in-flight poll result.
+    _attemptId++;
+    setState(() {
+      _isPolling = false;
+      _qrAuthUrl = null;
+      _errorMessage = null;
+      _timedOut = false;
+    });
     onSwitch();
   }
 
@@ -271,6 +288,26 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
           ],
         ],
       ],
+    );
+  }
+
+  /// The same escape hatch as in [_buildErrorBlock], but offered *while* the
+  /// PIN is still outstanding. Someone who typed Jellyfin credentials on
+  /// plex.tv will never claim this PIN, and waiting out the five-minute poll
+  /// to be told so reads as a broken app (App Review 2.1(a) twice over).
+  /// Deliberately a quiet text button — the PIN/QR stays the main event.
+  Widget? _buildJellyfinEscape() {
+    if (widget.onSwitchToJellyfin == null) return null;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: FocusableButton(
+        onPressed: _switchToJellyfin,
+        child: TextButton.icon(
+          onPressed: _switchToJellyfin,
+          icon: const BackendBadge(backend: MediaBackend.jellyfin, size: 16),
+          label: Text(t.auth.usingJellyfinInstead, textAlign: TextAlign.center),
+        ),
+      ),
     );
   }
 
@@ -330,6 +367,7 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
   }
 
   Widget _buildQr(ThemeData theme, double qrSize) {
+    final jellyfinEscape = _buildJellyfinEscape();
     return Column(
       mainAxisSize: .min,
       children: [
@@ -365,12 +403,14 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
             child: Text(t.common.retry),
           ),
         ),
+        ?jellyfinEscape,
         if (_errorMessage != null) ...[const SizedBox(height: 12), _buildErrorBlock(theme)],
       ],
     );
   }
 
   Widget _buildBrowserWaiting(ThemeData theme) {
+    final jellyfinEscape = _buildJellyfinEscape();
     return Column(
       mainAxisSize: .min,
       children: [
@@ -390,6 +430,7 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
             child: Text(t.common.retry),
           ),
         ),
+        ?jellyfinEscape,
         if (_errorMessage != null) ...[const SizedBox(height: 12), _buildErrorBlock(theme)],
       ],
     );
