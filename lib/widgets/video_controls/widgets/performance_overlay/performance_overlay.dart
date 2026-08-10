@@ -77,6 +77,15 @@ class _PlayerPerformanceOverlayState extends State<PlayerPerformanceOverlay> {
         // What the system says it is rendering, next to what mpv is feeding
         // it — the pair is what tells you whether Atmos actually landed.
         if (_renderingLabel != null) _metric(t.videoSettings.audioOutput, _renderingLabel!),
+        // Which output mpv settled on and in what format. `avfoundation` +
+        // `spdif-eac3` is a live bitstream; `audiounit` + `s16`/`float` means
+        // it decoded, whatever the passthrough setting was asked to do.
+        // Leeg, niet null, is wat mpv teruggeeft zolang de AO nog niet staat —
+        // vandaar dezelfde isNotEmpty-guard als aspectName hierboven.
+        if (_stats.currentAo != null && _stats.currentAo!.isNotEmpty)
+          _metric(t.performanceOverlay.audioDriver, _stats.currentAo!),
+        if (_stats.audioOutFormat != null && _stats.audioOutFormat!.isNotEmpty)
+          _metric(t.performanceOverlay.audioOutFormat, _stats.audioOutFormat!),
         if (_stats.hasValidAudioBitrate) _metric(t.fileInfo.bitrate, _stats.audioBitrateFormatted),
         if (!isMpv && _stats.audioDecoderName != null)
           _metric(t.performanceOverlay.decoder, _stats.audioDecoderFormatted),

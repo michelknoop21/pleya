@@ -37,6 +37,16 @@ class PerformanceStats {
   final int? audioBitrate;
   final String? audioDecoderName;
 
+  /// mpv's `current-ao` — which audio output actually came up. On Apple this
+  /// is the one thing that says whether the bitstream path was taken:
+  /// `audiounit` decodes, `avfoundation` is the compressed renderer.
+  final String? currentAo;
+
+  /// mpv's `audio-out-params/format` — the sample format handed to that output.
+  /// A `spdif-*` value is a bitstream reaching the far end; `s16`/`float` means
+  /// mpv decoded, whatever the passthrough setting says.
+  final String? audioOutFormat;
+
   // Tunneling
   final bool tunneledPlayback;
   final String? tunnelingStatus;
@@ -95,6 +105,8 @@ class PerformanceStats {
     this.audioChannels,
     this.audioBitrate,
     this.audioDecoderName,
+    this.currentAo,
+    this.audioOutFormat,
     this.tunneledPlayback = false,
     this.tunnelingStatus,
     this.actualFps,
@@ -146,6 +158,8 @@ class PerformanceStats {
       audioChannels = null,
       audioBitrate = null,
       audioDecoderName = null,
+      currentAo = null,
+      audioOutFormat = null,
       tunneledPlayback = false,
       tunnelingStatus = null,
       actualFps = null,

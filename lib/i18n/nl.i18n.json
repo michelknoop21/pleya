@@ -1279,6 +1279,8 @@
     "dvPath": "DV-pad",
     "p7Conversion": "P7-conv.",
     "sampleRate": "Samplefrequentie",
+    "audioDriver": "Audiostuurprogramma",
+    "audioOutFormat": "Uitvoerformaat",
     "pixelFormat": "Pixelformaat",
     "hwFormat": "HW-formaat",
     "matrix": "Matrix",

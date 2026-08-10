@@ -3619,6 +3619,12 @@ class TranslationsPerformanceOverlayEn {
 	/// en: 'Sample Rate'
 	String get sampleRate => 'Sample Rate';
 
+	/// en: 'Audio Driver'
+	String get audioDriver => 'Audio Driver';
+
+	/// en: 'Out Format'
+	String get audioOutFormat => 'Out Format';
+
 	/// en: 'Pixel Fmt'
 	String get pixelFormat => 'Pixel Fmt';
 
@@ -6557,6 +6563,8 @@ extension on Translations {
 			'performanceOverlay.dvPath' => 'DV Path',
 			'performanceOverlay.p7Conversion' => 'P7 Conv',
 			'performanceOverlay.sampleRate' => 'Sample Rate',
+			'performanceOverlay.audioDriver' => 'Audio Driver',
+			'performanceOverlay.audioOutFormat' => 'Out Format',
 			'performanceOverlay.pixelFormat' => 'Pixel Fmt',
 			'performanceOverlay.hwFormat' => 'HW Fmt',
 			'performanceOverlay.matrix' => 'Matrix',

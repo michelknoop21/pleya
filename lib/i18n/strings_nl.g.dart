@@ -1481,6 +1481,8 @@ class _TranslationsPerformanceOverlayNl extends TranslationsPerformanceOverlayEn
 	@override String get dvPath => 'DV-pad';
 	@override String get p7Conversion => 'P7-conv.';
 	@override String get sampleRate => 'Samplefrequentie';
+	@override String get audioDriver => 'Audiostuurprogramma';
+	@override String get audioOutFormat => 'Uitvoerformaat';
 	@override String get pixelFormat => 'Pixelformaat';
 	@override String get hwFormat => 'HW-formaat';
 	@override String get matrix => 'Matrix';
@@ -3417,6 +3419,8 @@ extension on TranslationsNl {
 			'performanceOverlay.dvPath' => 'DV-pad',
 			'performanceOverlay.p7Conversion' => 'P7-conv.',
 			'performanceOverlay.sampleRate' => 'Samplefrequentie',
+			'performanceOverlay.audioDriver' => 'Audiostuurprogramma',
+			'performanceOverlay.audioOutFormat' => 'Uitvoerformaat',
 			'performanceOverlay.pixelFormat' => 'Pixelformaat',
 			'performanceOverlay.hwFormat' => 'HW-formaat',
 			'performanceOverlay.matrix' => 'Matrix',
