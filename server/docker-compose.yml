@@ -1,15 +1,23 @@
 services:
   relay:
     build: .
+    container_name: pleya-relay
     restart: unless-stopped
     mem_limit: 128m
     stop_grace_period: 15s
     volumes:
+      # Logs, Discord-posters en de room-snapshot leven allemaal onder /data.
       - logs:/data
     expose:
       - "8080"
+    ports:
+      # Loopback-only: `POST /logs` is onauthenticated en de OAuth-proxy zit op
+      # dezelfde poort, dus een 0.0.0.0-binding zou iedereen op het LAN (en alles
+      # dat via een bestaande port-forward binnenkomt) langs Cloudflare's TLS,
+      # WAF en rate limiting laten. deploy-nas.sh curlt dit over ssh óp de NAS.
+      - "127.0.0.1:8831:8080"
     environment:
-      OAUTH_BASE_URL: https://ice.plezy.app
+      OAUTH_BASE_URL: https://ice.pleya.app
       MAL_CLIENT_ID: ${MAL_CLIENT_ID:-}
       ANILIST_CLIENT_ID: ${ANILIST_CLIENT_ID:-}
       ANILIST_CLIENT_SECRET: ${ANILIST_CLIENT_SECRET:-}
@@ -19,7 +27,32 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # Publiceert ice.pleya.app zonder inkomende poorten: cloudflared belt naar
+  # buiten. De koppeling hostname -> http://relay:8080 staat in het Cloudflare-
+  # dashboard bij de tunnel zelf, niet hier.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: pleya-tunnel
+    restart: unless-stopped
+    mem_limit: 128m
+    depends_on:
+      - relay
+    command: tunnel --no-autoupdate run
+    environment:
+      # Bewust geen `:?`-guard: die wordt bij het parsen geëvalueerd en zou ook
+      # `up relay` en het vps-profile blokkeren. deploy-nas.sh controleert hem.
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Alternatief voor een losse VPS waar poort 80/443 vrij zijn: Caddy regelt
+  # dan zelf het certificaat. Niet gebruikt in de NAS-opstelling.
+  #   docker compose --profile vps up -d
   caddy:
+    profiles: ["vps"]
     image: caddy:2-alpine
     restart: unless-stopped
     mem_limit: 128m
@@ -36,31 +69,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  bugs:
-    image: ghcr.io/edde746/bugs:latest
-    restart: unless-stopped
-    mem_limit: 512m
-    volumes:
-      - bugs_data:/data
-    environment:
-      BUGS_AUTH__ADMIN_TOKEN: ${BUGS_AUTH__ADMIN_TOKEN}
-      BUGS_PUBLIC_URL: https://bugs.plezy.app
-      BUGS_RETENTION_DAYS: 90
-      BUGS_SYMBOLICATION__NATIVE_SYMCACHE_CACHE_BYTES_MB: 128
-      BUGS_INGEST__MAX_RAW_REQUEST_BYTES: 536870912
-      BUGS_SQLITE__READER_CONNECTIONS: 4
-      BUGS_SQLITE__CACHE_SIZE_MB: 16
-      BUGS_SQLITE__MMAP_SIZE_MB: 64
-    expose:
-      - "9000"
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
 volumes:
   logs:
   caddy_data:
   caddy_config:
-  bugs_data:
