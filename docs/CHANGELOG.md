@@ -2,6 +2,25 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-11] Opruimronde: dode Live TV-interface, eenmalige abstracties, no-op-vlaggen
+
+### Removed
+- **41 nooit-aangeroepen leden uit `LiveTvSupport`** (commits `d0ad971`, `e9b9fe5`). Grabber-beheer, de EPG-lineup-wizard, DVR-CRUD, media-providers, sessiedetails en de twee notificatie-URI's stonden in vier lagen tegelijk: de interface, `NoopLiveTvSupport`, een rij `UnimplementedError`-gooiers in de Jellyfin-adapter en de Plex-adapter met de `PlexClient`-implementaties eronder. Callers waren er nul. `buildNotificationWebSocketUri` en `buildNotificationEventSourceUri` hoorden er sowieso niet: het zijn geen live-TV-operaties, en de noop-variant gaf een lege `Uri()` terug in plaats van te weigeren, wat een stille verkeerde verbinding zou opleveren zodra iemand ze wél ging gebruiken. Vijf modelbestanden (`livetv_lineup`, `livetv_server_status`, `livetv_session`, `media_grabber_device`, `media_provider_info`) hingen alleen aan die leden en zijn mee verdwenen.
+- **`ConnectionAuthService`** (`lib/connection/connection_auth_service.dart`, commit `24fe41e`). Eén implementatie, en geen enkele call-site die op het abstracte type leunde. `JellyfinConnectionAuthService` houdt `validate`/`refresh`/`signOut` gewoon als eigen methoden.
+- **`TvLayoutConstants.heroContentMaxWidth`** en de prefs `preferred_video_codec` / `preferred_audio_codec` (commit `c605852`). De constante had nul lezers; de twee codec-prefs werden nergens uitgelezen, alleen netjes meegereset. De export-test gebruikt nu `subtitle_text_color` als representatieve string-pref.
+
+### Changed
+- **DVR-operaties zitten in een eigen `LiveTvDvrSupport`** (`lib/media/live_tv_dvr_support.dart`, commit `208cd6e`). Alleen Plex implementeert opnameregels en gidsherlaad, dus `MediaServerClient.liveTvDvr` is `null` op Jellyfin, lokale mappen en Pleya Share. Dat vervangt `ServerCapabilities.liveTvDvr` als beveiliging op de aanroeppaden: waar die vlag eerst een afspraak was die drie callers vergaten (`livetv_recording_actions.dart`, `record_options_sheet.dart`, `program_details_sheet.dart`), wijst de compiler ze nu aan. Gedragsnuance: `program_details_sheet` zette `_checkedMapping` voorheen via een gevangen `UnimplementedError`, nu via een expliciete null-check.
+- **Hold-to-2x draait op `TemporaryOverride`** (`video_controls.dart`, `parts/playback_input.dart`, commit `e6133c5`). De twee losse velden `_isLongPressing` en `_rateBeforeLongPress` waren precies de constructie waar de gotcha in CLAUDE.md voor waarschuwt. `engage` capture't nu eenmalig en `release` herstelt eenmalig. Daarmee heeft `lib/utils/temporary_override.dart` een echte gebruiker en kon de `ignore_for_file: unused-code, unused-files` uit de kop weg (zie de "Changed"-notitie van 2026-08-06, die daarmee vervalt).
+- **`kBlurArtwork` is een dart-define geworden** (`lib/utils/obfuscation_utils.dart`, commit `187f4a1`). Screenshot-builds draaien voortaan met `--dart-define=BLUR_ARTWORK=true` in plaats van een handmatige const-flip in de bron. De waarde blijft `const`, dus een gewone build shaket het hele blur-pad er nog steeds uit. Toegevoegd aan de env-tabel in `docs/release-baseline.md`.
+- **TV-tekstinvoerdiagnostiek hangt aan de bestaande debug-pref** (`lib/utils/text_input_diagnostics.dart`, commit `7ecaffd`). Het `enabled`-veld stond hard op `false` en had geen schakelaar in de UI, dus de logregels waren onbereikbaar. Ze gaan nu via `appLogger.d`, waarmee "debug logging" in Instellingen de enige knop is.
+- **Twee handgeschreven `_listEquals`-kopieën vervangen door `ListEquality`** uit `package:collection` (`host_playback_coordinator.dart`, `guest_playback_reconciler.dart`, commit `a3e71dd`). Zelfde patroon als `playback_state.dart:149` al gebruikte, en het houdt beide services Flutter-vrij.
+
+### Notes
+- Vier vondsten uit de audit zijn bewust blijven staan. De donatie-flow is een gedocumenteerd patroon in `docs/DECISIONS.md`. `TemporaryOverride` krijgt juist een gebruiker in plaats van de prullenbak. De `kBlurArtwork`-callsites horen bij een levende screenshot-feature. En de Plex-adapter platslaan in `PlexClient` zou een klasse van 4315 regels nog eens ~62 publieke namen geven, terwijl de adapters na deze sanering dun genoeg zijn.
+- Geverifieerd met `scripts/ci_checks.sh` volledig groen (format, codegen-freshness, analyze, unused-code, unused-files) en **2888 tests groen**. Netto 1384 regels minder in `lib/` en `test/`.
+- Handmatig nog te doen zodra er weer ingelogd kan worden: Live TV openen op een Plex-server (gids laadt, opname plannen zichtbaar) en op een Jellyfin-server (kanalen en favorieten, geen DVR-knoppen). Dat dekt de gedragsnuance in `program_details_sheet`.
+
 ## [2026-08-10] — Inloggen: de Apple-afwijzing dichtgezet en het lege profielscherm op macOS
 
 ### Fixed
