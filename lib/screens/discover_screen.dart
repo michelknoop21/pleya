@@ -1992,9 +1992,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final isEpisode = heroItem.isEpisode;
     final showName = heroItem.grandparentTitle ?? heroItem.displayTitle;
     final screenWidth = MediaQuery.sizeOf(context).width;
+    // TV never reaches this builder: `_buildDiscoverContent` returns
+    // `_buildTvContent` (TvSpotlightBackground) before the hero sliver is
+    // built, so this layout only ever serves desktop/tablet/phone.
     final isLargeScreen = ScreenBreakpoints.isWideTabletOrLarger(screenWidth);
-    final isTv = PlatformDetector.isTV();
-    final alignLeft = isTv || isLargeScreen;
+    final alignLeft = isLargeScreen;
     // The billboard shows the 16:9 backdrop on a wide box; on a narrow (phone
     // portrait) box it prefers the square background art, which crops far less
     // horizontally. The title is drawn in app typography either way. Null only
@@ -2002,15 +2004,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final billboardArt = heroItem.billboardArt(containerAspectRatio: screenWidth / heroHeight);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final heroLogoWidth = isTv ? TvLayoutConstants.heroLogoWidth : 400.0;
-    final heroLogoHeight = isTv ? TvLayoutConstants.heroLogoHeight : 120.0;
+    const heroLogoWidth = 400.0;
+    const heroLogoHeight = 120.0;
     // No ad-hoc glow/shadow on the title: the scrim gradient already provides
     // contrast against the artwork.
-    final heroTitleStyle = theme.textTheme.displaySmall?.copyWith(
-      color: colorScheme.onSurface,
-      fontWeight: .bold,
-      fontSize: isTv ? 52 : null,
-    );
+    final heroTitleStyle = theme.textTheme.displaySmall?.copyWith(color: colorScheme.onSurface, fontWeight: .bold);
     // Metadata line and synopsis sit on the artwork. 70% ink reads as
     // "secondary" white-on-dark, but as washed-out black over bright artwork,
     // so light mode keeps far more of it.
@@ -2147,7 +2145,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [Colors.transparent, bgColor.withValues(alpha: 0.9), bgColor],
-                            stops: isTv ? const [0.25, 0.78, 1.0] : const [0.5, 0.85, 1.0],
+                            stops: const [0.5, 0.85, 1.0],
                           ),
                         ),
                       );
@@ -2192,163 +2190,133 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
               // Content with responsive alignment
               Positioned(
-                bottom: isTv
-                    ? 88
-                    : isLargeScreen
-                    ? 80
-                    : 50,
+                bottom: isLargeScreen ? 80 : 50,
                 left: 0,
-                right: isTv
-                    ? screenWidth * 0.36
-                    : isLargeScreen
-                    ? 200
-                    : 0,
+                right: isLargeScreen ? 200 : 0,
                 child: Padding(
-                  padding: .symmetric(
-                    horizontal: isTv
-                        ? TvLayoutConstants.horizontalInset
-                        : isLargeScreen
-                        ? 40
-                        : 24,
-                  ),
+                  padding: .symmetric(horizontal: isLargeScreen ? 40.0 : 24.0),
                   child: Align(
                     alignment: alignLeft ? Alignment.centerLeft : Alignment.center,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: isTv ? TvLayoutConstants.heroContentMaxWidth : double.infinity,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: alignLeft ? CrossAxisAlignment.start : CrossAxisAlignment.center,
-                        mainAxisSize: .min,
-                        children: [
-                          // Show logo or name/title
-                          if (heroItem.clearLogoPath != null)
-                            SizedBox(
-                              height: heroLogoHeight,
-                              width: heroLogoWidth,
-                              child: Builder(
-                                builder: (context) {
-                                  final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
-                                  final logoUrl = MediaImageHelper.getOptimizedImageUrl(
-                                    client: heroClient,
-                                    thumbPath: heroItem.clearLogoPath,
-                                    maxWidth: heroLogoWidth,
-                                    maxHeight: heroLogoHeight,
-                                    devicePixelRatio: dpr,
-                                    imageType: ImageType.logo,
-                                  );
+                    child: Column(
+                      crossAxisAlignment: alignLeft ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+                      mainAxisSize: .min,
+                      children: [
+                        // Show logo or name/title
+                        if (heroItem.clearLogoPath != null)
+                          SizedBox(
+                            height: heroLogoHeight,
+                            width: heroLogoWidth,
+                            child: Builder(
+                              builder: (context) {
+                                final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
+                                final logoUrl = MediaImageHelper.getOptimizedImageUrl(
+                                  client: heroClient,
+                                  thumbPath: heroItem.clearLogoPath,
+                                  maxWidth: heroLogoWidth,
+                                  maxHeight: heroLogoHeight,
+                                  devicePixelRatio: dpr,
+                                  imageType: ImageType.logo,
+                                );
 
-                                  return blurArtwork(
-                                    CachedNetworkImage(
-                                      imageUrl: logoUrl,
-                                      cacheKey: artworkStorageKey(logoUrl),
-                                      cacheManager: PlexImageCacheManager.instance,
-                                      filterQuality: FilterQuality.medium,
-                                      fit: BoxFit.contain,
-                                      memCacheWidth: (heroLogoWidth * dpr).clamp(200, isTv ? 1000 : 800).round(),
-                                      alignment: alignLeft ? Alignment.bottomLeft : Alignment.bottomCenter,
-                                      placeholder: (context, url) => const SizedBox.shrink(),
-                                      errorBuilder: (context, error, stackTrace) {
-                                        // Fallback to text if logo fails to load
-                                        return FittingTitleText(
-                                          showName,
-                                          style: heroTitleStyle,
-                                          textAlign: alignLeft ? TextAlign.left : TextAlign.center,
-                                          alignment: alignLeft ? Alignment.centerLeft : Alignment.center,
-                                        );
-                                      },
-                                    ),
-                                    sigma: 10,
-                                    clip: false,
-                                  );
-                                },
-                              ),
-                            )
-                          else
-                            SizedBox(
-                              height: heroLogoHeight,
-                              width: heroLogoWidth,
-                              child: FittingTitleText(
-                                showName,
-                                style: heroTitleStyle,
-                                textAlign: alignLeft ? TextAlign.left : TextAlign.center,
-                                alignment: alignLeft ? Alignment.centerLeft : Alignment.center,
-                              ),
-                            ),
-
-                          // One plain muted meta line: year · genre · duration.
-                          // No chips/badges — just quiet supporting text.
-                          if (heroItem.year != null ||
-                              heroItem.genres?.isNotEmpty == true ||
-                              heroItem.durationMs != null ||
-                              heroItem.isWatched) ...[
-                            const SizedBox(height: 16),
-                            Text(
-                              [
-                                if (heroItem.year != null) heroItem.year.toString(),
-                                if (heroItem.genres?.isNotEmpty == true) heroItem.genres!.first,
-                                if (heroItem.durationMs != null) formatDurationTextual(heroItem.durationMs!),
-                                if (heroItem.isWatched && !heroItem.hasActiveProgress) '\u2713 ${t.discover.watched}',
-                              ].join(' • '),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: heroMutedColor,
-                                fontSize: isTv ? 18 : 14,
-                              ),
-                            ),
-                          ],
-
-                          // On small screens: show button before summary
-                          if (!alignLeft) ...[const SizedBox(height: 20), _buildSmartPlayButton(heroItem)],
-
-                          // Summary with episode info (Apple TV style)
-                          if (heroItem.summary != null && !shouldHideSpoiler) ...[
-                            const SizedBox(height: 12),
-                            RichText(
-                              maxLines: isTv ? 3 : 2,
-                              overflow: .ellipsis,
-                              textAlign: alignLeft ? TextAlign.left : TextAlign.center,
-                              text: TextSpan(
-                                style: TextStyle(
-                                  color: heroMutedColor,
-                                  fontSize: isTv ? 18 : 14,
-                                  height: isTv ? 1.45 : 1.4,
-                                ),
-                                children: [
-                                  if (isEpisode && heroItem.parentIndex != null && heroItem.index != null)
-                                    TextSpan(
-                                      text: 'S${heroItem.parentIndex}, E${heroItem.index}: ',
-                                      style: TextStyle(fontWeight: .bold, color: colorScheme.onSurface),
-                                    ),
-                                  TextSpan(
-                                    text: heroItem.summary?.isNotEmpty == true
-                                        ? heroItem.summary!
-                                        : t.messages.noDescriptionAvailable,
+                                return blurArtwork(
+                                  CachedNetworkImage(
+                                    imageUrl: logoUrl,
+                                    cacheKey: artworkStorageKey(logoUrl),
+                                    cacheManager: PlexImageCacheManager.instance,
+                                    filterQuality: FilterQuality.medium,
+                                    fit: BoxFit.contain,
+                                    memCacheWidth: (heroLogoWidth * dpr).clamp(200, 800).round(),
+                                    alignment: alignLeft ? Alignment.bottomLeft : Alignment.bottomCenter,
+                                    placeholder: (context, url) => const SizedBox.shrink(),
+                                    errorBuilder: (context, error, stackTrace) {
+                                      // Fallback to text if logo fails to load
+                                      return FittingTitleText(
+                                        showName,
+                                        style: heroTitleStyle,
+                                        textAlign: alignLeft ? TextAlign.left : TextAlign.center,
+                                        alignment: alignLeft ? Alignment.centerLeft : Alignment.center,
+                                      );
+                                    },
                                   ),
-                                ],
-                              ),
+                                  sigma: 10,
+                                  clip: false,
+                                );
+                              },
                             ),
-                          ] else if (shouldHideSpoiler &&
-                              isEpisode &&
-                              heroItem.parentIndex != null &&
-                              heroItem.index != null) ...[
-                            const SizedBox(height: 12),
-                            Text(
-                              'S${heroItem.parentIndex}, E${heroItem.index}: ${heroItem.title}',
-                              maxLines: 2,
-                              overflow: .ellipsis,
+                          )
+                        else
+                          SizedBox(
+                            height: heroLogoHeight,
+                            width: heroLogoWidth,
+                            child: FittingTitleText(
+                              showName,
+                              style: heroTitleStyle,
                               textAlign: alignLeft ? TextAlign.left : TextAlign.center,
-                              style: TextStyle(
-                                color: heroMutedColor,
-                                fontSize: isTv ? 18 : 14,
-                                height: isTv ? 1.45 : 1.4,
-                              ),
+                              alignment: alignLeft ? Alignment.centerLeft : Alignment.center,
                             ),
-                          ],
+                          ),
 
-                          // On large screens: show button after summary
-                          if (alignLeft) ...[SizedBox(height: isTv ? 28 : 20), _buildSmartPlayButton(heroItem)],
+                        // One plain muted meta line: year · genre · duration.
+                        // No chips/badges — just quiet supporting text.
+                        if (heroItem.year != null ||
+                            heroItem.genres?.isNotEmpty == true ||
+                            heroItem.durationMs != null ||
+                            heroItem.isWatched) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            [
+                              if (heroItem.year != null) heroItem.year.toString(),
+                              if (heroItem.genres?.isNotEmpty == true) heroItem.genres!.first,
+                              if (heroItem.durationMs != null) formatDurationTextual(heroItem.durationMs!),
+                              if (heroItem.isWatched && !heroItem.hasActiveProgress) '\u2713 ${t.discover.watched}',
+                            ].join(' • '),
+                            style: theme.textTheme.bodySmall?.copyWith(color: heroMutedColor, fontSize: 14),
+                          ),
                         ],
-                      ),
+
+                        // On small screens: show button before summary
+                        if (!alignLeft) ...[const SizedBox(height: 20), _buildSmartPlayButton(heroItem)],
+
+                        // Summary with episode info (Apple TV style)
+                        if (heroItem.summary != null && !shouldHideSpoiler) ...[
+                          const SizedBox(height: 12),
+                          RichText(
+                            maxLines: 2,
+                            overflow: .ellipsis,
+                            textAlign: alignLeft ? TextAlign.left : TextAlign.center,
+                            text: TextSpan(
+                              style: TextStyle(color: heroMutedColor, fontSize: 14, height: 1.4),
+                              children: [
+                                if (isEpisode && heroItem.parentIndex != null && heroItem.index != null)
+                                  TextSpan(
+                                    text: 'S${heroItem.parentIndex}, E${heroItem.index}: ',
+                                    style: TextStyle(fontWeight: .bold, color: colorScheme.onSurface),
+                                  ),
+                                TextSpan(
+                                  text: heroItem.summary?.isNotEmpty == true
+                                      ? heroItem.summary!
+                                      : t.messages.noDescriptionAvailable,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else if (shouldHideSpoiler &&
+                            isEpisode &&
+                            heroItem.parentIndex != null &&
+                            heroItem.index != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            'S${heroItem.parentIndex}, E${heroItem.index}: ${heroItem.title}',
+                            maxLines: 2,
+                            overflow: .ellipsis,
+                            textAlign: alignLeft ? TextAlign.left : TextAlign.center,
+                            style: TextStyle(color: heroMutedColor, fontSize: 14, height: 1.4),
+                          ),
+                        ],
+
+                        // On large screens: show button after summary
+                        if (alignLeft) ...[const SizedBox(height: 20), _buildSmartPlayButton(heroItem)],
+                      ],
                     ),
                   ),
                 ),
@@ -2367,84 +2335,57 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         // patch bridges the gap so "minutes left" never lags.
         final heroItem = context.withFreshWatchState(rawHeroItem);
         final hasProgress = heroItem.hasActiveProgress;
-        final isTv = PlatformDetector.isTV();
 
         final minutesLeft = hasProgress ? ((heroItem.durationMs! - heroItem.viewOffsetMs!) / 60_000).round() : 0;
 
         final progress = hasProgress ? heroItem.viewOffsetMs! / heroItem.durationMs! : 0.0;
 
-        return ListenableBuilder(
-          listenable: _heroFocusNode,
-          builder: (context, _) {
-            final showFocus = isTv && _heroFocusNode.hasFocus && InputModeTracker.isKeyboardMode(context);
-            final colorScheme = Theme.of(context).colorScheme;
-            final backgroundColor = showFocus ? colorScheme.primary : Colors.white;
-            final foregroundColor = showFocus ? colorScheme.onPrimary : Colors.black;
-            return InkWell(
-              onTap: () {
-                appLogger.d('Playing: ${heroItem.title}');
-                navigateToVideoPlayer(context, metadata: heroItem);
-              },
-              borderRadius: BorderRadius.all(Radius.circular(isTv ? 32 : 24)),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                curve: Curves.easeOutCubic,
-                padding: .symmetric(horizontal: isTv ? 34 : 24, vertical: isTv ? 16 : 12),
-                decoration: BoxDecoration(
-                  color: backgroundColor,
-                  borderRadius: BorderRadius.all(Radius.circular(isTv ? 32 : 24)),
-                  boxShadow: showFocus
-                      ? [BoxShadow(color: colorScheme.primary.withValues(alpha: 0.35), blurRadius: 28, spreadRadius: 4)]
-                      : null,
-                ),
-                child: Row(
-                  mainAxisSize: .min,
-                  children: [
-                    AppIcon(Symbols.play_arrow_rounded, fill: 1, size: isTv ? 28 : 20, color: foregroundColor),
-                    SizedBox(width: isTv ? 12 : 8),
-                    if (hasProgress) ...[
-                      // Progress bar
-                      Container(
-                        width: isTv ? 56 : 40,
-                        height: isTv ? 8 : 6,
-                        decoration: BoxDecoration(
-                          color: foregroundColor.withValues(alpha: 0.25),
-                          borderRadius: BorderRadius.all(Radius.circular(isTv ? 4 : 3)),
-                        ),
-                        child: FractionallySizedBox(
-                          alignment: .centerLeft,
-                          widthFactor: progress,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: foregroundColor,
-                              borderRadius: BorderRadius.all(Radius.circular(isTv ? 3 : 2)),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: isTv ? 12 : 8),
-                      Text(
-                        t.discover.minutesLeft(minutes: minutesLeft),
-                        style: TextStyle(
-                          color: foregroundColor,
-                          fontSize: isTv ? 18 : 14,
-                          fontWeight: isTv ? FontWeight.w700 : FontWeight.w600,
-                        ),
-                      ),
-                    ] else
-                      Text(
-                        t.common.play,
-                        style: TextStyle(
-                          color: foregroundColor,
-                          fontSize: isTv ? 18 : 14,
-                          fontWeight: isTv ? FontWeight.w700 : FontWeight.w600,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            );
+        // Fixed white pill: the TV focus ring that used to live here is now
+        // TvSpotlightBackground's job, and desktop keyboard focus lands on the
+        // hero itself (_heroFocusNode), not on this button.
+        const foregroundColor = Colors.black;
+        const textStyle = TextStyle(color: foregroundColor, fontSize: 14, fontWeight: FontWeight.w600);
+        return InkWell(
+          onTap: () {
+            appLogger.d('Playing: ${heroItem.title}');
+            navigateToVideoPlayer(context, metadata: heroItem);
           },
+          borderRadius: const BorderRadius.all(Radius.circular(24)),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.all(Radius.circular(24))),
+            child: Row(
+              mainAxisSize: .min,
+              children: [
+                const AppIcon(Symbols.play_arrow_rounded, fill: 1, size: 20, color: foregroundColor),
+                const SizedBox(width: 8),
+                if (hasProgress) ...[
+                  // Progress bar
+                  Container(
+                    width: 40,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: foregroundColor.withValues(alpha: 0.25),
+                      borderRadius: const BorderRadius.all(Radius.circular(3)),
+                    ),
+                    child: FractionallySizedBox(
+                      alignment: .centerLeft,
+                      widthFactor: progress,
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: foregroundColor,
+                          borderRadius: BorderRadius.all(Radius.circular(2)),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(t.discover.minutesLeft(minutes: minutesLeft), style: textStyle),
+                ] else
+                  Text(t.common.play, style: textStyle),
+              ],
+            ),
+          ),
         );
       },
     );

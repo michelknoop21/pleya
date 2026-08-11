@@ -769,6 +769,15 @@ class MpvPlayerCoreBase: NSObject {
         // round-trips BT.2020/PQ through linear P3.
         checkError(mpv_set_option_string(mpv, "avfoundation-composite-osd", "no"))
         checkError(mpv_set_option_string(mpv, "hwdec", "videotoolbox"))
+        // mpv's default order puts audiounit first, and on tvOS that AO reads
+        // AVAudioSession.maximumOutputNumberOfChannels — which reports 2 over
+        // HDMI even on a chain that plays 5.1 in every other app. It then
+        // remixes 5.1 down to stereo ("max channels: 2, requested: 6") and the
+        // surround is gone before the receiver ever sees it. The avfoundation
+        // AO negotiates layouts with the route instead, so it goes first;
+        // audiounit stays behind it as the fallback for anything avfoundation
+        // refuses.
+        checkError(mpv_set_option_string(mpv, "ao", "avfoundation,audiounit"))
       #else
         checkError(mpv_set_option_string(mpv, "avfoundation-composite-osd", "no"))
         checkError(mpv_set_option_string(mpv, "hwdec", "videotoolbox"))

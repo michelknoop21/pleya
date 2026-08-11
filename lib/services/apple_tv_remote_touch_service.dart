@@ -598,10 +598,26 @@ class AppleTvRemoteTouchService {
     }
   }
 
+  /// The touch remote reports a position several times per second, and every
+  /// one of those used to land on debug. In an uploaded log from a playback
+  /// session a third of all lines were touch coordinates, which is a third of
+  /// the buffer not spent on whatever the report was about.
+  ///
+  /// So the continuous stream (`loc`, `move`) drops to trace, which the normal
+  /// debug level filters out, while the events gestures are actually
+  /// reconstructed from — the touch starting and ending, and every key emitted
+  /// or suppressed below — stay on debug.
+  static const _highFrequencyTouchTypes = {'loc', 'move'};
+
   void _logTouch(String type, Map<dynamic, dynamic> arguments) {
     final x = _toDouble(arguments['x']);
     final y = _toDouble(arguments['y']);
-    _log('touch type=$type x=${_formatDouble(x)} y=${_formatDouble(y)} active=$_touchActive');
+    final message = 'touch type=$type x=${_formatDouble(x)} y=${_formatDouble(y)} active=$_touchActive';
+    if (_highFrequencyTouchTypes.contains(type)) {
+      appLogger.t('AppleTvRemoteTouchService: $message');
+      return;
+    }
+    _log(message);
   }
 
   void _log(String message) {

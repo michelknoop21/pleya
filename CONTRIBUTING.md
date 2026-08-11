@@ -38,9 +38,11 @@ All these checks must pass before your changes can be merged.
 ## tvOS testen in de simulator
 
 `scripts/tvos_sim.sh` draait de app in de tvOS-simulator en bedient hem, zodat
-TV-invoer niet per TestFlight-build geverifieerd hoeft te worden. Alleen
-dictatie is niet simuleerbaar (zie DEC-009); het toetsenbord, focus, Menu en de
-D-pad wél — en dat is precies waar de bugs zitten (zie DEC-011).
+TV-invoer niet per TestFlight-build geverifieerd hoeft te worden. Focus in de
+Flutter-UI, Menu, en het openen/sluiten/vullen van het systeemtoetsenbord zijn
+zo te testen (zie DEC-011). Niet simuleerbaar zijn dictatie (zie DEC-009) en
+D-pad-navigatie *binnen* het systeemtoetsenbord — zie de bullet daarover
+hieronder voordat je daar een bug op baseert.
 
 ```bash
 scripts/tvos_sim.sh doctor          # omgevingscheck: kan ik knoppen sturen?
@@ -65,6 +67,17 @@ Punten die anders tijd kosten:
   scherm uit, dan heeft Simulator geen venster en verdwijnen toetsaanslagen
   geruisloos — geen foutmelding, ze doen gewoon niets. `doctor` zegt welke route
   actief is.
+- **Het systeemtoetsenbord kun je vullen, niet bedienen.** `idb` stuurt HID-
+  *toetsenbord*codes; een Siri-Remote-D-pad zit daar niet bij. Met
+  `I/O ▸ Keyboard ▸ Connect Hardware Keyboard` aan (de standaard) behandelt tvOS
+  dat als een fysiek toetsenbord: je typt rechtstreeks in het veld en Return
+  submit, en de letterstrip doet géén focusnavigatie. Pijltjes laten de
+  highlight dus op `a` staan en vallen door naar de app — dat lijkt een bug maar
+  is het niet. Zet je de koppeling uit, dan komt er helemaal geen press meer aan
+  (ook niet via het Apple TV Remote-venster). Netto: typen en submitten test je
+  hier prima, "kan ik met de D-pad een letter aanklikken" alleen op een echt
+  toestel. Een focus-probe bevestigde dat het toetsenbord de focus wél bezit
+  (`UIFocusSystem.focusedItem == UIKeyboard`), dus focus is niet de verdachte.
 - **Navigeren door een TV-UI is niet 100% deterministisch.** `goto` drukt hooguit
   twee keer Menu (méér zet de app op het tvOS-thuisscherm, waarna de volgende
   select opgaat aan het heropenen) en `check-keyboard` heeft daarom één

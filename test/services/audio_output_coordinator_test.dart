@@ -38,6 +38,8 @@ class _FakePlayer implements Player {
   final PlayerStreams _streams;
 
   bool buffering = false;
+  bool playing = false;
+  Duration position = Duration.zero;
   bool failNextSetProperty = false;
   bool failNextPassthrough = false;
 
@@ -45,7 +47,10 @@ class _FakePlayer implements Player {
   final List<bool> passthroughCalls = [];
 
   @override
-  PlayerState get state => PlayerState(buffering: buffering);
+  PlayerState get state => PlayerState(buffering: buffering, playing: playing, position: position);
+
+  @override
+  Future<String?> getProperty(String name) async => null;
 
   @override
   PlayerStreams get streams => _streams;
@@ -171,6 +176,82 @@ void main() {
 
       expect(player.passthroughCalls.last, isFalse, reason: 'the newer pcm choice must win');
       coordinator.dispose();
+    });
+  });
+
+  group('stall watchdog', () {
+    /// Puts the coordinator on the bitstream path with the player reporting
+    /// playback that is running but going nowhere.
+    _FakePlayer stalledOnPassthrough(FakeAsync async, AudioOutputCoordinator coordinator, _FakePlayer player) {
+      settings.write(SettingsService.audioOutputMode, AudioOutputMode.passthrough);
+      async.flushMicrotasks();
+      coordinator.prepare(audioCodec: 'eac3');
+      async.flushMicrotasks();
+      expect(player.passthroughCalls, [true], reason: 'the bitstream path must be the one under test');
+      player.playing = true;
+      player.position = const Duration(minutes: 15);
+      return player;
+    }
+
+    setUp(AudioOutputCoordinator.resetBitstreamBlocksForTest);
+
+    test('gives up a little over the stall timeout, not at twice it', () {
+      fakeAsync((async) {
+        final player = _FakePlayer();
+        final coordinator = AudioOutputCoordinator(player: player, settings: settings);
+        stalledOnPassthrough(async, coordinator, player);
+
+        // Sampling every second means the first tick only records a position;
+        // three more identical ones make it a stall.
+        async.elapse(const Duration(seconds: 3));
+        expect(player.passthroughCalls, [true], reason: 'too early to call it a stall');
+
+        async.elapse(const Duration(seconds: 2));
+        expect(player.passthroughCalls.last, isFalse, reason: 'the bitstream must be abandoned by ~4s');
+
+        coordinator.dispose();
+      });
+    });
+
+    test('a position that keeps moving is never a stall', () {
+      fakeAsync((async) {
+        final player = _FakePlayer();
+        final coordinator = AudioOutputCoordinator(player: player, settings: settings);
+        stalledOnPassthrough(async, coordinator, player);
+
+        for (var i = 0; i < 20; i++) {
+          async.elapse(const Duration(seconds: 1));
+          player.position += const Duration(seconds: 1);
+        }
+
+        expect(player.passthroughCalls, [true], reason: 'playback was advancing the whole time');
+        coordinator.dispose();
+      });
+    });
+
+    test('buffering resets the count instead of ageing into a stall', () {
+      fakeAsync((async) {
+        final player = _FakePlayer();
+        final coordinator = AudioOutputCoordinator(player: player, settings: settings);
+        stalledOnPassthrough(async, coordinator, player);
+
+        // Two seconds of standing still, then a buffering hitch: the position
+        // is expected to sit still during buffering, so the count has to start
+        // over rather than tip over on the next tick.
+        async.elapse(const Duration(seconds: 2));
+        player.buffering = true;
+        async.elapse(const Duration(seconds: 3));
+        expect(player.passthroughCalls, [true], reason: 'buffering is not a stalled bitstream');
+
+        player.buffering = false;
+        async.elapse(const Duration(seconds: 2));
+        expect(player.passthroughCalls, [true], reason: 'the count must have restarted after buffering');
+
+        async.elapse(const Duration(seconds: 3));
+        expect(player.passthroughCalls.last, isFalse, reason: 'still stuck once buffering is over');
+
+        coordinator.dispose();
+      });
     });
   });
 

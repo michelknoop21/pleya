@@ -65,7 +65,17 @@ class AudioOutputCoordinator {
   /// How long playback may sit still with a bitstream running before it counts
   /// as a stall. Long enough to survive a slow start, short enough that nobody
   /// reaches for the remote first.
-  static const _stallTimeout = Duration(seconds: 5);
+  static const _stallTimeout = Duration(seconds: 3);
+
+  /// How often the position is sampled while a bitstream is running.
+  ///
+  /// Separate from [_stallTimeout] on purpose. Sampling *at* the timeout meant
+  /// two ticks were needed to see anything stand still, so a 5s timeout cost
+  /// between 5 and 10 seconds of silence — measured at 14.5s on an Apple TV,
+  /// because the AO also takes its time coming up before the first tick counts.
+  /// Sampling every second and counting consecutive identical positions puts
+  /// detection just over [_stallTimeout] instead of at twice it.
+  static const _stallSampleInterval = Duration(seconds: 1);
 
   /// The coordinator for the playback session currently on screen, or null
   /// when nothing is playing.
@@ -91,6 +101,10 @@ class AudioOutputCoordinator {
   /// produces, short enough that the badge still feels immediate.
   static const _routeSettleDelay = Duration(milliseconds: 500);
 
+  /// How long mpv gets to bring the new audio output up before we read back
+  /// what it settled on.
+  static const _outputVerifyDelay = Duration(seconds: 2);
+
   /// How many times a pending apply may wait for playback to stop buffering.
   ///
   /// Deferring while buffering avoids turning a hitch into a stall, but the
@@ -105,7 +119,11 @@ class AudioOutputCoordinator {
   StreamSubscription<PlayerLog>? _logSub;
   Timer? _stallWatchdog;
   Duration? _lastSeenPosition;
+
+  /// How long the position has stood still across consecutive samples.
+  Duration _stalledFor = Duration.zero;
   Timer? _settleTimer;
+  Timer? _verifyTimer;
 
   /// Re-entrancy guard. A route change can arrive while the previous apply is
   /// still awaiting mpv; without this the two interleave and can leave
@@ -197,17 +215,24 @@ class AudioOutputCoordinator {
   void _startStallWatchdog() {
     _stallWatchdog?.cancel();
     _lastSeenPosition = null;
-    _stallWatchdog = Timer.periodic(_stallTimeout, (_) {
+    _stalledFor = Duration.zero;
+    _stallWatchdog = Timer.periodic(_stallSampleInterval, (_) {
       if (_disposed || _lastDecision != AudioOutputDecision.passthrough) return;
       final state = player.state;
       if (!state.playing || state.buffering) {
         _lastSeenPosition = null;
+        _stalledFor = Duration.zero;
         return;
       }
       final previous = _lastSeenPosition;
       _lastSeenPosition = state.position;
-      if (previous != null && state.position == previous) {
-        _abandonBitstream('playback sat at ${state.position} for $_stallTimeout');
+      if (previous == null || state.position != previous) {
+        _stalledFor = Duration.zero;
+        return;
+      }
+      _stalledFor += _stallSampleInterval;
+      if (_stalledFor >= _stallTimeout) {
+        _abandonBitstream('playback sat at ${state.position} for $_stalledFor');
       }
     });
   }
@@ -316,6 +341,7 @@ class AudioOutputCoordinator {
           _stallWatchdog = null;
         }
         appLogger.i('Audio output: ${decision.name} (mode: ${mode.name}, codec: $_audioCodec)');
+        _scheduleOutputVerification(decision);
       }
     } catch (e, st) {
       appLogger.w('Applying audio output failed', error: e, stackTrace: st);
@@ -326,6 +352,41 @@ class AudioOutputCoordinator {
     if (_applyPending && !_disposed) {
       _applyPending = false;
       await _apply();
+    }
+  }
+
+  /// Reads back what mpv actually settled on, once the AO has had time to come
+  /// up.
+  ///
+  /// The decision above is an intention, and on tvOS the two came apart
+  /// silently: the route said multichannel, we logged `pcmMultichannel`, and
+  /// mpv meanwhile initialised the stereo-capped AO and remixed 5.1 down. A
+  /// bug report then showed a decision that looked right next to sound that
+  /// was not. This logs the outcome so the next report says which of the two
+  /// it was — the performance overlay reads the same properties live.
+  void _scheduleOutputVerification(AudioOutputDecision decision) {
+    _verifyTimer?.cancel();
+    _verifyTimer = Timer(_outputVerifyDelay, () => unawaited(_logEffectiveOutput(decision)));
+  }
+
+  Future<void> _logEffectiveOutput(AudioOutputDecision intended) async {
+    if (_disposed || _lastDecision != intended) return;
+    try {
+      final values = await Future.wait([
+        player.getProperty('current-ao'),
+        player.getProperty('audio-out-params/format'),
+        player.getProperty('audio-out-params/hr-channels'),
+      ]);
+      // A decision that moved on while we waited makes this reading stale, and
+      // a stale line here is worse than none: it would describe the output the
+      // player just left.
+      if (_disposed || _lastDecision != intended) return;
+      appLogger.i(
+        'Audio output in effect: ao=${values[0] ?? 'unknown'}, format=${values[1] ?? 'unknown'}, '
+        'channels=${values[2] ?? 'unknown'} (intended: ${intended.name})',
+      );
+    } catch (e) {
+      appLogger.d('Reading back the audio output failed: $e');
     }
   }
 
@@ -344,6 +405,8 @@ class AudioOutputCoordinator {
     if (identical(current, this)) current = null;
     _settleTimer?.cancel();
     _settleTimer = null;
+    _verifyTimer?.cancel();
+    _verifyTimer = null;
     unawaited(_routeSub?.cancel());
     _routeSub = null;
     unawaited(_trackSub?.cancel());
