@@ -37,7 +37,7 @@ extension _PlexVideoControlsVisibilityMethods on _PlexVideoControlsState {
   void _listenToCompleted() {
     _completedSubscription = widget.player.streams.completed.listen((completed) {
       if (completed && mounted) {
-        if (_isLongPressing) {
+        if (_rateBoost.isActive) {
           _handleLongPressCancel();
         }
         widget.chromeController.show(restartAutoHide: false);

@@ -1,8 +1,3 @@
-// Deliberate standalone guard utility (see the CLAUDE.md gotcha on temporary
-// overrides): kept available, with its own tests, for the next override
-// implementation — even while no production code currently instantiates it.
-// ignore_for_file: unused-code, unused-files
-
 /// Guards the "capture prior value → apply override → restore on release"
 /// pattern (hold-to-2x rate, background pause, etc.) against the bug class
 /// where a re-entrant start overwrites the captured prior value with the
