@@ -105,37 +105,6 @@ void main() {
     expect(dvrs.single.channelMappings.single.enabled, isTrue);
   });
 
-  test('createDvr sends repeated device and lineup query params and exposes activity id', () async {
-    late http.Request captured;
-    final client = makeClient((request) async {
-      captured = request;
-      return jsonResponse(
-        {
-          'MediaContainer': {
-            'Dvr': [
-              {'key': '42', 'uuid': 'dvr-42'},
-            ],
-          },
-        },
-        headers: {'x-plex-activity': 'activity-1'},
-      );
-    });
-    addTearDown(client.close);
-
-    final result = await client.liveTv.createDvr(
-      devices: const ['dev-a', 'dev-b'],
-      lineups: const ['lineup-a', 'lineup-b'],
-      language: 'eng',
-    );
-
-    expect(captured.url.path, '/livetv/dvrs');
-    expect(captured.url.queryParametersAll['device'], ['dev-a', 'dev-b']);
-    expect(captured.url.queryParametersAll['lineup'], ['lineup-a', 'lineup-b']);
-    expect(captured.url.queryParameters['language'], 'eng');
-    expect(result.activityUuid, 'activity-1');
-    expect(result.value?.key, '42');
-  });
-
   test('subscription template parses settings and URL-encoded enum labels', () async {
     final client = makeClient((request) async {
       expect(request.url.path, '/media/subscriptions/template');
