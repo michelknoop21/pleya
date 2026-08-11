@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
+
 import '../../utils/app_logger.dart';
 import '../models/playback_state.dart';
 import '../models/sync_message.dart';
@@ -237,7 +239,7 @@ class GuestPlaybackReconciler {
       _reportedPhase = state.phase;
       _callbacks.onPhaseChanged?.call(state.phase);
     }
-    if (!_listEquals(state.waitingOn, _reportedWaitingOn)) {
+    if (!const ListEquality<String>().equals(state.waitingOn, _reportedWaitingOn)) {
       _reportedWaitingOn = state.waitingOn;
       _callbacks.onWaitingOnChanged?.call(state.waitingOn);
     }
@@ -586,13 +588,5 @@ class GuestPlaybackReconciler {
     }
     _lastSentStatus = status;
     _sendToHost(SyncMessage.status(status, peerId: myPeerId));
-  }
-
-  static bool _listEquals(List<String> a, List<String> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
   }
 }
