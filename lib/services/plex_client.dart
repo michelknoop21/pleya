@@ -8,6 +8,7 @@ import '../media/download_resolution.dart';
 import '../media/library_filter_result.dart';
 import '../media/library_first_character.dart';
 import '../media/library_query.dart';
+import '../media/live_tv_dvr_support.dart';
 import '../media/live_tv_support.dart';
 import '../media/media_backend.dart';
 import '../media/item_watcher.dart';

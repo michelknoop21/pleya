@@ -2,8 +2,6 @@ import '../models/livetv_capture_buffer.dart';
 import '../models/livetv_channel.dart';
 import '../models/livetv_dvr.dart';
 import '../models/livetv_program.dart';
-import '../models/media_grab_operation.dart';
-import '../models/media_subscription.dart';
 
 class LiveTvActivityResult<T> {
   final T value;
@@ -167,20 +165,4 @@ abstract class LiveTvSupport {
   /// `/Users/{userId}/FavoriteItems/{channelId}` flag and saves the order
   /// locally.
   Future<void> setFavoriteChannels(List<FavoriteChannel> channels);
-
-  Future<LiveTvActivityResult<void>> reloadGuide(String dvrId);
-
-  Future<List<SubscriptionTemplate>> getSubscriptionTemplate(String guid);
-  Future<List<MediaSubscription>> fetchRecordingRules({bool includeGrabs = true, bool includeStorage = true});
-  Future<MediaSubscription?> createRecordingRule(MediaSubscriptionCreateRequest request);
-  Future<MediaSubscription?> updateRecordingRule(String subscriptionId, Map<String, Object?> prefs);
-  Future<void> deleteRecordingRule(String subscriptionId);
-  Future<void> processRecordingRules();
-  Future<List<MediaGrabOperation>> fetchScheduledRecordings();
-  Future<void> cancelGrab(String operationId);
-  Future<List<MediaSubscription>> fetchSubscriptionMapping({
-    required String providerId,
-    required List<String> ratingKeys,
-    bool includeStorage = true,
-  });
 }

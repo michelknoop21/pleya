@@ -848,6 +848,9 @@ mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
 
   @override
   LiveTvSupport get liveTv => _PlexLiveTvSupport(this as PlexClient);
+
+  @override
+  LiveTvDvrSupport? get liveTvDvr => _PlexLiveTvDvrSupport(this as PlexClient);
 }
 
 /// Plex implementation of [LiveTvSupport] — wraps the existing per-DVR
@@ -900,6 +903,12 @@ class _PlexLiveTvSupport implements LiveTvSupport {
 
   @override
   Future<void> setFavoriteChannels(List<FavoriteChannel> channels) => _client.setFavoriteChannels(channels);
+}
+
+/// DVR half of the Plex live-TV surface; `null` on backends without a DVR.
+class _PlexLiveTvDvrSupport implements LiveTvDvrSupport {
+  final PlexClient _client;
+  _PlexLiveTvDvrSupport(this._client);
 
   @override
   Future<LiveTvActivityResult<void>> reloadGuide(String dvrId) => _client.reloadGuide(dvrId);

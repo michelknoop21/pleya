@@ -138,6 +138,11 @@ class _RecordOptionsContentState extends State<_RecordOptionsContent> {
       _close(RecordOutcome.targetMissing);
       return;
     }
+    final dvr = widget.client.liveTvDvr;
+    if (dvr == null) {
+      _close(RecordOutcome.failed);
+      return;
+    }
     setState(() => _saving = true);
     try {
       if (widget.isEdit) {
@@ -146,12 +151,12 @@ class _RecordOptionsContentState extends State<_RecordOptionsContent> {
           _close(RecordOutcome.failed);
           return;
         }
-        await widget.client.liveTv.updateRecordingRule(id, Map.of(_dirtyPrefs));
+        await dvr.updateRecordingRule(id, Map.of(_dirtyPrefs));
         if (!mounted) return;
         _close(RecordOutcome.updated);
       } else {
         final request = MediaSubscriptionCreateRequest.fromTemplate(_entry, prefs: Map.of(_dirtyPrefs));
-        await widget.client.liveTv.createRecordingRule(request);
+        await dvr.createRecordingRule(request);
         if (!mounted) return;
         _close(RecordOutcome.scheduled);
       }

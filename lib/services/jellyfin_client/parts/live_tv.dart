@@ -144,6 +144,9 @@ mixin _JellyfinLiveTvMethods on MediaServerCacheMixin {
   @override
   LiveTvSupport get liveTv => _JellyfinLiveTvSupport(this as JellyfinClient);
 
+  @override
+  LiveTvDvrSupport? get liveTvDvr => null;
+
   /// Toggle the per-user `IsFavorite` flag for [itemId]. Used by the live-TV
   /// favorite-channel adapter; works on any Jellyfin item.
   Future<void> _setItemFavorite(String itemId, bool isFavorite) async {
@@ -157,8 +160,6 @@ mixin _JellyfinLiveTvMethods on MediaServerCacheMixin {
 class _JellyfinLiveTvSupport implements LiveTvSupport {
   final JellyfinClient _client;
   _JellyfinLiveTvSupport(this._client);
-
-  Future<T> _unsupported<T>() async => throw UnimplementedError('Jellyfin DVR recording API is not implemented');
 
   @override
   Future<bool> isAvailable() => _client.hasLiveTv();
@@ -272,41 +273,6 @@ class _JellyfinLiveTvSupport implements LiveTvSupport {
       appLogger.e('Failed to save Jellyfin favorite channels', error: e);
     }
   }
-
-  @override
-  Future<LiveTvActivityResult<void>> reloadGuide(String dvrId) => _unsupported();
-
-  @override
-  Future<List<SubscriptionTemplate>> getSubscriptionTemplate(String guid) => _unsupported();
-
-  @override
-  Future<List<MediaSubscription>> fetchRecordingRules({bool includeGrabs = true, bool includeStorage = true}) =>
-      _unsupported();
-
-  @override
-  Future<MediaSubscription?> createRecordingRule(MediaSubscriptionCreateRequest request) => _unsupported();
-
-  @override
-  Future<MediaSubscription?> updateRecordingRule(String subscriptionId, Map<String, Object?> prefs) => _unsupported();
-
-  @override
-  Future<void> deleteRecordingRule(String subscriptionId) => _unsupported();
-
-  @override
-  Future<void> processRecordingRules() => _unsupported();
-
-  @override
-  Future<List<MediaGrabOperation>> fetchScheduledRecordings() => _unsupported();
-
-  @override
-  Future<void> cancelGrab(String operationId) => _unsupported();
-
-  @override
-  Future<List<MediaSubscription>> fetchSubscriptionMapping({
-    required String providerId,
-    required List<String> ratingKeys,
-    bool includeStorage = true,
-  }) => _unsupported();
 }
 
 /// A Jellyfin live playback session: one negotiated direct-stream URL plus

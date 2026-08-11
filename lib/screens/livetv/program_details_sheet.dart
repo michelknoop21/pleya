@@ -120,15 +120,15 @@ class _ProgramDetailsSheetContentState extends State<_ProgramDetailsSheetContent
   }
 
   Future<void> _loadMapping() async {
-    final client = widget.client;
+    final dvr = widget.client?.liveTvDvr;
     final providerId = widget.program.providerIdentifier;
     final ratingKey = widget.program.ratingKey;
-    if (client == null || providerId == null || providerId.isEmpty || ratingKey == null || ratingKey.isEmpty) {
+    if (dvr == null || providerId == null || providerId.isEmpty || ratingKey == null || ratingKey.isEmpty) {
       setStateIfMounted(() => _checkedMapping = true);
       return;
     }
     try {
-      final mapped = await client.liveTv.fetchSubscriptionMapping(providerId: providerId, ratingKeys: [ratingKey]);
+      final mapped = await dvr.fetchSubscriptionMapping(providerId: providerId, ratingKeys: [ratingKey]);
       final match = mapped.where((s) => s.key.isNotEmpty).firstOrNull;
       if (!mounted) return;
       setState(() {
