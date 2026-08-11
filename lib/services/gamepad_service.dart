@@ -26,8 +26,8 @@ String _describeGamepadAxis(GamepadAxisEvent event) {
   return 'axis=${event.axis} value=${event.value} gamepad=${event.gamepadId}';
 }
 
-void _logGamepadDiag(String message) {
-  TextInputDiagnostics.log('GamepadService', message);
+void _logGamepadDiag(String message, {bool highFrequency = false}) {
+  TextInputDiagnostics.log('GamepadService', message, highFrequency: highFrequency);
 }
 
 /// Suppresses synthetic gamepad key events when the OS has just delivered an
@@ -325,7 +325,10 @@ class GamepadService with WindowListener {
   }
 
   void _handleGamepadEvent(GamepadEvent event) {
-    _logGamepadDiag('event received type=${event.runtimeType} nativeTextInputFocused=$_nativeTextInputFocused');
+    _logGamepadDiag(
+      'event received type=${event.runtimeType} nativeTextInputFocused=$_nativeTextInputFocused',
+      highFrequency: event is GamepadAxisEvent,
+    );
     switch (event) {
       case final GamepadConnectionEvent e:
         appLogger.i('GamepadService: Gamepad ${e.connected ? "connected" : "disconnected"}: ${e.info.name}');
@@ -449,13 +452,14 @@ class GamepadService with WindowListener {
   void _handleAxis(GamepadAxisEvent event) {
     _logGamepadDiag(
       'axis received ${_describeGamepadAxis(event)} windowFocused=$_windowFocused nativeTextInputFocused=$_nativeTextInputFocused',
+      highFrequency: true,
     );
     if (!_windowFocused) {
-      _logGamepadDiag('axis ignored because window is not focused ${_describeGamepadAxis(event)}');
+      _logGamepadDiag('axis ignored because window is not focused ${_describeGamepadAxis(event)}', highFrequency: true);
       return;
     }
     if (_nativeTextInputFocused) {
-      _logGamepadDiag('axis ignored for native text input ${_describeGamepadAxis(event)}');
+      _logGamepadDiag('axis ignored for native text input ${_describeGamepadAxis(event)}', highFrequency: true);
       return;
     }
 
