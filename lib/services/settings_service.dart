@@ -330,8 +330,6 @@ class SettingsService extends BaseSharedPreferencesService {
 
   /// Recent search queries, most-recent first, capped at 15 by the search UI.
   static const searchHistory = StringListPref('search_history');
-  static const preferredVideoCodec = StringPref('preferred_video_codec', defaultValue: 'auto');
-  static const preferredAudioCodec = StringPref('preferred_audio_codec', defaultValue: 'auto');
   static const viewMode = EnumPref<ViewMode>('view_mode', values: ViewMode.values, defaultValue: ViewMode.grid);
   static const seekTimeSmall = IntPref('seek_time_small', defaultValue: 10);
   static const seekTimeLarge = IntPref('seek_time_large', defaultValue: 30);
@@ -805,8 +803,6 @@ class SettingsService extends BaseSharedPreferencesService {
     bufferSize,
     enableHardwareDecoding,
     enableHDR,
-    preferredVideoCodec,
-    preferredAudioCodec,
     viewMode,
     showHeroSection,
     hoverExpandCards,
