@@ -76,6 +76,7 @@ These are baseline tech debt, not regressions from this phase. They should be ad
 | `GIT_COMMIT` | Release version tag for Sentry | empty | Sentry release name |
 | `TVOS_BUILD` | Marks a tvOS build | `false` | Platform detection, download, shelf, exit |
 | `PLEX_TOKEN` | Dev/screenshot token | empty | Screenshot automation only |
+| `BLUR_ARTWORK` | Blur artwork, scramble titles | `false` | Screenshot automation only |
 | `TRAKT_CLIENT_ID` | Trakt tracker | empty | Trakt scrobble/sync |
 | `TRAKT_CLIENT_SECRET` | Trakt tracker | empty | Trakt scrobble/sync |
 | `SIMKL_CLIENT_ID` | Simkl tracker | empty | Simkl tracking |
