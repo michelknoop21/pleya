@@ -28,6 +28,14 @@ class AppleTvRemoteTouchService {
   // while stopping the focus from over-running. Tune on-device if it feels slow.
   static const Duration defaultSwipeRepeatInterval = Duration(milliseconds: 190);
   static const Duration defaultClickAfterDirectionSuppression = Duration(milliseconds: 220);
+  // How long after a swipe-driven directional key widgets may still attribute
+  // that key to a swipe. Synthetic keys are dispatched a frame after they are
+  // tagged, so this has to be a window, not a momentary flag.
+  static const Duration defaultSwipeAttributionWindow = Duration(milliseconds: 250);
+  // Pan distance since touch-start above which a *native* directional key that
+  // survived dedup is attributed to a swipe instead of a clickpad press (a
+  // press keeps the finger nearly still). Tuning knob; the verdict is logged.
+  static const double defaultNativeSwipeClassifyDistance = 60;
 
   static final AppleTvRemoteTouchService instance = AppleTvRemoteTouchService();
 
@@ -44,6 +52,8 @@ class AppleTvRemoteTouchService {
   final double axisSwitchDominanceRatio;
   final Duration swipeRepeatInterval;
   final Duration clickAfterDirectionSuppression;
+  final Duration swipeAttributionWindow;
+  final double nativeSwipeClassifyDistance;
 
   bool _listening = false;
   bool _nativeKeyHandlerRegistered = false;
@@ -53,6 +63,8 @@ class AppleTvRemoteTouchService {
   double _startY = 0;
   double _anchorX = 0;
   double _anchorY = 0;
+  double _lastTouchX = 0;
+  double _lastTouchY = 0;
   _SwipeAxis? _lastSwipeAxis;
   DateTime? _lastSwipeAt;
   DateTime? _lastDirectionalInputAt;
@@ -64,6 +76,9 @@ class AppleTvRemoteTouchService {
   bool _selectPressedFromClick = false;
   final Map<LogicalKeyboardKey, DateTime> _lastSyntheticDirectionalAt = {};
   final Map<LogicalKeyboardKey, int> _suppressedNativeDirectionalDowns = {};
+  // Separate from _lastSyntheticDirectionalAt (dedup bookkeeping, pruned at
+  // 120ms): this one answers "was this direction a swipe?" for widgets.
+  final Map<LogicalKeyboardKey, DateTime> _lastSwipeDirectionalAt = {};
 
   AppleTvRemoteTouchService({
     BasicMessageChannel<dynamic>? channel,
@@ -78,6 +93,8 @@ class AppleTvRemoteTouchService {
     this.axisSwitchDominanceRatio = defaultAxisSwitchDominanceRatio,
     this.swipeRepeatInterval = defaultSwipeRepeatInterval,
     this.clickAfterDirectionSuppression = defaultClickAfterDirectionSuppression,
+    this.swipeAttributionWindow = defaultSwipeAttributionWindow,
+    this.nativeSwipeClassifyDistance = defaultNativeSwipeClassifyDistance,
   }) : assert(axisSwitchDominanceRatio >= 1),
        _channel = channel ?? const BasicMessageChannel<dynamic>(_channelName, JSONMessageCodec()),
        _simulateKeyPress = simulateKeyPress ?? key_sim.simulateKeyPress,
@@ -98,6 +115,16 @@ class AppleTvRemoteTouchService {
   /// touch gesture ends (used to extend Home-rail select suppression).
   ValueListenable<bool> get touchActiveListenable => _touchActiveNotifier;
 
+  /// Whether [key] was most recently produced by a touch-surface swipe rather
+  /// than a directional clickpad press. True only within
+  /// [swipeAttributionWindow] of the swipe, because synthetic keys reach
+  /// widgets a frame after they are tagged. tvOS-only; `false` elsewhere.
+  bool isSwipeDirectional(LogicalKeyboardKey key) {
+    final taggedAt = _lastSwipeDirectionalAt[key];
+    if (taggedAt == null) return false;
+    return _now().difference(taggedAt).abs() <= swipeAttributionWindow;
+  }
+
   void start() {
     if (_listening) return;
     _channel.setMessageHandler(handleMessage);
@@ -114,6 +141,7 @@ class AppleTvRemoteTouchService {
     _resetNativeSelectBurstState();
     _lastSyntheticDirectionalAt.clear();
     _suppressedNativeDirectionalDowns.clear();
+    _lastSwipeDirectionalAt.clear();
     _releaseSelectFromClick(source: 'stop');
     _resetTouch();
     _listening = false;
@@ -133,6 +161,13 @@ class AppleTvRemoteTouchService {
     }
     if (event is KeyDownEvent && _isDirectionalKey(event.logicalKey)) {
       _lastDirectionalInputAt = _now();
+      if (_isNativeDirectionalFromSwipe(event.logicalKey)) {
+        _lastSwipeDirectionalAt[event.logicalKey] = _lastDirectionalInputAt!;
+      } else {
+        // Near-still finger => clickpad press; drop any stale swipe tag so the
+        // press wins the attribution.
+        _lastSwipeDirectionalAt.remove(event.logicalKey);
+      }
     }
     return _duplicateInputGuard.handleNativeKeyEvent(event);
   }
@@ -204,6 +239,8 @@ class AppleTvRemoteTouchService {
     _startY = y;
     _anchorX = x;
     _anchorY = y;
+    _lastTouchX = x;
+    _lastTouchY = y;
     _lastSwipeAxis = null;
     _lastSwipeAt = null;
   }
@@ -213,6 +250,11 @@ class AppleTvRemoteTouchService {
       _log('ignore touch-move reason=no-active-touch x=${_formatDouble(x)} y=${_formatDouble(y)}');
       return;
     }
+
+    // Track the live position before any early return, so moves swallowed by
+    // the repeat cooldown still build up travel distance for the classifier.
+    _lastTouchX = x;
+    _lastTouchY = y;
 
     final deltaX = _anchorX - x;
     final deltaY = _anchorY - y;
@@ -445,6 +487,24 @@ class AppleTvRemoteTouchService {
     return false;
   }
 
+  /// Classify a native directional key that survived dedup: a finger on the
+  /// surface that has travelled along the key's axis is a swipe, a nearly
+  /// still finger is a clickpad press.
+  bool _isNativeDirectionalFromSwipe(LogicalKeyboardKey key) {
+    if (!_touchActive) {
+      _log('classify native logical=${_keyName(key)} verdict=press reason=no-active-touch');
+      return false;
+    }
+    final isVertical = key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown;
+    final distance = isVertical ? (_startY - _lastTouchY).abs() : (_startX - _lastTouchX).abs();
+    final isSwipe = distance >= nativeSwipeClassifyDistance;
+    _log(
+      'classify native logical=${_keyName(key)} verdict=${isSwipe ? 'swipe' : 'press'} '
+      'distance=${_formatDouble(distance)} threshold=${_formatDouble(nativeSwipeClassifyDistance)}',
+    );
+    return isSwipe;
+  }
+
   void _pruneSyntheticDirectionalState(DateTime now) {
     _lastSyntheticDirectionalAt.removeWhere(
       (_, timestamp) => now.difference(timestamp).abs() > duplicateSuppressionWindow,
@@ -471,6 +531,7 @@ class AppleTvRemoteTouchService {
       _lastDirectionalInputAt = _now();
       if (source == 'swipe') {
         _lastSyntheticDirectionalAt[logicalKey] = _lastDirectionalInputAt!;
+        _lastSwipeDirectionalAt[logicalKey] = _lastDirectionalInputAt!;
         _pruneSyntheticDirectionalState(_lastDirectionalInputAt!);
       }
     }

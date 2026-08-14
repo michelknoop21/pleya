@@ -27,6 +27,7 @@ import 'package:flutter/services.dart'
         KeyDownEvent,
         KeyUpEvent,
         HardwareKeyboard;
+import '../../services/apple_tv_remote_touch_service.dart';
 import '../../services/fullscreen_state_manager.dart';
 import '../../services/macos_window_service.dart';
 import '../../services/pip_service.dart';

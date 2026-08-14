@@ -16,6 +16,13 @@ extension _PlexVideoControlsKeyEventMethods on _PlexVideoControlsState {
         key == LogicalKeyboardKey.arrowRight;
   }
 
+  /// Apple TV only: whether the arrowDown currently being handled came from a
+  /// touch-surface swipe rather than a directional clickpad press. The service
+  /// is the only place that sees the raw gesture, so it owns the verdict.
+  bool get _isAppleTvSwipeDown =>
+      PlatformDetector.isAppleTV() &&
+      AppleTvRemoteTouchService.instance.isSwipeDirectional(LogicalKeyboardKey.arrowDown);
+
   bool _isSelectKey(LogicalKeyboardKey key) {
     return key == LogicalKeyboardKey.select ||
         key == LogicalKeyboardKey.enter ||
@@ -301,11 +308,16 @@ extension _PlexVideoControlsKeyEventMethods on _PlexVideoControlsState {
     // LEFT/RIGHT focuses timeline for seeking, UP/DOWN focuses play/pause.
     if (!isMobile && _isDirectionalKey(key) && (_videoPlayerNavigationEnabled || PlatformDetector.isTV())) {
       if (!_showControls) {
-        // On TV, swipe-down (arrowDown) while controls are hidden opens the
-        // Infuse-style info panel instead of the controls (arrowUp keeps its
-        // ContentStrip behavior via the controls path).
+        // On TV, arrowDown while controls are hidden opens the Infuse-style
+        // info panel instead of the controls (arrowUp keeps its ContentStrip
+        // behavior via the controls path). On Apple TV the two gestures are
+        // split: a swipe opens the panel, a directional press opens the queue.
         if (PlatformDetector.isTV() && key == LogicalKeyboardKey.arrowDown && event is KeyDownEvent) {
-          _showTvInfoPanel();
+          if (PlatformDetector.isAppleTV() && !_isAppleTvSwipeDown) {
+            _openQueueFromRemotePress();
+          } else {
+            _showTvInfoPanel();
+          }
           return KeyEventResult.handled;
         }
         final isHorizontal = key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight;
@@ -322,6 +334,11 @@ extension _PlexVideoControlsKeyEventMethods on _PlexVideoControlsState {
       }
       // Children (DesktopVideoControls) handle navigation first via their own onKeyEvent.
       // If we reach here, children already declined the event — consume it to prevent leaking.
+      // Safety net: an Apple TV swipe-down that no child claimed still belongs
+      // to the info panel.
+      if (key == LogicalKeyboardKey.arrowDown && event is KeyDownEvent && _isAppleTvSwipeDown) {
+        _showTvInfoPanel();
+      }
       return KeyEventResult.handled;
     }
 

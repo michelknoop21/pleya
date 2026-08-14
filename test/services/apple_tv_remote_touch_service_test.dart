@@ -326,6 +326,70 @@ void main() {
       expect(seen, [true, false]);
     });
 
+    test('synthetic swipe tags the direction as swipe-driven', () async {
+      final harness = _Harness();
+
+      expect(harness.service.isSwipeDirectional(LogicalKeyboardKey.arrowDown), isFalse);
+
+      await harness.send('started', x: 500, y: 300);
+      await harness.send('move', x: 500, y: 420);
+
+      expect(harness.keys, [LogicalKeyboardKey.arrowDown]);
+      expect(harness.service.isSwipeDirectional(LogicalKeyboardKey.arrowDown), isTrue);
+    });
+
+    test('native directional during a travelling touch is tagged as swipe-driven', () async {
+      final harness = _Harness();
+
+      await harness.send('started', x: 500, y: 300);
+      await harness.send('move', x: 500, y: 370);
+
+      // No synthetic key yet (below the 100pt test threshold), but the finger
+      // has travelled past the 60pt classify distance.
+      expect(harness.keys, isEmpty);
+      expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowDown)), isFalse);
+      expect(harness.service.isSwipeDirectional(LogicalKeyboardKey.arrowDown), isTrue);
+    });
+
+    test('a near-still native press clears an earlier swipe tag', () async {
+      final harness = _Harness();
+
+      await harness.send('started', x: 500, y: 300);
+      await harness.send('move', x: 500, y: 420);
+      expect(harness.service.isSwipeDirectional(LogicalKeyboardKey.arrowDown), isTrue);
+
+      await harness.send('ended', x: 500, y: 420);
+      harness.advance(const Duration(milliseconds: 130));
+      await harness.send('started', x: 500, y: 300);
+      await harness.send('move', x: 500, y: 302);
+
+      expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowDown)), isFalse);
+      expect(harness.service.isSwipeDirectional(LogicalKeyboardKey.arrowDown), isFalse);
+    });
+
+    test('swipe attribution expires after the attribution window', () async {
+      final harness = _Harness();
+
+      await harness.send('started', x: 500, y: 300);
+      await harness.send('move', x: 500, y: 420);
+
+      harness.advance(const Duration(milliseconds: 250));
+      expect(harness.service.isSwipeDirectional(LogicalKeyboardKey.arrowDown), isTrue);
+
+      harness.advance(const Duration(milliseconds: 1));
+      expect(harness.service.isSwipeDirectional(LogicalKeyboardKey.arrowDown), isFalse);
+    });
+
+    test('native key repeats never tag a direction as swipe-driven', () async {
+      final harness = _Harness();
+
+      await harness.send('started', x: 500, y: 300);
+      await harness.send('move', x: 500, y: 370);
+
+      expect(harness.service.handleNativeKeyEvent(_keyRepeat(LogicalKeyboardKey.arrowDown)), isFalse);
+      expect(harness.service.isSwipeDirectional(LogicalKeyboardKey.arrowDown), isFalse);
+    });
+
     test('cancelled touch clears touch-active state', () async {
       final harness = _Harness();
 

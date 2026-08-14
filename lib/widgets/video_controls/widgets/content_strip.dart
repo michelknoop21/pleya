@@ -34,6 +34,10 @@ class ContentStrip extends StatefulWidget {
   final bool chaptersLoaded;
   final String? serverId;
   final bool showQueueTab;
+
+  /// Open on the queue tab when a queue is available, even if the item has
+  /// chapters (a remote down-press asks for the queue specifically).
+  final bool preferQueueTab;
   final Function(MediaItem)? onQueueItemSelected;
   final Future<void> Function(Duration position)? onSeekRequested;
   final Function(Duration position)? onSeekCompleted;
@@ -55,6 +59,7 @@ class ContentStrip extends StatefulWidget {
     required this.chaptersLoaded,
     this.serverId,
     this.showQueueTab = false,
+    this.preferQueueTab = false,
     this.onQueueItemSelected,
     this.onSeekRequested,
     this.onSeekCompleted,
@@ -90,7 +95,9 @@ class ContentStripState extends State<ContentStrip> {
   @override
   void initState() {
     super.initState();
-    _activeTab = _hasChapters ? _StripTab.chapters : _StripTab.queue;
+    _activeTab = (widget.preferQueueTab && _hasQueue)
+        ? _StripTab.queue
+        : (_hasChapters ? _StripTab.chapters : _StripTab.queue);
   }
 
   @override

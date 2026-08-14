@@ -10,6 +10,7 @@ import '../../focus/dpad_navigator.dart';
 import '../../media/media_item.dart';
 import '../../mpv/mpv.dart';
 import '../../media/media_source_info.dart';
+import '../../services/apple_tv_remote_touch_service.dart';
 import '../../services/fullscreen_state_manager.dart';
 import '../../services/scrub_preview_source.dart';
 import '../../utils/desktop_window_padding.dart';
@@ -102,6 +103,10 @@ class DesktopVideoControls extends StatefulWidget {
   /// Called when content strip visibility changes
   final ValueChanged<bool>? onContentStripVisibilityChanged;
 
+  /// Called when a swipe-down on the Apple TV remote should open the TV info
+  /// panel instead of the content strip.
+  final VoidCallback? onTvInfoPanelRequested;
+
   /// Called when a seek should be executed by the owning screen.
   final Future<void> Function(Duration position)? onSeekRequested;
 
@@ -150,6 +155,7 @@ class DesktopVideoControls extends StatefulWidget {
     this.onCancelAutoHide,
     this.onStartAutoHide,
     this.onContentStripVisibilityChanged,
+    this.onTvInfoPanelRequested,
     this.onSeekRequested,
     this.onSeekCompleted,
   });
@@ -200,6 +206,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
 
   // Content strip state
   bool _contentStripVisible = false;
+  bool _preferQueueTabOnOpen = false;
   final GlobalKey<ContentStripState> _contentStripKey = GlobalKey<ContentStripState>();
 
   // Track which button was last focused (for returning from content strip)
@@ -207,8 +214,14 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
 
   /// Whether the content strip has any content to show
   bool get _hasStripContent {
-    return widget.chapters.isNotEmpty || (widget.showQueueTab && widget.onQueueItemSelected != null);
+    return widget.chapters.isNotEmpty || hasQueueContent;
   }
+
+  /// Whether the content strip has a queue to show (independent of chapters).
+  bool get hasQueueContent => widget.showQueueTab && widget.onQueueItemSelected != null;
+
+  /// Open the content strip from outside this widget (remote down-press).
+  void showContentStrip({bool preferQueueTab = false}) => _showContentStrip(preferQueueTab: preferQueueTab);
 
   @override
   void initState() {
@@ -343,7 +356,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     }
   }
 
-  void _showContentStrip() {
+  void _showContentStrip({bool preferQueueTab = false}) {
     if (!widget.useDpadNavigation || !_hasStripContent) return;
     if (_contentStripVisible) {
       // Already visible - focus into it
@@ -352,6 +365,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     }
 
     setState(() {
+      _preferQueueTabOnOpen = preferQueueTab;
       _contentStripVisible = true;
     });
     widget.onContentStripVisibilityChanged?.call(true);
@@ -413,14 +427,27 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     }
 
     if (key == LogicalKeyboardKey.arrowDown) {
+      if (_maybeRedirectSwipeDownToInfoPanel(event)) return KeyEventResult.handled;
       if (widget.useDpadNavigation && _hasStripContent) {
-        _showContentStrip();
+        _showContentStrip(preferQueueTab: PlatformDetector.isAppleTV());
         return KeyEventResult.handled;
       }
       return KeyEventResult.handled;
     }
 
     return KeyEventResult.ignored;
+  }
+
+  /// Apple TV: a swipe-down asks for the TV info panel, a directional press
+  /// keeps the normal arrowDown behavior. The touch service owns the verdict.
+  bool _maybeRedirectSwipeDownToInfoPanel(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    if (!PlatformDetector.isAppleTV()) return false;
+    final onTvInfoPanelRequested = widget.onTvInfoPanelRequested;
+    if (onTvInfoPanelRequested == null) return false;
+    if (!AppleTvRemoteTouchService.instance.isSwipeDirectional(LogicalKeyboardKey.arrowDown)) return false;
+    onTvInfoPanelRequested();
+    return true;
   }
 
   /// Handle key events for horizontal button navigation
@@ -563,6 +590,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
 
     // DOWN arrow - move focus to play/pause button and reset seek state
     if (key == LogicalKeyboardKey.arrowDown) {
+      if (_maybeRedirectSwipeDownToInfoPanel(event)) return KeyEventResult.handled;
       _flushTimelinePreviewSeek();
       _resetSeekState();
       _playPauseFocusNode.requestFocus();
@@ -685,6 +713,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
                           chaptersLoaded: widget.chaptersLoaded,
                           serverId: widget.serverId,
                           showQueueTab: widget.showQueueTab,
+                          preferQueueTab: _preferQueueTabOnOpen,
                           onQueueItemSelected: widget.onQueueItemSelected,
                           onSeekRequested: widget.onSeekRequested,
                           onSeekCompleted: widget.onSeekCompleted,

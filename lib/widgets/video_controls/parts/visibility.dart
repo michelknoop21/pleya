@@ -229,6 +229,20 @@ extension _PlexVideoControlsVisibilityMethods on _PlexVideoControlsState {
     }
   }
 
+  /// Open the queue strip from a directional down-press on the remote.
+  /// No-op without a queue, so a press on a chapters-only item never flashes
+  /// the chrome for nothing.
+  void _openQueueFromRemotePress() {
+    final controls = _desktopControlsKey.currentState;
+    if (controls == null || !controls.hasQueueContent) return;
+    // The strip only renders inside visible chrome.
+    widget.chromeController.show();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _desktopControlsKey.currentState?.showContentStrip(preferQueueTab: true);
+    });
+  }
+
   /// Show controls and focus timeline on LEFT/RIGHT input (TV/desktop)
   void _showControlsWithTimelineFocus() {
     widget.chromeController.show();
