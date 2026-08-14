@@ -320,6 +320,13 @@ extension _PlexVideoControlsKeyEventMethods on _PlexVideoControlsState {
           }
           return KeyEventResult.handled;
         }
+        // The skip/next button lives outside the controls focus scope, so with
+        // the controls hidden it is unreachable. UP goes straight to it while
+        // it is on screen, without opening the controls over the video.
+        if (key == LogicalKeyboardKey.arrowUp && event is KeyDownEvent && _isSkipMarkerButtonVisible) {
+          _skipMarkerFocusNode.requestFocus();
+          return KeyEventResult.handled;
+        }
         final isHorizontal = key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight;
         if (isHorizontal) {
           _showControlsWithTimelineFocus();

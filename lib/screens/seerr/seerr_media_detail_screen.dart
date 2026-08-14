@@ -6,6 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../../focus/focusable_button.dart';
+import '../../focus/key_event_utils.dart';
 import '../../i18n/strings.g.dart';
 import '../../models/seerr/seerr_media.dart';
 import '../../providers/seerr_provider.dart';
@@ -19,6 +20,7 @@ import '../../utils/platform_detector.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/collapsible_text.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
+import '../../widgets/overlay_sheet.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/seerr_poster_card.dart';
 import '../../widgets/seerr_request_sheet.dart';
@@ -112,9 +114,20 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return FocusedScrollScaffold(
-      title: Text(_base.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      slivers: _buildSlivers(),
+    // Host so the request sheet gets the TV overlay path (focus trap, D-pad
+    // back) instead of the focusless showModalBottomSheet fallback — this
+    // screen is pushed straight from search results.
+    return OverlaySheetHost(
+      // canPop preserves the iOS interactive swipe-back (same as hub detail).
+      canPop: PlatformDetector.isHandheldIOS(context),
+      onSystemBack: () {
+        if (BackKeyCoordinator.consumeIfHandled()) return;
+        if (mounted) Navigator.pop(context);
+      },
+      child: FocusedScrollScaffold(
+        title: Text(_base.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        slivers: _buildSlivers(),
+      ),
     );
   }
 

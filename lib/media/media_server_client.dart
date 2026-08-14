@@ -11,6 +11,7 @@ import 'ids.dart';
 import 'library_filter_result.dart';
 import 'library_first_character.dart';
 import 'library_query.dart';
+import 'live_tv_dvr_support.dart';
 import 'live_tv_support.dart';
 import 'media_backend.dart';
 import 'media_file_info.dart';
@@ -579,6 +580,10 @@ abstract class MediaServerClient {
   /// [LiveTvSupport.isAvailable] to find out whether the server actually
   /// has live TV configured before calling other methods.
   LiveTvSupport get liveTv;
+
+  /// DVR operations (guide reload, recording rules). `null` on backends
+  /// without a DVR — Jellyfin, local folders, Pleya Share.
+  LiveTvDvrSupport? get liveTvDvr;
 
   /// Resolve the download URL for [item]'s primary video file along with
   /// any external subtitle tracks that should be saved alongside it.

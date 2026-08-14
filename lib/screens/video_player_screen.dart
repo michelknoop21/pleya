@@ -13,6 +13,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../mpv/mpv.dart';
+import '../mpv/disc_source.dart';
 import '../mpv/player/platform/player_android.dart';
 
 import '../services/scrub_preview_source.dart';
@@ -29,6 +30,7 @@ import '../services/live_seek_accumulator.dart';
 import '../services/plex_client.dart';
 import '../utils/session_identifier.dart';
 import '../database/app_database.dart';
+import '../media/media_stream.dart';
 import '../media/media_version.dart';
 import '../models/transcode_quality_preset.dart';
 import '../media/media_source_info.dart';
@@ -54,6 +56,7 @@ import '../services/playback_progress_tracker.dart';
 import '../services/playback_source_resolver.dart';
 import '../services/offline_watch_sync_service.dart';
 import '../services/display_mode_service.dart';
+import '../services/audio_output_coordinator.dart';
 import '../services/settings_service.dart';
 import '../services/sleep_timer_service.dart';
 import '../services/track_manager.dart';
@@ -77,6 +80,7 @@ import '../utils/provider_extensions.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/stream_buffer_sizing.dart';
 import '../utils/video_player_navigation.dart';
+import 'video_player/auto_play_countdown.dart';
 import 'video_player/completion_latch.dart';
 import 'video_player/frame_rate_matcher.dart';
 import 'video_player/live_tv_session_args.dart';
@@ -253,8 +257,30 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
 
   // In-flight media-source transition. At most one can run at a time: the
   // entry guards make reload / transcode-restart / channel-switch mutually
-  // exclusive instead of relying on three independent booleans.
-  _PlaybackTransition _playbackTransition = _PlaybackTransition.idle;
+  // exclusive instead of relying on three independent booleans. Written
+  // through the setter so an end-of-video signal that arrived mid-transition
+  // gets replayed once the transition settles (see [_pendingCompletion]).
+  _PlaybackTransition _playbackTransitionState = _PlaybackTransition.idle;
+  _PlaybackTransition get _playbackTransition => _playbackTransitionState;
+  set _playbackTransition(_PlaybackTransition value) {
+    final wasBusy = _playbackTransitionState != _PlaybackTransition.idle;
+    _playbackTransitionState = value;
+    if (wasBusy && value == _PlaybackTransition.idle && _pendingCompletion) {
+      scheduleMicrotask(() => _retryPendingCompletion('transition idle'));
+    }
+  }
+
+  /// An end-of-video signal that could not be handled when it arrived (a media
+  /// transition was in flight, or the still-watching prompt owned the screen).
+  /// mpv flips `eof-reached` only once per file, so dropping it would disable
+  /// autoplay for the rest of the item.
+  bool _pendingCompletion = false;
+
+  /// Most recent adjacent-episode load, so end-of-video handling can wait for
+  /// it instead of closing the player on a next episode that has not resolved
+  /// yet (short episodes finish before the fire-and-forget fetch returns).
+  Future<void>? _adjacentEpisodesLoad;
+
   bool _playbackIntentShouldPlay = true;
 
   bool _showPlayNextDialog = false;
@@ -310,6 +336,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   StreamSubscription<void>? _playbackRestartSubscription;
   StreamSubscription<void>? _backendSwitchedSubscription;
   TrackManager? _trackManager;
+  AudioOutputCoordinator? _audioOutput;
   StreamSubscription<PlayerLog>? _logSubscription;
   StreamSubscription<void>? _sleepTimerSubscription;
   StreamSubscription<bool>? _mediaControlsPlayingSubscription;
@@ -340,8 +367,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     onChanged: _onLiveSeekTargetChanged,
   );
 
-  Timer? _autoPlayTimer;
-  int _autoPlayCountdown = 5;
+  final AutoPlayCountdown _autoPlayCountdown = AutoPlayCountdown();
 
   // End-of-video Play Next latch. Completion comes from the player EOF signal;
   // position ticks only re-arm once playback is more than 2s from the end.
@@ -466,6 +492,9 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   ScrubFrame? _getThumbnailData(Duration time) => _scrubPreviewSource?.getFrame(time);
 
   int _beginPlaybackGeneration({bool isMediaReload = false}) {
+    // A new attempt owns playback from here on, so a completion deferred for
+    // the file it replaces must not be replayed against it.
+    _pendingCompletion = false;
     if (!isMediaReload) _playbackTransition = _PlaybackTransition.idle;
     return ++_playbackGeneration;
   }
@@ -788,7 +817,13 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         _audioFocusFuture = currentPlayer.requestAudioFocus();
         _audioFocusFuture!.ignore();
       }
-      await currentPlayer.setProperty('msg-level', debugLoggingEnabled ? 'all=debug,ffmpeg/video=warn' : 'all=error');
+      // ad_spdif/ao at warn even when debug logging is off: that is where mpv
+      // reports the compressed renderer failing, and AudioOutputCoordinator
+      // needs to hear it to fall back to PCM instead of leaving silence.
+      await currentPlayer.setProperty(
+        'msg-level',
+        debugLoggingEnabled ? 'all=debug,ffmpeg/video=warn' : 'all=error,ad_spdif=warn,ao=warn',
+      );
       await currentPlayer.setLogLevel(debugLoggingEnabled ? 'v' : 'warn');
       await currentPlayer.setProperty('hwdec', _getHwdecValue(enableHardwareDecoding));
 
@@ -841,10 +876,19 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         );
       }
 
-      // Audio passthrough (desktop and Android TV; disabled on tvOS)
-      if (PlatformDetector.supportsAudioPassthrough()) {
-        await currentPlayer.setAudioPassthrough(settingsService.read(SettingsService.audioPassthrough));
-      }
+      // Audio output path: Dolby bitstream, multichannel PCM or stereo. Runs
+      // before loadfile because the Apple audio output samples the route once
+      // at init — a session widened afterwards no longer helps.
+      _audioOutput?.dispose();
+      final audioOutput = AudioOutputCoordinator(
+        player: currentPlayer,
+        settings: settingsService,
+        onPassthroughUnavailable: () {
+          if (mounted) showAppSnackBar(context, t.videoSettings.audioPassthroughUnavailable);
+        },
+      );
+      _audioOutput = audioOutput;
+      await audioOutput.prepare(audioCodec: _preferredAudioCodec());
 
       // HDR is controlled via custom hdr-enabled property on iOS/macOS/Windows
       if (Platform.isIOS || Platform.isMacOS || Platform.isWindows) {
@@ -947,7 +991,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
       // until after first frame anyway.
       unawaited(
         _ensurePlayQueue().whenComplete(() {
-          if (mounted) _loadAdjacentEpisodes();
+          if (mounted) unawaited(_startAdjacentEpisodesLoad());
         }),
       );
       initPhase = 'initializing playback services';
@@ -1134,6 +1178,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     _appleTvPlayPauseSubscription?.cancel();
     _bufferingSubscription?.cancel();
     _trackManager?.dispose();
+    _audioOutput?.dispose();
     _positionSubscription?.cancel();
     _playbackRestartSubscription?.cancel();
     _backendSwitchedSubscription?.cancel();
@@ -1145,7 +1190,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     _mediaControlsSeekableSubscription?.cancel();
     _serverStatusSubscription?.cancel();
 
-    _autoPlayTimer?.cancel();
+    _autoPlayCountdown.cancel();
     _tvBackgroundMediaControlResumeTimer?.cancel();
 
     _stillWatchingTimer?.cancel();
@@ -1318,7 +1363,29 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     }
   }
 
-  Future<void> _onAudioTrackChanged(AudioTrack track) async => _trackManager?.onAudioTrackChanged(track);
+  /// Audio codec of the track playback will most likely land on, read from the
+  /// server metadata before mpv has reported any tracks.
+  ///
+  /// Only a hint, and a rough one — with several versions it reports the first
+  /// one that has audio, and offline items carry no versions at all. That is
+  /// fine: [AudioOutputCoordinator] watches the player's track selection and
+  /// corrects itself against the track mpv really picked. Getting the hint
+  /// right just saves an audible output reload on Dolby titles.
+  String? _preferredAudioCodec() {
+    for (final version in _currentMetadata.mediaVersions ?? const <MediaVersion>[]) {
+      for (final part in version.parts) {
+        final audio = part.streams.where((s) => s.kind == MediaStreamKind.audio);
+        if (audio.isEmpty) continue;
+        return audio.firstWhere((s) => s.selected, orElse: () => audio.first).codec;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _onAudioTrackChanged(AudioTrack track) async {
+    await _audioOutput?.onAudioTrackChanged(track);
+    await _trackManager?.onAudioTrackChanged(track);
+  }
 
   Future<void> _onSubtitleTrackChanged(SubtitleTrack track) async => _trackManager?.onSubtitleTrackChanged(track);
 

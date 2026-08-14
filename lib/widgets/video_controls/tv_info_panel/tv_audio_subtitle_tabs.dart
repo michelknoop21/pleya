@@ -3,7 +3,11 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../i18n/strings.g.dart';
 import '../../../mpv/mpv.dart';
+import '../../../services/apple_audio_session_service.dart';
+import '../../../services/audio_output_coordinator.dart';
+import '../../../services/audio_output_decision.dart';
 import '../../../services/settings_service.dart';
+import '../../../utils/audio_output_labels.dart';
 import '../../../utils/player_subtitle_labeling.dart';
 import '../../../utils/track_label_builder.dart';
 import '../models/track_controls_state.dart';
@@ -90,19 +94,41 @@ class TvAudioTab extends StatelessWidget {
                   language: track.language,
                   codec: track.codec,
                   channels: track.channelsCount,
+                  profile: track.profile,
                   index: i,
                 );
+                final isSelected = track.id == selectedId;
+                final row = TvPanelRow(
+                  focusNode: nodeFor(),
+                  onNavigateUp: upFor(),
+                  title: label.primary,
+                  selected: isSelected,
+                  onSelect: () {
+                    player.selectAudioTrack(track);
+                    state.onAudioTrackChanged?.call(track);
+                  },
+                );
                 rows.add(
-                  TvPanelRow(
-                    focusNode: nodeFor(),
-                    onNavigateUp: upFor(),
-                    title: label.primary,
-                    selected: track.id == selectedId,
-                    onSelect: () {
-                      player.selectAudioTrack(track);
-                      state.onAudioTrackChanged?.call(track);
-                    },
-                  ),
+                  // Only the playing track can say what the system is doing
+                  // with it — on Apple TV this is where Atmos becomes visible
+                  // rather than assumed. It has to follow the route: switching
+                  // the receiver to Atmos while the panel is open should not
+                  // leave the old label on screen, and this panel otherwise
+                  // only rebuilds when a track stream fires.
+                  isSelected
+                      ? StreamBuilder<AppleAudioRoute>(
+                          stream: AppleAudioSessionService.instance.routeChanges,
+                          initialData: AppleAudioSessionService.instance.lastKnown,
+                          builder: (context, routeSnapshot) => TvPanelRow(
+                            focusNode: row.focusNode,
+                            onNavigateUp: row.onNavigateUp,
+                            title: row.title,
+                            value: audioRenderingLabel((routeSnapshot.data ?? AppleAudioRoute.unknown).renderingMode),
+                            selected: true,
+                            onSelect: row.onSelect,
+                          ),
+                        )
+                      : row,
                 );
                 first = false;
               }
@@ -122,6 +148,25 @@ class TvAudioTab extends StatelessWidget {
                 highlighted: state.audioSyncOffset != 0,
                 showChevron: true,
                 onSelect: onOpenAudioSync,
+              ),
+            );
+
+            rows.add(
+              ValueListenableBuilder<AudioOutputMode>(
+                valueListenable: SettingsService.instance.listenable(SettingsService.audioOutputMode),
+                builder: (context, mode, _) => TvPanelRow(
+                  icon: Symbols.surround_sound_rounded,
+                  title: t.videoSettings.audioOutputTitle,
+                  value: _audioOutputModeLabel(mode),
+                  highlighted: mode != AudioOutputMode.pcm,
+                  // Tap cycles Auto → Passthrough → PCM, same as the mobile sheet.
+                  onSelect: () async {
+                    const order = AudioOutputMode.values;
+                    final next = order[(mode.index + 1) % order.length];
+                    await SettingsService.instance.write(SettingsService.audioOutputMode, next);
+                    await AudioOutputCoordinator.current?.onModeChanged();
+                  },
+                ),
               ),
             );
 
@@ -153,6 +198,12 @@ class TvAudioTab extends StatelessWidget {
       },
     );
   }
+
+  String _audioOutputModeLabel(AudioOutputMode mode) => switch (mode) {
+    AudioOutputMode.auto => t.videoSettings.audioOutputModes.auto,
+    AudioOutputMode.passthrough => t.videoSettings.audioOutputModes.passthrough,
+    AudioOutputMode.pcm => t.videoSettings.audioOutputModes.pcm,
+  };
 
   String _audioNormalizationLabel(AudioNormalizationMode mode) => switch (mode) {
     AudioNormalizationMode.off => t.videoSettings.audioNormalizationModes.off,

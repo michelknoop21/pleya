@@ -16,6 +16,12 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
+# Adviserend, nooit blokkerend: MPVKit is exact gepind en levert prebuilt
+# XCFrameworks, dus een nieuwe tag komt er alleen in als iemand hem haalt.
+# Voor een release wil je weten dat je achterloopt; offline of GitHub plat mag
+# de build niet tegenhouden.
+scripts/check_mpvkit_update.sh || true
+
 fastlane "$LANE"
 
 # fastlane heeft pubspec.yaml op het nieuwe buildnummer gezet — leg dat vast.

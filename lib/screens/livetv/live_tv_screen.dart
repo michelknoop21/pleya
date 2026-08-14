@@ -178,7 +178,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
 
   Future<void> _reloadGuideSafe(MediaServerClient client, String dvrId) async {
     try {
-      await client.liveTv.reloadGuide(dvrId);
+      await client.liveTvDvr?.reloadGuide(dvrId);
     } catch (e) {
       // 403 (admin only) and transient errors are non-fatal — caller still
       // re-fetches client-side channels.
@@ -203,7 +203,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
 
   Future<void> _processRulesSafe(MediaServerClient client) async {
     try {
-      await client.liveTv.processRecordingRules();
+      await client.liveTvDvr?.processRecordingRules();
     } catch (e) {
       appLogger.d('processRecordingRules failed: $e');
     }

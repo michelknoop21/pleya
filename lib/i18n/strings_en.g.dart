@@ -1129,6 +1129,12 @@ class TranslationsSettingsEn {
 	/// en: 'Seek & Timing'
 	String get seekAndTiming => 'Seek & Timing';
 
+	/// en: 'Audio'
+	String get audio => 'Audio';
+
+	/// en: 'Shift audio relative to video for every title'
+	String get audioSyncOffsetDescription => 'Shift audio relative to video for every title';
+
 	/// en: 'Behavior'
 	String get behavior => 'Behavior';
 
@@ -1523,6 +1529,15 @@ class TranslationsVideoControlsEn {
 	/// en: 'Play Next'
 	String get playNext => 'Play Next';
 
+	/// en: 'Next Episode'
+	String get nextEpisode => 'Next Episode';
+
+	/// en: 'Skip Intro'
+	String get skipIntro => 'Skip Intro';
+
+	/// en: 'Skip Credits'
+	String get skipCredits => 'Skip Credits';
+
 	/// en: 'Play'
 	String get playButton => 'Play';
 
@@ -1845,8 +1860,29 @@ class TranslationsMessagesEn {
 	/// en: 'Failed to upload logs'
 	String get logsUploadFailed => 'Failed to upload logs';
 
+	/// en: 'The log is too large to upload. Clear it, reproduce the problem, and upload again.'
+	String get logsUploadTooLarge => 'The log is too large to upload. Clear it, reproduce the problem, and upload again.';
+
+	/// en: 'Uploaded too soon after the last one. Try again in ${seconds} seconds.'
+	String logsUploadRateLimited({required Object seconds}) => 'Uploaded too soon after the last one. Try again in ${seconds} seconds.';
+
+	/// en: 'The log server refused the upload (HTTP ${status}).'
+	String logsUploadRefused({required Object status}) => 'The log server refused the upload (HTTP ${status}).';
+
+	/// en: 'The log server ran into a problem (HTTP ${status}). Try again later.'
+	String logsUploadServerError({required Object status}) => 'The log server ran into a problem (HTTP ${status}). Try again later.';
+
+	/// en: 'Could not reach the log server. Check your connection and try again.'
+	String get logsUploadNetworkError => 'Could not reach the log server. Check your connection and try again.';
+
 	/// en: 'Log ID'
 	String get logId => 'Log ID';
+
+	/// en: 'DVD discs aren't supported on this device.'
+	String get dvdNotSupported => 'DVD discs aren\'t supported on this device.';
+
+	/// en: 'This disc format isn't supported on this device.'
+	String get discNotSupported => 'This disc format isn\'t supported on this device.';
 }
 
 // Path: subtitlingStyling
@@ -3535,6 +3571,16 @@ class TranslationsVideoSettingsEn {
 	/// en: 'Audio Passthrough'
 	String get audioPassthrough => 'Audio Passthrough';
 
+	/// en: 'Audio Output Mode'
+	String get audioOutputTitle => 'Audio Output Mode';
+
+	late final TranslationsVideoSettingsAudioOutputModesEn audioOutputModes = TranslationsVideoSettingsAudioOutputModesEn.internal(_root);
+	late final TranslationsVideoSettingsAudioOutputModeDescriptionsEn audioOutputModeDescriptions = TranslationsVideoSettingsAudioOutputModeDescriptionsEn.internal(_root);
+	late final TranslationsVideoSettingsAudioOutputRenderingEn audioOutputRendering = TranslationsVideoSettingsAudioOutputRenderingEn.internal(_root);
+
+	/// en: 'now: ${mode}'
+	String audioOutputNow({required Object mode}) => 'now: ${mode}';
+
 	/// en: 'Normalize Loudness'
 	String get audioNormalization => 'Normalize Loudness';
 
@@ -3545,6 +3591,9 @@ class TranslationsVideoSettingsEn {
 
 	/// en: 'Try lower quality'
 	String get tryLowerQuality => 'Try lower quality';
+
+	/// en: 'This output can't take a Dolby bitstream — switched to decoded audio.'
+	String get audioPassthroughUnavailable => 'This output can\'t take a Dolby bitstream — switched to decoded audio.';
 }
 
 // Path: performanceOverlay
@@ -3593,6 +3642,12 @@ class TranslationsPerformanceOverlayEn {
 
 	/// en: 'Sample Rate'
 	String get sampleRate => 'Sample Rate';
+
+	/// en: 'Audio Driver'
+	String get audioDriver => 'Audio Driver';
+
+	/// en: 'Out Format'
+	String get audioOutFormat => 'Out Format';
 
 	/// en: 'Pixel Fmt'
 	String get pixelFormat => 'Pixel Fmt';
@@ -5133,6 +5188,66 @@ class TranslationsCompanionRemoteErrorsEn {
 	String get connectionLost => 'Connection lost';
 }
 
+// Path: videoSettings.audioOutputModes
+class TranslationsVideoSettingsAudioOutputModesEn {
+	TranslationsVideoSettingsAudioOutputModesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Auto'
+	String get auto => 'Auto';
+
+	/// en: 'Passthrough'
+	String get passthrough => 'Passthrough';
+
+	/// en: 'PCM (decode)'
+	String get pcm => 'PCM (decode)';
+}
+
+// Path: videoSettings.audioOutputModeDescriptions
+class TranslationsVideoSettingsAudioOutputModeDescriptionsEn {
+	TranslationsVideoSettingsAudioOutputModeDescriptionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Widens to multichannel where the output allows it; never bitstreams'
+	String get auto => 'Widens to multichannel where the output allows it; never bitstreams';
+
+	/// en: 'Always send Dolby untouched to the receiver'
+	String get passthrough => 'Always send Dolby untouched to the receiver';
+
+	/// en: 'Always decode in the app'
+	String get pcm => 'Always decode in the app';
+}
+
+// Path: videoSettings.audioOutputRendering
+class TranslationsVideoSettingsAudioOutputRenderingEn {
+	TranslationsVideoSettingsAudioOutputRenderingEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Stereo'
+	String get monoStereo => 'Stereo';
+
+	/// en: 'Surround'
+	String get surround => 'Surround';
+
+	/// en: 'Spatial Audio'
+	String get spatialAudio => 'Spatial Audio';
+
+	/// en: 'Dolby Audio'
+	String get dolbyAudio => 'Dolby Audio';
+
+	/// en: 'Dolby Atmos'
+	String get dolbyAtmos => 'Dolby Atmos';
+}
+
 // Path: videoSettings.audioNormalizationModes
 class TranslationsVideoSettingsAudioNormalizationModesEn {
 	TranslationsVideoSettingsAudioNormalizationModesEn.internal(this._root);
@@ -5592,6 +5707,8 @@ extension on Translations {
 			'settings.player' => 'Player',
 			'settings.subtitlesAndConfig' => 'Subtitles & Configuration',
 			'settings.seekAndTiming' => 'Seek & Timing',
+			'settings.audio' => 'Audio',
+			'settings.audioSyncOffsetDescription' => 'Shift audio relative to video for every title',
 			'settings.behavior' => 'Behavior',
 			'settings.personalizedRecommendations' => 'Personalized recommendations',
 			'settings.personalizedRecommendationsDescription' => 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.',
@@ -5728,6 +5845,9 @@ extension on Translations {
 			'videoControls.continueWatching' => 'Continue',
 			'videoControls.autoPlayNext' => 'Auto-Play Next',
 			'videoControls.playNext' => 'Play Next',
+			'videoControls.nextEpisode' => 'Next Episode',
+			'videoControls.skipIntro' => 'Skip Intro',
+			'videoControls.skipCredits' => 'Skip Credits',
 			'videoControls.playButton' => 'Play',
 			'videoControls.pauseButton' => 'Pause',
 			'videoControls.seekBackwardButton' => ({required Object seconds}) => 'Seek backward ${seconds} seconds',
@@ -5774,13 +5894,13 @@ extension on Translations {
 			'videoControls.pipFailed' => 'Picture-in-picture failed to start',
 			'videoControls.screenshotSaved' => 'Screenshot saved',
 			'videoControls.zoomPercent' => ({required Object percent}) => 'Zoom ${percent}%',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.pipErrors.androidVersion' => 'Requires Android 8.0 or newer',
 			'videoControls.pipErrors.iosVersion' => 'Requires iOS 15.0 or newer',
 			'videoControls.pipErrors.permissionDisabled' => 'Picture-in-picture is disabled. Enable it in system settings.',
 			'videoControls.pipErrors.notSupported' => 'Device doesn\'t support picture-in-picture mode',
 			'videoControls.pipErrors.voSwitchFailed' => 'Failed to switch video output for picture-in-picture',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.pipErrors.failed' => 'Picture-in-picture failed to start',
 			'videoControls.pipErrors.unknown' => ({required Object error}) => 'An error occurred: ${error}',
 			'videoControls.chapters' => 'Chapters',
@@ -5842,7 +5962,14 @@ extension on Translations {
 			'messages.serverLimitBody' => 'Server error (HTTP 500). A bandwidth/transcoding limit likely rejected this session. Ask the owner to adjust it.',
 			'messages.logsUploaded' => 'Logs uploaded',
 			'messages.logsUploadFailed' => 'Failed to upload logs',
+			'messages.logsUploadTooLarge' => 'The log is too large to upload. Clear it, reproduce the problem, and upload again.',
+			'messages.logsUploadRateLimited' => ({required Object seconds}) => 'Uploaded too soon after the last one. Try again in ${seconds} seconds.',
+			'messages.logsUploadRefused' => ({required Object status}) => 'The log server refused the upload (HTTP ${status}).',
+			'messages.logsUploadServerError' => ({required Object status}) => 'The log server ran into a problem (HTTP ${status}). Try again later.',
+			'messages.logsUploadNetworkError' => 'Could not reach the log server. Check your connection and try again.',
 			'messages.logId' => 'Log ID',
+			'messages.dvdNotSupported' => 'DVD discs aren\'t supported on this device.',
+			'messages.discNotSupported' => 'This disc format isn\'t supported on this device.',
 			'subtitlingStyling.text' => 'Text',
 			'subtitlingStyling.border' => 'Border',
 			'subtitlingStyling.background' => 'Background',
@@ -6281,6 +6408,8 @@ extension on Translations {
 			'watchTogether.guestSwitchFailed' => 'Couldn\'t switch — content not found on this server',
 			'downloads.title' => 'Downloads',
 			'downloads.manage' => 'Manage',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.tvShows' => 'TV Shows',
 			'downloads.movies' => 'Movies',
 			'downloads.noDownloads' => 'No downloads yet',
@@ -6293,8 +6422,6 @@ extension on Translations {
 			'downloads.downloadResumed' => 'Download resumed',
 			'downloads.serverErrorBitrate' => 'Server error: file may exceed the remote bitrate limit',
 			'downloads.storageFull' => 'Not enough storage space on this device',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.episodesQueued' => ({required Object count}) => '${count} episodes queued for download',
 			'downloads.downloadDeleted' => 'Download deleted',
 			'downloads.deleteConfirm' => ({required Object title}) => 'Delete "${title}" from this device?',
@@ -6435,12 +6562,26 @@ extension on Translations {
 			'videoSettings.audioOutput' => 'Audio Output',
 			'videoSettings.performanceOverlay' => 'Performance Overlay',
 			'videoSettings.audioPassthrough' => 'Audio Passthrough',
+			'videoSettings.audioOutputTitle' => 'Audio Output Mode',
+			'videoSettings.audioOutputModes.auto' => 'Auto',
+			'videoSettings.audioOutputModes.passthrough' => 'Passthrough',
+			'videoSettings.audioOutputModes.pcm' => 'PCM (decode)',
+			'videoSettings.audioOutputModeDescriptions.auto' => 'Widens to multichannel where the output allows it; never bitstreams',
+			'videoSettings.audioOutputModeDescriptions.passthrough' => 'Always send Dolby untouched to the receiver',
+			'videoSettings.audioOutputModeDescriptions.pcm' => 'Always decode in the app',
+			'videoSettings.audioOutputRendering.monoStereo' => 'Stereo',
+			'videoSettings.audioOutputRendering.surround' => 'Surround',
+			'videoSettings.audioOutputRendering.spatialAudio' => 'Spatial Audio',
+			'videoSettings.audioOutputRendering.dolbyAudio' => 'Dolby Audio',
+			'videoSettings.audioOutputRendering.dolbyAtmos' => 'Dolby Atmos',
+			'videoSettings.audioOutputNow' => ({required Object mode}) => 'now: ${mode}',
 			'videoSettings.audioNormalization' => 'Normalize Loudness',
 			'videoSettings.audioNormalizationTitle' => 'Loudness',
 			'videoSettings.audioNormalizationModes.off' => 'Off',
 			'videoSettings.audioNormalizationModes.normalize' => 'Normalize',
 			'videoSettings.audioNormalizationModes.night' => 'Night mode',
 			'videoSettings.tryLowerQuality' => 'Try lower quality',
+			'videoSettings.audioPassthroughUnavailable' => 'This output can\'t take a Dolby bitstream — switched to decoded audio.',
 			'performanceOverlay.color' => 'Color',
 			'performanceOverlay.performance' => 'Performance',
 			'performanceOverlay.buffer' => 'Buffer',
@@ -6454,6 +6595,8 @@ extension on Translations {
 			'performanceOverlay.dvPath' => 'DV Path',
 			'performanceOverlay.p7Conversion' => 'P7 Conv',
 			'performanceOverlay.sampleRate' => 'Sample Rate',
+			'performanceOverlay.audioDriver' => 'Audio Driver',
+			'performanceOverlay.audioOutFormat' => 'Out Format',
 			'performanceOverlay.pixelFormat' => 'Pixel Fmt',
 			'performanceOverlay.hwFormat' => 'HW Fmt',
 			'performanceOverlay.matrix' => 'Matrix',
@@ -6779,6 +6922,8 @@ extension on Translations {
 			'pleyaShare.pairFailed' => 'Pairing failed. Check the code and try again.',
 			'pleyaShare.paired' => ({required Object name}) => 'Connected to ${name}',
 			'pleyaShare.pairUnreachable' => 'Host not reachable. Check the address and network.',
+			_ => null,
+		} ?? switch (path) {
 			'pleyaShare.addFolder' => 'Add a local folder',
 			'pleyaShare.notificationTitle' => 'Sharing media',
 			'pleyaShare.notificationText' => 'Other Pleya devices can stream your local folders',

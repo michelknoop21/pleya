@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
@@ -108,6 +109,70 @@ void main() {
     expect(client.queries, ['movie']);
     expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'SearchFirstResult');
+  });
+
+  testWidgets('TV history chips are focusable and run their query on select', (tester) async {
+    SettingsService.instance.write(SettingsService.searchHistory, ['star wars']);
+    final (client, _) = await _pumpTvSearchScreen(tester);
+    await tester.pumpAndSettle();
+
+    // The default TV landing state (history exists, nothing searched yet).
+    expect(find.text('star wars'), findsOneWidget);
+
+    // D-pad down from the keyboard panel until the history chip has focus.
+    var reachedChip = false;
+    for (var i = 0; i < 12 && !reachedChip; i++) {
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      reachedChip = FocusManager.instance.primaryFocus?.debugLabel == 'filter_chip_star wars';
+    }
+    expect(reachedChip, isTrue, reason: 'history chip must be reachable by D-pad');
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+
+    expect(client.queries, ['star wars']);
+    expect(find.text('Movie 1'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('TV clear-history keeps focus alive by returning it to the input', (tester) async {
+    SettingsService.instance.write(SettingsService.searchHistory, ['star wars']);
+    final (_, key) = await _pumpTvSearchScreen(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(t.search.clearHistory).last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('star wars'), findsNothing);
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'SearchInput');
+    expect(key.currentState, isNotNull);
+  });
+
+  testWidgets('TV: a new search while a result is focused parks focus on the input', (tester) async {
+    final (client, key) = await _pumpTvSearchScreen(tester);
+    await tester.pumpAndSettle();
+
+    final state = key.currentState!;
+    (state as SearchInputFocusable).setSearchQuery('movie');
+    (state as Refreshable).refresh();
+    await tester.pumpAndSettle();
+    await tester.tap(_keyboardDoneKey());
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'SearchFirstResult');
+
+    // A new search swaps the results sliver for skeletons (zero focusables) —
+    // without the safety net, primary focus dies with the unmounted card.
+    (state as SearchInputFocusable).submitSearchQuery('other movie');
+    await tester.pumpAndSettle();
+
+    expect(client.queries, ['movie', 'other movie']);
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'SearchInput');
+
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('a slow earlier search cannot overwrite a newer one', (tester) async {

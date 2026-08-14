@@ -3,6 +3,8 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../../i18n/strings.g.dart';
 import '../../../../mpv/mpv.dart';
+import '../../../../services/apple_audio_session_service.dart';
+import '../../../../utils/audio_output_labels.dart';
 import '../../../../widgets/app_icon.dart';
 import 'performance_stats.dart';
 import 'performance_stats_service.dart';
@@ -44,6 +46,10 @@ class _PlayerPerformanceOverlayState extends State<PlayerPerformanceOverlay> {
     super.dispose();
   }
 
+  /// Read live rather than cached: the overlay already repaints on every stats
+  /// tick, so the route is at most one poll interval stale.
+  String? get _renderingLabel => audioRenderingLabel(AppleAudioSessionService.instance.lastKnown.renderingMode);
+
   @override
   Widget build(BuildContext context) {
     final isMpv = _stats.playerType == 'mpv';
@@ -68,6 +74,18 @@ class _PlayerPerformanceOverlayState extends State<PlayerPerformanceOverlay> {
         if (_stats.audioCodec != null) _metric(t.fileInfo.codec, _stats.audioCodec!),
         _metric(t.performanceOverlay.sampleRate, _stats.sampleRateFormatted),
         _metric(t.fileInfo.channels, _stats.audioChannels ?? 'N/A'),
+        // What the system says it is rendering, next to what mpv is feeding
+        // it — the pair is what tells you whether Atmos actually landed.
+        if (_renderingLabel != null) _metric(t.videoSettings.audioOutput, _renderingLabel!),
+        // Which output mpv settled on and in what format. `avfoundation` +
+        // `spdif-eac3` is a live bitstream; `audiounit` + `s16`/`float` means
+        // it decoded, whatever the passthrough setting was asked to do.
+        // Leeg, niet null, is wat mpv teruggeeft zolang de AO nog niet staat —
+        // vandaar dezelfde isNotEmpty-guard als aspectName hierboven.
+        if (_stats.currentAo != null && _stats.currentAo!.isNotEmpty)
+          _metric(t.performanceOverlay.audioDriver, _stats.currentAo!),
+        if (_stats.audioOutFormat != null && _stats.audioOutFormat!.isNotEmpty)
+          _metric(t.performanceOverlay.audioOutFormat, _stats.audioOutFormat!),
         if (_stats.hasValidAudioBitrate) _metric(t.fileInfo.bitrate, _stats.audioBitrateFormatted),
         if (!isMpv && _stats.audioDecoderName != null)
           _metric(t.performanceOverlay.decoder, _stats.audioDecoderFormatted),

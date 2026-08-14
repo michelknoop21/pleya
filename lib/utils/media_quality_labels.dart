@@ -106,8 +106,15 @@ String _formatAudioCodec(String codec) {
   };
 }
 
+/// Atmos is announced in the server's codec *profile* — Plex `audioProfile`,
+/// Jellyfin `Profile`. The codec itself only ever says `eac3`/`truehd`, so
+/// reading it can never distinguish an Atmos track from a plain one.
+///
+/// Title sniffing stays as a fallback: release names carry "Atmos" often
+/// enough, and some servers leave the profile empty.
 bool _isAtmos(MediaStream stream) {
   return [
+    stream.profile,
     stream.codec,
     stream.title,
     stream.displayTitle,

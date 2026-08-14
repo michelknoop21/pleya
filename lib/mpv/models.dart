@@ -61,6 +61,13 @@ sealed class AudioTrack with _$AudioTrack {
     int? channels,
     int? sampleRate,
     int? bitrate,
+
+    /// Server-reported codec profile — where Atmos actually announces itself,
+    /// rather than in [codec]. Mirrors `MediaStream.profile`.
+    String? profile,
+
+    /// Server-reported channel layout, e.g. `5.1(side)`.
+    String? channelLayout,
     @Default(false) bool isDefault,
     @Default(false) bool isForced,
   }) = _AudioTrack;

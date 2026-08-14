@@ -42,22 +42,27 @@ void main() {
     TvDetectionService.debugSetAppleTVOverride(null);
   });
 
-  testWidgets('shows audio passthrough on supported TV-style surfaces', (tester) async {
+  testWidgets('shows the audio output mode on supported TV-style surfaces', (tester) async {
     await _pumpSheet(tester);
 
-    await tester.scrollUntilVisible(find.text('Audio Passthrough'), 500, scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(find.text('Audio Output Mode'), 500, scrollable: find.byType(Scrollable).first);
 
-    expect(find.text('Audio Passthrough'), findsOneWidget);
+    expect(find.text('Audio Output Mode'), findsOneWidget);
+    // Off-device there is no route to report, so the mode shows on its own
+    // rather than as "Auto (now: …)".
+    expect(find.text('Auto'), findsOneWidget);
   });
 
-  testWidgets('hides audio passthrough on Apple TV', (tester) async {
+  testWidgets('shows the audio output mode on Apple TV too', (tester) async {
+    // Apple TV used to be excluded from this setting entirely; a receiver over
+    // HDMI is exactly the case Dolby passthrough exists for.
     TvDetectionService.debugSetAppleTVOverride(true);
 
     await _pumpSheet(tester);
     await tester.drag(find.byType(ListView), const Offset(0, -800));
     await tester.pumpAndSettle();
 
-    expect(find.text('Audio Passthrough'), findsNothing);
+    expect(find.text('Audio Output Mode'), findsOneWidget);
   });
 }
 

@@ -12,13 +12,27 @@ import wakelock_plus
     codec: FlutterJSONMessageCodec.sharedInstance()
   )
 
+  // Stepping aside for a native session is the whole fix: while one is up this
+  // controller must not hold first responder, or every press is delivered here
+  // and swallowed by the engine before the presented controller sees it.
   override var canBecomeFirstResponder: Bool {
-    true
+    !NativeInputSession.isActive
+  }
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(nativeInputSessionChanged),
+      name: NativeInputSession.didChange,
+      object: nil)
   }
 
   override func viewDidAppear(_ animated: Bool) {
     super.viewDidAppear(animated)
-    becomeFirstResponder()
+    if !NativeInputSession.isActive {
+      becomeFirstResponder()
+    }
   }
 
   override func viewWillDisappear(_ animated: Bool) {
@@ -26,16 +40,105 @@ import wakelock_plus
     super.viewWillDisappear(animated)
   }
 
+  @objc private func nativeInputSessionChanged() {
+    if NativeInputSession.isActive {
+      resignFirstResponder()
+    } else if isViewLoaded, view.window != nil {
+      becomeFirstResponder()
+    }
+  }
+
+  /// Whether this press is the Menu/Back button.
+  ///
+  /// `press.type == .menu` is *not* enough. On tvOS 26 the delivered raw value
+  /// is 2041 while `UIPress.PressType.menu.rawValue` compiles to 5, so the
+  /// obvious comparison silently never matches — which is exactly why the
+  /// system keyboard could not be dismissed: the press was forwarded past the
+  /// escape hatch instead of triggering it. Measured on tvOS 26.2 (simulator):
+  /// select = 2040, menu = 2041. The symbolic case is kept first so this keeps
+  /// working if the runtime ever agrees with the SDK again, and the escape
+  /// keyCode covers a hardware keyboard (and the simulator's Escape).
+  private static let menuPressRawValue = 2041
+
+  private static func containsMenuPress(_ presses: Set<UIPress>) -> Bool {
+    presses.contains { press in
+      press.type == .menu
+        || press.type.rawValue == menuPressRawValue
+        || press.key?.keyCode == .keyboardEscape
+    }
+  }
+
+  /// Keeps presses out of the engine while a native surface owns the remote.
+  ///
+  /// `super` is `FlutterViewController`, which routes into the keyboard manager
+  /// and only reaches the responder chain after an async Dart round-trip that
+  /// reports "unhandled" — which never happens, because Pleya's focus tree
+  /// handles every arrow and select. Swallowing outright would be just as bad:
+  /// the focus engine would never see the press either. So forward to `next`.
+  private func yieldPressToNativeSession(
+    _ presses: Set<UIPress>,
+    with event: UIPressesEvent?,
+    handlingMenu: Bool,
+    forward: (Set<UIPress>, UIPressesEvent?) -> Void
+  ) -> Bool {
+    guard NativeInputSession.isActive else { return false }
+
+    if Self.containsMenuPress(presses) {
+      if handlingMenu {
+        NativeInputSession.onMenuPress?()
+      }
+      return true
+    }
+
+    NativeInputSession.noteForwardedPress()
+    forward(presses, event)
+    return true
+  }
+
   override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
     if handlePlayPausePress(presses) {
+      return
+    }
+    if yieldPressToNativeSession(
+      presses, with: event, handlingMenu: true,
+      forward: { presses, event in
+        next?.pressesBegan(presses, with: event)
+      })
+    {
       return
     }
 
     super.pressesBegan(presses, with: event)
   }
 
+  // The engine overrides pressesChanged too; without this, a held direction
+  // leaks into Flutter mid-session.
+  override func pressesChanged(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+    if containsPlayPausePress(presses) {
+      return
+    }
+    if yieldPressToNativeSession(
+      presses, with: event, handlingMenu: false,
+      forward: { presses, event in
+        next?.pressesChanged(presses, with: event)
+      })
+    {
+      return
+    }
+
+    super.pressesChanged(presses, with: event)
+  }
+
   override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
     if containsPlayPausePress(presses) {
+      return
+    }
+    if yieldPressToNativeSession(
+      presses, with: event, handlingMenu: false,
+      forward: { presses, event in
+        next?.pressesEnded(presses, with: event)
+      })
+    {
       return
     }
 
@@ -44,6 +147,14 @@ import wakelock_plus
 
   override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
     if containsPlayPausePress(presses) {
+      return
+    }
+    if yieldPressToNativeSession(
+      presses, with: event, handlingMenu: false,
+      forward: { presses, event in
+        next?.pressesCancelled(presses, with: event)
+      })
+    {
       return
     }
 
@@ -118,13 +229,10 @@ import wakelock_plus
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    do {
-      let session = AVAudioSession.sharedInstance()
-      try session.setCategory(.playback, mode: .default)
-      try session.setActive(true)
-    } catch {
-      print("Failed to configure audio session: \(error)")
-    }
+    // `.moviePlayback` plus the multichannel opt-in; without the latter the
+    // system caps the route at two channels and mpv downmixes before Dolby or
+    // spatial rendering can ever apply.
+    AudioSessionPlugin.configure(multichannel: true)
 
     application.beginReceivingRemoteControlEvents()
 
@@ -164,6 +272,9 @@ import wakelock_plus
     }
     if let r = self.registrar(forPlugin: "ICloudKvsPlugin") {
       ICloudKvsPlugin.register(with: r)
+    }
+    if let r = self.registrar(forPlugin: "AudioSessionPlugin") {
+      AudioSessionPlugin.register(with: r)
     }
     if let r = self.registrar(forPlugin: "NativeTextEntryPlugin") {
       NativeTextEntryPlugin.register(with: r)

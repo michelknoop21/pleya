@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+// `show Value`: drift's top-level `isNull`/`isNotNull` collide with matcher's.
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
@@ -174,6 +178,44 @@ void main() {
       expect(list, hasLength(1));
       expect(list.first.userToken, 'home-tok');
       expect(list.first.userIdentifier, 'uuid-1234');
+    });
+
+    group('token encrypted under a stale vault key', () {
+      // The key lives in shared preferences, the ciphertext in the database:
+      // a prefs reset leaves rows nobody can decrypt. Reads must survive it —
+      // an exception here errors the profile picker's combined stream and the
+      // launch gate shows nothing but "something went wrong".
+      setUp(() async {
+        await registry.upsert(
+          const ProfileConnection(profileId: 'p1', connectionId: 'c1', userToken: 'tok', userIdentifier: 'uid-1'),
+        );
+        await (db.update(db.profileConnections)..where((t) => t.profileId.equals('p1'))).write(
+          ProfileConnectionsCompanion(
+            userToken: Value(
+              'enc:v1:${jsonEncode({'n': base64Encode(List.filled(12, 7)), 'c': base64Encode(utf8.encode('garbage')), 'm': base64Encode(List.filled(16, 9))})}',
+            ),
+          ),
+        );
+      });
+
+      test('surfaces the row with no token instead of throwing', () async {
+        final list = await registry.listForProfile('p1');
+        expect(list, hasLength(1));
+        expect(list.first.userToken, isNull);
+        expect(list.first.userIdentifier, 'uid-1');
+      });
+
+      test('watchAll keeps emitting', () async {
+        expect(await registry.watchAll().first, hasLength(1));
+      });
+
+      test('drops the unreadable ciphertext so the next switch re-caches', () async {
+        await registry.listForProfile('p1');
+        await pumpEventQueue();
+        final raw = await db.select(db.profileConnections).getSingle();
+        expect(raw.userToken, isEmpty);
+        expect(raw.tokenAcquiredAt, isNull);
+      });
     });
   });
 }

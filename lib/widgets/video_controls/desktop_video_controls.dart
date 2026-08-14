@@ -7,6 +7,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 
 import '../../focus/dpad_navigator.dart';
+import '../../focus/key_event_utils.dart';
 import '../../media/media_item.dart';
 import '../../mpv/mpv.dart';
 import '../../media/media_source_info.dart';
@@ -28,6 +29,26 @@ import 'widgets/video_controls_header.dart';
 import 'widgets/video_timeline_bar.dart';
 import 'widgets/volume_control.dart';
 import 'widgets/track_chapter_controls.dart';
+
+/// Seek step multiplier for a streak of quickly repeated LEFT/RIGHT presses.
+///
+/// The streak counts follow-up presses that arrive inside the streak window,
+/// which covers both a held d-pad (key repeats) and repeated remote clicks or
+/// touchpad swipes. A lone press stays at 1x so a single tap keeps seeking by
+/// exactly the configured step.
+double seekMultiplierForStreak(int streak) {
+  if (streak <= 0) {
+    return 1.0;
+  } else if (streak <= 5) {
+    return 1.5;
+  } else if (streak <= 15) {
+    return 3.0;
+  } else if (streak <= 30) {
+    return 6.0;
+  } else {
+    return 10.0;
+  }
+}
 
 /// Desktop-specific video controls layout with top bar and bottom controls
 class DesktopVideoControls extends StatefulWidget {
@@ -190,8 +211,9 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
   late final List<FocusNode> _buttonFocusNodes;
 
   // Progressive seek acceleration state
-  LogicalKeyboardKey? _seekDirection; // Current direction being held
-  int _seekRepeatCount = 0; // Consecutive key repeats for acceleration
+  LogicalKeyboardKey? _seekDirection; // Current direction being pressed
+  int _seekStreak = 0; // Consecutive quick presses/repeats for acceleration
+  DateTime? _lastSeekKeyAt; // Timestamp of the previous LEFT/RIGHT press
 
   // Preview thumbnail during sustained dpad/keyboard seeking
   bool _showKeyRepeatThumbnail = false;
@@ -203,6 +225,12 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
   static const _keyRepeatThumbnailTimeout = Duration(milliseconds: 400);
   static const _timelineSeekDebounce = Duration(milliseconds: 350);
   static const _timelinePreviewClearDelay = Duration(seconds: 2);
+  static const _seekStreakWindow = Duration(milliseconds: 800);
+
+  // Explicit scrub mode: the timeline shows a preview position that LEFT/RIGHT
+  // moves without seeking, select commits it and back cancels it.
+  bool _timelineScrubMode = false;
+  bool _resumeAfterTimelineScrub = false;
 
   // Content strip state
   bool _contentStripVisible = false;
@@ -254,6 +282,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
 
   @override
   void dispose() {
+    if (_timelineScrubMode) widget.onScrubEnd?.call();
     _keyRepeatThumbnailTimer?.cancel();
     _timelineSeekDebounceTimer?.cancel();
     _timelinePreviewClearTimer?.cancel();
@@ -327,8 +356,14 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     if (hasFocus) {
       widget.onFocusActivity?.call();
     } else {
-      // Reset progressive seek state when timeline loses focus
-      _flushTimelinePreviewSeek();
+      // Reset progressive seek state when timeline loses focus. An unconfirmed
+      // scrub preview is dropped rather than committed — navigating away must
+      // never seek behind the user's back.
+      if (_timelineScrubMode) {
+        _cancelTimelineScrub();
+      } else {
+        _flushTimelinePreviewSeek();
+      }
       _resetSeekState();
     }
   }
@@ -488,12 +523,66 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
   /// Reset progressive seek state
   void _resetSeekState() {
     _seekDirection = null;
-    _seekRepeatCount = 0;
+    _seekStreak = 0;
+    _lastSeekKeyAt = null;
     _keyRepeatThumbnailTimer?.cancel();
     _keyRepeatThumbnailTimer = null;
     if (_showKeyRepeatThumbnail) {
       setState(() => _showKeyRepeatThumbnail = false);
     }
+  }
+
+  /// Whether the explicit scrub mode can run: it needs a controllable VOD
+  /// timeline with a known duration (live TV has its own time-shift path).
+  bool get _canScrubTimeline => _canControl && !_isLive && widget.player.state.duration.inMilliseconds > 0;
+
+  /// Enter scrub mode: pause (remembering whether we did), seed the preview at
+  /// the current position and keep the thumbnail and the chrome on screen.
+  void _enterTimelineScrubMode() {
+    if (_timelineScrubMode) return;
+    final wasPlaying = widget.player.state.playing;
+    if (wasPlaying) widget.player.pause();
+    _keyRepeatThumbnailTimer?.cancel();
+    _keyRepeatThumbnailTimer = null;
+    setState(() {
+      _timelineScrubMode = true;
+      _resumeAfterTimelineScrub = wasPlaying;
+      _showKeyRepeatThumbnail = true;
+    });
+    _setTimelinePreviewPosition(widget.player.state.position);
+    widget.onScrubStart?.call();
+  }
+
+  /// Leave scrub mode, resuming playback when entering it did the pausing.
+  void _exitTimelineScrubMode() {
+    if (!_timelineScrubMode) return;
+    final shouldResume = _resumeAfterTimelineScrub;
+    _timelineScrubMode = false;
+    _resumeAfterTimelineScrub = false;
+    _resetSeekState();
+    widget.onScrubEnd?.call();
+    if (shouldResume) widget.player.play();
+  }
+
+  /// Select in scrub mode: commit the previewed position as a real seek.
+  void _confirmTimelineScrub() {
+    if (!_timelineScrubMode) return;
+    _flushTimelinePreviewSeek();
+    _exitTimelineScrubMode();
+  }
+
+  /// Back/menu in scrub mode: drop the preview without seeking.
+  void _cancelTimelineScrub() {
+    if (!_timelineScrubMode) return;
+    _timelineSeekDebounceTimer?.cancel();
+    _timelineSeekDebounceTimer = null;
+    _timelinePreviewClearTimer?.cancel();
+    _timelinePreviewClearTimer = null;
+    _lastFlushedTimelinePreviewPosition = null;
+    if (_timelinePreviewPosition != null) {
+      setState(() => _timelinePreviewPosition = null);
+    }
+    _exitTimelineScrubMode();
   }
 
   void _clearTimelinePreviewIfStill(Duration target) {
@@ -543,16 +632,26 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     });
   }
 
-  /// Calculate seek multiplier based on repeat count (stepped tiers)
-  double _getSeekMultiplier() {
-    if (_seekRepeatCount <= 5) {
-      return 1.5;
-    } else if (_seekRepeatCount <= 15) {
-      return 3.0;
-    } else if (_seekRepeatCount <= 30) {
-      return 6.0;
+  /// Record a LEFT/RIGHT press and update the acceleration streak.
+  ///
+  /// The streak grows on every press that follows the previous one within
+  /// [_seekStreakWindow] and starts over on a pause or a direction change.
+  /// Timing rather than [KeyRepeatEvent] drives it, so repeated remote clicks
+  /// and touchpad swipes (which only produce down/up pairs) accelerate the
+  /// same way a held d-pad does.
+  void _registerSeekKeyPress(LogicalKeyboardKey key) {
+    final now = DateTime.now();
+    final last = _lastSeekKeyAt;
+    if (_seekDirection != key || last == null || now.difference(last) > _seekStreakWindow) {
+      _seekStreak = 0;
     } else {
-      return 10.0;
+      _seekStreak++;
+    }
+    _seekDirection = key;
+    _lastSeekKeyAt = now;
+    // In scrub mode the thumbnail is already pinned on screen.
+    if (_seekStreak > 0 && !_timelineScrubMode) {
+      _triggerKeyRepeatThumbnail();
     }
   }
 
@@ -560,15 +659,33 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
   KeyEventResult _handleTimelineKeyEvent(FocusNode _, KeyEvent event) {
     final key = event.logicalKey;
 
-    // Handle key release to reset progressive seek state
+    // Select drives the explicit scrub mode: the first press pauses and starts
+    // previewing, the next one commits the previewed position.
+    if (key.isSelectKey && (_timelineScrubMode || _canScrubTimeline)) {
+      return handleOneShotSelect(event, () {
+        if (_timelineScrubMode) {
+          _confirmTimelineScrub();
+        } else {
+          _enterTimelineScrubMode();
+        }
+        widget.onFocusActivity?.call();
+      });
+    }
+
+    // Back/menu cancels an in-progress preview instead of leaving the player.
+    // Outside scrub mode the parent keeps its normal back handling.
+    if (_timelineScrubMode && key.isBackKey) {
+      return handleBackKeyAction(event, _cancelTimelineScrub);
+    }
+
+    // Handle key release. The acceleration streak deliberately survives the
+    // release so repeated clicks keep climbing the tiers; it ages out on time.
     if (event is KeyUpEvent) {
       if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight) {
-        if (_trackControlsState.isTranscoding) {
+        if (_trackControlsState.isTranscoding && !_timelineScrubMode) {
           _flushTimelinePreviewSeek();
-          _resetSeekState();
           return KeyEventResult.handled;
         }
-        _resetSeekState();
       }
       return KeyEventResult.ignored;
     }
@@ -582,7 +699,11 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
 
     // UP arrow - hide controls and reset seek state
     if (key == LogicalKeyboardKey.arrowUp) {
-      _flushTimelinePreviewSeek();
+      if (_timelineScrubMode) {
+        _cancelTimelineScrub();
+      } else {
+        _flushTimelinePreviewSeek();
+      }
       _resetSeekState();
       widget.onHideControls?.call();
       return KeyEventResult.handled;
@@ -590,9 +711,15 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
 
     // DOWN arrow - move focus to play/pause button and reset seek state
     if (key == LogicalKeyboardKey.arrowDown) {
-      if (_maybeRedirectSwipeDownToInfoPanel(event)) return KeyEventResult.handled;
-      _flushTimelinePreviewSeek();
+      // The timeline is left behind either way, also when the swipe hands the
+      // key to the info panel below, so tidy the scrub state first.
+      if (_timelineScrubMode) {
+        _cancelTimelineScrub();
+      } else {
+        _flushTimelinePreviewSeek();
+      }
       _resetSeekState();
+      if (_maybeRedirectSwipeDownToInfoPanel(event)) return KeyEventResult.handled;
       _playPauseFocusNode.requestFocus();
       widget.onFocusActivity?.call();
       return KeyEventResult.handled;
@@ -603,18 +730,17 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
       // Ignore seeking if user cannot control
       if (!_canControl) return KeyEventResult.handled;
 
-      // Track direction change - reset if direction changes
-      if (_seekDirection != key) {
-        _seekDirection = key;
-        _seekRepeatCount = 0;
-      }
-      if (event is KeyRepeatEvent) {
-        _seekRepeatCount++;
-        _triggerKeyRepeatThumbnail();
+      // Implicit entry on a remote: LEFT/RIGHT on a paused video starts the
+      // preview instead of seeking straight away, so the user can pick a spot
+      // and confirm it. Playing video keeps the direct per-press seek.
+      if (!_timelineScrubMode && widget.useDpadNavigation && !widget.player.state.playing && _canScrubTimeline) {
+        _enterTimelineScrubMode();
       }
 
+      _registerSeekKeyPress(key);
+
       final isForward = key == LogicalKeyboardKey.arrowRight;
-      final effectiveMultiplier = event is KeyRepeatEvent ? _getSeekMultiplier() : 1.0;
+      final effectiveMultiplier = seekMultiplierForStreak(_seekStreak);
 
       // Live TV: relative epoch-based seeking via the parent accumulator, which
       // coalesces a rapid/held burst into one transcode re-open (#1253). The
@@ -638,10 +764,18 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
       // Clamp to valid range
       final clampedPosition = Duration(milliseconds: newPosition.inMilliseconds.clamp(0, duration.inMilliseconds));
 
+      final previewBase = _timelinePreviewPosition ?? position;
+      final previewPosition = isForward ? previewBase + step : previewBase - step;
+      final clampedPreview = Duration(milliseconds: previewPosition.inMilliseconds.clamp(0, duration.inMilliseconds));
+
+      // Scrub mode only moves the preview; the seek waits for select.
+      if (_timelineScrubMode) {
+        _setTimelinePreviewPosition(clampedPreview);
+        widget.onFocusActivity?.call();
+        return KeyEventResult.handled;
+      }
+
       if (_trackControlsState.isTranscoding) {
-        final previewBase = _timelinePreviewPosition ?? position;
-        final previewPosition = isForward ? previewBase + step : previewBase - step;
-        final clampedPreview = Duration(milliseconds: previewPosition.inMilliseconds.clamp(0, duration.inMilliseconds));
         _setTimelinePreviewPosition(clampedPreview);
         _scheduleTimelinePreviewSeekFlush();
         widget.onFocusActivity?.call();

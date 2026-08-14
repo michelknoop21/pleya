@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -22,9 +23,11 @@ import '../mixins/controller_disposer_mixin.dart';
 import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
 import '../providers/multi_server_provider.dart';
+import '../services/apple_tv_native_text_entry.dart';
 import '../services/settings_service.dart';
 import '../services/speech_search_service.dart';
 import '../utils/app_logger.dart';
+import '../utils/native_input_session.dart';
 import '../utils/platform_detector.dart';
 import '../utils/snackbar_helper.dart';
 import '../widgets/desktop_app_bar.dart';
@@ -90,6 +93,10 @@ class _SearchScreenState extends State<SearchScreen>
   // TV only: phones and desktops already have a dictation key on the system
   // keyboard, so a second mic affordance there would just be noise.
   bool _voiceSearchSupported = false;
+  // Apple TV: the native system keyboard is the primary input (and the
+  // dictation surface). Only when that path is broken does the inline D-pad
+  // keyboard take over — latched, so a device where it fails never sees it again.
+  bool _nativeEntryUnavailable = false;
   // Bumped per search; a completing request that isn't the latest is dropped.
   int _searchGeneration = 0;
   String? _focusResultsForQuery;
@@ -109,6 +116,7 @@ class _SearchScreenState extends State<SearchScreen>
     _searchController.addListener(_onSearchChanged);
     _history = SettingsService.instance.read(SettingsService.searchHistory);
     FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
+    _nativeEntryUnavailable = PlatformDetector.isAppleTV() && AppleTvNativeTextEntry.instance.isUnavailable;
     if (PlatformDetector.isTV()) {
       unawaited(
         SpeechSearchService.instance.isSupported().then((supported) {
@@ -118,12 +126,53 @@ class _SearchScreenState extends State<SearchScreen>
     }
   }
 
-  /// Hand off to the platform's dictation surface, then run whatever came back
-  /// as a full search — no letter-by-letter D-pad entry needed at all.
-  Future<void> _startVoiceSearch() async {
-    final spoken = await SpeechSearchService.instance.capture(prompt: t.search.hint);
-    if (!mounted || spoken == null) return;
-    submitSearchQuery(spoken);
+  /// Hand off to the platform's dictation surface — no letter-by-letter D-pad
+  /// entry needed at all. On Apple TV that surface is the system keyboard
+  /// itself (the Siri Remote mic dictates into it) and partial text streams
+  /// back live, so results are already on screen when it closes.
+  Future<void> _openNativeSearchEntry() async {
+    try {
+      final result = await SpeechSearchService.instance.capture(
+        prompt: t.search.hint,
+        initialText: _searchController.text,
+        onPartial: (text) {
+          if (!mounted) return;
+          _searchController.value = TextEditingValue(
+            text: text,
+            selection: TextSelection.collapsed(offset: text.length),
+          );
+        },
+      );
+      if (!mounted) return;
+      if (result == null) {
+        // Cancelled or BUSY — but a missing plugin flips isSupported() to
+        // false; reveal the inline keyboard when the surface is gone entirely.
+        if (PlatformDetector.isAppleTV() && !await SpeechSearchService.instance.isSupported()) {
+          _revealFallbackKeyboard();
+        }
+        return;
+      }
+      _searchController.text = result.text;
+      _searchController.selection = TextSelection.collapsed(offset: result.text.length);
+      if (result.submitted) _handleSearchSubmit();
+    } on PlatformException {
+      // Broken native surface — including the watchdog's verdict that it never
+      // became usable (BUSY returns null instead). Switch this screen to the
+      // inline D-pad keyboard so the user is never stuck.
+      if (mounted) _revealFallbackKeyboard();
+    }
+  }
+
+  /// Swap the Apple TV pill-plus-system-keyboard input for the inline D-pad
+  /// keyboard, and keep focus alive across the swap.
+  void _revealFallbackKeyboard() {
+    if (_nativeEntryUnavailable) return;
+    setStateIfMounted(() {
+      _nativeEntryUnavailable = true;
+      // The mic button opens the same broken surface — hide it too.
+      _voiceSearchSupported = false;
+    });
+    FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
   }
 
   /// Filtered view of [_searchResults] for the active type chip.
@@ -147,8 +196,13 @@ class _SearchScreenState extends State<SearchScreen>
 
   void _clearHistory() {
     _history = const [];
-    SettingsService.instance.write(SettingsService.searchHistory, const []);
+    // Explicitly typed: an untyped `const []` infers List<dynamic> here, which
+    // StringListPref rejects at runtime — the button silently did nothing.
+    SettingsService.instance.write(SettingsService.searchHistory, const <String>[]);
     setStateIfMounted(() {});
+    // The chips and this button unmount with the row — without a new home,
+    // primary focus dies with them and the D-pad goes dead.
+    FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
   }
 
   void _runHistoryQuery(String query) {
@@ -244,6 +298,25 @@ class _SearchScreenState extends State<SearchScreen>
       _seerrSearched = false;
       _seerrSearching = false;
     });
+    // TV: the results/history area just became skeletons with zero focusables.
+    // If primary focus lived there (result card, history chip), it unmounts and
+    // the D-pad goes dead — park focus on the input until results land.
+    // _maybeFocusResultsAfterSubmit still moves it onward for submit flows.
+    // Scoped to focus inside this screen, so a background refresh() while
+    // another tab is active can't steal focus across tabs.
+    // Not while the native keyboard is up: each keystroke streams a new search
+    // in, and parking focus would scroll this screen around underneath a
+    // surface the user cannot see past. Results keep updating; the park waits
+    // until the session ends, and a submit routes through
+    // _maybeFocusResultsAfterSubmit anyway (that one runs after `edit`
+    // completes, so after the session is over).
+    if (PlatformDetector.isTV() && !_searchFocusNode.hasFocus && !NativeInputSession.isActive) {
+      final primary = FocusManager.instance.primaryFocus;
+      final inThisScreen = primary?.context?.findAncestorStateOfType<_SearchScreenState>() == this;
+      if (inThisScreen) {
+        FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
+      }
+    }
 
     try {
       if (!mounted) return;
@@ -488,39 +561,59 @@ class _SearchScreenState extends State<SearchScreen>
     }
   }
 
-  /// TV header: read-only query pill + always-visible inline keyboard. No
-  /// FocusableTextField here — nothing that can trigger the modal machinery.
+  /// TV header: query pill + voice button + keyboard. No FocusableTextField
+  /// here — nothing that can trigger the modal machinery.
+  ///
+  /// On Apple TV the pill itself is the input: select opens the native
+  /// system keyboard, which is also the Siri-Remote dictation surface,
+  /// so the inline D-pad keyboard only renders as fallback when the native
+  /// path is broken. Everywhere else the pill stays read-only and the inline
+  /// keyboard is the input.
   List<Widget> _buildTvSearchHeader(BuildContext context) {
+    final nativePill = PlatformDetector.isAppleTV() && !_nativeEntryUnavailable;
+    final pill = ListenableBuilder(
+      listenable: _searchController,
+      builder: (context, _) {
+        final text = _searchController.text;
+        return InputDecorator(
+          decoration: pillInputDecoration(
+            context,
+            hintText: t.search.hint,
+            prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
+          ),
+          isEmpty: text.isEmpty,
+          child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+        );
+      },
+    );
     return [
       SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
-          child: ListenableBuilder(
-            listenable: _searchController,
-            builder: (context, _) {
-              final text = _searchController.text;
-              return InputDecorator(
-                decoration: pillInputDecoration(
-                  context,
-                  hintText: t.search.hint,
-                  prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
-                ),
-                isEmpty: text.isEmpty,
-                child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
-              );
-            },
-          ),
+          child: nativePill
+              ? FocusableButton(
+                  focusNode: _searchFocusNode,
+                  onPressed: _openNativeSearchEntry,
+                  onNavigateLeft: _navigateToSidebar,
+                  onNavigateDown: _handleTvKeyboardNavigateDown,
+                  onBack: _handleTvKeyboardClose,
+                  child: pill,
+                )
+              : pill,
         ),
       ),
-      if (_voiceSearchSupported)
+      // Apple TV gets no mic button: the mic is on the remote and dictates the
+      // moment the system keyboard is up, which selecting the pill already
+      // does. Android TV needs one — there the mic opens RecognizerIntent.
+      if (_voiceSearchSupported && !PlatformDetector.isAppleTV())
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
             child: Center(
               child: FocusableButton(
-                onPressed: _startVoiceSearch,
+                onPressed: _openNativeSearchEntry,
                 child: TextButton.icon(
-                  onPressed: _startVoiceSearch,
+                  onPressed: _openNativeSearchEntry,
                   icon: const AppIcon(Symbols.mic_rounded, fill: 1),
                   label: Text(t.search.voiceSearch),
                 ),
@@ -528,26 +621,27 @@ class _SearchScreenState extends State<SearchScreen>
             ),
           ),
         ),
-      SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-          child: Center(
-            child: TvVirtualKeyboardPanel(
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              hintText: t.search.hint,
-              textInputAction: TextInputAction.search,
-              autofocus: false,
-              showPreview: false,
-              showCancelKey: false,
-              dismissOnPhysicalKeyboardInput: false,
-              onSubmitted: (_) => _handleSearchSubmit(),
-              onClose: _handleTvKeyboardClose,
-              onNavigateDown: _handleTvKeyboardNavigateDown,
+      if (!nativePill)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+            child: Center(
+              child: TvVirtualKeyboardPanel(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                hintText: t.search.hint,
+                textInputAction: TextInputAction.search,
+                autofocus: false,
+                showPreview: false,
+                showCancelKey: false,
+                dismissOnPhysicalKeyboardInput: false,
+                onSubmitted: (_) => _handleSearchSubmit(),
+                onClose: _handleTvKeyboardClose,
+                onNavigateDown: _handleTvKeyboardNavigateDown,
+              ),
             ),
           ),
         ),
-      ),
     ];
   }
 
@@ -620,7 +714,13 @@ class _SearchScreenState extends State<SearchScreen>
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
-                TextButton(onPressed: _clearHistory, child: Text(t.search.clearHistory)),
+                // FocusableButton, not a bare TextButton: this row is the
+                // default TV landing state, so everything on it must carry the
+                // 10ft focus highlight and be select-activatable.
+                FocusableButton(
+                  onPressed: _clearHistory,
+                  child: TextButton(onPressed: _clearHistory, child: Text(t.search.clearHistory)),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -629,9 +729,9 @@ class _SearchScreenState extends State<SearchScreen>
               runSpacing: 8,
               children: [
                 for (final query in _history)
-                  ActionChip(
-                    avatar: const AppIcon(Symbols.history_rounded, fill: 1, size: 18),
-                    label: Text(query),
+                  FocusableFilterChip(
+                    icon: Symbols.history_rounded,
+                    label: query,
                     onPressed: () => _runHistoryQuery(query),
                   ),
               ],

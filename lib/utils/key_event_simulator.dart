@@ -4,6 +4,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import 'native_input_session.dart';
 import 'text_input_diagnostics.dart';
 
 String _describeSimulatedKey(KeyEvent event) {
@@ -21,7 +22,15 @@ final Map<LogicalKeyboardKey, FocusNode> _heldFocusNodes = {};
 ///
 /// Used by companion remotes, Apple TV touch input, and gamepad services to
 /// translate external input into focus-tree key events.
+///
+/// Every entry point here is gated on [NativeInputSession]: while a native
+/// surface (the tvOS system keyboard) owns the remote, driving the focus tree
+/// underneath it would move focus behind the user's back.
 void simulateKeyPress(LogicalKeyboardKey logicalKey) {
+  if (NativeInputSession.isActive) {
+    _logKeySimulator('simulateKeyPress dropped for native session logical=${logicalKey.keyLabel}');
+    return;
+  }
   _logKeySimulator('simulateKeyPress scheduled logical=${logicalKey.keyLabel}/${logicalKey.keyId}');
   // The dispatch below is deferred via addPostFrameCallback to ensure the
   // focus tree is settled before we walk it. That post-frame callback only
@@ -59,6 +68,10 @@ void simulateKeyPress(LogicalKeyboardKey logicalKey) {
 
 /// Simulate only key down. Pair with [simulateKeyUp] for held buttons.
 void simulateKeyDown(LogicalKeyboardKey logicalKey) {
+  if (NativeInputSession.isActive) {
+    _logKeySimulator('simulateKeyDown dropped for native session logical=${logicalKey.keyLabel}');
+    return;
+  }
   _logKeySimulator('simulateKeyDown scheduled logical=${logicalKey.keyLabel}/${logicalKey.keyId}');
   scheduleFrameIfIdle();
   SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -80,6 +93,13 @@ void simulateKeyDown(LogicalKeyboardKey logicalKey) {
 
 /// Simulate only key up. The release half of [simulateKeyDown].
 void simulateKeyUp(LogicalKeyboardKey logicalKey) {
+  if (NativeInputSession.isActive) {
+    // Still forget the hold: a key that was down when the session started would
+    // otherwise keep its stale node and fire a release into it much later.
+    _heldFocusNodes.remove(logicalKey);
+    _logKeySimulator('simulateKeyUp dropped for native session logical=${logicalKey.keyLabel}');
+    return;
+  }
   _logKeySimulator('simulateKeyUp scheduled logical=${logicalKey.keyLabel}/${logicalKey.keyId}');
   scheduleFrameIfIdle();
   SchedulerBinding.instance.addPostFrameCallback((_) {

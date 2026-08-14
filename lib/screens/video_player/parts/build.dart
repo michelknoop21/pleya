@@ -364,7 +364,7 @@ extension _VideoPlayerBuildMethods on VideoPlayerScreenState {
               VideoPlayerPlayNextOverlay(
                 visible: _showPlayNextDialog,
                 nextEpisode: _nextEpisode,
-                autoPlayCountdown: _autoPlayCountdown,
+                autoPlayCountdown: _autoPlayCountdown.remaining,
                 cancelFocusNode: _playNextCancelFocusNode,
                 confirmFocusNode: _playNextConfirmFocusNode,
                 chromeController: _chromeController,

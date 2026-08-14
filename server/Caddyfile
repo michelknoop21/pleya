@@ -1,4 +1,6 @@
-ice.plezy.app {
+# Alleen in gebruik bij de `vps`-profile (zie docker-compose.yml). In de
+# NAS-opstelling termineert Cloudflare de TLS en is Caddy niet nodig.
+ice.pleya.app {
 	log {
 		output stderr
 		level ERROR
@@ -8,8 +10,4 @@ ice.plezy.app {
 			max_conns_per_host 100
 		}
 	}
-}
-
-bugs.plezy.app {
-	reverse_proxy bugs:9000
 }

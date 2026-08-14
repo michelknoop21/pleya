@@ -10,6 +10,7 @@ import 'package:pleya/utils/app_logger.dart';
 import '../i18n/strings.g.dart';
 import '../models/mpv_config_models.dart';
 import '../mpv/models.dart' show AudioNormalizationMode;
+import 'audio_output_decision.dart' show AudioOutputMode;
 import '../models/external_player_models.dart';
 import 'base_shared_preferences_service.dart';
 import 'device_performance.dart';
@@ -190,21 +191,6 @@ class _UseExternalPlayerPref extends Pref<bool> {
   Future<void> writeTo(BaseSharedPreferencesService svc, bool value) => svc.writeBool(key, value);
 }
 
-/// Experimental Dolby passthrough. Keep opt-in everywhere, including Apple TV,
-/// until the AVFoundation EAC3 path is verified across real receiver setups.
-class _AudioPassthroughPref extends Pref<bool> {
-  const _AudioPassthroughPref() : super('audio_passthrough');
-
-  @override
-  bool readFrom(BaseSharedPreferencesService svc) {
-    // TODO: Default Apple TV to on once EAC3 passthrough is hardware-verified.
-    return svc.prefs.getBool(key) ?? false;
-  }
-
-  @override
-  Future<void> writeTo(BaseSharedPreferencesService svc, bool value) => svc.writeBool(key, value);
-}
-
 String? _trimEmptyAsNull(String? v) {
   final t = v?.trim();
   return (t == null || t.isEmpty) ? null : t;
@@ -344,8 +330,6 @@ class SettingsService extends BaseSharedPreferencesService {
 
   /// Recent search queries, most-recent first, capped at 15 by the search UI.
   static const searchHistory = StringListPref('search_history');
-  static const preferredVideoCodec = StringPref('preferred_video_codec', defaultValue: 'auto');
-  static const preferredAudioCodec = StringPref('preferred_audio_codec', defaultValue: 'auto');
   static const viewMode = EnumPref<ViewMode>('view_mode', values: ViewMode.values, defaultValue: ViewMode.grid);
   static const seekTimeSmall = IntPref('seek_time_small', defaultValue: 10);
   static const seekTimeLarge = IntPref('seek_time_large', defaultValue: 30);
@@ -453,7 +437,20 @@ class SettingsService extends BaseSharedPreferencesService {
 
   /// Ambient lighting glow intensity: 'subtle' | 'balanced' | 'bright'.
   static const ambientLightingIntensity = StringPref('ambient_lighting_intensity', defaultValue: 'balanced');
-  static const audioPassthrough = _AudioPassthroughPref();
+
+  /// Legacy on/off Dolby passthrough. Superseded by [audioOutputMode]; kept
+  /// only so its value can seed that default.
+  static const audioPassthrough = BoolPref('audio_passthrough');
+
+  /// Auto / Passthrough / PCM. Auto follows the output route: bitstream Dolby
+  /// where the far end decodes it (real Atmos), multichannel PCM where the
+  /// route is wide enough, stereo otherwise. Users who had the legacy toggle
+  /// on keep forced passthrough; everyone else lands on auto.
+  static final audioOutputMode = EnumPref<AudioOutputMode>(
+    'audio_output_mode',
+    values: AudioOutputMode.values,
+    defaultValueProvider: () => instance.read(audioPassthrough) ? AudioOutputMode.passthrough : AudioOutputMode.auto,
+  );
   static const audioNormalization = BoolPref('audio_normalization');
 
   /// Loudness mode: Off / Normalize / Night. Supersedes the legacy on/off
@@ -806,8 +803,6 @@ class SettingsService extends BaseSharedPreferencesService {
     bufferSize,
     enableHardwareDecoding,
     enableHDR,
-    preferredVideoCodec,
-    preferredAudioCodec,
     viewMode,
     showHeroSection,
     hoverExpandCards,
@@ -864,6 +859,7 @@ class SettingsService extends BaseSharedPreferencesService {
     ambientLighting,
     ambientLightingIntensity,
     audioPassthrough,
+    audioOutputMode,
     audioNormalization,
     themeMode,
     keyboardShortcuts,

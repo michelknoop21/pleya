@@ -284,7 +284,21 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         icon: Symbols.play_circle_rounded,
         title: t.settings.videoPlayback,
         subtitle: t.settings.videoPlaybackDescription,
-        keywords: const ['subtitle', 'audio', 'skip intro', 'ondertitel', 'afspelen'],
+        keywords: const [
+          'subtitle',
+          'audio',
+          'skip intro',
+          'ondertitel',
+          'afspelen',
+          // The audio-output setting lives on this screen; these are what
+          // people actually type when they go looking for it.
+          'atmos',
+          'dolby',
+          'passthrough',
+          'spatial',
+          'surround',
+          'doorvoer',
+        ],
         destinationBuilder: (_) => const PlaybackSettingsScreen(),
       ),
       _SettingsSearchEntry(

@@ -95,6 +95,48 @@ class HubSection extends StatefulWidget {
 class HubSectionState extends State<HubSection> with MountedSetStateMixin {
   static const _longPressDuration = Duration(milliseconds: 500);
 
+  /// Episode cards are wider than poster cards by this much.
+  static const double _wideCardMultiplier = 1.5;
+
+  /// Added to the poster height to get the full card block on phone/tablet:
+  /// the title + subtitle labels under the artwork (33), the focus ring the
+  /// list reserves so a focused card isn't clipped, and 4 of slack.
+  static const double _cardBlockExtra = 33 + FocusTheme.focusBorderWidth * 2 + 4;
+
+  /// The icon + title row above the cards, including both of its paddings.
+  ///
+  /// Fixed rather than measured: it is a single line of [titleLarge] with
+  /// `maxLines: 1`, so it cannot grow. The value comes from a device
+  /// screenshot (a 402pt-wide phone put it at 38.5–41.5pt, depending on the
+  /// status bar inset assumed); the same measurement confirmed the artwork
+  /// height below to the tenth of a point, so only this term carries any
+  /// slack. Rounding up is the safe direction: a couple of points too much
+  /// leaves a sliver of the next rail showing, too little clips the card
+  /// labels.
+  static const double _headerHeight = 41;
+
+  /// Artwork height for one card in a phone/tablet rail [availableWidth] wide.
+  ///
+  /// Episode rails are 16:9 and therefore much shorter than the 2:3 poster
+  /// rails, which is why callers have to say which kind they mean.
+  static double posterHeightFor(BuildContext context, double availableWidth, {required bool wideLayout}) {
+    final density = SettingsService.instanceOrNull?.read(SettingsService.libraryDensity) ?? LibraryDensity.defaultValue;
+    final baseCardWidth = GridSizeCalculator.getCellWidth(availableWidth, context, density);
+    final cardWidth = wideLayout ? baseCardWidth * _wideCardMultiplier : baseCardWidth;
+    final posterWidth = cardWidth - 6; // 3px padding on each side
+    return wideLayout ? posterWidth * (9 / 16) : posterWidth * 1.5;
+  }
+
+  /// Total height one phone/tablet rail occupies: header, artwork and labels.
+  ///
+  /// The home hero sizes itself against this so the first rail lands exactly
+  /// at the fold instead of a fraction of the screen that happens to look
+  /// right on one device. It lives here, next to the layout it describes, and
+  /// [build] uses the same constants — otherwise the two drift apart the first
+  /// time a card size changes and the hero silently starts cropping the rail.
+  static double railHeight(BuildContext context, double availableWidth, {required bool wideLayout}) =>
+      _headerHeight + posterHeightFor(context, availableWidth, wideLayout: wideLayout) + _cardBlockExtra;
+
   late FocusNode _hubFocusNode;
   final ScrollController _scrollController = ScrollController();
 
@@ -135,12 +177,43 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
       _mediaCardKeys.removeWhere((index, _) => index >= widget.hub.items.length);
     }
 
+    // Rows refresh in place, and refreshing can reorder: finishing an episode
+    // moves that title to the front of Continue Watching while the list stays
+    // exactly as long. Length-only bookkeeping sees nothing, so the cursor
+    // silently ends up on whatever slid into its slot — which is how "open
+    // another series" replays the one you just watched. Follow the item.
+    _followFocusedItemAcrossUpdate(oldWidget.hub.items);
+
     if (widget.hub.items.length != oldWidget.hub.items.length || widget.hub.more != oldWidget.hub.more) {
       final maxIndex = _totalItemCount == 0 ? 0 : _totalItemCount - 1;
       if (_focusedIndex > maxIndex) {
         _focusedIndex = maxIndex;
       }
     }
+  }
+
+  /// Moves [_focusedIndex] to wherever the item it pointed at ended up.
+  ///
+  /// Does nothing when the focus sits on the trailing "View All" card, or when
+  /// the item is gone — the length clamp in [didUpdateWidget] handles that.
+  void _followFocusedItemAcrossUpdate(List<MediaItem> oldItems) {
+    if (_focusedIndex < 0 || _focusedIndex >= oldItems.length) return;
+    final focusedKey = oldItems[_focusedIndex].globalKey;
+    final moved = widget.hub.items.indexWhere((item) => item.globalKey == focusedKey);
+    if (moved < 0 || moved == _focusedIndex) return;
+    _focusedIndex = moved;
+    _rememberFocus(moved);
+    _notifyFocusedItemChanged();
+  }
+
+  /// Stores the focused position together with the item sitting there, so a
+  /// later restore can go back to the item rather than to the slot.
+  void _rememberFocus(int index) {
+    HubFocusMemory.setForHub(
+      widget.hub.id,
+      index,
+      itemKey: index >= 0 && index < widget.hub.items.length ? widget.hub.items[index].globalKey : null,
+    );
   }
 
   @override
@@ -172,7 +245,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     final clamped = index.clamp(0, _totalItemCount - 1).toInt();
     _focusedIndex = clamped;
     // Remember this position for this specific hub
-    HubFocusMemory.setForHub(widget.hub.id, clamped);
+    _rememberFocus(clamped);
     _notifyFocusedItemChanged();
     _scrollToIndex(clamped);
     _hubFocusNode.requestFocus();
@@ -182,10 +255,17 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     _scrollHubIntoView();
   }
 
-  /// Request focus using the stored memory for this hub
+  /// Request focus using the stored memory for this hub.
+  ///
+  /// Prefers the remembered *item* over the remembered slot: the row may have
+  /// reordered while focus was elsewhere, and coming back to a position is how
+  /// you end up on a title you never picked. Falls back to the index when the
+  /// hub has no identity memory or the item has dropped out of the list.
   void requestFocusFromMemory() {
-    final index = HubFocusMemory.getForHub(widget.hub.id, _totalItemCount);
-    requestFocusAt(index);
+    final byItem = HubFocusMemory.rememberedItemIndex(widget.hub.id, [
+      for (final item in widget.hub.items) item.globalKey,
+    ]);
+    requestFocusAt(byItem ?? HubFocusMemory.getForHub(widget.hub.id, _totalItemCount));
   }
 
   /// Scroll this hub into view in the parent scroll view
@@ -281,7 +361,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
         setState(() {
           _focusedIndex--;
         });
-        HubFocusMemory.setForHub(widget.hub.id, _focusedIndex);
+        _rememberFocus(_focusedIndex);
         _notifyFocusedItemChanged();
         _scrollToIndex(_focusedIndex);
       } else if (widget.onNavigateToSidebar != null) {
@@ -298,7 +378,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
         setState(() {
           _focusedIndex++;
         });
-        HubFocusMemory.setForHub(widget.hub.id, _focusedIndex);
+        _rememberFocus(_focusedIndex);
         _notifyFocusedItemChanged();
         _scrollToIndex(_focusedIndex);
       }
@@ -504,8 +584,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                         episodePosterMode == EpisodePosterMode.episodeThumbnail && (isEpisodeOnlyHub || isMixedHub);
 
                     // Card dimensions based on hub type
-                    const wideCardMultiplier = 1.5;
-                    final cardWidth = useWideLayout ? baseCardWidth * wideCardMultiplier : baseCardWidth;
+                    final cardWidth = useWideLayout ? baseCardWidth * _wideCardMultiplier : baseCardWidth;
                     final posterWidth = cardWidth - 6; // 3px padding on each side
                     final posterHeight = useWideLayout
                         ? posterWidth *
@@ -514,7 +593,6 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
 
                     final containerHeight = posterHeight + (isTv ? 48 : 33);
                     final focusBorderWidth = FocusTheme.focusBorderWidth;
-                    final focusExtra = focusBorderWidth * 2; // border on both sides
                     // A focused card scales up and draws its ring *outside* its
                     // box, while the ListView paints item i+1 over item i. Too
                     // small a gap and the next card covers the focused card's
@@ -526,7 +604,12 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                     _itemExtent = cardWidth + itemGap * 2;
 
                     return SizedBox(
-                      height: containerHeight + (isTv ? (focusGrowY + focusBorderWidth) * 2 : focusExtra + 4),
+                      // Non-TV goes through [_cardBlockExtra] so [railHeight]
+                      // — which the home hero measures itself against — can
+                      // never disagree with what is actually laid out here.
+                      height: isTv
+                          ? containerHeight + (focusGrowY + focusBorderWidth) * 2
+                          : posterHeight + _cardBlockExtra,
                       child: HorizontalScrollWithArrows(
                         controller: _scrollController,
                         builder: (scrollController) => ListView.builder(
@@ -637,7 +720,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     setState(() {
       _focusedIndex = clamped;
     });
-    HubFocusMemory.setForHub(widget.hub.id, clamped);
+    _rememberFocus(clamped);
     _notifyFocusedItemChanged();
     _scrollToIndex(clamped);
     _hubFocusNode.requestFocus();

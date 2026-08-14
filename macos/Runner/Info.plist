@@ -37,6 +37,11 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<!-- Zonder deze sleutel blijft elke upload in TestFlight hangen op
+	     MISSING_EXPORT_COMPLIANCE en bereikt hij geen enkele tester.
+	     iOS en tvOS hebben hem al; macOS ontbrak. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>FLTEnableMergedPlatformUIThread</key>
 	<false/>
 	<key>SUEnableAutomaticChecks</key>

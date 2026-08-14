@@ -192,7 +192,7 @@ class ProfileConnectionRegistry {
 
   Future<ProfileConnection> _rowToModel(ProfileConnectionRow row) async {
     final hasPlaintextToken = row.userToken.isNotEmpty && !CredentialVault.isProtected(row.userToken);
-    final userToken = row.userToken.isEmpty ? null : await CredentialVault.reveal(row.userToken);
+    final userToken = row.userToken.isEmpty ? null : await _revealToken(row);
     if (hasPlaintextToken) {
       unawaited(recordToken(row.profileId, row.connectionId, userToken!));
     }
@@ -207,5 +207,42 @@ class ProfileConnectionRegistry {
       tokenAcquiredAt: row.tokenAcquiredAt == null ? null : DateTime.fromMillisecondsSinceEpoch(row.tokenAcquiredAt!),
       lastUsedAt: row.lastUsedAt == null ? null : DateTime.fromMillisecondsSinceEpoch(row.lastUsedAt!),
     );
+  }
+
+  /// Decrypt a cached token, or surface it as absent when the ciphertext no
+  /// longer matches the vault key.
+  ///
+  /// The key lives in shared preferences and the ciphertext in this table, so
+  /// the two can drift apart — a prefs reset (or the legacy→async prefs
+  /// migration generating a fresh key before the old one is copied over)
+  /// leaves rows nobody can read. Letting that throw takes down the whole
+  /// stream: `watchAll` is one `asyncMap`, so a single dead row errors the
+  /// profile picker's combined stream and the launch gate renders "something
+  /// went wrong" with a retry that rebuilds the same failure. The token is a
+  /// cache of something re-fetchable, so treat it like the empty-string
+  /// lazy-fetch sentinel and let the next profile switch acquire a new one.
+  Future<String?> _revealToken(ProfileConnectionRow row) async {
+    try {
+      return await CredentialVault.reveal(row.userToken);
+    } catch (e, st) {
+      appLogger.w(
+        'ProfileConnectionRegistry: cached token for ${row.profileId}/${row.connectionId} '
+        'does not match the current vault key — dropping it',
+        error: e,
+        stackTrace: st,
+      );
+      unawaited(_forgetUnreadableToken(row));
+      return null;
+    }
+  }
+
+  /// Clear ciphertext we can't read, so the row stops failing on every read
+  /// and the next switch caches a token under the current key. The write
+  /// makes `watchAll` tick once more; that pass takes the empty-token path,
+  /// so it settles immediately.
+  Future<void> _forgetUnreadableToken(ProfileConnectionRow row) async {
+    await (_db.update(_db.profileConnections)
+          ..where((t) => t.profileId.equals(row.profileId) & t.connectionId.equals(row.connectionId)))
+        .write(const ProfileConnectionsCompanion(userToken: Value(''), tokenAcquiredAt: Value(null)));
   }
 }

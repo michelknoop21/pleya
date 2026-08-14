@@ -102,6 +102,27 @@ class MultiServerManager {
   /// Debounce timer for connectivity events — collapses rapid network flapping
   Timer? _connectivityDebounce;
 
+  /// When each server last exhausted every endpoint candidate without a single
+  /// one answering.
+  ///
+  /// Startup asks for the same server from several directions — bind from
+  /// cached metadata, then reconcile once the resource fetch lands, then the
+  /// health sweep — and each of those used to run the full candidate race. For
+  /// a server that is simply down that meant three or four races of ~2.3s each
+  /// within seven seconds, all reaching the same conclusion, plus a warning per
+  /// candidate per race. Remembering the verdict briefly makes the second and
+  /// third caller fail instantly instead.
+  final Map<String, DateTime> _unreachableSince = {};
+
+  /// How long that verdict is trusted. Short on purpose: it exists to collapse
+  /// one burst of startup callers, not to keep a server marked dead after the
+  /// user has plugged the network back in.
+  static const _unreachableMemory = Duration(seconds: 30);
+
+  /// Forgets the "nothing answered" verdicts, so the next attempt races for
+  /// real. Anything that means "the network may be different now" calls this.
+  void _clearUnreachableMemory() => _unreachableSince.clear();
+
   /// Get all registered server IDs (Plex + Jellyfin).
   ///
   /// Sourced from [_clients] rather than [_plexServers] because
@@ -267,6 +288,11 @@ class MultiServerManager {
     final serverId = server.clientIdentifier;
     final stopwatch = Stopwatch()..start();
 
+    final lastFailure = _unreachableSince[serverId];
+    if (lastFailure != null && DateTime.now().difference(lastFailure) < _unreachableMemory) {
+      throw Exception('No working connection found (${server.name} was unreachable moments ago)');
+    }
+
     // Get storage and load cached endpoint for this server
     final storage = await StorageService.getInstance();
     final cachedEndpoint = storage.getServerEndpoint(ServerId(serverId));
@@ -286,8 +312,10 @@ class MultiServerManager {
     );
 
     if (!await streamIterator.moveNext()) {
+      _unreachableSince[serverId] = DateTime.now();
       throw Exception('No working connection found');
     }
+    _unreachableSince.remove(serverId);
 
     final workingConnection = streamIterator.current;
     final baseUrl = workingConnection.uri;
@@ -548,6 +576,7 @@ class MultiServerManager {
       _serverStatus.remove(id);
       _authErrorServers.remove(id);
       _clientIdByServer.remove(id);
+      _unreachableSince.remove(id);
     }
     _statusController.add(Map.from(_serverStatus));
   }
@@ -937,6 +966,11 @@ class MultiServerManager {
               },
             );
 
+            // A different network is exactly the case where a remembered
+            // "nothing answered" is worthless: the candidates that timed out
+            // on the old one may be the right ones here.
+            _clearUnreachableMemory();
+
             // Re-optimize all servers and re-probe offline ones
             _reoptimizeAllServers(reason: 'connectivity:${status.name}');
             resetSharePollBackoff();
@@ -1110,6 +1144,9 @@ class MultiServerManager {
   /// (e.g. after a network change while the app was backgrounded).
   Future<void> reconnectOfflineServers({bool forceRediscovery = false}) async {
     resetSharePollBackoff();
+    // Asking to reconnect is asking to try again for real — the same reason
+    // AudioOutputCoordinator.onModeChanged clears its remembered failure.
+    _clearUnreachableMemory();
     // Coalesce concurrent calls — but a force call must not silently degrade
     // to a running non-force sweep (the user pressed "reconnect" exactly
     // because cached endpoints are stale). Wait it out, then run force.

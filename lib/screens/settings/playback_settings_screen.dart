@@ -5,7 +5,10 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../models/transcode_quality_preset.dart';
+import '../../mpv/models.dart' show AudioNormalizationMode;
 import '../../mpv/player/platform/player_android.dart';
+import '../../services/audio_output_coordinator.dart';
+import '../../services/audio_output_decision.dart';
 import '../../utils/quality_preset_labels.dart';
 import '../../services/companion_remote/companion_remote_host_controller.dart';
 import '../../services/discord_rpc_service.dart';
@@ -71,6 +74,13 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
           destinationBuilder: (_) => const SubtitleStylingScreen(),
         ),
         _mpvConfigTile(),
+
+        // These three used to live only inside the player's settings sheet,
+        // which meant they could not be set before playback started.
+        SettingsSectionHeader(t.settings.audio),
+        if (PlatformDetector.supportsAudioPassthrough()) _audioOutputModeTile(),
+        _audioNormalizationTile(),
+        _audioSyncOffsetTile(),
 
         SettingsSectionHeader(t.settings.seekAndTiming),
         SettingNumberTile(
@@ -313,6 +323,61 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         subtitle: t.settings.tunneledPlaybackDescription,
       );
     },
+  );
+
+  Widget _audioOutputModeTile() => SettingSelectionTile<AudioOutputMode, AudioOutputMode>(
+    pref: SettingsService.audioOutputMode,
+    icon: Symbols.surround_sound_rounded,
+    title: t.videoSettings.audioOutputTitle,
+    subtitleBuilder: (mode) => '${_audioOutputModeLabel(mode)} · ${_audioOutputModeDescription(mode)}',
+    options: AudioOutputMode.values
+        .map((m) => DialogOption(value: m, title: _audioOutputModeLabel(m), subtitle: _audioOutputModeDescription(m)))
+        .toList(),
+    decode: (m) => m,
+    encode: (m) => m,
+    // Takes effect on the running player too, not just the next title.
+    onAfterWrite: (_) => AudioOutputCoordinator.current?.onModeChanged(),
+  );
+
+  String _audioOutputModeLabel(AudioOutputMode mode) => switch (mode) {
+    AudioOutputMode.auto => t.videoSettings.audioOutputModes.auto,
+    AudioOutputMode.passthrough => t.videoSettings.audioOutputModes.passthrough,
+    AudioOutputMode.pcm => t.videoSettings.audioOutputModes.pcm,
+  };
+
+  String _audioOutputModeDescription(AudioOutputMode mode) => switch (mode) {
+    AudioOutputMode.auto => t.videoSettings.audioOutputModeDescriptions.auto,
+    AudioOutputMode.passthrough => t.videoSettings.audioOutputModeDescriptions.passthrough,
+    AudioOutputMode.pcm => t.videoSettings.audioOutputModeDescriptions.pcm,
+  };
+
+  Widget _audioNormalizationTile() => SettingSelectionTile<AudioNormalizationMode, AudioNormalizationMode>(
+    pref: SettingsService.audioNormalizationMode,
+    icon: Symbols.graphic_eq_rounded,
+    title: t.videoSettings.audioNormalizationTitle,
+    subtitleBuilder: _audioNormalizationLabel,
+    options: AudioNormalizationMode.values
+        .map((m) => DialogOption(value: m, title: _audioNormalizationLabel(m)))
+        .toList(),
+    decode: (m) => m,
+    encode: (m) => m,
+  );
+
+  String _audioNormalizationLabel(AudioNormalizationMode mode) => switch (mode) {
+    AudioNormalizationMode.off => t.videoSettings.audioNormalizationModes.off,
+    AudioNormalizationMode.normalize => t.videoSettings.audioNormalizationModes.normalize,
+    AudioNormalizationMode.night => t.videoSettings.audioNormalizationModes.night,
+  };
+
+  Widget _audioSyncOffsetTile() => SettingNumberTile(
+    pref: SettingsService.audioSyncOffset,
+    icon: Symbols.sync_rounded,
+    title: t.videoSettings.audioSync,
+    subtitleBuilder: (v) => '${(v / 1000).toStringAsFixed(1)}s · ${t.settings.audioSyncOffsetDescription}',
+    labelText: t.videoSettings.audioSync,
+    suffixText: 'ms',
+    min: -5000,
+    max: 5000,
   );
 
   Widget _dvConversionModeTile() => SettingValueBuilder<bool>(

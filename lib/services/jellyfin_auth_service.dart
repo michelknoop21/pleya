@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 
 import '../connection/connection.dart';
-import '../connection/connection_auth_service.dart';
 import '../exceptions/media_server_exceptions.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart';
@@ -31,9 +30,9 @@ class JellyfinQuickConnectInitiation {
 ///   2. [authenticateByName] (or future Quick Connect equivalent) — exchanges
 ///      credentials for a long-lived access token and returns a built
 ///      [JellyfinConnection] ready to insert into [ConnectionRegistry].
-///   3. (later) [validate] / [refresh] / [signOut] for the [ConnectionAuthService]
-///      contract.
-class JellyfinConnectionAuthService implements ConnectionAuthService {
+///   3. (later) [validate] / [refresh] / [signOut] keep an existing connection
+///      alive or tear it down.
+class JellyfinConnectionAuthService {
   JellyfinConnectionAuthService({
     required this.clientName,
     required this.clientVersion,
@@ -356,7 +355,6 @@ class JellyfinConnectionAuthService implements ConnectionAuthService {
     }
   }
 
-  @override
   Future<bool> validate(Connection connection) async {
     if (connection is! JellyfinConnection) return false;
     final client = _authenticatedClient(connection);
@@ -371,7 +369,6 @@ class JellyfinConnectionAuthService implements ConnectionAuthService {
     }
   }
 
-  @override
   Future<Connection> refresh(Connection connection) async {
     if (connection is! JellyfinConnection) return connection;
     final ok = await validate(connection);
@@ -381,7 +378,6 @@ class JellyfinConnectionAuthService implements ConnectionAuthService {
     return connection.copyWith(status: ConnectionStatus.online, lastAuthenticatedAt: DateTime.now());
   }
 
-  @override
   Future<void> signOut(Connection connection) async {
     if (connection is! JellyfinConnection) return;
     final client = _authenticatedClient(connection);

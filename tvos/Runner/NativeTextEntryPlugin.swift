@@ -7,50 +7,32 @@ import UIKit
   import Flutter
 #endif
 
-/// Alert die de Menu/Back-press zelf onderschept. De press bereikt de alert
-/// nooit via de normale responder-chain (GameController + PleyaFlutterViewController
-/// consumeren hem eerder), dus zonder deze override is de dialog niet te sluiten.
-final class MenuDismissAlertController: UIAlertController {
-  var onMenuPressed: (() -> Void)?
-
-  override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-    if presses.contains(where: { $0.type == .menu }) {
-      onMenuPressed?()
-      return
-    }
-    super.pressesBegan(presses, with: event)
-  }
-
-  override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-    if presses.contains(where: { $0.type == .menu }) {
-      return
-    }
-    super.pressesEnded(presses, with: event)
-  }
-
-  override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-    if presses.contains(where: { $0.type == .menu }) {
-      return
-    }
-    super.pressesCancelled(presses, with: event)
-  }
-}
-
-/// Presents native tvOS text entry as a `UIAlertController` with a text field —
-/// a proper modal that owns the tvOS focus engine, so the on-screen keyboard is
-/// navigable with the remote (and still offers the "type with iPhone" Continuity
-/// prompt). Live edits stream back to Dart via `textChanged`; the final value
-/// returns from `edit`.
+/// Native tvOS text entry: a `NativeTextEntryField` parked in the Flutter view
+/// takes first responder, so the system keyboard — the platform's only
+/// dictation surface — comes up directly. Live edits stream back to Dart via
+/// `textChanged`; the final value returns from `edit`.
 ///
-/// One session at a time (`BUSY` otherwise). Cancel/Menu returns the current
-/// text with `submitted=false`; Done returns it with `submitted=true`.
-final class NativeTextEntryPlugin: NSObject, FlutterPlugin, UITextFieldDelegate {
+/// One session at a time (`BUSY` otherwise). Menu returns the current text with
+/// `submitted=false`; committing on the keyboard returns it with
+/// `submitted=true`. A surface that never becomes usable returns
+/// `KEYBOARD_DEAD`/`KEYBOARD_UNAVAILABLE` so Dart can fall back for good.
+final class NativeTextEntryPlugin: NSObject, FlutterPlugin {
   private static let channelName = "com.pleya/native_text_entry"
 
+  /// tvOS needs a few frames to tear its keyboard down, and the press that
+  /// ended the session is still travelling through Flutter's focus tree while
+  /// it does. Whatever it lands on can ask for a new session, and the user sees
+  /// a keyboard that "will not close" — it closed and instantly reopened, which
+  /// is the reopen-loop DEC-009 and DEC-011 both document. Long enough to
+  /// swallow that echo, short enough that a deliberate second press still opens
+  /// the keyboard.
+  private static let reopenCooldown: TimeInterval = 0.5
+
   private var channel: FlutterMethodChannel?
-  private var textField: UITextField?
-  private var alert: UIAlertController?
+  private var entry: NativeTextEntryField?
   private var pendingResult: FlutterResult?
+  /// Monotonic, so a clock change cannot turn the cooldown into a lockout.
+  private var lastSessionEndedAt: TimeInterval?
 
   static func register(with registrar: FlutterPluginRegistrar) {
     let instance = NativeTextEntryPlugin()
@@ -60,10 +42,21 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin, UITextFieldDelegate 
   }
 
   func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    NSLog("[NativeTextEntry] channel call %@", call.method)
     switch call.method {
     case "edit":
-      guard pendingResult == nil, textField == nil else {
+      guard pendingResult == nil, entry == nil else {
         result(FlutterError(code: "BUSY", message: "A text entry session is already active", details: nil))
+        return
+      }
+      // Reported as BUSY on purpose: both Dart callers already treat that as
+      // "drop this quietly" — no fallback keyboard, no availability latch —
+      // which is exactly right for an echo of the press that just closed us.
+      if let ended = lastSessionEndedAt,
+        ProcessInfo.processInfo.systemUptime - ended < Self.reopenCooldown
+      {
+        NSLog("[NativeTextEntry] refusing edit within reopen cooldown")
+        result(FlutterError(code: "BUSY", message: "The keyboard is still closing", details: nil))
         return
       }
       guard let args = call.arguments as? [String: Any] else {
@@ -71,92 +64,77 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin, UITextFieldDelegate 
         return
       }
       begin(args: args, result: result)
+    case "cancel":
+      // Second exit for a back press that reached Dart instead of the escape
+      // hatch in AppDelegate. Cancelling nothing is not an error: the two paths
+      // race by design, and whichever arrives first should win quietly.
+      entry?.cancel()
+      result(nil)
     default:
       result(FlutterMethodNotImplemented)
     }
   }
 
   private func begin(args: [String: Any], result: @escaping FlutterResult) {
-    guard let presenter = Self.rootViewController() else {
-      result(FlutterError(code: "UNAVAILABLE", message: "No root view controller", details: nil))
+    guard let host = Self.rootViewController()?.viewIfLoaded, host.window != nil else {
+      result(FlutterError(code: "UNAVAILABLE", message: "No hosting view on screen", details: nil))
       return
     }
 
-    // A UIAlertController with a text field is the idiomatic tvOS text entry: a
-    // proper modal that captures the focus engine, so the on-screen keyboard is
-    // actually navigable. The old zero-alpha first-responder trick left the
-    // Flutter view competing for the remote, so the keyboard stayed dead.
-    let alert = MenuDismissAlertController(title: args["hint"] as? String, message: nil, preferredStyle: .alert)
-    alert.onMenuPressed = { [weak self] in
-      self?.finish(submitted: false)
+    let entry = NativeTextEntryField()
+    Self.configure(entry.textField, from: args)
+    entry.onTextChanged = { [weak self] text in
+      self?.channel?.invokeMethod("textChanged", arguments: text)
     }
-    alert.addTextField { [weak self] field in
-      guard let self = self else { return }
-      field.text = args["text"] as? String ?? ""
-      field.delegate = self
-      field.isSecureTextEntry = (args["obscure"] as? Bool) ?? false
-      field.keyboardType = Self.keyboardType(args["keyboardType"] as? String)
-      field.returnKeyType = Self.returnKeyType(args["action"] as? String)
-      field.autocorrectionType = ((args["autocorrect"] as? Bool) ?? true) ? .yes : .no
-      field.autocapitalizationType = Self.capitalization(args["capitalization"] as? String)
-      if let hint = args["hint"] as? String {
-        field.placeholder = hint
-      }
-      self.textField = field
-      NotificationCenter.default.addObserver(
-        self,
-        selector: #selector(self.textDidChange(_:)),
-        name: UITextField.textDidChangeNotification,
-        object: field)
+    entry.onDiagnostic = { [weak self] message in
+      self?.channel?.invokeMethod("diagnostic", arguments: message)
     }
-    let done = UIAlertAction(title: "Done", style: .default) { [weak self] _ in
-      self?.finish(submitted: true)
+    entry.onFinished = { [weak self] text, submitted, failure in
+      self?.finish(text: text, submitted: submitted, failure: failure)
     }
-    let cancel = UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
-      self?.finish(submitted: false)
-    }
-    alert.addAction(done)
-    alert.addAction(cancel)
-    alert.preferredAction = done
 
-    self.alert = alert
+    self.entry = entry
     pendingResult = result
-    presenter.present(alert, animated: true)
+
+    NativeInputSession.begin { [weak entry] in entry?.cancel() }
+    // Nothing is presented: the field goes straight into the Flutter view and
+    // tvOS raises its own keyboard for it. See the note on NativeTextEntryField
+    // for why a presented view controller had to go.
+    entry.attach(to: host)
   }
 
-  // MARK: - UITextFieldDelegate
-
-  func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-    finish(submitted: true)
-    return true
-  }
-
-  @objc private func textDidChange(_ note: Notification) {
-    guard let field = textField, (note.object as? UITextField) === field else { return }
-    channel?.invokeMethod("textChanged", arguments: field.text ?? "")
-  }
-
-  private func finish(submitted: Bool) {
+  private func finish(text: String, submitted: Bool, failure: String?) {
     guard let result = pendingResult else { return }
     pendingResult = nil
-    let text = textField?.text ?? ""
-    cleanup()
-    result(["text": text, "submitted": submitted])
-  }
+    entry = nil
+    // Every ending, not just cancels: a submit hands focus back to the caller's
+    // field too, and an echo there would reopen just as readily.
+    lastSessionEndedAt = ProcessInfo.processInfo.systemUptime
 
-  private func cleanup() {
-    if let field = textField {
-      NotificationCenter.default.removeObserver(self, name: UITextField.textDidChangeNotification, object: field)
+    // The field has already removed itself; handing the remote back is all
+    // that is left, and it cannot fail.
+    NativeInputSession.end()
+
+    if let failure {
+      result(FlutterError(code: failure, message: "Native text entry never became usable", details: nil))
+    } else {
+      result(["text": text, "submitted": submitted])
     }
-    textField = nil
-    alert?.dismiss(animated: true)
-    alert = nil
-    // Geef de key-press-afhandeling terug aan Flutter, anders werkt play/pause
-    // (PleyaFlutterViewController.pressesBegan) niet meer na de dialog.
-    Self.rootViewController()?.becomeFirstResponder()
   }
 
   // MARK: - Lookups
+
+  private static func configure(_ field: UITextField, from args: [String: Any]) {
+    field.text = args["text"] as? String ?? ""
+    field.isSecureTextEntry = (args["obscure"] as? Bool) ?? false
+    field.keyboardType = keyboardType(args["keyboardType"] as? String)
+    field.returnKeyType = returnKeyType(args["action"] as? String)
+    field.autocorrectionType = ((args["autocorrect"] as? Bool) ?? true) ? .yes : .no
+    field.autocapitalizationType = capitalization(args["capitalization"] as? String)
+    if let hint = args["hint"] as? String {
+      field.placeholder = hint
+    }
+  }
 
   private static func rootViewController() -> UIViewController? {
     let scenes = UIApplication.shared.connectedScenes
@@ -177,6 +155,8 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin, UITextFieldDelegate 
     switch value {
     case "url": return .URL
     case "email": return .emailAddress
+    // .numberPad/.phonePad disable system dictation, but a numeric field has
+    // nothing to dictate into anyway.
     case "number": return .numberPad
     case "phone": return .phonePad
     default: return .default

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:collection/collection.dart';
+
 import '../../utils/app_logger.dart';
 import '../models/playback_state.dart';
 import '../models/watch_session.dart';
@@ -785,18 +787,10 @@ class HostPlaybackCoordinator {
     if (toPeerId == null) {
       final previousWaiting = _lastBroadcast?.waitingOn ?? const [];
       _lastBroadcast = state;
-      if (!_listEquals(previousWaiting, waitingOn)) {
+      if (!const ListEquality<String>().equals(previousWaiting, waitingOn)) {
         _callbacks.onWaitingOnChanged?.call(waitingOn);
       }
     }
     _sendState(state, toPeerId: toPeerId);
-  }
-
-  static bool _listEquals(List<String> a, List<String> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
   }
 }

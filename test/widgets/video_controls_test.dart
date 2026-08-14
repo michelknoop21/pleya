@@ -1,20 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/media/media_version.dart';
 import 'package:pleya/models/shader_preset.dart';
 import 'package:pleya/mpv/mpv.dart';
+import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_tokens.dart';
+import 'package:pleya/watch_together/providers/watch_together_provider.dart';
 import 'package:pleya/widgets/video_controls/video_controls.dart';
+import 'package:pleya/widgets/video_controls/desktop_video_controls.dart';
 import 'package:pleya/widgets/video_controls/painters/buffer_range_painter.dart';
 import 'package:pleya/widgets/video_controls/widgets/mobile_skip_zones.dart';
 import 'package:pleya/widgets/video_controls/widgets/skip_marker_button.dart';
 import 'package:pleya/widgets/video_controls/widgets/sync_offset_control.dart';
 import 'package:pleya/widgets/video_controls/widgets/timeline_slider.dart';
 import 'package:pleya/widgets/video_controls/widgets/video_timeline_bar.dart';
+import 'package:provider/provider.dart';
 
+import '../test_helpers/prefs.dart';
 import '../test_helpers/watch_together_fakes.dart';
 
 const _testTokens = MonoTokens(
@@ -330,6 +339,60 @@ void main() {
 
       expect(activateCount, 1);
     });
+
+    testWidgets('d-pad up, left and right release focus instead of dead-ending', (tester) async {
+      final focusNode = FocusNode();
+      addTearDown(focusNode.dispose);
+      var exitCount = 0;
+
+      await _pumpSkipMarkerButton(
+        tester,
+        focusNode: focusNode,
+        isAutoSkipActive: false,
+        onActivate: () {},
+        onFocusExit: () => exitCount++,
+      );
+
+      focusNode.requestFocus();
+      await tester.pump();
+
+      for (final key in [LogicalKeyboardKey.arrowUp, LogicalKeyboardKey.arrowLeft, LogicalKeyboardKey.arrowRight]) {
+        await tester.sendKeyEvent(key);
+        await tester.pump();
+      }
+
+      expect(exitCount, 3);
+    });
+
+    testWidgets('credits at the end of the file become the next-episode button', (tester) async {
+      final focusNode = FocusNode();
+      addTearDown(focusNode.dispose);
+
+      await _pumpSkipMarkerButton(
+        tester,
+        focusNode: focusNode,
+        isAutoSkipActive: false,
+        onActivate: () {},
+        marker: MediaMarker(id: 2, type: 'credits', startTimeOffset: 1140000, endTimeOffset: 1200000),
+        playerDuration: const Duration(minutes: 20),
+        hasNextEpisode: true,
+      );
+
+      expect(find.text('Next Episode'), findsOneWidget);
+
+      // That same label also lives on the Play Next card, so the card has to
+      // win: two next-episode affordances at once is the bug this guards.
+      expect(
+        shouldShowSkipMarkerButton(
+          hasFirstFrame: true,
+          hasMarker: true,
+          hasPlayNextPrompt: true,
+          skipButtonDismissed: false,
+          controlsVisible: false,
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('mobileSkipZoneForTap', () {
@@ -559,7 +622,10 @@ void main() {
       expect(seekEnds.single.inMilliseconds, closeTo(const Duration(minutes: 7, seconds: 30).inMilliseconds, 2000));
     });
 
-    testWidgets('keyboard input does not start a scrub lifecycle', (tester) async {
+    // The scrub lifecycle for keyboard/remote input is owned by
+    // DesktopVideoControls (see the scrub-mode group below); the slider itself
+    // only reports drag scrubs, so key events must leave it silent.
+    testWidgets('keyboard input does not start a scrub lifecycle in the slider', (tester) async {
       final focusNode = FocusNode();
       addTearDown(focusNode.dispose);
       var scrubStarts = 0;
@@ -733,6 +799,202 @@ void main() {
     });
   });
 
+  group('seekMultiplierForStreak', () {
+    test('a lone press seeks by exactly the configured step', () {
+      expect(seekMultiplierForStreak(0), 1.0);
+    });
+
+    test('quickly repeated presses climb the acceleration tiers', () {
+      expect(seekMultiplierForStreak(1), 1.5);
+      expect(seekMultiplierForStreak(5), 1.5);
+      expect(seekMultiplierForStreak(6), 3.0);
+      expect(seekMultiplierForStreak(15), 3.0);
+      expect(seekMultiplierForStreak(16), 6.0);
+      expect(seekMultiplierForStreak(30), 6.0);
+      expect(seekMultiplierForStreak(31), 10.0);
+    });
+  });
+
+  group('DesktopVideoControls scrub mode', () {
+    late FakeSyncPlayer player;
+    late List<Duration> seeks;
+    late List<Duration> seekEnds;
+    late List<String> scrubLifecycle;
+
+    setUp(() async {
+      LocaleSettings.setLocaleSync(AppLocale.en);
+      await initializeDateFormatting('en');
+      resetSharedPreferencesForTest();
+      SettingsService.resetForTesting();
+      await SettingsService.getInstance();
+      seeks = [];
+      seekEnds = [];
+      scrubLifecycle = [];
+    });
+
+    tearDown(() => player.dispose());
+
+    Future<DesktopVideoControlsState> pumpControls(WidgetTester tester, {required bool playing}) async {
+      player = FakeSyncPlayer(
+        playing: playing,
+        position: const Duration(minutes: 5),
+        duration: const Duration(minutes: 10),
+      );
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final controlsKey = GlobalKey<DesktopVideoControlsState>();
+      final watchTogether = WatchTogetherProvider();
+      addTearDown(watchTogether.dispose);
+      // Bind the recorders to locals: the tree is disposed after the next
+      // test's setUp has already swapped in fresh lists.
+      final recordedSeeks = seeks;
+      final recordedSeekEnds = seekEnds;
+      final recordedLifecycle = scrubLifecycle;
+      await tester.pumpWidget(
+        ChangeNotifierProvider<WatchTogetherProvider>.value(
+          value: watchTogether,
+          child: MaterialApp(
+            theme: ThemeData(extensions: const [_testTokens]),
+            home: Scaffold(
+              body: SizedBox(
+                width: 1600,
+                height: 900,
+                child: DesktopVideoControls(
+                  key: controlsKey,
+                  player: player,
+                  metadata: MediaItem(id: '1', backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Test'),
+                  chapters: const [],
+                  chaptersLoaded: true,
+                  seekTimeSmall: 10,
+                  // ignore: no-empty-block - not exercised by these tests
+                  onSeekToPreviousChapter: () {},
+                  // ignore: no-empty-block - not exercised by these tests
+                  onSeekToNextChapter: () {},
+                  onSeek: recordedSeeks.add,
+                  onSeekEnd: recordedSeekEnds.add,
+                  onScrubStart: () => recordedLifecycle.add('start'),
+                  onScrubEnd: () => recordedLifecycle.add('end'),
+                  getReplayIcon: (_) => Icons.replay_10,
+                  getForwardIcon: (_) => Icons.forward_10,
+                  useDpadNavigation: true,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final state = controlsKey.currentState!;
+      state.requestTimelineFocus();
+      await tester.pump();
+      return state;
+    }
+
+    Duration sliderPosition(WidgetTester tester) {
+      final slider = tester.widget<Slider>(find.byType(Slider).first);
+      return Duration(milliseconds: slider.value.round());
+    }
+
+    testWidgets('select on the focused timeline pauses and opens a preview', (tester) async {
+      await pumpControls(tester, playing: true);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+
+      expect(player.commandLog, contains('pause'));
+      expect(scrubLifecycle, ['start']);
+      expect(seeks, isEmpty);
+      expect(seekEnds, isEmpty);
+    });
+
+    testWidgets('arrow keys move the preview without seeking, select commits once', (tester) async {
+      await pumpControls(tester, playing: true);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      for (var i = 0; i < 3; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        await tester.pump();
+      }
+
+      expect(seeks, isEmpty);
+      expect(seekEnds, isEmpty);
+      final previewed = sliderPosition(tester);
+      expect(previewed, greaterThan(const Duration(minutes: 5)));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+
+      expect(seekEnds, hasLength(1));
+      expect(seekEnds.single, previewed);
+      expect(scrubLifecycle, ['start', 'end']);
+      // Entering the scrub mode did the pausing, so confirming resumes.
+      expect(player.commandLog.last, 'play');
+    });
+
+    testWidgets('back cancels the preview without seeking', (tester) async {
+      await pumpControls(tester, playing: true);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(sliderPosition(tester), lessThan(const Duration(minutes: 5)));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+
+      expect(seeks, isEmpty);
+      expect(seekEnds, isEmpty);
+      expect(sliderPosition(tester), const Duration(minutes: 5));
+      expect(scrubLifecycle, ['start', 'end']);
+      expect(player.commandLog.last, 'play');
+    });
+
+    testWidgets('arrow keys on playing video keep seeking immediately', (tester) async {
+      await pumpControls(tester, playing: true);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(seeks, hasLength(1));
+      expect(seeks.single, const Duration(minutes: 5, seconds: 10));
+      expect(scrubLifecycle, isEmpty);
+      expect(player.commandLog, isNot(contains('pause')));
+    });
+
+    testWidgets('arrow keys on paused video open the preview instead of seeking', (tester) async {
+      await pumpControls(tester, playing: false);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(seeks, isEmpty);
+      expect(scrubLifecycle, ['start']);
+      expect(sliderPosition(tester), const Duration(minutes: 5, seconds: 10));
+      // The user paused, so confirming must not start playback again.
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      expect(seekEnds, hasLength(1));
+      expect(player.commandLog, isNot(contains('play')));
+    });
+
+    testWidgets('repeated clicks accelerate the seek step', (tester) async {
+      await pumpControls(tester, playing: true);
+
+      for (var i = 0; i < 8; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        await tester.pump();
+      }
+
+      expect(seeks, hasLength(8));
+      final firstStep = seeks.first - const Duration(minutes: 5);
+      final lastStep = seeks.last - const Duration(minutes: 5);
+      expect(firstStep, const Duration(seconds: 10));
+      expect(lastStep, greaterThan(const Duration(seconds: 10)));
+    });
+  });
+
   group('shouldSkipDuplicateTimelineSeek', () {
     test('skips a matching non-transcode final seek', () {
       expect(
@@ -827,6 +1089,10 @@ Future<void> _pumpSkipMarkerButton(
   required bool isAutoSkipActive,
   required VoidCallback onActivate,
   VoidCallback? onFocusDown,
+  VoidCallback? onFocusExit,
+  MediaMarker? marker,
+  Duration playerDuration = const Duration(minutes: 20),
+  bool hasNextEpisode = false,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -834,9 +1100,9 @@ Future<void> _pumpSkipMarkerButton(
       home: Scaffold(
         body: Center(
           child: SkipMarkerButton(
-            marker: MediaMarker(id: 1, type: 'intro', startTimeOffset: 10000, endTimeOffset: 45000),
-            playerDuration: const Duration(minutes: 20),
-            hasNextEpisode: false,
+            marker: marker ?? MediaMarker(id: 1, type: 'intro', startTimeOffset: 10000, endTimeOffset: 45000),
+            playerDuration: playerDuration,
+            hasNextEpisode: hasNextEpisode,
             isAutoSkipActive: isAutoSkipActive,
             shouldShowAutoSkip: true,
             autoSkipDelay: 5,
@@ -844,6 +1110,7 @@ Future<void> _pumpSkipMarkerButton(
             focusNode: focusNode,
             onActivate: onActivate,
             onFocusDown: onFocusDown ?? () {},
+            onFocusExit: onFocusExit ?? () {},
           ),
         ),
       ),

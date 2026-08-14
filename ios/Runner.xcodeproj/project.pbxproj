@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		2F296BD395FD28B5FE4153F8 /* ICloudKvsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5AEF09791812EA3DEE53491 /* ICloudKvsPlugin.swift */; };
+		B1D51A6A2F00110000000102 /* AudioSessionPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1D51A6A2F00110000000101 /* AudioSessionPlugin.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		69E1B4BB161DC9D84D1DFC62 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB346A1D0705AB171F80B11B /* Pods_Runner.framework */; };
@@ -83,6 +84,7 @@
 		BB346A1D0705AB171F80B11B /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C924A20B2FF7B7CF00A24BBC /* Podfile 2 */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Podfile 2"; sourceTree = "<group>"; };
 		D5AEF09791812EA3DEE53491 /* ICloudKvsPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ICloudKvsPlugin.swift; path = ICloudKvsPlugin.swift; sourceTree = "<group>"; };
+		B1D51A6A2F00110000000101 /* AudioSessionPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AudioSessionPlugin.swift; path = ../shared/apple/AudioSession/AudioSessionPlugin.swift; sourceTree = SOURCE_ROOT; };
 		DE48FF2E074644167608B23D /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		F3553CDE70191F0FC81A782E /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -199,6 +201,7 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				D5AEF09791812EA3DEE53491 /* ICloudKvsPlugin.swift */,
+				B1D51A6A2F00110000000101 /* AudioSessionPlugin.swift */,
 				B2C3D4E5F60718293A4B5C6D /* SecureFolderPlugin.swift */,
 			);
 			path = Runner;
@@ -450,6 +453,7 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				2F296BD395FD28B5FE4153F8 /* ICloudKvsPlugin.swift in Sources */,
+				B1D51A6A2F00110000000102 /* AudioSessionPlugin.swift in Sources */,
 				A1B2C3D4E5F60718293A4B5C /* SecureFolderPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -830,7 +834,7 @@
 			repositoryURL = "https://github.com/edde746/MPVKit";
 			requirement = {
 				kind = exactVersion;
-				version = 1.0.6;
+				version = 1.0.16;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

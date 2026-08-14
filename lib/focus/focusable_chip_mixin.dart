@@ -84,6 +84,12 @@ mixin FocusableChipStateMixin<T extends StatefulWidget> on State<T> {
   }
 
   void _onFocusChange() {
+    if (!focusNode.hasFocus) {
+      // A press in flight when focus leaves can never complete here — reset so
+      // a later, unrelated key-up isn't mistaken for our press's release.
+      _longPressTimer?.cancel();
+      _isSelectKeyDown = false;
+    }
     if (mounted) {
       setState(() => _isFocused = focusNode.hasFocus);
     }
@@ -130,9 +136,13 @@ mixin FocusableChipStateMixin<T extends StatefulWidget> on State<T> {
         } else if (event is KeyRepeatEvent) {
           return KeyEventResult.handled;
         } else if (event is KeyUpEvent) {
+          if (!_isSelectKeyDown) {
+            // Release of a press whose key-down landed elsewhere — not ours.
+            return KeyEventResult.ignored;
+          }
           final timerWasActive = _longPressTimer?.isActive ?? false;
           _longPressTimer?.cancel();
-          if (timerWasActive && _isSelectKeyDown) {
+          if (timerWasActive) {
             callbacks.onSelect?.call();
           }
           _isSelectKeyDown = false;

@@ -77,6 +77,15 @@ extension _VideoPlayerEpisodeQueueMethods on VideoPlayerScreenState {
     }
   }
 
+  /// Start an adjacent-episode load and publish the future, so end-of-video
+  /// handling can wait for a next episode that has not resolved yet instead of
+  /// treating it as "no next episode".
+  Future<void> _startAdjacentEpisodesLoad({MediaItem? metadata, _PlaybackAttempt? attempt}) {
+    final load = _loadAdjacentEpisodes(metadata: metadata, attempt: attempt);
+    _adjacentEpisodesLoad = load;
+    return load;
+  }
+
   Future<void> _loadAdjacentEpisodes({MediaItem? metadata, _PlaybackAttempt? attempt}) async {
     if (!mounted || widget.isLive) return;
 

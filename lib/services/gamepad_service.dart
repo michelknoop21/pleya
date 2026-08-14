@@ -26,8 +26,8 @@ String _describeGamepadAxis(GamepadAxisEvent event) {
   return 'axis=${event.axis} value=${event.value} gamepad=${event.gamepadId}';
 }
 
-void _logGamepadDiag(String message) {
-  TextInputDiagnostics.log('GamepadService', message);
+void _logGamepadDiag(String message, {bool highFrequency = false}) {
+  TextInputDiagnostics.log('GamepadService', message, highFrequency: highFrequency);
 }
 
 /// Suppresses synthetic gamepad key events when the OS has just delivered an
@@ -325,7 +325,10 @@ class GamepadService with WindowListener {
   }
 
   void _handleGamepadEvent(GamepadEvent event) {
-    _logGamepadDiag('event received type=${event.runtimeType} nativeTextInputFocused=$_nativeTextInputFocused');
+    _logGamepadDiag(
+      'event received type=${event.runtimeType} nativeTextInputFocused=$_nativeTextInputFocused',
+      highFrequency: event is GamepadAxisEvent,
+    );
     switch (event) {
       case final GamepadConnectionEvent e:
         appLogger.i('GamepadService: Gamepad ${e.connected ? "connected" : "disconnected"}: ${e.info.name}');
@@ -343,6 +346,13 @@ class GamepadService with WindowListener {
     );
     if (!_windowFocused) {
       _logGamepadDiag('button ignored because window is not focused ${_describeGamepadButton(event)}');
+      return;
+    }
+    // A native text surface owns the remote. Note this only ever fires for a
+    // paired MFi controller — the Siri Remote never reaches this service — but
+    // that controller would otherwise drive the UI behind the keyboard.
+    if (_nativeTextInputFocused) {
+      _logGamepadDiag('button ignored for native text input ${_describeGamepadButton(event)}');
       return;
     }
 
@@ -442,9 +452,14 @@ class GamepadService with WindowListener {
   void _handleAxis(GamepadAxisEvent event) {
     _logGamepadDiag(
       'axis received ${_describeGamepadAxis(event)} windowFocused=$_windowFocused nativeTextInputFocused=$_nativeTextInputFocused',
+      highFrequency: true,
     );
     if (!_windowFocused) {
-      _logGamepadDiag('axis ignored because window is not focused ${_describeGamepadAxis(event)}');
+      _logGamepadDiag('axis ignored because window is not focused ${_describeGamepadAxis(event)}', highFrequency: true);
+      return;
+    }
+    if (_nativeTextInputFocused) {
+      _logGamepadDiag('axis ignored for native text input ${_describeGamepadAxis(event)}', highFrequency: true);
       return;
     }
 
@@ -466,6 +481,12 @@ class GamepadService with WindowListener {
   }
 
   void _moveFocus(TraversalDirection direction) {
+    // The repeat timer can outlive the press that started it, so gate here too
+    // rather than only on the incoming event.
+    if (_nativeTextInputFocused) {
+      _logGamepadDiag('moveFocus ignored for native text input direction=$direction');
+      return;
+    }
     // Convert direction to arrow key and simulate a key press
     // This allows widgets like HubSection that intercept key events to handle navigation
     final logicalKey = _directionToKey(direction);

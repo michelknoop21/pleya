@@ -441,6 +441,10 @@ abstract class PlayerBase with PlayerStreamControllersMixin implements Player {
             language: cleanTrackMetadataValue(track['lang'] as String?),
             codec: track['codec'] as String?,
             channels: (track['demux-channel-count'] as num?)?.toInt(),
+            // Where mpv exposes it, the profile is the only place Atmos is
+            // named — `codec` says `eac3` either way.
+            profile: track['codec-profile'] as String?,
+            channelLayout: track['demux-channels'] as String?,
             sampleRate: (track['demux-samplerate'] as num?)?.toInt(),
             isDefault: track['default'] as bool? ?? false,
           ),

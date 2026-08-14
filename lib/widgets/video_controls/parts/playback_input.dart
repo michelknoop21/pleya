@@ -5,7 +5,7 @@ extension _PlexVideoControlsPlaybackInputMethods on _PlexVideoControlsState {
 
   void _onRateChanged(double newRate) {
     if (!mounted) return;
-    if (_isLongPressing) return;
+    if (_rateBoost.isActive) return;
     if (_suppressRateToastUntil != null && DateTime.now().isBefore(_suppressRateToastUntil!)) return;
     final prev = _lastReportedRate;
     if (prev != null && (prev - newRate).abs() < 0.005) return;
@@ -303,7 +303,7 @@ extension _PlexVideoControlsPlaybackInputMethods on _PlexVideoControlsState {
     }
 
     _suppressTouchTaps();
-    if (_isLongPressing) _handleLongPressCancel();
+    if (_rateBoost.isActive) _handleLongPressCancel();
 
     final Future<double?>? future;
     final int generation;
@@ -351,7 +351,7 @@ extension _PlexVideoControlsPlaybackInputMethods on _PlexVideoControlsState {
 
   void _startEdgeAdjustment(MobileEdgeAdjustmentSide side, double deltaFraction, {required double startValue}) {
     _suppressTouchTaps();
-    if (_isLongPressing) _handleLongPressCancel();
+    if (_rateBoost.isActive) _handleLongPressCancel();
     _edgeAdjustmentIndicatorHideTimer?.cancel();
     _edgeAdjustmentIndicatorClearTimer?.cancel();
     _edgeAdjustmentWasActive = true;
@@ -597,33 +597,26 @@ extension _PlexVideoControlsPlaybackInputMethods on _PlexVideoControlsState {
   /// Handle long-press start - activate 2x speed
   void _handleLongPressStart() {
     if (!widget.canControl || widget.isLive) return;
-    // Re-entrant start (overlapping gesture detectors / second finger) must
-    // not overwrite the captured pre-press rate with the boosted 2.0 — the
-    // release would then "restore" 2x and playback stays fast forever.
-    if (_isLongPressing) return;
+    // A re-entrant start (overlapping gesture detectors / second finger) is a
+    // no-op inside engage, so the captured pre-press rate can never be
+    // overwritten with the boosted 2.0.
+    if (!_rateBoost.engage(widget.player.state.rate)) return;
 
     Haptics.light();
-    _setControlsState(() {
-      _isLongPressing = true;
-      _rateBeforeLongPress = widget.player.state.rate;
-      _showSpeedIndicator = true;
-    });
+    _setControlsState(() => _showSpeedIndicator = true);
     widget.player.setRate(2.0);
   }
 
   /// Handle long-press end - restore original speed
   void _handleLongPressEnd() {
-    if (!_isLongPressing) return;
+    final priorRate = _rateBoost.release();
+    if (priorRate == null) return;
     Haptics.light();
     // Swallow the rate-restore emission so the stream-driven toast doesn't
     // flash as the rate snaps back to the prior value.
     _suppressRateToastUntil = DateTime.now().add(const Duration(milliseconds: 250));
-    widget.player.setRate(_rateBeforeLongPress ?? 1.0);
-    _setControlsState(() {
-      _isLongPressing = false;
-      _rateBeforeLongPress = null;
-      _showSpeedIndicator = false;
-    });
+    widget.player.setRate(priorRate);
+    _setControlsState(() => _showSpeedIndicator = false);
   }
 
   void _handleLongPressCancel() => _handleLongPressEnd();

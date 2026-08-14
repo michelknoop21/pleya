@@ -136,6 +136,10 @@ List<MediaStream> _mediaStreamsFromPlexPart(Object? raw, {Map<String, dynamic>? 
         displayTitle: stream['displayTitle']?.toString() ?? stream['extendedDisplayTitle']?.toString(),
         selected: flexibleBool(stream['selected']) || flexibleBool(stream['default']),
         channels: flexibleInt(stream['channels']),
+        // Plex spells the Atmos marker here (`audioProfile: "atmos"` on an
+        // ec-3 track), never in `codec`.
+        profile: kind == MediaStreamKind.audio ? stream['audioProfile']?.toString() : null,
+        channelLayout: kind == MediaStreamKind.audio ? stream['audioChannelLayout']?.toString() : null,
         frameRate: flexibleDouble(stream['frameRate']),
         hdr: isHdr,
         dolbyVision: isDolbyVision,
@@ -187,6 +191,7 @@ List<MediaStream> _fallbackStreamsFromPlexMedia(Map<String, dynamic>? media, Map
         kind: MediaStreamKind.audio,
         codec: audioCodec,
         channels: audioChannels,
+        profile: media['audioProfile']?.toString(),
         selected: true,
       ),
     );

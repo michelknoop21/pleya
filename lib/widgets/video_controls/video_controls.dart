@@ -61,6 +61,7 @@ import '../../utils/player_utils.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/provider_extensions.dart';
 import '../../utils/snackbar_helper.dart';
+import '../../utils/temporary_override.dart';
 import 'icons.dart';
 import 'player_chrome_controller.dart';
 import 'playback_extras_loader.dart';
@@ -491,14 +492,13 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
   // Performance overlay
   bool get _showPerformanceOverlay => _settings.read(SettingsService.showPerformanceOverlay);
   bool get _autoHidePerformanceOverlay => _settings.read(SettingsService.autoHidePerformanceOverlay);
-  // Long-press 2x speed state
-  bool _isLongPressing = false;
+  // Long-press 2x speed: holds the pre-press rate while boosted.
+  final _rateBoost = TemporaryOverride<double>();
   // Subtitle visibility toggle state
   bool _subtitlesVisible = true;
   // Skip marker button focus node (for TV D-pad navigation)
   late final FocusNode _skipMarkerFocusNode;
   final ValueNotifier<bool> _fallbackHasFirstFrame = ValueNotifier<bool>(true);
-  double? _rateBeforeLongPress;
   bool _showSpeedIndicator = false;
   StreamSubscription<double>? _rateSubscription;
   double? _lastReportedRate;
@@ -687,8 +687,9 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
     _skipMarkerFocusNode.dispose();
     _fallbackHasFirstFrame.dispose();
     // Restore original rate if long-press was active when disposed
-    if (_isLongPressing && _rateBeforeLongPress != null) {
-      widget.player.setRate(_rateBeforeLongPress!);
+    final priorRate = _rateBoost.release();
+    if (priorRate != null) {
+      widget.player.setRate(priorRate);
     }
     // Remove window listener and reset always-on-top if it was enabled
     if (PlatformDetector.isDesktopOS()) {

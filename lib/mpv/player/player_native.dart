@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 
 import '../../media/media_display_criteria.dart';
 import '../../services/secure_folder_service.dart';
+import '../../utils/app_logger.dart';
+import '../disc_source.dart';
 import '../models.dart';
 import 'player_base.dart';
 
@@ -216,6 +218,26 @@ class PlayerNative extends PlayerBase {
       // before libmpv can open it by path. No-op for Pleya's own downloads.
       final filePath = uri.startsWith('file://') ? Uri.parse(uri).toFilePath() : uri;
       uri = await SecureFolderService.instance.resolvePlaybackPath(filePath);
+    }
+
+    // A disc image or an unpacked BDMV/VIDEO_TS folder is a filesystem, not a
+    // stream: mpv has to be pointed at it as a device and asked for a disc URL,
+    // or it tries to demux the image and reports a corrupt file.
+    //
+    // Deliberately after the path rewriting above — libbluray opens the path
+    // itself, so it needs the security-scoped path on iOS/macOS, not the raw
+    // one. Handing it an unresolved path fails as a permission error that reads
+    // like a damaged disc.
+    final disc = detectDiscSource(uri);
+    if (disc != null) {
+      if (disc.kind == DiscKind.dvd && !platformSupportsDvd) {
+        // This build's mpv has no dvdnav; say so instead of letting it fail as
+        // an unreadable stream.
+        throw const UnsupportedDiscException(DiscKind.dvd);
+      }
+      appLogger.i('Opening as ${disc.kind.name} disc: ${disc.devicePath}');
+      await setProperty('bluray-device', disc.devicePath);
+      uri = disc.mpvUri;
     }
 
     final loadfileArgs = ['loadfile', uri, 'replace'];

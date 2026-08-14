@@ -13,6 +13,7 @@ import '../media/ids.dart';
 import '../media/library_filter_result.dart';
 import '../media/library_first_character.dart';
 import '../media/library_query.dart';
+import '../media/live_tv_dvr_support.dart';
 import '../media/live_tv_support.dart';
 import '../media/media_backend.dart';
 import '../media/media_file_info.dart';
@@ -60,7 +61,19 @@ const _videoExtensions = {
   '.vob',
   '.3gp',
   '.ogv',
+  // Disc image. Handed to libbluray as a device at playback time rather than
+  // demuxed as a stream — see lib/mpv/disc_source.dart.
+  '.iso',
 };
+
+/// Folder names that mark an unpacked disc. A folder holding one of these is a
+/// single playable item, not a folder to descend into: `.m2ts` is a recognised
+/// video extension, so an unpacked Blu-ray would otherwise scan as a few
+/// hundred stream files. This is exactly how they sit on a NAS.
+const _discStructureFolders = {'BDMV', 'VIDEO_TS'};
+
+bool _isDiscFolderListing(List<SafDocumentFile> children) =>
+    children.any((c) => c.isDir && _discStructureFolders.contains(c.name.toUpperCase()));
 
 /// Regex to extract title + year from movie filenames like "Movie Name (2024).mkv"
 /// or "Movie.Name.2024.mkv". Greedy match up to the last 4-digit year in parens.
@@ -207,6 +220,9 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
 
   @override
   LiveTvSupport get liveTv => const NoopLiveTvSupport();
+
+  @override
+  LiveTvDvrSupport? get liveTvDvr => null;
 
   // ---------------------------------------------------------------------------
   // Library browsing
@@ -915,6 +931,12 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
     final children = await SafStorageService.instance.list(folder.uri);
     if (children == null) return;
 
+    // An unpacked disc is one movie, not a folder of streams.
+    if (_isDiscFolderListing(children)) {
+      _cacheItem(_parseMovieFile(folder, connection.id));
+      return;
+    }
+
     for (final child in children) {
       if (!child.isDir && _isVideoFile(child.name)) {
         final item = _parseMovieFile(child, connection.id, folderName: folder.name);
@@ -1150,6 +1172,11 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   Future<void> _scanGenericFolder(SafDocumentFile folder, String libraryId) async {
     final children = await SafStorageService.instance.list(folder.uri);
     if (children == null) return;
+
+    if (_isDiscFolderListing(children)) {
+      _cacheItem(_parseMovieFile(folder, libraryId));
+      return;
+    }
 
     for (final child in children) {
       if (!child.isDir && _isVideoFile(child.name)) {

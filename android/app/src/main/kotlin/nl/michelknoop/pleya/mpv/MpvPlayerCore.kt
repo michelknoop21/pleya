@@ -765,7 +765,11 @@ class MpvPlayerCore(private val activity: Activity) : SurfaceHolder.Callback {
       "cache-speed" to getProperty("cache-speed"),
       "frame-drop-count" to getProperty("frame-drop-count"),
       "decoder-frame-drop-count" to getProperty("decoder-frame-drop-count"),
-      "demuxer-cache-duration" to getProperty("demuxer-cache-duration")
+      "demuxer-cache-duration" to getProperty("demuxer-cache-duration"),
+      // Which audio output came up and in what sample format — a `spdif-*`
+      // format is the only proof a bitstream reached the far end.
+      "current-ao" to getProperty("current-ao"),
+      "audio-out-params/format" to getProperty("audio-out-params/format")
     )
 
     if (hasVideo) {

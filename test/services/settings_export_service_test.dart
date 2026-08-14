@@ -456,7 +456,7 @@ void main() {
       await prefs.setBool('enable_hardware_decoding', true);
       await prefs.setInt('seek_time_small', 15);
       await prefs.setDouble('volume', 0.75);
-      await prefs.setString('preferred_video_codec', 'h264');
+      await prefs.setString('subtitle_text_color', '#FFFFFF');
       await prefs.setStringList('shader_list', const ['a', 'b', 'c']);
       // User-scoped data for "alice".
       await prefs.setStringList('user_alice_library_order', const ['lib-1', 'lib-2']);
@@ -487,7 +487,7 @@ void main() {
       expect(prefs.getBool('enable_hardware_decoding'), isTrue);
       expect(prefs.getInt('seek_time_small'), 15);
       expect(prefs.getDouble('volume'), 0.75);
-      expect(prefs.getString('preferred_video_codec'), 'h264');
+      expect(prefs.getString('subtitle_text_color'), '#FFFFFF');
       expect(prefs.getStringList('shader_list'), ['a', 'b', 'c']);
       expect(prefs.getStringList('user_alice_library_order'), ['lib-1', 'lib-2']);
 

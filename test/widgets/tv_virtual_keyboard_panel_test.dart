@@ -139,6 +139,52 @@ void main() {
     // ...and it genuinely did not treat it as text.
     expect(controller.text, isEmpty);
   });
+
+  testWidgets('key highlight dims when the panel loses focus', (tester) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    final other = FocusNode(debugLabel: 'elsewhere');
+    addTearDown(other.dispose);
+
+    TvDetectionService.debugSetAppleTVOverride(true);
+    await tester.binding.setSurfaceSize(const Size(1280, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              Focus(focusNode: other, child: const SizedBox(width: 10, height: 10)),
+              Expanded(
+                child: Center(child: TvVirtualKeyboardPanel(controller: controller, showPreview: false)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final primary = Theme.of(tester.element(find.byType(TvVirtualKeyboardPanel))).colorScheme.primary;
+    bool anyKeyHighlighted() => tester
+        .widgetList<AnimatedContainer>(
+          find.descendant(
+            of: find.byKey(const Key('tv_virtual_keyboard_panel')),
+            matching: find.byType(AnimatedContainer),
+          ),
+        )
+        .any((c) => (c.decoration as BoxDecoration?)?.color == primary);
+
+    expect(anyKeyHighlighted(), isTrue, reason: 'focused panel shows its cursor key');
+
+    // A lit key under an unfocused panel promises keystrokes that would land
+    // elsewhere — it must dim the moment focus leaves.
+    other.requestFocus();
+    await tester.pumpAndSettle();
+
+    expect(anyKeyHighlighted(), isFalse, reason: 'unfocused panel shows no lit key');
+  });
 }
 
 Future<void> _pumpPanel(

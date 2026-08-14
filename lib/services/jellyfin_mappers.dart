@@ -438,6 +438,10 @@ class JellyfinMappers {
             defaultSubtitleStreamIndex: defaultSubtitleStreamIndex,
           ),
           channels: f.channels,
+          // Jellyfin puts the Atmos marker in `Profile` (e.g. "Dolby Digital+
+          // + Dolby Atmos"); `ChannelLayout` gives the real bed layout.
+          profile: kind == MediaStreamKind.audio ? s['Profile']?.toString() : null,
+          channelLayout: kind == MediaStreamKind.audio ? s['ChannelLayout']?.toString() : null,
           frameRate: f.frameRate,
           hdr: isVideo && jellyfinVideoStreamIsHdr(source ?? const <String, dynamic>{}, s),
           dolbyVision: isDolbyVision,

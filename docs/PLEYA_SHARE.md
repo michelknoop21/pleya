@@ -65,8 +65,15 @@ de bestaande HTTP-stack (`pleya_share_aware.dart`). Volgorde: LAN -> Aware -> re
 
 ## Server-side vereiste (ice.pleya.app)
 Arbitraire rooms (`ps-<hostId>`, >2 peers), object-payloads pass-through in `sendTo`
-(met `from`), text-frames tot ~90KB, `ping`→`pong`. Getest tegen lokale stub;
-productie-relay nog te verifiëren.
+(met `from`), text-frames tot ~90KB, `ping`→`pong`. Getest tegen lokale stub.
+
+De productierelay was nooit geverifieerd om een simpelere reden dan gedacht:
+**`ice.pleya.app` bestond niet**. De implementatie stond wel klaar in `server/`
+(`/relay` via `handleWS`), maar `Caddyfile` en `docker-compose.yml` stonden na de
+rebrand nog op `ice.plezy.app`. Sinds 2026-08-10 draait de host wel, achter een
+Cloudflare Tunnel op de NAS; zie `server/README.md` voor de opzet en
+[DEC-014](DECISIONS.md#dec-014) voor de hostingkeuze. Het framecontract hierboven
+is daarmee **testbaar geworden maar nog niet getest** tegen productie.
 
 ## Tests
 `test/services/pleya_share_*`: host/client E2E, pairAny, relay-stub (pairing, ranged

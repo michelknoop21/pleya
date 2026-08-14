@@ -10,6 +10,7 @@ import '../../media/ids.dart';
 import '../../media/library_filter_result.dart';
 import '../../media/library_first_character.dart';
 import '../../media/library_query.dart';
+import '../../media/live_tv_dvr_support.dart';
 import '../../media/live_tv_support.dart';
 import '../../media/media_backend.dart';
 import '../../media/media_file_info.dart';
@@ -208,6 +209,9 @@ class PleyaShareClient implements MediaServerClient, ServerMatchableClient {
 
   @override
   LiveTvSupport get liveTv => const NoopLiveTvSupport();
+
+  @override
+  LiveTvDvrSupport? get liveTvDvr => null;
 
   // ── Library browsing ──
 

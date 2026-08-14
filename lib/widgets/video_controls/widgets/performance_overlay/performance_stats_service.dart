@@ -155,6 +155,8 @@ class PerformanceStatsService {
         audioSamplerate: _parseInt(statsMap['audio-params/samplerate'] as String?),
         audioChannels: statsMap['audio-params/hr-channels'] as String?,
         audioBitrate: _parseInt(statsMap['audio-bitrate'] as String?),
+        currentAo: statsMap['current-ao'] as String?,
+        audioOutFormat: statsMap['audio-out-params/format'] as String?,
         avsyncChange: _parseDouble(statsMap['total-avsync-change'] as String?),
         cacheUsed: _parseInt(statsMap['cache-used'] as String?),
         cacheLimit: _parseInt(statsMap['demuxer-max-bytes'] as String?),
@@ -246,6 +248,11 @@ class PerformanceStatsService {
       player.getProperty('frame-drop-count'), // 15
       player.getProperty('decoder-frame-drop-count'), // 16
       player.getProperty('demuxer-cache-duration'), // 17
+      // Which audio output came up and in what sample format. Together they
+      // are the only in-app answer to "did the Dolby bitstream actually get
+      // out"; the requested setting says nothing about what mpv settled on.
+      player.getProperty('current-ao'), // 18
+      player.getProperty('audio-out-params/format'), // 19
     ]);
 
     final hasVideo = results[1] != null;
@@ -301,6 +308,8 @@ class PerformanceStatsService {
       frameDropCount: _parseInt(results[15]),
       decoderFrameDropCount: _parseInt(results[16]),
       cacheDuration: _parseDouble(results[17]),
+      currentAo: results[18],
+      audioOutFormat: results[19],
       // Video-dependent properties
       displayFps: _parseDouble(videoResults?.first),
       pixelformat: videoResults?[1],

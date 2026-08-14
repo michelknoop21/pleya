@@ -86,20 +86,28 @@ class ManagedHttpClient extends http.BaseClient {
   Future<void> _closeGracefully(Duration drainTimeout) async {
     await _abortActive();
 
+    var drainTimedOut = false;
     if (_active.isNotEmpty) {
       try {
         await Future.wait(_active.map((request) => request.done), eagerError: false).timeout(drainTimeout);
       } on TimeoutException {
-        appLogger.w('HTTP client drain timed out', error: {'client': debugLabel, 'activeRequests': _active.length});
+        drainTimedOut = true;
       }
     }
 
     _tryCloseInner();
+    // One line per close instead of two. A drain timeout is always followed by
+    // the deferred-close line saying the same thing about the same client, and
+    // a server whose endpoints all time out closes a client per candidate — a
+    // single unreachable server produced two dozen warnings that way, which
+    // buries the one line that says *which* server it was.
     if (!_innerClosed) {
       appLogger.w(
         'HTTP client close deferred until active requests finish',
-        error: {'client': debugLabel, 'activeRequests': _active.length},
+        error: {'client': debugLabel, 'activeRequests': _active.length, 'drainTimedOut': drainTimedOut},
       );
+    } else if (drainTimedOut) {
+      appLogger.d('HTTP client drain timed out, closed anyway', error: {'client': debugLabel});
     }
   }
 

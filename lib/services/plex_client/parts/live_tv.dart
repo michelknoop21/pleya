@@ -20,6 +20,7 @@ mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
     Map<String, dynamic>? queryParameters,
     // ignore: unused_element_parameter
     Map<String, String>? headers,
+    // ignore: unused_element_parameter
     Duration? timeout,
     // ignore: unused_element_parameter
     AbortController? abort,
@@ -197,240 +198,10 @@ mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
     return dvrs.isNotEmpty;
   }
 
-  Future<LiveTvServerStatus> getLiveTvServerStatus() async {
-    final response = await _getWithFailover('/');
-    final container = _getMediaContainer(response);
-    return LiveTvServerStatus.fromJson(container ?? const <String, dynamic>{});
-  }
-
-  Future<LiveTvDvr?> getDvr(String dvrId) async {
-    final response = await _getWithFailover('/livetv/dvrs/$dvrId');
-    final container = _getMediaContainer(response);
-    final rootMappings = container?['ChannelMapping'];
-    return _extractFirst(response, const ['Dvr'], (json) {
-      final map = Map<String, dynamic>.from(json)..putIfAbsent('ChannelMapping', () => rootMappings);
-      return LiveTvDvr.fromJson(map);
-    });
-  }
-
-  Future<LiveTvActivityResult<LiveTvDvr?>> createDvr({
-    required List<String> devices,
-    required List<String> lineups,
-    String? language,
-    String? country,
-    String? postalCode,
-  }) async {
-    final response = await _http.post(
-      '/livetv/dvrs',
-      queryParameters: {
-        'device': devices,
-        'lineup': lineups,
-        ...?(language == null ? null : {'language': language}),
-        ...?(country == null ? null : {'country': country}),
-        ...?(postalCode == null ? null : {'postalCode': postalCode}),
-      },
-      timeout: MediaServerTimeouts.receive,
-    );
-    _throwIfFailed(response);
-    return LiveTvActivityResult(
-      value: _extractFirst(response, const ['Dvr'], LiveTvDvr.fromJson),
-      activityUuid: _activityUuid(response),
-    );
-  }
-
-  Future<void> deleteDvr(String dvrId) => _expectOk(() => _http.delete('/livetv/dvrs/$dvrId'));
-
-  Future<void> updateDvrPrefs(String dvrId, Map<String, Object?> prefs) =>
-      _expectOk(() => _http.put('/livetv/dvrs/$dvrId/prefs', queryParameters: prefs));
-
-  Future<void> attachDeviceToDvr(String dvrId, String deviceId) =>
-      _expectOk(() => _http.put('/livetv/dvrs/$dvrId/devices/$deviceId'));
-
-  Future<void> detachDeviceFromDvr(String dvrId, String deviceId) =>
-      _expectOk(() => _http.delete('/livetv/dvrs/$dvrId/devices/$deviceId'));
-
-  Future<void> addLineupToDvr(String dvrId, String lineupUri) =>
-      _expectOk(() => _http.put('/livetv/dvrs/$dvrId/lineups', queryParameters: {'lineup': lineupUri}));
-
-  Future<void> removeLineupFromDvr(String dvrId, String lineupUri) =>
-      _expectOk(() => _http.delete('/livetv/dvrs/$dvrId/lineups', queryParameters: {'lineup': lineupUri}));
-
   Future<LiveTvActivityResult<void>> reloadGuide(String dvrId) async {
     final response = await _http.post('/livetv/dvrs/$dvrId/reloadGuide', timeout: MediaServerTimeouts.receive);
     _throwIfFailed(response);
     return LiveTvActivityResult(value: null, activityUuid: _activityUuid(response));
-  }
-
-  Future<void> cancelGuideReload(String dvrId) => _expectOk(() => _http.delete('/livetv/dvrs/$dvrId/reloadGuide'));
-
-  Future<List<MediaGrabber>> getGrabbers({String? protocol}) async {
-    final response = await _getWithFailover(
-      '/media/grabbers',
-      queryParameters: {
-        ...?(protocol == null ? null : {'protocol': protocol}),
-      },
-    );
-    return _extractContainerList(response, const ['MediaGrabber'], MediaGrabber.fromJson);
-  }
-
-  Future<List<MediaGrabberDevice>> getGrabberDevices() async {
-    final response = await _getWithFailover('/media/grabbers/devices');
-    return _extractContainerList(response, const ['Device', 'Devices'], MediaGrabberDevice.fromJson);
-  }
-
-  Future<LiveTvActivityResult<List<MediaGrabberDevice>>> discoverGrabberDevices() async {
-    final response = await _http.post('/media/grabbers/devices/discover', timeout: MediaServerTimeouts.receive);
-    _throwIfFailed(response);
-    return LiveTvActivityResult(
-      value: _extractContainerList(response, const ['Device', 'Devices'], MediaGrabberDevice.fromJson),
-      activityUuid: _activityUuid(response),
-    );
-  }
-
-  Future<MediaGrabberDevice?> getGrabberDevice(String deviceId) async {
-    final response = await _getWithFailover('/media/grabbers/devices/$deviceId');
-    return _extractFirst(response, const ['Device', 'Devices'], MediaGrabberDevice.fromJson);
-  }
-
-  Future<MediaGrabberDevice?> addGrabberDevice(String uri, {String? grabberId}) async {
-    final path = grabberId == null ? '/media/grabbers/devices' : '/media/grabbers/$grabberId/devices';
-    final response = await _http.post(path, queryParameters: {'uri': uri});
-    _throwIfFailed(response);
-    return _extractFirst(response, const ['Device', 'Devices'], MediaGrabberDevice.fromJson);
-  }
-
-  Future<void> updateGrabberDevice(String deviceId, {bool? enabled, String? title}) => _expectOk(
-    () => _http.put(
-      '/media/grabbers/devices/$deviceId',
-      queryParameters: {
-        ...?(enabled == null ? null : {'enabled': enabled ? 1 : 0}),
-        ...?(title == null ? null : {'title': title}),
-      },
-    ),
-  );
-
-  Future<void> deleteGrabberDevice(String deviceId) =>
-      _expectOk(() => _http.delete('/media/grabbers/devices/$deviceId'));
-
-  Future<List<MediaGrabberDeviceChannel>> getGrabberDeviceChannels(String deviceId) async {
-    final response = await _getWithFailover('/media/grabbers/devices/$deviceId/channels');
-    return _extractContainerList(response, const ['DeviceChannel'], MediaGrabberDeviceChannel.fromJson);
-  }
-
-  Future<LiveTvActivityResult<MediaGrabberDevice?>> scanGrabberDevice(
-    String deviceId, {
-    String? source,
-    Map<String, Object?> prefs = const {},
-    String? network,
-    String? country,
-  }) async {
-    final response = await _http.post(
-      '/media/grabbers/devices/$deviceId/scan',
-      queryParameters: {
-        ...?(source == null ? null : {'source': source}),
-        for (final entry in prefs.entries) 'prefs[${entry.key}]': entry.value,
-        ...?(network == null ? null : {'network': network}),
-        ...?(country == null ? null : {'country': country}),
-      },
-      timeout: MediaServerTimeouts.receive,
-    );
-    _throwIfFailed(response);
-    return LiveTvActivityResult(
-      value: _extractFirst(response, const ['Device', 'Devices'], MediaGrabberDevice.fromJson),
-      activityUuid: _activityUuid(response),
-    );
-  }
-
-  Future<MediaGrabberDevice?> cancelGrabberDeviceScan(String deviceId) async {
-    final response = await _http.delete('/media/grabbers/devices/$deviceId/scan');
-    _throwIfFailed(response);
-    return _extractFirst(response, const ['Device', 'Devices'], MediaGrabberDevice.fromJson);
-  }
-
-  Future<MediaGrabberDevice?> saveGrabberDeviceChannelMap(
-    String deviceId,
-    MediaGrabberChannelMapRequest request,
-  ) async {
-    final response = await _http.put(
-      '/media/grabbers/devices/$deviceId/channelmap',
-      queryParameters: {
-        if (request.channelsEnabled.isNotEmpty) 'channelsEnabled': request.channelsEnabled.join(','),
-        for (final entry in request.channelMapping.entries) 'channelMapping[${entry.key}]': entry.value,
-        for (final entry in request.channelMappingByKey.entries) 'channelMappingByKey[${entry.key}]': entry.value,
-      },
-    );
-    _throwIfFailed(response);
-    return _extractFirst(response, const ['Device', 'Devices'], MediaGrabberDevice.fromJson);
-  }
-
-  Future<void> updateGrabberDevicePrefs(String deviceId, Map<String, Object?> prefs) =>
-      _expectOk(() => _http.put('/media/grabbers/devices/$deviceId/prefs', queryParameters: prefs));
-
-  String buildGrabberDeviceThumbUrl(String deviceId, int version) =>
-      '${config.baseUrl}/media/grabbers/devices/$deviceId/thumb/$version'.withPlexToken(config.token);
-
-  Future<List<LiveTvCountry>> getEpgCountries() async {
-    final response = await _getWithFailover('/livetv/epg/countries');
-    return _extractContainerList(response, const ['Country'], LiveTvCountry.fromJson);
-  }
-
-  Future<List<LiveTvLanguage>> getEpgLanguages() async {
-    final response = await _getWithFailover('/livetv/epg/languages');
-    return _extractContainerList(response, const ['Language'], LiveTvLanguage.fromJson);
-  }
-
-  Future<List<LiveTvRegion>> getEpgRegions(String country, String epgId) async {
-    final response = await _getWithFailover('/livetv/epg/countries/$country/$epgId/regions');
-    return _extractContainerList(response, const ['Region'], LiveTvRegion.fromJson);
-  }
-
-  Future<LiveTvLineupResult> getEpgLineups(String country, String epgId, {String? postalCode, String? region}) async {
-    final path = region == null
-        ? '/livetv/epg/countries/$country/$epgId/lineups'
-        : '/livetv/epg/countries/$country/$epgId/regions/$region/lineups';
-    final response = await _getWithFailover(
-      path,
-      queryParameters: {
-        ...?(postalCode == null ? null : {'postalCode': postalCode}),
-      },
-    );
-    final container = _getMediaContainer(response);
-    return LiveTvLineupResult(
-      lineupGroupUuid: container?['uuid'] as String?,
-      lineups: _extractContainerList(response, const ['Lineup'], LiveTvLineup.fromJson),
-    );
-  }
-
-  Future<List<LiveTvChannel>> getEpgChannelsForLineup(String lineupUri) async {
-    final response = await _getWithFailover('/livetv/epg/channels', queryParameters: {'lineup': lineupUri});
-    return _extractContainerList(response, const [
-      'Channel',
-    ], (json) => LiveTvChannel.fromJson(json).copyWith(serverId: serverId, serverName: serverName));
-  }
-
-  Future<List<LiveTvLineup>> getEpgChannelsForLineups(List<String> lineupUris) async {
-    final response = await _getWithFailover('/livetv/epg/lineupchannels', queryParameters: {'lineup': lineupUris});
-    return _extractContainerList(response, const ['Lineup'], LiveTvLineup.fromJson);
-  }
-
-  Future<List<ChannelMapping>> computeEpgChannelMap({required String deviceUri, required String lineupUri}) async {
-    final response = await _getWithFailover(
-      '/livetv/epg/channelmap',
-      queryParameters: {'device': deviceUri, 'lineup': lineupUri},
-    );
-    return _extractContainerList(response, const ['ChannelMapping'], ChannelMapping.fromJson);
-  }
-
-  Future<LiveTvActivityResult<Map<String, dynamic>?>> findBestLineup({
-    required String deviceUri,
-    required String lineupGroupUri,
-  }) async {
-    final response = await _getWithFailover(
-      '/livetv/epg/lineup',
-      queryParameters: {'device': deviceUri, 'lineupGroup': lineupGroupUri},
-      timeout: MediaServerTimeouts.receive,
-    );
-    return LiveTvActivityResult(value: _getMediaContainer(response), activityUuid: _activityUuid(response));
   }
 
   /// Get EPG channels using provider lineup endpoints (matches official Plex web client)
@@ -710,18 +481,6 @@ mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
     return _extractContainerList(response, const ['MediaSubscription'], MediaSubscription.fromJson);
   }
 
-  Future<MediaSubscription?> getRecordingRule(
-    String subscriptionId, {
-    bool includeGrabs = true,
-    bool includeStorage = true,
-  }) async {
-    final response = await _getWithFailover(
-      '/media/subscriptions/$subscriptionId',
-      queryParameters: {'includeGrabs': includeGrabs ? 1 : 0, 'includeStorage': includeStorage ? 1 : 0},
-    );
-    return _extractFirst(response, const ['MediaSubscription'], MediaSubscription.fromJson);
-  }
-
   Future<MediaSubscription?> createRecordingRule(MediaSubscriptionCreateRequest request) async {
     final response = await _http.post(_withQuery('/media/subscriptions', _subscriptionCreateQuery(request)));
     _throwIfFailed(response);
@@ -739,17 +498,6 @@ mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
 
   Future<void> deleteRecordingRule(String subscriptionId) =>
       _expectOk(() => _http.delete('/media/subscriptions/$subscriptionId'));
-
-  Future<MediaSubscription?> moveRecordingRule(String subscriptionId, {String? afterSubscriptionId}) async {
-    final response = await _http.put(
-      '/media/subscriptions/$subscriptionId/move',
-      queryParameters: {
-        ...?(afterSubscriptionId == null ? null : {'after': afterSubscriptionId}),
-      },
-    );
-    _throwIfFailed(response);
-    return _extractFirst(response, const ['MediaSubscription'], MediaSubscription.fromJson);
-  }
 
   Future<void> processRecordingRules() => _expectOk(() => _http.post('/media/subscriptions/process'));
 
@@ -780,19 +528,6 @@ mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
     );
     return _extractContainerList(response, const ['MediaSubscription'], MediaSubscription.fromJson);
   }
-
-  Future<List<MediaProviderInfo>> getMediaProviders() async {
-    final response = await _getWithFailover('/media/providers');
-    return _extractContainerList(response, const ['MediaProvider'], MediaProviderInfo.fromJson);
-  }
-
-  Future<void> registerMediaProvider(String url) =>
-      _expectOk(() => _http.post('/media/providers', queryParameters: {'url': url}));
-
-  Future<void> refreshMediaProviders() => _expectOk(() => _http.post('/media/providers/refresh'));
-
-  Future<void> unregisterMediaProvider(String providerId) =>
-      _expectOk(() => _http.delete('/media/providers/$providerId'));
 
   /// Tune to a live TV channel.
   ///
@@ -1067,49 +802,6 @@ mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
     );
   }
 
-  Future<List<LiveTvSession>> getLiveTvSessionsDetailed() async {
-    final response = await _getWithFailover('/livetv/sessions');
-    return _extractContainerList(response, const [
-      'LiveTVSession',
-      'LiveTvSession',
-      'Session',
-      'Metadata',
-    ], LiveTvSession.fromJson);
-  }
-
-  Future<LiveTvSession?> getLiveTvSession(String sessionId) async {
-    final response = await _getWithFailover('/livetv/sessions/$sessionId');
-    return _extractFirst(response, const [
-      'LiveTVSession',
-      'LiveTvSession',
-      'Session',
-      'Metadata',
-    ], LiveTvSession.fromJson);
-  }
-
-  Uri buildNotificationWebSocketUri({List<String>? filters}) {
-    final base = Uri.parse(config.baseUrl);
-    return base.replace(
-      scheme: base.scheme == 'https' ? 'wss' : 'ws',
-      path: '/:/websocket/notifications',
-      queryParameters: {
-        if (config.token != null) 'X-Plex-Token': config.token!,
-        if (filters != null) 'filters': filters.join(','),
-      },
-    );
-  }
-
-  Uri buildNotificationEventSourceUri({List<String>? filters}) {
-    final base = Uri.parse(config.baseUrl);
-    return base.replace(
-      path: '/:/eventsource/notifications',
-      queryParameters: {
-        if (config.token != null) 'X-Plex-Token': config.token!,
-        if (filters != null) 'filters': filters.join(','),
-      },
-    );
-  }
-
   /// Build the source URI for favorite channels: `server://{machineIdentifier}/{providerIdentifier}`
   Future<String> buildFavoriteChannelSource({String? lineup}) async {
     final providers = _epgProvidersForLineup(lineup);
@@ -1156,6 +848,9 @@ mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
 
   @override
   LiveTvSupport get liveTv => _PlexLiveTvSupport(this as PlexClient);
+
+  @override
+  LiveTvDvrSupport? get liveTvDvr => _PlexLiveTvDvrSupport(this as PlexClient);
 }
 
 /// Plex implementation of [LiveTvSupport] — wraps the existing per-DVR
@@ -1208,132 +903,15 @@ class _PlexLiveTvSupport implements LiveTvSupport {
 
   @override
   Future<void> setFavoriteChannels(List<FavoriteChannel> channels) => _client.setFavoriteChannels(channels);
+}
 
-  @override
-  Future<LiveTvServerStatus> fetchLiveTvServerStatus() => _client.getLiveTvServerStatus();
-
-  @override
-  Future<LiveTvDvr?> fetchDvr(String dvrId) => _client.getDvr(dvrId);
-
-  @override
-  Future<LiveTvActivityResult<LiveTvDvr?>> createDvr({
-    required List<String> devices,
-    required List<String> lineups,
-    String? language,
-    String? country,
-    String? postalCode,
-  }) => _client.createDvr(
-    devices: devices,
-    lineups: lineups,
-    language: language,
-    country: country,
-    postalCode: postalCode,
-  );
-
-  @override
-  Future<void> deleteDvr(String dvrId) => _client.deleteDvr(dvrId);
-
-  @override
-  Future<void> updateDvrPrefs(String dvrId, Map<String, Object?> prefs) => _client.updateDvrPrefs(dvrId, prefs);
-
-  @override
-  Future<void> attachDeviceToDvr(String dvrId, String deviceId) => _client.attachDeviceToDvr(dvrId, deviceId);
-
-  @override
-  Future<void> detachDeviceFromDvr(String dvrId, String deviceId) => _client.detachDeviceFromDvr(dvrId, deviceId);
-
-  @override
-  Future<void> addLineupToDvr(String dvrId, String lineupUri) => _client.addLineupToDvr(dvrId, lineupUri);
-
-  @override
-  Future<void> removeLineupFromDvr(String dvrId, String lineupUri) => _client.removeLineupFromDvr(dvrId, lineupUri);
+/// DVR half of the Plex live-TV surface; `null` on backends without a DVR.
+class _PlexLiveTvDvrSupport implements LiveTvDvrSupport {
+  final PlexClient _client;
+  _PlexLiveTvDvrSupport(this._client);
 
   @override
   Future<LiveTvActivityResult<void>> reloadGuide(String dvrId) => _client.reloadGuide(dvrId);
-
-  @override
-  Future<void> cancelGuideReload(String dvrId) => _client.cancelGuideReload(dvrId);
-
-  @override
-  Future<List<MediaGrabber>> fetchGrabbers({String? protocol}) => _client.getGrabbers(protocol: protocol);
-
-  @override
-  Future<List<MediaGrabberDevice>> fetchGrabberDevices() => _client.getGrabberDevices();
-
-  @override
-  Future<LiveTvActivityResult<List<MediaGrabberDevice>>> discoverGrabberDevices() => _client.discoverGrabberDevices();
-
-  @override
-  Future<MediaGrabberDevice?> fetchGrabberDevice(String deviceId) => _client.getGrabberDevice(deviceId);
-
-  @override
-  Future<MediaGrabberDevice?> addGrabberDevice(String uri, {String? grabberId}) =>
-      _client.addGrabberDevice(uri, grabberId: grabberId);
-
-  @override
-  Future<void> updateGrabberDevice(String deviceId, {bool? enabled, String? title}) =>
-      _client.updateGrabberDevice(deviceId, enabled: enabled, title: title);
-
-  @override
-  Future<void> deleteGrabberDevice(String deviceId) => _client.deleteGrabberDevice(deviceId);
-
-  @override
-  Future<List<MediaGrabberDeviceChannel>> fetchGrabberDeviceChannels(String deviceId) =>
-      _client.getGrabberDeviceChannels(deviceId);
-
-  @override
-  Future<LiveTvActivityResult<MediaGrabberDevice?>> scanGrabberDevice(
-    String deviceId, {
-    String? source,
-    Map<String, Object?> prefs = const {},
-    String? network,
-    String? country,
-  }) => _client.scanGrabberDevice(deviceId, source: source, prefs: prefs, network: network, country: country);
-
-  @override
-  Future<MediaGrabberDevice?> cancelGrabberDeviceScan(String deviceId) => _client.cancelGrabberDeviceScan(deviceId);
-
-  @override
-  Future<MediaGrabberDevice?> saveGrabberDeviceChannelMap(String deviceId, MediaGrabberChannelMapRequest request) =>
-      _client.saveGrabberDeviceChannelMap(deviceId, request);
-
-  @override
-  Future<void> updateGrabberDevicePrefs(String deviceId, Map<String, Object?> prefs) =>
-      _client.updateGrabberDevicePrefs(deviceId, prefs);
-
-  @override
-  String buildGrabberDeviceThumbUrl(String deviceId, int version) =>
-      _client.buildGrabberDeviceThumbUrl(deviceId, version);
-
-  @override
-  Future<List<LiveTvCountry>> fetchEpgCountries() => _client.getEpgCountries();
-
-  @override
-  Future<List<LiveTvLanguage>> fetchEpgLanguages() => _client.getEpgLanguages();
-
-  @override
-  Future<List<LiveTvRegion>> fetchEpgRegions(String country, String epgId) => _client.getEpgRegions(country, epgId);
-
-  @override
-  Future<LiveTvLineupResult> fetchEpgLineups(String country, String epgId, {String? postalCode, String? region}) =>
-      _client.getEpgLineups(country, epgId, postalCode: postalCode, region: region);
-
-  @override
-  Future<List<LiveTvChannel>> fetchEpgChannelsForLineup(String lineupUri) => _client.getEpgChannelsForLineup(lineupUri);
-
-  @override
-  Future<List<LiveTvLineup>> fetchEpgChannelsForLineups(List<String> lineupUris) =>
-      _client.getEpgChannelsForLineups(lineupUris);
-
-  @override
-  Future<List<ChannelMapping>> computeEpgChannelMap({required String deviceUri, required String lineupUri}) =>
-      _client.computeEpgChannelMap(deviceUri: deviceUri, lineupUri: lineupUri);
-
-  @override
-  Future<LiveTvActivityResult<Map<String, dynamic>?>> findBestLineup({
-    required String deviceUri,
-    required String lineupGroupUri,
-  }) => _client.findBestLineup(deviceUri: deviceUri, lineupGroupUri: lineupGroupUri);
 
   @override
   Future<List<SubscriptionTemplate>> getSubscriptionTemplate(String guid) => _client.getSubscriptionTemplate(guid);
@@ -1341,13 +919,6 @@ class _PlexLiveTvSupport implements LiveTvSupport {
   @override
   Future<List<MediaSubscription>> fetchRecordingRules({bool includeGrabs = true, bool includeStorage = true}) =>
       _client.getRecordingRules(includeGrabs: includeGrabs, includeStorage: includeStorage);
-
-  @override
-  Future<MediaSubscription?> fetchRecordingRule(
-    String subscriptionId, {
-    bool includeGrabs = true,
-    bool includeStorage = true,
-  }) => _client.getRecordingRule(subscriptionId, includeGrabs: includeGrabs, includeStorage: includeStorage);
 
   @override
   Future<MediaSubscription?> createRecordingRule(MediaSubscriptionCreateRequest request) =>
@@ -1359,10 +930,6 @@ class _PlexLiveTvSupport implements LiveTvSupport {
 
   @override
   Future<void> deleteRecordingRule(String subscriptionId) => _client.deleteRecordingRule(subscriptionId);
-
-  @override
-  Future<MediaSubscription?> moveRecordingRule(String subscriptionId, {String? afterSubscriptionId}) =>
-      _client.moveRecordingRule(subscriptionId, afterSubscriptionId: afterSubscriptionId);
 
   @override
   Future<void> processRecordingRules() => _client.processRecordingRules();
@@ -1379,31 +946,6 @@ class _PlexLiveTvSupport implements LiveTvSupport {
     required List<String> ratingKeys,
     bool includeStorage = true,
   }) => _client.getSubscriptionMapping(providerId: providerId, ratingKeys: ratingKeys, includeStorage: includeStorage);
-
-  @override
-  Future<List<MediaProviderInfo>> fetchMediaProviders() => _client.getMediaProviders();
-
-  @override
-  Future<void> registerMediaProvider(String url) => _client.registerMediaProvider(url);
-
-  @override
-  Future<void> refreshMediaProviders() => _client.refreshMediaProviders();
-
-  @override
-  Future<void> unregisterMediaProvider(String providerId) => _client.unregisterMediaProvider(providerId);
-
-  @override
-  Future<List<LiveTvSession>> fetchLiveTvSessionsDetailed() => _client.getLiveTvSessionsDetailed();
-
-  @override
-  Future<LiveTvSession?> fetchLiveTvSession(String sessionId) => _client.getLiveTvSession(sessionId);
-
-  @override
-  Uri buildNotificationWebSocketUri({List<String>? filters}) => _client.buildNotificationWebSocketUri(filters: filters);
-
-  @override
-  Uri buildNotificationEventSourceUri({List<String>? filters}) =>
-      _client.buildNotificationEventSourceUri(filters: filters);
 }
 
 /// A tuned Plex DVR transcode session. Holds the tune outputs

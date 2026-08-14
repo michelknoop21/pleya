@@ -314,12 +314,24 @@ class MainActivity : FlutterActivity() {
   private fun handleSearchIntent(intent: Intent?) {
     if (intent?.action != Intent.ACTION_SEARCH) return
     val query = intent.getStringExtra(SearchManager.QUERY)?.trim()?.takeIf { it.isNotEmpty() } ?: return
-    val messenger = flutterEngine?.dartExecutor?.binaryMessenger
-    if (messenger == null) {
-      pendingSearchQuery = query
-      return
-    }
-    MethodChannel(messenger, SPEECH_CHANNEL).invokeMethod("onSearchIntent", query)
+    // Always stash first: on a cold launch the messenger exists before Dart
+    // has registered its handler, so a bare invoke lands on notImplemented and
+    // the query would be lost. Dart registers the handler *before* draining,
+    // so a delivered invoke clears the stash and a too-early one leaves it for
+    // drainPendingSearchIntent — never both.
+    pendingSearchQuery = query
+    val messenger = flutterEngine?.dartExecutor?.binaryMessenger ?: return
+    MethodChannel(messenger, SPEECH_CHANNEL).invokeMethod(
+      "onSearchIntent",
+      query,
+      object : MethodChannel.Result {
+        override fun success(result: Any?) {
+          if (pendingSearchQuery == query) pendingSearchQuery = null
+        }
+        override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {}
+        override fun notImplemented() {}
+      }
+    )
   }
 
   override fun dispatchKeyEvent(event: KeyEvent): Boolean {

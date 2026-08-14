@@ -213,9 +213,12 @@ class PlatformDetector {
     return Platform.isAndroid || Platform.isIOS || Platform.isMacOS || Platform.isLinux || Platform.isWindows;
   }
 
+  /// Whether the platform can hand a compressed Dolby stream to the system or
+  /// receiver instead of decoding it. On Apple this is what preserves Dolby
+  /// Atmos — the JOC objects survive only if nothing decodes them on the way
+  /// out. `Platform.isIOS` covers iPhone/iPad and Apple TV alike.
   static bool supportsAudioPassthrough() {
-    if (isAppleTV()) return false;
-    return isDesktopOS() || (Platform.isAndroid && isTV());
+    return isDesktopOS() || Platform.isIOS || (Platform.isAndroid && isTV());
   }
 
   static bool supportsPictureInPicture() {

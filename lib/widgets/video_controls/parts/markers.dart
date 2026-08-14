@@ -97,6 +97,12 @@ extension _PlexVideoControlsMarkerMethods on _PlexVideoControlsState {
       if (!skipAutoPlayCountdown && widget.onNext != null) {
         widget.onNext!.call();
       } else {
+        // Drop the marker before the await: the parent opens its Play Next card
+        // off the back of onReachedEnd, and a marker that is still set would
+        // leave this button on screen next to that card.
+        _setControlsState(() {
+          _currentMarker = null;
+        });
         // Seeking to EOF is unreliable due to position stream throttling,
         // so pause and defer to the parent's completion flow.
         await widget.player.pause();
@@ -227,7 +233,21 @@ extension _PlexVideoControlsMarkerMethods on _PlexVideoControlsState {
       autoSkipProgress: _autoSkipProgress,
       focusNode: _skipMarkerFocusNode,
       onActivate: _activateSkipMarker,
-      onFocusDown: () => _desktopControlsKey.currentState?.requestPlayPauseFocus(),
+      onFocusDown: () {
+        // Play/pause only exists while the controls are up; otherwise open them
+        // so DOWN still lands somewhere.
+        if (_showControls) {
+          _desktopControlsKey.currentState?.requestPlayPauseFocus();
+        } else {
+          _showControlsWithFocus();
+        }
+      },
+      onFocusExit: _releaseSkipMarkerFocus,
     );
+  }
+
+  /// Hand focus back to the player root so the skip button is not a dead end.
+  void _releaseSkipMarkerFocus() {
+    _focusNode.requestFocus();
   }
 }
