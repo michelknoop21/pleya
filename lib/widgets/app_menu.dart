@@ -11,6 +11,7 @@ import '../focus/input_mode_tracker.dart';
 import '../focus/key_event_utils.dart';
 import '../theme/mono_tokens.dart';
 import '../utils/focus_utils.dart';
+import '../utils/platform_detector.dart';
 import 'app_icon.dart';
 import 'clickable_cursor.dart';
 import 'overlay_sheet.dart';
@@ -233,7 +234,9 @@ class AppMenuSheet<T> extends StatelessWidget {
       children: [
         if (titleWidget != null || title != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            padding: PlatformDetector.isTV()
+                ? const EdgeInsets.fromLTRB(14, 4, 14, 6)
+                : const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child:
                 titleWidget ??
                 Text(
@@ -386,13 +389,14 @@ class _AppMenuItemTileState<T> extends State<AppMenuItemTile<T>> with FocusableT
     final item = widget.item;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final tv = PlatformDetector.isTV();
     final enabled = item.enabled && widget.onPressed != null;
     final active = enabled && (_isFocused || _isHovered);
     final foreground = _foregroundColor(context, active: active);
     final subtitleColor = foreground.withValues(alpha: active && item.stateLayerColor != null ? 0.86 : 0.68);
     final background = _backgroundColor(context, active: active);
 
-    final leading = item.leading ?? (item.icon != null ? AppIcon(item.icon!, fill: 1, size: 20) : null);
+    final leading = item.leading ?? (item.icon != null ? AppIcon(item.icon!, fill: 1, size: tv ? 18 : 20) : null);
     final trailing = item.trailing ?? (item.selected ? AppIcon(Symbols.check_rounded, size: 18) : null);
     final subtitle = item.subtitleWidget ?? (item.subtitle != null ? Text(item.subtitle!) : null);
 
@@ -425,19 +429,19 @@ class _AppMenuItemTileState<T> extends State<AppMenuItemTile<T>> with FocusableT
                     color: background,
                     borderRadius: BorderRadius.circular(tokens(context).radiusSm),
                   ),
-                  constraints: BoxConstraints(minHeight: subtitle == null ? 40 : 52),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  constraints: BoxConstraints(minHeight: subtitle == null ? (tv ? 36 : 40) : (tv ? 46 : 52)),
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: tv ? 3 : 6),
                   child: Row(
                     children: [
                       if (leading != null) ...[
                         SizedBox(
-                          width: 24,
+                          width: tv ? 20 : 24,
                           child: IconTheme.merge(
                             data: IconThemeData(color: foreground),
                             child: leading,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: tv ? 10 : 12),
                       ],
                       Expanded(
                         child: Column(

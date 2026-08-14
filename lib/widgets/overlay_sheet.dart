@@ -128,9 +128,10 @@ class OverlaySheetController {
         () {
           final size = MediaQuery.sizeOf(context);
           final isDesktop = size.width > 600;
+          final isTV = PlatformDetector.isTV();
           return BoxConstraints(
-            maxWidth: isDesktop ? 700 : double.infinity,
-            maxHeight: isDesktop ? 400 : size.height * 0.75,
+            maxWidth: isTV ? 400 : (isDesktop ? 700 : double.infinity),
+            maxHeight: isTV ? 400 : (isDesktop ? 400 : size.height * 0.75),
           );
         }();
     return showModalBottomSheet<T>(
@@ -614,7 +615,10 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
 
     final effectiveConstraints =
         _constraints ??
-        BoxConstraints(maxWidth: isDesktop ? 700 : double.infinity, maxHeight: isDesktop ? 400 : size.height * 0.75);
+        BoxConstraints(
+          maxWidth: isTV ? 400 : (isDesktop ? 700 : double.infinity),
+          maxHeight: isTV ? 400 : (isDesktop ? 400 : size.height * 0.75),
+        );
 
     // Slide direction depends on alignment: bottom sheets slide up, top sheets slide down.
     // Use a pixel transform instead of FractionalTranslation so mouse-tracker
