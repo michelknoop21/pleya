@@ -63,6 +63,14 @@ class TvBrowseRailLayoutMetrics {
 class TvBrowseRailLayout {
   static const double compactTallPosterScale = 0.8;
   static const double compactEpisodeThumbnailScale = compactTallPosterScale;
+
+  /// Tall-poster scale for the continue-watching hub on the TV home screen.
+  ///
+  /// Smaller than [compactTallPosterScale] on purpose: that hub sits at the
+  /// bottom of the resting hero, and its card height is what decides how much
+  /// backdrop stays visible. Trimming it there buys hero without touching the
+  /// hubs further down, which only appear once the rail has focus anyway.
+  static const double continueWatchingTallPosterScale = 0.7;
   static const double fullCardFocusScale = FocusTheme.fullCardFocusScale;
 
   static double scaleForSize(Size size) => TvLayoutConstants.scaleForSize(size);
@@ -207,6 +215,7 @@ class TvBrowseRailLayout {
     required EpisodePosterMode episodePosterMode,
     EpisodePosterMode Function(MediaHub hub)? episodePosterModeForHub,
     double Function(MediaHub hub)? widePosterScaleForHub,
+    double Function(MediaHub hub)? tallPosterScaleForHub,
     required double scale,
     bool fullCardLayout = false,
     double tallPosterScale = 1.0,
@@ -221,7 +230,7 @@ class TvBrowseRailLayout {
         episodePosterMode: episodePosterModeForHub?.call(hub) ?? episodePosterMode,
         scale: scale,
         fullCardLayout: fullCardLayout,
-        tallPosterScale: tallPosterScale,
+        tallPosterScale: tallPosterScaleForHub?.call(hub) ?? tallPosterScale,
         widePosterScale: widePosterScaleForHub?.call(hub) ?? widePosterScale,
       );
       if (metrics.height > maxHeight) maxHeight = metrics.height;
@@ -290,6 +299,7 @@ class TvBrowseRailLayout {
     required EpisodePosterMode episodePosterMode,
     EpisodePosterMode Function(MediaHub hub)? episodePosterModeForHub,
     double Function(MediaHub hub)? widePosterScaleForHub,
+    double Function(MediaHub hub)? tallPosterScaleForHub,
     bool fullCardLayout = false,
     double tallPosterScale = 1.0,
     double widePosterScale = 1.0,
@@ -307,6 +317,7 @@ class TvBrowseRailLayout {
       episodePosterMode: episodePosterMode,
       episodePosterModeForHub: episodePosterModeForHub,
       widePosterScaleForHub: widePosterScaleForHub,
+      tallPosterScaleForHub: tallPosterScaleForHub,
       scale: scale,
       fullCardLayout: fullCardLayout,
       tallPosterScale: tallPosterScale,
@@ -361,6 +372,7 @@ class TvBrowseRail extends StatefulWidget {
   final bool autofocus;
   final EpisodePosterMode Function(MediaHub hub)? episodePosterModeForHub;
   final double Function(MediaHub hub)? widePosterScaleForHub;
+  final double Function(MediaHub hub)? tallPosterScaleForHub;
 
   /// Explicit background bleed override. When null, the bleed target is read
   /// from [MainScreenFocusScope] (offset aspect) inside the bleed widget
@@ -400,6 +412,7 @@ class TvBrowseRail extends StatefulWidget {
     this.autofocus = false,
     this.episodePosterModeForHub,
     this.widePosterScaleForHub,
+    this.tallPosterScaleForHub,
     this.backgroundBleedLeft,
     this.selectSuppressionGestureSignal,
   });
@@ -1119,6 +1132,9 @@ class TvBrowseRailState extends State<TvBrowseRail> {
           final wideScales = [
             for (final hub in widget.hubs) widget.widePosterScaleForHub?.call(hub) ?? widget.widePosterScale,
           ];
+          final tallScales = [
+            for (final hub in widget.hubs) widget.tallPosterScaleForHub?.call(hub) ?? widget.tallPosterScale,
+          ];
           final metricsByHub = [
             for (var i = 0; i < widget.hubs.length; i++)
               TvBrowseRailLayout.metricsForHub(
@@ -1128,7 +1144,7 @@ class TvBrowseRailState extends State<TvBrowseRail> {
                 episodePosterMode: modes[i],
                 scale: scale,
                 fullCardLayout: fullCardLayout,
-                tallPosterScale: widget.tallPosterScale,
+                tallPosterScale: tallScales[i],
                 widePosterScale: wideScales[i],
               ),
           ];

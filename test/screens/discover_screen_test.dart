@@ -187,18 +187,21 @@ void main() {
     // owns what's left (mirrors the spotlightBottom math in DiscoverScreen).
     final spotlightTop = (720 * MonoTokens.tvHeroContentTopFraction).clamp(64.0 * scale, 120.0 * scale).toDouble();
     final railScale = TvBrowseRailLayout.scaleForSize(const Size(foregroundWidth, 720));
+    final firstHubMetrics = TvBrowseRailLayout.metricsForHub(
+      hub: hub,
+      availableWidth: foregroundWidth - TvBrowseRailLayout.horizontalInsetForScale(railScale),
+      density: LibraryDensity.max,
+      episodePosterMode: settings.read(SettingsService.episodePosterMode),
+      scale: railScale,
+      fullCardLayout: settings.read(SettingsService.tvFullCardLayout),
+      tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
+    );
+    // The bottom focus-ring reserve is not part of the resting peek.
     final firstHubPeek =
         TvBrowseRailLayout.railTopPaddingForScale(railScale) +
         TvBrowseRailLayout.hubStripHeightForScale(railScale) +
-        TvBrowseRailLayout.metricsForHub(
-          hub: hub,
-          availableWidth: foregroundWidth - TvBrowseRailLayout.horizontalInsetForScale(railScale),
-          density: LibraryDensity.max,
-          episodePosterMode: settings.read(SettingsService.episodePosterMode),
-          scale: railScale,
-          fullCardLayout: settings.read(SettingsService.tvFullCardLayout),
-          tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
-        ).height;
+        firstHubMetrics.height -
+        firstHubMetrics.focusExtra;
     final railPeek = math.min(railHeight, math.min(firstHubPeek, 720 * MonoTokens.tvHomeRailMaxPeekFraction));
     final maxSpotlightBottom = (720 - spotlightTop - (MonoTokens.tvHeroMinInfoHeight * scale))
         .clamp(0.0, double.infinity)

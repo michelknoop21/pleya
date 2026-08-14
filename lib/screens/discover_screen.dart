@@ -1541,6 +1541,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
+  /// Tall-poster scale per hub on the TV home rail.
+  ///
+  /// Continue-watching sits under the resting hero and is the one row whose
+  /// height decides how much backdrop survives, so it runs smaller than the
+  /// hubs below it. Used for both the rail itself and the peek math, so the
+  /// two always agree on how tall that first row is.
+  static double _tvTallPosterScaleForHub(MediaHub hub) => hub.isContinueWatchingHub
+      ? TvBrowseRailLayout.continueWatchingTallPosterScale
+      : TvBrowseRailLayout.compactTallPosterScale;
+
   Widget _buildTvContent(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final theme = Theme.of(context);
@@ -1565,33 +1575,43 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             episodePosterMode: svc.read(SettingsService.episodePosterMode),
             fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
             tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
+            tallPosterScaleForHub: _tvTallPosterScaleForHub,
           );
     final spotlightTop = (size.height * MonoTokens.tvHeroContentTopFraction)
         .clamp(64.0 * scale, 120.0 * scale)
         .toDouble();
     // Netflix landing: at rest the rail shows its first hub in full — strip plus
-    // one complete card row, labels and focus ring included — so "continue
-    // watching" is readable without moving. What stays below the fold is the
-    // next-hub peek and the rail's own bottom margin; focusing the rail slides
-    // those up (see [_tvRailRevealed]). The reveal is a translate, so the hero
-    // content keeps its resting position and the rail slides up over it.
+    // one complete card row with its labels — so "continue watching" is readable
+    // without moving. What stays below the fold is the next-hub peek and the
+    // rail's own bottom margin; focusing the rail slides those up (see
+    // [_tvRailRevealed]). The reveal is a translate, so the hero content keeps
+    // its resting position and the rail slides up over it.
+    //
+    // The row's bottom focus-ring reserve (`focusExtra`) is deliberately left
+    // out of the peek: nothing in the rail has focus while it rests, and the
+    // reveal brings the reserve into view before any ring is drawn. Keeping it
+    // would only pad dead space under the labels.
     //
     // The peek is derived from the same inputs as the estimateHeight call
     // above, so the two can't drift apart.
     final railScale = TvBrowseRailLayout.scaleForSize(railSize);
     final firstHubPeek = browseHubs.isEmpty
         ? 0.0
-        : TvBrowseRailLayout.railTopPaddingForScale(railScale) +
-              TvBrowseRailLayout.hubStripHeightForScale(railScale) +
-              TvBrowseRailLayout.metricsForHub(
-                hub: browseHubs.first,
-                availableWidth: railSize.width - TvBrowseRailLayout.horizontalInsetForScale(railScale),
-                density: svc.read(SettingsService.libraryDensity),
-                episodePosterMode: svc.read(SettingsService.episodePosterMode),
-                scale: railScale,
-                fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
-                tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
-              ).height;
+        : () {
+            final metrics = TvBrowseRailLayout.metricsForHub(
+              hub: browseHubs.first,
+              availableWidth: railSize.width - TvBrowseRailLayout.horizontalInsetForScale(railScale),
+              density: svc.read(SettingsService.libraryDensity),
+              episodePosterMode: svc.read(SettingsService.episodePosterMode),
+              scale: railScale,
+              fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
+              tallPosterScale: _tvTallPosterScaleForHub(browseHubs.first),
+            );
+            return TvBrowseRailLayout.railTopPaddingForScale(railScale) +
+                TvBrowseRailLayout.hubStripHeightForScale(railScale) +
+                metrics.height -
+                metrics.focusExtra;
+          }();
     final railPeek = browseHubs.isEmpty
         ? 0.0
         : math.min(railHeight, math.min(firstHubPeek, size.height * MonoTokens.tvHomeRailMaxPeekFraction));
@@ -1709,6 +1729,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     onNavigateUp: _focusTvHeroPlay,
                     onNavigateToSidebar: _navigateToSidebar,
                     tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
+                    tallPosterScaleForHub: _tvTallPosterScaleForHub,
                     selectSuppressionGestureSignal: PlatformDetector.isAppleTV()
                         ? AppleTvRemoteTouchService.instance.touchActiveListenable
                         : null,
