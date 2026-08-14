@@ -10,7 +10,7 @@
 #   scripts/tvos_sim.sh doctor           # kan ik knoppen sturen?
 #   scripts/tvos_sim.sh build            # xcodebuild voor de simulator
 #   scripts/tvos_sim.sh run              # boot + install + launch
-#   scripts/tvos_sim.sh login            # demoserver koppelen (incl. Quick Connect)
+#   scripts/tvos_sim.sh login            # demoserver koppelen (faalt als het misgaat)
 #   scripts/tvos_sim.sh goto search      # deterministisch navigeren
 #   scripts/tvos_sim.sh type "sintel"    # tekst typen (leestekens kloppen)
 #   scripts/tvos_sim.sh key menu         # één toets
@@ -217,42 +217,92 @@ load_env() {
   [[ -f .env ]] && set -a && . ./.env && set +a || true
 }
 
+# Vraagt de server zelf of Quick Connect aanstaat — hetzelfde publieke endpoint
+# dat de app gebruikt (JellyfinAuthService.isQuickConnectEnabled). De response
+# is letterlijk `true` of `false`.
+quick_connect_enabled() {
+  local base="$1" body
+  [[ "$base" == http://* || "$base" == https://* ]] || base="https://$base"
+  body="$(curl -fsS --max-time 10 "${base%/}/QuickConnect/Enabled" 2>/dev/null || true)"
+  [[ "$body" == "true" ]]
+}
+
+# De succes-marker van `login` is een appLogger.d-regel, en het logniveau staat
+# standaard op info. Deze pref (shared_preferences, dus met `flutter.`-prefix)
+# zet het op debug zonder de UI in te duiken. Bijvangst: de classifier-verdicts
+# van de invoerlaag worden zichtbaar, wat een regressieronde toch al wil.
+# Moet vóór de launch: main.dart leest de pref één keer bij het opstarten.
+enable_debug_logging() {
+  local container plist
+  container="$(xcrun simctl get_app_container "$DEVICE" "$BUNDLE_ID" data 2>/dev/null || true)"
+  [[ -n "$container" ]] || return 1
+  plist="$container/Library/Preferences/$BUNDLE_ID.plist"
+  xcrun simctl spawn "$DEVICE" defaults write "$plist" flutter.enable_debug_logging -bool YES >/dev/null 2>&1 || return 1
+  [[ "$(xcrun simctl spawn "$DEVICE" defaults read "$plist" flutter.enable_debug_logging 2>/dev/null)" == "1" ]]
+}
+
+# Koppelt de demoserver volautomatisch. Aanname: de app staat op het
+# keuzescherm Plex/Jellyfin — `reset` + `run` garandeert dat.
+#
+# Er wordt bewust zo min mogelijk blind genavigeerd; op elke plek waar de app
+# de focus zelf zet, stuurt dit script niets:
+#   · keuzescherm: "Sign in with Plex" heeft autofocus, Jellyfin staat eronder;
+#   · URL-veld: textInputAction.go, dus return start de server-probe — de knop
+#     "Find Server" wordt overgeslagen, want LAN-gevonden servers schuiven
+#     tiles tussen veld en knop en maken elke down-telling onbetrouwbaar;
+#   · na de probe focust de app zelf het gebruikersveld;
+#   · het gebruikersveld submit naar het wachtwoordveld, het wachtwoordveld
+#     submit de login.
+#
+# Quick Connect wordt niet geautomatiseerd: dat pad vereist goedkeuring in een
+# tweede client. Staat het op de server aan, dan stopt dit script met een fout
+# in plaats van er blind langs te toetsen. Wie het toch wil: het paneel toont
+# een code die via POST /QuickConnect/Authorize met een admin-token goedgekeurd
+# kan worden, en dat is een harnas-uitbreiding op zichzelf.
 do_login() {
-  local url="${1:-${PLEYA_DEMO_URL:-demo.pleya.app}}"
   load_env
+  local url="${1:-${PLEYA_DEMO_URL:-demo.pleya.app}}"
   [[ -n "${PLEYA_DEMO_USER:-}" && -n "${PLEYA_DEMO_PASS:-}" ]] \
     || die "zet PLEYA_DEMO_URL/USER/PASS in .env (gitignored)"
   require_input
 
-  # Verwacht het scherm "Jellyfin-server toevoegen" met het URL-veld gefocust.
-  # Focusvolgorde daaronder: serverkaart, gebruikersnaam, wachtwoord, inloggen.
+  if quick_connect_enabled "$url"; then
+    die "Quick Connect staat aan op $url — dit harnas automatiseert dat pad bewust niet (goedkeuring vereist een tweede client). Zet het uit op de server of log handmatig in."
+  fi
+
+  note "backend kiezen: Jellyfin"
+  send_key down; sleep 0.7; send_key select; sleep 3
+
   note "server-URL invoeren"
-  type_text "$url"
-  sleep 1
-  note "server zoeken"
-  send_key down; sleep 0.7; send_key select
+  type_text "$url"; sleep 1
+  send_key return
+  note "wachten op de server-probe"
   sleep 9
 
-  # Terug naar de bovenkant en dan omlaag tellen: na het vinden van de server
-  # staat de focus niet op een vaste plek, maar de volgorde eronder wel
-  # (URL, serverkaart, gebruikersnaam, wachtwoord, inloggen).
   note "gebruikersnaam"
-  local i; for i in 1 2 3 4 5; do send_key up; sleep 0.35; done
-  send_key down; sleep 0.7; send_key down; sleep 0.9
   send_key select; sleep 3
   type_text "$PLEYA_DEMO_USER"; sleep 1
   send_key return; sleep 2.5
 
   note "wachtwoord"
-  send_key down; sleep 0.9
   send_key select; sleep 3
   type_text "$PLEYA_DEMO_PASS"; sleep 1
-  send_key return; sleep 2.5
 
+  # Nulmeting vlak vóór de submit: de log is een terugblik, dus een marker uit
+  # een eerdere loginpoging zou anders als succes tellen.
+  local marker='ConnectionRegistry: upserted jellyfin/'
+  local before; before="$(count_log "$marker")"
   note "inloggen"
-  send_key down; sleep 0.9; send_key select
-  sleep 10
-  echo "klaar — controleer met: $0 shot"
+  send_key return
+
+  if wait_for_more "$marker" "$before" 30; then
+    echo "GESLAAGD: verbinding geregistreerd"
+    read_logs "$marker" 40 | tail -1
+    return 0
+  fi
+  echo "MISLUKT: Jellyfin-login niet bevestigd; controleer de simulator met: $0 shot"
+  read_logs "Jellyfin|ConnectionRegistry" 40 | tail -8
+  return 1
 }
 
 # Regressietest voor DEC-011: het toetsenbord moet met Menu te sluiten zijn.
@@ -323,6 +373,7 @@ case "${1:-}" in
     open -a Simulator >/dev/null 2>&1 || true
     xcrun simctl terminate "$DEVICE" "$BUNDLE_ID" >/dev/null 2>&1 || true
     xcrun simctl install "$DEVICE" "$APP"
+    enable_debug_logging || note "debug-logging niet gezet — 'login' kan zijn succes-marker dan niet zien"
     xcrun simctl launch "$DEVICE" "$BUNDLE_ID"
     ;;
   reset)
