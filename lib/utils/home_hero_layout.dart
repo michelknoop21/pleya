@@ -34,5 +34,22 @@ double homeHeroHeight({
 
   // Cap: keep a sliver of the rail on screen on a short viewport, so the page
   // still reads as scrollable rather than looking like a dead end.
-  return math.max(fill, sixteenNine).clamp(360.0, viewportExtent * 0.82);
+  final cap = viewportExtent * 0.82;
+
+  // A viewport this small is a transient layout, not a screen anyone is
+  // looking at. Returning zero keeps the caller in bounds; the next layout
+  // pass sizes the hero for real.
+  if (cap <= 0) return 0;
+
+  // The cap wins when the viewport is too short to honour the floor: the hero
+  // can never be taller than the space it is drawn in. Ordering these the
+  // other way round is not a rounding detail — `clamp` throws when its lower
+  // bound exceeds its upper one, and a throw inside the layout builder costs
+  // the whole billboard: release builds swap it for a blank error box, so the
+  // home screen loses its artwork, title and play button at once. That is
+  // reachable in normal use, because the home tab stays laid out inside the
+  // IndexedStack while the search keyboard shrinks the viewport under it.
+  final floor = math.min(360.0, cap);
+
+  return math.max(fill, sixteenNine).clamp(floor, cap);
 }
