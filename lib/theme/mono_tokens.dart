@@ -12,12 +12,14 @@ class MonoTokens extends ThemeExtension<MonoTokens> {
   // TV home hero layout (moved from DiscoverScreen — values unchanged).
   // Fraction of viewport height above the hero/spotlight content block.
   static const double tvHeroContentTopFraction = 0.075;
-  // How much of the browse rail peeks at the bottom of the TV home screen when
-  // the hero is focused (fraction of viewport height): enough for the hub
-  // label and the poster tops. Focusing the rail slides the rest up into view.
-  static const double tvHomeRailPeekFraction = 0.16;
+  // Upper bound on the browse-rail peek at the bottom of the TV home screen
+  // when the hero is focused (fraction of viewport height). The peek itself is
+  // content-driven — it's whatever the first hub needs to show in full — and
+  // this cap only stops a very tall first hub from squeezing the hero below
+  // roughly a third of the screen.
+  static const double tvHomeRailMaxPeekFraction = 0.5;
   // Gap between the hero content and the peeking rail (logical px, pre-scale).
-  static const double tvHeroRailGap = 32;
+  static const double tvHeroRailGap = 16;
   // Minimum height reserved for the hero info block (logical px, pre-scale).
   static const double tvHeroMinInfoHeight = 96;
 

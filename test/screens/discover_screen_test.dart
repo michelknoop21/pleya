@@ -183,10 +183,23 @@ void main() {
       fullCardLayout: settings.read(SettingsService.tvFullCardLayout),
       tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
     );
-    // Netflix landing: the rail only peeks at the bottom; the hero owns the
-    // rest of the screen (mirrors the spotlightBottom math in DiscoverScreen).
+    // Netflix landing: at rest the rail shows its first hub in full and the hero
+    // owns what's left (mirrors the spotlightBottom math in DiscoverScreen).
     final spotlightTop = (720 * MonoTokens.tvHeroContentTopFraction).clamp(64.0 * scale, 120.0 * scale).toDouble();
-    final railPeek = math.min(railHeight, 720 * MonoTokens.tvHomeRailPeekFraction);
+    final railScale = TvBrowseRailLayout.scaleForSize(const Size(foregroundWidth, 720));
+    final firstHubPeek =
+        TvBrowseRailLayout.railTopPaddingForScale(railScale) +
+        TvBrowseRailLayout.hubStripHeightForScale(railScale) +
+        TvBrowseRailLayout.metricsForHub(
+          hub: hub,
+          availableWidth: foregroundWidth - TvBrowseRailLayout.horizontalInsetForScale(railScale),
+          density: LibraryDensity.max,
+          episodePosterMode: settings.read(SettingsService.episodePosterMode),
+          scale: railScale,
+          fullCardLayout: settings.read(SettingsService.tvFullCardLayout),
+          tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
+        ).height;
+    final railPeek = math.min(railHeight, math.min(firstHubPeek, 720 * MonoTokens.tvHomeRailMaxPeekFraction));
     final maxSpotlightBottom = (720 - spotlightTop - (MonoTokens.tvHeroMinInfoHeight * scale))
         .clamp(0.0, double.infinity)
         .toDouble();

@@ -99,7 +99,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // buttons never slide behind the rail — the hero simply takes whatever height
   // the rail leaves.
   // Layout constants live in [MonoTokens] (tvHeroContentTopFraction,
-  // tvHomeRailPeekFraction, tvHeroRailGap, tvHeroMinInfoHeight).
+  // tvHomeRailMaxPeekFraction, tvHeroRailGap, tvHeroMinInfoHeight).
 
   /// Data + refresh policy live in [DiscoverProvider]; this state keeps only
   /// UI concerns (hero carousel, focus, spotlight). The proxy getters keep
@@ -1569,11 +1569,32 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final spotlightTop = (size.height * MonoTokens.tvHeroContentTopFraction)
         .clamp(64.0 * scale, 120.0 * scale)
         .toDouble();
-    // Netflix landing: at rest the rail only peeks at the bottom (poster tops +
-    // hub label), so the hero owns most of the screen. Focusing the rail reveals
-    // it (see [_tvRailRevealed]); the reveal is a translate, so the hero content
-    // keeps its resting position and the rail simply slides up over it.
-    final railPeek = browseHubs.isEmpty ? 0.0 : math.min(railHeight, size.height * MonoTokens.tvHomeRailPeekFraction);
+    // Netflix landing: at rest the rail shows its first hub in full — strip plus
+    // one complete card row, labels and focus ring included — so "continue
+    // watching" is readable without moving. What stays below the fold is the
+    // next-hub peek and the rail's own bottom margin; focusing the rail slides
+    // those up (see [_tvRailRevealed]). The reveal is a translate, so the hero
+    // content keeps its resting position and the rail slides up over it.
+    //
+    // The peek is derived from the same inputs as the estimateHeight call
+    // above, so the two can't drift apart.
+    final railScale = TvBrowseRailLayout.scaleForSize(railSize);
+    final firstHubPeek = browseHubs.isEmpty
+        ? 0.0
+        : TvBrowseRailLayout.railTopPaddingForScale(railScale) +
+              TvBrowseRailLayout.hubStripHeightForScale(railScale) +
+              TvBrowseRailLayout.metricsForHub(
+                hub: browseHubs.first,
+                availableWidth: railSize.width - TvBrowseRailLayout.horizontalInsetForScale(railScale),
+                density: svc.read(SettingsService.libraryDensity),
+                episodePosterMode: svc.read(SettingsService.episodePosterMode),
+                scale: railScale,
+                fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
+                tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
+              ).height;
+    final railPeek = browseHubs.isEmpty
+        ? 0.0
+        : math.min(railHeight, math.min(firstHubPeek, size.height * MonoTokens.tvHomeRailMaxPeekFraction));
     final railSafetyBottom = browseHubs.isEmpty ? 0.0 : railPeek + (MonoTokens.tvHeroRailGap * scale);
     final maxSpotlightBottom = (size.height - spotlightTop - (MonoTokens.tvHeroMinInfoHeight * scale))
         .clamp(0.0, double.infinity)
@@ -1611,7 +1632,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       contentTop: spotlightTop,
                       contentBottom: spotlightBottom,
                       contentLeft: spotlightLeft + foregroundLeft,
-                      compact: false,
+                      // Compact presentation at rest as well: the first hub now
+                      // claims real estate the full-size logo used to hold, and
+                      // rail focus already rendered compact — so the resting
+                      // hero no longer jumps in logo size when focus moves down.
+                      compact: true,
                       showPrimaryAction: false,
                       deepBottomScrim: true,
                       kenBurns: true,
@@ -1649,10 +1674,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               left: 0,
               right: 0,
               bottom: 0,
-              // At rest the rail is slid down so only [railPeek] shows (poster
-              // tops + hub label); focusing it slides the full rail up over the
-              // hero's lower edge (Netflix landing). Slide fraction is relative to
-              // the rail's own height, so no fixed height is forced on it.
+              // At rest the rail is slid down so [railPeek] shows: the first hub
+              // complete, everything below it out of frame. Focusing it slides
+              // the remainder up over the hero's lower edge (Netflix landing).
+              // Slide fraction is relative to the rail's own height, so no fixed
+              // height is forced on it.
               child: AnimatedSlide(
                 duration: const Duration(milliseconds: 320),
                 curve: Curves.easeOutCubic,
