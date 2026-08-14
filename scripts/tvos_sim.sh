@@ -247,12 +247,13 @@ enable_debug_logging() {
 # Er wordt bewust zo min mogelijk blind genavigeerd; op elke plek waar de app
 # de focus zelf zet, stuurt dit script niets:
 #   · keuzescherm: "Sign in with Plex" heeft autofocus, Jellyfin staat eronder;
-#   · URL-veld: textInputAction.go, dus return start de server-probe — de knop
-#     "Find Server" wordt overgeslagen, want LAN-gevonden servers schuiven
-#     tiles tussen veld en knop en maken elke down-telling onbetrouwbaar;
-#   · na de probe focust de app zelf het gebruikersveld;
-#   · het gebruikersveld submit naar het wachtwoordveld, het wachtwoordveld
-#     submit de login.
+#   · na de probe focust de app zelf het gebruikersveld.
+#
+# Er wordt nergens `select` op een tekstveld gedrukt: dat opent de native
+# invoerdialoog van tvOS, en daar landt geïnjecteerde tekst pas ná een
+# onvoorspelbare openingsanimatie. De velden nemen hardware-toetsen rechtstreeks
+# aan (FocusableTextField handelt die zelf af), dus typen kan direct en één
+# pijltje omlaag stapt naar het volgende veld.
 #
 # Quick Connect wordt niet geautomatiseerd: dat pad vereist goedkeuring in een
 # tweede client. Staat het op de server aan, dan stopt dit script met een fout
@@ -275,25 +276,32 @@ do_login() {
 
   note "server-URL invoeren"
   type_text "$url"; sleep 1
-  send_key return
+  # Het URL-veld is meerregelig (minLines 1, maxLines 4), dus enter zet een
+  # regeleinde en onFieldSubmitted vuurt nooit — de knop "Server zoeken" is het
+  # enige pad. Die knop is het laatste element van het formulier, dus vaker
+  # omlaag drukken dan nodig landt er altijd op: extra drukken zijn een no-op,
+  # en eventuele LAN-gevonden servers tussen veld en knop worden zo overbrugd
+  # zonder ze te tellen.
+  note "server zoeken"
+  local i; for i in 1 2 3 4; do send_key down; sleep 0.5; done
+  send_key select
   note "wachten op de server-probe"
   sleep 9
 
   note "gebruikersnaam"
-  send_key select; sleep 3
   type_text "$PLEYA_DEMO_USER"; sleep 1
-  send_key return; sleep 2.5
+  send_key down; sleep 1
 
   note "wachtwoord"
-  send_key select; sleep 3
   type_text "$PLEYA_DEMO_PASS"; sleep 1
+  send_key down; sleep 1
 
   # Nulmeting vlak vóór de submit: de log is een terugblik, dus een marker uit
   # een eerdere loginpoging zou anders als succes tellen.
   local marker='ConnectionRegistry: upserted jellyfin/'
   local before; before="$(count_log "$marker")"
   note "inloggen"
-  send_key return
+  send_key select
 
   if wait_for_more "$marker" "$before" 30; then
     echo "GESLAAGD: verbinding geregistreerd"
@@ -363,6 +371,11 @@ case "${1:-}" in
     echo "demo-login: $([[ -n "${PLEYA_DEMO_USER:-}" ]] && echo 'PLEYA_DEMO_* gezet' || echo 'ontbreekt in .env')"
     ;;
   build)
+    # Zelfde valkuil als in de tvos_beta-lane: tvOS bouwt op een eigen
+    # engine-fork, en zonder deze stap faalt de build op "unable to resolve
+    # module dependency: 'Flutter'" — een fout die nergens naar de oorzaak
+    # wijst. Het script is idempotent, dus altijd draaien is goedkoop.
+    tvos/scripts/fetch_engine.sh >/dev/null
     xcodebuild -workspace tvos/Runner.xcworkspace -scheme Runner -configuration Debug \
       -destination 'generic/platform=tvOS Simulator' -derivedDataPath tvos/build/dd \
       build CODE_SIGNING_ALLOWED=NO
