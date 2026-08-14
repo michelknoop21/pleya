@@ -126,4 +126,76 @@ void main() {
     release.complete(<String, dynamic>{'text': '', 'submitted': false});
     await session;
   });
+
+  // A session that ends without clearing the flag leaves the gate swallowing
+  // every press for the rest of the run, which is a remote that does nothing on
+  // any screen. Every way out of `edit` therefore has to land on inactive.
+  testWidgets('the session ends after a submit', (tester) async {
+    await pumpTwoFocusables(tester);
+    final (session, release, _) = await openSession();
+
+    release.complete(<String, dynamic>{'text': 'sintel', 'submitted': true});
+    final result = await session;
+
+    expect(result.submitted, isTrue);
+    expect(NativeInputSession.isActive, isFalse);
+  });
+
+  testWidgets('the session ends when the platform throws', (tester) async {
+    await pumpTwoFocusables(tester);
+
+    final opened = Completer<void>();
+    final release = Completer<Map<String, dynamic>>();
+    messenger.setMockMethodCallHandler(channel, (call) {
+      if (call.method == 'edit') {
+        opened.complete();
+        return release.future;
+      }
+      return Future<dynamic>.value();
+    });
+
+    final session = AppleTvNativeTextEntry(channel: channel).edit(text: '');
+    await opened.future;
+    expect(NativeInputSession.isActive, isTrue);
+
+    release.completeError(PlatformException(code: AppleTvNativeTextEntry.deadCode));
+
+    await expectLater(session, throwsA(isA<PlatformException>()));
+    expect(NativeInputSession.isActive, isFalse);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(second.hasPrimaryFocus, isTrue, reason: 'the remote must work again after a failed session');
+  });
+
+  testWidgets('a rejected second session leaves the live one alone', (tester) async {
+    await pumpTwoFocusables(tester);
+
+    final opened = Completer<void>();
+    final release = Completer<Map<String, dynamic>>();
+    messenger.setMockMethodCallHandler(channel, (call) {
+      if (call.method == 'edit') {
+        if (!opened.isCompleted) opened.complete();
+        return release.future;
+      }
+      return Future<dynamic>.value();
+    });
+
+    // One instance, because the guard that answers BUSY is the one the app uses:
+    // a single shared entry, not a fresh object per field.
+    final entry = AppleTvNativeTextEntry(channel: channel);
+    final session = entry.edit(text: '');
+    await opened.future;
+    expect(NativeInputSession.isActive, isTrue);
+
+    await expectLater(
+      entry.edit(text: ''),
+      throwsA(isA<PlatformException>().having((e) => e.code, 'code', AppleTvNativeTextEntry.busyCode)),
+    );
+    expect(NativeInputSession.isActive, isTrue, reason: 'the keyboard on screen still owns the remote');
+
+    release.complete(<String, dynamic>{'text': '', 'submitted': false});
+    await session;
+    expect(NativeInputSession.isActive, isFalse);
+  });
 }
