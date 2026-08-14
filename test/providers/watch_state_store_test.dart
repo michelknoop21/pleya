@@ -157,4 +157,59 @@ void main() {
     expect(resolved.viewedLeafCount, 10);
     expect(resolved.isWatched, isTrue);
   });
+
+  group('a second device that watched further', () {
+    final patchedAt = DateTime.utc(2026, 8, 14, 20, 0);
+
+    MediaItem movie({int? lastViewedAt, required int viewOffsetMs}) => MediaItem(
+      id: 'item-1',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.movie,
+      serverId: 'jf-machine',
+      viewOffsetMs: viewOffsetMs,
+      lastViewedAt: lastViewedAt,
+    );
+
+    Future<WatchStateStore> storeWithProgressPatch() async {
+      final store = WatchStateStore(now: () => patchedAt);
+      addTearDown(store.dispose);
+      await _emit(
+        _event(changeType: WatchStateChangeType.progressUpdate, isNowWatched: false, viewOffset: 600000),
+      );
+      return store;
+    }
+
+    int secondsAfterPatch(Duration d) => patchedAt.add(d).millisecondsSinceEpoch ~/ 1000;
+
+    test('the patch still bridges while the server only echoes this playback', () async {
+      final store = await storeWithProgressPatch();
+
+      // The server timestamp lands within seconds of the patch because this
+      // device reported the very playback the patch describes.
+      final resolved = store.apply(
+        movie(viewOffsetMs: 300000, lastViewedAt: secondsAfterPatch(const Duration(seconds: 5))),
+      );
+
+      expect(resolved.viewOffsetMs, 600000, reason: 'the local position is the fresher one here');
+    });
+
+    test('the server wins once its viewing is newer than the patch', () async {
+      final store = await storeWithProgressPatch();
+
+      final resolved = store.apply(
+        movie(viewOffsetMs: 2700000, lastViewedAt: secondsAfterPatch(const Duration(minutes: 30))),
+      );
+
+      expect(resolved.viewOffsetMs, 2700000, reason: 'another device got further, so the patch is stale');
+      expect(store.patchForItem(resolved), isNull);
+    });
+
+    test('a server without a viewing timestamp cannot outrank the patch', () async {
+      final store = await storeWithProgressPatch();
+
+      final resolved = store.apply(movie(viewOffsetMs: 300000));
+
+      expect(resolved.viewOffsetMs, 600000);
+    });
+  });
 }
