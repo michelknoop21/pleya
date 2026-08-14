@@ -692,15 +692,21 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   void _moveTvHero(int delta) {
-    if (_latestMovies.length < 2) return;
+    if (_latestMovies.isEmpty) return;
     final current = _effectiveSpotlightItem;
     final currentIndex = current == null ? -1 : _latestMovies.indexWhere((m) => m.globalKey == current.globalKey);
     final baseIndex = currentIndex == -1 ? _currentHeroIndex.clamp(0, _latestMovies.length - 1).toInt() : currentIndex;
-    final nextIndex = (baseIndex + delta) % _latestMovies.length;
-    final normalizedIndex = nextIndex < 0 ? nextIndex + _latestMovies.length : nextIndex;
-    setState(() => _currentHeroIndex = normalizedIndex);
+    final nextIndex = baseIndex + delta;
+    // Finite carousel, same convention as the phone hero and the browse rails:
+    // left off the first item exits into the sidebar, right off the last stays put.
+    if (nextIndex < 0) {
+      _navigateToSidebar();
+      return;
+    }
+    if (nextIndex >= _latestMovies.length) return;
+    setState(() => _currentHeroIndex = nextIndex);
     _spotlightUserDriven = true;
-    _spotlightItem.value = _latestMovies[normalizedIndex];
+    _spotlightItem.value = _latestMovies[nextIndex];
     _pauseTvHeroAutoScrollForManualNavigation();
   }
 
