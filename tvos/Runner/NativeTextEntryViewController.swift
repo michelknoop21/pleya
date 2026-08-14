@@ -82,6 +82,10 @@ final class NativeTextEntryField: NSObject, UITextFieldDelegate {
   private static let responderPollInterval: TimeInterval = 0.4
   /// Roughly two seconds of trying before we stop waiting for the keyboard.
   private static let maxDismissAttempts = 5
+  /// Backstop for the result we hand Dart. It waits for the dismissal to
+  /// finish, and a dismissal that never calls back would leave the `edit` call
+  /// pending forever, which is a remote that does nothing at all on any screen.
+  private static let finishReportTimeout: TimeInterval = 1
 
   private var didBeginEditing = false
   private var committed = false
@@ -191,13 +195,21 @@ final class NativeTextEntryField: NSObject, UITextFieldDelegate {
 
   /// Close the keyboard tvOS put up for us — and only that. Anything that was
   /// already presented when we attached belongs to someone else.
-  private func dismissSystemKeyboardIfPresented() {
-    guard let top = Self.topPresented(from: host), top !== presentedBeforeAttach else { return }
+  ///
+  /// `completion` runs once the presentation is really gone, and runs straight
+  /// away when there was nothing of ours to dismiss.
+  private func dismissSystemKeyboardIfPresented(completion: (() -> Void)? = nil) {
+    guard let top = Self.topPresented(from: host), top !== presentedBeforeAttach,
+      let presenter = top.presentingViewController
+    else {
+      completion?()
+      return
+    }
     diag("dismissing keyboard presentation \(type(of: top))")
     // Via the presenter, never the presented controller itself: `dismiss` routes
     // to the receiver's *presented* child, so calling it on the keyboard would
     // close whatever the keyboard is showing and leave the keyboard. DEC-011.
-    top.presentingViewController?.dismiss(animated: false)
+    presenter.dismiss(animated: false, completion: completion)
   }
 
   // MARK: - UITextFieldDelegate
@@ -247,14 +259,28 @@ final class NativeTextEntryField: NSObject, UITextFieldDelegate {
     // Build 203 hit this and fixed it via `presentingViewController`; the
     // rewrite to a parked field (no presented VC of our own) dropped that
     // escape without replacing it. This is the replacement.
-    dismissSystemKeyboardIfPresented()
+    //
+    // Report only once that dismissal has finished. Reporting earlier ends the
+    // Dart-side session, and so hands the remote back to Flutter, while the
+    // presentation is still on screen: presses during the transition then drive
+    // the UI behind a keyboard the user is still looking at. Strong `self` on
+    // purpose, because the plugin holds this object until `onFinished` fires and
+    // a weak capture that came back nil would leave the Dart call pending
+    // forever. The timer is the backstop for a completion that never arrives.
+    var reported = false
+    let report = { [self] in
+      guard !reported else { return }
+      reported = true
+      diag("finish submitted=\(submitted) failure=\(failure ?? "-")")
+      onFinished?(text, submitted, failure)
+    }
+    dismissSystemKeyboardIfPresented(completion: report)
+    DispatchQueue.main.asyncAfter(deadline: .now() + Self.finishReportTimeout, execute: report)
     // Not in this runloop turn. Resigning starts an asynchronous dismissal, and
-    // yanking the field out of the tree now — moments before the plugin drops
-    // the last strong reference to us — destroys the object driving it. The
-    // closure holds the field alive until the transition has had its turn.
+    // yanking the field out of the tree now, moments before the plugin drops the
+    // last strong reference to us, destroys the object driving it. The closure
+    // holds the field alive until the transition has had its turn.
     let field = textField
     DispatchQueue.main.async { field.removeFromSuperview() }
-    diag("finish submitted=\(submitted) failure=\(failure ?? "-")")
-    onFinished?(text, submitted, failure)
   }
 }

@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../focus/dpad_navigator.dart';
 import '../utils/app_logger.dart';
 import '../utils/key_event_simulator.dart' as key_sim;
 import '../utils/native_input_session.dart';
@@ -150,20 +149,14 @@ class AppleTvRemoteTouchService {
       return true;
     }
     // The tvOS system keyboard owns the remote — anything that still leaks
-    // through stops here rather than moving focus behind it.
+    // through stops here rather than moving focus behind it. Only a first line:
+    // answering "handled" here does not stop FocusManager from walking the focus
+    // tree, so the press is actually stopped by the early key handler in
+    // AppleTvNativeTextEntry. That handler also owns the back key, which still
+    // has to close the surface: asking twice for one press would be two
+    // needless platform round-trips.
     if (NativeInputSession.isActive) {
       _releaseSelectForNativeSession();
-      // Back is the exception that still has to *do* something. It reaches Dart
-      // only when the native escape hatch missed the press, and swallowing it
-      // there is why the first Menu could appear to do nothing: the keyboard
-      // stayed up until a later press happened to take the native path. Ask the
-      // surface to close, then consume as usual so focus stays put either way.
-      // KeyDown only — repeats and the key-up would ask again for one press.
-      if (event is KeyDownEvent && event.logicalKey.isBackKey) {
-        final asked = NativeInputSession.requestClose();
-        _log('consume native key reason=native-input-session close=$asked');
-        return true;
-      }
       _log('consume native key reason=native-input-session');
       return true;
     }

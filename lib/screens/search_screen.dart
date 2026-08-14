@@ -27,6 +27,7 @@ import '../services/apple_tv_native_text_entry.dart';
 import '../services/settings_service.dart';
 import '../services/speech_search_service.dart';
 import '../utils/app_logger.dart';
+import '../utils/native_input_session.dart';
 import '../utils/platform_detector.dart';
 import '../utils/snackbar_helper.dart';
 import '../widgets/desktop_app_bar.dart';
@@ -303,7 +304,13 @@ class _SearchScreenState extends State<SearchScreen>
     // _maybeFocusResultsAfterSubmit still moves it onward for submit flows.
     // Scoped to focus inside this screen, so a background refresh() while
     // another tab is active can't steal focus across tabs.
-    if (PlatformDetector.isTV() && !_searchFocusNode.hasFocus) {
+    // Not while the native keyboard is up: each keystroke streams a new search
+    // in, and parking focus would scroll this screen around underneath a
+    // surface the user cannot see past. Results keep updating; the park waits
+    // until the session ends, and a submit routes through
+    // _maybeFocusResultsAfterSubmit anyway (that one runs after `edit`
+    // completes, so after the session is over).
+    if (PlatformDetector.isTV() && !_searchFocusNode.hasFocus && !NativeInputSession.isActive) {
       final primary = FocusManager.instance.primaryFocus;
       final inThisScreen = primary?.context?.findAncestorStateOfType<_SearchScreenState>() == this;
       if (inThisScreen) {

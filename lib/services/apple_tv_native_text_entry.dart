@@ -1,8 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 
+import '../focus/dpad_navigator.dart';
 import '../utils/app_logger.dart';
 import '../utils/native_input_session.dart';
 import 'gamepad_service.dart';
@@ -49,6 +50,40 @@ class AppleTvNativeTextEntry {
   static const unavailableCode = 'KEYBOARD_UNAVAILABLE';
 
   final MethodChannel _channel;
+
+  /// Installs the one hook that can actually stop a press from reaching the UI
+  /// behind the system keyboard.
+  ///
+  /// The tvOS engine swizzles `sendEvent:` and ships every Siri Remote press to
+  /// Dart as a key event, outside the responder chain. [FocusManager] then walks
+  /// the focus tree for it regardless of what a [HardwareKeyboard] handler
+  /// answered, so gating there stops nothing: the button behind the keyboard
+  /// still scrolls, still activates, still moves focus. Early key handlers run
+  /// before that walk, which makes this the single place to close the leak for
+  /// every input field at once.
+  ///
+  /// Called on every session and never removed: outside a session the handler
+  /// answers [KeyEventResult.ignored] on its first line. The remove-then-add is
+  /// what keeps that idempotent, because the handler list takes duplicates and
+  /// the binding hands out a fresh [FocusManager] between widget tests.
+  static void _installKeyGate() {
+    FocusManager.instance
+      ..removeEarlyKeyEventHandler(_blockKeysDuringSession)
+      ..addEarlyKeyEventHandler(_blockKeysDuringSession);
+  }
+
+  static KeyEventResult _blockKeysDuringSession(KeyEvent event) {
+    if (!NativeInputSession.isActive) return KeyEventResult.ignored;
+    // Back is the one key that still has to do something. It reaches Dart only
+    // when the native escape hatch missed the press, and swallowing it outright
+    // is why the first Menu could appear to do nothing. Ask the surface to
+    // close, then consume it like the rest so focus stays put either way.
+    // KeyDown only: repeats and the key-up would ask again for one press.
+    if (event is KeyDownEvent && event.logicalKey.isBackKey) {
+      NativeInputSession.requestClose();
+    }
+    return KeyEventResult.handled;
+  }
 
   ValueChanged<String>? _activeOnTextChanged;
   bool _sessionActive = false;
@@ -121,6 +156,7 @@ class AppleTvNativeTextEntry {
 
     _sessionActive = true;
     _activeOnTextChanged = onTextChanged;
+    _installKeyGate();
     // Synchronous, before the await: an async flag would leave a window in
     // which the keyboard is already up and Dart is still dispatching keys.
     NativeInputSession.begin(onRequestClose: _requestCancel);
