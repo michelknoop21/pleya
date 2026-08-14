@@ -247,7 +247,7 @@ extension _PlexVideoControlsVisibilityMethods on _PlexVideoControlsState {
       return;
     }
 
-    if (_currentMarker != null) {
+    if (_isSkipMarkerButtonVisible) {
       _skipMarkerFocusNode.requestFocus();
       return;
     }
@@ -266,11 +266,20 @@ extension _PlexVideoControlsVisibilityMethods on _PlexVideoControlsState {
 
     if (visibilityChanged && !controlsVisible) {
       _desktopControlsKey.currentState?.hideContentStrip();
-      _cancelSkipButtonDismissTimer();
-      _setControlsState(() {
-        if (_currentMarker != null) _skipButtonDismissed = true;
-      });
-      _reclaimFocusAfterControlsHide();
+      // Standing on the skip button when the controls auto-hide is not a reason
+      // to dismiss it and yank focus away; the button outlives the chrome.
+      if (_skipMarkerFocusNode.hasFocus && _isSkipMarkerButtonVisible) {
+        // Also stop the 7s dismiss timer: it would pull the button out from
+        // under the focus it currently holds.
+        _cancelSkipButtonDismissTimer();
+        _setControlsState(() {});
+      } else {
+        _cancelSkipButtonDismissTimer();
+        _setControlsState(() {
+          if (_currentMarker != null) _skipButtonDismissed = true;
+        });
+        _reclaimFocusAfterControlsHide();
+      }
     } else {
       _setControlsState(() {});
     }

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart' show KeyDownEvent, LogicalKeyboardKey;
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../focus/focusable_wrapper.dart';
+import '../../../i18n/strings.g.dart';
 import '../../../media/media_source_info.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../app_icon.dart';
@@ -19,6 +20,10 @@ class SkipMarkerButton extends StatelessWidget {
   final VoidCallback onActivate;
   final VoidCallback onFocusDown;
 
+  /// Called on UP/LEFT/RIGHT. The button sits outside the controls focus scope,
+  /// so without this it is a dead end in those directions.
+  final VoidCallback onFocusExit;
+
   const SkipMarkerButton({
     super.key,
     required this.marker,
@@ -31,6 +36,7 @@ class SkipMarkerButton extends StatelessWidget {
     required this.focusNode,
     required this.onActivate,
     required this.onFocusDown,
+    required this.onFocusExit,
   });
 
   @override
@@ -41,11 +47,11 @@ class SkipMarkerButton extends StatelessWidget {
     final showNextEpisode = creditsAtEnd && hasNextEpisode;
     String baseButtonText;
     if (showNextEpisode) {
-      baseButtonText = 'Next Episode';
+      baseButtonText = t.videoControls.nextEpisode;
     } else if (isCredits) {
-      baseButtonText = 'Skip Credits';
+      baseButtonText = t.videoControls.skipCredits;
     } else {
-      baseButtonText = 'Skip Intro';
+      baseButtonText = t.videoControls.skipIntro;
     }
 
     final remainingSeconds = isAutoSkipActive && shouldShowAutoSkip
@@ -62,8 +68,13 @@ class SkipMarkerButton extends StatelessWidget {
       focusNode: focusNode,
       onSelect: _activate,
       borderRadius: tokens(context).radiusSm,
-      useBackgroundFocus: true,
+      // Border ring, not the background tint: the tint sits behind an opaque
+      // white button and is invisible.
+      useBackgroundFocus: false,
       autoScroll: false,
+      onNavigateUp: onFocusExit,
+      onNavigateLeft: onFocusExit,
+      onNavigateRight: onFocusExit,
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowDown) {
           onFocusDown();

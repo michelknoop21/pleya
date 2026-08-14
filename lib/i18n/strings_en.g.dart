@@ -1529,6 +1529,15 @@ class TranslationsVideoControlsEn {
 	/// en: 'Play Next'
 	String get playNext => 'Play Next';
 
+	/// en: 'Next Episode'
+	String get nextEpisode => 'Next Episode';
+
+	/// en: 'Skip Intro'
+	String get skipIntro => 'Skip Intro';
+
+	/// en: 'Skip Credits'
+	String get skipCredits => 'Skip Credits';
+
 	/// en: 'Play'
 	String get playButton => 'Play';
 
@@ -5821,6 +5830,9 @@ extension on Translations {
 			'videoControls.continueWatching' => 'Continue',
 			'videoControls.autoPlayNext' => 'Auto-Play Next',
 			'videoControls.playNext' => 'Play Next',
+			'videoControls.nextEpisode' => 'Next Episode',
+			'videoControls.skipIntro' => 'Skip Intro',
+			'videoControls.skipCredits' => 'Skip Credits',
 			'videoControls.playButton' => 'Play',
 			'videoControls.pauseButton' => 'Pause',
 			'videoControls.seekBackwardButton' => ({required Object seconds}) => 'Seek backward ${seconds} seconds',
@@ -5867,11 +5879,11 @@ extension on Translations {
 			'videoControls.pipFailed' => 'Picture-in-picture failed to start',
 			'videoControls.screenshotSaved' => 'Screenshot saved',
 			'videoControls.zoomPercent' => ({required Object percent}) => 'Zoom ${percent}%',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.pipErrors.androidVersion' => 'Requires Android 8.0 or newer',
 			'videoControls.pipErrors.iosVersion' => 'Requires iOS 15.0 or newer',
 			'videoControls.pipErrors.permissionDisabled' => 'Picture-in-picture is disabled. Enable it in system settings.',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.pipErrors.notSupported' => 'Device doesn\'t support picture-in-picture mode',
 			'videoControls.pipErrors.voSwitchFailed' => 'Failed to switch video output for picture-in-picture',
 			'videoControls.pipErrors.failed' => 'Picture-in-picture failed to start',
@@ -6381,11 +6393,11 @@ extension on Translations {
 			'downloads.noDownloads' => 'No downloads yet',
 			'downloads.noDownloadsDescription' => 'Downloaded content will appear here for offline viewing',
 			'downloads.downloadNow' => 'Download',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.deleteDownload' => 'Delete download',
 			'downloads.retryDownload' => 'Retry download',
 			'downloads.downloadQueued' => 'Download queued',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.waitingForNetwork' => 'Waiting for network',
 			'downloads.downloadResumed' => 'Download resumed',
 			'downloads.serverErrorBitrate' => 'Server error: file may exceed the remote bitrate limit',

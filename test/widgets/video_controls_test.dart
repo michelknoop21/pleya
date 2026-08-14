@@ -330,6 +330,60 @@ void main() {
 
       expect(activateCount, 1);
     });
+
+    testWidgets('d-pad up, left and right release focus instead of dead-ending', (tester) async {
+      final focusNode = FocusNode();
+      addTearDown(focusNode.dispose);
+      var exitCount = 0;
+
+      await _pumpSkipMarkerButton(
+        tester,
+        focusNode: focusNode,
+        isAutoSkipActive: false,
+        onActivate: () {},
+        onFocusExit: () => exitCount++,
+      );
+
+      focusNode.requestFocus();
+      await tester.pump();
+
+      for (final key in [LogicalKeyboardKey.arrowUp, LogicalKeyboardKey.arrowLeft, LogicalKeyboardKey.arrowRight]) {
+        await tester.sendKeyEvent(key);
+        await tester.pump();
+      }
+
+      expect(exitCount, 3);
+    });
+
+    testWidgets('credits at the end of the file become the next-episode button', (tester) async {
+      final focusNode = FocusNode();
+      addTearDown(focusNode.dispose);
+
+      await _pumpSkipMarkerButton(
+        tester,
+        focusNode: focusNode,
+        isAutoSkipActive: false,
+        onActivate: () {},
+        marker: MediaMarker(id: 2, type: 'credits', startTimeOffset: 1140000, endTimeOffset: 1200000),
+        playerDuration: const Duration(minutes: 20),
+        hasNextEpisode: true,
+      );
+
+      expect(find.text('Next Episode'), findsOneWidget);
+
+      // That same label also lives on the Play Next card, so the card has to
+      // win: two next-episode affordances at once is the bug this guards.
+      expect(
+        shouldShowSkipMarkerButton(
+          hasFirstFrame: true,
+          hasMarker: true,
+          hasPlayNextPrompt: true,
+          skipButtonDismissed: false,
+          controlsVisible: false,
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('mobileSkipZoneForTap', () {
@@ -827,6 +881,10 @@ Future<void> _pumpSkipMarkerButton(
   required bool isAutoSkipActive,
   required VoidCallback onActivate,
   VoidCallback? onFocusDown,
+  VoidCallback? onFocusExit,
+  MediaMarker? marker,
+  Duration playerDuration = const Duration(minutes: 20),
+  bool hasNextEpisode = false,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -834,9 +892,9 @@ Future<void> _pumpSkipMarkerButton(
       home: Scaffold(
         body: Center(
           child: SkipMarkerButton(
-            marker: MediaMarker(id: 1, type: 'intro', startTimeOffset: 10000, endTimeOffset: 45000),
-            playerDuration: const Duration(minutes: 20),
-            hasNextEpisode: false,
+            marker: marker ?? MediaMarker(id: 1, type: 'intro', startTimeOffset: 10000, endTimeOffset: 45000),
+            playerDuration: playerDuration,
+            hasNextEpisode: hasNextEpisode,
             isAutoSkipActive: isAutoSkipActive,
             shouldShowAutoSkip: true,
             autoSkipDelay: 5,
@@ -844,6 +902,7 @@ Future<void> _pumpSkipMarkerButton(
             focusNode: focusNode,
             onActivate: onActivate,
             onFocusDown: onFocusDown ?? () {},
+            onFocusExit: onFocusExit ?? () {},
           ),
         ),
       ),

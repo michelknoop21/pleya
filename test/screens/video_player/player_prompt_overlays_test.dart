@@ -43,6 +43,45 @@ void main() {
     expect(_promptPosition(tester).bottom, 24);
   });
 
+  testWidgets('play next buttons are pills so the focus ring fits the shape', (tester) async {
+    PipService().isPipActive.value = false;
+    final chromeController = PlayerChromeController();
+    final cancelFocusNode = FocusNode(debugLabel: 'TestCancel');
+    final confirmFocusNode = FocusNode(debugLabel: 'TestConfirm');
+    addTearDown(chromeController.dispose);
+    addTearDown(cancelFocusNode.dispose);
+    addTearDown(confirmFocusNode.dispose);
+
+    await tester.pumpWidget(
+      _wrapPrompt(
+        VideoPlayerPlayNextOverlay(
+          visible: true,
+          nextEpisode: _episode(),
+          autoPlayCountdown: -1,
+          cancelFocusNode: cancelFocusNode,
+          confirmFocusNode: confirmFocusNode,
+          chromeController: chromeController,
+          onCancel: () {},
+          onPlayNext: () {},
+        ),
+      ),
+    );
+
+    final confirmShape = tester
+        .widget<FilledButton>(find.byType(FilledButton))
+        .style
+        ?.shape
+        ?.resolve(const <WidgetState>{});
+    final cancelShape = tester
+        .widget<OutlinedButton>(find.byType(OutlinedButton))
+        .style
+        ?.shape
+        ?.resolve(const <WidgetState>{});
+
+    expect(confirmShape, isA<StadiumBorder>());
+    expect(cancelShape, isA<StadiumBorder>());
+  });
+
   testWidgets('hovering play next prompt holds chrome visible and stable', (tester) async {
     PipService().isPipActive.value = false;
     final chromeController = PlayerChromeController();

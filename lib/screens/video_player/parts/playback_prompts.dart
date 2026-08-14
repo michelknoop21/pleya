@@ -47,6 +47,13 @@ extension _VideoPlayerPlaybackPromptMethods on VideoPlayerScreenState {
       // Capture keyboard mode before async gap
       final isKeyboardMode = PlatformDetector.isTV() && InputModeTracker.isKeyboardMode(context);
 
+      // Claim the prompt slot before the async gap. The skip/next button hides
+      // on `hasPlayNextPrompt`, so waiting for the settings round-trip leaves
+      // both next-episode affordances on screen during the credits.
+      _setPlayerState(() {
+        _showPlayNextDialog = true;
+      });
+
       final settings = await SettingsService.getInstance();
       if (!mounted) return;
       final autoPlayEnabled = settings.read(SettingsService.autoPlayNextEpisode);
