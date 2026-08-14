@@ -155,7 +155,7 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
         positionMs: position.inMilliseconds,
         durationMs: duration.inMilliseconds,
         promptVisible: _showPlayNextDialog,
-        countdownActive: _autoPlayTimer?.isActive == true,
+        countdownActive: _autoPlayCountdown.isActive,
       );
       // CompletionLatchSignal.rearmed needs no action here: the latch
       // re-armed itself once playback seeked back out of the end region.

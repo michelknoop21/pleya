@@ -23,9 +23,12 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
 
   Future<void> _playNext() async {
     if (!mounted) return;
-    if (_nextEpisode == null || _isLoadingNext) return;
+    if (_nextEpisode == null || _isLoadingNext) {
+      appLogger.i('Autoplay: play next skipped (next=${_nextEpisode != null}, loading=$_isLoadingNext)');
+      return;
+    }
 
-    _autoPlayTimer?.cancel();
+    _autoPlayCountdown.cancel();
     _unfocusPlayNextPrompt();
     _dismissStillWatching();
 
@@ -60,7 +63,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       return;
     }
 
-    _autoPlayTimer?.cancel();
+    _autoPlayCountdown.cancel();
     _unfocusPlayNextPrompt();
     _dismissStillWatching();
 
@@ -280,7 +283,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     VideoPlayerScreenState._activeMediaIndex = targetMediaIndex;
     _unfocusPlayNextPrompt();
     _showPlayNextDialog = false;
-    _autoPlayTimer?.cancel();
+    _autoPlayCountdown.cancel();
     _hasFirstFrame.value = false;
 
     try {
@@ -490,7 +493,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         appLogger.d('playbackState.setCurrentItem failed', error: e);
       }
 
-      unawaited(_loadAdjacentEpisodes(metadata: metadata, attempt: attempt));
+      unawaited(_startAdjacentEpisodesLoad(metadata: metadata, attempt: attempt));
       if (!isCurrentReload()) return true;
 
       if (_autoPipEnabled) {
@@ -547,6 +550,13 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       if (attempt.isCurrent && _playbackTransition == _PlaybackTransition.reloadingMedia) {
         _playbackTransition = _PlaybackTransition.idle;
       }
+      // The `!isCurrentReload()` exits above hand the screen to a newer flow
+      // without touching the loading flags. Only a newer *reload* clears them
+      // itself; every other take-over (transcode restart, channel switch,
+      // unmount) would leave `_isLoadingNext` stuck true, which turns Play
+      // Next into a silent no-op for the rest of the session.
+      final newerReloadOwnsFlags = !attempt.isCurrent && _playbackTransition == _PlaybackTransition.reloadingMedia;
+      if (!newerReloadOwnsFlags) _clearEpisodeLoadingFlags();
       // Restore Watch Together sync on every exit: after a successful item
       // change (readiness re-handshakes for the new item), after a failed
       // reload (the still-playing old item must stay synced), and when the
