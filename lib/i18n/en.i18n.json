@@ -618,6 +618,11 @@
     "serverLimitBody": "Server error (HTTP 500). A bandwidth/transcoding limit likely rejected this session. Ask the owner to adjust it.",
     "logsUploaded": "Logs uploaded",
     "logsUploadFailed": "Failed to upload logs",
+    "logsUploadTooLarge": "The log is too large to upload. Clear it, reproduce the problem, and upload again.",
+    "logsUploadRateLimited": "Uploaded too soon after the last one. Try again in ${seconds} seconds.",
+    "logsUploadRefused": "The log server refused the upload (HTTP ${status}).",
+    "logsUploadServerError": "The log server ran into a problem (HTTP ${status}). Try again later.",
+    "logsUploadNetworkError": "Could not reach the log server. Check your connection and try again.",
     "logId": "Log ID",
     "dvdNotSupported": "DVD discs aren't supported on this device.",
     "discNotSupported": "This disc format isn't supported on this device."

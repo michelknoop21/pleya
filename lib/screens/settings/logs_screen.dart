@@ -9,6 +9,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../../exceptions/media_server_exceptions.dart';
 import '../../focus/focusable_action_bar.dart';
 import '../../focus/focusable_button.dart';
 import '../../focus/key_event_utils.dart';
@@ -19,13 +20,18 @@ import '../../utils/media_server_timeouts.dart';
 import '../../main.dart' show gitCommit;
 import '../../utils/app_logger.dart';
 import '../../utils/formatters.dart';
+import '../../utils/log_upload.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../widgets/desktop_app_bar.dart';
 import '../../widgets/ios_status_bar_tap_scroll_to_top.dart';
 
 class LogsScreen extends StatefulWidget {
-  const LogsScreen({super.key});
+  const LogsScreen({super.key, @visibleForTesting this.uploadClient});
+
+  /// Overrides the shared [httpClient] for the upload action so tests can
+  /// answer with the status codes the relay actually returns.
+  final MediaServerHttpClient? uploadClient;
 
   @override
   State<LogsScreen> createState() => _LogsScreenState();
@@ -34,6 +40,7 @@ class LogsScreen extends StatefulWidget {
 class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
   List<LogEntry> _logs = [];
   String _deviceInfo = '';
+  bool _isUploading = false;
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -129,6 +136,12 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
       buffer.writeln(_deviceInfo);
       buffer.writeln('---');
     }
+    buffer.write(_formatLogEntries());
+    return buffer.toString();
+  }
+
+  String _formatLogEntries() {
+    final buffer = StringBuffer();
     bool isFirst = true;
     for (final log in _logs.reversed) {
       if (!isFirst) {
@@ -152,24 +165,52 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
     showSuccessSnackBar(context, t.messages.logsCopied);
   }
 
+  /// Budget for the upload request itself. The dialog below outlives it on
+  /// purpose: whoever gives up first decides what happened, and only the HTTP
+  /// layer can abort the request. If the dialog won that race the log could
+  /// still land on the server afterwards, with the ID unreachable.
+  static const _uploadRequestTimeout = MediaServerTimeouts.interactive;
+  static const _uploadDialogTimeout = Duration(seconds: 25);
+
+  /// Fallback wait after a 429. The relay allows one upload per minute and
+  /// sends no `Retry-After`, so this is what the user is actually waiting for.
+  static const _uploadRetryAfterFallback = 60;
+
   Future<void> _uploadLogs() async {
-    final logText = _formatAllLogs();
+    // A second press while the first upload is in flight would run straight
+    // into the relay's one-per-minute limit and report a rate limit the user
+    // caused by waiting.
+    if (_isUploading) return;
+    final logText = buildLogUploadBody(header: _deviceInfo, entries: _formatLogEntries());
+    final abort = AbortController();
+    var retryAfter = _uploadRetryAfterFallback;
+    setStateIfMounted(() => _isUploading = true);
 
     try {
       final response = await showCancellableLoadingDialog(
         context: context,
-        timeout: MediaServerTimeouts.interactive,
+        timeout: _uploadDialogTimeout,
         timeoutMessage: t.common.timedOut,
-        task: httpClient.post(
+        onCancel: abort.abort,
+        task: (widget.uploadClient ?? httpClient).post(
           '${const String.fromEnvironment('PLEYA_ICE_BASE', defaultValue: 'https://ice.pleya.app')}/logs',
           body: logText,
           headers: {'Content-Type': 'text/plain'},
+          timeout: _uploadRequestTimeout,
+          abort: abort,
         ),
       );
 
-      // null = cancelled or timed out; the helper already told the user.
-      if (response == null || !mounted) return;
+      // null = cancelled or timed out; the helper already told the user. Abort
+      // regardless so a request nobody is waiting for cannot still be stored.
+      if (response == null) {
+        abort.abort();
+        return;
+      }
+      if (!mounted) return;
 
+      retryAfter = _retryAfterSeconds(response.headers) ?? _uploadRetryAfterFallback;
+      throwIfHttpError(response);
       final data = response.data is String ? jsonDecode(response.data) : response.data;
       final id = (data as Map<String, dynamic>)['id'] as String;
 
@@ -205,10 +246,53 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
           ),
         ),
       );
-    } catch (_) {
+    } catch (e) {
+      // The relay answers failures in text/plain, so the old bare catch turned
+      // every one of them into a FormatException and the same generic line,
+      // with nothing in the log to say which one it was.
+      appLogger.w('Log upload failed: $e');
       if (!mounted) return;
-      showErrorSnackBar(context, t.messages.logsUploadFailed);
+      showErrorSnackBar(context, _uploadErrorMessage(e, retryAfter));
+    } finally {
+      setStateIfMounted(() => _isUploading = false);
     }
+  }
+
+  /// Seconds the server asks us to wait, when it says so. The relay currently
+  /// sends no `Retry-After`; a date-form value is left to the caller's default
+  /// rather than parsed, since one minute is the only interval it enforces.
+  int? _retryAfterSeconds(Map<String, String> headers) {
+    for (final entry in headers.entries) {
+      if (entry.key.toLowerCase() != 'retry-after') continue;
+      final seconds = int.tryParse(entry.value.trim());
+      if (seconds != null && seconds > 0) return seconds;
+    }
+    return null;
+  }
+
+  /// One message per outcome. A refused upload and an unreachable server are
+  /// different problems and only one of them is worth retrying right away.
+  String _uploadErrorMessage(Object error, int retryAfter) {
+    if (error is! MediaServerHttpException) return t.messages.logsUploadFailed;
+
+    final status = error.statusCode;
+    if (status == null) {
+      return switch (error.type) {
+        MediaServerHttpErrorType.connectionTimeout ||
+        MediaServerHttpErrorType.receiveTimeout ||
+        MediaServerHttpErrorType.connectionError ||
+        MediaServerHttpErrorType.cancelled => t.messages.logsUploadNetworkError,
+        MediaServerHttpErrorType.unknown => t.messages.logsUploadFailed,
+      };
+    }
+
+    return switch (status) {
+      HttpStatus.requestEntityTooLarge => t.messages.logsUploadTooLarge,
+      HttpStatus.tooManyRequests => t.messages.logsUploadRateLimited(seconds: retryAfter),
+      >= 500 => t.messages.logsUploadServerError(status: status),
+      >= 400 => t.messages.logsUploadRefused(status: status),
+      _ => t.messages.logsUploadFailed,
+    };
   }
 
   Color _getLevelColor(Level level) {
@@ -311,7 +395,7 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
                         FocusableAction(
                           icon: Symbols.upload_rounded,
                           tooltip: t.logs.uploadLogs,
-                          onPressed: _logs.isNotEmpty ? _uploadLogs : null,
+                          onPressed: _logs.isNotEmpty && !_isUploading ? _uploadLogs : null,
                         ),
                         FocusableAction(
                           icon: Symbols.content_copy_rounded,

@@ -1860,6 +1860,21 @@ class TranslationsMessagesEn {
 	/// en: 'Failed to upload logs'
 	String get logsUploadFailed => 'Failed to upload logs';
 
+	/// en: 'The log is too large to upload. Clear it, reproduce the problem, and upload again.'
+	String get logsUploadTooLarge => 'The log is too large to upload. Clear it, reproduce the problem, and upload again.';
+
+	/// en: 'Uploaded too soon after the last one. Try again in ${seconds} seconds.'
+	String logsUploadRateLimited({required Object seconds}) => 'Uploaded too soon after the last one. Try again in ${seconds} seconds.';
+
+	/// en: 'The log server refused the upload (HTTP ${status}).'
+	String logsUploadRefused({required Object status}) => 'The log server refused the upload (HTTP ${status}).';
+
+	/// en: 'The log server ran into a problem (HTTP ${status}). Try again later.'
+	String logsUploadServerError({required Object status}) => 'The log server ran into a problem (HTTP ${status}). Try again later.';
+
+	/// en: 'Could not reach the log server. Check your connection and try again.'
+	String get logsUploadNetworkError => 'Could not reach the log server. Check your connection and try again.';
+
 	/// en: 'Log ID'
 	String get logId => 'Log ID';
 
@@ -5947,6 +5962,11 @@ extension on Translations {
 			'messages.serverLimitBody' => 'Server error (HTTP 500). A bandwidth/transcoding limit likely rejected this session. Ask the owner to adjust it.',
 			'messages.logsUploaded' => 'Logs uploaded',
 			'messages.logsUploadFailed' => 'Failed to upload logs',
+			'messages.logsUploadTooLarge' => 'The log is too large to upload. Clear it, reproduce the problem, and upload again.',
+			'messages.logsUploadRateLimited' => ({required Object seconds}) => 'Uploaded too soon after the last one. Try again in ${seconds} seconds.',
+			'messages.logsUploadRefused' => ({required Object status}) => 'The log server refused the upload (HTTP ${status}).',
+			'messages.logsUploadServerError' => ({required Object status}) => 'The log server ran into a problem (HTTP ${status}). Try again later.',
+			'messages.logsUploadNetworkError' => 'Could not reach the log server. Check your connection and try again.',
 			'messages.logId' => 'Log ID',
 			'messages.dvdNotSupported' => 'DVD discs aren\'t supported on this device.',
 			'messages.discNotSupported' => 'This disc format isn\'t supported on this device.',
@@ -6388,13 +6408,13 @@ extension on Translations {
 			'watchTogether.guestSwitchFailed' => 'Couldn\'t switch — content not found on this server',
 			'downloads.title' => 'Downloads',
 			'downloads.manage' => 'Manage',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.tvShows' => 'TV Shows',
 			'downloads.movies' => 'Movies',
 			'downloads.noDownloads' => 'No downloads yet',
 			'downloads.noDownloadsDescription' => 'Downloaded content will appear here for offline viewing',
 			'downloads.downloadNow' => 'Download',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.deleteDownload' => 'Delete download',
 			'downloads.retryDownload' => 'Retry download',
 			'downloads.downloadQueued' => 'Download queued',
@@ -6902,6 +6922,8 @@ extension on Translations {
 			'pleyaShare.pairFailed' => 'Pairing failed. Check the code and try again.',
 			'pleyaShare.paired' => ({required Object name}) => 'Connected to ${name}',
 			'pleyaShare.pairUnreachable' => 'Host not reachable. Check the address and network.',
+			_ => null,
+		} ?? switch (path) {
 			'pleyaShare.addFolder' => 'Add a local folder',
 			'pleyaShare.notificationTitle' => 'Sharing media',
 			'pleyaShare.notificationText' => 'Other Pleya devices can stream your local folders',

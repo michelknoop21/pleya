@@ -1,11 +1,18 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:logger/logger.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/screens/settings/logs_screen.dart';
 import 'package:pleya/utils/app_logger.dart';
+import 'package:pleya/utils/log_upload.dart';
+import 'package:pleya/utils/media_server_http_client.dart';
 
 /// Swallows console output. Entries still land in [MemoryLogOutput] because
 /// recording happens in the printer, not the output — so the buffer fills
@@ -41,6 +48,30 @@ void installDeviceInfoMock() {
     },
   );
 }
+
+/// Records what the upload action sent and how often.
+///
+/// The relay answers everything but a stored log in `text/plain`, which is what
+/// used to turn each distinct refusal into one FormatException and one generic
+/// line on screen.
+final class _Relay {
+  _Relay(this.handler);
+
+  final Future<http.Response> Function(http.Request request) handler;
+  final List<String> requests = [];
+
+  MediaServerHttpClient client() => MediaServerHttpClient(
+    client: MockClient((request) {
+      requests.add(request.body);
+      return handler(request);
+    }),
+  );
+}
+
+_Relay _answering(int status, String body, {Map<String, String> headers = const {'content-type': 'text/plain'}}) =>
+    _Relay((_) async => http.Response(body, status, headers: headers));
+
+_Relay _accepting() => _answering(200, '{"id":"abc12345"}', headers: const {'content-type': 'application/json'});
 
 /// The log screen is opened precisely when a session has produced a lot to
 /// read, so it must not pay for entries that are off screen. It used to build
@@ -101,6 +132,107 @@ void main() {
 
     expect(find.text(t.messages.noLogsAvailable), findsOneWidget);
     expect(find.byType(SelectableText), findsNothing);
+  });
+
+  Future<_Relay> pumpAndUpload(WidgetTester tester, _Relay relay, {int taps = 1}) async {
+    final client = relay.client();
+    addTearDown(client.close);
+
+    appLogger.i('something worth reporting');
+    await tester.pumpWidget(MaterialApp(home: LogsScreen(uploadClient: client)));
+    await tester.pump();
+
+    for (var i = 0; i < taps; i++) {
+      await tester.tap(find.byTooltip(t.logs.uploadLogs), warnIfMissed: false);
+      await tester.pump();
+    }
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 400));
+    return relay;
+  }
+
+  testWidgets('shows the log ID when the relay accepts the upload', (tester) async {
+    await pumpAndUpload(tester, _accepting());
+
+    expect(find.text(t.messages.logsUploaded), findsOneWidget);
+    expect(find.text('abc12345'), findsOneWidget);
+  });
+
+  testWidgets('names the size limit on 413 instead of the generic failure', (tester) async {
+    await pumpAndUpload(tester, _answering(413, 'Log too large (max 1MB)\n'));
+
+    expect(find.text(t.messages.logsUploadTooLarge), findsOneWidget);
+    expect(find.text(t.messages.logsUploadFailed), findsNothing);
+  });
+
+  testWidgets('says how long to wait on 429', (tester) async {
+    await pumpAndUpload(tester, _answering(429, 'Rate limited: 1 upload per minute\n'));
+
+    expect(find.text(t.messages.logsUploadRateLimited(seconds: 60)), findsOneWidget);
+  });
+
+  testWidgets('honours Retry-After when the server sends one', (tester) async {
+    await pumpAndUpload(
+      tester,
+      _answering(429, 'Rate limited\n', headers: const {'content-type': 'text/plain', 'retry-after': '20'}),
+    );
+
+    expect(find.text(t.messages.logsUploadRateLimited(seconds: 20)), findsOneWidget);
+  });
+
+  testWidgets('names a refused upload as a refusal', (tester) async {
+    await pumpAndUpload(tester, _answering(400, 'Empty body\n'));
+
+    expect(find.text(t.messages.logsUploadRefused(status: 400)), findsOneWidget);
+  });
+
+  testWidgets('names a server-side failure as the server having a problem', (tester) async {
+    await pumpAndUpload(tester, _answering(503, 'Log store full\n'));
+
+    expect(find.text(t.messages.logsUploadServerError(status: 503)), findsOneWidget);
+  });
+
+  testWidgets('reports an unreachable server as a network problem', (tester) async {
+    await pumpAndUpload(tester, _Relay((_) async => throw http.ClientException('Failed host lookup')));
+
+    expect(find.text(t.messages.logsUploadNetworkError), findsOneWidget);
+    expect(find.text(t.messages.logsUploadFailed), findsNothing);
+  });
+
+  testWidgets('reports a timeout as a network problem', (tester) async {
+    await pumpAndUpload(tester, _Relay((_) async => throw TimeoutException('connect')));
+
+    expect(find.text(t.messages.logsUploadNetworkError), findsOneWidget);
+  });
+
+  testWidgets('a second press while uploading does not fire a second request', (tester) async {
+    // Pressing again after a slow first attempt would hit the relay's
+    // one-per-minute limit and report a rate limit the user caused.
+    final completer = Completer<http.Response>();
+    final relay = await pumpAndUpload(tester, _Relay((_) => completer.future), taps: 3);
+
+    expect(relay.requests, hasLength(1));
+    final uploadButton = tester.widget<IconButton>(
+      find.ancestor(of: find.byTooltip(t.logs.uploadLogs), matching: find.byType(IconButton)),
+    );
+    expect(uploadButton.onPressed, isNull, reason: 'the action must be disabled while an upload is in flight');
+
+    completer.complete(http.Response('{"id":"abc12345"}', 200, headers: const {'content-type': 'application/json'}));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text(t.messages.logsUploaded), findsOneWidget);
+  });
+
+  testWidgets('uploads no more than the relay accepts', (tester) async {
+    for (var i = 0; i < 4000; i++) {
+      appLogger.i('entry $i ${'x' * 400}');
+    }
+
+    final relay = await pumpAndUpload(tester, _accepting());
+
+    expect(relay.requests, hasLength(1));
+    expect(utf8.encode(relay.requests.single).length, lessThanOrEqualTo(logUploadMaxBytes));
+    expect(relay.requests.single, contains('KB of older log lines dropped'));
   });
 
   testWidgets('still renders when the device probe fails', (tester) async {
