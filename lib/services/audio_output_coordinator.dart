@@ -62,6 +62,17 @@ class AudioOutputCoordinator {
   @visibleForTesting
   static bool isPassthroughFailureLog(String text) => _passthroughFailure.hasMatch(text);
 
+  /// mpv announcing that it has opened an audio output, as in
+  /// `AO: [avfoundation] 192000Hz stereo 2ch spdif-eac3`.
+  ///
+  /// This is the moment the readback below becomes meaningful. A fixed timer
+  /// misses it: on a device where the start ran long the AO only came up after
+  /// four seconds and the probe logged three times `unknown`.
+  static final RegExp _audioOutputOpened = RegExp(r'^\s*AO:\s*\[');
+
+  @visibleForTesting
+  static bool isAudioOutputOpenedLog(String text) => _audioOutputOpened.hasMatch(text);
+
   /// How long playback may sit still with a bitstream running before it counts
   /// as a stall. Long enough to survive a slow start, short enough that nobody
   /// reaches for the remote first.
@@ -102,8 +113,16 @@ class AudioOutputCoordinator {
   static const _routeSettleDelay = Duration(milliseconds: 500);
 
   /// How long mpv gets to bring the new audio output up before we read back
-  /// what it settled on.
+  /// what it settled on, when no `AO:` log line arrives to say it is ready.
   static const _outputVerifyDelay = Duration(seconds: 2);
+
+  /// How often the readback is retried while mpv still answers with nothing.
+  static const _outputVerifyRetry = Duration(seconds: 1);
+
+  /// How many times the readback may find an empty answer before it gives up
+  /// and logs the emptiness. Bounded so a player that never opens an AO does
+  /// not leave a timer running for the rest of the session.
+  static const _maxOutputVerifyAttempts = 10;
 
   /// How many times a pending apply may wait for playback to stop buffering.
   ///
@@ -124,6 +143,24 @@ class AudioOutputCoordinator {
   Duration _stalledFor = Duration.zero;
   Timer? _settleTimer;
   Timer? _verifyTimer;
+
+  /// The decision whose output is still to be measured, or null when the
+  /// measurement is done. Doubles as the de-duplication: an AO reload that
+  /// belongs to no decision change is ignored.
+  AudioOutputDecision? _pendingVerification;
+
+  /// How often the readback found mpv still without an AO.
+  int _verifyAttempts = 0;
+
+  /// Bumped per output decision, so a late reading can tell whether it still
+  /// describes the state that asked for it.
+  int _verifyGeneration = 0;
+
+  VerifiedAudioOutput? _verifiedOutput;
+
+  /// What mpv was last measured to be doing, as opposed to what was asked of
+  /// it. Ground truth for anything that has to report the real output.
+  VerifiedAudioOutput? get verifiedOutput => _verifiedOutput;
 
   /// Re-entrancy guard. A route change can arrive while the previous apply is
   /// still awaiting mpv; without this the two interleave and can leave
@@ -189,9 +226,25 @@ class AudioOutputCoordinator {
   }
 
   void _onPlayerLog(PlayerLog log) {
-    if (_disposed || _lastDecision != AudioOutputDecision.passthrough) return;
+    if (_disposed) return;
+    if (isAudioOutputOpenedLog(log.text)) _onAudioOutputOpened();
+    if (_lastDecision != AudioOutputDecision.passthrough) return;
     if (!isPassthroughFailureLog(log.text)) return;
     _abandonBitstream('mpv reported: ${log.text.trim()}');
+  }
+
+  /// Reads back the output the moment mpv says it has one, instead of waiting
+  /// out the timer.
+  ///
+  /// mpv reloads the AO for reasons that are not a decision change (the
+  /// `audio-channels` write above is one), so this only fires when a
+  /// verification is actually outstanding.
+  void _onAudioOutputOpened() {
+    final pending = _pendingVerification;
+    if (pending == null) return;
+    _verifyTimer?.cancel();
+    _verifyTimer = null;
+    unawaited(_measureOutput(pending, _verifyGeneration));
   }
 
   /// Gives up on bitstreaming for this route and gets sound back.
@@ -366,11 +419,19 @@ class AudioOutputCoordinator {
   /// it was — the performance overlay reads the same properties live.
   void _scheduleOutputVerification(AudioOutputDecision decision) {
     _verifyTimer?.cancel();
-    _verifyTimer = Timer(_outputVerifyDelay, () => unawaited(_logEffectiveOutput(decision)));
+    _pendingVerification = decision;
+    _verifyAttempts = 0;
+    // A generation rather than a decision comparison: two applies in a row can
+    // land on the same decision, and a late reading from the first must not be
+    // recorded as the outcome of the second.
+    final generation = ++_verifyGeneration;
+    // The `AO:` log line usually gets here first; this timer is what covers a
+    // backend that logs nothing recognisable.
+    _verifyTimer = Timer(_outputVerifyDelay, () => unawaited(_measureOutput(decision, generation)));
   }
 
-  Future<void> _logEffectiveOutput(AudioOutputDecision intended) async {
-    if (_disposed || _lastDecision != intended) return;
+  Future<void> _measureOutput(AudioOutputDecision intended, int generation) async {
+    if (!_verificationCurrent(intended, generation)) return;
     try {
       final values = await Future.wait([
         player.getProperty('current-ao'),
@@ -380,15 +441,40 @@ class AudioOutputCoordinator {
       // A decision that moved on while we waited makes this reading stale, and
       // a stale line here is worse than none: it would describe the output the
       // player just left.
-      if (_disposed || _lastDecision != intended) return;
+      if (!_verificationCurrent(intended, generation)) return;
+
+      // While the AO is still coming up mpv answers with an empty string rather
+      // than null, which is why the old `?? 'unknown'` never caught it. The log
+      // line and the property update do not have to arrive together either, so
+      // an unfilled answer buys a few more tries instead of a line that says
+      // nothing.
+      final ao = _readback(values[0]);
+      final format = _readback(values[1]);
+      if ((ao == null || format == null) && _verifyAttempts < _maxOutputVerifyAttempts) {
+        _verifyAttempts++;
+        _verifyTimer?.cancel();
+        _verifyTimer = Timer(_outputVerifyRetry, () => unawaited(_measureOutput(intended, generation)));
+        return;
+      }
+
+      _pendingVerification = null;
+      _verifyTimer?.cancel();
+      _verifyTimer = null;
+      _verifiedOutput = VerifiedAudioOutput(intended: intended, ao: ao, format: format, channels: _readback(values[2]));
       appLogger.i(
-        'Audio output in effect: ao=${values[0] ?? 'unknown'}, format=${values[1] ?? 'unknown'}, '
-        'channels=${values[2] ?? 'unknown'} (intended: ${intended.name})',
+        'Audio output in effect: ao=${ao ?? 'unknown'}, format=${format ?? 'unknown'}, '
+        'channels=${_readback(values[2]) ?? 'unknown'} (intended: ${intended.name})',
       );
     } catch (e) {
       appLogger.d('Reading back the audio output failed: $e');
     }
   }
+
+  bool _verificationCurrent(AudioOutputDecision intended, int generation) =>
+      !_disposed && generation == _verifyGeneration && _pendingVerification == intended && _lastDecision == intended;
+
+  /// mpv reports "not there yet" as an empty string just as often as a null.
+  static String? _readback(String? value) => (value == null || value.isEmpty) ? null : value;
 
   /// Re-applies after the user changes the setting in the player.
   ///
@@ -407,6 +493,7 @@ class AudioOutputCoordinator {
     _settleTimer = null;
     _verifyTimer?.cancel();
     _verifyTimer = null;
+    _pendingVerification = null;
     unawaited(_routeSub?.cancel());
     _routeSub = null;
     unawaited(_trackSub?.cancel());
@@ -416,4 +503,25 @@ class AudioOutputCoordinator {
     _stallWatchdog?.cancel();
     _stallWatchdog = null;
   }
+}
+
+/// What mpv turned out to be doing, read back once its audio output was up.
+///
+/// The decision the coordinator made is an intention; this is the measurement.
+/// `avfoundation` with a `spdif-` format is the only proof that a bitstream is
+/// really running rather than merely requested. Fields are null where mpv had
+/// nothing to say.
+class VerifiedAudioOutput {
+  const VerifiedAudioOutput({required this.intended, this.ao, this.format, this.channels});
+
+  final AudioOutputDecision intended;
+  final String? ao;
+  final String? format;
+  final String? channels;
+
+  /// True when mpv is handing over a compressed stream, not decoded audio.
+  bool get isBitstream => format?.startsWith('spdif') ?? false;
+
+  @override
+  String toString() => 'VerifiedAudioOutput(ao: $ao, format: $format, channels: $channels, intended: ${intended.name})';
 }

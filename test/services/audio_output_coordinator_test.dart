@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/mpv/models.dart';
@@ -13,29 +15,31 @@ import '../test_helpers/prefs.dart';
 /// Records what the coordinator writes to mpv, and can be told to fail a write
 /// or to report the player as buffering.
 class _FakePlayer implements Player {
-  _FakePlayer()
-    : _streams = PlayerStreams(
-        playing: const Stream<bool>.empty(),
-        completed: const Stream<bool>.empty(),
-        buffering: const Stream<bool>.empty(),
-        position: const Stream<Duration>.empty(),
-        duration: const Stream<Duration>.empty(),
-        seekable: const Stream<bool>.empty(),
-        buffer: const Stream<Duration>.empty(),
-        volume: const Stream<double>.empty(),
-        rate: const Stream<double>.empty(),
-        tracks: const Stream<Tracks>.empty(),
-        track: const Stream<TrackSelection>.empty(),
-        log: const Stream<PlayerLog>.empty(),
-        error: const Stream<PlayerError>.empty(),
-        audioDevice: const Stream<AudioDevice>.empty(),
-        audioDevices: const Stream<List<AudioDevice>>.empty(),
-        bufferRanges: const Stream<List<BufferRange>>.empty(),
-        playbackRestart: const Stream<void>.empty(),
-        backendSwitched: const Stream<void>.empty(),
-      );
+  _FakePlayer() {
+    _streams = PlayerStreams(
+      playing: const Stream<bool>.empty(),
+      completed: const Stream<bool>.empty(),
+      buffering: const Stream<bool>.empty(),
+      position: const Stream<Duration>.empty(),
+      duration: const Stream<Duration>.empty(),
+      seekable: const Stream<bool>.empty(),
+      buffer: const Stream<Duration>.empty(),
+      volume: const Stream<double>.empty(),
+      rate: const Stream<double>.empty(),
+      tracks: const Stream<Tracks>.empty(),
+      track: const Stream<TrackSelection>.empty(),
+      log: _logs.stream,
+      error: const Stream<PlayerError>.empty(),
+      audioDevice: const Stream<AudioDevice>.empty(),
+      audioDevices: const Stream<List<AudioDevice>>.empty(),
+      bufferRanges: const Stream<List<BufferRange>>.empty(),
+      playbackRestart: const Stream<void>.empty(),
+      backendSwitched: const Stream<void>.empty(),
+    );
+  }
 
-  final PlayerStreams _streams;
+  late final PlayerStreams _streams;
+  final StreamController<PlayerLog> _logs = StreamController<PlayerLog>.broadcast();
 
   bool buffering = false;
   bool playing = false;
@@ -46,11 +50,20 @@ class _FakePlayer implements Player {
   final List<MapEntry<String, String>> properties = [];
   final List<bool> passthroughCalls = [];
 
+  /// What mpv answers for a property, and which ones were asked for.
+  final Map<String, String?> propertyValues = {};
+  final List<String> propertyReads = [];
+
+  void emitLog(String text) => _logs.add(PlayerLog(prefix: 'cplayer', level: PlayerLogLevel.verbose, text: text));
+
   @override
   PlayerState get state => PlayerState(buffering: buffering, playing: playing, position: position);
 
   @override
-  Future<String?> getProperty(String name) async => null;
+  Future<String?> getProperty(String name) async {
+    propertyReads.add(name);
+    return propertyValues[name];
+  }
 
   @override
   PlayerStreams get streams => _streams;
@@ -249,6 +262,92 @@ void main() {
 
         async.elapse(const Duration(seconds: 3));
         expect(player.passthroughCalls.last, isFalse, reason: 'still stuck once buffering is over');
+
+        coordinator.dispose();
+      });
+    });
+  });
+
+  group('verifying what mpv settled on', () {
+    test('recognises the AO line mpv logs when the output opens', () {
+      // Straight from an Apple TV device log; the probe hangs on this line, so
+      // a reworded upstream string must fail here loudly.
+      for (final line in [
+        'AO: [avfoundation] 192000Hz stereo 2ch spdif-eac3',
+        'AO: [audiounit] 48000Hz 5.1 6ch floatp',
+        '  AO: [pulse] 48000Hz stereo 2ch float',
+      ]) {
+        expect(AudioOutputCoordinator.isAudioOutputOpenedLog(line), isTrue, reason: line);
+      }
+    });
+
+    test('ignores lines that are not an audio output coming up', () {
+      for (final line in [
+        'VO: [avfoundation] 1920x1080 yuv420p',
+        'Selected decoder: spdif_eac3',
+        'audiounit does not support spdif formats',
+        'Setting option AO: [avfoundation]',
+        '',
+      ]) {
+        expect(AudioOutputCoordinator.isAudioOutputOpenedLog(line), isFalse, reason: line);
+      }
+    });
+
+    test('measures as soon as the AO log arrives, and only once per decision', () {
+      fakeAsync((async) {
+        final player = _FakePlayer();
+        final coordinator = AudioOutputCoordinator(player: player, settings: settings);
+        coordinator.prepare(audioCodec: 'eac3');
+        async.flushMicrotasks();
+        player.propertyValues['current-ao'] = 'avfoundation';
+        player.propertyValues['audio-out-params/format'] = 'spdif-eac3';
+        player.propertyReads.clear();
+
+        player.emitLog('AO: [avfoundation] 192000Hz stereo 2ch spdif-eac3');
+        async.flushMicrotasks();
+        expect(player.propertyReads, contains('current-ao'), reason: 'measured on the log line, not on the timer');
+        // Kept, not only logged: this is the ground truth a later layer needs
+        // to tell a requested bitstream from a running one.
+        expect(coordinator.verifiedOutput?.ao, 'avfoundation');
+        expect(coordinator.verifiedOutput?.isBitstream, isTrue);
+
+        // mpv reloads the AO for reasons that are not a decision change; those
+        // must not produce a second reading of the same decision.
+        player.propertyReads.clear();
+        player.emitLog('AO: [avfoundation] 48000Hz 5.1 6ch floatp');
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 30));
+        expect(player.propertyReads, isEmpty, reason: 'the decision was already measured');
+
+        coordinator.dispose();
+      });
+    });
+
+    test('keeps trying while mpv has no output yet', () {
+      fakeAsync((async) {
+        final player = _FakePlayer();
+        final coordinator = AudioOutputCoordinator(player: player, settings: settings);
+        coordinator.prepare(audioCodec: 'eac3');
+        async.flushMicrotasks();
+
+        // An AO that is still coming up answers with an empty string, not with
+        // null. Logging that as "unknown" is what made the device reports
+        // worthless.
+        player.propertyValues['current-ao'] = '';
+        player.propertyValues['audio-out-params/format'] = 'spdif-eac3';
+        player.propertyReads.clear();
+        async.elapse(const Duration(seconds: 2));
+        expect(player.propertyReads, contains('current-ao'));
+
+        player.propertyReads.clear();
+        async.elapse(const Duration(seconds: 1));
+        expect(player.propertyReads, contains('current-ao'), reason: 'an empty answer is not a measurement');
+
+        player.propertyValues['current-ao'] = 'avfoundation';
+        async.elapse(const Duration(seconds: 1));
+        player.propertyReads.clear();
+        async.elapse(const Duration(seconds: 30));
+        expect(player.propertyReads, isEmpty, reason: 'polling stops once there is something to report');
 
         coordinator.dispose();
       });
