@@ -12,6 +12,13 @@ import 'package:flutter/foundation.dart';
 /// Deliberately synchronous: the call that opens the native surface is awaited,
 /// so an async flag would leave a window in which the keyboard is already up
 /// and Dart is still armed.
+///
+/// **Not the same thing as the `NativeInputSession` enum in
+/// `tvos/Runner/NativeTextEntryViewController.swift`,** despite the name. That
+/// one is the source of truth for the engine press hook, which has to decide
+/// synchronously while `sendEvent:` is on the stack. This one is Dart-side
+/// bookkeeping only: it arms the fail-safe gates that catch a press if that
+/// hook ever stops yielding. Never make the Swift one follow this.
 class NativeInputSession {
   NativeInputSession._();
 

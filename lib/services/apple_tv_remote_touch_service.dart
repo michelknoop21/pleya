@@ -177,13 +177,21 @@ class AppleTvRemoteTouchService {
       _log('consume native media key reason=direct-playback-action');
       return true;
     }
-    // The tvOS system keyboard owns the remote — anything that still leaks
-    // through stops here rather than moving focus behind it. Only a first line:
-    // answering "handled" here does not stop FocusManager from walking the focus
-    // tree, so the press is actually stopped by the early key handler in
-    // AppleTvNativeTextEntry. That handler also owns the back key, which still
-    // has to close the surface: asking twice for one press would be two
-    // needless platform round-trips.
+    // Unreachable while the native press hook works, and kept for the day it
+    // does not.
+    //
+    // `PleyaFlutterViewController.tvosHandlePress(fromUIEvent:)` answers
+    // `false` for the whole session, so the engine claims no press and Dart
+    // never receives a key event to gate. The one exception is the tail of the
+    // press that opened the keyboard: its key-down came before the session
+    // existed, and the key-up arrives here afterwards. That is also why
+    // `_releaseSelectForNativeSession()` below still has work to do.
+    //
+    // Anything beyond that means the hook stopped yielding, and then this is
+    // only a first line anyway: answering "handled" here does not stop
+    // FocusManager from walking the focus tree. The layer that actually stops
+    // the press is the early key handler in AppleTvNativeTextEntry, which logs
+    // the same failure.
     if (NativeInputSession.isActive) {
       _releaseSelectForNativeSession();
       _log('consume native key reason=native-input-session');

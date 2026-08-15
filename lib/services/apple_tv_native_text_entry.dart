@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../focus/dpad_navigator.dart';
 import '../utils/app_logger.dart';
 import '../utils/native_input_session.dart';
 import 'gamepad_service.dart';
@@ -51,16 +50,19 @@ class AppleTvNativeTextEntry {
 
   final MethodChannel _channel;
 
-  /// Installs the one hook that can actually stop a press from reaching the UI
-  /// behind the system keyboard.
+  /// Installs the fail-safe net for presses that reach Dart during a session.
   ///
-  /// The tvOS engine swizzles `sendEvent:` and ships every Siri Remote press to
-  /// Dart as a key event, outside the responder chain. [FocusManager] then walks
-  /// the focus tree for it regardless of what a [HardwareKeyboard] handler
-  /// answered, so gating there stops nothing: the button behind the keyboard
-  /// still scrolls, still activates, still moves focus. Early key handlers run
-  /// before that walk, which makes this the single place to close the leak for
-  /// every input field at once.
+  /// It is no longer the mechanism. The native hook
+  /// (`PleyaFlutterViewController.tvosHandlePress(fromUIEvent:)` in
+  /// `tvos/Runner/AppDelegate.swift`) answers `false` for the whole session, so
+  /// the engine claims nothing, UIKit owns the remote, and no key event is
+  /// produced at all. What stays here is the backstop for the day that hook
+  /// falls away (an engine bump that renames the selector, say), because
+  /// without it the UI behind the keyboard would silently start moving again.
+  ///
+  /// Early key handlers are still the only layer that can do this: [FocusManager]
+  /// walks the focus tree regardless of what a [HardwareKeyboard] handler
+  /// answered, so gating there stops nothing.
   ///
   /// Called on every session and never removed: outside a session the handler
   /// answers [KeyEventResult.ignored] on its first line. The remove-then-add is
@@ -74,14 +76,24 @@ class AppleTvNativeTextEntry {
 
   static KeyEventResult _blockKeysDuringSession(KeyEvent event) {
     if (!NativeInputSession.isActive) return KeyEventResult.ignored;
-    // Back is the one key that still has to do something. It reaches Dart only
-    // when the native escape hatch missed the press, and swallowing it outright
-    // is why the first Menu could appear to do nothing. Ask the surface to
-    // close, then consume it like the rest so focus stays put either way.
-    // KeyDown only: repeats and the key-up would ask again for one press.
-    if (event is KeyDownEvent && event.logicalKey.isBackKey) {
-      NativeInputSession.requestClose();
-    }
+    // Logged rather than swallowed in silence: with the native hook working
+    // this line should not appear at all, so it is the tell that the hook
+    // stopped yielding. The answer to seeing it is the engine side, never a
+    // further filter layer here.
+    //
+    // One benign case, so this is debug and not a warning: the select that
+    // opened the keyboard was pressed before the session existed, and its
+    // key-up lands here afterwards. A whole session's worth of arrows and
+    // selects is the failure.
+    //
+    // Back is no longer an exception. Menu goes to UIKit along with every other
+    // press now and closes the keyboard itself, so asking the platform to
+    // cancel from here would only add a round trip to a surface on its way out.
+    appLogger.d(
+      'AppleTvNativeTextEntry: fallback gate consumed '
+      '${event.runtimeType} ${event.logicalKey.debugName ?? event.logicalKey.keyId} '
+      'while the native press hook should have yielded it',
+    );
     return KeyEventResult.handled;
   }
 

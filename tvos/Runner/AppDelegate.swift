@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
 import AVFoundation
+import os
 import universal_gamepad
 import os_media_controls
 import wakelock_plus
@@ -11,6 +12,12 @@ import wakelock_plus
     binaryMessenger: binaryMessenger,
     codec: FlutterJSONMessageCodec.sharedInstance()
   )
+
+  /// Debug level on purpose. This fires for every press of every session and
+  /// twice per press (see below), so at default level it would push everything
+  /// else out of the log buffer during normal remote use. Read it with
+  /// `log stream --level debug --predicate 'processImagePath CONTAINS "Runner"'`.
+  private static let pressLog = Logger(subsystem: "nl.michelknoop.pleya", category: "PleyaTvosPress")
 
   // Stepping aside for a native session is the whole fix: while one is up this
   // controller must not hold first responder, or every press is delivered here
@@ -46,6 +53,55 @@ import wakelock_plus
     } else if isViewLoaded, view.window != nil {
       becomeFirstResponder()
     }
+  }
+
+  /// The one place the engine asks whether it may claim a press.
+  ///
+  /// Answering `false` is what gives the tvOS system keyboard its clicks back.
+  /// The engine's own implementation returns YES for everything, and the
+  /// swizzled `sendEvent:` then skips the original implementation, so UIKit
+  /// never begins its responder chain and the keyboard never learns that a
+  /// letter was selected. Swipes were unaffected because those are
+  /// `UIEventTypeTouches`, which the swizzle ignores. The split between what
+  /// worked and what did not was exactly the split between UITouch and UIPress.
+  ///
+  /// `super` is deliberately *not* called on the session branch. Super is what
+  /// synthesizes the press and posts `flutter/keydata`, so calling it would put
+  /// the press into Flutter's focus tree as well and the UI behind the keyboard
+  /// would start moving again. There is nothing to hand over to: while a
+  /// session is up, UIKit owns the remote outright.
+  ///
+  /// Both swizzled hops (`UIApplication` and `UIWindow`) land here, so this runs
+  /// twice per press. It reads a flag and logs; no counters, no state, nothing
+  /// a second call could double.
+  ///
+  /// Menu needs no exception. The engine's `shouldPassMenuPressToSystem:` sits
+  /// ahead of this point, and with the session branch returning `false` Menu
+  /// reaches UIKit along with everything else.
+  override func tvosHandlePress(fromUIEvent press: UIPress) -> Bool {
+    guard NativeInputSession.isActive else {
+      return super.tvosHandlePress(fromUIEvent: press)
+    }
+    Self.pressLog.debug("\(Self.pressName(press), privacy: .public) -> yield to UIKit")
+    return false
+  }
+
+  /// For the log line only. The symbolic cases are not reliable on tvOS 26 (the
+  /// runtime delivers 2040 for select and 2041 for menu where the SDK compiles
+  /// 4 and 5), so the raw value is printed alongside rather than trusted.
+  private static func pressName(_ press: UIPress) -> String {
+    let name: String
+    switch press.type {
+    case .upArrow: name = "up"
+    case .downArrow: name = "down"
+    case .leftArrow: name = "left"
+    case .rightArrow: name = "right"
+    case .select: name = "select"
+    case .menu: name = "menu"
+    case .playPause: name = "playPause"
+    default: name = "press"
+    }
+    return "\(name)(\(press.type.rawValue))"
   }
 
   /// Whether this press is the Menu/Back button.
@@ -225,10 +281,30 @@ import wakelock_plus
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
+  /// One line at startup so an engine bump cannot break the press hook in
+  /// silence.
+  ///
+  /// `tvosHandlePressFromUIEvent:` is engine-internal and appears in no public
+  /// header; `Runner-Bridging-Header.h` only promises the compiler it exists. If
+  /// a future `tvos/engine.version` drops or renames it,
+  /// `PleyaFlutterViewController.tvosHandlePress(fromUIEvent:)` simply stops
+  /// being called and the system keyboard goes back to ignoring every click.
+  ///
+  /// Asked of `FlutterViewController` itself, never of an instance: our own
+  /// subclass implements the selector, so any instance answers yes regardless of
+  /// what the engine still provides.
+  private static func logPressHookAvailability() {
+    let selector = NSSelectorFromString("tvosHandlePressFromUIEvent:")
+    let supported = FlutterViewController.instancesRespond(to: selector)
+    NSLog("[PleyaTvosPress] engine press hook available=%@", supported ? "true" : "false")
+  }
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    Self.logPressHookAvailability()
+
     // `.moviePlayback` plus the multichannel opt-in; without the latter the
     // system caps the route at two channels and mpv downmixes before Dolby or
     // spatial rendering can ever apply.

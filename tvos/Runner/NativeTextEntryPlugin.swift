@@ -93,10 +93,14 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin {
       self?.finish(text: text, submitted: submitted, failure: failure)
     }
 
+    // This pair, not `NativeInputSession`, is the single-session guard: it is
+    // set before `attach` and cleared in `finish`, so it covers the whole call
+    // including the moment the field is still trying to become first responder.
+    // The session flag is about who owns the remote, and starts later on
+    // purpose (see `NativeTextEntryField.attach`).
     self.entry = entry
     pendingResult = result
 
-    NativeInputSession.begin { [weak entry] in entry?.cancel() }
     // Nothing is presented: the field goes straight into the Flutter view and
     // tvOS raises its own keyboard for it. See the note on NativeTextEntryField
     // for why a presented view controller had to go.
@@ -111,9 +115,11 @@ final class NativeTextEntryPlugin: NSObject, FlutterPlugin {
     // field too, and an echo there would reopen just as readily.
     lastSessionEndedAt = ProcessInfo.processInfo.systemUptime
 
-    // The field has already removed itself; handing the remote back is all
-    // that is left, and it cannot fail.
-    NativeInputSession.end()
+    // The remote is already back with Flutter: `NativeTextEntryField.finish`
+    // ends the session in its own cleanup path, right after the dismissal
+    // completes. Ending it here as well would depend on `pendingResult` still
+    // being set, and a session that ends without one would leave the flag on
+    // for the rest of the app run.
 
     if let failure {
       result(FlutterError(code: failure, message: "Native text entry never became usable", details: nil))

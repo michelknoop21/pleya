@@ -110,16 +110,21 @@ void main() {
     expect(second.hasPrimaryFocus, isTrue);
   });
 
-  testWidgets('a back key that reaches Dart closes the surface instead of vanishing', (tester) async {
+  // Back used to be the one key the gate answered with a platform `cancel`.
+  // With the native press hook in place Menu never reaches Dart at all: the
+  // engine yields it to UIKit, which closes its own keyboard. A back key
+  // arriving here therefore means the hook failed, and the only right answer is
+  // the same as for every other key — consume it so focus stays put — rather
+  // than a round trip to a surface UIKit is already tearing down.
+  testWidgets('a back key that reaches Dart is consumed without a platform call', (tester) async {
     await pumpTwoFocusables(tester);
     final (session, release, calls) = await openSession();
 
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
-    // The close request is fire-and-forget over the channel.
     await tester.idle();
 
-    expect(calls, contains('cancel'));
+    expect(calls, isNot(contains('cancel')));
     expect(seen, isEmpty);
     expect(first.hasPrimaryFocus, isTrue);
 

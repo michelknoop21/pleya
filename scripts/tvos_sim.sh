@@ -19,6 +19,7 @@
 #   scripts/tvos_sim.sh logs NativeText  # gefilterde log, laatste 30s
 #   scripts/tvos_sim.sh wait "cancel"    # wacht tot een logregel verschijnt
 #   scripts/tvos_sim.sh check-keyboard   # regressietest: Menu sluit het toetsenbord
+#   scripts/tvos_sim.sh check-select     # regressietest: select voert een letter in
 #
 # Eén randvoorwaarde: knoppen sturen vereist een ONTGRENDELD, WAKKER scherm.
 # Staat het scherm uit, dan heeft Simulator geen venster en verdwijnen
@@ -349,6 +350,71 @@ check_keyboard() {
   read_logs "NativeTextEntry" 40 | tail -4
 }
 
+# De twee logregels waaraan te zien is dat een press tóch bij Dart uitkwam. Met
+# een werkende native hook horen die tijdens een sessie niet te verschijnen.
+FALLBACK_MARKER='consume native key reason=native-input-session|fallback gate consumed'
+
+# Regressietest voor de eigendomsoverdracht: een select op het systeemtoetsenbord
+# moet een letter invoeren, en die press mag niet via Dart zijn gelopen.
+#
+# check-keyboard mist dit per definitie: dat opent en sluit alleen, en precies
+# daardoor kwam de commit die select onbruikbaar liet groen door. Constateren
+# dát er een select-event was is net zo min genoeg. Vandaar dat dit meet of de
+# tekstlengte oploopt (`NativeTextEntry: textChanged length=N`) én of de
+# Dart-vangnetten stil bleven.
+#
+# Simulator-voorbehoud, lees dit vóór je een rode uitslag als bug noteert: met
+# `I/O ▸ Keyboard ▸ Connect Hardware Keyboard` aan (de standaard) behandelt tvOS
+# de HID-toetsen van idb als een fysiek toetsenbord. Return submit dan het veld
+# in plaats van een letter op de letterstrip te kiezen, en de lengte loopt niet
+# op. Zet die koppeling uit of draai dit op een echt toestel; zie CONTRIBUTING.md.
+check_select() {
+  require_input
+  note "naar het zoekscherm"
+  goto_tab search
+
+  local attach_before attempt opened=0
+  for attempt in 1 2; do
+    attach_before="$(count_log 'attach becameFirstResponder=true')"
+    note "zoekbalk selecteren → systeemtoetsenbord (poging $attempt)"
+    send_key select
+    if wait_for_more 'attach becameFirstResponder=true' "$attach_before" 15; then opened=1; break; fi
+    note "geen toetsenbord; opnieuw navigeren"
+    goto_tab search
+  done
+  if ((opened == 0)); then
+    echo "MISLUKT: het toetsenbord ging niet open"
+    read_logs "NativeTextEntry" 40 | tail -5
+    return 1
+  fi
+
+  # Nulmeting ná het openen, en met een adempauze: de key-up van de druk die het
+  # toetsenbord opende hoort nog bij de vorige eigenaar en landt legitiem in de
+  # Dart-gates. Die mag niet als bewijs van falen tellen.
+  sleep 2
+  local typed_before fallback_before
+  typed_before="$(count_log 'textChanged length=')"
+  fallback_before="$(count_log "$FALLBACK_MARKER")"
+
+  note "letter selecteren"
+  send_key select
+
+  if ! wait_for_more 'textChanged length=' "$typed_before" 10; then
+    echo "MISLUKT: select voerde geen letter in; UIKit kreeg de press niet"
+    read_logs 'NativeTextEntry|NativeInputSession' 40 | tail -10
+    return 1
+  fi
+
+  if (( $(count_log "$FALLBACK_MARKER") > fallback_before )); then
+    echo "MISLUKT: de Dart-vangnetten zagen deze press; de native hook heeft niet geyield"
+    read_logs "$FALLBACK_MARKER" 40 | tail -5
+    return 1
+  fi
+
+  echo "GESLAAGD: select voert een letter in en de press liep buiten Dart om"
+  read_logs 'NativeTextEntry' 40 | tail -3
+}
+
 resolve_device
 case "${1:-}" in
   doctor)
@@ -409,5 +475,6 @@ case "${1:-}" in
   goto)  [[ $# -ge 2 ]] || die "gebruik: $0 goto <home|movies|search|settings>"; goto_tab "$2" ;;
   login) shift; do_login "${1:-}" ;;
   check-keyboard) check_keyboard ;;
-  *) sed -n '2,30p' "$0"; exit 1 ;;
+  check-select) check_select ;;
+  *) sed -n '2,27p' "$0"; exit 1 ;;
 esac

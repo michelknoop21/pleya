@@ -8,6 +8,19 @@ import UIKit
 /// converts every press to `flutter/keydata` and only falls through to the
 /// responder chain once Dart reports the key *unhandled* — which never happens,
 /// because Pleya's focus tree handles every arrow and select.
+///
+/// **Not the same thing as `NativeInputSession` in `lib/utils/`.** The Dart
+/// class of that name is bookkeeping for Dart's own fail-safe gates. This enum
+/// is the one the engine hook reads: `tvosHandlePress(fromUIEvent:)` has to
+/// decide while `sendEvent:` is still on the stack, so asking Dart over a
+/// channel is not an option. The two are kept in step, but this one never
+/// follows the other.
+///
+/// The window is exact on both ends: ownership starts at a `becomeFirstResponder`
+/// that actually took, and ends only once the field has released it and the
+/// keyboard dismissal has finished. Starting earlier yields presses to a
+/// keyboard that is not up yet; ending earlier hands the remote back to Flutter
+/// while the user is still looking at one.
 enum NativeInputSession {
   static let didChange = Notification.Name("PleyaNativeInputSessionDidChange")
 
@@ -20,10 +33,14 @@ enum NativeInputSession {
   /// Menu escape hatch, invoked from the controller that is in the press path.
   static var onMenuPress: (() -> Void)?
 
+  // Info level, not debug: two lines per session is nothing, and without them
+  // the whole ownership window is invisible in a device log, which is exactly
+  // what has to be provable when the keyboard misbehaves again.
   static func begin(onMenuPress: @escaping () -> Void) {
     self.onMenuPress = onMenuPress
     forwardedPressCount = 0
     isActive = true
+    NSLog("[NativeInputSession] begin: UIKit owns the remote")
     NotificationCenter.default.post(name: didChange, object: nil)
   }
 
@@ -31,6 +48,7 @@ enum NativeInputSession {
     guard isActive else { return }
     onMenuPress = nil
     isActive = false
+    NSLog("[NativeInputSession] end: remote handed back to Flutter")
     NotificationCenter.default.post(name: didChange, object: nil)
   }
 
@@ -121,6 +139,18 @@ final class NativeTextEntryField: NSObject, UITextFieldDelegate {
 
     let became = textField.becomeFirstResponder()
     diag("attach becameFirstResponder=\(became)")
+    if became {
+      // Ownership flips here and not a moment sooner. It used to start in the
+      // plugin, before `attach` ran, which left a window in which every press
+      // was yielded to a keyboard that did not exist yet. A refusal leaves the
+      // flag off entirely, so the existing flow stays intact and the watchdog
+      // below turns the dead surface into a failure Dart can fall back on.
+      //
+      // This is not the single-session guard: that one lives in
+      // `NativeTextEntryPlugin` (`pendingResult`/`entry`) and still spans the
+      // whole call, so nothing can slip in while this attach is in flight.
+      NativeInputSession.begin { [weak self] in self?.cancel() }
+    }
     startWatchdog()
   }
 
@@ -235,9 +265,22 @@ final class NativeTextEntryField: NSObject, UITextFieldDelegate {
   }
 
   @objc private func textDidChange(_ note: Notification) {
-    onTextChanged?(textField.text ?? "")
+    let text = textField.text ?? ""
+    // Length only, never the text. This line goes to the app log, and the
+    // fields that use this surface include passwords and server URLs. It is
+    // also the marker `scripts/tvos_sim.sh check-select` measures: proving a
+    // press arrived is not the same as proving it entered a letter, and that
+    // gap is what let the click-does-nothing bug through `check-keyboard`.
+    diag("textChanged length=\(text.count)")
+    onTextChanged?(text)
   }
 
+  /// The one way out, for every exit there is: submit, cancel/Menu,
+  /// `didEndEditing`, the watchdog, the responder poll giving up, and every
+  /// failure branch. They all land here, `finished` makes it run once, and the
+  /// session is ended from a single place inside it. One exit that skipped this
+  /// would leave the remote yielded to a keyboard that is gone, which is a
+  /// remote that does nothing on any screen.
   private func finish(submitted: Bool, failure: String?) {
     guard !finished else { return }
     finished = true
@@ -272,6 +315,13 @@ final class NativeTextEntryField: NSObject, UITextFieldDelegate {
       guard !reported else { return }
       reported = true
       diag("finish submitted=\(submitted) failure=\(failure ?? "-")")
+      // The single place ownership goes back to Flutter, and only once the
+      // field has released first responder (above) and the dismissal has
+      // really finished. Ending it when submit or cancel is merely *requested*
+      // reopens the border case this fix exists for: the Search click starts
+      // while UIKit owns the remote, and the tail of that same press would
+      // then reach the engine and move focus in the UI behind the keyboard.
+      NativeInputSession.end()
       onFinished?(text, submitted, failure)
     }
     dismissSystemKeyboardIfPresented(completion: report)
