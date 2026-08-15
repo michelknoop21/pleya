@@ -192,6 +192,15 @@ class AudioOutputCoordinator {
     current = this;
     _audioCodec = audioCodec;
     if (AppleAudioSessionService.isAvailable) {
+      // Diagnostic only, and deliberately first: the probe toggles the
+      // multichannel opt-in off and back on to see whether the route widens,
+      // so it has to run before the AO exists and before the configure below
+      // has the last word on the session state. It measures once per app run
+      // and changes no decision. Gated on the debug-logging setting because
+      // the answer is only wanted when someone is reading the log.
+      if (settings.read(SettingsService.enableDebugLogging)) {
+        await AppleAudioSessionService.instance.logChannelNegotiation();
+      }
       final route = await AppleAudioSessionService.instance.configure(multichannel: true);
       appLogger.i('Audio route at playback start: $route');
       // onError matters: on a host build without the plugin the EventChannel
