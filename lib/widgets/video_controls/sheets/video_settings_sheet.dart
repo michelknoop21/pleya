@@ -280,11 +280,16 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
     await AudioOutputCoordinator.current?.onModeChanged();
   }
 
-  void _cycleAudioNormalization(AudioNormalizationMode current) {
+  Future<void> _cycleAudioNormalization(AudioNormalizationMode current) async {
     const order = AudioNormalizationMode.values;
     final next = order[(current.index + 1) % order.length];
-    SettingsService.instance.write(SettingsService.audioNormalizationMode, next);
-    unawaited(widget.player.setAudioNormalization(next));
+    await SettingsService.instance.write(SettingsService.audioNormalizationMode, next);
+    await widget.player.setAudioNormalization(next);
+    // A running bitstream outranks loudness normalization (DEC-013). Without
+    // this the setting flips in the UI and changes nothing anyone can hear.
+    if (mounted && widget.player.consumeNormalizationSuspendedNotice()) {
+      showAppSnackBar(context, t.videoSettings.audioNormalizationSuspended);
+    }
   }
 
   void _navigateTo(_SettingsView view) {
@@ -616,7 +621,7 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
             title: t.videoSettings.audioNormalizationTitle,
             valueText: _audioNormalizationLabel(mode),
             isHighlighted: mode.isEnabled,
-            onTap: () => _cycleAudioNormalization(mode),
+            onTap: () => unawaited(_cycleAudioNormalization(mode)),
           ),
         ),
 

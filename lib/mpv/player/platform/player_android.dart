@@ -286,7 +286,17 @@ class PlayerAndroid extends PlayerBase {
   @override
   Future<void> setAudioNormalization(AudioNormalizationMode mode) async {
     if (disposed) return;
-    // The native ExoPlayer effect is on/off only; night maps to enabled.
+    await reconcileAudioPath(audioPath.request(normalization: mode));
+  }
+
+  /// Sends the *resolved* normalization state to ExoPlayer.
+  ///
+  /// The native effect is on/off only; night maps to enabled. Handing it the
+  /// resolved state rather than the request is what keeps `ExoPlayerCore` from
+  /// forcing decoded non-tunneled PCM while a bitstream is running, so the
+  /// arbitration needs no Kotlin side.
+  @override
+  Future<void> applyNormalization(AudioNormalizationMode mode) async {
     final enabled = mode.isEnabled;
     _audioNormalizationEnabled = enabled;
     final initFuture = _initFuture;
@@ -301,12 +311,17 @@ class PlayerAndroid extends PlayerBase {
     // Keep the mpv af property flowing through setMpvProperty so the plugin's
     // pendingMpvProperties replay applies the loudnorm filter if exo falls back
     // to mpv (night's aggressive filter included).
-    await super.setAudioNormalization(mode);
+    await super.applyNormalization(mode);
   }
 
   @override
   Future<void> setAudioPassthrough(bool enabled) async {
     if (disposed) return;
+    await reconcileAudioPath(audioPath.request(passthrough: enabled));
+  }
+
+  @override
+  Future<void> applyPassthrough(bool enabled) async {
     _audioPassthroughEnabled = enabled;
     final initFuture = _initFuture;
     if (initialized) {

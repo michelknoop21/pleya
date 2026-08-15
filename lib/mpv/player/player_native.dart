@@ -311,15 +311,17 @@ class PlayerNative extends PlayerBase {
   @override
   Future<void> setRate(double rate) async {
     // mpv cannot scaletempo compressed (spdif) audio and silently keeps
-    // playing at 1x, so suspend passthrough while the rate is not 1.0.
-    _currentRate = rate;
-    if (_passthroughActive && rate != 1.0) {
-      await _applyPassthrough(false);
+    // playing at 1x, so the arbiter drops passthrough while the rate is not
+    // 1.0 and puts it back afterwards. The bitstream goes down before the new
+    // speed and comes back up after it, so the compressed path is never the
+    // one being sped up.
+    if (rate != 1.0) {
+      await reconcileAudioPath(audioPath.request(rate: rate));
+      await setProperty('speed', rate.toString());
+      return;
     }
     await setProperty('speed', rate.toString());
-    if (_passthroughRequested && !_passthroughActive && rate == 1.0) {
-      await _applyPassthrough(true);
-    }
+    await reconcileAudioPath(audioPath.request(rate: rate));
   }
 
   @override
@@ -390,12 +392,8 @@ class PlayerNative extends PlayerBase {
     await invoke('setLogLevel', {'level': level});
   }
 
-  bool _passthroughRequested = false;
-  bool _passthroughActive = false;
-  double _currentRate = 1.0;
-
   @override
-  bool get audioPassthroughActive => _passthroughActive;
+  bool get audioPassthroughActive => audioPath.appliedPassthrough ?? false;
 
   /// Codecs the platform can take as a bitstream. On iOS/tvOS compressed
   /// audio goes through the system renderer, which only handles Dolby
@@ -404,14 +402,13 @@ class PlayerNative extends PlayerBase {
 
   @override
   Future<void> setAudioPassthrough(bool enabled) async {
-    _passthroughRequested = enabled;
-    // Deferred until the rate returns to 1.0 (see setRate).
-    if (enabled && _currentRate != 1.0) return;
-    await _applyPassthrough(enabled);
+    // The request is kept even where it cannot be honoured yet (a rate other
+    // than 1.0); the arbiter re-applies it when the rate comes back.
+    await reconcileAudioPath(audioPath.request(passthrough: enabled));
   }
 
-  Future<void> _applyPassthrough(bool enabled) async {
-    _passthroughActive = enabled;
+  @override
+  Future<void> applyPassthrough(bool enabled) async {
     await setProperty('audio-spdif', enabled ? _passthroughCodecs : '');
     // audio-exclusive redirects coreaudio to coreaudio_exclusive on macOS
     // (and exclusive WASAPI on Windows); on iOS/tvOS it is set once at

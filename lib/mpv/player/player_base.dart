@@ -10,6 +10,7 @@ import '../../utils/app_logger.dart';
 import '../../utils/track_label_builder.dart';
 import '../font_loader.dart';
 import '../models.dart';
+import 'audio_path_arbiter.dart';
 import 'player.dart';
 import 'player_state.dart';
 import 'player_stream_controllers.dart';
@@ -36,6 +37,11 @@ abstract class PlayerBase with PlayerStreamControllersMixin implements Player {
 
   @override
   bool get audioPassthroughActive => false;
+
+  /// Keeps loudness normalization and bitstream passthrough out of each
+  /// other's way; see [AudioPathArbiter].
+  @protected
+  final AudioPathArbiter audioPath = AudioPathArbiter();
 
   late final PlayerStreams _streams;
 
@@ -696,10 +702,60 @@ abstract class PlayerBase with PlayerStreamControllersMixin implements Player {
 
   @override
   Future<void> setAudioNormalization(AudioNormalizationMode mode) async {
-    // Empty string removes the filter; the normalize target mirrors the Android
-    // ExoPlayer effect parameters in AudioNormalizationEffect.kt.
+    // Registers the wish only; the arbiter decides what actually reaches mpv,
+    // because loudnorm needs decoded audio and a running bitstream has none.
+    await reconcileAudioPath(audioPath.request(normalization: mode));
+  }
+
+  @override
+  bool consumeNormalizationSuspendedNotice() {
+    if (!_normalizationNoticePending) return false;
+    _normalizationNoticePending = false;
+    return true;
+  }
+
+  /// Set when a transition suspended the user's loudness setting and nobody has
+  /// been told yet. Cleared for good once consumed, so a rate change or a next
+  /// title cannot repeat the message within this playback session.
+  bool _normalizationNoticePending = false;
+  bool _normalizationNoticeSpent = false;
+
+  /// Runs a transition in the order the arbiter asked for, caching each part
+  /// only after its write returned.
+  @protected
+  Future<void> reconcileAudioPath(AudioPathTransition transition) async {
+    if (transition.suspendsNormalization && !_normalizationNoticeSpent) {
+      _normalizationNoticeSpent = true;
+      _normalizationNoticePending = true;
+    }
+    if (transition.normalizationFirst) await _applyNormalization(transition.normalization);
+    if (transition.togglePassthrough) {
+      await applyPassthrough(transition.target.passthrough);
+      audioPath.markPassthroughApplied(transition.target.passthrough);
+    }
+    if (!transition.normalizationFirst) await _applyNormalization(transition.normalization);
+  }
+
+  Future<void> _applyNormalization(AudioNormalizationMode? mode) async {
+    if (mode == null) return;
+    await applyNormalization(mode);
+    audioPath.markNormalizationApplied(mode);
+  }
+
+  /// Hands the resolved loudness mode to the backend.
+  ///
+  /// Empty string removes the filter; the normalize target mirrors the Android
+  /// ExoPlayer effect parameters in AudioNormalizationEffect.kt.
+  @protected
+  Future<void> applyNormalization(AudioNormalizationMode mode) async {
     await setProperty('af', mode.mpvFilter);
   }
+
+  /// Hands the resolved bitstream state to the backend. Base players have no
+  /// compressed path, so nothing to do.
+  @protected
+  // ignore: no-empty-block - base no-op, overridden by platform subclasses
+  Future<void> applyPassthrough(bool enabled) async {}
 
   @override
   // ignore: no-empty-block - base no-op, overridden by platform subclasses

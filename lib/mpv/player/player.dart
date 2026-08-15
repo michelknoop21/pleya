@@ -218,6 +218,12 @@ abstract class Player {
   /// distinguishes on/off, so night mode maps to normalize there.
   Future<void> setAudioNormalization(AudioNormalizationMode mode);
 
+  /// True once per playback session, the first time a running bitstream
+  /// suspends the loudness setting the user asked for (DEC-013: the bitstream
+  /// wins). Consumed by whoever shows the message, so the user is told at the
+  /// transition rather than on every re-apply.
+  bool consumeNormalizationSuspendedNotice();
+
   /// Show or hide the video rendering layer.
   ///
   /// On macOS, this controls the Metal layer visibility.

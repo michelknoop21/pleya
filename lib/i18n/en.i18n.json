@@ -1302,6 +1302,7 @@
       "normalize": "Normalize",
       "night": "Night mode"
     },
+    "audioNormalizationSuspended": "Loudness normalization is paused while Dolby bitstreaming is active.",
     "tryLowerQuality": "Try lower quality",
     "audioPassthroughUnavailable": "This output can't take a Dolby bitstream — switched to decoded audio."
   },

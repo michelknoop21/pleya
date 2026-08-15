@@ -876,6 +876,14 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         );
       }
 
+      // Loudness first, and unconditionally: the filter chain lives in the
+      // shared mpv core, so `off` still has to clear whatever the previous
+      // title left behind. Writing it before the output path is what keeps
+      // `af` from landing after `audio-spdif`, which mpv reports as a
+      // passthrough failure.
+      final normalizationMode = settingsService.read(SettingsService.audioNormalizationMode);
+      await currentPlayer.setAudioNormalization(normalizationMode);
+
       // Audio output path: Dolby bitstream, multichannel PCM or stereo. Runs
       // before loadfile because the Apple audio output samples the route once
       // at init — a session widened afterwards no longer helps.
@@ -889,6 +897,13 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
       );
       _audioOutput = audioOutput;
       await audioOutput.prepare(audioCodec: _preferredAudioCodec());
+
+      // Passthrough wins from loudness normalization (DEC-013), so say so
+      // rather than leaving the user with a setting that quietly does nothing.
+      // The player hands this out once per session, at the transition.
+      if (currentPlayer.consumeNormalizationSuspendedNotice() && mounted) {
+        showAppSnackBar(context, t.videoSettings.audioNormalizationSuspended);
+      }
 
       // HDR is controlled via custom hdr-enabled property on iOS/macOS/Windows
       if (Platform.isIOS || Platform.isMacOS || Platform.isWindows) {
@@ -906,11 +921,6 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
       if (subtitleSyncOffset != 0) {
         final offsetSeconds = subtitleSyncOffset / 1000.0;
         await currentPlayer.setProperty('sub-delay', offsetSeconds.toString());
-      }
-
-      final normalizationMode = settingsService.read(SettingsService.audioNormalizationMode);
-      if (normalizationMode.isEnabled) {
-        await currentPlayer.setAudioNormalization(normalizationMode);
       }
 
       if (PlatformDetector.isDesktopOS()) {

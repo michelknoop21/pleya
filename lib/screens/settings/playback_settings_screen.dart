@@ -361,6 +361,9 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         .toList(),
     decode: (m) => m,
     encode: (m) => m,
+    // Takes effect on the running player too, not just the next title. The
+    // coordinator is the handle on the playback session currently on screen.
+    onAfterWrite: (mode) => AudioOutputCoordinator.current?.player.setAudioNormalization(mode),
   );
 
   String _audioNormalizationLabel(AudioNormalizationMode mode) => switch (mode) {

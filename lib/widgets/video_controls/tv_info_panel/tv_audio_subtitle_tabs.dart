@@ -9,6 +9,7 @@ import '../../../services/audio_output_decision.dart';
 import '../../../services/settings_service.dart';
 import '../../../utils/audio_output_labels.dart';
 import '../../../utils/player_subtitle_labeling.dart';
+import '../../../utils/snackbar_helper.dart';
 import '../../../utils/track_label_builder.dart';
 import '../models/track_controls_state.dart';
 import '../helpers/track_filter_helper.dart';
@@ -184,6 +185,12 @@ class TvAudioTab extends StatelessWidget {
                     final next = order[(mode.index + 1) % order.length];
                     await SettingsService.instance.write(SettingsService.audioNormalizationMode, next);
                     await player.setAudioNormalization(next);
+                    // A running bitstream outranks the loudness setting
+                    // (DEC-013); say so once instead of changing nothing
+                    // audible.
+                    if (context.mounted && player.consumeNormalizationSuspendedNotice()) {
+                      showAppSnackBar(context, t.videoSettings.audioNormalizationSuspended);
+                    }
                   },
                 ),
               ),

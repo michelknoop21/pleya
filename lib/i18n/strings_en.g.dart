@@ -3589,6 +3589,9 @@ class TranslationsVideoSettingsEn {
 
 	late final TranslationsVideoSettingsAudioNormalizationModesEn audioNormalizationModes = TranslationsVideoSettingsAudioNormalizationModesEn.internal(_root);
 
+	/// en: 'Loudness normalization is paused while Dolby bitstreaming is active.'
+	String get audioNormalizationSuspended => 'Loudness normalization is paused while Dolby bitstreaming is active.';
+
 	/// en: 'Try lower quality'
 	String get tryLowerQuality => 'Try lower quality';
 
@@ -6580,6 +6583,7 @@ extension on Translations {
 			'videoSettings.audioNormalizationModes.off' => 'Off',
 			'videoSettings.audioNormalizationModes.normalize' => 'Normalize',
 			'videoSettings.audioNormalizationModes.night' => 'Night mode',
+			'videoSettings.audioNormalizationSuspended' => 'Loudness normalization is paused while Dolby bitstreaming is active.',
 			'videoSettings.tryLowerQuality' => 'Try lower quality',
 			'videoSettings.audioPassthroughUnavailable' => 'This output can\'t take a Dolby bitstream — switched to decoded audio.',
 			'performanceOverlay.color' => 'Color',
@@ -6921,9 +6925,9 @@ extension on Translations {
 			'pleyaShare.connect' => 'Connect',
 			'pleyaShare.pairFailed' => 'Pairing failed. Check the code and try again.',
 			'pleyaShare.paired' => ({required Object name}) => 'Connected to ${name}',
-			'pleyaShare.pairUnreachable' => 'Host not reachable. Check the address and network.',
 			_ => null,
 		} ?? switch (path) {
+			'pleyaShare.pairUnreachable' => 'Host not reachable. Check the address and network.',
 			'pleyaShare.addFolder' => 'Add a local folder',
 			'pleyaShare.notificationTitle' => 'Sharing media',
 			'pleyaShare.notificationText' => 'Other Pleya devices can stream your local folders',
