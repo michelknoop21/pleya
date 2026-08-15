@@ -2,6 +2,23 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-15] Het systeemtoetsenbord op Apple TV reageert weer op de Siri Remote
+
+### Fixed
+- **Klikken op een letter in het tvOS-systeemtoetsenbord deed niets** (`tvos/Runner/AppDelegate.swift`, `Runner-Bridging-Header.h`, `NativeTextEntryViewController.swift`, `NativeTextEntryPlugin.swift`, commit `6bab0ca`, tvOS-build 219). Vegen werkte, dictatie werkte, continuity-typen werkte, alleen de klik kwam nooit aan. De oorzaak zat in de gepinde fork-engine en is uit de binary bewezen: `-[UIApplication(FlutterTvosPressEvents) flutterTvos_sendEvent:]` slaat de originele `sendEvent:` over zodra `FlutterTvosHandlePressesEvent` `YES` teruggeeft, en `-[FlutterViewController tvosHandlePressFromUIEvent:]` eindigt in `synthesizeRemotePressType:`, die onvoorwaardelijk `YES` retourneert (`mov w0, #0x1` op `0x4b828`; er is geen enkel pad dat 0 geeft). Een select-press werd dus geclaimd op de allereerste hop, voordat UIKit zijn responder chain begon. Vegen bleef werken omdat de swizzle bovenaan bailt op `[event type] != 3`: dat is `UIEventTypeTouches`, geen press. De scheidslijn in het symptoom viel exact samen met de scheidslijn UITouch/UIPress.
+
+  `PleyaFlutterViewController` beantwoordt die vraag nu zelf en geeft `false` zolang een native tekstinvoersessie loopt, **zonder `super` aan te roepen**: super is wat de press synthetiseert en `flutter/keydata` post, dus meelopen zou het achtergrondlek terugbrengen. De selector staat in geen publieke header en wordt gedeclareerd als categorie in `Runner-Bridging-Header.h` (was 0 bytes); Swift importeert hem als `tvosHandlePress(fromUIEvent:)`, geverifieerd met `swiftc -typecheck` tegen de gepinde `Flutter.framework`. Het eigendomsvenster is aan beide kanten aan de responder-staat gekoppeld: aan bij een geslaagde `becomeFirstResponder`, uit in het opruimpad van `NativeTextEntryField.finish` ná de dismissal. Zie [DEC-019](DECISIONS.md#dec-019).
+
+### Changed
+- **De Dart-gates zijn vangnet geworden in plaats van het normale pad.** `_blockKeysDuringSession` en de sessie-gate in `apple_tv_remote_touch_service.dart` blijven staan, maar verschijnt hun logregel tijdens een sessie, dan heeft de native hook gefaald. De `requestClose()`-uitzondering voor Back is vervallen: Menu gaat nu met de rest naar UIKit. Eén legitieme trefkans blijft over, de key-up van de select die het toetsenbord opende.
+- **Startup-guard tegen een stille engine-bump.** `AppDelegate` logt `FlutterViewController.instancesRespond(to:)` op de selector. Nadrukkelijk op de superclass en niet op een instance: de eigen subklasse implementeert hem, dus een instance zou altijd ja zeggen en de guard waardeloos maken.
+- **`scripts/tvos_sim.sh check-select`** meet nu of `textChanged length=N` oploopt én of de Dart-vangnetten stil bleven. Alleen het eindresultaat controleren bewijst de eigendomsoverdracht niet, en juist dat gat liet deze bug langs `check-keyboard` glippen. Op de simulator faalt de check zolang Connect Hardware Keyboard aanstaat, want Return submit dan in plaats van een letter te kiezen.
+
+### Notes
+- Twee correcties op eerdere aannames. De gate uit DEC-017 was **niet** de oorzaak: select werd al door de engine opgeslokt vóór die commit, en wat DEC-017 deed was het achtergrondlek dichten. En er is nooit een app-side override geweest, ondanks een geheugennotitie die het tegendeel beweerde; die is gecorrigeerd.
+- Meegemerged uit `test`: de hero die verdween nadat het zoektoetsenbord open was geweest, en de watch-state-sync waarbij een tweede apparaat dat verder keek nu wint van een verouderde lokale positie. 2935 tests groen.
+- Losse defecten, genoteerd maar bewust niet meegefixt: `forwardedPressCount` telt tijdens een sessie nu nul, waardoor de watchdog altijd `KEYBOARD_UNAVAILABLE` kiest in plaats van `KEYBOARD_DEAD`; en de play/pause-afvang in `AppDelegate.swift` vergelijkt tegen een presstype dat door dezelfde raw-value-mismatch als Menu (2040/2041 tegenover 4/5) waarschijnlijk nooit matcht.
+
 ## [2026-08-14] Apple TV: toetsenbord, skip-knoppen, autoplay, scrubben en de log-upload
 
 ### Fixed

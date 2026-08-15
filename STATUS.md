@@ -1,8 +1,14 @@
 # STATUS — Pleya
 
-_Laatst bijgewerkt: 2026-08-14 16:00 (branch `main`, gepusht t/m `9c896d7`; TestFlight 2.8.0: tvOS 216, macOS 216, iOS 215)_
+_Laatst bijgewerkt: 2026-08-15 14:00 (branch `main` = `test` = `7f56137`; TestFlight 2.8.0: tvOS 219, macOS 216, iOS 217)_
 
 ## Waar was ik
+
+**Het systeemtoetsenbord op Apple TV reageert weer op de Siri Remote, bevestigd op het toestel met build 219.** Klikken op een letter deed niets terwijl vegen, dictatie en continuity-typen wél werkten. Uit de disassembly van de gepinde engine bleek waarom: die claimt elke press al in `sendEvent:` (`synthesizeRemotePressType:` geeft onvoorwaardelijk `YES`) en slaat de originele implementatie dan over, zodat UIKit zijn responder chain nooit begint. Vegen ontsnapte omdat dat touches zijn, geen presses. De fix legt het eigendom terug op de enige plek waar de engine het vraagt: `PleyaFlutterViewController.tvosHandlePress(fromUIEvent:)` geeft `false` tijdens een tekstinvoersessie, zonder `super`. Zie [DEC-019](docs/DECISIONS.md#dec-019) en de gotcha in `CLAUDE.md`.
+
+Twee correcties op wat hier gisteren stond: de gate uit DEC-017 was **niet** de oorzaak van het niet-werkende klikken (die dichtte het achtergrondlek; select was al eerder stuk), en de app-side override die een geheugennotitie als geïmplementeerd beschreef, bestond niet.
+
+## Eergisteren en gisteren
 
 Vijf gemelde Apple TV-problemen opgelost en naar TestFlight gebracht. Het toetsenbord was de belangrijkste: de D-pad bediende de UI achter het geopende systeemtoetsenbord, en de fix uit DEC-011 bleek op een codepad te zitten dat daar nooit draait. De engine swizzlet `sendEvent:` en levert elke press rechtstreeks aan Dart, buiten de responder chain om, dus de gate hoort op `FocusManager.addEarlyKeyEventHandler`. Die geldt nu centraal voor elk invoerveld. Zie [DEC-017](docs/DECISIONS.md#dec-017). Verder: de skip- en volgende-aflevering-knop zijn bereikbaar met de remote en tonen er niet langer twee tegelijk tijdens de aftiteling, autoplay had drie onafhankelijke breekpunten waarvan er één autoplay voor de rest van de sessie stil kon leggen, de tijdlijn kent nu scrubben op pauze plus een spoelsnelheid die met het klikritme oploopt, en de log-upload hield zich niet aan het 1 MB-contract van de eigen relay.
 
@@ -36,7 +42,7 @@ Het uitgewerkte implementatieplan (arbiter, badge uit de beslissing, `auto` op d
 
 ## Blockers
 
-- [ ] **Regressieronde op de fysieke Apple TV**: de vijf fixes van 14 augustus zitten in tvOS build 216 en zijn unit- en widget-gedekt, maar de Siri Remote is niet te simuleren. Zie de volgende stap hierboven.
+- [ ] **Regressieronde op de fysieke Apple TV**: de vijf fixes van 14 augustus zitten inmiddels in tvOS build 219 en zijn unit- en widget-gedekt, maar de Siri Remote is niet te simuleren. Het toetsenbord is los bevestigd (zie hierboven); de skip-knoppen, autoplay en het scrubben nog niet.
 - [ ] **Autoplay-vlaggen na een overgenomen herlaadpoging zijn niet door een test gedekt**: de opruiming zit in een `finally` in `_reloadMediaInPlace`, maar die logica leeft in een private extensie op de schermstaat en testen vraagt een volledig spelerharnas. Bewust overgeslagen; de dekking leunt hier op de deviceronde.
 - [ ] **Scrubben: hervatten wacht niet op de seek**: bij bevestigen volgt `player.play()` direct op `onSeekEnd`, want die geeft geen future terug. Op mpv landen de commando's in volgorde, maar of er een frame op de oude positie doorschemert is alleen op een toestel te zien.
 - [x] ~~**Log-upload werkte niet**~~ opgelost 2026-08-14. Niet de host: de client las de statuscode nooit en verstuurde tot 5 MB terwijl de relay 1 MB accepteert. Zie de CHANGELOG-entry van 14 augustus.
@@ -76,6 +82,10 @@ xcrun devicectl device process launch --console --terminate-existing \
 ```
 
 ## Recente sessies
+
+### 2026-08-15
+- Het tvOS-systeemtoetsenbord reageert weer op de Siri Remote (`6bab0ca`, build 219, op het toestel bevestigd). Oorzaak uit de engine-binary bewezen, fix via een override van `tvosHandlePressFromUIEvent:`. Zie [DEC-019](docs/DECISIONS.md#dec-019); de gotcha staat in `CLAUDE.md` zodat dit niet opnieuw verloren gaat.
+- `main` en `test` weer gelijkgetrokken (`b3dc5b2`), inclusief twee commits die alleen op `test` stonden: de hero die verdween na het zoektoetsenbord, en de watch-state-sync waarbij een tweede apparaat wint van een verouderde lokale positie. 2935 tests groen.
 
 ### 2026-08-14
 - Vijf gemelde Apple TV-problemen opgelost: de D-pad-lek door het systeemtoetsenbord (`5dba184`, `c8ae4b7`), de bereikbaarheid en vorm van de skip- en volgende-aflevering-knop plus de dubbele knop tijdens de aftiteling (`2dfbcd4`), autoplay naar de volgende aflevering (`ee96f6c`), scrubben op pauze met oplopende spoelsnelheid (`d9706ad`) en de log-upload (`73ba2b8`). 2925 tests groen. Zie [DEC-017](docs/DECISIONS.md#dec-017).
