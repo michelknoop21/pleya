@@ -74,6 +74,43 @@ void main() {
       expect(viewport - hero, greaterThan(0), reason: 'part of the rail still shows, so the page reads as scrollable');
     });
 
+    test('survives the viewport the search keyboard leaves behind', () {
+      // The home tab keeps being laid out inside the IndexedStack while the
+      // search tab has focus, so its viewport shrinks by the keyboard. Below
+      // ~439pt the floor used to exceed the cap and the whole billboard threw,
+      // which a release build renders as an empty box that never recovers.
+      for (final viewport in [438.0, 400.0, 300.0, 120.0]) {
+        final hero = homeHeroHeight(
+          useSideNav: false,
+          viewportExtent: viewport,
+          screenHeight: 874,
+          screenWidth: 402,
+          statusBarHeight: 59,
+          firstRailHeight: _episodeRail,
+        );
+
+        expect(hero, closeTo(viewport * 0.82, 0.001), reason: 'viewport=$viewport');
+        expect(hero, lessThan(viewport), reason: 'viewport=$viewport');
+      }
+    });
+
+    test('a collapsed viewport gives a zero hero instead of throwing', () {
+      for (final viewport in [0.0, -10.0]) {
+        expect(
+          homeHeroHeight(
+            useSideNav: false,
+            viewportExtent: viewport,
+            screenHeight: 874,
+            screenWidth: 402,
+            statusBarHeight: 59,
+            firstRailHeight: _episodeRail,
+          ),
+          0,
+          reason: 'viewport=$viewport',
+        );
+      }
+    });
+
     test('a wide window falls back to the 16:9 frame instead of a stunted hero', () {
       // iPad landscape-ish without side nav: leftover height is small, but the
       // billboard should still be as tall as its own aspect ratio wants.

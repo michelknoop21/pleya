@@ -41,7 +41,12 @@ class _WatchStatePatchEntry {
   final WatchStatePatch patch;
   final int sequence;
 
-  const _WatchStatePatchEntry(this.patch, this.sequence);
+  /// Wall clock at which this patch was recorded, so a server snapshot can
+  /// prove it is describing a *later* viewing than the patch does. [sequence]
+  /// only orders patches against each other and says nothing about the server.
+  final int createdAtMsEpoch;
+
+  const _WatchStatePatchEntry(this.patch, this.sequence, this.createdAtMsEpoch);
 }
 
 /// The single session-local layer for watch-state freshness.
@@ -54,9 +59,23 @@ class _WatchStatePatchEntry {
 /// marking a show/season reaches every descendant, while a later per-item
 /// event still overrides an older container mark.
 class WatchStateStore extends ChangeNotifier with DisposableChangeNotifierMixin {
-  WatchStateStore() {
+  WatchStateStore({DateTime Function()? now}) : _now = now ?? DateTime.now {
     _subscription = WatchStateNotifier().stream.listen(_onWatchStateEvent);
   }
+
+  /// How far a server snapshot's [MediaItem.lastViewedAt] has to run ahead of a
+  /// patch before the server is believed over it.
+  ///
+  /// Zero would be wrong: this device reports its own progress while playing,
+  /// so the server's timestamp for the very playback a patch describes lands
+  /// within seconds of the patch itself. Without a margin the bridge the patch
+  /// exists for would collapse and "minutes left" would lag again. Anything
+  /// beyond the margin cannot be this session's own report; it is another
+  /// device that watched further, and then the server is the better source.
+  /// Matches the progress tracker's own notify delta.
+  static const Duration serverWinsMargin = Duration(seconds: 30);
+
+  final DateTime Function() _now;
 
   StreamSubscription<WatchStateEvent>? _subscription;
   final Map<String, _WatchStatePatchEntry> _patches = {};
@@ -91,7 +110,21 @@ class WatchStateStore extends ChangeNotifier with DisposableChangeNotifierMixin 
         if (entry != null && (best == null || entry.sequence > best.sequence)) best = entry;
       }
     }
-    return best?.patch;
+    if (best == null || _serverOutranks(item, best)) return null;
+    return best.patch;
+  }
+
+  /// Whether [item] carries a viewing the server recorded after [entry] was
+  /// made, which is how a second device announces that it watched further.
+  ///
+  /// Patches are session-local and never expire on their own, so without this
+  /// the position left behind here would keep overriding fresher server data
+  /// for as long as the app stays alive.
+  bool _serverOutranks(MediaItem item, _WatchStatePatchEntry entry) {
+    final lastViewedAt = item.lastViewedAt;
+    if (lastViewedAt == null || lastViewedAt <= 0) return false;
+    final serverMs = lastViewedAt * 1000;
+    return serverMs - entry.createdAtMsEpoch > serverWinsMargin.inMilliseconds;
   }
 
   MediaItem apply(MediaItem item) {
@@ -139,7 +172,7 @@ class WatchStateStore extends ChangeNotifier with DisposableChangeNotifierMixin 
     final key = cacheServerId != null && cacheServerId.isNotEmpty && cacheServerId != event.serverId
         ? buildGlobalKey(ServerId(cacheServerId), event.itemId)
         : event.globalKey;
-    _patches[key] = _WatchStatePatchEntry(patch, ++_sequence);
+    _patches[key] = _WatchStatePatchEntry(patch, ++_sequence, _now().millisecondsSinceEpoch);
     safeNotifyListeners();
   }
 
