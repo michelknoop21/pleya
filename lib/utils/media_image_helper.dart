@@ -263,6 +263,37 @@ class MediaImageHelper {
     return true;
   }
 
+  /// Public Plex image proxy, used for catalogue artwork that belongs to no
+  /// server.
+  static const String _plexPhotoProxy = 'https://images.plex.tv/photo';
+
+  /// Sized URL for a Plex discover poster.
+  ///
+  /// Watchlist artwork cannot go through [getOptimizedImageUrl] with a client.
+  /// A discover title has no server, and handing an absolute URL to a Plex
+  /// client would proxy it via `/photo/:/transcode`, which appends the server
+  /// token. That token would then sit inside a persistent image-cache key,
+  /// where it outlives the session and travels with the cache.
+  ///
+  /// `images.plex.tv/photo` needs no authentication at all. Measured on 16
+  /// August 2026 against every artwork host the watchlist actually returns
+  /// (`metadata-static.plex.tv`, `image.tmdb.org`), it answers 200 with a
+  /// correctly resized image and turns a 428 KB poster into 20 KB. Requests
+  /// carry no header, so the URL is the whole cache key and holds nothing
+  /// private.
+  ///
+  /// Returns an empty string for a missing reference, and passes a relative
+  /// path through untouched: only absolute catalogue URLs are proxied.
+  static String catalogPosterUrl(String? url, {required int width, required int height}) {
+    if (url == null || url.isEmpty) return '';
+    if (!url.startsWith('http://') && !url.startsWith('https://')) return url;
+    if (url.startsWith(_plexPhotoProxy)) return url;
+
+    return Uri.parse(
+      _plexPhotoProxy,
+    ).replace(queryParameters: {'width': '$width', 'height': '$height', 'url': url}).toString();
+  }
+
   /// Optimized URL for hero/background art ([ImageType.art]).
   static String heroArtUrl({
     required MediaServerClient? client,

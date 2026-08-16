@@ -59,4 +59,47 @@ void main() {
       expect(url, original);
     });
   });
+
+  group('MediaImageHelper.catalogPosterUrl', () {
+    const poster = 'https://metadata-static.plex.tv/1/gracenote/16d409c65c018341b0b142504779b09c.jpg';
+
+    test('proxies a catalogue poster through the public resizer', () {
+      final url = Uri.parse(MediaImageHelper.catalogPosterUrl(poster, width: 300, height: 450));
+
+      expect(url.host, 'images.plex.tv');
+      expect(url.path, '/photo');
+      expect(url.queryParameters['width'], '300');
+      expect(url.queryParameters['height'], '450');
+      expect(url.queryParameters['url'], poster);
+    });
+
+    test('carries no token, so the cache key holds nothing private', () {
+      final url = MediaImageHelper.catalogPosterUrl(poster, width: 300, height: 450);
+
+      expect(url.toLowerCase(), isNot(contains('token')));
+      expect(url.toLowerCase(), isNot(contains('api_key')));
+      expect(url.toLowerCase(), isNot(contains('/photo/:/transcode')));
+    });
+
+    test('handles a tmdb-hosted poster the same way', () {
+      const tmdb = 'https://image.tmdb.org/t/p/original/p53wbsukyhJ8TieisoeU1zZr9iA.jpg';
+
+      expect(Uri.parse(MediaImageHelper.catalogPosterUrl(tmdb, width: 300, height: 450)).queryParameters['url'], tmdb);
+    });
+
+    test('does not wrap an already proxied url twice', () {
+      final once = MediaImageHelper.catalogPosterUrl(poster, width: 300, height: 450);
+
+      expect(MediaImageHelper.catalogPosterUrl(once, width: 600, height: 900), once);
+    });
+
+    test('leaves a relative path alone and answers empty for nothing', () {
+      expect(
+        MediaImageHelper.catalogPosterUrl('/library/metadata/1/thumb', width: 300, height: 450),
+        '/library/metadata/1/thumb',
+      );
+      expect(MediaImageHelper.catalogPosterUrl(null, width: 300, height: 450), '');
+      expect(MediaImageHelper.catalogPosterUrl('', width: 300, height: 450), '');
+    });
+  });
 }
