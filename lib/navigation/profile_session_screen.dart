@@ -1,3 +1,9 @@
+import '../providers/download_provider.dart';
+import '../services/watchlist/watchlist_snapshot_store.dart';
+import '../services/api_cache.dart';
+import '../providers/watchlist_store.dart';
+import '../providers/watchlist_provider.dart';
+import '../media/media_backend.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -180,6 +186,26 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                     isProfileBinding: () => activeProfile.isBinding,
                     recommendations: activeId == null ? null : context.read<RecommendationService>(),
                   );
+                },
+              ),
+              ChangeNotifierProvider(create: (_) => WatchlistStore()..bindProfile(activeId)),
+              // The kijklijst is rebuilt per profile: its sources, its cache
+              // keys and its snapshot are all scoped to the acting user, and a
+              // provider carried across a switch would serve the previous
+              // user's list.
+              ChangeNotifierProxyProvider3<MultiServerProvider, DownloadProvider, SeerrProvider, WatchlistProvider>(
+                create: (context) =>
+                    WatchlistProvider(snapshots: WatchlistSnapshotStore(cache: ApiCache.forBackend(MediaBackend.plex))),
+                update: (context, multiServer, downloads, seerr, previous) {
+                  final provider =
+                      previous ??
+                      WatchlistProvider(
+                        snapshots: WatchlistSnapshotStore(cache: ApiCache.forBackend(MediaBackend.plex)),
+                      );
+                  provider.isServerOnline = multiServer.isServerOnline;
+                  provider.hasDownload = downloads.isDownloaded;
+                  provider.seerrConfigured = seerr.isConfigured;
+                  return provider;
                 },
               ),
               ChangeNotifierProvider(create: (context) => PlaybackStateProvider()),
