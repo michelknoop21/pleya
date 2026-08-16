@@ -39,8 +39,12 @@ class _TabIcon extends StatelessWidget {
   }
 }
 
-/// Navigation tab identifiers
-enum NavigationTabId { discover, libraries, liveTv, search, requests, downloads, settings }
+/// Navigation tab identifiers.
+///
+/// Order here is not the display order (that is [allNavigationTabs]) and the
+/// enum position is not persisted either: `EnumPref` serialises on `.name`, so
+/// inserting a value cannot shift a stored `startup_section`.
+enum NavigationTabId { discover, libraries, liveTv, search, watchlist, requests, downloads, settings, myPleya }
 
 /// Represents a navigation tab with its configuration
 class NavigationTab {
@@ -69,17 +73,43 @@ class NavigationTab {
   }
 
   /// Get the index for a tab ID in the visible tabs list
-  static int indexFor(NavigationTabId id, {required bool isOffline, bool hasLiveTv = false, bool hasSeerr = false}) {
-    final tabs = getVisibleTabs(isOffline: isOffline, hasLiveTv: hasLiveTv, hasSeerr: hasSeerr);
+  static int indexFor(
+    NavigationTabId id, {
+    required bool isOffline,
+    bool hasLiveTv = false,
+    bool hasSeerr = false,
+    bool hasWatchlist = false,
+    bool isMobile = false,
+  }) {
+    final tabs = getVisibleTabs(
+      isOffline: isOffline,
+      hasLiveTv: hasLiveTv,
+      hasSeerr: hasSeerr,
+      hasWatchlist: hasWatchlist,
+      isMobile: isMobile,
+    );
     return tabs.indexWhere((tab) => tab.id == id);
   }
 
-  /// Get tabs filtered by offline mode and feature availability
-  static List<NavigationTab> getVisibleTabs({required bool isOffline, bool hasLiveTv = false, bool hasSeerr = false}) {
+  /// Get tabs filtered by offline mode and feature availability.
+  ///
+  /// [isMobile] gates My Pleya, which exists only on phones. It is an answer
+  /// to a five-slot bottom bar, not a new information architecture: the
+  /// sidebar has room for Downloads, Requests and Settings as first-class
+  /// destinations and keeps them.
+  static List<NavigationTab> getVisibleTabs({
+    required bool isOffline,
+    bool hasLiveTv = false,
+    bool hasSeerr = false,
+    bool hasWatchlist = false,
+    bool isMobile = false,
+  }) {
     return allNavigationTabs.where((tab) {
       if (isOffline && tab.onlineOnly) return false;
       if (tab.id == NavigationTabId.liveTv && !hasLiveTv) return false;
       if (tab.id == NavigationTabId.requests && !hasSeerr) return false;
+      if (tab.id == NavigationTabId.watchlist && !hasWatchlist) return false;
+      if (tab.id == NavigationTabId.myPleya && !isMobile) return false;
       if (tab.id == NavigationTabId.downloads && PlatformDetector.isAppleTV()) return false;
       return true;
     }).toList();
@@ -94,9 +124,17 @@ class NavigationTab {
     required bool isOffline,
     required bool hasLiveTv,
     bool hasSeerr = false,
+    bool hasWatchlist = false,
+    bool isMobile = false,
     required NavigationTabId? preferredStartup,
   }) {
-    final tabs = getVisibleTabs(isOffline: isOffline, hasLiveTv: hasLiveTv, hasSeerr: hasSeerr);
+    final tabs = getVisibleTabs(
+      isOffline: isOffline,
+      hasLiveTv: hasLiveTv,
+      hasSeerr: hasSeerr,
+      hasWatchlist: hasWatchlist,
+      isMobile: isMobile,
+    );
     if (isOffline && tabs.any((t) => t.id == NavigationTabId.downloads)) {
       return NavigationTabId.downloads;
     }
@@ -115,6 +153,8 @@ String _getSearchLabel() => t.common.search;
 String _getRequestsLabel() => t.seerr.title;
 String _getDownloadsLabel() => t.navigation.downloads;
 String _getSettingsLabel() => t.common.settings;
+String _getWatchlistLabel() => t.navigation.watchlist;
+String _getMyPleyaLabel() => t.navigation.myPleya;
 
 /// Solid nav glyphs from the sidebar-v2 mockup.
 class NavGlyphs {
@@ -125,6 +165,7 @@ class NavGlyphs {
   static const requests = 'assets/icons/nav/requests.svg';
   static const downloads = 'assets/icons/nav/downloads.svg';
   static const settings = 'assets/icons/nav/settings.svg';
+  static const watchlist = 'assets/icons/nav/watchlist.svg';
 
   // Library-row glyphs (same solid style, one icon language across the rail).
   static const libMovie = 'assets/icons/nav/movie.svg';
@@ -166,6 +207,13 @@ const allNavigationTabs = [
     getLabel: _getSearchLabel,
   ),
   NavigationTab(
+    id: NavigationTabId.watchlist,
+    onlineOnly: false,
+    icon: Symbols.bookmark_add_rounded,
+    svgAsset: NavGlyphs.watchlist,
+    getLabel: _getWatchlistLabel,
+  ),
+  NavigationTab(
     id: NavigationTabId.requests,
     onlineOnly: true,
     icon: Symbols.playlist_add_rounded,
@@ -185,5 +233,14 @@ const allNavigationTabs = [
     icon: Symbols.settings_rounded,
     svgAsset: NavGlyphs.settings,
     getLabel: _getSettingsLabel,
+  ),
+  // Last, because it is the mobile bar's rightmost slot. Its icon is the
+  // profile avatar rather than this glyph; the fallback only shows before a
+  // profile is resolved.
+  NavigationTab(
+    id: NavigationTabId.myPleya,
+    onlineOnly: false,
+    icon: Symbols.account_circle_rounded,
+    getLabel: _getMyPleyaLabel,
   ),
 ];

@@ -90,7 +90,7 @@ void main() {
   });
 
   group('main screen bottom navigation tabs', () {
-    test('mobile online hides Settings when another tab is active', () {
+    test('mobile online hides Settings, which now lives behind the gear in My Pleya', () {
       final tabs = mainScreenBottomNavigationTabs(
         visibleTabs: allNavigationTabs,
         isMobile: true,
@@ -101,7 +101,7 @@ void main() {
       expect(_ids(tabs), isNot(contains(NavigationTabId.settings)));
     });
 
-    test('mobile offline includes Downloads and Settings', () {
+    test('mobile offline includes Downloads but still not Settings', () {
       final offlineTabs = allNavigationTabs
           .where((tab) => tab.id == NavigationTabId.downloads || tab.id == NavigationTabId.settings)
           .toList();
@@ -112,10 +112,13 @@ void main() {
         currentTab: NavigationTabId.downloads,
       );
 
-      expect(_ids(tabs), [NavigationTabId.downloads, NavigationTabId.settings]);
+      expect(_ids(tabs), [NavigationTabId.downloads]);
     });
 
-    test('mobile online keeps Settings visible when it is selected', () {
+    test('Settings stays out of the bar even while it is the active screen', () {
+      // Changed behaviour: Settings used to reappear as a bar item when
+      // selected. It is now reached through the gear in My Pleya, and the bar
+      // projects the selection onto My Pleya instead of growing a sixth slot.
       final tabs = mainScreenBottomNavigationTabs(
         visibleTabs: allNavigationTabs,
         isMobile: true,
@@ -123,7 +126,11 @@ void main() {
         currentTab: NavigationTabId.settings,
       );
 
-      expect(_ids(tabs), contains(NavigationTabId.settings));
+      expect(_ids(tabs), isNot(contains(NavigationTabId.settings)));
+      expect(
+        mainScreenSelectedBarTab(currentTab: NavigationTabId.settings, isOffline: false, barTabs: _ids(tabs)),
+        NavigationTabId.myPleya,
+      );
     });
 
     test('non-mobile returns all visible tabs unchanged', () {

@@ -921,7 +921,44 @@
   "navigation": {
     "libraries": "Libraries",
     "downloads": "Downloads",
-    "liveTv": "Live TV"
+    "liveTv": "Live TV",
+    "watchlist": "Watchlist",
+    "myPleya": "My Pleya"
+  },
+  "watchlist": {
+    "title": "Watchlist",
+    "seeAll": "See all",
+    "empty": "Nothing on your watchlist yet",
+    "emptyBody": "Titles you add from Plex or mark as a Jellyfin favorite show up here.",
+    "emptyFiltered": "No titles match this filter",
+    "retry": "Try again",
+    "notAvailable": "Not available",
+    "checking": "Checking",
+    "notFoundOnServers": "Not found on your connected media servers",
+    "coverageIncomplete": "Some of your media servers could not be reached. This title may already be there.",
+    "remove": "Remove from Watchlist",
+    "add": "Add to Watchlist",
+    "added": "Added to Watchlist",
+    "removed": "Removed from Watchlist",
+    "addFailed": "Could not update your watchlist",
+    "partiallyFailed": "Removed from some lists only. Your watchlist has been refreshed.",
+    "offlineRejected": "You need a connection to change your watchlist",
+    "filterAll": "All",
+    "filterMovies": "Movies",
+    "filterShows": "Shows",
+    "filterAvailable": "Available",
+    "sortRecentlyAdded": "Recently added",
+    "sortTitle": "Title",
+    "sortYear": "Year"
+  },
+  "myPleya": {
+    "title": "My Pleya",
+    "settings": "Settings",
+    "switchProfile": "Switch profile",
+    "downloadsCount": {
+      "one": "1 download",
+      "other": "{n} downloads"
+    }
   },
   "liveTv": {
     "serverNotAvailable": "Live TV server is not available.",

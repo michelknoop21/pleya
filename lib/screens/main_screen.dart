@@ -1,3 +1,6 @@
+import '../providers/watchlist_provider.dart';
+import 'watchlist_screen.dart';
+import 'my_pleya_screen.dart';
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 import '../media/ids.dart';
@@ -104,6 +107,19 @@ bool shouldRenderMainScreenOffline({
   return providerOffline || (startupOfflineUntilConnected && !hasVisibleConnectedServers);
 }
 
+/// Destinations that are hidden from the mobile bottom bar because My Pleya
+/// holds them instead.
+///
+/// Downloads is the exception offline: with Home, Libraries, Live TV, Search
+/// and Requests all gone there is room for it, and it is what the user came
+/// for.
+const _mobileTabsInsideMyPleya = {
+  NavigationTabId.watchlist,
+  NavigationTabId.downloads,
+  NavigationTabId.requests,
+  NavigationTabId.settings,
+};
+
 @visibleForTesting
 List<NavigationTab> mainScreenBottomNavigationTabs({
   required List<NavigationTab> visibleTabs,
@@ -113,9 +129,47 @@ List<NavigationTab> mainScreenBottomNavigationTabs({
 }) {
   if (!isMobile) return visibleTabs;
   return visibleTabs.where((tab) {
-    if (tab.id != NavigationTabId.settings) return true;
-    return isOffline || currentTab == NavigationTabId.settings;
+    if (!_mobileTabsInsideMyPleya.contains(tab.id)) return true;
+    return isOffline && tab.id == NavigationTabId.downloads;
   }).toList();
+}
+
+/// Which bottom-bar destination should light up for [currentTab].
+///
+/// Tapping Downloads inside My Pleya makes Downloads the current tab, but on
+/// mobile online Downloads has no slot in the bar. Without this projection the
+/// bar's `indexWhere` returns -1, falls back to 0, and Home lights up while
+/// the user is looking at their downloads.
+///
+/// [barTabs] is what the bar actually renders, so the answer is checked
+/// against reality rather than against an assumption about which destinations
+/// exist. A tab can be current while its natural target is absent: Live TV
+/// without a tuner, or an online-only tab in the frame before
+/// `_normalizeTabForMode` has moved the selection. In those cases the first
+/// bar destination is the honest fallback, and it is the same thing the bar
+/// would have shown anyway, only now deliberately.
+@visibleForTesting
+NavigationTabId mainScreenSelectedBarTab({
+  required NavigationTabId currentTab,
+  required bool isOffline,
+  required List<NavigationTabId> barTabs,
+}) {
+  final preferred = switch (currentTab) {
+    NavigationTabId.discover ||
+    NavigationTabId.libraries ||
+    NavigationTabId.liveTv ||
+    NavigationTabId.search => isOffline ? NavigationTabId.downloads : currentTab,
+    // Offline the bar is Downloads plus My Pleya, so Downloads points at
+    // itself; online it lives behind My Pleya.
+    NavigationTabId.downloads => isOffline ? NavigationTabId.downloads : NavigationTabId.myPleya,
+    NavigationTabId.watchlist ||
+    NavigationTabId.requests ||
+    NavigationTabId.settings ||
+    NavigationTabId.myPleya => NavigationTabId.myPleya,
+  };
+
+  if (barTabs.contains(preferred)) return preferred;
+  return barTabs.isEmpty ? currentTab : barTabs.first;
 }
 
 @visibleForTesting
@@ -205,9 +259,11 @@ class _MainScreenState extends State<MainScreen>
   OfflineModeProvider? _offlineModeProvider;
   MultiServerProvider? _multiServerProvider;
   SeerrProvider? _seerrProvider;
+  WatchlistProvider? _watchlistProvider;
   RouteObserver<PageRoute<dynamic>>? _profileRouteObserver;
   bool _lastHasLiveTv = false;
   bool _lastHasSeerr = false;
+  bool _lastHasWatchlist = false;
 
   /// Whether a reconnection attempt is in progress
   bool _isReconnecting = false;
@@ -227,6 +283,8 @@ class _MainScreenState extends State<MainScreen>
   final GlobalKey<State<SearchScreen>> _searchKey = GlobalKey();
   final GlobalKey<State<DownloadsScreen>> _downloadsKey = GlobalKey();
   final GlobalKey<State<SettingsScreen>> _settingsKey = GlobalKey();
+  final GlobalKey<State<WatchlistScreen>> _watchlistKey = GlobalKey();
+  final GlobalKey _myPleyaKey = GlobalKey();
   final GlobalKey<SideNavigationRailState> _sideNavKey = GlobalKey();
 
   // Focus management for sidebar/content switching
@@ -306,6 +364,11 @@ class _MainScreenState extends State<MainScreen>
       _lastHasSeerr = context.read<SeerrProvider>().isConfigured;
     } catch (_) {
       _lastHasSeerr = false;
+    }
+    try {
+      _lastHasWatchlist = context.read<WatchlistProvider>().hasWatchlist;
+    } catch (_) {
+      _lastHasWatchlist = false;
     }
     _currentTab = _defaultTabForMode(_isOffline);
     _lastOnlineTabId = _isOffline ? null : NavigationTabId.discover;
@@ -766,8 +829,18 @@ class _MainScreenState extends State<MainScreen>
     final seerr = context.read<SeerrProvider>();
     if (seerr != _seerrProvider) {
       _seerrProvider?.removeListener(_handleSeerrChanged);
+      _watchlistProvider?.removeListener(_handleWatchlistChanged);
       _seerrProvider = seerr;
       _seerrProvider!.addListener(_handleSeerrChanged);
+    }
+
+    // Same for the kijklijst: its sources resolve asynchronously after a
+    // profile bind, so the Watchlist destination appears once there is one.
+    final watchlist = context.read<WatchlistProvider>();
+    if (watchlist != _watchlistProvider) {
+      _watchlistProvider?.removeListener(_handleWatchlistChanged);
+      _watchlistProvider = watchlist;
+      _watchlistProvider!.addListener(_handleWatchlistChanged);
     }
 
     // Wire up Companion Remote command routing (host devices only, once)
@@ -957,6 +1030,8 @@ class _MainScreenState extends State<MainScreen>
           NavigationTabId.requests => const SeerrDiscoverScreen(),
           NavigationTabId.downloads => DownloadsScreen(key: _downloadsKey),
           NavigationTabId.settings => SettingsScreen(key: _settingsKey),
+          NavigationTabId.watchlist => WatchlistScreen(key: _watchlistKey),
+          NavigationTabId.myPleya => MyPleyaScreen(key: _myPleyaKey, onOpenTab: _selectTab),
         },
     ];
   }
@@ -973,6 +1048,8 @@ class _MainScreenState extends State<MainScreen>
     isOffline: isOffline,
     hasLiveTv: _hasLiveTv,
     hasSeerr: _hasSeerr,
+    hasWatchlist: _hasWatchlist,
+    isMobile: _isMobile,
     preferredStartup: SettingsService.instanceOrNull?.read(SettingsService.startupSection),
   );
 
@@ -1035,6 +1112,19 @@ class _MainScreenState extends State<MainScreen>
     final hasSeerr = _seerrProvider?.isConfigured ?? false;
     if (hasSeerr == _lastHasSeerr) return;
     _lastHasSeerr = hasSeerr;
+    if (!mounted) return;
+
+    setState(() {
+      _screens = _buildScreens(_isOffline);
+      _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
+    });
+    _updateTvosMenuPassthrough();
+  }
+
+  void _handleWatchlistChanged() {
+    final hasWatchlist = _watchlistProvider?.hasWatchlist ?? false;
+    if (hasWatchlist == _lastHasWatchlist) return;
+    _lastHasWatchlist = hasWatchlist;
     if (!mounted) return;
 
     setState(() {
@@ -1558,9 +1648,25 @@ class _MainScreenState extends State<MainScreen>
   /// Synchronized value so the screens list and nav bar always agree.
   bool get _hasSeerr => _lastHasSeerr;
 
+  /// Whether there is a kijklijst to show. Gates the Watchlist destination
+  /// only; My Pleya exists on mobile regardless, because it also holds
+  /// Downloads, Requests and Settings.
+  bool get _hasWatchlist => _lastHasWatchlist;
+
+  /// Whether this build renders the mobile shell. Captured at the top of
+  /// [build] so the tab list, the screens list and the bottom bar all answer
+  /// from the same value instead of each re-reading the layout.
+  bool _isMobile = false;
+
   /// Get navigation tabs filtered by offline mode
   List<NavigationTab> _getVisibleTabs(bool isOffline) {
-    return NavigationTab.getVisibleTabs(isOffline: isOffline, hasLiveTv: _hasLiveTv, hasSeerr: _hasSeerr);
+    return NavigationTab.getVisibleTabs(
+      isOffline: isOffline,
+      hasLiveTv: _hasLiveTv,
+      hasSeerr: _hasSeerr,
+      hasWatchlist: _hasWatchlist,
+      isMobile: _isMobile,
+    );
   }
 
   List<NavigationTab> _getBottomNavigationTabs(BuildContext context) {
@@ -1582,12 +1688,19 @@ class _MainScreenState extends State<MainScreen>
       NavigationTabId.requests => null,
       NavigationTabId.downloads => _downloadsKey,
       NavigationTabId.settings => _settingsKey,
+      NavigationTabId.watchlist => _watchlistKey,
+      NavigationTabId.myPleya => _myPleyaKey,
     };
   }
 
   Widget _buildBottomNavigationBar(BuildContext context, {required bool hideLabels}) {
     final tabs = _getBottomNavigationTabs(context);
-    final selectedIndex = tabs.indexWhere((tab) => tab.id == _currentTab);
+    final projected = mainScreenSelectedBarTab(
+      currentTab: _currentTab,
+      isOffline: _isOffline,
+      barTabs: tabs.map((tab) => tab.id).toList(),
+    );
+    final selectedIndex = tabs.indexWhere((tab) => tab.id == projected);
     final navigationBar = NavigationBar(
       selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
       onDestinationSelected: (i) {
@@ -1660,6 +1773,20 @@ class _MainScreenState extends State<MainScreen>
   @override
   Widget build(BuildContext context) {
     final useSideNav = PlatformDetector.shouldUseSideNavigation(context);
+    // My Pleya only exists on the mobile shell, and the screens list has to
+    // agree with the tab list about that. Rebuild the screens when the answer
+    // actually changes (a fold, a window resize) rather than on every build.
+    final isMobile = PlatformDetector.isMobile(context);
+    if (isMobile != _isMobile) {
+      _isMobile = isMobile;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _screens = _buildScreens(_isOffline);
+          _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
+        });
+      });
+    }
     return _buildContent(context, useSideNav);
   }
 

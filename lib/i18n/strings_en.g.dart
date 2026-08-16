@@ -71,6 +71,8 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsLogsEn logs = TranslationsLogsEn.internal(_root);
 	late final TranslationsLicensesEn licenses = TranslationsLicensesEn.internal(_root);
 	late final TranslationsNavigationEn navigation = TranslationsNavigationEn.internal(_root);
+	late final TranslationsWatchlistEn watchlist = TranslationsWatchlistEn.internal(_root);
+	late final TranslationsMyPleyaEn myPleya = TranslationsMyPleyaEn.internal(_root);
 	late final TranslationsLiveTvEn liveTv = TranslationsLiveTvEn.internal(_root);
 	late final TranslationsCollectionsEn collections = TranslationsCollectionsEn.internal(_root);
 	late final TranslationsPlaylistsEn playlists = TranslationsPlaylistsEn.internal(_root);
@@ -2683,6 +2685,117 @@ class TranslationsNavigationEn {
 
 	/// en: 'Live TV'
 	String get liveTv => 'Live TV';
+
+	/// en: 'Watchlist'
+	String get watchlist => 'Watchlist';
+
+	/// en: 'My Pleya'
+	String get myPleya => 'My Pleya';
+}
+
+// Path: watchlist
+class TranslationsWatchlistEn {
+	TranslationsWatchlistEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Watchlist'
+	String get title => 'Watchlist';
+
+	/// en: 'See all'
+	String get seeAll => 'See all';
+
+	/// en: 'Nothing on your watchlist yet'
+	String get empty => 'Nothing on your watchlist yet';
+
+	/// en: 'Titles you add from Plex or mark as a Jellyfin favorite show up here.'
+	String get emptyBody => 'Titles you add from Plex or mark as a Jellyfin favorite show up here.';
+
+	/// en: 'No titles match this filter'
+	String get emptyFiltered => 'No titles match this filter';
+
+	/// en: 'Try again'
+	String get retry => 'Try again';
+
+	/// en: 'Not available'
+	String get notAvailable => 'Not available';
+
+	/// en: 'Checking'
+	String get checking => 'Checking';
+
+	/// en: 'Not found on your connected media servers'
+	String get notFoundOnServers => 'Not found on your connected media servers';
+
+	/// en: 'Some of your media servers could not be reached. This title may already be there.'
+	String get coverageIncomplete => 'Some of your media servers could not be reached. This title may already be there.';
+
+	/// en: 'Remove from Watchlist'
+	String get remove => 'Remove from Watchlist';
+
+	/// en: 'Add to Watchlist'
+	String get add => 'Add to Watchlist';
+
+	/// en: 'Added to Watchlist'
+	String get added => 'Added to Watchlist';
+
+	/// en: 'Removed from Watchlist'
+	String get removed => 'Removed from Watchlist';
+
+	/// en: 'Could not update your watchlist'
+	String get addFailed => 'Could not update your watchlist';
+
+	/// en: 'Removed from some lists only. Your watchlist has been refreshed.'
+	String get partiallyFailed => 'Removed from some lists only. Your watchlist has been refreshed.';
+
+	/// en: 'You need a connection to change your watchlist'
+	String get offlineRejected => 'You need a connection to change your watchlist';
+
+	/// en: 'All'
+	String get filterAll => 'All';
+
+	/// en: 'Movies'
+	String get filterMovies => 'Movies';
+
+	/// en: 'Shows'
+	String get filterShows => 'Shows';
+
+	/// en: 'Available'
+	String get filterAvailable => 'Available';
+
+	/// en: 'Recently added'
+	String get sortRecentlyAdded => 'Recently added';
+
+	/// en: 'Title'
+	String get sortTitle => 'Title';
+
+	/// en: 'Year'
+	String get sortYear => 'Year';
+}
+
+// Path: myPleya
+class TranslationsMyPleyaEn {
+	TranslationsMyPleyaEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'My Pleya'
+	String get title => 'My Pleya';
+
+	/// en: 'Settings'
+	String get settings => 'Settings';
+
+	/// en: 'Switch profile'
+	String get switchProfile => 'Switch profile';
+
+	/// en: '(one) {1 download} (other) {{n} downloads}'
+	String downloadsCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 download',
+		other: '{n} downloads',
+	);
 }
 
 // Path: liveTv
@@ -6233,6 +6346,36 @@ extension on Translations {
 			'navigation.libraries' => 'Libraries',
 			'navigation.downloads' => 'Downloads',
 			'navigation.liveTv' => 'Live TV',
+			'navigation.watchlist' => 'Watchlist',
+			'navigation.myPleya' => 'My Pleya',
+			'watchlist.title' => 'Watchlist',
+			'watchlist.seeAll' => 'See all',
+			'watchlist.empty' => 'Nothing on your watchlist yet',
+			'watchlist.emptyBody' => 'Titles you add from Plex or mark as a Jellyfin favorite show up here.',
+			'watchlist.emptyFiltered' => 'No titles match this filter',
+			'watchlist.retry' => 'Try again',
+			'watchlist.notAvailable' => 'Not available',
+			'watchlist.checking' => 'Checking',
+			'watchlist.notFoundOnServers' => 'Not found on your connected media servers',
+			'watchlist.coverageIncomplete' => 'Some of your media servers could not be reached. This title may already be there.',
+			'watchlist.remove' => 'Remove from Watchlist',
+			'watchlist.add' => 'Add to Watchlist',
+			'watchlist.added' => 'Added to Watchlist',
+			'watchlist.removed' => 'Removed from Watchlist',
+			'watchlist.addFailed' => 'Could not update your watchlist',
+			'watchlist.partiallyFailed' => 'Removed from some lists only. Your watchlist has been refreshed.',
+			'watchlist.offlineRejected' => 'You need a connection to change your watchlist',
+			'watchlist.filterAll' => 'All',
+			'watchlist.filterMovies' => 'Movies',
+			'watchlist.filterShows' => 'Shows',
+			'watchlist.filterAvailable' => 'Available',
+			'watchlist.sortRecentlyAdded' => 'Recently added',
+			'watchlist.sortTitle' => 'Title',
+			'watchlist.sortYear' => 'Year',
+			'myPleya.title' => 'My Pleya',
+			'myPleya.settings' => 'Settings',
+			'myPleya.switchProfile' => 'Switch profile',
+			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 download', other: '{n} downloads', ), 
 			'liveTv.serverNotAvailable' => 'Live TV server is not available.',
 			'liveTv.serverNotConnected' => 'Live TV server is not connected.',
 			'liveTv.title' => 'Live TV',
@@ -6381,6 +6524,8 @@ extension on Translations {
 			'watchTogether.syncing' => 'Syncing...',
 			'watchTogether.joinWatchSession' => 'Join Watch Session',
 			'watchTogether.enterCodeHint' => 'Enter 5-character code',
+			_ => null,
+		} ?? switch (path) {
 			'watchTogether.pasteFromClipboard' => 'Paste from clipboard',
 			'watchTogether.pleaseEnterCode' => 'Please enter a session code',
 			'watchTogether.codeMustBe5Chars' => 'Session code must be 5 characters',
@@ -6411,8 +6556,6 @@ extension on Translations {
 			'watchTogether.guestSwitchFailed' => 'Couldn\'t switch — content not found on this server',
 			'downloads.title' => 'Downloads',
 			'downloads.manage' => 'Manage',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.tvShows' => 'TV Shows',
 			'downloads.movies' => 'Movies',
 			'downloads.noDownloads' => 'No downloads yet',
@@ -6895,6 +7038,8 @@ extension on Translations {
 			'addLocalFolder.nameHint' => 'e.g. My Movies',
 			'addLocalFolder.save' => 'Add folder',
 			'addLocalFolder.saveError' => 'Failed to add local folder',
+			_ => null,
+		} ?? switch (path) {
 			'addLocalFolder.entriesFound' => ({required Object count}) => '${count} items found in folder',
 			'pleyaShare.cardTitle' => 'Pleya Share',
 			'pleyaShare.cardSubtitle' => 'Connect to another Pleya device sharing its media',
@@ -6925,8 +7070,6 @@ extension on Translations {
 			'pleyaShare.connect' => 'Connect',
 			'pleyaShare.pairFailed' => 'Pairing failed. Check the code and try again.',
 			'pleyaShare.paired' => ({required Object name}) => 'Connected to ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'pleyaShare.pairUnreachable' => 'Host not reachable. Check the address and network.',
 			'pleyaShare.addFolder' => 'Add a local folder',
 			'pleyaShare.notificationTitle' => 'Sharing media',

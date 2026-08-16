@@ -1,3 +1,4 @@
+import '../providers/watchlist_provider.dart';
 import 'dart:async';
 import '../media/ids.dart';
 import 'dart:io' show Platform;
@@ -266,6 +267,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
   static const _kHome = 'home';
   static const _kSearch = 'search';
   static const _kRequests = 'requests';
+  static const _kWatchlist = 'watchlist';
   static const _kDownloads = 'downloads';
   static const _kSettings = 'settings';
   static const _kReconnect = 'reconnect';
@@ -406,6 +408,13 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
         return _kSearch;
       case NavigationTabId.requests:
         return _kRequests;
+      case NavigationTabId.watchlist:
+        return _kWatchlist;
+      case NavigationTabId.myPleya:
+        // Mobile-only destination; the rail never renders it and has nothing
+        // to restore focus to. Returning a key here would silently point the
+        // focus restore at an item that is not mounted.
+        return null;
       case NavigationTabId.downloads:
         return _showDownloads ? _kDownloads : null;
       case NavigationTabId.settings:
@@ -441,10 +450,12 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     required List<_LibraryNavRow> visibleRows,
     required bool hasLiveTv,
     required bool hasSeerr,
+    required bool hasWatchlist,
   }) {
     return {
       _kHome,
       _kSearch,
+      if (hasWatchlist) _kWatchlist,
       if (hasSeerr) _kRequests,
       if (_showDownloads) _kDownloads,
       _kSettings,
@@ -511,7 +522,12 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
   }
 
   /// Ordered list of focusable keys matching visual top-to-bottom order.
-  List<String> _buildFocusOrder(List<_LibraryNavRow> visibleRows, {required bool hasLiveTv, required bool hasSeerr}) {
+  List<String> _buildFocusOrder(
+    List<_LibraryNavRow> visibleRows, {
+    required bool hasLiveTv,
+    required bool hasSeerr,
+    required bool hasWatchlist,
+  }) {
     return [
       if (widget.isOfflineMode && widget.onReconnect != null) _kReconnect,
       if (!widget.isOfflineMode) ...[
@@ -519,6 +535,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
         ..._focusKeysForLibraryRows(visibleRows),
         if (hasLiveTv) 'liveTv',
         _kSearch,
+        if (hasWatchlist) _kWatchlist,
         if (hasSeerr) _kRequests,
       ],
       if (_showDownloads) _kDownloads,
@@ -653,6 +670,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     final itemHorizontalPadding = itemHorizontalPaddingForContext(context, isCollapsed: isCollapsed);
     final hasLiveTv = context.watch<MultiServerProvider>().hasLiveTv;
     final hasSeerr = context.watch<SeerrProvider?>()?.isConfigured ?? false;
+    final hasWatchlist = context.watch<WatchlistProvider?>()?.hasWatchlist ?? false;
 
     // Listen to fullscreen + groupLibrariesByServer setting so the rail
     // rebuilds when the user toggles "Group libraries by server" in Appearance.
@@ -674,9 +692,19 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
           showServerHeaders: showServerHeaders,
         );
         _focusTracker.pruneExcept(
-          _buildValidFocusKeys(visibleRows: visibleRows, hasLiveTv: hasLiveTv, hasSeerr: hasSeerr),
+          _buildValidFocusKeys(
+            visibleRows: visibleRows,
+            hasLiveTv: hasLiveTv,
+            hasSeerr: hasSeerr,
+            hasWatchlist: hasWatchlist,
+          ),
         );
-        final focusOrder = _buildFocusOrder(visibleRows, hasLiveTv: hasLiveTv, hasSeerr: hasSeerr);
+        final focusOrder = _buildFocusOrder(
+          visibleRows,
+          hasLiveTv: hasLiveTv,
+          hasSeerr: hasSeerr,
+          hasWatchlist: hasWatchlist,
+        );
         _debugAssertUniqueFocusOrder(focusOrder);
         return TapRegion(
           onTapOutside: (_) {
@@ -793,6 +821,22 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                       isCollapsed: isCollapsed,
                                     ),
                                     const SizedBox(height: 8),
+                                    // Watchlist — only when this profile has a
+                                    // source or a snapshot for one.
+                                    if (hasWatchlist) ...[
+                                      _buildNavItem(
+                                        icon: Symbols.bookmark_add_rounded,
+                                        selectedIcon: Symbols.bookmark_add_rounded,
+                                        svgAsset: NavGlyphs.watchlist,
+                                        label: Translations.of(context).navigation.watchlist,
+                                        isSelected: widget.selectedTab == NavigationTabId.watchlist,
+                                        isFocused: _focusTracker.isFocused(_kWatchlist),
+                                        onTap: () => widget.onDestinationSelected(NavigationTabId.watchlist),
+                                        focusNode: _focusTracker.get(_kWatchlist),
+                                        isCollapsed: isCollapsed,
+                                      ),
+                                      const SizedBox(height: 8),
+                                    ],
                                     // Requests (Jellyseerr/Overseerr) — only when configured.
                                     if (hasSeerr) ...[
                                       _buildNavItem(
