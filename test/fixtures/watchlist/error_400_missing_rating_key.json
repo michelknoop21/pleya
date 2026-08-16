@@ -1,0 +1,7 @@
+{
+  "Error": {
+    "error": "Bad Request",
+    "message": "Invalid value provided for ratingKey!",
+    "statusCode": 400
+  }
+}

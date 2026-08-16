@@ -1,0 +1,7 @@
+{
+  "Error": {
+    "error": "Not Found",
+    "message": "MetadataItem for deadbeefdeadbeefdeadbeef not found!",
+    "statusCode": 404
+  }
+}

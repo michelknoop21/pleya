@@ -1,0 +1,10 @@
+{
+  "MediaContainer": {
+    "librarySectionID": "watchlist",
+    "librarySectionTitle": "Watchlist",
+    "identifier": "tv.plex.provider.discover",
+    "offset": 0,
+    "totalSize": 0,
+    "size": 0
+  }
+}

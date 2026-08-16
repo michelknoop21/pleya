@@ -1,0 +1,7 @@
+{
+  "Error": {
+    "error": "Unauthorized",
+    "message": "You must provide a token!",
+    "statusCode": 401
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "MediaContainer": {
+    "identifier": "tv.plex.provider.metadata",
+    "size": 1,
+    "UserState": {
+      "ratingKey": "5d7768352e80df001ebde4c9",
+      "type": "movie",
+      "viewCount": 0,
+      "viewOffset": 0,
+      "watchlistedAt": 1786904870
+    }
+  }
+}
