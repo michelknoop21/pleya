@@ -203,16 +203,21 @@ MediaKind? _plexTypeMediaKind(String typeNumber) {
 /// `_http.get('/Items', queryParameters: ...)` without further mutation.
 class JellyfinLibraryQueryTranslator implements LibraryQueryTranslator {
   final String userId;
-  final String parentId;
+
+  /// Library to browse. Null asks across every library the user can see,
+  /// which is what a favorites sweep needs: a favorite is a property of the
+  /// user, not of one library.
+  final String? parentId;
   final String fields;
 
-  const JellyfinLibraryQueryTranslator({required this.userId, required this.parentId, required this.fields});
+  const JellyfinLibraryQueryTranslator({required this.userId, this.parentId, required this.fields});
 
   @override
   Map<String, dynamic> toQueryParameters(LibraryQuery query) {
+    final parent = parentId;
     final params = <String, dynamic>{
       'userId': userId,
-      'ParentId': parentId,
+      if (parent != null && parent.isNotEmpty) 'ParentId': parent,
       'Recursive': 'true',
       'StartIndex': query.offset.toString(),
       'Limit': query.limit.toString(),
@@ -221,8 +226,11 @@ class JellyfinLibraryQueryTranslator implements LibraryQueryTranslator {
       'Fields': fields,
       ...jellyfinImageQueryParameters,
     };
-    if (!query.includeWatched) {
-      params['Filters'] = 'IsUnplayed';
+    // Jellyfin takes `Filters` as one comma-separated list. Assigning per
+    // clause would let the last one win and silently drop the others.
+    final filters = <String>[if (!query.includeWatched) 'IsUnplayed', if (query.favoritesOnly) 'IsFavorite'];
+    if (filters.isNotEmpty) {
+      params['Filters'] = filters.join(',');
     }
     if (query.genres != null && query.genres!.isNotEmpty) {
       // Jellyfin uses `|` as the multi-value separator for Genres.

@@ -100,6 +100,16 @@ class ServerCapabilities {
   /// gates whether the player attempts the load at all.
   final bool scrubThumbnails;
 
+  /// Per-user favorite flag on any item (Jellyfin `FavoriteItems`). Gates
+  /// [MediaServerClient.setFavorite] and [MediaServerClient.fetchFavorites].
+  ///
+  /// Deliberately not paired with an `accountWatchlist` flag. The Plex
+  /// watchlist is not a property of a server but of an account plus a Home
+  /// user, and "there is a Plex server" proves nothing about whether a valid
+  /// user-scoped account token exists. Whether the account watchlist is
+  /// reachable is decided by the source, from profile plus scoped auth.
+  final bool serverFavorites;
+
   /// Library section exposes a folder hierarchy. Plex uses
   /// `/library/sections/{id}/folders`; Jellyfin uses direct-child
   /// `/Items?ParentId=...&Recursive=false` queries.
@@ -124,6 +134,7 @@ class ServerCapabilities {
     this.richMetadataEdit = false,
     this.alphaBar = AlphaBarMode.none,
     this.scrubThumbnails = false,
+    this.serverFavorites = false,
     this.folderGrouping = false,
   });
 
@@ -177,6 +188,7 @@ class ServerCapabilities {
     richMetadataEdit: true,
     alphaBar: AlphaBarMode.nameStartsWithFilter,
     scrubThumbnails: true,
+    serverFavorites: true,
     folderGrouping: true,
   );
 
@@ -225,6 +237,7 @@ class ServerCapabilities {
     bool? richMetadataEdit,
     AlphaBarMode? alphaBar,
     bool? scrubThumbnails,
+    bool? serverFavorites,
     bool? folderGrouping,
   }) {
     return ServerCapabilities(
@@ -246,6 +259,7 @@ class ServerCapabilities {
       richMetadataEdit: richMetadataEdit ?? this.richMetadataEdit,
       alphaBar: alphaBar ?? this.alphaBar,
       scrubThumbnails: scrubThumbnails ?? this.scrubThumbnails,
+      serverFavorites: serverFavorites ?? this.serverFavorites,
       folderGrouping: folderGrouping ?? this.folderGrouping,
     );
   }

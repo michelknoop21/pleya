@@ -660,6 +660,15 @@ class PleyaShareClient implements MediaServerClient, ServerMatchableClient {
   @override
   Future<void> rate(MediaItem item, double rating) async {}
 
+  /// A shared library carries no per-user state of its own.
+  @override
+  Future<void> setFavorite(MediaItem item, bool isFavorite) async {}
+
+  @override
+  Future<LibraryPage<MediaItem>> fetchFavorites({MediaKind? kind, int offset = 0, int limit = 100}) async {
+    return LibraryPage<MediaItem>(items: const [], totalCount: 0, offset: offset);
+  }
+
   // ── Playlists & collections (unsupported, same contract as local) ──
 
   @override

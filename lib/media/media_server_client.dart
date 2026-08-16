@@ -312,6 +312,23 @@ abstract class MediaServerClient {
   /// unsupported backends throw [UnsupportedError].
   Future<void> removeFromContinueWatching(MediaItem item);
 
+  /// Set or clear the per-user favorite flag on [item].
+  ///
+  /// Only call when [ServerCapabilities.serverFavorites] is true; backends
+  /// without a per-user favorite flag throw [UnsupportedError]. This is a
+  /// server-scoped primitive on purpose. The Plex watchlist looks similar from
+  /// a distance but belongs to an account plus a Home user rather than to a
+  /// server, so it has no place on this interface.
+  Future<void> setFavorite(MediaItem item, bool isFavorite);
+
+  /// Items the active user marked as a favorite, across every library.
+  ///
+  /// Restricted to movies and shows: the kijklijst is about titles, and a
+  /// favorited channel or track has nothing to do with it. Backends without
+  /// the concept return an empty page rather than throwing, so a mixed set of
+  /// servers needs no branching at the call site.
+  Future<LibraryPage<MediaItem>> fetchFavorites({MediaKind? kind, int offset = 0, int limit = 100});
+
   /// Rate the item on a 0–10 scale. Backends without numeric ratings
   /// (Jellyfin) collapse to like/dislike — see [ServerCapabilities.numericUserRating].
   /// Throws [MediaServerHttpException] on failure, mirroring [markWatched] /

@@ -132,7 +132,7 @@ class PlexWatchlistClient {
           'includeCollections': '1',
           'includeExternalMedia': '1',
           if (type != null) 'type': '${type.plexTypeId}',
-          if (sort != null) 'sort': sort,
+          'sort': ?sort,
           'X-Plex-Container-Start': '$start',
           'X-Plex-Container-Size': '$pageSize',
         },

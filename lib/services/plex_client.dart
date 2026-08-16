@@ -3891,6 +3891,19 @@ class PlexClient
     await removeFromOnDeck(item.id);
   }
 
+  /// Plex has no per-user favorite flag on library items. What looks like the
+  /// equivalent is the account watchlist, which lives on plex.tv rather than
+  /// on this server and is reached through `PlexWatchlistClient`.
+  @override
+  Future<void> setFavorite(MediaItem item, bool isFavorite) {
+    throw UnsupportedError('Plex servers have no per-user favorites; the watchlist lives on the account');
+  }
+
+  @override
+  Future<LibraryPage<MediaItem>> fetchFavorites({MediaKind? kind, int offset = 0, int limit = 100}) async {
+    return LibraryPage<MediaItem>(items: const [], totalCount: 0, offset: offset);
+  }
+
   /// Rate a media item (0.0-10.0 scale, where each integer = half a star).
   /// Pass `-1` to clear an existing rating. Throws [MediaServerHttpException]
   /// on non-2xx — call sites surface a snackbar on the catch arm.

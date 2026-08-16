@@ -572,6 +572,15 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   @override
   Future<void> rate(MediaItem item, double rating) async {}
 
+  /// A local folder has no user account to hang a favorite on.
+  @override
+  Future<void> setFavorite(MediaItem item, bool isFavorite) async {}
+
+  @override
+  Future<LibraryPage<MediaItem>> fetchFavorites({MediaKind? kind, int offset = 0, int limit = 100}) async {
+    return LibraryPage<MediaItem>(items: const [], totalCount: 0, offset: offset);
+  }
+
   // ---------------------------------------------------------------------------
   // Playlists & collections
   // ---------------------------------------------------------------------------

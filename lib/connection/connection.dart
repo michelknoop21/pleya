@@ -121,6 +121,16 @@ class PlexAccountConnection extends Connection {
   @override
   ConnectionKind get kind => ConnectionKind.plex;
 
+  /// The bare plex.tv account uuid, without the `plex.` prefix that [id]
+  /// wears to keep the connection table's key namespace apart.
+  ///
+  /// Account-scoped state (the watchlist) keys on this. Carrying the prefixed
+  /// row id into such a key would mix a storage detail into an identity that
+  /// also has to line up with what plex.tv reports, and the two would drift the
+  /// first time the row-id scheme changes. Falls back to [id] when the prefix
+  /// is missing, which happens for the rare rows keyed by client identifier.
+  String get accountUuid => id.startsWith('plex.') ? id.substring('plex.'.length) : id;
+
   @override
   String get displayName => activeProfile != null && activeProfile!.title.isNotEmpty
       ? '${activeProfile!.title} · $accountLabel'

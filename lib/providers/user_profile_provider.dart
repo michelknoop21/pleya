@@ -203,6 +203,22 @@ class UserProfileProvider extends ChangeNotifier with DisposableChangeNotifierMi
   Future<String?> _resolveActivePlexUserToken({
     ({ProfileConnection profileConnection, Connection connection})? preferred,
   }) async {
+    return (await _resolvePlexAuth(preferred: preferred))?.token;
+  }
+
+  /// [_resolveActivePlexUserToken] with the identity it resolved to, and
+  /// whether that identity is the one the caller actually asked for.
+  ///
+  /// The token alone cannot tell those apart. Both branches below can end at
+  /// the account owner's token: once as the correct answer for a local profile
+  /// bound to a plain account, and once as a stopgap for a Home profile whose
+  /// binder has not run. For settings that difference is cosmetic. For
+  /// account-scoped data such as the watchlist it is not, because the fallback
+  /// silently shows one family member the list of another. Callers that cannot
+  /// live with that check [isUserScoped] and refuse.
+  Future<({String token, String profileId, String accountId, String userId, bool isUserScoped})?> _resolvePlexAuth({
+    ({ProfileConnection profileConnection, Connection connection})? preferred,
+  }) async {
     final connections = _connectionRegistry;
     final activeProfile = _activeProfile;
     if (connections == null || activeProfile == null) return null;
@@ -219,33 +235,93 @@ class UserProfileProvider extends ChangeNotifier with DisposableChangeNotifierMi
       final parentId = profile.parentConnectionId;
       final uuid = profile.plexHomeUserUuid;
       if (parentId == null || uuid == null) return null;
+      final parent = plexAccounts.where((a) => a.id == parentId).firstOrNull;
       if (pcRegistry != null) {
         final pc = await pcRegistry.get(profile.id, parentId);
-        if (pc?.hasToken == true) return pc!.userToken;
+        final token = pc?.userToken;
+        if (pc?.hasToken == true && token != null) {
+          return (
+            token: token,
+            profileId: profile.id,
+            accountId: parent?.accountUuid ?? _bareAccountId(parentId),
+            userId: uuid,
+            isUserScoped: true,
+          );
+        }
       }
       // Pre-bind fallback: the binder hasn't run yet (or it failed), so
       // there's no user-scoped token. Return the parent account token —
       // it'll fetch the *owner's* settings, but that's still better than
       // no settings at all on first launch.
-      for (final acc in plexAccounts) {
-        if (acc.id == parentId) return acc.accountToken;
-      }
-      return null;
+      if (parent == null) return null;
+      return (
+        token: parent.accountToken,
+        profileId: profile.id,
+        accountId: parent.accountUuid,
+        userId: uuid,
+        isUserScoped: false,
+      );
     }
 
     // Local profile — read the user-token off the default ProfileConnection
     // (listForProfile orders default first). Each connection persists its
     // own minted token, so this is already user-scoped.
     final resolved = preferred ?? await _resolveActiveSettingsConnection();
-    if (resolved?.connection is PlexAccountConnection && resolved!.profileConnection.hasToken) {
-      return resolved.profileConnection.userToken;
-    }
     final resolvedConnection = resolved?.connection;
-    if (resolvedConnection is PlexAccountConnection) {
-      return resolvedConnection.accountToken;
+    if (resolvedConnection is PlexAccountConnection && resolved!.profileConnection.hasToken) {
+      final token = resolved.profileConnection.userToken;
+      if (token != null) {
+        return (
+          token: token,
+          profileId: profile.id,
+          accountId: resolvedConnection.accountUuid,
+          userId: _userIdentityFor(resolvedConnection, resolved.profileConnection),
+          isUserScoped: true,
+        );
+      }
     }
-    return plexAccounts.first.accountToken;
+    if (resolvedConnection is PlexAccountConnection) {
+      return _ownerAuth(profile.id, resolvedConnection);
+    }
+    // No bound connection at all. With more than one Plex account on the
+    // device, picking the first is a guess about identity, not an answer.
+    final auth = _ownerAuth(profile.id, plexAccounts.first);
+    if (plexAccounts.length == 1) return auth;
+    return (
+      token: auth.token,
+      profileId: auth.profileId,
+      accountId: auth.accountId,
+      userId: auth.userId,
+      isUserScoped: false,
+    );
   }
+
+  /// The account owner acting as themselves. Scoped unless the connection has
+  /// switched into a Home user, in which case the owner token would act as
+  /// somebody other than the user the app is showing.
+  ({String token, String profileId, String accountId, String userId, bool isUserScoped}) _ownerAuth(
+    String profileId,
+    PlexAccountConnection connection,
+  ) {
+    final home = connection.activeProfile;
+    return (
+      token: connection.accountToken,
+      profileId: profileId,
+      accountId: connection.accountUuid,
+      userId: home?.uuid.isNotEmpty == true ? home!.uuid : connection.accountUuid,
+      isUserScoped: home == null,
+    );
+  }
+
+  String _userIdentityFor(PlexAccountConnection connection, ProfileConnection profileConnection) {
+    final identifier = profileConnection.userIdentifier;
+    if (identifier.isNotEmpty) return identifier;
+    final home = connection.activeProfile;
+    return home != null && home.uuid.isNotEmpty ? home.uuid : connection.accountUuid;
+  }
+
+  static String _bareAccountId(String connectionId) =>
+      connectionId.startsWith('plex.') ? connectionId.substring('plex.'.length) : connectionId;
 
   Future<({ProfileConnection profileConnection, Connection connection})?> _resolveActiveSettingsConnection() async {
     final pcRegistry = _profileConnectionRegistry;
@@ -281,6 +357,16 @@ class UserProfileProvider extends ChangeNotifier with DisposableChangeNotifierMi
   /// The active Home user's Plex token, used by the seerr integration for
   /// one-tap Plex login and silent re-auth. Null on Jellyfin-only setups.
   Future<String?> currentPlexUserToken() => _resolveActivePlexUserToken();
+
+  /// The active profile's plex.tv auth together with the identity it belongs
+  /// to. Null on Jellyfin-only setups or when no profile is active.
+  ///
+  /// Read [isUserScoped] before touching anything account-scoped: `false`
+  /// means the resolver fell back to the account owner while a different user
+  /// is active, which for the watchlist would mean showing one Home user the
+  /// list of another.
+  Future<({String token, String profileId, String accountId, String userId, bool isUserScoped})?>
+  currentPlexAccountAuth() => _resolvePlexAuth();
 
   @visibleForTesting
   String? get debugWatchedProfileConnectionProfileId => _watchedProfileConnectionProfileId;

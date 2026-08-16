@@ -210,6 +210,29 @@ void main() {
       expect(params['Filters'], 'IsUnplayed');
     });
 
+    test('a query with neither flag sends no Filters at all', () {
+      expect(translator.toQueryParameters(const LibraryQuery()), isNot(contains('Filters')));
+    });
+
+    test('favoritesOnly sets Filters=IsFavorite', () {
+      final params = translator.toQueryParameters(const LibraryQuery(favoritesOnly: true));
+      expect(params['Filters'], 'IsFavorite');
+    });
+
+    test('both flags share one comma-separated value instead of overwriting each other', () {
+      final params = translator.toQueryParameters(const LibraryQuery(includeWatched: false, favoritesOnly: true));
+      expect(params['Filters'], 'IsUnplayed,IsFavorite');
+    });
+
+    test('a translator without a parent asks across every library', () {
+      const allLibraries = JellyfinLibraryQueryTranslator(userId: 'user-1', fields: 'Overview');
+      final params = allLibraries.toQueryParameters(const LibraryQuery(favoritesOnly: true));
+
+      expect(params, isNot(contains('ParentId')));
+      expect(params['Recursive'], 'true');
+      expect(params['userId'], 'user-1');
+    });
+
     test('search puts text in SearchTerm', () {
       final params = translator.toQueryParameters(const LibraryQuery(search: 'matrix'));
       expect(params['SearchTerm'], 'matrix');

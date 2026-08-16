@@ -147,9 +147,10 @@ mixin _JellyfinLiveTvMethods on MediaServerCacheMixin {
   @override
   LiveTvDvrSupport? get liveTvDvr => null;
 
-  /// Toggle the per-user `IsFavorite` flag for [itemId]. Used by the live-TV
-  /// favorite-channel adapter; works on any Jellyfin item.
-  Future<void> _setItemFavorite(String itemId, bool isFavorite) async {
+  /// Toggle the per-user `IsFavorite` flag for [itemId]. Works on any
+  /// Jellyfin item; the live-TV favorite-channel adapter and
+  /// [setFavorite] both go through here.
+  Future<void> setItemFavorite(String itemId, bool isFavorite) async {
     final path = '/Users/${_segment(connection.userId)}/FavoriteItems/${_segment(itemId)}';
     final response = isFavorite ? await _http.post(path) : await _http.delete(path);
     throwIfHttpError(response);
@@ -255,14 +256,14 @@ class _JellyfinLiveTvSupport implements LiveTvSupport {
 
       for (final id in newIds.difference(previousIds)) {
         try {
-          await _client._setItemFavorite(id, true);
+          await _client.setItemFavorite(id, true);
         } catch (e) {
           appLogger.w('Failed to mark Jellyfin channel $id favorite: $e');
         }
       }
       for (final id in previousIds.difference(newIds)) {
         try {
-          await _client._setItemFavorite(id, false);
+          await _client.setItemFavorite(id, false);
         } catch (e) {
           appLogger.w('Failed to unmark Jellyfin channel $id favorite: $e');
         }

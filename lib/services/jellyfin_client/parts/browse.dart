@@ -140,6 +140,11 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
   MediaItem? _mapItem(Map<String, dynamic> json);
   List<MediaItem> _mapItems(Iterable<Map<String, dynamic>> items);
 
+  /// Implemented by `_JellyfinLiveTvMethods`, which owns the
+  /// `/FavoriteItems` transport. Declared here so [setFavorite] can reach it
+  /// without duplicating the endpoint.
+  Future<void> setItemFavorite(String itemId, bool isFavorite);
+
   // Endpoint conventions follow what the official Jellyfin Kotlin SDK
   // generates (cross-checked against the Findroid client). The SDK mixes
   // `/Users/{userId}/...` for "user library" / "views" / "latest" / "single
@@ -188,6 +193,32 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
         ? rawTotal
         : _fallbackPageTotal(offset: query.offset, itemCount: items.length, requestedSize: query.limit);
     return LibraryPage<MediaItem>(items: _mapItems(items), totalCount: total, offset: query.offset);
+  }
+
+  @override
+  Future<void> setFavorite(MediaItem item, bool isFavorite) => setItemFavorite(item.id, isFavorite);
+
+  @override
+  Future<LibraryPage<MediaItem>> fetchFavorites({MediaKind? kind, int offset = 0, int limit = 100}) async {
+    // No ParentId: a favorite belongs to the user, not to one library.
+    final translator = JellyfinLibraryQueryTranslator(userId: connection.userId, fields: _browseFields);
+    final params = translator.toQueryParameters(
+      LibraryQuery(kind: kind, offset: offset, limit: limit, favoritesOnly: true),
+    );
+    // Without a kind the translator asks for the library default, which on a
+    // recursive all-library sweep also drags in episodes, tracks and favorited
+    // channels. A favorited channel is not a kijklijst item.
+    if (kind == null) params['IncludeItemTypes'] = 'Movie,Series';
+
+    final response = await _http.get('/Items', queryParameters: params);
+    throwIfHttpError(response);
+    final data = response.data;
+    final items = _itemsArray(data);
+    final rawTotal = data is Map<String, dynamic> ? data['TotalRecordCount'] : null;
+    final total = rawTotal is int
+        ? rawTotal
+        : _fallbackPageTotal(offset: offset, itemCount: items.length, requestedSize: limit);
+    return LibraryPage<MediaItem>(items: _mapItems(items), totalCount: total, offset: offset);
   }
 
   /// Jellyfin's `/Items/Filters` returns Genres / OfficialRatings / Tags /
