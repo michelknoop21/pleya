@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../media/ids.dart';
+import '../media/media_server_client.dart';
+import '../services/api_cache.dart';
+import '../services/watchlist/plex_account_watchlist_source.dart';
+import '../services/watchlist/watchlist_source_factory.dart';
 import '../media/watchlist_entry.dart';
 import '../media/watchlist_scope.dart';
 import '../media/watchlist_source.dart';
@@ -86,6 +90,61 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
   bool get hasWatchlist => _entries.isNotEmpty || (repository?.sources.isNotEmpty ?? false) || _hasSnapshot;
 
   bool _hasSnapshot = false;
+
+  String? _attachedProfileId;
+  WatchlistSourceFactory? _factory;
+
+  /// Bind the provider to the active profile's connections.
+  ///
+  /// Rebuilding the sources is deliberately cheap to call: the wiring runs on
+  /// every proxy-provider update, and only an actual profile change tears the
+  /// old repository down. Everything downstream (cache keys, snapshot rows,
+  /// scope checks) hangs off the profile, so serving one user's list from a
+  /// repository built for another would be the exact failure this design is
+  /// shaped to prevent.
+  void attach({
+    required String? profileId,
+    required PlexAccountAuthResolver resolvePlexAuth,
+    required Future<String> Function() clientIdentifier,
+    required Map<String, MediaServerClient> Function() clientsById,
+    required List<EligibleServer> Function() serversFor,
+    required ApiCache cache,
+  }) {
+    if (profileId == null) {
+      _factory?.dispose();
+      _factory = null;
+      repository = null;
+      resolver = null;
+      _attachedProfileId = null;
+      return;
+    }
+
+    if (_attachedProfileId != profileId) {
+      _factory?.dispose();
+      _factory = null;
+      reset();
+    }
+    _attachedProfileId = profileId;
+
+    resolver ??= WatchlistAvailabilityResolver(profileId: profileId, serversFor: serversFor, cache: cache);
+    if (_factory != null) return;
+
+    unawaited(() async {
+      final factory = WatchlistSourceFactory(
+        profileId: profileId,
+        resolvePlexAuth: resolvePlexAuth,
+        clientIdentifier: await clientIdentifier(),
+        clientsById: clientsById,
+      );
+      if (_attachedProfileId != profileId) {
+        factory.dispose();
+        return;
+      }
+      _factory = factory;
+      repository = WatchlistRepository(sources: await factory.build());
+      safeNotifyListeners();
+    }());
+  }
 
   WatchlistEntry? entryForKey(String key) {
     for (final entry in _entries) {

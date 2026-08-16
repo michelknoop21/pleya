@@ -205,6 +205,23 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   provider.isServerOnline = multiServer.isServerOnline;
                   provider.hasDownload = downloads.isDownloaded;
                   provider.seerrConfigured = seerr.isConfigured;
+                  provider.attach(
+                    profileId: activeId,
+                    resolvePlexAuth: () => context.read<UserProfileProvider>().currentPlexAccountAuth(),
+                    clientIdentifier: () => context.read<StorageService>().getOrCreateClientIdentifier(),
+                    clientsById: () => multiServer.serverManager.onlineClients,
+                    serversFor: () => [
+                      for (final serverId in multiServer.serverManager.serverIds)
+                        (
+                          serverId: ServerId(serverId),
+                          backend:
+                              multiServer.serverManager.getClient(ServerId(serverId))?.backend ?? MediaBackend.plex,
+                          client: multiServer.serverManager.getClient(ServerId(serverId)),
+                          online: multiServer.isServerOnline(ServerId(serverId)),
+                        ),
+                    ],
+                    cache: ApiCache.forBackend(MediaBackend.plex),
+                  );
                   return provider;
                 },
               ),
