@@ -13,6 +13,7 @@ import '../providers/offline_mode_provider.dart';
 import '../providers/seerr_provider.dart';
 import '../providers/watchlist_provider.dart';
 import '../widgets/desktop_app_bar.dart';
+import '../widgets/watchlist_card.dart';
 
 /// The personal corner of the mobile app.
 ///
@@ -58,7 +59,7 @@ class MyPleyaScreen extends StatelessWidget {
               ).push(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen())),
             ),
           ),
-          if (watchlist?.hasWatchlist ?? false)
+          if (watchlist?.hasWatchlist ?? false) ...[
             SliverToBoxAdapter(
               child: _SectionRow(
                 icon: Symbols.bookmark_add_rounded,
@@ -67,6 +68,10 @@ class MyPleyaScreen extends StatelessWidget {
                 onTap: () => onOpenTab(NavigationTabId.watchlist),
               ),
             ),
+            SliverToBoxAdapter(
+              child: _WatchlistRail(provider: watchlist!, onOpenAll: () => onOpenTab(NavigationTabId.watchlist)),
+            ),
+          ],
           SliverToBoxAdapter(
             child: _SectionRow(
               icon: Symbols.download_rounded,
@@ -158,6 +163,49 @@ class _SectionRow extends StatelessWidget {
               ],
             ),
       onTap: onTap,
+    );
+  }
+}
+
+/// A short horizontal preview of the kijklijst, with the full screen one tap
+/// away.
+///
+/// The rail deliberately does not resolve availability. That work belongs to
+/// the full screen, where the user is actually looking at the list; doing it
+/// here would fan out lookups every time someone opens My Pleya to reach their
+/// downloads.
+class _WatchlistRail extends StatelessWidget {
+  const _WatchlistRail({required this.provider, required this.onOpenAll});
+
+  final WatchlistProvider provider;
+  final VoidCallback onOpenAll;
+
+  /// How many posters the rail shows before "See all" takes over.
+  static const int maxItems = 12;
+
+  static const double _posterWidth = 104;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = provider.entriesByRecentlyAdded.take(maxItems).toList();
+    if (entries.isEmpty) return const SizedBox.shrink();
+
+    final height = _posterWidth * 3 / 2 + watchlistCardTextExtent;
+    return SizedBox(
+      height: height,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: entries.length,
+        separatorBuilder: (context, _) => const SizedBox(width: 10),
+        itemBuilder: (context, index) => WatchlistCard(
+          entry: entries[index],
+          isPlayable: provider.isPlayable(entries[index]),
+          onTap: onOpenAll,
+          width: _posterWidth,
+          height: height,
+        ),
+      ),
     );
   }
 }

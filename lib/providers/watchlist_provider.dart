@@ -90,6 +90,15 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
   bool get hasWatchlist => _entries.isNotEmpty || (repository?.sources.isNotEmpty ?? false) || _hasSnapshot;
 
   bool _hasSnapshot = false;
+  bool _hasLoaded = false;
+
+  /// Whether a load has already run for this profile.
+  ///
+  /// Screens use it to avoid refetching every time the user returns to the
+  /// tab; the kijklijst is not a feed that needs re-pulling on each visit, and
+  /// a fetch on every tab switch would put a spinner over a list that is
+  /// already correct.
+  bool get hasLoaded => _hasLoaded;
 
   String? _attachedProfileId;
   WatchlistSourceFactory? _factory;
@@ -185,6 +194,7 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
 
     if (offline || repository == null) {
       _isLoading = false;
+      _hasLoaded = true;
       _offline = true;
       safeNotifyListeners();
       return;
@@ -202,6 +212,7 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
       _error = e.toString();
     } finally {
       _isLoading = false;
+      _hasLoaded = true;
       safeNotifyListeners();
     }
   }
@@ -272,6 +283,7 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
   /// Drop everything and rebind. Called on a profile switch.
   void reset() {
     _entries = const [];
+    _hasLoaded = false;
     _complete = true;
     _offline = false;
     _hasSnapshot = false;

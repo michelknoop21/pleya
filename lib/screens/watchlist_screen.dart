@@ -3,11 +3,21 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../i18n/strings.g.dart';
+import '../media/media_kind.dart';
 import '../media/watchlist_entry.dart';
 import '../providers/offline_mode_provider.dart';
 import '../providers/watchlist_provider.dart';
+import '../services/settings_service.dart';
 import '../widgets/desktop_app_bar.dart';
+import '../widgets/media_grid_delegate.dart';
+import '../widgets/settings_builder.dart';
+import '../widgets/sliver_cross_axis_layout_builder.dart';
 import '../widgets/state_view.dart';
+import '../widgets/watchlist_card.dart';
+import '../widgets/watchlist_item_sheet.dart';
+
+/// Which slice of the kijklijst is on screen.
+enum WatchlistFilter { all, movies, shows, available }
 
 /// The full kijklijst.
 ///
@@ -16,7 +26,8 @@ import '../widgets/state_view.dart';
 /// whole list resolved before the screen can settle, so at 300 titles across
 /// several servers the grid would keep reflowing while answers trickle in, and
 /// that fights the lazy resolver instead of using it. Ordering by availability
-/// is still possible, but only when the user asks for it through the filter.
+/// is still possible, but only when the user asks for it through the filter,
+/// and asking for it is what pays for the full sweep.
 class WatchlistScreen extends StatefulWidget {
   const WatchlistScreen({super.key});
 
@@ -26,6 +37,7 @@ class WatchlistScreen extends StatefulWidget {
 
 class _WatchlistScreenState extends State<WatchlistScreen> {
   bool _requestedLoad = false;
+  WatchlistFilter _filter = WatchlistFilter.all;
 
   @override
   void didChangeDependencies() {
@@ -33,51 +45,174 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     if (_requestedLoad) return;
     _requestedLoad = true;
     final provider = context.read<WatchlistProvider?>();
-    final isOffline = context.read<OfflineModeProvider?>()?.isOffline ?? false;
+    // Already loaded for this profile: returning to the tab should not put a
+    // spinner over a list that is already right.
+    if (provider?.hasLoaded ?? false) return;
+    final isOffline = _isOffline;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) provider?.load(offline: isOffline);
     });
   }
 
+  bool get _isOffline => context.read<OfflineModeProvider?>()?.isOffline ?? false;
+
   Future<void> _reload() async {
-    final isOffline = context.read<OfflineModeProvider?>()?.isOffline ?? false;
-    await context.read<WatchlistProvider?>()?.load(offline: isOffline);
+    await context.read<WatchlistProvider?>()?.load(offline: _isOffline);
+  }
+
+  /// Turning on "Available" pays for a full sweep of everything still
+  /// unresolved. Lazy resolving and filtering on availability contradict each
+  /// other: entries outside the viewport are still unknown, so without the
+  /// sweep the filter would hide titles that are in fact there.
+  Future<void> _setFilter(WatchlistFilter filter) async {
+    setState(() => _filter = filter);
+    if (filter == WatchlistFilter.available) {
+      await context.read<WatchlistProvider?>()?.resolveAllUnknown();
+    }
+  }
+
+  List<WatchlistEntry> _applyFilter(List<WatchlistEntry> entries) {
+    return switch (_filter) {
+      WatchlistFilter.all => entries,
+      WatchlistFilter.movies => entries.where((e) => e.kind == MediaKind.movie).toList(),
+      WatchlistFilter.shows => entries.where((e) => e.kind == MediaKind.show).toList(),
+      WatchlistFilter.available => entries.where((e) => e.availability == WatchlistAvailability.available).toList(),
+    };
+  }
+
+  Future<void> _openSheet(WatchlistProvider provider, WatchlistEntry entry) async {
+    final action = await showWatchlistItemSheet(context, entry: entry, requestability: provider.requestability(entry));
+    if (action == null || !mounted) return;
+    // Wiring the two actions to Seerr and to WatchlistActions lands with the
+    // detail-screen and context-menu work; the sheet already reports which one
+    // the user picked.
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<WatchlistProvider?>();
-    final entries = provider?.entriesByRecentlyAdded ?? const <WatchlistEntry>[];
+    final isOffline = context.watch<OfflineModeProvider?>()?.isOffline ?? false;
+    final all = provider?.entriesByRecentlyAdded ?? const <WatchlistEntry>[];
+    final entries = _applyFilter(all);
 
     return Scaffold(
       body: CustomScrollView(
-        // Not the default Clip.hardEdge: a focused card grows a ring that would
-        // otherwise be sheared off at the viewport edge on TV.
+        // Not the default Clip.hardEdge: a focused card grows past its cell and
+        // the ring would be sheared off at the viewport edge on TV.
         clipBehavior: Clip.none,
         slivers: [
           CustomAppBar(title: Text(t.watchlist.title), automaticallyImplyLeading: false),
-          if (provider == null || (provider.isLoading && entries.isEmpty))
+          SliverToBoxAdapter(
+            child: _FilterBar(
+              filter: _filter,
+              // Availability needs live servers, so offline the filter is not
+              // a slower answer but a wrong one.
+              showAvailable: !isOffline,
+              onChanged: _setFilter,
+            ),
+          ),
+          if (provider == null || (provider.isLoading && all.isEmpty))
             const SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator()))
           else if (entries.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: StateView.empty(
                 icon: Symbols.bookmark_add_rounded,
-                title: t.watchlist.empty,
-                message: t.watchlist.emptyBody,
-                // Without a retry there is no focusable element left on this
-                // screen, and a TV remote has nowhere to go.
-                onRetry: _reload,
-                retryLabel: t.watchlist.retry,
+                // An empty watchlist and a filter that hides everything are
+                // different problems and get different words.
+                title: all.isEmpty ? t.watchlist.empty : t.watchlist.emptyFiltered,
+                message: all.isEmpty ? t.watchlist.emptyBody : null,
+                // Without a retry there is no focusable element left here, and
+                // a TV remote would have nowhere to go.
+                onRetry: all.isEmpty ? _reload : () => _setFilter(WatchlistFilter.all),
+                retryLabel: all.isEmpty ? t.watchlist.retry : t.watchlist.filterAll,
               ),
             )
           else
-            SliverList.builder(
-              itemCount: entries.length,
-              itemBuilder: (context, index) => ListTile(
-                title: Text(entries[index].item.title ?? ''),
-                subtitle: Text('${entries[index].item.year ?? ''}'),
-              ),
+            _buildGrid(provider, entries),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGrid(WatchlistProvider provider, List<WatchlistEntry> entries) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
+      sliver: SettingsBuilder(
+        prefs: const [SettingsService.libraryDensity],
+        builder: (context) {
+          final density = SettingsService.instance.read(SettingsService.libraryDensity);
+          return SliverCrossAxisLayoutBuilder(
+            builder: (context, crossAxisExtent) {
+              final geometry = MediaGridGeometry.resolve(
+                context: context,
+                crossAxisExtent: crossAxisExtent,
+                density: density,
+                usePaddingAware: true,
+                horizontalPadding: 16,
+              );
+              final cellHeight = geometry.itemWidth * 3 / 2 + watchlistCardTextExtent;
+              return SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: geometry.columnCount,
+                  mainAxisSpacing: geometry.spacing,
+                  crossAxisSpacing: geometry.spacing,
+                  childAspectRatio: geometry.itemWidth / cellHeight,
+                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final entry = entries[index];
+                  // Viewport-driven: a card asks for its own row as it is
+                  // built, so a 300-title list never fans out 300 lookups on
+                  // open.
+                  if (entry.availability == WatchlistAvailability.unknown) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) provider.resolveAvailability(entry);
+                    });
+                  }
+                  return WatchlistCard(
+                    entry: entry,
+                    isPlayable: provider.isPlayable(entry),
+                    onTap: () => _openSheet(provider, entry),
+                    // Both branches of the card render at exactly the cell
+                    // size; a card wider than its tile gets its top clipped.
+                    width: geometry.itemWidth,
+                    height: cellHeight,
+                  );
+                }, childCount: entries.length),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FilterBar extends StatelessWidget {
+  const _FilterBar({required this.filter, required this.showAvailable, required this.onChanged});
+
+  final WatchlistFilter filter;
+  final bool showAvailable;
+  final ValueChanged<WatchlistFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final options = <(WatchlistFilter, String)>[
+      (WatchlistFilter.all, t.watchlist.filterAll),
+      (WatchlistFilter.movies, t.watchlist.filterMovies),
+      (WatchlistFilter.shows, t.watchlist.filterShows),
+      if (showAvailable) (WatchlistFilter.available, t.watchlist.filterAvailable),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      child: Row(
+        children: [
+          for (final (value, label) in options)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(label: Text(label), selected: filter == value, onSelected: (_) => onChanged(value)),
             ),
         ],
       ),
