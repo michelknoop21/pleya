@@ -146,6 +146,21 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
     }());
   }
 
+  /// Priority per source, derived from the repository's own order. The
+  /// comparator needs it to rank entries that no timestamp can compare.
+  Map<WatchlistScopeId, int> get sourcePriority {
+    final sources = repository?.sources ?? const <WatchlistSource>[];
+    return {for (var i = 0; i < sources.length; i++) sources[i].scope: i};
+  }
+
+  /// The list in "recently added" order.
+  ///
+  /// Not stored sorted: the repository's own order is already this order for
+  /// the common single-source case, and re-deriving keeps one definition of
+  /// recency instead of two that can drift.
+  List<WatchlistEntry> get entriesByRecentlyAdded =>
+      List<WatchlistEntry>.of(_entries)..sort(WatchlistEntry.byRecentlyAdded(sourcePriority));
+
   WatchlistEntry? entryForKey(String key) {
     for (final entry in _entries) {
       if (entry.key == key) return entry;

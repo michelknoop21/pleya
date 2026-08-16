@@ -38,23 +38,41 @@ class WatchlistMembership {
   /// the item id for Jellyfin.
   final String remoteKey;
 
-  /// When the title was added, in milliseconds since epoch, when the source
-  /// reports it. Plenty of sources do not.
+  /// When the title was added, in milliseconds since epoch, but only when the
+  /// source really reports it. Plenty do not: the Plex watchlist endpoint puts
+  /// no timestamp on its items, and Jellyfin has no favorited-at field at all.
   final int? addedAt;
 
-  WatchlistMembership({required this.scope, required this.remoteKey, this.addedAt}) {
+  /// Where this title sat in the list its source handed over, 0 being the most
+  /// recent that source knows about.
+  ///
+  /// This is **ordinal, not time**. Plex returns its watchlist newest-first
+  /// and that sequence is the only recency signal it gives, so the position is
+  /// kept as a position. Turning it into a synthetic timestamp would create a
+  /// number that looks comparable to a real Jellyfin timestamp and is not.
+  final int sourcePosition;
+
+  WatchlistMembership({required this.scope, required this.remoteKey, this.addedAt, this.sourcePosition = 0}) {
     if (remoteKey.isEmpty) {
       throw ArgumentError.value(remoteKey, 'remoteKey', 'A watchlist membership needs a remote key');
     }
+    if (sourcePosition < 0) {
+      throw ArgumentError.value(sourcePosition, 'sourcePosition', 'A source position cannot be negative');
+    }
   }
 
-  WatchlistMembership copyWith({int? addedAt}) =>
-      WatchlistMembership(scope: scope, remoteKey: remoteKey, addedAt: addedAt ?? this.addedAt);
+  WatchlistMembership copyWith({int? addedAt, int? sourcePosition}) => WatchlistMembership(
+    scope: scope,
+    remoteKey: remoteKey,
+    addedAt: addedAt ?? this.addedAt,
+    sourcePosition: sourcePosition ?? this.sourcePosition,
+  );
 
   Map<String, Object?> toJson() => {
     'scope': scope.toJson(),
     'remoteKey': remoteKey,
     if (addedAt != null) 'addedAt': addedAt,
+    'sourcePosition': sourcePosition,
   };
 
   /// Null when the row is unreadable. A membership without a scope or a
@@ -66,19 +84,29 @@ class WatchlistMembership {
     final remoteKey = json['remoteKey'];
     if (scope == null || remoteKey is! String || remoteKey.isEmpty) return null;
     final addedAt = json['addedAt'];
-    return WatchlistMembership(scope: scope, remoteKey: remoteKey, addedAt: addedAt is int ? addedAt : null);
+    final sourcePosition = json['sourcePosition'];
+    return WatchlistMembership(
+      scope: scope,
+      remoteKey: remoteKey,
+      addedAt: addedAt is int ? addedAt : null,
+      sourcePosition: sourcePosition is int && sourcePosition >= 0 ? sourcePosition : 0,
+    );
   }
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is WatchlistMembership && other.scope == scope && other.remoteKey == remoteKey && other.addedAt == addedAt;
+      other is WatchlistMembership &&
+          other.scope == scope &&
+          other.remoteKey == remoteKey &&
+          other.addedAt == addedAt &&
+          other.sourcePosition == sourcePosition;
 
   @override
-  int get hashCode => Object.hash(scope, remoteKey, addedAt);
+  int get hashCode => Object.hash(scope, remoteKey, addedAt, sourcePosition);
 
   @override
-  String toString() => 'WatchlistMembership(${scope.storageKey}, $remoteKey, addedAt: $addedAt)';
+  String toString() => 'WatchlistMembership(${scope.storageKey}, $remoteKey, addedAt: $addedAt, at: $sourcePosition)';
 }
 
 /// One title on the merged kijklijst.
@@ -318,20 +346,55 @@ class WatchlistEntry {
     _ => WatchlistAvailability.unknown,
   };
 
-  /// "Recently added", newest first.
+  /// Rank of this entry within its best-placed source: the lowest source
+  /// priority it has a membership in, and its position inside that source.
   ///
-  /// An entry whose sources never reported a timestamp counts as the oldest
-  /// known and then falls back to title, so the order does not silently depend
-  /// on which source happened to be merged first.
-  static int compareByRecentlyAdded(WatchlistEntry a, WatchlistEntry b) {
-    final aAdded = a.addedAt;
-    final bAdded = b.addedAt;
-    if (aAdded != bAdded) {
-      if (aAdded == null) return 1;
-      if (bAdded == null) return -1;
-      return bAdded.compareTo(aAdded);
+  /// Lower is more recent, in both halves.
+  (int priority, int position) rankWithin(Map<WatchlistScopeId, int> sourcePriority) {
+    var best = (sourcePriority.length, 0);
+    for (final membership in memberships) {
+      final priority = sourcePriority[membership.scope];
+      if (priority == null) continue;
+      final candidate = (priority, membership.sourcePosition);
+      if (candidate.$1 < best.$1 || (candidate.$1 == best.$1 && candidate.$2 < best.$2)) {
+        best = candidate;
+      }
     }
-    return compareByTitle(a, b);
+    return best;
+  }
+
+  /// "Recently added", newest first, for a list merged from several sources.
+  ///
+  /// [sourcePriority] maps each source's scope to its position in the
+  /// repository, so the comparator can fall back on a deterministic order
+  /// instead of on whichever source happened to be merged first.
+  ///
+  /// The rules, in order:
+  ///
+  /// 1. Two entries that both carry a real timestamp compare on it.
+  /// 2. Anything else compares on source priority, then on the position that
+  ///    source gave it. Plex hands over its watchlist newest-first without
+  ///    timestamps, and that sequence is preserved as a sequence.
+  /// 3. A tie breaks on title, and then on key, so the order is total.
+  ///
+  /// A timestamp is never invented from a position. The two are different
+  /// kinds of thing: a position is ordinal and only means something inside its
+  /// own source, while a timestamp is comparable across all of them. Minting
+  /// one from the other would produce a number that looks comparable and is
+  /// not, and the whole list would silently sort on a fiction.
+  static Comparator<WatchlistEntry> byRecentlyAdded(Map<WatchlistScopeId, int> sourcePriority) {
+    return (a, b) {
+      final aAdded = a.addedAt;
+      final bAdded = b.addedAt;
+      if (aAdded != null && bAdded != null && aAdded != bAdded) return bAdded.compareTo(aAdded);
+
+      final aRank = a.rankWithin(sourcePriority);
+      final bRank = b.rankWithin(sourcePriority);
+      if (aRank.$1 != bRank.$1) return aRank.$1.compareTo(bRank.$1);
+      if (aRank.$2 != bRank.$2) return aRank.$2.compareTo(bRank.$2);
+
+      return compareByTitle(a, b);
+    };
   }
 
   /// Title order, case-insensitive, using the sort title when the source
@@ -343,12 +406,16 @@ class WatchlistEntry {
 
   String get _sortTitle => (item.titleSort ?? item.title ?? '').toLowerCase();
 
+  /// The fresher of two memberships in the same scope.
+  ///
+  /// A real timestamp decides. Without one the lower source position wins,
+  /// because within a single source that is what "more recent" means there.
   static WatchlistMembership _newer(WatchlistMembership a, WatchlistMembership b) {
     final aAdded = a.addedAt;
     final bAdded = b.addedAt;
-    if (bAdded == null) return a;
-    if (aAdded == null) return b;
-    return bAdded > aAdded ? b : a;
+    if (aAdded != null && bAdded != null) return bAdded > aAdded ? b : a;
+    if (bAdded == null && aAdded == null) return b.sourcePosition < a.sourcePosition ? b : a;
+    return aAdded != null ? a : b;
   }
 
   static int _rank(WatchlistAvailability availability) => switch (availability) {

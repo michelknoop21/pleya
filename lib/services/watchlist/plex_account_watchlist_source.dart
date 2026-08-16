@@ -79,7 +79,10 @@ class PlexAccountWatchlistSource implements WatchlistSource {
           guid: item.guid,
           externalIds: item.externalIds,
           posterRef: item.posterUrl,
-          memberships: [WatchlistMembership(scope: scope, remoteKey: remoteKey)],
+          // The list arrives newest-first and carries no timestamps, so the
+          // index is the recency signal. It stays an index; see
+          // [WatchlistMembership.sourcePosition].
+          memberships: [WatchlistMembership(scope: scope, remoteKey: remoteKey, sourcePosition: entries.length)],
         ),
       );
     }

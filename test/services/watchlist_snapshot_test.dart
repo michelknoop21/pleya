@@ -109,6 +109,22 @@ void main() {
 
       expect((await store.read(plexScope))!.single.memberships.single.addedAt, isNull);
     });
+
+    test('the source position survives, because offline it is the only recency signal', () async {
+      await store.write(plexScope, [
+        WatchlistEntry(
+          key: 'plex:abc',
+          kind: MediaKind.movie,
+          item: MediaItem(id: 'abc', backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Sintel'),
+          memberships: [WatchlistMembership(scope: plexScope, remoteKey: 'abc', sourcePosition: 7)],
+        ),
+      ]);
+
+      final read = (await store.read(plexScope))!.single.memberships.single;
+
+      expect(read.sourcePosition, 7);
+      expect(read.addedAt, isNull, reason: 'a position must not read back as a timestamp');
+    });
   });
 
   group('scoping', () {

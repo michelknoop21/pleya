@@ -46,7 +46,7 @@ class JellyfinFavoritesSource implements WatchlistSource {
     while (true) {
       final page = await client.fetchFavorites(offset: offset, limit: _pageSize);
       for (final item in page.items) {
-        final entry = _toEntry(item);
+        final entry = _toEntry(item, position: entries.length);
         if (entry != null) entries.add(entry);
       }
       offset += page.items.length;
@@ -70,7 +70,7 @@ class JellyfinFavoritesSource implements WatchlistSource {
   @override
   Future<bool?> contains(MediaItem item) async => null;
 
-  WatchlistEntry? _toEntry(MediaItem item) {
+  WatchlistEntry? _toEntry(MediaItem item, {required int position}) {
     final externalIds = _externalIdsOf(item);
     final key = watchlistKeyForItem(item, externalIds: externalIds);
     // No cross-server identity means the title cannot be matched anywhere
@@ -84,7 +84,9 @@ class JellyfinFavoritesSource implements WatchlistSource {
       guid: item.guid,
       externalIds: externalIds,
       posterRef: item.thumbPath,
-      memberships: [WatchlistMembership(scope: scope, remoteKey: item.id)],
+      // Jellyfin has no favorited-at field, so this is a stable order and
+      // nothing more. It never claims to be recency.
+      memberships: [WatchlistMembership(scope: scope, remoteKey: item.id, sourcePosition: position)],
     );
   }
 

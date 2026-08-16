@@ -20,6 +20,13 @@ final jellyfinScope = WatchlistScopeId(
   userId: 'jf-user-1',
 );
 
+final otherScope = WatchlistScopeId(
+  profileId: 'profile-1',
+  backend: MediaBackend.jellyfin,
+  accountId: 'jf-machine-2',
+  userId: 'jf-user-2',
+);
+
 MediaItem discoverItem({String title = 'Sintel', String? titleSort, String id = 'abc'}) {
   return MediaItem(id: id, backend: MediaBackend.plex, kind: MediaKind.movie, title: title, titleSort: titleSort);
 }
@@ -229,11 +236,33 @@ void main() {
   });
 
   group('WatchlistEntry sorting', () {
-    test('recently added is newest first on the newest membership', () {
-      final old = entry(
-        key: 'a',
-        memberships: [WatchlistMembership(scope: plexScope, remoteKey: 'a', addedAt: 100)],
+    final priority = {plexScope: 0, jellyfinScope: 1};
+
+    WatchlistEntry at(
+      String key, {
+      required WatchlistScopeId scope,
+      int position = 0,
+      int? addedAt,
+      String title = 'Title',
+    }) {
+      return entry(
+        key: key,
+        item: discoverItem(title: title),
+        memberships: [WatchlistMembership(scope: scope, remoteKey: key, addedAt: addedAt, sourcePosition: position)],
       );
+    }
+
+    test('two real timestamps compare on time, newest first', () {
+      final older = at('a', scope: jellyfinScope, addedAt: 100);
+      final newer = at('b', scope: jellyfinScope, addedAt: 900);
+
+      final sorted = [older, newer]..sort(WatchlistEntry.byRecentlyAdded(priority));
+
+      expect(sorted.map((e) => e.key), ['b', 'a']);
+    });
+
+    test('the newest membership speaks for a merged entry', () {
+      final old = at('a', scope: jellyfinScope, addedAt: 100);
       final recent = entry(
         key: 'b',
         memberships: [
@@ -242,32 +271,80 @@ void main() {
         ],
       );
 
-      final sorted = [old, recent]..sort(WatchlistEntry.compareByRecentlyAdded);
+      final sorted = [old, recent]..sort(WatchlistEntry.byRecentlyAdded(priority));
 
       expect(sorted.map((e) => e.key), ['b', 'a']);
     });
 
-    test('entries without a timestamp sort last and then by title, not by merge order', () {
-      final zeta = entry(
-        key: 'z',
-        item: discoverItem(title: 'Zeta'),
-        memberships: [WatchlistMembership(scope: plexScope, remoteKey: 'z')],
-      );
-      final alpha = entry(
-        key: 'a',
-        item: discoverItem(title: 'Alpha'),
-        memberships: [WatchlistMembership(scope: plexScope, remoteKey: 'a')],
-      );
-      final dated = entry(
-        key: 'd',
-        memberships: [WatchlistMembership(scope: plexScope, remoteKey: 'd', addedAt: 1)],
-      );
+    test('a source without timestamps keeps the order that source gave', () {
+      final first = at('a', scope: plexScope, position: 0);
+      final second = at('b', scope: plexScope, position: 1);
+      final third = at('c', scope: plexScope, position: 2);
 
-      final oneWay = [zeta, alpha, dated]..sort(WatchlistEntry.compareByRecentlyAdded);
-      final otherWay = [alpha, dated, zeta]..sort(WatchlistEntry.compareByRecentlyAdded);
+      final sorted = [third, first, second]..sort(WatchlistEntry.byRecentlyAdded(priority));
 
-      expect(oneWay.map((e) => e.key), ['d', 'a', 'z']);
+      expect(sorted.map((e) => e.key), ['a', 'b', 'c']);
+    });
+
+    test('no timestamp is ever invented from a position', () {
+      final plexNewest = at('plex-first', scope: plexScope, position: 0);
+      final jellyfinAncient = at('jf-old', scope: jellyfinScope, addedAt: 1);
+
+      final sorted = [jellyfinAncient, plexNewest]..sort(WatchlistEntry.byRecentlyAdded(priority));
+
+      expect(sorted.map((e) => e.key), [
+        'plex-first',
+        'jf-old',
+      ], reason: 'incomparable pairs fall back to source priority, not to a synthetic timestamp');
+      expect(plexNewest.addedAt, isNull, reason: 'a position must never surface as a timestamp');
+    });
+
+    test('source priority decides between two sources that cannot be compared on time', () {
+      final fromJellyfin = at('jf', scope: jellyfinScope, position: 0);
+      final fromPlex = at('plex', scope: plexScope, position: 5);
+
+      final sorted = [fromJellyfin, fromPlex]..sort(WatchlistEntry.byRecentlyAdded(priority));
+
+      expect(sorted.map((e) => e.key), ['plex', 'jf']);
+    });
+
+    test('a merged entry ranks by its best-placed source', () {
+      final merged = entry(
+        key: 'merged',
+        memberships: [
+          WatchlistMembership(scope: jellyfinScope, remoteKey: 'x', sourcePosition: 0),
+          WatchlistMembership(scope: plexScope, remoteKey: 'y', sourcePosition: 3),
+        ],
+      );
+      final plexOnly = at('plex-only', scope: plexScope, position: 7);
+
+      final sorted = [plexOnly, merged]..sort(WatchlistEntry.byRecentlyAdded(priority));
+
+      expect(sorted.map((e) => e.key), ['merged', 'plex-only']);
+      expect(merged.rankWithin(priority), (0, 3));
+    });
+
+    test('the order does not depend on the order the list came in', () {
+      final entries = [
+        at('a', scope: plexScope, position: 0, title: 'Alpha'),
+        at('b', scope: plexScope, position: 1, title: 'Beta'),
+        at('c', scope: jellyfinScope, position: 0, title: 'Gamma'),
+        at('d', scope: jellyfinScope, addedAt: 500, title: 'Delta'),
+      ];
+
+      final oneWay = [...entries]..sort(WatchlistEntry.byRecentlyAdded(priority));
+      final otherWay = [...entries.reversed]..sort(WatchlistEntry.byRecentlyAdded(priority));
+
       expect(otherWay.map((e) => e.key), oneWay.map((e) => e.key));
+    });
+
+    test('an entry from a source that is gone sorts last, not first', () {
+      final orphan = at('orphan', scope: otherScope, position: 0);
+      final known = at('known', scope: jellyfinScope, position: 9);
+
+      final sorted = [orphan, known]..sort(WatchlistEntry.byRecentlyAdded(priority));
+
+      expect(sorted.map((e) => e.key), ['known', 'orphan']);
     });
 
     test('title order uses the sort title and is case-insensitive', () {
