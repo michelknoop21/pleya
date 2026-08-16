@@ -886,7 +886,44 @@
   "navigation": {
     "libraries": "Media",
     "downloads": "Downloads",
-    "liveTv": "Live TV"
+    "liveTv": "Live TV",
+    "watchlist": "Kijklijst",
+    "myPleya": "Mijn Pleya"
+  },
+  "watchlist": {
+    "title": "Kijklijst",
+    "seeAll": "Alles bekijken",
+    "empty": "Nog niets op je kijklijst",
+    "emptyBody": "Titels die je in Plex toevoegt of als Jellyfin-favoriet markeert, verschijnen hier.",
+    "emptyFiltered": "Geen titels binnen dit filter",
+    "retry": "Opnieuw proberen",
+    "notAvailable": "Niet beschikbaar",
+    "checking": "Controleren",
+    "notFoundOnServers": "Niet gevonden op je gekoppelde mediaservers",
+    "coverageIncomplete": "Een deel van je mediaservers was niet bereikbaar. Deze titel staat er misschien al.",
+    "remove": "Uit kijklijst verwijderen",
+    "add": "Aan kijklijst toevoegen",
+    "added": "Toegevoegd aan kijklijst",
+    "removed": "Verwijderd uit kijklijst",
+    "addFailed": "Kon je kijklijst niet bijwerken",
+    "partiallyFailed": "Alleen uit een deel van de lijsten verwijderd. Je kijklijst is opnieuw geladen.",
+    "offlineRejected": "Je hebt verbinding nodig om je kijklijst te wijzigen",
+    "filterAll": "Alles",
+    "filterMovies": "Films",
+    "filterShows": "Series",
+    "filterAvailable": "Beschikbaar",
+    "sortRecentlyAdded": "Recent toegevoegd",
+    "sortTitle": "Titel",
+    "sortYear": "Jaar"
+  },
+  "myPleya": {
+    "title": "Mijn Pleya",
+    "settings": "Instellingen",
+    "switchProfile": "Profiel wisselen",
+    "downloadsCount": {
+      "one": "1 download",
+      "other": "{n} downloads"
+    }
   },
   "liveTv": {
     "serverNotAvailable": "Live TV-server is niet beschikbaar.",

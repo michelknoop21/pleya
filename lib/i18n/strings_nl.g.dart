@@ -70,6 +70,8 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsLogsNl logs = _TranslationsLogsNl._(_root);
 	@override late final _TranslationsLicensesNl licenses = _TranslationsLicensesNl._(_root);
 	@override late final _TranslationsNavigationNl navigation = _TranslationsNavigationNl._(_root);
+	@override late final _TranslationsWatchlistNl watchlist = _TranslationsWatchlistNl._(_root);
+	@override late final _TranslationsMyPleyaNl myPleya = _TranslationsMyPleyaNl._(_root);
 	@override late final _TranslationsLiveTvNl liveTv = _TranslationsLiveTvNl._(_root);
 	@override late final _TranslationsCollectionsNl collections = _TranslationsCollectionsNl._(_root);
 	@override late final _TranslationsPlaylistsNl playlists = _TranslationsPlaylistsNl._(_root);
@@ -1108,6 +1110,57 @@ class _TranslationsNavigationNl extends TranslationsNavigationEn {
 	@override String get libraries => 'Media';
 	@override String get downloads => 'Downloads';
 	@override String get liveTv => 'Live TV';
+	@override String get watchlist => 'Kijklijst';
+	@override String get myPleya => 'Mijn Pleya';
+}
+
+// Path: watchlist
+class _TranslationsWatchlistNl extends TranslationsWatchlistEn {
+	_TranslationsWatchlistNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Kijklijst';
+	@override String get seeAll => 'Alles bekijken';
+	@override String get empty => 'Nog niets op je kijklijst';
+	@override String get emptyBody => 'Titels die je in Plex toevoegt of als Jellyfin-favoriet markeert, verschijnen hier.';
+	@override String get emptyFiltered => 'Geen titels binnen dit filter';
+	@override String get retry => 'Opnieuw proberen';
+	@override String get notAvailable => 'Niet beschikbaar';
+	@override String get checking => 'Controleren';
+	@override String get notFoundOnServers => 'Niet gevonden op je gekoppelde mediaservers';
+	@override String get coverageIncomplete => 'Een deel van je mediaservers was niet bereikbaar. Deze titel staat er misschien al.';
+	@override String get remove => 'Uit kijklijst verwijderen';
+	@override String get add => 'Aan kijklijst toevoegen';
+	@override String get added => 'Toegevoegd aan kijklijst';
+	@override String get removed => 'Verwijderd uit kijklijst';
+	@override String get addFailed => 'Kon je kijklijst niet bijwerken';
+	@override String get partiallyFailed => 'Alleen uit een deel van de lijsten verwijderd. Je kijklijst is opnieuw geladen.';
+	@override String get offlineRejected => 'Je hebt verbinding nodig om je kijklijst te wijzigen';
+	@override String get filterAll => 'Alles';
+	@override String get filterMovies => 'Films';
+	@override String get filterShows => 'Series';
+	@override String get filterAvailable => 'Beschikbaar';
+	@override String get sortRecentlyAdded => 'Recent toegevoegd';
+	@override String get sortTitle => 'Titel';
+	@override String get sortYear => 'Jaar';
+}
+
+// Path: myPleya
+class _TranslationsMyPleyaNl extends TranslationsMyPleyaEn {
+	_TranslationsMyPleyaNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Mijn Pleya';
+	@override String get settings => 'Instellingen';
+	@override String get switchProfile => 'Profiel wisselen';
+	@override String downloadsCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '1 download',
+		other: '{n} downloads',
+	);
 }
 
 // Path: liveTv
@@ -3059,6 +3112,36 @@ extension on TranslationsNl {
 			'navigation.libraries' => 'Media',
 			'navigation.downloads' => 'Downloads',
 			'navigation.liveTv' => 'Live TV',
+			'navigation.watchlist' => 'Kijklijst',
+			'navigation.myPleya' => 'Mijn Pleya',
+			'watchlist.title' => 'Kijklijst',
+			'watchlist.seeAll' => 'Alles bekijken',
+			'watchlist.empty' => 'Nog niets op je kijklijst',
+			'watchlist.emptyBody' => 'Titels die je in Plex toevoegt of als Jellyfin-favoriet markeert, verschijnen hier.',
+			'watchlist.emptyFiltered' => 'Geen titels binnen dit filter',
+			'watchlist.retry' => 'Opnieuw proberen',
+			'watchlist.notAvailable' => 'Niet beschikbaar',
+			'watchlist.checking' => 'Controleren',
+			'watchlist.notFoundOnServers' => 'Niet gevonden op je gekoppelde mediaservers',
+			'watchlist.coverageIncomplete' => 'Een deel van je mediaservers was niet bereikbaar. Deze titel staat er misschien al.',
+			'watchlist.remove' => 'Uit kijklijst verwijderen',
+			'watchlist.add' => 'Aan kijklijst toevoegen',
+			'watchlist.added' => 'Toegevoegd aan kijklijst',
+			'watchlist.removed' => 'Verwijderd uit kijklijst',
+			'watchlist.addFailed' => 'Kon je kijklijst niet bijwerken',
+			'watchlist.partiallyFailed' => 'Alleen uit een deel van de lijsten verwijderd. Je kijklijst is opnieuw geladen.',
+			'watchlist.offlineRejected' => 'Je hebt verbinding nodig om je kijklijst te wijzigen',
+			'watchlist.filterAll' => 'Alles',
+			'watchlist.filterMovies' => 'Films',
+			'watchlist.filterShows' => 'Series',
+			'watchlist.filterAvailable' => 'Beschikbaar',
+			'watchlist.sortRecentlyAdded' => 'Recent toegevoegd',
+			'watchlist.sortTitle' => 'Titel',
+			'watchlist.sortYear' => 'Jaar',
+			'myPleya.title' => 'Mijn Pleya',
+			'myPleya.settings' => 'Instellingen',
+			'myPleya.switchProfile' => 'Profiel wisselen',
+			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 download', other: '{n} downloads', ), 
 			'liveTv.serverNotAvailable' => 'Live TV-server is niet beschikbaar.',
 			'liveTv.serverNotConnected' => 'Live TV-server is niet verbonden.',
 			'liveTv.title' => 'Live TV',
@@ -3242,6 +3325,8 @@ extension on TranslationsNl {
 			'downloads.deleteDownload' => 'Download verwijderen',
 			'downloads.retryDownload' => 'Download opnieuw proberen',
 			'downloads.downloadQueued' => 'Download in wachtrij',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.downloadResumed' => 'Download hervat',
 			'downloads.serverErrorBitrate' => 'Serverfout: bestand overschrijdt mogelijk de externe bitrate-limiet',
 			'downloads.episodesQueued' => ({required Object count}) => '${count} afleveringen in wachtrij voor download',
@@ -3272,8 +3357,6 @@ extension on TranslationsNl {
 			'downloads.customAmount' => 'Aangepast aantal...',
 			'downloads.includeSpecials' => 'Specials opnemen',
 			'downloads.howManyEpisodes' => 'Hoeveel afleveringen?',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.itemsQueued' => ({required Object count}) => '${count} items in downloadwachtrij',
 			'downloads.keepSynced' => 'Gesynchroniseerd houden',
 			'downloads.downloadOnce' => 'Eenmalig downloaden',
