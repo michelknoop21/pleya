@@ -1,3 +1,4 @@
+import '../media/media_identity.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -575,6 +576,11 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   /// A local folder has no user account to hang a favorite on.
   @override
   Future<void> setFavorite(MediaItem item, bool isFavorite) async {}
+
+  /// No catalogue identity to match against, so this source never counts as
+  /// a checked server for watchlist availability.
+  @override
+  Future<MediaItem?> findByIdentity(MediaIdentity identity) async => null;
 
   @override
   Future<LibraryPage<MediaItem>> fetchFavorites({MediaKind? kind, int offset = 0, int limit = 100}) async {

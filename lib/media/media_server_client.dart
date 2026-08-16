@@ -16,6 +16,7 @@ import 'live_tv_support.dart';
 import 'media_backend.dart';
 import 'media_file_info.dart';
 import 'media_hub.dart';
+import 'media_identity.dart';
 import '../services/scrub_preview_source.dart';
 import 'media_item.dart';
 import 'media_kind.dart';
@@ -238,6 +239,18 @@ abstract class MediaServerClient {
 
   /// Free-text search across the user's libraries.
   Future<List<MediaItem>> searchItems(String query, {int limit = 100});
+
+  /// The item on this server that is [identity], or null when it is not here.
+  ///
+  /// Returns null for "not found" and throws for "could not look". The
+  /// watchlist leans on that difference: an unreachable server must not count
+  /// as a checked one, or a single offline server would turn every title into
+  /// a request suggestion for content the user already owns.
+  ///
+  /// Backends that cannot answer at all (a local folder, a shared library)
+  /// return null and are excluded from coverage by their capability flags
+  /// rather than pretending to have looked.
+  Future<MediaItem?> findByIdentity(MediaIdentity identity);
 
   /// Recently-added items across all libraries.
   Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50});

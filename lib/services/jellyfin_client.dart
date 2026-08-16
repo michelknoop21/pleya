@@ -39,6 +39,7 @@ import '../utils/failover_http_client.dart';
 import '../utils/media_server_retry.dart';
 import '../utils/media_server_timeouts.dart';
 import '../utils/log_redaction_manager.dart';
+import '../media/media_identity.dart';
 import '../utils/external_ids.dart';
 import '../utils/media_server_http_client.dart';
 import '../utils/resolution_label.dart';

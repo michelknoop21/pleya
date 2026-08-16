@@ -198,6 +198,51 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
   @override
   Future<void> setFavorite(MediaItem item, bool isFavorite) => setItemFavorite(item.id, isFavorite);
 
+  /// Jellyfin has no server-side lookup by external id. The official SDK's
+  /// `/Items` parameter list has `hasImdbId`/`hasTmdbId` as booleans and no
+  /// value matcher, so the only route is: search on the title, ask for
+  /// `ProviderIds`, and confirm on the client.
+  @override
+  Future<MediaItem?> findByIdentity(MediaIdentity identity) async {
+    final title = identity.title;
+    if (!identity.isSearchable || title == null || title.isEmpty) return null;
+
+    final response = await _http.get(
+      '/Items',
+      queryParameters: {
+        'userId': connection.userId,
+        'SearchTerm': title,
+        'Recursive': 'true',
+        'Limit': '20',
+        'IncludeItemTypes': _includeTypesForIdentity(identity.kind),
+        'Fields': '$_browseFields,ProviderIds',
+        ...jellyfinImageQueryParameters,
+      },
+    );
+    throwIfHttpError(response);
+
+    final candidates = <({MediaItem item, ExternalIds ids})>[];
+    for (final raw in _itemsArray(response.data)) {
+      final item = _mapItem(raw);
+      if (item == null) continue;
+      final providerIds = raw['ProviderIds'];
+      candidates.add((
+        item: item,
+        ids: providerIds is Map<String, Object?>
+            ? ExternalIds.fromJellyfinProviderIds(providerIds)
+            : const ExternalIds(),
+      ));
+    }
+
+    return identity.pickMatch(candidates);
+  }
+
+  static String _includeTypesForIdentity(MediaKind kind) => switch (kind) {
+    MediaKind.movie => 'Movie',
+    MediaKind.show => 'Series',
+    _ => 'Movie,Series',
+  };
+
   @override
   Future<LibraryPage<MediaItem>> fetchFavorites({MediaKind? kind, int offset = 0, int limit = 100}) async {
     // No ParentId: a favorite belongs to the user, not to one library.

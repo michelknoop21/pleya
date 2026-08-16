@@ -9,6 +9,7 @@ import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/media_server_client.dart';
 import '../utils/app_logger.dart';
+import '../utils/title_normalizer.dart';
 import 'multi_server_manager.dart';
 import 'offline_watch_sync_service.dart';
 import 'settings_service.dart';
@@ -72,13 +73,7 @@ class LocalServerSyncBridge {
 
   /// Lower-cased, punctuation/whitespace-stripped title for comparison. A
   /// trailing `(2024)` year is dropped so "Movie (2024)" matches "Movie".
-  static String normalizeTitle(String? title) {
-    if (title == null) return '';
-    var t = title.toLowerCase();
-    t = t.replaceAll(RegExp(r'\(\d{4}\)'), ' ');
-    t = t.replaceAll(RegExp(r'[^a-z0-9]+'), '');
-    return t;
-  }
+  static String normalizeTitle(String? title) => normalizeTitleForMatching(title);
 
   /// Pick the one server item that confidently matches [local], or null when
   /// zero or more-than-one candidates qualify (ambiguous → never guess).

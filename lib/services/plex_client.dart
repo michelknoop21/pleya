@@ -1,3 +1,5 @@
+import '../media/media_identity.dart';
+import 'plex_constants.dart';
 import 'dart:async';
 import '../utils/isolate_helper.dart';
 import '../utils/json_utils.dart';
@@ -3708,6 +3710,69 @@ class PlexClient
   Future<List<MediaItem>> searchItems(String query, {int limit = 100}) async {
     final results = await _search(query, limit: limit);
     return results.map((m) => PlexMappers.mediaItem(m)).toList();
+  }
+
+  /// Two tiers, both measured against a live Plex Media Server on 16 August
+  /// 2026 (see `test/fixtures/watchlist/README.md`).
+  ///
+  /// `/library/all?guid=plex://movie/...` answers with the one matching item
+  /// across every section. The same filter with `imdb://` or `tmdb://`
+  /// answers `size: 0` even for an item whose own `Guid` array holds exactly
+  /// that id, so external ids cannot be matched server-side. They are matched
+  /// on the client instead, against the `Guid` array that `includeGuids=1`
+  /// puts next to each title-search result.
+  @override
+  Future<MediaItem?> findByIdentity(MediaIdentity identity) async {
+    if (!identity.isSearchable) return null;
+
+    final guid = identity.guid;
+    if (guid != null && guid.isNotEmpty) {
+      final response = await _getWithFailover('/library/all', queryParameters: {'guid': guid, 'includeGuids': 1});
+      final matches = _extractMetadataList(response);
+      if (matches.length == 1) return PlexMappers.mediaItem(matches.single);
+      if (matches.length > 1) return null;
+    }
+
+    final title = identity.title;
+    if (title == null || title.isEmpty) return null;
+
+    final typeNumber = switch (identity.kind) {
+      MediaKind.movie => PlexMetadataType.movie,
+      MediaKind.show => PlexMetadataType.show,
+      _ => null,
+    };
+    final response = await _getWithFailover(
+      '/library/all',
+      queryParameters: {
+        'title': title,
+        'includeGuids': 1,
+        'X-Plex-Container-Size': 20,
+        'type': ?typeNumber,
+      },
+    );
+
+    return identity.pickMatch(_candidatesWithGuids(response));
+  }
+
+  /// Pair every result with the external ids from its `Guid` array. The array
+  /// only travels in the raw payload, so this reads the response directly
+  /// rather than going through the mapped item.
+  List<({MediaItem item, ExternalIds ids})> _candidatesWithGuids(MediaServerResponse response) {
+    final data = response.data;
+    final container = data is Map ? data['MediaContainer'] : null;
+    final metadata = container is Map ? container['Metadata'] : null;
+    if (metadata is! List) return const [];
+
+    final candidates = <({MediaItem item, ExternalIds ids})>[];
+    for (final raw in metadata) {
+      if (raw is! Map<String, dynamic>) continue;
+      final guids = raw['Guid'];
+      candidates.add((
+        item: PlexMappers.mediaItemFromJson(raw),
+        ids: guids is List ? ExternalIds.fromGuids(guids) : const ExternalIds(),
+      ));
+    }
+    return candidates;
   }
 
   @override

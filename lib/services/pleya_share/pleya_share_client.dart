@@ -1,3 +1,4 @@
+import '../../media/media_identity.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -663,6 +664,11 @@ class PleyaShareClient implements MediaServerClient, ServerMatchableClient {
   /// A shared library carries no per-user state of its own.
   @override
   Future<void> setFavorite(MediaItem item, bool isFavorite) async {}
+
+  /// No catalogue identity to match against, so this source never counts as
+  /// a checked server for watchlist availability.
+  @override
+  Future<MediaItem?> findByIdentity(MediaIdentity identity) async => null;
 
   @override
   Future<LibraryPage<MediaItem>> fetchFavorites({MediaKind? kind, int offset = 0, int limit = 100}) async {
