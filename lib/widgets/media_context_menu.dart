@@ -30,6 +30,9 @@ import '../utils/global_key_utils.dart';
 import '../providers/download_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/offline_mode_provider.dart';
+import '../providers/watchlist_provider.dart';
+import '../providers/watchlist_store.dart';
+import '../services/watchlist_ui_actions.dart';
 import '../profiles/active_profile_provider.dart';
 import '../profiles/profile.dart';
 import '../utils/provider_extensions.dart';
@@ -240,6 +243,9 @@ class MediaContextMenuState extends State<MediaContextMenu> {
     final canRemoveFromContinueWatching = mediaClient?.capabilities.continueWatchingRemoval ?? false;
     final canEditMetadata = isAdmin && supportsMetadataEdit(mediaClient, mediaKind);
 
+    final isOfflineNow = context.read<OfflineModeProvider?>()?.isOffline ?? false;
+    final watchlistProvider = context.read<WatchlistProvider?>();
+
     final menuActions = <_MenuAction>[];
 
     if (isCollection || isPlaylist) {
@@ -322,6 +328,27 @@ class MediaContextMenuState extends State<MediaContextMenu> {
 
       if (isVideoKind) {
         menuActions.add(_MenuAction(value: 'rate', icon: Symbols.star_rounded, label: t.mediaMenu.rate));
+      }
+
+      // Watchlist, for movies and shows only, backend-neutral, online only. A
+      // watchlist write is refused offline rather than queued (see
+      // `WatchlistActions.remove`), so offering it there would promise
+      // something the layer underneath will not do. Hidden, not failing.
+      if (!isOfflineNow && (mediaKind == MediaKind.movie || mediaKind == MediaKind.show)) {
+        final onWatchlist = WatchlistUiActions.isOnList(
+          store: context.read<WatchlistStore?>(),
+          provider: watchlistProvider,
+          item: mediaItem,
+        );
+        if (WatchlistUiActions.canOffer(provider: watchlistProvider, item: mediaItem, onList: onWatchlist)) {
+          menuActions.add(
+            _MenuAction(
+              value: 'watchlist_toggle',
+              icon: onWatchlist ? Symbols.bookmark_remove_rounded : Symbols.bookmark_add_rounded,
+              label: onWatchlist ? t.watchlist.remove : t.watchlist.add,
+            ),
+          );
+        }
       }
 
       // Edit Metadata — admin-only and backend-capability gated.
@@ -607,6 +634,12 @@ class MediaContextMenuState extends State<MediaContextMenu> {
               }
             }
           }
+          break;
+
+        case 'watchlist_toggle':
+          // Feedback lives in WatchlistUiActions so the snackbar and the
+          // haptic read the same here as on the detail screen.
+          await WatchlistUiActions.toggle(context, mediaItem!);
           break;
 
         case 'edit_metadata':

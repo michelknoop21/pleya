@@ -39,6 +39,7 @@ class _StubSource implements WatchlistSource {
   _StubSource(this.entries);
 
   final List<WatchlistEntry> entries;
+  final removed = <WatchlistMembership>[];
 
   @override
   WatchlistScopeId get scope =>
@@ -54,7 +55,7 @@ class _StubSource implements WatchlistSource {
   Future<WatchlistMembership> add(MediaItem item) async => WatchlistMembership(scope: scope, remoteKey: item.id);
 
   @override
-  Future<void> remove(WatchlistMembership membership) async {}
+  Future<void> remove(WatchlistMembership membership) async => removed.add(membership);
 
   @override
   Future<bool?> contains(MediaItem item) async => null;
@@ -63,6 +64,7 @@ class _StubSource implements WatchlistSource {
 void main() {
   late AppDatabase db;
   late WatchlistProvider provider;
+  late _StubSource source;
 
   setUp(() async {
     resetSharedPreferencesForTest();
@@ -73,10 +75,12 @@ void main() {
 
   tearDown(() async => db.close());
 
-  Future<void> pumpScreen(WidgetTester tester, List<WatchlistEntry> entries) async {
+  Future<void> pumpScreen(WidgetTester tester, List<WatchlistEntry> entries, {bool seerrConfigured = false}) async {
+    source = _StubSource(entries);
     provider = WatchlistProvider(
       snapshots: WatchlistSnapshotStore(cache: PlexApiCache.instance),
-      repository: WatchlistRepository(sources: [_StubSource(entries)]),
+      repository: WatchlistRepository(sources: [source]),
+      seerrConfigured: seerrConfigured,
     );
     // Load before pumping, and through runAsync: the snapshot store talks to a
     // real sqlite file, which the test binding's fake async never advances. The
@@ -162,5 +166,44 @@ void main() {
     // A focused card grows past its cell; hardEdge would shear the ring off at
     // the viewport edge on TV.
     expect(scrollView.clipBehavior, Clip.none);
+  });
+
+  testWidgets('Remove in the sheet reaches the source and drops the card', (tester) async {
+    await pumpScreen(tester, [entry(key: 'a', title: 'Sintel')]);
+
+    await tester.tap(find.byType(WatchlistCard));
+    await tester.pumpAndSettle();
+    expect(find.text(t.watchlist.remove), findsOneWidget);
+
+    await tester.tap(find.text(t.watchlist.remove));
+    await tester.pumpAndSettle();
+
+    expect(source.removed.single.remoteKey, 'a');
+    // The grid emptying is the confirmation, which is why no snackbar follows.
+    expect(find.byType(WatchlistCard), findsNothing);
+    expect(find.byType(SnackBar), findsNothing);
+  });
+
+  testWidgets('Request in the sheet goes to Seerr, and says so when there is no id to send', (tester) async {
+    final unavailable = WatchlistEntry(
+      key: 'a',
+      kind: MediaKind.movie,
+      item: MediaItem(id: 'a', backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Sintel'),
+      guid: 'plex://movie/a',
+      memberships: [WatchlistMembership(scope: scope, remoteKey: 'a')],
+      availability: WatchlistAvailability.notFound,
+      coverageComplete: true,
+    );
+    await pumpScreen(tester, [unavailable], seerrConfigured: true);
+
+    await tester.tap(find.byType(WatchlistCard));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(t.seerr.request));
+    await tester.pumpAndSettle();
+
+    // No TMDB id on the entry, so the request cannot be filed and the screen
+    // says that rather than opening an empty sheet.
+    expect(find.text(t.seerr.errorGeneric), findsOneWidget);
+    expect(source.removed, isEmpty);
   });
 }

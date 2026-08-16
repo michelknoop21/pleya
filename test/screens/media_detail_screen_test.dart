@@ -16,10 +16,17 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/media/watchlist_entry.dart';
+import 'package:pleya/media/watchlist_scope.dart';
+import 'package:pleya/media/watchlist_source.dart';
 import 'package:pleya/providers/download_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/watch_state_store.dart';
+import 'package:pleya/providers/watchlist_provider.dart';
+import 'package:pleya/providers/watchlist_store.dart';
 import 'package:pleya/screens/media_detail_screen.dart';
+import 'package:pleya/services/watchlist/watchlist_repository.dart';
+import 'package:pleya/services/watchlist/watchlist_snapshot_store.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/download_manager_service.dart';
 import 'package:pleya/services/download_storage_service.dart';
@@ -992,6 +999,115 @@ void main() {
       await tester.pump(const Duration(seconds: 30));
     });
   });
+
+  group('watchlist action button', () {
+    testWidgets('flips to Remove on the store, without asking the sources again', (tester) async {
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      PlexApiCache.initialize(db);
+      final source = _CountingWatchlistSource();
+      final watchlistProvider = WatchlistProvider(
+        snapshots: WatchlistSnapshotStore(cache: PlexApiCache.instance),
+        repository: WatchlistRepository(sources: [source]),
+      );
+      final watchlistStore = WatchlistStore();
+      final manager = MultiServerManager();
+      final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+      final watchStateStore = WatchStateStore();
+      addTearDown(() async {
+        watchStateStore.dispose();
+        multiServerProvider.dispose();
+        manager.dispose();
+        watchlistStore.dispose();
+        watchlistProvider.dispose();
+        await db.close();
+      });
+
+      // Load through runAsync: the snapshot store talks to real sqlite, which
+      // the test binding's fake async never advances. After this the screen's
+      // own ensureLoaded is a no-op, so the fetch count below stays readable.
+      await tester.runAsync(() => watchlistProvider.load());
+      expect(source.fetches, 1);
+
+      final movie = MediaItem(
+        id: 'movie_1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Sintel',
+        guid: 'plex://movie/abc',
+        serverId: 'server_1',
+      );
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
+              ChangeNotifierProvider<WatchStateStore>.value(value: watchStateStore),
+              ChangeNotifierProvider<WatchlistProvider>.value(value: watchlistProvider),
+              ChangeNotifierProvider<WatchlistStore>.value(value: watchlistStore),
+            ],
+            child: MaterialApp(
+              theme: monoTheme(dark: true),
+              home: withProfileNavigationScope(child: MediaDetailScreen(metadata: movie)),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byIcon(Symbols.bookmark_add_rounded), findsOneWidget);
+      expect(find.byIcon(Symbols.bookmark_remove_rounded), findsNothing);
+
+      await tester.tap(find.byIcon(Symbols.bookmark_add_rounded));
+      await tester.pump();
+      await tester.pump();
+
+      expect(source.added, hasLength(1));
+      expect(find.byIcon(Symbols.bookmark_remove_rounded), findsOneWidget);
+      expect(find.byIcon(Symbols.bookmark_add_rounded), findsNothing);
+      // The icon turned over on the optimistic patch; nothing was re-read.
+      expect(source.fetches, 1);
+    });
+  });
+}
+
+/// A watchlist source that counts what it was asked for, so a test can tell a
+/// local patch apart from a round trip.
+class _CountingWatchlistSource implements WatchlistSource {
+  int fetches = 0;
+  final added = <MediaItem>[];
+
+  @override
+  WatchlistScopeId get scope =>
+      WatchlistScopeId(profileId: 'p1', backend: MediaBackend.plex, accountId: 'acc', userId: 'usr');
+
+  @override
+  bool accepts(MediaItem item) => true;
+
+  @override
+  Future<List<WatchlistEntry>> fetch() async {
+    fetches++;
+    return const [];
+  }
+
+  @override
+  Future<WatchlistMembership> add(MediaItem item) async {
+    added.add(item);
+    return WatchlistMembership(scope: scope, remoteKey: 'abc');
+  }
+
+  @override
+  Future<void> remove(WatchlistMembership membership) async {}
+
+  @override
+  Future<bool?> contains(MediaItem item) async => null;
 }
 
 /// Never answers `fetchItemWithOnDeck`, standing in for the flaky-network case.

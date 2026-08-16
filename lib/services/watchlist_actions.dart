@@ -42,11 +42,18 @@ class WatchlistActions {
   ///
   /// Adding is single-source by construction: [WatchlistRepository.targetFor]
   /// picks the one place the title belongs, so there is nothing to compensate.
+  ///
+  /// [onAdded] hands the caller the membership the source just created. A list
+  /// held in memory needs it to stay in step: without it the only way to learn
+  /// where the title landed is a refetch, and then adding a title from the
+  /// detail screen would leave the kijklijst tab looking empty until something
+  /// else happened to reload it.
   static Future<WatchlistOutcome> add({
     required WatchlistRepository repository,
     required MediaItem item,
     required bool isOffline,
     WatchlistNotifier? notifier,
+    void Function(WatchlistMembership membership)? onAdded,
   }) async {
     final key = watchlistKeyForItem(item);
     if (key == null) return WatchlistOutcome.unsupported;
@@ -59,7 +66,8 @@ class WatchlistActions {
     events.notify(WatchlistEvent(key: key, changeType: WatchlistChangeType.added, optimistic: true));
 
     try {
-      await source.add(item);
+      final membership = await source.add(item);
+      onAdded?.call(membership);
       events.notify(WatchlistEvent(key: key, changeType: WatchlistChangeType.added));
       return WatchlistOutcome.added;
     } catch (e, st) {

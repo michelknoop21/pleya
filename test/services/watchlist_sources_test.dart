@@ -37,11 +37,7 @@ final plexScope = WatchlistScopeId(
   userId: 'home-user-uuid',
 );
 
-PlexAccountWatchlistSource plexSource({
-  required http.Client httpClient,
-  PlexAuth? resolved,
-  bool nullAuth = false,
-}) {
+PlexAccountWatchlistSource plexSource({required http.Client httpClient, PlexAuth? resolved, bool nullAuth = false}) {
   return PlexAccountWatchlistSource(
     client: PlexWatchlistClient.forTesting(httpClient: httpClient),
     resolveAuth: () async => nullAuth ? null : (resolved ?? auth()),

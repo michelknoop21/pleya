@@ -173,9 +173,7 @@ void main() {
     Future<WatchStateStore> storeWithProgressPatch() async {
       final store = WatchStateStore(now: () => patchedAt);
       addTearDown(store.dispose);
-      await _emit(
-        _event(changeType: WatchStateChangeType.progressUpdate, isNowWatched: false, viewOffset: 600000),
-      );
+      await _emit(_event(changeType: WatchStateChangeType.progressUpdate, isNowWatched: false, viewOffset: 600000));
       return store;
     }
 

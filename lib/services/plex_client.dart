@@ -3743,12 +3743,7 @@ class PlexClient
     };
     final response = await _getWithFailover(
       '/library/all',
-      queryParameters: {
-        'title': title,
-        'includeGuids': 1,
-        'X-Plex-Container-Size': 20,
-        'type': ?typeNumber,
-      },
+      queryParameters: {'title': title, 'includeGuids': 1, 'X-Plex-Container-Size': 20, 'type': ?typeNumber},
     );
 
     return identity.pickMatch(_candidatesWithGuids(response));

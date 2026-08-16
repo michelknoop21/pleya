@@ -218,6 +218,44 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
             ),
           );
 
+    // Watchlist, for movies and shows, online only. Watching both the provider
+    // and the store is what makes the icon flip on tap: the store carries the
+    // optimistic patch, the provider the list the patch is folded over.
+    final watchlistProvider = context.watch<WatchlistProvider?>();
+    final watchlistStore = context.watch<WatchlistStore?>();
+    final isWatchlistKind = metadata.isMovie || metadata.isShow;
+    final onWatchlist = WatchlistUiActions.isOnList(store: watchlistStore, provider: watchlistProvider, item: metadata);
+
+    // Add and Remove are different words on the same button, and only a loaded
+    // list tells them apart. The provider guards this, so it costs one fetch
+    // per profile session rather than one per title opened.
+    if (!widget.isOffline && isWatchlistKind && watchlistProvider != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(watchlistProvider.ensureLoaded());
+      });
+    }
+
+    void onWatchlistPressed() => unawaited(WatchlistUiActions.toggle(context, metadata));
+
+    final watchlistAction =
+        (!widget.isOffline &&
+            isWatchlistKind &&
+            WatchlistUiActions.canOffer(provider: watchlistProvider, item: metadata, onList: onWatchlist))
+        ? FocusableAction(
+            debugLabel: 'detail_watchlist',
+            onPressed: onWatchlistPressed,
+            builder: (context, state) => iconActionButton(
+              state,
+              onPressed: onWatchlistPressed,
+              icon: AppIcon(
+                onWatchlist ? Symbols.bookmark_remove_rounded : Symbols.bookmark_add_rounded,
+                fill: onWatchlist ? 1 : 0,
+              ),
+              tooltip: onWatchlist ? t.watchlist.remove : t.watchlist.add,
+            ),
+          )
+        : null;
+
     // Request via Jellyseerr/Overseerr — only when a server is configured, the
     // item is a movie/show, and we're online (needs a TMDB-id lookup).
     final seerrConfigured = context.watch<SeerrProvider?>()?.isConfigured ?? false;
@@ -240,6 +278,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       ?shuffleAction,
       ?downloadAction,
       watchedAction,
+      ?watchlistAction,
       ?requestAction,
       ?moreActionsAction,
     ];
@@ -271,7 +310,14 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
         return compact;
       }
 
-      final medium = <FocusableAction>[playAction, ?downloadAction, watchedAction, ?requestAction, ?moreActionsAction];
+      final medium = <FocusableAction>[
+        playAction,
+        ?downloadAction,
+        watchedAction,
+        ?watchlistAction,
+        ?requestAction,
+        ?moreActionsAction,
+      ];
       if (!maxWidth.isFinite || estimatedRowWidth(medium) <= maxWidth) return medium;
 
       final compact = <FocusableAction>[playAction, watchedAction, ?moreActionsAction];

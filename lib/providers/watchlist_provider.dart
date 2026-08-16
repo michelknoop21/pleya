@@ -3,18 +3,22 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../media/ids.dart';
+import '../media/media_item.dart';
 import '../media/media_server_client.dart';
 import '../services/api_cache.dart';
 import '../services/watchlist/plex_account_watchlist_source.dart';
 import '../services/watchlist/watchlist_source_factory.dart';
 import '../media/watchlist_entry.dart';
+import '../media/watchlist_key.dart';
 import '../media/watchlist_scope.dart';
 import '../media/watchlist_source.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../services/watchlist/watchlist_availability_resolver.dart';
 import '../services/watchlist/watchlist_repository.dart';
 import '../services/watchlist/watchlist_snapshot_store.dart';
+import '../services/watchlist_actions.dart';
 import '../utils/app_logger.dart';
+import '../utils/external_ids.dart';
 import '../utils/global_key_utils.dart';
 
 /// Whether a title can be requested through Seerr, and how loudly to offer it.
@@ -278,6 +282,84 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
     if (!seerrConfigured) return WatchlistRequestability.unsupported;
     if (entry.availability != WatchlistAvailability.notFound) return WatchlistRequestability.unsupported;
     return entry.coverageComplete ? WatchlistRequestability.ready : WatchlistRequestability.resolvable;
+  }
+
+  /// Load once per profile, and only if nothing has yet.
+  ///
+  /// The detail screen needs this: its button has to read Add or Remove
+  /// correctly on first paint, and only a loaded list can tell those apart.
+  /// The guard is what keeps that affordable, one fetch per profile session
+  /// rather than one per title opened.
+  Future<void> ensureLoaded({bool offline = false}) async {
+    if (_hasLoaded || _isLoading || repository == null) return;
+    await load(offline: offline);
+  }
+
+  /// Put [item] on the list and keep the in-memory list in step.
+  ///
+  /// The new entry is inserted locally rather than refetched. A refetch after
+  /// every add would put a spinner over a list that is already right, and the
+  /// source hands back the membership needed to build the row anyway.
+  Future<WatchlistOutcome> addToWatchlist(MediaItem item, {required bool isOffline, ExternalIds? externalIds}) async {
+    final repository = this.repository;
+    if (repository == null) return WatchlistOutcome.unsupported;
+
+    final key = watchlistKeyForItem(item, externalIds: externalIds);
+    if (key == null) return WatchlistOutcome.unsupported;
+
+    WatchlistMembership? created;
+    final outcome = await WatchlistActions.add(
+      repository: repository,
+      item: item,
+      isOffline: isOffline,
+      onAdded: (membership) => created = membership,
+    );
+
+    final membership = created;
+    if (outcome != WatchlistOutcome.added || membership == null) return outcome;
+
+    final existing = entryForKey(key);
+    final entry = WatchlistEntry(
+      key: key,
+      kind: item.kind,
+      item: item,
+      guid: item.guid,
+      externalIds: externalIds ?? const ExternalIds(),
+      memberships: [membership],
+      // A title added from a server item is on that server by definition, and
+      // saying so beats making the card look it up again. A discover item with
+      // no server stays unknown, which is the truth about it.
+      availability: item.serverId != null ? WatchlistAvailability.available : WatchlistAvailability.unknown,
+      coverageComplete: item.serverId != null,
+      lastKnownMatch: item.serverId != null ? item : null,
+    );
+
+    _entries = [if (existing == null) entry else existing.mergeWith(entry), ..._entries.where((e) => e.key != key)];
+    safeNotifyListeners();
+    return outcome;
+  }
+
+  /// Take [entry] off every list Pleya merged it from.
+  ///
+  /// A partial failure is not swallowed: the list is then in a state neither
+  /// the user nor the app chose, so it is refetched before the caller reports
+  /// anything, and the caller still learns that it went half way.
+  Future<WatchlistOutcome> removeFromWatchlist(WatchlistEntry entry, {required bool isOffline}) async {
+    final repository = this.repository;
+    if (repository == null) return WatchlistOutcome.unsupported;
+
+    final outcome = await WatchlistActions.remove(sources: repository.sources, entry: entry, isOffline: isOffline);
+
+    switch (outcome) {
+      case WatchlistOutcome.removed:
+        _entries = _entries.where((e) => e.key != entry.key).toList();
+        safeNotifyListeners();
+      case WatchlistOutcome.partiallyFailed:
+        await load(offline: isOffline);
+      case _:
+        break;
+    }
+    return outcome;
   }
 
   /// Drop everything and rebind. Called on a profile switch.

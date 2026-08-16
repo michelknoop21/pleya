@@ -5,10 +5,14 @@ import 'package:provider/provider.dart';
 import '../i18n/strings.g.dart';
 import '../media/media_kind.dart';
 import '../media/watchlist_entry.dart';
+import '../models/seerr/seerr_media.dart';
 import '../providers/offline_mode_provider.dart';
 import '../providers/watchlist_provider.dart';
 import '../services/settings_service.dart';
+import '../services/watchlist_ui_actions.dart';
+import '../utils/snackbar_helper.dart';
 import '../widgets/desktop_app_bar.dart';
+import '../widgets/seerr_request_sheet.dart';
 import '../widgets/media_grid_delegate.dart';
 import '../widgets/settings_builder.dart';
 import '../widgets/sliver_cross_axis_layout_builder.dart';
@@ -83,9 +87,38 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   Future<void> _openSheet(WatchlistProvider provider, WatchlistEntry entry) async {
     final action = await showWatchlistItemSheet(context, entry: entry, requestability: provider.requestability(entry));
     if (action == null || !mounted) return;
-    // Wiring the two actions to Seerr and to WatchlistActions lands with the
-    // detail-screen and context-menu work; the sheet already reports which one
-    // the user picked.
+    switch (action) {
+      case WatchlistSheetAction.request:
+        await _request(entry);
+      case WatchlistSheetAction.remove:
+        // No snackbar on success: the card leaves the grid, and that is the
+        // confirmation. A failure still speaks, because there nothing moves.
+        await WatchlistUiActions.remove(context, entry);
+      case WatchlistSheetAction.cancel:
+        break;
+    }
+  }
+
+  /// Open the Seerr request sheet for [entry].
+  ///
+  /// The TMDB id comes off the entry rather than out of a lookup: the sources
+  /// already parsed it from Plex' `Guid` array or Jellyfin's `ProviderIds`, and
+  /// a catalogue item has no server to ask a second time.
+  Future<void> _request(WatchlistEntry entry) async {
+    final tmdb = entry.externalIds.tmdb;
+    if (tmdb == null) {
+      showErrorSnackBar(context, t.seerr.errorGeneric);
+      return;
+    }
+    final requested = await SeerrRequestSheet.show(
+      context,
+      media: SeerrMedia(
+        tmdbId: tmdb,
+        mediaType: entry.kind == MediaKind.show ? 'tv' : 'movie',
+        title: entry.item.displayTitle,
+      ),
+    );
+    if (requested == true && mounted) showSuccessSnackBar(context, t.seerr.requestSuccess);
   }
 
   @override
