@@ -15,6 +15,36 @@ class ExternalIds {
 
   bool get hasAny => imdb != null || tmdb != null || tvdb != null;
 
+  /// Round-trip form for cached rows. Absent keys stay absent rather than
+  /// serialising as null, so an old row without a field reads back the same
+  /// as a new one that never had it.
+  Map<String, Object?> toJson() => {
+    if (imdb != null) 'imdb': imdb,
+    if (tmdb != null) 'tmdb': tmdb,
+    if (tvdb != null) 'tvdb': tvdb,
+  };
+
+  factory ExternalIds.fromJson(Map<String, Object?> json) {
+    final imdb = json['imdb'];
+    final tmdb = json['tmdb'];
+    final tvdb = json['tvdb'];
+    return ExternalIds(
+      imdb: imdb is String && imdb.isNotEmpty ? imdb : null,
+      tmdb: tmdb is int ? tmdb : int.tryParse('$tmdb'),
+      tvdb: tvdb is int ? tvdb : int.tryParse('$tvdb'),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is ExternalIds && other.imdb == imdb && other.tmdb == tmdb && other.tvdb == tvdb;
+
+  @override
+  int get hashCode => Object.hash(imdb, tmdb, tvdb);
+
+  @override
+  String toString() => 'ExternalIds(imdb: $imdb, tmdb: $tmdb, tvdb: $tvdb)';
+
   factory ExternalIds.fromGuids(List<dynamic> guids) {
     String? imdb;
     int? tmdb;

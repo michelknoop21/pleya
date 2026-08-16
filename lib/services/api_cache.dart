@@ -86,6 +86,13 @@ abstract class ApiCache {
         );
   }
 
+  /// Drop a single cached endpoint. Pinned rows are removed too; call
+  /// [unpin] first only when the row should survive as unpinned.
+  Future<void> delete(ServerId serverId, String endpoint) async {
+    final key = _buildKey(serverId, endpoint);
+    await (_db.delete(_db.apiCache)..where((t) => t.cacheKey.equals(key))).go();
+  }
+
   Future<void> deleteForServer(ServerId serverId) async {
     await (_db.delete(_db.apiCache)..where((t) => t.cacheKey.like('$serverId:%'))).go();
   }

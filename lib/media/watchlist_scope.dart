@@ -65,6 +65,35 @@ class WatchlistScopeId {
     Uri.encodeComponent(userId),
   ].join(_separator);
 
+  Map<String, Object?> toJson() => {
+    'profileId': profileId,
+    'backend': backend.id,
+    'accountId': accountId,
+    'userId': userId,
+  };
+
+  /// Rebuild from a cached row, or null when the row predates a field or was
+  /// written by a version that spelled a backend differently. A scope that
+  /// cannot be read back is not guessed at: an entry filed under the wrong
+  /// scope is the bug this class exists to prevent.
+  static WatchlistScopeId? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final profileId = json['profileId'];
+    final backend = json['backend'];
+    final accountId = json['accountId'];
+    final userId = json['userId'];
+    if (profileId is! String || backend is! String || accountId is! String || userId is! String) return null;
+    if (backend != MediaBackend.plex.id && backend != MediaBackend.jellyfin.id && backend != MediaBackend.local.id) {
+      return null;
+    }
+    return WatchlistScopeId(
+      profileId: profileId,
+      backend: MediaBackend.fromId(backend),
+      accountId: accountId,
+      userId: userId,
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

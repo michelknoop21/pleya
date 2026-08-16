@@ -51,6 +51,24 @@ class WatchlistMembership {
   WatchlistMembership copyWith({int? addedAt}) =>
       WatchlistMembership(scope: scope, remoteKey: remoteKey, addedAt: addedAt ?? this.addedAt);
 
+  Map<String, Object?> toJson() => {
+    'scope': scope.toJson(),
+    'remoteKey': remoteKey,
+    if (addedAt != null) 'addedAt': addedAt,
+  };
+
+  /// Null when the row is unreadable. A membership without a scope or a
+  /// remote key cannot be removed later, so keeping it would put a title on
+  /// the list that the user cannot get off it again.
+  static WatchlistMembership? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final scope = WatchlistScopeId.fromJson(json['scope']);
+    final remoteKey = json['remoteKey'];
+    if (scope == null || remoteKey is! String || remoteKey.isEmpty) return null;
+    final addedAt = json['addedAt'];
+    return WatchlistMembership(scope: scope, remoteKey: remoteKey, addedAt: addedAt is int ? addedAt : null);
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -222,6 +240,83 @@ class WatchlistEntry {
       lastKnownMatch: lastKnownMatch ?? this.lastKnownMatch,
     );
   }
+
+  Map<String, Object?> toJson() => {
+    'key': key,
+    'kind': kind.id,
+    'item': item.toJson(),
+    if (guid != null) 'guid': guid,
+    'externalIds': externalIds.toJson(),
+    if (posterRef != null) 'posterRef': posterRef,
+    'memberships': memberships.map((m) => m.toJson()).toList(),
+    'availability': availability.name,
+    'coverageComplete': coverageComplete,
+    if (lastKnownMatch != null) 'lastKnownMatch': lastKnownMatch!.toJson(),
+  };
+
+  /// Null when the row cannot be read back into a valid entry.
+  ///
+  /// The invariants hold on the way in as well as at construction: a row whose
+  /// memberships all failed to parse is not an entry with an empty list, it is
+  /// not an entry at all, and dropping it beats resurrecting a title nobody
+  /// can remove.
+  static WatchlistEntry? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final key = json['key'];
+    final itemJson = json['item'];
+    if (key is! String || key.isEmpty || itemJson is! Map<String, dynamic>) return null;
+
+    final memberships = <WatchlistMembership>[];
+    final rawMemberships = json['memberships'];
+    if (rawMemberships is List) {
+      for (final raw in rawMemberships) {
+        final membership = WatchlistMembership.fromJson(raw);
+        if (membership != null) memberships.add(membership);
+      }
+    }
+    if (memberships.isEmpty) return null;
+
+    final MediaItem item;
+    try {
+      item = MediaItem.fromJson(itemJson);
+    } catch (_) {
+      return null;
+    }
+
+    final lastKnownJson = json['lastKnownMatch'];
+    MediaItem? lastKnownMatch;
+    if (lastKnownJson is Map<String, dynamic>) {
+      try {
+        lastKnownMatch = MediaItem.fromJson(lastKnownJson);
+      } catch (_) {
+        lastKnownMatch = null;
+      }
+    }
+
+    final externalIds = json['externalIds'];
+    final guid = json['guid'];
+    final posterRef = json['posterRef'];
+
+    return WatchlistEntry(
+      key: key,
+      kind: MediaKind.fromString(json['kind'] as String?),
+      item: item,
+      guid: guid is String ? guid : null,
+      externalIds: externalIds is Map<String, Object?> ? ExternalIds.fromJson(externalIds) : const ExternalIds(),
+      posterRef: posterRef is String ? posterRef : null,
+      memberships: memberships,
+      availability: _availabilityFromName(json['availability']),
+      coverageComplete: json['coverageComplete'] == true,
+      lastKnownMatch: lastKnownMatch,
+    );
+  }
+
+  static WatchlistAvailability _availabilityFromName(Object? name) => switch (name) {
+    'checking' => WatchlistAvailability.checking,
+    'available' => WatchlistAvailability.available,
+    'notFound' => WatchlistAvailability.notFound,
+    _ => WatchlistAvailability.unknown,
+  };
 
   /// "Recently added", newest first.
   ///
