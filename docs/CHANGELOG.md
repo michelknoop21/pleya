@@ -2,6 +2,29 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-17] Drie tvOS-ingrepen: overlappende herotekst, onzichtbare focus, en het canvas dat maar half zo groot was
+
+Op `main`, drie commits: `d16fa4f`, `e2c123f`, `0f780f9`.
+
+### Fixed
+- **De herotekst op Libraries liep over de kop van de eerste posterrij.** De onderrand van het tekstblok kwam uit `firstHubPeekHeight`, de peek-formule van het TV-homescherm. Daar hangt de rail in een `AnimatedSlide` die hem precies op die peek houdt, dus daar klopt hij. Op Libraries staat de rail gedokt op `bottom: 0` en meet hij zichzelf op zijn volle `railHeight`, die groter is met de focusreserve, de peek van de volgende hub en de onderpadding. Het verschil is precies de strook waar het rijlabel staat, en `_RailBackgroundBleed` tekent daar een verloop van 0,7 in plaats van een dekkend vlak, dus de twee teksten mengden zichtbaar. `TvBrowseRailLayout.heroBottomInsetForDockedRail` staat nu naast `firstHubPeekHeight` en legt in zijn dartdoc vast wanneer je welke nodig hebt. Zie [DEC-027](DECISIONS.md#dec-027).
+- **De bovengrens die een minimale hoogte voor het infoblok reserveerde is weg.** Die kon de onderrand terug de rail in duwen, precies de fout die hierboven wordt gerepareerd. Bij weinig hoogte laat het blok nu synopsisregels vallen in plaats van zichzelf als geheel te verkleinen, zodat de titel op leesafstand leesbaar blijft. Dat gaat via `TvSpotlightBackground.constrainInfoToAvailableHeight`, expliciet per scherm aan te zetten: afleiden uit "heeft geen knoppen" zou stilletjes omslaan zodra Libraries er een krijgt.
+- **De gefocuste settings-rij was op tv niet van een ongefocuste te onderscheiden.** De markering was er nog, hij werd overgeschilderd. Een settings-rij is een kale `ListTile`, en die laat zijn focus-highlight tekenen als inkt op de dichtstbijzijnde `Material`, hier de Scaffold. Flutter tekent die inkt vóór de widgets eronder, dus toen `SettingsGroup` er een dekkende kaart van `t.surface` tussen zette landde de highlight op de Scaffold en legde de kaart hem meteen weer toe. Een gefocuste rij was daardoor pixelidentiek aan een ongefocuste, terwijl navigeren gewoon bleef werken. `SettingsPage._grouped()` vouwt alle rijenlijsten tot kaarten, dus elk subscherm ging in één keer mee. De kaart heeft nu een eigen transparante `Material`, en elke rij loopt door `SettingRowFocus` met `descendantsAreFocusable: false`, zodat er precies één focus-eigenaar per rij is en de D-pad één stop per rij krijgt.
+
+### Changed
+- **De Apple TV-vergroting van 2,00 naar 1,85.** Pleya tekent op tvOS niet op het oppervlak dat het systeem aanlevert maar op de helft daarvan, waarna `_AppleTvScale` de uitvoer weer opblaast. Het canvas is daardoor 960x540, en `TvLayoutConstants.scaleForHeight` ziet 540, rekent 0,5 en wordt door zijn eigen clamp op 0,85 gezet: netto 1,7 keer zo groot als het ontwerpdoel van 1080 hoog. Met 1,85 wordt het canvas 1038x584. Zie [DEC-028](DECISIONS.md#dec-028).
+
+### Added
+- **`test/widgets/tv_hero_rail_clearance_test.dart`** zet de echte hero boven een echte gedokte rail met twee hubs en meet de vier tekstblokken met `getRect`. Eén test laat zien dat de oude peek-formule daar daadwerkelijk overlap oplevert, zodat de assertie aantoonbaar kan falen.
+- **`test/screens/settings/settings_row_focus_test.dart`** bewijst dat het focusvlak van de gefocuste rij verschilt van dat van de buren in donker én licht, dat er precies één rij gemarkeerd is, dat de markering niet achterblijft, dat `getRect` voor en na focus identiek is, en dat omlaag van rij één direct op rij twee landt.
+
+### Notes
+- **De meting waar dit allemaal op hangt.** Een tijdelijke logregel in de hero gaf `size=Size(960.0, 540.0) dpr=4.0 textScaler=geen`. Onafhankelijke controle op de schermafdruk: de icoonbadge in Instellingen is 36 logische punten en meet 138 fysieke pixels, wat dpr 4 bevestigt. De logregel is daarna verwijderd.
+- **De richtwaarden uit de opdracht klopten grotendeels niet.** De tekst is op tv niet groot, de chrome eromheen wel. Een settings-rij heeft een titel van 13 punten en is 81 punten hoog door de badge van 36 en de padding; de hele instellingen-stack heeft geen enkele tv-tak voor maatvoering. `FocusTheme.focusScale` is 1,05 en niet 1,08, `TvLayoutConstants.horizontalInset` is 72 en niet 48, en de icooncontainer is 36 en dus al kleiner dan het voorstel van 38 tot 40. Fonts verkleinen zou hier de verkeerde knop zijn.
+- **Meerdere plekken kiezen bewust een grotere maat voor tv en vermenigvuldigen die daarna met 0,85**, waardoor de tv-waarde logisch kleiner uitkomt dan de mobiele: de actieknop op het detailscherm is 46 × 0,85 = 39,1 tegen 48,0 op mobiel, het afspeelicoon 18,7 tegen 20,0, het afspeellabel 14,5 tegen 16,0. Op het scherm zijn ze alsnog groter door de globale factor. Wie alleen de logische getallen leest, leest het omgekeerde van wat de gebruiker ziet.
+- **Nog niet aangeraakt, bewust:** de rijhoogtes, de bibliotheekkop, de railmaten en de focusschaal halen hun ruimte uit dezelfde marge die de schaalwijziging al vrijmaakt. Samen uitgevoerd zou je twee keer verkleinen en niet meer weten welke wijziging het effect gaf. De clamp in `scaleForHeight` blijft ook staan: bij 584 punten blijft die actief, dus die factor is nog steeds een constante en geen tweede schaalmechanisme dat meebeweegt.
+- **Losse opruiming gevonden, niet gedaan:** `mono_theme.dart:129-136` gebruikt `textTheme.copyWith` voor `displayLarge` en `titleMedium`. `copyWith` op een `TextTheme` vervángt de stijl, dus die twee verliezen hun `fontSize` en `height` uit `Typography.englishLike2021` en vallen terug op de omringende `DefaultTextStyle`. Bewust niet in deze ronde gerepareerd, want dan verandert typografie tegelijk met de schaal.
+
 ## [2026-08-17] Dependency-onderhoud kreeg een proces, en dat proces ving meteen twee stille regressies
 
 Op branch `deps/onderhoudsronde-aug2026`, zeven commits vanaf `e9b1b0b`.
