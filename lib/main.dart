@@ -970,7 +970,7 @@ class _AppleTvScale extends StatelessWidget {
   final Widget? child;
   const _AppleTvScale({required this.child});
 
-  static const double _scale = 2.0;
+  static const double _scale = 1.85;
 
   @override
   Widget build(BuildContext context) {
