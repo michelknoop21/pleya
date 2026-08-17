@@ -3,8 +3,7 @@ import 'package:http/http.dart' as http;
 
 import '../media/media_item.dart';
 import '../utils/external_ids.dart';
-import '../utils/media_server_http_client.dart';
-import '../utils/media_server_timeouts.dart';
+import 'plex_cloud_http_client.dart';
 import 'plex_mappers.dart';
 
 /// Which slice of the watchlist to ask for. The value is a **path segment**,
@@ -46,8 +45,8 @@ class PlexWatchlistItem {
 /// plex.tv account plus a Home user, not to a server; and the token it needs is
 /// the account token, while `PlexClient` puts the **server** token in
 /// `defaultHeaders`, which `MediaServerHttpClient` merges into every request
-/// including absolute-URL ones. Modelled on `PlexAuthService` instead: no
-/// default headers, everything passed per call.
+/// including absolute-URL ones. That property is not this client's own doing:
+/// it lives in [PlexCloudHttpClient], which every plex.tv caller shares.
 ///
 /// The client stays deliberately dumb. It does not decide which token it may
 /// use; `PlexAccountWatchlistSource` resolves scoped auth per operation and
@@ -67,21 +66,12 @@ class PlexWatchlistClient {
   /// total it never delivers cannot spin forever.
   static const int _maxPages = 100;
 
-  final MediaServerHttpClient _http;
-  final String _clientIdentifier;
-  final String _product;
+  final PlexCloudHttpClient _cloud;
 
-  PlexWatchlistClient._(this._http, this._clientIdentifier, this._product);
+  PlexWatchlistClient._(this._cloud);
 
   factory PlexWatchlistClient({required String clientIdentifier, String product = 'Pleya'}) {
-    return PlexWatchlistClient._(
-      MediaServerHttpClient(
-        connectTimeout: MediaServerTimeouts.plexTvConnect,
-        receiveTimeout: MediaServerTimeouts.plexTvReceive,
-      ),
-      clientIdentifier,
-      product,
-    );
+    return PlexWatchlistClient._(PlexCloudHttpClient(clientIdentifier: clientIdentifier, product: product));
   }
 
   @visibleForTesting
@@ -90,22 +80,20 @@ class PlexWatchlistClient {
     String clientIdentifier = 'test-client',
     String product = 'Pleya',
   }) {
-    return PlexWatchlistClient._(MediaServerHttpClient(client: httpClient), clientIdentifier, product);
+    return PlexWatchlistClient._(
+      PlexCloudHttpClient(clientIdentifier: clientIdentifier, product: product, httpClient: httpClient),
+    );
   }
 
-  void dispose() => _http.close();
+  void dispose() => _cloud.dispose();
 
   /// The complete allowed header set for every call this client makes.
   ///
-  /// Kept to what `PlexAuthService` already sends. Anything beyond this leaks
-  /// device or server detail to plex.tv that the watchlist does not need, and a
-  /// test pins this set exactly.
-  Map<String, String> headersForToken(String token) => {
-    'Accept': 'application/json',
-    'X-Plex-Product': _product,
-    'X-Plex-Client-Identifier': _clientIdentifier,
-    'X-Plex-Token': token,
-  };
+  /// No extra headers are declared, so this is exactly the four the transport
+  /// boundary sends by default: what `PlexAuthService` already uses. Anything
+  /// beyond that would leak device or server detail to plex.tv that the
+  /// watchlist does not need, and a test pins this set exactly.
+  Map<String, String> headersForToken(String token) => _cloud.headersForToken(token);
 
   /// Every title on the watchlist, across all pages.
   ///
@@ -121,13 +109,13 @@ class PlexWatchlistClient {
     PlexWatchlistType? type,
     String? sort,
   }) async {
-    final headers = headersForToken(token);
     final items = <PlexWatchlistItem>[];
 
     var start = 0;
     for (var page = 0; page < _maxPages; page++) {
-      final response = await _http.get(
+      final response = await _cloud.get(
         '$discoverBase/library/sections/watchlist/${filter.pathSegment}',
+        token: token,
         queryParameters: {
           'includeCollections': '1',
           'includeExternalMedia': '1',
@@ -136,9 +124,7 @@ class PlexWatchlistClient {
           'X-Plex-Container-Start': '$start',
           'X-Plex-Container-Size': '$pageSize',
         },
-        headers: headers,
       );
-      throwIfHttpError(response);
 
       final container = _mediaContainer(response.data);
       if (container == null) break;
@@ -183,23 +169,14 @@ class PlexWatchlistClient {
   /// array, and the `watchlistedAt` key is simply absent once a title has been
   /// removed. The call still answers 200 in that case.
   Future<int?> fetchWatchlistedAt({required String token, required String ratingKey}) async {
-    final response = await _http.get(
-      '$metadataBase/library/metadata/$ratingKey/userState',
-      headers: headersForToken(token),
-    );
-    throwIfHttpError(response);
+    final response = await _cloud.get('$metadataBase/library/metadata/$ratingKey/userState', token: token);
 
     final userState = _mediaContainer(response.data)?['UserState'];
     return userState is Map ? _asInt(userState['watchlistedAt']) : null;
   }
 
   Future<void> _action(String action, {required String token, required String ratingKey}) async {
-    final response = await _http.put(
-      '$discoverBase/actions/$action',
-      queryParameters: {'ratingKey': ratingKey},
-      headers: headersForToken(token),
-    );
-    throwIfHttpError(response);
+    await _cloud.put('$discoverBase/actions/$action', token: token, queryParameters: {'ratingKey': ratingKey});
   }
 
   static PlexWatchlistItem _mapItem(Map<String, dynamic> json) {

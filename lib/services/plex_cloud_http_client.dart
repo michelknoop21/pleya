@@ -33,16 +33,24 @@ class PlexCloudHttpClient {
   /// wants `X-Plex-Provider-Version`, the watchlist hosts want nothing extra.
   /// Passing it per call would mean every method has to remember it, and one
   /// forgotten method would then behave differently for no visible reason.
+  /// [httpClient] is the injection seam. Tests pass a `MockClient`, and so do
+  /// the `forTesting` factories of the clients built on top of this one, which
+  /// is why it lives on the ordinary constructor: a seam that only test code
+  /// may touch cannot be reached from another test seam without tripping the
+  /// analyzer.
   factory PlexCloudHttpClient({
     required String clientIdentifier,
     String product = 'Pleya',
     Map<String, String> extraHeaders = const {},
+    http.Client? httpClient,
   }) {
     return PlexCloudHttpClient._(
-      MediaServerHttpClient(
-        connectTimeout: MediaServerTimeouts.plexTvConnect,
-        receiveTimeout: MediaServerTimeouts.plexTvReceive,
-      ),
+      httpClient != null
+          ? MediaServerHttpClient(client: httpClient)
+          : MediaServerHttpClient(
+              connectTimeout: MediaServerTimeouts.plexTvConnect,
+              receiveTimeout: MediaServerTimeouts.plexTvReceive,
+            ),
       clientIdentifier,
       product,
       _sanitizeExtraHeaders(extraHeaders),
@@ -56,11 +64,11 @@ class PlexCloudHttpClient {
     String product = 'Pleya',
     Map<String, String> extraHeaders = const {},
   }) {
-    return PlexCloudHttpClient._(
-      MediaServerHttpClient(client: httpClient),
-      clientIdentifier,
-      product,
-      _sanitizeExtraHeaders(extraHeaders),
+    return PlexCloudHttpClient(
+      clientIdentifier: clientIdentifier,
+      product: product,
+      extraHeaders: extraHeaders,
+      httpClient: httpClient,
     );
   }
 
