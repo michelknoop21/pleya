@@ -176,20 +176,33 @@ except Exception:
 
 # .fvmrc, de workflows en de lokale SDK moeten hetzelfde zeggen. Loopt dat
 # uiteen, dan is elke andere meting in dit rapport op een andere SDK gedaan dan
-# CI draait.
+# CI draait. Een workflow mag de versie op twee manieren opgeven: letterlijk
+# (`flutter-version:`, moet gelijk zijn aan de pin) of via het bestand
+# (`flutter-version-file: .fvmrc`, de bedoelde vorm). Een flutter-action-stap
+# zonder allebei valt terug op de kop van het kanaal en is dus geen pin.
 check_flutter_drift() {
   local pin; pin="$(pinned_flutter)"
   if [ -z "$pin" ]; then
-    record flutter-pin-drift 1 UNKNOWN "?" "$pin" "kon .fvmrc niet lezen"
+    record flutter-pin-drift 1 UNKNOWN "?" "?" "kon .fvmrc niet lezen"
     return
   fi
   local mismatched=()
-  local f v
+  local f v steps pinned_steps
   for f in "$ROOT"/.github/workflows/*.yml; do
     [ -f "$f" ] || continue
     while IFS= read -r v; do
-      [ "$v" = "$pin" ] || mismatched+=("$(basename "$f"):$v")
+      [ "$v" = "$pin" ] || mismatched+=("$(basename "$f") flutter-version:$v")
     done < <(sed -n 's/.*flutter-version: *"\{0,1\}\([0-9][^"]*\)"\{0,1\}.*/\1/p' "$f")
+    while IFS= read -r v; do
+      [ "$v" = ".fvmrc" ] || mismatched+=("$(basename "$f") flutter-version-file:$v")
+    done < <(sed -n 's/.*flutter-version-file: *"\{0,1\}\([^" ]*\)"\{0,1\}.*/\1/p' "$f")
+    # grep -c geeft 0 én exitcode 1 als er niets staat; die 1 mag hier niets
+    # betekenen, anders telt het script de nul dubbel.
+    steps="$(grep -c "uses: subosito/flutter-action@" "$f" 2>/dev/null)" || steps=0
+    pinned_steps="$(grep -c "flutter-version" "$f" 2>/dev/null)" || pinned_steps=0
+    if [ "$steps" -gt "$pinned_steps" ]; then
+      mismatched+=("$(basename "$f") $((steps - pinned_steps)) flutter-action-stap(pen) zonder versie")
+    fi
   done
   local local_v=""
   if command -v flutter >/dev/null 2>&1; then
@@ -201,7 +214,7 @@ check_flutter_drift() {
   if [ ${#mismatched[@]} -eq 0 ]; then
     record flutter-pin-drift 1 CURRENT "$pin overal gelijk" "" ""
   else
-    record flutter-pin-drift 1 OUTDATED "$pin" "${mismatched[*]}" \
+    record flutter-pin-drift 1 OUTDATED "$pin" "${#mismatched[@]} afwijking(en)" \
       "deze plekken wijken af van .fvmrc: ${mismatched[*]}"
   fi
 }
