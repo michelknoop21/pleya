@@ -24,7 +24,7 @@ set -uo pipefail
 # strict-ring, 2 rapport incompleet doordat minimaal één check UNKNOWN is.
 # 2 wint van 1 — een incompleet rapport zegt niets over wat er nog meer misging.
 #
-# Het bewijsniveau per component staat als ring in het rapport; zie DEC-023.
+# Het bewijsniveau per component staat als ring in het rapport; zie DEC-025.
 # --strict-through-ring N laat alleen componenten met ring <= N de run laten
 # falen, zodat een ring-3-set die bewust op een cyclus wacht de wekelijkse
 # signalering niet rood zet.
@@ -347,7 +347,7 @@ check_forks() {
 # De analyzer-stack is bewust bevroren. Een nieuwere analyzer laat drift_dev
 # zonder compilefout relaties uit app_database.g.dart weglaten: de foreign key,
 # de ON DELETE CASCADE, de writepropagatie en de reference managers. Gemeten,
-# niet vermoed — zie DEC-024. Deze regel is BLOCKED en geen OUTDATED, want
+# niet vermoed — zie DEC-026. Deze regel is BLOCKED en geen OUTDATED, want
 # "loop achter" is hier de bedoeling en niet een achterstand.
 ANALYZER_STACK=(analyzer dart_code_linter)
 
@@ -377,17 +377,17 @@ except Exception: pass' 2>/dev/null)"
   if [ ${#behind[@]} -eq 0 ]; then
     record analyzer-stack 2 CURRENT "$(printf '%s ' "${ANALYZER_STACK[@]}")" "" ""
   else
-    record analyzer-stack 2 BLOCKED "${behind[*]}" ""       "een nieuwere analyzer laat drift_dev de foreign key, de ON DELETE CASCADE, de writepropagatie en de reference managers uit app_database.g.dart weg, zonder compilefout (DEC-024); pas los te laten als drift_dev compatibiliteit ondersteunt of als test/database/drift_relations_test.dart bij de nieuwe versie groen blijft"
+    record analyzer-stack 2 BLOCKED "${behind[*]}" ""       "een nieuwere analyzer laat drift_dev de foreign key, de ON DELETE CASCADE, de writepropagatie en de reference managers uit app_database.g.dart weg, zonder compilefout (DEC-026); pas los te laten als drift_dev compatibiliteit ondersteunt of als test/database/drift_relations_test.dart bij de nieuwe versie groen blijft"
   fi
 }
 
 # Pakketten die bewust achterlopen, met de reden erbij. Zonder deze lijst zou de
 # ring-1-gate permanent rood staan op een achterstand die een besluit is.
 BLOCKED_PACKAGES=(
-  "analyzer|DEC-024: een nieuwere analyzer laat drift_dev relaties weg"
-  "_fe_analyzer_shared|DEC-024: beweegt met analyzer mee"
-  "analyzer_plugin|DEC-024: beweegt met analyzer mee"
-  "dart_code_linter|DEC-024: trekt een nieuwere analyzer mee"
+  "analyzer|DEC-026: een nieuwere analyzer laat drift_dev relaties weg"
+  "_fe_analyzer_shared|DEC-026: beweegt met analyzer mee"
+  "analyzer_plugin|DEC-026: beweegt met analyzer mee"
+  "dart_code_linter|DEC-026: trekt een nieuwere analyzer mee"
   "rate_limiter|1.1.0 leest de tijd via package:clock; onder de fake clock van flutter_test vuurt de zoekdebounce anders en vallen twee TV-focustests om — eerst die tests aanpassen"
 )
 

@@ -19,7 +19,7 @@ scripts/classify_lock_diff.sh      # ring per gewijzigd pakket in een pubspec.lo
 scripts/check_flutter_version.sh   # bewaakt de SDK-pin uit .fvmrc
 ```
 
-## Dependencies bumpen (ringen, zie [DEC-023](docs/DECISIONS.md#dec-023))
+## Dependencies bumpen (ringen, zie [DEC-025](docs/DECISIONS.md#dec-025))
 De Flutter-versie staat alleen in `.fvmrc`; de workflows lezen datzelfde bestand via
 `flutter-version-file`. Een andere SDK op PATH wordt geweigerd door `check_flutter_version.sh`,
 dat aan het begin van `ci_checks.sh`, `codegen.sh` en `testflight_release.sh` draait: `dart format`
@@ -40,7 +40,7 @@ apart, anders is een veranderde `.g.dart` niet meer toe te wijzen.
 **De analyzer-stack staat bewust stil** (`analyzer`, `_fe_analyzer_shared`, `analyzer_plugin`,
 `dart_code_linter`). Een nieuwere analyzer laat `drift_dev` zonder compilefout de foreign key, de
 `ON DELETE CASCADE`, de writepropagatie en de reference managers uit `app_database.g.dart` weg.
-`test/database/drift_relations_test.dart` bewaakt dat; zie [DEC-024](docs/DECISIONS.md#dec-024) voor
+`test/database/drift_relations_test.dart` bewaakt dat; zie [DEC-026](docs/DECISIONS.md#dec-026) voor
 de voorwaarden waaronder de pin weer los mag.
 
 ## Codegen (gotcha — fails CI if skipped)

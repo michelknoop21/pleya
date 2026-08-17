@@ -112,7 +112,9 @@ Package managers:
 ## Building from Source
 
 ### Prerequisites
-- Flutter SDK 3.38.4+
+- Flutter SDK **3.44.0 exactly**. The version is pinned in `.fvmrc`, and CI reads that same file.
+  `scripts/codegen.sh` and `scripts/ci_checks.sh` refuse to run on a different SDK, because
+  `dart format` output differs between versions and the mismatch only surfaces in CI.
 - A Plex account or Jellyfin server with user credentials
 
 ### Setup

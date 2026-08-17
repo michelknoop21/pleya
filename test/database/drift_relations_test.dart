@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 ///
 /// Deze test kijkt daarom naar de gegenereerde output zelf. `flutter analyze`
 /// en de typechecker kunnen dit niet zien, want er verdwijnt niets waar iets
-/// anders naar verwijst. Zie [DEC-024](../../docs/DECISIONS.md#dec-024).
+/// anders naar verwijst. Zie [DEC-026](../../docs/DECISIONS.md#dec-026).
 void main() {
   late String generated;
 
@@ -25,7 +25,7 @@ void main() {
       contains("'REFERENCES connections (id) ON DELETE CASCADE'"),
       reason:
           'drift_dev genereert de foreign-keyconstraint niet meer. '
-          'Vrijwel zeker een analyzer-stack die te ver vooruit staat — zie DEC-024.',
+          'Vrijwel zeker een analyzer-stack die te ver vooruit staat — zie DEC-026.',
     );
   });
 
@@ -37,7 +37,7 @@ void main() {
       contains("TableUpdate('profile_connections', kind: UpdateKind.delete)"),
       reason:
           'zonder deze regel blijven streamqueries op profile_connections stale '
-          'na het verwijderen van een connection — zie DEC-024.',
+          'na het verwijderen van een connection — zie DEC-026.',
     );
   });
 
@@ -46,7 +46,7 @@ void main() {
     expect(
       generated,
       contains('profileConnectionsRefs'),
-      reason: 'de gegenereerde manager om van een connection naar zijn profielen te lopen is weg — zie DEC-024.',
+      reason: 'de gegenereerde manager om van een connection naar zijn profielen te lopen is weg — zie DEC-026.',
     );
   });
 }
