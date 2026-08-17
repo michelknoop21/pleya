@@ -42,13 +42,17 @@ note() { echo "· $*"; }
 # nieuwste Apple TV 4K. Overrule met TVOS_SIM_UDID.
 resolve_device() {
   if [[ -n "${TVOS_SIM_UDID:-}" ]]; then DEVICE="$TVOS_SIM_UDID"; return; fi
+  # `|| true`: zonder booted toestel matcht grep niets, en met `set -o pipefail`
+  # breekt die exit 1 het hele script af nog vóór de fallback hieronder.
   DEVICE="$(xcrun simctl list devices | awk '/^-- tvOS/{tv=1; next} /^--/{tv=0} tv && /Booted/ {print}' \
-    | head -1 | grep -oE '[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}' | head -1)"
-  [[ -n "$DEVICE" ]] && return
+    | head -1 | grep -oE '[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}' | head -1 || true)"
+  # Geen `[[ ... ]] && return`: onder `set -e` breekt een niet-matchende test
+  # als laatste statement de hele aanroep af, en dan stopt het script stil.
+  if [[ -n "$DEVICE" ]]; then return; fi
   # BSD-awk kent geen 3-argument match(), dus filteren en dan grep'en.
   DEVICE="$(xcrun simctl list devices available \
     | awk '/^-- tvOS/{tv=1; next} /^--/{tv=0} tv && /Apple TV 4K \(3rd generation\) \(/ && !/1080p/ {print}' \
-    | tail -1 | grep -oE '[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}' | head -1)"
+    | tail -1 | grep -oE '[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}' | head -1 || true)"
   [[ -n "$DEVICE" ]] || die "geen tvOS-simulator gevonden (xcrun simctl list devices)"
 }
 
