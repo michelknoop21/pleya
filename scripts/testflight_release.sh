@@ -11,6 +11,10 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 LANE="${1:-beta}"
 LOG_PREFIX="[testflight $(date '+%Y-%m-%d %H:%M')]"
 
+# Blokkerend: een release die met een andere SDK is gebouwd dan CI verifieert,
+# is niet dezelfde build.
+scripts/check_flutter_version.sh
+
 if [[ ! -f .env ]]; then
   echo "$LOG_PREFIX FOUT: .env ontbreekt (zie .env.example)" >&2
   exit 1

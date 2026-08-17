@@ -37,6 +37,19 @@ have_dart_code_linter() {
 
 FAILED=0
 
+# 0. SDK-pin (.fvmrc) — dart format verschilt per SDK-versie, dus drift hier
+#    maakt elke volgende check onbetrouwbaar.
+section "flutter sdk pin"
+out="$(mktemp)"
+if scripts/check_flutter_version.sh >"$out" 2>&1; then
+  ok "flutter $(scripts/check_flutter_version.sh --print) (.fvmrc)"
+else
+  fail "SDK-versie wijkt af van .fvmrc"
+  sed 's/^/    /' "$out"
+  FAILED=1
+fi
+rm -f "$out"
+
 # 1. dart format (mirrors ci.yml "Verify formatting")
 section "dart format"
 files=()
