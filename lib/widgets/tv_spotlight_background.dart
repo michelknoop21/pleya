@@ -53,6 +53,16 @@ class TvSpotlightBackground extends StatelessWidget {
   /// row labels stay readable and the artwork reads as atmosphere instead of
   /// noise — while still telling you *which* title is focused.
   final bool railRevealed;
+
+  /// Fit the info block to the band it was given by dropping summary lines,
+  /// instead of letting the enclosing [FittedBox] scale the whole block —
+  /// title included — down to fit.
+  ///
+  /// Opt-in per screen rather than inferred from the block's contents: a screen
+  /// that later gains a button would silently fall back to uniform shrinking if
+  /// this hung off "has no actions".
+  final bool constrainInfoToAvailableHeight;
+
   final String? Function(String? artworkPath)? localArtworkPathResolver;
 
   const TvSpotlightBackground({
@@ -72,6 +82,7 @@ class TvSpotlightBackground extends StatelessWidget {
     this.deepBottomScrim = false,
     this.kenBurns = false,
     this.railRevealed = false,
+    this.constrainInfoToAvailableHeight = false,
     this.localArtworkPathResolver,
   });
 
@@ -180,10 +191,16 @@ class TvSpotlightBackground extends StatelessWidget {
 
                           return Align(
                             alignment: anchor,
+                            // The FittedBox stays as the last-resort guard, so
+                            // the block can never paint outside its band even
+                            // if the line budget under-estimates.
                             child: FittedBox(
                               fit: BoxFit.scaleDown,
                               alignment: anchor,
-                              child: SizedBox(width: constraints.maxWidth, child: _buildInfo(context, media)),
+                              child: SizedBox(
+                                width: constraints.maxWidth,
+                                child: _buildInfo(context, media, availableHeight: constraints.maxHeight),
+                              ),
                             ),
                           );
                         },
@@ -327,7 +344,7 @@ class TvSpotlightBackground extends StatelessWidget {
     );
   }
 
-  Widget _buildInfo(BuildContext context, MediaItem media) {
+  Widget _buildInfo(BuildContext context, MediaItem media, {double? availableHeight}) {
     final scale = _scale(context);
     final colorScheme = Theme.of(context).colorScheme;
     // Dimmed text reads as "secondary" on a dark surface, but as "washed out"
@@ -369,7 +386,7 @@ class TvSpotlightBackground extends StatelessWidget {
           SizedBox(height: _sectionGap(scale)),
           Text(
             summary,
-            maxLines: 3,
+            maxLines: _summaryMaxLines(context, scale, availableHeight),
             overflow: .ellipsis,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurface.withValues(alpha: summaryAlpha),
@@ -540,6 +557,30 @@ class TvSpotlightBackground extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       child: Row(mainAxisSize: MainAxisSize.min, children: children),
     );
+  }
+
+  /// Ceiling on the summary — the value the block used unconditionally before
+  /// the budget existed, so a roomy band renders exactly as it always did.
+  static const int _maxSummaryLines = 3;
+
+  double _summaryLineHeight(BuildContext context, double scale) =>
+      MediaQuery.textScalerOf(context).scale(_summaryFontSize(scale)) * (compact ? 1.34 : 1.45);
+
+  /// Lines the summary may use inside [availableHeight].
+  ///
+  /// Degrades the way the TV detail foreground does: the block keeps its type
+  /// sizes and sheds lines, rather than scaling title and summary down together
+  /// until neither reads from the couch.
+  int _summaryMaxLines(BuildContext context, double scale, double? availableHeight) {
+    if (!constrainInfoToAvailableHeight || availableHeight == null || availableHeight <= 0) {
+      return _maxSummaryLines;
+    }
+    final metadataLineHeight = MediaQuery.textScalerOf(context).scale(_metadataFontSize(scale)) * 1.2;
+    final reserved = _logoHeight(scale) + _sectionGap(scale) + metadataLineHeight + _sectionGap(scale);
+    final remaining = availableHeight - reserved;
+    if (remaining <= 0) return 1;
+    final fits = remaining ~/ _summaryLineHeight(context, scale);
+    return fits.clamp(1, _maxSummaryLines);
   }
 
   double _sectionGap(double scale) => (compact ? 10 : 16) * scale;

@@ -136,6 +136,26 @@ class TvBrowseRailLayout {
     return railTopPaddingForScale(scale) + hubStripHeightForScale(scale) + metrics.height - metrics.focusExtra;
   }
 
+  /// How much space a screen has to reserve at its bottom edge for a rail that
+  /// is *not* slid down: such a rail occupies its full [railHeight] measured
+  /// from the bottom, so content drawn into that band lands on the first hub's
+  /// header.
+  ///
+  /// An inset, not a coordinate — feed it to `Positioned.bottom`, never to
+  /// `top`. Only the rail's own top padding may be shared, because nothing is
+  /// drawn in it.
+  ///
+  /// Do not reach for [firstHubPeekHeight] here. That one answers how much of
+  /// the rail should stay visible while an [AnimatedSlide] holds the rest off
+  /// screen, and it is smaller than [railHeight] by the focus reserve, the
+  /// next-hub peek and the bottom padding — a hero placed against it while the
+  /// rail is docked ends up drawing over the first row's label.
+  static double heroBottomInsetForDockedRail({
+    required double railHeight,
+    required double scale,
+    required double gap,
+  }) => railHeight <= 0 ? 0.0 : (railHeight - railTopPaddingForScale(scale)) + gap;
+
   static double cardWidthFor({
     required double availableWidth,
     required int density,

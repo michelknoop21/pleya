@@ -356,33 +356,21 @@ class _LibraryRecommendedTabState extends BaseLibraryTabState<MediaHub, LibraryR
     final proportionalTop = (size.height * 0.075).clamp(64.0 * scale, 120.0 * scale).toDouble();
     final belowHeader = LibraryHeaderMetrics.totalHeight + (12 * scale);
     final spotlightTop = proportionalTop > belowHeader ? proportionalTop : belowHeader;
-    // Same landing as the TV home screen: the rail rests with its first hub in
-    // full and the hero gets everything above it, instead of the hero being
-    // capped at a fixed fraction of the screen and leaving a dead band between
-    // the two. On a library with one short hub that band was most of what the
-    // hero could have used.
-    final firstHubPeek = tvHubs.isEmpty
-        ? 0.0
-        : TvBrowseRailLayout.firstHubPeekHeight(
-            hub: tvHubs.first,
-            railSize: railSize,
-            density: svc.read(SettingsService.libraryDensity),
-            episodePosterMode: svc.read(SettingsService.episodePosterMode),
-            fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
-            tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
-          );
-    final railPeek = tvHubs.isEmpty
-        ? 0.0
-        : [
-            railHeight,
-            firstHubPeek,
-            size.height * MonoTokens.tvHomeRailMaxPeekFraction,
-          ].reduce((a, b) => a < b ? a : b);
-    final desiredSpotlightBottom = tvHubs.isEmpty ? 0.0 : railPeek + (MonoTokens.tvHeroRailGap * scale);
-    final maxSpotlightBottom = (size.height - spotlightTop - (MonoTokens.tvHeroMinInfoHeight * scale))
-        .clamp(0.0, double.infinity)
+    // The rail here is docked at bottom 0 — unlike the TV home screen, which
+    // slides it down to a peek — so it occupies its full height and the hero
+    // has to clear all of it. Reserving only the first hub's peek (the home
+    // screen's figure) left the summary drawing across that hub's header.
+    final desiredSpotlightBottom = TvBrowseRailLayout.heroBottomInsetForDockedRail(
+      railHeight: railHeight,
+      scale: scale,
+      gap: MonoTokens.tvHeroRailGap * scale,
+    );
+    // Only guard against a negative band. Clamping this down to reserve a
+    // minimum info height is what pushed the text back under the rail; a short
+    // viewport drops summary lines instead (see [TvSpotlightBackground]).
+    final spotlightBottom = desiredSpotlightBottom
+        .clamp(0.0, (size.height - spotlightTop).clamp(0.0, double.infinity))
         .toDouble();
-    final spotlightBottom = desiredSpotlightBottom.clamp(0.0, maxSpotlightBottom).toDouble();
     final spotlightLeft = (24 * scale).clamp(18.0, 40.0).toDouble();
 
     return Material(
@@ -417,6 +405,10 @@ class _LibraryRecommendedTabState extends BaseLibraryTabState<MediaHub, LibraryR
                         contentLeft: spotlightLeft + foregroundLeft,
                         compact: true,
                         showPrimaryAction: false,
+                        // The band between the header and the docked rail is
+                        // fixed, so the summary sheds lines to fit rather than
+                        // letting the whole block scale down with the title.
+                        constrainInfoToAvailableHeight: true,
                       );
                     },
                   ),
