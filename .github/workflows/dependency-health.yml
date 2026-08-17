@@ -1,0 +1,46 @@
+name: Dependency health
+
+# Bewust een eigen workflow en geen scheduled variant van de PR-CI. Zodra
+# checkout@v8 uitkomt zou "CI" anders elke week rood staan terwijl main prima
+# is, en dan leert iedereen die kleur negeren. Rood hier betekent onderhoud
+# nodig, niet code stuk.
+on:
+  schedule:
+    # Maandagochtend, ruim voor de maandelijkse releaseronde.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version-file: .fvmrc
+          channel: stable
+          cache: true
+
+      - name: flutter pub get
+        run: flutter pub get
+
+      # --strict-through-ring 1: alleen ring 1 mag deze run laten falen. MPVKit,
+      # de tvOS-engine en libass horen bewust op een releasecyclus te wachten, en
+      # die mogen de signalering niet permanent rood zetten. Exit 2 (een
+      # incompleet rapport) faalt altijd.
+      - name: Rapport
+        run: scripts/check_updates.sh --strict-through-ring 1
+
+      - name: JSON-rapport bewaren
+        if: always()
+        run: scripts/check_updates.sh --json > dependency-health.json || true
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: dependency-health
+          path: dependency-health.json
