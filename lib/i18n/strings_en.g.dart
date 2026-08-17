@@ -4442,6 +4442,9 @@ class TranslationsSeerrEn {
 
 	/// en: 'By streaming service'
 	String get byStreamingService => 'By streaming service';
+
+	/// en: 'Show all'
+	String get showAll => 'Show all';
 }
 
 // Path: trakt
@@ -6961,6 +6964,7 @@ extension on Translations {
 			'seerr.errorGeneric' => 'Something went wrong. Try again.',
 			'seerr.searchPlaceholder' => 'Search for a movie or show to request',
 			'seerr.byStreamingService' => 'By streaming service',
+			'seerr.showAll' => 'Show all',
 			'trakt.title' => 'Trakt',
 			'trakt.connected' => 'Connected',
 			'trakt.connectedAs' => ({required Object username}) => 'Connected as @${username}',
@@ -7043,9 +7047,9 @@ extension on Translations {
 			'addLocalFolder.directory' => 'Directory',
 			'addLocalFolder.chooseDirectory' => 'Choose a directory…',
 			'addLocalFolder.nameLabel' => 'Display name',
-			'addLocalFolder.nameHint' => 'e.g. My Movies',
 			_ => null,
 		} ?? switch (path) {
+			'addLocalFolder.nameHint' => 'e.g. My Movies',
 			'addLocalFolder.save' => 'Add folder',
 			'addLocalFolder.saveError' => 'Failed to add local folder',
 			'addLocalFolder.entriesFound' => ({required Object count}) => '${count} items found in folder',

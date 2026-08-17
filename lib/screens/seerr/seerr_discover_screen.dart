@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
-import '../../focus/focus_theme.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
@@ -12,7 +11,6 @@ import '../../models/seerr/seerr_media.dart';
 import '../../navigation/main_screen_scope.dart';
 import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
-import '../../services/settings_service.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/debouncer.dart';
 import '../../utils/seerr_error_message.dart';
@@ -21,14 +19,13 @@ import '../../utils/platform_detector.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/focusable_filter_chip.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
-import '../../widgets/media_grid_delegate.dart';
 import '../../widgets/pill_input_decoration.dart';
 import '../../widgets/seerr_poster_card.dart';
-import '../../widgets/settings_builder.dart';
 import '../../widgets/skeletons.dart';
-import '../../widgets/sliver_cross_axis_layout_builder.dart';
 import '../../widgets/state_view.dart';
+import 'seerr_grid_sliver.dart';
 import 'seerr_media_detail_screen.dart';
+import 'seerr_row_grid_screen.dart';
 import 'seerr_requests_screen.dart';
 
 /// Jellyseerr / Overseerr ("seerr") discover + search screen.
@@ -466,8 +463,8 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     );
   }
 
-  /// A poster grid shared by search results and the genre-filtered discover
-  /// view, with a trailing "load more" tile when [hasMore].
+  /// Grid view of [items], delegating to the shared seerr grid so discover and
+  /// the expanded row view stay identical.
   Widget _buildGridSliver(
     List<SeerrMedia> items, {
     bool hasMore = false,
@@ -475,69 +472,13 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     VoidCallback? onLoadMore,
     FocusNode? firstItemFocusNode,
   }) {
-    // Reuse the app's grid geometry so column count follows the library
-    // density setting and poster width matches the rest of the app. The seerr
-    // card is taller than a bare poster (it reserves its own title/year block),
-    // so we pin the cells to the resolved width but keep the seerr aspect.
-    final isTv = PlatformDetector.isTV();
-    // TV: extra top padding so the first grid row has headroom for the
-    // focus-scaled card + ring (SliverGrid clips at its own bounds). Half the
-    // scale overhang of the tallest plausible cell + ring width, rounded up.
-    final topPad = isTv ? 8.0 + seerrGridFocusTopPad : 8.0;
-    return SliverPadding(
-      padding: EdgeInsets.fromLTRB(8, topPad, 8, 24),
-      sliver: SettingsBuilder(
-        prefs: const [SettingsService.libraryDensity],
-        builder: (context) {
-          final density = SettingsService.instance.read(SettingsService.libraryDensity);
-          return SliverCrossAxisLayoutBuilder(
-            builder: (context, crossAxisExtent) {
-              final geometry = MediaGridGeometry.resolve(
-                context: context,
-                crossAxisExtent: crossAxisExtent,
-                density: density,
-                usePaddingAware: true,
-                horizontalPadding: 16,
-              );
-              // TV: widen the gaps so a focus-scaled cell (+ ring) never paints
-              // over its neighbours or the next grid row. The wider gaps shrink
-              // the cells, so recompute the real cell width for the pinned
-              // column count and size the cards to exactly that — a card wider
-              // than its tile gets its top clipped by the grid (build 197 bug).
-              final cols = geometry.columnCount;
-              final scaleExtra = FocusTheme.focusScale - 1;
-              final ring = 2 * FocusTheme.focusBorderWidth;
-              // hReserve is based on the pre-shrink width, so it slightly
-              // overestimates the needed gap — safe (never overlaps).
-              final hReserve = isTv ? geometry.itemWidth * scaleExtra + ring : 0.0;
-              final hGap = geometry.spacing + hReserve;
-              final w = (crossAxisExtent - hGap * (cols - 1)) / cols;
-              final cellHeight = w * 3 / 2 + seerrCardTextExtent;
-              final vReserve = isTv ? cellHeight * scaleExtra + ring : 0.0;
-              return SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: cols,
-                  mainAxisSpacing: geometry.spacing + vReserve,
-                  crossAxisSpacing: hGap,
-                  childAspectRatio: w / cellHeight,
-                ),
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  if (index >= items.length) {
-                    return SeerrLoadMoreTile(loading: loadingMore, onActivate: onLoadMore ?? () {}, width: w);
-                  }
-                  final media = items[index];
-                  return SeerrPosterCard(
-                    media: media,
-                    width: w,
-                    focusNode: index == 0 ? firstItemFocusNode : null,
-                    onTap: () => _openDetail(media),
-                  );
-                }, childCount: items.length + (hasMore ? 1 : 0)),
-              );
-            },
-          );
-        },
-      ),
+    return buildSeerrGridSliver(
+      items: items,
+      onTap: _openDetail,
+      hasMore: hasMore,
+      loadingMore: loadingMore,
+      onLoadMore: onLoadMore,
+      firstItemFocusNode: firstItemFocusNode,
     );
   }
 
@@ -705,7 +646,12 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       if (row.items.isEmpty) continue;
       slivers.add(
         SliverToBoxAdapter(
-          child: _SeerrRowView(row: row, onTapItem: _openDetail, onLoadMore: () => _loadMore(row)),
+          child: _SeerrRowView(
+            row: row,
+            onTapItem: _openDetail,
+            onLoadMore: () => _loadMore(row),
+            onShowAll: () => _openRowGrid(row),
+          ),
         ),
       );
     }
@@ -715,7 +661,12 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       if (row != null && !row.loadingFirst && row.items.isNotEmpty) {
         slivers.add(
           SliverToBoxAdapter(
-            child: _SeerrRowView(row: row, onTapItem: _openDetail, onLoadMore: () => _loadMore(row)),
+            child: _SeerrRowView(
+              row: row,
+              onTapItem: _openDetail,
+              onLoadMore: () => _loadMore(row),
+              onShowAll: () => _openRowGrid(row),
+            ),
           ),
         );
       } else if (row != null && row.loadingFirst) {
@@ -724,6 +675,14 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     }
     slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 24)));
     return slivers;
+  }
+
+  void _openRowGrid(_SeerrRow row) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SeerrRowGridScreen(title: row.title, fetch: row.fetch),
+      ),
+    );
   }
 
   /// Streaming services for this region. Picking one swaps the row underneath,
@@ -849,11 +808,14 @@ TextStyle? _rowHeaderStyle(BuildContext context) {
 /// A single horizontal poster row with a header and an optional trailing
 /// "Load more" tile.
 class _SeerrRowView extends StatelessWidget {
-  const _SeerrRowView({required this.row, required this.onTapItem, required this.onLoadMore});
+  const _SeerrRowView({required this.row, required this.onTapItem, required this.onLoadMore, this.onShowAll});
 
   final _SeerrRow row;
   final ValueChanged<SeerrMedia> onTapItem;
   final VoidCallback onLoadMore;
+
+  /// Opens this row as a full grid. Null hides the action (skeleton rows).
+  final VoidCallback? onShowAll;
 
   @override
   Widget build(BuildContext context) {
@@ -866,7 +828,13 @@ class _SeerrRowView extends StatelessWidget {
         children: [
           Padding(
             padding: EdgeInsets.symmetric(horizontal: _rowInset),
-            child: Text(row.title, style: _rowHeaderStyle(context)),
+            child: Row(
+              children: [
+                Expanded(child: Text(row.title, style: _rowHeaderStyle(context))),
+                if (onShowAll != null)
+                  FocusableFilterChip(label: t.seerr.showAll, icon: Symbols.grid_view_rounded, onPressed: onShowAll!),
+              ],
+            ),
           ),
           const SizedBox(height: 8),
           LayoutBuilder(

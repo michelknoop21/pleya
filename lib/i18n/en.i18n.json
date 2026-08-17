@@ -1579,7 +1579,8 @@
     "errorNetwork": "Couldn't reach the server. Check the URL.",
     "errorGeneric": "Something went wrong. Try again.",
     "searchPlaceholder": "Search for a movie or show to request",
-    "byStreamingService": "By streaming service"
+    "byStreamingService": "By streaming service",
+    "showAll": "Show all"
   },
   "trakt": {
     "title": "Trakt",

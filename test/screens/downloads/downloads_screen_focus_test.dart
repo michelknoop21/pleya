@@ -19,6 +19,7 @@ import 'package:pleya/services/settings_service.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
+import 'package:pleya/theme/mono_theme.dart';
 
 class _FakeConnectionRegistry extends ConnectionRegistry {
   _FakeConnectionRegistry(super.db);
@@ -74,7 +75,9 @@ void main() {
             ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
           ],
           child: MaterialApp(
-            theme: ThemeData(platform: TargetPlatform.macOS),
+            // monoTheme carries the MonoTokens extension the shared widgets read;
+            // a bare ThemeData leaves tokens(context) null.
+            theme: monoTheme(dark: true).copyWith(platform: TargetPlatform.macOS),
             home: DownloadsScreen(key: screenKey),
           ),
         ),
