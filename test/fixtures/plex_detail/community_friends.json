@@ -1,0 +1,39 @@
+{
+  "data": {
+    "user": {
+      "id": "e434272903092b4e",
+      "friends": {
+        "nodes": [
+          {
+            "id": "8aa339c19a914bdb",
+            "displayName": "",
+            "avatar": "https://plex.tv/users/ACCOUNTHASH/avatar?t=1648479693000"
+          },
+          {
+            "id": "0a4fb352a82cae3d",
+            "displayName": "",
+            "avatar": "https://plex.tv/users/ACCOUNTHASH/avatar?t=1671019238907"
+          },
+          {
+            "id": "914c27bb2f83bed2",
+            "displayName": "",
+            "avatar": "https://plex.tv/users/ACCOUNTHASH/avatar?t=1750066585000"
+          },
+          {
+            "id": "a6620bb3d400e327",
+            "displayName": "",
+            "avatar": "https://plex.tv/users/ACCOUNTHASH/avatar?t=1671019238907"
+          },
+          {
+            "id": "dec145c25b33cfe8",
+            "displayName": "",
+            "avatar": "https://plex.tv/users/ACCOUNTHASH/avatar?t=1671019238907"
+          }
+        ],
+        "pageInfo": {
+          "hasNextPage": true
+        }
+      }
+    }
+  }
+}

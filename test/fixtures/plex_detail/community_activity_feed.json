@@ -1,0 +1,69 @@
+{
+  "data": {
+    "activityFeed": {
+      "nodes": [
+        {
+          "__typename": "ActivityWatchHistory",
+          "id": "60736e14-8999-e52f-0bfb-053f4d496b95",
+          "date": "2026-08-16T20:15:36.000Z",
+          "privacy": "PRIVATE",
+          "isPrimary": null,
+          "userV2": {
+            "id": "e434272903092b4e",
+            "username": "user67",
+            "displayName": "user82",
+            "avatar": "https://plex.tv/users/ACCOUNTHASH/avatar?t=1783242594000"
+          },
+          "metadataItem": {
+            "id": "68b99a1c61b413851f57471a",
+            "title": "We Cheer You Up in the Pin-Up Club",
+            "type": "EPISODE",
+            "year": 2025
+          }
+        },
+        {
+          "__typename": "ActivityWatchHistory",
+          "id": "51361a8b-1773-81fe-56cf-de44f2e369f8",
+          "date": "2026-08-16T19:26:55.000Z",
+          "privacy": "PRIVATE",
+          "isPrimary": null,
+          "userV2": {
+            "id": "e434272903092b4e",
+            "username": "user67",
+            "displayName": "user82",
+            "avatar": "https://plex.tv/users/ACCOUNTHASH/avatar?t=1783242594000"
+          },
+          "metadataItem": {
+            "id": "68b99a1c61b413851f574721",
+            "title": "Forever, Pour Toujours",
+            "type": "EPISODE",
+            "year": 2025
+          }
+        },
+        {
+          "__typename": "ActivityWatchHistory",
+          "id": "48610578-2d9e-fd9a-e5b2-571d820bb7f2",
+          "date": "2026-08-16T18:40:14.000Z",
+          "privacy": "PRIVATE",
+          "isPrimary": null,
+          "userV2": {
+            "id": "e434272903092b4e",
+            "username": "user67",
+            "displayName": "user82",
+            "avatar": "https://plex.tv/users/ACCOUNTHASH/avatar?t=1783242594000"
+          },
+          "metadataItem": {
+            "id": "68b99a1c61b413851f574728",
+            "title": "Carpe Vitam",
+            "type": "EPISODE",
+            "year": 2025
+          }
+        }
+      ],
+      "pageInfo": {
+        "hasNextPage": true,
+        "endCursor": "MTc4NjkwNTYxNDAwMDpmOWM1ZjIzZC1lYmE4LTQ2NWEtYjgwNy0wOTVmNTY3MTEwNzk="
+      }
+    }
+  }
+}
