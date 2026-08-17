@@ -1,0 +1,136 @@
+# Contractmeting epg.provider.plex.tv/settings/favoriteChannels
+# Datum: 2026-08-17T07:48:19Z
+# Let op: dit is synthetisch contractbewijs. Er stond geen echte tuner op dit
+# account, dus de favoriet-regel is verzonnen. Het bewijst het gedrag van de
+# endpoint en de tokens, niet dat een echte EPG-provider dezelfde velden levert.
+
+## Servers op dit account
+server 1: eigen, 4 verbinding(en)
+  bereikt via directe verbinding
+  providers met livetv-protocol: geen
+server 2: gedeeld, 3 verbinding(en)
+  niet bereikbaar binnen de timeout
+
+## Nulmeting
+lezen met PMS-servertoken: status 200
+{
+  "MediaContainer": {
+    "size": 0
+  }
+}
+
+lezen met accounttoken: status 200
+{
+  "MediaContainer": {
+    "size": 0
+  }
+}
+
+## No-op probe: een lege lijst schrijven met de PMS-servertoken
+Dit verandert niets aan de toestand (de lijst was al leeg) en laat zien of de
+endpoint de blob zonder meer accepteert.
+
+PUT [] met PMS-servertoken: status 200
+{
+  "MediaContainer": {
+    "size": 0
+  }
+}
+
+lezen met PMS-servertoken: status 200
+{
+  "MediaContainer": {
+    "size": 0
+  }
+}
+
+De endpoint slaat de blob op en geeft hem onveranderd terug. Verder met de synthetische regel.
+
+## De regel die wordt weggeschreven
+bron: synthetisch, er was geen tuner
+{
+  "source": "server://REDACTED-ID/tv.plex.providers.epg.cloud",
+  "id": "pleya-contract-probe",
+  "title": "Pleya contract probe",
+  "vcn": "0"
+}
+
+## Schrijven met de PMS-servertoken, zoals Pleya het vandaag doet
+PUT [regel] met PMS-servertoken: status 400
+{
+  "Error": {
+    "error": "Bad Request",
+    "message": "Bad source value: server://REDACTED-ID/tv.plex.providers.epg.cloud",
+    "statusCode": 400
+  }
+}
+
+## Teruglezen
+lezen met PMS-servertoken: status 200
+{
+  "MediaContainer": {
+    "size": 0
+  }
+}
+
+lezen met accounttoken: status 200
+{
+  "MediaContainer": {
+    "size": 0
+  }
+}
+
+A. volledige container identiek voor beide tokens: True
+A. regel round-trip zonder veldverlies: False
+   teruggekregen: null
+
+## B. Ziet een tweede Plex Home-gebruiker dezelfde lijst?
+gebruikers in deze Plex Home: 2, waarvan niet-eigenaar: 1
+gekozen gebruiker: restricted=False, protected=True
+lezen met de token van de tweede home-user: status 200
+{
+  "MediaContainer": {
+    "size": 0
+  }
+}
+
+[ONGELDIGE CONCLUSIE, bewust bewaard]
+> B. tweede home-user ziet dezelfde regel: True
+> B. conclusie: account/owner-scoped
+
+Waarom die conclusie niet klopt: de schrijfactie hierboven werd met 400
+geweigerd, dus er stond nooit een regel in de lijst. Beide antwoorden zijn
+lege containers, en het script vergeleek dus twee nulmetingen met elkaar.
+Over scope zegt deze meting niets. De regel blijft hier staan omdat de
+afleiding verleidelijk is en iemand hem anders opnieuw maakt.
+
+## Opruimen met de accounttoken, zodat ook die schrijfkant bewezen is
+PUT [] met accounttoken: status 200
+{
+  "MediaContainer": {
+    "size": 0
+  }
+}
+
+## Eindstand
+lezen met PMS-servertoken: status 200
+{
+  "MediaContainer": {
+    "size": 0
+  }
+}
+
+lezen met accounttoken: status 200
+{
+  "MediaContainer": {
+    "size": 0
+  }
+}
+
+lijst weer leeg: True
+terug op de nulmeting: True
+
+## Samenvatting
+A. accounttoken lezen: ja
+A. accounttoken schrijven: ja
+A. servertoken schrijven (huidig gedrag): status 400
