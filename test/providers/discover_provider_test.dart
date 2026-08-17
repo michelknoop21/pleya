@@ -162,6 +162,42 @@ void main() {
     expect(aggregation.hubCalls, 2);
   });
 
+  test('isRefreshing brackets a pass and notifies on both edges', () async {
+    // The clear happens in a whenComplete, i.e. after the pass's own last
+    // notify — miss the trailing notify and a finished refresh keeps showing
+    // as running until something unrelated rebuilds.
+    final transitions = <bool>[];
+    provider.addListener(() {
+      if (transitions.isEmpty || transitions.last != provider.isRefreshing) transitions.add(provider.isRefreshing);
+    });
+
+    expect(provider.isRefreshing, isFalse);
+    final pass = provider.load();
+    expect(provider.isRefreshing, isTrue);
+
+    await pass;
+    expect(provider.isRefreshing, isFalse);
+
+    await pumpEventQueue();
+    expect(transitions, [true, false]);
+  });
+
+  test('a refresh with content on screen is refreshing but not loading', () async {
+    aggregation.onDeckResult = () => [_item('a')];
+    aggregation.hubsResult = () => [_hub('hub-1')];
+    await provider.load();
+
+    final second = provider.load();
+    expect(provider.isRefreshing, isTrue);
+    // Deliberate: the rows stay put instead of flipping to a skeleton, which
+    // is exactly why the refresh action needs its own signal.
+    expect(provider.isLoading, isFalse);
+    expect(provider.areHubsLoading, isFalse);
+
+    await second;
+    expect(provider.isRefreshing, isFalse);
+  });
+
   test('limits the preview row and probes for more', () async {
     aggregation.onDeckResult = () => [for (var i = 0; i < 30; i++) _item('item-$i')];
 

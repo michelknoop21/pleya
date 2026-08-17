@@ -30,6 +30,7 @@ import '../providers/discover_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/home_layout_provider.dart';
 import '../providers/watch_state_store.dart';
+import '../widgets/discover_refresh_action.dart';
 import '../widgets/hub_section.dart';
 import '../widgets/app_menu.dart';
 import '../widgets/clickable_cursor.dart';
@@ -945,6 +946,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     unawaited(_discover.load());
   }
 
+  /// Header refresh action. Also the D-pad handler for it, which is why the
+  /// in-flight guard lives here rather than in [DiscoverRefreshAction]: the
+  /// action list is built outside that widget's rebuild.
+  void _handleRefreshPressed() {
+    if (_discover.isRefreshing) return;
+    unawaited(_discover.load());
+  }
+
   /// Get icon for hub based on its title
   IconData _getHubIcon(String title) {
     final lowerTitle = title.toLowerCase();
@@ -1245,9 +1254,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     onNavigateDown: _focusContentFromAppBar,
                     actions: [
                       FocusableAction(
-                        icon: Symbols.refresh_rounded,
-                        iconColor: foregroundColor,
-                        onPressed: _discover.load,
+                        onPressed: _handleRefreshPressed,
+                        child: DiscoverRefreshAction(color: foregroundColor, onPressed: _handleRefreshPressed),
                       ),
                       // Watch Together
                       FocusableAction(
