@@ -44,25 +44,29 @@ class SettingSwitchTile extends StatelessWidget {
     final svc = _TileBase._svc;
     return ValueListenableBuilder<bool>(
       valueListenable: svc.listenable(pref),
-      builder: (_, value, _) => ClickableCursor(
+      builder: (_, value, _) => SettingRowFocus(
         enabled: enabled,
-        child: SwitchListTile(
-          focusNode: focusNode,
-          contentPadding: kSettingRowPadding,
-          secondary: SettingsIconBadge(icon),
-          title: Text(title),
-          subtitle: subtitle != null ? Text(subtitle!) : null,
-          value: value,
-          onChanged: enabled
-              ? (v) async {
-                  await svc.write(pref, v);
-                  final callback = onAfterWrite;
-                  if (callback != null) await callback(v);
-                }
-              : null,
+        focusNode: focusNode,
+        onSelect: () => _write(svc, !value),
+        child: ClickableCursor(
+          enabled: enabled,
+          child: SwitchListTile(
+            contentPadding: kSettingRowPadding,
+            secondary: SettingsIconBadge(icon),
+            title: Text(title),
+            subtitle: subtitle != null ? Text(subtitle!) : null,
+            value: value,
+            onChanged: enabled ? (v) => _write(svc, v) : null,
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _write(SettingsService svc, bool value) async {
+    await svc.write(pref, value);
+    final callback = onAfterWrite;
+    if (callback != null) await callback(value);
   }
 }
 
@@ -89,15 +93,27 @@ class SettingNavigationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClickableCursor(
-      child: ListTile(
-        focusNode: focusNode,
-        contentPadding: kSettingRowPadding,
-        leading: SettingsIconBadge(icon),
-        title: Text(title),
-        subtitle: subtitle != null ? Text(subtitle!) : null,
-        trailing: AppIcon(trailingIcon, fill: 1, size: 20, color: tokens(context).textMuted),
-        onTap: onTap ?? () => Navigator.push(context, MaterialPageRoute(builder: destinationBuilder!)),
+    void activate() {
+      final handler = onTap;
+      if (handler != null) {
+        handler();
+        return;
+      }
+      Navigator.push(context, MaterialPageRoute(builder: destinationBuilder!));
+    }
+
+    return SettingRowFocus(
+      focusNode: focusNode,
+      onSelect: activate,
+      child: ClickableCursor(
+        child: ListTile(
+          contentPadding: kSettingRowPadding,
+          leading: SettingsIconBadge(icon),
+          title: Text(title),
+          subtitle: subtitle != null ? Text(subtitle!) : null,
+          trailing: AppIcon(trailingIcon, fill: 1, size: 20, color: tokens(context).textMuted),
+          onTap: activate,
+        ),
       ),
     );
   }
@@ -133,29 +149,36 @@ class SettingNumberTile extends StatelessWidget {
     final svc = _TileBase._svc;
     return ValueListenableBuilder<int>(
       valueListenable: svc.listenable(pref),
-      builder: (_, value, _) => ClickableCursor(
-        child: ListTile(
-          leading: SettingsIconBadge(icon),
-          contentPadding: kSettingRowPadding,
-          title: Text(title),
-          subtitle: Text(subtitleBuilder(value)),
-          trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
-          onTap: () => showNumericInputDialog(
-            context: context,
-            title: title,
-            labelText: labelText,
-            suffixText: suffixText,
-            min: min,
-            max: max,
-            currentValue: value,
-            onSave: (v) async {
-              await svc.write(pref, v);
-              final callback = onAfterWrite;
-              if (callback != null) await callback(v);
-            },
+      builder: (_, value, _) {
+        void activate() => showNumericInputDialog(
+          context: context,
+          title: title,
+          labelText: labelText,
+          suffixText: suffixText,
+          min: min,
+          max: max,
+          currentValue: value,
+          onSave: (v) async {
+            await svc.write(pref, v);
+            final callback = onAfterWrite;
+            if (callback != null) await callback(v);
+          },
+        );
+
+        return SettingRowFocus(
+          onSelect: activate,
+          child: ClickableCursor(
+            child: ListTile(
+              leading: SettingsIconBadge(icon),
+              contentPadding: kSettingRowPadding,
+              title: Text(title),
+              subtitle: Text(subtitleBuilder(value)),
+              trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
+              onTap: activate,
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -192,25 +215,30 @@ class SettingSelectionTile<T, S> extends StatelessWidget {
       valueListenable: svc.listenable(pref),
       builder: (_, raw, _) {
         final value = decode(raw);
-        return ClickableCursor(
-          child: ListTile(
-            leading: SettingsIconBadge(icon),
-            contentPadding: kSettingRowPadding,
-            title: Text(title),
-            subtitle: Text(subtitleBuilder(value)),
-            trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
-            onTap: () async {
-              final picked = await showSelectionDialog<T>(
-                context: context,
-                title: title,
-                options: options,
-                currentValue: value,
-              );
-              if (picked == null) return;
-              await svc.write(pref, encode(picked));
-              final callback = onAfterWrite;
-              if (callback != null) await callback(picked);
-            },
+        Future<void> activate() async {
+          final picked = await showSelectionDialog<T>(
+            context: context,
+            title: title,
+            options: options,
+            currentValue: value,
+          );
+          if (picked == null) return;
+          await svc.write(pref, encode(picked));
+          final callback = onAfterWrite;
+          if (callback != null) await callback(picked);
+        }
+
+        return SettingRowFocus(
+          onSelect: activate,
+          child: ClickableCursor(
+            child: ListTile(
+              leading: SettingsIconBadge(icon),
+              contentPadding: kSettingRowPadding,
+              title: Text(title),
+              subtitle: Text(subtitleBuilder(value)),
+              trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
+              onTap: activate,
+            ),
           ),
         );
       },
@@ -242,26 +270,33 @@ class SettingRegexTile extends StatelessWidget {
     final svc = _TileBase._svc;
     return ValueListenableBuilder<String>(
       valueListenable: svc.listenable(pref),
-      builder: (_, value, _) => ClickableCursor(
-        child: ListTile(
-          leading: SettingsIconBadge(icon),
-          contentPadding: kSettingRowPadding,
-          title: Text(title),
-          subtitle: Text(subtitle),
-          trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
-          onTap: () => showRegexInputDialog(
-            context: context,
-            title: title,
-            currentValue: value,
-            defaultValue: defaultValue,
-            onSave: (v) async {
-              await svc.write(pref, v);
-              final callback = onAfterWrite;
-              if (callback != null) await callback(v);
-            },
+      builder: (_, value, _) {
+        void activate() => showRegexInputDialog(
+          context: context,
+          title: title,
+          currentValue: value,
+          defaultValue: defaultValue,
+          onSave: (v) async {
+            await svc.write(pref, v);
+            final callback = onAfterWrite;
+            if (callback != null) await callback(v);
+          },
+        );
+
+        return SettingRowFocus(
+          onSelect: activate,
+          child: ClickableCursor(
+            child: ListTile(
+              leading: SettingsIconBadge(icon),
+              contentPadding: kSettingRowPadding,
+              title: Text(title),
+              subtitle: Text(subtitle),
+              trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
+              onTap: activate,
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -335,33 +370,40 @@ class SettingColorTile extends StatelessWidget {
     final svc = _TileBase._svc;
     return ValueListenableBuilder<String>(
       valueListenable: svc.listenable(pref),
-      builder: (_, hex, _) => ClickableCursor(
-        child: ListTile(
-          leading: SettingsIconBadge(icon),
-          contentPadding: kSettingRowPadding,
-          title: Text(title),
-          subtitle: subtitle != null ? Text(subtitle!) : null,
-          trailing: Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: hexToColor(hex),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      builder: (_, hex, _) {
+        void activate() => showColorInputDialog(
+          context: context,
+          title: title,
+          currentHex: hex,
+          onSave: (v) async {
+            await svc.write(pref, v);
+            final callback = onAfterWrite;
+            if (callback != null) await callback(v);
+          },
+        );
+
+        return SettingRowFocus(
+          onSelect: activate,
+          child: ClickableCursor(
+            child: ListTile(
+              leading: SettingsIconBadge(icon),
+              contentPadding: kSettingRowPadding,
+              title: Text(title),
+              subtitle: subtitle != null ? Text(subtitle!) : null,
+              trailing: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: hexToColor(hex),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                ),
+              ),
+              onTap: activate,
             ),
           ),
-          onTap: () => showColorInputDialog(
-            context: context,
-            title: title,
-            currentHex: hex,
-            onSave: (v) async {
-              await svc.write(pref, v);
-              final callback = onAfterWrite;
-              if (callback != null) await callback(v);
-            },
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

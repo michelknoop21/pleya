@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../focus/card_focus_scope.dart';
+import '../focus/focus_theme.dart';
+import '../focus/focusable_wrapper.dart';
 import '../theme/mono_tokens.dart';
 import 'app_icon.dart';
 
@@ -56,9 +59,14 @@ class SettingsSectionHeader extends StatelessWidget {
   }
 }
 
-/// Groups settings rows into one card, the way system settings do. Rows keep
-/// their own focus and hit targets; the card only supplies the surface, the
-/// rounded edge and the hairlines between rows.
+/// Groups settings rows into one card, the way system settings do. The card
+/// supplies the surface, the rounded edge and the hairlines between rows.
+///
+/// The inner [Material] is load-bearing, not decoration. Ink features (ripple,
+/// hover, the Material focus highlight) are painted by the nearest enclosing
+/// Material *before* its descendants, so without one here they land on the
+/// Scaffold underneath and this card's opaque surface paints straight over
+/// them. That is what made focus in settings invisible.
 class SettingsGroup extends StatelessWidget {
   final String? title;
   final List<Widget> children;
@@ -81,17 +89,89 @@ class SettingsGroup extends StatelessWidget {
             borderRadius: BorderRadius.circular(t.radiusMd),
             border: Border.all(color: t.outline.withValues(alpha: 0.6)),
           ),
-          child: Column(
-            children: [
-              for (var i = 0; i < rows.length; i++) ...[
-                if (i > 0)
-                  Divider(height: 1, thickness: 1, indent: 68, endIndent: 0, color: t.outline.withValues(alpha: 0.5)),
-                rows[i],
+          clipBehavior: Clip.antiAlias,
+          child: Material(
+            type: MaterialType.transparency,
+            child: Column(
+              children: [
+                for (var i = 0; i < rows.length; i++) ...[
+                  if (i > 0)
+                    Divider(height: 1, thickness: 1, indent: 68, endIndent: 0, color: t.outline.withValues(alpha: 0.5)),
+                  rows[i],
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One settings row, carrying the focus treatment the rest of the TV UI uses.
+///
+/// This wrapper is the row's single focus owner. `descendantsAreFocusable:
+/// false` keeps the tile's own `InkWell` out of the focus tree, so the D-pad
+/// gets exactly one stop per row and SELECT runs the same callback a tap does.
+/// Leaving the tile focusable underneath would give two targets per row: an
+/// extra press on the way down, and focus visuals on the wrapper while Enter is
+/// handled by the child.
+///
+/// Pointer input is untouched — `descendantsAreFocusable` governs focus, not hit
+/// testing, so the tile keeps its own `onTap`, ripple and hover.
+class SettingRowFocus extends StatelessWidget {
+  final Widget child;
+
+  /// Runs on SELECT/Enter. Pass the same callback the tile's `onTap` uses.
+  final VoidCallback? onSelect;
+
+  final FocusNode? focusNode;
+  final bool enabled;
+
+  const SettingRowFocus({super.key, required this.child, required this.onSelect, this.focusNode, this.enabled = true});
+
+  @override
+  Widget build(BuildContext context) {
+    return FocusableWrapper(
+      focusNode: focusNode,
+      canRequestFocus: enabled,
+      descendantsAreFocusable: false,
+      // A row that grows on focus would push the rows under it down the card.
+      disableScale: true,
+      // The fill and border come from the theme tokens below rather than from
+      // the wrapper's white-on-artwork defaults: a settings row sits on an
+      // opaque card that flips with the theme, where a white ring on white is
+      // no ring at all.
+      delegateFocusBorder: true,
+      onSelect: enabled ? onSelect : null,
+      child: _SettingRowSurface(child: child),
+    );
+  }
+}
+
+class _SettingRowSurface extends StatelessWidget {
+  final Widget child;
+
+  const _SettingRowSurface({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = tokens(context);
+    final focused = CardFocusScope.maybeOf(context) ?? false;
+    return AnimatedContainer(
+      duration: FocusTheme.getAnimationDuration(context),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(t.radiusSm),
+        color: focused ? t.surfaceElevated : Colors.transparent,
+        // The border is present in both states and only changes colour. One
+        // that appears on focus would inset the content and make the row jump.
+        border: Border.all(
+          color: focused ? t.text.withValues(alpha: 0.85) : Colors.transparent,
+          width: FocusTheme.focusBorderWidth,
+        ),
+      ),
+      child: child,
     );
   }
 }
