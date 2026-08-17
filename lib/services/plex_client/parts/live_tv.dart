@@ -1,7 +1,11 @@
 part of '../../plex_client.dart';
 
-const _favoriteChannelsUrl = 'https://epg.provider.plex.tv/settings/favoriteChannels';
-const _providerVersionHeader = {'X-Plex-Provider-Version': '5.1'};
+// No plex.tv URL belongs in this file. The favorite-channel list lives on
+// epg.provider.plex.tv and used to be fetched straight from here, which sent
+// the PMS token along: `_http` carries `config.headers` as defaults and
+// `MediaServerHttpClient` merges those into absolute-URL requests too. It now
+// lives in `PlexEpgClient` behind `PlexFavoriteChannelsService`, which resolves
+// account-scoped auth. See DEC-021; a test enforces that it stays gone.
 
 mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
   PlexConfig get config;
@@ -810,36 +814,6 @@ mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
     return 'server://$machineId/$providerIdentifier';
   }
 
-  /// Get favorite channels from the Plex cloud.
-  Future<List<FavoriteChannel>> getFavoriteChannels() async {
-    try {
-      final response = await _http.get(_favoriteChannelsUrl, headers: _providerVersionHeader);
-      final container = _getMediaContainer(response);
-      if (container != null && container['FavoriteChannel'] != null) {
-        return (container['FavoriteChannel'] as List)
-            .map((json) => FavoriteChannel.fromJson(json as Map<String, dynamic>))
-            .toList();
-      }
-      return [];
-    } catch (e) {
-      appLogger.e('Failed to get favorite channels', error: e);
-      return [];
-    }
-  }
-
-  /// Update favorite channels on the Plex cloud.
-  Future<void> setFavoriteChannels(List<FavoriteChannel> channels) async {
-    try {
-      await _http.put(
-        _favoriteChannelsUrl,
-        body: channels.map((c) => c.toJson()).toList(),
-        headers: _providerVersionHeader,
-      );
-    } catch (e) {
-      appLogger.e('Failed to update favorite channels', error: e);
-    }
-  }
-
   /// Plex-specific: live TV sessions (active recordings/playback).
   Future<List<MediaItem>> fetchLiveTvSessions() async {
     final raw = await _getLiveTvSessions();
@@ -858,15 +832,16 @@ mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
 /// [PlexClient]; [startPlayback] packages it behind the backend-neutral
 /// [LiveTvPlaybackSession], and [resolveStreamUrl] returns `null` because a
 /// Plex stream URL is only valid inside a tuned session.
-class _PlexLiveTvSupport implements LiveTvSupport, LiveTvFavoritesStore {
+class _PlexLiveTvSupport implements LiveTvSupport {
   final PlexClient _client;
   _PlexLiveTvSupport(this._client);
 
-  // Still its own store for now. The Plex list actually lives in the cloud and
-  // belongs to an account plus a Home user, so this moves out in the commit
-  // that cuts the EPG call out of PlexClient.
+  /// A Plex server does not own its favorite channels. That list belongs to a
+  /// plex.tv account plus a Home user, an identity this client does not have
+  /// and must not be given, so the store comes from
+  /// `PlexFavoriteChannelsService` instead.
   @override
-  LiveTvFavoritesStore? get favorites => this;
+  LiveTvFavoritesStore? get favorites => null;
 
   @override
   Future<bool> isAvailable() => _client.hasDvr();
@@ -897,18 +872,6 @@ class _PlexLiveTvSupport implements LiveTvSupport, LiveTvFavoritesStore {
 
   @override
   Future<String> buildFavoriteChannelSource({String? lineup}) => _client.buildFavoriteChannelSource(lineup: lineup);
-
-  @override
-  String get favoriteStoreKey => 'plex:${_client.config.clientIdentifier}';
-
-  @override
-  FavoriteChannelPersistenceMode get favoritePersistenceMode => FavoriteChannelPersistenceMode.sharedFullList;
-
-  @override
-  Future<List<FavoriteChannel>> fetchFavoriteChannels() => _client.getFavoriteChannels();
-
-  @override
-  Future<void> setFavoriteChannels(List<FavoriteChannel> channels) => _client.setFavoriteChannels(channels);
 }
 
 /// DVR half of the Plex live-TV surface; `null` on backends without a DVR.

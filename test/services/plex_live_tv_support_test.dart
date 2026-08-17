@@ -63,21 +63,15 @@ void main() {
     expect(await client.liveTv.buildFavoriteChannelSource(lineup: 'provider-b'), 'server://machine-1/provider-b');
   });
 
-  test('favorite store is account device scoped instead of token scoped', () {
-    final a = makeClient(
-      (_) async => http.Response('{}', 200),
-      token: 'server-token-a',
-      clientIdentifier: 'account-device',
-    );
-    final b = makeClient(
-      (_) async => http.Response('{}', 200),
-      token: 'server-token-b',
-      clientIdentifier: 'account-device',
-    );
-    addTearDown(a.close);
-    addTearDown(b.close);
+  // The store this used to expose moved to PlexFavoriteChannelsService, along
+  // with the property it guarded: two servers of one account share one store.
+  // That now lives in plex_favorite_channels_service_test.dart, keyed on
+  // account plus Home user instead of on the device.
+  test('a Plex server owns no favorites store, because that list is the account\'s', () {
+    final client = makeClient((_) async => http.Response('{}', 200));
+    addTearDown(client.close);
 
-    expect(a.liveTv.favorites!.favoriteStoreKey, b.liveTv.favorites!.favoriteStoreKey);
+    expect(client.liveTv.favorites, isNull);
   });
 
   test('DVR list applies root channel mapping to each DVR and parses string numbers', () async {

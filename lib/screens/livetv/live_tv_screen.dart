@@ -10,12 +10,14 @@ import '../../focus/focusable_action_bar.dart';
 import '../../focus/focusable_button.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/live_tv_support.dart';
+import '../../media/media_backend.dart';
 import '../../media/media_server_client.dart';
 import '../../models/livetv_channel.dart';
 import '../../models/livetv_dvr.dart';
 import '../../mixins/refreshable.dart';
 import '../../mixins/tab_navigation_mixin.dart';
 import '../../providers/multi_server_provider.dart';
+import '../../services/livetv/plex_favorite_channels_service.dart';
 import '../../services/settings_service.dart';
 import '../../widgets/settings_builder.dart';
 import '../../utils/app_logger.dart';
@@ -78,6 +80,29 @@ class _LiveTvScreenState extends State<LiveTvScreen>
   /// rather than through the client, because for Plex the two are not the same
   /// thing: the channels come from the server, the favorites from the account.
   final Map<String, LiveTvFavoritesStore> _favoriteStoreById = {};
+
+  /// Which stores were read successfully, and in which resolution round.
+  ///
+  /// A `sharedFullList` write replaces the whole list at the other end, so it
+  /// may only go out when this session has actually seen that list. Before the
+  /// cut, a failed read quietly became an empty list and the next tap wrote
+  /// that emptiness back over the real favorites.
+  int _favoritesGeneration = 0;
+  final Map<String, FavoriteStoreReadProof> _favoriteReadProofById = {};
+
+  /// Where a Plex server's favorites actually live. Null when this profile has
+  /// no user-scoped Plex identity, and then Plex favorites are simply absent:
+  /// no store, no star, no write.
+  PlexFavoriteChannelsService? get _plexFavorites => context.read<PlexFavoriteChannelsService?>();
+
+  /// The store for [client], wherever it lives. Jellyfin owns its own; Plex
+  /// borrows one from the profile-scoped service.
+  Future<LiveTvFavoritesStore?> _resolveFavoritesStore(MediaServerClient client) async {
+    final own = client.liveTv.favorites;
+    if (own != null) return own;
+    if (client.backend != MediaBackend.plex) return null;
+    return _plexFavorites?.resolveStore();
+  }
 
   List<LiveTvChannel> get _filteredChannels => filterLiveTvChannelsForFavorites(
     channels: _channels,
@@ -321,8 +346,8 @@ class _LiveTvScreenState extends State<LiveTvScreen>
           final source = await liveTv.buildFavoriteChannelSource(lineup: serverInfo.lineup);
           final sourceTitle = _sourceTitleForServerInfo(serverInfo);
           // The store is asked for separately from the server: for Jellyfin it
-          // is the same object, for Plex it will not be.
-          final store = liveTv.favorites;
+          // is the same object, for Plex it comes from the account.
+          final store = await _resolveFavoritesStore(genericClient);
           final storeKey = store?.favoriteStoreKey;
           final liveServerKey = _liveServerScopeKey(serverInfo);
           _favoriteSourceByLiveServer[liveServerKey] = source;
@@ -400,11 +425,15 @@ class _LiveTvScreenState extends State<LiveTvScreen>
   }
 
   Future<void> _loadFavorites(MultiServerProvider multiServer) async {
+    // A new resolution round. Read proof from the previous one does not carry
+    // over: identities may have been reshuffled in between.
+    final generation = ++_favoritesGeneration;
     try {
       _favoriteSourceByLiveServer.clear();
       _favoriteStoreBySource.clear();
       _favoriteModeByStore.clear();
       _favoriteStoreById.clear();
+      _favoriteReadProofById.clear();
       final merged = <FavoriteChannel>[];
       final fetchedStores = <String>{};
       final seenFavorites = <String>{};
@@ -413,7 +442,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
         if (client == null) continue;
         final liveTv = client.liveTv;
         final source = await liveTv.buildFavoriteChannelSource(lineup: serverInfo.lineup);
-        final store = liveTv.favorites;
+        final store = await _resolveFavoritesStore(client);
         final liveServerKey = _liveServerScopeKey(serverInfo);
         _favoriteSourceByLiveServer[liveServerKey] = source;
         if (store == null) continue;
@@ -423,10 +452,17 @@ class _LiveTvScreenState extends State<LiveTvScreen>
         _favoriteStoreBySource[source] = storeKey;
         _favoriteModeByStore[storeKey] = store.favoritePersistenceMode;
         if (!fetchedStores.add(storeKey)) continue;
-        final serverFavorites = await store.fetchFavoriteChannels();
-        for (final favorite in serverFavorites) {
-          _favoriteStoreBySource[favorite.source] = storeKey;
-          if (seenFavorites.add(favorite.stableKey)) merged.add(favorite);
+        // Per store, so one unreachable store does not take the others with it.
+        try {
+          final serverFavorites = await store.fetchFavoriteChannels();
+          _favoriteReadProofById[storeKey] = FavoriteStoreReadProof(generation: generation, store: store);
+          for (final favorite in serverFavorites) {
+            _favoriteStoreBySource[favorite.source] = storeKey;
+            if (seenFavorites.add(favorite.stableKey)) merged.add(favorite);
+          }
+        } catch (e) {
+          // No proof, so no full-list write for this store until a read works.
+          appLogger.e('Failed to read favorites from $storeKey', error: e);
         }
       }
 
@@ -506,6 +542,11 @@ class _LiveTvScreenState extends State<LiveTvScreen>
       // shaped and where it goes.
       final store = _favoriteStoreById[storeKey];
       if (store == null) continue;
+      // The list this write replaces has to be one we have actually seen.
+      if (!mayWriteFavorites(store: store, generation: _favoritesGeneration, proof: _favoriteReadProofById[storeKey])) {
+        appLogger.w('Skipping favorites write for $storeKey: no successful read in this round');
+        continue;
+      }
       final source = _favoriteSourceByLiveServer[liveServerKey];
       if (source == null) continue; // not yet resolved, the next toggle catches up
       final channels = favoritePayload(
