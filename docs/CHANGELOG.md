@@ -2,6 +2,38 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-17] Kijklijst afgemaakt, en de Plex-cloudgrens getrokken
+
+### Fixed
+- **De servertoken van je eigen mediaserver ging mee naar `epg.provider.plex.tv`** (`lib/services/plex_client/parts/live_tv.dart`, `lib/services/plex_cloud_http_client.dart`, `lib/services/plex_epg_client.dart`, `lib/services/livetv/plex_favorite_channels_service.dart`, commits `a089264`, `74ce20f`, `20ed398`, `2f171c4`). De favorieten van Live TV werden opgehaald en weggeschreven via `_http`, de `FailoverHttpClient` van `PlexClient`, die `config.headers` als defaults draagt met de PMS-token erin; `MediaServerHttpClient._send:288` merget die ook bij een absolute URL. Gemeten tegen een echt account: die host accepteert de servertoken (200), weigert een verzoek zonder token (401) en accepteert de plex.tv-accounttoken net zo goed (200). Weglaten was dus geen optie, verhuizen wel. `PlexCloudHttpClient` is nu de transportgrens naar plex.tv: geen `baseUrl`, geen `defaultHeaders`, nooit een `FailoverHttpClient`, en de token als verplichte parameter per call. `PlexWatchlistClient` staat er ook op, zodat Live TV geen uitzondering werd maar het patroon volgde. De scopecheck zit in `PlexFavoriteChannelsService`, die per operatie opnieuw om user-scoped auth vraagt en de owner-fallback weigert. Zonder scope is de functie afwezig en niet stuk: geen store, geen ster, geen schrijfactie, geen foutmelding. Zie [DEC-021](DECISIONS.md#dec-021).
+- **Een mislukte lees van de favorietenlijst wiste je favorieten** (`lib/screens/livetv/live_tv_screen.dart`, `lib/screens/livetv/live_tv_favorites.dart`, commits `2f171c4`, `8f7f937`). `getFavoriteChannels()` ving elke fout af en gaf `[]`, `_loadFavorites` maakte daar een lege lijst van terwijl de store- en source-maps al gevuld waren, en één ster aantikken schreef die leegte terug als de volledige lijst van het account. Een `sharedFullList`-write eist nu een geslaagde lees van precies dezelfde store-instantie binnen dezelfde favorietengeneratie. Dat leesbewijs is een eigen type (`FavoriteStoreReadProof`) in plaats van een set naast een teller, zodat de regel niet stil kan verzwakken als iemand later een `clear()` vergeet.
+- **De leescall van de favorieten kon je eigen server offline melden.** `FailoverHttpClient` overridet alleen `get` (`failover_http_client.dart:78`), dus een 5xx van de cloudhost kon de endpoint-cascade van de mediaserver starten en in het uiterste geval `onAllEndpointsExhausted` vuren. Dat pad bestaat niet meer.
+
+### Added
+- **Sorteren op de kijklijst: recent toegevoegd, titel, jaar** (`lib/media/watchlist_entry.dart`, `lib/widgets/watchlist_sort_sheet.dart`, `lib/screens/watchlist_screen.dart`, commit `3634fa0`). Het plan beloofde drie ordeningen en offline expliciet "sorteren blijft actief", maar het scherm kende alleen de volgorde van toevoegen. Sorteren gebeurt volledig over de entries in het geheugen: geen refetch, geen availability-resolve, en daarom blijft het offline werken terwijl het filter Beschikbaar verdwijnt. De comparators zijn totaal gemaakt zodat de mergevolgorde niet in het resultaat lekt: titel valt terug op jaar en dan op key (een remake en het origineel delen hun titel), jaar sorteert nieuwste eerst met een ontbrekend jaar achteraan in plaats van als jaar nul.
+- **Nederlandse vertalingen voor de kijklijst en Mijn Pleya** (`lib/i18n/nl.i18n.json`, commit `195904e`). Kijklijst is de gekozen term, ook in de navigatie en de meldingen na een mutatie.
+
+### Changed
+- **`LiveTvSupport` splitst in server en opslag** (`lib/media/live_tv_support.dart`, commit `b4bc5d9`). `buildFavoriteChannelSource` blijft serverkennis, de vier opslag-members zitten op `LiveTvFavoritesStore`, en `LiveTvSupport.favorites` geeft de store die de server zelf bezit. Jellyfin geeft zichzelf terug en verandert twee regels; Plex geeft `null`, bewust en niet een stub met mode `none`, want Plex-favorieten bestaan wél en wonen alleen elders.
+- **De favorietenregels van het Live TV-scherm staan naast het scherm** (`lib/screens/livetv/live_tv_favorites.dart`, commit `e41975c`), zodat een regel die beslist of een volledige lijst overschreven mag worden testbaar is zonder widgetboom. Daar staat ook het onderscheid dat de degraded state draagt: `isFavoriteCapable` stuurt zichtbaarheid, `canToggleFavorite` de bevoegdheid van dit moment.
+- **`myPleya.settings` en `myPleya.switchProfile` verwijderd** ten gunste van `common.settings` en `screens.switchProfile`; de profielkop in Mijn Pleya draagt nu een Semantics-label, zodat een avatar met een naam ernaast ook hoorbaar een knop is.
+
+### Notes
+- **De scope van `favoriteChannels` is niet vastgesteld.** Het testaccount heeft geen provider met het `livetv`-protocol, dus er bestaat geen geldige `source` en er kon geen onderscheidende regel worden weggeschreven; een synthetische regel wordt geweigerd met 400 `Bad source value`. User-scoped auth is dus de gekozen veilige faalrichting en geen gemeten eigenschap. De gesaniteerde meting staat in `test/fixtures/livetv/`, inclusief een afleiding die achteraf ongeldig bleek en als zodanig gemarkeerd is: het meetscript concludeerde "account/owner-scoped" uit twee lege antwoorden.
+- De kijklijst kreeg zijn beslissing in [DEC-020](DECISIONS.md#dec-020) (commit `dd75c69`), de cloudgrens in [DEC-021](DECISIONS.md#dec-021) (commit `d867260`).
+- 3264 tests groen, 50 nieuwe. `scripts/ci_checks.sh` schoon op alle zes de gates.
+
+## [2026-08-16] Mijn Pleya en de kijklijst
+
+### Added
+- **De universele kijklijst, gevoed door de Plex-watchlist en Jellyfin-favorieten** (`lib/media/watchlist_*.dart`, `lib/services/plex_watchlist_client.dart`, `lib/services/watchlist/`, `lib/providers/watchlist_provider.dart`, `lib/screens/watchlist_screen.dart`, commits `310ace8` tot en met `11ec313`). Titels die je op je telefoon aan je kijklijst zet bestonden in Pleya niet. Het contract is eerst gemeten en gesaniteerd vastgelegd in `test/fixtures/watchlist/`, en die meting sneuvelde vier planaannames: het padsegment `available` gaat over streamingdiensten en niet over eigen servers, de lijst draagt geen `watchlistedAt` per titel terwijl de serverkant wel op `watchlistedAt:desc` sorteert, dubbel toevoegen geeft 200, en alle beeld-URL's zijn absolute publieke CDN-links die zonder header laden.
+- **Mijn Pleya op mobiel** (`lib/screens/my_pleya_screen.dart`, `lib/navigation/navigation_tabs.dart`, `lib/screens/main_screen.dart`, commit `7c4f06c`), met Watchlist als eigen bestemming in de sidebar op desktop en TV. Downloads, Verzoeken en Instellingen zijn op mobiel geen bar-items meer maar ingangen binnen Mijn Pleya, dus die zijn daar twee tikken in plaats van één.
+- **Toevoegen en verwijderen vanaf het detailscherm, het contextmenu en de sheet** (`lib/services/watchlist_ui_actions.dart`, commit `11ec313`), alleen op film en serie en alleen online. Offline verdwijnt de actie in plaats van te falen, want een kijklijstmutatie wordt geweigerd en niet in de wachtrij gezet.
+
+### Notes
+- Een entry draagt meerdere memberships, want dezelfde film kan tegelijk een Plex-watchlistregel en een Jellyfin-favoriet zijn. Verwijderen haalt hem overal weg en is compenserend: lukt de compensatie niet, dan volgt `partiallyFailed` en leest de provider de lijst terug in plaats van te raden. Alle state is genamespaced op profiel plus echte gebruiker. Zie [DEC-020](DECISIONS.md#dec-020).
+- Artwork gaat via `MediaImageHelper.catalogPosterUrl` over images.plex.tv zonder auth, met een invariant-test die voorkomt dat er ooit een accounttoken in een persistente image-cachekey belandt.
+
 ## [2026-08-15] Het systeemtoetsenbord op Apple TV reageert weer op de Siri Remote
 
 ### Fixed

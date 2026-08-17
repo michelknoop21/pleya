@@ -1,18 +1,18 @@
 # STATUS — Pleya
 
-_Laatst bijgewerkt: 2026-08-15 14:00 (branch `main` = `test` = `7f56137`; TestFlight 2.8.0: tvOS 219, macOS 216, iOS 217)_
+_Laatst bijgewerkt: 2026-08-17 11:50 (branch `main` = `d867260`, gepusht naar `github` en `origin`; TestFlight 2.8.0: tvOS 219, macOS 216, iOS 217, upload van build 221 loopt)_
 
 ## Waar was ik
 
-**Het systeemtoetsenbord op Apple TV reageert weer op de Siri Remote, bevestigd op het toestel met build 219.** Klikken op een letter deed niets terwijl vegen, dictatie en continuity-typen wél werkten. Uit de disassembly van de gepinde engine bleek waarom: die claimt elke press al in `sendEvent:` (`synthesizeRemotePressType:` geeft onvoorwaardelijk `YES`) en slaat de originele implementatie dan over, zodat UIKit zijn responder chain nooit begint. Vegen ontsnapte omdat dat touches zijn, geen presses. De fix legt het eigendom terug op de enige plek waar de engine het vraagt: `PleyaFlutterViewController.tvosHandlePress(fromUIEvent:)` geeft `false` tijdens een tekstinvoersessie, zonder `super`. Zie [DEC-019](docs/DECISIONS.md#dec-019) en de gotcha in `CLAUDE.md`.
+**De kijklijst is af en het Live TV-tokenlek is dicht.** De kijklijst kreeg zijn laatste twee stukken: Nederlandse vertalingen plus [DEC-020](docs/DECISIONS.md#dec-020), en alsnog de sorteerkeuze die het plan beloofde maar het scherm niet had (recent toegevoegd, titel, jaar, volledig client-side). Daarna het lek dat sinds fase 0 als losse fix openstond: de favorieten van Live TV gingen via `PlexClient` naar `epg.provider.plex.tv`, en die client draagt de PMS-servertoken in `defaultHeaders` die ook bij een absolute URL meegaat. Eerst gemeten tegen een echt account, daarna in negen commits verhuisd naar `PlexCloudHttpClient`, de gedeelde transportgrens waar de kijklijst nu ook op staat. Zie [DEC-021](docs/DECISIONS.md#dec-021).
 
-Twee correcties op wat hier gisteren stond: de gate uit DEC-017 was **niet** de oorzaak van het niet-werkende klikken (die dichtte het achtergrondlek; select was al eerder stuk), en de app-side override die een geheugennotitie als geïmplementeerd beschreef, bestond niet.
+Twee dingen kwamen onderweg boven die er los van stonden. De leescall liep door `FailoverHttpClient`, die alleen `get` overridet, dus een 5xx bij plex.tv kon de endpoint-cascade van je eigen server starten. En een mislukte lees gaf `[]`, waarna één ster aantikken die leegte terugschreef als de volledige lijst van het account. Beide dicht.
 
 ## Eergisteren en gisteren
 
-Vijf gemelde Apple TV-problemen opgelost en naar TestFlight gebracht. Het toetsenbord was de belangrijkste: de D-pad bediende de UI achter het geopende systeemtoetsenbord, en de fix uit DEC-011 bleek op een codepad te zitten dat daar nooit draait. De engine swizzlet `sendEvent:` en levert elke press rechtstreeks aan Dart, buiten de responder chain om, dus de gate hoort op `FocusManager.addEarlyKeyEventHandler`. Die geldt nu centraal voor elk invoerveld. Zie [DEC-017](docs/DECISIONS.md#dec-017). Verder: de skip- en volgende-aflevering-knop zijn bereikbaar met de remote en tonen er niet langer twee tegelijk tijdens de aftiteling, autoplay had drie onafhankelijke breekpunten waarvan er één autoplay voor de rest van de sessie stil kon leggen, de tijdlijn kent nu scrubben op pauze plus een spoelsnelheid die met het klikritme oploopt, en de log-upload hield zich niet aan het 1 MB-contract van de eigen relay.
+Gisteren landde de kijklijst zelf: identiteit en het multi-membership-model, de Plex-cloudclient op een gemeten contract, artwork zonder token in de cachekey, repository, beschikbaarheid met eerlijke dekking, offline-snapshot, provider, Mijn Pleya op mobiel met Watchlist in de sidebar, het kijklijst-scherm en de schrijfacties. Vijftien commits van `310ace8` tot `11ec313`; de details staan in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Bij het uitrollen bleek dat **geen enkele macOS-build sinds 196 ooit installeerbaar is geweest**: `ITSAppUsesNonExemptEncryption` ontbrak in de macOS-plist, waardoor Apple elke upload op `MISSING_EXPORT_COMPLIANCE` zette terwijl de lane succes meldde. Sleutel toegevoegd en de builds 214 en 216 via de ASC-API losgetrokken. Zie [DEC-018](docs/DECISIONS.md#dec-018).
+Eergisteren reageerde het systeemtoetsenbord op Apple TV weer op de Siri Remote, bevestigd op het toestel met build 219. De engine claimt elke press al in `sendEvent:` en slaat de originele implementatie over, dus UIKit begint zijn responder chain nooit; het eigendom ligt nu terug op `PleyaFlutterViewController.tvosHandlePress(fromUIEvent:)`. Zie [DEC-019](docs/DECISIONS.md#dec-019) en de gotcha in `CLAUDE.md`.
 
 ## Eerder werk, ongewijzigd
 
@@ -22,7 +22,11 @@ Het Atmos-spoor staat er nog precies zo bij als gisteren: een iOS-log van build 
 
 ## Volgende stap
 
-**Eén regressieronde op de fysieke Apple TV met tvOS build 216.** Alle vijf de fixes raken de remote, de focus of de spelerstaat, dus ze worden in één sessie doorlopen in plaats van los. Volgorde en wat je per punt controleert staat in `~/.claude/plans/ik-wil-dat-je-starry-possum.md`. Kort: zoeken openen en letters typen (achtergrond moet stilstaan, Menu sluit in één druk, daarna normaal navigeren, en hetzelfde bij inloggen, server-URL en Seerr), tijdens een intro omhoog naar de skip-knop en er weer uit, tijdens de aftiteling tellen hoeveel volgende-aflevering-knoppen er staan, een aflevering uitkijken en zien of hij vanzelf doorgaat (ook ná een eerdere seek in dezelfde sessie, dat was het no-op-scenario), pauzeren en met de balk een positie kiezen, en tot slot een log uploaden na een lange kijksessie plus direct nog eens drukken voor de "te snel"-melding.
+**De kijklijst op een toestel doorlopen zodra build 221 binnen is.** Vier dingen, in deze volgorde. Op de Apple TV via de sidebar naar Watchlist: staat de focusring op de eerste rij, werkt randnavigatie, sluit Menu de sheet, en kloppen de focusvolgorde van de nieuwe detailknop en het contextmenu-item. Daarna wisselen tussen twee Plex Home-gebruikers: de lijst moet meewisselen en geen enkel item van de vorige gebruiker tonen. Dan dezelfde film die zowel Plex-watchlist als Jellyfin-favoriet is verwijderen, en kijken of hij uit beide verdwijnt. En tot slot netwerk uit met een gedownloade titel: die moet speelbaar blijven, sorteren en de typefilters moeten blijven werken, en alleen het filter Beschikbaar hoort te vervallen. De volledige lijst staat in `~/.claude/plans/wat-ik-wel-echt-synchronous-piglet.md` onder Verificatie.
+
+De favorieten van Live TV kun je in dezelfde ronde niet meenemen: dat vraagt een Plex-account met een tuner, en dit account heeft er geen. Zie de blocker daarover.
+
+**Daarna de regressieronde op de fysieke Apple TV met tvOS build 216 of nieuwer.** Alle vijf de fixes van 14 augustus raken de remote, de focus of de spelerstaat, dus ze worden in één sessie doorlopen in plaats van los. Volgorde en wat je per punt controleert staat in `~/.claude/plans/ik-wil-dat-je-starry-possum.md`. Kort: zoeken openen en letters typen (achtergrond moet stilstaan, Menu sluit in één druk, daarna normaal navigeren, en hetzelfde bij inloggen, server-URL en Seerr), tijdens een intro omhoog naar de skip-knop en er weer uit, tijdens de aftiteling tellen hoeveel volgende-aflevering-knoppen er staan, een aflevering uitkijken en zien of hij vanzelf doorgaat (ook ná een eerdere seek in dezelfde sessie, dat was het no-op-scenario), pauzeren en met de balk een positie kiezen, en tot slot een log uploaden na een lange kijksessie plus direct nog eens drukken voor de "te snel"-melding.
 
 Let bij het eerste punt op één ding in het bijzonder: reageert de remote na het sluiten van het toetsenbord nergens meer op, dan is dat het resterende native risico uit [DEC-017](docs/DECISIONS.md#dec-017) en geen los raadsel.
 
@@ -42,6 +46,9 @@ Het uitgewerkte implementatieplan (arbiter, badge uit de beslissing, `auto` op d
 
 ## Blockers
 
+- [ ] **Kijklijst op een toestel**: alles is unit- en widget-gedekt (3264 tests), maar de TV-focusronde, de profielwissel tussen twee Plex Home-gebruikers, het verwijderen van een gemergde entry en de offline-ronde zijn alleen op een toestel te zien. Wacht op build 221.
+- [ ] **De scope van `favoriteChannels` is niet gemeten**: dit Plex-account heeft geen provider met het `livetv`-protocol, dus er bestaat geen geldige `source` en een synthetische regel wordt geweigerd met 400. Of die lijst per account of per Home-gebruiker is, blijft daarmee open. De proef die het beslist: een account met een echte tuner, favoriet zetten als gebruiker A, teruglezen als B. Het meetscript kan dat al zodra er een tuner is. Geen blocker voor de gedichte credentialgrens, wel voor de vraag of de gekozen profielscope semantisch klopt met wat Plex opslaat.
+- [ ] **Live TV-favorieten zijn niet te verifiëren zonder tuner**: dezelfde reden. Bewuste achteruitgang die daarbij hoort: een Home-gebruiker van wie de binding nog loopt ziet geen favorieten, waar de servertoken vandaag wél een antwoord gaf. Zie [DEC-021](docs/DECISIONS.md#dec-021).
 - [ ] **Regressieronde op de fysieke Apple TV**: de vijf fixes van 14 augustus zitten inmiddels in tvOS build 219 en zijn unit- en widget-gedekt, maar de Siri Remote is niet te simuleren. Het toetsenbord is los bevestigd (zie hierboven); de skip-knoppen, autoplay en het scrubben nog niet.
 - [ ] **Autoplay-vlaggen na een overgenomen herlaadpoging zijn niet door een test gedekt**: de opruiming zit in een `finally` in `_reloadMediaInPlace`, maar die logica leeft in een private extensie op de schermstaat en testen vraagt een volledig spelerharnas. Bewust overgeslagen; de dekking leunt hier op de deviceronde.
 - [ ] **Scrubben: hervatten wacht niet op de seek**: bij bevestigen volgt `player.play()` direct op `onSeekEnd`, want die geeft geen future terug. Op mpv landen de commando's in volgorde, maar of er een frame op de oude positie doorschemert is alleen op een toestel te zien.
@@ -83,6 +90,15 @@ xcrun devicectl device process launch --console --terminate-existing \
 
 ## Recente sessies
 
+### 2026-08-17
+- Kijklijst afgemaakt: Nederlandse vertalingen (`195904e`), [DEC-020](docs/DECISIONS.md#dec-020) (`dd75c69`) en alsnog de sorteerkeuze op recent, titel en jaar (`3634fa0`), volledig client-side zodat hij offline blijft werken.
+- Het Live TV-tokenlek gedicht in negen commits (`a089264` tot `d867260`), na een meting tegen een echt account. `PlexCloudHttpClient` is nu de transportgrens naar plex.tv en de kijklijst staat er ook op. Onderweg twee losse defecten mee: de cloudcall kon de endpoint-failover van je eigen server triggeren, en een mislukte lees wiste je favorieten bij de eerstvolgende tik. Zie [DEC-021](docs/DECISIONS.md#dec-021).
+- 3264 tests groen (was 3202), `scripts/ci_checks.sh` schoon, gepusht naar beide remotes, build 221 naar TestFlight.
+
+### 2026-08-16
+- Mijn Pleya en de kijklijst gebouwd, vijftien commits van `310ace8` tot `11ec313`: datalaag met multi-membership, Plex-cloudclient op een gemeten contract, beschikbaarheid met eerlijke dekking, offline-snapshot, navigatie, scherm en schrijfacties.
+- Het API-contract eerst gemeten en gesaniteerd vastgelegd in `test/fixtures/watchlist/`; vier planaannames sneuvelden daarop.
+
 ### 2026-08-15
 - Het tvOS-systeemtoetsenbord reageert weer op de Siri Remote (`6bab0ca`, build 219, op het toestel bevestigd). Oorzaak uit de engine-binary bewezen, fix via een override van `tvosHandlePressFromUIEvent:`. Zie [DEC-019](docs/DECISIONS.md#dec-019); de gotcha staat in `CLAUDE.md` zodat dit niet opnieuw verloren gaat.
 - `main` en `test` weer gelijkgetrokken (`b3dc5b2`), inclusief twee commits die alleen op `test` stonden: de hero die verdween na het zoektoetsenbord, en de watch-state-sync waarbij een tweede apparaat wint van een verouderde lokale positie. 2935 tests groen.
@@ -98,22 +114,6 @@ xcrun devicectl device process launch --console --terminate-existing \
 - Builds 213 (iOS) en 214 (tvOS, macOS) naar TestFlight; 2883 tests groen, `scripts/ci_checks.sh` schoon.
 - `ice.pleya.app` live: Cloudflare Tunnel op de Synology, relay en tunnel als containers. `/health` en de volledige log-upload-route publiek geverifieerd (`POST /logs` geeft een code van vijf tekens, `GET /logs/<id>` geeft de tekst terug).
 - Code-review-fixes op het serverwerk: LAN-poort naar `127.0.0.1` (de relay is onauthenticated en de OAuth-proxy zit op dezelfde poort), `--remove-orphans` in het deploy-script, en de OAuth-redirect-URI-stap gedocumenteerd omdat `OAUTH_BASE_URL` van hostnaam wisselde.
-
-### 2026-08-09
-- Atmos-diagnose: bitstream werkt aantoonbaar op iOS (`JOC=yes`), `audio-exclusive` en MPVKit-bisect afgevoerd als spoor. Twee echte defecten gevonden: de badge hangt aan een property die `not-applicable` teruggeeft, en loudnorm vecht met passthrough. Zie [DEC-013](docs/DECISIONS.md#dec-013).
-- Builds 210 t/m 212: `auto` bitstreamt niet meer (`a0a2018`), daarna een vangnet dat binnen een seconde terugvalt op PCM en de route onthoudt (`87844bb`).
-- `current-ao` en `audio-out-params/format` toegevoegd aan de performance-HUD, plus de Android-pariteit. Nog niet gecommit.
-- `ice.pleya.app` bleek nooit te hebben bestaan; `server/` omgezet van `ice.plezy.app`, tunnel-compose, deploy-script en README erbij, lokaal end-to-end getest. Zie [DEC-014](docs/DECISIONS.md#dec-014).
-
-### 2026-08-07/08
-- Dolby Atmos en spatial audio op iOS en tvOS (`87c5e04`, build 207): de ontbrekende schakel was `setSupportsMultichannelContent(true)`, niet mpv. Introduceerde ook de auto-passthrough die in build 211 weer terugging.
-- Blu-ray ISO's en uitgepakte BDMV-mappen afspelen (`de48dbb`): libbluray zat al in de bundle, alleen de Dart-kant ontbrak.
-- Seerr Ontdekken zegt nu wát er misging in plaats van altijd "probeer opnieuw" (`24f9054`).
-
-### 2026-08-05
-- Zoeken op elk apparaat: Siri Remote-dictatie via het systeem-toetsenbord op Apple TV, plus zeven focus/selectie/popup-fixes waaronder twee globale (`SelectKeyUpSuppressor`, verweesde key-ups). Commit `3b193f8`, build 202 op iOS/tvOS/macOS.
-- Repo gesynchroniseerd: `main` 64 commits bijgewerkt naar `origin/main` en de lokale `test`-branch gemerged.
-- Xcode-toolchain hersteld (componenten stonden op 26.3 tegen Xcode 26.6) — zie [DEC-010](docs/DECISIONS.md#dec-010).
 
 Ouder dan dit: zie [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
