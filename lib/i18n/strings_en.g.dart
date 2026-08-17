@@ -2884,6 +2884,9 @@ class TranslationsLiveTvEn {
 	/// en: 'Reorder Favorites'
 	String get reorderFavorites => 'Reorder Favorites';
 
+	/// en: 'Could not save your favorite channels'
+	String get favoritesSaveFailed => 'Could not save your favorite channels';
+
 	/// en: 'Join Session in Progress'
 	String get joinSession => 'Join Session in Progress';
 
@@ -6396,6 +6399,7 @@ extension on Translations {
 			'liveTv.watchChannel' => 'Watch Channel',
 			'liveTv.favorites' => 'Favorites',
 			'liveTv.reorderFavorites' => 'Reorder Favorites',
+			'liveTv.favoritesSaveFailed' => 'Could not save your favorite channels',
 			'liveTv.joinSession' => 'Join Session in Progress',
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Watch from start (${minutes} min ago)',
 			'liveTv.watchLive' => 'Watch Live',
@@ -6517,9 +6521,9 @@ extension on Translations {
 			'watchTogether.joinWatchSession' => 'Join Watch Session',
 			'watchTogether.enterCodeHint' => 'Enter 5-character code',
 			'watchTogether.pasteFromClipboard' => 'Paste from clipboard',
-			'watchTogether.pleaseEnterCode' => 'Please enter a session code',
 			_ => null,
 		} ?? switch (path) {
+			'watchTogether.pleaseEnterCode' => 'Please enter a session code',
 			'watchTogether.codeMustBe5Chars' => 'Session code must be 5 characters',
 			'watchTogether.joinInstructions' => 'Enter the host\'s session code to join.',
 			'watchTogether.failedToCreate' => 'Failed to create session',
@@ -7031,9 +7035,9 @@ extension on Translations {
 			'addLocalFolder.save' => 'Add folder',
 			'addLocalFolder.saveError' => 'Failed to add local folder',
 			'addLocalFolder.entriesFound' => ({required Object count}) => '${count} items found in folder',
-			'pleyaShare.cardTitle' => 'Pleya Share',
 			_ => null,
 		} ?? switch (path) {
+			'pleyaShare.cardTitle' => 'Pleya Share',
 			'pleyaShare.cardSubtitle' => 'Connect to another Pleya device sharing its media',
 			'pleyaShare.hostTitle' => 'Share my media',
 			'pleyaShare.hostDescription' => 'Other Pleya devices on this network can browse, stream, and download your local folders. Keep this screen open while sharing.',

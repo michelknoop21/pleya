@@ -987,6 +987,7 @@
     "watchChannel": "Watch Channel",
     "favorites": "Favorites",
     "reorderFavorites": "Reorder Favorites",
+    "favoritesSaveFailed": "Could not save your favorite channels",
     "joinSession": "Join Session in Progress",
     "watchFromStart": "Watch from start (${minutes} min ago)",
     "watchLive": "Watch Live",

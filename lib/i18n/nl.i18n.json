@@ -952,6 +952,7 @@
     "watchChannel": "Kanaal bekijken",
     "favorites": "Favorieten",
     "reorderFavorites": "Favorieten herordenen",
+    "favoritesSaveFailed": "Kon je favoriete kanalen niet opslaan",
     "joinSession": "Deelnemen aan lopende sessie",
     "watchFromStart": "Kijk vanaf het begin (${minutes} min geleden)",
     "watchLive": "Live kijken",

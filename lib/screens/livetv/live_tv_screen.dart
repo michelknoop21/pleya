@@ -16,6 +16,7 @@ import '../../models/livetv_channel.dart';
 import '../../models/livetv_dvr.dart';
 import '../../mixins/refreshable.dart';
 import '../../mixins/tab_navigation_mixin.dart';
+import '../../profiles/active_profile_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../services/livetv/plex_favorite_channels_service.dart';
 import '../../services/settings_service.dart';
@@ -90,6 +91,9 @@ class _LiveTvScreenState extends State<LiveTvScreen>
   int _favoritesGeneration = 0;
   final Map<String, FavoriteStoreReadProof> _favoriteReadProofById = {};
 
+  ActiveProfileProvider? _activeProfile;
+  bool _wasBinding = false;
+
   /// Where a Plex server's favorites actually live. Null when this profile has
   /// no user-scoped Plex identity, and then Plex favorites are simply absent:
   /// no store, no star, no write.
@@ -106,7 +110,9 @@ class _LiveTvScreenState extends State<LiveTvScreen>
 
   List<LiveTvChannel> get _filteredChannels => filterLiveTvChannelsForFavorites(
     channels: _channels,
-    favoritesOnly: _showFavoritesOnly,
+    // Without a single store there are no favorites to filter down to, and the
+    // setting that turns this on by default would leave an empty guide.
+    favoritesOnly: _showFavoritesOnly && _anyFavoritesCapable,
     favorites: _favoriteChannels,
     sourceForChannel: _sourceForChannel,
   );
@@ -120,6 +126,24 @@ class _LiveTvScreenState extends State<LiveTvScreen>
   String _favoriteKeyForChannel(LiveTvChannel channel) => favoriteChannelKey(_sourceForChannel(channel), channel.key);
 
   bool _isFavoriteChannel(LiveTvChannel channel) => _favoriteKeys.contains(_favoriteKeyForChannel(channel));
+
+  /// Whether any store can hold favorites at all. Drives the filter and the
+  /// reorder button: with a Jellyfin server present this stays true even when
+  /// Plex has no scope, and then only the Plex channels are inert.
+  bool get _anyFavoritesCapable => _favoriteStoreById.isNotEmpty;
+
+  /// Whether this channel may be toggled right now.
+  ///
+  /// Deliberately not the same question as "is it favoritable": after a failed
+  /// reread the last proven star stays on screen, but touching it would write a
+  /// list nobody has seen.
+  bool _canToggleFavorite(LiveTvChannel channel) => canToggleFavorite(
+    channel,
+    storeByChannel: _favoriteStoreByChannel,
+    storeById: _favoriteStoreById,
+    proofByStore: _favoriteReadProofById,
+    generation: _favoritesGeneration,
+  );
 
   void _refreshFavoriteKeys() {
     _favoriteKeys = _favoriteChannels.map((f) => f.stableKey).toSet();
@@ -140,16 +164,34 @@ class _LiveTvScreenState extends State<LiveTvScreen>
     suppressAutoFocus = true;
     _showFavoritesOnly = context.settingsRead(SettingsService.liveTvDefaultFavorites);
     initTabNavigation();
+    _activeProfile = context.read<ActiveProfileProvider?>();
+    _wasBinding = _activeProfile?.isBinding ?? false;
+    _activeProfile?.addListener(_onProfileBindingChanged);
     _loadChannels();
   }
 
   @override
   void dispose() {
+    _activeProfile?.removeListener(_onProfileBindingChanged);
     _guideTabFocusNode.dispose();
     _whatsOnTabFocusNode.dispose();
     _recordingsTabFocusNode.dispose();
     disposeTabNavigation();
     super.dispose();
+  }
+
+  /// Pick up favorites once the Home-user binding lands.
+  ///
+  /// Before that moment there is no user-scoped token, so Plex has no store and
+  /// no star. Only the falling edge counts, and the work happens off the
+  /// callback: this fires inside the synchronous notify cascade, which has a
+  /// documented ordering trap (see `main_screen.dart`).
+  void _onProfileBindingChanged() {
+    final isBindingNow = _activeProfile?.isBinding ?? false;
+    final settled = _wasBinding && !isBindingNow;
+    _wasBinding = isBindingNow;
+    if (!settled || !mounted) return;
+    unawaited(_loadFavorites(context.read<MultiServerProvider>()));
   }
 
   @override
@@ -484,10 +526,13 @@ class _LiveTvScreenState extends State<LiveTvScreen>
   }
 
   void _toggleFavorite(LiveTvChannel channel) {
+    // No store, or a store this round has not read: the star stays as it is
+    // rather than starting a write that would overwrite an unseen list.
+    if (!_canToggleFavorite(channel)) return;
+
     final source = _sourceForChannel(channel);
     final favoriteKey = favoriteChannelKey(source, channel.key);
-    final scopeKey = liveTvChannelScopeKey(channel);
-    final storeKey = channel.favoriteStoreKey ?? _favoriteStoreByChannel[scopeKey];
+    final storeKey = favoriteStoreKeyForChannel(channel, storeByChannel: _favoriteStoreByChannel);
     if (storeKey != null) _favoriteStoreBySource[source] = storeKey;
 
     setState(() {
@@ -554,7 +599,34 @@ class _LiveTvScreenState extends State<LiveTvScreen>
         forStore: byStore[storeKey] ?? const <FavoriteChannel>[],
         source: source,
       );
-      unawaited(store.setFavoriteChannels(channels));
+      unawaited(_writeFavorites(store, storeKey, channels, multiServer));
+    }
+  }
+
+  /// Write, and when that fails let the truth come from the server rather than
+  /// from the optimistic state.
+  ///
+  /// The order matters. The toggle already moved the UI; a failed write says
+  /// so; a successful reread then decides what is actually there. If the reread
+  /// fails too, the last proven list stays on screen and its read proof is
+  /// dropped, so the star is still visible but no longer touchable. Falling
+  /// back to an empty list here is exactly how favorites get erased.
+  Future<void> _writeFavorites(
+    LiveTvFavoritesStore store,
+    String storeKey,
+    List<FavoriteChannel> channels,
+    MultiServerProvider multiServer,
+  ) async {
+    try {
+      await store.setFavoriteChannels(channels);
+    } catch (e) {
+      appLogger.e('Failed to save favorite channels for $storeKey', error: e);
+      _favoriteReadProofById.remove(storeKey);
+      if (mounted) {
+        showErrorSnackBar(context, t.liveTv.favoritesSaveFailed);
+        setState(() {});
+      }
+      await _loadFavorites(multiServer);
     }
   }
 
@@ -615,14 +687,16 @@ class _LiveTvScreenState extends State<LiveTvScreen>
             onNavigateLeft: () => getTabChipFocusNode(tabCount - 1).requestFocus(),
             onNavigateDown: _focusCurrentTab,
             actions: [
-              if (!isRecordings)
+              // No store means no favorites anywhere, so the filter would only
+              // ever empty the guide.
+              if (!isRecordings && _anyFavoritesCapable)
                 FocusableAction(
                   icon: _showFavoritesOnly ? Symbols.star_rounded : Symbols.star_outline_rounded,
                   iconFill: _showFavoritesOnly ? 1.0 : 0.0,
                   tooltip: t.liveTv.favorites,
                   onPressed: _toggleFavoritesFilter,
                 ),
-              if (!isRecordings && _showFavoritesOnly && _favoriteChannels.length > 1)
+              if (!isRecordings && _anyFavoritesCapable && _showFavoritesOnly && _favoriteChannels.length > 1)
                 FocusableAction(
                   icon: Symbols.swap_vert_rounded,
                   tooltip: t.liveTv.reorderFavorites,
@@ -654,6 +728,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
         channels: guideChannels,
         isFavoriteChannel: _isFavoriteChannel,
         onToggleFavorite: _toggleFavorite,
+        canToggleFavorite: _canToggleFavorite,
         onNavigateUp: focusTabBar,
         onBack: onTabBarBack,
       ),

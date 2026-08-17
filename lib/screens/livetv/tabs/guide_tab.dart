@@ -38,6 +38,12 @@ class GuideTab extends StatefulWidget {
   final List<LiveTvChannel> channels;
   final bool Function(LiveTvChannel channel)? isFavoriteChannel;
   final void Function(LiveTvChannel)? onToggleFavorite;
+
+  /// Whether this channel may be toggled right now. Absent means yes, so
+  /// callers that have no notion of it keep their old behaviour. When it says
+  /// no the gesture is not offered at all: a long press that visibly does
+  /// nothing is worse than no long press.
+  final bool Function(LiveTvChannel channel)? canToggleFavorite;
   final VoidCallback? onNavigateUp;
   final VoidCallback? onBack;
 
@@ -46,6 +52,7 @@ class GuideTab extends StatefulWidget {
     required this.channels,
     this.isFavoriteChannel,
     this.onToggleFavorite,
+    this.canToggleFavorite,
     this.onNavigateUp,
     this.onBack,
   });
@@ -74,6 +81,10 @@ final class _GuideChannelRow extends _GuideRow {
 }
 
 class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBindingObserver {
+  /// No predicate means the caller does not distinguish, so keep the old
+  /// behaviour and allow the toggle.
+  bool _canToggleFavorite(LiveTvChannel channel) => widget.canToggleFavorite?.call(channel) ?? true;
+
   static const _slotWidth = 180.0;
   static const _channelColumnWidth = 132.0;
   static const _rowHeight = 64.0;
@@ -778,7 +789,9 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
     // 'F' key toggles favorite on focused channel
     if (key == LogicalKeyboardKey.keyF && _gridColumn == 0) {
       if (_gridChannelIndex >= 0 && _gridChannelIndex < widget.channels.length) {
-        widget.onToggleFavorite?.call(widget.channels[_gridChannelIndex]);
+        final channel = widget.channels[_gridChannelIndex];
+        if (!_canToggleFavorite(channel)) return KeyEventResult.ignored;
+        widget.onToggleFavorite?.call(channel);
       }
       return KeyEventResult.handled;
     }
@@ -1310,7 +1323,9 @@ class GuideTabState extends State<GuideTab> with MountedSetStateMixin, WidgetsBi
       channel: channel,
       theme: theme,
       onTap: () => _tuneChannel(channel),
-      onLongPress: widget.onToggleFavorite != null ? () => widget.onToggleFavorite!(channel) : null,
+      onLongPress: widget.onToggleFavorite != null && _canToggleFavorite(channel)
+          ? () => widget.onToggleFavorite!(channel)
+          : null,
       isFocused: isFocused,
       isFavorite: widget.isFavoriteChannel?.call(channel) ?? false,
       fallbackBuilder: () => _buildChannelNameFallback(channel, theme),
