@@ -1,0 +1,12 @@
+name: path_provider_android
+version: 2.2.1
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.16.0"
+flutter:
+  plugin:
+    implements: path_provider
+    platforms:
+      android:
+        package: io.flutter.plugins.pathprovider
+        pluginClass: PathProviderPlugin

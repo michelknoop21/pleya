@@ -1,0 +1,4 @@
+name: collection
+version: 1.19.1
+environment:
+  sdk: ">=3.4.0 <4.0.0"
