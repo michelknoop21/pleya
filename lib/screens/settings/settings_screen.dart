@@ -212,7 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
 
                     if (UpdateService.isUpdateCheckEnabled) ...[_buildUpdateSection()],
 
-                    if (!PlatformDetector.isTV()) _buildBackupSection(),
+                    if (!PlatformDetector.isTV() || _icloudSyncPlatform) _buildBackupSection(),
 
                     if (kDebugMode) _buildDebugSection(),
 
@@ -401,20 +401,22 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         keywords: const ['reset', 'restore', 'herstel', 'standaard'],
         onTap: (_) => _showResetSettingsDialog(),
       ),
-      _SettingsSearchEntry(
-        icon: Symbols.upload_rounded,
-        title: t.settings.exportSettings,
-        subtitle: t.settings.exportSettingsDescription,
-        keywords: const ['backup', 'export', 'settings', 'instellingen'],
-        onTap: (_) => _handleExportSettings(),
-      ),
-      _SettingsSearchEntry(
-        icon: Symbols.download_rounded,
-        title: t.settings.importSettings,
-        subtitle: t.settings.importSettingsDescription,
-        keywords: const ['backup', 'import', 'restore', 'instellingen'],
-        onTap: (_) => _showImportSettingsDialog(),
-      ),
+      if (!PlatformDetector.isTV()) ...[
+        _SettingsSearchEntry(
+          icon: Symbols.upload_rounded,
+          title: t.settings.exportSettings,
+          subtitle: t.settings.exportSettingsDescription,
+          keywords: const ['backup', 'export', 'settings', 'instellingen'],
+          onTap: (_) => _handleExportSettings(),
+        ),
+        _SettingsSearchEntry(
+          icon: Symbols.download_rounded,
+          title: t.settings.importSettings,
+          subtitle: t.settings.importSettingsDescription,
+          keywords: const ['backup', 'import', 'restore', 'instellingen'],
+          onTap: (_) => _showImportSettingsDialog(),
+        ),
+      ],
       if (UpdateService.isUpdateCheckEnabled)
         _SettingsSearchEntry(
           icon: Symbols.system_update_rounded,
@@ -841,23 +843,29 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   }
 
   Widget _buildBackupSection() {
+    final isTv = PlatformDetector.isTV();
     return SettingsGroup(
       title: t.settings.backup,
       children: [
-        SettingNavigationTile(
-          focusNode: _focusTracker.get(_kExportSettings),
-          icon: Symbols.upload_rounded,
-          title: t.settings.exportSettings,
-          subtitle: t.settings.exportSettingsDescription,
-          onTap: _handleExportSettings,
-        ),
-        SettingNavigationTile(
-          focusNode: _focusTracker.get(_kImportSettings),
-          icon: Symbols.download_rounded,
-          title: t.settings.importSettings,
-          subtitle: t.settings.importSettingsDescription,
-          onTap: _showImportSettingsDialog,
-        ),
+        // Export and import hand a file to a file picker, which a TV has no
+        // sensible surface for. iCloud sync needs nothing but the toggle, so
+        // it is the one tile in here that an Apple TV does get.
+        if (!isTv) ...[
+          SettingNavigationTile(
+            focusNode: _focusTracker.get(_kExportSettings),
+            icon: Symbols.upload_rounded,
+            title: t.settings.exportSettings,
+            subtitle: t.settings.exportSettingsDescription,
+            onTap: _handleExportSettings,
+          ),
+          SettingNavigationTile(
+            focusNode: _focusTracker.get(_kImportSettings),
+            icon: Symbols.download_rounded,
+            title: t.settings.importSettings,
+            subtitle: t.settings.importSettingsDescription,
+            onTap: _showImportSettingsDialog,
+          ),
+        ],
         if (_icloudSyncPlatform) _buildIcloudSyncTile(),
       ],
     );
