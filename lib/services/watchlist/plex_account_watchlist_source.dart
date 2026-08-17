@@ -5,15 +5,13 @@ import '../../media/watchlist_entry.dart';
 import '../../media/watchlist_key.dart';
 import '../../media/watchlist_scope.dart';
 import '../../media/watchlist_source.dart';
+import '../plex_account_auth.dart';
 import '../plex_watchlist_client.dart';
 
-/// Resolves the plex.tv auth for the profile that is active right now.
-///
-/// A function rather than a stored value, because the answer changes when the
-/// user switches profile and a source that cached it would keep serving the
-/// previous user's list.
-typedef PlexAccountAuthResolver =
-    Future<({String token, String profileId, String accountId, String userId, bool isUserScoped})?> Function();
+// The resolver is not the watchlist's own idea: Live TV favorites need the
+// same identity for the same reason. It lives in `plex_account_auth.dart` now
+// and is re-exported here so every existing import keeps working.
+export '../plex_account_auth.dart' show PlexAccountAuth, PlexAccountAuthResolver;
 
 /// The Plex account watchlist as a [WatchlistSource].
 ///

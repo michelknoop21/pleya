@@ -28,6 +28,7 @@ import '../providers/watch_state_store.dart';
 import '../database/app_database.dart';
 import '../i18n/strings.g.dart';
 import '../screens/main_screen.dart';
+import '../services/livetv/plex_favorite_channels_service.dart';
 import '../services/recommendations/interaction_recorder.dart';
 import '../services/recommendations/personalized_rows_builder.dart';
 import '../services/recommendations/recommendation_service.dart';
@@ -224,6 +225,19 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   );
                   return provider;
                 },
+              ),
+              // The Plex Live TV favorites live in the cloud, on an account
+              // plus a Home user, so they hang off the profile session and not
+              // off a server client. Lazy on purpose: a Jellyfin-only setup
+              // must never open a socket to plex.tv.
+              Provider<PlexFavoriteChannelsService>(
+                lazy: true,
+                create: (context) => PlexFavoriteChannelsService(
+                  profileId: activeId ?? '',
+                  resolveAuth: () => context.read<UserProfileProvider>().currentPlexAccountAuth(),
+                  clientIdentifier: () => context.read<StorageService>().getOrCreateClientIdentifier(),
+                ),
+                dispose: (_, service) => service.dispose(),
               ),
               ChangeNotifierProvider(create: (context) => PlaybackStateProvider()),
               ChangeNotifierProvider(create: (context) => WatchTogetherProvider()),
