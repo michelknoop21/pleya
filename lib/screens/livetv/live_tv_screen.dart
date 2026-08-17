@@ -73,6 +73,11 @@ class _LiveTvScreenState extends State<LiveTvScreen>
   final Map<String, String> _favoriteStoreBySource = {};
   final Map<String, FavoriteChannelPersistenceMode> _favoriteModeByStore = {};
 
+  /// The store behind each store key. Reading and writing go through this
+  /// rather than through the client, because for Plex the two are not the same
+  /// thing: the channels come from the server, the favorites from the account.
+  final Map<String, LiveTvFavoritesStore> _favoriteStoreById = {};
+
   List<LiveTvChannel> get _filteredChannels => filterLiveTvChannelsForFavorites(
     channels: _channels,
     favoritesOnly: _showFavoritesOnly,
@@ -291,6 +296,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
       _favoriteStoreByChannel.clear();
       _favoriteStoreBySource.clear();
       _favoriteModeByStore.clear();
+      _favoriteStoreById.clear();
 
       appLogger.d(
         'Live TV DVRs: ${liveTvServers.map((s) => '${s.serverId}/${s.dvrKey} lineup=${s.lineup}').join(', ')}',
@@ -313,12 +319,18 @@ class _LiveTvScreenState extends State<LiveTvScreen>
           final liveTv = genericClient.liveTv;
           final source = await liveTv.buildFavoriteChannelSource(lineup: serverInfo.lineup);
           final sourceTitle = _sourceTitleForServerInfo(serverInfo);
-          final storeKey = liveTv.favoriteStoreKey;
+          // The store is asked for separately from the server: for Jellyfin it
+          // is the same object, for Plex it will not be.
+          final store = liveTv.favorites;
+          final storeKey = store?.favoriteStoreKey;
           final liveServerKey = _liveServerScopeKey(serverInfo);
           _favoriteSourceByLiveServer[liveServerKey] = source;
-          _favoriteStoreByLiveServer[liveServerKey] = storeKey;
-          _favoriteStoreBySource[source] = storeKey;
-          _favoriteModeByStore[storeKey] = liveTv.favoritePersistenceMode;
+          if (store != null && storeKey != null) {
+            _favoriteStoreById[storeKey] = store;
+            _favoriteStoreByLiveServer[liveServerKey] = storeKey;
+            _favoriteStoreBySource[source] = storeKey;
+            _favoriteModeByStore[storeKey] = store.favoritePersistenceMode;
+          }
 
           final channels = await genericClient.liveTv.fetchChannels(lineup: serverInfo.lineup);
           // Plex's DVR exposes a separate enabled-channel mapping; Jellyfin
@@ -339,7 +351,9 @@ class _LiveTvScreenState extends State<LiveTvScreen>
             if (seenChannels.add(dedupKey)) {
               final scopeKey = liveTvChannelScopeKey(scopedChannel);
               _favoriteSourceByChannel[scopeKey] = source;
-              _favoriteStoreByChannel[scopeKey] = storeKey;
+              // A channel without a store key is a channel that cannot be
+              // favorited. Leaving the entry out is what says so.
+              if (storeKey != null) _favoriteStoreByChannel[scopeKey] = storeKey;
               allChannels.add(scopedChannel);
             }
           }
@@ -389,6 +403,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
       _favoriteSourceByLiveServer.clear();
       _favoriteStoreBySource.clear();
       _favoriteModeByStore.clear();
+      _favoriteStoreById.clear();
       final merged = <FavoriteChannel>[];
       final fetchedStores = <String>{};
       final seenFavorites = <String>{};
@@ -397,14 +412,17 @@ class _LiveTvScreenState extends State<LiveTvScreen>
         if (client == null) continue;
         final liveTv = client.liveTv;
         final source = await liveTv.buildFavoriteChannelSource(lineup: serverInfo.lineup);
-        final storeKey = liveTv.favoriteStoreKey;
+        final store = liveTv.favorites;
         final liveServerKey = _liveServerScopeKey(serverInfo);
         _favoriteSourceByLiveServer[liveServerKey] = source;
+        if (store == null) continue;
+        final storeKey = store.favoriteStoreKey;
+        _favoriteStoreById[storeKey] = store;
         _favoriteStoreByLiveServer[liveServerKey] = storeKey;
         _favoriteStoreBySource[source] = storeKey;
-        _favoriteModeByStore[storeKey] = liveTv.favoritePersistenceMode;
+        _favoriteModeByStore[storeKey] = store.favoritePersistenceMode;
         if (!fetchedStores.add(storeKey)) continue;
-        final serverFavorites = await liveTv.fetchFavoriteChannels();
+        final serverFavorites = await store.fetchFavoriteChannels();
         for (final favorite in serverFavorites) {
           _favoriteStoreBySource[favorite.source] = storeKey;
           if (seenFavorites.add(favorite.stableKey)) merged.add(favorite);
@@ -488,16 +506,20 @@ class _LiveTvScreenState extends State<LiveTvScreen>
       final liveServerKey = _liveServerScopeKey(serverInfo);
       final storeKey = _favoriteStoreByLiveServer[liveServerKey];
       if (storeKey == null || !writtenStores.add(storeKey)) continue;
-      final mode = _favoriteModeByStore[storeKey] ?? client.liveTv.favoritePersistenceMode;
+      // The store owns the list, so it is also what decides how a write is
+      // shaped and where it goes.
+      final store = _favoriteStoreById[storeKey];
+      if (store == null) continue;
+      final mode = store.favoritePersistenceMode;
       final source = _favoriteSourceByLiveServer[liveServerKey];
-      if (source == null) continue; // not yet resolved — skip; next toggle will catch up
+      if (source == null) continue; // not yet resolved, the next toggle catches up
       final channels = switch (mode) {
         FavoriteChannelPersistenceMode.sharedFullList => byStore[storeKey] ?? const <FavoriteChannel>[],
         FavoriteChannelPersistenceMode.serverSlice =>
           (byStore[storeKey] ?? const <FavoriteChannel>[]).where((f) => f.source == source).toList(),
         FavoriteChannelPersistenceMode.none => const <FavoriteChannel>[],
       };
-      unawaited(client.liveTv.setFavoriteChannels(channels));
+      unawaited(store.setFavoriteChannels(channels));
     }
   }
 

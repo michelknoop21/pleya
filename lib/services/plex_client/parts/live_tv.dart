@@ -858,9 +858,15 @@ mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
 /// [PlexClient]; [startPlayback] packages it behind the backend-neutral
 /// [LiveTvPlaybackSession], and [resolveStreamUrl] returns `null` because a
 /// Plex stream URL is only valid inside a tuned session.
-class _PlexLiveTvSupport implements LiveTvSupport {
+class _PlexLiveTvSupport implements LiveTvSupport, LiveTvFavoritesStore {
   final PlexClient _client;
   _PlexLiveTvSupport(this._client);
+
+  // Still its own store for now. The Plex list actually lives in the cloud and
+  // belongs to an account plus a Home user, so this moves out in the commit
+  // that cuts the EPG call out of PlexClient.
+  @override
+  LiveTvFavoritesStore? get favorites => this;
 
   @override
   Future<bool> isAvailable() => _client.hasDvr();

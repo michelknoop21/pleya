@@ -146,8 +146,35 @@ abstract class LiveTvSupport {
   /// `server://{machineId}/{providerId}` so its cloud-synced favorites are
   /// keyed per EPG provider. Jellyfin uses `server://{serverId}/jellyfin`
   /// (no provider concept).
+  ///
+  /// This one stays on the server: it is built from the machine identifier and
+  /// the EPG providers `/media/providers` advertises, and it makes no network
+  /// call of its own.
   Future<String> buildFavoriteChannelSource({String? lineup});
 
+  /// The store this server owns, or `null` when its favorites live elsewhere.
+  ///
+  /// For Jellyfin the two coincide: the list is per server and per user, so the
+  /// live-TV support *is* its own store. For Plex they do not. That list
+  /// belongs to a plex.tv account plus a Home user, an identity `PlexClient`
+  /// does not have and must not be given, so Plex answers `null` here and the
+  /// store comes from `PlexFavoriteChannelsService` instead.
+  ///
+  /// Deliberately `null` rather than a stub with
+  /// [FavoriteChannelPersistenceMode.none]: Plex favorites do exist, they just
+  /// live somewhere else, and a stub would have to invent a store key and four
+  /// method bodies that must never be called. `null` can be checked; a stub
+  /// lies.
+  LiveTvFavoritesStore? get favorites;
+}
+
+/// Where favorite channels are kept, separate from the server that serves the
+/// channels themselves.
+///
+/// Splitting this off the [LiveTvSupport] interface is what lets a store live
+/// outside the media server without every server implementation having to
+/// pretend it owns one.
+abstract class LiveTvFavoritesStore {
   /// Runtime store identity used to avoid fetching/writing a shared favorite
   /// backend more than once. Plex is cloud/account-scoped; Jellyfin is
   /// server-user scoped.
@@ -155,13 +182,12 @@ abstract class LiveTvSupport {
 
   FavoriteChannelPersistenceMode get favoritePersistenceMode;
 
-  /// Read the user's favorite channels for this server. Plex pulls from the
-  /// cloud-synced list; Jellyfin queries `IsFavorite=true` with locally
-  /// stored ordering.
+  /// Read the user's favorite channels. Plex pulls from the cloud-synced list;
+  /// Jellyfin reads the locally stored ordering it mirrors onto `IsFavorite`.
   Future<List<FavoriteChannel>> fetchFavoriteChannels();
 
-  /// Persist the favorites list (and order, where supported). Plex pushes
-  /// to its cloud sync endpoint; Jellyfin POSTs/DELETEs the
+  /// Persist the favorites list (and order, where supported). Plex pushes to
+  /// its cloud sync endpoint; Jellyfin POSTs/DELETEs the
   /// `/Users/{userId}/FavoriteItems/{channelId}` flag and saves the order
   /// locally.
   Future<void> setFavoriteChannels(List<FavoriteChannel> channels);

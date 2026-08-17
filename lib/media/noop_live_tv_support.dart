@@ -29,14 +29,5 @@ class NoopLiveTvSupport implements LiveTvSupport {
   Future<String> buildFavoriteChannelSource({String? lineup}) async => '';
 
   @override
-  String get favoriteStoreKey => 'noop';
-
-  @override
-  FavoriteChannelPersistenceMode get favoritePersistenceMode => FavoriteChannelPersistenceMode.none;
-
-  @override
-  Future<List<FavoriteChannel>> fetchFavoriteChannels() async => [];
-
-  @override
-  Future<void> setFavoriteChannels(List<FavoriteChannel> channels) async {}
+  LiveTvFavoritesStore? get favorites => null;
 }

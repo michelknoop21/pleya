@@ -158,9 +158,16 @@ mixin _JellyfinLiveTvMethods on MediaServerCacheMixin {
 }
 
 /// Adapter from [LiveTvSupport] to Jellyfin channel/program helpers.
-class _JellyfinLiveTvSupport implements LiveTvSupport {
+///
+/// Also its own [LiveTvFavoritesStore]: on Jellyfin the favorites live on the
+/// same server and the same user as the channels, so the two identities
+/// coincide. That is exactly what does not hold for Plex.
+class _JellyfinLiveTvSupport implements LiveTvSupport, LiveTvFavoritesStore {
   final JellyfinClient _client;
   _JellyfinLiveTvSupport(this._client);
+
+  @override
+  LiveTvFavoritesStore? get favorites => this;
 
   @override
   Future<bool> isAvailable() => _client.hasLiveTv();

@@ -48,8 +48,8 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_favKey(connA), _encodeFavorites([_ch('chan-a1'), _ch('chan-a2')]));
 
-      final aFavs = await _client(connA).liveTv.fetchFavoriteChannels();
-      final bFavs = await _client(connB).liveTv.fetchFavoriteChannels();
+      final aFavs = await _client(connA).liveTv.favorites!.fetchFavoriteChannels();
+      final bFavs = await _client(connB).liveTv.favorites!.fetchFavoriteChannels();
 
       expect(aFavs.map((f) => f.id).toList(), ['chan-a1', 'chan-a2']);
       expect(bFavs, isEmpty, reason: 'user B must not see user A\'s favorites');
@@ -62,7 +62,7 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_legacyFavKey(connA), _encodeFavorites([_ch('legacy-1')]));
 
-      final aFavs = await _client(connA).liveTv.fetchFavoriteChannels();
+      final aFavs = await _client(connA).liveTv.favorites!.fetchFavoriteChannels();
       expect(aFavs.map((f) => f.id).toList(), ['legacy-1']);
 
       // Migration: legacy key gone, compound key written.

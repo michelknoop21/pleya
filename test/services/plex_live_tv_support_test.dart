@@ -77,7 +77,7 @@ void main() {
     addTearDown(a.close);
     addTearDown(b.close);
 
-    expect(a.liveTv.favoriteStoreKey, b.liveTv.favoriteStoreKey);
+    expect(a.liveTv.favorites!.favoriteStoreKey, b.liveTv.favorites!.favoriteStoreKey);
   });
 
   test('DVR list applies root channel mapping to each DVR and parses string numbers', () async {
