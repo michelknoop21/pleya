@@ -106,6 +106,36 @@ class TvBrowseRailLayout {
 
   static bool isPersonHub(MediaHub hub) => hub.type == 'person';
 
+  /// How much of the rail a screen should leave visible under a resting hero:
+  /// the strip plus one complete card row with its labels, so the first hub
+  /// reads without moving.
+  ///
+  /// The row's bottom focus-ring reserve is deliberately left out: nothing in
+  /// the rail has focus while it rests, so it would only pad dead space under
+  /// the labels. Screens derive their hero band from this, which is why it
+  /// lives next to the metrics it is built from instead of being reproduced
+  /// per screen.
+  static double firstHubPeekHeight({
+    required MediaHub hub,
+    required Size railSize,
+    required int density,
+    required EpisodePosterMode episodePosterMode,
+    bool fullCardLayout = false,
+    double tallPosterScale = 1.0,
+  }) {
+    final scale = scaleForSize(railSize);
+    final metrics = metricsForHub(
+      hub: hub,
+      availableWidth: railSize.width - horizontalInsetForScale(scale),
+      density: density,
+      episodePosterMode: episodePosterMode,
+      scale: scale,
+      fullCardLayout: fullCardLayout,
+      tallPosterScale: tallPosterScale,
+    );
+    return railTopPaddingForScale(scale) + hubStripHeightForScale(scale) + metrics.height - metrics.focusExtra;
+  }
+
   static double cardWidthFor({
     required double availableWidth,
     required int density,

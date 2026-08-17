@@ -13,6 +13,7 @@ import '../../../mixins/watch_state_aware.dart';
 import '../../../services/settings_service.dart';
 import '../../../utils/debouncer.dart';
 import '../../../utils/global_key_utils.dart';
+import '../../../theme/mono_tokens.dart';
 import '../../../utils/layout_constants.dart';
 import '../../../utils/platform_detector.dart';
 import '../../../utils/provider_extensions.dart';
@@ -209,12 +210,10 @@ class _LibraryRecommendedTabState extends BaseLibraryTabState<MediaHub, LibraryR
             ),
           );
 
-    // Move Continue Watching hub to the front if present
-    final cwIndex = hubs.indexWhere(_isContinueWatchingHub);
-    if (cwIndex > 0) {
-      final cwHub = hubs.removeAt(cwIndex);
-      hubs.insert(0, cwHub);
-    }
+    // Continue Watching belongs to the home screen. Repeating it per library
+    // pushed the library's own recommendations down a row and ate the space
+    // the hero could use.
+    hubs.removeWhere(_isContinueWatchingHub);
 
     return hubs;
   }
@@ -357,13 +356,33 @@ class _LibraryRecommendedTabState extends BaseLibraryTabState<MediaHub, LibraryR
     final proportionalTop = (size.height * 0.075).clamp(64.0 * scale, 120.0 * scale).toDouble();
     final belowHeader = LibraryHeaderMetrics.totalHeight + (12 * scale);
     final spotlightTop = proportionalTop > belowHeader ? proportionalTop : belowHeader;
-    final minimumSpotlightBottom = railHeight + (8 * scale);
-    final baseSpotlightBottom = (size.height * 0.48).clamp(160.0, 820.0).toDouble();
-    final desiredSpotlightBottom = minimumSpotlightBottom > baseSpotlightBottom
-        ? minimumSpotlightBottom
-        : baseSpotlightBottom;
-    final maxSpotlightBottom = (size.height - spotlightTop - (96 * scale)).clamp(0.0, double.infinity).toDouble();
-    final spotlightBottom = desiredSpotlightBottom > maxSpotlightBottom ? maxSpotlightBottom : desiredSpotlightBottom;
+    // Same landing as the TV home screen: the rail rests with its first hub in
+    // full and the hero gets everything above it, instead of the hero being
+    // capped at a fixed fraction of the screen and leaving a dead band between
+    // the two. On a library with one short hub that band was most of what the
+    // hero could have used.
+    final firstHubPeek = tvHubs.isEmpty
+        ? 0.0
+        : TvBrowseRailLayout.firstHubPeekHeight(
+            hub: tvHubs.first,
+            railSize: railSize,
+            density: svc.read(SettingsService.libraryDensity),
+            episodePosterMode: svc.read(SettingsService.episodePosterMode),
+            fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
+            tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
+          );
+    final railPeek = tvHubs.isEmpty
+        ? 0.0
+        : [
+            railHeight,
+            firstHubPeek,
+            size.height * MonoTokens.tvHomeRailMaxPeekFraction,
+          ].reduce((a, b) => a < b ? a : b);
+    final desiredSpotlightBottom = tvHubs.isEmpty ? 0.0 : railPeek + (MonoTokens.tvHeroRailGap * scale);
+    final maxSpotlightBottom = (size.height - spotlightTop - (MonoTokens.tvHeroMinInfoHeight * scale))
+        .clamp(0.0, double.infinity)
+        .toDouble();
+    final spotlightBottom = desiredSpotlightBottom.clamp(0.0, maxSpotlightBottom).toDouble();
     final spotlightLeft = (24 * scale).clamp(18.0, 40.0).toDouble();
 
     return Material(

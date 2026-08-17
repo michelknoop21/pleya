@@ -1595,24 +1595,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     //
     // The peek is derived from the same inputs as the estimateHeight call
     // above, so the two can't drift apart.
-    final railScale = TvBrowseRailLayout.scaleForSize(railSize);
     final firstHubPeek = browseHubs.isEmpty
         ? 0.0
-        : () {
-            final metrics = TvBrowseRailLayout.metricsForHub(
-              hub: browseHubs.first,
-              availableWidth: railSize.width - TvBrowseRailLayout.horizontalInsetForScale(railScale),
-              density: svc.read(SettingsService.libraryDensity),
-              episodePosterMode: svc.read(SettingsService.episodePosterMode),
-              scale: railScale,
-              fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
-              tallPosterScale: _tvTallPosterScaleForHub(browseHubs.first),
-            );
-            return TvBrowseRailLayout.railTopPaddingForScale(railScale) +
-                TvBrowseRailLayout.hubStripHeightForScale(railScale) +
-                metrics.height -
-                metrics.focusExtra;
-          }();
+        : TvBrowseRailLayout.firstHubPeekHeight(
+            hub: browseHubs.first,
+            railSize: railSize,
+            density: svc.read(SettingsService.libraryDensity),
+            episodePosterMode: svc.read(SettingsService.episodePosterMode),
+            fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
+            tallPosterScale: _tvTallPosterScaleForHub(browseHubs.first),
+          );
     final railPeek = browseHubs.isEmpty
         ? 0.0
         : math.min(railHeight, math.min(firstHubPeek, size.height * MonoTokens.tvHomeRailMaxPeekFraction));
