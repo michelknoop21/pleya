@@ -26,6 +26,7 @@ reads the topmost anchor and fills the block below with everything committed sin
 - kaartcel meet poster, bijschrift en focusruimte apart
 - iCloud-synchronisatie ook zichtbaar op Apple TV
 - downloadlocatie blijft per apparaat
+- mobiele geometrie op minimale kaartbreedte in plaats van doelbreedte
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 221 · 17 August 2026
