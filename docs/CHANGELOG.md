@@ -2,6 +2,24 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-17] De reviewbuild gekoppeld, en het koppelen geautomatiseerd
+
+### Fixed
+- **De drie App Store-versies hingen nog aan de afgewezen build 156.** Alleen App Store Connect, geen code. iOS en tvOS 2.8.0 stonden op build 156 (de build die Apple op 6 juli afwees), macOS had helemaal geen build, terwijl build 220 sinds 15 augustus op alle drie de platforms `VALID` in TestFlight stond. Een reviewer die nu hertest had dus opnieuw de build zonder de inlogfix van `21eb01b` gekregen. Gekoppeld met `PATCH /v1/appStoreVersions/<id>/relationships/build` (drie keer HTTP 204); iOS ging daarmee van `REJECTED` naar `PREPARE_FOR_SUBMISSION`, en alle drie de versies dragen nu build 220 met export compliance al beantwoord.
+
+### Added
+- **De TestFlight-lanes koppelen de build zelf aan het versierecord** (`fastlane/Fastfile`). Een upload zet de build in TestFlight, niet in de versie die je indient; die tweede stap was handwerk en ging daarom mis. `ios_beta`, `tvos_beta` en `macos_beta` wachten na de upload op processing (`wait_for_build`) en selecteren de build in de bewerkbare versie van dat platform (`attach_build_to_version`, via `Spaceship::ConnectAPI` `select_build`). In `beta` gebeurt dat pas ná alle drie de uploads, anders staat platform twee te wachten op Apple's processing van platform één. Koppelen is nooit fataal en slaat een versie in review of live over met een melding; wachttijd via `ASC_ATTACH_TIMEOUT` (default 1800s). Losse lane `attach_builds [platform:ios] [build:220]` voor handwerk en herstel. Geverifieerd tegen App Store Connect: alle drie de platforms melden "build 220 was al gekoppeld", dus de idempotente tak klopt.
+
+### Changed
+- `docs/TESTFLIGHT.md` kreeg de sectie "Build koppelen aan het App Store-versierecord", met de reden erbij zodat dit niet opnieuw stil misgaat.
+- `docs/app-review-reply-2026-08.md` bijgewerkt: de verificatie van de demoserver van vandaag staat erin, plus het aanbod van een schermopname en de instructie om de reply samen met de herindiening te versturen.
+- `add_testers` maakt geen eigen Spaceship-token meer aan maar gebruikt de gedeelde `spaceship_app`-helper.
+
+### Notes
+- Demoserver opnieuw gemeten: `demo.pleya.app` antwoordt in 296 ms (Jellyfin 10.11.11), het account `applereview` authenticeert, en de bibliotheek geeft de drie rechtenvrije Blender-films terug. De "Authentication timed out" van de reviewer kwam dus niet daarvandaan.
+- **Build 221 staat niet in App Store Connect.** De upload die in STATUS als lopend stond heeft geen enkel platform bereikt; het hoogste nummer is op alle drie 220 (15 augustus).
+- Zie [DEC-022](DECISIONS.md#dec-022).
+
 ## [2026-08-17] Kijklijst afgemaakt, en de Plex-cloudgrens getrokken
 
 ### Fixed

@@ -53,6 +53,14 @@ Laatste build(s) naar external testgroep (Beta App Review bij eerste build van e
 
 E-mailadressen toevoegen aan de external testgroep: fastlane add_testers emails:a@x.nl,b@y.nl
 
+### attach_builds
+
+```sh
+[bundle exec] fastlane attach_builds
+```
+
+Laatste build aan het App Store-versierecord koppelen: fastlane attach_builds [platform:ios] [build:220]
+
 ### beta
 
 ```sh

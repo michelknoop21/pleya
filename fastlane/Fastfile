@@ -6,6 +6,14 @@
 opt_out_usage
 
 PROJECT_ROOT = File.expand_path("..", __dir__)
+BUNDLE_ID = "nl.michelknoop.pleya"
+
+# Lane-platform → App Store Connect-platform.
+ASC_PLATFORM = {
+  "ios" => "IOS",
+  "appletvos" => "TV_OS",
+  "osx" => "MAC_OS",
+}.freeze
 
 def asc_api_key
   app_store_connect_api_key(
@@ -106,9 +114,88 @@ def upload_external(extra = {})
   }.merge(extra))
 end
 
+# App Store Connect koppelt een geüploade build niet vanzelf aan het
+# versierecord: die blijft in TestFlight staan tot iemand hem selecteert. Dat
+# ging fout bij de 2.1(a)-hertest — de versies hingen nog aan de afgewezen build
+# 156 terwijl 220 al een maand klaarstond. Sindsdien doen de lanes het zelf.
+def spaceship_app
+  $spaceship_app ||= begin
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key: Base64.decode64(ENV.fetch("ASC_KEY_CONTENT")),
+    )
+    app = Spaceship::ConnectAPI::App.find(BUNDLE_ID)
+    UI.user_error!("App #{BUNDLE_ID} niet gevonden in App Store Connect") unless app
+    app
+  end
+end
+
+# Wacht tot de zojuist geüploade build door processing is. Uploaden gebeurt met
+# skip_waiting_for_build_processing, dus vlak na de upload bestaat de build in de
+# API nog niet of staat hij op PROCESSING; koppelen kan pas bij VALID.
+def wait_for_build(platform, build_number, timeout)
+  asc_platform = ASC_PLATFORM.fetch(platform)
+  deadline = Time.now + timeout
+  reported = nil
+  loop do
+    build = spaceship_app.get_builds(
+      filter: { "preReleaseVersion.platform" => asc_platform, version: build_number.to_s },
+      limit: 1,
+    ).first
+    state = build&.processing_state
+    return build if state == "VALID"
+    UI.user_error!("Build #{build_number} (#{platform}) is #{state}") if %w[FAILED INVALID].include?(state)
+    if Time.now > deadline
+      UI.important("Build #{build_number} (#{platform}) is na #{timeout}s nog #{state || 'niet zichtbaar'}")
+      return nil
+    end
+    if state != reported
+      reported = state
+      UI.message("Wachten op processing van build #{build_number} (#{platform}): #{state || 'nog niet zichtbaar'}")
+    end
+    sleep(30)
+  end
+end
+
+# Koppelt build_number aan de bewerkbare App Store-versie van dit platform.
+# Geeft true bij succes, false als er niets te koppelen viel.
+def attach_build_to_version(platform, build_number, timeout: ENV.fetch("ASC_ATTACH_TIMEOUT", "1800").to_i)
+  asc_platform = ASC_PLATFORM.fetch(platform)
+  version = spaceship_app.get_edit_app_store_version(platform: asc_platform)
+  # Geen bewerkbare versie = in review of live; dan mag er niets gewijzigd worden.
+  unless version
+    UI.important("#{platform}: geen bewerkbare App Store-versie, build #{build_number} niet gekoppeld")
+    return false
+  end
+
+  build = wait_for_build(platform, build_number, timeout)
+  return false unless build
+
+  current = version.get_build
+  if current&.id == build.id
+    UI.message("#{platform} #{version.version_string}: build #{build_number} was al gekoppeld")
+    return true
+  end
+
+  version.select_build(build_id: build.id)
+  UI.success("#{platform} #{version.version_string}: build #{current&.version || 'geen'} → #{build_number} gekoppeld")
+  true
+end
+
+# Aanroep vanuit de upload-lanes. Nooit fataal: de build staat dan al op
+# TestFlight en `fastlane attach_builds` haalt het koppelen later in.
+def attach_after_upload(platform, build_number)
+  return ($pending_attach ||= {})[platform] = build_number if $defer_attach
+  attach_build_to_version(platform, build_number)
+rescue => e
+  UI.important("Koppelen van build #{build_number} (#{platform}) faalde: #{e.message}")
+  UI.important("Later herstellen met: fastlane attach_builds platform:#{platform} build:#{build_number}")
+end
+
 desc "iOS → TestFlight"
 lane :ios_beta do
-  ensure_build_number("ios")
+  build_number = ensure_build_number("ios")
   flutter_sh("flutter build ios --config-only --release")
   patch_spm_min_ios
   build_app(
@@ -119,11 +206,12 @@ lane :ios_beta do
     xcargs: auth_xcargs,
   )
   upload_beta
+  attach_after_upload("ios", build_number)
 end
 
 desc "tvOS → TestFlight"
 lane :tvos_beta do
-  ensure_build_number("appletvos")
+  build_number = ensure_build_number("appletvos")
   flutter_sh("flutter pub get")
   # tvOS bouwt op een eigen engine-fork (edde746/flutter-tvos) uit
   # ~/.cache/flutter-tvos-engine, plus een projectkopie in tvos/Flutter/ephemeral/.
@@ -145,6 +233,7 @@ lane :tvos_beta do
     xcargs: auth_xcargs,
   )
   upload_beta(app_platform: "appletvos")
+  attach_after_upload("appletvos", build_number)
 end
 
 desc "macOS → TestFlight (pkg)"
@@ -277,6 +366,7 @@ lane :macos_beta do
   sh("pkgutil --check-signature #{signed_pkg}")
 
   upload_beta(app_platform: "osx", pkg: signed_pkg)
+  attach_after_upload("osx", build_number)
 end
 
 desc "Laatste build(s) naar external testgroep (Beta App Review bij eerste build van een versie)"
@@ -303,15 +393,7 @@ lane :add_testers do |options|
   UI.user_error!("Geef emails op: fastlane add_testers emails:a@x.nl,b@y.nl") if emails.empty?
   # `pilot` in een Fastfile is een alias voor upload_to_testflight en kent geen
   # tester-commando's — dus via Spaceship::ConnectAPI.
-  token = Spaceship::ConnectAPI::Token.create(
-    key_id: ENV.fetch("ASC_KEY_ID"),
-    issuer_id: ENV.fetch("ASC_ISSUER_ID"),
-    key: Base64.decode64(ENV.fetch("ASC_KEY_CONTENT")),
-  )
-  Spaceship::ConnectAPI.token = token
-  app = Spaceship::ConnectAPI::App.find("nl.michelknoop.pleya")
-  UI.user_error!("App nl.michelknoop.pleya niet gevonden") unless app
-  group = app.get_beta_groups(filter: { name: EXTERNAL_GROUP }).first
+  group = spaceship_app.get_beta_groups(filter: { name: EXTERNAL_GROUP }).first
   UI.user_error!("Testgroep '#{EXTERNAL_GROUP}' bestaat niet — maak hem eerst aan in App Store Connect → TestFlight → External Testing") unless group
   emails.each do |email|
     group.post_bulk_beta_tester_assignments(beta_testers: [{ email: email }])
@@ -321,9 +403,31 @@ lane :add_testers do |options|
   end
 end
 
+desc "Laatste build aan het App Store-versierecord koppelen: fastlane attach_builds [platform:ios] [build:220]"
+lane :attach_builds do |options|
+  platforms = options[:platform] ? [options[:platform]] : ASC_PLATFORM.keys
+  timeout = (options[:timeout] || ENV.fetch("ASC_ATTACH_TIMEOUT", "1800")).to_i
+  failures = []
+  platforms.each do |platform|
+    # Zonder build-optie: de hoogste build die dit platform op TestFlight heeft.
+    number = options[:build] || latest_testflight_build_number(
+      api_key: asc_api_key, platform: platform, initial_build_number: 0
+    )
+    attach_build_to_version(platform, number, timeout: timeout) || failures << platform
+  rescue => e
+    UI.error("#{platform}: #{e.message}")
+    failures << platform
+  end
+  UI.user_error!("Koppelen mislukt of overgeslagen voor: #{failures.join(', ')}") unless failures.empty?
+end
+
 desc "Alle platforms → TestFlight; gaat door als één platform faalt"
 lane :beta do
   failures = []
+  # Uploads eerst, koppelen daarna: anders staat iedere lane te wachten op
+  # Apple's processing terwijl het volgende platform nog gebouwd moet worden.
+  $defer_attach = true
+  $pending_attach = {}
   begin
     ios_beta
   rescue => e
@@ -341,6 +445,13 @@ lane :beta do
   rescue => e
     UI.error("macos faalde: #{e.message}")
     failures << "macos"
+  end
+  $defer_attach = false
+  $pending_attach.each do |platform, number|
+    attach_build_to_version(platform, number)
+  rescue => e
+    UI.important("Koppelen van build #{number} (#{platform}) faalde: #{e.message}")
+    UI.important("Later herstellen met: fastlane attach_builds platform:#{platform} build:#{number}")
   end
   UI.user_error!("TestFlight upload mislukt voor: #{failures.join(', ')}") unless failures.empty?
 end
