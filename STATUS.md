@@ -1,6 +1,6 @@
 # STATUS — Pleya
 
-_Laatst bijgewerkt: 2026-08-17 12:10 (branch `main` = `6ba0249`, gepusht naar `github` en `origin`; App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`; build 221 heeft TestFlight nooit bereikt)_
+_Laatst bijgewerkt: 2026-08-17 12:10 (branch `main` = `f7b583f`, gepusht naar `github` en `origin`; App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`; build 221 heeft TestFlight nooit bereikt)_
 
 ## Waar was ik
 
@@ -99,7 +99,7 @@ xcrun devicectl device process launch --console --terminate-existing \
 - Het Live TV-tokenlek gedicht in negen commits (`a089264` tot `d867260`), na een meting tegen een echt account. `PlexCloudHttpClient` is nu de transportgrens naar plex.tv en de kijklijst staat er ook op. Onderweg twee losse defecten mee: de cloudcall kon de endpoint-failover van je eigen server triggeren, en een mislukte lees wiste je favorieten bij de eerstvolgende tik. Zie [DEC-021](docs/DECISIONS.md#dec-021).
 - 3264 tests groen (was 3202), `scripts/ci_checks.sh` schoon, gepusht naar beide remotes. De upload van build 221 is gestart maar heeft App Store Connect nooit bereikt.
 - App Store Connect rechtgezet: build 220 gekoppeld aan de versies 2.8.0 van iOS, tvOS en macOS, die alle drie nog op de afgewezen build 156 stonden (macOS op niets). iOS ging daarmee uit `REJECTED`.
-- Het koppelen geautomatiseerd in `fastlane/Fastfile`, met `fastlane attach_builds` als losse lane, plus documentatie in `docs/TESTFLIGHT.md`. Zie [DEC-022](docs/DECISIONS.md#dec-022). Nog niet gecommit.
+- Het koppelen geautomatiseerd in `fastlane/Fastfile`, met `fastlane attach_builds` als losse lane, plus documentatie in `docs/TESTFLIGHT.md`. Zie [DEC-022](docs/DECISIONS.md#dec-022) en commit `f7b583f`.
 - Demoserver en reviewnotities nagelopen en in orde bevonden; het antwoord in `docs/app-review-reply-2026-08.md` is bijgewerkt en klaar om te versturen.
 
 ### 2026-08-16
