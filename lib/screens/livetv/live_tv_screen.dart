@@ -24,6 +24,7 @@ import '../../utils/platform_detector.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/overlay_sheet.dart';
+import 'live_tv_favorites.dart';
 import 'reorder_favorites_sheet.dart';
 import 'tabs/guide_tab.dart';
 import 'tabs/recordings_tab.dart';
@@ -493,12 +494,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
 
   void _persistFavorites() {
     final multiServer = context.read<MultiServerProvider>();
-    final byStore = <String, List<FavoriteChannel>>{};
-    for (final f in _favoriteChannels) {
-      final storeKey = _favoriteStoreBySource[f.source];
-      if (storeKey == null) continue;
-      byStore.putIfAbsent(storeKey, () => []).add(f);
-    }
+    final byStore = groupFavoritesByStore(favorites: _favoriteChannels, storeBySource: _favoriteStoreBySource);
     final writtenStores = <String>{};
     for (final serverInfo in multiServer.liveTvServers) {
       final client = multiServer.getClientForServer(ServerId(serverInfo.serverId));
@@ -510,15 +506,13 @@ class _LiveTvScreenState extends State<LiveTvScreen>
       // shaped and where it goes.
       final store = _favoriteStoreById[storeKey];
       if (store == null) continue;
-      final mode = store.favoritePersistenceMode;
       final source = _favoriteSourceByLiveServer[liveServerKey];
       if (source == null) continue; // not yet resolved, the next toggle catches up
-      final channels = switch (mode) {
-        FavoriteChannelPersistenceMode.sharedFullList => byStore[storeKey] ?? const <FavoriteChannel>[],
-        FavoriteChannelPersistenceMode.serverSlice =>
-          (byStore[storeKey] ?? const <FavoriteChannel>[]).where((f) => f.source == source).toList(),
-        FavoriteChannelPersistenceMode.none => const <FavoriteChannel>[],
-      };
+      final channels = favoritePayload(
+        mode: store.favoritePersistenceMode,
+        forStore: byStore[storeKey] ?? const <FavoriteChannel>[],
+        source: source,
+      );
       unawaited(store.setFavoriteChannels(channels));
     }
   }
