@@ -14,6 +14,7 @@ import '../services/watchlist_ui_actions.dart';
 import '../utils/snackbar_helper.dart';
 import '../widgets/desktop_app_bar.dart';
 import '../widgets/seerr_request_sheet.dart';
+import '../widgets/media_card_grid_layout.dart';
 import '../widgets/media_grid_delegate.dart';
 import '../widgets/settings_builder.dart';
 import '../widgets/sliver_cross_axis_layout_builder.dart';
@@ -204,7 +205,9 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                 usePaddingAware: true,
                 horizontalPadding: 16,
               );
-              final cellHeight = geometry.itemWidth * 3 / 2 + watchlistCardTextExtent;
+              // One contract for the cell and both card branches: a 2:3
+              // poster plus the caption block MediaCard draws under it.
+              final cellHeight = MediaCardGridLayout.cardHeightFor(context, geometry.itemWidth);
               return SliverGrid(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: geometry.columnCount,
@@ -226,10 +229,10 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                     entry: entry,
                     isPlayable: provider.isPlayable(entry),
                     onTap: () => _openSheet(provider, entry),
-                    // Both branches of the card render at exactly the cell
-                    // size; a card wider than its tile gets its top clipped.
+                    // Both branches lay out inside the cell through
+                    // MediaCardGridLayout, so nothing spills into the row
+                    // below.
                     width: geometry.itemWidth,
-                    height: cellHeight,
                   );
                 }, childCount: entries.length),
               );

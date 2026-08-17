@@ -44,7 +44,7 @@ Future<void> pumpCard(WidgetTester tester, WatchlistEntry e) async {
         theme: monoTheme(dark: true),
         home: Scaffold(
           body: Center(
-            child: WatchlistUnavailableCard(entry: e, onTap: () {}, width: 120, height: 226),
+            child: WatchlistUnavailableCard(entry: e, onTap: () {}, width: 120),
           ),
         ),
       ),
@@ -118,7 +118,6 @@ void main() {
                   isPlayable: true,
                   onTap: () {},
                   width: 120,
-                  height: 226,
                 ),
               ),
             ),
@@ -150,7 +149,6 @@ void main() {
                   isPlayable: false,
                   onTap: () {},
                   width: 120,
-                  height: 226,
                 ),
               ),
             ),
@@ -170,7 +168,7 @@ void main() {
             theme: monoTheme(dark: true),
             home: Scaffold(
               body: Center(
-                child: WatchlistUnavailableCard(entry: entry(), onTap: () => taps++, width: 120, height: 226),
+                child: WatchlistUnavailableCard(entry: entry(), onTap: () => taps++, width: 120),
               ),
             ),
           ),

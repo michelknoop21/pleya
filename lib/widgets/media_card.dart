@@ -55,6 +55,18 @@ class MediaCard extends StatefulWidget {
   /// has no nominal union type — runtime `is` checks select the variant.
   final Object item;
   final double? width;
+
+  /// In standard grid mode this is the **poster** height, not the card
+  /// height: the title and subtitle are drawn *below* a poster of exactly
+  /// this height, so the card ends up roughly 33 logical pixels taller than
+  /// what you pass in. A caller sizing a cell or a rail has to add that
+  /// itself. `MediaCardGridLayout` in widgets/media_card_grid_layout.dart
+  /// does the arithmetic. Handing this a cell height makes the card paint
+  /// over whatever sits below it.
+  ///
+  /// In full-bleed mode ([fullBleedImage]) there is no caption, so it is the
+  /// whole card. Null means "take what the cell leaves after the caption":
+  /// the poster goes in an [Expanded].
   final double? height;
   final void Function(String itemId)? onRefresh;
   final VoidCallback? onRemoveFromContinueWatching;
@@ -471,7 +483,9 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
   }
 
   Widget _buildStandardGridCard(BuildContext context, Object item, String? localPosterPath) {
-    // Compute actual poster dimensions from card dimensions
+    // widget.height is the POSTER height here, not the card height (see
+    // MediaCard.height); the caption below it is extra. Null hands the poster
+    // an Expanded instead.
     final posterWidth = widget.width != null ? widget.width! - 6 : null;
     final posterHeight = widget.height;
 

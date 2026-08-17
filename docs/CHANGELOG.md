@@ -2,6 +2,37 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-17] De kijklijst-kaart paste niet in zijn cel, en het accountmenu stond dubbel
+
+### Dependencies
+- **`mobile_scanner` 5.2.3 → 7.4.0, ring 3, bewust geaccepteerd.** De iOS-simulator kon niet bouwen op Apple Silicon omdat GoogleMLKit geen arm64-slice levert, en sinds iOS 18 is er geen x86_64-simulator om op terug te vallen. In 7.x is ML Kit op iOS vervangen door Apple's Vision-framework, dus de arm64-uitsluiting is weg. De Dart-API die Pleya gebruikt (`MobileScanner(onDetect:)`, `barcode.rawValue`) is broncompatibel en het scanscherm is niet aangeraakt. `mobile_scanner` staat alleen in `ios/Podfile.lock`, dus tvOS en macOS vallen buiten de impact. Dat de simulator bouwt bewijst een gezonde iOS-build, niet dat scannen werkt: de decoder is juist het onderdeel dat wisselde en een simulator heeft geen camera. Daarom staat er nu een verplichte smoketest op fysieke hardware in [TESTFLIGHT.md](TESTFLIGHT.md), af te vinken vóór de eerstvolgende iOS-upload. Zie [DEC-024](DECISIONS.md#dec-024).
+
+### Fixed
+- **Metadata van rij 1 werd over de posters van rij 2 getekend in de Kijklijst.** Op TV liep de titel van een speelbare kaart de rij eronder in, verdween sommige metadata achter een poster, en waren posters binnen dezelfde rij ongelijk hoog. Oorzaak: `MediaCard.height` is in standard-grid-modus de **poster**hoogte, niet de kaarthoogte, en `WatchlistCard` gaf de hele celhoogte door. Elke speelbare kaart werd daarmee 32 logische pixels hoger dan zijn cel, en `SliverGrid` klipt niet. Dezelfde fout zat in de kijklijst-rail op Mijn Pleya. De insets, de gap en de gereserveerde teksthoogte verschilden bovendien tussen de twee kaarttakken, dus posters lagen niet op dezelfde pixel.
+- Nieuw `lib/widgets/media_card_grid_layout.dart` (`MediaCardGridLayout`, zusje van `MediaCardListLayout`) bezit die geometrie: 2:3 gemeten over de posterbreedte, plus een captionreserve die met de systeemtekstgrootte meeschaalt. `WatchlistCard` heeft geen `height`-parameter meer, dus celhoogte en kaarthoogte kunnen niet meer uit elkaar lopen. `MediaCard` zelf is alleen van commentaar voorzien; `hub_section`, `tv_browse_rail` en `extras_section` rekenen op het huidige gedrag en blijven ongemoeid.
+- Bewijs: met de fix teruggedraaid vallen zes nieuwe geometrietests om met `A RenderFlex overflowed by 32 pixels on the bottom`, exact het voorspelde getal. Met de fix erin is de volledige suite groen.
+
+### Changed
+- **Op mobiel is Mijn Pleya de enige persoonlijke ingang.** De avatar met accountmenu rechtsboven in de Home-header verdwijnt daar; Profielen, Opties en Uitloggen staan nu onderaan Mijn Pleya, en de Mijn Pleya-tab draagt de echte profielavatar in plaats van een generiek persoon-icoon. Desktop en tvOS houden het menu, want hun sidebar rendert Mijn Pleya bewust nooit. Eén predicaat (`showsHeaderAccountMenu`) stuurt beide kanten, met dezelfde `isMobile` als de gate op de tab, zodat de acties nooit op twee plekken staan en nooit op geen enkele. Zie [DEC-023](DECISIONS.md#dec-023).
+- Uitloggen en het openen van de profielkiezer verhuisden naar `lib/services/account_ui_actions.dart`, naar het model van `WatchlistUiActions`. Dat haalde elf imports uit `discover_screen.dart`, waaronder `auth_screen.dart` en vier registries.
+
+### Notes
+- Het twee-personen-icoon in de Home-header is **Samen Kijken** en het telefoon-icoon is de **Companion Remote**. Geen van beide is een accountknop, dus beide blijven staan.
+- Het oude menu toonde als eerste items de *andere* profielen, als snelwissel. Die snelwissel kost op mobiel nu een tik meer, via de identiteit bovenaan Mijn Pleya naar `ProfileSwitchScreen`. Dat scherm doet meer dan wisselen (beheren, PIN, verwijderen, Plex-account afmelden), dus een tweede dunnere wisselaar is bewust niet gebouwd.
+
+## [2026-08-17] Copyright gezet, en de indiencheck opgeschreven
+
+### Fixed
+- **Het copyright-veld blokkeerde "Add for Review".** Alleen App Store Connect, geen code. Alle drie de 2.8.0-versies stonden op `Buildmind`, een naam zonder jaartal, en dat is niet wat Apple in dat veld verwacht. Gezet op `2026 Michel Knoop` met `PATCH /v1/appStoreVersions/<id>` (drie keer), en teruggelezen: alle drie geven nu `copyright='2026 Michel Knoop'` en staan nog op `PREPARE_FOR_SUBMISSION`.
+
+### Changed
+- `docs/TESTFLIGHT.md` kreeg de sectie "Indienen voor review": de veldenchecklist per platform met per veld of de API hem kan zetten, de version-id's van 2.8.0, en de volgorde bij een hertest na afwijzing. "Add for Review" noemt alleen het eerste veld dat het mist, dus zonder lijst vind je de volgende blokkade pas na de volgende poging. Dit is dezelfde valkuil als bij het versienummer, de export compliance en de buildkoppeling.
+
+### Notes
+- **Screenshots zijn de enige harde blokkade die overblijft.** tvOS en macOS hebben er geen enkele; die erven niet van iOS. iOS heeft 6× iPhone 6.5" en 2× iPad 12.9". Verder is elk versierecord compleet: beschrijving, keywords, support- en marketing-URL, reviewnotities, demo-account `applereview`, contactpersoon en bijlage staan op alle drie. App-niveau ook: categorie Entertainment, leeftijdsclassificatie 4+, privacybeleid-URL, `contentRightsDeclaration` op `DOES_NOT_USE_THIRD_PARTY_CONTENT`, prijs met basisterritorium NLD, 175 van 175 territoria.
+- **Build 221 bestaat wél en hangt aan tvOS**, anders dan de notitie van eerder vandaag meldde. tvOS 2.8.0 draagt build 221 (geüpload 17 augustus, `VALID`, `IN_BETA_TESTING`, export compliance beantwoord); iOS en macOS staan op 220. Geen blokkade, maar de drie platforms lopen dus niet meer gelijk.
+- **App Privacy en de EU DSA trader status zijn niet gecontroleerd.** De API-sleutel (rol App Manager) kan ze niet lezen: `appDataUsages` en `appDataUsagePublishState` geven HTTP 404 als relatie op `/v1/apps/<id>`, geen 403. Een sessie in de webinterface was er ook niet (geen Apple-cookies lokaal, en de login vraagt 2FA). Beide staan vermoedelijk goed omdat de iOS-inzending van 6 juli door de indienstap kwam, maar dat is een afleiding en geen meting.
+
 ## [2026-08-17] De reviewbuild gekoppeld, en het koppelen geautomatiseerd
 
 ### Fixed
