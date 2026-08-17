@@ -67,6 +67,19 @@ class GridSizeCalculator {
     return (crossAxisExtent / (maxCrossAxisExtent + crossAxisSpacing)).ceil().clamp(1, 100);
   }
 
+  /// Columns for a grid that has a minimum card width rather than a target
+  /// one: how many cards of at least [minCardWidth] fit in [crossAxisExtent].
+  ///
+  /// [getColumnCount] rounds *up* from a target extent, which is right for a
+  /// library that wants to fill the screen but wrong for a curated list: on a
+  /// 390pt phone it put a fourth poster of 85pt in the row, and at that width
+  /// a title, its year and a status badge all run out of room. This rounds
+  /// down, so a card never ends up narrower than the minimum its content needs.
+  static int getColumnCountForMinWidth(double crossAxisExtent, double minCardWidth, {double spacing = 0}) {
+    if (minCardWidth <= 0) return 1;
+    return (((crossAxisExtent + spacing) / (minCardWidth + spacing)).floor()).clamp(1, 100);
+  }
+
   static double getCellWidthForColumnCount(
     double crossAxisExtent,
     int columnCount, {

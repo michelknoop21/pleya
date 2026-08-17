@@ -35,6 +35,9 @@ class FocusableMediaCard extends StatefulWidget {
   /// Render grid cards as image-only full-bleed cards.
   final bool fullBleedImage;
 
+  /// See [MediaCard.gridTitleLines].
+  final int gridTitleLines;
+
   /// Show server name in list view (multi-server)
   final bool showServerName;
 
@@ -86,6 +89,7 @@ class FocusableMediaCard extends StatefulWidget {
     this.isOffline = false,
     this.mixedHubContext = false,
     this.fullBleedImage = false,
+    this.gridTitleLines = 1,
     this.showServerName = false,
     this.disableScale = false,
     this.focusNode,
@@ -141,6 +145,7 @@ class _FocusableMediaCardState extends State<FocusableMediaCard> {
         isOffline: widget.isOffline,
         mixedHubContext: widget.mixedHubContext,
         fullBleedImage: widget.fullBleedImage,
+        gridTitleLines: widget.gridTitleLines,
         showServerName: widget.showServerName,
       ),
     );

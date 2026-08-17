@@ -22,6 +22,9 @@ import '../widgets/state_view.dart';
 import '../widgets/watchlist_card.dart';
 import '../widgets/watchlist_item_sheet.dart';
 import '../widgets/watchlist_sort_sheet.dart';
+import '../utils/grid_size_calculator.dart';
+import '../utils/layout_constants.dart';
+import '../utils/platform_detector.dart';
 
 /// Which slice of the kijklijst is on screen.
 enum WatchlistFilter { all, movies, shows, available }
@@ -189,9 +192,25 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     );
   }
 
+  /// Smallest a watchlist card may get before its own content stops fitting:
+  /// a title on two lines, a year under it, and an availability badge across
+  /// the poster. Handheld and tablet widths size their columns against this
+  /// instead of against the library's target extent, which rounds up and put a
+  /// fourth 85pt poster on a phone.
+  static const double _minCardWidthHandheld = 108;
+  static const double _minCardWidthTablet = 150;
+
+  /// Two lines of title on the layouts where a card is wide enough to make the
+  /// second line worth reserving.
+  static int _titleLinesFor(double width) => ScreenBreakpoints.isDesktopOrLarger(width) ? 1 : 2;
+
   Widget _buildGrid(WatchlistProvider provider, List<WatchlistEntry> entries) {
+    // The bottom bar is the shell's, not this screen's, so the room it takes
+    // comes from the padding the shell leaves behind rather than from a number
+    // typed in here.
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
+      padding: EdgeInsets.fromLTRB(8, 8, 8, 24 + safeBottom),
       sliver: SettingsBuilder(
         prefs: const [SettingsService.libraryDensity],
         builder: (context) {
@@ -205,15 +224,36 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                 usePaddingAware: true,
                 horizontalPadding: 16,
               );
+              final screenWidth = MediaQuery.sizeOf(context).width;
+              final titleLines = _titleLinesFor(screenWidth);
+
+              // Desktop and TV keep the library's geometry; a phone or tablet
+              // gets its columns from how wide a card has to be to stay
+              // readable, so the row never packs one more poster than fits.
+              final int columnCount;
+              if (ScreenBreakpoints.isDesktopOrLarger(screenWidth) || PlatformDetector.isTV()) {
+                columnCount = geometry.columnCount;
+              } else {
+                columnCount = GridSizeCalculator.getColumnCountForMinWidth(
+                  crossAxisExtent,
+                  ScreenBreakpoints.isTablet(screenWidth) ? _minCardWidthTablet : _minCardWidthHandheld,
+                  spacing: geometry.spacing,
+                );
+              }
+              final itemWidth = GridSizeCalculator.getCellWidthForColumnCount(
+                crossAxisExtent,
+                columnCount,
+                crossAxisSpacing: geometry.spacing,
+              );
               // One contract for the cell and both card branches: a 2:3
               // poster plus the caption block MediaCard draws under it.
-              final cellHeight = MediaCardGridLayout.cardHeightFor(context, geometry.itemWidth);
+              final cellHeight = MediaCardGridLayout.cardHeightFor(context, itemWidth, titleLines: titleLines);
               return SliverGrid(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: geometry.columnCount,
+                  crossAxisCount: columnCount,
                   mainAxisSpacing: geometry.spacing,
                   crossAxisSpacing: geometry.spacing,
-                  childAspectRatio: geometry.itemWidth / cellHeight,
+                  childAspectRatio: itemWidth / cellHeight,
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final entry = entries[index];
@@ -232,7 +272,8 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                     // Both branches lay out inside the cell through
                     // MediaCardGridLayout, so nothing spills into the row
                     // below.
-                    width: geometry.itemWidth,
+                    width: itemWidth,
+                    titleLines: titleLines,
                   );
                 }, childCount: entries.length),
               );
@@ -271,6 +312,9 @@ class _FilterBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
+        // Chips and sort read as one toolbar: both sit on the same centre line
+        // instead of each carrying its own top padding.
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // The chips scroll and the sort button does not. At 360dp the four
           // chips no longer fit beside it, and scrolling them is the only
@@ -278,26 +322,38 @@ class _FilterBar extends StatelessWidget {
           // first row of posters down on exactly the screens with the least
           // room for that.
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(12, 4, 4, 0),
-              child: Row(
-                children: [
-                  for (final (value, label) in options)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(label),
-                        selected: filter == value,
-                        onSelected: (_) => onChanged(value),
+            // The chips run under the sort button when they overflow, and a
+            // chip cut clean in half reads as a rendering fault rather than as
+            // "there is more here". The fade says the row continues.
+            child: ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [Colors.black, Colors.black, Colors.transparent],
+                stops: [0, 0.88, 1],
+              ).createShader(bounds),
+              blendMode: BlendMode.dstIn,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    for (final (value, label) in options)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(label),
+                          selected: filter == value,
+                          onSelected: (_) => onChanged(value),
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(right: 8, top: 4),
+            padding: const EdgeInsets.only(right: 8),
             // The current order rides along as the tooltip instead of in the
             // label. A button whose text changes with the state would shift
             // the chips beside it every time the user sorts, and the tooltip

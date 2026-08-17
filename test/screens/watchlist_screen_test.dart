@@ -289,6 +289,65 @@ void main() {
       );
     }
 
+    /// Column count from the rendered cards: the distinct card lefts in the
+    /// first row.
+    int columnsOn(WidgetTester tester) {
+      final cards = cardRects(tester);
+      final firstTop = (cards.map((r) => r.top).reduce((a, b) => a < b ? a : b) * 2).roundToDouble() / 2;
+      return cards.where((r) => ((r.top * 2).roundToDouble() / 2) == firstTop).length;
+    }
+
+    testWidgets('a phone gets readable columns, not one more poster than fits', (tester) async {
+      // 390 is a stock iPhone. Four columns there left 85pt cards, on which
+      // nearly every title ellipsised and the availability badge could not show
+      // its own word.
+      for (final width in <double>[375, 390, 430]) {
+        tester.view.physicalSize = Size(width, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        await pumpScreen(tester, [
+          for (var i = 0; i < 8; i++) entry(key: 'p$i', title: 'Titel $i'),
+        ], serversOnline: true);
+
+        expect(columnsOn(tester), 3, reason: 'at ${width}pt');
+        expect(tester.takeException(), isNull);
+      }
+    });
+
+    testWidgets('a very narrow phone drops to two columns rather than shrinking further', (tester) async {
+      tester.view.physicalSize = const Size(320, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await pumpScreen(tester, [for (var i = 0; i < 6; i++) entry(key: 'n$i', title: 'Titel $i')], serversOnline: true);
+
+      expect(columnsOn(tester), 2);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a tablet uses its extra width for more columns', (tester) async {
+      tester.view.physicalSize = const Size(768, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await pumpScreen(tester, [
+        for (var i = 0; i < 10; i++) entry(key: 't$i', title: 'Titel $i'),
+      ], serversOnline: true);
+
+      expect(columnsOn(tester), greaterThanOrEqualTo(4));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a title on two lines does not make its card taller than the row', (tester) async {
+      await pumpTwoRows(tester);
+
+      final cards = cardRects(tester);
+      final heights = {for (final r in cards) (r.height * 2).roundToDouble() / 2};
+      // 'Een titel die veel te lang is…' wraps, the others do not.
+      expect(heights.length, 1, reason: 'cards in one grid must share a height');
+    });
+
     testWidgets('no card overflows its cell, whichever branch renders it', (tester) async {
       await pumpTwoRows(tester);
 
@@ -300,7 +359,9 @@ void main() {
       expect(cards.length, 6);
 
       final context = tester.element(find.byType(WatchlistCard).first);
-      final expected = MediaCardGridLayout.cardHeightFor(context, cards.first.width);
+      // Phone widths give the title two lines, and the cell reserves both, so
+      // the row keeps one height whether a title wraps or not.
+      final expected = MediaCardGridLayout.cardHeightFor(context, cards.first.width, titleLines: 2);
       for (final r in cards) {
         expect(r.height, moreOrLessEquals(expected, epsilon: 0.5));
         expect(r.width, moreOrLessEquals(cards.first.width, epsilon: 0.5));

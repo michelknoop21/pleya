@@ -37,14 +37,14 @@ WatchlistEntry entry({
   );
 }
 
-Future<void> pumpCard(WidgetTester tester, WatchlistEntry e) async {
+Future<void> pumpCard(WidgetTester tester, WatchlistEntry e, {double width = 120}) async {
   await tester.pumpWidget(
     TranslationProvider(
       child: MaterialApp(
         theme: monoTheme(dark: true),
         home: Scaffold(
           body: Center(
-            child: WatchlistUnavailableCard(entry: e, onTap: () {}, width: 120),
+            child: WatchlistUnavailableCard(entry: e, onTap: () {}, width: width),
           ),
         ),
       ),
@@ -79,13 +79,30 @@ void main() {
     });
 
     testWidgets('notFound dims the poster and names it', (tester) async {
+      final semantics = tester.ensureSemantics();
       await pumpCard(tester, entry(availability: WatchlistAvailability.notFound, coverageComplete: true));
 
-      expect(find.text(t.watchlist.notAvailable), findsOneWidget);
+      // On a card this narrow the badge is the icon alone: ellipsising the
+      // label to "Not avail…" would leave a badge that cannot say what it
+      // means. The sentence stays in the semantics either way.
+      // The card merges its children into one node, so the status arrives as
+      // part of that label rather than as a node of its own.
+      expect(
+        find.bySemanticsLabel(RegExp(RegExp.escape(t.watchlist.notAvailable))),
+        findsAtLeastNWidgets(1),
+        reason: 'the status has to survive a narrow card',
+      );
       expect(find.byType(ColorFiltered), findsOneWidget);
       final opacity = tester.widget<Opacity>(find.byType(Opacity).first);
       expect(opacity.opacity, WatchlistUnavailableCard.notFoundOpacity);
       expect(opacity.opacity, greaterThan(0.7), reason: 'still real content you can request, not a disabled control');
+      semantics.dispose();
+    });
+
+    testWidgets('a card wide enough spells the status out', (tester) async {
+      await pumpCard(tester, entry(availability: WatchlistAvailability.notFound, coverageComplete: true), width: 190);
+
+      expect(find.text(t.watchlist.notAvailable), findsOneWidget);
     });
 
     testWidgets('available never gets a tick, because it is the normal state', (tester) async {

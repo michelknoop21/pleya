@@ -7,6 +7,7 @@ import '../i18n/strings.g.dart';
 import '../media/watchlist_entry.dart';
 import '../theme/mono_tokens.dart';
 import '../utils/media_image_helper.dart';
+import 'app_icon.dart';
 import '../focus/card_focus_scope.dart';
 import 'media_card_grid_layout.dart';
 import 'pressable.dart';
@@ -39,6 +40,7 @@ class WatchlistCard extends StatelessWidget {
     required this.isPlayable,
     required this.onTap,
     required this.width,
+    this.titleLines = 1,
     this.focusNode,
   });
 
@@ -57,6 +59,11 @@ class WatchlistCard extends StatelessWidget {
 
   final FocusNode? focusNode;
 
+  /// Lines the title may use. The grid reserves the same number in its cell
+  /// height, so a wrapped title never makes one card taller than its
+  /// neighbours, and both branches below get the same budget.
+  final int titleLines;
+
   @override
   Widget build(BuildContext context) {
     final match = entry.lastKnownMatch;
@@ -70,12 +77,23 @@ class WatchlistCard extends StatelessWidget {
             width: width,
             height: MediaCardGridLayout.posterHeightFor(width),
             focusNode: focusNode,
+            gridTitleLines: titleLines,
           )
-        : WatchlistUnavailableCard(entry: entry, onTap: onTap, width: width, focusNode: focusNode);
+        : WatchlistUnavailableCard(
+            entry: entry,
+            onTap: onTap,
+            width: width,
+            focusNode: focusNode,
+            titleLines: titleLines,
+          );
 
     // A tight cell overrides this with the identical value; outside a grid it
     // is what gives both branches the same definitive height.
-    return SizedBox(width: width, height: MediaCardGridLayout.cardHeightFor(context, width), child: card);
+    return SizedBox(
+      width: width,
+      height: MediaCardGridLayout.cardHeightFor(context, width, titleLines: titleLines),
+      child: card,
+    );
   }
 }
 
@@ -99,6 +117,7 @@ class WatchlistUnavailableCard extends StatelessWidget {
     required this.entry,
     required this.onTap,
     required this.width,
+    this.titleLines = 1,
     this.focusNode,
   });
 
@@ -110,6 +129,11 @@ class WatchlistUnavailableCard extends StatelessWidget {
   final double width;
 
   final FocusNode? focusNode;
+
+  /// How many lines the title may use. The grid reserves the same number in
+  /// its cell height, so a wrapped title never makes one card taller than its
+  /// neighbours.
+  final int titleLines;
 
   /// Opacity for a title none of the reachable servers has.
   static const double notFoundOpacity = 0.82;
@@ -176,14 +200,14 @@ class WatchlistUnavailableCard extends StatelessWidget {
                 // Fixed-height block: a missing year or a title that wraps
                 // must not move the row below.
                 SizedBox(
-                  height: MediaCardGridLayout.captionExtentFor(context),
+                  height: MediaCardGridLayout.captionExtentFor(context, titleLines: titleLines),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         entry.item.title ?? '',
-                        maxLines: 1,
+                        maxLines: titleLines,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
@@ -279,17 +303,64 @@ class _CheckingSpinner extends StatelessWidget {
 class _NotAvailableBadge extends StatelessWidget {
   const _NotAvailableBadge();
 
+  static const TextStyle _labelStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 10,
+    fontWeight: FontWeight.w600,
+    height: 1.2,
+  );
+
+  /// Padding and icon together, so the fit test below knows what the label has
+  /// left to work with.
+  static const double _horizontalPadding = 6;
+  static const double _iconSize = 11;
+  static const double _iconGap = 3;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.62), borderRadius: BorderRadius.circular(4)),
-      child: Text(
-        t.watchlist.notAvailable,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600, height: 1.2),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // A card four columns wide is narrower than the word "unavailable" in
+        // most languages. Ellipsising it leaves a badge that cannot say what it
+        // means ("Niet besc…"), so below that width the icon carries it alone
+        // and the sentence stays in the semantics.
+        final available = constraints.maxWidth - _horizontalPadding * 2 - _iconSize - _iconGap;
+        final painter = TextPainter(
+          text: TextSpan(text: t.watchlist.notAvailable, style: _labelStyle),
+          maxLines: 1,
+          textDirection: Directionality.of(context),
+        )..layout();
+        final labelFits = available >= painter.width;
+
+        return Semantics(
+          label: t.watchlist.notAvailable,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.62),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const AppIcon(Symbols.cloud_off_rounded, size: _iconSize, color: Colors.white),
+                if (labelFits) ...[
+                  const SizedBox(width: _iconGap),
+                  Flexible(
+                    child: Text(
+                      t.watchlist.notAvailable,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _labelStyle,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

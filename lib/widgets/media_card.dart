@@ -83,6 +83,12 @@ class MediaCard extends StatefulWidget {
   final EpisodePosterMode? episodePosterModeOverride;
   final bool fullBleedImage;
 
+  /// Lines the title may use on a standard grid card. One is the default and
+  /// what every library grid uses; a caller whose cells are wide enough for two
+  /// (the watchlist on a phone) has to reserve the same number in its cell
+  /// height, or the row loses its uniform height.
+  final int gridTitleLines;
+
   const MediaCard({
     super.key,
     required this.item,
@@ -101,6 +107,7 @@ class MediaCard extends StatefulWidget {
     this.showServerName = false,
     this.episodePosterModeOverride,
     this.fullBleedImage = false,
+    this.gridTitleLines = 1,
   }) : usesContinueWatchingAction = usesContinueWatchingAction ?? isInContinueWatching;
 
   @override
@@ -554,7 +561,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
                 // row ends at the same height. Both lines are single-line, so
                 // this is the exact height they need, not a worst case.
                 SizedBox(
-                  height: MediaCardGridLayout.captionExtentFor(context),
+                  height: MediaCardGridLayout.captionExtentFor(context, titleLines: widget.gridTitleLines),
                   child: Column(
                     mainAxisSize: .min,
                     crossAxisAlignment: .start,
@@ -569,7 +576,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
                       else
                         Text(
                           item is MediaPlaylist ? item.title : (item as MediaItem).displayTitle,
-                          maxLines: 1,
+                          maxLines: widget.gridTitleLines,
                           overflow: .ellipsis,
                           style: MediaCardGridLayout.titleStyle,
                         ),

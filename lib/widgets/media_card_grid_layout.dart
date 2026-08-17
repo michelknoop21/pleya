@@ -67,19 +67,23 @@ class MediaCardGridLayout {
   /// constant. A fixed number is right at scale 1.0 and overflows into the
   /// row below the moment a user turns text size up, which is exactly the
   /// failure this contract exists to prevent.
-  static double captionExtentFor(BuildContext context) {
+  /// [titleLines] is how many lines the title is allowed to take. One is the
+  /// default and what [MediaCard] uses; a grid whose cards are wide enough for
+  /// two (the watchlist on a phone) reserves the second line here so every card
+  /// in the row keeps the same height whether its title wraps or not.
+  static double captionExtentFor(BuildContext context, {int titleLines = 1}) {
     final scaler = MediaQuery.textScalerOf(context);
-    final title = scaler.scale(titleFontSize) * lineHeightFactor;
+    final title = scaler.scale(titleFontSize) * lineHeightFactor * titleLines;
     final subtitle = scaler.scale(subtitleFontSize) * lineHeightFactor;
     return (title + subtitle).ceilToDouble();
   }
 
   /// What a grid cell has to reserve on top of the poster.
-  static double textExtentFor(BuildContext context) =>
-      topInset + posterCaptionGap + captionExtentFor(context) + bottomInset;
+  static double textExtentFor(BuildContext context, {int titleLines = 1}) =>
+      topInset + posterCaptionGap + captionExtentFor(context, titleLines: titleLines) + bottomInset;
 
-  static double cardHeightFor(BuildContext context, double cardWidth) =>
-      posterHeightFor(cardWidth) + textExtentFor(context);
+  static double cardHeightFor(BuildContext context, double cardWidth, {int titleLines = 1}) =>
+      posterHeightFor(cardWidth) + textExtentFor(context, titleLines: titleLines);
 
   /// Height of a grid cell [cellWidth] wide: the reserved focus room, the
   /// card's padding, the artwork at its own aspect, and the caption.
