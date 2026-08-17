@@ -1,4 +1,12 @@
-# Pleya — Handleiding voor gebruikers
+<!-- anti-slop: off — bevroren archiefdocument, tekst blijft zoals opgeleverd -->
+
+> **Gearchiveerd.** Dit is de Nederlandse handleiding zoals die op 2 juli 2026 is opgeleverd.
+> Hij wordt niet meer bijgewerkt en mist alles van daarna: de kijklijst en Mijn Pleya,
+> Pleya Share, Verzoeken via Jellyseerr en Overseerr, de herziene Live TV-favorieten en
+> iCloud-sync. De actuele handleiding staat op <https://pleya.app/docs> en is Engels,
+> in lijn met de site en de App Store.
+
+# Pleya · Handleiding voor gebruikers
 
 **Versie 2.8.0 · 2 juli 2026**
 
