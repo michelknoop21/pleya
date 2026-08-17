@@ -1145,6 +1145,9 @@ class TranslationsSettingsEn {
 
 	/// en: 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.'
 	String get personalizedRecommendationsDescription => 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.';
+
+	/// en: 'App & playback'
+	String get sectionLibrary => 'App & playback';
 }
 
 // Path: search
@@ -4433,6 +4436,12 @@ class TranslationsSeerrEn {
 
 	/// en: 'Something went wrong. Try again.'
 	String get errorGeneric => 'Something went wrong. Try again.';
+
+	/// en: 'Search for a movie or show to request'
+	String get searchPlaceholder => 'Search for a movie or show to request';
+
+	/// en: 'By streaming service'
+	String get byStreamingService => 'By streaming service';
 }
 
 // Path: trakt
@@ -5825,6 +5834,7 @@ extension on Translations {
 			'settings.behavior' => 'Behavior',
 			'settings.personalizedRecommendations' => 'Personalized recommendations',
 			'settings.personalizedRecommendationsDescription' => 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.',
+			'settings.sectionLibrary' => 'App & playback',
 			'search.hint' => 'Search movies, shows, music...',
 			'search.tryDifferentTerm' => 'Try a different search term',
 			'search.searchYourMedia' => 'Search your media',
@@ -6006,9 +6016,9 @@ extension on Translations {
 			'videoControls.pipActive' => 'Playing in Picture-in-Picture',
 			'videoControls.pipFailed' => 'Picture-in-picture failed to start',
 			'videoControls.screenshotSaved' => 'Screenshot saved',
-			'videoControls.zoomPercent' => ({required Object percent}) => 'Zoom ${percent}%',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.zoomPercent' => ({required Object percent}) => 'Zoom ${percent}%',
 			'videoControls.pipErrors.androidVersion' => 'Requires Android 8.0 or newer',
 			'videoControls.pipErrors.iosVersion' => 'Requires iOS 15.0 or newer',
 			'videoControls.pipErrors.permissionDisabled' => 'Picture-in-picture is disabled. Enable it in system settings.',
@@ -6520,9 +6530,9 @@ extension on Translations {
 			'watchTogether.syncing' => 'Syncing...',
 			'watchTogether.joinWatchSession' => 'Join Watch Session',
 			'watchTogether.enterCodeHint' => 'Enter 5-character code',
-			'watchTogether.pasteFromClipboard' => 'Paste from clipboard',
 			_ => null,
 		} ?? switch (path) {
+			'watchTogether.pasteFromClipboard' => 'Paste from clipboard',
 			'watchTogether.pleaseEnterCode' => 'Please enter a session code',
 			'watchTogether.codeMustBe5Chars' => 'Session code must be 5 characters',
 			'watchTogether.joinInstructions' => 'Enter the host\'s session code to join.',
@@ -6949,6 +6959,8 @@ extension on Translations {
 			'seerr.errorForbidden' => 'You don\'t have permission for that.',
 			'seerr.errorNetwork' => 'Couldn\'t reach the server. Check the URL.',
 			'seerr.errorGeneric' => 'Something went wrong. Try again.',
+			'seerr.searchPlaceholder' => 'Search for a movie or show to request',
+			'seerr.byStreamingService' => 'By streaming service',
 			'trakt.title' => 'Trakt',
 			'trakt.connected' => 'Connected',
 			'trakt.connectedAs' => ({required Object username}) => 'Connected as @${username}',
@@ -7032,11 +7044,11 @@ extension on Translations {
 			'addLocalFolder.chooseDirectory' => 'Choose a directory…',
 			'addLocalFolder.nameLabel' => 'Display name',
 			'addLocalFolder.nameHint' => 'e.g. My Movies',
+			_ => null,
+		} ?? switch (path) {
 			'addLocalFolder.save' => 'Add folder',
 			'addLocalFolder.saveError' => 'Failed to add local folder',
 			'addLocalFolder.entriesFound' => ({required Object count}) => '${count} items found in folder',
-			_ => null,
-		} ?? switch (path) {
 			'pleyaShare.cardTitle' => 'Pleya Share',
 			'pleyaShare.cardSubtitle' => 'Connect to another Pleya device sharing its media',
 			'pleyaShare.hostTitle' => 'Share my media',

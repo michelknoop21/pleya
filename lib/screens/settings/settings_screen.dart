@@ -179,50 +179,59 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           primary: false,
           slivers: [
             ExcludeFocus(child: CustomAppBar(title: Text(t.settings.title), pinned: true)),
-            if (_searchEnabled) SliverToBoxAdapter(child: _buildSearchField()),
+            if (_searchEnabled) SliverToBoxAdapter(child: SettingsWidthLimit(child: _buildSearchField())),
             if (_searchQuery.isNotEmpty)
               _buildSearchResults()
             else
               SliverList(
-                delegate: SliverChildListDelegate([
-                  if (DonationService.isEnabled) _buildDonateTile(),
+                delegate: SliverChildListDelegate(
+                  [
+                    if (DonationService.isEnabled) SettingsGroup(children: [_buildDonateTile()]),
 
-                  _buildAppearanceTile(),
+                    SettingsGroup(
+                      title: t.settings.sectionLibrary,
+                      children: [
+                        _buildAppearanceTile(),
+                        _buildLibraryVisibilityTile(),
+                        _buildHomeLayoutTile(),
+                        _buildPlaybackTile(),
+                        _buildTrackersTile(),
+                        _buildRequestsTile(),
+                      ],
+                    ),
 
-                  _buildLibraryVisibilityTile(),
-                  _buildHomeLayoutTile(),
+                    _buildConnectionsSection(),
 
-                  _buildPlaybackTile(),
+                    _buildProfilesSection(),
 
-                  _buildTrackersTile(),
+                    if (!PlatformDetector.isAppleTV()) _buildDownloadsSection(),
 
-                  _buildRequestsTile(),
+                    if (_keyboardShortcutsSupported) ...[_buildKeyboardShortcutsSection()],
 
-                  _buildConnectionsSection(),
+                    _buildAdvancedSection(),
 
-                  _buildProfilesSection(),
+                    if (UpdateService.isUpdateCheckEnabled) ...[_buildUpdateSection()],
 
-                  if (!PlatformDetector.isAppleTV()) _buildDownloadsSection(),
+                    if (!PlatformDetector.isTV()) _buildBackupSection(),
 
-                  if (_keyboardShortcutsSupported) ...[_buildKeyboardShortcutsSection()],
+                    if (kDebugMode) _buildDebugSection(),
 
-                  _buildAdvancedSection(),
-
-                  if (UpdateService.isUpdateCheckEnabled) ...[_buildUpdateSection()],
-
-                  if (!PlatformDetector.isTV()) _buildBackupSection(),
-
-                  if (kDebugMode) _buildDebugSection(),
-
-                  SettingNavigationTile(
-                    focusNode: _focusTracker.get(_kAbout),
-                    icon: Symbols.info_rounded,
-                    title: t.settings.about,
-                    subtitle: t.settings.aboutDescription,
-                    destinationBuilder: (context) => const AboutScreen(),
-                  ),
-                  const SizedBox(height: 24),
-                ]),
+                    SettingsGroup(
+                      children: [
+                        SettingNavigationTile(
+                          focusNode: _focusTracker.get(_kAbout),
+                          icon: Symbols.info_rounded,
+                          title: t.settings.about,
+                          subtitle: t.settings.aboutDescription,
+                          destinationBuilder: (context) => const AboutScreen(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // Every card gets the same maximum width so the column stays
+                    // centred on a wide window instead of stretching across it.
+                  ].map((w) => SettingsWidthLimit(child: w)).toList(),
+                ),
               ),
           ],
         ),
@@ -546,10 +555,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         ? t.connections.addConnectionSubtitleNoProfile
         : t.connections.addConnectionSubtitleScoped(displayName: active.displayName);
 
-    return Column(
-      crossAxisAlignment: .start,
+    return SettingsGroup(
+      title: t.connections.sectionTitle,
       children: [
-        SettingsSectionHeader(t.connections.sectionTitle),
         // Connections are managed per-profile (via the Profiles section
         // and each profile's detail screen). The shortcut here just opens
         // the picker scoped to the active profile so users can add a Plex
@@ -669,14 +677,18 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
             : (activeName != null
                   ? t.profiles.summaryMultipleWithActive(count: count, activeName: activeName)
                   : t.profiles.summaryMultiple(count: count));
-        return SettingNavigationTile(
-          icon: Symbols.group_rounded,
-          title: t.profiles.sectionTitle,
-          subtitle: subtitle,
-          onTap: () => Navigator.of(
-            context,
-            rootNavigator: true,
-          ).push(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen())),
+        return SettingsGroup(
+          children: [
+            SettingNavigationTile(
+              icon: Symbols.group_rounded,
+              title: t.profiles.sectionTitle,
+              subtitle: subtitle,
+              onTap: () => Navigator.of(
+                context,
+                rootNavigator: true,
+              ).push(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen())),
+            ),
+          ],
         );
       },
     );
@@ -686,10 +698,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     final storageService = DownloadStorageService.instance;
     final isCustom = storageService.isUsingCustomPath();
 
-    return Column(
-      crossAxisAlignment: .start,
+    return SettingsGroup(
+      title: t.settings.downloads,
       children: [
-        SettingsSectionHeader(t.settings.downloads),
         if (!Platform.isIOS)
           FutureBuilder<String>(
             future: storageService.getCurrentDownloadPathDisplay(),
@@ -726,10 +737,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   Widget _buildKeyboardShortcutsSection() {
     if (_keyboardService == null) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: .start,
+    return SettingsGroup(
+      title: t.settings.keyboardShortcuts,
       children: [
-        SettingsSectionHeader(t.settings.keyboardShortcuts),
         SettingNavigationTile(
           focusNode: _focusTracker.get(_kVideoPlayerControls),
           icon: Symbols.keyboard_rounded,
@@ -754,10 +764,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   }
 
   Widget _buildAdvancedSection() {
-    return Column(
-      crossAxisAlignment: .start,
+    return SettingsGroup(
+      title: t.settings.advanced,
       children: [
-        SettingsSectionHeader(t.settings.advanced),
         SettingNavigationTile(
           focusNode: _focusTracker.get(_kWatchTogetherRelay),
           icon: Symbols.dns_rounded,
@@ -806,10 +815,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
 
   /// Debug-only tools, shown as a separate section at the bottom of the list.
   Widget _buildDebugSection() {
-    return Column(
-      crossAxisAlignment: .start,
+    return SettingsGroup(
+      title: 'Debug',
       children: [
-        const SettingsSectionHeader('Debug'),
         SettingNavigationTile(
           icon: Symbols.error_rounded,
           title: 'Test Sentry',
@@ -833,10 +841,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   }
 
   Widget _buildBackupSection() {
-    return Column(
-      crossAxisAlignment: .start,
+    return SettingsGroup(
+      title: t.settings.backup,
       children: [
-        SettingsSectionHeader(t.settings.backup),
         SettingNavigationTile(
           focusNode: _focusTracker.get(_kExportSettings),
           icon: Symbols.upload_rounded,
@@ -896,10 +903,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
 
   Widget _buildUpdateSection() {
     if (UpdateService.useNativeUpdater) {
-      return Column(
-        crossAxisAlignment: .start,
+      return SettingsGroup(
+        title: t.settings.updates,
         children: [
-          SettingsSectionHeader(t.settings.updates),
           SettingNavigationTile(
             focusNode: _focusTracker.get(_kCheckForUpdates),
             icon: Symbols.system_update_rounded,
@@ -913,10 +919,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
 
     final hasUpdate = _updateInfo != null && _updateInfo!['hasUpdate'] == true;
 
-    return Column(
-      crossAxisAlignment: .start,
+    return SettingsGroup(
+      title: t.settings.updates,
       children: [
-        SettingsSectionHeader(t.settings.updates),
         ListTile(
           focusNode: _focusTracker.get(_kCheckForUpdates),
           leading: AppIcon(

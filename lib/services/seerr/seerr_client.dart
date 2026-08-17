@@ -40,6 +40,24 @@ typedef SeerrQuota = ({int? movieRemaining, int? movieLimit, int? tvRemaining, i
 /// A TMDB genre (id + display name) from `/genres/movie` or `/genres/tv`.
 typedef SeerrGenre = ({int id, String name});
 
+/// A streaming service from `/watchproviders/*`. [logoPath] is a TMDB path, so
+/// it still needs the image base URL prefixed before use.
+class SeerrWatchProvider {
+  final int id;
+  final String name;
+  final String? logoPath;
+
+  const SeerrWatchProvider({required this.id, required this.name, this.logoPath});
+
+  static SeerrWatchProvider? tryFromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final name = json['name'];
+    if (id is! int || name is! String || name.isEmpty) return null;
+    final logo = json['logoPath'];
+    return SeerrWatchProvider(id: id, name: name, logoPath: logo is String && logo.isNotEmpty ? logo : null);
+  }
+}
+
 /// HTTP client for one Jellyseerr / Overseerr server, bound to a [SeerrSession].
 ///
 /// Auth: apiKey mode sends `X-Api-Key`; plex/local modes capture the
@@ -146,10 +164,44 @@ class SeerrClient {
 
   Future<SeerrMediaPage> search(String query, {int page = 1}) => _mediaPage('/search', {'query': query, 'page': page});
 
-  Future<SeerrMediaPage> discoverMovies({int page = 1, int? genre}) =>
-      _mediaPage('/discover/movies', {'page': page, 'genre': ?genre});
-  Future<SeerrMediaPage> discoverTv({int page = 1, int? genre}) =>
-      _mediaPage('/discover/tv', {'page': page, 'genre': ?genre});
+  /// [watchProvider] is a TMDB provider id (Netflix, Disney+, …). It only means
+  /// anything together with [watchRegion], because availability is per country.
+  Future<SeerrMediaPage> discoverMovies({int page = 1, int? genre, int? watchProvider, String? watchRegion}) =>
+      _mediaPage('/discover/movies', {
+        'page': page,
+        'genre': ?genre,
+        'watchProviders': ?watchProvider?.toString(),
+        'watchRegion': ?watchRegion,
+      });
+  Future<SeerrMediaPage> discoverTv({int page = 1, int? genre, int? watchProvider, String? watchRegion}) => _mediaPage(
+    '/discover/tv',
+    {'page': page, 'genre': ?genre, 'watchProviders': ?watchProvider?.toString(), 'watchRegion': ?watchRegion},
+  );
+
+  /// `GET /watchproviders/{movies|tv}` — the streaming services this region has,
+  /// ordered by TMDB display priority. Empty list on any hiccup: the row simply
+  /// does not appear rather than breaking discover.
+  Future<List<SeerrWatchProvider>> getWatchProviders({required bool movies, required String region}) async {
+    try {
+      final resp = await _send(
+        () => _http.get(
+          movies ? '/watchproviders/movies' : '/watchproviders/tv',
+          queryParameters: {'watchRegion': region},
+          headers: _authHeaders(),
+        ),
+      );
+      final data = resp.data;
+      if (data is! List) return const [];
+      return data
+          .whereType<Map>()
+          .map((e) => SeerrWatchProvider.tryFromJson(e.cast<String, dynamic>()))
+          .whereType<SeerrWatchProvider>()
+          .toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
   Future<SeerrMediaPage> discoverTrending({int page = 1}) => _mediaPage('/discover/trending', {'page': page});
   Future<SeerrMediaPage> discoverUpcomingMovies({int page = 1}) =>
       _mediaPage('/discover/movies/upcoming', {'page': page});
@@ -234,6 +286,27 @@ class SeerrClient {
     };
     final resp = await _send(() => _http.post('/request', body: body, headers: _authHeaders()));
     _throwIfError(resp);
+  }
+
+  /// `GET /request/count`. Feeds the counts next to the filter tabs. Returns
+  /// zeros when the server does not answer, so the tabs degrade to plain labels
+  /// instead of the screen failing over a decoration.
+  Future<({int total, int pending, int approved, int available, int processing})> getRequestCounts() async {
+    const empty = (total: 0, pending: 0, approved: 0, available: 0, processing: 0);
+    try {
+      final resp = await _send(() => _http.get('/request/count', headers: _authHeaders()));
+      final data = resp.data;
+      if (data is! Map) return empty;
+      return (
+        total: _int(data['total']) ?? 0,
+        pending: _int(data['pending']) ?? 0,
+        approved: _int(data['approved']) ?? 0,
+        available: _int(data['available']) ?? 0,
+        processing: _int(data['processing']) ?? 0,
+      );
+    } catch (_) {
+      return empty;
+    }
   }
 
   /// `GET /request`. [filter] is one of all/pending/approved/processing/

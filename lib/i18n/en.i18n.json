@@ -341,7 +341,8 @@
     "audioSyncOffsetDescription": "Shift audio relative to video for every title",
     "behavior": "Behavior",
     "personalizedRecommendations": "Personalized recommendations",
-    "personalizedRecommendationsDescription": "Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device."
+    "personalizedRecommendationsDescription": "Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.",
+    "sectionLibrary": "App & playback"
   },
   "search": {
     "hint": "Search movies, shows, music...",
@@ -1576,7 +1577,9 @@
     "errorAuth": "Sign-in failed. Check your credentials.",
     "errorForbidden": "You don't have permission for that.",
     "errorNetwork": "Couldn't reach the server. Check the URL.",
-    "errorGeneric": "Something went wrong. Try again."
+    "errorGeneric": "Something went wrong. Try again.",
+    "searchPlaceholder": "Search for a movie or show to request",
+    "byStreamingService": "By streaming service"
   },
   "trakt": {
     "title": "Trakt",

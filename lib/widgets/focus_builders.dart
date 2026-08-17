@@ -32,6 +32,7 @@ class FocusBuilders {
     required EdgeInsetsGeometry padding,
     required Color backgroundColor,
     double borderRadius = 20,
+    Color? borderColor,
     required Widget child,
   }) {
     final duration = FocusTheme.getAnimationDuration(context);
@@ -46,7 +47,11 @@ class FocusBuilders {
             duration: duration,
             curve: Curves.easeOutCubic,
             padding: padding,
-            decoration: BoxDecoration(color: backgroundColor, borderRadius: BorderRadius.circular(borderRadius)),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(borderRadius),
+              border: borderColor == null ? null : Border.all(color: borderColor),
+            ),
             child: child,
           ),
         ),

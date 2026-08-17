@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../focus/focusable_chip_mixin.dart';
 import '../focus/input_mode_tracker.dart';
-import '../utils/platform_detector.dart';
+import '../theme/mono_tokens.dart';
 import 'focus_builders.dart';
 
 /// A focusable tab chip that shows a color change when focused or selected.
@@ -106,36 +106,30 @@ class _FocusableTabChipState extends State<FocusableTabChip> with FocusableChipS
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     // Only show focus effects during keyboard/d-pad navigation
     final showFocus = isFocused && InputModeTracker.isKeyboardMode(context);
 
-    // Determine background color based on focus and selection state
-    // - Selected + Focused: slightly dimmed primary (to show focus distinction)
-    // - Selected only: primary color
-    // - Focused only: primary color
-    // - Neither: surface color
-    Color backgroundColor;
-    Color foregroundColor;
+    // Segmented-control look: the group draws the surface, a tab only marks
+    // itself. Selected sits one step lighter with an accent underline; the rest
+    // stays transparent so the row reads as one control instead of four buttons.
+    final tk = tokens(context);
+    final Color backgroundColor;
+    final Color foregroundColor;
+    Color? borderColor;
 
-    if (widget.isSelected && showFocus) {
-      // Selected + focused: dim the primary color slightly
-      backgroundColor = Color.lerp(colorScheme.primary, colorScheme.surface, 0.25)!;
-      foregroundColor = colorScheme.onPrimary;
-    } else if (widget.isSelected || showFocus) {
-      // Selected or focused (but not both): full primary
-      backgroundColor = colorScheme.primary;
-      foregroundColor = colorScheme.onPrimary;
+    if (widget.isSelected) {
+      backgroundColor = tk.surfaceElevated;
+      foregroundColor = tk.text;
+      borderColor = tk.outline.withValues(alpha: 0.9);
+    } else if (showFocus) {
+      backgroundColor = tk.surfaceElevated.withValues(alpha: 0.6);
+      foregroundColor = tk.text;
+      borderColor = tk.text.withValues(alpha: 0.55);
     } else {
-      // Neither selected nor focused
-      if (PlatformDetector.isTV()) {
-        backgroundColor = colorScheme.secondaryContainer.withValues(alpha: 0.38);
-        foregroundColor = colorScheme.onSecondaryContainer;
-      } else {
-        backgroundColor = colorScheme.surfaceContainerHighest;
-        foregroundColor = colorScheme.onSurfaceVariant;
-      }
+      backgroundColor = Colors.transparent;
+      foregroundColor = tk.textMuted;
     }
+    if (showFocus) borderColor = tk.text.withValues(alpha: 0.75);
 
     final isHighlighted = showFocus || widget.isSelected;
 
@@ -143,8 +137,18 @@ class _FocusableTabChipState extends State<FocusableTabChip> with FocusableChipS
       widget.label,
       style: Theme.of(context).textTheme.labelLarge?.copyWith(
         color: foregroundColor,
-        fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.normal,
+        fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.w500,
       ),
+    );
+
+    // Underline keeps the brand accent in play without a filled red slab, and
+    // the zero-width twin keeps every tab the same height.
+    final underline = AnimatedContainer(
+      duration: reduceMotion(context, tk.fast),
+      margin: const EdgeInsets.only(top: 5),
+      height: 2,
+      width: widget.isSelected ? 18 : 0,
+      decoration: BoxDecoration(color: tk.accent, borderRadius: BorderRadius.circular(2)),
     );
 
     final hasImage = widget.topImage != null;
@@ -153,9 +157,10 @@ class _FocusableTabChipState extends State<FocusableTabChip> with FocusableChipS
       focusNode: focusNode,
       onKeyEvent: _handleKeyEvent,
       onTap: widget.onSelect,
-      padding: hasImage ? const EdgeInsets.all(8) : const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: hasImage ? const EdgeInsets.all(8) : const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 5),
       backgroundColor: backgroundColor,
-      borderRadius: hasImage ? 12 : 20,
+      borderColor: borderColor,
+      borderRadius: hasImage ? 12 : 10,
       child: hasImage
           ? Column(
               mainAxisSize: .min,
@@ -165,7 +170,7 @@ class _FocusableTabChipState extends State<FocusableTabChip> with FocusableChipS
                 label,
               ],
             )
-          : label,
+          : Column(mainAxisSize: MainAxisSize.min, children: [label, underline]),
     );
   }
 }

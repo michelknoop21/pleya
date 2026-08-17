@@ -6,6 +6,9 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../theme/mono_tokens.dart';
+import '../../widgets/settings_section.dart';
+
 import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
 import '../../providers/multi_server_provider.dart';
@@ -129,6 +132,22 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
     );
   }
 
+  /// Card surface shared by the blocks on this screen, matching the grouped
+  /// look of the settings list.
+  Widget _card(BuildContext context, {required Widget child, EdgeInsets? padding}) {
+    final tk = tokens(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: padding ?? const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: tk.surface,
+        borderRadius: BorderRadius.circular(tk.radiusMd),
+        border: Border.all(color: tk.outline.withValues(alpha: 0.6)),
+      ),
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -145,117 +164,172 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
               builder: (context, _) {
                 final running = _service.isRunning;
                 final code = _service.pairCode;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      Platform.isAndroid
-                          ? t.pleyaShare.hostDescriptionAndroid
-                          : Platform.isIOS
-                          ? t.pleyaShare.hostDescriptionIos
-                          : t.pleyaShare.hostDescription,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _howItWorks(theme),
-                    const SizedBox(height: 16),
-                    FocusableWrapper(
-                      disableScale: true,
-                      borderRadius: 12,
-                      onSelect: hasFolders && !_busy ? () => _toggle(!running) : null,
-                      child: SwitchListTile(
-                        title: Text(t.pleyaShare.hostToggle),
-                        value: running,
-                        onChanged: hasFolders && !_busy ? _toggle : null,
-                      ),
-                    ),
-                    if (!hasFolders) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        t.pleyaShare.noLocalFolders,
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
-                      ),
-                      const SizedBox(height: 12),
-                      FocusableWrapper(
-                        disableScale: true,
-                        borderRadius: 20,
-                        onSelect: _addFolder,
-                        child: OutlinedButton.icon(
-                          onPressed: _addFolder,
-                          icon: const Icon(Symbols.create_new_folder_rounded, fill: 1),
-                          label: Text(t.pleyaShare.addFolder),
+                return SettingsWidthLimit(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _card(
+                        context,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SettingsIconBadge(Symbols.cast_rounded),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    Platform.isAndroid
+                                        ? t.pleyaShare.hostDescriptionAndroid
+                                        : Platform.isIOS
+                                        ? t.pleyaShare.hostDescriptionIos
+                                        : t.pleyaShare.hostDescription,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            _howItWorks(theme),
+                          ],
                         ),
                       ),
-                    ],
-                    if (running && code != null) ...[
-                      const SizedBox(height: 24),
-                      Text(t.pleyaShare.pairCodeLabel, style: theme.textTheme.titleSmall),
-                      const SizedBox(height: 8),
-                      Center(
-                        child: Text(
-                          '${code.substring(0, 3)} ${code.substring(3)}',
-                          style: theme.textTheme.displayMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 6,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _pairQr(code),
-                      const SizedBox(height: 8),
-                      Text(
-                        t.pleyaShare.pairCodeHint,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Center(
+                      _card(
+                        context,
+                        padding: EdgeInsets.zero,
                         child: FocusableWrapper(
                           disableScale: true,
-                          borderRadius: 20,
-                          onSelect: _service.regeneratePairCode,
-                          child: TextButton.icon(
-                            onPressed: _service.regeneratePairCode,
-                            icon: const Icon(Symbols.refresh_rounded),
-                            label: Text(t.pleyaShare.regenerateCode),
+                          borderRadius: 12,
+                          onSelect: hasFolders && !_busy ? () => _toggle(!running) : null,
+                          child: SwitchListTile(
+                            contentPadding: kSettingRowPadding,
+                            secondary: const SettingsIconBadge(Symbols.share_rounded),
+                            title: Text(t.pleyaShare.hostToggle),
+                            value: running,
+                            onChanged: hasFolders && !_busy ? _toggle : null,
                           ),
                         ),
                       ),
-                    ],
-                    const SizedBox(height: 24),
-                    Text(t.pleyaShare.pairedDevices, style: theme.textTheme.titleSmall),
-                    const SizedBox(height: 8),
-                    if (_service.pairedGuests.isEmpty)
-                      Text(
-                        t.pleyaShare.noGuests,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
-                      )
-                    else
-                      for (final guest in _service.pairedGuests)
-                        FocusableWrapper(
-                          disableScale: true,
-                          borderRadius: 12,
-                          onSelect: () => _service.revokeGuest(guest.pairId),
-                          child: Card(
-                            child: ListTile(
-                              leading: const Icon(Symbols.devices_rounded, fill: 1),
-                              title: Text(guest.deviceName),
-                              trailing: IconButton(
-                                tooltip: t.pleyaShare.revokeGuest,
-                                icon: Icon(Symbols.link_off_rounded, color: theme.colorScheme.error),
-                                onPressed: () => _service.revokeGuest(guest.pairId),
+                      if (!hasFolders)
+                        _card(
+                          context,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                t.pleyaShare.noLocalFolders,
+                                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
                               ),
-                            ),
+                              const SizedBox(height: 12),
+                              FocusableWrapper(
+                                disableScale: true,
+                                borderRadius: 20,
+                                onSelect: _addFolder,
+                                child: OutlinedButton.icon(
+                                  onPressed: _addFolder,
+                                  icon: const Icon(Symbols.create_new_folder_rounded, fill: 1),
+                                  label: Text(t.pleyaShare.addFolder),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                  ],
+                      if (running && code != null)
+                        _card(
+                          context,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(t.pleyaShare.pairCodeLabel, style: theme.textTheme.titleSmall),
+                              const SizedBox(height: 12),
+                              // Code and QR sit side by side when there is room:
+                              // a guest either types the digits or scans, and
+                              // stacking them pushed the QR off a laptop screen.
+                              Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 24,
+                                runSpacing: 16,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '${code.substring(0, 3)} ${code.substring(3)}',
+                                        style: theme.textTheme.displayMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 6,
+                                          fontFeatures: const [FontFeature.tabularFigures()],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      ConstrainedBox(
+                                        constraints: const BoxConstraints(maxWidth: 320),
+                                        child: Text(
+                                          t.pleyaShare.pairCodeHint,
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      FocusableWrapper(
+                                        disableScale: true,
+                                        borderRadius: 20,
+                                        onSelect: _service.regeneratePairCode,
+                                        child: TextButton.icon(
+                                          onPressed: _service.regeneratePairCode,
+                                          icon: const Icon(Symbols.refresh_rounded),
+                                          label: Text(t.pleyaShare.regenerateCode),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  _pairQr(code),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      _card(
+                        context,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(t.pleyaShare.pairedDevices, style: theme.textTheme.titleSmall),
+                            const SizedBox(height: 8),
+                            if (_service.pairedGuests.isEmpty)
+                              Text(
+                                t.pleyaShare.noGuests,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                ),
+                              )
+                            else
+                              for (final guest in _service.pairedGuests)
+                                FocusableWrapper(
+                                  disableScale: true,
+                                  borderRadius: 12,
+                                  onSelect: () => _service.revokeGuest(guest.pairId),
+                                  child: ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: const SettingsIconBadge(Symbols.devices_rounded),
+                                    title: Text(guest.deviceName),
+                                    trailing: IconButton(
+                                      tooltip: t.pleyaShare.revokeGuest,
+                                      icon: Icon(Symbols.link_off_rounded, color: theme.colorScheme.error),
+                                      onPressed: () => _service.revokeGuest(guest.pairId),
+                                    ),
+                                  ),
+                                ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               },
             ),

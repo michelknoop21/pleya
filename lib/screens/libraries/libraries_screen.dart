@@ -36,6 +36,7 @@ import '../../services/storage_service.dart';
 import '../../mixins/refreshable.dart';
 import '../../mixins/item_updatable.dart';
 import '../../i18n/strings.g.dart';
+import '../../widgets/segmented_tab_group.dart';
 import 'state_messages.dart';
 import 'tabs/library_browse_tab.dart';
 import 'tabs/library_recommended_tab.dart';
@@ -907,11 +908,10 @@ class _LibrariesScreenState extends State<LibrariesScreen>
 
     // On desktop/TV with side nav, show tabs in app bar (library name is in side nav)
     if (PlatformDetector.shouldUseSideNavigation(context)) {
-      return Row(
-        mainAxisSize: .min,
+      return SegmentedTabGroup(
         children: [
           for (int i = 0; i < _visibleTabs.length; i++) ...[
-            if (i > 0) const SizedBox(width: 8),
+            if (i > 0) const SizedBox(width: 2),
             buildTabChip(
               _getTabLabel(_visibleTabs[i]),
               i,
@@ -1166,10 +1166,10 @@ class _LibrariesScreenState extends State<LibrariesScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: Row(
+                    child: SegmentedTabGroup(
                       children: [
                         for (int i = 0; i < _visibleTabs.length; i++) ...[
-                          if (i > 0) const SizedBox(width: 8),
+                          if (i > 0) const SizedBox(width: 2),
                           buildTabChip(
                             _getTabLabel(_visibleTabs[i]),
                             i,

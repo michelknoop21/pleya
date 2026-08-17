@@ -4,6 +4,7 @@ import 'package:pleya/widgets/app_icon.dart';
 import '../focus/focusable_chip_mixin.dart';
 import '../focus/input_mode_tracker.dart';
 import 'focus_builders.dart';
+import '../theme/mono_tokens.dart';
 
 /// A focusable filter chip that shows a color change when focused.
 ///
@@ -96,23 +97,28 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     // Only show focus effects during keyboard/d-pad navigation
     final showFocus = isFocused && InputModeTracker.isKeyboardMode(context);
 
-    // Focus wins; otherwise an accent tint marks the selected/active state and
-    // the neutral surface is the resting state.
+    // Outlined instead of filled: these sit next to the segmented tab control,
+    // and two competing filled shapes made the header look like a toolbar of
+    // grey slabs. Active state keeps a soft accent tint so it still reads.
+    final tk = tokens(context);
     final Color backgroundColor;
     final Color foregroundColor;
+    final Color borderColor;
     if (showFocus) {
-      backgroundColor = colorScheme.primary;
-      foregroundColor = colorScheme.onPrimary;
+      backgroundColor = tk.surfaceElevated;
+      foregroundColor = tk.text;
+      borderColor = tk.text.withValues(alpha: 0.75);
     } else if (widget.selected) {
-      backgroundColor = colorScheme.primary.withValues(alpha: 0.16);
-      foregroundColor = colorScheme.primary;
+      backgroundColor = tk.accent.withValues(alpha: 0.14);
+      foregroundColor = tk.accent;
+      borderColor = tk.accent.withValues(alpha: 0.55);
     } else {
-      backgroundColor = colorScheme.surfaceContainerHighest;
-      foregroundColor = colorScheme.onSurfaceVariant;
+      backgroundColor = Colors.transparent;
+      foregroundColor = tk.textMuted;
+      borderColor = tk.outline.withValues(alpha: 0.8);
     }
 
     return FocusBuilders.buildFocusableChip(
@@ -120,7 +126,9 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
       focusNode: focusNode,
       onKeyEvent: _handleKeyEvent,
       onTap: widget.onPressed,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+      borderRadius: 10,
+      borderColor: borderColor,
       backgroundColor: backgroundColor,
       child: Row(
         mainAxisSize: .min,
