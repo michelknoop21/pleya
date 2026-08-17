@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../focus/focusable_button.dart';
 import '../i18n/strings.g.dart';
 import '../media/media_kind.dart';
 import '../media/watchlist_entry.dart';
@@ -19,6 +20,7 @@ import '../widgets/sliver_cross_axis_layout_builder.dart';
 import '../widgets/state_view.dart';
 import '../widgets/watchlist_card.dart';
 import '../widgets/watchlist_item_sheet.dart';
+import '../widgets/watchlist_sort_sheet.dart';
 
 /// Which slice of the kijklijst is on screen.
 enum WatchlistFilter { all, movies, shows, available }
@@ -42,6 +44,7 @@ class WatchlistScreen extends StatefulWidget {
 class _WatchlistScreenState extends State<WatchlistScreen> {
   bool _requestedLoad = false;
   WatchlistFilter _filter = WatchlistFilter.all;
+  WatchlistSort _sort = WatchlistSort.recentlyAdded;
 
   @override
   void didChangeDependencies() {
@@ -74,6 +77,20 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
       await context.read<WatchlistProvider?>()?.resolveAllUnknown();
     }
   }
+
+  /// Pick an order. Nothing else happens: no fetch, no availability sweep.
+  ///
+  /// The contrast with [_setFilter] is the point. Availability is a question
+  /// for the servers, so asking for it costs a round of lookups; order is a
+  /// property of what is already loaded, so it costs a rebuild.
+  Future<void> _pickSort() async {
+    final picked = await showWatchlistSortSheet(context, current: _sort);
+    if (picked == null || !mounted) return;
+    setState(() => _sort = picked);
+  }
+
+  List<WatchlistEntry> _sorted(WatchlistProvider provider) =>
+      List<WatchlistEntry>.of(provider.entries)..sort(_sort.comparator(provider.sourcePriority));
 
   List<WatchlistEntry> _applyFilter(List<WatchlistEntry> entries) {
     return switch (_filter) {
@@ -125,7 +142,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<WatchlistProvider?>();
     final isOffline = context.watch<OfflineModeProvider?>()?.isOffline ?? false;
-    final all = provider?.entriesByRecentlyAdded ?? const <WatchlistEntry>[];
+    final all = provider == null ? const <WatchlistEntry>[] : _sorted(provider);
     final entries = _applyFilter(all);
 
     return Scaffold(
@@ -139,9 +156,12 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
             child: _FilterBar(
               filter: _filter,
               // Availability needs live servers, so offline the filter is not
-              // a slower answer but a wrong one.
+              // a slower answer but a wrong one. Sorting has no such problem
+              // and stays where it is.
               showAvailable: !isOffline,
               onChanged: _setFilter,
+              sort: _sort,
+              onSortPressed: _pickSort,
             ),
           ),
           if (provider == null || (provider.isLoading && all.isEmpty))
@@ -222,11 +242,19 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
 }
 
 class _FilterBar extends StatelessWidget {
-  const _FilterBar({required this.filter, required this.showAvailable, required this.onChanged});
+  const _FilterBar({
+    required this.filter,
+    required this.showAvailable,
+    required this.onChanged,
+    required this.sort,
+    required this.onSortPressed,
+  });
 
   final WatchlistFilter filter;
   final bool showAvailable;
   final ValueChanged<WatchlistFilter> onChanged;
+  final WatchlistSort sort;
+  final VoidCallback onSortPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -237,16 +265,56 @@ class _FilterBar extends StatelessWidget {
       if (showAvailable) (WatchlistFilter.available, t.watchlist.filterAvailable),
     ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          for (final (value, label) in options)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(label: Text(label), selected: filter == value, onSelected: (_) => onChanged(value)),
+          // The chips scroll and the sort button does not. At 360dp the four
+          // chips no longer fit beside it, and scrolling them is the only
+          // answer that keeps the bar one row high; wrapping would push the
+          // first row of posters down on exactly the screens with the least
+          // room for that.
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(12, 4, 4, 0),
+              child: Row(
+                children: [
+                  for (final (value, label) in options)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(label),
+                        selected: filter == value,
+                        onSelected: (_) => onChanged(value),
+                      ),
+                    ),
+                ],
+              ),
             ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8, top: 4),
+            // The current order rides along as the tooltip instead of in the
+            // label. A button whose text changes with the state would shift
+            // the chips beside it every time the user sorts, and the tooltip
+            // is also what a screen reader announces.
+            child: Tooltip(
+              message: watchlistSortLabel(sort),
+              // Wrapped the way the rest of the app wraps its buttons, so on TV
+              // the control gets a focus ring instead of only the hairline a
+              // bare TextButton draws.
+              child: FocusableButton(
+                onPressed: onSortPressed,
+                child: TextButton.icon(
+                  onPressed: onSortPressed,
+                  icon: const Icon(Symbols.sort_rounded, size: 18),
+                  label: Text(t.libraries.sort),
+                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -1155,8 +1155,6 @@ class _TranslationsMyPleyaNl extends TranslationsMyPleyaEn {
 
 	// Translations
 	@override String get title => 'Mijn Pleya';
-	@override String get settings => 'Instellingen';
-	@override String get switchProfile => 'Profiel wisselen';
 	@override String downloadsCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
 		one: '1 download',
 		other: '{n} downloads',
@@ -3139,8 +3137,6 @@ extension on TranslationsNl {
 			'watchlist.sortTitle' => 'Titel',
 			'watchlist.sortYear' => 'Jaar',
 			'myPleya.title' => 'Mijn Pleya',
-			'myPleya.settings' => 'Instellingen',
-			'myPleya.switchProfile' => 'Profiel wisselen',
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 download', other: '{n} downloads', ), 
 			'liveTv.serverNotAvailable' => 'Live TV-server is niet beschikbaar.',
 			'liveTv.serverNotConnected' => 'Live TV-server is niet verbonden.',
@@ -3325,10 +3321,10 @@ extension on TranslationsNl {
 			'downloads.deleteDownload' => 'Download verwijderen',
 			'downloads.retryDownload' => 'Download opnieuw proberen',
 			'downloads.downloadQueued' => 'Download in wachtrij',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.downloadResumed' => 'Download hervat',
 			'downloads.serverErrorBitrate' => 'Serverfout: bestand overschrijdt mogelijk de externe bitrate-limiet',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.episodesQueued' => ({required Object count}) => '${count} afleveringen in wachtrij voor download',
 			'downloads.downloadDeleted' => 'Download verwijderd',
 			'downloads.deleteConfirm' => ({required Object title}) => '"${title}" van dit apparaat verwijderen?',

@@ -118,17 +118,24 @@ class _ProfileHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
       child: Row(
         children: [
-          InkWell(
-            onTap: onSwitchProfile,
-            borderRadius: BorderRadius.circular(24),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Row(
-                children: [
-                  ProfileAvatar(profile: profile, size: 40),
-                  const SizedBox(width: 12),
-                  Text(profile?.displayName ?? '', style: theme.textTheme.titleMedium),
-                ],
+          // The avatar and the name read as an identity, not as a control, so
+          // what it does is said out loud for anyone who cannot see that
+          // tapping it leads to the profile picker.
+          Semantics(
+            button: true,
+            label: t.screens.switchProfile,
+            child: InkWell(
+              onTap: onSwitchProfile,
+              borderRadius: BorderRadius.circular(24),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Row(
+                  children: [
+                    ProfileAvatar(profile: profile, size: 40),
+                    const SizedBox(width: 12),
+                    Text(profile?.displayName ?? '', style: theme.textTheme.titleMedium),
+                  ],
+                ),
               ),
             ),
           ),

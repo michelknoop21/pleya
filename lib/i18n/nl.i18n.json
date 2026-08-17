@@ -918,8 +918,6 @@
   },
   "myPleya": {
     "title": "Mijn Pleya",
-    "settings": "Instellingen",
-    "switchProfile": "Profiel wisselen",
     "downloadsCount": {
       "one": "1 download",
       "other": "{n} downloads"

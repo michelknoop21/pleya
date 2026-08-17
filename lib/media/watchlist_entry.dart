@@ -404,6 +404,46 @@ class WatchlistEntry {
     return byTitle != 0 ? byTitle : a.key.compareTo(b.key);
   }
 
+  /// Title order for the sort control: title, then year, then [key].
+  ///
+  /// The year sits between the two because a remake and its original share a
+  /// title. Without it their order would come down to [key], which is the
+  /// remote id and therefore says nothing a reader can predict. Oldest first
+  /// within one title, and a title without a year goes last of its name.
+  static int compareByTitleThenYear(WatchlistEntry a, WatchlistEntry b) {
+    final byTitle = a._sortTitle.compareTo(b._sortTitle);
+    if (byTitle != 0) return byTitle;
+    final byYear = _compareYearAscending(a, b);
+    if (byYear != 0) return byYear;
+    return a.key.compareTo(b.key);
+  }
+
+  /// Year order, newest first, then title, then [key].
+  ///
+  /// A title without a year goes last rather than counting as year zero: a
+  /// missing year is a gap in the metadata, and putting it at the far end of
+  /// the timeline would state something the source never said.
+  static int compareByYear(WatchlistEntry a, WatchlistEntry b) {
+    final aYear = a.item.year;
+    final bYear = b.item.year;
+    if (aYear != bYear) {
+      if (aYear == null) return 1;
+      if (bYear == null) return -1;
+      return bYear.compareTo(aYear);
+    }
+    return compareByTitle(a, b);
+  }
+
+  /// Oldest first, with a missing year last either way.
+  static int _compareYearAscending(WatchlistEntry a, WatchlistEntry b) {
+    final aYear = a.item.year;
+    final bYear = b.item.year;
+    if (aYear == bYear) return 0;
+    if (aYear == null) return 1;
+    if (bYear == null) return -1;
+    return aYear.compareTo(bYear);
+  }
+
   String get _sortTitle => (item.titleSort ?? item.title ?? '').toLowerCase();
 
   /// The fresher of two memberships in the same scope.
@@ -427,4 +467,30 @@ class WatchlistEntry {
 
   @override
   String toString() => 'WatchlistEntry($key, ${item.title}, ${memberships.length} membership(s), ${availability.name})';
+}
+
+/// The orders the kijklijst can be read in.
+///
+/// All three sort the entries that are already in memory. Switching between
+/// them fetches nothing and starts no availability lookup: order is a property
+/// of the list on screen, not a question for a server. That is why sorting
+/// keeps working offline while the Available filter cannot.
+///
+/// There is no separate ascending/descending switch. Each option carries the
+/// one direction that answers the question it is named after: what did I add
+/// last, where does this title sit in the alphabet, what is the newest thing
+/// here.
+enum WatchlistSort {
+  recentlyAdded,
+  title,
+  year;
+
+  /// [sourcePriority] is only read by [recentlyAdded], which needs it to rank
+  /// entries that no timestamp can compare. The other two order on the item's
+  /// own metadata and ignore it.
+  Comparator<WatchlistEntry> comparator(Map<WatchlistScopeId, int> sourcePriority) => switch (this) {
+    WatchlistSort.recentlyAdded => WatchlistEntry.byRecentlyAdded(sourcePriority),
+    WatchlistSort.title => WatchlistEntry.compareByTitleThenYear,
+    WatchlistSort.year => WatchlistEntry.compareByYear,
+  };
 }

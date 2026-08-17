@@ -27,8 +27,15 @@ final otherScope = WatchlistScopeId(
   userId: 'jf-user-2',
 );
 
-MediaItem discoverItem({String title = 'Sintel', String? titleSort, String id = 'abc'}) {
-  return MediaItem(id: id, backend: MediaBackend.plex, kind: MediaKind.movie, title: title, titleSort: titleSort);
+MediaItem discoverItem({String title = 'Sintel', String? titleSort, String id = 'abc', int? year}) {
+  return MediaItem(
+    id: id,
+    backend: MediaBackend.plex,
+    kind: MediaKind.movie,
+    title: title,
+    titleSort: titleSort,
+    year: year,
+  );
 }
 
 MediaItem serverItem({String id = '4711', String serverId = 'machine-1'}) {
@@ -374,6 +381,97 @@ void main() {
 
       expect(WatchlistEntry.compareByTitle(first, second), lessThan(0));
       expect(WatchlistEntry.compareByTitle(second, first), greaterThan(0));
+    });
+  });
+
+  group('WatchlistSort', () {
+    final priority = {plexScope: 0, jellyfinScope: 1};
+
+    WatchlistEntry film(String key, {required String title, int? year, int position = 0}) {
+      return entry(
+        key: key,
+        item: discoverItem(title: title, year: year, id: key),
+        memberships: [WatchlistMembership(scope: plexScope, remoteKey: key, sourcePosition: position)],
+      );
+    }
+
+    List<String> sortedBy(WatchlistSort sort, List<WatchlistEntry> entries) =>
+        ([...entries]..sort(sort.comparator(priority))).map((e) => e.key).toList();
+
+    test('recentlyAdded is the order the list already had', () {
+      final entries = [
+        film('c', title: 'Gamma', position: 2),
+        film('a', title: 'Alpha', position: 0),
+        film('b', title: 'Beta', position: 1),
+      ];
+
+      expect(sortedBy(WatchlistSort.recentlyAdded, entries), ['a', 'b', 'c']);
+      expect(
+        sortedBy(WatchlistSort.recentlyAdded, entries),
+        ([...entries]..sort(WatchlistEntry.byRecentlyAdded(priority))).map((e) => e.key),
+        reason: 'the default must stay exactly what the screen showed before there was a sort control',
+      );
+    });
+
+    test('title sorts A to Z on the sort title, ignoring the order added', () {
+      final entries = [
+        film('m', title: 'The Matrix', position: 0),
+        film('z', title: 'zulu', position: 1),
+        film('a', title: 'Avatar', position: 2),
+      ];
+
+      expect(sortedBy(WatchlistSort.title, entries), ['a', 'm', 'z']);
+    });
+
+    test('two films with the same title fall back on year, oldest first', () {
+      final remake = film('new', title: 'Solaris', year: 2002);
+      final original = film('old', title: 'Solaris', year: 1972);
+      final undated = film('none', title: 'Solaris');
+
+      expect(sortedBy(WatchlistSort.title, [undated, remake, original]), ['old', 'new', 'none']);
+    });
+
+    test('year sorts newest first', () {
+      final entries = [
+        film('mid', title: 'B', year: 2005),
+        film('new', title: 'C', year: 2020),
+        film('old', title: 'A', year: 1999),
+      ];
+
+      expect(sortedBy(WatchlistSort.year, entries), ['new', 'mid', 'old']);
+    });
+
+    test('a title without a year goes last instead of counting as year zero', () {
+      final entries = [film('none', title: 'A'), film('old', title: 'B', year: 1950)];
+
+      expect(sortedBy(WatchlistSort.year, entries), ['old', 'none']);
+    });
+
+    test('equal years break on title and then on key, so the order is total', () {
+      final entries = [
+        film('b', title: 'Same', year: 2010),
+        film('a', title: 'Same', year: 2010),
+        film('c', title: 'Different', year: 2010),
+      ];
+
+      expect(sortedBy(WatchlistSort.year, entries), ['c', 'a', 'b']);
+    });
+
+    test('none of the three orders depends on the order the list came in', () {
+      final entries = [
+        film('a', title: 'Alpha', year: 2001, position: 3),
+        film('b', title: 'Alpha', year: 1999, position: 1),
+        film('c', title: 'Beta', position: 0),
+        film('d', title: 'Gamma', year: 2001, position: 2),
+      ];
+
+      for (final sort in WatchlistSort.values) {
+        expect(
+          sortedBy(sort, entries.reversed.toList()),
+          sortedBy(sort, entries),
+          reason: '$sort must not let the merge order leak into the result',
+        );
+      }
     });
   });
 

@@ -953,8 +953,6 @@
   },
   "myPleya": {
     "title": "My Pleya",
-    "settings": "Settings",
-    "switchProfile": "Switch profile",
     "downloadsCount": {
       "one": "1 download",
       "other": "{n} downloads"
