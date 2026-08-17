@@ -36,7 +36,8 @@ import '../../services/storage_service.dart';
 import '../../mixins/refreshable.dart';
 import '../../mixins/item_updatable.dart';
 import '../../i18n/strings.g.dart';
-import '../../widgets/segmented_tab_group.dart';
+import '../../theme/mono_tokens.dart';
+import 'library_header.dart';
 import 'state_messages.dart';
 import 'tabs/library_browse_tab.dart';
 import 'tabs/library_recommended_tab.dart';
@@ -121,6 +122,11 @@ class _LibrariesScreenState extends State<LibrariesScreen>
 
   // App bar action bar
   final _actionBarKey = GlobalKey<FocusableActionBarState>();
+
+  /// What the active tab wants shown in the header: the item count for the
+  /// subtitle and its own actions (grouping, filters, sort) for the header
+  /// line. Only the browse tab fills this; the others leave it empty.
+  final ValueNotifier<LibraryHeaderInfo> _headerInfo = ValueNotifier(LibraryHeaderInfo.empty);
 
   // Scroll controller for the outer CustomScrollView
   final ScrollController _outerScrollController = ScrollController();
@@ -355,6 +361,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
   @override
   void dispose() {
     _outerScrollController.dispose();
+    _headerInfo.dispose();
     for (final node in _tabFocusNodes) {
       node.dispose();
     }
@@ -423,6 +430,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
         onDataLoaded: () => _handleTabDataLoaded(tabIndex),
         onBack: focusTabBar,
         onResetScroll: _resetOuterScroll,
+        headerInfo: _headerInfo,
       ),
       LibraryTabType.collections => LibraryCollectionsTab(
         key: _collectionsTabKey,
@@ -906,26 +914,66 @@ class _LibrariesScreenState extends State<LibrariesScreen>
       return Text(t.libraries.title);
     }
 
-    // On desktop/TV with side nav, show tabs in app bar (library name is in side nav)
+    // On desktop/TV with side nav, the library name is the page heading and the
+    // tabs move to the header line below it (see [_buildHeaderBar]).
     if (PlatformDetector.shouldUseSideNavigation(context)) {
-      return SegmentedTabGroup(
-        children: [
-          for (int i = 0; i < _visibleTabs.length; i++) ...[
-            if (i > 0) const SizedBox(width: 2),
-            buildTabChip(
-              _getTabLabel(_visibleTabs[i]),
-              i,
-              onSelectWhenActive: _focusCurrentTab,
-              onNavigateDown: _focusCurrentTabFromTabBar,
-              onNavigateToActions: () => _actionBarKey.currentState?.requestFocusOnFirst(),
-            ),
-          ],
-        ],
+      final serverLabel = _hasMultipleServers(visibleLibraries) ? selectedLibrary?.serverName : null;
+      return Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: ValueListenableBuilder<LibraryHeaderInfo>(
+          valueListenable: _headerInfo,
+          builder: (context, info, _) => LibraryHeaderTitle(
+            title: selectedLibrary?.title ?? t.libraries.title,
+            subtitle: [
+              if (info.countLabel != null) info.countLabel!,
+              if (serverLabel != null && serverLabel.isNotEmpty) serverLabel,
+            ].join(' · '),
+          ),
+        ),
       );
     }
 
     // On mobile, show the dropdown
     return _buildLibraryDropdownTitle(visibleLibraries, groupByServer: groupByServer);
+  }
+
+  /// The header line under the library name: text tabs on the left, the active
+  /// tab's own actions on the right.
+  ///
+  /// [showDivider] is off on the TV backdrop, where the rule would cut across
+  /// the artwork.
+  Widget _buildHeaderBar({bool showDivider = true}) {
+    void focusAppBarActions() => _actionBarKey.currentState?.requestFocusOnFirst();
+
+    return ValueListenableBuilder<LibraryHeaderInfo>(
+      valueListenable: _headerInfo,
+      builder: (context, info, _) => LibraryHeaderBar(
+        showDivider: showDivider,
+        actions: info.actions,
+        onActionsExitLeft: () => getTabChipFocusNode(_visibleTabs.length - 1).requestFocus(),
+        onActionsExitRight: focusAppBarActions,
+        tabs: [
+          for (int i = 0; i < _visibleTabs.length; i++)
+            buildTabChip(
+              _getTabLabel(_visibleTabs[i]),
+              i,
+              onSelectWhenActive: _focusCurrentTab,
+              onNavigateDown: _focusCurrentTabFromTabBar,
+              // RIGHT keeps travelling along the header line and only reaches
+              // the app bar icons once the tab's own actions are behind it.
+              onNavigateToActions: () {
+                final actions = _headerInfo.value.actions;
+                if (actions.isEmpty) {
+                  focusAppBarActions();
+                  return;
+                }
+                actions.first.focusNode.requestFocus();
+              },
+              onNavigateUpToActions: focusAppBarActions,
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildLibraryDropdownTitle(List<MediaLibrary> visibleLibraries, {required bool groupByServer}) {
@@ -1025,8 +1073,19 @@ class _LibrariesScreenState extends State<LibrariesScreen>
       FocusableAction(icon: Symbols.refresh_rounded, tooltip: t.common.refresh, onPressed: _refreshSelectedLibraryTabs),
     ];
 
+    // The header line only exists next to a page heading, so it rides along
+    // with the side-nav layout and stays away from the loading/empty states.
+    final showHeaderBar = useSideNavigation && selectedLibrary != null;
+
     Widget appBar({required bool floating}) => DesktopSliverAppBar(
       title: _buildAppBarTitle(visibleLibraries, selectedLibrary, groupByServer: groupByServerSetting),
+      toolbarHeight: showHeaderBar ? LibraryHeaderMetrics.titleHeight : null,
+      bottom: showHeaderBar
+          ? PreferredSize(
+              preferredSize: const Size.fromHeight(LibraryHeaderMetrics.barHeight),
+              child: _buildHeaderBar(),
+            )
+          : null,
       // When showing the tab content, let the app bar float away with the
       // content. Otherwise (loading / empty / error states) keep it pinned so
       // it stays visible over the centered state widget.
@@ -1058,23 +1117,34 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     }
 
     Widget buildTransparentTvTopBar() {
+      // The header line is a sibling here, not the app bar's `bottom`: this bar
+      // hangs in a Stack with an unbounded height, and an AppBar with a bottom
+      // wraps its toolbar in a Flexible — which asserts under an unbounded
+      // constraint and leaves the whole bar unpainted over the backdrop.
       return SafeArea(
         bottom: false,
-        child: AppBar(
-          primary: false,
-          backgroundColor: Colors.transparent,
-          surfaceTintColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          title: _buildAppBarTitle(visibleLibraries, selectedLibrary, groupByServer: groupByServerSetting),
-          actions: [
-            FocusableActionBar(
-              key: _actionBarKey,
-              onNavigateLeft: () => getTabChipFocusNode(_visibleTabs.length - 1).requestFocus(),
-              onNavigateDown: _focusCurrentTab,
-              actions: appBarActions(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppBar(
+              toolbarHeight: showHeaderBar ? LibraryHeaderMetrics.titleHeight : null,
+              primary: false,
+              backgroundColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              title: _buildAppBarTitle(visibleLibraries, selectedLibrary, groupByServer: groupByServerSetting),
+              actions: [
+                FocusableActionBar(
+                  key: _actionBarKey,
+                  onNavigateLeft: () => getTabChipFocusNode(_visibleTabs.length - 1).requestFocus(),
+                  onNavigateDown: _focusCurrentTab,
+                  actions: appBarActions(),
+                ),
+              ],
             ),
+            if (showHeaderBar) _buildHeaderBar(showDivider: false),
           ],
         ),
       );
@@ -1162,14 +1232,17 @@ class _LibrariesScreenState extends State<LibrariesScreen>
             if (showMobileTabsRow)
               SliverToBoxAdapter(
                 child: Container(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    border: Border(bottom: BorderSide(color: tokens(context).outline.withValues(alpha: 0.6))),
+                  ),
+                  padding: const EdgeInsets.only(left: 12, right: 12, top: 2),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: SegmentedTabGroup(
+                    child: Row(
                       children: [
                         for (int i = 0; i < _visibleTabs.length; i++) ...[
-                          if (i > 0) const SizedBox(width: 2),
+                          if (i > 0) const SizedBox(width: 18),
                           buildTabChip(
                             _getTabLabel(_visibleTabs[i]),
                             i,

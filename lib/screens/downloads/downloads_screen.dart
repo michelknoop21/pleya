@@ -102,9 +102,9 @@ class DownloadsScreenState extends State<DownloadsScreen>
       return Row(
         children: [
           _buildTabChip(t.downloads.manage, 0),
-          const SizedBox(width: 8),
+          const SizedBox(width: 22),
           _buildTabChip(t.downloads.tvShows, 1),
-          const SizedBox(width: 8),
+          const SizedBox(width: 22),
           _buildTabChip(t.downloads.movies, 2),
         ],
       );

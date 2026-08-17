@@ -794,6 +794,8 @@
   "libraries": {
     "title": "Libraries",
     "fallbackTitle": "Library",
+    "itemCount": "${count} items",
+    "oneItem": "1 item",
     "scanLibraryFiles": "Scan Library Files",
     "scanLibrary": "Scan Library",
     "analyze": "Analyze",

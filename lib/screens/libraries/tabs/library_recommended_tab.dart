@@ -20,6 +20,7 @@ import '../../../utils/watch_state_notifier.dart';
 import '../../../widgets/hub_section.dart';
 import '../../../widgets/settings_builder.dart';
 import '../../../widgets/tv_browse_rail.dart';
+import '../library_header.dart';
 import '../../../widgets/tv_spotlight_background.dart';
 import '../../main_screen.dart';
 import 'base_library_tab.dart';
@@ -350,7 +351,12 @@ class _LibraryRecommendedTabState extends BaseLibraryTabState<MediaHub, LibraryR
             fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
             tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
           );
-    final spotlightTop = (size.height * 0.075).clamp(64.0 * scale, 120.0 * scale).toDouble();
+    // The screen draws a page heading above a tab line on this tab too, and
+    // that chrome is taller than the toolbar this offset was tuned against, so
+    // the hero starts below it instead of under it.
+    final proportionalTop = (size.height * 0.075).clamp(64.0 * scale, 120.0 * scale).toDouble();
+    final belowHeader = LibraryHeaderMetrics.totalHeight + (12 * scale);
+    final spotlightTop = proportionalTop > belowHeader ? proportionalTop : belowHeader;
     final minimumSpotlightBottom = railHeight + (8 * scale);
     final baseSpotlightBottom = (size.height * 0.48).clamp(160.0, 820.0).toDouble();
     final desiredSpotlightBottom = minimumSpotlightBottom > baseSpotlightBottom

@@ -89,16 +89,21 @@ mixin TabNavigationMixin<T extends StatefulWidget> on State<T>, TickerProviderSt
 
   /// Shared tab chip builder — eliminates duplication between screens.
   ///
-  /// [onNavigateToActions] moves focus into the app bar's right-aligned
-  /// [FocusableActionBar]. It fires both on RIGHT from the last tab and on UP
-  /// from any tab, so every screen with that layout gets a consistent remote
-  /// path to its app bar actions.
+  /// [onNavigateToActions] moves focus out of the tab row to the right. It
+  /// fires both on RIGHT from the last tab and on UP from any tab, so every
+  /// screen with that layout gets a consistent remote path to its app bar
+  /// actions.
+  ///
+  /// [onNavigateUpToActions] overrides the UP half of that. Screens whose tab
+  /// row shares its line with other controls need the two directions to part
+  /// ways: RIGHT continues along the line, UP leaves it for the app bar icons.
   Widget buildTabChip(
     String label,
     int index, {
     required VoidCallback onSelectWhenActive,
     required VoidCallback onNavigateDown,
     VoidCallback? onNavigateToActions,
+    VoidCallback? onNavigateUpToActions,
   }) {
     final isSelected = tabController.index == index;
     return FocusableTabChip(
@@ -135,7 +140,7 @@ mixin TabNavigationMixin<T extends StatefulWidget> on State<T>, TickerProviderSt
             }
           : onNavigateToActions,
       onNavigateDown: onNavigateDown,
-      onNavigateUp: onNavigateToActions,
+      onNavigateUp: onNavigateUpToActions ?? onNavigateToActions,
       onBack: onTabBarBack,
     );
   }

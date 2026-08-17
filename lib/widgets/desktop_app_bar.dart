@@ -105,6 +105,9 @@ class DesktopSliverAppBar extends StatelessWidget {
   final Widget? flexibleSpace;
   final PreferredSizeWidget? bottom;
 
+  /// Taller toolbar, for a title that carries a second line.
+  final double? toolbarHeight;
+
   const DesktopSliverAppBar({
     super.key,
     this.title,
@@ -122,6 +125,7 @@ class DesktopSliverAppBar extends StatelessWidget {
     this.expandedHeight,
     this.flexibleSpace,
     this.bottom,
+    this.toolbarHeight,
   });
 
   @override
@@ -149,6 +153,7 @@ class DesktopSliverAppBar extends StatelessWidget {
       expandedHeight: expandedHeight,
       flexibleSpace: DesktopAppBarSections.buildFlexibleSpaceSection(flexibleSpace),
       bottom: bottom,
+      toolbarHeight: toolbarHeight ?? kToolbarHeight,
     );
   }
 }

@@ -2414,6 +2414,12 @@ class TranslationsLibrariesEn {
 	/// en: 'Library'
 	String get fallbackTitle => 'Library';
 
+	/// en: '${count} items'
+	String itemCount({required Object count}) => '${count} items';
+
+	/// en: '1 item'
+	String get oneItem => '1 item';
+
 	/// en: 'Scan Library Files'
 	String get scanLibraryFiles => 'Scan Library Files';
 
@@ -6247,6 +6253,8 @@ extension on Translations {
 			'errors.couldNotLoad' => ({required Object context}) => 'Couldn\'t load ${context}. Try again.',
 			'libraries.title' => 'Libraries',
 			'libraries.fallbackTitle' => 'Library',
+			'libraries.itemCount' => ({required Object count}) => '${count} items',
+			'libraries.oneItem' => '1 item',
 			'libraries.scanLibraryFiles' => 'Scan Library Files',
 			'libraries.scanLibrary' => 'Scan Library',
 			'libraries.analyze' => 'Analyze',
@@ -6531,10 +6539,10 @@ extension on Translations {
 			'watchTogether.end' => 'End',
 			'watchTogether.leave' => 'Leave',
 			'watchTogether.syncing' => 'Syncing...',
-			'watchTogether.joinWatchSession' => 'Join Watch Session',
-			'watchTogether.enterCodeHint' => 'Enter 5-character code',
 			_ => null,
 		} ?? switch (path) {
+			'watchTogether.joinWatchSession' => 'Join Watch Session',
+			'watchTogether.enterCodeHint' => 'Enter 5-character code',
 			'watchTogether.pasteFromClipboard' => 'Paste from clipboard',
 			'watchTogether.pleaseEnterCode' => 'Please enter a session code',
 			'watchTogether.codeMustBe5Chars' => 'Session code must be 5 characters',
@@ -7045,10 +7053,10 @@ extension on Translations {
 			'addLocalFolder.typeTvShows' => 'TV Shows',
 			'addLocalFolder.typeMixed' => 'Mixed',
 			'addLocalFolder.directory' => 'Directory',
-			'addLocalFolder.chooseDirectory' => 'Choose a directory…',
-			'addLocalFolder.nameLabel' => 'Display name',
 			_ => null,
 		} ?? switch (path) {
+			'addLocalFolder.chooseDirectory' => 'Choose a directory…',
+			'addLocalFolder.nameLabel' => 'Display name',
 			'addLocalFolder.nameHint' => 'e.g. My Movies',
 			'addLocalFolder.save' => 'Add folder',
 			'addLocalFolder.saveError' => 'Failed to add local folder',

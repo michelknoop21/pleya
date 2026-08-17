@@ -1,5 +1,4 @@
 import 'dart:async';
-import '../../widgets/segmented_tab_group.dart';
 import '../../media/ids.dart';
 
 import 'package:flutter/foundation.dart';
@@ -661,7 +660,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
   List<Widget> _buildTabChipItems() {
     return [
       for (int i = 0; i < _visibleTabs.length; i++) ...[
-        if (i > 0) const SizedBox(width: 8),
+        if (i > 0) const SizedBox(width: 22),
         buildTabChip(
           _getTabLabel(_visibleTabs[i]),
           i,
@@ -681,7 +680,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
     final isRecordings = _currentTab == LiveTvTab.recordings;
     return Scaffold(
       appBar: AppBar(
-        title: useSideNav ? SegmentedTabGroup(children: _buildTabChipItems()) : Text(t.liveTv.title),
+        title: useSideNav ? Row(children: _buildTabChipItems()) : Text(t.liveTv.title),
         actions: DesktopAppBarHelper.buildAdjustedActions([
           FocusableActionBar(
             key: _actionBarKey,
@@ -786,7 +785,7 @@ class _LiveTvScreenState extends State<LiveTvScreen>
             alignment: .centerLeft,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: SegmentedTabGroup(children: _buildTabChipItems()),
+              child: Row(children: _buildTabChipItems()),
             ),
           ),
         Expanded(

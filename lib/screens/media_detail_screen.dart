@@ -2341,6 +2341,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                   onSecondaryTapDown: (details) => tapPosition = details.globalPosition,
                   onSecondaryTap: () => _showSeasonTabContextMenu(index, position: tapPosition),
                   child: FocusableTabChip(
+                    style: TabChipStyle.segmented,
                     label: season.title!,
                     isSelected: index == _selectedSeasonIndex,
                     topImage: topImage,

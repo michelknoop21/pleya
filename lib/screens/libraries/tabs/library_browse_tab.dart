@@ -34,7 +34,6 @@ import '../library_alpha_bar_strategy.dart';
 import '../library_alpha_scroll_metrics.dart';
 import '../library_filter_sort_loader.dart';
 import '../../../widgets/focusable_media_card.dart';
-import '../../../widgets/focusable_filter_chip.dart';
 import '../../../widgets/listenable_selector.dart';
 import '../../../widgets/loading_indicator_box.dart';
 import '../../../widgets/media_grid_delegate.dart';
@@ -64,6 +63,7 @@ import '../../../utils/platform_detector.dart';
 import '../../../i18n/strings.g.dart';
 import '../../main_screen.dart';
 import 'base_library_tab.dart';
+import '../library_header.dart';
 
 /// Browse tab for library screen
 /// Shows library items with grouping, filtering, and sorting
@@ -72,6 +72,12 @@ class LibraryBrowseTab extends BaseLibraryTab<MediaItem> {
   /// (filter/sort change, library reload, etc.). Lets the parent resync the
   /// outer floating header — see `_resetOuterScroll` in libraries_screen.
   final VoidCallback? onResetScroll;
+
+  /// Where this tab publishes its item count and its grouping/filter/sort
+  /// actions, so the libraries screen can draw them on the header line next to
+  /// the tabs instead of this tab opening a second band of buttons below it.
+  /// Null on layouts that keep the options behind a sheet (phones).
+  final ValueNotifier<LibraryHeaderInfo>? headerInfo;
 
   const LibraryBrowseTab({
     super.key,
@@ -83,6 +89,7 @@ class LibraryBrowseTab extends BaseLibraryTab<MediaItem> {
     super.suppressAutoFocus,
     super.onBack,
     this.onResetScroll,
+    this.headerInfo,
   });
 
   @override
@@ -341,6 +348,9 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     _alphaUpdateTimer?.cancel();
     _innerPosition?.removeListener(_onScrollChanged);
     // _innerPosition is owned by the inner CustomScrollView's Scrollable.
+    // The header outlives this tab and holds our focus nodes, so hand it back
+    // empty before those nodes go away.
+    widget.headerInfo?.value = LibraryHeaderInfo.empty;
     _groupingChipFocusNode.dispose();
     _filtersChipFocusNode.dispose();
     _sortChipFocusNode.dispose();
@@ -443,9 +453,6 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     }
   }
 
-  /// Height of the chips bar (padding + chip + padding)
-  static const double _chipsBarHeight = 32.0;
-
   /// Focus the chips bar (for navigating from tab bar to content).
   /// Called by libraries screen when pressing DOWN on tab bar.
   void focusChipsBar() {
@@ -454,7 +461,23 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       return;
     }
     lastFocusedGridIndex = null;
-    _groupingChipFocusNode.requestFocus();
+    _focusHeaderActions();
+  }
+
+  /// Focus the first of our header actions. The header publishes them one frame
+  /// behind this tab's build (see [_publishHeaderInfo]), so a request that
+  /// arrives before the chip is mounted gets one retry on the next frame
+  /// instead of silently dropping focus.
+  void _focusHeaderActions() {
+    void request() {
+      if (!mounted) return;
+      if (_groupingChipFocusNode.context == null) return;
+      if (_groupingChipFocusNode.hasFocus) return;
+      _groupingChipFocusNode.requestFocus();
+    }
+
+    request();
+    WidgetsBinding.instance.addPostFrameCallback((_) => request());
   }
 
   /// Show the mobile browse options sheet from the parent app bar.
@@ -1085,7 +1108,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       widget.onBack?.call();
       return;
     }
-    _groupingChipFocusNode.requestFocus();
+    _focusHeaderActions();
   }
 
   /// Navigate focus to the sidebar
@@ -1234,7 +1257,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     );
   }
 
-  double get _contentStartScrollOffset => (_usesMobileBrowseOptions ? 0.0 : _chipsBarHeight) + _effectiveTopPadding;
+  double get _contentStartScrollOffset => _effectiveTopPadding;
 
   /// Handle a tap on the letter at [targetIndex] in the alpha bar. The
   /// active [LibraryAlphaBarStrategy] owns the per-backend behaviour and
@@ -1318,6 +1341,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
+    _publishHeaderInfo();
 
     // The alpha jump bar is the only overlay; we offset it by the typical app
     // bar height so it isn't obscured by the floating outer header. Using
@@ -1413,15 +1437,6 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
                 },
               ),
             ),
-            // Floating chips: scroll off with content but snap back into view
-            // on upward direction reversal, matching the outer floating
-            // SliverAppBar's behavior.
-            if (!_usesMobileBrowseOptions)
-              SliverPersistentHeader(
-                floating: true,
-                pinned: false,
-                delegate: _ChipsBarDelegate(builder: (_) => _buildChipsBar(), height: _chipsBarHeight),
-              ),
             ..._buildContentSlivers(),
           ],
         ),
@@ -1560,8 +1575,12 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   /// Whether the sort chip is visible
   bool get _isSortChipVisible => _sortOptions.isNotEmpty && _selectedGrouping != 'folders';
 
-  /// Builds the chips bar widget
-  Widget _buildChipsBar() {
+  /// The actions this tab contributes to the screen's header line, in reading
+  /// order. LEFT out of the first one and RIGHT out of the last one are left
+  /// open: those exits belong to the header, which knows what sits beside them.
+  List<LibraryHeaderAction> _headerActions() {
+    final actions = <LibraryHeaderAction>[];
+
     VoidCallback? groupingNavigateRight;
     if (_isFiltersChipVisible) {
       groupingNavigateRight = () => _filtersChipFocusNode.requestFocus();
@@ -1569,59 +1588,81 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       groupingNavigateRight = () => _sortChipFocusNode.requestFocus();
     }
 
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      alignment: .centerLeft,
-      child: Row(
-        mainAxisSize: .min,
-        children: [
-          // Grouping chip
-          FocusableFilterChip(
-            focusNode: _groupingChipFocusNode,
-            icon: Symbols.category_rounded,
-            label: _getGroupingLabel(_selectedGrouping),
-            onPressed: _showGroupingBottomSheet,
-            onNavigateDown: _navigateToGrid,
-            onNavigateUp: widget.onBack,
-            onNavigateLeft: _navigateToSidebar,
-            onNavigateRight: groupingNavigateRight,
-            onBack: widget.onBack,
-          ),
-          const SizedBox(width: 8),
-          // Filters chip
-          if (_isFiltersChipVisible)
-            FocusableFilterChip(
-              focusNode: _filtersChipFocusNode,
-              icon: Symbols.filter_alt_rounded,
-              label: _selectedFilters.isEmpty
-                  ? t.libraries.filters
-                  : t.libraries.filtersWithCount(count: _selectedFilters.length),
-              onPressed: _showFiltersBottomSheet,
-              onNavigateDown: _navigateToGrid,
-              onNavigateUp: widget.onBack,
-              onNavigateLeft: () => _groupingChipFocusNode.requestFocus(),
-              onNavigateRight: _isSortChipVisible ? () => _sortChipFocusNode.requestFocus() : null,
-              onBack: widget.onBack,
-            ),
-          if (_isFiltersChipVisible) const SizedBox(width: 8),
-          // Sort chip
-          if (_isSortChipVisible)
-            FocusableFilterChip(
-              focusNode: _sortChipFocusNode,
-              icon: Symbols.sort_rounded,
-              label: _selectedSort?.title ?? t.libraries.sort,
-              onPressed: _showSortBottomSheet,
-              onNavigateDown: _navigateToGrid,
-              onNavigateUp: widget.onBack,
-              onNavigateLeft: _isFiltersChipVisible
-                  ? () => _filtersChipFocusNode.requestFocus()
-                  : () => _groupingChipFocusNode.requestFocus(),
-              onBack: widget.onBack,
-            ),
-        ],
+    actions.add(
+      LibraryHeaderAction(
+        label: t.libraries.groupings.title,
+        value: _getGroupingLabel(_selectedGrouping),
+        focusNode: _groupingChipFocusNode,
+        onPressed: _showGroupingBottomSheet,
+        onNavigateDown: _navigateToGrid,
+        onNavigateUp: widget.onBack,
+        onNavigateRight: groupingNavigateRight,
+        onBack: widget.onBack,
       ),
     );
+
+    if (_isFiltersChipVisible) {
+      actions.add(
+        LibraryHeaderAction(
+          label: t.libraries.filters,
+          // No value while nothing is selected: next to "Grouping All" a second
+          // "All" reads as if the two belong together.
+          value: _selectedFilters.isEmpty ? null : '${_selectedFilters.length}',
+          isActive: _selectedFilters.isNotEmpty,
+          focusNode: _filtersChipFocusNode,
+          onPressed: _showFiltersBottomSheet,
+          onNavigateDown: _navigateToGrid,
+          onNavigateUp: widget.onBack,
+          onNavigateLeft: () => _groupingChipFocusNode.requestFocus(),
+          onNavigateRight: _isSortChipVisible ? () => _sortChipFocusNode.requestFocus() : null,
+          onBack: widget.onBack,
+        ),
+      );
+    }
+
+    if (_isSortChipVisible) {
+      actions.add(
+        LibraryHeaderAction(
+          label: t.libraries.sort,
+          value: _selectedSort?.title,
+          focusNode: _sortChipFocusNode,
+          onPressed: _showSortBottomSheet,
+          onNavigateDown: _navigateToGrid,
+          onNavigateUp: widget.onBack,
+          onNavigateLeft: _isFiltersChipVisible
+              ? () => _filtersChipFocusNode.requestFocus()
+              : () => _groupingChipFocusNode.requestFocus(),
+          onBack: widget.onBack,
+        ),
+      );
+    }
+
+    return actions;
+  }
+
+  /// Hand the header what it should show for this tab. Called from [build], so
+  /// a label can never drift out of sync with the grid, and applied after the
+  /// frame because a notifier fired mid-build would rebuild an ancestor that is
+  /// already building. [LibraryHeaderInfo] compares by what is on screen, so an
+  /// unchanged header costs nothing.
+  void _publishHeaderInfo() {
+    final notifier = widget.headerInfo;
+    if (notifier == null) return;
+
+    final next = (widget.isActive && !_usesMobileBrowseOptions)
+        ? LibraryHeaderInfo(countLabel: _itemCountLabel(), actions: _headerActions())
+        : LibraryHeaderInfo.empty;
+    if (notifier.value == next) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      notifier.value = next;
+    });
+  }
+
+  String? _itemCountLabel() {
+    if (totalSize <= 0) return null;
+    return totalSize == 1 ? t.libraries.oneItem : t.libraries.itemCount(count: totalSize);
   }
 
   /// Builds content as slivers for the CustomScrollView
@@ -1876,28 +1917,4 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       });
     }
   }
-}
-
-/// SliverPersistentHeader delegate for the chips bar. Fixed-height floating
-/// header that snaps in on scroll direction reversal.
-class _ChipsBarDelegate extends SliverPersistentHeaderDelegate {
-  final WidgetBuilder builder;
-  final double height;
-
-  const _ChipsBarDelegate({required this.builder, required this.height});
-
-  @override
-  double get minExtent => height;
-
-  @override
-  double get maxExtent => height;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return SizedBox(height: height, child: builder(context));
-  }
-
-  @override
-  bool shouldRebuild(covariant _ChipsBarDelegate oldDelegate) =>
-      builder != oldDelegate.builder || height != oldDelegate.height;
 }

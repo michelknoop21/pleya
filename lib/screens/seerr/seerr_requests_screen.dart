@@ -225,6 +225,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
             for (var i = 0; i < tabs.length; i++) ...[
               if (i > 0) const SizedBox(width: 2),
               FocusableTabChip(
+                style: TabChipStyle.segmented,
                 label: (tabs[i].$3 ?? 0) > 0 ? '${tabs[i].$2}  ${tabs[i].$3}' : tabs[i].$2,
                 isSelected: _filter == tabs[i].$1,
                 onSelect: () => _onFilter(tabs[i].$1),

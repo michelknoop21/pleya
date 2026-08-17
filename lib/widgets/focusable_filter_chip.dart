@@ -6,6 +6,18 @@ import '../focus/input_mode_tracker.dart';
 import 'focus_builders.dart';
 import '../theme/mono_tokens.dart';
 
+/// How a [FocusableFilterChip] draws itself.
+enum FilterChipVariant {
+  /// Outlined pill with an icon. For chip rows that stand on their own, like
+  /// the search filters.
+  outlined,
+
+  /// Muted label plus its current value in full colour, no outline. For a
+  /// header line where the chips have to sit beside a page title without
+  /// turning it into a toolbar.
+  text,
+}
+
 /// A focusable filter chip that shows a color change when focused.
 ///
 /// Unlike FocusableWrapper which uses scale + border, this widget
@@ -14,6 +26,14 @@ class FocusableFilterChip extends StatefulWidget {
   final IconData? icon;
   final String label;
   final VoidCallback onPressed;
+
+  /// Visual treatment. See [FilterChipVariant].
+  final FilterChipVariant variant;
+
+  /// Current value, shown after [label] in the [FilterChipVariant.text]
+  /// variant ("Sort · Title"). Ignored by the outlined variant, which folds
+  /// the value into [label].
+  final String? value;
 
   /// When true, renders an accent-tinted "active" state (used for toggle
   /// filters like type/genre). Focus styling always takes precedence.
@@ -42,6 +62,8 @@ class FocusableFilterChip extends StatefulWidget {
     this.icon,
     required this.label,
     required this.onPressed,
+    this.variant = FilterChipVariant.outlined,
+    this.value,
     this.selected = false,
     this.focusNode,
     this.onNavigateDown,
@@ -99,6 +121,7 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
   Widget build(BuildContext context) {
     // Only show focus effects during keyboard/d-pad navigation
     final showFocus = isFocused && InputModeTracker.isKeyboardMode(context);
+    if (widget.variant == FilterChipVariant.text) return _buildText(context, showFocus);
 
     // Outlined instead of filled: these sit next to the segmented tab control,
     // and two competing filled shapes made the header look like a toolbar of
@@ -141,4 +164,43 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
   }
 
   IconData? get icon => widget.icon;
+
+  /// Label in muted ink, current value in full ink, and nothing drawn around it.
+  /// Focus lifts and brightens the text rather than adding a surface or a rule:
+  /// this variant shares its line with the tab labels and their accent bar, and
+  /// a second marker there would compete with the one that says which tab is
+  /// open.
+  Widget _buildText(BuildContext context, bool showFocus) {
+    final tk = tokens(context);
+    final theme = Theme.of(context);
+    final labelColor = showFocus ? tk.text : tk.textMuted;
+    final valueColor = widget.selected ? tk.accent : tk.text;
+
+    return FocusBuilders.buildFocusableChip(
+      context: context,
+      focusNode: focusNode,
+      onKeyEvent: _handleKeyEvent,
+      onTap: widget.onPressed,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      borderRadius: 8,
+      backgroundColor: Colors.transparent,
+      child: AnimatedScale(
+        duration: reduceMotion(context, tk.fast),
+        scale: showFocus ? 1.05 : 1.0,
+        child: Row(
+          mainAxisSize: .min,
+          children: [
+            Text(widget.label, style: theme.textTheme.labelMedium?.copyWith(color: labelColor)),
+            if (widget.value != null) ...[
+              const SizedBox(width: 6),
+              Text(
+                widget.value!,
+                style: theme.textTheme.labelMedium?.copyWith(color: valueColor, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
