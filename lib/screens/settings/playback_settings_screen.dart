@@ -61,8 +61,8 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         if (Platform.isWindows) _matchRefreshRateTile(),
         if (Platform.isWindows) _matchDynamicRangeTile(),
         _displaySwitchDelayTile(),
-        _tunneledPlaybackTile(),
-        _dvConversionModeTile(),
+        if (Platform.isAndroid) _tunneledPlaybackTile(),
+        if (Platform.isAndroid) _dvConversionModeTile(),
         _bufferSizeTile(),
         _defaultQualityTile(),
 
