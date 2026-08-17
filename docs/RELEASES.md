@@ -14,10 +14,18 @@ reads the topmost anchor and fills the block below with everything committed sin
 <!-- BEGIN GENERATED -->
 ### New
 - TestFlight-lanes koppelen de build zelf aan het versierecord
+- settings, tabs en aanvragen in één rustiger vormtaal
+- carrousel uitklappen naar een raster
 - refresh-knop toont dat hij bezig is
+- bibliotheekkop als paginakop, tabs en filters op één regel
+- bibliotheekhero krijgt de ruimte die de rij eronder niet gebruikt
 
 ### Fixed
 - kaartgeometrie in één contract, en accountacties naar Mijn Pleya
+- platformconditie van twee afspeeltegels naar de aanroepplek
+- kaartcel meet poster, bijschrift en focusruimte apart
+- iCloud-synchronisatie ook zichtbaar op Apple TV
+- downloadlocatie blijft per apparaat
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 221 · 17 August 2026
