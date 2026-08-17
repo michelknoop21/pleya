@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+if [ "${SKIP_HOOKS:-}" = "1" ]; then
+  echo "[pre-push] skipped (SKIP_HOOKS=1)"
+  exit 0
+fi
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+# Alleen zinvol als er iets te ankeren valt. Bij een verse clone zonder
+# docs/RELEASES.md laten we de push met rust.
+[ -f "$ROOT/docs/RELEASES.md" ] || exit 0
+
+if ! git -C "$ROOT" diff --quiet -- docs/RELEASES.md \
+   || ! git -C "$ROOT" diff --cached --quiet -- docs/RELEASES.md; then
+  echo "[pre-push] docs/RELEASES.md heeft al onopgeslagen wijzigingen — overgeslagen"
+  exit 0
+fi
+
+if ! "$ROOT/scripts/gen_release_notes.sh" --quiet; then
+  echo "[pre-push] gen_release_notes.sh faalde — push afgebroken" >&2
+  exit 1
+fi
+
+if git -C "$ROOT" diff --quiet -- docs/RELEASES.md; then
+  exit 0
+fi
+
+git -C "$ROOT" add docs/RELEASES.md
+SKIP_HOOKS=1 git -C "$ROOT" commit -m "docs: releasenotes bijwerken" --no-verify >/dev/null
+
+cat >&2 <<'EOF'
+[pre-push] docs/RELEASES.md liep achter en is bijgewerkt en gecommit.
+
+Deze push is afgebroken, met opzet: git heeft de te pushen refs al vastgesteld
+voordat deze hook draaide, dus de zojuist gemaakte commit gaat er niet meer in
+mee. Push nog een keer en alles gaat mee.
+
+  git push
+
+Overslaan kan met SKIP_HOOKS=1 git push
+EOF
+exit 1

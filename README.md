@@ -53,10 +53,10 @@ Package managers:
 
 ### <img src="assets/readme_icons/browse.svg" height="20" alt="" align="center" /> Browse & Discover
 - Libraries, collections, and playlists
-- Discover hub — Continue Watching, Next Up, trending, and recommendations
+- Discover hub: Continue Watching, Next Up, trending, and recommendations
 - Cross-server search
 - Filtering, sorting, and alphabetical jump navigation
-- Extras — trailers, deleted scenes, behind-the-scenes
+- Extras: trailers, deleted scenes, behind-the-scenes
 
 ### <img src="assets/readme_icons/playback.svg" height="20" alt="" align="center" /> Playback
 - Wide codec support (HEVC, AV1, VP9, and more)
@@ -91,11 +91,11 @@ Package managers:
 ### <img src="assets/readme_icons/integrations.svg" height="20" alt="" align="center" /> Integrations
 - Discord Rich Presence[^7]
 - Trakt, MyAnimeList, AniList, and Simkl tracking & rating
-- Plezy Remote — control desktop and TV from mobile
+- Pleya Remote: control desktop and TV from mobile
 - Watch Next row[^6]
 
 ### <img src="assets/readme_icons/customization.svg" height="20" alt="" align="center" /> Platform & Customization
-- Desktop, mobile, and TV — full D-pad, keyboard, and gamepad support
+- Desktop, mobile, and TV: full D-pad, keyboard, and gamepad support
 - Customizable keyboard shortcuts[^7]
 - Metadata and artwork editing[^2]
 - Settings import/export
@@ -123,9 +123,15 @@ Package managers:
 git clone https://github.com/edde746/plezy.git
 cd plezy
 flutter pub get
+scripts/setup_hooks.sh   # pre-commit (CI gate) + pre-push (release notes)
 scripts/codegen.sh
 flutter run
 ```
+
+`scripts/setup_hooks.sh` is part of the setup, not an optional extra. Git stores
+`core.hooksPath` in `.git/config`, so it does not travel with a clone: skip this step and
+you silently have no pre-commit gate and no release-note updates. `scripts/ci_checks.sh`
+and `scripts/codegen.sh` warn when it has not been run.
 
 ### Code Generation
 
