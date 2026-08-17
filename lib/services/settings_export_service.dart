@@ -89,6 +89,10 @@ class SettingsExportService {
     // another device. Deny it so export/iCloud doesn't ship a dead payload or
     // write an unscoped `seerr_session` the active profile never loads.
     'seerr_session',
+    // Tautulli: same reasoning as seerr_session. The token is vault-encrypted
+    // with a device-local key, so a copied blob is undecryptable elsewhere, and
+    // a Tautulli token opens the entire admin API of someone's server.
+    'tautulli_session',
   };
 
   /// Prefix denylist. A key is excluded if it starts with any of these.

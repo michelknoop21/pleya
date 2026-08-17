@@ -13,7 +13,6 @@ import '../media/library_query.dart';
 import '../media/live_tv_dvr_support.dart';
 import '../media/live_tv_support.dart';
 import '../media/media_backend.dart';
-import '../media/item_watcher.dart';
 import '../media/media_hub.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
@@ -199,6 +198,10 @@ bool? _parsePlexTranscoderVideoCapability(Object? value) {
     _ => null,
   };
 }
+
+/// One row of Plex's server-wide watch history, in Plex's own id space.
+/// [accountId] is 1 for the owner of an owned server, a plex.tv id otherwise.
+typedef PlexWatcherRow = ({int accountId, String displayName, String? thumbUrl, int viewedAt});
 
 class PlexClient
     with MediaServerCacheMixin, _PlexLiveTvClientMethods
@@ -3864,10 +3867,19 @@ class PlexClient
   }
 
   /// Server users who have watched [ratingKey], newest first. Reads the
-  /// server-wide history (`/status/sessions/history/all`) — owner-token only,
-  /// so pass the owner token via [authToken] and gate the call on server
-  /// ownership at the call site. Returns `[]` on any failure or no data.
-  Future<List<ItemWatcher>> fetchItemWatchers(String ratingKey, {String? authToken}) async {
+  /// server-wide history (`/status/sessions/history/all`), owner-token only, so
+  /// pass the owner token via [authToken] and gate the call on server ownership
+  /// at the call site. Returns `[]` on any failure or no data.
+  ///
+  /// Rows stay in Plex's own shape, including its account id space where an
+  /// owned server files the owner under 1. Mapping to the neutral model is
+  /// [ItemWatchersService]'s job, because Tautulli numbers the same people
+  /// differently and only the mapper knows which source it is holding.
+  ///
+  /// A row exists per completed view: measured against a live server, items at
+  /// 19 to 60 percent had none, and none of 9590 rows carried a `viewOffset`.
+  /// See `test/fixtures/plex_detail/README.md`.
+  Future<List<PlexWatcherRow>> fetchItemWatchers(String ratingKey, {String? authToken}) async {
     try {
       final response = await _getWithFailover(
         '/status/sessions/history/all',
@@ -3898,9 +3910,9 @@ class PlexClient
       if (byAccount.isEmpty) return const [];
 
       final accounts = await fetchServerAccounts(authToken: authToken);
-      final watchers = <ItemWatcher>[
+      final watchers = <PlexWatcherRow>[
         for (final entry in byAccount.entries)
-          ItemWatcher(
+          (
             accountId: entry.key,
             displayName: accounts[entry.key]?.name.isNotEmpty == true ? accounts[entry.key]!.name : 'User ${entry.key}',
             thumbUrl: accounts[entry.key]?.thumb,

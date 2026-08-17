@@ -78,6 +78,11 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   int? _genreId;
   _SeerrRow? _genreRow; // single paginated grid when a genre is active
 
+  // Streaming services for this region, plus the row that follows the pick.
+  List<SeerrWatchProvider> _providers = const [];
+  SeerrWatchProvider? _provider;
+  _SeerrRow? _providerRow;
+
   @override
   void initState() {
     super.initState();
@@ -111,6 +116,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       ),
     ];
     unawaited(_loadAll());
+    unawaited(_loadProviders());
   }
 
   @override
@@ -125,6 +131,44 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     final client = _client;
     if (client == null) return;
     await Future.wait(_rows.map((row) => _loadFirst(row, client)));
+  }
+
+  /// Availability differs per country, so the region comes from the device
+  /// locale. Falls back to US, which is what seerr itself defaults to.
+  String get _watchRegion => WidgetsBinding.instance.platformDispatcher.locale.countryCode?.toUpperCase() ?? 'US';
+
+  Future<void> _loadProviders() async {
+    final client = _client;
+    if (client == null) return;
+    final providers = await client.getWatchProviders(movies: _type != _SeerrType.tv, region: _watchRegion);
+    if (!mounted || providers.isEmpty) return;
+    setState(() => _providers = providers.take(10).toList(growable: false));
+  }
+
+  Future<void> _selectProvider(SeerrWatchProvider? provider) async {
+    final client = _client;
+    if (client == null) return;
+    if (provider == null || provider.id == _provider?.id) {
+      setState(() {
+        _provider = null;
+        _providerRow = null;
+      });
+      return;
+    }
+    final wantsTv = _type == _SeerrType.tv;
+    final row = _SeerrRow(
+      title: provider.name,
+      showIn: const {_SeerrType.all, _SeerrType.movies, _SeerrType.tv},
+      fetch: (c, p) => wantsTv
+          ? c.discoverTv(page: p, watchProvider: provider.id, watchRegion: _watchRegion)
+          : c.discoverMovies(page: p, watchProvider: provider.id, watchRegion: _watchRegion),
+    );
+    setState(() {
+      _provider = provider;
+      _providerRow = row;
+    });
+    await _loadFirst(row, client);
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadFirst(_SeerrRow row, SeerrClient client) async {
@@ -665,8 +709,53 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         ),
       );
     }
+    if (_providers.isNotEmpty) {
+      slivers.add(SliverToBoxAdapter(child: _buildProviderPicker()));
+      final row = _providerRow;
+      if (row != null && !row.loadingFirst && row.items.isNotEmpty) {
+        slivers.add(
+          SliverToBoxAdapter(
+            child: _SeerrRowView(row: row, onTapItem: _openDetail, onLoadMore: () => _loadMore(row)),
+          ),
+        );
+      } else if (row != null && row.loadingFirst) {
+        slivers.add(SliverToBoxAdapter(child: _RowHeaderSkeleton(title: row.title)));
+      }
+    }
     slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 24)));
     return slivers;
+  }
+
+  /// Streaming services for this region. Picking one swaps the row underneath,
+  /// the way seerr's own discover does it; picking it again clears the row.
+  Widget _buildProviderPicker() {
+    final inset = PlatformDetector.isTV() ? TvLayoutConstants.horizontalInset : _rowInset;
+    return Padding(
+      padding: EdgeInsets.only(left: inset, right: inset, top: 16, bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(t.seerr.byStreamingService, style: _rowHeaderStyle(context)),
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final p in _providers)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FocusableFilterChip(
+                      label: p.name,
+                      selected: _provider?.id == p.id,
+                      onPressed: () => unawaited(_selectProvider(p)),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// The single grid shown when a genre chip is active.

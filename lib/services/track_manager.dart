@@ -6,6 +6,7 @@ import '../media/media_item.dart';
 import '../media/media_server_user_profile.dart';
 import '../media/media_source_info.dart';
 import '../services/settings_service.dart';
+import '../services/track_preference_store.dart';
 import '../services/track_selection_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/language_codes.dart';
@@ -17,6 +18,21 @@ import '../utils/track_label_builder.dart';
 /// [trackType] is `'audio'` or `'subtitle'`.
 typedef TrackPreferencePersister =
     Future<void> Function({required int partId, required String trackType, int? streamID});
+
+/// Mirrors a remembered language choice onto the show's own Plex preferences,
+/// so devices Pleya's iCloud sync cannot reach (Android, Windows) and the
+/// official Plex clients start the next episode the same way.
+///
+/// Only Plex has a per-series override; Jellyfin leaves this null and relies on
+/// the local store alone. [subtitleMode] follows Plex's own encoding:
+/// 0 manually selected, 1 shown with foreign audio, 2 always enabled.
+typedef SeriesLanguagePersister =
+    Future<void> Function({
+      required String seriesRatingKey,
+      String? audioLanguage,
+      String? subtitleLanguage,
+      int? subtitleMode,
+    });
 
 /// Manages track (audio + subtitle) lifecycle: external subtitle loading,
 /// automatic track selection, server preference sync, and cycling.
@@ -34,6 +50,10 @@ class TrackManager {
   /// for backends with a different persistence path (Jellyfin) or no
   /// server-side track preferences.
   final TrackPreferencePersister? persistTrackPreference;
+
+  /// Optional hook for writing the remembered language onto the show's Plex
+  /// preferences. Null for backends without a per-series override (Jellyfin).
+  final SeriesLanguagePersister? persistSeriesLanguage;
 
   /// Resolves the user's profile settings (may be null during loading).
   final MediaServerUserProfile? Function() getProfileSettings;
@@ -69,6 +89,7 @@ class TrackManager {
     required this.player,
     required this.isActive,
     this.persistTrackPreference,
+    this.persistSeriesLanguage,
     required this.getProfileSettings,
     required this.waitForProfileSettings,
     required this.metadata,
@@ -214,11 +235,20 @@ class TrackManager {
       final settingsService = await SettingsService.getInstance();
       if (!isActive()) return;
 
+      // Re-read per item: episode navigation swaps [metadata] underneath us,
+      // and the choice may have arrived from another device via iCloud since
+      // the last item started.
+      final stickyChoice = settingsService.read(SettingsService.rememberTrackSelections)
+          ? await TrackPreferenceStore.read(metadata)
+          : null;
+      if (!isActive()) return;
+
       final trackService = TrackSelectionService(
         player: player,
         profileSettings: profileSettings,
         metadata: metadata,
         plexMediaInfo: mediaInfo,
+        stickyChoice: stickyChoice,
       );
 
       await trackService.selectAndApplyTracks(
@@ -309,6 +339,8 @@ class TrackManager {
 
   /// Handle audio track changes — save stream selection and language preference.
   Future<void> onAudioTrackChanged(AudioTrack track) async {
+    await _rememberAudioLanguage(track);
+
     final info = mediaInfo;
     final partId = await _guardTrackChange(info);
     if (partId == null || info == null) return;
@@ -340,6 +372,8 @@ class TrackManager {
 
   /// Handle subtitle track changes — save stream selection and language preference.
   Future<void> onSubtitleTrackChanged(SubtitleTrack track) async {
+    await _rememberSubtitleLanguage(track);
+
     final info = mediaInfo;
     final partId = await _guardTrackChange(info);
     if (partId == null) return;
@@ -386,12 +420,72 @@ class TrackManager {
     // which is automatically read during episode navigation. No additional state needed.
   }
 
+  // ── Remembered language per series/movie ───────────────────────────
+
+  Future<bool> _remembersTrackSelections() async {
+    final settings = await SettingsService.getInstance();
+    return settings.read(SettingsService.rememberTrackSelections);
+  }
+
+  /// Store the language behind [track] for this title. Runs before
+  /// [_guardTrackChange] on purpose: that guard bails out for backends without
+  /// a server-side stream write (Jellyfin), which would otherwise never
+  /// remember anything at all.
+  Future<void> _rememberAudioLanguage(AudioTrack track) async {
+    if (!await _remembersTrackSelections()) return;
+    final language = track.language;
+    // A track without a language code says nothing about what to pick on the
+    // next episode, so leave the previous choice alone rather than clear it.
+    if (language == null || language.isEmpty) return;
+    await TrackPreferenceStore.saveAudio(metadata, language: language, title: track.title);
+    await _mirrorSeriesLanguageToServer();
+  }
+
+  Future<void> _rememberSubtitleLanguage(SubtitleTrack track) async {
+    if (!await _remembersTrackSelections()) return;
+    if (track.id == 'no') {
+      await TrackPreferenceStore.saveSubtitle(metadata, off: true);
+    } else {
+      final language = track.language;
+      if (language == null || language.isEmpty) return;
+      await TrackPreferenceStore.saveSubtitle(metadata, language: language, title: track.title, forced: track.isForced);
+    }
+    await _mirrorSeriesLanguageToServer();
+  }
+
+  /// Push the remembered choice onto the show's own Plex preferences. Episodes
+  /// only: movies have no per-item language override.
+  Future<void> _mirrorSeriesLanguageToServer() async {
+    final persist = persistSeriesLanguage;
+    final seriesRatingKey = metadata.grandparentId;
+    if (persist == null || seriesRatingKey == null || seriesRatingKey.isEmpty) return;
+    if (!isActive()) return;
+
+    final choice = await TrackPreferenceStore.read(metadata);
+    if (choice == null || choice.isEmpty) return;
+
+    try {
+      await persist(
+        seriesRatingKey: seriesRatingKey,
+        audioLanguage: choice.audioLanguage,
+        subtitleLanguage: choice.subtitlesOff ? '' : choice.subtitleLanguage,
+        subtitleMode: switch (choice) {
+          _ when !choice.hasSubtitle => null,
+          _ when choice.subtitlesOff => 0,
+          _ when choice.subtitleForced => 1,
+          _ => 2,
+        },
+      );
+    } catch (e) {
+      appLogger.w('Failed to mirror language choice onto the series', error: e);
+    }
+  }
+
   // ── Private helpers ────────────────────────────────────────────────
 
   /// Common guard checks for track change handlers.
   Future<int?> _guardTrackChange(MediaSourceInfo? info) async {
-    final settings = await SettingsService.getInstance();
-    if (!settings.read(SettingsService.rememberTrackSelections)) return null;
+    if (!await _remembersTrackSelections()) return null;
 
     if (persistTrackPreference == null) return null;
 

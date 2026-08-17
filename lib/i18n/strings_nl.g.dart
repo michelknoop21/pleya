@@ -91,6 +91,8 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddLocalFolderNl addLocalFolder = _TranslationsAddLocalFolderNl._(_root);
 	@override late final _TranslationsPleyaShareNl pleyaShare = _TranslationsPleyaShareNl._(_root);
 	@override late final _TranslationsSeerrNl seerr = _TranslationsSeerrNl._(_root);
+	@override late final _TranslationsTautulliNl tautulli = _TranslationsTautulliNl._(_root);
+	@override late final _TranslationsNowWatchingNl nowWatching = _TranslationsNowWatchingNl._(_root);
 }
 
 // Path: states
@@ -186,6 +188,7 @@ class _TranslationsCommonNl extends TranslationsCommonEn {
 	@override String get mute => 'Dempen';
 	@override String get ok => 'OK';
 	@override String get off => 'Uit';
+	@override String get on => 'Aan';
 	@override String seasonNumber({required Object number}) => 'Seizoen ${number}';
 	@override String episodeNumberTitle({required Object number, required Object title}) => 'Aflevering ${number} - ${title}';
 	@override String chapterNumber({required Object number}) => 'Hoofdstuk ${number}';
@@ -324,7 +327,9 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get defaultSleepTimer => 'Standaard slaap timer';
 	@override String minutesUnit({required Object minutes}) => 'bij ${minutes} minuten';
 	@override String get rememberTrackSelections => 'Onthoud track selecties per serie/film';
-	@override String get rememberTrackSelectionsDescription => 'Onthoud audio- en ondertitelkeuzes per titel';
+	@override String get rememberTrackSelectionsDescription => 'Start de volgende aflevering in de audio- en ondertiteltaal die je zelf koos. Synct via iCloud naar je andere Apple-apparaten.';
+	@override String get writeSeriesLanguageToServer => 'Taal ook in Plex opslaan';
+	@override String get writeSeriesLanguageToServerDescription => 'Schrijft de taal op de serie in Plex, zodat Android, Windows en de officiële Plex-apps hem ook volgen. Overschrijft wat je daar zelf hebt ingesteld.';
 	@override String get showChapterMarkersOnTimeline => 'Hoofdstukmarkeringen op tijdlijn tonen';
 	@override String get showChapterMarkersOnTimelineDescription => 'Verdeel de tijdlijn bij hoofdstukgrenzen';
 	@override String get clickVideoTogglesPlayback => 'Klik op de video om afspelen/pauzeren te wisselen.';
@@ -673,6 +678,7 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	@override String get longPressToUnlock => 'Lang indrukken om te ontgrendelen';
 	@override String get timelineSlider => 'Videotijdlijn';
 	@override String get volumeSlider => 'Volumeniveau';
+	@override String get volumeHandledByDevice => 'Volume wordt tijdens doorvoer door je audioapparaat geregeld';
 	@override String endsAt({required Object time}) => 'Eindigt om ${time}';
 	@override String get pipActive => 'Afspelen in beeld-in-beeld';
 	@override String get pipFailed => 'Beeld-in-beeld kon niet worden gestart';
@@ -942,6 +948,11 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String becauseYouLike({required Object genre}) => 'Omdat je van ${genre} houdt';
 	@override String get hiddenGems => 'Verborgen parels';
 	@override String watchedBy({required Object names}) => 'Bekeken door ${names}';
+	@override String watchingSeriesBy({required Object names}) => 'Kijken deze serie: ${names}';
+	@override String statsPlays({required Object count}) => '${count} keer afgespeeld';
+	@override String statsViewers({required Object count}) => 'door ${count} mensen';
+	@override String statsWatchTime({required Object duration}) => '${duration} bekeken';
+	@override String statsRecent({required Object count}) => '${count} in de laatste 30 dagen';
 	@override String get watchedByYou => 'Jij';
 	@override String get watchedByAnd => 'en';
 	@override String watchedByOthers({required Object count}) => '${count} anderen';
@@ -1503,12 +1514,20 @@ class _TranslationsVideoSettingsNl extends TranslationsVideoSettingsEn {
 	@override String get audioPassthrough => 'Audio-doorvoer';
 	@override String get audioOutputTitle => 'Audio-uitvoermodus';
 	@override late final _TranslationsVideoSettingsAudioOutputModesNl audioOutputModes = _TranslationsVideoSettingsAudioOutputModesNl._(_root);
+	@override late final _TranslationsVideoSettingsAudioOutputDecisionsNl audioOutputDecisions = _TranslationsVideoSettingsAudioOutputDecisionsNl._(_root);
 	@override late final _TranslationsVideoSettingsAudioOutputModeDescriptionsNl audioOutputModeDescriptions = _TranslationsVideoSettingsAudioOutputModeDescriptionsNl._(_root);
 	@override late final _TranslationsVideoSettingsAudioOutputRenderingNl audioOutputRendering = _TranslationsVideoSettingsAudioOutputRenderingNl._(_root);
 	@override String audioOutputNow({required Object mode}) => 'nu: ${mode}';
 	@override String get audioNormalization => 'Volume normaliseren';
 	@override String get audioNormalizationTitle => 'Geluidssterkte';
 	@override late final _TranslationsVideoSettingsAudioNormalizationModesNl audioNormalizationModes = _TranslationsVideoSettingsAudioNormalizationModesNl._(_root);
+	@override String get audioNormalizationSuspended => 'Dolby-doorvoer loopt, dus volume gelijkmaken staat uit. Je receiver bepaalt het niveau.';
+	@override String get audioPriorityTitle => 'Prioriteit';
+	@override late final _TranslationsVideoSettingsAudioPrioritiesNl audioPriorities = _TranslationsVideoSettingsAudioPrioritiesNl._(_root);
+	@override String get audioLevelVolume => 'Volume gelijkmaken';
+	@override String get audioLevelVolumeDescription => 'Brengt elke titel op hetzelfde niveau als de rest van je tv';
+	@override String get audioReduceLoudSounds => 'Verminder harde geluiden';
+	@override String get audioReduceLoudSoundsDescription => 'Verkleint het verschil tussen dialoog en harde effecten';
 	@override String get tryLowerQuality => 'Probeer lagere kwaliteit';
 	@override String get audioPassthroughUnavailable => 'Deze uitgang accepteert geen Dolby-bitstream — overgeschakeld op gedecodeerd geluid.';
 }
@@ -1535,6 +1554,14 @@ class _TranslationsPerformanceOverlayNl extends TranslationsPerformanceOverlayEn
 	@override String get sampleRate => 'Samplefrequentie';
 	@override String get audioDriver => 'Audiostuurprogramma';
 	@override String get audioOutFormat => 'Uitvoerformaat';
+	@override String get audioRequested => 'Gevraagd';
+	@override String get audioActual => 'Werkelijk';
+	@override String get audioMeasuring => 'meten…';
+	@override String get audioBitstream => 'bitstream';
+	@override String get audioFellBack => 'terugval';
+	@override String get audioFilters => 'Filters';
+	@override String get audioFiltersNone => 'geen';
+	@override String get volume => 'Volume';
 	@override String get pixelFormat => 'Pixelformaat';
 	@override String get hwFormat => 'HW-formaat';
 	@override String get matrix => 'Matrix';
@@ -1933,6 +1960,65 @@ class _TranslationsSeerrNl extends TranslationsSeerrEn {
 	@override String get errorGeneric => 'Er ging iets mis. Probeer opnieuw.';
 }
 
+// Path: tautulli
+class _TranslationsTautulliNl extends TranslationsTautulliEn {
+	_TranslationsTautulliNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Tautulli';
+	@override String get subtitle => 'Tautulli houdt bij wie wat kijkt op je Plex-server. Koppel hem om kijkers, statistieken en live activiteit in Pleya te zien.';
+	@override String get adminOnlyNote => 'Tautulli heeft één sleutel die zijn hele beheer-API opent, dus die blijft op dit toestel en alleen jij ziet wat hij meldt. De mensen met wie je je server deelt merken er niets van en hoeven niets in te stellen.';
+	@override String get serverUrl => 'Tautulli-adres';
+	@override String get serverUrlHint => 'http://192.168.1.10:8181 of https://tautulli.voorbeeld.nl';
+	@override String get authMode => 'Hoe koppelen';
+	@override String get modeDevice => 'Apparaat-token';
+	@override String get modeDeviceHelp => 'Ga in Tautulli naar Settings, Tautulli Remote App, en registreer een apparaat. Plak het token hier binnen vijf minuten. Je vaste API-key blijft zo buiten de app, en je kunt dit ene apparaat later weer intrekken.';
+	@override String get modeApiKey => 'API-key';
+	@override String get modeApiKeyHelp => 'De vaste sleutel uit Settings, Web Interface. Die geeft volledige toegang tot Tautulli, dus gebruik hem alleen als het apparaat-token niet lukt.';
+	@override String get deviceToken => 'Apparaat-token';
+	@override String get apiKey => 'API-key';
+	@override String get testConnection => 'Verbinding testen';
+	@override String get save => 'Opslaan';
+	@override String get connected => 'Verbonden';
+	@override String get disconnect => 'Ontkoppelen';
+	@override String get disconnectConfirm => 'Tautulli ontkoppelen?';
+	@override String get disconnectConfirmBody => 'Pleya vergeet het adres en het token. Kijkers, statistieken en live activiteit verdwijnen tot je opnieuw koppelt.';
+	@override String get setupOnDesktopNote => 'Makkelijker op je telefoon of computer: het adres en het token typen lastig met een afstandsbediening.';
+	@override String get errorNetwork => 'Tautulli niet bereikbaar. Controleer het adres en of hij vanaf dit toestel te bereiken is.';
+	@override String get errorAuth => 'Tautulli weigert deze sleutel.';
+	@override String get errorTokenExpired => 'Tautulli weigert dit token. Een apparaat-token is maar vijf minuten geldig, dus maak een nieuwe aan en probeer opnieuw.';
+	@override String get errorUrlRequired => 'Vul het adres van je Tautulli-server in.';
+	@override String get errorTokenRequired => 'Vul een token in.';
+	@override String get errorGeneric => 'Koppelen is niet gelukt.';
+}
+
+// Path: nowWatching
+class _TranslationsNowWatchingNl extends TranslationsNowWatchingEn {
+	_TranslationsNowWatchingNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Nu aan het kijken';
+	@override String get tooltip => 'Bekijk wie er nu kijkt';
+	@override String streams({required Object count}) => '${count} streams';
+	@override String get oneStream => '1 stream';
+	@override String transcoding({required Object count}) => '${count} transcoderen';
+	@override String get directPlay => 'Direct play';
+	@override String get directStream => 'Direct stream';
+	@override String get transcode => 'Transcoderen';
+	@override String get paused => 'Gepauzeerd';
+	@override String remaining({required Object time}) => 'nog ${time}';
+	@override String watchingNow({required Object name}) => '${name} kijkt dit nu';
+	@override String get hardware => 'Hardware';
+	@override String get onLan => 'Op je netwerk';
+	@override String get onWan => 'Van buiten';
+	@override String get unavailable => 'Tautulli gaf geen antwoord';
+	@override String get sidebarLabel => 'Nu aan het kijken';
+}
+
 // Path: search.filters
 class _TranslationsSearchFiltersNl extends TranslationsSearchFiltersEn {
 	_TranslationsSearchFiltersNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -2192,6 +2278,18 @@ class _TranslationsVideoSettingsAudioOutputModesNl extends TranslationsVideoSett
 	@override String get pcm => 'PCM (decoderen)';
 }
 
+// Path: videoSettings.audioOutputDecisions
+class _TranslationsVideoSettingsAudioOutputDecisionsNl extends TranslationsVideoSettingsAudioOutputDecisionsEn {
+	_TranslationsVideoSettingsAudioOutputDecisionsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get passthrough => 'Dolby-doorvoer';
+	@override String get pcmMultichannel => 'PCM meerkanaals';
+	@override String get pcmStereo => 'PCM stereo';
+}
+
 // Path: videoSettings.audioOutputModeDescriptions
 class _TranslationsVideoSettingsAudioOutputModeDescriptionsNl extends TranslationsVideoSettingsAudioOutputModeDescriptionsEn {
 	_TranslationsVideoSettingsAudioOutputModeDescriptionsNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -2228,6 +2326,17 @@ class _TranslationsVideoSettingsAudioNormalizationModesNl extends TranslationsVi
 	@override String get off => 'Uit';
 	@override String get normalize => 'Normaliseren';
 	@override String get night => 'Nachtmodus';
+}
+
+// Path: videoSettings.audioPriorities
+class _TranslationsVideoSettingsAudioPrioritiesNl extends TranslationsVideoSettingsAudioPrioritiesEn {
+	_TranslationsVideoSettingsAudioPrioritiesNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get evenVolume => 'Gelijkmatig volume';
+	@override String get originalDolby => 'Originele Dolby Atmos';
 }
 
 // Path: trackers.services
@@ -2357,6 +2466,7 @@ extension on TranslationsNl {
 			'common.mute' => 'Dempen',
 			'common.ok' => 'OK',
 			'common.off' => 'Uit',
+			'common.on' => 'Aan',
 			'common.seasonNumber' => ({required Object number}) => 'Seizoen ${number}',
 			'common.episodeNumberTitle' => ({required Object number, required Object title}) => 'Aflevering ${number} - ${title}',
 			'common.chapterNumber' => ({required Object number}) => 'Hoofdstuk ${number}',
@@ -2468,7 +2578,9 @@ extension on TranslationsNl {
 			'settings.defaultSleepTimer' => 'Standaard slaap timer',
 			'settings.minutesUnit' => ({required Object minutes}) => 'bij ${minutes} minuten',
 			'settings.rememberTrackSelections' => 'Onthoud track selecties per serie/film',
-			'settings.rememberTrackSelectionsDescription' => 'Onthoud audio- en ondertitelkeuzes per titel',
+			'settings.rememberTrackSelectionsDescription' => 'Start de volgende aflevering in de audio- en ondertiteltaal die je zelf koos. Synct via iCloud naar je andere Apple-apparaten.',
+			'settings.writeSeriesLanguageToServer' => 'Taal ook in Plex opslaan',
+			'settings.writeSeriesLanguageToServerDescription' => 'Schrijft de taal op de serie in Plex, zodat Android, Windows en de officiële Plex-apps hem ook volgen. Overschrijft wat je daar zelf hebt ingesteld.',
 			'settings.showChapterMarkersOnTimeline' => 'Hoofdstukmarkeringen op tijdlijn tonen',
 			'settings.showChapterMarkersOnTimelineDescription' => 'Verdeel de tijdlijn bij hoofdstukgrenzen',
 			'settings.clickVideoTogglesPlayback' => 'Klik op de video om afspelen/pauzeren te wisselen.',
@@ -2777,6 +2889,7 @@ extension on TranslationsNl {
 			'videoControls.longPressToUnlock' => 'Lang indrukken om te ontgrendelen',
 			'videoControls.timelineSlider' => 'Videotijdlijn',
 			'videoControls.volumeSlider' => 'Volumeniveau',
+			'videoControls.volumeHandledByDevice' => 'Volume wordt tijdens doorvoer door je audioapparaat geregeld',
 			'videoControls.endsAt' => ({required Object time}) => 'Eindigt om ${time}',
 			'videoControls.pipActive' => 'Afspelen in beeld-in-beeld',
 			'videoControls.pipFailed' => 'Beeld-in-beeld kon niet worden gestart',
@@ -2806,12 +2919,12 @@ extension on TranslationsNl {
 			'videoControls.airplayButton' => 'AirPlay',
 			'userStatus.admin' => 'Beheerder',
 			'userStatus.restricted' => 'Beperkt',
+			_ => null,
+		} ?? switch (path) {
 			'userStatus.protected' => 'Beschermd',
 			'userStatus.current' => 'HUIDIG',
 			'messages.markedAsWatched' => 'Gemarkeerd als gekeken',
 			'messages.markedAsUnwatched' => 'Gemarkeerd als ongekeken',
-			_ => null,
-		} ?? switch (path) {
 			'messages.markedAsWatchedOffline' => 'Gemarkeerd als gekeken (sync wanneer online)',
 			'messages.markedAsUnwatchedOffline' => 'Gemarkeerd als ongekeken (sync wanneer online)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Automatisch verwijderd: ${title}',
@@ -2982,6 +3095,11 @@ extension on TranslationsNl {
 			'discover.becauseYouLike' => ({required Object genre}) => 'Omdat je van ${genre} houdt',
 			'discover.hiddenGems' => 'Verborgen parels',
 			'discover.watchedBy' => ({required Object names}) => 'Bekeken door ${names}',
+			'discover.watchingSeriesBy' => ({required Object names}) => 'Kijken deze serie: ${names}',
+			'discover.statsPlays' => ({required Object count}) => '${count} keer afgespeeld',
+			'discover.statsViewers' => ({required Object count}) => 'door ${count} mensen',
+			'discover.statsWatchTime' => ({required Object duration}) => '${duration} bekeken',
+			'discover.statsRecent' => ({required Object count}) => '${count} in de laatste 30 dagen',
 			'discover.watchedByYou' => 'Jij',
 			'discover.watchedByAnd' => 'en',
 			'discover.watchedByOthers' => ({required Object count}) => '${count} anderen',
@@ -3315,6 +3433,8 @@ extension on TranslationsNl {
 			'watchTogether.guestSwitchFailed' => 'Kon niet schakelen — inhoud niet gevonden op deze server',
 			'downloads.title' => 'Downloads',
 			'downloads.manage' => 'Beheren',
+			_ => null,
+		} ?? switch (path) {
 			'downloads.tvShows' => 'Series',
 			'downloads.movies' => 'Films',
 			'downloads.noDownloads' => 'Nog geen downloads',
@@ -3324,8 +3444,6 @@ extension on TranslationsNl {
 			'downloads.retryDownload' => 'Download opnieuw proberen',
 			'downloads.downloadQueued' => 'Download in wachtrij',
 			'downloads.downloadResumed' => 'Download hervat',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.serverErrorBitrate' => 'Serverfout: bestand overschrijdt mogelijk de externe bitrate-limiet',
 			'downloads.episodesQueued' => ({required Object count}) => '${count} afleveringen in wachtrij voor download',
 			'downloads.downloadDeleted' => 'Download verwijderd',
@@ -3471,6 +3589,9 @@ extension on TranslationsNl {
 			'videoSettings.audioOutputModes.auto' => 'Automatisch',
 			'videoSettings.audioOutputModes.passthrough' => 'Doorvoeren',
 			'videoSettings.audioOutputModes.pcm' => 'PCM (decoderen)',
+			'videoSettings.audioOutputDecisions.passthrough' => 'Dolby-doorvoer',
+			'videoSettings.audioOutputDecisions.pcmMultichannel' => 'PCM meerkanaals',
+			'videoSettings.audioOutputDecisions.pcmStereo' => 'PCM stereo',
 			'videoSettings.audioOutputModeDescriptions.auto' => 'Verbreedt naar meerkanaals waar de uitgang dat toelaat; stuurt nooit een bitstream',
 			'videoSettings.audioOutputModeDescriptions.passthrough' => 'Stuur Dolby altijd onbewerkt naar de ontvanger',
 			'videoSettings.audioOutputModeDescriptions.pcm' => 'Decodeer altijd in de app',
@@ -3485,6 +3606,14 @@ extension on TranslationsNl {
 			'videoSettings.audioNormalizationModes.off' => 'Uit',
 			'videoSettings.audioNormalizationModes.normalize' => 'Normaliseren',
 			'videoSettings.audioNormalizationModes.night' => 'Nachtmodus',
+			'videoSettings.audioNormalizationSuspended' => 'Dolby-doorvoer loopt, dus volume gelijkmaken staat uit. Je receiver bepaalt het niveau.',
+			'videoSettings.audioPriorityTitle' => 'Prioriteit',
+			'videoSettings.audioPriorities.evenVolume' => 'Gelijkmatig volume',
+			'videoSettings.audioPriorities.originalDolby' => 'Originele Dolby Atmos',
+			'videoSettings.audioLevelVolume' => 'Volume gelijkmaken',
+			'videoSettings.audioLevelVolumeDescription' => 'Brengt elke titel op hetzelfde niveau als de rest van je tv',
+			'videoSettings.audioReduceLoudSounds' => 'Verminder harde geluiden',
+			'videoSettings.audioReduceLoudSoundsDescription' => 'Verkleint het verschil tussen dialoog en harde effecten',
 			'videoSettings.tryLowerQuality' => 'Probeer lagere kwaliteit',
 			'videoSettings.audioPassthroughUnavailable' => 'Deze uitgang accepteert geen Dolby-bitstream — overgeschakeld op gedecodeerd geluid.',
 			'performanceOverlay.color' => 'Kleur',
@@ -3502,6 +3631,14 @@ extension on TranslationsNl {
 			'performanceOverlay.sampleRate' => 'Samplefrequentie',
 			'performanceOverlay.audioDriver' => 'Audiostuurprogramma',
 			'performanceOverlay.audioOutFormat' => 'Uitvoerformaat',
+			'performanceOverlay.audioRequested' => 'Gevraagd',
+			'performanceOverlay.audioActual' => 'Werkelijk',
+			'performanceOverlay.audioMeasuring' => 'meten…',
+			'performanceOverlay.audioBitstream' => 'bitstream',
+			'performanceOverlay.audioFellBack' => 'terugval',
+			'performanceOverlay.audioFilters' => 'Filters',
+			'performanceOverlay.audioFiltersNone' => 'geen',
+			'performanceOverlay.volume' => 'Volume',
 			'performanceOverlay.pixelFormat' => 'Pixelformaat',
 			'performanceOverlay.hwFormat' => 'HW-formaat',
 			'performanceOverlay.matrix' => 'Matrix',
@@ -3810,6 +3947,8 @@ extension on TranslationsNl {
 			'seerr.filterShows' => 'Series',
 			'seerr.approve' => 'Goedkeuren',
 			'seerr.decline' => 'Afwijzen',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.edit' => 'Bewerken',
 			'seerr.cancelRequest' => 'Aanvraag annuleren',
 			'seerr.cancelRequestConfirm' => 'Deze aanvraag annuleren?',
@@ -3828,6 +3967,47 @@ extension on TranslationsNl {
 			'seerr.errorForbidden' => 'Je hebt hier geen rechten voor.',
 			'seerr.errorNetwork' => 'Kan de server niet bereiken. Controleer de URL.',
 			'seerr.errorGeneric' => 'Er ging iets mis. Probeer opnieuw.',
+			'tautulli.title' => 'Tautulli',
+			'tautulli.subtitle' => 'Tautulli houdt bij wie wat kijkt op je Plex-server. Koppel hem om kijkers, statistieken en live activiteit in Pleya te zien.',
+			'tautulli.adminOnlyNote' => 'Tautulli heeft één sleutel die zijn hele beheer-API opent, dus die blijft op dit toestel en alleen jij ziet wat hij meldt. De mensen met wie je je server deelt merken er niets van en hoeven niets in te stellen.',
+			'tautulli.serverUrl' => 'Tautulli-adres',
+			'tautulli.serverUrlHint' => 'http://192.168.1.10:8181 of https://tautulli.voorbeeld.nl',
+			'tautulli.authMode' => 'Hoe koppelen',
+			'tautulli.modeDevice' => 'Apparaat-token',
+			'tautulli.modeDeviceHelp' => 'Ga in Tautulli naar Settings, Tautulli Remote App, en registreer een apparaat. Plak het token hier binnen vijf minuten. Je vaste API-key blijft zo buiten de app, en je kunt dit ene apparaat later weer intrekken.',
+			'tautulli.modeApiKey' => 'API-key',
+			'tautulli.modeApiKeyHelp' => 'De vaste sleutel uit Settings, Web Interface. Die geeft volledige toegang tot Tautulli, dus gebruik hem alleen als het apparaat-token niet lukt.',
+			'tautulli.deviceToken' => 'Apparaat-token',
+			'tautulli.apiKey' => 'API-key',
+			'tautulli.testConnection' => 'Verbinding testen',
+			'tautulli.save' => 'Opslaan',
+			'tautulli.connected' => 'Verbonden',
+			'tautulli.disconnect' => 'Ontkoppelen',
+			'tautulli.disconnectConfirm' => 'Tautulli ontkoppelen?',
+			'tautulli.disconnectConfirmBody' => 'Pleya vergeet het adres en het token. Kijkers, statistieken en live activiteit verdwijnen tot je opnieuw koppelt.',
+			'tautulli.setupOnDesktopNote' => 'Makkelijker op je telefoon of computer: het adres en het token typen lastig met een afstandsbediening.',
+			'tautulli.errorNetwork' => 'Tautulli niet bereikbaar. Controleer het adres en of hij vanaf dit toestel te bereiken is.',
+			'tautulli.errorAuth' => 'Tautulli weigert deze sleutel.',
+			'tautulli.errorTokenExpired' => 'Tautulli weigert dit token. Een apparaat-token is maar vijf minuten geldig, dus maak een nieuwe aan en probeer opnieuw.',
+			'tautulli.errorUrlRequired' => 'Vul het adres van je Tautulli-server in.',
+			'tautulli.errorTokenRequired' => 'Vul een token in.',
+			'tautulli.errorGeneric' => 'Koppelen is niet gelukt.',
+			'nowWatching.title' => 'Nu aan het kijken',
+			'nowWatching.tooltip' => 'Bekijk wie er nu kijkt',
+			'nowWatching.streams' => ({required Object count}) => '${count} streams',
+			'nowWatching.oneStream' => '1 stream',
+			'nowWatching.transcoding' => ({required Object count}) => '${count} transcoderen',
+			'nowWatching.directPlay' => 'Direct play',
+			'nowWatching.directStream' => 'Direct stream',
+			'nowWatching.transcode' => 'Transcoderen',
+			'nowWatching.paused' => 'Gepauzeerd',
+			'nowWatching.remaining' => ({required Object time}) => 'nog ${time}',
+			'nowWatching.watchingNow' => ({required Object name}) => '${name} kijkt dit nu',
+			'nowWatching.hardware' => 'Hardware',
+			'nowWatching.onLan' => 'Op je netwerk',
+			'nowWatching.onWan' => 'Van buiten',
+			'nowWatching.unavailable' => 'Tautulli gaf geen antwoord',
+			'nowWatching.sidebarLabel' => 'Nu aan het kijken',
 			_ => null,
 		};
 	}

@@ -413,6 +413,9 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
       // Plex writes track changes immediately. Jellyfin persists selected
       // indexes through playback progress reports.
       persistTrackPreference: plexClient != null ? _plexTrackPersister(() => plexClient) : null,
+      // Plex is the only backend with a per-series language override; Jellyfin
+      // relies on the local store plus iCloud alone.
+      persistSeriesLanguage: plexClient != null ? _plexSeriesLanguagePersister(() => plexClient) : null,
       getProfileSettings: getProfileSettings,
       waitForProfileSettings: _waitForProfileSettingsIfNeeded,
       metadata: metadata,

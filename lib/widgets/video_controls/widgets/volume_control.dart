@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../../../focus/dpad_navigator.dart';
 import '../../../focus/key_event_utils.dart';
 import '../../../mpv/mpv.dart';
+import '../../../services/audio_output_coordinator.dart';
 import '../../../services/settings_service.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../focus/focusable_wrapper.dart';
@@ -55,7 +56,16 @@ class _VolumeControlState extends State<VolumeControl> {
 
   SettingsService get _settings => SettingsService.instance;
 
+  /// True while mpv is measurably handing over a compressed stream.
+  ///
+  /// Software volume cannot touch one — mpv has no decoded samples to scale —
+  /// so every path that writes it stops here rather than moving a slider that
+  /// changes nothing. Keyed on the measurement, not on the passthrough setting:
+  /// a requested bitstream that fell back to PCM has a working volume again.
+  bool get _volumeIsExternal => AudioOutputCoordinator.bitstreamActive.value;
+
   void _enterAdjustMode() {
+    if (_volumeIsExternal) return;
     setState(() {
       _isAdjustMode = true;
     });
@@ -68,6 +78,7 @@ class _VolumeControlState extends State<VolumeControl> {
   }
 
   Future<void> _adjustVolume(double delta) async {
+    if (_volumeIsExternal) return;
     final currentVolume = widget.player.state.volume;
     final maxVolume = _settings.read(SettingsService.maxVolume).toDouble();
     final newVolume = (currentVolume + delta).clamp(0.0, maxVolume);
@@ -128,65 +139,81 @@ class _VolumeControlState extends State<VolumeControl> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: _settings.listenable(SettingsService.maxVolume),
-      builder: (context, maxVolume, _) {
-        return StreamBuilder<double>(
-          stream: widget.player.streams.volume,
-          initialData: widget.player.state.volume,
-          builder: (context, snapshot) {
-            final volume = snapshot.data ?? 100.0;
-            final isMuted = volume == 0;
-            final muteButton = Semantics(
-              label: isMuted ? t.videoControls.unmuteButton : t.videoControls.muteButton,
-              button: true,
-              excludeSemantics: true,
-              child: IconButton(
-                icon: AppIcon(
-                  isMuted ? Symbols.volume_off_rounded : Symbols.volume_up_rounded,
-                  fill: 1,
-                  color: Colors.white,
+    return ValueListenableBuilder<bool>(
+      valueListenable: AudioOutputCoordinator.bitstreamActive,
+      builder: (context, external, _) => ValueListenableBuilder<int>(
+        valueListenable: _settings.listenable(SettingsService.maxVolume),
+        builder: (context, maxVolume, _) {
+          return StreamBuilder<double>(
+            stream: widget.player.streams.volume,
+            initialData: widget.player.state.volume,
+            builder: (context, snapshot) {
+              final volume = snapshot.data ?? 100.0;
+              final isMuted = volume == 0;
+              final muteButton = Semantics(
+                label: external
+                    ? t.videoControls.volumeHandledByDevice
+                    : (isMuted ? t.videoControls.unmuteButton : t.videoControls.muteButton),
+                button: true,
+                excludeSemantics: true,
+                child: IconButton(
+                  icon: AppIcon(
+                    isMuted ? Symbols.volume_off_rounded : Symbols.volume_up_rounded,
+                    fill: 1,
+                    color: Colors.white,
+                  ),
+                  onPressed: external
+                      ? null
+                      : () async {
+                          final newVolume = isMuted ? 100.0 : 0.0;
+                          await widget.player.setVolume(newVolume);
+                          await _settings.write(SettingsService.volume, newVolume);
+                        },
                 ),
-                onPressed: () async {
-                  final newVolume = isMuted ? 100.0 : 0.0;
-                  await widget.player.setVolume(newVolume);
-                  await _settings.write(SettingsService.volume, newVolume);
-                },
-              ),
-            );
+              );
 
-            return Row(
-              mainAxisSize: .min,
-              children: [
-                if (widget.focusNode != null)
-                  FocusableWrapper(
-                    focusNode: widget.focusNode,
-                    onSelect: _enterAdjustMode,
-                    onKeyEvent: _handleKeyEvent,
-                    onFocusChange: _handleFocusChange,
-                    borderRadius: 20,
-                    autoScroll: false,
-                    useBackgroundFocus: true,
-                    disableScale: true,
-                    semanticLabel: () {
-                      if (_isAdjustMode) return t.videoControls.volumeSlider;
-                      return isMuted ? t.videoControls.unmuteButton : t.videoControls.muteButton;
-                    }(),
-                    child: muteButton,
-                  )
-                else
-                  muteButton,
-                const SizedBox(width: 8),
-                _buildVolumeSlider(volume, maxVolume),
-              ],
-            );
-          },
-        );
-      },
+              final row = Row(
+                mainAxisSize: .min,
+                children: [
+                  if (widget.focusNode != null)
+                    FocusableWrapper(
+                      focusNode: widget.focusNode,
+                      onSelect: _enterAdjustMode,
+                      onKeyEvent: _handleKeyEvent,
+                      onFocusChange: _handleFocusChange,
+                      borderRadius: 20,
+                      autoScroll: false,
+                      useBackgroundFocus: true,
+                      disableScale: true,
+                      semanticLabel: () {
+                        if (external) return t.videoControls.volumeHandledByDevice;
+                        if (_isAdjustMode) return t.videoControls.volumeSlider;
+                        return isMuted ? t.videoControls.unmuteButton : t.videoControls.muteButton;
+                      }(),
+                      child: muteButton,
+                    )
+                  else
+                    muteButton,
+                  const SizedBox(width: 8),
+                  _buildVolumeSlider(volume, maxVolume, external),
+                ],
+              );
+
+              if (!external) return row;
+              // Dimmed and explained rather than hidden: the control vanishing
+              // mid-playback reads as a bug, and the reason is worth knowing.
+              return Tooltip(
+                message: t.videoControls.volumeHandledByDevice,
+                child: Opacity(opacity: 0.4, child: row),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildVolumeSlider(double volume, int maxVolume) {
+  Widget _buildVolumeSlider(double volume, int maxVolume, bool external) {
     final maxVolumeDouble = maxVolume.toDouble();
 
     // Calculate 100% marker position as fraction of slider width
@@ -230,15 +257,17 @@ class _VolumeControlState extends State<VolumeControl> {
                 tickMarkShape: SliderTickMarkShape.noTickMark,
               ),
               child: Semantics(
-                label: t.videoControls.volumeSlider,
+                label: external ? t.videoControls.volumeHandledByDevice : t.videoControls.volumeSlider,
                 slider: true,
                 child: Slider(
                   value: volume.clamp(0.0, maxVolumeDouble),
                   min: 0.0,
                   max: maxVolumeDouble,
-                  onChanged: (value) {
-                    widget.player.setVolume(value);
-                  },
+                  onChanged: external
+                      ? null
+                      : (value) {
+                          widget.player.setVolume(value);
+                        },
                   onChangeEnd: (value) async {
                     await _settings.write(SettingsService.volume, value);
                   },

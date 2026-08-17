@@ -30,7 +30,7 @@ of posters underneath.
 
 Hover a row title (desktop) or navigate to it and choose **See all** to open the whole row.
 
-![Continue watching and a Top 10 row](/docs-media/home-rows.png)
+![Continue Watching with progress bars, and a recommendation row below it](/docs-media/home-rows.png)
 
 ## The match percentage
 

@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../../i18n/strings.g.dart';
 import '../../../../mpv/mpv.dart';
 import '../../../../services/apple_audio_session_service.dart';
+import '../../../../services/audio_output_coordinator.dart';
 import '../../../../utils/audio_output_labels.dart';
 import '../../../../widgets/app_icon.dart';
 import 'performance_stats.dart';
@@ -50,6 +51,50 @@ class _PlayerPerformanceOverlayState extends State<PlayerPerformanceOverlay> {
   /// tick, so the route is at most one poll interval stale.
   String? get _renderingLabel => audioRenderingLabel(AppleAudioSessionService.instance.lastKnown.renderingMode);
 
+  /// The audio route, taken from the coordinator's measurement rather than
+  /// derived a second time here.
+  ///
+  /// The overlay used to poll `current-ao` and `audio-out-params/format` on its
+  /// own timer, which meant two answers to one question and a blank spot during
+  /// the window the coordinator was still retrying. What was asked for and what
+  /// mpv settled on now come from the same place, and the pair is what tells
+  /// you whether a bitstream really landed.
+  List<_Metric> _audioRouteMetrics() {
+    final coordinator = AudioOutputCoordinator.current;
+    if (coordinator == null) {
+      // Backends without a coordinator (ExoPlayer) still have the live poll.
+      // Empty, not null, is what mpv returns before the AO is up.
+      return [
+        if (_stats.currentAo != null && _stats.currentAo!.isNotEmpty)
+          _metric(t.performanceOverlay.audioDriver, _stats.currentAo!),
+        if (_stats.audioOutFormat != null && _stats.audioOutFormat!.isNotEmpty)
+          _metric(t.performanceOverlay.audioOutFormat, _stats.audioOutFormat!),
+      ];
+    }
+
+    final requested = coordinator.decision;
+    final verified = coordinator.verifiedOutput;
+    final diagnostics = coordinator.diagnostics;
+    return [
+      if (requested != null) _metric(t.performanceOverlay.audioRequested, audioOutputDecisionLabel(requested)),
+      _metric(
+        t.performanceOverlay.audioActual,
+        verified == null ? t.performanceOverlay.audioMeasuring : verifiedAudioOutputLabel(verified),
+      ),
+      if (verified?.format != null) _metric(t.performanceOverlay.audioOutFormat, verified!.format!),
+      if (diagnostics?.filters != null)
+        _metric(
+          t.performanceOverlay.audioFilters,
+          diagnostics!.hasFilters ? diagnostics.filters! : t.performanceOverlay.audioFiltersNone,
+        ),
+      if (diagnostics?.volume != null)
+        _metric(
+          t.performanceOverlay.volume,
+          '${diagnostics!.volume}${diagnostics.volumeMax == null ? '' : ' / ${diagnostics.volumeMax}'}',
+        ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMpv = _stats.playerType == 'mpv';
@@ -77,15 +122,7 @@ class _PlayerPerformanceOverlayState extends State<PlayerPerformanceOverlay> {
         // What the system says it is rendering, next to what mpv is feeding
         // it — the pair is what tells you whether Atmos actually landed.
         if (_renderingLabel != null) _metric(t.videoSettings.audioOutput, _renderingLabel!),
-        // Which output mpv settled on and in what format. `avfoundation` +
-        // `spdif-eac3` is a live bitstream; `audiounit` + `s16`/`float` means
-        // it decoded, whatever the passthrough setting was asked to do.
-        // Leeg, niet null, is wat mpv teruggeeft zolang de AO nog niet staat —
-        // vandaar dezelfde isNotEmpty-guard als aspectName hierboven.
-        if (_stats.currentAo != null && _stats.currentAo!.isNotEmpty)
-          _metric(t.performanceOverlay.audioDriver, _stats.currentAo!),
-        if (_stats.audioOutFormat != null && _stats.audioOutFormat!.isNotEmpty)
-          _metric(t.performanceOverlay.audioOutFormat, _stats.audioOutFormat!),
+        ..._audioRouteMetrics(),
         if (_stats.hasValidAudioBitrate) _metric(t.fileInfo.bitrate, _stats.audioBitrateFormatted),
         if (!isMpv && _stats.audioDecoderName != null)
           _metric(t.performanceOverlay.decoder, _stats.audioDecoderFormatted),

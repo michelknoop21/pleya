@@ -87,6 +87,8 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsMatchScreenEn matchScreen = TranslationsMatchScreenEn.internal(_root);
 	late final TranslationsServerTasksEn serverTasks = TranslationsServerTasksEn.internal(_root);
 	late final TranslationsSeerrEn seerr = TranslationsSeerrEn.internal(_root);
+	late final TranslationsTautulliEn tautulli = TranslationsTautulliEn.internal(_root);
+	late final TranslationsNowWatchingEn nowWatching = TranslationsNowWatchingEn.internal(_root);
 	late final TranslationsTraktEn trakt = TranslationsTraktEn.internal(_root);
 	late final TranslationsTrackersEn trackers = TranslationsTrackersEn.internal(_root);
 	late final TranslationsAddServerEn addServer = TranslationsAddServerEn.internal(_root);
@@ -305,6 +307,9 @@ class TranslationsCommonEn {
 
 	/// en: 'Off'
 	String get off => 'Off';
+
+	/// en: 'On'
+	String get on => 'On';
 
 	/// en: 'Season ${number}'
 	String seasonNumber({required Object number}) => 'Season ${number}';
@@ -687,8 +692,14 @@ class TranslationsSettingsEn {
 	/// en: 'Remember track selections per show/movie'
 	String get rememberTrackSelections => 'Remember track selections per show/movie';
 
-	/// en: 'Remember audio and subtitle choices per title'
-	String get rememberTrackSelectionsDescription => 'Remember audio and subtitle choices per title';
+	/// en: 'Start the next episode in the audio and subtitle language you last picked by hand. Syncs to your other Apple devices via iCloud.'
+	String get rememberTrackSelectionsDescription => 'Start the next episode in the audio and subtitle language you last picked by hand. Syncs to your other Apple devices via iCloud.';
+
+	/// en: 'Also save the language to Plex'
+	String get writeSeriesLanguageToServer => 'Also save the language to Plex';
+
+	/// en: 'Writes the language onto the show in Plex, so Android, Windows and the official Plex apps follow it too. Overwrites what you set by hand there.'
+	String get writeSeriesLanguageToServerDescription => 'Writes the language onto the show in Plex, so Android, Windows and the official Plex apps follow it too. Overwrites what you set by hand there.';
 
 	/// en: 'Show chapter markers on seek bar'
 	String get showChapterMarkersOnTimeline => 'Show chapter markers on seek bar';
@@ -1145,6 +1156,9 @@ class TranslationsSettingsEn {
 
 	/// en: 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.'
 	String get personalizedRecommendationsDescription => 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.';
+
+	/// en: 'App & playback'
+	String get sectionLibrary => 'App & playback';
 }
 
 // Path: search
@@ -1649,6 +1663,9 @@ class TranslationsVideoControlsEn {
 
 	/// en: 'Volume level'
 	String get volumeSlider => 'Volume level';
+
+	/// en: 'Volume is controlled by your audio device during passthrough'
+	String get volumeHandledByDevice => 'Volume is controlled by your audio device during passthrough';
 
 	/// en: 'Ends at ${time}'
 	String endsAt({required Object time}) => 'Ends at ${time}';
@@ -2332,6 +2349,21 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Watched by ${names}'
 	String watchedBy({required Object names}) => 'Watched by ${names}';
+
+	/// en: 'Watching this show: ${names}'
+	String watchingSeriesBy({required Object names}) => 'Watching this show: ${names}';
+
+	/// en: 'Played ${count} times'
+	String statsPlays({required Object count}) => 'Played ${count} times';
+
+	/// en: 'by ${count} people'
+	String statsViewers({required Object count}) => 'by ${count} people';
+
+	/// en: '${duration} watched'
+	String statsWatchTime({required Object duration}) => '${duration} watched';
+
+	/// en: '${count} in the last 30 days'
+	String statsRecent({required Object count}) => '${count} in the last 30 days';
 
 	/// en: 'You'
 	String get watchedByYou => 'You';
@@ -3685,6 +3717,7 @@ class TranslationsVideoSettingsEn {
 	String get audioOutputTitle => 'Audio Output Mode';
 
 	late final TranslationsVideoSettingsAudioOutputModesEn audioOutputModes = TranslationsVideoSettingsAudioOutputModesEn.internal(_root);
+	late final TranslationsVideoSettingsAudioOutputDecisionsEn audioOutputDecisions = TranslationsVideoSettingsAudioOutputDecisionsEn.internal(_root);
 	late final TranslationsVideoSettingsAudioOutputModeDescriptionsEn audioOutputModeDescriptions = TranslationsVideoSettingsAudioOutputModeDescriptionsEn.internal(_root);
 	late final TranslationsVideoSettingsAudioOutputRenderingEn audioOutputRendering = TranslationsVideoSettingsAudioOutputRenderingEn.internal(_root);
 
@@ -3699,8 +3732,25 @@ class TranslationsVideoSettingsEn {
 
 	late final TranslationsVideoSettingsAudioNormalizationModesEn audioNormalizationModes = TranslationsVideoSettingsAudioNormalizationModesEn.internal(_root);
 
-	/// en: 'Loudness normalization is paused while Dolby bitstreaming is active.'
-	String get audioNormalizationSuspended => 'Loudness normalization is paused while Dolby bitstreaming is active.';
+	/// en: 'Dolby passthrough is running, so volume levelling is paused. Your receiver sets the level.'
+	String get audioNormalizationSuspended => 'Dolby passthrough is running, so volume levelling is paused. Your receiver sets the level.';
+
+	/// en: 'Priority'
+	String get audioPriorityTitle => 'Priority';
+
+	late final TranslationsVideoSettingsAudioPrioritiesEn audioPriorities = TranslationsVideoSettingsAudioPrioritiesEn.internal(_root);
+
+	/// en: 'Even out volume'
+	String get audioLevelVolume => 'Even out volume';
+
+	/// en: 'Brings every title to the same level as the rest of your TV'
+	String get audioLevelVolumeDescription => 'Brings every title to the same level as the rest of your TV';
+
+	/// en: 'Reduce loud sounds'
+	String get audioReduceLoudSounds => 'Reduce loud sounds';
+
+	/// en: 'Narrows the gap between dialogue and loud effects'
+	String get audioReduceLoudSoundsDescription => 'Narrows the gap between dialogue and loud effects';
 
 	/// en: 'Try lower quality'
 	String get tryLowerQuality => 'Try lower quality';
@@ -3761,6 +3811,30 @@ class TranslationsPerformanceOverlayEn {
 
 	/// en: 'Out Format'
 	String get audioOutFormat => 'Out Format';
+
+	/// en: 'Requested'
+	String get audioRequested => 'Requested';
+
+	/// en: 'Actual'
+	String get audioActual => 'Actual';
+
+	/// en: 'measuring…'
+	String get audioMeasuring => 'measuring…';
+
+	/// en: 'bitstream'
+	String get audioBitstream => 'bitstream';
+
+	/// en: 'fell back'
+	String get audioFellBack => 'fell back';
+
+	/// en: 'Filters'
+	String get audioFilters => 'Filters';
+
+	/// en: 'none'
+	String get audioFiltersNone => 'none';
+
+	/// en: 'Volume'
+	String get volume => 'Volume';
 
 	/// en: 'Pixel Fmt'
 	String get pixelFormat => 'Pixel Fmt';
@@ -4433,6 +4507,153 @@ class TranslationsSeerrEn {
 
 	/// en: 'Something went wrong. Try again.'
 	String get errorGeneric => 'Something went wrong. Try again.';
+
+	/// en: 'Search for a movie or show to request'
+	String get searchPlaceholder => 'Search for a movie or show to request';
+
+	/// en: 'By streaming service'
+	String get byStreamingService => 'By streaming service';
+}
+
+// Path: tautulli
+class TranslationsTautulliEn {
+	TranslationsTautulliEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Tautulli'
+	String get title => 'Tautulli';
+
+	/// en: 'Tautulli tracks who watches what on your Plex server. Connect it to see viewers, statistics and live activity inside Pleya.'
+	String get subtitle => 'Tautulli tracks who watches what on your Plex server. Connect it to see viewers, statistics and live activity inside Pleya.';
+
+	/// en: 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.'
+	String get adminOnlyNote => 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.';
+
+	/// en: 'Tautulli address'
+	String get serverUrl => 'Tautulli address';
+
+	/// en: 'http://192.168.1.10:8181 or https://tautulli.example.com'
+	String get serverUrlHint => 'http://192.168.1.10:8181 or https://tautulli.example.com';
+
+	/// en: 'How to connect'
+	String get authMode => 'How to connect';
+
+	/// en: 'Device token'
+	String get modeDevice => 'Device token';
+
+	/// en: 'In Tautulli, open Settings, Tautulli Remote App, and register a device. Paste the generated token here within five minutes. Your permanent API key stays out of the app, and you can revoke this one device later.'
+	String get modeDeviceHelp => 'In Tautulli, open Settings, Tautulli Remote App, and register a device. Paste the generated token here within five minutes. Your permanent API key stays out of the app, and you can revoke this one device later.';
+
+	/// en: 'API key'
+	String get modeApiKey => 'API key';
+
+	/// en: 'The permanent key from Settings, Web Interface. It grants full access to Tautulli, so use it only if the device token does not work for you.'
+	String get modeApiKeyHelp => 'The permanent key from Settings, Web Interface. It grants full access to Tautulli, so use it only if the device token does not work for you.';
+
+	/// en: 'Device token'
+	String get deviceToken => 'Device token';
+
+	/// en: 'API key'
+	String get apiKey => 'API key';
+
+	/// en: 'Test connection'
+	String get testConnection => 'Test connection';
+
+	/// en: 'Save'
+	String get save => 'Save';
+
+	/// en: 'Connected'
+	String get connected => 'Connected';
+
+	/// en: 'Disconnect'
+	String get disconnect => 'Disconnect';
+
+	/// en: 'Disconnect Tautulli?'
+	String get disconnectConfirm => 'Disconnect Tautulli?';
+
+	/// en: 'Pleya forgets the address and the token. Viewers, statistics and live activity disappear until you connect again.'
+	String get disconnectConfirmBody => 'Pleya forgets the address and the token. Viewers, statistics and live activity disappear until you connect again.';
+
+	/// en: 'Easier on your phone or computer: the address and token are long to type with a remote.'
+	String get setupOnDesktopNote => 'Easier on your phone or computer: the address and token are long to type with a remote.';
+
+	/// en: 'Could not reach Tautulli. Check the address and whether it is reachable from this device.'
+	String get errorNetwork => 'Could not reach Tautulli. Check the address and whether it is reachable from this device.';
+
+	/// en: 'Tautulli rejected this key.'
+	String get errorAuth => 'Tautulli rejected this key.';
+
+	/// en: 'Tautulli rejected this token. A device token is only valid for five minutes, so generate a new one and try again.'
+	String get errorTokenExpired => 'Tautulli rejected this token. A device token is only valid for five minutes, so generate a new one and try again.';
+
+	/// en: 'Enter the address of your Tautulli server.'
+	String get errorUrlRequired => 'Enter the address of your Tautulli server.';
+
+	/// en: 'Enter a token.'
+	String get errorTokenRequired => 'Enter a token.';
+
+	/// en: 'Connecting failed.'
+	String get errorGeneric => 'Connecting failed.';
+}
+
+// Path: nowWatching
+class TranslationsNowWatchingEn {
+	TranslationsNowWatchingEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Now watching'
+	String get title => 'Now watching';
+
+	/// en: 'See who is watching now'
+	String get tooltip => 'See who is watching now';
+
+	/// en: '${count} streams'
+	String streams({required Object count}) => '${count} streams';
+
+	/// en: '1 stream'
+	String get oneStream => '1 stream';
+
+	/// en: '${count} transcoding'
+	String transcoding({required Object count}) => '${count} transcoding';
+
+	/// en: 'Direct play'
+	String get directPlay => 'Direct play';
+
+	/// en: 'Direct stream'
+	String get directStream => 'Direct stream';
+
+	/// en: 'Transcode'
+	String get transcode => 'Transcode';
+
+	/// en: 'Paused'
+	String get paused => 'Paused';
+
+	/// en: '${time} left'
+	String remaining({required Object time}) => '${time} left';
+
+	/// en: '${name} is watching this now'
+	String watchingNow({required Object name}) => '${name} is watching this now';
+
+	/// en: 'Hardware'
+	String get hardware => 'Hardware';
+
+	/// en: 'On your network'
+	String get onLan => 'On your network';
+
+	/// en: 'Remote'
+	String get onWan => 'Remote';
+
+	/// en: 'Tautulli did not answer'
+	String get unavailable => 'Tautulli did not answer';
+
+	/// en: 'Now watching'
+	String get sidebarLabel => 'Now watching';
 }
 
 // Path: trakt
@@ -5319,6 +5540,24 @@ class TranslationsVideoSettingsAudioOutputModesEn {
 	String get pcm => 'PCM (decode)';
 }
 
+// Path: videoSettings.audioOutputDecisions
+class TranslationsVideoSettingsAudioOutputDecisionsEn {
+	TranslationsVideoSettingsAudioOutputDecisionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Dolby bitstream'
+	String get passthrough => 'Dolby bitstream';
+
+	/// en: 'PCM multichannel'
+	String get pcmMultichannel => 'PCM multichannel';
+
+	/// en: 'PCM stereo'
+	String get pcmStereo => 'PCM stereo';
+}
+
 // Path: videoSettings.audioOutputModeDescriptions
 class TranslationsVideoSettingsAudioOutputModeDescriptionsEn {
 	TranslationsVideoSettingsAudioOutputModeDescriptionsEn.internal(this._root);
@@ -5377,6 +5616,21 @@ class TranslationsVideoSettingsAudioNormalizationModesEn {
 
 	/// en: 'Night mode'
 	String get night => 'Night mode';
+}
+
+// Path: videoSettings.audioPriorities
+class TranslationsVideoSettingsAudioPrioritiesEn {
+	TranslationsVideoSettingsAudioPrioritiesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Even volume'
+	String get evenVolume => 'Even volume';
+
+	/// en: 'Original Dolby Atmos'
+	String get originalDolby => 'Original Dolby Atmos';
 }
 
 // Path: trackers.services
@@ -5554,6 +5808,7 @@ extension on Translations {
 			'common.mute' => 'Mute',
 			'common.ok' => 'OK',
 			'common.off' => 'Off',
+			'common.on' => 'On',
 			'common.seasonNumber' => ({required Object number}) => 'Season ${number}',
 			'common.episodeNumberTitle' => ({required Object number, required Object title}) => 'Episode ${number} - ${title}',
 			'common.chapterNumber' => ({required Object number}) => 'Chapter ${number}',
@@ -5672,7 +5927,9 @@ extension on Translations {
 			'settings.defaultSleepTimer' => 'Default Sleep Timer',
 			'settings.minutesUnit' => ({required Object minutes}) => '${minutes} minutes',
 			'settings.rememberTrackSelections' => 'Remember track selections per show/movie',
-			'settings.rememberTrackSelectionsDescription' => 'Remember audio and subtitle choices per title',
+			'settings.rememberTrackSelectionsDescription' => 'Start the next episode in the audio and subtitle language you last picked by hand. Syncs to your other Apple devices via iCloud.',
+			'settings.writeSeriesLanguageToServer' => 'Also save the language to Plex',
+			'settings.writeSeriesLanguageToServerDescription' => 'Writes the language onto the show in Plex, so Android, Windows and the official Plex apps follow it too. Overwrites what you set by hand there.',
 			'settings.showChapterMarkersOnTimeline' => 'Show chapter markers on seek bar',
 			'settings.showChapterMarkersOnTimelineDescription' => 'Segment the seek bar at chapter boundaries',
 			'settings.clickVideoTogglesPlayback' => 'Click on video to toggle play/pause',
@@ -5825,6 +6082,7 @@ extension on Translations {
 			'settings.behavior' => 'Behavior',
 			'settings.personalizedRecommendations' => 'Personalized recommendations',
 			'settings.personalizedRecommendationsDescription' => 'Learn your taste on this device to suggest Top Picks and more. Nothing leaves your device.',
+			'settings.sectionLibrary' => 'App & playback',
 			'search.hint' => 'Search movies, shows, music...',
 			'search.tryDifferentTerm' => 'Try a different search term',
 			'search.searchYourMedia' => 'Search your media',
@@ -6002,13 +6260,14 @@ extension on Translations {
 			'videoControls.longPressToUnlock' => 'Long press to unlock',
 			'videoControls.timelineSlider' => 'Video timeline',
 			'videoControls.volumeSlider' => 'Volume level',
+			'videoControls.volumeHandledByDevice' => 'Volume is controlled by your audio device during passthrough',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.endsAt' => ({required Object time}) => 'Ends at ${time}',
 			'videoControls.pipActive' => 'Playing in Picture-in-Picture',
 			'videoControls.pipFailed' => 'Picture-in-picture failed to start',
 			'videoControls.screenshotSaved' => 'Screenshot saved',
 			'videoControls.zoomPercent' => ({required Object percent}) => 'Zoom ${percent}%',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.pipErrors.androidVersion' => 'Requires Android 8.0 or newer',
 			'videoControls.pipErrors.iosVersion' => 'Requires iOS 15.0 or newer',
 			'videoControls.pipErrors.permissionDisabled' => 'Picture-in-picture is disabled. Enable it in system settings.',
@@ -6214,6 +6473,11 @@ extension on Translations {
 			'discover.becauseYouLike' => ({required Object genre}) => 'Because you like ${genre}',
 			'discover.hiddenGems' => 'Hidden Gems',
 			'discover.watchedBy' => ({required Object names}) => 'Watched by ${names}',
+			'discover.watchingSeriesBy' => ({required Object names}) => 'Watching this show: ${names}',
+			'discover.statsPlays' => ({required Object count}) => 'Played ${count} times',
+			'discover.statsViewers' => ({required Object count}) => 'by ${count} people',
+			'discover.statsWatchTime' => ({required Object duration}) => '${duration} watched',
+			'discover.statsRecent' => ({required Object count}) => '${count} in the last 30 days',
 			'discover.watchedByYou' => 'You',
 			'discover.watchedByAnd' => 'and',
 			'discover.watchedByOthers' => ({required Object count}) => '${count} others',
@@ -6511,6 +6775,8 @@ extension on Translations {
 			'watchTogether.leaveSession' => 'Leave Session',
 			'watchTogether.endSessionQuestion' => 'End Session?',
 			'watchTogether.leaveSessionQuestion' => 'Leave Session?',
+			_ => null,
+		} ?? switch (path) {
 			'watchTogether.endSessionConfirm' => 'This will end the session for all participants.',
 			'watchTogether.leaveSessionConfirm' => 'You will be removed from the session.',
 			'watchTogether.endSessionConfirmOverlay' => 'This will end the watch session for all participants.',
@@ -6521,8 +6787,6 @@ extension on Translations {
 			'watchTogether.joinWatchSession' => 'Join Watch Session',
 			'watchTogether.enterCodeHint' => 'Enter 5-character code',
 			'watchTogether.pasteFromClipboard' => 'Paste from clipboard',
-			_ => null,
-		} ?? switch (path) {
 			'watchTogether.pleaseEnterCode' => 'Please enter a session code',
 			'watchTogether.codeMustBe5Chars' => 'Session code must be 5 characters',
 			'watchTogether.joinInstructions' => 'Enter the host\'s session code to join.',
@@ -6708,6 +6972,9 @@ extension on Translations {
 			'videoSettings.audioOutputModes.auto' => 'Auto',
 			'videoSettings.audioOutputModes.passthrough' => 'Passthrough',
 			'videoSettings.audioOutputModes.pcm' => 'PCM (decode)',
+			'videoSettings.audioOutputDecisions.passthrough' => 'Dolby bitstream',
+			'videoSettings.audioOutputDecisions.pcmMultichannel' => 'PCM multichannel',
+			'videoSettings.audioOutputDecisions.pcmStereo' => 'PCM stereo',
 			'videoSettings.audioOutputModeDescriptions.auto' => 'Widens to multichannel where the output allows it; never bitstreams',
 			'videoSettings.audioOutputModeDescriptions.passthrough' => 'Always send Dolby untouched to the receiver',
 			'videoSettings.audioOutputModeDescriptions.pcm' => 'Always decode in the app',
@@ -6722,7 +6989,14 @@ extension on Translations {
 			'videoSettings.audioNormalizationModes.off' => 'Off',
 			'videoSettings.audioNormalizationModes.normalize' => 'Normalize',
 			'videoSettings.audioNormalizationModes.night' => 'Night mode',
-			'videoSettings.audioNormalizationSuspended' => 'Loudness normalization is paused while Dolby bitstreaming is active.',
+			'videoSettings.audioNormalizationSuspended' => 'Dolby passthrough is running, so volume levelling is paused. Your receiver sets the level.',
+			'videoSettings.audioPriorityTitle' => 'Priority',
+			'videoSettings.audioPriorities.evenVolume' => 'Even volume',
+			'videoSettings.audioPriorities.originalDolby' => 'Original Dolby Atmos',
+			'videoSettings.audioLevelVolume' => 'Even out volume',
+			'videoSettings.audioLevelVolumeDescription' => 'Brings every title to the same level as the rest of your TV',
+			'videoSettings.audioReduceLoudSounds' => 'Reduce loud sounds',
+			'videoSettings.audioReduceLoudSoundsDescription' => 'Narrows the gap between dialogue and loud effects',
 			'videoSettings.tryLowerQuality' => 'Try lower quality',
 			'videoSettings.audioPassthroughUnavailable' => 'This output can\'t take a Dolby bitstream — switched to decoded audio.',
 			'performanceOverlay.color' => 'Color',
@@ -6740,6 +7014,14 @@ extension on Translations {
 			'performanceOverlay.sampleRate' => 'Sample Rate',
 			'performanceOverlay.audioDriver' => 'Audio Driver',
 			'performanceOverlay.audioOutFormat' => 'Out Format',
+			'performanceOverlay.audioRequested' => 'Requested',
+			'performanceOverlay.audioActual' => 'Actual',
+			'performanceOverlay.audioMeasuring' => 'measuring…',
+			'performanceOverlay.audioBitstream' => 'bitstream',
+			'performanceOverlay.audioFellBack' => 'fell back',
+			'performanceOverlay.audioFilters' => 'Filters',
+			'performanceOverlay.audioFiltersNone' => 'none',
+			'performanceOverlay.volume' => 'Volume',
 			'performanceOverlay.pixelFormat' => 'Pixel Fmt',
 			'performanceOverlay.hwFormat' => 'HW Fmt',
 			'performanceOverlay.matrix' => 'Matrix',
@@ -6949,6 +7231,49 @@ extension on Translations {
 			'seerr.errorForbidden' => 'You don\'t have permission for that.',
 			'seerr.errorNetwork' => 'Couldn\'t reach the server. Check the URL.',
 			'seerr.errorGeneric' => 'Something went wrong. Try again.',
+			'seerr.searchPlaceholder' => 'Search for a movie or show to request',
+			'seerr.byStreamingService' => 'By streaming service',
+			'tautulli.title' => 'Tautulli',
+			'tautulli.subtitle' => 'Tautulli tracks who watches what on your Plex server. Connect it to see viewers, statistics and live activity inside Pleya.',
+			'tautulli.adminOnlyNote' => 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.',
+			'tautulli.serverUrl' => 'Tautulli address',
+			'tautulli.serverUrlHint' => 'http://192.168.1.10:8181 or https://tautulli.example.com',
+			'tautulli.authMode' => 'How to connect',
+			'tautulli.modeDevice' => 'Device token',
+			'tautulli.modeDeviceHelp' => 'In Tautulli, open Settings, Tautulli Remote App, and register a device. Paste the generated token here within five minutes. Your permanent API key stays out of the app, and you can revoke this one device later.',
+			'tautulli.modeApiKey' => 'API key',
+			'tautulli.modeApiKeyHelp' => 'The permanent key from Settings, Web Interface. It grants full access to Tautulli, so use it only if the device token does not work for you.',
+			'tautulli.deviceToken' => 'Device token',
+			'tautulli.apiKey' => 'API key',
+			'tautulli.testConnection' => 'Test connection',
+			'tautulli.save' => 'Save',
+			'tautulli.connected' => 'Connected',
+			'tautulli.disconnect' => 'Disconnect',
+			'tautulli.disconnectConfirm' => 'Disconnect Tautulli?',
+			'tautulli.disconnectConfirmBody' => 'Pleya forgets the address and the token. Viewers, statistics and live activity disappear until you connect again.',
+			'tautulli.setupOnDesktopNote' => 'Easier on your phone or computer: the address and token are long to type with a remote.',
+			'tautulli.errorNetwork' => 'Could not reach Tautulli. Check the address and whether it is reachable from this device.',
+			'tautulli.errorAuth' => 'Tautulli rejected this key.',
+			'tautulli.errorTokenExpired' => 'Tautulli rejected this token. A device token is only valid for five minutes, so generate a new one and try again.',
+			'tautulli.errorUrlRequired' => 'Enter the address of your Tautulli server.',
+			'tautulli.errorTokenRequired' => 'Enter a token.',
+			'tautulli.errorGeneric' => 'Connecting failed.',
+			'nowWatching.title' => 'Now watching',
+			'nowWatching.tooltip' => 'See who is watching now',
+			'nowWatching.streams' => ({required Object count}) => '${count} streams',
+			'nowWatching.oneStream' => '1 stream',
+			'nowWatching.transcoding' => ({required Object count}) => '${count} transcoding',
+			'nowWatching.directPlay' => 'Direct play',
+			'nowWatching.directStream' => 'Direct stream',
+			'nowWatching.transcode' => 'Transcode',
+			'nowWatching.paused' => 'Paused',
+			'nowWatching.remaining' => ({required Object time}) => '${time} left',
+			'nowWatching.watchingNow' => ({required Object name}) => '${name} is watching this now',
+			'nowWatching.hardware' => 'Hardware',
+			'nowWatching.onLan' => 'On your network',
+			'nowWatching.onWan' => 'Remote',
+			'nowWatching.unavailable' => 'Tautulli did not answer',
+			'nowWatching.sidebarLabel' => 'Now watching',
 			'trakt.title' => 'Trakt',
 			'trakt.connected' => 'Connected',
 			'trakt.connectedAs' => ({required Object username}) => 'Connected as @${username}',
@@ -6964,6 +7289,8 @@ extension on Translations {
 			'trackers.connectedAs' => ({required Object username}) => 'Connected as @${username}',
 			'trackers.scrobble' => 'Track progress automatically',
 			'trackers.scrobbleDescription' => 'Update your list when you finish an episode or movie.',
+			_ => null,
+		} ?? switch (path) {
 			'trackers.disconnectConfirm' => ({required Object service}) => 'Disconnect ${service}?',
 			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya will stop updating ${service}. Reconnect any time.',
 			'trackers.connectFailed' => ({required Object service}) => 'Couldn\'t connect to ${service}. Try again.',
@@ -7035,8 +7362,6 @@ extension on Translations {
 			'addLocalFolder.save' => 'Add folder',
 			'addLocalFolder.saveError' => 'Failed to add local folder',
 			'addLocalFolder.entriesFound' => ({required Object count}) => '${count} items found in folder',
-			_ => null,
-		} ?? switch (path) {
 			'pleyaShare.cardTitle' => 'Pleya Share',
 			'pleyaShare.cardSubtitle' => 'Connect to another Pleya device sharing its media',
 			'pleyaShare.hostTitle' => 'Share my media',

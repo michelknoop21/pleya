@@ -4,6 +4,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_user_profile.dart';
 import 'package:pleya/media/media_source_info.dart';
+import 'package:pleya/media/track_language_choice.dart';
 import 'package:pleya/models/jellyfin/jellyfin_user_profile.dart';
 import 'package:pleya/models/plex/plex_user_profile.dart';
 import 'package:pleya/mpv/mpv.dart';
@@ -165,14 +166,37 @@ class _StubPlayer implements Player {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-TrackSelectionService _svc({MediaItem? metadata, MediaServerUserProfile? profile, MediaSourceInfo? info}) {
+TrackSelectionService _svc({
+  MediaItem? metadata,
+  MediaServerUserProfile? profile,
+  MediaSourceInfo? info,
+  TrackLanguageChoice? sticky,
+}) {
   return TrackSelectionService(
     player: _StubPlayer(),
     metadata: metadata ?? _meta(),
     profileSettings: profile,
     plexMediaInfo: info,
+    stickyChoice: sticky,
   );
 }
+
+TrackLanguageChoice _sticky({
+  String? audio,
+  String? audioTitle,
+  String? subtitle,
+  String? subtitleTitle,
+  bool subtitleForced = false,
+  bool subtitlesOff = false,
+}) => TrackLanguageChoice(
+  audioLanguage: audio,
+  audioTitle: audioTitle,
+  subtitleLanguage: subtitle,
+  subtitleTitle: subtitleTitle,
+  subtitleForced: subtitleForced,
+  subtitlesOff: subtitlesOff,
+  updatedAt: 1,
+);
 
 void main() {
   // ============================================================
@@ -643,6 +667,123 @@ void main() {
       final result = _svc().selectSubtitleTrack(const [], null, null);
       expect(result.priority, TrackSelectionPriority.off);
       expect(result.track.id, 'no');
+    });
+  });
+
+  // ============================================================
+  // Remembered language per series/movie (the sticky priority)
+  // ============================================================
+
+  group('sticky language choice', () {
+    // The bug this exists for: on episode 3 the server pre-selects English
+    // because nobody ever wrote a stream selection for that part, while the
+    // user picked Dutch on episode 1.
+    test('audio: remembered language beats the server pre-selection', () {
+      final tracks = [_audio('A', lang: 'eng'), _audio('B', lang: 'nld')];
+      final info = _info(
+        audio: [
+          _plexAudio(1, language: 'eng', languageCode: 'eng', selected: true),
+          _plexAudio(2, language: 'nld', languageCode: 'nld'),
+        ],
+      );
+      final result = _svc(
+        info: info,
+        sticky: _sticky(audio: 'nld'),
+      ).selectAudioTrack(tracks, null);
+      expect(result!.priority, TrackSelectionPriority.sticky);
+      expect(result.track.language, 'nld');
+    });
+
+    test('audio: navigation still outranks the remembered language', () {
+      final tracks = [_audio('A', lang: 'eng'), _audio('B', lang: 'nld')];
+      final result = _svc(sticky: _sticky(audio: 'nld')).selectAudioTrack(tracks, _audio('A', lang: 'eng'));
+      expect(result!.priority, TrackSelectionPriority.navigation);
+      expect(result.track.language, 'eng');
+    });
+
+    test('audio: falls through when the remembered language is absent', () {
+      final tracks = [_audio('A', lang: 'eng', isDefault: true)];
+      final result = _svc(sticky: _sticky(audio: 'jpn')).selectAudioTrack(tracks, null);
+      expect(result!.priority, TrackSelectionPriority.defaultTrack);
+      expect(result.track.language, 'eng');
+    });
+
+    test('audio: title breaks a tie between two tracks in one language', () {
+      final tracks = [_audio('A', lang: 'eng', title: 'Commentary'), _audio('B', lang: 'eng', title: 'Main')];
+      final result = _svc(
+        sticky: _sticky(audio: 'eng', audioTitle: 'Main'),
+      ).selectAudioTrack(tracks, null);
+      expect(result!.priority, TrackSelectionPriority.sticky);
+      expect(result.track.title, 'Main');
+    });
+
+    test('audio: ISO variations still match (nl vs nld)', () {
+      final tracks = [_audio('A', lang: 'eng'), _audio('B', lang: 'nld')];
+      final result = _svc(sticky: _sticky(audio: 'nl')).selectAudioTrack(tracks, null);
+      expect(result!.priority, TrackSelectionPriority.sticky);
+      expect(result.track.language, 'nld');
+    });
+
+    test('subtitles: remembered language beats the server pre-selection', () {
+      final tracks = [_sub('1', lang: 'eng'), _sub('2', lang: 'nld')];
+      final info = _info(
+        subs: [
+          _plexSub(10, language: 'eng', languageCode: 'eng', selected: true),
+          _plexSub(11, language: 'nld', languageCode: 'nld'),
+        ],
+      );
+      final result = _svc(
+        info: info,
+        sticky: _sticky(subtitle: 'nld'),
+      ).selectSubtitleTrack(tracks, null, null);
+      expect(result.priority, TrackSelectionPriority.sticky);
+      expect(result.track.language, 'nld');
+    });
+
+    // An explicit off is a decision; "never chose" is not. Only the first may
+    // override a server that did pre-select a subtitle track.
+    test('subtitles: an explicit off is honoured even when tracks exist', () {
+      final tracks = [_sub('1', lang: 'eng', isDefault: true)];
+      final info = _info(
+        subs: [_plexSub(10, language: 'eng', languageCode: 'eng', selected: true)],
+      );
+      final result = _svc(info: info, sticky: _sticky(subtitlesOff: true)).selectSubtitleTrack(tracks, null, null);
+      expect(result.priority, TrackSelectionPriority.sticky);
+      expect(result.track.id, 'no');
+    });
+
+    test('subtitles: never-chosen leaves the server decision alone', () {
+      final tracks = [_sub('1', lang: 'eng'), _sub('2', lang: 'nld')];
+      final info = _info(
+        subs: [
+          _plexSub(10, language: 'eng', languageCode: 'eng', selected: true),
+          _plexSub(11, language: 'nld', languageCode: 'nld'),
+        ],
+      );
+      final result = _svc(
+        info: info,
+        sticky: _sticky(audio: 'nld'),
+      ).selectSubtitleTrack(tracks, null, null);
+      expect(result.priority, TrackSelectionPriority.serverSelected);
+      expect(result.track.language, 'eng');
+    });
+
+    test('subtitles: prefers the forced variant the user picked', () {
+      final tracks = [_sub('1', lang: 'nld'), _sub('2', lang: 'nld', isForced: true)];
+      final result = _svc(
+        sticky: _sticky(subtitle: 'nld', subtitleForced: true),
+      ).selectSubtitleTrack(tracks, null, null);
+      expect(result.priority, TrackSelectionPriority.sticky);
+      expect(result.track.id, '2');
+    });
+
+    test('subtitles: settles for a non-forced track when no forced one exists', () {
+      final tracks = [_sub('1', lang: 'nld')];
+      final result = _svc(
+        sticky: _sticky(subtitle: 'nld', subtitleForced: true),
+      ).selectSubtitleTrack(tracks, null, null);
+      expect(result.priority, TrackSelectionPriority.sticky);
+      expect(result.track.id, '1');
     });
   });
 }

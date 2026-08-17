@@ -251,10 +251,9 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
     OverlaySheetController.of(context).close();
   }
 
-  String _audioNormalizationLabel(AudioNormalizationMode mode) => switch (mode) {
-    AudioNormalizationMode.off => t.videoSettings.audioNormalizationModes.off,
-    AudioNormalizationMode.normalize => t.videoSettings.audioNormalizationModes.normalize,
-    AudioNormalizationMode.night => t.videoSettings.audioNormalizationModes.night,
+  String _audioPriorityLabel(AudioPriority priority) => switch (priority) {
+    AudioPriority.evenVolume => t.videoSettings.audioPriorities.evenVolume,
+    AudioPriority.originalDolby => t.videoSettings.audioPriorities.originalDolby,
   };
 
   /// "Auto (now: Dolby Atmos)" where the system reports a mode, plain
@@ -280,13 +279,25 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
     await AudioOutputCoordinator.current?.onModeChanged();
   }
 
-  Future<void> _cycleAudioNormalization(AudioNormalizationMode current) async {
-    const order = AudioNormalizationMode.values;
+  Future<void> _cycleAudioPriority(AudioPriority current) async {
+    const order = AudioPriority.values;
     final next = order[(current.index + 1) % order.length];
-    await SettingsService.instance.write(SettingsService.audioNormalizationMode, next);
-    await widget.player.setAudioNormalization(next);
-    // A running bitstream outranks loudness normalization (DEC-013). Without
-    // this the setting flips in the UI and changes nothing anyone can hear.
+    await SettingsService.instance.write(SettingsService.audioPriority, next);
+    await AudioOutputCoordinator.current?.onModeChanged();
+  }
+
+  /// Pushes both loudness switches at once, because the filter chain is built
+  /// from the pair and neither means anything on its own.
+  Future<void> _pushLoudness() async {
+    final settings = SettingsService.instance;
+    await widget.player.setAudioNormalization(
+      AudioLoudness(
+        levelVolume: settings.read(SettingsService.audioLevelVolume),
+        reduceLoudSounds: settings.read(SettingsService.audioReduceLoudSounds),
+      ),
+    );
+    // A running bitstream outranks the loudness stage (DEC-013). Without this
+    // the switch flips in the UI and changes nothing anyone can hear.
     if (mounted && widget.player.consumeNormalizationSuspendedNotice()) {
       showAppSnackBar(context, t.videoSettings.audioNormalizationSuspended);
     }
@@ -613,16 +624,45 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
             ),
           ),
 
-        // Audio Normalization — Off / Normalize / Night (tap cycles).
-        SettingValueBuilder<AudioNormalizationMode>(
-          pref: SettingsService.audioNormalizationMode,
-          builder: (context, mode, _) => _SettingsMenuItem(
-            icon: Symbols.graphic_eq_rounded,
-            title: t.videoSettings.audioNormalizationTitle,
-            valueText: _audioNormalizationLabel(mode),
-            isHighlighted: mode.isEnabled,
-            onTap: () => unawaited(_cycleAudioNormalization(mode)),
+        // Priority — only meaningful under Auto; the explicit modes already say
+        // which property they protect.
+        if (PlatformDetector.supportsAudioPassthrough())
+          SettingValueBuilder<AudioOutputMode>(
+            pref: SettingsService.audioOutputMode,
+            builder: (context, mode, _) => mode != AudioOutputMode.auto
+                ? const SizedBox.shrink()
+                : SettingValueBuilder<AudioPriority>(
+                    pref: SettingsService.audioPriority,
+                    builder: (context, priority, _) => _SettingsMenuItem(
+                      icon: Symbols.tune_rounded,
+                      title: t.videoSettings.audioPriorityTitle,
+                      valueText: _audioPriorityLabel(priority),
+                      allowValueOverflow: true,
+                      isHighlighted: priority == AudioPriority.originalDolby,
+                      onTap: () => unawaited(_cycleAudioPriority(priority)),
+                    ),
+                  ),
           ),
+
+        _SettingsToggleItem(
+          pref: SettingsService.audioLevelVolume,
+          icon: Symbols.graphic_eq_rounded,
+          title: t.videoSettings.audioLevelVolume,
+          onAfterWrite: (_) => _pushLoudness(),
+        ),
+
+        // Hidden rather than disabled while levelling is off: without a level
+        // to hold, the compressor measurably clipped instead of helping.
+        SettingValueBuilder<bool>(
+          pref: SettingsService.audioLevelVolume,
+          builder: (context, levelling, _) => !levelling
+              ? const SizedBox.shrink()
+              : _SettingsToggleItem(
+                  pref: SettingsService.audioReduceLoudSounds,
+                  icon: Symbols.compress_rounded,
+                  title: t.videoSettings.audioReduceLoudSounds,
+                  onAfterWrite: (_) => _pushLoudness(),
+                ),
         ),
 
         // Shader Preset (MPV only)

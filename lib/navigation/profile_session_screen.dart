@@ -21,6 +21,7 @@ import '../providers/libraries_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/playback_state_provider.dart';
 import '../providers/seerr_provider.dart';
+import '../providers/tautulli_provider.dart';
 import '../providers/trakt_account_provider.dart';
 import '../providers/trackers_provider.dart';
 import '../providers/user_profile_provider.dart';
@@ -134,6 +135,17 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   unawaited(
                     provider.onActiveProfileChanged(activeId).catchError((Object e, StackTrace s) {
                       appLogger.w('Seerr profile hydrate failed', error: e, stackTrace: s);
+                    }),
+                  );
+                  return provider;
+                },
+              ),
+              ChangeNotifierProvider(
+                create: (context) {
+                  final provider = TautulliProvider();
+                  unawaited(
+                    provider.onActiveProfileChanged(activeId).catchError((Object e, StackTrace s) {
+                      appLogger.w('Tautulli profile hydrate failed', error: e, stackTrace: s);
                     }),
                   );
                   return provider;

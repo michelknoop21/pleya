@@ -410,9 +410,10 @@ class PlayerNative extends PlayerBase {
   @override
   Future<void> applyPassthrough(bool enabled) async {
     await setProperty('audio-spdif', enabled ? _passthroughCodecs : '');
-    // audio-exclusive redirects coreaudio to coreaudio_exclusive on macOS
-    // (and exclusive WASAPI on Windows); on iOS/tvOS it is set once at
-    // playback start and must not be clobbered here.
+    // audio-exclusive redirects coreaudio to coreaudio_exclusive on macOS (and
+    // exclusive WASAPI on Windows). iOS/tvOS is skipped because the libmpv
+    // shipped there builds neither of those outputs, so the option has nothing
+    // to act on; this is the only place that decides it.
     if (!Platform.isIOS) {
       await setProperty('audio-exclusive', enabled ? 'yes' : 'no');
     }

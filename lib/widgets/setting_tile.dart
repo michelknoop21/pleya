@@ -5,6 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../screens/settings/settings_utils.dart';
 import '../services/settings_service.dart';
+import '../theme/mono_tokens.dart';
 import 'app_icon.dart';
 import 'clickable_cursor.dart';
 import 'settings_section.dart';
@@ -47,7 +48,8 @@ class SettingSwitchTile extends StatelessWidget {
         enabled: enabled,
         child: SwitchListTile(
           focusNode: focusNode,
-          secondary: AppIcon(icon, fill: 1),
+          contentPadding: kSettingRowPadding,
+          secondary: SettingsIconBadge(icon),
           title: Text(title),
           subtitle: subtitle != null ? Text(subtitle!) : null,
           value: value,
@@ -90,10 +92,11 @@ class SettingNavigationTile extends StatelessWidget {
     return ClickableCursor(
       child: ListTile(
         focusNode: focusNode,
-        leading: AppIcon(icon, fill: 1),
+        contentPadding: kSettingRowPadding,
+        leading: SettingsIconBadge(icon),
         title: Text(title),
         subtitle: subtitle != null ? Text(subtitle!) : null,
-        trailing: AppIcon(trailingIcon, fill: 1),
+        trailing: AppIcon(trailingIcon, fill: 1, size: 20, color: tokens(context).textMuted),
         onTap: onTap ?? () => Navigator.push(context, MaterialPageRoute(builder: destinationBuilder!)),
       ),
     );
@@ -132,10 +135,11 @@ class SettingNumberTile extends StatelessWidget {
       valueListenable: svc.listenable(pref),
       builder: (_, value, _) => ClickableCursor(
         child: ListTile(
-          leading: AppIcon(icon, fill: 1),
+          leading: SettingsIconBadge(icon),
+          contentPadding: kSettingRowPadding,
           title: Text(title),
           subtitle: Text(subtitleBuilder(value)),
-          trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
+          trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
           onTap: () => showNumericInputDialog(
             context: context,
             title: title,
@@ -190,10 +194,11 @@ class SettingSelectionTile<T, S> extends StatelessWidget {
         final value = decode(raw);
         return ClickableCursor(
           child: ListTile(
-            leading: AppIcon(icon, fill: 1),
+            leading: SettingsIconBadge(icon),
+            contentPadding: kSettingRowPadding,
             title: Text(title),
             subtitle: Text(subtitleBuilder(value)),
-            trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
+            trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
             onTap: () async {
               final picked = await showSelectionDialog<T>(
                 context: context,
@@ -239,10 +244,11 @@ class SettingRegexTile extends StatelessWidget {
       valueListenable: svc.listenable(pref),
       builder: (_, value, _) => ClickableCursor(
         child: ListTile(
-          leading: AppIcon(icon, fill: 1),
+          leading: SettingsIconBadge(icon),
+          contentPadding: kSettingRowPadding,
           title: Text(title),
           subtitle: Text(subtitle),
-          trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
+          trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
           onTap: () => showRegexInputDialog(
             context: context,
             title: title,
@@ -331,7 +337,8 @@ class SettingColorTile extends StatelessWidget {
       valueListenable: svc.listenable(pref),
       builder: (_, hex, _) => ClickableCursor(
         child: ListTile(
-          leading: AppIcon(icon, fill: 1),
+          leading: SettingsIconBadge(icon),
+          contentPadding: kSettingRowPadding,
           title: Text(title),
           subtitle: subtitle != null ? Text(subtitle!) : null,
           trailing: Container(

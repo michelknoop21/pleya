@@ -15,6 +15,24 @@ enum AudioOutputMode {
   pcm,
 }
 
+/// Which of two incompatible properties [AudioOutputMode.auto] should protect.
+///
+/// They are incompatible because of where the levels sit, not because of taste.
+/// A film mix puts dialogue around -30 LUFS with peaks near full scale, which is
+/// cinema reference level and roughly 7 dB below what broadcast television is
+/// held to. Lifting the dialogue to television level therefore means narrowing
+/// the range, and on a compressed bitstream it cannot be done at all. So this is
+/// a real choice: match the rest of the living room, or keep the object layer.
+enum AudioPriority {
+  /// Decode, so the loudness stage can run and Pleya lands where the rest of
+  /// the television is.
+  evenVolume,
+
+  /// Bitstream Dolby untouched where the route can carry it, and accept that
+  /// the receiver decides the level.
+  originalDolby,
+}
+
 /// What playback should actually do.
 enum AudioOutputDecision {
   /// Hand the compressed stream to the system/receiver untouched. The only
@@ -72,6 +90,7 @@ AudioOutputDecision decideAudioOutput({
   required AudioOutputMode mode,
   required AppleAudioRoute route,
   required String? audioCodec,
+  AudioPriority priority = AudioPriority.evenVolume,
   Set<String> bitstreamCodecs = appleBitstreamCodecs,
   bool bitstreamBlocked = false,
 }) {
@@ -90,18 +109,26 @@ AudioOutputDecision decideAudioOutput({
     // because metadata was missing would be worse.
     AudioOutputMode.passthrough =>
       !bitstreamBlocked && (knownBitstreamable || codec == null) ? AudioOutputDecision.passthrough : pcm,
-    // Auto never bitstreams. It used to, on the reasoning that real Atmos
-    // beats a respatialized downmix — but that only holds if the far end
-    // actually accepts the bitstream, and on an Apple TV over HDMI with an
-    // E-AC3 track it does not: no sound, and the player stalls waiting on the
-    // audio renderer. The setting this replaced said exactly that ("keep
-    // opt-in everywhere, including Apple TV, until the AVFoundation EAC3 path
-    // is verified across real receiver setups"), and auto switched it on
-    // before that verification had happened.
+    // Auto follows the priority the user set once.
     //
-    // So bitstreaming stays something the user turns on deliberately, and the
-    // default can only pick a path that decodes. Auto still earns its keep: it
-    // widens to multichannel PCM wherever the route allows it.
-    AudioOutputMode.auto => pcm,
+    // Under evenVolume it never bitstreams, which is what it has done since
+    // build 211: a bitstream cannot be levelled, and levelling is the whole
+    // point of that choice. It still earns its keep by widening to multichannel
+    // PCM wherever the route allows.
+    //
+    // Under originalDolby it may bitstream again, but only on a wired digital
+    // port and only for a codec we know is bitstreamable — no `codec == null`
+    // leniency, unlike the explicit passthrough mode. That narrowness is the
+    // lesson of build 207, where auto sent a bitstream to an Apple TV over HDMI
+    // that never agreed to take one: no sound, and the player stalled on the
+    // audio renderer. What is different now is evidence rather than optimism —
+    // a device log shows `spdif_eac3` reaching the avfoundation sink with
+    // `JOC=yes` on that same hardware — plus the build 212 safety net
+    // underneath: mpv's own failure line, a stall watchdog, and a per-route
+    // memory of a bitstream that did not come up.
+    AudioOutputMode.auto =>
+      priority == AudioPriority.originalDolby && route.isDigitalPassthroughPort && knownBitstreamable
+          ? AudioOutputDecision.passthrough
+          : pcm,
   };
 }

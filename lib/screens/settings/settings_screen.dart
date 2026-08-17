@@ -25,6 +25,8 @@ import '../../services/icloud_sync_service.dart';
 import '../../services/saf_storage_service.dart';
 import '../../services/settings_export_service.dart';
 import '../../providers/seerr_provider.dart';
+import '../../media/ids.dart';
+import '../../providers/tautulli_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/trackers_provider.dart';
 import '../../providers/trakt_account_provider.dart';
@@ -62,6 +64,7 @@ import 'logs_screen.dart';
 import 'playback_settings_screen.dart';
 import '../profile/profile_switch_screen.dart';
 import 'seerr_settings_screen.dart';
+import 'tautulli_settings_screen.dart';
 import 'trackers_settings_screen.dart';
 import '../../widgets/loading_indicator_box.dart';
 
@@ -83,6 +86,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   static const _kLibraryVisibility = 'library_visibility';
   static const _kHomeLayout = 'home_layout';
   static const _kRequests = 'requests';
+  static const _kTautulli = 'tautulli';
   static const _kDownloadLocation = 'download_location';
   static const _kDownloadOnWifiOnly = 'download_on_wifi_only';
   static const _kAutoRemoveWatchedDownloads = 'auto_remove_watched_downloads';
@@ -179,50 +183,60 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           primary: false,
           slivers: [
             ExcludeFocus(child: CustomAppBar(title: Text(t.settings.title), pinned: true)),
-            if (_searchEnabled) SliverToBoxAdapter(child: _buildSearchField()),
+            if (_searchEnabled) SliverToBoxAdapter(child: SettingsWidthLimit(child: _buildSearchField())),
             if (_searchQuery.isNotEmpty)
               _buildSearchResults()
             else
               SliverList(
-                delegate: SliverChildListDelegate([
-                  if (DonationService.isEnabled) _buildDonateTile(),
+                delegate: SliverChildListDelegate(
+                  [
+                    if (DonationService.isEnabled) SettingsGroup(children: [_buildDonateTile()]),
 
-                  _buildAppearanceTile(),
+                    SettingsGroup(
+                      title: t.settings.sectionLibrary,
+                      children: [
+                        _buildAppearanceTile(),
+                        _buildLibraryVisibilityTile(),
+                        _buildHomeLayoutTile(),
+                        _buildPlaybackTile(),
+                        _buildTrackersTile(),
+                        _buildRequestsTile(),
+                        _buildTautulliTile(),
+                      ],
+                    ),
 
-                  _buildLibraryVisibilityTile(),
-                  _buildHomeLayoutTile(),
+                    _buildConnectionsSection(),
 
-                  _buildPlaybackTile(),
+                    _buildProfilesSection(),
 
-                  _buildTrackersTile(),
+                    if (!PlatformDetector.isAppleTV()) _buildDownloadsSection(),
 
-                  _buildRequestsTile(),
+                    if (_keyboardShortcutsSupported) ...[_buildKeyboardShortcutsSection()],
 
-                  _buildConnectionsSection(),
+                    _buildAdvancedSection(),
 
-                  _buildProfilesSection(),
+                    if (UpdateService.isUpdateCheckEnabled) ...[_buildUpdateSection()],
 
-                  if (!PlatformDetector.isAppleTV()) _buildDownloadsSection(),
+                    if (!PlatformDetector.isTV()) _buildBackupSection(),
 
-                  if (_keyboardShortcutsSupported) ...[_buildKeyboardShortcutsSection()],
+                    if (kDebugMode) _buildDebugSection(),
 
-                  _buildAdvancedSection(),
-
-                  if (UpdateService.isUpdateCheckEnabled) ...[_buildUpdateSection()],
-
-                  if (!PlatformDetector.isTV()) _buildBackupSection(),
-
-                  if (kDebugMode) _buildDebugSection(),
-
-                  SettingNavigationTile(
-                    focusNode: _focusTracker.get(_kAbout),
-                    icon: Symbols.info_rounded,
-                    title: t.settings.about,
-                    subtitle: t.settings.aboutDescription,
-                    destinationBuilder: (context) => const AboutScreen(),
-                  ),
-                  const SizedBox(height: 24),
-                ]),
+                    SettingsGroup(
+                      children: [
+                        SettingNavigationTile(
+                          focusNode: _focusTracker.get(_kAbout),
+                          icon: Symbols.info_rounded,
+                          title: t.settings.about,
+                          subtitle: t.settings.aboutDescription,
+                          destinationBuilder: (context) => const AboutScreen(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // Every card gets the same maximum width so the column stays
+                    // centred on a wide window instead of stretching across it.
+                  ].map((w) => SettingsWidthLimit(child: w)).toList(),
+                ),
               ),
           ],
         ),
@@ -314,6 +328,13 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         subtitle: t.settings.requestsDescription,
         keywords: const ['jellyseerr', 'overseerr', 'seerr'],
         destinationBuilder: (_) => const SeerrSettingsScreen(),
+      ),
+      _SettingsSearchEntry(
+        icon: Symbols.insights_rounded,
+        title: t.tautulli.title,
+        subtitle: t.tautulli.subtitle,
+        keywords: const ['tautulli', 'statistics', 'statistieken', 'watched by'],
+        destinationBuilder: (_) => const TautulliSettingsScreen(),
       ),
       if (_keyboardShortcutsSupported && _keyboardService != null)
         _SettingsSearchEntry(
@@ -540,16 +561,41 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     );
   }
 
+  /// Tautulli reports on the whole Plex server, and its single API key opens
+  /// the entire admin surface, so the tile only appears for someone who owns a
+  /// Plex server here. Everyone else never learns the integration exists, which
+  /// is the right outcome: they could not use it anyway.
+  Widget _buildTautulliTile() {
+    final ownsAPlexServer = context.select<MultiServerProvider, bool>((multiServer) {
+      final manager = multiServer.serverManager;
+      return manager.serverIds.any((id) => manager.isOwnerOrAdmin(ServerId(id)));
+    });
+    if (!ownsAPlexServer) return const SizedBox.shrink();
+
+    return Consumer<TautulliProvider>(
+      builder: (context, tautulli, _) {
+        return SettingNavigationTile(
+          focusNode: _focusTracker.get(_kTautulli),
+          icon: Symbols.insights_rounded,
+          title: t.tautulli.title,
+          subtitle: tautulli.isConfigured
+              ? (tautulli.serverName ?? tautulli.host ?? t.tautulli.connected)
+              : t.tautulli.subtitle,
+          destinationBuilder: (_) => const TautulliSettingsScreen(),
+        );
+      },
+    );
+  }
+
   Widget _buildConnectionsSection() {
     final active = context.select<ActiveProfileProvider, Profile?>((p) => p.active);
     final subtitle = active == null
         ? t.connections.addConnectionSubtitleNoProfile
         : t.connections.addConnectionSubtitleScoped(displayName: active.displayName);
 
-    return Column(
-      crossAxisAlignment: .start,
+    return SettingsGroup(
+      title: t.connections.sectionTitle,
       children: [
-        SettingsSectionHeader(t.connections.sectionTitle),
         // Connections are managed per-profile (via the Profiles section
         // and each profile's detail screen). The shortcut here just opens
         // the picker scoped to the active profile so users can add a Plex
@@ -669,14 +715,18 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
             : (activeName != null
                   ? t.profiles.summaryMultipleWithActive(count: count, activeName: activeName)
                   : t.profiles.summaryMultiple(count: count));
-        return SettingNavigationTile(
-          icon: Symbols.group_rounded,
-          title: t.profiles.sectionTitle,
-          subtitle: subtitle,
-          onTap: () => Navigator.of(
-            context,
-            rootNavigator: true,
-          ).push(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen())),
+        return SettingsGroup(
+          children: [
+            SettingNavigationTile(
+              icon: Symbols.group_rounded,
+              title: t.profiles.sectionTitle,
+              subtitle: subtitle,
+              onTap: () => Navigator.of(
+                context,
+                rootNavigator: true,
+              ).push(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen())),
+            ),
+          ],
         );
       },
     );
@@ -686,10 +736,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     final storageService = DownloadStorageService.instance;
     final isCustom = storageService.isUsingCustomPath();
 
-    return Column(
-      crossAxisAlignment: .start,
+    return SettingsGroup(
+      title: t.settings.downloads,
       children: [
-        SettingsSectionHeader(t.settings.downloads),
         if (!Platform.isIOS)
           FutureBuilder<String>(
             future: storageService.getCurrentDownloadPathDisplay(),
@@ -726,10 +775,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   Widget _buildKeyboardShortcutsSection() {
     if (_keyboardService == null) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: .start,
+    return SettingsGroup(
+      title: t.settings.keyboardShortcuts,
       children: [
-        SettingsSectionHeader(t.settings.keyboardShortcuts),
         SettingNavigationTile(
           focusNode: _focusTracker.get(_kVideoPlayerControls),
           icon: Symbols.keyboard_rounded,
@@ -754,10 +802,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   }
 
   Widget _buildAdvancedSection() {
-    return Column(
-      crossAxisAlignment: .start,
+    return SettingsGroup(
+      title: t.settings.advanced,
       children: [
-        SettingsSectionHeader(t.settings.advanced),
         SettingNavigationTile(
           focusNode: _focusTracker.get(_kWatchTogetherRelay),
           icon: Symbols.dns_rounded,
@@ -806,10 +853,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
 
   /// Debug-only tools, shown as a separate section at the bottom of the list.
   Widget _buildDebugSection() {
-    return Column(
-      crossAxisAlignment: .start,
+    return SettingsGroup(
+      title: 'Debug',
       children: [
-        const SettingsSectionHeader('Debug'),
         SettingNavigationTile(
           icon: Symbols.error_rounded,
           title: 'Test Sentry',
@@ -833,10 +879,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   }
 
   Widget _buildBackupSection() {
-    return Column(
-      crossAxisAlignment: .start,
+    return SettingsGroup(
+      title: t.settings.backup,
       children: [
-        SettingsSectionHeader(t.settings.backup),
         SettingNavigationTile(
           focusNode: _focusTracker.get(_kExportSettings),
           icon: Symbols.upload_rounded,
@@ -896,10 +941,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
 
   Widget _buildUpdateSection() {
     if (UpdateService.useNativeUpdater) {
-      return Column(
-        crossAxisAlignment: .start,
+      return SettingsGroup(
+        title: t.settings.updates,
         children: [
-          SettingsSectionHeader(t.settings.updates),
           SettingNavigationTile(
             focusNode: _focusTracker.get(_kCheckForUpdates),
             icon: Symbols.system_update_rounded,
@@ -913,10 +957,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
 
     final hasUpdate = _updateInfo != null && _updateInfo!['hasUpdate'] == true;
 
-    return Column(
-      crossAxisAlignment: .start,
+    return SettingsGroup(
+      title: t.settings.updates,
       children: [
-        SettingsSectionHeader(t.settings.updates),
         ListTile(
           focusNode: _focusTracker.get(_kCheckForUpdates),
           leading: AppIcon(

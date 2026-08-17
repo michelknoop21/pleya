@@ -14,7 +14,9 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/dialogs.dart';
 import '../../utils/media_server_timeouts.dart';
 import '../../widgets/app_icon.dart';
-import '../../widgets/focusable_filter_chip.dart';
+import '../../widgets/segmented_tab_group.dart';
+import '../../widgets/focusable_tab_chip.dart';
+import 'seerr_discover_screen.dart';
 import '../../widgets/focusable_list_tile.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../focus/focusable_wrapper.dart';
@@ -52,12 +54,17 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   // in-flight load-more, preventing stale-filter items from being appended.
   int _loadGen = 0;
 
+  /// Counts shown next to the filter tabs. Zero means "not known yet"; the tab
+  /// then renders without a number instead of claiming there are none.
+  ({int total, int pending, int approved, int available, int processing})? _counts;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_initialized) return;
     _initialized = true;
     _load(reset: true);
+    _loadCounts();
   }
 
   // ---------------------------------------------------------------------------
@@ -119,6 +126,13 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
         _error = t.seerr.errorGeneric;
       });
     }
+  }
+
+  Future<void> _loadCounts() async {
+    final client = context.read<SeerrProvider>().client;
+    if (client == null) return;
+    final counts = await client.getRequestCounts();
+    if (mounted) setState(() => _counts = counts);
   }
 
   void _onFilter(String filter) {
@@ -188,6 +202,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
       title: Text(canManage ? t.seerr.allRequests : t.seerr.myRequests),
       slivers: [
         SliverToBoxAdapter(child: _filterRow()),
+        SliverToBoxAdapter(child: _discoverBar()),
         ..._contentSlivers(canManage, ownUserId),
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
@@ -195,27 +210,79 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   }
 
   Widget _filterRow() {
-    final chips = <(String, IconData, String)>[
-      ('all', Symbols.apps_rounded, t.seerr.filterAll),
-      ('pending', Symbols.hourglass_empty_rounded, t.seerr.filterPending),
-      ('approved', Symbols.check_circle_rounded, t.seerr.filterApproved),
-      ('available', Symbols.download_done_rounded, t.seerr.filterAvailable),
+    final tabs = <(String, String, int?)>[
+      ('all', t.seerr.filterAll, _counts?.total),
+      ('pending', t.seerr.filterPending, _counts?.pending),
+      ('approved', t.seerr.filterApproved, _counts?.approved),
+      ('available', t.seerr.filterAvailable, _counts?.available),
     ];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(_hInset, 8, _hInset, 12),
+      padding: const EdgeInsets.fromLTRB(_hInset, 8, _hInset, 4),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: Row(
+        child: SegmentedTabGroup(
           children: [
-            for (final (value, icon, label) in chips)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: FocusableFilterChip(icon: icon, label: label, onPressed: () => _onFilter(value)),
+            for (var i = 0; i < tabs.length; i++) ...[
+              if (i > 0) const SizedBox(width: 2),
+              FocusableTabChip(
+                label: (tabs[i].$3 ?? 0) > 0 ? '${tabs[i].$2}  ${tabs[i].$3}' : tabs[i].$2,
+                isSelected: _filter == tabs[i].$1,
+                onSelect: () => _onFilter(tabs[i].$1),
               ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  /// Entry point to the discover screen. Without it this page is a dead end:
+  /// you can review requests but never start one.
+  Widget _discoverBar() {
+    final tk = tokens(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(_hInset, 8, _hInset, 12),
+      child: FocusableWrapper(
+        disableScale: true,
+        borderRadius: 12,
+        onSelect: _openDiscover,
+        child: GestureDetector(
+          onTap: _openDiscover,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: tk.surface,
+              borderRadius: BorderRadius.circular(tk.radiusMd),
+              border: Border.all(color: tk.outline.withValues(alpha: 0.7)),
+            ),
+            child: Row(
+              children: [
+                AppIcon(Symbols.search_rounded, fill: 1, size: 20, color: tk.textMuted),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    t.seerr.searchPlaceholder,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: tk.textMuted),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(color: tk.text, borderRadius: BorderRadius.circular(9)),
+                  child: Text(
+                    t.seerr.discoverTitle,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(color: tk.bg, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openDiscover() {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SeerrDiscoverScreen()));
   }
 
   List<Widget> _contentSlivers(bool canManage, int? ownUserId) {

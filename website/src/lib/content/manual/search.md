@@ -13,7 +13,7 @@ updated: 2026-08-17
 The **Search** tab looks through every connected server at once, on title, cast member or
 keyword.
 
-![Search results across two servers](/docs-media/search-results.png)
+![Search results, here from one connected server](/docs-media/search-results.png)
 
 On a computer, **Cmd+F** on macOS and **Ctrl+F** on Windows and Linux open it directly.
 
@@ -24,7 +24,7 @@ you already typed. That keyboard is also the surface the Siri Remote's microphon
 into, so speaking a title works from the same place. Results update while you dictate, and
 **Done** moves focus to the first result.
 
-![The system keyboard over the search results](/docs-media/search-tv.png)
+![The tvOS system keyboard, opened from the search field](/docs-media/search-tv.png)
 
 If the system keyboard does not come up, Pleya falls back to its own on-screen keyboard
 that you drive with the D-pad. Nothing is lost, it is just slower.

@@ -19,7 +19,7 @@ Films and episodes can be stored on the device and watched without a connection.
 3. For a show, pick **all episodes** or **unwatched only**, and whether specials come along.
 4. Follow it on the detail button (a percentage) or in the **Downloads** tab.
 
-![The downloads tab with one download in progress](/docs-media/downloads-manage.png)
+![The Downloads tab, with finished downloads under Manage](/docs-media/downloads-manage.png)
 
 ## The Downloads tab
 
