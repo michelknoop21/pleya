@@ -14,7 +14,34 @@ flutter test test/path/to/foo_test.dart          # single test file
 flutter test test/foo_test.dart --plain-name "desc"   # single test by name
 scripts/ci_checks.sh               # full pre-commit gate (mirrors CI); also installed as a hook via scripts/setup_hooks.sh
 scripts/format_native.sh --fix     # format Kotlin/Swift/C++/ObjC
+scripts/check_updates.sh           # rapport over elke pin (SDK, engine, MPVKit, forks, Dart, Actions)
+scripts/classify_lock_diff.sh      # ring per gewijzigd pakket in een pubspec.lock-diff
+scripts/check_flutter_version.sh   # bewaakt de SDK-pin uit .fvmrc
 ```
+
+## Dependencies bumpen (ringen, zie [DEC-025](docs/DECISIONS.md#dec-025))
+De Flutter-versie staat alleen in `.fvmrc`; de workflows lezen datzelfde bestand via
+`flutter-version-file`. Een andere SDK op PATH wordt geweigerd door `check_flutter_version.sh`,
+dat aan het begin van `ci_checks.sh`, `codegen.sh` en `testflight_release.sh` draait: `dart format`
+verschilt per SDK-versie, dus drift levert diff-ruis op die pas in CI opvalt.
+
+Het bewijsniveau van een update volgt uit de eigenschappen van de wijziging, niet uit de naam van
+het pakket, en promoveert altijd naar de hoogste ring die van toepassing is. Ring 1 vraagt
+`ci_checks.sh` plus `flutter test`, ring 2 daarbovenop `codegen.sh` met een lege gegenereerde diff
+en een debug-build, ring 3 daarbovenop runtimebewijs op echte hardware. `classify_lock_diff.sh`
+leest die eigenschappen af uit een lockfile-diff, maar het is een heuristiek: draai altijd de
+bewijsstap. In de eerste ronde zette hij zes pakketten op ring 1 die de codegen-controle en de
+testsuite er alsnog uithaalden.
+
+**Nooit blind `flutter pub upgrade` committen.** Eerst naar een kopie upgraden, `classify_lock_diff.sh`
+draaien, de kopie weggooien en dan gericht `flutter pub upgrade <ring-1-pakketten>`. Generatoren gaan
+apart, anders is een veranderde `.g.dart` niet meer toe te wijzen.
+
+**De analyzer-stack staat bewust stil** (`analyzer`, `_fe_analyzer_shared`, `analyzer_plugin`,
+`dart_code_linter`). Een nieuwere analyzer laat `drift_dev` zonder compilefout de foreign key, de
+`ON DELETE CASCADE`, de writepropagatie en de reference managers uit `app_database.g.dart` weg.
+`test/database/drift_relations_test.dart` bewaakt dat; zie [DEC-026](docs/DECISIONS.md#dec-026) voor
+de voorwaarden waaronder de pin weer los mag.
 
 ## Codegen (gotcha — fails CI if skipped)
 Models use `freezed` + `json_serializable`; i18n uses `slang`. After editing any `@freezed` model or `strings.i18n.json`, run `scripts/codegen.sh`. CI fails if a `.dart` source is newer than its generated `.g.dart`/`.freezed.dart`, and `flutter analyze` **warnings are treated as failures**.

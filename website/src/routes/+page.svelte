@@ -56,4 +56,67 @@
 <Screenshots />
 <Features />
 <FAQ />
+
+<section class="more-reading" aria-labelledby="more-reading-heading">
+  <h2 id="more-reading-heading">Still wondering how something works?</h2>
+  <p>
+    The guide covers every screen in the app, from connecting a server to what to change
+    when playback struggles. The release notes list what changed in each build.
+  </p>
+  <div class="more-links">
+    <a class="primary" href="/docs">Read the guide</a>
+    <a href="/releases">See what changed</a>
+  </div>
+</section>
+
 <Footer />
+
+<style>
+  .more-reading {
+    max-width: 44rem;
+    margin-inline: auto;
+    padding: 0 1.5rem 4rem;
+    text-align: center;
+  }
+
+  .more-reading h2 {
+    margin-bottom: 0.75rem;
+    font-size: 1.5rem;
+  }
+
+  .more-reading p {
+    color: var(--color-text-muted);
+  }
+
+  .more-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+
+  .more-links a {
+    padding: 0.625rem 1.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    transition: border-color 180ms ease, background-color 180ms ease;
+  }
+
+  .more-links a:hover {
+    border-color: var(--color-accent-glow);
+    background: var(--color-surface);
+  }
+
+  .more-links .primary {
+    border-color: transparent;
+    background: var(--gradient-brand);
+    color: #0e0e10;
+  }
+
+  .more-links .primary:hover {
+    filter: brightness(1.08);
+  }
+</style>

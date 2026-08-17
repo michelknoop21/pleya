@@ -22,7 +22,7 @@ import '../screens/hub_detail_screen.dart';
 import '../utils/media_navigation_helper.dart';
 import 'focus_builders.dart';
 import 'media_card.dart';
-import 'media_card_metrics.dart';
+import 'media_card_grid_layout.dart';
 import '../utils/scroll_utils.dart';
 import 'horizontal_scroll_with_arrows.dart';
 import '../i18n/strings.g.dart';
@@ -102,14 +102,10 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
   /// Added to the poster height to get the full card block on phone/tablet:
   /// the title and metadata labels under the artwork, the card's own padding,
   /// the focus ring the list reserves so a focused card isn't clipped, and 4
-  /// of slack. The label block comes from [MediaCardMetrics] rather than a
+  /// of slack. The label block comes from [MediaCardGridLayout] rather than a
   /// number copied from the card, which is how the two used to drift.
   static double _cardBlockExtra(BuildContext context) =>
-      MediaCardMetrics.cardPadding.vertical +
-      MediaCardMetrics.captionGap +
-      MediaCardMetrics.captionHeight(context) +
-      FocusTheme.focusBorderWidth * 2 +
-      4;
+      MediaCardGridLayout.textExtentFor(context) + FocusTheme.focusBorderWidth * 2 + 4;
 
   /// The icon + title row above the cards, including both of its paddings.
   ///
@@ -131,7 +127,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     final density = SettingsService.instanceOrNull?.read(SettingsService.libraryDensity) ?? LibraryDensity.defaultValue;
     final baseCardWidth = GridSizeCalculator.getCellWidth(availableWidth, context, density);
     final cardWidth = wideLayout ? baseCardWidth * _wideCardMultiplier : baseCardWidth;
-    final posterWidth = MediaCardMetrics.posterWidth(cardWidth);
+    final posterWidth = MediaCardGridLayout.posterWidthFor(cardWidth);
     return wideLayout ? posterWidth * (9 / 16) : posterWidth * 1.5;
   }
 
@@ -593,7 +589,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
 
                     // Card dimensions based on hub type
                     final cardWidth = useWideLayout ? baseCardWidth * _wideCardMultiplier : baseCardWidth;
-                    final posterWidth = MediaCardMetrics.posterWidth(cardWidth);
+                    final posterWidth = MediaCardGridLayout.posterWidthFor(cardWidth);
                     final posterHeight = useWideLayout
                         ? posterWidth *
                               (9 / 16) // 16:9 for wide layout

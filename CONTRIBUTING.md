@@ -35,13 +35,53 @@ The project includes automated CI checks that run on all pull requests:
 
 All these checks must pass before your changes can be merged.
 
+## Documentatie en releasenotes
+
+De handleiding en de releasenotes op [pleya.app](https://pleya.app/docs) worden met één
+commando ververst: `/update-docs`. Dat draait `scripts/gen_release_notes.sh`, herschrijft de
+gegenereerde commitregels naar Engelse gebruikerstaal, werkt de geraakte hoofdstukken bij,
+bouwt de site en zet hem live. De skill staat in `.claude/skills/update-docs/`.
+
+Twee stromen die niet door elkaar mogen lopen:
+
+- **`docs/CHANGELOG.md`, `docs/DECISIONS.md` en `STATUS.md` zijn intern.** Sessielogboek,
+  DEC-nummers, driftmigraties, analyzer-pins. Die blijven zoals ze zijn.
+- **`docs/RELEASES.md` is publiek**, Engels, en noemt alleen wat iemand merkt. Het is een
+  herschrijving van het logboek, geen vertaling ervan.
+
+De handleiding zelf staat als markdown met frontmatter in
+`website/src/lib/content/manual/`, twintig hoofdstukken, en wordt bij `bun run build` naar
+statieke HTML gerenderd. `docs/manual/SCREENSHOTS.md` houdt bij welke schermafbeeldingen er
+nog moeten komen; een hoofdstuk dat naar een bestand verwijst dat er niet is tekent een
+plaatshouder in plaats van een kapotte afbeelding. De Nederlandse handleiding is bevroren en
+staat in `docs/archive/`.
+
+### De pre-push hook
+
+`scripts/setup_hooks.sh` installeert naast `pre-commit` ook een `pre-push`. Die ververst
+`docs/RELEASES.md` met de commits sinds de laatst gepubliceerde build. Schrijft hij iets, dan
+commit hij dat en **breekt de push af** met de melding om opnieuw te pushen.
+
+Dat afbreken is opzet. Een pre-push hook draait nadat git de te pushen refs al heeft
+vastgesteld, dus een commit die de hook zelf maakt gaat niet meer mee. De keuze is stilzwijgend
+achterlopen of één keer opnieuw pushen. Overslaan kan met `SKIP_HOOKS=1 git push`.
+
+**`scripts/setup_hooks.sh` hoort bij het opzetten van een clone**, niet bij de losse eindjes.
+`core.hooksPath` staat in `.git/config` en reist dus niet mee: sla die stap over en je hebt
+stilzwijgend geen enkele hook, waarna de CI-gate pas op de server aanslaat en
+`docs/RELEASES.md` ongemerkt maanden achterloopt. `scripts/check_hooks_installed.sh` maakt dat
+zichtbaar en draait adviserend mee in `ci_checks.sh` en `codegen.sh`; in CI zwijgt hij, want
+daar roepen de workflows dezelfde scripts rechtstreeks aan. Draai je bewust zonder hooks, dan
+zijn `scripts/ci_checks.sh` vóór een commit en `scripts/gen_release_notes.sh` vóór een push je
+eigen verantwoordelijkheid.
+
 ## tvOS testen in de simulator
 
 `scripts/tvos_sim.sh` draait de app in de tvOS-simulator en bedient hem, zodat
 TV-invoer niet per TestFlight-build geverifieerd hoeft te worden. Focus in de
 Flutter-UI, Menu, en het openen/sluiten/vullen van het systeemtoetsenbord zijn
 zo te testen (zie DEC-011). Niet simuleerbaar zijn dictatie (zie DEC-009) en
-D-pad-navigatie *binnen* het systeemtoetsenbord — zie de bullet daarover
+D-pad-navigatie *binnen* het systeemtoetsenbord, zie de bullet daarover
 hieronder voordat je daar een bug op baseert.
 
 ```bash
@@ -65,14 +105,14 @@ Punten die anders tijd kosten:
   gewoon doorwerken terwijl een test loopt. Zonder idb valt het script terug op
   AppleScript, en dán moet het Mac-scherm ontgrendeld en wakker zijn: staat het
   scherm uit, dan heeft Simulator geen venster en verdwijnen toetsaanslagen
-  geruisloos — geen foutmelding, ze doen gewoon niets. `doctor` zegt welke route
+  geruisloos, zonder foutmelding, ze doen gewoon niets. `doctor` zegt welke route
   actief is.
 - **Het systeemtoetsenbord kun je vullen, niet bedienen.** `idb` stuurt HID-
   *toetsenbord*codes; een Siri-Remote-D-pad zit daar niet bij. Met
   `I/O ▸ Keyboard ▸ Connect Hardware Keyboard` aan (de standaard) behandelt tvOS
   dat als een fysiek toetsenbord: je typt rechtstreeks in het veld en Return
   submit, en de letterstrip doet géén focusnavigatie. Pijltjes laten de
-  highlight dus op `a` staan en vallen door naar de app — dat lijkt een bug maar
+  highlight dus op `a` staan en vallen door naar de app, en dat lijkt een bug maar
   is het niet. Zet je de koppeling uit, dan komt er helemaal geen press meer aan
   (ook niet via het Apple TV Remote-venster). Netto: typen en submitten test je
   hier prima, "kan ik met de D-pad een letter aanklikken" alleen op een echt
@@ -88,7 +128,7 @@ Punten die anders tijd kosten:
   niet schrijven (TCC weigert met een misleidende permissiefout), dus ze gaan
   naar `$TMPDIR`. Overrule met `TVOS_SIM_SHOT_DIR`.
 - **Dart-logs** verschijnen als `(Flutter) flutter:`, native `NSLog` als
-  `(Foundation)`. `appLogger.d` wordt gefilterd — log op info wat je wilt zien.
+  `(Foundation)`. `appLogger.d` wordt gefilterd, dus log op info wat je wilt zien.
 - **Inloggen** doe je één keer per simulator-toestel; daarna blijft de sessie
   staan. Zet `PLEYA_DEMO_URL` / `PLEYA_DEMO_USER` / `PLEYA_DEMO_PASS` in `.env`
   (gitignored) en gebruik `scripts/tvos_sim.sh login`.

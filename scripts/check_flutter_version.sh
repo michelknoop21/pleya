@@ -19,6 +19,14 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# --root laat een andere projectmap kiezen. Alleen nodig voor gereedschap dat de
+# pin van buitenaf uitleest (check_updates.sh) en voor de tests daarvan; in het
+# normale gebruik is de repo zelf de root.
+if [ "${1:-}" = "--root" ]; then
+  ROOT="$(cd "${2:-}" 2>/dev/null && pwd)" || { echo "check_flutter_version: --root bestaat niet" >&2; exit 1; }
+  shift 2
+fi
 FVMRC="$ROOT/.fvmrc"
 
 if [ ! -f "$FVMRC" ]; then

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:provider/provider.dart';
 
 import '../i18n/strings.g.dart';
+import '../profiles/active_profile_provider.dart';
+import '../profiles/profile_avatar.dart';
 import '../theme/mono_theme.dart';
 import '../utils/platform_detector.dart';
 
@@ -14,7 +17,11 @@ class _TabIcon extends StatelessWidget {
   final String? svgAsset;
   final bool selected;
 
-  const _TabIcon({required this.icon, this.svgAsset, required this.selected});
+  /// Replaces the glyph without touching the dot or the alignment above it.
+  /// My Pleya uses it to show the active profile's avatar.
+  final Widget? glyph;
+
+  const _TabIcon({required this.icon, this.svgAsset, required this.selected, this.glyph});
 
   @override
   Widget build(BuildContext context) {
@@ -33,11 +40,55 @@ class _TabIcon extends StatelessWidget {
                 )
               : null,
         ),
-        NavGlyph(svgAsset: svgAsset, icon: icon, size: 24),
+        glyph ?? NavGlyph(svgAsset: svgAsset, icon: icon, size: 24),
       ],
     );
   }
 }
+
+/// The My Pleya slot's icon: the active profile's avatar, the same one the
+/// desktop and TV header still show, at nav size.
+///
+/// Watches [ActiveProfileProvider] itself instead of letting the whole
+/// navigation bar watch it, so switching profiles repaints one icon rather
+/// than rebuilding every destination. Without a resolved profile it falls back
+/// to the tab's own glyph, which is what the bar shows during startup binding.
+///
+/// The avatar carries no semantics of its own: the destination's label already
+/// announces "My Pleya", and an image announcing a second time would only get
+/// in the way. The PIN badge is dropped too: at 24 logical pixels it is three
+/// pixels of noise under a selection dot, and the lock still shows everywhere
+/// the profile is actually chosen.
+class MyPleyaTabIcon extends StatelessWidget {
+  final bool selected;
+
+  const MyPleyaTabIcon({super.key, required this.selected});
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = context.watch<ActiveProfileProvider?>()?.active;
+    return _TabIcon(
+      icon: Symbols.account_circle_rounded,
+      selected: selected,
+      glyph: profile == null
+          ? null
+          : ExcludeSemantics(child: ProfileAvatar(profile: profile, size: 24, showLockBadge: false)),
+    );
+  }
+}
+
+/// Whether the Home header still carries the account menu behind the avatar.
+///
+/// The counterpart of the `isMobile` gate on [NavigationTabId.myPleya] in
+/// [NavigationTab.getVisibleTabs], and deliberately the same input: profiles,
+/// settings and sign out belong in exactly one place per platform. Mobile has
+/// My Pleya in the bottom bar and drops the header menu; desktop and TV have a
+/// sidebar with no room for a personal hub, so they keep it.
+///
+/// A single predicate rather than two conditions that happen to agree, because
+/// disagreeing would mean either a duplicate account menu or no way to sign out
+/// at all.
+bool showsHeaderAccountMenu({required bool isMobile}) => !isMobile;
 
 /// Navigation tab identifiers.
 ///
@@ -65,6 +116,16 @@ class NavigationTab {
   });
 
   NavigationDestination toDestination() {
+    // My Pleya is the one slot whose icon is state, not a constant: it shows
+    // whoever is signed in. Resolved here rather than at the call site so
+    // every bar that renders this tab gets the same treatment.
+    if (id == NavigationTabId.myPleya) {
+      return NavigationDestination(
+        icon: const MyPleyaTabIcon(selected: false),
+        selectedIcon: const MyPleyaTabIcon(selected: true),
+        label: getLabel(),
+      );
+    }
     return NavigationDestination(
       icon: _TabIcon(icon: icon, svgAsset: svgAsset, selected: false),
       selectedIcon: _TabIcon(icon: icon, svgAsset: svgAsset, selected: true),
@@ -235,8 +296,8 @@ const allNavigationTabs = [
     getLabel: _getSettingsLabel,
   ),
   // Last, because it is the mobile bar's rightmost slot. Its icon is the
-  // profile avatar rather than this glyph; the fallback only shows before a
-  // profile is resolved.
+  // profile avatar rather than this glyph (see [MyPleyaTabIcon]); the fallback
+  // below only shows before a profile is resolved.
   NavigationTab(
     id: NavigationTabId.myPleya,
     onlineOnly: false,

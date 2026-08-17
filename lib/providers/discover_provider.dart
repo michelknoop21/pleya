@@ -154,6 +154,12 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   bool get areHubsLoading => _hubsState == DiscoverLoadState.initial || _hubsState == DiscoverLoadState.loading;
 
+  /// True while a load pass is in flight. Unlike [isLoading] this also covers
+  /// the refresh-with-content-on-screen case, where the states deliberately
+  /// stay `loaded` so the rows aren't swapped for a skeleton — leaving the
+  /// header's refresh action as the only place that can show progress.
+  bool get isRefreshing => _inFlightLoad != null;
+
   /// Bumped each time a [load] pass replaces the on-deck list. The screen
   /// uses this to distinguish "full reload — reset the hero carousel" from
   /// a background Continue Watching refresh (clamp only).
@@ -188,7 +194,25 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     return _ensureLoadLoop();
   }
 
-  Future<void> _ensureLoadLoop() => _inFlightLoad ??= _runLoadLoop().whenComplete(() => _inFlightLoad = null);
+  Future<void> _ensureLoadLoop() {
+    final inFlight = _inFlightLoad;
+    if (inFlight != null) return inFlight;
+    // Both edges of [isRefreshing] notify explicitly. The clear runs in
+    // whenComplete, i.e. after the pass's own final notify, so without this a
+    // finished refresh would keep listeners showing it as still running until
+    // something else happened to rebuild them.
+    final load = _runLoadLoop().whenComplete(() {
+      _inFlightLoad = null;
+      _notifyRefreshingChanged();
+    });
+    _inFlightLoad = load;
+    _notifyRefreshingChanged();
+    return load;
+  }
+
+  /// Deferred by a microtask: [load] is called from the screen's `initState`,
+  /// and notifying there would mark listening widgets dirty mid-build.
+  void _notifyRefreshingChanged() => scheduleMicrotask(safeNotifyListeners);
 
   Future<void> _runLoadLoop() async {
     while ((_hasPendingLoad || _pendingDeltaServerIds.isNotEmpty) && !isDisposed) {

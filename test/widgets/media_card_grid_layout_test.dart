@@ -9,82 +9,73 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/media_card.dart';
-import 'package:pleya/widgets/media_card_metrics.dart';
+import 'package:pleya/widgets/media_card_grid_layout.dart';
 import 'package:pleya/widgets/media_grid_delegate.dart';
 
 import '../test_helpers/prefs.dart';
 
-/// The grid used to size cells by one aspect ratio for poster plus caption.
-/// The caption does not shrink with the column, so a narrow column pushed the
-/// metadata line out of its own cell and into the row below. These tests pin
-/// the measured layout that replaced it, and the gap that keeps a focused card
-/// off its neighbour.
+/// Pins the arithmetic so a later change to a font size or an inset breaks
+/// here, in one line, instead of on a television.
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
-  setUp(() async {
-    resetSharedPreferencesForTest();
-    SettingsService.resetForTesting();
-    await SettingsService.getInstance();
-  });
-
-  tearDown(() {
-    TvDetectionService.debugSetAppleTVOverride(null);
-  });
-
-  testWidgets('cell height is padding plus poster plus caption', (tester) async {
-    late double cellHeight;
-    late double captionHeight;
-    await tester.pumpWidget(
-      _TestApp(
-        child: Builder(
-          builder: (context) {
-            captionHeight = MediaCardMetrics.captionHeight(context);
-            cellHeight = MediaCardMetrics.cellHeight(
-              context,
-              200,
-              imageAspectRatio: GridLayoutConstants.fullCardPosterAspectRatio,
-            );
-            return const SizedBox.shrink();
-          },
-        ),
-      ),
+  Future<BuildContext> pumpContext(WidgetTester tester, {TextScaler? textScaler}) async {
+    late BuildContext captured;
+    Widget child = Builder(
+      builder: (context) {
+        captured = context;
+        return const SizedBox.shrink();
+      },
     );
+    if (textScaler != null) {
+      child = MediaQuery(
+        data: MediaQueryData(textScaler: textScaler),
+        child: child,
+      );
+    }
+    await tester.pumpWidget(Directionality(textDirection: TextDirection.ltr, child: child));
+    return captured;
+  }
 
-    // 200 wide, minus 3 padding on each side, at 2:3 gives a 291-high poster.
-    const posterHeight = (200 - 6) * 1.5;
-    expect(
-      cellHeight,
-      moreOrLessEquals(
-        MediaCardMetrics.cardPadding.vertical + posterHeight + MediaCardMetrics.captionGap + captionHeight,
-      ),
-    );
+  test('the poster is 2:3 measured on the poster, not on the cell', () {
+    expect(MediaCardGridLayout.posterWidthFor(120), 114);
+    expect(MediaCardGridLayout.posterHeightFor(120), 171);
+    expect(MediaCardGridLayout.posterHeightFor(120) / MediaCardGridLayout.posterWidthFor(120), closeTo(1.5, 0.001));
   });
 
-  testWidgets('caption height follows the OS text scale', (tester) async {
-    late double plain;
-    late double scaled;
-    await tester.pumpWidget(
-      _TestApp(
-        child: Builder(
-          builder: (context) {
-            plain = MediaCardMetrics.captionHeight(context);
-            return MediaQuery(
-              data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(1.5)),
-              child: Builder(
-                builder: (context) {
-                  scaled = MediaCardMetrics.captionHeight(context);
-                  return const SizedBox.shrink();
-                },
-              ),
-            );
-          },
-        ),
-      ),
-    );
+  testWidgets('the caption reserve covers one title line plus one subtitle line', (tester) async {
+    final context = await pumpContext(tester, textScaler: TextScaler.noScaling);
 
-    expect(scaled, moreOrLessEquals(plain * 1.5));
+    // 13 * 1.1 + 11 * 1.1 = 26.4, rounded up so the box is never short.
+    expect(MediaCardGridLayout.captionExtentFor(context), 27);
+    // 3 top + 2 gap + 27 caption + 1 bottom.
+    expect(MediaCardGridLayout.textExtentFor(context), 33);
+    expect(MediaCardGridLayout.cardHeightFor(context, 120), 171 + 33);
   });
+
+  testWidgets('the reserve grows with the system text size', (tester) async {
+    final context = await pumpContext(tester, textScaler: const TextScaler.linear(2));
+
+    // The poster is fixed, so unlike the app's other grids the caption cannot
+    // borrow height from it. If the reserve did not scale, a large text
+    // setting would put the caption back on the row below.
+    expect(MediaCardGridLayout.captionExtentFor(context), 53);
+    expect(MediaCardGridLayout.cardHeightFor(context, 120), 171 + 59);
+  });
+
+  testWidgets('the card height is exactly the poster plus the text reserve', (tester) async {
+    final context = await pumpContext(tester);
+
+    for (final width in [104.0, 120.0, 187.5]) {
+      expect(
+        MediaCardGridLayout.cardHeightFor(context, width),
+        MediaCardGridLayout.posterHeightFor(width) + MediaCardGridLayout.textExtentFor(context),
+      );
+    }
+  });
+
+  // ============================================================
+  // What a grid cell reserves: the same arithmetic, plus the room a focused
+  // card grows into and the artwork's own aspect.
+  // ============================================================
 
   test('grid spacing is a real gap', () {
     expect(GridLayoutConstants.posterGridSpacingForScale(0.85), greaterThan(0));
@@ -95,95 +86,127 @@ void main() {
     // focus lands: at [FocusTheme.focusScale] the card ends up filling the cell
     // it was handed, and never a pixel of the spacing beside it.
     for (final cellWidth in <double>[100, 148, 220, 280]) {
-      final inset = MediaCardMetrics.focusInset(cellWidth);
+      final inset = MediaCardGridLayout.focusInsetFor(cellWidth);
       final grown = (cellWidth - inset * 2) * FocusTheme.focusScale;
       expect(grown, lessThanOrEqualTo(cellWidth + 0.001), reason: 'cell $cellWidth overflows its own bounds');
     }
   });
 
-  testWidgets('title and year fit inside a cell of the height the grid reserves', (tester) async {
-    final item = MediaItem(
-      id: 'movie_1',
-      backend: MediaBackend.plex,
-      kind: MediaKind.movie,
-      title: 'A title long enough that it has to be cut off with an ellipsis somewhere',
-      year: 2017,
-    );
+  testWidgets('a cell reserves the focus room on top of poster and caption', (tester) async {
+    final context = await pumpContext(tester, textScaler: TextScaler.noScaling);
+    const cellWidth = 200.0;
+    final inset = MediaCardGridLayout.focusInsetFor(cellWidth);
 
-    // A narrow column: the case that used to push the year out of the cell.
-    const cellWidth = 120.0;
-    late double cellHeight;
-
-    await tester.pumpWidget(
-      _TestApp(
-        child: Builder(
-          builder: (context) {
-            final inset = MediaCardMetrics.focusInset(cellWidth);
-            cellHeight = MediaCardMetrics.cellHeight(
-              context,
-              cellWidth,
-              imageAspectRatio: GridLayoutConstants.fullCardPosterAspectRatio,
-              focusInset: inset,
-            );
-            return SizedBox(
-              width: cellWidth,
-              height: cellHeight,
-              child: Padding(
-                padding: EdgeInsets.all(inset),
-                child: MediaCard(item: item, forceGridMode: true, isOffline: true),
-              ),
-            );
-          },
-        ),
+    expect(
+      MediaCardGridLayout.cellHeightFor(
+        context,
+        cellWidth,
+        imageAspectRatio: GridLayoutConstants.fullCardPosterAspectRatio,
+        focusInset: inset,
+      ),
+      moreOrLessEquals(
+        inset * 2 +
+            MediaCardGridLayout.posterWidthFor(cellWidth, focusInset: inset) * 1.5 +
+            MediaCardGridLayout.textExtentFor(context),
       ),
     );
-
-    expect(tester.takeException(), isNull);
-    expect(find.text('2017'), findsOneWidget);
-
-    final card = tester.getRect(find.byType(MediaCard));
-    final year = tester.getRect(find.text('2017'));
-    expect(year.bottom, lessThanOrEqualTo(card.bottom));
   });
 
-  testWidgets('grid geometry reserves the measured cell height', (tester) async {
-    TvDetectionService.debugSetAppleTVOverride(true);
-    tester.view.devicePixelRatio = 1.0;
-    tester.view.physicalSize = const Size(1920, 1080);
-    addTearDown(() {
-      tester.view.resetDevicePixelRatio();
-      tester.view.resetPhysicalSize();
+  group('in a grid', () {
+    setUp(() async {
+      resetSharedPreferencesForTest();
+      SettingsService.resetForTesting();
+      await SettingsService.getInstance();
     });
 
-    late MediaGridGeometry geometry;
-    late double expectedHeight;
-    await tester.pumpWidget(
-      _TestApp(
-        child: Builder(
-          builder: (context) {
-            geometry = MediaGridGeometry.resolve(
-              context: context,
-              crossAxisExtent: 1200,
-              density: LibraryDensity.defaultValue,
-            );
-            expectedHeight = MediaCardMetrics.cellHeight(
-              context,
-              geometry.itemWidth,
-              imageAspectRatio: GridLayoutConstants.fullCardPosterAspectRatio,
-              focusInset: geometry.cellInset,
-            );
-            return const SizedBox.shrink();
-          },
-        ),
-      ),
-    );
+    tearDown(() {
+      TvDetectionService.debugSetAppleTVOverride(null);
+    });
 
-    expect(geometry.spacing, greaterThan(0));
-    expect(geometry.cellInset, moreOrLessEquals(MediaCardMetrics.focusInset(geometry.itemWidth)));
-    expect(geometry.delegate.crossAxisSpacing, geometry.spacing);
-    expect(geometry.delegate.mainAxisSpacing, geometry.spacing);
-    expect(geometry.delegate.mainAxisExtent, moreOrLessEquals(expectedHeight));
-    expect(geometry.itemHeight, moreOrLessEquals(expectedHeight));
+    testWidgets('title and year fit inside the cell the grid reserves', (tester) async {
+      final item = MediaItem(
+        id: 'movie_1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'A title long enough that it has to be cut off with an ellipsis somewhere',
+        year: 2017,
+      );
+
+      // A narrow column: the case that used to push the year out of the cell.
+      const cellWidth = 120.0;
+      late double cellHeight;
+
+      await tester.pumpWidget(
+        _TestApp(
+          child: Builder(
+            builder: (context) {
+              final inset = MediaCardGridLayout.focusInsetFor(cellWidth);
+              cellHeight = MediaCardGridLayout.cellHeightFor(
+                context,
+                cellWidth,
+                imageAspectRatio: GridLayoutConstants.fullCardPosterAspectRatio,
+                focusInset: inset,
+              );
+              return SizedBox(
+                width: cellWidth,
+                height: cellHeight,
+                child: Padding(
+                  padding: EdgeInsets.all(inset),
+                  child: MediaCard(item: item, forceGridMode: true, isOffline: true),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('2017'), findsOneWidget);
+
+      final card = tester.getRect(find.byType(MediaCard));
+      final year = tester.getRect(find.text('2017'));
+      expect(year.bottom, lessThanOrEqualTo(card.bottom));
+    });
+
+    testWidgets('the geometry hands the delegate the measured cell height', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1920, 1080);
+      addTearDown(() {
+        tester.view.resetDevicePixelRatio();
+        tester.view.resetPhysicalSize();
+      });
+
+      late MediaGridGeometry geometry;
+      late double expectedHeight;
+      await tester.pumpWidget(
+        _TestApp(
+          child: Builder(
+            builder: (context) {
+              geometry = MediaGridGeometry.resolve(
+                context: context,
+                crossAxisExtent: 1200,
+                density: LibraryDensity.defaultValue,
+              );
+              expectedHeight = MediaCardGridLayout.cellHeightFor(
+                context,
+                geometry.itemWidth,
+                imageAspectRatio: GridLayoutConstants.fullCardPosterAspectRatio,
+                focusInset: geometry.cellInset,
+              );
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+
+      expect(geometry.spacing, greaterThan(0));
+      expect(geometry.cellInset, moreOrLessEquals(MediaCardGridLayout.focusInsetFor(geometry.itemWidth)));
+      expect(geometry.delegate.crossAxisSpacing, geometry.spacing);
+      expect(geometry.delegate.mainAxisSpacing, geometry.spacing);
+      expect(geometry.delegate.mainAxisExtent, moreOrLessEquals(expectedHeight));
+      expect(geometry.itemHeight, moreOrLessEquals(expectedHeight));
+    });
   });
 }
 

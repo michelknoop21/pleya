@@ -28,6 +28,30 @@ scripts/testflight_release.sh ios_beta   # alleen iOS
 fastlane ios_beta                        # zonder build-number bump
 ```
 
+## Verplicht vóór een iOS-upload: QR-scannen op echte hardware
+
+`mobile_scanner` ging op 17 augustus 2026 van 5.2.3 naar 7.4.0, en daarmee
+wisselde de decoder op iOS van Google ML Kit naar Apple's Vision-framework
+(zie [DEC-024](DECISIONS.md#dec-024)). Dat de simulator weer bouwt is bewijs
+dat de iOS-build gezond is, niet dat scannen werkt: een simulator heeft geen
+camera, dus die kant is daar principieel niet te testen.
+
+Loop dit één keer af op een fysiek toestel vóór de eerstvolgende upload. Het is
+een smoketest, geen regressiesuite; hij duurt een paar minuten.
+
+- [ ] Pleya Share openen en de scanner starten.
+- [ ] De camera-permissievraag verschijnt en toestaan werkt.
+- [ ] Een geldige Pleya-pair-QR scannen; de pairing gaat door.
+- [ ] `barcode.rawValue` levert de verwachte `pleya://`-URI (log meelezen via
+      de debug-pref, of het gedrag afleiden uit een geslaagde pairing).
+- [ ] Een onleesbare of niet-Pleya QR aanbieden: de scanner blijft doorzoeken
+      in plaats van te stoppen of te crashen.
+- [ ] Scanner sluiten en opnieuw openen; de camera komt terug.
+- [ ] Eén ronde bij matig licht.
+
+Faalt hier iets, dan is dat een blokkade voor de upload en niet iets voor de
+volgende ronde: QR-pairing is de enige manier om een host te koppelen.
+
 ## Build koppelen aan het App Store-versierecord
 
 Een upload naar TestFlight zet de build nog niet in de versie die je indient.
@@ -53,6 +77,64 @@ ASC_ATTACH_TIMEOUT=3600 fastlane beta           # langer wachten op processing (
 Staat de versie in review of live, dan is er niets te bewerken en slaat de lane
 dat platform over met een melding. Een versierecord op een ánder versienummer dan
 de pubspec blokkeert het koppelen ook; zie de troubleshooting-tabel hieronder.
+
+## Indienen voor review
+
+TestFlight en App Review zijn twee aparte poorten. Een build die intern getest
+wordt is nog niet ingediend; daarvoor moet het versierecord van dat platform
+compleet zijn, en "Add for Review" weigert zonder te zeggen wélk veld ontbreekt
+dan het eerste dat het tegenkomt. Loop daarom de checklist af vóór je klikt.
+
+Per platform moet het versierecord hebben:
+
+| Veld | Via de API te zetten | Opmerking |
+|---|---|---|
+| Build gekoppeld | ja, `fastlane attach_builds` | zie de sectie hierboven |
+| Export compliance | ja, `PATCH /v1/builds/<id>` | anders is de build ook intern onzichtbaar |
+| Beschrijving, keywords, support-URL | ja, `appStoreVersionLocalizations` | |
+| Reviewnotities, demo-account, contactpersoon | ja, `appStoreReviewDetail` | demo-account is `applereview` op `demo.pleya.app` |
+| Copyright | ja, `appStoreVersions.copyright` | jaartal **plus** rechthebbende, dus `2026 Michel Knoop`; alleen een naam wordt geweigerd |
+| Screenshots | ja, maar omslachtig | minimaal één per platform, en tvOS en macOS erven die van iOS **niet** |
+
+Copyright zetten of controleren:
+
+```bash
+# lezen
+GET  /v1/appStoreVersions/<version-id>
+# zetten
+PATCH /v1/appStoreVersions/<version-id>
+{"data":{"type":"appStoreVersions","id":"<version-id>",
+         "attributes":{"copyright":"2026 Michel Knoop"}}}
+```
+
+De version-id's van 2.8.0: iOS `c5f974ea-55e7-46fb-8258-5f534cf03a35`, tvOS
+`f885b8de-2677-4034-ae7f-07ee7c1a9e45`, macOS
+`b185cff8-3c5e-4913-9cdb-cbb85df97b47`. Een nieuwe versie krijgt nieuwe id's;
+haal ze op met `GET /v1/apps/6787464031/appStoreVersions`.
+
+### Twee dingen die de API niet toont
+
+De API-sleutel met rol App Manager leest deze twee niet: `appDataUsages` en
+`appDataUsagePublishState` bestaan niet als relatie op `/v1/apps/<id>` (HTTP 404,
+geen 403). Ze zijn account- of app-breed, dus één keer controleren in de
+webinterface volstaat voor alle drie de platforms.
+
+- **App Privacy**, het vragenformulier over dataverzameling. Moet op "Published"
+  staan; zonder ingevuld formulier blokkeert Apple een eerste inzending.
+- **EU DSA trader status**, onder Business. Sinds 17 februari 2025 wordt een
+  inzending voor EU-distributie geweigerd zonder gecontroleerde traderstatus, en
+  een app die niet voldoet verdwijnt uit alle 27 EU-territoria.
+
+Beide stonden vermoedelijk al goed, want de iOS-inzending van 6 juli 2026 kwam
+door de indienstap heen. Dat is een afleiding, geen meting: controleer ze zelf.
+
+### Volgorde bij een hertest na afwijzing
+
+Staat er nog een afgewezen submission open, zoals iOS na 6 juli 2026
+(`UNRESOLVED_ISSUES`), dien dan niet opnieuw in vóór het antwoord in Resolution
+Center staat. De tekst daarvoor ligt klaar in
+[`app-review-reply-2026-08.md`](app-review-reply-2026-08.md). Platforms zonder
+open submission (tvOS, macOS) kun je los indienen.
 
 ## External testers
 

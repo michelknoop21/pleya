@@ -17,6 +17,8 @@
 		"@sveltejs/enhanced-img": "^0.10.4",
 		"@sveltejs/kit": "^2.50.1",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"github-slugger": "^2.0.0",
+		"marked": "^18.0.9",
 		"svelte": "^5.48.2",
 		"svelte-check": "^4.3.5",
 		"typescript": "^5.9.3",

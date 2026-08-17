@@ -8,13 +8,9 @@ import '../media/watchlist_entry.dart';
 import '../theme/mono_tokens.dart';
 import '../utils/media_image_helper.dart';
 import '../focus/card_focus_scope.dart';
+import 'media_card_grid_layout.dart';
 import 'pressable.dart';
 import 'focusable_media_card.dart';
-
-/// Vertical space a watchlist card reserves for its title and year block,
-/// on top of the 2:3 poster. Shared with the grid so the cell height and the
-/// card height cannot drift apart.
-const double watchlistCardTextExtent = 46;
 
 /// One title on the kijklijst.
 ///
@@ -29,8 +25,13 @@ const double watchlistCardTextExtent = 46;
 /// neither. The repo's own precedent runs the other way: `SeerrPosterCard` is
 /// a separate card for exactly this reason.
 ///
-/// Both branches render at the same [width] and [height], because a card that
-/// is wider than its grid cell gets its top clipped by the SliverGrid.
+/// Both branches lay out through [MediaCardGridLayout], so a playable and an
+/// unavailable title in the same row put their poster and their caption on the
+/// same pixel. There is no height parameter: the card is exactly
+/// [MediaCardGridLayout.cardHeightFor] for its [width], and a caller that
+/// sizes a cell or a rail asks the same function. The one time the height was
+/// a parameter, the two branches disagreed about whether it meant the card or
+/// the poster, and a playable card drew a full caption over the row below.
 class WatchlistCard extends StatelessWidget {
   const WatchlistCard({
     super.key,
@@ -38,7 +39,6 @@ class WatchlistCard extends StatelessWidget {
     required this.isPlayable,
     required this.onTap,
     required this.width,
-    required this.height,
     this.focusNode,
   });
 
@@ -52,17 +52,30 @@ class WatchlistCard extends StatelessWidget {
   /// detail route through [FocusableMediaCard].
   final VoidCallback onTap;
 
+  /// The grid cell's width. Everything else follows from it.
   final double width;
-  final double height;
+
   final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
     final match = entry.lastKnownMatch;
-    if (isPlayable && match != null) {
-      return FocusableMediaCard(item: match, width: width, height: height, focusNode: focusNode);
-    }
-    return WatchlistUnavailableCard(entry: entry, onTap: onTap, width: width, height: height, focusNode: focusNode);
+    final card = isPlayable && match != null
+        // MediaCard's `height` is the poster height, not the card height; see
+        // [MediaCardGridLayout]. Handing it the cell height made every playable
+        // card a caption taller than its tile, and SliverGrid does not clip, so
+        // that caption landed on the next row's posters.
+        ? FocusableMediaCard(
+            item: match,
+            width: width,
+            height: MediaCardGridLayout.posterHeightFor(width),
+            focusNode: focusNode,
+          )
+        : WatchlistUnavailableCard(entry: entry, onTap: onTap, width: width, focusNode: focusNode);
+
+    // A tight cell overrides this with the identical value; outside a grid it
+    // is what gives both branches the same definitive height.
+    return SizedBox(width: width, height: MediaCardGridLayout.cardHeightFor(context, width), child: card);
   }
 }
 
@@ -86,14 +99,16 @@ class WatchlistUnavailableCard extends StatelessWidget {
     required this.entry,
     required this.onTap,
     required this.width,
-    required this.height,
     this.focusNode,
   });
 
   final WatchlistEntry entry;
   final VoidCallback onTap;
+
+  /// The grid cell's width. The poster and the caption follow from it, the
+  /// same way they do inside [MediaCard]'s standard grid card.
   final double width;
-  final double height;
+
   final FocusNode? focusNode;
 
   /// Opacity for a title none of the reachable servers has.
@@ -104,9 +119,10 @@ class WatchlistUnavailableCard extends StatelessWidget {
     final tk = tokens(context);
     final theme = Theme.of(context);
     final notFound = entry.availability == WatchlistAvailability.notFound;
-    final posterHeight = (height - watchlistCardTextExtent).clamp(0.0, height);
+    final posterWidth = MediaCardGridLayout.posterWidthFor(width);
+    final posterHeight = MediaCardGridLayout.posterHeightFor(width);
 
-    Widget poster = _WatchlistPoster(entry: entry, width: width, height: posterHeight);
+    Widget poster = _WatchlistPoster(entry: entry, width: posterWidth, height: posterHeight);
     if (notFound) {
       poster = Opacity(
         opacity: notFoundOpacity,
@@ -129,50 +145,68 @@ class WatchlistUnavailableCard extends StatelessWidget {
         onTap: onTap,
         child: SizedBox(
           width: width,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CardFocusBorder(
-                borderRadius: tk.radiusSm,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(tk.radiusSm),
-                  child: Stack(
+          // Insets, gap and caption budget are MediaCard's, so a row that
+          // mixes both branches stays on one grid.
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MediaCardGridLayout.topInset,
+              MediaCardGridLayout.topInset,
+              MediaCardGridLayout.topInset,
+              MediaCardGridLayout.bottomInset,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CardFocusBorder(
+                  borderRadius: tk.radiusSm,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(tk.radiusSm),
+                    child: Stack(
+                      children: [
+                        poster,
+                        if (entry.availability == WatchlistAvailability.checking)
+                          const Positioned(top: 6, right: 6, child: _CheckingSpinner()),
+                        if (notFound) Positioned(left: 6, bottom: 6, right: 6, child: _NotAvailableBadge()),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: MediaCardGridLayout.posterCaptionGap),
+                // Fixed-height block: a missing year or a title that wraps
+                // must not move the row below.
+                SizedBox(
+                  height: MediaCardGridLayout.captionExtentFor(context),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      poster,
-                      if (entry.availability == WatchlistAvailability.checking)
-                        const Positioned(top: 6, right: 6, child: _CheckingSpinner()),
-                      if (notFound) Positioned(left: 6, bottom: 6, right: 6, child: _NotAvailableBadge()),
+                      Text(
+                        entry.item.title ?? '',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: MediaCardGridLayout.titleFontSize,
+                          height: MediaCardGridLayout.lineHeightFactor,
+                        ),
+                      ),
+                      if (entry.item.year != null)
+                        Text(
+                          '${entry.item.year}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: tk.textMuted,
+                            fontSize: MediaCardGridLayout.subtitleFontSize,
+                            height: MediaCardGridLayout.lineHeightFactor,
+                          ),
+                        ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              SizedBox(
-                height: watchlistCardTextExtent - 6,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      entry.item.title ?? '',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        height: 1.1,
-                      ),
-                    ),
-                    if (entry.item.year != null)
-                      Text(
-                        '${entry.item.year}',
-                        style: theme.textTheme.bodySmall?.copyWith(color: tk.textMuted, fontSize: 11, height: 1.1),
-                      ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

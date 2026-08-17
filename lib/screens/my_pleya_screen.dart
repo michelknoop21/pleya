@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -7,12 +9,13 @@ import '../navigation/navigation_tabs.dart';
 import '../profiles/active_profile_provider.dart';
 import '../profiles/profile.dart';
 import '../profiles/profile_avatar.dart';
-import 'profile/profile_switch_screen.dart';
+import '../services/account_ui_actions.dart';
 import '../providers/download_provider.dart';
 import '../providers/offline_mode_provider.dart';
 import '../providers/seerr_provider.dart';
 import '../providers/watchlist_provider.dart';
 import '../widgets/desktop_app_bar.dart';
+import '../widgets/media_card_grid_layout.dart';
 import '../widgets/watchlist_card.dart';
 
 /// The personal corner of the mobile app.
@@ -50,14 +53,7 @@ class MyPleyaScreen extends StatelessWidget {
         slivers: [
           CustomAppBar(title: Text(t.myPleya.title), automaticallyImplyLeading: false),
           SliverToBoxAdapter(
-            child: _ProfileHeader(
-              profile: profile,
-              onOpenSettings: () => onOpenTab(NavigationTabId.settings),
-              onSwitchProfile: () => Navigator.of(
-                context,
-                rootNavigator: true,
-              ).push(MaterialPageRoute(builder: (_) => const ProfileSwitchScreen())),
-            ),
+            child: _ProfileHeader(profile: profile, onSwitchProfile: () => AccountUiActions.openProfiles(context)),
           ),
           if (watchlist?.hasWatchlist ?? false) ...[
             SliverToBoxAdapter(
@@ -90,6 +86,34 @@ class MyPleyaScreen extends StatelessWidget {
                 onTap: () => onOpenTab(NavigationTabId.requests),
               ),
             ),
+          // The three actions that used to hang off the avatar in the Home
+          // header. They come last and behind a rule: this screen is a content
+          // hub first, and account management is what you come here for least
+          // often. Each one calls the action that already existed; the mobile
+          // entry point moved, the behaviour did not.
+          const SliverToBoxAdapter(child: Divider(height: 32, indent: 16, endIndent: 16)),
+          SliverToBoxAdapter(
+            child: _SectionRow(
+              icon: Symbols.group_rounded,
+              label: t.profiles.sectionTitle,
+              onTap: () => AccountUiActions.openProfiles(context),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: _SectionRow(
+              icon: Symbols.settings_rounded,
+              label: t.common.settings,
+              onTap: () => onOpenTab(NavigationTabId.settings),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: _SectionRow(
+              icon: Symbols.logout_rounded,
+              label: t.common.logout,
+              showChevron: false,
+              onTap: () => unawaited(AccountUiActions.logout(context)),
+            ),
+          ),
         ],
       ),
     );
@@ -102,13 +126,13 @@ class MyPleyaScreen extends StatelessWidget {
   }
 }
 
-/// Avatar, name and a gear. Deliberately compact so the kijklijst rail lands
-/// in the first screenful instead of below the fold.
+/// Avatar and name. Deliberately compact so the kijklijst rail lands in the
+/// first screenful instead of below the fold, and so the account actions at the
+/// bottom stay secondary to the content between them.
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.profile, required this.onOpenSettings, required this.onSwitchProfile});
+  const _ProfileHeader({required this.profile, required this.onSwitchProfile});
 
   final Profile? profile;
-  final VoidCallback onOpenSettings;
   final VoidCallback onSwitchProfile;
 
   @override
@@ -140,7 +164,6 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          IconButton(onPressed: onOpenSettings, icon: const Icon(Symbols.settings_rounded), tooltip: t.common.settings),
         ],
       ),
     );
@@ -148,15 +171,28 @@ class _ProfileHeader extends StatelessWidget {
 }
 
 class _SectionRow extends StatelessWidget {
-  const _SectionRow({required this.icon, required this.label, required this.onTap, this.trailing});
+  const _SectionRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.trailing,
+    this.showChevron = true,
+  });
 
   final IconData icon;
   final String label;
   final String? trailing;
   final VoidCallback onTap;
 
+  /// Off for a row that acts instead of navigating, so a chevron cannot
+  /// promise a screen that never opens. Sign out is the only such row.
+  final bool showChevron;
+
   @override
   Widget build(BuildContext context) {
+    if (!showChevron) {
+      return ListTile(leading: Icon(icon), title: Text(label), onTap: onTap);
+    }
     return ListTile(
       leading: Icon(icon),
       title: Text(label),
@@ -197,7 +233,9 @@ class _WatchlistRail extends StatelessWidget {
     final entries = provider.entriesByRecentlyAdded.take(maxItems).toList();
     if (entries.isEmpty) return const SizedBox.shrink();
 
-    final height = _posterWidth * 3 / 2 + watchlistCardTextExtent;
+    // Same contract the kijklijst grid uses: a 2:3 poster plus the caption
+    // MediaCard draws underneath it.
+    final height = MediaCardGridLayout.cardHeightFor(context, _posterWidth);
     return SizedBox(
       height: height,
       child: ListView.separated(
@@ -210,7 +248,6 @@ class _WatchlistRail extends StatelessWidget {
           isPlayable: provider.isPlayable(entries[index]),
           onTap: onOpenAll,
           width: _posterWidth,
-          height: height,
         ),
       ),
     );

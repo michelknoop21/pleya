@@ -19,6 +19,8 @@
 
       <!-- Links -->
       <nav class="footer-nav">
+        <a href="/docs">Guide</a>
+        <a href="/releases">Release notes</a>
         <a href="/privacy">Privacy Policy</a>
         <a href={SOURCE_REPO_URL} target="_blank" rel="noopener noreferrer">Source</a>
         <a href="/LICENSE.txt" target="_blank" rel="noopener noreferrer">License</a>
@@ -74,8 +76,10 @@
 
   .footer-nav {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     align-items: center;
-    gap: 2rem;
+    gap: 1rem 1.75rem;
     color: var(--color-text-muted);
     font-size: 0.875rem;
     line-height: 1.25rem;

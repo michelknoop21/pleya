@@ -30,8 +30,8 @@ import '../utils/snackbar_helper.dart';
 import '../theme/mono_tokens.dart';
 import '../i18n/strings.g.dart';
 import 'media_context_menu.dart';
+import 'media_card_grid_layout.dart';
 import 'media_card_list_layout.dart';
-import 'media_card_metrics.dart';
 import 'backend_badge.dart';
 import 'optimized_media_image.dart';
 import 'hover_boxart_overlay.dart';
@@ -56,6 +56,18 @@ class MediaCard extends StatefulWidget {
   /// has no nominal union type — runtime `is` checks select the variant.
   final Object item;
   final double? width;
+
+  /// In standard grid mode this is the **poster** height, not the card
+  /// height: the title and subtitle are drawn *below* a poster of exactly
+  /// this height, so the card ends up roughly 33 logical pixels taller than
+  /// what you pass in. A caller sizing a cell or a rail has to add that
+  /// itself. `MediaCardGridLayout` in widgets/media_card_grid_layout.dart
+  /// does the arithmetic. Handing this a cell height makes the card paint
+  /// over whatever sits below it.
+  ///
+  /// In full-bleed mode ([fullBleedImage]) there is no caption, so it is the
+  /// whole card. Null means "take what the cell leaves after the caption":
+  /// the poster goes in an [Expanded].
   final double? height;
   final void Function(String itemId)? onRefresh;
   final VoidCallback? onRemoveFromContinueWatching;
@@ -472,8 +484,10 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
   }
 
   Widget _buildStandardGridCard(BuildContext context, Object item, String? localPosterPath) {
-    // Compute actual poster dimensions from card dimensions
-    final posterWidth = widget.width != null ? MediaCardMetrics.posterWidth(widget.width!) : null;
+    // widget.height is the POSTER height here, not the card height (see
+    // MediaCard.height); the caption below it is extra. Null hands the poster
+    // an Expanded instead.
+    final posterWidth = widget.width != null ? MediaCardGridLayout.posterWidthFor(widget.width!) : null;
     final posterHeight = widget.height;
 
     // The focus border hugs the poster (captions stay outside it), matching
@@ -519,7 +533,12 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
           onSecondaryTap: showContextMenuFromTap,
           borderRadius: BorderRadius.circular(tokens(context).radiusSm),
           child: Padding(
-            padding: MediaCardMetrics.cardPadding,
+            padding: const EdgeInsets.fromLTRB(
+              MediaCardGridLayout.topInset,
+              MediaCardGridLayout.topInset,
+              MediaCardGridLayout.topInset,
+              MediaCardGridLayout.bottomInset,
+            ),
             child: Column(
               mainAxisSize: .min,
               crossAxisAlignment: .start,
@@ -529,13 +548,13 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
                   SizedBox(width: double.infinity, height: posterHeight, child: poster)
                 else
                   Expanded(child: poster),
-                const SizedBox(height: MediaCardMetrics.captionGap),
+                const SizedBox(height: MediaCardGridLayout.posterCaptionGap),
                 // The caption gets a fixed slice of the card, so a two-line
                 // block never grows into the row below and every poster in a
                 // row ends at the same height. Both lines are single-line, so
                 // this is the exact height they need, not a worst case.
                 SizedBox(
-                  height: MediaCardMetrics.captionHeight(context),
+                  height: MediaCardGridLayout.captionExtentFor(context),
                   child: Column(
                     mainAxisSize: .min,
                     crossAxisAlignment: .start,
@@ -544,7 +563,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
                       if (item is MediaItem && _hasClickableTitle(item))
                         _ClickableText(
                           text: item.displayTitle,
-                          style: MediaCardMetrics.titleStyle,
+                          style: MediaCardGridLayout.titleStyle,
                           onTap: () => _navigateToFocusedDetail(context, item, isOffline: widget.isOffline),
                         )
                       else
@@ -552,7 +571,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
                           item is MediaPlaylist ? item.title : (item as MediaItem).displayTitle,
                           maxLines: 1,
                           overflow: .ellipsis,
-                          style: MediaCardMetrics.titleStyle,
+                          style: MediaCardGridLayout.titleStyle,
                         ),
                       // Subtitle
                       if (item is MediaPlaylist)
@@ -1008,7 +1027,10 @@ class _MediaCardHelpers {
         t.playlists.itemCount(count: playlist.leafCount!),
         maxLines: 1,
         overflow: .ellipsis,
-        style: MediaCardMetrics.subtitleStyle(context, color: tokens(context).textMuted),
+        style: MediaCardGridLayout.subtitleStyleFrom(
+          Theme.of(context).textTheme.bodySmall,
+          color: tokens(context).textMuted,
+        ),
       );
     }
     return const SizedBox.shrink();
@@ -1016,7 +1038,10 @@ class _MediaCardHelpers {
 
   /// Builds metadata subtitle (for collections, episodes, movies, shows)
   static Widget buildMetadataSubtitle(BuildContext context, MediaItem mi, {bool isOffline = false}) {
-    final subtitleStyle = MediaCardMetrics.subtitleStyle(context, color: tokens(context).textMuted);
+    final subtitleStyle = MediaCardGridLayout.subtitleStyleFrom(
+      Theme.of(context).textTheme.bodySmall,
+      color: tokens(context).textMuted,
+    );
 
     // For collections, show item count
     if (mi.kind == MediaKind.collection) {

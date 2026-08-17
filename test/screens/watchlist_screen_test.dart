@@ -10,15 +10,20 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/watchlist_entry.dart';
 import 'package:pleya/media/watchlist_scope.dart';
 import 'package:pleya/media/watchlist_source.dart';
+import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/offline_mode_provider.dart';
 import 'package:pleya/providers/watchlist_provider.dart';
 import 'package:pleya/screens/watchlist_screen.dart';
+import 'package:pleya/services/data_aggregation_service.dart';
+import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/watchlist/watchlist_repository.dart';
 import 'package:pleya/services/watchlist/watchlist_snapshot_store.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/focus/focusable_button.dart';
+import 'package:pleya/focus/card_focus_scope.dart';
+import 'package:pleya/widgets/media_card_grid_layout.dart';
 import 'package:pleya/widgets/watchlist_card.dart';
 
 import '../test_helpers/prefs.dart';
@@ -31,6 +36,8 @@ WatchlistEntry entry({
   MediaKind kind = MediaKind.movie,
   int? year = 2010,
   int position = 0,
+  WatchlistAvailability availability = WatchlistAvailability.unknown,
+  MediaItem? match,
 }) {
   return WatchlistEntry(
     key: key,
@@ -39,8 +46,22 @@ WatchlistEntry entry({
     guid: 'plex://movie/$key',
     posterRef: 'https://metadata-static.plex.tv/$key.jpg',
     memberships: [WatchlistMembership(scope: scope, remoteKey: key, sourcePosition: position)],
+    availability: availability,
+    lastKnownMatch: match,
   );
 }
+
+/// A match on a registered server, which is what turns an entry into the
+/// playable branch of [WatchlistCard] (see `WatchlistProvider.isPlayable`).
+/// No poster path, so nothing reaches for the network.
+MediaItem playableMatch(String key, {String title = 'Sintel', int? year = 2010}) => MediaItem(
+  id: key,
+  backend: MediaBackend.plex,
+  kind: MediaKind.movie,
+  title: title,
+  year: year,
+  serverId: 'machine-1',
+);
 
 class _StubSource implements WatchlistSource {
   _StubSource(this.entries);
@@ -104,13 +125,22 @@ void main() {
     List<WatchlistEntry> entries, {
     bool seerrConfigured = false,
     bool offline = false,
+    bool serversOnline = false,
+    TextScaler? textScaler,
   }) async {
     source = _StubSource(entries);
     provider = WatchlistProvider(
       snapshots: WatchlistSnapshotStore(cache: PlexApiCache.instance),
       repository: WatchlistRepository(sources: [source]),
       seerrConfigured: seerrConfigured,
+      isServerOnline: (_) => serversOnline,
     );
+    // An empty manager: no clients registered, so MediaCard's poster resolves
+    // to its fallback icon and no image request goes out. Registered because
+    // the real card asks for one during build and would throw without it.
+    final manager = MultiServerManager();
+    final servers = MultiServerProvider(manager, DataAggregationService(manager));
+    addTearDown(servers.dispose);
     // Load before pumping, and through runAsync: the snapshot store talks to a
     // real sqlite file, which the test binding's fake async never advances. The
     // screen kicks off its own load too, but by then this one has settled and
@@ -120,11 +150,18 @@ void main() {
       TranslationProvider(
         child: MaterialApp(
           theme: monoTheme(dark: true),
+          builder: textScaler == null
+              ? null
+              : (context, child) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+                  child: child!,
+                ),
           // Without an OfflineModeProvider the screen reads absent as online,
           // which is the state most of these tests are about.
           home: MultiProvider(
             providers: [
               ChangeNotifierProvider<WatchlistProvider>.value(value: provider),
+              ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
               if (offline) ChangeNotifierProvider<OfflineModeProvider>(create: (_) => _OfflineProvider()),
             ],
             child: const WatchlistScreen(),
@@ -191,6 +228,182 @@ void main() {
     await tester.pump();
     expect(find.text('A Show'), findsOneWidget);
     expect(find.text('A Movie'), findsNothing);
+  });
+
+  // The screen regression these cover: a playable card handed MediaCard the
+  // cell height, MediaCard read that as the poster height and drew its title
+  // and year below it, and SliverGrid does not clip — so the caption of row 1
+  // landed on the posters of row 2.
+  group('grid geometry', () {
+    /// Both branches wrap their poster in a [CardFocusBorder], so its rect is
+    /// the poster rect regardless of which card rendered it.
+    Rect posterOf(WidgetTester tester, int index) => tester.getRect(
+      find.descendant(of: find.byType(WatchlistCard).at(index), matching: find.byType(CardFocusBorder)).first,
+    );
+
+    List<Rect> cardRects(WidgetTester tester) => [
+      for (var i = 0; i < tester.widgetList(find.byType(WatchlistCard)).length; i++)
+        tester.getRect(find.byType(WatchlistCard).at(i)),
+    ];
+
+    /// The top of the second row, from the two distinct card tops on screen.
+    double secondRowTop(List<Rect> cards) {
+      final tops = {for (final r in cards) (r.top * 2).roundToDouble() / 2}.toList()..sort();
+      expect(tops.length, greaterThanOrEqualTo(2), reason: 'this needs two rows on screen');
+      return tops[1];
+    }
+
+    /// A phone-width viewport, so three columns and the mix below spans more
+    /// than one row.
+    void useTallPhone(WidgetTester tester) {
+      tester.view.physicalSize = const Size(420, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+    }
+
+    Future<void> pumpTwoRows(WidgetTester tester, {TextScaler? textScaler}) async {
+      useTallPhone(tester);
+
+      await pumpScreen(
+        tester,
+        [
+          // A playable entry renders its server match, so the two titles are
+          // kept apart on purpose: find.text has to stay unambiguous.
+          entry(
+            key: 'a',
+            title: 'Sintel',
+            match: playableMatch('a', title: 'Sintel op de server'),
+          ),
+          entry(key: 'b', title: 'Big Buck Bunny', availability: WatchlistAvailability.notFound),
+          entry(key: 'c', title: 'Een titel die veel te lang is om op een enkele regel te passen'),
+          entry(key: 'd', title: 'Zonder jaar', year: null),
+          entry(
+            key: 'e',
+            title: 'Cosmos Laundromat',
+            match: playableMatch('e', title: 'Cosmos op de server'),
+          ),
+          entry(key: 'f', title: 'Caminandes', availability: WatchlistAvailability.checking),
+        ],
+        serversOnline: true,
+        textScaler: textScaler,
+      );
+    }
+
+    testWidgets('no card overflows its cell, whichever branch renders it', (tester) async {
+      await pumpTwoRows(tester);
+
+      // An overflowing card is a RenderFlex overflow in a test; on a TV it was
+      // 32 invisible pixels drawn over the row below.
+      expect(tester.takeException(), isNull);
+
+      final cards = cardRects(tester);
+      expect(cards.length, 6);
+
+      final context = tester.element(find.byType(WatchlistCard).first);
+      final expected = MediaCardGridLayout.cardHeightFor(context, cards.first.width);
+      for (final r in cards) {
+        expect(r.height, moreOrLessEquals(expected, epsilon: 0.5));
+        expect(r.width, moreOrLessEquals(cards.first.width, epsilon: 0.5));
+      }
+    });
+
+    testWidgets('nothing from the first row reaches into the second', (tester) async {
+      await pumpTwoRows(tester);
+
+      final cards = cardRects(tester);
+      final rowTwoTop = secondRowTop(cards);
+
+      for (final r in cards.where((r) => r.top < rowTwoTop - 0.5)) {
+        expect(r.bottom, lessThanOrEqualTo(rowTwoTop + 0.5));
+      }
+      // And the captions themselves, which is what the screenshot showed.
+      for (final title in ['Sintel op de server', 'Big Buck Bunny', 'Zonder jaar']) {
+        final text = find.text(title);
+        expect(text, findsOneWidget);
+        final rect = tester.getRect(text);
+        if (rect.top >= rowTwoTop) continue;
+        expect(
+          rect.bottom,
+          lessThanOrEqualTo(rowTwoTop + 0.5),
+          reason: '"$title" is drawn over the poster of the row below',
+        );
+      }
+    });
+
+    testWidgets('the second row starts at one Y, whatever is in the first', (tester) async {
+      await pumpTwoRows(tester);
+      final withMixedContent = secondRowTop(cardRects(tester));
+
+      // Same grid, first row now all plain unavailable cards with a year.
+      useTallPhone(tester);
+      await pumpScreen(tester, [
+        for (final key in ['a', 'b', 'c', 'd', 'e', 'f']) entry(key: key, title: 'Title $key'),
+      ]);
+
+      expect(secondRowTop(cardRects(tester)), moreOrLessEquals(withMixedContent, epsilon: 0.5));
+    });
+
+    testWidgets('both branches put their poster on the same pixel', (tester) async {
+      useTallPhone(tester);
+
+      await pumpScreen(tester, [
+        entry(key: 'a', title: 'Playable', match: playableMatch('a')),
+        entry(key: 'b', title: 'Not available', availability: WatchlistAvailability.notFound),
+      ], serversOnline: true);
+
+      final cards = cardRects(tester);
+      final playable = posterOf(tester, 0);
+      final unavailable = posterOf(tester, 1);
+
+      expect(playable.size.width, moreOrLessEquals(unavailable.size.width, epsilon: 0.5));
+      expect(playable.size.height, moreOrLessEquals(unavailable.size.height, epsilon: 0.5));
+      expect(playable.top - cards[0].top, moreOrLessEquals(MediaCardGridLayout.topInset, epsilon: 0.5));
+      expect(unavailable.top - cards[1].top, moreOrLessEquals(MediaCardGridLayout.topInset, epsilon: 0.5));
+      expect(playable.height / playable.width, moreOrLessEquals(1.5, epsilon: 0.01));
+    });
+
+    testWidgets('the Not available badge does not change the geometry', (tester) async {
+      useTallPhone(tester);
+
+      await pumpScreen(tester, [entry(key: 'a', title: 'Sintel')]);
+      final plain = cardRects(tester).single;
+
+      await pumpScreen(tester, [entry(key: 'a', title: 'Sintel', availability: WatchlistAvailability.notFound)]);
+      expect(cardRects(tester).single, plain);
+    });
+
+    testWidgets('focus grows the card in paint, not in layout', (tester) async {
+      await pumpTwoRows(tester);
+
+      final before = cardRects(tester);
+      final rowTwoTop = secondRowTop(before);
+
+      final firstCard = tester.firstElement(find.byType(WatchlistCard));
+      final node = FocusScope.of(firstCard).traversalDescendants.firstWhere((n) => n.canRequestFocus);
+      node.requestFocus();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // Transform.scale is paint-time, so the layout boxes must be untouched.
+      final after = cardRects(tester);
+      for (var i = 0; i < before.length; i++) {
+        if (before[i].top < rowTwoTop - 0.5) continue; // the focused row may paint larger
+        expect(after[i], before[i], reason: 'focus moved a card in the row below');
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a larger system text size still keeps the rows apart', (tester) async {
+      await pumpTwoRows(tester, textScaler: const TextScaler.linear(1.5));
+
+      expect(tester.takeException(), isNull);
+
+      final cards = cardRects(tester);
+      final rowTwoTop = secondRowTop(cards);
+      for (final r in cards.where((r) => r.top < rowTwoTop - 0.5)) {
+        expect(r.bottom, lessThanOrEqualTo(rowTwoTop + 0.5));
+      }
+    });
   });
 
   testWidgets('the grid never scrolls horizontally out of its own clip', (tester) async {

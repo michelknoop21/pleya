@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/grid_size_calculator.dart';
 import '../focus/focus_theme.dart';
 import '../utils/layout_constants.dart';
-import 'media_card_metrics.dart';
+import 'media_card_grid_layout.dart';
 
 /// Shared grid delegate configuration for media item grids
 /// Maintains consistent aspect ratio and spacing across all media grids.
@@ -105,7 +105,7 @@ class MediaGridGeometry {
   final double spacing;
 
   /// Padding a grid must put around every cell's card. See
-  /// [MediaCardMetrics.focusInset]: it is the room a focused card grows into,
+  /// [MediaCardGridLayout.focusInsetFor]: it is the room a focused card grows into,
   /// and reserving it here is what keeps [spacing] intact under focus.
   final double cellInset;
 
@@ -166,7 +166,7 @@ class MediaGridGeometry {
       crossAxisSpacing: spacing,
     );
 
-    final cellInset = MediaCardMetrics.focusInset(
+    final cellInset = MediaCardGridLayout.focusInsetFor(
       itemWidth,
       focusScale: fullBleedImage ? FocusTheme.fullCardFocusScale : FocusTheme.focusScale,
     );
@@ -182,7 +182,7 @@ class MediaGridGeometry {
       itemHeight = itemWidth / aspectRatio;
       mainAxisExtent = null;
     } else {
-      itemHeight = MediaCardMetrics.cellHeight(
+      itemHeight = MediaCardGridLayout.cellHeightFor(
         context,
         itemWidth,
         imageAspectRatio: MediaGridDelegate.imageAspectRatioFor(useWideAspectRatio: useWideAspectRatio),

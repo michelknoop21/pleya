@@ -37,6 +37,12 @@ have_dart_code_linter() {
 
 FAILED=0
 
+# Adviserend en niet meegeteld in FAILED: draait deze run als pre-commit hook,
+# dan staan de hooks per definitie aan en zegt hij niets. Draait iemand hem met
+# de hand op een clone waar setup_hooks.sh nooit liep, dan is dit de plek waar
+# dat opvalt.
+scripts/check_hooks_installed.sh || true
+
 # 0. SDK-pin (.fvmrc) — dart format verschilt per SDK-versie, dus drift hier
 #    maakt elke volgende check onbetrouwbaar.
 section "flutter sdk pin"

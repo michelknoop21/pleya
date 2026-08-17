@@ -25,7 +25,7 @@ import '../../../utils/error_message_utils.dart';
 import '../../../utils/app_logger.dart';
 import '../../../utils/grid_size_calculator.dart';
 import '../../../utils/layout_constants.dart';
-import '../../../widgets/media_card_metrics.dart';
+import '../../../widgets/media_card_grid_layout.dart';
 import '../../../utils/media_image_helper.dart';
 import '../../../utils/provider_extensions.dart';
 import '../alpha_jump_bar.dart';
@@ -1497,7 +1497,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       final itemWidth = screenSize.width / columnCount;
       final scale = TvLayoutConstants.scaleForSize(screenSize);
       final rowHeight =
-          MediaCardMetrics.cellHeight(
+          MediaCardGridLayout.cellHeightFor(
             context,
             itemWidth,
             imageAspectRatio: GridLayoutConstants.fullCardPosterAspectRatio,

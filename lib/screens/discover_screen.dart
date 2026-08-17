@@ -28,27 +28,20 @@ import '../utils/media_image_helper.dart';
 import '../widgets/optimized_media_image.dart' show blurArtwork;
 import '../providers/discover_provider.dart';
 import '../providers/multi_server_provider.dart';
-import '../providers/hidden_libraries_provider.dart';
 import '../providers/home_layout_provider.dart';
-import '../providers/playback_state_provider.dart';
 import '../providers/watch_state_store.dart';
+import '../widgets/discover_refresh_action.dart';
 import '../widgets/hub_section.dart';
 import '../widgets/app_menu.dart';
 import '../widgets/clickable_cursor.dart';
 import '../widgets/skeletons.dart';
 import '../widgets/state_view.dart';
 import '../widgets/profile_switching_overlay.dart';
-import 'profile/profile_switch_screen.dart';
-import '../connection/connection_registry.dart';
 import '../profiles/active_profile_provider.dart';
-import '../profiles/plex_home_service.dart';
 import '../profiles/profile.dart';
 import '../profiles/profile_activation.dart';
 import '../profiles/profile_avatar.dart';
-import '../profiles/profile_connection_registry.dart';
-import '../profiles/profile_registry.dart';
-import '../providers/user_profile_provider.dart';
-import '../services/storage_service.dart';
+import '../services/account_ui_actions.dart';
 import '../services/settings_service.dart';
 import '../widgets/settings_builder.dart';
 import '../widgets/fitting_title_text.dart';
@@ -57,8 +50,8 @@ import '../widgets/tv_spotlight_background.dart';
 import '../mixins/refreshable.dart';
 import '../mixins/tab_visibility_aware.dart';
 import '../i18n/strings.g.dart';
+import '../navigation/navigation_tabs.dart';
 import '../utils/app_logger.dart';
-import '../utils/dialogs.dart';
 import '../utils/home_hero_layout.dart';
 import '../utils/media_navigation_helper.dart';
 import '../utils/provider_extensions.dart';
@@ -70,7 +63,6 @@ import '../utils/desktop_window_padding.dart';
 import '../widgets/top_ten_row.dart';
 import '../theme/mono_tokens.dart';
 import '../utils/formatters.dart' show formatDurationTextual;
-import 'auth_screen.dart';
 import 'libraries/content_state_builder.dart';
 import 'main_screen.dart';
 import 'settings/settings_screen.dart';
@@ -954,6 +946,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     unawaited(_discover.load());
   }
 
+  /// Header refresh action. Also the D-pad handler for it, which is why the
+  /// in-flight guard lives here rather than in [DiscoverRefreshAction]: the
+  /// action list is built outside that widget's rebuild.
+  void _handleRefreshPressed() {
+    if (_discover.isRefreshing) return;
+    unawaited(_discover.load());
+  }
+
   /// Get icon for hub based on its title
   IconData _getHubIcon(String title) {
     final lowerTitle = title.toLowerCase();
@@ -1056,56 +1056,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   Future<void> _handleLogout() async {
-    final confirm = await showConfirmDialog(
-      context,
-      title: t.common.logout,
-      message: t.messages.logoutConfirm,
-      confirmText: t.common.logout,
-      isDestructive: true,
-    );
-
-    if (confirm && mounted) {
-      final navigator = Navigator.of(context, rootNavigator: true);
-      // Use comprehensive logout through UserProfileProvider
-      final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
-      final multiServerProvider = context.read<MultiServerProvider>();
-      final hiddenLibrariesProvider = context.read<HiddenLibrariesProvider>();
-      final playbackStateProvider = context.read<PlaybackStateProvider>();
-      final connectionRegistry = context.read<ConnectionRegistry>();
-      final profileRegistry = context.read<ProfileRegistry>();
-      final profileConnReg = context.read<ProfileConnectionRegistry>();
-      final plexHome = context.read<PlexHomeService>();
-      final companionRemote = context.read<CompanionRemoteProvider>();
-
-      // Clear all user data and provider states
-      await companionRemote.resetForLogout();
-      await userProfileProvider.logout();
-      multiServerProvider.clearAllConnections();
-      // Drop the profile/connection rows so the next sign-in starts clean
-      // and doesn't bind to stale tokens or orphaned profile rows.
-      await profileConnReg.clear();
-      await profileRegistry.clear();
-      await connectionRegistry.clear();
-      await plexHome.clearAll();
-      final storage = await StorageService.getInstance();
-      await storage.clearActiveProfileId();
-      await storage.clearAllProfileLastUsed();
-      await hiddenLibrariesProvider.refresh();
-      playbackStateProvider.clearShuffle();
-
-      if (navigator.mounted) {
-        unawaited(
-          navigator.pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const AuthScreen()), (route) => false),
-        );
-      }
-    }
+    await AccountUiActions.logout(context);
   }
 
   void _handleSwitchProfile(BuildContext context) {
-    Navigator.of(
-      context,
-      rootNavigator: true,
-    ).push(MaterialPageRoute(builder: (context) => const ProfileSwitchScreen()));
+    AccountUiActions.openProfiles(context);
   }
 
   void _handleOpenSettings(BuildContext context) {
@@ -1299,9 +1254,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     onNavigateDown: _focusContentFromAppBar,
                     actions: [
                       FocusableAction(
-                        icon: Symbols.refresh_rounded,
-                        iconColor: foregroundColor,
-                        onPressed: _discover.load,
+                        onPressed: _handleRefreshPressed,
+                        child: DiscoverRefreshAction(color: foregroundColor, onPressed: _handleRefreshPressed),
                       ),
                       // Watch Together
                       FocusableAction(
@@ -1403,8 +1357,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           onPressed: () => _serverActivitiesButtonKey.currentState?.togglePanel(),
                           child: ServerActivitiesButton(key: _serverActivitiesButtonKey),
                         ),
-                      // User menu — profiles + sign out
-                      _buildUserMenuAction(context),
+                      // User menu: profiles and sign out. Gone on mobile, because the
+                      // bottom bar's My Pleya slot is the personal destination
+                      // there and carries the same three actions. Desktop and
+                      // TV keep it, because their sidebar has no My Pleya.
+                      // Same predicate that gates the tab, so the actions are
+                      // never in two places and never in none.
+                      if (showsHeaderAccountMenu(isMobile: PlatformDetector.isMobile(context)))
+                        _buildUserMenuAction(context),
                     ],
                   );
                 },

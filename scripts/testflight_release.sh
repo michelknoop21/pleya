@@ -20,11 +20,11 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
-# Adviserend, nooit blokkerend: MPVKit is exact gepind en levert prebuilt
-# XCFrameworks, dus een nieuwe tag komt er alleen in als iemand hem haalt.
-# Voor een release wil je weten dat je achterloopt; offline of GitHub plat mag
-# de build niet tegenhouden.
-scripts/check_mpvkit_update.sh || true
+# Adviserend, nooit blokkerend: vlak voor een release wil je zien wat er
+# openstaat, maar offline of GitHub plat mag de build niet tegenhouden. Dit
+# vervangt de losse MPVKit-aanroep — check_updates.sh roept die zelf aan en zet
+# hem naast de engine, de Android-binaries, de git-forks en de Actions.
+scripts/check_updates.sh || true
 
 fastlane "$LANE"
 

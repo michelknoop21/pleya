@@ -2,38 +2,27 @@
   import type { Snippet } from 'svelte';
 
   let { children, delay = 0, class: className = '' }: { children: Snippet; delay?: number; class?: string } = $props();
-
-  let el: HTMLDivElement | undefined = $state();
-  let visible = $state(false);
-
-  $effect(() => {
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          visible = true;
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  });
 </script>
 
-<div
-  bind:this={el}
-  class="{className} scroll-reveal"
-  style="opacity: {visible ? 1 : 0}; transform: translateY({visible ? 0 : 24}px); transition-delay: {delay}ms;"
->
+<div class="{className} scroll-reveal" style="animation-delay: {delay}ms;">
   {@render children()}
 </div>
 
 <style>
+  /* Entrance animation in plain CSS, no IntersectionObserver.
+     The observer version wrote opacity: 0 into the server-rendered HTML and only
+     cleared it once it fired, so anything that never runs the page script kept a
+     full-height blank where Screenshots, Features and FAQ belong. Same movement as
+     the chapter index on /docs, and it completes on its own.
+     Not switched to animation-timeline: view(), which would tie progress to scroll
+     position again and leave a full-page capture blank below the fold. */
   .scroll-reveal {
-    transition-property: opacity, transform;
-    transition-duration: 600ms;
-    transition-timing-function: ease-out;
+    animation: var(--animate-fade-in-up);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scroll-reveal {
+      animation: none;
+    }
   }
 </style>

@@ -47,31 +47,31 @@ jobs:
       attestations: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: "temurin"
           java-version: "17"
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: "stable"
-          flutter-version: "3.44.0"
+          flutter-version-file: .fvmrc
           cache: true
           pub-cache: false
 
       - name: Cache Pub dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.pub-cache
           key: ${{ runner.os }}-${{ runner.arch }}-pub-v2-${{ hashFiles('pubspec.yaml', 'pubspec.lock') }}
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.gradle/caches
@@ -114,7 +114,7 @@ jobs:
           tar -czf plezy-android-x86_64.tar.gz -C build/app/outputs/flutter-apk app-x86_64-release.apk --transform 's/app-x86_64-release.apk/plezy.apk/'
 
       - name: Attest APKs
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             plezy-android-arm64-v8a.tar.gz
@@ -122,7 +122,7 @@ jobs:
             plezy-android-x86_64.tar.gz
 
       - name: Upload APKs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-apk
           path: |
@@ -138,25 +138,25 @@ jobs:
       attestations: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: "stable"
-          flutter-version: "3.44.0"
+          flutter-version-file: .fvmrc
           cache: true
           pub-cache: false
 
       - name: Cache Pub dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.pub-cache
           key: ${{ runner.os }}-${{ runner.arch }}-pub-v2-${{ hashFiles('pubspec.yaml', 'pubspec.lock') }}
 
       - name: Cache CocoaPods
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ios/Pods
@@ -186,12 +186,12 @@ jobs:
           zip -r plezy-ios.ipa Payload
 
       - name: Attest IPA
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: plezy-ios.ipa
 
       - name: Upload IPA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ios-ipa
           path: plezy-ios.ipa
@@ -204,25 +204,25 @@ jobs:
       attestations: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: "stable"
-          flutter-version: "3.44.0"
+          flutter-version-file: .fvmrc
           cache: true
           pub-cache: false
 
       - name: Cache Pub dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.pub-cache
           key: ${{ runner.os }}-${{ runner.arch }}-pub-v2-${{ hashFiles('pubspec.yaml', 'pubspec.lock') }}
 
       - name: Cache CocoaPods
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             macos/Pods
@@ -355,7 +355,7 @@ jobs:
           echo "MACOS_DMG_SIZE=$(stat -f%z plezy-macos.dmg)" >> $GITHUB_ENV
 
       - name: Attest macOS DMG
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: plezy-macos.dmg
 
@@ -365,7 +365,7 @@ jobs:
           echo "${{ env.MACOS_DMG_SIZE }}" > macos-dmg-size.txt
 
       - name: Upload macOS DMG
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macos-dmg
           path: |
@@ -379,25 +379,25 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: "stable"
-          flutter-version: "3.44.0"
+          flutter-version-file: .fvmrc
           cache: true
           pub-cache: false
 
       - name: Cache Pub dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~\AppData\Local\Pub\Cache
           key: ${{ runner.os }}-${{ runner.arch }}-pub-v2-${{ hashFiles('pubspec.yaml', 'pubspec.lock') }}
 
       - name: Cache Windows native dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: build/windows/x64/_deps
           key: windows-native-x64-${{ hashFiles('windows/CMakeLists.txt') }}
@@ -417,7 +417,7 @@ jobs:
         run: .\scripts\upload-symbols.ps1 windows-x64
 
       - name: Upload x64 build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-x64-build
           path: build/windows/x64/runner/Release/
@@ -428,11 +428,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Cache Windows native dependencies
         id: windows-native-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             build/windows/arm64/_deps
@@ -444,15 +444,15 @@ jobs:
         run: choco install 7zip -y
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: "master"
-          flutter-version: "3.44.0"
+          flutter-version-file: .fvmrc
           cache: true
           pub-cache: false
 
       - name: Cache Pub dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~\AppData\Local\Pub\Cache
@@ -473,7 +473,7 @@ jobs:
         run: .\scripts\upload-symbols.ps1 windows-arm64
 
       - name: Upload arm64 build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-arm64-build
           path: build/windows/arm64/runner/Release/
@@ -487,19 +487,19 @@ jobs:
       attestations: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Dart
-        uses: dart-lang/setup-dart@v1
+        uses: dart-lang/setup-dart@7654d458321ee25acccccfdb86cd48bd95768ff1 # v1.8.0
 
       - name: Download x64 build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: windows-x64-build
           path: build-x64
 
       - name: Download arm64 build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: windows-arm64-build
           path: build-arm64
@@ -534,7 +534,7 @@ jobs:
           Set-Content -Path win-installer-size.txt -Value (Get-Item plezy-windows-installer.exe).Length.ToString() -Encoding ascii -NoNewline
 
       - name: Attest Windows artifacts
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             plezy-windows-x64-portable.7z
@@ -542,19 +542,19 @@ jobs:
             plezy-windows-installer.exe
 
       - name: Upload x64 portable
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-x64-portable
           path: plezy-windows-x64-portable.7z
 
       - name: Upload arm64 portable
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-arm64-portable
           path: plezy-windows-arm64-portable.7z
 
       - name: Upload installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-installer
           path: |
@@ -570,25 +570,25 @@ jobs:
       attestations: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: "stable"
-          flutter-version: "3.44.0"
+          flutter-version-file: .fvmrc
           cache: true
           pub-cache: false
 
       - name: Cache Pub dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.pub-cache
           key: ${{ runner.os }}-${{ runner.arch }}-pub-v2-${{ hashFiles('pubspec.yaml', 'pubspec.lock') }}
 
       - name: Cache APT packages
-        uses: awalsh128/cache-apt-pkgs-action@latest
+        uses: awalsh128/cache-apt-pkgs-action@553a35bb8ebd9fcabcb1c9451aa4c98e1b4ca8a9 # v1.6.3
         with:
           packages: ${{ env.LINUX_APT_PACKAGES }}
           version: 1.1
@@ -611,7 +611,7 @@ jobs:
 
       - name: Cache libmpv build
         id: libmpv-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: libmpv-prefix
           key: libmpv-${{ runner.arch }}-${{ hashFiles('linux/packaging/build-libmpv.sh') }}
@@ -671,7 +671,7 @@ jobs:
           tar -czf $GITHUB_WORKSPACE/plezy-linux-x64.tar.gz *
 
       - name: Attest Linux x64 artifacts
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             plezy-linux-x64.tar.gz
@@ -680,7 +680,7 @@ jobs:
             plezy-linux-x64.pkg.tar.zst
 
       - name: Upload Linux x64 artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-x64
           path: |
@@ -697,25 +697,25 @@ jobs:
       attestations: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: "master"
-          flutter-version: "3.44.0"
+          flutter-version-file: .fvmrc
           cache: true
           pub-cache: false
 
       - name: Cache Pub dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.pub-cache
           key: ${{ runner.os }}-${{ runner.arch }}-pub-v2-${{ hashFiles('pubspec.yaml', 'pubspec.lock') }}
 
       - name: Cache APT packages
-        uses: awalsh128/cache-apt-pkgs-action@latest
+        uses: awalsh128/cache-apt-pkgs-action@553a35bb8ebd9fcabcb1c9451aa4c98e1b4ca8a9 # v1.6.3
         with:
           packages: ${{ env.LINUX_APT_PACKAGES }}
           version: 1.1
@@ -738,7 +738,7 @@ jobs:
 
       - name: Cache libmpv build
         id: libmpv-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: libmpv-prefix
           key: libmpv-${{ runner.arch }}-${{ hashFiles('linux/packaging/build-libmpv.sh') }}
@@ -808,7 +808,7 @@ jobs:
           tar -czf $GITHUB_WORKSPACE/plezy-linux-arm64.tar.gz *
 
       - name: Attest Linux arm64 artifacts
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             plezy-linux-arm64.tar.gz
@@ -817,7 +817,7 @@ jobs:
             plezy-linux-arm64.pkg.tar.zst
 
       - name: Upload Linux arm64 artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-arm64
           path: |
@@ -833,63 +833,63 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: pubspec.yaml
           sparse-checkout-cone-mode: false
 
       - name: Download Android artifacts
         if: ${{ inputs.build_android }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: android-apk
           path: artifacts/android-apk
 
       - name: Download iOS artifact
         if: ${{ inputs.build_ios }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ios-ipa
           path: artifacts/ios-ipa
 
       - name: Download macOS artifact
         if: ${{ inputs.build_macos }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: macos-dmg
           path: artifacts/macos-dmg
 
       - name: Download Windows x64 artifact
         if: ${{ inputs.build_windows }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: windows-x64-portable
           path: artifacts/windows-x64-portable
 
       - name: Download Windows arm64 artifact
         if: ${{ inputs.build_windows }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: windows-arm64-portable
           path: artifacts/windows-arm64-portable
 
       - name: Download Windows installer artifact
         if: ${{ inputs.build_windows }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: windows-installer
           path: artifacts/windows-installer
 
       - name: Download Linux x64 artifacts
         if: ${{ inputs.build_linux }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: linux-x64
           path: artifacts/linux-x64
 
       - name: Download Linux arm64 artifacts
         if: ${{ inputs.build_linux }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: linux-arm64
           path: artifacts/linux-arm64
@@ -1005,7 +1005,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           files: ${{ steps.release-files.outputs.files }}
           draft: true
