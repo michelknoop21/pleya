@@ -79,6 +79,11 @@ class SettingsExportService {
     // View state, not settings
     'selected_library_index',
     'selected_library_key',
+    // Download location: a path that exists on a Mac means nothing on an Apple
+    // TV or a phone, and moving someone's download folder is not a preference
+    // you want another device to decide.
+    'custom_download_path',
+    'custom_download_path_type',
     // Internal migration flags
     'buffer_size_migrated_to_auto',
     'pleya_legacy_prefs_migrated_v1',

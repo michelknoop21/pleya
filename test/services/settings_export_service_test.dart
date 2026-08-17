@@ -164,6 +164,17 @@ void main() {
       expect(p, isNot(contains('trakt_session')));
     });
 
+    test('drops the download location', () async {
+      final prefs = await BaseSharedPreferencesService.sharedCache();
+      await prefs.setString('custom_download_path', '/Users/someone/Movies');
+      await prefs.setString('custom_download_path_type', 'custom');
+      final out = SettingsExportService.buildExportMap(prefs);
+      // A path from one device is meaningless on the next, and syncing it would
+      // move where downloads land without anyone asking.
+      expect((out['prefs'] as Map), isNot(contains('custom_download_path')));
+      expect((out['prefs'] as Map), isNot(contains('custom_download_path_type')));
+    });
+
     test('drops the internal migration flag', () async {
       final prefs = await BaseSharedPreferencesService.sharedCache();
       await prefs.setBool('buffer_size_migrated_to_auto', true);
