@@ -290,39 +290,39 @@ class _DownloadsGridContentState extends State<_DownloadsGridContent> {
             final settings = SettingsService.instance;
             final density = settings.read(SettingsService.libraryDensity);
             final fullCardLayout = PlatformDetector.isTV() && settings.read(SettingsService.tvFullCardLayout);
-            final maxCrossAxisExtent = GridSizeCalculator.getMaxCrossAxisExtent(context, density);
             // Use LayoutBuilder to get actual available width (accounting for sidebar)
             return LayoutBuilder(
               builder: (context, constraints) {
                 final availableWidth = constraints.maxWidth - effectivePadding.left - effectivePadding.right;
-                final gridSpacing = MediaGridDelegate.spacingFor(context: context, fullBleedImage: fullCardLayout);
-                final columnCount = GridSizeCalculator.getColumnCount(
-                  availableWidth,
-                  maxCrossAxisExtent,
-                  crossAxisSpacing: gridSpacing,
+                // Same resolver as the library grids, so a downloaded poster
+                // gets the same gap and the same room for its caption.
+                final geometry = MediaGridGeometry.resolve(
+                  context: context,
+                  crossAxisExtent: availableWidth,
+                  density: density,
+                  fullBleedImage: fullCardLayout,
                 );
+                final columnCount = geometry.columnCount;
 
                 return GridView.builder(
                   padding: effectivePadding,
                   // Allow focus decoration to render outside scroll bounds
                   clipBehavior: Clip.none,
-                  gridDelegate: MediaGridDelegate.createDelegate(
-                    context: context,
-                    density: density,
-                    fullBleedImage: fullCardLayout,
-                  ),
+                  gridDelegate: geometry.delegate,
                   itemCount: items.length,
                   itemBuilder: (context, index) {
                     final item = items[index];
                     final isFirstColumn = GridSizeCalculator.isFirstColumn(index, columnCount);
                     final isFirst = index == 0;
-                    return FocusableMediaCard(
-                      item: item,
-                      focusNode: isFirst ? _firstItemFocusNode : null,
-                      onBack: widget.onBack,
-                      isOffline: true, // Downloaded content works without server
-                      fullBleedImage: fullCardLayout,
-                      onNavigateLeft: isFirstColumn ? _navigateToSidebar : null,
+                    return geometry.insetCell(
+                      FocusableMediaCard(
+                        item: item,
+                        focusNode: isFirst ? _firstItemFocusNode : null,
+                        onBack: widget.onBack,
+                        isOffline: true, // Downloaded content works without server
+                        fullBleedImage: fullCardLayout,
+                        onNavigateLeft: isFirstColumn ? _navigateToSidebar : null,
+                      ),
                     );
                   },
                 );

@@ -25,6 +25,7 @@ import '../../../utils/error_message_utils.dart';
 import '../../../utils/app_logger.dart';
 import '../../../utils/grid_size_calculator.dart';
 import '../../../utils/layout_constants.dart';
+import '../../../widgets/media_card_metrics.dart';
 import '../../../utils/media_image_helper.dart';
 import '../../../utils/provider_extensions.dart';
 import '../alpha_jump_bar.dart';
@@ -248,7 +249,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   Map<String, List<MediaFilterValue>> _jellyfinFilterValues = const {};
   final ValueNotifier<int> _currentFirstVisibleIndex = ValueNotifier<int>(0);
   LibraryAlphaScrollMetrics _scrollMetrics = LibraryAlphaScrollMetrics.empty;
-  double _effectiveTopPadding = _gridTopPadding;
+  double _effectiveTopPadding = 0;
   final GlobalKey _firstListItemKey = GlobalKey(debugLabel: 'first_library_list_item');
   double? _measuredListRowHeight;
   int? _listMetricsDensity;
@@ -1494,8 +1495,14 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       final maxExtent = GridSizeCalculator.getMaxCrossAxisExtent(context, density);
       final columnCount = GridSizeCalculator.getColumnCount(screenSize.width, maxExtent);
       final itemWidth = screenSize.width / columnCount;
-      final itemHeight = itemWidth / GridLayoutConstants.posterAspectRatio;
-      final rowHeight = itemHeight + GridLayoutConstants.mainAxisSpacing;
+      final scale = TvLayoutConstants.scaleForSize(screenSize);
+      final rowHeight =
+          MediaCardMetrics.cellHeight(
+            context,
+            itemWidth,
+            imageAspectRatio: GridLayoutConstants.fullCardPosterAspectRatio,
+          ) +
+          GridLayoutConstants.posterGridSpacingForScale(scale);
       if (rowHeight <= 0) return _activeFetchSize;
       final visibleRows = (screenSize.height / rowHeight).ceil() + 1;
       final visibleCount = visibleRows * columnCount;
@@ -1712,8 +1719,15 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   // Top padding for grid content. Chips are inline above the grid now, so this
   // is purely focus-decoration clearance on desktop. Phone has no D-pad
   // focus ring so no extra clearance is needed.
-  static const double _gridTopPadding = 6.0;
   static const double _gridTopPaddingPhone = 0.0;
+
+  /// Distance between the header's hairline and the first row of posters.
+  ///
+  /// The grid's own row gap, so the first row breathes the same as every row
+  /// after it. It used to be a flat 6, which put the posters right under the
+  /// line and made the header and the grid read as one block.
+  double _gridTopPadding(BuildContext context) =>
+      GridLayoutConstants.posterGridSpacingForScale(TvLayoutConstants.scaleOf(context));
 
   /// Width of the alpha jump bar widget
   static const double _alphaJumpBarWidth = 20.0;
@@ -1763,7 +1777,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     final fullCardLayout = PlatformDetector.isTV() && svc.read(SettingsService.tvFullCardLayout);
     final itemCount = totalSize;
     final isPhone = _isPhone(context);
-    final topPadding = isPhone ? _gridTopPaddingPhone : _gridTopPadding;
+    final topPadding = isPhone ? _gridTopPaddingPhone : _gridTopPadding(context);
     _effectiveTopPadding = topPadding;
     final rightPadding = _shouldShowAlphaJumpBar && !isPhone ? _alphaJumpBarWidth : 8.0;
 
@@ -1820,14 +1834,16 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
             return SliverGrid.builder(
               gridDelegate: geometry.delegate,
               itemCount: itemCount,
-              itemBuilder: (context, index) => _buildMediaCardItem(
-                index,
-                isFirstRow: GridSizeCalculator.isFirstRow(index, columnCount),
-                isFirstColumn: GridSizeCalculator.isFirstColumn(index, columnCount),
-                isLastColumn: (index % columnCount) == (columnCount - 1),
-                columnCount: columnCount,
-                itemCount: itemCount,
-                fullBleedImage: fullCardLayout,
+              itemBuilder: (context, index) => geometry.insetCell(
+                _buildMediaCardItem(
+                  index,
+                  isFirstRow: GridSizeCalculator.isFirstRow(index, columnCount),
+                  isFirstColumn: GridSizeCalculator.isFirstColumn(index, columnCount),
+                  isLastColumn: (index % columnCount) == (columnCount - 1),
+                  columnCount: columnCount,
+                  itemCount: itemCount,
+                  fullBleedImage: fullCardLayout,
+                ),
               ),
             );
           },

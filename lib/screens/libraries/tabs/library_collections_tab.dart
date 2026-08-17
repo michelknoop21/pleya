@@ -161,11 +161,13 @@ class _LibraryCollectionsTabState extends BaseLibraryTabState<MediaItem, Library
           return SliverGrid.builder(
             gridDelegate: geometry.delegate,
             itemCount: totalSize,
-            itemBuilder: (context, index) => _buildMediaCardItem(
-              index,
-              isFirstRow: GridSizeCalculator.isFirstRow(index, geometry.columnCount),
-              isFirstColumn: GridSizeCalculator.isFirstColumn(index, geometry.columnCount),
-              fullBleedImage: fullCardLayout,
+            itemBuilder: (context, index) => geometry.insetCell(
+              _buildMediaCardItem(
+                index,
+                isFirstRow: GridSizeCalculator.isFirstRow(index, geometry.columnCount),
+                isFirstColumn: GridSizeCalculator.isFirstColumn(index, geometry.columnCount),
+                fullBleedImage: fullCardLayout,
+              ),
             ),
           );
         },

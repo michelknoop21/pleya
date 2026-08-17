@@ -22,6 +22,7 @@ import '../screens/hub_detail_screen.dart';
 import '../utils/media_navigation_helper.dart';
 import 'focus_builders.dart';
 import 'media_card.dart';
+import 'media_card_metrics.dart';
 import '../utils/scroll_utils.dart';
 import 'horizontal_scroll_with_arrows.dart';
 import '../i18n/strings.g.dart';
@@ -99,9 +100,16 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
   static const double _wideCardMultiplier = 1.5;
 
   /// Added to the poster height to get the full card block on phone/tablet:
-  /// the title + subtitle labels under the artwork (33), the focus ring the
-  /// list reserves so a focused card isn't clipped, and 4 of slack.
-  static const double _cardBlockExtra = 33 + FocusTheme.focusBorderWidth * 2 + 4;
+  /// the title and metadata labels under the artwork, the card's own padding,
+  /// the focus ring the list reserves so a focused card isn't clipped, and 4
+  /// of slack. The label block comes from [MediaCardMetrics] rather than a
+  /// number copied from the card, which is how the two used to drift.
+  static double _cardBlockExtra(BuildContext context) =>
+      MediaCardMetrics.cardPadding.vertical +
+      MediaCardMetrics.captionGap +
+      MediaCardMetrics.captionHeight(context) +
+      FocusTheme.focusBorderWidth * 2 +
+      4;
 
   /// The icon + title row above the cards, including both of its paddings.
   ///
@@ -123,7 +131,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     final density = SettingsService.instanceOrNull?.read(SettingsService.libraryDensity) ?? LibraryDensity.defaultValue;
     final baseCardWidth = GridSizeCalculator.getCellWidth(availableWidth, context, density);
     final cardWidth = wideLayout ? baseCardWidth * _wideCardMultiplier : baseCardWidth;
-    final posterWidth = cardWidth - 6; // 3px padding on each side
+    final posterWidth = MediaCardMetrics.posterWidth(cardWidth);
     return wideLayout ? posterWidth * (9 / 16) : posterWidth * 1.5;
   }
 
@@ -135,7 +143,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
   /// [build] uses the same constants — otherwise the two drift apart the first
   /// time a card size changes and the hero silently starts cropping the rail.
   static double railHeight(BuildContext context, double availableWidth, {required bool wideLayout}) =>
-      _headerHeight + posterHeightFor(context, availableWidth, wideLayout: wideLayout) + _cardBlockExtra;
+      _headerHeight + posterHeightFor(context, availableWidth, wideLayout: wideLayout) + _cardBlockExtra(context);
 
   late FocusNode _hubFocusNode;
   final ScrollController _scrollController = ScrollController();
@@ -585,7 +593,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
 
                     // Card dimensions based on hub type
                     final cardWidth = useWideLayout ? baseCardWidth * _wideCardMultiplier : baseCardWidth;
-                    final posterWidth = cardWidth - 6; // 3px padding on each side
+                    final posterWidth = MediaCardMetrics.posterWidth(cardWidth);
                     final posterHeight = useWideLayout
                         ? posterWidth *
                               (9 / 16) // 16:9 for wide layout
@@ -609,7 +617,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                       // never disagree with what is actually laid out here.
                       height: isTv
                           ? containerHeight + (focusGrowY + focusBorderWidth) * 2
-                          : posterHeight + _cardBlockExtra,
+                          : posterHeight + _cardBlockExtra(context),
                       child: HorizontalScrollWithArrows(
                         controller: _scrollController,
                         builder: (scrollController) => ListView.builder(

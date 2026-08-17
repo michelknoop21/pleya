@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../utils/grid_size_calculator.dart';
+import '../focus/focus_theme.dart';
 import '../utils/layout_constants.dart';
+import 'media_card_metrics.dart';
 
 /// Shared grid delegate configuration for media item grids
 /// Maintains consistent aspect ratio and spacing across all media grids.
@@ -65,9 +67,17 @@ class MediaGridDelegate {
   }
 
   static double spacingFor({required BuildContext context, bool fullBleedImage = false}) {
-    if (!fullBleedImage) return GridLayoutConstants.crossAxisSpacing;
-    return GridLayoutConstants.fullCardGridSpacingForScale(TvLayoutConstants.scaleOf(context));
+    final scale = TvLayoutConstants.scaleOf(context);
+    if (!fullBleedImage) return GridLayoutConstants.posterGridSpacingForScale(scale);
+    return GridLayoutConstants.fullCardGridSpacingForScale(scale);
   }
+
+  /// Aspect of the artwork inside a cell, width over height. Not the same as
+  /// [aspectRatioFor], which describes the cell: a standard card also has to
+  /// fit a caption under the artwork.
+  static double imageAspectRatioFor({bool useWideAspectRatio = false}) => useWideAspectRatio
+      ? GridLayoutConstants.episodeThumbnailAspectRatio
+      : GridLayoutConstants.fullCardPosterAspectRatio;
 
   static double aspectRatioFor({bool useWideAspectRatio = false, bool fullBleedImage = false}) {
     if (fullBleedImage) {
@@ -93,6 +103,12 @@ class MediaGridGeometry {
   final double itemWidth;
   final double itemHeight;
   final double spacing;
+
+  /// Padding a grid must put around every cell's card. See
+  /// [MediaCardMetrics.focusInset]: it is the room a focused card grows into,
+  /// and reserving it here is what keeps [spacing] intact under focus.
+  final double cellInset;
+
   final SliverGridDelegateWithMaxCrossAxisExtent delegate;
 
   const MediaGridGeometry._({
@@ -100,8 +116,14 @@ class MediaGridGeometry {
     required this.itemWidth,
     required this.itemHeight,
     required this.spacing,
+    required this.cellInset,
     required this.delegate,
   });
+
+  /// Wraps one cell's card in the focus room this geometry reserved for it.
+  /// Grids should build every cell through this, otherwise a focused card
+  /// grows straight into the gap next to it.
+  Widget insetCell(Widget child) => cellInset <= 0 ? child : Padding(padding: EdgeInsets.all(cellInset), child: child);
 
   /// Resolves the geometry for a grid laid out in [crossAxisExtent] (the
   /// sliver's width AFTER any wrapping [SliverPadding]).
@@ -144,17 +166,44 @@ class MediaGridGeometry {
       crossAxisSpacing: spacing,
     );
 
+    final cellInset = MediaCardMetrics.focusInset(
+      itemWidth,
+      focusScale: fullBleedImage ? FocusTheme.fullCardFocusScale : FocusTheme.focusScale,
+    );
+
+    // A cell that carries a caption is measured, not proportioned: the poster
+    // keeps its own aspect and the title and metadata line get exactly the room
+    // they need. An aspect ratio for the whole cell cannot do that, because the
+    // caption does not grow with the column width, so on a narrow column it ran
+    // out of the cell and into the row below it.
+    final double itemHeight;
+    final double? mainAxisExtent;
+    if (fullBleedImage) {
+      itemHeight = itemWidth / aspectRatio;
+      mainAxisExtent = null;
+    } else {
+      itemHeight = MediaCardMetrics.cellHeight(
+        context,
+        itemWidth,
+        imageAspectRatio: MediaGridDelegate.imageAspectRatioFor(useWideAspectRatio: useWideAspectRatio),
+        focusInset: cellInset,
+      );
+      mainAxisExtent = itemHeight;
+    }
+
     return MediaGridGeometry._(
       columnCount: columnCount,
       itemWidth: itemWidth,
-      itemHeight: itemWidth / aspectRatio,
+      itemHeight: itemHeight,
       spacing: spacing,
+      cellInset: cellInset,
       delegate: SliverGridDelegateWithMaxCrossAxisExtent(
         // When the column count is pinned to a different basis width, the
         // delegate must pack exactly [columnCount] columns into the real
         // extent, so cap cells at the derived width instead.
         maxCrossAxisExtent: crossAxisExtentForColumnCount != null ? itemWidth : maxCrossAxisExtent,
         childAspectRatio: aspectRatio,
+        mainAxisExtent: mainAxisExtent,
         crossAxisSpacing: spacing,
         mainAxisSpacing: spacing,
       ),

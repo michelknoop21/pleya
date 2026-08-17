@@ -221,17 +221,19 @@ mixin FocusableDetailScreenMixin<T extends StatefulWidget> on State<T>, GridFocu
                   final inFirstRow = GridSizeCalculator.isFirstRow(index, geometry.columnCount);
                   final focusNode = _focusNodeForIndex(index);
 
-                  return FocusableMediaCard(
-                    key: Key(_idForItem(item)),
-                    item: item,
-                    focusNode: focusNode,
-                    onRefresh: onRefresh,
-                    collectionId: collectionId,
-                    onListRefresh: onListRefresh,
-                    fullBleedImage: fullCardLayout,
-                    onNavigateUp: inFirstRow ? navigateToAppBar : null,
-                    onBack: handleBackFromContent,
-                    onFocusChange: (hasFocus) => trackGridItemFocus(index, hasFocus),
+                  return geometry.insetCell(
+                    FocusableMediaCard(
+                      key: Key(_idForItem(item)),
+                      item: item,
+                      focusNode: focusNode,
+                      onRefresh: onRefresh,
+                      collectionId: collectionId,
+                      onListRefresh: onListRefresh,
+                      fullBleedImage: fullCardLayout,
+                      onNavigateUp: inFirstRow ? navigateToAppBar : null,
+                      onBack: handleBackFromContent,
+                      onFocusChange: (hasFocus) => trackGridItemFocus(index, hasFocus),
+                    ),
                   );
                 },
               );
@@ -307,10 +309,12 @@ mixin FocusableDetailScreenMixin<T extends StatefulWidget> on State<T>, GridFocu
               return SliverGrid.builder(
                 gridDelegate: geometry.delegate,
                 itemCount: totalItems,
-                itemBuilder: (context, index) => buildTile(
-                  index,
-                  inFirstRow: GridSizeCalculator.isFirstRow(index, geometry.columnCount),
-                  disableScale: false,
+                itemBuilder: (context, index) => geometry.insetCell(
+                  buildTile(
+                    index,
+                    inFirstRow: GridSizeCalculator.isFirstRow(index, geometry.columnCount),
+                    disableScale: false,
+                  ),
                 ),
               );
             },

@@ -31,6 +31,7 @@ import '../theme/mono_tokens.dart';
 import '../i18n/strings.g.dart';
 import 'media_context_menu.dart';
 import 'media_card_list_layout.dart';
+import 'media_card_metrics.dart';
 import 'backend_badge.dart';
 import 'optimized_media_image.dart';
 import 'hover_boxart_overlay.dart';
@@ -472,7 +473,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
 
   Widget _buildStandardGridCard(BuildContext context, Object item, String? localPosterPath) {
     // Compute actual poster dimensions from card dimensions
-    final posterWidth = widget.width != null ? widget.width! - 6 : null;
+    final posterWidth = widget.width != null ? MediaCardMetrics.posterWidth(widget.width!) : null;
     final posterHeight = widget.height;
 
     // The focus border hugs the poster (captions stay outside it), matching
@@ -518,7 +519,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
           onSecondaryTap: showContextMenuFromTap,
           borderRadius: BorderRadius.circular(tokens(context).radiusSm),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(3, 3, 3, 1),
+            padding: MediaCardMetrics.cardPadding,
             child: Column(
               mainAxisSize: .min,
               crossAxisAlignment: .start,
@@ -528,26 +529,39 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
                   SizedBox(width: double.infinity, height: posterHeight, child: poster)
                 else
                   Expanded(child: poster),
-                const SizedBox(height: 2),
-                // Title (flattened — no inner Column)
-                if (item is MediaItem && _hasClickableTitle(item))
-                  _ClickableText(
-                    text: item.displayTitle,
-                    style: const TextStyle(fontWeight: .w600, fontSize: 13, height: 1.1),
-                    onTap: () => _navigateToFocusedDetail(context, item, isOffline: widget.isOffline),
-                  )
-                else
-                  Text(
-                    item is MediaPlaylist ? item.title : (item as MediaItem).displayTitle,
-                    maxLines: 1,
-                    overflow: .ellipsis,
-                    style: const TextStyle(fontWeight: .w600, fontSize: 13, height: 1.1),
+                const SizedBox(height: MediaCardMetrics.captionGap),
+                // The caption gets a fixed slice of the card, so a two-line
+                // block never grows into the row below and every poster in a
+                // row ends at the same height. Both lines are single-line, so
+                // this is the exact height they need, not a worst case.
+                SizedBox(
+                  height: MediaCardMetrics.captionHeight(context),
+                  child: Column(
+                    mainAxisSize: .min,
+                    crossAxisAlignment: .start,
+                    children: [
+                      // Title (flattened — no inner Column)
+                      if (item is MediaItem && _hasClickableTitle(item))
+                        _ClickableText(
+                          text: item.displayTitle,
+                          style: MediaCardMetrics.titleStyle,
+                          onTap: () => _navigateToFocusedDetail(context, item, isOffline: widget.isOffline),
+                        )
+                      else
+                        Text(
+                          item is MediaPlaylist ? item.title : (item as MediaItem).displayTitle,
+                          maxLines: 1,
+                          overflow: .ellipsis,
+                          style: MediaCardMetrics.titleStyle,
+                        ),
+                      // Subtitle
+                      if (item is MediaPlaylist)
+                        _MediaCardHelpers.buildPlaylistMeta(context, item)
+                      else if (item is MediaItem)
+                        _MediaCardHelpers.buildMetadataSubtitle(context, item, isOffline: widget.isOffline),
+                    ],
                   ),
-                // Subtitle
-                if (item is MediaPlaylist)
-                  _MediaCardHelpers.buildPlaylistMeta(context, item)
-                else if (item is MediaItem)
-                  _MediaCardHelpers.buildMetadataSubtitle(context, item, isOffline: widget.isOffline),
+                ),
               ],
             ),
           ),
@@ -994,9 +1008,7 @@ class _MediaCardHelpers {
         t.playlists.itemCount(count: playlist.leafCount!),
         maxLines: 1,
         overflow: .ellipsis,
-        style: Theme.of(
-          context,
-        ).textTheme.bodySmall?.copyWith(color: tokens(context).textMuted, fontSize: 11, height: 1.1),
+        style: MediaCardMetrics.subtitleStyle(context, color: tokens(context).textMuted),
       );
     }
     return const SizedBox.shrink();
@@ -1004,9 +1016,7 @@ class _MediaCardHelpers {
 
   /// Builds metadata subtitle (for collections, episodes, movies, shows)
   static Widget buildMetadataSubtitle(BuildContext context, MediaItem mi, {bool isOffline = false}) {
-    final subtitleStyle = Theme.of(
-      context,
-    ).textTheme.bodySmall?.copyWith(color: tokens(context).textMuted, fontSize: 11, height: 1.1);
+    final subtitleStyle = MediaCardMetrics.subtitleStyle(context, color: tokens(context).textMuted);
 
     // For collections, show item count
     if (mi.kind == MediaKind.collection) {

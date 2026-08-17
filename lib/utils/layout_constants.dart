@@ -52,6 +52,15 @@ class GridLayoutConstants {
 
   static double fullCardGridSpacingForScale(double scale) => (12 * scale).clamp(8, 18).toDouble();
 
+  /// Gap a grid keeps between poster cards, in both axes.
+  ///
+  /// It used to be zero, with the only separation coming from the padding
+  /// inside the card. A focused card scales up by [FocusTheme.focusScale] and
+  /// ate that padding, so the neighbour of a focused card sat visibly tighter
+  /// than every other pair in the grid. A real gap in the delegate is wider
+  /// than that overhang, so the row keeps its rhythm wherever focus lands.
+  static double posterGridSpacingForScale(double scale) => (12 * scale).clamp(8, 18).toDouble();
+
   /// Standard grid padding
   static EdgeInsets get gridPadding => const EdgeInsets.only(left: 2, right: 2, bottom: 2);
 }

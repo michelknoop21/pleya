@@ -163,11 +163,13 @@ class _LibraryPlaylistsTabState extends BaseLibraryTabState<MediaPlaylist, Libra
           return SliverGrid.builder(
             gridDelegate: geometry.delegate,
             itemCount: totalSize,
-            itemBuilder: (context, index) => _buildPlaylistCard(
-              index,
-              isFirstRow: GridSizeCalculator.isFirstRow(index, geometry.columnCount),
-              isFirstColumn: GridSizeCalculator.isFirstColumn(index, geometry.columnCount),
-              fullBleedImage: fullCardLayout,
+            itemBuilder: (context, index) => geometry.insetCell(
+              _buildPlaylistCard(
+                index,
+                isFirstRow: GridSizeCalculator.isFirstRow(index, geometry.columnCount),
+                isFirstColumn: GridSizeCalculator.isFirstColumn(index, geometry.columnCount),
+                fullBleedImage: fullCardLayout,
+              ),
             ),
           );
         },

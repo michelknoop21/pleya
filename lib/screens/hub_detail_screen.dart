@@ -590,21 +590,23 @@ class _HubDetailScreenState extends State<HubDetailScreen>
                                 final isFirstRow = GridSizeCalculator.isFirstRow(index, columnCount);
                                 final isFirstColumn = GridSizeCalculator.isFirstColumn(index, columnCount);
 
-                                return FocusableMediaCard(
-                                  focusNode: focusNode,
-                                  item: item,
-                                  onRefresh: _handleItemRefresh,
-                                  onRemoveFromContinueWatching: widget.isInContinueWatching
-                                      ? _handleRemoveFromContinueWatching
-                                      : null,
-                                  isInContinueWatching: widget.isInContinueWatching,
-                                  usesContinueWatchingAction: widget.usesContinueWatchingAction,
-                                  onNavigateUp: isFirstRow ? navigateToAppBar : null,
-                                  onNavigateLeft: isFirstColumn ? () {} : null,
-                                  onBack: handleBackFromContent,
-                                  onFocusChange: (hasFocus) => trackGridItemFocus(index, hasFocus),
-                                  mixedHubContext: isMixedHub,
-                                  fullBleedImage: fullCardLayout,
+                                return geometry.insetCell(
+                                  FocusableMediaCard(
+                                    focusNode: focusNode,
+                                    item: item,
+                                    onRefresh: _handleItemRefresh,
+                                    onRemoveFromContinueWatching: widget.isInContinueWatching
+                                        ? _handleRemoveFromContinueWatching
+                                        : null,
+                                    isInContinueWatching: widget.isInContinueWatching,
+                                    usesContinueWatchingAction: widget.usesContinueWatchingAction,
+                                    onNavigateUp: isFirstRow ? navigateToAppBar : null,
+                                    onNavigateLeft: isFirstColumn ? () {} : null,
+                                    onBack: handleBackFromContent,
+                                    onFocusChange: (hasFocus) => trackGridItemFocus(index, hasFocus),
+                                    mixedHubContext: isMixedHub,
+                                    fullBleedImage: fullCardLayout,
+                                  ),
                                 );
                               }, childCount: _filteredItems.length),
                             );
