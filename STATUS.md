@@ -1,6 +1,6 @@
 # STATUS — Pleya
 
-_Laatst bijgewerkt: 2026-08-17 15:10 (`main` = `c636f6b`; het dependency-werk staat op branch `deps/onderhoudsronde-aug2026`, gepusht naar `github`, bewust nog niet gemerged. Er loopt parallel een tweede sessie met ongecommit werk in de hoofdmap. App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`)_
+_Laatst bijgewerkt: 2026-08-17 16:30 (`main` = `8009300`; de dependency-onderhoudsronde is gerebased op `7721859` en geland. Er loopt parallel een tweede sessie met ongecommit werk in de hoofdmap. App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`)_
 
 ## Waar was ik
 
@@ -34,9 +34,7 @@ Het Atmos-spoor staat er nog precies zo bij als gisteren: een iOS-log van build 
 
 ## Volgende stap
 
-**Eerst `deps/onderhoudsronde-aug2026` landen, en dat kan pas als de tweede sessie klaar is.** Die sessie heeft ongecommit werk in de hoofdmap dat `pubspec.yaml`, `pubspec.lock` en `docs/DECISIONS.md` raakt, dus er komt een merge overheen. Volgorde: wacht tot zij committen, kijk dan naar overlap in `pubspec.lock`, de workflows en `docs/`, rebase de branch, draai `scripts/ci_checks.sh` plus `flutter test` op de combinatie, en merge daarna pas. Ruim de worktree `../plezy-deps-wt` en de remote branch op als laatste. Let op één ding: die sessie claimt zelf ook DEC-023 en DEC-024, dus de mijne zijn al hernummerd naar DEC-025 en DEC-026; controleer bij het mergen dat er geen dubbel nummer overblijft.
-
-**Daarna een nieuwe TestFlight-upload draaien, want build 221 is er nooit gekomen.** Daarna de kijklijst op een toestel doorlopen. Vier dingen, in deze volgorde. Op de Apple TV via de sidebar naar Watchlist: staat de focusring op de eerste rij, werkt randnavigatie, sluit Menu de sheet, en kloppen de focusvolgorde van de nieuwe detailknop en het contextmenu-item. Daarna wisselen tussen twee Plex Home-gebruikers: de lijst moet meewisselen en geen enkel item van de vorige gebruiker tonen. Dan dezelfde film die zowel Plex-watchlist als Jellyfin-favoriet is verwijderen, en kijken of hij uit beide verdwijnt. En tot slot netwerk uit met een gedownloade titel: die moet speelbaar blijven, sorteren en de typefilters moeten blijven werken, en alleen het filter Beschikbaar hoort te vervallen. De volledige lijst staat in `~/.claude/plans/wat-ik-wel-echt-synchronous-piglet.md` onder Verificatie.
+**Een nieuwe TestFlight-upload draaien, want build 221 is er nooit gekomen.** Daarna de kijklijst op een toestel doorlopen. Vier dingen, in deze volgorde. Op de Apple TV via de sidebar naar Watchlist: staat de focusring op de eerste rij, werkt randnavigatie, sluit Menu de sheet, en kloppen de focusvolgorde van de nieuwe detailknop en het contextmenu-item. Daarna wisselen tussen twee Plex Home-gebruikers: de lijst moet meewisselen en geen enkel item van de vorige gebruiker tonen. Dan dezelfde film die zowel Plex-watchlist als Jellyfin-favoriet is verwijderen, en kijken of hij uit beide verdwijnt. En tot slot netwerk uit met een gedownloade titel: die moet speelbaar blijven, sorteren en de typefilters moeten blijven werken, en alleen het filter Beschikbaar hoort te vervallen. De volledige lijst staat in `~/.claude/plans/wat-ik-wel-echt-synchronous-piglet.md` onder Verificatie.
 
 De favorieten van Live TV kun je in dezelfde ronde niet meenemen: dat vraagt een Plex-account met een tuner, en dit account heeft er geen. Zie de blocker daarover.
 
@@ -107,7 +105,8 @@ xcrun devicectl device process launch --console --terminate-existing \
 ## Recente sessies
 
 ### 2026-08-17
-- Dependency-onderhoud kreeg een proces op branch `deps/onderhoudsronde-aug2026` (zeven commits): `.fvmrc` plus preflight, `classify_lock_diff.sh`, 27 ring-1-pakketten, GitHub Actions bijgewerkt en third-party op SHA, `check_updates.sh` met de `dependency-health`-workflow, en [DEC-025](docs/DECISIONS.md#dec-025) plus [DEC-026](docs/DECISIONS.md#dec-026).
+- Dependency-onderhoud kreeg een proces, geland op `main` van `9575b6c` tot `8009300`: `.fvmrc` plus preflight, `classify_lock_diff.sh`, 27 ring-1-pakketten, GitHub Actions bijgewerkt en third-party op SHA, `check_updates.sh` met de `dependency-health`-workflow, en [DEC-025](docs/DECISIONS.md#dec-025) plus [DEC-026](docs/DECISIONS.md#dec-026).
+- Het landen zelf vroeg één ingreep. `pubspec.lock` is niet met de hand gemerged maar opnieuw opgebouwd vanaf de lockfile van `main`, met een gerichte `flutter pub upgrade` op de 27 pakketten. De uitkomst is de vereniging van beide kanten: `classify_lock_diff.sh` meldt 27 gewijzigd met ring1=27 en geen UNKNOWN, en `mobile_scanner` blijft op 7.4.0. Op de combinatie is de gegenereerde diff leeg, `ci_checks.sh` groen, `flutter test` 3308 groen en `check_updates.sh --strict-through-ring 1` exit 0.
 - De analyzer-stack en `rate_limiter` vielen af doordat de bewijsstap ze ving, niet de classificatie. De drift-regressie is nu vastgelegd in `test/database/drift_relations_test.dart`.
 - Eerste GitHub Actions-runs ooit op deze repo. Twee bestaande Linux-only testfouten zichtbaar geworden; de controle-run op `main` bevestigt dat ze er al waren.
 - Kijklijst afgemaakt: Nederlandse vertalingen (`195904e`), [DEC-020](docs/DECISIONS.md#dec-020) (`dd75c69`) en alsnog de sorteerkeuze op recent, titel en jaar (`3634fa0`), volledig client-side zodat hij offline blijft werken.
