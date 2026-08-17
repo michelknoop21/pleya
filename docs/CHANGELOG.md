@@ -2,6 +2,35 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-17] Dependency-onderhoud kreeg een proces, en dat proces ving meteen twee stille regressies
+
+Op branch `deps/onderhoudsronde-aug2026`, zeven commits vanaf `e9b1b0b`.
+
+### Added
+- **`scripts/check_updates.sh` zet elke pin in één rapport.** Tot nu toe had alleen MPVKit een controle; de Flutter-SDK, de tvOS-engine, libmpv-android, libdovi, libass, de zeven git-forks, de Dart-pakketten en de GitHub Actions werden pas zichtbaar als iemand er toevallig naar keek. Elke pin wordt gelezen uit het bestand dat hem echt gebruikt. Vier statussen in plaats van twee: `CURRENT`, `BLOCKED`, `OUTDATED`, `UNKNOWN`. Exitcodes 0, 1 (`OUTDATED` binnen `--strict-through-ring N`) en 2 (`UNKNOWN`), waarbij 2 van 1 wint, want een incompleet rapport zegt niets over wat er nog meer misging. `check_mpvkit_update.sh` blijft bestaan en wordt hiervandaan aangeroepen.
+- **`scripts/classify_lock_diff.sh` bepaalt per gewijzigd pakket het bewijsniveau.** Plugin met gewijzigde platformcode is ring 3, plugin met identieke native kant en codegen-deelnemers zijn ring 2, de rest ring 1. Ontbreekt een van beide bronnen in de pub-cache, dan is de uitkomst `UNKNOWN` en promoveert die mee. Elke regel draagt zijn eigen `classificationEvidence`, dus een uitkomst is naleesbaar in plaats van te geloven. Zes fixtures in `test/fixtures/lock_diff/`.
+- **`.fvmrc` is de enige bron voor de Flutter-versie**, met `scripts/check_flutter_version.sh` als preflight in `ci_checks.sh`, `codegen.sh` en `testflight_release.sh`. De tien losse `flutter-version: "3.44.0"`-regels in `ci.yml` en `build.yml` zijn vervangen door `flutter-version-file: .fvmrc`; `subosito/flutter-action` leest datzelfde bestand met `jq -r '.flutter'`. `pubspec.yaml` kan die rol niet spelen, want `environment.flutter` is hier een range.
+- **`test/database/drift_relations_test.dart`** bewaakt de gegenereerde drift-relaties rechtstreeks: de foreign key, de `ON DELETE CASCADE`, de writepropagatie en de reference manager.
+- **Workflow `dependency-health`**, wekelijks plus `workflow_dispatch`, op `--strict-through-ring 1`. Bewust geen scheduled variant van de PR-CI: zodra `checkout@v8` uitkomt zou "CI" anders elke week rood staan terwijl `main` prima is.
+
+### Fixed
+- **De committede `.g.dart`-bestanden waren geformatteerd met een andere SDK dan CI draait.** Homebrew-Flutter 3.44.4 op PATH, CI op 3.44.0, en `dart format` breekt argumentenlijsten in die twee versies anders af: 4001 regels verschil over twintig bestanden zonder dat er iets aan de bronnen veranderde. Geen van beide gates zag dat, want de codegen-freshness-check vergelijkt mtimes en de format-check slaat `*.g.dart` juist over. Aantoonbaar alleen opmaak: beide kanten door dezelfde formatter halen maakt ze byte-identiek.
+
+### Changed
+- **27 ring-1-pakketten bijgewerkt, `pubspec.yaml` ongemoeid.** Niet blind `flutter pub upgrade` gecommit: eerst een verkenning naar een kopie (64 gewijzigd, ring1=42 ring2=11 ring3=11), die geklassificeerd, de kopie weggegooid, en daarna gericht opgewaardeerd in twee golven. Golf A telde 21 leaf- en runtimepakketten, golf B zeven uit de build-stack; beide lieten de gegenereerde diff leeg.
+- **GitHub Actions bijgewerkt**, elke major tegen zijn release notes gelegd: `checkout` v4 naar v7, `cache` v4 naar v6, `upload-artifact` v4 naar v7, `download-artifact` v4 naar v8, `setup-java` v4 naar v5, `attest-build-provenance` v2 naar v4.
+- **Third-party actions staan nu op een volledige commit-SHA** met de leesbare versie als comment: `awalsh128/cache-apt-pkgs-action` (stond op `@latest`), `vedantmgoyal9/winget-releaser`, `softprops/action-gh-release` (v1 naar v3), `subosito/flutter-action` en `dart-lang/setup-dart`.
+
+### Notes
+- **Het ringbeleid ving meteen twee dingen die de classifier zelf niet zag.** Beide kwamen er als ring 1 uit; de bewijsstap haalde ze eruit.
+  - De analyzer-stack (`analyzer` 10.0.1 naar 10.2.0 en drie meebewegers) laat `drift_dev` zonder compilefout de hele relatie tussen `connections` en `profile_connections` uit `app_database.g.dart` weglaten: de foreign key, de `ON DELETE CASCADE`, de `StreamQueryUpdateRules`-writepropagatie en de `$$ConnectionsTableReferences`-manager. 298 regels weg, geen waarschuwing, `flutter analyze` groen. Zie [DEC-026](DECISIONS.md#dec-026).
+  - `rate_limiter` 1.1.0 leest de tijd via `package:clock` in plaats van `DateTime.now()`. Onder de fake clock van `flutter_test` vuurt de zoekdebounce daardoor anders en vallen twee TV-focustests in `search_screen_test.dart` om. Ring 2: dat vraagt eerst aanpassing van die tests.
+- **`upload-artifact` en `download-artifact` horen niet op hetzelfde majornummer.** Download kreeg in v5 een eigen breaking change (het pad bij een download op artifact-id) en loopt sindsdien één major voor; v8 is de tegenhanger van upload v7. Die v5-wijziging raakt ons niet: alle tien de downloads in `build.yml` halen op `name:`, geen enkele op `artifact-ids:`.
+- **De breaking change in `checkout` v5 tot en met v7** gaat over veiliger defaults voor `pull_request_target`. Geen enkele workflow gebruikt die trigger.
+- **Eén plat getal voor lockfile-achterstand bleek onbruikbaar.** Van de 32 pakketten die binnen hun constraint hoger kunnen zijn er zeventien plugins met platformcode. De achterstand wordt daarom gesplitst per ring, plus een meting die verder gaat dan `pub outdated`: kán het pakket op eigen kracht bewegen? Voor `drift`, `slang`, `sqlite3`, `sqlparser` en `json_annotation` is dat nee, dus die set is ring 2.
+- **Bewust blijven liggen**, elk als eigen ring-3-set voor een volgende cyclus: libass 0.18.3, MPVKit 1.0.17, tvOS-engine `+5`, Flutter 3.47 (geblokkeerd tot `edde746/flutter-tvos` een 3.47-lijn publiceert), `file_picker` 10 naar 12, `saf_stream`, `saf_util` en `sqlite3_flutter_libs` 0.6.0+eol.
+- Nog geen Renovate of Dependabot: eerst één of twee cycli met dit rapport draaien om te zien welke checks betrouwbaar zijn.
+
 ## [2026-08-17] De kijklijst-kaart paste niet in zijn cel, en het accountmenu stond dubbel
 
 ### Dependencies
