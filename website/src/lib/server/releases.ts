@@ -103,6 +103,11 @@ function parse(): Release[] {
     const head = parseHeading(parts[i]);
     const body = parts[i + 1]
       .replace(/^<!-- *commit:[^>]*-->\s*$/gm, '')
+      // Everything between the generated markers is a working list of raw commit
+      // subjects in the language they were committed in. It tells the next
+      // rewrite what still needs turning into user-facing English; publishing it
+      // verbatim put Dutch commit lines under "Unreleased" on the live page.
+      .replace(/^<!-- *BEGIN GENERATED *-->[\s\S]*?^<!-- *END GENERATED *-->[^\n]*$/gm, '')
       .replace(/^<!-- *(BEGIN|END) GENERATED *-->\s*$/gm, '');
 
     const sections = parseSections(body);
