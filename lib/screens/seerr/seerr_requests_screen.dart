@@ -1,15 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
-import '../../focus/focusable_button.dart';
 import '../../i18n/strings.g.dart';
 import '../../models/seerr/seerr_request.dart';
 import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
-import '../../services/seerr/seerr_constants.dart';
-import '../../services/settings_service.dart';
-import '../../theme/mono_theme.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/dialogs.dart';
 import '../../utils/media_server_timeouts.dart';
@@ -20,11 +18,7 @@ import 'seerr_discover_screen.dart';
 import '../../widgets/focusable_list_tile.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../focus/focusable_wrapper.dart';
-import '../../models/seerr/seerr_media.dart';
-import '../../widgets/pressable.dart';
-import '../../widgets/seerr_poster_card.dart';
-import '../../widgets/seerr_status_badge.dart';
-import 'seerr_media_detail_screen.dart';
+import '../../widgets/seerr_request_row.dart';
 
 /// Jellyseerr / Overseerr requests-management screen.
 ///
@@ -54,6 +48,10 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   // in-flight load-more, preventing stale-filter items from being appended.
   int _loadGen = 0;
 
+  final ScrollController _filterScrollController = ScrollController();
+  static const _filterKeys = ['all', 'pending', 'approved', 'available'];
+  final Map<String, GlobalKey> _filterChipKeys = {for (final k in _filterKeys) k: GlobalKey()};
+
   /// Counts shown next to the filter tabs. Zero means "not known yet"; the tab
   /// then renders without a number instead of claiming there are none.
   ({int total, int pending, int approved, int available, int processing})? _counts;
@@ -65,6 +63,13 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     _initialized = true;
     _load(reset: true);
     _loadCounts();
+    _revealSelectedFilter();
+  }
+
+  @override
+  void dispose() {
+    _filterScrollController.dispose();
+    super.dispose();
   }
 
   // ---------------------------------------------------------------------------
@@ -111,6 +116,17 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
         _loadingMore = false;
         _error = null;
       });
+
+      // Titles and artwork are not part of the request payload and have to be
+      // resolved per title, so the rows land first and fill themselves in. The
+      // alternative is holding a page of twenty back on a metadata round trip
+      // that may never come.
+      final hydrated = await client.hydrateRequests(result.items);
+      if (!mounted || gen != _loadGen) return;
+      final byId = {for (final r in hydrated) r.id: r};
+      setState(() {
+        _items = [for (final r in _items) byId[r.id] ?? r];
+      });
     } on SeerrException catch (e) {
       if (!mounted || gen != _loadGen) return;
       setState(() {
@@ -138,6 +154,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   void _onFilter(String filter) {
     if (filter == _filter) return;
     setState(() => _filter = filter);
+    _revealSelectedFilter();
     _load(reset: true);
   }
 
@@ -166,6 +183,10 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
       messenger.showSnackBar(SnackBar(content: Text(errText)));
       return;
     }
+    // The counts come from a separate endpoint, so approving or cancelling
+    // leaves them a page behind unless they are asked for again. Not awaited:
+    // the list refresh below is what the user is waiting for.
+    unawaited(_loadCounts());
     await _load(reset: true);
   }
 
@@ -217,14 +238,21 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
       ('available', t.seerr.filterAvailable, _counts?.available),
     ];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(_hInset, 8, _hInset, 4),
+      padding: const EdgeInsets.only(top: 8, bottom: 4),
       child: SingleChildScrollView(
+        controller: _filterScrollController,
         scrollDirection: Axis.horizontal,
+        // Inset lives on the scroll view, not around it: as padding around the
+        // scrollport it is outside the scrollable area, so the first and last
+        // chip ended up hard against the viewport edge the moment the strip was
+        // dragged. Here it scrolls with the content and stays a real margin.
+        padding: const EdgeInsets.symmetric(horizontal: _hInset),
         child: SegmentedTabGroup(
           children: [
             for (var i = 0; i < tabs.length; i++) ...[
               if (i > 0) const SizedBox(width: 2),
               FocusableTabChip(
+                key: _filterChipKeys[tabs[i].$1],
                 style: TabChipStyle.segmented,
                 label: (tabs[i].$3 ?? 0) > 0 ? '${tabs[i].$2}  ${tabs[i].$3}' : tabs[i].$2,
                 isSelected: _filter == tabs[i].$1,
@@ -237,6 +265,25 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     );
   }
 
+  /// Brings the active filter fully into view, with the same inset the strip
+  /// starts with. Without this the selected chip could sit off-screen entirely,
+  /// and the focus system's own ensureVisible scrolls the minimum distance,
+  /// which leaves the neighbouring chip cut in half.
+  void _revealSelectedFilter() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_filterScrollController.hasClients) return;
+      final context = _filterChipKeys[_filter]?.currentContext;
+      if (context == null) return;
+      Scrollable.ensureVisible(
+        context,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
   /// Entry point to the discover screen. Without it this page is a dead end:
   /// you can review requests but never start one.
   Widget _discoverBar() {
@@ -247,6 +294,9 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
         disableScale: true,
         borderRadius: 12,
         onSelect: _openDiscover,
+        // The button that used to spell this out is gone, so the destination
+        // has to be named for a screen reader.
+        semanticLabel: t.seerr.discoverTitle,
         child: GestureDetector(
           onTap: _openDiscover,
           child: Container(
@@ -256,6 +306,11 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
               borderRadius: BorderRadius.circular(tk.radiusMd),
               border: Border.all(color: tk.outline.withValues(alpha: 0.7)),
             ),
+            // The whole bar is one target that opens discover, so the filled
+            // "Discover" button was a second label for what the row already
+            // does -- and on a phone it squeezed the placeholder onto two
+            // lines. A trailing chevron says "this goes somewhere" in the space
+            // of a glyph and leaves the sentence room to read.
             child: Row(
               children: [
                 AppIcon(Symbols.search_rounded, fill: 1, size: 20, color: tk.textMuted),
@@ -263,17 +318,13 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
                 Expanded(
                   child: Text(
                     t.seerr.searchPlaceholder,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: tk.textMuted),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(color: tk.text, borderRadius: BorderRadius.circular(9)),
-                  child: Text(
-                    t.seerr.discoverTitle,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(color: tk.bg, fontWeight: FontWeight.w700),
-                  ),
-                ),
+                const SizedBox(width: 8),
+                AppIcon(Symbols.chevron_right_rounded, size: 20, color: tk.textMuted),
               ],
             ),
           ),
@@ -312,7 +363,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
           final req = _items[index];
           final isOwn = ownUserId != null && req.requestedById == ownUserId;
           final actionable = canManage && req.isPending;
-          return _SeerrRequestRow(
+          return SeerrRequestRow(
             request: req,
             onApprove: actionable ? () => _runAction((c) => c.approveRequest(req.id)) : null,
             onDecline: actionable ? () => _runAction((c) => c.declineRequest(req.id)) : null,
@@ -341,188 +392,6 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
           child: Text(message, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
         ),
       ),
-    );
-  }
-}
-
-/// One request row: media icon, season pills, availability badge, lifecycle
-/// status, requester, and discrete focusable action buttons.
-class _SeerrRequestRow extends StatelessWidget {
-  const _SeerrRequestRow({required this.request, this.onApprove, this.onDecline, this.onCancel});
-
-  final SeerrRequest request;
-  final VoidCallback? onApprove;
-  final VoidCallback? onDecline;
-  final VoidCallback? onCancel;
-
-  /// The tapped row opens the graphical media detail — the same screen the
-  /// discover posters open — so a request is never a dead end.
-  void _openDetail(BuildContext context) {
-    final tmdbId = request.tmdbId;
-    if (tmdbId == null) return;
-    final media = SeerrMedia(
-      tmdbId: tmdbId,
-      mediaType: request.mediaType,
-      title: request.mediaTitle ?? '',
-      year: request.mediaYear?.toString(),
-      posterPath: request.posterPath,
-      backdropPath: request.backdropPath,
-      status: request.mediaStatus,
-    );
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => SeerrMediaDetailScreen(media: media)));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isTv = request.mediaType == 'tv';
-    final title = request.mediaTitle ?? (isTv ? t.discover.tvShow : t.discover.movie);
-    final posterUrl = SeerrConstants.tmdbPosterUrl(request.posterPath);
-    final canOpen = request.tmdbId != null;
-
-    // Compact list thumbnail that follows the size slider (libraryDensity).
-    final f = LibraryDensity.factor(SettingsService.instance.read(SettingsService.libraryDensity));
-    final thumbW = 44 + f * 28; // 44→72
-    final thumbH = thumbW * 1.5;
-
-    final card = Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.all(Radius.circular(tokens(context).radiusSm)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.all(Radius.circular(tokens(context).radiusSm)),
-            child: SizedBox(
-              width: thumbW,
-              height: thumbH,
-              child: request.posterPath == null
-                  ? ColoredBox(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      child: Center(
-                        child: AppIcon(
-                          isTv ? Symbols.tv_rounded : Symbols.movie_rounded,
-                          size: 24,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    )
-                  : SeerrPosterImage(url: posterUrl),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  request.mediaYear == null ? title : '$title (${request.mediaYear})',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    // Availability only when it says more than the lifecycle chip
-                    // (otherwise two near-identical amber pills sit side by side).
-                    if (request.mediaStatus == SeerrMediaStatus.partiallyAvailable ||
-                        request.mediaStatus == SeerrMediaStatus.available)
-                      SeerrStatusBadge(status: request.mediaStatus, compact: true),
-                    _lifecycleChip(theme),
-                    if (request.is4k || request.seasons.isNotEmpty) _plainPill(theme, _qualitySeasonsLabel()),
-                  ],
-                ),
-                if (request.requestedByName != null && request.requestedByName!.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    request.requestedByName!,
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (onApprove != null || onDecline != null || onCancel != null) ...[
-            const SizedBox(width: 12),
-            _actions(context),
-          ],
-        ],
-      ),
-    );
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: FocusableWrapper(
-        onSelect: canOpen ? () => _openDetail(context) : null,
-        child: Pressable(onTap: canOpen ? () => _openDetail(context) : null, child: card),
-      ),
-    );
-  }
-
-  Widget _actions(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      alignment: WrapAlignment.end,
-      children: [
-        if (onApprove != null)
-          _actionButton(onApprove!, FilledButton(onPressed: onApprove, child: Text(t.seerr.approve))),
-        if (onDecline != null)
-          _actionButton(onDecline!, OutlinedButton(onPressed: onDecline, child: Text(t.seerr.decline))),
-        if (onCancel != null)
-          _actionButton(onCancel!, TextButton(onPressed: onCancel, child: Text(t.seerr.cancelRequest))),
-      ],
-    );
-  }
-
-  Widget _actionButton(VoidCallback onPressed, Widget child) {
-    return FocusableButton(onPressed: onPressed, child: child);
-  }
-
-  String _qualitySeasonsLabel() {
-    final parts = <String>[
-      if (request.is4k) t.seerr.fourKBadge,
-      for (final n in request.seasons) t.seerr.season(number: n),
-    ];
-    return parts.join(' · ');
-  }
-
-  Widget _lifecycleChip(ThemeData theme) {
-    final (color, label) = switch (request.status) {
-      SeerrRequestStatus.pending => (kAccentAlt, t.seerr.pending),
-      SeerrRequestStatus.approved => (kSuccess, t.seerr.approved),
-      SeerrRequestStatus.declined => (theme.colorScheme.error, t.seerr.declined),
-      SeerrRequestStatus.completed => (kSuccess, t.seerr.completed),
-      SeerrRequestStatus.failed => (theme.colorScheme.error, t.seerr.failed),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.16),
-        borderRadius: const BorderRadius.all(Radius.circular(4)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-
-  Widget _plainPill(ThemeData theme, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: const BorderRadius.all(Radius.circular(4)),
-      ),
-      child: Text(text, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
     );
   }
 }

@@ -203,4 +203,158 @@ void main() {
       expect(seen!.queryParameters.containsKey('requestedBy'), isFalse);
     });
   });
+
+  group('hydrateRequests', () {
+    // What Overseerr actually answers on /request: the media row, with the
+    // availability status and the tmdb id, and nothing that names the title.
+    Map<String, dynamic> bareRequest({
+      required int id,
+      required int tmdbId,
+      required String type,
+      int status = 1,
+      int mediaStatus = 3,
+    }) => {
+      'id': id,
+      'status': status,
+      'type': type,
+      'media': {'id': id * 10, 'mediaType': type, 'tmdbId': tmdbId, 'status': mediaStatus, 'status4k': 1},
+      'requestedBy': {'id': 7, 'displayName': 'rapmadri'},
+    };
+
+    SeerrClient clientFor(
+      List<Map<String, dynamic>> requests,
+      Map<String, Object> details, {
+      List<Uri>? seen,
+      Set<String>? failFor,
+    }) {
+      return SeerrClient(
+        _session(),
+        httpClient: MockClient((request) async {
+          seen?.add(request.url);
+          final path = request.url.path;
+          if (path.endsWith('/request')) {
+            return _json({
+              'results': requests,
+              'pageInfo': {'pages': 1},
+            }, 200);
+          }
+          for (final entry in details.entries) {
+            if (path.endsWith(entry.key)) {
+              if (failFor?.contains(entry.key) ?? false) return _json({'message': 'nope'}, 500);
+              return _json(entry.value, 200);
+            }
+          }
+          return _json({'message': 'not found'}, 404);
+        }),
+      );
+    }
+
+    test('a movie request gets its real title, year and poster', () async {
+      final client = clientFor(
+        [bareRequest(id: 1, tmdbId: 550, type: 'movie')],
+        {
+          '/movie/550': {
+            'id': 550,
+            'title': 'Fight Club',
+            'releaseDate': '1999-10-15',
+            'posterPath': '/fight.jpg',
+            'backdropPath': '/fight-bd.jpg',
+          },
+        },
+      );
+
+      final raw = await client.getRequests();
+      // Straight off the wire there is nothing to show but the media type.
+      expect(raw.items.single.mediaTitle, isNull);
+      expect(raw.items.single.posterPath, isNull);
+
+      final hydrated = await client.hydrateRequests(raw.items);
+      expect(hydrated.single.mediaTitle, 'Fight Club');
+      expect(hydrated.single.mediaYear, '1999');
+      expect(hydrated.single.posterPath, '/fight.jpg');
+      expect(hydrated.single.backdropPath, '/fight-bd.jpg');
+      // Availability came off the request itself and must survive.
+      expect(hydrated.single.mediaStatus, SeerrMediaStatus.processing);
+      expect(hydrated.single.requestedByName, 'rapmadri');
+    });
+
+    test('a show request resolves through /tv and its first-air date', () async {
+      final client = clientFor(
+        [bareRequest(id: 2, tmdbId: 1399, type: 'tv')],
+        {
+          '/tv/1399': {'id': 1399, 'name': 'Game of Thrones', 'firstAirDate': '2011-04-17', 'posterPath': '/got.jpg'},
+        },
+      );
+
+      final hydrated = await client.hydrateRequests((await client.getRequests()).items);
+      expect(hydrated.single.mediaTitle, 'Game of Thrones');
+      expect(hydrated.single.mediaYear, '2011');
+      expect(hydrated.single.posterPath, '/got.jpg');
+    });
+
+    test('the same title is fetched once, however often it is requested', () async {
+      final seen = <Uri>[];
+      final client = clientFor(
+        [bareRequest(id: 1, tmdbId: 550, type: 'movie'), bareRequest(id: 2, tmdbId: 550, type: 'movie')],
+        {
+          '/movie/550': {'id': 550, 'title': 'Fight Club', 'posterPath': '/fight.jpg'},
+        },
+        seen: seen,
+      );
+
+      final first = await client.hydrateRequests((await client.getRequests()).items);
+      expect(first.map((r) => r.mediaTitle), everyElement('Fight Club'));
+      expect(seen.where((u) => u.path.endsWith('/movie/550')), hasLength(1));
+
+      // A second page, or a filter switch, must not go back for it.
+      await client.hydrateRequests((await client.getRequests()).items);
+      expect(seen.where((u) => u.path.endsWith('/movie/550')), hasLength(1));
+    });
+
+    test('a title that cannot be resolved leaves its row listed', () async {
+      final client = clientFor(
+        [bareRequest(id: 1, tmdbId: 550, type: 'movie'), bareRequest(id: 2, tmdbId: 99, type: 'movie')],
+        {
+          '/movie/550': {'id': 550, 'title': 'Fight Club', 'posterPath': '/fight.jpg'},
+          '/movie/99': <String, Object>{},
+        },
+        failFor: {'/movie/99'},
+      );
+
+      final hydrated = await client.hydrateRequests((await client.getRequests()).items);
+      expect(hydrated, hasLength(2));
+      expect(hydrated.first.mediaTitle, 'Fight Club');
+      // Still there, still cancellable, just without a name.
+      expect(hydrated.last.mediaTitle, isNull);
+      expect(hydrated.last.id, 2);
+    });
+
+    test('a payload that already carries the title is left alone', () async {
+      final seen = <Uri>[];
+      final client = clientFor(
+        [
+          {
+            'id': 3,
+            'status': 2,
+            'type': 'movie',
+            'media': {
+              'tmdbId': 550,
+              'status': 5,
+              'title': 'Al bekend',
+              'posterPath': '/known.jpg',
+              'releaseDate': '2001-01-01',
+            },
+          },
+        ],
+        {
+          '/movie/550': {'id': 550, 'title': 'Fight Club', 'posterPath': '/fight.jpg'},
+        },
+        seen: seen,
+      );
+
+      final hydrated = await client.hydrateRequests((await client.getRequests()).items);
+      expect(hydrated.single.mediaTitle, 'Al bekend');
+      expect(seen.any((u) => u.path.endsWith('/movie/550')), isFalse);
+    });
+  });
 }

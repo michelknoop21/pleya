@@ -4398,6 +4398,15 @@ class TranslationsSeerrEn {
 	/// en: 'All seasons'
 	String get allSeasons => 'All seasons';
 
+	/// en: 'Seasons ${range}'
+	String seasonsRange({required Object range}) => 'Seasons ${range}';
+
+	/// en: '${count} seasons'
+	String seasonsCount({required Object count}) => '${count} seasons';
+
+	/// en: 'Requested by ${name}'
+	String requestedBy({required Object name}) => 'Requested by ${name}';
+
 	/// en: 'Request in 4K'
 	String get fourK => 'Request in 4K';
 
@@ -7181,6 +7190,9 @@ extension on Translations {
 			'seerr.selectSeasons' => 'Select seasons',
 			'seerr.season' => ({required Object number}) => 'Season ${number}',
 			'seerr.allSeasons' => 'All seasons',
+			'seerr.seasonsRange' => ({required Object range}) => 'Seasons ${range}',
+			'seerr.seasonsCount' => ({required Object count}) => '${count} seasons',
+			'seerr.requestedBy' => ({required Object name}) => 'Requested by ${name}',
 			'seerr.fourK' => 'Request in 4K',
 			'seerr.fourKBadge' => '4K',
 			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
@@ -7275,11 +7287,11 @@ extension on Translations {
 			'trackers.title' => 'Trackers',
 			'trackers.hubSubtitle' => 'Sync watch progress with Trakt and other services.',
 			'trackers.notConnected' => 'Not connected',
+			_ => null,
+		} ?? switch (path) {
 			'trackers.connectedAs' => ({required Object username}) => 'Connected as @${username}',
 			'trackers.scrobble' => 'Track progress automatically',
 			'trackers.scrobbleDescription' => 'Update your list when you finish an episode or movie.',
-			_ => null,
-		} ?? switch (path) {
 			'trackers.disconnectConfirm' => ({required Object service}) => 'Disconnect ${service}?',
 			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya will stop updating ${service}. Reconnect any time.',
 			'trackers.connectFailed' => ({required Object service}) => 'Couldn\'t connect to ${service}. Try again.',

@@ -1917,6 +1917,12 @@ class _TranslationsSeerrNl extends TranslationsSeerrEn {
 	@override String get selectSeasons => 'Seizoenen kiezen';
 	@override String season({required Object number}) => 'Seizoen ${number}';
 	@override String get allSeasons => 'Alle seizoenen';
+	@override String seasonsRange({required Object range}) => 'Seizoenen ${range}';
+	@override String seasonsCount({required Object count}) => '${count} seizoenen';
+	@override String requestedBy({required Object name}) => 'Aangevraagd door ${name}';
+	@override String get searchPlaceholder => 'Zoek een film of serie om aan te vragen';
+	@override String get byStreamingService => 'Per streamingdienst';
+	@override String get showAll => 'Alles tonen';
 	@override String get fourK => 'In 4K aanvragen';
 	@override String get fourKBadge => '4K';
 	@override String percentMatch({required Object percent}) => '${percent}% match';
@@ -3907,6 +3913,12 @@ extension on TranslationsNl {
 			'seerr.selectSeasons' => 'Seizoenen kiezen',
 			'seerr.season' => ({required Object number}) => 'Seizoen ${number}',
 			'seerr.allSeasons' => 'Alle seizoenen',
+			'seerr.seasonsRange' => ({required Object range}) => 'Seizoenen ${range}',
+			'seerr.seasonsCount' => ({required Object count}) => '${count} seizoenen',
+			'seerr.requestedBy' => ({required Object name}) => 'Aangevraagd door ${name}',
+			'seerr.searchPlaceholder' => 'Zoek een film of serie om aan te vragen',
+			'seerr.byStreamingService' => 'Per streamingdienst',
+			'seerr.showAll' => 'Alles tonen',
 			'seerr.fourK' => 'In 4K aanvragen',
 			'seerr.fourKBadge' => '4K',
 			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
@@ -3926,14 +3938,14 @@ extension on TranslationsNl {
 			'seerr.filterShows' => 'Series',
 			'seerr.approve' => 'Goedkeuren',
 			'seerr.decline' => 'Afwijzen',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.edit' => 'Bewerken',
 			'seerr.cancelRequest' => 'Aanvraag annuleren',
 			'seerr.cancelRequestConfirm' => 'Deze aanvraag annuleren?',
 			'seerr.discoverTitle' => 'Ontdekken via Aanvragen',
 			'seerr.trending' => 'Populair nu',
 			'seerr.popularMovies' => 'Populaire films',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.popularTv' => 'Populaire series',
 			'seerr.upcoming' => 'Binnenkort',
 			'seerr.recommendations' => 'Aanbevolen',

@@ -40,6 +40,32 @@ class SeerrRequest {
 
   bool get isPending => status == SeerrRequestStatus.pending;
 
+  /// Whether the row still lacks the fields that make it readable. Overseerr's
+  /// `/request` payload carries the media row (tmdb id, availability) but no
+  /// title, year or artwork, so these have to be fetched separately.
+  bool get needsDisplayData => mediaTitle == null || posterPath == null;
+
+  /// Returns a copy with the display fields filled in. Only overwrites what is
+  /// still missing, so a Jellyseerr payload that did embed them keeps its own.
+  SeerrRequest withDisplayData({String? title, String? year, String? posterPath, String? backdropPath}) {
+    return SeerrRequest(
+      id: id,
+      status: status,
+      mediaType: mediaType,
+      tmdbId: tmdbId,
+      mediaTitle: mediaTitle ?? title,
+      mediaYear: mediaYear ?? year,
+      posterPath: this.posterPath ?? posterPath,
+      backdropPath: this.backdropPath ?? backdropPath,
+      mediaStatus: mediaStatus,
+      seasons: seasons,
+      is4k: is4k,
+      requestedById: requestedById,
+      requestedByName: requestedByName,
+      createdAt: createdAt,
+    );
+  }
+
   static int? _asInt(Object? v) => v is int ? v : (v is num ? v.toInt() : int.tryParse('${v ?? ''}'));
 
   static String? _nonEmptyString(Object? value) {
@@ -111,4 +137,32 @@ class SeerrRequest {
       createdAt: json['createdAt']?.toString(),
     );
   }
+}
+
+/// Collapses requested season numbers into a compact, still-accurate string:
+/// `3`, `18-22`, `1-3, 7`. Runs of consecutive seasons become a range; gaps are
+/// preserved, because "Seizoenen 1-22" would be a lie about what was asked for.
+///
+/// Returns null past [maxGroups] separate runs, where naming every one of them
+/// takes over the card. The caller then says how many there are instead.
+String? seerrSeasonRanges(List<int> seasons, {int maxGroups = 3}) {
+  if (seasons.isEmpty) return null;
+  final sorted = seasons.toSet().toList()..sort();
+
+  final groups = <String>[];
+  var start = sorted.first;
+  var previous = start;
+  for (final n in sorted.skip(1)) {
+    if (n == previous + 1) {
+      previous = n;
+      continue;
+    }
+    groups.add(start == previous ? '$start' : '$start-$previous');
+    start = n;
+    previous = n;
+  }
+  groups.add(start == previous ? '$start' : '$start-$previous');
+
+  if (groups.length > maxGroups) return null;
+  return groups.join(', ');
 }

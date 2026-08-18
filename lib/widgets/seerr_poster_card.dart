@@ -154,8 +154,20 @@ class SeerrPosterCard extends StatelessWidget {
                         height: h,
                         child: SeerrPosterImage(url: media.posterUrl),
                       ),
+                      // Bounded on both sides. With only `left` set the badge
+                      // was laid out unconstrained, grew to its intrinsic width
+                      // and was then cut off by the ClipRRect at the poster
+                      // edge; the label has to shrink instead.
                       if (media.status != SeerrMediaStatus.unknown)
-                        Positioned(top: 6, left: 6, child: SeerrStatusBadge(status: media.status, compact: true)),
+                        Positioned(
+                          top: 6,
+                          left: 6,
+                          right: 6,
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: SeerrStatusBadge(status: media.status, compact: true),
+                          ),
+                        ),
                     ],
                   ),
                 ),
