@@ -2,6 +2,99 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-18] De replacement matrix maakt zichtbaar wat er nog tussen Pleya Server en Plex-off staat
+
+Document-only. De roadmap is niet gewijzigd; de gaten zijn vastgelegd als bevinding.
+
+### Added
+- **`docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md`**, 156 capabilities over 17 domeinen, opgebouwd uit de codebase en niet uit kennis van Plex. Bronnen zijn `lib/media/media_server_client.dart` (ruim tachtig members), de twintig vlaggen in `lib/media/server_capabilities.dart` die elk hun Plex-endpoint benoemen, de aparte Live TV-interfaces, en `lib/metadata_edit/` voor de schrijfkant. Per capability staat er wat Plex vandaag levert, wat Pleya Server ervoor in de plaats zet, welke van de drie bestemmingen dat is, welke fase hem draagt, zijn status, of hij de Plex-off gate blokkeert, en waaraan je ziet dat hij klaar is.
+- **Hoofdstuk 25 in het architectuurdocument: Definition of Done en `PLEX_OFFLINE_REPLACEMENT_GATE`.** Volwaardig betekent dat elke blocker op Productgereed staat, dat de gate slaagt zonder één runtimeaanroep naar Plex, en dat geen enkele overige capability bij vrijgave nog op onbekend staat. De gate heeft zeven categorieën en één rode maakt hem rood. Erbij hoort de harde regel dat alleen het migratiegereedschap, de Plex-adapter en een in de fase beschreven tijdelijke fallback Plex mogen lezen; verborgen fallback wordt niet geaccepteerd.
+- **Hoofdstuk 1.1: het einddoel is niet onderhandelbaar.** Met de regel die de rest beschermt: "niet in deze fase" is iets anders dan "niet nodig voor het eindproduct". Een functie verdwijnt niet uit het eindproduct omdat hij nog geen Phase ID heeft.
+- **PS-1 kreeg één ontwerpcontrole**, en verder niets. Scope, out-of-scope, acceptatiecriteria en stopcriterium zijn ongewijzigd. De vraag bij elke fundamentele protocolkeuze is of hij later uitbreidbaar is naar de replacement-capabilities zonder breaking herbouw. Nee betekent de blocker rapporteren, niet de latere feature alvast specificeren.
+
+### Changed
+- **23.1 kijkt nu twee kanten op.** De bestaande anti-driftregel verbood vooruitbouwen. Erbij komt het spiegelbeeld: schrap, versimpel of herdefinieer ook geen latere productvereiste omdat die nu niet nodig is, en een keuze die een latere essentiële serverfunctie onmogelijk of onevenredig duur maakt is een architectuurblocker. Samengevat: build for extension is niet hetzelfde als build the extension early.
+- **`CLAUDE.md` kreeg een zevende werkregel** plus dezelfde bidirectionele scope-discipline, zodat de matrix de bron is bij twijfel of iets nog bij het eindproduct hoort.
+
+### Notes
+- **De telling is de eigenlijke opbrengst.** 104 van de 156 capabilities zijn Plex-off blocker. Achtenzeventig daarvan hangen aan een bestaande fase; zesentwintig aan geen enkele, waarvan twee eerst een productbesluit vragen. In totaal zijn er 37 roadmap gaps en 11 open productbesluiten.
+- **Twaalf gaten met de grootste gevolgen**, gegroepeerd: verzamelingen en afspeellijsten (volledige CRUD in de client, nergens in de roadmap), kijkgeschiedenis, favorieten en waarderingen, intro- en aftitelingsmarkers, externe ondertitels als sidecar, bibliotheekbeheer vanuit de client, back-up en restore en upgrade en terugrollen, de faalpaden als samenhangend geheel, home-rijen, beoordelingen, edities, en afspeellijsten in de migratie.
+- **Twee fasen spreken elkaar tegen over realtime.** Hoofdstuk 14 beschrijft een websocket-hub, PS-2 zet hem expliciet buiten scope, en PS-11 gaat ervan uit dat hij bestaat ("websockets door de proxy"). Geen enkele fase bouwt hem. Het is geen blocker, want elk event is ook op te halen met een gewone aanroep, maar de tegenstrijdigheid hoort weg voordat PS-11 begint.
+- **Vier fasen kunnen technisch gereed zijn terwijl het product dat niet is:** PS-2, PS-4, PS-7 en PS-11. Daarom meet de gate op productniveau en niet op endpointniveau.
+- Nagelopen: alle interne ankers in beide documenten resolven, de twintig `ServerCapabilities`-vlaggen komen alle twintig in de matrix terug, en de anti-slop-check is schoon. Bekend en niet in dit spoor gerepareerd: de verwijzingen `DECISIONS.md#dec-014` en `#dec-025` gebruiken de projectconventie van een kort anker, dat GitHub niet resolvet naar de volledige kop.
+
+## [2026-08-18] Het architectuurdocument is een goedgekeurde baseline, en de werkregels staan in CLAUDE.md
+
+Document-only. Spoor gesloten; de eerstvolgende beslissing is wanneer PS-1 wordt vrijgegeven.
+
+### Changed
+- **`docs/pleya-server-architecture.md` draagt bovenaan zijn eigen status.** Architectuurbaseline goedgekeurd, uitvoering niet vrijgegeven. Dat voorkomt dat een sessie maanden later het document als eerste concept behandelt en fundamentele keuzes opnieuw openbreekt.
+- **De twee open vragen zijn gates geworden** in plaats van losse aandachtspunten. Hoofdstuk 24.2 opent met een tabel: het conflictmodel voor kijkstatus moet beslist zijn voordat PS-4 begint, en de regel voor de content fingerprint voordat er scannerlogica komt die op relocatie leunt. Een fingerprint die later van definitie verandert maakt elke eerder vastgelegde koppeling onbetrouwbaar.
+- **`STATUS.md` noemt nog één concrete vervolgactie.** PS-1 start pas na expliciete vrijgave, en die komt na 2.8.0.
+
+### Added
+- **Een sectie in `CLAUDE.md` met de werkregels voor elk Pleya Server-werk.** Zes regels: eerst hoofdstuk 23 plus de eigen fase lezen, uitsluitend binnen de huidige Phase ID werken, de roadmap niet stilzwijgend wijzigen, geen werk uit een latere fase vooruit voeren, bij een noodzakelijke afwijking eerst een deviation proposal, en stoppen bij het stopcriterium. Die staan daar en niet in het architectuurdocument zelf, omdat `CLAUDE.md` elke sessie meelaadt en de discipline dus niet afhangt van wat er nog in het contextvenster past.
+
+## [2026-08-18] Reviewronde op het architectuurdocument: acht aanscherpingen vóór implementation freeze
+
+Document-only, `docs/pleya-server-architecture.md`. De architecturale kern is ongewijzigd; wat er
+veranderde zijn de grenzen die tijdens implementatie het makkelijkst vervagen.
+
+### Changed
+- **Fase 1 mag niet langer vooruitontwerpen.** Hoofdstuk 12.2 legt vast dat PS-1 uitsluitend het protocoloppervlak specificeert dat nodig is tot en met PS-4, met een tabel die per oppervlak de fase noemt die het introduceert. De transcode-sessie-endpoints in hoofdstuk 11.2 waren daar een schending van en staan nu als voorgenomen vorm, vast te leggen in PS-8.
+- **`feature_level` is ondergeschikt aan `capabilities`.** Level N betekent uitsluitend dat de implementatie alle protocolfeatures tot en met N begrijpt, en nooit dat een functie beschikbaar is. Een client die uit een hoog level afleidt dat transcoding bestaat terwijl de capability `false` is, redeneert fout.
+- **Scan-signature, `MediaFile.id` en content fingerprint zijn drie dingen** (hoofdstuk 7.2, nieuw). Een hash over kop en staart bewijst niets over het middenstuk, dus hij mag nooit op zichzelf "gegarandeerd hetzelfde bestand" betekenen. De signature is een scanoptimalisatie, de id is de identiteit, en de fingerprint is apart bewijs voor relocatie tussen mounts.
+- **`confidence` is vervangen door `detectionStatus` plus `source`.** Eén generieke score van hoog tot laag verbergt dat een `inferred` Dolby Vision-profiel gevaarlijker is dan een `inferred` kanaalindeling. De statussen zijn `confirmed`, `inferred` en `unknown`; de bronnen zijn opgesomd. Beleid hangt aan de combinatie van eigenschap en status.
+- **De planner is een filter met een score, geen boom van takken.** Harde beperkingen elimineren kandidaatplannen, zachte voorkeuren scoren wat overblijft, en een lege verzameling is een expliciete fout met reden in plaats van wat de laatste `else` toevallig oplevert.
+- **Redenen zijn domeincodes met parameters**, bijvoorbeeld `audio.truehd_passthrough_unsupported` met bron- en doelcodec. Een i18n-sleutel van de app in een serverantwoord zou het hernoemen van een vertaalsleutel tot breaking change maken.
+- **Bootstrap-identiteit staat los van multi-user** (hoofdstuk 13.1a, nieuw). Vóór PS-9 bestaat er precies één server-owner-identiteit, zonder profielen, rollen of bibliotheekrechten. Dat voorkomt dat fase 2 alvast `users` en `sessions` aanlegt omdat er toch tokens nodig zijn.
+- **Streamtokens zijn kortlevend en smal, niet eenmalig.** Een speler doet een `HEAD`, een openingsrange, een range per seek, retries en bij HLS een request per segment; een token dat na de eerste verzilvering vervalt breekt op de tweede. Nu twee tot vijf minuten geldig, gebonden aan gebruiker, resource en eventueel sessie.
+- **De `ETag` hoeft geen contenthash te zijn.** De eis is dat de validator verandert zodra de bytes veranderen; `(MediaFile.id, generation)` voldoet. Een hash over tachtig gigabyte berekenen om een header te zetten is precies het werk dat een NAS onbruikbaar maakt.
+- **`transcode_workers` is uit v1 verdwenen.** De vorm van die tabel volgt uit keuzes die nog niet gemaakt zijn (registratie, capabilities, push of pull, opslagzicht, segmentroutering), dus hem nu ontwerpen levert een verkeerde tabel op die daarna meereist. Fase 8 krijgt een lokale executor, fase 13 voegt de tabel toe met een migratie.
+
+### Added
+- **23.1 kreeg er een anti-driftregel bij.** Een latere fase mag geen datamodel, interface of infrastructuur afdwingen in een eerdere fase uitsluitend om een migratie te vermijden. Bouw voor uitbreidbaarheid, bouw de uitbreiding niet vooruit. Die regel houdt zowel `transcode_workers` als het sessiecontract uit fase 1.
+- **Twee open vragen erbij.** Het conflictmodel voor kijkstatus moet beantwoord zijn vóór PS-4: "hoogste positie wint" faalt zichtbaar wanneer iemand een film bewust opnieuw begint, dus kijkstatus wordt een gebeurtenis met `session_id`, positie, duur, tijdstempel, `completed` en `explicit_action`, waarbij expliciete intentie altijd van heuristiek wint. En wanneer de content fingerprint verplicht wordt is een beslissing voor het moment dat de eerste bibliotheek verhuist.
+
+### Notes
+- **Het publieke `/info`-antwoord geeft minder prijs.** Servernaam, versie en buildnummer staan nu achter authenticatie. Fingerprinting is voor een huisserver geen groot risico, maar een versienummer aan de buitenkant vertelt een scanner welke bekende zwakke plekken het proberen waard zijn.
+- Opnieuw geverifieerd na de ronde: 64 interne ankers resolven, 16 regelverwijzingen kloppen, 6 Mermaid-blokken parsen, `anti-slop-check.sh` schoon.
+
+## [2026-08-18] Pleya Server: het onderzoek keerde de opdracht om
+
+Document-only. Geen commit, geen wijziging aan `lib/`, `share_server/` of `server/`.
+
+### Added
+- **[docs/pleya-server-architecture.md](pleya-server-architecture.md)**, 1870 regels, 24 hoofdstukken plus een bijlage. Ontwerp voor een eigen mediaserver in Go, met als einddoel dat Pleya zonder Plex kan functioneren en Plex en Jellyfin optionele adapters worden.
+- **Een roadmap van dertien fasen**, elk met Phase ID, doel, bijdrage aan het einddoel, scope, expliciete out-of-scope, afhankelijkheden, acceptatiecriteria, stopcriterium, risico's, tests en een Roadmap Drift Check. Fase 3 is de eerste die de app raakt.
+- **Acht voorgestelde DEC-besluiten** (DEC-030 tot en met DEC-037), samengevat in hoofdstuk 24. Ze worden pas als ADR geschreven wanneer fase 1 wordt ingepland, dus [DECISIONS.md](DECISIONS.md) is ongewijzigd en `DEC-029` blijft de laatste bestaande.
+
+### Notes
+- **De aanname dat de client eerst van Plex losgemaakt moet worden klopt niet.** `lib/media/media_server_client.dart` is 766 regels met ruim tachtig members en draagt al vier implementaties, waarvan `LocalFolderClient` (1376 regels) en `PleyaShareClient` (917) geen enkele Plex-eigenschap hebben. `ServerCapabilities` heeft negentien vlaggen, `ConnectionKind` vier waarden, en `data_aggregation_service.dart` (623 regels) noemt Plex en Jellyfin alleen nog in doc-comments. Er staan 125 backend-vertakkingen in 52 bestanden, en een deel daarvan is legitiem omdat de backends echt verschillen.
+- **Fase B uit de opdracht draait al.** `share_server/` staat op de NAS in Docker met read-only mounts, met `scanner.dart`, code-pairing via challenge/response in `pairing.dart`, range-streaming en kijkvoortgang per gast.
+- **Het echte gat zit in de playbackbeslissing.** De client stelt geen enkele device-capability vast. `lib/services/plex_client.dart:3072-3110` bouwt `X-Plex-Client-Profile-Extra` uit een vaste clause-lijst en `lib/services/jellyfin_client/parts/playback.dart:504-543` stuurt een hardgecodeerde `DeviceProfile`; op een Apple TV 4K gaat dezelfde JSON de lijn over als op een oude tablet. De enige knop is `TranscodeQualityPreset`, dat in zijn doc-comment naar Plex Web's tabel verwijst. De client neemt dus te weinig verantwoordelijkheid en niet te veel.
+- **Het eigen protocol spreekt vandaag Plex.** `lib/services/pleya_share/pleya_share_protocol.dart:14` serveert op `/library` letterlijk de freezed `MediaItem` als JSON, en `share_server/lib/src/server.dart:330-336` zet `viewOffsetMs` en `viewCount` in het antwoord. Server en client zitten daarmee compile-time aan hetzelfde model vast. Het ontwerp trekt daaruit de regel dat wire-types en domeintypes twee dingen zijn.
+- **Een transcode-sessie wordt nergens afgesloten.** `universal/stop` komt nul keer voor in `lib/`. Plex ruimt verweesde sessies zelf op na een timeout, dus het gat wordt pas zichtbaar zodra Pleya Server zelf transcodeert. Fase 8 bouwt beide kanten tegelijk, met een watchdog als garantie en de `DELETE` als beleefdheid.
+- **Pleya Share blijft een eigen product**, geen voorloper. Ander eigenaarschap, andere levensduur, ander vertrouwensmodel. Gedeeld wordt een protocolvocabulaire met een profielbegrip (`minimal`, `full`), niet de runtime; `share_server` overzetten is optioneel en geen voorwaarde voor v1.
+- **Het document is zelf nagelopen.** Alle 16 `bestand:regel`-verwijzingen nagelopen tegen de code (twee gecorrigeerd), alle padverwijzingen bestaan, alle 5 Mermaid-blokken parsen, alle 54 interne ankers resolven, en `anti-slop-check.sh` is schoon.
+- **Eén bug gevonden en bewust laten staan.** `lib/widgets/new_content_badge.dart:36` bepaalt het NEW-label met `(item.viewCount ?? 0) == 0`, waardoor een half bekeken titel "NEW" kan tonen. Staat in de backlogtabel van hoofdstuk 24 en als blocker in `STATUS.md`.
+- **Vier vragen blijven bewust open.** De keuze van metadata-providers naast TMDB, het schedulingmodel voor externe transcode-workers, de jobbibliotheek op Postgres, en de vraag of `MediaServerClient` opgesplitst moet worden. Die laatste krijgt een meting in fase 4 met een concreet criterium in plaats van een voorspelling.
+
+## [2026-08-18] Releasenotes gaan mee de build in, en de lane leest ze terug
+
+Op `main`, vijf commits van `34f2c5f` tot `8e84f3a`.
+
+### Added
+- **Elke TestFlight-build krijgt de publieke releasenotes als "What to Test".** `apply_release_notes` haalt de tekst voor het buildnummer uit `docs/RELEASES.md` via `release_notes_for`, `testflight_notes` maakt er platte tekst van en `set_build_notes` schrijft hem op de build. De external-lane geeft geen ipa mee, dus `local_build_number` leest het nummer uit `pubspec.yaml`; ontbreken de notities daar, dan stopt `required_notes_for` de lane in plaats van een lege tekst te uploaden.
+- **`fastlane notes build:227`** zet de notities los op een bestaande build, voor het geval `/update-docs` pas na de upload draait.
+
+### Fixed
+- **Een geslaagde schrijfactie was geen bewijs dat een tester de tekst ziet.** `verify_build_notes` leest de beta build localizations terug en vergelijkt ze met wat er gestuurd is, met genormaliseerde regeleindes aan beide kanten. Het veld heeft een lengtegrens, Apple normaliseert regeleindes, en een build met meerdere locales kan er één missen: dat zijn drie manieren waarop een `200` alsnog niets oplevert. Zonder localization of bij een afwijking stopt de lane.
+- **De gegenereerde werklijst uit de releasenotes stond op de site.** Alles tussen de `BEGIN GENERATED`- en `END GENERATED`-markers is een ruwe lijst commit-onderwerpen in de taal waarin ze gecommit zijn, bedoeld als invoer voor de volgende herschrijfronde. `website/src/lib/server/releases.ts` knipt dat blok er nu uit, want het zette Nederlandse commitregels onder "Unreleased" op de live pagina.
+
+### Changed
+- **De handleiding op pleya.app bijgewerkt** op zeven hoofdstukken: FAQ, film- en seriedetails, aanvragen, instellingenoverzicht, ondertitels en audio, het homescherm en de speler. `docs/manual/SCREENSHOTS.md` kreeg er één openstaande schermafbeelding bij.
+
 ## [2026-08-17] Drie tvOS-ingrepen: overlappende herotekst, onzichtbare focus, en het canvas dat maar half zo groot was
 
 Op `main`, drie commits: `d16fa4f`, `e2c123f`, `0f780f9`.

@@ -1,8 +1,46 @@
 # STATUS · Pleya
 
-_Laatst bijgewerkt: 2026-08-17 22:40 (`main` = `0f780f9`; drie tvOS-ingrepen geland bovenop `3856ca1`. Er loopt nog steeds een tweede sessie met ongecommit werk in de hoofdmap, inmiddels ongeveer 120 bestanden rond Tautulli, now-watching en de audio-arbiter. App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`)_
+_Laatst bijgewerkt: 2026-08-18 (`main` = `8e84f3a`, en `feat/pleyaserver` staat op dezelfde commit met documentatiewerk in de working tree. Er loopt nog steeds een tweede sessie met ongecommit werk in de hoofdmap. App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`)_
 
 ## Waar was ik
+
+**De replacement matrix laat zien dat de roadmap Plex nog niet uitzet, en waar dat aan ligt.** Het
+architectuurdocument beschreef goed *hoe* Pleya Server gebouwd wordt, maar nergens stond de volledige
+lijst serververantwoordelijkheden die Pleya vandaag bij Plex afneemt. Zonder die lijst is niet vast
+te stellen of dertien fasen genoeg zijn.
+
+Die lijst staat nu in [docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md](docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md):
+156 capabilities over 17 domeinen, opgebouwd uit `lib/media/media_server_client.dart`, de twintig
+vlaggen in `server_capabilities.dart` die elk hun Plex-endpoint benoemen, de Live TV-interfaces en
+`lib/metadata_edit/`. Per capability een bestemming, een fase, een status en een oordeel of hij de
+Plex-off gate blokkeert.
+
+De uitkomst: **104 van de 156 zijn blocker. Achtenzeventig hangen aan een bestaande fase,
+zesentwintig aan geen enkele.** In totaal 37 roadmap gaps en 11 open productbesluiten. De grootste
+gaten zijn verzamelingen en afspeellijsten (de client heeft er volledige CRUD voor, de roadmap noemt
+ze niet), kijkgeschiedenis, favorieten en waarderingen, intro- en aftitelingsmarkers, externe
+ondertitels als los bestand, bibliotheekbeheer vanuit de client, en back-up, restore, upgrade en
+terugrollen. Onderweg kwam één tegenstrijdigheid boven: hoofdstuk 14 beschrijft een websocket-hub,
+PS-2 zet hem buiten scope, PS-11 gaat ervan uit dat hij bestaat, en geen enkele fase bouwt hem.
+
+In het architectuurdocument staan nu vier grenzen die dit borgen: hoofdstuk 1.1 met het
+niet-onderhandelbare einddoel, hoofdstuk 25 met de Definition of Done en
+`PLEX_OFFLINE_REPLACEMENT_GATE`, een bidirectionele scope-discipline in 23.1 (build for extension is
+niet hetzelfde als build the extension early), en één ontwerpcontrole bij PS-1 die zijn scope niet
+vergroot. **De roadmap is niet gewijzigd.** De gaten zijn bevindingen; ze worden pas een fase via een
+Roadmap deviation proposal. Er is geen regel code aangeraakt.
+
+## Eerder op 18 augustus
+
+**Het architectuurontwerp voor Pleya Server ligt er, en het onderzoek keerde de opdracht om.** De aanname was dat de client eerst van Plex losgemaakt moest worden voordat serverwerk zin heeft. Die volgorde klopt niet: `lib/media/media_server_client.dart` is 766 regels met ruim tachtig members en draagt al vier backends, waarvan `LocalFolderClient` en `PleyaShareClient` geen enkele Plex-eigenschap hebben, en `data_aggregation_service.dart` noemt Plex en Jellyfin alleen nog in commentaar. Ook fase B uit de opdracht draait al: `share_server/` staat op de NAS met een scanner, code-pairing en range-streaming.
+
+Waar het gat wél zit is de playbackbeslissing. De client stelt geen enkele device-capability vast. `plex_client.dart:3072-3110` en `jellyfin_client/parts/playback.dart:504-543` sturen allebei een hardgecodeerde constante, identiek op een Apple TV 4K en een oude tablet, en de enige knop is `TranscodeQualityPreset`, dat in zijn eigen doc-comment naar Plex Web verwijst. De kernzin van het document: de grootste ontbrekende abstractie is niet een generieke media-backend, want die bestaat al, maar een expliciet capability- en playbackcontract tussen client en server.
+
+Het resultaat is [docs/pleya-server-architecture.md](docs/pleya-server-architecture.md), 1870 regels, 24 hoofdstukken plus een bijlage met de weerlegde aannames. Het bevat een roadmap van dertien fasen waarin elke fase een expliciete scope, out-of-scope, acceptatiecriteria, stopcriterium en drift check draagt, en acht voorgestelde DEC-besluiten (DEC-030 tot en met DEC-037) die pas geschreven worden als fase 1 wordt ingepland. **Er is geen code geschreven**, niets in `lib/`, `share_server/` of `server/` aangeraakt, en het releasewerk is ongemoeid gebleven.
+
+Daarna volgde een reviewronde met acht aanscherpingen die er vóór implementation freeze in moesten. De architecturale kern bleef staan; wat veranderde zijn de grenzen die tijdens implementatie het snelst vervagen. Fase 1 mag alleen nog het oppervlak tot en met fase 4 specificeren, `capabilities` wint van `feature_level`, scan-signature is geen identiteit, `confidence` is vervangen door `detectionStatus` plus `source`, de planner is een filter met een score, bootstrap-identiteit staat los van multi-user, streamtokens zijn kortlevend maar niet eenmalig, en de `transcode_workers`-tabel is uit v1 verdwenen. Er kwam één anti-driftregel bij: een latere fase mag niets afdwingen in een eerdere fase om een migratie te vermijden. Het conflictmodel voor kijkstatus staat nu als open vraag die vóór fase 4 beantwoord moet zijn, omdat "hoogste positie wint" een bewuste herstart terugdraait.
+
+## Gisteren, 17 augustus
 
 **Drie tvOS-ingrepen, waarvan de derde uitlegde waarom de app zo groot aanvoelt.** De herotekst op Libraries liep over de kop van de eerste posterrij omdat de onderrand van het tekstblok met de peek-formule van het homescherm werd berekend, terwijl de rail daar gedokt staat en zijn volle hoogte bezet. De gefocuste settings-rij was onzichtbaar omdat de Material-inktvlek op de Scaffold landt en de nieuwe kaart van `SettingsGroup` er meteen overheen schildert; navigeren werkte al die tijd gewoon, je zag alleen niet waar je stond. Zie [DEC-027](docs/DECISIONS.md#dec-027) en de CHANGELOG-entry van vandaag.
 
@@ -14,17 +52,17 @@ Het beleid bewees zichzelf tijdens de eerste ronde. De analyzer-stack kwam er al
 
 Onderweg bleek de committede gegenereerde code al scheef te staan: geformatteerd met homebrew-3.44.4 terwijl CI 3.44.0 pint, 4001 regels verschil. De controle-run op `main` bevestigt dat los van mij, want daar faalt CI op "Generated files are out of date" ([32032784299](https://github.com/michelknoop21/pleya/actions/runs/32032784299)); op de branch is die stap groen. Dit waren de eerste Actions-runs die deze repo ooit heeft gehad; `origin` is een Gitea-instance, dus er was geen historie om tegen af te zetten.
 
-## Eerder vandaag
+## Eerder op 17 augustus
 
 **De reviewbuild hing niet aan de versie, en dat koppelen doet de lane nu zelf.** De 2.1(a)-afwijzing was allang uitgezocht en gerepareerd, maar de drie App Store-versies stonden nog op build 156: precies de build die Apple afwees. Build 220 met de inlogfix stond sinds 15 augustus in TestFlight, macOS had zelfs helemaal geen build gekoppeld. Alle drie zijn nu op 220 gezet, waarmee iOS uit `REJECTED` kwam. Omdat dit de derde keer is dat de stap tussen "geüpload" en "indienbaar" stil misgaat, koppelen `ios_beta`, `tvos_beta` en `macos_beta` de build voortaan zelf, met `fastlane attach_builds` als vangnet. Zie [DEC-022](docs/DECISIONS.md#dec-022). Reviewnotities, demo-account en demoserver zijn opnieuw nagelopen en kloppen: `demo.pleya.app` antwoordt in 296 ms, het account `applereview` authenticeert en de drie Blender-films staan er.
 
-## Eerder vandaag
+## Eerder op 17 augustus
 
 **De kijklijst is af en het Live TV-tokenlek is dicht.** De kijklijst kreeg zijn laatste twee stukken: Nederlandse vertalingen plus [DEC-020](docs/DECISIONS.md#dec-020), en alsnog de sorteerkeuze die het plan beloofde maar het scherm niet had (recent toegevoegd, titel, jaar, volledig client-side). Daarna het lek dat sinds fase 0 als losse fix openstond: de favorieten van Live TV gingen via `PlexClient` naar `epg.provider.plex.tv`, en die client draagt de PMS-servertoken in `defaultHeaders` die ook bij een absolute URL meegaat. Eerst gemeten tegen een echt account, daarna in negen commits verhuisd naar `PlexCloudHttpClient`, de gedeelde transportgrens waar de kijklijst nu ook op staat. Zie [DEC-021](docs/DECISIONS.md#dec-021).
 
 Twee dingen kwamen onderweg boven die er los van stonden. De leescall liep door `FailoverHttpClient`, die alleen `get` overridet, dus een 5xx bij plex.tv kon de endpoint-cascade van je eigen server starten. En een mislukte lees gaf `[]`, waarna één ster aantikken die leegte terugschreef als de volledige lijst van het account. Beide dicht.
 
-## Eergisteren en gisteren
+## 15 en 16 augustus
 
 Gisteren landde de kijklijst zelf: identiteit en het multi-membership-model, de Plex-cloudclient op een gemeten contract, artwork zonder token in de cachekey, repository, beschikbaarheid met eerlijke dekking, offline-snapshot, provider, Mijn Pleya op mobiel met Watchlist in de sidebar, het kijklijst-scherm en de schrijfacties. Vijftien commits van `310ace8` tot `11ec313`; de details staan in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
@@ -38,6 +76,17 @@ Het Atmos-spoor staat er nog precies zo bij als gisteren: een iOS-log van build 
 
 ## Volgende stap
 
+**Besluiten wat er met de 26 blockers zonder fase gebeurt, vóór PS-1 wordt vrijgegeven.** Twaalf
+gegroepeerde gaten staan in
+[hoofdstuk 7 van de matrix](docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md#7-roadmap-gaps), met per gat de
+plek waar hij logisch zou horen. Het zijn geen dertien nieuwe fasen: verzamelingen en afspeellijsten
+passen bij een catalogusfase, de persoonlijke laag bij PS-9, en beheer, back-up en de faalpaden bij
+PS-11. Elk voorstel vraagt wel een Roadmap deviation proposal met de zes onderdelen uit 23.1, en die
+wordt niet automatisch doorgevoerd. Los daarvan liggen er 11 productbesluiten
+([hoofdstuk 8](docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md#8-open-productbesluiten)), waarvan Live TV en
+DVR de zwaarste zijn: die bepalen of iemand die via Plex televisie kijkt Plex überhaupt uit kan
+zetten.
+
 **Een TestFlight-build met de nieuwe schaal, en die op een echte televisie beoordelen.** De A/B/C tussen 2,00, 1,90 en 1,85 is alleen in de simulator gedaan, op een bureau, en dat is precies het oordeel dat niet telt voor een 10-voets interface. Ga op het toestel langs Home, Libraries op beide tabs, een detailscherm, Instellingen met een subpagina, Mijn Pleya, Zoeken, de spelerbediening en de audio- en ondertitelsheets. Let daarbij op twee dingen die de schaalwijziging kan raken: tekst die net niet meer in een knop past, en alles wat een vaste hoogte tegen een schermfractie afzet, zoals dialogen met een maximumhoogte en de alpha-sprongbalk die met `viewportHeight * 0.25` rekent. Voelt 1,85 goed, dan pas opnieuw meten wat er nog werkelijk te groot is; de kans is groot dat er van de componentronde weinig overblijft.
 
 Log in diezelfde ronde één keer `MediaQuery.size`, `devicePixelRatio` en `physicalSize` op het echte toestel. Dat de 960x540 ook op hardware geldt volgt uit de code, maar het is een afleiding en geen meting, en alle getallen uit de audit hangen eraan.
@@ -49,6 +98,8 @@ De favorieten van Live TV kun je in dezelfde ronde niet meenemen: dat vraagt een
 **Daarna de rest van de tvOS-regressieronde, op de fysieke Apple TV met build 219 of nieuwer.** De vijf fixes van 14 augustus zijn allang gemaakt en zitten in build 219, met unit- en widgetdekking; het toetsenbord is daarnaast op het toestel bevestigd (`6bab0ca`, zie [DEC-019](docs/DECISIONS.md#dec-019)). Wat overblijft is wat alleen een echte Siri Remote kan aantonen: tijdens een intro omhoog naar de skip-knop en er weer uit, tijdens de aftiteling tellen hoeveel volgende-aflevering-knoppen er staan, en een aflevering uitkijken om te zien of hij vanzelf doorgaat, ook ná een eerdere seek in dezelfde sessie, want dat was het no-op-scenario. Scrubben hoort daarbij: pauzeren en met de balk een positie kiezen. En als laatste een log uploaden na een lange kijksessie, plus direct nog eens drukken voor de "te snel"-melding; die is 14 augustus gerepareerd maar nooit op een echte sessielengte gemeten. De volledige volgorde staat in `~/.claude/plans/ik-wil-dat-je-starry-possum.md`.
 
 Neem het typen in zoeken, inloggen, server-URL en Seerr onderweg wel even mee, niet als los testpunt maar als waarschuwingslampje: reageert de remote na het sluiten van het toetsenbord nergens meer op, dan is dat het resterende native risico uit [DEC-017](docs/DECISIONS.md#dec-017) en geen los raadsel.
+
+**Pleya Server: PS-1 pas starten na expliciete vrijgave, en die vrijgave komt na 2.8.0.** De architectuurbaseline in [docs/pleya-server-architecture.md](docs/pleya-server-architecture.md) is goedgekeurd; uitvoering is dat niet. PS-1 is de protocolspecificatie uit hoofdstuk 12, alleen tekst en schema's, met als stopcriterium dat een lezer er een client uit kan bouwen zonder de servercode te zien. Niet eerder beginnen: fase 3 is de eerste die de app raakt en die wil je niet naast een lopende indiening hebben. De werkregels voor elke Pleya Server-sessie staan in `CLAUDE.md`, zodat ze niet van het contextvenster afhangen.
 
 **Daarna pas de oude sporen hieronder.** Die staan ongewijzigd stil.
 
@@ -70,6 +121,7 @@ Het uitgewerkte implementatieplan (arbiter, badge uit de beslissing, `auto` op d
 - [ ] **`MediaQuery.size` en `devicePixelRatio` zijn nooit op echte hardware gelogd**: de 960x540 volgt uit `_AppleTvScale` en is in de simulator gemeten, met dpr 4 op een 4K-toestel. Elk getal in de densityaudit hangt aan die aanname.
 - [ ] **De schermsweep voor de schaalwijziging is niet af**: Home, Libraries Aanbevolen en Instellingen hebben een volledige vergelijking over de drie varianten, de rest niet. Het aansturen van de TV-UI met blinde toetsaanslagen liep uit de rails, opende het filterpaneel en dook daarna telkens dieper in detailschermen. Bladeren, media detail, kijklijst, zoeken, de spelerbediening en de sheets moeten op het toestel.
 - [ ] **`textTheme.copyWith` vervangt twee stijlen volledig**: `mono_theme.dart:129-136` zet `displayLarge` en `titleMedium` met `copyWith`, wat de stijl vervángt in plaats van aanvult, dus die twee verliezen hun `fontSize` en `height` uit `Typography.englishLike2021` en vallen terug op de omringende `DefaultTextStyle`. Losse opruiming, bewust niet tijdens de densityronde gedaan omdat typografie dan tegelijk met de schaal verandert.
+- [ ] **De NEW-badge leest de verkeerde bron**: `lib/widgets/new_content_badge.dart:36` bepaalt het label voor films en afleveringen met `(item.viewCount ?? 0) == 0`, dus een titel die half bekeken is maar nooit uitgekeken toont "NEW". De juiste bron is de afgeleide kijkstatus. Gevonden tijdens het Pleya Server-onderzoek en daar bewust niet gerepareerd, want dat spoor was document-only.
 - [ ] **Twee tests falen op de Linux-runner en niet lokaal op macOS**: `side_navigation_rail_test.dart: Apple TV D-pad focus skips hidden downloads item` (verwacht `NavigationTabId.settings`, krijgt `null`) en `pleya_share_pair_any_test.dart: pairAny pairs via a later candidate when the first IP is dead`. Aantoonbaar niet van het dependency-werk: de controle-run op `main` van vóór die branch geeft exact dezelfde twee (branch [32031692723](https://github.com/michelknoop21/pleya/actions/runs/32031692723), controle op main [32032784299](https://github.com/michelknoop21/pleya/actions/runs/32032784299)). Ze zijn nooit eerder gezien omdat GitHub Actions op deze repo nog nooit had gedraaid; `origin` is een Gitea-instance. Bewust niet gerepareerd in de dependency-ronde.
 - [ ] **`softprops/action-gh-release@v3` is niet in een echte run bewezen**: `build.yml` leidt `tag_name` af uit een tag-ref, en een `workflow_dispatch` op een branch heeft die niet, dus de stap faalt met `Missing tag_name parameter` voordat de actie iets doet. Dat is een eigenschap van het dispatchen, niet van de versiebump. Alle andere bijgewerkte actions zijn wél groen gedraaid, inclusief de artefact-heenweg `upload-artifact@v7` naar `download-artifact@v8` (Build-run [32031695034](https://github.com/michelknoop21/pleya/actions/runs/32031695034), alleen Linux). Er is daardoor ook geen draft release aangemaakt om op te ruimen.
 - [ ] **Kijklijst op een toestel**: alles is unit- en widget-gedekt (3264 tests), maar de TV-focusronde, de profielwissel tussen twee Plex Home-gebruikers, het verwijderen van een gemergde entry en de offline-ronde zijn alleen op een toestel te zien. **Build 221 bestaat niet in App Store Connect**: het hoogste nummer is op alle drie de platforms 220 van 15 augustus, en dat is vóór het kijklijstwerk. Er moet dus eerst een nieuwe upload draaien.
@@ -118,6 +170,13 @@ xcrun devicectl device process launch --console --terminate-existing \
 
 ## Recente sessies
 
+### 2026-08-18
+- Architectuurontwerp voor Pleya Server opgeleverd als [docs/pleya-server-architecture.md](docs/pleya-server-architecture.md): 24 hoofdstukken, een roadmap van dertien fasen met per fase een expliciete scope en drift check, en acht voorgestelde DEC-besluiten (DEC-030 tot en met DEC-037). Document-only, geen commit, geen regel code.
+- Het onderzoek keerde de opdracht om. De neutrale laag bestaat al en draagt vier backends; het gat zit in de playbackbeslissing, waar de client op elk toestel dezelfde hardgecodeerde profielen stuurt. `DeviceCapabilities` en `PlaybackPlan` staan daarom vóór metadata in de roadmap.
+- Reviewronde erachteraan met acht blokkerende aanscherpingen: fase 1 specificeert alleen het oppervlak tot en met fase 4, `capabilities` wint van `feature_level`, scan-signature los van identiteit, `detectionStatus` in plaats van `confidence`, planner als filter met score, reden als domeincode, bootstrap-identiteit los van multi-user, streamtokens niet eenmalig, `ETag` zonder verplichte contenthash, en geen `transcode_workers` in v1. Plus een anti-driftregel en twee nieuwe open vragen.
+- Geverifieerd na de laatste ronde: 16 regelverwijzingen tegen de code (twee gecorrigeerd), 6 Mermaid-blokken parsen, 64 interne ankers resolven, `anti-slop-check.sh` schoon.
+- Eerder op de dag geland op `main` (`34f2c5f` tot `8e84f3a`): de publieke releasenotes gaan als "What to Test" mee op elke TestFlight-build, met `verify_build_notes` die terugleest wat er daadwerkelijk op de build staat, plus zeven bijgewerkte hoofdstukken van de handleiding.
+
 ### 2026-08-17 (avond)
 - Drie tvOS-ingrepen op `main`: de hero-clearance boven een gedokte rail (`d16fa4f`), de focusmarkering in Instellingen (`e2c123f`) en de Apple TV-vergroting van 2,00 naar 1,85 (`0f780f9`). Zie [DEC-027](docs/DECISIONS.md#dec-027) en [DEC-028](docs/DECISIONS.md#dec-028).
 - De densitymeting legde de oorzaak bloot: het canvas is 960x540 en niet 1920x1080, waarna `scaleForHeight` op zijn clamp van 0,85 blijft steken. Samen 1,7 keer het ontwerpdoel. Gemeten met een tijdelijke logregel, bevestigd op de schermafdruk via de icoonbadge van 36 punten die 138 fysieke pixels meet, en daarna weer verwijderd.
@@ -145,18 +204,6 @@ xcrun devicectl device process launch --console --terminate-existing \
 - Het tvOS-systeemtoetsenbord reageert weer op de Siri Remote (`6bab0ca`, build 219, op het toestel bevestigd). Oorzaak uit de engine-binary bewezen, fix via een override van `tvosHandlePressFromUIEvent:`. Zie [DEC-019](docs/DECISIONS.md#dec-019); de gotcha staat in `CLAUDE.md` zodat dit niet opnieuw verloren gaat.
 - `main` en `test` weer gelijkgetrokken (`b3dc5b2`), inclusief twee commits die alleen op `test` stonden: de hero die verdween na het zoektoetsenbord, en de watch-state-sync waarbij een tweede apparaat wint van een verouderde lokale positie. 2935 tests groen.
 
-### 2026-08-14
-- Vijf gemelde Apple TV-problemen opgelost: de D-pad-lek door het systeemtoetsenbord (`5dba184`, `c8ae4b7`), de bereikbaarheid en vorm van de skip- en volgende-aflevering-knop plus de dubbele knop tijdens de aftiteling (`2dfbcd4`), autoplay naar de volgende aflevering (`ee96f6c`), scrubben op pauze met oplopende spoelsnelheid (`d9706ad`) en de log-upload (`73ba2b8`). 2925 tests groen. Zie [DEC-017](docs/DECISIONS.md#dec-017).
-- Ontdekt dat geen enkele macOS-build sinds 196 installeerbaar was in TestFlight: `ITSAppUsesNonExemptEncryption` ontbrak (`9c896d7`). Builds 214 en 216 via de ASC-API losgetrokken. Zie [DEC-018](docs/DECISIONS.md#dec-018).
-- TestFlight 2.8.0: tvOS 216, macOS 216, iOS 215. De iOS-lane hing eerst 32 minuten op de bekende `xattr`-valkuil met een `build/`-map van 13 GB; opgelost met een reaper die alleen een `xattr`-proces boven de 45 seconden afbreekt.
-
-### 2026-08-10
-- App Review 2.1(a) dichtgezet: de Jellyfin-uitweg staat nu óók tijdens het wachten op de PIN, en breekt de lopende poging af (`6f4d6d9`). Reviewnotities herschreven met de Plex-waarschuwing bovenaan; ASC-versierecords voor macOS en tvOS van 1.0 naar 2.8.0 gezet zodat er een build aan te koppelen is. Zie [DEC-015](docs/DECISIONS.md#dec-015).
-- Leeg profielscherm op macOS: laden, leeg en stuk zijn nu drie toestanden, de toevoeg-knop staat in de lege staat zelf, en `_combineLatest4` noemt na drie seconden welke bron stilvalt (`fd87cad`). Zie [DEC-016](docs/DECISIONS.md#dec-016).
-- Builds 213 (iOS) en 214 (tvOS, macOS) naar TestFlight; 2883 tests groen, `scripts/ci_checks.sh` schoon.
-- `ice.pleya.app` live: Cloudflare Tunnel op de Synology, relay en tunnel als containers. `/health` en de volledige log-upload-route publiek geverifieerd (`POST /logs` geeft een code van vijf tekens, `GET /logs/<id>` geeft de tekst terug).
-- Code-review-fixes op het serverwerk: LAN-poort naar `127.0.0.1` (de relay is onauthenticated en de OAuth-proxy zit op dezelfde poort), `--remove-orphans` in het deploy-script, en de OAuth-redirect-URI-stap gedocumenteerd omdat `OAUTH_BASE_URL` van hostnaam wisselde.
-
-Ouder dan dit: zie [docs/CHANGELOG.md](docs/CHANGELOG.md).
+Ouder dan dit (2026-08-14 en eerder): zie [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 Zie [docs/DECISIONS.md](docs/DECISIONS.md) voor keuzes, [docs/CHANGELOG.md](docs/CHANGELOG.md) voor details en [docs/PLEYA_SHARE.md](docs/PLEYA_SHARE.md) voor de share-architectuur.

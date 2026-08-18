@@ -1,0 +1,2316 @@
+# Pleya Server: onderzoek en architectuurontwerp
+
+**Status:** **architectuurbaseline goedgekeurd, uitvoering niet vrijgegeven.** De hoofdrichting ligt
+vast en wordt niet opnieuw geopend. De eerstvolgende beslissing is *wanneer* PS-1 wordt vrijgegeven,
+niet hoe dit ontwerp nog beter kan. Vrijgave gebeurt expliciet, na 2.8.0.
+**Datum:** 18 augustus 2026
+**Auteur:** Michel Knoop
+**Scope:** dit document beschrijft een ontwerp. Er is geen servercode geschreven, er is niets
+gewijzigd in `lib/`, `share_server/` of `server/`, en het lopende releasewerk aan 2.8.0 is niet
+aangeraakt.
+
+**Over de lengte.** Dit bestand staat ruim boven de 500 regels waar ontwikkeldocumentatie in dit project normaal wordt gesplitst. Bewuste uitzondering: het is een onderzoeksverslag dat je één keer lineair leest en daarna via de inhoudsopgave raadpleegt, niet een naslagdocument dat per hoofdstuk wordt opgezocht. Splitsen zou het argument uit elkaar trekken zonder dat er iets makkelijker te vinden wordt.
+
+**Einddoel dat dit hele document dient:** Pleya moet uiteindelijk zelfstandig functioneren zonder
+Plex als server, waarbij Plex en Jellyfin optionele adapters blijven en Pleya Share zijn eigen
+lichte productrol houdt. Welke capabilities daarvoor aanwezig moeten zijn staat niet hier maar in
+[docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md](PLEYA-SERVER-REPLACEMENT-MATRIX.md); de definitie van
+"volwaardig" en de gate die hem toetst staan in [hoofdstuk 25](#25-definition-of-done-pleya-server-als-zelfstandig-mediaserverproduct).
+
+---
+
+## Inhoud
+
+1. [Managementsamenvatting](#1-managementsamenvatting)
+2. [De grens tussen Pleya Share en Pleya Server](#2-de-grens-tussen-pleya-share-en-pleya-server)
+3. [Wat de client vandaag is](#3-wat-de-client-vandaag-is)
+4. [Koppelingen met Plex en hun risico](#4-koppelingen-met-plex-en-hun-risico)
+5. [Domeinmodel](#5-domeinmodel)
+6. [Serverarchitectuur](#6-serverarchitectuur)
+7. [Bibliotheek, identiteit en scanner](#7-bibliotheek-identiteit-en-scanner)
+8. [Metadata en artwork](#8-metadata-en-artwork)
+9. [Device-capabilities in de client](#9-device-capabilities-in-de-client)
+10. [De playbackplanner op de server](#10-de-playbackplanner-op-de-server)
+11. [Streaming, remux en transcoding](#11-streaming-remux-en-transcoding)
+12. [Het protocol en het wire-contract](#12-het-protocol-en-het-wire-contract)
+13. [Gebruikers, rechten en kijkstatus](#13-gebruikers-rechten-en-kijkstatus)
+14. [Realtime en push](#14-realtime-en-push)
+15. [Remote access](#15-remote-access)
+16. [Security en dreigingsmodel](#16-security-en-dreigingsmodel)
+17. [Opslag en datamodel](#17-opslag-en-datamodel)
+18. [Observability en beheer](#18-observability-en-beheer)
+19. [Migratie vanaf Plex](#19-migratie-vanaf-plex)
+20. [Client- en serververantwoordelijkheden](#20-client--en-serververantwoordelijkheden)
+21. [Teststrategie](#21-teststrategie)
+22. [Deployment en distributie](#22-deployment-en-distributie)
+23. [Roadmap in dertien fasen](#23-roadmap-in-dertien-fasen)
+24. [Voorgestelde DEC-besluiten en open vragen](#24-voorgestelde-dec-besluiten-en-open-vragen)
+25. [Definition of Done: Pleya Server als zelfstandig mediaserverproduct](#25-definition-of-done-pleya-server-als-zelfstandig-mediaserverproduct)
+
+[Bijlage A: aannames die het onderzoek weerlegt](#bijlage-a-aannames-die-het-onderzoek-weerlegt)
+
+---
+
+## 1. Managementsamenvatting
+
+De opdracht ging uit van een client die diep aan Plex vastzit en die eerst ontkoppeld moet worden
+voordat serverontwikkeling verstandig is. Die volgorde klopt niet meer, en dat verandert wat er
+ontworpen moet worden.
+
+> **De grootste ontbrekende abstractie in Pleya is niet een generieke media-backend, want die
+> bestaat al, maar een expliciet capability- en playback-contract tussen client en server.**
+
+Drie metingen dragen die zin.
+
+**De neutrale laag bestaat.** `lib/media/media_server_client.dart` is een abstracte klasse van 766
+regels met ruim tachtig members, een sealed foutcontract in
+`lib/exceptions/media_server_exceptions.dart:10`, en per methode een notitie over wat Plex doet en
+wat Jellyfin doet. Er zijn vier implementaties: `PlexClient` (4396 regels plus parts),
+`JellyfinClient` (362 regels plus negen parts van samen 3590 regels), `LocalFolderClient` (1376) en
+`PleyaShareClient` (917). `ConnectionKind` (`lib/connection/connection.dart:8`) kent vier soorten,
+`ServerCapabilities` negentien vlaggen, `MediaItem` is een sealed union met per-backend fabrieken,
+en `ServerId` is een getypeerde extension type (`lib/media/ids.dart:14`). Over de hele `lib/` staan
+125 backend-vertakkingen verspreid over 52 bestanden, en `data_aggregation_service.dart` (623
+regels) noemt Plex of Jellyfin alleen nog in commentaar.
+
+**Er draait al een Pleya-mediaserver.** `share_server/` is een headless Dart-server die op de NAS in
+Docker draait met read-only mounts, met een scanner (`share_server/lib/src/scanner.dart`),
+code-pairing met challenge/response (`pairing.dart`), HTTP range-streaming en kijkvoortgang per gast
+(`server.dart`). Dat is precies de fase die de oorspronkelijke opdracht als "later" wegzette, en hij
+werkt.
+
+**De greenfield zit in de playbackbeslissing.** De client stelt vandaag geen enkele
+device-capability vast die naar een server gaat. Plex' `X-Plex-Client-Profile-Extra`
+(`lib/services/plex_client.dart:3072-3110`) en Jellyfins `DeviceProfile`
+(`lib/services/jellyfin_client/parts/playback.dart:504-543`) zijn allebei hardgecodeerde constanten,
+identiek op Apple TV, Android TV en Windows. De enige knop is `TranscodeQualityPreset`, een enum die
+in zijn eigen doc-comment "modeled on Plex Web's custom-quality table" heet
+(`lib/models/transcode_quality_preset.dart:1`). HDR, Dolby Vision, passthrough en Atmos worden
+uitsluitend client-side afgehandeld en bereiken geen server. Op de vraag of nieuwe
+playbackfunctionaliteit te veel Plex-verantwoordelijkheid in de client legt is het antwoord dus
+omgekeerd: de client neemt te weinig verantwoordelijkheid en besteedt de beslissing uit aan de
+backend die toevallig aan de lijn hangt.
+
+Een vierde vondst stuurt het protocolontwerp. Het bestaande Pleya Share-protocol serveert op
+`/library` letterlijk de freezed `MediaItem` als JSON
+(`lib/services/pleya_share/pleya_share_protocol.dart:14`), en `viewOffsetMs` en `viewCount` staan in
+de antwoorden (`share_server/lib/src/server.dart:330-336`). Het eigen protocol spreekt dus Plex, en
+koppelt server en client compile-time aan hetzelfde model. Dat is precies wat een versieerbaar
+protocol niet moet doen.
+
+**Wat daaruit volgt voor de bouwvolgorde.** Niet eerst ontkoppelen en dan bouwen, maar: eerst een
+wire-contract, dan een read-only catalogus in Go, dan de client als vijfde backend, dan direct play,
+en pas daarna capabilities en het playbackplan. Metadata schuift achter de playbackkern, omdat de
+architecturale vernieuwing in de playbackbeslissing zit en metadata daar niets van blokkeert.
+
+### 1.1 Het einddoel is niet onderhandelbaar
+
+De bouwvolgorde hierboven gaat over *hoe*. Dit gaat over *waarheen*, en het staat vooraan omdat het
+de enige zin is die na dertien fasen nog even hard moet gelden als vandaag.
+
+> **Pleya Server is geen aanvullende backend, geen beperkte homeserver en geen technisch experiment
+> naast Plex. Het einddoel is een zelfstandig mediaserverproduct waarmee een Pleya-gebruiker Plex
+> Media Server kan uitschakelen zonder voor de afgesproken Pleya-productscope afhankelijk te blijven
+> van Plex voor bibliotheekbeheer, metadata, afspelen, transcoding, gebruikers, kijkstatus, gebruik
+> buiten huis, downloads of dagelijks serverbeheer.**
+
+De roadmap is incrementeel, en daar hoort één regel bij die de rest beschermt:
+
+> **"Niet in deze fase" is iets anders dan "niet nodig voor het eindproduct".**
+
+Een functie verdwijnt niet uit het eindproduct omdat hij nog geen Phase ID heeft. Waar dat onderscheid
+concreet wordt gemaakt is [docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md](PLEYA-SERVER-REPLACEMENT-MATRIX.md):
+daar draagt elke serververantwoordelijkheid die Pleya vandaag bij Plex afneemt een bestemming, een
+fase, een status en een oordeel of hij de Plex-off gate blokkeert. Dit document beschrijft het
+ontwerp; die matrix bewaakt de volledigheid.
+
+Pleya vervangt Plex niet door Plex te klonen. Voor iedere Plex-verantwoordelijkheid bestaat
+uiteindelijk precies één van drie besluiten: een eigen Pleya-equivalent, hetzelfde probleem bewust
+anders opgelost, of aantoonbaar buiten de productscope. Die laatste categorie is nooit een restbak
+voor wat moeilijk bleek.
+
+---
+
+## 2. De grens tussen Pleya Share en Pleya Server
+
+Dit hoofdstuk staat vooraan omdat het de rest bepaalt. Pleya Share is geen voorloper van Pleya
+Server en geen legacy. Het is een ander product met een andere levensduur en een ander
+vertrouwensmodel.
+
+| | Pleya Share | Pleya Server |
+| --- | --- | --- |
+| Eigenaar | een toestel dat tijdelijk een map uitleent | het huishouden |
+| Levensduur | een sessie of een logeerpartij | permanent |
+| Vertrouwen | zescijferige code, roteert na koppeling | accounts, rollen, rechten per bibliotheek |
+| Waarheid | de bestandsboom | de catalogus in Postgres |
+| Kijkstatus | per gast, JSON op schijf | gezaghebbend, per gebruiker, synchroniseerbaar |
+| Metadata | bestandsnaam | providers plus eigen canoniek record |
+| Afspelen | direct play met range | plan met direct play, remux of transcode |
+| Bereik | LAN, plus relay-fallback | LAN en remote |
+
+Gedeeld wordt het **vocabulaire**, niet de runtime. Itemvorm, kijkvoortgangvorm, range-semantiek,
+pairing- en tokenbegrippen horen in één specificatie te staan; de implementaties blijven los. Het
+mechanisme daarvoor is een protocolspecificatie in de repo met een profielbegrip:
+
+- **Profiel `minimal`.** Bladeren, streamen met range, kijkvoortgang per gast. Dat is wat
+  `share_server` vandaag al doet.
+- **Profiel `full`.** Alles uit `minimal`, plus gebruikers, rechten, playbackplannen,
+  transcodesessies, realtime, downloads.
+
+Een client leest bij `GET /pleya/v1/info` welk profiel er aan de andere kant staat en welke
+capabilities de server aanbiedt. Zo ontstaan er geen twee concurrerende protocollen zonder dat Dart
+en Go aan elkaar vastzitten. Het overzetten van `share_server` op dat profiel is een latere,
+optionele stap en geen voorwaarde voor Pleya Server v1.
+
+---
+
+## 3. Wat de client vandaag is
+
+### 3.1 De neutrale laag
+
+`MediaServerClient` is de enige poort waarlangs UI-code een server bereikt. De abstractie is niet
+theoretisch: hij draagt vandaag vier heel verschillende backends, waaronder er twee (`LocalFolder`,
+`PleyaShare`) die geen enkele Plex-eigenschap hebben. Dat is het beste bewijs dat de laag houdt.
+
+| Implementatie | Bestand | Regels | Bijzonderheid |
+| --- | --- | --- | --- |
+| `PlexClient` | `lib/services/plex_client.dart` | 4396 plus parts | rijkste capability-set, Live TV, DVR, metadata-edit |
+| `JellyfinClient` | `lib/services/jellyfin_client.dart` plus negen parts | 362 plus 3590 | per-user scope, eigen sessiemodel |
+| `LocalFolderClient` | `lib/services/local_folder_client.dart` | 1376 | geen netwerk, geen metadata |
+| `PleyaShareClient` | `lib/services/pleya_share/pleya_share_client.dart` | 917 | eigen protocol, rapporteert zich als `MediaBackend.local` |
+
+`ServerCapabilities` (negentien booleans) is het mechanisme waarmee de UI functionaliteit aan- of
+uitzet zonder naar het backendtype te kijken. `data_aggregation_service.dart` fant queries uit over
+alle online servers en is daarbij backend-blind; de enige treffers op "Plex" of "Jellyfin" in dat
+bestand staan in doc-comments.
+
+### 3.2 Waar de vertakkingen wel zitten
+
+125 plekken vertakken alsnog op `MediaBackend` of `ConnectionKind`, verspreid over 52 bestanden. Dat
+is geen bewijs van een lekkende abstractie; een deel is legitiem (Live TV bestaat alleen bij Plex,
+Jellyfin heeft per-user scope). Wat wel telt is dat een vijfde backend die 125 plekken langsloopt.
+Dart dwingt exhaustieve switches af op enums, dus na het toevoegen van een waarde aan `MediaBackend`
+wijst de compiler het merendeel zelf aan. Dat maakt de uitbreiding vervelend maar niet gevaarlijk.
+
+### 3.3 De blinde vlek
+
+Wat nergens bestaat is een beschrijving van het toestel. Er is geen type dat zegt: dit scherm doet
+4K, deze uitgang doet Dolby Vision profiel 5 niet maar profiel 8 wel, deze ontvanger neemt E-AC-3
+maar geen TrueHD aan, deze verbinding houdt 40 Mbit vol. Alle drie de plekken die zoiets zouden
+kunnen dragen zijn constanten:
+
+- `plex_client.dart:3072-3110` bouwt `X-Plex-Client-Profile-Extra` uit een vaste lijst clauses.
+- `jellyfin_client/parts/playback.dart:504-543` stuurt een `DeviceProfile` met vaste
+  `DirectPlayProfiles` en één `TranscodingProfile`.
+- `transcode_quality_preset.dart` biedt een handmatige bitrate-keuze en verder niets.
+
+Op een Apple TV 4K met een Atmos-ontvanger gaat exact dezelfde JSON de lijn over als op een oude
+Android-tablet.
+
+---
+
+## 4. Koppelingen met Plex en hun risico
+
+Per koppeling: waar hij zit, wat hij doet, wat er Plex aan is, wat het risico is bij een vijfde
+backend, en welke abstractie het oplost. Geen van deze punten wordt in dit spoor gerepareerd.
+
+### 4.1 Profielen kennen alleen Plex Home
+
+| | |
+| --- | --- |
+| Bestand | `lib/profiles/profile.dart:179`, `lib/providers/user_profile_provider.dart` |
+| Symbool | `ProfileKind { local, plexHome }`, `UserProfileProvider._resolvePlexAuth` |
+| Verantwoordelijkheid | het actieve profiel binden aan een token waarmee gebruikersinstellingen worden gelezen |
+| Plex-afhankelijkheid | de enum heeft geen Jellyfin-variant; de resolutie is een driestapsketen die eindigt bij het account-owner-token (`user_profile_provider.dart:192-268`) |
+| Risico | een Pleya Server-profiel past in geen van beide waarden, en de fallback naar het owner-token is bij een backend met echte rollen fout in plaats van onhandig |
+| Voorgestelde abstractie | `ProfileKind` verbreden naar een backend-neutrale identiteit met een `ProfileCredentialResolver` per backend; Pleya Server levert een eigen resolver die nooit naar een owner-token terugvalt |
+
+De doc-comment op regel 212 zegt het zelf: het token alleen kan de twee gevallen niet uit elkaar
+houden, en beide takken kunnen bij het owner-token eindigen. Dat is precies het soort ambiguïteit
+dat bij een rechtenmodel niet mag bestaan.
+
+### 4.2 Plex-getypeerde clientresolvers
+
+| | |
+| --- | --- |
+| Bestand | `lib/utils/provider_extensions.dart:22-85` |
+| Symbool | `_resolveClient`, `_requireClient`, `getPlexClientForServer`, `getPlexClientForLibrary`, `getPlexClientWithFallback`, `tryGetPlexClientForServer` |
+| Verantwoordelijkheid | vanuit een `ServerId` of `MediaLibrary` een client ophalen |
+| Plex-afhankelijkheid | het retourtype is `PlexClient`, niet `MediaServerClient` |
+| Risico | 19 callsites buiten het bestand, waaronder een force-unwrap op `lib/screens/libraries/tabs/library_browse_tab.dart:296` (`manager.getPlexClient(serverId)!`) die alleen veilig is zolang de aanroeper zelf al weet dat de bibliotheek Plex is |
+| Voorgestelde abstractie | de neutrale variant wordt de standaard; de Plex-getypeerde helpers blijven bestaan maar krijgen een naam die aankondigt dat ze een Plex-only pad bedienen, en de force-unwrap wordt een expliciete fout met bericht |
+
+Het bestand documenteert de val zelf op regel 68-69. Dat de val bekend is maakt hem niet ongevaarlijk
+zodra er een vijfde backend bij komt die ook geen `PlexClient` is.
+
+### 4.3 Eén account levert N servers, één connectie levert er één
+
+| | |
+| --- | --- |
+| Bestand | `lib/services/multi_server_manager.dart` |
+| Symbool | `_plexServers`, `_jellyfinByCompoundId`, `_jellyfinHealthByCompoundId`, `_reconnectDebounce` |
+| Verantwoordelijkheid | clients registreren, gezondheid bijhouden, herverbinden |
+| Plex-afhankelijkheid | een Plex-account levert een lijst servers met een gedeelde `clientIdentifier`; een Jellyfin-connectie is er precies één, geadresseerd via een compound id |
+| Risico | twee parallelle reconnect-paden en twee gezondheidskaarten; een derde model erbij verdubbelt de kans dat een pad achterblijft |
+| Voorgestelde abstractie | één registratie-eenheid ("connectie levert nul of meer servers") waar Plex, Jellyfin en Pleya Server allemaal een geval van zijn, met één gezondheidskaart en één reconnect-sweep |
+
+Pleya Server lijkt hier op Jellyfin: één endpoint, één server. Dat maakt fase 3 goedkoop en zegt
+niets over of de asymmetrie later opgeruimd moet worden.
+
+### 4.4 Cachescope neemt de server als eenheid
+
+| | |
+| --- | --- |
+| Bestand | `lib/database/app_database.dart:158-163`, `:318` |
+| Symbool | `DownloadedMedia.clientScopeId`, `OfflineWatchProgress.clientScopeId`, `_clientScopePredicate` |
+| Verantwoordelijkheid | offline data scheiden per client |
+| Plex-afhankelijkheid | het schema is ontstaan met server als scope; Jellyfins per-user scope is er later met een migratie bovenop gelegd |
+| Risico | Pleya Server heeft ook per-user scope, dus een `null`-scope betekent straks drie dingen tegelijk |
+| Voorgestelde abstractie | scope expliciet maken als getypeerd paar (server, gebruiker) in plaats van een nullable string, met een migratie die bestaande rijen invult in plaats van te raden |
+
+De predicate op regel 318-319 vertaalt `null` naar `IS NULL`. Dat is correct, maar het betekent dat
+"nog geen scope" en "bewust geen scope" niet te onderscheiden zijn.
+
+### 4.5 Seek betekent transcode herstarten, en dat weet alleen Plex
+
+| | |
+| --- | --- |
+| Bestand | `lib/screens/video_player/parts/seeking.dart:17-23` |
+| Symbool | `_usesPlexVodTranscodeSeekPolicy`, `_plexTranscodeSeekAction`, `_restartPlexTranscodeAt` |
+| Verantwoordelijkheid | bepalen of een seek native mag of dat de stream opnieuw op moet |
+| Plex-afhankelijkheid | de conditie test letterlijk `_currentMetadata.backend == MediaBackend.plex` |
+| Risico | elke nieuwe backend die transcodeert erft stilzwijgend het verkeerde gedrag (native seek in een stream die dat niet kan) |
+| Voorgestelde abstractie | de server vertelt in het playbackplan of de stream seekbaar is en binnen welke grenzen; de client vertakt op die eigenschap, niet op het backendtype |
+
+Dit is het duidelijkste voorbeeld van het thema uit hoofdstuk 1: een eigenschap van de stream is
+gecodeerd als een eigenschap van de leverancier.
+
+### 4.6 Er bestaat geen einde van een sessie
+
+| | |
+| --- | --- |
+| Bestand | de hele `lib/` |
+| Symbool | `universal/stop` |
+| Verantwoordelijkheid | een transcode-sessie op de server opruimen |
+| Bevinding | het aantal treffers op `universal/stop` in `lib/` is nul |
+| Risico | Plex ruimt verweesde sessies zelf op na een timeout; een eigen server die dat overneemt zonder afsluit-hook laat ffmpeg-processen staan |
+| Voorgestelde abstractie | sessielevenscyclus in het protocol, met een expliciete `DELETE` op de sessie plus een keepalive waarvan het uitblijven de sessie opruimt |
+
+Dit is geen bug in de client maar een gat dat pas ontstaat zodra Pleya Server zelf transcodeert.
+Fase 8 bouwt beide kanten tegelijk.
+
+### 4.7 Bijvangst die hier alleen gemeld wordt
+
+`lib/widgets/new_content_badge.dart:36` bepaalt het NEW-label voor films en afleveringen met
+`(item.viewCount ?? 0) == 0`. Een titel die half bekeken is maar nooit is uitgekeken heeft
+`viewCount == 0` en toont dus "NEW". De juiste bron is de afgeleide kijkstatus (`isWatched` plus
+`viewOffsetMs`), niet de teller. **Dit wordt in dit spoor niet gerepareerd**; het staat in
+[hoofdstuk 24](#24-voorgestelde-dec-besluiten-en-open-vragen) onder de backlog.
+
+---
+
+## 5. Domeinmodel
+
+### 5.1 Niet opnieuw ontwerpen
+
+`lib/media/` is de basis en blijft dat. Pleya Server sluit erop aan als vijfde `MediaServerClient`.
+Wat er moet gebeuren is klein en mechanisch:
+
+- `MediaBackend` (`lib/media/media_backend.dart`) krijgt een vierde waarde, `pleyaServer`. De enum
+  heeft nu `plex`, `jellyfin` en `local`; `PleyaShareClient` rapporteert zich als `local`
+  (`pleya_share_client.dart:113` en `:160`), wat voor een deel-uit-een-map klopt maar voor een echte
+  server niet.
+- `ConnectionKind` (`lib/connection/connection.dart:8`) krijgt een vijfde waarde naast `plex`,
+  `jellyfin`, `local` en `pleyaShare`.
+- `MediaBackend.fromString` heeft een tolerante tak die onbekende waarden op `plex` laat vallen met
+  een waarschuwing. Die tak moet `pleyaServer` kennen vóór er ooit een rij mee wordt weggeschreven,
+  anders leest een oudere build een Pleya Server-item terug als Plex-item.
+
+Omdat Dart exhaustieve switches afdwingt, wijst de compiler na die twee toevoegingen het merendeel
+van de 125 vertakkingen zelf aan. Dat is de goedkoopste vorm van volledigheid die er is.
+
+### 5.2 De naamgevingsschuld blijft staan
+
+Het model draagt Plex-woorden: `ratingKey` als kolomnaam, `leafCount`, `viewedLeafCount`,
+`viewOffsetMs`, `viewCount`. Hernoemen levert nu niets op. De namen zijn intern consistent, ze staan
+in gegenereerde code en in drift-migraties, en een hernoeming raakt honderden regels zonder één
+gedragsverandering. Het moment waarop het wel loont is het moment waarop het protocol eigen
+veldnamen krijgt (fase 1): dan bestaat er een tweede vocabulaire dat niet vastzit aan de historische
+namen, en kan een latere hernoeming binnen `lib/` gebeuren zonder dat er iets over de lijn verandert.
+Tot dan is de regel: **het protocol gebruikt nooit een Plex-woord, ook niet als het interne model dat
+wel doet.**
+
+### 5.3 Wordt `MediaServerClient` te breed?
+
+De opdracht vraagt hier een oordeel, geen refactor. Het oordeel:
+
+De klasse heeft ruim tachtig members op 766 regels en draagt vier implementaties. Twee daarvan
+(`LocalFolderClient`, `PleyaShareClient`) implementeren een minderheid van de members zinvol en
+leunen voor de rest op `ServerCapabilities` om de UI weg te houden. Dat werkt, en het is de reden dat
+de laag houdt. Het is ook de reden dat een vijfde implementatie niet gratis is: Pleya Server begint
+in fase 3 met bladeren en groeit pas in fase 8 naar transcoding, dus er is een periode waarin de
+klasse voor de vijfde keer grotendeels ongeïmplementeerd blijft.
+
+Er zijn drie natuurlijke breuklijnen zichtbaar in de bestaande code: Live TV en DVR zitten al in
+aparte types (`live_tv_support.dart`, `live_tv_dvr_support.dart`, `noop_live_tv_support.dart`),
+metadata-edit is Plex-only, en playlists en collections zijn optioneel per backend. Een opsplitsing
+langs die lijnen zou de kernklasse tot ongeveer de helft terugbrengen.
+
+**Aanbeveling: niet nu.** De reden is meetbaar. Een opsplitsing raakt alle vier de bestaande
+implementaties en een onbekend deel van de 125 vertakkingen, terwijl de winst pas zichtbaar wordt
+bij de vijfde implementatie die er nog niet is. De juiste volgorde is: eerst Pleya Server erbij als
+vijfde, en dán beoordelen welke members bij vijf implementaties structureel leeg blijven. Dat is een
+meting in plaats van een voorspelling. Het beoordelingsmoment staat vast in fase 4, met een concreet
+criterium: als bij vijf implementaties meer dan een kwart van de members in meer dan de helft van de
+implementaties `UnsupportedError` gooit, is de klasse te breed en volgt een aparte opsplitsingsronde.
+
+---
+
+## 6. Serverarchitectuur
+
+### 6.1 Eén binary
+
+Pleya Server is één Go-binary met de scanner, de jobrunner en de transcode-supervisor in hetzelfde
+proces. Postgres is de enige verplichte infrastructuurdependency. Jobs staan in diezelfde database,
+en fan-out naar websockets loopt over `LISTEN/NOTIFY`.
+
+```mermaid
+flowchart TB
+  subgraph client["Pleya-client (Flutter)"]
+    PSC["PleyaServerClient<br/>(vijfde MediaServerClient)"]
+    CAP["DeviceCapabilities"]
+  end
+
+  subgraph server["pleya-server (één Go-binary)"]
+    API["HTTP API<br/>/pleya/v1"]
+    WS["Websocket-hub"]
+    PLAN["Playbackplanner"]
+    SCAN["Scanner"]
+    JOBS["Jobrunner"]
+    TRX["Transcode-supervisor"]
+    FF["ffmpeg / ffprobe<br/>(kindprocessen)"]
+  end
+
+  PG[("Postgres<br/>catalogus + jobs + LISTEN/NOTIFY")]
+  FS[("Mediabestanden<br/>read-only mounts")]
+  MD["Metadataproviders<br/>(HTTPS, uitgaand)"]
+
+  PSC -->|"HTTP, range"| API
+  CAP -->|"capabilities bij sessiestart"| API
+  PSC <-->|"events"| WS
+  API --> PLAN
+  API --> PG
+  PLAN --> PG
+  SCAN --> FS
+  SCAN --> PG
+  JOBS --> PG
+  JOBS --> MD
+  TRX --> FF
+  FF --> FS
+  PG -.->|"NOTIFY"| WS
+```
+
+### 6.2 Waarom geen losse containers bij v1
+
+De verleiding is een aparte transcoder-service, een aparte scanner en een broker ertussen. Dat
+verdient zijn plek pas als er workers op een andere machine staan. Tot die tijd koopt splitsen niets
+en kost het een jobprotocol, een deploymentverhaal en een tweede plek waar configuratie kan
+verlopen. Wat er in v1 staat is een lokale transcode-executor achter een interne aanroep, en verder
+niets: geen worker-registratie, geen jobprotocol, geen `transcode_workers`-tabel. Fase 13 voegt die
+toe met een migratie, en pas nadat is aangetoond dat één NAS tekortschiet. Een schemawijziging is
+goedkoop; een abstractie die drie jaar meeloopt zonder tweede gebruiker is dat niet.
+
+Geen Redis en geen NATS bij v1. Postgres draagt de wachtrij en de fan-out. De prijs daarvan is
+bekend en acceptabel: `LISTEN/NOTIFY` heeft een payloadlimiet van 8 kB, dus een notify draagt een id
+en geen document, en de ontvanger leest het document zelf. Dat is geen omweg maar de juiste vorm,
+omdat de ontvanger daarmee altijd de actuele rij ziet in plaats van een verouderde kopie.
+
+### 6.3 Procesgrenzen die wel bestaan
+
+ffmpeg en ffprobe draaien als kindprocessen, nooit in-process. Drie redenen: een crash in een decoder
+mag de server niet meenemen, een transcode moet met een signaal te doden zijn, en resource-limieten
+(nice-waarde, aantal threads) zijn per proces in te stellen. De supervisor houdt per sessie een
+handle en een watchdog vast, zodat een sessie zonder keepalive gegarandeerd wordt opgeruimd. Zie
+[hoofdstuk 11](#11-streaming-remux-en-transcoding).
+
+### 6.4 Schaalpunten die nu al vastliggen
+
+De scanner is I/O-gebonden en draait met een begrensde worker-pool, omdat een NAS met draaiende
+schijven bij te veel parallelle statistieken langzamer wordt in plaats van sneller. ffprobe draait
+niet op elk bestand bij elke scan, maar alleen op wat aantoonbaar veranderde
+([hoofdstuk 7](#7-bibliotheek-identiteit-en-scanner)). Range-requests worden door de kernel
+afgehandeld via `sendfile`-achtige paden waar Go dat toestaat, zodat direct play geen geheugen kost
+per stream. Het aantal gelijktijdige transcodes is een expliciete configuratiewaarde met een default
+die past bij een NAS, niet bij een werkstation.
+
+---
+
+## 7. Bibliotheek, identiteit en scanner
+
+### 7.1 Identiteit los van locatie
+
+De belangrijkste modelbeslissing: een item is niet een bestand. Een film die in 1080p en in 4K op
+schijf staat is één item met twee versies, en een versie die over twee bestanden is gesplitst is één
+versie met twee bestanden.
+
+```mermaid
+erDiagram
+  LIBRARY ||--o{ MEDIA_ITEM : bevat
+  MEDIA_ITEM ||--o{ MEDIA_VERSION : "heeft"
+  MEDIA_VERSION ||--o{ MEDIA_FILE : "bestaat uit"
+  MEDIA_FILE }o--|| STORAGE_LOCATION : "ligt op"
+  MEDIA_ITEM ||--o{ EXTERNAL_ID : "wordt herkend aan"
+  MEDIA_ITEM ||--o{ MEDIA_ITEM : "ouder van"
+  MEDIA_VERSION ||--o{ MEDIA_STREAM : "bevat spoor"
+
+  MEDIA_ITEM {
+    uuid id PK
+    text kind
+    text title
+    int year
+  }
+  MEDIA_VERSION {
+    uuid id PK
+    text container
+    bigint duration_ms
+  }
+  MEDIA_FILE {
+    uuid id PK
+    text relative_path
+    bigint size_bytes
+    bigint mtime_unix
+    bigint inode
+    text scan_signature
+    text content_fingerprint
+    bigint generation
+  }
+  STORAGE_LOCATION {
+    uuid id PK
+    text root_path
+  }
+```
+
+Interne ids zijn UUIDv7. De reden voor v7 en niet v4: de tijdsprefix maakt ids sorteerbaar op
+aanmaakmoment, wat de index-locality op grote tabellen aanzienlijk beter maakt dan een willekeurige
+v4. De reden voor een UUID en niet een serial: ids moeten uitdeelbaar zijn zonder rondgang naar de
+database, en een migratiegereedschap moet ids kunnen genereren voordat het schrijft.
+
+Een pad is nooit een identiteit. Een item dat van schijf verhuist behoudt zijn id, zijn kijkstatus en
+zijn metadata, omdat alleen de `MEDIA_FILE`-rij verandert.
+
+### 7.2 Drie begrippen die niet door elkaar mogen lopen
+
+Voordat de scanner iets doet, staan hier drie dingen los van elkaar. Ze worden makkelijk verward, en
+die verwarring is de bron van stille datacorruptie.
+
+| Begrip | Wat het is | Wat het niet is |
+| --- | --- | --- |
+| **Scan-signature** (`inode`, `size`, `mtime`, plus een goedkope hash over kop en staart) | een optimalisatie die zegt of er dure controle nodig is | geen bewijs van gelijkheid, en nooit een identiteit |
+| **`MediaFile.id`** (UUIDv7) | de persistente interne identiteit van een bestand, waaraan versies, items en kijkstatus hangen | niet afgeleid van pad, inhoud of enige externe eigenschap |
+| **Content fingerprint** | sterker bewijs dat twee paden dezelfde bytes dragen, gebruikt bij relocatie tussen mounts en bij herstel na een database-import | geen scanoptimalisatie, want hij is te duur om elke ronde te draaien |
+
+De regel die dit draagt: **een scan-signature mag op zichzelf nooit betekenen "dit is gegarandeerd
+hetzelfde bestand".** Een hash over de eerste en laatste megabyte zegt niets over het middenstuk, en
+juist bij grote mediabestanden kan een remux of een gerepareerde container het midden veranderen
+terwijl kop en staart intact blijven. De signature beslist alleen of er verder gekeken wordt.
+
+### 7.3 Wat de scanner elke ronde doet
+
+Een volledige scan die elk bestand door ffprobe haalt is op een NAS met tienduizenden bestanden
+onbruikbaar. De scanner werkt daarom in lagen.
+
+**Laag 1, goedkoop.** Voor elk bestand: `(inode, size, mtime)`. Is de drieslag onveranderd, dan is er
+niets te doen. Dit is één `stat` per bestand.
+
+**Laag 2, iets duurder.** Is de drieslag veranderd, of is `inode` niet betrouwbaar (sommige
+netwerkmounts hergebruiken inodes), dan volgt de hash over de eerste en de laatste megabyte plus de
+grootte. Wijkt die af, dan is het bestand zeker gewijzigd. Komt hij overeen, dan is het bestand
+*waarschijnlijk* ongewijzigd, en dat woord is het hele punt van 7.2.
+
+**Laag 3, duur.** Alles wat laag 2 als gewijzigd aanmerkt gaat door ffprobe, en de `generation` van
+de `MediaFile` loopt op.
+
+Een hernoeming binnen dezelfde filesystemcontext wordt herkend aan de inode: hetzelfde bestand op een
+nieuw pad houdt zijn `MediaFile.id`, zijn item en zijn kijkstatus. Dat is precies het scenario waarin
+Plex vandaag een dubbele entry maakt. Voor relocatie *tussen* mounts, waar de inode niets meer
+betekent, is de signature onvoldoende bewijs en volgt de content fingerprint. Die staat in het schema
+vanaf v1 als nullable kolom en wordt in fase 2 alleen berekend waar hij gevraagd wordt; wanneer hij
+verplicht wordt is een aparte afweging.
+
+De scanner is bovendien **incrementeel via filesystem-events waar dat kan** en valt terug op een
+periodieke volledige ronde. Events zijn een versnelling, nooit de enige bron: een gemiste event mag
+niet betekenen dat een bestand permanent onzichtbaar blijft.
+
+### 7.4 Wat ffprobe wel en niet betrouwbaar zegt
+
+Dit is het punt waar een mediaserver stil fout gaat, dus de detectiegrenzen staan hier expliciet.
+
+Elk technisch veld draagt in het schema twee dingen naast zijn waarde: een `detectionStatus` en een
+`source`. Er is bewust **geen** enkele `confidence`-score van hoog tot laag, want dan moet de planner
+zelf verzinnen wat "middel" betekent voor Dolby Vision tegenover wat het betekent voor een
+kanaalindeling, en dat verschil is precies wat ertoe doet.
+
+```
+detectionStatus: confirmed | inferred | unknown
+source:          ffprobe_stream | ffprobe_side_data | bitstream_probe | filename | manual
+```
+
+`confirmed` betekent dat de bron het veld expliciet draagt. `inferred` betekent dat het is afgeleid
+uit iets anders, bijvoorbeeld een Atmos-vermoeden op grond van een codec plus een bitrate zonder dat
+de JOC-substream is gezien. `unknown` betekent dat er niets over te zeggen valt.
+
+| Eigenschap | Bron | Typische status |
+| --- | --- | --- |
+| Container, duur, resolutie, framerate | `ffprobe_stream` | `confirmed` |
+| Videocodec en profiel (H.264 High, HEVC Main 10) | `ffprobe_stream` | `confirmed` |
+| Bitdiepte | `ffprobe_stream` (`pix_fmt`) | `confirmed` |
+| HDR10 | `ffprobe_stream` (`color_transfer=smpte2084`) plus mastering-metadata | `confirmed` |
+| HLG | `ffprobe_stream` (`color_transfer=arib-std-b67`) | `confirmed` |
+| Dolby Vision profiel en compatibiliteits-id | `ffprobe_side_data` (`DOVI configuration record`) | `confirmed` als het record er is, anders `unknown`; de laag-structuur blijft vaak `inferred` |
+| HDR10+ | `bitstream_probe` over meerdere frames | `inferred` bij een enkele probe |
+| Atmos in TrueHD | `ffprobe_side_data` of `bitstream_probe` (JOC) | `confirmed` bij een gezien JOC-veld, anders `inferred` |
+| Atmos in E-AC-3 | `bitstream_probe` (JOC-substream) | dezelfde tweedeling |
+| Aantal kanalen | `ffprobe_stream` (`channel_layout`) | `confirmed` |
+| Exacte kanaalindeling bij ongebruikelijke mixen | `ffprobe_stream` | `inferred` |
+
+Het beleid hangt aan de combinatie van eigenschap en status, niet aan een generieke drempel. Een
+`inferred` Dolby Vision-profiel is gevaarlijker dan een `inferred` kanaalindeling: bij het eerste
+levert een verkeerde gok een zwart of paars beeld op, bij het tweede hoogstens een suboptimale
+downmix. Dat verschil verdwijnt zodra beide "medium confidence" heten. De planner leest daarom per
+veld welke status voldoende is om op te bouwen, en `unknown` telt nooit als toestemming.
+
+---
+
+## 8. Metadata en artwork
+
+Metadata staat bewust ná de playbackkern in de roadmap (fase 7). Een catalogus zonder posters is
+lelijk maar bruikbaar; een catalogus die niet kan afspelen is niets.
+
+### 8.1 Providerabstractie vanaf de eerste regel
+
+Er is één interface `MetadataProvider` met `Search`, `Details` en `Artwork`, en providers zijn
+registreerbaar per bibliotheek. TMDB is de eerste implementatie. TVDB is een optie waar het
+licentiemodel dat toelaat, en die afweging is uitdrukkelijk nog niet gemaakt
+([hoofdstuk 24](#24-voorgestelde-dec-besluiten-en-open-vragen)).
+
+### 8.2 Providers schrijven nooit op het canonieke record
+
+Elke providertreffer landt in een kandidatenlaag: `metadata_candidates(item_id, provider, payload,
+fetched_at, score)`. Het canonieke record wordt daaruit samengesteld met een expliciete
+prioriteitsvolgorde, en handmatige correcties door een gebruiker krijgen de hoogste prioriteit en
+worden nooit overschreven door een latere providerronde.
+
+Twee dingen die dit oplost. Een provider die zijn API wijzigt of een verkeerde match teruggeeft
+beschadigt geen gebruikersdata, want het canonieke record is afgeleid en herbouwbaar. En een
+gebruiker die een titel corrigeert ziet die correctie niet terugdraaien bij de volgende scan, wat
+een klacht is die bij bestaande servers structureel terugkomt.
+
+### 8.3 Attributie is een productvereiste
+
+TMDB verplicht tot bronvermelding met logo in de interface die de data toont. Dat is geen voetnoot
+in een licentiebestand maar een zichtbaar element in de client, en het hoort in de acceptatiecriteria
+van fase 7. Wordt TMDB later vervangen, dan verdwijnt de vermelding mee; zolang hij gebruikt wordt,
+staat hij er.
+
+### 8.4 Artwork
+
+Artwork wordt lokaal opgeslagen met content-hash als bestandsnaam en geserveerd met een sterke
+`ETag` en een lange `Cache-Control`. Afgeleide formaten (poster-thumbnail, achtergrond op
+schermbreedte) worden op aanvraag gemaakt en gecachet, niet vooraf voor elk item in elke maat. De
+client vraagt een maat en krijgt de dichtstbijzijnde beschikbare of een nieuw gerenderde.
+
+---
+
+## 9. Device-capabilities in de client
+
+Dit hoofdstuk en het volgende zijn samen de kern van het onderzoek. Ze beschrijven wat vandaag
+nergens bestaat.
+
+### 9.1 Wat het model beschrijft
+
+`DeviceCapabilities` is een client-side type dat één vraag beantwoordt: wat kan deze combinatie van
+app, toestel, uitgang en verbinding op dit moment aan? Vier lagen, elk met een eigen bron van
+waarheid:
+
+**Decoder.** Welke videocodecs, profielen, levels en bitdieptes de speler daadwerkelijk decodeert.
+Bron is de mpv/MPVKit-laag plus platformkennis, niet een aanname. Een Apple TV 4K en een Apple TV HD
+verschillen hier.
+
+**Weergave.** Resolutie, refresh-rates, HDR-transferfuncties die het aangesloten scherm accepteert.
+Op tvOS en Android TV is dit uit het systeem te lezen; op desktop is het deels bekend en deels een
+gebruikersinstelling.
+
+**Audio-uitgang.** Aantal kanalen, en per codec of passthrough mogelijk is. Dit is de laag waar het
+vandaag het meest misgaat, omdat de app wel weet dat hij multichannel mag aanvragen maar de server
+dat nooit hoort.
+
+**Verbinding.** Een gemeten of geschatte bandbreedte plus of de verbinding lokaal is. Lokaal versus
+remote is een harde eigenschap, geen heuristiek: een server op hetzelfde subnet is iets anders dan
+een server achter een tunnel.
+
+### 9.2 Waar het vandaan komt en waar het heen gaat
+
+```mermaid
+flowchart LR
+  MPV["mpv / MPVKit<br/>decoder-capabilities"] --> DC
+  DISP["Platform-API's<br/>display + refresh"] --> DC
+  AUD["Audio-uitgang<br/>kanalen + passthrough"] --> DC
+  NET["Verbinding<br/>lokaal / remote / bandbreedte"] --> DC
+  USER["Gebruikersvoorkeuren<br/>(overrides)"] --> DC
+
+  DC["DeviceCapabilities"] --> PS["Pleya Server<br/>POST /playback/plan"]
+  DC --> JF["Jellyfin DeviceProfile<br/>(vervangt de constante)"]
+  DC --> PX["Plex client-profile-extra<br/>(vervangt de constante)"]
+```
+
+De winst zit in die drie pijlen naar rechts. Hetzelfde model voedt Pleya Server, en vervangt tegelijk
+de hardgecodeerde `DeviceProfile` op `jellyfin_client/parts/playback.dart:504-543` en de vaste
+clause-lijst op `plex_client.dart:3072-3110`. Dat is de reden dat fase 5 losstaat van Pleya Server:
+hij verbetert Plex en Jellyfin ook, en is daarmee zelfstandig waardevol als Pleya Server later zou
+vertragen.
+
+### 9.3 Gebruikersvoorkeuren zijn overrides, geen bron
+
+Een gebruiker mag zeggen "forceer stereo" of "nooit transcoderen boven 1080p". Dat is een override
+op een gedetecteerde capability, en het model houdt beide waarden vast: wat gedetecteerd is en wat
+de gebruiker eroverheen heeft gezet. De server ontvangt het resultaat plus de informatie dat het een
+override is, zodat een uitlegbare reden ("stereo omdat je dat hebt ingesteld") mogelijk blijft.
+
+`TranscodeQualityPreset` blijft bestaan als bandbreedtevoorkeur en wordt onderdeel van de
+verbindingslaag. Wat vervalt is zijn rol als enige signaal richting de server.
+
+### 9.4 Wat het niet is
+
+`DeviceCapabilities` beschrijft geen voorkeur voor een taal, geen ondertitelstijl en geen
+afspeelsnelheid. Dat zijn gebruikersinstellingen die al bestaan en die niets met de
+playbackbeslissing te maken hebben. De grens is scherp: alleen wat de vraag "kan dit toestel deze
+bytes weergeven" beantwoordt hoort erin.
+
+---
+
+## 10. De playbackplanner op de server
+
+### 10.1 De uitkomst is rijker dan een enkel woord
+
+Een planner die "direct play of transcode" antwoordt is te grof, om twee redenen. Video en audio
+kunnen onafhankelijk behandeld worden (video kopiëren, audio downmixen is een veelvoorkomend en goed
+plan), en de reden van de keuze moet naar de gebruiker.
+
+Een `PlaybackPlan` bevat daarom:
+
+- een videobesluit (`copy`, `transcode`, met doelcodec, doelresolutie en doelbitrate),
+- een audiobesluit (`copy`, `transcode`, `downmix`, met doelcodec en kanalen),
+- een ondertitelbesluit (`external`, `embed`, `burn`),
+- een containerbesluit (`original`, `fmp4`, `hls`),
+- de resulterende `deliveryMode` (`directPlay`, `directStream`, `remux`, `transcode`),
+- seekbaarheid en de grenzen daarvan,
+- een `reason`-lijst met domeinredenen.
+
+Die laatste is niet cosmetisch. Vandaag kan de app niet uitleggen waarom er getranscodeerd wordt, en
+dat is de meestgestelde vraag van iedereen die een mediaserver draait.
+
+Een reden is een **domeincode met parameters**, geen vertaalsleutel:
+
+```json
+{
+  "reason": {
+    "code": "audio.truehd_passthrough_unsupported",
+    "parameters": { "source_codec": "truehd", "target_codec": "eac3", "channels": 6 }
+  }
+}
+```
+
+De server weet niet hoe de i18n van de client is georganiseerd en mag dat ook niet weten. Een veld
+als `reasonKey: "playback.audioUnsupported"` zou de sleutelboom van de Flutter-app tot
+protocolcontract maken, waarna het hernoemen van een vertaalsleutel een breaking change is. De keten
+is: protocolcode, dan een mapper in de client, dan de lokale vertaling. Een client die een code niet
+kent toont een generieke tekst en logt de code, in plaats van niets te tonen.
+
+### 10.2 Harde beperkingen, zachte voorkeuren, en een score
+
+De planner is conceptueel geen boom van `if`-takken maar een filter met een scoring erachter. Dat
+onderscheid staat hier al vast, ook als de eerste implementatie eenvoudiger blijft, want het bepaalt
+waar nieuwe regels straks landen.
+
+**Harde beperkingen** sluiten een plan uit. Ze zijn niet af te kopen met kwaliteitsverlies en niet te
+overrulen door een voorkeur. De decoder kent AV1 niet, het scherm accepteert geen HDR-transfer, de
+server heeft geen encoder voor het doelformaat, de bron mist een spoor dat het plan nodig heeft.
+
+**Zachte voorkeuren** sturen de keuze tussen plannen die allemaal mógen. Liever direct play dan
+remux, liever de originele audio dan een downmix, liever 1080p direct dan 4K getranscodeerd, niet
+boven 20 Mbit op een remote verbinding, en de gebruikersoverrides uit
+[hoofdstuk 9.3](#93-gebruikersvoorkeuren-zijn-overrides-geen-bron).
+
+```mermaid
+flowchart LR
+  C["Kandidaatplannen<br/>(versies × video × audio × container)"] --> H["Filter op harde beperkingen"]
+  H --> E{"Iets over?"}
+  E -->|nee| F["Fout met domeinreden:<br/>geen speelbaar plan"]
+  E -->|ja| S["Score op kosten en kwaliteit<br/>volgens de zachte voorkeuren"]
+  S --> P["Beste PlaybackPlan<br/>+ redenen"]
+```
+
+Twee dingen die deze vorm oplevert. Een nieuwe eigenschap is een regel erbij in het filter of een
+term erbij in de score, niet een tak in een groeiende boom die met elke toevoeging moeilijker te
+overzien wordt. En "er is geen plan" is een expliciete uitkomst met een reden, in plaats van dat de
+laatste `else` iets kiest wat toevallig overblijft.
+
+De eerste implementatie mag het besluitpad hieronder letterlijk volgen: bij één versie en een
+overzichtelijk aantal codecs komt dat op hetzelfde neer. Zodra er een derde dimensie bij komt
+(hardwareversnelling die per doelformaat verschilt, bijvoorbeeld) is het filter-met-score de vorm die
+het aankan.
+
+### 10.3 Het besluitpad
+
+```mermaid
+flowchart TD
+  A["Aanvraag: item + versie + DeviceCapabilities"] --> B{"Versie gekozen?"}
+  B -->|"meerdere versies"| B2["Kies versie op<br/>capability-fit, dan kwaliteit"]
+  B -->|"één versie"| C
+  B2 --> C{"Container speelbaar?"}
+  C -->|nee| R1["container: fmp4 of hls"]
+  C -->|ja| D{"Videocodec, profiel,<br/>level, bitdiepte OK?"}
+  R1 --> D
+  D -->|nee| V1["video: transcode"]
+  D -->|ja| E{"HDR-transfer door<br/>scherm geaccepteerd?"}
+  E -->|nee| V2["video: transcode<br/>met tonemapping"]
+  E -->|ja| V3["video: copy"]
+  V1 --> F
+  V2 --> F
+  V3 --> F{"Audiocodec speelbaar<br/>of passthrough?"}
+  F -->|nee| A1["audio: transcode"]
+  F -->|"ja, te veel kanalen"| A2["audio: downmix"]
+  F -->|ja| A3["audio: copy"]
+  A1 --> G
+  A2 --> G
+  A3 --> G{"Bandbreedte toereikend<br/>voor het resultaat?"}
+  G -->|nee| H["verlaag doelbitrate,<br/>herbereken video"]
+  G -->|ja| I["Bepaal deliveryMode<br/>+ seekbaarheid + reasons"]
+  H --> I
+  I --> J["PlaybackPlan"]
+```
+
+Twee eigenschappen van dit pad zijn opzettelijk:
+
+**Versiekeuze komt eerst.** Bij twee versies van dezelfde film kiest de server de versie die het
+minste werk kost bij dit toestel, niet automatisch de hoogste kwaliteit. Een 4K HDR-bron naar een
+1080p-SDR-toestel transcoderen is duur en zichtbaar slechter dan de 1080p-versie direct afspelen.
+
+**Bandbreedte komt als laatste.** De codec-geschiktheid bepaalt eerst wat er überhaupt kan; daarna
+pas knijpt bandbreedte de kwaliteit. Andersom levert het plannen op tegen een limiet die er misschien
+niet toe doet.
+
+### 10.4 Waar de planner nooit op vertakt
+
+De planner kijkt nooit naar het clienttype, het platform of de app-versie. Alles wat hij weet komt
+uit `DeviceCapabilities` en uit de eigenschappen van de versie. Dat is de directe les uit
+[hoofdstuk 4.5](#45-seek-betekent-transcode-herstarten-en-dat-weet-alleen-plex): zodra gedrag aan een
+producttype hangt in plaats van aan een eigenschap, erft de volgende backend het verkeerde gedrag.
+
+### 10.5 Tabelgedreven tests
+
+De planner is een pure functie van (versie-eigenschappen, capabilities, beleid) naar plan, en wordt
+zo getest. De testtabel dekt minimaal: HEVC Main 10 HDR10 naar een SDR-1080p-toestel; Dolby Vision
+profiel 5 naar een toestel dat alleen profiel 8 accepteert; TrueHD Atmos naar een stereo-uitgang;
+E-AC-3 5.1 naar een ontvanger met passthrough; AV1 naar een decoder zonder AV1; een container die de
+speler niet kent met een codec die hij wel kan; een 4K-bron over een remote verbinding met 8 Mbit;
+en de gevallen waarin een veld `inferred` of `unknown` is en de planner dus de veilige kant moet
+kiezen, per eigenschap verschillend. Elke rij legt de verwachte `deliveryMode` én de verwachte
+`reason.code` vast, want een goed plan om de verkeerde reden is een latente bug. Eén rij dekt het
+geval waarin het harde filter niets overlaat: dat hoort een expliciete fout op te leveren en geen
+willekeurig laatste plan.
+
+---
+
+## 11. Streaming, remux en transcoding
+
+### 11.1 Direct play is de standaard en het meeste verkeer
+
+Verreweg de meeste bestanden in een huishoudelijke bibliotheek zijn afspeelbaar zoals ze zijn. Het
+hoofdpad is dus: `GET /pleya/v1/stream/{versionId}` met volledige HTTP-range-ondersteuning,
+`Accept-Ranges: bytes`, correcte `206`-antwoorden en `If-Range` met een sterke validator. Geen
+sessie, geen state, geen opruimwerk.
+
+Over die validator: de eis is dat de `ETag` **verandert zodra de bytes veranderen**, niet dat hij een
+cryptografische hash van het bestand is. Een hash over tachtig gigabyte berekenen om een header te
+kunnen zetten is precies het soort werk dat een NAS onbruikbaar maakt. De server heeft die
+informatie al: de `generation` van de `MediaFile` loopt op zodra de scanner een wijziging vaststelt
+([hoofdstuk 7.3](#73-wat-de-scanner-elke-ronde-doet)), dus een opaque validator over
+`(MediaFile.id, generation)` voldoet en laat de implementatie vrij. Wat niet mag is een validator die
+alleen aan de mtime hangt, want die overleeft een `touch` en een kopieeractie niet. Dit is ook precies wat `share_server` vandaag al doet en waarvan bewezen is dat het
+werkt.
+
+### 11.2 Wanneer er wel een sessie is
+
+Remux en transcode hebben een sessie, omdat er een proces achter hangt. De vorm hieronder is de
+**voorgenomen** vorm en wordt pas als protocoloppervlak vastgelegd in fase 8, de fase die hem
+introduceert. Fase 1 specificeert hem niet; zie de scoperegel in
+[hoofdstuk 12.2](#122-welk-oppervlak-wanneer-wordt-gespecificeerd). Wat hier staat is de reden dat
+het contract er überhaupt moet komen, niet de tekst ervan.
+
+| Stap | Aanroep | Effect |
+| --- | --- | --- |
+| Openen | `POST /playback/sessions` met het plan | ffmpeg start, sessie-id terug plus stream-URL |
+| Levend houden | `POST /playback/sessions/{id}/ping` | watchdog opnieuw gezet |
+| Verplaatsen | `POST /playback/sessions/{id}/seek` | binnen de grenzen uit het plan, of herstart |
+| Sluiten | `DELETE /playback/sessions/{id}` | proces gedood, tijdelijke bestanden weg |
+
+De afsluitstap is nieuw ten opzichte van alles wat de client vandaag doet: `universal/stop` komt nul
+keer voor in `lib/`. Een client die de `DELETE` niet stuurt is geen fout die de server mag laten
+lekken, dus de watchdog is de garantie en de `DELETE` de beleefdheid. Een sessie zonder ping
+verdwijnt na een vaste periode, ook als de client is gecrasht of het toestel is uitgezet.
+
+### 11.3 fMP4 en HLS, geen DASH
+
+Op het transcode-pad is fMP4 het voorkeursformaat, met HLS waar segmentatie nodig is. DASH wordt
+niet gebouwd. De reden is beperkt en eerlijk: de spelerlaag is overal mpv of een platformspeler die
+HLS goed ondersteunt, en een tweede manifestformaat levert een tweede plek op waar seek, ondertitels
+en audiowissels apart getest moeten worden zonder dat één gebruiker er iets van merkt.
+
+De namen en paden hierboven zijn indicatief. Wat wel nu al vastligt is de eigenschap: er is een
+expliciete afsluiting, en de watchdog is de garantie die niet van clientgedrag afhangt.
+
+### 11.4 Seek is een eigenschap van de stream
+
+Het plan zegt of seek binnen de huidige stream mag en tot hoe ver. Bij direct play is dat het hele
+bestand. Bij een transcode zonder segmentatie is het het al geproduceerde deel plus een marge; verder
+springen betekent de sessie op een nieuw startpunt herstarten. De client vertakt op dat veld, niet op
+`backend == plex` zoals `seeking.dart:17-23` vandaag doet. Fase 6 legt het veld vast in het protocol;
+fase 8 maakt het waar op de server.
+
+### 11.5 Hardwareversnelling
+
+De supervisor detecteert bij het opstarten welke encoders en decoders beschikbaar zijn (VideoToolbox
+op Apple, VAAPI of QSV op Linux-x86, NVENC waar aanwezig) en legt dat vast als servercapability. Een
+plan dat transcoding vraagt krijgt het snelste beschikbare pad; ontbreekt hardwareversnelling, dan
+wordt dat een zichtbare eigenschap van de server en een reden om het aantal gelijktijdige sessies
+lager te zetten. Software-x264 op een NAS-CPU is een geldige uitkomst, maar dan wel eentje waarvan de
+gebruiker weet dat hij hem heeft.
+
+---
+
+## 12. Het protocol en het wire-contract
+
+Dit hoofdstuk beschrijft de grens tussen client en server. Alles wat hier niet in staat, mag een
+client niet aannemen. Wat er in **fase 1** wordt gespecificeerd is minder dan wat er in dit hoofdstuk
+staat, en 12.2 legt uit waar die streep loopt.
+
+### 12.1 Eigen wire-types
+
+Het protocol definieert eigen types. Er gaat nooit een freezed `MediaItem` over de lijn, ook niet als
+de vorm toevallig lijkt. De bestaande fout staat in
+`lib/services/pleya_share/pleya_share_protocol.dart:14` (`/library` levert `MediaItem`-JSON) en in
+`share_server/lib/src/server.dart:330-336` (`viewOffsetMs` en `viewCount` in het antwoord): server en
+client zitten daarmee vast aan hetzelfde Dart-model, en een veldwijziging in de app is een
+protocolwijziging.
+
+De regel: **wire-types en domeintypes zijn twee dingen, met een expliciete mapper ertussen.** In de
+client woont die mapper naast `plex_mappers` en `jellyfin_mappers`. Op de server is het wire-type het
+enige dat de HTTP-laag kent.
+
+De veldnamen in het protocol zijn backend-neutraal. `position_ms` in plaats van `viewOffsetMs`,
+`episode_count` en `watched_episode_count` in plaats van `leafCount` en `viewedLeafCount`,
+`watched` als boolean naast `play_count` als teller. Dat het interne model in `lib/` andere namen
+draagt is toegestaan; de mapper vertaalt.
+
+### 12.2 Welk oppervlak wanneer wordt gespecificeerd
+
+**PS-1 specificeert uitsluitend het protocoloppervlak dat nodig is tot en met PS-4. Elk latere
+endpoint wordt gespecificeerd in de fase die het introduceert, binnen dezelfde
+v1-compatibiliteitsregels.**
+
+Die regel bestaat omdat fase 1 anders stilzwijgend delen van fase 8 ontwerpt. Een sessiecontract voor
+transcoding opschrijven voordat er een transcoder is, betekent gokken naar de vorm van iets dat je
+nog niet gebouwd hebt, en die gok staat daarna in een specificatie waar compatibiliteitsregels op
+rusten.
+
+| Oppervlak | Gespecificeerd in |
+| --- | --- |
+| `/info`, auth, fouten, pagination, bladeren, zoeken, bibliotheken | PS-1 |
+| Streamen met range, kijkstatus | PS-1 |
+| `POST /playback/plan` en de `PlaybackPlan`-vorm | PS-6 |
+| Transcode-sessies openen, pingen, verplaatsen, sluiten | PS-8 |
+| Gebruikers, rollen, bibliotheekrechten | PS-9 |
+| Downloads | PS-10 |
+
+Wat fase 1 wél doet voor die latere oppervlakken is ruimte laten: `feature_level` bestaat vanaf dag
+één, de foutdomeinen zijn uitbreidbaar, en regel 1 hieronder maakt een veld toevoegen altijd
+toegestaan. Ruimte laten is iets anders dan invullen.
+
+### 12.3 Versionering en compatibiliteitsregels
+
+Het pad draagt de majorversie: `/pleya/v1/...`. Binnen v1 gelden vier regels, en ze staan in de
+specificatie zelf zodat er niet over te discussiëren valt.
+
+1. Een veld toevoegen is toegestaan. Clients negeren onbekende velden en mogen daar niet op falen.
+2. Een veld hernoemen of verwijderen is niet toegestaan binnen dezelfde major. Een vervangen veld
+   blijft naast het nieuwe bestaan tot v2, met een `deprecated`-markering in de specificatie.
+3. De betekenis van een bestaand veld wijzigen is niet toegestaan, ook niet als het type gelijk
+   blijft. Dat is de stilste vorm van breken.
+4. Een nieuwe verplichte parameter op een bestaande endpoint is niet toegestaan; nieuwe parameters
+   zijn optioneel met een gedocumenteerde default die het oude gedrag reproduceert.
+
+Naast de majorversie draagt de server een `feature_level` als geheel getal, met een strikte
+definitie:
+
+> **Feature level N betekent dat de implementatie alle protocolfeatures tot en met N begrijpt.** Het
+> zegt niets over een serverversie, een buildnummer of een releasedatum, en het zegt niets over wat
+> deze server daadwerkelijk aanbiedt.
+
+Wat een server aanbiedt staat in `capabilities`, en **`capabilities` is altijd leidend**. De twee
+velden beantwoorden verschillende vragen: `feature_level` zegt wat de implementatie kán verstaan,
+`capabilities` zegt wat er hier aanstaat. Een server op feature level 6 met transcoding uitgezet
+ziet er zo uit:
+
+```json
+{
+  "protocol": { "major": 1, "feature_level": 6 },
+  "capabilities": { "playback_plan": true, "transcode": false }
+}
+```
+
+Een client mag daar nooit uit afleiden dat transcoding bestaat omdat het level hoog genoeg is. De
+enige geldige redenering is: staat de capability op `true`, dan is de functie er; anders niet,
+ongeacht het level. `feature_level` is bruikbaar voor het omgekeerde geval, namelijk een client die
+vaststelt dat een server een nieuwer veld niet zal begrijpen en daarom een oudere vorm stuurt.
+
+### 12.4 Capability negotiation
+
+```
+GET /pleya/v1/info        (geen auth vereist)
+{
+  "protocol": { "major": 1, "feature_level": 3, "profile": "full" },
+  "server":   { "id": "..." },
+  "capabilities": {
+    "browse": true, "search": true, "watch_state": true,
+    "playback_plan": true, "transcode": false, "downloads": false,
+    "live_tv": false, "realtime": true, "users": true
+  },
+  "auth": { "methods": ["password", "pairing_code"] }
+}
+```
+
+Drie eigenschappen van dit antwoord tellen:
+
+Het is bereikbaar zonder authenticatie, want een client moet kunnen weten wat er aan de andere kant
+staat voordat hij een inlogpoging doet. Precies daarom staat er zo weinig in. Een `id` om de server
+te herkennen tussen opgeslagen verbindingen, het protocol, de capabilities en de auth-methoden, en
+verder niets: geen gebruikersgegevens, geen padnamen, en **geen servernaam, versie of buildnummer**.
+Die laatste drie zijn nuttig voor foutzoeken en verhuizen daarom naar een tweede antwoord dat pas na
+authenticatie beschikbaar is. Voor een huisserver is fingerprinting geen groot risico, maar het is
+hier gratis om het netjes te doen, en een versienummer dat aan de buitenkant hangt vertelt een
+scanner precies welke bekende zwakke plekken het proberen waard zijn.
+
+`profile` onderscheidt `minimal` van `full` en is de haak waaraan `share_server` later kan hangen
+zonder dat er een tweede protocol ontstaat.
+
+`capabilities` is de bron voor `ServerCapabilities` in de client. De vertaling is één mapper en geen
+if-op-backend. Een server die transcoding uitzet is voor de client hetzelfde als een server die het
+nooit had, en dat is precies het gedrag dat de bestaande capability-laag al aankan.
+
+### 12.5 De auth-grens
+
+Authenticatie levert een kortlevend accesstoken en een langlevend refreshtoken. Het accesstoken gaat
+mee in de `Authorization`-header, nooit in een querystring, met één uitzondering die expliciet
+benoemd wordt: stream-URL's die aan een externe speler worden doorgegeven kunnen geen header zetten,
+en krijgen daarom een streamtoken in de URL.
+
+Dat token is **kortlevend en smal, niet eenmalig**. Eén keer verzilveren zou het onbruikbaar maken:
+een speler doet routinematig een `HEAD`, dan een `GET` met `Range: bytes=0-`, dan losse ranges bij
+elke seek, plus retries na een netwerkhapering, en bij HLS bovendien een request per segment. Een
+token dat na de eerste range vervalt breekt op de tweede.
+
+De eigenschappen die het wél draagt: geldig voor twee tot vijf minuten, gebonden aan één gebruiker,
+één mediaresource en waar van toepassing één playbacksessie, en zonder enig recht op de rest van de
+API. Het is een capability-token voor bytes, geen accesstoken met een korte houdbaarheid. Verlopen
+tijdens een lange film is geen probleem: de bestaande verbinding loopt door, en een nieuwe range
+vraagt de client met zijn gewone accesstoken een nieuw streamtoken op.
+
+Elke endpoint in de specificatie draagt expliciet wie hem mag aanroepen: publiek, elke
+geauthenticeerde gebruiker, de eigenaar van de sessie, of een beheerder. Er is geen impliciete regel
+en geen "wie het pad kent mag het".
+
+### 12.6 Foutmodel
+
+Eén vorm voor elke fout, met een stabiele machineleesbare code:
+
+```
+HTTP 409
+{
+  "error": {
+    "code": "playback.version_unavailable",
+    "message": "The requested version is offline",
+    "retryable": false,
+    "details": { "version_id": "..." }
+  }
+}
+```
+
+De code is het contract; het bericht is voor logs en niet voor de UI. De client vertaalt codes naar
+tekst en mag nooit op de tekst matchen. De HTTP-status draagt de grofmazige categorie, de code de
+precieze reden. `retryable` is een expliciet veld en geen afleiding uit de status, omdat een `503`
+soms wel en een `409` soms niet te herhalen is.
+
+De codes worden gegroepeerd per domein (`auth.`, `library.`, `playback.`, `session.`, `storage.`) en
+uitbreiden mag; een bestaande code van betekenis veranderen niet. Dit sluit aan op het bestaande
+sealed foutcontract in `lib/exceptions/media_server_exceptions.dart:10`, zodat de mapper van
+protocolcode naar `MediaServerException` klein blijft.
+
+### 12.7 Pagination
+
+Cursor-gebaseerd, niet offset-gebaseerd. Een offset over een bibliotheek die tijdens het bladeren
+verandert slaat items over of toont ze dubbel, en dat is precies wat er gebeurt tijdens een scan.
+
+```
+GET /pleya/v1/libraries/{id}/items?limit=100&cursor=<opaque>
+{ "items": [...], "next_cursor": "<opaque>|null", "total_estimate": 4821 }
+```
+
+De cursor is ondoorzichtig voor de client en codeert serverzijdig de sorteersleutel plus het id van
+het laatste item. `total_estimate` is expliciet een schatting, zodat een UI een scrollbar kan tekenen
+zonder dat de server een dure `COUNT` per pagina doet.
+
+### 12.8 Wat de specificatie nog meer vastlegt
+
+Tijdstempels zijn RFC 3339 in UTC. Duur is altijd in milliseconden als geheel getal, nooit in
+seconden als kommagetal. Ids zijn opaque strings voor de client, ook al zijn het serverzijdig
+UUIDv7's. Sorteervolgorde is expliciet in de aanvraag en heeft een gedocumenteerde default per
+resource. Een lege lijst is `[]` en nooit `null`.
+
+---
+
+## 13. Gebruikers, rechten en kijkstatus
+
+### 13.1 Het model
+
+Een huishouden heeft gebruikers. Een gebruiker heeft een rol (`owner`, `admin`, `member`, `guest`) en
+per bibliotheek een recht (`none`, `read`, `read_write`). Rechten zijn additief noch impliciet: geen
+recht betekent dat de bibliotheek niet in de lijst voorkomt, niet dat hij zichtbaar is maar afgeschermd.
+Een item dat niet zichtbaar is bestaat voor die gebruiker niet, ook niet in zoekresultaten en ook niet
+als hij het id raadt.
+
+Profielen in de client (`lib/profiles/`) bestaan al en modelleren vandaag Plex Home. Pleya Server
+sluit daarop aan met een eigen `ProfileKind`-variant; zie [hoofdstuk 4.1](#41-profielen-kennen-alleen-plex-home)
+voor waarom de bestaande enum daar niet zonder aanpassing op past.
+
+### 13.1a Bootstrap-identiteit is niet hetzelfde als multi-user
+
+Fase 2 heeft authenticatie nodig, want tokens en de auth-grens zitten in het protocol vanaf fase 1.
+Dat is geen reden om het gebruikersmodel naar voren te halen, en de scheiding staat daarom letterlijk
+vast:
+
+> **Vóór PS-9 bestaat er precies één server-owner-identiteit. Er zijn geen gebruikers, geen
+> profielen, geen rollen en geen bibliotheekrechten.**
+
+| | Bootstrap-identiteit (PS-2 tot PS-8) | Multi-user (vanaf PS-9) |
+| --- | --- | --- |
+| Wie | één eigenaar, aangemaakt met de setup-code bij eerste start | `users` met rollen |
+| Waar | een enkele credential plus de tokensleutel | `users`, `sessions`, `library_permissions` |
+| Rechten | impliciet alles | expliciet per bibliotheek |
+| Kijkstatus | hangt aan de eigenaar | hangt aan een gebruiker |
+
+Wat dit voorkomt: dat fase 2 alvast een `users`- en `sessions`-tabel bouwt "omdat er toch tokens
+nodig zijn". Tokens uitgeven kan tegen één identiteit, en de migratie die daar in fase 9 een echte
+gebruiker van maakt is klein. Kijkstatus krijgt vanaf fase 4 wel meteen een gebruikerskolom, met de
+eigenaar als enige waarde, omdat die kolom achteraf vullen duurder is dan hem leeg meedragen.
+
+### 13.2 De server is de bron van kijkstatus
+
+Kijkvoortgang, gekeken-vlag en teller staan per (gebruiker, item) in Postgres, en de server is
+gezaghebbend. De client houdt een lokale kopie voor offline gebruik, precies zoals
+`offline_watch_sync_service` dat vandaag al doet.
+
+**Het conflictmodel is nog niet vastgesteld, en dat is opzet.** De voor de hand liggende regel
+("hoogste positie wint") is aantoonbaar fout in een scenario dat gewoon voorkomt: op de tv staat een
+film op 85 minuten, iemand begint hem op de telefoon bewust opnieuw en kijkt tot 30 minuten. Hoogste
+positie wint zet die kijker terug op 85 en gooit een expliciete handeling weg ten gunste van een
+bijproduct.
+
+De richting die wel vaststaat is dat expliciete intentie altijd van heuristiek wint. Een
+kijkstatus-update is daarom een gebeurtenis en geen waarde:
+
+```
+session_id       welke kijksessie
+position_ms      waar
+duration_ms      waarvan
+updated_at       wanneer
+completed        uitgekeken volgens de drempel
+explicit_action  none | mark_watched | mark_unwatched | restart
+```
+
+Met dat onderscheid tussen een passieve voortgangsmelding en een expliciete handeling
+(`mark_watched`, `mark_unwatched`, `restart`) is de regel eenvoudig: een expliciete handeling wint
+van elke passieve update die ervoor ligt, en tussen passieve updates onderling beslist een nog te
+kiezen regel. Welke dat is, is een open ontwerpvraag die vóór PS-4 beantwoord moet zijn; zie
+[hoofdstuk 24.2](#242-open-vragen). Wat er niet gebeurt is dat fase 4 stilzwijgend "hoogste positie
+wint" vastlegt en dat daarna in de data zit.
+
+### 13.3 Wat expliciet niet in v1 zit
+
+Geen gedeelde bibliotheken tussen huishoudens, geen uitnodigingen per e-mail, geen ouderlijk toezicht
+met leeftijdsgrenzen. Dat zijn zelfstandige productbeslissingen die het datamodel wel moet toelaten
+(de rechtentabel is per bibliotheek en per gebruiker, dus uitbreidbaar) maar die fase 9 niet bouwt.
+
+---
+
+## 14. Realtime en push
+
+Er is vandaag geen enkele server-push in de app. Plex' eventsource wordt niet gebruikt en Jellyfins
+websocket evenmin. Dat maakt een websocket op Pleya Server een toevoeging die per definitie niets
+breekt: er is geen bestaand push-gedrag om mee te botsen.
+
+De verbinding is één websocket per client op `/pleya/v1/events`, geauthenticeerd met hetzelfde
+accesstoken, met een event-envelop die een type, een resource-id en een monotone volgnummer draagt.
+Het volgnummer laat een client die kort weg was zien dat hij iets heeft gemist, waarna hij ververst
+in plaats van te gokken.
+
+Wat er over gaat: scanvoortgang en scanresultaat, itemwijzigingen, kijkstatuswijzigingen van dezelfde
+gebruiker op een ander toestel, sessiestatus, en serverbrede meldingen. Wat er niet over gaat:
+volledige documenten. Een event zegt "item X is gewijzigd", en de client haalt X op als hij het in
+beeld heeft. Dat past bij de 8 kB-limiet van `LISTEN/NOTIFY` en voorkomt dat er twee waarheden
+ontstaan.
+
+Fan-out loopt van een databasetransactie via `NOTIFY` naar elke serverinstantie, en van daar naar de
+websockets. De websocket is een optimalisatie, nooit de enige weg: alles wat via een event komt, is
+ook via een gewone aanroep op te halen. Een client zonder werkende websocket is trager en niet kapot.
+
+---
+
+## 15. Remote access
+
+**Het architectuurbesluit is productneutraal: Pleya Server bouwt in v1 geen eigen NAT-traversal, geen
+eigen relay en geen eigen certificaatuitgifte. Wat de server wel garandeert is correct gedrag achter
+HTTPS en achter een omgekeerde proxy.**
+
+Dat betekent concreet: de server vertrouwt `X-Forwarded-For` en `X-Forwarded-Proto` alleen van
+geconfigureerde proxy-adressen, genereert absolute URL's op basis van de externe hostnaam en niet van
+de interne, ondersteunt een subpad-montage, houdt websockets werkend door proxies die upgrade-headers
+doorgeven, en zet geen cookies die aan een intern domein hangen. Streaming over een proxy werkt met
+range-requests zonder buffering vooraf, want een proxy die het hele antwoord buffert maakt seeken
+onbruikbaar.
+
+Hoe iemand die proxy neerzet is een deploymentrecept en geen architectuurbeslissing. In de
+documentatie komen recepten voor de routes die hier al draaien of gangbaar zijn: een tunnel die naar
+buiten uitbelt (op de NAS draait er al een voor `pleya.app` en `ice.pleya.app`, zie
+[DEC-014](DECISIONS.md#dec-014)), een mesh-VPN, of een eigen omgekeerde proxy met poortforwarding.
+Geen daarvan is verplicht en geen daarvan zit in de binary.
+
+De winst is dubbel. Er verdwijnt een groot bouwspoor (NAT-traversal en relay-infrastructuur zijn
+zelfstandige projecten), en de belofte dat er geen verplichte cloud is blijft overeind, omdat de
+gebruiker zelf kiest of er iets buiten het huis staat.
+
+Fase 11 hardent dit: rate limiting op de auth-endpoints, een expliciete lijst van wat er zonder
+authenticatie bereikbaar is, gedrag bij traag netwerk, en een test die aantoont dat range-requests
+door de gekozen proxy heen intact blijven.
+
+---
+
+## 16. Security en dreigingsmodel
+
+### 16.1 Het beginpunt is een concrete bevinding
+
+In `share_server` is de item-id het absolute bestandspad, base64url-gecodeerd
+(`lib/services/pleya_share/pleya_share_protocol.dart`, `encodeItemId`), en de toegang wordt gedekt
+door een lidmaatschapscheck op de catalogus. Dat werkt zolang die check klopt, en het is precies het
+soort constructie waar één ontbrekende check volledige bestandssysteemtoegang oplevert.
+
+**Pleya Server adresseert bestanden uitsluitend via opaque ids en gaat nooit rechtstreeks op een pad
+af dat uit een aanvraag komt.** Een `versionId` slaat een rij op, die rij bevat een
+`storage_location_id` plus een relatief pad, en het uiteindelijke pad wordt serverzijdig samengesteld
+en gecontroleerd op containment binnen de geregistreerde root. Symlinks worden opgelost vóór die
+controle, niet erna.
+
+### 16.2 Dreigingen en antwoorden
+
+| Dreiging | Antwoord |
+| --- | --- |
+| Padtraversal via een id | ids zijn opaque, paden komen uit de database, containment-check na symlinkresolutie |
+| Brute force op inloggen | rate limiting per account en per bron-IP, oplopende vertraging, geen onderscheid tussen "onbekende gebruiker" en "verkeerd wachtwoord" in het antwoord |
+| Gestolen accesstoken | korte levensduur, refresh met rotatie, sessies per toestel intrekbaar |
+| Gestolen streamtoken uit een URL | gebonden aan gebruiker, resource en waar van toepassing sessie, geldig twee tot vijf minuten, geen rechten op de rest van de API |
+| Een gebruiker die andermans bibliotheek raadt | autorisatie op elke resource, niet alleen op de lijst; onzichtbaar betekent `404` en niet `403`, zodat het bestaan niet lekt |
+| Beschadigd mediabestand dat ffprobe laat crashen | ffprobe draait als kindproces met timeout; een crash markeert het bestand en stopt de scan niet |
+| Een provider-API die HTML terugstuurt | providerantwoorden landen in de kandidatenlaag en worden gevalideerd voordat er iets canoniek wordt |
+| Uploaden van bestanden | bestaat niet in v1; alle mounts zijn read-only |
+| Log met inhoud | paden en titels worden in logs afgekort en tokens nooit gelogd |
+
+Het publieke `/info`-antwoord draagt bewust geen servernaam, versie of buildnummer; die staan achter
+authenticatie. Zie [hoofdstuk 12.4](#124-capability-negotiation).
+
+### 16.3 Wachtwoorden en geheimen
+
+Wachtwoorden met Argon2id, parameters vastgelegd in de configuratie en meegroeiend met de hardware.
+Tokens zijn ondertekend met een sleutel die bij eerste start wordt gegenereerd en op schijf staat met
+restrictieve rechten, niet in de database, zodat een databasedump alleen geen sessies oplevert. Er is
+geen defaultwachtwoord en geen ingebouwd account: de eerste start levert een eenmalige setup-code op
+de console, en zonder die code komt er niemand binnen.
+
+---
+
+## 17. Opslag en datamodel
+
+### 17.1 Postgres draagt alles wat duurzaam is
+
+Catalogus, gebruikers, rechten, kijkstatus, metadata-kandidaten en de jobwachtrij staan in dezelfde
+database. Eén transactie kan daarmee een scanresultaat en de bijbehorende vervolgjob atomair
+wegschrijven, en dat is de belangrijkste reden voor de keuze: een aparte wachtrij betekent dat "de
+scan is klaar" en "de metadata-job staat klaar" twee schrijfacties zijn die kunnen divergeren.
+
+Een jobbibliotheek die op Postgres draait is de kandidaat (River is de voor de hand liggende), maar de
+keuze is nog niet vastgezet en staat in de open vragen. Wat wel vastligt is de eigenschap: duurzame
+jobs met retries en zichtbaarheid, in dezelfde database, zonder tweede infrastructuurcomponent.
+
+### 17.2 Tabellen in hoofdlijnen
+
+| Groep | Tabellen |
+| --- | --- |
+| Catalogus | `libraries`, `media_items`, `media_versions`, `media_files`, `media_streams`, `storage_locations`, `external_ids` |
+| Metadata | `metadata_candidates`, `artwork`, `people`, `item_people` |
+| Gebruikers | `users`, `sessions`, `library_permissions` |
+| Kijkstatus | `watch_states`, `play_sessions` |
+| Werk | `jobs`, `scan_runs`, `transcode_sessions` |
+
+Er staat bewust **geen** `transcode_workers` in v1. De vorm van die tabel volgt uit keuzes die nog
+niet gemaakt zijn: hoe workers zich registreren, welke capabilities ze melden, of scheduling push of
+pull is, welke opslag ze zien en hoe segmenten terugstromen. Een tabel ontwerpen zonder die
+antwoorden levert een verkeerde tabel op die daarna meereist. Fase 13 voegt hem toe met een migratie,
+en dat is het goedkope deel.
+
+### 17.3 Migraties
+
+Voorwaartse migraties met versienummer, uitgevoerd bij het opstarten, met een expliciete
+minimum-schemaversie die de binary weigert te onderschrijden. Geen automatische neerwaartse
+migraties: terugrollen gebeurt met een back-up, want een gegenereerde down-migratie die data
+weggooit is gevaarlijker dan de situatie die hij oplost. Een back-up maken vóór een migratie die
+kolommen verwijdert is onderdeel van de opstartprocedure en niet van de documentatie.
+
+---
+
+## 18. Observability en beheer
+
+Gestructureerde logs in JSON met een niveau per subsysteem, en een correlatie-id per aanvraag dat ook
+in de logregels van de scanner en de transcode-supervisor terugkomt. Zonder dat laatste is "waarom
+duurde deze start zo lang" niet te beantwoorden.
+
+Metrics in Prometheus-formaat op een aparte poort die standaard alleen op loopback luistert: aantal
+actieve sessies, verdeling over `deliveryMode`, scanduur en scanresultaat per bibliotheek,
+joblatency, foutcodes per domein. De verdeling over `deliveryMode` is de belangrijkste enkele meting
+die er is, omdat een onverwacht hoog transcode-aandeel de duidelijkste indicatie is dat de planner of
+de capabilities ergens fout zitten.
+
+Een `/healthz` voor liveness en een `/readyz` die pas groen wordt als de database bereikbaar is en de
+migraties zijn gedraaid. Een beheerdersoverzicht in de client (fase 11) toont scanstatus, actieve
+sessies en de laatste fouten, zodat er geen SSH-sessie nodig is om te zien wat er speelt.
+
+---
+
+## 19. Migratie vanaf Plex
+
+### 19.1 Het matchpatroon bestaat al
+
+`MediaIdentity.pickMatch` (`lib/media/media_identity.dart:40-70`) doet client-side precies de
+driestapsmatch die de migratie serverzijdig nodig heeft: eerst op `guid`, dan op een gedeelde externe
+id, dan op genormaliseerde titel plus jaar met een kindcontrole. De belangrijkste eigenschap is de
+regel die op drie plekken herhaald wordt: **meer dan één kandidaat betekent geen match.** Ambiguïteit
+resolvet nooit, ook niet naar de "beste" kandidaat.
+
+Dat patroon wordt overgenomen op de server. Wat een migratie niet eenduidig kan koppelen, komt op een
+lijst voor de gebruiker in plaats van dat het geraden wordt.
+
+### 19.2 Wat er overkomt en wat niet
+
+Overkomen: kijkstatus per gebruiker, gekeken-vlaggen, kijkposities, favorieten en verzamelingen waar
+een equivalent bestaat. Niet overkomen: Plex' interne ids. `ratingKey` wordt nooit een
+Pleya-identiteit, ook niet als vreemde sleutel, ook niet "tijdelijk". Hij mag hooguit als
+herkomstannotatie in een migratielogboek staan.
+
+De reden is de kern van [DEC-032](#24-voorgestelde-dec-besluiten-en-open-vragen): een externe id die
+identiteit wordt, maakt de externe bron permanent onderdeel van het systeem. Plex hergebruikt
+`ratingKey` bovendien na een bibliotheekherbouw, dus de sleutel is niet eens stabiel binnen Plex
+zelf.
+
+### 19.3 De vorm van het gereedschap
+
+Een eenmalige import die tegen een draaiende Plex-server praat, een droogloop doet met een rapport
+(hoeveel eenduidig gekoppeld, hoeveel ambigu, hoeveel niet gevonden), en pas na bevestiging schrijft.
+De droogloop is niet optioneel: een migratie die kijkstatus van jaren aan de verkeerde titels hangt
+is niet terug te draaien zonder back-up.
+
+---
+
+## 20. Client- en serververantwoordelijkheden
+
+| Onderwerp | Client | Server | Toelichting |
+| --- | --- | --- | --- |
+| Bestandskennis | nee | ja | de client ziet nooit een pad |
+| Catalogus en zoeken | cache | bron | de client cachet voor offline, de server is gezaghebbend |
+| Metadata | toont | haalt op en cureert | providers worden nooit vanuit de client aangeroepen |
+| Device-capabilities | bron | ontvangt | alleen de client kent scherm, uitgang en decoder |
+| Serverbelasting | nee | ja | aantal actieve transcodes is serverkennis |
+| Playbackplan | vraagt aan, mag weigeren | stelt op | gezamenlijk, zie hieronder |
+| Versiekeuze | mag voorkeur geven | beslist | de server kent de versies en hun eigenschappen |
+| Seekbeleid | voert uit | bepaalt grenzen | eigenschap van de stream, niet van de backend |
+| Sessielevenscyclus | opent, pingt, sluit | bewaakt en ruimt op | watchdog is de garantie |
+| Kijkstatus | rapporteert, cachet offline | gezaghebbend, lost conflicten op | |
+| Ondertitelstijl | volledig | nee | rendering is clientwerk |
+| Downloads | beheert de wachtrij | levert bytes en een geschikte versie | |
+| Rechten | toont wat mag | handhaaft | de client verbergt, de server weigert |
+
+Het rijtje "playbackplan" is de nuance die telt. De client kent de uitgang en het scherm, de server
+kent de bestanden en zijn eigen belasting, en alleen samen kan een plan kloppen. Daarom is het plan
+een aanvraag met capabilities en een antwoord met een reden, en geen bevel in één richting. Een
+client mag een plan weigeren en om een alternatief vragen (bijvoorbeeld als de gebruiker liever
+wacht dan een lagere kwaliteit accepteert), en de server mag een plan intrekken als zijn belasting
+verandert.
+
+---
+
+## 21. Teststrategie
+
+**De planner is de zwaarst geteste eenheid.** Pure functie, tabelgedreven, met de gevallen uit
+[hoofdstuk 10.5](#105-tabelgedreven-tests). Elke rij legt zowel de uitkomst als de reden vast.
+
+**De scanner wordt getest tegen een echte bestandsboom in een tijdelijke map**, met scenario's voor
+hernoemen, verplaatsen, vervangen door een ander bestand van dezelfde grootte, en een bestand dat
+tijdens de scan verdwijnt. De eigenschap die bewezen moet worden is dat een hernoeming de item-id en
+de kijkstatus behoudt.
+
+**Het protocol krijgt contracttests aan beide kanten.** De specificatie levert voorbeeldantwoorden;
+de Go-server wordt getest tegen die voorbeelden en de Dart-client ook. Zo kan geen van beide kanten
+afdrijven zonder dat een test rood wordt. Dit is de goedkoopste verzekering tegen het probleem uit
+[hoofdstuk 12.1](#121-eigen-wire-types).
+
+**Range-streaming krijgt een eigen testset**: eerste byte, laatste byte, open einde, meerdere ranges,
+een range voorbij het einde, `If-Range` met een verouderde validator. Dat zijn de gevallen waarop
+spelers struikelen en die met de hand nooit consequent worden nagelopen.
+
+**Migratie wordt getest met een opgenomen Plex-antwoordset**, zodat de driestapsmatch en de
+ambiguïteitsregel te reproduceren zijn zonder draaiende Plex-server.
+
+De bestaande gates blijven gelden voor alles wat `lib/` raakt: `scripts/ci_checks.sh`,
+`flutter analyze` waarbij waarschuwingen fouten zijn, `flutter test`, en `scripts/codegen.sh` met een
+lege gegenereerde diff wanneer modellen wijzigen.
+
+---
+
+## 22. Deployment en distributie
+
+Eén statisch gelinkte Go-binary plus een containerimage. De image bevat ffmpeg en ffprobe in een
+vastgezette versie, want een mediaserver waarvan het gedrag afhangt van de ffmpeg van het hostsysteem
+is niet reproduceerbaar. Dat is dezelfde redenering als achter de MPVKit-pin in de app: een tag is
+een specifieke binary, en een zwevende versie wisselt de decoder onder het product vandaan.
+
+Architecturen: `linux/amd64` en `linux/arm64`, omdat de NAS die hier draait en de meeste
+huishoudelijke doelen daaronder vallen. Postgres is een aparte container of een bestaande instantie;
+de server maakt zijn eigen schema aan bij de eerste start.
+
+Configuratie via omgevingsvariabelen met een klein bestand als alternatief, en één principe: de
+server start met alleen een databaseverbinding en een bibliotheekpad, en al het andere heeft een
+werkende default. Mounts zijn read-only, en dat is geen aanbeveling maar de gedocumenteerde
+verwachting waar het dreigingsmodel op steunt.
+
+Updates: schemaversie in de binary, migraties bij het opstarten, en een weigering te starten als de
+database nieuwer is dan de binary. Terugrollen naar een oudere binary vraagt een back-up, zoals in
+[hoofdstuk 17.3](#173-migraties) beschreven.
+
+---
+
+## 23. Roadmap in dertien fasen
+
+### 23.1 De roadmap is een contract
+
+Elke fase heeft één doel. Binnen een fase geldt: geen functionaliteit uit latere fasen meenemen, geen
+toevallig gevonden bugs buiten scope repareren, geen algemene refactors omdat ze mooier zijn, geen
+nieuwe infrastructuur zonder aantoonbare noodzaak. Zijbevindingen gaan naar de backlog in
+[hoofdstuk 24](#24-voorgestelde-dec-besluiten-en-open-vragen) en nergens anders heen.
+
+Eén regel verdient een eigen plek, omdat hij de subtielste vorm van drift afvangt:
+
+> **Een latere fase mag geen datamodel, interface of infrastructuur afdwingen in een eerdere fase,
+> uitsluitend om een migratie later te vermijden.**
+
+Bouw voor uitbreidbaarheid, bouw de uitbreiding niet vast vooruit. Een schemawijziging is goedkoop;
+een abstractie die jaren meeloopt zonder tweede gebruiker is dat niet, en hij is bovendien meestal
+verkeerd omdat hij is ontworpen zonder de kennis die de latere fase nog moest opleveren. Dit is de
+regel die de `transcode_workers`-tabel uit v1 houdt
+([hoofdstuk 17.2](#172-tabellen-in-hoofdlijnen)) en die fase 1 verbiedt om het sessiecontract van
+fase 8 alvast te specificeren.
+
+Die regel kijkt maar één kant op, en dat is niet genoeg. Scope discipline werkt twee kanten op:
+
+> **Bouw geen toekomstige functionaliteit vooruit, maar verwijder, versimpel of herdefinieer ook geen
+> toekomstige productvereiste alleen omdat die niet nodig is voor de huidige fase.**
+
+De huidige fase mag klein zijn. Het einddoel blijft een zelfstandige vervanging van Plex Media Server
+binnen de afgesproken productscope ([hoofdstuk 1.1](#11-het-einddoel-is-niet-onderhandelbaar)). Maakt
+een keuze in de huidige fase een latere essentiële serverfunctie onmogelijk of onevenredig duur, dan
+is dat een architectuurblocker en geen toegestane vereenvoudiging. Rapporteren dus, niet doorvoeren.
+
+Samengevat in één zin: **build for extension is niet hetzelfde als build the extension early.** De
+eerste helft verbiedt het weggooien van een latere vereiste, de tweede helft verbiedt het vooruit
+bouwen ervan, en beide helften zijn nodig.
+
+Blijkt tijdens een fase dat de roadmap zelf niet meer klopt, dan volgt eerst een **Roadmap deviation
+proposal** met zes onderdelen: de oorspronkelijke aanname, de nieuwe bevinding, waarom de huidige
+roadmap daardoor niet meer klopt, de concrete voorgestelde wijziging, de gevolgen voor latere fasen,
+en welke scope hierdoor juist vervalt. Die wijziging wordt niet automatisch doorgevoerd.
+
+Een fase is pas klaar als alle acceptatiecriteria gehaald zijn, en sluit af met een **Roadmap Drift
+Check**: is er iets gebouwd dat niet in de scope stond, is er scope blijven liggen, en klopt de
+volgende fase nog.
+
+### 23.2 De volgorde en waarom hij zo is
+
+```mermaid
+flowchart LR
+  P1["1. Protocol"] --> P2["2. Catalogus (Go)"]
+  P2 --> P3["3. PleyaServerClient"]
+  P3 --> P4["4. Direct play +<br/>watch state"]
+  P4 --> P5["5. DeviceCapabilities"]
+  P5 --> P6["6. PlaybackPlan"]
+  P6 --> P7["7. Metadata"]
+  P6 --> P8["8. Transcoding"]
+  P4 --> P9["9. Users + rechten"]
+  P8 --> P10["10. Downloads"]
+  P9 --> P11["11. Remote + observability"]
+  P9 --> P12["12. Plex-migratie"]
+  P8 --> P13["13. Externe workers"]
+```
+
+Capabilities en het playbackplan staan vóór metadata omdat daar de architecturale vernieuwing zit;
+metadata blokkeert de playbackkern niet en kan later. Fase 3 is de eerste die de app raakt, en dan
+achter een nieuwe `ConnectionKind` naast de bestaande vier.
+
+---
+
+### Fase 1. Protocolspecificatie en wire-contract
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-1 |
+| Doel | een versieerbaar wire-contract dat client en server onafhankelijk kunnen implementeren |
+| Bijdrage aan einddoel | zonder eigen protocol blijft elke server een variant op andermans API; dit is de grens waarachter Pleya zelfstandig wordt |
+| Afhankelijkheden | geen |
+| Eerstvolgende fase | PS-2 |
+
+**Scope.** Eén specificatiedocument in de repo plus machineleesbare schema's, dat **uitsluitend het
+protocoloppervlak beschrijft dat nodig is tot en met PS-4** ([hoofdstuk 12.2](#122-welk-oppervlak-wanneer-wordt-gespecificeerd)).
+Concreet: resources en endpoints voor bladeren, zoeken, streamen en kijkstatus; het foutmodel met
+codes per domein; capability negotiation via `/pleya/v1/info` inclusief het profielbegrip `minimal`
+en `full`; de auth-grens met accesstoken, refreshtoken en het kortlevende streamtoken; cursorgebaseerde
+pagination; de vier compatibiliteitsregels plus de strikte definitie van `feature_level` en zijn
+ondergeschiktheid aan `capabilities`; conventies voor tijd, duur, ids, sortering en lege lijsten.
+Voorbeeldantwoorden per endpoint, bruikbaar als contracttest-fixtures aan beide kanten.
+
+**Out of scope.** Geen implementatie in Go of Dart. Geen `PlaybackPlan`-vorm, geen transcode-sessies
+(openen, pingen, seeken, sluiten), geen downloads, geen gebruikers of rechten. Die worden
+gespecificeerd in de fase die ze introduceert, binnen dezelfde v1-regels; fase 1 laat er alleen
+ruimte voor via `feature_level` en uitbreidbare foutdomeinen. Geen wijziging aan `share_server`.
+
+**Acceptatiecriteria.**
+1. Elke endpoint draagt expliciet wie hem mag aanroepen.
+2. Elk foutgeval heeft een stabiele code, en geen enkele UI-tekst is nodig om een fout te
+   interpreteren.
+3. Er staat geen enkel Plex- of Jellyfin-woord in een veldnaam.
+4. De voorbeeldantwoorden valideren tegen de schema's, machinaal gecontroleerd.
+5. Een lezer kan uit de specificatie alleen een client bouwen zonder de servercode te zien.
+6. De specificatie bevat geen endpoint waar PS-2 tot en met PS-4 niet om vraagt.
+
+**Stopcriterium.** De specificatie is compleet voor bladeren, zoeken, streamen en kijkstatus, en de
+schema's valideren. Alles daarbuiten is fase 6 of later.
+
+**Risico's.** Overontwerpen is hier het echte gevaar: een specificatie die alle latere fasen al
+beschrijft, wordt in fase 6 alsnog herschreven. De tegenmaatregel is `feature_level` plus regel 1
+(velden toevoegen mag altijd).
+
+**Tests.** Schemavalidatie van alle voorbeeldantwoorden in CI.
+
+**Ontwerpcontrole.** De scope hierboven verandert hier niet door, en er komt geen enkele endpoint of
+capability bij. Wat er wel bij komt is één vraag die bij elke fundamentele protocolkeuze gesteld
+wordt:
+
+> Kan deze keuze later worden uitgebreid naar de capabilities uit de replacement matrix zonder een
+> breaking herbouw van het protocol af te dwingen?
+
+Ja betekent doorgaan. Nee betekent de blocker rapporteren, niet hem oplossen door de latere feature
+alvast te specificeren. De vraag toetst de vorm van de keuze, niet de inhoud van wat er later op
+gebouwd wordt.
+
+**Roadmap Drift Check.** Is er een endpoint gespecificeerd dat pas in PS-6 of later nodig is? Dan
+hoort het uit de specificatie en terug naar de fase die het introduceert.
+
+---
+
+### Fase 2. Read-only catalogus in Go
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-2 |
+| Doel | een draaiende Go-service die een bestandsboom scant en als catalogus serveert |
+| Bijdrage aan einddoel | dit is het eerste stuk Pleya dat zonder enige externe mediaserver een bibliotheek kan tonen |
+| Afhankelijkheden | PS-1 |
+| Eerstvolgende fase | PS-3 |
+
+**Scope.** Go-binary met Postgres, schema en migraties, `storage_locations`, de scanner met de
+drielagige verandersdetectie uit [hoofdstuk 7.3](#73-wat-de-scanner-elke-ronde-doet), ffprobe voor
+technische eigenschappen inclusief `detectionStatus` en `source` per veld, en de leesendpoints uit fase 1.
+Containerimage met vastgezette ffmpeg. Jobrunner in dezelfde database.
+
+**Out of scope.** Geen client. Geen metadata-providers. Geen streaming, geen transcoding, geen
+websocket. En expliciet: **geen gebruikersmodel.** Er is precies één server-owner-identiteit,
+aangemaakt met de setup-code bij eerste start ([hoofdstuk 13.1a](#131a-bootstrap-identiteit-is-niet-hetzelfde-als-multi-user)).
+Tokens uitgeven tegen die ene identiteit vraagt geen `users`- of `sessions`-tabel, en die aanleggen
+"omdat er toch tokens nodig zijn" is precies de drift die de regel in 23.1 verbiedt.
+
+**Acceptatiecriteria.**
+1. Een bibliotheek met minimaal duizend bestanden scant volledig en levert items, versies en
+   bestanden in Postgres.
+2. Een tweede scan zonder wijzigingen draait ffprobe nul keer.
+3. Een hernoemd bestand behoudt zijn item-id.
+4. De leesendpoints leveren antwoorden die tegen de fase-1-schema's valideren.
+5. `/readyz` wordt pas groen na een geslaagde migratie.
+
+**Stopcriterium.** De catalogus is met `curl` te doorbladeren en overleeft een herstart met behoud
+van ids.
+
+**Risico's.** Inode-hergebruik op netwerkmounts kan de goedkope laag misleiden; de prefix-hash is de
+tegenmaatregel en moet aantoonbaar aanslaan in een test. Een trage NAS kan de scanner laten lijken te
+hangen; scanvoortgang moet meetbaar zijn ook zonder websocket.
+
+**Tests.** Scannertests tegen een tijdelijke bestandsboom met hernoemen, verplaatsen, vervangen bij
+gelijke grootte, en verdwijnen tijdens de scan. Schemavalidatie van de antwoorden.
+
+**Roadmap Drift Check.** Is er iets gebouwd dat naar een provider belt, of een tabel die meer dan
+één identiteit kan dragen? Dat hoort in fase 7 of 9.
+
+---
+
+### Fase 3. `PleyaServerClient` in de app, bladeren en zoeken
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-3 |
+| Doel | de vijfde `MediaServerClient`, alleen lezen |
+| Bijdrage aan einddoel | vanaf hier is Pleya Server een echte backend in het product en niet een experiment ernaast |
+| Afhankelijkheden | PS-1, PS-2 |
+| Eerstvolgende fase | PS-4 |
+
+**Scope.** `MediaBackend.pleyaServer` en `ConnectionKind.pleyaServer` toevoegen en de door de
+compiler aangewezen vertakkingen invullen. `PleyaServerClient` implementeert bladeren, zoeken en
+bibliotheeklijsten; alle andere members melden zich netjes als niet-ondersteund via
+`ServerCapabilities`. Een wire-naar-domein-mapper naast de bestaande mappers. Verbinding toevoegen in
+`lib/connection/` en registratie in `multi_server_manager`, met hetzelfde één-endpoint-één-server-model
+als Jellyfin. Contracttests aan de Dart-kant tegen de fixtures uit fase 1.
+
+**Out of scope.** Geen afspelen. Geen kijkstatus schrijven. Geen opsplitsing van `MediaServerClient`.
+Geen aanpassing van de Plex-getypeerde resolvers uit [hoofdstuk 4.2](#42-plex-getypeerde-clientresolvers),
+tenzij de compiler daar dwingend op stuit.
+
+**Acceptatiecriteria.**
+1. Een Pleya Server-verbinding is toe te voegen, blijft na herstart staan, en toont bibliotheken.
+2. Zoeken over meerdere servers levert Pleya Server-resultaten naast Plex- en Jellyfin-resultaten
+   zonder dat `data_aggregation_service` een backendcheck nodig heeft.
+3. `flutter analyze` is schoon en `scripts/ci_checks.sh` groen.
+4. Geen enkele UI-plek toont een lege of kapotte staat door een niet-ondersteunde capability.
+5. `MediaBackend.fromString` kent de nieuwe waarde vóór er een rij mee is weggeschreven.
+
+**Stopcriterium.** Bladeren en zoeken werkt op minstens twee vormfactoren, inclusief TV-focus.
+
+**Risico's.** De 125 bestaande vertakkingen: de compiler wijst de exhaustieve switches aan, maar niet
+de `if`-ketens. Een gerichte doorloop van de niet-exhaustieve gevallen hoort in deze fase en nergens
+anders, want later is de context weg.
+
+**Tests.** Contracttests tegen de fixtures, plus widgettests op de bibliotheek- en zoekschermen met
+een Pleya Server-capabilityset.
+
+**Roadmap Drift Check.** Is er een member geïmplementeerd die niet voor bladeren of zoeken nodig is?
+Terugdraaien of naar de juiste fase verplaatsen.
+
+---
+
+### Fase 4. Direct play, range-streaming en kijkstatus
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-4 |
+| Doel | afspelen vanaf Pleya Server met de server als bron van kijkstatus |
+| Bijdrage aan einddoel | dit is het punt waarop Pleya Server een Plex-server functioneel kan vervangen voor het meest voorkomende gebruik |
+| Afhankelijkheden | PS-3 |
+| Eerstvolgende fase | PS-5 |
+
+**Scope.** Streaming-endpoint met volledige range-ondersteuning, een sterke validator die meebeweegt
+met `MediaFile.generation`, `If-Range`. Kijkstatus als gebeurtenis met `session_id`, positie, duur,
+tijdstempel, `completed` en `explicit_action`, gebonden aan de bootstrap-eigenaar uit fase 2, met
+rapportage vanuit de speler en terugsynchronisatie vanuit de offline-laag.
+
+**Poort vóór deze fase begint:** het conflictmodel uit
+[hoofdstuk 13.2](#132-de-server-is-de-bron-van-kijkstatus) is een open ontwerpvraag en moet eerst
+beantwoord zijn. "Hoogste positie wint" is aantoonbaar fout bij een bewuste herstart, dus die regel
+wordt niet als bijproduct van de implementatie vastgelegd. De beoordeling van `MediaServerClient`
+uit [hoofdstuk 5.3](#53-wordt-mediaserverclient-te-breed) valt in deze fase, als meting met het daar
+genoemde criterium.
+
+**Out of scope.** Geen transcoding, geen remux, geen sessies. Een bestand dat het toestel niet
+aankan, faalt hier zichtbaar en met een duidelijke melding; dat is de bedoeling en niet een gat.
+Geen `DeviceCapabilities`. Geen gebruikersmodel: de kijkstatustabel krijgt wel een gebruikerskolom,
+met de bootstrap-eigenaar als enige waarde, omdat die kolom achteraf vullen duurder is dan hem leeg
+meedragen.
+
+**Acceptatiecriteria.**
+1. Een direct-play-bestand speelt op desktop, mobiel en TV, met werkende seek.
+2. Seeken naar een willekeurige positie in een groot bestand gebeurt zonder de stream opnieuw op te
+   bouwen.
+3. Kijkpositie overleeft het afsluiten van de app en verschijnt op een tweede toestel.
+4. Het gekozen conflictmodel is opgeschreven vóór de eerste regel code, en offline gekeken materiaal
+   synchroniseert terug volgens dat model, met een test per regel. Minimaal gedekt: een expliciete
+   handeling wint van elke passieve update die ervoor ligt, en het herstart-scenario uit 13.2 zet de
+   kijker niet terug.
+5. De `MediaServerClient`-beoordeling is uitgevoerd en de uitkomst staat opgeschreven.
+
+**Stopcriterium.** Een huishouden kan een avond films kijken vanaf Pleya Server, mits de bestanden
+direct speelbaar zijn.
+
+**Risico's.** Range-gedrag verschilt per speler en per platform; de testset uit
+[hoofdstuk 21](#21-teststrategie) is hier de gate. Kijkstatusconflicten zijn moeilijk reproduceerbaar
+en verdienen expliciete tests in plaats van handmatige controle.
+
+**Tests.** Range-testset, conflictregeltests, en een handmatige ronde op tvOS omdat focus en seek
+daar het meest afwijken.
+
+**Roadmap Drift Check.** Is er een transcode-pad ontstaan omdat een bestand niet speelde? Dat is fase
+8, en de juiste uitkomst hier is een foutmelding.
+
+---
+
+### Fase 5. `DeviceCapabilities` in de client
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-5 |
+| Doel | de client stelt vast wat dit toestel aankan, en stuurt dat naar elke backend |
+| Bijdrage aan einddoel | dit is de ontbrekende abstractie uit de samenvatting; hij is zelfstandig waardevol, ook zonder Pleya Server |
+| Afhankelijkheden | PS-4 (voor de Pleya Server-kant), verder geen |
+| Eerstvolgende fase | PS-6 |
+
+**Scope.** Het model uit [hoofdstuk 9](#9-device-capabilities-in-de-client) met vier lagen: decoder,
+weergave, audio-uitgang, verbinding. Detectie per platform, met gebruikersoverrides die naast de
+detectie bestaan in plaats van eroverheen. Het model vervangt de hardgecodeerde `DeviceProfile` op
+`jellyfin_client/parts/playback.dart:504-543` en de vaste clause-lijst op
+`plex_client.dart:3072-3110`. `TranscodeQualityPreset` wordt onderdeel van de verbindingslaag en
+verliest zijn rol als enige signaal.
+
+**Out of scope.** Geen serverzijdige planner. Geen wijziging aan het afspeelgedrag zelf, behalve wat
+er uit een beter profiel volgt. Geen nieuwe instellingen-UI buiten wat nodig is om een override te
+zetten.
+
+**Acceptatiecriteria.**
+1. Twee verschillende toestellen leveren aantoonbaar verschillende capabilities, vastgelegd in een
+   test met een gemocked platform.
+2. De Jellyfin- en Plex-profielen worden uit het model afgeleid, en de oude constanten bestaan niet
+   meer.
+3. Een gebruikersoverride is zichtbaar als override, en de gedetecteerde waarde blijft bekend.
+4. Geen regressie op bestaand afspeelgedrag bij Plex en Jellyfin, aangetoond op echte hardware voor
+   minimaal tvOS en één desktopplatform.
+
+**Stopcriterium.** Het model is de enige bron voor alle drie de profielen.
+
+**Risico's.** Dit raakt bestaand afspeelgedrag bij Plex en Jellyfin, en dat is de gevaarlijkste
+eigenschap van deze fase. Een verkeerd afgeleid profiel levert stilte of een zwart beeld op, geen
+compilefout. Daarom hoort hier runtimebewijs op hardware, in de geest van
+[DEC-025](DECISIONS.md#dec-025).
+
+**Tests.** Tabeltests op de afleiding van elk van de drie profielen uit een gegeven capabilityset,
+plus hardwareverificatie op minimaal Apple TV met een multichannel-uitgang.
+
+**Roadmap Drift Check.** Is er iets in het model geslopen dat geen antwoord geeft op "kan dit toestel
+deze bytes weergeven"? Dat is een gebruikersinstelling en hoort elders.
+
+---
+
+### Fase 6. `PlaybackPlan` en versieselectie op de server
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-6 |
+| Doel | de server beslist wat er moet gebeuren, en legt uit waarom |
+| Bijdrage aan einddoel | hiermee heeft Pleya een eigen playbackcontract in plaats van dat van Plex of Jellyfin |
+| Afhankelijkheden | PS-5 |
+| Eerstvolgende fase | PS-7 |
+
+**Scope.** `POST /pleya/v1/playback/plan` met capabilities in en een plan uit, plus de specificatie
+van dat oppervlak (fase 1 heeft het bewust niet beschreven). De planner uit
+[hoofdstuk 10](#10-de-playbackplanner-op-de-server): kandidaatplannen, filteren op harde
+beperkingen, scoren op zachte voorkeuren, en dan pas kiezen. Inclusief versieselectie, het gescheiden
+video- en audiobesluit, seekbaarheid met grenzen, en redenen als domeincode met parameters. De client vertakt op
+seekbaarheid uit het plan in plaats van op `backend == plex` zoals `seeking.dart:17-23` nu doet, voor
+het Pleya Server-pad. Protocoluitbreiding binnen v1 met een verhoogd `feature_level`.
+
+**Out of scope.** Geen uitvoering van transcode of remux. Een plan dat `transcode` zegt, levert in
+deze fase een nette "nog niet ondersteund"-fout op. Geen wijziging aan het Plex-seekpad.
+
+**Acceptatiecriteria.**
+1. De tabelgedreven tests uit [hoofdstuk 10.5](#105-tabelgedreven-tests) draaien groen, inclusief de
+   `inferred`- en `unknown`-gevallen waar de veilige uitkomst moet winnen, met per eigenschap een
+   eigen drempel in plaats van één generieke.
+2. Bij twee versies van hetzelfde item kiest de planner aantoonbaar de goedkoopste passende versie en
+   niet de hoogste kwaliteit.
+3. Elk plan draagt minimaal één reden als `{code, parameters}`, de client mapt die zelf naar tekst,
+   en een onbekende code levert een generieke melding op in plaats van een lege UI. Er staat nergens
+   een i18n-sleutel van de app in een serverantwoord.
+4. Een lege verzameling na het harde filter geeft een expliciete fout met reden, niet een willekeurig
+   overgebleven plan.
+5. Direct play blijft het resultaat voor alles wat in fase 4 al direct speelde, aangetoond met een
+   regressietest over dezelfde bestandenset.
+
+**Stopcriterium.** De planner beslist correct, en de client handelt naar het plan voor het direct
+play-pad.
+
+**Risico's.** De planner die te agressief transcode kiest, maakt het product langzamer dan fase 4.
+Criterium 4 is daar de bewaking op. Ondertitelbesluiten zijn ondergesneeuwd bij video en audio en
+verdienen expliciete rijen in de testtabel.
+
+**Tests.** De tabel, de regressieset uit fase 4, en een test die aantoont dat de planner nooit op
+clienttype vertakt (bijvoorbeeld door dezelfde capabilities onder twee verschillende user-agents in
+te sturen en hetzelfde plan te eisen).
+
+**Roadmap Drift Check.** Is er ffmpeg aangeraakt? Dat is fase 8.
+
+---
+
+### Fase 7. Metadata en artwork
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-7 |
+| Doel | een catalogus met titels, samenvattingen en beeld |
+| Bijdrage aan einddoel | zonder metadata is Pleya Server bruikbaar maar niet aantrekkelijk; dit maakt hem een volwaardig alternatief |
+| Afhankelijkheden | PS-2 |
+| Eerstvolgende fase | PS-8 |
+
+**Scope.** De providerabstractie met TMDB als eerste implementatie. De kandidatenlaag, de
+prioriteitsvolgorde, handmatige correcties die niet worden overschreven. Artwork met content-hash,
+afgeleide formaten op aanvraag, sterke `ETag`. Attributie zichtbaar in de client. Matching op de
+driestapsregel uit [hoofdstuk 19.1](#191-het-matchpatroon-bestaat-al), met ambiguïteit die nooit
+resolvet.
+
+**Out of scope.** Geen tweede provider. Geen automatische correctie van verkeerde matches. Geen
+handmatige metadata-editor buiten het bevestigen of afwijzen van een kandidaat.
+
+**Acceptatiecriteria.**
+1. Een bibliotheek met gemengde naamgeving levert een gerapporteerd matchpercentage, en de niet
+   eenduidig gematchte titels staan op een lijst in plaats van verkeerd gekoppeld te zijn.
+2. Een handmatige correctie overleeft drie opeenvolgende metadata-rondes.
+3. Het canonieke record is volledig herbouwbaar uit de kandidatenlaag plus de correcties.
+4. De TMDB-attributie is zichtbaar op elk scherm dat TMDB-data toont.
+
+**Stopcriterium.** Posters en samenvattingen staan in de client, en correcties blijven staan.
+
+**Risico's.** Rate limits bij de provider maken een eerste scan van een grote bibliotheek traag;
+jobretries met exponentiële vertraging horen erbij. Een verkeerde match is erger dan geen match, en
+dat moet in het beleid terugkomen.
+
+**Tests.** Matchtests met opgenomen providerantwoorden, inclusief ambigue gevallen. Een test die
+bewijst dat een correctie een providerronde overleeft.
+
+**Roadmap Drift Check.** Is er provider-logica in de HTTP-laag beland in plaats van in een job? Dan
+staat de server straks te wachten op een externe API tijdens een gebruikersaanvraag.
+
+---
+### Fase 8. Remux, transcoding en sessielevenscyclus
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-8 |
+| Doel | uitvoeren wat de planner besluit, met een sessie die gegarandeerd wordt opgeruimd |
+| Bijdrage aan einddoel | hiermee speelt Pleya Server alles af wat Plex afspeelt, ook op toestellen die de bron niet aankunnen |
+| Afhankelijkheden | PS-6 |
+| Eerstvolgende fase | PS-9 |
+
+**Scope.** De specificatie van het sessieoppervlak (fase 1 heeft het bewust opengelaten), plus de
+implementatie: een lokale transcode-executor met ffmpeg als kindproces, fMP4 en HLS op het
+transcode-pad, hardwaredetectie bij het opstarten, en een expliciete limiet op gelijktijdige sessies.
+Het sessiecontract uit [hoofdstuk 11.2](#112-wanneer-er-wel-een-sessie-is), inclusief de `DELETE` die
+in de client vandaag nergens bestaat (`universal/stop` komt nul keer voor in `lib/`) en de watchdog
+die de garantie levert. Seek binnen de grenzen uit het plan, met herstart daarbuiten.
+
+**Out of scope.** Geen DASH. Geen vooraf gegenereerde varianten. Geen aanpassing van het
+Plex-transcodepad in `seeking.dart`. En expliciet: **geen worker-abstractie.** De executor is een
+interne aanroep, geen geregistreerde worker; er komt geen `transcode_workers`-tabel en geen
+jobprotocol. Fase 13 voegt die toe met een migratie op het moment dat er iets te verdelen valt.
+
+**Acceptatiecriteria.**
+1. Een bestand dat het toestel niet direct aankan speelt via remux of transcode, met een reden in
+   beeld.
+2. Een client die zonder afsluiten wegvalt, laat na de watchdog-periode geen ffmpeg-proces en geen
+   tijdelijke bestanden achter, aangetoond met een test die het proces hard afbreekt.
+3. Seek binnen de grenzen gebeurt zonder herstart; daarbuiten herstart de sessie zonder dat de
+   gebruiker de speler opnieuw hoeft te openen.
+4. Het aantal gelijktijdige sessies respecteert de limiet, en een aanvraag boven de limiet krijgt een
+   duidelijke foutcode in plaats van een trage stream.
+
+**Stopcriterium.** Elk bestand in een testbibliotheek speelt, op elk ondersteund toestel, via het pad
+dat de planner koos.
+
+**Risico's.** Verweesde processen zijn de klassieke fout hier, en criterium 2 is er expliciet op
+gericht. Hardwareversnelling die stil terugvalt op software maakt een NAS onbruikbaar zonder dat
+iemand het merkt; dat moet een zichtbare servercapability zijn en een metric.
+
+**Tests.** Sessielevenscyclustests inclusief hard afbreken, een test per `deliveryMode`, en een
+belastingtest op het sessiemaximum.
+
+**Roadmap Drift Check.** Is er een worker-, registratie- of schedulingbegrip ontstaan waar één
+lokale executor volstaat? Dat is fase 13, en het valt onder de regel in 23.1.
+
+---
+
+### Fase 9. Gebruikers, profielen en rechten
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-9 |
+| Doel | een huishouden met meerdere mensen, elk met eigen rechten en eigen kijkstatus |
+| Bijdrage aan einddoel | een server zonder gebruikers vervangt Plex niet voor een gezin |
+| Afhankelijkheden | PS-4 |
+| Eerstvolgende fase | PS-10 |
+
+**Scope.** `users`, `sessions` en `library_permissions`. Rollen en rechten per bibliotheek met de
+regel dat onzichtbaar `404` oplevert en niet `403`. Argon2id, tokenrotatie, intrekbare sessies per
+toestel. De setup-code bij eerste start. Aan de clientkant: een `ProfileKind`-variant voor Pleya
+Server met een eigen credential-resolver die nooit naar een owner-token terugvalt, zie
+[hoofdstuk 4.1](#41-profielen-kennen-alleen-plex-home). Kijkstatus wordt per gebruiker in plaats van
+per server.
+
+**Out of scope.** Geen gedeelde bibliotheken tussen huishoudens, geen uitnodigingen per e-mail, geen
+leeftijdsgrenzen. Geen herstructurering van `UserProfileProvider` voor Plex of Jellyfin.
+
+**Acceptatiecriteria.**
+1. Twee gebruikers zien verschillende bibliotheken en verschillende kijkstatus.
+2. Een gebruiker zonder recht op een bibliotheek krijgt `404` op een direct id, ook op stream- en
+   plan-endpoints.
+3. Een ingetrokken sessie is onmiddellijk ongeldig, ook voor een lopende stream met een streamtoken.
+4. Er bestaat geen defaultwachtwoord en geen ingebouwd account; zonder setup-code komt niemand
+   binnen.
+5. De bestaande Plex- en Jellyfin-profielpaden zijn ongewijzigd, aangetoond met de bestaande tests.
+
+**Stopcriterium.** Een gezin kan de server delen zonder elkaars kijkstatus of bibliotheken te zien.
+
+**Risico's.** Autorisatie die alleen op lijstniveau zit is de meest voorkomende fout; criterium 2 is
+daar de gate op. De `clientScopeId`-ambiguïteit uit [hoofdstuk 4.4](#44-cachescope-neemt-de-server-als-eenheid)
+wordt hier scherper, en de migratie die scope expliciet maakt hoort in deze fase.
+
+**Tests.** Autorisatietests per endpoint met een gebruiker zonder recht. Migratietest op de
+scope-kolommen met bestaande rijen.
+
+**Roadmap Drift Check.** Is er een rechtenmodel gebouwd dat verder gaat dan bibliotheekniveau? Dat is
+niet gevraagd en maakt het model moeilijker uitlegbaar.
+
+---
+
+### Fase 10. Downloads vanaf Pleya Server
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-10 |
+| Doel | offline meenemen wat op de server staat |
+| Bijdrage aan einddoel | offline gebruik is een bestaande belofte van de app en mag niet aan Plex hangen |
+| Afhankelijkheden | PS-8, PS-9 |
+| Eerstvolgende fase | PS-11 |
+
+**Scope.** De bestaande downloadlaag (`lib/database/download_operations.dart`, de offline providers)
+uitbreiden naar Pleya Server. De server levert een geschikte versie voor het doeltoestel op basis van
+capabilities, en desgewenst een vooraf getranscodeerde variant. Kijkstatus uit de offline-laag
+synchroniseert terug volgens de regels uit fase 4.
+
+**Out of scope.** Geen syncregels of automatische downloads voor Pleya Server. Geen wijziging aan de
+Plex- of Jellyfin-downloadpaden.
+
+**Acceptatiecriteria.**
+1. Een download is offline af te spelen, met de juiste scope in de lokale database.
+2. Offline gekeken materiaal synchroniseert terug bij herverbinding.
+3. Een download die op de server verdwijnt, geeft een duidelijke staat in plaats van een stille
+   fout.
+
+**Stopcriterium.** Een vlucht zonder netwerk werkt met materiaal van Pleya Server.
+
+**Risico's.** De scope-kolommen uit fase 9 moeten hier kloppen, anders vermengen downloads van
+verschillende gebruikers zich.
+
+**Tests.** Downloadtests met scope, en een terugsynchronisatietest na kunstmatige netwerkonderbreking.
+
+**Roadmap Drift Check.** Is er een syncregel-engine gebouwd? Niet in scope.
+
+---
+
+### Fase 11. Remote hardening en observability
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-11 |
+| Doel | veilig en zichtbaar draaien buiten het eigen netwerk |
+| Bijdrage aan einddoel | zonder remote gebruik is een eigen server een halve vervanging van Plex |
+| Afhankelijkheden | PS-9 |
+| Eerstvolgende fase | PS-12 |
+
+**Scope.** Correct gedrag achter een omgekeerde proxy zoals beschreven in
+[hoofdstuk 15](#15-remote-access): vertrouwde proxy-adressen, externe hostnaam in gegenereerde URL's,
+subpad-montage, websockets door de proxy, range-requests zonder buffering. Rate limiting op
+auth-endpoints. Een expliciete, geteste lijst van wat zonder authenticatie bereikbaar is.
+Gestructureerde logs met correlatie-id, Prometheus-metrics op loopback, `/healthz` en `/readyz`, en
+een beheerdersoverzicht in de client. Deploymentrecepten in de documentatie voor een uitbellende
+tunnel, een mesh-VPN en een eigen proxy.
+
+**Out of scope.** Geen eigen NAT-traversal, geen eigen relay, geen certificaatuitgifte in de binary.
+Geen ingebouwde afhankelijkheid van een specifieke tunnelaanbieder.
+
+**Acceptatiecriteria.**
+1. Range-requests blijven intact door minimaal twee verschillende proxy-opstellingen, gemeten met de
+   range-testset.
+2. De lijst met niet-geauthenticeerde endpoints is één regel in de code en één test, en `/info` is
+   het enige dat gegevens teruggeeft.
+3. De metric met de verdeling over `deliveryMode` is zichtbaar en klopt met een handmatig
+   gecontroleerde sessie.
+4. Een brute-force-poging wordt aantoonbaar afgeremd zonder een geldige gebruiker uit te sluiten.
+
+**Stopcriterium.** De server draait remote met dezelfde functionaliteit als lokaal, en een beheerder
+ziet zonder SSH wat er speelt.
+
+**Risico's.** Een proxy die buffert breekt seek zonder foutmelding; criterium 1 is daar de bewaking
+op. Metrics die op een publieke poort luisteren zijn zelf een lek.
+
+**Tests.** Range-testset door de proxy, een test op de lijst met publieke endpoints, en een test op
+de rate limiter.
+
+**Roadmap Drift Check.** Is er een relay of tunnelclient in de binary beland? Dat is een expliciet
+afgewezen richting.
+
+---
+
+### Fase 12. Migratiegereedschap vanaf Plex
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-12 |
+| Doel | jaren kijkgeschiedenis meenemen naar Pleya Server |
+| Bijdrage aan einddoel | zonder migratie is overstappen duur genoeg om niet te gebeuren |
+| Afhankelijkheden | PS-9 |
+| Eerstvolgende fase | PS-13 |
+
+**Scope.** Een eenmalige import die tegen een draaiende Plex-server praat, kijkstatus per gebruiker,
+gekeken-vlaggen, kijkposities, favorieten en verzamelingen waar een equivalent bestaat. De
+driestapsmatch met de ambiguïteitsregel uit [hoofdstuk 19](#19-migratie-vanaf-plex). Verplichte
+droogloop met een rapport voordat er iets wordt weggeschreven.
+
+**Out of scope.** Geen migratie vanaf Jellyfin. Geen overname van Plex' interne ids in welke vorm dan
+ook. Geen doorlopende synchronisatie tussen Plex en Pleya Server.
+
+**Acceptatiecriteria.**
+1. De droogloop rapporteert eenduidig gekoppeld, ambigu en niet gevonden, met aantallen en een lijst.
+2. Een ambigue titel wordt nooit automatisch gekoppeld.
+3. `ratingKey` komt in geen enkele tabel voor als sleutel of vreemde sleutel.
+4. Een tweede uitvoering van dezelfde import verandert niets (idempotent).
+
+**Stopcriterium.** Een echte Plex-bibliotheek is gemigreerd met een gecontroleerd rapport.
+
+**Risico's.** Een verkeerde koppeling van kijkstatus is niet te herstellen zonder back-up; de
+droogloop is daarom verplicht en niet aan te zetten met een vlag die hem overslaat.
+
+**Tests.** Migratietests met een opgenomen Plex-antwoordset, inclusief ambigue gevallen en een
+idempotentietest.
+
+**Roadmap Drift Check.** Is er een doorlopende synchronisatie ontstaan in plaats van een eenmalige
+import? Dat is een ander product.
+
+---
+
+### Fase 13. Externe transcode-workers
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-13 |
+| Doel | transcoding verplaatsen naar een machine die er beter geschikt voor is |
+| Bijdrage aan einddoel | dit haalt de laatste hardwarebeperking weg voor huishoudens met een zwakke NAS |
+| Afhankelijkheden | PS-8, plus een gemeten tekortkoming |
+| Eerstvolgende fase | geen |
+
+**Scope.** De migratie die `transcode_workers` toevoegt, plus de omzetting van de lokale
+transcode-executor uit fase 8 naar de eerste rij daarin. Externe workers registreren
+zich, melden hun hardware en capaciteit, en krijgen werk toegewezen. Een jobprotocol tussen server en
+worker. Segmenten stromen terug naar de client via de server of rechtstreeks, afhankelijk van de
+gekozen topologie.
+
+**Out of scope.** Alles zolang het criterium niet gehaald is.
+
+**Acceptatiecriteria.**
+1. Er is een gemeten situatie waarin één NAS aantoonbaar tekortschiet (sessies die de limiet raken,
+   of transcodes die niet realtime halen), vastgelegd met de metrics uit fase 11.
+2. Een externe worker neemt werk over zonder wijziging aan de client.
+3. Uitval van een externe worker degradeert naar de lokale worker in plaats van naar een fout.
+
+**Stopcriterium.** Deze fase begint pas als criterium 1 gehaald is. Zonder die meting wordt hij niet
+ingepland.
+
+**Risico's.** Dit is de fase met de grootste kans op vroegtijdig bouwen. Het schedulingmodel is
+bovendien nog een open vraag, zie [hoofdstuk 24](#24-voorgestelde-dec-besluiten-en-open-vragen).
+
+**Tests.** Workeruitval tijdens een lopende sessie, en een verdelingstest over twee workers.
+
+**Roadmap Drift Check.** Is er iets in fase 6 of 8 gebouwd dat alleen zin heeft met externe workers?
+Terugdraaien.
+
+---
+
+## 24. Voorgestelde DEC-besluiten en open vragen
+
+### 24.1 Voorgestelde besluiten
+
+`DEC-029` is de laatste bestaande in [docs/DECISIONS.md](DECISIONS.md). Voorstel voor acht nieuwe.
+Ze worden pas geschreven wanneer fase 1 daadwerkelijk wordt ingepland; hier staat de kern.
+
+**DEC-030: Go als serverruntime.** Er draait al Go in dit project (`server/` is de relay achter
+`ice.pleya.app`), en de eigenschappen die een mediaserver nodig heeft (één statische binary,
+voorspelbaar geheugengebruik bij honderden gelijktijdige range-requests, goedkope processupervisie
+voor ffmpeg) zijn precies waar de taal sterk in is. Dart zou het ook kunnen, en `share_server`
+bewijst dat, maar dan met een runtime die naast de app-toolchain onderhouden moet worden op een
+platform waar hij verder niets doet.
+
+**DEC-031: twee producten, één protocolvocabulaire.** Pleya Share en Pleya Server blijven aparte
+runtimes met een gedeelde specificatie en een profielbegrip (`minimal`, `full`). Zie
+[hoofdstuk 2](#2-de-grens-tussen-pleya-share-en-pleya-server). Het overzetten van `share_server` op
+het profiel is optioneel en geen voorwaarde voor v1.
+
+**DEC-032: eigen identiteiten, los van locatie en van externe ids.** Interne UUIDv7's, een pad is
+nooit een identiteit, en `ratingKey` of een TMDB-id wordt nooit primaire sleutel. Externe ids leven
+in `external_ids` als herkenningsmiddel.
+
+**DEC-033: Postgres is de enige verplichte infrastructuurdependency voor v1, inclusief duurzame
+lokale jobs.** Catalogus, gebruikers, kijkstatus en de lokale jobwachtrij staan in dezelfde database,
+zodat een scanresultaat en zijn vervolgjob in één transactie passen. Dit sluit niet uit dat externe
+transcode-workers in fase 13 een ander schedulingmechanisme krijgen; die keuze staat open.
+
+**DEC-034: het protocol is de grens, dus eigen wire-types.** Er gaat nooit een freezed `MediaItem`
+over de lijn. De bestaande fout in het Pleya Share-protocol is de aanleiding. Bij dit besluit hoort
+dat `capabilities` leidend is boven `feature_level`, en dat elke fase alleen het oppervlak
+specificeert dat hij zelf introduceert.
+
+**DEC-035: device-capabilities horen in de client, het plan op de server.** De client is de enige die
+scherm, uitgang, decoder en verbinding kent; de server is de enige die de bestanden en zijn eigen
+belasting kent. Het plan is een aanvraag met een antwoord en een reden, geen bevel in één richting.
+De planner filtert op harde beperkingen en scoort daarna op zachte voorkeuren, en een reden is een
+domeincode met parameters en nooit een vertaalsleutel van de client.
+
+**DEC-036: direct play met HTTP-range is de standaard.** Remux en transcode zijn uitzonderingen met
+een sessie en een levenscyclus. fMP4 en HLS op het transcode-pad, geen DASH.
+
+**DEC-037: Pleya Server bouwt geen eigen NAT-traversal of relay.** Het architectuurbesluit is dat de
+server correct werkt achter HTTPS en achter een omgekeerde proxy; hoe die proxy tot stand komt is een
+deploymentrecept en staat in de documentatie, niet in de binary.
+
+### 24.2 Open vragen
+
+Twee daarvan zijn **gates**: de fase die eronder staat begint niet voordat de vraag beantwoord en
+opgeschreven is. De rest is een gewone open vraag met een beslismoment.
+
+| Gate | Moet beslist zijn vóór |
+| --- | --- |
+| Het conflictmodel voor kijkstatus | PS-4 begint. Daarna zit de semantiek in de data. |
+| De regel voor de content fingerprint | de eerste scannerlogica die relocatie gebruikt, dus vóór de relocatiepaden in PS-2 of waar ze later landen. |
+
+Deze krijgen bewust geen ADR tot er meer bekend is.
+
+**Het conflictmodel voor kijkstatus, te beantwoorden vóór PS-4.** Dat expliciete intentie wint van
+heuristiek staat vast; wat er tussen twee passieve voortgangsmeldingen gebeurt niet. "Hoogste positie
+wint" faalt bij een bewuste herstart, "laatste update wint" faalt bij een toestel met een scheve klok
+of een late offline-sync, en "per sessie afzonderlijk bijhouden en de meest recente sessie tonen"
+kost een sessiebegrip in de UI dat er nu niet is. De keuze moet gemaakt en opgeschreven zijn voordat
+fase 4 begint, want daarna zit hij in de data. Zie [hoofdstuk 13.2](#132-de-server-is-de-bron-van-kijkstatus).
+
+**Metadata-providers.** TMDB is de eerste keuze, maar de vraag welke providers daarnaast horen en
+onder welk licentiemodel is niet beantwoord. TVDB heeft een ander model, muziekmetadata is een apart
+verhaal, en de attributieverplichtingen verschillen per bron. Beslismoment: het begin van fase 7.
+
+**Schedulingmodel voor externe transcode-workers.** Push vanuit de server, pull door de worker, of
+een wachtrij waar workers uit trekken, en of segmenten via de server terugstromen of rechtstreeks
+naar de client. Dit hangt af van de topologie die in de praktijk voorkomt. Beslismoment: fase 13, en
+alleen als die fase begint.
+
+**Wanneer de content fingerprint verplicht wordt.** De kolom staat er vanaf fase 2 en wordt alleen
+berekend waar hij gevraagd wordt. Of hij bij elke scan gevuld moet worden, en met welk algoritme over
+hoeveel bytes, hangt af van hoe vaak relocatie tussen mounts in de praktijk voorkomt. **Dit is een
+gate:** de regel moet vastliggen voordat er scannerlogica wordt geschreven die op relocatie leunt,
+want een fingerprint die later van definitie verandert maakt elke eerder vastgelegde koppeling
+onbetrouwbaar. Zolang de scanner alleen inode-hernoemingen afhandelt, blijft de vraag open. Zie
+[hoofdstuk 7.2](#72-drie-begrippen-die-niet-door-elkaar-mogen-lopen).
+
+**Jobbibliotheek.** Een Postgres-gebaseerde jobrunner is de vorm; welke bibliotheek precies is nog
+open en wordt bij de start van fase 2 vastgesteld tegen actuele documentatie.
+
+**Opsplitsing van `MediaServerClient`.** De meting staat in fase 4 met een concreet criterium
+([hoofdstuk 5.3](#53-wordt-mediaserverclient-te-breed)). De uitkomst bepaalt of er een aparte
+opsplitsingsronde komt.
+
+### 24.3 Backlog uit dit onderzoek
+
+Gevonden tijdens het onderzoek, bewust niet gerepareerd, hier vastgelegd zodat het niet verdwijnt.
+
+| Bevinding | Plaats | Voorstel |
+| --- | --- | --- |
+| NEW-badge gebruikt `viewCount` in plaats van de kijkstatus, waardoor een half gekeken titel "NEW" kan tonen | `lib/widgets/new_content_badge.dart:36` | los oppakken, buiten dit spoor |
+| Force-unwrap op een Plex-client in een gedeeld scherm | `lib/screens/libraries/tabs/library_browse_tab.dart:296` | vervangen door een expliciete fout met bericht |
+| `clientScopeId` is nullable en betekent straks drie dingen | `lib/database/app_database.dart:318` | expliciet paar (server, gebruiker), migratie in fase 9 |
+| Twee parallelle reconnect-paden | `lib/services/multi_server_manager.dart` | één registratie-eenheid, niet vóór fase 3 |
+| Pleya Share-protocol serveert `MediaItem` als wire-type | `lib/services/pleya_share/pleya_share_protocol.dart:14` | optioneel overzetten op het `minimal`-profiel, na fase 1 |
+
+---
+
+## 25. Definition of Done: Pleya Server als zelfstandig mediaserverproduct
+
+Hoofdstuk 23 zegt wanneer een fase klaar is. Dit hoofdstuk zegt wanneer het product klaar is, en dat
+is een andere vraag. Dertien geslaagde fasen zijn geen bewijs dat Plex uit kan.
+
+### 25.1 De definitie
+
+> **Pleya Server is volwaardig wanneer alle capabilities die in de replacement matrix als Plex-off
+> blocker staan de status Productgereed hebben, en de `PLEX_OFFLINE_REPLACEMENT_GATE` slaagt zonder
+> ook maar één runtimeaanroep naar Plex.**
+
+Daarnaast draagt elke overige capability op dat moment precies één expliciete status: Productgereed,
+Bewust anders opgelost, of Bewust buiten scope. **Geen enkele capability mag bij de vrijgave van de
+replacement-release op onbekend staan.** De lijst zelf staat in
+[docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md](PLEYA-SERVER-REPLACEMENT-MATRIX.md) en wordt daar
+bijgehouden.
+
+Een zin als "ongeveer dezelfde functies als Plex" telt niet als definitie, omdat hij per lezer iets
+anders betekent en achteraf altijd waar te maken is.
+
+### 25.2 Technisch gereed is niet productgereed
+
+Een capability telt voor de gate pas als productgereed wanneer dagelijks gebruik dat niveau vraagt.
+Het verschil is niet cosmetisch:
+
+| Niveau | Voorbeeld |
+| --- | --- |
+| Technische capability | de scanner indexeert media |
+| Productgereed | een beheerder voegt een bibliotheek toe, start een scan, ziet de voortgang en begrijpt een fout, zonder de database aan te raken en zonder SSH |
+
+Vier fasen kunnen technisch gereed zijn terwijl het product dat niet is: PS-2, PS-4, PS-7 en PS-11.
+De mapping per fase staat in
+[hoofdstuk 6 van de replacement matrix](PLEYA-SERVER-REPLACEMENT-MATRIX.md#6-roadmapmapping-per-fase).
+
+### 25.3 `PLEX_OFFLINE_REPLACEMENT_GATE`
+
+```
+Plex-container stoppen
+        ↓
+Pleya Server blijft zelfstandig functioneren
+        ↓
+Pleya-clients blijven bruikbaar
+        ↓
+geen enkele Plex-aanroep op het normale Pleya Server-pad
+```
+
+Zeven categorieën, en één rode maakt de hele gate rood: **catalogus**, **playback**, **persoonlijke
+state**, **remote**, **offline**, **beheer** en **migratie**. De meetpunten per categorie staan in
+[hoofdstuk 9 van de replacement matrix](PLEYA-SERVER-REPLACEMENT-MATRIX.md#9-de-plex-off-acceptance-gate),
+zodat de criteria op één plek leven en niet in twee documenten uit elkaar kunnen lopen.
+
+Een release van Pleya Server mag pas als volwaardige Plex-vervanging worden aangeduid wanneer deze
+gate aantoonbaar slaagt. Tot dat moment is hij een backend naast Plex, en dat is een eerlijke en
+bruikbare tussenstand, maar het is niet hetzelfde.
+
+### 25.4 Geen Plex-runtimeafhankelijkheid na de gate
+
+> **Zolang een Pleya Server-verbinding actief is, mag geen normale Pleya Server-functionaliteit
+> runtime afhankelijk zijn van Plex.**
+
+Dus geen catalogus van Pleya Server met metadata van Plex, geen afspelen van Pleya Server met
+kijkstatus van Plex, geen gebruikers van Pleya Server met identiteit van Plex, en geen zoekopdracht
+op Pleya Server die stilletjes terugvalt op een Plex-bibliotheek.
+
+Drie dingen mogen Plex wél lezen, en die uitzonderingen zijn uitputtend: het migratiegereedschap uit
+[hoofdstuk 19](#19-migratie-vanaf-plex), de Plex-adapter zelf, en een tijdelijke fallback die
+expliciet in de scope van een migratiefase beschreven staat. Alles daarbuiten is een schending. **De
+gate accepteert geen verborgen fallback**, en een fallback die alleen in de code bestaat en niet in
+de fasebeschrijving is per definitie verborgen.
+
+### 25.5 Plex en Jellyfin blijven adapters
+
+De eindarchitectuur is een client met vijf backends:
+
+```
+Pleya Client
+    │
+    └── lib/media
+          ├── Plex adapter
+          ├── Jellyfin adapter
+          ├── Local Folder
+          ├── Pleya Share
+          └── Pleya Server
+```
+
+Pleya Server wordt de zelfstandige first-class backend. Plex en Jellyfin blijven optioneel en worden
+niet uitgefaseerd. **"Plex vervangen" betekent dat Pleya Plex niet meer nodig heeft, niet dat
+Plex-ondersteuning verdwijnt.** Dat onderscheid staat hier omdat het bij elke latere opruimronde
+opnieuw verward zal worden.
+
+Pleya Share blijft een apart product met een eigen eigenaar, levensduur, waarheidsbron en
+vertrouwensmodel, zoals [hoofdstuk 2](#2-de-grens-tussen-pleya-share-en-pleya-server) beschrijft.
+Gedeeld wordt het protocolvocabulaire, niet de productscope. Pleya Share wordt geen halve Pleya
+Server om duplicatie te vermijden.
+
+### 25.6 Wat er vandaag nog niet klopt
+
+Het opstellen van de replacement matrix leverde zevenendertig capabilities op die aan geen enkele
+fase hangen, waarvan tweeëntwintig een Plex-off blocker zijn, plus elf open productbesluiten. Ze
+staan in [hoofdstuk 7](PLEYA-SERVER-REPLACEMENT-MATRIX.md#7-roadmap-gaps) en
+[hoofdstuk 8](PLEYA-SERVER-REPLACEMENT-MATRIX.md#8-open-productbesluiten) van dat document.
+
+**Dit hoofdstuk wijzigt de roadmap niet.** De dertien fasen staan zoals ze stonden. Een gat wordt
+pas een fase via een Roadmap deviation proposal met de zes onderdelen uit
+[23.1](#231-de-roadmap-is-een-contract), en dat voorstel wordt niet automatisch doorgevoerd.
+
+---
+
+## Bijlage A: aannames die het onderzoek weerlegt
+
+De oorspronkelijke opdracht ging uit van een aantal dingen die niet blijken te kloppen. Ze staan hier
+apart, zodat de afwijkingen zichtbaar blijven in plaats van stil in de tekst te verdwijnen.
+
+**"De client zit diep aan Plex vast en moet eerst ontkoppeld worden."** De neutrale laag bestaat en
+draagt al vier backends, waarvan twee zonder enige Plex-eigenschap.
+`lib/media/media_server_client.dart` is 766 regels met ruim tachtig members, `ServerCapabilities`
+heeft negentien vlaggen, en `data_aggregation_service.dart` (623 regels) noemt Plex en Jellyfin
+alleen nog in commentaar. Er zijn 125 backend-vertakkingen over 52 bestanden, en een deel daarvan is
+legitiem omdat de backends echt verschillen. Ontkoppelen is niet de eerste stap; er bij komen wel.
+
+**"Fase B (een eigen mediaserver) moet nog beginnen."** `share_server/` draait op de NAS in Docker
+met read-only mounts, met een scanner, code-pairing met challenge/response, HTTP range-streaming en
+kijkvoortgang per gast. Het is beperkter dan Pleya Server wordt, en dat is een productkeuze en geen
+tekortkoming.
+
+**"Nieuwe playbackfunctionaliteit legt te veel Plex-verantwoordelijkheid in de client."** Het
+omgekeerde is waar. De client stelt geen enkele capability vast en stuurt op elk toestel dezelfde
+hardgecodeerde profielen (`plex_client.dart:3072-3110`,
+`jellyfin_client/parts/playback.dart:504-543`). De beslissing ligt volledig bij de backend die
+toevallig aan de lijn hangt. De client neemt te weinig verantwoordelijkheid, niet te veel.
+
+**"Het domeinmodel moet opnieuw worden ontworpen voor een eigen server."** `lib/media/` is bruikbaar
+zoals het is. Wat er nodig is, is een waarde bij twee enums en een mapper. De Plex-namen in het model
+(`ratingKey`, `leafCount`, `viewOffsetMs`) zijn een schuld die het protocol omzeilt door eigen
+veldnamen te gebruiken, niet een reden om het model te herbouwen.
+
+**"Pleya Share is de voorloper van Pleya Server."** Het zijn twee producten met een andere eigenaar,
+levensduur, waarheidsbron en vertrouwensmodel, zie [hoofdstuk 2](#2-de-grens-tussen-pleya-share-en-pleya-server).
+Ze delen een vocabulaire en geen runtime.
+
+**"Metadata is een vroege fase."** Metadata blokkeert de playbackkern niet, en de architecturale
+vernieuwing zit in het capability- en playbackcontract. In de roadmap staat metadata daarom op zeven,
+achter capabilities en het plan.
+
+**"Remote access vraagt een eigen relay."** De NAS draait al een uitbellende tunnel voor `pleya.app`
+en `ice.pleya.app` ([DEC-014](DECISIONS.md#dec-014)), en een mesh-VPN is een gelijkwaardige route.
+Wat de server moet leveren is correct gedrag achter een proxy; de rest is een recept.
+
+**Wat het onderzoek juist bevestigt.** Dat een eigen server nodig is als Pleya zelfstandig moet
+kunnen bestaan, dat Postgres het juiste fundament is voor een catalogus die identiteit los van
+locatie houdt, en dat de sessielevenscyclus rond transcoding een echt gat is: `universal/stop` komt
+nul keer voor in `lib/`.
