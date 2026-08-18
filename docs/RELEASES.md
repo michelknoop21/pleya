@@ -41,6 +41,7 @@ reads the topmost anchor and fills the block below with everything committed sin
 - twee tests die alleen op de Linux-runner omvielen
 - het koppelscherm vergat je modus, en de fout wees de verkeerde kant op
 - redigeer geheimen in query strings en headers standaard
+- sla een intro-marker alleen automatisch over bij een aflevering
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 221 · 17 August 2026
