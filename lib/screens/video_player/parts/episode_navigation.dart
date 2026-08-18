@@ -124,6 +124,47 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     );
   }
 
+  /// Remember the language behind a source-stream switch.
+  ///
+  /// While Plex is transcoding, the track pickers do not change an mpv track:
+  /// they select a different source stream and reload. That path never reaches
+  /// [TrackManager.onSubtitleTrackChanged], so nothing was written to
+  /// [TrackPreferenceStore] and the next episode fell back to whatever the
+  /// server had selected. Direct play remembered the choice, transcoding did
+  /// not, which is why this looked like the memory working only sometimes.
+  ///
+  /// Best effort: a stream without a language code says nothing about what to
+  /// pick next time, so the previous choice is left alone rather than cleared.
+  Future<void> _rememberSwitchedSourceLanguages({int? subtitleStreamId, int? audioStreamId}) async {
+    final settings = await SettingsService.getInstance();
+    if (!settings.read(SettingsService.rememberTrackSelections)) return;
+    if (!mounted) return;
+
+    if (subtitleStreamId != null) {
+      if (subtitleStreamId == 0) {
+        // Turning subtitles off here is as much a decision as picking one.
+        await TrackPreferenceStore.saveSubtitle(_currentMetadata, off: true);
+      } else {
+        final choice = subtitleStreamLanguage(_sourceSubtitleTracksForControls(), subtitleStreamId);
+        if (choice != null) {
+          await TrackPreferenceStore.saveSubtitle(
+            _currentMetadata,
+            language: choice.language,
+            title: choice.title,
+            forced: choice.forced,
+          );
+        }
+      }
+    }
+
+    if (audioStreamId != null) {
+      final choice = audioStreamLanguage(_currentMediaInfo?.audioTracks ?? const <MediaAudioTrack>[], audioStreamId);
+      if (choice != null) {
+        await TrackPreferenceStore.saveAudio(_currentMetadata, language: choice.language, title: choice.title);
+      }
+    }
+  }
+
   Future<void> _switchPlaybackSource({
     int? newMediaIndex,
     TranscodeQualityPreset? newPreset,
@@ -180,6 +221,10 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         if (!saved) {
           throw StateError('Failed to select streams');
         }
+        await _rememberSwitchedSourceLanguages(
+          subtitleStreamId: isSubtitleChange ? effectiveSubtitleStreamId : null,
+          audioStreamId: isAudioChange ? effectiveAudioStreamId : null,
+        );
       }
 
       await _reloadMediaInPlace(
