@@ -14,6 +14,11 @@ onderscheid is het hele punt van deze fase.
 De afwijking die deze fase aan de roadmap toevoegde staat in
 [docs/pleya-server-ps0-proposal.md](../docs/pleya-server-ps0-proposal.md).
 
+**PS-0 is gesloten en bevroren sinds 18 augustus 2026.** Verdere verfijning van de fundering gebeurt
+pas wanneer echte serverfunctionaliteit erom vraagt. De image is 93 MB en dat blijft zo: de
+glibc-basis is gekozen voor de latere ffmpeg- en QuickSync-route, en een runtimebasis vervangen kost
+meer dan hij aan megabytes oplevert.
+
 ## Gekozen versies
 
 Vastgezet op digest, want een tag verschuift en een mediaserver waarvan de
@@ -174,7 +179,7 @@ Plex-container.
 | Bestandssysteem van de mount | btrfs, `mounted_read_only: true` |
 | `read_only` rootfs | toegepast, schrijven naar `/` faalt |
 | `cap_drop: ALL` | toegepast, `CapEff` is `0000000000000000` |
-| `no-new-privileges` | gezet, zie de noot hieronder |
+| `no-new-privileges` | toegepast; op deze kernel niet uit `/proc` te verifiëren, zie de noot |
 | Postgres hostpoort | geen |
 | Persistentie over een herstart | data komt terug |
 | Database weg | `/healthz` 200, `/readyz` 503 |
@@ -189,10 +194,10 @@ Plex-container.
 
 Ter vergelijking stond Plex op hetzelfde moment op 2,03% CPU en 1,495 GiB.
 
-**Noot bij `no-new-privileges`.** Docker heeft de optie toegepast, maar de
-kernel van DSM 7.3.2 toont het veld `NoNewPrivs` niet in `/proc/<pid>/status`,
-dus het is op deze machine niet waarneembaar. Wat wel waarneembaar is en wel
-klopt: alle capabilities zijn weg.
+**Noot bij `no-new-privileges`.** Docker past de optie toe, maar de kernel van
+DSM 7.3.2 toont het veld `NoNewPrivs` niet in `/proc/<pid>/status`. Dat is een
+verificatiebeperking van het platform en geen openstaand punt: alle
+capabilities zijn aantoonbaar weg en het proces draait non-root.
 
 **Noot bij de mediamounts.** Getest is `/volume1/Intern_PlexMedia`, btrfs. Op
 deze NAS staat een deel van de bibliotheek op `fuseblk.ntfs`

@@ -1493,6 +1493,7 @@ achter een nieuwe `ConnectionKind` naast de bestaande vier.
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-0 |
+| Status | **gesloten en bevroren, 18 augustus 2026** |
 | Doel | aantonen dat een Go-service met Postgres betrouwbaar in Docker op de DS920+ draait, naast de bestaande Plex-container |
 | Bijdrage aan einddoel | elke latere fase draait in deze container; onbewezen blijft de uitvoeringsomgeving een aanname die halverwege PS-2 alsnog kan omvallen |
 | Afhankelijkheden | geen |
@@ -1544,6 +1545,62 @@ shutdown. De containerintegratie wordt via een verificatiescript bewezen.
 **Roadmap Drift Check.** Staat er een tabel, een endpoint uit het protocol, of een ffmpeg in de
 image? Dat hoort in PS-1 of PS-2 en gaat eruit. Is een gemeten belemmering weggeschreven in plaats
 van gerapporteerd? Terugdraaien.
+
+#### Uitkomst: gesloten op 18 augustus 2026
+
+Alle zeven acceptatiecriteria zijn gehaald op de echte DS920+, naast een draaiende Plex. De code
+staat in [pleya_server/](../pleya_server/README.md), waar ook alle gemeten waarden staan.
+
+| Aanname uit onderdeel 2 van het voorstel | Uitkomst |
+| --- | --- |
+| Draait een actuele Postgres op kernel 4.4.302 met cgroups v1 | ja, PostgreSQL 18.6, healthcheck groen |
+| Kan een non-root container de bibliotheek lezen | ja, als `1026:100`, dezelfde uid/gid als Plex |
+| Pakken `read_only` en `cap_drop` op deze DSM | ja, schrijven naar `/` faalt en `CapEff` is `0000000000000000` |
+| Houdt de inode-aanname op elk van de vijf mounts | **niet gemeten**, zie hieronder |
+
+Idle gebruikt de stack 0,00% CPU en samen 38 MiB geheugen. Databaseverlies maakt `/readyz` rood en
+laat `/healthz` groen; herstel werkt zonder rebuild. SIGTERM geeft exitcode 0.
+
+**Drift check.** Er staat geen tabel, geen endpoint uit het protocol en geen ffmpeg in de image.
+`lib/`, `server/` en `share_server/` zijn niet aangeraakt. Er is geen scope blijven liggen.
+
+**Eén meting is bewust niet gedaan.** Getest is `/volume1/Intern_PlexMedia`, btrfs. De
+`fuseblk.ntfs`-mount op `/volumeUSB5` is leesbaar voor uid 1026, maar of de verandersdetectie daar
+op stabiele inodes kan bouwen is een vraag van PS-2 en niet van de fundering. De server logt daarom
+bij elke start het bestandssysteemtype per mediamount, zodat PS-2 die meting kant en klaar aantreft.
+
+**`no-new-privileges` is geen openstaand punt.** Docker past de optie toe, maar de kernel van
+DSM 7.3.2 toont het veld `NoNewPrivs` niet in `/proc/<pid>/status`. Dat is een verificatiebeperking
+van het platform, niet een onzekerheid over de container: alle capabilities zijn aantoonbaar weg en
+het proces draait non-root.
+
+**De fase is bevroren.** Verdere verfijning van de Docker Foundation gebeurt pas wanneer echte
+serverfunctionaliteit erom vraagt. De image is 93 MB; die niet verkleinen is een keuze, want de
+glibc-basis is gekozen voor de latere ffmpeg- en QuickSync-route en een runtimebasis vervangen kost
+meer dan hij aan megabytes oplevert.
+
+#### Wat PS-1 hiervan erft
+
+De volgende rij was voor deze fase een ontwerpaanname en is nu een gemeten deploymentgegeven.
+
+| | |
+| --- | --- |
+| Runtimedoel | Docker op Linux, `amd64` |
+| Eerste productiedoel | Synology DS920+, DSM 7.3.2 |
+| Runtimebasis | Debian bookworm, non-root |
+| Database | PostgreSQL 18, privaat, geen hostpoort |
+| Media | read-only mounts, meerdere roots |
+| Serverstate | `/config` duurzaam, `/cache` herbouwbaar, `/transcode` vluchtig |
+| Poort in de container | 8080 |
+| Hostpoort tijdens ontwikkeling | `127.0.0.1:8832` |
+| Liveness en readiness | `/healthz` en `/readyz` |
+
+**Geen van deze gegevens hoort in het protocol.** Ze beschrijven hoe deze server draait, niet wat
+een client mag verwachten. `GET /pleya/v1/info` weet niets van Postgres, Synology, Docker,
+containerpaden of poortnummers, en een client die dat wel zou kunnen aflezen is aan een specifieke
+opstelling vastgeklonken. De regel uit [hoofdstuk 16.2](#162-dreigingen-en-antwoorden) dat het
+publieke `/info` geen servernaam, versie of buildnummer draagt geldt hier onverkort: een
+deploymentdetail is nooit protocoloppervlak.
 
 ---
 

@@ -31,6 +31,17 @@ Geen protocol, geen `/pleya/v1`, geen schema, geen tabel, geen scanner, geen ffp
 geen metadata, geen streaming, geen kijkstatus, geen gebruikers, geen authenticatie. De replacement
 matrix is inhoudelijk niet aangeraakt.
 
+### Gesloten
+PS-0 is gesloten en bevroren. De drift check is schoon: geen tabel, geen protocolendpoint en geen
+ffmpeg in de image, en `lib/`, `server/` en `share_server/` zijn niet aangeraakt. Er gaat niets meer
+bij aan de fundering voordat serverfunctionaliteit erom vraagt, en de 93 MB image blijft zoals hij
+is omdat de glibc-basis voor de latere ffmpeg-route gekozen is.
+
+`no-new-privileges` staat als verificatiebeperking van DSM 7.3.2 genoteerd en niet als openstaand
+punt: de optie wordt toegepast, alle capabilities zijn weg en het proces draait non-root. De
+`fuseblk.ntfs`-mount blijft bewust ongemeten; dat is een vraag van PS-2, die de meting kant en klaar
+aantreft omdat de server bij elke start het bestandssysteemtype per mediamount logt.
+
 ## [2026-08-18] De replacement matrix maakt zichtbaar wat er nog tussen Pleya Server en Plex-off staat
 
 Document-only. De roadmap is niet gewijzigd; de gaten zijn vastgelegd als bevinding.

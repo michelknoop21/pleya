@@ -117,8 +117,16 @@ Het Atmos-spoor staat er nog precies zo bij als gisteren: een iOS-log van build 
 
 ## Volgende stap
 
-**PS-1 blijft wachten tot na 2.8.0.** PS-0 is af en vrijgegeven; dat verandert niets aan de volgorde
-daarna. Fase 3 is de eerste die de app raakt, en die wil je niet naast een lopende indiening hebben.
+**PS-0 is gesloten en bevroren; PS-1 blijft wachten tot na 2.8.0.** De drift check is schoon en alle
+zeven acceptatiecriteria zijn op de echte NAS gehaald, dus er gaat niets meer bij aan de Docker
+Foundation voordat serverfunctionaliteit erom vraagt. Dat verandert niets aan de volgorde daarna:
+fase 3 is de eerste die de app raakt, en die wil je niet naast een lopende indiening hebben.
+
+PS-1 erft wel een betere uitgangspositie. Runtimedoel, database, mediamounts, mapindeling, poorten
+en de twee health-endpoints zijn geen ontwerpaannames meer maar gemeten deploymentgegevens; ze staan
+op een rij in de PS-0-sectie van het architectuurdocument. Met één regel eromheen: **geen van die
+gegevens hoort in het protocol.** `GET /pleya/v1/info` weet niets van Postgres, Synology, Docker,
+containerpaden of poortnummers.
 
 **Besluiten wat er met de 26 blockers zonder fase gebeurt, vóór PS-1 wordt vrijgegeven.** Twaalf
 gegroepeerde gaten staan in
