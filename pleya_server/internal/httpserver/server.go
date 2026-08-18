@@ -25,6 +25,11 @@ type Options struct {
 	Addr   string
 	DB     Pinger
 	Logger *slog.Logger
+
+	// Handler is de volledige router. Blijft hij leeg, dan luistert de server
+	// alleen op de twee operationele endpoints; dat is de toestand waarin PS-0
+	// hem achterliet.
+	Handler http.Handler
 }
 
 // Server draait de HTTP-laag.
@@ -35,14 +40,18 @@ type Server struct {
 
 // New bouwt de server. Er wordt nog niet geluisterd.
 func New(opts Options) *Server {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", healthz)
-	mux.HandleFunc("GET /readyz", readyz(opts.DB))
+	handler := opts.Handler
+	if handler == nil {
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /healthz", healthz)
+		mux.HandleFunc("GET /readyz", readyz(opts.DB))
+		handler = mux
+	}
 
 	return &Server{
 		http: &http.Server{
 			Addr:              opts.Addr,
-			Handler:           mux,
+			Handler:           handler,
 			ReadHeaderTimeout: 10 * time.Second,
 		},
 		log: opts.Logger,

@@ -2,6 +2,53 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-19] PS-2 bouwt de read-only catalogus
+
+Een Go-service die een bestandsboom scant, de catalogus in Postgres bijhoudt en de leeskant van het
+protocol serveert. Elfduizend regels Go in negentien testbestanden en drie migraties. Het contract
+uit PS-1 is niet aangeraakt.
+
+### Added
+- **Twaalf tabellen in drie migraties**, uitgevoerd bij het opstarten met een advisory lock, een checksum per toegepaste migratie, en een weigering te starten als de database nieuwer is dan de binary. `/readyz` wordt pas groen nadat ze gedraaid zijn.
+- **De scanner met de drie lagen uit hoofdstuk 7.3.** Eén `stat` per bestand; bij verschil of bij een mount waar de inode niets betekent een hash over kop en staart plus de grootte; en alleen daarna ffprobe. Een tweede ronde zonder wijzigingen schrijft geen enkele rij in `media_files`.
+- **ffprobe met een detectionStatus en een source per veld**, volgens hoofdstuk 7.4, opgeslagen als `jsonb`. De lijn draagt het nog niet; dat is PS-6. Wat er niet gebeurt is interpreteren: `color_transfer` en het Dolby Vision-configuratierecord gaan er rauw in, want er een HDR-oordeel van maken is planner-beleid.
+- **Negen leesendpoints**, met cursorpaginering, sorteren, zoeken over alle bibliotheken, home-bouwstenen, en het leveren van artwork en losse ondertitels van schijf.
+- **De bootstrap-auth uit specificatie 6.5.** Een setupcode op de console bij de eerste start, Argon2id in PHC-vorm, refreshtokens die roteren met hergebruikdetectie, en een streamtoken dat één mediaresource opent en verder niets. De ondertekensleutel staat in `/config` met rechten 0600 en niet in Postgres.
+- **Een jobrunner in dezelfde database**, met `FOR UPDATE SKIP LOCKED`, backoff met een dak, en een dedupe key die een tweede scanverzoek voor dezelfde bibliotheek eruit houdt zolang het eerste loopt.
+- **ffmpeg 5.1.9 in de image**, op een exacte versie gepind.
+- **`scripts/verify-protocol.sh`**, dat de antwoorden van een draaiende server vastlegt en met `scripts/check_server_responses.py` tegen hetzelfde `openapi.yaml` houdt waar ook de fixtures tegen valideren. Negentien antwoorden, acht schema's, alle gedekt.
+- **`scripts/test-db.sh` en `scripts/test-image.sh`**, die een wegwerp-Postgres en een Go-toolchain met dezelfde gepinde ffmpeg klaarzetten. Staan ze er niet, dan slaan de tests zichzelf over in plaats van te falen.
+
+### Changed
+- **`scripts/verify-local.sh` telt veertien secties** in plaats van dertien. De nieuwe sectie zet de catalogus neer met ffmpeg uit de image zelf, wisselt de setupcode in, bladert erdoorheen, controleert dat streaming en kijkstatus 404 geven, en herstart de container om te zien of de ids blijven staan.
+- **`compose.yaml` kent een tweede mediavolume.** De bibliotheek op deze NAS staat over btrfs en fuseblk.ntfs verspreid, en juist dat verschil is wat de scanner moet meten.
+
+### Vier besluiten
+`DEC-040` tot en met `DEC-043`. De grouping key is geen identiteit en heet daarom niet zo. Media,
+ondertitels en artwork delen één bestandstabel, want die 5578 losse `.srt`-bestanden hebben dezelfde
+goedkope detectie nodig als de media ernaast. De jobtabel is eigen werk en beantwoordt de open vraag
+uit 17.1 niet. En de inodebetrouwbaarheid staat per root in de database, wordt gemeten en niet
+aangenomen, en een gunstige ronde zet een root niet vanzelf op vertrouwen.
+
+### Wat er groter van werd
+De image gaat van 93 MB naar ongeveer 780 MB. Zeshonderd daarvan is de afhankelijkheidsboom van
+Debians `ffmpeg`: via `libavdevice` komt de hele Mesa- en LLVM-stack mee, waarvan LLVM alleen al
+112 MB. Een statische build zou kleiner zijn maar levert een GPL-binary van derden mee, met een
+bronaanbod erbij. Dat is een aparte afweging.
+
+### Wat er bewust niet in zit
+Geen streaming, geen kijkstatus in welke richting dan ook, geen metadata-providers, geen afspeelplan,
+geen gebruikersmodel. `GET /pleya/v1/stream/{version_id}` en beide kijkstatus-endpoints geven een 404,
+en `capabilities.watch_state` staat op `false`. Poort 3 en poort 4 zijn niet aangeraakt en staan nog
+steeds open.
+
+### Verificatie
+`scripts/check_protocol.sh` onveranderd groen. `scripts/verify-local.sh`: 54 controles.
+`scripts/verify-protocol.sh`: 19 antwoorden tegen `openapi.yaml`, alle acht schema's gedekt. De
+acceptatiecriteria staan als test: duizend bestanden scannen volledig, een tweede ronde draait
+ffprobe nul keer, een hernoemd bestand behoudt zijn item-id, en `/readyz` wordt pas groen na een
+geslaagde migratie.
+
 ## [2026-08-18] PS-1 goedgekeurd en bevroren, PS-2 vrijgegeven
 
 Twee poorten dicht. De goedkeuring was inhoudelijk akkoord met het contract, met de opdracht om drie

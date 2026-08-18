@@ -1,59 +1,104 @@
-# Pleya Server, PS-0 Docker Foundation
+# Pleya Server
 
-Een Go-service met Postgres in Docker, bedoeld om naast een bestaande
-Plex-container op een Synology NAS te draaien. Dit is de fundering onder de
-roadmap in [docs/pleya-server-architecture.md](../docs/pleya-server-architecture.md),
-en verder niets.
+Een mediaserver in Go met Postgres, bedoeld om naast een bestaande Plex-container op een Synology NAS
+te draaien. De roadmap staat in [docs/pleya-server-architecture.md](../docs/pleya-server-architecture.md);
+dit bestand beschrijft wat er nu draait en hoe u het aan de praat krijgt.
 
-De service is met opzet leeg. Hij leest configuratie, logt gestructureerd,
-opent een databasepool, luistert op HTTP met `/healthz` en `/readyz`, en sluit
-netjes af op SIGTERM. Er is geen catalogus, geen protocol, geen scanner en geen
-ffmpeg. Wat hier faalt ligt aan de container en niet aan het product, en dat
-onderscheid is het hele punt van deze fase.
+**Stand: PS-2, read-only catalogus.** De server scant een bestandsboom, houdt de catalogus bij in
+Postgres, en serveert de leeskant van [Pleya Protocol v1](../docs/pleya-protocol-v1.md). Er is nog
+geen streaming, geen kijkstatus, geen metadata-provider en geen gebruikersmodel. Dat zijn PS-4, PS-7
+en PS-9, en ze staan bewust niet half in.
 
-De afwijking die deze fase aan de roadmap toevoegde staat in
-[docs/pleya-server-ps0-proposal.md](../docs/pleya-server-ps0-proposal.md).
+PS-0 (de Docker-fundering) is gesloten en bevroren; de afwijking die die fase aan de roadmap
+toevoegde staat in [docs/pleya-server-ps0-proposal.md](../docs/pleya-server-ps0-proposal.md).
 
-**PS-0 is gesloten en bevroren sinds 18 augustus 2026.** Verdere verfijning van de fundering gebeurt
-pas wanneer echte serverfunctionaliteit erom vraagt. De image is 93 MB en dat blijft zo: de
-glibc-basis is gekozen voor de latere ffmpeg- en QuickSync-route, en een runtimebasis vervangen kost
-meer dan hij aan megabytes oplevert.
+## Wat de server doet
 
-## Gekozen versies
+Bij het opstarten migreert hij het schema, richt hij de bootstrap-identiteit in, en zet hij per
+bibliotheek een scanronde in de wachtrij. Een ronde loopt de geconfigureerde roots af, bepaalt per
+bestand of er iets te doen is, en analyseert alleen wat werkelijk veranderd is. Daarna is de
+catalogus te doorbladeren met `curl`, of straks met de app.
 
-Vastgezet op digest, want een tag verschuift en een mediaserver waarvan de
-basis onder de build vandaan wisselt is niet reproduceerbaar.
+Verandersdetectie werkt in drie lagen, uit [hoofdstuk 7.3](../docs/pleya-server-architecture.md#73-wat-de-scanner-elke-ronde-doet).
+Laag 1 is één `stat` per bestand: is `(inode, size, mtime)` onveranderd, dan is er niets te doen.
+Laag 2 is een hash over de eerste en de laatste megabyte plus de grootte, en die draait wanneer laag
+1 iets ziet of wanneer de inode op deze mount niets betekent. Laag 3 is ffprobe, en die draait alleen
+op wat laag 2 als gewijzigd aanmerkt.
 
-| Onderdeel | Versie | Digest |
+Die tweede laag is nadrukkelijk geen bewijs van gelijkheid. Een hash over kop en staart zegt niets
+over het middenstuk, en een remux kan precies dat veranderen. Hij beslist alleen of er verder gekeken
+wordt; [hoofdstuk 7.2](../docs/pleya-server-architecture.md#72-drie-begrippen-die-niet-door-elkaar-mogen-lopen)
+legt uit waarom dat onderscheid ertoe doet.
+
+Een hernoemd of verplaatst bestand houdt zijn identiteit. Op een mount met bruikbare inodes gaat dat
+via de inode; daarbuiten via de scan-signature, die op zo'n mount toch al voor elk bestand berekend
+wordt. Het item, de versie en straks de kijkstatus verhuizen mee, want alleen de bestandsrij
+verandert.
+
+## Wat het schema draagt
+
+Twaalf tabellen, in drie migraties.
+
+| Groep | Tabellen | Waarvoor |
 | --- | --- | --- |
-| Go | 1.26.6 | `golang:1.26.6-bookworm@sha256:116d58cb…` |
-| Runtime | Debian bookworm-slim | `debian:bookworm-slim@sha256:abd67ffc…` |
-| PostgreSQL | 18.6 | `postgres:18.6-bookworm@sha256:7d2695c3…` |
-| pgx | v5.10.0 | via `go.sum` |
+| Identiteit en auth | `server_instance`, `auth_owner`, `auth_refresh_tokens` | de bootstrap-identiteit uit specificatie 6.5, en niets daarbuiten |
+| Catalogus | `libraries`, `storage_locations`, `media_items`, `media_versions`, `media_files`, `media_streams` | het domeinmodel uit hoofdstuk 7.1 |
+| Werk | `jobs`, `scan_runs` | duurzame jobs en meetbare scanvoortgang |
 
-Debian en geen Alpine, omdat [hoofdstuk 22](../docs/pleya-server-architecture.md#22-deployment-en-distributie)
-later een gepinde ffmpeg in de image vraagt en de Intel-mediastack die de
-DS920+ nodig heeft op glibc een pakket is. Er zit nu nog geen ffmpeg in.
+Drie keuzes die uitleg verdienen, en die als [DEC-040](../docs/DECISIONS.md#dec-040-grouping-key-en-identiteit-zijn-twee-dingen-in-het-catalogusschema)
+tot en met [DEC-043](../docs/DECISIONS.md#dec-043-de-inodebetrouwbaarheid-staat-per-root-in-de-database-en-wordt-gemeten-en-niet-aangenomen)
+vastliggen.
 
-Bookworm en geen trixie, omdat DSM op kernel 4.4.302 draait.
+**`grouping_key` heet bewust niet `identity_key`.** Hij doet één ding: een nieuw gevonden bestand aan
+een bestaand item hangen. Een bestand dat al bekend is komt er nooit langs.
 
-## Vereisten
+**`media_files` draagt elk pad dat de scanner volgt**, met een `role` die media, ondertitel en artwork
+onderscheidt. De testbibliotheek telt 2601 videobestanden naast 5578 losse `.srt`-bestanden en 2923
+`.jpg`-bestanden, en die sidecars hebben dezelfde goedkope detectie nodig als de media zelf.
 
-- Docker met de Compose-plug-in. Getest op DSM 7.3.2 met Docker 24.0.2 en
-  Compose v2.20.1.
-- SSH-toegang tot de NAS, en Docker zonder `sudo`.
-- Een mediabibliotheek die read-only gemount mag worden.
+**Detectiemetadata staat per veld in een `jsonb`-kolom**, met de drie statussen en vijf bronnen uit
+[hoofdstuk 7.4](../docs/pleya-server-architecture.md#74-wat-ffprobe-wel-en-niet-betrouwbaar-zegt).
+De lijn draagt het nog niet; dat komt in PS-6 bij de planner. Wat er niet gebeurt is interpreteren:
+`color_transfer` en het Dolby Vision-configuratierecord gaan er rauw in zoals ffprobe ze geeft, want
+er een HDR-oordeel van maken is planner-beleid.
 
-Op de ontwikkelmachine is Go niet nodig. `scripts/go-tool.sh` draait de
-toolchain in dezelfde gepinde image die de container bouwt.
+Wat er níét in staat: geen `users`, geen `sessions`, geen `library_permissions`, geen `watch_states`,
+geen `external_ids`, geen `metadata_candidates`, geen `transcode_sessions`. De tabellenlijst in
+hoofdstuk 17.2 beschrijft het hele v1-product en niet deze fase; `users` en `sessions` staan er ook
+in en zijn voor PS-2 uitdrukkelijk verboden.
+
+## Wat er op de lijn zit
+
+Negen endpoints van de zeventien uit het protocol.
+
+| Endpoint | Klasse |
+| --- | --- |
+| `GET /pleya/v1/info` | publiek |
+| `POST /pleya/v1/auth/setup`, `/auth/login`, `/auth/refresh` | publiek |
+| `POST /pleya/v1/auth/stream-token` | geauthenticeerd |
+| `GET /pleya/v1/server` | geauthenticeerd |
+| `GET /pleya/v1/libraries`, `/libraries/{id}/items` | geauthenticeerd |
+| `GET /pleya/v1/items/{id}`, `/items/{id}/children` | geauthenticeerd |
+| `GET /pleya/v1/search`, `/hubs/{hub_id}` | geauthenticeerd |
+| `GET /pleya/v1/artwork/{id}` | geauthenticeerd |
+| `GET /pleya/v1/subtitles/{id}` | geauthenticeerd of met een streamtoken |
+
+`GET /pleya/v1/stream/{version_id}` en beide kijkstatus-endpoints bestaan niet en geven een 404. Dat
+is opzet: streaming is PS-4, en de twee poorten die daaronder liggen (het conflictmodel voor
+kijkstatus en de byte-validator achter de `ETag`-belofte) staan nog open in
+[docs/pleya-server-gates.md](../docs/pleya-server-gates.md). `capabilities` in `/info` zegt hetzelfde:
+`watch_state` staat op `false`, en capabilities is leidend.
+
+`continue_watching` en `next_up` leveren een lege lijst en geen fout. De specificatie noemt dat de
+normale toestand van een catalogusserver die nog niet kan afspelen.
 
 ## Installeren op een Synology NAS
 
 ### 1. Mappen aanmaken
 
-Drie schrijfbare mappen met drie verschillende levensduren. Ze horen los van
-elkaar te staan: op één volume neemt een vollopende transcode-scratch de
-database mee, en dan is de cache ook niet meer uit een back-up te houden.
+Drie schrijfbare mappen met drie verschillende levensduren. Ze horen los van elkaar te staan: op één
+volume neemt een vollopende transcode-scratch de database mee, en dan is de cache ook niet meer uit
+een back-up te houden.
 
 ```sh
 ssh synology
@@ -66,10 +111,9 @@ mkdir -p /volume1/docker/pleya-server/data/{config,cache,transcode}
 | `data/cache` | herbouwbaar | nee |
 | `data/transcode` | vluchtig, hoge churn | nee |
 
-Reken op groei. Ter vergelijking: de Plex-datamap op deze NAS is 60 GB, waarvan
-51 GB in `Media` zit, de hoofdstukminiaturen en markers die de scanner per
-bestand afleidt. De catalogusdatabase is daarvan maar 520 MB. De dure opslag is
-niet de catalogus maar wat er per bestand uit wordt afgeleid.
+In `data/config` komt ook de ondertekensleutel te staan, in `token-signing.key` met rechten 0600. Die
+staat bewust niet in Postgres: een databasedump mag geen sessies opleveren. Raakt het bestand kwijt,
+dan zijn alle uitstaande tokens ongeldig en logt iedereen opnieuw in; de catalogus blijft ongemoeid.
 
 ### 2. Uw uid en gid opzoeken
 
@@ -78,8 +122,8 @@ id
 # uid=1026(Michel) gid=100(users) ...
 ```
 
-Op deze NAS is dat `1026:100`, precies de combinatie waarmee de Plex-container
-al leest. De bibliotheek is daarmee bewezen leesbaar zonder één rechtenwijziging.
+Op deze NAS is dat `1026:100`, precies de combinatie waarmee de Plex-container al leest. De
+bibliotheek is daarmee bewezen leesbaar zonder één rechtenwijziging.
 
 ### 3. `.env` invullen
 
@@ -89,18 +133,29 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-Genereer het wachtwoord met `openssl rand -hex 32`. Bewust hex en geen base64:
-een verbindingsreeks is een URL, en `+`, `/` en `=` vragen daar om escaping die
-vroeg of laat ergens misgaat.
+Genereer het wachtwoord met `openssl rand -hex 32`. Bewust hex en geen base64: een verbindingsreeks
+is een URL, en `+`, `/` en `=` vragen daar om escaping die vroeg of laat ergens misgaat.
 
-Vul verder in: `PLEYA_UID` en `PLEYA_GID` uit stap 2, `PLEYA_SERVER_MEDIA_HOST`
-met het pad naar uw bibliotheek, en de drie `_HOST`-paden uit stap 1.
+Vul verder in: `PLEYA_UID` en `PLEYA_GID` uit stap 2, de drie `_HOST`-paden uit stap 1, de
+mediavolumes, en de bibliotheken.
 
-**Wat `.env` wel en niet doet.** Het houdt de credential uit Git. Het verbergt
-hem niet voor een Docker-beheerder: `docker inspect pleya-server` toont de
-environment van de container. Voor een database zonder hostpoort op een NAS die
-u zelf beheert is dat een aanvaardbare grens, maar het is een bewuste keuze en
-geen bescherming die er niet is.
+```sh
+PLEYA_SERVER_MEDIA_HOST=/volume1/Intern_PlexMedia
+PLEYA_SERVER_MEDIA_HOST_2=/volumeUSB5/usbshare5-2/Plex
+PLEYA_SERVER_LIBRARIES=films=movies:/media/library/Films,/media/library2/Films;series=shows:/media/library/Series,/media/library2/Series
+```
+
+De vorm is `slug=soort:/pad[,/pad]`, gescheiden door puntkomma's, met `movies` of `shows` als soort.
+Een eigen titel kan ertussen: `films="Onze films"=movies:/media/library/Films`.
+
+**De slug is de matchsleutel**, niet de titel en niet het pad. Daarom overleeft een bibliotheek een
+hernoeming en een verplaatste root met zijn ids intact. Een nieuwe slug is een nieuwe bibliotheek,
+met nieuwe ids voor alles eronder.
+
+**Wat `.env` wel en niet doet.** Het houdt de credential uit Git. Het verbergt hem niet voor een
+Docker-beheerder: `docker inspect pleya-server` toont de environment van de container. Voor een
+database zonder hostpoort op een NAS die u zelf beheert is dat een aanvaardbare grens, maar het is een
+bewuste keuze en geen bescherming die er niet is.
 
 ### 4. Starten
 
@@ -115,19 +170,25 @@ Vanaf een werkkopie gaat het in één opdracht:
 pleya_server/deploy-nas.sh
 ```
 
-Dat verstuurt de bronnen, laat de NAS zelf bouwen en wacht tot `/readyz` groen
-is. De NAS bouwt zelf omdat hij amd64 is en de ontwikkelmachine dat meestal niet
-is; emuleren duurt langer dan bouwen.
+Dat verstuurt de bronnen, laat de NAS zelf bouwen en wacht tot `/readyz` groen is. De NAS bouwt zelf
+omdat hij amd64 is en de ontwikkelmachine dat meestal niet is; emuleren duurt langer dan bouwen.
 
-### Via Container Manager
+### 5. De eigenaar aanmaken
 
-De hierboven beschreven route over SSH is de route die in deze sessie is
-getest. Container Manager kan dezelfde stack als Project draaien
-(**Project** ▸ **Create**, pad `/volume1/docker/pleya-server`, en de bestaande
-compose-file gebruiken), maar dat is hier niet geverifieerd. Twee dingen om op
-te letten als u die weg kiest: oudere versies verwachten de bestandsnaam
-`docker-compose.yml` in plaats van `compose.yaml`, en `.env` moet in dezelfde
-map staan.
+De eerste start drukt een setupcode af op de console. Er is geen standaardwachtwoord en geen
+ingebouwd account.
+
+```sh
+docker compose logs pleya-server | grep Setupcode
+#   Setupcode: K7M-2QX-91B
+
+curl -s -X POST http://127.0.0.1:8832/pleya/v1/auth/setup \
+  -H 'Content-Type: application/json' \
+  -d '{"setup_code":"K7M-2QX-91B","username":"michel","password":"..."}'
+```
+
+Het antwoord is een tokenpaar. De code vervalt bij die eerste geslaagde inwisseling en daarnaast na
+een halfuur vanzelf; is hij verlopen, dan drukt een herstart een nieuwe af.
 
 ## Bediening
 
@@ -136,11 +197,31 @@ cd /volume1/docker/pleya-server
 
 docker compose ps                        # status
 curl -s http://127.0.0.1:8832/healthz    # leeft het proces
-curl -s http://127.0.0.1:8832/readyz     # is de database bereikbaar
+curl -s http://127.0.0.1:8832/readyz     # database bereikbaar en migraties gedraaid
 docker compose logs -f pleya-server      # logs volgen
-docker compose stop                      # stoppen
-docker compose start                     # starten
 docker compose up -d --build             # bijwerken na een codewijziging
+```
+
+Door de catalogus bladeren met een accesstoken:
+
+```sh
+A=<access_token>
+B=http://127.0.0.1:8832/pleya/v1
+
+curl -s -H "Authorization: Bearer $A" $B/libraries
+curl -s -H "Authorization: Bearer $A" "$B/libraries/<id>/items?sort=-added_at&limit=20"
+curl -s -H "Authorization: Bearer $A" $B/items/<id>
+curl -s -H "Authorization: Bearer $A" "$B/search?q=grease"
+curl -s -H "Authorization: Bearer $A" $B/hubs/recently_added
+```
+
+De voortgang van een lopende scan staat in `scan_runs` en in de logregels `scan gestart` en
+`scan klaar`. Er is bewust geen endpoint voor: realtime is PS-11, en een trage NAS die lijkt te hangen
+is met een teller die oploopt net zo goed te onderscheiden van een scanner die vastzit.
+
+```sh
+docker compose exec postgres psql -U pleya -d pleya -c \
+  "SELECT state, files_seen, files_probed, current_path FROM scan_runs ORDER BY started_at DESC LIMIT 3"
 ```
 
 Verwijderen zonder de mediabibliotheek te raken:
@@ -154,101 +235,100 @@ De mediabibliotheek is read-only gemount en wordt door geen van beide geraakt.
 
 ## De LAN-grens
 
-De hostpoort is gebonden aan `127.0.0.1` van de NAS. Dat is een securitygrens:
-er is in PS-0 nog geen authenticatie, en een onbeschermde service op het
-thuisnetwerk zetten is geen goede eerste stap. Uw telefoon, Apple TV of laptop
-kan hem dus niet bereiken, en dat hoeft ook niet: PS-0 heeft niets te bedienen.
+De hostpoort is gebonden aan `127.0.0.1` van de NAS. De authenticatiegrens bestaat inmiddels, maar
+openstellen is een aparte stap: dat hoort bij PS-11 en gebeurt volgens
+[hoofdstuk 15](../docs/pleya-server-architecture.md#15-remote-toegang) achter een omgekeerde proxy of
+een tunnel, zoals `ice.pleya.app` dat al doet. De rate limiter op de auth-endpoints is in het geheugen
+en per proces; dat is genoeg voor een huisserver met één identiteit en niet voor een server aan het
+open internet.
 
-Openstellen gebeurt in de fase waarin de authenticatiegrens bestaat, en dan
-volgens [hoofdstuk 15](../docs/pleya-server-architecture.md#15-remote-toegang):
-achter een omgekeerde proxy of een tunnel, zoals `ice.pleya.app` dat al doet.
+## Gekozen versies
+
+Vastgezet op digest of op een exacte versie, want een tag verschuift en een mediaserver waarvan de
+basis onder de build vandaan wisselt is niet reproduceerbaar.
+
+| Onderdeel | Versie | Pin |
+| --- | --- | --- |
+| Go | 1.26.6 | `golang:1.26.6-bookworm@sha256:116d58cb…` |
+| Runtime | Debian bookworm-slim | `debian:bookworm-slim@sha256:abd67ffc…` |
+| PostgreSQL | 18.6 | `postgres:18.6-bookworm@sha256:7d2695c3…` |
+| ffmpeg en ffprobe | 5.1.9 | `ffmpeg=7:5.1.9-0+deb12u1` uit bookworm |
+| pgx | v5.10.0 | via `go.sum` |
+| golang.org/x/crypto | v0.42.0 | via `go.sum`, voor Argon2id |
+
+Debian en geen Alpine, omdat [hoofdstuk 22](../docs/pleya-server-architecture.md#22-deployment-en-distributie)
+een gepinde ffmpeg in de image vraagt en de Intel-mediastack die de DS920+ nodig heeft op glibc een
+pakket is. Bookworm en geen trixie, omdat DSM op kernel 4.4.302 draait.
+
+**De ffmpeg-pin is hard.** Verdwijnt deze versie van de spiegel omdat er een beveiligingsupdate
+overheen is gegaan, dan faalt de build luid in plaats van stil een andere ffmpeg mee te nemen.
+Bijwerken is dan bewust werk: versie omhoog in de `Dockerfile`, opnieuw bouwen, afspelen verifiëren.
+
+**Dat kost fors aan omvang.** De image gaat van 93 MB naar ongeveer 780 MB, en ongeveer 600 MB
+daarvan is de afhankelijkheidsboom van Debians `ffmpeg`: via `libavdevice` komt de hele Mesa- en
+LLVM-stack mee, waarvan LLVM alleen al 112 MB is. Een statische build zou een stuk kleiner zijn, maar
+dan wordt er een GPL-binary van derden meegeleverd en komt daar een bronaanbod bij. Dat is een aparte
+afweging en geen bijproduct van deze fase.
 
 ## Wat er gemeten is
 
-Op een Synology DS920+ (Celeron J4125, 4 cores, 19,4 GiB), DSM 7.3.2,
-kernel 4.4.302, cgroups v1, btrfs, Docker 24.0.2, naast een draaiende
-Plex-container.
+Op een Synology DS920+ (Celeron J4125, 4 cores, 19,4 GiB), DSM 7.3.2, kernel 4.4.302, cgroups v1,
+naast een draaiende Plex-container. De fundering uit PS-0 staat er nog steeds:
 
 | Meting | Uitkomst |
 | --- | --- |
 | PostgreSQL 18.6 op kernel 4.4.302 | draait, healthcheck groen |
-| `/healthz` en `/readyz` | 200 |
 | Gebruiker in de container | `1026:100`, niet root |
-| Media lezen | lukt |
-| Media schrijven | `Read-only file system` |
-| Bestandssysteem van de mount | btrfs, `mounted_read_only: true` |
-| `read_only` rootfs | toegepast, schrijven naar `/` faalt |
-| `cap_drop: ALL` | toegepast, `CapEff` is `0000000000000000` |
-| `no-new-privileges` | toegepast; op deze kernel niet uit `/proc` te verifiëren, zie de noot |
+| Media lezen | lukt; schrijven geeft `Read-only file system` |
+| `read_only` rootfs, `cap_drop: ALL` | toegepast, `CapEff` is `0000000000000000` |
 | Postgres hostpoort | geen |
-| Persistentie over een herstart | data komt terug |
-| Database weg | `/healthz` 200, `/readyz` 503 |
-| Database terug | `/readyz` weer 200, zonder rebuild |
 | Graceful shutdown | exitcode 0 op SIGTERM |
-| Idle CPU, server | 0,00% |
-| Idle geheugen, server | 10,6 MiB |
-| Idle CPU, Postgres | 0,00% |
-| Idle geheugen, Postgres | 27,3 MiB |
-| Image | 93 MB |
-| Plex tijdens en na de test | ongewijzigd, `Up 13 days (healthy)` |
 
-Ter vergelijking stond Plex op hetzelfde moment op 2,03% CPU en 1,495 GiB.
-
-**Noot bij `no-new-privileges`.** Docker past de optie toe, maar de kernel van
-DSM 7.3.2 toont het veld `NoNewPrivs` niet in `/proc/<pid>/status`. Dat is een
-verificatiebeperking van het platform en geen openstaand punt: alle
-capabilities zijn aantoonbaar weg en het proces draait non-root.
-
-**Noot bij de mediamounts.** Getest is `/volume1/Intern_PlexMedia`, btrfs. Op
-deze NAS staat een deel van de bibliotheek op `fuseblk.ntfs`
-(`/volumeUSB5/usbshare5-2`). Dat is leesbaar voor uid 1026, maar of de aanname
-van de scanner over stabiele inodes daar houdt is niet in deze fase gemeten.
-Dat hoort bij PS-2, en de server logt daarom bij elke start het
-bestandssysteemtype per mediamount.
-
-## Configuratie
-
-| Variabele | Default | Rol |
-| --- | --- | --- |
-| `DATABASE_URL` | geen | verplicht; ontbreekt hij, dan exit 64 |
-| `PLEYA_SERVER_HTTP_ADDR` | `:8080` | luisteradres in de container |
-| `PLEYA_SERVER_CONFIG_DIR` | `/config` | duurzame state |
-| `PLEYA_SERVER_CACHE_DIR` | `/cache` | herbouwbaar |
-| `PLEYA_SERVER_TRANSCODE_DIR` | `/transcode` | vluchtige scratch |
-| `PLEYA_SERVER_MEDIA_DIRS` | `/media/library` | komma-gescheiden lijst |
-| `PLEYA_SERVER_LOG_LEVEL` | `info` | debug, info, warn, error |
-| `PLEYA_SERVER_SHUTDOWN_TIMEOUT` | `15s` | grace-periode bij SIGTERM |
-
-Alles behalve de databaseverbinding heeft een werkende default.
-
-`/healthz` zegt of het proces leeft en wordt niet rood van een database die even
-weg is. `/readyz` pingt de database en geeft 503 zodra dat niet lukt. De pool
-verbindt lui, dus een Postgres die tien seconden later opkomt houdt de server
-niet tegen.
+`scripts/verify-local.sh` draait die hele keten lokaal en doet er de catalogus bij: veertien secties,
+van `go vet` tot een herstart die de ids intact laat.
 
 ## Ontwikkelen
 
+Op de ontwikkelmachine is Go niet nodig. `scripts/go-tool.sh` draait de toolchain in dezelfde gepinde
+image die de container bouwt.
+
 ```sh
 scripts/go-tool.sh vet ./...
-scripts/go-tool.sh test ./...
-scripts/verify-local.sh      # de hele keten, dertien stappen
+scripts/verify-local.sh              # de hele keten, veertien secties
 ```
 
-`verify-local.sh` bouwt een amd64-image, start de stack, en bewijst de
-healthchecks, non-root, read-only media, een read-only rootfs met drie
-schrijfbare mounts, persistentie over een herstart, uitval en herstel van de
-database, graceful shutdown, en dat er geen secrets in git of in de logs staan.
-De persistentietest schrijft in een apart schema en gooit dat daarna weg, zodat
-er geen tabel achterblijft die later voor echt schema wordt aangezien.
+De tests tegen een echte database en een echte ffprobe vragen twee dingen vooraf. Zonder die twee
+slaan ze zichzelf over in plaats van te falen, zodat `go test ./...` ook werkt op een machine waar ze
+niet klaarstaan.
+
+```sh
+scripts/test-image.sh                # Go-toolchain plus dezelfde gepinde ffmpeg
+eval "$(scripts/test-db.sh up)"      # wegwerp-Postgres in dezelfde gepinde versie
+GO_IMAGE=pleya-server-test:go-ffmpeg scripts/go-tool.sh test ./...
+scripts/test-db.sh down
+```
+
+De scannertests maken hun eigen mediabestanden met ffmpeg. Een test die de analyse namaakt bewijst
+niets over de analyse zelf, en juist daar zit het punt waar een mediaserver stil fout gaat.
+
+Dat de server zich aan het bevroren wire-contract houdt wordt apart gemeten:
+
+```sh
+scripts/verify-protocol.sh
+```
+
+Dat legt de antwoorden van een draaiende server vast en houdt ze met
+`scripts/check_server_responses.py` tegen hetzelfde `openapi.yaml` waar ook de fixtures tegen
+valideren. De validator staat bewust in Python en niet in Go: een Go-validator zou de server tegen
+zijn eigen lezing van het contract houden.
 
 ## Wat hier niet in zit
 
-Geen protocol en geen `/pleya/v1`. Geen schema, geen migraties, geen tabel.
-Geen scanner, geen ffprobe, geen ffmpeg. Geen metadata, geen artwork, geen
-zoeken, geen bladeren, geen streaming, geen kijkstatus, geen gebruikers, geen
-authenticatie, geen downloads, geen transcodering.
+Geen streaming en geen range-verkeer. Geen kijkstatus, in geen van beide richtingen. Geen
+metadata-providers, geen matching, geen artwork van buiten de schijf, geen schalen of cachen van
+afbeeldingen. Geen afspeelplan, geen transcodering, geen sessies. Geen gebruikers, rollen of
+bibliotheekrechten. Geen downloads, geen Live TV, geen websockets, geen server-sent events.
 
-`compose.yaml` bevat een uitgecommentarieerd blok voor `/dev/dri` met
-`group_add: "937"`, de groep `videodriver` zoals gemeten op deze NAS. Het is
-volledig inert zolang het uitstaat en staat er alleen zodat later blijkt dat de
-weg vrij is. Aanzetten hoort bij PS-8.
+`compose.yaml` bevat een uitgecommentarieerd blok voor `/dev/dri` met `group_add: "937"`, de groep
+`videodriver` zoals gemeten op deze NAS. Het is volledig inert zolang het uitstaat en staat er alleen
+zodat later blijkt dat de weg vrij is. Aanzetten hoort bij PS-8.

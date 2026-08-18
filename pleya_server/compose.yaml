@@ -1,4 +1,4 @@
-# Pleya Server, PS-0 Docker Foundation.
+# Pleya Server.
 #
 # Twee services in een eigen privaat netwerk. Compose noemt dat
 # pleya_server_default, wat niet botst met de bestaande pleya_default en
@@ -13,9 +13,10 @@ services:
     container_name: pleya-server
     restart: unless-stopped
 
-    # Loopback, en dat is een securitygrens en geen netwerkarchitectuur. Er is
-    # in PS-0 nog geen authenticatie, dus deze service hoort niet op het LAN.
-    # Openstellen gebeurt pas in de fase waarin die grens bestaat.
+    # Loopback, en dat is een securitygrens en geen netwerkarchitectuur. De
+    # authenticatiegrens bestaat inmiddels, maar remote hardening is PS-11:
+    # openstellen gebeurt achter een omgekeerde proxy of een tunnel, en dat is
+    # een bewuste stap en geen bijproduct van deze fase.
     ports:
       - "127.0.0.1:${PLEYA_SERVER_HOST_PORT:-8832}:8080"
 
@@ -29,9 +30,22 @@ services:
       PLEYA_SERVER_CONFIG_DIR: /config
       PLEYA_SERVER_CACHE_DIR: /cache
       PLEYA_SERVER_TRANSCODE_DIR: /transcode
-      PLEYA_SERVER_MEDIA_DIRS: /media/library
       PLEYA_SERVER_LOG_LEVEL: ${PLEYA_SERVER_LOG_LEVEL:-info}
       TZ: ${TZ:-Europe/Amsterdam}
+
+      # Bibliotheken: slug=soort:/pad[,/pad]. De slug is de matchsleutel bij het
+      # opstarten, dus een gewijzigde titel of een verplaatste root maakt geen
+      # tweede bibliotheek en de ids overleven een herstart.
+      PLEYA_SERVER_LIBRARIES: ${PLEYA_SERVER_LIBRARIES:-films=movies:/media/library}
+
+      # Per root: mag de goedkope laag van de scanner op inodes bouwen. Zonder
+      # vermelding beslist het bestandssysteemtype, en bij twijfel is dat nee.
+      PLEYA_SERVER_INODE_TRUST: ${PLEYA_SERVER_INODE_TRUST:-}
+
+      PLEYA_SERVER_NAME: ${PLEYA_SERVER_NAME:-Pleya}
+      PLEYA_SERVER_SCAN_ON_START: ${PLEYA_SERVER_SCAN_ON_START:-true}
+      PLEYA_SERVER_SCAN_INTERVAL: ${PLEYA_SERVER_SCAN_INTERVAL:-6h}
+      PLEYA_SERVER_JOB_WORKERS: ${PLEYA_SERVER_JOB_WORKERS:-2}
 
     volumes:
       # Drie schrijfbare mappen met drie verschillende levensduren. Op één
@@ -43,6 +57,12 @@ services:
       # Read-only, en dat is geen aanbeveling maar de gedocumenteerde
       # verwachting waar het dreigingsmodel op steunt (hoofdstuk 22).
       - ${PLEYA_SERVER_MEDIA_HOST:-./testdata/media}:/media/library:ro
+      # Een tweede volume, want de bibliotheek op deze NAS staat over twee
+      # bestandssystemen verspreid: btrfs op /volume1 en fuseblk.ntfs op de
+      # USB-schijf. Dat verschil is precies wat de scanner moet meten. Blijft
+      # PLEYA_SERVER_MEDIA_HOST_2 leeg, dan wijst deze mount naar dezelfde map
+      # als de eerste en noemt PLEYA_SERVER_LIBRARIES hem gewoon niet.
+      - ${PLEYA_SERVER_MEDIA_HOST_2:-./testdata/media}:/media/library2:ro
 
     read_only: true
     tmpfs:
@@ -54,8 +74,10 @@ services:
     init: true
     stop_grace_period: 20s
 
-    # Bewust geen mem_limit in PS-0. Er is nog geen scanner, geen metadata en
-    # geen ffmpeg, dus er is geen basis voor een getal. Eerst meten.
+    # Nog steeds geen mem_limit. De scanner houdt de bestandsstand van één root
+    # in het geheugen en ffprobe draait ernaast; wat dat op de echte bibliotheek
+    # kost is gemeten en staat in README.md, maar één meting is te weinig om er
+    # een harde grens op te zetten.
 
     # Toekomstige hardwaretranscodering op de DS920+ (QuickSync, UHD 600).
     # Volledig inert zolang dit uitstaat; de gid is gemeten op de NAS zelf,

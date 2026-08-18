@@ -1710,7 +1710,7 @@ PS-2 niet: de kijkstatus-endpoints en het streampad komen daar niet aan bod.
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-2 |
-| Status | **vrijgegeven, 18 augustus 2026** |
+| Status | **opgeleverd 19 augustus 2026, ter goedkeuring** |
 | Doel | een draaiende Go-service die een bestandsboom scant en als catalogus serveert |
 | Bijdrage aan einddoel | dit is het eerste stuk Pleya dat zonder enige externe mediaserver een bibliotheek kan tonen |
 | Afhankelijkheden | PS-1 |

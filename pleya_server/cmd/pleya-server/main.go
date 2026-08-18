@@ -1,9 +1,9 @@
-// Command pleya-server is de Pleya Server-fundering (PS-0).
+// Command pleya-server is de Pleya Server (PS-2).
 //
-// Deze binary doet met opzet bijna niets: configuratie lezen, gestructureerd
-// loggen, een databasepool openen, HTTP luisteren met /healthz en /readyz, en
-// netjes afsluiten op SIGTERM. Er is geen catalogus, geen protocol en geen
-// scanner. Wat hier faalt ligt aan de container en niet aan het product.
+// De binary leest de configuratie, migreert het schema, richt de
+// bootstrap-identiteit in, scant de geconfigureerde bibliotheken en serveert de
+// leeskant van het Pleya Protocol v1. Er is geen streaming, geen kijkstatus,
+// geen metadata-provider en geen gebruikersmodel: dat zijn latere fasen.
 package main
 
 import (
@@ -14,14 +14,21 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"sync"
 	"syscall"
 	"time"
 
+	"github.com/edde746/plezy/pleya_server/internal/api"
+	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/database"
+	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/httpserver"
+	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
+	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/mounts"
+	"github.com/edde746/plezy/pleya_server/internal/scanner"
 )
 
 // version wordt bij het bouwen gezet met -ldflags "-X main.version=...".
@@ -70,10 +77,133 @@ func run() int {
 	// plek waar bereikbaarheid blijkt.
 	startup.Info("database geconfigureerd, verbinding wordt lui opgebouwd")
 
+	ready := &readiness{db: pool}
+	catalogStore, authStore := openStores(pool)
+	startedAt := time.Now().UTC()
+
+	// De ondertekensleutel leeft alleen in de eigen persistente /config, met
+	// restrictieve rechten, en dus niet in Postgres en niet in Git. Een sleutel
+	// die naast de data ligt die hij beschermt scheidt niets: een databasedump
+	// mag geen sessies opleveren.
+	key, keyCreated, err := auth.LoadOrCreateSigningKey(cfg.ConfigDir)
+	if err != nil {
+		startup.Error("ondertekensleutel", slog.String("error", err.Error()))
+		return config.ExitConfig
+	}
+	if keyCreated {
+		startup.Info("ondertekensleutel aangemaakt", slog.String("file", auth.KeyFileName))
+	}
+	signer, err := auth.NewSigner(key)
+	if err != nil {
+		startup.Error("ondertekensleutel is onbruikbaar", slog.String("error", err.Error()))
+		return config.ExitConfig
+	}
+
+	// Vanaf hier praat alles met de database. De HTTP-laag komt pas omhoog nadat
+	// de migraties gedraaid zijn, want /readyz belooft dat.
+	migrateCtx, cancelMigrate := context.WithTimeout(ctx, 5*time.Minute)
+	result, err := migrate.Run(migrateCtx, pool, logging.Component(log, "migrate"))
+	cancelMigrate()
+	if err != nil {
+		startup.Error("migreren mislukt", slog.String("error", err.Error()))
+		return config.ExitConfig
+	}
+	ready.migrated.Store(true)
+	startup.Info("schema gereed",
+		slog.Int("from", result.From),
+		slog.Int("to", result.To),
+		slog.Int("applied", len(result.Applied)))
+
+	serverID, err := authStore.ServerID(ctx)
+	if err != nil {
+		startup.Error("serveridentiteit", slog.String("error", err.Error()))
+		return config.ExitConfig
+	}
+	startup.Info("serveridentiteit", slog.String("server_id", serverID.String()))
+
+	if err := ensureSetupCode(ctx, authStore, cfg.SetupCodeTTL, startup); err != nil {
+		startup.Error("setupcode", slog.String("error", err.Error()))
+		return config.ExitConfig
+	}
+
+	libs, err := syncLibraries(ctx, catalogStore, cfg, startup)
+	if err != nil {
+		startup.Error("bibliotheken inrichten", slog.String("error", err.Error()))
+		return config.ExitConfig
+	}
+
+	prober := ffprobe.New(cfg.FFprobePath, cfg.FFprobeTimeout)
+	if ffprobeVersion, err := prober.Available(ctx); err != nil {
+		// Zonder ffprobe komt er geen enkele versie in de catalogus. Dat is een
+		// waarschuwing en geen startfout: bladeren door wat er al staat blijft
+		// werken, en een image zonder ffmpeg hoort zichtbaar te zijn en niet stil.
+		startup.Warn("ffprobe is niet bereikbaar; scannen levert niets op",
+			slog.String("path", cfg.FFprobePath), slog.String("error", err.Error()))
+	} else {
+		startup.Info("ffprobe gereed", slog.String("version", ffprobeVersion))
+	}
+
+	sc := scanner.New(scanner.Options{
+		Store:       catalogStore,
+		Prober:      prober,
+		Logger:      logging.Component(log, "scanner"),
+		Concurrency: cfg.JobWorkers,
+	})
+
+	runner := jobs.New(jobs.Options{
+		Pool:     pool,
+		Logger:   logging.Component(log, "jobs"),
+		Workers:  cfg.JobWorkers,
+		Instance: serverID.String()[:8],
+	})
+	runner.Register(JobScanLibrary, scanHandler(catalogStore, sc, logging.Component(log, "scanner")))
+
+	if n, err := runner.Requeue(ctx); err != nil {
+		startup.Warn("lopende jobs terugzetten mislukt", slog.String("error", err.Error()))
+	} else if n > 0 {
+		startup.Info("lopende jobs teruggezet in de wachtrij", slog.Int64("count", n))
+	}
+
+	workCtx, stopWork := context.WithCancel(ctx)
+	defer stopWork()
+
+	workers := &sync.WaitGroup{}
+	workers.Add(3)
+	go func() { defer workers.Done(); runner.Run(workCtx) }()
+	go func() {
+		defer workers.Done()
+		schedule(workCtx, runner, libs, cfg.ScanInterval, logging.Component(log, "scanner"))
+	}()
+	go func() {
+		defer workers.Done()
+		housekeeping(workCtx, runner, authStore, logging.Component(log, "housekeeping"))
+	}()
+
+	if cfg.ScanOnStart {
+		enqueueScans(ctx, runner, libs, "startup", logging.Component(log, "scanner"))
+	}
+
+	apiServer := api.New(api.Options{
+		Catalog:         catalogStore,
+		Auth:            authStore,
+		Signer:          signer,
+		Logger:          logging.Component(log, "http"),
+		Ready:           ready.ok,
+		ServerID:        serverID,
+		Name:            cfg.ServerName,
+		Version:         version,
+		StartedAt:       startedAt,
+		AccessTokenTTL:  cfg.AccessTokenTTL,
+		RefreshTokenTTL: cfg.RefreshTokenTTL,
+		StreamTokenTTL:  cfg.StreamTokenTTL,
+		SetupCodeTTL:    cfg.SetupCodeTTL,
+	})
+
 	srv := httpserver.New(httpserver.Options{
-		Addr:   cfg.HTTPAddr,
-		DB:     pool,
-		Logger: logging.Component(log, "http"),
+		Addr:    cfg.HTTPAddr,
+		DB:      pool,
+		Logger:  logging.Component(log, "http"),
+		Handler: apiServer.Handler(),
 	})
 
 	serveErr := make(chan error, 1)
@@ -92,6 +222,12 @@ func run() int {
 	case s := <-sig:
 		log.Info("signaal ontvangen, afsluiten", slog.String("signal", s.String()))
 	}
+
+	// Eerst het werk stoppen, dan de aanvragen. Een scan die halverwege afbreekt
+	// is geen probleem: de job gaat terug in de wachtrij en de volgende ronde
+	// begint waar deze ophield, want de bestandsstand staat in de database.
+	stopWork()
+	workers.Wait()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()

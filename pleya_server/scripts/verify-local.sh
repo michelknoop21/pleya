@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# Bewijs de PS-0-fundering lokaal, van broncode tot draaiende stack.
+# Bewijs Pleya Server lokaal, van broncode tot draaiende catalogus.
+#
+# De fundering uit PS-0 blijft erin: non-root, read-only media, read-only rootfs,
+# persistentie, uitval en herstel van de database, graceful shutdown en secrets.
+# Daarbovenop staan de acceptatiecriteria van PS-2: migreren, scannen, bladeren
+# met curl, en een herstart die de ids intact laat.
 #
 # Elke stap print PASS of FAIL. Aan het eind staat er een telling, en de
 # exitcode is niet nul zodra er iets faalt.
@@ -47,6 +52,36 @@ fi
 mkdir -p testdata/media data/config data/cache data/transcode
 echo "dit bestand staat er zodat de read-only test iets te lezen heeft" > testdata/media/leesbaar.txt
 ok "testmappen gereed"
+
+# Een echte bibliotheek, gemaakt met de ffmpeg uit de image zelf. Een verzonnen
+# bestand bewijst niets over de analyse, en juist daar zit het punt waar een
+# mediaserver stil fout gaat (hoofdstuk 7.4).
+if [ ! -f "testdata/media/films/Grease (1978)/Grease (1978).mkv" ]; then
+  if docker build -q -t pleya-server:verify-media . >/dev/null 2>&1 && \
+     docker run --rm --entrypoint sh -v "$PWD/testdata/media:/out" pleya-server:verify-media -c '
+       set -e
+       mk() { mkdir -p "$(dirname "$1")"; ffmpeg -hide_banner -loglevel error -y \
+         -f lavfi -i "testsrc=size=320x180:rate=24:duration=$2" \
+         -f lavfi -i "sine=frequency=440:duration=$2" \
+         -c:v libx264 -preset ultrafast -pix_fmt yuv420p -c:a aac -shortest "$1"; }
+       mk "/out/films/Grease (1978)/Grease (1978).mkv" 2
+       mk "/out/films/Grease (1978)/Grease (1978) - 2160p.mkv" 2
+       mk "/out/films/Blade Runner (1982)/Blade Runner (1982) {edition-Final Cut}.mkv" 2
+       mk "/out/series/Testserie (2020)/Season 01/Testserie - S01E01 - Eerste.mkv" 1
+       mk "/out/series/Testserie (2020)/Season 01/Testserie - S01E02 - Tweede.mkv" 1
+       printf "1\n00:00:01,000 --> 00:00:02,000\nhallo daar\n" > "/out/films/Grease (1978)/Grease (1978).nld.srt"
+       printf "geen echte jpeg" > "/out/films/Grease (1978)/poster.jpg"
+     ' >/dev/null 2>&1; then
+    ok "testbibliotheek gemaakt met de ffmpeg uit de image"
+  else
+    fail "testbibliotheek maken mislukte"
+  fi
+else
+  ok "testbibliotheek aanwezig"
+fi
+
+export PLEYA_SERVER_LIBRARIES='films=movies:/media/library/films;series=shows:/media/library/series'
+export PLEYA_SERVER_SCAN_INTERVAL=0
 
 # --------------------------------------------------------------------- 1. compose
 section "1. compose config"
@@ -99,13 +134,150 @@ section "5. healthz en readyz"
 [ "$(status "$BASE/healthz")" = "200" ] && ok "/healthz = 200" || fail "/healthz = $(status "$BASE/healthz")"
 [ "$(status "$BASE/readyz")"  = "200" ] && ok "/readyz = 200"  || fail "/readyz = $(status "$BASE/readyz")"
 
-# ---------------------------------------------------------------------- 6. non-root
-section "6. non-root"
+# ----------------------------------------------------------------- 6. catalogus
+section "6. catalogus (PS-2)"
+
+api() { curl -s -m 10 "$BASE/pleya/v1$1" "${@:2}"; }
+
+# De uitdrukking gaat via de omgeving en niet via de opdrachtregel: hij bevat
+# dubbele aanhalingstekens, en die overleven de weg door twee shells niet.
+jq_field() {
+  PLEYA_EXPR="$1" python3 -c 'import json, os, sys
+d = json.load(sys.stdin)
+print(eval(os.environ["PLEYA_EXPR"]))' 2>/dev/null
+}
+
+# Het schema hoort er te staan en /readyz hoort pas daarna groen te zijn.
+tables="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'" 2>/dev/null | tr -d '\r')"
+if [ "${tables:-0}" -ge 12 ]; then ok "schema gemigreerd ($tables tabellen)"; else fail "schema telt $tables tabellen"; fi
+
+# Er is geen users- of sessions-tabel. Dat is de drift check uit hoofdstuk 23.1
+# in scriptvorm: tokens uitgeven tegen één identiteit vraagt daar niet om.
+forbidden="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT coalesce(string_agg(table_name, ','), '') FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('users','sessions','library_permissions','watch_states','play_sessions','transcode_sessions','external_ids','metadata_candidates')" 2>/dev/null | tr -d '\r')"
+if [ -z "$forbidden" ]; then ok "geen tabel uit een latere fase"; else fail "tabellen uit een latere fase: $forbidden"; fi
+
+setup_required="$(api /info | jq_field 'd["auth"]["setup_required"]')"
+if [ "$setup_required" = "True" ] || [ "$setup_required" = "False" ]; then
+  ok "/info is publiek bereikbaar zonder token (setup_required=$setup_required)"
+else
+  fail "/info gaf geen bruikbaar antwoord"
+fi
+
+# /info draagt geen servernaam, versie of buildnummer.
+if api /info | grep -qiE '"(name|version|build)"'; then
+  fail "/info lekt een naam of versienummer"
+else
+  ok "/info draagt geen naam, versie of buildnummer"
+fi
+
+CODE="$($COMPOSE logs pleya-server 2>/dev/null | grep -o 'Setupcode: [A-Z0-9-]*' | tail -1 | cut -d' ' -f2)"
+if [ -n "$CODE" ]; then ok "setupcode op de console"; else fail "geen setupcode in de log"; fi
+
+ACCESS="$(api /auth/setup -X POST -H 'Content-Type: application/json' \
+  -d "{\"setup_code\":\"$CODE\",\"username\":\"verify\",\"password\":\"een-lang-genoeg-wachtwoord\"}" \
+  | jq_field 'd["access_token"]')"
+if [ -n "$ACCESS" ]; then ok "setupcode ingewisseld voor een tokenpaar"; else fail "setup mislukte"; fi
+
+AUTH=(-H "Authorization: Bearer $ACCESS")
+
+# Zonder token komt er niets door.
+if [ "$(status "$BASE/pleya/v1/libraries")" = "401" ]; then
+  ok "/libraries zonder token = 401"
+else
+  fail "/libraries zonder token = $(status "$BASE/pleya/v1/libraries")"
+fi
+
+libs="$(api /libraries "${AUTH[@]}")"
+if [ "$(printf '%s' "$libs" | jq_field 'len(d["items"])')" = "2" ]; then
+  ok "twee bibliotheken"
+else
+  fail "bibliotheken: $libs"
+fi
+
+FILMS="$(printf '%s' "$libs" | jq_field '[l["id"] for l in d["items"] if l["kind"]=="movies"][0]')"
+page="$(api "/libraries/$FILMS/items" "${AUTH[@]}")"
+count="$(printf '%s' "$page" | jq_field 'len(d["items"])')"
+if [ "$count" = "2" ]; then ok "twee films in de catalogus"; else fail "$count films, verwacht 2"; fi
+
+ITEM="$(printf '%s' "$page" | jq_field '[i["id"] for i in d["items"] if i["title"]=="Grease"][0]')"
+detail="$(api "/items/$ITEM" "${AUTH[@]}")"
+versions="$(printf '%s' "$detail" | jq_field 'len(d["versions"])')"
+if [ "$versions" = "2" ]; then ok "twee versies van dezelfde film, één item"; else fail "$versions versies"; fi
+
+if [ "$(printf '%s' "$detail" | jq_field 'd["user_state"] is None')" = "True" ]; then
+  ok "user_state is null; er is in deze fase geen kijkstatus"
+else
+  fail "user_state is gevuld terwijl er geen kijkstatus is"
+fi
+
+POSTER="$(printf '%s' "$detail" | jq_field 'd["artwork"]["poster_id"]')"
+if [ "$(status "$BASE/pleya/v1/artwork/$POSTER")" = "401" ]; then ok "artwork zonder token = 401"; fi
+if curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" "$BASE/pleya/v1/artwork/$POSTER" | grep -q 200; then
+  ok "artwork wordt geleverd"
+else
+  fail "artwork niet geleverd"
+fi
+
+SUBURL="$(printf '%s' "$detail" | jq_field '[s["url"] for v in d["versions"] for s in v["subtitle_streams"] if s["is_external"]][0]')"
+if curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" "$BASE$SUBURL" | grep -q 200; then
+  ok "externe ondertitel wordt geleverd"
+else
+  fail "ondertitel niet geleverd"
+fi
+
+VER="$(printf '%s' "$detail" | jq_field 'd["versions"][0]["id"]')"
+STOK="$(api /auth/stream-token -X POST "${AUTH[@]}" -H 'Content-Type: application/json' \
+  -d "{\"version_id\":\"$VER\"}" | jq_field 'd["stream_token"]')"
+if [ -n "$STOK" ]; then ok "streamtoken uitgegeven"; else fail "streamtoken mislukte"; fi
+if [ "$(status "$BASE/pleya/v1/libraries?stream_token=$STOK")" = "401" ]; then
+  ok "een streamtoken opent de rest van de API niet"
+else
+  fail "een streamtoken opende /libraries"
+fi
+
+# Streaming en kijkstatus horen in deze fase niet te bestaan.
+for path in "/pleya/v1/stream/$VER" "/pleya/v1/watch-state"; do
+  if [ "$(curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" "$BASE$path")" = "404" ]; then
+    ok "$path bestaat niet (PS-4)"
+  else
+    fail "$path gaf $(curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" "$BASE$path")"
+  fi
+done
+
+# De ids overleven een herstart, en de tweede ronde raakt ffprobe niet aan.
+before="$(api "/libraries/$FILMS/items" "${AUTH[@]}" | jq_field 'sorted(i["id"] for i in d["items"])')"
+$COMPOSE restart pleya-server >/dev/null 2>&1
+wait_healthy pleya-server >/dev/null
+after="$(api "/libraries/$FILMS/items" "${AUTH[@]}" | jq_field 'sorted(i["id"] for i in d["items"])')"
+if [ "$before" = "$after" ] && [ -n "$before" ]; then
+  ok "de ids overleven een herstart"
+else
+  fail "de ids veranderden: $before -> $after"
+fi
+if [ "$(status "$BASE/pleya/v1/server")" != "000" ] && \
+   curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" "$BASE/pleya/v1/server" | grep -q 200; then
+  ok "het accesstoken werkt na de herstart; de sleutel staat op schijf"
+else
+  fail "het accesstoken werkte niet meer na de herstart"
+fi
+
+# compose zet de servicenaam vóór elke regel, dus die moet er eerst af voordat
+# het JSON is.
+probed="$($COMPOSE logs pleya-server 2>/dev/null | grep '"msg":"scan klaar"' | sed 's/^[^{]*//' | tail -2 \
+  | python3 -c 'import json,sys; print(sum(json.loads(l)["files_probed"] for l in sys.stdin))' 2>/dev/null)"
+if [ "${probed:-1}" = "0" ]; then
+  ok "de tweede scan draaide ffprobe nul keer"
+else
+  fail "de tweede scan analyseerde $probed bestanden"
+fi
+
+# ---------------------------------------------------------------------- 7. non-root
+section "7. non-root"
 uid="$($COMPOSE exec -T pleya-server id -u 2>/dev/null | tr -d '\r')"
 if [ -n "$uid" ] && [ "$uid" != "0" ]; then ok "container draait als uid $uid"; else fail "container draait als uid ${uid:-onbekend}"; fi
 
-# ----------------------------------------------------------------- 7. media :ro
-section "7. media read-only"
+# ----------------------------------------------------------------- 8. media :ro
+section "8. media read-only"
 if $COMPOSE exec -T pleya-server cat /media/library/leesbaar.txt >/dev/null 2>&1; then
   ok "lezen uit /media/library lukt"
 else
@@ -123,8 +295,8 @@ else
   note "de server meldde geen mounted_read_only=true; zie de startlog"
 fi
 
-# ------------------------------------------------------- 8. rootfs en scratch
-section "8. read-only rootfs en schrijfbare mappen"
+# ------------------------------------------------------- 9. rootfs en scratch
+section "9. read-only rootfs en schrijfbare mappen"
 if $COMPOSE exec -T pleya-server sh -c 'touch /rootfs-poging' >/dev/null 2>&1; then
   fail "de rootfs is beschrijfbaar"
 else
@@ -138,8 +310,8 @@ for d in /config /cache /transcode /tmp; do
   fi
 done
 
-# ------------------------------------------------------------------ 9. persistentie
-section "9. persistentie over een herstart"
+# ----------------------------------------------------------------- 10. persistentie
+section "10. persistentie over een herstart"
 psql() { $COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "$1" 2>/dev/null | tr -d '\r'; }
 
 psql "CREATE SCHEMA IF NOT EXISTS pleya_verify;" >/dev/null
@@ -168,8 +340,8 @@ else
   fail "testschema staat er nog"
 fi
 
-# -------------------------------------------------------------- 10. database weg
-section "10. database weg en terug"
+# -------------------------------------------------------------- 11. database weg
+section "11. database weg en terug"
 wait_healthy pleya-server >/dev/null
 $COMPOSE stop postgres >/dev/null 2>&1
 sleep 3
@@ -190,8 +362,8 @@ if ready_after 503; then ok "/readyz wordt 503 zonder database"; else fail "/rea
 $COMPOSE start postgres >/dev/null 2>&1
 if ready_after 200; then ok "/readyz wordt weer 200 zonder rebuild"; else fail "/readyz kwam niet terug op 200"; fi
 
-# ------------------------------------------------------- 11. graceful shutdown
-section "11. graceful shutdown"
+# ------------------------------------------------------- 12. graceful shutdown
+section "12. graceful shutdown"
 $COMPOSE stop -t 25 pleya-server >/dev/null 2>&1
 code="$(docker inspect pleya-server --format '{{.State.ExitCode}}' 2>/dev/null)"
 if [ "$code" = "0" ]; then ok "het Go-proces sloot met exitcode 0 op SIGTERM"; else fail "exitcode $code, verwacht 0"; fi
@@ -203,8 +375,8 @@ fi
 $COMPOSE start pleya-server >/dev/null 2>&1
 wait_healthy pleya-server >/dev/null
 
-# ----------------------------------------------------------------- 12. secrets
-section "12. secrets"
+# ----------------------------------------------------------------- 13. secrets
+section "13. secrets"
 pw="$(grep -E '^POSTGRES_PASSWORD=' .env | cut -d= -f2)"
 if git -C .. grep -qI --cached "$pw" 2>/dev/null; then
   fail "het wachtwoord staat in de git-index"
@@ -231,8 +403,8 @@ if docker inspect pleya-server --format '{{range .Config.Env}}{{println .}}{{end
   note "docker inspect toont het wachtwoord: bekend en aanvaard, zie README"
 fi
 
-# --------------------------------------------------------------- 13. postgres net
-section "13. postgres niet geexposed"
+# --------------------------------------------------------------- 14. postgres net
+section "14. postgres niet geexposed"
 if docker inspect pleya-server-db --format '{{json .HostConfig.PortBindings}}' 2>/dev/null | grep -q '{}'; then
   ok "postgres heeft geen hostpoort"
 else

@@ -6,3 +6,4 @@ scripts/
 deploy-nas.sh
 README.md
 .gocache/
+.responses/

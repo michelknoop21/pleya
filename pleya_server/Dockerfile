@@ -1,12 +1,11 @@
 # syntax=docker/dockerfile:1
 
-# Pleya Server, PS-0 Docker Foundation.
+# Pleya Server.
 #
-# De runtime is Debian en niet Alpine. Dat is een keuze voor later: hoofdstuk 22
-# van de architectuur vraagt om een gepinde ffmpeg in de image, en de
-# Intel-mediastack die de DS920+ nodig heeft (libva, intel-media-driver) is op
-# glibc een pakket en op musl een project. Er zit in deze fase nog geen ffmpeg
-# in; de basis moet hem alleen later kunnen dragen.
+# De runtime is Debian en niet Alpine. Dat was in PS-0 een keuze voor later, en
+# die later is nu: hoofdstuk 22 van de architectuur vraagt om een gepinde ffmpeg
+# in de image, en de Intel-mediastack die de DS920+ nodig heeft (libva,
+# intel-media-driver) is op glibc een pakket en op musl een project.
 
 FROM golang:1.26.6-bookworm@sha256:116d58cbd88c1297624acc6e967a060012422bacf9930927e23fb719189c6f36 AS build
 
@@ -30,11 +29,28 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 
 FROM debian:bookworm-slim@sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241
 
-# ca-certificates en verder niets. Elk pakket meer is straks een pakket dat
-# meegepatcht moet worden zonder dat iemand weet waarom het er staat.
+# ffmpeg op een exacte versie, want een mediaserver waarvan het gedrag afhangt
+# van de ffmpeg van het hostsysteem is niet reproduceerbaar. Dat is dezelfde
+# redenering als achter de MPVKit-pin in de app: een tag is een specifieke
+# binary, en een zwevende versie wisselt de decoder onder het product vandaan.
+#
+# De pin is bewust hard. Verdwijnt deze versie van de spiegel omdat er een
+# beveiligingsupdate overheen is gegaan, dan faalt de build luid in plaats van
+# stil een andere ffmpeg mee te nemen. Bijwerken is dan het bewuste werk dat het
+# hoort te zijn: versie hier omhoog, image opnieuw bouwen, afspelen verifiëren.
+#
+# Dit kost fors aan omvang. Debian's ffmpeg trekt via libavdevice de hele
+# Mesa- en LLVM-stack mee, en dat is ongeveer 600 MB bovenop de basis. Een
+# statische build zou kleiner zijn, maar dan wordt er een GPL-binary van derden
+# meegeleverd en komt daar een bronaanbod bij; dat is een aparte afweging en
+# geen bijproduct van deze fase. Zie pleya_server/README.md.
+ARG FFMPEG_VERSION=7:5.1.9-0+deb12u1
 RUN apt-get update \
- && apt-get install --no-install-recommends -y ca-certificates \
- && rm -rf /var/lib/apt/lists/*
+ && apt-get install --no-install-recommends -y \
+      ca-certificates \
+      "ffmpeg=${FFMPEG_VERSION}" \
+ && rm -rf /var/lib/apt/lists/* \
+ && ffprobe -version | head -1
 
 # Een non-root gebruiker in de image zelf, zodat "docker run" zonder compose
 # ook niet als root draait. Compose overschrijft de uid/gid met die van de

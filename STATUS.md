@@ -1,8 +1,44 @@
 # STATUS · Pleya
 
-_Laatst bijgewerkt: 2026-08-18 (`main` = `8e84f3a`; `feat/pleyaserver` loopt vooruit met het Pleya Server-werk. Er loopt nog steeds een tweede sessie met ongecommit werk in de hoofdmap. App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`)_
+_Laatst bijgewerkt: 2026-08-19 (`main` = `8e84f3a`; `feat/pleyaserver` loopt vooruit met het Pleya Server-werk. Er loopt nog steeds een tweede sessie met ongecommit werk in de hoofdmap. App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`)_
 
 ## Waar was ik
+
+**Pleya kan een bibliotheek tonen zonder Plex.** PS-2 staat in `pleya_server/`: een Go-service die een
+bestandsboom scant, de catalogus in Postgres bijhoudt, en de leeskant van het protocol serveert.
+Bladeren, zoeken, seizoenen en afleveringen, meerdere versies per film, artwork en losse ondertitels.
+Wat er nog niet is: afspelen.
+
+De verandersdetectie werkt in de drie lagen uit hoofdstuk 7.3, en de twee acceptatiecriteria die
+daarover gaan staan als test. Een tweede ronde zonder wijzigingen draait ffprobe nul keer, ook over
+duizend bestanden. Een hernoemd bestand behoudt zijn item-id, en dat werkt zowel via de inode als,
+op een mount waar die niets betekent, via de scan-signature die daar toch al berekend wordt.
+
+Het protocol is niet aangeraakt. Dat wordt apart gemeten: `scripts/verify-protocol.sh` legt de
+antwoorden van een draaiende server vast en houdt ze tegen hetzelfde `openapi.yaml` waar ook de
+fixtures tegen valideren. Negentien antwoorden, acht schema's, allemaal gedekt. De validator staat
+bewust in Python en niet in Go, want een Go-validator zou de server tegen zijn eigen lezing van het
+contract houden.
+
+Vier besluiten erbij, `DEC-040` tot en met `DEC-043`. De grouping key is geen identiteit en heet
+daarom niet zo: hij hangt een nieuw gevonden bestand aan een bestaand item en komt nooit langs bij
+een bestand dat al bekend is. Media, ondertitels en artwork delen één bestandstabel, want de 5578
+losse `.srt`-bestanden hebben dezelfde goedkope detectie nodig als de media ernaast. De jobtabel is
+eigen werk en beantwoordt de open vraag uit 17.1 niet. En de inodebetrouwbaarheid staat per root in
+de database, wordt gemeten, en een gunstige ronde zet een root niet vanzelf op vertrouwen.
+
+**Wat er bewust niet in zit.** `GET /pleya/v1/stream/{version_id}` en beide kijkstatus-endpoints geven
+een 404, en `capabilities.watch_state` staat op `false`. Poort 3 (het conflictmodel voor kijkstatus)
+en poort 4 (de byte-validator achter de `ETag`-belofte) zijn niet aangeraakt en staan nog steeds open;
+ze horen dicht vóór PS-4. Er is geen `users`-tabel, geen `sessions`-tabel en geen `external_ids`, en
+`scripts/verify-local.sh` controleert dat ook zo.
+
+**Wat het kostte.** De image gaat van 93 MB naar ongeveer 780 MB, en zeshonderd daarvan is de
+afhankelijkheidsboom van Debians `ffmpeg`. Via `libavdevice` komt de hele Mesa- en LLVM-stack mee,
+waarvan LLVM alleen al 112 MB is. Een statische build zou kleiner zijn maar levert een GPL-binary van
+derden mee met een bronaanbod erbij, en dat is een aparte afweging.
+
+## Eerder op 18 augustus: PS-1, het wire-contract
 
 **Het wire-contract is goedgekeurd, PS-1 is gesloten en bevroren, en PS-2 is vrijgegeven.**
 `docs/pleya-protocol/v1/openapi.yaml` ligt vast: zeventien endpoints, een prozaspecificatie die

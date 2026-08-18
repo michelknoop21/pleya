@@ -115,3 +115,33 @@ func EnsureDir(path string) error {
 	}
 	return nil
 }
+
+// inodeStableFS zijn de bestandssystemen waarvan bekend is dat een inode een
+// bestand blijft aanwijzen.
+//
+// De lijst is bewust kort en de default bij twijfel is "niet vertrouwen".
+// Hoofdstuk 7.3 noemt netwerkmounts die inodes hergebruiken; de kosten van
+// verkeerd vertrouwen zijn een bestand dat stil aan het verkeerde item hangt,
+// de kosten van onterecht wantrouwen zijn een hash per bestand per ronde.
+var inodeStableFS = map[string]bool{
+	"btrfs":   true,
+	"ext2":    true,
+	"ext3":    true,
+	"ext4":    true,
+	"xfs":     true,
+	"zfs":     true,
+	"apfs":    true,
+	"tmpfs":   true,
+	"overlay": true,
+}
+
+// InodeTrustDefault zegt of de goedkope laag van de scanner op dit
+// bestandssysteem op inodes mag bouwen zolang er niets gemeten is.
+//
+// fuseblk (ntfs-3g) staat er niet in. Dat is niet omdat het bewezen instabiel
+// is, maar omdat het niet gemeten is, en PS-0 heeft die meting uitdrukkelijk aan
+// PS-2 doorgegeven. De scanner rapporteert wat hij ziet; de default blijft
+// wantrouwen tot de meting het tegendeel laat zien.
+func InodeTrustDefault(fsType string) bool {
+	return inodeStableFS[fsType]
+}
