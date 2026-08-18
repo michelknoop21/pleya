@@ -43,7 +43,7 @@ lichte productrol houdt. Welke capabilities daarvoor aanwezig moeten zijn staat 
 20. [Client- en serververantwoordelijkheden](#20-client--en-serververantwoordelijkheden)
 21. [Teststrategie](#21-teststrategie)
 22. [Deployment en distributie](#22-deployment-en-distributie)
-23. [Roadmap in dertien fasen](#23-roadmap-in-dertien-fasen)
+23. [Roadmap in dertien fasen plus een fundering](#23-roadmap-in-dertien-fasen-plus-een-fundering)
 24. [Voorgestelde DEC-besluiten en open vragen](#24-voorgestelde-dec-besluiten-en-open-vragen)
 25. [Definition of Done: Pleya Server als zelfstandig mediaserverproduct](#25-definition-of-done-pleya-server-als-zelfstandig-mediaserverproduct)
 
@@ -1415,7 +1415,7 @@ database nieuwer is dan de binary. Terugrollen naar een oudere binary vraagt een
 
 ---
 
-## 23. Roadmap in dertien fasen
+## 23. Roadmap in dertien fasen plus een fundering
 
 ### 23.1 De roadmap is een contract
 
@@ -1463,7 +1463,8 @@ volgende fase nog.
 
 ```mermaid
 flowchart LR
-  P1["1. Protocol"] --> P2["2. Catalogus (Go)"]
+  P0["0. Docker Foundation"] --> P1["1. Protocol"]
+  P1 --> P2["2. Catalogus (Go)"]
   P2 --> P3["3. PleyaServerClient"]
   P3 --> P4["4. Direct play +<br/>watch state"]
   P4 --> P5["5. DeviceCapabilities"]
@@ -1477,9 +1478,72 @@ flowchart LR
   P8 --> P13["13. Externe workers"]
 ```
 
+Fase 0 staat vooraan omdat hij niets over het product zegt en alles over de grond eronder. Hij is
+toegevoegd nadat de doelhardware gemeten bleek af te wijken van wat hoofdstuk 22 stilzwijgend
+aanneemt; zie [docs/pleya-server-ps0-proposal.md](pleya-server-ps0-proposal.md).
+
 Capabilities en het playbackplan staan vóór metadata omdat daar de architecturale vernieuwing zit;
 metadata blokkeert de playbackkern niet en kan later. Fase 3 is de eerste die de app raakt, en dan
 achter een nieuwe `ConnectionKind` naast de bestaande vier.
+
+---
+
+### Fase 0. Docker Foundation
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-0 |
+| Doel | aantonen dat een Go-service met Postgres betrouwbaar in Docker op de DS920+ draait, naast de bestaande Plex-container |
+| Bijdrage aan einddoel | elke latere fase draait in deze container; onbewezen blijft de uitvoeringsomgeving een aanname die halverwege PS-2 alsnog kan omvallen |
+| Afhankelijkheden | geen |
+| Eerstvolgende fase | PS-1 |
+
+Toegevoegd als goedgekeurde afwijking, vastgelegd in
+[docs/pleya-server-ps0-proposal.md](pleya-server-ps0-proposal.md). PS-1 tot en met PS-13 behouden
+hun nummer, doel, scope en stopcriterium.
+
+**Scope.** Een minimale Go-service: configuratie uit omgevingsvariabelen, gestructureerde JSON-logs,
+`/healthz`, `/readyz` en graceful shutdown op SIGTERM. Een multi-stage image die non-root draait, op
+een runtime waar de gepinde ffmpeg uit [hoofdstuk 22](#22-deployment-en-distributie) later op past.
+Een Compose-stack met Postgres zonder hostpoort in een eigen privaat netwerk. Read-only
+mediamounts met meerdere roots. Gescheiden schrijfbare mappen voor duurzame state, cache en
+transcode-scratch. Lokale verificatie plus een smoketest op de echte NAS met gemeten
+resourcegebruik.
+
+**Out of scope.** Geen protocol en geen `/pleya/v1`. Geen schema, geen migraties, geen tabel. Geen
+scanner, geen ffprobe, geen ffmpeg. Geen metadata, geen streaming, geen kijkstatus, geen gebruikers,
+geen auth. De service is leeg, en dat is het punt: wat hier faalt moet aan de container liggen en
+niet aan het product.
+
+**Acceptatiecriteria.**
+1. De stack draait op de DS920+ en beide healthchecks zijn groen.
+2. De container draait non-root en de mediamounts zijn `:ro`; lezen lukt, schrijven faalt.
+3. De data overleven een herstart van de stack.
+4. Uitval van de database laat `/healthz` groen en maakt `/readyz` rood; herstel maakt `/readyz`
+   weer groen zonder rebuild.
+5. Postgres heeft geen hostpoort en is uitsluitend over het interne netwerk bereikbaar.
+6. Het idle resourcegebruik is gemeten en gerapporteerd, ook als het tegenvalt.
+7. De bestaande Plex-container draait er ongewijzigd naast.
+
+**Stopcriterium.** De fundering draait aantoonbaar en de metingen staan opgeschreven. Alles
+daarbuiten is PS-1 of later.
+
+**Risico's.** De kernel van DSM is 4.4 met cgroups v1, en Docker meldt daar alleen AppArmor. Of een
+actuele Postgres daarop draait en of `read_only`, `cap_drop` en `no-new-privileges` werkelijk pakken
+is een meting, geen aanname. Faalt Postgres, dan wordt eerst het bewijs vastgelegd (exitcode,
+databaselog, kernel- of syscallfout, healthcheck) voordat een oudere major wordt geprobeerd, anders
+wordt een permissiefout opgelost door te downgraden.
+
+Het tweede risico is uitdijen. Een lege service is saai, en de verleiding om er alvast een tabel of
+een endpoint bij te zetten is precies de drift die 23.1 verbiedt.
+
+**Tests.** Configuratie met defaults en met een ontbrekende databaseverbinding, redactie van
+credentials in de logs, `/healthz`, `/readyz` met en zonder bereikbare database, en graceful
+shutdown. De containerintegratie wordt via een verificatiescript bewezen.
+
+**Roadmap Drift Check.** Staat er een tabel, een endpoint uit het protocol, of een ffmpeg in de
+image? Dat hoort in PS-1 of PS-2 en gaat eruit. Is een gemeten belemmering weggeschreven in plaats
+van gerapporteerd? Terugdraaien.
 
 ---
 
