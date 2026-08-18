@@ -24,6 +24,8 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/focus/focusable_button.dart';
 import 'package:pleya/focus/card_focus_scope.dart';
 import 'package:pleya/widgets/media_card_grid_layout.dart';
+import 'package:pleya/widgets/focusable_filter_chip.dart';
+import 'package:pleya/widgets/watchlist_sort_sheet.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/widgets/watchlist_card.dart';
 
@@ -521,6 +523,62 @@ void main() {
     // says that rather than opening an empty sheet.
     expect(find.text(t.seerr.errorGeneric), findsOneWidget);
     expect(source.removed, isEmpty);
+  });
+
+  group('filter bar', () {
+    // The screenshots showed "Alles" cut off at the left edge and the last chip
+    // erased mid-word by a fade, on a bar that used a raw Material ChoiceChip
+    // found nowhere else in the app.
+    testWidgets('the sort control names the order it is in', (tester) async {
+      await pumpScreen(tester, [entry(key: 'a')]);
+
+      // Not hidden in a tooltip: tooltips never open on an iOS touch.
+      expect(find.text(watchlistSortLabel(WatchlistSort.recentlyAdded)), findsOneWidget);
+      expect(find.byType(Tooltip), findsNothing);
+    });
+
+    testWidgets('the chips are the app\'s own, not a bare Material chip', (tester) async {
+      await pumpScreen(tester, [entry(key: 'a')]);
+
+      expect(find.byType(ChoiceChip), findsNothing);
+      expect(find.byType(FocusableFilterChip), findsWidgets);
+    });
+
+    testWidgets('no chip starts or ends outside the viewport', (tester) async {
+      tester.view.physicalSize = const Size(360, 780);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await pumpScreen(tester, [entry(key: 'a')]);
+
+      for (final label in [t.watchlist.filterAll, t.watchlist.filterMovies, t.watchlist.filterShows]) {
+        final chip = find.ancestor(of: find.text(label), matching: find.byType(FocusableFilterChip)).first;
+        final rect = tester.getRect(chip);
+        expect(rect.left, greaterThanOrEqualTo(0), reason: '$label starts off-screen');
+        expect(rect.width, greaterThan(0));
+      }
+    });
+
+    testWidgets('the strip keeps an inset, so the first chip is never flush left', (tester) async {
+      await pumpScreen(tester, [entry(key: 'a')]);
+
+      final chip = find
+          .ancestor(of: find.text(t.watchlist.filterAll), matching: find.byType(FocusableFilterChip))
+          .first;
+      expect(tester.getRect(chip).left, greaterThan(0));
+    });
+
+    testWidgets('picking a filter keeps it selected and readable', (tester) async {
+      await pumpScreen(tester, [entry(key: 'a'), entry(key: 'show', kind: MediaKind.show)]);
+
+      await tester.tap(find.text(t.watchlist.filterShows));
+      await tester.pumpAndSettle();
+
+      final chip = tester.widget<FocusableFilterChip>(
+        find.ancestor(of: find.text(t.watchlist.filterShows), matching: find.byType(FocusableFilterChip)).first,
+      );
+      expect(chip.selected, isTrue);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('sorting', () {
