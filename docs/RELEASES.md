@@ -13,20 +13,48 @@ reads the topmost anchor and fills the block below with everything committed sin
 
 <!-- BEGIN GENERATED -->
 ### New
-- zet de publieke releasenotes als "What to Test" op elke build
-- lees "What to Test" terug voordat de lane hem geslaagd noemt
-- kies het kwaliteitsprofiel en de rootmap van Radarr/Sonarr
+
+- **Pick the quality profile and root folder when you request something.** The advanced
+  options on a request only let you choose which Radarr or Sonarr server to send it to, so a
+  profile you had set up yourself was out of reach. Both pickers open on whatever that server
+  would have used anyway, and changing server clears them rather than carrying the previous
+  server's choices over.
 
 ### Improved
-- deel één lookup per titel tussen gelijktijdige hydratatiepassages
+
+- **Requests show what was actually requested.** The list used to head every row with
+  "Movie" or "Show", above a grey placeholder, because the request itself carries only an id
+  and an availability state. Pleya now resolves each title once and remembers it, so the real
+  name, year and poster appear, with the kind and year on their own line underneath.
+- Seasons on a request fit on one line. A run of consecutive seasons reads as a range, gaps
+  stay visible rather than being smoothed into one, and a request spread over too many
+  separate runs says how many there are.
+- A request no longer shows "Available" next to "Completed". Where the two say different
+  things, such as approved but only partly downloaded, both still appear.
+- The filter tabs on Requests and on your watchlist keep their margin when you scroll them,
+  and the active filter scrolls itself into view. The last chip is no longer faded out
+  halfway through its own word.
+- The search field on Requests has room for its sentence again instead of being pushed onto
+  two lines by a button that repeated what the whole field already did.
+- Your watchlist says what it is sorted by, on the button itself. It used to be in a tooltip,
+  and tooltips never open on a touchscreen.
 
 ### Fixed
-- sluit de sheets via de overlay-host in plaats van Navigator.pop
-- toon de echte titel, poster en status op elke aanvraagregel
-- maak de keuze in een segmented control weer zichtbaar
-- geen skip-intro-knop meer bij films
-- filterbalk in lijn met de rest van de app
-- onderscheid een niet-Tautulli-antwoord van een onbekende vorm
+
+- **Sorting your watchlist no longer blanks the screen.** Choosing an order closed the app
+  behind the sheet instead of the sheet, leaving nothing on screen and the sort unapplied.
+  The same fault sat behind Request, Remove and Cancel on a watchlist title.
+- **The audio priority setting responds again.** Choosing between even volume and original
+  Dolby Atmos did save your choice, but the selected option looked exactly like the unselected
+  one, so there was no way to tell. Every setting of that shape was affected.
+- The skip intro button no longer appears on films. Films rarely carry a real intro marker,
+  so the button was working off a chapter title and could sit there for minutes, returning
+  every time you touched the screen. Skipping the credits is unchanged, on films as much as
+  on episodes.
+- A status label on a poster stays inside the poster instead of being cut off at its edge.
+- Connecting to Tautulli says so when something other than Tautulli answers. Behind a login
+  page or a reverse proxy the reply came back as a Tautulli error, which sent you looking in
+  the wrong place.
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 227 · 18 August 2026
