@@ -425,8 +425,11 @@ void main() {
     sideNavKey.currentState!.focusActiveItem();
     await tester.pumpAndSettle();
 
-    // Home -> Libraries -> Search -> Settings. Downloads is hidden on Apple TV.
-    await _press(tester, LogicalKeyboardKey.arrowDown);
+    // Downloads is hidden on Apple TV, so the rail is Home -> Search ->
+    // Settings and Settings is exactly two steps down. Pressing a third time
+    // would prove nothing: on macOS it saturates on the last item, but on
+    // Windows and Linux the fullscreen toggle sits after Settings and swallows
+    // it, and Enter there never reaches onDestinationSelected.
     await _press(tester, LogicalKeyboardKey.arrowDown);
     await _press(tester, LogicalKeyboardKey.arrowDown);
     await _press(tester, LogicalKeyboardKey.enter);

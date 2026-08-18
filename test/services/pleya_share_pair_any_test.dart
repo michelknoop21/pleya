@@ -67,10 +67,13 @@ void main() {
   });
 
   test('pairAny pairs via a later candidate when the first IP is dead', () async {
-    // 127.0.0.2 answers nothing on macOS loopback → probe fails fast; the
-    // reachable 127.0.0.1 candidate must win.
+    // 192.0.2.1 is TEST-NET-1 (RFC 5737): reserved for documentation, so no
+    // host answers there and the probe falls through its 1500 ms timeout. Do
+    // not use 127.0.0.2 here — macOS configures only 127.0.0.1 on loopback,
+    // but Linux binds all of 127.0.0.0/8, so there it answers and wins the
+    // race. The reachable 127.0.0.1 candidate must win on both.
     final connection = await PleyaShareChannel.pairAny(
-      ips: ['127.0.0.2', '127.0.0.1'],
+      ips: ['192.0.2.1', '127.0.0.1'],
       port: host.port,
       code: host.pairCode!,
       deviceName: 'test-guest',
@@ -79,7 +82,7 @@ void main() {
     expect(host.pairedGuests, hasLength(1));
     // Winner first, other advertised IPs kept as reconnect candidates.
     expect(connection.lastKnownIps.first, '127.0.0.1');
-    expect(connection.lastKnownIps, contains('127.0.0.2'));
+    expect(connection.lastKnownIps, contains('192.0.2.1'));
   });
 
   test('pairAny aborts immediately on wrong code', () async {
