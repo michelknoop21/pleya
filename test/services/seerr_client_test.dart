@@ -399,6 +399,132 @@ void main() {
       expect(hydrated.last.id, 2);
     });
 
+    test('a page of twenty distinct titles costs exactly twenty lookups, then none', () async {
+      final detailCalls = <String>[];
+      final requests = [for (var i = 1; i <= 20; i++) bareRequest(id: i, tmdbId: 1000 + i, type: 'movie')];
+      final client = SeerrClient(
+        _session(),
+        httpClient: MockClient((request) async {
+          final path = request.url.path;
+          if (path.endsWith('/request')) {
+            return _json({
+              'results': requests,
+              'pageInfo': {'pages': 3},
+            }, 200);
+          }
+          detailCalls.add(path);
+          final id = int.parse(path.split('/').last);
+          return _json({'id': id, 'title': 'Film $id', 'posterPath': '/p$id.jpg'}, 200);
+        }),
+      );
+
+      final page = await client.getRequests();
+      await client.hydrateRequests(page.items);
+      // One per distinct title. Not one per row, not one per field.
+      expect(detailCalls, hasLength(20));
+
+      // Scrolling back over the same titles, or switching filter and back, is
+      // free: the whole point of the cache.
+      await client.hydrateRequests(page.items);
+      await client.hydrateRequests((await client.getRequests(filter: 'approved')).items);
+      expect(detailCalls, hasLength(20));
+    });
+
+    test('a page that repeats a title costs one lookup for it, not one per row', () async {
+      final detailCalls = <String>[];
+      final client = SeerrClient(
+        _session(),
+        httpClient: MockClient((request) async {
+          final path = request.url.path;
+          if (path.endsWith('/request')) {
+            return _json({
+              'results': [
+                bareRequest(id: 1, tmdbId: 550, type: 'movie'),
+                bareRequest(id: 2, tmdbId: 550, type: 'movie'),
+                bareRequest(id: 3, tmdbId: 550, type: 'movie'),
+                bareRequest(id: 4, tmdbId: 99, type: 'movie'),
+              ],
+              'pageInfo': {'pages': 1},
+            }, 200);
+          }
+          detailCalls.add(path);
+          final id = int.parse(path.split('/').last);
+          return _json({'id': id, 'title': 'Film $id'}, 200);
+        }),
+      );
+
+      final hydrated = await client.hydrateRequests((await client.getRequests()).items);
+
+      // Four rows, two distinct titles, two lookups.
+      expect(detailCalls, hasLength(2));
+      expect(hydrated.where((r) => r.mediaTitle == 'Film 550'), hasLength(3));
+      expect(hydrated.last.mediaTitle, 'Film 99');
+    });
+
+    test('two hydration passes at once share one lookup per title', () async {
+      final detailCalls = <String>[];
+      final requests = [bareRequest(id: 1, tmdbId: 550, type: 'movie')];
+      final client = SeerrClient(
+        _session(),
+        httpClient: MockClient((request) async {
+          final path = request.url.path;
+          if (path.endsWith('/request')) {
+            return _json({
+              'results': requests,
+              'pageInfo': {'pages': 1},
+            }, 200);
+          }
+          detailCalls.add(path);
+          return _json({'id': 550, 'title': 'Fight Club'}, 200);
+        }),
+      );
+
+      final items = (await client.getRequests()).items;
+      // A fast filter switch fires a second pass before the first has landed.
+      await Future.wait([client.hydrateRequests(items), client.hydrateRequests(items)]);
+
+      expect(detailCalls, hasLength(1));
+    });
+
+    test('a failing lookup costs one attempt per pass, and the list still renders', () async {
+      var attempts = 0;
+      final client = SeerrClient(
+        _session(),
+        httpClient: MockClient((request) async {
+          final path = request.url.path;
+          if (path.endsWith('/request')) {
+            return _json({
+              'results': [
+                bareRequest(id: 1, tmdbId: 550, type: 'movie'),
+                bareRequest(id: 2, tmdbId: 99, type: 'movie'),
+              ],
+              'pageInfo': {'pages': 1},
+            }, 200);
+          }
+          if (path.endsWith('/movie/99')) {
+            attempts++;
+            return _json({'message': 'boom'}, 500);
+          }
+          return _json({'id': 550, 'title': 'Fight Club'}, 200);
+        }),
+      );
+
+      final items = (await client.getRequests()).items;
+      final first = await client.hydrateRequests(items);
+      // The good title resolved, the bad one did not, and both rows survive.
+      expect(first, hasLength(2));
+      expect(first.first.mediaTitle, 'Fight Club');
+      expect(first.last.mediaTitle, isNull);
+      expect(first.last.tmdbId, 99, reason: 'the request data itself must stay intact');
+      expect(first.last.requestedByName, 'rapmadri');
+      expect(attempts, 1);
+
+      // Retried on the next pass rather than written off for the session, but
+      // once per pass -- never once per row.
+      await client.hydrateRequests(items);
+      expect(attempts, 2);
+    });
+
     test('a payload that already carries the title is left alone', () async {
       final seen = <Uri>[];
       final client = clientFor(

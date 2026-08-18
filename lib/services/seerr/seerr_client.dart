@@ -93,6 +93,11 @@ class SeerrClient {
   /// number of distinct titles a session looks at, which is small.
   final Map<String, _SeerrMediaDisplay> _displayCache = {};
 
+  /// Lookups currently on the wire, so two hydration passes that overlap (a
+  /// fast filter switch, a load-more landing on top of a reload) share one call
+  /// per title instead of racing for the same one.
+  final Map<String, Future<void>> _displayInFlight = {};
+
   void dispose() => _http.close();
 
   // ---------------------------------------------------------------------------
@@ -399,7 +404,20 @@ class SeerrClient {
     ];
   }
 
-  Future<void> _cacheDisplay(String key, int tmdbId, bool isMovie) async {
+  Future<void> _cacheDisplay(String key, int tmdbId, bool isMovie) {
+    final running = _displayInFlight[key];
+    if (running != null) return running;
+    // Block body, not an arrow: `remove` hands back the very future being
+    // awaited here, and whenComplete waits on a returned future -- so an arrow
+    // makes this wait on itself and never completes.
+    final future = _fetchDisplay(key, tmdbId, isMovie).whenComplete(() {
+      _displayInFlight.remove(key);
+    });
+    _displayInFlight[key] = future;
+    return future;
+  }
+
+  Future<void> _fetchDisplay(String key, int tmdbId, bool isMovie) async {
     try {
       final json = isMovie ? await getMovie(tmdbId) : await getTv(tmdbId);
       final media = SeerrMedia.fromDetail(json, mediaType: isMovie ? 'movie' : 'tv');
