@@ -204,6 +204,76 @@ void main() {
     });
   });
 
+  group('service server detail', () {
+    test('quality profiles and root folders come from the per-server call', () async {
+      final seen = <Uri>[];
+      final client = SeerrClient(
+        _session(),
+        httpClient: MockClient((request) async {
+          seen.add(request.url);
+          if (request.url.path.endsWith('/service/radarr/1')) {
+            return _json({
+              'server': {'id': 1, 'name': 'Radarr'},
+              'profiles': [
+                {'id': 4, 'name': 'HD-1080p'},
+                {'id': 7, 'name': 'Ultra-HD'},
+              ],
+              'rootFolders': [
+                {'id': 1, 'path': '/films', 'freeSpace': 123},
+                {'id': 2, 'path': '/films-4k'},
+              ],
+            }, 200);
+          }
+          return _json({'message': 'not found'}, 404);
+        }),
+      );
+
+      final detail = await client.getRadarrServerDetail(1);
+
+      expect(seen.single.path, endsWith('/service/radarr/1'));
+      expect(detail.profiles.map((p) => p.name), ['HD-1080p', 'Ultra-HD']);
+      expect(detail.profiles.first.id, 4);
+      expect(detail.rootFolders.map((f) => f.path), ['/films', '/films-4k']);
+      expect(detail.rootFolders.first.freeSpace, 123);
+      // A server that does not report free space is still a usable folder.
+      expect(detail.rootFolders.last.freeSpace, isNull);
+    });
+
+    test('the server list carries the defaults to seed the pickers with', () async {
+      final client = SeerrClient(
+        _session(),
+        httpClient: MockClient((request) async {
+          return _json([
+            {'id': 1, 'name': 'Radarr', 'isDefault': true, 'activeProfileId': 4, 'activeDirectory': '/films'},
+            {'id': 2, 'name': 'Radarr 4K', 'is4k': true},
+          ], 200);
+        }),
+      );
+
+      final servers = await client.getRadarrServers();
+      expect(servers.first.activeProfileId, 4);
+      expect(servers.first.activeDirectory, '/films');
+      expect(servers.first.isDefault, isTrue);
+      expect(servers.last.is4k, isTrue);
+      expect(servers.last.activeProfileId, isNull);
+    });
+
+    test('a shape without profiles decodes to empty rather than throwing', () async {
+      final client = SeerrClient(
+        _session(),
+        httpClient: MockClient(
+          (request) async => _json({
+            'server': {'id': 1},
+          }, 200),
+        ),
+      );
+
+      final detail = await client.getSonarrServerDetail(1);
+      expect(detail.profiles, isEmpty);
+      expect(detail.rootFolders, isEmpty);
+    });
+  });
+
   group('hydrateRequests', () {
     // What Overseerr actually answers on /request: the media row, with the
     // availability status and the tmdb id, and nothing that names the title.

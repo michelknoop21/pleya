@@ -444,6 +444,23 @@ class SeerrClient {
     return SeerrServiceServer.listFrom(resp.data);
   }
 
+  /// Quality profiles and root folders for one Radarr/Sonarr server.
+  ///
+  /// The list endpoints above only name the servers; the profiles a user
+  /// created in Radarr or Sonarr live behind this per-server call, which is why
+  /// the request sheet could never offer them.
+  Future<SeerrServiceServerDetail> getRadarrServerDetail(int serverId) =>
+      _serviceServerDetail('/service/radarr', serverId);
+  Future<SeerrServiceServerDetail> getSonarrServerDetail(int serverId) =>
+      _serviceServerDetail('/service/sonarr', serverId);
+
+  Future<SeerrServiceServerDetail> _serviceServerDetail(String path, int serverId) async {
+    final resp = await _send(() => _http.get('$path/$serverId', headers: _authHeaders()));
+    final data = resp.data;
+    if (data is! Map) return const SeerrServiceServerDetail();
+    return SeerrServiceServerDetail.fromJson(data.cast<String, dynamic>());
+  }
+
   // ---------------------------------------------------------------------------
   // Internals
   // ---------------------------------------------------------------------------
