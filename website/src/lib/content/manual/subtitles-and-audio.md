@@ -5,7 +5,7 @@ order: 8
 group: Watching
 icon: subtitles
 summary: Picking tracks, styling subtitles, re-timing them, and Atmos on Apple devices.
-updated: 2026-08-17
+updated: 2026-08-18
 ---
 
 # Subtitles and audio
@@ -18,8 +18,14 @@ a search for subtitles that are not in the file.
 ## Choosing tracks
 
 Pick a language or a specific track, or switch subtitles off. Pleya remembers the choice
-and applies it to the next episode of the same show, so you set it once per series rather
-than once per episode. **Remember track selections** in Settings turns that off.
+per title and applies it to the next episode of the same show, so you set it once per
+series rather than once per episode. On Apple devices that memory travels with you over
+iCloud. **Remember track selections** in Settings turns it off.
+
+Underneath it sits **Also save the language to Plex**, which writes the language onto the
+show on the server. Turn it on and the official Plex apps, and Pleya on Android or Windows,
+open that series the same way. It replaces whatever language was set on the server by hand,
+so leave it off if someone else curates that.
 
 Track names come from the file, and an untagged track used to show up as "Track 1". Pleya
 now borrows the language and title your server already knows for that stream, so the list
@@ -63,5 +69,19 @@ The performance overlay in the player shows the active audio output and its form
 the only way from inside the app to tell a real bitstream from a decode that merely claims
 to be one.
 
-Loudness normalisation and passthrough cannot both be active: normalisation needs decoded
-audio to work on.
+## Evening out the volume
+
+Two switches, and they are independent:
+
+- **Even out volume** brings every title to the same level as the rest of your television,
+  so a quiet documentary and a loud blockbuster start at the same place.
+- **Reduce loud sounds** narrows the gap between dialogue and effects. This is the one for
+  watching at night without a hand on the volume.
+
+They used to be a single setting with three positions, which meant taming the bangs also
+levelled everything else whether you wanted that or not. An existing choice carries over to
+the pair.
+
+Neither works during passthrough: both need decoded audio to act on, and a bitstream is
+handed to your receiver untouched. Pleya says so in the player rather than leaving a switch
+that quietly does nothing.

@@ -63,6 +63,7 @@ ruim: de pagina schaalt terug naar de kolombreedte.
 | `library-filters.png` | Browsing your libraries | iPad | Het filterpaneel open met twee actieve filters | nee |
 | `detail-show.png` | Movie and show details | iPhone | Seriedetail met achtergrondbeeld, knoppenrij en seizoenkiezer | nee |
 | `detail-episodes.png` | Movie and show details | iPhone | Afleveringenlijst met een half gekeken aflevering | nee |
+| `detail-watched-by.png` | Movie and show details | Desktop | De regel "Bekeken door" met twee avatars en de statistiekregel eronder, op een Blender-titel | nee |
 | `player-controls.png` | The player | iPad | Bediening zichtbaar, hoofdstukmarkeringen op de tijdbalk | nee |
 | `player-scrub.png` | The player | Apple TV | Voorbeeldminiatuur tijdens het spoelen met de remote | nee |
 | `player-tracks.png` | Subtitles and audio | iPhone | Het sporenmenu met audio- en ondertitelkeuze | nee |

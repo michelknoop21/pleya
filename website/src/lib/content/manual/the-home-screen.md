@@ -5,7 +5,7 @@ order: 4
 group: Watching
 icon: home
 summary: The billboard, the rows, and the quick menu behind every poster.
-updated: 2026-08-17
+updated: 2026-08-18
 ---
 
 # The home screen
@@ -45,6 +45,11 @@ between profiles.
 | Phone and tablet | A bar at the bottom: Home, Media, Live TV, Search, My Pleya. Long-press **Media** to jump to another library. |
 | Computer | A bar at the top with the Pleya wordmark and the same destinations as text. |
 | Television | A sidebar on the left that expands, driven by the remote. |
+
+A small cluster of faces appears in the toolbar while other people are streaming from your
+server, if you have connected [Tautulli](/docs/movie-and-show-details). On Apple TV that is
+a sidebar entry instead, because an overlay hanging under a toolbar button cannot be reached
+with a remote.
 
 **Live TV** only appears when a connected server offers it. Settings live inside
 [My Pleya](/docs/watchlist-and-my-pleya) on a phone, and in the navigation on desktop and

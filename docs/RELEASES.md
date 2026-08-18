@@ -13,36 +13,68 @@ reads the topmost anchor and fills the block below with everything committed sin
 
 <!-- BEGIN GENERATED -->
 ### New
-- TestFlight-lanes koppelen de build zelf aan het versierecord
-- settings, tabs en aanvragen in één rustiger vormtaal
-- carrousel uitklappen naar een raster
-- refresh-knop toont dat hij bezig is
-- bibliotheekkop als paginakop, tabs en filters op één regel
-- bibliotheekhero krijgt de ruimte die de rij eronder niet gebruikt
-- loudness in twee assen, audiopad-arbiter en taalgeheugen per titel
-- kijkers, statistieken en wie er nu kijkt
-- xattr-versnelling aanzetten, met bewijs dat hij gebruikt is
+- zet de publieke releasenotes als "What to Test" op elke build
+<!-- END GENERATED -->
+
+## 2.8.0 · build 227 · 18 August 2026
+
+<!-- commit: 68ad70d -->
+
+### New
+
+- **Who watched this, and who is watching now.** Connect a Tautulli server and a title shows
+  who has seen it and how often, with a separate screen for the streams playing at this
+  moment. Plex only, and only if you run the server yourself: a Tautulli key opens that
+  server's entire admin API, so Pleya keeps it in the vault of the profile you added it to
+  and leaves it out of settings export and iCloud sync.
+- **Levelling the volume and taming loud effects are two switches now.** They used to be one
+  setting with three positions, so softening the bangs late at night also flattened the rest
+  of the film. An existing choice carries over to the new pair. While Dolby passthrough is
+  running, levelling is not possible and the player says so instead of failing quietly.
+- Pleya remembers your audio and subtitle language per title rather than per session, so the
+  next episode starts the way you left the last one. On Apple devices that memory follows you
+  over iCloud, and an optional switch writes the language onto the show in Plex so the
+  official Plex apps pick it up too.
+- On the Requests screen a row of posters expands into a full grid, so you can take it in at
+  once instead of scrolling sideways.
 
 ### Improved
-- parallelle xattr-shim voor de iOS-build
+
+- Settings, tabs and requests follow one layout instead of three.
+- The refresh button on the home screen shows that it is working, instead of looking like
+  nothing happened.
+- Library pages put the library name in the page header and the tabs and filters on one
+  line. On Apple TV the artwork above them takes the room the row below leaves unused.
+- On Apple TV everything is drawn a little smaller, at scale 1.85 instead of 2.00. A
+  settings page fits six rows where five fitted before, and a poster row gains about a card.
 
 ### Fixed
-- kaartgeometrie in één contract, en accountacties naar Mijn Pleya
-- platformconditie van twee afspeeltegels naar de aanroepplek
-- kaartcel meet poster, bijschrift en focusruimte apart
-- iCloud-synchronisatie ook zichtbaar op Apple TV
-- downloadlocatie blijft per apparaat
-- mobiele geometrie op minimale kaartbreedte in plaats van doelbreedte
-- hero-tekst op Libraries liep over de kop van de eerste rij
-- gefocuste rij was onzichtbaar op tv
-- Apple TV-vergroting van 2,00 naar 1,85
-- de gepinde SDK wint weer van homebrew in de release-lane
-- de pre-push commit alleen de releasenotes
-- twee tests die alleen op de Linux-runner omvielen
-- het koppelscherm vergat je modus, en de fout wees de verkeerde kant op
-- redigeer geheimen in query strings en headers standaard
-- sla een intro-marker alleen automatisch over bij een aflevering
-<!-- END GENERATED -->
+
+- Posters on a phone. A composed list put four cards of roughly 85 points next to each
+  other, which cut off nearly every title. That is three columns on a normal phone now, two
+  on a small one, and a title may run to two lines without making its neighbours taller. A
+  status label that does not fit shows its icon instead of clipping mid-word.
+- Cards in a grid have real spacing again, in both directions. A focused card grew over the
+  three pixels of padding that were separating it from its neighbour, and the caption came
+  out of one ratio that left too little room for two lines of text in a narrow column. The
+  caption follows the system text size, so a larger font makes the grid taller instead of
+  cutting the year off.
+- The first row of a grid no longer sits against the hairline under the heading.
+- On Apple TV, the text over the artwork on Libraries ran into the heading of the first row.
+- On Apple TV, a focused row in Settings was invisible. Navigating always worked; the
+  highlight was painted over by the card behind it.
+- iCloud sync is visible in Settings on Apple TV.
+- The download location stays on the device you set it on, instead of following iCloud to
+  another one.
+- A settings page no longer shows a divider with nothing under it. Two playback options are
+  Android only, and hiding them left their separator behind.
+- Connecting Tautulli: the screen keeps the connection method you were using, and a rejected
+  key says whether the token expired or the wrong method is selected. Both used to read as
+  "token expired", which sent people off generating tokens they did not need.
+- Secrets stay out of the log you can send in for support. Keys in web addresses and
+  authorization headers are stripped before a line is written.
+- An intro marker is only skipped automatically for an episode. In a film, a chapter called
+  "Intro" was skipping real film.
 
 ## 2.8.0 · build 221 · 17 August 2026
 

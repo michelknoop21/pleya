@@ -5,7 +5,7 @@ order: 17
 group: Devices and settings
 icon: settings
 summary: Every settings group, what each option changes, and which ones matter most.
-updated: 2026-08-17
+updated: 2026-08-18
 ---
 
 # Settings reference
@@ -35,12 +35,15 @@ Settings sit in the navigation on desktop and Apple TV, and inside
 | **Player backend** | ExoPlayer (recommended) or mpv, on Android |
 | **Default quality** | The ceiling on stream quality; lower uses less bandwidth |
 | **Hardware decoding** | Smoother playback; leave it on unless you are debugging |
-| **Auto skip intro / credits** | Skips them without asking |
+| **Auto skip intro / credits** | Skips them without asking. Intro skipping acts on episodes only. |
 | **Small / large skip duration** | How far the skip buttons jump |
 | **Rewind on resume** | Backs up a few seconds when you resume |
 | **Audio output** | Auto, Passthrough or PCM, see [Subtitles and audio](/docs/subtitles-and-audio) |
+| **Even out volume** | Brings every title to the same level as the rest of your television |
+| **Reduce loud sounds** | Narrows the gap between quiet dialogue and loud effects. Independent of the switch above |
 | **Subtitle styling** | Size, colour, outline and background |
-| **Remember track selections** | Keeps your language choice per show |
+| **Remember track selections** | Keeps the audio and subtitle language you picked, per title, and syncs it to your other Apple devices |
+| **Also save the language to Plex** | Writes that language onto the show in Plex, so the official Plex apps follow it too. It overwrites what you set there by hand |
 
 ![Playback settings on iPhone](/docs-media/settings-playback.png)
 
@@ -66,6 +69,8 @@ visible. This is also where a server that is no longer reachable gets removed.
 - **Companion Remote** lets a phone drive this device
 - **Requests** connects Jellyseerr or Overseerr, see [Requests](/docs/requests)
 - **Pleya Share** hosts or joins a device share, see [Pleya Share](/docs/pleya-share)
+- **Tautulli** adds viewers, watch statistics and live activity to Pleya, see
+  [Movie and show details](/docs/movie-and-show-details)
 
 ## Advanced
 

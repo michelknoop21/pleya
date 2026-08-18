@@ -5,7 +5,7 @@ order: 7
 group: Watching
 icon: play_circle
 summary: Controls, chapters, gestures, skipping, and what to change when playback struggles.
-updated: 2026-08-17
+updated: 2026-08-18
 ---
 
 # The player
@@ -50,8 +50,10 @@ The gear icon inside the player:
 ## Skipping
 
 **Skip intro** and **Skip credits** appear where the server knows the marks. Settings can
-make both happen automatically. On a remote, pressing up jumps straight to the button while
-it is on screen.
+make both happen automatically. Automatic intro skipping only applies to episodes: in a
+film, a chapter called "Intro" is usually part of the film, and jumping past it costs you
+real minutes. The button is still there if you want it. On a remote, pressing up jumps
+straight to the button while it is on screen.
 
 Watch long enough without touching anything and Pleya asks **Still watching?**. Choose
 **Continue**.

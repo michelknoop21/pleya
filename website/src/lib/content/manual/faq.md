@@ -5,7 +5,7 @@ order: 19
 group: Reference
 icon: help
 summary: Short answers to the questions that come up most.
-updated: 2026-08-17
+updated: 2026-08-18
 ---
 
 # FAQ
@@ -53,7 +53,8 @@ connection and of the server.
 
 ## Can I skip intros automatically?
 
-Yes, turn on **Auto skip intro**. Otherwise a button appears.
+Yes, turn on **Auto skip intro**. It acts on episodes, not on films, where a chapter
+marked as an intro tends to be part of the picture. Otherwise a button appears.
 
 ## How do I change the language?
 

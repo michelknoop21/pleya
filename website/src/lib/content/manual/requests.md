@@ -5,7 +5,7 @@ order: 13
 group: More to watch
 icon: add_circle
 summary: Asking for titles the server does not have, through Jellyseerr or Overseerr.
-updated: 2026-08-17
+updated: 2026-08-18
 ---
 
 # Requests
@@ -47,6 +47,9 @@ status badge:
 
 Open a title and choose **Request**. For a show you pick seasons. Approval is up to whoever
 administers the requests server, so a request sitting on Pending is not a Pleya problem.
+
+Any row of posters here opens into a full grid with **Show all**, which beats scrolling
+sideways through a few dozen titles to find out what is in it.
 
 ## Where requests appear
 

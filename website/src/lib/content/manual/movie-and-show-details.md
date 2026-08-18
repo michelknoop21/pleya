@@ -5,7 +5,7 @@ order: 6
 group: Watching
 icon: info
 summary: The detail page, its action buttons, and the season and episode list.
-updated: 2026-08-17
+updated: 2026-08-18
 ---
 
 # Movie and show details
@@ -41,6 +41,21 @@ Settings. The season picker switches seasons.
 If you would rather not read what happens next, turn on **Hide spoilers for unwatched
 episodes**. Thumbnails and descriptions of episodes you have not seen are blurred until you
 have.
+
+## Who watched it
+
+With a **Tautulli** server connected, a detail page also shows who has seen this title, how
+often it has been played, and how much of it has been watched in the past month. A separate
+screen lists what is streaming from your server right now, reachable from the toolbar on
+desktop and from the sidebar on Apple TV, and it only appears while someone is actually
+watching.
+
+![Who watched a title, with the statistics line](/docs-media/detail-watched-by.png)
+
+This is Plex only, and it is for the person who runs the server. Tautulli has a single key
+that opens its entire administration interface, so Pleya keeps that key on the device you
+entered it on, out of settings export and out of iCloud. The people you share your server
+with see none of this and have nothing to set up.
 
 ## Versions
 
