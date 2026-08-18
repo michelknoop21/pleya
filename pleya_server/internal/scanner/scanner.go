@@ -236,7 +236,7 @@ func (s *Scanner) scanRoot(ctx context.Context, lib catalog.Library, root catalo
 		}
 	}
 
-	if err := s.processMedia(ctx, lib, root, media, stats, log); err != nil {
+	if err := s.processMedia(ctx, lib, root, media, stats, tracker, log); err != nil {
 		return err
 	}
 	if err := s.processSidecars(ctx, root, media, sidecars, stats, log); err != nil {
@@ -394,7 +394,7 @@ type probeResult struct {
 	err    error
 }
 
-func (s *Scanner) processMedia(ctx context.Context, lib catalog.Library, root catalog.StorageLocation, media []candidate, stats *Stats, log *slog.Logger) error {
+func (s *Scanner) processMedia(ctx context.Context, lib catalog.Library, root catalog.StorageLocation, media []candidate, stats *Stats, tracker *progress, log *slog.Logger) error {
 	todo := make([]int, 0, len(media))
 	for i, c := range media {
 		if c.action == actionUnchanged {
@@ -441,6 +441,12 @@ func (s *Scanner) processMedia(ctx context.Context, lib catalog.Library, root ca
 
 	for i := range media {
 		c := &media[i]
+		// Ook tijdens het analyseren, en niet alleen tijdens de wandeling. Op een
+		// bibliotheek van zesduizend afleveringen is dit veruit het langste stuk,
+		// en een pad dat een uur lang op het laatst gewandelde bestand blijft
+		// staan is geen voortgang maar een verkeerd spoor.
+		tracker.note(c.entry.RelPath)
+
 		if c.action == actionUnchanged {
 			if c.renamed {
 				if err := s.store.MoveFile(ctx, c.fileID, c.entry.RelPath); err != nil {
