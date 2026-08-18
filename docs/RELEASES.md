@@ -27,6 +27,10 @@ reads the topmost anchor and fills the block below with everything committed sin
 - iCloud-synchronisatie ook zichtbaar op Apple TV
 - downloadlocatie blijft per apparaat
 - mobiele geometrie op minimale kaartbreedte in plaats van doelbreedte
+- hero-tekst op Libraries liep over de kop van de eerste rij
+- gefocuste rij was onzichtbaar op tv
+- Apple TV-vergroting van 2,00 naar 1,85
+- de gepinde SDK wint weer van homebrew in de release-lane
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 221 · 17 August 2026
