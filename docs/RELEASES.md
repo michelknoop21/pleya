@@ -19,6 +19,8 @@ reads the topmost anchor and fills the block below with everything committed sin
 - refresh-knop toont dat hij bezig is
 - bibliotheekkop als paginakop, tabs en filters op één regel
 - bibliotheekhero krijgt de ruimte die de rij eronder niet gebruikt
+- loudness in twee assen, audiopad-arbiter en taalgeheugen per titel
+- kijkers, statistieken en wie er nu kijkt
 
 ### Fixed
 - kaartgeometrie in één contract, en accountacties naar Mijn Pleya
