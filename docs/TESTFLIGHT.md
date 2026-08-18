@@ -7,8 +7,16 @@ Automatische TestFlight-uploads voor iOS, tvOS en macOS naar interne testers
 
 - `fastlane/Fastfile`: lanes `ios_beta`, `tvos_beta`, `macos_beta`, `beta` (alle drie),
   plus `attach_builds`, `external` en `add_testers` (zie hieronder).
-- `scripts/testflight_release.sh [lane]` bumpt het build number in `pubspec.yaml`,
+- `scripts/testflight_release.sh [--clean] [lane]` bumpt het build number in `pubspec.yaml`,
   commit+pusht dat, en draait daarna de fastlane lane (default `beta`).
+- Het script zet `scripts/xattr-fast/` vooraan in `PATH`. Zonder die shim besteedt
+  `flutter build ios` ruim een uur aan twee recursieve `xattr`-passes over de hele repo
+  voordat `xcodebuild` begint; zie [DEC-029](DECISIONS.md#dec-029). Na afloop rapporteert
+  het script hoe vaak de shim is aangeroepen. Staat die teller na een iOS-build op nul,
+  dan roept Flutter iets anders aan dan verwacht en is de traagheid terug. Uitzetten kan
+  met `PLEYA_XATTR_FAST=0`, het aantal workers met `PLEYA_XATTR_JOBS`.
+- `--clean` draait `flutter clean` vooraf. Dat is een herstelmiddel voor een build die
+  zich raar gedraagt, geen snelheidstruc: het kost een volledige hercompilatie.
 - launchd draait dit **maandelijks** (1e van de maand, 14:00) via
   `~/Library/LaunchAgents/nl.michelknoop.pleya.testflight.plist`,
   zodat builds nooit de 90-dagen TestFlight-limiet halen.
