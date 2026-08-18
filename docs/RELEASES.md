@@ -21,6 +21,10 @@ reads the topmost anchor and fills the block below with everything committed sin
 - bibliotheekhero krijgt de ruimte die de rij eronder niet gebruikt
 - loudness in twee assen, audiopad-arbiter en taalgeheugen per titel
 - kijkers, statistieken en wie er nu kijkt
+- xattr-versnelling aanzetten, met bewijs dat hij gebruikt is
+
+### Improved
+- parallelle xattr-shim voor de iOS-build
 
 ### Fixed
 - kaartgeometrie in één contract, en accountacties naar Mijn Pleya
