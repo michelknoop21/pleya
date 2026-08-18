@@ -103,8 +103,7 @@ void main() {
   // replaced it.
   group('secrets in a query string are redacted without registration', () {
     test('the Tautulli case: apikey without an underscore', () {
-      final input =
-          'GET https://tautulli.example.test/api/v2?apikey=b73978aaa7154073b9048bbf0f33966a&cmd=get_activity';
+      final input = 'GET https://tautulli.example.test/api/v2?apikey=b73978aaa7154073b9048bbf0f33966a&cmd=get_activity';
       final out = LogRedactionManager.redact(input);
       expect(out, contains('apikey=[REDACTED]'));
       expect(out, isNot(contains('b73978aaa7154073b9048bbf0f33966a')));
