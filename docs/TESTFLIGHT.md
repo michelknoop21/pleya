@@ -52,6 +52,13 @@ een smoketest, geen regressiesuite; hij duurt een paar minuten.
 Faalt hier iets, dan is dat een blokkade voor de upload en niet iets voor de
 volgende ronde: QR-pairing is de enige manier om een host te koppelen.
 
+### Overgeslagen rondes
+
+Build 226 van 18 augustus 2026 (2.8.0, iOS/tvOS/macOS) is geupload zonder dat
+deze lijst is afgelopen. Dat was een bewuste keuze, geen vergissing: de
+scanner is op die build niet op een toestel gezien. De vakjes hierboven staan
+daarom nog open en gelden onverkort voor de volgende upload.
+
 ## Build koppelen aan het App Store-versierecord
 
 Een upload naar TestFlight zet de build nog niet in de versie die je indient.
