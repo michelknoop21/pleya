@@ -117,6 +117,26 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     splashFactory: NoSplash.splashFactory,
     highlightColor: Colors.transparent,
     dividerColor: c.outline,
+    // Material fills the selected segment with secondaryContainer, which this
+    // palette maps onto the surface colour the settings card is already painted
+    // with. Combined with showSelectedIcon: false that left a segmented control
+    // with no visible selection at all -- indistinguishable from a dead widget,
+    // and reported as one. Give the selection its own surface, the same step up
+    // that FocusableTabChip uses for its segmented style.
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? c.surfaceElevated : Colors.transparent,
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? c.text : c.textMuted,
+        ),
+        textStyle: WidgetStateProperty.resolveWith(
+          (states) => TextStyle(fontWeight: states.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500),
+        ),
+        side: WidgetStatePropertyAll(BorderSide(color: c.outline)),
+      ),
+    ),
     scaffoldBackgroundColor: c.bg,
     appBarTheme: AppBarTheme(
       backgroundColor: c.bg,
