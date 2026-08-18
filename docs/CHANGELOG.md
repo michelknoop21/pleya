@@ -2,6 +2,42 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-18] PS-1 legt het wire-contract vast, en vindt onderweg vier gaten
+
+Alleen tekst en schema's, zoals de fase voorschrijft. Geen regel Go of Dart.
+
+### Added
+- **`docs/pleya-protocol/v1/openapi.yaml`**, contractueel leidend. Zeventien endpoints: ontdekken, authenticeren, bladeren, zoeken, home-bouwstenen, artwork, ondertitels, streamen en kijkstatus. OpenAPI 3.1 en geen losse JSON-schema's, omdat die alleen bodies dekken terwijl methode, pad, headers, authenticatieklasse, `Range`, `If-Range`, statuscodes en responseheaders net zo goed contract zijn.
+- **`docs/pleya-protocol-v1.md`**, de prozaspecificatie die uitlegt en motiveert. Botsen de twee, dan wint het contract en is de proza de fout.
+- **25 fixtures plus een manifest** onder `docs/pleya-protocol/v1/examples/`. Ze zijn de koppeling tussen de fasen: PS-2 valideert zijn antwoorden ertegen, PS-3 draait er contracttests mee, en beide lezen hetzelfde manifest.
+- **`scripts/check_protocol.sh`**, dat het document als OpenAPI 3.1 valideert in een gepinde container, controleert dat elke verwijzing uitkomt, elke fixture tegen zijn schema toetst, en drie plausibele fouten invoert om te bewijzen dat de validator werkelijk afkeurt.
+- **`DEC-030` tot en met `DEC-037`**, geschreven zoals hoofdstuk 24.1 voorschrijft zodra fase 1 wordt ingepland.
+- **`docs/pleya-server-gates.md`**, met de vier uitvoeringspoorten en hun stand.
+
+### Vier gaten in de architectuur gesloten
+- **Snake_case op de lijn, zonder uitzondering.** Elk JSON-blok in hoofdstuk 12 is snake_case, maar 7.4 schrijft `detectionStatus` en 18 `deliveryMode`. Die twee heten op de lijn `detection_status` en `delivery_mode`.
+- **Artwork had geen fase.** 12.2 noemt het niet als PS-1-oppervlak en metadata staat in PS-7, terwijl PS-3 een bladerscherm tekent. De vorm ligt nu in PS-1 vast en de inhoud komt in PS-2 uit de 2923 `.jpg`-bestanden die al op schijf staan.
+- **Een versie met meerdere bestanden had geen regel.** Die blijft geldig in het domeinmodel; `file_count` staat op elke versie en alleen direct play begrenst zich in v1 tot één bestand. De begrenzing zit in de levering en niet in het model, zodat aaneenschakeling later geen catalogusmigratie vraagt.
+- **Meerdere bereiken in één `Range`.** Pleya bouwt geen `multipart/byteranges` en antwoordt met het volledige bestand als `200`. Dat is de toegestane terugval; een `416` zou een speler breken die het toch probeert.
+
+### Twee dingen die het contract sluiten
+- **De bootstrap-authflow.** Het protocol geeft tokens uit terwijl PS-2 geen `users` en geen `sessions` heeft. Hoofdstuk 6.5 somt daarom uitputtend op welke persistente auth-state een server wel mag hebben: één credential met Argon2id, een ondertekensleutel op schijf en niet in de database, per refreshtoken een identificatie met vervalmoment en ingetrokken-vlag, en de setupcode. Meer niet.
+- **Kijkstatus heeft nu ook een leescontract.** De toestand reist mee als `user_state` in elk itemantwoord, plus een lijstendpoint met `updated_since` voor de offline-laag. `session_id` is client-generated, want er zijn bewust geen serverzijdige playbacksessies en zonder die regel had het veld geen herkomst.
+
+### De vierde poort is nieuw en is de zwaarste
+De belofte in hoofdstuk 11.1 dat de `ETag` verandert zodra de bytes veranderen volgt **niet** uit
+`(MediaFile.id, generation)`. `generation` loopt alleen op wanneer de drielagige detectie iets
+aanmerkt, en laag 2 is een hash over de eerste en de laatste megabyte. Hoofdstuk 7.2 zegt zelf dat
+zo'n signature nooit gelijkheid bewijst en noemt precies het geval: een remux die het midden
+verandert terwijl kop en staart intact blijven. Dat bestand houdt dan dezelfde `ETag`, `If-Range`
+slaagt, en de speler plakt oude en nieuwe bytes aan elkaar. De validatorstrategie moet vastliggen
+vóór PS-4, en elk bestand volledig hashen is niet de enige uitweg en waarschijnlijk niet de juiste.
+
+### Roadmap Drift Check
+Geen implementatie in Go of Dart. Geen `PlaybackPlan`, geen transcode-sessies, geen downloads, geen
+gebruikers of rechten, geen wijziging aan `share_server`. Er staat geen endpoint in het contract dat
+alleen een latere fase nodig heeft.
+
 ## [2026-08-18] PS-0 Docker Foundation draait op de DS920+ naast Plex
 
 De eerste servercode. De service doet niets, en dat is de bedoeling: wat hier faalt ligt aan de

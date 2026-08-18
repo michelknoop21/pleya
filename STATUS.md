@@ -4,6 +4,35 @@ _Laatst bijgewerkt: 2026-08-18 (`main` = `8e84f3a`; `feat/pleyaserver` loopt voo
 
 ## Waar was ik
 
+**Het wire-contract van Pleya Server ligt er, en het wacht op jouw akkoord.** PS-1 is opgeleverd:
+`docs/pleya-protocol/v1/openapi.yaml` met zeventien endpoints, een prozaspecificatie van 738 regels
+die uitlegt waarom, en 25 fixtures die PS-2, PS-3 en PS-4 straks aan elkaar knopen.
+
+OpenAPI en niet losse JSON-schema's, omdat schema's alleen bodies dekken. Methode, pad, headers,
+authenticatieklasse, `Range`, `If-Range`, statuscodes en responseheaders zijn net zo goed contract,
+en juist die zijn het onderwerp van PS-4. `scripts/check_protocol.sh` valideert het document als
+OpenAPI 3.1 in een gepinde container, controleert dat elke verwijzing uitkomt, toetst elke fixture,
+en voert drie plausibele fouten in om te bewijzen dat de validator werkelijk afkeurt.
+
+Vier gaten in de architectuur zijn onderweg opgelost. Snake_case op de lijn zonder uitzondering.
+Artwork krijgt zijn vorm hier en zijn inhoud in PS-2. Een versie met meerdere bestanden blijft geldig
+in het domeinmodel; alleen direct play begrenst zich in v1 tot één bestand. Eén bereik per aanvraag,
+en meerdere bereiken geven het volledige bestand als `200` in plaats van een `416` die de speler zou
+breken.
+
+`DEC-030` tot en met `DEC-037` zijn geschreven, zoals hoofdstuk 24.1 voorschrijft zodra fase 1 wordt
+ingepland.
+
+**De twee gates uit 24.2 zijn er vier geworden**, en ze staan met hun stand in
+[docs/pleya-server-gates.md](docs/pleya-server-gates.md). De nieuwe vierde is de zwaarste en kwam uit
+je eigen review: de belofte dat de `ETag` verandert zodra de bytes veranderen volgt **niet** uit
+`(MediaFile.id, generation)`. `generation` loopt alleen op wanneer de drielagige detectie iets
+aanmerkt, en laag 2 is een steekproef over kop en staart. Een remux die het midden verandert bij
+gelijke grootte glipt daar doorheen, `If-Range` slaagt, en de speler plakt oude en nieuwe bytes aan
+elkaar. Dat moet dicht vóór PS-4.
+
+## Eerder op 18 augustus
+
 **Pleya Server draait op de NAS, en hij doet nog niets. Dat is het resultaat.** PS-0 Docker
 Foundation staat in `pleya_server/`: een Go-service met Postgres in Docker, naast de bestaande
 Plex-container op de DS920+, met de mediabibliotheek read-only gemount.
@@ -117,7 +146,11 @@ Het Atmos-spoor staat er nog precies zo bij als gisteren: een iOS-log van build 
 
 ## Volgende stap
 
-**PS-0 is gesloten en bevroren; PS-1 blijft wachten tot na 2.8.0.** De drift check is schoon en alle
+**PS-1 wacht op twee akkoorden voordat PS-2 begint.** Poort 1 is het wire-contract, poort 2 de
+bootstrap-authflow. Beide zijn opgeleverd en voorgelegd; zonder die akkoorden zou PS-2 het contract
+implementeren dat nog kan wijzigen. De uitvoeringsregel is per fase stoppen, en dit is dat moment.
+
+**PS-0 is gesloten en bevroren.** De drift check is schoon en alle
 zeven acceptatiecriteria zijn op de echte NAS gehaald, dus er gaat niets meer bij aan de Docker
 Foundation voordat serverfunctionaliteit erom vraagt. Dat verandert niets aan de volgorde daarna:
 fase 3 is de eerste die de app raakt, en die wil je niet naast een lopende indiening hebben.
