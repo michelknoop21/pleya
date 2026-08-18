@@ -27,8 +27,11 @@ if git -C "$ROOT" diff --quiet -- docs/RELEASES.md; then
   exit 0
 fi
 
-git -C "$ROOT" add docs/RELEASES.md
-SKIP_HOOKS=1 git -C "$ROOT" commit -m "docs: releasenotes bijwerken" --no-verify >/dev/null
+# --only, want een kale commit neemt alles mee wat er al in de index staat.
+# Wie met gestagede wijzigingen pusht zag die anders stilzwijgend in een commit
+# met deze boodschap verdwijnen; dat is een keer gebeurd met 87 bestanden.
+SKIP_HOOKS=1 git -C "$ROOT" commit --only docs/RELEASES.md \
+  -m "docs: releasenotes bijwerken" --no-verify >/dev/null
 
 cat >&2 <<'EOF'
 [pre-push] docs/RELEASES.md liep achter en is bijgewerkt en gecommit.
