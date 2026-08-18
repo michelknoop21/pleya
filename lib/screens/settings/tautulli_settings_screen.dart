@@ -77,6 +77,10 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
     super.dispose();
   }
 
+  /// Every branch ends in a sentence written for this screen. What used to
+  /// happen instead was that a TautulliException with no flag on it fell
+  /// through to `e.message`, so the field under the Test button read `HTTP 400`
+  /// or `Bad Gateway`. Those belong in the log, which now has them.
   String _mapError(Object e) {
     if (e is TautulliException) {
       if (e.isNetwork) return t.tautulli.errorNetwork;
@@ -89,7 +93,14 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
         if (TautulliConstants.looksLikeApiKey(_tokenController.text)) return t.tautulli.errorModeMismatch;
         return t.tautulli.errorTokenExpired;
       }
-      return e.message;
+      // One sentence for both body-shape failures: the difference between "not
+      // Tautulli" and "Tautulli said something unfamiliar" decides where a
+      // developer looks, not what the user does next, and what the user does
+      // next is check the address either way.
+      if (e.isNotTautulli || e.isMalformed) return t.tautulli.errorNotTautulli;
+      final status = e.statusCode;
+      if (status != null) return t.tautulli.errorServer(code: status);
+      return t.tautulli.errorGeneric;
     }
     return t.tautulli.errorGeneric;
   }

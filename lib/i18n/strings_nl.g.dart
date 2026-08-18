@@ -1994,6 +1994,8 @@ class _TranslationsTautulliNl extends TranslationsTautulliEn {
 	@override String get errorModeMismatch => 'Tautulli weigert dit token, en het lijkt op je permanente API-sleutel in plaats van op een apparaat-token. Zet hierboven om naar API-sleutel, of registreer een apparaat in Tautulli en plak dat token.';
 	@override String get errorUrlRequired => 'Vul het adres van je Tautulli-server in.';
 	@override String get errorTokenRequired => 'Vul een token in.';
+	@override String get errorNotTautulli => 'Er antwoordt iets op dat adres, maar het is geen Tautulli. Controleer het adres en het basispad, en of er een loginpagina voor staat.';
+	@override String errorServer({required Object code}) => 'Tautulli meldt een serverfout (HTTP ${code}).';
 	@override String get errorGeneric => 'Koppelen is niet gelukt.';
 }
 
@@ -3983,6 +3985,8 @@ extension on TranslationsNl {
 			'tautulli.errorModeMismatch' => 'Tautulli weigert dit token, en het lijkt op je permanente API-sleutel in plaats van op een apparaat-token. Zet hierboven om naar API-sleutel, of registreer een apparaat in Tautulli en plak dat token.',
 			'tautulli.errorUrlRequired' => 'Vul het adres van je Tautulli-server in.',
 			'tautulli.errorTokenRequired' => 'Vul een token in.',
+			'tautulli.errorNotTautulli' => 'Er antwoordt iets op dat adres, maar het is geen Tautulli. Controleer het adres en het basispad, en of er een loginpagina voor staat.',
+			'tautulli.errorServer' => ({required Object code}) => 'Tautulli meldt een serverfout (HTTP ${code}).',
 			'tautulli.errorGeneric' => 'Koppelen is niet gelukt.',
 			'nowWatching.title' => 'Nu aan het kijken',
 			'nowWatching.tooltip' => 'Bekijk wie er nu kijkt',

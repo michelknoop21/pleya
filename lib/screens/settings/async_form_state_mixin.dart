@@ -68,7 +68,14 @@ mixin AsyncFormStateMixin<T extends StatefulWidget> on State<T> {
     });
     try {
       return await body();
-    } catch (e) {
+    } catch (e, st) {
+      // The user always saw *something* here; the log saw nothing. An exception
+      // the errorMapper does not recognise reaches the screen as its generic
+      // "that failed" line and left no trace at all, so an uploaded log showed
+      // a row of successful-looking requests and no reason for the retries. The
+      // stack trace is the part that pays for itself: it names the line the
+      // form actually died on.
+      appLogger.e('Async form action failed', error: e, stackTrace: st);
       if (canApplyState()) {
         setState(() => _errorText = errorMapper?.call(e) ?? e.toString());
       }

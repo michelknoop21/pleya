@@ -1728,6 +1728,8 @@
     "errorModeMismatch": "Tautulli weigert dit token, en het lijkt op je permanente API-sleutel in plaats van op een apparaat-token. Zet hierboven om naar API-sleutel, of registreer een apparaat in Tautulli en plak dat token.",
     "errorUrlRequired": "Vul het adres van je Tautulli-server in.",
     "errorTokenRequired": "Vul een token in.",
+    "errorNotTautulli": "Er antwoordt iets op dat adres, maar het is geen Tautulli. Controleer het adres en het basispad, en of er een loginpagina voor staat.",
+    "errorServer": "Tautulli meldt een serverfout (HTTP ${code}).",
     "errorGeneric": "Koppelen is niet gelukt."
   },
   "nowWatching": {

@@ -1638,6 +1638,8 @@
     "errorModeMismatch": "Tautulli rejected this token, and it looks like your permanent API key rather than a device token. Switch to API key above, or register a device in Tautulli and paste that token.",
     "errorUrlRequired": "Enter the address of your Tautulli server.",
     "errorTokenRequired": "Enter a token.",
+    "errorNotTautulli": "Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.",
+    "errorServer": "Tautulli reported a server error (HTTP ${code}).",
     "errorGeneric": "Connecting failed."
   },
   "nowWatching": {

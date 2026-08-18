@@ -78,6 +78,12 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       deviceId: mode == TautulliAuthMode.device ? deviceId : null,
     );
     final client = TautulliClient(provisional);
+    // A breadcrumb per step, all under one prefix so it can be grepped out of
+    // someone else's uploaded log. What it buys is which call was the last one:
+    // "started, register_device succeeded, silence" says the failure was in
+    // get_server_info without anyone having to reason about the request list.
+    // No address and no token, here or in any of the lines below.
+    appLogger.i('Tautulli test: started mode=${mode.name}');
     try {
       String? serverName;
       String? version;
@@ -90,6 +96,8 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
         serverName = info['pms_name']?.toString();
         machineIdentifier = info['pms_identifier']?.toString();
         version = info['tautulli_version']?.toString();
+        final reported = (machineIdentifier ?? '').isEmpty ? 'absent' : 'present';
+        appLogger.i('Tautulli test: register_device succeeded pmsIdentifier=$reported');
       }
 
       if (machineIdentifier == null || machineIdentifier.isEmpty) {
@@ -101,12 +109,20 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
         // already is.
         try {
           machineIdentifier = (await client.serverInfo())['pms_identifier']?.toString();
+          appLogger.i('Tautulli test: get_server_info succeeded');
         } on TautulliException catch (e) {
           appLogger.d('Tautulli did not report which Plex server it monitors', error: e);
         }
       }
-      serverName ??= await client.serverFriendlyName();
-      version ??= await client.version();
+      if (serverName == null) {
+        serverName = await client.serverFriendlyName();
+        appLogger.i('Tautulli test: friendly name retrieved');
+      }
+      if (version == null) {
+        version = await client.version();
+        appLogger.i('Tautulli test: Tautulli info retrieved');
+      }
+      appLogger.i('Tautulli test: succeeded');
 
       return (
         serverName: serverName,

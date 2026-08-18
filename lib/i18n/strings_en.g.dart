@@ -4611,6 +4611,12 @@ class TranslationsTautulliEn {
 	/// en: 'Enter a token.'
 	String get errorTokenRequired => 'Enter a token.';
 
+	/// en: 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.'
+	String get errorNotTautulli => 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.';
+
+	/// en: 'Tautulli reported a server error (HTTP ${code}).'
+	String errorServer({required Object code}) => 'Tautulli reported a server error (HTTP ${code}).';
+
 	/// en: 'Connecting failed.'
 	String get errorGeneric => 'Connecting failed.';
 }
@@ -7258,6 +7264,8 @@ extension on Translations {
 			'tautulli.errorModeMismatch' => 'Tautulli rejected this token, and it looks like your permanent API key rather than a device token. Switch to API key above, or register a device in Tautulli and paste that token.',
 			'tautulli.errorUrlRequired' => 'Enter the address of your Tautulli server.',
 			'tautulli.errorTokenRequired' => 'Enter a token.',
+			'tautulli.errorNotTautulli' => 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.',
+			'tautulli.errorServer' => ({required Object code}) => 'Tautulli reported a server error (HTTP ${code}).',
 			'tautulli.errorGeneric' => 'Connecting failed.',
 			'nowWatching.title' => 'Now watching',
 			'nowWatching.tooltip' => 'See who is watching now',
@@ -7285,10 +7293,10 @@ extension on Translations {
 			'trakt.watchedSync' => 'Sync watched status',
 			'trakt.watchedSyncDescription' => 'When you mark items watched in Pleya, mark them on Trakt.',
 			'trackers.title' => 'Trackers',
-			'trackers.hubSubtitle' => 'Sync watch progress with Trakt and other services.',
-			'trackers.notConnected' => 'Not connected',
 			_ => null,
 		} ?? switch (path) {
+			'trackers.hubSubtitle' => 'Sync watch progress with Trakt and other services.',
+			'trackers.notConnected' => 'Not connected',
 			'trackers.connectedAs' => ({required Object username}) => 'Connected as @${username}',
 			'trackers.scrobble' => 'Track progress automatically',
 			'trackers.scrobbleDescription' => 'Update your list when you finish an episode or movie.',
