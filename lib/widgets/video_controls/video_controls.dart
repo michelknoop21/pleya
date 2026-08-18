@@ -185,9 +185,24 @@ bool shouldShowSkipMarkerButton({
   return hasFirstFrame && hasMarker && !hasPlayNextPrompt && (!skipButtonDismissed || controlsVisible);
 }
 
-/// Intro auto-skip geldt alleen voor afleveringen. Bij een film komt een
-/// intro-marker vrijwel altijd uit de hoofdstuktitel-fallback, en dan slaat de
-/// speler echte film over. De knop blijft wel staan, zodat handmatig springen kan.
+/// Of deze marker de skip-knop mag oproepen.
+///
+/// Bij een film niet, als het om een intro gaat. Films hebben zelden een echte
+/// intro-marker, dus die komt uit de hoofdstuktitel-fallback, waar het einde op
+/// de start van het volgende hoofdstuk ligt: een openingshoofdstuk van minuten
+/// in plaats van de anderhalve minuut van een aflevering. Automatisch springen
+/// zou dan echte film overslaan, en een knop die daar minutenlang blijft staan
+/// en bij elke aanraking terugkomt is geen aanbod maar een obstakel.
+///
+/// Aftiteling blijft wel gewoon overslaanbaar, ook bij een film.
+@visibleForTesting
+bool markerCanOfferSkip({required MediaMarker marker, required MediaKind kind}) {
+  if (marker.isCredits) return true;
+  return kind == MediaKind.episode;
+}
+
+/// Intro auto-skip geldt alleen voor afleveringen. Bij een film bestaat de
+/// intro-knop niet meer (zie [markerCanOfferSkip]), dus dit is het tweede slot.
 @visibleForTesting
 bool shouldAutoSkipMarker({
   required MediaMarker marker,
