@@ -179,10 +179,8 @@ _PlaybackOpenTiming _playbackOpenTiming({
 /// [PlexClient] itself; the resolver returning null (e.g. when the active
 /// server is Jellyfin) makes the call short-circuit.
 ///
-/// Only the current episode's part is touched — we deliberately do NOT write
-/// the show-wide audio/subtitle language default (#1393): an in-player track
-/// change should not silently rewrite the whole series' Plex prefs. The
-/// explicit path for that lives in the metadata-edit UI.
+/// Only the current episode's part is touched here. The show-wide language
+/// default is written separately by [_plexSeriesLanguagePersister].
 TrackPreferencePersister _plexTrackPersister(PlexClient? Function() resolve) {
   return ({required int partId, required String trackType, int? streamID}) async {
     if (streamID == null) return;
@@ -191,6 +189,34 @@ TrackPreferencePersister _plexTrackPersister(PlexClient? Function() resolve) {
     await (trackType == 'audio'
         ? client.selectStreams(partId, audioStreamID: streamID, allParts: true)
         : client.selectStreams(partId, subtitleStreamID: streamID, allParts: true));
+  };
+}
+
+/// Writes the remembered language onto the show's Plex preferences, the same
+/// fields the metadata-edit UI exposes under Advanced.
+///
+/// Issue #1393 argued that an in-player track change must not silently rewrite
+/// the series prefs. It no longer does so silently: this runs only while both
+/// [SettingsService.rememberTrackSelections] and
+/// [SettingsService.writeSeriesLanguageToServer] are on, and only for episodes.
+/// Without it the choice would never reach Android, Windows or the official
+/// Plex clients, because iCloud key-value sync is Apple-only.
+SeriesLanguagePersister _plexSeriesLanguagePersister(PlexClient? Function() resolve) {
+  return ({required String seriesRatingKey, String? audioLanguage, String? subtitleLanguage, int? subtitleMode}) async {
+    final client = resolve();
+    if (client == null) return;
+
+    final settings = await SettingsService.getInstance();
+    if (!settings.read(SettingsService.writeSeriesLanguageToServer)) return;
+
+    final prefs = <String, String>{
+      'audioLanguage': ?audioLanguage,
+      'subtitleLanguage': ?subtitleLanguage,
+      if (subtitleMode != null) 'subtitleMode': '$subtitleMode',
+    };
+    if (prefs.isEmpty) return;
+
+    await client.updateMetadataPrefs(seriesRatingKey, prefs);
   };
 }
 
@@ -864,7 +890,15 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
       }
 
       if (Platform.isIOS) {
-        await currentPlayer.setProperty('audio-exclusive', 'yes');
+        // No `audio-exclusive` here. It used to be set once at playback start,
+        // which left two owners for one policy: the player deliberately skips
+        // the option on iOS/tvOS while this wrote it anyway. It has no consumer
+        // in the shipped libmpv either — the AO list is `audiounit,
+        // avfoundation, lavc, null, pcm`, and only `coreaudio` and `wasapi`
+        // read it — so an Apple TV log showed `audio-exclusive="yes"` next to a
+        // route that never looked at it. Ownership now sits entirely in
+        // PlayerNative.applyPassthrough, which sets it on the platforms that
+        // act on it.
 
         // Rasterize subtitles at the video's resolution instead of the
         // display's; the OSD layer upscales them with the video.
@@ -876,13 +910,32 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         );
       }
 
-      // Loudness first, and unconditionally: the filter chain lives in the
-      // shared mpv core, so `off` still has to clear whatever the previous
-      // title left behind. Writing it before the output path is what keeps
-      // `af` from landing after `audio-spdif`, which mpv reports as a
+      // Honour dialogue normalization when decoding Dolby. FFmpeg's AC-3/E-AC-3
+      // decoder ships with `target_level=0`, which its own documentation spells
+      // "not applied", so Pleya was the only party in the chain ignoring the
+      // level the mixing engineer wrote into the stream — a receiver decoding
+      // the same bitstream does apply it. Measured on an E-AC-3 title with
+      // dialnorm -27 the difference is exactly 4,0 dB, and it varies per title
+      // (-27, -28 and -31 across four files), which is precisely why a fixed
+      // compensation constant would be wrong. Setting the reference to -31
+      // makes the decoded route land where the bitstream route lands, per
+      // title, with no filter and no compression.
+      //
+      // Only `ac3` and `eac3` expose the option; `truehd`, `mlp` and `dts` do
+      // not, and fall through to the loudness stage below. mpv applies this at
+      // decoder init, so it has to be set before loadfile.
+      await currentPlayer.setProperty('ad-lavc-o', 'target_level=-31');
+
+      // Loudness next, and unconditionally: the filter chain lives in the
+      // shared mpv core, so an empty chain still has to clear whatever the
+      // previous title left behind. Writing it before the output path is what
+      // keeps `af` from landing after `audio-spdif`, which mpv reports as a
       // passthrough failure.
-      final normalizationMode = settingsService.read(SettingsService.audioNormalizationMode);
-      await currentPlayer.setAudioNormalization(normalizationMode);
+      final loudness = AudioLoudness(
+        levelVolume: settingsService.read(SettingsService.audioLevelVolume),
+        reduceLoudSounds: settingsService.read(SettingsService.audioReduceLoudSounds),
+      );
+      await currentPlayer.setAudioNormalization(loudness);
 
       // Audio output path: Dolby bitstream, multichannel PCM or stereo. Runs
       // before loadfile because the Apple audio output samples the route once

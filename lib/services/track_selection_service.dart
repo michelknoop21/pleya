@@ -6,6 +6,7 @@ import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_server_user_profile.dart';
 import '../media/media_source_info.dart';
+import '../media/track_language_choice.dart';
 import '../utils/future_extensions.dart';
 import '../utils/app_logger.dart';
 import '../utils/language_codes.dart';
@@ -335,11 +336,12 @@ int _mediaTrackStreamIndex(int id, int? index) => index ?? id;
 /// Priority levels for track selection
 enum TrackSelectionPriority {
   navigation, // Priority 1: User's manual selection from previous episode
-  serverSelected, // Priority 2: server's pre-selected track
-  perMedia, // Priority 3: Per-media language preference
-  profile, // Priority 4: User profile preferences
-  defaultTrack, // Priority 5: Default or first track
-  off, // Priority 6: Subtitles off (subtitle only)
+  sticky, // Priority 2: Remembered language for this series/movie
+  serverSelected, // Priority 3: server's pre-selected track
+  perMedia, // Priority 4: Per-media language preference
+  profile, // Priority 5: User profile preferences
+  defaultTrack, // Priority 6: Default or first track
+  off, // Priority 7: Subtitles off (subtitle only)
 }
 
 /// Result of track selection including the selected track and which priority was used
@@ -358,7 +360,19 @@ class TrackSelectionService {
   final MediaItem metadata;
   final MediaSourceInfo? plexMediaInfo;
 
-  TrackSelectionService({required this.player, this.profileSettings, required this.metadata, this.plexMediaInfo});
+  /// The language this user last picked by hand for this series or movie, or
+  /// null when they never did. Outranks the server's pre-selection because for
+  /// an episode they have not opened before that pre-selection is only a
+  /// default, while this is their own most recent decision.
+  final TrackLanguageChoice? stickyChoice;
+
+  TrackSelectionService({
+    required this.player,
+    this.profileSettings,
+    required this.metadata,
+    this.plexMediaInfo,
+    this.stickyChoice,
+  });
 
   /// Build list of preferred languages from a user profile
   List<String> _buildPreferredLanguages(MediaServerUserProfile profile, {required bool isAudio}) {
@@ -624,12 +638,29 @@ class TrackSelectionService {
     return variations.contains(trackBase);
   }
 
+  /// Pick the track whose language matches [language], breaking a tie between
+  /// same-language tracks on [title]. Null when no track speaks that language.
+  T? _matchByLanguage<T>(
+    List<T> tracks,
+    String? language,
+    String? title,
+    String? Function(T) getLanguage,
+    String? Function(T) getTitle,
+  ) {
+    if (language == null || language.isEmpty) return null;
+    final matches = tracks.where((t) => languageMatches(getLanguage(t), language)).toList();
+    if (matches.isEmpty) return null;
+    if (title == null || title.isEmpty) return matches.first;
+    return matches.where((t) => getTitle(t) == title).firstOrNull ?? matches.first;
+  }
+
   /// Select the best audio track based on priority:
   /// Priority 1: Preferred track from navigation
-  /// Priority 2: Server-selected track from media info
-  /// Priority 3: Per-media language preference
-  /// Priority 4: User profile preferences
-  /// Priority 5: Default or first track
+  /// Priority 2: Remembered language for this series/movie
+  /// Priority 3: Server-selected track from media info
+  /// Priority 4: Per-media language preference
+  /// Priority 5: User profile preferences
+  /// Priority 6: Default or first track
   TrackSelectionResult<AudioTrack>? selectAudioTrack(
     List<AudioTrack> availableTracks,
     AudioTrack? preferredAudioTrack,
@@ -646,7 +677,23 @@ class TrackSelectionService {
       }
     }
 
-    // Priority 2: Check server-selected track from media info
+    // Priority 2: The language this user last chose by hand for this title.
+    final sticky = stickyChoice;
+    if (sticky != null && sticky.hasAudio) {
+      final stickyTrack = _matchByLanguage<AudioTrack>(
+        availableTracks,
+        sticky.audioLanguage,
+        sticky.audioTitle,
+        (t) => t.language,
+        (t) => t.title,
+      );
+      if (stickyTrack != null) {
+        appLogger.d('Audio: honouring remembered language ${sticky.audioLanguage}');
+        return TrackSelectionResult(stickyTrack, TrackSelectionPriority.sticky);
+      }
+    }
+
+    // Priority 3: Check server-selected track from media info
     final info = plexMediaInfo;
     if (info != null && availableTracks.isNotEmpty) {
       final serverSelectedTrack = info.audioTracks.where((t) => t.selected).firstOrNull;
@@ -683,7 +730,7 @@ class TrackSelectionService {
       }
     }
 
-    // Priority 3: Try per-media language preference
+    // Priority 4: Try per-media language preference
     if (metadata.audioLanguage != null) {
       final matchedTrack = availableTracks.firstWhere(
         (track) => languageMatches(track.language, metadata.audioLanguage),
@@ -694,7 +741,7 @@ class TrackSelectionService {
       }
     }
 
-    // Priority 4: Try user profile preferences
+    // Priority 5: Try user profile preferences
     if (profileSettings != null) {
       trackToSelect = findAudioTrackByProfile(availableTracks, profileSettings!);
       if (trackToSelect != null) {
@@ -702,17 +749,18 @@ class TrackSelectionService {
       }
     }
 
-    // Priority 5: Use default or first track
+    // Priority 6: Use default or first track
     trackToSelect = availableTracks.firstWhere((t) => t.isDefault, orElse: () => availableTracks.first);
     return TrackSelectionResult(trackToSelect, TrackSelectionPriority.defaultTrack);
   }
 
   /// Select the best subtitle track based on priority:
   /// Priority 1: Preferred track from navigation
-  /// Priority 2: Server-selected track or explicit server off decision
-  /// Priority 3: User profile subtitle mode
-  /// Priority 4: Default track
-  /// Priority 5: Off
+  /// Priority 2: Remembered language (or explicit off) for this series/movie
+  /// Priority 3: Server-selected track or explicit server off decision
+  /// Priority 4: User profile subtitle mode
+  /// Priority 5: Default track
+  /// Priority 6: Off
   TrackSelectionResult<SubtitleTrack> selectSubtitleTrack(
     List<SubtitleTrack> availableTracks,
     SubtitleTrack? preferredSubtitleTrack,
@@ -730,7 +778,38 @@ class TrackSelectionService {
       }
     }
 
-    // Priority 2: Trust the server's selected track. Plex computes this from
+    // Priority 2: The subtitle language this user last chose by hand for this
+    // title. An explicit "off" counts as a choice and is honoured even when
+    // subtitle tracks exist.
+    final sticky = stickyChoice;
+    if (sticky != null && sticky.hasSubtitle) {
+      if (sticky.subtitlesOff) {
+        appLogger.d('Subtitles: honouring remembered off');
+        return TrackSelectionResult(SubtitleTrack.off, TrackSelectionPriority.sticky);
+      }
+      final forcedMatch = availableTracks.where((t) => t.isForced == sticky.subtitleForced).toList();
+      final stickyTrack =
+          _matchByLanguage<SubtitleTrack>(
+            forcedMatch,
+            sticky.subtitleLanguage,
+            sticky.subtitleTitle,
+            (t) => t.language,
+            (t) => t.title,
+          ) ??
+          _matchByLanguage<SubtitleTrack>(
+            availableTracks,
+            sticky.subtitleLanguage,
+            sticky.subtitleTitle,
+            (t) => t.language,
+            (t) => t.title,
+          );
+      if (stickyTrack != null) {
+        appLogger.d('Subtitles: honouring remembered language ${sticky.subtitleLanguage}');
+        return TrackSelectionResult(stickyTrack, TrackSelectionPriority.sticky);
+      }
+    }
+
+    // Priority 3: Trust the server's selected track. Plex computes this from
     // account/show/per-item prefs; Jellyfin exposes DefaultSubtitleStreamIndex.
     final info = plexMediaInfo;
     if (info != null) {
@@ -777,18 +856,18 @@ class TrackSelectionService {
       }
     }
 
-    // Priority 3: Apply server profile subtitle mode when the backend exposes
+    // Priority 4: Apply server profile subtitle mode when the backend exposes
     // one (Jellyfin). Plex keeps using the selected-stream path above.
     final profileSelectedTrack = _selectSubtitleTrackByProfile(availableTracks, selectedAudioTrack);
     if (profileSelectedTrack != null) return profileSelectedTrack;
 
-    // Priority 4: Check for default subtitle
+    // Priority 5: Check for default subtitle
     final defaultTrack = _findDefaultSubtitleTrack(availableTracks);
     if (defaultTrack != null) {
       return TrackSelectionResult(defaultTrack, TrackSelectionPriority.defaultTrack);
     }
 
-    // Priority 5: Turn off subtitles
+    // Priority 6: Turn off subtitles
     return TrackSelectionResult(SubtitleTrack.off, TrackSelectionPriority.off);
   }
 
@@ -798,8 +877,10 @@ class TrackSelectionService {
     SubtitleTrack? preferredSubtitleTrack,
     SubtitleTrack? preferredSecondarySubtitleTrack,
     double? defaultPlaybackSpeed,
-    Function(AudioTrack)? onAudioTrackChanged,
-    Function(SubtitleTrack)? onSubtitleTrackChanged,
+    // Typed as returning a future rather than `Function(...)`: both are fired
+    // without awaiting below, and `unawaited` needs a real future to accept.
+    Future<void> Function(AudioTrack)? onAudioTrackChanged,
+    Future<void> Function(SubtitleTrack)? onSubtitleTrackChanged,
   }) async {
     // Wait for tracks to be loaded
     if (player.state.tracks.audio.isEmpty && player.state.tracks.subtitle.isEmpty) {
@@ -831,7 +912,9 @@ class TrackSelectionService {
 
       // Save to Plex if this was user's navigation preference (Priority 1)
       if (audioResult.priority == TrackSelectionPriority.navigation && onAudioTrackChanged != null) {
-        onAudioTrackChanged(selectedAudioTrack);
+        // Deliberately not awaited: remembering the choice must not hold up
+        // applying the tracks. TrackPreferenceStore serialises its own writes.
+        unawaited(onAudioTrackChanged(selectedAudioTrack));
       }
     }
 
@@ -846,7 +929,8 @@ class TrackSelectionService {
 
     // Save to Plex if this was user's navigation preference (Priority 1)
     if (subtitleResult.priority == TrackSelectionPriority.navigation && onSubtitleTrackChanged != null) {
-      onSubtitleTrackChanged(selectedSubtitleTrack);
+      // Same as the audio side above: fire and forget, on purpose.
+      unawaited(onSubtitleTrackChanged(selectedSubtitleTrack));
     }
 
     // Apply preferred secondary subtitle track if provided (mpv-only)

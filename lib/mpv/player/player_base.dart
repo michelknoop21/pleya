@@ -701,10 +701,10 @@ abstract class PlayerBase with PlayerStreamControllersMixin implements Player {
   Future<void> setAudioPassthrough(bool enabled) async {}
 
   @override
-  Future<void> setAudioNormalization(AudioNormalizationMode mode) async {
+  Future<void> setAudioNormalization(AudioLoudness loudness) async {
     // Registers the wish only; the arbiter decides what actually reaches mpv,
     // because loudnorm needs decoded audio and a running bitstream has none.
-    await reconcileAudioPath(audioPath.request(normalization: mode));
+    await reconcileAudioPath(audioPath.request(normalization: loudness));
   }
 
   @override
@@ -736,19 +736,17 @@ abstract class PlayerBase with PlayerStreamControllersMixin implements Player {
     if (!transition.normalizationFirst) await _applyNormalization(transition.normalization);
   }
 
-  Future<void> _applyNormalization(AudioNormalizationMode? mode) async {
-    if (mode == null) return;
-    await applyNormalization(mode);
-    audioPath.markNormalizationApplied(mode);
+  Future<void> _applyNormalization(AudioLoudness? loudness) async {
+    if (loudness == null) return;
+    await applyNormalization(loudness);
+    audioPath.markNormalizationApplied(loudness);
   }
 
-  /// Hands the resolved loudness mode to the backend.
-  ///
-  /// Empty string removes the filter; the normalize target mirrors the Android
-  /// ExoPlayer effect parameters in AudioNormalizationEffect.kt.
+  /// Hands the resolved loudness state to the backend. An empty chain removes
+  /// the filter.
   @protected
-  Future<void> applyNormalization(AudioNormalizationMode mode) async {
-    await setProperty('af', mode.mpvFilter);
+  Future<void> applyNormalization(AudioLoudness loudness) async {
+    await setProperty('af', loudness.mpvFilter);
   }
 
   /// Hands the resolved bitstream state to the backend. Base players have no

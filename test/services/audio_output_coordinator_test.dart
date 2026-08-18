@@ -54,6 +54,9 @@ class _FakePlayer implements Player {
   final Map<String, String?> propertyValues = {};
   final List<String> propertyReads = [];
 
+  /// Properties whose read throws, for backends that do not know them.
+  final Set<String> failingPropertyReads = {};
+
   void emitLog(String text) => _logs.add(PlayerLog(prefix: 'cplayer', level: PlayerLogLevel.verbose, text: text));
 
   @override
@@ -62,6 +65,7 @@ class _FakePlayer implements Player {
   @override
   Future<String?> getProperty(String name) async {
     propertyReads.add(name);
+    if (failingPropertyReads.contains(name)) throw StateError('unknown property $name');
     return propertyValues[name];
   }
 
@@ -101,6 +105,7 @@ void main() {
     SettingsService.resetForTesting();
     settings = await SettingsService.getInstance();
     AudioOutputCoordinator.current = null;
+    AudioOutputCoordinator.bitstreamActive.value = false;
   });
 
   test('a failed native write is retried instead of being cached as applied', () async {
@@ -348,6 +353,107 @@ void main() {
         player.propertyReads.clear();
         async.elapse(const Duration(seconds: 30));
         expect(player.propertyReads, isEmpty, reason: 'polling stops once there is something to report');
+
+        coordinator.dispose();
+      });
+    });
+
+    test('records the filter chain, the software volume and the source width', () {
+      fakeAsync((async) {
+        final player = _FakePlayer();
+        final coordinator = AudioOutputCoordinator(player: player, settings: settings);
+        coordinator.prepare(audioCodec: 'eac3');
+        async.flushMicrotasks();
+        player.propertyValues['current-ao'] = 'avfoundation';
+        player.propertyValues['audio-out-params/format'] = 'spdif-eac3';
+        player.propertyValues['audio-out-params/hr-channels'] = 'stereo';
+        // Empty, not absent: this is the invariant DEC-013 rests on, seen from
+        // the measuring end instead of from the arbiter that wrote it.
+        player.propertyValues['af'] = '';
+        player.propertyValues['volume'] = '100.000000';
+        player.propertyValues['volume-max'] = '100.000000';
+        player.propertyValues['audio-params/channel-count'] = '6';
+
+        player.emitLog('AO: [avfoundation] 192000Hz stereo 2ch spdif-eac3');
+        async.flushMicrotasks();
+
+        expect(coordinator.diagnostics?.filters, '');
+        expect(coordinator.diagnostics?.hasFilters, isFalse, reason: 'a running bitstream carries no filters');
+        expect(coordinator.diagnostics?.volume, '100.000000');
+        expect(coordinator.diagnostics?.sourceChannels, '6', reason: 'six-channel source behind a two-channel carrier');
+
+        coordinator.dispose();
+      });
+    });
+
+    test('an unknown diagnostic property does not take the measurement with it', () {
+      fakeAsync((async) {
+        final player = _FakePlayer();
+        final coordinator = AudioOutputCoordinator(player: player, settings: settings);
+        coordinator.prepare(audioCodec: 'eac3');
+        async.flushMicrotasks();
+        player.propertyValues['current-ao'] = 'avfoundation';
+        player.propertyValues['audio-out-params/format'] = 'spdif-eac3';
+        player.failingPropertyReads.add('audio-params/channel-count');
+
+        player.emitLog('AO: [avfoundation] 192000Hz stereo 2ch spdif-eac3');
+        async.flushMicrotasks();
+
+        // The identity is what the fallback logic depends on, so it survives a
+        // backend that does not know one of the context properties.
+        expect(coordinator.verifiedOutput?.isBitstream, isTrue);
+        expect(coordinator.diagnostics, isNull);
+
+        coordinator.dispose();
+      });
+    });
+
+    test('only a measured bitstream marks the volume as external', () {
+      fakeAsync((async) {
+        final player = _FakePlayer();
+        final coordinator = AudioOutputCoordinator(player: player, settings: settings);
+        coordinator.prepare(audioCodec: 'eac3');
+        async.flushMicrotasks();
+        // A pcm decision says so before anything is measured: leaving the
+        // controls disabled for the two seconds of the readback would carry the
+        // previous title's answer into this one.
+        expect(AudioOutputCoordinator.bitstreamActive.value, isFalse);
+
+        player.propertyValues['current-ao'] = 'avfoundation';
+        player.propertyValues['audio-out-params/format'] = 'spdif-eac3';
+        player.emitLog('AO: [avfoundation] 192000Hz stereo 2ch spdif-eac3');
+        async.flushMicrotasks();
+        expect(AudioOutputCoordinator.bitstreamActive.value, isTrue);
+
+        // Disposing has to release it, or the controls stay dead after the
+        // player closes.
+        coordinator.dispose();
+        expect(AudioOutputCoordinator.bitstreamActive.value, isFalse);
+      });
+    });
+
+    test('a bitstream that fell back to PCM leaves the volume usable', () {
+      fakeAsync((async) {
+        final player = _FakePlayer();
+        // The block list is static and outlives a test; without this an earlier
+        // failure in this file decides the route here.
+        AudioOutputCoordinator.resetBitstreamBlocksForTest();
+        settings.write(SettingsService.audioOutputMode, AudioOutputMode.passthrough);
+        async.flushMicrotasks();
+        final coordinator = AudioOutputCoordinator(player: player, settings: settings);
+        coordinator.prepare(audioCodec: 'eac3');
+        async.flushMicrotasks();
+        expect(coordinator.decision, AudioOutputDecision.passthrough, reason: 'a bitstream was asked for');
+        // Asked for a bitstream, got decoded audio. The setting says one thing
+        // and the measurement another, and the measurement is what the volume
+        // control has to believe.
+        player.propertyValues['current-ao'] = 'avfoundation';
+        player.propertyValues['audio-out-params/format'] = 'float';
+        player.emitLog('AO: [avfoundation] 48000Hz 5.1 6ch float');
+        async.flushMicrotasks();
+
+        expect(coordinator.verifiedOutput?.isBitstream, isFalse);
+        expect(AudioOutputCoordinator.bitstreamActive.value, isFalse);
 
         coordinator.dispose();
       });

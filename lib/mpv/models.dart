@@ -26,27 +26,63 @@ sealed class PlayerError with _$PlayerError {
 
 enum PlayerLogLevel { none, fatal, error, warn, info, verbose, debug, trace }
 
-/// Loudness handling applied via mpv's `af` loudnorm filter.
-/// - [off]: no filter, original dynamics.
-/// - [normalize]: streaming-style target (I=-14), tames overall loudness.
-/// - [night]: compresses dynamic range harder (lower LRA, higher target floor)
-///   so quiet dialogue stays audible without loud effects spiking — for
-///   late-night listening. Mirrored on Android by the ExoPlayer effect, which
-///   only supports on/off, so [night] there behaves like [normalize].
-enum AudioNormalizationMode {
-  off,
-  normalize,
-  night;
+/// Legacy single-axis loudness setting, superseded by [AudioLoudness].
+///
+/// Kept only because it is still the stored value of the `audio_normalization_mode`
+/// pref, which seeds the defaults of the two switches that replaced it. It
+/// carries no behaviour any more.
+enum AudioNormalizationMode { off, normalize, night }
 
-  /// mpv `af` filter string for this mode ('' disables filtering).
-  String get mpvFilter => switch (this) {
-    AudioNormalizationMode.off => '',
-    AudioNormalizationMode.normalize => 'loudnorm=I=-14:TP=-3:LRA=4',
-    AudioNormalizationMode.night => 'loudnorm=I=-16:TP=-2:LRA=2',
-  };
+/// The two independent loudness choices and the mpv filter chain they make.
+///
+/// The numbers are measured, not chosen. On a 120-second dialogue excerpt of an
+/// E-AC-3 Atmos title (dialnorm -27), decoded with dialnorm honoured, the
+/// levelling chain lands between -22,2 and -23,1 LUFS across AC-3 and E-AC-3
+/// and across dialnorm -27 and -28, with the true peak always at -2,0 dBFS.
+/// That target is EBU R128, the level broadcasters are held to, so Pleya ends
+/// up where the rest of the television is instead of 5 dB above it — where the
+/// old `I=-14` put it — or 7 dB below it, where an untouched Dolby bitstream
+/// sits.
+class AudioLoudness {
+  const AudioLoudness({this.levelVolume = false, this.reduceLoudSounds = false});
 
-  /// Whether any loudness filtering is active (Android native on/off).
-  bool get isEnabled => this != AudioNormalizationMode.off;
+  /// Bring every title to the same average level.
+  final bool levelVolume;
+
+  /// Narrow the gap between dialogue and loud effects.
+  final bool reduceLoudSounds;
+
+  static const none = AudioLoudness();
+
+  /// mpv `af` chain ('' disables filtering).
+  ///
+  /// [reduceLoudSounds] only does anything alongside [levelVolume], and that is
+  /// a measurement result rather than a simplification: a compressor with
+  /// makeup gain and no loudness target ran the same excerpt up to +5,4 dBFS —
+  /// clipping — while leaving the loudness range where it started. Reducing
+  /// dynamics is only safe once something is holding the level.
+  String get mpvFilter {
+    if (!levelVolume) return '';
+    if (!reduceLoudSounds) return 'loudnorm=I=-22:TP=-2:LRA=9';
+    // `LRA` alone barely moves single-pass loudnorm (10,2 against 8,5 LU), so
+    // the compressor ahead of it is what actually narrows the range: 10,2 down
+    // to 6,4 LU at the same -22,5 LUFS.
+    return 'acompressor=threshold=-38dB:ratio=8:attack=5:release=250,loudnorm=I=-22:TP=-2:LRA=3';
+  }
+
+  /// Whether any loudness filtering is active. Android's native effect is
+  /// on/off only, so both switches collapse to this one bit there.
+  bool get isEnabled => levelVolume;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AudioLoudness && other.levelVolume == levelVolume && other.reduceLoudSounds == reduceLoudSounds;
+
+  @override
+  int get hashCode => Object.hash(levelVolume, reduceLoudSounds);
+
+  @override
+  String toString() => 'AudioLoudness(level: $levelVolume, reduceLoud: $reduceLoudSounds)';
 }
 
 @freezed

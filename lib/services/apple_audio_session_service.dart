@@ -66,6 +66,16 @@ class AppleAudioRoute {
 
   final AppleRenderingMode renderingMode;
 
+  /// `AVAudioSession` category and mode as they stand at this snapshot.
+  ///
+  /// Diagnostic, and here rather than in a separate call because the route is
+  /// already logged at playback start and on every change. The app asks for
+  /// `.moviePlayback`, and a device log showed mpv reading back `.default`
+  /// during playback; carrying the mode on every snapshot is what turns that
+  /// into a trace instead of a guess.
+  final String category;
+  final String mode;
+
   const AppleAudioRoute({
     this.maximumOutputNumberOfChannels = 2,
     this.outputNumberOfChannels = 2,
@@ -75,6 +85,8 @@ class AppleAudioRoute {
     this.portName = '',
     this.isDigitalPassthroughPort = false,
     this.renderingMode = AppleRenderingMode.notApplicable,
+    this.category = '',
+    this.mode = '',
   });
 
   /// Fallback used off Apple platforms and when the channel is unreachable:
@@ -91,6 +103,8 @@ class AppleAudioRoute {
       portName: map['portName'] as String? ?? '',
       isDigitalPassthroughPort: map['isDigitalOutput'] as bool? ?? false,
       renderingMode: AppleRenderingMode.parse(map['renderingMode'] as String?),
+      category: map['category'] as String? ?? '',
+      mode: map['mode'] as String? ?? '',
     );
   }
 
@@ -115,7 +129,8 @@ class AppleAudioRoute {
   String toString() =>
       'AppleAudioRoute(port: $portType/$portName, max: $maximumOutputNumberOfChannels, '
       'out: $outputNumberOfChannels, multichannel: $supportsMultichannelContent, '
-      'spatial: $spatialAudioEnabled, rendering: ${renderingMode.name})';
+      'spatial: $spatialAudioEnabled, rendering: ${renderingMode.name}'
+      '${mode.isEmpty ? '' : ', session: $category/$mode'})';
 }
 
 /// Reads and configures the Apple audio session so playback can negotiate more

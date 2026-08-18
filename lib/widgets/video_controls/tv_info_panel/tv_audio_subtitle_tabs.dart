@@ -9,7 +9,6 @@ import '../../../services/audio_output_decision.dart';
 import '../../../services/settings_service.dart';
 import '../../../utils/audio_output_labels.dart';
 import '../../../utils/player_subtitle_labeling.dart';
-import '../../../utils/snackbar_helper.dart';
 import '../../../utils/track_label_builder.dart';
 import '../models/track_controls_state.dart';
 import '../helpers/track_filter_helper.dart';
@@ -171,28 +170,40 @@ class TvAudioTab extends StatelessWidget {
               ),
             );
 
+            // Priority, only under Auto: the explicit modes already say which
+            // property they protect.
             rows.add(
-              ValueListenableBuilder<AudioNormalizationMode>(
-                valueListenable: SettingsService.instance.listenable(SettingsService.audioNormalizationMode),
-                builder: (context, mode, _) => TvPanelRow(
-                  icon: Symbols.graphic_eq_rounded,
-                  title: t.videoSettings.audioNormalizationTitle,
-                  value: _audioNormalizationLabel(mode),
-                  highlighted: mode.isEnabled,
-                  // Tap cycles Off → Normalize → Night, same as the mobile sheet.
-                  onSelect: () async {
-                    const order = AudioNormalizationMode.values;
-                    final next = order[(mode.index + 1) % order.length];
-                    await SettingsService.instance.write(SettingsService.audioNormalizationMode, next);
-                    await player.setAudioNormalization(next);
-                    // A running bitstream outranks the loudness setting
-                    // (DEC-013); say so once instead of changing nothing
-                    // audible.
-                    if (context.mounted && player.consumeNormalizationSuspendedNotice()) {
-                      showAppSnackBar(context, t.videoSettings.audioNormalizationSuspended);
-                    }
-                  },
-                ),
+              ValueListenableBuilder<AudioOutputMode>(
+                valueListenable: SettingsService.instance.listenable(SettingsService.audioOutputMode),
+                builder: (context, mode, _) => mode != AudioOutputMode.auto
+                    ? const SizedBox.shrink()
+                    : ValueListenableBuilder<AudioPriority>(
+                        valueListenable: SettingsService.instance.listenable(SettingsService.audioPriority),
+                        builder: (context, priority, _) => TvPanelRow(
+                          icon: Symbols.tune_rounded,
+                          title: t.videoSettings.audioPriorityTitle,
+                          value: _audioPriorityLabel(priority),
+                          highlighted: priority == AudioPriority.originalDolby,
+                          onSelect: () async {
+                            const order = AudioPriority.values;
+                            final next = order[(priority.index + 1) % order.length];
+                            await SettingsService.instance.write(SettingsService.audioPriority, next);
+                            await AudioOutputCoordinator.current?.onModeChanged();
+                          },
+                        ),
+                      ),
+              ),
+            );
+
+            rows.add(_LoudnessRow(player: player, pref: SettingsService.audioLevelVolume, level: true));
+            rows.add(
+              ValueListenableBuilder<bool>(
+                valueListenable: SettingsService.instance.listenable(SettingsService.audioLevelVolume),
+                // Hidden rather than disabled: without a level to hold, the
+                // compressor measurably clipped instead of helping.
+                builder: (context, levelling, _) => !levelling
+                    ? const SizedBox.shrink()
+                    : _LoudnessRow(player: player, pref: SettingsService.audioReduceLoudSounds, level: false),
               ),
             );
 
@@ -212,10 +223,9 @@ class TvAudioTab extends StatelessWidget {
     AudioOutputMode.pcm => t.videoSettings.audioOutputModes.pcm,
   };
 
-  String _audioNormalizationLabel(AudioNormalizationMode mode) => switch (mode) {
-    AudioNormalizationMode.off => t.videoSettings.audioNormalizationModes.off,
-    AudioNormalizationMode.normalize => t.videoSettings.audioNormalizationModes.normalize,
-    AudioNormalizationMode.night => t.videoSettings.audioNormalizationModes.night,
+  String _audioPriorityLabel(AudioPriority priority) => switch (priority) {
+    AudioPriority.evenVolume => t.videoSettings.audioPriorities.evenVolume,
+    AudioPriority.originalDolby => t.videoSettings.audioPriorities.originalDolby,
   };
 
   int? _selectedSourceAudioId() {
@@ -228,6 +238,48 @@ class TvAudioTab extends StatelessWidget {
   }
 }
 
+/// One of the two loudness switches, as an on/off panel row.
+///
+/// Says why it is inert during a bitstream instead of flipping a value nobody
+/// can hear — the same substituted-value idiom the max-volume row uses.
+class _LoudnessRow extends StatelessWidget {
+  const _LoudnessRow({required this.player, required this.pref, required this.level});
+
+  final Player player;
+  final Pref<bool> pref;
+
+  /// True for "even out volume", false for "reduce loud sounds".
+  final bool level;
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = SettingsService.instance;
+    return ValueListenableBuilder<bool>(
+      valueListenable: AudioOutputCoordinator.bitstreamActive,
+      builder: (context, bitstreaming, _) => ValueListenableBuilder<bool>(
+        valueListenable: settings.listenable(pref),
+        builder: (context, enabled, _) => TvPanelRow(
+          icon: level ? Symbols.graphic_eq_rounded : Symbols.compress_rounded,
+          title: level ? t.videoSettings.audioLevelVolume : t.videoSettings.audioReduceLoudSounds,
+          value: bitstreaming ? t.videoSettings.audioNormalizationSuspended : (enabled ? t.common.on : t.common.off),
+          highlighted: !bitstreaming && enabled,
+          onSelect: bitstreaming
+              ? () {}
+              : () async {
+                  await settings.write(pref, !enabled);
+                  await player.setAudioNormalization(
+                    AudioLoudness(
+                      levelVolume: settings.read(SettingsService.audioLevelVolume),
+                      reduceLoudSounds: settings.read(SettingsService.audioReduceLoudSounds),
+                    ),
+                  );
+                },
+        ),
+      ),
+    );
+  }
+}
+
 class _MaxVolumeRow extends StatelessWidget {
   final FocusNode? focusNode;
   final VoidCallback? onNavigateUp;
@@ -236,16 +288,21 @@ class _MaxVolumeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: SettingsService.instance.listenable(SettingsService.maxVolume),
-      builder: (context, maxVol, _) => TvPanelRow(
-        focusNode: focusNode,
-        onNavigateUp: onNavigateUp,
-        icon: Symbols.volume_up_rounded,
-        title: t.settings.maxVolume,
-        value: '$maxVol%',
-        highlighted: maxVol > 100,
-        onSelect: onSelect,
+    return ValueListenableBuilder<bool>(
+      // A ceiling on a volume that mpv cannot apply is four button presses
+      // that do nothing, which is exactly what the Apple TV log caught.
+      valueListenable: AudioOutputCoordinator.bitstreamActive,
+      builder: (context, external, _) => ValueListenableBuilder<int>(
+        valueListenable: SettingsService.instance.listenable(SettingsService.maxVolume),
+        builder: (context, maxVol, _) => TvPanelRow(
+          focusNode: focusNode,
+          onNavigateUp: onNavigateUp,
+          icon: Symbols.volume_up_rounded,
+          title: t.settings.maxVolume,
+          value: external ? t.videoControls.volumeHandledByDevice : '$maxVol%',
+          highlighted: !external && maxVol > 100,
+          onSelect: external ? () {} : onSelect,
+        ),
       ),
     );
   }

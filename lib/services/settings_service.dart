@@ -9,8 +9,9 @@ import 'image_cache_service.dart';
 import 'package:pleya/utils/app_logger.dart';
 import '../i18n/strings.g.dart';
 import '../models/mpv_config_models.dart';
+import '../media/track_language_choice.dart';
 import '../mpv/models.dart' show AudioNormalizationMode;
-import 'audio_output_decision.dart' show AudioOutputMode;
+import 'audio_output_decision.dart' show AudioOutputMode, AudioPriority;
 import '../models/external_player_models.dart';
 import 'base_shared_preferences_service.dart';
 import 'device_performance.dart';
@@ -372,6 +373,11 @@ class SettingsService extends BaseSharedPreferencesService {
   static const subtitleItalic = BoolPref('subtitle_italic');
   static const cleanedOldImageCache = BoolPref('cleaned_old_image_cache');
   static const rememberTrackSelections = BoolPref('remember_track_selections', defaultValue: true);
+
+  /// Mirror a remembered language choice onto the show's Plex preferences.
+  /// Reaches devices iCloud cannot (Android, Windows) and the official Plex
+  /// clients, at the cost of overwriting what the user set by hand in Plex.
+  static const writeSeriesLanguageToServer = BoolPref('write_series_language_to_server', defaultValue: true);
   static const showChapterMarkersOnTimeline = BoolPref('show_chapter_markers_on_timeline', defaultValue: true);
   static const clickVideoTogglesPlayback = BoolPref('click_video_toggles_playback');
   static const autoSkipIntro = BoolPref('auto_skip_intro');
@@ -453,14 +459,38 @@ class SettingsService extends BaseSharedPreferencesService {
   );
   static const audioNormalization = BoolPref('audio_normalization');
 
-  /// Loudness mode: Off / Normalize / Night. Supersedes the legacy on/off
-  /// [audioNormalization] bool, whose value seeds the default so existing users
-  /// keep normalization on until they pick a mode explicitly.
+  /// Legacy single-axis loudness mode. Superseded by [audioLevelVolume] and
+  /// [audioReduceLoudSounds]; kept only so its value can seed their defaults.
   static final audioNormalizationMode = EnumPref<AudioNormalizationMode>(
     'audio_normalization_mode',
     values: AudioNormalizationMode.values,
     defaultValueProvider: () =>
         instance.read(audioNormalization) ? AudioNormalizationMode.normalize : AudioNormalizationMode.off,
+  );
+
+  /// Bring every title to the same average level, so Pleya sits where the rest
+  /// of the television sits instead of well below it.
+  static final audioLevelVolume = BoolPref(
+    'audio_level_volume',
+    defaultValueProvider: () => instance.read(audioNormalizationMode) != AudioNormalizationMode.off,
+  );
+
+  /// Narrow the gap between dialogue and loud effects. Only the old night mode
+  /// asked for this, so only night seeds it on.
+  static final audioReduceLoudSounds = BoolPref(
+    'audio_reduce_loud_sounds',
+    defaultValueProvider: () => instance.read(audioNormalizationMode) == AudioNormalizationMode.night,
+  );
+
+  /// Which property [AudioOutputMode.auto] protects when they conflict. Someone
+  /// who deliberately forced passthrough clearly wanted the object layer, so
+  /// their choice carries over rather than being levelled away.
+  static final audioPriority = EnumPref<AudioPriority>(
+    'audio_priority',
+    values: AudioPriority.values,
+    defaultValueProvider: () => instance.read(audioOutputMode) == AudioOutputMode.passthrough
+        ? AudioPriority.originalDolby
+        : AudioPriority.evenVolume,
   );
   static const liveTvDefaultFavorites = BoolPref('live_tv_default_favorites');
   static const matchRefreshRate = BoolPref('match_refresh_rate');
@@ -530,6 +560,20 @@ class SettingsService extends BaseSharedPreferencesService {
     defaultValue: const {},
     encode: json.encode,
     decode: (raw) => (raw as Map<String, dynamic>).map((k, v) => MapEntry(k, v as int)),
+  );
+
+  /// Last hand-picked audio/subtitle language per series or movie, keyed by
+  /// `{profileScope}|{grandparentId ?? id}`. The profile scope is part of the
+  /// key rather than the pref name so two Plex Home users on one device keep
+  /// separate choices while the whole map still travels as a single iCloud
+  /// key-value entry. Read and written through `TrackPreferenceStore`.
+  static final trackLanguagePreferences = JsonPref<Map<String, TrackLanguageChoice>>(
+    'track_language_preferences',
+    defaultValue: const {},
+    encode: (v) => json.encode(v.map((key, choice) => MapEntry(key, choice.toJson()))),
+    decode: (raw) => (raw as Map<String, dynamic>).map(
+      (key, value) => MapEntry(key, TrackLanguageChoice.fromJson(value as Map<String, dynamic>)),
+    ),
   );
   static final customShaderPresets = JsonPref<List<Map<String, dynamic>>>(
     'custom_shader_presets',
@@ -860,7 +904,13 @@ class SettingsService extends BaseSharedPreferencesService {
     ambientLightingIntensity,
     audioPassthrough,
     audioOutputMode,
+    audioPriority,
     audioNormalization,
+    // audioNormalizationMode was missing here, so a reset left the old loudness
+    // choice behind while clearing the output mode next to it.
+    audioNormalizationMode,
+    audioLevelVolume,
+    audioReduceLoudSounds,
     themeMode,
     keyboardShortcuts,
     keyboardHotkeys,

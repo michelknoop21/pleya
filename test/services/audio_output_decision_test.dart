@@ -31,8 +31,22 @@ const _hdmi = AppleAudioRoute(
 /// The built-in speaker: no spatial support, no width.
 const _builtIn = AppleAudioRoute(portType: 'Speaker', supportsMultichannelContent: true);
 
-AudioOutputDecision decide(AudioOutputMode mode, AppleAudioRoute route, String? codec, {Set<String>? codecs}) =>
-    decideAudioOutput(mode: mode, route: route, audioCodec: codec, bitstreamCodecs: codecs ?? appleBitstreamCodecs);
+AudioOutputDecision decide(
+  AudioOutputMode mode,
+  AppleAudioRoute route,
+  String? codec, {
+  Set<String>? codecs,
+  AudioPriority priority = AudioPriority.evenVolume,
+}) => decideAudioOutput(
+  mode: mode,
+  route: route,
+  audioCodec: codec,
+  priority: priority,
+  bitstreamCodecs: codecs ?? appleBitstreamCodecs,
+);
+
+AudioOutputDecision dolbyFirst(AudioOutputMode mode, AppleAudioRoute route, String? codec, {Set<String>? codecs}) =>
+    decide(mode, route, codec, codecs: codecs, priority: AudioPriority.originalDolby);
 
 void main() {
   group('normalizeAudioCodec', () {
@@ -90,6 +104,49 @@ void main() {
     test('an unknown codec changes nothing', () {
       expect(decide(AudioOutputMode.auto, _hdmi, null), AudioOutputDecision.pcmMultichannel);
       expect(decide(AudioOutputMode.auto, _airPodsStereo, null), AudioOutputDecision.pcmStereo);
+    });
+  });
+
+  group('auto, with Dolby first', () {
+    test('bitstreams on a wired digital port', () {
+      // The unlock: a device log from an Apple TV 4K over HDMI shows
+      // `spdif_eac3` reaching the avfoundation sink with `JOC=yes`, which is
+      // the proof this was waiting on since build 211.
+      expect(dolbyFirst(AudioOutputMode.auto, _hdmi, 'eac3'), AudioOutputDecision.passthrough);
+      expect(dolbyFirst(AudioOutputMode.auto, _hdmi, 'ac3'), AudioOutputDecision.passthrough);
+    });
+
+    test('will not bitstream to a route that is not a wired digital port', () {
+      // AirPods can report themselves wide, and this is exactly where build 207
+      // went wrong: a bitstream to something that never agreed to take one.
+      expect(dolbyFirst(AudioOutputMode.auto, _airPodsWide, 'eac3'), AudioOutputDecision.pcmMultichannel);
+      expect(dolbyFirst(AudioOutputMode.auto, _builtIn, 'eac3'), AudioOutputDecision.pcmStereo);
+    });
+
+    test('demands a known codec, unlike the explicit passthrough mode', () {
+      // Passthrough forgives a null codec because the user asked for it by
+      // hand. Auto has no such licence.
+      expect(dolbyFirst(AudioOutputMode.auto, _hdmi, null), AudioOutputDecision.pcmMultichannel);
+      expect(dolbyFirst(AudioOutputMode.auto, _hdmi, 'dts'), AudioOutputDecision.pcmMultichannel);
+    });
+
+    test('stays on PCM once the route is known to refuse a bitstream', () {
+      expect(
+        decideAudioOutput(
+          mode: AudioOutputMode.auto,
+          priority: AudioPriority.originalDolby,
+          route: _hdmi,
+          audioCodec: 'eac3',
+          bitstreamBlocked: true,
+        ),
+        AudioOutputDecision.pcmMultichannel,
+      );
+    });
+
+    test('even volume never bitstreams, whatever the route offers', () {
+      // Levelling cannot touch a compressed stream, so the priority that asks
+      // for level has to decode.
+      expect(decide(AudioOutputMode.auto, _hdmi, 'eac3'), AudioOutputDecision.pcmMultichannel);
     });
   });
 

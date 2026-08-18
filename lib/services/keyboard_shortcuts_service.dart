@@ -10,6 +10,7 @@ import '../mpv/mpv.dart';
 import 'settings_service.dart';
 import '../utils/platform_detector.dart';
 import '../utils/player_utils.dart';
+import 'audio_output_coordinator.dart';
 
 class KeyboardShortcutsService extends ChangeNotifier {
   static const Set<String> _repeatableVideoActions = {'zoom_in', 'zoom_out'};
@@ -324,12 +325,18 @@ class KeyboardShortcutsService extends ChangeNotifier {
       case 'play_pause':
         player.playOrPause();
         break;
+      // The three volume actions stop at a running bitstream: mpv has no
+      // decoded samples to scale, so the write lands and changes nothing. The
+      // measurement decides, not the passthrough setting — a bitstream that
+      // fell back to PCM has a working volume again.
       case 'volume_up':
+        if (AudioOutputCoordinator.bitstreamActive.value) break;
         final newVolume = (player.state.volume + 10).clamp(0.0, _maxVolume.toDouble());
         player.setVolume(newVolume);
         _settingsService.write(SettingsService.volume, newVolume);
         break;
       case 'volume_down':
+        if (AudioOutputCoordinator.bitstreamActive.value) break;
         final newVolume = (player.state.volume - 10).clamp(0.0, _maxVolume.toDouble());
         player.setVolume(newVolume);
         _settingsService.write(SettingsService.volume, newVolume);
@@ -350,6 +357,7 @@ class KeyboardShortcutsService extends ChangeNotifier {
         onToggleFullscreen?.call();
         break;
       case 'mute_toggle':
+        if (AudioOutputCoordinator.bitstreamActive.value) break;
         final newVolume = player.state.volume > 0 ? 0.0 : 100.0;
         player.setVolume(newVolume);
         _settingsService.write(SettingsService.volume, newVolume);

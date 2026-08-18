@@ -1,19 +1,18 @@
-import '../models.dart' show AudioNormalizationMode;
+import '../models.dart' show AudioLoudness;
 
 /// What the user (and the output coordinator) asked for.
 class AudioPathRequest {
-  const AudioPathRequest({this.passthrough = false, this.normalization = AudioNormalizationMode.off, this.rate = 1.0});
+  const AudioPathRequest({this.passthrough = false, this.normalization = AudioLoudness.none, this.rate = 1.0});
 
   final bool passthrough;
-  final AudioNormalizationMode normalization;
+  final AudioLoudness normalization;
   final double rate;
 
-  AudioPathRequest copyWith({bool? passthrough, AudioNormalizationMode? normalization, double? rate}) =>
-      AudioPathRequest(
-        passthrough: passthrough ?? this.passthrough,
-        normalization: normalization ?? this.normalization,
-        rate: rate ?? this.rate,
-      );
+  AudioPathRequest copyWith({bool? passthrough, AudioLoudness? normalization, double? rate}) => AudioPathRequest(
+    passthrough: passthrough ?? this.passthrough,
+    normalization: normalization ?? this.normalization,
+    rate: rate ?? this.rate,
+  );
 }
 
 /// What actually applies once the requests have been arbitrated.
@@ -21,7 +20,7 @@ class AudioPathState {
   const AudioPathState({required this.passthrough, required this.normalization});
 
   final bool passthrough;
-  final AudioNormalizationMode normalization;
+  final AudioLoudness normalization;
 }
 
 /// Resolves conflicting audio-path requests into the one state mpv can be in.
@@ -38,7 +37,7 @@ AudioPathState resolveAudioPath(AudioPathRequest request) {
   final passthrough = request.passthrough && request.rate == 1.0;
   return AudioPathState(
     passthrough: passthrough,
-    normalization: passthrough ? AudioNormalizationMode.off : request.normalization,
+    normalization: passthrough ? AudioLoudness.none : request.normalization,
   );
 }
 
@@ -60,7 +59,7 @@ class AudioPathTransition {
   final bool togglePassthrough;
 
   /// The normalization mode still to be written, or null when mpv has it.
-  final AudioNormalizationMode? normalization;
+  final AudioLoudness? normalization;
 
   /// Whether the filter write comes before the bitstream toggle.
   ///
@@ -94,7 +93,7 @@ class AudioPathArbiter {
   /// assume the filter chain is empty or the bitstream off. They are filled
   /// only after a write has returned, so a failed write is retried instead of
   /// being skipped as "no change".
-  AudioNormalizationMode? _appliedNormalization;
+  AudioLoudness? _appliedNormalization;
   bool? _appliedPassthrough;
 
   AudioPathRequest get requested => _requested;
@@ -110,7 +109,7 @@ class AudioPathArbiter {
   bool get normalizationSuspended => _requested.normalization != effective.normalization;
 
   /// Records a new request and returns the transition that realises it.
-  AudioPathTransition request({bool? passthrough, AudioNormalizationMode? normalization, double? rate}) {
+  AudioPathTransition request({bool? passthrough, AudioLoudness? normalization, double? rate}) {
     final wasSuspended = normalizationSuspended;
     _requested = _requested.copyWith(passthrough: passthrough, normalization: normalization, rate: rate);
     final target = effective;
@@ -125,7 +124,7 @@ class AudioPathArbiter {
 
   /// Caches a normalization mode as written. Call only after the write
   /// returned.
-  void markNormalizationApplied(AudioNormalizationMode mode) => _appliedNormalization = mode;
+  void markNormalizationApplied(AudioLoudness mode) => _appliedNormalization = mode;
 
   /// Caches the bitstream state as written. Call only after the write returned.
   void markPassthroughApplied(bool enabled) => _appliedPassthrough = enabled;

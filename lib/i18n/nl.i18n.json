@@ -65,6 +65,7 @@
     "mute": "Dempen",
     "ok": "OK",
     "off": "Uit",
+    "on": "Aan",
     "seasonNumber": "Seizoen ${number}",
     "episodeNumberTitle": "Aflevering ${number} - ${title}",
     "chapterNumber": "Hoofdstuk ${number}",
@@ -513,6 +514,7 @@
     "longPressToUnlock": "Lang indrukken om te ontgrendelen",
     "timelineSlider": "Videotijdlijn",
     "volumeSlider": "Volumeniveau",
+    "volumeHandledByDevice": "Volume wordt tijdens doorvoer door je audioapparaat geregeld",
     "endsAt": "Eindigt om ${time}",
     "pipActive": "Afspelen in beeld-in-beeld",
     "pipFailed": "Beeld-in-beeld kon niet worden gestart",
@@ -736,7 +738,12 @@
     "watchedBy": "Bekeken door ${names}",
     "watchedByYou": "Jij",
     "watchedByAnd": "en",
-    "watchedByOthers": "${count} anderen"
+    "watchedByOthers": "${count} anderen",
+    "statsPlays": "${count} keer afgespeeld",
+    "statsViewers": "door ${count} mensen",
+    "statsWatchTime": "${duration} bekeken",
+    "statsRecent": "${count} in de laatste 30 dagen",
+    "watchingSeriesBy": "Kijken deze serie: ${names}"
   },
   "errors": {
     "searchFailed": "Zoeken mislukt: ${error}",
@@ -1278,6 +1285,11 @@
       "passthrough": "Doorvoeren",
       "pcm": "PCM (decoderen)"
     },
+    "audioOutputDecisions": {
+      "passthrough": "Dolby-doorvoer",
+      "pcmMultichannel": "PCM meerkanaals",
+      "pcmStereo": "PCM stereo"
+    },
     "audioOutputModeDescriptions": {
       "auto": "Verbreedt naar meerkanaals waar de uitgang dat toelaat; stuurt nooit een bitstream",
       "passthrough": "Stuur Dolby altijd onbewerkt naar de ontvanger",
@@ -1292,12 +1304,16 @@
     },
     "audioOutputNow": "nu: ${mode}",
     "audioNormalization": "Volume normaliseren",
-    "audioNormalizationTitle": "Geluidssterkte",
-    "audioNormalizationModes": {
-      "off": "Uit",
-      "normalize": "Normaliseren",
-      "night": "Nachtmodus"
+    "audioNormalizationSuspended": "Dolby-doorvoer loopt, dus volume gelijkmaken staat uit. Je receiver bepaalt het niveau.",
+    "audioPriorityTitle": "Prioriteit",
+    "audioPriorities": {
+      "evenVolume": "Gelijkmatig volume",
+      "originalDolby": "Originele Dolby Atmos"
     },
+    "audioLevelVolume": "Volume gelijkmaken",
+    "audioLevelVolumeDescription": "Brengt elke titel op hetzelfde niveau als de rest van je tv",
+    "audioReduceLoudSounds": "Verminder harde geluiden",
+    "audioReduceLoudSoundsDescription": "Verkleint het verschil tussen dialoog en harde effecten",
     "tryLowerQuality": "Probeer lagere kwaliteit",
     "audioPassthroughUnavailable": "Deze uitgang accepteert geen Dolby-bitstream — overgeschakeld op gedecodeerd geluid."
   },
@@ -1317,6 +1333,14 @@
     "sampleRate": "Samplefrequentie",
     "audioDriver": "Audiostuurprogramma",
     "audioOutFormat": "Uitvoerformaat",
+    "audioRequested": "Gevraagd",
+    "audioActual": "Werkelijk",
+    "audioMeasuring": "meten…",
+    "audioBitstream": "bitstream",
+    "audioFellBack": "terugval",
+    "audioFilters": "Filters",
+    "audioFiltersNone": "geen",
+    "volume": "Volume",
     "pixelFormat": "Pixelformaat",
     "hwFormat": "HW-formaat",
     "matrix": "Matrix",
@@ -1671,5 +1695,50 @@
     "errorForbidden": "Je hebt hier geen rechten voor.",
     "errorNetwork": "Kan de server niet bereiken. Controleer de URL.",
     "errorGeneric": "Er ging iets mis. Probeer opnieuw."
+  },
+  "tautulli": {
+    "title": "Tautulli",
+    "subtitle": "Tautulli houdt bij wie wat kijkt op je Plex-server. Koppel hem om kijkers, statistieken en live activiteit in Pleya te zien.",
+    "adminOnlyNote": "Tautulli heeft één sleutel die zijn hele beheer-API opent, dus die blijft op dit toestel en alleen jij ziet wat hij meldt. De mensen met wie je je server deelt merken er niets van en hoeven niets in te stellen.",
+    "serverUrl": "Tautulli-adres",
+    "serverUrlHint": "http://192.168.1.10:8181 of https://tautulli.voorbeeld.nl",
+    "authMode": "Hoe koppelen",
+    "modeDevice": "Apparaat-token",
+    "modeDeviceHelp": "Ga in Tautulli naar Settings, Tautulli Remote App, en registreer een apparaat. Plak het token hier binnen vijf minuten. Je vaste API-key blijft zo buiten de app, en je kunt dit ene apparaat later weer intrekken.",
+    "modeApiKey": "API-key",
+    "modeApiKeyHelp": "De vaste sleutel uit Settings, Web Interface. Die geeft volledige toegang tot Tautulli, dus gebruik hem alleen als het apparaat-token niet lukt.",
+    "deviceToken": "Apparaat-token",
+    "apiKey": "API-key",
+    "testConnection": "Verbinding testen",
+    "save": "Opslaan",
+    "connected": "Verbonden",
+    "disconnect": "Ontkoppelen",
+    "disconnectConfirm": "Tautulli ontkoppelen?",
+    "disconnectConfirmBody": "Pleya vergeet het adres en het token. Kijkers, statistieken en live activiteit verdwijnen tot je opnieuw koppelt.",
+    "setupOnDesktopNote": "Makkelijker op je telefoon of computer: het adres en het token typen lastig met een afstandsbediening.",
+    "errorNetwork": "Tautulli niet bereikbaar. Controleer het adres en of hij vanaf dit toestel te bereiken is.",
+    "errorAuth": "Tautulli weigert deze sleutel.",
+    "errorTokenExpired": "Tautulli weigert dit token. Een apparaat-token is maar vijf minuten geldig, dus maak een nieuwe aan en probeer opnieuw.",
+    "errorUrlRequired": "Vul het adres van je Tautulli-server in.",
+    "errorTokenRequired": "Vul een token in.",
+    "errorGeneric": "Koppelen is niet gelukt."
+  },
+  "nowWatching": {
+    "title": "Nu aan het kijken",
+    "tooltip": "Bekijk wie er nu kijkt",
+    "streams": "${count} streams",
+    "oneStream": "1 stream",
+    "transcoding": "${count} transcoderen",
+    "directPlay": "Direct play",
+    "directStream": "Direct stream",
+    "transcode": "Transcoderen",
+    "paused": "Gepauzeerd",
+    "remaining": "nog ${time}",
+    "watchingNow": "${name} kijkt dit nu",
+    "hardware": "Hardware",
+    "onLan": "Op je netwerk",
+    "onWan": "Van buiten",
+    "unavailable": "Tautulli gaf geen antwoord",
+    "sidebarLabel": "Nu aan het kijken"
   }
 }

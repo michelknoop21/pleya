@@ -57,13 +57,32 @@ import Foundation
     /// until sharing stopped.
     static func configure(multichannel: Bool, options: AVAudioSession.CategoryOptions = []) {
       let session = AVAudioSession.sharedInstance()
+      // An Apple TV log showed mpv reading back `mode=AVAudioSessionModeDefault`
+      // during playback, while this call asks for `.moviePlayback` and reports
+      // no error. Something puts the mode back, and guessing which layer would
+      // mean re-setting it blindly after mpv has already started. These three
+      // readings bracket the call so the next log says whether the mode was
+      // ever taken, and the snapshot carries it onwards so the Dart side can
+      // see who loses it later.
+      let before = profile(session)
       do {
         try session.setCategory(.playback, mode: .moviePlayback, options: options)
+        let afterCategory = profile(session)
         try session.setSupportsMultichannelContent(multichannel)
         try session.setActive(true)
+        NSLog(
+          "[AudioSession] configure(multichannel: \(multichannel)) "
+            + "before=[\(before)] afterSetCategory=[\(afterCategory)] afterSetActive=[\(profile(session))]"
+        )
       } catch {
         NSLog("[AudioSession] configure(multichannel: \(multichannel)) failed: \(error)")
       }
+    }
+
+    /// Category, mode and options in one line, for tracing who owns them.
+    private static func profile(_ session: AVAudioSession) -> String {
+      "category=\(session.category.rawValue), mode=\(session.mode.rawValue), "
+        + "options=0x\(String(session.categoryOptions.rawValue, radix: 16))"
     }
 
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -129,6 +148,11 @@ import Foundation
         // values are undocumented ("LineOut", not "Line Out") and a typo would
         // fail silently as a branch that simply never runs.
         "isDigitalOutput": output.map(Self.isDigitalOutput) ?? false,
+        // Carried on every snapshot rather than fetched separately: the route
+        // is already logged at playback start and on every change, so the
+        // session mode rides along to those same checkpoints for free.
+        "category": session.category.rawValue,
+        "mode": session.mode.rawValue,
       ]
 
       // renderingMode is iOS/tvOS 17.2+; the iOS deployment target is lower, so

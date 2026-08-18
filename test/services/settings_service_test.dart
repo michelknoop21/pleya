@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/models/hotkey_model.dart';
+import 'package:pleya/mpv/models.dart' show AudioNormalizationMode;
 import 'package:pleya/services/audio_output_decision.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/trackers/tracker_constants.dart';
@@ -127,6 +128,87 @@ void main() {
       await settings.resetAllSettings();
 
       expect(settings.read(SettingsService.audioOutputMode), AudioOutputMode.auto);
+    });
+  });
+
+  group('SettingsService audio priority', () {
+    test('defaults to even volume', () async {
+      final settings = await SettingsService.getInstance();
+
+      expect(settings.read(SettingsService.audioPriority), AudioPriority.evenVolume);
+    });
+
+    test('carries over for someone who deliberately forced passthrough', () async {
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.audioOutputMode, AudioOutputMode.passthrough);
+
+      // They asked for the object layer once already; levelling it away by
+      // default would read as the app overruling them.
+      expect(settings.read(SettingsService.audioPriority), AudioPriority.originalDolby);
+    });
+
+    test('an explicit choice outranks the seed', () async {
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.audioOutputMode, AudioOutputMode.passthrough);
+      await settings.write(SettingsService.audioPriority, AudioPriority.evenVolume);
+
+      expect(settings.read(SettingsService.audioPriority), AudioPriority.evenVolume);
+    });
+  });
+
+  group('SettingsService loudness switches', () {
+    test('are both off for a user who never turned normalization on', () async {
+      final settings = await SettingsService.getInstance();
+
+      expect(settings.read(SettingsService.audioLevelVolume), isFalse);
+      expect(settings.read(SettingsService.audioReduceLoudSounds), isFalse);
+    });
+
+    test('the old normalize mode becomes levelling alone', () async {
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.audioNormalizationMode, AudioNormalizationMode.normalize);
+
+      expect(settings.read(SettingsService.audioLevelVolume), isTrue);
+      expect(settings.read(SettingsService.audioReduceLoudSounds), isFalse);
+    });
+
+    test('the old night mode becomes both switches', () async {
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.audioNormalizationMode, AudioNormalizationMode.night);
+
+      expect(settings.read(SettingsService.audioLevelVolume), isTrue);
+      expect(settings.read(SettingsService.audioReduceLoudSounds), isTrue);
+    });
+
+    test('the legacy bool still reaches the new switches through the old enum', () async {
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.audioNormalization, true);
+
+      // Two migrations chained: bool -> mode -> switches. Neither hop writes
+      // anything to disk, so this is the path a user who never opened the
+      // setting actually takes.
+      expect(settings.read(SettingsService.audioLevelVolume), isTrue);
+      expect(settings.read(SettingsService.audioReduceLoudSounds), isFalse);
+    });
+
+    test('an explicit choice outranks the seed', () async {
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.audioNormalizationMode, AudioNormalizationMode.night);
+      await settings.write(SettingsService.audioReduceLoudSounds, false);
+
+      expect(settings.read(SettingsService.audioReduceLoudSounds), isFalse);
+    });
+
+    test('resetting clears the old loudness mode too', () async {
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.audioNormalizationMode, AudioNormalizationMode.night);
+
+      await settings.resetAllSettings();
+
+      // The old key used to survive a reset while the output mode next to it
+      // was cleared, so the switches would come back on out of nowhere.
+      expect(settings.read(SettingsService.audioLevelVolume), isFalse);
+      expect(settings.read(SettingsService.audioReduceLoudSounds), isFalse);
     });
   });
 

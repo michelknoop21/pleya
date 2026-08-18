@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show ValueNotifier, visibleForTesting;
 
 import '../mpv/models.dart' show AudioTrack, PlayerLog, TrackSelection;
 import '../mpv/player/player.dart';
@@ -157,10 +157,24 @@ class AudioOutputCoordinator {
   int _verifyGeneration = 0;
 
   VerifiedAudioOutput? _verifiedOutput;
+  AudioOutputDiagnostics? _diagnostics;
 
   /// What mpv was last measured to be doing, as opposed to what was asked of
   /// it. Ground truth for anything that has to report the real output.
   VerifiedAudioOutput? get verifiedOutput => _verifiedOutput;
+
+  /// Context around that measurement: filter chain, software volume, source
+  /// width. Null until a readback succeeded.
+  AudioOutputDiagnostics? get diagnostics => _diagnostics;
+
+  /// Whether a compressed bitstream is measurably running.
+  ///
+  /// Static, and a notifier rather than a getter, because the widgets that have
+  /// to react outlive any single coordinator: every title builds a new one, and
+  /// a per-instance notifier would leave them listening to a disposed object.
+  /// Only a measurement may set this true — a requested passthrough that never
+  /// came up must not disable controls that still work.
+  static final ValueNotifier<bool> bitstreamActive = ValueNotifier(false);
 
   /// Re-entrancy guard. A route change can arrive while the previous apply is
   /// still awaiting mpv; without this the two interleave and can leave
@@ -356,6 +370,7 @@ class AudioOutputCoordinator {
       final route = AppleAudioSessionService.instance.lastKnown;
       final decision = decideAudioOutput(
         mode: mode,
+        priority: settings.read(SettingsService.audioPriority),
         route: route,
         audioCodec: _audioCodec,
         bitstreamCodecs: Platform.isIOS ? appleBitstreamCodecs : desktopBitstreamCodecs,
@@ -430,6 +445,10 @@ class AudioOutputCoordinator {
     _verifyTimer?.cancel();
     _pendingVerification = decision;
     _verifyAttempts = 0;
+    // A decision that is not passthrough cannot become a bitstream, so say so
+    // now instead of leaving the UI on the previous title's answer for the two
+    // seconds the readback takes.
+    if (decision != AudioOutputDecision.passthrough) bitstreamActive.value = false;
     // A generation rather than a decision comparison: two applies in a row can
     // land on the same decision, and a late reading from the first must not be
     // recorded as the outcome of the second.
@@ -469,13 +488,53 @@ class AudioOutputCoordinator {
       _pendingVerification = null;
       _verifyTimer?.cancel();
       _verifyTimer = null;
-      _verifiedOutput = VerifiedAudioOutput(intended: intended, ao: ao, format: format, channels: _readback(values[2]));
+      final verified = VerifiedAudioOutput(intended: intended, ao: ao, format: format, channels: _readback(values[2]));
+      _verifiedOutput = verified;
+      bitstreamActive.value = verified.isBitstream;
+      _diagnostics = await _measureDiagnostics();
       appLogger.i(
         'Audio output in effect: ao=${ao ?? 'unknown'}, format=${format ?? 'unknown'}, '
-        'channels=${_readback(values[2]) ?? 'unknown'} (intended: ${intended.name})',
+        'channels=${_readback(values[2]) ?? 'unknown'} (intended: ${intended.name})'
+        '${_diagnostics == null ? '' : ', ${_diagnostics!}'}',
       );
+      // The last checkpoint of the session-mode trace. The route logged at
+      // playback start is a reading from before mpv existed; this one is taken
+      // at the moment a device log caught mpv reporting `mode=default` while
+      // the app had asked for `.moviePlayback`. Whichever layer changes it,
+      // the pair of lines now brackets it.
+      if (AppleAudioSessionService.isAvailable) {
+        appLogger.i('Audio session at output open: ${await AppleAudioSessionService.instance.snapshot()}');
+      }
     } catch (e) {
       appLogger.d('Reading back the audio output failed: $e');
+    }
+  }
+
+  /// Reads the context that explains a level difference, as opposed to the
+  /// three properties that identify the output.
+  ///
+  /// Separate from the verification on purpose: a backend that does not know
+  /// one of these properties would otherwise take the identity down with it,
+  /// and the identity is what the fallback logic depends on.
+  Future<AudioOutputDiagnostics?> _measureDiagnostics() async {
+    try {
+      final values = await Future.wait([
+        player.getProperty('af'),
+        player.getProperty('volume'),
+        player.getProperty('volume-max'),
+        player.getProperty('audio-params/channel-count'),
+      ]);
+      return AudioOutputDiagnostics(
+        // Not run through _readback: empty is a real answer here, and the one
+        // that matters. A running bitstream has to show an empty chain.
+        filters: values[0],
+        volume: _readback(values[1]),
+        volumeMax: _readback(values[2]),
+        sourceChannels: _readback(values[3]),
+      );
+    } catch (e) {
+      appLogger.d('Reading the audio diagnostics failed: $e');
+      return null;
     }
   }
 
@@ -497,7 +556,12 @@ class AudioOutputCoordinator {
 
   void dispose() {
     _disposed = true;
-    if (identical(current, this)) current = null;
+    if (identical(current, this)) {
+      current = null;
+      // No coordinator means nothing is measurably bitstreaming, and leaving
+      // this true would keep the volume controls disabled after playback ends.
+      bitstreamActive.value = false;
+    }
     _settleTimer?.cancel();
     _settleTimer = null;
     _verifyTimer?.cancel();
@@ -533,4 +597,37 @@ class VerifiedAudioOutput {
 
   @override
   String toString() => 'VerifiedAudioOutput(ao: $ao, format: $format, channels: $channels, intended: ${intended.name})';
+}
+
+/// Context around the verified output, for diagnosing a level or filter
+/// problem.
+///
+/// Deliberately not folded into [VerifiedAudioOutput]: that one answers what
+/// the output *is*, and stays small enough to keep meaning that. This answers
+/// what was being done to the audio on the way there, and is the half that
+/// grows every time a new question comes up.
+class AudioOutputDiagnostics {
+  const AudioOutputDiagnostics({this.filters, this.volume, this.volumeMax, this.sourceChannels});
+
+  /// mpv's actual filter chain. Empty means there is none; null means mpv did
+  /// not answer. The distinction matters: an empty chain is what a running
+  /// bitstream must have, so "empty" is evidence and "unknown" is not.
+  final String? filters;
+
+  /// Software volume and its ceiling. Both are inert while a bitstream runs —
+  /// mpv cannot scale a compressed stream — which is exactly what makes them
+  /// worth showing next to the route.
+  final String? volume;
+  final String? volumeMax;
+
+  /// Channel count of the source, to put next to the output width.
+  final String? sourceChannels;
+
+  bool get hasFilters => (filters ?? '').isNotEmpty;
+
+  @override
+  String toString() =>
+      'af=${filters == null ? 'unknown' : (filters!.isEmpty ? 'none' : filters)}, '
+      'volume=${volume ?? 'unknown'}/${volumeMax ?? 'unknown'}, '
+      'source channels=${sourceChannels ?? 'unknown'}';
 }

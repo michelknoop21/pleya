@@ -5,7 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../models/transcode_quality_preset.dart';
-import '../../mpv/models.dart' show AudioNormalizationMode;
+import '../../mpv/models.dart' show AudioLoudness;
 import '../../mpv/player/platform/player_android.dart';
 import '../../services/audio_output_coordinator.dart';
 import '../../services/audio_output_decision.dart';
@@ -61,8 +61,8 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         if (Platform.isWindows) _matchRefreshRateTile(),
         if (Platform.isWindows) _matchDynamicRangeTile(),
         _displaySwitchDelayTile(),
-        if (Platform.isAndroid) _tunneledPlaybackTile(),
-        if (Platform.isAndroid) _dvConversionModeTile(),
+        _tunneledPlaybackTile(),
+        _dvConversionModeTile(),
         _bufferSizeTile(),
         _defaultQualityTile(),
 
@@ -79,7 +79,9 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         // which meant they could not be set before playback started.
         SettingsSectionHeader(t.settings.audio),
         if (PlatformDetector.supportsAudioPassthrough()) _audioOutputModeTile(),
-        _audioNormalizationTile(),
+        if (PlatformDetector.supportsAudioPassthrough()) _audioPriorityTile(),
+        _audioLevelVolumeTile(),
+        _audioReduceLoudSoundsTile(),
         _audioSyncOffsetTile(),
 
         SettingsSectionHeader(t.settings.seekAndTiming),
@@ -158,6 +160,16 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
           icon: Symbols.bookmark_rounded,
           title: t.settings.rememberTrackSelections,
           subtitle: t.settings.rememberTrackSelectionsDescription,
+        ),
+        ValueListenableBuilder<bool>(
+          valueListenable: SettingsService.instance.listenable(SettingsService.rememberTrackSelections),
+          builder: (_, remembers, _) => SettingSwitchTile(
+            pref: SettingsService.writeSeriesLanguageToServer,
+            icon: Symbols.cloud_upload_rounded,
+            title: t.settings.writeSeriesLanguageToServer,
+            subtitle: t.settings.writeSeriesLanguageToServerDescription,
+            enabled: remembers,
+          ),
         ),
         SettingSwitchTile(
           pref: SettingsService.showChapterMarkersOnTimeline,
@@ -351,26 +363,64 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     AudioOutputMode.pcm => t.videoSettings.audioOutputModeDescriptions.pcm,
   };
 
-  Widget _audioNormalizationTile() => SettingSelectionTile<AudioNormalizationMode, AudioNormalizationMode>(
-    pref: SettingsService.audioNormalizationMode,
-    icon: Symbols.graphic_eq_rounded,
-    title: t.videoSettings.audioNormalizationTitle,
-    subtitleBuilder: _audioNormalizationLabel,
-    options: AudioNormalizationMode.values
-        .map((m) => DialogOption(value: m, title: _audioNormalizationLabel(m)))
-        .toList(),
-    decode: (m) => m,
-    encode: (m) => m,
-    // Takes effect on the running player too, not just the next title. The
-    // coordinator is the handle on the playback session currently on screen.
-    onAfterWrite: (mode) => AudioOutputCoordinator.current?.player.setAudioNormalization(mode),
+  /// Only shown for Automatic: the explicit Passthrough and PCM modes already
+  /// say which property they protect, so a priority under them would be a
+  /// second answer to a question the user already answered.
+  Widget _audioPriorityTile() => SettingValueBuilder<AudioOutputMode>(
+    pref: SettingsService.audioOutputMode,
+    builder: (context, mode, _) => mode != AudioOutputMode.auto
+        ? const SizedBox.shrink()
+        : SettingSegmentedTile<AudioPriority, AudioPriority>(
+            pref: SettingsService.audioPriority,
+            icon: Symbols.tune_rounded,
+            title: t.videoSettings.audioPriorityTitle,
+            segments: [
+              ButtonSegment(value: AudioPriority.evenVolume, label: Text(t.videoSettings.audioPriorities.evenVolume)),
+              ButtonSegment(
+                value: AudioPriority.originalDolby,
+                label: Text(t.videoSettings.audioPriorities.originalDolby),
+              ),
+            ],
+            decode: (v) => v,
+            encode: (v) => v,
+            onAfterWrite: (_) => AudioOutputCoordinator.current?.onModeChanged(),
+          ),
   );
 
-  String _audioNormalizationLabel(AudioNormalizationMode mode) => switch (mode) {
-    AudioNormalizationMode.off => t.videoSettings.audioNormalizationModes.off,
-    AudioNormalizationMode.normalize => t.videoSettings.audioNormalizationModes.normalize,
-    AudioNormalizationMode.night => t.videoSettings.audioNormalizationModes.night,
-  };
+  Widget _audioLevelVolumeTile() => SettingSwitchTile(
+    pref: SettingsService.audioLevelVolume,
+    icon: Symbols.graphic_eq_rounded,
+    title: t.videoSettings.audioLevelVolume,
+    subtitle: t.videoSettings.audioLevelVolumeDescription,
+    onAfterWrite: (_) => _pushLoudness(),
+  );
+
+  /// Gated on levelling, and that is a measurement rather than a shortcut: a
+  /// compressor with makeup gain and no loudness target ran a test excerpt up
+  /// to +5,4 dBFS while leaving the loudness range where it was.
+  Widget _audioReduceLoudSoundsTile() => SettingValueBuilder<bool>(
+    pref: SettingsService.audioLevelVolume,
+    builder: (context, levelling, _) => SettingSwitchTile(
+      pref: SettingsService.audioReduceLoudSounds,
+      icon: Symbols.compress_rounded,
+      title: t.videoSettings.audioReduceLoudSounds,
+      subtitle: t.videoSettings.audioReduceLoudSoundsDescription,
+      enabled: levelling,
+      onAfterWrite: (_) => _pushLoudness(),
+    ),
+  );
+
+  /// Takes effect on the running player too, not just the next title. The
+  /// coordinator is the handle on the playback session currently on screen.
+  Future<void> _pushLoudness() async {
+    final settings = SettingsService.instance;
+    await AudioOutputCoordinator.current?.player.setAudioNormalization(
+      AudioLoudness(
+        levelVolume: settings.read(SettingsService.audioLevelVolume),
+        reduceLoudSounds: settings.read(SettingsService.audioReduceLoudSounds),
+      ),
+    );
+  }
 
   Widget _audioSyncOffsetTile() => SettingNumberTile(
     pref: SettingsService.audioSyncOffset,

@@ -284,20 +284,25 @@ class PlayerAndroid extends PlayerBase {
   }
 
   @override
-  Future<void> setAudioNormalization(AudioNormalizationMode mode) async {
+  Future<void> setAudioNormalization(AudioLoudness loudness) async {
     if (disposed) return;
-    await reconcileAudioPath(audioPath.request(normalization: mode));
+    await reconcileAudioPath(audioPath.request(normalization: loudness));
   }
 
-  /// Sends the *resolved* normalization state to ExoPlayer.
+  /// Sends the *resolved* loudness state to ExoPlayer.
   ///
-  /// The native effect is on/off only; night maps to enabled. Handing it the
-  /// resolved state rather than the request is what keeps `ExoPlayerCore` from
-  /// forcing decoded non-tunneled PCM while a bitstream is running, so the
-  /// arbitration needs no Kotlin side.
+  /// The native effect is on/off only, so both switches collapse to one bit
+  /// here. Handing it the resolved state rather than the request is what keeps
+  /// `ExoPlayerCore` from forcing decoded non-tunneled PCM while a bitstream is
+  /// running, so the arbitration needs no Kotlin side.
+  ///
+  /// Known divergence until the Android round: the native chain is a fixed
+  /// compressor with +15 dB makeup aimed at roughly -14 LUFS, while the mpv
+  /// chain now targets -22. Android is therefore louder than Apple until
+  /// `AudioNormalizationEffect.kt` gets a target.
   @override
-  Future<void> applyNormalization(AudioNormalizationMode mode) async {
-    final enabled = mode.isEnabled;
+  Future<void> applyNormalization(AudioLoudness loudness) async {
+    final enabled = loudness.isEnabled;
     _audioNormalizationEnabled = enabled;
     final initFuture = _initFuture;
     if (initialized) {
@@ -309,9 +314,9 @@ class PlayerAndroid extends PlayerBase {
       }
     }
     // Keep the mpv af property flowing through setMpvProperty so the plugin's
-    // pendingMpvProperties replay applies the loudnorm filter if exo falls back
-    // to mpv (night's aggressive filter included).
-    await super.applyNormalization(mode);
+    // pendingMpvProperties replay applies the filter chain if exo falls back
+    // to mpv.
+    await super.applyNormalization(loudness);
   }
 
   @override
