@@ -14,6 +14,7 @@ reads the topmost anchor and fills the block below with everything committed sin
 <!-- BEGIN GENERATED -->
 ### New
 - zet de publieke releasenotes als "What to Test" op elke build
+- lees "What to Test" terug voordat de lane hem geslaagd noemt
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 227 · 18 August 2026
