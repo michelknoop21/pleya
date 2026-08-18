@@ -31,6 +31,7 @@ reads the topmost anchor and fills the block below with everything committed sin
 - gefocuste rij was onzichtbaar op tv
 - Apple TV-vergroting van 2,00 naar 1,85
 - de gepinde SDK wint weer van homebrew in de release-lane
+- de pre-push commit alleen de releasenotes
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 221 · 17 August 2026
