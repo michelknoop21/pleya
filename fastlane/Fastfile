@@ -103,12 +103,32 @@ end
 # bestaan in App Store Connect onder TestFlight → External Testing.
 EXTERNAL_GROUP = ENV.fetch("EXTERNAL_GROUP", "External Testers")
 
+# Het buildnummer zoals het in pubspec.yaml staat. De external-lane geeft geen
+# ipa mee (fastlane pakt de laatst geüploade build), dus dit is de enige plek
+# waar het nummer nog vandaan kan komen.
+def local_build_number
+  File.read(File.join(PROJECT_ROOT, "pubspec.yaml"))[/^version:\s*\S+\+(\d+)/, 1]
+end
+
+# Zoals release_notes_for, maar stopt de lane als ze ontbreken. Voor external
+# distributie is dat terecht: die tekst gaat langs Beta App Review en naar
+# mensen buiten je eigen toestellen, dus daar is "onbekend" geen uitkomst.
+def required_notes_for(build_number)
+  notes = release_notes_for(build_number)
+  UI.user_error!("Geen releasenotes voor build #{build_number} in docs/RELEASES.md; draai eerst /update-docs") unless notes
+  testflight_notes(notes)
+end
+
 def upload_external(extra = {})
   upload_to_testflight({
     api_key: asc_api_key,
     distribute_external: true,
     groups: [EXTERNAL_GROUP],
-    changelog: ENV["TESTFLIGHT_CHANGELOG"] || "Bugfixes en verbeteringen.",
+    # Uit docs/RELEASES.md, net als de interne builds. Hier stond jarenlang
+    # "Bugfixes en verbeteringen", precies de tekst waar de publieke
+    # releasenotes voor bedacht zijn. Externe distributie gaat langs Beta App
+    # Review, dus dit is ook de tekst die een reviewer leest.
+    changelog: ENV["TESTFLIGHT_CHANGELOG"] || required_notes_for(local_build_number),
     # external distributie kan pas ná processing → hier wél wachten
     skip_waiting_for_build_processing: false,
   }.merge(extra))
@@ -158,6 +178,67 @@ def wait_for_build(platform, build_number, timeout)
   end
 end
 
+# Leest de publieke releasenotes van één build uit docs/RELEASES.md.
+#
+# Dat bestand is de enige bron: wat een tester in TestFlight leest hoort exact
+# te zijn wat er op pleya.app/releases staat. Een aparte tekst hier zou binnen
+# twee builds uit elkaar lopen, en dan weet niemand meer welke van de twee de
+# waarheid is.
+#
+# De sectiekop ziet er zo uit: "## 2.8.0 · build 227 · 18 August 2026". Alles
+# tot de volgende "## " hoort erbij. Nil als de notities voor deze build nog
+# niet geschreven zijn; dat is de normale toestand vlak na een upload, want
+# /update-docs draait daarna.
+def release_notes_for(build_number)
+  path = File.join(PROJECT_ROOT, "docs/RELEASES.md")
+  return nil unless File.exist?(path)
+  match = File.read(path).match(/^\#\# [^\n]*\bbuild #{build_number}\b[^\n]*\n(.*?)(?=^\#\# |\z)/m)
+  return nil unless match
+  body = match[1].gsub(/<!--.*?-->/m, "")
+  body.strip.empty? ? nil : body.strip
+end
+
+# Markdown naar de platte tekst die het "What to Test"-veld toont. TestFlight
+# rendert geen opmaak, dus sterretjes en hekjes worden daar letterlijk zichtbaar.
+def testflight_notes(markdown)
+  markdown
+    .gsub(/^\#+\s*/, "")           # "### New" wordt "New"
+    .gsub(/\*\*(.+?)\*\*/, '\\1')  # vetdruk eruit
+    .gsub(/^- /, "\u2022 ")         # streepjes naar bolletjes, leest rustiger
+    .gsub(/\n{3,}/, "\n\n")
+    .strip
+end
+
+# Zet de releasenotes als "What to Test" op een build die al door processing is.
+#
+# Kan niet bij het uploaden: de lanes gebruiken skip_waiting_for_build_processing
+# zodat platform twee niet staat te wachten op Apple's processing van platform
+# één, en fastlane weigert dan een changelog te zetten. Hier zijn we toch al
+# voorbij dat punt, want koppelen vereist een VALID build.
+def set_build_notes(build, notes)
+  # Zelf afkappen in plaats van Pilot::BuildManager.sanitize_changelog: die is
+  # alleen geladen als de lane ook uploadt, en `fastlane notes` doet dat niet.
+  # 4000 is de grens die App Store Connect op dit veld hanteert.
+  text = testflight_notes(notes)
+  if text.length > 4000
+    UI.important("Releasenotes zijn #{text.length} tekens; TestFlight neemt er 4000")
+    text = "#{text[0, 3997]}..."
+  end
+  localizations = build.get_beta_build_localizations
+  if localizations.empty?
+    Spaceship::ConnectAPI.post_beta_build_localizations(
+      build_id: build.id, attributes: { whatsNew: text, locale: "en-US" }
+    )
+  else
+    localizations.each do |loc|
+      Spaceship::ConnectAPI.patch_beta_build_localizations(
+        localization_id: loc.id, attributes: { whatsNew: text }
+      )
+    end
+  end
+  true
+end
+
 # Koppelt build_number aan de bewerkbare App Store-versie van dit platform.
 # Geeft true bij succes, false als er niets te koppelen viel.
 def attach_build_to_version(platform, build_number, timeout: ENV.fetch("ASC_ATTACH_TIMEOUT", "1800").to_i)
@@ -180,7 +261,29 @@ def attach_build_to_version(platform, build_number, timeout: ENV.fetch("ASC_ATTA
 
   version.select_build(build_id: build.id)
   UI.success("#{platform} #{version.version_string}: build #{current&.version || 'geen'} → #{build_number} gekoppeld")
+  apply_release_notes(platform, build_number, build)
   true
+end
+
+# Zet de notities als ze er zijn, en zeg het als ze er niet zijn.
+#
+# Vlak na een upload bestaan ze meestal nog niet, want /update-docs schrijft ze
+# daarna. Dat is geen fout en mag een geslaagde release niet omver halen, maar
+# stilzwijgend overslaan zou betekenen dat builds jarenlang zonder uitleg in
+# TestFlight blijven staan. Vandaar de melding met het commando dat het herstelt.
+def apply_release_notes(platform, build_number, build)
+  notes = release_notes_for(build_number)
+  if notes.nil?
+    UI.important("#{platform}: geen releasenotes voor build #{build_number} in docs/RELEASES.md")
+    UI.important("Na /update-docs bijwerken met: fastlane notes build:#{build_number}")
+    return false
+  end
+  set_build_notes(build, notes)
+  UI.success("#{platform}: releasenotes op build #{build_number} gezet")
+  true
+rescue => e
+  UI.important("#{platform}: releasenotes zetten faalde: #{e.message}")
+  false
 end
 
 # Aanroep vanuit de upload-lanes. Nooit fataal: de build staat dan al op
@@ -419,6 +522,33 @@ lane :attach_builds do |options|
     failures << platform
   end
   UI.user_error!("Koppelen mislukt of overgeslagen voor: #{failures.join(', ')}") unless failures.empty?
+end
+
+desc "Releasenotes uit docs/RELEASES.md op een TestFlight-build zetten: fastlane notes build:227"
+lane :notes do |options|
+  build_number = options[:build] || local_build_number
+  UI.user_error!("Geen buildnummer") unless build_number
+  notes = required_notes_for(build_number)
+  UI.message("Notities voor build #{build_number}, #{notes.length} tekens:")
+  notes.lines.first(4).each { |l| UI.message("  #{l.chomp}") }
+
+  platforms = options[:platform] ? [options[:platform]] : ASC_PLATFORM.keys
+  timeout = (options[:timeout] || ENV.fetch("ASC_ATTACH_TIMEOUT", "1800")).to_i
+  failures = []
+  platforms.each do |platform|
+    build = wait_for_build(platform, build_number, timeout)
+    if build.nil?
+      UI.important("#{platform}: build #{build_number} niet gevonden of nog niet VALID")
+      failures << platform
+      next
+    end
+    set_build_notes(build, release_notes_for(build_number))
+    UI.success("#{platform}: releasenotes op build #{build_number} gezet")
+  rescue => e
+    UI.error("#{platform}: #{e.message}")
+    failures << platform
+  end
+  UI.user_error!("Notities zetten mislukt voor: #{failures.join(', ')}") unless failures.empty?
 end
 
 desc "Alle platforms → TestFlight; gaat door als één platform faalt"

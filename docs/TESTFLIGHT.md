@@ -22,6 +22,33 @@ Automatische TestFlight-uploads voor iOS, tvOS en macOS naar interne testers
   zodat builds nooit de 90-dagen TestFlight-limiet halen.
 - Log: `~/Library/Logs/pleya-testflight.log`
 
+## Wat een tester in TestFlight leest
+
+Het "What to Test"-veld van een build komt uit `docs/RELEASES.md`, uit de sectie van dat
+buildnummer. Eén bron dus: wat op pleya.app/releases staat is letterlijk wat in TestFlight
+staat. Een aparte tekst voor testers zou binnen twee builds uit elkaar lopen.
+
+De volgorde is onvermijdelijk andersom dan je zou willen. De notities worden pas na een
+upload geschreven, want pas dan weet je welke commits erin zitten. Vandaar:
+
+```bash
+scripts/testflight_release.sh        # bouwt en uploadt; meldt dat notities ontbreken
+/update-docs                         # schrijft de sectie voor dit buildnummer
+fastlane notes build:227             # zet die tekst op alle drie de platforms
+```
+
+De koppelstap probeert het zelf al, dus staat de sectie er toevallig wél op het moment van
+koppelen, dan is `fastlane notes` niet meer nodig. Bij een gemiste ronde is de lane het
+herstel: hij is idempotent en werkt op elke build die door processing is.
+
+Het zetten faalt nooit fataal. Een build zonder notities staat gewoon op TestFlight, en dat
+is beter dan een geslaagde release laten omvallen op een tekstveld. Het wordt wel per platform
+gemeld, met het commando erbij, zodat het niet ongemerkt jaren zo blijft.
+
+Voor externe distributie ligt het anders: `fastlane external` **stopt** als de notities
+ontbreken. Die tekst gaat langs Beta App Review en naar mensen buiten je eigen toestellen,
+dus daar is "onbekend" geen uitkomst. Overrulen kan met `TESTFLIGHT_CHANGELOG`.
+
 ## Credentials
 
 `.env` in de project root (gitignored, zie `.env.example`):

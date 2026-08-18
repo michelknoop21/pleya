@@ -145,6 +145,17 @@ git add docs/RELEASES.md docs/manual website/src/lib/content/manual website/stat
 git commit -m "docs: handleiding en releasenotes bijgewerkt"
 ```
 
+Zet daarna de notities ook op de TestFlight-builds, zodat een tester ziet wat er nieuw is
+zonder de site erbij te pakken:
+
+```bash
+fastlane notes build:<nummer>
+```
+
+Dat leest dezelfde sectie uit `docs/RELEASES.md` die je zojuist geschreven hebt en zet hem als
+"What to Test" op alle drie de platforms. De lane is idempotent, dus opnieuw draaien na een
+correctie kan gewoon.
+
 De pre-push hook draait `gen_release_notes.sh` nog een keer. Schrijft hij iets, dan commit hij
 dat en breekt de push af met de melding om opnieuw te pushen. Dat is bedoeld gedrag: git heeft
 de te pushen refs al vastgesteld voordat de hook draaide.
