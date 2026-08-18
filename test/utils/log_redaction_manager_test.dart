@@ -95,6 +95,90 @@ void main() {
     });
   });
 
+  // Registration only covers what somebody remembered to register, and the
+  // per-vendor patterns each name one backend. Tautulli fell between the two on
+  // 18 August 2026: `apikey=` matched nothing, and a master API key that opens
+  // `sql` and `delete_all_user_history` ended up verbatim in a log the user
+  // uploaded to a public relay. These pin the default-deny behaviour that
+  // replaced it.
+  group('secrets in a query string are redacted without registration', () {
+    test('the Tautulli case: apikey without an underscore', () {
+      final input =
+          'GET https://tautulli.example.test/api/v2?apikey=b73978aaa7154073b9048bbf0f33966a&cmd=get_activity';
+      final out = LogRedactionManager.redact(input);
+      expect(out, contains('apikey=[REDACTED]'));
+      expect(out, isNot(contains('b73978aaa7154073b9048bbf0f33966a')));
+    });
+
+    test('the command survives, because that is what makes a log readable', () {
+      final out = LogRedactionManager.redact('/api/v2?apikey=deadbeef&cmd=get_history&rating_key=12345');
+      expect(out, contains('cmd=get_history'));
+      expect(out, contains('rating_key=12345'));
+    });
+
+    test('an underscore prefix does not create an escape hatch', () {
+      for (final name in ['pms_token', 'user_token', 'device_token', 'client_secret']) {
+        final out = LogRedactionManager.redact('https://e.test/x?$name=s3cr3tvalue&keep=1');
+        expect(out, contains('$name=[REDACTED]'), reason: name);
+        expect(out, isNot(contains('s3cr3tvalue')), reason: name);
+        expect(out, contains('keep=1'), reason: name);
+      }
+    });
+
+    test('names that merely end in a secret word are left alone', () {
+      // `configtoken` is not a credential parameter, and over-redacting makes
+      // a log useless in the other direction.
+      expect(LogRedactionManager.redact('?configtoken=visible'), contains('configtoken=visible'));
+    });
+
+    test('stops at the parameter boundary', () {
+      final out = LogRedactionManager.redact('?token=abc123&next=keepme#frag');
+      expect(out, contains('token=[REDACTED]'));
+      expect(out, contains('next=keepme'));
+    });
+
+    test('several secrets in one line all go', () {
+      final out = LogRedactionManager.redact('?apikey=aaa&password=bbb&signature=ccc');
+      expect(out, isNot(contains('aaa')));
+      expect(out, isNot(contains('bbb')));
+      expect(out, isNot(contains('ccc')));
+    });
+  });
+
+  group('secrets in a header are redacted without registration', () {
+    test('the credential goes but the scheme stays', () {
+      // Which scheme a request used is worth knowing and gives nothing away.
+      final out = LogRedactionManager.redact('Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig');
+      expect(out, 'Authorization: Bearer [REDACTED]');
+    });
+
+    test('an unrecognised scheme still loses the whole value', () {
+      expect(LogRedactionManager.redact('Authorization: Weird s3cr3tvalue'), 'Authorization: [REDACTED]');
+    });
+
+    test('covers the header names an integration is likely to reach for', () {
+      for (final name in ['X-Api-Key', 'X-Auth-Token', 'Cookie', 'Proxy-Authorization']) {
+        final out = LogRedactionManager.redact('$name: s3cr3tvalue');
+        expect(out, '$name: [REDACTED]', reason: name);
+      }
+    });
+
+    test('structured metadata survives next to the secret', () {
+      final out = LogRedactionManager.redact(
+        'Authorization: MediaBrowser Client="Pleya", DeviceId="dev-1", Token="opaque"',
+      );
+      expect(out, contains('Client="Pleya"'));
+      expect(out, contains('DeviceId="dev-1"'));
+      expect(out, isNot(contains('opaque')));
+    });
+
+    test('one header does not swallow the next line', () {
+      final out = LogRedactionManager.redact('Authorization: Bearer abc\nX-Request-Id: 42');
+      expect(out, contains('X-Request-Id: 42'));
+      expect(out, isNot(contains('abc')));
+    });
+  });
+
   group('registerToken', () {
     test('redacts a registered token verbatim', () {
       LogRedactionManager.registerToken('abc-secret-XYZ');

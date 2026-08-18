@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../models/tautulli/tautulli_activity.dart';
 import '../../models/tautulli/tautulli_models.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/log_redaction_manager.dart';
 import '../../utils/media_server_http_client.dart';
 import 'tautulli_constants.dart';
 import 'tautulli_session.dart';
@@ -40,7 +41,14 @@ class TautulliClient {
         baseUrl: TautulliConstants.normalizeBaseUrl(_session.baseUrl),
         connectTimeout: TautulliConstants.requestTimeout,
         receiveTimeout: TautulliConstants.requestTimeout,
-      );
+      ) {
+    // Same as the Plex and Jellyfin clients do, and it was the one backend that
+    // did not: the key rides in the query string of every request, so without
+    // this a log holds it verbatim. The name-based rule in LogRedactionManager
+    // catches `apikey=` on its own now; this is the second layer, for wherever
+    // the value turns up without its parameter name.
+    LogRedactionManager.registerServer(_session.baseUrl, _session.token);
+  }
 
   final TautulliSession _session;
   final MediaServerHttpClient _http;
