@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+data/
+scripts/
+deploy-nas.sh
+README.md
+.gocache/

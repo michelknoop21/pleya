@@ -1,0 +1,112 @@
+# Pleya Server, PS-0 Docker Foundation.
+#
+# Twee services in een eigen privaat netwerk. Compose noemt dat
+# pleya_server_default, wat niet botst met de bestaande pleya_default en
+# pleya-relay_default op de NAS.
+
+services:
+  pleya-server:
+    build:
+      context: .
+      args:
+        VERSION: ${PLEYA_SERVER_VERSION:-dev}
+    container_name: pleya-server
+    restart: unless-stopped
+
+    # Loopback, en dat is een securitygrens en geen netwerkarchitectuur. Er is
+    # in PS-0 nog geen authenticatie, dus deze service hoort niet op het LAN.
+    # Openstellen gebeurt pas in de fase waarin die grens bestaat.
+    ports:
+      - "127.0.0.1:${PLEYA_SERVER_HOST_PORT:-8832}:8080"
+
+    # Op de NAS is dit 1026:100, dezelfde uid/gid waarmee Plex al draait. De
+    # mediabibliotheek is daarmee bewezen leesbaar zonder één rechtenwijziging.
+    user: "${PLEYA_UID:-1000}:${PLEYA_GID:-1000}"
+
+    environment:
+      DATABASE_URL: postgresql://pleya:${POSTGRES_PASSWORD:-}@postgres:5432/pleya?sslmode=disable
+      PLEYA_SERVER_HTTP_ADDR: ":8080"
+      PLEYA_SERVER_CONFIG_DIR: /config
+      PLEYA_SERVER_CACHE_DIR: /cache
+      PLEYA_SERVER_TRANSCODE_DIR: /transcode
+      PLEYA_SERVER_MEDIA_DIRS: /media/library
+      PLEYA_SERVER_LOG_LEVEL: ${PLEYA_SERVER_LOG_LEVEL:-info}
+      TZ: ${TZ:-Europe/Amsterdam}
+
+    volumes:
+      # Drie schrijfbare mappen met drie verschillende levensduren. Op één
+      # volume neemt een vollopende transcode-scratch de database mee, en dan
+      # is de cache ook niet meer uit een back-up te houden.
+      - ${PLEYA_SERVER_CONFIG_HOST:-./data/config}:/config
+      - ${PLEYA_SERVER_CACHE_HOST:-./data/cache}:/cache
+      - ${PLEYA_SERVER_TRANSCODE_HOST:-./data/transcode}:/transcode
+      # Read-only, en dat is geen aanbeveling maar de gedocumenteerde
+      # verwachting waar het dreigingsmodel op steunt (hoofdstuk 22).
+      - ${PLEYA_SERVER_MEDIA_HOST:-./testdata/media}:/media/library:ro
+
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    stop_grace_period: 20s
+
+    # Bewust geen mem_limit in PS-0. Er is nog geen scanner, geen metadata en
+    # geen ffmpeg, dus er is geen basis voor een getal. Eerst meten.
+
+    # Toekomstige hardwaretranscodering op de DS920+ (QuickSync, UHD 600).
+    # Volledig inert zolang dit uitstaat; de gid is gemeten op de NAS zelf,
+    # groep "videodriver". Aanzetten hoort bij PS-8, niet hier.
+    # devices:
+    #   - /dev/dri:/dev/dri
+    # group_add:
+    #   - "937"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    image: postgres:18.6-bookworm@sha256:7d2695c3aa88e792e8b3b233e7e4adb296a20412c6c0ca361e3edaaacfada108
+    container_name: pleya-server-db
+    restart: unless-stopped
+
+    # Geen ports. De database is uitsluitend over het interne netwerk
+    # bereikbaar en heeft op de NAS-host niets te zoeken.
+
+    environment:
+      POSTGRES_USER: pleya
+      POSTGRES_DB: pleya
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      TZ: ${TZ:-Europe/Amsterdam}
+
+    volumes:
+      # Postgres 18 zet PGDATA op /var/lib/postgresql/18/docker en declareert
+      # het volume een niveau hoger. Het oude /var/lib/postgresql/data mounten
+      # levert een stack op die draait en niets bewaart.
+      - pleya_pgdata:/var/lib/postgresql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pleya -d pleya"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  pleya_pgdata:
