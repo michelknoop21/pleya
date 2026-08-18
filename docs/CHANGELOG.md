@@ -2,6 +2,37 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-18] PS-1 goedgekeurd en bevroren, PS-2 vrijgegeven
+
+Twee poorten dicht. De goedkeuring was inhoudelijk akkoord met het contract, met de opdracht om drie
+formuleringen hard te maken voordat het dichtging. Alle drie zijn compatibiliteits- of
+beveiligingsinvarianten; geen ervan voegt een endpoint, een veld of een categorie persistente state
+toe.
+
+### Changed
+- **"Een veld toevoegen mag altijd" verzweeg twee gevallen.** Hoofdstuk 3 telt nu zes regels in plaats van vier. Een nieuw veld mag in een antwoord. Een nieuw verplicht veld in een aanvraag is breken, in de querystring net zo goed als in de body. En omdat elk verzoekschema `additionalProperties: false` draagt wijst een server een nieuw optioneel aanvraagveld af in plaats van het stil te laten vallen, dus een client stuurt zo'n veld pas nadat `capabilities` of `feature_level` zegt dat de server het kent.
+- **Enums hadden geen uitspraak.** Een nieuwe waarde is alleen compatibel waar het veld unknown-safe is. Vier velden zijn dat: `auth.methods[]`, `Library.kind`, `Item.kind` en `SubtitleStream.format`, elk met de vastgelegde terugval dat een client de waarde overslaat in plaats van te falen. De rest is gesloten, inclusief `profile` en de enums in een aanvraag.
+- **Hoofdstuk 6.5 benoemde welke auth-state mag bestaan, niet hoe die bewaard wordt.** Vier eigenschappen liggen nu vast, omdat ze de opslagvorm bepalen en na PS-2 een migratie kosten: de setupcode is kortlevend en eenmalig en staat persistent niet leesbaar opgeslagen; een refreshtoken is een ondoorzichtig geheim waarvan alleen een niet-terugrekenbare identificatie met vervalmoment en ingetrokken-vlag in de database staat; de Argon2id-parameters van een bestaande hash staan in de hash zelf, dus verifiëren hangt niet van de configuratie af en zwaarder hashen vraagt geen schemawijziging; en de ondertekensleutel leeft alleen in de eigen persistente `/data`, niet in Postgres en niet in Git.
+- **Architectuur 12.3 en 16.3 lopen mee**, zodat de baseline en de specificatie hetzelfde zeggen. 16.3 zei dat de Argon2id-parameters in de configuratie staan; dat klopt voor een nieuwe hash en niet voor het verifiëren van een bestaande.
+
+### Added
+- **`x-unknown-safe` op elk enum in `openapi.yaml`**, met een controle in `scripts/check_protocol.py` die een enum zonder die markering afkeurt. Zonder die controle erft een nieuw enum-veld stilzwijgend een keuze die niemand gemaakt heeft; nu dwingt het veld de keuze af op het moment dat het wordt toegevoegd. Alle acht enums dragen hem.
+
+### Poorten
+Poort 1 (wire-contract) en poort 2 (bootstrap-authflow) zijn dicht, vastgelegd in
+`docs/pleya-server-gates.md`. Poort 3 (conflictmodel voor kijkstatus) en poort 4 (byte-validator
+achter de `ETag`-belofte) blijven open en horen dicht vóór PS-4. Ze raken PS-2 niet.
+
+### PS-1 is bevroren
+Zolang PS-2 gebouwd wordt verandert er niets cosmetisch aan het protocol. Legt PS-2 een echt probleem
+bloot, dan is dat een protocolwijziging met een compatibiliteitstoets langs de zes regels, en geen
+aanpassing in de YAML omdat het zo uitkomt.
+
+### Verificatie
+`scripts/check_protocol.sh` in de gepinde container: OpenAPI 3.1 geldig (16 paden), alle
+verwijzingen komen uit, alle acht enums dragen `x-unknown-safe`, 25 fixtures valideren, en de drie
+ingevoerde fouten worden alle drie afgekeurd.
+
 ## [2026-08-18] PS-1 legt het wire-contract vast, en vindt onderweg vier gaten
 
 Alleen tekst en schema's, zoals de fase voorschrijft. Geen regel Go of Dart.

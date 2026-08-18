@@ -93,6 +93,42 @@ def check_dangling_refs(document: dict) -> None:
         report(PASS, f"alle verwijzingen komen uit, {len(known)} componenten")
 
 
+def check_enum_markings(document: dict) -> None:
+    """Elk enum-veld draagt x-unknown-safe.
+
+    Hoofdstuk 3.2 van de specificatie zegt dat een waarde alleen bij een enum mag
+    komen wanneer het veld unknown-safe is. Die eigenschap is niet af te lezen aan
+    het schema zelf, dus een nieuw enum-veld zou hem stilzwijgend erven. Deze
+    controle dwingt de keuze af op het moment dat het veld wordt toegevoegd.
+    """
+    print("\n==> enum-markering")
+    unmarked, wrong_type, marked = [], [], 0
+
+    def walk(node, path: str) -> None:
+        nonlocal marked
+        if isinstance(node, dict):
+            if "enum" in node:
+                if "x-unknown-safe" not in node:
+                    unmarked.append(path)
+                elif not isinstance(node["x-unknown-safe"], bool):
+                    wrong_type.append(path)
+                else:
+                    marked += 1
+            for key, value in node.items():
+                walk(value, f"{path}/{key}")
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                walk(value, f"{path}/{index}")
+
+    walk(document, "#")
+    for path in unmarked:
+        report(FAIL, f"enum zonder x-unknown-safe: {path}")
+    for path in wrong_type:
+        report(FAIL, f"x-unknown-safe is geen boolean: {path}")
+    if not unmarked and not wrong_type:
+        report(PASS, f"alle {marked} enums dragen x-unknown-safe")
+
+
 def check_fixtures(document: dict) -> None:
     print("\n==> fixtures tegen het contract")
     from jsonschema import Draft202012Validator
@@ -190,6 +226,7 @@ def main() -> int:
     document = load_openapi()
     check_structure(document)
     check_dangling_refs(document)
+    check_enum_markings(document)
     check_fixtures(document)
     check_validator_bites(document)
 

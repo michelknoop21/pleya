@@ -13,8 +13,8 @@ validator niet volgt uit het mechanisme dat ervoor is voorgesteld.
 
 | # | Poort | Dicht vóór | Status |
 | --- | --- | --- | --- |
-| 1 | Het wire-contract | PS-2 | **voorgelegd**, zie hieronder |
-| 2 | De bootstrap-authflow | PS-2 | **voorgelegd**, zie hieronder |
+| 1 | Het wire-contract | PS-2 | **dicht**, goedgekeurd 18 augustus 2026 |
+| 2 | De bootstrap-authflow | PS-2 | **dicht**, goedgekeurd 18 augustus 2026 |
 | 3 | Het conflictmodel voor kijkstatus | PS-4 | open |
 | 4 | De byte-validator en `generation` | PS-4 | open |
 
@@ -33,9 +33,26 @@ implementaties straks toetsen. Zeventien endpoints, geen daarvan uitsluitend voo
 uitkomt, toetst elke fixture tegen zijn schema, en voert drie plausibele fouten in om te bewijzen dat
 de validator werkelijk afkeurt.
 
-**Wat de goedkeuring vastlegt.** Vanaf dat moment gelden de vier compatibiliteitsregels uit hoofdstuk
-3 van de specificatie. Een veld toevoegen mag daarna altijd; hernoemen, verwijderen of van betekenis
-veranderen niet.
+**Wat de goedkeuring vastlegt.** Vanaf dat moment gelden de compatibiliteitsregels uit hoofdstuk 3
+van de specificatie. De goedkeuring vroeg twee van die regels scherper op te schrijven voordat het
+contract dichtging, omdat "een veld toevoegen mag altijd" twee gevallen verzweeg:
+
+- een nieuw veld in een **antwoord** mag, een nieuw verplicht veld in een **aanvraag** is breken, en
+  omdat elk verzoekschema `additionalProperties: false` draagt wijst een server een nieuw optioneel
+  aanvraagveld af in plaats van het te negeren. Een client stuurt het dus pas wanneer `capabilities`
+  of `feature_level` zegt dat de server het kent;
+- een nieuwe **enum-waarde** is alleen compatibel waar het veld expliciet unknown-safe is. Vier
+  velden zijn dat (`auth.methods[]`, `Library.kind`, `Item.kind`, `SubtitleStream.format`), de rest
+  is gesloten. `openapi.yaml` draagt het per veld als `x-unknown-safe` en `check_protocol.sh` weigert
+  een enum zonder die markering, zodat een nieuw enum-veld de keuze afdwingt in plaats van hem te
+  erven.
+
+Hernoemen, verwijderen of van betekenis veranderen blijft onveranderd verboden. Zie
+[DEC-038](DECISIONS.md#dec-038-wat-v1-compatibel-houdt-per-richting-en-per-enum).
+
+**Bevroren.** Het contract ligt vast zolang PS-2 gebouwd wordt. Legt PS-2 een probleem in het
+protocol bloot, dan is dat een protocolwijziging met een compatibiliteitstoets langs de zes regels,
+niet een aanpassing in `openapi.yaml`.
 
 ## 2. De bootstrap-authflow
 
@@ -56,7 +73,20 @@ persistente auth-state een server hiervoor **wel** mag hebben:
 Meer niet. Rollen, rechten en apparaatbeheer horen bij PS-9, en die alvast aanleggen omdat er toch
 tokens nodig zijn is de drift die 23.1 verbiedt.
 
-**Wat de goedkeuring vastlegt.** Dat PS-2 deze vier dingen mag bewaren en niets daarbuiten.
+**Wat de goedkeuring vastlegt.** Dat PS-2 deze vier dingen mag bewaren en niets daarbuiten, en
+daarnaast vier eigenschappen van hóé ze bewaard worden. Die staan nu in 6.5, omdat ze de opslagvorm
+bepalen en na PS-2 een migratie kosten:
+
+- de setupcode is kortlevend en eenmalig, en staat persistent niet leesbaar opgeslagen;
+- een refreshtoken is een ondoorzichtig geheim dat de server niet bewaart; in de database staat een
+  identificatie die er niet naar terug te rekenen is, plus vervalmoment en ingetrokken-vlag;
+- de Argon2id-parameters van een bestaande hash staan in de hash zelf, dus verifiëren hangt niet van
+  de configuratie af en zwaarder hashen vraagt geen schemawijziging;
+- de ondertekensleutel leeft alleen in de eigen persistente `/data` met restrictieve rechten, niet in
+  Postgres en niet in Git.
+
+Geen van de vier voegt een categorie persistente state toe. Zie
+[DEC-039](DECISIONS.md#dec-039-hoe-de-bootstrap-auth-state-bewaard-wordt-niet-alleen-welke).
 
 ## 3. Het conflictmodel voor kijkstatus
 

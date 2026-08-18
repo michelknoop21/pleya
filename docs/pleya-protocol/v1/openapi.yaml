@@ -1,11 +1,11 @@
-# Pleya Protocol v1 — contractueel leidend.
+# Pleya Protocol v1: contractueel leidend.
 #
 # De prozaspecificatie staat in docs/pleya-protocol-v1.md en legt uit waarom de
 # keuzes hieronder zo zijn. Botsen de twee, dan wint dit bestand.
 #
 # Deze versie beschrijft feature level 1: het oppervlak dat PS-2 tot en met PS-4
 # nodig hebben. Elk later oppervlak wordt toegevoegd door de fase die het
-# introduceert, binnen de vier compatibiliteitsregels uit hoofdstuk 3.
+# introduceert, binnen de zes compatibiliteitsregels uit hoofdstuk 3.
 openapi: 3.1.0
 
 info:
@@ -15,11 +15,19 @@ info:
   description: |
     Alles wat hier niet in staat, mag een client niet aannemen.
 
-    Vier compatibiliteitsregels binnen v1:
-      1. Een veld toevoegen mag. Clients negeren onbekende velden.
+    Zes compatibiliteitsregels binnen v1:
+      1. Een nieuw optioneel veld in een antwoord mag. Clients negeren
+         onbekende velden.
       2. Een veld hernoemen of verwijderen mag niet.
       3. De betekenis van een bestaand veld wijzigen mag niet.
-      4. Een nieuwe verplichte parameter op een bestaande endpoint mag niet.
+      4. Een nieuw verplicht veld in een aanvraag mag niet, in de query net zo
+         min als in de body.
+      5. Een aanvraagbody is gesloten (additionalProperties: false). Een client
+         stuurt een nieuw optioneel veld pas wanneer capabilities of
+         feature_level zegt dat de server het kent.
+      6. Een nieuwe enum-waarde mag alleen waar x-unknown-safe true is. Elk
+         enum-veld in dit document draagt die markering; check_protocol.sh
+         weigert er een zonder.
   license:
     name: GPL-3.0-only
     identifier: GPL-3.0-only
@@ -203,6 +211,7 @@ paths:
             type: string
             enum: [title, added_at, year, "-title", "-added_at", "-year"]
             default: title
+            x-unknown-safe: false
       responses:
         "200":
           description: Een pagina items.
@@ -293,6 +302,7 @@ paths:
           schema:
             type: string
             enum: [recently_added, continue_watching, next_up]
+            x-unknown-safe: false
         - name: library_id
           in: query
           required: false
@@ -606,6 +616,7 @@ components:
             profile:
               type: string
               enum: [minimal, full]
+              x-unknown-safe: false
         server:
           type: object
           required: [id]
@@ -619,7 +630,13 @@ components:
           properties:
             methods:
               type: array
-              items: { type: string, enum: [password, pairing_code] }
+              items:
+                type: string
+                enum: [password, pairing_code]
+                x-unknown-safe: true
+                description: |
+                  Er mag binnen v1 een methode bij komen. Een client slaat een
+                  methode die hij niet kent over en kiest er een die hij wel kent.
             setup_required:
               type: boolean
               description: True zolang er nog geen eigenaar is aangemaakt.
@@ -701,6 +718,10 @@ components:
     LibraryKind:
       type: string
       enum: [movies, shows]
+      x-unknown-safe: true
+      description: |
+        Er mag binnen v1 een soort bij komen. Een client die de soort niet kent
+        toont de bibliotheek niet, en faalt niet.
 
     Library:
       type: object
@@ -722,6 +743,10 @@ components:
     ItemKind:
       type: string
       enum: [movie, show, season, episode]
+      x-unknown-safe: true
+      description: |
+        Er mag binnen v1 een soort bij komen. Een client die de soort niet kent
+        toont het item niet, en faalt niet.
 
     Artwork:
       type: object
@@ -774,7 +799,13 @@ components:
         index:
           type: [integer, "null"]
           description: Alleen bij ingebedde sporen.
-        format: { type: string, enum: [srt, ass, ssa, vtt, pgs, dvdsub] }
+        format:
+          type: string
+          enum: [srt, ass, ssa, vtt, pgs, dvdsub]
+          x-unknown-safe: true
+          description: |
+            Er mag binnen v1 een formaat bij komen. Een client die het formaat
+            niet kent biedt het spoor niet aan, en faalt niet.
         language: { type: [string, "null"] }
         title: { type: [string, "null"] }
         is_default: { type: boolean, default: false }
@@ -888,6 +919,7 @@ components:
     ExplicitAction:
       type: string
       enum: [none, mark_watched, mark_unwatched, restart]
+      x-unknown-safe: false
       description: |
         Een expliciete handeling wint van elke passieve update die ervoor ligt.
         Dat onderscheid is de reden dat een update een gebeurtenis is.

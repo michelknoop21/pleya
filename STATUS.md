@@ -4,9 +4,20 @@ _Laatst bijgewerkt: 2026-08-18 (`main` = `8e84f3a`; `feat/pleyaserver` loopt voo
 
 ## Waar was ik
 
-**Het wire-contract van Pleya Server ligt er, en het wacht op jouw akkoord.** PS-1 is opgeleverd:
-`docs/pleya-protocol/v1/openapi.yaml` met zeventien endpoints, een prozaspecificatie van 738 regels
-die uitlegt waarom, en 25 fixtures die PS-2, PS-3 en PS-4 straks aan elkaar knopen.
+**Het wire-contract is goedgekeurd, PS-1 is gesloten en bevroren, en PS-2 is vrijgegeven.**
+`docs/pleya-protocol/v1/openapi.yaml` ligt vast: zeventien endpoints, een prozaspecificatie die
+uitlegt waarom, en 25 fixtures die PS-2, PS-3 en PS-4 aan elkaar knopen.
+
+De goedkeuring vroeg eerst drie invarianten hard te maken, en die staan er nu in. Een nieuw veld mag
+in een antwoord, een nieuw verplicht veld in een aanvraag is breken, en omdat elk verzoekschema
+`additionalProperties: false` draagt wijst een server een onbekend optioneel aanvraagveld af in
+plaats van het te negeren. Een nieuwe enum-waarde mag alleen waar het veld unknown-safe is: vier
+velden zijn dat, `openapi.yaml` draagt het als `x-unknown-safe`, en `check_protocol.sh` weigert een
+enum zonder markering, zodat een nieuw enum-veld de keuze afdwingt in plaats van hem te erven. En
+6.5 legt vast hoe de auth-state bewaard wordt: eenmalige en niet-leesbaar opgeslagen setupcode,
+refreshtokens waarvan alleen een niet-terugrekenbare identificatie in de database staat, de
+Argon2id-parameters in de hash zelf, en de ondertekensleutel alleen in de eigen `/data`. Geen van
+de drie voegt een endpoint, een veld of een categorie persistente state toe.
 
 OpenAPI en niet losse JSON-schema's, omdat schema's alleen bodies dekken. Methode, pad, headers,
 authenticatieklasse, `Range`, `If-Range`, statuscodes en responseheaders zijn net zo goed contract,
@@ -146,9 +157,16 @@ Het Atmos-spoor staat er nog precies zo bij als gisteren: een iOS-log van build 
 
 ## Volgende stap
 
-**PS-1 wacht op twee akkoorden voordat PS-2 begint.** Poort 1 is het wire-contract, poort 2 de
-bootstrap-authflow. Beide zijn opgeleverd en voorgelegd; zonder die akkoorden zou PS-2 het contract
-implementeren dat nog kan wijzigen. De uitvoeringsregel is per fase stoppen, en dit is dat moment.
+**PS-2 bouwen: migraties, bootstrap-auth, catalogus en scanner, en ffprobe op de 2601 echte
+videobestanden.** Poort 1 en poort 2 zijn dicht, dus PS-2 implementeert een contract dat vastligt.
+Geen streamingcode naar voren trekken: het streampad is PS-4, en poort 4 staat daar nog open. Legt
+PS-2 een echt probleem in het protocol bloot, dan is dat een protocolwijziging met een
+compatibiliteitstoets langs de zes regels uit hoofdstuk 3, niet een aanpassing in `openapi.yaml`
+omdat het zo uitkomt.
+
+**Twee poorten blijven open, en ze horen dicht vóór PS-4.** Het conflictmodel voor kijkstatus en de
+byte-validator achter de `ETag`-belofte. Ze raken PS-2 niet en hoeven dus nu niet beantwoord te
+worden, maar ze mogen ook niet als bijproduct van implementatiewerk ontstaan.
 
 **PS-0 is gesloten en bevroren.** De drift check is schoon en alle
 zeven acceptatiecriteria zijn op de echte NAS gehaald, dus er gaat niets meer bij aan de Docker
@@ -161,7 +179,7 @@ op een rij in de PS-0-sectie van het architectuurdocument. Met één regel eromh
 gegevens hoort in het protocol.** `GET /pleya/v1/info` weet niets van Postgres, Synology, Docker,
 containerpaden of poortnummers.
 
-**Besluiten wat er met de 26 blockers zonder fase gebeurt, vóór PS-1 wordt vrijgegeven.** Twaalf
+**Besluiten wat er met de 26 blockers zonder fase gebeurt.** Twaalf
 gegroepeerde gaten staan in
 [hoofdstuk 7 van de matrix](docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md#7-roadmap-gaps), met per gat de
 plek waar hij logisch zou horen. Het zijn geen dertien nieuwe fasen: verzamelingen en afspeellijsten
@@ -184,7 +202,7 @@ De favorieten van Live TV kun je in dezelfde ronde niet meenemen: dat vraagt een
 
 Neem het typen in zoeken, inloggen, server-URL en Seerr onderweg wel even mee, niet als los testpunt maar als waarschuwingslampje: reageert de remote na het sluiten van het toetsenbord nergens meer op, dan is dat het resterende native risico uit [DEC-017](docs/DECISIONS.md#dec-017) en geen los raadsel.
 
-**Pleya Server: PS-1 pas starten na expliciete vrijgave, en die vrijgave komt na 2.8.0.** De architectuurbaseline in [docs/pleya-server-architecture.md](docs/pleya-server-architecture.md) is goedgekeurd; uitvoering is dat niet. PS-1 is de protocolspecificatie uit hoofdstuk 12, alleen tekst en schema's, met als stopcriterium dat een lezer er een client uit kan bouwen zonder de servercode te zien. Niet eerder beginnen: fase 3 is de eerste die de app raakt en die wil je niet naast een lopende indiening hebben. De werkregels voor elke Pleya Server-sessie staan in `CLAUDE.md`, zodat ze niet van het contextvenster afhangen.
+**Pleya Server loopt tot en met PS-2 los van de app.** PS-0 en PS-1 zijn gesloten, PS-2 is vrijgegeven en blijft binnen `pleya_server/` en `docs/`. Fase 3 is de eerste die `lib/` raakt, en die wil je niet naast een lopende indiening hebben. De werkregels voor elke Pleya Server-sessie staan in `CLAUDE.md`, zodat ze niet van het contextvenster afhangen.
 
 **Daarna pas de oude sporen hieronder.** Die staan ongewijzigd stil.
 

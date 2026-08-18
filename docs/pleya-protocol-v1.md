@@ -78,16 +78,27 @@ het protocol volgt de client niet.
 
 Het pad draagt de majorversie: `/pleya/v1/...`.
 
-Binnen v1 gelden vier regels. Ze staan hier zodat er niet over te discussiëren valt.
+Binnen v1 gelden zes regels. Ze staan hier zodat er niet over te discussiëren valt.
 
-1. **Een veld toevoegen is toegestaan.** Clients negeren onbekende velden en mogen daar niet op
-   falen.
+1. **Een nieuw optioneel veld in een antwoord is toegestaan.** Clients negeren velden die ze niet
+   kennen en mogen daar niet op falen. Een antwoordveld dat erbij komt is nooit verplicht om te
+   lezen: een client die het negeert blijft correct werken.
 2. **Een veld hernoemen of verwijderen is niet toegestaan** binnen dezelfde major. Een vervangen veld
    blijft naast het nieuwe bestaan tot v2, met een `deprecated`-markering in deze specificatie.
 3. **De betekenis van een bestaand veld wijzigen is niet toegestaan**, ook niet als het type gelijk
    blijft. Dat is de stilste vorm van breken.
-4. **Een nieuwe verplichte parameter op een bestaande endpoint is niet toegestaan.** Nieuwe
-   parameters zijn optioneel met een gedocumenteerde default die het oude gedrag reproduceert.
+4. **Een nieuw verplicht veld in een aanvraag is breken.** Dat geldt voor een querystringparameter
+   net zo goed als voor een veld in een JSON-body, en ook wanneer de server een default zou kunnen
+   invullen: een bestaande client stuurt het niet. Nieuwe aanvraagvelden zijn optioneel met een
+   gedocumenteerde default die het oude gedrag reproduceert.
+5. **Een aanvraagbody is gesloten.** Elk verzoekschema draagt `additionalProperties: false`, dus een
+   server die een nieuw optioneel veld nog niet kent wijst het verzoek af in plaats van het veld
+   stil te laten vallen. Dat is de bedoeling: een client die iets meestuurt hoort te weten of het
+   aankomt. Zo'n veld gaat er daarom pas in nadat `capabilities` of `feature_level` zegt dat de
+   server het kent.
+6. **Een nieuwe enum-waarde is alleen toegestaan waar het veld unknown-safe is.** Welke velden dat
+   zijn staat in 3.2. Bij elk ander enum-veld is een extra waarde breken, ook wanneer het schema
+   formeel ruimer lijkt.
 
 ### 3.1 `feature_level` tegenover `capabilities`
 
@@ -107,6 +118,34 @@ nieuwer veld niet zal begrijpen en daarom een oudere vorm stuurt.
 
 Deze specificatie beschrijft **feature level 1**.
 
+### 3.2 Welke enums unknown-safe zijn
+
+Een gesloten enum in een antwoord is een belofte: de client kent elke waarde die hij kan krijgen en
+mag er een keuze op bouwen zonder restgeval. Die belofte is bruikbaar, en daarom kost hij ook iets.
+Een waarde toevoegen aan een gesloten enum breekt precies de clients die de belofte serieus namen.
+
+Deze vier velden zijn **unknown-safe**. Daar mag binnen v1 een waarde bij komen, en een client die
+de waarde niet kent doet wat in de derde kolom staat in plaats van te falen.
+
+| Veld | Waar | Bij een onbekende waarde |
+| --- | --- | --- |
+| `auth.methods[]` | `GET /info` | de methode overslaan en er een kiezen die hij wel kent |
+| `Library.kind` | bibliotheeklijst | de bibliotheek niet tonen |
+| `Item.kind` | items, zoekresultaten, hubs | het item niet tonen |
+| `SubtitleStream.format` | itemdetail | het spoor niet aanbieden |
+
+In `openapi.yaml` draagt elk enum-veld `x-unknown-safe`, met `true` of `false`, en
+`scripts/check_protocol.sh` weigert een enum zonder die markering. Een nieuw enum-veld dwingt zo een
+keuze af in plaats van er stilzwijgend een te erven.
+
+Elk ander enum-veld is gesloten. Twee gevallen verdienen een aantekening:
+
+- `profile` in `GET /info` blijft gesloten. Een client moet weten wat een profiel van hem verwacht
+  voordat hij ertegen praat, dus een derde profiel is een feature level erbij, geen waarde erbij.
+- De enums in een aanvraag (`sort`, `hub_id`, `explicit_action`) zijn gesloten aan de kant van de
+  client. Dat een server er later méér accepteert breekt niemand, minder accepteren wel. Een client
+  stuurt alleen waarden die deze specificatie noemt.
+
 ---
 
 ## 4. Wie mag wat aanroepen
@@ -123,7 +162,8 @@ kent mag het".
 
 Tot PS-9 bestaat er precies één identiteit, de server-owner. `authenticated`, `owner` en `admin`
 vallen daarmee vandaag samen. Ze staan nu al uit elkaar omdat de betekenis van een endpoint niet mag
-veranderen wanneer het gebruikersmodel er in PS-9 bijkomt; dat zou regel 3 breken.
+veranderen wanneer het gebruikersmodel er in PS-9 bijkomt; dat zou regel 3 uit hoofdstuk 3
+breken.
 
 ---
 
@@ -268,15 +308,31 @@ waarmaken zonder alsnog protocol te ontwerpen:
 | één credential-record: gebruikersnaam plus een wachtwoordhash | om `POST /auth/login` te beantwoorden |
 | een ondertekensleutel voor tokens | om accesstokens te kunnen uitgeven en verifiëren |
 | per uitgegeven refreshtoken: een identificatie, een vervalmoment en een ingetrokken-vlag | om rotatie en hergebruikdetectie te kunnen doen |
-| de setupcode plus de vlag of setup al gedaan is | om `setup_required` te kunnen beantwoorden |
+| de setupcode, niet leesbaar bewaard, plus de vlag of setup al gedaan is | om `setup_required` te kunnen beantwoorden |
 
 Meer niet. **Geen `users`-tabel en geen `sessions`-tabel**: die dragen rollen, rechten en
 apparaatbeheer, en dat is PS-9. Eén credential met één refreshtokenketen vraagt daar niet om, en ze
 alvast aanleggen omdat er toch tokens nodig zijn is precies de drift die hoofdstuk 23.1 verbiedt.
 
-Het wachtwoord wordt gehasht met Argon2id. De ondertekensleutel wordt bij de eerste start gegenereerd
-en **op schijf bewaard met restrictieve rechten, niet in de database**, zodat een databasedump alleen
-geen sessies oplevert.
+**Vier eigenschappen die een implementatie niet zelf mag invullen.** Ze bepalen de opslagvorm, dus na
+PS-2 zijn ze alleen met een migratie te wijzigen.
+
+1. **De setupcode is kortlevend en eenmalig.** Hij vervalt bij de eerste geslaagde inwisseling, en
+   daarnaast na een korte tijd vanzelf. Zolang hij persistent staat, staat hij er niet leesbaar in:
+   de server hoeft hem alleen te vergelijken, dus een hash is genoeg.
+2. **Een refreshtoken is een ondoorzichtig geheim en de server bewaart het niet.** Wat er in de
+   database staat is een identificatie die niet naar het token terug te rekenen is, plus het
+   vervalmoment en de ingetrokken-vlag. Rotatie met hergebruikdetectie is alleen iets waard als een
+   databasedump geen bruikbaar token oplevert.
+3. **Het wachtwoord wordt gehasht met Argon2id, en de gebruikte parameters staan in de hash zelf**,
+   in PHC-vorm. Verifiëren leunt daarmee nergens op de configuratie: die noemt alleen wat er vandaag
+   voor een nieuwe hash geldt. Parameters gaan omhoog naarmate hardware sneller wordt, en dat hoort
+   geen schemawijziging te vragen. Ligt de opgeslagen hash onder de huidige instelling, dan hasht de
+   server bij de eerstvolgende geslaagde login opnieuw.
+4. **De ondertekensleutel leeft alleen in de eigen persistente `/data` van Pleya**, met restrictieve
+   bestandsrechten, en dus niet in Postgres en niet in Git. Hij wordt bij de eerste start
+   gegenereerd. Een sleutel die naast de data ligt die hij beschermt scheidt niets: een databasedump
+   mag geen sessies opleveren, en dat is precies wat deze regel koopt.
 
 ### 6.6 `GET /pleya/v1/server`
 
@@ -728,5 +784,5 @@ kijkgeschiedenis, favorieten of waarderingen. Geen metadata-providers, geen matc
 artwork-upload. Geen websockets en geen server-sent events. Geen Live TV.
 
 Voor elk daarvan geldt hetzelfde: het wordt gespecificeerd door de fase die het introduceert, binnen
-de vier regels uit hoofdstuk 3. Een client die vandaag tegen deze specificatie bouwt hoeft daarvoor
+de regels uit hoofdstuk 3. Een client die vandaag tegen deze specificatie bouwt hoeft daarvoor
 niets te herschrijven.

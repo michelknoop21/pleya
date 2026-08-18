@@ -934,21 +934,29 @@ rusten.
 | Downloads | PS-10 |
 
 Wat fase 1 wél doet voor die latere oppervlakken is ruimte laten: `feature_level` bestaat vanaf dag
-één, de foutdomeinen zijn uitbreidbaar, en regel 1 hieronder maakt een veld toevoegen altijd
+één, de foutdomeinen zijn uitbreidbaar, en regel 1 hieronder maakt een optioneel antwoordveld altijd
 toegestaan. Ruimte laten is iets anders dan invullen.
 
 ### 12.3 Versionering en compatibiliteitsregels
 
-Het pad draagt de majorversie: `/pleya/v1/...`. Binnen v1 gelden vier regels, en ze staan in de
+Het pad draagt de majorversie: `/pleya/v1/...`. Binnen v1 gelden zes regels, en ze staan in de
 specificatie zelf zodat er niet over te discussiëren valt.
 
-1. Een veld toevoegen is toegestaan. Clients negeren onbekende velden en mogen daar niet op falen.
+1. Een nieuw optioneel veld in een antwoord is toegestaan. Clients negeren velden die ze niet kennen
+   en mogen daar niet op falen.
 2. Een veld hernoemen of verwijderen is niet toegestaan binnen dezelfde major. Een vervangen veld
    blijft naast het nieuwe bestaan tot v2, met een `deprecated`-markering in de specificatie.
 3. De betekenis van een bestaand veld wijzigen is niet toegestaan, ook niet als het type gelijk
    blijft. Dat is de stilste vorm van breken.
-4. Een nieuwe verplichte parameter op een bestaande endpoint is niet toegestaan; nieuwe parameters
-   zijn optioneel met een gedocumenteerde default die het oude gedrag reproduceert.
+4. Een nieuw verplicht veld in een aanvraag is breken, in de querystring net zo goed als in de body;
+   nieuwe aanvraagvelden zijn optioneel met een gedocumenteerde default die het oude gedrag
+   reproduceert.
+5. Een aanvraagbody is gesloten. Een server die een nieuw optioneel veld niet kent wijst het verzoek
+   af, dus een client stuurt zo'n veld pas wanneer `capabilities` of `feature_level` zegt dat de
+   server het kent.
+6. Een nieuwe enum-waarde is alleen toegestaan waar het veld unknown-safe is. Welke velden dat zijn
+   staat in hoofdstuk 3.2 van de specificatie, en `openapi.yaml` draagt het per veld als
+   `x-unknown-safe`.
 
 Naast de majorversie draagt de server een `feature_level` als geheel getal, met een strikte
 definitie:
@@ -1239,11 +1247,16 @@ authenticatie. Zie [hoofdstuk 12.4](#124-capability-negotiation).
 
 ### 16.3 Wachtwoorden en geheimen
 
-Wachtwoorden met Argon2id, parameters vastgelegd in de configuratie en meegroeiend met de hardware.
-Tokens zijn ondertekend met een sleutel die bij eerste start wordt gegenereerd en op schijf staat met
-restrictieve rechten, niet in de database, zodat een databasedump alleen geen sessies oplevert. Er is
-geen defaultwachtwoord en geen ingebouwd account: de eerste start levert een eenmalige setup-code op
-de console, en zonder die code komt er niemand binnen.
+Wachtwoorden met Argon2id. De configuratie noemt de parameters voor een nieuwe hash en groeit mee met
+de hardware; de parameters waarmee een bestaande hash gemaakt is staan in de hash zelf, zodat
+verifiëren nooit van de configuratie afhangt en een verhoging geen schemawijziging vraagt. Tokens
+zijn ondertekend met een sleutel die bij eerste start wordt gegenereerd en in de eigen persistente
+`/data` staat met restrictieve rechten, niet in de database en niet in Git, zodat een databasedump
+alleen geen sessies oplevert. Refreshtokens zijn ondoorzichtige geheimen die de server niet bewaart:
+in de database staat een identificatie die niet naar het token terug te rekenen is, met het
+vervalmoment en de ingetrokken-vlag. Er is geen defaultwachtwoord en geen ingebouwd account: de
+eerste start levert een eenmalige setup-code op de console, kortlevend en na inwisseling verlopen, en
+zonder die code komt er niemand binnen.
 
 ---
 
@@ -1609,7 +1622,7 @@ deploymentdetail is nooit protocoloppervlak.
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-1 |
-| Status | **contract opgeleverd, ter goedkeuring**: [openapi.yaml](pleya-protocol/v1/openapi.yaml), [proza](pleya-protocol-v1.md), 25 fixtures |
+| Status | **gesloten en bevroren, 18 augustus 2026**: [openapi.yaml](pleya-protocol/v1/openapi.yaml), [proza](pleya-protocol-v1.md), 25 fixtures |
 | Doel | een versieerbaar wire-contract dat client en server onafhankelijk kunnen implementeren |
 | Bijdrage aan einddoel | zonder eigen protocol blijft elke server een variant op andermans API; dit is de grens waarachter Pleya zelfstandig wordt |
 | Afhankelijkheden | geen |
@@ -1620,7 +1633,7 @@ protocoloppervlak beschrijft dat nodig is tot en met PS-4** ([hoofdstuk 12.2](#1
 Concreet: resources en endpoints voor bladeren, zoeken, streamen en kijkstatus; het foutmodel met
 codes per domein; capability negotiation via `/pleya/v1/info` inclusief het profielbegrip `minimal`
 en `full`; de auth-grens met accesstoken, refreshtoken en het kortlevende streamtoken; cursorgebaseerde
-pagination; de vier compatibiliteitsregels plus de strikte definitie van `feature_level` en zijn
+pagination; de compatibiliteitsregels plus de strikte definitie van `feature_level` en zijn
 ondergeschiktheid aan `capabilities`; conventies voor tijd, duur, ids, sortering en lege lijsten.
 Voorbeeldantwoorden per endpoint, bruikbaar als contracttest-fixtures aan beide kanten.
 
@@ -1643,7 +1656,7 @@ schema's valideren. Alles daarbuiten is fase 6 of later.
 
 **Risico's.** Overontwerpen is hier het echte gevaar: een specificatie die alle latere fasen al
 beschrijft, wordt in fase 6 alsnog herschreven. De tegenmaatregel is `feature_level` plus regel 1
-(velden toevoegen mag altijd).
+(een optioneel antwoordveld mag er altijd bij).
 
 **Tests.** Schemavalidatie van alle voorbeeldantwoorden in CI.
 
@@ -1661,6 +1674,35 @@ gebouwd wordt.
 **Roadmap Drift Check.** Is er een endpoint gespecificeerd dat pas in PS-6 of later nodig is? Dan
 hoort het uit de specificatie en terug naar de fase die het introduceert.
 
+#### Uitkomst: gesloten op 18 augustus 2026
+
+De zes acceptatiecriteria zijn gehaald. `scripts/check_protocol.sh` valideert `openapi.yaml` als
+OpenAPI 3.1 (16 paden), controleert dat elke `$ref` uitkomt, toetst alle 25 fixtures tegen het schema
+dat het manifest ze toewijst, en voert drie plausibele fouten in om te bewijzen dat de validator
+werkelijk afkeurt. De poorten 1 en 2 uit
+[docs/pleya-server-gates.md](pleya-server-gates.md) zijn daarmee dicht.
+
+De goedkeuring vroeg per poort een formulering hard te maken voordat het contract dichtging. Drie
+regels, elk een compatibiliteits- of beveiligingsinvariant en geen functionaliteit:
+
+| Wat er te ruim stond | Wat er nu staat |
+| --- | --- |
+| "een veld toevoegen mag altijd" | een nieuw veld mag in een **antwoord**; een nieuw verplicht veld in een **aanvraag** is breken, en omdat elk verzoekschema `additionalProperties: false` draagt wijst een server een nieuw optioneel aanvraagveld af in plaats van het te negeren |
+| enums zonder uitspraak | een nieuwe enum-waarde mag alleen waar het veld unknown-safe is; vier velden zijn dat, `openapi.yaml` draagt het als `x-unknown-safe` en de validator weigert een enum zonder markering |
+| auth-state benoemd, opslagvorm niet | 6.5 legt vier eigenschappen vast: eenmalige en niet-leesbaar bewaarde setupcode, refreshtokens als ondoorzichtig geheim waarvan alleen een niet-terugrekenbare identificatie in de database staat, Argon2id-parameters in de hash zelf, en de ondertekensleutel uitsluitend in de eigen `/data` |
+
+Geen van de drie voegt een endpoint, een veld of een categorie persistente state toe.
+
+**De fase is bevroren.** Zolang PS-2 gebouwd wordt verandert er niets cosmetisch aan het protocol.
+Legt PS-2 een echt probleem in het contract bloot, dan is dat een protocolwijziging die langs de zes
+regels uit [hoofdstuk 12.3](#123-versionering-en-compatibiliteitsregels) getoetst wordt, niet een
+aanpassing in `openapi.yaml` omdat het zo uitkomt.
+
+**Wat PS-2 erft, en wat nog open is.** PS-2 implementeert een contract dat vastligt, met de
+auth-invarianten uit 6.5 als opslageis. De poorten 3 en 4, het conflictmodel voor kijkstatus en de
+byte-validator achter de `ETag`-belofte, staan nog open en horen dicht te zijn vóór PS-4. Ze raken
+PS-2 niet: de kijkstatus-endpoints en het streampad komen daar niet aan bod.
+
 ---
 
 ### Fase 2. Read-only catalogus in Go
@@ -1668,6 +1710,7 @@ hoort het uit de specificatie en terug naar de fase die het introduceert.
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-2 |
+| Status | **vrijgegeven, 18 augustus 2026** |
 | Doel | een draaiende Go-service die een bestandsboom scant en als catalogus serveert |
 | Bijdrage aan einddoel | dit is het eerste stuk Pleya dat zonder enige externe mediaserver een bibliotheek kan tonen |
 | Afhankelijkheden | PS-1 |
