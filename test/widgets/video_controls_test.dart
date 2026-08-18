@@ -224,6 +224,46 @@ void main() {
     });
   });
 
+  group('shouldAutoSkipMarker', () {
+    MediaMarker marker(String type) => MediaMarker(id: 1, type: type, startTimeOffset: 0, endTimeOffset: 30000);
+
+    bool autoSkip(String type, MediaKind kind, {bool intro = true, bool credits = true}) =>
+        shouldAutoSkipMarker(marker: marker(type), kind: kind, autoSkipIntro: intro, autoSkipCredits: credits);
+
+    test('auto-skips an intro marker on an episode', () {
+      expect(autoSkip('intro', MediaKind.episode), isTrue);
+    });
+
+    test('never auto-skips an intro marker on a movie', () {
+      expect(autoSkip('intro', MediaKind.movie), isFalse);
+    });
+
+    test('never auto-skips an intro marker on clips or unknown items', () {
+      expect(autoSkip('intro', MediaKind.clip), isFalse);
+      expect(autoSkip('intro', MediaKind.unknown), isFalse);
+    });
+
+    test('respects the intro setting on episodes', () {
+      expect(autoSkip('intro', MediaKind.episode, intro: false), isFalse);
+    });
+
+    test('leaves credits auto-skip untouched, including on movies', () {
+      expect(autoSkip('credits', MediaKind.movie), isTrue);
+      expect(autoSkip('credits', MediaKind.episode), isTrue);
+    });
+
+    test('does not auto-skip credits when the setting is off', () {
+      expect(autoSkip('credits', MediaKind.movie, credits: false), isFalse);
+      expect(autoSkip('credits', MediaKind.episode, credits: false), isFalse);
+    });
+
+    test('treats other marker types as intro: episode only', () {
+      expect(autoSkip('recap', MediaKind.movie), isFalse);
+      expect(autoSkip('recap', MediaKind.episode), isTrue);
+      expect(autoSkip('recap', MediaKind.episode, intro: false), isFalse);
+    });
+  });
+
   group('handlePromptDismissBackKey', () {
     test('ignores back keys when no prompt is visible', () {
       final dismissCount = 0;

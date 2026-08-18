@@ -42,6 +42,7 @@ import '../../focus/dpad_navigator.dart';
 import '../../database/app_database.dart';
 import '../../media/media_backend.dart';
 import '../../media/media_item.dart';
+import '../../media/media_kind.dart';
 import '../../models/livetv_capture_buffer.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../media/media_source_info.dart';
@@ -182,6 +183,20 @@ bool shouldShowSkipMarkerButton({
   required bool controlsVisible,
 }) {
   return hasFirstFrame && hasMarker && !hasPlayNextPrompt && (!skipButtonDismissed || controlsVisible);
+}
+
+/// Intro auto-skip geldt alleen voor afleveringen. Bij een film komt een
+/// intro-marker vrijwel altijd uit de hoofdstuktitel-fallback, en dan slaat de
+/// speler echte film over. De knop blijft wel staan, zodat handmatig springen kan.
+@visibleForTesting
+bool shouldAutoSkipMarker({
+  required MediaMarker marker,
+  required MediaKind kind,
+  required bool autoSkipIntro,
+  required bool autoSkipCredits,
+}) {
+  if (marker.isCredits) return autoSkipCredits;
+  return autoSkipIntro && kind == MediaKind.episode;
 }
 
 @visibleForTesting

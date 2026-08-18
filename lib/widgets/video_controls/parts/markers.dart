@@ -124,7 +124,7 @@ extension _PlexVideoControlsMarkerMethods on _PlexVideoControlsState {
     _cancelAutoSkipTimer();
     if (!_hasRenderedFirstFrame) return;
 
-    final shouldAutoSkip = (marker.isCredits && _autoSkipCredits) || (!marker.isCredits && _autoSkipIntro);
+    final shouldAutoSkip = _shouldAutoSkipForMarker(marker);
 
     if (!shouldAutoSkip || _autoSkipDelay <= 0) return;
 
@@ -199,7 +199,12 @@ extension _PlexVideoControlsMarkerMethods on _PlexVideoControlsState {
   }
 
   bool _shouldAutoSkipForMarker(MediaMarker marker) {
-    return (marker.isCredits && _autoSkipCredits) || (!marker.isCredits && _autoSkipIntro);
+    return shouldAutoSkipMarker(
+      marker: marker,
+      kind: widget.metadata.kind,
+      autoSkipIntro: _autoSkipIntro,
+      autoSkipCredits: _autoSkipCredits,
+    );
   }
 
   bool _shouldShowAutoSkip() {
