@@ -71,3 +71,6 @@ duplication-report/
 maestro/**/*.png
 
 server/deploy.sh
+
+# Wegwerpboom van scripts/xattr-fast/benchmark.sh (zie DEC-029).
+/.xattr-bench/

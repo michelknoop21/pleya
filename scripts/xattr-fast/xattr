@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+# Parallelle vervanger voor één specifieke aanroep van xattr, en alleen die.
+#
+# `flutter build ios` draait vóór elke build twee volledige recursies over de
+# hele projectroot (flutter_tools/lib/src/ios/mac.dart:199):
+#
+#     xattr -r -d com.apple.FinderInfo  <projectroot>
+#     xattr -r -d com.apple.provenance  <projectroot>
+#
+# Op de externe USB-APFS-schijf waar deze repo staat is elke removexattr een
+# schrijftransactie met USB-latency. Gemeten: 21 bestanden per seconde over
+# 51090 bestanden, dus ongeveer 40 minuten per attribuut en 80 per build,
+# voordat xcodebuild ook maar begint. Het proces gebruikt daarbij nauwelijks
+# CPU, dus dit is latency-gebonden en niet bandbreedte-gebonden: gelijktijdig
+# werken helpt, harder werken niet.
+#
+# Deze shim onderschept uitsluitend het patroon hierboven en voert het parallel
+# uit. Elke andere aanroep gaat ongewijzigd door naar /usr/bin/xattr. Zie
+# DEC-029.
+set -uo pipefail
+
+REAL=/usr/bin/xattr
+
+# Takken die nooit in een ondertekende bundel terechtkomen. build/ staat er
+# bewust niet bij: dat is bouwuitvoer die wél in de bundel belandt, en juist
+# daar moeten de attributen weg.
+PRUNE_NAMES=(.git node_modules .dart_tool .fvm)
+
+# Niet-onderschept: exact doorgeven. Dit dekt -l, -p, -w, -c, losse bestanden,
+# en ook Flutter's eigen `xattr -w com.apple.xcode.CreatedByBuildSystem`.
+if [ "$#" -ne 4 ] || [ "$1" != "-r" ] || [ "$2" != "-d" ] || [ ! -d "$4" ]; then
+  exec "$REAL" "$@"
+fi
+
+attr=$3
+root=$4
+# Twaalf, op twee metingen. Een koude A/B op twee vergelijkbare, onaangeroerde
+# repo-bomen ging van 145 naar 507 bestanden per seconde; scripts/xattr-fast/
+# benchmark.sh zag 12 en 16 workers gelijk aan kop en 4 en 8 erachter. Boven de
+# twaalf levert het niets meer op, dus daar houden we het.
+jobs=${PLEYA_XATTR_JOBS:-12}
+
+case "$jobs" in
+  '' | *[!0-9]*)
+    echo "xattr-fast: PLEYA_XATTR_JOBS moet een getal zijn, kreeg '$jobs'" >&2
+    exit 2
+    ;;
+esac
+[ "$jobs" -ge 1 ] || { echo "xattr-fast: PLEYA_XATTR_JOBS moet minstens 1 zijn" >&2; exit 2; }
+
+if [ ! -x "$REAL" ]; then
+  echo "xattr-fast: $REAL ontbreekt of is niet uitvoerbaar" >&2
+  exit 2
+fi
+
+# Bewijs dat Flutter deze shim écht met dit patroon heeft aangeroepen. Zonder
+# marker is er geen verschil te zien tussen "de shim deed zijn werk" en "de
+# shim stond niet op PATH en het oude trage pad liep gewoon door".
+if [ -n "${PLEYA_XATTR_MARKER:-}" ]; then
+  printf '%s\t%s\n' "$attr" "$root" >> "$PLEYA_XATTR_MARKER" 2>/dev/null || true
+fi
+
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/xattr-fast.XXXXXX") || {
+  echo "xattr-fast: kan geen tijdelijke map maken" >&2
+  exit 2
+}
+trap 'rm -rf "$tmp"' EXIT
+
+find_args=()
+for name in "${PRUNE_NAMES[@]}"; do
+  find_args+=(-name "$name" -o)
+done
+unset 'find_args[${#find_args[@]}-1]'
+
+find "$root" \( "${find_args[@]}" \) -prune -o -print0 \
+  > "$tmp/paths" 2> "$tmp/find.err"
+find_status=$?
+
+if [ "$find_status" -ne 0 ] || [ -s "$tmp/find.err" ]; then
+  echo "xattr-fast: find over '$root' faalde (status $find_status)" >&2
+  cat "$tmp/find.err" >&2
+  exit 2
+fi
+
+xargs -0 -P "$jobs" -n 256 "$REAL" -d "$attr" < "$tmp/paths" \
+  > /dev/null 2> "$tmp/xattr.err"
+xargs_status=$?
+
+# De exitcode van xargs zegt hier vrijwel niets. `xattr -d` faalt op elk
+# bestand dat het attribuut niet heeft, en dat zijn er bijna altijd, dus een
+# gefaalde deelaanroep is de normale toestand. macOS levert BSD-xargs, die
+# daarvoor 1 teruggeeft waar GNU-xargs 123 gebruikt; beide betekenen hetzelfde.
+# Of er echt iets mis is, blijkt uit de inhoud van stderr, hieronder. Alleen
+# "kan het commando niet uitvoeren" is op zichzelf al fataal.
+case "$xargs_status" in
+  0 | 1 | 123) ;;
+  126 | 127)
+    echo "xattr-fast: kan $REAL niet uitvoeren (xargs status $xargs_status)" >&2
+    exit 2
+    ;;
+  *)
+    echo "xattr-fast: xargs faalde met status $xargs_status" >&2
+    head -20 "$tmp/xattr.err" >&2
+    exit 2
+    ;;
+esac
+
+# Twee goedaardige meldingen, allebei verwacht tijdens een normale run:
+#   xattr: <pad>: No such xattr: <attr>   het attribuut stond er niet op
+#   xattr: No such file: <pad>            weggehaald tussen find en xargs in
+# Alles wat overblijft is een echte fout en mag niet verdwijnen.
+#
+# De patronen staan bewust niet verankerd, en lege regels vallen weg. Alle
+# workers schrijven naar dezelfde stderr, en een melding komt niet altijd in
+# één write() naar buiten, dus onder gelijktijdigheid raken regels gesplitst:
+# op 702 meldingen leverde dat twintig losse newlines op. Een halve regel die
+# zijn prefix kwijt is herkennen we nog aan de rest; een lege regel draagt
+# sowieso geen informatie.
+grep -v 'No such xattr' "$tmp/xattr.err" \
+  | grep -v 'No such file' \
+  | grep -v '^[[:space:]]*$' > "$tmp/real.err" || true
+
+if [ -s "$tmp/real.err" ]; then
+  echo "xattr-fast: onverwachte fouten bij het verwijderen van '$attr' onder '$root'" >&2
+  head -20 "$tmp/real.err" >&2
+  exit 2
+fi
+
+exit 0
