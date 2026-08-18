@@ -51,7 +51,7 @@ class WatchlistSortSheet extends StatelessWidget {
                 fill: 1,
               ),
               title: Text(watchlistSortLabel(option)),
-              onTap: () => Navigator.of(context).pop(option),
+              onTap: () => OverlaySheetController.closeAdaptive(context, option),
             ),
           const SizedBox(height: 8),
         ],

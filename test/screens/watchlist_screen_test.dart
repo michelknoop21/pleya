@@ -24,6 +24,7 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/focus/focusable_button.dart';
 import 'package:pleya/focus/card_focus_scope.dart';
 import 'package:pleya/widgets/media_card_grid_layout.dart';
+import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/widgets/watchlist_card.dart';
 
 import '../test_helpers/prefs.dart';
@@ -164,7 +165,13 @@ void main() {
               ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
               if (offline) ChangeNotifierProvider<OfflineModeProvider>(create: (_) => _OfflineProvider()),
             ],
-            child: const WatchlistScreen(),
+            // The real app always has an OverlaySheetHost above this screen
+            // (MainScreen installs one), so sheets open as overlays rather than
+            // routes. Pumping without it sent showAdaptive down the
+            // showModalBottomSheet fallback, where a plain Navigator.pop is
+            // correct -- which is exactly why the sort sheet could pop the whole
+            // screen in the app while these tests stayed green.
+            child: const OverlaySheetHost(child: WatchlistScreen()),
           ),
         ),
       ),
@@ -557,6 +564,24 @@ void main() {
       // Order is a property of the list already in memory. Fetching again to
       // answer it would be a round trip for something the app knows.
       expect(source.fetchCount, fetchesAfterLoad);
+    });
+
+    // The sheet is an overlay, not a route, so closing it with a plain
+    // Navigator.pop popped the screen underneath instead: on the phone the only
+    // route below is MainScreen, and an empty Navigator paints black.
+    testWidgets('picking an order closes the sheet and leaves the screen standing', (tester) async {
+      await pumpScreen(tester, threeFilms());
+
+      await tester.tap(find.text(t.libraries.sort));
+      await tester.pumpAndSettle();
+      expect(find.text(t.libraries.sortBy), findsOneWidget);
+
+      await tester.tap(find.text(t.watchlist.sortYear));
+      await tester.pumpAndSettle();
+
+      expect(find.text(t.libraries.sortBy), findsNothing, reason: 'the sheet should be gone');
+      expect(find.byType(WatchlistScreen), findsOneWidget, reason: 'the screen must survive the sheet closing');
+      expect(cardOrder(tester), ['c', 'b', 'a']);
     });
 
     testWidgets('sorting applies to what a type filter left over', (tester) async {
