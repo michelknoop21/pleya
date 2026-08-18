@@ -2,6 +2,35 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-18] PS-0 Docker Foundation draait op de DS920+ naast Plex
+
+De eerste servercode. De service doet niets, en dat is de bedoeling: wat hier faalt ligt aan de
+container en niet aan het product.
+
+### Added
+- **`pleya_server/`**, een Go-service met vier pakketten. Configuratie uit omgevingsvariabelen met een werkende default voor alles behalve de databaseverbinding, gestructureerde JSON-logs met een `component`-veld, een lui verbindende `pgxpool`, en `/healthz` plus `/readyz`. Het onderscheid tussen die twee is het punt: `/healthz` zegt of het proces leeft en wordt niet rood van een database die even weg is, `/readyz` pingt en geeft 503 zodra dat niet lukt. Omdat de pool lui verbindt houdt een Postgres die tien seconden later opkomt de server niet tegen, en is er geen retrylus nodig.
+- **`internal/mounts`**, dat bij elke start per pad meet of hij bestaat, leesbaar en beschrijfbaar is, read-only gemount staat en op welk bestandssysteem hij ligt. Het bestandssysteemtype staat erbij omdat de verandersdetectie van de scanner straks op stabiele inodes leunt en een van de mediamounts op deze NAS `fuseblk.ntfs` is.
+- **Multi-stage image op Debian bookworm-slim**, non-root, met de binary als eigen healthcheck omdat er geen curl in zit. Debian en geen Alpine is een keuze voor later: hoofdstuk 22 vraagt om een gepinde ffmpeg, en de Intel-mediastack die de DS920+ nodig heeft is op glibc een pakket. Er zit nu nog geen ffmpeg in.
+- **Compose-stack met Postgres 18.6 zonder hostpoort**, in een eigen privaat netwerk, met drie schrijfbare mounts voor drie verschillende levensduren: `/config` duurzaam en de back-up-eenheid, `/cache` herbouwbaar, `/transcode` vluchtig. Op één volume neemt een vollopende scratch de database mee.
+- **`scripts/verify-local.sh`**, dertien stappen van broncode tot draaiende stack, en `scripts/go-tool.sh`, dat de toolchain in de gepinde builder-image draait zodat er geen Go op de ontwikkelmachine hoeft te staan.
+- **`docs/pleya-server-ps0-proposal.md`**, de goedgekeurde afwijking met de zes onderdelen uit 23.1, plus PS-0 als fase in het architectuurdocument.
+
+### Gemeten op de DS920+
+- PostgreSQL 18.6 draait op **kernel 4.4.302 met cgroups v1**. Dat was het grootste onbewezen risico van de hele opzet.
+- `read_only` en `cap_drop: ALL` worden werkelijk toegepast: schrijven naar `/` faalt en `CapEff` is `0000000000000000`. `no-new-privileges` is gezet maar op deze kernel niet uit `/proc` af te lezen.
+- Idle **0,00% CPU en 10,6 MiB** voor de server, 0,00% en 27,3 MiB voor Postgres. Plex stond op hetzelfde moment op 2,03% en 1,495 GiB.
+- Media lezen lukt, schrijven geeft `Read-only file system`. Persistentie overleeft een herstart, uitval van de database maakt `/readyz` rood en herstel maakt hem weer groen zonder rebuild, en SIGTERM geeft exitcode 0.
+- Plex draaide er ongewijzigd naast, voor en na.
+
+### Fixed
+- **Postgres 18 zet `PGDATA` op `/var/lib/postgresql/18/docker`**, niet meer op `/var/lib/postgresql/data`. Het volume aan het oude pad hangen levert een stack op die draait en niets bewaart, en dat was pas bij de persistentietest opgevallen.
+- **`statfs` meldt een read-only bind mount als beschrijfbaar** op de laag die Docker Desktop gebruikt, omdat die `ST_RDONLY` niet doorgeeft. De `:ro`-controle leest daarom `/proc/self/mountinfo`, wat meteen een echte bestandssysteemnaam per mount oplevert in plaats van een magic.
+
+### Niet gebouwd
+Geen protocol, geen `/pleya/v1`, geen schema, geen tabel, geen scanner, geen ffprobe, geen ffmpeg,
+geen metadata, geen streaming, geen kijkstatus, geen gebruikers, geen authenticatie. De replacement
+matrix is inhoudelijk niet aangeraakt.
+
 ## [2026-08-18] De replacement matrix maakt zichtbaar wat er nog tussen Pleya Server en Plex-off staat
 
 Document-only. De roadmap is niet gewijzigd; de gaten zijn vastgelegd als bevinding.

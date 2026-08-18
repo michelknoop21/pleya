@@ -1,8 +1,49 @@
 # STATUS · Pleya
 
-_Laatst bijgewerkt: 2026-08-18 (`main` = `8e84f3a`, en `feat/pleyaserver` staat op dezelfde commit met documentatiewerk in de working tree. Er loopt nog steeds een tweede sessie met ongecommit werk in de hoofdmap. App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`)_
+_Laatst bijgewerkt: 2026-08-18 (`main` = `8e84f3a`; `feat/pleyaserver` loopt vooruit met het Pleya Server-werk. Er loopt nog steeds een tweede sessie met ongecommit werk in de hoofdmap. App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`)_
 
 ## Waar was ik
+
+**Pleya Server draait op de NAS, en hij doet nog niets. Dat is het resultaat.** PS-0 Docker
+Foundation staat in `pleya_server/`: een Go-service met Postgres in Docker, naast de bestaande
+Plex-container op de DS920+, met de mediabibliotheek read-only gemount.
+
+De aanleiding was een meting. De roadmap begon bij PS-1 en nam stilzwijgend aan dat de
+uitvoeringsomgeving een gegeven is. Dat is ze niet: DSM 7.3.2 draait op **kernel 4.4.302** met
+**cgroups v1**, Docker meldt daar als security options **alleen AppArmor**, en een deel van de
+bibliotheek staat op **fuseblk.ntfs**. Vier aannames die elke latere fase dragen waren onbewezen, en
+ze halverwege PS-2 tegenkomen kost het fundament van die fase. Daarom is PS-0 toegevoegd als
+goedgekeurde afwijking, met de zes onderdelen uit 23.1 in
+[docs/pleya-server-ps0-proposal.md](docs/pleya-server-ps0-proposal.md). **PS-1 tot en met PS-13
+behouden hun nummer, doel, scope en stopcriterium; er vervalt geen scope.**
+
+Wat er op de echte DS920+ bewezen is, naast een draaiende Plex:
+
+| Meting | Uitkomst |
+| --- | --- |
+| PostgreSQL 18.6 op kernel 4.4.302, cgroups v1 | draait, healthcheck groen |
+| `/healthz` en `/readyz` | 200 |
+| Gebruiker in de container | `1026:100`, niet root |
+| Media lezen / schrijven | lukt / `Read-only file system` |
+| `read_only` rootfs, `cap_drop: ALL` | toegepast; `CapEff` is `0000000000000000` |
+| `no-new-privileges` | gezet, maar op deze kernel niet uit `/proc` af te lezen |
+| Postgres hostpoort | geen |
+| Database weg / terug | `/readyz` 503 / weer 200 zonder rebuild |
+| Graceful shutdown | exitcode 0 op SIGTERM |
+| Idle server / Postgres | **0,00% CPU, 10,6 MiB** / 0,00%, 27,3 MiB |
+| Plex tijdens en na de test | ongewijzigd, `Up 13 days (healthy)` |
+
+Twee dingen kwamen onderweg boven die anders pas in PS-2 pijn hadden gedaan. **Postgres 18 zet
+`PGDATA` op `/var/lib/postgresql/18/docker`**, niet meer op `/var/lib/postgresql/data`; het oude pad
+mounten levert een stack op die draait en niets bewaart. En **`statfs` liegt over read-only mounts**
+op de laag die Docker Desktop gebruikt, dus de `:ro`-controle leest nu `/proc/self/mountinfo`, wat
+meteen een echte bestandssysteemnaam per mediamount oplevert.
+
+De service is met opzet leeg: geen protocol, geen schema, geen tabel, geen scanner, geen ffmpeg.
+`compose.yaml` heeft een uitgecommentarieerd `/dev/dri`-blok met `group_add: "937"`, de groep
+`videodriver` zoals gemeten, volledig inert tot PS-8.
+
+## Eerder op 18 augustus
 
 **De replacement matrix laat zien dat de roadmap Plex nog niet uitzet, en waar dat aan ligt.** Het
 architectuurdocument beschreef goed *hoe* Pleya Server gebouwd wordt, maar nergens stond de volledige
@@ -75,6 +116,9 @@ Twee opstartbugs dichtgezet en 2.8.0 klaargemaakt voor herindiening. De Apple-af
 Het Atmos-spoor staat er nog precies zo bij als gisteren: een iOS-log van build 211 laat zien dat de bitstream-keten gewoon wérkt: `spdif_eac3` komt op, de avfoundation-sink pakt hem, en de fork logt `JOC=yes`, dus de Atmos-objecten van Ted Lasso S4E1 bereiken de renderer. Daarmee vallen twee van de drie oorspronkelijke verdachten af: `audio-exclusive` heeft in deze libmpv geen enkele consument (geen coreaudio, geen wasapi), en een MPVKit-bisect is zinloos omdat de sink in 1.0.16 aantoonbaar functioneert. Wat er wél uit kwam: de app kan niet zien dát Atmos loopt, want `AVAudioSession.renderingMode` geeft tijdens de werkende bitstream `not-applicable` en de badge hangt volledig aan die property. En loudness-normalisatie sluit passthrough uit zonder dat iets dat coördineert, terwijl Android TV datzelfde conflict al arbitreert maar precies andersom. Zie [DEC-013](docs/DECISIONS.md#dec-013). Verder ontdekt dat `ice.pleya.app` nooit heeft bestaan, waardoor de log-uploadknop altijd stil faalde; de Go-relay stond al klaar in `server/`, alleen op de verkeerde hostnaam. Zie [DEC-014](docs/DECISIONS.md#dec-014).
 
 ## Volgende stap
+
+**PS-1 blijft wachten tot na 2.8.0.** PS-0 is af en vrijgegeven; dat verandert niets aan de volgorde
+daarna. Fase 3 is de eerste die de app raakt, en die wil je niet naast een lopende indiening hebben.
 
 **Besluiten wat er met de 26 blockers zonder fase gebeurt, vóór PS-1 wordt vrijgegeven.** Twaalf
 gegroepeerde gaten staan in
