@@ -25,6 +25,14 @@ import '../focus/key_event_utils.dart';
 import '../focus/input_mode_tracker.dart';
 import '../utils/media_server_timeouts.dart';
 import '../media/item_watcher.dart';
+import '../profiles/active_profile_provider.dart';
+import '../profiles/plex_home_service.dart';
+import '../profiles/plex_self_account.dart';
+import '../providers/tautulli_provider.dart';
+import '../media/media_watch_stats.dart';
+import '../services/item_watchers_service.dart';
+import '../services/media_watch_stats_service.dart';
+import 'media_detail/watch_stats_row.dart';
 import '../media/library_query.dart';
 import '../media/media_hub.dart';
 import '../utils/provider_extensions.dart';
@@ -57,6 +65,7 @@ import '../utils/grid_size_calculator.dart';
 import '../utils/layout_constants.dart';
 import '../providers/download_provider.dart';
 import '../providers/multi_server_provider.dart';
+import 'media_detail/now_watching_line.dart';
 import 'media_detail/watched_by_row.dart';
 import '../providers/offline_watch_provider.dart';
 import '../providers/seerr_provider.dart';
@@ -275,7 +284,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   int _episodesLoadGeneration = 0;
   bool _showEpisodesDirectly = false;
   MediaItem? _fullMetadata;
-  List<ItemWatcher>? _watchers;
+  ItemWatchers? _watchers;
+  MediaWatchStats? _watchStats;
   MediaItem? _onDeckEpisode;
   bool _isLoadingMetadata = true;
   List<MediaItem>? _extras;
@@ -1916,9 +1926,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     }
   }
 
-  /// Plex-only "Watched by …" row. Reads the server-wide history, which needs
-  /// the server-owner token, so it's gated on server ownership and silently
-  /// skips for Jellyfin / shared / non-owned servers.
+  /// Plex-only "Watched by …" row, served by Tautulli when it is configured and
+  /// by the server-wide Plex history otherwise. Both are admin data, so this is
+  /// gated on server ownership and silently skips for Jellyfin, shared and
+  /// non-owned servers.
   Future<void> _loadWatchers() async {
     if (widget.isOffline) return;
     if (!_metadata.isMovie && !_metadata.isShow) return;
@@ -1929,19 +1940,39 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     if (plexClient == null) return; // Jellyfin / not registered
 
     final manager = context.read<MultiServerProvider>().serverManager;
-    if (!manager.isOwnerOrAdmin(serverId)) return; // owner-token endpoint only
+    if (!manager.isOwnerOrAdmin(serverId)) return; // admin-only either way
     final ownerToken = manager.getPlexServer(serverId)?.accessToken;
     // The history endpoint 403s on a non-owner token; without a real owner
     // token the call would silently fall back to the (possibly restricted)
     // client token — skip rather than fail quietly or poison the roster cache.
     if (ownerToken == null || ownerToken.isEmpty) return;
 
-    final watchers = await plexClient.fetchItemWatchers(_metadata.id, authToken: ownerToken);
+    final watchers = await const ItemWatchersService().resolve(
+      _metadata,
+      tautulli: context.read<TautulliProvider?>()?.client,
+      plex: plexClient,
+      plexOwnerToken: ownerToken,
+      selfPlexAccountId: _selfPlexAccountId(),
+    );
     // Assign unconditionally (mounted-guarded): an empty result clears any
     // stale row from a prior load; the render sites hide on empty.
     if (!mounted) return;
     setState(() => _watchers = watchers);
+
+    // Tautulli-only, so this stays null (and the row absent) on servers without
+    // it. Loaded after the watchers rather than alongside, because it is the
+    // less interesting of the two and should not delay the avatars.
+    final tautulli = context.read<TautulliProvider?>()?.client;
+    if (tautulli == null) return;
+    final stats = await const MediaWatchStatsService().resolve(_metadata, tautulli: tautulli);
+    if (!mounted) return;
+    setState(() => _watchStats = stats);
   }
+
+  /// plex.tv account id of the active profile, which is the id space Tautulli
+  /// reports in.
+  int? _selfPlexAccountId() =>
+      plexSelfAccountId(context.read<ActiveProfileProvider>().activeId, context.read<PlexHomeService>());
 
   /// Load related hubs (collections, similar, "more from" director/actor).
   /// Backend-neutral — both Plex and Jellyfin implement
@@ -3339,11 +3370,20 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                                 SizedBox(height: isTv ? 28 : 8),
                               ],
 
-                              // "Watched by …" row (Plex, owned servers only).
-                              if (_watchers != null && _watchers!.isNotEmpty) ...[
-                                WatchedByRow(watchers: _watchers!, selfAccountId: 1),
-                                const SizedBox(height: 24),
+                              // Someone streaming this title right now, then
+                              // "Watched by …" and the server statistics under
+                              // it. All three are admin-only and all three
+                              // arrive after the page, so each hides itself
+                              // when empty.
+                              NowWatchingLine(ratingKey: _metadata.id),
+                              if (_watchers?.watchers.isNotEmpty ?? false)
+                                WatchedByRow(watchers: _watchers!.watchers, scope: _watchers!.scope),
+                              if (_watchStats?.isNotEmpty ?? false) ...[
+                                const SizedBox(height: 8),
+                                WatchStatsRow(stats: _watchStats!),
                               ],
+                              if ((_watchers?.watchers.isNotEmpty ?? false) || (_watchStats?.isNotEmpty ?? false))
+                                const SizedBox(height: 24),
 
                               // Additional info — wrapped in Focus so DPAD DOWN from the
                               // last focusable section lands here and scrolls it into view.
@@ -3665,10 +3705,16 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                     ],
                     SizedBox(height: actionGap),
                     SizedBox(height: actionHeight, child: _buildActionButtons(metadata)),
-                    // "Watched by …" row (Plex, owned servers only).
-                    if (_watchers != null && _watchers!.isNotEmpty) ...[
+                    // Live viewer, then the "Watched by …" row (Plex, owned
+                    // servers only).
+                    NowWatchingLine(ratingKey: _metadata.id),
+                    if (_watchers?.watchers.isNotEmpty ?? false) ...[
                       const SizedBox(height: 20),
-                      WatchedByRow(watchers: _watchers!, selfAccountId: 1, avatarSize: 36),
+                      WatchedByRow(watchers: _watchers!.watchers, scope: _watchers!.scope, avatarSize: 36),
+                    ],
+                    if (_watchStats?.isNotEmpty ?? false) ...[
+                      const SizedBox(height: 8),
+                      WatchStatsRow(stats: _watchStats!),
                     ],
                   ],
                 ),

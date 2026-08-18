@@ -99,6 +99,25 @@ void main() {
       expect(p, contains('keep_me'));
     });
 
+    // Both integration sessions are vault-encrypted with a device-local key, so
+    // exporting one ships a blob the other device cannot read and writes an
+    // unscoped key the active profile never loads. The Tautulli one is the
+    // heavier of the two: its key opens that server's whole admin API.
+    test('drops the vault-encrypted integration sessions, scoped or not', () async {
+      final prefs = await BaseSharedPreferencesService.sharedCache();
+      await prefs.setString('seerr_session', 'vault-blob');
+      await prefs.setString('tautulli_session', 'vault-blob');
+      await prefs.setString('user_uuid-1_tautulli_session', 'vault-blob');
+
+      final out = SettingsExportService.buildExportMap(prefs, currentUserUuid: 'uuid-1');
+      final p = out['prefs'] as Map<String, dynamic>;
+
+      expect(p, isNot(contains('seerr_session')));
+      expect(p, isNot(contains('tautulli_session')));
+      expect(SettingsExportService.isExportable('tautulli_session'), isFalse);
+      expect(SettingsExportService.syncBaseKey('user_uuid-1_tautulli_session', currentUserUuid: 'uuid-1'), isNull);
+    });
+
     test('drops prefix-deny keys', () async {
       final prefs = await BaseSharedPreferencesService.sharedCache();
       await prefs.setString('server_endpoint_srv1', 'http://x');

@@ -43,6 +43,8 @@ import '../profiles/profile_activation.dart';
 import '../profiles/profile_avatar.dart';
 import '../services/account_ui_actions.dart';
 import '../services/settings_service.dart';
+import '../providers/now_watching_provider.dart';
+import '../widgets/now_watching/now_watching_button.dart';
 import '../widgets/settings_builder.dart';
 import '../widgets/fitting_title_text.dart';
 import '../widgets/tv_browse_rail.dart';
@@ -162,6 +164,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   final FocusNode _tvHeroInfoFocusNode = FocusNode(debugLabel: 'tv_hero_info');
   final _actionBarKey = GlobalKey<FocusableActionBarState>();
   final _serverActivitiesButtonKey = GlobalKey<ServerActivitiesButtonState>();
+  final _nowWatchingButtonKey = GlobalKey<NowWatchingButtonState>();
+
+  /// Held so the ambient poll can be released when Home goes away.
+  NowWatchingProvider? _nowWatching;
   final _userMenuKey = GlobalKey<AppMenuButtonState<String>>();
 
   /// Backend-neutral hero client lookup. Returns the actual
@@ -504,6 +510,19 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
+    // Home is the surface that carries the now-watching indicator, so it is
+    // Home that asks Tautulli once a minute whether anyone is streaming. The
+    // subscription cannot live in the button: the button only exists while
+    // there is something to show, and a widget that unmounts when the answer
+    // is "nobody" could never learn that the answer changed. Kept before the
+    // early return below, which is about a different provider.
+    final nowWatching = context.read<NowWatchingProvider?>();
+    if (!identical(nowWatching, _nowWatching)) {
+      _nowWatching?.releaseAmbient();
+      _nowWatching = nowWatching?..watchAmbient();
+    }
+
     // Resolve with listen: true so this rebinds when the provider instance is
     // swapped (profile switch / session subtree rebuild). Binding once in
     // initState left us listening to a stale notifier: the settings screen
@@ -749,6 +768,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   void dispose() {
     _discover.removeListener(_onDiscoverChanged);
     _homeLayout?.removeListener(_onHomeLayoutChanged);
+    _nowWatching?.releaseAmbient();
     WidgetsBinding.instance.removeObserver(this);
     _autoScrollTimer?.cancel();
     _indicatorTimer?.cancel();
@@ -1257,6 +1277,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                         onPressed: _handleRefreshPressed,
                         child: DiscoverRefreshAction(color: foregroundColor, onPressed: _handleRefreshPressed),
                       ),
+                      // Who is streaming right now. The action only exists
+                      // while someone else is watching, so the bar keeps no
+                      // empty slot. Not on TV: its panel is a pointer overlay,
+                      // and there the sidebar carries this instead.
+                      if (!PlatformDetector.isTV() && (context.watch<NowWatchingProvider?>()?.now.hasOthers ?? false))
+                        FocusableAction(
+                          onPressed: () => _nowWatchingButtonKey.currentState?.togglePanel(),
+                          child: NowWatchingButton(key: _nowWatchingButtonKey),
+                        ),
                       // Watch Together
                       FocusableAction(
                         onPressed: () =>

@@ -14,6 +14,8 @@ import '../focus/focus_memory_tracker.dart';
 import '../media/media_library.dart';
 import '../mixins/mounted_set_state_mixin.dart';
 import '../navigation/navigation_tabs.dart';
+import '../screens/now_watching_screen.dart';
+import '../providers/now_watching_provider.dart';
 import '../providers/hidden_libraries_provider.dart';
 import '../providers/libraries_provider.dart';
 import '../services/settings_service.dart';
@@ -239,6 +241,9 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
   bool _isTouchExpanded = false;
   bool _lastReportedInteractionExpanded = false;
   Timer? _collapseTimer;
+
+  /// Held so the ambient poll can be released when the rail goes away.
+  NowWatchingProvider? _nowWatching;
   static const double collapsedWidth = 80.0;
   static const double tvCollapsedWidth = 48.0;
   static const double expandedWidth = 220.0;
@@ -270,6 +275,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
   static const _kWatchlist = 'watchlist';
   static const _kDownloads = 'downloads';
   static const _kSettings = 'settings';
+  static const _kNowWatching = 'nowWatching';
   static const _kReconnect = 'reconnect';
   static const _kFullscreen = 'fullscreen';
   static const _kServerHeaderPrefix = 'serverHeader';
@@ -290,6 +296,12 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
   /// macOS has the system green button; mobile/TV have no OS fullscreen toggle.
   bool get _showFullscreenToggle => Platform.isWindows || Platform.isLinux;
 
+  /// TV only, and only while other people are streaming. Desktop reaches the
+  /// same list from the presence control in the app bar, which a pointer can
+  /// use and a remote cannot.
+  bool _showNowWatching(BuildContext context) =>
+      PlatformDetector.isTV() && (context.watch<NowWatchingProvider?>()?.now.hasOthers ?? false);
+
   @override
   void initState() {
     super.initState();
@@ -302,9 +314,23 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     );
   }
 
+  /// The rail is the surface that carries the now-watching entry on TV, so it
+  /// is the rail that keeps the slow poll alive. It cannot live in the entry
+  /// itself: that entry only exists while someone is streaming, so it could
+  /// never be the thing that notices someone started.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final nowWatching = context.read<NowWatchingProvider?>();
+    if (identical(nowWatching, _nowWatching)) return;
+    _nowWatching?.releaseAmbient();
+    _nowWatching = nowWatching?..watchAmbient();
+  }
+
   @override
   void dispose() {
     _collapseTimer?.cancel();
+    _nowWatching?.releaseAmbient();
     _focusTracker.dispose();
     super.dispose();
   }
@@ -848,6 +874,32 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                         isFocused: _focusTracker.isFocused(_kRequests),
                                         onTap: () => widget.onDestinationSelected(NavigationTabId.requests),
                                         focusNode: _focusTracker.get(_kRequests),
+                                        isCollapsed: isCollapsed,
+                                      ),
+                                      const SizedBox(height: 8),
+                                    ],
+                                    // Who is streaming right now, TV only: the
+                                    // app bar's overlay panel cannot be reached
+                                    // with a remote, so the rail is the way in
+                                    // and the list opens as a page.
+                                    //
+                                    // Last in the group on purpose. It comes
+                                    // and goes with the streams, and an entry
+                                    // that appears above the fixed ones would
+                                    // shift them under someone's thumb every
+                                    // time a film starts.
+                                    if (_showNowWatching(context)) ...[
+                                      _buildNavItem(
+                                        icon: Symbols.sensors_rounded,
+                                        selectedIcon: Symbols.sensors_rounded,
+                                        label: Translations.of(context).nowWatching.title,
+                                        isSelected: false,
+                                        isFocused: _focusTracker.isFocused(_kNowWatching),
+                                        onTap: () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (_) => const NowWatchingScreen()),
+                                        ),
+                                        focusNode: _focusTracker.get(_kNowWatching),
                                         isCollapsed: isCollapsed,
                                       ),
                                       const SizedBox(height: 8),

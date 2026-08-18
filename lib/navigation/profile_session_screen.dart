@@ -21,6 +21,10 @@ import '../providers/libraries_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/playback_state_provider.dart';
 import '../providers/seerr_provider.dart';
+import '../providers/tautulli_provider.dart';
+import '../profiles/plex_home_service.dart';
+import '../profiles/plex_self_account.dart';
+import '../providers/now_watching_provider.dart';
 import '../providers/trakt_account_provider.dart';
 import '../providers/trackers_provider.dart';
 import '../providers/user_profile_provider.dart';
@@ -33,6 +37,7 @@ import '../services/recommendations/interaction_recorder.dart';
 import '../services/recommendations/personalized_rows_builder.dart';
 import '../services/recommendations/recommendation_service.dart';
 import '../services/storage_service.dart';
+import '../services/tautulli/tautulli_server_binding.dart';
 import '../utils/app_logger.dart';
 import '../watch_together/providers/watch_together_provider.dart';
 import 'profile_navigation_scope.dart';
@@ -137,6 +142,60 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                     }),
                   );
                   return provider;
+                },
+              ),
+              ChangeNotifierProvider(
+                create: (context) {
+                  final provider = TautulliProvider();
+                  unawaited(
+                    provider.onActiveProfileChanged(activeId).catchError((Object e, StackTrace s) {
+                      appLogger.w('Tautulli profile hydrate failed', error: e, stackTrace: s);
+                    }),
+                  );
+                  return provider;
+                },
+              ),
+              // Everything Tautulli reports is admin data, so this poller is
+              // wired to say no by default: without an owned Plex server and a
+              // paired instance it never starts a timer, never sends a request
+              // and never holds state. The dependencies are read once and kept,
+              // because the closures outlive any single build.
+              ChangeNotifierProvider(
+                create: (context) {
+                  final tautulli = context.read<TautulliProvider>();
+                  final multiServer = context.read<MultiServerProvider>();
+                  final activeProfile = context.read<ActiveProfileProvider>();
+                  final plexHome = context.read<PlexHomeService>();
+
+                  // Two different questions. Whether this profile may see any of
+                  // it is about ownership anywhere; which client can resolve a
+                  // reported rating key is about the one server Tautulli
+                  // watches, and only the second one may guess.
+                  bool ownsAServer() {
+                    final manager = multiServer.serverManager;
+                    return manager.serverIds.any((id) => manager.isOwnerOrAdmin(ServerId(id)));
+                  }
+
+                  ServerId? monitoredServerId() {
+                    final manager = multiServer.serverManager;
+                    return tautulliMonitoredServer(
+                      machineIdentifier: tautulli.machineIdentifier,
+                      serverIds: manager.serverIds,
+                      isOwnerOrAdmin: manager.isOwnerOrAdmin,
+                    );
+                  }
+
+                  return NowWatchingProvider(
+                    client: () => tautulli.client,
+                    enabled: ownsAServer,
+                    selfUserId: () => plexSelfAccountId(activeProfile.activeId, plexHome),
+                    // Tautulli hands out Plex library paths for artwork, which
+                    // only a Plex client can turn into a loadable URL.
+                    artworkClient: () {
+                      final serverId = monitoredServerId();
+                      return serverId == null ? null : multiServer.getPlexClientForServer(serverId);
+                    },
+                  );
                 },
               ),
               ChangeNotifierProvider(

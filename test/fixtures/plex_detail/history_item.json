@@ -1,0 +1,46 @@
+{
+  "MediaContainer": {
+    "size": 3,
+    "Metadata": [
+      {
+        "historyKey": "/status/sessions/history/10269",
+        "key": "/library/metadata/2",
+        "ratingKey": "2",
+        "librarySectionID": "1",
+        "title": "2 Fast 2 Furious",
+        "type": "movie",
+        "thumb": "/library/metadata/2/thumb/1785937633",
+        "originallyAvailableAt": "2003-06-05",
+        "viewedAt": 1781391671,
+        "accountID": 1,
+        "deviceID": 9
+      },
+      {
+        "historyKey": "/status/sessions/history/3377",
+        "key": "/library/metadata/2",
+        "ratingKey": "2",
+        "librarySectionID": "1",
+        "title": "2 Fast 2 Furious",
+        "type": "movie",
+        "thumb": "/library/metadata/2/thumb/1785937633",
+        "originallyAvailableAt": "2003-06-05",
+        "viewedAt": 1713114458,
+        "accountID": 1,
+        "deviceID": 6
+      },
+      {
+        "historyKey": "/status/sessions/history/3375",
+        "key": "/library/metadata/2",
+        "ratingKey": "2",
+        "librarySectionID": "1",
+        "title": "2 Fast 2 Furious",
+        "type": "movie",
+        "thumb": "/library/metadata/2/thumb/1785937633",
+        "originallyAvailableAt": "2003-06-05",
+        "viewedAt": 1713105678,
+        "accountID": 1,
+        "deviceID": 6
+      }
+    ]
+  }
+}

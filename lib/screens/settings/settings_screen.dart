@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../focus/focus_memory_tracker.dart';
+import '../../media/ids.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../focus/input_mode_tracker.dart';
 import '../../i18n/strings.g.dart';
@@ -25,6 +26,7 @@ import '../../services/icloud_sync_service.dart';
 import '../../services/saf_storage_service.dart';
 import '../../services/settings_export_service.dart';
 import '../../providers/seerr_provider.dart';
+import '../../providers/tautulli_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/trackers_provider.dart';
 import '../../providers/trakt_account_provider.dart';
@@ -62,6 +64,7 @@ import 'logs_screen.dart';
 import 'playback_settings_screen.dart';
 import '../profile/profile_switch_screen.dart';
 import 'seerr_settings_screen.dart';
+import 'tautulli_settings_screen.dart';
 import 'trackers_settings_screen.dart';
 import '../../widgets/loading_indicator_box.dart';
 
@@ -83,6 +86,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   static const _kLibraryVisibility = 'library_visibility';
   static const _kHomeLayout = 'home_layout';
   static const _kRequests = 'requests';
+  static const _kTautulli = 'tautulli';
   static const _kDownloadLocation = 'download_location';
   static const _kDownloadOnWifiOnly = 'download_on_wifi_only';
   static const _kAutoRemoveWatchedDownloads = 'auto_remove_watched_downloads';
@@ -197,6 +201,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
                         _buildPlaybackTile(),
                         _buildTrackersTile(),
                         _buildRequestsTile(),
+                        _buildTautulliTile(),
                       ],
                     ),
 
@@ -324,6 +329,16 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         keywords: const ['jellyseerr', 'overseerr', 'seerr'],
         destinationBuilder: (_) => const SeerrSettingsScreen(),
       ),
+      // Same gate as the tile itself: searching for "tautulli" must not be a
+      // back door into a screen the profile is not allowed to have.
+      if (_ownsAPlexServer(context.read<MultiServerProvider>()))
+        _SettingsSearchEntry(
+          icon: Symbols.insights_rounded,
+          title: t.tautulli.title,
+          subtitle: t.tautulli.subtitle,
+          keywords: const ['tautulli', 'statistics', 'statistieken', 'watched by'],
+          destinationBuilder: (_) => const TautulliSettingsScreen(),
+        ),
       if (_keyboardShortcutsSupported && _keyboardService != null)
         _SettingsSearchEntry(
           icon: Symbols.keyboard_rounded,
@@ -546,6 +561,36 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           title: t.settings.requests,
           subtitle: seerr.isConfigured ? (seerr.host ?? t.settings.requests) : t.settings.requestsDescription,
           destinationBuilder: (_) => const SeerrSettingsScreen(),
+        );
+      },
+    );
+  }
+
+  /// Whether this profile administers any Plex server here. Used by both the
+  /// tile and the search entry, so the two can never disagree about who is
+  /// allowed to reach the Tautulli screen.
+  static bool _ownsAPlexServer(MultiServerProvider multiServer) {
+    final manager = multiServer.serverManager;
+    return manager.serverIds.any((id) => manager.isOwnerOrAdmin(ServerId(id)));
+  }
+
+  /// Tautulli reports on the whole Plex server, and its single API key opens
+  /// the entire admin surface, so the tile only appears for someone who owns a
+  /// Plex server here. Everyone else never learns the integration exists, which
+  /// is the right outcome: they could not use it anyway.
+  Widget _buildTautulliTile() {
+    if (!context.select<MultiServerProvider, bool>(_ownsAPlexServer)) return const SizedBox.shrink();
+
+    return Consumer<TautulliProvider>(
+      builder: (context, tautulli, _) {
+        return SettingNavigationTile(
+          focusNode: _focusTracker.get(_kTautulli),
+          icon: Symbols.insights_rounded,
+          title: t.tautulli.title,
+          subtitle: tautulli.isConfigured
+              ? (tautulli.serverName ?? tautulli.host ?? t.tautulli.connected)
+              : t.tautulli.subtitle,
+          destinationBuilder: (_) => const TautulliSettingsScreen(),
         );
       },
     );
