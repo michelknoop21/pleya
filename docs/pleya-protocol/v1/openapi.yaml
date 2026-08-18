@@ -1,0 +1,936 @@
+# Pleya Protocol v1 — contractueel leidend.
+#
+# De prozaspecificatie staat in docs/pleya-protocol-v1.md en legt uit waarom de
+# keuzes hieronder zo zijn. Botsen de twee, dan wint dit bestand.
+#
+# Deze versie beschrijft feature level 1: het oppervlak dat PS-2 tot en met PS-4
+# nodig hebben. Elk later oppervlak wordt toegevoegd door de fase die het
+# introduceert, binnen de vier compatibiliteitsregels uit hoofdstuk 3.
+openapi: 3.1.0
+
+info:
+  title: Pleya Protocol
+  version: "1.0.0"
+  summary: Wire-contract tussen een Pleya-client en een Pleya Server.
+  description: |
+    Alles wat hier niet in staat, mag een client niet aannemen.
+
+    Vier compatibiliteitsregels binnen v1:
+      1. Een veld toevoegen mag. Clients negeren onbekende velden.
+      2. Een veld hernoemen of verwijderen mag niet.
+      3. De betekenis van een bestaand veld wijzigen mag niet.
+      4. Een nieuwe verplichte parameter op een bestaande endpoint mag niet.
+  license:
+    name: GPL-3.0-only
+    identifier: GPL-3.0-only
+
+servers:
+  - url: /pleya/v1
+    description: Het pad draagt de majorversie.
+
+tags:
+  - name: discovery
+  - name: auth
+  - name: library
+  - name: playback
+  - name: watch-state
+
+security:
+  - bearerAuth: []
+
+paths:
+  /info:
+    get:
+      tags: [discovery]
+      operationId: getInfo
+      summary: Wat staat er aan de andere kant.
+      description: |
+        Klasse `public`. Bereikbaar zonder authenticatie, want een client moet
+        weten wat er staat voordat hij een inlogpoging doet. Draagt daarom
+        bewust geen servernaam, versie of buildnummer; die staan in /server.
+      security: []
+      responses:
+        "200":
+          description: Serverinformatie.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Info" }
+
+  /auth/setup:
+    post:
+      tags: [auth]
+      operationId: completeSetup
+      summary: Maak de bootstrap-eigenaar aan met de setupcode.
+      description: |
+        Klasse `public`, en uitsluitend zolang info.auth.setup_required waar is.
+        De eerste start van een server drukt een eenmalige code af op de console.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetupRequest" }
+      responses:
+        "200":
+          description: Eigenaar aangemaakt, tokenpaar uitgegeven.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenPair" }
+        "401": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Wissel gebruikersnaam en wachtwoord in voor een tokenpaar.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: Tokenpaar.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenPair" }
+        "401":
+          description: |
+            auth.invalid_credentials. Een onbekende gebruiker en een verkeerd
+            wachtwoord geven hetzelfde antwoord, zodat het bestaan van een
+            account niet lekt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      operationId: refresh
+      summary: Ververs het tokenpaar.
+      description: |
+        Klasse `public`, want het refreshtoken is zelf het bewijs. Het token
+        roteert bij elk gebruik en het oude vervalt onmiddellijk. Een tweede
+        aanroep met hetzelfde token geeft auth.refresh_token_reused, en de
+        server mag de hele keten dan ongeldig maken.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RefreshRequest" }
+      responses:
+        "200":
+          description: Nieuw tokenpaar.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenPair" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /auth/stream-token:
+    post:
+      tags: [auth]
+      operationId: issueStreamToken
+      summary: Vraag een kortlevend token voor bytes.
+      description: |
+        Klasse `authenticated`. Voor spelers die geen header kunnen zetten.
+        Kortlevend en smal, maar NIET eenmalig: een speler doet een HEAD, dan
+        een open range, dan losse ranges per seek, plus retries. Een token dat
+        na de eerste range vervalt breekt op de tweede.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StreamTokenRequest" }
+      responses:
+        "200":
+          description: Streamtoken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StreamToken" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /server:
+    get:
+      tags: [discovery]
+      operationId: getServer
+      summary: Serverdetail achter authenticatie.
+      responses:
+        "200":
+          description: Naam, versie en starttijd.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ServerDetail" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /libraries:
+    get:
+      tags: [library]
+      operationId: listLibraries
+      summary: Alle zichtbare bibliotheken.
+      description: Niet gepagineerd; een huishouden heeft er een handvol.
+      responses:
+        "200":
+          description: Bibliotheken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryList" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /libraries/{library_id}/items:
+    get:
+      tags: [library]
+      operationId: listLibraryItems
+      summary: Blader door een bibliotheek.
+      description: |
+        Een bibliotheek van soort `shows` levert uitsluitend items met
+        kind `show`. Seizoenen en afleveringen bereikt u via /items/{id}/children.
+      parameters:
+        - $ref: "#/components/parameters/LibraryId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: sort
+          in: query
+          required: false
+          description: Een voorafgaand minteken keert de volgorde om.
+          schema:
+            type: string
+            enum: [title, added_at, year, "-title", "-added_at", "-year"]
+            default: title
+      responses:
+        "200":
+          description: Een pagina items.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /items/{item_id}:
+    get:
+      tags: [library]
+      operationId: getItem
+      summary: Eén item met zijn versies en kijkstatus.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "200":
+          description: Het item.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Item" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /items/{item_id}/children:
+    get:
+      tags: [library]
+      operationId: listItemChildren
+      summary: Seizoenen van een serie, afleveringen van een seizoen.
+      description: Voor een film is het antwoord een lege lijst en geen fout.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Een pagina items.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemPage" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /search:
+    get:
+      tags: [library]
+      operationId: search
+      summary: Zoek over alle bibliotheken.
+      description: |
+        Resultaten zijn gewone itemobjecten. Er is geen apart resultaattype en
+        geen groepering per soort; de client groepeert zelf en hoeft daarvoor
+        geen tweede vorm te kennen.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: kind
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/ItemKind" }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Een pagina items. Geen treffers is een lege lijst, geen fout.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /hubs/{hub_id}:
+    get:
+      tags: [library]
+      operationId: getHub
+      summary: Bouwstenen voor het homescherm.
+      description: |
+        De server levert bouwstenen en geen schermindeling; de client bouwt zijn
+        eigen rijen. Een server zonder kijkstatus levert lege lijsten voor
+        continue_watching en next_up, en geen fout.
+      parameters:
+        - name: hub_id
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [recently_added, continue_watching, next_up]
+        - name: library_id
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/Id" }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Een pagina items.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemPage" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /artwork/{artwork_id}:
+    get:
+      tags: [library]
+      operationId: getArtwork
+      summary: Een afbeelding, eventueel op maat.
+      description: |
+        Artwork is onveranderlijk: een andere afbeelding krijgt een ander id.
+        In v1 levert de server uitsluitend afbeeldingen die naast de media op
+        schijf staan; een 404 is daarom een normale toestand en geen storing.
+      parameters:
+        - name: artwork_id
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Id" }
+        - name: width
+          in: query
+          required: false
+          description: Zonder deze parameter krijgt u het origineel.
+          schema: { type: integer, minimum: 1, maximum: 4096 }
+      responses:
+        "200":
+          description: De afbeelding.
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+            Cache-Control:
+              schema: { type: string }
+              description: Lang, want artwork is onveranderlijk.
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+            image/webp: { schema: { type: string, format: binary } }
+        "304": { description: Niet gewijzigd. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /subtitles/{subtitle_id}:
+    get:
+      tags: [playback]
+      operationId: getSubtitle
+      summary: Een ondertitelbestand.
+      security:
+        - bearerAuth: []
+        - streamToken: []
+      parameters:
+        - name: subtitle_id
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Id" }
+      responses:
+        "200":
+          description: Het ondertitelbestand.
+          content:
+            application/x-subrip: { schema: { type: string } }
+            text/x-ssa: { schema: { type: string } }
+            text/vtt: { schema: { type: string } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /stream/{version_id}:
+    get:
+      tags: [playback]
+      operationId: getStream
+      summary: Direct play met HTTP-range.
+      description: |
+        Het hoofdpad en verreweg het meeste verkeer. Geen sessie, geen state,
+        geen opruimwerk.
+
+        Eén bereik per aanvraag. Een Range-header met meerdere bereiken wordt
+        beantwoord met het volledige bestand als 200; dat is de toegestane
+        terugval en houdt een speler die het toch probeert aan de praat, waar
+        een 416 hem zou breken.
+
+        De ETag verandert zodra de bytes van de versie veranderen. Hoe een
+        server dat waarmaakt is geen protocol; dat hij het waarmaakt wel, want
+        een client leunt erop bij If-Range na een onderbreking.
+      security:
+        - bearerAuth: []
+        - streamToken: []
+      parameters:
+        - name: version_id
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Id" }
+        - name: Range
+          in: header
+          required: false
+          schema: { type: string }
+          example: bytes=0-1048575
+        - name: If-Range
+          in: header
+          required: false
+          description: De eerder ontvangen ETag.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Het hele bestand. Ook het antwoord op meerdere bereiken.
+          headers:
+            Accept-Ranges: { $ref: "#/components/headers/AcceptRanges" }
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/octet-stream: { schema: { type: string, format: binary } }
+        "206":
+          description: Het gevraagde bereik.
+          headers:
+            Accept-Ranges: { $ref: "#/components/headers/AcceptRanges" }
+            ETag: { $ref: "#/components/headers/ETag" }
+            Content-Range:
+              schema: { type: string }
+              example: bytes 0-1048575/5368709120
+          content:
+            application/octet-stream: { schema: { type: string, format: binary } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: |
+            library.version_multifile. De versie bestaat uit meer dan een
+            bestand. Dat is een geldige versie in het domeinmodel; v1 begrenst
+            alleen de levering.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "415": { $ref: "#/components/responses/Error" }
+        "416":
+          description: playback.range_not_satisfiable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "503": { $ref: "#/components/responses/Error" }
+
+  /watch-state:
+    post:
+      tags: [watch-state]
+      operationId: reportWatchState
+      summary: Meld wat er gebeurd is.
+      description: |
+        Een update is een gebeurtenis en geen waarde. De client stuurt niet "de
+        positie is nu X" maar "dit is er gebeurd", en de server beslist wat dat
+        voor de toestand betekent.
+
+        session_id is client-generated: de client maakt bij het starten van
+        afspelen een UUID aan en houdt die aan tot hij stopt. Er zijn in v1
+        bewust geen serverzijdige playbacksessies, dus er is ook geen endpoint
+        dat een sessie-id uitdeelt.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WatchStateEvent" }
+      responses:
+        "200":
+          description: De nieuwe toestand van het item.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserState" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    get:
+      tags: [watch-state]
+      operationId: listWatchState
+      summary: Alles wat deze identiteit heeft aangeraakt.
+      description: |
+        Gesorteerd op updated_at aflopend. updated_since is wat de offline-laag
+        gebruikt om na een periode zonder netwerk bij te trekken zonder de hele
+        catalogus op te halen.
+      parameters:
+        - name: updated_since
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Een pagina kijkstatusregels.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WatchStatePage" }
+        "401": { $ref: "#/components/responses/Error" }
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Het accesstoken. Nooit in een querystring.
+    streamToken:
+      type: apiKey
+      in: query
+      name: stream_token
+      description: |
+        De enige uitzondering op de regel hierboven. Externe spelers kunnen geen
+        header zetten. Geldig voor twee tot vijf minuten, gebonden aan een
+        identiteit en een mediaresource, zonder rechten op de rest van de API.
+
+  headers:
+    ETag:
+      schema: { type: string }
+      description: |
+        Sterke validator. Verandert zodra de bytes veranderen. Ondoorzichtig:
+        een client ontleedt hem niet en leidt er niets uit af.
+    AcceptRanges:
+      schema: { type: string, const: bytes }
+
+  parameters:
+    LibraryId:
+      name: library_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    ItemId:
+      name: item_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Een hogere waarde wordt naar het maximum teruggebracht en is geen fout.
+      schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Ondoorzichtig. Hoort bij een sortering; bij een andere sortering ongeldig.
+      schema: { type: string }
+
+  responses:
+    Error:
+      description: Fout met een stabiele machineleesbare code.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  schemas:
+
+    Id:
+      type: string
+      minLength: 1
+      description: |
+        Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet
+        wanneer het op iets herkenbaars lijkt. Een pad is nooit een id.
+
+    Timestamp:
+      type: string
+      format: date-time
+      description: RFC 3339 in UTC, met Z-achtervoegsel.
+
+    DurationMs:
+      type: integer
+      minimum: 0
+      description: Milliseconden. Nooit seconden, nooit een kommagetal.
+
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      additionalProperties: false
+      properties:
+        error:
+          type: object
+          required: [code, message, retryable]
+          properties:
+            code:
+              type: string
+              pattern: "^(auth|library|playback|session|storage)\\.[a-z0-9_]+$"
+              description: Het contract. De client vertaalt codes en matcht nooit op message.
+            message:
+              type: string
+              description: Voor logs, niet voor de UI.
+            retryable:
+              type: boolean
+              description: |
+                Expliciet en geen afleiding uit de status, omdat een 503 soms wel
+                en een 409 soms niet te herhalen is.
+            details:
+              type: object
+              additionalProperties: true
+
+    Info:
+      type: object
+      required: [protocol, server, capabilities, auth]
+      properties:
+        protocol:
+          type: object
+          required: [major, feature_level, profile]
+          properties:
+            major: { type: integer, const: 1 }
+            feature_level:
+              type: integer
+              minimum: 1
+              description: |
+                Wat de implementatie kan verstaan. Zegt niets over wat deze
+                server aanbiedt; daarvoor is capabilities leidend.
+            profile:
+              type: string
+              enum: [minimal, full]
+        server:
+          type: object
+          required: [id]
+          properties:
+            id: { $ref: "#/components/schemas/Id" }
+        capabilities:
+          $ref: "#/components/schemas/Capabilities"
+        auth:
+          type: object
+          required: [methods, setup_required]
+          properties:
+            methods:
+              type: array
+              items: { type: string, enum: [password, pairing_code] }
+            setup_required:
+              type: boolean
+              description: True zolang er nog geen eigenaar is aangemaakt.
+
+    Capabilities:
+      type: object
+      description: Altijd leidend boven feature_level.
+      required: [browse, search, artwork, watch_state]
+      properties:
+        browse: { type: boolean }
+        search: { type: boolean }
+        artwork: { type: boolean }
+        watch_state: { type: boolean }
+        playback_plan: { type: boolean, default: false }
+        transcode: { type: boolean, default: false }
+        downloads: { type: boolean, default: false }
+        live_tv: { type: boolean, default: false }
+        realtime: { type: boolean, default: false }
+        users: { type: boolean, default: false }
+
+    ServerDetail:
+      type: object
+      required: [id, name, version, started_at]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        name: { type: string }
+        version: { type: string }
+        started_at: { $ref: "#/components/schemas/Timestamp" }
+
+    SetupRequest:
+      type: object
+      required: [setup_code, username, password]
+      additionalProperties: false
+      properties:
+        setup_code: { type: string, minLength: 1 }
+        username: { type: string, minLength: 1 }
+        password: { type: string, minLength: 8 }
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      additionalProperties: false
+      properties:
+        username: { type: string, minLength: 1 }
+        password: { type: string, minLength: 1 }
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      additionalProperties: false
+      properties:
+        refresh_token: { type: string, minLength: 1 }
+
+    TokenPair:
+      type: object
+      required: [access_token, refresh_token, token_type, expires_in_ms]
+      properties:
+        access_token: { type: string }
+        refresh_token:
+          type: string
+          description: Roteert bij elk gebruik; het oude vervalt onmiddellijk.
+        token_type: { type: string, const: bearer }
+        expires_in_ms: { $ref: "#/components/schemas/DurationMs" }
+
+    StreamTokenRequest:
+      type: object
+      required: [version_id]
+      additionalProperties: false
+      properties:
+        version_id: { $ref: "#/components/schemas/Id" }
+
+    StreamToken:
+      type: object
+      required: [stream_token, expires_at]
+      properties:
+        stream_token: { type: string }
+        expires_at: { $ref: "#/components/schemas/Timestamp" }
+
+    LibraryKind:
+      type: string
+      enum: [movies, shows]
+
+    Library:
+      type: object
+      required: [id, title, kind, item_count]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        title: { type: string }
+        kind: { $ref: "#/components/schemas/LibraryKind" }
+        item_count: { type: integer, minimum: 0 }
+
+    LibraryList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Library" }
+
+    ItemKind:
+      type: string
+      enum: [movie, show, season, episode]
+
+    Artwork:
+      type: object
+      description: Ids van beschikbare afbeeldingen. Null wanneer er geen is.
+      properties:
+        poster_id:
+          oneOf:
+            - { $ref: "#/components/schemas/Id" }
+            - { type: "null" }
+        backdrop_id:
+          oneOf:
+            - { $ref: "#/components/schemas/Id" }
+            - { type: "null" }
+
+    VideoStream:
+      type: object
+      required: [id, index, codec]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        index: { type: integer, minimum: 0 }
+        codec: { type: string }
+        profile: { type: [string, "null"] }
+        width: { type: [integer, "null"] }
+        height: { type: [integer, "null"] }
+        bit_depth: { type: [integer, "null"] }
+        frame_rate: { type: [number, "null"] }
+
+    AudioStream:
+      type: object
+      required: [id, index, codec]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        index: { type: integer, minimum: 0 }
+        codec: { type: string }
+        channels: { type: [integer, "null"] }
+        language:
+          type: [string, "null"]
+          description: ISO 639-2/B in drie letters, of null.
+        title: { type: [string, "null"] }
+        is_default: { type: boolean, default: false }
+
+    SubtitleStream:
+      type: object
+      required: [id, format, is_external, is_forced, is_hearing_impaired]
+      description: |
+        Twee soorten met hetzelfde veldenpakket. Extern heeft een url en geen
+        index; ingebed heeft een index en geen url.
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        index:
+          type: [integer, "null"]
+          description: Alleen bij ingebedde sporen.
+        format: { type: string, enum: [srt, ass, ssa, vtt, pgs, dvdsub] }
+        language: { type: [string, "null"] }
+        title: { type: [string, "null"] }
+        is_default: { type: boolean, default: false }
+        is_forced:
+          type: boolean
+          description: Expliciet, geen afleiding uit de titel.
+        is_hearing_impaired:
+          type: boolean
+          description: Expliciet, geen afleiding uit de titel.
+        is_external: { type: boolean }
+        url:
+          type: [string, "null"]
+          description: Alleen bij externe sporen.
+
+    Version:
+      type: object
+      required: [id, container, duration_ms, file_count]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        container: { type: string }
+        duration_ms: { $ref: "#/components/schemas/DurationMs" }
+        file_count:
+          type: integer
+          minimum: 1
+          description: |
+            Een versie mag uit meerdere bestanden bestaan; dat is geldig in het
+            domeinmodel. Direct play accepteert in v1 uitsluitend 1.
+        edition:
+          type: [string, "null"]
+          description: Bijvoorbeeld "Director's Cut". Onderscheidt twee snedes van dezelfde titel.
+        video_streams:
+          type: array
+          items: { $ref: "#/components/schemas/VideoStream" }
+        audio_streams:
+          type: array
+          items: { $ref: "#/components/schemas/AudioStream" }
+        subtitle_streams:
+          type: array
+          items: { $ref: "#/components/schemas/SubtitleStream" }
+
+    UserState:
+      type: object
+      required: [position_ms, watched, play_count, updated_at]
+      description: |
+        De leeskant van kijkstatus. Reist mee in elk itemantwoord, zodat een
+        detailscherm geen tweede aanvraag nodig heeft.
+      properties:
+        position_ms: { $ref: "#/components/schemas/DurationMs" }
+        watched: { type: boolean }
+        play_count: { type: integer, minimum: 0 }
+        updated_at: { $ref: "#/components/schemas/Timestamp" }
+
+    Item:
+      type: object
+      required: [id, kind, title, added_at]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        kind: { $ref: "#/components/schemas/ItemKind" }
+        title: { type: string }
+        sort_title: { type: [string, "null"] }
+        year: { type: [integer, "null"] }
+        added_at: { $ref: "#/components/schemas/Timestamp" }
+        duration_ms:
+          oneOf:
+            - { $ref: "#/components/schemas/DurationMs" }
+            - { type: "null" }
+        parent_id:
+          oneOf:
+            - { $ref: "#/components/schemas/Id" }
+            - { type: "null" }
+        index:
+          type: [integer, "null"]
+          description: Seizoen- of afleveringsnummer.
+        child_count: { type: [integer, "null"] }
+        episode_count:
+          type: [integer, "null"]
+          description: Backend-neutrale naam; het interne model van de client heet anders.
+        watched_episode_count: { type: [integer, "null"] }
+        artwork: { $ref: "#/components/schemas/Artwork" }
+        versions:
+          type: array
+          items: { $ref: "#/components/schemas/Version" }
+        user_state:
+          oneOf:
+            - { $ref: "#/components/schemas/UserState" }
+            - { type: "null" }
+
+    Page:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        next_cursor:
+          type: [string, "null"]
+          description: Null op de laatste pagina.
+        total_estimate:
+          type: [integer, "null"]
+          description: |
+            Expliciet een schatting, zodat een UI een scrollbar kan tekenen
+            zonder dat de server per pagina telt. Nooit als exact aantal tonen.
+
+    ItemPage:
+      allOf:
+        - { $ref: "#/components/schemas/Page" }
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Item" }
+
+    ExplicitAction:
+      type: string
+      enum: [none, mark_watched, mark_unwatched, restart]
+      description: |
+        Een expliciete handeling wint van elke passieve update die ervoor ligt.
+        Dat onderscheid is de reden dat een update een gebeurtenis is.
+
+    WatchStateEvent:
+      type: object
+      required: [item_id, session_id, position_ms, occurred_at, explicit_action]
+      additionalProperties: false
+      properties:
+        item_id: { $ref: "#/components/schemas/Id" }
+        session_id:
+          type: string
+          minLength: 1
+          description: |
+            Client-generated. De client maakt bij het starten van afspelen een
+            UUID aan en houdt die aan tot hij stopt.
+        position_ms: { $ref: "#/components/schemas/DurationMs" }
+        duration_ms:
+          oneOf:
+            - { $ref: "#/components/schemas/DurationMs" }
+            - { type: "null" }
+        occurred_at:
+          allOf: [{ $ref: "#/components/schemas/Timestamp" }]
+          description: |
+            Het moment volgens de client. De server bewaart daarnaast zijn eigen
+            ontvangstmoment, want een toestel met een scheve klok mag de
+            volgorde niet bepalen.
+        completed: { type: boolean, default: false }
+        explicit_action: { $ref: "#/components/schemas/ExplicitAction" }
+
+    WatchStateEntry:
+      type: object
+      required: [item_id, state]
+      properties:
+        item_id: { $ref: "#/components/schemas/Id" }
+        state: { $ref: "#/components/schemas/UserState" }
+
+    WatchStatePage:
+      allOf:
+        - { $ref: "#/components/schemas/Page" }
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/WatchStateEntry" }

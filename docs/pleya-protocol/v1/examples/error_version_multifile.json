@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "library.version_multifile",
+    "message": "This version consists of more than one file",
+    "retryable": false,
+    "details": {
+      "version_id": "0198f2b1-2222-7000-8000-000000000012",
+      "file_count": 2
+    }
+  }
+}

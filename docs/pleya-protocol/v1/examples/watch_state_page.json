@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "item_id": "0198f2b0-1111-7000-8000-000000000001",
+      "state": {
+        "position_ms": 1830000,
+        "watched": false,
+        "play_count": 0,
+        "updated_at": "2026-08-18T20:12:44Z"
+      }
+    },
+    {
+      "item_id": "0198f2b0-1111-7000-8000-000000000003",
+      "state": {
+        "position_ms": 1320000,
+        "watched": true,
+        "play_count": 2,
+        "updated_at": "2026-08-17T22:40:03Z"
+      }
+    }
+  ],
+  "next_cursor": null,
+  "total_estimate": 2
+}

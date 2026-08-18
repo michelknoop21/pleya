@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "playback.range_not_satisfiable",
+    "message": "Requested range is outside the file",
+    "retryable": false
+  }
+}

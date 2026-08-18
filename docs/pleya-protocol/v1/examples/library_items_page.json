@@ -1,0 +1,136 @@
+{
+  "items": [
+    {
+      "id": "0198f2b0-1111-7000-8000-000000000001",
+      "kind": "movie",
+      "title": "Grease",
+      "sort_title": "Grease",
+      "year": 1978,
+      "added_at": "2026-06-18T21:34:02Z",
+      "duration_ms": 6720000,
+      "parent_id": null,
+      "index": null,
+      "child_count": null,
+      "episode_count": null,
+      "watched_episode_count": null,
+      "artwork": {
+        "poster_id": "0198f2c0-0001-7000-8000-000000000001",
+        "backdrop_id": null
+      },
+      "versions": [
+        {
+          "id": "0198f2b1-2222-7000-8000-000000000001",
+          "container": "mkv",
+          "duration_ms": 6720000,
+          "file_count": 1,
+          "edition": null,
+          "video_streams": [
+            {
+              "id": "0198f2b3-0001-7000-8000-000000000001",
+              "index": 0,
+              "codec": "h264",
+              "profile": "High",
+              "width": 1920,
+              "height": 1080,
+              "bit_depth": 8,
+              "frame_rate": 23.976
+            }
+          ],
+          "audio_streams": [
+            {
+              "id": "0198f2b3-0002-7000-8000-000000000001",
+              "index": 1,
+              "codec": "eac3",
+              "channels": 6,
+              "language": "eng",
+              "title": null,
+              "is_default": true
+            }
+          ],
+          "subtitle_streams": [
+            {
+              "id": "0198f2b2-0001-7000-8000-000000000001",
+              "index": null,
+              "format": "srt",
+              "language": "nld",
+              "title": null,
+              "is_default": false,
+              "is_forced": false,
+              "is_hearing_impaired": false,
+              "is_external": true,
+              "url": "/pleya/v1/subtitles/0198f2b2-0001-7000-8000-000000000001"
+            },
+            {
+              "id": "0198f2b2-0002-7000-8000-000000000001",
+              "index": 2,
+              "format": "pgs",
+              "language": "eng",
+              "title": null,
+              "is_default": false,
+              "is_forced": false,
+              "is_hearing_impaired": false,
+              "is_external": false,
+              "url": null
+            }
+          ]
+        }
+      ],
+      "user_state": {
+        "position_ms": 1830000,
+        "watched": false,
+        "play_count": 0,
+        "updated_at": "2026-08-18T20:12:44Z"
+      }
+    },
+    {
+      "id": "0198f2b0-1111-7000-8000-000000000009",
+      "kind": "movie",
+      "title": "Blade Runner",
+      "sort_title": "Blade Runner",
+      "year": 1982,
+      "added_at": "2026-05-02T10:11:12Z",
+      "duration_ms": 7020000,
+      "parent_id": null,
+      "index": null,
+      "artwork": {
+        "poster_id": null,
+        "backdrop_id": null
+      },
+      "versions": [
+        {
+          "id": "0198f2b1-2222-7000-8000-000000000010",
+          "container": "mkv",
+          "duration_ms": 7020000,
+          "file_count": 1,
+          "edition": "Theatrical Cut",
+          "video_streams": [],
+          "audio_streams": [],
+          "subtitle_streams": []
+        },
+        {
+          "id": "0198f2b1-2222-7000-8000-000000000011",
+          "container": "mkv",
+          "duration_ms": 7620000,
+          "file_count": 1,
+          "edition": "Final Cut",
+          "video_streams": [],
+          "audio_streams": [],
+          "subtitle_streams": []
+        },
+        {
+          "id": "0198f2b1-2222-7000-8000-000000000012",
+          "container": "mkv",
+          "duration_ms": 7500000,
+          "file_count": 2,
+          "edition": "Director's Cut",
+          "video_streams": [],
+          "audio_streams": [],
+          "subtitle_streams": []
+        }
+      ],
+      "user_state": null
+    }
+  ],
+  "next_cursor": "eyJzIjoidGl0bGUiLCJpZCI6IjAxOThmMmIwIn0",
+  "total_estimate": 14
+}

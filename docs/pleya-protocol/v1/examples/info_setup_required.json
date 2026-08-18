@@ -1,0 +1,17 @@
+{
+  "protocol": { "major": 1, "feature_level": 1, "profile": "full" },
+  "server": { "id": "0198f2a1-7c3e-7b21-9f44-1c2d3e4f5a6b" },
+  "capabilities": {
+    "browse": true,
+    "search": true,
+    "artwork": true,
+    "watch_state": true,
+    "playback_plan": false,
+    "transcode": false,
+    "downloads": false,
+    "live_tv": false,
+    "realtime": false,
+    "users": false
+  },
+  "auth": { "methods": ["password"], "setup_required": true }
+}

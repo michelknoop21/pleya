@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "library.not_found",
+    "message": "No such item",
+    "retryable": false
+  }
+}

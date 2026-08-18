@@ -1,0 +1,7 @@
+{
+  "items": [
+    { "id": "0198f2a1-0001-7000-8000-000000000001", "title": "Films", "kind": "movies", "item_count": 14 },
+    { "id": "0198f2a1-0001-7000-8000-000000000002", "title": "Series", "kind": "shows", "item_count": 112 },
+    { "id": "0198f2a1-0001-7000-8000-000000000003", "title": "Kids", "kind": "movies", "item_count": 133 }
+  ]
+}

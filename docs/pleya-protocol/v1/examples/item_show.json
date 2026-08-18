@@ -1,0 +1,17 @@
+{
+  "id": "0198f2b0-1111-7000-8000-000000000002",
+  "kind": "show",
+  "title": "How I Met Your Mother",
+  "sort_title": "How I Met Your Mother",
+  "year": 2005,
+  "added_at": "2026-01-04T08:00:00Z",
+  "duration_ms": null,
+  "parent_id": null,
+  "index": null,
+  "child_count": 9,
+  "episode_count": 208,
+  "watched_episode_count": 41,
+  "artwork": { "poster_id": "0198f2c0-0001-7000-8000-000000000002", "backdrop_id": null },
+  "versions": [],
+  "user_state": null
+}

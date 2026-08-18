@@ -1,0 +1,31 @@
+{
+  "id": "0198f2b0-1111-7000-8000-000000000003",
+  "kind": "episode",
+  "title": "Slap Bet",
+  "sort_title": null,
+  "year": 2006,
+  "added_at": "2026-01-04T08:00:00Z",
+  "duration_ms": 1320000,
+  "parent_id": "0198f2b0-1111-7000-8000-000000000004",
+  "index": 9,
+  "child_count": null,
+  "artwork": { "poster_id": null, "backdrop_id": null },
+  "versions": [
+    {
+      "id": "0198f2b1-2222-7000-8000-000000000003",
+      "container": "mkv",
+      "duration_ms": 1320000,
+      "file_count": 1,
+      "edition": null,
+      "video_streams": [],
+      "audio_streams": [],
+      "subtitle_streams": []
+    }
+  ],
+  "user_state": {
+    "position_ms": 1320000,
+    "watched": true,
+    "play_count": 2,
+    "updated_at": "2026-08-17T22:40:03Z"
+  }
+}

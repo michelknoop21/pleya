@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "auth.rate_limited",
+    "message": "Too many attempts",
+    "retryable": true,
+    "details": {
+      "retry_after_ms": 30000
+    }
+  }
+}

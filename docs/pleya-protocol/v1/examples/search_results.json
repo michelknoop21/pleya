@@ -1,0 +1,142 @@
+{
+  "items": [
+    {
+      "id": "0198f2b0-1111-7000-8000-000000000001",
+      "kind": "movie",
+      "title": "Grease",
+      "sort_title": "Grease",
+      "year": 1978,
+      "added_at": "2026-06-18T21:34:02Z",
+      "duration_ms": 6720000,
+      "parent_id": null,
+      "index": null,
+      "child_count": null,
+      "episode_count": null,
+      "watched_episode_count": null,
+      "artwork": {
+        "poster_id": "0198f2c0-0001-7000-8000-000000000001",
+        "backdrop_id": null
+      },
+      "versions": [
+        {
+          "id": "0198f2b1-2222-7000-8000-000000000001",
+          "container": "mkv",
+          "duration_ms": 6720000,
+          "file_count": 1,
+          "edition": null,
+          "video_streams": [
+            {
+              "id": "0198f2b3-0001-7000-8000-000000000001",
+              "index": 0,
+              "codec": "h264",
+              "profile": "High",
+              "width": 1920,
+              "height": 1080,
+              "bit_depth": 8,
+              "frame_rate": 23.976
+            }
+          ],
+          "audio_streams": [
+            {
+              "id": "0198f2b3-0002-7000-8000-000000000001",
+              "index": 1,
+              "codec": "eac3",
+              "channels": 6,
+              "language": "eng",
+              "title": null,
+              "is_default": true
+            }
+          ],
+          "subtitle_streams": [
+            {
+              "id": "0198f2b2-0001-7000-8000-000000000001",
+              "index": null,
+              "format": "srt",
+              "language": "nld",
+              "title": null,
+              "is_default": false,
+              "is_forced": false,
+              "is_hearing_impaired": false,
+              "is_external": true,
+              "url": "/pleya/v1/subtitles/0198f2b2-0001-7000-8000-000000000001"
+            },
+            {
+              "id": "0198f2b2-0002-7000-8000-000000000001",
+              "index": 2,
+              "format": "pgs",
+              "language": "eng",
+              "title": null,
+              "is_default": false,
+              "is_forced": false,
+              "is_hearing_impaired": false,
+              "is_external": false,
+              "url": null
+            }
+          ]
+        }
+      ],
+      "user_state": {
+        "position_ms": 1830000,
+        "watched": false,
+        "play_count": 0,
+        "updated_at": "2026-08-18T20:12:44Z"
+      }
+    },
+    {
+      "id": "0198f2b0-1111-7000-8000-000000000002",
+      "kind": "show",
+      "title": "How I Met Your Mother",
+      "sort_title": "How I Met Your Mother",
+      "year": 2005,
+      "added_at": "2026-01-04T08:00:00Z",
+      "duration_ms": null,
+      "parent_id": null,
+      "index": null,
+      "child_count": 9,
+      "episode_count": 208,
+      "watched_episode_count": 41,
+      "artwork": {
+        "poster_id": "0198f2c0-0001-7000-8000-000000000002",
+        "backdrop_id": null
+      },
+      "versions": [],
+      "user_state": null
+    },
+    {
+      "id": "0198f2b0-1111-7000-8000-000000000003",
+      "kind": "episode",
+      "title": "Slap Bet",
+      "sort_title": null,
+      "year": 2006,
+      "added_at": "2026-01-04T08:00:00Z",
+      "duration_ms": 1320000,
+      "parent_id": "0198f2b0-1111-7000-8000-000000000004",
+      "index": 9,
+      "child_count": null,
+      "artwork": {
+        "poster_id": null,
+        "backdrop_id": null
+      },
+      "versions": [
+        {
+          "id": "0198f2b1-2222-7000-8000-000000000003",
+          "container": "mkv",
+          "duration_ms": 1320000,
+          "file_count": 1,
+          "edition": null,
+          "video_streams": [],
+          "audio_streams": [],
+          "subtitle_streams": []
+        }
+      ],
+      "user_state": {
+        "position_ms": 1320000,
+        "watched": true,
+        "play_count": 2,
+        "updated_at": "2026-08-17T22:40:03Z"
+      }
+    }
+  ],
+  "next_cursor": null,
+  "total_estimate": 3
+}

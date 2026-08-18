@@ -1,0 +1,30 @@
+{
+  "comment": "Koppelt elke fixture aan het schema waar hij tegen valideert. Gelezen door scripts/check_protocol.sh, en later door de contracttests aan Go- en Dart-zijde, zodat beide kanten tegen exact dezelfde verzameling toetsen.",
+  "fixtures": [
+    { "file": "info.json", "schema": "Info", "note": "server met een eigenaar" },
+    { "file": "info_setup_required.json", "schema": "Info", "note": "eerste start, nog geen eigenaar" },
+    { "file": "server_detail.json", "schema": "ServerDetail" },
+    { "file": "token_pair.json", "schema": "TokenPair" },
+    { "file": "stream_token.json", "schema": "StreamToken" },
+    { "file": "libraries.json", "schema": "LibraryList" },
+    { "file": "item_movie.json", "schema": "Item", "note": "film met een externe en een ingebedde ondertitel" },
+    { "file": "item_movie_with_edition.json", "schema": "Item", "note": "drie snedes, waarvan een uit twee bestanden" },
+    { "file": "item_show.json", "schema": "Item", "note": "serie met episode_count en watched_episode_count" },
+    { "file": "item_episode.json", "schema": "Item", "note": "aflevering met parent_id en index" },
+    { "file": "library_items_page.json", "schema": "ItemPage", "note": "met vervolgcursor" },
+    { "file": "library_items_last_page.json", "schema": "ItemPage", "note": "next_cursor is null" },
+    { "file": "children_episodes.json", "schema": "ItemPage" },
+    { "file": "search_results.json", "schema": "ItemPage", "note": "soorten door elkaar, geen groepering" },
+    { "file": "search_empty.json", "schema": "ItemPage", "note": "geen treffers is een lege lijst" },
+    { "file": "hub_recently_added.json", "schema": "ItemPage" },
+    { "file": "hub_continue_watching_empty.json", "schema": "ItemPage", "note": "server zonder kijkstatus" },
+    { "file": "user_state.json", "schema": "UserState" },
+    { "file": "watch_state_event_progress.json", "schema": "WatchStateEvent", "note": "passieve voortgang" },
+    { "file": "watch_state_event_restart.json", "schema": "WatchStateEvent", "note": "expliciete handeling" },
+    { "file": "watch_state_page.json", "schema": "WatchStatePage" },
+    { "file": "error_not_found.json", "schema": "ErrorEnvelope" },
+    { "file": "error_version_multifile.json", "schema": "ErrorEnvelope" },
+    { "file": "error_rate_limited.json", "schema": "ErrorEnvelope", "note": "retryable is true bij een 429" },
+    { "file": "error_range_not_satisfiable.json", "schema": "ErrorEnvelope" }
+  ]
+}

@@ -1609,6 +1609,7 @@ deploymentdetail is nooit protocoloppervlak.
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-1 |
+| Status | **contract opgeleverd, ter goedkeuring**: [openapi.yaml](pleya-protocol/v1/openapi.yaml), [proza](pleya-protocol-v1.md), 25 fixtures |
 | Doel | een versieerbaar wire-contract dat client en server onafhankelijk kunnen implementeren |
 | Bijdrage aan einddoel | zonder eigen protocol blijft elke server een variant op andermans API; dit is de grens waarachter Pleya zelfstandig wordt |
 | Afhankelijkheden | geen |
@@ -2184,8 +2185,9 @@ Terugdraaien.
 
 ### 24.1 Voorgestelde besluiten
 
-`DEC-029` is de laatste bestaande in [docs/DECISIONS.md](DECISIONS.md). Voorstel voor acht nieuwe.
-Ze worden pas geschreven wanneer fase 1 daadwerkelijk wordt ingepland; hier staat de kern.
+`DEC-030` tot en met `DEC-037` **zijn geschreven** op 18 augustus 2026, bij het inplannen van fase 1,
+en staan in [docs/DECISIONS.md](DECISIONS.md). Hieronder blijft de kern staan als toelichting; de
+besluiten zelf zijn daar leidend.
 
 **DEC-030: Go als serverruntime.** Er draait al Go in dit project (`server/` is de relay achter
 `ice.pleya.app`), en de eigenschappen die een mediaserver nodig heeft (één statische binary,
@@ -2228,8 +2230,17 @@ deploymentrecept en staat in de documentatie, niet in de binary.
 
 ### 24.2 Open vragen
 
-Twee daarvan zijn **gates**: de fase die eronder staat begint niet voordat de vraag beantwoord en
-opgeschreven is. De rest is een gewone open vraag met een beslismoment.
+Twee daarvan waren **gates**: de fase die eronder staat begint niet voordat de vraag beantwoord en
+opgeschreven is. Bij het inplannen van fase 1 zijn er twee bijgekomen, en alle vier staan nu met hun
+stand in [docs/pleya-server-gates.md](pleya-server-gates.md): het wire-contract en de
+bootstrap-authflow vóór PS-2, het conflictmodel voor kijkstatus en de byte-validator vóór PS-4.
+
+De vierde is de zwaarste en is nieuw. De belofte in hoofdstuk 11.1 dat de `ETag` verandert zodra de
+bytes veranderen volgt **niet** uit `(MediaFile.id, generation)`, omdat `generation` alleen oploopt
+wanneer de drielagige detectie iets aanmerkt en laag 2 een steekproef over kop en staart is. Precies
+het geval dat hoofdstuk 7.2 zelf noemt, een remux die het midden verandert, glipt daar doorheen.
+
+De rest hieronder is een gewone open vraag met een beslismoment.
 
 | Gate | Moet beslist zijn vóór |
 | --- | --- |

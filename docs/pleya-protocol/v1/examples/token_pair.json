@@ -1,0 +1,6 @@
+{
+  "access_token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.PLACEHOLDER.PLACEHOLDER",
+  "refresh_token": "rt_0198f2e0a1b24c3d8e5f60718293a4b5",
+  "token_type": "bearer",
+  "expires_in_ms": 900000
+}
