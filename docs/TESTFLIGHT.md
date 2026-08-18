@@ -41,6 +41,12 @@ De koppelstap probeert het zelf al, dus staat de sectie er toevallig wél op het
 koppelen, dan is `fastlane notes` niet meer nodig. Bij een gemiste ronde is de lane het
 herstel: hij is idempotent en werkt op elke build die door processing is.
 
+Na het schrijven leest de lane het veld terug en vergelijkt het met de bron. Een geslaagde
+PATCH is geen bewijs dat een tester de tekst ziet: het veld kapt af op 4000 tekens, Apple
+normaliseert regeleindes, en een build met meerdere locales kan er één missen. De regel
+"Teruggelezen: 1 locale(s), N tekens, gelijk aan de bron" per platform is het bewijs; wijkt
+er iets af, dan noemt de lane de locale en het aantal tekens dat er wél staat.
+
 Het zetten faalt nooit fataal. Een build zonder notities staat gewoon op TestFlight, en dat
 is beter dan een geslaagde release laten omvallen op een tekstveld. Het wordt wel per platform
 gemeld, met het commando erbij, zodat het niet ongemerkt jaren zo blijft.

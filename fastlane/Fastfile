@@ -236,6 +236,28 @@ def set_build_notes(build, notes)
       )
     end
   end
+  verify_build_notes(build, text)
+end
+
+# Leest terug wat er nu op de build staat en vergelijkt het met wat we stuurden.
+#
+# Een geslaagde POST of PATCH is geen bewijs dat een tester de tekst ziet: het
+# veld heeft een lengtegrens, Apple normaliseert regeleindes, en een build met
+# meerdere locales kan er één missen. Dit is dus geen dubbelop maar de enige
+# controle die over het uiteindelijke veld gaat.
+#
+# Regeleindes worden aan beide kanten genormaliseerd voordat er vergeleken
+# wordt; alleen daarop verschillen zou een valse afwijking zijn.
+def verify_build_notes(build, expected)
+  want = expected.gsub("\r\n", "\n")
+  found = build.get_beta_build_localizations
+  UI.user_error!("Geen beta build localization op deze build na het schrijven") if found.empty?
+  mismatched = found.reject { |loc| loc.whats_new.to_s.gsub("\r\n", "\n") == want }
+  unless mismatched.empty?
+    locales = mismatched.map { |loc| "#{loc.locale} (#{loc.whats_new.to_s.length} tekens)" }
+    UI.user_error!("What to Test wijkt af van wat er gestuurd is: #{locales.join(', ')}")
+  end
+  UI.message("Teruggelezen: #{found.length} locale(s), #{want.length} tekens, gelijk aan de bron")
   true
 end
 
