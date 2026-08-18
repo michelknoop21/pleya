@@ -863,8 +863,8 @@ class TranslationsSettingsEn {
 	/// en: 'Auto Skip Intro'
 	String get autoSkipIntro => 'Auto Skip Intro';
 
-	/// en: 'Automatically skip intro markers after a few seconds'
-	String get autoSkipIntroDescription => 'Automatically skip intro markers after a few seconds';
+	/// en: 'Automatically skip intro markers in episodes after a few seconds'
+	String get autoSkipIntroDescription => 'Automatically skip intro markers in episodes after a few seconds';
 
 	/// en: 'Auto Skip Credits'
 	String get autoSkipCredits => 'Auto Skip Credits';
@@ -4593,6 +4593,9 @@ class TranslationsTautulliEn {
 	/// en: 'Tautulli rejected this token. A device token is only valid for five minutes, so generate a new one and try again.'
 	String get errorTokenExpired => 'Tautulli rejected this token. A device token is only valid for five minutes, so generate a new one and try again.';
 
+	/// en: 'Tautulli rejected this token, and it looks like your permanent API key rather than a device token. Switch to API key above, or register a device in Tautulli and paste that token.'
+	String get errorModeMismatch => 'Tautulli rejected this token, and it looks like your permanent API key rather than a device token. Switch to API key above, or register a device in Tautulli and paste that token.';
+
 	/// en: 'Enter the address of your Tautulli server.'
 	String get errorUrlRequired => 'Enter the address of your Tautulli server.';
 
@@ -5970,7 +5973,7 @@ extension on Translations {
 			'settings.shortcutUpdated' => ({required Object action}) => 'Shortcut updated for ${action}',
 			'settings.autoSkip' => 'Auto Skip',
 			'settings.autoSkipIntro' => 'Auto Skip Intro',
-			'settings.autoSkipIntroDescription' => 'Automatically skip intro markers after a few seconds',
+			'settings.autoSkipIntroDescription' => 'Automatically skip intro markers in episodes after a few seconds',
 			'settings.autoSkipCredits' => 'Auto Skip Credits',
 			'settings.autoSkipCreditsDescription' => 'Automatically skip credits and play next episode',
 			'settings.forceSkipMarkerFallback' => 'Force Fallback Markers',
@@ -7240,6 +7243,7 @@ extension on Translations {
 			'tautulli.errorNetwork' => 'Could not reach Tautulli. Check the address and whether it is reachable from this device.',
 			'tautulli.errorAuth' => 'Tautulli rejected this key.',
 			'tautulli.errorTokenExpired' => 'Tautulli rejected this token. A device token is only valid for five minutes, so generate a new one and try again.',
+			'tautulli.errorModeMismatch' => 'Tautulli rejected this token, and it looks like your permanent API key rather than a device token. Switch to API key above, or register a device in Tautulli and paste that token.',
 			'tautulli.errorUrlRequired' => 'Enter the address of your Tautulli server.',
 			'tautulli.errorTokenRequired' => 'Enter a token.',
 			'tautulli.errorGeneric' => 'Connecting failed.',
@@ -7274,9 +7278,9 @@ extension on Translations {
 			'trackers.connectedAs' => ({required Object username}) => 'Connected as @${username}',
 			'trackers.scrobble' => 'Track progress automatically',
 			'trackers.scrobbleDescription' => 'Update your list when you finish an episode or movie.',
-			'trackers.disconnectConfirm' => ({required Object service}) => 'Disconnect ${service}?',
 			_ => null,
 		} ?? switch (path) {
+			'trackers.disconnectConfirm' => ({required Object service}) => 'Disconnect ${service}?',
 			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya will stop updating ${service}. Reconnect any time.',
 			'trackers.connectFailed' => ({required Object service}) => 'Couldn\'t connect to ${service}. Try again.',
 			'trackers.services.mal' => 'MyAnimeList',

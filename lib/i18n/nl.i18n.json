@@ -234,7 +234,7 @@
     "shortcutUpdated": "Sneltoets bijgewerkt voor ${action}",
     "autoSkip": "Automatisch Overslaan",
     "autoSkipIntro": "Intro Automatisch Overslaan",
-    "autoSkipIntroDescription": "Intro-markeringen na enkele seconden automatisch overslaan",
+    "autoSkipIntroDescription": "Intro-markeringen in afleveringen na enkele seconden automatisch overslaan",
     "autoSkipCredits": "Credits Automatisch Overslaan",
     "autoSkipCreditsDescription": "Credits automatisch overslaan en volgende aflevering afspelen",
     "forceSkipMarkerFallback": "Fallbackmarkeringen afdwingen",
@@ -1719,6 +1719,7 @@
     "errorNetwork": "Tautulli niet bereikbaar. Controleer het adres en of hij vanaf dit toestel te bereiken is.",
     "errorAuth": "Tautulli weigert deze sleutel.",
     "errorTokenExpired": "Tautulli weigert dit token. Een apparaat-token is maar vijf minuten geldig, dus maak een nieuwe aan en probeer opnieuw.",
+    "errorModeMismatch": "Tautulli weigert dit token, en het lijkt op je permanente API-sleutel in plaats van op een apparaat-token. Zet hierboven om naar API-sleutel, of registreer een apparaat in Tautulli en plak dat token.",
     "errorUrlRequired": "Vul het adres van je Tautulli-server in.",
     "errorTokenRequired": "Vul een token in.",
     "errorGeneric": "Koppelen is niet gelukt."

@@ -376,4 +376,37 @@ void main() {
       expect(TautulliConstants.normalizeBaseUrl('http://192.168.1.10:8181/api/v2'), 'http://192.168.1.10:8181');
     });
   });
+
+  // Both a stale device token and an API key used in device mode come back as
+  // "Invalid apikey", so the settings screen tells them apart by shape. Getting
+  // this wrong costs the user real time: the log of 18 August shows three
+  // register_device attempts with a master key while the screen kept saying the
+  // token had expired.
+  group('looksLikeApiKey', () {
+    test('a master key is 32 lowercase hex characters', () {
+      expect(TautulliConstants.looksLikeApiKey('b73978aaa7154073b9048bbf0f33966a'), isTrue);
+    });
+
+    test('a device token carries characters outside the hex alphabet', () {
+      expect(TautulliConstants.looksLikeApiKey('nmbmTEa2qxMOz0X2OF_sqrpaR5dXqtNO'), isFalse);
+    });
+
+    test('surrounding whitespace does not change the answer', () {
+      expect(TautulliConstants.looksLikeApiKey('  b73978aaa7154073b9048bbf0f33966a\n'), isTrue);
+    });
+
+    test('length matters, so a truncated or padded key is not one', () {
+      expect(TautulliConstants.looksLikeApiKey('b73978aaa7154073b9048bbf0f33966'), isFalse);
+      expect(TautulliConstants.looksLikeApiKey('b73978aaa7154073b9048bbf0f33966ab'), isFalse);
+    });
+
+    test('uppercase hex is not what Tautulli generates', () {
+      expect(TautulliConstants.looksLikeApiKey('B73978AAA7154073B9048BBF0F33966A'), isFalse);
+    });
+
+    test('an empty field is not a key', () {
+      expect(TautulliConstants.looksLikeApiKey(''), isFalse);
+      expect(TautulliConstants.looksLikeApiKey('   '), isFalse);
+    });
+  });
 }

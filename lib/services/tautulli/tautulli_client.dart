@@ -70,16 +70,16 @@ class TautulliClient {
     try {
       resp = await _http.get(TautulliConstants.apiPath, queryParameters: query, timeout: timeout);
     } catch (e) {
-      throw TautulliException.network(e.toString());
+      throw _fail(cmd, TautulliException.network(e.toString()));
     }
 
-    if (resp.statusCode == 401) throw TautulliException.auth();
-    if (resp.statusCode != 200) throw TautulliException('HTTP ${resp.statusCode}');
+    if (resp.statusCode == 401) throw _fail(cmd, TautulliException.auth());
+    if (resp.statusCode != 200) throw _fail(cmd, TautulliException('HTTP ${resp.statusCode}'));
 
     final body = resp.data is String ? json.decode(resp.data as String) : resp.data;
-    if (body is! Map) throw const TautulliException('Unexpected response');
+    if (body is! Map) throw _fail(cmd, const TautulliException('Unexpected response'));
     final envelope = body['response'];
-    if (envelope is! Map) throw const TautulliException('Unexpected response');
+    if (envelope is! Map) throw _fail(cmd, const TautulliException('Unexpected response'));
 
     if (envelope['result'] != 'success') {
       // Tautulli answers some errors with `message: ""` rather than by leaving
@@ -88,10 +88,22 @@ class TautulliClient {
       final reported = envelope['message']?.toString().trim() ?? '';
       final msg = reported.isEmpty ? 'Unknown error' : reported;
       // Tautulli answers a bad key with HTTP 200 + this exact message.
-      if (msg.toLowerCase().contains('apikey')) throw TautulliException.auth();
-      throw TautulliException(msg);
+      if (msg.toLowerCase().contains('apikey')) throw _fail(cmd, TautulliException.auth());
+      throw _fail(cmd, TautulliException(msg));
     }
     return envelope['data'];
+  }
+
+  /// Log the reason, then hand the exception back to be thrown.
+  ///
+  /// Every Tautulli failure arrives as HTTP 200, so an uploaded log used to
+  /// show a row of successful-looking requests and no hint why the user kept
+  /// retrying. The command and the message are enough to tell a wrong key from
+  /// an unreachable host; the token is never part of it, and neither is the
+  /// URL, because the key rides along in its query string.
+  TautulliException _fail(String cmd, TautulliException e) {
+    appLogger.d('Tautulli $cmd failed: ${e.message}${e.isAuth ? ' (auth)' : ''}${e.isNetwork ? ' (network)' : ''}');
+    return e;
   }
 
   List<Map<String, dynamic>> _rows(Object? data) =>
@@ -223,8 +235,8 @@ class TautulliClient {
     try {
       await serverFriendlyName();
       return true;
-    } on TautulliException catch (e) {
-      appLogger.d('Tautulli ping failed: ${e.message}');
+    } on TautulliException {
+      // _call already logged the reason.
       return false;
     }
   }

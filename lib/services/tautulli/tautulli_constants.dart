@@ -24,6 +24,23 @@ class TautulliConstants {
   /// (`mobile_app.set_temp_device_token`), so pairing has to be prompt.
   static const Duration pairingWindow = Duration(minutes: 5);
 
+  /// Does this token look like the permanent API key rather than a device
+  /// token?
+  ///
+  /// Tautulli rejects both mismatches with the same "Invalid apikey", so
+  /// without this the settings screen has to guess which of the two happened,
+  /// and guessing "your token expired" at someone who pasted their API key
+  /// sends them off generating token after token. It generates the master key
+  /// as 32 lowercase hex characters (`uuid4().hex`), while a device token comes
+  /// from `generate_uuid` in base64url form and nearly always carries a
+  /// character outside the hex alphabet.
+  ///
+  /// A hint, not a verdict: roughly one device token in a few billion is all
+  /// hex, so the copy that uses this suggests rather than states.
+  static bool looksLikeApiKey(String token) => _apiKeyShape.hasMatch(token.trim());
+
+  static final RegExp _apiKeyShape = RegExp(r'^[0-9a-f]{32}$');
+
   /// Normalize a user-entered Tautulli URL.
   ///
   /// Tautulli is commonly reverse-proxied onto a subdomain on 443 rather than

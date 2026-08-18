@@ -11,6 +11,7 @@ import '../../providers/tautulli_provider.dart';
 import '../../services/storage_service.dart';
 import '../../services/tautulli/tautulli_client.dart';
 import '../../services/tautulli/tautulli_constants.dart';
+import '../../services/tautulli/tautulli_session.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
@@ -48,6 +49,27 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
   TautulliTestResult? _testResult;
 
   @override
+  void initState() {
+    super.initState();
+    // The form only renders once nothing is configured, so without this the
+    // mode silently resets to `device` the moment someone disconnects, even
+    // when their working setup used the API key. Tautulli then gets that key
+    // with `app=1`, checks it against the mobile device table, and rejects a
+    // key that is perfectly valid. Seed from the session while it still
+    // exists; _disconnect does the same on its way out.
+    final session = context.read<TautulliProvider>().session;
+    if (session != null) _seedFrom(session);
+  }
+
+  /// Carry the address and the mode into the form. Deliberately not the token:
+  /// a device token has to be regenerated anyway, and putting a master API key
+  /// back into a visible field is a step backwards.
+  void _seedFrom(TautulliSession session) {
+    _mode = session.authMode;
+    _urlController.text = session.baseUrl;
+  }
+
+  @override
   void dispose() {
     _urlFocus.dispose();
     _testFocus.dispose();
@@ -58,10 +80,14 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
   String _mapError(Object e) {
     if (e is TautulliException) {
       if (e.isNetwork) return t.tautulli.errorNetwork;
-      // A device token that already expired reads as "Invalid apikey", which is
-      // the single most likely failure here: it only lives five minutes.
       if (e.isAuth) {
-        return _mode == TautulliAuthMode.device ? t.tautulli.errorTokenExpired : t.tautulli.errorAuth;
+        if (_mode != TautulliAuthMode.device) return t.tautulli.errorAuth;
+        // Both failures reach us as the same "Invalid apikey". Guessing wrong
+        // is expensive here: telling someone their token expired when they
+        // actually pasted the API key sends them off to generate token after
+        // token, which is exactly what happened in the field.
+        if (TautulliConstants.looksLikeApiKey(_tokenController.text)) return t.tautulli.errorModeMismatch;
+        return t.tautulli.errorTokenExpired;
       }
       return e.message;
     }
@@ -118,7 +144,12 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
       ),
     );
     if (confirmed != true || !mounted) return;
-    await context.read<TautulliProvider>().disconnect();
+    final provider = context.read<TautulliProvider>();
+    // Grab it before it is gone: after disconnect the form takes over and the
+    // session is no longer there to read the mode and address from.
+    final session = provider.session;
+    if (session != null) _seedFrom(session);
+    await provider.disconnect();
   }
 
   @override

@@ -378,7 +378,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String shortcutUpdated({required Object action}) => 'Sneltoets bijgewerkt voor ${action}';
 	@override String get autoSkip => 'Automatisch Overslaan';
 	@override String get autoSkipIntro => 'Intro Automatisch Overslaan';
-	@override String get autoSkipIntroDescription => 'Intro-markeringen na enkele seconden automatisch overslaan';
+	@override String get autoSkipIntroDescription => 'Intro-markeringen in afleveringen na enkele seconden automatisch overslaan';
 	@override String get autoSkipCredits => 'Credits Automatisch Overslaan';
 	@override String get autoSkipCreditsDescription => 'Credits automatisch overslaan en volgende aflevering afspelen';
 	@override String get forceSkipMarkerFallback => 'Fallbackmarkeringen afdwingen';
@@ -1985,6 +1985,7 @@ class _TranslationsTautulliNl extends TranslationsTautulliEn {
 	@override String get errorNetwork => 'Tautulli niet bereikbaar. Controleer het adres en of hij vanaf dit toestel te bereiken is.';
 	@override String get errorAuth => 'Tautulli weigert deze sleutel.';
 	@override String get errorTokenExpired => 'Tautulli weigert dit token. Een apparaat-token is maar vijf minuten geldig, dus maak een nieuwe aan en probeer opnieuw.';
+	@override String get errorModeMismatch => 'Tautulli weigert dit token, en het lijkt op je permanente API-sleutel in plaats van op een apparaat-token. Zet hierboven om naar API-sleutel, of registreer een apparaat in Tautulli en plak dat token.';
 	@override String get errorUrlRequired => 'Vul het adres van je Tautulli-server in.';
 	@override String get errorTokenRequired => 'Vul een token in.';
 	@override String get errorGeneric => 'Koppelen is niet gelukt.';
@@ -2613,7 +2614,7 @@ extension on TranslationsNl {
 			'settings.shortcutUpdated' => ({required Object action}) => 'Sneltoets bijgewerkt voor ${action}',
 			'settings.autoSkip' => 'Automatisch Overslaan',
 			'settings.autoSkipIntro' => 'Intro Automatisch Overslaan',
-			'settings.autoSkipIntroDescription' => 'Intro-markeringen na enkele seconden automatisch overslaan',
+			'settings.autoSkipIntroDescription' => 'Intro-markeringen in afleveringen na enkele seconden automatisch overslaan',
 			'settings.autoSkipCredits' => 'Credits Automatisch Overslaan',
 			'settings.autoSkipCreditsDescription' => 'Credits automatisch overslaan en volgende aflevering afspelen',
 			'settings.forceSkipMarkerFallback' => 'Fallbackmarkeringen afdwingen',
@@ -3967,6 +3968,7 @@ extension on TranslationsNl {
 			'tautulli.errorNetwork' => 'Tautulli niet bereikbaar. Controleer het adres en of hij vanaf dit toestel te bereiken is.',
 			'tautulli.errorAuth' => 'Tautulli weigert deze sleutel.',
 			'tautulli.errorTokenExpired' => 'Tautulli weigert dit token. Een apparaat-token is maar vijf minuten geldig, dus maak een nieuwe aan en probeer opnieuw.',
+			'tautulli.errorModeMismatch' => 'Tautulli weigert dit token, en het lijkt op je permanente API-sleutel in plaats van op een apparaat-token. Zet hierboven om naar API-sleutel, of registreer een apparaat in Tautulli en plak dat token.',
 			'tautulli.errorUrlRequired' => 'Vul het adres van je Tautulli-server in.',
 			'tautulli.errorTokenRequired' => 'Vul een token in.',
 			'tautulli.errorGeneric' => 'Koppelen is niet gelukt.',

@@ -247,7 +247,7 @@
     "shortcutUpdated": "Shortcut updated for ${action}",
     "autoSkip": "Auto Skip",
     "autoSkipIntro": "Auto Skip Intro",
-    "autoSkipIntroDescription": "Automatically skip intro markers after a few seconds",
+    "autoSkipIntroDescription": "Automatically skip intro markers in episodes after a few seconds",
     "autoSkipCredits": "Auto Skip Credits",
     "autoSkipCreditsDescription": "Automatically skip credits and play next episode",
     "forceSkipMarkerFallback": "Force Fallback Markers",
@@ -1632,6 +1632,7 @@
     "errorNetwork": "Could not reach Tautulli. Check the address and whether it is reachable from this device.",
     "errorAuth": "Tautulli rejected this key.",
     "errorTokenExpired": "Tautulli rejected this token. A device token is only valid for five minutes, so generate a new one and try again.",
+    "errorModeMismatch": "Tautulli rejected this token, and it looks like your permanent API key rather than a device token. Switch to API key above, or register a device in Tautulli and paste that token.",
     "errorUrlRequired": "Enter the address of your Tautulli server.",
     "errorTokenRequired": "Enter a token.",
     "errorGeneric": "Connecting failed."
