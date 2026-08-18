@@ -39,6 +39,7 @@ reads the topmost anchor and fills the block below with everything committed sin
 - de gepinde SDK wint weer van homebrew in de release-lane
 - de pre-push commit alleen de releasenotes
 - twee tests die alleen op de Linux-runner omvielen
+- het koppelscherm vergat je modus, en de fout wees de verkeerde kant op
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 221 · 17 August 2026
