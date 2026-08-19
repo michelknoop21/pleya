@@ -110,15 +110,16 @@ func writeError(w http.ResponseWriter, log *slog.Logger, code, message string, d
 }
 
 // writeInternal verbergt de oorzaak voor de client en laat hem in het log.
+//
+// De status komt uit het coderegister en niet uit een eigen keuze. Een 500 met
+// storage.unavailable erin zou de tabel in hoofdstuk 7.1 tegenspreken, en dan
+// leest een client iets anders uit de status dan uit de code. Het register is
+// het contract, dus dat wint.
 func writeInternal(w http.ResponseWriter, log *slog.Logger, err error) {
 	if log != nil {
 		log.Error("interne fout", slog.String("error", err.Error()))
 	}
-	writeJSON(w, http.StatusInternalServerError, errorEnvelope{Error: Error{
-		Code:      CodeStorageUnavailable,
-		Message:   "internal error",
-		Retryable: true,
-	}})
+	writeError(w, nil, CodeStorageUnavailable, "internal error", nil)
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
@@ -127,4 +128,11 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	w.WriteHeader(status)
 	enc := json.NewEncoder(w)
 	_ = enc.Encode(body)
+}
+
+// registeredStatus geeft de status die het coderegister aan deze code toekent.
+// Alleen voor tests: het register hoort de enige bron te zijn.
+func registeredStatus(code string) (int, bool) {
+	entry, ok := errorTable[code]
+	return entry.status, ok
 }
