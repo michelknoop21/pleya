@@ -18,7 +18,14 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### New
+- volg één Select-druk van de kaart tot het metadata-antwoord
+
+### Fixed
+- maak de filterregel met de afstandsbediening bedienbaar
+- open bij Select het item dat de gebruiker ziet, niet de index
+- een dode Select-rij, en een trace die de verkeerde rij aanwees
+- waarschuw niet over gewone drukken, en houd het doel bij de trailing plek
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 232 · 19 August 2026
