@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 
 import '../connection/connection.dart';
@@ -32,12 +31,14 @@ const String pleyaProtocolPrefix = '/pleya/v1';
 /// is [PleyaServerSession]'s job, because that is where single-flight has to
 /// live.
 class PleyaServerAuthService {
-  PleyaServerAuthService({@visibleForTesting http.Client Function()? httpClientFactory})
-    : _testHttpClientFactory = httpClientFactory;
+  PleyaServerAuthService({http.Client Function()? httpClientFactory}) : _testHttpClientFactory = httpClientFactory;
 
-  /// Test-only HTTP client factory. Each [MediaServerHttpClient] closes its
-  /// underlying client, so this hands out a fresh one per call rather than
-  /// sharing a single instance.
+  /// Injection point for the HTTP transport. Null means the platform default.
+  ///
+  /// A factory rather than a client, because each [MediaServerHttpClient]
+  /// closes its underlying client on `close()` and these are short-lived: one
+  /// per call. Tests hand in a `MockClient` factory here, which is the only
+  /// way to assert what goes on the wire without a live server.
   final http.Client Function()? _testHttpClientFactory;
 
   MediaServerHttpClient _http(String baseUrl) {
