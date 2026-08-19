@@ -18,6 +18,7 @@ reads the topmost anchor and fills the block below with everything committed sin
 - dicht de race en de vertraging in het onthouden van een stroomwissel
 - hover-snelknoppen navigeren binnen de profielsessie
 - laat Filters, Sorteren en Groepering in beeld openen
+- prevent sidebar input from activating hero content
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 228 · 18 August 2026
