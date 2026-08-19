@@ -23,6 +23,7 @@ import '../widgets/sliver_cross_axis_layout_builder.dart';
 import '../widgets/desktop_app_bar.dart';
 import '../widgets/skeletons.dart';
 import '../widgets/overlay_sheet.dart';
+import '../widgets/overlay_sheet_geometry.dart';
 import '../focus/focusable_action_bar.dart';
 import '../focus/key_event_utils.dart';
 import '../mixins/grid_focus_node_mixin.dart';
@@ -221,6 +222,7 @@ class _HubDetailScreenState extends State<HubDetailScreen>
     bool pendingCleared = false;
     OverlaySheetController.of(overlayContext)
         .show(
+          presentation: OverlaySheetPresentation.panel,
           builder: (context) => SortBottomSheet(
             sortOptions: _sortOptions,
             selectedSort: _selectedSort,

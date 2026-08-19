@@ -23,6 +23,7 @@ import '../../widgets/pill_input_decoration.dart';
 import '../../widgets/seerr_poster_card.dart';
 import '../../widgets/skeletons.dart';
 import '../../widgets/state_view.dart';
+import 'seerr_discover_filter_bar.dart';
 import 'seerr_grid_sliver.dart';
 import 'seerr_media_detail_screen.dart';
 import 'seerr_row_grid_screen.dart';
@@ -40,11 +41,6 @@ import 'seerr_requests_screen.dart';
 /// Reuses the shared [SeerrPosterCard] / [SeerrLoadMoreTile] widgets plus the
 /// lower-level focus + layout primitives (`FocusedScrollScaffold`,
 /// `TvLayoutConstants`, `SkeletonHubRow`, `StateView`).
-/// Discover/search type filter. `all` shows the mixed shelves; `movies` / `tv`
-/// narrow the shelves (and enable genre chips in discover, client-side type
-/// filtering in search).
-enum _SeerrType { all, movies, tv }
-
 class SeerrDiscoverScreen extends StatefulWidget {
   const SeerrDiscoverScreen({super.key});
 
@@ -69,7 +65,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   bool _searchErrored = false;
 
   // Filters.
-  _SeerrType _type = _SeerrType.all;
+  SeerrDiscoverType _type = SeerrDiscoverType.all;
   List<SeerrGenre> _movieGenres = const [];
   List<SeerrGenre> _tvGenres = const [];
   int? _genreId;
@@ -88,27 +84,27 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     _rows = [
       _SeerrRow(
         title: t.seerr.trending,
-        showIn: const {_SeerrType.all},
+        showIn: const {SeerrDiscoverType.all},
         fetch: (c, p) => c.discoverTrending(page: p),
       ),
       _SeerrRow(
         title: t.seerr.popularMovies,
-        showIn: const {_SeerrType.all, _SeerrType.movies},
+        showIn: const {SeerrDiscoverType.all, SeerrDiscoverType.movies},
         fetch: (c, p) => c.discoverMovies(page: p),
       ),
       _SeerrRow(
         title: t.seerr.popularTv,
-        showIn: const {_SeerrType.all, _SeerrType.tv},
+        showIn: const {SeerrDiscoverType.all, SeerrDiscoverType.tv},
         fetch: (c, p) => c.discoverTv(page: p),
       ),
       _SeerrRow(
         title: t.seerr.upcoming,
-        showIn: const {_SeerrType.all, _SeerrType.movies},
+        showIn: const {SeerrDiscoverType.all, SeerrDiscoverType.movies},
         fetch: (c, p) => c.discoverUpcomingMovies(page: p),
       ),
       _SeerrRow(
         title: t.seerr.upcoming,
-        showIn: const {_SeerrType.tv},
+        showIn: const {SeerrDiscoverType.tv},
         fetch: (c, p) => c.discoverUpcomingTv(page: p),
       ),
     ];
@@ -137,7 +133,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   Future<void> _loadProviders() async {
     final client = _client;
     if (client == null) return;
-    final providers = await client.getWatchProviders(movies: _type != _SeerrType.tv, region: _watchRegion);
+    final providers = await client.getWatchProviders(movies: _type != SeerrDiscoverType.tv, region: _watchRegion);
     if (!mounted || providers.isEmpty) return;
     setState(() => _providers = providers.take(10).toList(growable: false));
   }
@@ -152,10 +148,10 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       });
       return;
     }
-    final wantsTv = _type == _SeerrType.tv;
+    final wantsTv = _type == SeerrDiscoverType.tv;
     final row = _SeerrRow(
       title: provider.name,
-      showIn: const {_SeerrType.all, _SeerrType.movies, _SeerrType.tv},
+      showIn: const {SeerrDiscoverType.all, SeerrDiscoverType.movies, SeerrDiscoverType.tv},
       fetch: (c, p) => wantsTv
           ? c.discoverTv(page: p, watchProvider: provider.id, watchRegion: _watchRegion)
           : c.discoverMovies(page: p, watchProvider: provider.id, watchRegion: _watchRegion),
@@ -313,34 +309,38 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   /// type param, so we filter client-side).
   List<SeerrMedia> get _filteredSearchResults {
     switch (_type) {
-      case _SeerrType.all:
+      case SeerrDiscoverType.all:
         return _searchResults;
-      case _SeerrType.movies:
+      case SeerrDiscoverType.movies:
         return _searchResults.where((m) => m.isMovie).toList();
-      case _SeerrType.tv:
+      case SeerrDiscoverType.tv:
         return _searchResults.where((m) => !m.isMovie).toList();
     }
   }
 
-  void _onTypeSelected(_SeerrType type) {
+  /// Picking a segment selects it outright. It used to toggle back to "All"
+  /// when you tapped the active chip, which was the only way to get there while
+  /// "All" had no chip of its own; the segment now says so on screen.
+  void _onTypeSelected(SeerrDiscoverType type) {
+    if (type == _type) return;
     setState(() {
-      _type = (_type == type) ? _SeerrType.all : type;
+      _type = type;
       _genreId = null;
       _genreRow = null;
     });
-    if (_type != _SeerrType.all) unawaited(_ensureGenres(_type));
+    if (_type != SeerrDiscoverType.all) unawaited(_ensureGenres(_type));
   }
 
-  Future<void> _ensureGenres(_SeerrType type) async {
+  Future<void> _ensureGenres(SeerrDiscoverType type) async {
     final client = _client;
     if (client == null) return;
-    if (type == _SeerrType.movies && _movieGenres.isNotEmpty) return;
-    if (type == _SeerrType.tv && _tvGenres.isNotEmpty) return;
+    if (type == SeerrDiscoverType.movies && _movieGenres.isNotEmpty) return;
+    if (type == SeerrDiscoverType.tv && _tvGenres.isNotEmpty) return;
     try {
-      final genres = type == _SeerrType.movies ? await client.getMovieGenres() : await client.getTvGenres();
+      final genres = type == SeerrDiscoverType.movies ? await client.getMovieGenres() : await client.getTvGenres();
       if (!mounted) return;
       setState(() {
-        if (type == _SeerrType.movies) {
+        if (type == SeerrDiscoverType.movies) {
           _movieGenres = genres;
         } else {
           _tvGenres = genres;
@@ -351,13 +351,15 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     }
   }
 
-  void _onGenreSelected(int id) {
+  /// [id] is null for "all genres". It used to be a chip you tapped twice to
+  /// clear; the picker spells that out as its first row instead.
+  void _onGenreSelected(int? id) {
+    if (id == _genreId) return;
     setState(() {
-      _genreId = (_genreId == id) ? null : id;
+      _genreId = id;
       _genreRow = null;
     });
-    final gid = _genreId;
-    if (gid != null) unawaited(_loadGenreRow(gid));
+    if (id != null) unawaited(_loadGenreRow(id));
   }
 
   Future<void> _loadGenreRow(int genreId) async {
@@ -366,17 +368,18 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     final type = _type;
     final row = _SeerrRow(
       title: '',
-      fetch: (c, p) =>
-          type == _SeerrType.movies ? c.discoverMovies(page: p, genre: genreId) : c.discoverTv(page: p, genre: genreId),
+      fetch: (c, p) => type == SeerrDiscoverType.movies
+          ? c.discoverMovies(page: p, genre: genreId)
+          : c.discoverTv(page: p, genre: genreId),
     );
     setState(() => _genreRow = row);
     await _loadFirst(row, client);
   }
 
   List<SeerrGenre> get _activeGenres => switch (_type) {
-    _SeerrType.movies => _movieGenres,
-    _SeerrType.tv => _tvGenres,
-    _SeerrType.all => const [],
+    SeerrDiscoverType.movies => _movieGenres,
+    SeerrDiscoverType.tv => _tvGenres,
+    SeerrDiscoverType.all => const [],
   };
 
   @override
@@ -412,54 +415,18 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     );
   }
 
-  /// Type chips (Movies / Shows), plus a horizontal genre-chip row when a type
-  /// is active in discover mode. Mirrors the search screen's filter-chip style.
+  /// Type segments plus, in discover mode with a type active, that type's
+  /// genres. Presentation lives in [SeerrDiscoverFilterBar]; this only wires
+  /// the state to it.
   Widget _buildFilterBar() {
-    final inset = PlatformDetector.isTV() ? TvLayoutConstants.horizontalInset : 12.0;
-    final showGenres = _query.isEmpty && _type != _SeerrType.all && _activeGenres.isNotEmpty;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.only(left: inset, right: inset, bottom: 8),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FocusableFilterChip(
-                label: t.seerr.filterMovies,
-                selected: _type == _SeerrType.movies,
-                onPressed: () => _onTypeSelected(_SeerrType.movies),
-              ),
-              FocusableFilterChip(
-                label: t.seerr.filterShows,
-                selected: _type == _SeerrType.tv,
-                onPressed: () => _onTypeSelected(_SeerrType.tv),
-              ),
-            ],
-          ),
-        ),
-        if (showGenres)
-          SizedBox(
-            height: 52,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.only(left: inset, right: inset, bottom: 8),
-              itemCount: _activeGenres.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final g = _activeGenres[index];
-                return Center(
-                  child: FocusableFilterChip(
-                    label: g.name,
-                    selected: _genreId == g.id,
-                    onPressed: () => _onGenreSelected(g.id),
-                  ),
-                );
-              },
-            ),
-          ),
-      ],
+    return SeerrDiscoverFilterBar(
+      type: _type,
+      // Genres refine the shelves, and there are no shelves while a search is
+      // running — same rule the outlined chip row had.
+      genres: _query.isEmpty ? _activeGenres : const [],
+      genreId: _genreId,
+      onTypeSelected: _onTypeSelected,
+      onGenreSelected: _onGenreSelected,
     );
   }
 
@@ -605,7 +572,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
 
   List<Widget> _buildDiscoverSlivers() {
     // A genre is active → one filtered grid instead of the mixed shelves.
-    if (_type != _SeerrType.all && _genreId != null) {
+    if (_type != SeerrDiscoverType.all && _genreId != null) {
       return _buildGenreGridSlivers();
     }
 
@@ -760,13 +727,13 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
 
 /// Mutable per-row pagination state.
 class _SeerrRow {
-  _SeerrRow({required this.title, required this.fetch, this.showIn = const {_SeerrType.all}});
+  _SeerrRow({required this.title, required this.fetch, this.showIn = const {SeerrDiscoverType.all}});
 
   final String title;
   final Future<SeerrMediaPage> Function(SeerrClient client, int page) fetch;
 
   /// Which type-filter selections this shelf appears under.
-  final Set<_SeerrType> showIn;
+  final Set<SeerrDiscoverType> showIn;
 
   List<SeerrMedia> items = const [];
   int page = 0;
