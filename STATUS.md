@@ -4,7 +4,24 @@ _Laatst bijgewerkt: 2026-08-19 (`main` = `8e84f3a`; `feat/pleyaserver` loopt voo
 
 ## Waar was ik
 
-**PS-2 en PS-3W zijn gesloten en bevroren, PS-3 is vrijgegeven.** Beide fasen stonden inhoudelijk af
+**PS-3 staat: Pleya Server is een backend in de app.** Een Pleya Server-bibliotheek staat náást Plex
+en Jellyfin, in dezelfde zoekresultaten en op dezelfde schermen. Bladeren, zoeken,
+bibliotheeklijsten, hubs en artwork werken; afspelen is PS-4 en zit er niet half in. Acht commits,
+188 tests in `test/pleya_server/`, de volledige suite op 3695 en groen.
+
+Twee dingen kostten de meeste aandacht. Het eerste is dat de app in offsets telt en het protocol met
+cursors pagineert, en dat die twee niet in elkaar om te rekenen zijn: een ledger onthoudt welke
+cursor welke offset opende en de client loopt de rest, met een grens van tien pagina's. Het tweede is
+artwork. `GET /artwork/{id}` accepteert alleen een bearer-header en het contract laat geen token in
+de querystring toe, terwijl de app zijn afbeeldingen met een kale URL tekent. De header hecht nu aan
+op het ene punt waar elke artwork-download langs komt; dat is [DEC-048], en het protocol is niet
+aangeraakt.
+
+**Wat er niet gemeten is:** niets is tegen de draaiende server op de NAS gelegd. De stack draait niet
+en er is niets uitgerold. Acceptatiecriterium 1 en het stopcriterium staan op tests, en daarom heet
+de fase "opgeleverd, ter goedkeuring" en niet "gesloten".
+
+**PS-2 en PS-3W zijn gesloten en bevroren.** Beide fasen stonden inhoudelijk af
 zonder formele afsluiting: PS-2 droeg `opgeleverd, ter goedkeuring` en had geen Roadmap Drift Check,
 PS-3W had geen statusrij en geen Uitkomst. Die staan er nu, met de acceptatiecriteria per stuk en de
 drift check langs de code in plaats van langs het geheugen.

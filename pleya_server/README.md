@@ -16,8 +16,12 @@ achter de protocolroutes. Dat voegt geen endpoint en geen capability toe.
 legt vast dat samen uitgeleverd worden geen extra rechten geeft: wat de webclient toont, gaat over
 `/pleya/v1`, en dus kan de Flutter-client het morgen ook.
 
-PS-0 (de Docker-fundering) is gesloten en bevroren; de afwijking die die fase aan de roadmap
-toevoegde staat in [docs/pleya-server-ps0-proposal.md](../docs/pleya-server-ps0-proposal.md).
+PS-0 (de Docker-fundering), PS-1 (het wire-contract), PS-2 en PS-3W zijn gesloten en bevroren; de
+afwijking die PS-0 aan de roadmap toevoegde staat in
+[docs/pleya-server-ps0-proposal.md](../docs/pleya-server-ps0-proposal.md).
+
+De Flutter-app praat er sinds PS-3 zelf mee. Dat voegt niets toe aan deze server: `PleyaServerClient`
+gebruikt dezelfde veertien endpoints als Pleya Web en vraagt geen enkel veld extra.
 
 ## Wat de server doet
 

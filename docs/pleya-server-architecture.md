@@ -1815,6 +1815,7 @@ komen niet langs kijkstatus of bytes.
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-3 |
+| Status | **opgeleverd 19 augustus 2026, ter goedkeuring**: `lib/services/pleya_server_client*`, 188 tests |
 | Doel | de vijfde `MediaServerClient`, alleen lezen |
 | Bijdrage aan einddoel | vanaf hier is Pleya Server een echte backend in het product en niet een experiment ernaast |
 | Afhankelijkheden | PS-1, PS-2 |
@@ -1850,6 +1851,39 @@ een Pleya Server-capabilityset.
 
 **Roadmap Drift Check.** Is er een member geïmplementeerd die niet voor bladeren of zoeken nodig is?
 Terugdraaien of naar de juiste fase verplaatsen.
+
+#### Stand op 19 augustus 2026: opgeleverd, ter goedkeuring
+
+| Acceptatiecriterium | Stand |
+| --- | --- |
+| 1. Verbinding toevoegen, overleeft een herstart, toont bibliotheken | toevoegscherm, registratie en herstel staan er, met tests tegen een echte database en een nagebootste server; **nog niet gemeten tegen de DS920+** |
+| 2. Zoeken over meerdere servers zonder backendcheck in `data_aggregation_service` | gehaald, en vastgelegd als broncontrole die faalt zodra die laag of `multi_server_provider` op een backend gaat vertakken |
+| 3. `flutter analyze` schoon en `scripts/ci_checks.sh` groen | gehaald, alle zeven secties |
+| 4. Geen UI-plek toont een lege of kapotte staat door een niet-ondersteunde capability | gehaald voor zover een widgettest dat kan tonen; de capability-resolver eist server én client, en lege hubs worden niet eens opgevraagd |
+| 5. `MediaBackend.fromString` kent de nieuwe waarde | gehaald, met een eigen test, en de idlijst komt nu uit `values` in plaats van uit een tweede handgeschreven lijst |
+
+**Wat er staat.** `MediaBackend.pleyaServer` en `ConnectionKind.pleyaServer` met een vijfde
+`MediaItem`-variant, handgeschreven wire-types tegen de 25 fixtures, een mapper, een authservice met
+rotatie en single-flight verversen, `PleyaServerClient` met capabilities uit `GET /info`, bladeren met
+een cursorvertaling, zoeken volgens DEC-045, artwork, en registratie in de manager en de
+profielbinder. Honderdachtentachtig tests in `test/pleya_server/`, en de volledige suite staat op 3695.
+
+**Eén nieuw besluit:** [DEC-048](DECISIONS.md#dec-048-artwork-van-een-pleya-server-reist-met-een-header-via-een-register-per-origin).
+Artwork accepteert alleen een bearer-header en het contract staat geen token in de querystring toe,
+dus de header hecht aan op het ene punt waar elke artwork-download langs komt. Het protocol is niet
+aangeraakt.
+
+**Drift check.** Er is geen member geïmplementeerd die niet voor bladeren of zoeken nodig is:
+afspelen, kijkstatus, verzamelingen, afspeellijsten, downloads en Live TV antwoorden allemaal
+"niet ondersteund" via één mixin, en `MediaServerClient` is niet opgesplitst. `docs/pleya-protocol/`
+is niet aangeraakt en `check_protocol.sh` is groen. Er is scope blijven liggen die geen scope was: de
+alfabetische sprongbalk en filters kan het bevroren contract niet dragen, en dat staat nu als G13 en
+als een gecorrigeerde matrixregel in plaats van als een client-side benadering.
+
+**Wat er nog niet is gemeten.** De verbinding is niet tegen de draaiende server op de DS920+ gelegd:
+de stack draait niet en er is in deze ronde niets uitgerold. Acceptatiecriterium 1 en het
+stopcriterium staan daarmee op tests en niet op een toestel. Dat is de reden dat deze fase
+"ter goedkeuring" heet en niet "gesloten".
 
 ---
 

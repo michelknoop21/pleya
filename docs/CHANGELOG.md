@@ -2,6 +2,37 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-19] PS-3: Pleya Server is een backend in de app
+
+Vanaf hier staat een Pleya Server-bibliotheek náást Plex en Jellyfin, in dezelfde app, in dezelfde
+zoekresultaten, op dezelfde schermen. Alleen lezen: bladeren, zoeken, bibliotheeklijsten, hubs en
+artwork. Afspelen is PS-4 en zit er niet half in.
+
+### Added
+- **`MediaBackend.pleyaServer` en `ConnectionKind.pleyaServer`**, met een vijfde `MediaItem`-variant. `MediaBackend.fromString` kende de nieuwe waarde niet en zou hem stil als Plex hebben gelezen; de idlijst komt nu uit `values` in plaats van uit een tweede handgeschreven lijst, en er staat een test op.
+- **Handgeschreven wire-types voor Pleya Protocol v1**, met een contracttest tegen dezelfde 25 fixtures en hetzelfde manifest als `check_protocol.sh`. Geen Dart-generator: die toevoegen is nieuwe infrastructuur zonder aangetoonde noodzaak.
+- **Een authservice en een sessie.** Verversen is single-flight, want het refreshtoken roteert bij elk gebruik en twee gelijktijdige verversingen zijn per definitie hergebruik. Het nieuwe token wordt weggeschreven vóór het accesstoken wordt uitgedeeld.
+- **`PleyaServerClient` met capabilities uit `GET /info`.** Een vlag staat aan als de server hem aanbiedt én deze build hem geïmplementeerd heeft. Vóór het eerste antwoord claimt de client niets, ook browse niet.
+- **Bladeren met een cursorvertaling.** De app telt in offsets en het protocol pagineert met cursors; een ledger onthoudt welke cursor welke offset opende en de client loopt de rest, begrensd op tien pagina's.
+- **Zoeken volgens DEC-045 en artwork via `GET /artwork/{id}`**, plus registratie in `multi_server_manager`, de profielbinder en het toevoegscherm.
+
+### Changed
+- **`data_aggregation_service` kreeg geen enkele regel**, en dat is nu een test. Een broncontrole faalt zodra die laag of `multi_server_provider` op een backend gaat vertakken.
+- **De alfabetische sprongbalk staat op `AlphaBarMode.none`** en filters zijn er niet. Het bevroren contract kent geen `firstCharacter`-endpoint en geen filterparameter, en client-side over een gecursorde lijst filteren verplaatst het probleem naar de verkeerde kant van de grens. Zie G13 in de replacement matrix.
+- **`watchlist_availability_resolver` telt Pleya Server niet mee** in de noemer van `coverageComplete`. Er is geen `external_ids` tot PS-7, dus `findByIdentity` kan er alleen null antwoorden, en meetellen zou betekenen dat een server die structureel niets kan beantwoorden toch als bevraagd geldt.
+
+### Decisions
+- [DEC-048](DECISIONS.md#dec-048-artwork-van-een-pleya-server-reist-met-een-header-via-een-register-per-origin): artwork reist met een bearer-header via een register per origin, aangehecht op het ene punt waar elke artwork-download langs komt. Het contract staat geen token in de querystring toe en blijft ongewijzigd.
+
+### Tests
+Honderdachtentachtig tests in `test/pleya_server/`, waaronder de zoekschermen op 390, 1440 en 1920
+breed met TV-detectie aan, tegen een echte `PleyaServerClient` die tegen een nagebootste server praat
+die het contract spreekt inclusief cursors. De volledige suite staat op 3695 en is groen;
+`scripts/ci_checks.sh`, `scripts/check_protocol.sh`, `go vet ./...` en `go test ./...` ook.
+
+**Niet gemeten:** de verbinding is niet tegen de draaiende server op de DS920+ gelegd. De stack
+draait niet en er is niets uitgerold. De fase staat daarom op "ter goedkeuring" en niet op "gesloten".
+
 ## [2026-08-19] Het stopcriterium van PS-3W op de NAS, en de artworkmeting met getallen
 
 De fase stond gesloten met de acceptatiecriteria beschreven maar twee ervan zonder meting eronder.
