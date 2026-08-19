@@ -18,7 +18,9 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### Fixed
+- de zijbalk reserveert de strook naast zich niet meer
+- maak het "What to Test"-veld leesbaar op een telefoon
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 231 · 19 August 2026
