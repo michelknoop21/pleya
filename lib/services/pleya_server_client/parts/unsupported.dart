@@ -19,78 +19,11 @@ part of '../../pleya_server_client.dart';
 /// the belt to that pair of braces, for the paths that call a member without
 /// asking first.
 mixin _PleyaServerUnsupportedMethods {
-  // ── The catalogue surface, wired in the commits that follow ──
+  // ── Search and artwork, wired in the commit that follows ──
   //
-  // These are the members PS-3 exists to implement. They answer empty here so
-  // this commit compiles and stays honest: nothing constructs a
-  // [PleyaServerClient] yet, so no screen sees an empty list that should have
-  // held something. The browse commit and the search commit lift them out of
-  // this file one group at a time.
-
-  Future<List<MediaLibrary>> fetchLibraries() async => const [];
-
-  Future<LibraryPage<MediaItem>> fetchLibraryContent(String libraryId, LibraryQuery query) async =>
-      const LibraryPage(items: [], totalCount: 0);
-
-  Future<LibraryPage<MediaItem>> fetchLibraryPagedContent(
-    String libraryId, {
-    required LibraryQuery query,
-    MediaKind? libraryKind,
-    AbortController? abort,
-  }) async => const LibraryPage(items: [], totalCount: 0);
-
-  Future<List<MediaSort>> fetchSortOptions(String libraryId, {String? libraryType}) async => const [];
-
-  Future<MediaItem?> fetchItem(String id) async => null;
-
-  Future<({MediaItem? item, MediaItem? onDeckEpisode})> fetchItemWithOnDeck(String id) async =>
-      (item: null, onDeckEpisode: null);
-
-  Future<List<MediaItem>> fetchChildren(String parentId) async => const [];
-
-  Future<LibraryPage<MediaItem>> fetchChildrenPage(
-    String parentId, {
-    int? start,
-    int? size,
-    AbortController? abort,
-  }) async => const LibraryPage(items: [], totalCount: 0);
-
-  Future<LibraryPage<MediaItem>> fetchPlayableDescendantsPage(
-    String parentId, {
-    int? start,
-    int? size,
-    AbortController? abort,
-  }) async => const LibraryPage(items: [], totalCount: 0);
-
-  Future<List<MediaItem>> fetchPlayableDescendants(String parentId) async => const [];
-
-  Future<List<MediaItem>?> fetchClientSideEpisodeQueue(String seriesId) async => null;
-
-  Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async => const [];
-
-  Future<List<MediaItem>> fetchRecentlyAddedShows({int limit = 50}) async => const [];
-
-  Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async => const [];
-
-  Future<List<MediaHub>> fetchGlobalHubs({int limit = defaultHubPreviewLimit, bool includePlaybackHubs = true}) async =>
-      const [];
-
-  Future<List<MediaHub>> fetchLibraryHubs(
-    String libraryId, {
-    required String libraryName,
-    MediaKind? libraryKind,
-    int limit = defaultHubPreviewLimit,
-    bool includePlaybackHubs = true,
-  }) async => const [];
-
-  Future<List<MediaItem>> fetchMoreHubItems(String hubId, {int? limit}) async => const [];
-
-  Future<LibraryPage<MediaItem>> fetchMoreHubItemsPage(
-    String hubId, {
-    int? start,
-    int? size,
-    AbortController? abort,
-  }) async => const LibraryPage(items: [], totalCount: 0);
+  // Browsing moved into `browse.dart`; these two are the remainder. They answer
+  // empty here so this file keeps compiling, and nothing constructs a client
+  // yet, so no screen sees the difference.
 
   Future<List<MediaItem>> searchItems(String query, {int limit = 100}) async => const [];
 

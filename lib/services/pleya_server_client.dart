@@ -25,7 +25,9 @@ import '../media/media_source_info.dart';
 import '../media/noop_live_tv_support.dart';
 import '../media/playback_report_metadata.dart';
 import '../media/server_capabilities.dart';
+import '../i18n/strings.g.dart';
 import '../models/pleya_server/pleya_wire.dart';
+import '../models/pleya_server/pleya_wire_library.dart';
 import '../utils/app_logger.dart';
 import '../utils/external_ids.dart';
 import '../utils/media_server_http_client.dart';
@@ -35,9 +37,12 @@ import 'playback_initialization_types.dart';
 import 'pleya_server_api_cache.dart';
 import 'pleya_server_auth_service.dart';
 import 'pleya_server_capabilities.dart';
+import 'pleya_server_cursor_ledger.dart';
+import 'pleya_server_mappers.dart';
 import 'pleya_server_session.dart';
 import 'scrub_preview_source.dart';
 
+part 'pleya_server_client/parts/browse.dart';
 part 'pleya_server_client/parts/unsupported.dart';
 
 /// [MediaServerClient] over a Pleya Server, speaking Pleya Protocol v1.
@@ -66,7 +71,7 @@ part 'pleya_server_client/parts/unsupported.dart';
 // parameter. dart_code_linter flags the pattern; here it is unavoidable.
 // ignore_for_file: prefer_initializing_formals
 class PleyaServerClient
-    with MediaServerCacheMixin, _PleyaServerUnsupportedMethods
+    with MediaServerCacheMixin, _PleyaServerBrowseMethods, _PleyaServerUnsupportedMethods
     implements MediaServerClient, ScopedMediaServerClient, GracefullyCloseable {
   PleyaServerClient._({required PleyaServerSession session, required MediaServerHttpClient http})
     : _session = session,
@@ -102,15 +107,20 @@ class PleyaServerClient
   final PleyaServerSession _session;
   final MediaServerHttpClient _http;
 
+  @override
+  final PleyaServerCursorLedger _cursors = PleyaServerCursorLedger();
+
   bool _offlineMode = false;
   ServerCapabilities _capabilities = PleyaServerCapabilityResolver.unknown;
   PleyaCapabilities _wireCapabilities = PleyaCapabilities.unknown;
 
+  @override
   PleyaServerConnection get connection => _session.connection;
 
   /// Raw protocol capabilities as the server last reported them. The client's
   /// own calls gate on this; [capabilities] is the app-facing translation and
   /// is narrower by design.
+  @override
   PleyaCapabilities get wireCapabilities => _wireCapabilities;
 
   @override
@@ -263,5 +273,34 @@ class PleyaServerClient
       timeout: timeout,
       abort: abort,
     );
+  }
+
+  /// GET a protocol path and hand back its JSON object, or null.
+  ///
+  /// Null covers three cases the callers treat the same way: offline mode, a
+  /// non-2xx answer, and a body that is not an object. A caller that has to
+  /// tell them apart uses [_authorizedGet] directly, which is what
+  /// [checkHealth] does.
+  @override
+  Future<Map<String, dynamic>?> _getJson(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Duration? timeout,
+    AbortController? abort,
+  }) async {
+    if (_offlineMode) return null;
+    try {
+      final response = await _authorizedGet(path, queryParameters: queryParameters, timeout: timeout, abort: abort);
+      if (response.statusCode >= 400) {
+        final error = PleyaError.tryParse(response.data);
+        appLogger.d('PleyaServerClient: $path -> ${response.statusCode} ${error?.code ?? ''}');
+        return null;
+      }
+      final data = response.data;
+      return data is Map<String, dynamic> ? data : null;
+    } catch (e) {
+      appLogger.d('PleyaServerClient: $path failed', error: e);
+      return null;
+    }
   }
 }
