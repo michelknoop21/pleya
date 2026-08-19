@@ -198,15 +198,76 @@ def release_notes_for(build_number)
   body.strip.empty? ? nil : body.strip
 end
 
-# Markdown naar de platte tekst die het "What to Test"-veld toont. TestFlight
-# rendert geen opmaak, dus sterretjes en hekjes worden daar letterlijk zichtbaar.
+# Markdown naar de platte tekst die het "What to Test"-veld toont.
+#
+# TestFlight rendert geen opmaak en breekt zelf af op de schermbreedte. Het
+# bestand is op ~95 tekens met de hand afgebroken en zet twee spaties voor elke
+# vervolgregel, dus letterlijk doorgeven leverde een blok waarin elke tweede
+# regel inspringt: onleesbaar op een telefoon. Alinea's worden daarom eerst weer
+# aan elkaar geplakt en pas dan doorgegeven.
+#
+# Wat er staat verschilt ook bewust van de site. Een releasenote op pleya.app mag
+# uitleggen waaróm iets stuk was; het "What to Test"-veld wordt op een telefoon
+# gescand vlak voor iemand gaat testen. New, Improved en Fixed worden daarom
+# ingekort tot de kop van elk punt, de vetgedrukte zin die er al staat, met de
+# volledige tekst een tik verderop op de site. Secties die een tester juist wél
+# helemaal nodig heeft blijven staan.
+SECTIONS_KEPT_IN_FULL = ["worth checking", "notes", "known"].freeze
+
+# Losse opmaak die in platte tekst alleen maar in de weg staat.
+def strip_inline_markdown(text)
+  text
+    .gsub(/\*\*(.+?)\*\*/, '\\1')
+    .gsub(/\[([^\]]+)\]\([^)]*\)/, '\\1')
+    .gsub(/`([^`]+)`/, '\\1')
+end
+
+# De kop van een punt: de vetgedrukte openingszin als die er is, anders de eerste
+# zin. Punten zonder allebei zijn al kort genoeg en gaan heel mee.
+def bullet_headline(text)
+  bold = text[/\A\*\*(.+?)\*\*/, 1]
+  return strip_inline_markdown(bold) if bold
+  first = text[/\A(.+?[.!?])(?:\s|\z)/m, 1]
+  strip_inline_markdown(first || text)
+end
+
+# Plakt een blok met de hand afgebroken regels terug tot hele alinea's en punten.
+def unwrap_block(block)
+  items = []
+  block.split("\n").map(&:strip).reject(&:empty?).each do |line|
+    if line.start_with?("- ")
+      items << line[2..]
+    elsif items.empty?
+      items << line
+    else
+      items[-1] = "#{items[-1]} #{line}"
+    end
+  end
+  items
+end
+
 def testflight_notes(markdown)
-  markdown
-    .gsub(/^\#+\s*/, "")           # "### New" wordt "New"
-    .gsub(/\*\*(.+?)\*\*/, '\\1')  # vetdruk eruit
-    .gsub(/^- /, "\u2022 ")         # streepjes naar bolletjes, leest rustiger
-    .gsub(/\n{3,}/, "\n\n")
-    .strip
+  out = []
+  keep_full = true
+  markdown.split(/\n[ \t]*\n/).each do |block|
+    lines = block.split("\n").map(&:strip).reject(&:empty?)
+    next if lines.empty?
+
+    if lines.first.start_with?("#")
+      heading = lines.first.gsub(/^\#+\s*/, "")
+      keep_full = SECTIONS_KEPT_IN_FULL.any? { |k| heading.downcase.include?(k) }
+      out << heading.upcase
+      next
+    end
+
+    bulleted = block.lstrip.start_with?("- ")
+    unwrap_block(block).each do |item|
+      text = keep_full || !bulleted ? strip_inline_markdown(item) : bullet_headline(item)
+      out << (bulleted ? "\u2022 #{text}" : text)
+    end
+  end
+  out << "Full notes: pleya.app/releases"
+  out.join("\n\n").strip
 end
 
 # Zet de releasenotes als "What to Test" op een build die al door processing is.
