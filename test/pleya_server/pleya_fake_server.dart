@@ -52,6 +52,15 @@ class PleyaFakeServer {
 
   int refreshCount = 0;
 
+  /// Reject every access token from here on, the way a server that restarted
+  /// and lost its signing key does. The next refresh mints one that works
+  /// again.
+  bool rejectCurrentAccessTokens = false;
+
+  /// Answer every request with a transport failure, the way an unplugged NAS
+  /// does. Distinct from a 401: offline is not signed out.
+  bool unreachable = false;
+
   void addLibrary({required String id, required String title, required String kind, int? itemCount}) {
     libraries.add({'id': id, 'title': title, 'kind': kind, 'item_count': itemCount ?? 0});
     libraryItems.putIfAbsent(id, () => []);
@@ -125,6 +134,7 @@ class PleyaFakeServer {
   http.Client asHttpClient() => MockClient(_handle);
 
   Future<http.Response> _handle(http.Request request) async {
+    if (unreachable) throw const PleyaFakeServerUnreachable();
     final path = request.url.path.replaceFirst('/pleya/v1', '');
     final query = request.url.queryParameters;
     requests.add(request.url.path + (query.isEmpty ? '' : '?${request.url.query}'));
@@ -139,7 +149,8 @@ class PleyaFakeServer {
         'expires_in_ms': 900000,
       });
     }
-    if (request.headers['Authorization'] != 'Bearer at-$refreshCount') {
+    final expected = rejectCurrentAccessTokens ? null : 'Bearer at-$refreshCount';
+    if (expected == null || request.headers['Authorization'] != expected) {
       return _json(_error('auth.invalid_token'), status: 401);
     }
     if (path == '/server') {
@@ -260,4 +271,14 @@ class PleyaFakeServer {
 
   http.Response _json(Object body, {int status = 200}) =>
       http.Response(jsonEncode(body), status, headers: const {'content-type': 'application/json'});
+}
+
+/// A transport failure that is not an HTTP answer. Named rather than borrowing
+/// a `dart:io` type so the fake does not depend on the platform's socket
+/// errors.
+class PleyaFakeServerUnreachable implements Exception {
+  const PleyaFakeServerUnreachable();
+
+  @override
+  String toString() => 'PleyaFakeServerUnreachable';
 }
