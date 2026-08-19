@@ -524,7 +524,7 @@ class DownloadProvider extends ChangeNotifier with DisposableChangeNotifierMixin
             final synthesizedRaw = switch (meta.backend) {
               MediaBackend.plex => <String, dynamic>{'key': '/library/metadata/$showRatingKey'},
               MediaBackend.jellyfin => <String, dynamic>{'Id': showRatingKey, 'Type': 'Series'},
-              MediaBackend.local => <String, dynamic>{'id': showRatingKey},
+              MediaBackend.local || MediaBackend.pleyaServer => <String, dynamic>{'id': showRatingKey},
             };
             shows[showRatingKey] = MediaItem(
               id: showRatingKey,

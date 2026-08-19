@@ -167,6 +167,10 @@ class _SyncRuleTileState extends State<_SyncRuleTile> {
           if (id == rule.serverId && hostName.isNotEmpty) {
             return _RuleServerInfo(label: hostName, isKnown: true);
           }
+        case PleyaServerConnection(:final serverId, :final serverName):
+          if (serverId == rule.serverId && serverName.isNotEmpty) {
+            return _RuleServerInfo(label: serverName, isKnown: true);
+          }
       }
     }
 

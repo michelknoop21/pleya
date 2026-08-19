@@ -218,6 +218,10 @@ class _BorrowConnectionScreenState extends State<BorrowConnectionScreen> {
           await _borrowJellyfin(cand);
         case LocalFolderConnection():
         case PleyaShareConnection():
+        case PleyaServerConnection():
+          // Borrowing shares a parent connection's credentials with a child
+          // profile. These three have no per-profile identity to share:
+          // Pleya Server has exactly one bootstrap owner until PS-9.
           break;
       }
     } finally {

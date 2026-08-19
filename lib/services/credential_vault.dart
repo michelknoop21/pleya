@@ -48,6 +48,7 @@ class CredentialVault {
       'plex' => 'accountToken',
       'jellyfin' => 'accessToken',
       'pleyaShare' => 'pairSecret',
+      'pleyaServer' => 'refreshToken',
       _ => null,
     };
     final token = tokenKey == null ? null : copy[tokenKey];
@@ -67,6 +68,7 @@ class CredentialVault {
       'plex' => 'accountToken',
       'jellyfin' => 'accessToken',
       'pleyaShare' => 'pairSecret',
+      'pleyaServer' => 'refreshToken',
       _ => null,
     };
     var migrated = false;

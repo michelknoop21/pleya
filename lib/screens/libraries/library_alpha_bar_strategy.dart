@@ -68,7 +68,12 @@ abstract class LibraryAlphaBarStrategy {
         isShared: isShared,
       ),
       MediaBackend.jellyfin => const JellyfinAlphaBarStrategy(),
-      MediaBackend.local => const NoAlphaBarStrategy(),
+      // Pleya Protocol v1 has no first-character endpoint and no name-prefix
+      // filter, so there is nothing to drive a jump bar with. Synthesising one
+      // client-side over a cursored list would scroll to the wrong place on
+      // every library larger than one page. See G13 and the alpha-bar row in
+      // docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md.
+      MediaBackend.local || MediaBackend.pleyaServer => const NoAlphaBarStrategy(),
     };
   }
 }

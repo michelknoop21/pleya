@@ -624,6 +624,7 @@ class _RatingBottomSheetState extends State<RatingBottomSheet> {
     MediaBackend.plex => 'Plex',
     MediaBackend.jellyfin => 'Jellyfin',
     MediaBackend.local => 'Local',
+    MediaBackend.pleyaServer => 'Pleya Server',
   };
 }
 

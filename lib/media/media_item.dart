@@ -252,6 +252,62 @@ sealed class MediaItem with _$MediaItem {
         backendFolderKey: backendFolderKey,
         raw: raw,
       ),
+      MediaBackend.pleyaServer => PleyaServerMediaItem(
+        id: id,
+        kind: kind,
+        guid: guid,
+        title: title,
+        titleSort: titleSort,
+        summary: summary,
+        tagline: tagline,
+        originalTitle: originalTitle,
+        studio: studio,
+        year: year,
+        originallyAvailableAt: originallyAvailableAt,
+        contentRating: contentRating,
+        parentId: parentId,
+        parentTitle: parentTitle,
+        parentThumbPath: parentThumbPath,
+        parentIndex: parentIndex,
+        index: index,
+        grandparentId: grandparentId,
+        grandparentTitle: grandparentTitle,
+        grandparentThumbPath: grandparentThumbPath,
+        grandparentArtPath: grandparentArtPath,
+        thumbPath: thumbPath,
+        artPath: artPath,
+        clearLogoPath: clearLogoPath,
+        backgroundSquarePath: backgroundSquarePath,
+        durationMs: durationMs,
+        viewOffsetMs: viewOffsetMs,
+        viewCount: viewCount,
+        lastViewedAt: lastViewedAt,
+        leafCount: leafCount,
+        viewedLeafCount: viewedLeafCount,
+        childCount: childCount,
+        addedAt: addedAt,
+        updatedAt: updatedAt,
+        rating: rating,
+        userRating: userRating,
+        genres: genres,
+        directors: directors,
+        writers: writers,
+        producers: producers,
+        countries: countries,
+        collections: collections,
+        labels: labels,
+        styles: styles,
+        moods: moods,
+        roles: roles,
+        mediaVersions: mediaVersions,
+        libraryId: libraryId,
+        libraryTitle: libraryTitle,
+        audioLanguage: audioLanguage,
+        serverId: serverId,
+        serverName: serverName,
+        backendFolderKey: backendFolderKey,
+        raw: raw,
+      ),
     };
   }
 
@@ -458,10 +514,75 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: _mediaItemRawFromJson) Map<String, Object?>? raw,
   }) = LocalMediaItem;
 
+  /// Backend-tagged concrete subclass for items sourced from a Pleya Server.
+  ///
+  /// Carries the same neutral field set as the other three. Pleya Protocol is
+  /// itself backend-neutral, so nothing Plex- or Jellyfin-shaped needs a home
+  /// here; what the mapper cannot fill stays null until the phase that adds it.
+  @FreezedUnionValue('pleyaServer')
+  @JsonSerializable(includeIfNull: false, explicitToJson: true)
+  const factory MediaItem.pleyaServer({
+    @JsonKey(readValue: readStringField, defaultValue: '') required String id,
+    @JsonKey(fromJson: _mediaKindFromJson, toJson: _mediaKindToJson) required MediaKind kind,
+    String? guid,
+    String? title,
+    String? titleSort,
+    String? summary,
+    String? tagline,
+    String? originalTitle,
+    String? studio,
+    @JsonKey(fromJson: flexibleInt) int? year,
+    String? originallyAvailableAt,
+    String? contentRating,
+    String? parentId,
+    String? parentTitle,
+    String? parentThumbPath,
+    @JsonKey(fromJson: flexibleInt) int? parentIndex,
+    @JsonKey(fromJson: flexibleInt) int? index,
+    String? grandparentId,
+    String? grandparentTitle,
+    String? grandparentThumbPath,
+    String? grandparentArtPath,
+    String? thumbPath,
+    String? artPath,
+    String? clearLogoPath,
+    String? backgroundSquarePath,
+    @JsonKey(fromJson: flexibleInt) int? durationMs,
+    @JsonKey(fromJson: flexibleInt) int? viewOffsetMs,
+    @JsonKey(fromJson: flexibleInt) int? viewCount,
+    @JsonKey(fromJson: flexibleInt) int? lastViewedAt,
+    @JsonKey(fromJson: flexibleInt) int? leafCount,
+    @JsonKey(fromJson: flexibleInt) int? viewedLeafCount,
+    @JsonKey(fromJson: flexibleInt) int? childCount,
+    @JsonKey(fromJson: flexibleInt) int? addedAt,
+    @JsonKey(fromJson: flexibleInt) int? updatedAt,
+    @JsonKey(fromJson: flexibleDouble) double? rating,
+    @JsonKey(fromJson: flexibleDouble) double? userRating,
+    @JsonKey(fromJson: _mediaItemStringList) List<String>? genres,
+    @JsonKey(fromJson: _mediaItemStringList) List<String>? directors,
+    @JsonKey(fromJson: _mediaItemStringList) List<String>? writers,
+    @JsonKey(fromJson: _mediaItemStringList) List<String>? producers,
+    @JsonKey(fromJson: _mediaItemStringList) List<String>? countries,
+    @JsonKey(fromJson: _mediaItemStringList) List<String>? collections,
+    @JsonKey(fromJson: _mediaItemStringList) List<String>? labels,
+    @JsonKey(fromJson: _mediaItemStringList) List<String>? styles,
+    @JsonKey(fromJson: _mediaItemStringList) List<String>? moods,
+    @JsonKey(fromJson: _mediaItemRolesFromJson) List<MediaRole>? roles,
+    @JsonKey(fromJson: _mediaItemVersionsFromJson) List<MediaVersion>? mediaVersions,
+    String? libraryId,
+    String? libraryTitle,
+    String? audioLanguage,
+    String? serverId,
+    String? serverName,
+    String? backendFolderKey,
+    @JsonKey(fromJson: _mediaItemRawFromJson) Map<String, Object?>? raw,
+  }) = PleyaServerMediaItem;
+
   MediaBackend get backend => switch (this) {
     PlexMediaItem() => MediaBackend.plex,
     JellyfinMediaItem() => MediaBackend.jellyfin,
     LocalMediaItem() => MediaBackend.local,
+    PleyaServerMediaItem() => MediaBackend.pleyaServer,
   };
 
   /// Restore a [MediaItem] from a [toJson] payload. Missing/unknown backend
@@ -472,6 +593,7 @@ sealed class MediaItem with _$MediaItem {
       MediaBackend.plex => _$PlexMediaItemFromJson(json),
       MediaBackend.jellyfin => _$JellyfinMediaItemFromJson(json),
       MediaBackend.local => _$LocalMediaItemFromJson(json),
+      MediaBackend.pleyaServer => _$PleyaServerMediaItemFromJson(json),
     };
   }
 
@@ -480,6 +602,10 @@ sealed class MediaItem with _$MediaItem {
       final PlexMediaItem item => {'backend': MediaBackend.plex.id, ..._$PlexMediaItemToJson(item)},
       final JellyfinMediaItem item => {'backend': MediaBackend.jellyfin.id, ..._$JellyfinMediaItemToJson(item)},
       final LocalMediaItem item => {'backend': MediaBackend.local.id, ..._$LocalMediaItemToJson(item)},
+      final PleyaServerMediaItem item => {
+        'backend': MediaBackend.pleyaServer.id,
+        ..._$PleyaServerMediaItemToJson(item),
+      },
     };
   }
 

@@ -107,9 +107,11 @@ class LocalServerSyncBridge {
 
   // ── Resolution (network) ──
 
-  /// Real Plex/Jellyfin servers only — local folders and Pleya Share guests
-  /// (backend local) are never match candidates (an item would match itself)
-  /// and must not count as "online" for match decisions.
+  /// Catalogue servers only. Local folders and Pleya Share guests (backend
+  /// local) are never match candidates (an item would match itself) and must
+  /// not count as "online" for match decisions. A Pleya Server is a candidate:
+  /// the match runs on titles through `searchItems`, which it serves, and not
+  /// on external ids, which it has not got until PS-7.
   Iterable<MediaServerClient> get _matchableServers =>
       _manager.onlineClients.values.where((c) => c.backend != MediaBackend.local);
 

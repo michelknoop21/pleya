@@ -25,7 +25,7 @@ class CachedPlaybackMetadataService {
       return switch (backend) {
         MediaBackend.plex => _fetchPlexMediaSourceInfo(ServerId(cacheServerId), itemId, mediaIndex: mediaIndex),
         MediaBackend.jellyfin => _fetchJellyfinMediaSourceInfo(cacheServerId, itemId, mediaIndex: mediaIndex),
-        MediaBackend.local => null,
+        MediaBackend.local || MediaBackend.pleyaServer => null,
       };
     } catch (e) {
       appLogger.d('Cached media source info unavailable for $cacheServerId:$itemId', error: e);
@@ -57,7 +57,7 @@ class CachedPlaybackMetadataService {
           creditsPattern: creditsPattern,
           forceChapterFallback: forceChapterFallback,
         ),
-        MediaBackend.local => null,
+        MediaBackend.local || MediaBackend.pleyaServer => null,
       };
     } catch (e) {
       appLogger.d('Cached playback extras unavailable for $cacheServerId:$itemId', error: e);

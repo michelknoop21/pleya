@@ -255,5 +255,6 @@ Set<ServerId> _serverIdsForConnection(Connection connection) {
     JellyfinConnection(:final serverMachineId) => {?ServerId.tryParse(serverMachineId)},
     LocalFolderConnection(:final id) => {?ServerId.tryParse(id)},
     PleyaShareConnection(:final id) => {?ServerId.tryParse(id)},
+    PleyaServerConnection(:final serverId) => {?ServerId.tryParse(serverId)},
   };
 }

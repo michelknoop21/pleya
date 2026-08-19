@@ -162,6 +162,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Controll
       JellyfinConnection(:final serverMachineId) => {serverMachineId},
       LocalFolderConnection(:final id) => {id},
       PleyaShareConnection(:final id) => {id},
+      PleyaServerConnection(:final serverId) => {serverId},
     };
   }
 

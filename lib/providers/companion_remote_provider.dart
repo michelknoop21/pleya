@@ -291,6 +291,11 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
           addContext(await _createJellyfinAuthContext(connection: connection));
         case LocalFolderConnection():
         case PleyaShareConnection():
+        case PleyaServerConnection():
+          // No remote auth context: the companion protocol hands a token to
+          // another device, and these three have nothing an off-device
+          // client could use. Pleya Server access tokens are short-lived and
+          // bound to this device's refresh chain.
           break;
       }
     }

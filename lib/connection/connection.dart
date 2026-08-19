@@ -9,13 +9,15 @@ enum ConnectionKind {
   plex,
   jellyfin,
   local,
-  pleyaShare;
+  pleyaShare,
+  pleyaServer;
 
   String get id => switch (this) {
     ConnectionKind.plex => 'plex',
     ConnectionKind.jellyfin => 'jellyfin',
     ConnectionKind.local => 'local',
     ConnectionKind.pleyaShare => 'pleyaShare',
+    ConnectionKind.pleyaServer => 'pleyaServer',
   };
 
   static ConnectionKind fromId(String id) => switch (id) {
@@ -23,12 +25,14 @@ enum ConnectionKind {
     'jellyfin' => ConnectionKind.jellyfin,
     'local' => ConnectionKind.local,
     'pleyaShare' => ConnectionKind.pleyaShare,
+    'pleyaServer' => ConnectionKind.pleyaServer,
     _ => throw ArgumentError('Unknown ConnectionKind id: $id'),
   };
 
   MediaBackend get backend => switch (this) {
     ConnectionKind.plex => MediaBackend.plex,
     ConnectionKind.jellyfin => MediaBackend.jellyfin,
+    ConnectionKind.pleyaServer => MediaBackend.pleyaServer,
     // Pleya Share items are proxied local files; they behave as local media
     // throughout the UI (no ratings/playlists/transcoding).
     ConnectionKind.local || ConnectionKind.pleyaShare => MediaBackend.local,
@@ -602,6 +606,143 @@ class PleyaShareConnection extends Connection {
       lastKnownIps: (json['lastKnownIps'] as List?)?.cast<String>() ?? const [],
       port: (json['port'] as num?)?.toInt() ?? 48634,
       relayHostId: json['relayHostId'] as String?,
+      status: status,
+      createdAt: createdAt,
+      lastAuthenticatedAt: lastAuthenticatedAt,
+    );
+  }
+}
+
+/// A single-server Pleya Server connection.
+///
+/// One endpoint, one bootstrap identity, same shape as [JellyfinConnection]
+/// rather than [PlexAccountConnection]: there is no account cloud in front of
+/// it and no server discovery, so the connection *is* the server.
+///
+/// ## What is persisted, and what is not
+///
+/// Only the refresh token is stored. Pleya Protocol access tokens are
+/// short-lived and rotate on every refresh ([DEC-039]), so persisting one buys
+/// nothing and widens the window in which a stale secret sits on disk. The
+/// refresh token goes through [CredentialVault] like every other connection
+/// secret.
+///
+/// Capabilities are deliberately absent. `GET /pleya/v1/info` is the source of
+/// truth for what a Pleya Server can do, and a cached copy in a connection row
+/// would let the app claim a feature the server has since stopped offering.
+/// Until the first successful `/info`, the client runs on a conservative
+/// capability set.
+class PleyaServerConnection extends Connection {
+  @override
+  final String id;
+
+  @override
+  final ConnectionStatus status;
+
+  @override
+  final DateTime createdAt;
+
+  @override
+  final DateTime? lastAuthenticatedAt;
+
+  /// Server base URL without a trailing slash and without the `/pleya/v1`
+  /// suffix, e.g. `http://nas.home.lan:8832`. The protocol path is a detail
+  /// of the client, not of what the user typed.
+  final String baseUrl;
+
+  /// Opaque server identity from `GET /info` (`server.id`). Stable across
+  /// restarts and across a change of address, which is what makes it usable
+  /// as the [ServerId] the rest of the app keys on.
+  final String serverId;
+
+  /// Server-reported name from `GET /server`. That endpoint sits behind auth,
+  /// so before the first successful login this falls back to a placeholder.
+  final String serverName;
+
+  /// The bootstrap owner's username. Shown in connection lists and re-sent on
+  /// an interactive re-login.
+  final String userName;
+
+  /// Long-lived rotating refresh token. Concealed via the credential vault
+  /// when persisted. Empty means "never authenticated" or "chain revoked".
+  final String refreshToken;
+
+  PleyaServerConnection({
+    required this.id,
+    required this.baseUrl,
+    required this.serverId,
+    required this.serverName,
+    required this.userName,
+    required this.refreshToken,
+    this.status = ConnectionStatus.unknown,
+    required this.createdAt,
+    this.lastAuthenticatedAt,
+  });
+
+  @override
+  ConnectionKind get kind => ConnectionKind.pleyaServer;
+
+  @override
+  String get displayName => '$userName · $serverName';
+
+  @override
+  String get displayLabel => serverName;
+
+  @override
+  String? get displaySubtitle => '$userName · ${_truncateUrl(baseUrl)}';
+
+  static String _truncateUrl(String url) {
+    if (url.length <= 40) return url;
+    return '${url.substring(0, 37)}…';
+  }
+
+  PleyaServerConnection copyWith({
+    String? baseUrl,
+    String? serverId,
+    String? serverName,
+    String? userName,
+    String? refreshToken,
+    ConnectionStatus? status,
+    DateTime? lastAuthenticatedAt,
+  }) {
+    return PleyaServerConnection(
+      id: id,
+      baseUrl: baseUrl ?? this.baseUrl,
+      serverId: serverId ?? this.serverId,
+      serverName: serverName ?? this.serverName,
+      userName: userName ?? this.userName,
+      refreshToken: refreshToken ?? this.refreshToken,
+      status: status ?? this.status,
+      createdAt: createdAt,
+      lastAuthenticatedAt: lastAuthenticatedAt ?? this.lastAuthenticatedAt,
+    );
+  }
+
+  @override
+  Map<String, Object?> toConfigJson() {
+    return {
+      'baseUrl': baseUrl,
+      'serverId': serverId,
+      'serverName': serverName,
+      'userName': userName,
+      'refreshToken': refreshToken,
+    };
+  }
+
+  factory PleyaServerConnection.fromConfigJson({
+    required String id,
+    required Map<String, Object?> json,
+    required ConnectionStatus status,
+    required DateTime createdAt,
+    DateTime? lastAuthenticatedAt,
+  }) {
+    return PleyaServerConnection(
+      id: id,
+      baseUrl: json['baseUrl'] as String? ?? '',
+      serverId: json['serverId'] as String? ?? '',
+      serverName: json['serverName'] as String? ?? 'Pleya Server',
+      userName: json['userName'] as String? ?? '',
+      refreshToken: json['refreshToken'] as String? ?? '',
       status: status,
       createdAt: createdAt,
       lastAuthenticatedAt: lastAuthenticatedAt,

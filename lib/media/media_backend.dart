@@ -8,18 +8,21 @@ import '../utils/app_logger.dart';
 enum MediaBackend {
   plex,
   jellyfin,
-  local;
+  local,
+  pleyaServer;
 
   String get id => switch (this) {
     MediaBackend.plex => 'plex',
     MediaBackend.jellyfin => 'jellyfin',
     MediaBackend.local => 'local',
+    MediaBackend.pleyaServer => 'pleyaServer',
   };
 
   static MediaBackend fromId(String id) => switch (id) {
     'plex' => MediaBackend.plex,
     'jellyfin' => MediaBackend.jellyfin,
     'local' => MediaBackend.local,
+    'pleyaServer' => MediaBackend.pleyaServer,
     _ => throw ArgumentError('Unknown MediaBackend id: $id'),
   };
 
@@ -29,14 +32,19 @@ enum MediaBackend {
   /// - An unrecognized non-null id logs a warning and defaults to Plex; this
   ///   surfaces corrupted cache rows or schema drift instead of silently
   ///   misclassifying Jellyfin items as Plex.
+  ///
+  /// The known-id set is derived from [values] rather than written out again.
+  /// A hand-maintained list here is how a new backend ends up parsed as Plex
+  /// without a single warning: the enum grows, the literal list does not, and
+  /// the fallback swallows the difference. That failure is silent by
+  /// construction, which is why PS-3 added a regression test for exactly this
+  /// value.
   static MediaBackend fromString(String? id) {
-    if (id != null && id != 'plex' && id != 'jellyfin' && id != 'local') {
-      appLogger.w('Unknown MediaBackend id "$id"; defaulting to plex');
+    if (id == null) return MediaBackend.plex;
+    for (final backend in MediaBackend.values) {
+      if (backend.id == id) return backend;
     }
-    return switch (id) {
-      'jellyfin' => MediaBackend.jellyfin,
-      'local' => MediaBackend.local,
-      _ => MediaBackend.plex,
-    };
+    appLogger.w('Unknown MediaBackend id "$id"; defaulting to plex');
+    return MediaBackend.plex;
   }
 }

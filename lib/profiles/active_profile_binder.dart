@@ -324,6 +324,8 @@ class ActiveProfileBinder {
           expected.add(id);
         case PleyaShareConnection(:final id):
           expected.add(id);
+        case PleyaServerConnection(:final serverId):
+          expected.add(serverId);
         case null:
           break;
       }
@@ -493,6 +495,12 @@ class ActiveProfileBinder {
         case PleyaShareConnection():
           expected.add(conn.id);
           futures.add(_bindPleyaShare(conn));
+        case PleyaServerConnection():
+          // Known to the profile, not yet bound: registration follows once
+          // PleyaServerClient exists. Listing it as expected-but-not-visible
+          // is the truthful state and keeps the "profile has no server"
+          // banner honest.
+          expected.add(conn.serverId);
       }
     }
     final results = await Future.wait(futures);

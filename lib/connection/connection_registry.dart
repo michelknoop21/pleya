@@ -151,6 +151,20 @@ class ConnectionRegistry {
     return c is JellyfinConnection ? c : null;
   }
 
+  /// All Pleya Server connections in insertion order. Symmetric helper to
+  /// [listPlexAccounts] and [listJellyfin].
+  Future<List<PleyaServerConnection>> listPleyaServers() async {
+    final all = await list();
+    return all.whereType<PleyaServerConnection>().toList();
+  }
+
+  /// Lookup a [PleyaServerConnection] by id. Returns `null` if no row matches
+  /// OR the row exists but isn't a Pleya Server connection.
+  Future<PleyaServerConnection?> getPleyaServer(String id) async {
+    final c = await get(id);
+    return c is PleyaServerConnection ? c : null;
+  }
+
   Future<Connection?> _rowToConnection(ConnectionRow row) async {
     try {
       final json = jsonDecode(row.configJson) as Map<String, dynamic>;
@@ -183,6 +197,13 @@ class ConnectionRegistry {
           lastAuthenticatedAt: lastAuth,
         ),
         ConnectionKind.pleyaShare => PleyaShareConnection.fromConfigJson(
+          id: row.id,
+          json: revealed.config,
+          status: ConnectionStatus.unknown,
+          createdAt: createdAt,
+          lastAuthenticatedAt: lastAuth,
+        ),
+        ConnectionKind.pleyaServer => PleyaServerConnection.fromConfigJson(
           id: row.id,
           json: revealed.config,
           status: ConnectionStatus.unknown,

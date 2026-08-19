@@ -39,9 +39,9 @@ typedef EligibleServer = ({ServerId serverId, MediaBackend backend, MediaServerC
 /// ```
 ///
 /// Offline, timeout and transport error all count as not checked. A local
-/// folder and a Pleya Share cannot match on catalogue identity at all, so they
-/// are not eligible: they stay out of the denominator instead of pretending to
-/// have looked.
+/// folder, a Pleya Share and a Pleya Server cannot match on catalogue identity
+/// at all, so they are not eligible: they stay out of the denominator instead
+/// of pretending to have looked.
 class WatchlistAvailabilityResolver {
   WatchlistAvailabilityResolver({
     required this.profileId,
@@ -143,7 +143,16 @@ class WatchlistAvailabilityResolver {
   /// search that could answer the question, so they never count. Reading the
   /// backend off the record rather than off the client matters: an offline
   /// server has no client, and it still has to count in the denominator.
-  static bool _isEligible(EligibleServer server) => server.backend != MediaBackend.local;
+  static bool _isEligible(EligibleServer server) => switch (server.backend) {
+    MediaBackend.plex || MediaBackend.jellyfin => true,
+    // A local folder and a Pleya Share have no guid and no external ids.
+    // Neither does a Pleya Server: `external_ids` is PS-7, so `findByIdentity`
+    // can only ever answer null there. Counting it in the denominator would
+    // make `coverageComplete` mean "asked a server that structurally cannot
+    // answer", which is the exact confusion this predicate exists to prevent.
+    // It becomes eligible in the phase that gives it identity, not before.
+    MediaBackend.local || MediaBackend.pleyaServer => false,
+  };
 
   /// Drop every cached answer, for every profile.
   ///

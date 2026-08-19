@@ -35,6 +35,7 @@ class BackendBadge extends StatelessWidget {
         height: size,
         theme: SvgTheme(currentColor: tint),
       ),
+      MediaBackend.pleyaServer => Image.asset('assets/branding/pleya_mark.png', width: size, height: size),
       MediaBackend.local => Icon(Symbols.folder_rounded, size: size, fill: 1, color: tint),
     };
   }
