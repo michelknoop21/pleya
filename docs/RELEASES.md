@@ -18,15 +18,37 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### New
-- volg één Select-druk van de kaart tot het metadata-antwoord
+<!-- END GENERATED -->
+
+## 2.8.0 · build 233 · 19 August 2026
+
+<!-- commit: a15a230 -->
 
 ### Fixed
-- maak de filterregel met de afstandsbediening bedienbaar
-- open bij Select het item dat de gebruiker ziet, niet de index
-- een dode Select-rij, en een trace die de verkeerde rij aanwees
-- waarschuw niet over gewone drukken, en houd het doel bij de trailing plek
-<!-- END GENERATED -->
+
+- **A row opens the title you were looking at, not the one that took its place.** Rows reload
+  while you are looking at them, and a reload can reorder or drop a card. Until now the app
+  remembered a position, so a title that slid into that slot between the frame you saw and
+  the moment you pressed was the one that opened. It now remembers the title itself. If that
+  title has gone, the press opens nothing rather than the wrong thing, and the next press
+  acts on the card you can see. This applies to phone, tablet and desktop rows; the Apple TV
+  home rows use a different row and are covered by the next build.
+- **Select could stop working on a row entirely.** When a row lost its **View All** card
+  during a refresh, or gained a title while the cursor sat on that card, the row kept
+  pointing at something that was no longer there. Pressing Select then did nothing at all, or
+  opened the whole category instead of the poster under the cursor, until you moved left or
+  right.
+- **The filter line in Requests can be reached with the remote**, and pressing down from it
+  while a search is running now reaches the results instead of doing nothing.
+
+### Notes
+
+- **Groundwork for the wrong-title reports on Apple TV.** Those reports could not be answered
+  from a log, because nothing recorded which card a press resolved to or what happened to it
+  on the way to the screen that opened. A press now leaves a single line covering that whole
+  path, and an unusual one leaves a short timeline instead. Nothing about this changes what
+  you see; it is there so the next report can be answered instead of guessed at.
+
 
 ## 2.8.0 · build 232 · 19 August 2026
 
