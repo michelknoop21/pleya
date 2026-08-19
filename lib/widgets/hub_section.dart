@@ -19,8 +19,10 @@ import '../media/media_hub.dart';
 import '../media/media_item.dart';
 import '../mixins/mounted_set_state_mixin.dart';
 import '../screens/hub_detail_screen.dart';
+import '../utils/app_logger.dart';
 import '../utils/media_navigation_helper.dart';
 import 'focus_builders.dart';
+import 'hub_activation.dart';
 import 'media_card.dart';
 import 'media_card_grid_layout.dart';
 import '../utils/scroll_utils.dart';
@@ -147,6 +149,14 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
   /// Current visual focus index (not tied to Flutter's focus system)
   int _focusedIndex = 0;
 
+  /// What the cursor points at, as an identity rather than a slot.
+  ///
+  /// The index alone cannot survive a refresh: rows reload in place, and an
+  /// item can move or drop out between the frame the user looked at and the
+  /// moment they press. This is the source of truth for activation; the index
+  /// stays in charge of painting and scrolling.
+  HubFocusTarget _focusTarget = const HubFocusNone();
+
   double _itemExtent = 0;
   bool _headerHovering = false;
   double _leadingPaddingFor(bool isTv) => widget.inset
@@ -202,12 +212,87 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
   /// the item is gone — the length clamp in [didUpdateWidget] handles that.
   void _followFocusedItemAcrossUpdate(List<MediaItem> oldItems) {
     if (_focusedIndex < 0 || _focusedIndex >= oldItems.length) return;
-    final focusedKey = oldItems[_focusedIndex].globalKey;
-    final moved = widget.hub.items.indexWhere((item) => item.globalKey == focusedKey);
-    if (moved < 0 || moved == _focusedIndex) return;
+    final focusedKey = hubItemIdentity(oldItems[_focusedIndex]);
+    final moved = widget.hub.items.indexWhere((item) => hubItemIdentity(item) == focusedKey);
+    if (moved < 0) {
+      // The cursor and the item it stood on have come apart. Activation refuses
+      // to guess from here (see [_resolveActivation]); this line says why.
+      final occupant = _focusedIndex < widget.hub.items.length
+          ? hubItemIdentity(widget.hub.items[_focusedIndex])
+          : 'none';
+      appLogger.w(
+        'Hub focus lost its item across a refresh: hub=${widget.hub.id} index=$_focusedIndex '
+        'was=$focusedKey occupant=$occupant items=${widget.hub.items.length}',
+      );
+      return;
+    }
+    if (moved == _focusedIndex) return;
     _focusedIndex = moved;
     _rememberFocus(moved);
     _notifyFocusedItemChanged();
+  }
+
+  /// Points [_focusTarget] at whatever sits at [index] right now.
+  ///
+  /// Called from every deliberate focus move, and from the recovery path after
+  /// a dropped activation: re-pointing is what keeps a single stale item from
+  /// blocking every following press.
+  void _setFocusTarget(int index) {
+    final items = widget.hub.items;
+    if (index >= 0 && index < items.length) {
+      _focusTarget = HubFocusItem(hubItemIdentity(items[index]));
+    } else if (index == items.length && widget.hub.more) {
+      _focusTarget = const HubFocusViewAll();
+    } else {
+      _focusTarget = const HubFocusNone();
+    }
+  }
+
+  String _describeTarget(HubFocusTarget target) => switch (target) {
+    HubFocusItem(:final identity) => identity,
+    HubFocusViewAll() => 'view-all',
+    HubFocusNone() => 'none',
+  };
+
+  /// Resolves one activation and records what it landed on.
+  ///
+  /// Every key-driven entry point goes through here, so "select" and the
+  /// context menu can never disagree about the target, and so there is exactly
+  /// one line in the log per user action that resolved to something.
+  HubActivation _resolveActivation(String action) {
+    final items = widget.hub.items;
+    final activation = resolveHubActivation(
+      items: items,
+      hasMore: widget.hub.more,
+      focusedIndex: _focusedIndex,
+      target: _focusTarget,
+    );
+
+    if (activation.strategy == HubActivationStrategy.staleDropped) {
+      final occupant = _focusedIndex >= 0 && _focusedIndex < items.length
+          ? hubItemIdentity(items[_focusedIndex])
+          : 'none';
+      appLogger.w(
+        'Hub activation dropped, focused item gone after refresh: '
+        'action=$action hub=${widget.hub.id} index=$_focusedIndex '
+        'requested=${_describeTarget(_focusTarget)} occupant=$occupant items=${items.length}',
+      );
+      // Re-point at what is actually on screen. Without this the row would
+      // refuse every following press for as long as the stale identity is held.
+      _setFocusTarget(_focusedIndex);
+      return activation;
+    }
+
+    final item = activation.item;
+    if (item != null) {
+      appLogger.i(
+        'Hub activation: action=$action hub=${widget.hub.id} index=${activation.index} '
+        'requested=${_describeTarget(_focusTarget)} resolved=${hubItemIdentity(item)} '
+        'title="${item.title}" backend=${item.backend.id} server=${item.serverId ?? 'none'} '
+        'itemId=${item.id} strategy=${activation.strategy.name}',
+      );
+    }
+    return activation;
   }
 
   /// Stores the focused position together with the item sitting there, so a
@@ -248,6 +333,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
 
     final clamped = index.clamp(0, _totalItemCount - 1).toInt();
     _focusedIndex = clamped;
+    _setFocusTarget(clamped);
     // Remember this position for this specific hub
     _rememberFocus(clamped);
     _notifyFocusedItemChanged();
@@ -364,6 +450,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
       if (_focusedIndex > 0) {
         setState(() {
           _focusedIndex--;
+          _setFocusTarget(_focusedIndex);
         });
         _rememberFocus(_focusedIndex);
         _notifyFocusedItemChanged();
@@ -381,6 +468,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
       if (_focusedIndex < totalCount - 1) {
         setState(() {
           _focusedIndex++;
+          _setFocusTarget(_focusedIndex);
         });
         _rememberFocus(_focusedIndex);
         _notifyFocusedItemChanged();
@@ -430,19 +518,22 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
   }
 
   void _activateCurrentItem() {
-    if (_focusedIndex == widget.hub.items.length && widget.hub.more) {
+    final activation = _resolveActivation('select');
+    if (activation.strategy == HubActivationStrategy.viewAll) {
       _navigateToHubDetail(context);
       return;
     }
-    if (_focusedIndex >= widget.hub.items.length) return;
-    final item = widget.hub.items[_focusedIndex];
+    final item = activation.item;
+    if (item == null) return;
     _navigateToItem(item);
   }
 
   void _showContextMenuForCurrentItem() {
-    // No context menu for the "View All" card
-    if (_focusedIndex >= widget.hub.items.length) return;
-    _mediaCardKeys[_focusedIndex]?.currentState?.showContextMenu();
+    // Same resolution as select, so the menu can never belong to a different
+    // card than the one an activation would have opened. No menu for "View All".
+    final activation = _resolveActivation('context-menu');
+    if (!activation.opensItem) return;
+    _mediaCardKeys[activation.index]?.currentState?.showContextMenu();
   }
 
   Future<void> _navigateToItem(MediaItem item) async {
@@ -723,6 +814,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     final clamped = index.clamp(0, _totalItemCount - 1).toInt();
     setState(() {
       _focusedIndex = clamped;
+      _setFocusTarget(clamped);
     });
     _rememberFocus(clamped);
     _notifyFocusedItemChanged();
