@@ -2,6 +2,28 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-19] Vier integriteitsgebreken uit de PS-2-scanner
+
+Een externe review vond vier gebreken in de PS-2-servercode. Geen ervan werd door een test gedekt,
+en drie ervan kostten stilzwijgend data of toonden metadata die niet meer bij de bytes op schijf
+hoorde. Het contract is niet aangeraakt.
+
+### Fixed
+- **Een gedeeltelijk gewandelde root veroorzaakt geen `MarkMissing` en geen `PruneEmpty` meer.** `filepath.WalkDir` doet `fs.SkipDir` zodra een map niet te lezen is, en dan ontbreekt de hele subboom in `seenPaths`. `MarkMissing` merkte die bestanden als verdwenen aan en `PruneEmpty` verwijderde daarna hun versies, met `ON DELETE CASCADE` de bestandsrijen erachteraan. De bestaande guard vangt alleen het alles-of-niets-geval: één gezien bestand van vijfduizend passeerde hem volledig. Een root die met een harde fout terugkomt telt nu ook als onvolledige dekking, en dan blijft het opruimen voor de hele bibliotheek achterwege.
+- **Een mislukte analyse laat de versie, de duur en de sporen los**, volgens [DEC-047](DECISIONS.md#dec-047-een-mislukte-analyse-laat-de-versie-los). De faalvariant schreef de nieuwe inhoud weg en liet de metadata van de vorige staan, waardoor `PruneEmpty` het bestand als aanwezig bleef zien. Bij een gestapelde versie wordt de duur herberekend op de delen die het wel overleven.
+- **Een verplaatste sidecar volgt het eigenaarschap dat uit zijn pad volgt.** Gelijke bytes leverden `actionUnchanged` op en dan werd het opnieuw koppelen overgeslagen, terwijl `anchors` zijn kaarten op de map en de basisnaam bouwt. Vindt de sidecar op zijn nieuwe plek geen eigenaar, dan wordt de oude koppeling losgemaakt in plaats van blijven staan.
+- **Een cursor met een verkeerd getypeerde sorteersleutel levert `library.cursor_invalid` op** in plaats van een interne fout. De sleutel ging met een cast de SQL in en klapte daar op een typefout, die gewrapt in de default van `writeStoreError` viel. De numerieke sorteringen worden nu in `DecodeCursor` getoetst; voor `added_at`, waar de sleutel Postgres-tekst is en geen RFC3339, vertaalt een vangnet SQLSTATE `22P02` en `22007` naar dezelfde foutcode. Dat vangnet grijpt alleen met een cursor in het spel, zodat een ontbrekende tabel geen gebruikersfout wordt.
+
+### Changed
+- **De wandeling over een root is injecteerbaar**, net als de prober al was. De testcontainer draait als root, dus een map met `chmod 000` levert daar gewoon zijn inhoud op en een gedeeltelijk gelezen root was anders niet betrouwbaar na te bootsen.
+
+### Tests
+Acht regressietests erbij, vijf bij de fixes en drie uit de eindreview, alle acht eerst zien falen op
+de regel die ze bewaken. Drieëntwintig tests in `internal/scanner` en `internal/catalog` draaien
+zonder één overgeslagen test tegen een echte Postgres en dezelfde gepinde ffmpeg als de
+productie-image. `go test ./...` en `go vet ./...` zijn schoon, en `verify-local.sh` komt op 62
+geslaagd en 0 gefaald.
+
 ## [2026-08-19] G11 zat al in de PS-1-afwijking, dus de matrix wacht op de drift check
 
 Een voorstel om edities als aparte roadmap deviation binnen PS-2 vast te leggen bleek een besluit te
