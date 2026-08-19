@@ -4,10 +4,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
+	"github.com/edde746/plezy/pleya_server/internal/testsupport"
 )
 
 // findMovie geeft het detail van een film op titel.
@@ -46,14 +50,19 @@ func TestArtworkIsServedAndCacheable(t *testing.T) {
 		t.Fatalf("content-type is %q", got)
 	}
 
-	// Artwork is onveranderlijk: een andere afbeelding krijgt een ander id, dus
-	// de ETag mag sterk zijn en de cache lang.
+	// De ETag is sterk en ondoorzichtig. Wat er níét mag staan is immutable: het
+	// pad is stabiel, de bytes erachter niet, en dat verschil is precies waar
+	// TestReplacedArtworkGetsANewValidator over gaat.
 	etag := rec.Header().Get("ETag")
 	if etag == "" || !strings.HasPrefix(etag, `"`) {
 		t.Fatalf("ETag is %q", etag)
 	}
-	if cache := rec.Header().Get("Cache-Control"); !strings.Contains(cache, "immutable") {
-		t.Fatalf("Cache-Control is %q", cache)
+	cache := rec.Header().Get("Cache-Control")
+	if !strings.Contains(cache, "max-age=") {
+		t.Fatalf("Cache-Control is %q, verwacht een max-age", cache)
+	}
+	if strings.Contains(cache, "immutable") {
+		t.Fatalf("Cache-Control is %q; immutable belooft meer dan dit endpoint waarmaakt", cache)
 	}
 
 	notModified := e.do(http.MethodGet, "/pleya/v1/artwork/"+*grease.Artwork.PosterID, nil,
@@ -68,6 +77,85 @@ func TestArtworkIsServedAndCacheable(t *testing.T) {
 		t.Fatalf("onbekend artwork gaf %d, verwacht 404", missing.Code)
 	}
 	e.expectCode(missing, api.CodeNotFound)
+}
+
+// TestReplacedArtworkGetsANewValidator dekt de afbeelding die in plaats wordt
+// vervangen.
+//
+// Dat is het geval waar het id juist niet meebeweegt: het pad blijft hetzelfde,
+// dus de media_files-rij blijft, dus het artwork-id blijft. Een ETag die alleen
+// van dat id afhangt blijft dan staan terwijl de bytes veranderd zijn, en met
+// een immutable-cache erbij ziet een client de oude poster een jaar lang. De
+// validator moet daarom generation volgen en niet alleen identiteit.
+func TestReplacedArtworkGetsANewValidator(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	grease := e.findMovie("Grease")
+	if grease.Artwork.PosterID == nil {
+		t.Fatal("geen poster_id")
+	}
+	posterID := *grease.Artwork.PosterID
+	url := "/pleya/v1/artwork/" + posterID
+
+	before := e.do(http.MethodGet, url, nil)
+	if before.Code != http.StatusOK {
+		t.Fatalf("artwork gaf %d: %s", before.Code, before.Body.String())
+	}
+	oldETag := before.Header().Get("ETag")
+	oldBody := before.Body.String()
+	oldGeneration := e.generation(posterID)
+
+	// Vervangen zoals iemand die een verkeerde poster corrigeert: zelfde naam,
+	// zelfde map, andere inhoud. De mtime gaat expliciet vooruit, want anders
+	// hangt de test aan de tijdsresolutie van het bestandssysteem.
+	poster := filepath.Join(e.root, "films", "Grease (1978)", "poster.jpg")
+	testsupport.WriteFile(t, poster, "een andere afbeelding, met een andere lengte")
+	stamp := time.Now().Add(2 * time.Second)
+	if err := os.Chtimes(poster, stamp, stamp); err != nil {
+		t.Fatal(err)
+	}
+
+	e.rescan()
+
+	// Zonder deze twee controles zou de test ook slagen op een server die het
+	// probleem ontloopt door een nieuw id uit te delen, en dan meet hij iets
+	// anders dan hij belooft.
+	after := e.findMovie("Grease")
+	if after.Artwork.PosterID == nil || *after.Artwork.PosterID != posterID {
+		t.Fatalf("het artwork-id veranderde van %s naar %v; dan bewijst deze test niets",
+			posterID, after.Artwork.PosterID)
+	}
+	newGeneration := e.generation(posterID)
+	if newGeneration <= oldGeneration {
+		t.Fatalf("generation bleef op %d staan; de scanner zag de vervanging niet", newGeneration)
+	}
+
+	current := e.do(http.MethodGet, url, nil)
+	if current.Code != http.StatusOK {
+		t.Fatalf("artwork gaf %d: %s", current.Code, current.Body.String())
+	}
+	if current.Body.String() == oldBody {
+		t.Fatal("de bytes zijn niet veranderd; de opzet van de test klopt niet")
+	}
+	newETag := current.Header().Get("ETag")
+	if newETag == "" || newETag == oldETag {
+		t.Fatalf("ETag bleef %q terwijl de bytes veranderden", newETag)
+	}
+
+	// De bewaarde validator van vóór de vervanging mag geen 304 meer opleveren.
+	stale := e.do(http.MethodGet, url, nil,
+		func(r *http.Request) { r.Header.Set("If-None-Match", oldETag) })
+	if stale.Code != http.StatusOK {
+		t.Fatalf("de oude If-None-Match gaf %d, verwacht 200", stale.Code)
+	}
+
+	// En de nieuwe wel, want anders is revalideren gratis noch nuttig.
+	fresh := e.do(http.MethodGet, url, nil,
+		func(r *http.Request) { r.Header.Set("If-None-Match", newETag) })
+	if fresh.Code != http.StatusNotModified {
+		t.Fatalf("de nieuwe If-None-Match gaf %d, verwacht 304", fresh.Code)
+	}
 }
 
 // TestSubtitleWithBearerAndStreamToken dekt beide autorisatiewegen.

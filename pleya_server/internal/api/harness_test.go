@@ -21,6 +21,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // EnvResponseDir laat de test elk antwoord op schijf zetten, zodat
@@ -51,6 +52,7 @@ type env struct {
 	server  *api.Server
 	store   *catalog.Store
 	auth    *auth.Store
+	pool    *pgxpool.Pool
 	root    string
 	access  string
 	refresh string
@@ -84,20 +86,7 @@ func newEnv(t *testing.T) *env {
 		t.Fatalf("bibliotheken: %v", err)
 	}
 
-	sc := scanner.New(scanner.Options{
-		Store:  store,
-		Prober: ffprobe.New("ffprobe", 60*time.Second),
-		Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn})),
-	})
-	for _, lib := range libs {
-		stats, err := sc.ScanLibrary(ctx, lib, "manual")
-		if err != nil {
-			t.Fatalf("scannen: %v", err)
-		}
-		if stats.Errors != 0 {
-			t.Fatalf("%d fouten tijdens het scannen: %s", stats.Errors, stats.LastError)
-		}
-	}
+	scanAll(t, store, libs)
 
 	serverID, err := authStore.ServerID(ctx)
 	if err != nil {
@@ -135,7 +124,51 @@ func newEnv(t *testing.T) *env {
 		Argon2:          light,
 	})
 
-	return &env{t: t, server: srv, store: store, auth: authStore, root: root, libs: libs, cap: shared}
+	return &env{t: t, server: srv, store: store, auth: authStore, pool: pool,
+		root: root, libs: libs, cap: shared}
+}
+
+// scanAll draait één volledige scanronde over elke bibliotheek.
+func scanAll(t *testing.T, store *catalog.Store, libs []catalog.Library) {
+	t.Helper()
+
+	sc := scanner.New(scanner.Options{
+		Store:  store,
+		Prober: ffprobe.New("ffprobe", 60*time.Second),
+		Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn})),
+	})
+	for _, lib := range libs {
+		stats, err := sc.ScanLibrary(context.Background(), lib, "manual")
+		if err != nil {
+			t.Fatalf("scannen: %v", err)
+		}
+		if stats.Errors != 0 {
+			t.Fatalf("%d fouten tijdens het scannen: %s", stats.Errors, stats.LastError)
+		}
+	}
+}
+
+// rescan draait een tweede ronde, voor tests die een bestand op schijf wijzigen.
+func (e *env) rescan() {
+	e.t.Helper()
+	scanAll(e.t, e.store, e.libs)
+}
+
+// generation leest de generation van een bestand rechtstreeks uit de database.
+//
+// De HTTP-laag toont hem nergens, en dat hoort ook zo: hij is intern. Een test
+// die wil bewijzen dat de validator de bytes volgt en niet het id moet hem wel
+// kunnen zien.
+func (e *env) generation(fileID string) int64 {
+	e.t.Helper()
+
+	var generation int64
+	err := e.pool.QueryRow(context.Background(),
+		`SELECT generation FROM media_files WHERE id = $1`, fileID).Scan(&generation)
+	if err != nil {
+		e.t.Fatalf("generation van %s lezen: %v", fileID, err)
+	}
+	return generation
 }
 
 // shared is één opvangpunt voor alle tests in dit pakket.

@@ -372,9 +372,16 @@ func (s *Store) ItemCount(ctx context.Context, libraryID *id.ID, kinds []string)
 // FileOnDisk beschrijft waar een bestand staat, voor de endpoints die bytes
 // leveren.
 type FileOnDisk struct {
-	ID       id.ID
-	AbsPath  string
-	Role     FileRole
+	ID      id.ID
+	AbsPath string
+	Role    FileRole
+
+	// Generation loopt op zodra de scanner het bestand opnieuw heeft
+	// vastgelegd. Het id blijft daarbij staan: een bestand dat in plaats wordt
+	// vervangen houdt zijn media_files-rij. Een endpoint dat bytes levert heeft
+	// dus allebei nodig om te zien of het nog om dezelfde inhoud gaat.
+	Generation int64
+
 	Format   string
 	Language string
 }
@@ -383,11 +390,11 @@ type FileOnDisk struct {
 func (s *Store) ArtworkFile(ctx context.Context, artworkID id.ID) (FileOnDisk, error) {
 	var f FileOnDisk
 	err := s.pool.QueryRow(ctx, `
-		SELECT f.id, l.root_path || '/' || f.relative_path
+		SELECT f.id, l.root_path || '/' || f.relative_path, f.generation
 		FROM media_files f
 		JOIN storage_locations l ON l.id = f.storage_location_id
 		WHERE f.id = $1 AND f.role = 'artwork' AND f.missing_since IS NULL`, artworkID).
-		Scan(&f.ID, &f.AbsPath)
+		Scan(&f.ID, &f.AbsPath, &f.Generation)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return f, ErrNotFound
 	}
@@ -403,13 +410,13 @@ func (s *Store) SubtitleFile(ctx context.Context, streamID id.ID) (FileOnDisk, i
 	var f FileOnDisk
 	var versionID id.ID
 	err := s.pool.QueryRow(ctx, `
-		SELECT st.file_id, l.root_path || '/' || fl.relative_path,
+		SELECT st.file_id, l.root_path || '/' || fl.relative_path, fl.generation,
 		       coalesce(st.subtitle_format, ''), coalesce(st.language, ''), st.version_id
 		FROM media_streams st
 		JOIN media_files fl ON fl.id = st.file_id
 		JOIN storage_locations l ON l.id = fl.storage_location_id
 		WHERE st.id = $1 AND st.is_external AND fl.missing_since IS NULL`, streamID).
-		Scan(&f.ID, &f.AbsPath, &f.Format, &f.Language, &versionID)
+		Scan(&f.ID, &f.AbsPath, &f.Generation, &f.Format, &f.Language, &versionID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return f, id.Nil, ErrNotFound
 	}

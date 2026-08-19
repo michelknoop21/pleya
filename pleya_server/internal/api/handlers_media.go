@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
@@ -48,12 +49,22 @@ func (s *Server) handleArtwork(w http.ResponseWriter, r *http.Request) {
 		contentType = "application/octet-stream"
 	}
 
-	// Artwork is onveranderlijk: een andere afbeelding krijgt een ander id. De
-	// ETag mag daarom over het id gaan en niet over de bytes, en de
-	// Cache-Control mag lang zijn.
-	etag := `"` + shortHash(file.ID.String()) + `"`
+	// De validator hangt aan het id én aan generation. Het id alleen is niet
+	// genoeg: een afbeelding die in plaats wordt vervangen houdt zijn
+	// media_files-rij en dus zijn id, terwijl de bytes veranderen. generation
+	// loopt bij zo'n vervanging wel op, want de scanner legt het bestand opnieuw
+	// vast.
+	//
+	// Dit herstelt de belofte bij de ETag-header voor dit endpoint en zegt niets
+	// over de validator voor mediabytes. Of generation dáár de juiste basis is,
+	// is poort 4 uit docs/pleya-server-gates.md, en die staat open tot PS-4.
+	etag := `"` + shortHash(file.ID.String()+":"+strconv.FormatInt(file.Generation, 10)) + `"`
 	w.Header().Set("ETag", etag)
-	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	// Geen immutable: dezelfde URL kan andere bytes gaan leveren zodra de
+	// afbeelding op schijf vervangen wordt. Cachen mag, blijven geloven zonder
+	// te vragen niet. Een revalidatie die niets oplevert is een 304 en kost
+	// vrijwel niets; een poster die een jaar verkeerd blijft staan wel.
+	w.Header().Set("Cache-Control", "public, max-age=300, must-revalidate")
 
 	if match := r.Header.Get("If-None-Match"); match != "" && strings.Contains(match, etag) {
 		w.WriteHeader(http.StatusNotModified)
