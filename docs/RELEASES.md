@@ -9,6 +9,12 @@ continuously while the version stays at 2.8.0. The internal engineering log live
 Every published entry carries the commit it was cut at. `scripts/gen_release_notes.sh`
 reads the topmost anchor and fills the block below with everything committed since.
 
+Only `### New`, `### Improved`, `### Fixed` and `### Notes` render on pleya.app; any other
+`###` heading is dropped there without a word (`website/src/lib/server/releases.ts`).
+`fastlane notes` reads this file straight, so such a heading still reaches TestFlight. That
+is how "Worth checking" is meant to work, and it is the reason a note for everyone belongs
+under `Notes`.
+
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
@@ -64,7 +70,7 @@ Two things in this build are easier to break than to notice, so a look at them h
   Pick a language partway through an episode, then start the next one. It should open in the
   language you picked.
 
-### Known in this build
+### Notes
 
 Moving a mouse or trackpad towards the sidebar claims the strip beside it as soon as the
 pointer arrives, so a control the page puts there, such as **Recommended** on a library page,
