@@ -60,7 +60,9 @@ Pleya nergens voor gebruikt. Ze komen mee via een keten van harde `Depends` vana
 
 **Wat zoeken opleverde.** Op de echte bibliotheek gaf `sea` 24 bruikbare treffers naast 396
 seizoenen, en `season` er 5 naast dezelfde 396. Dat is nu weg: seizoenen blijven eruit tenzij er met
-`kind=season` om gevraagd wordt.
+`kind=season` om gevraagd wordt. Geverifieerd tegen de draaiende container, geauthenticeerd: `sea`
+geeft 24 treffers zonder seizoen, `kind=season` levert ze alsnog, en zonder token is het `401` tegen
+`200` met token.
 
 ## Eerder op 18 augustus: PS-1, het wire-contract
 
