@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_source_info.dart';
+import 'package:pleya/media/track_language_choice.dart';
 import 'package:pleya/services/source_stream_language.dart';
 
 /// While Plex transcodes, picking a subtitle does not swap an mpv track: it
@@ -83,6 +84,32 @@ void main() {
     test('an untagged or unknown stream resolves to nothing', () {
       expect(audioStreamLanguage([audio(id: 2)], 2), isNull);
       expect(audioStreamLanguage([audio(id: 2, languageCode: 'eng')], 5), isNull);
+    });
+  });
+
+  group('Plex preferences for a remembered choice', () {
+    TrackLanguageChoice choice({String? language, bool forced = false, bool off = false}) =>
+        TrackLanguageChoice(subtitleLanguage: language, subtitleForced: forced, subtitlesOff: off, updatedAt: 0);
+
+    test('a chosen language asks the show for all subtitles', () {
+      final c = choice(language: 'nld');
+      expect(c.plexSubtitleMode, 2);
+      expect(c.plexSubtitleLanguage, 'nld');
+    });
+
+    test('a forced choice asks for forced only', () {
+      expect(choice(language: 'nld', forced: true).plexSubtitleMode, 1);
+    });
+
+    test('an explicit off turns them off and clears the language', () {
+      final c = choice(off: true);
+      expect(c.plexSubtitleMode, 0);
+      expect(c.plexSubtitleLanguage, '');
+    });
+
+    test('never having chosen leaves the show alone', () {
+      final c = choice();
+      expect(c.plexSubtitleMode, isNull);
     });
   });
 }

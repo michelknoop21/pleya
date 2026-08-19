@@ -135,34 +135,70 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
   ///
   /// Best effort: a stream without a language code says nothing about what to
   /// pick next time, so the previous choice is left alone rather than cleared.
-  Future<void> _rememberSwitchedSourceLanguages({int? subtitleStreamId, int? audioStreamId}) async {
-    final settings = await SettingsService.getInstance();
-    if (!settings.read(SettingsService.rememberTrackSelections)) return;
-    if (!mounted) return;
+  Future<void> _rememberSwitchedSourceLanguages({
+    int? subtitleStreamId,
+    int? audioStreamId,
+    PlexClient? plexClient,
+  }) async {
+    // Never let remembering break the switch it is attached to: the user asked
+    // for a different subtitle, not for a bookkeeping guarantee.
+    try {
+      final settings = await SettingsService.getInstance();
+      if (!settings.read(SettingsService.rememberTrackSelections)) return;
+      if (!mounted) return;
 
-    if (subtitleStreamId != null) {
-      if (subtitleStreamId == 0) {
-        // Turning subtitles off here is as much a decision as picking one.
-        await TrackPreferenceStore.saveSubtitle(_currentMetadata, off: true);
-      } else {
-        final choice = subtitleStreamLanguage(_sourceSubtitleTracksForControls(), subtitleStreamId);
-        if (choice != null) {
-          await TrackPreferenceStore.saveSubtitle(
-            _currentMetadata,
-            language: choice.language,
-            title: choice.title,
-            forced: choice.forced,
-          );
+      if (subtitleStreamId != null) {
+        if (subtitleStreamId == 0) {
+          // Turning subtitles off here is as much a decision as picking one.
+          await TrackPreferenceStore.saveSubtitle(_currentMetadata, off: true);
+        } else {
+          final choice = subtitleStreamLanguage(_sourceSubtitleTracksForControls(), subtitleStreamId);
+          if (choice != null) {
+            await TrackPreferenceStore.saveSubtitle(
+              _currentMetadata,
+              language: choice.language,
+              title: choice.title,
+              forced: choice.forced,
+            );
+          }
         }
       }
-    }
 
-    if (audioStreamId != null) {
-      final choice = audioStreamLanguage(_currentMediaInfo?.audioTracks ?? const <MediaAudioTrack>[], audioStreamId);
-      if (choice != null) {
-        await TrackPreferenceStore.saveAudio(_currentMetadata, language: choice.language, title: choice.title);
+      if (audioStreamId != null) {
+        final choice = audioStreamLanguage(_currentMediaInfo?.audioTracks ?? const <MediaAudioTrack>[], audioStreamId);
+        if (choice != null) {
+          await TrackPreferenceStore.saveAudio(_currentMetadata, language: choice.language, title: choice.title);
+        }
       }
+
+      await _mirrorSwitchedLanguageToSeries(plexClient);
+    } catch (e) {
+      appLogger.w('Failed to remember the switched source language', error: e);
     }
+  }
+
+  /// Push the freshly remembered choice onto the show itself, the way the
+  /// direct-play path does through [TrackManager].
+  ///
+  /// This is what makes the *next* episode start correctly while transcoding.
+  /// The local memory only helps where mpv can still see selectable subtitle
+  /// tracks; when Plex burns the subtitle into the video the decision has to be
+  /// the server's, and `selectStreams` above only covers the parts of this one
+  /// episode. Episodes only: a movie has no show to carry the choice.
+  Future<void> _mirrorSwitchedLanguageToSeries(PlexClient? plexClient) async {
+    if (plexClient == null) return;
+    final seriesRatingKey = _currentMetadata.grandparentId;
+    if (seriesRatingKey == null || seriesRatingKey.isEmpty) return;
+
+    final choice = await TrackPreferenceStore.read(_currentMetadata);
+    if (choice == null || choice.isEmpty) return;
+
+    await _plexSeriesLanguagePersister(() => plexClient)(
+      seriesRatingKey: seriesRatingKey,
+      audioLanguage: choice.audioLanguage,
+      subtitleLanguage: choice.plexSubtitleLanguage,
+      subtitleMode: choice.plexSubtitleMode,
+    );
   }
 
   Future<void> _switchPlaybackSource({
@@ -224,6 +260,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         await _rememberSwitchedSourceLanguages(
           subtitleStreamId: isSubtitleChange ? effectiveSubtitleStreamId : null,
           audioStreamId: isAudioChange ? effectiveAudioStreamId : null,
+          plexClient: streamSelectClient,
         );
       }
 

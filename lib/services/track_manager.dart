@@ -468,13 +468,8 @@ class TrackManager {
       await persist(
         seriesRatingKey: seriesRatingKey,
         audioLanguage: choice.audioLanguage,
-        subtitleLanguage: choice.subtitlesOff ? '' : choice.subtitleLanguage,
-        subtitleMode: switch (choice) {
-          _ when !choice.hasSubtitle => null,
-          _ when choice.subtitlesOff => 0,
-          _ when choice.subtitleForced => 1,
-          _ => 2,
-        },
+        subtitleLanguage: choice.plexSubtitleLanguage,
+        subtitleMode: choice.plexSubtitleMode,
       );
     } catch (e) {
       appLogger.w('Failed to mirror language choice onto the series', error: e);
