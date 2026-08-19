@@ -22,7 +22,9 @@ reads the topmost anchor and fills the block below with everything committed sin
   subtitle into the picture and there is no track left for the app to pick. Burned-in
   subtitles and streaming from outside the house both force transcoding, so this was exactly
   the case where you were most likely to be choosing a subtitle. Audio language went through
-  the same gap.
+  the same gap. Switching twice in quick succession no longer risks filing the choice under
+  the wrong title, and the subtitle now changes without waiting on a round trip to the
+  server first.
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 228 · 18 August 2026
