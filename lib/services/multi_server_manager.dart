@@ -14,6 +14,7 @@ import 'local_folder_client.dart';
 import 'secure_folder_service.dart';
 import 'pleya_share/pleya_share_client.dart';
 import 'pleya_share/pleya_share_host_service.dart';
+import 'pleya_server_client.dart';
 import 'plex_client.dart';
 import 'server_matchable_client.dart';
 import '../models/plex/plex_config.dart';
@@ -34,6 +35,13 @@ import 'storage_service.dart';
 class MultiServerManager {
   FutureOr<void> Function(JellyfinConnection connection)? onJellyfinConnectionUpdated;
   FutureOr<void> Function(PleyaShareConnection connection)? onPleyaShareConnectionUpdated;
+
+  /// Persists a Pleya Server connection whose refresh token has rotated.
+  ///
+  /// Not optional in practice. The protocol retires a refresh token the moment
+  /// it is used, so a rotation that is not written back leaves the row holding a
+  /// dead token and the next launch spends it on a revocation.
+  FutureOr<void> Function(PleyaServerConnection connection)? onPleyaServerConnectionUpdated;
 
   final Map<String, MediaServerClient> _clients = {};
 
@@ -654,6 +662,56 @@ class MultiServerManager {
       appLogger.e('Failed to add Jellyfin server ${connection.serverName}', error: e, stackTrace: stackTrace);
       return false;
     }
+  }
+
+  /// Add a Pleya Server connection as a media source.
+  ///
+  /// One endpoint, one identity, so this is closer to the Jellyfin path than to
+  /// the Plex one: no candidate race, no discovery, and the connection id is
+  /// the server id.
+  ///
+  /// The health probe runs before the client counts as added, so a server that
+  /// is up with a dead session lands on [HealthStatus.authError] and gets the
+  /// re-auth banner rather than being hidden as offline.
+  Future<bool> addPleyaServerConnection(PleyaServerConnection connection) async {
+    try {
+      final client = PleyaServerClient.create(
+        connection,
+        onConnectionUpdated: (updated) async {
+          final persist = onPleyaServerConnectionUpdated;
+          if (persist == null) return;
+          try {
+            await Future.sync(() => persist(updated));
+          } catch (e, st) {
+            appLogger.w('Failed to persist Pleya Server connection update', error: e, stackTrace: st);
+          }
+        },
+      );
+      final serverId = connection.serverId;
+      final oldClient = _clients[serverId];
+      if (oldClient != null) _closeClient(oldClient);
+      _clients[serverId] = client;
+
+      final health = await client.checkHealth();
+      _applyHealth(ServerId(serverId), health);
+      final healthy = health == HealthStatus.online;
+      appLogger.i('Added Pleya Server: ${connection.serverName}${healthy ? '' : ' ($health)'}');
+      if (_connectivitySubscription == null && healthy) {
+        _startNetworkMonitoring();
+      }
+      return healthy;
+    } catch (e, stackTrace) {
+      appLogger.e('Failed to add Pleya Server ${connection.serverName}', error: e, stackTrace: stackTrace);
+      return false;
+    }
+  }
+
+  /// Tear down a Pleya Server source's runtime client.
+  void removePleyaServerSource(PleyaServerConnection connection) {
+    final client = _clients.remove(connection.serverId);
+    if (client != null) _closeClient(client);
+    _serverStatus.remove(connection.serverId);
+    _statusController.add(Map.from(_serverStatus));
   }
 
   /// Add a local folder source. Always "online" — no health check needed.

@@ -4829,6 +4829,54 @@ class TranslationsAddServerEn {
 	/// en: 'Sign in to a Jellyfin server. Binds to ${name}.'
 	String connectToJellyfinCardSubtitleScoped({required Object name}) => 'Sign in to a Jellyfin server. Binds to ${name}.';
 
+	/// en: 'Connect to Pleya Server'
+	String get connectToPleyaServerCard => 'Connect to Pleya Server';
+
+	/// en: 'Your own server. Enter its address to continue.'
+	String get connectToPleyaServerCardSubtitle => 'Your own server. Enter its address to continue.';
+
+	/// en: 'Sign in to a Pleya Server. Binds to ${name}.'
+	String connectToPleyaServerCardSubtitleScoped({required Object name}) => 'Sign in to a Pleya Server. Binds to ${name}.';
+
+	/// en: 'Add Pleya Server'
+	String get addPleyaServerTitle => 'Add Pleya Server';
+
+	/// en: 'Enter your Pleya Server address'
+	String get enterPleyaServerUrlError => 'Enter your Pleya Server address';
+
+	/// en: 'Server address'
+	String get pleyaServerAddressLabel => 'Server address';
+
+	/// en: 'http://192.168.1.10:8832'
+	String get pleyaServerAddressHint => 'http://192.168.1.10:8832';
+
+	/// en: 'Continue'
+	String get pleyaServerFindServer => 'Continue';
+
+	/// en: 'Change server'
+	String get pleyaServerChangeServer => 'Change server';
+
+	/// en: 'First run'
+	String get pleyaServerSetupTitle => 'First run';
+
+	/// en: 'This server has no owner yet. The setup code is printed on its console at first start.'
+	String get pleyaServerSetupExplainer => 'This server has no owner yet. The setup code is printed on its console at first start.';
+
+	/// en: 'Setup code'
+	String get pleyaServerSetupCodeLabel => 'Setup code';
+
+	/// en: 'Create owner'
+	String get pleyaServerCreateOwner => 'Create owner';
+
+	/// en: 'Choose a password of at least 8 characters'
+	String get pleyaServerPasswordTooShort => 'Choose a password of at least 8 characters';
+
+	/// en: 'This server does not accept a password sign-in. Update Pleya to a version that speaks its method.'
+	String get pleyaServerNoPasswordMethod => 'This server does not accept a password sign-in. Update Pleya to a version that speaks its method.';
+
+	/// en: 'Connected to ${name}'
+	String pleyaServerConnected({required Object name}) => 'Connected to ${name}';
+
 	/// en: 'Borrow from another profile'
 	String get borrowFromAnotherProfile => 'Borrow from another profile';
 
@@ -7334,6 +7382,22 @@ extension on Translations {
 			'addServer.connectToJellyfinCard' => 'Connect to Jellyfin',
 			'addServer.connectToJellyfinCardSubtitle' => 'Enter your server URL, username, and password.',
 			'addServer.connectToJellyfinCardSubtitleScoped' => ({required Object name}) => 'Sign in to a Jellyfin server. Binds to ${name}.',
+			'addServer.connectToPleyaServerCard' => 'Connect to Pleya Server',
+			'addServer.connectToPleyaServerCardSubtitle' => 'Your own server. Enter its address to continue.',
+			'addServer.connectToPleyaServerCardSubtitleScoped' => ({required Object name}) => 'Sign in to a Pleya Server. Binds to ${name}.',
+			'addServer.addPleyaServerTitle' => 'Add Pleya Server',
+			'addServer.enterPleyaServerUrlError' => 'Enter your Pleya Server address',
+			'addServer.pleyaServerAddressLabel' => 'Server address',
+			'addServer.pleyaServerAddressHint' => 'http://192.168.1.10:8832',
+			'addServer.pleyaServerFindServer' => 'Continue',
+			'addServer.pleyaServerChangeServer' => 'Change server',
+			'addServer.pleyaServerSetupTitle' => 'First run',
+			'addServer.pleyaServerSetupExplainer' => 'This server has no owner yet. The setup code is printed on its console at first start.',
+			'addServer.pleyaServerSetupCodeLabel' => 'Setup code',
+			'addServer.pleyaServerCreateOwner' => 'Create owner',
+			'addServer.pleyaServerPasswordTooShort' => 'Choose a password of at least 8 characters',
+			'addServer.pleyaServerNoPasswordMethod' => 'This server does not accept a password sign-in. Update Pleya to a version that speaks its method.',
+			'addServer.pleyaServerConnected' => ({required Object name}) => 'Connected to ${name}',
 			'addServer.borrowFromAnotherProfile' => 'Borrow from another profile',
 			'addServer.borrowFromAnotherProfileSubtitle' => 'Reuse another profile\'s connection. PIN-protected profiles require a PIN.',
 			'addLocalFolder.cardTitle' => 'Local Folder',

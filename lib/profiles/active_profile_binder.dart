@@ -496,11 +496,8 @@ class ActiveProfileBinder {
           expected.add(conn.id);
           futures.add(_bindPleyaShare(conn));
         case PleyaServerConnection():
-          // Known to the profile, not yet bound: registration follows once
-          // PleyaServerClient exists. Listing it as expected-but-not-visible
-          // is the truthful state and keeps the "profile has no server"
-          // banner honest.
           expected.add(conn.serverId);
+          futures.add(_bindPleyaServer(conn));
       }
     }
     final results = await Future.wait(futures);
@@ -887,6 +884,17 @@ class ActiveProfileBinder {
       return _ProfileBindResult.visible({conn.id});
     }
     return _ProfileBindResult(visibleServerIds: const {}, expectedServerIds: {conn.id});
+  }
+
+  /// A Pleya Server binds like Jellyfin: one endpoint, one identity, and it
+  /// stays in the visibility filter on an auth error so the re-auth banner can
+  /// surface it instead of hiding the profile's only server.
+  Future<_ProfileBindResult> _bindPleyaServer(PleyaServerConnection conn) async {
+    final ok = await serverManager.addPleyaServerConnection(conn);
+    if (ok || serverManager.authErrorServerIds.contains(conn.serverId)) {
+      return _ProfileBindResult.visible({conn.serverId});
+    }
+    return _ProfileBindResult(visibleServerIds: const {}, expectedServerIds: {conn.serverId});
   }
 
   Future<_ProfileBindResult> _bindPleyaShare(PleyaShareConnection conn) async {
