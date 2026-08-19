@@ -102,11 +102,26 @@ bool _hasOpaqueSurface(WidgetTester tester) {
 /// [main_screen.dart]'s Stack: content first, rail on top at left: 0. Returns a
 /// reader for the number of taps that reached the content underneath.
 ///
+/// What the stand-in content underneath the rail received. Two separate
+/// receivers, because the two failures are opposites: the hero must never be
+/// activated by a navigation interaction, and the control must never *stop*
+/// being reachable because the rail reserved the strip it sits in.
+class _ContentProbe {
+  int heroTaps = 0;
+  int controlTaps = 0;
+  int controlHovers = 0;
+}
+
+/// Centre of [_ContentProbe.controlTaps]' receiver: a content control sitting in
+/// the strip between the collapsed and the expanded rail, where a library page
+/// puts Recommended/Browse/Collections.
+const _contentControlCenter = Offset(150, 300);
+
 /// The contract these tests hold is not "the box is N wide" but "one interaction
 /// with the navigation never does something in the content underneath", so they
 /// tap coordinates and count what arrives, and never read the rail's private
 /// state or its hit-test flags.
-Future<int Function()> _pumpRailOverContent(
+Future<_ContentProbe> _pumpRailOverContent(
   WidgetTester tester, {
   MonoTokens themeTokens = _testTokens,
   List<NavigationTabId>? selected,
@@ -126,7 +141,7 @@ Future<int Function()> _pumpRailOverContent(
   final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
   addTearDown(multiServerProvider.dispose);
 
-  var contentTaps = 0;
+  final probe = _ContentProbe();
 
   await tester.pumpWidget(
     TranslationProvider(
@@ -146,8 +161,24 @@ Future<int Function()> _pumpRailOverContent(
                 Positioned.fill(
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => contentTaps++,
+                    onTap: () => probe.heroTaps++,
                     child: const SizedBox.expand(),
+                  ),
+                ),
+                // Stand-in for a control the content puts right beside the shut
+                // rail, such as the Recommended tab on a library page.
+                Positioned(
+                  left: _contentControlCenter.dx - 30,
+                  top: _contentControlCenter.dy - 22,
+                  width: 60,
+                  height: 44,
+                  child: MouseRegion(
+                    onEnter: (_) => probe.controlHovers++,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => probe.controlTaps++,
+                      child: const SizedBox.expand(),
+                    ),
                   ),
                 ),
                 Positioned(
@@ -168,7 +199,7 @@ Future<int Function()> _pumpRailOverContent(
     ),
   );
   await tester.pumpAndSettle();
-  return () => contentTaps;
+  return probe;
 }
 
 /// Width of the panel as painted right now.
@@ -642,7 +673,7 @@ void main() {
   group('pointer ownership: the band between the collapsed and expanded rail', () {
     // x=150 sits in the strip that is menu when the rail is open and content
     // when it is shut. Who owns it must follow from what the user can see, not
-    // from hover history or from where a 200ms animation happens to be.
+    // from hover history and not from a width the rail might reach later.
     const bandX = 150.0;
     // Outside what the panel paints 60ms into a 200ms easeOutCubic (~172px),
     // so the mid-animation probes are not vacuous.
@@ -650,35 +681,72 @@ void main() {
 
     testWidgets('a tap on the collapsed rail never reaches the content underneath', (tester) async {
       final selected = <NavigationTabId>[];
-      final contentTaps = await _pumpRailOverContent(tester, selected: selected);
+      final probe = await _pumpRailOverContent(tester, selected: selected);
       expect(_railPaintedWidth(tester), SideNavigationRailState.collapsedWidth);
 
       await tester.tapAt(Offset(40, _searchRowY(tester)));
       await tester.pumpAndSettle();
 
-      expect(contentTaps(), 0);
+      expect(probe.heroTaps, 0);
       expect(selected, isEmpty, reason: 'the first touch opens the rail, it does not navigate');
       expect(_railPaintedWidth(tester), SideNavigationRailState.expandedWidth);
     });
 
-    testWidgets('a pointer entering the band opens the rail and the tap activates the menu item', (tester) async {
-      final selected = <NavigationTabId>[];
-      final contentTaps = await _pumpRailOverContent(tester, selected: selected);
-      expect(_railPaintedWidth(tester), SideNavigationRailState.collapsedWidth, reason: 'at rest x=$bandX is content');
+    testWidgets('a shut rail does not reserve the band: content there stays hoverable and clickable', (tester) async {
+      // The regression this pins: claiming everything up to the expanded width
+      // the moment a pointer entered it made the Recommended tab on a library
+      // page unreachable on macOS. Approaching it opened the menu, which then
+      // swallowed the click and slid the tab out from under the cursor.
+      final probe = await _pumpRailOverContent(tester);
+      expect(_railPaintedWidth(tester), SideNavigationRailState.collapsedWidth);
 
-      await _hoverAt(tester, Offset(bandX, _searchRowY(tester)));
+      // Straight at the control from the far corner. The pointer never crosses
+      // the collapsed rail, so nothing has activated the navigation.
+      await _hoverAt(tester, _contentControlCenter);
       await tester.pumpAndSettle();
+
+      expect(
+        _railPaintedWidth(tester),
+        SideNavigationRailState.collapsedWidth,
+        reason: 'hovering content beside a shut rail is not entering the menu',
+      );
+      expect(probe.controlHovers, 1, reason: 'the control must still see the pointer');
+
+      await tester.tapAt(_contentControlCenter);
+      await tester.pumpAndSettle();
+
+      expect(probe.controlTaps, 1);
+      expect(probe.heroTaps, 0);
+    });
+
+    testWidgets('entering over the rail hands it the band, and the pointer cannot outrun it', (tester) async {
+      // The opposite failure, and the reason the band exists at all: once the
+      // user is genuinely in the menu, racing ahead of the easeOutCubic must not
+      // drop the pointer back onto the content and start the collapse timer.
+      final selected = <NavigationTabId>[];
+      final probe = await _pumpRailOverContent(tester, themeTokens: _motionTokens, selected: selected);
+      final y = _searchRowY(tester);
+
+      final gesture = await _hoverAt(tester, Offset(40, y));
+      await tester.pump(const Duration(milliseconds: 60));
+
+      final painted = _railPaintedWidth(tester);
+      expect(painted, lessThan(probeX), reason: 'the pointer must arrive ahead of the paint for this to mean anything');
+
+      await gesture.moveTo(Offset(probeX, y));
+      await tester.pumpAndSettle();
+
       expect(_railPaintedWidth(tester), SideNavigationRailState.expandedWidth);
 
-      await tester.tapAt(Offset(bandX, _searchRowY(tester)));
+      await tester.tapAt(Offset(bandX, y));
       await tester.pumpAndSettle();
 
       expect(selected, [NavigationTabId.search]);
-      expect(contentTaps(), 0);
+      expect(probe.heroTaps, 0);
     });
 
     testWidgets('a tap while the rail is opening never reaches the content underneath', (tester) async {
-      final contentTaps = await _pumpRailOverContent(tester, themeTokens: _motionTokens);
+      final probe = await _pumpRailOverContent(tester, themeTokens: _motionTokens);
       final y = _searchRowY(tester);
 
       await _hoverAt(tester, Offset(40, y));
@@ -691,7 +759,7 @@ void main() {
       await tester.tapAt(Offset(probeX, y));
       await tester.pumpAndSettle();
 
-      expect(contentTaps(), 0);
+      expect(probe.heroTaps, 0);
     });
 
     testWidgets('a row stays live while the rail is closing over it', (tester) async {
@@ -700,7 +768,7 @@ void main() {
       // A click on a plainly visible menu item then did nothing, or slipped past
       // the shrinking edge into the content.
       final selected = <NavigationTabId>[];
-      final contentTaps = await _pumpRailOverContent(tester, themeTokens: _motionTokens, selected: selected);
+      final probe = await _pumpRailOverContent(tester, themeTokens: _motionTokens, selected: selected);
       final y = _searchRowY(tester);
 
       final gesture = await _hoverAt(tester, Offset(40, y));
@@ -723,20 +791,20 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(selected, isNotEmpty, reason: 'a visible row is a live row');
-      expect(contentTaps(), 0);
+      expect(probe.heroTaps, 0);
     });
 
     testWidgets('a settled collapsed rail leaves the band clickable', (tester) async {
       // The guard against over-fixing: no permanent dead zone over the content.
-      // tapAt synthesizes a touch pointer, so no hover precedes it — the rail is
+      // tapAt synthesizes a touch pointer, so no hover precedes it, so the rail is
       // shut and x=$bandX is genuinely content.
-      final contentTaps = await _pumpRailOverContent(tester);
+      final probe = await _pumpRailOverContent(tester);
       expect(_railPaintedWidth(tester), SideNavigationRailState.collapsedWidth);
 
       await tester.tapAt(const Offset(bandX, 300));
       await tester.pumpAndSettle();
 
-      expect(contentTaps(), 1);
+      expect(probe.controlTaps, 1);
       expect(_railPaintedWidth(tester), SideNavigationRailState.collapsedWidth);
     });
   });

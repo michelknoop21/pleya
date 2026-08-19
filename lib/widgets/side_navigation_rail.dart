@@ -695,10 +695,11 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     // The width the rail is heading for, flipped synchronously with
     // [_shouldExpand]; the panel below animates towards it over [panelMotion].
     final railTargetWidth = isCollapsed ? effectiveCollapsedWidth : expandedWidth;
-    // The strip the rail can ever occupy. Hover anywhere inside it means "the
-    // menu", so the pointer can't outrun the expansion and land on the content.
-    // On TV there is no pointer, so the band is exactly the rail: nothing may
-    // hang over the spotlight.
+    // The box the layers below are positioned in: wide enough to hold the rail
+    // at full width. It is a container, not a claim. What the rail actually owns
+    // at any moment is `owned` below, and while the rail sits shut that is the
+    // collapsed rail and nothing more. On TV there is no pointer, so the box is
+    // exactly the rail: nothing may hang over the spotlight.
     final bandWidth = PlatformDetector.isTV() ? railTargetWidth : expandedWidth;
     // One duration for the panel and for the mirror tween that tracks it. They
     // must not drift, or the hit box stops matching the pixels.
@@ -761,9 +762,14 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
             duration: panelMotion,
             curve: Curves.easeOutCubic,
             builder: (context, paintedWidth, _) {
-              // Never narrower than the pixels; on expansion the full target
-              // from frame one. A click on a label that has not finished
-              // sliding in is a no-op, not something in the content underneath.
+              // What the rail owns right now, and the whole of the ownership
+              // rule in one line. Shut and idle the target is the collapsed
+              // rail, so this is 80 and the strip beside it belongs to the
+              // content. Once a pointer has entered over the rail the target is
+              // already the expanded width, so ownership jumps there on the
+              // first frame and the pointer cannot outrun the easeOutCubic.
+              // Collapsing, the target drops back while the paint lags, so the
+              // pixels still on screen stay owned until they are gone.
               final owned = paintedWidth < railTargetWidth ? railTargetWidth : paintedWidth;
               // The rows are live for as long as they are visible. Keying this
               // off `isCollapsed` killed them the instant the collapse timer
@@ -1006,13 +1012,25 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                         ),
                       ),
                     ),
-                    // Layer 3 — watches the whole band and takes nothing. A
+                    // Layer 3 — watches what the rail owns and takes nothing. A
                     // translucent MouseRegion joins the hit path (so the
-                    // MouseTracker fires enter/exit across the full band) while its
-                    // hitTest returns false, so the Stack keeps walking down to the
-                    // panel and out to the content. It registers no gesture
-                    // recognizer, so nothing here competes with the hero.
-                    Positioned.fill(
+                    // MouseTracker fires enter/exit across the whole of it) while
+                    // its hitTest returns false, so the Stack keeps walking down
+                    // to the panel and out to the content. It registers no
+                    // gesture recognizer, so nothing here competes with the hero.
+                    //
+                    // Sized to `owned`, never to [bandWidth]. A permanent
+                    // expanded-width watcher turned every approach to a control
+                    // beside the shut rail into an entry into the menu, which
+                    // then swallowed the click and slid the control out from
+                    // under the cursor: the Recommended tab on a library page
+                    // became unclickable on macOS. Ownership is earned by
+                    // entering over the rail, not reserved in advance.
+                    Positioned(
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      width: owned,
                       child: MouseRegion(
                         opaque: false,
                         hitTestBehavior: HitTestBehavior.translucent,
