@@ -135,7 +135,16 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
   ///
   /// Best effort: a stream without a language code says nothing about what to
   /// pick next time, so the previous choice is left alone rather than cleared.
+  /// [item], [subtitleTracks] and [audioTracks] are snapshotted by the caller
+  /// before it awaits anything. Reading them off the state here would mean
+  /// reading whatever is current by the time these writes run, and a second
+  /// switch can start in the meantime: `_switchPlaybackSource` only claims
+  /// `_playbackTransition` once the reload begins, so the window between the
+  /// two is genuinely open.
   Future<void> _rememberSwitchedSourceLanguages({
+    required MediaItem item,
+    required List<MediaSubtitleTrack> subtitleTracks,
+    required List<MediaAudioTrack> audioTracks,
     int? subtitleStreamId,
     int? audioStreamId,
     PlexClient? plexClient,
@@ -145,17 +154,16 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     try {
       final settings = await SettingsService.getInstance();
       if (!settings.read(SettingsService.rememberTrackSelections)) return;
-      if (!mounted) return;
 
       if (subtitleStreamId != null) {
         if (subtitleStreamId == 0) {
           // Turning subtitles off here is as much a decision as picking one.
-          await TrackPreferenceStore.saveSubtitle(_currentMetadata, off: true);
+          await TrackPreferenceStore.saveSubtitle(item, off: true);
         } else {
-          final choice = subtitleStreamLanguage(_sourceSubtitleTracksForControls(), subtitleStreamId);
+          final choice = subtitleStreamLanguage(subtitleTracks, subtitleStreamId);
           if (choice != null) {
             await TrackPreferenceStore.saveSubtitle(
-              _currentMetadata,
+              item,
               language: choice.language,
               title: choice.title,
               forced: choice.forced,
@@ -165,13 +173,17 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       }
 
       if (audioStreamId != null) {
-        final choice = audioStreamLanguage(_currentMediaInfo?.audioTracks ?? const <MediaAudioTrack>[], audioStreamId);
+        final choice = audioStreamLanguage(audioTracks, audioStreamId);
         if (choice != null) {
-          await TrackPreferenceStore.saveAudio(_currentMetadata, language: choice.language, title: choice.title);
+          await TrackPreferenceStore.saveAudio(item, language: choice.language, title: choice.title);
         }
       }
 
-      await _mirrorSwitchedLanguageToSeries(plexClient);
+      // Not awaited: this is a network write to the show, and the reload the
+      // caller is about to start does not depend on it. Awaiting would put a
+      // round trip between the user's tap and the subtitle actually changing,
+      // and the next episode is minutes away regardless.
+      unawaited(_mirrorSwitchedLanguageToSeries(item, plexClient));
     } catch (e) {
       appLogger.w('Failed to remember the switched source language', error: e);
     }
@@ -185,20 +197,25 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
   /// tracks; when Plex burns the subtitle into the video the decision has to be
   /// the server's, and `selectStreams` above only covers the parts of this one
   /// episode. Episodes only: a movie has no show to carry the choice.
-  Future<void> _mirrorSwitchedLanguageToSeries(PlexClient? plexClient) async {
+  Future<void> _mirrorSwitchedLanguageToSeries(MediaItem item, PlexClient? plexClient) async {
     if (plexClient == null) return;
-    final seriesRatingKey = _currentMetadata.grandparentId;
+    final seriesRatingKey = item.grandparentId;
     if (seriesRatingKey == null || seriesRatingKey.isEmpty) return;
 
-    final choice = await TrackPreferenceStore.read(_currentMetadata);
-    if (choice == null || choice.isEmpty) return;
+    try {
+      final choice = await TrackPreferenceStore.read(item);
+      if (choice == null || choice.isEmpty) return;
 
-    await _plexSeriesLanguagePersister(() => plexClient)(
-      seriesRatingKey: seriesRatingKey,
-      audioLanguage: choice.audioLanguage,
-      subtitleLanguage: choice.plexSubtitleLanguage,
-      subtitleMode: choice.plexSubtitleMode,
-    );
+      await _plexSeriesLanguagePersister(() => plexClient)(
+        seriesRatingKey: seriesRatingKey,
+        audioLanguage: choice.audioLanguage,
+        subtitleLanguage: choice.plexSubtitleLanguage,
+        subtitleMode: choice.plexSubtitleMode,
+      );
+    } catch (e) {
+      // Runs unawaited, so nothing above would catch this.
+      appLogger.w('Failed to mirror the switched language onto the series', error: e);
+    }
   }
 
   Future<void> _switchPlaybackSource({
@@ -231,6 +248,12 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     // missing client leaves this null and the guard below reports it.
     final serverId = _currentMetadata.serverId;
     final isPlexBacked = _currentMetadata.backend == MediaBackend.plex;
+    // Snapshot what the remembering step needs, for the same reason the client
+    // is read here: everything below crosses an async gap, and a second switch
+    // may start before the reload claims the transition.
+    final switchedItem = _currentMetadata;
+    final switchedSubtitleTracks = _sourceSubtitleTracksForControls();
+    final switchedAudioTracks = _currentMediaInfo?.audioTracks ?? const <MediaAudioTrack>[];
     PlexClient? streamSelectClient;
     if ((isSubtitleChange || (isAudioChange && isPlexBacked)) && serverId != null) {
       try {
@@ -258,6 +281,9 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
           throw StateError('Failed to select streams');
         }
         await _rememberSwitchedSourceLanguages(
+          item: switchedItem,
+          subtitleTracks: switchedSubtitleTracks,
+          audioTracks: switchedAudioTracks,
           subtitleStreamId: isSubtitleChange ? effectiveSubtitleStreamId : null,
           audioStreamId: isAudioChange ? effectiveAudioStreamId : null,
           plexClient: streamSelectClient,

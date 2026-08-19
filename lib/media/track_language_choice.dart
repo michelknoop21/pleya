@@ -39,9 +39,16 @@ class TrackLanguageChoice {
   /// empty one.
   bool get isEmpty => !hasAudio && !hasSubtitle;
 
-  /// What to write into Plex's `subtitleMode` for this choice: 0 leaves
-  /// subtitles off, 1 asks for forced only, 2 asks for all. Null when the user
-  /// never chose, so the show's existing setting is left alone.
+  /// What to write into Plex's `subtitleMode` for this choice.
+  ///
+  /// Plex's own values, as the metadata editor labels them
+  /// (`plex_metadata_edit_adapter.dart`): 0 is "manually selected", so nothing
+  /// turns on by itself; 1 is "shown with foreign audio"; 2 is "always
+  /// enabled". A remembered forced track maps onto 1 because that is the
+  /// closest thing Plex offers, not because Plex calls it forced.
+  ///
+  /// Null when the user never chose, so the show's existing setting is left
+  /// alone rather than reset.
   int? get plexSubtitleMode {
     if (!hasSubtitle) return null;
     if (subtitlesOff) return 0;
