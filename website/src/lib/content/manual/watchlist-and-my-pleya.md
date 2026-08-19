@@ -5,7 +5,7 @@ order: 12
 group: More to watch
 icon: bookmark
 summary: One list fed by your Plex watchlist and your Jellyfin favourites, and the tab that holds it.
-updated: 2026-08-17
+updated: 2026-08-19
 ---
 
 # Watchlist and My Pleya
@@ -29,6 +29,13 @@ deliberate:
 The same film can be a Plex watchlist entry and a Jellyfin favourite at the same time.
 Removing it takes it off both. If one side fails, Pleya re-reads the list from the servers
 instead of guessing.
+
+## Sorting and filtering it
+
+The tabs above the grid narrow it to **Movies**, **Shows** or **Available**, the last being
+the titles a connected server can actually play right now. The button beside them says what
+the list is sorted by, **Recently added**, **Title** or **Year**, on the button itself rather
+than in a tooltip, since a tooltip never opens on a touchscreen.
 
 ## My Pleya
 

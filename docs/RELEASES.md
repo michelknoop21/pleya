@@ -12,14 +12,64 @@ reads the topmost anchor and fills the block below with everything committed sin
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### Fixed
-- onthoud de taalkeuze ook wanneer Plex transcodeert
-- zet de gewisselde taal ook op de serie, en laat onthouden nooit de wissel breken
-- dicht de race en de vertraging in het onthouden van een stroomwissel
-- hover-snelknoppen navigeren binnen de profielsessie
-- laat Filters, Sorteren en Groepering in beeld openen
-- prevent sidebar input from activating hero content
+Nothing user-facing since the last published build.
 <!-- END GENERATED -->
+
+## 2.8.0 · build 231 · 19 August 2026
+
+<!-- commit: 7c3d47e -->
+
+### Fixed
+
+- **Your subtitle and audio language is remembered when Plex transcodes.** Picking a language
+  only stuck when the file played directly. As soon as Plex re-encoded, which it always does
+  for burned-in or image-based subtitles and for anything streamed over the internet, the
+  choice went straight to the server and Pleya never saw it. The next episode then started in
+  whatever the server preferred, so you got a different language rather than no language,
+  which made it easy to miss. The choice now also lands on the series itself, the way it
+  already did on direct play. That is the only thing that can work when the subtitles are
+  burned into the picture. Switching no longer waits for that to be written, and a failed
+  write can no longer make the switch itself fail.
+- **The quick buttons on a hover preview no longer black out the app.** Play, add and info on
+  the preview that appears over a card opened their screen outside the profile you were in,
+  leaving an error across the whole window. The plus also left the preview standing on top of
+  the menu it had just opened, where it swallowed the clicks meant for that menu.
+- **A click on the sidebar no longer starts whatever sits behind it.** The rail switches to
+  its wide state at once while the width takes 200 ms to catch up, and in that gap a click
+  aimed at a menu item could land on the billboard and start playing. The rail now owns the
+  strip it is about to fill, from the first frame of opening until the last frame of closing.
+  Tapping the billboard opens the title; the play button still plays.
+- Filters, Sort and Group open in the middle of the window instead of in the corner you
+  clicked them from. They used to open at the mouse, which is right for a context menu and
+  for nothing else, so on a desktop window a panel of 700 by 400 ended up clamped against the
+  right edge with most of the height unused.
+
+### Improved
+
+- Discover on Requests uses the same header as a library page: film and series as tabs, genre
+  as an action beside them. It was a double row of outlined pills that took more room than the
+  posters underneath, 92 pixels of it against 42 now.
+- Choosing a type on Discover selects that type instead of falling back to All, and clearing a
+  genre is a row in the panel rather than a second tap on the chip you just picked.
+
+### Worth checking
+
+Two things in this build are easier to break than to notice, so a look at them helps.
+
+- Your list of requests, on a phone. Every row should carry the real title and poster, and the
+  status beside it should agree with what Overseerr says. Then send one request with a
+  different server, quality profile and root folder than the defaults: all three should arrive
+  in Radarr or Sonarr exactly as you set them.
+- Subtitle language on Apple TV, on a series Plex is transcoding rather than playing directly.
+  Pick a language partway through an episode, then start the next one. It should open in the
+  language you picked.
+
+### Known in this build
+
+Moving a mouse or trackpad towards the sidebar claims the strip beside it as soon as the
+pointer arrives, so a control the page puts there, such as **Recommended** on a library page,
+opens the menu instead of responding. Fixed in the next build; on this one, reach those
+controls from further right or use the keyboard.
 
 ## 2.8.0 · build 228 · 18 August 2026
 

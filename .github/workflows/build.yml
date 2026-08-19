@@ -1007,6 +1007,12 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
+          # Explicit, because this workflow only has a workflow_dispatch trigger
+          # and a dispatch on a branch carries no tag ref: without this the step
+          # fails on "Missing tag_name parameter" before the action does
+          # anything. The same value is what the appcast enclosures point at
+          # (releases/download/${VERSION}/...), so the two cannot drift.
+          tag_name: ${{ steps.version.outputs.version }}
           files: ${{ steps.release-files.outputs.files }}
           draft: true
           prerelease: false

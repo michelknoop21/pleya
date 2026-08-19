@@ -5,7 +5,7 @@ order: 8
 group: Watching
 icon: subtitles
 summary: Picking tracks, styling subtitles, re-timing them, and Atmos on Apple devices.
-updated: 2026-08-18
+updated: 2026-08-19
 ---
 
 # Subtitles and audio
@@ -26,6 +26,12 @@ Underneath it sits **Also save the language to Plex**, which writes the language
 show on the server. Turn it on and the official Plex apps, and Pleya on Android or Windows,
 open that series the same way. It replaces whatever language was set on the server by hand,
 so leave it off if someone else curates that.
+
+That switch also decides how far the memory reaches while Plex is transcoding. If Plex burns
+the subtitles into the picture, the next episode has no track left for Pleya to select, so
+only the server can carry the choice forward. With **Also save the language to Plex** off,
+the language you pick still applies to the episode you are watching and is kept on this
+device, but the episode after it opens on whatever the server prefers.
 
 Track names come from the file, and an untagged track used to show up as "Track 1". Pleya
 now borrows the language and title your server already knows for that stream, so the list
