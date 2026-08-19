@@ -4,6 +4,19 @@ _Laatst bijgewerkt: 2026-08-19 (`main` = `8e84f3a`; `feat/pleyaserver` loopt voo
 
 ## Waar was ik
 
+**PS-2 en PS-3W zijn gesloten en bevroren, PS-3 is vrijgegeven.** Beide fasen stonden inhoudelijk af
+zonder formele afsluiting: PS-2 droeg `opgeleverd, ter goedkeuring` en had geen Roadmap Drift Check,
+PS-3W had geen statusrij en geen Uitkomst. Die staan er nu, met de acceptatiecriteria per stuk en de
+drift check langs de code in plaats van langs het geheugen.
+
+De replacement matrix is bijgewerkt en beweegt voor het eerst: zeventien capabilities op
+`Technisch gereed`, acht Plex-off blockers dicht, en de zin dat er nog geen regel servercode bestaat
+is eruit. Twee tellingen klopten al langer niet en zijn opnieuw uit de tabel geteld. G5, G9 en G11
+zijn uit de gattenlijst omdat de PS-1-afwijking ze een fase gaf. Er kwam er één bij: **G13**, filters
+op een bibliotheek. Die regel stond op PS-1 en PS-3, en het bevroren contract kent geen
+filterparameter, dus geen van beide fasen kan hem leveren. Hetzelfde geldt voor de alfabetische
+sprongbalk, die al als gap stond en nu ook zonder fase.
+
 **Pleya kan een bibliotheek tonen zonder Plex.** PS-2 staat in `pleya_server/`: een Go-service die een
 bestandsboom scant, de catalogus in Postgres bijhoudt, en de leeskant van het protocol serveert.
 Bladeren, zoeken, seizoenen en afleveringen, meerdere versies per film, artwork en losse ondertitels.

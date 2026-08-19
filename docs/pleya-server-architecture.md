@@ -1724,7 +1724,7 @@ PS-2 niet: de kijkstatus-endpoints en het streampad komen daar niet aan bod.
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-2 |
-| Status | **opgeleverd 19 augustus 2026, ter goedkeuring** |
+| Status | **gesloten en bevroren, 19 augustus 2026**: [pleya_server/](../pleya_server/README.md), elf tabellen, veertien endpoints |
 | Doel | een draaiende Go-service die een bestandsboom scant en als catalogus serveert |
 | Bijdrage aan einddoel | dit is het eerste stuk Pleya dat zonder enige externe mediaserver een bibliotheek kan tonen |
 | Afhankelijkheden | PS-1 |
@@ -1761,6 +1761,52 @@ gelijke grootte, en verdwijnen tijdens de scan. Schemavalidatie van de antwoorde
 
 **Roadmap Drift Check.** Is er iets gebouwd dat naar een provider belt, of een tabel die meer dan
 één identiteit kan dragen? Dat hoort in fase 7 of 9.
+
+#### Uitkomst: gesloten op 19 augustus 2026
+
+De vijf acceptatiecriteria zijn gehaald, gemeten op de DS920+ naast de draaiende Plex-container. De
+code staat in [pleya_server/](../pleya_server/README.md), waar ook de installatie en de gemeten
+waarden staan.
+
+| Acceptatiecriterium | Uitkomst |
+| --- | --- |
+| 1. Duizend bestanden scannen tot items, versies en bestanden | 28.986 bestanden gelopen, 6.951 analyses, 7.300 items, nul fouten |
+| 2. Tweede scan zonder wijzigingen draait ffprobe nul keer | gehaald, en vastgelegd als test in `internal/scanner` |
+| 3. Een hernoemd bestand behoudt zijn item-id | gehaald, via de inode en op een mount waar die niets betekent via de scan-signature |
+| 4. De leesendpoints valideren tegen de fase-1-schema's | `scripts/verify-protocol.sh` legt negentien antwoorden van een draaiende server vast en toetst ze tegen hetzelfde `openapi.yaml` als de fixtures, acht schema's gedekt |
+| 5. `/readyz` wordt pas groen na een geslaagde migratie | gehaald, met een test in `internal/migrate` en een sectie in `verify-local.sh` |
+
+Honderdeenentwintig Go-tests over dertien pakketten, waarvan de scanner- en catalogustests tegen een
+echte Postgres en dezelfde gepinde ffmpeg als de productie-image draaien.
+
+Acht besluiten erbij, [DEC-040](DECISIONS.md#dec-040-grouping-key-en-identiteit-zijn-twee-dingen-in-het-catalogusschema)
+tot en met [DEC-047](DECISIONS.md#dec-047-een-mislukte-analyse-laat-de-versie-los). Twee daarvan
+raken het contract niet maar wel de belofte eronder: DEC-045 haalt seizoenen uit het standaard
+zoekresultaat, DEC-047 laat een mislukte analyse de versie los in plaats van oude metadata te laten
+staan bij nieuwe bytes.
+
+**Drift check.** Er is geen provider aangeroepen en er staat geen uitgaande HTTP-client in
+`internal/`. De elf tabellen dragen één identiteit: `auth_owner` heeft een unieke rij, er is geen
+`users`, geen `sessions`, geen `library_permissions` en geen `watch_states`. `lib/` is niet
+aangeraakt. Er is scope blijven liggen die geen scope was: `GET /stream/{version_id}` en beide
+kijkstatus-endpoints geven een 404 en `capabilities.watch_state` staat op `false`, precies zoals de
+fase voorschrijft.
+
+**Twee dingen die de fase toevoegde aan wat op papier stond.** De eerste is het gevolg van de
+PS-1-afwijking: G11 (edities) hoorde volgens die afwijking in PS-2 en is er gekomen, begrensd tot de
+`{edition-...}`-conventie in de bestandsnaam. De tweede is de artworkinhoud uit diezelfde afwijking:
+de server levert uitsluitend afbeeldingen die de scanner naast de media op schijf tegenkomt. Geen van
+beide is nieuwe scope; beide stonden in een goedgekeurd voorstel van vóór de fase.
+
+**De fase is bevroren.** Verdere verfijning van de catalogus gebeurt pas wanneer een latere fase erom
+vraagt. Dat geldt ook voor de 543 MB image: 159 MB daarvan is Mesa, LLVM en de DRI-drivers die via
+een keten van harde `Depends` vanaf `ffprobe` meekomen, en PS-8 raakt de ffmpeg-bouw toch aan voor
+QuickSync ([DEC-044](DECISIONS.md#dec-044-debians-ffmpeg-blijft-in-de-image-en-ps-8-is-het-herzieningsmoment)).
+
+**Wat PS-3 hiervan erft.** Een draaiende catalogus achter een bevroren contract, en twee poorten die
+dicht blijven. Poort 3 (het conflictmodel voor kijkstatus) en poort 4 (de byte-validator achter de
+`ETag`-belofte) staan nog open en horen dicht vóór PS-4; ze raken PS-3 niet, want bladeren en zoeken
+komen niet langs kijkstatus of bytes.
 
 ---
 
@@ -1812,6 +1858,7 @@ Terugdraaien of naar de juiste fase verplaatsen.
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-3W |
+| Status | **gesloten en bevroren, 19 augustus 2026**: [pleya_web/](../pleya_web/README.md), in de binary via `//go:embed` |
 | Doel | een meegeleverde webclient in de Pleya-designtaal, op de endpoints die vandaag draaien |
 | Bijdrage aan einddoel | Pleya Server wordt bruikbaar zonder dat er iets geïnstalleerd hoeft te worden, en het beheeroppervlak krijgt de plek waar het straks in landt |
 | Afhankelijkheden | PS-1, PS-2 |
@@ -1880,6 +1927,47 @@ OpenAPI-validator in vitest bewijst niets extra en loopt na verloop van tijd uit
 **Roadmap Drift Check.** Staat er een `<video>`-element, een kijkstatusaanroep, een beheerendpoint of
 een regel in `lib/`? Dan is er vooruitgebouwd. Is er een route naar de database of naar `/internal/`?
 Dan is DEC-046 overtreden.
+
+#### Uitkomst: gesloten op 19 augustus 2026
+
+De zeven acceptatiecriteria zijn gehaald. Wat er staat is een SvelteKit-applicatie in
+[pleya_web/](../pleya_web/README.md), gebouwd tot een statische bundel en met `//go:embed` in
+dezelfde binary geserveerd achter de protocolroutes.
+
+| Acceptatiecriterium | Uitkomst |
+| --- | --- |
+| 1. De bundel wordt geserveerd en overschaduwt de protocolroutes niet | `internal/web` en `internal/api/web_routes_test.go`; een onbekend pad onder `/pleya/v1` krijgt de foutvorm van het protocol en geen HTML |
+| 2. Een releasebuild zonder frontend faalt hard | `-tags release` maakt `dist/index.html` een `//go:embed`-patroon, en dat faalt op de compiler in plaats van een lege pagina mee te leveren |
+| 3. Setup, inloggen, bladeren, detail en zoeken tegen de echte API | Playwright tegen een echte binary met een echte Postgres en een echte ffprobe, geen mocks, op 390, 768, 1024, 1280 en 1600 |
+| 4. Elke route met het toetsenbord bedienbaar en zonder axe-overtreding | axe plus een toetsenbordroute per opgeleverde route: sla-over-link als eerste tabstop, zichtbare focus, reduced motion |
+| 5. De API-client komt aantoonbaar uit `openapi.yaml` | `scripts/check-api-types.sh` genereert opnieuw en vergelijkt byte voor byte; `schema.test.ts` toetst de bron-hash in de kop |
+| 6. De artworkmeting op vijfhonderd posters | `measure-artwork.ts`, met de instrumentatie in de pagina zelf, want de JS-heap draagt de blobs niet en de teller die telt is het aantal uitstaande object-URL's |
+| 7. Het serveroverzicht toont uitsluitend `GET /server` en `GET /info` | gehaald, en er is geen menu-item dat naar een leeg scherm leidt: de navigatie draait op `capabilities` |
+
+Eén besluit erbij,
+[DEC-046](DECISIONS.md#dec-046-pleya-web-is-een-protocolclient-en-co-distributie-geeft-geen-extra-rechten):
+samen uitgeleverd worden geeft geen extra rechten. Wat Pleya Web toont gaat over `/pleya/v1`, en dus
+kan de Flutter-client het morgen ook.
+
+**Drift check.** Er staat geen `<video>` in `pleya_web/src`, geen kijkstatusaanroep, geen
+beheerendpoint en geen regel in `lib/`. De enige treffer op `watch-state` staat in de gegenereerde
+`schema.d.ts` en komt dus uit het contract, niet uit een aanroep. Er is geen route naar de database
+en geen `/internal/`; DEC-046 staat.
+
+**Wat er bewust niet in kwam.** `continue_watching` en `next_up` worden niet opgevraagd, want
+`capabilities.watch_state` is `false` en dan levert de server per definitie lege lijsten. Samenvatting,
+genres, cast en beoordelingen zitten niet in `Item` en komen in PS-7. Scans, jobs, opslag en
+bibliotheekbeheer hebben geen endpoint: dat zijn G6 en G7 en die krijgen eerst een fase. Er staat
+daarom nergens een knop die niets doet.
+
+**Twee dingen die geen scope waren en toch nodig bleken.** De fonts zijn omgezet naar woff2, want 1,8
+MB aan OTF is over een LAN de eerste seconde van elk bezoek; dat is een hercodering en geen andere
+letter. En `nas-tunnel.ts` bestaat omdat de server op de NAS alleen op 127.0.0.1 luistert terwijl de
+sshd van DSM poortdoorgifte weigert, waardoor de NAS-verificatie anders niet uit te voeren was. Aan de
+NAS verandert daar niets door.
+
+**De fase is bevroren.** PS-3W blokkeert niets en wordt niet uitgebreid tot een fase erom vraagt.
+Afspelen in de browser hangt aan PS-4 en PS-6, de beheerkant aan G6 en G7.
 
 ---
 

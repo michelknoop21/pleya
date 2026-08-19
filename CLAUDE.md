@@ -61,14 +61,15 @@ mediaserver in Go, met als einddoel dat Pleya zonder Plex kan draaien en Plex en
 adapters worden. Het is geen concept en geen verkenning: de hoofdrichting is beslist en wordt niet
 opnieuw geopend.
 
-**Vrijgave is per fase.** PS-0 (Docker Foundation) en PS-1 (wire-contract) zijn gesloten en
-bevroren; de PS-0-afwijking staat in `docs/pleya-server-ps0-proposal.md`, de PS-1-afwijking in
-`docs/pleya-server-ps1-scope-deviation.md`. **PS-2 is vrijgegeven** (migraties, bootstrap-auth,
-catalogus en scanner, ffprobe). Werk dat verder gaat dan de PS-2-scope is per definitie te vroeg;
-streaming is PS-4.
+**Vrijgave is per fase.** PS-0 (Docker Foundation), PS-1 (wire-contract), PS-2 (catalogus in Go) en
+PS-3W (Pleya Web) zijn gesloten en bevroren; de PS-0-afwijking staat in
+`docs/pleya-server-ps0-proposal.md`, de PS-1-afwijking in `docs/pleya-server-ps1-scope-deviation.md`
+en de PS-3W-afwijking in `docs/pleya-server-ps3w-proposal.md`. **PS-3 is vrijgegeven**: de vijfde
+`MediaServerClient` in de Flutter-app, alleen lezen. Werk dat verder gaat dan de PS-3-scope is per
+definitie te vroeg; afspelen en kijkstatus zijn PS-4.
 
 **Het protocol ligt vast.** `docs/pleya-protocol/v1/openapi.yaml` is contractueel leidend en bevroren
-zolang PS-2 loopt. Legt PS-2 een echt probleem bloot, dan is dat een protocolwijziging die eerst
+zolang PS-3 loopt. Legt PS-3 een echt probleem bloot, dan is dat een protocolwijziging die eerst
 langs de zes compatibiliteitsregels uit hoofdstuk 3 van de specificatie getoetst wordt, niet een
 aanpassing in de YAML omdat het zo uitkomt. `scripts/check_protocol.sh` is de poortwachter.
 

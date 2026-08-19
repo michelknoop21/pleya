@@ -2,6 +2,31 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-19] PS-2 en PS-3W gesloten, en de matrix telt weer wat er staat
+
+Twee fasen stonden inhoudelijk af zonder formeel afgesloten te zijn. PS-2 droeg
+`opgeleverd, ter goedkeuring` en had nooit een Roadmap Drift Check gehad; PS-3W had helemaal geen
+statusrij en geen Uitkomst, terwijl PS-0 en PS-1 die allebei wel hebben. Beide zijn nu gesloten en
+bevroren volgens dezelfde conventie, met de acceptatiecriteria per stuk en de drift check erbij.
+Aan de besluiten van geen van beide fasen is iets veranderd.
+
+De drift checks liepen langs de code en niet langs het geheugen. PS-2: geen provideraanroep, geen
+uitgaande HTTP-client in `internal/`, en elf tabellen die één identiteit dragen. PS-3W: geen
+`<video>`, geen kijkstatusaanroep, geen beheerendpoint en geen regel in `lib/`; de enige treffer op
+`watch-state` staat in de gegenereerde `schema.d.ts` en komt dus uit het contract.
+
+### Changed
+- **De replacement matrix vertelde het tegenovergestelde van de repository.** Hoofdstuk 9.1 zei "er is nog geen regel servercode geschreven" terwijl er een catalogus en een webclient draaien. Zeventien capabilities staan nu op `Technisch gereed` en acht Plex-off blockers zijn dicht.
+- **G5, G9 en G11 zijn uit de gattenlijst.** De PS-1-afwijking wees ze op 18 augustus toe aan PS-4, PS-3 en PS-2. Onderhoudsregel 3 vraagt een goedgekeurd voorstel plus een Phase ID, en aan beide is voldaan. G11 staat op `Technisch gereed` omdat PS-2 hem opleverde; G5 en G9 op `In roadmap`.
+- **De tellingen zijn uit de tabel geteld en niet overgeschreven.** Twee ervan klopten niet: 9.1 gaf 24 blockers zonder fase waar hoofdstuk 7 er 22 gaf, en 22 plus vijftien niet-blokkerende gaps was 37 terwijl de tabel er 39 droeg. De nieuwe telling draagt een kolom "vorige ronde", zodat een verschil dat niemand kan verklaren opvalt als een telfout.
+
+### Fixed
+- **De alfabetische sprongbalk hing aan een fase die hem niet kan leveren.** De regel stond op `PS-1, PS-3`, terwijl het bevroren contract geen `firstCharacter`-endpoint kent. Hij was al een gap en is nu ook zonder fase.
+- **Filters stonden op `In roadmap` bij PS-1 en PS-3, en dat kan niet.** `/libraries/{id}/items` draagt `limit`, `cursor` en `sort` en verder niets. De regel is nu **G13**, een Plex-off blocker zonder fase. Client-side filteren over een gecursorde lijst van duizenden items lost het niet op maar verplaatst het naar de verkeerde kant van de grens. Sorteren blijft wél bij PS-3: `title`, `added_at` en `year` staan in beide richtingen in het contract.
+
+### Docs
+- `CLAUDE.md` geeft PS-3 vrij en bevriest het protocol voor de duur van die fase.
+
 ## [2026-08-19] Vier integriteitsgebreken uit de PS-2-scanner
 
 Een externe review vond vier gebreken in de PS-2-servercode. Geen ervan werd door een test gedekt,

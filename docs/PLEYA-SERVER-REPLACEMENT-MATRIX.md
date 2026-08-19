@@ -2,7 +2,7 @@
 
 **Status:** levend document, hoort bij de goedgekeurde architectuurbaseline in
 [docs/pleya-server-architecture.md](pleya-server-architecture.md).
-**Datum:** 18 augustus 2026
+**Datum:** 19 augustus 2026, bijgewerkt bij het sluiten van PS-2 en PS-3W
 **Auteur:** Michel Knoop
 
 Dit document beantwoordt één vraag:
@@ -119,17 +119,17 @@ waaraan je ziet dat hij klaar is.
 | --- | --- | --- | --- | --- | --- | --- |
 | Bibliotheken ontdekken en tonen | `GET /media/providers`, oude servers `GET /library/sections` | (A) eigen bibliotheeklijst in het protocol | PS-1, PS-2, PS-3 | In roadmap | ja | PS-3 criterium 1: verbinding toevoegen toont bibliotheken |
 | Bibliotheekinhoud pagineren | `/library/sections/{id}/all` met `X-Plex-Container-Start/Size` | (A) cursorpaginatie, [12.7](pleya-server-architecture.md#127-pagination) | PS-1, PS-2, PS-3 | In roadmap | ja | schemavalidatie plus een bibliotheek van 1000 items |
-| Item, versie en bestand als drie dingen | `Media[]` en `Part[]` op de metadata | (A) [7.1](pleya-server-architecture.md#71-identiteit-los-van-locatie) | PS-2 | In roadmap | ja | twee versies van één film leveren één item |
-| Edities onderscheiden | `editionTitle`, Plex-only veld | (A) veld op de versie | geen | **Roadmap gap** | ja | een Director's Cut naast de bioscoopversie blijft herkenbaar |
-| Technische eigenschappen per bestand | Plex-analyse plus `includeStreams=1` | (A) ffprobe met `detectionStatus` en `source`, [7.4](pleya-server-architecture.md#74-wat-ffprobe-wel-en-niet-betrouwbaar-zegt) | PS-2 | In roadmap | ja | PS-2 criterium 1 |
-| Verandersdetectie bij herscan | Plex-scanner | (A) drie lagen, [7.3](pleya-server-architecture.md#73-wat-de-scanner-elke-ronde-doet) | PS-2 | In roadmap | ja | PS-2 criterium 2: tweede scan draait ffprobe nul keer |
-| Hernoemen en verplaatsen zonder identiteitsverlies | Plex maakt hier een dubbele entry | (A) inode, plus content fingerprint tussen mounts | PS-2 | In roadmap, gate open | ja | PS-2 criterium 3 |
+| Item, versie en bestand als drie dingen | `Media[]` en `Part[]` op de metadata | (A) [7.1](pleya-server-architecture.md#71-identiteit-los-van-locatie) | PS-2 | Technisch gereed | nee | twee versies van één film leveren één item |
+| Edities onderscheiden | `editionTitle`, Plex-only veld | (A) veld op de versie | PS-2 | Technisch gereed | nee | een Director's Cut naast de bioscoopversie blijft herkenbaar |
+| Technische eigenschappen per bestand | Plex-analyse plus `includeStreams=1` | (A) ffprobe met `detectionStatus` en `source`, [7.4](pleya-server-architecture.md#74-wat-ffprobe-wel-en-niet-betrouwbaar-zegt) | PS-2 | Technisch gereed | nee | PS-2 criterium 1 |
+| Verandersdetectie bij herscan | Plex-scanner | (A) drie lagen, [7.3](pleya-server-architecture.md#73-wat-de-scanner-elke-ronde-doet) | PS-2 | Technisch gereed | nee | PS-2 criterium 2: tweede scan draait ffprobe nul keer |
+| Hernoemen en verplaatsen zonder identiteitsverlies | Plex maakt hier een dubbele entry | (A) inode, plus scan-signature tussen mounts | PS-2 | Technisch gereed, **gate open** | ja | PS-2 criterium 3; poort 4 beslist nog of de signature de `ETag`-belofte draagt |
 | Bibliotheek toevoegen en verwijderen | Plex Web, niet vanuit Pleya | (A) beheerscherm in de client | geen | **Roadmap gap** | ja | een nieuwe bibliotheek is zonder SSH aan te maken |
 | Scan starten vanuit de client | `GET /library/sections/{id}/refresh` | (A) beheer-endpoint plus knop | PS-11 deels | **Roadmap gap** | ja | scan start en de voortgang is zichtbaar |
 | Metadata forceren te verversen | `GET /library/sections/{id}/refresh?force=1` | (A) job opnieuw inplannen | PS-7, PS-11 | **Roadmap gap** | ja | een verkeerd gematchte titel is opnieuw te laten ophalen |
 | Lopende serverklussen zien | `GET /activities`, `DELETE /activities/{uuid}` | (A) jobstatus plus scanvoortgang | PS-11 deels | **Roadmap gap** | ja | beheerder ziet wat er draait en kan het afbreken |
-| Media analyseren als losse actie | `GET /library/sections/{id}/analyze` | (B) valt samen met de scanner: analyse gebeurt bij binnenkomst en bij wijziging | PS-2 | Ontworpen | nee | geen aparte knop nodig |
-| Prullenbak legen | `PUT /library/sections/{id}/emptyTrash` | (B) een verdwenen bestand verdwijnt bij de volgende scan, want mounts zijn read-only | PS-2 | Ontworpen | nee | een verwijderd bestand valt binnen één scanronde uit de catalogus |
+| Media analyseren als losse actie | `GET /library/sections/{id}/analyze` | (B) valt samen met de scanner: analyse gebeurt bij binnenkomst en bij wijziging | PS-2 | Technisch gereed | nee | geen aparte knop nodig |
+| Prullenbak legen | `PUT /library/sections/{id}/emptyTrash` | (B) een verdwenen bestand verdwijnt bij de volgende scan, want mounts zijn read-only | PS-2 | Technisch gereed | nee | een verwijderd bestand valt binnen één scanronde uit de catalogus |
 | Item plus bestanden verwijderen | `DELETE /library/metadata/{id}` | (C) read-only mounts vanaf v1, [16.2](pleya-server-architecture.md#162-dreigingen-en-antwoorden) | n.v.t. | Bewust buiten scope | nee | opruimen gebeurt op het bestandssysteem |
 | Mappenhiërarchie bladeren | `GET /library/sections/{id}/folder` | (A) mapweergave uit `storage_locations` | geen | **Roadmap gap** | nee | `folderGrouping` werkt ook op Pleya Server |
 
@@ -154,7 +154,7 @@ waaraan je ziet dat hij klaar is.
 
 | Capability | Vandaag bij Plex | Pleya Server-doel | Fase | Status | Blocker | Bewijs |
 | --- | --- | --- | --- | --- | --- | --- |
-| Home-rijen | `GET /hubs/promoted`, `GET /hubs` | (B) de bestaande client-side aanbevelingsmotor (`lib/services/recommendations/`) bouwt de rijen; de server levert de bouwstenen | PS-3, PS-7 | **Roadmap gap** | ja | het homescherm is gevuld zonder Plex-hubs |
+| Home-rijen | `GET /hubs/promoted`, `GET /hubs` | (B) de bestaande client-side aanbevelingsmotor (`lib/services/recommendations/`) bouwt de rijen; de server levert de bouwstenen | PS-3, PS-7 | In roadmap | ja | het homescherm is gevuld zonder Plex-hubs |
 | Recent toegevoegd | `GET /library/recentlyAdded` | (A) sorteren op `added_at` | PS-3 | In roadmap | ja | de rij vult zich na een scan |
 | Recent toegevoegde series op serieniveau | `GET /library/all?type=2&sort=addedAt:desc` | (A) zelfde query op itemtype | PS-3 | In roadmap | nee | de serie staat er, niet de losse aflevering |
 | Verder kijken | provider-key of `GET /hubs?identifier=home.continue` | (A) afgeleid uit kijkstatus | PS-4 | In roadmap | ja | PS-4 criterium 3 |
@@ -162,8 +162,8 @@ waaraan je ziet dat hij klaar is.
 | Volgende aflevering bij een serie | `includeOnDeck=1` op de metadata | (A) uit kijkstatus plus afleveringsvolgorde | PS-4 | In roadmap | ja | detailscherm toont de juiste volgende aflevering |
 | Verwante titels | `GET /hubs/metadata/{id}/related` | (A) uit genres, mensen en verzamelingen | PS-7 | **Roadmap gap** | nee | de "meer zoals dit"-rij is gevuld |
 | Sorteeropties per bibliotheek | `GET /library/sections/{id}/sorts` | (A) vaste lijst per bibliotheektype in het protocol | PS-1, PS-3 | In roadmap | ja | de sorteersheet is niet leeg |
-| Filtercategorieën en filterwaarden | `GET /library/sections/{id}/filters` | (A) categorieën uit de catalogus | PS-1, PS-3 | In roadmap | ja | filteren op genre en jaar werkt |
-| Alfabetische sprongbalk met echte offsets | `GET /library/sections/{id}/firstCharacter` | (A) telling per beginletter | PS-1, PS-3 | **Roadmap gap** | nee | de balk springt naar de juiste positie in plaats van te filteren |
+| Filtercategorieën en filterwaarden | `GET /library/sections/{id}/filters` | (A) categorieën uit de catalogus | geen | **Roadmap gap** | ja | filteren op genre en jaar werkt |
+| Alfabetische sprongbalk met echte offsets | `GET /library/sections/{id}/firstCharacter` | (A) telling per beginletter | geen | **Roadmap gap** | nee | de balk springt naar de juiste positie in plaats van te filteren |
 | Extra's en trailers | `GET /library/metadata/{id}/extras` | Productbesluit nodig | geen | **Productbesluit nodig** | nee | zie [8](#8-open-productbesluiten) |
 
 ### 5.4 Zoeken en identiteit
@@ -223,7 +223,7 @@ schrijfondersteuning voor heeft.
 | --- | --- | --- | --- | --- | --- | --- |
 | Audiospoor kiezen | `audioStreamID` op de stream-URL, `PUT /library/parts/{id}` | (A) spoorkeuze in plan en sessie | PS-6, PS-8 | In roadmap | ja | wisselen van audiospoor werkt op elk pad |
 | Ondertitelspoor kiezen (ingebed) | `subtitleStreamID` plus `subtitles=embedded` | (A) ondertitelbesluit in het plan | PS-6, PS-8 | In roadmap | ja | wisselen van ondertitel werkt op elk pad |
-| Externe ondertitels als los bestand leveren | `{track.key}.srt?encoding=utf-8&X-Plex-Token=` | (A) sidecar-endpoint naast de stream | PS-4 | **Roadmap gap** | ja | een film met een los `.srt` toont ondertitels |
+| Externe ondertitels als los bestand leveren | `{track.key}.srt?encoding=utf-8&X-Plex-Token=` | (A) sidecar-endpoint naast de stream | PS-4 | In roadmap | ja | een film met een los `.srt` toont ondertitels |
 | Ondertitels inbranden | `subtitles=burn` | (A) besluit in het plan, uitgevoerd in de sessie | PS-6, PS-8 | In roadmap | nee | een PGS-spoor op een toestel dat het niet rendert |
 | Spoorkeuze onthouden per titel en gebruiker | `PUT /library/metadata/{id}/prefs` plus `selectStream` | (A) voorkeur per (gebruiker, item) | geen | **Roadmap gap** | ja | dezelfde serie start op elk toestel met dezelfde taalkeuze |
 | Hoofdstukken | `includeChapters=1` | (A) uit ffprobe bij de scan | PS-2, PS-7 | **Roadmap gap** | nee | de hoofdstukkenlijst in de speler is gevuld |
@@ -300,7 +300,7 @@ mediaserver is niet volwaardig omdat een film op het gelukkige pad afspeelt.
 | Actieve sessies zien | `GET /status/sessions` | (A) beheerdersoverzicht | PS-11 | In roadmap | nee | het overzicht toont een lopende sessie |
 | Een sessie beëindigen | Plex-beheerfunctie | (A) sessie intrekken | geen | **Roadmap gap** | nee | een vastgelopen stream is af te breken |
 | Opslagstatus zien | Plex Web | (A) vrije ruimte per `storage_location` | geen | **Roadmap gap** | nee | een volle schijf is zichtbaar voordat hij vol is |
-| Databasemigraties bij het opstarten | Plex intern | (A) voorwaartse migraties, [17.3](pleya-server-architecture.md#173-migraties) | PS-2 | In roadmap | ja | PS-2 criterium 5 |
+| Databasemigraties bij het opstarten | Plex intern | (A) voorwaartse migraties, [17.3](pleya-server-architecture.md#173-migraties) | PS-2 | Technisch gereed | nee | PS-2 criterium 5 |
 | Back-up maken | Plex-datamap kopiëren | (A) opdracht of knop met een controleerbare uitkomst | geen | **Roadmap gap** | ja | een back-up is terug te zetten op een lege server |
 | Back-up terugzetten | datamap terugplaatsen | (A) restoreprocedure | geen | **Roadmap gap** | ja | catalogus en kijkstatus komen ongeschonden terug |
 | Upgraden | Plex-updater | (A) image bumpen, migratie bij opstart | PS-11 deels | **Roadmap gap** | ja | een upgrade over twee schemaversies slaagt |
@@ -327,12 +327,12 @@ PS-11 gaat ervan uit dat hij bestaat ("websockets door de proxy"), en geen enkel
 
 | Capability | Vandaag bij Plex | Pleya Server-doel | Fase | Status | Blocker | Bewijs |
 | --- | --- | --- | --- | --- | --- | --- |
-| Padtraversal onmogelijk maken | Plex regelt dit intern | (A) opaque ids, containment na symlinkresolutie, [16.1](pleya-server-architecture.md#161-het-beginpunt-is-een-concrete-bevinding) | PS-2 | In roadmap | ja | geen enkel pad uit een aanvraag bereikt het bestandssysteem |
+| Padtraversal onmogelijk maken | Plex regelt dit intern | (A) opaque ids, containment na symlinkresolutie, [16.1](pleya-server-architecture.md#161-het-beginpunt-is-een-concrete-bevinding) | PS-2 | Technisch gereed | nee | geen enkel pad uit een aanvraag bereikt het bestandssysteem |
 | Bestaan van een resource lekt niet | Plex geeft soms `403` | (A) onzichtbaar levert `404` | PS-9 | In roadmap | ja | PS-9 criterium 2 |
-| Kapot mediabestand laat de scan niet vallen | Plex-gedrag varieert | (A) ffprobe als kindproces met timeout | PS-2 | In roadmap | ja | een corrupt bestand markeert zichzelf en stopt de scan niet |
+| Kapot mediabestand laat de scan niet vallen | Plex-gedrag varieert | (A) ffprobe als kindproces met timeout | PS-2 | Technisch gereed | nee | een corrupt bestand markeert zichzelf en stopt de scan niet |
 | Providerantwoord valideren | Plex-agents | (A) kandidatenlaag, nooit rechtstreeks canoniek | PS-7 | In roadmap | ja | een HTML-antwoord van een provider beschadigt geen record |
 | Geen geheimen in logs | Plex logt tokens | (A) tokens nooit, paden afgekort | PS-11 | In roadmap | nee | een gedeeld logbestand bevat geen token |
-| Mounts zijn read-only | Plex schrijft in de bibliotheek | (A) gedocumenteerde verwachting waar het dreigingsmodel op steunt | PS-2 | In roadmap | ja | de container start met `:ro`-mounts |
+| Mounts zijn read-only | Plex schrijft in de bibliotheek | (A) gedocumenteerde verwachting waar het dreigingsmodel op steunt | PS-2 | Technisch gereed | nee | de container start met `:ro`-mounts |
 | Bestanden uploaden | Plex staat artwork-upload toe | (C) bestaat niet in v1 | n.v.t. | Bewust buiten scope | nee | hangt samen met het productbesluit over artwork |
 
 ### 5.16 Migratie vanaf Plex
@@ -359,12 +359,12 @@ staat al als blocker in [5.13](#513-serverbeheer-en-levenscyclus) onder G6 en G7
 
 | Capability | Vandaag bij Plex | Pleya Server-doel | Fase | Status | Blocker | Bewijs |
 | --- | --- | --- | --- | --- | --- | --- |
-| Webinterface meegeleverd met de server | Plex Web op `:32400/web` | (A) statische bundel via `//go:embed` in dezelfde binary, [DEC-046](DECISIONS.md#dec-046-pleya-web-is-een-protocolclient-en-co-distributie-geeft-geen-extra-rechten) | PS-3W | In roadmap | nee | PS-3W criterium 1: de bundel wordt geserveerd en `/pleya/v1` wordt niet overschaduwd |
-| Setup en inloggen zonder een app te installeren | Plex-webwizard | (A) setup-code inwisselen en inloggen in de browser | PS-3W | In roadmap | nee | PS-3W criterium 3 |
-| Bibliotheken bladeren in een browser | Plex Web | (A) schil plus posterraster op de bestaande leesendpoints | PS-3W | In roadmap | nee | PS-3W criterium 3 |
-| Zoeken in een browser | Plex Web | (A) `GET /search`, [DEC-045](DECISIONS.md#dec-045-zoeken-levert-standaard-films-series-en-afleveringen-geen-seizoenen) | PS-3W | In roadmap | nee | PS-3W criterium 3 |
-| Detailpagina in een browser | Plex Web | (A) wat `Item` vandaag draagt; samenvatting, genres en cast volgen in PS-7 | PS-3W | In roadmap | nee | PS-3W criterium 3 |
-| Serverstatus lezen zonder SSH | Plex Web toont server en versie | (A) overzicht uit `GET /server` en `GET /info`, in dezelfde schil als de mediakant | PS-3W | In roadmap | nee | PS-3W criterium 7 |
+| Webinterface meegeleverd met de server | Plex Web op `:32400/web` | (A) statische bundel via `//go:embed` in dezelfde binary, [DEC-046](DECISIONS.md#dec-046-pleya-web-is-een-protocolclient-en-co-distributie-geeft-geen-extra-rechten) | PS-3W | Technisch gereed | nee | PS-3W criterium 1: de bundel wordt geserveerd en `/pleya/v1` wordt niet overschaduwd |
+| Setup en inloggen zonder een app te installeren | Plex-webwizard | (A) setup-code inwisselen en inloggen in de browser | PS-3W | Technisch gereed | nee | PS-3W criterium 3 |
+| Bibliotheken bladeren in een browser | Plex Web | (A) schil plus posterraster op de bestaande leesendpoints | PS-3W | Technisch gereed | nee | PS-3W criterium 3 |
+| Zoeken in een browser | Plex Web | (A) `GET /search`, [DEC-045](DECISIONS.md#dec-045-zoeken-levert-standaard-films-series-en-afleveringen-geen-seizoenen) | PS-3W | Technisch gereed | nee | PS-3W criterium 3 |
+| Detailpagina in een browser | Plex Web | (A) wat `Item` vandaag draagt; samenvatting, genres en cast volgen in PS-7 | PS-3W | Technisch gereed | nee | PS-3W criterium 3 |
+| Serverstatus lezen zonder SSH | Plex Web toont server en versie | (A) overzicht uit `GET /server` en `GET /info`, in dezelfde schil als de mediakant | PS-3W | Technisch gereed | nee | PS-3W criterium 7 |
 
 ### 5.18 Buiten de mediaserver
 
@@ -394,9 +394,9 @@ technisch gereed kan zijn terwijl het product dat niet is.
 | Fase | Plex-verantwoordelijkheid die vervalt | Wat daarna nog openstaat | Technisch gereed zonder productgereed? |
 | --- | --- | --- | --- |
 | **PS-1** protocol | geen; dit is de grens waarachter de rest kan bestaan | alles | n.v.t., de fase levert een specificatie |
-| **PS-2** catalogus in Go | bestandsdetectie, identiteit, technische analyse, herscan | bibliotheekbeheer vanuit de client, metadata, afspelen | **ja**: de scanner werkt, maar alleen via de opdrachtregel te bedienen |
-| **PS-3** `PleyaServerClient` | bladeren, zoeken, bibliotheeklijst, filters, sortering | hubs, alfabalk, verzamelingen, afspeellijsten | nee, dit is meteen zichtbaar in de app |
-| **PS-3W** Pleya Web | de meegeleverde webinterface, voor bladeren, zoeken en de serverstatus | afspelen in de browser, beheer, en alles wat een endpoint mist | **ja**: de schil staat er, maar hij toont alleen wat PS-2 al kan |
+| **PS-2** catalogus in Go, gesloten | bestandsdetectie, identiteit, technische analyse, edities, herscan | bibliotheekbeheer vanuit de client, metadata, afspelen | **ja**: de scanner werkt, maar alleen via de opdrachtregel te bedienen |
+| **PS-3** `PleyaServerClient` | bladeren, zoeken, bibliotheeklijst, sortering, de hub-bouwstenen | filters, alfabalk, verzamelingen, afspeellijsten | nee, dit is meteen zichtbaar in de app |
+| **PS-3W** Pleya Web, gesloten | de meegeleverde webinterface, voor bladeren, zoeken en de serverstatus | afspelen in de browser, beheer, en alles wat een endpoint mist | **ja**: de schil staat er, maar hij toont alleen wat PS-2 al kan |
 | **PS-4** direct play en kijkstatus | de meest voorkomende afspeelweg, plus kijkstatus en hervatten | geschiedenis, favorieten, spoorvoorkeuren, externe ondertitels | **ja**: afspelen werkt, maar een bestand dat het toestel niet aankan faalt zichtbaar |
 | **PS-5** `DeviceCapabilities` | niets bij Plex; dit verbetert Plex en Jellyfin ook | de serverkant van de beslissing | nee |
 | **PS-6** `PlaybackPlan` | de beslissing welke stream er komt, plus versiekeuze | de uitvoering ervan | **ja**: een plan dat `transcode` zegt levert nog een nette fout op |
@@ -429,14 +429,28 @@ Gegroepeerd naar waar ze logisch zouden horen:
 | G2 | Kijkgeschiedenis en "Bekeken door" | PS-4 levert positie en gekeken-vlag, niet de geschiedenis. Het geschiedenisoverzicht en de rij Bekeken door blijven leeg. | PS-9, want geschiedenis is per gebruiker |
 | G3 | Favorieten, waarderingen en spoorvoorkeuren per gebruiker | Drie schrijfacties uit `MediaServerClient` (`setFavorite`, `rate`, spoorkeuze) die nergens landen. Zonder deze drie is de persoonlijke laag half. | PS-9 |
 | G4 | Intro en aftiteling overslaan | Een zichtbare functie op de verpakking van de app. Plex levert de markers kant-en-klaar; Pleya Server heeft er geen bron voor. | PS-7 voor de opslag, een analysestap na PS-8 voor de detectie |
-| G5 | Externe ondertitels als los bestand leveren | Een film met een los `.srt` toont zonder dit geen ondertitels, en PS-4 noemt alleen de videostream. | PS-4 |
 | G6 | Bibliotheekbeheer vanuit de client | Bibliotheek toevoegen, verwijderen, scannen, voortgang zien, metadata forceren en lopende klussen bekijken. Zonder dit is de server alleen met SSH te bedienen. | PS-11, met de endpoints in PS-2 |
 | G7 | Back-up, restore, upgrade en terugrollen | [17.3](pleya-server-architecture.md#173-migraties) en [22](pleya-server-architecture.md#22-deployment-en-distributie) beschrijven het beleid, maar geen fase levert het gereedschap. Terugrollen leunt expliciet op een back-up die niemand bouwt. | PS-11 |
 | G8 | Faalpaden als samenhangend geheel | Volle schijf, database weg, transcode-crash, kapot bestand, provider offline. Per stuk komen ze langs, maar geen enkele fase toetst ze als set. | PS-11, als acceptatiecriterium |
-| G9 | Home-rijen | Het homescherm is de eerste indruk van het product. De client-side aanbevelingsmotor bestaat, maar er is geen bron die hem voedt zonder Plex-hubs. | PS-3 voor de bouwstenen, PS-7 voor de verrijking |
 | G10 | Beoordelingen | Critici, publiek en het bronlogo staan op het detailscherm. PS-7 noemt titels, samenvattingen en artwork, niet de beoordelingen. | PS-7 |
-| G11 | Edities | Een bibliotheek met een Director's Cut naast de bioscoopversie toont zonder dit twee identieke titels. | PS-2 |
 | G12 | Afspeellijsten migreren | PS-12 noemt kijkstatus, favorieten en verzamelingen, niet afspeellijsten. Volgt uit G1. | PS-12 |
+| G13 | Filters op een bibliotheek | Filteren op genre, jaar, kijkstatus en resolutie zit in de app op elke bibliotheekpagina. Het bevroren contract kent geen filterparameter en geen filterendpoint, dus een Pleya Server-bibliotheek levert een ongefilterde lijst. | een catalogusfase, of een contractvraag vóór PS-7 |
+
+**Drie gaten zijn hier weg en dat is geen stille sluiting.**
+[docs/pleya-server-ps1-scope-deviation.md](pleya-server-ps1-scope-deviation.md) is op 18 augustus 2026
+goedgekeurd en wees G5 aan PS-4 toe, G11 aan PS-2 en G9 aan PS-3. Daarmee is voldaan aan
+onderhoudsregel 3: goedgekeurd voorstel plus een Phase ID. Ze staan nu als gewone regel in de matrix,
+G11 op `Technisch gereed` omdat PS-2 hem heeft opgeleverd, G5 en G9 op `In roadmap` omdat hun fase nog
+moet draaien.
+
+**G13 is er nieuw bij, gevonden bij het sluiten van PS-2 en PS-3W.** De regel voor filters stond op
+`PS-1, PS-3` terwijl PS-1 gesloten en bevroren is zonder één filterparameter: `/libraries/{id}/items`
+kent `limit`, `cursor` en `sort` en verder niets. Een fase die hem niet kan leveren is geen fase, dus
+de regel gaat naar `geen`. Client-side filteren over een gecursorde lijst van duizenden items is geen
+oplossing maar een fout antwoord op de vraag. Dezelfde correctie geldt voor de alfabetische
+sprongbalk, die om dezelfde reden geen `firstCharacter`-endpoint heeft; die stond al als gap en is
+alleen van fase ontdaan. Sorteren blijft wél bij PS-3: het contract draagt `title`, `added_at` en
+`year` in beide richtingen.
 
 Vijftien gaps zijn geen blocker: mappenhiërarchie, verwante titels, de alfabetische sprongbalk met
 echte offsets, afspeellijst herordenen, hoofdstukken, uit Verder kijken halen, de drempel voor
@@ -514,23 +528,41 @@ staat; de gate accepteert geen verborgen fallback.
 
 ### 9.1 Stand van zaken
 
-| Meting | Aantal |
-| --- | --- |
-| Domeinen | 18 |
-| Capabilities | 162 |
-| Plex-off blockers | 104 |
-| Blockers met een bestaande fase | 78 |
-| Blockers zonder fase (roadmap gap) | 24 |
-| Blockers die op een productbesluit wachten | 2 |
-| Roadmap gaps in totaal | 37 |
-| Open productbesluiten | 11 |
-| Bewust buiten scope | 12 |
-| Bewust anders opgelost | 1 |
+Bijgewerkt bij het sluiten van PS-2 en PS-3W op 19 augustus 2026. De aantallen zijn uit de matrix in
+hoofdstuk 5 geteld en niet overgeschreven uit een vorige ronde.
 
-De gate staat vandaag **rood**, en dat is de verwachte uitkomst: er is nog geen regel servercode
-geschreven. De waarde van deze telling zit elders. Zesentwintig van de honderdvier blockers hangen
-aan geen enkele fase, waarvan er twee eerst een productbesluit vragen. Dat aantal was tot nu toe
-onzichtbaar, en het is de reden dat dit document bestaat.
+| Meting | Aantal | Vorige ronde |
+| --- | --- | --- |
+| Domeinen | 18 | 18 |
+| Capabilities | 162 | 162 |
+| Technisch gereed | 17 | 0 |
+| Plex-off blockers | 96 | 104 |
+| Blockers met een bestaande fase | 72 | 78 |
+| Blockers zonder fase (roadmap gap) | 22 | 24 |
+| Blockers die op een productbesluit wachten | 2 | 2 |
+| Roadmap gaps in totaal | 37 | 37 |
+| Open productbesluiten | 11 | 11 |
+| Bewust buiten scope | 12 | 12 |
+| Bewust anders opgelost | 1 | 1 |
+
+De gate staat vandaag **rood**, en dat blijft de verwachte uitkomst: er is een catalogus en een
+webclient, en er is geen afspelen, geen kijkstatus, geen metadata en geen gebruikersmodel.
+
+Wat er wel veranderd is: PS-2 en PS-3W hebben zeventien capabilities op `Technisch gereed` gezet en
+acht Plex-off blockers gesloten. Dat is de eerste keer dat deze telling beweegt, en hij beweegt in de
+richting die de roadmap voorspelt: identiteit, verandersdetectie, technische analyse, edities,
+migraties en de drie securityregels van de scanner.
+
+Vierentwintig van de zesennegentig blockers hangen aan geen enkele fase, waarvan er twee eerst een
+productbesluit vragen. Dat aantal daalde met twee doordat G11 zijn fase kreeg en een filterregel er
+juist bijkwam die er niet in stond.
+
+Twee tellingen die eerder niet klopten staan nu vast. De regel "blockers zonder fase" stond op 24
+terwijl hoofdstuk 7 er 22 telde; de matrix zelf gaf 24 en hoofdstuk 7 gaf 22, en 22 plus de vijftien
+niet-blokkerende gaps was 37 terwijl de matrix er 39 droeg. Beide komen uit hetzelfde patroon: een
+telling die met de hand bijgewerkt werd terwijl de tabel eronder verschoof. Vandaar de kolom
+"vorige ronde": een verschil dat niemand kan verklaren is een fout in de telling en niet in de
+werkelijkheid.
 
 ---
 
