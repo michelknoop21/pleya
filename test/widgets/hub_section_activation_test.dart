@@ -180,6 +180,29 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('losing the View All card does not leave the row unable to open anything', (tester) async {
+    // hub.more comes off the server on every refresh, so the trailing card can
+    // disappear while the cursor is on it. The index gets clamped onto the last
+    // real card, which is what the user then sees highlighted, and the target
+    // was left saying "View All": activation resolved that to nothing and
+    // returned without re-pointing, so Select stayed dead until the user pressed
+    // left or right.
+    final hubKey = GlobalKey<HubSectionState>();
+    final (spy, pumpWith) = await pumpHub(tester, hub(['a', 'b', 'c'], more: true), hubKey: hubKey);
+
+    hubKey.currentState!.requestFocusAt(3); // the "View All" slot
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await pumpWith(hub(['a', 'b', 'c']));
+    spy.pushed.clear();
+
+    await pressSelect(tester);
+
+    expect(spy.pushed, hasLength(1), reason: 'the press acts on the card the cursor was clamped onto');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('a reorder the row absorbs stays one line naming what the user aimed at', (tester) async {
     // The counterweight to the warnings: this row follows the identity across a
     // refresh, so a reorder is not a defect and must not produce noise. What

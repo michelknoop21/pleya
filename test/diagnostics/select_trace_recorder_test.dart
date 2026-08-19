@@ -96,7 +96,7 @@ void main() {
 
     expect(warnings, isEmpty);
     expect(info, hasLength(1));
-    expect(info.single, contains('surface=tv-rail hub=recentlyAdded index=3'));
+    expect(info.single, contains('surface=tv-rail hub=recentlyAdded'));
     expect(info.single, contains('selected=s1:41215'));
   });
 
@@ -193,6 +193,58 @@ void main() {
     expect(info, hasLength(1));
   });
 
+  test('a change in another row cannot mark this press abnormal', () {
+    // Every row rebuilds on every refresh. Without keying the report on the row
+    // it came from, a background hub nobody is looking at would hand this press
+    // a cause that has nothing to do with the title that opened, and the whole
+    // point of the trace is that its warnings mean something.
+    final recorder = build();
+    recorder.noteFocus(surface: 'tv-rail', hubId: 'recentlyAdded', index: 3, item: item('41215'));
+    final id = recorder.beginSelect(source: 'native');
+
+    recorder.noteFocusedTargetChanged(
+      surface: 'tv-rail',
+      hubId: 'someOtherHub',
+      index: 0,
+      was: 's1:aaa',
+      occupant: 's1:bbb',
+      disposition: SelectTraceDisposition.replaced,
+    );
+    completeChain(recorder, id, item('41215'));
+    recorder.close(id, SelectTraceOutcome.detail);
+
+    expect(warnings, isEmpty);
+    expect(info, hasLength(1));
+  });
+
+  test('a benign change elsewhere leaves this row pending explanation alone', () {
+    final recorder = build();
+    recorder.noteFocus(surface: 'tv-rail', hubId: 'recentlyAdded', index: 3, item: item('41215'));
+    recorder.noteFocusedTargetChanged(
+      surface: 'tv-rail',
+      hubId: 'recentlyAdded',
+      index: 3,
+      was: 's1:41215',
+      occupant: 's1:9082',
+      disposition: SelectTraceDisposition.replaced,
+    );
+    recorder.noteFocusedTargetChanged(
+      surface: 'hub-section',
+      hubId: 'someOtherHub',
+      index: 0,
+      was: 's1:aaa',
+      occupant: 's1:bbb',
+      disposition: SelectTraceDisposition.moved,
+    );
+
+    recorder.noteFocus(surface: 'tv-rail', hubId: 'recentlyAdded', index: 3, item: item('9082'));
+    final id = recorder.beginSelect(source: 'native');
+    completeChain(recorder, id, item('9082'));
+    recorder.close(id, SelectTraceOutcome.detail);
+
+    expect(warnings.single, contains('focused_target_changed'));
+  });
+
   test('holds more than one press, because a route transition overlaps them', () {
     final recorder = build(maxOpenTraces: 2);
     recorder.noteFocus(surface: 'tv-rail', hubId: 'h', index: 0, item: item('a'));
@@ -213,6 +265,20 @@ void main() {
     expect(recorder.debugOpenTraceIds, hasLength(2));
     expect(recorder.debugOpenTraceIds, isNot(contains(first)));
     expect(warnings.single, contains('evicted'));
+  });
+
+  test('an evicted press that reached nothing is dropped in silence', () {
+    // A key-down whose release never arrives, because a native text-input
+    // session opened over it, ends up here. It never reached a widget, so the
+    // eviction must not turn it into a warning about an unfinished press.
+    final recorder = build(maxOpenTraces: 1);
+    recorder.noteFocus(surface: 'tv-rail', hubId: 'h', index: 0, item: item('a'));
+    recorder.beginSelect(source: 'native');
+    recorder.beginSelect(source: 'native');
+
+    expect(recorder.debugOpenTraceIds, hasLength(1));
+    expect(warnings, isEmpty);
+    expect(info, isEmpty);
   });
 
   test('bounds the timeline of one press', () {

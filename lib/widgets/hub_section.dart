@@ -206,6 +206,17 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
         _focusedIndex = maxIndex;
       }
     }
+
+    // `hub.more` comes off the server on every refresh, so the trailing card can
+    // disappear while the cursor is on it. The clamp above then moves the index
+    // onto the last real card, which is what the user sees highlighted, while
+    // the target still says "View All". Activation resolves that to `none` and
+    // returns without re-pointing, so every following Select would be a no-op
+    // until the user pressed left or right. Nothing was aimed at a title here,
+    // so re-pointing costs no protection.
+    if (_focusTarget is HubFocusViewAll && !widget.hub.more) {
+      _setFocusTarget(_focusedIndex, report: false);
+    }
   }
 
   /// Moves [_focusedIndex] to wherever the item it pointed at ended up.
@@ -222,10 +233,12 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     if (moved < 0) {
       // The cursor and the item it stood on have come apart. Activation refuses
       // to guess from here (see [_resolveActivation]); this line says why.
-      appLogger.w(
-        'Hub focus lost its item across a refresh: hub=${widget.hub.id} index=$_focusedIndex '
-        'was=$focusedKey occupant=$occupant items=${widget.hub.items.length}',
-      );
+      if (_hubFocusNode.hasFocus) {
+        appLogger.w(
+          'Hub focus lost its item across a refresh: hub=${widget.hub.id} index=$_focusedIndex '
+          'was=$focusedKey occupant=$occupant items=${widget.hub.items.length}',
+        );
+      }
       _reportFocusedTargetChange(was: focusedKey, occupant: occupant, disposition: SelectTraceDisposition.removed);
       return;
     }
@@ -244,6 +257,10 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     required String occupant,
     required SelectTraceDisposition disposition,
   }) {
+    // Every row rebuilds on every refresh, and `_focusedIndex` defaults to 0, so
+    // without this guard a background hub nobody is looking at would report a
+    // change and mark somebody else's press abnormal.
+    if (!_hubFocusNode.hasFocus) return;
     SelectTraceRecorder.instance.noteFocusedTargetChanged(
       surface: 'hub-section',
       hubId: widget.hub.id,
@@ -259,16 +276,21 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
   /// Called from every deliberate focus move, and from the recovery path after
   /// a dropped activation: re-pointing is what keeps a single stale item from
   /// blocking every following press.
-  void _setFocusTarget(int index) {
+  /// Set [report] to false for a mechanical re-point, where the cursor did not
+  /// move because the user asked it to. Telling the trace recorder about those
+  /// would overwrite the aim it is meant to remember.
+  void _setFocusTarget(int index, {bool report = true}) {
     final items = widget.hub.items;
     if (index >= 0 && index < items.length) {
       _focusTarget = HubFocusItem(hubItemIdentity(items[index]));
-      SelectTraceRecorder.instance.noteFocus(
-        surface: 'hub-section',
-        hubId: widget.hub.id,
-        index: index,
-        item: items[index],
-      );
+      if (report) {
+        SelectTraceRecorder.instance.noteFocus(
+          surface: 'hub-section',
+          hubId: widget.hub.id,
+          index: index,
+          item: items[index],
+        );
+      }
     } else if (index == items.length && widget.hub.more) {
       _focusTarget = const HubFocusViewAll();
     } else {
@@ -315,13 +337,29 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
       recorder.close(traceId, SelectTraceOutcome.dropped);
       // Re-point at what is actually on screen. Without this the row would
       // refuse every following press for as long as the stale identity is held.
-      _setFocusTarget(_focusedIndex);
+      //
+      // Yes, that means the *second* press opens the card that took the slot.
+      // That is the trade, not an oversight: the first press was aimed at a
+      // title that no longer exists and is refused, and by the time a second
+      // press arrives the user has been looking at the replacement. Re-pointing
+      // straight away in [_followFocusedItemAcrossUpdate] instead would open the
+      // replacement on the very press that was aimed at the old card, which is
+      // the reported bug. `test/widgets/hub_section_activation_test.dart` pins
+      // both halves.
+      //
+      // Not reported as a focus move: the recorder must keep the aim the user
+      // actually had, so the next press still shows up as selected != activated.
+      _setFocusTarget(_focusedIndex, report: false);
       return activation;
     }
 
     final item = activation.item;
     if (item != null) {
-      appLogger.i(
+      // Debug, not info: this carries a media title, it fires on every platform
+      // including desktop and mobile, and on TV the select trace already says
+      // the same thing with the rest of the chain attached. Turn on debug
+      // logging before reproducing and it comes back.
+      appLogger.d(
         'Hub activation: action=$action hub=${widget.hub.id} index=${activation.index} '
         'requested=${_describeTarget(_focusTarget)} resolved=${hubItemIdentity(item)} '
         'title="${item.title}" backend=${item.backend.id} server=${item.serverId ?? 'none'} '
@@ -568,6 +606,11 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     final item = activation.item;
     if (item == null) {
       recorder.close(traceId, SelectTraceOutcome.none);
+      // Recovery, same reason as the stale-drop branch: a target that resolves
+      // to nothing must not leave the row unable to act on a following press.
+      if (activation.strategy == HubActivationStrategy.none) {
+        _setFocusTarget(_focusedIndex, report: false);
+      }
       return;
     }
     recorder.link(traceId, SelectTraceLink.activatedTarget, item, note: 'strategy=${activation.strategy.name}');
@@ -581,8 +624,11 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     final recorder = SelectTraceRecorder.instance;
     final traceId = recorder.consumeActiveSelectTrace();
     final activation = _resolveActivation('context-menu', traceId: traceId);
+    if (!activation.opensItem) {
+      recorder.close(traceId, SelectTraceOutcome.none);
+      return;
+    }
     recorder.close(traceId, SelectTraceOutcome.contextMenu);
-    if (!activation.opensItem) return;
     _mediaCardKeys[activation.index]?.currentState?.showContextMenu();
   }
 

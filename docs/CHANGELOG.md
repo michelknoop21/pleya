@@ -4,7 +4,7 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
 ## [2026-08-19] De rij die Select op de Apple TV afhandelt was niet de rij die gehard was
 
-Op `main`, twee commits: `22b4249` en deze.
+Op `main`, drie commits: `22b4249`, `7bcd588` en deze.
 
 ### Fixed
 - **`HubSection` opent bij Select het item dat de gebruiker ziet, niet de index** (`22b4249`). Een rij herlaadt in place en kan daarbij herordenen, dus tussen het frame waar iemand naar keek en het moment van drukken kan een andere kaart op dezelfde plek staan. `lib/widgets/hub_activation.dart` houdt de cursor voortaan als identiteit (`MediaItem.globalKey`) vast in plaats van als positie, en weigert een activering waarvan het item verdwenen is in plaats van te openen wie de plek innam.
@@ -20,6 +20,14 @@ Op `main`, twee commits: `22b4249` en deze.
 
 ### Changed
 - **`AppleTvRemoteTouchService` krijgt een injecteerbare recorder** en opent de trace op de Select-key-down, op zowel het klikpad (`click_s`/`click_e`) als het natieve `UIPress`-pad. Op de key-up wordt het id vastgelegd vóór de pressed-status wist, want de service geeft daar `false` terug en Flutter dispatcht de release meteen daarna.
+- **De activeringsregel van een rij is geen info meer maar debug.** Hij draagt een mediatitel, hij vuurde op elk platform, en op TV zegt de trace hetzelfde met de rest van de keten erbij. Zet debug-logging aan vóór je reproduceert en hij komt terug.
+
+### Fixed (na de review)
+- **Een rij kon zijn Select permanent verliezen.** `hub.more` komt bij elke refresh van de server, dus de View All-kaart kan verdwijnen terwijl de cursor erop staat. `didUpdateWidget` klemde dan wel de index op de laatste echte kaart, precies wat de gebruiker gemarkeerd ziet, maar het doel bleef "View All". De activering loste dat op naar niets en keerde terug zonder opnieuw te richten, waarna elke volgende Select een no-op was tot je links of rechts drukte. Er was hier niets op een titel gericht, dus opnieuw richten kost geen bescherming.
+- **Een refresh van een rij waar niemand naar kijkt vervuilde de trace van een andere.** `noteFocusedTargetChanged` liep over álle open traces en elke rij bouwt bij elke refresh opnieuw op, met `_focusedIndex` standaard 0. Een druk op rij A kwam er zo als `ABNORMAL` uit met een oorzaak uit rij B. De melding is nu gesleuteld op surface plus hub, en beide rijen melden alleen als ze zelf focus hebben.
+- **Een Select-key-down zonder bijbehorende key-up lekte een trace.** Opent er een natieve tekstinvoersessie over de druk heen, dan wordt de release opgeslokt. `beginSelect` breekt nu eerst de vorige af, en een eviction die niets bereikt heeft zwijgt in plaats van te waarschuwen over een druk die simpelweg nooit afliep.
+- **De contextmenu-tak sloot de trace vóór bekend was dat er een menu opende**, in beide rijen. Nu pas nadat de guards door zijn.
+- **Omlaag vanaf de filterregel in Aanvragen was een dode toets tijdens het zoeken.** `handleChipKeyEvent` meldt de druk als afgehandeld zodra er een callback bestaat, en `_navigateDownFromFilterBar` mikte altijd op het ontdek-raster, dat tijdens een zoekopdracht niet bestaat. Hij volgt nu dezelfde regel als omlaag vanaf het zoekveld.
 
 ## [2026-08-19] Een klik op de zijbalk startte de film eronder
 

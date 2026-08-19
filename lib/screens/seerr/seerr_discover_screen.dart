@@ -456,8 +456,15 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   /// Down from the filter line: the first card under it. Nothing there (loading,
   /// empty, an error panel) leaves focus where it is rather than sending it to a
   /// node that is not on screen.
+  ///
+  /// While a search is running the shelves are gone and the results carry their
+  /// own first-item node, so the discover node is never attached. Without the
+  /// switch Down would be a dead key: `handleChipKeyEvent` reports the press as
+  /// handled the moment a callback exists, so default traversal never gets a
+  /// turn either.
   void _navigateDownFromFilterBar() {
-    if (_firstDiscoverItemFocusNode.context != null) _firstDiscoverItemFocusNode.requestFocus();
+    final target = _query.isEmpty ? _firstDiscoverItemFocusNode : _firstResultFocusNode;
+    if (target.context != null) target.requestFocus();
   }
 
   /// Grid view of [items], delegating to the shared seerr grid so discover and

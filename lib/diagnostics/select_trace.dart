@@ -164,7 +164,8 @@ class SelectTrace {
     required this.id,
     required this.source,
     required this.openedAt,
-    this.context = '',
+    this.surface = 'none',
+    this.hubId = '',
     this.maxTimelineEntries = 24,
   });
 
@@ -177,8 +178,15 @@ class SelectTrace {
 
   final DateTime openedAt;
 
-  /// Surface, hub and index the cursor sat on when the press started.
-  final String context;
+  /// Which row the cursor sat in when the press started. Kept as fields rather
+  /// than one formatted string because a rebuild elsewhere must not be able to
+  /// attach itself to this press: a report only lands here when it names the
+  /// same surface and hub.
+  final String surface;
+  final String hubId;
+
+  /// Whether [surface] and [hubId] name the row this press came from.
+  bool belongsTo(String surface, String hubId) => surface == this.surface && hubId == this.hubId;
 
   final int maxTimelineEntries;
 
@@ -283,7 +291,7 @@ SelectTraceVerdict evaluateSelectTrace(SelectTrace trace) {
 /// The one-line form, emitted when a press behaved normally.
 String formatSelectTraceLine(SelectTrace trace, {required int elapsedMs}) {
   final buffer = StringBuffer('Select trace ${trace.id}: outcome=${trace.outcome.name} source=${trace.source}');
-  if (trace.context.isNotEmpty) buffer.write(' ${trace.context}');
+  buffer.write(' surface=${trace.surface} hub=${trace.hubId}');
   for (final link in SelectTraceLink.values) {
     final target = trace.links[link];
     if (target != null) buffer.write(' ${link.label}=${target.identity}');
@@ -302,7 +310,7 @@ String formatSelectTraceReport(SelectTrace trace, SelectTraceVerdict verdict, {r
     'Select trace ${trace.id} ABNORMAL break=$reason outcome=${trace.outcome.name} '
     'source=${trace.source} ms=$elapsedMs',
   );
-  if (trace.context.isNotEmpty) buffer.write(' ${trace.context}');
+  buffer.write(' surface=${trace.surface} hub=${trace.hubId}');
   for (final entry in trace.timeline) {
     buffer.write('\n  $entry');
   }

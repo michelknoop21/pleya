@@ -2140,14 +2140,17 @@ void main() {
       await tester.pumpWidget(buildRail(hubOf([joey, movie('2'), movie('3')]), onActivateItem: handled));
       await tester.pump();
 
+      // Focus first: only the rail the user is actually in reports, so an
+      // unfocused row cannot pin its refresh on somebody else's press.
+      final railState = tester.state<TvBrowseRailState>(find.byType(TvBrowseRail));
+      railState.requestFocus();
+      await tester.pump();
+
       // Same length, same items, different order: the reported failure. A
       // length check sees nothing here.
       await tester.pumpWidget(buildRail(hubOf([movie('2'), movie('3'), joey]), onActivateItem: handled));
       await tester.pump();
 
-      final railState = tester.state<TvBrowseRailState>(find.byType(TvBrowseRail));
-      railState.requestFocus();
-      await tester.pump();
       await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
       await tester.pump(const Duration(milliseconds: 50));
       await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
@@ -2163,12 +2166,13 @@ void main() {
       await tester.pumpWidget(buildRail(hubOf([movie('41215'), movie('2')]), onActivateItem: handled));
       await tester.pump();
 
-      await tester.pumpWidget(buildRail(hubOf([movie('9082'), movie('2')]), onActivateItem: handled));
-      await tester.pump();
-
       final railState = tester.state<TvBrowseRailState>(find.byType(TvBrowseRail));
       railState.requestFocus();
       await tester.pump();
+
+      await tester.pumpWidget(buildRail(hubOf([movie('9082'), movie('2')]), onActivateItem: handled));
+      await tester.pump();
+
       await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
       await tester.pump(const Duration(milliseconds: 50));
       await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);

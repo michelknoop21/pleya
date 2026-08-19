@@ -16,8 +16,28 @@ class _FocusSnapshot {
   final String hubId;
   final int index;
   final SelectTraceTarget target;
+}
 
-  String get context => 'surface=$surface hub=$hubId index=$index';
+/// A rebuild that put a different item under a row's cursor, kept until the
+/// press it explains arrives.
+///
+/// Carries the row it happened in: a change reported by one row must never
+/// attach itself to a press that came from another, or the warning would name
+/// a cause that has nothing to do with the title that opened.
+@immutable
+class _PendingFocusChange {
+  const _PendingFocusChange({required this.surface, required this.hubId, required this.occupant, required this.entry});
+
+  final String surface;
+  final String hubId;
+
+  /// Identity that took the cursor's slot. While the cursor still sits on it,
+  /// this change keeps explaining the next press.
+  final String occupant;
+
+  final SelectTraceEntry entry;
+
+  bool matches(String surface, String hubId) => surface == this.surface && hubId == this.hubId;
 }
 
 /// Correlates one Select press across the row, the navigation helper, the route
@@ -80,11 +100,7 @@ class SelectTraceRecorder {
 
   /// The last replacement or removal under the cursor, kept so a press that
   /// starts *after* the rebuild still carries the explanation.
-  SelectTraceEntry? _pendingFocusChange;
-
-  /// Identity that took the cursor's slot in [_pendingFocusChange]. The change
-  /// stops explaining anything once the user aims at something else.
-  String? _pendingFocusChangeOccupant;
+  _PendingFocusChange? _pendingFocusChange;
 
   String? _pendingDispatchId;
 
@@ -108,12 +124,14 @@ class SelectTraceRecorder {
       target: SelectTraceTarget(identity: identity, title: item.title ?? item.displayTitle),
     );
     // Only a move *away* from the card that took the slot drops the pending
-    // explanation. Re-notifying the same position, which happens whenever the
-    // row regains focus or rebuilds, must not erase it: that is precisely the
-    // moment the user is still aimed at the swapped-in card.
-    if (identity != _pendingFocusChangeOccupant) {
+    // explanation, and only the row that reported it may drop it. Re-notifying
+    // the same position, which happens whenever the row regains focus or
+    // rebuilds, must not erase it: that is precisely the moment the user is
+    // still aimed at the swapped-in card.
+    final pending = _pendingFocusChange;
+    if (pending == null) return;
+    if (!pending.matches(surface, hubId) || identity != pending.occupant) {
       _pendingFocusChange = null;
-      _pendingFocusChangeOccupant = null;
     }
   }
 
@@ -132,11 +150,27 @@ class SelectTraceRecorder {
         'focused_target_changed disposition=${disposition.name} surface=$surface hub=$hubId '
         'index=$index was=$was occupant=$occupant';
     for (final trace in _open.values) {
+      // Only the row the press came from. A background refresh of an unrelated
+      // hub would otherwise mark an in-flight press abnormal and hand the log a
+      // cause that had nothing to do with the title that opened.
+      if (!trace.belongsTo(surface, hubId)) continue;
       trace.addEntry(SelectTraceEntry(atMs: trace.elapsedMsAt(_now()), kind: 'anomaly', detail: detail));
       if (disposition.isAnomalous) trace.sawFocusedTargetChange = true;
     }
-    _pendingFocusChange = disposition.isAnomalous ? SelectTraceEntry(atMs: 0, kind: 'anomaly', detail: detail) : null;
-    _pendingFocusChangeOccupant = disposition.isAnomalous ? occupant : null;
+
+    final pending = _pendingFocusChange;
+    if (!disposition.isAnomalous) {
+      // A benign reorder clears this row's own pending change and leaves
+      // another row's alone.
+      if (pending != null && pending.matches(surface, hubId)) _pendingFocusChange = null;
+      return;
+    }
+    _pendingFocusChange = _PendingFocusChange(
+      surface: surface,
+      hubId: hubId,
+      occupant: occupant,
+      entry: SelectTraceEntry(atMs: 0, kind: 'anomaly', detail: detail),
+    );
   }
 
   /// Opens a trace at the Select key-down edge and returns its id.
@@ -153,22 +187,25 @@ class SelectTraceRecorder {
       id: id,
       source: source,
       openedAt: _now(),
-      context: focus?.context ?? 'surface=none',
+      surface: focus?.surface ?? 'none',
+      hubId: focus?.hubId ?? '',
       maxTimelineEntries: maxTimelineEntries,
     );
     if (focus != null) {
-      trace.putLink(SelectTraceLink.selectedTarget, focus.target, atMs: 0);
+      trace.putLink(SelectTraceLink.selectedTarget, focus.target, atMs: 0, note: 'index=${focus.index}');
     }
     final pending = _pendingFocusChange;
-    if (pending != null) {
-      trace.addEntry(pending);
+    if (pending != null && focus != null && pending.matches(focus.surface, focus.hubId)) {
+      trace.addEntry(pending.entry);
       trace.sawFocusedTargetChange = true;
     }
 
     _open[id] = trace;
     while (_open.length > maxOpenTraces) {
-      final oldest = _open.keys.first;
-      _closeTrace(oldest, SelectTraceOutcome.none, note: 'evicted');
+      // Through [abandon], so an evicted press that never reached a second link
+      // stays silent. Those are the ordinary ones: a Select on a button leaves a
+      // trace nobody claims, and warning about it would drown the real reports.
+      abandon(_open.keys.first, 'evicted');
     }
     return id;
   }

@@ -429,7 +429,7 @@ class AppleTvRemoteTouchService {
     _setTraditionalFocusHighlight();
     _scheduleFrame();
     _selectPressedFromClick = true;
-    _openSelectTraceId = _traceRecorder.beginSelect(source: 'click_s');
+    _openSelectTraceId = _beginSelectTrace('click_s');
     _log('emit keydown=${_keyName(LogicalKeyboardKey.enter)} source=click_s');
     _simulateKeyDown(LogicalKeyboardKey.enter);
   }
@@ -466,6 +466,19 @@ class AppleTvRemoteTouchService {
     _traceRecorder.dispatchSelect(traceId);
     _log('emit keyup=${_keyName(LogicalKeyboardKey.enter)} source=$source');
     _simulateKeyUp(LogicalKeyboardKey.enter);
+  }
+
+  /// Opens a trace for a press that is going down now.
+  ///
+  /// Drops whatever was still open first. A key-down whose key-up never arrives
+  /// is normal here: a native text-input session can open over the press, and
+  /// the release is then consumed rather than delivered. Left alone, that
+  /// orphan would sit in the recorder until it got evicted, and eviction emits
+  /// a warning about a press that simply never finished.
+  String? _beginSelectTrace(String source) {
+    _traceRecorder.abandon(_openSelectTraceId, 'select-down-superseded');
+    _openSelectTraceId = null;
+    return _traceRecorder.beginSelect(source: source);
   }
 
   bool _shouldConsumeNativeSelectDuplicate(KeyEvent event) {
@@ -510,7 +523,7 @@ class AppleTvRemoteTouchService {
 
       _nativeSelectPressed = true;
       _lastAcceptedNativeSelectDownAt = now;
-      _openSelectTraceId = _traceRecorder.beginSelect(source: 'native');
+      _openSelectTraceId = _beginSelectTrace('native');
       return false;
     }
 

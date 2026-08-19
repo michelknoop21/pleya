@@ -773,6 +773,10 @@ class TvBrowseRailState extends State<TvBrowseRail> {
   /// the item is still in the row but no longer where the user left it.
   void _reportFocusedTargetChangeAcrossUpdate(String? was, MediaHub hub) {
     if (was == null) return;
+    // The rail rebuilds on every hub refresh whether or not anyone is looking at
+    // it. Reporting from an unfocused rail would mark a press that came from
+    // somewhere else abnormal, with a cause that had nothing to do with it.
+    if (!_focusNode.hasFocus) return;
     final occupant = _itemIndex >= 0 && _itemIndex < hub.items.length ? hubItemIdentity(hub.items[_itemIndex]) : 'none';
     if (occupant == was) return;
     final stillPresent = hub.items.any((item) => hubItemIdentity(item) == was);
@@ -1128,10 +1132,13 @@ class TvBrowseRailState extends State<TvBrowseRail> {
 
   void _showContextMenuForCurrentItem() {
     final recorder = SelectTraceRecorder.instance;
-    recorder.close(recorder.consumeActiveSelectTrace(), SelectTraceOutcome.contextMenu);
+    final traceId = recorder.consumeActiveSelectTrace();
     final hub = _activeHub;
-    if (hub == null || _itemIndex >= hub.items.length) return;
-    if (_isPersonHub(hub)) return;
+    if (hub == null || _itemIndex >= hub.items.length || _isPersonHub(hub)) {
+      recorder.close(traceId, SelectTraceOutcome.none);
+      return;
+    }
+    recorder.close(traceId, SelectTraceOutcome.contextMenu);
     _cardKeyFor(hub, _itemIndex).currentState?.showContextMenu();
   }
 
