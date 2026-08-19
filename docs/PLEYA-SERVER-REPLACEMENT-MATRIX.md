@@ -347,7 +347,26 @@ PS-11 gaat ervan uit dat hij bestaat ("websockets door de proxy"), en geen enkel
 | Droogloop met rapport | n.v.t. | (A) verplicht, niet over te slaan | PS-12 | In roadmap | ja | PS-12 criterium 1 |
 | Plex-ids nooit overnemen | n.v.t. | (A) `ratingKey` komt in geen enkele tabel voor | PS-12 | In roadmap | ja | PS-12 criterium 3 |
 
-### 5.17 Buiten de mediaserver
+### 5.17 Meegeleverde webinterface
+
+Plex levert zijn eigen webinterface mee op `:32400/web`, en de matrix had daar tot nu toe geen regel
+voor. PS-3W vult dat in. Wat hier staat is uitsluitend wat PS-3W aflevert; afspelen in een browser
+volgt op PS-4 en PS-6 en krijgt een regel zodra een fase hem draagt, niet eerder.
+
+Geen van deze regels is een blocker. Een huishouden dat de app op elk toestel heeft, mist de
+webinterface bij dagelijks gebruik niet zodra Plex stopt. Waar het wel telt is de beheerkant, en die
+staat al als blocker in [5.13](#513-serverbeheer-en-levenscyclus) onder G6 en G7.
+
+| Capability | Vandaag bij Plex | Pleya Server-doel | Fase | Status | Blocker | Bewijs |
+| --- | --- | --- | --- | --- | --- | --- |
+| Webinterface meegeleverd met de server | Plex Web op `:32400/web` | (A) statische bundel via `//go:embed` in dezelfde binary, [DEC-046](DECISIONS.md#dec-046-pleya-web-is-een-protocolclient-en-co-distributie-geeft-geen-extra-rechten) | PS-3W | In roadmap | nee | PS-3W criterium 1: de bundel wordt geserveerd en `/pleya/v1` wordt niet overschaduwd |
+| Setup en inloggen zonder een app te installeren | Plex-webwizard | (A) setup-code inwisselen en inloggen in de browser | PS-3W | In roadmap | nee | PS-3W criterium 3 |
+| Bibliotheken bladeren in een browser | Plex Web | (A) schil plus posterraster op de bestaande leesendpoints | PS-3W | In roadmap | nee | PS-3W criterium 3 |
+| Zoeken in een browser | Plex Web | (A) `GET /search`, [DEC-045](DECISIONS.md#dec-045-zoeken-levert-standaard-films-series-en-afleveringen-geen-seizoenen) | PS-3W | In roadmap | nee | PS-3W criterium 3 |
+| Detailpagina in een browser | Plex Web | (A) wat `Item` vandaag draagt; samenvatting, genres en cast volgen in PS-7 | PS-3W | In roadmap | nee | PS-3W criterium 3 |
+| Serverstatus lezen zonder SSH | Plex Web toont server en versie | (A) overzicht uit `GET /server` en `GET /info`, in dezelfde schil als de mediakant | PS-3W | In roadmap | nee | PS-3W criterium 7 |
+
+### 5.18 Buiten de mediaserver
 
 Wat hier staat is niet vergeten maar geplaatst. Elke regel draagt een expliciet oordeel.
 
@@ -377,6 +396,7 @@ technisch gereed kan zijn terwijl het product dat niet is.
 | **PS-1** protocol | geen; dit is de grens waarachter de rest kan bestaan | alles | n.v.t., de fase levert een specificatie |
 | **PS-2** catalogus in Go | bestandsdetectie, identiteit, technische analyse, herscan | bibliotheekbeheer vanuit de client, metadata, afspelen | **ja**: de scanner werkt, maar alleen via de opdrachtregel te bedienen |
 | **PS-3** `PleyaServerClient` | bladeren, zoeken, bibliotheeklijst, filters, sortering | hubs, alfabalk, verzamelingen, afspeellijsten | nee, dit is meteen zichtbaar in de app |
+| **PS-3W** Pleya Web | de meegeleverde webinterface, voor bladeren, zoeken en de serverstatus | afspelen in de browser, beheer, en alles wat een endpoint mist | **ja**: de schil staat er, maar hij toont alleen wat PS-2 al kan |
 | **PS-4** direct play en kijkstatus | de meest voorkomende afspeelweg, plus kijkstatus en hervatten | geschiedenis, favorieten, spoorvoorkeuren, externe ondertitels | **ja**: afspelen werkt, maar een bestand dat het toestel niet aankan faalt zichtbaar |
 | **PS-5** `DeviceCapabilities` | niets bij Plex; dit verbetert Plex en Jellyfin ook | de serverkant van de beslissing | nee |
 | **PS-6** `PlaybackPlan` | de beslissing welke stream er komt, plus versiekeuze | de uitvoering ervan | **ja**: een plan dat `transcode` zegt levert nog een nette fout op |
@@ -388,7 +408,7 @@ technisch gereed kan zijn terwijl het product dat niet is.
 | **PS-12** migratie | de reden om Plex draaiend te houden voor de historie | afspeellijsten migreren | nee |
 | **PS-13** externe workers | de laatste hardwarebeperking | niets | nee |
 
-Vier fasen kunnen technisch gereed zijn terwijl het product dat niet is, en dat is precies waarom de
+Zes fasen kunnen technisch gereed zijn terwijl het product dat niet is, en dat is precies waarom de
 gate in [hoofdstuk 9](#9-de-plex-off-acceptance-gate) op productniveau meet en niet op endpointniveau.
 
 ---
@@ -496,8 +516,8 @@ staat; de gate accepteert geen verborgen fallback.
 
 | Meting | Aantal |
 | --- | --- |
-| Domeinen | 17 |
-| Capabilities | 156 |
+| Domeinen | 18 |
+| Capabilities | 162 |
 | Plex-off blockers | 104 |
 | Blockers met een bestaande fase | 78 |
 | Blockers zonder fase (roadmap gap) | 24 |

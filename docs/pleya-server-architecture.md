@@ -1479,6 +1479,7 @@ flowchart LR
   P0["0. Docker Foundation"] --> P1["1. Protocol"]
   P1 --> P2["2. Catalogus (Go)"]
   P2 --> P3["3. PleyaServerClient"]
+  P2 --> P3W["3W. Pleya Web"]
   P3 --> P4["4. Direct play +<br/>watch state"]
   P4 --> P5["5. DeviceCapabilities"]
   P5 --> P6["6. PlaybackPlan"]
@@ -1498,6 +1499,12 @@ aanneemt; zie [docs/pleya-server-ps0-proposal.md](pleya-server-ps0-proposal.md).
 Capabilities en het playbackplan staan vóór metadata omdat daar de architecturale vernieuwing zit;
 metadata blokkeert de playbackkern niet en kan later. Fase 3 is de eerste die de app raakt, en dan
 achter een nieuwe `ConnectionKind` naast de bestaande vier.
+
+PS-3W hangt naast PS-3 en niet erachter. Het is een tweede client op hetzelfde protocol, en de twee
+fasen raken elkaars bestanden nergens: PS-3 wijzigt `lib/`, PS-3W wijzigt dat niet en voegt
+`pleya_web/` toe plus één statische route in de binary. Daarom houdt de nummering dertien fasen: er
+komt geen PS-14 bij, en PS-3W mag vóór of na PS-3 draaien. Toegevoegd als goedgekeurde afwijking, zie
+[docs/pleya-server-ps3w-proposal.md](pleya-server-ps3w-proposal.md).
 
 ---
 
@@ -1790,6 +1797,82 @@ een Pleya Server-capabilityset.
 
 **Roadmap Drift Check.** Is er een member geïmplementeerd die niet voor bladeren of zoeken nodig is?
 Terugdraaien of naar de juiste fase verplaatsen.
+
+---
+
+### Fase 3W. Pleya Web: schil, bladeren en zoeken
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-3W |
+| Doel | een meegeleverde webclient in de Pleya-designtaal, op de endpoints die vandaag draaien |
+| Bijdrage aan einddoel | Pleya Server wordt bruikbaar zonder dat er iets geïnstalleerd hoeft te worden, en het beheeroppervlak krijgt de plek waar het straks in landt |
+| Afhankelijkheden | PS-1, PS-2 |
+| Eerstvolgende fase | geen; PS-3W hangt naast PS-3 en blokkeert niets |
+
+Toegevoegd als goedgekeurde afwijking, vastgelegd in
+[docs/pleya-server-ps3w-proposal.md](pleya-server-ps3w-proposal.md). PS-1 tot en met PS-13 behouden
+hun nummer, doel, scope en stopcriterium, en er komt geen fase bij in de nummering.
+
+**Scope.** Een SvelteKit 5-applicatie in TypeScript strict, `adapter-static` in SPA-modus, in
+`pleya_web/`, gebouwd in een extra stage van `pleya_server/Dockerfile` en met `//go:embed` in de
+binary geserveerd achter de protocolroutes. Een designsysteem dat de tokens uit
+`lib/theme/mono_theme.dart` en `lib/utils/layout_constants.dart` letterlijk overneemt: kleur per
+themamodus met OLED als standaard, radii, ruimte, typografische maten, de drie duren, de
+poster-aspecten en de vier breakpoints, plus één breekpunt erbij aan de smalle kant omdat een browser
+320 px moet halen. Een uit `openapi.yaml` gegenereerde API-client met tokenvernieuwing en het
+foutcodenregister. De bootstrap- en inlogflow inclusief `retry_after_ms` uit de rate limiter. Een
+schil met zijbalk op breed en bottom bar op smal, capability-gestuurd uit `GET /info`. Home met
+`recently_added`, bibliotheken met cursorpaginering, een detailpagina voor film, serie, seizoen en
+aflevering, en zoeken volgens [DEC-045](DECISIONS.md#dec-045-zoeken-levert-standaard-films-series-en-afleveringen-geen-seizoenen).
+Artwork via `fetch` met token en een blob-URL, met de meting uit acceptatiecriterium 6. Eén
+serveroverzicht uit `GET /server` en `GET /info`, in dezelfde schil en met dezelfde componenten als
+de mediakant.
+
+**Out of scope.** Geen afspelen en geen `<video>`. Geen kijkstatus, lezen noch schrijven. Geen
+filters, verzamelingen, afspeellijsten, downloads en Live TV. Geen beheerendpoint: scans starten,
+jobs bekijken en bibliotheken toevoegen zijn G6 en G7 en hebben eerst een fase nodig. Geen wijziging
+in `docs/pleya-protocol/v1/openapi.yaml`, in de handlers, in het schema of in `lib/`. Geen
+TV-focusmodel: een browservenster is geen televisie, en `lib/focus/` wordt niet nagebouwd. Geen
+tweede designtaal voor het beheergedeelte.
+
+**Acceptatiecriteria.**
+1. De bundel wordt door de Go-binary geserveerd en `/pleya/v1/*`, `/healthz` en `/readyz` worden niet
+   overschaduwd, bewezen met een test in `internal/web`.
+2. Een releasebuild met een ontbrekende of plaatshoudende frontend faalt hard in plaats van stil een
+   lege pagina mee te leveren.
+3. Setup-code inwisselen, inloggen, bladeren, een detailpagina openen en zoeken werken tegen de echte
+   API zonder mocks, op de vijf breedtes uit de responsive strategie.
+4. Elke route is volledig met het toetsenbord te bedienen en levert geen axe-overtreding op.
+5. De gegenereerde API-client komt aantoonbaar uit `openapi.yaml`, met dezelfde
+   versheidscontrole als `scripts/codegen.sh` die voor Dart doet.
+6. De artworkmeting is gedaan op een raster van vijfhonderd posters en getoetst aan de drie
+   voorwaarden uit onderdeel 4.2 van het voorstel.
+7. Het serveroverzicht toont uitsluitend wat `GET /server` en `GET /info` dragen, en er is geen
+   menu-item dat naar een leeg scherm leidt.
+
+**Stopcriterium.** De webclient draait op de DS920+, geserveerd door de binary, en iemand kan er de
+bibliotheek mee doorbladeren en doorzoeken zonder de app te installeren.
+
+**Risico's.** Een webclient nodigt uit tot vooruitbouwen: de browser kan `<video>`, dus een speler is
+technisch dichtbij terwijl poort 3 en poort 4 openstaan. De scopetabel uit het voorstel is de
+tegenmaatregel. Het tweede risico is typografisch: de app levert Inter in 400, 500 en 700
+(`pubspec.yaml:157-164`) maar gebruikt op tientallen plekken `w600`, `w800` en `w900`, die Flutter
+synthetiseert en een browser niet. De variabele Inter meeleveren is onderdeel van de scope, want het
+paritydoel is expliciet. Het derde is dat een gedeelde container uitnodigt tot een `/internal/`-route
+of een directe query; DEC-046 sluit dat.
+
+**Tests.** Unit- en componenttests met vitest en `@testing-library/svelte`, waaronder de
+gegenereerde client tegen de fixtures uit `docs/pleya-protocol/v1/examples/` als vaste antwoorden.
+Toegankelijkheid en end-to-end met Playwright plus `axe-core` tegen een echte stack via
+`pleya_server/scripts/test-db.sh`. Go-tests voor de statische route en de SPA-fallback.
+Visuele vergelijking met de appschermen op 390, 768, 1280 en 1600 pixels breed. Het contract blijft
+getoetst door `scripts/check_protocol.sh` en `pleya_server/scripts/verify-protocol.sh`; een tweede, halve
+OpenAPI-validator in vitest bewijst niets extra en loopt na verloop van tijd uit de pas.
+
+**Roadmap Drift Check.** Staat er een `<video>`-element, een kijkstatusaanroep, een beheerendpoint of
+een regel in `lib/`? Dan is er vooruitgebouwd. Is er een route naar de database of naar `/internal/`?
+Dan is DEC-046 overtreden.
 
 ---
 
@@ -2334,6 +2417,8 @@ Gevonden tijdens het onderzoek, bewust niet gerepareerd, hier vastgelegd zodat h
 | `clientScopeId` is nullable en betekent straks drie dingen | `lib/database/app_database.dart:318` | expliciet paar (server, gebruiker), migratie in fase 9 |
 | Twee parallelle reconnect-paden | `lib/services/multi_server_manager.dart` | één registratie-eenheid, niet vóór fase 3 |
 | Pleya Share-protocol serveert `MediaItem` als wire-type | `lib/services/pleya_share/pleya_share_protocol.dart:14` | optioneel overzetten op het `minimal`-profiel, na fase 1 |
+| Geen enkele workflow in `.github/workflows/` noemt `pleya_server`, `go` of `check_protocol`; alle serververificatie is lokaal en handmatig | `.github/workflows/` | eigen spoor, bewust buiten PS-3W gehouden zodat die fase geen CI-modernisering wordt |
+| Twee kleuren staan buiten het palet: teal `#54B9C5` en rood `#F42B1F`, dat net naast `kAccent` `#E5140F` zit | `lib/widgets/hub_section.dart:547`, `lib/widgets/video_controls/tv_info_panel/tv_panel_widgets.dart:15` | design debt; app en web samen rechttrekken, niet eenzijdig in de webclient |
 
 ---
 
