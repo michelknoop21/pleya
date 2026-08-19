@@ -530,6 +530,13 @@ grootte. Wijkt die af, dan is het bestand zeker gewijzigd. Komt hij overeen, dan
 **Laag 3, duur.** Alles wat laag 2 als gewijzigd aanmerkt gaat door ffprobe, en de `generation` van
 de `MediaFile` loopt op.
 
+Faalt die analyse, dan levert ze geen versie op en laat ze er ook geen staan. Een `media_version`
+draagt `container` en `duration_ms` als `NOT NULL` juist omdat hij pas na een geslaagde ffprobe
+ontstaat, en dezelfde regel geldt aan de andere kant: een bestand waarvan de nieuwe inhoud niet te
+analyseren is laat zijn versie, zijn duur en zijn sporen los. Het bestand blijft wel bekend, met zijn
+foutreden erbij, zodat het niet als nieuw wordt ontdekt en een volgende ronde het opnieuw probeert.
+Zie [DEC-047](DECISIONS.md#dec-047-een-mislukte-analyse-laat-de-versie-los).
+
 Een hernoeming binnen dezelfde filesystemcontext wordt herkend aan de inode: hetzelfde bestand op een
 nieuw pad houdt zijn `MediaFile.id`, zijn item en zijn kijkstatus. Dat is precies het scenario waarin
 Plex vandaag een dubbele entry maakt. Voor relocatie *tussen* mounts, waar de inode niets meer
@@ -2419,6 +2426,8 @@ Gevonden tijdens het onderzoek, bewust niet gerepareerd, hier vastgelegd zodat h
 | Pleya Share-protocol serveert `MediaItem` als wire-type | `lib/services/pleya_share/pleya_share_protocol.dart:14` | optioneel overzetten op het `minimal`-profiel, na fase 1 |
 | Geen enkele workflow in `.github/workflows/` noemt `pleya_server`, `go` of `check_protocol`; alle serververificatie is lokaal en handmatig | `.github/workflows/` | eigen spoor, bewust buiten PS-3W gehouden zodat die fase geen CI-modernisering wordt |
 | Twee kleuren staan buiten het palet: teal `#54B9C5` en rood `#F42B1F`, dat net naast `kAccent` `#E5140F` zit | `lib/widgets/hub_section.dart:547`, `lib/widgets/video_controls/tv_info_panel/tv_panel_widgets.dart:15` | design debt; app en web samen rechttrekken, niet eenzijdig in de webclient |
+| `probe_attempts` wordt opgehoogd en nergens gelezen, dus een blijvend onanalyseerbaar bestand gaat elke ronde opnieuw door ffprobe | `pleya_server/internal/catalog/store_write.go:178` | begrensde backoff in `judge`, niet vóór PS-4 tenzij nieuw bewijs de prioriteit verandert |
+| Een mislukte `attach` legt niet dezelfde foutstatus vast als `RecordProbeFailure`, waardoor ook dat pad elke ronde opnieuw geanalyseerd wordt | `pleya_server/internal/scanner/scanner.go:558` | beide faalpaden semantisch gelijktrekken, samen met de backoff hierboven |
 
 ---
 
