@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
@@ -95,7 +96,7 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 
 	rows, err := s.pool.Query(ctx, sql, args...)
 	if err != nil {
-		return Page{}, fmt.Errorf("items lezen: %w", err)
+		return Page{}, cursorOrWrap(q.Cursor, err, "items lezen")
 	}
 
 	var page Page
@@ -113,7 +114,7 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
-		return Page{}, err
+		return Page{}, cursorOrWrap(q.Cursor, err, "items lezen")
 	}
 
 	if len(page.Items) > limit {
@@ -484,4 +485,23 @@ func (s *Store) FileOwners(ctx context.Context, fileIDs []id.ID) (map[id.ID]File
 		out[fileID] = o
 	}
 	return out, rows.Err()
+}
+
+// cursorOrWrap vertaalt een typefout op de cursorwaarde naar ErrCursorInvalid.
+//
+// DecodeCursor toetst wat het toetsen kan, maar op added_at is de sleutel
+// Postgres-tekst en geen formaat dat Go kan nalezen. Blijft er dan toch een
+// onzinnige sleutel over, dan komt de fout pas uit de database, als 22P02
+// (invalid_text_representation) of 22007 (invalid_datetime_format). Dat is een
+// ongeldige cursor en dus een 400 met library.cursor_invalid; zonder deze
+// vertaling valt hij in writeStoreError door naar de default en wordt het een
+// 500 op invoer van de client.
+func cursorOrWrap(cursor *Cursor, err error, what string) error {
+	if cursor != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && (pgErr.Code == "22P02" || pgErr.Code == "22007") {
+			return fmt.Errorf("%w: %s", ErrCursorInvalid, pgErr.Message)
+		}
+	}
+	return fmt.Errorf("%s: %w", what, err)
 }

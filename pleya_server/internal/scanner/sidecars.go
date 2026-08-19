@@ -59,7 +59,12 @@ func (s *Scanner) processSidecars(ctx context.Context, root catalog.StorageLocat
 		// Een ongewijzigde sidecar die al gekoppeld is hoeft niets. Een die nog
 		// nergens aan hangt krijgt alsnog een kans: de media ernaast kan deze
 		// ronde pas zijn binnengekomen.
-		if c.action == actionUnchanged && c.prev != nil &&
+		//
+		// Een verplaatste sidecar is de uitzondering. Zijn bytes veranderen niet,
+		// maar zijn eigenaar wel: anchors bouwt zijn kaarten op de map en de
+		// basisnaam, dus het eigenaarschap volgt uit het pad. Overslaan zou hem
+		// aan de film laten hangen waar hij niet meer naast ligt.
+		if c.action == actionUnchanged && !c.renamed && c.prev != nil &&
 			(c.prev.VersionID != nil || c.prev.ItemID != nil) {
 			continue
 		}
@@ -171,7 +176,7 @@ func (s *Scanner) attachSubtitle(ctx context.Context, c *candidate, fileName str
 
 	anchor, matched, found := anchors.lookup(c.entry.Dir, parsed.MediaBase, parsed.FullBase)
 	if !found {
-		return nil
+		return s.releaseIfMoved(ctx, c)
 	}
 	if matched != "" {
 		parsed = withFormat(nameparse.SubtitleAttributes(parsed.FullBase, matched), parsed.Format)
@@ -221,11 +226,25 @@ func (s *Scanner) attachArtwork(ctx context.Context, c *candidate, fileName stri
 	}
 	anchor, _, found := anchors.lookup(c.entry.Dir, parsed.MediaBase, parsed.FullBase)
 	if !found {
-		return nil
+		return s.releaseIfMoved(ctx, c)
 	}
 	itemID := anchor.itemID
 	return s.store.AttachSidecar(ctx, c.fileID, c.entry.Size, c.entry.Mtime,
 		inodePtr(c.entry.Inode), c.signature, nil, &itemID, parsed.Kind)
+}
+
+// releaseIfMoved maakt een verplaatste sidecar los van zijn oude eigenaar.
+//
+// Vindt lookup op de nieuwe plek geen anker, dan is de oude koppeling onjuist
+// geworden: hij kwam uit een map waar dit bestand niet meer ligt. Voor een
+// sidecar die niet verplaatst is verandert er niets, want dan is "nog nergens
+// aan gehangen" een tussenstand en geen fout: de media ernaast kan er straks
+// wel zijn.
+func (s *Scanner) releaseIfMoved(ctx context.Context, c *candidate) error {
+	if !c.renamed || c.prev == nil || !c.prev.IsAttached() {
+		return nil
+	}
+	return s.store.DetachSidecar(ctx, c.fileID)
 }
 
 // lookup gaat van precies naar ruim: naast het bestand met dezelfde naam, dan op

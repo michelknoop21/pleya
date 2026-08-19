@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
@@ -115,7 +116,27 @@ func DecodeCursor(raw string, want Sort) (*Cursor, error) {
 	if _, err := id.Parse(c.ID); err != nil {
 		return nil, ErrCursorInvalid
 	}
+	if !want.keyValid(c.Key) {
+		return nil, fmt.Errorf("%w: sleutel past niet bij sortering %q", ErrCursorInvalid, want)
+	}
 	return &c, nil
+}
+
+// keyValid zegt of deze sleutel de cast uit castSuffix overleeft.
+//
+// Zonder deze controle gaat een verzonnen sleutel als parameter de SQL in en
+// klapt daar op een typefout, en die komt gewrapt terug als een interne fout.
+// Alleen de numerieke sorteringen zijn hier te toetsen: op added_at is de
+// sleutel Postgres-tekst uit %s::text en geen RFC3339, dus een layoutgok zou
+// werkende cursors weigeren. Daarvoor staat het vangnet in store_read.go.
+func (s Sort) keyValid(key string) bool {
+	switch s {
+	case SortYear, SortYearDesc, SortIndex:
+		_, err := strconv.Atoi(key)
+		return err == nil
+	default:
+		return true
+	}
 }
 
 // LimitBounds zijn de grenzen uit hoofdstuk 8 van de specificatie.

@@ -175,6 +175,49 @@ func TestSidecarsAttachToTheirOwner(t *testing.T) {
 	}
 }
 
+// TestMovedSubtitleFollowsItsNewNeighbour dekt een sidecar die naar een andere
+// film verhuist.
+//
+// De bytes veranderen niet, dus laag 1 en laag 2 zien niets, en met de inode
+// erbij levert dat actionUnchanged op. Het eigenaarschap van een sidecar volgt
+// echter uit het pad en niet uit de bytes: anchors bouwt zijn kaarten op de map
+// en de basisnaam. Wie hier het opnieuw koppelen overslaat laat de ondertitel
+// aan de film hangen waar hij niet meer naast ligt.
+func TestMovedSubtitleFollowsItsNewNeighbour(t *testing.T) {
+	h := newHarness(t, "movies")
+
+	grease := h.path("Grease (1978)")
+	alien := h.path("Alien (1979)")
+	testsupport.MakeVideo(t, filepath.Join(grease, "Grease (1978).mkv"), 1)
+	testsupport.MakeVideo(t, filepath.Join(alien, "Alien (1979).mkv"), 1)
+
+	srt := filepath.Join(grease, "Grease (1978).nld.srt")
+	testsupport.WriteFile(t, srt, "1\n00:00:01,000 --> 00:00:02,000\nhallo\n")
+
+	h.scan()
+	if got := externalSubtitles(h.byTitle("Grease")); got != 1 {
+		t.Fatalf("de ondertitel hangt niet aan Grease: %d externe sporen", got)
+	}
+
+	// os.Rename binnen dezelfde tmpfs houdt de inode vast, dus dit doorloopt
+	// precies het hernoempad en niet het pad van een nieuw bestand.
+	if err := os.Rename(srt, filepath.Join(alien, "Alien (1979).nld.srt")); err != nil {
+		t.Fatal(err)
+	}
+
+	stats := h.scan()
+	if stats.FilesRenamed != 1 {
+		t.Fatalf("de verplaatsing is niet als hernoeming herkend: files_renamed = %d", stats.FilesRenamed)
+	}
+
+	if got := externalSubtitles(h.byTitle("Alien")); got != 1 {
+		t.Fatalf("de verplaatste ondertitel hangt niet aan Alien: %d externe sporen", got)
+	}
+	if got := externalSubtitles(h.byTitle("Grease")); got != 0 {
+		t.Fatalf("de ondertitel hangt nog aan Grease: %d externe sporen", got)
+	}
+}
+
 // TestSidecarVariantsAttachToTheirEpisode gebruikt namen die op de echte
 // bibliotheek staan en die de eerste ronde daar niet kon koppelen.
 func TestSidecarVariantsAttachToTheirEpisode(t *testing.T) {
@@ -299,4 +342,27 @@ func (h *harness) children(parentID id.ID) []catalog.Item {
 		h.t.Fatalf("kinderen lezen: %v", err)
 	}
 	return page.Items
+}
+
+func (h *harness) byTitle(title string) catalog.Item {
+	h.t.Helper()
+	for _, it := range h.items() {
+		if it.Title == title {
+			return it
+		}
+	}
+	h.t.Fatalf("item %q ontbreekt", title)
+	return catalog.Item{}
+}
+
+func externalSubtitles(it catalog.Item) int {
+	var n int
+	for _, v := range it.Versions {
+		for _, st := range v.Streams {
+			if st.Kind == "subtitle" && st.IsExternal {
+				n++
+			}
+		}
+	}
+	return n
 }

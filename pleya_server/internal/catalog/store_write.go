@@ -151,14 +151,36 @@ func (s *Store) RecordProbe(ctx context.Context, fileID id.ID, size, mtime int64
 
 // RecordProbeFailure onthoudt dat dit bestand niet te analyseren was, zodat de
 // volgende ronde het niet opnieuw probeert alsof er niets gebeurd is.
+//
+// De koppeling gaat er daarbij af. De nieuwe inhoud wordt vastgelegd, en dan is
+// alles wat uit de vórige inhoud kwam onjuist geworden: de versie, de duur en de
+// sporen. Blijven ze staan, dan serveert de bibliotheek de metadata van iets dat
+// er niet meer ligt, en houdt PruneEmpty de versie in leven omdat de rij nog een
+// version_id draagt. 0002_catalog.sql legt bij media_versions al vast dat een
+// versie pas na een geslaagde ffprobe ontstaat; loskoppelen is die invariant
+// naleven en geen nieuwe regel. Gevolg: een film waarvan het bestand stukgaat
+// verdwijnt uit de bibliotheek tot hij weer analyseerbaar is.
 func (s *Store) RecordProbeFailure(ctx context.Context, fileID id.ID, size, mtime int64, inode *int64, signature, reason string) error {
-	_, err := s.pool.Exec(ctx, `
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx, `DELETE FROM media_streams WHERE file_id = $1`, fileID); err != nil {
+		return fmt.Errorf("sporen van een mislukte analyse wissen: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
 		UPDATE media_files
 		SET size_bytes = $2, mtime_unix = $3, inode = $4, scan_signature = $5,
+		    version_id = NULL, part_index = 0, probe_duration_ms = NULL,
+		    generation = generation + 1,
 		    probe_attempts = probe_attempts + 1, last_probe_at = now(),
 		    last_probe_error = $6, missing_since = NULL, last_seen_at = now()
-		WHERE id = $1`, fileID, size, mtime, inode, nullString(signature), truncate(reason, 500))
-	return err
+		WHERE id = $1`, fileID, size, mtime, inode, nullString(signature), truncate(reason, 500)); err != nil {
+		return fmt.Errorf("mislukte analyse vastleggen: %w", err)
+	}
+	return tx.Commit(ctx)
 }
 
 // AttachSidecar hangt een ondertitel- of artworkbestand aan zijn eigenaar.
@@ -174,6 +196,32 @@ func (s *Store) AttachSidecar(ctx context.Context, fileID id.ID, size, mtime int
 		return fmt.Errorf("sidecar koppelen: %w", err)
 	}
 	return nil
+}
+
+// DetachSidecar maakt een sidecar los van de versie of het item waar hij aan
+// hing, sporen inbegrepen.
+//
+// Nodig zodra een sidecar verhuist naar een plek waar geen eigenaar te vinden
+// is. De koppeling volgt uit het pad, dus een verplaatsing die niets nieuws
+// oplevert hoort de oude koppeling weg te halen en niet te laten staan.
+func (s *Store) DetachSidecar(ctx context.Context, fileID id.ID) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx, `DELETE FROM media_streams WHERE file_id = $1`, fileID); err != nil {
+		return fmt.Errorf("sporen van een losgemaakte sidecar wissen: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE media_files
+		SET version_id = NULL, item_id = NULL, artwork_kind = NULL,
+		    generation = generation + 1
+		WHERE id = $1`, fileID); err != nil {
+		return fmt.Errorf("sidecar losmaken: %w", err)
+	}
+	return tx.Commit(ctx)
 }
 
 // ReplaceStreams vervangt alle sporen die uit dit bestand komen.

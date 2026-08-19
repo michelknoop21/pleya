@@ -22,12 +22,22 @@ type Prober interface {
 	Probe(ctx context.Context, path string) (*ffprobe.Result, error)
 }
 
+// WalkFunc is de wandeling over één root, met dezelfde vorm als Walk.
+//
+// Injecteerbaar om dezelfde reden als Prober: een gedeeltelijk gelezen root is
+// anders niet te testen. De tests draaien als root in de container, dus een map
+// met chmod 000 levert daar gewoon zijn inhoud op.
+type WalkFunc func(ctx context.Context, root string, onEntry func(Entry) error, onProblem func(path string, err error)) error
+
 // Options bundelt de instellingen van een scanner.
 type Options struct {
 	Store       *catalog.Store
 	Prober      Prober
 	Logger      *slog.Logger
 	Concurrency int
+
+	// Walk is de wandeling. Leeg betekent Walk uit dit pakket.
+	Walk WalkFunc
 
 	// ProgressEvery bepaalt hoe vaak de tellers naar de database gaan. Zonder
 	// websocket is dat het antwoord op "hangt de scanner of is de NAS traag".
@@ -41,6 +51,7 @@ type Scanner struct {
 	log           *slog.Logger
 	concurrency   int
 	progressEvery time.Duration
+	walk          WalkFunc
 }
 
 // New bouwt een scanner.
@@ -51,12 +62,16 @@ func New(opts Options) *Scanner {
 	if opts.ProgressEvery <= 0 {
 		opts.ProgressEvery = 5 * time.Second
 	}
+	if opts.Walk == nil {
+		opts.Walk = Walk
+	}
 	return &Scanner{
 		store:         opts.Store,
 		prober:        opts.Prober,
 		log:           opts.Logger,
 		concurrency:   opts.Concurrency,
 		progressEvery: opts.ProgressEvery,
+		walk:          opts.Walk,
 	}
 }
 
@@ -73,6 +88,13 @@ type Stats struct {
 	VersionsCreated int64
 	Errors          int64
 	LastError       string
+
+	// WalkProblems en RootsIncomplete zeggen iets over de dekking van de ronde en
+	// niet over de catalogus, net als de drie inodetellers hieronder. Ze blijven
+	// daarom buiten toCatalog: scan_runs draagt het wire-contract van fase 1 en
+	// een teller erbij zou een migratie zijn.
+	WalkProblems    int64
+	RootsIncomplete int64
 
 	// De inodemeting die PS-0 aan deze fase heeft doorgegeven. Ze zeggen niets
 	// over de catalogus en alles over de vraag of de goedkope laag hier op
@@ -111,17 +133,26 @@ func (s *Scanner) ScanLibrary(ctx context.Context, lib catalog.Library, trigger 
 				break
 			}
 			stats.Errors++
+			stats.RootsIncomplete++
 			stats.LastError = err.Error()
 			log.Error("root overgeslagen",
 				slog.String("root", root.RootPath), slog.String("error", err.Error()))
 		}
 	}
 
-	if scanErr == nil {
+	// Opruimen mag alleen na een ronde die de hele bibliotheek werkelijk gezien
+	// heeft. PruneEmpty verwijdert versies zonder aanwezig mediabestand, en met
+	// ON DELETE CASCADE gaan de bestandsrijen mee: op een halve waarneming is dat
+	// dataverlies dat de volgende ronde niet meer terugdraait.
+	if scanErr == nil && stats.RootsIncomplete == 0 {
 		if err := s.store.PruneEmpty(ctx, lib.ID); err != nil {
 			stats.Errors++
 			stats.LastError = err.Error()
 		}
+	} else if scanErr == nil {
+		log.Warn("opruimen overgeslagen",
+			slog.Int64("roots_incomplete", stats.RootsIncomplete),
+			slog.Int64("walk_problems", stats.WalkProblems))
 	}
 
 	state := "succeeded"
@@ -147,6 +178,8 @@ func (s *Scanner) ScanLibrary(ctx context.Context, lib catalog.Library, trigger 
 		slog.Int64("files_missing", stats.FilesMissing),
 		slog.Int64("bytes_hashed", stats.BytesHashed),
 		slog.Int64("errors", stats.Errors),
+		slog.Int64("walk_problems", stats.WalkProblems),
+		slog.Int64("roots_incomplete", stats.RootsIncomplete),
 		slog.Int64("inodes_seen", stats.InodesSeen),
 		slog.Int64("inodes_distinct", stats.InodesDistinct),
 		slog.Int64("inode_mismatches", stats.InodeMismatches),
@@ -183,12 +216,15 @@ func (s *Scanner) scanRoot(ctx context.Context, lib catalog.Library, root catalo
 	// niets als verdwenen aangemerkt te worden: een USB-schijf die even niet
 	// gemount is mag geen halve bibliotheek opruimen.
 	var entries []Entry
-	walkErr := Walk(ctx, root.RootPath, func(e Entry) error {
+	var walkProblems int64
+	walkErr := s.walk(ctx, root.RootPath, func(e Entry) error {
 		entries = append(entries, e)
 		stats.FilesSeen++
 		tracker.note(e.RelPath)
 		return nil
 	}, func(p string, err error) {
+		walkProblems++
+		stats.WalkProblems++
 		stats.Errors++
 		stats.LastError = err.Error()
 		log.Warn("pad overgeslagen", slog.String("path", p), slog.String("error", err.Error()))
@@ -249,11 +285,26 @@ func (s *Scanner) scanRoot(ctx context.Context, lib catalog.Library, root catalo
 		log.Info("bestanden weer aanwezig", slog.Int64("count", n))
 	}
 
-	missing, err := s.store.MarkMissing(ctx, root.ID, seenPaths, time.Now().UTC())
-	if err != nil {
-		return err
+	// Een wandeling die onderweg een map moest overslaan heeft de bestanden
+	// eronder niet gezien, en die staan dus ook niet in seenPaths. MarkMissing
+	// zou ze als verdwenen aanmerken en PruneEmpty gooit daarna de versies weg,
+	// met ON DELETE CASCADE de bestandsrijen erachteraan. De guard hierboven
+	// vangt alleen het alles-of-niets-geval: één gezien bestand van vijfduizend
+	// passeert hem volledig. ClearMissing blijft wel draaien; die zet alleen de
+	// vlag weg van paden die deze ronde juist wél gezien zijn.
+	if walkProblems > 0 {
+		stats.RootsIncomplete++
+		log.Error("root onvolledig gewandeld; niets als verdwenen aangemerkt",
+			slog.String("root", root.RootPath),
+			slog.Int64("walk_problems", walkProblems),
+			slog.Int("paths_seen", len(seenPaths)))
+	} else {
+		missing, err := s.store.MarkMissing(ctx, root.ID, seenPaths, time.Now().UTC())
+		if err != nil {
+			return err
+		}
+		stats.FilesMissing += missing
 	}
-	stats.FilesMissing += missing
 
 	stats.InodesSeen += measure.seen
 	stats.InodesDistinct += int64(len(inodes))
@@ -488,6 +539,13 @@ func (s *Scanner) processMedia(ctx context.Context, lib catalog.Library, root ca
 			stats.LastError = res.err.Error()
 			log.Warn("analyse mislukt",
 				slog.String("path", c.entry.RelPath), slog.String("error", res.err.Error()))
+			// De versie die dit bestand loslaat kan een gestapelde versie zijn
+			// waar nog een ander deel aan hangt. Die duur is de som van de delen
+			// en klopt dus niet meer; hem meenemen in touchedVersions laat de
+			// hercalculatie hieronder hem bijwerken.
+			if c.prev != nil && c.prev.VersionID != nil {
+				touchedVersions[*c.prev.VersionID] = true
+			}
 			if err := s.store.RecordProbeFailure(ctx, c.fileID, c.entry.Size, c.entry.Mtime,
 				inodePtr(c.entry.Inode), c.signature, res.err.Error()); err != nil {
 				return err

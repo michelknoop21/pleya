@@ -1,6 +1,7 @@
 package catalog_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
@@ -39,6 +40,29 @@ func TestCursorBelongsToItsSort(t *testing.T) {
 		if _, err := catalog.DecodeCursor(raw, catalog.SortTitle); err == nil {
 			t.Errorf("%q werd geaccepteerd als cursor", raw)
 		}
+	}
+}
+
+// TestCursorKeyMatchesItsSort: de sleutel gaat als parameter met een cast de SQL
+// in, dus een sleutel die niet bij de sortering past klapt daar op een
+// typefout. Dat hoort een 400 met library.cursor_invalid te zijn en geen 500.
+func TestCursorKeyMatchesItsSort(t *testing.T) {
+	itemID := id.New().String()
+
+	bad := catalog.Cursor{Sort: catalog.SortYear, Key: "x", ID: itemID}.Encode()
+	if _, err := catalog.DecodeCursor(bad, catalog.SortYear); !errors.Is(err, catalog.ErrCursorInvalid) {
+		t.Fatalf("een year-cursor met sleutel \"x\" gaf %v, verwacht ErrCursorInvalid", err)
+	}
+
+	good := catalog.Cursor{Sort: catalog.SortYear, Key: "1999", ID: itemID}.Encode()
+	if _, err := catalog.DecodeCursor(good, catalog.SortYear); err != nil {
+		t.Fatalf("een year-cursor met sleutel \"1999\" werd geweigerd: %v", err)
+	}
+
+	// Op titel is elke tekst een geldige sleutel; daar valt niets te typeren.
+	text := catalog.Cursor{Sort: catalog.SortTitle, Key: "x", ID: itemID}.Encode()
+	if _, err := catalog.DecodeCursor(text, catalog.SortTitle); err != nil {
+		t.Fatalf("een title-cursor met sleutel \"x\" werd geweigerd: %v", err)
 	}
 }
 

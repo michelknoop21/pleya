@@ -2,9 +2,11 @@ package scanner_test
 
 import (
 	"context"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -38,6 +40,12 @@ type harness struct {
 	sc     *scanner.Scanner
 	prober *countingProber
 	lib    catalog.Library
+
+	// walkOverride vervangt de wandeling voor de rondes die erna komen. Een map
+	// werkelijk onleesbaar maken bewijst hier niets: de testcontainer draait als
+	// root en chmod 000 houdt die niet tegen. Een gedeeltelijke wandeling is dus
+	// alleen na te bootsen door de wandeling zelf te vervangen.
+	walkOverride scanner.WalkFunc
 }
 
 func newHarness(t *testing.T, kind string) *harness {
@@ -69,14 +77,21 @@ func newHarness(t *testing.T, kind string) *harness {
 	}
 
 	prober := &countingProber{inner: ffprobe.New("ffprobe", 60*time.Second)}
-	sc := scanner.New(scanner.Options{
+	h := &harness{t: t, root: root, store: store, prober: prober, lib: libs[0]}
+	h.sc = scanner.New(scanner.Options{
 		Store:       store,
 		Prober:      prober,
 		Logger:      slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn})),
 		Concurrency: 2,
+		Walk: func(ctx context.Context, root string, onEntry func(scanner.Entry) error, onProblem func(string, error)) error {
+			if h.walkOverride != nil {
+				return h.walkOverride(ctx, root, onEntry, onProblem)
+			}
+			return scanner.Walk(ctx, root, onEntry, onProblem)
+		},
 	})
 
-	return &harness{t: t, root: root, store: store, sc: sc, prober: prober, lib: libs[0]}
+	return h
 }
 
 // scan eist een schone ronde. Een scanner die de helft overslaat en dat als
@@ -334,6 +349,92 @@ func TestEmptyRootDoesNotWipeTheLibrary(t *testing.T) {
 	}
 	if len(h.items()) != 1 {
 		t.Fatalf("de bibliotheek is opgeruimd door een lege root: %d items over", len(h.items()))
+	}
+}
+
+// TestPartialWalkKeepsTheLibrary dekt een ronde die maar een deel van de root te
+// zien kreeg.
+//
+// filepath.WalkDir doet fs.SkipDir zodra een map niet te lezen is, en dan
+// ontbreekt de hele subboom eronder in de waarnemingen. De guard op "geen enkel
+// bestand" ziet daar niets van: één gezien bestand van vijfduizend haalt hem.
+// Wie daarna toch MarkMissing en PruneEmpty draait gooit de rest van de
+// bibliotheek weg omdat één map even dicht zat.
+func TestPartialWalkKeepsTheLibrary(t *testing.T) {
+	h := newHarness(t, "movies")
+
+	testsupport.MakeVideo(t, h.path("Grease (1978)", "Grease (1978).mkv"), 1)
+	testsupport.MakeVideo(t, h.path("Alien (1979)", "Alien (1979).mkv"), 1)
+
+	h.scan()
+	if got := len(h.items()); got != 2 {
+		t.Fatalf("verwachtte twee items, kreeg %d", got)
+	}
+
+	const dicht = "Alien (1979)"
+	h.walkOverride = func(ctx context.Context, root string, onEntry func(scanner.Entry) error, onProblem func(string, error)) error {
+		err := scanner.Walk(ctx, root, func(e scanner.Entry) error {
+			if strings.HasPrefix(e.RelPath, dicht+"/") {
+				return nil
+			}
+			return onEntry(e)
+		}, onProblem)
+		onProblem(filepath.Join(root, dicht), fs.ErrPermission)
+		return err
+	}
+
+	stats := h.scanAllowingErrors()
+	if items := h.items(); len(items) != 2 {
+		t.Fatalf("na een onvolledige wandeling %d items over, verwacht 2", len(items))
+	}
+	if stats.FilesMissing != 0 {
+		t.Fatalf("files_missing is %d; een onvolledige wandeling mag niets als verdwenen aanmerken", stats.FilesMissing)
+	}
+	if stats.WalkProblems != 1 {
+		t.Fatalf("walk_problems is %d, verwacht 1", stats.WalkProblems)
+	}
+	if stats.RootsIncomplete != 1 {
+		t.Fatalf("roots_incomplete is %d, verwacht 1", stats.RootsIncomplete)
+	}
+}
+
+// TestFailedProbeReleasesTheOldVersion dekt een bestand dat vervangen is door
+// iets dat ffprobe niet aankan.
+//
+// De faalvariant liet version_id, probe_duration_ms en de sporen van de vórige
+// inhoud staan. De rij hield daarmee role='media', missing_since IS NULL en een
+// version_id, dus PruneEmpty zag hem als aanwezig en de bibliotheek bleef de
+// duur en de sporen van iets tonen dat er niet meer ligt.
+func TestFailedProbeReleasesTheOldVersion(t *testing.T) {
+	h := newHarness(t, "movies")
+
+	target := h.path("Grease (1978)", "Grease (1978).mkv")
+	testsupport.MakeVideo(t, target, 1)
+	h.scan()
+
+	before := h.items()
+	if len(before) != 1 {
+		t.Fatalf("verwachtte één item, kreeg %d", len(before))
+	}
+	if len(before[0].Versions) != 1 {
+		t.Fatalf("verwachtte één versie, kreeg %d", len(before[0].Versions))
+	}
+
+	// Een andere grootte, dus laag 1 ziet het verschil en de ronde komt bij
+	// ffprobe uit. Wat er dan ligt is geen video.
+	if err := os.WriteFile(target, []byte(strings.Repeat("dit is geen video\n", 64)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stats := h.scanAllowingErrors()
+	if stats.Errors != 1 {
+		t.Fatalf("errors is %d, verwacht 1: de mislukte analyse hoort geteld te worden", stats.Errors)
+	}
+
+	after := h.items()
+	if len(after) != 0 {
+		t.Fatalf("het item staat er nog met %d versies; een onanalyseerbaar bestand hoort zijn versie los te laten",
+			len(after[0].Versions))
 	}
 }
 
