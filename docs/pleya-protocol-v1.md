@@ -554,6 +554,11 @@ De resultaten zijn itemobjecten in dezelfde vorm als 9.4, over alle bibliotheken
 apart resultaattype en geen groepering per soort: de client kan zelf groeperen en hoeft daarvoor geen
 tweede vorm te kennen.
 
+Zonder `kind` levert een zoekopdracht items van soort `movie`, `show` en `episode`. Seizoenen blijven
+eruit: hun titel is `Season 3` en draagt niets van wat een gebruiker intypt, dus ze voegen alleen ruis
+toe aan korte zoektermen. Een seizoen is met `kind=season` wel op te vragen en staat verder in de
+kinderen van zijn serie.
+
 Een ontbrekende of lege `q` is een aanvraagfout en geeft `400` met `library.search_query_empty`. Een
 zoekopdracht zonder treffers is dat niet: die geeft `200` met een lege lijst.
 

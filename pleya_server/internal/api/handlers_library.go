@@ -135,7 +135,12 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var kinds []string
+	// Zonder kind levert zoeken movie, show en episode. Een seizoen heet
+	// "Season 3" en draagt niets van wat iemand intypt, dus het matcht alleen op
+	// termen die toevallig in het woord Season zitten, en dan komen ze met
+	// honderden tegelijk. Wie ze wil vraagt er met kind=season om; verder staan
+	// ze in de kinderen van hun serie. Zie DEC-045.
+	kinds := searchDefaultKinds
 	if kind := strings.TrimSpace(r.URL.Query().Get("kind")); kind != "" {
 		if !isItemKind(kind) {
 			// Een onbekende soort levert geen treffers op, en dat is geen fout.
@@ -217,6 +222,9 @@ func (s *Server) handleHub(w http.ResponseWriter, r *http.Request) {
 		writeError(w, s.log, CodeNotFound, "unknown hub", nil)
 	}
 }
+
+// searchDefaultKinds is de verzameling die een zoekopdracht zonder kind levert.
+var searchDefaultKinds = []string{"movie", "show", "episode"}
 
 func isItemKind(kind string) bool {
 	switch kind {

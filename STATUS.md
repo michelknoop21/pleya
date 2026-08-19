@@ -20,12 +20,20 @@ fixtures tegen valideren. Negentien antwoorden, acht schema's, allemaal gedekt. 
 bewust in Python en niet in Go, want een Go-validator zou de server tegen zijn eigen lezing van het
 contract houden.
 
-Vier besluiten erbij, `DEC-040` tot en met `DEC-043`. De grouping key is geen identiteit en heet
+Zes besluiten erbij, `DEC-040` tot en met `DEC-045`. De grouping key is geen identiteit en heet
 daarom niet zo: hij hangt een nieuw gevonden bestand aan een bestaand item en komt nooit langs bij
 een bestand dat al bekend is. Media, ondertitels en artwork delen één bestandstabel, want de 5578
 losse `.srt`-bestanden hebben dezelfde goedkope detectie nodig als de media ernaast. De jobtabel is
-eigen werk en beantwoordt de open vraag uit 17.1 niet. En de inodebetrouwbaarheid staat per root in
+eigen werk en beantwoordt de open vraag uit 17.1 niet. De inodebetrouwbaarheid staat per root in
 de database, wordt gemeten, en een gunstige ronde zet een root niet vanzelf op vertrouwen.
+
+De laatste twee zijn de nazorg van het opleveren. **`DEC-044`: Debians `ffmpeg` blijft in de image.**
+Zelf bouwen met `--disable-avdevice` scheelt 159 MB en is scope-neutraal, maar het verlegt de
+CVE-bewaking van Debian naar ons; PS-8 raakt de ffmpeg-bouw toch aan voor QuickSync, en daar kost het
+meenemen bijna niets extra. **`DEC-045`: zoeken levert standaard geen seizoenen meer.** Zonder `kind`
+komen er `movie`, `show` en `episode` uit; met `kind=season` komen seizoenen gewoon terug. Dat is één
+regel in de handler plus een zin in hoofdstuk 10 en in `openapi.yaml`, getoetst langs de zes
+compatibiliteitsregels: er komt geen veld bij, er gaat er geen weg, en `kind` blijft optioneel.
 
 **Wat er bewust niet in zit.** `GET /pleya/v1/stream/{version_id}` en beide kijkstatus-endpoints geven
 een 404, en `capabilities.watch_state` staat op `false`. Poort 3 (het conflictmodel voor kijkstatus)
@@ -49,6 +57,10 @@ erachter, en een onbekend woord dat de ontleding afbrak. Gerepareerd met tests o
 Daarvan is 459 MB gedeelde bibliotheken, en 159 MB daarvan zijn Mesa, LLVM, z3 en de DRI-drivers die
 Pleya nergens voor gebruikt. Ze komen mee via een keten van harde `Depends` vanaf `ffprobe` via
 `libavdevice59` naar `libgl1` en verder, dus `--no-install-recommends` verandert er niets aan.
+
+**Wat zoeken opleverde.** Op de echte bibliotheek gaf `sea` 24 bruikbare treffers naast 396
+seizoenen, en `season` er 5 naast dezelfde 396. Dat is nu weg: seizoenen blijven eruit tenzij er met
+`kind=season` om gevraagd wordt.
 
 ## Eerder op 18 augustus: PS-1, het wire-contract
 

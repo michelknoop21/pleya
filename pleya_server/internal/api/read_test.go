@@ -303,6 +303,29 @@ func TestSearch(t *testing.T) {
 	if len(wildcard.Items) != 0 {
 		t.Fatalf("een procentteken werkte als wildcard: %d treffers", len(wildcard.Items))
 	}
+
+	// Seizoenen heten "Season 1" en dragen niets van wat iemand intypt, dus
+	// zonder kind blijven ze eruit. Zie DEC-045.
+	var seasons api.ItemPage
+	e.getJSON("/pleya/v1/search?q=season", "ItemPage", http.StatusOK, &seasons)
+	for _, it := range seasons.Items {
+		if it.Kind == "season" {
+			t.Fatalf("zoeken zonder kind leverde een seizoen op: %+v", it)
+		}
+	}
+
+	// Met kind=season komen ze wel terug; de serie in de testbibliotheek heeft
+	// er twee.
+	var asked api.ItemPage
+	e.getJSON("/pleya/v1/search?q=season&kind=season", "ItemPage", http.StatusOK, &asked)
+	if len(asked.Items) != 2 {
+		t.Fatalf("kind=season gaf %d treffers, verwacht 2: %+v", len(asked.Items), asked.Items)
+	}
+	for _, it := range asked.Items {
+		if it.Kind != "season" {
+			t.Fatalf("kind=season leverde ook %q op", it.Kind)
+		}
+	}
 }
 
 // TestHubs dekt de bouwstenen voor het homescherm.

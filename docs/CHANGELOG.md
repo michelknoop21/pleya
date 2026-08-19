@@ -23,12 +23,14 @@ uit PS-1 is niet aangeraakt.
 - **`scripts/verify-local.sh` telt veertien secties** in plaats van dertien. De nieuwe sectie zet de catalogus neer met ffmpeg uit de image zelf, wisselt de setupcode in, bladert erdoorheen, controleert dat streaming en kijkstatus 404 geven, en herstart de container om te zien of de ids blijven staan.
 - **`compose.yaml` kent een tweede mediavolume.** De bibliotheek op deze NAS staat over btrfs en fuseblk.ntfs verspreid, en juist dat verschil is wat de scanner moet meten.
 
-### Vier besluiten
-`DEC-040` tot en met `DEC-043`. De grouping key is geen identiteit en heet daarom niet zo. Media,
+### Zes besluiten
+`DEC-040` tot en met `DEC-045`. De grouping key is geen identiteit en heet daarom niet zo. Media,
 ondertitels en artwork delen één bestandstabel, want die 5578 losse `.srt`-bestanden hebben dezelfde
 goedkope detectie nodig als de media ernaast. De jobtabel is eigen werk en beantwoordt de open vraag
-uit 17.1 niet. En de inodebetrouwbaarheid staat per root in de database, wordt gemeten en niet
-aangenomen, en een gunstige ronde zet een root niet vanzelf op vertrouwen.
+uit 17.1 niet. De inodebetrouwbaarheid staat per root in de database, wordt gemeten en niet
+aangenomen, en een gunstige ronde zet een root niet vanzelf op vertrouwen. Debians `ffmpeg` blijft in
+de image, met PS-8 als vastgelegd moment om `--disable-avdevice` mee te nemen. En zoeken levert
+standaard films, series en afleveringen, geen seizoenen.
 
 ### Wat er groter van werd
 De image gaat van 81 MB naar 543 MB, gemeten met `du -sx /` in de amd64-image. Daarvan is 459 MB
@@ -39,6 +41,16 @@ libglx-mesa0 → libgl1-mesa-dri → libLLVM-15 + libz3`. `libavdevice` is de co
 schermopname, die een mediaserver niet aanraakt, maar Debian linkt hem mee in `ffprobe`. Zelf bouwen
 met `--disable-avdevice` scheelt die 159 MB en verlegt de CVE-bewaking van Debian naar ons; dat
 gebeurt bij PS-8, dat de ffmpeg-bouw toch aanraakt voor QuickSync. Zie `DEC-044`.
+
+### Zoeken laat seizoenen eruit
+Op de echte bibliotheek levert `sea` 24 bruikbare treffers naast 396 seizoenen, en `season` er 5
+naast diezelfde 396. Een seizoen heet `Season 3` en draagt niets van wat iemand intypt: hij matcht
+alleen op termen die toevallig in het woord `Season` zitten, en dan komen ze met honderden tegelijk.
+Zonder `kind` levert `GET /pleya/v1/search` daarom `movie`, `show` en `episode`; met `kind=season`
+komen seizoenen gewoon terug, en verder staan ze in `/items/{id}/children`. Afleveringen blijven erin,
+want die hebben een echte titel. Hoofdstuk 10 en de `description` van `/search` zeggen dat nu ook. De
+wijziging is langs de zes compatibiliteitsregels getoetst: geen veld erbij of weg, `kind` blijft
+optioneel en behoudt zijn betekenis, `ItemKind` ongewijzigd. Zie `DEC-045`.
 
 ### Wat er bewust niet in zit
 Geen streaming, geen kijkstatus in welke richting dan ook, geen metadata-providers, geen afspeelplan,
