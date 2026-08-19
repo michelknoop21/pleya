@@ -61,13 +61,21 @@ E-mailadressen toevoegen aan de external testgroep: fastlane add_testers emails:
 
 Laatste build aan het App Store-versierecord koppelen: fastlane attach_builds [platform:ios] [build:220]
 
+### notes_show
+
+```sh
+[bundle exec] fastlane notes_show
+```
+
+Releasenotes uit docs/RELEASES.md op een TestFlight-build zetten: fastlane notes build:227
+
 ### notes
 
 ```sh
 [bundle exec] fastlane notes
 ```
 
-Releasenotes uit docs/RELEASES.md op een TestFlight-build zetten: fastlane notes build:227
+
 
 ### beta
 

@@ -18,10 +18,31 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### Fixed
-- de zijbalk reserveert de strook naast zich niet meer
-- maak het "What to Test"-veld leesbaar op een telefoon
+Nothing user-facing since the last published build.
 <!-- END GENERATED -->
+
+## 2.8.0 · build 232 · 19 August 2026
+
+<!-- commit: 38efe8a -->
+
+### Fixed
+
+- **Controls beside the sidebar respond again.** Moving a mouse or trackpad towards the rail
+  handed it the whole strip up to its open width, so a control the page puts there, such as
+  **Recommended** on a library page, opened the menu instead of doing its own job, and the
+  menu then swallowed the click. The rail claims that strip only once you have actually
+  entered over it, and gives it back as it closes. Everything the previous build fixed stays
+  fixed: coming in over the rail and moving straight to a label still works, and a click
+  aimed at the menu still cannot start the billboard.
+
+### Worth checking
+
+- The sidebar with a mouse or trackpad, both ways round. From the middle of the screen
+  straight onto **Recommended** on a library page: it should switch tabs and the menu should
+  stay shut. Then in over the rail and quickly on to a menu label without pausing: the menu
+  should stay open and respond.
+- The two checks from build 231 are still open: the request list with real titles and posters
+  on a phone, and subtitle language on Apple TV while Plex is transcoding.
 
 ## 2.8.0 · build 231 · 19 August 2026
 
