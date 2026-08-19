@@ -45,10 +45,10 @@ Die ronde legde ook 5.841 losse bestanden bloot die nergens aan hingen, en dat w
 de naamherkenning: de afleveringsminiatuur `-thumb.jpg` (5.001 stuks), een taal met een teller
 erachter, en een onbekend woord dat de ontleding afbrak. Gerepareerd met tests op precies die namen.
 
-**Wat het kostte.** De image gaat van 93 MB naar ongeveer 780 MB, en zeshonderd daarvan is de
-afhankelijkheidsboom van Debians `ffmpeg`. Via `libavdevice` komt de hele Mesa- en LLVM-stack mee,
-waarvan LLVM alleen al 112 MB is. Een statische build zou kleiner zijn maar levert een GPL-binary van
-derden mee met een bronaanbod erbij, en dat is een aparte afweging.
+**Wat het kostte.** De image gaat van 81 MB naar 543 MB, gemeten met `du -sx /` in de amd64-image.
+Daarvan is 459 MB gedeelde bibliotheken, en 159 MB daarvan zijn Mesa, LLVM, z3 en de DRI-drivers die
+Pleya nergens voor gebruikt. Ze komen mee via een keten van harde `Depends` vanaf `ffprobe` via
+`libavdevice59` naar `libgl1` en verder, dus `--no-install-recommends` verandert er niets aan.
 
 ## Eerder op 18 augustus: PS-1, het wire-contract
 

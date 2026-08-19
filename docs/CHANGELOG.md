@@ -31,10 +31,14 @@ uit 17.1 niet. En de inodebetrouwbaarheid staat per root in de database, wordt g
 aangenomen, en een gunstige ronde zet een root niet vanzelf op vertrouwen.
 
 ### Wat er groter van werd
-De image gaat van 93 MB naar ongeveer 780 MB. Zeshonderd daarvan is de afhankelijkheidsboom van
-Debians `ffmpeg`: via `libavdevice` komt de hele Mesa- en LLVM-stack mee, waarvan LLVM alleen al
-112 MB. Een statische build zou kleiner zijn maar levert een GPL-binary van derden mee, met een
-bronaanbod erbij. Dat is een aparte afweging.
+De image gaat van 81 MB naar 543 MB, gemeten met `du -sx /` in de amd64-image. Daarvan is 459 MB
+gedeelde bibliotheken, en 159 MB daarvan zijn Mesa, LLVM, z3 en de DRI-drivers die Pleya nergens voor
+gebruikt. Ze komen mee via een keten die van begin tot eind uit harde `Depends` bestaat, dus
+`--no-install-recommends` verandert er niets: `ffprobe → libavdevice59 → libgl1 → libglx0 →
+libglx-mesa0 → libgl1-mesa-dri → libLLVM-15 + libz3`. `libavdevice` is de component voor webcams en
+schermopname, die een mediaserver niet aanraakt, maar Debian linkt hem mee in `ffprobe`. Zelf bouwen
+met `--disable-avdevice` scheelt die 159 MB en verlegt de CVE-bewaking van Debian naar ons; dat
+gebeurt bij PS-8, dat de ffmpeg-bouw toch aanraakt voor QuickSync. Zie `DEC-044`.
 
 ### Wat er bewust niet in zit
 Geen streaming, geen kijkstatus in welke richting dan ook, geen metadata-providers, geen afspeelplan,

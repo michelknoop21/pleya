@@ -264,11 +264,22 @@ pakket is. Bookworm en geen trixie, omdat DSM op kernel 4.4.302 draait.
 overheen is gegaan, dan faalt de build luid in plaats van stil een andere ffmpeg mee te nemen.
 Bijwerken is dan bewust werk: versie omhoog in de `Dockerfile`, opnieuw bouwen, afspelen verifiëren.
 
-**Dat kost fors aan omvang.** De image gaat van 93 MB naar ongeveer 780 MB, en ongeveer 600 MB
-daarvan is de afhankelijkheidsboom van Debians `ffmpeg`: via `libavdevice` komt de hele Mesa- en
-LLVM-stack mee, waarvan LLVM alleen al 112 MB is. Een statische build zou een stuk kleiner zijn, maar
-dan wordt er een GPL-binary van derden meegeleverd en komt daar een bronaanbod bij. Dat is een aparte
-afweging en geen bijproduct van deze fase.
+**Dat kost fors aan omvang.** Gemeten met `du -sx /` in de amd64-image, de architectuur van de NAS:
+`debian:bookworm-slim` is 81 MB, met ffmpeg erin is het 543 MB, en 459 MB daarvan zijn gedeelde
+bibliotheken. Van die 459 MB is 159 MB Mesa, LLVM, z3 en de DRI-drivers, en die gebruikt Pleya
+nergens voor. Ze komen mee via een keten die van begin tot eind uit harde `Depends` bestaat, dus
+`--no-install-recommends` verandert er niets aan:
+
+```
+ffprobe → libavdevice59 → libgl1 → libglx0 → libglx-mesa0 → libgl1-mesa-dri → libLLVM-15 + libz3
+```
+
+`libavdevice` is de component voor opname- en weergaveapparaten: webcams, schermopname, SDL-uitvoer.
+Een mediaserver raakt hem niet aan, en Debian linkt hem toch mee in `ffprobe`. Zelf bouwen met
+`--disable-avdevice` zou rond 380 MB uitkomen, maar dan volgen wij de beveiligingswaarschuwingen van
+ffmpeg in plaats van Debian. Dat gebeurt bij PS-8, dat de ffmpeg-bouw hoe dan ook aanraakt voor
+QuickSync; zie [DEC-044](../docs/DECISIONS.md#dec-044). Een statische build van derden meeleveren is
+weer een andere afweging, want daar hoort een bronaanbod bij.
 
 ## Wat er gemeten is
 

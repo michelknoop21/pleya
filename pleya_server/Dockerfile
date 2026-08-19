@@ -39,11 +39,13 @@ FROM debian:bookworm-slim@sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639
 # stil een andere ffmpeg mee te nemen. Bijwerken is dan het bewuste werk dat het
 # hoort te zijn: versie hier omhoog, image opnieuw bouwen, afspelen verifiëren.
 #
-# Dit kost fors aan omvang. Debian's ffmpeg trekt via libavdevice de hele
-# Mesa- en LLVM-stack mee, en dat is ongeveer 600 MB bovenop de basis. Een
-# statische build zou kleiner zijn, maar dan wordt er een GPL-binary van derden
-# meegeleverd en komt daar een bronaanbod bij; dat is een aparte afweging en
-# geen bijproduct van deze fase. Zie pleya_server/README.md.
+# Dit kost fors aan omvang: de image gaat van 81 MB naar 543 MB, gemeten met
+# du -sx / op amd64. 159 MB daarvan is Mesa, LLVM, z3 en de DRI-drivers, die
+# Pleya nergens voor gebruikt; ze komen mee via een keten van harde Depends
+# (ffprobe -> libavdevice59 -> libgl1 -> ... -> libLLVM-15), dus
+# --no-install-recommends verandert er niets aan. Zelf bouwen met
+# --disable-avdevice haalt ze eruit en gebeurt bij PS-8, dat de ffmpeg-bouw
+# toch aanraakt voor QuickSync. Zie DEC-044 en pleya_server/README.md.
 ARG FFMPEG_VERSION=7:5.1.9-0+deb12u1
 RUN apt-get update \
  && apt-get install --no-install-recommends -y \
