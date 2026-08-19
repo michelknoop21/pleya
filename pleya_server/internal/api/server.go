@@ -11,6 +11,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/web"
 )
 
 // SubjectOwner is de enige identiteit die vóór PS-9 bestaat.
@@ -101,6 +102,27 @@ func (s *Server) routes() {
 	// Klasse authenticated of met een streamtoken in de querystring: een externe
 	// speler kan geen header zetten.
 	s.mux.Handle("GET "+p+"/subtitles/{subtitle_id}", s.streamAuthorized(s.handleSubtitle))
+
+	// Alles wat onder /pleya/v1 valt en hierboven niet staat is een onbekende
+	// protocolroute, en die krijgt de foutvorm van het protocol. Zonder deze
+	// regel zou hij bij de SPA-terugval hieronder belanden en een client een
+	// pagina HTML zien waar hij JSON verwacht. Het patroon eindigt op een
+	// schuine streep en dekt dus de hele deelboom, terwijl elke exacte route
+	// hierboven specifieker is en dus wint.
+	s.mux.HandleFunc(p+"/", func(w http.ResponseWriter, _ *http.Request) {
+		writeError(w, s.log, CodeNotFound, "unknown endpoint", nil)
+	})
+
+	// De meegeleverde webclient, op het minst specifieke patroon dat er
+	// bestaat. /healthz, /readyz en elke route onder /pleya/v1 houden daardoor
+	// voorrang; internal/api/web_routes_test.go bewijst dat.
+	//
+	// Bewust zonder methode ervoor. "GET /" naast "/pleya/v1/" weigert
+	// ServeMux als dubbelzinnig: de een dekt minder methoden, de ander een
+	// smaller pad, en dan is er geen volgorde. De methodecontrole staat
+	// daarom in de webhandler zelf, die alles buiten GET en HEAD met een 405
+	// afwijst in plaats van met een pagina.
+	s.mux.Handle("/", web.Handler())
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {

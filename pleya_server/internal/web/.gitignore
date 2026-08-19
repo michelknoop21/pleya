@@ -1,0 +1,3 @@
+# De gebouwde bundel hoort niet in Git; alleen de plaatshouder blijft staan.
+dist/*
+!dist/PLACEHOLDER

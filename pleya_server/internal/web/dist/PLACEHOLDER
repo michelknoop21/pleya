@@ -1,0 +1,14 @@
+Deze map draagt de gebouwde Pleya Web-bundel.
+
+Hij staat leeg in Git, en dat is opzet. `//go:embed` heeft minstens één bestand
+nodig om te compileren, dus dit bestand staat er wel; de bundel zelf niet, want
+gebouwde uitvoer hoort niet in de bronboom.
+
+Vullen: `pleya_web/scripts/build-into-server.sh`, die met Bun bouwt en het
+resultaat hier neerzet. `pleya_server/deploy-nas.sh` doet dat zelf.
+
+Een ontwikkel- of testbuild werkt zonder bundel: de webhandler zegt dan met
+zoveel woorden dat er geen frontend gebouwd is. Een releasebuild
+(`go build -tags release`) doet dat niet: die eist `dist/index.html` in een
+`//go:embed`-regel en faalt op de compiler wanneer hij ontbreekt. Zie
+acceptatiecriterium 2 van PS-3W.

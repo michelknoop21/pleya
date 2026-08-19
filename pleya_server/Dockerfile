@@ -16,14 +16,24 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY cmd ./cmd
+# internal/web/dist draagt de gebouwde Pleya Web-bundel. Die wordt hier niet
+# gebouwd maar meegestuurd: de uitvoer is architectuurloos, dus een tweede
+# toolchain in deze image zou hetzelfde resultaat opleveren voor meer tijd en
+# meer geheugen, en op de NAS is dat een Celeron. Vullen doet
+# pleya_web/scripts/build-into-server.sh, en deploy-nas.sh roept die zelf aan.
 COPY internal ./internal
 
 ARG VERSION=dev
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 
+# -tags release maakt de bundel verplicht. internal/web/release.go draagt een
+# //go:embed naar dist/index.html, dus een release zonder gebouwde frontend
+# faalt hier op de compiler in plaats van stil een lege pagina mee te nemen.
+# Dat is acceptatiecriterium 2 van PS-3W, en dezelfde redenering als achter de
+# harde ffmpeg-pin verderop.
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" \
+    go build -trimpath -tags release -ldflags="-s -w -X main.version=${VERSION}" \
     -o /out/pleya-server ./cmd/pleya-server
 
 
