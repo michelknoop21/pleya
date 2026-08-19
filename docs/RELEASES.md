@@ -12,6 +12,15 @@ reads the topmost anchor and fills the block below with everything committed sin
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
+### Fixed
+
+- **Your subtitle language is remembered while Plex is transcoding too.** It stuck on direct
+  play, but a transcoding session does not swap a track: it selects a different source stream
+  and reloads, and that path never told Pleya what you had picked. The next episode then fell
+  back to whatever the server had selected, which is a different language rather than none.
+  Burned-in subtitles and streaming from outside the house both force transcoding, so this
+  was exactly the case where you were most likely to be choosing a subtitle. Audio language
+  went through the same gap.
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 228 · 18 August 2026
