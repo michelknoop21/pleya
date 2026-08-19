@@ -289,6 +289,7 @@ class SelectTraceRecorder {
     trace.outcome = outcome;
     final elapsedMs = trace.elapsedMsAt(_now());
     if (note != null) {
+      trace.wasAbandoned = true;
       trace.addEntry(SelectTraceEntry(atMs: elapsedMs, kind: 'abandoned', detail: note));
     }
     final verdict = evaluateSelectTrace(trace);

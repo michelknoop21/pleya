@@ -188,6 +188,9 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     if (widget.hub.id != oldWidget.hub.id) {
       _itemKeys.clear();
       _mediaCardKeys.clear();
+      // A different hub in the same slot: an identity from the old one would
+      // resolve to `staleDropped` and swallow the first press on the new row.
+      _focusTarget = const HubFocusNone();
     } else if (widget.hub.items.length != oldWidget.hub.items.length || widget.hub.more != oldWidget.hub.more) {
       _itemKeys.removeWhere((index, _) => index >= _totalItemCount);
       _mediaCardKeys.removeWhere((index, _) => index >= widget.hub.items.length);
@@ -207,14 +210,16 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
       }
     }
 
-    // `hub.more` comes off the server on every refresh, so the trailing card can
-    // disappear while the cursor is on it. The clamp above then moves the index
-    // onto the last real card, which is what the user sees highlighted, while
-    // the target still says "View All". Activation resolves that to `none` and
-    // returns without re-pointing, so every following Select would be a no-op
-    // until the user pressed left or right. Nothing was aimed at a title here,
-    // so re-pointing costs no protection.
-    if (_focusTarget is HubFocusViewAll && !widget.hub.more) {
+    // The trailing card always sits at `items.length`, so anything that moves
+    // the cursor off that slot has separated it from a "View All" target. Two
+    // ways in, both from the server on an ordinary refresh: `more` flips false
+    // and the clamp above drops the index onto the last real card, or the row
+    // gains an item and a real card slides in under the unchanged index. Left
+    // alone the first makes every following Select a no-op, and the second
+    // opens the whole-hub screen while the user is looking at a poster. Nothing
+    // was aimed at a title here, so re-pointing costs no protection.
+    final viewAllIndex = widget.hub.more ? widget.hub.items.length : -1;
+    if (_focusTarget is HubFocusViewAll && _focusedIndex != viewAllIndex) {
       _setFocusTarget(_focusedIndex, report: false);
     }
   }

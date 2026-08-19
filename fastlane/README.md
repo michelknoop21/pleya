@@ -67,7 +67,7 @@ Laatste build aan het App Store-versierecord koppelen: fastlane attach_builds [p
 [bundle exec] fastlane notes_show
 ```
 
-Releasenotes uit docs/RELEASES.md op een TestFlight-build zetten: fastlane notes build:227
+Tonen wat er nu als "What to Test" op een build staat: fastlane notes_show build:227
 
 ### notes
 
@@ -75,7 +75,7 @@ Releasenotes uit docs/RELEASES.md op een TestFlight-build zetten: fastlane notes
 [bundle exec] fastlane notes
 ```
 
-
+Releasenotes uit docs/RELEASES.md op een TestFlight-build zetten: fastlane notes build:227
 
 ### beta
 

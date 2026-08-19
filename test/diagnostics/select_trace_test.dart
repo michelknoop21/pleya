@@ -107,11 +107,14 @@ void main() {
       expect(evaluateSelectTrace(trace).anomaly, SelectTraceAnomaly.activationDropped);
     });
 
-    test('a press that never reached an outcome is abnormal', () {
-      expect(
-        evaluateSelectTrace(traceWith(fullChain, outcome: SelectTraceOutcome.none)).anomaly,
-        SelectTraceAnomaly.unterminated,
-      );
+    test('a press that died is abnormal, one that simply opened nothing is not', () {
+      // The difference is why `wasAbandoned` exists next to the outcome: a
+      // press that resolved to nothing is ordinary, a press that never got an
+      // answer at all is the one worth a line.
+      expect(evaluateSelectTrace(traceWith(fullChain, outcome: SelectTraceOutcome.none)).isConsistent, isTrue);
+
+      final died = traceWith(fullChain, outcome: SelectTraceOutcome.none)..wasAbandoned = true;
+      expect(evaluateSelectTrace(died).anomaly, SelectTraceAnomaly.unterminated);
     });
   });
 

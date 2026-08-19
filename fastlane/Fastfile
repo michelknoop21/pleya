@@ -266,7 +266,14 @@ def testflight_notes(markdown)
       heading = lines.first.gsub(/^\#+\s*/, "")
       keep_full = SECTIONS_KEPT_IN_FULL.any? { |k| heading.downcase.include?(k) }
       out << heading.upcase
-      next
+      # Wat eronder in hetzelfde blok staat hoort bij de sectie. Zonder dit
+      # verdween een sectie waarvan de kop niet door een lege regel gevolgd
+      # wordt geruisloos: gen_release_notes.sh zet die regel altijd, maar
+      # docs/RELEASES.md wordt met de hand bijgewerkt.
+      rest = lines[1..]
+      next if rest.nil? || rest.empty?
+      block = rest.join("\n")
+      lines = rest
     end
 
     bulleted = block.lstrip.start_with?("- ")
@@ -616,7 +623,7 @@ lane :attach_builds do |options|
   UI.user_error!("Koppelen mislukt of overgeslagen voor: #{failures.join(', ')}") unless failures.empty?
 end
 
-desc "Releasenotes uit docs/RELEASES.md op een TestFlight-build zetten: fastlane notes build:227"
+desc "Tonen wat er nu als \"What to Test\" op een build staat: fastlane notes_show build:227"
 # Leest terug wat er op dit moment als "What to Test" op een build staat, zonder
 # iets te schrijven. Bestaat omdat de TestFlight-app het veld per build cachet:
 # een tester die de oude tekst ziet bewijst niets over wat App Store Connect
@@ -638,6 +645,7 @@ lane :notes_show do |options|
   end
 end
 
+desc "Releasenotes uit docs/RELEASES.md op een TestFlight-build zetten: fastlane notes build:227"
 lane :notes do |options|
   build_number = options[:build] || local_build_number
   UI.user_error!("Geen buildnummer") unless build_number

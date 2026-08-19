@@ -4,7 +4,7 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
 ## [2026-08-19] De rij die Select op de Apple TV afhandelt was niet de rij die gehard was
 
-Op `main`, drie commits: `22b4249`, `7bcd588` en deze.
+Op `main`, vier commits: `22b4249`, `7bcd588`, `2c6c767` en deze.
 
 ### Fixed
 - **`HubSection` opent bij Select het item dat de gebruiker ziet, niet de index** (`22b4249`). Een rij herlaadt in place en kan daarbij herordenen, dus tussen het frame waar iemand naar keek en het moment van drukken kan een andere kaart op dezelfde plek staan. `lib/widgets/hub_activation.dart` houdt de cursor voortaan als identiteit (`MediaItem.globalKey`) vast in plaats van als positie, en weigert een activering waarvan het item verdwenen is in plaats van te openen wie de plek innam.
@@ -28,6 +28,12 @@ Op `main`, drie commits: `22b4249`, `7bcd588` en deze.
 - **Een Select-key-down zonder bijbehorende key-up lekte een trace.** Opent er een natieve tekstinvoersessie over de druk heen, dan wordt de release opgeslokt. `beginSelect` breekt nu eerst de vorige af, en een eviction die niets bereikt heeft zwijgt in plaats van te waarschuwen over een druk die simpelweg nooit afliep.
 - **De contextmenu-tak sloot de trace vóór bekend was dat er een menu opende**, in beide rijen. Nu pas nadat de guards door zijn.
 - **Omlaag vanaf de filterregel in Aanvragen was een dode toets tijdens het zoeken.** `handleChipKeyEvent` meldt de druk als afgehandeld zodra er een callback bestaat, en `_navigateDownFromFilterBar` mikte altijd op het ontdek-raster, dat tijdens een zoekopdracht niet bestaat. Hij volgt nu dezelfde regel als omlaag vanaf het zoekveld.
+- **Elke gewone druk die niets opent gaf een waarschuwing.** Muziek, een nog ladende laad-meer-kaart, een personenrij: die sluiten allemaal met `none`, en dat werd als `unterminated` gelezen. Een druk die niets opende is normaal; alleen een druk die halverwege sterft is dat niet, en dat staat nu apart van de uitkomst.
+- **Een rij die een item won terwijl de cursor op View All stond, opende het hele hub-scherm.** De trailing kaart zit altijd op `items.length`, dus een groeiende rij schuift daar een echte poster onder. De gebruiker ziet die poster gemarkeerd staan. Het doel volgt nu de trailing plek in plaats van alleen de `more`-vlag.
+- **Een rij die een andere hub kreeg, slikte de eerste druk in.** De onthouden identiteit hoorde bij een lijst die er niet meer was, wat als stale drop uitkwam. Bij een hub-wissel wordt het doel nu leeggemaakt.
+- **Een niet-gefocuste rij kon de trace-aanwijzer overschrijven.** `_notifyFocusedItem` vuurt ook op `autofocus` en op een door de host gevraagd beginitem, dus een rij achter een detailscherm zette de aim van een druk die ergens anders vandaan kwam. Dezelfde guard als op het meldpad staat nu ook op het schrijfpad.
+- **`fastlane lanes` beschreef de verkeerde lane.** De `desc` boven `notes` werd door het nieuw ingevoegde `notes_show` opgepikt, dus de lane die daadwerkelijk naar App Store Connect schrijft stond zonder omschrijving.
+- **Een kop zonder lege regel erachter liet zijn hele sectie uit "What to Test" vallen.** `testflight_notes` gaf de kop door en sloeg de rest van het blok over. `gen_release_notes.sh` zet die lege regel altijd, maar `docs/RELEASES.md` wordt met de hand bijgewerkt en dit faalde stil.
 
 ## [2026-08-19] Een klik op de zijbalk startte de film eronder
 

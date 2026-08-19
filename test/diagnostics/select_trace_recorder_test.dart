@@ -112,6 +112,21 @@ void main() {
     expect(warnings.single, contains('s1:9082'));
   });
 
+  test('a press that legitimately opens nothing is not a warning', () {
+    // Music, a still-loading trailing card, a person row: all close with
+    // `none` and all are perfectly ordinary. Warning about them would bury the
+    // reports this whole subsystem exists to make findable.
+    final recorder = build();
+    recorder.noteFocus(surface: 'tv-rail', hubId: 'h', index: 0, item: item('a'));
+    final id = recorder.beginSelect(source: 'native');
+    recorder.link(id, SelectTraceLink.activatedTarget, item('a'));
+    recorder.close(id, SelectTraceOutcome.none);
+
+    expect(warnings, isEmpty);
+    expect(info, hasLength(1));
+    expect(info.single, contains('outcome=none'));
+  });
+
   test('a replacement under the cursor lands in every open trace', () {
     final recorder = build();
     recorder.noteFocus(surface: 'tv-rail', hubId: 'h', index: 3, item: item('41215'));

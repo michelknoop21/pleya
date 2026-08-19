@@ -203,6 +203,13 @@ class SelectTrace {
 
   bool sawActivationDropped = false;
 
+  /// Set when a trace was ended because it died rather than because it reached
+  /// an outcome. Kept apart from [outcome] being [SelectTraceOutcome.none]:
+  /// plenty of presses legitimately open nothing (music, a still-loading
+  /// trailing card, a person row), and warning about those would drown the
+  /// reports this whole subsystem exists to make findable.
+  bool wasAbandoned = false;
+
   /// Timeline lines dropped because the buffer was full.
   int droppedEntries = 0;
 
@@ -282,7 +289,7 @@ SelectTraceVerdict evaluateSelectTrace(SelectTrace trace) {
   if (trace.sawActivationDropped) {
     return const SelectTraceVerdict.broken(anomaly: SelectTraceAnomaly.activationDropped);
   }
-  if (trace.outcome == SelectTraceOutcome.none) {
+  if (trace.wasAbandoned) {
     return const SelectTraceVerdict.broken(anomaly: SelectTraceAnomaly.unterminated);
   }
   return const SelectTraceVerdict.consistent();

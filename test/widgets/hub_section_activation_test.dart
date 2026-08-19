@@ -203,6 +203,55 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('a card sliding under the View All slot opens that card, not the hub', (tester) async {
+    // The trailing card sits at items.length, so a row that gains an item while
+    // `more` stays true puts a real poster under an unchanged cursor. The
+    // highlight is on that poster; a target still saying "View All" would open
+    // the whole-hub screen instead. Happens when you start a title on another
+    // device and Continue Watching grows.
+    final hubKey = GlobalKey<HubSectionState>();
+    final (spy, pumpWith) = await pumpHub(tester, hub(['a', 'b', 'c'], more: true), hubKey: hubKey);
+
+    hubKey.currentState!.requestFocusAt(3); // the "View All" slot
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await pumpWith(hub(['a', 'b', 'c', 'd'], more: true));
+    spy.pushed.clear();
+
+    await pressSelect(tester);
+
+    expect(spy.pushed, hasLength(1));
+    expect(
+      spy.pushed.single,
+      isA<MaterialPageRoute<bool>>(),
+      reason: 'the bool-returning route is the media detail one; the hub page is not',
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('a row handed a different hub does not swallow the first press', (tester) async {
+    // The slot is reused for another hub, so the remembered identity belongs to
+    // a list that is no longer there. Left standing it resolves to a stale drop
+    // and the first Select on the new row does nothing.
+    final hubKey = GlobalKey<HubSectionState>();
+    final (spy, pumpWith) = await pumpHub(tester, hub(['a', 'b', 'c']), hubKey: hubKey);
+
+    hubKey.currentState!.requestFocusAt(1);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await pumpWith(
+      MediaHub(id: 'another_hub', title: 'Another', type: 'movie', size: 3, items: [item('x'), item('y'), item('z')]),
+    );
+    spy.pushed.clear();
+
+    await pressSelect(tester);
+
+    expect(spy.pushed, hasLength(1));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('a reorder the row absorbs stays one line naming what the user aimed at', (tester) async {
     // The counterweight to the warnings: this row follows the identity across a
     // refresh, so a reorder is not a defect and must not produce noise. What

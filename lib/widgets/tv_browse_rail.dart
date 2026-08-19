@@ -754,7 +754,13 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     final item = hub.items[_itemIndex];
     // The single choke point for "the cursor now points here", so the trace
     // recorder learns about every deliberate move without a listener per row.
-    SelectTraceRecorder.instance.noteFocus(surface: 'tv-rail', hubId: _hubKey(hub), index: _itemIndex, item: item);
+    // Focused rails only: the callers also fire on `autofocus` and on a
+    // host-requested initial item, and a rail mounted behind a detail screen
+    // would otherwise overwrite the aim of a press coming from somewhere else.
+    // Same guard as [_reportFocusedTargetChangeAcrossUpdate], on the write path.
+    if (_focusNode.hasFocus) {
+      SelectTraceRecorder.instance.noteFocus(surface: 'tv-rail', hubId: _hubKey(hub), index: _itemIndex, item: item);
+    }
     widget.onFocusedItemChanged?.call(item);
     widget.onFocusedHubItemChanged?.call(hub, item);
   }
