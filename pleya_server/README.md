@@ -4,10 +4,17 @@ Een mediaserver in Go met Postgres, bedoeld om naast een bestaande Plex-containe
 te draaien. De roadmap staat in [docs/pleya-server-architecture.md](../docs/pleya-server-architecture.md);
 dit bestand beschrijft wat er nu draait en hoe u het aan de praat krijgt.
 
-**Stand: PS-2, read-only catalogus.** De server scant een bestandsboom, houdt de catalogus bij in
-Postgres, en serveert de leeskant van [Pleya Protocol v1](../docs/pleya-protocol-v1.md). Er is nog
-geen streaming, geen kijkstatus, geen metadata-provider en geen gebruikersmodel. Dat zijn PS-4, PS-7
-en PS-9, en ze staan bewust niet half in.
+**Stand: PS-2, read-only catalogus, plus de meegeleverde webclient uit PS-3W.** De server scant een
+bestandsboom, houdt de catalogus bij in Postgres, en serveert de leeskant van
+[Pleya Protocol v1](../docs/pleya-protocol-v1.md). Er is nog geen streaming, geen kijkstatus, geen
+metadata-provider en geen gebruikersmodel. Dat zijn PS-4, PS-7 en PS-9, en ze staan bewust niet half
+in.
+
+Sinds PS-3W zit [Pleya Web](../pleya_web/README.md) in dezelfde binary: een statische bundel op `/`,
+achter de protocolroutes. Dat voegt geen endpoint en geen capability toe.
+[DEC-046](../docs/DECISIONS.md#dec-046-pleya-web-is-een-protocolclient-en-co-distributie-geeft-geen-extra-rechten)
+legt vast dat samen uitgeleverd worden geen extra rechten geeft: wat de webclient toont, gaat over
+`/pleya/v1`, en dus kan de Flutter-client het morgen ook.
 
 PS-0 (de Docker-fundering) is gesloten en bevroren; de afwijking die die fase aan de roadmap
 toevoegde staat in [docs/pleya-server-ps0-proposal.md](../docs/pleya-server-ps0-proposal.md).
@@ -82,6 +89,11 @@ Negen endpoints van de zeventien uit het protocol.
 | `GET /pleya/v1/search`, `/hubs/{hub_id}` | geauthenticeerd |
 | `GET /pleya/v1/artwork/{id}` | geauthenticeerd |
 | `GET /pleya/v1/subtitles/{id}` | geauthenticeerd of met een streamtoken |
+
+Buiten het protocol staat er nog één route: `GET /` en elk pad dat geen bestand en geen protocolroute is levert
+`index.html` van de webbundel. `/pleya/v1/*`, `/healthz` en `/readyz` houden altijd voorrang, en een
+onbekend pad onder `/pleya/v1` krijgt de foutvorm van het protocol en geen pagina HTML.
+`internal/web` en `internal/api/web_routes_test.go` toetsen dat.
 
 `GET /pleya/v1/stream/{version_id}` en beide kijkstatus-endpoints bestaan niet en geven een 404. Dat
 is opzet: streaming is PS-4, en de twee poorten die daaronder liggen (het conflictmodel voor
@@ -170,8 +182,21 @@ Vanaf een werkkopie gaat het in één opdracht:
 pleya_server/deploy-nas.sh
 ```
 
-Dat verstuurt de bronnen, laat de NAS zelf bouwen en wacht tot `/readyz` groen is. De NAS bouwt zelf
-omdat hij amd64 is en de ontwikkelmachine dat meestal niet is; emuleren duurt langer dan bouwen.
+Dat bouwt eerst Pleya Web, verstuurt de bronnen inclusief die bundel, laat de NAS de binary zelf
+bouwen en wacht tot `/readyz` groen is. De NAS bouwt de binary zelf omdat hij amd64 is en de
+ontwikkelmachine dat meestal niet is; emuleren duurt langer dan bouwen. De webbundel is
+architectuurloos en wordt daarom níét op de NAS gebouwd: een Bun-toolchain op een Celeron levert
+hetzelfde bestand op voor meer tijd en meer geheugen.
+
+**De containerbuild eist die bundel.** Hij compileert met `-tags release`, en dan is
+`internal/web/dist/index.html` een `//go:embed`-patroon. Ontbreekt hij, dan faalt de build luid:
+
+```
+internal/web/release.go:18:12: pattern dist/index.html: no matching files found
+```
+
+Dat is opzet, en dezelfde redenering als achter de harde ffmpeg-pin: liever luid falen dan stil iets
+anders meeleveren. Een ontwikkel- of testbuild draagt de tag niet en werkt dus zonder Bun.
 
 ### 5. De eigenaar aanmaken
 
@@ -191,6 +216,9 @@ Het antwoord is een tokenpaar. De code vervalt bij die eerste geslaagde inwissel
 een halfuur vanzelf; is hij verlopen, dan drukt een herstart een nieuwe af.
 
 ## Bediening
+
+De webclient staat daarna op `http://127.0.0.1:8832/` van de NAS zelf. Dat is dezelfde LAN-grens als
+de API: openstellen hoort bij PS-11.
 
 ```sh
 cd /volume1/docker/pleya-server
@@ -368,7 +396,8 @@ zijn eigen lezing van het contract houden.
 
 ## Wat hier niet in zit
 
-Geen streaming en geen range-verkeer. Geen kijkstatus, in geen van beide richtingen. Geen
+Geen afspelen, ook niet in de webclient. Geen streaming en geen range-verkeer. Geen kijkstatus, in
+geen van beide richtingen. Geen
 metadata-providers, geen matching, geen artwork van buiten de schijf, geen schalen of cachen van
 afbeeldingen. Geen afspeelplan, geen transcodering, geen sessies. Geen gebruikers, rollen of
 bibliotheekrechten. Geen downloads, geen Live TV, geen websockets, geen server-sent events.

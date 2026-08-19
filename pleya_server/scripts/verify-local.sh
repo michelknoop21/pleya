@@ -411,6 +411,71 @@ else
   fail "postgres heeft een hostpoort: $(docker inspect pleya-server-db --format '{{json .HostConfig.PortBindings}}')"
 fi
 
+# ------------------------------------------------------------- 15. Pleya Web (PS-3W)
+section "15. Pleya Web wordt geserveerd en overschaduwt het protocol niet"
+
+web_status() { curl -s -o /dev/null -w '%{http_code}' "$1"; }
+web_type()   { curl -s -o /dev/null -w '%{content_type}' "$1"; }
+
+if [ "$(web_status "$BASE/")" = "200" ] && curl -s "$BASE/" | grep -q '<title>Pleya</title>'; then
+  ok "de bundel wordt op / geleverd door dezelfde binary"
+else
+  fail "/ levert geen Pleya Web (status $(web_status "$BASE/"))"
+fi
+
+if curl -s "$BASE/libraries" | grep -q '<title>Pleya</title>'; then
+  ok "SPA-terugval: een frontendroute krijgt index.html"
+else
+  fail "SPA-terugval werkt niet op /libraries"
+fi
+
+# De kern van acceptatiecriterium 1: het protocol houdt voorrang.
+drift=0
+for path in /healthz /readyz /pleya/v1/info; do
+  case "$(web_type "$BASE$path")" in
+    application/json*) ;;
+    *) fail "$path werd niet als JSON beantwoord"; drift=1 ;;
+  esac
+done
+[ "$drift" -eq 0 ] && ok "/healthz, /readyz en /pleya/v1/info houden voorrang"
+
+if [ "$(web_status "$BASE/pleya/v1/nonexistent")" = "404" ] &&
+   curl -s "$BASE/pleya/v1/nonexistent" | grep -q '"library.not_found"'; then
+  ok "een onbekende protocolroute krijgt de foutvorm en geen pagina"
+else
+  fail "een onbekende protocolroute belandde bij de SPA"
+fi
+
+asset="$(curl -s "$BASE/" | grep -o '/_app/immutable/[^"]*\.js' | head -1)"
+if [ -n "$asset" ] && curl -sI "$BASE$asset" | grep -qi 'cache-control:.*immutable'; then
+  ok "een gehasht bestand mag een jaar gecachet worden"
+else
+  fail "de cacheheader op een gehasht bestand klopt niet"
+fi
+
+if curl -sI "$BASE/" | grep -qi 'cache-control: no-cache'; then
+  ok "index.html krijgt geen agressieve cache"
+else
+  fail "index.html krijgt de verkeerde cacheheader"
+fi
+
+missing=""
+for header in "x-content-type-options: nosniff" "x-frame-options: DENY" \
+              "referrer-policy: no-referrer" "content-security-policy: frame-ancestors"; do
+  curl -sI "$BASE/" | grep -qi "$header" || missing="$missing $header"
+done
+if [ -z "$missing" ]; then
+  ok "de securityheaders staan er"
+else
+  fail "securityheaders ontbreken:$missing"
+fi
+
+if curl -sI "$BASE/" | grep -qi 'access-control-allow-origin'; then
+  fail "er staat een CORS-header; bundel en API delen hun origin en hebben die niet nodig"
+else
+  ok "geen CORS-header, want bundel en API delen hun origin"
+fi
+
 # ------------------------------------------------------------------------ slot
 cleanup
 

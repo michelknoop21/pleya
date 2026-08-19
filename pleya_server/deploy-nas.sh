@@ -17,6 +17,14 @@ if ! ssh "$SSH_HOST" "grep -q '^POSTGRES_PASSWORD=.\{16,\}' $REMOTE_DIR/.env" 2>
   exit 1
 fi
 
+echo "→ Pleya Web bouwen"
+# De frontend wordt hier gebouwd en gaat als bundel mee in de tar. De NAS bouwt
+# wel de Go-binary zelf, want hij is amd64 en de ontwikkelmachine meestal niet;
+# de webbundel is architectuurloos, dus daar zou een Bun-toolchain op een
+# Celeron niets aan toevoegen behalve tijd. Zonder deze stap faalt de
+# containerbuild luid op de ontbrekende bundel, en dat is opzet.
+../pleya_web/scripts/build-into-server.sh
+
 echo "→ bronnen versturen naar $SSH_HOST:$REMOTE_DIR"
 COPYFILE_DISABLE=1 tar czf - Dockerfile compose.yaml .dockerignore go.mod go.sum cmd internal \
   | ssh "$SSH_HOST" "mkdir -p $REMOTE_DIR && tar xzf - -C $REMOTE_DIR"
