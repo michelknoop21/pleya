@@ -33,6 +33,18 @@ en poort 4 (de byte-validator achter de `ETag`-belofte) zijn niet aangeraakt en 
 ze horen dicht vóór PS-4. Er is geen `users`-tabel, geen `sessions`-tabel en geen `external_ids`, en
 `scripts/verify-local.sh` controleert dat ook zo.
 
+**Uitgerold en gemeten op de DS920+.** 28.986 bestanden, 6.951 analyses, 7.300 items, nul fouten. De
+tweede ronde draaide ffprobe geen enkele keer en de ids waren na een herstart byte-identiek. Het
+verschil tussen de twee mounts is precies wat het model voorspelt: Kids staat op btrfs en was in nul
+seconden klaar, Films en Series staan op de NTFS-schijf en lezen daar samen 10,7 GB aan
+kop-en-staart-hashes. Blijkt de inode daar een aankoppeling te overleven, dan haalt
+`PLEYA_SERVER_INODE_TRUST` die hele ronde weg; dat vraagt een reboot of een umount om te meten, want
+een herstart van de container laat de mount staan.
+
+Die ronde legde ook 5.841 losse bestanden bloot die nergens aan hingen, en dat waren drie fouten in
+de naamherkenning: de afleveringsminiatuur `-thumb.jpg` (5.001 stuks), een taal met een teller
+erachter, en een onbekend woord dat de ontleding afbrak. Gerepareerd met tests op precies die namen.
+
 **Wat het kostte.** De image gaat van 93 MB naar ongeveer 780 MB, en zeshonderd daarvan is de
 afhankelijkheidsboom van Debians `ffmpeg`. Via `libavdevice` komt de hele Mesa- en LLVM-stack mee,
 waarvan LLVM alleen al 112 MB is. Een statische build zou kleiner zijn maar levert een GPL-binary van

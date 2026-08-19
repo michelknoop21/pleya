@@ -273,7 +273,34 @@ afweging en geen bijproduct van deze fase.
 ## Wat er gemeten is
 
 Op een Synology DS920+ (Celeron J4125, 4 cores, 19,4 GiB), DSM 7.3.2, kernel 4.4.302, cgroups v1,
-naast een draaiende Plex-container. De fundering uit PS-0 staat er nog steeds:
+naast een draaiende Plex-container. De bibliotheek staat over twee bestandssystemen: btrfs op
+`/volume1` en `fuseblk.ntfs` op de USB-schijf.
+
+| Bibliotheek | Bestanden | Analyses ronde 1 | Analyses ronde 2 | Items | Ronde 1 | Ronde 2 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Films | 3.044 | 461 | 0 | 460 | 860 s | 354 s |
+| Series | 25.809 | 6.357 | 0 | 6.835 | 5.477 s | 1.100 s |
+| Kids | 133 | 133 | 0 | 5 | 40 s | 0 s |
+
+Bij elkaar 28.986 bestanden, 6.951 analyses en 7.300 items, met nul fouten. De tweede ronde draaide
+ffprobe geen enkele keer, en de item-ids waren na een herstart byte-identiek.
+
+Het verschil tussen de twee mounts staat in die laatste kolom. Kids staat volledig op btrfs, waar de
+inode een bestand blijft aanwijzen: daar volstaat laag 1 en wordt er geen byte gelezen, dus nul
+seconden. Films en Series staan grotendeels op de NTFS-schijf, waar de inode niet vertrouwd wordt en
+laag 2 dus voor elk bestand draait: samen 10,7 GB aan kop-en-staart-reads, tegen ongeveer 6 MB/s
+omdat het verspreide leesacties over USB zijn. Dat is verreweg de grootste post in die 354 en 1.100
+seconden.
+
+**Die kosten zijn af te zetten tegen een meting die nog niet gedaan is.** Blijkt de inode op
+`fuseblk.ntfs` een aankoppeling te overleven, dan haalt `PLEYA_SERVER_INODE_TRUST=<root>=always` die
+hele hashronde weg. Een herstart van de container bewijst dat niet, want de mount blijft daarbij
+staan; het gaat om een reboot of een `umount` gevolgd door `mount`, en daarna kijken of
+`mismatches_on_known_paths` in de logregel `inodemeting` nul blijft. Zolang die meting er niet is
+blijft de root op wantrouwen staan, want de kosten van verkeerd vertrouwen zijn een bestand dat stil
+aan het verkeerde item hangt.
+
+De fundering uit PS-0 staat er nog steeds:
 
 | Meting | Uitkomst |
 | --- | --- |

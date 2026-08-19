@@ -42,6 +42,30 @@ geen gebruikersmodel. `GET /pleya/v1/stream/{version_id}` en beide kijkstatus-en
 en `capabilities.watch_state` staat op `false`. Poort 3 en poort 4 zijn niet aangeraakt en staan nog
 steeds open.
 
+### Op de echte bibliotheek
+Uitgerold op de DS920+ en over de volledige bibliotheek gedraaid: 28.986 bestanden, 6.951 analyses,
+7.300 items, nul fouten. De tweede ronde draaide ffprobe geen enkele keer en de item-ids waren na een
+herstart byte-identiek. Kids staat volledig op btrfs en was in nul seconden klaar; Films en Series
+staan op de NTFS-schijf, waar laag 2 voor elk bestand draait en samen 10,7 GB leest tegen ongeveer
+6 MB/s.
+
+Die ronde legde ook drie fouten in de naamherkenning bloot, samen goed voor 5.841 van de 19.450
+losse bestanden die nergens aan hingen. De afleveringsminiatuur `<aflevering>-thumb.jpg` viel buiten
+de lijst met achtervoegsels, en dat zijn er 5.001. Een taal met een teller erachter (`nl_2`, `nl_3`)
+werd niet als taal gelezen. En een onbekend woord achter de taal (`.nl.synced.srt`) brak de
+ontleding af, waarna de naam van het mediabestand niet meer klopte.
+
+De derde is de interessante, want het was een volgordefout. Zolang niet vaststaat welk mediabestand
+erbij hoort moet elk onbekend woord als deel van de titel gelden, anders eet de ontleding de naam
+op. De scanner zoekt nu eerst op een steeds kortere prefix tegen de mediabestanden die werkelijk in
+die map staan, en leest taal en markeringen pas daarna uit wat erachter staat. Wat overblijft zijn
+echte wezen: mappen met alleen een poster waar de film niet meer staat, en Plex-restanten waar de
+geoptimaliseerde versie verdwenen is maar de ondertitel bleef.
+
+Wat de ronde niet beantwoordde is de inodevraag zelf. Een herstart van de container laat de mount
+staan, dus dat het aantal mismatches nul bleef bewijst niets. Daarvoor is een reboot of een
+`umount` gevolgd door `mount` nodig.
+
 ### Verificatie
 `scripts/check_protocol.sh` onveranderd groen. `scripts/verify-local.sh`: 54 controles.
 `scripts/verify-protocol.sh`: 19 antwoorden tegen `openapi.yaml`, alle acht schema's gedekt. De
