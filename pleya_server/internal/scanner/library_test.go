@@ -175,6 +175,66 @@ func TestSidecarsAttachToTheirOwner(t *testing.T) {
 	}
 }
 
+// TestSidecarVariantsAttachToTheirEpisode gebruikt namen die op de echte
+// bibliotheek staan en die de eerste ronde daar niet kon koppelen.
+func TestSidecarVariantsAttachToTheirEpisode(t *testing.T) {
+	h := newHarness(t, "shows")
+
+	season := h.path("Two and a Half Men", "Season 1")
+	episode := "Two and a Half Men S1E14 - I Can't Afford Hyenas"
+	testsupport.MakeVideo(t, filepath.Join(season, episode+".mkv"), 1)
+
+	// Een tweede aflevering in dezelfde map, zodat de terugval op de map niet
+	// meehelpt: de koppeling moet uit de naam komen.
+	other := "Two and a Half Men S1E15 - Round One to the Hot Crazy Chick"
+	testsupport.MakeVideo(t, filepath.Join(season, other+".mkv"), 1)
+
+	testsupport.WriteFile(t, filepath.Join(season, episode+".nl_2.srt"),
+		"1\n00:00:01,000 --> 00:00:02,000\ntwee\n")
+	testsupport.WriteFile(t, filepath.Join(season, episode+".nl.synced.srt"),
+		"1\n00:00:01,000 --> 00:00:02,000\ngelijkgezet\n")
+	testsupport.WriteFile(t, filepath.Join(season, episode+"-thumb.jpg"), "geen echte jpeg")
+	testsupport.WriteFile(t, filepath.Join(season, other+"-thumb.jpg"), "geen echte jpeg")
+
+	h.scan()
+
+	shows := h.items()
+	if len(shows) != 1 {
+		t.Fatalf("%d series, verwacht 1", len(shows))
+	}
+	seasons := h.children(shows[0].ID)
+	episodes := h.children(seasons[0].ID)
+	if len(episodes) != 2 {
+		t.Fatalf("%d afleveringen, verwacht 2", len(episodes))
+	}
+
+	var target catalog.Item
+	for _, e := range episodes {
+		if e.Index != nil && *e.Index == 14 {
+			target = e
+		}
+	}
+	if target.ID.IsZero() {
+		t.Fatal("aflevering 14 ontbreekt")
+	}
+	if target.PosterID == nil {
+		t.Fatal("de miniatuur -thumb.jpg is niet aan de aflevering gekoppeld")
+	}
+
+	var external int
+	for _, st := range target.Versions[0].Streams {
+		if st.Kind == "subtitle" && st.IsExternal {
+			external++
+			if st.Language != "dut" {
+				t.Errorf("extern spoor heeft taal %q, verwacht dut", st.Language)
+			}
+		}
+	}
+	if external != 2 {
+		t.Fatalf("%d externe ondertitelsporen gekoppeld, verwacht 2", external)
+	}
+}
+
 // TestThousandFilesScanCompletely is acceptatiecriterium 1.
 func TestThousandFilesScanCompletely(t *testing.T) {
 	if testing.Short() {

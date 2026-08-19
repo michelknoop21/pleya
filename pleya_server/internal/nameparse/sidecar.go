@@ -9,7 +9,10 @@ import (
 type Subtitle struct {
 	// MediaBase is de bestandsnaam van de media waar dit spoor bij hoort, zonder
 	// extensie. Leeg betekent: dit bestand hoort bij elke media in dezelfde map.
-	MediaBase       string
+	MediaBase string
+	// FullBase is de hele naam zonder extensie, voor het geval MediaBase niets
+	// oplevert en er op prefix gezocht moet worden.
+	FullBase        string
 	Format          string
 	Language        string
 	Forced          bool
@@ -62,20 +65,55 @@ func ParseSubtitle(fileName string) (Subtitle, bool) {
 		}
 		break
 	}
-
+	out.FullBase = base
 	out.MediaBase = strings.Join(parts[:end], ".")
 	return out, true
+}
+
+// SubtitleAttributes leest taal en markeringen uit wat er achter de naam van het
+// mediabestand staat.
+//
+// Dit gebeurt pas nadat vaststaat welk mediabestand het is, en dat maakt het
+// verschil. Zolang dat niet vaststaat moet elk onbekend woord van achteren als
+// deel van de titel worden beschouwd, want anders eet de ontleding de naam op.
+// Zodra de naam bekend is, is alles erachter aantekening: een onbekend woord als
+// "synced" mag dan overgeslagen worden, en de taal erachter wordt alsnog gelezen.
+func SubtitleAttributes(fullBase, mediaBase string) Subtitle {
+	out := Subtitle{MediaBase: mediaBase, FullBase: fullBase}
+
+	rest := strings.TrimPrefix(fullBase, mediaBase)
+	rest = strings.TrimPrefix(rest, ".")
+	if rest == "" {
+		return out
+	}
+
+	for _, token := range strings.Split(rest, ".") {
+		token = strings.ToLower(strings.TrimSpace(token))
+		if apply, ok := subtitleFlags[token]; ok {
+			apply(&out)
+			continue
+		}
+		if lang, ok := LanguageCode(token); ok && out.Language == "" {
+			out.Language = lang
+		}
+	}
+	return out
 }
 
 // Artwork zegt of een afbeelding een poster of een achtergrond is, en bij welk
 // bestand hij hoort.
 type Artwork struct {
 	MediaBase string // leeg betekent: hoort bij de map, dus bij het item
+	FullBase  string
 	Kind      string // poster of backdrop
 }
 
 var posterNames = map[string]bool{
 	"poster": true, "folder": true, "cover": true, "default": true, "movie": true, "show": true,
+	// thumb is de afleveringsminiatuur die Plex naast elke aflevering zet. Op de
+	// echte bibliotheek zijn dat er vijfduizend, en het protocol kent in v1 geen
+	// apart veld voor een miniatuur; poster is waar een client hem toont.
+	"thumb": true,
 }
 
 var backdropNames = map[string]bool{
@@ -93,25 +131,26 @@ func ParseArtwork(fileName string) (Artwork, bool) {
 	lower := strings.ToLower(base)
 
 	if posterNames[lower] {
-		return Artwork{Kind: "poster"}, true
+		return Artwork{Kind: "poster", FullBase: base}, true
 	}
 	if backdropNames[lower] {
-		return Artwork{Kind: "backdrop"}, true
+		return Artwork{Kind: "backdrop", FullBase: base}, true
 	}
 
-	// Vorm "<mediabestand>-poster.jpg".
+	// Vorm "<mediabestand>-poster.jpg" of "<aflevering>-thumb.jpg".
 	if idx := strings.LastIndexAny(base, "-."); idx > 0 {
-		suffix := strings.ToLower(base[idx+1:])
+		suffix := strings.ToLower(strings.TrimSpace(base[idx+1:]))
+		trimmed := strings.TrimRight(base[:idx], " -.")
 		switch {
 		case posterNames[suffix]:
-			return Artwork{MediaBase: base[:idx], Kind: "poster"}, true
+			return Artwork{MediaBase: trimmed, FullBase: base, Kind: "poster"}, true
 		case backdropNames[suffix]:
-			return Artwork{MediaBase: base[:idx], Kind: "backdrop"}, true
+			return Artwork{MediaBase: trimmed, FullBase: base, Kind: "backdrop"}, true
 		}
 	}
 
 	// Een afbeelding met dezelfde naam als het mediabestand is de poster ervan.
-	return Artwork{MediaBase: base, Kind: "poster"}, true
+	return Artwork{MediaBase: base, FullBase: base, Kind: "poster"}, true
 }
 
 // iso6391to2b vertaalt de tweeletterige codes die in bestandsnamen staan naar de
@@ -137,9 +176,16 @@ var iso6392tAliases = map[string]string{
 }
 
 // LanguageCode zet een taalaanduiding uit een bestandsnaam om naar ISO 639-2/B.
+//
+// Een teller achter de taal hoort erbij: op deze bibliotheek staan tientallen
+// afleveringen met "nl_2" en "nl_3" naast elkaar, twee vertalingen van hetzelfde
+// spoor. De taal is nl; het nummer onderscheidt de bestanden en niet de taal.
 func LanguageCode(raw string) (string, bool) {
 	v := strings.ToLower(strings.TrimSpace(raw))
 	v, _, _ = strings.Cut(v, "-")
+	if base, counter, ok := strings.Cut(v, "_"); ok && isDigits(counter) {
+		v = base
+	}
 
 	switch len(v) {
 	case 2:
@@ -161,4 +207,16 @@ func LanguageCode(raw string) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+func isDigits(v string) bool {
+	if v == "" {
+		return false
+	}
+	for _, r := range v {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }

@@ -130,6 +130,41 @@ func TestParseSubtitle(t *testing.T) {
 	}
 }
 
+// TestParseSubtitleVariantsFromTheRealLibrary gebruikt namen die op de echte
+// bibliotheek staan. Een taal met een teller erachter is nog steeds die taal.
+func TestParseSubtitleVariantsFromTheRealLibrary(t *testing.T) {
+	cases := []struct {
+		file      string
+		mediaBase string
+		language  string
+	}{
+		{"How I Met Your Mother - S01E16.nl_3.srt",
+			"How I Met Your Mother - S01E16", "dut"},
+		{"Two and a Half Men S1E14 - I Can't Afford Hyenas.nl_2.srt",
+			"Two and a Half Men S1E14 - I Can't Afford Hyenas", "dut"},
+		{"Game of Thrones S5E2 - The House of Black and White.nl.synced.srt",
+			"Game of Thrones S5E2 - The House of Black and White", "dut"},
+	}
+	for _, c := range cases {
+		got, ok := nameparse.ParseSubtitle(c.file)
+		if !ok {
+			t.Errorf("%s werd niet als ondertitel herkend", c.file)
+			continue
+		}
+		if got.FullBase == "" {
+			t.Errorf("%s draagt geen FullBase voor de prefix-terugval", c.file)
+		}
+
+		// Zodra de scanner weet welk mediabestand erbij hoort, wordt alles
+		// erachter opnieuw gelezen als aantekening. Pas dan is een onbekend woord
+		// als "synced" over te slaan zonder de titel op te eten.
+		attrs := nameparse.SubtitleAttributes(got.FullBase, c.mediaBase)
+		if attrs.Language != c.language {
+			t.Errorf("%s gaf taal %q, verwacht %q", c.file, attrs.Language, c.language)
+		}
+	}
+}
+
 func TestParseArtwork(t *testing.T) {
 	cases := []struct {
 		file string
@@ -141,6 +176,10 @@ func TestParseArtwork(t *testing.T) {
 		{"fanart.jpg", "", "backdrop"},
 		{"Grease (1978)-poster.jpg", "Grease (1978)", "poster"},
 		{"Grease (1978).jpg", "Grease (1978)", "poster"},
+		// De afleveringsminiatuur die Plex naast elke aflevering zet. Vijfduizend
+		// stuks op de echte bibliotheek.
+		{"The Simpsons S07E14 - Scenes from the Class Struggle-thumb.jpg",
+			"The Simpsons S07E14 - Scenes from the Class Struggle", "poster"},
 	}
 
 	for _, c := range cases {

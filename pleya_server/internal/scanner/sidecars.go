@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"path"
+	"strings"
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
@@ -168,9 +169,12 @@ func (s *Scanner) attachSubtitle(ctx context.Context, c *candidate, fileName str
 		return nil
 	}
 
-	anchor, found := anchors.lookup(c.entry.Dir, parsed.MediaBase)
+	anchor, matched, found := anchors.lookup(c.entry.Dir, parsed.MediaBase, parsed.FullBase)
 	if !found {
 		return nil
+	}
+	if matched != "" {
+		parsed = withFormat(nameparse.SubtitleAttributes(parsed.FullBase, matched), parsed.Format)
 	}
 
 	if err := s.store.AttachSidecar(ctx, c.fileID, c.entry.Size, c.entry.Mtime,
@@ -215,7 +219,7 @@ func (s *Scanner) attachArtwork(ctx context.Context, c *candidate, fileName stri
 	if !ok {
 		return nil
 	}
-	anchor, found := anchors.lookup(c.entry.Dir, parsed.MediaBase)
+	anchor, _, found := anchors.lookup(c.entry.Dir, parsed.MediaBase, parsed.FullBase)
 	if !found {
 		return nil
 	}
@@ -224,17 +228,43 @@ func (s *Scanner) attachArtwork(ctx context.Context, c *candidate, fileName stri
 		inodePtr(c.entry.Inode), c.signature, nil, &itemID, parsed.Kind)
 }
 
-// lookup gaat van precies naar ruim: naast het bestand, in de map, of een map
-// erboven. Levert geen van drieën iets op, dan hangt de sidecar nergens aan.
-func (a *anchorSet) lookup(dir, mediaBase string) (mediaAnchor, bool) {
+// lookup gaat van precies naar ruim: naast het bestand met dezelfde naam, dan op
+// een steeds kortere prefix van de naam, dan de map, dan een map erboven. Levert
+// geen ervan iets op, dan hangt de sidecar nergens aan.
+func (a *anchorSet) lookup(dir, mediaBase, fullBase string) (mediaAnchor, string, bool) {
 	if mediaBase != "" {
 		if hit, ok := a.byBase[path.Join(dir, mediaBase)]; ok {
-			return hit, true
+			return hit, mediaBase, true
 		}
 	}
+
+	// De prefix-terugval vangt wat het ontleden niet kan weten. Op deze
+	// bibliotheek staan ".nl.synced.srt" en ".nl_2.srt" naast elkaar, en er is
+	// geen lijst van markeringen die alle varianten dekt die iemand ooit heeft
+	// bedacht. Wat er wel is: de mediabestanden die in deze map staan. Steeds een
+	// punt van achteren afhalen en daartegen matchen raadt niets, het vergelijkt
+	// met wat er werkelijk ligt.
+	for candidate := fullBase; ; {
+		idx := strings.LastIndex(candidate, ".")
+		if idx <= 0 {
+			break
+		}
+		candidate = candidate[:idx]
+		if hit, ok := a.byBase[path.Join(dir, candidate)]; ok {
+			return hit, candidate, true
+		}
+	}
+
 	if hit, ok := a.byDir[dir]; ok {
-		return hit, true
+		return hit, "", true
 	}
 	hit, ok := a.byParentDir[dir]
-	return hit, ok
+	return hit, "", ok
+}
+
+// withFormat houdt het formaat vast dat uit de extensie kwam. SubtitleAttributes
+// leest alleen wat er achter de mediabestandsnaam staat en kent de extensie niet.
+func withFormat(s nameparse.Subtitle, format string) nameparse.Subtitle {
+	s.Format = format
+	return s
 }
