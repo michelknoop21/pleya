@@ -2,6 +2,55 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-19] Het taalgeheugen werkte alleen bij direct play
+
+Op `main`, drie commits: `cb2f486`, `0b25734`, `05a9179`.
+
+### Fixed
+- **De onthouden ondertiteltaal ging verloren zodra Plex transcodeerde.** Gemeld op Apple TV: aflevering 2 van dezelfde serie startte in een andere taal dan gekozen. De keuze wordt per serie bewaard in `TrackPreferenceStore`, maar alleen het direct-play-pad schrijft daarheen. Bij transcoding wisselen de kiezers geen mpv-spoor maar een bronstroom: de tegel roept `onSwitchSubtitleStreamId` aan, die via `_switchPlaybackSource` de stream naar Plex schrijft en de sessie herlaadt. `TrackManager.onSubtitleTrackChanged` komt daar nooit langs. Geldt voor beide bedieningen, de sheet op telefoon en desktop en het TV-paneel. Geen regressie: de functie landde in `2e60dc4` en dit pad heeft nooit gewerkt.
+- **De taal wordt nu ook op de serie zelf gezet, niet alleen lokaal.** Zonder dat deed de fix niets in het geval waarvoor hij bedoeld was. Brandt Plex de ondertiteling in, dan ziet mpv geen selecteerbaar spoor meer en kan het lokale geheugen niets; alleen de server kan die keuze maken. De `selectStreams` die er al stond geldt met `allParts` bovendien alleen voor de delen van die ene aflevering, niet voor de serie.
+- **Een gat dat afleveringen raakte, los van de melding.** Staat auto-skip aan met een vertraging van nul, dan armeert `_startAutoSkipTimer` niets terwijl de dismiss-timer alleen bij auto-skip-uit werd gestart. Geen van beide liep, dus de skip-knop bleef onbeperkt staan.
+
+### Changed
+- **De vertaling van een keuze naar Plex-voorkeuren staat nu in `TrackLanguageChoice`** als `plexSubtitleMode` en `plexSubtitleLanguage`, in plaats van twee keer uitgeschreven. Plex' waarden zijn 0 handmatig gekozen, 1 bij anderstalige dialoog, 2 altijd aan; een onthouden forced-spoor valt op 1 omdat dat het dichtste is wat Plex biedt.
+
+### Added
+- **`lib/services/source_stream_language.dart`** zoekt de taal bij een stream-id op. Losse functie omdat dit precies de naad was die ontbrak: de opslag was getest, de resolver was getest, de bedrading tussen bediening en opslag nergens. De ISO-code wint van de weergavenaam, want "Dutch" matcht nooit tegen een spoor dat als `nld` getagd staat. Twaalf tests in `test/services/source_stream_language_test.dart`.
+
+### Notes
+- **Een onafhankelijke review op de eerste twee commits vond een race die in de fix zelf zat.** `_switchPlaybackSource` claimt `_playbackTransition` pas zodra het herladen begint, dus tussen binnenkomst en herladen kan een tweede wissel starten. Het onthouden las `_currentMetadata` en de sporenlijst pas op het moment dat de schrijfacties liepen, en het toegevoegde netwerkschrijven maakte dat venster juist wijder. Die drie worden nu vastgelegd voordat er iets await, op dezelfde plek waar de Plex-client al om die reden vooruit werd gelezen.
+- **De schrijfactie naar de serie liep awaited**, waardoor er een netwerkronde tussen de tik en de daadwerkelijke ondertitelwissel zat. Nu losgekoppeld, met een eigen vangnet omdat er dan niets meer omheen staat.
+- **Twee dingen bewust laten liggen.** Een ondertitelspoor zonder taalcode wordt nog steeds niet onthouden (`track_manager.dart:449`), wat losse SRT-bestanden raakt. En de iCloud-synchronisatie vervangt de hele voorkeurenkaart in één keer in plaats van per titel samen te voegen, dus een verouderde snapshot op een tweede Apple-toestel kan nieuwere keuzes overschrijven. Allebei een andere oorzaak dan het gemelde probleem.
+- **Niet op een toestel geverifieerd.** De tests dekken het opzoeken van de taal en de Plex-mapping, niet de echte wissel op een Apple TV.
+
+## [2026-08-18] De aanvragen-schermen: titel, poster, filterbalk, en vier losse meldingen
+
+Op `main`, zeven commits van `02d5b71` tot `da1bbab`.
+
+### Fixed
+- **De aanvraaglijst toonde als kop alleen "Film" of "TV Serie", met een grijze placeholder.** `SeerrRequest.tryFromJson` leest titel, jaar en posterpad uit het `media`-object van `/request`, maar Overseerr zet daar de mediarij neer: tmdb-id, beschikbaarheid, tijdstempels. Geen titel, geen poster. Er was nergens een stap die dat aanvulde. `SeerrClient.hydrateRequests` haalt nu per titel `/movie/{id}` of `/tv/{id}` op, zoals de webinterface van Overseerr zelf doet: gecachet op `mediaType:tmdbId`, zes tegelijk, gedeeld tussen gelijktijdige passages, en een mislukte lookup laat de regel staan. Ontbrekende titel en ontbrekende poster waren één bug, niet twee.
+- **Het zwarte scherm bij sorteren in de kijklijst.** De sorteer- en kaart-sheets sluiten met `Navigator.pop`, maar in de draaiende app zijn dat geen routes: `showAdaptive` tekent ze als kind van een `Stack` zodra er een `OverlaySheetHost` boven zit, en op de mobiele schil zit die er altijd. Die pop haalde dus niet de sheet weg maar `MainScreen` eronder, en een lege navigator tekent zwart. De `Completer` kwam nooit binnen, dus de sortering werd ook niet toegepast. Dezelfde fout stond vier keer in het kaartmenu, ongemeld maar identiek.
+- **De keuze in een segmented control was onzichtbaar.** Gemeld als "de audio-prioriteit is niet te selecteren". De instelling schakelde en bewaarde gewoon. Material vult het gekozen segment met `secondaryContainer`, en dit palet zet die op `c.surface`: exact de kleur van de kaart waarop de rij ligt. Met `showSelectedIcon` uit en een doorzichtige highlight bleef er geen enkel signaal over. Raakt elke segmented instelling in de app.
+- **De skip-intro-knop verscheen bij films en bleef terugkomen.** Intro-auto-skip staat daar bewust uit, omdat een filmmarker vrijwel altijd uit de hoofdstuktitel-fallback komt en het einde op de start van het volgende hoofdstuk ligt: minuten in plaats van anderhalve minuut. De knop verdween daardoor alleen via de dismiss-timer en kwam terug zodra de bediening in beeld kwam. Nu verschijnt hij er niet meer; aftiteling blijft overslaanbaar.
+- **De statusbadge liep uit de poster.** `Positioned` zonder `right` liet hem onbegrensd groeien, waarna de omliggende `ClipRRect` hem afsneed aan de posterrand.
+- **De filterbalken van aanvragen en kijklijst vielen half buiten beeld.** De inset zat op of om de scrollview en scrolde mee naar binnen, er was geen scroll-naar-geselecteerd, en de kijklijst gumde met een `ShaderMask` de staart van de laatste chip uit. De kijklijst gebruikte als enige scherm een kale Material `ChoiceChip`, die niet meedoet in het focussysteem en op TV dus dood was.
+- **De sorteerknop van de kijklijst verstopte zijn waarde in een tooltip**, en die opent op iOS bij aanraken nooit. Nu in het label, zoals de bibliotheken-header.
+
+### Added
+- **Kwaliteitsprofiel en rootmap kiezen bij een aanvraag.** Bestond niet: de sheet bood alleen een serverkeuze, `createRequest` kreeg geen `profileId` mee, en `/service/radarr/{id}` werd nergens aangeroepen. De vertaalsleutels `qualityProfile` en `rootFolder` lagen er al zonder aanroepplek, dus het was bedoeld en nooit afgemaakt. Vier lagen: modellen voor profiel en rootmap, het per-server endpoint, de keuzes in de sheet, en de velden in de aanvraag.
+- **`lib/widgets/seerr_request_row.dart`**, uit het scherm gehaald zodat de rij los te testen is; het scherm zakte van 621 naar 397 regels.
+- **`test/i18n/seerr_i18n_test.dart`** vangt voortaan wat hier misging: een sleutel die alleen in de basistaal bestaat valt stil terug op Engels.
+
+### Changed
+- **De aanvraagkaart leest nu titel, soort en jaar, status, seizoenen, aanvrager.** Het jaar staat niet meer in de titelregel, seizoenen worden samengevat (`Seizoenen 18-22`) met gaten behouden, 4K is een eigen pil, en de beschikbaarheidsbadge verschijnt alleen waar hij iets toevoegt, dus niet "Beschikbaar" naast "Afgerond".
+- **De aantallen naast de filtertabs worden na goedkeuren of annuleren opnieuw opgehaald.** Ze kwamen van een apart endpoint en liepen achter zodra je iets deed.
+
+### Notes
+- **Twee aannames uit de melding klopten niet.** De statussemantiek was al goed: lifecycle en beschikbaarheid zijn twee dimensies, dus "Goedgekeurd + Deels beschikbaar" hoort te kunnen. En de badge liep niet in de buurkaart, hij werd afgekapt door de clip eromheen.
+- **`seerr.searchPlaceholder`, `byStreamingService` en `showAll` stonden alleen in het Engels.** De overige dertien talen hebben helemaal geen `seerr`-sectie en vallen volledig terug op Engels; buiten scope gelaten.
+- **Technische schuld genoteerd:** `SeerrProvider` bouwt zijn eigen `SeerrClient` zonder injecteerbare http-client, dus de sheet met de profielkeuze is niet met gestubde HTTP te testen. Niet nu gerepareerd; wel eerst dependency injection bij de volgende Seerr-uitbreiding.
+- **Het Tautulli-werk van een parallelle sessie is in `6e595f1` vastgelegd**, zodat de TestFlight-build naar een commit verwijst in plaats van naar een werkboom. Inhoudelijk onderscheidt het een niet-Tautulli-antwoord van een onbekende JSON-vorm, wat de Cloudflare Access-melding uit log `bcjk3` adresseert.
+
 ## [2026-08-17] Drie tvOS-ingrepen: overlappende herotekst, onzichtbare focus, en het canvas dat maar half zo groot was
 
 Op `main`, drie commits: `d16fa4f`, `e2c123f`, `0f780f9`.
