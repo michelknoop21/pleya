@@ -18,6 +18,7 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
+Nothing user-facing since the last published build.
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 233 · 19 August 2026
