@@ -54,6 +54,13 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   late final TextEditingController _searchController;
   final _searchFocusNode = FocusNode(debugLabel: 'SeerrSearchInput');
   final _firstResultFocusNode = FocusNode(debugLabel: 'SeerrSearchFirstResult');
+
+  /// The two rungs between the search field and the content. Without them the
+  /// remote had to fall back on default directional traversal to reach the type
+  /// tabs, and a horizontally scrolling row of chips inside a sliver is exactly
+  /// where that gets unpredictable.
+  final _filterFirstTabFocusNode = FocusNode(debugLabel: 'SeerrFilterFirstTab');
+  final _firstDiscoverItemFocusNode = FocusNode(debugLabel: 'SeerrDiscoverFirstItem');
   final _searchDebounce = Debouncer(const Duration(milliseconds: 400));
 
   String _query = '';
@@ -117,6 +124,8 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     _searchDebounce.dispose();
     _searchFocusNode.dispose();
     _firstResultFocusNode.dispose();
+    _filterFirstTabFocusNode.dispose();
+    _firstDiscoverItemFocusNode.dispose();
     super.dispose();
   }
 
@@ -422,12 +431,33 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     return SeerrDiscoverFilterBar(
       type: _type,
       // Genres refine the shelves, and there are no shelves while a search is
-      // running — same rule the outlined chip row had.
+      // running: same rule the outlined chip row had.
       genres: _query.isEmpty ? _activeGenres : const [],
       genreId: _genreId,
       onTypeSelected: _onTypeSelected,
       onGenreSelected: _onGenreSelected,
+      firstTabFocusNode: _filterFirstTabFocusNode,
+      onExitLeft: _navigateToSidebar,
+      onExitUp: _searchFocusNode.requestFocus,
+      onExitDown: _navigateDownFromFilterBar,
     );
+  }
+
+  /// Down from the search field: the results while a search is running, the type
+  /// tabs otherwise.
+  void _navigateDownFromSearch() {
+    if (_filteredSearchResults.isNotEmpty && !_searching) {
+      _firstResultFocusNode.requestFocus();
+    } else {
+      _filterFirstTabFocusNode.requestFocus();
+    }
+  }
+
+  /// Down from the filter line: the first card under it. Nothing there (loading,
+  /// empty, an error panel) leaves focus where it is rather than sending it to a
+  /// node that is not on screen.
+  void _navigateDownFromFilterBar() {
+    if (_firstDiscoverItemFocusNode.context != null) _firstDiscoverItemFocusNode.requestFocus();
   }
 
   /// Grid view of [items], delegating to the shared seerr grid so discover and
@@ -489,10 +519,11 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       // which strands the D-pad with nothing focused and traps the user.
       onEditingComplete: isTv ? _focusFirstResultOrSidebar : null,
       onNavigateLeft: _navigateToSidebar,
-      // Only intercept Down when there are results to jump to. In discover mode
-      // (no query) leave it null so the field's built-in down-traversal reaches
-      // the filter chips / discover rows below — matches search_screen.dart.
-      onNavigateDown: (_filteredSearchResults.isNotEmpty && !_searching) ? _firstResultFocusNode.requestFocus : null,
+      // Down goes to the first thing below that can actually take focus: the
+      // result grid while searching, the type tabs otherwise. Leaving it to the
+      // field's own down-traversal was the old behaviour and it did not reliably
+      // land on the tabs, so the filter line was close to unreachable by remote.
+      onNavigateDown: _navigateDownFromSearch,
       onBack: () {
         if (_searchController.text.isNotEmpty) {
           _clearSearch();
@@ -602,6 +633,8 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     }
 
     final slivers = <Widget>[];
+    // The first row that actually renders owns the node the filter line aims at.
+    var firstItemNodeTaken = false;
     for (final row in _rows) {
       if (!row.showIn.contains(_type)) continue;
       if (row.loadingFirst) {
@@ -618,9 +651,11 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
             onTapItem: _openDetail,
             onLoadMore: () => _loadMore(row),
             onShowAll: () => _openRowGrid(row),
+            firstItemFocusNode: firstItemNodeTaken ? null : _firstDiscoverItemFocusNode,
           ),
         ),
       );
+      firstItemNodeTaken = true;
     }
     if (_providers.isNotEmpty) {
       slivers.add(SliverToBoxAdapter(child: _buildProviderPicker()));
@@ -720,7 +755,13 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       ];
     }
     return [
-      _buildGridSliver(row.items, hasMore: row.hasMore, loadingMore: row.loadingMore, onLoadMore: () => _loadMore(row)),
+      _buildGridSliver(
+        row.items,
+        hasMore: row.hasMore,
+        loadingMore: row.loadingMore,
+        onLoadMore: () => _loadMore(row),
+        firstItemFocusNode: _firstDiscoverItemFocusNode,
+      ),
     ];
   }
 }
@@ -775,7 +816,13 @@ TextStyle? _rowHeaderStyle(BuildContext context) {
 /// A single horizontal poster row with a header and an optional trailing
 /// "Load more" tile.
 class _SeerrRowView extends StatelessWidget {
-  const _SeerrRowView({required this.row, required this.onTapItem, required this.onLoadMore, this.onShowAll});
+  const _SeerrRowView({
+    required this.row,
+    required this.onTapItem,
+    required this.onLoadMore,
+    this.onShowAll,
+    this.firstItemFocusNode,
+  });
 
   final _SeerrRow row;
   final ValueChanged<SeerrMedia> onTapItem;
@@ -783,6 +830,10 @@ class _SeerrRowView extends StatelessWidget {
 
   /// Opens this row as a full grid. Null hides the action (skeleton rows).
   final VoidCallback? onShowAll;
+
+  /// Set on the topmost row only, so the filter line above has something to aim
+  /// DOWN at.
+  final FocusNode? firstItemFocusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -824,7 +875,12 @@ class _SeerrRowView extends StatelessWidget {
                       );
                     }
                     final media = row.items[index];
-                    return SeerrPosterCard(media: media, onTap: () => onTapItem(media), width: metrics.cardWidth);
+                    return SeerrPosterCard(
+                      media: media,
+                      onTap: () => onTapItem(media),
+                      width: metrics.cardWidth,
+                      focusNode: index == 0 ? firstItemFocusNode : null,
+                    );
                   },
                 ),
               );

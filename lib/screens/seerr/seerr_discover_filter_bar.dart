@@ -44,6 +44,10 @@ class SeerrDiscoverFilterBar extends StatefulWidget {
     required this.genreId,
     required this.onTypeSelected,
     required this.onGenreSelected,
+    this.firstTabFocusNode,
+    this.onExitLeft,
+    this.onExitUp,
+    this.onExitDown,
   });
 
   /// The active type tab.
@@ -62,18 +66,57 @@ class SeerrDiscoverFilterBar extends StatefulWidget {
   /// Fires with the picked genre, or null for "all genres".
   final ValueChanged<int?> onGenreSelected;
 
+  /// The screen's handle on the first tab, so it can aim DOWN from the search
+  /// field at this bar. Same split the grid slivers already use: the screen owns
+  /// the node it needs to reach, the bar owns the rest of the row.
+  final FocusNode? firstTabFocusNode;
+
+  /// LEFT from the first tab. The sidebar, on TV.
+  final VoidCallback? onExitLeft;
+
+  /// UP from anywhere on the line. The search field above it.
+  final VoidCallback? onExitUp;
+
+  /// DOWN from anywhere on the line. The first item of the content below.
+  final VoidCallback? onExitDown;
+
   @override
   State<SeerrDiscoverFilterBar> createState() => _SeerrDiscoverFilterBarState();
 }
 
 class _SeerrDiscoverFilterBarState extends State<SeerrDiscoverFilterBar> {
-  /// [LibraryHeaderAction] owns no focus node of its own — the screen that draws
-  /// the header keeps them, so remote navigation can aim at a specific action.
+  /// [LibraryHeaderAction] owns no focus node of its own: whoever draws the
+  /// header keeps them, so remote navigation can aim at a specific action.
   final _genreActionFocusNode = FocusNode(debugLabel: 'SeerrGenreAction');
+
+  /// Every tab needs a node for the same reason. Without one a chip is still
+  /// focusable, but nothing can *send* focus to it, and the remote is left to
+  /// Flutter's default directional traversal through a horizontally scrolling
+  /// row inside a sliver. That is what made this line so hard to work with.
+  final _ownedFirstTabFocusNode = FocusNode(debugLabel: 'SeerrTypeTab0');
+  final _laterTabFocusNodes = [FocusNode(debugLabel: 'SeerrTypeTab1'), FocusNode(debugLabel: 'SeerrTypeTab2')];
+
+  FocusNode _tabFocusNode(int index) =>
+      index == 0 ? (widget.firstTabFocusNode ?? _ownedFirstTabFocusNode) : _laterTabFocusNodes[index - 1];
+
+  @override
+  void didUpdateWidget(covariant SeerrDiscoverFilterBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The genre action comes and goes with the type and with an active search.
+    // Letting it disappear from under the focus leaves the whole screen with
+    // nothing focused, which on a remote reads as the app having died.
+    if (!_showGenreAction && _genreActionFocusNode.hasFocus) {
+      _tabFocusNode(_lastTabIndex).requestFocus();
+    }
+  }
 
   @override
   void dispose() {
     _genreActionFocusNode.dispose();
+    _ownedFirstTabFocusNode.dispose();
+    for (final node in _laterTabFocusNodes) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -92,35 +135,46 @@ class _SeerrDiscoverFilterBarState extends State<SeerrDiscoverFilterBar> {
     return null;
   }
 
+  static const _segmentTypes = [SeerrDiscoverType.all, SeerrDiscoverType.movies, SeerrDiscoverType.tv];
+
+  int get _lastTabIndex => _segmentTypes.length - 1;
+
   @override
   Widget build(BuildContext context) {
-    final segments = <(SeerrDiscoverType, String)>[
-      // "All" is a tab of its own now. It always was a state; you just had to
-      // find it by tapping the active pill a second time.
-      (SeerrDiscoverType.all, t.seerr.filterAll),
-      (SeerrDiscoverType.movies, t.seerr.filterMovies),
-      (SeerrDiscoverType.tv, t.seerr.filterShows),
-    ];
+    // "All" is a tab of its own now. It always was a state; you just had to find
+    // it by tapping the active pill a second time.
+    final labels = [t.seerr.filterAll, t.seerr.filterMovies, t.seerr.filterShows];
+    final showGenre = _showGenreAction;
 
     return LibraryHeaderBar(
       padding: EdgeInsets.only(left: _inset, right: _inset),
       tabs: [
-        for (final segment in segments)
+        for (var i = 0; i < _segmentTypes.length; i++)
           FocusableTabChip(
-            key: ValueKey(segment.$1),
-            label: segment.$2,
-            isSelected: widget.type == segment.$1,
-            onSelect: () => widget.onTypeSelected(segment.$1),
+            key: ValueKey(_segmentTypes[i]),
+            label: labels[i],
+            isSelected: widget.type == _segmentTypes[i],
+            focusNode: _tabFocusNode(i),
+            onSelect: () => widget.onTypeSelected(_segmentTypes[i]),
+            onNavigateLeft: i > 0 ? () => _tabFocusNode(i - 1).requestFocus() : widget.onExitLeft,
+            onNavigateRight: i < _lastTabIndex
+                ? () => _tabFocusNode(i + 1).requestFocus()
+                : (showGenre ? _genreActionFocusNode.requestFocus : null),
+            onNavigateUp: widget.onExitUp,
+            onNavigateDown: widget.onExitDown,
           ),
       ],
       actions: [
-        if (_showGenreAction)
+        if (showGenre)
           LibraryHeaderAction(
             label: t.libraries.filterCategories.genre,
             value: _selectedGenreName,
             isActive: widget.genreId != null,
             focusNode: _genreActionFocusNode,
             onPressed: _openGenrePicker,
+            onNavigateLeft: () => _tabFocusNode(_lastTabIndex).requestFocus(),
+            onNavigateUp: widget.onExitUp,
+            onNavigateDown: widget.onExitDown,
           ),
       ],
     );
