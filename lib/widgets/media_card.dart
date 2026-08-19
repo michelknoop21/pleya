@@ -321,13 +321,29 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
   /// the title, then a row of round quick-action buttons (Play, My List, more)
   /// and the match/meta line. Reuses this card's own handlers so behaviour
   /// stays consistent with a normal tap / context menu.
-  Widget _buildHoverOverlayContent(BuildContext context, Object item, String? localPosterPath, VoidCallback close) {
-    final t = tokens(context);
+  ///
+  /// [overlayContext] builds the preview and nothing else. It belongs to the
+  /// hand-inserted [OverlayEntry] in the **root** overlay, which sits above
+  /// `ProfileNavigationScope` and the profile navigator — so navigating with it
+  /// pushes onto the root navigator, and the pushed screen then cannot find the
+  /// scope it needs (`MediaDetailScreen` throws in `didChangeDependencies`,
+  /// leaving an error widget over the whole window). Every action below
+  /// therefore uses this card's own `context`, which is inside the shell.
+  Widget _buildHoverOverlayContent(
+    BuildContext overlayContext,
+    Object item,
+    String? localPosterPath,
+    VoidCallback close,
+  ) {
+    final t = tokens(overlayContext);
     final title = item is MediaPlaylist ? item.title : (item as MediaItem).displayTitle;
 
     Widget roundButton(IconData icon, VoidCallback onTap, {bool filled = false}) {
       return InkWell(
         onTap: onTap,
+        // Feeds the shared tap position, so a menu opened from here lands under
+        // the cursor instead of falling back to the keyboard-activation path.
+        onTapDown: storeTapPosition,
         customBorder: const CircleBorder(),
         child: Container(
           width: 34,
@@ -360,7 +376,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
               children: [
                 _wrapPosterHero(
                   _buildPosterImage(
-                    context,
+                    overlayContext,
                     item,
                     isOffline: widget.isOffline,
                     localPosterPath: localPosterPath,
@@ -397,7 +413,10 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
                   _handleTap(context, item);
                 }, filled: true),
                 const SizedBox(width: 8),
-                roundButton(Symbols.add_rounded, () => showContextMenuFromTap()),
+                roundButton(Symbols.add_rounded, () {
+                  close();
+                  showContextMenuFromTap();
+                }),
                 const Spacer(),
                 roundButton(Symbols.expand_more_rounded, () {
                   close();
