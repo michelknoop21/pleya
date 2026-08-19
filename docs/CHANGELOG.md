@@ -44,8 +44,9 @@ steeds open.
 
 ### Op de echte bibliotheek
 Uitgerold op de DS920+ en over de volledige bibliotheek gedraaid: 28.986 bestanden, 6.951 analyses,
-7.300 items, nul fouten. De tweede ronde draaide ffprobe geen enkele keer en de item-ids waren na een
-herstart byte-identiek. Kids staat volledig op btrfs en was in nul seconden klaar; Films en Series
+7.300 items, nul fouten. Elke ronde daarna draaide ffprobe geen enkele keer en de item-ids waren na
+een herstart byte-identiek. In rust merkt de scanner nog 108 bestanden als gewijzigd aan, en dat is
+exact het aantal dat nergens aan hangt; de andere 28.878 worden met rust gelaten. Kids staat volledig op btrfs en was in nul seconden klaar; Films en Series
 staan op de NTFS-schijf, waar laag 2 voor elk bestand draait en samen 10,7 GB leest tegen ongeveer
 6 MB/s.
 

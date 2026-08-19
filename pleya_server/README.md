@@ -276,14 +276,20 @@ Op een Synology DS920+ (Celeron J4125, 4 cores, 19,4 GiB), DSM 7.3.2, kernel 4.4
 naast een draaiende Plex-container. De bibliotheek staat over twee bestandssystemen: btrfs op
 `/volume1` en `fuseblk.ntfs` op de USB-schijf.
 
-| Bibliotheek | Bestanden | Analyses ronde 1 | Analyses ronde 2 | Items | Ronde 1 | Ronde 2 |
+| Bibliotheek | Bestanden | Items | Analyses ronde 1 | Ronde 1 | Analyses daarna | Ronde in rust |
 | --- | --- | --- | --- | --- | --- | --- |
-| Films | 3.044 | 461 | 0 | 460 | 860 s | 354 s |
-| Series | 25.809 | 6.357 | 0 | 6.835 | 5.477 s | 1.100 s |
-| Kids | 133 | 133 | 0 | 5 | 40 s | 0 s |
+| Films | 3.044 | 460 | 461 | 860 s | 0 | 204 s |
+| Series | 25.809 | 6.835 | 6.357 | 5.477 s | 0 | 807 s |
+| Kids | 133 | 5 | 133 | 40 s | 0 | 0 s |
 
-Bij elkaar 28.986 bestanden, 6.951 analyses en 7.300 items, met nul fouten. De tweede ronde draaide
+Bij elkaar 28.986 bestanden, 6.951 analyses en 7.300 items, met nul fouten. Elke ronde daarna draaide
 ffprobe geen enkele keer, en de item-ids waren na een herstart byte-identiek.
+
+In rust merkt de scanner nog 108 bestanden als gewijzigd aan, en dat is precies het aantal dat
+nergens aan hangt: mappen met alleen een poster waar de film niet meer staat, en Plex-restanten waar
+de geoptimaliseerde versie verdween maar de ondertitel bleef. Die krijgen elke ronde opnieuw een
+kans, want de media ernaast kan er de volgende keer wel zijn. Alle 28.878 andere bestanden worden met
+rust gelaten.
 
 Het verschil tussen de twee mounts staat in die laatste kolom. Kids staat volledig op btrfs, waar de
 inode een bestand blijft aanwijzen: daar volstaat laag 1 en wordt er geen byte gelezen, dus nul
