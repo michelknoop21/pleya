@@ -2,6 +2,48 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-19] Een klik op de zijbalk startte de film eronder
+
+Op `main`, twee commits: `29431f9` en `7aae62b`.
+
+### Fixed
+- **Een klik die op een menu-item mikte kon op het billboard landen en meteen afspelen.** Log `y69x7` bevat alleen de hero-activatie: geen tabwissel, geen bibliotheekselectie, en ook niet de regel van de Afspelen-knop. De klik werd dus volledig door de content opgeslokt en de zijbalk zag hem nooit. De eerste hypothese, labels die buiten de hitbox getekend worden, klopte niet: `Clip.hardEdge` knipt ook het hit-testen weg, dus verf en hitbox zijn per frame gelijk. Het verschil zit in de tijd. `isCollapsed` klapt synchroon om, de breedte animeert er 200 ms achteraan, en bij het uitklappen was de hover-zone een proxy over die animerende container en dus nooit breder dan de balk op dat moment. Wie naar een label toe beweegt haalt de easeOutCubic in, verlaat de zone, start de collapse-timer, en klikt op de hero.
+- **Andersom lagen de menurijen dood terwijl ze nog zichtbaar waren.** `IgnorePointer(ignoring: isCollapsed)` schakelde ze uit zodra de collapse-timer afging, terwijl de balk nog 200 ms op volle breedte stond te tekenen. Een klik op een duidelijk zichtbaar item deed dan niets, of glipte langs de krimpende rand naar de content. Dit raakte ook touch: tik om uit te klappen, tik een item, en een snelle tweede tik tijdens het inklappen viel op de hero.
+- **Het billboard was een verborgen afspeelknop.** Eén `GestureDetector` over het hele vlak met `playDirectly: true`, terwijl de Afspelen-pil er los bovenop staat. Elke misklik was daardoor een gestarte film.
+
+### Changed
+- **De zijbalk bezit nu zijn eigen band, in drie lagen die één mirror-tween volgen.** Onderop claimt een `AbsorbPointer` `max(getekend, doel)`, zodat de band bij uitklappen vanaf frame één van het menu is en bij inklappen pas wordt losgelaten zoals de verf terugtrekt. Daarboven de balk zelf, inhoudelijk ongewijzigd. Bovenop een translucent `MouseRegion` die de hele band ziet en niets pakt: die komt wél in het hit-pad, zodat enter en exit vuren, maar geeft `false`, dus de `Stack` loopt door naar de content. `IgnorePointer` en het klik-om-uit-te-klappen lezen voortaan de getekende breedte in plaats van de boolean. Zie [DEC-033](DECISIONS.md#dec-033).
+- **Een tik op het billboard opent de detailpagina**, via `navigateToMediaItemDetails` en niet via `playDirectly: false`: die tak speelt afleveringen alsnog af zolang `episodeAction` op `play` staat. De Afspelen-pil blijft direct afspelen, de toetsenbord-select volgt de tik, en de semantics-hint werd `t.mediaMenu.viewDetails`.
+
+### Added
+- **Vijf pointer-tests** in `test/widgets/side_navigation_rail_test.dart` die het contract vastleggen in plaats van de implementatie: ze tikken coördinaten aan boven een teller-oppervlak. Drie ervan waren vóór de fix rood, geverifieerd door de fix eruit te halen en terug te zetten. De tegenhanger is er ook: stil ingeklapt blijft x=150 gewoon content, zodat de fix niet doorslaat naar een dode zone van 140px.
+- **`test/screens/discover_hero_activation_test.dart`** pompt het echte discover-scherm in niet-TV-modus, zodat de billboard-tik en de Afspelen-pil door de echte navigatie gaan en niet door een stub.
+- **Drie tvOS-contracttests** met een echte `FocusableWrapper` als content: een Select op de zijbalk voert alleen de zijbalkactie uit, de bijbehorende key-up telt niet als activatie in de content, en de focusovergang op zichzelf activeert niets.
+
+### Notes
+- **De tvOS-variant is onderzocht en niet aangetoond.** In de simulator verplaatst Select op een gefocust zijbalk-item de focus zichtbaar naar de content zonder iets te starten, en een tabwissel opent gewoon de tab. Wel gevonden: `NavigationRailItem` is de enige plek die op Select activeert, daarna focus verplaatst en `SelectKeyUpSuppressor.suppressSelectUntilKeyUp()` niet wapent, waar elf andere plekken dat wel doen. Toch lekt het niet, want `handleOneShotSelect` negeert een key-up en `FocusableWrapper` weigert een release waarvan hij de druk niet zag. Bewust geen preventieve suppressor toegevoegd; de bevinding staat als gotcha in `CLAUDE.md` zodat een volgende melding bij het focus- en key-eventpad begint en niet bij timing.
+- **De hover-band is niet met de hand na te doen op macOS.** `cliclick` levert geen synthetische hover- of scrollevents aan deze app, dus die kant leunt op de widgettest met een echte pointer-gesture. Wat wél met de hand is gezien: een klik op x=150 in het hero-gebied levert nu de detailpagina op in plaats van een film, en de Afspelen-pil speelt.
+- **Los gezien op de tvOS-hero**: een `RIGHT OVERFLOWED BY 16 PIXELS`-banner op de knoppenrij met Resume en View details. Bestond al vóór deze wijziging en is bewust niet meegenomen.
+
+## [2026-08-19] Filters en Sorteren openden in de hoek, en de Seerr-filterbalk woog te zwaar
+
+Op `main`, één commit: `6247253`.
+
+### Fixed
+- **Filters, Sorteren en Groepering openden op een desktopvenster rechtsonder.** `_resolveSheetHorizontalAnchor` gaf op een desktop-OS met muisinvoer de laatste muis-x terug en de layout-delegate centreerde de sheet daarop. Die knoppen staan rechtsboven, dus het paneel werd tegen de rechterrand geklemd, en met een vaste `maxHeight` van 400 stond er een blok van 700x400 in de hoek van een venster van bijna duizend pixels hoog. Dat anker klopt voor een contextmenu bij de cursor en voor niets anders.
+
+### Added
+- **`lib/widgets/overlay_sheet_geometry.dart`** zet presentatie, viewport en `isTV` om in alignment, constraints, radius, randmarge, muisanker, sleepgreep en animatie. Een pure functie, dus het responsive gedrag is zonder `pumpWidget` te testen, net als `mainScreenSideNavigationContentLayout`. Negentien tests. De stand `sheet` levert per pixel wat er stond; de stand `panel` centreert op tablet en desktop, kapt op `min(h-96, 0,8h)`, zet het muisanker uit en klemt ook meegegeven constraints binnen de viewport. Zie [DEC-032](DECISIONS.md#dec-032).
+- **`lib/screens/seerr/seerr_discover_filter_bar.dart`** haalt de filterbalk uit het 895 regels lange discover-scherm.
+
+### Changed
+- **Ontdekken via Aanvragen gebruikt nu de bibliotheekheader zelf.** Films en Series plus de genres stonden er als omlijnde pillen: 92px chroom boven de posters en een rand per optie. Het is nu een echte `LibraryHeaderBar`, dezelfde component als op de bibliotheekpagina, met de typetabs links en Genre als actie rechts die de categorieën in datzelfde gecentreerde paneel opent. 42px, één rand.
+- **Twee gedragswijzigingen die uit die vorm volgen**: een tab kiezen selecteert die tab in plaats van terug te vallen op Alles, en een genre wissen doet de regel Alles in het paneel in plaats van een tweede tik op de actieve chip.
+
+### Notes
+- **Alleen de vier panelen achter een header-actie schakelen om**; de twintig andere aanroepen blijven op `sheet`, zodat contextmenu's bij de cursor blijven openen. Een widgettest legt allebei vast.
+- **De interne scroll van het paneel is niet met de hand aangetoond**: synthetische scroll-events komen niet aan bij deze app, de posterlijst erachter scrolde er evenmin van. Gedekt door de widgettest.
+
 ## [2026-08-19] Het taalgeheugen werkte alleen bij direct play
 
 Op `main`, drie commits: `cb2f486`, `0b25734`, `05a9179`.
