@@ -112,6 +112,16 @@ async function main(): Promise<void> {
     .sort((a, b) => b.count - a.count);
   const largest = counted[0];
   if (!largest) throw new Error('geen bibliotheken');
+  // Een te kleine bibliotheek levert een meting op die er geslaagd uitziet en
+  // niets bewijst: drie posters ruimen altijd netjes op. Liever luid falen dan
+  // een raster van twee cellen als het antwoord op criterium 6.
+  if (largest.count < TARGET_POSTERS) {
+    throw new Error(
+      `de grootste bibliotheek draagt ${largest.count} items en de meting vraagt er ${TARGET_POSTERS}. ` +
+        'Zet ze klaar met scripts/e2e-stack.sh seed-large en start de stack met ' +
+        'PLEYA_E2E_LIBRARIES="...;meting=movies:/media/library/bulk".'
+    );
+  }
   const libraryId = largest.href.split('/').pop() ?? '';
 
   const samples: Sample[] = [];

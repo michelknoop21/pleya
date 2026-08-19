@@ -17,6 +17,21 @@ op een bibliotheek. Die regel stond op PS-1 en PS-3, en het bevroren contract ke
 filterparameter, dus geen van beide fasen kan hem leveren. Hetzelfde geldt voor de alfabetische
 sprongbalk, die al als gap stond en nu ook zonder fase.
 
+**Het bewijs onder PS-3W staat nu op de DS920+ zelf.** De NAS draait de binary met de bundel erin.
+De protocolroutes houden voorrang, de cache- en securityheaders kloppen en er staat geen CORS-header,
+want bundel en API delen hun origin. Door de tunnel heen bladert een browser de drie echte
+bibliotheken (Films 461, Kids 5, Series 97) en levert zoeken op `sea` 24 treffers zonder seizoenen.
+Dezelfde 62 end-to-end-tests die tegen de wegwerpstack draaien zijn ook daar groen.
+
+De artworkmeting uit acceptatiecriterium 6 draaide op een raster van vijfhonderd posters: 28 van 104
+cellen bij binnenkomst, 500 uitstaande object-URL's en 7,3 MB heap tijdens het raster, 0 en 1,8 MB
+erna, en 0,2 MB verschil over tien keer heen en weer. Alle drie de voorwaarden gehaald. De meting
+zelf is aangescherpt: de eerste ronde koos een bibliotheek van twee items en kwam vrolijk op GEHAALD
+uit, dus hij stopt nu met een fout zodra de grootste bibliotheek kleiner is dan het doelaantal.
+
+Het eigenaarswachtwoord van de NAS-instantie was kwijt en is opnieuw ingericht via de bootstrap; het
+staat nu als `PLEYA_WEB_USER` en `PLEYA_WEB_PASS` in de vault.
+
 **Pleya kan een bibliotheek tonen zonder Plex.** PS-2 staat in `pleya_server/`: een Go-service die een
 bestandsboom scant, de catalogus in Postgres bijhoudt, en de leeskant van het protocol serveert.
 Bladeren, zoeken, seizoenen en afleveringen, meerdere versies per film, artwork en losse ondertitels.

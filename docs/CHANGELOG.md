@@ -2,6 +2,22 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-19] Het stopcriterium van PS-3W op de NAS, en de artworkmeting met getallen
+
+De fase stond gesloten met de acceptatiecriteria beschreven maar twee ervan zonder meting eronder.
+Die zijn nu gedaan, op de DS920+ en niet op een nagebootste stack.
+
+### Tests
+- **62 end-to-end-tests groen tegen de DS920+**, dezelfde suite die tegen de wegwerpstack draait, via `nas-tunnel.ts` en met de inloggegevens uit de omgeving. De echte bibliotheek draagt 563 items in drie bibliotheken, en zoeken op `sea` geeft daar 24 treffers zonder seizoenen. De limiter op `/auth/login` staat een suite van tweeënzestig inlogbeurten toe omdat een geslaagde poging de emmer teruggeeft (`internal/api/limiter.go:65`).
+- **De artworkmeting op vijfhonderd posters.** 28 van 104 cellen bij binnenkomst, 500 uitstaande object-URL's en 7,3 MB heap tijdens het raster, 0 object-URL's en 1,8 MB erna, 0,2 MB verschil tussen ronde 1-5 en 6-10 van tien keer heen en weer. De drie voorwaarden uit onderdeel 4.2 van het voorstel zijn alle drie gehaald, in drie opeenvolgende ronden met dezelfde uitkomst.
+- **De unauthenticated kant van de uitrol gemeten op de NAS zelf**: de bundel op `/`, de SPA-terugval op een frontendroute, `/healthz`, `/readyz` en `/pleya/v1` met voorrang, een jaar cache op een gehasht bestand en `no-cache` op `index.html`, de securityheaders aanwezig en geen CORS-header.
+
+### Fixed
+- **De artworkmeting kan niet meer stil de verkeerde bibliotheek pakken.** De eerste ronde koos een bibliotheek van twee items terwijl die van vijfhonderd er al stond, en het oordeel kwam op GEHAALD uit: twee posters ruimen altijd netjes op. `measure-artwork.ts` stopt nu met een fout zodra de grootste bibliotheek kleiner is dan het doelaantal.
+
+### Changed
+- **De eigenaar van de NAS-instantie is opnieuw ingericht.** Het wachtwoord was sinds 19 augustus nergens meer terug te vinden en PS-2 kent geen endpoint om het te wijzigen, dus kon niemand op die server inloggen. De bootstrap heeft hem opnieuw gezet; de inloggegevens staan nu in de vault. De catalogus, de bibliotheken en de media zijn niet aangeraakt.
+
 ## [2026-08-19] PS-2 en PS-3W gesloten, en de matrix telt weer wat er staat
 
 Twee fasen stonden inhoudelijk af zonder formeel afgesloten te zijn. PS-2 droeg

@@ -1938,16 +1938,31 @@ dezelfde binary geserveerd achter de protocolroutes.
 | --- | --- |
 | 1. De bundel wordt geserveerd en overschaduwt de protocolroutes niet | `internal/web` en `internal/api/web_routes_test.go`; een onbekend pad onder `/pleya/v1` krijgt de foutvorm van het protocol en geen HTML |
 | 2. Een releasebuild zonder frontend faalt hard | `-tags release` maakt `dist/index.html` een `//go:embed`-patroon, en dat faalt op de compiler in plaats van een lege pagina mee te leveren |
-| 3. Setup, inloggen, bladeren, detail en zoeken tegen de echte API | Playwright tegen een echte binary met een echte Postgres en een echte ffprobe, geen mocks, op 390, 768, 1024, 1280 en 1600 |
+| 3. Setup, inloggen, bladeren, detail en zoeken tegen de echte API | Playwright tegen een echte binary met een echte Postgres en een echte ffprobe, geen mocks, op 390, 768, 1024, 1280 en 1600. 62 tests groen tegen de wegwerpstack en dezelfde 62 tegen de DS920+ met de echte bibliotheek van 563 items |
 | 4. Elke route met het toetsenbord bedienbaar en zonder axe-overtreding | axe plus een toetsenbordroute per opgeleverde route: sla-over-link als eerste tabstop, zichtbare focus, reduced motion |
 | 5. De API-client komt aantoonbaar uit `openapi.yaml` | `scripts/check-api-types.sh` genereert opnieuw en vergelijkt byte voor byte; `schema.test.ts` toetst de bron-hash in de kop |
-| 6. De artworkmeting op vijfhonderd posters | `measure-artwork.ts`, met de instrumentatie in de pagina zelf, want de JS-heap draagt de blobs niet en de teller die telt is het aantal uitstaande object-URL's |
+| 6. De artworkmeting op vijfhonderd posters | gemeten met `measure-artwork.ts`: 28 van 104 cellen bij binnenkomst, 500 posters met 500 uitstaande object-URL's en 7,3 MB heap tijdens het raster, 0 object-URL's en 1,8 MB erna, en 0,2 MB verschil tussen ronde 1-5 en 6-10 van tien keer heen en weer. Alle drie de voorwaarden gehaald |
 | 7. Het serveroverzicht toont uitsluitend `GET /server` en `GET /info` | gehaald, en er is geen menu-item dat naar een leeg scherm leidt: de navigatie draait op `capabilities` |
 
 Eén besluit erbij,
 [DEC-046](DECISIONS.md#dec-046-pleya-web-is-een-protocolclient-en-co-distributie-geeft-geen-extra-rechten):
 samen uitgeleverd worden geeft geen extra rechten. Wat Pleya Web toont gaat over `/pleya/v1`, en dus
 kan de Flutter-client het morgen ook.
+
+**Het stopcriterium is gehaald op de DS920+.** De binary daar serveert de bundel op `/`, een
+frontendroute krijgt dezelfde app terug, en `/healthz`, `/readyz` en `/pleya/v1` houden voorrang: een
+onbekend pad onder het protocol krijgt de foutvorm en geen HTML. De gehashte bestanden staan op een
+jaar en `index.html` op `no-cache`, de securityheaders staan er en een CORS-header staat er niet,
+want bundel en API delen hun origin. Door `nas-tunnel.ts` heen bladert een browser de drie echte
+bibliotheken (Films 461, Kids 5, Series 97) en levert zoeken op `sea` 24 treffers zonder seizoenen,
+conform [DEC-045](DECISIONS.md#dec-045-zoeken-levert-standaard-films-series-en-afleveringen-geen-seizoenen).
+Dezelfde 62 end-to-end-tests die tegen de wegwerpstack draaien zijn ook tegen die server groen.
+
+**De meting kan niet meer stil de verkeerde bibliotheek pakken.** De eerste ronde koos een
+bibliotheek van twee items terwijl die van vijfhonderd er al stond, en het oordeel kwam op GEHAALD
+uit: twee posters ruimen altijd netjes op. `measure-artwork.ts` stopt nu met een fout zodra de
+grootste bibliotheek kleiner is dan het doelaantal, want een meting die er geslaagd uitziet en niets
+bewijst is erger dan geen meting.
 
 **Drift check.** Er staat geen `<video>` in `pleya_web/src`, geen kijkstatusaanroep, geen
 beheerendpoint en geen regel in `lib/`. De enige treffer op `watch-state` staat in de gegenereerde
