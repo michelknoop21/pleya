@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
@@ -133,6 +134,52 @@ func TestStackedVersionIsOneVersionWithTwoFiles(t *testing.T) {
 	}
 }
 
+// TestFailedProbeOnOnePartKeepsTheRest dekt de gestapelde kant van DEC-047.
+//
+// Gaat cd1 stuk en blijft cd2 heel, dan hoort de versie te blijven bestaan en
+// hoort de duur de som van de overgebleven delen te zijn. Zonder de opname van
+// de losgelaten versie in touchedVersions zou de duur van drie uur blijven staan
+// terwijl er nog anderhalf uur speelbaar is.
+func TestFailedProbeOnOnePartKeepsTheRest(t *testing.T) {
+	h := newHarness(t, "movies")
+
+	dir := h.path("Das Boot (1981)")
+	cd1 := filepath.Join(dir, "Das Boot (1981) - cd1.mkv")
+	testsupport.MakeVideo(t, cd1, 2)
+	testsupport.MakeVideo(t, filepath.Join(dir, "Das Boot (1981) - cd2.mkv"), 3)
+
+	h.scan()
+	before := h.byTitle("Das Boot")
+	if len(before.Versions) != 1 || before.Versions[0].FileCount != 2 {
+		t.Fatalf("verwachtte één versie met twee delen, kreeg %+v", before.Versions)
+	}
+	if before.Versions[0].DurationMs < 4500 {
+		t.Fatalf("duur vooraf is %d ms, verwacht ongeveer de som van twee en drie seconden",
+			before.Versions[0].DurationMs)
+	}
+
+	if err := os.WriteFile(cd1, []byte(strings.Repeat("dit is geen video\n", 64)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stats := h.scanAllowingErrors()
+	if stats.Errors != 1 {
+		t.Fatalf("errors is %d, verwacht 1", stats.Errors)
+	}
+
+	after := h.byTitle("Das Boot")
+	if len(after.Versions) != 1 {
+		t.Fatalf("de versie is verdwenen terwijl cd2 nog speelbaar is: %d versies", len(after.Versions))
+	}
+	v := after.Versions[0]
+	if v.FileCount != 1 {
+		t.Fatalf("file_count is %d, verwacht 1: alleen cd2 hangt er nog aan", v.FileCount)
+	}
+	if v.DurationMs < 2500 || v.DurationMs > 4000 {
+		t.Fatalf("duur is %d ms; verwacht ongeveer de drie seconden van cd2 alleen", v.DurationMs)
+	}
+}
+
 // TestSidecarsAttachToTheirOwner dekt losse ondertitels en artwork.
 func TestSidecarsAttachToTheirOwner(t *testing.T) {
 	h := newHarness(t, "movies")
@@ -215,6 +262,48 @@ func TestMovedSubtitleFollowsItsNewNeighbour(t *testing.T) {
 	}
 	if got := externalSubtitles(h.byTitle("Grease")); got != 0 {
 		t.Fatalf("de ondertitel hangt nog aan Grease: %d externe sporen", got)
+	}
+}
+
+// TestMovedSubtitleWithoutAnOwnerLetsGo dekt de andere helft van dezelfde
+// verplaatsing: de sidecar landt op een plek waar geen eigenaar te vinden is.
+//
+// De oude koppeling kwam uit een map waar dit bestand niet meer ligt en is
+// daarmee onjuist geworden. Blijven staan zou de ondertitel bij een film laten
+// horen waar hij niet naast ligt en ook niet meer naar verwijst. Hij hangt
+// daarna nergens aan, en dat is de juiste tussenstand: de volgende ronde krijgt
+// hem alsnog te pakken zodra er media naast komt te liggen.
+func TestMovedSubtitleWithoutAnOwnerLetsGo(t *testing.T) {
+	h := newHarness(t, "movies")
+
+	grease := h.path("Grease (1978)")
+	testsupport.MakeVideo(t, filepath.Join(grease, "Grease (1978).mkv"), 1)
+
+	srt := filepath.Join(grease, "Grease (1978).nld.srt")
+	testsupport.WriteFile(t, srt, "1\n00:00:01,000 --> 00:00:02,000\nhallo\n")
+
+	h.scan()
+	if got := externalSubtitles(h.byTitle("Grease")); got != 1 {
+		t.Fatalf("de ondertitel hangt niet aan Grease: %d externe sporen", got)
+	}
+
+	// Een map zonder enig mediabestand: geen naamgenoot, geen map die precies
+	// één item draagt, en bij films is er geen map erboven om op terug te vallen.
+	zwerver := h.path("Losse ondertitels", "Zwerver.nld.srt")
+	if err := os.MkdirAll(filepath.Dir(zwerver), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(srt, zwerver); err != nil {
+		t.Fatal(err)
+	}
+
+	stats := h.scan()
+	if stats.FilesRenamed != 1 {
+		t.Fatalf("de verplaatsing is niet als hernoeming herkend: files_renamed = %d", stats.FilesRenamed)
+	}
+
+	if got := externalSubtitles(h.byTitle("Grease")); got != 0 {
+		t.Fatalf("Grease draagt nog %d externe ondertitelsporen; de ondertitel ligt er niet meer naast", got)
 	}
 }
 
