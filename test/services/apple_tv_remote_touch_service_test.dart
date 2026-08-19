@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/diagnostics/select_trace_recorder.dart';
 import 'package:pleya/services/apple_tv_remote_touch_service.dart';
 
 void main() {
@@ -467,6 +468,72 @@ void main() {
       expect(harness.service.isTouchActive, isFalse);
     });
   });
+
+  group('AppleTvRemoteTouchService select trace', () {
+    // The correlation id is a separate field from the duplicate-suppression
+    // flag on purpose. These tests pin that separation: the flag is cleared by
+    // rules that have nothing to do with a press reaching a widget, and an id
+    // that died with it would leave the row without a trace to carry.
+    test('a clickpad press opens one trace and latches it at the release', () async {
+      final harness = _Harness();
+
+      await harness.send('click_s');
+      expect(harness.recorder.debugOpenTraceIds, hasLength(1));
+      final opened = harness.recorder.debugOpenTraceIds.single;
+
+      await harness.send('click_e');
+
+      expect(harness.recorder.consumeActiveSelectTrace(), opened);
+    });
+
+    test('a native press latches its id even though the pressed flag is cleared', () async {
+      final harness = _Harness();
+
+      harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.select));
+      final opened = harness.recorder.debugOpenTraceIds.single;
+      harness.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.select));
+
+      expect(harness.recorder.consumeActiveSelectTrace(), opened);
+    });
+
+    test('a suppressed duplicate key-down does not open a second trace', () async {
+      final harness = _Harness();
+
+      harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.select));
+      harness.service.handleNativeKeyEvent(_keyDown(_rawEnterKey));
+
+      expect(harness.recorder.debugOpenTraceIds, hasLength(1));
+    });
+
+    test('an unclaimed press is dropped when the next one starts', () async {
+      // Select on something that is not a row leaves a latch nobody consumes.
+      final harness = _Harness();
+
+      harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.select));
+      harness.service.handleNativeKeyEvent(_keyUp(LogicalKeyboardKey.select));
+      final abandoned = harness.recorder.debugOpenTraceIds.single;
+
+      // Far enough out that the next press is a real one and not swallowed as
+      // a duplicate of the one before it.
+      harness.advance(const Duration(seconds: 1));
+      harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.select));
+
+      expect(harness.recorder.debugOpenTraceIds, hasLength(1));
+      expect(harness.recorder.debugOpenTraceIds, isNot(contains(abandoned)));
+      expect(harness.traceLines, isEmpty, reason: 'a press that reached nothing is not worth a line');
+    });
+
+    test('stopping the service leaves no press open', () async {
+      final harness = _Harness();
+      harness.service.start();
+
+      harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.select));
+      harness.service.stop();
+
+      expect(harness.recorder.debugOpenTraceIds, isEmpty);
+      expect(harness.recorder.consumeActiveSelectTrace(), isNull);
+    });
+  });
 }
 
 class _Harness {
@@ -474,6 +541,14 @@ class _Harness {
   final List<LogicalKeyboardKey> keys = [];
   final List<LogicalKeyboardKey> keyDowns = [];
   final List<LogicalKeyboardKey> keyUps = [];
+  final List<String> traceLines = [];
+
+  late final SelectTraceRecorder recorder = SelectTraceRecorder(
+    enabled: true,
+    now: () => now,
+    emitInfo: traceLines.add,
+    emitWarning: traceLines.add,
+  );
 
   late final AppleTvRemoteTouchService service = AppleTvRemoteTouchService(
     simulateKeyPress: keys.add,
@@ -482,6 +557,7 @@ class _Harness {
     scheduleFrame: () {},
     now: () => now,
     swipeThreshold: 100,
+    traceRecorder: recorder,
   );
 
   Future<void> send(String type, {double x = 0, double y = 0}) {

@@ -2,6 +2,25 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-19] De rij die Select op de Apple TV afhandelt was niet de rij die gehard was
+
+Op `main`, twee commits: `22b4249` en deze.
+
+### Fixed
+- **`HubSection` opent bij Select het item dat de gebruiker ziet, niet de index** (`22b4249`). Een rij herlaadt in place en kan daarbij herordenen, dus tussen het frame waar iemand naar keek en het moment van drukken kan een andere kaart op dezelfde plek staan. `lib/widgets/hub_activation.dart` houdt de cursor voortaan als identiteit (`MediaItem.globalKey`) vast in plaats van als positie, en weigert een activering waarvan het item verdwenen is in plaats van te openen wie de plek innam.
+
+### Notes
+- **Die fix raakt het beginscherm op TV niet.** `discover_screen.dart:1430` gaat op TV naar `_buildTvContent()` en dat bouwt `TvBrowseRail`; `HubSection` is het telefoon-, tablet- en desktoppad. Hetzelfde geldt voor Bibliotheken ▸ Aanbevolen en het TV-detailscherm. `TvBrowseRail._activateCurrentItem()` leest nog `hub.items[_itemIndex]`, en `didUpdateWidget` bewaart `_hubIndex` op hub-key maar klemt `_itemIndex` alleen. De melding uit log `yto0s` liep dus door een widget die de hardening niet heeft.
+- **`TvBrowseRail` rapporteert nu, maar corrigeert niets.** De identity-fix daar wacht bewust op een device-log met deze trace erin: tegelijk repareren zou het bewijs wissen dat de melding daar zat.
+
+### Added
+- **`lib/diagnostics/select_trace.dart` en `select_trace_recorder.dart`**: één correlatie-id per Select-druk, dat vanaf de activering als expliciete parameter door `navigateToMediaItem`, de route en `MediaDetailScreen` reist, net als `heroTag`. Zes schakels worden vergeleken, waarbij `expected` via `mediaDetailNavigationTargetFor()` loopt zodat een aflevering die zijn serie opent geen vals alarm is. Normaal gedrag is één info-regel, afwijkend gedrag één waarschuwing met een begrensde tijdlijn. Zie [DEC-034](DECISIONS.md#dec-034).
+- **Rapportage van een refresh onder de cursor** in beide rijen, als één anomalie met drie disposities. `HubSection` volgt de identiteit en meldt `moved`; `TvBrowseRail` doet dat niet en meldt daarom `replaced` of `removed`.
+- **Vijfendertig tests**: het oordeel over de keten zonder widgettree, de levensduur van het id in de recorder, vijf tests op het Apple TV-invoerpad die vastleggen dat het id een eigen veld is naast `_nativeSelectPressed`, en widgettests op beide rijen.
+
+### Changed
+- **`AppleTvRemoteTouchService` krijgt een injecteerbare recorder** en opent de trace op de Select-key-down, op zowel het klikpad (`click_s`/`click_e`) als het natieve `UIPress`-pad. Op de key-up wordt het id vastgelegd vóór de pressed-status wist, want de service geeft daar `false` terug en Flutter dispatcht de release meteen daarna.
+
 ## [2026-08-19] Een klik op de zijbalk startte de film eronder
 
 Op `main`, twee commits: `29431f9` en `7aae62b`.

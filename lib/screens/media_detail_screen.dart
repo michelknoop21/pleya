@@ -37,6 +37,8 @@ import '../media/library_query.dart';
 import '../media/media_hub.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/plex_season_display.dart';
+import '../diagnostics/select_trace.dart';
+import '../diagnostics/select_trace_recorder.dart';
 import '../media/media_item.dart';
 import '../media/episode_collection.dart';
 import '../media/media_item_types.dart';
@@ -224,6 +226,11 @@ class MediaDetailScreen extends StatefulWidget {
   /// and from entry points without a source poster (deep links, context menu).
   final Object? heroTag;
 
+  /// Correlation id of the Select press that opened this screen, handed down as
+  /// an explicit parameter. Null for every entry point that is not a TV
+  /// activation. See [SelectTraceRecorder].
+  final String? traceId;
+
   const MediaDetailScreen({
     super.key,
     required this.metadata,
@@ -232,6 +239,7 @@ class MediaDetailScreen extends StatefulWidget {
     this.initialSeasonId,
     this.initialEpisodeId,
     this.heroTag,
+    this.traceId,
   });
 
   @override
@@ -245,7 +253,11 @@ PageRoute<bool> mediaDetailRoute({
   String? initialSeasonId,
   String? initialEpisodeId,
   Object? heroTag,
+  String? traceId,
 }) {
+  // Built here, not in a lazy builder: the id has to be on the widget before
+  // [State.initState] runs, otherwise the first link the screen records would
+  // already be a frame late.
   final page = MediaDetailScreen(
     metadata: metadata,
     isOffline: isOffline,
@@ -253,6 +265,7 @@ PageRoute<bool> mediaDetailRoute({
     initialSeasonId: initialSeasonId,
     initialEpisodeId: initialEpisodeId,
     heroTag: heroTag,
+    traceId: traceId,
   );
   if (!PlatformDetector.isTV()) return MaterialPageRoute<bool>(builder: (_) => page);
 
@@ -685,6 +698,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     _overviewFocusNode = FocusNode(debugLabel: 'overview');
     _castFocusNode = FocusNode(debugLabel: 'cast_row');
     _infoRowsFocusNode = FocusNode(debugLabel: 'info_rows');
+    SelectTraceRecorder.instance.link(widget.traceId, SelectTraceLink.detailTarget, widget.metadata);
     _loadFullMetadata();
   }
 
@@ -839,6 +853,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     _lastEpisodeFocusNode.removeListener(_onLastEpisodeFocusChanged);
     _lastEpisodeFocusNode.dispose();
     _initialEpisodeFocusNode.dispose();
+    SelectTraceRecorder.instance.close(widget.traceId, SelectTraceOutcome.detail);
     super.dispose();
   }
 
@@ -1308,6 +1323,15 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     }
   }
 
+  /// Last link in the chain: what the server actually handed back for the item
+  /// the row said it was opening. All four exits of [_loadFullMetadata] go
+  /// through here, so a trace never leaks past the screen that owns it.
+  void _closeSelectTrace({String? note}) {
+    final recorder = SelectTraceRecorder.instance;
+    recorder.link(widget.traceId, SelectTraceLink.metadataTarget, _metadata, note: note);
+    recorder.close(widget.traceId, SelectTraceOutcome.detail);
+  }
+
   Future<void> _loadFullMetadata() async {
     setState(() {
       _isLoadingMetadata = true;
@@ -1328,6 +1352,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         _hasLoadedExtras = true;
         _hasLoadedRelatedHubs = true;
       });
+      _closeSelectTrace(note: 'offline-cache');
 
       if (_metadata.isShow) {
         _loadSeasonsFromDownloads();
@@ -1358,6 +1383,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
           _hasLoadedExtras = true;
           _hasLoadedRelatedHubs = true;
         });
+        _closeSelectTrace(note: 'no-client');
         return;
       }
 
@@ -1392,6 +1418,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         _onDeckEpisode = onDeckWithServerId;
         _isLoadingMetadata = false;
       });
+      _closeSelectTrace();
 
       if (base.isShow) {
         unawaited(_loadSeasons());
@@ -1415,6 +1442,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         _hasLoadedExtras = true;
         _hasLoadedRelatedHubs = true;
       });
+      _closeSelectTrace(note: 'fetch-failed');
 
       if (_metadata.isShow) {
         unawaited(_loadSeasons());

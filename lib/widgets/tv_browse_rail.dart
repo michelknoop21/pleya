@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../diagnostics/select_trace.dart';
+import '../diagnostics/select_trace_recorder.dart';
 import '../focus/card_focus_scope.dart';
 import '../focus/dpad_navigator.dart';
 import '../focus/focus_theme.dart';
@@ -26,6 +28,7 @@ import '../utils/layout_constants.dart';
 import 'app_icon.dart';
 import 'clickable_cursor.dart';
 import 'focus_builders.dart';
+import 'hub_activation.dart';
 import 'horizontal_scroll_with_arrows.dart';
 import 'listenable_selector.dart';
 import 'media_card.dart';
@@ -594,6 +597,9 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     final oldActiveHubKey = oldWidget.hubs.isEmpty
         ? null
         : _hubKey(oldWidget.hubs[_hubIndex.clamp(0, oldWidget.hubs.length - 1)]);
+    // Read before any index moves: this is the item the user was aimed at in
+    // the frame they were looking at.
+    final focusedBeforeUpdate = _identityAt(oldWidget.hubs, _hubIndex, _itemIndex);
 
     if (widget.hubs.isEmpty) {
       _hubIndex = 0;
@@ -619,6 +625,9 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     if (hub == null) return;
     _itemIndex = _itemIndex.clamp(0, _totalItemCount(hub) == 0 ? 0 : _totalItemCount(hub) - 1);
     final selectedInitialItem = _selectInitialItemIfPossible();
+    if (oldActiveHubKey == _hubKey(hub)) {
+      _reportFocusedTargetChangeAcrossUpdate(focusedBeforeUpdate, hub);
+    }
     // notify:false — this runs during the build phase and the enclosing
     // rebuild already refreshes every selector.
     _focusPosition.set(_hubIndex, _itemIndex, notify: false);
@@ -743,8 +752,38 @@ class TvBrowseRailState extends State<TvBrowseRail> {
     final hub = _activeHub;
     if (hub == null || hub.items.isEmpty || _itemIndex >= hub.items.length) return;
     final item = hub.items[_itemIndex];
+    // The single choke point for "the cursor now points here", so the trace
+    // recorder learns about every deliberate move without a listener per row.
+    SelectTraceRecorder.instance.noteFocus(surface: 'tv-rail', hubId: _hubKey(hub), index: _itemIndex, item: item);
     widget.onFocusedItemChanged?.call(item);
     widget.onFocusedHubItemChanged?.call(hub, item);
+  }
+
+  String? _identityAt(List<MediaHub> hubs, int hubIndex, int itemIndex) {
+    if (hubs.isEmpty) return null;
+    final hub = hubs[hubIndex.clamp(0, hubs.length - 1)];
+    if (itemIndex < 0 || itemIndex >= hub.items.length) return null;
+    return hubItemIdentity(hub.items[itemIndex]);
+  }
+
+  /// Reports that a rebuild put a different item under the cursor.
+  ///
+  /// Reporting only. This rail keeps its cursor on the index, so unlike
+  /// [HubSection] it does not follow the identity, and the disposition says so:
+  /// the item is still in the row but no longer where the user left it.
+  void _reportFocusedTargetChangeAcrossUpdate(String? was, MediaHub hub) {
+    if (was == null) return;
+    final occupant = _itemIndex >= 0 && _itemIndex < hub.items.length ? hubItemIdentity(hub.items[_itemIndex]) : 'none';
+    if (occupant == was) return;
+    final stillPresent = hub.items.any((item) => hubItemIdentity(item) == was);
+    SelectTraceRecorder.instance.noteFocusedTargetChanged(
+      surface: 'tv-rail',
+      hubId: _hubKey(hub),
+      index: _itemIndex,
+      was: was,
+      occupant: occupant,
+      disposition: stillPresent ? SelectTraceDisposition.replaced : SelectTraceDisposition.removed,
+    );
   }
 
   void _notifyActiveHubChanged() {
@@ -1088,6 +1127,8 @@ class TvBrowseRailState extends State<TvBrowseRail> {
   }
 
   void _showContextMenuForCurrentItem() {
+    final recorder = SelectTraceRecorder.instance;
+    recorder.close(recorder.consumeActiveSelectTrace(), SelectTraceOutcome.contextMenu);
     final hub = _activeHub;
     if (hub == null || _itemIndex >= hub.items.length) return;
     if (_isPersonHub(hub)) return;
@@ -1095,31 +1136,58 @@ class TvBrowseRailState extends State<TvBrowseRail> {
   }
 
   Future<void> _activateCurrentItem() async {
+    // Read once, synchronously, at the moment of activation. Everything after
+    // this point carries the id as a parameter; the recorder must never be
+    // asked again which press is open, because by the time the detail screen
+    // loads its metadata the next press can already be in flight.
+    final recorder = SelectTraceRecorder.instance;
+    final traceId = recorder.consumeActiveSelectTrace() ?? recorder.beginSelect(source: 'tv-rail-fallback');
     final hub = _activeHub;
-    if (hub == null) return;
+    if (hub == null) {
+      recorder.close(traceId, SelectTraceOutcome.none);
+      return;
+    }
     if (_itemIndex == hub.items.length && _hasTrailingFor(hub)) {
       switch (_trailingFor(hub)) {
         case TvRailTrailing.error:
+          recorder.close(traceId, SelectTraceOutcome.none);
           widget.onRetryHub?.call(hub);
           break;
         case TvRailTrailing.loading:
+          recorder.close(traceId, SelectTraceOutcome.none);
           break; // no-op while the page loads
         case TvRailTrailing.viewAll:
         case TvRailTrailing.none:
+          recorder.close(traceId, SelectTraceOutcome.hubDetail);
           _navigateToHubDetail(hub);
       }
       return;
     }
-    if (_itemIndex >= hub.items.length) return;
+    if (_itemIndex >= hub.items.length) {
+      recorder.close(traceId, SelectTraceOutcome.none);
+      return;
+    }
     final item = hub.items[_itemIndex];
+    recorder.link(traceId, SelectTraceLink.activatedTarget, item, note: 'strategy=index');
+    // Computed here rather than at the route: comparing this against what the
+    // navigation helper actually pushes is what makes a swap in between visible,
+    // while an episode mapping to its show stays correct behaviour.
+    recorder.link(traceId, SelectTraceLink.expectedNavigationTarget, mediaDetailNavigationTargetFor(item).metadata);
     final handled = await widget.onActivateItem?.call(hub, item);
-    if (handled == true) return;
-    if (!mounted) return;
+    if (handled == true) {
+      recorder.close(traceId, SelectTraceOutcome.handledByHost);
+      return;
+    }
+    if (!mounted) {
+      recorder.abandon(traceId, 'rail-unmounted');
+      return;
+    }
     await navigateToMediaItem(
       context,
       item,
       onRefresh: widget.onRefresh,
       playDirectly: _usesContinueWatchingAction(hub),
+      traceId: traceId,
     );
   }
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/diagnostics/select_trace.dart';
+import 'package:pleya/diagnostics/select_trace_recorder.dart';
 import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/focus/dpad_navigator.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
@@ -2086,6 +2088,113 @@ void main() {
 
     expect(focusedItemIds, isEmpty);
     expect(activeHubIds, isEmpty);
+  });
+
+  group('select trace', () {
+    // This rail keeps its cursor on the index, so a rebuild that reorders or
+    // drops items leaves the user aimed at a different card than the one they
+    // were looking at. Nothing here corrects that; it records it, so a device
+    // log can say whether it happened before the wrong title opened.
+    late List<String> lines;
+
+    setUp(() {
+      lines = [];
+      SelectTraceRecorder.debugSetInstance(
+        SelectTraceRecorder(enabled: true, emitInfo: lines.add, emitWarning: lines.add),
+      );
+    });
+
+    tearDown(() => SelectTraceRecorder.debugSetInstance(null));
+
+    MediaItem movie(String id) =>
+        MediaItem(id: id, backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Title $id', serverId: 's1');
+
+    MediaHub hubOf(List<MediaItem> items) =>
+        MediaHub(id: 'recently_added', title: 'Recently added', type: 'movie', items: items, size: items.length);
+
+    Widget buildRail(MediaHub hub, {Future<bool> Function(MediaHub, MediaItem)? onActivateItem}) {
+      final serverManager = MultiServerManager();
+      return ChangeNotifierProvider<MultiServerProvider>(
+        create: (_) => MultiServerProvider(serverManager, DataAggregationService(serverManager)),
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: Scaffold(
+            body: SizedBox(
+              width: 1280,
+              height: 720,
+              child: TvBrowseRail(
+                key: const ValueKey('trace_rail'),
+                hubs: [hub],
+                iconForHub: (_, _) => Icons.tv_rounded,
+                onActivateItem: onActivateItem,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('reports a refresh that puts another card under the cursor', (tester) async {
+      final joey = movie('41215');
+      Future<bool> handled(MediaHub _, MediaItem _) => Future.value(true);
+      await tester.pumpWidget(buildRail(hubOf([joey, movie('2'), movie('3')]), onActivateItem: handled));
+      await tester.pump();
+
+      // Same length, same items, different order: the reported failure. A
+      // length check sees nothing here.
+      await tester.pumpWidget(buildRail(hubOf([movie('2'), movie('3'), joey]), onActivateItem: handled));
+      await tester.pump();
+
+      final railState = tester.state<TvBrowseRailState>(find.byType(TvBrowseRail));
+      railState.requestFocus();
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+
+      expect(lines.single, contains('focused_target_changed disposition=replaced'));
+      expect(lines.single, contains('was=s1:41215'));
+      expect(lines.single, contains('occupant=s1:2'));
+    });
+
+    testWidgets('reports a refresh that drops the focused item altogether', (tester) async {
+      Future<bool> handled(MediaHub _, MediaItem _) => Future.value(true);
+      await tester.pumpWidget(buildRail(hubOf([movie('41215'), movie('2')]), onActivateItem: handled));
+      await tester.pump();
+
+      await tester.pumpWidget(buildRail(hubOf([movie('9082'), movie('2')]), onActivateItem: handled));
+      await tester.pump();
+
+      final railState = tester.state<TvBrowseRailState>(find.byType(TvBrowseRail));
+      railState.requestFocus();
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+
+      expect(lines.single, contains('focused_target_changed disposition=removed'));
+    });
+
+    testWidgets('an untouched row activates what it selected, on one line', (tester) async {
+      final hub = hubOf([movie('41215'), movie('2')]);
+      await tester.pumpWidget(buildRail(hub, onActivateItem: (_, _) => Future.value(true)));
+      await tester.pump();
+
+      final railState = tester.state<TvBrowseRailState>(find.byType(TvBrowseRail));
+      railState.requestFocus();
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+
+      expect(lines.single, contains('selected=s1:41215'));
+      expect(lines.single, contains('activated=s1:41215'));
+      expect(lines.single, contains('outcome=${SelectTraceOutcome.handledByHost.name}'));
+      expect(lines.single, isNot(contains('ABNORMAL')));
+    });
   });
 }
 

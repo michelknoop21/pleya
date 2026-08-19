@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../i18n/strings.g.dart';
+import '../diagnostics/select_trace.dart';
+import '../diagnostics/select_trace_recorder.dart';
 import '../media/ids.dart';
 import '../media/media_item.dart';
 import '../media/media_item_types.dart';
@@ -156,13 +158,17 @@ Future<MediaNavigationResult> navigateToMediaItem(
   bool isOffline = false,
   bool playDirectly = false,
   Object? heroTag,
+  String? traceId,
 }) async {
+  final recorder = SelectTraceRecorder.instance;
   if (item is MediaPlaylist) {
+    recorder.close(traceId, SelectTraceOutcome.hubDetail);
     await Navigator.push(context, MaterialPageRoute(builder: (context) => PlaylistDetailScreen(playlist: item)));
     return MediaNavigationResult.navigated;
   }
 
   if (item is! MediaItem) {
+    recorder.close(traceId, SelectTraceOutcome.none);
     return MediaNavigationResult.unsupported;
   }
   final mi = item;
@@ -183,13 +189,16 @@ Future<MediaNavigationResult> navigateToMediaItem(
     if (sectionKey != null && mi.serverId != null) {
       final libraryGlobalKey = buildGlobalKey(ServerId(mi.serverId!), sectionKey);
       MainScreenFocusScope.of(context, listen: false)?.selectLibrary?.call(libraryGlobalKey);
+      recorder.close(traceId, SelectTraceOutcome.none);
       return MediaNavigationResult.librarySelected;
     }
+    recorder.close(traceId, SelectTraceOutcome.none);
     return MediaNavigationResult.unsupported;
   }
 
   switch (mi.kind) {
     case MediaKind.collection:
+      recorder.close(traceId, SelectTraceOutcome.hubDetail);
       final result = await Navigator.push<bool>(
         context,
         MaterialPageRoute(builder: (context) => CollectionDetailScreen(collection: mi)),
@@ -204,13 +213,22 @@ Future<MediaNavigationResult> navigateToMediaItem(
     case MediaKind.album:
     case MediaKind.track:
       // Music types not supported
+      recorder.close(traceId, SelectTraceOutcome.none);
       return MediaNavigationResult.unsupported;
 
     case MediaKind.clip:
     case MediaKind.episode:
       if (mi.kind == MediaKind.episode && shouldOpenEpisodeDetails) {
-        return navigateToMediaItemDetails(context, mi, onRefresh: onRefresh, isOffline: isOffline, heroTag: heroTag);
+        return navigateToMediaItemDetails(
+          context,
+          mi,
+          onRefresh: onRefresh,
+          isOffline: isOffline,
+          heroTag: heroTag,
+          traceId: traceId,
+        );
       }
+      recorder.close(traceId, SelectTraceOutcome.player);
       final result = await navigateToVideoPlayer(context, metadata: mi, isOffline: isOffline);
       if (result == true && context.mounted) {
         onRefresh?.call(mi.id);
@@ -219,19 +237,41 @@ Future<MediaNavigationResult> navigateToMediaItem(
 
     case MediaKind.movie:
       if (playDirectly && !shouldOpenContinueWatchingDetails) {
+        recorder.close(traceId, SelectTraceOutcome.player);
         final result = await navigateToVideoPlayer(context, metadata: mi, isOffline: isOffline);
         if (result == true && context.mounted) {
           onRefresh?.call(mi.id);
         }
         return MediaNavigationResult.navigated;
       }
-      return navigateToMediaItemDetails(context, mi, isOffline: isOffline, onRefresh: onRefresh, heroTag: heroTag);
+      return navigateToMediaItemDetails(
+        context,
+        mi,
+        isOffline: isOffline,
+        onRefresh: onRefresh,
+        heroTag: heroTag,
+        traceId: traceId,
+      );
 
     case MediaKind.season:
-      return navigateToMediaItemDetails(context, mi, isOffline: isOffline, onRefresh: onRefresh, heroTag: heroTag);
+      return navigateToMediaItemDetails(
+        context,
+        mi,
+        isOffline: isOffline,
+        onRefresh: onRefresh,
+        heroTag: heroTag,
+        traceId: traceId,
+      );
 
     default:
-      return navigateToMediaItemDetails(context, mi, isOffline: isOffline, onRefresh: onRefresh, heroTag: heroTag);
+      return navigateToMediaItemDetails(
+        context,
+        mi,
+        isOffline: isOffline,
+        onRefresh: onRefresh,
+        heroTag: heroTag,
+        traceId: traceId,
+      );
   }
 }
 
@@ -242,8 +282,17 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
   void Function(String)? onRefresh,
   MediaItem? metadataOverride,
   Object? heroTag,
+  String? traceId,
 }) async {
   final target = mediaDetailNavigationTargetFor(mi, metadataOverride: metadataOverride);
+  // The route boundary, not the activation site: comparing this against the
+  // expected target recorded back at the row is what catches a swap in between.
+  SelectTraceRecorder.instance.link(
+    traceId,
+    SelectTraceLink.actualNavigationTarget,
+    target.metadata,
+    note: metadataOverride == null ? null : 'override',
+  );
   final result = await Navigator.push<bool>(
     context,
     mediaDetailRoute(
@@ -253,8 +302,14 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
       initialSeasonId: target.initialSeasonId,
       initialEpisodeId: target.initialEpisodeId,
       heroTag: heroTag,
+      traceId: traceId,
     ),
   );
+  // Backstop for a screen that never got as far as its metadata: a fast back,
+  // a route replaced under it, a server that never answered. Closing here as
+  // `detail` rather than abandoning keeps that from reading as a defect, while
+  // any mismatch among the links it did collect still shows up.
+  SelectTraceRecorder.instance.close(traceId, SelectTraceOutcome.detail);
   if (result == true && context.mounted) {
     onRefresh?.call(mi.id);
   }

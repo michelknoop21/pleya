@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import '../diagnostics/select_trace.dart';
+import '../diagnostics/select_trace_recorder.dart';
 import '../focus/dpad_navigator.dart';
 import '../focus/focus_theme.dart';
 import '../focus/input_mode_tracker.dart';
@@ -214,22 +216,42 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     if (_focusedIndex < 0 || _focusedIndex >= oldItems.length) return;
     final focusedKey = hubItemIdentity(oldItems[_focusedIndex]);
     final moved = widget.hub.items.indexWhere((item) => hubItemIdentity(item) == focusedKey);
+    final occupant = _focusedIndex < widget.hub.items.length
+        ? hubItemIdentity(widget.hub.items[_focusedIndex])
+        : 'none';
     if (moved < 0) {
       // The cursor and the item it stood on have come apart. Activation refuses
       // to guess from here (see [_resolveActivation]); this line says why.
-      final occupant = _focusedIndex < widget.hub.items.length
-          ? hubItemIdentity(widget.hub.items[_focusedIndex])
-          : 'none';
       appLogger.w(
         'Hub focus lost its item across a refresh: hub=${widget.hub.id} index=$_focusedIndex '
         'was=$focusedKey occupant=$occupant items=${widget.hub.items.length}',
       );
+      _reportFocusedTargetChange(was: focusedKey, occupant: occupant, disposition: SelectTraceDisposition.removed);
       return;
     }
     if (moved == _focusedIndex) return;
+    // Another item took the old slot, but the cursor follows the identity right
+    // below, so this row corrects itself: benign, and only worth a timeline
+    // line. A row that does *not* correct itself reports `replaced` instead.
+    _reportFocusedTargetChange(was: focusedKey, occupant: occupant, disposition: SelectTraceDisposition.moved);
     _focusedIndex = moved;
     _rememberFocus(moved);
     _notifyFocusedItemChanged();
+  }
+
+  void _reportFocusedTargetChange({
+    required String was,
+    required String occupant,
+    required SelectTraceDisposition disposition,
+  }) {
+    SelectTraceRecorder.instance.noteFocusedTargetChanged(
+      surface: 'hub-section',
+      hubId: widget.hub.id,
+      index: _focusedIndex,
+      was: was,
+      occupant: occupant,
+      disposition: disposition,
+    );
   }
 
   /// Points [_focusTarget] at whatever sits at [index] right now.
@@ -241,6 +263,12 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
     final items = widget.hub.items;
     if (index >= 0 && index < items.length) {
       _focusTarget = HubFocusItem(hubItemIdentity(items[index]));
+      SelectTraceRecorder.instance.noteFocus(
+        surface: 'hub-section',
+        hubId: widget.hub.id,
+        index: index,
+        item: items[index],
+      );
     } else if (index == items.length && widget.hub.more) {
       _focusTarget = const HubFocusViewAll();
     } else {
@@ -259,7 +287,7 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
   /// Every key-driven entry point goes through here, so "select" and the
   /// context menu can never disagree about the target, and so there is exactly
   /// one line in the log per user action that resolved to something.
-  HubActivation _resolveActivation(String action) {
+  HubActivation _resolveActivation(String action, {String? traceId}) {
     final items = widget.hub.items;
     final activation = resolveHubActivation(
       items: items,
@@ -277,6 +305,14 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
         'action=$action hub=${widget.hub.id} index=$_focusedIndex '
         'requested=${_describeTarget(_focusTarget)} occupant=$occupant items=${items.length}',
       );
+      final recorder = SelectTraceRecorder.instance;
+      recorder.noteActivationDropped(
+        traceId,
+        detail:
+            'activation_dropped hub=${widget.hub.id} index=$_focusedIndex '
+            'requested=${_describeTarget(_focusTarget)} occupant=$occupant',
+      );
+      recorder.close(traceId, SelectTraceOutcome.dropped);
       // Re-point at what is actually on screen. Without this the row would
       // refuse every following press for as long as the stale identity is held.
       _setFocusTarget(_focusedIndex);
@@ -518,30 +554,45 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
   }
 
   void _activateCurrentItem() {
-    final activation = _resolveActivation('select');
+    // Read once, synchronously, at the moment of activation. From here the id
+    // travels as a parameter; asking the recorder again after any await would
+    // pick up whatever press is open by then.
+    final recorder = SelectTraceRecorder.instance;
+    final traceId = recorder.consumeActiveSelectTrace() ?? recorder.beginSelect(source: 'hub-section-fallback');
+    final activation = _resolveActivation('select', traceId: traceId);
     if (activation.strategy == HubActivationStrategy.viewAll) {
+      recorder.close(traceId, SelectTraceOutcome.hubDetail);
       _navigateToHubDetail(context);
       return;
     }
     final item = activation.item;
-    if (item == null) return;
-    _navigateToItem(item);
+    if (item == null) {
+      recorder.close(traceId, SelectTraceOutcome.none);
+      return;
+    }
+    recorder.link(traceId, SelectTraceLink.activatedTarget, item, note: 'strategy=${activation.strategy.name}');
+    recorder.link(traceId, SelectTraceLink.expectedNavigationTarget, mediaDetailNavigationTargetFor(item).metadata);
+    _navigateToItem(item, traceId: traceId);
   }
 
   void _showContextMenuForCurrentItem() {
     // Same resolution as select, so the menu can never belong to a different
     // card than the one an activation would have opened. No menu for "View All".
-    final activation = _resolveActivation('context-menu');
+    final recorder = SelectTraceRecorder.instance;
+    final traceId = recorder.consumeActiveSelectTrace();
+    final activation = _resolveActivation('context-menu', traceId: traceId);
+    recorder.close(traceId, SelectTraceOutcome.contextMenu);
     if (!activation.opensItem) return;
     _mediaCardKeys[activation.index]?.currentState?.showContextMenu();
   }
 
-  Future<void> _navigateToItem(MediaItem item) async {
+  Future<void> _navigateToItem(MediaItem item, {String? traceId}) async {
     await navigateToMediaItem(
       context,
       item,
       onRefresh: widget.onRefresh,
       playDirectly: widget.usesContinueWatchingAction,
+      traceId: traceId,
     );
   }
 

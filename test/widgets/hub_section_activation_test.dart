@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/diagnostics/select_trace_recorder.dart';
 import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
@@ -175,6 +176,56 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(spy.pushed, hasLength(1));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('a reorder the row absorbs stays one line naming what the user aimed at', (tester) async {
+    // The counterweight to the warnings: this row follows the identity across a
+    // refresh, so a reorder is not a defect and must not produce noise. What
+    // the line has to prove is that selected and activated are the same title.
+    final lines = <String>[];
+    SelectTraceRecorder.debugSetInstance(
+      SelectTraceRecorder(enabled: true, emitInfo: lines.add, emitWarning: lines.add),
+    );
+    addTearDown(() => SelectTraceRecorder.debugSetInstance(null));
+
+    final hubKey = GlobalKey<HubSectionState>();
+    final (_, pumpWith) = await pumpHub(tester, hub(['a', 'b', 'c', 'd']), hubKey: hubKey);
+
+    hubKey.currentState!.requestFocusAt(3);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await pumpWith(hub(['d', 'a', 'b', 'c']));
+    await pressSelect(tester);
+
+    final trace = lines.singleWhere((line) => line.contains('Select trace'));
+    expect(trace, contains('selected=s1:d'));
+    expect(trace, contains('activated=s1:d'), reason: 'the cursor followed the item to its new slot');
+    expect(trace, isNot(contains('ABNORMAL')), reason: 'a reorder the row absorbs is not a defect');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('a dropped activation is reported as such', (tester) async {
+    final lines = <String>[];
+    SelectTraceRecorder.debugSetInstance(
+      SelectTraceRecorder(enabled: true, emitInfo: lines.add, emitWarning: lines.add),
+    );
+    addTearDown(() => SelectTraceRecorder.debugSetInstance(null));
+
+    final hubKey = GlobalKey<HubSectionState>();
+    final (_, pumpWith) = await pumpHub(tester, hub(['a', 'b', 'c', 'd']), hubKey: hubKey);
+
+    hubKey.currentState!.requestFocusAt(3);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await pumpWith(hub(['a', 'b', 'c', 'zz']));
+    await pressSelect(tester);
+
+    final trace = lines.singleWhere((line) => line.contains('Select trace'));
+    expect(trace, contains('ABNORMAL'));
+    expect(trace, contains('activation_dropped'));
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
