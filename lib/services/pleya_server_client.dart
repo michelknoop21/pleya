@@ -36,13 +36,17 @@ import 'api_cache.dart';
 import 'playback_initialization_types.dart';
 import 'pleya_server_api_cache.dart';
 import 'pleya_server_auth_service.dart';
+import 'image_cache_service.dart';
 import 'pleya_server_capabilities.dart';
 import 'pleya_server_cursor_ledger.dart';
 import 'pleya_server_mappers.dart';
 import 'pleya_server_session.dart';
 import 'scrub_preview_source.dart';
 
+part 'pleya_server_client/parts/seam.dart';
+part 'pleya_server_client/parts/artwork.dart';
 part 'pleya_server_client/parts/browse.dart';
+part 'pleya_server_client/parts/search.dart';
 part 'pleya_server_client/parts/unsupported.dart';
 
 /// [MediaServerClient] over a Pleya Server, speaking Pleya Protocol v1.
@@ -71,7 +75,13 @@ part 'pleya_server_client/parts/unsupported.dart';
 // parameter. dart_code_linter flags the pattern; here it is unavoidable.
 // ignore_for_file: prefer_initializing_formals
 class PleyaServerClient
-    with MediaServerCacheMixin, _PleyaServerBrowseMethods, _PleyaServerUnsupportedMethods
+    with
+        MediaServerCacheMixin,
+        _PleyaServerRequests,
+        _PleyaServerBrowseMethods,
+        _PleyaServerSearchMethods,
+        _PleyaServerArtworkMethods,
+        _PleyaServerUnsupportedMethods
     implements MediaServerClient, ScopedMediaServerClient, GracefullyCloseable {
   PleyaServerClient._({required PleyaServerSession session, required MediaServerHttpClient http})
     : _session = session,
@@ -94,7 +104,7 @@ class PleyaServerClient
   }) {
     final authService = auth ?? PleyaServerAuthService(httpClientFactory: httpClientFactory);
     final session = PleyaServerSession(connection: connection, auth: authService, onTokensRotated: onConnectionUpdated);
-    return PleyaServerClient._(
+    final client = PleyaServerClient._(
       session: session,
       http: MediaServerHttpClient(
         baseUrl: '${connection.baseUrl}$pleyaProtocolPrefix',
@@ -102,8 +112,11 @@ class PleyaServerClient
         client: httpClientFactory?.call(),
       ),
     );
+    client._registerArtworkAuthorization();
+    return client;
   }
 
+  @override
   final PleyaServerSession _session;
   final MediaServerHttpClient _http;
 
@@ -169,11 +182,14 @@ class PleyaServerClient
   Map<String, String> get streamHeaders => const {};
 
   @override
-  void close() => _http.close();
+  void close() {
+    _unregisterArtworkAuthorization();
+    _http.close();
+  }
 
   @override
   Future<void> closeGracefully({Duration drainTimeout = const Duration(seconds: 2)}) async {
-    _http.close();
+    close();
   }
 
   /// Re-read `GET /info` and apply what it says.

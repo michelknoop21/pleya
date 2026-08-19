@@ -16,16 +16,7 @@ part of '../../pleya_server_client.dart';
 /// anything it has scrolled gets what the walk reached rather than a stall,
 /// because a grid that is briefly short is repairable and a request that never
 /// returns is not.
-mixin _PleyaServerBrowseMethods {
-  // Members the shell provides. Declared here so this mixin can be read on its
-  // own and so the compiler, rather than a reader, checks the seam.
-  ServerId get serverId;
-  String? get serverName;
-  PleyaServerConnection get connection;
-  PleyaServerCursorLedger get _cursors;
-  PleyaCapabilities get wireCapabilities;
-  Future<Map<String, dynamic>?> _getJson(String path, {Map<String, dynamic>? queryParameters, AbortController? abort});
-
+mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   /// How many extra pages a single request may walk before giving up.
   ///
   /// Ten pages of at most 500 is five thousand items, which covers a jump to

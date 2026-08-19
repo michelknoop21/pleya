@@ -19,18 +19,6 @@ part of '../../pleya_server_client.dart';
 /// the belt to that pair of braces, for the paths that call a member without
 /// asking first.
 mixin _PleyaServerUnsupportedMethods {
-  // ── Search and artwork, wired in the commit that follows ──
-  //
-  // Browsing moved into `browse.dart`; these two are the remainder. They answer
-  // empty here so this file keeps compiling, and nothing constructs a client
-  // yet, so no screen sees the difference.
-
-  Future<List<MediaItem>> searchItems(String query, {int limit = 100}) async => const [];
-
-  String thumbnailUrl(String? path, {int? width, int? height}) => '';
-
-  String externalImageUrl(String url, {int? width, int? height}) => url;
-
   // ── Library shape the contract does not carry ──
 
   /// The contract has `limit`, `cursor` and `sort` on a library listing and no

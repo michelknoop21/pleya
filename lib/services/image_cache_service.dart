@@ -7,6 +7,7 @@ import 'package:cached_network_image_ce/cached_network_image.dart' show FileResp
 // behind a narrower unsupported-platform stub.
 // ignore: implementation_imports
 import 'package:cached_network_image_ce/src/cache/default_cache_manager.dart' as ce_cache;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
@@ -67,6 +68,62 @@ class PlexImageCacheManager extends ce_cache.DefaultCacheManager {
   }
 }
 
+/// Per-origin authorization for artwork downloads.
+///
+/// Plex and Jellyfin put their token in the artwork URL, so their images need
+/// nothing here. Pleya Protocol does not allow that: `GET /artwork/{id}` is
+/// class `authenticated` and accepts a bearer header only, with the stream
+/// token explicitly scoped to `/stream` and `/subtitles`. Putting an access
+/// token in a query string would be a protocol violation, not a shortcut.
+///
+/// The app renders artwork through `CachedNetworkImage`, which carries a URL
+/// and no headers, and threading a header parameter through every image call
+/// site would be a refactor with a wide blast radius for one backend. This
+/// registry solves it at the one point every artwork download already passes
+/// through: a backend registers a header supplier for its origin, and
+/// [_SharedHttpClient] applies it.
+///
+/// Backend-neutral on purpose. It knows about origins and headers, not about
+/// Pleya Server.
+class ArtworkAuthorizationRegistry {
+  ArtworkAuthorizationRegistry._();
+
+  static final Map<String, Future<Map<String, String>> Function()> _suppliers = {};
+
+  /// The `scheme://host:port` form used as the registry key. Comparing whole
+  /// origins rather than hosts keeps two servers on one machine apart.
+  static String originOf(Uri uri) =>
+      Uri(scheme: uri.scheme, host: uri.host, port: uri.hasPort ? uri.port : null).toString();
+
+  static void register(String baseUrl, Future<Map<String, String>> Function() headers) {
+    final uri = Uri.tryParse(baseUrl);
+    if (uri == null || uri.host.isEmpty) return;
+    _suppliers[originOf(uri)] = headers;
+  }
+
+  static void unregister(String baseUrl) {
+    final uri = Uri.tryParse(baseUrl);
+    if (uri == null) return;
+    _suppliers.remove(originOf(uri));
+  }
+
+  /// Headers for [uri], or an empty map when nothing is registered for its
+  /// origin. A supplier that throws yields nothing rather than failing the
+  /// download: a poster that 401s is a missing poster, not a crash.
+  static Future<Map<String, String>> headersFor(Uri uri) async {
+    final supplier = _suppliers[originOf(uri)];
+    if (supplier == null) return const {};
+    try {
+      return await supplier();
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  @visibleForTesting
+  static void clear() => _suppliers.clear();
+}
+
 /// CE closes each factory-created client after a download. Wrap the app-wide
 /// shared client so image requests reuse its platform transport without
 /// transferring ownership of its lifecycle, and cap artwork fan-out globally.
@@ -94,6 +151,10 @@ class _SharedHttpClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    // Applied before the permit so a slow token refresh does not hold one of
+    // the few concurrent artwork slots.
+    final auth = await ArtworkAuthorizationRegistry.headersFor(request.url);
+    if (auth.isNotEmpty) request.headers.addAll(auth);
     final permit = await _artworkRequestLimiter.acquire();
     _permits.add(permit);
     try {
