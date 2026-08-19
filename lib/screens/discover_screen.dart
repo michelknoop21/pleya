@@ -756,9 +756,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           _heroController.nextPage(duration: tokens(context).slow, curve: Curves.easeInOut);
         }
       },
+      // Enter follows the click. The element announces itself as "View
+      // details", and an element that opens on click but plays on Enter is the
+      // same invisible split that caused the bug. Playback stays one Tab away
+      // on the pill itself.
       onSelect: () {
         if (_latestMovies.isNotEmpty && _currentHeroIndex < _latestMovies.length) {
-          navigateToMediaItem(context, _latestMovies[_currentHeroIndex], playDirectly: true);
+          navigateToMediaItemDetails(context, _latestMovies[_currentHeroIndex]);
         }
       },
     )(node, event);
@@ -2058,12 +2062,21 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return Semantics(
       label: heroLabel,
       button: true,
-      hint: t.accessibility.tapToPlay,
+      hint: t.mediaMenu.viewDetails,
       child: ClickableCursor(
         child: GestureDetector(
+          // The billboard opens the title; the Afspelen pill on top of it is the
+          // only thing that starts playback. It used to be one big hidden play
+          // button, so any stray click — a menu label missed by a few pixels, a
+          // click that woke the window — started a film.
+          //
+          // Not `navigateToMediaItem(playDirectly: false)`: its episode branch
+          // still hands off to the player while `episodeAction` is `play`, and
+          // the hero shows episodes. `navigateToMediaItemDetails` resolves an
+          // episode to its show with the right season and episode selected.
           onTap: () {
-            appLogger.d('Activating hero item: ${heroItem.title}');
-            navigateToMediaItem(context, heroItem, playDirectly: true);
+            appLogger.d('Activating hero item (details): ${heroItem.title}');
+            navigateToMediaItemDetails(context, heroItem);
           },
           child: Stack(
             fit: StackFit.expand,

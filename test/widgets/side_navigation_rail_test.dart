@@ -4,6 +4,7 @@ import 'package:pleya/media/ids.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
@@ -30,6 +31,28 @@ const _testTokens = MonoTokens(
   fast: Duration(milliseconds: 1),
   normal: Duration(milliseconds: 1),
   slow: Duration(milliseconds: 1),
+  bg: Colors.black,
+  surface: Colors.black,
+  surfaceElevated: Color(0xFF2F2F2F),
+  outline: Colors.white24,
+  text: Colors.white,
+  textMuted: Colors.white70,
+  isLight: false,
+  accent: Color(0xFFF42B1F),
+  accentAlt: Color(0xFFFFB020),
+  splashFactory: NoSplash.splashFactory,
+);
+
+/// [_testTokens] with real motion. The 1ms durations above make the expand and
+/// collapse animations instantaneous, and the pointer-ownership tests below are
+/// entirely about what happens *during* those 200ms.
+const _motionTokens = MonoTokens(
+  radiusSm: 8,
+  radiusMd: 12,
+  space: 8,
+  fast: Duration(milliseconds: 120),
+  normal: Duration(milliseconds: 200),
+  slow: Duration(milliseconds: 300),
   bg: Colors.black,
   surface: Colors.black,
   surfaceElevated: Color(0xFF2F2F2F),
@@ -74,6 +97,100 @@ BoxDecoration? _railItemDecoration(WidgetTester tester, Finder item) {
 bool _hasOpaqueSurface(WidgetTester tester) {
   return find.byWidgetPredicate((w) => w is ColoredBox && w.color == _testTokens.surface).evaluate().isNotEmpty;
 }
+
+/// The rail over a full-bleed tap recorder, in the same order as
+/// [main_screen.dart]'s Stack: content first, rail on top at left: 0. Returns a
+/// reader for the number of taps that reached the content underneath.
+///
+/// The contract these tests hold is not "the box is N wide" but "one interaction
+/// with the navigation never does something in the content underneath", so they
+/// tap coordinates and count what arrives, and never read the rail's private
+/// state or its hit-test flags.
+Future<int Function()> _pumpRailOverContent(
+  WidgetTester tester, {
+  MonoTokens themeTokens = _testTokens,
+  List<NavigationTabId>? selected,
+}) async {
+  tester.view.physicalSize = const Size(1280, 720);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+
+  await SettingsService.getInstance();
+
+  final librariesProvider = LibrariesProvider();
+  addTearDown(librariesProvider.dispose);
+  final hiddenLibrariesProvider = HiddenLibrariesProvider();
+  await hiddenLibrariesProvider.ensureInitialized();
+  addTearDown(hiddenLibrariesProvider.dispose);
+  final manager = MultiServerManager();
+  final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+  addTearDown(multiServerProvider.dispose);
+
+  var contentTaps = 0;
+
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<LibrariesProvider>.value(value: librariesProvider),
+          ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibrariesProvider),
+          ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(extensions: [themeTokens]),
+          home: Scaffold(
+            body: Stack(
+              children: [
+                // Stand-in for the discover billboard: opaque and full bleed,
+                // exactly like the hero's GestureDetector.
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => contentTaps++,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  left: 0,
+                  child: SideNavigationRail(
+                    selectedTab: NavigationTabId.discover,
+                    onDestinationSelected: (tab) => selected?.add(tab),
+                    onLibrarySelected: (_) {},
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return () => contentTaps;
+}
+
+/// Width of the panel as painted right now.
+double _railPaintedWidth(WidgetTester tester) => tester
+    .getSize(find.descendant(of: find.byType(SideNavigationRail), matching: find.byType(AnimatedContainer)).first)
+    .width;
+
+/// Enters from a corner far outside the band, so [target] produces a real
+/// pointer-enter rather than an ambiguous first position.
+Future<TestGesture> _hoverAt(WidgetTester tester, Offset target) async {
+  final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+  addTearDown(gesture.removePointer);
+  await gesture.addPointer(location: const Offset(1279, 719));
+  await tester.pump();
+  await gesture.moveTo(target);
+  await tester.pump();
+  return gesture;
+}
+
+/// A row that is always present, whatever the server config.
+double _searchRowY(WidgetTester tester) =>
+    tester.getCenter(find.widgetWithText(NavigationRailItem, t.common.search)).dy;
 
 Future<void> _pumpBasicRail(
   WidgetTester tester, {
@@ -520,5 +637,231 @@ void main() {
       await _press(tester, LogicalKeyboardKey.enter);
       expect(selectedLibraryKey, isNot(hiddenServerALibrary.globalKey));
     }
+  });
+
+  group('pointer ownership: the band between the collapsed and expanded rail', () {
+    // x=150 sits in the strip that is menu when the rail is open and content
+    // when it is shut. Who owns it must follow from what the user can see, not
+    // from hover history or from where a 200ms animation happens to be.
+    const bandX = 150.0;
+    // Outside what the panel paints 60ms into a 200ms easeOutCubic (~172px),
+    // so the mid-animation probes are not vacuous.
+    const probeX = SideNavigationRailState.expandedWidth - 10;
+
+    testWidgets('a tap on the collapsed rail never reaches the content underneath', (tester) async {
+      final selected = <NavigationTabId>[];
+      final contentTaps = await _pumpRailOverContent(tester, selected: selected);
+      expect(_railPaintedWidth(tester), SideNavigationRailState.collapsedWidth);
+
+      await tester.tapAt(Offset(40, _searchRowY(tester)));
+      await tester.pumpAndSettle();
+
+      expect(contentTaps(), 0);
+      expect(selected, isEmpty, reason: 'the first touch opens the rail, it does not navigate');
+      expect(_railPaintedWidth(tester), SideNavigationRailState.expandedWidth);
+    });
+
+    testWidgets('a pointer entering the band opens the rail and the tap activates the menu item', (tester) async {
+      final selected = <NavigationTabId>[];
+      final contentTaps = await _pumpRailOverContent(tester, selected: selected);
+      expect(_railPaintedWidth(tester), SideNavigationRailState.collapsedWidth, reason: 'at rest x=$bandX is content');
+
+      await _hoverAt(tester, Offset(bandX, _searchRowY(tester)));
+      await tester.pumpAndSettle();
+      expect(_railPaintedWidth(tester), SideNavigationRailState.expandedWidth);
+
+      await tester.tapAt(Offset(bandX, _searchRowY(tester)));
+      await tester.pumpAndSettle();
+
+      expect(selected, [NavigationTabId.search]);
+      expect(contentTaps(), 0);
+    });
+
+    testWidgets('a tap while the rail is opening never reaches the content underneath', (tester) async {
+      final contentTaps = await _pumpRailOverContent(tester, themeTokens: _motionTokens);
+      final y = _searchRowY(tester);
+
+      await _hoverAt(tester, Offset(40, y));
+      await tester.pump(const Duration(milliseconds: 60));
+
+      final painted = _railPaintedWidth(tester);
+      expect(painted, greaterThan(SideNavigationRailState.collapsedWidth));
+      expect(painted, lessThan(probeX), reason: 'the probe must sit outside what the panel paints');
+
+      await tester.tapAt(Offset(probeX, y));
+      await tester.pumpAndSettle();
+
+      expect(contentTaps(), 0);
+    });
+
+    testWidgets('a row stays live while the rail is closing over it', (tester) async {
+      // Race 2: the collapse timer flipped the rail to "collapsed" instantly and
+      // killed every row, while the panel stood at full width for another 200ms.
+      // A click on a plainly visible menu item then did nothing, or slipped past
+      // the shrinking edge into the content.
+      final selected = <NavigationTabId>[];
+      final contentTaps = await _pumpRailOverContent(tester, themeTokens: _motionTokens, selected: selected);
+      final y = _searchRowY(tester);
+
+      final gesture = await _hoverAt(tester, Offset(40, y));
+      await tester.pumpAndSettle();
+      expect(_railPaintedWidth(tester), SideNavigationRailState.expandedWidth);
+
+      await gesture.moveTo(Offset(900, y));
+      await tester.pump(const Duration(milliseconds: 150)); // the collapse delay
+      await tester.pump(const Duration(milliseconds: 60)); // 60 of the 200ms collapse
+
+      final painted = _railPaintedWidth(tester);
+      expect(painted, greaterThan(SideNavigationRailState.collapsedWidth));
+      expect(painted, lessThan(SideNavigationRailState.expandedWidth));
+
+      // A row as it stands right now, well inside what the panel still paints,
+      // so this is something the user can still see.
+      final row = find.byType(NavigationRailItem).at(1);
+      final rowRect = tester.getRect(row);
+      await tester.tapAt(Offset(painted - 30, rowRect.center.dy));
+      await tester.pumpAndSettle();
+
+      expect(selected, isNotEmpty, reason: 'a visible row is a live row');
+      expect(contentTaps(), 0);
+    });
+
+    testWidgets('a settled collapsed rail leaves the band clickable', (tester) async {
+      // The guard against over-fixing: no permanent dead zone over the content.
+      // tapAt synthesizes a touch pointer, so no hover precedes it — the rail is
+      // shut and x=$bandX is genuinely content.
+      final contentTaps = await _pumpRailOverContent(tester);
+      expect(_railPaintedWidth(tester), SideNavigationRailState.collapsedWidth);
+
+      await tester.tapAt(const Offset(bandX, 300));
+      await tester.pumpAndSettle();
+
+      expect(contentTaps(), 1);
+      expect(_railPaintedWidth(tester), SideNavigationRailState.collapsedWidth);
+    });
+  });
+
+  group('remote ownership: a sidebar Select never leaks into the content', () {
+    // On tvOS the engine hands KeyDown and KeyUp to Flutter back to back, and
+    // the rail moves focus into the content inside its own KeyDown handler
+    // (main_screen's onDestinationSelected calls _focusContent). The paired
+    // KeyUp therefore arrives at whatever the content just focused. It must not
+    // count as an activation there.
+    Future<({List<NavigationTabId> selected, List<String> contentSelects})> pumpRailAndContent(
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await SettingsService.getInstance();
+      final librariesProvider = LibrariesProvider();
+      addTearDown(librariesProvider.dispose);
+      final hiddenLibrariesProvider = HiddenLibrariesProvider();
+      await hiddenLibrariesProvider.ensureInitialized();
+      addTearDown(hiddenLibrariesProvider.dispose);
+      final manager = MultiServerManager();
+      final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(multiServerProvider.dispose);
+
+      final selected = <NavigationTabId>[];
+      final contentSelects = <String>[];
+      final contentNode = FocusNode(debugLabel: 'content');
+      addTearDown(contentNode.dispose);
+      final railNode = FocusNode(debugLabel: 'railItem');
+      addTearDown(railNode.dispose);
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<LibrariesProvider>.value(value: librariesProvider),
+              ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibrariesProvider),
+              ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
+            ],
+            child: MaterialApp(
+              theme: ThemeData(extensions: const [_testTokens]),
+              home: Scaffold(
+                body: Row(
+                  children: [
+                    SideNavigationRail(
+                      selectedTab: NavigationTabId.discover,
+                      isSidebarFocused: true,
+                      onDestinationSelected: (tab) {
+                        selected.add(tab);
+                        // Exactly what main_screen does: hand focus to the
+                        // content in the same gesture.
+                        contentNode.requestFocus();
+                      },
+                      onLibrarySelected: (_) {},
+                    ),
+                    Expanded(
+                      // Stands in for the hero's play pill: a real
+                      // FocusableWrapper, the same one the TV hero uses.
+                      child: FocusableWrapper(
+                        focusNode: contentNode,
+                        onSelect: () => contentSelects.add('play'),
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final item = find.widgetWithText(NavigationRailItem, t.common.search);
+      tester.widget<NavigationRailItem>(item).focusNode.requestFocus();
+      await tester.pumpAndSettle();
+
+      return (selected: selected, contentSelects: contentSelects);
+    }
+
+    testWidgets('Select on a focused sidebar item runs the sidebar action only', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+
+      final recorded = await pumpRailAndContent(tester);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      expect(recorded.selected, [NavigationTabId.search]);
+      expect(recorded.contentSelects, isEmpty);
+    });
+
+    testWidgets('the key-up of that same press is not an activation in the content', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+
+      final recorded = await pumpRailAndContent(tester);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      // Focus is in the content now; the release of the press that moved it
+      // must not act there.
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      expect(recorded.selected, [NavigationTabId.search], reason: 'the sidebar acted once');
+      expect(recorded.contentSelects, isEmpty, reason: 'one press, one action');
+    });
+
+    testWidgets('moving focus from the sidebar into the content activates nothing', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+
+      final recorded = await pumpRailAndContent(tester);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+
+      expect(recorded.contentSelects, isEmpty);
+      expect(recorded.selected, isEmpty);
+    });
   });
 }
