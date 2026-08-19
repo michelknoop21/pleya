@@ -1,6 +1,6 @@
 # STATUS · Pleya
 
-_Laatst bijgewerkt: 2026-08-19 (`main` = `8e84f3a`; `feat/pleyaserver` loopt vooruit met het Pleya Server-werk. Er loopt nog steeds een tweede sessie met ongecommit werk in de hoofdmap. App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`)_
+_Laatst bijgewerkt: 2026-08-19 (`main` = `8e84f3a`; `feat/pleyaserver` loopt vooruit met het Pleya Server-werk. Er loopt nog steeds een tweede sessie met ongecommit werk in de hoofdmap; het PS-3W-werk in deze worktree is inmiddels gecommit. App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`)_
 
 ## Waar was ik
 
@@ -219,12 +219,17 @@ Het Atmos-spoor staat er nog precies zo bij als gisteren: een iOS-log van build 
 
 ## Volgende stap
 
-**PS-2 bouwen: migraties, bootstrap-auth, catalogus en scanner, en ffprobe op de 2601 echte
-videobestanden.** Poort 1 en poort 2 zijn dicht, dus PS-2 implementeert een contract dat vastligt.
-Geen streamingcode naar voren trekken: het streampad is PS-4, en poort 4 staat daar nog open. Legt
-PS-2 een echt probleem in het protocol bloot, dan is dat een protocolwijziging met een
-compatibiliteitstoets langs de zes regels uit hoofdstuk 3, niet een aanpassing in `openapi.yaml`
-omdat het zo uitkomt.
+**PS-2 is gebouwd en uitgerold; wat er nog van openstaat is de Roadmap Drift Check.** Daar hoort
+boekhouding bij die nu blijft liggen: G5, G9 en G11 kregen op 18 augustus een fase toegewezen in
+`docs/pleya-server-ps1-scope-deviation.md`, maar staan in hoofdstuk 5 van de replacement matrix nog
+op `Roadmap gap`. Bij het sluiten van de fase krijgen ze hun Phase ID, verdwijnen ze uit de gattenlijst
+in hoofdstuk 7, en gaat de telling in 9.1 van 37 naar 34 gaps en van 24 naar 21 blockers zonder fase.
+In diezelfde ronde hoort de zin onder 9.1 weg dat er nog geen regel servercode geschreven is.
+
+Wat er niet mag gebeuren zolang PS-4 niet begonnen is: geen streamingcode naar voren trekken, want
+het streampad is PS-4 en poort 4 staat daar nog open. Legt implementatiewerk een echt probleem in het
+protocol bloot, dan is dat een protocolwijziging met een compatibiliteitstoets langs de zes regels
+uit hoofdstuk 3, niet een aanpassing in `openapi.yaml` omdat het zo uitkomt.
 
 **Twee poorten blijven open, en ze horen dicht vóór PS-4.** Het conflictmodel voor kijkstatus en de
 byte-validator achter de `ETag`-belofte. Ze raken PS-2 niet en hoeven dus nu niet beantwoord te
@@ -335,6 +340,12 @@ xcrun devicectl device process launch --console --terminate-existing \
 
 ## Recente sessies
 
+### 2026-08-19
+- G11 (edities) getoetst na een voorstel om er een aparte roadmap deviation voor te maken. Dat voorstel is niet nodig: `docs/pleya-server-ps1-scope-deviation.md` gaf G11 op 18 augustus al aan PS-2, begrensd tot de `{edition-...}`-conventie, en de implementatie blijft binnen die grens.
+- Bewijs: `0002_catalog.sql:97` draagt de kolom, `nameparse.go:38` leest de marker, `scanner.go:562` en `:631` geven hem door aan `ResolveVersion`. `TestParseMovie` en `TestMultipleVersionsAndEditions` slagen, die laatste tegen een echte Postgres met ffprobe. Protocolimpact is nul: `edition` staat al in het bevroren `openapi.yaml` en in de fixtures.
+- Besluit: de matrix blijft ongewijzigd tot PS-2 sluit, want onderhoudsregel 1 verspringt de status bij het afsluiten van een fase en PS-2 loopt nog. Geen bestand gewijzigd, geen commit.
+- `docs/CHANGELOG.md` liep tot 3 juli terug en stond op 740 regels. Alles van vóór 10 augustus staat nu in [docs/archive/CHANGELOG-tot-2026-08-06.md](docs/archive/CHANGELOG-tot-2026-08-06.md); het hoofdbestand houdt 569 regels over.
+
 ### 2026-08-18
 - Architectuurontwerp voor Pleya Server opgeleverd als [docs/pleya-server-architecture.md](docs/pleya-server-architecture.md): 24 hoofdstukken, een roadmap van dertien fasen met per fase een expliciete scope en drift check, en acht voorgestelde DEC-besluiten (DEC-030 tot en met DEC-037). Document-only, geen commit, geen regel code.
 - Het onderzoek keerde de opdracht om. De neutrale laag bestaat al en draagt vier backends; het gat zit in de playbackbeslissing, waar de client op elk toestel dezelfde hardgecodeerde profielen stuurt. `DeviceCapabilities` en `PlaybackPlan` staan daarom vóór metadata in de roadmap.
@@ -365,10 +376,6 @@ xcrun devicectl device process launch --console --terminate-existing \
 - Mijn Pleya en de kijklijst gebouwd, vijftien commits van `310ace8` tot `11ec313`: datalaag met multi-membership, Plex-cloudclient op een gemeten contract, beschikbaarheid met eerlijke dekking, offline-snapshot, navigatie, scherm en schrijfacties.
 - Het API-contract eerst gemeten en gesaniteerd vastgelegd in `test/fixtures/watchlist/`; vier planaannames sneuvelden daarop.
 
-### 2026-08-15
-- Het tvOS-systeemtoetsenbord reageert weer op de Siri Remote (`6bab0ca`, build 219, op het toestel bevestigd). Oorzaak uit de engine-binary bewezen, fix via een override van `tvosHandlePressFromUIEvent:`. Zie [DEC-019](docs/DECISIONS.md#dec-019); de gotcha staat in `CLAUDE.md` zodat dit niet opnieuw verloren gaat.
-- `main` en `test` weer gelijkgetrokken (`b3dc5b2`), inclusief twee commits die alleen op `test` stonden: de hero die verdween na het zoektoetsenbord, en de watch-state-sync waarbij een tweede apparaat wint van een verouderde lokale positie. 2935 tests groen.
-
-Ouder dan dit (2026-08-14 en eerder): zie [docs/CHANGELOG.md](docs/CHANGELOG.md).
+Ouder dan dit (2026-08-15 en eerder): zie [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 Zie [docs/DECISIONS.md](docs/DECISIONS.md) voor keuzes, [docs/CHANGELOG.md](docs/CHANGELOG.md) voor details en [docs/PLEYA_SHARE.md](docs/PLEYA_SHARE.md) voor de share-architectuur.
