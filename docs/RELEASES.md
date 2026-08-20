@@ -18,7 +18,11 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### New
+- nieuw Notice-systeem als vervanging voor rauwe SnackBars
+
+### Fixed
+- vraag hero-artwork aan op de ratio van de bron, niet de container
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 233 · 19 August 2026
