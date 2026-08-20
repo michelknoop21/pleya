@@ -128,7 +128,11 @@ HomeHeroArtGeometry homeHeroArtGeometry({
     width: screenWidth,
     height: height,
     requestHeight: requestHeight,
-    fadeHeight: math.min(height * 0.35, 180.0),
+    // A long fade: the sharp island is meant to read as a quiet strip, not a
+    // billboard that happens to end early, and the clear-logo needs a calm
+    // dark zone under (or partially over) the fade to land in without
+    // competing with the subject above it.
+    fadeHeight: math.min(height * 0.5, 200.0),
     coversHero: false,
   );
 }

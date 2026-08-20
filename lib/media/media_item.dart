@@ -663,25 +663,29 @@ sealed class MediaItem with _$MediaItem {
 
   /// Best billboard art, or null when the item has no artwork at all.
   ///
-  /// [containerAspectRatio] is the width/height of the box the art fills. On a
-  /// narrow (portrait) box a 16:9 backdrop must scale to the box height and
-  /// loses most of its width to a centre crop, slicing faces off the sides.
-  /// A square background art frames far better there and — unlike a poster —
-  /// carries no baked-in title, so it stands in as a real backdrop (rendered
-  /// sharp, not blurred). Wide boxes keep the 16:9 backdrop as before.
+  /// [containerAspectRatio] is the width/height of the box the art fills. A
+  /// 16:9 backdrop always wins when one exists, on any box: the layout (see
+  /// `homeHeroArtGeometry`) shrinks the frame to its own 16:9 ratio on a
+  /// narrow box instead of stretching the backdrop to fill it, so there is no
+  /// centre-crop to avoid and no reason to prefer square art over a sharp,
+  /// smaller widescreen strip. Square background art is a second choice, used
+  /// only when no backdrop exists at all — it carries no baked-in title, so it
+  /// still renders sharp rather than blurred. Wide boxes were never affected
+  /// by [containerAspectRatio] here in the first place.
   BillboardArt? billboardArt({double? containerAspectRatio}) {
-    if (containerAspectRatio != null && containerAspectRatio < billboardNarrowAspectRatioThreshold) {
-      final square = backgroundSquarePath;
-      if (square != null && square.isNotEmpty) {
-        return BillboardArt(path: square, kind: BillboardArtKind.square);
-      }
-    }
     final backdrops = _dedupedPaths(switch (kind) {
       MediaKind.episode => [grandparentArtPath, artPath],
       _ => [artPath],
     });
     if (backdrops.isNotEmpty) {
       return BillboardArt(path: backdrops.first, kind: BillboardArtKind.widescreen);
+    }
+
+    if (containerAspectRatio != null && containerAspectRatio < billboardNarrowAspectRatioThreshold) {
+      final square = backgroundSquarePath;
+      if (square != null && square.isNotEmpty) {
+        return BillboardArt(path: square, kind: BillboardArtKind.square);
+      }
     }
 
     // No 16:9 frame exists. Square and poster art carry their own baked-in

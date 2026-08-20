@@ -1,3 +1,4 @@
+import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/ids.dart';
@@ -30,6 +31,7 @@ void main() {
     required HomeHeroArtGeometry geometry,
     required double screenWidth,
     required double heroHeight,
+    Duration settleAfter = const Duration(milliseconds: 900), // past the 800ms fade/zoom entrance
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -42,7 +44,7 @@ void main() {
         ),
       ),
     );
-    await tester.pump(const Duration(milliseconds: 900)); // past the 800ms fade/zoom entrance
+    await tester.pump(settleAfter);
   }
 
   testWidgets('a narrow square frame sits at the top, never wider than the screen, DPR 2', (tester) async {
@@ -156,5 +158,124 @@ void main() {
     expect(find.byKey(HomeHeroArtwork.artworkKey), findsNothing);
     expect(client.requests, isEmpty);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('an island frame draws crop-free with fitWidth; a full-bleed frame keeps cover', (tester) async {
+    const screenWidth = 402.0, heroHeight = 572.0;
+    const island = BillboardArt(path: '/backdrop', kind: BillboardArtKind.widescreen);
+    final islandGeometry = homeHeroArtGeometry(screenWidth: screenWidth, heroHeight: heroHeight, kind: island.kind);
+    final islandClient = _RecordingClient();
+
+    await pumpArtwork(
+      tester,
+      client: islandClient,
+      art: island,
+      geometry: islandGeometry,
+      screenWidth: screenWidth,
+      heroHeight: heroHeight,
+    );
+
+    final islandImage = tester.widget<CachedNetworkImage>(find.byType(CachedNetworkImage));
+    expect(islandImage.fit, BoxFit.fitWidth, reason: 'the island frame is already sized to its own source ratio');
+    expect(tester.takeException(), isNull);
+
+    const fullBleed = BillboardArt(path: '/backdrop', kind: BillboardArtKind.widescreen);
+    const wideWidth = 1280.0, wideHeight = 720.0;
+    final fullBleedGeometry = homeHeroArtGeometry(screenWidth: wideWidth, heroHeight: wideHeight, kind: fullBleed.kind);
+    final fullBleedClient = _RecordingClient();
+
+    await pumpArtwork(
+      tester,
+      client: fullBleedClient,
+      art: fullBleed,
+      geometry: fullBleedGeometry,
+      screenWidth: wideWidth,
+      heroHeight: wideHeight,
+    );
+
+    final fullBleedImage = tester.widget<CachedNetworkImage>(find.byType(CachedNetworkImage));
+    expect(fullBleedImage.fit, BoxFit.cover, reason: 'the wide box still needs cover to fill a mismatched ratio');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('an island frame never gets the 1.1 zoom, mid-animation or settled', (tester) async {
+    const screenWidth = 402.0, heroHeight = 572.0;
+    const art = BillboardArt(path: '/backdrop', kind: BillboardArtKind.widescreen);
+    final geometry = homeHeroArtGeometry(screenWidth: screenWidth, heroHeight: heroHeight, kind: art.kind);
+    final client = _RecordingClient();
+
+    // Mid-entrance (well before the 800ms fade/zoom finishes): a full-bleed
+    // frame would still be scaled up here, so this is the moment a stray
+    // zoom on the island frame would actually show up as an oversized rect.
+    await pumpArtwork(
+      tester,
+      client: client,
+      art: art,
+      geometry: geometry,
+      screenWidth: screenWidth,
+      heroHeight: heroHeight,
+      settleAfter: const Duration(milliseconds: 200),
+    );
+
+    final midRect = tester.getRect(find.byKey(HomeHeroArtwork.frameKey));
+    expect(midRect.width, closeTo(geometry.width, 0.5));
+    expect(midRect.height, closeTo(geometry.height, 0.5));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the fade begins transparent and ends in the scaffold background, flush against the frame', (
+    tester,
+  ) async {
+    const screenWidth = 402.0, heroHeight = 572.0;
+    const art = BillboardArt(path: '/backdrop', kind: BillboardArtKind.widescreen);
+    final geometry = homeHeroArtGeometry(screenWidth: screenWidth, heroHeight: heroHeight, kind: art.kind);
+    final client = _RecordingClient();
+
+    await pumpArtwork(
+      tester,
+      client: client,
+      art: art,
+      geometry: geometry,
+      screenWidth: screenWidth,
+      heroHeight: heroHeight,
+    );
+
+    final frameRect = tester.getRect(find.byKey(HomeHeroArtwork.frameKey));
+    final fadeRect = tester.getRect(find.byKey(HomeHeroArtwork.fadeKey));
+
+    // No gap and no overshoot: the fade's top sits exactly at the frame's own
+    // bottom minus fadeHeight, and its bottom sits exactly at the frame's
+    // bottom — never in the empty hero space below it.
+    expect(fadeRect.top, closeTo(frameRect.bottom - geometry.fadeHeight, 0.5));
+    expect(fadeRect.bottom, closeTo(frameRect.bottom, 0.5));
+
+    final decoratedBox = tester.widget<DecoratedBox>(
+      find.descendant(of: find.byKey(HomeHeroArtwork.fadeKey), matching: find.byType(DecoratedBox)),
+    );
+    final gradient = (decoratedBox.decoration as BoxDecoration).gradient! as LinearGradient;
+    final scaffoldBg = Theme.of(tester.element(find.byKey(HomeHeroArtwork.fadeKey))).scaffoldBackgroundColor;
+
+    expect(gradient.colors.first, Colors.transparent, reason: 'the fade starts invisible, right over the artwork');
+    expect(gradient.colors.last, scaffoldBg, reason: 'the fade ends exactly in the scaffold background, no hard edge');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('353, 402, and 430pt wide island frames render without overflow', (tester) async {
+    for (final (width, heroHeight) in [(353.0, 500.0), (402.0, 572.0), (430.0, 650.0)]) {
+      const art = BillboardArt(path: '/backdrop', kind: BillboardArtKind.widescreen);
+      final geometry = homeHeroArtGeometry(screenWidth: width, heroHeight: heroHeight, kind: art.kind);
+      final client = _RecordingClient();
+
+      await pumpArtwork(
+        tester,
+        client: client,
+        art: art,
+        geometry: geometry,
+        screenWidth: width,
+        heroHeight: heroHeight,
+      );
+
+      expect(tester.takeException(), isNull, reason: 'w=$width h=$heroHeight');
+    }
   });
 }

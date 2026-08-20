@@ -2032,10 +2032,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     // built, so this layout only ever serves desktop/tablet/phone.
     final isLargeScreen = ScreenBreakpoints.isWideTabletOrLarger(screenWidth);
     final alignLeft = isLargeScreen;
-    // The billboard shows the 16:9 backdrop on a wide box; on a narrow (phone
-    // portrait) box it prefers the square background art, which crops far less
-    // horizontally. The title is drawn in app typography either way. Null only
-    // when the item has no artwork at all.
+    // The billboard shows the 16:9 backdrop whenever one exists — on a narrow
+    // (phone portrait) box the layout below shrinks the sharp frame to its
+    // own 16:9 ratio instead of stretching the backdrop across the full hero,
+    // so there's no centre-crop to dodge. Square background art is only used
+    // as a second choice when an item has no backdrop at all. The title is
+    // drawn in app typography either way. Null only when the item has no
+    // artwork at all.
     final billboardArt = heroItem.billboardArt(containerAspectRatio: screenWidth / heroHeight);
     final artGeometry = billboardArt == null
         ? null

@@ -164,14 +164,16 @@ void main() {
       expect(art?.shouldBlur, isFalse);
     });
 
-    test('a narrow box prefers the square backdrop, shown sharp not blurred', () {
+    test('a narrow box still prefers the 16:9 backdrop over square art', () {
       final movie = _movie(artPath: '/art', backgroundSquarePath: '/square');
 
-      // On a phone-portrait box the 16:9 backdrop centre-crops faces off the
-      // sides, so the square art (which carries no baked-in title) stands in as
-      // a real backdrop — sharp, not blurred.
+      // The billboard layout shrinks the sharp frame to its own 16:9 ratio on
+      // a narrow box instead of stretching the backdrop across the full hero
+      // (see `homeHeroArtGeometry`), so there is no centre-crop to dodge and
+      // no reason to prefer the square art here — a smaller, calmer backdrop
+      // beats a subject blown up to fill the box.
       final narrow = movie.billboardArt(containerAspectRatio: 0.78);
-      expect(narrow, const BillboardArt(path: '/square', kind: BillboardArtKind.square));
+      expect(narrow, const BillboardArt(path: '/art', kind: BillboardArtKind.widescreen));
       expect(narrow?.canRenderSharp, isTrue);
       expect(narrow?.shouldBlur, isFalse);
       // Wide box is unchanged: the 16:9 backdrop still wins.
@@ -179,6 +181,52 @@ void main() {
         movie.billboardArt(containerAspectRatio: 1.6),
         const BillboardArt(path: '/art', kind: BillboardArtKind.widescreen),
       );
+    });
+
+    test('a narrow box on an episode prefers the show backdrop over square art', () {
+      final episode = MediaItem(
+        id: 'e2',
+        backend: MediaBackend.plex,
+        kind: MediaKind.episode,
+        title: 'Episode',
+        grandparentTitle: 'Show',
+        grandparentArtPath: '/show-art',
+        artPath: '/episode-art',
+        backgroundSquarePath: '/square',
+        serverId: 's1',
+      );
+
+      expect(
+        episode.billboardArt(containerAspectRatio: 0.78),
+        const BillboardArt(path: '/show-art', kind: BillboardArtKind.widescreen),
+      );
+    });
+
+    test('a narrow box with no backdrop falls back to square art, shown sharp', () {
+      final square = _movie(backgroundSquarePath: '/square');
+
+      // No 16:9 frame exists at all, so square is the only sharp option left
+      // — it still renders sharp, not blurred, because it carries no
+      // baked-in title.
+      final narrow = square.billboardArt(containerAspectRatio: 0.78);
+      expect(narrow, const BillboardArt(path: '/square', kind: BillboardArtKind.square));
+      expect(narrow?.canRenderSharp, isTrue);
+      expect(narrow?.shouldBlur, isFalse);
+    });
+
+    test('a narrow box with only poster art keeps the blurred fallback', () {
+      final posterOnly = MediaItem(
+        id: 'm4',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Movie',
+        thumbPath: '/poster',
+        serverId: 's1',
+      );
+
+      final narrow = posterOnly.billboardArt(containerAspectRatio: 0.78);
+      expect(narrow, const BillboardArt(path: '/poster', kind: BillboardArtKind.fallback));
+      expect(narrow?.shouldBlur, isTrue);
     });
 
     test('a narrow box with no square art keeps the 16:9 backdrop', () {
@@ -199,6 +247,17 @@ void main() {
       final art = square.billboardArt();
       expect(art?.kind, BillboardArtKind.fallback);
       expect(art?.shouldBlur, isTrue);
+    });
+
+    test('billboardArt() without a container ratio is unaffected by the narrow-box source order', () {
+      // Regression pin for `_hasBillboardArt` (discover_screen.dart), which
+      // calls billboardArt() with no ratio to decide whether an item needs an
+      // art-enrichment fetch. That call must keep resolving to the backdrop
+      // exactly as before this change, on both platforms.
+      final movie = _movie(artPath: '/art', backgroundSquarePath: '/square');
+
+      expect(movie.billboardArt(), const BillboardArt(path: '/art', kind: BillboardArtKind.widescreen));
+      expect(movie.billboardArt()?.canRenderSharp, isTrue);
     });
 
     test('returns nothing when the item has no artwork at all', () {

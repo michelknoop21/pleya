@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_item.dart' show BillboardArtKind;
 import 'package:pleya/utils/home_hero_layout.dart';
@@ -119,6 +121,25 @@ void main() {
 
       expect(hero, greaterThan(500 - 60 - _episodeRail));
     });
+
+    test('total hero height is pinned at 353, 402, and 430pt wide', () {
+      // Regression guard: the iOS billboard source-order and fade changes
+      // must not shift `homeHeroHeight()` itself, nor the first rail's
+      // position under it. Each case is set up so `fill` (viewport minus the
+      // rail) is what wins, matching the (width, heroHeight) pairs already
+      // used by the art-geometry and artwork-widget tests below/in
+      // home_hero_artwork_test.dart, so all three suites agree on one shared
+      // envelope.
+      const cases = [
+        (width: 353.0, screenHeight: 767.0, chrome: 79.0, expected: 500.0),
+        (width: 402.0, screenHeight: 874.0, chrome: 114.0, expected: 572.0),
+        (width: 430.0, screenHeight: 935.0, chrome: 97.0, expected: 650.0),
+      ];
+      for (final c in cases) {
+        final hero = phoneHero(screenHeight: c.screenHeight, screenWidth: c.width, bottomChrome: c.chrome);
+        expect(hero, closeTo(c.expected, 0.01), reason: 'width=${c.width}');
+      }
+    });
   });
 
   group('desktop and tablet', () {
@@ -207,6 +228,36 @@ void main() {
             reason: 'kind=$kind w=$width h=$heroHeight',
           );
         }
+      }
+    });
+
+    test('the island frame envelope (width, height, coversHero) is pinned at 353, 402, and 430pt wide', () {
+      for (final (width, heroHeight) in phones) {
+        for (final kind in [BillboardArtKind.widescreen, BillboardArtKind.square]) {
+          final geometry = homeHeroArtGeometry(screenWidth: width, heroHeight: heroHeight, kind: kind);
+          expect(geometry.width, width, reason: 'kind=$kind w=$width h=$heroHeight');
+          expect(geometry.coversHero, isFalse, reason: 'kind=$kind w=$width h=$heroHeight');
+          final expectedHeight = kind == BillboardArtKind.square ? math.min(width, heroHeight) : width * 9 / 16;
+          expect(geometry.height, closeTo(expectedHeight, 0.01), reason: 'kind=$kind w=$width h=$heroHeight');
+        }
+      }
+    });
+
+    test('the fade is roughly half the frame height, always shorter than the frame', () {
+      for (final (width, heroHeight) in phones) {
+        final geometry = homeHeroArtGeometry(
+          screenWidth: width,
+          heroHeight: heroHeight,
+          kind: BillboardArtKind.widescreen,
+        );
+
+        expect(geometry.fadeHeight, greaterThan(0), reason: 'w=$width h=$heroHeight');
+        expect(geometry.fadeHeight, lessThan(geometry.height), reason: 'w=$width h=$heroHeight');
+        expect(
+          geometry.fadeHeight,
+          closeTo(math.min(geometry.height * 0.5, 200.0), 0.01),
+          reason: 'w=$width h=$heroHeight',
+        );
       }
     });
 

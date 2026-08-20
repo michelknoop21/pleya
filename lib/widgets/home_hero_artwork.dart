@@ -90,7 +90,14 @@ class HomeHeroArtwork extends StatelessWidget {
                       imageUrl: imageUrl,
                       cacheKey: artworkStorageKey(imageUrl),
                       cacheManager: PlexImageCacheManager.instance,
-                      fit: BoxFit.cover,
+                      // A full-bleed frame (`coversHero`) fills a box with a
+                      // different ratio than the source, so it still needs
+                      // `cover`. The island frame is already sized to the
+                      // source's own ratio (see `homeHeroArtGeometry`), so
+                      // `fitWidth` there is crop-free rather than a no-op —
+                      // `cover` would still centre-crop a source that isn't
+                      // exactly 16:9.
+                      fit: geometry.coversHero ? BoxFit.cover : BoxFit.fitWidth,
                       alignment: Alignment.topCenter,
                       memCacheHeight: memHeight,
                       placeholder: (context, url) =>
@@ -103,10 +110,17 @@ class HomeHeroArtwork extends StatelessWidget {
                       key: HomeHeroArtwork.frameKey,
                       width: geometry.width,
                       height: geometry.height,
-                      child: blurArtwork(
-                        art.shouldBlur
-                            ? ImageFiltered(imageFilter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28), child: image)
-                            : image,
+                      // Backstop for `fitWidth`: if the source isn't exactly
+                      // 16:9, `fitWidth` can letterbox inside this frame. That
+                      // gap must read as the scaffold background continuing,
+                      // never as a hard image edge or a black sliver.
+                      child: ColoredBox(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        child: blurArtwork(
+                          art.shouldBlur
+                              ? ImageFiltered(imageFilter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28), child: image)
+                              : image,
+                        ),
                       ),
                     );
                   },
