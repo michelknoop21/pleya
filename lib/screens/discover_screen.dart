@@ -2,7 +2,6 @@ import 'dart:async';
 import '../media/ids.dart';
 import 'dart:io' show Platform;
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HardwareKeyboard, LogicalKeyboardKey;
@@ -26,6 +25,7 @@ import '../media/media_server_client.dart';
 import '../media/media_hub.dart';
 import '../utils/media_image_helper.dart';
 import '../widgets/optimized_media_image.dart' show blurArtwork;
+import '../widgets/home_hero_artwork.dart';
 import '../providers/discover_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/home_layout_provider.dart';
@@ -112,10 +112,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   bool get _hasMoreContinueWatching => _discover.hasMoreContinueWatching;
   bool get _isLoading => _discover.isLoading;
   bool get _areHubsLoading => _discover.areHubsLoading;
-  String? get _errorMessage {
-    final raw = _discover.errorMessage;
-    return raw == null ? null : t.errors.failedToLoad(context: t.discover.title, error: raw);
-  }
+  String? get _errorMessage => _discover.errorMessage;
 
   bool _switchingProfile = false;
   final PageController _heroController = PageController();
@@ -657,7 +654,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // a real 16:9 backdrop? `backgroundSquarePath` counts as art but *not* as a
   // backdrop, so counting it here would skip exactly the items that render as
   // a blurred stand-in.
-  bool _hasBillboardArt(MediaItem item) => item.billboardArt()?.isBackdrop == true;
+  bool _hasBillboardArt(MediaItem item) => item.billboardArt()?.canRenderSharp == true;
 
   Future<void> _enrichSpotlightArt(MediaItem item) async {
     final key = item.globalKey;
@@ -2040,10 +2037,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     // horizontally. The title is drawn in app typography either way. Null only
     // when the item has no artwork at all.
     final billboardArt = heroItem.billboardArt(containerAspectRatio: screenWidth / heroHeight);
+    final artGeometry = billboardArt == null
+        ? null
+        : homeHeroArtGeometry(screenWidth: screenWidth, heroHeight: heroHeight, kind: billboardArt.kind);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    const heroLogoWidth = 400.0;
-    const heroLogoHeight = 120.0;
+    final heroLogoMetrics = homeHeroLogoConstraints(screenWidth: screenWidth, isLargeScreen: isLargeScreen);
+    final heroLogoWidth = heroLogoMetrics.width;
+    final heroLogoHeight = heroLogoMetrics.height;
     // No ad-hoc glow/shadow on the title: the scrim gradient already provides
     // contrast against the artwork.
     final heroTitleStyle = theme.textTheme.displaySmall?.copyWith(color: colorScheme.onSurface, fontWeight: .bold);
@@ -2083,95 +2084,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             clipBehavior: Clip.none,
             children: [
               // Background Image with fade/zoom animation and parallax
-              if (billboardArt != null)
-                ClipRect(
-                  child: AnimatedBuilder(
-                    animation: _scrollController,
-                    builder: (context, child) {
-                      final scrollOffset = _scrollController.hasClients ? _scrollController.offset : 0.0;
-                      return Transform.translate(offset: Offset(0, scrollOffset * 0.3), child: child);
-                    },
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      duration: const Duration(milliseconds: 800),
-                      curve: Curves.easeOut,
-                      builder: (context, value, child) {
-                        return Transform.scale(
-                          scale: 1.0 + (0.1 * (1 - value)),
-                          child: Opacity(opacity: value, child: child),
-                        );
-                      },
-                      child: Builder(
-                        builder: (context) {
-                          // heroClient resolves to the actual server's client
-                          // (Plex or Jellyfin) so each backend's transcoder
-                          // builds sized URLs.
-                          final size = MediaQuery.sizeOf(context);
-                          final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
-                          // Effective art height: the full 16:9 frame, floored
-                          // at the box height so a tall box never upscales a
-                          // too-short decode. Drives both the fetch and the
-                          // decode budget so a width-bound cover isn't upscaled
-                          // from a short decode. Match screenWidth (used by the
-                          // mem-cache displayWidth) so request, decode budget,
-                          // and box width stay aligned even if content is ever
-                          // narrower than the window.
-                          final artHeight = (screenWidth * 9 / 16).clamp(heroHeight, double.infinity).toDouble();
-                          final imageUrl = MediaImageHelper.getOptimizedImageUrl(
-                            client: heroClient,
-                            thumbPath: billboardArt.path,
-                            maxWidth: size.width,
-                            // Plex crops server-side (minSize=1) from the CENTER,
-                            // so a box-shaped request bakes in a centered crop
-                            // that lops heads off the top before Flutter's
-                            // Alignment.topCenter can act. Request the full 16:9
-                            // frame on wide (desktop/TV) billboards so the client
-                            // top-anchors the crop — but never below the box
-                            // height, or a tall (mobile portrait) billboard would
-                            // upscale a too-short image and blur.
-                            maxHeight: artHeight,
-                            devicePixelRatio: dpr,
-                            imageType: ImageType.art,
-                          );
-
-                          final (_, memHeight) = MediaImageHelper.getMemCacheDimensions(
-                            displayWidth: (screenWidth * dpr).round(),
-                            displayHeight: (artHeight * dpr).round(),
-                            imageType: ImageType.art,
-                          );
-
-                          final image = CachedNetworkImage(
-                            imageUrl: imageUrl,
-                            cacheKey: artworkStorageKey(imageUrl),
-                            cacheManager: PlexImageCacheManager.instance,
-                            fit: BoxFit.cover,
-                            // Top-anchor the crop: hero art is taller than the
-                            // wide billboard, so a centered cover clips faces/
-                            // titles off the top. The bottom (under the scrim
-                            // and title overlay) is the safe side to lose.
-                            alignment: Alignment.topCenter,
-                            memCacheHeight: memHeight,
-                            placeholder: (context, url) =>
-                                ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
-                            errorBuilder: (context, error, stackTrace) =>
-                                ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
-                          );
-
-                          return blurArtwork(
-                            // No 16:9 frame existed, so this is square or
-                            // poster art standing in. Blur it into a wash: its
-                            // baked-in title treatment becomes atmosphere
-                            // instead of a second title fighting ours, and the
-                            // heavy crop stops mattering. Better than an empty
-                            // billboard, and honest about being a stand-in.
-                            billboardArt.isBackdrop
-                                ? image
-                                : ImageFiltered(imageFilter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28), child: image),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
+              if (billboardArt != null && artGeometry != null)
+                HomeHeroArtwork(
+                  client: heroClient,
+                  art: billboardArt,
+                  geometry: artGeometry,
+                  scrollController: _scrollController,
                 )
               else
                 ColoredBox(color: colorScheme.surfaceContainerHighest),

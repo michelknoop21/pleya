@@ -670,10 +670,10 @@ sealed class MediaItem with _$MediaItem {
   /// carries no baked-in title, so it stands in as a real backdrop (rendered
   /// sharp, not blurred). Wide boxes keep the 16:9 backdrop as before.
   BillboardArt? billboardArt({double? containerAspectRatio}) {
-    if (containerAspectRatio != null && containerAspectRatio < 1.39) {
+    if (containerAspectRatio != null && containerAspectRatio < billboardNarrowAspectRatioThreshold) {
       final square = backgroundSquarePath;
       if (square != null && square.isNotEmpty) {
-        return BillboardArt(path: square, isBackdrop: true);
+        return BillboardArt(path: square, kind: BillboardArtKind.square);
       }
     }
     final backdrops = _dedupedPaths(switch (kind) {
@@ -681,7 +681,7 @@ sealed class MediaItem with _$MediaItem {
       _ => [artPath],
     });
     if (backdrops.isNotEmpty) {
-      return BillboardArt(path: backdrops.first, isBackdrop: true);
+      return BillboardArt(path: backdrops.first, kind: BillboardArtKind.widescreen);
     }
 
     // No 16:9 frame exists. Square and poster art carry their own baked-in
@@ -690,7 +690,7 @@ sealed class MediaItem with _$MediaItem {
     // the caller renders it blurred, as atmosphere, and lets the app's own
     // typography carry the title alone.
     final fills = billboardArtCandidates();
-    return fills.isEmpty ? null : BillboardArt(path: fills.first, isBackdrop: false);
+    return fills.isEmpty ? null : BillboardArt(path: fills.first, kind: BillboardArtKind.fallback);
   }
 
   /// Returns billboard art candidates in display-preference order.
@@ -717,26 +717,49 @@ sealed class MediaItem with _$MediaItem {
   }
 }
 
+/// Below this width/height ratio a 16:9 backdrop crops away too much of its
+/// sides to read as the intended composition. Shared by [MediaItem.billboardArt]
+/// and `homeHeroArtGeometry` so both agree on when a box counts as narrow.
+const double billboardNarrowAspectRatioThreshold = 1.39;
+
+/// Which source [BillboardArt.path] came from, and thus how it must be rendered.
+enum BillboardArtKind {
+  /// A 16:9 backdrop, chosen because the container was wide enough for it.
+  widescreen,
+
+  /// Square background art, chosen on a narrow (portrait) container to avoid
+  /// the centre-crop a 16:9 backdrop would take there.
+  square,
+
+  /// No 16:9 frame existed; the choice fell back to square or poster art that
+  /// carries its own baked-in title treatment, so the caller blurs it into a
+  /// background wash instead of showing it sharp under the app's title.
+  fallback,
+}
+
 /// Artwork chosen for a billboard, plus how it must be rendered.
-///
-/// [isBackdrop] is false when no 16:9 frame existed and the choice fell back
-/// to square or poster art. Such artwork usually carries its own title
-/// treatment, so the caller blurs it into a background wash instead of showing
-/// it sharp under the app's title.
 class BillboardArt {
-  const BillboardArt({required this.path, required this.isBackdrop});
+  const BillboardArt({required this.path, required this.kind});
 
   final String path;
-  final bool isBackdrop;
+  final BillboardArtKind kind;
+
+  /// A widescreen or square source carries no baked-in title, so it can be
+  /// drawn sharp under the app's own typography.
+  bool get canRenderSharp => kind != BillboardArtKind.fallback;
+
+  /// A fallback source (square/poster without a 16:9 frame) already carries a
+  /// title, so it is shown blurred as atmosphere instead.
+  bool get shouldBlur => kind == BillboardArtKind.fallback;
 
   @override
-  bool operator ==(Object other) => other is BillboardArt && other.path == path && other.isBackdrop == isBackdrop;
+  bool operator ==(Object other) => other is BillboardArt && other.path == path && other.kind == kind;
 
   @override
-  int get hashCode => Object.hash(path, isBackdrop);
+  int get hashCode => Object.hash(path, kind);
 
   @override
-  String toString() => 'BillboardArt($path, isBackdrop: $isBackdrop)';
+  String toString() => 'BillboardArt($path, kind: $kind)';
 }
 
 MediaKind _mediaKindFromJson(Object? raw) => MediaKind.fromString(raw as String?);

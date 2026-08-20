@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/media/media_item.dart' show BillboardArtKind;
 import 'package:pleya/utils/home_hero_layout.dart';
 
 /// The rail the hero sizes itself against on a phone: a Continue Watching row
@@ -146,6 +147,100 @@ void main() {
 
       expect(sideNav(400), 480);
       expect(sideNav(4000), 900);
+    });
+  });
+
+  group('homeHeroArtGeometry', () {
+    const phones = [(353.0, 500.0), (402.0, 572.0), (430.0, 650.0)];
+
+    test('a narrow box with square art frames a square, never wider than the box', () {
+      for (final (width, heroHeight) in phones) {
+        final geometry = homeHeroArtGeometry(screenWidth: width, heroHeight: heroHeight, kind: BillboardArtKind.square);
+
+        expect(geometry.height, geometry.width, reason: 'w=$width h=$heroHeight');
+        expect(geometry.requestHeight, width, reason: 'w=$width h=$heroHeight');
+        expect(geometry.coversHero, isFalse, reason: 'w=$width h=$heroHeight');
+        expect(geometry.height, lessThanOrEqualTo(heroHeight), reason: 'w=$width h=$heroHeight');
+      }
+    });
+
+    test('a narrow box with widescreen art frames 16:9, requested at its own ratio', () {
+      for (final (width, heroHeight) in phones) {
+        final wide = homeHeroArtGeometry(screenWidth: width, heroHeight: heroHeight, kind: BillboardArtKind.widescreen);
+
+        expect(wide.height, closeTo(width * 9 / 16, 0.01), reason: 'w=$width h=$heroHeight');
+        // Unlike the square branch (which requests a square), the request
+        // follows the 16:9 source ratio too — never the box's own ratio.
+        expect(wide.requestHeight, closeTo(width * 9 / 16, 0.01), reason: 'w=$width h=$heroHeight');
+        expect(wide.coversHero, isFalse, reason: 'w=$width h=$heroHeight');
+      }
+    });
+
+    test('a fallback source keeps the old full-bleed behaviour on any box', () {
+      for (final (width, heroHeight) in [...phones, (1280.0, 720.0), (1600.0, 750.0)]) {
+        final geometry = homeHeroArtGeometry(
+          screenWidth: width,
+          heroHeight: heroHeight,
+          kind: BillboardArtKind.fallback,
+        );
+
+        expect(geometry.coversHero, isTrue, reason: 'w=$width h=$heroHeight');
+        expect(geometry.width, width, reason: 'w=$width h=$heroHeight');
+        expect(geometry.height, heroHeight, reason: 'w=$width h=$heroHeight');
+        expect(
+          geometry.requestHeight,
+          closeTo((width * 9 / 16).clamp(heroHeight, double.infinity), 0.01),
+          reason: 'w=$width h=$heroHeight',
+        );
+      }
+    });
+
+    test('a wide box keeps the old full-bleed behaviour regardless of source kind', () {
+      for (final kind in [BillboardArtKind.widescreen, BillboardArtKind.square]) {
+        for (final (width, heroHeight) in [(1280.0, 720.0), (1600.0, 750.0)]) {
+          final geometry = homeHeroArtGeometry(screenWidth: width, heroHeight: heroHeight, kind: kind);
+
+          expect(geometry.coversHero, isTrue, reason: 'kind=$kind w=$width h=$heroHeight');
+          expect(
+            geometry.requestHeight,
+            closeTo((width * 9 / 16).clamp(heroHeight, double.infinity), 0.01),
+            reason: 'kind=$kind w=$width h=$heroHeight',
+          );
+        }
+      }
+    });
+
+    test('a collapsed viewport gives zero geometry, not a bad request', () {
+      for (final (width, heroHeight) in [(0.0, 500.0), (402.0, 0.0), (-1.0, 500.0), (402.0, -1.0)]) {
+        final geometry = homeHeroArtGeometry(screenWidth: width, heroHeight: heroHeight, kind: BillboardArtKind.square);
+
+        expect(geometry.width, 0, reason: 'w=$width h=$heroHeight');
+        expect(geometry.height, 0, reason: 'w=$width h=$heroHeight');
+        expect(geometry.requestHeight, 0, reason: 'w=$width h=$heroHeight');
+        expect(geometry.coversHero, isFalse, reason: 'w=$width h=$heroHeight');
+      }
+    });
+  });
+
+  group('homeHeroLogoConstraints', () {
+    test('a phone-width logo box stays within the padded hero and the 78% cap', () {
+      for (final width in [353.0, 402.0, 430.0]) {
+        final metrics = homeHeroLogoConstraints(screenWidth: width, isLargeScreen: false);
+
+        expect(metrics.width, lessThanOrEqualTo(width - 48), reason: 'w=$width');
+        expect(metrics.width, lessThanOrEqualTo(width * 0.78 + 0.01), reason: 'w=$width');
+        expect(metrics.height, greaterThanOrEqualTo(90), reason: 'w=$width');
+        expect(metrics.height, lessThanOrEqualTo(96), reason: 'w=$width');
+      }
+    });
+
+    test('a large screen keeps the fixed 400x120 box', () {
+      for (final width in [900.0, 1280.0, 1920.0]) {
+        final metrics = homeHeroLogoConstraints(screenWidth: width, isLargeScreen: true);
+
+        expect(metrics.width, 400);
+        expect(metrics.height, 120);
+      }
     });
   });
 }
