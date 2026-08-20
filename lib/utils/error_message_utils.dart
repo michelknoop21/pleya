@@ -1,9 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 
-import '../i18n/strings.g.dart';
-import 'app_logger.dart';
+import 'package:flutter/material.dart';
+
 import '../exceptions/media_server_exceptions.dart';
+import '../i18n/strings.g.dart';
+import '../main.dart' show rootNavigatorKey;
+import '../screens/settings/logs_screen.dart';
+import '../widgets/notice/notice.dart';
+import 'app_logger.dart';
+import 'playback_failure_classifier.dart';
 
 /// Shared helpers for translating network errors into user-friendly messages.
 String mapHttpErrorToMessage(MediaServerHttpException error, {required String context}) {
@@ -15,8 +21,7 @@ String mapHttpErrorToMessage(MediaServerHttpException error, {required String co
       return t.errors.connectionFailed;
     default:
       appLogger.e('Error loading $context', error: error);
-      final msg = error.message.isNotEmpty ? error.message : t.common.unknown;
-      return t.errors.failedToLoad(context: context, error: msg);
+      return t.errors.couldNotLoad(context: context);
   }
 }
 
@@ -28,9 +33,10 @@ String mapUnexpectedErrorToMessage(dynamic error, {required String context}) {
 
 /// Translate any caught error into a user-friendly, localized message.
 ///
-/// Known network/transport failures map to specific messages; everything else
-/// falls back to a generic "something went wrong". The raw error is logged,
-/// never shown — users get a next action, not a stack-trace fragment.
+/// Known network/transport/auth failures map to specific messages;
+/// everything else falls back to a generic "something went wrong". The raw
+/// error is logged, never shown — users get a next action, not a
+/// stack-trace fragment.
 String friendlyError(Object error, {String? context}) {
   if (error is MediaServerHttpException) {
     // Only the transient types map to a curated message. Other types (notably
@@ -48,6 +54,17 @@ String friendlyError(Object error, {String? context}) {
         return context != null ? t.errors.couldNotLoad(context: context) : t.errors.somethingWentWrongTryAgain;
     }
   }
+  // MediaServerAuthException also covers MediaServerPinExpiredException (a
+  // subtype) — both collapse to the same generic sign-in failure text; the
+  // curated distinction isn't worth a second string yet.
+  if (error is MediaServerAuthException) {
+    appLogger.e('Authentication failed${context != null ? ' for $context' : ''}', error: error);
+    return t.errors.authenticationFailed;
+  }
+  if (error is MediaServerUrlException) {
+    appLogger.e('Server unreachable${context != null ? ' for $context' : ''}', error: error);
+    return t.errors.connectionFailed;
+  }
   if (error is SocketException || error is HandshakeException || error is HttpException) {
     return t.errors.connectionFailed;
   }
@@ -56,4 +73,161 @@ String friendlyError(Object error, {String? context}) {
   }
   appLogger.e('Unexpected error${context != null ? ' in $context' : ''}', error: error);
   return context != null ? t.errors.couldNotLoad(context: context) : t.errors.somethingWentWrongTryAgain;
+}
+
+/// Builds a [Notice] for [error], logging it with a [noticeCode] first so
+/// the notice's "Details" action can jump straight to the matching log line.
+///
+/// [context] and [serverName] shape both the message and the notice's
+/// `groupKey` (so retries against the *same* thing fold into one counter
+/// instead of stacking — see [NoticeController]). Pass [onRetry] when the
+/// caller can actually retry; it becomes the primary action and "Details"
+/// moves to secondary. Without it, "Details" is primary.
+Notice noticeForError(Object error, {String? context, String? serverName, VoidCallback? onRetry}) {
+  final code = logNoticeError(context ?? 'error', error);
+  final scope = serverName ?? context ?? 'generic';
+  final (primary, secondary) = _noticeActions(onRetry: onRetry);
+
+  if (error is MediaServerHttpException) {
+    switch (error.type) {
+      case MediaServerHttpErrorType.connectionTimeout:
+      case MediaServerHttpErrorType.receiveTimeout:
+        return Notice(
+          level: NoticeLevel.error,
+          title: t.notices.connectionTimeoutTitle,
+          body: context != null ? t.notices.connectionTimeoutBody(context: context) : null,
+          primary: primary,
+          secondary: secondary,
+          reportCode: code,
+          groupKey: 'timeout:$scope',
+        );
+      case MediaServerHttpErrorType.connectionError:
+        return Notice(
+          level: NoticeLevel.error,
+          title: t.notices.connectionFailedTitle,
+          body: serverName != null ? t.notices.connectionFailedBody(serverName: serverName) : null,
+          primary: primary,
+          secondary: secondary,
+          reportCode: code,
+          groupKey: 'connection:$scope',
+        );
+      default:
+        return Notice(
+          level: NoticeLevel.error,
+          title: context != null ? t.notices.couldNotLoadTitle(context: context) : t.notices.genericErrorTitle,
+          primary: primary,
+          secondary: secondary,
+          reportCode: code,
+          groupKey: 'http:$scope',
+        );
+    }
+  }
+  if (error is MediaServerAuthException) {
+    return Notice(
+      level: NoticeLevel.error,
+      title: t.notices.authFailedTitle,
+      primary: primary,
+      secondary: secondary,
+      reportCode: code,
+      groupKey: 'auth:$scope',
+    );
+  }
+  if (error is MediaServerUrlException) {
+    return Notice(
+      level: NoticeLevel.error,
+      title: t.notices.connectionFailedTitle,
+      body: serverName != null ? t.notices.connectionFailedBody(serverName: serverName) : null,
+      primary: primary,
+      secondary: secondary,
+      reportCode: code,
+      groupKey: 'url:$scope',
+    );
+  }
+  if (error is SocketException || error is HandshakeException || error is HttpException) {
+    return Notice(
+      level: NoticeLevel.error,
+      title: t.notices.connectionFailedTitle,
+      body: serverName != null ? t.notices.connectionFailedBody(serverName: serverName) : null,
+      primary: primary,
+      secondary: secondary,
+      reportCode: code,
+      groupKey: 'connection:$scope',
+    );
+  }
+  if (error is TimeoutException) {
+    return Notice(
+      level: NoticeLevel.error,
+      title: t.notices.connectionTimeoutTitle,
+      body: context != null ? t.notices.connectionTimeoutBody(context: context) : null,
+      primary: primary,
+      secondary: secondary,
+      reportCode: code,
+      groupKey: 'timeout:$scope',
+    );
+  }
+  return Notice(
+    level: NoticeLevel.error,
+    title: context != null ? t.notices.couldNotLoadTitle(context: context) : t.notices.genericErrorTitle,
+    primary: primary,
+    secondary: secondary,
+    reportCode: code,
+    groupKey: 'unknown:$scope',
+  );
+}
+
+/// Builds a [Notice] for a raw mpv/transcoder log line. The line itself is
+/// never shown — [classifyPlaybackFailure] buckets it into a
+/// [PlaybackFailureKind] first, and only the bucket's curated body text
+/// reaches the screen. The raw line still goes to the log, tagged with the
+/// notice's [Notice.reportCode].
+Notice noticeForPlaybackFailure(String rawMessage, {VoidCallback? onRetry}) {
+  final code = logNoticeError('playback', rawMessage);
+  final kind = classifyPlaybackFailure(rawMessage);
+  final (primary, secondary) = _noticeActions(onRetry: onRetry);
+  final body = switch (kind) {
+    PlaybackFailureKind.segmentUnavailable => t.notices.playbackSegmentUnavailableBody,
+    PlaybackFailureKind.connectionLost => t.notices.playbackConnectionLostBody,
+    PlaybackFailureKind.codecUnsupported => t.notices.playbackCodecUnsupportedBody,
+    PlaybackFailureKind.serverError => t.notices.playbackServerErrorBody,
+    PlaybackFailureKind.unknown => null,
+  };
+  return Notice(
+    level: NoticeLevel.error,
+    title: t.notices.playbackStoppedTitle,
+    body: body,
+    primary: primary,
+    secondary: secondary,
+    reportCode: code,
+    groupKey: 'playback:${kind.name}',
+  );
+}
+
+/// Builds a [Notice] for a failed play/shuffle launch. Deliberately doesn't
+/// go through [noticeForError]: [actionLabel] is a verb ("Play", "Shuffle"),
+/// so the verb-phrase "Failed to ${action}" reads right where
+/// [noticeForError]'s noun-phrase "Couldn't load ${context}" wouldn't.
+Notice noticeForPlaybackLaunchFailure(Object error, {required String actionLabel}) {
+  final code = logNoticeError('playback-launch: $actionLabel', error);
+  final (primary, secondary) = _noticeActions(onRetry: null);
+  return Notice(
+    level: NoticeLevel.error,
+    title: t.messages.failedPlayback(action: actionLabel),
+    primary: primary,
+    secondary: secondary,
+    reportCode: code,
+    groupKey: 'playback-launch:$actionLabel',
+  );
+}
+
+/// Retry (when offered) is always primary, "Details" (always offered, since
+/// every [noticeForError] call already logged a code) fills whichever slot
+/// is left. On tv this keeps a bare playback failure from defaulting to
+/// "Details" as the loudest button when there's nothing to retry.
+(NoticeAction primary, NoticeAction? secondary) _noticeActions({required VoidCallback? onRetry}) {
+  final details = NoticeAction(
+    label: t.common.details,
+    onPressed: () => rootNavigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => const LogsScreen())),
+  );
+  if (onRetry == null) return (details, null);
+  return (NoticeAction(label: t.common.retry, onPressed: onRetry), details);
 }

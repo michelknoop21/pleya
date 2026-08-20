@@ -16,7 +16,9 @@ import '../../profiles/active_profile_provider.dart';
 import '../../services/settings_service.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/dialogs.dart';
+import '../../utils/error_message_utils.dart';
 import '../../utils/snackbar_helper.dart';
+import '../../widgets/notice/notice_controller.dart';
 import '../../widgets/dialog_action_button.dart';
 import '../../utils/video_player_navigation.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
@@ -229,9 +231,10 @@ class _NotInSessionViewState extends State<_NotInSessionView> with MountedSetSta
       await RecentRoomsService.addOrUpdateRoom(sessionId, controlMode: controlMode);
       setStateIfMounted(() => _recentRooms = RecentRoomsService.getRecentRooms());
     } catch (e) {
-      appLogger.e('Failed to create session', error: e);
       if (mounted) {
-        showErrorSnackBar(context, '${t.watchTogether.failedToCreate}: $e');
+        noticeController.show(noticeForError(e, context: t.watchTogether.failedToCreate));
+      } else {
+        appLogger.e('Failed to create session', error: e);
       }
     } finally {
       if (mounted) {
@@ -273,9 +276,10 @@ class _NotInSessionViewState extends State<_NotInSessionView> with MountedSetSta
       await RecentRoomsService.addOrUpdateRoom(sessionId);
       setStateIfMounted(() => _recentRooms = RecentRoomsService.getRecentRooms());
     } catch (e) {
-      appLogger.e('Failed to join session', error: e);
       if (mounted) {
-        showErrorSnackBar(context, '${t.watchTogether.failedToJoin}: $e');
+        noticeController.show(noticeForError(e, context: t.watchTogether.failedToJoin));
+      } else {
+        appLogger.e('Failed to join session', error: e);
       }
     } finally {
       if (mounted) {
@@ -296,9 +300,10 @@ class _NotInSessionViewState extends State<_NotInSessionView> with MountedSetSta
       await RecentRoomsService.addOrUpdateRoom(room.code);
       setStateIfMounted(() => _recentRooms = RecentRoomsService.getRecentRooms());
     } catch (e) {
-      appLogger.e('Failed to enter room', error: e);
       if (mounted) {
-        showErrorSnackBar(context, '${t.watchTogether.failedToJoin}: $e');
+        noticeController.show(noticeForError(e, context: t.watchTogether.failedToJoin));
+      } else {
+        appLogger.e('Failed to enter room', error: e);
       }
     } finally {
       if (mounted) {

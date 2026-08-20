@@ -77,6 +77,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'utils/navigation_transitions.dart';
 import 'utils/log_redaction_manager.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'widgets/notice/notice_host.dart';
 
 const bool _enableSentry = bool.fromEnvironment('ENABLE_SENTRY', defaultValue: false);
 const String gitCommit = String.fromEnvironment('GIT_COMMIT');
@@ -946,7 +947,15 @@ class _AppShell extends StatelessWidget {
                       key: rootScaffoldMessengerKey,
                       child: Scaffold(
                         backgroundColor: Colors.transparent,
-                        body: _AppleTvScale(child: IntroGate(child: child ?? const SizedBox.shrink())),
+                        body: Stack(
+                          children: [
+                            _AppleTvScale(child: IntroGate(child: child ?? const SizedBox.shrink())),
+                            // Global notice overlay — deliberately a Stack layer here,
+                            // not a hand-inserted OverlayEntry. See NoticeHost's doc
+                            // comment for why that distinction matters.
+                            const NoticeHost(),
+                          ],
+                        ),
                       ),
                     ),
                   ),

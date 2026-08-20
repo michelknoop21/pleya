@@ -13,20 +13,23 @@ import '../../focus/input_mode_tracker.dart';
 import '../../focus/key_event_utils.dart';
 import '../../mixins/tab_navigation_mixin.dart';
 import '../../../services/plex_client.dart';
+import '../../media/ids.dart';
 import '../../media/media_backend.dart';
 import '../../media/media_item.dart';
 import '../../media/media_library.dart';
 import '../../media/media_server_client.dart';
 import '../../providers/hidden_libraries_provider.dart';
 import '../../providers/libraries_provider.dart';
+import '../../providers/multi_server_provider.dart';
 import '../../services/settings_service.dart';
 import '../../widgets/settings_builder.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/error_message_utils.dart';
+import '../../widgets/notice/notice.dart';
+import '../../widgets/notice/notice_controller.dart';
 import '../../utils/dialogs.dart';
 import '../../utils/library_grouping.dart';
 import '../../utils/platform_detector.dart';
-import '../../utils/provider_extensions.dart';
-import '../../utils/snackbar_helper.dart';
 import '../../utils/content_utils.dart';
 import '../../widgets/app_menu.dart';
 import '../../widgets/backend_badge.dart';
@@ -724,26 +727,25 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     required Future<void> Function(PlexClient client) action,
     required String progressMessage,
     required String successMessage,
-    required String Function(Object error) failureMessage,
-  }) async {
-    try {
-      final client = context.getPlexClientForLibrary(library);
-
-      if (mounted) {
-        showAppSnackBar(context, progressMessage, duration: const Duration(seconds: 2));
-      }
-
-      await action(client);
-
-      if (mounted) {
-        showSuccessSnackBar(context, successMessage);
-      }
-    } catch (e) {
-      appLogger.e('Library action failed', error: e);
-      if (mounted) {
-        showErrorSnackBar(context, failureMessage(e));
-      }
-    }
+  }) {
+    if (!mounted) return Future.value();
+    // Resolve the provider once, here, while context is definitely valid,
+    // and hand the *provider* (not context, not `this`) to the retry-capable
+    // top-level function below. A retry built from an instance method
+    // (`() => _performLibraryAction(...)`) implicitly captures `this` —
+    // this screen's State — and a persistent error notice keeps that
+    // closure (and everything the disposed State still references) alive
+    // in the global NoticeController until the notice is dismissed, long
+    // after the screen itself is gone. MultiServerProvider is app-scoped
+    // and outlives this screen either way, so capturing it instead is free.
+    final multiServer = context.read<MultiServerProvider>();
+    return _runLibraryAction(
+      multiServer: multiServer,
+      library: library,
+      action: action,
+      progressMessage: progressMessage,
+      successMessage: successMessage,
+    );
   }
 
   /// Backend-neutral counterpart to [_performLibraryAction] for ops that exist
@@ -755,26 +757,17 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     required Future<void> Function(MediaServerClient client) action,
     required String progressMessage,
     required String successMessage,
-    required String Function(Object error) failureMessage,
-  }) async {
-    try {
-      final client = context.getMediaClientForLibrary(library);
-
-      if (mounted) {
-        showAppSnackBar(context, progressMessage, duration: const Duration(seconds: 2));
-      }
-
-      await action(client);
-
-      if (mounted) {
-        showSuccessSnackBar(context, successMessage);
-      }
-    } catch (e) {
-      appLogger.e('Library action failed', error: e);
-      if (mounted) {
-        showErrorSnackBar(context, failureMessage(e));
-      }
-    }
+  }) {
+    if (!mounted) return Future.value();
+    // See _performLibraryAction's comment: pass the provider down, not `this`.
+    final multiServer = context.read<MultiServerProvider>();
+    return _runMediaLibraryAction(
+      multiServer: multiServer,
+      library: library,
+      action: action,
+      progressMessage: progressMessage,
+      successMessage: successMessage,
+    );
   }
 
   Future<void> _scanLibrary(MediaLibrary library) {
@@ -783,7 +776,6 @@ class _LibrariesScreenState extends State<LibrariesScreen>
       action: (client) => client.scanLibrary(library.id),
       progressMessage: t.messages.libraryScanning(title: library.title),
       successMessage: t.messages.libraryScanStarted(title: library.title),
-      failureMessage: (error) => t.messages.libraryScanFailed(error: error.toString()),
     );
   }
 
@@ -793,7 +785,6 @@ class _LibrariesScreenState extends State<LibrariesScreen>
       action: (client) => client.refreshLibraryMetadata(library.id),
       progressMessage: t.messages.metadataRefreshing(title: library.title),
       successMessage: t.messages.metadataRefreshStarted(title: library.title),
-      failureMessage: (error) => t.messages.metadataRefreshFailed(error: error.toString()),
     );
   }
 
@@ -803,7 +794,6 @@ class _LibrariesScreenState extends State<LibrariesScreen>
       action: (client) => client.emptyLibraryTrash(library.id),
       progressMessage: t.libraries.emptyingTrash(title: library.title),
       successMessage: t.libraries.trashEmptied(title: library.title),
-      failureMessage: (error) => t.libraries.failedToEmptyTrash(error: error),
     );
   }
 
@@ -813,7 +803,6 @@ class _LibrariesScreenState extends State<LibrariesScreen>
       action: (client) => client.analyzeLibrary(library.id),
       progressMessage: t.libraries.analyzing(title: library.title),
       successMessage: t.libraries.analysisStarted(title: library.title),
-      failureMessage: (error) => t.libraries.failedToAnalyze(error: error),
     );
   }
 
@@ -1726,4 +1715,124 @@ class _LibraryManagementSheetState extends State<_LibraryManagementSheet> {
       ),
     );
   }
+}
+
+/// Runs a Plex library action (scan/empty trash/analyze) and, on failure,
+/// shows a retryable error [Notice]. Deliberately a top-level function, not
+/// a method on `_LibrariesScreenState`: its `onRetry` closure recurses into
+/// itself, and if this were an instance method that recursion would
+/// implicitly capture `this`. Errors are persistent [Notice]s retained by
+/// the global `noticeController` — a `this`-capturing retry would keep this
+/// screen's disposed `State` (and everything it references) reachable from
+/// that global singleton until the notice is dismissed. [multiServer] is
+/// captured instead: it's app-scoped and outlives any single screen anyway,
+/// so retaining it costs nothing.
+Future<void> _runLibraryAction({
+  required MultiServerProvider multiServer,
+  required MediaLibrary library,
+  required Future<void> Function(PlexClient client) action,
+  required String progressMessage,
+  required String successMessage,
+}) async {
+  try {
+    final client = _requirePlexClientForLibrary(multiServer, library);
+    noticeController.show(
+      Notice(
+        level: NoticeLevel.info,
+        title: progressMessage,
+        groupKey: 'library-progress:${library.id}',
+        durationOverride: const Duration(seconds: 2),
+      ),
+    );
+    await action(client);
+    noticeController.show(
+      Notice(level: NoticeLevel.success, title: successMessage, groupKey: 'library-success:${library.id}'),
+    );
+  } catch (e) {
+    noticeController.show(
+      noticeForError(
+        e,
+        context: library.title,
+        onRetry: () => _runLibraryAction(
+          multiServer: multiServer,
+          library: library,
+          action: action,
+          progressMessage: progressMessage,
+          successMessage: successMessage,
+        ),
+      ),
+    );
+  }
+}
+
+/// Backend-neutral counterpart to [_runLibraryAction] — see its doc comment
+/// for why this is a top-level function rather than a screen method.
+Future<void> _runMediaLibraryAction({
+  required MultiServerProvider multiServer,
+  required MediaLibrary library,
+  required Future<void> Function(MediaServerClient client) action,
+  required String progressMessage,
+  required String successMessage,
+}) async {
+  try {
+    final client = _requireMediaClientForLibrary(multiServer, library);
+    noticeController.show(
+      Notice(
+        level: NoticeLevel.info,
+        title: progressMessage,
+        groupKey: 'library-progress:${library.id}',
+        durationOverride: const Duration(seconds: 2),
+      ),
+    );
+    await action(client);
+    noticeController.show(
+      Notice(level: NoticeLevel.success, title: successMessage, groupKey: 'library-success:${library.id}'),
+    );
+  } catch (e) {
+    noticeController.show(
+      noticeForError(
+        e,
+        context: library.title,
+        onRetry: () => _runMediaLibraryAction(
+          multiServer: multiServer,
+          library: library,
+          action: action,
+          progressMessage: progressMessage,
+          successMessage: successMessage,
+        ),
+      ),
+    );
+  }
+}
+
+/// Mirrors `BuildContext.getPlexClientForLibrary` (provider_extensions.dart)
+/// against an already-resolved [MultiServerProvider] instead of a
+/// [BuildContext], so callers don't need a live element tree. Same fallback
+/// order: the library's own server first, then any online server.
+PlexClient _requirePlexClientForLibrary(MultiServerProvider multiServer, MediaLibrary library) {
+  final serverId = serverIdOrNull(library.serverId);
+  if (serverId != null) {
+    final client = multiServer.getPlexClientForServer(serverId);
+    if (client != null) return client;
+  }
+  for (final id in multiServer.onlineServerIds) {
+    final client = multiServer.getPlexClientForServer(ServerId(id));
+    if (client != null) return client;
+  }
+  throw Exception(t.errors.noClientAvailable);
+}
+
+/// Backend-neutral counterpart to [_requirePlexClientForLibrary], mirroring
+/// `BuildContext.getMediaClientForLibrary`.
+MediaServerClient _requireMediaClientForLibrary(MultiServerProvider multiServer, MediaLibrary library) {
+  final serverId = serverIdOrNull(library.serverId);
+  if (serverId != null) {
+    final client = multiServer.getClientForServer(serverId);
+    if (client != null) return client;
+  }
+  for (final id in multiServer.onlineServerIds) {
+    final client = multiServer.getClientForServer(ServerId(id));
+    if (client != null) return client;
+  }
+  throw Exception(t.errors.noClientAvailable);
 }

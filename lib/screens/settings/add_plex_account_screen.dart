@@ -120,7 +120,7 @@ class _AddPlexAccountScreenState extends State<AddPlexAccountScreen> with AsyncF
               Navigator.of(context).pop(true);
               return true;
             }
-            throw StateError(t.addServer.failedToRegisterAccount(error: 'Connection was not borrowed'));
+            throw StateError(t.addServer.failedToRegisterAccount);
           }
           await _rebindActiveIfUses(connection.id);
           if (!mounted) return false;
@@ -132,11 +132,11 @@ class _AddPlexAccountScreenState extends State<AddPlexAccountScreen> with AsyncF
       },
       errorMapper: (e) {
         appLogger.e('Failed to register Plex account', error: e);
-        return t.addServer.failedToRegisterAccount(error: e.toString());
+        return t.addServer.failedToRegisterAccount;
       },
     );
     if (mounted && completed != true) {
-      throw StateError(errorText ?? t.addServer.failedToRegisterAccount(error: t.common.unknown));
+      throw StateError(errorText ?? t.addServer.failedToRegisterAccount);
     }
   }
 

@@ -679,9 +679,9 @@ class _TranslationsMessagesBg extends TranslationsMessagesEn {
 	@override String get markedAsUnwatchedOffline => 'Маркирано като негледано (ще се синхронизира, когато сте онлайн)';
 	@override String autoRemovedWatchedDownload({required Object title}) => 'Автоматично премахнато: ${title}';
 	@override String get removedFromContinueWatching => 'Премахнато от продължаване на гледането';
-	@override String errorLoading({required Object error}) => 'Грешка: ${error}';
+	@override String get errorLoading => 'Грешка';
 	@override String get fileInfoNotAvailable => 'Информацията за файла не е налична';
-	@override String errorLoadingFileInfo({required Object error}) => 'Грешка при зареждане на информация за файла: ${error}';
+	@override String get errorLoadingFileInfo => 'Грешка при зареждане на информация за файла';
 	@override String get errorLoadingSeries => 'Грешка при зареждане на сериала';
 	@override String get musicNotSupported => 'Възпроизвеждането на музика все още не се поддържа';
 	@override String get noDescriptionAvailable => 'Няма налично описание';
@@ -693,10 +693,10 @@ class _TranslationsMessagesBg extends TranslationsMessagesEn {
 	@override String get noLogsAvailable => 'Няма налични логове';
 	@override String libraryScanning({required Object title}) => 'Сканиране на "${title}"...';
 	@override String libraryScanStarted({required Object title}) => 'Сканирането на библиотеката е стартирано за "${title}"';
-	@override String libraryScanFailed({required Object error}) => 'Неуспешно сканиране на библиотеката: ${error}';
+	@override String get libraryScanFailed => 'Неуспешно сканиране на библиотеката';
 	@override String metadataRefreshing({required Object title}) => 'Опресняване на метаданни за "${title}"...';
 	@override String metadataRefreshStarted({required Object title}) => 'Опресняването на метаданни е стартирано за "${title}"';
-	@override String metadataRefreshFailed({required Object error}) => 'Неуспешно опресняване на метаданни: ${error}';
+	@override String get metadataRefreshFailed => 'Неуспешно опресняване на метаданни';
 	@override String get logoutConfirm => 'Сигурни ли сте, че искате да излезете?';
 	@override String get noSeasonsFound => 'Не са намерени сезони';
 	@override String get seasonsLoadFailed => 'Неуспешно зареждане на сезони';
@@ -707,7 +707,7 @@ class _TranslationsMessagesBg extends TranslationsMessagesEn {
 	@override String sleepTimerSet({required Object label}) => 'Таймерът за заспиване е зададен за ${label}';
 	@override String get noItemsAvailable => 'Няма налични елементи';
 	@override String get failedToCreatePlayQueueNoItems => 'Неуспешно създаване на опашка за възпроизвеждане - няма елементи';
-	@override String failedPlayback({required Object action, required Object error}) => 'Неуспешно ${action}: ${error}';
+	@override String failedPlayback({required Object action}) => 'Неуспешно ${action}';
 	@override String get switchingToCompatiblePlayer => 'Превключване към съвместим плейър...';
 	@override String get serverLimitTitle => 'Възпроизвеждането е неуспешно';
 	@override String get serverLimitBody => 'Грешка на сървъра (HTTP 500). Вероятно лимит за пропускателна способност/транскодиране е отхвърлил тази сесия. Помолете собственика да го коригира.';
@@ -899,16 +899,16 @@ class _TranslationsErrorsBg extends TranslationsErrorsEn {
 	final TranslationsBg _root; // ignore: unused_field
 
 	// Translations
-	@override String searchFailed({required Object error}) => 'Търсенето е неуспешно: ${error}';
+	@override String get searchFailed => 'Търсенето е неуспешно';
 	@override String connectionTimeout({required Object context}) => 'Изтече времето за връзка при зареждане на ${context}';
 	@override String get connectionFailed => 'Не може да се осъществи връзка с медиен сървър';
-	@override String failedToLoad({required Object context, required Object error}) => 'Неуспешно зареждане на ${context}: ${error}';
+	@override String failedToLoad({required Object context}) => 'Неуспешно зареждане на ${context}';
 	@override String get noClientAvailable => 'Няма наличен клиент';
-	@override String authenticationFailed({required Object error}) => 'Удостоверяването е неуспешно: ${error}';
+	@override String get authenticationFailed => 'Удостоверяването е неуспешно';
 	@override String get couldNotLaunchUrl => 'URL адресът за удостоверяване не може да бъде отворен';
 	@override String get pleaseEnterToken => 'Моля, въведете токен';
 	@override String get invalidToken => 'Невалиден токен';
-	@override String failedToVerifyToken({required Object error}) => 'Неуспешна проверка на токена: ${error}';
+	@override String get failedToVerifyToken => 'Неуспешна проверка на токена';
 	@override String failedToSwitchProfile({required Object displayName}) => 'Неуспешна смяна към ${displayName}';
 	@override String failedToDeleteProfile({required Object displayName}) => 'Неуспешно изтриване на ${displayName}';
 	@override String get failedToRate => 'Оценката не можа да бъде обновена';
@@ -931,10 +931,10 @@ class _TranslationsLibrariesBg extends TranslationsLibrariesEn {
 	@override String get emptyTrash => 'Изпразни кошчето';
 	@override String emptyingTrash({required Object title}) => 'Изпразване на кошчето за "${title}"...';
 	@override String trashEmptied({required Object title}) => 'Кошчето е изпразнено за "${title}"';
-	@override String failedToEmptyTrash({required Object error}) => 'Неуспешно изпразване на кошчето: ${error}';
+	@override String get failedToEmptyTrash => 'Неуспешно изпразване на кошчето';
 	@override String analyzing({required Object title}) => 'Анализиране на "${title}"...';
 	@override String analysisStarted({required Object title}) => 'Анализът е стартиран за "${title}"';
-	@override String failedToAnalyze({required Object error}) => 'Неуспешен анализ на библиотеката: ${error}';
+	@override String get failedToAnalyze => 'Неуспешен анализ на библиотеката';
 	@override String get noLibrariesFound => 'Не са намерени библиотеки';
 	@override String get allLibrariesHidden => 'Всички библиотеки са скрити';
 	@override String hiddenLibrariesCount({required Object count}) => 'Скрити библиотеки (${count})';
@@ -989,7 +989,7 @@ class _TranslationsServerSelectionBg extends TranslationsServerSelectionEn {
 	// Translations
 	@override String get allServerConnectionsFailed => 'Не може да се осъществи връзка с нито един сървър. Проверете мрежата.';
 	@override String noServersFoundForAccount({required Object username, required Object email}) => 'Не са намерени сървъри за ${username} (${email})';
-	@override String failedToLoadServers({required Object error}) => 'Неуспешно зареждане на сървъри: ${error}';
+	@override String get failedToLoadServers => 'Неуспешно зареждане на сървъри';
 }
 
 // Path: hubDetail
@@ -1131,8 +1131,8 @@ class _TranslationsCollectionsBg extends TranslationsCollectionsEn {
 	@override String deleteConfirm({required Object title}) => 'Да се изтрие ли "${title}"? Това не може да бъде отменено.';
 	@override String get deleted => 'Колекцията е изтрита';
 	@override String get deleteFailed => 'Неуспешно изтриване на колекция';
-	@override String deleteFailedWithError({required Object error}) => 'Неуспешно изтриване на колекция: ${error}';
-	@override String failedToLoadItems({required Object error}) => 'Неуспешно зареждане на елементите в колекцията: ${error}';
+	@override String get deleteFailedWithError => 'Неуспешно изтриване на колекция';
+	@override String get failedToLoadItems => 'Неуспешно зареждане на елементите в колекцията';
 	@override String get selectCollection => 'Избери колекция';
 	@override String get collectionName => 'Име на колекция';
 	@override String get enterCollectionName => 'Въведете име на колекция';
@@ -1143,7 +1143,7 @@ class _TranslationsCollectionsBg extends TranslationsCollectionsEn {
 	@override String removeFromCollectionConfirm({required Object title}) => 'Да се премахне ли "${title}" от тази колекция?';
 	@override String get removedFromCollection => 'Премахнато от колекция';
 	@override String get removeFromCollectionFailed => 'Неуспешно премахване от колекция';
-	@override String removeFromCollectionError({required Object error}) => 'Грешка при премахване от колекция: ${error}';
+	@override String get removeFromCollectionError => 'Грешка при премахване от колекция';
 	@override String get searchCollections => 'Търсене на колекции...';
 }
 
@@ -1626,13 +1626,13 @@ class _TranslationsAddServerBg extends TranslationsAddServerEn {
 	@override String get signIn => 'Вход';
 	@override String get change => 'Промени';
 	@override String get required => 'Задължително';
-	@override String couldNotReachServer({required Object error}) => 'Сървърът не може да бъде достигнат: ${error}';
-	@override String signInFailed({required Object error}) => 'Входът е неуспешен: ${error}';
-	@override String quickConnectFailed({required Object error}) => 'Quick Connect е неуспешен: ${error}';
+	@override String get couldNotReachServer => 'Сървърът не може да бъде достигнат';
+	@override String get signInFailed => 'Входът е неуспешен';
+	@override String get quickConnectFailed => 'Quick Connect е неуспешен';
 	@override String get addPlexTitle => 'Вход с Plex';
 	@override String get pinExpired => 'PIN-ът изтече преди вход. Моля, опитайте отново.';
 	@override String get duplicatePlexAccount => 'Вече сте влезли в Plex. Излезте, за да смените акаунта.';
-	@override String failedToRegisterAccount({required Object error}) => 'Неуспешна регистрация на акаунт: ${error}';
+	@override String get failedToRegisterAccount => 'Неуспешна регистрация на акаунт';
 	@override String get enterJellyfinUrlError => 'Въведете URL адреса на вашия Jellyfin сървър';
 	@override String get addConnectionTitle => 'Добави връзка';
 	@override String addConnectionTitleScoped({required Object name}) => 'Добави към ${name}';
@@ -1754,7 +1754,7 @@ class _TranslationsVideoControlsPipErrorsBg extends TranslationsVideoControlsPip
 	@override String get notSupported => 'Устройството не поддържа режим картина в картината';
 	@override String get voSwitchFailed => 'Неуспешна смяна на видео изхода за режим картина в картината';
 	@override String get failed => 'Режимът картина в картината не успя да стартира';
-	@override String unknown({required Object error}) => 'Възникна грешка: ${error}';
+	@override String get unknown => 'Възникна грешка';
 }
 
 // Path: libraries.tabs
@@ -1872,7 +1872,7 @@ class _TranslationsCompanionRemotePairingBg extends TranslationsCompanionRemoteP
 	@override String get connectionTimedOut => 'Връзката изтече. Използвайте една и съща мрежа на двете устройства.';
 	@override String get sessionNotFound => 'Устройството не е намерено. Уверете се, че Pleya работи на хоста.';
 	@override String get authFailed => 'Удостоверяването е неуспешно. Двете устройства трябва да използват същия Plex акаунт.';
-	@override String failedToConnect({required Object error}) => 'Неуспешно свързване: ${error}';
+	@override String get failedToConnect => 'Неуспешно свързване';
 }
 
 // Path: companionRemote.remote
@@ -2447,7 +2447,7 @@ extension on TranslationsBg {
 			'videoControls.pipErrors.notSupported' => 'Устройството не поддържа режим картина в картината',
 			'videoControls.pipErrors.voSwitchFailed' => 'Неуспешна смяна на видео изхода за режим картина в картината',
 			'videoControls.pipErrors.failed' => 'Режимът картина в картината не успя да стартира',
-			'videoControls.pipErrors.unknown' => ({required Object error}) => 'Възникна грешка: ${error}',
+			'videoControls.pipErrors.unknown' => 'Възникна грешка',
 			'videoControls.chapters' => 'Глави',
 			'videoControls.noChaptersAvailable' => 'Няма налични глави',
 			'videoControls.queue' => 'Опашка',
@@ -2472,9 +2472,9 @@ extension on TranslationsBg {
 			'messages.markedAsUnwatchedOffline' => 'Маркирано като негледано (ще се синхронизира, когато сте онлайн)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Автоматично премахнато: ${title}',
 			'messages.removedFromContinueWatching' => 'Премахнато от продължаване на гледането',
-			'messages.errorLoading' => ({required Object error}) => 'Грешка: ${error}',
+			'messages.errorLoading' => 'Грешка',
 			'messages.fileInfoNotAvailable' => 'Информацията за файла не е налична',
-			'messages.errorLoadingFileInfo' => ({required Object error}) => 'Грешка при зареждане на информация за файла: ${error}',
+			'messages.errorLoadingFileInfo' => 'Грешка при зареждане на информация за файла',
 			'messages.errorLoadingSeries' => 'Грешка при зареждане на сериала',
 			'messages.musicNotSupported' => 'Възпроизвеждането на музика все още не се поддържа',
 			'messages.noDescriptionAvailable' => 'Няма налично описание',
@@ -2486,10 +2486,10 @@ extension on TranslationsBg {
 			'messages.noLogsAvailable' => 'Няма налични логове',
 			'messages.libraryScanning' => ({required Object title}) => 'Сканиране на "${title}"...',
 			'messages.libraryScanStarted' => ({required Object title}) => 'Сканирането на библиотеката е стартирано за "${title}"',
-			'messages.libraryScanFailed' => ({required Object error}) => 'Неуспешно сканиране на библиотеката: ${error}',
+			'messages.libraryScanFailed' => 'Неуспешно сканиране на библиотеката',
 			'messages.metadataRefreshing' => ({required Object title}) => 'Опресняване на метаданни за "${title}"...',
 			'messages.metadataRefreshStarted' => ({required Object title}) => 'Опресняването на метаданни е стартирано за "${title}"',
-			'messages.metadataRefreshFailed' => ({required Object error}) => 'Неуспешно опресняване на метаданни: ${error}',
+			'messages.metadataRefreshFailed' => 'Неуспешно опресняване на метаданни',
 			'messages.logoutConfirm' => 'Сигурни ли сте, че искате да излезете?',
 			'messages.noSeasonsFound' => 'Не са намерени сезони',
 			'messages.seasonsLoadFailed' => 'Неуспешно зареждане на сезони',
@@ -2500,7 +2500,7 @@ extension on TranslationsBg {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Таймерът за заспиване е зададен за ${label}',
 			'messages.noItemsAvailable' => 'Няма налични елементи',
 			'messages.failedToCreatePlayQueueNoItems' => 'Неуспешно създаване на опашка за възпроизвеждане - няма елементи',
-			'messages.failedPlayback' => ({required Object action, required Object error}) => 'Неуспешно ${action}: ${error}',
+			'messages.failedPlayback' => ({required Object action}) => 'Неуспешно ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Превключване към съвместим плейър...',
 			'messages.serverLimitTitle' => 'Възпроизвеждането е неуспешно',
 			'messages.serverLimitBody' => 'Грешка на сървъра (HTTP 500). Вероятно лимит за пропускателна способност/транскодиране е отхвърлил тази сесия. Помолете собственика да го коригира.',
@@ -2631,16 +2631,16 @@ extension on TranslationsBg {
 			'discover.tvShow' => 'ТВ сериал',
 			'discover.minutesLeft' => ({required Object minutes}) => 'Остават ${minutes} мин',
 			'discover.moreLikeThis' => 'Подобно на това',
-			'errors.searchFailed' => ({required Object error}) => 'Търсенето е неуспешно: ${error}',
+			'errors.searchFailed' => 'Търсенето е неуспешно',
 			'errors.connectionTimeout' => ({required Object context}) => 'Изтече времето за връзка при зареждане на ${context}',
 			'errors.connectionFailed' => 'Не може да се осъществи връзка с медиен сървър',
-			'errors.failedToLoad' => ({required Object context, required Object error}) => 'Неуспешно зареждане на ${context}: ${error}',
+			'errors.failedToLoad' => ({required Object context}) => 'Неуспешно зареждане на ${context}',
 			'errors.noClientAvailable' => 'Няма наличен клиент',
-			'errors.authenticationFailed' => ({required Object error}) => 'Удостоверяването е неуспешно: ${error}',
+			'errors.authenticationFailed' => 'Удостоверяването е неуспешно',
 			'errors.couldNotLaunchUrl' => 'URL адресът за удостоверяване не може да бъде отворен',
 			'errors.pleaseEnterToken' => 'Моля, въведете токен',
 			'errors.invalidToken' => 'Невалиден токен',
-			'errors.failedToVerifyToken' => ({required Object error}) => 'Неуспешна проверка на токена: ${error}',
+			'errors.failedToVerifyToken' => 'Неуспешна проверка на токена',
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Неуспешна смяна към ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Неуспешно изтриване на ${displayName}',
 			'errors.failedToRate' => 'Оценката не можа да бъде обновена',
@@ -2654,10 +2654,10 @@ extension on TranslationsBg {
 			'libraries.emptyTrash' => 'Изпразни кошчето',
 			'libraries.emptyingTrash' => ({required Object title}) => 'Изпразване на кошчето за "${title}"...',
 			'libraries.trashEmptied' => ({required Object title}) => 'Кошчето е изпразнено за "${title}"',
-			'libraries.failedToEmptyTrash' => ({required Object error}) => 'Неуспешно изпразване на кошчето: ${error}',
+			'libraries.failedToEmptyTrash' => 'Неуспешно изпразване на кошчето',
 			'libraries.analyzing' => ({required Object title}) => 'Анализиране на "${title}"...',
 			'libraries.analysisStarted' => ({required Object title}) => 'Анализът е стартиран за "${title}"',
-			'libraries.failedToAnalyze' => ({required Object error}) => 'Неуспешен анализ на библиотеката: ${error}',
+			'libraries.failedToAnalyze' => 'Неуспешен анализ на библиотеката',
 			'libraries.noLibrariesFound' => 'Не са намерени библиотеки',
 			'libraries.allLibrariesHidden' => 'Всички библиотеки са скрити',
 			'libraries.hiddenLibrariesCount' => ({required Object count}) => 'Скрити библиотеки (${count})',
@@ -2727,7 +2727,7 @@ extension on TranslationsBg {
 			'about.viewLicensesDescription' => 'Виж лицензите на библиотеки на трети страни',
 			'serverSelection.allServerConnectionsFailed' => 'Не може да се осъществи връзка с нито един сървър. Проверете мрежата.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'Не са намерени сървъри за ${username} (${email})',
-			'serverSelection.failedToLoadServers' => ({required Object error}) => 'Неуспешно зареждане на сървъри: ${error}',
+			'serverSelection.failedToLoadServers' => 'Неуспешно зареждане на сървъри',
 			'hubDetail.title' => 'Заглавие',
 			'hubDetail.releaseYear' => 'Година на излизане',
 			'hubDetail.dateAdded' => 'Дата на добавяне',
@@ -2815,8 +2815,8 @@ extension on TranslationsBg {
 			'collections.deleteConfirm' => ({required Object title}) => 'Да се изтрие ли "${title}"? Това не може да бъде отменено.',
 			'collections.deleted' => 'Колекцията е изтрита',
 			'collections.deleteFailed' => 'Неуспешно изтриване на колекция',
-			'collections.deleteFailedWithError' => ({required Object error}) => 'Неуспешно изтриване на колекция: ${error}',
-			'collections.failedToLoadItems' => ({required Object error}) => 'Неуспешно зареждане на елементите в колекцията: ${error}',
+			'collections.deleteFailedWithError' => 'Неуспешно изтриване на колекция',
+			'collections.failedToLoadItems' => 'Неуспешно зареждане на елементите в колекцията',
 			'collections.selectCollection' => 'Избери колекция',
 			'collections.collectionName' => 'Име на колекция',
 			'collections.enterCollectionName' => 'Въведете име на колекция',
@@ -2827,7 +2827,7 @@ extension on TranslationsBg {
 			'collections.removeFromCollectionConfirm' => ({required Object title}) => 'Да се премахне ли "${title}" от тази колекция?',
 			'collections.removedFromCollection' => 'Премахнато от колекция',
 			'collections.removeFromCollectionFailed' => 'Неуспешно премахване от колекция',
-			'collections.removeFromCollectionError' => ({required Object error}) => 'Грешка при премахване от колекция: ${error}',
+			'collections.removeFromCollectionError' => 'Грешка при премахване от колекция',
 			'collections.searchCollections' => 'Търсене на колекции...',
 			'playlists.title' => 'Плейлисти',
 			'playlists.playlist' => 'Плейлист',
@@ -3025,7 +3025,7 @@ extension on TranslationsBg {
 			'companionRemote.pairing.connectionTimedOut' => 'Връзката изтече. Използвайте една и съща мрежа на двете устройства.',
 			'companionRemote.pairing.sessionNotFound' => 'Устройството не е намерено. Уверете се, че Pleya работи на хоста.',
 			'companionRemote.pairing.authFailed' => 'Удостоверяването е неуспешно. Двете устройства трябва да използват същия Plex акаунт.',
-			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Неуспешно свързване: ${error}',
+			'companionRemote.pairing.failedToConnect' => 'Неуспешно свързване',
 			'companionRemote.remote.disconnectConfirm' => 'Искате ли да прекъснете връзката с дистанционната сесия?',
 			'companionRemote.remote.reconnecting' => 'Повторно свързване...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Опит ${current} от 5',
@@ -3262,13 +3262,13 @@ extension on TranslationsBg {
 			'addServer.signIn' => 'Вход',
 			'addServer.change' => 'Промени',
 			'addServer.required' => 'Задължително',
-			'addServer.couldNotReachServer' => ({required Object error}) => 'Сървърът не може да бъде достигнат: ${error}',
-			'addServer.signInFailed' => ({required Object error}) => 'Входът е неуспешен: ${error}',
-			'addServer.quickConnectFailed' => ({required Object error}) => 'Quick Connect е неуспешен: ${error}',
+			'addServer.couldNotReachServer' => 'Сървърът не може да бъде достигнат',
+			'addServer.signInFailed' => 'Входът е неуспешен',
+			'addServer.quickConnectFailed' => 'Quick Connect е неуспешен',
 			'addServer.addPlexTitle' => 'Вход с Plex',
 			'addServer.pinExpired' => 'PIN-ът изтече преди вход. Моля, опитайте отново.',
 			'addServer.duplicatePlexAccount' => 'Вече сте влезли в Plex. Излезте, за да смените акаунта.',
-			'addServer.failedToRegisterAccount' => ({required Object error}) => 'Неуспешна регистрация на акаунт: ${error}',
+			'addServer.failedToRegisterAccount' => 'Неуспешна регистрация на акаунт',
 			'addServer.enterJellyfinUrlError' => 'Въведете URL адреса на вашия Jellyfin сървър',
 			'addServer.addConnectionTitle' => 'Добави връзка',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => 'Добави към ${name}',

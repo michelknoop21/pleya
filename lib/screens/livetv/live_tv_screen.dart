@@ -23,6 +23,7 @@ import '../../services/settings_service.dart';
 import '../../widgets/settings_builder.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/desktop_window_padding.dart';
+import '../../utils/error_message_utils.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../widgets/app_icon.dart';
@@ -456,11 +457,10 @@ class _LiveTvScreenState extends State<LiveTvScreen>
         });
       }
     } catch (e) {
-      appLogger.e('Failed to load Live TV channels', error: e);
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error = e.toString();
+          _error = friendlyError(e, context: t.liveTv.title);
         });
       }
     }

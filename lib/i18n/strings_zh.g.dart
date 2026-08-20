@@ -679,9 +679,9 @@ class _TranslationsMessagesZh extends TranslationsMessagesEn {
 	@override String get markedAsUnwatchedOffline => '已标记为未观看 (将在联网时同步)';
 	@override String autoRemovedWatchedDownload({required Object title}) => '已自动移除: ${title}';
 	@override String get removedFromContinueWatching => '已从继续观看中移除';
-	@override String errorLoading({required Object error}) => '错误: ${error}';
+	@override String get errorLoading => '错误';
 	@override String get fileInfoNotAvailable => '文件信息不可用';
-	@override String errorLoadingFileInfo({required Object error}) => '加载文件信息时出错: ${error}';
+	@override String get errorLoadingFileInfo => '加载文件信息时出错';
 	@override String get errorLoadingSeries => '加载系列时出错';
 	@override String get musicNotSupported => '尚不支持播放音乐';
 	@override String get noDescriptionAvailable => '暂无描述';
@@ -693,10 +693,10 @@ class _TranslationsMessagesZh extends TranslationsMessagesEn {
 	@override String get noLogsAvailable => '没有可用日志';
 	@override String libraryScanning({required Object title}) => '正在扫描 “${title}”...';
 	@override String libraryScanStarted({required Object title}) => '已开始扫描 “${title}” 媒体库';
-	@override String libraryScanFailed({required Object error}) => '无法扫描媒体库: ${error}';
+	@override String get libraryScanFailed => '无法扫描媒体库';
 	@override String metadataRefreshing({required Object title}) => '正在刷新 “${title}” 的元数据...';
 	@override String metadataRefreshStarted({required Object title}) => '已开始刷新 “${title}” 的元数据';
-	@override String metadataRefreshFailed({required Object error}) => '无法刷新元数据: ${error}';
+	@override String get metadataRefreshFailed => '无法刷新元数据';
 	@override String get logoutConfirm => '你确定要登出吗？';
 	@override String get noSeasonsFound => '未找到季';
 	@override String get seasonsLoadFailed => '无法加载季';
@@ -707,7 +707,7 @@ class _TranslationsMessagesZh extends TranslationsMessagesEn {
 	@override String sleepTimerSet({required Object label}) => '睡眠定时器已设置为 ${label}';
 	@override String get noItemsAvailable => '没有可用的项目';
 	@override String get failedToCreatePlayQueueNoItems => '创建播放队列失败 - 没有项目';
-	@override String failedPlayback({required Object action, required Object error}) => '无法${action}: ${error}';
+	@override String failedPlayback({required Object action}) => '无法${action}';
 	@override String get switchingToCompatiblePlayer => '正在切换到兼容的播放器...';
 	@override String get serverLimitTitle => '播放失败';
 	@override String get serverLimitBody => '服务器错误 (HTTP 500)。带宽/转码限制可能拒绝了此会话。请让所有者调整。';
@@ -899,16 +899,16 @@ class _TranslationsErrorsZh extends TranslationsErrorsEn {
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String searchFailed({required Object error}) => '搜索失败: ${error}';
+	@override String get searchFailed => '搜索失败';
 	@override String connectionTimeout({required Object context}) => '加载 ${context} 时连接超时';
 	@override String get connectionFailed => '无法连接到媒体服务器';
-	@override String failedToLoad({required Object context, required Object error}) => '无法加载 ${context}: ${error}';
+	@override String failedToLoad({required Object context}) => '无法加载 ${context}';
 	@override String get noClientAvailable => '没有可用客户端';
-	@override String authenticationFailed({required Object error}) => '验证失败: ${error}';
+	@override String get authenticationFailed => '验证失败';
 	@override String get couldNotLaunchUrl => '无法打开授权 URL';
 	@override String get pleaseEnterToken => '请输入一个令牌';
 	@override String get invalidToken => '令牌无效';
-	@override String failedToVerifyToken({required Object error}) => '无法验证令牌: ${error}';
+	@override String get failedToVerifyToken => '无法验证令牌';
 	@override String failedToSwitchProfile({required Object displayName}) => '无法切换到 ${displayName}';
 	@override String failedToDeleteProfile({required Object displayName}) => '无法删除 ${displayName}';
 	@override String get failedToRate => '无法更新评分';
@@ -931,10 +931,10 @@ class _TranslationsLibrariesZh extends TranslationsLibrariesEn {
 	@override String get emptyTrash => '清空回收站';
 	@override String emptyingTrash({required Object title}) => '正在清空 “${title}” 的回收站...';
 	@override String trashEmptied({required Object title}) => '已清空 “${title}” 的回收站';
-	@override String failedToEmptyTrash({required Object error}) => '无法清空回收站: ${error}';
+	@override String get failedToEmptyTrash => '无法清空回收站';
 	@override String analyzing({required Object title}) => '正在分析 “${title}”...';
 	@override String analysisStarted({required Object title}) => '已开始分析 “${title}”';
-	@override String failedToAnalyze({required Object error}) => '无法分析媒体库: ${error}';
+	@override String get failedToAnalyze => '无法分析媒体库';
 	@override String get noLibrariesFound => '未找到媒体库';
 	@override String get allLibrariesHidden => '所有媒体库已隐藏';
 	@override String hiddenLibrariesCount({required Object count}) => '已隐藏的媒体库 (${count})';
@@ -989,7 +989,7 @@ class _TranslationsServerSelectionZh extends TranslationsServerSelectionEn {
 	// Translations
 	@override String get allServerConnectionsFailed => '无法连接到任何服务器。请检查网络。';
 	@override String noServersFoundForAccount({required Object username, required Object email}) => '未找到 ${username} (${email}) 的服务器';
-	@override String failedToLoadServers({required Object error}) => '无法加载服务器: ${error}';
+	@override String get failedToLoadServers => '无法加载服务器';
 }
 
 // Path: hubDetail
@@ -1131,8 +1131,8 @@ class _TranslationsCollectionsZh extends TranslationsCollectionsEn {
 	@override String deleteConfirm({required Object title}) => '要删除“${title}”吗？此操作无法撤销。';
 	@override String get deleted => '已删除合集';
 	@override String get deleteFailed => '删除合集失败';
-	@override String deleteFailedWithError({required Object error}) => '删除合集失败：${error}';
-	@override String failedToLoadItems({required Object error}) => '加载合集项目失败：${error}';
+	@override String get deleteFailedWithError => '删除合集失败';
+	@override String get failedToLoadItems => '加载合集项目失败';
 	@override String get selectCollection => '选择合集';
 	@override String get collectionName => '合集名称';
 	@override String get enterCollectionName => '输入合集名称';
@@ -1143,7 +1143,7 @@ class _TranslationsCollectionsZh extends TranslationsCollectionsEn {
 	@override String removeFromCollectionConfirm({required Object title}) => '将“${title}”从此合集移除？';
 	@override String get removedFromCollection => '已从合集移除';
 	@override String get removeFromCollectionFailed => '从合集移除失败';
-	@override String removeFromCollectionError({required Object error}) => '从合集移除时出错：${error}';
+	@override String get removeFromCollectionError => '从合集移除时出错';
 	@override String get searchCollections => '搜索合集...';
 }
 
@@ -1626,13 +1626,13 @@ class _TranslationsAddServerZh extends TranslationsAddServerEn {
 	@override String get signIn => '登录';
 	@override String get change => '更改';
 	@override String get required => '必填';
-	@override String couldNotReachServer({required Object error}) => '无法连接到服务器: ${error}';
-	@override String signInFailed({required Object error}) => '登录失败: ${error}';
-	@override String quickConnectFailed({required Object error}) => 'Quick Connect 失败: ${error}';
+	@override String get couldNotReachServer => '无法连接到服务器';
+	@override String get signInFailed => '登录失败';
+	@override String get quickConnectFailed => 'Quick Connect 失败';
 	@override String get addPlexTitle => '使用 Plex 登录';
 	@override String get pinExpired => 'PIN 在登录前已过期。请重试。';
 	@override String get duplicatePlexAccount => '已登录 Plex。请退出登录以切换账号。';
-	@override String failedToRegisterAccount({required Object error}) => '注册帐户失败: ${error}';
+	@override String get failedToRegisterAccount => '注册帐户失败';
 	@override String get enterJellyfinUrlError => '输入你的 Jellyfin 服务器 URL';
 	@override String get addConnectionTitle => '添加连接';
 	@override String addConnectionTitleScoped({required Object name}) => '添加到 ${name}';
@@ -1754,7 +1754,7 @@ class _TranslationsVideoControlsPipErrorsZh extends TranslationsVideoControlsPip
 	@override String get notSupported => '此设备不支持画中画模式';
 	@override String get voSwitchFailed => '无法切换画中画的视频输出';
 	@override String get failed => '画中画启动失败';
-	@override String unknown({required Object error}) => '发生错误：${error}';
+	@override String get unknown => '发生错误';
 }
 
 // Path: libraries.tabs
@@ -1872,7 +1872,7 @@ class _TranslationsCompanionRemotePairingZh extends TranslationsCompanionRemoteP
 	@override String get connectionTimedOut => '连接超时。请在两台设备上使用同一网络。';
 	@override String get sessionNotFound => '未找到设备。请确认 Pleya 正在主机上运行。';
 	@override String get authFailed => '认证失败。两台设备需要使用同一 Plex 账号。';
-	@override String failedToConnect({required Object error}) => '连接失败：${error}';
+	@override String get failedToConnect => '连接失败';
 }
 
 // Path: companionRemote.remote
@@ -2447,7 +2447,7 @@ extension on TranslationsZh {
 			'videoControls.pipErrors.notSupported' => '此设备不支持画中画模式',
 			'videoControls.pipErrors.voSwitchFailed' => '无法切换画中画的视频输出',
 			'videoControls.pipErrors.failed' => '画中画启动失败',
-			'videoControls.pipErrors.unknown' => ({required Object error}) => '发生错误：${error}',
+			'videoControls.pipErrors.unknown' => '发生错误',
 			'videoControls.chapters' => '章节',
 			'videoControls.noChaptersAvailable' => '没有可用的章节',
 			'videoControls.queue' => '播放队列',
@@ -2472,9 +2472,9 @@ extension on TranslationsZh {
 			'messages.markedAsUnwatchedOffline' => '已标记为未观看 (将在联网时同步)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => '已自动移除: ${title}',
 			'messages.removedFromContinueWatching' => '已从继续观看中移除',
-			'messages.errorLoading' => ({required Object error}) => '错误: ${error}',
+			'messages.errorLoading' => '错误',
 			'messages.fileInfoNotAvailable' => '文件信息不可用',
-			'messages.errorLoadingFileInfo' => ({required Object error}) => '加载文件信息时出错: ${error}',
+			'messages.errorLoadingFileInfo' => '加载文件信息时出错',
 			'messages.errorLoadingSeries' => '加载系列时出错',
 			'messages.musicNotSupported' => '尚不支持播放音乐',
 			'messages.noDescriptionAvailable' => '暂无描述',
@@ -2486,10 +2486,10 @@ extension on TranslationsZh {
 			'messages.noLogsAvailable' => '没有可用日志',
 			'messages.libraryScanning' => ({required Object title}) => '正在扫描 “${title}”...',
 			'messages.libraryScanStarted' => ({required Object title}) => '已开始扫描 “${title}” 媒体库',
-			'messages.libraryScanFailed' => ({required Object error}) => '无法扫描媒体库: ${error}',
+			'messages.libraryScanFailed' => '无法扫描媒体库',
 			'messages.metadataRefreshing' => ({required Object title}) => '正在刷新 “${title}” 的元数据...',
 			'messages.metadataRefreshStarted' => ({required Object title}) => '已开始刷新 “${title}” 的元数据',
-			'messages.metadataRefreshFailed' => ({required Object error}) => '无法刷新元数据: ${error}',
+			'messages.metadataRefreshFailed' => '无法刷新元数据',
 			'messages.logoutConfirm' => '你确定要登出吗？',
 			'messages.noSeasonsFound' => '未找到季',
 			'messages.seasonsLoadFailed' => '无法加载季',
@@ -2500,7 +2500,7 @@ extension on TranslationsZh {
 			'messages.sleepTimerSet' => ({required Object label}) => '睡眠定时器已设置为 ${label}',
 			'messages.noItemsAvailable' => '没有可用的项目',
 			'messages.failedToCreatePlayQueueNoItems' => '创建播放队列失败 - 没有项目',
-			'messages.failedPlayback' => ({required Object action, required Object error}) => '无法${action}: ${error}',
+			'messages.failedPlayback' => ({required Object action}) => '无法${action}',
 			'messages.switchingToCompatiblePlayer' => '正在切换到兼容的播放器...',
 			'messages.serverLimitTitle' => '播放失败',
 			'messages.serverLimitBody' => '服务器错误 (HTTP 500)。带宽/转码限制可能拒绝了此会话。请让所有者调整。',
@@ -2631,16 +2631,16 @@ extension on TranslationsZh {
 			'discover.tvShow' => '电视剧',
 			'discover.minutesLeft' => ({required Object minutes}) => '剩余 ${minutes} 分钟',
 			'discover.moreLikeThis' => '更多类似内容',
-			'errors.searchFailed' => ({required Object error}) => '搜索失败: ${error}',
+			'errors.searchFailed' => '搜索失败',
 			'errors.connectionTimeout' => ({required Object context}) => '加载 ${context} 时连接超时',
 			'errors.connectionFailed' => '无法连接到媒体服务器',
-			'errors.failedToLoad' => ({required Object context, required Object error}) => '无法加载 ${context}: ${error}',
+			'errors.failedToLoad' => ({required Object context}) => '无法加载 ${context}',
 			'errors.noClientAvailable' => '没有可用客户端',
-			'errors.authenticationFailed' => ({required Object error}) => '验证失败: ${error}',
+			'errors.authenticationFailed' => '验证失败',
 			'errors.couldNotLaunchUrl' => '无法打开授权 URL',
 			'errors.pleaseEnterToken' => '请输入一个令牌',
 			'errors.invalidToken' => '令牌无效',
-			'errors.failedToVerifyToken' => ({required Object error}) => '无法验证令牌: ${error}',
+			'errors.failedToVerifyToken' => '无法验证令牌',
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => '无法切换到 ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => '无法删除 ${displayName}',
 			'errors.failedToRate' => '无法更新评分',
@@ -2654,10 +2654,10 @@ extension on TranslationsZh {
 			'libraries.emptyTrash' => '清空回收站',
 			'libraries.emptyingTrash' => ({required Object title}) => '正在清空 “${title}” 的回收站...',
 			'libraries.trashEmptied' => ({required Object title}) => '已清空 “${title}” 的回收站',
-			'libraries.failedToEmptyTrash' => ({required Object error}) => '无法清空回收站: ${error}',
+			'libraries.failedToEmptyTrash' => '无法清空回收站',
 			'libraries.analyzing' => ({required Object title}) => '正在分析 “${title}”...',
 			'libraries.analysisStarted' => ({required Object title}) => '已开始分析 “${title}”',
-			'libraries.failedToAnalyze' => ({required Object error}) => '无法分析媒体库: ${error}',
+			'libraries.failedToAnalyze' => '无法分析媒体库',
 			'libraries.noLibrariesFound' => '未找到媒体库',
 			'libraries.allLibrariesHidden' => '所有媒体库已隐藏',
 			'libraries.hiddenLibrariesCount' => ({required Object count}) => '已隐藏的媒体库 (${count})',
@@ -2727,7 +2727,7 @@ extension on TranslationsZh {
 			'about.viewLicensesDescription' => '查看第三方库的许可证',
 			'serverSelection.allServerConnectionsFailed' => '无法连接到任何服务器。请检查网络。',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => '未找到 ${username} (${email}) 的服务器',
-			'serverSelection.failedToLoadServers' => ({required Object error}) => '无法加载服务器: ${error}',
+			'serverSelection.failedToLoadServers' => '无法加载服务器',
 			'hubDetail.title' => '标题',
 			'hubDetail.releaseYear' => '发行年份',
 			'hubDetail.dateAdded' => '添加日期',
@@ -2815,8 +2815,8 @@ extension on TranslationsZh {
 			'collections.deleteConfirm' => ({required Object title}) => '要删除“${title}”吗？此操作无法撤销。',
 			'collections.deleted' => '已删除合集',
 			'collections.deleteFailed' => '删除合集失败',
-			'collections.deleteFailedWithError' => ({required Object error}) => '删除合集失败：${error}',
-			'collections.failedToLoadItems' => ({required Object error}) => '加载合集项目失败：${error}',
+			'collections.deleteFailedWithError' => '删除合集失败',
+			'collections.failedToLoadItems' => '加载合集项目失败',
 			'collections.selectCollection' => '选择合集',
 			'collections.collectionName' => '合集名称',
 			'collections.enterCollectionName' => '输入合集名称',
@@ -2827,7 +2827,7 @@ extension on TranslationsZh {
 			'collections.removeFromCollectionConfirm' => ({required Object title}) => '将“${title}”从此合集移除？',
 			'collections.removedFromCollection' => '已从合集移除',
 			'collections.removeFromCollectionFailed' => '从合集移除失败',
-			'collections.removeFromCollectionError' => ({required Object error}) => '从合集移除时出错：${error}',
+			'collections.removeFromCollectionError' => '从合集移除时出错',
 			'collections.searchCollections' => '搜索合集...',
 			'playlists.title' => '播放列表',
 			'playlists.playlist' => '播放列表',
@@ -3025,7 +3025,7 @@ extension on TranslationsZh {
 			'companionRemote.pairing.connectionTimedOut' => '连接超时。请在两台设备上使用同一网络。',
 			'companionRemote.pairing.sessionNotFound' => '未找到设备。请确认 Pleya 正在主机上运行。',
 			'companionRemote.pairing.authFailed' => '认证失败。两台设备需要使用同一 Plex 账号。',
-			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '连接失败：${error}',
+			'companionRemote.pairing.failedToConnect' => '连接失败',
 			'companionRemote.remote.disconnectConfirm' => '是否要断开远程会话的连接？',
 			'companionRemote.remote.reconnecting' => '重新连接中...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => '第 ${current} 次尝试，共 5 次',
@@ -3262,13 +3262,13 @@ extension on TranslationsZh {
 			'addServer.signIn' => '登录',
 			'addServer.change' => '更改',
 			'addServer.required' => '必填',
-			'addServer.couldNotReachServer' => ({required Object error}) => '无法连接到服务器: ${error}',
-			'addServer.signInFailed' => ({required Object error}) => '登录失败: ${error}',
-			'addServer.quickConnectFailed' => ({required Object error}) => 'Quick Connect 失败: ${error}',
+			'addServer.couldNotReachServer' => '无法连接到服务器',
+			'addServer.signInFailed' => '登录失败',
+			'addServer.quickConnectFailed' => 'Quick Connect 失败',
 			'addServer.addPlexTitle' => '使用 Plex 登录',
 			'addServer.pinExpired' => 'PIN 在登录前已过期。请重试。',
 			'addServer.duplicatePlexAccount' => '已登录 Plex。请退出登录以切换账号。',
-			'addServer.failedToRegisterAccount' => ({required Object error}) => '注册帐户失败: ${error}',
+			'addServer.failedToRegisterAccount' => '注册帐户失败',
 			'addServer.enterJellyfinUrlError' => '输入你的 Jellyfin 服务器 URL',
 			'addServer.addConnectionTitle' => '添加连接',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => '添加到 ${name}',

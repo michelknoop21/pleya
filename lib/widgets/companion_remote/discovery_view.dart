@@ -180,7 +180,7 @@ class _DiscoveryViewState extends State<DiscoveryView> with ControllerDisposerMi
     } else if (error.contains('Authentication failed')) {
       return t.companionRemote.pairing.authFailed;
     }
-    return t.companionRemote.pairing.failedToConnect(error: error.replaceAll('Exception: ', ''));
+    return t.companionRemote.pairing.failedToConnect;
   }
 
   IconData _platformIcon(String platform) {

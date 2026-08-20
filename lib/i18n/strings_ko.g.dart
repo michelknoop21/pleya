@@ -679,9 +679,9 @@ class _TranslationsMessagesKo extends TranslationsMessagesEn {
 	@override String get markedAsUnwatchedOffline => '미시청으로 표시됨 (연결 시 동기화됨)';
 	@override String autoRemovedWatchedDownload({required Object title}) => '자동 삭제됨: ${title}';
 	@override String get removedFromContinueWatching => '계속 시청 목록에서 제거됨';
-	@override String errorLoading({required Object error}) => '오류: ${error}';
+	@override String get errorLoading => '오류';
 	@override String get fileInfoNotAvailable => '파일 정보가 없습니다';
-	@override String errorLoadingFileInfo({required Object error}) => '파일 정보 로딩 중 오류: ${error}';
+	@override String get errorLoadingFileInfo => '파일 정보 로딩 중 오류';
 	@override String get errorLoadingSeries => '시리즈 로딩 중 오류';
 	@override String get musicNotSupported => '음악 재생 미지원';
 	@override String get noDescriptionAvailable => '설명이 없습니다';
@@ -693,10 +693,10 @@ class _TranslationsMessagesKo extends TranslationsMessagesEn {
 	@override String get noLogsAvailable => '사용 가능한 로그가 없습니다';
 	@override String libraryScanning({required Object title}) => '"${title}"을(를) 스캔 중입니다...';
 	@override String libraryScanStarted({required Object title}) => '"${title}" 미디어 라이브러리 스캔 시작';
-	@override String libraryScanFailed({required Object error}) => '미디어 라이브러리 스캔 실패: ${error}';
+	@override String get libraryScanFailed => '미디어 라이브러리 스캔 실패';
 	@override String metadataRefreshing({required Object title}) => '"${title}" 메타데이터 새로고침 중...';
 	@override String metadataRefreshStarted({required Object title}) => '"${title}" 메타데이터 새로고침 시작됨';
-	@override String metadataRefreshFailed({required Object error}) => '메타데이터 새로고침 실패: ${error}';
+	@override String get metadataRefreshFailed => '메타데이터 새로고침 실패';
 	@override String get logoutConfirm => '로그아웃 하시겠습니까?';
 	@override String get noSeasonsFound => '시즌을 찾을 수 없음';
 	@override String get seasonsLoadFailed => '시즌을 불러오지 못했습니다';
@@ -707,7 +707,7 @@ class _TranslationsMessagesKo extends TranslationsMessagesEn {
 	@override String sleepTimerSet({required Object label}) => '수면 타이머가 ${label}로 설정 되었습니다';
 	@override String get noItemsAvailable => '사용 가능한 항목이 없습니다';
 	@override String get failedToCreatePlayQueueNoItems => '재생 대기열 생성 실패 - 항목 없음';
-	@override String failedPlayback({required Object action, required Object error}) => '${action}을(를) 수행할 수 없습니다: ${error}';
+	@override String failedPlayback({required Object action}) => '${action}을(를) 수행할 수 없습니다';
 	@override String get switchingToCompatiblePlayer => '호환되는 플레이어로 전환 중...';
 	@override String get serverLimitTitle => '재생 실패';
 	@override String get serverLimitBody => '서버 오류(HTTP 500). 대역폭/트랜스코딩 제한으로 세션이 거부된 것 같습니다. 소유자에게 조정을 요청하세요.';
@@ -899,16 +899,16 @@ class _TranslationsErrorsKo extends TranslationsErrorsEn {
 	final TranslationsKo _root; // ignore: unused_field
 
 	// Translations
-	@override String searchFailed({required Object error}) => '검색 실패: ${error}';
+	@override String get searchFailed => '검색 실패';
 	@override String connectionTimeout({required Object context}) => '${context} 로드 중 연결 시간 초과';
 	@override String get connectionFailed => '미디어 서버에 연결할 수 없습니다';
-	@override String failedToLoad({required Object context, required Object error}) => '${context} 로드 실패: ${error}';
+	@override String failedToLoad({required Object context}) => '${context} 로드 실패';
 	@override String get noClientAvailable => '사용 가능한 클라이언트가 없습니다';
-	@override String authenticationFailed({required Object error}) => '인증 실패: ${error}';
+	@override String get authenticationFailed => '인증 실패';
 	@override String get couldNotLaunchUrl => '인증 URL을 열 수 없습니다';
 	@override String get pleaseEnterToken => '토큰을 입력해 주세요';
 	@override String get invalidToken => '토큰이 유효하지 않습니다';
-	@override String failedToVerifyToken({required Object error}) => '토큰을 확인할 수 없습니다: ${error}';
+	@override String get failedToVerifyToken => '토큰을 확인할 수 없습니다';
 	@override String failedToSwitchProfile({required Object displayName}) => '${displayName}으로 전환할 수 없습니다';
 	@override String failedToDeleteProfile({required Object displayName}) => '${displayName}을(를) 삭제할 수 없습니다';
 	@override String get failedToRate => '평점을 업데이트하지 못했습니다';
@@ -931,10 +931,10 @@ class _TranslationsLibrariesKo extends TranslationsLibrariesEn {
 	@override String get emptyTrash => '휴지통 비우기';
 	@override String emptyingTrash({required Object title}) => '「${title}」의 휴지통을 비우고 있습니다...';
 	@override String trashEmptied({required Object title}) => '「${title}」의 휴지통을 비웠습니다';
-	@override String failedToEmptyTrash({required Object error}) => '휴지통 비우기 실패: ${error}';
+	@override String get failedToEmptyTrash => '휴지통 비우기 실패';
 	@override String analyzing({required Object title}) => '"${title}" 분석 중...';
 	@override String analysisStarted({required Object title}) => '"${title}" 분석 시작됨';
-	@override String failedToAnalyze({required Object error}) => '미디어 라이브러리 분석 실패: ${error}';
+	@override String get failedToAnalyze => '미디어 라이브러리 분석 실패';
 	@override String get noLibrariesFound => '미디어 라이브러리 없음';
 	@override String get allLibrariesHidden => '모든 라이브러리가 숨겨졌습니다';
 	@override String hiddenLibrariesCount({required Object count}) => '숨겨진 라이브러리 (${count})';
@@ -989,7 +989,7 @@ class _TranslationsServerSelectionKo extends TranslationsServerSelectionEn {
 	// Translations
 	@override String get allServerConnectionsFailed => '서버에 연결할 수 없습니다. 네트워크를 확인하세요.';
 	@override String noServersFoundForAccount({required Object username, required Object email}) => '${username} (${email})의 서버를 찾을 수 없습니다.';
-	@override String failedToLoadServers({required Object error}) => '서버를 로드할 수 없습니다: ${error}';
+	@override String get failedToLoadServers => '서버를 로드할 수 없습니다';
 }
 
 // Path: hubDetail
@@ -1131,8 +1131,8 @@ class _TranslationsCollectionsKo extends TranslationsCollectionsEn {
 	@override String deleteConfirm({required Object title}) => '"${title}"을(를) 삭제할까요? 되돌릴 수 없습니다.';
 	@override String get deleted => '컬렉션 삭제됨';
 	@override String get deleteFailed => '컬렉션 삭제 실패';
-	@override String deleteFailedWithError({required Object error}) => '컬렉션 삭제 실패: ${error}';
-	@override String failedToLoadItems({required Object error}) => '컬렉션 항목 로드 실패: ${error}';
+	@override String get deleteFailedWithError => '컬렉션 삭제 실패';
+	@override String get failedToLoadItems => '컬렉션 항목 로드 실패';
 	@override String get selectCollection => '컬렉션 선택';
 	@override String get collectionName => '컬렉션 이름';
 	@override String get enterCollectionName => '컬렉션 이름 입력';
@@ -1143,7 +1143,7 @@ class _TranslationsCollectionsKo extends TranslationsCollectionsEn {
 	@override String removeFromCollectionConfirm({required Object title}) => '${title}을/를 이 컬렉션에서 제거 하시겠습니까?';
 	@override String get removedFromCollection => '컬렉션에서 제거됨';
 	@override String get removeFromCollectionFailed => '컬렉션에서 제거 실패';
-	@override String removeFromCollectionError({required Object error}) => '컬렉션에서 제거 중 오류 발생: ${error}';
+	@override String get removeFromCollectionError => '컬렉션에서 제거 중 오류 발생';
 	@override String get searchCollections => '컬렉션 검색...';
 }
 
@@ -1626,13 +1626,13 @@ class _TranslationsAddServerKo extends TranslationsAddServerEn {
 	@override String get signIn => '로그인';
 	@override String get change => '변경';
 	@override String get required => '필수';
-	@override String couldNotReachServer({required Object error}) => '서버에 연결할 수 없습니다: ${error}';
-	@override String signInFailed({required Object error}) => '로그인 실패: ${error}';
-	@override String quickConnectFailed({required Object error}) => 'Quick Connect 실패: ${error}';
+	@override String get couldNotReachServer => '서버에 연결할 수 없습니다';
+	@override String get signInFailed => '로그인 실패';
+	@override String get quickConnectFailed => 'Quick Connect 실패';
 	@override String get addPlexTitle => 'Plex로 로그인';
 	@override String get pinExpired => '로그인 전에 PIN이 만료되었습니다. 다시 시도하세요.';
 	@override String get duplicatePlexAccount => '이미 Plex에 로그인되어 있습니다. 계정을 전환하려면 로그아웃하세요.';
-	@override String failedToRegisterAccount({required Object error}) => '계정 등록 실패: ${error}';
+	@override String get failedToRegisterAccount => '계정 등록 실패';
 	@override String get enterJellyfinUrlError => 'Jellyfin 서버 URL을 입력하세요';
 	@override String get addConnectionTitle => '연결 추가';
 	@override String addConnectionTitleScoped({required Object name}) => '${name}에 추가';
@@ -1754,7 +1754,7 @@ class _TranslationsVideoControlsPipErrorsKo extends TranslationsVideoControlsPip
 	@override String get notSupported => '이 기기는 화면 속 화면 모드를 지원하지 않습니다';
 	@override String get voSwitchFailed => '화면 속 화면을 위한 비디오 출력 전환에 실패했습니다';
 	@override String get failed => '화면 속 화면 모드를 시작할 수 없습니다';
-	@override String unknown({required Object error}) => '오류가 발생했습니다: ${error}';
+	@override String get unknown => '오류가 발생했습니다';
 }
 
 // Path: libraries.tabs
@@ -1872,7 +1872,7 @@ class _TranslationsCompanionRemotePairingKo extends TranslationsCompanionRemoteP
 	@override String get connectionTimedOut => '연결 시간이 초과되었습니다. 두 기기에서 같은 네트워크를 사용하세요.';
 	@override String get sessionNotFound => '기기를 찾을 수 없습니다. 호스트에서 Pleya가 실행 중인지 확인하세요.';
 	@override String get authFailed => '인증에 실패했습니다. 두 기기 모두 같은 Plex 계정이 필요합니다.';
-	@override String failedToConnect({required Object error}) => '연결 실패: ${error}';
+	@override String get failedToConnect => '연결 실패';
 }
 
 // Path: companionRemote.remote
@@ -2447,7 +2447,7 @@ extension on TranslationsKo {
 			'videoControls.pipErrors.notSupported' => '이 기기는 화면 속 화면 모드를 지원하지 않습니다',
 			'videoControls.pipErrors.voSwitchFailed' => '화면 속 화면을 위한 비디오 출력 전환에 실패했습니다',
 			'videoControls.pipErrors.failed' => '화면 속 화면 모드를 시작할 수 없습니다',
-			'videoControls.pipErrors.unknown' => ({required Object error}) => '오류가 발생했습니다: ${error}',
+			'videoControls.pipErrors.unknown' => '오류가 발생했습니다',
 			'videoControls.chapters' => '챕터',
 			'videoControls.noChaptersAvailable' => '사용 가능한 챕터가 없습니다',
 			'videoControls.queue' => '재생 대기열',
@@ -2472,9 +2472,9 @@ extension on TranslationsKo {
 			'messages.markedAsUnwatchedOffline' => '미시청으로 표시됨 (연결 시 동기화됨)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => '자동 삭제됨: ${title}',
 			'messages.removedFromContinueWatching' => '계속 시청 목록에서 제거됨',
-			'messages.errorLoading' => ({required Object error}) => '오류: ${error}',
+			'messages.errorLoading' => '오류',
 			'messages.fileInfoNotAvailable' => '파일 정보가 없습니다',
-			'messages.errorLoadingFileInfo' => ({required Object error}) => '파일 정보 로딩 중 오류: ${error}',
+			'messages.errorLoadingFileInfo' => '파일 정보 로딩 중 오류',
 			'messages.errorLoadingSeries' => '시리즈 로딩 중 오류',
 			'messages.musicNotSupported' => '음악 재생 미지원',
 			'messages.noDescriptionAvailable' => '설명이 없습니다',
@@ -2486,10 +2486,10 @@ extension on TranslationsKo {
 			'messages.noLogsAvailable' => '사용 가능한 로그가 없습니다',
 			'messages.libraryScanning' => ({required Object title}) => '"${title}"을(를) 스캔 중입니다...',
 			'messages.libraryScanStarted' => ({required Object title}) => '"${title}" 미디어 라이브러리 스캔 시작',
-			'messages.libraryScanFailed' => ({required Object error}) => '미디어 라이브러리 스캔 실패: ${error}',
+			'messages.libraryScanFailed' => '미디어 라이브러리 스캔 실패',
 			'messages.metadataRefreshing' => ({required Object title}) => '"${title}" 메타데이터 새로고침 중...',
 			'messages.metadataRefreshStarted' => ({required Object title}) => '"${title}" 메타데이터 새로고침 시작됨',
-			'messages.metadataRefreshFailed' => ({required Object error}) => '메타데이터 새로고침 실패: ${error}',
+			'messages.metadataRefreshFailed' => '메타데이터 새로고침 실패',
 			'messages.logoutConfirm' => '로그아웃 하시겠습니까?',
 			'messages.noSeasonsFound' => '시즌을 찾을 수 없음',
 			'messages.seasonsLoadFailed' => '시즌을 불러오지 못했습니다',
@@ -2500,7 +2500,7 @@ extension on TranslationsKo {
 			'messages.sleepTimerSet' => ({required Object label}) => '수면 타이머가 ${label}로 설정 되었습니다',
 			'messages.noItemsAvailable' => '사용 가능한 항목이 없습니다',
 			'messages.failedToCreatePlayQueueNoItems' => '재생 대기열 생성 실패 - 항목 없음',
-			'messages.failedPlayback' => ({required Object action, required Object error}) => '${action}을(를) 수행할 수 없습니다: ${error}',
+			'messages.failedPlayback' => ({required Object action}) => '${action}을(를) 수행할 수 없습니다',
 			'messages.switchingToCompatiblePlayer' => '호환되는 플레이어로 전환 중...',
 			'messages.serverLimitTitle' => '재생 실패',
 			'messages.serverLimitBody' => '서버 오류(HTTP 500). 대역폭/트랜스코딩 제한으로 세션이 거부된 것 같습니다. 소유자에게 조정을 요청하세요.',
@@ -2631,16 +2631,16 @@ extension on TranslationsKo {
 			'discover.tvShow' => 'TV 시리즈',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes}분 남음',
 			'discover.moreLikeThis' => '비슷한 콘텐츠',
-			'errors.searchFailed' => ({required Object error}) => '검색 실패: ${error}',
+			'errors.searchFailed' => '검색 실패',
 			'errors.connectionTimeout' => ({required Object context}) => '${context} 로드 중 연결 시간 초과',
 			'errors.connectionFailed' => '미디어 서버에 연결할 수 없습니다',
-			'errors.failedToLoad' => ({required Object context, required Object error}) => '${context} 로드 실패: ${error}',
+			'errors.failedToLoad' => ({required Object context}) => '${context} 로드 실패',
 			'errors.noClientAvailable' => '사용 가능한 클라이언트가 없습니다',
-			'errors.authenticationFailed' => ({required Object error}) => '인증 실패: ${error}',
+			'errors.authenticationFailed' => '인증 실패',
 			'errors.couldNotLaunchUrl' => '인증 URL을 열 수 없습니다',
 			'errors.pleaseEnterToken' => '토큰을 입력해 주세요',
 			'errors.invalidToken' => '토큰이 유효하지 않습니다',
-			'errors.failedToVerifyToken' => ({required Object error}) => '토큰을 확인할 수 없습니다: ${error}',
+			'errors.failedToVerifyToken' => '토큰을 확인할 수 없습니다',
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => '${displayName}으로 전환할 수 없습니다',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => '${displayName}을(를) 삭제할 수 없습니다',
 			'errors.failedToRate' => '평점을 업데이트하지 못했습니다',
@@ -2654,10 +2654,10 @@ extension on TranslationsKo {
 			'libraries.emptyTrash' => '휴지통 비우기',
 			'libraries.emptyingTrash' => ({required Object title}) => '「${title}」의 휴지통을 비우고 있습니다...',
 			'libraries.trashEmptied' => ({required Object title}) => '「${title}」의 휴지통을 비웠습니다',
-			'libraries.failedToEmptyTrash' => ({required Object error}) => '휴지통 비우기 실패: ${error}',
+			'libraries.failedToEmptyTrash' => '휴지통 비우기 실패',
 			'libraries.analyzing' => ({required Object title}) => '"${title}" 분석 중...',
 			'libraries.analysisStarted' => ({required Object title}) => '"${title}" 분석 시작됨',
-			'libraries.failedToAnalyze' => ({required Object error}) => '미디어 라이브러리 분석 실패: ${error}',
+			'libraries.failedToAnalyze' => '미디어 라이브러리 분석 실패',
 			'libraries.noLibrariesFound' => '미디어 라이브러리 없음',
 			'libraries.allLibrariesHidden' => '모든 라이브러리가 숨겨졌습니다',
 			'libraries.hiddenLibrariesCount' => ({required Object count}) => '숨겨진 라이브러리 (${count})',
@@ -2727,7 +2727,7 @@ extension on TranslationsKo {
 			'about.viewLicensesDescription' => '타사 라이브러리 라이선스 보기',
 			'serverSelection.allServerConnectionsFailed' => '서버에 연결할 수 없습니다. 네트워크를 확인하세요.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => '${username} (${email})의 서버를 찾을 수 없습니다.',
-			'serverSelection.failedToLoadServers' => ({required Object error}) => '서버를 로드할 수 없습니다: ${error}',
+			'serverSelection.failedToLoadServers' => '서버를 로드할 수 없습니다',
 			'hubDetail.title' => '제목',
 			'hubDetail.releaseYear' => '출시 연도',
 			'hubDetail.dateAdded' => '추가 날짜',
@@ -2815,8 +2815,8 @@ extension on TranslationsKo {
 			'collections.deleteConfirm' => ({required Object title}) => '"${title}"을(를) 삭제할까요? 되돌릴 수 없습니다.',
 			'collections.deleted' => '컬렉션 삭제됨',
 			'collections.deleteFailed' => '컬렉션 삭제 실패',
-			'collections.deleteFailedWithError' => ({required Object error}) => '컬렉션 삭제 실패: ${error}',
-			'collections.failedToLoadItems' => ({required Object error}) => '컬렉션 항목 로드 실패: ${error}',
+			'collections.deleteFailedWithError' => '컬렉션 삭제 실패',
+			'collections.failedToLoadItems' => '컬렉션 항목 로드 실패',
 			'collections.selectCollection' => '컬렉션 선택',
 			'collections.collectionName' => '컬렉션 이름',
 			'collections.enterCollectionName' => '컬렉션 이름 입력',
@@ -2827,7 +2827,7 @@ extension on TranslationsKo {
 			'collections.removeFromCollectionConfirm' => ({required Object title}) => '${title}을/를 이 컬렉션에서 제거 하시겠습니까?',
 			'collections.removedFromCollection' => '컬렉션에서 제거됨',
 			'collections.removeFromCollectionFailed' => '컬렉션에서 제거 실패',
-			'collections.removeFromCollectionError' => ({required Object error}) => '컬렉션에서 제거 중 오류 발생: ${error}',
+			'collections.removeFromCollectionError' => '컬렉션에서 제거 중 오류 발생',
 			'collections.searchCollections' => '컬렉션 검색...',
 			'playlists.title' => '플레이리스트',
 			'playlists.playlist' => '재생 목록',
@@ -3025,7 +3025,7 @@ extension on TranslationsKo {
 			'companionRemote.pairing.connectionTimedOut' => '연결 시간이 초과되었습니다. 두 기기에서 같은 네트워크를 사용하세요.',
 			'companionRemote.pairing.sessionNotFound' => '기기를 찾을 수 없습니다. 호스트에서 Pleya가 실행 중인지 확인하세요.',
 			'companionRemote.pairing.authFailed' => '인증에 실패했습니다. 두 기기 모두 같은 Plex 계정이 필요합니다.',
-			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '연결 실패: ${error}',
+			'companionRemote.pairing.failedToConnect' => '연결 실패',
 			'companionRemote.remote.disconnectConfirm' => '원격 세션 연결을 해제하시겠습니까?',
 			'companionRemote.remote.reconnecting' => '재연결 중...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => '${current}/5 시도 중',
@@ -3262,13 +3262,13 @@ extension on TranslationsKo {
 			'addServer.signIn' => '로그인',
 			'addServer.change' => '변경',
 			'addServer.required' => '필수',
-			'addServer.couldNotReachServer' => ({required Object error}) => '서버에 연결할 수 없습니다: ${error}',
-			'addServer.signInFailed' => ({required Object error}) => '로그인 실패: ${error}',
-			'addServer.quickConnectFailed' => ({required Object error}) => 'Quick Connect 실패: ${error}',
+			'addServer.couldNotReachServer' => '서버에 연결할 수 없습니다',
+			'addServer.signInFailed' => '로그인 실패',
+			'addServer.quickConnectFailed' => 'Quick Connect 실패',
 			'addServer.addPlexTitle' => 'Plex로 로그인',
 			'addServer.pinExpired' => '로그인 전에 PIN이 만료되었습니다. 다시 시도하세요.',
 			'addServer.duplicatePlexAccount' => '이미 Plex에 로그인되어 있습니다. 계정을 전환하려면 로그아웃하세요.',
-			'addServer.failedToRegisterAccount' => ({required Object error}) => '계정 등록 실패: ${error}',
+			'addServer.failedToRegisterAccount' => '계정 등록 실패',
 			'addServer.enterJellyfinUrlError' => 'Jellyfin 서버 URL을 입력하세요',
 			'addServer.addConnectionTitle' => '연결 추가',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => '${name}에 추가',

@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../connection/connection.dart';
-import '../../exceptions/media_server_exceptions.dart';
 import '../../focus/card_focus_scope.dart';
 import '../../focus/focusable_button.dart';
 import '../../focus/focusable_text_field.dart';
@@ -26,6 +25,7 @@ import '../../utils/media_server_timeouts.dart';
 import '../../services/jellyfin_lan_discovery_service.dart';
 import '../../services/storage_service.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/error_message_utils.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../profile/profile_switch_screen.dart';
@@ -188,49 +188,37 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
       setErrorText(t.addServer.enterJellyfinUrlError);
       return;
     }
-    final autoStartQuickConnect = await runAsync<bool>(
-      () async {
-        final auth = await _buildAuthService();
-        final endpoint = await auth.raceEndpoints(
-          input.probeBaseUrls,
-          baseUrlsToPersist: input.explicitBaseUrls,
-          baseUrlValidationGroups: input.validationBaseUrlGroups,
-          // The user explicitly typed this URL: give a slow first hop (cold
-          // tunnel, waking disks) time instead of the 2s background budget.
-          raceTimeout: MediaServerTimeouts.jellyfinManualConnect,
-        );
-        final qcEnabled = await auth.isQuickConnectEnabled(endpoint.activeBaseUrl);
-        if (!mounted) return false;
-        setState(() {
-          _serverEndpoint = endpoint;
-          _serverInfo = endpoint.serverInfo;
-          _quickConnectEnabled = qcEnabled;
-          _urlController.text = endpoint.baseUrls.join('\n');
-        });
-        // On TV, typing a username/password with a remote is misery — auto-jump
-        // to Quick Connect when the server supports it. Mirrors the
-        // PlatformDetector.isTV() default in add_plex_account_screen.dart.
-        final autoStart = qcEnabled && PlatformDetector.isTV();
-        if (!autoStart) _requestFocusAfterFrame(_usernameFocus);
-        return autoStart;
-      },
-      errorMapper: (e) => e is MediaServerUrlException ? e.message : t.addServer.couldNotReachServer(error: _detail(e)),
-    );
+    final autoStartQuickConnect = await runAsync<bool>(() async {
+      final auth = await _buildAuthService();
+      final endpoint = await auth.raceEndpoints(
+        input.probeBaseUrls,
+        baseUrlsToPersist: input.explicitBaseUrls,
+        baseUrlValidationGroups: input.validationBaseUrlGroups,
+        // The user explicitly typed this URL: give a slow first hop (cold
+        // tunnel, waking disks) time instead of the 2s background budget.
+        raceTimeout: MediaServerTimeouts.jellyfinManualConnect,
+      );
+      final qcEnabled = await auth.isQuickConnectEnabled(endpoint.activeBaseUrl);
+      if (!mounted) return false;
+      setState(() {
+        _serverEndpoint = endpoint;
+        _serverInfo = endpoint.serverInfo;
+        _quickConnectEnabled = qcEnabled;
+        _urlController.text = endpoint.baseUrls.join('\n');
+      });
+      // On TV, typing a username/password with a remote is misery — auto-jump
+      // to Quick Connect when the server supports it. Mirrors the
+      // PlatformDetector.isTV() default in add_plex_account_screen.dart.
+      final autoStart = qcEnabled && PlatformDetector.isTV();
+      if (!autoStart) _requestFocusAfterFrame(_usernameFocus);
+      return autoStart;
+    }, errorMapper: (e) => friendlyError(e, context: t.addServer.addJellyfinTitle));
     // Sequenced after the probe's runAsync so busy stays set straight through
     // /QuickConnect/Initiate. Started from inside the probe body, the probe's
     // `finally` cleared busy mid-initiate, re-enabling the form — the focus
     // fallback from the removed tile/button then landed on the URL field and
     // auto-opened the TV keyboard over the Quick Connect panel.
     if (autoStartQuickConnect == true && mounted) await _startQuickConnect();
-  }
-
-  /// Human-readable detail for an error that's about to be interpolated into
-  /// user-facing text. `toString()` on our own exceptions leaks the runtime
-  /// type ("MediaServerHttpException: ..."), which reads as a crash to anyone
-  /// who screenshots it.
-  static String _detail(Object e) {
-    if (e is MediaServerException && e.message.isNotEmpty) return e.message;
-    return e.toString();
   }
 
   Future<void> _signIn() async {
@@ -241,30 +229,23 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
       await _probe();
       return;
     }
-    await runAsync<void>(
-      () async {
-        final auth = await _buildAuthService();
-        final storage = await StorageService.getInstance();
-        final deviceId = await storage.getOrCreateClientIdentifier();
+    await runAsync<void>(() async {
+      final auth = await _buildAuthService();
+      final storage = await StorageService.getInstance();
+      final deviceId = await storage.getOrCreateClientIdentifier();
 
-        final connection = await auth.authenticateByName(
-          baseUrl: endpoint.activeBaseUrl,
-          baseUrls: endpoint.baseUrls,
-          username: _usernameController.text,
-          password: _passwordController.text,
-          deviceId: deviceId,
-          serverInfo: info,
-        );
+      final connection = await auth.authenticateByName(
+        baseUrl: endpoint.activeBaseUrl,
+        baseUrls: endpoint.baseUrls,
+        username: _usernameController.text,
+        password: _passwordController.text,
+        deviceId: deviceId,
+        serverInfo: info,
+      );
 
-        if (!mounted) return;
-        await _persistAndExit(connection);
-      },
-      errorMapper: (e) {
-        if (e is MediaServerAuthException) return e.message;
-        appLogger.e('Add Jellyfin failed', error: e);
-        return t.addServer.signInFailed(error: _detail(e));
-      },
-    );
+      if (!mounted) return;
+      await _persistAndExit(connection);
+    }, errorMapper: (e) => friendlyError(e, context: t.addServer.addJellyfinTitle));
   }
 
   Future<void> _startQuickConnect() async {
@@ -306,11 +287,7 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
         }
         await _persistAndExit(connection);
       },
-      errorMapper: (e) {
-        if (e is MediaServerAuthException) return e.message;
-        appLogger.e('Jellyfin Quick Connect failed', error: e);
-        return t.addServer.quickConnectFailed(error: _detail(e));
-      },
+      errorMapper: (e) => friendlyError(e, context: t.addServer.addJellyfinTitle),
       shouldApplyState: () => attemptId == _qcAttemptId,
     );
     // Clear the QC panel after any error so the form re-shows.

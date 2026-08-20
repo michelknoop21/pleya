@@ -3,16 +3,23 @@ part of '../../video_player_screen.dart';
 extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
   String _safePlaybackErrorMessage(Object error) {
     final raw = error.toString();
-    final redacted = LogRedactionManager.redact(raw);
     if (raw.contains('No client registered')) {
-      return t.messages.errorLoading(error: 'Server is unavailable for the active profile');
+      return t.notices.playbackConnectionLostBody;
     }
     // A recognised disc this build cannot play. Say that, instead of letting
     // mpv's "corrupt stream" reach the user for a perfectly fine DVD.
     if (error is UnsupportedDiscException) {
       return error.kind == DiscKind.dvd ? t.messages.dvdNotSupported : t.messages.discNotSupported;
     }
-    return t.messages.errorLoading(error: redacted);
+    final redacted = LogRedactionManager.redact(raw);
+    logNoticeError('playback-init', redacted);
+    return switch (classifyPlaybackFailure(redacted)) {
+      PlaybackFailureKind.segmentUnavailable => t.notices.playbackSegmentUnavailableBody,
+      PlaybackFailureKind.connectionLost => t.notices.playbackConnectionLostBody,
+      PlaybackFailureKind.codecUnsupported => t.notices.playbackCodecUnsupportedBody,
+      PlaybackFailureKind.serverError => t.notices.playbackServerErrorBody,
+      PlaybackFailureKind.unknown => t.notices.playbackStoppedTitle,
+    };
   }
 
   void _onPlayerError(PlayerError err) {
@@ -35,7 +42,7 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
       return;
     }
 
-    showGlobalErrorSnackBar(_redactPlayerError(_lastLogError ?? err.message));
+    noticeController.show(noticeForPlaybackFailure(_redactPlayerError(_lastLogError ?? err.message)));
     _handleBackButton();
   }
 

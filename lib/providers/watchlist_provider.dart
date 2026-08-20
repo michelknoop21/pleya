@@ -18,6 +18,7 @@ import '../services/watchlist/watchlist_repository.dart';
 import '../services/watchlist/watchlist_snapshot_store.dart';
 import '../services/watchlist_actions.dart';
 import '../utils/app_logger.dart';
+import '../utils/error_message_utils.dart';
 import '../utils/external_ids.dart';
 import '../utils/global_key_utils.dart';
 
@@ -213,7 +214,7 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
       _hasSnapshot = true;
     } catch (e, st) {
       appLogger.w('Watchlist load failed', error: e, stackTrace: st);
-      _error = e.toString();
+      _error = friendlyError(e);
     } finally {
       _isLoading = false;
       _hasLoaded = true;

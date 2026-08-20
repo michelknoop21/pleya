@@ -6,6 +6,7 @@ import '../services/data_aggregation_service.dart';
 import '../services/storage_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/content_utils.dart';
+import '../utils/error_message_utils.dart';
 import 'multi_server_provider.dart';
 
 /// Load state for the libraries provider
@@ -220,7 +221,7 @@ class LibrariesProvider extends ChangeNotifier with DisposableChangeNotifierMixi
       // emission re-drives the sync.
       if (reloadInPlace) return false;
       _loadState = LibrariesLoadState.error;
-      _errorMessage = e.toString();
+      _errorMessage = friendlyError(e);
       safeNotifyListeners();
       return false;
     }

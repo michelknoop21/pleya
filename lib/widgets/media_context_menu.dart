@@ -44,6 +44,7 @@ import '../utils/platform_detector.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/media_server_timeouts.dart';
 import '../utils/dialogs.dart';
+import 'notice/notice_controller.dart';
 import '../services/external_player_service.dart';
 import '../focus/focusable_button.dart';
 import '../focus/focusable_text_field.dart';
@@ -846,9 +847,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
         _notifyRefresh(refreshItemId);
       }
     } catch (e) {
-      if (context.mounted) {
-        showErrorSnackBar(context, '$errorPrefix: $e');
-      }
+      noticeController.show(noticeForError(e, context: errorPrefix));
     }
   }
 
@@ -878,9 +877,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
       }
     } catch (e) {
       // The helper closes its own dialog before rethrowing.
-      if (context.mounted) {
-        showErrorSnackBar(context, t.messages.errorLoadingFileInfo(error: friendlyError(e)));
-      }
+      noticeController.show(noticeForError(e, context: t.messages.fileInfoNotAvailable));
     }
   }
 
@@ -1186,10 +1183,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
         }
       }
     } catch (e) {
-      appLogger.e('Failed to remove from collection', error: e);
-      if (context.mounted) {
-        showErrorSnackBar(context, t.collections.removeFromCollectionError(error: friendlyError(e)));
-      }
+      noticeController.show(noticeForError(e, context: item.displayTitle));
     }
   }
 
@@ -1219,7 +1213,6 @@ class MediaContextMenuState extends State<MediaContextMenu> {
     final client = _getMediaClientForItem();
 
     final itemTitle = _itemDisplayTitle();
-    final itemTypeLabel = isCollection ? t.collections.collection : t.playlists.playlist;
 
     // Show confirmation dialog
     final confirmed = await showDeleteConfirmation(
@@ -1251,13 +1244,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
         }
       }
     } catch (e) {
-      appLogger.e('Failed to delete $itemTypeLabel', error: e);
-      if (context.mounted) {
-        showErrorSnackBar(
-          context,
-          isCollection ? t.collections.deleteFailedWithError(error: friendlyError(e)) : t.playlists.errorDeleting,
-        );
-      }
+      noticeController.show(noticeForError(e, context: itemTitle));
     }
   }
 
@@ -1649,7 +1636,7 @@ class _PlaylistSelectionDialogState extends State<_PlaylistSelectionDialog> {
               if (_errorMessage != null) {
                 return ListTile(
                   leading: const AppIcon(Symbols.error_rounded, fill: 1),
-                  title: Text(t.messages.errorLoading(error: _errorMessage!)),
+                  title: Text(_errorMessage!),
                   trailing: TextButton(onPressed: _loadNextPage, child: Text(t.common.retry)),
                 );
               }
@@ -1838,7 +1825,7 @@ class _CollectionSelectionDialogState extends State<_CollectionSelectionDialog> 
                     if (_errorMessage != null) {
                       return FocusableListTile(
                         leading: const AppIcon(Symbols.error_rounded, fill: 1),
-                        title: Text(t.messages.errorLoading(error: _errorMessage!)),
+                        title: Text(_errorMessage!),
                         onTap: _loadNextPage,
                       );
                     }

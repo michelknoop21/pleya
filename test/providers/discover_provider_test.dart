@@ -328,12 +328,14 @@ void main() {
     expect(provider.isLoading, isFalse);
   });
 
-  test('load failure surfaces the error and ends both loading states', () async {
+  test('load failure surfaces a friendly error (not the raw exception) and ends both loading states', () async {
     aggregation.onDeckResult = () => throw Exception('boom');
 
     await provider.load();
 
-    expect(provider.errorMessage, contains('boom'));
+    expect(provider.errorMessage, isNotNull);
+    expect(provider.errorMessage, isNot(contains('boom')));
+    expect(provider.errorMessage, isNot(contains('Exception')));
     expect(provider.isLoading, isFalse);
     expect(provider.areHubsLoading, isFalse);
   });

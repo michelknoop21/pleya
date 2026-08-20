@@ -679,9 +679,9 @@ class _TranslationsMessagesPl extends TranslationsMessagesEn {
 	@override String get markedAsUnwatchedOffline => 'Oznaczono jako nieobejrzane (zsynchronizuje się po połączeniu)';
 	@override String autoRemovedWatchedDownload({required Object title}) => 'Automatycznie usunięto: ${title}';
 	@override String get removedFromContinueWatching => 'Usunięto z kontynuowania oglądania';
-	@override String errorLoading({required Object error}) => 'Błąd: ${error}';
+	@override String get errorLoading => 'Błąd';
 	@override String get fileInfoNotAvailable => 'Informacje o pliku niedostępne';
-	@override String errorLoadingFileInfo({required Object error}) => 'Błąd ładowania informacji o pliku: ${error}';
+	@override String get errorLoadingFileInfo => 'Błąd ładowania informacji o pliku';
 	@override String get errorLoadingSeries => 'Błąd ładowania serialu';
 	@override String get musicNotSupported => 'Odtwarzanie muzyki nie jest jeszcze obsługiwane';
 	@override String get noDescriptionAvailable => 'Brak dostępnego opisu';
@@ -693,10 +693,10 @@ class _TranslationsMessagesPl extends TranslationsMessagesEn {
 	@override String get noLogsAvailable => 'Brak dostępnych logów';
 	@override String libraryScanning({required Object title}) => 'Skanowanie "${title}"...';
 	@override String libraryScanStarted({required Object title}) => 'Rozpoczęto skanowanie biblioteki "${title}"';
-	@override String libraryScanFailed({required Object error}) => 'Nie udało się zeskanować biblioteki: ${error}';
+	@override String get libraryScanFailed => 'Nie udało się zeskanować biblioteki';
 	@override String metadataRefreshing({required Object title}) => 'Odświeżanie metadanych "${title}"...';
 	@override String metadataRefreshStarted({required Object title}) => 'Rozpoczęto odświeżanie metadanych "${title}"';
-	@override String metadataRefreshFailed({required Object error}) => 'Nie udało się odświeżyć metadanych: ${error}';
+	@override String get metadataRefreshFailed => 'Nie udało się odświeżyć metadanych';
 	@override String get logoutConfirm => 'Czy na pewno chcesz się wylogować?';
 	@override String get noSeasonsFound => 'Nie znaleziono sezonów';
 	@override String get seasonsLoadFailed => 'Nie udało się załadować sezonów';
@@ -707,7 +707,7 @@ class _TranslationsMessagesPl extends TranslationsMessagesEn {
 	@override String sleepTimerSet({required Object label}) => 'Wyłącznik czasowy ustawiony na ${label}';
 	@override String get noItemsAvailable => 'Brak dostępnych elementów';
 	@override String get failedToCreatePlayQueueNoItems => 'Nie udało się utworzyć kolejki odtwarzania — brak elementów';
-	@override String failedPlayback({required Object action, required Object error}) => 'Nie udało się ${action}: ${error}';
+	@override String failedPlayback({required Object action}) => 'Nie udało się ${action}';
 	@override String get switchingToCompatiblePlayer => 'Przełączanie na kompatybilny odtwarzacz...';
 	@override String get serverLimitTitle => 'Odtwarzanie nie powiodło się';
 	@override String get serverLimitBody => 'Błąd serwera (HTTP 500). Limit przepustowości/transkodowania prawdopodobnie odrzucił tę sesję. Poproś właściciela o zmianę.';
@@ -899,16 +899,16 @@ class _TranslationsErrorsPl extends TranslationsErrorsEn {
 	final TranslationsPl _root; // ignore: unused_field
 
 	// Translations
-	@override String searchFailed({required Object error}) => 'Wyszukiwanie nie powiodło się: ${error}';
+	@override String get searchFailed => 'Wyszukiwanie nie powiodło się';
 	@override String connectionTimeout({required Object context}) => 'Limit czasu połączenia przy ładowaniu ${context}';
 	@override String get connectionFailed => 'Nie można połączyć się z serwerem multimediów';
-	@override String failedToLoad({required Object context, required Object error}) => 'Nie udało się załadować ${context}: ${error}';
+	@override String failedToLoad({required Object context}) => 'Nie udało się załadować ${context}';
 	@override String get noClientAvailable => 'Brak dostępnego klienta';
-	@override String authenticationFailed({required Object error}) => 'Uwierzytelnienie nie powiodło się: ${error}';
+	@override String get authenticationFailed => 'Uwierzytelnienie nie powiodło się';
 	@override String get couldNotLaunchUrl => 'Nie można otworzyć URL uwierzytelniania';
 	@override String get pleaseEnterToken => 'Wprowadź token';
 	@override String get invalidToken => 'Nieprawidłowy token';
-	@override String failedToVerifyToken({required Object error}) => 'Nie udało się zweryfikować tokena: ${error}';
+	@override String get failedToVerifyToken => 'Nie udało się zweryfikować tokena';
 	@override String failedToSwitchProfile({required Object displayName}) => 'Nie udało się przełączyć na ${displayName}';
 	@override String failedToDeleteProfile({required Object displayName}) => 'Nie udało się usunąć ${displayName}';
 	@override String get failedToRate => 'Nie udało się zaktualizować oceny';
@@ -931,10 +931,10 @@ class _TranslationsLibrariesPl extends TranslationsLibrariesEn {
 	@override String get emptyTrash => 'Opróżnij kosz';
 	@override String emptyingTrash({required Object title}) => 'Opróżnianie kosza dla "${title}"...';
 	@override String trashEmptied({required Object title}) => 'Kosz opróżniony dla "${title}"';
-	@override String failedToEmptyTrash({required Object error}) => 'Nie udało się opróżnić kosza: ${error}';
+	@override String get failedToEmptyTrash => 'Nie udało się opróżnić kosza';
 	@override String analyzing({required Object title}) => 'Analizowanie "${title}"...';
 	@override String analysisStarted({required Object title}) => 'Analiza rozpoczęta dla "${title}"';
-	@override String failedToAnalyze({required Object error}) => 'Nie udało się przeanalizować biblioteki: ${error}';
+	@override String get failedToAnalyze => 'Nie udało się przeanalizować biblioteki';
 	@override String get noLibrariesFound => 'Nie znaleziono bibliotek';
 	@override String get allLibrariesHidden => 'Wszystkie biblioteki są ukryte';
 	@override String hiddenLibrariesCount({required Object count}) => 'Ukryte biblioteki (${count})';
@@ -989,7 +989,7 @@ class _TranslationsServerSelectionPl extends TranslationsServerSelectionEn {
 	// Translations
 	@override String get allServerConnectionsFailed => 'Nie udało się połączyć z żadnym serwerem. Sprawdź sieć.';
 	@override String noServersFoundForAccount({required Object username, required Object email}) => 'Nie znaleziono serwerów dla ${username} (${email})';
-	@override String failedToLoadServers({required Object error}) => 'Nie udało się załadować serwerów: ${error}';
+	@override String get failedToLoadServers => 'Nie udało się załadować serwerów';
 }
 
 // Path: hubDetail
@@ -1131,8 +1131,8 @@ class _TranslationsCollectionsPl extends TranslationsCollectionsEn {
 	@override String deleteConfirm({required Object title}) => 'Usunąć "${title}"? Tego nie można cofnąć.';
 	@override String get deleted => 'Kolekcja usunięta';
 	@override String get deleteFailed => 'Nie udało się usunąć kolekcji';
-	@override String deleteFailedWithError({required Object error}) => 'Nie udało się usunąć kolekcji: ${error}';
-	@override String failedToLoadItems({required Object error}) => 'Nie udało się załadować elementów kolekcji: ${error}';
+	@override String get deleteFailedWithError => 'Nie udało się usunąć kolekcji';
+	@override String get failedToLoadItems => 'Nie udało się załadować elementów kolekcji';
 	@override String get selectCollection => 'Wybierz kolekcję';
 	@override String get collectionName => 'Nazwa kolekcji';
 	@override String get enterCollectionName => 'Wprowadź nazwę kolekcji';
@@ -1143,7 +1143,7 @@ class _TranslationsCollectionsPl extends TranslationsCollectionsEn {
 	@override String removeFromCollectionConfirm({required Object title}) => 'Usunąć "${title}" z tej kolekcji?';
 	@override String get removedFromCollection => 'Usunięto z kolekcji';
 	@override String get removeFromCollectionFailed => 'Nie udało się usunąć z kolekcji';
-	@override String removeFromCollectionError({required Object error}) => 'Błąd usuwania z kolekcji: ${error}';
+	@override String get removeFromCollectionError => 'Błąd usuwania z kolekcji';
 	@override String get searchCollections => 'Szukaj kolekcji...';
 }
 
@@ -1626,13 +1626,13 @@ class _TranslationsAddServerPl extends TranslationsAddServerEn {
 	@override String get signIn => 'Zaloguj się';
 	@override String get change => 'Zmień';
 	@override String get required => 'Wymagane';
-	@override String couldNotReachServer({required Object error}) => 'Nie udało się połączyć z serwerem: ${error}';
-	@override String signInFailed({required Object error}) => 'Logowanie nie powiodło się: ${error}';
-	@override String quickConnectFailed({required Object error}) => 'Quick Connect nie powiodło się: ${error}';
+	@override String get couldNotReachServer => 'Nie udało się połączyć z serwerem';
+	@override String get signInFailed => 'Logowanie nie powiodło się';
+	@override String get quickConnectFailed => 'Quick Connect nie powiodło się';
 	@override String get addPlexTitle => 'Zaloguj się przez Plex';
 	@override String get pinExpired => 'PIN wygasł przed zalogowaniem. Spróbuj ponownie.';
 	@override String get duplicatePlexAccount => 'Już zalogowano do Plex. Wyloguj się, aby zmienić konto.';
-	@override String failedToRegisterAccount({required Object error}) => 'Nie udało się zarejestrować konta: ${error}';
+	@override String get failedToRegisterAccount => 'Nie udało się zarejestrować konta';
 	@override String get enterJellyfinUrlError => 'Podaj URL serwera Jellyfin';
 	@override String get addConnectionTitle => 'Dodaj połączenie';
 	@override String addConnectionTitleScoped({required Object name}) => 'Dodaj do ${name}';
@@ -1754,7 +1754,7 @@ class _TranslationsVideoControlsPipErrorsPl extends TranslationsVideoControlsPip
 	@override String get notSupported => 'Urządzenie nie obsługuje trybu obraz w obrazie';
 	@override String get voSwitchFailed => 'Nie udało się przełączyć wyjścia wideo dla trybu obraz w obrazie';
 	@override String get failed => 'Nie udało się uruchomić trybu obraz w obrazie';
-	@override String unknown({required Object error}) => 'Wystąpił błąd: ${error}';
+	@override String get unknown => 'Wystąpił błąd';
 }
 
 // Path: libraries.tabs
@@ -1872,7 +1872,7 @@ class _TranslationsCompanionRemotePairingPl extends TranslationsCompanionRemoteP
 	@override String get connectionTimedOut => 'Limit czasu połączenia. Użyj tej samej sieci na obu urządzeniach.';
 	@override String get sessionNotFound => 'Nie znaleziono urządzenia. Upewnij się, że Pleya działa na hoście.';
 	@override String get authFailed => 'Uwierzytelnianie nie powiodło się. Oba urządzenia muszą używać tego samego konta Plex.';
-	@override String failedToConnect({required Object error}) => 'Nie udało się połączyć: ${error}';
+	@override String get failedToConnect => 'Nie udało się połączyć';
 }
 
 // Path: companionRemote.remote
@@ -2447,7 +2447,7 @@ extension on TranslationsPl {
 			'videoControls.pipErrors.notSupported' => 'Urządzenie nie obsługuje trybu obraz w obrazie',
 			'videoControls.pipErrors.voSwitchFailed' => 'Nie udało się przełączyć wyjścia wideo dla trybu obraz w obrazie',
 			'videoControls.pipErrors.failed' => 'Nie udało się uruchomić trybu obraz w obrazie',
-			'videoControls.pipErrors.unknown' => ({required Object error}) => 'Wystąpił błąd: ${error}',
+			'videoControls.pipErrors.unknown' => 'Wystąpił błąd',
 			'videoControls.chapters' => 'Rozdziały',
 			'videoControls.noChaptersAvailable' => 'Brak dostępnych rozdziałów',
 			'videoControls.queue' => 'Kolejka',
@@ -2472,9 +2472,9 @@ extension on TranslationsPl {
 			'messages.markedAsUnwatchedOffline' => 'Oznaczono jako nieobejrzane (zsynchronizuje się po połączeniu)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Automatycznie usunięto: ${title}',
 			'messages.removedFromContinueWatching' => 'Usunięto z kontynuowania oglądania',
-			'messages.errorLoading' => ({required Object error}) => 'Błąd: ${error}',
+			'messages.errorLoading' => 'Błąd',
 			'messages.fileInfoNotAvailable' => 'Informacje o pliku niedostępne',
-			'messages.errorLoadingFileInfo' => ({required Object error}) => 'Błąd ładowania informacji o pliku: ${error}',
+			'messages.errorLoadingFileInfo' => 'Błąd ładowania informacji o pliku',
 			'messages.errorLoadingSeries' => 'Błąd ładowania serialu',
 			'messages.musicNotSupported' => 'Odtwarzanie muzyki nie jest jeszcze obsługiwane',
 			'messages.noDescriptionAvailable' => 'Brak dostępnego opisu',
@@ -2486,10 +2486,10 @@ extension on TranslationsPl {
 			'messages.noLogsAvailable' => 'Brak dostępnych logów',
 			'messages.libraryScanning' => ({required Object title}) => 'Skanowanie "${title}"...',
 			'messages.libraryScanStarted' => ({required Object title}) => 'Rozpoczęto skanowanie biblioteki "${title}"',
-			'messages.libraryScanFailed' => ({required Object error}) => 'Nie udało się zeskanować biblioteki: ${error}',
+			'messages.libraryScanFailed' => 'Nie udało się zeskanować biblioteki',
 			'messages.metadataRefreshing' => ({required Object title}) => 'Odświeżanie metadanych "${title}"...',
 			'messages.metadataRefreshStarted' => ({required Object title}) => 'Rozpoczęto odświeżanie metadanych "${title}"',
-			'messages.metadataRefreshFailed' => ({required Object error}) => 'Nie udało się odświeżyć metadanych: ${error}',
+			'messages.metadataRefreshFailed' => 'Nie udało się odświeżyć metadanych',
 			'messages.logoutConfirm' => 'Czy na pewno chcesz się wylogować?',
 			'messages.noSeasonsFound' => 'Nie znaleziono sezonów',
 			'messages.seasonsLoadFailed' => 'Nie udało się załadować sezonów',
@@ -2500,7 +2500,7 @@ extension on TranslationsPl {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Wyłącznik czasowy ustawiony na ${label}',
 			'messages.noItemsAvailable' => 'Brak dostępnych elementów',
 			'messages.failedToCreatePlayQueueNoItems' => 'Nie udało się utworzyć kolejki odtwarzania — brak elementów',
-			'messages.failedPlayback' => ({required Object action, required Object error}) => 'Nie udało się ${action}: ${error}',
+			'messages.failedPlayback' => ({required Object action}) => 'Nie udało się ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Przełączanie na kompatybilny odtwarzacz...',
 			'messages.serverLimitTitle' => 'Odtwarzanie nie powiodło się',
 			'messages.serverLimitBody' => 'Błąd serwera (HTTP 500). Limit przepustowości/transkodowania prawdopodobnie odrzucił tę sesję. Poproś właściciela o zmianę.',
@@ -2631,16 +2631,16 @@ extension on TranslationsPl {
 			'discover.tvShow' => 'Serial TV',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min pozostało',
 			'discover.moreLikeThis' => 'Więcej podobnych',
-			'errors.searchFailed' => ({required Object error}) => 'Wyszukiwanie nie powiodło się: ${error}',
+			'errors.searchFailed' => 'Wyszukiwanie nie powiodło się',
 			'errors.connectionTimeout' => ({required Object context}) => 'Limit czasu połączenia przy ładowaniu ${context}',
 			'errors.connectionFailed' => 'Nie można połączyć się z serwerem multimediów',
-			'errors.failedToLoad' => ({required Object context, required Object error}) => 'Nie udało się załadować ${context}: ${error}',
+			'errors.failedToLoad' => ({required Object context}) => 'Nie udało się załadować ${context}',
 			'errors.noClientAvailable' => 'Brak dostępnego klienta',
-			'errors.authenticationFailed' => ({required Object error}) => 'Uwierzytelnienie nie powiodło się: ${error}',
+			'errors.authenticationFailed' => 'Uwierzytelnienie nie powiodło się',
 			'errors.couldNotLaunchUrl' => 'Nie można otworzyć URL uwierzytelniania',
 			'errors.pleaseEnterToken' => 'Wprowadź token',
 			'errors.invalidToken' => 'Nieprawidłowy token',
-			'errors.failedToVerifyToken' => ({required Object error}) => 'Nie udało się zweryfikować tokena: ${error}',
+			'errors.failedToVerifyToken' => 'Nie udało się zweryfikować tokena',
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Nie udało się przełączyć na ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Nie udało się usunąć ${displayName}',
 			'errors.failedToRate' => 'Nie udało się zaktualizować oceny',
@@ -2654,10 +2654,10 @@ extension on TranslationsPl {
 			'libraries.emptyTrash' => 'Opróżnij kosz',
 			'libraries.emptyingTrash' => ({required Object title}) => 'Opróżnianie kosza dla "${title}"...',
 			'libraries.trashEmptied' => ({required Object title}) => 'Kosz opróżniony dla "${title}"',
-			'libraries.failedToEmptyTrash' => ({required Object error}) => 'Nie udało się opróżnić kosza: ${error}',
+			'libraries.failedToEmptyTrash' => 'Nie udało się opróżnić kosza',
 			'libraries.analyzing' => ({required Object title}) => 'Analizowanie "${title}"...',
 			'libraries.analysisStarted' => ({required Object title}) => 'Analiza rozpoczęta dla "${title}"',
-			'libraries.failedToAnalyze' => ({required Object error}) => 'Nie udało się przeanalizować biblioteki: ${error}',
+			'libraries.failedToAnalyze' => 'Nie udało się przeanalizować biblioteki',
 			'libraries.noLibrariesFound' => 'Nie znaleziono bibliotek',
 			'libraries.allLibrariesHidden' => 'Wszystkie biblioteki są ukryte',
 			'libraries.hiddenLibrariesCount' => ({required Object count}) => 'Ukryte biblioteki (${count})',
@@ -2727,7 +2727,7 @@ extension on TranslationsPl {
 			'about.viewLicensesDescription' => 'Zobacz licencje bibliotek zewnętrznych',
 			'serverSelection.allServerConnectionsFailed' => 'Nie udało się połączyć z żadnym serwerem. Sprawdź sieć.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'Nie znaleziono serwerów dla ${username} (${email})',
-			'serverSelection.failedToLoadServers' => ({required Object error}) => 'Nie udało się załadować serwerów: ${error}',
+			'serverSelection.failedToLoadServers' => 'Nie udało się załadować serwerów',
 			'hubDetail.title' => 'Tytuł',
 			'hubDetail.releaseYear' => 'Rok premiery',
 			'hubDetail.dateAdded' => 'Data dodania',
@@ -2815,8 +2815,8 @@ extension on TranslationsPl {
 			'collections.deleteConfirm' => ({required Object title}) => 'Usunąć "${title}"? Tego nie można cofnąć.',
 			'collections.deleted' => 'Kolekcja usunięta',
 			'collections.deleteFailed' => 'Nie udało się usunąć kolekcji',
-			'collections.deleteFailedWithError' => ({required Object error}) => 'Nie udało się usunąć kolekcji: ${error}',
-			'collections.failedToLoadItems' => ({required Object error}) => 'Nie udało się załadować elementów kolekcji: ${error}',
+			'collections.deleteFailedWithError' => 'Nie udało się usunąć kolekcji',
+			'collections.failedToLoadItems' => 'Nie udało się załadować elementów kolekcji',
 			'collections.selectCollection' => 'Wybierz kolekcję',
 			'collections.collectionName' => 'Nazwa kolekcji',
 			'collections.enterCollectionName' => 'Wprowadź nazwę kolekcji',
@@ -2827,7 +2827,7 @@ extension on TranslationsPl {
 			'collections.removeFromCollectionConfirm' => ({required Object title}) => 'Usunąć "${title}" z tej kolekcji?',
 			'collections.removedFromCollection' => 'Usunięto z kolekcji',
 			'collections.removeFromCollectionFailed' => 'Nie udało się usunąć z kolekcji',
-			'collections.removeFromCollectionError' => ({required Object error}) => 'Błąd usuwania z kolekcji: ${error}',
+			'collections.removeFromCollectionError' => 'Błąd usuwania z kolekcji',
 			'collections.searchCollections' => 'Szukaj kolekcji...',
 			'playlists.title' => 'Playlisty',
 			'playlists.playlist' => 'Playlista',
@@ -3025,7 +3025,7 @@ extension on TranslationsPl {
 			'companionRemote.pairing.connectionTimedOut' => 'Limit czasu połączenia. Użyj tej samej sieci na obu urządzeniach.',
 			'companionRemote.pairing.sessionNotFound' => 'Nie znaleziono urządzenia. Upewnij się, że Pleya działa na hoście.',
 			'companionRemote.pairing.authFailed' => 'Uwierzytelnianie nie powiodło się. Oba urządzenia muszą używać tego samego konta Plex.',
-			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Nie udało się połączyć: ${error}',
+			'companionRemote.pairing.failedToConnect' => 'Nie udało się połączyć',
 			'companionRemote.remote.disconnectConfirm' => 'Czy chcesz się rozłączyć od sesji zdalnej?',
 			'companionRemote.remote.reconnecting' => 'Ponowne łączenie...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Próba ${current} z 5',
@@ -3262,13 +3262,13 @@ extension on TranslationsPl {
 			'addServer.signIn' => 'Zaloguj się',
 			'addServer.change' => 'Zmień',
 			'addServer.required' => 'Wymagane',
-			'addServer.couldNotReachServer' => ({required Object error}) => 'Nie udało się połączyć z serwerem: ${error}',
-			'addServer.signInFailed' => ({required Object error}) => 'Logowanie nie powiodło się: ${error}',
-			'addServer.quickConnectFailed' => ({required Object error}) => 'Quick Connect nie powiodło się: ${error}',
+			'addServer.couldNotReachServer' => 'Nie udało się połączyć z serwerem',
+			'addServer.signInFailed' => 'Logowanie nie powiodło się',
+			'addServer.quickConnectFailed' => 'Quick Connect nie powiodło się',
 			'addServer.addPlexTitle' => 'Zaloguj się przez Plex',
 			'addServer.pinExpired' => 'PIN wygasł przed zalogowaniem. Spróbuj ponownie.',
 			'addServer.duplicatePlexAccount' => 'Już zalogowano do Plex. Wyloguj się, aby zmienić konto.',
-			'addServer.failedToRegisterAccount' => ({required Object error}) => 'Nie udało się zarejestrować konta: ${error}',
+			'addServer.failedToRegisterAccount' => 'Nie udało się zarejestrować konta',
 			'addServer.enterJellyfinUrlError' => 'Podaj URL serwera Jellyfin',
 			'addServer.addConnectionTitle' => 'Dodaj połączenie',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => 'Dodaj do ${name}',

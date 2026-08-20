@@ -14,6 +14,7 @@ import '../utils/platform_detector.dart';
 import '../utils/media_server_http_client.dart';
 import '../utils/snackbar_helper.dart';
 import '../widgets/desktop_app_bar.dart';
+import '../widgets/notice/notice_controller.dart';
 import '../i18n/strings.g.dart';
 import 'base_media_list_detail_screen.dart';
 import 'focusable_detail_screen_mixin.dart';
@@ -106,10 +107,9 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
       appLogger.d('Loaded ${loadedItems.length} of $totalSize items for collection: ${widget.collection.title}');
       autoFocusFirstItemAfterLoad();
     } catch (e) {
-      appLogger.e('Failed to load collection items', error: e);
       if (!mounted) return;
       setState(() {
-        errorMessage = t.collections.failedToLoadItems(error: friendlyError(e));
+        errorMessage = friendlyError(e, context: widget.collection.title);
         isLoading = false;
       });
     }
@@ -224,10 +224,7 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
         showErrorSnackBar(context, t.collections.deleteFailed);
       }
     } catch (e) {
-      appLogger.e('Failed to delete collection', error: e);
-      if (mounted) {
-        showErrorSnackBar(context, t.collections.deleteFailedWithError(error: friendlyError(e)));
-      }
+      noticeController.show(noticeForError(e, context: widget.collection.title));
     }
   }
 

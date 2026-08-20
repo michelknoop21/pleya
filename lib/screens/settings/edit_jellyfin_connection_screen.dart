@@ -4,13 +4,12 @@ import 'package:provider/provider.dart';
 
 import '../../connection/connection.dart';
 import '../../connection/connection_registry.dart';
-import '../../exceptions/media_server_exceptions.dart';
 import '../../focus/focusable_button.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
 import '../../services/jellyfin_endpoint_discovery.dart';
-import '../../utils/app_logger.dart';
+import '../../utils/error_message_utils.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/loading_indicator_box.dart';
@@ -41,32 +40,25 @@ class _EditJellyfinConnectionScreenState extends State<EditJellyfinConnectionScr
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    await runAsync<void>(
-      () async {
-        final input = JellyfinEndpointDiscovery.buildUserInputCandidates(_enteredUrls());
-        final endpoint = await JellyfinEndpointDiscovery().raceEndpoints(
-          input.probeBaseUrls,
-          preferredUrl: widget.connection.baseUrl,
-          expectedMachineId: widget.connection.serverMachineId,
-          baseUrlsToPersist: input.explicitBaseUrls,
-          baseUrlValidationGroups: input.validationBaseUrlGroups,
-        );
-        final updated = widget.connection.copyWith(
-          baseUrl: endpoint.activeBaseUrl,
-          baseUrls: endpoint.baseUrls,
-          serverName: endpoint.serverInfo.serverName,
-        );
-        if (!mounted) return;
-        await context.read<ConnectionRegistry>().upsert(updated);
-        if (!mounted) return;
-        Navigator.of(context).pop(true);
-      },
-      errorMapper: (e) {
-        if (e is MediaServerUrlException) return e.message;
-        appLogger.e('Edit Jellyfin connection failed', error: e);
-        return t.addServer.couldNotReachServer(error: e.toString());
-      },
-    );
+    await runAsync<void>(() async {
+      final input = JellyfinEndpointDiscovery.buildUserInputCandidates(_enteredUrls());
+      final endpoint = await JellyfinEndpointDiscovery().raceEndpoints(
+        input.probeBaseUrls,
+        preferredUrl: widget.connection.baseUrl,
+        expectedMachineId: widget.connection.serverMachineId,
+        baseUrlsToPersist: input.explicitBaseUrls,
+        baseUrlValidationGroups: input.validationBaseUrlGroups,
+      );
+      final updated = widget.connection.copyWith(
+        baseUrl: endpoint.activeBaseUrl,
+        baseUrls: endpoint.baseUrls,
+        serverName: endpoint.serverInfo.serverName,
+      );
+      if (!mounted) return;
+      await context.read<ConnectionRegistry>().upsert(updated);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    }, errorMapper: (e) => friendlyError(e, context: t.addServer.addJellyfinTitle));
   }
 
   List<String> _enteredUrls() {

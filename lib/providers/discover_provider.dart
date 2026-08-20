@@ -17,6 +17,7 @@ import '../services/recommendations/hub_dedup.dart';
 import '../services/recommendations/recommendation_service.dart';
 import '../services/system_shelf_service.dart';
 import '../utils/app_logger.dart';
+import '../utils/error_message_utils.dart';
 import '../utils/global_key_utils.dart';
 import '../utils/media_hub_ordering.dart';
 import '../utils/watch_state_notifier.dart';
@@ -146,7 +147,8 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       : [?_latestShowsHub, ..._seedHubs, ..._personalizedHubs, ..._hubs];
   bool get hasMoreContinueWatching => _hasMoreContinueWatching;
 
-  /// Raw load failure (unlocalized); the screen wraps it for display.
+  /// Localized, display-ready load failure — already run through
+  /// [friendlyError], never the raw exception. The screen shows it as-is.
   String? get errorMessage => _errorMessage;
 
   /// True until the first on-deck result (or error) of a [load] pass lands.
@@ -324,7 +326,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       appLogger.e('Failed to load discover content', error: e);
       if (isDisposed) return;
       if (showingSnapshot) return; // Stale snapshot rows beat an error flash.
-      _errorMessage = e.toString();
+      _errorMessage = friendlyError(e, context: t.discover.title);
       _onDeckState = DiscoverLoadState.error;
       _hubsState = DiscoverLoadState.error;
       safeNotifyListeners();

@@ -33,6 +33,7 @@ import 'package:pleya/services/watchlist/watchlist_snapshot_store.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/media_context_menu.dart';
+import 'package:pleya/widgets/notice/notice_controller.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -153,7 +154,14 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(find.byType(SnackBar), findsOneWidget);
+      // No NoticeHost is mounted in this widget tree, so the failure surfaces
+      // on the global controller's model rather than as a widget in the tree.
+      expect(noticeController.visible, isNotEmpty);
+      addTearDown(() {
+        for (final entry in noticeController.visible.toList()) {
+          noticeController.dismiss(entry.id);
+        }
+      });
       expect(find.text('target'), findsOneWidget);
     });
   });

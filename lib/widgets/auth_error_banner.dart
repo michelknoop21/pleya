@@ -7,6 +7,8 @@ import '../i18n/strings.g.dart';
 import '../providers/multi_server_provider.dart';
 import '../screens/settings/add_connection_screen.dart';
 import '../focus/focusable_button.dart';
+import '../theme/mono_theme.dart';
+import '../theme/mono_tokens.dart';
 import 'app_icon.dart';
 
 /// Top-of-app banner shown when one or more servers' tokens have been
@@ -30,35 +32,33 @@ class AuthErrorBanner extends StatelessWidget {
     if (entries.isEmpty) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final mono = tokens(context);
+    final errorColor = mono.isLight ? kNoticeErrorLight : kNoticeErrorDark;
     final label = entries.length == 1
         ? t.connections.sessionExpiredOne(name: entries.first.displayName)
         : t.connections.sessionExpiredMany(count: entries.length);
 
     return Material(
-      color: scheme.errorContainer,
+      color: mono.surfaceElevated,
       child: SafeArea(
         bottom: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
           child: Row(
             children: [
-              AppIcon(Symbols.lock_rounded, fill: 1, color: scheme.onErrorContainer),
+              AppIcon(Symbols.error_rounded, fill: 1, color: errorColor),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   label,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onErrorContainer, fontWeight: .w500),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: mono.text, fontWeight: .w500),
                 ),
               ),
               const SizedBox(width: 8),
               FocusableButton(
                 onPressed: () => _openReauth(context),
                 child: FilledButton.tonal(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: scheme.onErrorContainer,
-                    foregroundColor: scheme.errorContainer,
-                  ),
+                  style: FilledButton.styleFrom(backgroundColor: errorColor, foregroundColor: mono.surfaceElevated),
                   onPressed: () => _openReauth(context),
                   child: Text(t.connections.signInAgain),
                 ),
