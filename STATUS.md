@@ -1,10 +1,14 @@
 # STATUS · Pleya
 
-_Laatst bijgewerkt: 2026-08-19 avond (`main` = `40658ed`. Build 231 staat op TestFlight voor iOS, tvOS en macOS; 232 volgt met de zijbalkregressie erin. App Store Connect 2.8.0 hangt op iOS, tvOS en macOS aan build 229 en staat op `PREPARE_FOR_SUBMISSION`)_
+_Laatst bijgewerkt: 2026-08-20 (`main`, hero-crop fix net gecommit. Build 231 staat op TestFlight voor iOS, tvOS en macOS; 232 volgt met de zijbalkregressie erin. App Store Connect 2.8.0 hangt op iOS, tvOS en macOS aan build 229 en staat op `PREPARE_FOR_SUBMISSION`)_
 
 ## Waar was ik
 
-**Twee UI-meldingen die allebei op dezelfde as lagen: een control die te veel gewicht opeist, en een klik die bij het verkeerde terechtkomt.** Eerst openden Filters, Sorteren en Groepering op een desktopvenster rechtsonder. Dat zat niet in de bibliotheekpagina maar in de gedeelde overlay-sheet: die geeft op desktop de laatste muis-x als anker, wat klopt voor een contextmenu en voor niets anders, plus een vaste hoogte van 400. De host heeft nu een presentatiestand en de plaatsing staat in een pure functie. In dezelfde ronde kreeg Ontdekken via Aanvragen de bibliotheekheader zelf in plaats van omlijnde pillen: van 92px naar 42px chroom. Zie [DEC-032](docs/DECISIONS.md#dec-032).
+**De home-hero croppte op een smalle telefoon de zijkanten van zijn eigen artwork weg, en dat zat al in de serveraanvraag.** `billboardArt()` koos daar terecht het vierkante `backgroundSquarePath` in plaats van een 16:9-backdrop, maar `discover_screen.dart` vroeg nog altijd de volle 16:9-hoogte op (`max(screenWidth*9/16, heroHeight)`), en Plex' `minSize=1&upscale=1` vulde die portret-box door van het midden te croppen vóórdat Flutter iets tekende. `homeHeroArtGeometry()` (`lib/utils/home_hero_layout.dart`) laat de aanvraag voortaan altijd de ratio van de gekozen bron volgen in plaats van de containerratio, en de artworklaag verhuisde naar een eigen `HomeHeroArtwork`-widget zodat de geometrie los van het hele scherm te toetsen is. Onderweg ook het vaste 400×120-logo responsive gemaakt voor telefoon. Een onafhankelijke `/code-review` op de diff ving daarna een echte bug in die nieuwe widget: de fade-gradient onder het (kortere) frame stond gepositioneerd op de onderkant van de hele hero in plaats van op de onderkant van het frame zelf, dus hij rendersde in lege ruimte. Gefixt en met een regressietest vastgelegd. Zie [DEC-035](docs/DECISIONS.md#dec-035).
+
+`flutter test`, `flutter analyze` en `scripts/ci_checks.sh` zijn schoon voor de geraakte bestanden (73 gerichte tests groen). Nog niet gedaan: committen, en de verplichte visuele verificatie met een screenshot op een echt smal scherm dat de crop nu klopt.
+
+**Eerdere twee UI-meldingen lagen allebei op dezelfde as: een control die te veel gewicht opeist, en een klik die bij het verkeerde terechtkomt.** Eerst openden Filters, Sorteren en Groepering op een desktopvenster rechtsonder. Dat zat niet in de bibliotheekpagina maar in de gedeelde overlay-sheet: die geeft op desktop de laatste muis-x als anker, wat klopt voor een contextmenu en voor niets anders, plus een vaste hoogte van 400. De host heeft nu een presentatiestand en de plaatsing staat in een pure functie. In dezelfde ronde kreeg Ontdekken via Aanvragen de bibliotheekheader zelf in plaats van omlijnde pillen: van 92px naar 42px chroom. Zie [DEC-032](docs/DECISIONS.md#dec-032).
 
 **De fix van die tweede melding sloeg door en is dezelfde avond hersteld.** Zie de alinea eronder: de balk claimde de hele strook tot 220 zodra de pointer erin kwam, ook stil ingeklapt, en daarmee de contentknoppen die daar staan. Op macOS was Aanbevolen op een bibliotheekpagina niet meer aan te klikken.
 
@@ -34,12 +38,15 @@ Het Atmos-spoor staat er nog precies zo bij als gisteren: een iOS-log van build 
 
 ## Volgende stap
 
-**De deviceronde op de nieuwe build, in deze volgorde.** Eerst de twee dingen die al sinds build 230 wachten en de echte server vragen: de aanvraaglijst op de iPhone (staan er echte titels en posters, klopt de status per regel, met debuglogging gefilterd op `seerr: could not resolve`), en de ondertiteltaal op de Apple TV terwijl Plex transcodeert. Daarna één wegwerpaanvraag met bewust gekozen server, kwaliteitsprofiel en rootmap, in Radarr of Sonarr controleren dat exact die waarden zijn opgeslagen, en de aanvraag verwijderen.
+**Eerst de hero-crop fix afronden: screenshot op een smal scherm (simulator volstaat, 353 of 402pt breed) dat het vierkante of 16:9-frame nu ongecropt staat.** De code is gecommit en getest; alleen de verplichte visuele check ontbreekt nog. `docs/CHANGELOG.md` krijgt zijn entry zodra die check gedaan is.
+
+**Daarna de deviceronde op de nieuwe build, in deze volgorde.** Eerst de twee dingen die al sinds build 230 wachten en de echte server vragen: de aanvraaglijst op de iPhone (staan er echte titels en posters, klopt de status per regel, met debuglogging gefilterd op `seerr: could not resolve`), en de ondertiteltaal op de Apple TV terwijl Plex transcodeert. Daarna één wegwerpaanvraag met bewust gekozen server, kwaliteitsprofiel en rootmap, in Radarr of Sonarr controleren dat exact die waarden zijn opgeslagen, en de aanvraag verwijderen.
 
 Nieuw erbij op deze build: op een echt toestel met trackpad of muis de zijbalk naderen en meteen een menu-item aanklikken. Dat is de ene helft van de fix die niet met de hand te automatiseren was, want `cliclick` levert geen synthetische hover aan deze app. Kijk daarbij ook of de content in de strook tussen 80 en 220 pixels prettig blijft: die schuift nu weg zodra je hem nadert, en dat is bewust.
 
 ## Blockers
 
+- [ ] **De hero-crop fix is niet visueel geverifieerd**: `homeHeroArtGeometry()` en `HomeHeroArtwork` zijn compleet getest (73 tests, inclusief de frame/fade-rects), maar niemand heeft nog een screenshot bekeken op een echt smal scherm om te zien dat de gezichten/compositie nu wél in beeld staan in plaats van gecropt. Zie [DEC-035](docs/DECISIONS.md#dec-035).
 - [ ] **De hover-band van de zijbalk is niet met de hand geverifieerd**: `cliclick` levert geen synthetische hover- of scrollevents aan deze app, dus dat de balk uitklapt zodra de cursor binnen 220 pixels komt leunt volledig op de widgettest met een echte pointer-gesture. Wat wél met de hand is gezien: een klik op x=150 in het hero-gebied levert de detailpagina op in plaats van een film, en de Afspelen-pil speelt. Vraagt de nieuwe build op een toestel met muis of trackpad.
 - [ ] **`RIGHT OVERFLOWED BY 16 PIXELS` op de tvOS-hero**: de knoppenrij met Resume en View details loopt over. Gezien in de simulator, bestond al vóór het zijbalkwerk en bewust niet in die commit meegenomen. Eigen UI-fix.
 - [ ] **De tvOS-select-asymmetrie blijft open als onderzoeksnotitie**: `NavigationRailItem` is de enige plek die op Select activeert, daarna focus verplaatst en `SelectKeyUpSuppressor.suppressSelectUntilKeyUp()` niet wapent, terwijl elf andere plekken dat wel doen. Niet gerepareerd omdat het aantoonbaar niet lekt (beide ontvangers in de content weigeren een losse key-up) en het in de simulator niet te reproduceren was. Drie contracttests leggen het gedrag vast; komt er een nieuwe melding, begin dan bij het focus- en key-eventpad.
@@ -100,6 +107,12 @@ xcrun devicectl device process launch --console --terminate-existing \
 
 ## Recente sessies
 
+### 2026-08-20
+- De home-hero croppte op een smalle telefoon de zijkanten van het gekozen artwork weg, want de server-aanvraag volgde de containerratio in plaats van de bronratio. `homeHeroArtGeometry()` (`lib/utils/home_hero_layout.dart`) koppelt de framehoogte nu los van `heroHeight` en laat de aanvraag altijd de ratio van de bron (vierkant of 16:9) volgen; de artworklaag verhuisde naar `HomeHeroArtwork` (`lib/widgets/home_hero_artwork.dart`). Zie [DEC-035](docs/DECISIONS.md#dec-035).
+- Onderweg ook het vaste 400×120-herologo responsive gemaakt op telefoon (`homeHeroLogoConstraints()`).
+- Een onafhankelijke `/code-review` op de diff ving een echte bug: de fade-gradient onder het frame stond op de onderkant van de hele hero in plaats van op de onderkant van het (kortere) frame. Gefixt, met een regressietest die de fade-rect tegen de frame-rect toetst.
+- 73 gerichte tests groen, `flutter analyze` en `scripts/ci_checks.sh` schoon voor de geraakte bestanden. Gecommit als `40d9608` op `main`. Nog open: visuele verificatie op een echt smal scherm.
+
 ### 2026-08-18 en 2026-08-19
 - De aanvragen-schermen in zeven commits van `02d5b71` tot `da1bbab`: echte titel en poster per regel via `SeerrClient.hydrateRequests`, de kaart herschikt met samengevatte seizoenen, filterbalk en zoekveld rechtgezet, kwaliteitsprofiel en rootmap toegevoegd, en de posterbadge binnen zijn kaart.
 - Vier losse meldingen erbij: het zwarte scherm bij sorteren in de kijklijst (`02d5b71`, een sheet die `MainScreen` onder zichzelf vandaan popte), de onzichtbare selectie in elke segmented instelling (`1717a44`), de skip-intro-knop bij films (`5e6d5e0`) en de filterbalk van de kijklijst (`d0678c7`).
@@ -134,10 +147,6 @@ xcrun devicectl device process launch --console --terminate-existing \
 ### 2026-08-16
 - Mijn Pleya en de kijklijst gebouwd, vijftien commits van `310ace8` tot `11ec313`: datalaag met multi-membership, Plex-cloudclient op een gemeten contract, beschikbaarheid met eerlijke dekking, offline-snapshot, navigatie, scherm en schrijfacties.
 - Het API-contract eerst gemeten en gesaniteerd vastgelegd in `test/fixtures/watchlist/`; vier planaannames sneuvelden daarop.
-
-### 2026-08-15
-- Het tvOS-systeemtoetsenbord reageert weer op de Siri Remote (`6bab0ca`, build 219, op het toestel bevestigd). Oorzaak uit de engine-binary bewezen, fix via een override van `tvosHandlePressFromUIEvent:`. Zie [DEC-019](docs/DECISIONS.md#dec-019); de gotcha staat in `CLAUDE.md` zodat dit niet opnieuw verloren gaat.
-- `main` en `test` weer gelijkgetrokken (`b3dc5b2`), inclusief twee commits die alleen op `test` stonden: de hero die verdween na het zoektoetsenbord, en de watch-state-sync waarbij een tweede apparaat wint van een verouderde lokale positie. 2935 tests groen.
 
 Ouder dan dit: zie [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
