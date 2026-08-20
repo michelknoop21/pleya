@@ -77,6 +77,22 @@ Tonen wat er nu als "What to Test" op een build staat: fastlane notes_show build
 
 Releasenotes uit docs/RELEASES.md op een TestFlight-build zetten: fastlane notes build:227
 
+### whats_new_show
+
+```sh
+[bundle exec] fastlane whats_new_show
+```
+
+Tonen wat er nu als App Store "What's New" op de bewerkbare versie staat: fastlane whats_new_show [platform:ios]
+
+### whats_new
+
+```sh
+[bundle exec] fastlane whats_new
+```
+
+Releasenotes uit docs/RELEASES.md als App Store "What's New" zetten: fastlane whats_new build:227
+
 ### beta
 
 ```sh

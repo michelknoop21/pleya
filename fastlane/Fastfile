@@ -338,6 +338,64 @@ def verify_build_notes(build, expected)
   true
 end
 
+# Zet het "What's New in This Version"-veld van de App Store-versie zelf.
+#
+# Ander veld dan set_build_notes hierboven: dat vult de BetaBuildLocalization
+# die een TestFlight-tester ziet, dit vult de AppStoreVersionLocalization die
+# een gebruiker bij een echte update ziet. Beide lezen dezelfde bron in
+# docs/RELEASES.md via dezelfde testflight_notes-opmaak — een App Store-update
+# wordt op een telefoon net zo gescand als een TestFlight-build.
+def set_version_whats_new(version, notes)
+  text = testflight_notes(notes)
+  if text.length > 4000
+    UI.important("App Store What's New is #{text.length} tekens; App Store neemt er 4000")
+    text = "#{text[0, 3997]}..."
+  end
+  localizations = version.get_app_store_version_localizations
+  if localizations.empty?
+    UI.important("Geen App Store-versielocalisatie gevonden; What's New niet gezet")
+    return false
+  end
+  localizations.each do |loc|
+    Spaceship::ConnectAPI.patch_app_store_version_localization(
+      app_store_version_localization_id: loc.id, attributes: { whatsNew: text }
+    )
+  end
+  verify_version_whats_new(version, text)
+end
+
+# Leestcontrole analoog aan verify_build_notes, maar over de App Store-versie.
+def verify_version_whats_new(version, expected)
+  want = expected.gsub("\r\n", "\n")
+  found = version.get_app_store_version_localizations
+  UI.user_error!("Geen App Store-versielocalisatie na het schrijven") if found.empty?
+  mismatched = found.reject { |loc| loc.whats_new.to_s.gsub("\r\n", "\n") == want }
+  unless mismatched.empty?
+    locales = mismatched.map { |loc| "#{loc.locale} (#{loc.whats_new.to_s.length} tekens)" }
+    UI.user_error!("App Store What's New wijkt af van wat er gestuurd is: #{locales.join(', ')}")
+  end
+  UI.message("Teruggelezen: #{found.length} locale(s), #{want.length} tekens, gelijk aan de bron")
+  true
+end
+
+# Analoog aan apply_release_notes, maar voor de App Store-versie in plaats van
+# de TestFlight-build. Ook hier geen fout bij ontbrekende notities: vlak na
+# een upload heeft docs/RELEASES.md ze meestal nog niet.
+def apply_app_store_whats_new(platform, build_number, version)
+  notes = release_notes_for(build_number)
+  if notes.nil?
+    UI.important("#{platform}: geen releasenotes voor build #{build_number} in docs/RELEASES.md")
+    UI.important("Na /update-docs bijwerken met: fastlane whats_new build:#{build_number}")
+    return false
+  end
+  set_version_whats_new(version, notes)
+  UI.success("#{platform}: App Store What's New op #{version.version_string} gezet")
+  true
+rescue => e
+  UI.important("#{platform}: App Store What's New zetten faalde: #{e.message}")
+  false
+end
+
 # Koppelt build_number aan de bewerkbare App Store-versie van dit platform.
 # Geeft true bij succes, false als er niets te koppelen viel.
 def attach_build_to_version(platform, build_number, timeout: ENV.fetch("ASC_ATTACH_TIMEOUT", "1800").to_i)
@@ -361,6 +419,7 @@ def attach_build_to_version(platform, build_number, timeout: ENV.fetch("ASC_ATTA
   version.select_build(build_id: build.id)
   UI.success("#{platform} #{version.version_string}: build #{current&.version || 'geen'} → #{build_number} gekoppeld")
   apply_release_notes(platform, build_number, build)
+  apply_app_store_whats_new(platform, build_number, version)
   true
 end
 
@@ -670,6 +729,50 @@ lane :notes do |options|
     failures << platform
   end
   UI.user_error!("Notities zetten mislukt voor: #{failures.join(', ')}") unless failures.empty?
+end
+
+desc "Tonen wat er nu als App Store \"What's New\" op de bewerkbare versie staat: fastlane whats_new_show [platform:ios]"
+lane :whats_new_show do |options|
+  platforms = options[:platform] ? [options[:platform]] : ASC_PLATFORM.keys
+  platforms.each do |platform|
+    asc_platform = ASC_PLATFORM.fetch(platform)
+    version = spaceship_app.get_edit_app_store_version(platform: asc_platform)
+    next UI.important("#{platform}: geen bewerkbare App Store-versie") unless version
+    locs = version.get_app_store_version_localizations
+    next UI.important("#{platform}: geen App Store-versielocalisatie") if locs.empty?
+    locs.each do |loc|
+      text = loc.whats_new.to_s
+      UI.message("#{platform} #{version.version_string} #{loc.locale}: #{text.length} tekens")
+      text.lines.first(6).each { |l| UI.message("  | #{l.chomp}") }
+    end
+  end
+end
+
+desc "Releasenotes uit docs/RELEASES.md als App Store \"What's New\" zetten: fastlane whats_new build:227"
+lane :whats_new do |options|
+  build_number = options[:build] || local_build_number
+  UI.user_error!("Geen buildnummer") unless build_number
+  preview = required_notes_for(build_number)
+  UI.message("What's New voor build #{build_number}, #{preview.length} tekens:")
+  preview.lines.first(4).each { |l| UI.message("  #{l.chomp}") }
+
+  platforms = options[:platform] ? [options[:platform]] : ASC_PLATFORM.keys
+  failures = []
+  platforms.each do |platform|
+    asc_platform = ASC_PLATFORM.fetch(platform)
+    version = spaceship_app.get_edit_app_store_version(platform: asc_platform)
+    if version.nil?
+      UI.important("#{platform}: geen bewerkbare App Store-versie")
+      failures << platform
+      next
+    end
+    set_version_whats_new(version, release_notes_for(build_number))
+    UI.success("#{platform} #{version.version_string}: What's New gezet")
+  rescue => e
+    UI.error("#{platform}: #{e.message}")
+    failures << platform
+  end
+  UI.user_error!("What's New zetten mislukt voor: #{failures.join(', ')}") unless failures.empty?
 end
 
 desc "Alle platforms → TestFlight; gaat door als één platform faalt"
