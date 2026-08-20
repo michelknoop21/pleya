@@ -18,7 +18,11 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### New
+- App Store "What's New" automatisch zetten bij het koppelen van een build
+
+### Fixed
+- prefer 16:9 backdrop over square art on narrow iPhone hero
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 234 · 20 August 2026
