@@ -18,12 +18,35 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### New
-- nieuw Notice-systeem als vervanging voor rauwe SnackBars
+Nothing user-facing since the last published build.
+<!-- END GENERATED -->
+
+## 2.8.0 · build 234 · 20 August 2026
+
+<!-- commit: cdeda9c -->
+
+### Improved
+
+- **Error and status messages are easier to read, and the important ones now offer a way to
+  act on them.** They used to be plain text on a flat red or green bar, which fell short of
+  comfortable reading in the dark theme. They now match the rest of the app's cards, stay
+  readable in dark, OLED and light, and a failed action can carry a Retry button right on the
+  message instead of leaving you to find one elsewhere. A repeated failure, like a server that
+  keeps timing out, now folds into a single message with a counter instead of stacking a new
+  one on screen every time.
 
 ### Fixed
-- vraag hero-artwork aan op de ratio van de bron, niet de container
-<!-- END GENERATED -->
+
+- **The home screen's hero image no longer crops out the sides on narrower phones.** The app
+  was asking the server for a wide picture even when the artwork itself is a tall poster or a
+  square, so the server centred and cropped it to fit, cutting off whatever sat at the edges.
+  It now asks for the image in its own shape, so the full picture shows.
+
+### Notes
+
+- **Twenty translated error messages had a gap where the underlying, untranslated text used to
+  leak in.** That gap is gone across all fifteen supported languages, so a network or login
+  failure always shows in your own language now.
 
 ## 2.8.0 · build 233 · 19 August 2026
 
