@@ -9,13 +9,247 @@ continuously while the version stays at 2.8.0. The internal engineering log live
 Every published entry carries the commit it was cut at. `scripts/gen_release_notes.sh`
 reads the topmost anchor and fills the block below with everything committed since.
 
+Only `### New`, `### Improved`, `### Fixed` and `### Notes` render on pleya.app; any other
+`###` heading is dropped there without a word (`website/src/lib/server/releases.ts`).
+`fastlane notes` reads this file straight, so such a heading still reaches TestFlight. That
+is how "Worth checking" is meant to work, and it is the reason a note for everyone belongs
+under `Notes`.
+
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
 ### New
-- zet de publieke releasenotes als "What to Test" op elke build
-- lees "What to Test" terug voordat de lane hem geslaagd noemt
+- App Store "What's New" automatisch zetten bij het koppelen van een build
+- Tautulli-kijkgeschiedenis als bron voor de smaakengine
+- layer the home billboard, and give iPad portrait its own tier
+
+### Fixed
+- Resume no longer jumps backwards when the same title is open on two devices. A player left
+  paused used to keep writing its own position over a device that was still watching.
+- Jumping to a new position is saved right away instead of at the next ten-second update, so
+  closing straight after a seek keeps the position you jumped to.
+- Playing a downloaded file while online now resumes from whichever position is actually the
+  most recent, rather than always preferring the one stored on this device.
+- A position you jumped to during a network hiccup is no longer lost. It used to be dropped
+  while the app was backing off from a failed update, which left the server on the position
+  from before the jump until playback happened to continue.
+- Turning a setting off on one device now turns it off on your other Apple devices too.
+  Switching something on already travelled; switching it off did not.
+- prefer 16:9 backdrop over square art on narrow iPhone hero
+- import liet elke rij vallen en telde afleveringen dubbel
+- clear the Dynamic Island on iPhone, edge to edge
+- credential-grens dicht en de koude start hersteld
+- Hidden libraries could come back on your other devices. A list that only held local folders
+  was read as empty by the sync and removed from iCloud, which put the libraries back on every
+  device that read it afterwards.
+- Signing out of iCloud while Pleya is open is noticed right away. Settings sync used to keep
+  reporting itself as healthy while nothing was actually being sent.
+
+### Improved
+- **Settings changed on another device now show up while the app is open.** Hiding a library or
+  reordering your libraries on your Mac reaches the Apple TV without restarting it. The same
+  happens after importing a settings file or resetting settings.
+- **Coming back to Pleya checks for settings changed elsewhere.** A device that was asleep or in
+  the background no longer waits for the next launch to catch up.
+- **Switching profile loads that profile's own settings.** Each profile has had its own place in
+  iCloud since the previous build; now switching also fetches it.
+- **The iCloud switch says what the sync is doing.** One line under it: syncing, when something
+  was last sent, whether iCloud has run out of room for settings, and whether a setting is too
+  large to send. It says what this device sent, never what your other devices received, because
+  iCloud does not report that.
+
+### Notes
+
+- **Settings that describe a device now stay on that device.** Volume, download folder,
+  hardware decoding, HDR and the last used remote-control address were being copied between
+  your Apple devices, where they either meant nothing or were plainly wrong. They are yours
+  per device from now on. Everything that is a genuine preference, like subtitle appearance,
+  theme and playback behaviour, keeps syncing as before.
 <!-- END GENERATED -->
+
+## 2.8.0 · build 234 · 20 August 2026
+
+<!-- commit: cdeda9c -->
+
+### Improved
+
+- **Error and status messages are easier to read, and the important ones now offer a way to
+  act on them.** They used to be plain text on a flat red or green bar, which fell short of
+  comfortable reading in the dark theme. They now match the rest of the app's cards, stay
+  readable in dark, OLED and light, and a failed action can carry a Retry button right on the
+  message instead of leaving you to find one elsewhere. A repeated failure, like a server that
+  keeps timing out, now folds into a single message with a counter instead of stacking a new
+  one on screen every time.
+
+### Fixed
+
+- **The home screen's hero image no longer crops out the sides on narrower phones.** The app
+  was asking the server for a wide picture even when the artwork itself is a tall poster or a
+  square, so the server centred and cropped it to fit, cutting off whatever sat at the edges.
+  It now asks for the image in its own shape, so the full picture shows.
+
+### Notes
+
+- **Twenty translated error messages had a gap where the underlying, untranslated text used to
+  leak in.** That gap is gone across all fifteen supported languages, so a network or login
+  failure always shows in your own language now.
+
+## 2.8.0 · build 233 · 19 August 2026
+
+<!-- commit: a15a230 -->
+
+### Fixed
+
+- **A row opens the title you were looking at, not the one that took its place.** Rows reload
+  while you are looking at them, and a reload can reorder or drop a card. Until now the app
+  remembered a position, so a title that slid into that slot between the frame you saw and
+  the moment you pressed was the one that opened. It now remembers the title itself. If that
+  title has gone, the press opens nothing rather than the wrong thing, and the next press
+  acts on the card you can see. This applies to phone, tablet and desktop rows; the Apple TV
+  home rows use a different row and are covered by the next build.
+- **Select could stop working on a row entirely.** When a row lost its **View All** card
+  during a refresh, or gained a title while the cursor sat on that card, the row kept
+  pointing at something that was no longer there. Pressing Select then did nothing at all, or
+  opened the whole category instead of the poster under the cursor, until you moved left or
+  right.
+- **The filter line in Requests can be reached with the remote**, and pressing down from it
+  while a search is running now reaches the results instead of doing nothing.
+
+### Notes
+
+- **Groundwork for the wrong-title reports on Apple TV.** Those reports could not be answered
+  from a log, because nothing recorded which card a press resolved to or what happened to it
+  on the way to the screen that opened. A press now leaves a single line covering that whole
+  path, and an unusual one leaves a short timeline instead. Nothing about this changes what
+  you see; it is there so the next report can be answered instead of guessed at.
+
+
+## 2.8.0 · build 232 · 19 August 2026
+
+<!-- commit: 38efe8a -->
+
+### Fixed
+
+- **Controls beside the sidebar respond again.** Moving a mouse or trackpad towards the rail
+  handed it the whole strip up to its open width, so a control the page puts there, such as
+  **Recommended** on a library page, opened the menu instead of doing its own job, and the
+  menu then swallowed the click. The rail claims that strip only once you have actually
+  entered over it, and gives it back as it closes. Everything the previous build fixed stays
+  fixed: coming in over the rail and moving straight to a label still works, and a click
+  aimed at the menu still cannot start the billboard.
+
+### Worth checking
+
+- The sidebar with a mouse or trackpad, both ways round. From the middle of the screen
+  straight onto **Recommended** on a library page: it should switch tabs and the menu should
+  stay shut. Then in over the rail and quickly on to a menu label without pausing: the menu
+  should stay open and respond.
+- The two checks from build 231 are still open: the request list with real titles and posters
+  on a phone, and subtitle language on Apple TV while Plex is transcoding.
+
+## 2.8.0 · build 231 · 19 August 2026
+
+<!-- commit: 7c3d47e -->
+
+### Fixed
+
+- **Your subtitle and audio language is remembered when Plex transcodes.** Picking a language
+  only stuck when the file played directly. As soon as Plex re-encoded, which it always does
+  for burned-in or image-based subtitles and for anything streamed over the internet, the
+  choice went straight to the server and Pleya never saw it. The next episode then started in
+  whatever the server preferred, so you got a different language rather than no language,
+  which made it easy to miss. The choice now also lands on the series itself, the way it
+  already did on direct play. That is the only thing that can work when the subtitles are
+  burned into the picture. Switching no longer waits for that to be written, and a failed
+  write can no longer make the switch itself fail.
+- **The quick buttons on a hover preview no longer black out the app.** Play, add and info on
+  the preview that appears over a card opened their screen outside the profile you were in,
+  leaving an error across the whole window. The plus also left the preview standing on top of
+  the menu it had just opened, where it swallowed the clicks meant for that menu.
+- **A click on the sidebar no longer starts whatever sits behind it.** The rail switches to
+  its wide state at once while the width takes 200 ms to catch up, and in that gap a click
+  aimed at a menu item could land on the billboard and start playing. The rail now owns the
+  strip it is about to fill, from the first frame of opening until the last frame of closing.
+  Tapping the billboard opens the title; the play button still plays.
+- Filters, Sort and Group open in the middle of the window instead of in the corner you
+  clicked them from. They used to open at the mouse, which is right for a context menu and
+  for nothing else, so on a desktop window a panel of 700 by 400 ended up clamped against the
+  right edge with most of the height unused.
+
+### Improved
+
+- Discover on Requests uses the same header as a library page: film and series as tabs, genre
+  as an action beside them. It was a double row of outlined pills that took more room than the
+  posters underneath, 92 pixels of it against 42 now.
+- Choosing a type on Discover selects that type instead of falling back to All, and clearing a
+  genre is a row in the panel rather than a second tap on the chip you just picked.
+
+### Worth checking
+
+Two things in this build are easier to break than to notice, so a look at them helps.
+
+- Your list of requests, on a phone. Every row should carry the real title and poster, and the
+  status beside it should agree with what Overseerr says. Then send one request with a
+  different server, quality profile and root folder than the defaults: all three should arrive
+  in Radarr or Sonarr exactly as you set them.
+- Subtitle language on Apple TV, on a series Plex is transcoding rather than playing directly.
+  Pick a language partway through an episode, then start the next one. It should open in the
+  language you picked.
+
+### Notes
+
+Moving a mouse or trackpad towards the sidebar claims the strip beside it as soon as the
+pointer arrives, so a control the page puts there, such as **Recommended** on a library page,
+opens the menu instead of responding. Fixed in the next build; on this one, reach those
+controls from further right or use the keyboard.
+
+## 2.8.0 · build 228 · 18 August 2026
+
+<!-- commit: 04f1411 -->
+
+### New
+
+- **Pick the quality profile and root folder when you request something.** The advanced
+  options on a request only let you choose which Radarr or Sonarr server to send it to, so a
+  profile you had set up yourself was out of reach. Both pickers open on whatever that server
+  would have used anyway, and changing server clears them rather than carrying the previous
+  server's choices over.
+
+### Improved
+
+- **Requests show what was actually requested.** The list used to head every row with
+  "Movie" or "Show", above a grey placeholder, because the request itself carries only an id
+  and an availability state. Pleya now resolves each title once and remembers it, so the real
+  name, year and poster appear, with the kind and year on their own line underneath.
+- Seasons on a request fit on one line. A run of consecutive seasons reads as a range, gaps
+  stay visible rather than being smoothed into one, and a request spread over too many
+  separate runs says how many there are.
+- A request no longer shows "Available" next to "Completed". Where the two say different
+  things, such as approved but only partly downloaded, both still appear.
+- The filter tabs on Requests and on your watchlist keep their margin when you scroll them,
+  and the active filter scrolls itself into view. The last chip is no longer faded out
+  halfway through its own word.
+- The search field on Requests has room for its sentence again instead of being pushed onto
+  two lines by a button that repeated what the whole field already did.
+- Your watchlist says what it is sorted by, on the button itself. It used to be in a tooltip,
+  and tooltips never open on a touchscreen.
+
+### Fixed
+
+- **Sorting your watchlist no longer blanks the screen.** Choosing an order closed the app
+  behind the sheet instead of the sheet, leaving nothing on screen and the sort unapplied.
+  The same fault sat behind Request, Remove and Cancel on a watchlist title.
+- **The audio priority setting responds again.** Choosing between even volume and original
+  Dolby Atmos did save your choice, but the selected option looked exactly like the
+  unselected one, so there was no way to tell. Every setting of that shape was affected.
+- The skip intro button no longer appears on films. Films rarely carry a real intro marker,
+  so the button was working off a chapter title and could sit there for minutes, returning
+  every time you touched the screen. Skipping the credits is unchanged, on films as much as
+  on episodes.
+- A status label on a poster stays inside the poster instead of being cut off at its edge.
+- Connecting to Tautulli says so when something other than Tautulli answers. Behind a login
+  page or a reverse proxy the reply came back as a Tautulli error, which sent you looking in
+  the wrong place.
 
 ## 2.8.0 · build 227 · 18 August 2026
 

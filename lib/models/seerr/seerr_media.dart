@@ -210,7 +210,20 @@ class SeerrServiceServer {
   final bool is4k;
   final bool isDefault;
 
-  const SeerrServiceServer({required this.id, required this.name, this.is4k = false, this.isDefault = false});
+  /// The server's own defaults, as configured in Overseerr. Used to seed the
+  /// pickers so they open on what the server would have done anyway, rather
+  /// than on nothing.
+  final int? activeProfileId;
+  final String? activeDirectory;
+
+  const SeerrServiceServer({
+    required this.id,
+    required this.name,
+    this.is4k = false,
+    this.isDefault = false,
+    this.activeProfileId,
+    this.activeDirectory,
+  });
 
   static List<SeerrServiceServer> listFrom(Object? raw) {
     if (raw is! List) return const [];
@@ -225,9 +238,68 @@ class SeerrServiceServer {
           name: (s['name'] ?? 'Server $id').toString(),
           is4k: s['is4k'] == true,
           isDefault: s['isDefault'] == true,
+          activeProfileId: SeerrMedia._asInt(s['activeProfileId']),
+          activeDirectory: s['activeDirectory']?.toString(),
         ),
       );
     }
     return out;
+  }
+}
+
+/// One Radarr/Sonarr quality profile. Only reachable through the per-server
+/// detail endpoint (`/service/radarr/{id}`); the server list does not carry it.
+class SeerrQualityProfile {
+  const SeerrQualityProfile({required this.id, required this.name});
+
+  final int id;
+  final String name;
+
+  static List<SeerrQualityProfile> listFrom(Object? raw) {
+    if (raw is! List) return const [];
+    final out = <SeerrQualityProfile>[];
+    for (final p in raw) {
+      if (p is! Map) continue;
+      final id = SeerrMedia._asInt(p['id']);
+      if (id == null) continue;
+      out.add(SeerrQualityProfile(id: id, name: (p['name'] ?? 'Profile $id').toString()));
+    }
+    return out;
+  }
+}
+
+/// A root folder configured on a Radarr/Sonarr server. [freeSpace] is bytes and
+/// is absent on servers that do not report it.
+class SeerrRootFolder {
+  const SeerrRootFolder({required this.path, this.freeSpace});
+
+  final String path;
+  final int? freeSpace;
+
+  static List<SeerrRootFolder> listFrom(Object? raw) {
+    if (raw is! List) return const [];
+    final out = <SeerrRootFolder>[];
+    for (final f in raw) {
+      if (f is! Map) continue;
+      final path = f['path']?.toString();
+      if (path == null || path.isEmpty) continue;
+      out.add(SeerrRootFolder(path: path, freeSpace: SeerrMedia._asInt(f['freeSpace'])));
+    }
+    return out;
+  }
+}
+
+/// The `{server, profiles, rootFolders}` envelope from `/service/radarr/{id}`.
+class SeerrServiceServerDetail {
+  const SeerrServiceServerDetail({this.profiles = const [], this.rootFolders = const []});
+
+  final List<SeerrQualityProfile> profiles;
+  final List<SeerrRootFolder> rootFolders;
+
+  factory SeerrServiceServerDetail.fromJson(Map<String, dynamic> json) {
+    return SeerrServiceServerDetail(
+      profiles: SeerrQualityProfile.listFrom(json['profiles']),
+      rootFolders: SeerrRootFolder.listFrom(json['rootFolders']),
+    );
   }
 }

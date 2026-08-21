@@ -2,7 +2,6 @@ import 'dart:async';
 import '../media/ids.dart';
 import 'dart:io' show Platform;
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HardwareKeyboard, LogicalKeyboardKey;
@@ -26,6 +25,7 @@ import '../media/media_server_client.dart';
 import '../media/media_hub.dart';
 import '../utils/media_image_helper.dart';
 import '../widgets/optimized_media_image.dart' show blurArtwork;
+import '../widgets/home_hero_artwork.dart';
 import '../providers/discover_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/home_layout_provider.dart';
@@ -76,6 +76,10 @@ import 'companion_remote/mobile_remote_screen.dart';
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
 
+  /// The hero's pagination-dot row, so tests can measure its real rect
+  /// against the "Verder kijken" heading directly below the hero.
+  static const Key heroPaginationKey = Key('home-hero-pagination');
+
   @override
   State<DiscoverScreen> createState() => _DiscoverScreenState();
 }
@@ -112,10 +116,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   bool get _hasMoreContinueWatching => _discover.hasMoreContinueWatching;
   bool get _isLoading => _discover.isLoading;
   bool get _areHubsLoading => _discover.areHubsLoading;
-  String? get _errorMessage {
-    final raw = _discover.errorMessage;
-    return raw == null ? null : t.errors.failedToLoad(context: t.discover.title, error: raw);
-  }
+  String? get _errorMessage => _discover.errorMessage;
 
   bool _switchingProfile = false;
   final PageController _heroController = PageController();
@@ -657,7 +658,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // a real 16:9 backdrop? `backgroundSquarePath` counts as art but *not* as a
   // backdrop, so counting it here would skip exactly the items that render as
   // a blurred stand-in.
-  bool _hasBillboardArt(MediaItem item) => item.billboardArt()?.isBackdrop == true;
+  bool _hasBillboardArt(MediaItem item) => item.billboardArt()?.canRenderSharp == true;
 
   Future<void> _enrichSpotlightArt(MediaItem item) async {
     final key = item.globalKey;
@@ -756,9 +757,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           _heroController.nextPage(duration: tokens(context).slow, curve: Curves.easeInOut);
         }
       },
+      // Enter follows the click. The element announces itself as "View
+      // details", and an element that opens on click but plays on Enter is the
+      // same invisible split that caused the bug. Playback stays one Tab away
+      // on the pill itself.
       onSelect: () {
         if (_latestMovies.isNotEmpty && _currentHeroIndex < _latestMovies.length) {
-          navigateToMediaItem(context, _latestMovies[_currentHeroIndex], playDirectly: true);
+          navigateToMediaItemDetails(context, _latestMovies[_currentHeroIndex]);
         }
       },
     )(node, event);
@@ -1541,6 +1546,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       ? TvBrowseRailLayout.continueWatchingTallPosterScale
       : TvBrowseRailLayout.compactTallPosterScale;
 
+  /// Wide-card (16:9) scale override for the home screen's continue-watching
+  /// row — see [TvBrowseRailLayout.continueWatchingWidePosterScale]. Every
+  /// other TV rail keeps the default 1.0.
+  static double _tvWidePosterScaleForHub(MediaHub hub) =>
+      hub.isContinueWatchingHub ? TvBrowseRailLayout.continueWatchingWidePosterScale : 1.0;
+
   Widget _buildTvContent(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final theme = Theme.of(context);
@@ -1566,6 +1577,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
             tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
             tallPosterScaleForHub: _tvTallPosterScaleForHub,
+            widePosterScaleForHub: _tvWidePosterScaleForHub,
           );
     final spotlightTop = (size.height * MonoTokens.tvHeroContentTopFraction)
         .clamp(64.0 * scale, 120.0 * scale)
@@ -1593,6 +1605,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             episodePosterMode: svc.read(SettingsService.episodePosterMode),
             fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
             tallPosterScale: _tvTallPosterScaleForHub(browseHubs.first),
+            widePosterScale: _tvWidePosterScaleForHub(browseHubs.first),
           );
     final railPeek = browseHubs.isEmpty
         ? 0.0
@@ -1712,6 +1725,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     onNavigateToSidebar: _navigateToSidebar,
                     tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
                     tallPosterScaleForHub: _tvTallPosterScaleForHub,
+                    widePosterScaleForHub: _tvWidePosterScaleForHub,
                     selectSuppressionGestureSignal: PlatformDetector.isAppleTV()
                         ? AppleTvRemoteTouchService.instance.touchActiveListenable
                         : null,
@@ -1874,6 +1888,31 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return HubSectionState.railHeight(context, width, wideLayout: wide);
   }
 
+  /// Which content-layout tier the hero's info column uses for [screenWidth].
+  ///
+  /// `shortestSide >= ScreenBreakpoints.mobile` (not
+  /// `ScreenBreakpoints.isWideTabletOrLarger`, which only starts at 900) is
+  /// what catches iPad-portrait widths like 768/834 that sit below that
+  /// 900pt threshold. In portrait, `shortestSide == screenWidth`, so this
+  /// still excludes every phone (never wider than ~430pt in portrait).
+  /// [PlatformDetector.isHandheldIOS] is `!isTV() && Theme.platform == iOS`,
+  /// so this only ever fires for an iPad held in portrait: tvOS, desktop and
+  /// macOS are excluded, and so is Android, which reports
+  /// `TargetPlatform.android` and lands on [HomeHeroContentTier.phone] even on
+  /// a large tablet. Landscape iPad and desktop keep
+  /// [HomeHeroContentTier.wide] exactly as before.
+  HomeHeroContentTier _heroContentTier(BuildContext context, double screenWidth) {
+    final size = MediaQuery.sizeOf(context);
+    final isTabletPortrait =
+        PlatformDetector.isHandheldIOS(context) &&
+        MediaQuery.orientationOf(context) == Orientation.portrait &&
+        size.shortestSide >= ScreenBreakpoints.mobile;
+    final isLargeScreen = ScreenBreakpoints.isWideTabletOrLarger(screenWidth) && !isTabletPortrait;
+    return isLargeScreen
+        ? HomeHeroContentTier.wide
+        : (isTabletPortrait ? HomeHeroContentTier.tabletPortrait : HomeHeroContentTier.phone);
+  }
+
   Widget _buildHeroSectionSliver(double viewportExtent) {
     // TV runs through _buildTvContent, so this section is phone/tablet/desktop.
     final w = MediaQuery.sizeOf(context).width;
@@ -1915,7 +1954,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               // Page indicators with animated progress and pause/play button
               if (!InputModeTracker.isKeyboardMode(context))
                 Positioned(
-                  bottom: 16,
+                  key: DiscoverScreen.heroPaginationKey,
+                  // The same 16 on every tier, so it is read straight from the
+                  // constant: resolving the tier here would add a rotation
+                  // rebuild to this sliver for a value that never varies.
+                  bottom: homeHeroPaginationBottomInset,
                   left: -26,
                   right: 0,
                   child: Row(
@@ -2029,17 +2072,61 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     // TV never reaches this builder: `_buildDiscoverContent` returns
     // `_buildTvContent` (TvSpotlightBackground) before the hero sliver is
     // built, so this layout only ever serves desktop/tablet/phone.
-    final isLargeScreen = ScreenBreakpoints.isWideTabletOrLarger(screenWidth);
+    final tier = _heroContentTier(context, screenWidth);
+    final isLargeScreen = tier == HomeHeroContentTier.wide;
     final alignLeft = isLargeScreen;
-    // The billboard shows the 16:9 backdrop on a wide box; on a narrow (phone
-    // portrait) box it prefers the square background art, which crops far less
-    // horizontally. The title is drawn in app typography either way. Null only
-    // when the item has no artwork at all.
-    final billboardArt = heroItem.billboardArt(containerAspectRatio: screenWidth / heroHeight);
+    final contentMetrics = homeHeroContentMetrics(tier: tier);
+    // The sharp layer is top-anchored, so on an iPhone its top edge lands under
+    // the Dynamic Island. Push it clear, and run it edge to edge, but only
+    // there: this gate has to exclude iPad-portrait (which keeps the centred
+    // island on a much wider canvas), iPhone-landscape (cutout on the side,
+    // nothing to clear at the top), and every non-iOS platform.
+    //
+    // `isHandheldIOS` is `!isTV() && Theme.of(context).platform ==
+    // TargetPlatform.iOS`, so Android reports `android` and macOS reports
+    // `macOS` and both fall out here without a separate `Platform.isIOS`
+    // check. In portrait `shortestSide` is the screen width, so the
+    // `ScreenBreakpoints.mobile` (600) test keeps iPad's 768/834 out while
+    // letting every phone width through. tvOS never reaches this builder at
+    // all: `_buildDiscoverContent` branches to `_buildTvContent` first.
+    final size = MediaQuery.sizeOf(context);
+    final isIPhonePortrait =
+        PlatformDetector.isHandheldIOS(context) &&
+        MediaQuery.orientationOf(context) == Orientation.portrait &&
+        size.shortestSide < ScreenBreakpoints.mobile;
+    // Edge to edge on a phone. A centred island at 82% reads as a small card
+    // there rather than a hero; iPad keeps the island, where the canvas is
+    // wide enough for it to read as a composition.
+    final sharpPresentation = isIPhonePortrait ? HomeHeroSharpPresentation.fullWidth : HomeHeroSharpPresentation.island;
+    // The source choice follows that composition, which is why it is decided
+    // after it: a square source is the calmer subject inside an island, but at
+    // full width it becomes a block as tall as the screen is wide with the
+    // clear-logo across it. See `MediaItem.billboardArt`. Null only when the
+    // item has no artwork at all.
+    final billboardArt = heroItem.billboardArt(
+      containerAspectRatio: screenWidth / heroHeight,
+      narrowBoxIsFullWidth: isIPhonePortrait,
+    );
+    // `viewPadding`, not `padding`: the hero sits in a Scaffold body that can
+    // zero `padding.top`, and `viewPadding` also stays put when the keyboard
+    // opens. No extra breathing room on top of it — the artwork is meant to
+    // meet the bottom of the hardware safe area exactly.
+    final topViewPadding = MediaQuery.viewPaddingOf(context).top;
+    final requestedSharpTopInset = isIPhonePortrait ? topViewPadding : 0.0;
+    final artGeometry = billboardArt == null
+        ? null
+        : homeHeroArtGeometry(
+            screenWidth: screenWidth,
+            heroHeight: heroHeight,
+            kind: billboardArt.kind,
+            requestedSharpTopInset: requestedSharpTopInset,
+            presentation: sharpPresentation,
+          );
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    const heroLogoWidth = 400.0;
-    const heroLogoHeight = 120.0;
+    final heroLogoMetrics = homeHeroLogoConstraints(screenWidth: screenWidth, tier: tier);
+    final heroLogoWidth = heroLogoMetrics.width;
+    final heroLogoHeight = heroLogoMetrics.height;
     // No ad-hoc glow/shadow on the title: the scrim gradient already provides
     // contrast against the artwork.
     final heroTitleStyle = theme.textTheme.displaySmall?.copyWith(color: colorScheme.onSurface, fontWeight: .bold);
@@ -2058,107 +2145,33 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return Semantics(
       label: heroLabel,
       button: true,
-      hint: t.accessibility.tapToPlay,
+      hint: t.mediaMenu.viewDetails,
       child: ClickableCursor(
         child: GestureDetector(
+          // The billboard opens the title; the Afspelen pill on top of it is the
+          // only thing that starts playback. It used to be one big hidden play
+          // button, so any stray click — a menu label missed by a few pixels, a
+          // click that woke the window — started a film.
+          //
+          // Not `navigateToMediaItem(playDirectly: false)`: its episode branch
+          // still hands off to the player while `episodeAction` is `play`, and
+          // the hero shows episodes. `navigateToMediaItemDetails` resolves an
+          // episode to its show with the right season and episode selected.
           onTap: () {
-            appLogger.d('Activating hero item: ${heroItem.title}');
-            navigateToMediaItem(context, heroItem, playDirectly: true);
+            appLogger.d('Activating hero item (details): ${heroItem.title}');
+            navigateToMediaItemDetails(context, heroItem);
           },
           child: Stack(
             fit: StackFit.expand,
             clipBehavior: Clip.none,
             children: [
               // Background Image with fade/zoom animation and parallax
-              if (billboardArt != null)
-                ClipRect(
-                  child: AnimatedBuilder(
-                    animation: _scrollController,
-                    builder: (context, child) {
-                      final scrollOffset = _scrollController.hasClients ? _scrollController.offset : 0.0;
-                      return Transform.translate(offset: Offset(0, scrollOffset * 0.3), child: child);
-                    },
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      duration: const Duration(milliseconds: 800),
-                      curve: Curves.easeOut,
-                      builder: (context, value, child) {
-                        return Transform.scale(
-                          scale: 1.0 + (0.1 * (1 - value)),
-                          child: Opacity(opacity: value, child: child),
-                        );
-                      },
-                      child: Builder(
-                        builder: (context) {
-                          // heroClient resolves to the actual server's client
-                          // (Plex or Jellyfin) so each backend's transcoder
-                          // builds sized URLs.
-                          final size = MediaQuery.sizeOf(context);
-                          final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
-                          // Effective art height: the full 16:9 frame, floored
-                          // at the box height so a tall box never upscales a
-                          // too-short decode. Drives both the fetch and the
-                          // decode budget so a width-bound cover isn't upscaled
-                          // from a short decode. Match screenWidth (used by the
-                          // mem-cache displayWidth) so request, decode budget,
-                          // and box width stay aligned even if content is ever
-                          // narrower than the window.
-                          final artHeight = (screenWidth * 9 / 16).clamp(heroHeight, double.infinity).toDouble();
-                          final imageUrl = MediaImageHelper.getOptimizedImageUrl(
-                            client: heroClient,
-                            thumbPath: billboardArt.path,
-                            maxWidth: size.width,
-                            // Plex crops server-side (minSize=1) from the CENTER,
-                            // so a box-shaped request bakes in a centered crop
-                            // that lops heads off the top before Flutter's
-                            // Alignment.topCenter can act. Request the full 16:9
-                            // frame on wide (desktop/TV) billboards so the client
-                            // top-anchors the crop — but never below the box
-                            // height, or a tall (mobile portrait) billboard would
-                            // upscale a too-short image and blur.
-                            maxHeight: artHeight,
-                            devicePixelRatio: dpr,
-                            imageType: ImageType.art,
-                          );
-
-                          final (_, memHeight) = MediaImageHelper.getMemCacheDimensions(
-                            displayWidth: (screenWidth * dpr).round(),
-                            displayHeight: (artHeight * dpr).round(),
-                            imageType: ImageType.art,
-                          );
-
-                          final image = CachedNetworkImage(
-                            imageUrl: imageUrl,
-                            cacheKey: artworkStorageKey(imageUrl),
-                            cacheManager: PlexImageCacheManager.instance,
-                            fit: BoxFit.cover,
-                            // Top-anchor the crop: hero art is taller than the
-                            // wide billboard, so a centered cover clips faces/
-                            // titles off the top. The bottom (under the scrim
-                            // and title overlay) is the safe side to lose.
-                            alignment: Alignment.topCenter,
-                            memCacheHeight: memHeight,
-                            placeholder: (context, url) =>
-                                ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
-                            errorBuilder: (context, error, stackTrace) =>
-                                ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
-                          );
-
-                          return blurArtwork(
-                            // No 16:9 frame existed, so this is square or
-                            // poster art standing in. Blur it into a wash: its
-                            // baked-in title treatment becomes atmosphere
-                            // instead of a second title fighting ours, and the
-                            // heavy crop stops mattering. Better than an empty
-                            // billboard, and honest about being a stand-in.
-                            billboardArt.isBackdrop
-                                ? image
-                                : ImageFiltered(imageFilter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28), child: image),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
+              if (billboardArt != null && artGeometry != null)
+                HomeHeroArtwork(
+                  client: heroClient,
+                  art: billboardArt,
+                  geometry: artGeometry,
+                  scrollController: _scrollController,
                 )
               else
                 ColoredBox(color: colorScheme.surfaceContainerHighest),
@@ -2173,16 +2186,30 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   child: Builder(
                     builder: (context) {
                       final bgColor = Theme.of(context).scaffoldBackgroundColor;
-                      return Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, bgColor.withValues(alpha: 0.9), bgColor],
-                            stops: const [0.5, 0.85, 1.0],
-                          ),
-                        ),
-                      );
+                      // On phone/tabletPortrait the ambient artwork layer
+                      // already carries most of the darkening (see
+                      // HomeHeroArtwork), so this gradient only needs to
+                      // finish the job under the (now lower, more compact)
+                      // content column — it starts earlier and stays
+                      // partial through the middle so artwork colour keeps
+                      // reading behind the text, instead of an early hard
+                      // wall of scaffold colour. Wide/desktop keeps its
+                      // original ramp: that layout has no ambient layer to
+                      // share the work with.
+                      final gradient = isLargeScreen
+                          ? LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.transparent, bgColor.withValues(alpha: 0.9), bgColor],
+                              stops: const [0.5, 0.85, 1.0],
+                            )
+                          : LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.transparent, bgColor.withValues(alpha: 0.55), bgColor],
+                              stops: const [0.30, 0.62, 1.0],
+                            );
+                      return Container(decoration: BoxDecoration(gradient: gradient));
                     },
                   ),
                 ),
@@ -2224,133 +2251,142 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
               // Content with responsive alignment
               Positioned(
-                bottom: isLargeScreen ? 80 : 50,
+                bottom: contentMetrics.contentBottomInset,
                 left: 0,
                 right: isLargeScreen ? 200 : 0,
                 child: Padding(
                   padding: .symmetric(horizontal: isLargeScreen ? 40.0 : 24.0),
                   child: Align(
                     alignment: alignLeft ? Alignment.centerLeft : Alignment.center,
-                    child: Column(
-                      crossAxisAlignment: alignLeft ? CrossAxisAlignment.start : CrossAxisAlignment.center,
-                      mainAxisSize: .min,
-                      children: [
-                        // Show logo or name/title
-                        if (heroItem.clearLogoPath != null)
-                          SizedBox(
-                            height: heroLogoHeight,
-                            width: heroLogoWidth,
-                            child: Builder(
-                              builder: (context) {
-                                final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
-                                final logoUrl = MediaImageHelper.getOptimizedImageUrl(
-                                  client: heroClient,
-                                  thumbPath: heroItem.clearLogoPath,
-                                  maxWidth: heroLogoWidth,
-                                  maxHeight: heroLogoHeight,
-                                  devicePixelRatio: dpr,
-                                  imageType: ImageType.logo,
-                                );
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: contentMetrics.maxContentWidth ?? double.infinity),
+                      child: Column(
+                        crossAxisAlignment: alignLeft ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+                        mainAxisSize: .min,
+                        children: [
+                          // Show logo or name/title
+                          if (heroItem.clearLogoPath != null)
+                            SizedBox(
+                              height: heroLogoHeight,
+                              width: heroLogoWidth,
+                              child: Builder(
+                                builder: (context) {
+                                  final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
+                                  final logoUrl = MediaImageHelper.getOptimizedImageUrl(
+                                    client: heroClient,
+                                    thumbPath: heroItem.clearLogoPath,
+                                    maxWidth: heroLogoWidth,
+                                    maxHeight: heroLogoHeight,
+                                    devicePixelRatio: dpr,
+                                    imageType: ImageType.logo,
+                                  );
 
-                                return blurArtwork(
-                                  CachedNetworkImage(
-                                    imageUrl: logoUrl,
-                                    cacheKey: artworkStorageKey(logoUrl),
-                                    cacheManager: PlexImageCacheManager.instance,
-                                    filterQuality: FilterQuality.medium,
-                                    fit: BoxFit.contain,
-                                    memCacheWidth: (heroLogoWidth * dpr).clamp(200, 800).round(),
-                                    alignment: alignLeft ? Alignment.bottomLeft : Alignment.bottomCenter,
-                                    placeholder: (context, url) => const SizedBox.shrink(),
-                                    errorBuilder: (context, error, stackTrace) {
-                                      // Fallback to text if logo fails to load
-                                      return FittingTitleText(
-                                        showName,
-                                        style: heroTitleStyle,
-                                        textAlign: alignLeft ? TextAlign.left : TextAlign.center,
-                                        alignment: alignLeft ? Alignment.centerLeft : Alignment.center,
-                                      );
-                                    },
-                                  ),
-                                  sigma: 10,
-                                  clip: false,
-                                );
-                              },
+                                  return blurArtwork(
+                                    CachedNetworkImage(
+                                      imageUrl: logoUrl,
+                                      cacheKey: artworkStorageKey(logoUrl),
+                                      cacheManager: PlexImageCacheManager.instance,
+                                      filterQuality: FilterQuality.medium,
+                                      fit: BoxFit.contain,
+                                      memCacheWidth: (heroLogoWidth * dpr).clamp(200, 800).round(),
+                                      alignment: alignLeft ? Alignment.bottomLeft : Alignment.bottomCenter,
+                                      placeholder: (context, url) => const SizedBox.shrink(),
+                                      errorBuilder: (context, error, stackTrace) {
+                                        // Fallback to text if logo fails to load
+                                        return FittingTitleText(
+                                          showName,
+                                          style: heroTitleStyle,
+                                          textAlign: alignLeft ? TextAlign.left : TextAlign.center,
+                                          alignment: alignLeft ? Alignment.centerLeft : Alignment.center,
+                                        );
+                                      },
+                                    ),
+                                    sigma: 10,
+                                    clip: false,
+                                  );
+                                },
+                              ),
+                            )
+                          else
+                            SizedBox(
+                              height: heroLogoHeight,
+                              width: heroLogoWidth,
+                              child: FittingTitleText(
+                                showName,
+                                style: heroTitleStyle,
+                                textAlign: alignLeft ? TextAlign.left : TextAlign.center,
+                                alignment: alignLeft ? Alignment.centerLeft : Alignment.center,
+                              ),
                             ),
-                          )
-                        else
-                          SizedBox(
-                            height: heroLogoHeight,
-                            width: heroLogoWidth,
-                            child: FittingTitleText(
-                              showName,
-                              style: heroTitleStyle,
+
+                          // One plain muted meta line: year · genre · duration.
+                          // No chips/badges — just quiet supporting text.
+                          if (heroItem.year != null ||
+                              heroItem.genres?.isNotEmpty == true ||
+                              heroItem.durationMs != null ||
+                              heroItem.isWatched) ...[
+                            SizedBox(height: contentMetrics.logoToMeta),
+                            Text(
+                              [
+                                if (heroItem.year != null) heroItem.year.toString(),
+                                if (heroItem.genres?.isNotEmpty == true) heroItem.genres!.first,
+                                if (heroItem.durationMs != null) formatDurationTextual(heroItem.durationMs!),
+                                if (heroItem.isWatched && !heroItem.hasActiveProgress) '\u2713 ${t.discover.watched}',
+                              ].join(' • '),
+                              style: theme.textTheme.bodySmall?.copyWith(color: heroMutedColor, fontSize: 14),
+                            ),
+                          ],
+
+                          // On small screens: show button before summary
+                          if (!alignLeft) ...[
+                            SizedBox(height: contentMetrics.metaToButton),
+                            _buildSmartPlayButton(heroItem),
+                          ],
+
+                          // Summary with episode info (Apple TV style)
+                          if (heroItem.summary != null && !shouldHideSpoiler) ...[
+                            SizedBox(height: contentMetrics.buttonToSummary),
+                            RichText(
+                              maxLines: 2,
+                              overflow: .ellipsis,
                               textAlign: alignLeft ? TextAlign.left : TextAlign.center,
-                              alignment: alignLeft ? Alignment.centerLeft : Alignment.center,
-                            ),
-                          ),
-
-                        // One plain muted meta line: year · genre · duration.
-                        // No chips/badges — just quiet supporting text.
-                        if (heroItem.year != null ||
-                            heroItem.genres?.isNotEmpty == true ||
-                            heroItem.durationMs != null ||
-                            heroItem.isWatched) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            [
-                              if (heroItem.year != null) heroItem.year.toString(),
-                              if (heroItem.genres?.isNotEmpty == true) heroItem.genres!.first,
-                              if (heroItem.durationMs != null) formatDurationTextual(heroItem.durationMs!),
-                              if (heroItem.isWatched && !heroItem.hasActiveProgress) '\u2713 ${t.discover.watched}',
-                            ].join(' • '),
-                            style: theme.textTheme.bodySmall?.copyWith(color: heroMutedColor, fontSize: 14),
-                          ),
-                        ],
-
-                        // On small screens: show button before summary
-                        if (!alignLeft) ...[const SizedBox(height: 20), _buildSmartPlayButton(heroItem)],
-
-                        // Summary with episode info (Apple TV style)
-                        if (heroItem.summary != null && !shouldHideSpoiler) ...[
-                          const SizedBox(height: 12),
-                          RichText(
-                            maxLines: 2,
-                            overflow: .ellipsis,
-                            textAlign: alignLeft ? TextAlign.left : TextAlign.center,
-                            text: TextSpan(
-                              style: TextStyle(color: heroMutedColor, fontSize: 14, height: 1.4),
-                              children: [
-                                if (isEpisode && heroItem.parentIndex != null && heroItem.index != null)
+                              text: TextSpan(
+                                style: TextStyle(color: heroMutedColor, fontSize: 14, height: 1.4),
+                                children: [
+                                  if (isEpisode && heroItem.parentIndex != null && heroItem.index != null)
+                                    TextSpan(
+                                      text: 'S${heroItem.parentIndex}, E${heroItem.index}: ',
+                                      style: TextStyle(fontWeight: .bold, color: colorScheme.onSurface),
+                                    ),
                                   TextSpan(
-                                    text: 'S${heroItem.parentIndex}, E${heroItem.index}: ',
-                                    style: TextStyle(fontWeight: .bold, color: colorScheme.onSurface),
+                                    text: heroItem.summary?.isNotEmpty == true
+                                        ? heroItem.summary!
+                                        : t.messages.noDescriptionAvailable,
                                   ),
-                                TextSpan(
-                                  text: heroItem.summary?.isNotEmpty == true
-                                      ? heroItem.summary!
-                                      : t.messages.noDescriptionAvailable,
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ] else if (shouldHideSpoiler &&
-                            isEpisode &&
-                            heroItem.parentIndex != null &&
-                            heroItem.index != null) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            'S${heroItem.parentIndex}, E${heroItem.index}: ${heroItem.title}',
-                            maxLines: 2,
-                            overflow: .ellipsis,
-                            textAlign: alignLeft ? TextAlign.left : TextAlign.center,
-                            style: TextStyle(color: heroMutedColor, fontSize: 14, height: 1.4),
-                          ),
-                        ],
+                          ] else if (shouldHideSpoiler &&
+                              isEpisode &&
+                              heroItem.parentIndex != null &&
+                              heroItem.index != null) ...[
+                            SizedBox(height: contentMetrics.buttonToSummary),
+                            Text(
+                              'S${heroItem.parentIndex}, E${heroItem.index}: ${heroItem.title}',
+                              maxLines: 2,
+                              overflow: .ellipsis,
+                              textAlign: alignLeft ? TextAlign.left : TextAlign.center,
+                              style: TextStyle(color: heroMutedColor, fontSize: 14, height: 1.4),
+                            ),
+                          ],
 
-                        // On large screens: show button after summary
-                        if (alignLeft) ...[const SizedBox(height: 20), _buildSmartPlayButton(heroItem)],
-                      ],
+                          // On large screens: show button after summary
+                          if (alignLeft) ...[
+                            SizedBox(height: contentMetrics.metaToButton),
+                            _buildSmartPlayButton(heroItem),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

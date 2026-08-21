@@ -64,6 +64,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsConnectionsEn connections = TranslationsConnectionsEn.internal(_root);
 	late final TranslationsDiscoverEn discover = TranslationsDiscoverEn.internal(_root);
 	late final TranslationsErrorsEn errors = TranslationsErrorsEn.internal(_root);
+	late final TranslationsNoticesEn notices = TranslationsNoticesEn.internal(_root);
 	late final TranslationsLibrariesEn libraries = TranslationsLibrariesEn.internal(_root);
 	late final TranslationsAboutEn about = TranslationsAboutEn.internal(_root);
 	late final TranslationsServerSelectionEn serverSelection = TranslationsServerSelectionEn.internal(_root);
@@ -238,6 +239,9 @@ class TranslationsCommonEn {
 
 	/// en: 'Retry'
 	String get retry => 'Retry';
+
+	/// en: 'Details'
+	String get details => 'Details';
 
 	/// en: 'Logout'
 	String get logout => 'Logout';
@@ -820,6 +824,24 @@ class TranslationsSettingsEn {
 
 	/// en: 'Could not turn on iCloud settings sync'
 	String get icloudSyncEnableFailed => 'Could not turn on iCloud settings sync';
+
+	/// en: 'Another Apple device is still on an older Pleya version, so settings are not being shared with it. Update Pleya everywhere to sync again.'
+	String get icloudSyncLegacyPeer => 'Another Apple device is still on an older Pleya version, so settings are not being shared with it. Update Pleya everywhere to sync again.';
+
+	/// en: 'Syncing…'
+	String get icloudSyncStatusSyncing => 'Syncing…';
+
+	/// en: 'Last sent to iCloud at ${time}'
+	String icloudSyncStatusLastSent({required Object time}) => 'Last sent to iCloud at ${time}';
+
+	/// en: 'Could not reach iCloud. Your settings are saved on this device.'
+	String get icloudSyncStatusError => 'Could not reach iCloud. Your settings are saved on this device.';
+
+	/// en: 'iCloud has no room left for settings, so not everything is being sent.'
+	String get icloudSyncStatusQuota => 'iCloud has no room left for settings, so not everything is being sent.';
+
+	/// en: 'Some settings are too large to send and stay on this device.'
+	String get icloudSyncStatusOversize => 'Some settings are too large to send and stay on this device.';
 
 	/// en: 'Shortcuts reset to defaults'
 	String get shortcutsReset => 'Shortcuts reset to defaults';
@@ -1777,14 +1799,14 @@ class TranslationsMessagesEn {
 	/// en: 'Removed from Continue Watching'
 	String get removedFromContinueWatching => 'Removed from Continue Watching';
 
-	/// en: 'Error: ${error}'
-	String errorLoading({required Object error}) => 'Error: ${error}';
+	/// en: 'Error'
+	String get errorLoading => 'Error';
 
 	/// en: 'File information not available'
 	String get fileInfoNotAvailable => 'File information not available';
 
-	/// en: 'Error loading file info: ${error}'
-	String errorLoadingFileInfo({required Object error}) => 'Error loading file info: ${error}';
+	/// en: 'Error loading file info'
+	String get errorLoadingFileInfo => 'Error loading file info';
 
 	/// en: 'Error loading series'
 	String get errorLoadingSeries => 'Error loading series';
@@ -1819,8 +1841,8 @@ class TranslationsMessagesEn {
 	/// en: 'Library scan started for "${title}"'
 	String libraryScanStarted({required Object title}) => 'Library scan started for "${title}"';
 
-	/// en: 'Failed to scan library: ${error}'
-	String libraryScanFailed({required Object error}) => 'Failed to scan library: ${error}';
+	/// en: 'Failed to scan library'
+	String get libraryScanFailed => 'Failed to scan library';
 
 	/// en: 'Refreshing metadata for "${title}"...'
 	String metadataRefreshing({required Object title}) => 'Refreshing metadata for "${title}"...';
@@ -1828,8 +1850,8 @@ class TranslationsMessagesEn {
 	/// en: 'Metadata refresh started for "${title}"'
 	String metadataRefreshStarted({required Object title}) => 'Metadata refresh started for "${title}"';
 
-	/// en: 'Failed to refresh metadata: ${error}'
-	String metadataRefreshFailed({required Object error}) => 'Failed to refresh metadata: ${error}';
+	/// en: 'Failed to refresh metadata'
+	String get metadataRefreshFailed => 'Failed to refresh metadata';
 
 	/// en: 'Are you sure you want to logout?'
 	String get logoutConfirm => 'Are you sure you want to logout?';
@@ -1861,8 +1883,8 @@ class TranslationsMessagesEn {
 	/// en: 'Failed to create play queue - no items'
 	String get failedToCreatePlayQueueNoItems => 'Failed to create play queue - no items';
 
-	/// en: 'Failed to ${action}: ${error}'
-	String failedPlayback({required Object action, required Object error}) => 'Failed to ${action}: ${error}';
+	/// en: 'Failed to ${action}'
+	String failedPlayback({required Object action}) => 'Failed to ${action}';
 
 	/// en: 'Switching to compatible player...'
 	String get switchingToCompatiblePlayer => 'Switching to compatible player...';
@@ -2383,8 +2405,8 @@ class TranslationsErrorsEn {
 
 	// Translations
 
-	/// en: 'Search failed: ${error}'
-	String searchFailed({required Object error}) => 'Search failed: ${error}';
+	/// en: 'Search failed'
+	String get searchFailed => 'Search failed';
 
 	/// en: 'Connection timeout while loading ${context}'
 	String connectionTimeout({required Object context}) => 'Connection timeout while loading ${context}';
@@ -2392,14 +2414,14 @@ class TranslationsErrorsEn {
 	/// en: 'Unable to connect to media server'
 	String get connectionFailed => 'Unable to connect to media server';
 
-	/// en: 'Failed to load ${context}: ${error}'
-	String failedToLoad({required Object context, required Object error}) => 'Failed to load ${context}: ${error}';
+	/// en: 'Failed to load ${context}'
+	String failedToLoad({required Object context}) => 'Failed to load ${context}';
 
 	/// en: 'No client available'
 	String get noClientAvailable => 'No client available';
 
-	/// en: 'Authentication failed: ${error}'
-	String authenticationFailed({required Object error}) => 'Authentication failed: ${error}';
+	/// en: 'Authentication failed'
+	String get authenticationFailed => 'Authentication failed';
 
 	/// en: 'Could not launch auth URL'
 	String get couldNotLaunchUrl => 'Could not launch auth URL';
@@ -2410,8 +2432,8 @@ class TranslationsErrorsEn {
 	/// en: 'Invalid token'
 	String get invalidToken => 'Invalid token';
 
-	/// en: 'Failed to verify token: ${error}'
-	String failedToVerifyToken({required Object error}) => 'Failed to verify token: ${error}';
+	/// en: 'Failed to verify token'
+	String get failedToVerifyToken => 'Failed to verify token';
 
 	/// en: 'Failed to switch to ${displayName}'
 	String failedToSwitchProfile({required Object displayName}) => 'Failed to switch to ${displayName}';
@@ -2427,6 +2449,51 @@ class TranslationsErrorsEn {
 
 	/// en: 'Couldn't load ${context}. Try again.'
 	String couldNotLoad({required Object context}) => 'Couldn\'t load ${context}. Try again.';
+}
+
+// Path: notices
+class TranslationsNoticesEn {
+	TranslationsNoticesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Connection timed out'
+	String get connectionTimeoutTitle => 'Connection timed out';
+
+	/// en: '${context} took too long to respond'
+	String connectionTimeoutBody({required Object context}) => '${context} took too long to respond';
+
+	/// en: 'Can't connect'
+	String get connectionFailedTitle => 'Can\'t connect';
+
+	/// en: '${serverName} isn't responding'
+	String connectionFailedBody({required Object serverName}) => '${serverName} isn\'t responding';
+
+	/// en: 'Couldn't load ${context}'
+	String couldNotLoadTitle({required Object context}) => 'Couldn\'t load ${context}';
+
+	/// en: 'Something went wrong'
+	String get genericErrorTitle => 'Something went wrong';
+
+	/// en: 'Sign-in failed'
+	String get authFailedTitle => 'Sign-in failed';
+
+	/// en: 'Playback stopped'
+	String get playbackStoppedTitle => 'Playback stopped';
+
+	/// en: 'This part of the video isn't available right now'
+	String get playbackSegmentUnavailableBody => 'This part of the video isn\'t available right now';
+
+	/// en: 'Lost connection to the server'
+	String get playbackConnectionLostBody => 'Lost connection to the server';
+
+	/// en: 'This file's format isn't supported on this device'
+	String get playbackCodecUnsupportedBody => 'This file\'s format isn\'t supported on this device';
+
+	/// en: 'The server hit an error while transcoding'
+	String get playbackServerErrorBody => 'The server hit an error while transcoding';
 }
 
 // Path: libraries
@@ -2473,8 +2540,8 @@ class TranslationsLibrariesEn {
 	/// en: 'Trash emptied for "${title}"'
 	String trashEmptied({required Object title}) => 'Trash emptied for "${title}"';
 
-	/// en: 'Failed to empty trash: ${error}'
-	String failedToEmptyTrash({required Object error}) => 'Failed to empty trash: ${error}';
+	/// en: 'Failed to empty trash'
+	String get failedToEmptyTrash => 'Failed to empty trash';
 
 	/// en: 'Analyzing "${title}"...'
 	String analyzing({required Object title}) => 'Analyzing "${title}"...';
@@ -2482,8 +2549,8 @@ class TranslationsLibrariesEn {
 	/// en: 'Analysis started for "${title}"'
 	String analysisStarted({required Object title}) => 'Analysis started for "${title}"';
 
-	/// en: 'Failed to analyze library: ${error}'
-	String failedToAnalyze({required Object error}) => 'Failed to analyze library: ${error}';
+	/// en: 'Failed to analyze library'
+	String get failedToAnalyze => 'Failed to analyze library';
 
 	/// en: 'No libraries found'
 	String get noLibrariesFound => 'No libraries found';
@@ -2631,8 +2698,8 @@ class TranslationsServerSelectionEn {
 	/// en: 'Try a different Plex account'
 	String get noServersFoundRetryPlex => 'Try a different Plex account';
 
-	/// en: 'Failed to load servers: ${error}'
-	String failedToLoadServers({required Object error}) => 'Failed to load servers: ${error}';
+	/// en: 'Failed to load servers'
+	String get failedToLoadServers => 'Failed to load servers';
 
 	/// en: 'Something went wrong while loading your servers. Check your internet connection and try again.'
 	String get failedToLoadServersDescription => 'Something went wrong while loading your servers. Check your internet connection and try again.';
@@ -3072,11 +3139,11 @@ class TranslationsCollectionsEn {
 	/// en: 'Failed to delete collection'
 	String get deleteFailed => 'Failed to delete collection';
 
-	/// en: 'Failed to delete collection: ${error}'
-	String deleteFailedWithError({required Object error}) => 'Failed to delete collection: ${error}';
+	/// en: 'Failed to delete collection'
+	String get deleteFailedWithError => 'Failed to delete collection';
 
-	/// en: 'Failed to load collection items: ${error}'
-	String failedToLoadItems({required Object error}) => 'Failed to load collection items: ${error}';
+	/// en: 'Failed to load collection items'
+	String get failedToLoadItems => 'Failed to load collection items';
 
 	/// en: 'Select Collection'
 	String get selectCollection => 'Select Collection';
@@ -3108,8 +3175,8 @@ class TranslationsCollectionsEn {
 	/// en: 'Failed to remove from collection'
 	String get removeFromCollectionFailed => 'Failed to remove from collection';
 
-	/// en: 'Error removing from collection: ${error}'
-	String removeFromCollectionError({required Object error}) => 'Error removing from collection: ${error}';
+	/// en: 'Error removing from collection'
+	String get removeFromCollectionError => 'Error removing from collection';
 
 	/// en: 'Search collections...'
 	String get searchCollections => 'Search collections...';
@@ -4398,6 +4465,15 @@ class TranslationsSeerrEn {
 	/// en: 'All seasons'
 	String get allSeasons => 'All seasons';
 
+	/// en: 'Seasons ${range}'
+	String seasonsRange({required Object range}) => 'Seasons ${range}';
+
+	/// en: '${count} seasons'
+	String seasonsCount({required Object count}) => '${count} seasons';
+
+	/// en: 'Requested by ${name}'
+	String requestedBy({required Object name}) => 'Requested by ${name}';
+
 	/// en: 'Request in 4K'
 	String get fourK => 'Request in 4K';
 
@@ -4536,6 +4612,15 @@ class TranslationsTautulliEn {
 	/// en: 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.'
 	String get adminOnlyNote => 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.';
 
+	/// en: 'Use history for recommendations'
+	String get useHistoryForRecommendations => 'Use history for recommendations';
+
+	/// en: 'Uses viewing history from this Tautulli server to improve personal recommendations for every profile on this device. Each profile only ever gets its own history, and processing stays local in Pleya.'
+	String get useHistoryForRecommendationsDescription => 'Uses viewing history from this Tautulli server to improve personal recommendations for every profile on this device. Each profile only ever gets its own history, and processing stays local in Pleya.';
+
+	/// en: 'Two different Tautulli pairings were found for this server, so history is not being used until you reconnect the one you want to keep.'
+	String get integrationConflictNote => 'Two different Tautulli pairings were found for this server, so history is not being used until you reconnect the one you want to keep.';
+
 	/// en: 'Tautulli address'
 	String get serverUrl => 'Tautulli address';
 
@@ -4601,6 +4686,12 @@ class TranslationsTautulliEn {
 
 	/// en: 'Enter a token.'
 	String get errorTokenRequired => 'Enter a token.';
+
+	/// en: 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.'
+	String get errorNotTautulli => 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.';
+
+	/// en: 'Tautulli reported a server error (HTTP ${code}).'
+	String errorServer({required Object code}) => 'Tautulli reported a server error (HTTP ${code}).';
 
 	/// en: 'Connecting failed.'
 	String get errorGeneric => 'Connecting failed.';
@@ -4781,14 +4872,14 @@ class TranslationsAddServerEn {
 	/// en: 'Required'
 	String get required => 'Required';
 
-	/// en: 'Could not reach the server: ${error}'
-	String couldNotReachServer({required Object error}) => 'Could not reach the server: ${error}';
+	/// en: 'Could not reach the server'
+	String get couldNotReachServer => 'Could not reach the server';
 
-	/// en: 'Sign-in failed: ${error}'
-	String signInFailed({required Object error}) => 'Sign-in failed: ${error}';
+	/// en: 'Sign-in failed'
+	String get signInFailed => 'Sign-in failed';
 
-	/// en: 'Quick Connect failed: ${error}'
-	String quickConnectFailed({required Object error}) => 'Quick Connect failed: ${error}';
+	/// en: 'Quick Connect failed'
+	String get quickConnectFailed => 'Quick Connect failed';
 
 	/// en: 'Sign in with Plex'
 	String get addPlexTitle => 'Sign in with Plex';
@@ -4799,8 +4890,8 @@ class TranslationsAddServerEn {
 	/// en: 'Already signed in to Plex. Sign out to switch accounts.'
 	String get duplicatePlexAccount => 'Already signed in to Plex. Sign out to switch accounts.';
 
-	/// en: 'Failed to register account: ${error}'
-	String failedToRegisterAccount({required Object error}) => 'Failed to register account: ${error}';
+	/// en: 'Failed to register account'
+	String get failedToRegisterAccount => 'Failed to register account';
 
 	/// en: 'Enter your Jellyfin server URL'
 	String get enterJellyfinUrlError => 'Enter your Jellyfin server URL';
@@ -5210,8 +5301,8 @@ class TranslationsVideoControlsPipErrorsEn {
 	/// en: 'Picture-in-picture failed to start'
 	String get failed => 'Picture-in-picture failed to start';
 
-	/// en: 'An error occurred: ${error}'
-	String unknown({required Object error}) => 'An error occurred: ${error}';
+	/// en: 'An error occurred'
+	String get unknown => 'An error occurred';
 }
 
 // Path: libraries.tabs
@@ -5456,8 +5547,8 @@ class TranslationsCompanionRemotePairingEn {
 	/// en: 'Authentication failed. Both devices need the same Plex account.'
 	String get authFailed => 'Authentication failed. Both devices need the same Plex account.';
 
-	/// en: 'Failed to connect: ${error}'
-	String failedToConnect({required Object error}) => 'Failed to connect: ${error}';
+	/// en: 'Failed to connect'
+	String get failedToConnect => 'Failed to connect';
 }
 
 // Path: companionRemote.remote
@@ -5822,6 +5913,7 @@ extension on Translations {
 			'common.submit' => 'Submit',
 			'common.confirm' => 'Confirm',
 			'common.retry' => 'Retry',
+			'common.details' => 'Details',
 			'common.logout' => 'Logout',
 			'common.unknown' => 'Unknown',
 			'common.refresh' => 'Refresh',
@@ -6007,6 +6099,12 @@ extension on Translations {
 			'settings.icloudSyncDescription' => 'Keep your preferences in sync across your Apple devices',
 			'settings.icloudSyncUnavailable' => 'Sign in to iCloud on this device to sync settings',
 			'settings.icloudSyncEnableFailed' => 'Could not turn on iCloud settings sync',
+			'settings.icloudSyncLegacyPeer' => 'Another Apple device is still on an older Pleya version, so settings are not being shared with it. Update Pleya everywhere to sync again.',
+			'settings.icloudSyncStatusSyncing' => 'Syncing…',
+			'settings.icloudSyncStatusLastSent' => ({required Object time}) => 'Last sent to iCloud at ${time}',
+			'settings.icloudSyncStatusError' => 'Could not reach iCloud. Your settings are saved on this device.',
+			'settings.icloudSyncStatusQuota' => 'iCloud has no room left for settings, so not everything is being sent.',
+			'settings.icloudSyncStatusOversize' => 'Some settings are too large to send and stay on this device.',
 			'settings.shortcutsReset' => 'Shortcuts reset to defaults',
 			'settings.about' => 'About',
 			'settings.aboutDescription' => 'App information and licenses',
@@ -6291,6 +6389,8 @@ extension on Translations {
 			'videoControls.fullscreenButton' => 'Enter fullscreen',
 			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
 			'videoControls.alwaysOnTopButton' => 'Always on top',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.rotationLockButton' => 'Rotation lock',
 			'videoControls.lockScreen' => 'Lock screen',
 			'videoControls.screenLockButton' => 'Screen lock',
@@ -6298,8 +6398,6 @@ extension on Translations {
 			'videoControls.timelineSlider' => 'Video timeline',
 			'videoControls.volumeSlider' => 'Volume level',
 			'videoControls.volumeHandledByDevice' => 'Volume is controlled by your audio device during passthrough',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.endsAt' => ({required Object time}) => 'Ends at ${time}',
 			'videoControls.pipActive' => 'Playing in Picture-in-Picture',
 			'videoControls.pipFailed' => 'Picture-in-picture failed to start',
@@ -6311,7 +6409,7 @@ extension on Translations {
 			'videoControls.pipErrors.notSupported' => 'Device doesn\'t support picture-in-picture mode',
 			'videoControls.pipErrors.voSwitchFailed' => 'Failed to switch video output for picture-in-picture',
 			'videoControls.pipErrors.failed' => 'Picture-in-picture failed to start',
-			'videoControls.pipErrors.unknown' => ({required Object error}) => 'An error occurred: ${error}',
+			'videoControls.pipErrors.unknown' => 'An error occurred',
 			'videoControls.chapters' => 'Chapters',
 			'videoControls.noChaptersAvailable' => 'No chapters available',
 			'videoControls.queue' => 'Queue',
@@ -6337,9 +6435,9 @@ extension on Translations {
 			'messages.markedAsUnwatchedOffline' => 'Marked as unwatched (will sync when online)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Auto-removed: ${title}',
 			'messages.removedFromContinueWatching' => 'Removed from Continue Watching',
-			'messages.errorLoading' => ({required Object error}) => 'Error: ${error}',
+			'messages.errorLoading' => 'Error',
 			'messages.fileInfoNotAvailable' => 'File information not available',
-			'messages.errorLoadingFileInfo' => ({required Object error}) => 'Error loading file info: ${error}',
+			'messages.errorLoadingFileInfo' => 'Error loading file info',
 			'messages.errorLoadingSeries' => 'Error loading series',
 			'messages.musicNotSupported' => 'Music playback is not yet supported',
 			'messages.noDescriptionAvailable' => 'No description available',
@@ -6351,10 +6449,10 @@ extension on Translations {
 			'messages.noLogsAvailable' => 'No logs available',
 			'messages.libraryScanning' => ({required Object title}) => 'Scanning "${title}"...',
 			'messages.libraryScanStarted' => ({required Object title}) => 'Library scan started for "${title}"',
-			'messages.libraryScanFailed' => ({required Object error}) => 'Failed to scan library: ${error}',
+			'messages.libraryScanFailed' => 'Failed to scan library',
 			'messages.metadataRefreshing' => ({required Object title}) => 'Refreshing metadata for "${title}"...',
 			'messages.metadataRefreshStarted' => ({required Object title}) => 'Metadata refresh started for "${title}"',
-			'messages.metadataRefreshFailed' => ({required Object error}) => 'Failed to refresh metadata: ${error}',
+			'messages.metadataRefreshFailed' => 'Failed to refresh metadata',
 			'messages.logoutConfirm' => 'Are you sure you want to logout?',
 			'messages.noSeasonsFound' => 'No seasons found',
 			'messages.seasonsLoadFailed' => 'Couldn\'t load seasons',
@@ -6365,7 +6463,7 @@ extension on Translations {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sleep timer set for ${label}',
 			'messages.noItemsAvailable' => 'No items available',
 			'messages.failedToCreatePlayQueueNoItems' => 'Failed to create play queue - no items',
-			'messages.failedPlayback' => ({required Object action, required Object error}) => 'Failed to ${action}: ${error}',
+			'messages.failedPlayback' => ({required Object action}) => 'Failed to ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Switching to compatible player...',
 			'messages.serverLimitTitle' => 'Playback failed',
 			'messages.serverLimitBody' => 'Server error (HTTP 500). A bandwidth/transcoding limit likely rejected this session. Ask the owner to adjust it.',
@@ -6518,21 +6616,33 @@ extension on Translations {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} watched',
 			'discover.statsRecent' => ({required Object count}) => '${count} in the last 30 days',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Watching this show: ${names}',
-			'errors.searchFailed' => ({required Object error}) => 'Search failed: ${error}',
+			'errors.searchFailed' => 'Search failed',
 			'errors.connectionTimeout' => ({required Object context}) => 'Connection timeout while loading ${context}',
 			'errors.connectionFailed' => 'Unable to connect to media server',
-			'errors.failedToLoad' => ({required Object context, required Object error}) => 'Failed to load ${context}: ${error}',
+			'errors.failedToLoad' => ({required Object context}) => 'Failed to load ${context}',
 			'errors.noClientAvailable' => 'No client available',
-			'errors.authenticationFailed' => ({required Object error}) => 'Authentication failed: ${error}',
+			'errors.authenticationFailed' => 'Authentication failed',
 			'errors.couldNotLaunchUrl' => 'Could not launch auth URL',
 			'errors.pleaseEnterToken' => 'Please enter a token',
 			'errors.invalidToken' => 'Invalid token',
-			'errors.failedToVerifyToken' => ({required Object error}) => 'Failed to verify token: ${error}',
+			'errors.failedToVerifyToken' => 'Failed to verify token',
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Failed to switch to ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Failed to delete ${displayName}',
 			'errors.failedToRate' => 'Couldn\'t update rating',
 			'errors.somethingWentWrongTryAgain' => 'Something went wrong. Try again.',
 			'errors.couldNotLoad' => ({required Object context}) => 'Couldn\'t load ${context}. Try again.',
+			'notices.connectionTimeoutTitle' => 'Connection timed out',
+			'notices.connectionTimeoutBody' => ({required Object context}) => '${context} took too long to respond',
+			'notices.connectionFailedTitle' => 'Can\'t connect',
+			'notices.connectionFailedBody' => ({required Object serverName}) => '${serverName} isn\'t responding',
+			'notices.couldNotLoadTitle' => ({required Object context}) => 'Couldn\'t load ${context}',
+			'notices.genericErrorTitle' => 'Something went wrong',
+			'notices.authFailedTitle' => 'Sign-in failed',
+			'notices.playbackStoppedTitle' => 'Playback stopped',
+			'notices.playbackSegmentUnavailableBody' => 'This part of the video isn\'t available right now',
+			'notices.playbackConnectionLostBody' => 'Lost connection to the server',
+			'notices.playbackCodecUnsupportedBody' => 'This file\'s format isn\'t supported on this device',
+			'notices.playbackServerErrorBody' => 'The server hit an error while transcoding',
 			'libraries.title' => 'Libraries',
 			'libraries.fallbackTitle' => 'Library',
 			'libraries.itemCount' => ({required Object count}) => '${count} items',
@@ -6545,10 +6655,10 @@ extension on Translations {
 			'libraries.emptyTrash' => 'Empty Trash',
 			'libraries.emptyingTrash' => ({required Object title}) => 'Emptying trash for "${title}"...',
 			'libraries.trashEmptied' => ({required Object title}) => 'Trash emptied for "${title}"',
-			'libraries.failedToEmptyTrash' => ({required Object error}) => 'Failed to empty trash: ${error}',
+			'libraries.failedToEmptyTrash' => 'Failed to empty trash',
 			'libraries.analyzing' => ({required Object title}) => 'Analyzing "${title}"...',
 			'libraries.analysisStarted' => ({required Object title}) => 'Analysis started for "${title}"',
-			'libraries.failedToAnalyze' => ({required Object error}) => 'Failed to analyze library: ${error}',
+			'libraries.failedToAnalyze' => 'Failed to analyze library',
 			'libraries.noLibrariesFound' => 'No libraries found',
 			'libraries.allLibrariesHidden' => 'All libraries are hidden',
 			'libraries.hiddenLibrariesCount' => ({required Object count}) => 'Hidden libraries (${count})',
@@ -6627,7 +6737,7 @@ extension on Translations {
 			'serverSelection.noServersFoundDescription' => 'Your Plex account doesn\'t have access to any servers yet. Ask the server owner to share their library with you, or connect a Jellyfin server instead.',
 			'serverSelection.noServersFoundTryJellyfin' => 'Connect a Jellyfin server',
 			'serverSelection.noServersFoundRetryPlex' => 'Try a different Plex account',
-			'serverSelection.failedToLoadServers' => ({required Object error}) => 'Failed to load servers: ${error}',
+			'serverSelection.failedToLoadServers' => 'Failed to load servers',
 			'serverSelection.failedToLoadServersDescription' => 'Something went wrong while loading your servers. Check your internet connection and try again.',
 			'serverSelection.networkErrorTitle' => 'Can\'t reach the server',
 			'serverSelection.networkErrorDescription' => 'Pleya couldn\'t connect to the internet. Check your network and try again.',
@@ -6749,8 +6859,8 @@ extension on Translations {
 			'collections.deleteConfirm' => ({required Object title}) => 'Delete "${title}"? This can\'t be undone.',
 			'collections.deleted' => 'Collection deleted',
 			'collections.deleteFailed' => 'Failed to delete collection',
-			'collections.deleteFailedWithError' => ({required Object error}) => 'Failed to delete collection: ${error}',
-			'collections.failedToLoadItems' => ({required Object error}) => 'Failed to load collection items: ${error}',
+			'collections.deleteFailedWithError' => 'Failed to delete collection',
+			'collections.failedToLoadItems' => 'Failed to load collection items',
 			'collections.selectCollection' => 'Select Collection',
 			'collections.collectionName' => 'Collection Name',
 			'collections.enterCollectionName' => 'Enter collection name',
@@ -6761,7 +6871,7 @@ extension on Translations {
 			'collections.removeFromCollectionConfirm' => ({required Object title}) => 'Remove "${title}" from this collection?',
 			'collections.removedFromCollection' => 'Removed from collection',
 			'collections.removeFromCollectionFailed' => 'Failed to remove from collection',
-			'collections.removeFromCollectionError' => ({required Object error}) => 'Error removing from collection: ${error}',
+			'collections.removeFromCollectionError' => 'Error removing from collection',
 			'collections.searchCollections' => 'Search collections...',
 			'playlists.title' => 'Playlists',
 			'playlists.playlist' => 'Playlist',
@@ -6793,6 +6903,8 @@ extension on Translations {
 			'watchTogether.createSession' => 'Create Session',
 			'watchTogether.creating' => 'Creating...',
 			'watchTogether.joinSession' => 'Join Session',
+			_ => null,
+		} ?? switch (path) {
 			'watchTogether.joining' => 'Joining...',
 			'watchTogether.controlMode' => 'Control Mode',
 			'watchTogether.controlModeQuestion' => 'Who can control playback?',
@@ -6812,8 +6924,6 @@ extension on Translations {
 			'watchTogether.watchingWithOthers' => 'Watching with others',
 			'watchTogether.endSession' => 'End Session',
 			'watchTogether.leaveSession' => 'Leave Session',
-			_ => null,
-		} ?? switch (path) {
 			'watchTogether.endSessionQuestion' => 'End Session?',
 			'watchTogether.leaveSessionQuestion' => 'Leave Session?',
 			'watchTogether.endSessionConfirm' => 'This will end the session for all participants.',
@@ -6964,7 +7074,7 @@ extension on Translations {
 			'companionRemote.pairing.connectionTimedOut' => 'Connection timed out. Use the same network on both devices.',
 			'companionRemote.pairing.sessionNotFound' => 'Device not found. Make sure Pleya is running on the host.',
 			'companionRemote.pairing.authFailed' => 'Authentication failed. Both devices need the same Plex account.',
-			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Failed to connect: ${error}',
+			'companionRemote.pairing.failedToConnect' => 'Failed to connect',
 			'companionRemote.remote.disconnectConfirm' => 'Do you want to disconnect from the remote session?',
 			'companionRemote.remote.reconnecting' => 'Reconnecting...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Attempt ${current} of 5',
@@ -7229,6 +7339,9 @@ extension on Translations {
 			'seerr.selectSeasons' => 'Select seasons',
 			'seerr.season' => ({required Object number}) => 'Season ${number}',
 			'seerr.allSeasons' => 'All seasons',
+			'seerr.seasonsRange' => ({required Object range}) => 'Seasons ${range}',
+			'seerr.seasonsCount' => ({required Object count}) => '${count} seasons',
+			'seerr.requestedBy' => ({required Object name}) => 'Requested by ${name}',
 			'seerr.fourK' => 'Request in 4K',
 			'seerr.fourKBadge' => '4K',
 			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
@@ -7272,6 +7385,9 @@ extension on Translations {
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli tracks who watches what on your Plex server. Connect it to see viewers, statistics and live activity inside Pleya.',
 			'tautulli.adminOnlyNote' => 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.',
+			'tautulli.useHistoryForRecommendations' => 'Use history for recommendations',
+			'tautulli.useHistoryForRecommendationsDescription' => 'Uses viewing history from this Tautulli server to improve personal recommendations for every profile on this device. Each profile only ever gets its own history, and processing stays local in Pleya.',
+			'tautulli.integrationConflictNote' => 'Two different Tautulli pairings were found for this server, so history is not being used until you reconnect the one you want to keep.',
 			'tautulli.serverUrl' => 'Tautulli address',
 			'tautulli.serverUrlHint' => 'http://192.168.1.10:8181 or https://tautulli.example.com',
 			'tautulli.authMode' => 'How to connect',
@@ -7294,11 +7410,15 @@ extension on Translations {
 			'tautulli.errorModeMismatch' => 'Tautulli rejected this token, and it looks like your permanent API key rather than a device token. Switch to API key above, or register a device in Tautulli and paste that token.',
 			'tautulli.errorUrlRequired' => 'Enter the address of your Tautulli server.',
 			'tautulli.errorTokenRequired' => 'Enter a token.',
+			'tautulli.errorNotTautulli' => 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.',
+			'tautulli.errorServer' => ({required Object code}) => 'Tautulli reported a server error (HTTP ${code}).',
 			'tautulli.errorGeneric' => 'Connecting failed.',
 			'nowWatching.title' => 'Now watching',
 			'nowWatching.tooltip' => 'See who is watching now',
 			'nowWatching.streams' => ({required Object count}) => '${count} streams',
 			'nowWatching.oneStream' => '1 stream',
+			_ => null,
+		} ?? switch (path) {
 			'nowWatching.transcoding' => ({required Object count}) => '${count} transcoding',
 			'nowWatching.directPlay' => 'Direct play',
 			'nowWatching.directStream' => 'Direct stream',
@@ -7326,8 +7446,6 @@ extension on Translations {
 			'trackers.connectedAs' => ({required Object username}) => 'Connected as @${username}',
 			'trackers.scrobble' => 'Track progress automatically',
 			'trackers.scrobbleDescription' => 'Update your list when you finish an episode or movie.',
-			_ => null,
-		} ?? switch (path) {
 			'trackers.disconnectConfirm' => ({required Object service}) => 'Disconnect ${service}?',
 			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya will stop updating ${service}. Reconnect any time.',
 			'trackers.connectFailed' => ({required Object service}) => 'Couldn\'t connect to ${service}. Try again.',
@@ -7366,13 +7484,13 @@ extension on Translations {
 			'addServer.signIn' => 'Sign in',
 			'addServer.change' => 'Change',
 			'addServer.required' => 'Required',
-			'addServer.couldNotReachServer' => ({required Object error}) => 'Could not reach the server: ${error}',
-			'addServer.signInFailed' => ({required Object error}) => 'Sign-in failed: ${error}',
-			'addServer.quickConnectFailed' => ({required Object error}) => 'Quick Connect failed: ${error}',
+			'addServer.couldNotReachServer' => 'Could not reach the server',
+			'addServer.signInFailed' => 'Sign-in failed',
+			'addServer.quickConnectFailed' => 'Quick Connect failed',
 			'addServer.addPlexTitle' => 'Sign in with Plex',
 			'addServer.pinExpired' => 'PIN expired before sign-in. Please try again.',
 			'addServer.duplicatePlexAccount' => 'Already signed in to Plex. Sign out to switch accounts.',
-			'addServer.failedToRegisterAccount' => ({required Object error}) => 'Failed to register account: ${error}',
+			'addServer.failedToRegisterAccount' => 'Failed to register account',
 			'addServer.enterJellyfinUrlError' => 'Enter your Jellyfin server URL',
 			'addServer.addConnectionTitle' => 'Add connection',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => 'Add to ${name}',

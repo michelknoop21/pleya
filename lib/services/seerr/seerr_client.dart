@@ -88,6 +88,16 @@ class SeerrClient {
   Map<String, dynamic>? _cachedStatus;
   DateTime? _statusFetchedAt;
 
+  /// Title/year/artwork per `mediaType:tmdbId`, so paging through the request
+  /// list and switching filters never refetches the same title. Bounded by the
+  /// number of distinct titles a session looks at, which is small.
+  final Map<String, _SeerrMediaDisplay> _displayCache = {};
+
+  /// Lookups currently on the wire, so two hydration passes that overlap (a
+  /// fast filter switch, a load-more landing on top of a reload) share one call
+  /// per title instead of racing for the same one.
+  final Map<String, Future<void>> _displayInFlight = {};
+
   void dispose() => _http.close();
 
   // ---------------------------------------------------------------------------
@@ -347,6 +357,82 @@ class SeerrClient {
     return (items: items, totalPages: totalPages);
   }
 
+  /// Fills in the title, year and artwork that `/request` does not return.
+  ///
+  /// Overseerr's request payload embeds the `media` row (tmdb id, availability,
+  /// timestamps) and nothing that names the title, so a request list on its own
+  /// can only say "movie" or "show". Its own web frontend resolves each row
+  /// against `/movie/{id}` or `/tv/{id}`; this does the same, cached per title
+  /// and a few at a time so a page of twenty does not open twenty sockets.
+  ///
+  /// Best effort by design: a lookup that fails leaves that row exactly as it
+  /// came in. A request must still be listed, and still be cancellable, when
+  /// the metadata service is having a bad day.
+  Future<List<SeerrRequest>> hydrateRequests(List<SeerrRequest> items) async {
+    final wanted = <String, ({int tmdbId, bool isMovie})>{};
+    for (final r in items) {
+      final tmdbId = r.tmdbId;
+      if (tmdbId == null || !r.needsDisplayData) continue;
+      final key = '${r.mediaType}:$tmdbId';
+      if (_displayCache.containsKey(key)) continue;
+      wanted[key] = (tmdbId: tmdbId, isMovie: r.mediaType != 'tv');
+    }
+
+    if (wanted.isNotEmpty) {
+      const maxInFlight = 6;
+      final entries = wanted.entries.toList();
+      for (var i = 0; i < entries.length; i += maxInFlight) {
+        final batch = entries.skip(i).take(maxInFlight);
+        await Future.wait(batch.map((e) => _cacheDisplay(e.key, e.value.tmdbId, e.value.isMovie)));
+      }
+    }
+
+    return [
+      for (final r in items)
+        if (r.tmdbId == null || !r.needsDisplayData)
+          r
+        else
+          switch (_displayCache['${r.mediaType}:${r.tmdbId}']) {
+            final d? => r.withDisplayData(
+              title: d.title,
+              year: d.year,
+              posterPath: d.posterPath,
+              backdropPath: d.backdropPath,
+            ),
+            null => r,
+          },
+    ];
+  }
+
+  Future<void> _cacheDisplay(String key, int tmdbId, bool isMovie) {
+    final running = _displayInFlight[key];
+    if (running != null) return running;
+    // Block body, not an arrow: `remove` hands back the very future being
+    // awaited here, and whenComplete waits on a returned future -- so an arrow
+    // makes this wait on itself and never completes.
+    final future = _fetchDisplay(key, tmdbId, isMovie).whenComplete(() {
+      _displayInFlight.remove(key);
+    });
+    _displayInFlight[key] = future;
+    return future;
+  }
+
+  Future<void> _fetchDisplay(String key, int tmdbId, bool isMovie) async {
+    try {
+      final json = isMovie ? await getMovie(tmdbId) : await getTv(tmdbId);
+      final media = SeerrMedia.fromDetail(json, mediaType: isMovie ? 'movie' : 'tv');
+      _displayCache[key] = _SeerrMediaDisplay(
+        title: media.title.isEmpty ? null : media.title,
+        year: media.year,
+        posterPath: media.posterPath,
+        backdropPath: media.backdropPath,
+      );
+    } catch (e) {
+      // One unreachable title must not take the list down with it.
+      appLogger.d('seerr: could not resolve $key for the request list: $e');
+    }
+  }
+
   Future<void> updateRequest(int id, {List<int>? seasons, bool? is4k}) async {
     final body = <String, dynamic>{'seasons': ?seasons, 'is4k': ?is4k};
     final resp = await _send(() => _http.put('/request/$id', body: body, headers: _authHeaders()));
@@ -374,6 +460,23 @@ class SeerrClient {
   Future<List<SeerrServiceServer>> _serviceServers(String path) async {
     final resp = await _send(() => _http.get(path, headers: _authHeaders()));
     return SeerrServiceServer.listFrom(resp.data);
+  }
+
+  /// Quality profiles and root folders for one Radarr/Sonarr server.
+  ///
+  /// The list endpoints above only name the servers; the profiles a user
+  /// created in Radarr or Sonarr live behind this per-server call, which is why
+  /// the request sheet could never offer them.
+  Future<SeerrServiceServerDetail> getRadarrServerDetail(int serverId) =>
+      _serviceServerDetail('/service/radarr', serverId);
+  Future<SeerrServiceServerDetail> getSonarrServerDetail(int serverId) =>
+      _serviceServerDetail('/service/sonarr', serverId);
+
+  Future<SeerrServiceServerDetail> _serviceServerDetail(String path, int serverId) async {
+    final resp = await _send(() => _http.get('$path/$serverId', headers: _authHeaders()));
+    final data = resp.data;
+    if (data is! Map) return const SeerrServiceServerDetail();
+    return SeerrServiceServerDetail.fromJson(data.cast<String, dynamic>());
   }
 
   // ---------------------------------------------------------------------------
@@ -465,4 +568,14 @@ class SeerrClient {
   }
 
   static int? _int(Object? v) => v is int ? v : (v is num ? v.toInt() : int.tryParse('${v ?? ''}'));
+}
+
+/// Cached display fields for one title, keyed by `mediaType:tmdbId`.
+class _SeerrMediaDisplay {
+  const _SeerrMediaDisplay({this.title, this.year, this.posterPath, this.backdropPath});
+
+  final String? title;
+  final String? year;
+  final String? posterPath;
+  final String? backdropPath;
 }

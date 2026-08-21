@@ -16,6 +16,7 @@ import '../services/storage_service.dart';
 import '../providers/user_profile_provider.dart';
 import '../i18n/strings.g.dart';
 import '../utils/app_logger.dart';
+import '../utils/error_message_utils.dart';
 import '../utils/platform_detector.dart';
 import '../focus/focusable_button.dart';
 import '../focus/focusable_text_field.dart';
@@ -589,7 +590,7 @@ class _DebugTokenDialogState extends State<_DebugTokenDialog> with ControllerDis
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = t.errors.failedToVerifyToken(error: e);
+        _errorMessage = friendlyError(e);
         _busy = false;
       });
     }

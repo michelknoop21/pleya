@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../../mpv/mpv.dart';
 import '../../services/settings_service.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/error_message_utils.dart';
 import '../models/playback_state.dart';
 import '../models/sync_message.dart';
 import '../models/watch_session.dart';
@@ -325,7 +326,7 @@ class WatchTogetherProvider with ChangeNotifier {
       return createdSessionId;
     } catch (e) {
       appLogger.e('WatchTogether: Failed to create session', error: e);
-      _session = _session?.copyWith(state: SessionState.error, errorMessage: e.toString());
+      _session = _session?.copyWith(state: SessionState.error, errorMessage: friendlyError(e));
       notifyListeners();
       rethrow;
     }
@@ -370,7 +371,7 @@ class WatchTogetherProvider with ChangeNotifier {
       appLogger.d('WatchTogether: Joined session successfully');
     } catch (e) {
       appLogger.e('WatchTogether: Failed to join session', error: e);
-      _session = _session?.copyWith(state: SessionState.error, errorMessage: e.toString());
+      _session = _session?.copyWith(state: SessionState.error, errorMessage: friendlyError(e));
       notifyListeners();
       rethrow;
     }

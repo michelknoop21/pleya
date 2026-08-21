@@ -7,6 +7,7 @@ import '../../providers/companion_remote_provider.dart';
 import '../../services/companion_remote/companion_remote_host_controller.dart';
 import '../../services/settings_service.dart';
 import '../../utils/dialogs.dart';
+import '../../utils/error_message_utils.dart';
 import '../../focus/focusable_button.dart';
 import '../../focus/key_event_utils.dart';
 
@@ -64,7 +65,7 @@ class _RemoteSessionDialogState extends State<RemoteSessionDialog> with MountedS
     } catch (e) {
       setStateIfMounted(() {
         _isStarting = false;
-        _errorMessage = e.toString();
+        _errorMessage = friendlyError(e);
       });
     }
   }

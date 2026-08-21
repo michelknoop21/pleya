@@ -42,7 +42,11 @@ class WatchStateResolver {
     };
   }
 
-  static WatchStateSnapshot fromActions(Iterable<OfflineWatchProgressItem> actions) {
+  /// The action that decides the local watch state: the most recently updated
+  /// one of the three types that carry state. Exposed separately from
+  /// [fromActions] because the resume resolver needs the *timestamp* of the
+  /// winning action, not just the state it implies.
+  static OfflineWatchProgressItem? latestAction(Iterable<OfflineWatchProgressItem> actions) {
     OfflineWatchProgressItem? latest;
 
     for (final action in actions) {
@@ -51,6 +55,12 @@ class WatchStateResolver {
       }
       if (latest == null || action.updatedAt > latest.updatedAt) latest = action;
     }
+
+    return latest;
+  }
+
+  static WatchStateSnapshot fromActions(Iterable<OfflineWatchProgressItem> actions) {
+    final latest = latestAction(actions);
 
     return switch (latest?.actionType) {
       'watched' => const WatchStateSnapshot(isWatched: true, hasViewOffsetMs: true, viewOffsetMs: 0),

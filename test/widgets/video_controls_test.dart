@@ -224,6 +224,30 @@ void main() {
     });
   });
 
+  group('markerCanOfferSkip', () {
+    MediaMarker marker(String type) => MediaMarker(id: 1, type: type, startTimeOffset: 0, endTimeOffset: 30000);
+
+    test('an episode intro is offered, that is what the button is for', () {
+      expect(markerCanOfferSkip(marker: marker('intro'), kind: MediaKind.episode), isTrue);
+    });
+
+    test('a movie intro is not offered at all', () {
+      // A movie's intro marker comes from the chapter-title fallback and can run
+      // for minutes, so the button used to sit there and return on every tap.
+      expect(markerCanOfferSkip(marker: marker('intro'), kind: MediaKind.movie), isFalse);
+    });
+
+    test('clips and unknown items get no intro button either', () {
+      expect(markerCanOfferSkip(marker: marker('intro'), kind: MediaKind.clip), isFalse);
+      expect(markerCanOfferSkip(marker: marker('unknown'), kind: MediaKind.unknown), isFalse);
+    });
+
+    test('credits stay skippable, on a movie as much as on an episode', () {
+      expect(markerCanOfferSkip(marker: marker('credits'), kind: MediaKind.movie), isTrue);
+      expect(markerCanOfferSkip(marker: marker('credits'), kind: MediaKind.episode), isTrue);
+    });
+  });
+
   group('shouldAutoSkipMarker', () {
     MediaMarker marker(String type) => MediaMarker(id: 1, type: type, startTimeOffset: 0, endTimeOffset: 30000);
 

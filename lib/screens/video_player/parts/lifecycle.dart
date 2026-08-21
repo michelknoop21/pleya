@@ -71,6 +71,28 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     }
   }
 
+  /// Re-read the backend position, then hand the write authority back.
+  ///
+  /// A revoked authority stays revoked when the refresh fails: without knowing
+  /// the current state there is nothing this player can write safely.
+  Future<void> _reconcileAndRetakeWriteAuthorityAfterResume() async {
+    final authority = _playbackWriteAuthority;
+    if (authority == null || authority.isHeld) return;
+
+    try {
+      await authority.retakeAfterRefresh(() async {
+        final client = _playbackContext?.reportingClient;
+        if (client == null) return;
+        final fresh = await client.fetchItem(_currentMetadata.id);
+        if (fresh != null && mounted) {
+          _currentMetadata = _currentMetadata.copyWith(viewOffsetMs: fresh.viewOffsetMs);
+        }
+      }, reason: 'app resumed');
+    } catch (e) {
+      appLogger.w('Could not reconcile playback state on resume; keeping the write authority revoked', error: e);
+    }
+  }
+
   Future<void> _handleAppHidden() async {
     if (_shouldSkipForPip) {
       _recordLifecycleState('hidden', action: 'skipped_for_pip');
@@ -116,6 +138,11 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
 
     if (!mounted || currentPlayer != player) return;
 
+    if (shouldPauseForBackground) {
+      await _flushFinalPlaybackReportForLifecycle('hidden', wasPlaying: _wasPlayingBeforeInactive);
+      if (!mounted || currentPlayer != player) return;
+    }
+
     _suspendLiveTimelineForBackground();
 
     if (isTv) {
@@ -127,6 +154,37 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     _hiddenForBackground = true;
     await currentPlayer.setVisible(false, restoreOnWindowVisible: Platform.isMacOS);
     _recordLifecycleState('hidden', action: 'render_hidden');
+  }
+
+  /// Flush at most one final report for a lifecycle transition.
+  ///
+  /// Everything about *whether* to write lives in
+  /// [PlaybackLifecycleReportDecision]; this only supplies the three facts it
+  /// asks for and performs the write. The tracker's own `sendStoppedProgressOnce`
+  /// keeps the "exactly once" guarantee across the background, detach and
+  /// dispose paths, which can all fire for the same exit.
+  Future<void> _flushFinalPlaybackReportForLifecycle(String label, {required bool wasPlaying}) async {
+    if (!_shouldFlushFinalPlaybackReport(label, wasPlaying: wasPlaying)) return;
+    await _sendStoppedProgressOnce();
+  }
+
+  /// The synchronous half, for `dispose`, which cannot await.
+  bool _shouldFlushFinalPlaybackReport(String label, {required bool wasPlaying}) {
+    final tracker = _progressTracker;
+    if (tracker == null) return false;
+
+    final decision = PlaybackLifecycleReportDecision.resolve(
+      authorityHeld: _playbackWriteAuthority?.isHeld ?? true,
+      wasPlaying: wasPlaying,
+      positionChanged: tracker.hasReportablePositionChange,
+    );
+    if (decision == PlaybackLifecycleReport.none) {
+      appLogger.d('Lifecycle $label: no final playback report needed');
+      return false;
+    }
+
+    appLogger.d('Lifecycle $label: flushing one final playback report');
+    return true;
   }
 
   Future<void> _handleAppResumed() async {
@@ -163,6 +221,13 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     _backgroundPauseCaptured = false;
 
     _resumeLiveTimelineAfterBackgroundIfNeeded();
+
+    // Resuming reads the backend's current state first and only then takes the
+    // write authority back. Taking it first would let this player report a
+    // position it has not reconciled, which is the overwrite the authority
+    // exists to prevent.
+    await _reconcileAndRetakeWriteAuthorityAfterResume();
+
     _recordLifecycleState('resumed', action: 'complete');
   }
 }

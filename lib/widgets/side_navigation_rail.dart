@@ -692,6 +692,18 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
 
     final isCollapsed = !_shouldExpand;
     final effectiveCollapsedWidth = collapsedWidthForContext(context);
+    // The width the rail is heading for, flipped synchronously with
+    // [_shouldExpand]; the panel below animates towards it over [panelMotion].
+    final railTargetWidth = isCollapsed ? effectiveCollapsedWidth : expandedWidth;
+    // The box the layers below are positioned in: wide enough to hold the rail
+    // at full width. It is a container, not a claim. What the rail actually owns
+    // at any moment is `owned` below, and while the rail sits shut that is the
+    // collapsed rail and nothing more. On TV there is no pointer, so the box is
+    // exactly the rail: nothing may hang over the spotlight.
+    final bandWidth = PlatformDetector.isTV() ? railTargetWidth : expandedWidth;
+    // One duration for the panel and for the mirror tween that tracks it. They
+    // must not drift, or the hit box stops matching the pixels.
+    final panelMotion = reduceMotion(context, t.normal);
     final horizontalPadding = horizontalPaddingForContext(context, isCollapsed: isCollapsed);
     final itemHorizontalPadding = itemHorizontalPaddingForContext(context, isCollapsed: isCollapsed);
     final hasLiveTv = context.watch<MultiServerProvider>().hasLiveTv;
@@ -739,215 +751,297 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
               _notifyInteractionExpandedIfNeeded();
             }
           },
-          child: MouseRegion(
-            cursor: isCollapsed ? SystemMouseCursors.click : MouseCursor.defer,
-            onEnter: (_) => _onHoverEnter(),
-            onExit: (_) => _onHoverExit(),
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: isCollapsed ? _expandForTouch : null,
-              child: AnimatedContainer(
-                duration: reduceMotion(context, t.normal),
-                curve: Curves.easeOutCubic,
-                width: isCollapsed ? effectiveCollapsedWidth : expandedWidth,
-                clipBehavior: Clip.hardEdge,
-                decoration: const BoxDecoration(),
+          // Mirrors the panel's width animation so every layer below can ask
+          // "how wide is the rail *right now*" instead of reading a boolean
+          // that flipped 200ms ago. A mirror tween rather than a latch released
+          // by AnimatedContainer.onEnd: a missed onEnd (reduced motion, dispose
+          // race) would freeze the band, and a frozen band is a dead zone over
+          // the content — the opposite failure.
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(end: railTargetWidth),
+            duration: panelMotion,
+            curve: Curves.easeOutCubic,
+            builder: (context, paintedWidth, _) {
+              // What the rail owns right now, and the whole of the ownership
+              // rule in one line. Shut and idle the target is the collapsed
+              // rail, so this is 80 and the strip beside it belongs to the
+              // content. Once a pointer has entered over the rail the target is
+              // already the expanded width, so ownership jumps there on the
+              // first frame and the pointer cannot outrun the easeOutCubic.
+              // Collapsing, the target drops back while the paint lags, so the
+              // pixels still on screen stay owned until they are gone.
+              final owned = paintedWidth < railTargetWidth ? railTargetWidth : paintedWidth;
+              // The rows are live for as long as they are visible. Keying this
+              // off `isCollapsed` killed them the instant the collapse timer
+              // fired, while the panel stood at full width for another 200ms.
+              final panelInteractive = paintedWidth > effectiveCollapsedWidth + 0.5;
+              return SizedBox(
+                width: bandWidth,
                 child: Stack(
                   children: [
-                    // TV: left-to-right gradient scrim (Netflix-TV nav) so the
-                    // rail reads over the billboard without a hard panel.
-                    // Non-TV: solid surface panel.
-                    //
-                    // The labels on top are theme-coloured, so the scrim has to
-                    // follow: a black veil under near-black light-mode text is
-                    // unreadable. Dark keeps its original pure-black ramp;
-                    // light washes with the page background, harder and further
-                    // (the artwork stays bright, the ink does not).
-                    Positioned.fill(
-                      child: PlatformDetector.isTV()
-                          ? DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                  colors: t.isLight
-                                      ? [
-                                          t.artworkScrim.withValues(alpha: 0.97),
-                                          t.artworkScrim.withValues(alpha: 0.70),
-                                          const Color(0x00000000),
-                                        ]
-                                      : const [Color(0xE6000000), Color(0x00000000)],
-                                  stops: t.isLight ? const [0.0, 0.62, 1.0] : null,
-                                ),
-                              ),
-                            )
-                          : ColoredBox(color: t.surface),
+                    // Layer 1 — the band, claimed for exactly as long as the rail
+                    // owns it.
+                    Positioned(
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      width: owned,
+                      child: AbsorbPointer(absorbing: owned > effectiveCollapsedWidth + 0.5),
                     ),
-                    IgnorePointer(
-                      ignoring: isCollapsed,
-                      child: Focus(
-                        canRequestFocus: false,
-                        skipTraversal: true,
-                        onKeyEvent: (node, event) => _handleVerticalNavigation(node, event, focusOrder),
-                        child: Column(
-                          children: [
-                            SizedBox(height: _getTopPadding(context)),
-                            _buildBrandHeader(
-                              isCollapsed: isCollapsed,
-                              horizontalPadding: horizontalPadding,
-                              itemHorizontalPadding: itemHorizontalPadding,
-                            ),
-                            Expanded(
-                              child: ListView(
-                                padding: .symmetric(horizontal: horizontalPadding),
-                                clipBehavior: Clip.hardEdge,
-                                children: [
-                                  if (widget.isOfflineMode && widget.onReconnect != null) ...[
-                                    _buildReconnectItem(isCollapsed: isCollapsed),
-                                    const SizedBox(height: 8),
-                                  ],
-                                  if (!widget.isOfflineMode) ...[
-                                    _buildNavItem(
-                                      icon: Symbols.home_rounded,
-                                      selectedIcon: Symbols.home_rounded,
-                                      svgAsset: NavGlyphs.home,
-                                      label: Translations.of(context).common.home,
-                                      isSelected: widget.selectedTab == NavigationTabId.discover,
-                                      isFocused: _focusTracker.isFocused(_kHome),
-                                      onTap: () => widget.onDestinationSelected(NavigationTabId.discover),
-                                      focusNode: _focusTracker.get(_kHome),
-                                      isCollapsed: isCollapsed,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _buildLibrariesFlat(visibleRows, t, isCollapsed: isCollapsed),
-                                    const SizedBox(height: 8),
-                                    if (context.watch<MultiServerProvider>().hasLiveTv) ...[
-                                      _buildNavItem(
-                                        icon: Symbols.live_tv_rounded,
-                                        selectedIcon: Symbols.live_tv_rounded,
-                                        svgAsset: NavGlyphs.liveTv,
-                                        label: Translations.of(context).navigation.liveTv,
-                                        isSelected: widget.selectedTab == NavigationTabId.liveTv,
-                                        isFocused: _focusTracker.isFocused('liveTv'),
-                                        onTap: () => widget.onDestinationSelected(NavigationTabId.liveTv),
-                                        focusNode: _focusTracker.get('liveTv'),
-                                        isCollapsed: isCollapsed,
-                                      ),
-                                      const SizedBox(height: 8),
-                                    ],
-                                    _buildNavItem(
-                                      icon: Symbols.search_rounded,
-                                      selectedIcon: Symbols.search_rounded,
-                                      svgAsset: NavGlyphs.search,
-                                      label: Translations.of(context).common.search,
-                                      isSelected: widget.selectedTab == NavigationTabId.search,
-                                      isFocused: _focusTracker.isFocused(_kSearch),
-                                      onTap: () => widget.onDestinationSelected(NavigationTabId.search),
-                                      focusNode: _focusTracker.get(_kSearch),
-                                      isCollapsed: isCollapsed,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    // Watchlist — only when this profile has a
-                                    // source or a snapshot for one.
-                                    if (hasWatchlist) ...[
-                                      _buildNavItem(
-                                        icon: Symbols.bookmark_add_rounded,
-                                        selectedIcon: Symbols.bookmark_add_rounded,
-                                        svgAsset: NavGlyphs.watchlist,
-                                        label: Translations.of(context).navigation.watchlist,
-                                        isSelected: widget.selectedTab == NavigationTabId.watchlist,
-                                        isFocused: _focusTracker.isFocused(_kWatchlist),
-                                        onTap: () => widget.onDestinationSelected(NavigationTabId.watchlist),
-                                        focusNode: _focusTracker.get(_kWatchlist),
-                                        isCollapsed: isCollapsed,
-                                      ),
-                                      const SizedBox(height: 8),
-                                    ],
-                                    // Requests (Jellyseerr/Overseerr) — only when configured.
-                                    if (hasSeerr) ...[
-                                      _buildNavItem(
-                                        icon: Symbols.playlist_add_rounded,
-                                        selectedIcon: Symbols.playlist_add_rounded,
-                                        svgAsset: NavGlyphs.requests,
-                                        label: Translations.of(context).seerr.title,
-                                        isSelected: widget.selectedTab == NavigationTabId.requests,
-                                        isFocused: _focusTracker.isFocused(_kRequests),
-                                        onTap: () => widget.onDestinationSelected(NavigationTabId.requests),
-                                        focusNode: _focusTracker.get(_kRequests),
-                                        isCollapsed: isCollapsed,
-                                      ),
-                                      const SizedBox(height: 8),
-                                    ],
-                                    // Who is streaming right now, TV only: the
-                                    // app bar's overlay panel cannot be reached
-                                    // with a remote, so the rail is the way in
-                                    // and the list opens as a page.
-                                    //
-                                    // Last in the group on purpose. It comes
-                                    // and goes with the streams, and an entry
-                                    // that appears above the fixed ones would
-                                    // shift them under someone's thumb every
-                                    // time a film starts.
-                                    if (_showNowWatching(context)) ...[
-                                      _buildNavItem(
-                                        icon: Symbols.sensors_rounded,
-                                        selectedIcon: Symbols.sensors_rounded,
-                                        label: Translations.of(context).nowWatching.title,
-                                        isSelected: false,
-                                        isFocused: _focusTracker.isFocused(_kNowWatching),
-                                        onTap: () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute(builder: (_) => const NowWatchingScreen()),
+                    // Layer 2 — the rail itself. No `width` on the Positioned: a
+                    // tight constraint would kill the width animation.
+                    Positioned(
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      child: MouseRegion(
+                        // Cursor only. Hover *state* lives on layer 3, or moving
+                        // from the panel into the empty band would fire onExit and
+                        // start collapsing while the pointer is still in the band.
+                        cursor: isCollapsed ? SystemMouseCursors.click : MouseCursor.defer,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: panelInteractive ? null : _expandForTouch,
+                          child: AnimatedContainer(
+                            duration: panelMotion,
+                            curve: Curves.easeOutCubic,
+                            width: railTargetWidth,
+                            clipBehavior: Clip.hardEdge,
+                            decoration: const BoxDecoration(),
+                            child: Stack(
+                              children: [
+                                // TV: left-to-right gradient scrim (Netflix-TV nav) so the
+                                // rail reads over the billboard without a hard panel.
+                                // Non-TV: solid surface panel.
+                                //
+                                // The labels on top are theme-coloured, so the scrim has to
+                                // follow: a black veil under near-black light-mode text is
+                                // unreadable. Dark keeps its original pure-black ramp;
+                                // light washes with the page background, harder and further
+                                // (the artwork stays bright, the ink does not).
+                                Positioned.fill(
+                                  child: PlatformDetector.isTV()
+                                      ? DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.centerLeft,
+                                              end: Alignment.centerRight,
+                                              colors: t.isLight
+                                                  ? [
+                                                      t.artworkScrim.withValues(alpha: 0.97),
+                                                      t.artworkScrim.withValues(alpha: 0.70),
+                                                      const Color(0x00000000),
+                                                    ]
+                                                  : const [Color(0xE6000000), Color(0x00000000)],
+                                              stops: t.isLight ? const [0.0, 0.62, 1.0] : null,
+                                            ),
+                                          ),
+                                        )
+                                      : ColoredBox(color: t.surface),
+                                ),
+                                IgnorePointer(
+                                  // Live for as long as the row is visible.
+                                  // Keying this off `isCollapsed` killed every
+                                  // row the instant the collapse timer fired,
+                                  // while the panel stood at full width for
+                                  // another 200ms.
+                                  ignoring: !panelInteractive,
+                                  child: Focus(
+                                    canRequestFocus: false,
+                                    skipTraversal: true,
+                                    onKeyEvent: (node, event) => _handleVerticalNavigation(node, event, focusOrder),
+                                    child: Column(
+                                      children: [
+                                        SizedBox(height: _getTopPadding(context)),
+                                        _buildBrandHeader(
+                                          isCollapsed: isCollapsed,
+                                          horizontalPadding: horizontalPadding,
+                                          itemHorizontalPadding: itemHorizontalPadding,
                                         ),
-                                        focusNode: _focusTracker.get(_kNowWatching),
-                                        isCollapsed: isCollapsed,
-                                      ),
-                                      const SizedBox(height: 8),
-                                    ],
-                                  ],
-                                  // Downloads (hidden on Apple TV — no user
-                                  // file storage)
-                                  if (_showDownloads) ...[
-                                    _buildNavItem(
-                                      icon: Symbols.download_rounded,
-                                      selectedIcon: Symbols.download_rounded,
-                                      svgAsset: NavGlyphs.downloads,
-                                      label: Translations.of(context).navigation.downloads,
-                                      isSelected: widget.selectedTab == NavigationTabId.downloads,
-                                      isFocused: _focusTracker.isFocused(_kDownloads),
-                                      onTap: () => widget.onDestinationSelected(NavigationTabId.downloads),
-                                      focusNode: _focusTracker.get(_kDownloads),
-                                      isCollapsed: isCollapsed,
+                                        Expanded(
+                                          child: ListView(
+                                            padding: .symmetric(horizontal: horizontalPadding),
+                                            clipBehavior: Clip.hardEdge,
+                                            children: [
+                                              if (widget.isOfflineMode && widget.onReconnect != null) ...[
+                                                _buildReconnectItem(isCollapsed: isCollapsed),
+                                                const SizedBox(height: 8),
+                                              ],
+                                              if (!widget.isOfflineMode) ...[
+                                                _buildNavItem(
+                                                  icon: Symbols.home_rounded,
+                                                  selectedIcon: Symbols.home_rounded,
+                                                  svgAsset: NavGlyphs.home,
+                                                  label: Translations.of(context).common.home,
+                                                  isSelected: widget.selectedTab == NavigationTabId.discover,
+                                                  isFocused: _focusTracker.isFocused(_kHome),
+                                                  onTap: () => widget.onDestinationSelected(NavigationTabId.discover),
+                                                  focusNode: _focusTracker.get(_kHome),
+                                                  isCollapsed: isCollapsed,
+                                                ),
+                                                const SizedBox(height: 8),
+                                                _buildLibrariesFlat(visibleRows, t, isCollapsed: isCollapsed),
+                                                const SizedBox(height: 8),
+                                                if (context.watch<MultiServerProvider>().hasLiveTv) ...[
+                                                  _buildNavItem(
+                                                    icon: Symbols.live_tv_rounded,
+                                                    selectedIcon: Symbols.live_tv_rounded,
+                                                    svgAsset: NavGlyphs.liveTv,
+                                                    label: Translations.of(context).navigation.liveTv,
+                                                    isSelected: widget.selectedTab == NavigationTabId.liveTv,
+                                                    isFocused: _focusTracker.isFocused('liveTv'),
+                                                    onTap: () => widget.onDestinationSelected(NavigationTabId.liveTv),
+                                                    focusNode: _focusTracker.get('liveTv'),
+                                                    isCollapsed: isCollapsed,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                ],
+                                                _buildNavItem(
+                                                  icon: Symbols.search_rounded,
+                                                  selectedIcon: Symbols.search_rounded,
+                                                  svgAsset: NavGlyphs.search,
+                                                  label: Translations.of(context).common.search,
+                                                  isSelected: widget.selectedTab == NavigationTabId.search,
+                                                  isFocused: _focusTracker.isFocused(_kSearch),
+                                                  onTap: () => widget.onDestinationSelected(NavigationTabId.search),
+                                                  focusNode: _focusTracker.get(_kSearch),
+                                                  isCollapsed: isCollapsed,
+                                                ),
+                                                const SizedBox(height: 8),
+                                                // Watchlist — only when this profile has a
+                                                // source or a snapshot for one.
+                                                if (hasWatchlist) ...[
+                                                  _buildNavItem(
+                                                    icon: Symbols.bookmark_add_rounded,
+                                                    selectedIcon: Symbols.bookmark_add_rounded,
+                                                    svgAsset: NavGlyphs.watchlist,
+                                                    label: Translations.of(context).navigation.watchlist,
+                                                    isSelected: widget.selectedTab == NavigationTabId.watchlist,
+                                                    isFocused: _focusTracker.isFocused(_kWatchlist),
+                                                    onTap: () =>
+                                                        widget.onDestinationSelected(NavigationTabId.watchlist),
+                                                    focusNode: _focusTracker.get(_kWatchlist),
+                                                    isCollapsed: isCollapsed,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                ],
+                                                // Requests (Jellyseerr/Overseerr) — only when configured.
+                                                if (hasSeerr) ...[
+                                                  _buildNavItem(
+                                                    icon: Symbols.playlist_add_rounded,
+                                                    selectedIcon: Symbols.playlist_add_rounded,
+                                                    svgAsset: NavGlyphs.requests,
+                                                    label: Translations.of(context).seerr.title,
+                                                    isSelected: widget.selectedTab == NavigationTabId.requests,
+                                                    isFocused: _focusTracker.isFocused(_kRequests),
+                                                    onTap: () => widget.onDestinationSelected(NavigationTabId.requests),
+                                                    focusNode: _focusTracker.get(_kRequests),
+                                                    isCollapsed: isCollapsed,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                ],
+                                                // Who is streaming right now, TV only: the
+                                                // app bar's overlay panel cannot be reached
+                                                // with a remote, so the rail is the way in
+                                                // and the list opens as a page.
+                                                //
+                                                // Last in the group on purpose. It comes
+                                                // and goes with the streams, and an entry
+                                                // that appears above the fixed ones would
+                                                // shift them under someone's thumb every
+                                                // time a film starts.
+                                                if (_showNowWatching(context)) ...[
+                                                  _buildNavItem(
+                                                    icon: Symbols.sensors_rounded,
+                                                    selectedIcon: Symbols.sensors_rounded,
+                                                    label: Translations.of(context).nowWatching.title,
+                                                    isSelected: false,
+                                                    isFocused: _focusTracker.isFocused(_kNowWatching),
+                                                    onTap: () => Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(builder: (_) => const NowWatchingScreen()),
+                                                    ),
+                                                    focusNode: _focusTracker.get(_kNowWatching),
+                                                    isCollapsed: isCollapsed,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                ],
+                                              ],
+                                              // Downloads (hidden on Apple TV — no user
+                                              // file storage)
+                                              if (_showDownloads) ...[
+                                                _buildNavItem(
+                                                  icon: Symbols.download_rounded,
+                                                  selectedIcon: Symbols.download_rounded,
+                                                  svgAsset: NavGlyphs.downloads,
+                                                  label: Translations.of(context).navigation.downloads,
+                                                  isSelected: widget.selectedTab == NavigationTabId.downloads,
+                                                  isFocused: _focusTracker.isFocused(_kDownloads),
+                                                  onTap: () => widget.onDestinationSelected(NavigationTabId.downloads),
+                                                  focusNode: _focusTracker.get(_kDownloads),
+                                                  isCollapsed: isCollapsed,
+                                                ),
+                                                const SizedBox(height: 8),
+                                              ],
+                                              _buildNavItem(
+                                                icon: Symbols.settings_rounded,
+                                                selectedIcon: Symbols.settings_rounded,
+                                                svgAsset: NavGlyphs.settings,
+                                                label: Translations.of(context).common.settings,
+                                                isSelected: widget.selectedTab == NavigationTabId.settings,
+                                                isFocused: _focusTracker.isFocused(_kSettings),
+                                                onTap: () => widget.onDestinationSelected(NavigationTabId.settings),
+                                                focusNode: _focusTracker.get(_kSettings),
+                                                isCollapsed: isCollapsed,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        if (_showFullscreenToggle)
+                                          Padding(
+                                            padding: .fromLTRB(horizontalPadding, 0, horizontalPadding, 12),
+                                            child: _buildFullscreenItem(isCollapsed: isCollapsed),
+                                          ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 8),
-                                  ],
-                                  _buildNavItem(
-                                    icon: Symbols.settings_rounded,
-                                    selectedIcon: Symbols.settings_rounded,
-                                    svgAsset: NavGlyphs.settings,
-                                    label: Translations.of(context).common.settings,
-                                    isSelected: widget.selectedTab == NavigationTabId.settings,
-                                    isFocused: _focusTracker.isFocused(_kSettings),
-                                    onTap: () => widget.onDestinationSelected(NavigationTabId.settings),
-                                    focusNode: _focusTracker.get(_kSettings),
-                                    isCollapsed: isCollapsed,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            if (_showFullscreenToggle)
-                              Padding(
-                                padding: .fromLTRB(horizontalPadding, 0, horizontalPadding, 12),
-                                child: _buildFullscreenItem(isCollapsed: isCollapsed),
-                              ),
-                          ],
+                          ),
                         ),
+                      ),
+                    ),
+                    // Layer 3 — watches what the rail owns and takes nothing. A
+                    // translucent MouseRegion joins the hit path (so the
+                    // MouseTracker fires enter/exit across the whole of it) while
+                    // its hitTest returns false, so the Stack keeps walking down
+                    // to the panel and out to the content. It registers no
+                    // gesture recognizer, so nothing here competes with the hero.
+                    //
+                    // Sized to `owned`, never to [bandWidth]. A permanent
+                    // expanded-width watcher turned every approach to a control
+                    // beside the shut rail into an entry into the menu, which
+                    // then swallowed the click and slid the control out from
+                    // under the cursor: the Recommended tab on a library page
+                    // became unclickable on macOS. Ownership is earned by
+                    // entering over the rail, not reserved in advance.
+                    Positioned(
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      width: owned,
+                      child: MouseRegion(
+                        opaque: false,
+                        hitTestBehavior: HitTestBehavior.translucent,
+                        onEnter: (_) => _onHoverEnter(),
+                        onExit: (_) => _onHoverExit(),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ),
+              );
+            },
           ),
         );
       },

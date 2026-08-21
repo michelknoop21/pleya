@@ -12,6 +12,7 @@ import '../../media/media_backend.dart';
 import '../../theme/mono_tokens.dart';
 import '../../widgets/backend_badge.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/error_message_utils.dart';
 import '../../utils/platform_detector.dart';
 
 /// Self-contained Plex PIN/QR auth flow.
@@ -214,12 +215,11 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
   }
 
   String _authErrorMessage(Object error) {
+    // The one auth failure with a more specific, actionable message than
+    // friendlyError's generic "Authentication failed" — everything else
+    // delegates.
     if (error is MediaServerPinExpiredException) return t.addServer.pinExpired;
-    if (error is MediaServerAuthException) return error.message;
-    if (error is MediaServerHttpException) {
-      return t.addServer.couldNotReachServer(error: error.message.isEmpty ? error.toString() : error.message);
-    }
-    return error.toString();
+    return friendlyError(error);
   }
 
   bool _isCurrentAttempt(int attemptId) => mounted && attemptId == _attemptId;

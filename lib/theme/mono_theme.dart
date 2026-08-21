@@ -14,6 +14,22 @@ const Color kAccentAlt = Color(0xFFFFB020);
 /// Material green). Used for Seerr "available"/"partially available" states.
 const Color kSuccess = Color(0xFF3DD68C);
 
+/// Notice-card semantic ink, one pair per [NoticeLevel] (dark/OLED share the
+/// same `surfaceElevated` = #2F2F2F, so one dark value covers both; light
+/// renders on #EDEDED). Every value below clears WCAG AA (4.5:1) against the
+/// surface it renders on — see the contrast table in
+/// `docs/DECISIONS.md` and the check in `test/widgets/notice_test.dart`.
+/// Brand red ([kAccent]) cannot be reused here: as icon ink on
+/// `surfaceElevated` it only reaches 2.83:1.
+const Color kNoticeErrorDark = Color(0xFFFF6B60);
+const Color kNoticeErrorLight = Color(0xFFB3261E);
+const Color kNoticeWarningDark = Color(0xFFFFC24D);
+const Color kNoticeWarningLight = Color(0xFF8A5A00);
+const Color kNoticeSuccessDark = Color(0xFF4ADE9B);
+const Color kNoticeSuccessLight = Color(0xFF0F7A4D);
+const Color kNoticeInfoDark = Color(0xFF9CC2FF);
+const Color kNoticeInfoLight = Color(0xFF1A56B8);
+
 /// The logo's P gradient (red → amber, top-left to bottom-right). Used for
 /// brand moments: wordmark, badges, progress fills, splash.
 const Gradient kBrandGradient = LinearGradient(
@@ -117,6 +133,26 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     splashFactory: NoSplash.splashFactory,
     highlightColor: Colors.transparent,
     dividerColor: c.outline,
+    // Material fills the selected segment with secondaryContainer, which this
+    // palette maps onto the surface colour the settings card is already painted
+    // with. Combined with showSelectedIcon: false that left a segmented control
+    // with no visible selection at all -- indistinguishable from a dead widget,
+    // and reported as one. Give the selection its own surface, the same step up
+    // that FocusableTabChip uses for its segmented style.
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? c.surfaceElevated : Colors.transparent,
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? c.text : c.textMuted,
+        ),
+        textStyle: WidgetStateProperty.resolveWith(
+          (states) => TextStyle(fontWeight: states.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500),
+        ),
+        side: WidgetStatePropertyAll(BorderSide(color: c.outline)),
+      ),
+    ),
     scaffoldBackgroundColor: c.bg,
     appBarTheme: AppBarTheme(
       backgroundColor: c.bg,

@@ -230,6 +230,11 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
     // Local media still reports live when its server is online; only queue
     // locally when no reporting client is reachable.
     if (mediaClient != null) {
+      // One authority per tracked item. Nothing revokes it yet — the server
+      // event sources that do are phase D — so today it only carries the
+      // "may this player write" question to the one place that serializes the
+      // three report signals.
+      _playbackWriteAuthority = ObservedPlaybackAuthority(sessionId: _playbackSessionIdentifier, itemId: metadata.id);
       _progressTracker = PlaybackProgressTracker(
         client: mediaClient,
         metadata: metadata,
@@ -239,6 +244,7 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
         playMethod: playMethod ?? (_isTranscoding ? 'Transcode' : 'DirectPlay'),
         playSessionId: playSessionId,
         mediaInfo: mediaInfo,
+        authority: _playbackWriteAuthority,
       );
       _progressTracker!.startTracking();
     } else if (_isOfflinePlayback) {

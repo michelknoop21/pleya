@@ -9,6 +9,7 @@ const _nowMs = 1700000000000;
 
 TasteEvent _ev({
   required double weight,
+  String evidenceKey = '',
   int ageDays = 0,
   List<String> genres = const [],
   List<String> actors = const [],
@@ -18,6 +19,7 @@ TasteEvent _ev({
 }) => TasteEvent(
   weight: weight,
   occurredAtMs: _nowMs - ageDays * _day,
+  evidenceKey: evidenceKey,
   genres: genres,
   actors: actors,
   directors: directors,
@@ -47,18 +49,37 @@ void main() {
       expect(a.of('genre', 'old'), closeTo(0.5, 1e-6));
     });
 
-    test('negative weights push affinity below zero', () {
+    test('negative weights land in penalties, never in dims', () {
       final a = AffinityVector.build([
         _ev(weight: 1.0, genres: ['Liked']),
         _ev(weight: -0.4, genres: ['Disliked']),
       ], nowMs: _nowMs);
       expect(a.of('genre', 'liked'), greaterThan(0));
-      expect(a.of('genre', 'disliked'), lessThan(0));
+      expect(a.of('genre', 'disliked'), 0);
+      expect(a.penaltyOf('genre', 'disliked'), greaterThan(0));
     });
 
-    test('isWarm gates on event count', () {
-      expect(AffinityVector.build([for (var i = 0; i < 9; i++) _ev(weight: 1)], nowMs: _nowMs).isWarm, isFalse);
-      expect(AffinityVector.build([for (var i = 0; i < 10; i++) _ev(weight: 1)], nowMs: _nowMs).isWarm, isTrue);
+    test('isWarm gates on distinct titles, not raw rows', () {
+      // Many rows for one title stay cold; kWarmDistinctTitles separate titles
+      // are what makes a genre signal meaningful.
+      expect(
+        AffinityVector.build([
+          for (var i = 0; i < 40; i++) _ev(weight: 1, evidenceKey: 's1:one'),
+        ], nowMs: _nowMs).isWarm,
+        isFalse,
+      );
+      expect(
+        AffinityVector.build([
+          for (var i = 0; i < kWarmDistinctTitles - 1; i++) _ev(weight: 1, evidenceKey: 's1:t$i'),
+        ], nowMs: _nowMs).isWarm,
+        isFalse,
+      );
+      expect(
+        AffinityVector.build([
+          for (var i = 0; i < kWarmDistinctTitles; i++) _ev(weight: 1, evidenceKey: 's1:t$i'),
+        ], nowMs: _nowMs).isWarm,
+        isTrue,
+      );
     });
 
     test('a strong dislike does not suppress a liked genre below threshold', () {
@@ -68,7 +89,8 @@ void main() {
         for (var i = 0; i < 3; i++) TasteEvent(weight: 0.8, occurredAtMs: _nowMs, genres: const ['Comedy']),
       ], nowMs: _nowMs);
       expect(a.of('genre', 'comedy'), closeTo(1.0, 1e-9)); // normalized to strongest positive
-      expect(a.of('genre', 'horror'), lessThan(0));
+      expect(a.of('genre', 'horror'), 0); // negatives live in the penalty channel
+      expect(a.penaltyOf('genre', 'horror'), closeTo(kPenaltyMax, 1e-9));
       expect(a.topFeatures('genre', threshold: 0.5), contains('comedy'));
     });
 

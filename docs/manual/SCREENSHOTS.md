@@ -9,7 +9,7 @@ af, dus een ontbrekende schermafbeelding is geen kapotte pagina.
 
 ## Dit is een eigen ronde
 
-Eenendertig schermafbeeldingen is te veel om tussendoor te doen, en ze vragen iets wat de
+Tweeëndertig schermafbeeldingen is te veel om tussendoor te doen, en ze vragen iets wat de
 tekst niet vraagt: een ingelogd toestel per vormfactor, met de juiste content in beeld. Plan
 het als losse contentronde en meng het niet met nieuwe documentatiefuncties, anders blijft
 de helft half.
@@ -20,7 +20,7 @@ tijd is de handleiding gewoon bruikbaar; het beeld maakt hem beter, niet werkend
 
 Een tussenstap die de moeite waard is: de acht hoofdstukken die het meest bezocht zullen
 worden (Getting started, The home screen, The player, Downloads, Search, Watchlist,
-Requests, Troubleshooting) eerst doen. Dat is elf van de eenendertig schoten.
+Requests, Troubleshooting) eerst doen. Dat is vijftien van de tweeëndertig schoten.
 
 ## Regels voor het beeld
 

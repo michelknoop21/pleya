@@ -19,7 +19,9 @@ extension _PlexVideoControlsMarkerMethods on _PlexVideoControlsState {
 
     MediaMarker? foundMarker;
     for (final marker in _markers) {
-      if (marker.containsPosition(position)) {
+      // Filtered here rather than when the markers are loaded: `_markers` also
+      // feeds the chapter marks on the timeline, and those stay.
+      if (marker.containsPosition(position) && markerCanOfferSkip(marker: marker, kind: widget.metadata.kind)) {
         foundMarker = marker;
         break;
       }
@@ -69,9 +71,12 @@ extension _PlexVideoControlsMarkerMethods on _PlexVideoControlsState {
 
     _startAutoSkipTimer(foundMarker);
 
-    // Auto-skip OFF: dismiss button after 7s if no interaction
-    // Auto-skip ON: button stays until controls hide
-    if (!_shouldAutoSkipForMarker(foundMarker)) {
+    // Auto-skip OFF: dismiss button after 7s if no interaction.
+    // Auto-skip ON: the countdown consumes the marker, so the button goes with
+    // it -- but only if there is a countdown. With a delay of zero
+    // _startAutoSkipTimer returns without arming anything, and without the
+    // dismiss timer as well the button would then sit there indefinitely.
+    if (!_shouldAutoSkipForMarker(foundMarker) || _autoSkipDelay <= 0) {
       _startSkipButtonDismissTimer();
     }
 

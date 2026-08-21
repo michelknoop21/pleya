@@ -100,7 +100,7 @@ extension _VideoPlayerLiveTvMethods on VideoPlayerScreenState {
     final session = _live.session;
     if (session == null) {
       appLogger.w('Cannot retry live stream — no session');
-      showGlobalErrorSnackBar(_redactPlayerError(_lastLogError ?? t.liveTv.liveStreamFailed));
+      noticeController.show(noticeForPlaybackFailure(_redactPlayerError(_lastLogError ?? t.liveTv.liveStreamFailed)));
       unawaited(_handleBackButton());
       return;
     }
@@ -114,7 +114,7 @@ extension _VideoPlayerLiveTvMethods on VideoPlayerScreenState {
     final streamUrl = recovered == null ? null : await recovered.streamUrlAt();
     if (!mounted || player != currentPlayer) return;
     if (recovered == null || streamUrl == null) {
-      showGlobalErrorSnackBar(_redactPlayerError(_lastLogError ?? t.liveTv.liveStreamFailed));
+      noticeController.show(noticeForPlaybackFailure(_redactPlayerError(_lastLogError ?? t.liveTv.liveStreamFailed)));
       unawaited(_handleBackButton());
       return;
     }

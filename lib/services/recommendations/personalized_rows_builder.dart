@@ -57,7 +57,10 @@ List<MediaHub> buildPersonalizedRows(
   );
 
   // Top Picks
+  final topPicks = byScore.take(rowSize).toList();
   rows.add(row('home.toppicks', titles.topPicks, byScore));
+  // What already headlines the feed should not fill the row underneath it too.
+  final usedInTopPicks = {for (final i in topPicks) i.globalKey};
 
   // Because you like <genre> — only when taste is warm enough to be meaningful.
   if (taste.isWarm) {
@@ -78,6 +81,7 @@ List<MediaHub> buildPersonalizedRows(
   // Hidden Gems — quality catalogue depth the user hasn't touched.
   final gemCutoff = nowMs - const Duration(days: 90).inMilliseconds;
   final gems = byScore.where((i) {
+    if (usedInTopPicks.contains(i.globalKey)) return false;
     final rating = i.rating ?? 0;
     final added = i.addedAt;
     if (added == null || added <= 0) return false;

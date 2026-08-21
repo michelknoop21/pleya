@@ -679,9 +679,9 @@ class _TranslationsMessagesNb extends TranslationsMessagesEn {
 	@override String get markedAsUnwatchedOffline => 'Merket som usett (synkroniseres når tilkoblet)';
 	@override String autoRemovedWatchedDownload({required Object title}) => 'Automatisk fjernet: ${title}';
 	@override String get removedFromContinueWatching => 'Fjernet fra Fortsett å se';
-	@override String errorLoading({required Object error}) => 'Feil: ${error}';
+	@override String get errorLoading => 'Feil';
 	@override String get fileInfoNotAvailable => 'Filinformasjon ikke tilgjengelig';
-	@override String errorLoadingFileInfo({required Object error}) => 'Feil ved lasting av filinformasjon: ${error}';
+	@override String get errorLoadingFileInfo => 'Feil ved lasting av filinformasjon';
 	@override String get errorLoadingSeries => 'Feil ved lasting av serie';
 	@override String get musicNotSupported => 'Musikkavspilling støttes ikke ennå';
 	@override String get noDescriptionAvailable => 'Ingen beskrivelse tilgjengelig';
@@ -693,10 +693,10 @@ class _TranslationsMessagesNb extends TranslationsMessagesEn {
 	@override String get noLogsAvailable => 'Ingen logger tilgjengelig';
 	@override String libraryScanning({required Object title}) => 'Skanner "${title}"...';
 	@override String libraryScanStarted({required Object title}) => 'Bibliotekkanning startet for "${title}"';
-	@override String libraryScanFailed({required Object error}) => 'Kunne ikke skanne bibliotek: ${error}';
+	@override String get libraryScanFailed => 'Kunne ikke skanne bibliotek';
 	@override String metadataRefreshing({required Object title}) => 'Oppdaterer metadata for "${title}"...';
 	@override String metadataRefreshStarted({required Object title}) => 'Metadataoppdatering startet for "${title}"';
-	@override String metadataRefreshFailed({required Object error}) => 'Kunne ikke oppdatere metadata: ${error}';
+	@override String get metadataRefreshFailed => 'Kunne ikke oppdatere metadata';
 	@override String get logoutConfirm => 'Er du sikker på at du vil logge ut?';
 	@override String get noSeasonsFound => 'Ingen sesonger funnet';
 	@override String get seasonsLoadFailed => 'Kunne ikke laste sesonger';
@@ -707,7 +707,7 @@ class _TranslationsMessagesNb extends TranslationsMessagesEn {
 	@override String sleepTimerSet({required Object label}) => 'Søvntimer satt til ${label}';
 	@override String get noItemsAvailable => 'Ingen elementer tilgjengelig';
 	@override String get failedToCreatePlayQueueNoItems => 'Kunne ikke opprette avspillingskø – ingen elementer';
-	@override String failedPlayback({required Object action, required Object error}) => 'Kunne ikke ${action}: ${error}';
+	@override String failedPlayback({required Object action}) => 'Kunne ikke ${action}';
 	@override String get switchingToCompatiblePlayer => 'Bytter til kompatibel spiller...';
 	@override String get serverLimitTitle => 'Avspilling mislyktes';
 	@override String get serverLimitBody => 'Serverfeil (HTTP 500). En båndbredde-/transkodingsgrense avviste trolig økten. Be eieren justere den.';
@@ -899,16 +899,16 @@ class _TranslationsErrorsNb extends TranslationsErrorsEn {
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
-	@override String searchFailed({required Object error}) => 'Søk mislyktes: ${error}';
+	@override String get searchFailed => 'Søk mislyktes';
 	@override String connectionTimeout({required Object context}) => 'Tidsavbrudd ved lasting av ${context}';
 	@override String get connectionFailed => 'Kan ikke koble til medieserver';
-	@override String failedToLoad({required Object context, required Object error}) => 'Kunne ikke laste ${context}: ${error}';
+	@override String failedToLoad({required Object context}) => 'Kunne ikke laste ${context}';
 	@override String get noClientAvailable => 'Ingen klient tilgjengelig';
-	@override String authenticationFailed({required Object error}) => 'Autentisering mislyktes: ${error}';
+	@override String get authenticationFailed => 'Autentisering mislyktes';
 	@override String get couldNotLaunchUrl => 'Kunne ikke åpne autentiserings-URL';
 	@override String get pleaseEnterToken => 'Vennligst skriv inn et token';
 	@override String get invalidToken => 'Ugyldig token';
-	@override String failedToVerifyToken({required Object error}) => 'Kunne ikke verifisere token: ${error}';
+	@override String get failedToVerifyToken => 'Kunne ikke verifisere token';
 	@override String failedToSwitchProfile({required Object displayName}) => 'Kunne ikke bytte til ${displayName}';
 	@override String failedToDeleteProfile({required Object displayName}) => 'Kunne ikke slette ${displayName}';
 	@override String get failedToRate => 'Kunne ikke oppdatere vurderingen';
@@ -931,10 +931,10 @@ class _TranslationsLibrariesNb extends TranslationsLibrariesEn {
 	@override String get emptyTrash => 'Tøm papirkurv';
 	@override String emptyingTrash({required Object title}) => 'Tømmer papirkurv for "${title}"...';
 	@override String trashEmptied({required Object title}) => 'Papirkurv tømt for "${title}"';
-	@override String failedToEmptyTrash({required Object error}) => 'Kunne ikke tømme papirkurv: ${error}';
+	@override String get failedToEmptyTrash => 'Kunne ikke tømme papirkurv';
 	@override String analyzing({required Object title}) => 'Analyserer "${title}"...';
 	@override String analysisStarted({required Object title}) => 'Analyse startet for "${title}"';
-	@override String failedToAnalyze({required Object error}) => 'Kunne ikke analysere bibliotek: ${error}';
+	@override String get failedToAnalyze => 'Kunne ikke analysere bibliotek';
 	@override String get noLibrariesFound => 'Ingen biblioteker funnet';
 	@override String get allLibrariesHidden => 'Alle biblioteker er skjult';
 	@override String hiddenLibrariesCount({required Object count}) => 'Skjulte biblioteker (${count})';
@@ -989,7 +989,7 @@ class _TranslationsServerSelectionNb extends TranslationsServerSelectionEn {
 	// Translations
 	@override String get allServerConnectionsFailed => 'Kunne ikke koble til noen servere. Sjekk nettverket ditt.';
 	@override String noServersFoundForAccount({required Object username, required Object email}) => 'Ingen servere funnet for ${username} (${email})';
-	@override String failedToLoadServers({required Object error}) => 'Kunne ikke laste servere: ${error}';
+	@override String get failedToLoadServers => 'Kunne ikke laste servere';
 }
 
 // Path: hubDetail
@@ -1131,8 +1131,8 @@ class _TranslationsCollectionsNb extends TranslationsCollectionsEn {
 	@override String deleteConfirm({required Object title}) => 'Slette "${title}"? Dette kan ikke angres.';
 	@override String get deleted => 'Samling slettet';
 	@override String get deleteFailed => 'Kunne ikke slette samling';
-	@override String deleteFailedWithError({required Object error}) => 'Kunne ikke slette samling: ${error}';
-	@override String failedToLoadItems({required Object error}) => 'Kunne ikke laste samlingselementer: ${error}';
+	@override String get deleteFailedWithError => 'Kunne ikke slette samling';
+	@override String get failedToLoadItems => 'Kunne ikke laste samlingselementer';
 	@override String get selectCollection => 'Velg samling';
 	@override String get collectionName => 'Samlingsnavn';
 	@override String get enterCollectionName => 'Skriv inn samlingsnavn';
@@ -1143,7 +1143,7 @@ class _TranslationsCollectionsNb extends TranslationsCollectionsEn {
 	@override String removeFromCollectionConfirm({required Object title}) => 'Fjerne "${title}" fra denne samlingen?';
 	@override String get removedFromCollection => 'Fjernet fra samling';
 	@override String get removeFromCollectionFailed => 'Kunne ikke fjerne fra samling';
-	@override String removeFromCollectionError({required Object error}) => 'Feil ved fjerning fra samling: ${error}';
+	@override String get removeFromCollectionError => 'Feil ved fjerning fra samling';
 	@override String get searchCollections => 'Søk i samlinger...';
 }
 
@@ -1626,13 +1626,13 @@ class _TranslationsAddServerNb extends TranslationsAddServerEn {
 	@override String get signIn => 'Logg på';
 	@override String get change => 'Endre';
 	@override String get required => 'Påkrevd';
-	@override String couldNotReachServer({required Object error}) => 'Kunne ikke nå serveren: ${error}';
-	@override String signInFailed({required Object error}) => 'Pålogging mislyktes: ${error}';
-	@override String quickConnectFailed({required Object error}) => 'Quick Connect mislyktes: ${error}';
+	@override String get couldNotReachServer => 'Kunne ikke nå serveren';
+	@override String get signInFailed => 'Pålogging mislyktes';
+	@override String get quickConnectFailed => 'Quick Connect mislyktes';
 	@override String get addPlexTitle => 'Logg på med Plex';
 	@override String get pinExpired => 'PIN-koden gikk ut før pålogging. Prøv igjen.';
 	@override String get duplicatePlexAccount => 'Allerede logget inn på Plex. Logg ut for å bytte konto.';
-	@override String failedToRegisterAccount({required Object error}) => 'Kunne ikke registrere kontoen: ${error}';
+	@override String get failedToRegisterAccount => 'Kunne ikke registrere kontoen';
 	@override String get enterJellyfinUrlError => 'Oppgi URL-en til Jellyfin-serveren din';
 	@override String get addConnectionTitle => 'Legg til tilkobling';
 	@override String addConnectionTitleScoped({required Object name}) => 'Legg til i ${name}';
@@ -1754,7 +1754,7 @@ class _TranslationsVideoControlsPipErrorsNb extends TranslationsVideoControlsPip
 	@override String get notSupported => 'Enheten støtter ikke bilde-i-bilde-modus';
 	@override String get voSwitchFailed => 'Kunne ikke bytte videoutgang for bilde-i-bilde';
 	@override String get failed => 'Bilde-i-bilde kunne ikke starte';
-	@override String unknown({required Object error}) => 'En feil oppstod: ${error}';
+	@override String get unknown => 'En feil oppstod';
 }
 
 // Path: libraries.tabs
@@ -1872,7 +1872,7 @@ class _TranslationsCompanionRemotePairingNb extends TranslationsCompanionRemoteP
 	@override String get connectionTimedOut => 'Tilkoblingen fikk tidsavbrudd. Bruk samme nettverk på begge enheter.';
 	@override String get sessionNotFound => 'Enhet ikke funnet. Sørg for at Pleya kjører på verten.';
 	@override String get authFailed => 'Autentisering mislyktes. Begge enheter må bruke samme Plex-konto.';
-	@override String failedToConnect({required Object error}) => 'Kunne ikke koble til: ${error}';
+	@override String get failedToConnect => 'Kunne ikke koble til';
 }
 
 // Path: companionRemote.remote
@@ -2447,7 +2447,7 @@ extension on TranslationsNb {
 			'videoControls.pipErrors.notSupported' => 'Enheten støtter ikke bilde-i-bilde-modus',
 			'videoControls.pipErrors.voSwitchFailed' => 'Kunne ikke bytte videoutgang for bilde-i-bilde',
 			'videoControls.pipErrors.failed' => 'Bilde-i-bilde kunne ikke starte',
-			'videoControls.pipErrors.unknown' => ({required Object error}) => 'En feil oppstod: ${error}',
+			'videoControls.pipErrors.unknown' => 'En feil oppstod',
 			'videoControls.chapters' => 'Kapitler',
 			'videoControls.noChaptersAvailable' => 'Ingen kapitler tilgjengelig',
 			'videoControls.queue' => 'Kø',
@@ -2472,9 +2472,9 @@ extension on TranslationsNb {
 			'messages.markedAsUnwatchedOffline' => 'Merket som usett (synkroniseres når tilkoblet)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Automatisk fjernet: ${title}',
 			'messages.removedFromContinueWatching' => 'Fjernet fra Fortsett å se',
-			'messages.errorLoading' => ({required Object error}) => 'Feil: ${error}',
+			'messages.errorLoading' => 'Feil',
 			'messages.fileInfoNotAvailable' => 'Filinformasjon ikke tilgjengelig',
-			'messages.errorLoadingFileInfo' => ({required Object error}) => 'Feil ved lasting av filinformasjon: ${error}',
+			'messages.errorLoadingFileInfo' => 'Feil ved lasting av filinformasjon',
 			'messages.errorLoadingSeries' => 'Feil ved lasting av serie',
 			'messages.musicNotSupported' => 'Musikkavspilling støttes ikke ennå',
 			'messages.noDescriptionAvailable' => 'Ingen beskrivelse tilgjengelig',
@@ -2486,10 +2486,10 @@ extension on TranslationsNb {
 			'messages.noLogsAvailable' => 'Ingen logger tilgjengelig',
 			'messages.libraryScanning' => ({required Object title}) => 'Skanner "${title}"...',
 			'messages.libraryScanStarted' => ({required Object title}) => 'Bibliotekkanning startet for "${title}"',
-			'messages.libraryScanFailed' => ({required Object error}) => 'Kunne ikke skanne bibliotek: ${error}',
+			'messages.libraryScanFailed' => 'Kunne ikke skanne bibliotek',
 			'messages.metadataRefreshing' => ({required Object title}) => 'Oppdaterer metadata for "${title}"...',
 			'messages.metadataRefreshStarted' => ({required Object title}) => 'Metadataoppdatering startet for "${title}"',
-			'messages.metadataRefreshFailed' => ({required Object error}) => 'Kunne ikke oppdatere metadata: ${error}',
+			'messages.metadataRefreshFailed' => 'Kunne ikke oppdatere metadata',
 			'messages.logoutConfirm' => 'Er du sikker på at du vil logge ut?',
 			'messages.noSeasonsFound' => 'Ingen sesonger funnet',
 			'messages.seasonsLoadFailed' => 'Kunne ikke laste sesonger',
@@ -2500,7 +2500,7 @@ extension on TranslationsNb {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Søvntimer satt til ${label}',
 			'messages.noItemsAvailable' => 'Ingen elementer tilgjengelig',
 			'messages.failedToCreatePlayQueueNoItems' => 'Kunne ikke opprette avspillingskø – ingen elementer',
-			'messages.failedPlayback' => ({required Object action, required Object error}) => 'Kunne ikke ${action}: ${error}',
+			'messages.failedPlayback' => ({required Object action}) => 'Kunne ikke ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Bytter til kompatibel spiller...',
 			'messages.serverLimitTitle' => 'Avspilling mislyktes',
 			'messages.serverLimitBody' => 'Serverfeil (HTTP 500). En båndbredde-/transkodingsgrense avviste trolig økten. Be eieren justere den.',
@@ -2631,16 +2631,16 @@ extension on TranslationsNb {
 			'discover.tvShow' => 'TV-serie',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min igjen',
 			'discover.moreLikeThis' => 'Mer som dette',
-			'errors.searchFailed' => ({required Object error}) => 'Søk mislyktes: ${error}',
+			'errors.searchFailed' => 'Søk mislyktes',
 			'errors.connectionTimeout' => ({required Object context}) => 'Tidsavbrudd ved lasting av ${context}',
 			'errors.connectionFailed' => 'Kan ikke koble til medieserver',
-			'errors.failedToLoad' => ({required Object context, required Object error}) => 'Kunne ikke laste ${context}: ${error}',
+			'errors.failedToLoad' => ({required Object context}) => 'Kunne ikke laste ${context}',
 			'errors.noClientAvailable' => 'Ingen klient tilgjengelig',
-			'errors.authenticationFailed' => ({required Object error}) => 'Autentisering mislyktes: ${error}',
+			'errors.authenticationFailed' => 'Autentisering mislyktes',
 			'errors.couldNotLaunchUrl' => 'Kunne ikke åpne autentiserings-URL',
 			'errors.pleaseEnterToken' => 'Vennligst skriv inn et token',
 			'errors.invalidToken' => 'Ugyldig token',
-			'errors.failedToVerifyToken' => ({required Object error}) => 'Kunne ikke verifisere token: ${error}',
+			'errors.failedToVerifyToken' => 'Kunne ikke verifisere token',
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Kunne ikke bytte til ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Kunne ikke slette ${displayName}',
 			'errors.failedToRate' => 'Kunne ikke oppdatere vurderingen',
@@ -2654,10 +2654,10 @@ extension on TranslationsNb {
 			'libraries.emptyTrash' => 'Tøm papirkurv',
 			'libraries.emptyingTrash' => ({required Object title}) => 'Tømmer papirkurv for "${title}"...',
 			'libraries.trashEmptied' => ({required Object title}) => 'Papirkurv tømt for "${title}"',
-			'libraries.failedToEmptyTrash' => ({required Object error}) => 'Kunne ikke tømme papirkurv: ${error}',
+			'libraries.failedToEmptyTrash' => 'Kunne ikke tømme papirkurv',
 			'libraries.analyzing' => ({required Object title}) => 'Analyserer "${title}"...',
 			'libraries.analysisStarted' => ({required Object title}) => 'Analyse startet for "${title}"',
-			'libraries.failedToAnalyze' => ({required Object error}) => 'Kunne ikke analysere bibliotek: ${error}',
+			'libraries.failedToAnalyze' => 'Kunne ikke analysere bibliotek',
 			'libraries.noLibrariesFound' => 'Ingen biblioteker funnet',
 			'libraries.allLibrariesHidden' => 'Alle biblioteker er skjult',
 			'libraries.hiddenLibrariesCount' => ({required Object count}) => 'Skjulte biblioteker (${count})',
@@ -2727,7 +2727,7 @@ extension on TranslationsNb {
 			'about.viewLicensesDescription' => 'Vis lisenser for tredjepartsbiblioteker',
 			'serverSelection.allServerConnectionsFailed' => 'Kunne ikke koble til noen servere. Sjekk nettverket ditt.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'Ingen servere funnet for ${username} (${email})',
-			'serverSelection.failedToLoadServers' => ({required Object error}) => 'Kunne ikke laste servere: ${error}',
+			'serverSelection.failedToLoadServers' => 'Kunne ikke laste servere',
 			'hubDetail.title' => 'Tittel',
 			'hubDetail.releaseYear' => 'Utgivelsesår',
 			'hubDetail.dateAdded' => 'Dato lagt til',
@@ -2815,8 +2815,8 @@ extension on TranslationsNb {
 			'collections.deleteConfirm' => ({required Object title}) => 'Slette "${title}"? Dette kan ikke angres.',
 			'collections.deleted' => 'Samling slettet',
 			'collections.deleteFailed' => 'Kunne ikke slette samling',
-			'collections.deleteFailedWithError' => ({required Object error}) => 'Kunne ikke slette samling: ${error}',
-			'collections.failedToLoadItems' => ({required Object error}) => 'Kunne ikke laste samlingselementer: ${error}',
+			'collections.deleteFailedWithError' => 'Kunne ikke slette samling',
+			'collections.failedToLoadItems' => 'Kunne ikke laste samlingselementer',
 			'collections.selectCollection' => 'Velg samling',
 			'collections.collectionName' => 'Samlingsnavn',
 			'collections.enterCollectionName' => 'Skriv inn samlingsnavn',
@@ -2827,7 +2827,7 @@ extension on TranslationsNb {
 			'collections.removeFromCollectionConfirm' => ({required Object title}) => 'Fjerne "${title}" fra denne samlingen?',
 			'collections.removedFromCollection' => 'Fjernet fra samling',
 			'collections.removeFromCollectionFailed' => 'Kunne ikke fjerne fra samling',
-			'collections.removeFromCollectionError' => ({required Object error}) => 'Feil ved fjerning fra samling: ${error}',
+			'collections.removeFromCollectionError' => 'Feil ved fjerning fra samling',
 			'collections.searchCollections' => 'Søk i samlinger...',
 			'playlists.title' => 'Spillelister',
 			'playlists.playlist' => 'Spilleliste',
@@ -3025,7 +3025,7 @@ extension on TranslationsNb {
 			'companionRemote.pairing.connectionTimedOut' => 'Tilkoblingen fikk tidsavbrudd. Bruk samme nettverk på begge enheter.',
 			'companionRemote.pairing.sessionNotFound' => 'Enhet ikke funnet. Sørg for at Pleya kjører på verten.',
 			'companionRemote.pairing.authFailed' => 'Autentisering mislyktes. Begge enheter må bruke samme Plex-konto.',
-			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kunne ikke koble til: ${error}',
+			'companionRemote.pairing.failedToConnect' => 'Kunne ikke koble til',
 			'companionRemote.remote.disconnectConfirm' => 'Vil du koble fra fjernøkten?',
 			'companionRemote.remote.reconnecting' => 'Kobler til på nytt...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Forsøk ${current} av 5',
@@ -3262,13 +3262,13 @@ extension on TranslationsNb {
 			'addServer.signIn' => 'Logg på',
 			'addServer.change' => 'Endre',
 			'addServer.required' => 'Påkrevd',
-			'addServer.couldNotReachServer' => ({required Object error}) => 'Kunne ikke nå serveren: ${error}',
-			'addServer.signInFailed' => ({required Object error}) => 'Pålogging mislyktes: ${error}',
-			'addServer.quickConnectFailed' => ({required Object error}) => 'Quick Connect mislyktes: ${error}',
+			'addServer.couldNotReachServer' => 'Kunne ikke nå serveren',
+			'addServer.signInFailed' => 'Pålogging mislyktes',
+			'addServer.quickConnectFailed' => 'Quick Connect mislyktes',
 			'addServer.addPlexTitle' => 'Logg på med Plex',
 			'addServer.pinExpired' => 'PIN-koden gikk ut før pålogging. Prøv igjen.',
 			'addServer.duplicatePlexAccount' => 'Allerede logget inn på Plex. Logg ut for å bytte konto.',
-			'addServer.failedToRegisterAccount' => ({required Object error}) => 'Kunne ikke registrere kontoen: ${error}',
+			'addServer.failedToRegisterAccount' => 'Kunne ikke registrere kontoen',
 			'addServer.enterJellyfinUrlError' => 'Oppgi URL-en til Jellyfin-serveren din',
 			'addServer.addConnectionTitle' => 'Legg til tilkobling',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => 'Legg til i ${name}',

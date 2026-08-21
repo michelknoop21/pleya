@@ -458,6 +458,348 @@ Op `main`, vijf commits van `34f2c5f` tot `8e84f3a`.
 ### Changed
 - **De handleiding op pleya.app bijgewerkt** op zeven hoofdstukken: FAQ, film- en seriedetails, aanvragen, instellingenoverzicht, ondertitels en audio, het homescherm en de speler. `docs/manual/SCREENSHOTS.md` kreeg er één openstaande schermafbeelding bij.
 
+## [2026-08-21] De sync-engine reconcilieert op één plek, en de schermen volgen zonder herstart
+
+Op `main`, nog niet gecommit. Fase A blok 2 (A8 tot en met A16), plus de vijf voorwaarden uit de
+reviewronde op de v2-cutover. Hiermee is fase A af; fase B begint na het architectuurrapport.
+
+### Fixed
+- **De prune verwijderde clouddata van andere toestellen.** De bescherming "staat lokaal, alleen
+  niet syncbaar" vergeleek een genamespacete v2-cloudsleutel met een kale basissleutel, dus hij
+  matchte onder v2 nooit. Een lijst met uitsluitend local-folder-entries werd daardoor bij elke
+  reconcile uit de store gegooid. De vergelijking gaat nu over basissleutels; de test is rood op de
+  oude vergelijking.
+- **Een uitgaande schrijfactie kon entries van een ander toestel overschrijven.** De merge draaide
+  alleen inkomend. Voor de serverlijsten houdt de uitgaande merge nu de entries in de store die van
+  een server zijn waar dit toestel niets over kan zeggen, terwijl een bewuste verwijdering op een
+  gedeelde server gewoon doorreist. Kan de store niet gelezen worden, dan wordt er niet geschreven.
+- **Een geslaagde schrijfactie wiste een quotastop, een transportfout of de legacy-peer-waarschuwing
+  uit beeld.** Er was één `state`-veld, dus `success` overschreef alles wat nog waar was.
+- **Een remote wijziging kwam pas na een herstart op het scherm.** `HiddenLibrariesProvider` las
+  zijn set bij constructie, `HomeLayoutProvider` blokkeerde elke herlaadpoging met
+  `if (_isInitialized) return`, en `LibrariesProvider` bakte de volgorde in zijn lijst.
+- **Uitloggen bij iCloud tijdens een sessie bereikte de app nooit.**
+  `NSUbiquityIdentityDidChangeNotification` werd nergens waargenomen, dus de status bleef gezond
+  terwijl elke schrijfactie nergens heen ging.
+
+### Changed
+- **Eén `PreferenceReconcileScheduler` bezit alle triggers** (boot, inschakelen, foreground,
+  accountwissel, profielwissel, import, reset). Triggers uit dezelfde turn worden één run; een
+  trigger tijdens een lopende run levert precies één vervolgrun. Het venster is een microtask, geen
+  `Future.delayed`. Een profielwissel wordt opgemerkt aan de schrijfactie op `active_app_profile_id`,
+  dus elk pad dat van profiel wisselt is gedekt.
+- **`PreferenceSyncStatus` heeft drie assen** (`availability`, `activity`, `health`) plus
+  `legacyPeerDetected`. De acht toestanden uit het plan zijn een afgeleide getter, dus niets
+  schrijft nog een toestand. Alleen een geslaagde volledige reconcile schoont health op.
+- **`PreferenceMergeRegistry`** vervangt de hardgecodeerde `if` op een sleutelprefix. Een familie
+  registreert `merge(local, remote)` onder de naam die in de policy staat; de engine leert nooit wat
+  de waarden betekenen. `mergeProgressMaps` is daarmee een geregistreerde familie geworden.
+- **`PreferenceRefreshBus`** meldt per batch welke afgeleide families verlopen zijn, en de providers
+  herladen hun eigen plak. Geen herstart, geen globale rebuild. De ponytail-notitie op `main.dart`
+  is daarmee weg.
+- **Instellingen toont één statusregel** onder de iCloud-schakelaar, met nieuwe strings in
+  `lib/i18n/en.i18n.json`. Nooit een sleutel, waarde of telling met identiteit, en nooit de claim
+  dat andere toestellen bij zijn: KVS accepteert een write, het meldt geen aflevering.
+- **Native gewijzigd op precies twee punten** van de negen auditpunten: een `deinit` met
+  `removeObserver`, en waarneming van `NSUbiquityIdentityDidChange`. De volledige audit staat in
+  `docs/qa/icloud-kvs-native-audit.md`, inclusief waarom er géén buffer voor vroege notificaties is
+  gebouwd.
+
+### Added
+- `test/services/preferences/v2_only_invariant_test.dart` bewaakt dat v2-only een invariant is en
+  geen standaardwaarde: geen bestand in `lib/` kiest het formaat, en een volledige levenscyclus over
+  een store vol v1-records laat die records ongemoeid.
+- `test/services/preferences/local_only_bookkeeping_test.dart` bewaakt dat de bootstrap-marker, de
+  install-id, de revisieopslag, de quarantaine en de actieve-profielsleutel het toestel nooit
+  verlaten.
+- `test/services/preferences/log_safety_test.dart` scant de logregels op het syncpad en eist dat elke
+  interpolatie op een veilige lijst staat. Een nieuwe logregel met een waarde erin wordt rood.
+- Verder: `reconcile_scheduler_test`, `reconcile_lifecycle_test`, `runtime_refresh_test`,
+  `sync_status_model_test`, `merge_strategy_test`, `quota_and_oversize_test` en
+  `test/screens/settings/icloud_sync_status_test.dart`. Suite 4068 groen, dezelfde 15 rood als op
+  `8fea407`.
+
+Besluiten: [DEC-060](DECISIONS.md#dec-060) (de v2-cutover als bevroren v1) en
+[DEC-061](DECISIONS.md#dec-061) (scheduler, statusassen, gerichte invalidatie, merge per familie).
+
+## [2026-08-21] Preference-sync kreeg één pijplijn, en de grens met de legacy prefs-store ligt nu vast
+
+Op `main`, nog niet gecommit. Fase A blok 1 van het vijffasenplan (A0 tot en met A5 en A7, plus de
+vier amendementen uit de planreview). Blok 2 (A8 tot en met A16) en de cloudinhoud-migratie (A6)
+volgen apart.
+
+### Fixed
+- **Een seek tijdens een netwerkstoring verdween.** `onSeek()` gooide de debouncetimer weg zodra de
+  foutbackoff liep. Erger dan het lijkt: de periodieke timer draait alleen tijdens afspelen, dus wie
+  seekte en daarna pauzeerde liet de oude positie op de server staan tot er toevallig weer gespeeld
+  werd. De seek wordt nu uitgesteld in plaats van weggegooid, en het uitstel tikt de backoff zelf af
+  zodat een gepauzeerde speler convergeert. Vijf tests erbij; drie ervan zijn rood op de oude code.
+- **Een lokale verwijdering bereikte iCloud niet.** `onKeyWritten` gaf alleen een sleutel door, dus
+  de consument las de waarde terug, vond `null` bij een remove en stopte. Alleen een volledige
+  `pushAll` propageerde nog verwijderingen.
+- **Een waarde die over de 100 KB-grens groeide werd uit de cloud verwijderd in plaats van
+  overgeslagen.** `pushAll` prunede op afwezigheid uit de push-set, en een te grote waarde belandde
+  daar niet in. Oversize-sleutels worden nu expliciet buiten de prune gehouden en leveren een
+  zichtbare waarschuwing.
+- **Een transportfout verdween.** Het `void`-terugtype dwong de consument tot `unawaited(...)`.
+
+### Changed
+- **Het hookcontract is vervangen, niet omwikkeld.** `BaseSharedPreferencesService.onMutation`
+  levert een volledige `PreferenceMutation` met operatie en bron en geeft een `Future` terug.
+- **Nieuwe laag `lib/services/preferences/`**: `PreferenceSyncCoordinator` (mutatie, policy, scope,
+  merge, reconcile, status), `PreferenceTransport` als poort, `ICloudKvsTransport` als enige
+  implementatie. `ICloudSyncService` is een dunne facade geworden en draagt geen syncgedrag meer.
+- **Syncbaarheid is een expliciete registratie.** De allow-by-default denylist is weg: een
+  niet-geregistreerde voorkeur is local-only. Gevolg dat een gebruiker merkt: `volume`,
+  downloadmappen, hardware-decoding, HDR, `custom_relay_url` en het laatst gebruikte LAN-adres
+  synchroniseren niet meer.
+- **Profielidentiteit blijft aan de waarde hangen** via `PreferenceSyncScope`, dat eerlijk is over
+  portabiliteit: een Plex Home-UUID is portable, een `local-<uuid>` niet.
+- **Scalaire conflicten hebben een regel.** `PreferenceRevision`: deterministische last-writer-wins
+  op `(updatedAt, deviceId)` met tombstones, waarbij een `migration` geen gebruikerstijdstempel zet.
+- **De ~35 library- en home-callsites lopen rechtstreeks over de pijplijn**, verwijderingen
+  inbegrepen. Read-path-migraties dragen `source: migration`.
+
+### Added
+- `test/no_raw_preference_write_test.dart`: 81 rauwe prefs-schrijfacties in 20 bestanden, alle 81
+  geclassificeerd met een aantal per bestand. Een nieuwe schrijfactie in een onbekend bestand én een
+  extra schrijfactie in een bekend bestand zijn allebei aantoonbaar rood gemaakt.
+- `test/services/icloud_rolling_upgrade_test.dart`: de uitgebrachte client laat `__`-sleutels met
+  rust in zowel de prune-lus als de apply-lus, met een controle die bewijst dat dezelfde payload in
+  de gewone namespace wél wordt opgeruimd. Daarom krijgt de v2-namespace een `__`-voorvoegsel en is
+  er geen tweefasenuitrol nodig.
+- `docs/qa/preference-sync-and-playback-matrix.md`, met de drie openstaande metingen.
+
+### Notes
+- **De cloudinhoud is niet aangeraakt.** `PreferenceSyncCoordinator.v2CloudFormatEnabled` staat op
+  `false`: de scoped namespace en de envelop bestaan en zijn getest, maar er is geen v2-record
+  geschreven en geen v1-record verwijderd. A6 wacht op een eigen checkpoint, omdat v1-cloudsleutels
+  geen profielidentiteit meer dragen en dus niet aan het toevallig actieve profiel mogen worden
+  toegewezen.
+- **De vijf legacy-services vallen bewust buiten de engine.** `flutter.`-sleutels en de benoemde
+  historische namen bereiken iCloud niet. `mergeProgressMaps` blijft als legacy inbound
+  compatibility, met de verwijderconditie op de methode. Zie DEC-059.
+- **Bij het nalopen van de eigen acceptatie kwam er nog een gat uit.** De prune in `reconcile`
+  verwijderde een cloudsleutel zodra hij niet meer in de push-set zat, dus het omkeren van de
+  denylist zou clouddata van andere toestellen wissen, en een vergeten registratie zou dataverlies
+  zijn in plaats van een gemiste sync. De prune deletet nu alleen wat lokaal echt weg is. In
+  dezelfde controle bleken 26 gedeclareerde voorkeuren niet geregistreerd (`app_locale`,
+  `library_density`, `buffer_size`, `default_playback_speed`, de mpv-configuratie en meer); die zijn
+  alsnog geclassificeerd, en een guard scant voortaan de declaraties.
+- Meting: volledige suite 3909 groen / 15 rood, byte-identiek aan de 15 op `8fea407`.
+  `flutter analyze` zonder fouten of waarschuwingen, `scripts/ci_checks.sh` groen op SDK 3.44.0.
+
+## [2026-08-21] De hervatpositie kwam uit twee plekken die elkaar tegenspraken
+
+Op `main`, nog niet gecommit. Fase C van het vijffasenplan voor voorkeurensynchronisatie en
+kijkvoortgang; A, B, D en E volgen.
+
+### Fixed
+- **Een gepauzeerde speler zette de positie van een spelende speler terug.** De melding: *Mutiny*
+  stond open op de MacBook (gepauzeerd, 1:03 resterend) en op de Apple TV (actief, 0:57
+  resterend), en de MacBook won. De oorzaak stond in `playback_progress_tracker.dart`: de
+  periodieke timer stuurde elke zesde tik een `paused`-rapport "om de serversessie in leven te
+  houden", met steeds dezelfde positie. Die heartbeat is weg. Een rapport dat zowel de staat als
+  de positie van het vorige rapport herhaalt gaat nu niet meer de deur uit.
+- **Een seek bereikte de server pas bij de volgende tik.** Wie sprong en binnen tien seconden
+  afsloot, liet de positie van vóór de sprong staan. `PlaybackProgressTracker.onSeek()` rapporteert
+  na een trailing debounce van 500 ms, herstart daarbij de periodieke timer en respecteert een
+  lopende foutbackoff. De 30 seconden-drempel op `_notifyProgressIfNeeded` slikt de sprong niet
+  meer op.
+- **Een gedownload bestand hervatte op de lokale positie, ook online.** `_resolveOpenResumePosition`
+  las bij offline afspelen eerst de lokaal bijgehouden voortgang en gaf die terug zodra hij groter
+  dan nul was, ongeacht wat de server wist. Een tweede toestel dat verder had gekeken verloor het
+  daarmee altijd.
+- **De verse ophaalactie bij het starten sloeg juist het gevaarlijke geval over.**
+  `navigateToVideoPlayer` haalde het item alleen opnieuw op als het helemaal geen `viewOffsetMs`
+  droeg. Een scherm met een verouderde offset sloeg de ophaalactie dus over en hervatte op die
+  verouderde waarde. `shouldRefetchForFreshResume()` haalt online elke film en aflevering vers op.
+
+### Added
+- **`lib/services/playback_resume_resolver.dart`**: de enige plek die bepaalt waar een open begint.
+  Vijf lagen op intentie, herkomst en tijd, nooit op "welke positie is groter". Een lokale
+  handeling wint alleen van een vers opgehaalde serverwaarde als hij aantoonbaar nieuwer is én
+  als bewuste gebruikershandeling is vastgelegd; tegen een verouderde cachewaarde volstaat een
+  nieuwere tijdstempel. 19 tests.
+- **`lib/services/playback_write_authority.dart`**: `ObservedPlaybackAuthority`, een lokale
+  waarneming van wie mag schrijven. Uitdrukkelijk geen lease: een vertraagd socketevent, een
+  Plex-notificatie zonder bruikbare sessie-informatie of twee spelers die gelijk starten laten
+  twee toestellen tegelijk denken dat ze mogen schrijven. `PlaybackReportSession` weigert bij een
+  ingetrokken autoriteit alle drie de signalen, `stopped` incluis, want juist dat late stopbericht
+  draagt de oude positie. `retakeAfterRefresh` legt de volgorde vast: eerst de serverstaat lezen,
+  dan pas terugnemen. Wat de autoriteit intrekt komt in fase D. 13 tests.
+- **`lib/services/playback_lifecycle_report_decision.dart`**: wat de achtergrond-, detach- en
+  disposepaden schrijven. Ingetrokken autoriteit schrijft niets; een positie die niet bewoog heeft
+  niets toe te voegen; een speler die nog speelde schrijft één keer af, en die schrijfactie kan
+  niets terugzetten omdat hij een al verstuurde positie herhaalt. 12 tests.
+- **`OfflineWatchSyncService.getLocalResumeProgress()`** geeft dezelfde offset als
+  `getLocalViewOffset`, met de tijdstempel van de actie erbij. Zonder die tijdstempel bestaat er
+  maar één regel, "lokaal wint altijd", en dat was de bug.
+
+### Changed
+- **`VideoPlayerScreen` krijgt `resumeProgressIsFresh`.** Alleen de startroute kan zeggen dat de
+  offset deze keer bij de backend is opgehaald; de herlaadroutes dragen een eerder opgehaald
+  moment.
+- **`WatchStateResolver.latestAction()`** staat los van `fromActions()`, omdat de resolver de
+  tijdstempel van de winnende actie nodig heeft en niet alleen de staat die eruit volgt.
+
+### Notes
+- **Het plan schreef dat de verse ophaalactie langs de cache moest.** Dat klopt niet:
+  `fetchWithCacheFallback` (`lib/media/media_server_client.dart:704-732`) gaat network-first en
+  raakt de cache alleen in offlinemodus of nadat het verzoek faalde. `fetchItem` levert online dus
+  al verse data. Het echte gat zat in de `viewOffsetMs == null`-voorwaarde eromheen.
+- **Rood aangetoond op de oude code.** Met de heartbeat teruggezet falen beide
+  heartbeat-tests (`Expected: empty`); met `onSeek` leeggemaakt falen alle vijf de seektests.
+  Daarna 45 van de 45 groen.
+- **Er komt geen permanente DEC voor een leasemodel.** Wat landt is een tijdelijke strategie op
+  basis van waarneming. Een echt toegekende lease wacht op PS-4 in de serverrepo.
+- 89 gerichte tests groen, `flutter analyze` zonder fouten of waarschuwingen, `scripts/ci_checks.sh`
+  groen op de gepinde SDK 3.44.0. De volledige suite geeft 3826 groen en 15 rood; diezelfde 15
+  falen op een schone worktree van `8fea407`, in `logs_screen`, `watchlist`, `sync_rules` en
+  `media_detail`, geen daarvan raakt afspelen.
+- Niet gedaan: verificatie op echte hardware. Twee Apple-toestellen die hetzelfde item openen is de
+  enige manier om te zien dat de terugzetter echt weg is.
+
+## [2026-08-20] Hero-artwork vroeg de containerratio op, niet die van de bron
+
+Op `main`, één commit: `40d9608`.
+
+### Fixed
+- **De home-hero croppte vierkante artwork op een smalle telefoon horizontaal weg.** `billboardArt()` koos bij een smalle hero-box terecht de vierkante `backgroundSquarePath` in plaats van een 16:9-backdrop, maar `discover_screen.dart` vroeg de afbeelding nog steeds op met de volle 16:9-hoogte van de container. Plex' server-side crop (`minSize=1&upscale=1`) vulde die box vanuit het midden en croppte zo'n 30% van de breedte al weg vóórdat Flutter iets tekende. `homeHeroArtGeometry()` (`lib/utils/home_hero_layout.dart`) ontkoppelt de framehoogte van `heroHeight` en laat de aanvraag altijd de ratio van de gekozen bron volgen, zodat de server-side crop een no-op wordt. Zie [DEC-057](DECISIONS.md#dec-057).
+
+### Added
+- **`BillboardArtKind`** (`lib/media/media_item.dart`) vervangt de bool `isBackdrop` op `BillboardArt`: `widescreen`, `square` of `fallback`, met `canRenderSharp`/`shouldBlur` als afgeleide.
+- **`HomeHeroArtwork`** (`lib/widgets/home_hero_artwork.dart`, nieuw): de scherpe artworklaag van de hero geëxtraheerd uit `_buildHeroItemContent`, zodat de geometrie los van het hele scherm te toetsen is.
+- **`homeHeroLogoConstraints()`** maakt het vaste 400×120-herologo responsive op telefoonbreedtes.
+
+### Notes
+- Een onafhankelijke codereview (`/code-review`) op de diff ving een echte bug in de nieuwe widget: de fade-gradient onder een korter frame stond op de onderkant van de hele hero-Stack in plaats van op de onderkant van het frame zelf. Gefixt vóór de commit, met een regressietest die de fade-rect tegen de frame-rect toetst.
+- Visuele verificatie op een echt smal scherm (simulator- of TestFlight-screenshot) is nog niet gedaan.
+
+## [2026-08-19] De rij die Select op de Apple TV afhandelt was niet de rij die gehard was
+
+Op `main`, vier commits: `22b4249`, `7bcd588`, `2c6c767` en deze.
+
+### Fixed
+- **`HubSection` opent bij Select het item dat de gebruiker ziet, niet de index** (`22b4249`). Een rij herlaadt in place en kan daarbij herordenen, dus tussen het frame waar iemand naar keek en het moment van drukken kan een andere kaart op dezelfde plek staan. `lib/widgets/hub_activation.dart` houdt de cursor voortaan als identiteit (`MediaItem.globalKey`) vast in plaats van als positie, en weigert een activering waarvan het item verdwenen is in plaats van te openen wie de plek innam.
+
+### Notes
+- **Die fix raakt het beginscherm op TV niet.** `discover_screen.dart:1430` gaat op TV naar `_buildTvContent()` en dat bouwt `TvBrowseRail`; `HubSection` is het telefoon-, tablet- en desktoppad. Hetzelfde geldt voor Bibliotheken ▸ Aanbevolen en het TV-detailscherm. `TvBrowseRail._activateCurrentItem()` leest nog `hub.items[_itemIndex]`, en `didUpdateWidget` bewaart `_hubIndex` op hub-key maar klemt `_itemIndex` alleen. De melding uit log `yto0s` liep dus door een widget die de hardening niet heeft.
+- **`TvBrowseRail` rapporteert nu, maar corrigeert niets.** De identity-fix daar wacht bewust op een device-log met deze trace erin: tegelijk repareren zou het bewijs wissen dat de melding daar zat.
+
+### Added
+- **`lib/diagnostics/select_trace.dart` en `select_trace_recorder.dart`**: één correlatie-id per Select-druk, dat vanaf de activering als expliciete parameter door `navigateToMediaItem`, de route en `MediaDetailScreen` reist, net als `heroTag`. Zes schakels worden vergeleken, waarbij `expected` via `mediaDetailNavigationTargetFor()` loopt zodat een aflevering die zijn serie opent geen vals alarm is. Normaal gedrag is één info-regel, afwijkend gedrag één waarschuwing met een begrensde tijdlijn. Zie [DEC-056](DECISIONS.md#dec-056).
+- **Rapportage van een refresh onder de cursor** in beide rijen, als één anomalie met drie disposities. `HubSection` volgt de identiteit en meldt `moved`; `TvBrowseRail` doet dat niet en meldt daarom `replaced` of `removed`.
+- **Vijfendertig tests**: het oordeel over de keten zonder widgettree, de levensduur van het id in de recorder, vijf tests op het Apple TV-invoerpad die vastleggen dat het id een eigen veld is naast `_nativeSelectPressed`, en widgettests op beide rijen.
+
+### Changed
+- **`AppleTvRemoteTouchService` krijgt een injecteerbare recorder** en opent de trace op de Select-key-down, op zowel het klikpad (`click_s`/`click_e`) als het natieve `UIPress`-pad. Op de key-up wordt het id vastgelegd vóór de pressed-status wist, want de service geeft daar `false` terug en Flutter dispatcht de release meteen daarna.
+- **De activeringsregel van een rij is geen info meer maar debug.** Hij draagt een mediatitel, hij vuurde op elk platform, en op TV zegt de trace hetzelfde met de rest van de keten erbij. Zet debug-logging aan vóór je reproduceert en hij komt terug.
+
+### Fixed (na de review)
+- **Een rij kon zijn Select permanent verliezen.** `hub.more` komt bij elke refresh van de server, dus de View All-kaart kan verdwijnen terwijl de cursor erop staat. `didUpdateWidget` klemde dan wel de index op de laatste echte kaart, precies wat de gebruiker gemarkeerd ziet, maar het doel bleef "View All". De activering loste dat op naar niets en keerde terug zonder opnieuw te richten, waarna elke volgende Select een no-op was tot je links of rechts drukte. Er was hier niets op een titel gericht, dus opnieuw richten kost geen bescherming.
+- **Een refresh van een rij waar niemand naar kijkt vervuilde de trace van een andere.** `noteFocusedTargetChanged` liep over álle open traces en elke rij bouwt bij elke refresh opnieuw op, met `_focusedIndex` standaard 0. Een druk op rij A kwam er zo als `ABNORMAL` uit met een oorzaak uit rij B. De melding is nu gesleuteld op surface plus hub, en beide rijen melden alleen als ze zelf focus hebben.
+- **Een Select-key-down zonder bijbehorende key-up lekte een trace.** Opent er een natieve tekstinvoersessie over de druk heen, dan wordt de release opgeslokt. `beginSelect` breekt nu eerst de vorige af, en een eviction die niets bereikt heeft zwijgt in plaats van te waarschuwen over een druk die simpelweg nooit afliep.
+- **De contextmenu-tak sloot de trace vóór bekend was dat er een menu opende**, in beide rijen. Nu pas nadat de guards door zijn.
+- **Omlaag vanaf de filterregel in Aanvragen was een dode toets tijdens het zoeken.** `handleChipKeyEvent` meldt de druk als afgehandeld zodra er een callback bestaat, en `_navigateDownFromFilterBar` mikte altijd op het ontdek-raster, dat tijdens een zoekopdracht niet bestaat. Hij volgt nu dezelfde regel als omlaag vanaf het zoekveld.
+- **Elke gewone druk die niets opent gaf een waarschuwing.** Muziek, een nog ladende laad-meer-kaart, een personenrij: die sluiten allemaal met `none`, en dat werd als `unterminated` gelezen. Een druk die niets opende is normaal; alleen een druk die halverwege sterft is dat niet, en dat staat nu apart van de uitkomst.
+- **Een rij die een item won terwijl de cursor op View All stond, opende het hele hub-scherm.** De trailing kaart zit altijd op `items.length`, dus een groeiende rij schuift daar een echte poster onder. De gebruiker ziet die poster gemarkeerd staan. Het doel volgt nu de trailing plek in plaats van alleen de `more`-vlag.
+- **Een rij die een andere hub kreeg, slikte de eerste druk in.** De onthouden identiteit hoorde bij een lijst die er niet meer was, wat als stale drop uitkwam. Bij een hub-wissel wordt het doel nu leeggemaakt.
+- **Een niet-gefocuste rij kon de trace-aanwijzer overschrijven.** `_notifyFocusedItem` vuurt ook op `autofocus` en op een door de host gevraagd beginitem, dus een rij achter een detailscherm zette de aim van een druk die ergens anders vandaan kwam. Dezelfde guard als op het meldpad staat nu ook op het schrijfpad.
+- **`fastlane lanes` beschreef de verkeerde lane.** De `desc` boven `notes` werd door het nieuw ingevoegde `notes_show` opgepikt, dus de lane die daadwerkelijk naar App Store Connect schrijft stond zonder omschrijving.
+- **Een kop zonder lege regel erachter liet zijn hele sectie uit "What to Test" vallen.** `testflight_notes` gaf de kop door en sloeg de rest van het blok over. `gen_release_notes.sh` zet die lege regel altijd, maar `docs/RELEASES.md` wordt met de hand bijgewerkt en dit faalde stil.
+
+## [2026-08-19] Een klik op de zijbalk startte de film eronder
+
+Op `main`, twee commits: `29431f9` en `7aae62b`.
+
+### Fixed
+- **Een klik die op een menu-item mikte kon op het billboard landen en meteen afspelen.** Log `y69x7` bevat alleen de hero-activatie: geen tabwissel, geen bibliotheekselectie, en ook niet de regel van de Afspelen-knop. De klik werd dus volledig door de content opgeslokt en de zijbalk zag hem nooit. De eerste hypothese, labels die buiten de hitbox getekend worden, klopte niet: `Clip.hardEdge` knipt ook het hit-testen weg, dus verf en hitbox zijn per frame gelijk. Het verschil zit in de tijd. `isCollapsed` klapt synchroon om, de breedte animeert er 200 ms achteraan, en bij het uitklappen was de hover-zone een proxy over die animerende container en dus nooit breder dan de balk op dat moment. Wie naar een label toe beweegt haalt de easeOutCubic in, verlaat de zone, start de collapse-timer, en klikt op de hero.
+- **Andersom lagen de menurijen dood terwijl ze nog zichtbaar waren.** `IgnorePointer(ignoring: isCollapsed)` schakelde ze uit zodra de collapse-timer afging, terwijl de balk nog 200 ms op volle breedte stond te tekenen. Een klik op een duidelijk zichtbaar item deed dan niets, of glipte langs de krimpende rand naar de content. Dit raakte ook touch: tik om uit te klappen, tik een item, en een snelle tweede tik tijdens het inklappen viel op de hero.
+- **Het billboard was een verborgen afspeelknop.** Eén `GestureDetector` over het hele vlak met `playDirectly: true`, terwijl de Afspelen-pil er los bovenop staat. Elke misklik was daardoor een gestarte film.
+
+### Changed
+- **De zijbalk bezit nu zijn eigen band, in drie lagen die één mirror-tween volgen.** Onderop claimt een `AbsorbPointer` `max(getekend, doel)`, zodat de band bij uitklappen vanaf frame één van het menu is en bij inklappen pas wordt losgelaten zoals de verf terugtrekt. Daarboven de balk zelf, inhoudelijk ongewijzigd. Bovenop een translucent `MouseRegion` die de hele band ziet en niets pakt: die komt wél in het hit-pad, zodat enter en exit vuren, maar geeft `false`, dus de `Stack` loopt door naar de content. `IgnorePointer` en het klik-om-uit-te-klappen lezen voortaan de getekende breedte in plaats van de boolean. Zie [DEC-055](DECISIONS.md#dec-055).
+- **Een tik op het billboard opent de detailpagina**, via `navigateToMediaItemDetails` en niet via `playDirectly: false`: die tak speelt afleveringen alsnog af zolang `episodeAction` op `play` staat. De Afspelen-pil blijft direct afspelen, de toetsenbord-select volgt de tik, en de semantics-hint werd `t.mediaMenu.viewDetails`.
+
+### Added
+- **Vijf pointer-tests** in `test/widgets/side_navigation_rail_test.dart` die het contract vastleggen in plaats van de implementatie: ze tikken coördinaten aan boven een teller-oppervlak. Drie ervan waren vóór de fix rood, geverifieerd door de fix eruit te halen en terug te zetten. De tegenhanger is er ook: stil ingeklapt blijft x=150 gewoon content, zodat de fix niet doorslaat naar een dode zone van 140px.
+- **`test/screens/discover_hero_activation_test.dart`** pompt het echte discover-scherm in niet-TV-modus, zodat de billboard-tik en de Afspelen-pil door de echte navigatie gaan en niet door een stub.
+- **Drie tvOS-contracttests** met een echte `FocusableWrapper` als content: een Select op de zijbalk voert alleen de zijbalkactie uit, de bijbehorende key-up telt niet als activatie in de content, en de focusovergang op zichzelf activeert niets.
+
+### Notes
+- **De tvOS-variant is onderzocht en niet aangetoond.** In de simulator verplaatst Select op een gefocust zijbalk-item de focus zichtbaar naar de content zonder iets te starten, en een tabwissel opent gewoon de tab. Wel gevonden: `NavigationRailItem` is de enige plek die op Select activeert, daarna focus verplaatst en `SelectKeyUpSuppressor.suppressSelectUntilKeyUp()` niet wapent, waar elf andere plekken dat wel doen. Toch lekt het niet, want `handleOneShotSelect` negeert een key-up en `FocusableWrapper` weigert een release waarvan hij de druk niet zag. Bewust geen preventieve suppressor toegevoegd; de bevinding staat als gotcha in `CLAUDE.md` zodat een volgende melding bij het focus- en key-eventpad begint en niet bij timing.
+- **De hover-band is niet met de hand na te doen op macOS.** `cliclick` levert geen synthetische hover- of scrollevents aan deze app, dus die kant leunt op de widgettest met een echte pointer-gesture. Wat wél met de hand is gezien: een klik op x=150 in het hero-gebied levert nu de detailpagina op in plaats van een film, en de Afspelen-pil speelt.
+- **Los gezien op de tvOS-hero**: een `RIGHT OVERFLOWED BY 16 PIXELS`-banner op de knoppenrij met Resume en View details. Bestond al vóór deze wijziging en is bewust niet meegenomen.
+
+## [2026-08-19] Filters en Sorteren openden in de hoek, en de Seerr-filterbalk woog te zwaar
+
+Op `main`, één commit: `6247253`.
+
+### Fixed
+- **Filters, Sorteren en Groepering openden op een desktopvenster rechtsonder.** `_resolveSheetHorizontalAnchor` gaf op een desktop-OS met muisinvoer de laatste muis-x terug en de layout-delegate centreerde de sheet daarop. Die knoppen staan rechtsboven, dus het paneel werd tegen de rechterrand geklemd, en met een vaste `maxHeight` van 400 stond er een blok van 700x400 in de hoek van een venster van bijna duizend pixels hoog. Dat anker klopt voor een contextmenu bij de cursor en voor niets anders.
+
+### Added
+- **`lib/widgets/overlay_sheet_geometry.dart`** zet presentatie, viewport en `isTV` om in alignment, constraints, radius, randmarge, muisanker, sleepgreep en animatie. Een pure functie, dus het responsive gedrag is zonder `pumpWidget` te testen, net als `mainScreenSideNavigationContentLayout`. Negentien tests. De stand `sheet` levert per pixel wat er stond; de stand `panel` centreert op tablet en desktop, kapt op `min(h-96, 0,8h)`, zet het muisanker uit en klemt ook meegegeven constraints binnen de viewport. Zie [DEC-054](DECISIONS.md#dec-054).
+- **`lib/screens/seerr/seerr_discover_filter_bar.dart`** haalt de filterbalk uit het 895 regels lange discover-scherm.
+
+### Changed
+- **Ontdekken via Aanvragen gebruikt nu de bibliotheekheader zelf.** Films en Series plus de genres stonden er als omlijnde pillen: 92px chroom boven de posters en een rand per optie. Het is nu een echte `LibraryHeaderBar`, dezelfde component als op de bibliotheekpagina, met de typetabs links en Genre als actie rechts die de categorieën in datzelfde gecentreerde paneel opent. 42px, één rand.
+- **Twee gedragswijzigingen die uit die vorm volgen**: een tab kiezen selecteert die tab in plaats van terug te vallen op Alles, en een genre wissen doet de regel Alles in het paneel in plaats van een tweede tik op de actieve chip.
+
+### Notes
+- **Alleen de vier panelen achter een header-actie schakelen om**; de twintig andere aanroepen blijven op `sheet`, zodat contextmenu's bij de cursor blijven openen. Een widgettest legt allebei vast.
+- **De interne scroll van het paneel is niet met de hand aangetoond**: synthetische scroll-events komen niet aan bij deze app, de posterlijst erachter scrolde er evenmin van. Gedekt door de widgettest.
+
+## [2026-08-19] Het taalgeheugen werkte alleen bij direct play
+
+Op `main`, drie commits: `cb2f486`, `0b25734`, `05a9179`.
+
+### Fixed
+- **De onthouden ondertiteltaal ging verloren zodra Plex transcodeerde.** Gemeld op Apple TV: aflevering 2 van dezelfde serie startte in een andere taal dan gekozen. De keuze wordt per serie bewaard in `TrackPreferenceStore`, maar alleen het direct-play-pad schrijft daarheen. Bij transcoding wisselen de kiezers geen mpv-spoor maar een bronstroom: de tegel roept `onSwitchSubtitleStreamId` aan, die via `_switchPlaybackSource` de stream naar Plex schrijft en de sessie herlaadt. `TrackManager.onSubtitleTrackChanged` komt daar nooit langs. Geldt voor beide bedieningen, de sheet op telefoon en desktop en het TV-paneel. Geen regressie: de functie landde in `2e60dc4` en dit pad heeft nooit gewerkt.
+- **De taal wordt nu ook op de serie zelf gezet, niet alleen lokaal.** Zonder dat deed de fix niets in het geval waarvoor hij bedoeld was. Brandt Plex de ondertiteling in, dan ziet mpv geen selecteerbaar spoor meer en kan het lokale geheugen niets; alleen de server kan die keuze maken. De `selectStreams` die er al stond geldt met `allParts` bovendien alleen voor de delen van die ene aflevering, niet voor de serie.
+- **Een gat dat afleveringen raakte, los van de melding.** Staat auto-skip aan met een vertraging van nul, dan armeert `_startAutoSkipTimer` niets terwijl de dismiss-timer alleen bij auto-skip-uit werd gestart. Geen van beide liep, dus de skip-knop bleef onbeperkt staan.
+
+### Changed
+- **De vertaling van een keuze naar Plex-voorkeuren staat nu in `TrackLanguageChoice`** als `plexSubtitleMode` en `plexSubtitleLanguage`, in plaats van twee keer uitgeschreven. Plex' waarden zijn 0 handmatig gekozen, 1 bij anderstalige dialoog, 2 altijd aan; een onthouden forced-spoor valt op 1 omdat dat het dichtste is wat Plex biedt.
+
+### Added
+- **`lib/services/source_stream_language.dart`** zoekt de taal bij een stream-id op. Losse functie omdat dit precies de naad was die ontbrak: de opslag was getest, de resolver was getest, de bedrading tussen bediening en opslag nergens. De ISO-code wint van de weergavenaam, want "Dutch" matcht nooit tegen een spoor dat als `nld` getagd staat. Twaalf tests in `test/services/source_stream_language_test.dart`.
+
+### Notes
+- **Een onafhankelijke review op de eerste twee commits vond een race die in de fix zelf zat.** `_switchPlaybackSource` claimt `_playbackTransition` pas zodra het herladen begint, dus tussen binnenkomst en herladen kan een tweede wissel starten. Het onthouden las `_currentMetadata` en de sporenlijst pas op het moment dat de schrijfacties liepen, en het toegevoegde netwerkschrijven maakte dat venster juist wijder. Die drie worden nu vastgelegd voordat er iets await, op dezelfde plek waar de Plex-client al om die reden vooruit werd gelezen.
+- **De schrijfactie naar de serie liep awaited**, waardoor er een netwerkronde tussen de tik en de daadwerkelijke ondertitelwissel zat. Nu losgekoppeld, met een eigen vangnet omdat er dan niets meer omheen staat.
+- **Twee dingen bewust laten liggen.** Een ondertitelspoor zonder taalcode wordt nog steeds niet onthouden (`track_manager.dart:449`), wat losse SRT-bestanden raakt. En de iCloud-synchronisatie vervangt de hele voorkeurenkaart in één keer in plaats van per titel samen te voegen, dus een verouderde snapshot op een tweede Apple-toestel kan nieuwere keuzes overschrijven. Allebei een andere oorzaak dan het gemelde probleem.
+- **Niet op een toestel geverifieerd.** De tests dekken het opzoeken van de taal en de Plex-mapping, niet de echte wissel op een Apple TV.
+
+## [2026-08-18] De aanvragen-schermen: titel, poster, filterbalk, en vier losse meldingen
+
+Op `main`, zeven commits van `02d5b71` tot `da1bbab`.
+
+### Fixed
+- **De aanvraaglijst toonde als kop alleen "Film" of "TV Serie", met een grijze placeholder.** `SeerrRequest.tryFromJson` leest titel, jaar en posterpad uit het `media`-object van `/request`, maar Overseerr zet daar de mediarij neer: tmdb-id, beschikbaarheid, tijdstempels. Geen titel, geen poster. Er was nergens een stap die dat aanvulde. `SeerrClient.hydrateRequests` haalt nu per titel `/movie/{id}` of `/tv/{id}` op, zoals de webinterface van Overseerr zelf doet: gecachet op `mediaType:tmdbId`, zes tegelijk, gedeeld tussen gelijktijdige passages, en een mislukte lookup laat de regel staan. Ontbrekende titel en ontbrekende poster waren één bug, niet twee.
+- **Het zwarte scherm bij sorteren in de kijklijst.** De sorteer- en kaart-sheets sluiten met `Navigator.pop`, maar in de draaiende app zijn dat geen routes: `showAdaptive` tekent ze als kind van een `Stack` zodra er een `OverlaySheetHost` boven zit, en op de mobiele schil zit die er altijd. Die pop haalde dus niet de sheet weg maar `MainScreen` eronder, en een lege navigator tekent zwart. De `Completer` kwam nooit binnen, dus de sortering werd ook niet toegepast. Dezelfde fout stond vier keer in het kaartmenu, ongemeld maar identiek.
+- **De keuze in een segmented control was onzichtbaar.** Gemeld als "de audio-prioriteit is niet te selecteren". De instelling schakelde en bewaarde gewoon. Material vult het gekozen segment met `secondaryContainer`, en dit palet zet die op `c.surface`: exact de kleur van de kaart waarop de rij ligt. Met `showSelectedIcon` uit en een doorzichtige highlight bleef er geen enkel signaal over. Raakt elke segmented instelling in de app.
+- **De skip-intro-knop verscheen bij films en bleef terugkomen.** Intro-auto-skip staat daar bewust uit, omdat een filmmarker vrijwel altijd uit de hoofdstuktitel-fallback komt en het einde op de start van het volgende hoofdstuk ligt: minuten in plaats van anderhalve minuut. De knop verdween daardoor alleen via de dismiss-timer en kwam terug zodra de bediening in beeld kwam. Nu verschijnt hij er niet meer; aftiteling blijft overslaanbaar.
+- **De statusbadge liep uit de poster.** `Positioned` zonder `right` liet hem onbegrensd groeien, waarna de omliggende `ClipRRect` hem afsneed aan de posterrand.
+- **De filterbalken van aanvragen en kijklijst vielen half buiten beeld.** De inset zat op of om de scrollview en scrolde mee naar binnen, er was geen scroll-naar-geselecteerd, en de kijklijst gumde met een `ShaderMask` de staart van de laatste chip uit. De kijklijst gebruikte als enige scherm een kale Material `ChoiceChip`, die niet meedoet in het focussysteem en op TV dus dood was.
+- **De sorteerknop van de kijklijst verstopte zijn waarde in een tooltip**, en die opent op iOS bij aanraken nooit. Nu in het label, zoals de bibliotheken-header.
+
+### Added
+- **Kwaliteitsprofiel en rootmap kiezen bij een aanvraag.** Bestond niet: de sheet bood alleen een serverkeuze, `createRequest` kreeg geen `profileId` mee, en `/service/radarr/{id}` werd nergens aangeroepen. De vertaalsleutels `qualityProfile` en `rootFolder` lagen er al zonder aanroepplek, dus het was bedoeld en nooit afgemaakt. Vier lagen: modellen voor profiel en rootmap, het per-server endpoint, de keuzes in de sheet, en de velden in de aanvraag.
+- **`lib/widgets/seerr_request_row.dart`**, uit het scherm gehaald zodat de rij los te testen is; het scherm zakte van 621 naar 397 regels.
+- **`test/i18n/seerr_i18n_test.dart`** vangt voortaan wat hier misging: een sleutel die alleen in de basistaal bestaat valt stil terug op Engels.
+
+### Changed
+- **De aanvraagkaart leest nu titel, soort en jaar, status, seizoenen, aanvrager.** Het jaar staat niet meer in de titelregel, seizoenen worden samengevat (`Seizoenen 18-22`) met gaten behouden, 4K is een eigen pil, en de beschikbaarheidsbadge verschijnt alleen waar hij iets toevoegt, dus niet "Beschikbaar" naast "Afgerond".
+- **De aantallen naast de filtertabs worden na goedkeuren of annuleren opnieuw opgehaald.** Ze kwamen van een apart endpoint en liepen achter zodra je iets deed.
+
+### Notes
+- **Twee aannames uit de melding klopten niet.** De statussemantiek was al goed: lifecycle en beschikbaarheid zijn twee dimensies, dus "Goedgekeurd + Deels beschikbaar" hoort te kunnen. En de badge liep niet in de buurkaart, hij werd afgekapt door de clip eromheen.
+- **`seerr.searchPlaceholder`, `byStreamingService` en `showAll` stonden alleen in het Engels.** De overige dertien talen hebben helemaal geen `seerr`-sectie en vallen volledig terug op Engels; buiten scope gelaten.
+- **Technische schuld genoteerd:** `SeerrProvider` bouwt zijn eigen `SeerrClient` zonder injecteerbare http-client, dus de sheet met de profielkeuze is niet met gestubde HTTP te testen. Niet nu gerepareerd; wel eerst dependency injection bij de volgende Seerr-uitbreiding.
+- **Het Tautulli-werk van een parallelle sessie is in `6e595f1` vastgelegd**, zodat de TestFlight-build naar een commit verwijst in plaats van naar een werkboom. Inhoudelijk onderscheidt het een niet-Tautulli-antwoord van een onbekende JSON-vorm, wat de Cloudflare Access-melding uit log `bcjk3` adresseert.
+
 ## [2026-08-17] Drie tvOS-ingrepen: overlappende herotekst, onzichtbare focus, en het canvas dat maar half zo groot was
 
 Op `main`, drie commits: `d16fa4f`, `e2c123f`, `0f780f9`.
@@ -711,3 +1053,78 @@ Een iOS-log van build 211 met Ted Lasso S4E1 verschoof het onderzoek beslissend:
 
 Ouder dan dit (3 juli tot en met 6 augustus 2026): zie
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
+
+### Fixed
+- **Eén veeg verplaatste de focus soms twee cellen, of een richting op die je niet geveegd had** (`lib/services/apple_tv_remote_touch_service.dart`). Een veeg over de touch-surface komt via twee onafhankelijke paden binnen: tvOS' eigen swipe-recognizer synthetiseert `UIPress`-pijlen, en de engine-fork streamt daarnáást de ruwe coördinaten op `flutter/gamepadtouchevent` waar de service zelf pijlen uit bouwt. Ontdubbeling ging per losse toets binnen 120 ms, en dat venster begint te lopen op emit-moment terwijl `simulateKeyPress` de dispatch uitstelt tot een post-frame callback — één trage frame (poster-decode, de 250 ms scroll-animatie in de rail) en de native pijl viel erbuiten. Erger nog: beide paden bepalen de veeg-as los van elkaar en de ontdubbeling matchte alleen dezelfde toets, dus een diagonale veeg kon `arrowLeft` uit het ene pad en `arrowDown` uit het andere opleveren — allebei geldig, samen een sprong schuin weg. Nu bezit de eerste bron die een richting produceert het hele gebaar en wordt de andere gedempt tot het gebaar eindigt, inclusief 250 ms grace na het optillen van de vinger omdat tvOS' recognizer zijn pijl regelmatig pas ná `touchesEnded` levert. `KeyRepeatEvent` werd in de oude ontdubbeling helemaal niet afgehandeld en lekte dus altijd door; dat valt nu vanzelf onder de latch. Zie [DEC-012](DECISIONS.md#dec-012).
+- **Dezelfde fysieke veeg leverde de ene keer één en de andere keer drie stappen.** Het veeg-anker sprong na elke stap naar de vinger, waarmee de reis vóórbij de drempel werd weggegooid — en hoevéél weggegooid werd hing af van sample- en frametiming. Het anker schuift nu met exact één drempel op, zodat de rest doortelt naar de volgende stap: het aantal stappen is `floor(afstand / drempel)`. De 190 ms-cooldown blijft als snelheidsplafond maar draagt de logica niet meer.
+
+### Changed
+- De as-hysterese in `_resolveSwipeAxis` is **bewust ongemoeid** gelaten. Die is op device getuned (zes tests dekken hem af) en de verkeerde-richting-klacht komt aantoonbaar uit het cross-as-lek hierboven, niet uit de as-keuze zelf — de oude test `synthetic swipe does not suppress a different native direction` legde dat lek zelfs vast als gewenst gedrag.
+
+### Nog te doen
+- **Device-QA op een echte Apple TV** (niet simuleerbaar): één veeg = één poster, tien keer herhaald; diagonale veeg mag geen tegengestelde horizontale stap geven; richtingsring-klikken moeten ongewijzigd werken; bibliotheek-grid tijdens snel scrollen, waar de framedruk het hoogst is. In de logs hoort na elke `emit key=… source=swipe` een `consume native … reason=gesture-owned-by-swipe` te staan en nergens nog een ongesuppresseerde `native keydown` erachteraan.
+
+## [2026-08-06] — Apple TV: geen onbedienbare tekstinvoer meer
+
+### Fixed
+- **De native tekstinvoer op tvOS was dood én niet te sluiten** (`tvos/Runner/AppDelegate.swift`, `NativeTextEntryPlugin.swift`). `PleyaFlutterViewController` neemt first responder in `viewDidAppear` en geeft die alleen terug in `viewWillDisappear` — wat bij een `.alert`-presentatie nooit vuurt. Alle presses landden dus bij Flutter, dat ze aan `super` doorgaf: de engine zet ze om in `flutter/keydata` en valt pas op de responder-chain terug als Dart de toets als onafgehandeld terugmeldt, wat met Pleya's focus-tree nooit gebeurt. De alert kreeg daardoor geen enkele press — ook de Menu-override erop draaide nooit. Nu staat de controller first responder af zodra een sessie loopt (`NativeInputSession`), gaan presses naar `next?` in plaats van naar de engine, is `pressesChanged` toegevoegd (ontbrak, terwijl de engine hem wél overschrijft) en zit het Menu-vangnet op de Flutter-controller zelf — het enige object dat gegarandeerd in het press-pad zit. Raakt naast zoeken ook login, server-URL en Seerr, die dezelfde surface gebruiken. Zie [DEC-011](DECISIONS.md#dec-011).
+- **Synthetische toetsen bleven de UI achter het toetsenbord besturen** (`lib/utils/native_input_session.dart` nieuw, `key_event_simulator.dart`, `gamepad_service.dart`, `apple_tv_remote_touch_service.dart`). `_nativeTextInputFocused` bestond al maar stond alleen in logregels; de enige echte gate was `_windowFocused`, en die is desktop-only en dus altijd `true` op tvOS. Alle drie de routes dispatchen rechtstreeks in de focus-tree, langs `HardwareKeyboard` heen, en verplaatsten de focus onzichtbaar terwijl het toetsenbord openstond. De gate zit nu op het gedeelde choke point én per service. Let op: `Gamepad.pause()` is op iOS/tvOS een no-op in de plugin, en de Siri Remote komt sowieso nooit langs `GamepadService` — die gate raakt alleen een gekoppelde MFi-controller.
+- **`SpeechSearchService.capture()` slikte elke `PlatformException` in** en gaf `null` terug, waardoor het zoekscherm nooit leerde dat de surface stuk was en de fallback-toets nooit verscheen. Alleen `BUSY` is nog een stille no-op; de rest gaat door naar de aanroeper.
+
+### Added
+- **Systeem-toetsenbord in plaats van een alert-venster** (`tvos/Runner/NativeTextEntryViewController.swift`, nieuw): één `UITextField` die in `viewDidAppear` first responder wordt, zodat tvOS meteen zijn eigen toetsenbord toont. Dat toetsenbord ís de dictatie-surface — de mic-knop op de Siri Remote typt erin — dus het tussenscherm dat je eerst moest bedienen is er niet meer. `textFieldDidEndEditing` sluit de sessie af, anders blijf je na het sluiten van het toetsenbord achter met een lege overlay.
+- **Watchdog tegen een dode surface**: komt het toetsenbord niet binnen 4 s op, dan sluit de view zichzelf met `KEYBOARD_DEAD` (er kwamen presses binnen zonder reactie) of `KEYBOARD_UNAVAILABLE`. Die codes latchen een fallback naar het inline D-pad-toetsenbord voor élke aanroeper. Alleen `KEYBOARD_DEAD` wordt persistent opgeslagen (`SettingsService.nativeTextEntryUnavailable`, uitgesloten van export/iCloud — het is een oordeel over dít toestel); `KEYBOARD_UNAVAILABLE` blijft in-memory zodat een eenmalige onderbreking je dictatie niet voorgoed kost.
+
+- **Menu deed niets zolang het systeemtoetsenbord openstond** (builds 203/204). `press.type == .menu` matcht op tvOS 26 nooit: de runtime levert 2041 terwijl `UIPress.PressType.menu.rawValue` naar 5 compileert. De escape hatch werd dus overgeslagen en de druk ging naar `next?`; zonder actieve sessie ging Menu naar `super` en werkte hij wél — vandaar dat terug alléén mét toetsenbord stuk was. Gemeten en geverifieerd in de tvOS-simulator via het nieuwe `scripts/tvos_sim.sh`.
+- **Gepresenteerde view controller vervangen door een tekstveld in de Flutter-view.** De hele bugklasse eromheen — `dismiss` dat het gepresenteerde kind raakt in plaats van zichzelf, `viewDidAppear` die opnieuw vuurt als het toetsenbord sluit, `presentingViewController` die nil kan zijn — bestond alleen omdat er een modal gepresenteerd werd. Nu is teardown onvoorwaardelijk: resign + removeFromSuperview. Plus een responder-poll die de sessie beëindigt zodra het toetsenbord weg is, ongeacht wélke delegate-callback tvOS kiest.
+- **Het toetsenbord was niet te verlaten** (build 203, device-test): `entry.dismiss()` sluit niet de entry-VC maar zijn gepresenteerde kind — en dat kind is het systeemtoetsenbord. Menu sloot dus het toetsenbord, beëindigde de sessie en gaf de remote aan Flutter terug (achtergrond navigeerde zichtbaar terug) terwijl de lege overlay bleef staan. Nu via `presentingViewController.dismiss(...)`. Daarbovenop vuurt `viewDidAppear` een tweede keer zodra dat toetsenbord sluit, wat het direct heropende; een tweede verschijning telt nu als "klaar".
+
+### Changed
+- De mic-knop in het zoekscherm is weg op Apple TV (`lib/screens/search_screen.dart`): de mic zit op de afstandsbediening en werkt zodra het toetsenbord openstaat, wat select op de zoekbalk al doet. Android TV houdt zijn knop — daar opent die `RecognizerIntent`.
+
+## [2026-08-05] — Zoeken op elk apparaat: Siri Remote-dictatie en focus-hardening
+
+### Added
+- **Gedeelde native-tekstinvoerclient** (`lib/services/apple_tv_native_text_entry.dart`, nieuw): singleton `AppleTvNativeTextEntry` rond channel `com.pleya/native_text_entry`. Flutter routeert inkomende platform-calls op **channel-naam**, dus met een client-instantie per aanroeper landden live `textChanged`-events op de laatst geconstrueerde handler — bij voice search was dat een afgeronde sessie met een genulde callback, waardoor gedicteerde tekst nooit aankwam. De singleton geeft de events aan de actieve sessie, zet de gamepad-pauze in de client zelf (fix voor elke aanroeper) en behandelt `BUSY` als stille no-op i.p.v. een Flutter-keyboard achter de zichtbare alert te stapelen. `FocusableTextField._openAppleTvNativeEntry` delegeert hierheen. Zie [DEC-009](DECISIONS.md#dec-009).
+- **Zoekveld op Apple TV is invoer geworden** (`lib/screens/search_screen.dart`, `_buildTvSearchHeader`): de pill was een kale `InputDecorator` zonder focus en dus niet selecteerbaar. Nu een `FocusableButton` die op select het systeem-toetsenbord opent, voorgevuld met de huidige query — dat toetsenbord ís op tvOS de dictatie-surface van de Siri Remote. `_openNativeSearchEntry()` streamt partials naar `_searchController` zodat de bestaande debounce meezoekt tijdens het dicteren; `submitted` roept `_handleSearchSubmit()` aan. De inline `TvVirtualKeyboardPanel` blijft als fallback (`_nativeEntryUnavailable`); Android TV en Fire TV ongewijzigd.
+- **`SpeechSearchService.capture()`** (`lib/services/speech_search_service.dart`) geeft nu `({String text, bool submitted})` terug en accepteert `initialText` + `onPartial`. Voorheen gooide hij de `submitted`-vlag weg, waardoor annuleren-met-tekst alsnog zocht en Done nooit het eerste resultaat focuste.
+
+### Fixed
+- **`SelectKeyUpSuppressor` at een hele select-druk op** (`lib/focus/dpad_navigator.dart`, `focusable_wrapper.dart`): de context-menu-toets armde de globale suppressor óók als er geen `onLongPress` was (er opende dus niets), en alleen een key-up wiste hem. De eerstvolgende echte SELECT verdween daardoor geruisloos. Armen gebeurt nu alleen bij een echte handler, en een verse key-down wist de suppressie zonder te consumeren — een nieuwe druk kan nooit de release zijn waarvoor de suppressor bedoeld is.
+- **Verweesde select-key-ups** (`focusable_wrapper.dart:_handleKeyEvent`, `focusable_chip_mixin.dart`): met `enableLongPress` vuurde `onSelect` alleen op key-up. Verschoof de focus tussen down en up (rebuild, autoscroll), dan claimde de nieuwe node de key-up en verdween de druk zonder feedback. Zonder bijbehorende key-down geeft de handler nu `ignored`.
+- **Recente-zoekopdrachten waren onbruikbaar met de remote** (`search_screen.dart:_buildRecentSearches`): plain `ActionChip`s en een kale `TextButton` — op Apple TV zit `select` niet in de standaard shortcut-map, dus die chips waren daar niet eens activeerbaar, en de focus-highlight ontbrak. Nu `FocusableFilterChip` + `FocusableButton`. **"Wis geschiedenis" gooide bovendien een `TypeError`** (`const []` is `List<dynamic>`, `StringListPref` eist `List<String>`) en deed dus op géén enkel platform iets.
+- **Focus-zwart-gat bij het starten van een zoekactie** (`search_screen.dart:_performSearch`): `_isSearching = true` vervangt de resultaten door skeletons zonder focusables, dus stierf de focus met de unmounted kaart en lag de D-pad stil. Focus parkeert nu op het invoerveld, gescoped op dit scherm zodat een achtergrond-refresh geen focus tussen tabs steelt.
+- **Back ontsnapte uit een open sheet** (`lib/screens/main_screen.dart`): de host-fallback sloot de sheet terwijl `_handleBackKey` in dezelfde druk naar de sidebar sprong. Main-screen negeert nu toetsen zolang `_isOverlaySheetOpen`.
+- **Sheets zonder focus op hostloze schermen** (`lib/widgets/overlay_sheet.dart`, `lib/screens/seerr/seerr_media_detail_screen.dart`): de `showModalBottomSheet`-fallback negeerde `initialFocusNode`, dus opende een sheet met niets gefocust en dode D-pad. Het Seerr-detailscherm — direct bereikbaar vanuit zoekresultaten — kreeg een `OverlaySheetHost`, en de fallback honoreert de node nu post-frame.
+- **Toetsenbord toonde een opgelichte toets zonder focus** (`lib/widgets/tv_virtual_keyboard.dart`): las als "druk select om te typen" terwijl de druk elders landde.
+- **Android cold-start `ACTION_SEARCH`** (`android/app/src/main/kotlin/nl/michelknoop/pleya/MainActivity.kt:handleSearchIntent`): de query werd alleen gestasht als de `binaryMessenger` ontbrak, maar bij koude start bestaat die al vóórdat Dart zijn handler registreert — "zoek X in Pleya" via de Assistent landde op een leeg scherm. Nu altijd stashen en pas clearen bij bevestigde delivery.
+
+### Changed
+- `lib/utils/temporary_override.dart` kreeg `ignore_for_file: unused-code, unused-files`. De klasse wordt bewust aangehouden (zie de gotcha in CLAUDE.md) maar liet de CI-gate sinds 15 juli rood staan. Let op: een `exclude` in `analysis_options.yaml` werkt **niet** voor `check-unused-code` — alleen file-level ignores.
+- Drie tests in `test/screens/video_player/player_prompt_overlays_test.dart` annuleren nu de auto-hide-timer die `PlayerChromeController` bij het vrijgeven van een hold bewust opnieuw armt. Ze faalden op de pending-timer-invariant, niet op gedrag; dit was de "3 pre-existing failures" uit eerdere sessies.
+
+### Notes
+- **Verificatie:** `scripts/ci_checks.sh` volledig groen, `flutter analyze` zonder issues, **2792 tests groen**. Vier nieuwe testbestanden: `test/focus/dpad_navigator_suppressor_test.dart`, `test/focus/focusable_wrapper_select_test.dart`, `test/services/speech_search_service_test.dart` plus TV-cases in `test/screens/search_screen_test.dart`.
+- **Deploy:** build **202** op TestFlight voor iOS, tvOS én macOS (commits `3b193f8`, `3148604`).
+- **Nog te verifiëren op apparaat** (niet simuleerbaar): Apple TV — mic-knop op de Siri Remote dicteert in de native alert, Menu sluit hem en play/pause + D-pad werken daarna, iPhone-continuity streamt live. Android TV — mic-knop en Assistent-zoekopdracht vanuit een volledig afgesloten app.
+- **Toolchain-valkuil onderweg:** na een Xcode-update faalt élke build tot Xcode één keer handmatig is gestart; `xcodebuild -runFirstLaunch` lost dit niet op. Zie [DEC-010](DECISIONS.md#dec-010).
+
+## [2026-08-03] — Bruikbaarheidsronde: voice search, TV-invoer, App Review 2.1(a)
+
+### Added
+- **Voice search** (`lib/services/speech_search_service.dart`, nieuw): Android (incl. Android TV) via `RecognizerIntent.ACTION_RECOGNIZE_SPEECH` als activity-result, dus zonder `RECORD_AUDIO`-permissie — die is op een TV-afstandsbediening lastig te verlenen. Plus `ACTION_SEARCH`-afhandeling voor de Assistent en de leanback-zoekrij (`android/app/src/main/res/xml/searchable.xml`).
+- **Inline TV-zoektoetsenbord** op de zoekpagina in plaats van een pop-up (`ac21110`): `TvVirtualKeyboardPanel` uit `lib/widgets/tv_virtual_keyboard.dart` geëxtraheerd; de modale variant is nu een dunne wrapper.
+- **Guard-test** `test/no_bare_text_field_test.dart`: laat de build falen op een kale `TextField`/`TextFormField` in `lib/`, want zo'n veld is op TV niet te vullen.
+
+### Fixed
+- **Geen dead-end meer bij inloggen** (App Review 2.1(a)): Plex en Jellyfin zijn gelijkwaardige startpunten (`21eb01b`), met verzachte timeout-teksten in alle talen (`1337487`).
+- **Hero op Discover crashte** op `context.select` tijdens layout (`89f7641`).
+- **`tvos_beta` haalt zijn eigen engine op** in plaats van te leunen op oude artefacten (`a6218ad`).
+
+### Notes
+- Bekende bug uit deze ronde, opgelost op 2026-08-05: de cold-start-tak van `handleSearchIntent` verloor de query.
+
+## Ouder
+
+Juli 2026 en ouder staat in [docs/archive/CHANGELOG-2026-07.md](archive/CHANGELOG-2026-07.md),
+afgesplitst toen dit bestand over de 500 regels ging.

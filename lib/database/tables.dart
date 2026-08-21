@@ -270,6 +270,7 @@ class OfflineWatchProgress extends Table {
 /// scoring never re-fetches metadata. All data stays on-device, per profile.
 @DataClassName('MediaInteractionRow')
 @TableIndex(name: 'idx_interactions_profile_time', columns: {#profileId, #occurredAt})
+@TableIndex(name: 'idx_interactions_profile_item', columns: {#profileId, #globalKey})
 class MediaInteractions extends Table {
   IntColumn get id => integer().autoIncrement()();
 
@@ -303,6 +304,69 @@ class MediaInteractions extends Table {
 
   /// Grandparent (series) global key for episode events
   TextColumn get seriesKey => text().nullable()();
+
+  /// Where the row came from: `'local'` for something played in Pleya,
+  /// `'tautulli'` for an imported history record.
+  TextColumn get source => text().withDefault(const Constant('local'))();
+
+  /// Stable external event id (`tautulli:{machineIdentifier}:{rowId}`), so a
+  /// re-import is a no-op. Null for local rows; a partial unique index on
+  /// (profile_id, source_event_id) enforces it only where it is set.
+  TextColumn get sourceEventId => text().nullable()();
+
+  /// The server the import was bound to. Needed to drop a whole server's
+  /// imported history from scoring without deleting it.
+  TextColumn get sourceServerId => text().nullable()();
+
+  /// Tautulli `percent_complete` (0-100), for diagnostics and future tuning.
+  IntColumn get completionPercent => integer().nullable()();
+
+  /// Seconds actually played, from Tautulli `play_duration`. Not the media
+  /// duration: `get_activity` uses the same key for something else entirely.
+  IntColumn get playSeconds => integer().nullable()();
+}
+
+/// Where an external history import got to, per profile, server and source.
+///
+/// Two watermarks, because the two directions are not symmetric. Forward always
+/// advances into new records; backfill walks down a window whose upper bound is
+/// frozen once, with [backfillOffset] as the only cursor, so a calendar day
+/// bigger than one pass can never re-anchor and stall.
+@DataClassName('HistorySyncCursorRow')
+class HistorySyncCursors extends Table {
+  TextColumn get profileId => text()();
+  TextColumn get serverId => text()();
+
+  /// `'tautulli'` today; the shape is deliberately source-agnostic.
+  TextColumn get source => text()();
+
+  /// Epoch millis of the newest fully processed record.
+  IntColumn get forwardCursorAt => integer().withDefault(const Constant(0))();
+
+  /// Tie-breaker for records sharing [forwardCursorAt].
+  IntColumn get forwardLastRowId => integer().nullable()();
+
+  /// Frozen upper bound of the backfill window, `YYYY-MM-DD`.
+  TextColumn get backfillBeforeDay => text().nullable()();
+
+  /// Pagination offset inside that frozen window.
+  IntColumn get backfillOffset => integer().withDefault(const Constant(0))();
+
+  /// Epoch millis of the oldest processed record, for logging and the
+  /// 365-day floor check.
+  IntColumn get backfillCursorAt => integer().nullable()();
+
+  /// `pending`, `exhausted` (window really is empty) or `retentionCap`
+  /// (stopped because there is no storage left). Only `exhausted` is final.
+  TextColumn get backfillState => text().withDefault(const Constant('pending'))();
+
+  /// Consecutive truncated forward passes, for the escalation ladder.
+  IntColumn get forwardTruncationCount => integer().withDefault(const Constant(0))();
+
+  IntColumn get lastSyncAt => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column> get primaryKey => {profileId, serverId, source};
 }
 
 /// One cached taste/affinity vector per profile — a recomputed derivative of
@@ -319,6 +383,11 @@ class AffinitySnapshots extends Table {
 
   /// Timestamp of computation (milliseconds since epoch)
   IntColumn get computedAt => integer()();
+
+  /// Sorted, joined set of import server ids that were counted in. Freshness
+  /// compares it, so flipping the admin policy or disconnecting invalidates the
+  /// snapshot immediately. The row count alone would not change at all.
+  TextColumn get enabledKey => text().withDefault(const Constant(''))();
 
   @override
   Set<Column> get primaryKey => {profileId};

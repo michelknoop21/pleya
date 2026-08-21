@@ -8,6 +8,7 @@ import '../media/media_kind.dart';
 import '../media/media_server_client.dart';
 import '../mixins/paginated_item_loader.dart';
 import '../utils/app_logger.dart';
+import '../utils/error_message_utils.dart';
 import '../utils/media_server_http_client.dart';
 import '../utils/provider_extensions.dart';
 import '../widgets/desktop_app_bar.dart';
@@ -114,11 +115,10 @@ class _ActorMediaScreenState extends BaseMediaListDetailScreen<ActorMediaScreen>
       });
       appLogger.d('Loaded ${loadedItems.length} of $totalSize items for actor: ${widget.actorName}');
       autoFocusFirstItemAfterLoad();
-    } catch (e, st) {
-      appLogger.e('Failed to load actor media', error: e, stackTrace: st);
+    } catch (e) {
       if (!mounted) return;
       setState(() {
-        errorMessage = t.messages.errorLoading(error: e.toString());
+        errorMessage = friendlyError(e, context: widget.actorName);
         isLoading = false;
       });
     }

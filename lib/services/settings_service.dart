@@ -16,6 +16,9 @@ import '../models/external_player_models.dart';
 import 'base_shared_preferences_service.dart';
 import 'device_performance.dart';
 import 'icloud_sync_service.dart';
+import 'preferences/preference_mutation.dart';
+import 'preferences/preference_reconcile_scheduler.dart';
+import 'preferences/preference_refresh.dart';
 export 'base_shared_preferences_service.dart'
     show Pref, BoolPref, IntPref, DoublePref, StringPref, NullableStringPref, StringListPref, EnumPref, JsonPref;
 import '../models/transcode_quality_preset.dart';
@@ -943,9 +946,18 @@ class SettingsService extends BaseSharedPreferencesService {
       ),
     ]);
     refreshListenables();
-    // Reset bypasses write(), so the KVS mirror is stale — push the cleared
-    // state so removals propagate to other devices (no-op when sync is off).
-    await ICloudSyncService.instance?.pushAllIfEnabled();
+    // A reset carries its own source rather than arriving as a burst of
+    // ordinary local writes: the removals must propagate, but they are one
+    // deliberate act, so they reconcile as a batch.
+    for (final pref in resettable) {
+      await BaseSharedPreferencesService.notifyMutation(
+        PreferenceMutation.remove(pref.key, source: PreferenceSource.reset),
+      );
+    }
+    // Providers that cached a preference reload from the same signal a remote
+    // apply uses; a reset is the local version of the same event.
+    PreferenceRefreshBus.instance.invalidateAll();
+    await ICloudSyncService.instance?.pushAllIfEnabled(trigger: ReconcileTrigger.reset);
   }
 
   /// Push current stored values into every active listenable. Use after bulk

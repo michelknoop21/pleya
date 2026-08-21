@@ -128,15 +128,18 @@ void main() {
       // artwork's own title treatment collided with the app's title and got
       // cropped through. The backdrop wins on every form factor now.
       expect(movie.billboardArtCandidates(), ['/art', '/square']);
-      expect(movie.billboardArt(), const BillboardArt(path: '/art', isBackdrop: true));
+      expect(movie.billboardArt(), const BillboardArt(path: '/art', kind: BillboardArtKind.widescreen));
     });
 
     test('falls back to square art, then the poster, and marks it for blurring', () {
       // No 16:9 frame exists, so the stand-in must not be drawn sharp: it
-      // carries its own title treatment. isBackdrop: false is what tells the
+      // carries its own title treatment. kind: fallback is what tells the
       // billboard to blur it into a wash instead of leaving it empty.
       final square = _movie(backgroundSquarePath: '/square');
-      expect(square.billboardArt(), const BillboardArt(path: '/square', isBackdrop: false));
+      final squareArt = square.billboardArt();
+      expect(squareArt, const BillboardArt(path: '/square', kind: BillboardArtKind.fallback));
+      expect(squareArt?.shouldBlur, isTrue);
+      expect(squareArt?.canRenderSharp, isFalse);
 
       final posterOnly = MediaItem(
         id: 'm2',
@@ -147,30 +150,138 @@ void main() {
         serverId: 's1',
       );
       expect(posterOnly.billboardArtCandidates(), ['/poster']);
-      expect(posterOnly.billboardArt(), const BillboardArt(path: '/poster', isBackdrop: false));
+      final posterArt = posterOnly.billboardArt();
+      expect(posterArt, const BillboardArt(path: '/poster', kind: BillboardArtKind.fallback));
+      expect(posterArt?.shouldBlur, isTrue);
     });
 
     test('a backdrop always wins over square art, so it is never blurred', () {
       final movie = _movie(artPath: '/art', backgroundSquarePath: '/square');
 
-      expect(movie.billboardArt()?.isBackdrop, isTrue);
+      final art = movie.billboardArt();
+      expect(art?.kind, BillboardArtKind.widescreen);
+      expect(art?.canRenderSharp, isTrue);
+      expect(art?.shouldBlur, isFalse);
     });
 
-    test('a narrow box prefers the square backdrop, shown sharp not blurred', () {
+    test('a narrow box now prefers square art over the 16:9 backdrop', () {
       final movie = _movie(artPath: '/art', backgroundSquarePath: '/square');
 
-      // On a phone-portrait box the 16:9 backdrop centre-crops faces off the
-      // sides, so the square art (which carries no baked-in title) stands in as
-      // a real backdrop — sharp, not blurred.
-      expect(movie.billboardArt(containerAspectRatio: 0.78), const BillboardArt(path: '/square', isBackdrop: true));
+      // On a narrow box the sharp layer is a small, cropped-free island (see
+      // `homeHeroArtGeometry`), not a full-bleed fill, so a smaller square
+      // subject reads calmer there than a 16:9 backdrop blown up against a
+      // portrait-ish frame. Square wins when it exists; the backdrop is
+      // still the fallback ahead of the blurred poster/thumb (see the
+      // fallback test below).
+      final narrow = movie.billboardArt(containerAspectRatio: 0.78);
+      expect(narrow, const BillboardArt(path: '/square', kind: BillboardArtKind.square));
+      expect(narrow?.canRenderSharp, isTrue);
+      expect(narrow?.shouldBlur, isFalse);
       // Wide box is unchanged: the 16:9 backdrop still wins.
-      expect(movie.billboardArt(containerAspectRatio: 1.6), const BillboardArt(path: '/art', isBackdrop: true));
+      expect(
+        movie.billboardArt(containerAspectRatio: 1.6),
+        const BillboardArt(path: '/art', kind: BillboardArtKind.widescreen),
+      );
+    });
+
+    test('a narrow box on an episode prefers square art over the show backdrop', () {
+      final episode = MediaItem(
+        id: 'e2',
+        backend: MediaBackend.plex,
+        kind: MediaKind.episode,
+        title: 'Episode',
+        grandparentTitle: 'Show',
+        grandparentArtPath: '/show-art',
+        artPath: '/episode-art',
+        backgroundSquarePath: '/square',
+        serverId: 's1',
+      );
+
+      expect(
+        episode.billboardArt(containerAspectRatio: 0.78),
+        const BillboardArt(path: '/square', kind: BillboardArtKind.square),
+      );
+      // Wide box is unchanged: the show backdrop still wins over the episode's.
+      expect(
+        episode.billboardArt(containerAspectRatio: 1.6),
+        const BillboardArt(path: '/show-art', kind: BillboardArtKind.widescreen),
+      );
+    });
+
+    test('a narrow box on an episode without square art falls back to the show backdrop', () {
+      final episode = MediaItem(
+        id: 'e3',
+        backend: MediaBackend.plex,
+        kind: MediaKind.episode,
+        title: 'Episode',
+        grandparentTitle: 'Show',
+        grandparentArtPath: '/show-art',
+        artPath: '/episode-art',
+        serverId: 's1',
+      );
+
+      expect(
+        episode.billboardArt(containerAspectRatio: 0.78),
+        const BillboardArt(path: '/show-art', kind: BillboardArtKind.widescreen),
+      );
+    });
+
+    test('a narrow box with no backdrop falls back to square art, shown sharp', () {
+      final square = _movie(backgroundSquarePath: '/square');
+
+      // No 16:9 frame exists at all, so square is the only sharp option left
+      // — it still renders sharp, not blurred, because it carries no
+      // baked-in title.
+      final narrow = square.billboardArt(containerAspectRatio: 0.78);
+      expect(narrow, const BillboardArt(path: '/square', kind: BillboardArtKind.square));
+      expect(narrow?.canRenderSharp, isTrue);
+      expect(narrow?.shouldBlur, isFalse);
+    });
+
+    test('a narrow box with only poster art keeps the blurred fallback', () {
+      final posterOnly = MediaItem(
+        id: 'm4',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Movie',
+        thumbPath: '/poster',
+        serverId: 's1',
+      );
+
+      final narrow = posterOnly.billboardArt(containerAspectRatio: 0.78);
+      expect(narrow, const BillboardArt(path: '/poster', kind: BillboardArtKind.fallback));
+      expect(narrow?.shouldBlur, isTrue);
     });
 
     test('a narrow box with no square art keeps the 16:9 backdrop', () {
       final movie = _movie(artPath: '/art');
 
-      expect(movie.billboardArt(containerAspectRatio: 0.78), const BillboardArt(path: '/art', isBackdrop: true));
+      expect(
+        movie.billboardArt(containerAspectRatio: 0.78),
+        const BillboardArt(path: '/art', kind: BillboardArtKind.widescreen),
+      );
+    });
+
+    test('a square source without a container aspect ratio is a fallback, not sharp square', () {
+      // billboardArt() with no containerAspectRatio never takes the narrow
+      // branch, so square-only art without a wide backdrop is a fallback —
+      // it still carries its own title treatment and must be blurred.
+      final square = _movie(backgroundSquarePath: '/square');
+
+      final art = square.billboardArt();
+      expect(art?.kind, BillboardArtKind.fallback);
+      expect(art?.shouldBlur, isTrue);
+    });
+
+    test('billboardArt() without a container ratio is unaffected by the narrow-box source order', () {
+      // Regression pin for `_hasBillboardArt` (discover_screen.dart), which
+      // calls billboardArt() with no ratio to decide whether an item needs an
+      // art-enrichment fetch. That call must keep resolving to the backdrop
+      // exactly as before this change, on both platforms.
+      final movie = _movie(artPath: '/art', backgroundSquarePath: '/square');
+
+      expect(movie.billboardArt(), const BillboardArt(path: '/art', kind: BillboardArtKind.widescreen));
+      expect(movie.billboardArt()?.canRenderSharp, isTrue);
     });
 
     test('returns nothing when the item has no artwork at all', () {
@@ -194,7 +305,19 @@ void main() {
       );
 
       expect(episode.billboardArtCandidates(), ['/show-art', '/episode-art', '/square']);
-      expect(episode.billboardArt(), const BillboardArt(path: '/show-art', isBackdrop: true));
+      expect(episode.billboardArt(), const BillboardArt(path: '/show-art', kind: BillboardArtKind.widescreen));
+    });
+
+    test('two BillboardArts with the same path but different kind are not equal', () {
+      const widescreen = BillboardArt(path: '/art', kind: BillboardArtKind.widescreen);
+      const square = BillboardArt(path: '/art', kind: BillboardArtKind.square);
+      const fallback = BillboardArt(path: '/art', kind: BillboardArtKind.fallback);
+
+      expect(widescreen, isNot(equals(square)));
+      expect(widescreen, isNot(equals(fallback)));
+      expect(widescreen.hashCode, isNot(equals(square.hashCode)));
+      expect(widescreen.toString(), contains('widescreen'));
+      expect(square.toString(), contains('square'));
     });
   });
 

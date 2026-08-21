@@ -60,13 +60,21 @@ class SeerrStatusBadge extends StatelessWidget {
             AppIcon(icon, fill: 1, size: compact ? 12 : 14, color: onBadge),
             SizedBox(width: compact ? 4 : 5),
           ],
-          Text(
-            label,
-            style: TextStyle(
-              color: onBadge,
-              fontSize: compact ? 10.5 : 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.1,
+          // Flexible, not fixed: on a poster card the badge is given the card's
+          // width to live in, and a long label ("Deels beschikbaar") has to
+          // shorten itself rather than run under the clip at the poster edge.
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: onBadge,
+                fontSize: compact ? 10.5 : 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.1,
+              ),
             ),
           ),
         ],

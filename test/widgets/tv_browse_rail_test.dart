@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/diagnostics/select_trace.dart';
+import 'package:pleya/diagnostics/select_trace_recorder.dart';
 import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/focus/dpad_navigator.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
@@ -319,6 +321,123 @@ void main() {
       expect(clipMetrics.posterHeight, closeTo(episodeMetrics.posterHeight, 0.001));
     });
 
+    /// Number of full continue-watching cards that fit in [screenWidth] at
+    /// the default library density with [TvBrowseRailLayout
+    /// .continueWatchingWidePosterScale] applied, plus how much of the next
+    /// card peeks past the last full one — the same math the home screen's
+    /// row uses to decide how many cards a user sees without scrolling.
+    ({int fullCards, double peekFraction}) continueWatchingCardFit(double screenWidth, double screenHeight) {
+      final episode = MediaItem(
+        id: 'episode_1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.episode,
+        title: 'Episode 1',
+        thumbPath: '/episode-thumb',
+      );
+      final hub = MediaHub(
+        id: 'continue_watching',
+        title: 'Continue Watching',
+        type: 'mixed',
+        identifier: '_continue_watching_',
+        items: [episode],
+        size: 1,
+      );
+
+      final scale = TvBrowseRailLayout.scaleForSize(Size(screenWidth, screenHeight));
+      final availableWidth = screenWidth - TvBrowseRailLayout.horizontalInsetForScale(scale);
+      final metrics = TvBrowseRailLayout.metricsForHub(
+        hub: hub,
+        availableWidth: availableWidth,
+        density: LibraryDensity.defaultValue,
+        episodePosterMode: EpisodePosterMode.episodeThumbnail,
+        scale: scale,
+        widePosterScale: TvBrowseRailLayout.continueWatchingWidePosterScale,
+      );
+      expect(metrics.useWideLayout, isTrue);
+
+      final itemExtent = metrics.cardWidth + metrics.itemGap;
+      final usable = availableWidth - metrics.railEdgePadding;
+      final fullCards = (usable / itemExtent).floor();
+      final peekFraction = (usable / itemExtent) - fullCards;
+      return (fullCards: fullCards, peekFraction: peekFraction);
+    }
+
+    test('continue-watching wide poster scale fits at least 5 full cards at 1920x1080, at the default density', () {
+      final fit = continueWatchingCardFit(1920, 1080);
+      expect(fit.fullCards, greaterThanOrEqualTo(5), reason: 'fullCards=${fit.fullCards}');
+    });
+
+    test('continue-watching wide poster scale still fits a usable row with a visible peek at 1280x720', () {
+      final fit = continueWatchingCardFit(1280, 720);
+      expect(fit.fullCards, greaterThanOrEqualTo(4), reason: 'fullCards=${fit.fullCards}');
+      expect(fit.peekFraction, greaterThan(0.05), reason: 'peekFraction=${fit.peekFraction} — should read as a peek');
+    });
+
+    test('the default 1.0 wide poster scale is unaffected — every other TV rail keeps its old card count', () {
+      final episode = MediaItem(
+        id: 'episode_1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.episode,
+        title: 'Episode 1',
+        thumbPath: '/episode-thumb',
+      );
+      final hub = MediaHub(id: 'show_episodes', title: 'Episodes', type: 'episode', items: [episode], size: 1);
+      final scale = TvBrowseRailLayout.scaleForSize(const Size(1920, 1080));
+      final availableWidth = 1920 - TvBrowseRailLayout.horizontalInsetForScale(scale);
+
+      final defaultMetrics = TvBrowseRailLayout.metricsForHub(
+        hub: hub,
+        availableWidth: availableWidth,
+        density: LibraryDensity.defaultValue,
+        episodePosterMode: EpisodePosterMode.episodeThumbnail,
+        scale: scale,
+      );
+      final explicitDefaultMetrics = TvBrowseRailLayout.metricsForHub(
+        hub: hub,
+        availableWidth: availableWidth,
+        density: LibraryDensity.defaultValue,
+        episodePosterMode: EpisodePosterMode.episodeThumbnail,
+        scale: scale,
+        widePosterScale: 1.0,
+      );
+
+      expect(defaultMetrics.cardWidth, explicitDefaultMetrics.cardWidth);
+    });
+
+    test('firstHubPeekHeight honours widePosterScale — the continue-watching row peeks less tall', () {
+      final episode = MediaItem(
+        id: 'episode_1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.episode,
+        title: 'Episode 1',
+        thumbPath: '/episode-thumb',
+      );
+      final hub = MediaHub(
+        id: 'continue_watching',
+        title: 'Continue Watching',
+        type: 'mixed',
+        identifier: '_continue_watching_',
+        items: [episode],
+        size: 1,
+      );
+
+      final defaultPeek = TvBrowseRailLayout.firstHubPeekHeight(
+        hub: hub,
+        railSize: const Size(1920, 1080),
+        density: LibraryDensity.defaultValue,
+        episodePosterMode: EpisodePosterMode.episodeThumbnail,
+      );
+      final scaledPeek = TvBrowseRailLayout.firstHubPeekHeight(
+        hub: hub,
+        railSize: const Size(1920, 1080),
+        density: LibraryDensity.defaultValue,
+        episodePosterMode: EpisodePosterMode.episodeThumbnail,
+        widePosterScale: TvBrowseRailLayout.continueWatchingWidePosterScale,
+      );
+
+      expect(scaledPeek, lessThan(defaultPeek));
+    });
+
     test('multi-hub estimate reserves next hub peek height', () {
       final movie = MediaItem(id: 'movie_1', backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Movie');
       final movieHub = MediaHub(id: 'movies', title: 'Movies', type: 'movie', items: [movie], size: 1);
@@ -376,6 +495,54 @@ void main() {
 
     final headerText = tester.widget<Text>(find.text('Season 1'));
     expect(headerText.style?.color, theme.colorScheme.onSurface);
+  });
+
+  testWidgets('widePosterScaleForHub actually renders 5+ full cards through the real production tree', (tester) async {
+    // Pure math (see the TvBrowseRailLayout group above) proves the geometry;
+    // this proves the callback actually reaches metricsForHub through
+    // TvBrowseRail's real widget tree, not just in isolation.
+    final serverManager = MultiServerManager();
+    final items = List.generate(
+      6,
+      (i) => MediaItem(id: 'episode_$i', backend: MediaBackend.plex, kind: MediaKind.episode, title: 'Episode $i'),
+    );
+    final hub = MediaHub(
+      id: 'continue_watching',
+      title: 'Continue Watching',
+      type: 'mixed',
+      identifier: '_continue_watching_',
+      items: items,
+      size: items.length,
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<MultiServerProvider>(
+        create: (_) => MultiServerProvider(serverManager, DataAggregationService(serverManager)),
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: Scaffold(
+            body: SizedBox(
+              width: 1920,
+              height: 1080,
+              child: TvBrowseRail(
+                hubs: [hub],
+                iconForHub: (_, _) => Icons.tv_rounded,
+                widePosterScaleForHub: (h) =>
+                    h.isContinueWatchingHub ? TvBrowseRailLayout.continueWatchingWidePosterScale : 1.0,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    final cardRects = tester.widgetList(find.byType(MediaCard)).map((w) => tester.getRect(find.byWidget(w))).toList();
+    final fullyVisible = cardRects.where((r) => r.left >= -0.5 && r.right <= 1920.5).length;
+
+    expect(fullyVisible, greaterThanOrEqualTo(5), reason: 'rects=$cardRects');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('two hubs sharing a backend id across servers do not collide on card GlobalKeys', (tester) async {
@@ -2086,6 +2253,117 @@ void main() {
 
     expect(focusedItemIds, isEmpty);
     expect(activeHubIds, isEmpty);
+  });
+
+  group('select trace', () {
+    // This rail keeps its cursor on the index, so a rebuild that reorders or
+    // drops items leaves the user aimed at a different card than the one they
+    // were looking at. Nothing here corrects that; it records it, so a device
+    // log can say whether it happened before the wrong title opened.
+    late List<String> lines;
+
+    setUp(() {
+      lines = [];
+      SelectTraceRecorder.debugSetInstance(
+        SelectTraceRecorder(enabled: true, emitInfo: lines.add, emitWarning: lines.add),
+      );
+    });
+
+    tearDown(() => SelectTraceRecorder.debugSetInstance(null));
+
+    MediaItem movie(String id) =>
+        MediaItem(id: id, backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Title $id', serverId: 's1');
+
+    MediaHub hubOf(List<MediaItem> items) =>
+        MediaHub(id: 'recently_added', title: 'Recently added', type: 'movie', items: items, size: items.length);
+
+    Widget buildRail(MediaHub hub, {Future<bool> Function(MediaHub, MediaItem)? onActivateItem}) {
+      final serverManager = MultiServerManager();
+      return ChangeNotifierProvider<MultiServerProvider>(
+        create: (_) => MultiServerProvider(serverManager, DataAggregationService(serverManager)),
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: Scaffold(
+            body: SizedBox(
+              width: 1280,
+              height: 720,
+              child: TvBrowseRail(
+                key: const ValueKey('trace_rail'),
+                hubs: [hub],
+                iconForHub: (_, _) => Icons.tv_rounded,
+                onActivateItem: onActivateItem,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('reports a refresh that puts another card under the cursor', (tester) async {
+      final joey = movie('41215');
+      Future<bool> handled(MediaHub _, MediaItem _) => Future.value(true);
+      await tester.pumpWidget(buildRail(hubOf([joey, movie('2'), movie('3')]), onActivateItem: handled));
+      await tester.pump();
+
+      // Focus first: only the rail the user is actually in reports, so an
+      // unfocused row cannot pin its refresh on somebody else's press.
+      final railState = tester.state<TvBrowseRailState>(find.byType(TvBrowseRail));
+      railState.requestFocus();
+      await tester.pump();
+
+      // Same length, same items, different order: the reported failure. A
+      // length check sees nothing here.
+      await tester.pumpWidget(buildRail(hubOf([movie('2'), movie('3'), joey]), onActivateItem: handled));
+      await tester.pump();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+
+      expect(lines.single, contains('focused_target_changed disposition=replaced'));
+      expect(lines.single, contains('was=s1:41215'));
+      expect(lines.single, contains('occupant=s1:2'));
+    });
+
+    testWidgets('reports a refresh that drops the focused item altogether', (tester) async {
+      Future<bool> handled(MediaHub _, MediaItem _) => Future.value(true);
+      await tester.pumpWidget(buildRail(hubOf([movie('41215'), movie('2')]), onActivateItem: handled));
+      await tester.pump();
+
+      final railState = tester.state<TvBrowseRailState>(find.byType(TvBrowseRail));
+      railState.requestFocus();
+      await tester.pump();
+
+      await tester.pumpWidget(buildRail(hubOf([movie('9082'), movie('2')]), onActivateItem: handled));
+      await tester.pump();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+
+      expect(lines.single, contains('focused_target_changed disposition=removed'));
+    });
+
+    testWidgets('an untouched row activates what it selected, on one line', (tester) async {
+      final hub = hubOf([movie('41215'), movie('2')]);
+      await tester.pumpWidget(buildRail(hub, onActivateItem: (_, _) => Future.value(true)));
+      await tester.pump();
+
+      final railState = tester.state<TvBrowseRailState>(find.byType(TvBrowseRail));
+      railState.requestFocus();
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+
+      expect(lines.single, contains('selected=s1:41215'));
+      expect(lines.single, contains('activated=s1:41215'));
+      expect(lines.single, contains('outcome=${SelectTraceOutcome.handledByHost.name}'));
+      expect(lines.single, isNot(contains('ABNORMAL')));
+    });
   });
 }
 

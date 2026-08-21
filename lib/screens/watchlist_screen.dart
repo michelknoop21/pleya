@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
-import '../focus/focusable_button.dart';
+import '../widgets/focusable_filter_chip.dart';
 import '../i18n/strings.g.dart';
 import '../media/media_kind.dart';
 import '../media/watchlist_entry.dart';
@@ -285,7 +285,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   }
 }
 
-class _FilterBar extends StatelessWidget {
+class _FilterBar extends StatefulWidget {
   const _FilterBar({
     required this.filter,
     required this.showAvailable,
@@ -301,12 +301,58 @@ class _FilterBar extends StatelessWidget {
   final VoidCallback onSortPressed;
 
   @override
+  State<_FilterBar> createState() => _FilterBarState();
+}
+
+class _FilterBarState extends State<_FilterBar> {
+  final ScrollController _controller = ScrollController();
+  final Map<WatchlistFilter, GlobalKey> _chipKeys = {for (final f in WatchlistFilter.values) f: GlobalKey()};
+
+  /// Matches the grid's own inset, so the first chip lines up with the first
+  /// poster instead of starting somewhere of its own.
+  static const double _inset = 8;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _revealSelected());
+  }
+
+  @override
+  void didUpdateWidget(_FilterBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filter != widget.filter) _revealSelected();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// Scrolls the active filter fully into view. Without this the selected chip
+  /// could sit off-screen on a phone, and coming back to the tab showed a strip
+  /// that started halfway through a word.
+  void _revealSelected() {
+    if (!mounted || !_controller.hasClients) return;
+    final context = _chipKeys[widget.filter]?.currentContext;
+    if (context == null) return;
+    Scrollable.ensureVisible(
+      context,
+      alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+      alignment: 0.5,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final options = <(WatchlistFilter, String)>[
       (WatchlistFilter.all, t.watchlist.filterAll),
       (WatchlistFilter.movies, t.watchlist.filterMovies),
       (WatchlistFilter.shows, t.watchlist.filterShows),
-      if (showAvailable) (WatchlistFilter.available, t.watchlist.filterAvailable),
+      if (widget.showAvailable) (WatchlistFilter.available, t.watchlist.filterAvailable),
     ];
 
     return Padding(
@@ -322,56 +368,44 @@ class _FilterBar extends StatelessWidget {
           // first row of posters down on exactly the screens with the least
           // room for that.
           Expanded(
-            // The chips run under the sort button when they overflow, and a
-            // chip cut clean in half reads as a rendering fault rather than as
-            // "there is more here". The fade says the row continues.
-            child: ShaderMask(
-              shaderCallback: (bounds) => const LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [Colors.black, Colors.black, Colors.transparent],
-                stops: [0, 0.88, 1],
-              ).createShader(bounds),
-              blendMode: BlendMode.dstIn,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    for (final (value, label) in options)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(label),
-                          selected: filter == value,
-                          onSelected: (_) => onChanged(value),
-                        ),
+            child: SingleChildScrollView(
+              controller: _controller,
+              scrollDirection: Axis.horizontal,
+              // Inset on the scroll view, not around it. Around the scrollport
+              // it sits outside the scrollable area, so the first chip ended up
+              // hard against the edge the moment the strip was dragged. There
+              // used to be a fade over the last 12% here as well, which erased
+              // the tail of the final chip and read as a clipped word rather
+              // than as "there is more".
+              padding: const EdgeInsets.symmetric(horizontal: _inset),
+              child: Row(
+                children: [
+                  for (final (value, label) in options)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FocusableFilterChip(
+                        key: _chipKeys[value],
+                        label: label,
+                        selected: widget.filter == value,
+                        onPressed: () => widget.onChanged(value),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(right: 8),
-            // The current order rides along as the tooltip instead of in the
-            // label. A button whose text changes with the state would shift
-            // the chips beside it every time the user sorts, and the tooltip
-            // is also what a screen reader announces.
-            child: Tooltip(
-              message: watchlistSortLabel(sort),
-              // Wrapped the way the rest of the app wraps its buttons, so on TV
-              // the control gets a focus ring instead of only the hairline a
-              // bare TextButton draws.
-              child: FocusableButton(
-                onPressed: onSortPressed,
-                child: TextButton.icon(
-                  onPressed: onSortPressed,
-                  icon: const Icon(Symbols.sort_rounded, size: 18),
-                  label: Text(t.libraries.sort),
-                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                ),
-              ),
+            padding: const EdgeInsets.only(right: _inset),
+            // The order is in the label, the way the libraries header shows it.
+            // It used to ride along as a tooltip, and tooltips never open on an
+            // iOS touch, so on a phone there was no way to see what the list
+            // was sorted by.
+            child: FocusableFilterChip(
+              icon: Symbols.sort_rounded,
+              label: t.libraries.sort,
+              value: watchlistSortLabel(widget.sort),
+              variant: FilterChipVariant.text,
+              onPressed: widget.onSortPressed,
             ),
           ),
         ],

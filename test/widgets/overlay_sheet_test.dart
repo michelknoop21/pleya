@@ -1,7 +1,10 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
+import 'package:pleya/widgets/overlay_sheet_geometry.dart';
 
 void main() {
   testWidgets('scrollable sheet does not attach to parent primary controller', (tester) async {
@@ -178,5 +181,146 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('SHEET'), findsNothing, reason: 'sheet closed via escaped-focus fallback');
+  });
+
+  group('presentation placement', () {
+    const viewport = Size(1440, 900);
+
+    /// Rect of the sheet surface itself (the Material inside the sheet's
+    /// layout delegate), which is what the user sees land in the wrong corner.
+    Rect sheetRect(WidgetTester tester) {
+      return tester.getRect(
+        find.descendant(of: find.byType(CustomSingleChildLayout), matching: find.byType(Material)).first,
+      );
+    }
+
+    Future<void> pumpHost(
+      WidgetTester tester, {
+      required OverlaySheetPresentation presentation,
+      int itemCount = 1,
+    }) async {
+      tester.view.physicalSize = viewport;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.macOS),
+          home: OverlaySheetHost(
+            // Keyed by presentation so re-pumping in one test builds a fresh
+            // host instead of inheriting the previous one's open sheet.
+            key: ValueKey(presentation),
+            child: Scaffold(
+              body: Builder(
+                builder: (context) => Center(
+                  child: ElevatedButton(
+                    onPressed: () => OverlaySheetController.of(context).show<void>(
+                      presentation: presentation,
+                      builder: (_) => ListView.builder(
+                        itemCount: itemCount,
+                        itemBuilder: (_, i) => SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: Center(child: Text('Item $i')),
+                        ),
+                      ),
+                    ),
+                    child: const Text('Open'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    /// Parks the mouse near the right edge, the way clicking a header action in
+    /// the top-right corner does.
+    Future<void> moveMouseToRightEdge(WidgetTester tester) async {
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(() => mouse.removePointer());
+      await mouse.addPointer(location: const Offset(1400, 60));
+      await mouse.moveTo(const Offset(1400, 60));
+      await tester.pump();
+    }
+
+    testWidgets('panel opens centred and fully on screen despite the mouse being far right', (tester) async {
+      await pumpHost(tester, presentation: OverlaySheetPresentation.panel);
+      await moveMouseToRightEdge(tester);
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      final rect = sheetRect(tester);
+      expect(rect.center.dx, moreOrLessEquals(viewport.width / 2, epsilon: 1));
+      expect(rect.left, greaterThanOrEqualTo(24));
+      expect(rect.right, lessThanOrEqualTo(viewport.width - 24));
+      expect(rect.top, greaterThanOrEqualTo(0));
+      expect(rect.bottom, lessThanOrEqualTo(viewport.height));
+    });
+
+    testWidgets('sheet still anchors to the mouse, so context menus keep opening at the cursor', (tester) async {
+      await pumpHost(tester, presentation: OverlaySheetPresentation.sheet);
+      await moveMouseToRightEdge(tester);
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      final rect = sheetRect(tester);
+      expect(
+        rect.center.dx,
+        greaterThan(viewport.width / 2 + 100),
+        reason: 'pointer-anchored: pushed towards the cursor, not centred',
+      );
+      expect(rect.right, lessThanOrEqualTo(viewport.width - 16));
+    });
+
+    testWidgets('a long list scrolls inside the panel instead of overflowing', (tester) async {
+      await pumpHost(tester, presentation: OverlaySheetPresentation.panel, itemCount: 80);
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      final rect = sheetRect(tester);
+      expect(rect.height, lessThanOrEqualTo(viewport.height * 0.8));
+      expect(find.text('Item 0'), findsOneWidget);
+
+      await tester.drag(find.text('Item 1'), const Offset(0, -300));
+      await tester.pumpAndSettle();
+      expect(find.text('Item 0'), findsNothing, reason: 'the list scrolled inside the panel');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('escape closes a panel', (tester) async {
+      await pumpHost(tester, presentation: OverlaySheetPresentation.panel);
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      expect(find.text('Item 0'), findsOneWidget);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Item 0'), findsNothing);
+    });
+
+    testWidgets('on TV a panel lands exactly where a sheet lands', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+
+      await pumpHost(tester, presentation: OverlaySheetPresentation.sheet);
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      final sheet = sheetRect(tester);
+
+      await pumpHost(tester, presentation: OverlaySheetPresentation.panel);
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      expect(sheetRect(tester), sheet);
+    });
   });
 }

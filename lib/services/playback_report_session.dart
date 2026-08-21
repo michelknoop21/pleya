@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../media/media_server_client.dart';
 import '../media/playback_report_metadata.dart';
+import 'playback_write_authority.dart';
 
 enum _PlaybackReportState { idle, starting, started, stopping, stopFailed, stopped }
 
@@ -58,12 +59,31 @@ class PlaybackReportSnapshot {
 /// fire reports concurrently, but state changes are recorded synchronously
 /// before any async work such as settings lookup, track mapping, or HTTP calls.
 class PlaybackReportSession {
-  PlaybackReportSession({required this.client, required this.itemId, this.playSessionId, this.playMethod});
+  PlaybackReportSession({
+    required this.client,
+    required this.itemId,
+    this.playSessionId,
+    this.playMethod,
+    this.authority,
+  });
 
   final MediaServerClient client;
   final String itemId;
   final String? playSessionId;
   final String? playMethod;
+
+  /// Local observation of whether this player may still write watch state.
+  ///
+  /// This is the one place all three signals are serialized, so it is the one
+  /// place the check belongs. Null means no observation source is wired up, in
+  /// which case every report goes out as before.
+  final ObservedPlaybackAuthority? authority;
+
+  /// A revoked authority blocks every signal, `stopped` included. Dropping the
+  /// stop report is the part that matters: it carries a position from before
+  /// the other device took over, and delivering it late is exactly the rollback
+  /// this guards against.
+  bool get _mayReport => authority?.isHeld ?? true;
 
   _PlaybackReportState _state = _PlaybackReportState.idle;
   PlaybackReportSnapshot? _startSnapshot;
@@ -97,6 +117,7 @@ class PlaybackReportSession {
       _state == _PlaybackReportState.stopped;
 
   Future<bool> report(PlaybackReportSnapshot snapshot) {
+    if (!_mayReport) return Future.value(false);
     return snapshot.isStopped ? _reportStopped(snapshot) : _reportProgress(snapshot);
   }
 
@@ -238,6 +259,9 @@ class PlaybackReportSession {
 
   Future<void> _sendStarted(PlaybackReportSnapshot snapshot) async {
     final selection = await snapshot.resolveStreamSelection();
+    // Re-checked after the await: the authority can be revoked while the
+    // stream selection resolves, and the HTTP call must not outlive it.
+    if (!_mayReport) return;
     await client.reportPlaybackStarted(
       itemId: itemId,
       position: snapshot.position,
@@ -252,7 +276,7 @@ class PlaybackReportSession {
 
   Future<bool> _sendProgress(PlaybackReportSnapshot snapshot) async {
     final selection = await snapshot.resolveStreamSelection();
-    if (_state != _PlaybackReportState.started) return false;
+    if (_state != _PlaybackReportState.started || !_mayReport) return false;
     await client.reportPlaybackProgress(
       itemId: itemId,
       position: snapshot.position,
@@ -269,6 +293,7 @@ class PlaybackReportSession {
 
   Future<void> _sendStopped(PlaybackReportSnapshot snapshot) async {
     final selection = await snapshot.resolveStreamSelection();
+    if (!_mayReport) return;
     await client.reportPlaybackStopped(
       itemId: itemId,
       position: snapshot.position,

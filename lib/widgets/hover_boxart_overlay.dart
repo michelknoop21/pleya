@@ -50,6 +50,19 @@ class _HoverBoxartOverlayState extends State<HoverBoxartOverlay> {
     super.dispose();
   }
 
+  /// Take the preview down right now, and cancel a pending show or remove.
+  ///
+  /// This is the `close` handed to [overlayBuilder], and a quick action has to
+  /// call it before it opens anything. The preview lives in a hand-inserted
+  /// [OverlayEntry], and [OverlayState.rearrange] — which [Navigator] runs on
+  /// every push — puts entries it does not manage itself back on top of all
+  /// route entries. A menu opened while the preview is up therefore renders
+  /// *behind* it, and the preview swallows every click on the area it covers.
+  void dismiss() {
+    _timer?.cancel();
+    _removeOverlay();
+  }
+
   void _scheduleShow() {
     if (!widget.enabled || _entry != null) return;
     _timer?.cancel();
@@ -99,7 +112,7 @@ class _HoverBoxartOverlayState extends State<HoverBoxartOverlay> {
               onExit: (_) => _scheduleRemove(),
               child: Material(
                 color: Colors.transparent,
-                child: _GrowIn(child: widget.overlayBuilder(context, _removeOverlay)),
+                child: _GrowIn(child: widget.overlayBuilder(context, dismiss)),
               ),
             ),
           ),

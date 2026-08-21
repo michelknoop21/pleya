@@ -85,11 +85,37 @@ void main() {
   });
 
   test('Hidden Gems needs well-rated, old, unseen items', () {
+    // Enough on-taste freshness to fill Top Picks, plus older catalogue depth
+    // that scores below it. A pool smaller than one row cannot fill two rows
+    // with different titles, which is the whole point of the exclusion below.
+    final pool = [
+      for (var i = 0; i < 24; i++) _movie(id: 'fresh$i', genres: const ['Sci-Fi'], rating: 8, addedAtDaysAgo: 2),
+      for (var i = 0; i < 6; i++) _movie(id: 'gem$i', genres: const ['Western'], rating: 8.5, addedAtDaysAgo: 200),
+    ];
+    final rows = buildPersonalizedRows(_warmSciFiTaste(), pool, titles: _titles, nowMs: _nowMs);
+    expect(rows.map((r) => r.id), contains('home.hiddengems'));
+    final gems = rows.firstWhere((r) => r.id == 'home.hiddengems');
+    expect(gems.items.map((i) => i.id), everyElement(startsWith('gem')));
+  });
+
+  test('Hidden Gems never repeats a title already in Top Picks', () {
+    final pool = [
+      for (var i = 0; i < 24; i++) _movie(id: 'fresh$i', genres: const ['Sci-Fi'], rating: 8, addedAtDaysAgo: 2),
+      for (var i = 0; i < 6; i++) _movie(id: 'gem$i', genres: const ['Western'], rating: 8.5, addedAtDaysAgo: 200),
+    ];
+    final rows = buildPersonalizedRows(_warmSciFiTaste(), pool, titles: _titles, nowMs: _nowMs);
+    final top = rows.firstWhere((r) => r.id == 'home.toppicks').items.map((i) => i.globalKey).toSet();
+    final gems = rows.firstWhere((r) => r.id == 'home.hiddengems').items.map((i) => i.globalKey).toSet();
+    expect(top.intersection(gems), isEmpty);
+  });
+
+  test('an old well-rated title that is itself a top pick does not also become a gem', () {
+    // Six titles, all of them top picks. One row, not the same six twice.
     final pool = [
       for (var i = 0; i < 6; i++) _movie(id: 'gem$i', genres: const ['Sci-Fi'], rating: 8.5, addedAtDaysAgo: 200),
     ];
     final rows = buildPersonalizedRows(_warmSciFiTaste(), pool, titles: _titles, nowMs: _nowMs);
-    expect(rows.map((r) => r.id), contains('home.hiddengems'));
+    expect(rows.any((r) => r.id == 'home.hiddengems'), isFalse);
   });
 
   test('fresh low-rated items do not form Hidden Gems', () {

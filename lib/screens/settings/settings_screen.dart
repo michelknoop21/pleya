@@ -23,6 +23,8 @@ import '../../services/donation_service.dart';
 import '../../services/download_storage_service.dart';
 import '../../services/file_picker_service.dart';
 import '../../services/icloud_sync_service.dart';
+import 'icloud_sync_status_line.dart';
+import '../../services/preferences/preference_sync_coordinator.dart';
 import '../../services/saf_storage_service.dart';
 import '../../services/settings_export_service.dart';
 import '../../providers/seerr_provider.dart';
@@ -918,7 +920,8 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
 
   Widget _buildIcloudSyncTile() {
     final unavailable = _icloudAvailable == false;
-    return SettingSwitchTile(
+    final status = ICloudSyncService.instance?.status;
+    final tile = SettingSwitchTile(
       focusNode: _focusTracker.get(_kIcloudSync),
       pref: settings.SettingsService.icloudSyncEnabled,
       icon: Symbols.cloud_sync_rounded,
@@ -926,6 +929,20 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       subtitle: unavailable ? t.settings.icloudSyncUnavailable : t.settings.icloudSyncDescription,
       enabled: !unavailable,
       onAfterWrite: _handleIcloudSyncToggle,
+    );
+    if (status == null) return tile;
+
+    // One line under the toggle. It carries the mixed-version boundary too:
+    // after the v2 cutover this client neither writes the old format nor merges
+    // it, so an out-of-date Apple device keeps working but stops exchanging
+    // settings. Saying so is the difference between a known limitation and a
+    // mystery.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        tile,
+        ICloudSyncStatusLine(status: status),
+      ],
     );
   }
 
@@ -1186,6 +1203,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         if (_keyboardService != null) _keyboardService!.refreshFromStorage(),
       ]);
       unawaited(librariesProvider.refresh());
+      // Everything else that caches a preference: home layout and per-library
+      // view state reload from the same signal a remote apply uses.
+      PreferenceRefreshBus.instance.invalidateAll();
 
       // Import wrote straight to prefs, bypassing write() and its KVS mirror —
       // push the imported values so they reach the user's other devices.

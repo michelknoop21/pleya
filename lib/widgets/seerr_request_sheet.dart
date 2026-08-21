@@ -10,6 +10,7 @@ import '../models/seerr/seerr_media.dart';
 import '../providers/seerr_provider.dart';
 import '../services/seerr/seerr_client.dart';
 import '../services/seerr/seerr_constants.dart';
+import '../utils/app_logger.dart';
 import 'app_icon.dart';
 import 'bottom_sheet_page_scaffold.dart';
 import 'focusable_list_tile.dart';
@@ -54,6 +55,15 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
   List<SeerrServiceServer> _servers = const [];
   int? _serverId;
 
+  /// Quality profiles and root folders for [_serverId]. Only the server list is
+  /// available up front; these come from a per-server call, so they are loaded
+  /// when a server is picked and cleared while that call is in flight.
+  List<SeerrQualityProfile> _profiles = const [];
+  List<SeerrRootFolder> _rootFolders = const [];
+  bool _loadingServerDetail = false;
+  int? _profileId;
+  String? _rootFolder;
+
   bool get _isTv => widget.media.mediaType == 'tv';
 
   SeerrClient? get _client => context.read<SeerrProvider>().client;
@@ -87,8 +97,13 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       if (userId != null) _quota = await client.getQuota(userId);
       if (provider.isAdmin) {
         _servers = _isTv ? await client.getSonarrServers() : await client.getRadarrServers();
+        // Open on the server Overseerr would have used, so the profile list has
+        // something to show without the user first having to pick a server.
+        final preferred = _servers.where((s) => s.is4k == _is4k && s.isDefault).firstOrNull ?? _servers.firstOrNull;
+        if (preferred != null) _serverId = preferred.id;
       }
       if (mounted) setState(() => _loading = false);
+      if (_serverId != null) unawaited(_loadServerDetail(_serverId!));
     } on SeerrException catch (e) {
       if (mounted) {
         setState(() {
@@ -150,6 +165,8 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         seasons: _isTv ? (_selectedSeasons.toList()..sort()) : null,
         is4k: _is4k,
         serverId: _serverId,
+        profileId: _profileId,
+        rootFolder: _rootFolder,
       );
       if (mounted) OverlaySheetController.closeAdaptive(context, true);
     } on SeerrException catch (e) {
@@ -299,16 +316,98 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         trailing: AppIcon(_advancedOpen ? Symbols.expand_less_rounded : Symbols.expand_more_rounded, fill: 1),
         onTap: () => setState(() => _advancedOpen = !_advancedOpen),
       ),
-      if (_advancedOpen)
+      if (_advancedOpen) ...[
+        _advancedHeader(theme, t.seerr.server),
         for (final server in _servers)
           FocusableListTile(
             title: Text(server.name),
             leading: const AppIcon(Symbols.dns_rounded, fill: 1),
             selected: _serverId == server.id,
             trailing: _serverId == server.id ? const AppIcon(Symbols.check_rounded, fill: 1) : null,
-            onTap: () => setState(() => _serverId = server.id),
+            onTap: () => _selectServer(server),
           ),
+        if (_loadingServerDetail)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+          ),
+        if (!_loadingServerDetail && _profiles.isNotEmpty) ...[
+          _advancedHeader(theme, t.seerr.qualityProfile),
+          for (final profile in _profiles)
+            FocusableListTile(
+              title: Text(profile.name),
+              leading: const AppIcon(Symbols.high_quality_rounded, fill: 1),
+              selected: _profileId == profile.id,
+              trailing: _profileId == profile.id ? const AppIcon(Symbols.check_rounded, fill: 1) : null,
+              onTap: () => setState(() => _profileId = profile.id),
+            ),
+        ],
+        if (!_loadingServerDetail && _rootFolders.isNotEmpty) ...[
+          _advancedHeader(theme, t.seerr.rootFolder),
+          for (final folder in _rootFolders)
+            FocusableListTile(
+              title: Text(folder.path),
+              leading: const AppIcon(Symbols.folder_rounded, fill: 1),
+              selected: _rootFolder == folder.path,
+              trailing: _rootFolder == folder.path ? const AppIcon(Symbols.check_rounded, fill: 1) : null,
+              onTap: () => setState(() => _rootFolder = folder.path),
+            ),
+        ],
+      ],
     ];
+  }
+
+  Widget _advancedHeader(ThemeData theme, String label) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Text(
+        label,
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  void _selectServer(SeerrServiceServer server) {
+    if (_serverId == server.id) return;
+    setState(() {
+      _serverId = server.id;
+      // The old server's profiles say nothing about the new one.
+      _profiles = const [];
+      _rootFolders = const [];
+      _profileId = null;
+      _rootFolder = null;
+    });
+    unawaited(_loadServerDetail(server.id));
+  }
+
+  /// Loads one server's profiles and root folders, seeded on that server's own
+  /// defaults. Failure is quiet on purpose: these are optional refinements, and
+  /// losing them must not block the request itself.
+  Future<void> _loadServerDetail(int serverId) async {
+    final client = _client;
+    if (client == null) return;
+    setState(() => _loadingServerDetail = true);
+    try {
+      final detail = _isTv
+          ? await client.getSonarrServerDetail(serverId)
+          : await client.getRadarrServerDetail(serverId);
+      if (!mounted || _serverId != serverId) return;
+      final server = _servers.where((s) => s.id == serverId).firstOrNull;
+      setState(() {
+        _profiles = detail.profiles;
+        _rootFolders = detail.rootFolders;
+        _profileId = server?.activeProfileId;
+        _rootFolder = server?.activeDirectory;
+        _loadingServerDetail = false;
+      });
+    } catch (e) {
+      if (!mounted || _serverId != serverId) return;
+      appLogger.d('seerr: could not load server $serverId options: $e');
+      setState(() => _loadingServerDetail = false);
+    }
   }
 
   void _toggleSeason(int n) {

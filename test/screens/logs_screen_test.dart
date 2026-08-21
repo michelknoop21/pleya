@@ -14,6 +14,8 @@ import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/utils/log_upload.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 
+import '../test_helpers/notice_layer.dart';
+
 /// Swallows console output. Entries still land in [MemoryLogOutput] because
 /// recording happens in the printer, not the output — so the buffer fills
 /// without 400 lines of noise in every test run.
@@ -95,6 +97,9 @@ void main() {
   late Logger previousLogger;
 
   setUp(() {
+    // Error notices are persistent by design, so one left standing by the
+    // previous test blocks the next one from being shown at all.
+    resetNotices();
     MemoryLogOutput.clearLogs();
     previousLogger = appLogger;
     appLogger = Logger(printer: MemoryAwareLogPrinter(SimplePrinter()), output: _SilentOutput(), level: Level.info);
@@ -139,7 +144,12 @@ void main() {
     addTearDown(client.close);
 
     appLogger.i('something worth reporting');
-    await tester.pumpWidget(MaterialApp(home: LogsScreen(uploadClient: client)));
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: noticeLayer,
+        home: LogsScreen(uploadClient: client),
+      ),
+    );
     await tester.pump();
 
     for (var i = 0; i < taps; i++) {

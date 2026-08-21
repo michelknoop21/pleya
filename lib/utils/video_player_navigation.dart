@@ -113,6 +113,26 @@ Future<void> saveMediaVersionIndexFor(MediaItem metadata, int index) async {
   });
 }
 
+/// Whether this launch must refetch the item to get a current resume position.
+///
+/// The old rule refetched only when the item carried no view offset at all,
+/// which fixed list surfaces that omit per-user data (`/library/recentlyAdded`)
+/// but left the worse case untouched: a screen holding a *stale* offset skipped
+/// the refetch and resumed from it, so a position another device had already
+/// moved past won. Any playable item now gets a fresh read while online, and
+/// [PlaybackResumeResolver] decides what to do with the result.
+///
+/// Only movies and episodes qualify: they are the kinds that resume.
+bool shouldRefetchForFreshResume({
+  required bool resolveWatchState,
+  required bool isOffline,
+  required bool hasClient,
+  required MediaKind kind,
+}) {
+  if (!resolveWatchState || isOffline || !hasClient) return false;
+  return kind == MediaKind.movie || kind == MediaKind.episode;
+}
+
 /// Navigates to the VideoPlayerScreen with instant transitions to prevent white flash.
 ///
 /// This utility function provides a consistent way to navigate to the video player
@@ -163,18 +183,25 @@ Future<bool?> navigateToVideoPlayer(
       ? manager.getClient(serverId)
       : null;
 
-  // List surfaces like the discover hero come from endpoints that carry no
-  // per-user viewOffset (/library/recentlyAdded) — playing such an item raw
-  // would silently restart from 0. Refetch once so resume always works, same
-  // as navigateToWatchTogetherPlayback does. Fetch failure → play what we have.
-  if (resolveWatchState &&
-      !isOffline &&
-      mediaClient != null &&
-      metadata.viewOffsetMs == null &&
-      (metadata.kind == MediaKind.movie || metadata.kind == MediaKind.episode)) {
+  // Refetch so the resume position is the server's current one, not whatever
+  // the list or detail snapshot happened to carry. `fetchWithCacheFallback` is
+  // network-first, so this is a real read; it only falls back to the cache when
+  // the request fails, which is the behaviour we want anyway.
+  // Fetch failure → play what we have, flagged as not fresh.
+  var resumeProgressIsFresh = false;
+  if (shouldRefetchForFreshResume(
+    resolveWatchState: resolveWatchState,
+    isOffline: isOffline,
+    hasClient: mediaClient != null,
+    kind: metadata.kind,
+  )) {
     try {
-      metadata = await mediaClient.fetchItem(metadata.id) ?? metadata;
+      final fetched = await mediaClient!.fetchItem(metadata.id);
       if (!context.mounted) return null;
+      if (fetched != null) {
+        metadata = fetched;
+        resumeProgressIsFresh = true;
+      }
       metadata = context.readFreshWatchState(metadata);
     } catch (_) {}
   }
@@ -264,6 +291,7 @@ Future<bool?> navigateToVideoPlayer(
         selectedMediaSourceId: selectedMediaSourceId,
         selectedQualityPreset: selectedQualityPreset,
         isOffline: isOffline,
+        resumeProgressIsFresh: resumeProgressIsFresh,
       ),
       transitionDuration: Duration.zero,
       reverseTransitionDuration: Duration.zero,

@@ -52,6 +52,7 @@ import '../models/plex/plex_video_playback_data.dart';
 import '../models/transcode_quality_preset.dart';
 import '../utils/failover_http_client.dart';
 import '../utils/app_logger.dart';
+import '../utils/error_message_utils.dart';
 import '../utils/media_server_retry.dart';
 import '../utils/media_server_timeouts.dart';
 import '../utils/log_redaction_manager.dart';
@@ -3465,7 +3466,7 @@ class PlexClient
       );
     } catch (e) {
       if (e is PlaybackException) rethrow;
-      throw PlaybackException(t.messages.errorLoading(error: e.toString()));
+      throw PlaybackException(friendlyError(e));
     }
   }
 

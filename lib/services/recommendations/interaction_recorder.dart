@@ -9,6 +9,7 @@ import '../../media/media_kind.dart';
 import '../../media/media_role.dart';
 import '../../media/media_server_client.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/global_key_utils.dart';
 import '../../utils/watch_state_notifier.dart';
 
 /// Records watch interactions into the local [MediaInteractions] store so the
@@ -99,17 +100,22 @@ class InteractionRecorder {
     var item = await client.fetchItem(event.itemId);
     if (item == null) return null;
 
-    // Episodes rarely carry show-level genres/cast/crew; roll up to the series
-    // so taste reflects the show, not the single episode. One extra fetch max.
-    final episodeMetaSparse =
-        (item.genres?.isEmpty ?? true) && (item.roles?.isEmpty ?? true) && (item.directors?.isEmpty ?? true);
+    // Every episode records its series key, because the scorer groups evidence
+    // by it: twenty episodes of one show must saturate, not stack. Whether the
+    // *show* is also fetched is a separate question, and only worth a round
+    // trip when the episode itself carries no show-level genres/cast/crew.
     String? seriesKey;
-    if (item.kind == MediaKind.episode && episodeMetaSparse) {
+    if (item.kind == MediaKind.episode) {
       final grandparentId = item.grandparentId;
       if (grandparentId != null) {
-        seriesKey = serverIdOrNull(item.serverId) != null ? '${item.serverId}:$grandparentId' : grandparentId;
-        final show = await client.fetchItem(grandparentId);
-        if (show != null) item = show;
+        final serverId = serverIdOrNull(item.serverId);
+        seriesKey = serverId != null ? buildGlobalKey(serverId, grandparentId) : grandparentId;
+        final episodeMetaSparse =
+            (item.genres?.isEmpty ?? true) && (item.roles?.isEmpty ?? true) && (item.directors?.isEmpty ?? true);
+        if (episodeMetaSparse) {
+          final show = await client.fetchItem(grandparentId);
+          if (show != null) item = show;
+        }
       }
     }
 

@@ -151,6 +151,15 @@ def spaceship_app
   end
 end
 
+# Eén build opzoeken, zonder te wachten. [wait_for_build] doet dit in een lus;
+# een leescontrole heeft die lus niet nodig.
+def find_build(platform, build_number)
+  spaceship_app.get_builds(
+    filter: { "preReleaseVersion.platform" => ASC_PLATFORM.fetch(platform), version: build_number.to_s },
+    limit: 1,
+  ).first
+end
+
 # Wacht tot de zojuist geüploade build door processing is. Uploaden gebeurt met
 # skip_waiting_for_build_processing, dus vlak na de upload bestaat de build in de
 # API nog niet of staat hij op PROCESSING; koppelen kan pas bij VALID.
@@ -198,15 +207,83 @@ def release_notes_for(build_number)
   body.strip.empty? ? nil : body.strip
 end
 
-# Markdown naar de platte tekst die het "What to Test"-veld toont. TestFlight
-# rendert geen opmaak, dus sterretjes en hekjes worden daar letterlijk zichtbaar.
+# Markdown naar de platte tekst die het "What to Test"-veld toont.
+#
+# TestFlight rendert geen opmaak en breekt zelf af op de schermbreedte. Het
+# bestand is op ~95 tekens met de hand afgebroken en zet twee spaties voor elke
+# vervolgregel, dus letterlijk doorgeven leverde een blok waarin elke tweede
+# regel inspringt: onleesbaar op een telefoon. Alinea's worden daarom eerst weer
+# aan elkaar geplakt en pas dan doorgegeven.
+#
+# Wat er staat verschilt ook bewust van de site. Een releasenote op pleya.app mag
+# uitleggen waaróm iets stuk was; het "What to Test"-veld wordt op een telefoon
+# gescand vlak voor iemand gaat testen. New, Improved en Fixed worden daarom
+# ingekort tot de kop van elk punt, de vetgedrukte zin die er al staat, met de
+# volledige tekst een tik verderop op de site. Secties die een tester juist wél
+# helemaal nodig heeft blijven staan.
+SECTIONS_KEPT_IN_FULL = ["worth checking", "notes", "known"].freeze
+
+# Losse opmaak die in platte tekst alleen maar in de weg staat.
+def strip_inline_markdown(text)
+  text
+    .gsub(/\*\*(.+?)\*\*/, '\\1')
+    .gsub(/\[([^\]]+)\]\([^)]*\)/, '\\1')
+    .gsub(/`([^`]+)`/, '\\1')
+end
+
+# De kop van een punt: de vetgedrukte openingszin als die er is, anders de eerste
+# zin. Punten zonder allebei zijn al kort genoeg en gaan heel mee.
+def bullet_headline(text)
+  bold = text[/\A\*\*(.+?)\*\*/, 1]
+  return strip_inline_markdown(bold) if bold
+  first = text[/\A(.+?[.!?])(?:\s|\z)/m, 1]
+  strip_inline_markdown(first || text)
+end
+
+# Plakt een blok met de hand afgebroken regels terug tot hele alinea's en punten.
+def unwrap_block(block)
+  items = []
+  block.split("\n").map(&:strip).reject(&:empty?).each do |line|
+    if line.start_with?("- ")
+      items << line[2..]
+    elsif items.empty?
+      items << line
+    else
+      items[-1] = "#{items[-1]} #{line}"
+    end
+  end
+  items
+end
+
 def testflight_notes(markdown)
-  markdown
-    .gsub(/^\#+\s*/, "")           # "### New" wordt "New"
-    .gsub(/\*\*(.+?)\*\*/, '\\1')  # vetdruk eruit
-    .gsub(/^- /, "\u2022 ")         # streepjes naar bolletjes, leest rustiger
-    .gsub(/\n{3,}/, "\n\n")
-    .strip
+  out = []
+  keep_full = true
+  markdown.split(/\n[ \t]*\n/).each do |block|
+    lines = block.split("\n").map(&:strip).reject(&:empty?)
+    next if lines.empty?
+
+    if lines.first.start_with?("#")
+      heading = lines.first.gsub(/^\#+\s*/, "")
+      keep_full = SECTIONS_KEPT_IN_FULL.any? { |k| heading.downcase.include?(k) }
+      out << heading.upcase
+      # Wat eronder in hetzelfde blok staat hoort bij de sectie. Zonder dit
+      # verdween een sectie waarvan de kop niet door een lege regel gevolgd
+      # wordt geruisloos: gen_release_notes.sh zet die regel altijd, maar
+      # docs/RELEASES.md wordt met de hand bijgewerkt.
+      rest = lines[1..]
+      next if rest.nil? || rest.empty?
+      block = rest.join("\n")
+      lines = rest
+    end
+
+    bulleted = block.lstrip.start_with?("- ")
+    unwrap_block(block).each do |item|
+      text = keep_full || !bulleted ? strip_inline_markdown(item) : bullet_headline(item)
+      out << (bulleted ? "\u2022 #{text}" : text)
+    end
+  end
+  out << "Full notes: pleya.app/releases"
+  out.join("\n\n").strip
 end
 
 # Zet de releasenotes als "What to Test" op een build die al door processing is.
@@ -261,6 +338,64 @@ def verify_build_notes(build, expected)
   true
 end
 
+# Zet het "What's New in This Version"-veld van de App Store-versie zelf.
+#
+# Ander veld dan set_build_notes hierboven: dat vult de BetaBuildLocalization
+# die een TestFlight-tester ziet, dit vult de AppStoreVersionLocalization die
+# een gebruiker bij een echte update ziet. Beide lezen dezelfde bron in
+# docs/RELEASES.md via dezelfde testflight_notes-opmaak — een App Store-update
+# wordt op een telefoon net zo gescand als een TestFlight-build.
+def set_version_whats_new(version, notes)
+  text = testflight_notes(notes)
+  if text.length > 4000
+    UI.important("App Store What's New is #{text.length} tekens; App Store neemt er 4000")
+    text = "#{text[0, 3997]}..."
+  end
+  localizations = version.get_app_store_version_localizations
+  if localizations.empty?
+    UI.important("Geen App Store-versielocalisatie gevonden; What's New niet gezet")
+    return false
+  end
+  localizations.each do |loc|
+    Spaceship::ConnectAPI.patch_app_store_version_localization(
+      app_store_version_localization_id: loc.id, attributes: { whatsNew: text }
+    )
+  end
+  verify_version_whats_new(version, text)
+end
+
+# Leestcontrole analoog aan verify_build_notes, maar over de App Store-versie.
+def verify_version_whats_new(version, expected)
+  want = expected.gsub("\r\n", "\n")
+  found = version.get_app_store_version_localizations
+  UI.user_error!("Geen App Store-versielocalisatie na het schrijven") if found.empty?
+  mismatched = found.reject { |loc| loc.whats_new.to_s.gsub("\r\n", "\n") == want }
+  unless mismatched.empty?
+    locales = mismatched.map { |loc| "#{loc.locale} (#{loc.whats_new.to_s.length} tekens)" }
+    UI.user_error!("App Store What's New wijkt af van wat er gestuurd is: #{locales.join(', ')}")
+  end
+  UI.message("Teruggelezen: #{found.length} locale(s), #{want.length} tekens, gelijk aan de bron")
+  true
+end
+
+# Analoog aan apply_release_notes, maar voor de App Store-versie in plaats van
+# de TestFlight-build. Ook hier geen fout bij ontbrekende notities: vlak na
+# een upload heeft docs/RELEASES.md ze meestal nog niet.
+def apply_app_store_whats_new(platform, build_number, version)
+  notes = release_notes_for(build_number)
+  if notes.nil?
+    UI.important("#{platform}: geen releasenotes voor build #{build_number} in docs/RELEASES.md")
+    UI.important("Na /update-docs bijwerken met: fastlane whats_new build:#{build_number}")
+    return false
+  end
+  set_version_whats_new(version, notes)
+  UI.success("#{platform}: App Store What's New op #{version.version_string} gezet")
+  true
+rescue => e
+  UI.important("#{platform}: App Store What's New zetten faalde: #{e.message}")
+  false
+end
+
 # Koppelt build_number aan de bewerkbare App Store-versie van dit platform.
 # Geeft true bij succes, false als er niets te koppelen viel.
 def attach_build_to_version(platform, build_number, timeout: ENV.fetch("ASC_ATTACH_TIMEOUT", "1800").to_i)
@@ -284,6 +419,7 @@ def attach_build_to_version(platform, build_number, timeout: ENV.fetch("ASC_ATTA
   version.select_build(build_id: build.id)
   UI.success("#{platform} #{version.version_string}: build #{current&.version || 'geen'} → #{build_number} gekoppeld")
   apply_release_notes(platform, build_number, build)
+  apply_app_store_whats_new(platform, build_number, version)
   true
 end
 
@@ -546,6 +682,28 @@ lane :attach_builds do |options|
   UI.user_error!("Koppelen mislukt of overgeslagen voor: #{failures.join(', ')}") unless failures.empty?
 end
 
+desc "Tonen wat er nu als \"What to Test\" op een build staat: fastlane notes_show build:227"
+# Leest terug wat er op dit moment als "What to Test" op een build staat, zonder
+# iets te schrijven. Bestaat omdat de TestFlight-app het veld per build cachet:
+# een tester die de oude tekst ziet bewijst niets over wat App Store Connect
+# bewaart, en zonder deze lane is dat verschil alleen te raden.
+lane :notes_show do |options|
+  build_number = options[:build] || local_build_number
+  UI.user_error!("Geen buildnummer") unless build_number
+  platforms = options[:platform] ? [options[:platform]] : ASC_PLATFORM.keys
+  platforms.each do |platform|
+    build = find_build(platform, build_number)
+    next UI.important("#{platform}: build #{build_number} niet gevonden") if build.nil?
+    locs = build.get_beta_build_localizations
+    next UI.important("#{platform}: geen beta build localization") if locs.empty?
+    locs.each do |loc|
+      text = loc.whats_new.to_s
+      UI.message("#{platform} #{loc.locale}: #{text.length} tekens")
+      text.lines.first(6).each { |l| UI.message("  | #{l.chomp}") }
+    end
+  end
+end
+
 desc "Releasenotes uit docs/RELEASES.md op een TestFlight-build zetten: fastlane notes build:227"
 lane :notes do |options|
   build_number = options[:build] || local_build_number
@@ -571,6 +729,50 @@ lane :notes do |options|
     failures << platform
   end
   UI.user_error!("Notities zetten mislukt voor: #{failures.join(', ')}") unless failures.empty?
+end
+
+desc "Tonen wat er nu als App Store \"What's New\" op de bewerkbare versie staat: fastlane whats_new_show [platform:ios]"
+lane :whats_new_show do |options|
+  platforms = options[:platform] ? [options[:platform]] : ASC_PLATFORM.keys
+  platforms.each do |platform|
+    asc_platform = ASC_PLATFORM.fetch(platform)
+    version = spaceship_app.get_edit_app_store_version(platform: asc_platform)
+    next UI.important("#{platform}: geen bewerkbare App Store-versie") unless version
+    locs = version.get_app_store_version_localizations
+    next UI.important("#{platform}: geen App Store-versielocalisatie") if locs.empty?
+    locs.each do |loc|
+      text = loc.whats_new.to_s
+      UI.message("#{platform} #{version.version_string} #{loc.locale}: #{text.length} tekens")
+      text.lines.first(6).each { |l| UI.message("  | #{l.chomp}") }
+    end
+  end
+end
+
+desc "Releasenotes uit docs/RELEASES.md als App Store \"What's New\" zetten: fastlane whats_new build:227"
+lane :whats_new do |options|
+  build_number = options[:build] || local_build_number
+  UI.user_error!("Geen buildnummer") unless build_number
+  preview = required_notes_for(build_number)
+  UI.message("What's New voor build #{build_number}, #{preview.length} tekens:")
+  preview.lines.first(4).each { |l| UI.message("  #{l.chomp}") }
+
+  platforms = options[:platform] ? [options[:platform]] : ASC_PLATFORM.keys
+  failures = []
+  platforms.each do |platform|
+    asc_platform = ASC_PLATFORM.fetch(platform)
+    version = spaceship_app.get_edit_app_store_version(platform: asc_platform)
+    if version.nil?
+      UI.important("#{platform}: geen bewerkbare App Store-versie")
+      failures << platform
+      next
+    end
+    set_version_whats_new(version, release_notes_for(build_number))
+    UI.success("#{platform} #{version.version_string}: What's New gezet")
+  rescue => e
+    UI.error("#{platform}: #{e.message}")
+    failures << platform
+  end
+  UI.user_error!("What's New zetten mislukt voor: #{failures.join(', ')}") unless failures.empty?
 end
 
 desc "Alle platforms → TestFlight; gaat door als één platform faalt"

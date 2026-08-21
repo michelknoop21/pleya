@@ -1,71 +1,34 @@
 import 'package:flutter/material.dart';
 
-import '../navigation/profile_navigation_scope.dart';
+import '../widgets/notice/notice.dart';
+import '../widgets/notice/notice_controller.dart';
 import 'layout_constants.dart';
-import 'platform_detector.dart';
 
-/// Global key for the root ScaffoldMessenger, allowing snackbars to survive navigation.
+/// Global key for the root ScaffoldMessenger. A handful of call sites
+/// elsewhere (dialogs.dart, add_local_folder_screen.dart, ...) still use it
+/// directly for a native [SnackBar]; unrelated to the [Notice] system below.
 final rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
-/// Types of snackbars available in the app
+/// Types of snackbars available in the app.
 enum SnackBarType { info, success, error }
 
-const double _kDesktopSnackBarMaxWidth = 480.0;
-const double _kDesktopSnackBarHorizontalInset = 16.0;
-const EdgeInsets _kDismissibleSnackBarPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 14);
-
-/// Utility functions for showing snackbars throughout the application
-
-SnackBar _buildSnackBar(
-  BuildContext context,
-  ScaffoldMessengerState messenger, {
-  required Widget content,
-  required Color? backgroundColor,
-  required Duration duration,
-  bool? dismissible,
-}) {
-  final isDesktop = PlatformDetector.isDesktopOS();
-  final tapToDismiss = dismissible ?? isDesktop;
-  final body = tapToDismiss
-      ? MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => messenger.hideCurrentSnackBar(reason: SnackBarClosedReason.dismiss),
-            child: Padding(padding: _kDismissibleSnackBarPadding, child: content),
-          ),
-        )
-      : content;
-
-  return SnackBar(
-    content: body,
-    backgroundColor: backgroundColor,
-    duration: duration,
-    behavior: isDesktop ? SnackBarBehavior.floating : null,
-    width: isDesktop ? _desktopSnackBarWidth(context) : null,
-    padding: tapToDismiss ? EdgeInsets.zero : null,
-  );
-}
-
-double _desktopSnackBarWidth(BuildContext context) {
-  final windowWidth = MediaQuery.maybeSizeOf(context)?.width;
-  if (windowWidth == null) return _kDesktopSnackBarMaxWidth;
-
-  final insetPadding = SnackBarTheme.of(context).insetPadding;
-  final horizontalInset = insetPadding == null
-      ? _kDesktopSnackBarHorizontalInset * 2
-      : insetPadding.left + insetPadding.right;
-  final availableWidth = windowWidth - horizontalInset;
-  final width = availableWidth > 0 ? availableWidth : windowWidth;
-  return width < _kDesktopSnackBarMaxWidth ? width : _kDesktopSnackBarMaxWidth;
-}
-
-(Color?, Duration) _snackBarStyle(SnackBarType type) => switch (type) {
-  SnackBarType.info => (null, AppDurations.snackBarDefault),
-  SnackBarType.success => (Colors.green, AppDurations.snackBarDefault),
-  SnackBarType.error => (Colors.red, AppDurations.snackBarLong),
+NoticeLevel _levelFor(SnackBarType type) => switch (type) {
+  SnackBarType.info => NoticeLevel.info,
+  SnackBarType.success => NoticeLevel.success,
+  SnackBarType.error => NoticeLevel.error,
 };
 
+/// Compatibility facade over [NoticeController]/`NoticeHost`. Every one of
+/// this file's existing call sites keeps working unchanged — they render as
+/// notice cards now instead of raw [SnackBar]s, with AA-contrast colors, tv
+/// scaling, and a close button (plus swipe-to-dismiss on mobile) they didn't
+/// have before.
+///
+/// [context] and [dismissible] are accepted for source compatibility but are
+/// no longer load-bearing: a notice is shown globally (`NoticeController`
+/// needs no [BuildContext]) and is always dismissible. [duration], when
+/// passed, overrides the level's default duration — most callers should
+/// leave it null and let [type] decide.
 void showSnackBar(
   BuildContext context,
   String message, {
@@ -73,20 +36,7 @@ void showSnackBar(
   Duration? duration,
   bool? dismissible,
 }) {
-  if (!context.mounted) return;
-
-  final (backgroundColor, defaultDuration) = _snackBarStyle(type);
-  final messenger = ScaffoldMessenger.of(context);
-  messenger.showSnackBar(
-    _buildSnackBar(
-      context,
-      messenger,
-      content: Text(message),
-      backgroundColor: backgroundColor,
-      duration: duration ?? defaultDuration,
-      dismissible: dismissible,
-    ),
-  );
+  noticeController.show(Notice(level: _levelFor(type), title: message, groupKey: message, durationOverride: duration));
 }
 
 void showAppSnackBar(BuildContext context, String message, {Duration? duration}) {
@@ -97,32 +47,15 @@ void showErrorSnackBar(BuildContext context, String message) {
   showSnackBar(context, message, type: SnackBarType.error);
 }
 
-/// Shows an error snackbar using the root ScaffoldMessenger (survives navigation).
-void showGlobalErrorSnackBar(String message) {
-  final messenger = rootScaffoldMessengerKey.currentState;
-  if (messenger == null) return;
-  messenger.showSnackBar(
-    _buildSnackBar(
-      messenger.context,
-      messenger,
-      content: Text(message),
-      backgroundColor: Colors.red,
-      duration: AppDurations.snackBarLong,
-    ),
-  );
-}
-
-/// Shows an info snackbar through the main-screen messenger when available
-/// (so it floats above the mobile NavigationBar), falling back to the root
-/// messenger when the main screen is not mounted.
+/// Shows an info notice. Used to route through the main-screen
+/// `ScaffoldMessenger` so it would float above the mobile `NavigationBar`;
+/// `NoticeHost` already renders above it for every screen, so that detour is
+/// gone. Repeated calls with the same [message] within the dedupe window
+/// (`NoticeController.dedupeWindow`) refresh the existing card's timer
+/// instead of stacking a duplicate — the same "press again to confirm"
+/// behavior the old `removeCurrentSnackBar` + re-show got by hand.
 void showMainSnackBar(String message, {Duration duration = AppDurations.snackBarDefault}) {
-  final messenger = profileNavigationRegistry.mainScaffoldMessenger ?? rootScaffoldMessengerKey.currentState;
-  if (messenger == null) return;
-  messenger
-    ..removeCurrentSnackBar()
-    ..showSnackBar(
-      _buildSnackBar(messenger.context, messenger, content: Text(message), backgroundColor: null, duration: duration),
-    );
+  noticeController.show(Notice(level: NoticeLevel.info, title: message, groupKey: message, durationOverride: duration));
 }
 
 void showSuccessSnackBar(BuildContext context, String message) {

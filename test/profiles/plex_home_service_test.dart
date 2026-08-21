@@ -219,6 +219,102 @@ void main() {
       expect(home!.adminUser?.uuid, 'cached-admin');
     });
 
+    group('whenHomeUsersKnown', () {
+      // The background import needs to know which Plex account a profile is
+      // before it can ask Tautulli for that account's history. `start()` alone
+      // does not answer that on a first run: it reads the cache, which is
+      // empty, and kicks the fetch off unawaited.
+      test('waits for the first fetch instead of returning on an empty cache', () async {
+        final fetch = Completer<List<PlexHomeUser>>();
+        service = PlexHomeService(
+          connections: connections,
+          profileConnections: profileConnections,
+          storage: storage,
+          plexHomeUserFetcher: (_) => fetch.future,
+        );
+        await connections.upsert(_account('plex.wait1'));
+
+        var ready = false;
+        unawaited(service.whenHomeUsersKnown().then((_) => ready = true));
+        await pumpEventQueue();
+        expect(ready, isFalse, reason: 'nothing is known yet, so nothing may proceed on it');
+
+        fetch.complete([_user('admin-uuid', admin: true)]);
+        await pumpEventQueue();
+        expect(ready, isTrue);
+        expect(service.current, isNotEmpty);
+      });
+
+      test('returns at once when the cache already answered', () async {
+        service = PlexHomeService(
+          connections: connections,
+          profileConnections: profileConnections,
+          storage: storage,
+          plexHomeUserFetcher: (_) async => [_user('uuid-1')],
+        );
+        final acct = _account('plex.wait2');
+        await connections.upsert(acct);
+        await service.refresh(acct);
+
+        await service.whenHomeUsersKnown().timeout(const Duration(seconds: 1));
+      });
+
+      test('an account that genuinely has no Home users still counts as known', () async {
+        service = PlexHomeService(
+          connections: connections,
+          profileConnections: profileConnections,
+          storage: storage,
+          plexHomeUserFetcher: (_) async => const <PlexHomeUser>[],
+        );
+        await connections.upsert(_account('plex.wait3'));
+
+        // Asked and answered is an answer. Waiting for a *non-empty* list here
+        // would wait for something that is never coming.
+        await service.whenHomeUsersKnown(timeout: const Duration(seconds: 5));
+        expect(service.current.keys, contains('plex.wait3'));
+      });
+
+      test('a fetch that never answers is bounded rather than a permanent wait', () async {
+        service = PlexHomeService(
+          connections: connections,
+          profileConnections: profileConnections,
+          storage: storage,
+          plexHomeUserFetcher: (_) => Completer<List<PlexHomeUser>>().future,
+        );
+        await connections.upsert(_account('plex.wait4'));
+
+        // Would hang without the deadline, and the subscription behind it would
+        // outlive every caller.
+        await service.whenHomeUsersKnown(timeout: const Duration(milliseconds: 50));
+      });
+
+      test('waits for every Plex account, not just the first to answer', () async {
+        // A household with two Plex accounts: the active profile can live under
+        // either, so returning as soon as one answered resolves nothing for the
+        // other and refuses the import exactly as a cold start would.
+        final second = Completer<List<PlexHomeUser>>();
+        service = PlexHomeService(
+          connections: connections,
+          profileConnections: profileConnections,
+          storage: storage,
+          plexHomeUserFetcher: (token) =>
+              token == 'tok-plex.wait6' ? second.future : Future.value([_user('first-uuid', admin: true)]),
+        );
+        await connections.upsert(_account('plex.wait5'));
+        await connections.upsert(_account('plex.wait6'));
+
+        var ready = false;
+        unawaited(service.whenHomeUsersKnown(timeout: const Duration(seconds: 5)).then((_) => ready = true));
+        await pumpEventQueue();
+        expect(ready, isFalse, reason: 'one account answered, the other has not been asked yet');
+
+        second.complete([_user('second-uuid', admin: true)]);
+        await pumpEventQueue();
+        expect(ready, isTrue);
+        expect(service.current.keys, containsAll(['plex.wait5', 'plex.wait6']));
+      });
+    });
+
     test('clearAll wipes both memory and disk caches', () async {
       service = PlexHomeService(
         connections: connections,

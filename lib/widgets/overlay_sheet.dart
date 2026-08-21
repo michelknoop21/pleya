@@ -8,6 +8,7 @@ import '../focus/dpad_navigator.dart';
 import '../focus/input_mode_tracker.dart';
 import '../focus/key_event_utils.dart';
 import '../utils/platform_detector.dart';
+import 'overlay_sheet_geometry.dart';
 
 /// Entry in the sheet page stack.
 class _OverlaySheetEntry {
@@ -62,6 +63,7 @@ class OverlaySheetController {
     FocusNode? initialFocusNode,
     Alignment alignment = Alignment.bottomCenter,
     bool showDragHandle = false,
+    OverlaySheetPresentation presentation = OverlaySheetPresentation.sheet,
   }) {
     return _state._show<T>(
       builder: builder,
@@ -71,6 +73,7 @@ class OverlaySheetController {
       initialFocusNode: initialFocusNode,
       alignment: alignment,
       showDragHandle: showDragHandle,
+      presentation: presentation,
     );
   }
 
@@ -108,6 +111,7 @@ class OverlaySheetController {
     FocusNode? initialFocusNode,
     Alignment alignment = Alignment.bottomCenter,
     bool showDragHandle = false,
+    OverlaySheetPresentation presentation = OverlaySheetPresentation.sheet,
   }) {
     final controller = maybeOf(context);
     if (controller != null) {
@@ -119,21 +123,18 @@ class OverlaySheetController {
         initialFocusNode: initialFocusNode,
         alignment: alignment,
         showDragHandle: showDragHandle,
+        presentation: presentation,
       );
     }
     // Apply the same default constraints the overlay system uses so sheets
     // shown without an OverlaySheetHost still have sensible sizing on desktop.
-    final effectiveConstraints =
-        constraints ??
-        () {
-          final size = MediaQuery.sizeOf(context);
-          final isDesktop = size.width > 600;
-          final isTV = PlatformDetector.isTV();
-          return BoxConstraints(
-            maxWidth: isTV ? 400 : (isDesktop ? 700 : double.infinity),
-            maxHeight: isTV ? 400 : (isDesktop ? 400 : size.height * 0.75),
-          );
-        }();
+    final effectiveConstraints = resolveOverlaySheetGeometry(
+      presentation: presentation,
+      viewport: MediaQuery.sizeOf(context),
+      alignment: alignment,
+      isTV: PlatformDetector.isTV(),
+      explicitConstraints: constraints,
+    ).constraints;
     // The route fallback has no _autoFocus equivalent — honor the caller's
     // initialFocusNode here too, or the sheet opens with nothing focused and
     // the D-pad is dead on hostless screens.
@@ -252,6 +253,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
   BoxConstraints? _constraints;
   Color? _explicitBackgroundColor;
   Alignment _alignment = Alignment.bottomCenter;
+  OverlaySheetPresentation _presentation = OverlaySheetPresentation.sheet;
   Offset? _lastPointerPosition;
   double? _sheetHorizontalAnchor;
 
@@ -301,6 +303,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     FocusNode? initialFocusNode,
     Alignment alignment = Alignment.bottomCenter,
     bool showDragHandle = false,
+    OverlaySheetPresentation presentation = OverlaySheetPresentation.sheet,
   }) {
     // If already open, close first (instant)
     final wasOpen = _isOpen;
@@ -316,7 +319,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
 
     final completer = Completer<T?>();
     final entry = _OverlaySheetEntry(builder: builder, completer: completer, initialFocusNode: initialFocusNode);
-    final horizontalAnchor = _resolveSheetHorizontalAnchor(alignment);
+    final horizontalAnchor = _resolveSheetHorizontalAnchor(alignment, presentation, constraints);
 
     setState(() {
       _pageStack.add(entry);
@@ -327,6 +330,7 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
       _constraints = constraints;
       _explicitBackgroundColor = backgroundColor;
       _alignment = alignment;
+      _presentation = presentation;
       _sheetHorizontalAnchor = horizontalAnchor;
       _dragOffset = 0;
       _isDragging = false;
@@ -403,10 +407,27 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     _lastPointerPosition = event.localPosition;
   }
 
-  double? _resolveSheetHorizontalAnchor(Alignment alignment) {
+  /// The x the sheet should centre on, or null to fall back to [alignment].
+  ///
+  /// A panel never anchors to the pointer: that is the whole point of the
+  /// presentation, and it is what put Filters/Sort in the bottom-right corner
+  /// of a wide window.
+  double? _resolveSheetHorizontalAnchor(
+    Alignment alignment,
+    OverlaySheetPresentation presentation,
+    BoxConstraints? constraints,
+  ) {
     if (!PlatformDetector.isDesktopOS() || PlatformDetector.isTV()) return null;
     if (InputModeTracker.isKeyboardMode(context)) return null;
     if (alignment.x != 0 || alignment.y <= 0) return null;
+    final geometry = resolveOverlaySheetGeometry(
+      presentation: presentation,
+      viewport: MediaQuery.sizeOf(context),
+      alignment: alignment,
+      isTV: PlatformDetector.isTV(),
+      explicitConstraints: constraints,
+    );
+    if (!geometry.allowPointerAnchor) return null;
     return _lastPointerPosition?.dx;
   }
 
@@ -619,27 +640,20 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
   }
 
   Widget _buildSheet(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final isDesktop = size.width > 600;
-    final isTop = _alignment.y < 0;
-    final isTV = PlatformDetector.isTV();
-    final showHandle = _showDragHandle && !isTV && !isTop;
+    // Resolved every build, not once at show time: a window resize has to move
+    // the panel with it, and the geometry is a pure function of the viewport.
+    final geometry = resolveOverlaySheetGeometry(
+      presentation: _presentation,
+      viewport: MediaQuery.sizeOf(context),
+      alignment: _alignment,
+      isTV: PlatformDetector.isTV(),
+      explicitConstraints: _constraints,
+    );
+    final isTop = geometry.alignment.y < 0;
+    final showHandle = _showDragHandle && geometry.allowDragHandle;
 
-    final effectiveConstraints =
-        _constraints ??
-        BoxConstraints(
-          maxWidth: isTV ? 400 : (isDesktop ? 700 : double.infinity),
-          maxHeight: isTV ? 400 : (isDesktop ? 400 : size.height * 0.75),
-        );
-
-    // Slide direction depends on alignment: bottom sheets slide up, top sheets slide down.
-    // Use a pixel transform instead of FractionalTranslation so mouse-tracker
-    // hit testing never depends on the sheet child's just-invalidated layout.
-    final slideDirection = isTop ? -1.0 : 1.0;
-    final slideDistance = size.height;
-    final borderRadius = isTop
-        ? const BorderRadius.vertical(bottom: Radius.circular(16))
-        : const BorderRadius.vertical(top: Radius.circular(16));
+    final effectiveConstraints = geometry.constraints;
+    final borderRadius = geometry.borderRadius;
 
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -717,15 +731,19 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
         onKeyEvent: _handleKeyEvent,
         child: CustomSingleChildLayout(
           delegate: _OverlaySheetLayoutDelegate(
-            alignment: _alignment,
-            horizontalAnchor: _sheetHorizontalAnchor,
-            edgePadding: isDesktop ? _OverlaySheetLayoutDelegate.desktopEdgePadding : 0,
+            alignment: geometry.alignment,
+            horizontalAnchor: geometry.allowPointerAnchor ? _sheetHorizontalAnchor : null,
+            edgePadding: geometry.edgePadding,
           ),
           child: AnimatedBuilder(
             animation: _slideCurve,
             builder: (context, child) {
-              final dy = slideDirection * slideDistance * (1 - _slideCurve.value);
-              return Transform.translate(offset: Offset(0, dy), child: child);
+              // Pixel transform rather than FractionalTranslation so
+              // mouse-tracker hit testing never depends on the sheet child's
+              // just-invalidated layout.
+              final travel = geometry.enterOffset * (1 - _slideCurve.value);
+              final moved = Transform.translate(offset: travel, child: child);
+              return geometry.fadeIn ? FadeTransition(opacity: _slideCurve, child: moved) : moved;
             },
             child: Transform.translate(
               offset: Offset(0, _dragOffset.clamp(0, double.infinity)),
@@ -739,9 +757,11 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
                   color: _explicitBackgroundColor ?? colorScheme.surface,
                   borderRadius: borderRadius,
                   clipBehavior: Clip.antiAlias,
+                  // A floating panel touches no edge, so it needs no notch or
+                  // home-indicator padding; an edge-hugging sheet does.
                   child: SafeArea(
-                    top: isTop,
-                    bottom: !isTop,
+                    top: !geometry.isCentered && isTop,
+                    bottom: !geometry.isCentered && !isTop,
                     left: false,
                     right: false,
                     child: ConstrainedBox(constraints: effectiveConstraints, child: sheetContent),
@@ -789,8 +809,6 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
 }
 
 class _OverlaySheetLayoutDelegate extends SingleChildLayoutDelegate {
-  static const desktopEdgePadding = 16.0;
-
   final Alignment alignment;
   final double? horizontalAnchor;
   final double edgePadding;

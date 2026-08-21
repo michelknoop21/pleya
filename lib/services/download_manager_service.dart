@@ -28,6 +28,7 @@ import '../services/offline_mode_source.dart';
 import '../services/download_storage_service.dart';
 import '../i18n/strings.g.dart';
 import '../utils/app_logger.dart';
+import '../utils/error_message_utils.dart';
 import '../utils/codec_utils.dart';
 import '../utils/global_key_utils.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -1457,8 +1458,7 @@ class DownloadManagerService {
         _pendingDownloadContext.remove(globalKey);
         return true;
       }
-      appLogger.e('Failed to prepare download for $globalKey', error: e);
-      await _transitionStatus(globalKey, DownloadStatus.failed, errorMessage: e.toString());
+      await _transitionStatus(globalKey, DownloadStatus.failed, errorMessage: friendlyError(e));
       await _database.removeFromQueue(globalKey);
       _pendingDownloadContext.remove(globalKey);
       return false;

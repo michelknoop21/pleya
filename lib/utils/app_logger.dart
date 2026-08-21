@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:math';
 
 import 'package:logger/logger.dart';
 
@@ -144,6 +145,24 @@ Logger appLogger = Logger(
   filter: _productionFilter,
   level: Level.debug,
 );
+
+final _noticeCodeRandom = Random();
+
+/// A 4-char uppercase hex code (`[0-9A-F]{4}`), for tagging a log line so a
+/// [Notice] on screen can point back to it. Not a unique id — 65,536
+/// possible values is plenty for "find the recent log line this came from",
+/// not for collision-free identification across the log's whole history.
+String noticeCode() => _noticeCodeRandom.nextInt(0x10000).toRadixString(16).padLeft(4, '0').toUpperCase();
+
+/// Logs [error] at error level, tagged with a fresh [noticeCode], and
+/// returns that code. The code lives in [LogEntry.message] (no schema
+/// change needed) so it's visible and searchable in the logs screen and
+/// travels with a log upload.
+String logNoticeError(String context, Object error, {StackTrace? stackTrace}) {
+  final code = noticeCode();
+  appLogger.e('[$code] $context', error: error, stackTrace: stackTrace);
+  return code;
+}
 
 /// Update the logger's level dynamically based on debug setting
 /// Recreates the logger instance to ensure it works in release mode

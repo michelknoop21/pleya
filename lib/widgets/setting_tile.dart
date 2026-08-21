@@ -70,6 +70,55 @@ class SettingSwitchTile extends StatelessWidget {
   }
 }
 
+/// A switch row that looks exactly like [SettingSwitchTile] but is driven by an
+/// explicit value instead of a [Pref].
+///
+/// For state that deliberately does not live in preferences: the Tautulli
+/// history policy belongs to the server's integration record, next to the
+/// credential it authorises, so it survives a disconnect and cannot be flipped
+/// by hand-editing a plain preference key.
+class SettingSwitchRow extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final bool enabled;
+  final FocusNode? focusNode;
+
+  const SettingSwitchRow({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.enabled = true,
+    this.focusNode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final active = enabled && onChanged != null;
+    return SettingRowFocus(
+      enabled: active,
+      focusNode: focusNode,
+      onSelect: () => onChanged?.call(!value),
+      child: ClickableCursor(
+        enabled: active,
+        child: SwitchListTile(
+          contentPadding: kSettingRowPadding,
+          secondary: SettingsIconBadge(icon),
+          title: Text(title),
+          subtitle: subtitle != null ? Text(subtitle!) : null,
+          value: value,
+          onChanged: active ? onChanged : null,
+        ),
+      ),
+    );
+  }
+}
+
 /// Standard settings row that navigates to another screen.
 class SettingNavigationTile extends StatelessWidget {
   final IconData icon;

@@ -12,6 +12,7 @@ import '../../../mixins/controller_disposer_mixin.dart';
 import '../../../models/plex/plex_subtitle_search_result.dart';
 import '../../../services/plex_client.dart';
 import '../../../services/settings_service.dart';
+import '../../../utils/error_message_utils.dart';
 import '../../../utils/language_codes.dart';
 import '../../../utils/provider_extensions.dart';
 import '../../../utils/snackbar_helper.dart';
@@ -124,7 +125,7 @@ class _SubtitleSearchSheetState extends State<SubtitleSearchSheet> with Controll
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = friendlyError(e, context: t.videoControls.searchSubtitles);
         _isSearching = false;
       });
     }

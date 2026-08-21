@@ -679,9 +679,9 @@ class _TranslationsMessagesSv extends TranslationsMessagesEn {
 	@override String get markedAsUnwatchedOffline => 'Markerad som osedd (synkroniseras när online)';
 	@override String autoRemovedWatchedDownload({required Object title}) => 'Automatiskt borttagen: ${title}';
 	@override String get removedFromContinueWatching => 'Borttagen från Fortsätt titta';
-	@override String errorLoading({required Object error}) => 'Fel: ${error}';
+	@override String get errorLoading => 'Fel';
 	@override String get fileInfoNotAvailable => 'Filinformation inte tillgänglig';
-	@override String errorLoadingFileInfo({required Object error}) => 'Fel vid laddning av filinformation: ${error}';
+	@override String get errorLoadingFileInfo => 'Fel vid laddning av filinformation';
 	@override String get errorLoadingSeries => 'Fel vid laddning av serie';
 	@override String get musicNotSupported => 'Musikuppspelning stöds inte ännu';
 	@override String get noDescriptionAvailable => 'Ingen beskrivning tillgänglig';
@@ -693,10 +693,10 @@ class _TranslationsMessagesSv extends TranslationsMessagesEn {
 	@override String get noLogsAvailable => 'Inga loggar tillgängliga';
 	@override String libraryScanning({required Object title}) => 'Skannar "${title}"...';
 	@override String libraryScanStarted({required Object title}) => 'Biblioteksskanning startad för "${title}"';
-	@override String libraryScanFailed({required Object error}) => 'Misslyckades att skanna bibliotek: ${error}';
+	@override String get libraryScanFailed => 'Misslyckades att skanna bibliotek';
 	@override String metadataRefreshing({required Object title}) => 'Uppdaterar metadata för "${title}"...';
 	@override String metadataRefreshStarted({required Object title}) => 'Metadata-uppdatering startad för "${title}"';
-	@override String metadataRefreshFailed({required Object error}) => 'Misslyckades att uppdatera metadata: ${error}';
+	@override String get metadataRefreshFailed => 'Misslyckades att uppdatera metadata';
 	@override String get logoutConfirm => 'Är du säker på att du vill logga ut?';
 	@override String get noSeasonsFound => 'Inga säsonger hittades';
 	@override String get seasonsLoadFailed => 'Det gick inte att läsa in säsonger';
@@ -707,7 +707,7 @@ class _TranslationsMessagesSv extends TranslationsMessagesEn {
 	@override String sleepTimerSet({required Object label}) => 'Sovtimer inställd för ${label}';
 	@override String get noItemsAvailable => 'Inga objekt tillgängliga';
 	@override String get failedToCreatePlayQueueNoItems => 'Det gick inte att skapa uppspelningskö – inga objekt';
-	@override String failedPlayback({required Object action, required Object error}) => 'Kunde inte ${action}: ${error}';
+	@override String failedPlayback({required Object action}) => 'Kunde inte ${action}';
 	@override String get switchingToCompatiblePlayer => 'Byter till kompatibel spelare...';
 	@override String get serverLimitTitle => 'Uppspelningen misslyckades';
 	@override String get serverLimitBody => 'Serverfel (HTTP 500). En bandbredds-/transkodningsgräns avvisade troligen sessionen. Be ägaren justera den.';
@@ -899,16 +899,16 @@ class _TranslationsErrorsSv extends TranslationsErrorsEn {
 	final TranslationsSv _root; // ignore: unused_field
 
 	// Translations
-	@override String searchFailed({required Object error}) => 'Sökning misslyckades: ${error}';
+	@override String get searchFailed => 'Sökning misslyckades';
 	@override String connectionTimeout({required Object context}) => 'Anslutnings-timeout vid laddning ${context}';
 	@override String get connectionFailed => 'Kan inte ansluta till mediaserver';
-	@override String failedToLoad({required Object context, required Object error}) => 'Misslyckades att ladda ${context}: ${error}';
+	@override String failedToLoad({required Object context}) => 'Misslyckades att ladda ${context}';
 	@override String get noClientAvailable => 'Ingen klient tillgänglig';
-	@override String authenticationFailed({required Object error}) => 'Autentisering misslyckades: ${error}';
+	@override String get authenticationFailed => 'Autentisering misslyckades';
 	@override String get couldNotLaunchUrl => 'Kunde inte öppna autentiserings-URL';
 	@override String get pleaseEnterToken => 'Vänligen ange en token';
 	@override String get invalidToken => 'Ogiltig token';
-	@override String failedToVerifyToken({required Object error}) => 'Misslyckades att verifiera token: ${error}';
+	@override String get failedToVerifyToken => 'Misslyckades att verifiera token';
 	@override String failedToSwitchProfile({required Object displayName}) => 'Misslyckades att byta till ${displayName}';
 	@override String failedToDeleteProfile({required Object displayName}) => 'Misslyckades att ta bort ${displayName}';
 	@override String get failedToRate => 'Det gick inte att uppdatera betyget';
@@ -931,10 +931,10 @@ class _TranslationsLibrariesSv extends TranslationsLibrariesEn {
 	@override String get emptyTrash => 'Töm papperskorg';
 	@override String emptyingTrash({required Object title}) => 'Tömmer papperskorg för "${title}"...';
 	@override String trashEmptied({required Object title}) => 'Papperskorg tömd för "${title}"';
-	@override String failedToEmptyTrash({required Object error}) => 'Misslyckades att tömma papperskorg: ${error}';
+	@override String get failedToEmptyTrash => 'Misslyckades att tömma papperskorg';
 	@override String analyzing({required Object title}) => 'Analyserar "${title}"...';
 	@override String analysisStarted({required Object title}) => 'Analys startad för "${title}"';
-	@override String failedToAnalyze({required Object error}) => 'Misslyckades att analysera bibliotek: ${error}';
+	@override String get failedToAnalyze => 'Misslyckades att analysera bibliotek';
 	@override String get noLibrariesFound => 'Inga bibliotek hittades';
 	@override String get allLibrariesHidden => 'Alla bibliotek är dolda';
 	@override String hiddenLibrariesCount({required Object count}) => 'Dolda bibliotek (${count})';
@@ -989,7 +989,7 @@ class _TranslationsServerSelectionSv extends TranslationsServerSelectionEn {
 	// Translations
 	@override String get allServerConnectionsFailed => 'Kunde inte ansluta till några servrar. Kontrollera nätverket.';
 	@override String noServersFoundForAccount({required Object username, required Object email}) => 'Inga servrar hittades för ${username} (${email})';
-	@override String failedToLoadServers({required Object error}) => 'Misslyckades att ladda servrar: ${error}';
+	@override String get failedToLoadServers => 'Misslyckades att ladda servrar';
 }
 
 // Path: hubDetail
@@ -1131,8 +1131,8 @@ class _TranslationsCollectionsSv extends TranslationsCollectionsEn {
 	@override String deleteConfirm({required Object title}) => 'Ta bort "${title}"? Detta kan inte ångras.';
 	@override String get deleted => 'Samling borttagen';
 	@override String get deleteFailed => 'Det gick inte att ta bort samlingen';
-	@override String deleteFailedWithError({required Object error}) => 'Det gick inte att ta bort samlingen: ${error}';
-	@override String failedToLoadItems({required Object error}) => 'Det gick inte att läsa in samlingsobjekt: ${error}';
+	@override String get deleteFailedWithError => 'Det gick inte att ta bort samlingen';
+	@override String get failedToLoadItems => 'Det gick inte att läsa in samlingsobjekt';
 	@override String get selectCollection => 'Välj samling';
 	@override String get collectionName => 'Samlingsnamn';
 	@override String get enterCollectionName => 'Ange samlingsnamn';
@@ -1143,7 +1143,7 @@ class _TranslationsCollectionsSv extends TranslationsCollectionsEn {
 	@override String removeFromCollectionConfirm({required Object title}) => 'Ta bort "${title}" från denna samling?';
 	@override String get removedFromCollection => 'Borttagen från samling';
 	@override String get removeFromCollectionFailed => 'Misslyckades med att ta bort från samling';
-	@override String removeFromCollectionError({required Object error}) => 'Fel vid borttagning från samling: ${error}';
+	@override String get removeFromCollectionError => 'Fel vid borttagning från samling';
 	@override String get searchCollections => 'Sök samlingar...';
 }
 
@@ -1626,13 +1626,13 @@ class _TranslationsAddServerSv extends TranslationsAddServerEn {
 	@override String get signIn => 'Logga in';
 	@override String get change => 'Ändra';
 	@override String get required => 'Krävs';
-	@override String couldNotReachServer({required Object error}) => 'Kunde inte nå servern: ${error}';
-	@override String signInFailed({required Object error}) => 'Inloggning misslyckades: ${error}';
-	@override String quickConnectFailed({required Object error}) => 'Quick Connect misslyckades: ${error}';
+	@override String get couldNotReachServer => 'Kunde inte nå servern';
+	@override String get signInFailed => 'Inloggning misslyckades';
+	@override String get quickConnectFailed => 'Quick Connect misslyckades';
 	@override String get addPlexTitle => 'Logga in med Plex';
 	@override String get pinExpired => 'PIN-koden gick ut innan inloggning. Försök igen.';
 	@override String get duplicatePlexAccount => 'Redan inloggad på Plex. Logga ut för att byta konto.';
-	@override String failedToRegisterAccount({required Object error}) => 'Kunde inte registrera kontot: ${error}';
+	@override String get failedToRegisterAccount => 'Kunde inte registrera kontot';
 	@override String get enterJellyfinUrlError => 'Ange URL till din Jellyfin-server';
 	@override String get addConnectionTitle => 'Lägg till anslutning';
 	@override String addConnectionTitleScoped({required Object name}) => 'Lägg till i ${name}';
@@ -1754,7 +1754,7 @@ class _TranslationsVideoControlsPipErrorsSv extends TranslationsVideoControlsPip
 	@override String get notSupported => 'Denna enhet stöder inte bild-i-bild-läge';
 	@override String get voSwitchFailed => 'Kunde inte byta videoutgång för bild-i-bild';
 	@override String get failed => 'Bild-i-bild kunde inte starta';
-	@override String unknown({required Object error}) => 'Ett fel uppstod: ${error}';
+	@override String get unknown => 'Ett fel uppstod';
 }
 
 // Path: libraries.tabs
@@ -1872,7 +1872,7 @@ class _TranslationsCompanionRemotePairingSv extends TranslationsCompanionRemoteP
 	@override String get connectionTimedOut => 'Anslutningen tog för lång tid. Använd samma nätverk på båda enheter.';
 	@override String get sessionNotFound => 'Enhet hittades inte. Kontrollera att Pleya körs på värden.';
 	@override String get authFailed => 'Autentisering misslyckades. Båda enheter behöver samma Plex-konto.';
-	@override String failedToConnect({required Object error}) => 'Kunde inte ansluta: ${error}';
+	@override String get failedToConnect => 'Kunde inte ansluta';
 }
 
 // Path: companionRemote.remote
@@ -2447,7 +2447,7 @@ extension on TranslationsSv {
 			'videoControls.pipErrors.notSupported' => 'Denna enhet stöder inte bild-i-bild-läge',
 			'videoControls.pipErrors.voSwitchFailed' => 'Kunde inte byta videoutgång för bild-i-bild',
 			'videoControls.pipErrors.failed' => 'Bild-i-bild kunde inte starta',
-			'videoControls.pipErrors.unknown' => ({required Object error}) => 'Ett fel uppstod: ${error}',
+			'videoControls.pipErrors.unknown' => 'Ett fel uppstod',
 			'videoControls.chapters' => 'Kapitel',
 			'videoControls.noChaptersAvailable' => 'Inga kapitel tillgängliga',
 			'videoControls.queue' => 'Kö',
@@ -2472,9 +2472,9 @@ extension on TranslationsSv {
 			'messages.markedAsUnwatchedOffline' => 'Markerad som osedd (synkroniseras när online)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Automatiskt borttagen: ${title}',
 			'messages.removedFromContinueWatching' => 'Borttagen från Fortsätt titta',
-			'messages.errorLoading' => ({required Object error}) => 'Fel: ${error}',
+			'messages.errorLoading' => 'Fel',
 			'messages.fileInfoNotAvailable' => 'Filinformation inte tillgänglig',
-			'messages.errorLoadingFileInfo' => ({required Object error}) => 'Fel vid laddning av filinformation: ${error}',
+			'messages.errorLoadingFileInfo' => 'Fel vid laddning av filinformation',
 			'messages.errorLoadingSeries' => 'Fel vid laddning av serie',
 			'messages.musicNotSupported' => 'Musikuppspelning stöds inte ännu',
 			'messages.noDescriptionAvailable' => 'Ingen beskrivning tillgänglig',
@@ -2486,10 +2486,10 @@ extension on TranslationsSv {
 			'messages.noLogsAvailable' => 'Inga loggar tillgängliga',
 			'messages.libraryScanning' => ({required Object title}) => 'Skannar "${title}"...',
 			'messages.libraryScanStarted' => ({required Object title}) => 'Biblioteksskanning startad för "${title}"',
-			'messages.libraryScanFailed' => ({required Object error}) => 'Misslyckades att skanna bibliotek: ${error}',
+			'messages.libraryScanFailed' => 'Misslyckades att skanna bibliotek',
 			'messages.metadataRefreshing' => ({required Object title}) => 'Uppdaterar metadata för "${title}"...',
 			'messages.metadataRefreshStarted' => ({required Object title}) => 'Metadata-uppdatering startad för "${title}"',
-			'messages.metadataRefreshFailed' => ({required Object error}) => 'Misslyckades att uppdatera metadata: ${error}',
+			'messages.metadataRefreshFailed' => 'Misslyckades att uppdatera metadata',
 			'messages.logoutConfirm' => 'Är du säker på att du vill logga ut?',
 			'messages.noSeasonsFound' => 'Inga säsonger hittades',
 			'messages.seasonsLoadFailed' => 'Det gick inte att läsa in säsonger',
@@ -2500,7 +2500,7 @@ extension on TranslationsSv {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sovtimer inställd för ${label}',
 			'messages.noItemsAvailable' => 'Inga objekt tillgängliga',
 			'messages.failedToCreatePlayQueueNoItems' => 'Det gick inte att skapa uppspelningskö – inga objekt',
-			'messages.failedPlayback' => ({required Object action, required Object error}) => 'Kunde inte ${action}: ${error}',
+			'messages.failedPlayback' => ({required Object action}) => 'Kunde inte ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Byter till kompatibel spelare...',
 			'messages.serverLimitTitle' => 'Uppspelningen misslyckades',
 			'messages.serverLimitBody' => 'Serverfel (HTTP 500). En bandbredds-/transkodningsgräns avvisade troligen sessionen. Be ägaren justera den.',
@@ -2631,16 +2631,16 @@ extension on TranslationsSv {
 			'discover.tvShow' => 'TV-serie',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min kvar',
 			'discover.moreLikeThis' => 'Mer som detta',
-			'errors.searchFailed' => ({required Object error}) => 'Sökning misslyckades: ${error}',
+			'errors.searchFailed' => 'Sökning misslyckades',
 			'errors.connectionTimeout' => ({required Object context}) => 'Anslutnings-timeout vid laddning ${context}',
 			'errors.connectionFailed' => 'Kan inte ansluta till mediaserver',
-			'errors.failedToLoad' => ({required Object context, required Object error}) => 'Misslyckades att ladda ${context}: ${error}',
+			'errors.failedToLoad' => ({required Object context}) => 'Misslyckades att ladda ${context}',
 			'errors.noClientAvailable' => 'Ingen klient tillgänglig',
-			'errors.authenticationFailed' => ({required Object error}) => 'Autentisering misslyckades: ${error}',
+			'errors.authenticationFailed' => 'Autentisering misslyckades',
 			'errors.couldNotLaunchUrl' => 'Kunde inte öppna autentiserings-URL',
 			'errors.pleaseEnterToken' => 'Vänligen ange en token',
 			'errors.invalidToken' => 'Ogiltig token',
-			'errors.failedToVerifyToken' => ({required Object error}) => 'Misslyckades att verifiera token: ${error}',
+			'errors.failedToVerifyToken' => 'Misslyckades att verifiera token',
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Misslyckades att byta till ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Misslyckades att ta bort ${displayName}',
 			'errors.failedToRate' => 'Det gick inte att uppdatera betyget',
@@ -2654,10 +2654,10 @@ extension on TranslationsSv {
 			'libraries.emptyTrash' => 'Töm papperskorg',
 			'libraries.emptyingTrash' => ({required Object title}) => 'Tömmer papperskorg för "${title}"...',
 			'libraries.trashEmptied' => ({required Object title}) => 'Papperskorg tömd för "${title}"',
-			'libraries.failedToEmptyTrash' => ({required Object error}) => 'Misslyckades att tömma papperskorg: ${error}',
+			'libraries.failedToEmptyTrash' => 'Misslyckades att tömma papperskorg',
 			'libraries.analyzing' => ({required Object title}) => 'Analyserar "${title}"...',
 			'libraries.analysisStarted' => ({required Object title}) => 'Analys startad för "${title}"',
-			'libraries.failedToAnalyze' => ({required Object error}) => 'Misslyckades att analysera bibliotek: ${error}',
+			'libraries.failedToAnalyze' => 'Misslyckades att analysera bibliotek',
 			'libraries.noLibrariesFound' => 'Inga bibliotek hittades',
 			'libraries.allLibrariesHidden' => 'Alla bibliotek är dolda',
 			'libraries.hiddenLibrariesCount' => ({required Object count}) => 'Dolda bibliotek (${count})',
@@ -2727,7 +2727,7 @@ extension on TranslationsSv {
 			'about.viewLicensesDescription' => 'Visa licenser för tredjepartsbibliotek',
 			'serverSelection.allServerConnectionsFailed' => 'Kunde inte ansluta till några servrar. Kontrollera nätverket.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'Inga servrar hittades för ${username} (${email})',
-			'serverSelection.failedToLoadServers' => ({required Object error}) => 'Misslyckades att ladda servrar: ${error}',
+			'serverSelection.failedToLoadServers' => 'Misslyckades att ladda servrar',
 			'hubDetail.title' => 'Titel',
 			'hubDetail.releaseYear' => 'Utgivningsår',
 			'hubDetail.dateAdded' => 'Datum tillagd',
@@ -2815,8 +2815,8 @@ extension on TranslationsSv {
 			'collections.deleteConfirm' => ({required Object title}) => 'Ta bort "${title}"? Detta kan inte ångras.',
 			'collections.deleted' => 'Samling borttagen',
 			'collections.deleteFailed' => 'Det gick inte att ta bort samlingen',
-			'collections.deleteFailedWithError' => ({required Object error}) => 'Det gick inte att ta bort samlingen: ${error}',
-			'collections.failedToLoadItems' => ({required Object error}) => 'Det gick inte att läsa in samlingsobjekt: ${error}',
+			'collections.deleteFailedWithError' => 'Det gick inte att ta bort samlingen',
+			'collections.failedToLoadItems' => 'Det gick inte att läsa in samlingsobjekt',
 			'collections.selectCollection' => 'Välj samling',
 			'collections.collectionName' => 'Samlingsnamn',
 			'collections.enterCollectionName' => 'Ange samlingsnamn',
@@ -2827,7 +2827,7 @@ extension on TranslationsSv {
 			'collections.removeFromCollectionConfirm' => ({required Object title}) => 'Ta bort "${title}" från denna samling?',
 			'collections.removedFromCollection' => 'Borttagen från samling',
 			'collections.removeFromCollectionFailed' => 'Misslyckades med att ta bort från samling',
-			'collections.removeFromCollectionError' => ({required Object error}) => 'Fel vid borttagning från samling: ${error}',
+			'collections.removeFromCollectionError' => 'Fel vid borttagning från samling',
 			'collections.searchCollections' => 'Sök samlingar...',
 			'playlists.title' => 'Spellistor',
 			'playlists.playlist' => 'Spellista',
@@ -3025,7 +3025,7 @@ extension on TranslationsSv {
 			'companionRemote.pairing.connectionTimedOut' => 'Anslutningen tog för lång tid. Använd samma nätverk på båda enheter.',
 			'companionRemote.pairing.sessionNotFound' => 'Enhet hittades inte. Kontrollera att Pleya körs på värden.',
 			'companionRemote.pairing.authFailed' => 'Autentisering misslyckades. Båda enheter behöver samma Plex-konto.',
-			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kunde inte ansluta: ${error}',
+			'companionRemote.pairing.failedToConnect' => 'Kunde inte ansluta',
 			'companionRemote.remote.disconnectConfirm' => 'Vill du koppla från fjärrsessionen?',
 			'companionRemote.remote.reconnecting' => 'Återansluter...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Försök ${current} av 5',
@@ -3262,13 +3262,13 @@ extension on TranslationsSv {
 			'addServer.signIn' => 'Logga in',
 			'addServer.change' => 'Ändra',
 			'addServer.required' => 'Krävs',
-			'addServer.couldNotReachServer' => ({required Object error}) => 'Kunde inte nå servern: ${error}',
-			'addServer.signInFailed' => ({required Object error}) => 'Inloggning misslyckades: ${error}',
-			'addServer.quickConnectFailed' => ({required Object error}) => 'Quick Connect misslyckades: ${error}',
+			'addServer.couldNotReachServer' => 'Kunde inte nå servern',
+			'addServer.signInFailed' => 'Inloggning misslyckades',
+			'addServer.quickConnectFailed' => 'Quick Connect misslyckades',
 			'addServer.addPlexTitle' => 'Logga in med Plex',
 			'addServer.pinExpired' => 'PIN-koden gick ut innan inloggning. Försök igen.',
 			'addServer.duplicatePlexAccount' => 'Redan inloggad på Plex. Logga ut för att byta konto.',
-			'addServer.failedToRegisterAccount' => ({required Object error}) => 'Kunde inte registrera kontot: ${error}',
+			'addServer.failedToRegisterAccount' => 'Kunde inte registrera kontot',
 			'addServer.enterJellyfinUrlError' => 'Ange URL till din Jellyfin-server',
 			'addServer.addConnectionTitle' => 'Lägg till anslutning',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => 'Lägg till i ${name}',

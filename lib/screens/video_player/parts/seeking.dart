@@ -8,10 +8,15 @@ extension _VideoPlayerSeekingMethods on VideoPlayerScreenState {
     final target = clampSeekPosition(currentPlayer, position);
     if (_plexTranscodeSeekAction(currentPlayer, target) == PlexTranscodeSeekAction.nativeSeek) {
       await currentPlayer.seek(target);
+      // A jump must reach the server now, not at the next periodic tick: seek
+      // and close within that window used to leave the pre-seek position
+      // standing. The tracker debounces a scrub gesture into one report.
+      _progressTracker?.onSeek();
       return;
     }
 
     await _restartPlexTranscodeAt(target);
+    _progressTracker?.onSeek();
   }
 
   bool get _usesPlexVodTranscodeSeekPolicy {

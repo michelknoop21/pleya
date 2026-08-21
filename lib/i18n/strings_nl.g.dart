@@ -63,6 +63,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsConnectionsNl connections = _TranslationsConnectionsNl._(_root);
 	@override late final _TranslationsDiscoverNl discover = _TranslationsDiscoverNl._(_root);
 	@override late final _TranslationsErrorsNl errors = _TranslationsErrorsNl._(_root);
+	@override late final _TranslationsNoticesNl notices = _TranslationsNoticesNl._(_root);
 	@override late final _TranslationsLibrariesNl libraries = _TranslationsLibrariesNl._(_root);
 	@override late final _TranslationsAboutNl about = _TranslationsAboutNl._(_root);
 	@override late final _TranslationsServerSelectionNl serverSelection = _TranslationsServerSelectionNl._(_root);
@@ -165,6 +166,7 @@ class _TranslationsCommonNl extends TranslationsCommonEn {
 	@override String get submit => 'Verzenden';
 	@override String get confirm => 'Bevestigen';
 	@override String get retry => 'Opnieuw proberen';
+	@override String get details => 'Details';
 	@override String get logout => 'Uitloggen';
 	@override String get unknown => 'Onbekend';
 	@override String get refresh => 'Vernieuwen';
@@ -726,9 +728,9 @@ class _TranslationsMessagesNl extends TranslationsMessagesEn {
 	@override String get markedAsUnwatchedOffline => 'Gemarkeerd als ongekeken (sync wanneer online)';
 	@override String autoRemovedWatchedDownload({required Object title}) => 'Automatisch verwijderd: ${title}';
 	@override String get removedFromContinueWatching => 'Verwijderd uit Doorgaan met kijken';
-	@override String errorLoading({required Object error}) => 'Fout: ${error}';
+	@override String get errorLoading => 'Fout';
 	@override String get fileInfoNotAvailable => 'Bestand informatie niet beschikbaar';
-	@override String errorLoadingFileInfo({required Object error}) => 'Fout bij laden bestand info: ${error}';
+	@override String get errorLoadingFileInfo => 'Fout bij laden bestand info';
 	@override String get errorLoadingSeries => 'Fout bij laden serie';
 	@override String get musicNotSupported => 'Muziek afspelen wordt nog niet ondersteund';
 	@override String get noDescriptionAvailable => 'Geen beschrijving beschikbaar';
@@ -740,10 +742,10 @@ class _TranslationsMessagesNl extends TranslationsMessagesEn {
 	@override String get noLogsAvailable => 'Geen logs beschikbaar';
 	@override String libraryScanning({required Object title}) => 'Scannen "${title}"...';
 	@override String libraryScanStarted({required Object title}) => 'Bibliotheek scan gestart voor "${title}"';
-	@override String libraryScanFailed({required Object error}) => 'Kon bibliotheek niet scannen: ${error}';
+	@override String get libraryScanFailed => 'Kon bibliotheek niet scannen';
 	@override String metadataRefreshing({required Object title}) => 'Metadata vernieuwen voor "${title}"...';
 	@override String metadataRefreshStarted({required Object title}) => 'Metadata vernieuwen gestart voor "${title}"';
-	@override String metadataRefreshFailed({required Object error}) => 'Kon metadata niet vernieuwen: ${error}';
+	@override String get metadataRefreshFailed => 'Kon metadata niet vernieuwen';
 	@override String get logoutConfirm => 'Weet je zeker dat je wilt uitloggen?';
 	@override String get noSeasonsFound => 'Geen seizoenen gevonden';
 	@override String get seasonsLoadFailed => 'Kan seizoenen niet laden';
@@ -754,7 +756,7 @@ class _TranslationsMessagesNl extends TranslationsMessagesEn {
 	@override String sleepTimerSet({required Object label}) => 'Slaap timer ingesteld voor ${label}';
 	@override String get noItemsAvailable => 'Geen items beschikbaar';
 	@override String get failedToCreatePlayQueueNoItems => 'Kan afspeelwachtrij niet maken - geen items';
-	@override String failedPlayback({required Object action, required Object error}) => 'Afspelen van ${action} mislukt: ${error}';
+	@override String failedPlayback({required Object action}) => 'Afspelen van ${action} mislukt';
 	@override String get switchingToCompatiblePlayer => 'Overschakelen naar compatibele speler...';
 	@override String get serverLimitTitle => 'Afspelen mislukt';
 	@override String get serverLimitBody => 'Serverfout (HTTP 500). Waarschijnlijk weigerde een bandbreedte-/transcodeerlimiet deze sessie. Vraag de eigenaar dit aan te passen.';
@@ -963,21 +965,42 @@ class _TranslationsErrorsNl extends TranslationsErrorsEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String searchFailed({required Object error}) => 'Zoeken mislukt: ${error}';
+	@override String get searchFailed => 'Zoeken mislukt';
 	@override String connectionTimeout({required Object context}) => 'Verbinding time-out tijdens laden ${context}';
 	@override String get connectionFailed => 'Kan geen verbinding maken met mediaserver';
-	@override String failedToLoad({required Object context, required Object error}) => 'Kon ${context} niet laden: ${error}';
+	@override String failedToLoad({required Object context}) => 'Kon ${context} niet laden';
 	@override String get noClientAvailable => 'Geen client beschikbaar';
-	@override String authenticationFailed({required Object error}) => 'Authenticatie mislukt: ${error}';
+	@override String get authenticationFailed => 'Authenticatie mislukt';
 	@override String get couldNotLaunchUrl => 'Kon auth URL niet openen';
 	@override String get pleaseEnterToken => 'Voer een token in';
 	@override String get invalidToken => 'Ongeldig token';
-	@override String failedToVerifyToken({required Object error}) => 'Kon token niet verifiëren: ${error}';
+	@override String get failedToVerifyToken => 'Kon token niet verifiëren';
 	@override String failedToSwitchProfile({required Object displayName}) => 'Kon niet wisselen naar ${displayName}';
 	@override String failedToDeleteProfile({required Object displayName}) => 'Kon ${displayName} niet verwijderen';
 	@override String get failedToRate => 'Beoordeling kon niet worden bijgewerkt';
 	@override String get somethingWentWrongTryAgain => 'Er ging iets mis. Probeer het opnieuw.';
 	@override String couldNotLoad({required Object context}) => 'Kon ${context} niet laden. Probeer het opnieuw.';
+}
+
+// Path: notices
+class _TranslationsNoticesNl extends TranslationsNoticesEn {
+	_TranslationsNoticesNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get connectionTimeoutTitle => 'Verbinding verlopen';
+	@override String connectionTimeoutBody({required Object context}) => '${context} reageerde niet op tijd';
+	@override String get connectionFailedTitle => 'Kan niet verbinden';
+	@override String connectionFailedBody({required Object serverName}) => '${serverName} reageert niet';
+	@override String couldNotLoadTitle({required Object context}) => 'Kon ${context} niet laden';
+	@override String get genericErrorTitle => 'Er ging iets mis';
+	@override String get authFailedTitle => 'Aanmelden mislukt';
+	@override String get playbackStoppedTitle => 'Afspelen gestopt';
+	@override String get playbackSegmentUnavailableBody => 'Dit deel van de video is nu niet beschikbaar';
+	@override String get playbackConnectionLostBody => 'Verbinding met de server verloren';
+	@override String get playbackCodecUnsupportedBody => 'Dit bestandsformaat wordt niet ondersteund op dit toestel';
+	@override String get playbackServerErrorBody => 'De server liep vast tijdens het transcoderen';
 }
 
 // Path: libraries
@@ -997,10 +1020,10 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	@override String get emptyTrash => 'Prullenbak legen';
 	@override String emptyingTrash({required Object title}) => 'Prullenbak legen voor "${title}"...';
 	@override String trashEmptied({required Object title}) => 'Prullenbak geleegd voor "${title}"';
-	@override String failedToEmptyTrash({required Object error}) => 'Kon prullenbak niet legen: ${error}';
+	@override String get failedToEmptyTrash => 'Kon prullenbak niet legen';
 	@override String analyzing({required Object title}) => 'Analyseren "${title}"...';
 	@override String analysisStarted({required Object title}) => 'Analyse gestart voor "${title}"';
-	@override String failedToAnalyze({required Object error}) => 'Kon bibliotheek niet analyseren: ${error}';
+	@override String get failedToAnalyze => 'Kon bibliotheek niet analyseren';
 	@override String get noLibrariesFound => 'Geen bibliotheken gevonden';
 	@override String get allLibrariesHidden => 'Alle bibliotheken zijn verborgen';
 	@override String hiddenLibrariesCount({required Object count}) => 'Verborgen bibliotheken (${count})';
@@ -1064,7 +1087,7 @@ class _TranslationsServerSelectionNl extends TranslationsServerSelectionEn {
 	@override String get noServersFoundDescription => 'Je Plex-account heeft nog geen toegang tot servers. Vraag de server-eigenaar om zijn bibliotheek met je te delen, of verbind in plaats daarvan een Jellyfin-server.';
 	@override String get noServersFoundTryJellyfin => 'Verbind een Jellyfin-server';
 	@override String get noServersFoundRetryPlex => 'Probeer een ander Plex-account';
-	@override String failedToLoadServers({required Object error}) => 'Kon servers niet laden: ${error}';
+	@override String get failedToLoadServers => 'Kon servers niet laden';
 	@override String get failedToLoadServersDescription => 'Er ging iets mis bij het laden van je servers. Controleer je internetverbinding en probeer opnieuw.';
 	@override String get networkErrorTitle => 'Kan de server niet bereiken';
 	@override String get networkErrorDescription => 'Pleya kon geen verbinding maken met internet. Controleer je netwerk en probeer opnieuw.';
@@ -1261,8 +1284,8 @@ class _TranslationsCollectionsNl extends TranslationsCollectionsEn {
 	@override String deleteConfirm({required Object title}) => '"${title}" verwijderen? Dit kan niet ongedaan worden gemaakt.';
 	@override String get deleted => 'Collectie verwijderd';
 	@override String get deleteFailed => 'Collectie verwijderen mislukt';
-	@override String deleteFailedWithError({required Object error}) => 'Collectie verwijderen mislukt: ${error}';
-	@override String failedToLoadItems({required Object error}) => 'Collectie-items laden mislukt: ${error}';
+	@override String get deleteFailedWithError => 'Collectie verwijderen mislukt';
+	@override String get failedToLoadItems => 'Collectie-items laden mislukt';
 	@override String get selectCollection => 'Selecteer collectie';
 	@override String get collectionName => 'Collectienaam';
 	@override String get enterCollectionName => 'Voer collectienaam in';
@@ -1273,7 +1296,7 @@ class _TranslationsCollectionsNl extends TranslationsCollectionsEn {
 	@override String removeFromCollectionConfirm({required Object title}) => '"${title}" uit deze collectie verwijderen?';
 	@override String get removedFromCollection => 'Uit collectie verwijderd';
 	@override String get removeFromCollectionFailed => 'Verwijderen uit collectie mislukt';
-	@override String removeFromCollectionError({required Object error}) => 'Fout bij verwijderen uit collectie: ${error}';
+	@override String get removeFromCollectionError => 'Fout bij verwijderen uit collectie';
 	@override String get searchCollections => 'Collecties zoeken...';
 }
 
@@ -1781,13 +1804,13 @@ class _TranslationsAddServerNl extends TranslationsAddServerEn {
 	@override String get signIn => 'Inloggen';
 	@override String get change => 'Wijzigen';
 	@override String get required => 'Vereist';
-	@override String couldNotReachServer({required Object error}) => 'Kon de server niet bereiken: ${error}';
-	@override String signInFailed({required Object error}) => 'Inloggen mislukt: ${error}';
-	@override String quickConnectFailed({required Object error}) => 'Quick Connect mislukt: ${error}';
+	@override String get couldNotReachServer => 'Kon de server niet bereiken';
+	@override String get signInFailed => 'Inloggen mislukt';
+	@override String get quickConnectFailed => 'Quick Connect mislukt';
 	@override String get addPlexTitle => 'Inloggen met Plex';
 	@override String get pinExpired => 'PIN verlopen vóór inloggen. Probeer opnieuw.';
 	@override String get duplicatePlexAccount => 'Al aangemeld bij Plex. Meld je af om van account te wisselen.';
-	@override String failedToRegisterAccount({required Object error}) => 'Account registreren mislukt: ${error}';
+	@override String get failedToRegisterAccount => 'Account registreren mislukt';
 	@override String get enterJellyfinUrlError => 'Voer de URL van je Jellyfin-server in';
 	@override String get addConnectionTitle => 'Verbinding toevoegen';
 	@override String addConnectionTitleScoped({required Object name}) => 'Toevoegen aan ${name}';
@@ -1917,6 +1940,12 @@ class _TranslationsSeerrNl extends TranslationsSeerrEn {
 	@override String get selectSeasons => 'Seizoenen kiezen';
 	@override String season({required Object number}) => 'Seizoen ${number}';
 	@override String get allSeasons => 'Alle seizoenen';
+	@override String seasonsRange({required Object range}) => 'Seizoenen ${range}';
+	@override String seasonsCount({required Object count}) => '${count} seizoenen';
+	@override String requestedBy({required Object name}) => 'Aangevraagd door ${name}';
+	@override String get searchPlaceholder => 'Zoek een film of serie om aan te vragen';
+	@override String get byStreamingService => 'Per streamingdienst';
+	@override String get showAll => 'Alles tonen';
 	@override String get fourK => 'In 4K aanvragen';
 	@override String get fourKBadge => '4K';
 	@override String percentMatch({required Object percent}) => '${percent}% match';
@@ -1966,6 +1995,9 @@ class _TranslationsTautulliNl extends TranslationsTautulliEn {
 	@override String get title => 'Tautulli';
 	@override String get subtitle => 'Tautulli houdt bij wie wat kijkt op je Plex-server. Koppel hem om kijkers, statistieken en live activiteit in Pleya te zien.';
 	@override String get adminOnlyNote => 'Tautulli heeft één sleutel die zijn hele beheer-API opent, dus die blijft op dit toestel en alleen jij ziet wat hij meldt. De mensen met wie je je server deelt merken er niets van en hoeven niets in te stellen.';
+	@override String get useHistoryForRecommendations => 'Kijkgeschiedenis gebruiken voor aanbevelingen';
+	@override String get useHistoryForRecommendationsDescription => 'Gebruikt kijkgeschiedenis van deze Tautulli-server om persoonlijke aanbevelingen te verbeteren voor elk profiel op dit apparaat. Elk profiel krijgt alleen zijn eigen geschiedenis en de verwerking blijft lokaal in Pleya.';
+	@override String get integrationConflictNote => 'Er zijn twee verschillende Tautulli-koppelingen voor deze server gevonden, dus de kijkgeschiedenis wordt niet gebruikt tot je opnieuw koppelt met de koppeling die je wilt houden.';
 	@override String get serverUrl => 'Tautulli-adres';
 	@override String get serverUrlHint => 'http://192.168.1.10:8181 of https://tautulli.voorbeeld.nl';
 	@override String get authMode => 'Hoe koppelen';
@@ -1988,6 +2020,8 @@ class _TranslationsTautulliNl extends TranslationsTautulliEn {
 	@override String get errorModeMismatch => 'Tautulli weigert dit token, en het lijkt op je permanente API-sleutel in plaats van op een apparaat-token. Zet hierboven om naar API-sleutel, of registreer een apparaat in Tautulli en plak dat token.';
 	@override String get errorUrlRequired => 'Vul het adres van je Tautulli-server in.';
 	@override String get errorTokenRequired => 'Vul een token in.';
+	@override String get errorNotTautulli => 'Er antwoordt iets op dat adres, maar het is geen Tautulli. Controleer het adres en het basispad, en of er een loginpagina voor staat.';
+	@override String errorServer({required Object code}) => 'Tautulli meldt een serverfout (HTTP ${code}).';
 	@override String get errorGeneric => 'Koppelen is niet gelukt.';
 }
 
@@ -2091,7 +2125,7 @@ class _TranslationsVideoControlsPipErrorsNl extends TranslationsVideoControlsPip
 	@override String get notSupported => 'Dit apparaat ondersteunt geen beeld-in-beeld modus';
 	@override String get voSwitchFailed => 'Kan video-uitvoer niet wisselen voor beeld-in-beeld';
 	@override String get failed => 'Beeld-in-beeld kon niet worden gestart';
-	@override String unknown({required Object error}) => 'Er is een fout opgetreden: ${error}';
+	@override String get unknown => 'Er is een fout opgetreden';
 }
 
 // Path: libraries.tabs
@@ -2209,7 +2243,7 @@ class _TranslationsCompanionRemotePairingNl extends TranslationsCompanionRemoteP
 	@override String get connectionTimedOut => 'Verbinding verlopen. Gebruik hetzelfde netwerk op beide apparaten.';
 	@override String get sessionNotFound => 'Apparaat niet gevonden. Zorg dat Pleya op de host draait.';
 	@override String get authFailed => 'Authenticatie mislukt. Beide apparaten hebben hetzelfde Plex-account nodig.';
-	@override String failedToConnect({required Object error}) => 'Kan niet verbinden: ${error}';
+	@override String get failedToConnect => 'Kan niet verbinden';
 }
 
 // Path: companionRemote.remote
@@ -2428,6 +2462,7 @@ extension on TranslationsNl {
 			'common.submit' => 'Verzenden',
 			'common.confirm' => 'Bevestigen',
 			'common.retry' => 'Opnieuw proberen',
+			'common.details' => 'Details',
 			'common.logout' => 'Uitloggen',
 			'common.unknown' => 'Onbekend',
 			'common.refresh' => 'Vernieuwen',
@@ -2884,7 +2919,7 @@ extension on TranslationsNl {
 			'videoControls.pipErrors.notSupported' => 'Dit apparaat ondersteunt geen beeld-in-beeld modus',
 			'videoControls.pipErrors.voSwitchFailed' => 'Kan video-uitvoer niet wisselen voor beeld-in-beeld',
 			'videoControls.pipErrors.failed' => 'Beeld-in-beeld kon niet worden gestart',
-			'videoControls.pipErrors.unknown' => ({required Object error}) => 'Er is een fout opgetreden: ${error}',
+			'videoControls.pipErrors.unknown' => 'Er is een fout opgetreden',
 			'videoControls.chapters' => 'Hoofdstukken',
 			'videoControls.noChaptersAvailable' => 'Geen hoofdstukken beschikbaar',
 			'videoControls.queue' => 'Wachtrij',
@@ -2903,18 +2938,18 @@ extension on TranslationsNl {
 			'userStatus.admin' => 'Beheerder',
 			'userStatus.restricted' => 'Beperkt',
 			'userStatus.protected' => 'Beschermd',
-			'userStatus.current' => 'HUIDIG',
 			_ => null,
 		} ?? switch (path) {
+			'userStatus.current' => 'HUIDIG',
 			'messages.markedAsWatched' => 'Gemarkeerd als gekeken',
 			'messages.markedAsUnwatched' => 'Gemarkeerd als ongekeken',
 			'messages.markedAsWatchedOffline' => 'Gemarkeerd als gekeken (sync wanneer online)',
 			'messages.markedAsUnwatchedOffline' => 'Gemarkeerd als ongekeken (sync wanneer online)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Automatisch verwijderd: ${title}',
 			'messages.removedFromContinueWatching' => 'Verwijderd uit Doorgaan met kijken',
-			'messages.errorLoading' => ({required Object error}) => 'Fout: ${error}',
+			'messages.errorLoading' => 'Fout',
 			'messages.fileInfoNotAvailable' => 'Bestand informatie niet beschikbaar',
-			'messages.errorLoadingFileInfo' => ({required Object error}) => 'Fout bij laden bestand info: ${error}',
+			'messages.errorLoadingFileInfo' => 'Fout bij laden bestand info',
 			'messages.errorLoadingSeries' => 'Fout bij laden serie',
 			'messages.musicNotSupported' => 'Muziek afspelen wordt nog niet ondersteund',
 			'messages.noDescriptionAvailable' => 'Geen beschrijving beschikbaar',
@@ -2926,10 +2961,10 @@ extension on TranslationsNl {
 			'messages.noLogsAvailable' => 'Geen logs beschikbaar',
 			'messages.libraryScanning' => ({required Object title}) => 'Scannen "${title}"...',
 			'messages.libraryScanStarted' => ({required Object title}) => 'Bibliotheek scan gestart voor "${title}"',
-			'messages.libraryScanFailed' => ({required Object error}) => 'Kon bibliotheek niet scannen: ${error}',
+			'messages.libraryScanFailed' => 'Kon bibliotheek niet scannen',
 			'messages.metadataRefreshing' => ({required Object title}) => 'Metadata vernieuwen voor "${title}"...',
 			'messages.metadataRefreshStarted' => ({required Object title}) => 'Metadata vernieuwen gestart voor "${title}"',
-			'messages.metadataRefreshFailed' => ({required Object error}) => 'Kon metadata niet vernieuwen: ${error}',
+			'messages.metadataRefreshFailed' => 'Kon metadata niet vernieuwen',
 			'messages.logoutConfirm' => 'Weet je zeker dat je wilt uitloggen?',
 			'messages.noSeasonsFound' => 'Geen seizoenen gevonden',
 			'messages.seasonsLoadFailed' => 'Kan seizoenen niet laden',
@@ -2940,7 +2975,7 @@ extension on TranslationsNl {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Slaap timer ingesteld voor ${label}',
 			'messages.noItemsAvailable' => 'Geen items beschikbaar',
 			'messages.failedToCreatePlayQueueNoItems' => 'Kan afspeelwachtrij niet maken - geen items',
-			'messages.failedPlayback' => ({required Object action, required Object error}) => 'Afspelen van ${action} mislukt: ${error}',
+			'messages.failedPlayback' => ({required Object action}) => 'Afspelen van ${action} mislukt',
 			'messages.switchingToCompatiblePlayer' => 'Overschakelen naar compatibele speler...',
 			'messages.serverLimitTitle' => 'Afspelen mislukt',
 			'messages.serverLimitBody' => 'Serverfout (HTTP 500). Waarschijnlijk weigerde een bandbreedte-/transcodeerlimiet deze sessie. Vraag de eigenaar dit aan te passen.',
@@ -3086,21 +3121,33 @@ extension on TranslationsNl {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} bekeken',
 			'discover.statsRecent' => ({required Object count}) => '${count} in de laatste 30 dagen',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Kijken deze serie: ${names}',
-			'errors.searchFailed' => ({required Object error}) => 'Zoeken mislukt: ${error}',
+			'errors.searchFailed' => 'Zoeken mislukt',
 			'errors.connectionTimeout' => ({required Object context}) => 'Verbinding time-out tijdens laden ${context}',
 			'errors.connectionFailed' => 'Kan geen verbinding maken met mediaserver',
-			'errors.failedToLoad' => ({required Object context, required Object error}) => 'Kon ${context} niet laden: ${error}',
+			'errors.failedToLoad' => ({required Object context}) => 'Kon ${context} niet laden',
 			'errors.noClientAvailable' => 'Geen client beschikbaar',
-			'errors.authenticationFailed' => ({required Object error}) => 'Authenticatie mislukt: ${error}',
+			'errors.authenticationFailed' => 'Authenticatie mislukt',
 			'errors.couldNotLaunchUrl' => 'Kon auth URL niet openen',
 			'errors.pleaseEnterToken' => 'Voer een token in',
 			'errors.invalidToken' => 'Ongeldig token',
-			'errors.failedToVerifyToken' => ({required Object error}) => 'Kon token niet verifiëren: ${error}',
+			'errors.failedToVerifyToken' => 'Kon token niet verifiëren',
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => 'Kon niet wisselen naar ${displayName}',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => 'Kon ${displayName} niet verwijderen',
 			'errors.failedToRate' => 'Beoordeling kon niet worden bijgewerkt',
 			'errors.somethingWentWrongTryAgain' => 'Er ging iets mis. Probeer het opnieuw.',
 			'errors.couldNotLoad' => ({required Object context}) => 'Kon ${context} niet laden. Probeer het opnieuw.',
+			'notices.connectionTimeoutTitle' => 'Verbinding verlopen',
+			'notices.connectionTimeoutBody' => ({required Object context}) => '${context} reageerde niet op tijd',
+			'notices.connectionFailedTitle' => 'Kan niet verbinden',
+			'notices.connectionFailedBody' => ({required Object serverName}) => '${serverName} reageert niet',
+			'notices.couldNotLoadTitle' => ({required Object context}) => 'Kon ${context} niet laden',
+			'notices.genericErrorTitle' => 'Er ging iets mis',
+			'notices.authFailedTitle' => 'Aanmelden mislukt',
+			'notices.playbackStoppedTitle' => 'Afspelen gestopt',
+			'notices.playbackSegmentUnavailableBody' => 'Dit deel van de video is nu niet beschikbaar',
+			'notices.playbackConnectionLostBody' => 'Verbinding met de server verloren',
+			'notices.playbackCodecUnsupportedBody' => 'Dit bestandsformaat wordt niet ondersteund op dit toestel',
+			'notices.playbackServerErrorBody' => 'De server liep vast tijdens het transcoderen',
 			'libraries.title' => 'Bibliotheken',
 			'libraries.fallbackTitle' => 'Bibliotheek',
 			'libraries.scanLibraryFiles' => 'Scan bibliotheek bestanden',
@@ -3111,10 +3158,10 @@ extension on TranslationsNl {
 			'libraries.emptyTrash' => 'Prullenbak legen',
 			'libraries.emptyingTrash' => ({required Object title}) => 'Prullenbak legen voor "${title}"...',
 			'libraries.trashEmptied' => ({required Object title}) => 'Prullenbak geleegd voor "${title}"',
-			'libraries.failedToEmptyTrash' => ({required Object error}) => 'Kon prullenbak niet legen: ${error}',
+			'libraries.failedToEmptyTrash' => 'Kon prullenbak niet legen',
 			'libraries.analyzing' => ({required Object title}) => 'Analyseren "${title}"...',
 			'libraries.analysisStarted' => ({required Object title}) => 'Analyse gestart voor "${title}"',
-			'libraries.failedToAnalyze' => ({required Object error}) => 'Kon bibliotheek niet analyseren: ${error}',
+			'libraries.failedToAnalyze' => 'Kon bibliotheek niet analyseren',
 			'libraries.noLibrariesFound' => 'Geen bibliotheken gevonden',
 			'libraries.allLibrariesHidden' => 'Alle bibliotheken zijn verborgen',
 			'libraries.hiddenLibrariesCount' => ({required Object count}) => 'Verborgen bibliotheken (${count})',
@@ -3193,7 +3240,7 @@ extension on TranslationsNl {
 			'serverSelection.noServersFoundDescription' => 'Je Plex-account heeft nog geen toegang tot servers. Vraag de server-eigenaar om zijn bibliotheek met je te delen, of verbind in plaats daarvan een Jellyfin-server.',
 			'serverSelection.noServersFoundTryJellyfin' => 'Verbind een Jellyfin-server',
 			'serverSelection.noServersFoundRetryPlex' => 'Probeer een ander Plex-account',
-			'serverSelection.failedToLoadServers' => ({required Object error}) => 'Kon servers niet laden: ${error}',
+			'serverSelection.failedToLoadServers' => 'Kon servers niet laden',
 			'serverSelection.failedToLoadServersDescription' => 'Er ging iets mis bij het laden van je servers. Controleer je internetverbinding en probeer opnieuw.',
 			'serverSelection.networkErrorTitle' => 'Kan de server niet bereiken',
 			'serverSelection.networkErrorDescription' => 'Pleya kon geen verbinding maken met internet. Controleer je netwerk en probeer opnieuw.',
@@ -3315,8 +3362,8 @@ extension on TranslationsNl {
 			'collections.deleteConfirm' => ({required Object title}) => '"${title}" verwijderen? Dit kan niet ongedaan worden gemaakt.',
 			'collections.deleted' => 'Collectie verwijderd',
 			'collections.deleteFailed' => 'Collectie verwijderen mislukt',
-			'collections.deleteFailedWithError' => ({required Object error}) => 'Collectie verwijderen mislukt: ${error}',
-			'collections.failedToLoadItems' => ({required Object error}) => 'Collectie-items laden mislukt: ${error}',
+			'collections.deleteFailedWithError' => 'Collectie verwijderen mislukt',
+			'collections.failedToLoadItems' => 'Collectie-items laden mislukt',
 			'collections.selectCollection' => 'Selecteer collectie',
 			'collections.collectionName' => 'Collectienaam',
 			'collections.enterCollectionName' => 'Voer collectienaam in',
@@ -3327,7 +3374,7 @@ extension on TranslationsNl {
 			'collections.removeFromCollectionConfirm' => ({required Object title}) => '"${title}" uit deze collectie verwijderen?',
 			'collections.removedFromCollection' => 'Uit collectie verwijderd',
 			'collections.removeFromCollectionFailed' => 'Verwijderen uit collectie mislukt',
-			'collections.removeFromCollectionError' => ({required Object error}) => 'Fout bij verwijderen uit collectie: ${error}',
+			'collections.removeFromCollectionError' => 'Fout bij verwijderen uit collectie',
 			'collections.searchCollections' => 'Collecties zoeken...',
 			'playlists.title' => 'Afspeellijsten',
 			'playlists.playlist' => 'Afspeellijst',
@@ -3405,6 +3452,8 @@ extension on TranslationsNl {
 			'watchTogether.participantJoined' => ({required Object name}) => '${name} is toegetreden',
 			'watchTogether.participantLeft' => ({required Object name}) => '${name} heeft de sessie verlaten',
 			'watchTogether.participantPaused' => ({required Object name}) => '${name} heeft gepauzeerd',
+			_ => null,
+		} ?? switch (path) {
 			'watchTogether.participantResumed' => ({required Object name}) => '${name} heeft hervat',
 			'watchTogether.participantSeeked' => ({required Object name}) => '${name} heeft gespoeld',
 			'watchTogether.participantBuffering' => ({required Object name}) => '${name} is aan het bufferen',
@@ -3418,8 +3467,6 @@ extension on TranslationsNl {
 			'downloads.manage' => 'Beheren',
 			'downloads.tvShows' => 'Series',
 			'downloads.movies' => 'Films',
-			_ => null,
-		} ?? switch (path) {
 			'downloads.noDownloads' => 'Nog geen downloads',
 			'downloads.noDownloadsDescription' => 'Gedownloade content verschijnt hier voor offline weergave',
 			'downloads.downloadNow' => 'Download',
@@ -3525,7 +3572,7 @@ extension on TranslationsNl {
 			'companionRemote.pairing.connectionTimedOut' => 'Verbinding verlopen. Gebruik hetzelfde netwerk op beide apparaten.',
 			'companionRemote.pairing.sessionNotFound' => 'Apparaat niet gevonden. Zorg dat Pleya op de host draait.',
 			'companionRemote.pairing.authFailed' => 'Authenticatie mislukt. Beide apparaten hebben hetzelfde Plex-account nodig.',
-			'companionRemote.pairing.failedToConnect' => ({required Object error}) => 'Kan niet verbinden: ${error}',
+			'companionRemote.pairing.failedToConnect' => 'Kan niet verbinden',
 			'companionRemote.remote.disconnectConfirm' => 'Wil je de verbinding met de externe sessie verbreken?',
 			'companionRemote.remote.reconnecting' => 'Opnieuw verbinden...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => 'Poging ${current} van 5',
@@ -3798,13 +3845,13 @@ extension on TranslationsNl {
 			'addServer.signIn' => 'Inloggen',
 			'addServer.change' => 'Wijzigen',
 			'addServer.required' => 'Vereist',
-			'addServer.couldNotReachServer' => ({required Object error}) => 'Kon de server niet bereiken: ${error}',
-			'addServer.signInFailed' => ({required Object error}) => 'Inloggen mislukt: ${error}',
-			'addServer.quickConnectFailed' => ({required Object error}) => 'Quick Connect mislukt: ${error}',
+			'addServer.couldNotReachServer' => 'Kon de server niet bereiken',
+			'addServer.signInFailed' => 'Inloggen mislukt',
+			'addServer.quickConnectFailed' => 'Quick Connect mislukt',
 			'addServer.addPlexTitle' => 'Inloggen met Plex',
 			'addServer.pinExpired' => 'PIN verlopen vóór inloggen. Probeer opnieuw.',
 			'addServer.duplicatePlexAccount' => 'Al aangemeld bij Plex. Meld je af om van account te wisselen.',
-			'addServer.failedToRegisterAccount' => ({required Object error}) => 'Account registreren mislukt: ${error}',
+			'addServer.failedToRegisterAccount' => 'Account registreren mislukt',
 			'addServer.enterJellyfinUrlError' => 'Voer de URL van je Jellyfin-server in',
 			'addServer.addConnectionTitle' => 'Verbinding toevoegen',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => 'Toevoegen aan ${name}',
@@ -3907,12 +3954,20 @@ extension on TranslationsNl {
 			'seerr.selectSeasons' => 'Seizoenen kiezen',
 			'seerr.season' => ({required Object number}) => 'Seizoen ${number}',
 			'seerr.allSeasons' => 'Alle seizoenen',
+			'seerr.seasonsRange' => ({required Object range}) => 'Seizoenen ${range}',
+			'seerr.seasonsCount' => ({required Object count}) => '${count} seizoenen',
+			'seerr.requestedBy' => ({required Object name}) => 'Aangevraagd door ${name}',
+			'seerr.searchPlaceholder' => 'Zoek een film of serie om aan te vragen',
+			'seerr.byStreamingService' => 'Per streamingdienst',
+			'seerr.showAll' => 'Alles tonen',
 			'seerr.fourK' => 'In 4K aanvragen',
 			'seerr.fourKBadge' => '4K',
 			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
 			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => 'Nog ${remaining} van ${limit} aanvragen',
 			'seerr.quotaUnlimited' => 'Onbeperkt aanvragen',
 			'seerr.advancedOptions' => 'Geavanceerde opties',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.server' => 'Server',
 			'seerr.qualityProfile' => 'Kwaliteitsprofiel',
 			'seerr.rootFolder' => 'Hoofdmap',
@@ -3932,8 +3987,6 @@ extension on TranslationsNl {
 			'seerr.discoverTitle' => 'Ontdekken via Aanvragen',
 			'seerr.trending' => 'Populair nu',
 			'seerr.popularMovies' => 'Populaire films',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.popularTv' => 'Populaire series',
 			'seerr.upcoming' => 'Binnenkort',
 			'seerr.recommendations' => 'Aanbevolen',
@@ -3949,6 +4002,9 @@ extension on TranslationsNl {
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli houdt bij wie wat kijkt op je Plex-server. Koppel hem om kijkers, statistieken en live activiteit in Pleya te zien.',
 			'tautulli.adminOnlyNote' => 'Tautulli heeft één sleutel die zijn hele beheer-API opent, dus die blijft op dit toestel en alleen jij ziet wat hij meldt. De mensen met wie je je server deelt merken er niets van en hoeven niets in te stellen.',
+			'tautulli.useHistoryForRecommendations' => 'Kijkgeschiedenis gebruiken voor aanbevelingen',
+			'tautulli.useHistoryForRecommendationsDescription' => 'Gebruikt kijkgeschiedenis van deze Tautulli-server om persoonlijke aanbevelingen te verbeteren voor elk profiel op dit apparaat. Elk profiel krijgt alleen zijn eigen geschiedenis en de verwerking blijft lokaal in Pleya.',
+			'tautulli.integrationConflictNote' => 'Er zijn twee verschillende Tautulli-koppelingen voor deze server gevonden, dus de kijkgeschiedenis wordt niet gebruikt tot je opnieuw koppelt met de koppeling die je wilt houden.',
 			'tautulli.serverUrl' => 'Tautulli-adres',
 			'tautulli.serverUrlHint' => 'http://192.168.1.10:8181 of https://tautulli.voorbeeld.nl',
 			'tautulli.authMode' => 'Hoe koppelen',
@@ -3971,6 +4027,8 @@ extension on TranslationsNl {
 			'tautulli.errorModeMismatch' => 'Tautulli weigert dit token, en het lijkt op je permanente API-sleutel in plaats van op een apparaat-token. Zet hierboven om naar API-sleutel, of registreer een apparaat in Tautulli en plak dat token.',
 			'tautulli.errorUrlRequired' => 'Vul het adres van je Tautulli-server in.',
 			'tautulli.errorTokenRequired' => 'Vul een token in.',
+			'tautulli.errorNotTautulli' => 'Er antwoordt iets op dat adres, maar het is geen Tautulli. Controleer het adres en het basispad, en of er een loginpagina voor staat.',
+			'tautulli.errorServer' => ({required Object code}) => 'Tautulli meldt een serverfout (HTTP ${code}).',
 			'tautulli.errorGeneric' => 'Koppelen is niet gelukt.',
 			'nowWatching.title' => 'Nu aan het kijken',
 			'nowWatching.tooltip' => 'Bekijk wie er nu kijkt',

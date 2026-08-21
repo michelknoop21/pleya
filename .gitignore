@@ -80,3 +80,5 @@ pleya_server/.gocache/
 pleya_server/data/
 pleya_server/testdata/media/
 pleya_server/.responses/
+# Sessie-id van de codex-CLI, lokaal per machine.
+/.context/

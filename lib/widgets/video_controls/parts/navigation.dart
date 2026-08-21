@@ -157,9 +157,7 @@ extension _PlexVideoControlsNavigationMethods on _PlexVideoControlsState {
         newSubtitleStreamId: newSubtitleStreamId,
       );
     } catch (e) {
-      if (mounted) {
-        showErrorSnackBar(context, t.messages.errorLoading(error: e.toString()));
-      }
+      noticeController.show(noticeForError(e, context: t.videoControls.versionQualityButton));
     }
   }
 }

@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_hub.dart';
@@ -13,6 +17,9 @@ import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/recommendations/personalized_rows_builder.dart';
+import 'package:pleya/services/recommendations/recommendation_service.dart';
+import 'package:pleya/services/recommendations/tautulli_history_importer.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/utils/watch_state_notifier.dart';
 
@@ -88,6 +95,93 @@ class _FakeAggregationService extends DataAggregationService {
     lastHubsServerIds = serverIds;
     return (hubs: hubsResult(), succeededServerIds: hubSucceededServerIds ?? serverIds ?? const {'server_1'});
   }
+}
+
+/// Counts how often the feed asks for personalized rows and what the imported
+/// history sync answered, so the "no new data, no extra work" contract is
+/// measured rather than assumed.
+class _FakeRecommendationService implements RecommendationService {
+  _FakeRecommendationService({this.syncResult = false});
+
+  bool syncResult;
+  int buildCalls = 0;
+  int syncCalls = 0;
+
+  @override
+  String get profileId => 'p1';
+
+  @override
+  Future<List<MediaHub>> buildRows(
+    List<MediaServerClient> clients, {
+    List<MediaItem> hubItems = const [],
+    Set<String> excludeKeys = const {},
+    int? nowMs,
+  }) async {
+    buildCalls++;
+    return const [];
+  }
+
+  @override
+  Future<bool> syncImportedHistory() async {
+    syncCalls++;
+    return syncResult;
+  }
+
+  @override
+  void invalidateCandidates() {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// The real service, with only the row build counted. Used where the point is
+/// the service's own hydration logic rather than the feed's arithmetic.
+class _CountingRecommendationService extends RecommendationService {
+  _CountingRecommendationService({
+    required AppDatabase database,
+    required Set<String> Function() enabledImportServerIds,
+    required Future<void> Function() importSourcesReady,
+    required TautulliImporterFactory importerFactory,
+  }) : super(
+         profileId: 'p1',
+         database: database,
+         titles: PersonalizedRowTitles(
+           topPicks: 'Top Picks',
+           becauseYouLike: (g) => 'Because you like $g',
+           hiddenGems: 'Hidden Gems',
+         ),
+         enabledImportServerIds: enabledImportServerIds,
+         importSourcesReady: importSourcesReady,
+         importerFactory: importerFactory,
+       );
+
+  int buildCalls = 0;
+
+  @override
+  Future<List<MediaHub>> buildRows(
+    List<MediaServerClient> clients, {
+    List<MediaItem> hubItems = const [],
+    Set<String> excludeKeys = const {},
+    int? nowMs,
+  }) {
+    buildCalls++;
+    return super.buildRows(clients, hubItems: hubItems, excludeKeys: excludeKeys, nowMs: nowMs);
+  }
+}
+
+class _CountingImporter implements TautulliHistoryImporter {
+  int syncs = 0;
+
+  @override
+  Future<TautulliImportOutcome?> sync() async {
+    syncs++;
+    // A warm profile: everything is already stored, so nothing is new. The
+    // rebuild has to happen anyway, because the rows were scored without it.
+    return const TautulliImportOutcome(fetched: 3, deduplicated: 3);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeClient implements MediaServerClient {
@@ -328,12 +422,14 @@ void main() {
     expect(provider.isLoading, isFalse);
   });
 
-  test('load failure surfaces the error and ends both loading states', () async {
+  test('load failure surfaces a friendly error (not the raw exception) and ends both loading states', () async {
     aggregation.onDeckResult = () => throw Exception('boom');
 
     await provider.load();
 
-    expect(provider.errorMessage, contains('boom'));
+    expect(provider.errorMessage, isNotNull);
+    expect(provider.errorMessage, isNot(contains('boom')));
+    expect(provider.errorMessage, isNot(contains('Exception')));
     expect(provider.isLoading, isFalse);
     expect(provider.areHubsLoading, isFalse);
   });
@@ -499,5 +595,112 @@ void main() {
 
     await provider.refreshContinueWatching();
     expect(provider.loadGeneration, initial + 1);
+  });
+
+  group('imported history refresh', () {
+    Future<DiscoverProvider> loadWith(_FakeRecommendationService service) async {
+      final p = DiscoverProvider(
+        multiServer,
+        hiddenLibraries,
+        libraries,
+        isProfileBinding: () => isBinding,
+        recommendations: service,
+      );
+      aggregation.onDeckResult = () => [_item('a')];
+      aggregation.hubsResult = () => [_hub('hub-1')];
+      await p.load();
+      // The recommendation pass runs unawaited off the load.
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      return p;
+    }
+
+    test('no new data means one personalized pass and no hub refetch', () async {
+      final service = _FakeRecommendationService(syncResult: false);
+      final p = await loadWith(service);
+      addTearDown(p.dispose);
+
+      expect(service.syncCalls, 1);
+      expect(service.buildCalls, 1, reason: 'nothing new, so nothing to rebuild');
+      expect(aggregation.hubCalls, 1, reason: 'the sync never triggers a hub refetch');
+    });
+
+    test('new data means exactly one extra personalized pass', () async {
+      final service = _FakeRecommendationService(syncResult: true);
+      final p = await loadWith(service);
+      addTearDown(p.dispose);
+
+      expect(service.syncCalls, 1);
+      expect(service.buildCalls, 2, reason: 'once before the sync, once after');
+      expect(aggregation.hubCalls, 1, reason: 'still no hub refetch');
+    });
+
+    test('a cold start imports once when the integration store answers late', () async {
+      // The race this is about: Discover has servers and renders before
+      // TautulliProvider has finished reading the device's integrations, so the
+      // enabled set is empty at the moment the first rows are built.
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      final hydration = Completer<void>();
+      var enabled = <String>{};
+      final importer = _CountingImporter();
+      var factoryProfiles = <String>[];
+
+      final service = _CountingRecommendationService(
+        database: db,
+        enabledImportServerIds: () => enabled,
+        importSourcesReady: () => hydration.future,
+        importerFactory: (profileId, _) {
+          factoryProfiles.add(profileId);
+          return importer;
+        },
+      );
+
+      final p = DiscoverProvider(
+        multiServer,
+        hiddenLibraries,
+        libraries,
+        isProfileBinding: () => isBinding,
+        recommendations: service,
+      );
+      addTearDown(p.dispose);
+      aggregation.onDeckResult = () => [_item('a')];
+      aggregation.hubsResult = () => [_hub('hub-1')];
+
+      await p.load();
+      await pumpEventQueue();
+
+      // The feed is already on screen and the sync is still waiting.
+      expect(p.hubs.map((h) => h.id), ['hub-1']);
+      expect(service.buildCalls, 1, reason: 'existing rows are shown without waiting for the import');
+      expect(importer.syncs, 0);
+
+      // Hydration lands: a saved, enabled integration for a server this profile
+      // has. Nothing else happens — no profile switch, no reload, no tap.
+      enabled = {'server_1'};
+      hydration.complete();
+      await pumpEventQueue();
+
+      expect(importer.syncs, 1, reason: 'exactly one import, unprompted');
+      expect(factoryProfiles, ['p1'], reason: 'bound to this profile and no other');
+      expect(service.buildCalls, 2, reason: 'the personalized rows are rebuilt once, with the server in scope');
+      expect(aggregation.hubCalls, 1, reason: 'no hub refetch');
+      expect(aggregation.onDeckCalls, 1, reason: 'no continue-watching refetch');
+
+      // A second load does not re-import: the rows now match the enabled set.
+      await p.load();
+      await pumpEventQueue();
+      expect(importer.syncs, 2, reason: 'one pass per load, never two');
+      expect(service.buildCalls, 3, reason: 'nothing new and nothing out of date, so no extra rebuild');
+    });
+
+    test('without a recommendation service the feed behaves exactly as before', () async {
+      aggregation.onDeckResult = () => [_item('a')];
+      aggregation.hubsResult = () => [_hub('hub-1')];
+      await provider.load();
+      await Future<void>.delayed(Duration.zero);
+      expect(provider.hubs.map((h) => h.id), ['hub-1']);
+      expect(aggregation.hubCalls, 1);
+    });
   });
 }

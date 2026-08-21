@@ -9,9 +9,10 @@ import '../media/media_kind.dart';
 import '../media/media_playlist.dart';
 import '../media/play_queue.dart';
 import '../providers/playback_state_provider.dart';
-import '../utils/app_logger.dart';
+import '../utils/error_message_utils.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/video_player_navigation.dart';
+import '../widgets/notice/notice_controller.dart';
 import 'jellyfin_sequential_launcher.dart';
 import 'play_queue_launcher.dart';
 
@@ -159,10 +160,7 @@ abstract class MediaListPlaybackLauncher {
 
       return result;
     } catch (e) {
-      appLogger.e('Failed to $actionLabel', error: e);
-      if (context.mounted) {
-        showErrorSnackBar(context, t.messages.failedPlayback(action: actionLabel, error: e.toString()));
-      }
+      noticeController.show(noticeForPlaybackLaunchFailure(e, actionLabel: actionLabel));
       return PlayQueueError(e);
     } finally {
       await dismissLoading();

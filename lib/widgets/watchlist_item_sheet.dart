@@ -69,26 +69,26 @@ class WatchlistItemSheet extends StatelessWidget {
             const SizedBox(height: 20),
             if (canRequest && requestIsPrimary)
               FilledButton.icon(
-                onPressed: () => Navigator.of(context).pop(WatchlistSheetAction.request),
+                onPressed: () => OverlaySheetController.closeAdaptive(context, WatchlistSheetAction.request),
                 icon: const Icon(Symbols.playlist_add_rounded),
                 label: Text(t.seerr.request),
               ),
             if (canRequest && !requestIsPrimary)
               OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).pop(WatchlistSheetAction.request),
+                onPressed: () => OverlaySheetController.closeAdaptive(context, WatchlistSheetAction.request),
                 icon: const Icon(Symbols.playlist_add_rounded),
                 label: Text(t.seerr.request),
               ),
             if (canRequest) const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).pop(WatchlistSheetAction.remove),
+              onPressed: () => OverlaySheetController.closeAdaptive(context, WatchlistSheetAction.remove),
               icon: const Icon(Symbols.delete_rounded),
               label: Text(t.watchlist.remove),
               style: OutlinedButton.styleFrom(foregroundColor: theme.colorScheme.error),
             ),
             const SizedBox(height: 8),
             TextButton(
-              onPressed: () => Navigator.of(context).pop(WatchlistSheetAction.cancel),
+              onPressed: () => OverlaySheetController.closeAdaptive(context, WatchlistSheetAction.cancel),
               child: Text(t.common.cancel),
             ),
           ],

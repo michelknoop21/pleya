@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -16,6 +18,7 @@ import '../../utils/platform_detector.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/loading_indicator_box.dart';
+import '../../widgets/setting_tile.dart';
 import 'async_form_state_mixin.dart';
 
 /// Connect Tautulli, the Plex monitoring service, to this profile.
@@ -43,6 +46,7 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
   final _urlFocus = FocusNode(debugLabel: 'Tautulli:Url');
   final _testFocus = FocusNode(debugLabel: 'Tautulli:Test');
   final _saveFocus = FocusNode(debugLabel: 'Tautulli:Save');
+  final _historyPolicyFocus = FocusNode(debugLabel: 'Tautulli:HistoryPolicy');
   final _formKey = GlobalKey<FormState>();
 
   TautulliAuthMode _mode = TautulliAuthMode.device;
@@ -73,10 +77,15 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
   void dispose() {
     _urlFocus.dispose();
     _testFocus.dispose();
+    _historyPolicyFocus.dispose();
     _saveFocus.dispose();
     super.dispose();
   }
 
+  /// Every branch ends in a sentence written for this screen. What used to
+  /// happen instead was that a TautulliException with no flag on it fell
+  /// through to `e.message`, so the field under the Test button read `HTTP 400`
+  /// or `Bad Gateway`. Those belong in the log, which now has them.
   String _mapError(Object e) {
     if (e is TautulliException) {
       if (e.isNetwork) return t.tautulli.errorNetwork;
@@ -89,7 +98,14 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
         if (TautulliConstants.looksLikeApiKey(_tokenController.text)) return t.tautulli.errorModeMismatch;
         return t.tautulli.errorTokenExpired;
       }
-      return e.message;
+      // One sentence for both body-shape failures: the difference between "not
+      // Tautulli" and "Tautulli said something unfamiliar" decides where a
+      // developer looks, not what the user does next, and what the user does
+      // next is check the address either way.
+      if (e.isNotTautulli || e.isMalformed) return t.tautulli.errorNotTautulli;
+      final status = e.statusCode;
+      if (status != null) return t.tautulli.errorServer(code: status);
+      return t.tautulli.errorGeneric;
     }
     return t.tautulli.errorGeneric;
   }
@@ -213,6 +229,30 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
         ),
         const SizedBox(height: 16),
         Text(t.tautulli.adminOnlyNote, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
+        // Admin-only by construction: this whole screen is behind
+        // `SettingsScreen._ownsAPlexServer`, and the provider refuses the write
+        // again for anyone who does not administer the server. Regular profiles
+        // never see this switch, never opt in and never learn Tautulli exists;
+        // they just get better recommendations from their own history.
+        // A migration conflict silently disables import, so it has to be
+        // visible to the one person who can resolve it.
+        if (provider.hasIntegrationConflict)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              t.tautulli.integrationConflictNote,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+            ),
+          ),
+        if (provider.adminStatus != null)
+          SettingSwitchRow(
+            focusNode: _historyPolicyFocus,
+            value: provider.historyForRecommendations,
+            onChanged: busy ? null : (v) => unawaited(provider.setHistoryForRecommendations(v)),
+            icon: Symbols.recommend_rounded,
+            title: t.tautulli.useHistoryForRecommendations,
+            subtitle: t.tautulli.useHistoryForRecommendationsDescription,
+          ),
         const SizedBox(height: 16),
         FocusableButton(
           focusNode: _testFocus,

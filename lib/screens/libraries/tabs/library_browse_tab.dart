@@ -42,6 +42,7 @@ import '../../../widgets/sliver_cross_axis_layout_builder.dart';
 import '../../../widgets/media_card_list_layout.dart';
 import '../../../widgets/bottom_sheet_page_scaffold.dart';
 import '../../../widgets/overlay_sheet.dart';
+import '../../../widgets/overlay_sheet_geometry.dart';
 import '../../../mixins/library_tab_focus_mixin.dart';
 import '../folder_tree_view.dart';
 import '../filters_bottom_sheet.dart';
@@ -847,6 +848,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     controller
         .show<String>(
           showDragHandle: true,
+          presentation: OverlaySheetPresentation.panel,
           builder: (sheetContext) => Column(
             mainAxisSize: .min,
             children: [
@@ -926,7 +928,9 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
 
   void _showFiltersBottomSheet() {
     SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
-    OverlaySheetController.of(context).show(builder: (_) => _buildFiltersBottomSheet());
+    OverlaySheetController.of(
+      context,
+    ).show(presentation: OverlaySheetPresentation.panel, builder: (_) => _buildFiltersBottomSheet());
   }
 
   void _showFiltersOptionsPage(OverlaySheetController controller) {
@@ -963,7 +967,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
 
   void _showSortBottomSheet() {
     final controller = OverlaySheetController.of(context);
-    _openSortBottomSheet((builder) => controller.show(builder: builder));
+    _openSortBottomSheet((builder) => controller.show(presentation: OverlaySheetPresentation.panel, builder: builder));
   }
 
   void _showSortOptionsPage(OverlaySheetController controller) {

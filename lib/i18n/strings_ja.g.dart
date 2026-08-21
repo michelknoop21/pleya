@@ -679,9 +679,9 @@ class _TranslationsMessagesJa extends TranslationsMessagesEn {
 	@override String get markedAsUnwatchedOffline => '未視聴にしました（オンライン時に同期）';
 	@override String autoRemovedWatchedDownload({required Object title}) => '自動削除: ${title}';
 	@override String get removedFromContinueWatching => '視聴中から削除しました';
-	@override String errorLoading({required Object error}) => 'エラー: ${error}';
+	@override String get errorLoading => 'エラー';
 	@override String get fileInfoNotAvailable => 'ファイル情報が利用できません';
-	@override String errorLoadingFileInfo({required Object error}) => 'ファイル情報の読み込みエラー: ${error}';
+	@override String get errorLoadingFileInfo => 'ファイル情報の読み込みエラー';
 	@override String get errorLoadingSeries => 'シリーズの読み込みエラー';
 	@override String get musicNotSupported => '音楽の再生はまだサポートされていません';
 	@override String get noDescriptionAvailable => '説明はありません';
@@ -693,10 +693,10 @@ class _TranslationsMessagesJa extends TranslationsMessagesEn {
 	@override String get noLogsAvailable => 'ログがありません';
 	@override String libraryScanning({required Object title}) => '"${title}"をスキャン中...';
 	@override String libraryScanStarted({required Object title}) => '"${title}"のライブラリスキャンを開始しました';
-	@override String libraryScanFailed({required Object error}) => 'ライブラリのスキャンに失敗しました: ${error}';
+	@override String get libraryScanFailed => 'ライブラリのスキャンに失敗しました';
 	@override String metadataRefreshing({required Object title}) => '"${title}"のメタデータを更新中...';
 	@override String metadataRefreshStarted({required Object title}) => '"${title}"のメタデータ更新を開始しました';
-	@override String metadataRefreshFailed({required Object error}) => 'メタデータの更新に失敗しました: ${error}';
+	@override String get metadataRefreshFailed => 'メタデータの更新に失敗しました';
 	@override String get logoutConfirm => 'ログアウトしてもよろしいですか？';
 	@override String get noSeasonsFound => 'シーズンが見つかりません';
 	@override String get seasonsLoadFailed => 'シーズンを読み込めませんでした';
@@ -707,7 +707,7 @@ class _TranslationsMessagesJa extends TranslationsMessagesEn {
 	@override String sleepTimerSet({required Object label}) => 'スリープタイマーを${label}に設定しました';
 	@override String get noItemsAvailable => 'アイテムがありません';
 	@override String get failedToCreatePlayQueueNoItems => '再生キューの作成に失敗しました - アイテムがありません';
-	@override String failedPlayback({required Object action, required Object error}) => '${action}に失敗しました: ${error}';
+	@override String failedPlayback({required Object action}) => '${action}に失敗しました';
 	@override String get switchingToCompatiblePlayer => '互換プレーヤーに切替中...';
 	@override String get serverLimitTitle => '再生に失敗しました';
 	@override String get serverLimitBody => 'サーバーエラー（HTTP 500）。帯域幅/トランスコード制限により拒否された可能性があります。所有者に調整を依頼してください。';
@@ -899,16 +899,16 @@ class _TranslationsErrorsJa extends TranslationsErrorsEn {
 	final TranslationsJa _root; // ignore: unused_field
 
 	// Translations
-	@override String searchFailed({required Object error}) => '検索に失敗しました: ${error}';
+	@override String get searchFailed => '検索に失敗しました';
 	@override String connectionTimeout({required Object context}) => '${context}の読み込み中に接続がタイムアウトしました';
 	@override String get connectionFailed => 'メディアサーバーに接続できません';
-	@override String failedToLoad({required Object context, required Object error}) => '${context}の読み込みに失敗しました: ${error}';
+	@override String failedToLoad({required Object context}) => '${context}の読み込みに失敗しました';
 	@override String get noClientAvailable => 'クライアントが利用できません';
-	@override String authenticationFailed({required Object error}) => '認証に失敗しました: ${error}';
+	@override String get authenticationFailed => '認証に失敗しました';
 	@override String get couldNotLaunchUrl => '認証URLを開けませんでした';
 	@override String get pleaseEnterToken => 'トークンを入力してください';
 	@override String get invalidToken => '無効なトークン';
-	@override String failedToVerifyToken({required Object error}) => 'トークンの検証に失敗しました: ${error}';
+	@override String get failedToVerifyToken => 'トークンの検証に失敗しました';
 	@override String failedToSwitchProfile({required Object displayName}) => '${displayName}への切替に失敗しました';
 	@override String failedToDeleteProfile({required Object displayName}) => '${displayName}の削除に失敗しました';
 	@override String get failedToRate => '評価を更新できませんでした';
@@ -931,10 +931,10 @@ class _TranslationsLibrariesJa extends TranslationsLibrariesEn {
 	@override String get emptyTrash => 'ゴミ箱を空にする';
 	@override String emptyingTrash({required Object title}) => '"${title}"のゴミ箱を空にしています...';
 	@override String trashEmptied({required Object title}) => '"${title}"のゴミ箱を空にしました';
-	@override String failedToEmptyTrash({required Object error}) => 'ゴミ箱を空にできませんでした: ${error}';
+	@override String get failedToEmptyTrash => 'ゴミ箱を空にできませんでした';
 	@override String analyzing({required Object title}) => '"${title}"を解析中...';
 	@override String analysisStarted({required Object title}) => '"${title}"の解析を開始しました';
-	@override String failedToAnalyze({required Object error}) => 'ライブラリの解析に失敗しました: ${error}';
+	@override String get failedToAnalyze => 'ライブラリの解析に失敗しました';
 	@override String get noLibrariesFound => 'ライブラリが見つかりません';
 	@override String get allLibrariesHidden => 'すべてのライブラリが非表示です';
 	@override String hiddenLibrariesCount({required Object count}) => '非表示のライブラリ (${count})';
@@ -989,7 +989,7 @@ class _TranslationsServerSelectionJa extends TranslationsServerSelectionEn {
 	// Translations
 	@override String get allServerConnectionsFailed => 'どのサーバーにも接続できませんでした。ネットワークを確認してください。';
 	@override String noServersFoundForAccount({required Object username, required Object email}) => '${username} (${email})のサーバーが見つかりません';
-	@override String failedToLoadServers({required Object error}) => 'サーバーの読み込みに失敗しました: ${error}';
+	@override String get failedToLoadServers => 'サーバーの読み込みに失敗しました';
 }
 
 // Path: hubDetail
@@ -1131,8 +1131,8 @@ class _TranslationsCollectionsJa extends TranslationsCollectionsEn {
 	@override String deleteConfirm({required Object title}) => '「${title}」を削除しますか？元に戻せません。';
 	@override String get deleted => 'コレクションを削除しました';
 	@override String get deleteFailed => 'コレクションの削除に失敗しました';
-	@override String deleteFailedWithError({required Object error}) => 'コレクションの削除に失敗しました: ${error}';
-	@override String failedToLoadItems({required Object error}) => 'コレクションアイテムの読み込みに失敗しました: ${error}';
+	@override String get deleteFailedWithError => 'コレクションの削除に失敗しました';
+	@override String get failedToLoadItems => 'コレクションアイテムの読み込みに失敗しました';
 	@override String get selectCollection => 'コレクションを選択';
 	@override String get collectionName => 'コレクション名';
 	@override String get enterCollectionName => 'コレクション名を入力';
@@ -1143,7 +1143,7 @@ class _TranslationsCollectionsJa extends TranslationsCollectionsEn {
 	@override String removeFromCollectionConfirm({required Object title}) => '"${title}"をこのコレクションから削除しますか？';
 	@override String get removedFromCollection => 'コレクションから削除しました';
 	@override String get removeFromCollectionFailed => 'コレクションからの削除に失敗しました';
-	@override String removeFromCollectionError({required Object error}) => 'コレクションからの削除エラー: ${error}';
+	@override String get removeFromCollectionError => 'コレクションからの削除エラー';
 	@override String get searchCollections => 'コレクションを検索...';
 }
 
@@ -1626,13 +1626,13 @@ class _TranslationsAddServerJa extends TranslationsAddServerEn {
 	@override String get signIn => 'サインイン';
 	@override String get change => '変更';
 	@override String get required => '必須';
-	@override String couldNotReachServer({required Object error}) => 'サーバーに接続できませんでした: ${error}';
-	@override String signInFailed({required Object error}) => 'サインインに失敗しました: ${error}';
-	@override String quickConnectFailed({required Object error}) => 'Quick Connectに失敗しました: ${error}';
+	@override String get couldNotReachServer => 'サーバーに接続できませんでした';
+	@override String get signInFailed => 'サインインに失敗しました';
+	@override String get quickConnectFailed => 'Quick Connectに失敗しました';
 	@override String get addPlexTitle => 'Plexでサインイン';
 	@override String get pinExpired => 'サインイン前にPINの有効期限が切れました。もう一度お試しください。';
 	@override String get duplicatePlexAccount => 'すでにPlexにサインインしています。アカウントを切り替えるにはサインアウトしてください。';
-	@override String failedToRegisterAccount({required Object error}) => 'アカウントの登録に失敗しました: ${error}';
+	@override String get failedToRegisterAccount => 'アカウントの登録に失敗しました';
 	@override String get enterJellyfinUrlError => 'JellyfinサーバーのURLを入力してください';
 	@override String get addConnectionTitle => '接続を追加';
 	@override String addConnectionTitleScoped({required Object name}) => '${name}に追加';
@@ -1754,7 +1754,7 @@ class _TranslationsVideoControlsPipErrorsJa extends TranslationsVideoControlsPip
 	@override String get notSupported => 'デバイスはピクチャーインピクチャーモードをサポートしていません';
 	@override String get voSwitchFailed => 'ピクチャーインピクチャーの映像出力切替に失敗しました';
 	@override String get failed => 'ピクチャーインピクチャーの開始に失敗しました';
-	@override String unknown({required Object error}) => 'エラーが発生しました: ${error}';
+	@override String get unknown => 'エラーが発生しました';
 }
 
 // Path: libraries.tabs
@@ -1872,7 +1872,7 @@ class _TranslationsCompanionRemotePairingJa extends TranslationsCompanionRemoteP
 	@override String get connectionTimedOut => '接続がタイムアウトしました。両方のデバイスで同じネットワークを使用してください。';
 	@override String get sessionNotFound => 'デバイスが見つかりません。ホストでPleyaが実行中か確認してください。';
 	@override String get authFailed => '認証に失敗しました。両方のデバイスで同じPlexアカウントが必要です。';
-	@override String failedToConnect({required Object error}) => '接続に失敗しました: ${error}';
+	@override String get failedToConnect => '接続に失敗しました';
 }
 
 // Path: companionRemote.remote
@@ -2447,7 +2447,7 @@ extension on TranslationsJa {
 			'videoControls.pipErrors.notSupported' => 'デバイスはピクチャーインピクチャーモードをサポートしていません',
 			'videoControls.pipErrors.voSwitchFailed' => 'ピクチャーインピクチャーの映像出力切替に失敗しました',
 			'videoControls.pipErrors.failed' => 'ピクチャーインピクチャーの開始に失敗しました',
-			'videoControls.pipErrors.unknown' => ({required Object error}) => 'エラーが発生しました: ${error}',
+			'videoControls.pipErrors.unknown' => 'エラーが発生しました',
 			'videoControls.chapters' => 'チャプター',
 			'videoControls.noChaptersAvailable' => 'チャプターがありません',
 			'videoControls.queue' => 'キュー',
@@ -2472,9 +2472,9 @@ extension on TranslationsJa {
 			'messages.markedAsUnwatchedOffline' => '未視聴にしました（オンライン時に同期）',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => '自動削除: ${title}',
 			'messages.removedFromContinueWatching' => '視聴中から削除しました',
-			'messages.errorLoading' => ({required Object error}) => 'エラー: ${error}',
+			'messages.errorLoading' => 'エラー',
 			'messages.fileInfoNotAvailable' => 'ファイル情報が利用できません',
-			'messages.errorLoadingFileInfo' => ({required Object error}) => 'ファイル情報の読み込みエラー: ${error}',
+			'messages.errorLoadingFileInfo' => 'ファイル情報の読み込みエラー',
 			'messages.errorLoadingSeries' => 'シリーズの読み込みエラー',
 			'messages.musicNotSupported' => '音楽の再生はまだサポートされていません',
 			'messages.noDescriptionAvailable' => '説明はありません',
@@ -2486,10 +2486,10 @@ extension on TranslationsJa {
 			'messages.noLogsAvailable' => 'ログがありません',
 			'messages.libraryScanning' => ({required Object title}) => '"${title}"をスキャン中...',
 			'messages.libraryScanStarted' => ({required Object title}) => '"${title}"のライブラリスキャンを開始しました',
-			'messages.libraryScanFailed' => ({required Object error}) => 'ライブラリのスキャンに失敗しました: ${error}',
+			'messages.libraryScanFailed' => 'ライブラリのスキャンに失敗しました',
 			'messages.metadataRefreshing' => ({required Object title}) => '"${title}"のメタデータを更新中...',
 			'messages.metadataRefreshStarted' => ({required Object title}) => '"${title}"のメタデータ更新を開始しました',
-			'messages.metadataRefreshFailed' => ({required Object error}) => 'メタデータの更新に失敗しました: ${error}',
+			'messages.metadataRefreshFailed' => 'メタデータの更新に失敗しました',
 			'messages.logoutConfirm' => 'ログアウトしてもよろしいですか？',
 			'messages.noSeasonsFound' => 'シーズンが見つかりません',
 			'messages.seasonsLoadFailed' => 'シーズンを読み込めませんでした',
@@ -2500,7 +2500,7 @@ extension on TranslationsJa {
 			'messages.sleepTimerSet' => ({required Object label}) => 'スリープタイマーを${label}に設定しました',
 			'messages.noItemsAvailable' => 'アイテムがありません',
 			'messages.failedToCreatePlayQueueNoItems' => '再生キューの作成に失敗しました - アイテムがありません',
-			'messages.failedPlayback' => ({required Object action, required Object error}) => '${action}に失敗しました: ${error}',
+			'messages.failedPlayback' => ({required Object action}) => '${action}に失敗しました',
 			'messages.switchingToCompatiblePlayer' => '互換プレーヤーに切替中...',
 			'messages.serverLimitTitle' => '再生に失敗しました',
 			'messages.serverLimitBody' => 'サーバーエラー（HTTP 500）。帯域幅/トランスコード制限により拒否された可能性があります。所有者に調整を依頼してください。',
@@ -2631,16 +2631,16 @@ extension on TranslationsJa {
 			'discover.tvShow' => 'テレビ番組',
 			'discover.minutesLeft' => ({required Object minutes}) => '残り${minutes}分',
 			'discover.moreLikeThis' => '似ている作品',
-			'errors.searchFailed' => ({required Object error}) => '検索に失敗しました: ${error}',
+			'errors.searchFailed' => '検索に失敗しました',
 			'errors.connectionTimeout' => ({required Object context}) => '${context}の読み込み中に接続がタイムアウトしました',
 			'errors.connectionFailed' => 'メディアサーバーに接続できません',
-			'errors.failedToLoad' => ({required Object context, required Object error}) => '${context}の読み込みに失敗しました: ${error}',
+			'errors.failedToLoad' => ({required Object context}) => '${context}の読み込みに失敗しました',
 			'errors.noClientAvailable' => 'クライアントが利用できません',
-			'errors.authenticationFailed' => ({required Object error}) => '認証に失敗しました: ${error}',
+			'errors.authenticationFailed' => '認証に失敗しました',
 			'errors.couldNotLaunchUrl' => '認証URLを開けませんでした',
 			'errors.pleaseEnterToken' => 'トークンを入力してください',
 			'errors.invalidToken' => '無効なトークン',
-			'errors.failedToVerifyToken' => ({required Object error}) => 'トークンの検証に失敗しました: ${error}',
+			'errors.failedToVerifyToken' => 'トークンの検証に失敗しました',
 			'errors.failedToSwitchProfile' => ({required Object displayName}) => '${displayName}への切替に失敗しました',
 			'errors.failedToDeleteProfile' => ({required Object displayName}) => '${displayName}の削除に失敗しました',
 			'errors.failedToRate' => '評価を更新できませんでした',
@@ -2654,10 +2654,10 @@ extension on TranslationsJa {
 			'libraries.emptyTrash' => 'ゴミ箱を空にする',
 			'libraries.emptyingTrash' => ({required Object title}) => '"${title}"のゴミ箱を空にしています...',
 			'libraries.trashEmptied' => ({required Object title}) => '"${title}"のゴミ箱を空にしました',
-			'libraries.failedToEmptyTrash' => ({required Object error}) => 'ゴミ箱を空にできませんでした: ${error}',
+			'libraries.failedToEmptyTrash' => 'ゴミ箱を空にできませんでした',
 			'libraries.analyzing' => ({required Object title}) => '"${title}"を解析中...',
 			'libraries.analysisStarted' => ({required Object title}) => '"${title}"の解析を開始しました',
-			'libraries.failedToAnalyze' => ({required Object error}) => 'ライブラリの解析に失敗しました: ${error}',
+			'libraries.failedToAnalyze' => 'ライブラリの解析に失敗しました',
 			'libraries.noLibrariesFound' => 'ライブラリが見つかりません',
 			'libraries.allLibrariesHidden' => 'すべてのライブラリが非表示です',
 			'libraries.hiddenLibrariesCount' => ({required Object count}) => '非表示のライブラリ (${count})',
@@ -2727,7 +2727,7 @@ extension on TranslationsJa {
 			'about.viewLicensesDescription' => 'サードパーティライブラリのライセンスを表示',
 			'serverSelection.allServerConnectionsFailed' => 'どのサーバーにも接続できませんでした。ネットワークを確認してください。',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => '${username} (${email})のサーバーが見つかりません',
-			'serverSelection.failedToLoadServers' => ({required Object error}) => 'サーバーの読み込みに失敗しました: ${error}',
+			'serverSelection.failedToLoadServers' => 'サーバーの読み込みに失敗しました',
 			'hubDetail.title' => 'タイトル',
 			'hubDetail.releaseYear' => '公開年',
 			'hubDetail.dateAdded' => '追加日',
@@ -2815,8 +2815,8 @@ extension on TranslationsJa {
 			'collections.deleteConfirm' => ({required Object title}) => '「${title}」を削除しますか？元に戻せません。',
 			'collections.deleted' => 'コレクションを削除しました',
 			'collections.deleteFailed' => 'コレクションの削除に失敗しました',
-			'collections.deleteFailedWithError' => ({required Object error}) => 'コレクションの削除に失敗しました: ${error}',
-			'collections.failedToLoadItems' => ({required Object error}) => 'コレクションアイテムの読み込みに失敗しました: ${error}',
+			'collections.deleteFailedWithError' => 'コレクションの削除に失敗しました',
+			'collections.failedToLoadItems' => 'コレクションアイテムの読み込みに失敗しました',
 			'collections.selectCollection' => 'コレクションを選択',
 			'collections.collectionName' => 'コレクション名',
 			'collections.enterCollectionName' => 'コレクション名を入力',
@@ -2827,7 +2827,7 @@ extension on TranslationsJa {
 			'collections.removeFromCollectionConfirm' => ({required Object title}) => '"${title}"をこのコレクションから削除しますか？',
 			'collections.removedFromCollection' => 'コレクションから削除しました',
 			'collections.removeFromCollectionFailed' => 'コレクションからの削除に失敗しました',
-			'collections.removeFromCollectionError' => ({required Object error}) => 'コレクションからの削除エラー: ${error}',
+			'collections.removeFromCollectionError' => 'コレクションからの削除エラー',
 			'collections.searchCollections' => 'コレクションを検索...',
 			'playlists.title' => 'プレイリスト',
 			'playlists.playlist' => 'プレイリスト',
@@ -3025,7 +3025,7 @@ extension on TranslationsJa {
 			'companionRemote.pairing.connectionTimedOut' => '接続がタイムアウトしました。両方のデバイスで同じネットワークを使用してください。',
 			'companionRemote.pairing.sessionNotFound' => 'デバイスが見つかりません。ホストでPleyaが実行中か確認してください。',
 			'companionRemote.pairing.authFailed' => '認証に失敗しました。両方のデバイスで同じPlexアカウントが必要です。',
-			'companionRemote.pairing.failedToConnect' => ({required Object error}) => '接続に失敗しました: ${error}',
+			'companionRemote.pairing.failedToConnect' => '接続に失敗しました',
 			'companionRemote.remote.disconnectConfirm' => 'リモートセッションから切断しますか？',
 			'companionRemote.remote.reconnecting' => '再接続中...',
 			'companionRemote.remote.attemptOf' => ({required Object current}) => '試行 ${current}/5',
@@ -3262,13 +3262,13 @@ extension on TranslationsJa {
 			'addServer.signIn' => 'サインイン',
 			'addServer.change' => '変更',
 			'addServer.required' => '必須',
-			'addServer.couldNotReachServer' => ({required Object error}) => 'サーバーに接続できませんでした: ${error}',
-			'addServer.signInFailed' => ({required Object error}) => 'サインインに失敗しました: ${error}',
-			'addServer.quickConnectFailed' => ({required Object error}) => 'Quick Connectに失敗しました: ${error}',
+			'addServer.couldNotReachServer' => 'サーバーに接続できませんでした',
+			'addServer.signInFailed' => 'サインインに失敗しました',
+			'addServer.quickConnectFailed' => 'Quick Connectに失敗しました',
 			'addServer.addPlexTitle' => 'Plexでサインイン',
 			'addServer.pinExpired' => 'サインイン前にPINの有効期限が切れました。もう一度お試しください。',
 			'addServer.duplicatePlexAccount' => 'すでにPlexにサインインしています。アカウントを切り替えるにはサインアウトしてください。',
-			'addServer.failedToRegisterAccount' => ({required Object error}) => 'アカウントの登録に失敗しました: ${error}',
+			'addServer.failedToRegisterAccount' => 'アカウントの登録に失敗しました',
 			'addServer.enterJellyfinUrlError' => 'JellyfinサーバーのURLを入力してください',
 			'addServer.addConnectionTitle' => '接続を追加',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => '${name}に追加',

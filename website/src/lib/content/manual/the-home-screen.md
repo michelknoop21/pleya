@@ -5,7 +5,7 @@ order: 4
 group: Watching
 icon: home
 summary: The billboard, the rows, and the quick menu behind every poster.
-updated: 2026-08-18
+updated: 2026-08-19
 ---
 
 # The home screen
@@ -19,6 +19,8 @@ of posters underneath.
 
 - **The billboard.** A large featured item that changes every eight seconds, with a title,
   a description and buttons to start it. Half-watched titles carry a red progress bar.
+  Clicking the billboard itself opens the title; the play button is the only thing that
+  starts it, so a click that lands slightly wide no longer begins a film.
 - **Continue watching.** Everything you started and did not finish.
 - **Next up.** The next episode of the series you are in the middle of.
 - **Recently added.** New on the server.

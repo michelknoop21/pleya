@@ -790,41 +790,73 @@ sealed class MediaItem with _$MediaItem {
   /// Best billboard art, or null when the item has no artwork at all.
   ///
   /// [containerAspectRatio] is the width/height of the box the art fills. On a
-  /// narrow (portrait) box a 16:9 backdrop must scale to the box height and
-  /// loses most of its width to a centre crop, slicing faces off the sides.
-  /// A square background art frames far better there and — unlike a poster —
-  /// carries no baked-in title, so it stands in as a real backdrop (rendered
-  /// sharp, not blurred). Wide boxes keep the 16:9 backdrop as before.
-  BillboardArt? billboardArt({double? containerAspectRatio}) {
-    if (containerAspectRatio != null && containerAspectRatio < 1.39) {
-      final square = backgroundSquarePath;
-      if (square != null && square.isNotEmpty) {
-        return BillboardArt(path: square, isBackdrop: true);
-      }
+  /// wide box, and when no ratio is given at all (`_hasBillboardArt` calls it
+  /// that way), a 16:9 backdrop always wins when one exists.
+  ///
+  /// On a narrow box the answer depends on how the layout renders the sharp
+  /// layer there, which is what [narrowBoxIsFullWidth] says:
+  ///
+  /// - **A centred island** (iPad portrait, the default). Square art wins when
+  ///   it exists: the layer is only 82% of the box wide, so a square subject
+  ///   reads calmer than a 16:9 backdrop shrunk to fit that island.
+  /// - **Edge to edge** (iPhone portrait). The backdrop wins. A square source
+  ///   run at full width becomes a block as tall as the screen is wide, over
+  ///   half the hero, with the app's own clear-logo drawn across the subject.
+  ///   That is the defect "prefer 16:9 backdrop over square art on narrow
+  ///   iPhone hero" removed, and it is worse at full width than it ever was
+  ///   before that fix.
+  ///
+  /// Square is still the crop-free fallback in both cases when no backdrop
+  /// exists at all: it carries no baked-in title, so it can render sharp
+  /// rather than dropping to the blurred poster/thumb last resort.
+  BillboardArt? billboardArt({double? containerAspectRatio, bool narrowBoxIsFullWidth = false}) {
+    final isNarrowBox = containerAspectRatio != null && containerAspectRatio < billboardNarrowAspectRatioThreshold;
+    final square = backgroundSquarePath;
+    final hasSquare = square != null && square.isNotEmpty;
+
+    // Island on a narrow box: square first (see the doc comment above).
+    if (isNarrowBox && !narrowBoxIsFullWidth && hasSquare) {
+      return BillboardArt(path: square, kind: BillboardArtKind.square);
     }
+
     final backdrops = _dedupedPaths(switch (kind) {
       MediaKind.episode => [grandparentArtPath, artPath],
       _ => [artPath],
     });
     if (backdrops.isNotEmpty) {
-      return BillboardArt(path: backdrops.first, isBackdrop: true);
+      return BillboardArt(path: backdrops.first, kind: BillboardArtKind.widescreen);
     }
 
-    // No 16:9 frame exists. Square and poster art carry their own baked-in
-    // title treatment, so showing one sharp would double the title and crop
-    // through it. Fall back to one anyway — an empty billboard is worse — but
-    // the caller renders it blurred, as atmosphere, and lets the app's own
-    // typography carry the title alone.
+    // No 16:9 frame. On a narrow box a square source still renders sharp and
+    // crop-free at its own ratio, which beats a blurred poster.
+    if (isNarrowBox && hasSquare) {
+      return BillboardArt(path: square, kind: BillboardArtKind.square);
+    }
+
+    // Nothing shaped for a billboard exists. Square and poster art carry their
+    // own baked-in title treatment, so showing one sharp on a wide box would
+    // double the title and crop through it. Fall back to one anyway — an empty
+    // billboard is worse — but the caller renders it blurred, as atmosphere,
+    // and lets the app's own typography carry the title alone.
     final fills = billboardArtCandidates();
-    return fills.isEmpty ? null : BillboardArt(path: fills.first, isBackdrop: false);
+    return fills.isEmpty ? null : BillboardArt(path: fills.first, kind: BillboardArtKind.fallback);
   }
 
-  /// Returns billboard art candidates in display-preference order.
+  /// Returns billboard art candidates in display-preference order, ignoring
+  /// container shape entirely.
   ///
-  /// A billboard carries the app's own title typography (or clear logo) over
-  /// the artwork, so the 16:9 backdrop always wins — regardless of how tall
-  /// the box is. Square and poster art are last-resort fallbacks; see
-  /// [billboardArt] for how they are rendered.
+  /// This is *not* what [billboardArt] uses to decide between a 16:9
+  /// backdrop and square art on a narrow box — that choice is
+  /// [containerAspectRatio]-dependent and lives in [billboardArt] itself.
+  /// This list is the ratio-independent order two other things need: the
+  /// blurred last-resort fallback [billboardArt] falls through to when
+  /// neither a backdrop nor (on a narrow box) square art exists, and
+  /// `_hasBillboardArt` (`discover_screen.dart`), which calls [billboardArt]
+  /// with no ratio at all to decide whether an item still needs an
+  /// art-enrichment fetch — a decision that must not depend on how wide the
+  /// hero happens to be laid out this frame. Square and poster art are
+  /// fallbacks here, never the sharp choice; see [billboardArt] for the one
+  /// case (narrow box, square source) where square *does* render sharp.
   List<String> billboardArtCandidates() {
     final preferred = switch (kind) {
       MediaKind.episode => [grandparentArtPath, artPath, backgroundSquarePath, grandparentThumbPath, thumbPath],
@@ -843,26 +875,49 @@ sealed class MediaItem with _$MediaItem {
   }
 }
 
+/// Below this width/height ratio a 16:9 backdrop crops away too much of its
+/// sides to read as the intended composition. Shared by [MediaItem.billboardArt]
+/// and `homeHeroArtGeometry` so both agree on when a box counts as narrow.
+const double billboardNarrowAspectRatioThreshold = 1.39;
+
+/// Which source [BillboardArt.path] came from, and thus how it must be rendered.
+enum BillboardArtKind {
+  /// A 16:9 backdrop, chosen because the container was wide enough for it.
+  widescreen,
+
+  /// Square background art, chosen on a narrow (portrait) container to avoid
+  /// the centre-crop a 16:9 backdrop would take there.
+  square,
+
+  /// No 16:9 frame existed; the choice fell back to square or poster art that
+  /// carries its own baked-in title treatment, so the caller blurs it into a
+  /// background wash instead of showing it sharp under the app's title.
+  fallback,
+}
+
 /// Artwork chosen for a billboard, plus how it must be rendered.
-///
-/// [isBackdrop] is false when no 16:9 frame existed and the choice fell back
-/// to square or poster art. Such artwork usually carries its own title
-/// treatment, so the caller blurs it into a background wash instead of showing
-/// it sharp under the app's title.
 class BillboardArt {
-  const BillboardArt({required this.path, required this.isBackdrop});
+  const BillboardArt({required this.path, required this.kind});
 
   final String path;
-  final bool isBackdrop;
+  final BillboardArtKind kind;
+
+  /// A widescreen or square source carries no baked-in title, so it can be
+  /// drawn sharp under the app's own typography.
+  bool get canRenderSharp => kind != BillboardArtKind.fallback;
+
+  /// A fallback source (square/poster without a 16:9 frame) already carries a
+  /// title, so it is shown blurred as atmosphere instead.
+  bool get shouldBlur => kind == BillboardArtKind.fallback;
 
   @override
-  bool operator ==(Object other) => other is BillboardArt && other.path == path && other.isBackdrop == isBackdrop;
+  bool operator ==(Object other) => other is BillboardArt && other.path == path && other.kind == kind;
 
   @override
-  int get hashCode => Object.hash(path, isBackdrop);
+  int get hashCode => Object.hash(path, kind);
 
   @override
-  String toString() => 'BillboardArt($path, isBackdrop: $isBackdrop)';
+  String toString() => 'BillboardArt($path, kind: $kind)';
 }
 
 MediaKind _mediaKindFromJson(Object? raw) => MediaKind.fromString(raw as String?);

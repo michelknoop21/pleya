@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../diagnostics/select_trace_recorder.dart';
 import '../utils/app_logger.dart';
 import '../utils/key_event_simulator.dart' as key_sim;
 import '../utils/native_input_session.dart';
@@ -67,6 +68,7 @@ class AppleTvRemoteTouchService {
   final VoidCallback _scheduleFrame;
   final DateTime Function() _now;
   final GamepadDuplicateInputGuard _duplicateInputGuard;
+  final SelectTraceRecorder _traceRecorder;
   final StreamController<AppleTvRemotePlayPauseAction> _playPauseController =
       StreamController<AppleTvRemotePlayPauseAction>.broadcast();
   final double swipeThreshold;
@@ -95,6 +97,14 @@ class AppleTvRemoteTouchService {
   DateTime? _lastAcceptedNativeSelectUpAt;
   int _suppressedNativeSelectDowns = 0;
   bool _nativeSelectPressed = false;
+
+  /// Correlation id of the Select press that is currently down.
+  ///
+  /// Deliberately separate from [_nativeSelectPressed]: that flag is
+  /// duplicate-suppression bookkeeping and gets cleared on paths that have
+  /// nothing to do with the press reaching a widget. Overloading it as the
+  /// correlation carrier would tie the trace's lifetime to the wrong rule.
+  String? _openSelectTraceId;
   bool _selectPressedFromClick = false;
   _DirectionalOwner _directionalOwner = _DirectionalOwner.none;
   DateTime? _directionalOwnerExpiresAt;
@@ -111,6 +121,7 @@ class AppleTvRemoteTouchService {
     VoidCallback? scheduleFrame,
     DateTime Function()? now,
     GamepadDuplicateInputGuard? duplicateInputGuard,
+    SelectTraceRecorder? traceRecorder,
     Duration duplicateSuppressionWindow = GamepadDuplicateInputGuard.defaultSuppressionWindow,
     this.swipeThreshold = defaultSwipeThreshold,
     this.axisSwitchDominanceRatio = defaultAxisSwitchDominanceRatio,
@@ -126,6 +137,7 @@ class AppleTvRemoteTouchService {
        _simulateKeyUp = simulateKeyUp ?? key_sim.simulateKeyUp,
        _scheduleFrame = scheduleFrame ?? key_sim.scheduleFrameIfIdle,
        _now = now ?? DateTime.now,
+       _traceRecorder = traceRecorder ?? SelectTraceRecorder.instance,
        _duplicateInputGuard =
            duplicateInputGuard ?? GamepadDuplicateInputGuard(now: now, suppressionWindow: duplicateSuppressionWindow);
 
@@ -417,6 +429,7 @@ class AppleTvRemoteTouchService {
     _setTraditionalFocusHighlight();
     _scheduleFrame();
     _selectPressedFromClick = true;
+    _openSelectTraceId = _beginSelectTrace('click_s');
     _log('emit keydown=${_keyName(LogicalKeyboardKey.enter)} source=click_s');
     _simulateKeyDown(LogicalKeyboardKey.enter);
   }
@@ -445,8 +458,27 @@ class AppleTvRemoteTouchService {
     _scheduleFrame();
     _selectPressedFromClick = false;
     _lastSyntheticSelectAt = _now();
+    // Capture the id before anything else is cleared, then hand it to the
+    // recorder for the synchronous dispatch below. The row reads it there and
+    // carries it onwards itself; nothing may look it up again afterwards.
+    final traceId = _openSelectTraceId;
+    _openSelectTraceId = null;
+    _traceRecorder.dispatchSelect(traceId);
     _log('emit keyup=${_keyName(LogicalKeyboardKey.enter)} source=$source');
     _simulateKeyUp(LogicalKeyboardKey.enter);
+  }
+
+  /// Opens a trace for a press that is going down now.
+  ///
+  /// Drops whatever was still open first. A key-down whose key-up never arrives
+  /// is normal here: a native text-input session can open over the press, and
+  /// the release is then consumed rather than delivered. Left alone, that
+  /// orphan would sit in the recorder until it got evicted, and eviction emits
+  /// a warning about a press that simply never finished.
+  String? _beginSelectTrace(String source) {
+    _traceRecorder.abandon(_openSelectTraceId, 'select-down-superseded');
+    _openSelectTraceId = null;
+    return _traceRecorder.beginSelect(source: source);
   }
 
   bool _shouldConsumeNativeSelectDuplicate(KeyEvent event) {
@@ -491,6 +523,7 @@ class AppleTvRemoteTouchService {
 
       _nativeSelectPressed = true;
       _lastAcceptedNativeSelectDownAt = now;
+      _openSelectTraceId = _beginSelectTrace('native');
       return false;
     }
 
@@ -531,6 +564,12 @@ class AppleTvRemoteTouchService {
         return false;
       }
 
+      // Synchronously, and before the pressed flag is cleared: this method
+      // returns false, so Flutter dispatches the release into the focus tree
+      // right after and the latch has to be standing by then.
+      final traceId = _openSelectTraceId;
+      _openSelectTraceId = null;
+      _traceRecorder.dispatchSelect(traceId);
       _nativeSelectPressed = false;
       _lastAcceptedNativeSelectUpAt = now;
       return false;
@@ -618,6 +657,8 @@ class AppleTvRemoteTouchService {
     _lastAcceptedNativeSelectUpAt = null;
     _suppressedNativeSelectDowns = 0;
     _nativeSelectPressed = false;
+    _traceRecorder.abandon(_openSelectTraceId, 'native-select-state-reset');
+    _openSelectTraceId = null;
   }
 
   bool _emitKey(LogicalKeyboardKey logicalKey, {required String source, String? detail}) {

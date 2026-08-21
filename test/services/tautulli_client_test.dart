@@ -30,6 +30,12 @@ http.Response ok(String body) => http.Response(body, 200, headers: {'content-typ
 TautulliSession _session({TautulliAuthMode mode = TautulliAuthMode.device}) =>
     TautulliSession(baseUrl: 'https://tautulli.example.test', authMode: mode, token: 'TESTTOKEN');
 
+/// Builds a client whose transport answers with [response] verbatim, for the
+/// cases where the status code, the content type or a non-JSON body is the
+/// thing under test.
+TautulliClient rawClientFor(http.Response response, {TautulliAuthMode mode = TautulliAuthMode.device}) =>
+    TautulliClient(_session(mode: mode), httpClient: MockClient((_) async => response));
+
 /// Builds a client whose transport answers from [handler], and records the
 /// query parameters of every request for assertions.
 ({TautulliClient client, List<Map<String, String>> requests}) clientFor(
@@ -77,8 +83,9 @@ void main() {
       expect(f.requests.single.containsKey('app'), isFalse);
     });
 
-    // Tautulli reports a bad key as HTTP 200 with result "error", so the status
-    // code alone would read as success.
+    // Tautulli puts the reason in the envelope whatever the status is, so a 200
+    // is no proof of success on its own. The 400 that the measured instance
+    // actually sends for a rejected key has its own test below.
     test('a wrong key arrives as HTTP 200 and still raises an auth error', () async {
       final f = clientFor((_) => envelope(null, result: 'error', message: 'Invalid apikey'));
       addTearDown(f.client.dispose);
@@ -113,6 +120,105 @@ void main() {
         f.client.serverFriendlyName(),
         throwsA(isA<TautulliException>().having((e) => e.message, 'message', 'Unknown error')),
       );
+    });
+
+    // Measured against a live instance: Tautulli rejects a key with HTTP 400,
+    // not the 200 this client assumed. The status check used to run first, so
+    // isAuth was never set and the settings screen printed the string
+    // "HTTP 400" at someone who had simply pasted the wrong one of their two
+    // credentials into the wrong field.
+    test('a rejected key arrives as HTTP 400 and is still an auth error', () async {
+      final client = rawClientFor(
+        http.Response(
+          json.encode({
+            'response': {'result': 'error', 'message': 'Invalid apikey', 'data': {}},
+          }),
+          400,
+          headers: {'content-type': 'application/json'},
+        ),
+      );
+      addTearDown(client.dispose);
+
+      await expectLater(
+        client.serverFriendlyName(),
+        throwsA(isA<TautulliException>().having((e) => e.isAuth, 'isAuth', isTrue)),
+      );
+    });
+
+    // The failure in log bcjk3: five requests, all HTTP 200, no error line
+    // anywhere and a generic message on screen. json.decode sat outside the
+    // error boundary, so an HTML page left through a FormatException.
+    test('an HTML page on HTTP 200 is reported as not-Tautulli, not a crash', () async {
+      final client = rawClientFor(
+        http.Response(
+          '<html><head><title>Sign in</title></head><body>…</body></html>',
+          200,
+          headers: {'content-type': 'text/html; charset=utf-8'},
+        ),
+      );
+      addTearDown(client.dispose);
+
+      await expectLater(
+        client.serverFriendlyName(),
+        throwsA(
+          isA<TautulliException>()
+              .having((e) => e.isNotTautulli, 'isNotTautulli', isTrue)
+              .having((e) => e.isMalformed, 'isMalformed', isFalse),
+        ),
+      );
+    });
+
+    test('JSON without a Tautulli envelope is malformed rather than not-Tautulli', () async {
+      final client = rawClientFor(http.Response('{"foo":"bar"}', 200, headers: {'content-type': 'application/json'}));
+      addTearDown(client.dispose);
+
+      await expectLater(
+        client.serverFriendlyName(),
+        throwsA(
+          isA<TautulliException>()
+              .having((e) => e.isMalformed, 'isMalformed', isTrue)
+              .having((e) => e.isNotTautulli, 'isNotTautulli', isFalse),
+        ),
+      );
+    });
+
+    // The reason decode alone does not decide: a broken gateway also answers
+    // with HTML, and calling that "not Tautulli" sends the user off to check an
+    // address that was right.
+    test('an HTML page on HTTP 502 keeps the status code', () async {
+      final client = rawClientFor(
+        http.Response('<html><body>Bad Gateway</body></html>', 502, headers: {'content-type': 'text/html'}),
+      );
+      addTearDown(client.dispose);
+
+      await expectLater(
+        client.serverFriendlyName(),
+        throwsA(
+          isA<TautulliException>()
+              .having((e) => e.statusCode, 'statusCode', 502)
+              .having((e) => e.message, 'message', 'HTTP 502')
+              .having((e) => e.isNotTautulli, 'isNotTautulli', isFalse),
+        ),
+      );
+    });
+
+    test('an empty body on HTTP 500 is reported as the status', () async {
+      final client = rawClientFor(http.Response('', 500));
+      addTearDown(client.dispose);
+
+      await expectLater(
+        client.serverFriendlyName(),
+        throwsA(isA<TautulliException>().having((e) => e.statusCode, 'statusCode', 500)),
+      );
+    });
+
+    test('a valid envelope still succeeds', () async {
+      final client = rawClientFor(
+        http.Response(envelope('Plexflix'), 200, headers: {'content-type': 'application/json'}),
+      );
+      addTearDown(client.dispose);
+
+      expect(await client.serverFriendlyName(), 'Plexflix');
     });
 
     test('ping reports false instead of throwing', () async {
@@ -382,6 +488,30 @@ void main() {
   // this wrong costs the user real time: the log of 18 August shows three
   // register_device attempts with a master key while the screen kept saying the
   // token had expired.
+  // Auth recognition used to be `message.contains('apikey')`, spread over two
+  // places in _call. Any message that merely names the parameter then reads as
+  // a rejected credential, and the screen answers that with "generate a new
+  // token", which is an afternoon spent on the wrong thing.
+  group('isAuthMessage', () {
+    test('Tautulli\'s own wording is recognised', () {
+      expect(TautulliClient.isAuthMessage('Invalid apikey'), isTrue);
+      expect(TautulliClient.isAuthMessage('  invalid apikey  '), isTrue);
+    });
+
+    test('the variants other builds and proxies produce are recognised', () {
+      expect(TautulliClient.isAuthMessage('Invalid api key'), isTrue);
+      expect(TautulliClient.isAuthMessage('The apikey is invalid'), isTrue);
+      expect(TautulliClient.isAuthMessage('401 Unauthorized'), isTrue);
+      expect(TautulliClient.isAuthMessage('Authentication required'), isTrue);
+    });
+
+    test('naming the parameter is not the same as rejecting it', () {
+      expect(TautulliClient.isAuthMessage('The apikey parameter is not required for this command'), isFalse);
+      expect(TautulliClient.isAuthMessage('Item does not exist'), isFalse);
+      expect(TautulliClient.isAuthMessage(''), isFalse);
+    });
+  });
+
   group('looksLikeApiKey', () {
     test('a master key is 32 lowercase hex characters', () {
       expect(TautulliConstants.looksLikeApiKey('b73978aaa7154073b9048bbf0f33966a'), isTrue);
