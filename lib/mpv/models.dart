@@ -134,6 +134,13 @@ sealed class SubtitleTrack with _$SubtitleTrack {
     @Default(false) bool isForced,
     @Default(false) bool isExternal,
     String? uri,
+
+    /// mpv's `ff-index`: the stream's position in the container as libavformat
+    /// numbers it. Unlike [id], which is a per-type 1-based ordinal, this is
+    /// directly comparable to a Jellyfin `MediaStreams[].Index`. Null when mpv
+    /// did not report it, and never comparable to a Plex stream id, which is a
+    /// database key rather than a container position.
+    int? ffIndex,
   }) = _SubtitleTrack;
 
   factory SubtitleTrack.uri(

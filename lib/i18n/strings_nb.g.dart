@@ -576,6 +576,8 @@ class _TranslationsVideoControlsNb extends TranslationsVideoControlsEn {
 	// Translations
 	@override String get audioLabel => 'Lyd';
 	@override String get subtitlesLabel => 'Undertekster';
+	@override String subtitleTrackNumber({required Object number}) => 'Undertekst ${number}';
+	@override String audioTrackNumber({required Object number}) => 'Lydspor ${number}';
 	@override String get resetToZero => 'Tilbakestill til 0ms';
 	@override String addTime({required Object amount, required Object unit}) => '+${amount}${unit}';
 	@override String minusTime({required Object amount, required Object unit}) => '-${amount}${unit}';
@@ -2381,6 +2383,8 @@ extension on TranslationsNb {
 			'tooltips.markAsUnwatched' => 'Merk som usett',
 			'videoControls.audioLabel' => 'Lyd',
 			'videoControls.subtitlesLabel' => 'Undertekster',
+			'videoControls.subtitleTrackNumber' => ({required Object number}) => 'Undertekst ${number}',
+			'videoControls.audioTrackNumber' => ({required Object number}) => 'Lydspor ${number}',
 			'videoControls.resetToZero' => 'Tilbakestill til 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -2504,10 +2508,10 @@ extension on TranslationsNb {
 			'messages.switchingToCompatiblePlayer' => 'Bytter til kompatibel spiller...',
 			'messages.serverLimitTitle' => 'Avspilling mislyktes',
 			'messages.serverLimitBody' => 'Serverfeil (HTTP 500). En båndbredde-/transkodingsgrense avviste trolig økten. Be eieren justere den.',
-			'messages.logsUploaded' => 'Logger lastet opp',
-			'messages.logsUploadFailed' => 'Kunne ikke laste opp logger',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logsUploaded' => 'Logger lastet opp',
+			'messages.logsUploadFailed' => 'Kunne ikke laste opp logger',
 			'messages.logId' => 'Logg-ID',
 			'subtitlingStyling.text' => 'Tekst',
 			'subtitlingStyling.border' => 'Kantlinje',
@@ -3018,10 +3022,10 @@ extension on TranslationsNb {
 			'companionRemote.pairing.availableDevices' => 'Tilgjengelige enheter',
 			'companionRemote.pairing.manualConnection' => 'Manuell tilkobling',
 			'companionRemote.pairing.cryptoInitFailed' => 'Kunne ikke starte sikker tilkobling. Logg inn på Plex først.',
-			'companionRemote.pairing.validationHostRequired' => 'Vennligst oppgi vertsadresse',
-			'companionRemote.pairing.validationHostFormat' => 'Format må være IP:port (f.eks. 192.168.1.100:48632)',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.validationHostRequired' => 'Vennligst oppgi vertsadresse',
+			'companionRemote.pairing.validationHostFormat' => 'Format må være IP:port (f.eks. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Tilkoblingen fikk tidsavbrudd. Bruk samme nettverk på begge enheter.',
 			'companionRemote.pairing.sessionNotFound' => 'Enhet ikke funnet. Sørg for at Pleya kjører på verten.',
 			'companionRemote.pairing.authFailed' => 'Autentisering mislyktes. Begge enheter må bruke samme Plex-konto.',

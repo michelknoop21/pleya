@@ -415,6 +415,8 @@
   "videoControls": {
     "audioLabel": "Ljud",
     "subtitlesLabel": "Undertexter",
+    "subtitleTrackNumber": "Undertext ${number}",
+    "audioTrackNumber": "Ljudspår ${number}",
     "resetToZero": "Återställ till 0ms",
     "addTime": "+${amount}${unit}",
     "minusTime": "-${amount}${unit}",

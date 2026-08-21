@@ -470,6 +470,7 @@ abstract class PlayerBase with PlayerStreamControllersMixin implements Player {
             isForced: externalMetadata?.isForced ?? (track['forced'] as bool? ?? false),
             isExternal: track['external'] as bool? ?? false,
             uri: externalFilename,
+            ffIndex: (track['ff-index'] as num?)?.toInt(),
           ),
         );
       }

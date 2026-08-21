@@ -415,6 +415,8 @@
   "videoControls": {
     "audioLabel": "Lyd",
     "subtitlesLabel": "Undertekster",
+    "subtitleTrackNumber": "Undertekst ${number}",
+    "audioTrackNumber": "Lydspor ${number}",
     "resetToZero": "Tilbakestill til 0ms",
     "addTime": "+${amount}${unit}",
     "minusTime": "-${amount}${unit}",

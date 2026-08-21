@@ -450,6 +450,8 @@
   "videoControls": {
     "audioLabel": "Audio",
     "subtitlesLabel": "Ondertitels",
+    "subtitleTrackNumber": "Ondertiteling ${number}",
+    "audioTrackNumber": "Audiospoor ${number}",
     "resetToZero": "Reset naar 0ms",
     "addTime": "+${amount}${unit}",
     "minusTime": "-${amount}${unit}",

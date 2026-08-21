@@ -576,6 +576,8 @@ class _TranslationsVideoControlsSv extends TranslationsVideoControlsEn {
 	// Translations
 	@override String get audioLabel => 'Ljud';
 	@override String get subtitlesLabel => 'Undertexter';
+	@override String subtitleTrackNumber({required Object number}) => 'Undertext ${number}';
+	@override String audioTrackNumber({required Object number}) => 'Ljudspår ${number}';
 	@override String get resetToZero => 'Återställ till 0ms';
 	@override String addTime({required Object amount, required Object unit}) => '+${amount}${unit}';
 	@override String minusTime({required Object amount, required Object unit}) => '-${amount}${unit}';
@@ -2381,6 +2383,8 @@ extension on TranslationsSv {
 			'tooltips.markAsUnwatched' => 'Markera som osedd',
 			'videoControls.audioLabel' => 'Ljud',
 			'videoControls.subtitlesLabel' => 'Undertexter',
+			'videoControls.subtitleTrackNumber' => ({required Object number}) => 'Undertext ${number}',
+			'videoControls.audioTrackNumber' => ({required Object number}) => 'Ljudspår ${number}',
 			'videoControls.resetToZero' => 'Återställ till 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -2504,10 +2508,10 @@ extension on TranslationsSv {
 			'messages.switchingToCompatiblePlayer' => 'Byter till kompatibel spelare...',
 			'messages.serverLimitTitle' => 'Uppspelningen misslyckades',
 			'messages.serverLimitBody' => 'Serverfel (HTTP 500). En bandbredds-/transkodningsgräns avvisade troligen sessionen. Be ägaren justera den.',
-			'messages.logsUploaded' => 'Loggar uppladdade',
-			'messages.logsUploadFailed' => 'Uppladdning av loggar misslyckades',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logsUploaded' => 'Loggar uppladdade',
+			'messages.logsUploadFailed' => 'Uppladdning av loggar misslyckades',
 			'messages.logId' => 'Logg-ID',
 			'subtitlingStyling.text' => 'Text',
 			'subtitlingStyling.border' => 'Kantlinje',
@@ -3018,10 +3022,10 @@ extension on TranslationsSv {
 			'companionRemote.pairing.availableDevices' => 'Tillgängliga enheter',
 			'companionRemote.pairing.manualConnection' => 'Manuell anslutning',
 			'companionRemote.pairing.cryptoInitFailed' => 'Kunde inte starta säker anslutning. Logga in på Plex först.',
-			'companionRemote.pairing.validationHostRequired' => 'Ange värdadress',
-			'companionRemote.pairing.validationHostFormat' => 'Format måste vara IP:port (t.ex. 192.168.1.100:48632)',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.validationHostRequired' => 'Ange värdadress',
+			'companionRemote.pairing.validationHostFormat' => 'Format måste vara IP:port (t.ex. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Anslutningen tog för lång tid. Använd samma nätverk på båda enheter.',
 			'companionRemote.pairing.sessionNotFound' => 'Enhet hittades inte. Kontrollera att Pleya körs på värden.',
 			'companionRemote.pairing.authFailed' => 'Autentisering misslyckades. Båda enheter behöver samma Plex-konto.',

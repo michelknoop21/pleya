@@ -619,6 +619,8 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	// Translations
 	@override String get audioLabel => 'Audio';
 	@override String get subtitlesLabel => 'Ondertitels';
+	@override String subtitleTrackNumber({required Object number}) => 'Ondertiteling ${number}';
+	@override String audioTrackNumber({required Object number}) => 'Audiospoor ${number}';
 	@override String get resetToZero => 'Reset naar 0ms';
 	@override String addTime({required Object amount, required Object unit}) => '+${amount}${unit}';
 	@override String minusTime({required Object amount, required Object unit}) => '-${amount}${unit}';
@@ -2844,6 +2846,8 @@ extension on TranslationsNl {
 			'tooltips.markAsUnwatched' => 'Markeer als ongekeken',
 			'videoControls.audioLabel' => 'Audio',
 			'videoControls.subtitlesLabel' => 'Ondertitels',
+			'videoControls.subtitleTrackNumber' => ({required Object number}) => 'Ondertiteling ${number}',
+			'videoControls.audioTrackNumber' => ({required Object number}) => 'Audiospoor ${number}',
 			'videoControls.resetToZero' => 'Reset naar 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -2936,10 +2940,10 @@ extension on TranslationsNl {
 			'videoControls.searchLanguages' => 'Talen zoeken...',
 			'videoControls.airplayButton' => 'AirPlay',
 			'userStatus.admin' => 'Beheerder',
-			'userStatus.restricted' => 'Beperkt',
-			'userStatus.protected' => 'Beschermd',
 			_ => null,
 		} ?? switch (path) {
+			'userStatus.restricted' => 'Beperkt',
+			'userStatus.protected' => 'Beschermd',
 			'userStatus.current' => 'HUIDIG',
 			'messages.markedAsWatched' => 'Gemarkeerd als gekeken',
 			'messages.markedAsUnwatched' => 'Gemarkeerd als ongekeken',
@@ -3450,10 +3454,10 @@ extension on TranslationsNl {
 			'watchTogether.joinCurrentPlaybackDescription' => 'Ga terug naar wat de host nu kijkt',
 			'watchTogether.failedToOpenCurrentPlayback' => 'Huidige weergave kon niet worden geopend',
 			'watchTogether.participantJoined' => ({required Object name}) => '${name} is toegetreden',
-			'watchTogether.participantLeft' => ({required Object name}) => '${name} heeft de sessie verlaten',
-			'watchTogether.participantPaused' => ({required Object name}) => '${name} heeft gepauzeerd',
 			_ => null,
 		} ?? switch (path) {
+			'watchTogether.participantLeft' => ({required Object name}) => '${name} heeft de sessie verlaten',
+			'watchTogether.participantPaused' => ({required Object name}) => '${name} heeft gepauzeerd',
 			'watchTogether.participantResumed' => ({required Object name}) => '${name} heeft hervat',
 			'watchTogether.participantSeeked' => ({required Object name}) => '${name} heeft gespoeld',
 			'watchTogether.participantBuffering' => ({required Object name}) => '${name} is aan het bufferen',
@@ -3964,10 +3968,10 @@ extension on TranslationsNl {
 			'seerr.fourKBadge' => '4K',
 			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
 			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => 'Nog ${remaining} van ${limit} aanvragen',
-			'seerr.quotaUnlimited' => 'Onbeperkt aanvragen',
-			'seerr.advancedOptions' => 'Geavanceerde opties',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.quotaUnlimited' => 'Onbeperkt aanvragen',
+			'seerr.advancedOptions' => 'Geavanceerde opties',
 			'seerr.server' => 'Server',
 			'seerr.qualityProfile' => 'Kwaliteitsprofiel',
 			'seerr.rootFolder' => 'Hoofdmap',

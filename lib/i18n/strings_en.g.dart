@@ -1492,6 +1492,12 @@ class TranslationsVideoControlsEn {
 	/// en: 'Subtitles'
 	String get subtitlesLabel => 'Subtitles';
 
+	/// en: 'Subtitle ${number}'
+	String subtitleTrackNumber({required Object number}) => 'Subtitle ${number}';
+
+	/// en: 'Audio track ${number}'
+	String audioTrackNumber({required Object number}) => 'Audio track ${number}';
+
 	/// en: 'Reset to 0ms'
 	String get resetToZero => 'Reset to 0ms';
 
@@ -6269,6 +6275,8 @@ extension on Translations {
 			'tooltips.markAsUnwatched' => 'Mark as unwatched',
 			'videoControls.audioLabel' => 'Audio',
 			'videoControls.subtitlesLabel' => 'Subtitles',
+			'videoControls.subtitleTrackNumber' => ({required Object number}) => 'Subtitle ${number}',
+			'videoControls.audioTrackNumber' => ({required Object number}) => 'Audio track ${number}',
 			'videoControls.resetToZero' => 'Reset to 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -6330,10 +6338,10 @@ extension on Translations {
 			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
 			'videoControls.alwaysOnTopButton' => 'Always on top',
 			'videoControls.rotationLockButton' => 'Rotation lock',
-			'videoControls.lockScreen' => 'Lock screen',
-			'videoControls.screenLockButton' => 'Screen lock',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.lockScreen' => 'Lock screen',
+			'videoControls.screenLockButton' => 'Screen lock',
 			'videoControls.longPressToUnlock' => 'Long press to unlock',
 			'videoControls.timelineSlider' => 'Video timeline',
 			'videoControls.volumeSlider' => 'Volume level',
@@ -6844,10 +6852,10 @@ extension on Translations {
 			'watchTogether.creating' => 'Creating...',
 			'watchTogether.joinSession' => 'Join Session',
 			'watchTogether.joining' => 'Joining...',
-			'watchTogether.controlMode' => 'Control Mode',
-			'watchTogether.controlModeQuestion' => 'Who can control playback?',
 			_ => null,
 		} ?? switch (path) {
+			'watchTogether.controlMode' => 'Control Mode',
+			'watchTogether.controlModeQuestion' => 'Who can control playback?',
 			'watchTogether.hostOnly' => 'Host Only',
 			'watchTogether.anyone' => 'Anyone',
 			'watchTogether.hostingSession' => 'Hosting Session',
@@ -7358,10 +7366,10 @@ extension on Translations {
 			'nowWatching.streams' => ({required Object count}) => '${count} streams',
 			'nowWatching.oneStream' => '1 stream',
 			'nowWatching.transcoding' => ({required Object count}) => '${count} transcoding',
-			'nowWatching.directPlay' => 'Direct play',
-			'nowWatching.directStream' => 'Direct stream',
 			_ => null,
 		} ?? switch (path) {
+			'nowWatching.directPlay' => 'Direct play',
+			'nowWatching.directStream' => 'Direct stream',
 			'nowWatching.transcode' => 'Transcode',
 			'nowWatching.paused' => 'Paused',
 			'nowWatching.remaining' => ({required Object time}) => '${time} left',

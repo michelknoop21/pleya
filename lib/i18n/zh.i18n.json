@@ -415,6 +415,8 @@
   "videoControls": {
     "audioLabel": "音频",
     "subtitlesLabel": "字幕",
+    "subtitleTrackNumber": "字幕 ${number}",
+    "audioTrackNumber": "音轨 ${number}",
     "resetToZero": "重置为 0ms",
     "addTime": "+${amount}${unit}",
     "minusTime": "-${amount}${unit}",

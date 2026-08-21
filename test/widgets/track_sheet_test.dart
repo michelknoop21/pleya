@@ -151,6 +151,39 @@ void main() {
       expect(state.hasSubtitleControls(const Tracks(subtitle: [SubtitleTrack(id: 's1')])), isTrue);
     });
   });
+
+  group('subtitle labels', () {
+    // The reported bug, end to end through the sheet: mpv hands over a
+    // sidecar with no language at all, so the row used to read "Track 2".
+    testWidgets('a Dutch sidecar is named, not numbered', (tester) async {
+      final sidecar = SubtitleTrack.uri('https://plex.example/library/streams/200.srt?encoding=utf-8');
+      final player = _FakeTrackSheetPlayer(
+        tracks: Tracks(subtitle: [sidecar]),
+        track: const TrackSelection(subtitle: SubtitleTrack.off),
+      );
+
+      await _pumpTrackSheet(
+        tester,
+        player: player,
+        trackControlsState: TrackControlsState(
+          ratingKey: '123',
+          serverId: 'plex-server',
+          sourceSubtitleMetadata: [
+            MediaSubtitleTrack(
+              id: 200,
+              key: '/library/streams/200',
+              languageCode: 'nld',
+              selected: false,
+              forced: false,
+            ),
+          ],
+        ),
+      );
+
+      expect(find.text('Dutch'), findsOneWidget);
+      expect(find.text('Subtitle 1'), findsNothing);
+    });
+  });
 }
 
 Future<void> _pumpTrackSheet(

@@ -121,6 +121,7 @@ class MediaAudioTrack with _TrackLabelMixin {
       profile: profile,
       displayTitle: displayTitle,
       index: _fallbackLabelIndex,
+      numberLabel: (number) => t.videoControls.audioTrackNumber(number: number),
     );
   }
 }
@@ -169,6 +170,7 @@ class MediaSubtitleTrack with _TrackLabelMixin {
       forced: forced,
       displayTitle: displayTitle,
       index: visibleIndex,
+      numberLabel: (number) => t.videoControls.subtitleTrackNumber(number: number),
     );
   }
 

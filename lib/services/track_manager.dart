@@ -9,8 +9,12 @@ import '../services/settings_service.dart';
 import '../services/track_preference_store.dart';
 import '../services/track_selection_service.dart';
 import '../utils/app_logger.dart';
+import '../i18n/strings.g.dart';
 import '../utils/language_codes.dart';
+import '../utils/player_subtitle_labeling.dart';
+import '../utils/subtitle_track_resolver.dart';
 import '../utils/track_label_builder.dart';
+import '../utils/track_metadata_normalizer.dart';
 
 /// Persists a track choice for the current part to the server.
 /// Backends that persist through another path (Jellyfin uses playback progress
@@ -73,6 +77,10 @@ class TrackManager {
   SubtitleTrack? preferredSecondarySubtitleTrack;
 
   // ── Internal state ─────────────────────────────────────────────────
+
+  /// Server-to-player subtitle coupling for the tracks currently loaded.
+  SubtitleTrackResolution _resolution() =>
+      SubtitleLabeling.resolutionFor(player.state.tracks.subtitle, mediaInfo?.subtitleTracks ?? const []);
 
   bool waitingForExternalSubsTrackSelection = false;
   bool _externalSubtitleAddsInFlight = false;
@@ -309,9 +317,18 @@ class TrackManager {
     onSubtitleTrackChanged(next);
 
     if (isActive()) {
+      final resolved = _resolution().forTrack(next.id);
       final label = next.id == 'no'
-          ? 'Subtitles: Off'
-          : 'Subtitles: ${TrackLabelBuilder.subtitleLabel(title: next.title, language: next.language, codec: next.codec, forced: next.isForced, index: nextIndex).joined}';
+          ? '${t.videoControls.subtitlesLabel}: ${t.common.off}'
+          : '${t.videoControls.subtitlesLabel}: ${TrackLabelBuilder.subtitleLabel(
+              title: next.title,
+              language: next.language,
+              languageCode: next.language == null ? resolved?.resolvedLanguageCode : null,
+              codec: next.codec,
+              forced: next.isForced,
+              index: nextIndex,
+              numberLabel: (number) => t.videoControls.subtitleTrackNumber(number: number),
+            ).joined}';
       showMessage?.call(label, duration: const Duration(seconds: 1));
     }
   }
@@ -330,7 +347,14 @@ class TrackManager {
 
     if (isActive()) {
       final label =
-          'Audio: ${TrackLabelBuilder.audioLabel(title: next.title, language: next.language, codec: next.codec, channels: next.channelsCount, index: nextIndex).joined}';
+          '${t.videoControls.audioLabel}: ${TrackLabelBuilder.audioLabel(
+            title: next.title,
+            language: next.language,
+            codec: next.codec,
+            channels: next.channelsCount,
+            index: nextIndex,
+            numberLabel: (number) => t.videoControls.audioTrackNumber(number: number),
+          ).joined}';
       showMessage?.call(label, duration: const Duration(seconds: 1));
     }
   }
@@ -433,7 +457,7 @@ class TrackManager {
   /// remember anything at all.
   Future<void> _rememberAudioLanguage(AudioTrack track) async {
     if (!await _remembersTrackSelections()) return;
-    final language = track.language;
+    final language = normalizeLanguageCode(track.language);
     // A track without a language code says nothing about what to pick on the
     // next episode, so leave the previous choice alone rather than clear it.
     if (language == null || language.isEmpty) return;
@@ -441,14 +465,34 @@ class TrackManager {
     await _mirrorSeriesLanguageToServer();
   }
 
+  /// Store the language behind [track] for this title.
+  ///
+  /// The container tag wins, and where there is none the resolver's answer
+  /// stands in — but only a match it can prove (an identifier both sides
+  /// share, or unambiguous whole-list evidence). A language guessed from a
+  /// filename is fine to show and not fine to remember, so it never gets
+  /// here. A track nothing can be said about leaves the previous choice
+  /// alone rather than clearing it.
+  ///
+  /// Stored as a normalised ISO 639-1 code, which is the one vocabulary both
+  /// write paths can agree on: the source-stream path used to save the
+  /// server's display name, which never matched an mpv tag.
   Future<void> _rememberSubtitleLanguage(SubtitleTrack track) async {
     if (!await _remembersTrackSelections()) return;
     if (track.id == 'no') {
       await TrackPreferenceStore.saveSubtitle(metadata, off: true);
     } else {
-      final language = track.language;
+      final entry = _resolution().forTrack(track.id);
+      final language =
+          normalizeLanguageCode(track.language) ??
+          (entry != null && entry.isStorable ? entry.resolvedLanguageCode : null);
       if (language == null || language.isEmpty) return;
-      await TrackPreferenceStore.saveSubtitle(metadata, language: language, title: track.title, forced: track.isForced);
+      await TrackPreferenceStore.saveSubtitle(
+        metadata,
+        language: language,
+        title: track.title ?? entry?.server?.title,
+        forced: track.isForced || (entry?.server?.forced ?? false),
+      );
     }
     await _mirrorSeriesLanguageToServer();
   }

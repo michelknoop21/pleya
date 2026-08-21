@@ -1,190 +1,210 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logger/logger.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/mpv/mpv.dart';
+import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/utils/player_subtitle_labeling.dart';
+import 'package:pleya/utils/subtitle_track_resolver.dart';
+import 'package:pleya/utils/track_label_builder.dart';
 
-MediaSubtitleTrack _server({
-  int id = 1,
-  String? language,
-  String? languageCode,
-  String? title,
-  String? displayTitle,
-  bool external = false,
-}) => MediaSubtitleTrack(
-  id: id,
-  language: language,
-  languageCode: languageCode,
-  title: title,
-  displayTitle: displayTitle,
-  external: external,
-  selected: false,
-  forced: false,
-);
+import '../test_helpers/subtitle_fixtures.dart';
+
+TrackLabel label(SubtitleTrack track, int index, List<SubtitleTrack> player, List<MediaSubtitleTrack> server) =>
+    labelForPlayerSubtitle(track: track, visibleIndex: index, playerTracks: player, serverTracks: server);
+
+class _RecordingOutput extends LogOutput {
+  final lines = <String>[];
+
+  @override
+  void output(OutputEvent event) => lines.addAll(event.lines);
+}
 
 void main() {
-  test('untagged player track borrows the language from the server', () {
-    const track = SubtitleTrack(id: '1');
-    final label = labelForPlayerSubtitle(
-      track: track,
-      visibleIndex: 0,
-      playerTracks: const [track],
-      serverTracks: [_server(languageCode: 'nld')],
-    );
-
-    expect(label.primary, 'Dutch');
+  setUp(() {
+    SubtitleLabeling.resetCachesForTest();
+    LocaleSettings.setLocaleSync(AppLocale.en);
   });
 
-  test('placeholder titles do not win over the language', () {
-    const track = SubtitleTrack(id: '1', title: 'Unknown');
-    final label = labelForPlayerSubtitle(
-      track: track,
-      visibleIndex: 0,
-      playerTracks: const [track],
-      serverTracks: [_server(languageCode: 'nld', displayTitle: 'Onbekend')],
-    );
+  group('enrichment', () {
+    // The bug this whole resolver exists for: mpv reports the sidecar with no
+    // language at all, so the label used to read "Track 1".
+    test('an external Dutch SRT with no container language borrows the server language', () {
+      final track = SubtitleTrack.uri('https://plex.example/library/streams/200.srt?encoding=utf-8');
+      final server = [serverSubtitle(id: 200, key: '/library/streams/200', languageCode: 'nld', codec: 'srt')];
 
-    expect(label.primary, 'Dutch');
+      expect(label(track, 0, [track], server).primary, 'Dutch');
+    });
+
+    test('an untagged embedded track borrows a uniquely indexed server language', () {
+      const track = SubtitleTrack(id: '2', ffIndex: 3);
+      final player = [const SubtitleTrack(id: '1', ffIndex: 2, language: 'eng'), track];
+      final server = [
+        serverSubtitle(id: 2, index: 2, languageCode: 'eng'),
+        serverSubtitle(id: 3, index: 3, languageCode: 'nld'),
+      ];
+
+      expect(label(track, 1, player, server).primary, 'Dutch');
+    });
+
+    test('a container tag still wins over the server', () {
+      const track = SubtitleTrack(id: '1', language: 'nld', ffIndex: 3);
+      final server = [serverSubtitle(id: 3, index: 3, languageCode: 'nld', displayTitle: 'Dutch (SRT)')];
+
+      expect(label(track, 0, [track], server).primary, 'Dutch');
+    });
+
+    test('a count mismatch no longer blocks an exact match', () {
+      final track = SubtitleTrack.uri('https://plex.example/library/streams/200.srt');
+      final server = [
+        serverSubtitle(id: 200, key: '/library/streams/200', languageCode: 'nld'),
+        serverSubtitle(id: 1, languageCode: 'eng'),
+        serverSubtitle(id: 2, languageCode: 'fra'),
+      ];
+
+      expect(label(track, 0, [track], server).primary, 'Dutch');
+    });
+
+    test('external tracks keep their own metadata', () {
+      final track = SubtitleTrack.uri('https://plex.example/library/streams/200.srt', title: 'Mijn download');
+      final server = [serverSubtitle(id: 200, key: '/library/streams/200', languageCode: 'nld')];
+
+      expect(label(track, 0, [track], server).primary, 'Dutch');
+      expect(label(track, 0, [track], server).secondary, 'Mijn download');
+    });
   });
 
-  test('mismatched track counts fall back to the numbered label', () {
-    const track = SubtitleTrack(id: '1');
-    const other = SubtitleTrack(id: '2');
-    final label = labelForPlayerSubtitle(
-      track: track,
-      visibleIndex: 0,
-      playerTracks: const [track, other],
-      serverTracks: [_server(languageCode: 'nld')],
-    );
+  group('numbered fallback', () {
+    final ambiguous = [const SubtitleTrack(id: '1'), const SubtitleTrack(id: '2')];
+    final server = [
+      serverSubtitle(id: 10, languageCode: 'nld'),
+      serverSubtitle(id: 11, languageCode: 'eng'),
+      serverSubtitle(id: 12, languageCode: 'fra'),
+    ];
 
-    expect(label.primary, 'Track 1');
+    test('two genuinely ambiguous tracks stay numbered, in English', () {
+      expect(label(ambiguous[0], 0, ambiguous, server).primary, 'Subtitle 1');
+      expect(label(ambiguous[1], 1, ambiguous, server).primary, 'Subtitle 2');
+    });
+
+    test('and in Dutch', () async {
+      await LocaleSettings.setLocale(AppLocale.nl);
+      addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+      SubtitleLabeling.resetCachesForTest();
+
+      expect(label(ambiguous[0], 0, ambiguous, server).primary, 'Ondertiteling 1');
+      expect(label(ambiguous[1], 1, ambiguous, server).primary, 'Ondertiteling 2');
+    });
+
+    test('a resolved Dutch track reads Nederlands in Dutch', () async {
+      await LocaleSettings.setLocale(AppLocale.nl);
+      addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+      SubtitleLabeling.resetCachesForTest();
+
+      final track = SubtitleTrack.uri('https://plex.example/library/streams/200.srt');
+      final srv = [serverSubtitle(id: 200, key: '/library/streams/200', languageCode: 'nld')];
+      expect(label(track, 0, [track], srv).primary, 'Nederlands');
+    });
   });
 
-  test('position decides the match, not the order of ids', () {
-    const first = SubtitleTrack(id: '1');
-    const second = SubtitleTrack(id: '2');
-    final servers = [_server(id: 10, languageCode: 'eng'), _server(id: 11, languageCode: 'nld')];
+  group('diagnostics', () {
+    late _RecordingOutput output;
+    late Logger original;
 
-    expect(
-      labelForPlayerSubtitle(
-        track: second,
-        visibleIndex: 1,
-        playerTracks: const [first, second],
-        serverTracks: servers,
-      ).primary,
-      'Dutch',
-    );
-  });
+    setUp(() {
+      original = appLogger;
+      output = _RecordingOutput();
+      appLogger = Logger(printer: SimplePrinter(printTime: false), output: output, level: Level.info);
+    });
 
-  test('external tracks keep their own metadata', () {
-    const track = SubtitleTrack(id: '3', title: 'Mijn download', isExternal: true);
-    expect(
-      matchServerSubtitle(
-        track: track,
-        playerTracks: const [track],
-        serverTracks: [_server(languageCode: 'nld')],
-      ),
-      isNull,
-    );
-    final label = labelForPlayerSubtitle(
-      track: track,
-      visibleIndex: 0,
-      playerTracks: const [track],
-      serverTracks: [_server(languageCode: 'nld')],
-    );
-    expect(label.primary, 'Mijn download');
-  });
+    tearDown(() => appLogger = original);
 
-  test('container language still wins over the server', () {
-    const track = SubtitleTrack(id: '1', language: 'eng');
-    final label = labelForPlayerSubtitle(
-      track: track,
-      visibleIndex: 0,
-      playerTracks: const [track],
-      serverTracks: [_server(language: 'Dutch', languageCode: 'nld')],
-    );
-
-    expect(label.primary, 'English');
-  });
-
-  test('a contradicting pair discredits the whole alignment', () {
-    // Equal counts, but the server lists the streams the other way round.
-    const first = SubtitleTrack(id: '1', language: 'eng');
-    const second = SubtitleTrack(id: '2');
-    final servers = [_server(id: 10, languageCode: 'nld'), _server(id: 11, languageCode: 'eng')];
-
-    // The untagged second track gets nothing rather than a wrong 'English'.
-    expect(matchServerSubtitle(track: second, playerTracks: const [first, second], serverTracks: servers), isNull);
-  });
-
-  test('an English language name does not count as a contradiction', () {
-    // mpv says 'nld', the server only knows the display name 'Dutch' — not
-    // comparable, so the alignment must survive and the title still merge.
-    const first = SubtitleTrack(id: '1', language: 'nld');
-    const second = SubtitleTrack(id: '2');
-    final servers = [_server(id: 10, language: 'Dutch'), _server(id: 11, languageCode: 'eng')];
-
-    expect(matchServerSubtitle(track: second, playerTracks: const [first, second], serverTracks: servers)?.id, 11);
-  });
-
-  test('two-letter and three-letter codes for one language agree', () {
-    const track = SubtitleTrack(id: '1', language: 'nl');
-    expect(
-      matchServerSubtitle(
-        track: track,
-        playerTracks: const [track],
-        serverTracks: [_server(languageCode: 'nld')],
-      )?.id,
-      1,
-    );
-  });
-
-  group('diagnoseSubtitleAlignment', () {
-    test('reports noServerData when the server list holds no embedded streams', () {
-      expect(
-        diagnoseSubtitleAlignment(const [SubtitleTrack(id: '1')], const []),
-        SubtitleAlignmentOutcome.noServerData,
+    test('names the strategy that won for each track', () {
+      final track = SubtitleTrack.uri('https://plex.example/library/streams/200.srt');
+      logSubtitleLabelingDiagnostics(
+        surface: 'test',
+        playerTracks: [track],
+        serverTracks: [serverSubtitle(id: 200, key: '/library/streams/200', languageCode: 'nld')],
       );
+
+      final line = output.lines.join('\n');
+      expect(line, contains('#uri:exact'));
+      expect(line, contains('strategies=uri:1'));
+      expect(line, contains('resolved=1/1'));
+      expect(line, contains('enriched=1'));
+    });
+
+    test('never carries a path, a URL, a key or a filename token', () {
+      const uri = 'https://plex.example/library/streams/200.srt?X-Plex-Token=secrettoken';
+      const localUri = 'file:///Volumes/Media/Series/Show/Show.S01E02.nl.srt';
+      logSubtitleLabelingDiagnostics(
+        surface: 'test',
+        playerTracks: [SubtitleTrack.uri(uri), SubtitleTrack.uri(localUri)],
+        serverTracks: [serverSubtitle(id: 200, key: '/library/streams/200', languageCode: 'nld')],
+      );
+
+      final line = output.lines.join('\n');
+      expect(line, isNotEmpty);
+      for (final secret in [
+        uri,
+        localUri,
+        'secrettoken',
+        'plex.example',
+        '/library/streams/200',
+        '/Volumes/Media',
+        'Show.S01E02',
+      ]) {
+        expect(line, isNot(contains(secret)), reason: secret);
+      }
+      // The key is still reported, but only as a flag.
+      expect(line, contains('/key'));
+    });
+
+    test('a repeated identical picture is logged once', () {
+      for (var i = 0; i < 3; i++) {
+        logSubtitleLabelingDiagnostics(
+          surface: 'test',
+          playerTracks: [const SubtitleTrack(id: '1', language: 'nld')],
+          serverTracks: [serverSubtitle(id: 1, languageCode: 'nld')],
+        );
+      }
+      expect(output.lines.where((l) => l.contains('subtitle-labeling')), hasLength(1));
+    });
+  });
+
+  group('alignment diagnosis', () {
+    test('reports no server data when the server list is empty', () {
       expect(
-        diagnoseSubtitleAlignment(const [SubtitleTrack(id: '1')], [_server(external: true)]),
+        diagnoseSubtitleAlignment([const SubtitleTrack(id: '1')], const []),
         SubtitleAlignmentOutcome.noServerData,
       );
     });
 
-    test('reports countMismatch on differing embedded counts', () {
+    test('reports a count mismatch when the embedded lists differ in length', () {
       expect(
-        diagnoseSubtitleAlignment(const [SubtitleTrack(id: '1'), SubtitleTrack(id: '2')], [_server()]),
+        diagnoseSubtitleAlignment([const SubtitleTrack(id: '1')], [serverSubtitle(id: 1), serverSubtitle(id: 2)]),
         SubtitleAlignmentOutcome.countMismatch,
       );
     });
 
-    test('reports contradiction when a tagged pair disagrees', () {
+    test('reports a contradiction when a tagged pair disagrees', () {
       expect(
-        diagnoseSubtitleAlignment(const [SubtitleTrack(id: '1', language: 'fre')], [_server(languageCode: 'nld')]),
+        diagnoseSubtitleAlignment(
+          [const SubtitleTrack(id: '1', language: 'fre')],
+          [serverSubtitle(id: 1, languageCode: 'nld')],
+        ),
         SubtitleAlignmentOutcome.contradiction,
       );
     });
 
-    test('reports aligned when the lists line up', () {
+    test('an English display name agrees with a matching code', () {
       expect(
-        diagnoseSubtitleAlignment(const [SubtitleTrack(id: '1', language: 'nl')], [_server(languageCode: 'nld')]),
+        diagnoseSubtitleAlignment(
+          [const SubtitleTrack(id: '1', language: 'nld')],
+          [serverSubtitle(id: 1, language: 'Dutch')],
+        ),
         SubtitleAlignmentOutcome.aligned,
       );
-    });
-
-    test('agrees with matchServerSubtitle on every outcome', () {
-      const player = [SubtitleTrack(id: '1'), SubtitleTrack(id: '2', language: 'fre')];
-      final cases = <List<MediaSubtitleTrack>>[
-        const [],
-        [_server(id: 1, languageCode: 'nld')],
-        [_server(id: 1, languageCode: 'nld'), _server(id: 2, languageCode: 'eng')],
-        [_server(id: 1, languageCode: 'nld'), _server(id: 2, languageCode: 'fra')],
-      ];
-
-      for (final serverTracks in cases) {
-        final aligned = diagnoseSubtitleAlignment(player, serverTracks) == SubtitleAlignmentOutcome.aligned;
-        final matched = matchServerSubtitle(track: player.first, playerTracks: player, serverTracks: serverTracks);
-        expect(matched != null, aligned, reason: 'server=${serverTracks.length}');
-      }
     });
   });
 }

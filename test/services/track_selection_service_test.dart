@@ -132,6 +132,8 @@ MediaSubtitleTrack _plexSub(
   bool selected = false,
   bool forced = false,
   String? codec,
+  String? key,
+  bool external = false,
 }) {
   return MediaSubtitleTrack(
     id: id,
@@ -142,6 +144,8 @@ MediaSubtitleTrack _plexSub(
     selected: selected,
     forced: forced,
     codec: codec,
+    key: key,
+    external: external,
   );
 }
 
@@ -202,6 +206,60 @@ void main() {
   // ============================================================
   // languageMatches
   // ============================================================
+
+  group('remembered language vocabulary', () {
+    // Everything written before the store settled on one vocabulary is still
+    // out there: mpv codes, server display names, region-tagged codes.
+    test('a remembered nl matches a track tagged nld', () {
+      expect(_svc().languageMatches('nld', 'nl'), isTrue);
+    });
+
+    test('a legacy remembered display name still matches a coded track', () {
+      expect(_svc().languageMatches('nld', 'Dutch'), isTrue);
+      expect(_svc().languageMatches('nl-BE', 'nld'), isTrue);
+    });
+
+    test('two different languages still do not match', () {
+      expect(_svc().languageMatches('eng', 'Dutch'), isFalse);
+    });
+  });
+
+  group('sticky subtitle through the resolver', () {
+    // The track the preference was learned from carries no language of its
+    // own, so matching on t.language alone would never find it again.
+    test('the remembered language finds an untagged track the server calls Dutch', () {
+      final tracks = [const SubtitleTrack(id: '1', ffIndex: 2), const SubtitleTrack(id: '2', ffIndex: 3)];
+      final service = _svc(
+        info: _info(
+          subs: [
+            _plexSub(4, index: 2, languageCode: 'eng'),
+            _plexSub(5, index: 3, languageCode: 'nld'),
+          ],
+        ),
+        sticky: _sticky(subtitle: 'nl'),
+      );
+
+      final result = service.selectSubtitleTrack(tracks, null, null);
+      expect(result.track.id, '2');
+      expect(result.priority, TrackSelectionPriority.sticky);
+    });
+
+    test('an unresolvable track is not picked on a guess', () {
+      final tracks = [const SubtitleTrack(id: '1'), const SubtitleTrack(id: '2')];
+      final service = _svc(
+        info: _info(
+          subs: [
+            _plexSub(4, languageCode: 'nld'),
+            _plexSub(5, languageCode: 'eng'),
+            _plexSub(6),
+          ],
+        ),
+        sticky: _sticky(subtitle: 'nl'),
+      );
+
+      expect(service.selectSubtitleTrack(tracks, null, null).priority, isNot(TrackSelectionPriority.sticky));
+    });
+  });
 
   group('languageMatches', () {
     final svc = _svc();

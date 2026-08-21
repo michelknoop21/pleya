@@ -88,7 +88,7 @@ void main() {
     test('fallback index is clamped for zero-indexed streams', () {
       final track = MediaAudioTrack(id: 0, index: 0, selected: false);
 
-      expect(track.label, const TrackLabel('Audio Track 1'));
+      expect(track.label, const TrackLabel('Audio track 1'));
     });
   });
 }

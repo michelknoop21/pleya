@@ -415,6 +415,8 @@
   "videoControls": {
     "audioLabel": "오디오",
     "subtitlesLabel": "자막",
+    "subtitleTrackNumber": "자막 ${number}",
+    "audioTrackNumber": "오디오 트랙 ${number}",
     "resetToZero": "0ms로 재설정",
     "addTime": "+${amount}${unit}",
     "minusTime": "-${amount}${unit}",

@@ -270,7 +270,11 @@ class PlaybackInitializationService {
         subtitles.add(
           SubtitleTrack.uri(
             'file://${entity.path}',
-            title: cachedTrack?.displayTitle ?? cachedTrack?.language ?? 'Subtitle $fileName',
+            // No invented title: a synthetic one wins the label ladder over
+            // every piece of real metadata that turns up later, so an offline
+            // sidecar with no cached media info would read "Subtitle 200"
+            // permanently. Left null, the resolver gets its chance instead.
+            title: cachedTrack?.displayTitle ?? cachedTrack?.language,
             language: cachedTrack?.languageCode,
             codec: cachedTrack?.codec,
             isDefault: cachedTrack?.selected ?? false,

@@ -1,4 +1,6 @@
 import '../data/iso_639_data.dart';
+import '../data/language_names/localized_language_names.dart';
+import '../i18n/strings.g.dart';
 
 /// Helper class for converting between ISO 639-1 (2-letter) and ISO 639-2 (3-letter) language codes
 class LanguageCodes {
@@ -31,18 +33,20 @@ class LanguageCodes {
     return _resolve(normalized)?.code1;
   }
 
-  /// Get a display name for a language/locale code.
-  /// Handles plain codes ("en" → "English") and locale codes ("en-US" → "English",
-  /// "en-AU" → "English (Australia)").
+  /// Display name for a language/locale code, in the app's UI language.
+  /// Handles plain codes ("en" → "Engels" in Dutch) and locale codes
+  /// ("en-US" → "Engels", "en-AU" → "Engels (Australia)").
+  ///
+  /// Region names stay English for now; only the language half is translated.
   static String getDisplayName(String code) {
     if (code.isEmpty) return code;
 
     if (!code.contains('-')) {
-      return getLanguageName(code) ?? code;
+      return getLocalizedLanguageName(code) ?? code;
     }
 
     final parts = code.split('-');
-    final langName = getLanguageName(parts.first) ?? parts.first;
+    final langName = getLocalizedLanguageName(parts.first) ?? parts.first;
     final region = parts.length > 1 ? _regionNames[parts[1]] : null;
     return region != null ? '$langName ($region)' : langName;
   }
@@ -68,7 +72,19 @@ class LanguageCodes {
     return languages;
   }
 
+  /// English name, and the value every matching rule compares against.
+  /// Display code wants [getLocalizedLanguageName] instead.
   static String? getLanguageName(String languageCode) {
     return _resolve(languageCode)?.name;
+  }
+
+  /// The language's name in the app's current UI language, falling back to the
+  /// English name for a locale that has not translated that code. Kept apart
+  /// from [getLanguageName] on purpose: matching and normalisation must stay
+  /// on the English vocabulary regardless of what the user reads.
+  static String? getLocalizedLanguageName(String languageCode) {
+    final entry = _resolve(languageCode);
+    if (entry == null) return null;
+    return localizedLanguageName(LocaleSettings.instance.currentLocale.languageCode, entry.code1) ?? entry.name;
   }
 }

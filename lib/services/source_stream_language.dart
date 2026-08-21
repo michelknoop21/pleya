@@ -1,4 +1,5 @@
 import '../media/media_source_info.dart';
+import '../utils/track_metadata_normalizer.dart';
 
 /// The language to remember after a source-stream switch, or null when the
 /// stream says nothing worth remembering.
@@ -27,7 +28,10 @@ class SourceStreamLanguage {
 SourceStreamLanguage? subtitleStreamLanguage(List<MediaSubtitleTrack> tracks, int streamId) {
   final track = tracks.where((t) => t.id == streamId).firstOrNull;
   if (track == null) return null;
-  final language = track.languageCode ?? track.language;
+  // Normalised on the way in: this path used to store the server's display
+  // name ("Dutch") for Plex libraries without a code, which never matched an
+  // mpv track tagged `nld`.
+  final language = normalizeLanguageCode(track.languageCode) ?? normalizeLanguageCode(track.language);
   if (language == null || language.isEmpty) return null;
   return SourceStreamLanguage(language: language, title: track.title, forced: track.forced);
 }
@@ -36,7 +40,7 @@ SourceStreamLanguage? subtitleStreamLanguage(List<MediaSubtitleTrack> tracks, in
 SourceStreamLanguage? audioStreamLanguage(List<MediaAudioTrack> tracks, int streamId) {
   final track = tracks.where((t) => t.id == streamId).firstOrNull;
   if (track == null) return null;
-  final language = track.languageCode ?? track.language;
+  final language = normalizeLanguageCode(track.languageCode) ?? normalizeLanguageCode(track.language);
   if (language == null || language.isEmpty) return null;
   return SourceStreamLanguage(language: language, title: track.title);
 }

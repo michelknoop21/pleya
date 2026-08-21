@@ -38,20 +38,20 @@ void main() {
       final choice = subtitleStreamLanguage(tracks, 11);
 
       expect(choice, isNotNull);
-      expect(choice!.language, 'nld');
+      expect(choice!.language, 'nl');
       expect(choice.title, 'Dutch (SRT)');
       expect(choice.forced, isFalse);
     });
 
     test('keeps the forced variant apart from the ordinary one', () {
       expect(subtitleStreamLanguage(tracks, 13)!.forced, isTrue);
-      expect(subtitleStreamLanguage(tracks, 13)!.language, 'nld');
+      expect(subtitleStreamLanguage(tracks, 13)!.language, 'nl');
     });
 
     test('prefers the ISO code over the display name', () {
       // "Dutch" would never match a track tagged nld, so the code has to win.
       final choice = subtitleStreamLanguage([sub(id: 1, languageCode: 'nld', language: 'Dutch')], 1);
-      expect(choice!.language, 'nld');
+      expect(choice!.language, 'nl');
     });
 
     test('falls back to the language field when no code is given', () {
@@ -76,7 +76,7 @@ void main() {
         audio(id: 2, languageCode: 'eng', language: 'English', title: 'Surround 5.1'),
       ], 2);
 
-      expect(choice!.language, 'eng');
+      expect(choice!.language, 'en');
       expect(choice.title, 'Surround 5.1');
       expect(choice.forced, isFalse);
     });

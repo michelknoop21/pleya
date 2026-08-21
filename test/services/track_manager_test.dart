@@ -8,7 +8,10 @@ import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/mpv/mpv.dart';
 import 'package:pleya/mpv/player/player_stream_controllers.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/media/track_language_choice.dart';
+import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/services/track_manager.dart';
+import 'package:pleya/services/track_preference_store.dart';
 
 import '../test_helpers/prefs.dart';
 
@@ -34,10 +37,9 @@ import '../test_helpers/prefs.dart';
 // What's NOT covered:
 //   - Most `applyTrackSelection` selection permutations — the matching logic
 //     itself lives in [TrackSelectionService] and is covered there.
-//   - `onAudioTrackChanged` / `onSubtitleTrackChanged` — server-sync paths
-//     require a fully-faked PlexClient and MediaSourceInfo with realistic
-//     stream IDs. The matching logic itself lives in [TrackSelectionService]
-//     and is covered there.
+//   - The server-sync half of `onAudioTrackChanged` / `onSubtitleTrackChanged`
+//     — that needs a fully-faked PlexClient with realistic stream IDs. The
+//     language-remembering half of `onSubtitleTrackChanged` IS covered below.
 //   - `onBackendSwitched` — wraps applyTrackSelectionWhenReady and is
 //     therefore gated on the same SettingsService dependency.
 //   - `resumeAfterSubtitleLoad` — schedules a real wall-clock fallback Timer.
@@ -522,6 +524,94 @@ void main() {
       final mgr = _make(player: _FakePlayer());
       mgr.dispose();
       expect(mgr.dispose, returnsNormally);
+    });
+  });
+
+  group('remembering the subtitle language', () {
+    setUp(() async {
+      resetSharedPreferencesForTest();
+      await (await StorageService.getInstance()).clearActiveProfileId();
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.rememberTrackSelections, true);
+      await settings.write(SettingsService.trackLanguagePreferences, const <String, TrackLanguageChoice>{});
+    });
+
+    // The case the resolver exists for: mpv reports the sidecar with no
+    // language, so reading track.language alone remembered nothing at all,
+    // while the sheet was already showing the user "Dutch".
+    test('a resolved Dutch sidecar is remembered as nl even without an mpv tag', () async {
+      final track = SubtitleTrack.uri('https://plex.example/library/streams/200.srt?encoding=utf-8');
+      final player = _FakePlayer(tracks: Tracks(subtitle: [track]));
+      final mgr = _make(
+        player: player,
+        mediaInfo: MediaSourceInfo(
+          videoUrl: '',
+          audioTracks: const [],
+          subtitleTracks: [
+            MediaSubtitleTrack(
+              id: 200,
+              key: '/library/streams/200',
+              languageCode: 'nld',
+              selected: false,
+              forced: false,
+            ),
+          ],
+          chapters: const [],
+        ),
+      );
+      addTearDown(mgr.dispose);
+
+      await mgr.onSubtitleTrackChanged(track);
+
+      final stored = await TrackPreferenceStore.read(_meta());
+      expect(stored?.subtitleLanguage, 'nl');
+    });
+
+    test('an mpv tag is normalised rather than stored raw', () async {
+      const track = SubtitleTrack(id: '1', language: 'nld');
+      final player = _FakePlayer(tracks: const Tracks(subtitle: [track]));
+      final mgr = _make(player: player);
+      addTearDown(mgr.dispose);
+
+      await mgr.onSubtitleTrackChanged(track);
+
+      expect((await TrackPreferenceStore.read(_meta()))?.subtitleLanguage, 'nl');
+    });
+
+    test('an unresolvable track leaves the previous choice alone', () async {
+      await TrackPreferenceStore.saveSubtitle(_meta(), language: 'nl');
+
+      const track = SubtitleTrack(id: '1');
+      final player = _FakePlayer(tracks: const Tracks(subtitle: [track]));
+      final mgr = _make(player: player);
+      addTearDown(mgr.dispose);
+
+      await mgr.onSubtitleTrackChanged(track);
+
+      expect((await TrackPreferenceStore.read(_meta()))?.subtitleLanguage, 'nl');
+    });
+
+    // A language read out of a filename is fine to show and not fine to
+    // remember: it is the one strategy that is a heuristic.
+    test('a language inferred from a filename is never remembered', () async {
+      final track = SubtitleTrack.uri('file:///tv/Show.S01E02.nl.srt');
+      final player = _FakePlayer(tracks: Tracks(subtitle: [track]));
+      final mgr = _make(player: player);
+      addTearDown(mgr.dispose);
+
+      await mgr.onSubtitleTrackChanged(track);
+
+      expect((await TrackPreferenceStore.read(_meta()))?.subtitleLanguage, isNull);
+    });
+
+    test('turning subtitles off is still remembered as a decision', () async {
+      final player = _FakePlayer(tracks: const Tracks(subtitle: [SubtitleTrack.off]));
+      final mgr = _make(player: player);
+      addTearDown(mgr.dispose);
+
+      await mgr.onSubtitleTrackChanged(SubtitleTrack.off);
+
+      expect((await TrackPreferenceStore.read(_meta()))?.subtitlesOff, isTrue);
     });
   });
 }

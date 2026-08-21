@@ -576,6 +576,8 @@ class _TranslationsVideoControlsZh extends TranslationsVideoControlsEn {
 	// Translations
 	@override String get audioLabel => '音频';
 	@override String get subtitlesLabel => '字幕';
+	@override String subtitleTrackNumber({required Object number}) => '字幕 ${number}';
+	@override String audioTrackNumber({required Object number}) => '音轨 ${number}';
 	@override String get resetToZero => '重置为 0ms';
 	@override String addTime({required Object amount, required Object unit}) => '+${amount}${unit}';
 	@override String minusTime({required Object amount, required Object unit}) => '-${amount}${unit}';
@@ -2381,6 +2383,8 @@ extension on TranslationsZh {
 			'tooltips.markAsUnwatched' => '标记为未观看',
 			'videoControls.audioLabel' => '音频',
 			'videoControls.subtitlesLabel' => '字幕',
+			'videoControls.subtitleTrackNumber' => ({required Object number}) => '字幕 ${number}',
+			'videoControls.audioTrackNumber' => ({required Object number}) => '音轨 ${number}',
 			'videoControls.resetToZero' => '重置为 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -2504,10 +2508,10 @@ extension on TranslationsZh {
 			'messages.switchingToCompatiblePlayer' => '正在切换到兼容的播放器...',
 			'messages.serverLimitTitle' => '播放失败',
 			'messages.serverLimitBody' => '服务器错误 (HTTP 500)。带宽/转码限制可能拒绝了此会话。请让所有者调整。',
-			'messages.logsUploaded' => '日志已上传',
-			'messages.logsUploadFailed' => '上传日志失败',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logsUploaded' => '日志已上传',
+			'messages.logsUploadFailed' => '上传日志失败',
 			'messages.logId' => '日志 ID',
 			'subtitlingStyling.text' => '文本',
 			'subtitlingStyling.border' => '边框',
@@ -3018,10 +3022,10 @@ extension on TranslationsZh {
 			'companionRemote.pairing.availableDevices' => '可用设备',
 			'companionRemote.pairing.manualConnection' => '手动连接',
 			'companionRemote.pairing.cryptoInitFailed' => '无法启动安全连接。请先登录 Plex。',
-			'companionRemote.pairing.validationHostRequired' => '请输入主机地址',
-			'companionRemote.pairing.validationHostFormat' => '格式必须为IP:端口（例如 192.168.1.100:48632）',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.validationHostRequired' => '请输入主机地址',
+			'companionRemote.pairing.validationHostFormat' => '格式必须为IP:端口（例如 192.168.1.100:48632）',
 			'companionRemote.pairing.connectionTimedOut' => '连接超时。请在两台设备上使用同一网络。',
 			'companionRemote.pairing.sessionNotFound' => '未找到设备。请确认 Pleya 正在主机上运行。',
 			'companionRemote.pairing.authFailed' => '认证失败。两台设备需要使用同一 Plex 账号。',

@@ -576,6 +576,8 @@ class _TranslationsVideoControlsKo extends TranslationsVideoControlsEn {
 	// Translations
 	@override String get audioLabel => '오디오';
 	@override String get subtitlesLabel => '자막';
+	@override String subtitleTrackNumber({required Object number}) => '자막 ${number}';
+	@override String audioTrackNumber({required Object number}) => '오디오 트랙 ${number}';
 	@override String get resetToZero => '0ms로 재설정';
 	@override String addTime({required Object amount, required Object unit}) => '+${amount}${unit}';
 	@override String minusTime({required Object amount, required Object unit}) => '-${amount}${unit}';
@@ -2381,6 +2383,8 @@ extension on TranslationsKo {
 			'tooltips.markAsUnwatched' => '시청 안 함으로 표시',
 			'videoControls.audioLabel' => '오디오',
 			'videoControls.subtitlesLabel' => '자막',
+			'videoControls.subtitleTrackNumber' => ({required Object number}) => '자막 ${number}',
+			'videoControls.audioTrackNumber' => ({required Object number}) => '오디오 트랙 ${number}',
 			'videoControls.resetToZero' => '0ms로 재설정',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -2504,10 +2508,10 @@ extension on TranslationsKo {
 			'messages.switchingToCompatiblePlayer' => '호환되는 플레이어로 전환 중...',
 			'messages.serverLimitTitle' => '재생 실패',
 			'messages.serverLimitBody' => '서버 오류(HTTP 500). 대역폭/트랜스코딩 제한으로 세션이 거부된 것 같습니다. 소유자에게 조정을 요청하세요.',
-			'messages.logsUploaded' => '로그 업로드 완료',
-			'messages.logsUploadFailed' => '로그 업로드 실패',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logsUploaded' => '로그 업로드 완료',
+			'messages.logsUploadFailed' => '로그 업로드 실패',
 			'messages.logId' => '로그 ID',
 			'subtitlingStyling.text' => '텍스트',
 			'subtitlingStyling.border' => '테두리',
@@ -3018,10 +3022,10 @@ extension on TranslationsKo {
 			'companionRemote.pairing.availableDevices' => '사용 가능한 기기',
 			'companionRemote.pairing.manualConnection' => '수동 연결',
 			'companionRemote.pairing.cryptoInitFailed' => '보안 연결을 시작할 수 없습니다. 먼저 Plex에 로그인하세요.',
-			'companionRemote.pairing.validationHostRequired' => '호스트 주소를 입력하세요',
-			'companionRemote.pairing.validationHostFormat' => '형식은 IP:포트여야 합니다 (예: 192.168.1.100:48632)',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.validationHostRequired' => '호스트 주소를 입력하세요',
+			'companionRemote.pairing.validationHostFormat' => '형식은 IP:포트여야 합니다 (예: 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => '연결 시간이 초과되었습니다. 두 기기에서 같은 네트워크를 사용하세요.',
 			'companionRemote.pairing.sessionNotFound' => '기기를 찾을 수 없습니다. 호스트에서 Pleya가 실행 중인지 확인하세요.',
 			'companionRemote.pairing.authFailed' => '인증에 실패했습니다. 두 기기 모두 같은 Plex 계정이 필요합니다.',

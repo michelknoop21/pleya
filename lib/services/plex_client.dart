@@ -3529,7 +3529,7 @@ class PlexClient
   SubtitleTrack _subtitleTrackFromMediaTrack(MediaSubtitleTrack track, String url) {
     return SubtitleTrack(
       id: 'external:$url',
-      title: track.displayTitle ?? track.title ?? track.language ?? 'Track ${track.id}',
+      title: track.displayTitle ?? track.title ?? track.language,
       language: track.languageCode,
       codec: track.codec,
       isDefault: track.selected,
@@ -3592,7 +3592,7 @@ class PlexClient
         externalSubtitles.add(
           SubtitleTrack.uri(
             url,
-            title: plexTrack.displayTitle ?? plexTrack.title ?? plexTrack.language ?? 'Track ${plexTrack.id}',
+            title: plexTrack.displayTitle ?? plexTrack.title ?? plexTrack.language,
             language: plexTrack.languageCode,
             codec: plexTrack.codec,
             isDefault: plexTrack.selected,

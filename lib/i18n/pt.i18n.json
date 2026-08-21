@@ -415,6 +415,8 @@
   "videoControls": {
     "audioLabel": "Áudio",
     "subtitlesLabel": "Legendas",
+    "subtitleTrackNumber": "Legenda ${number}",
+    "audioTrackNumber": "Faixa de áudio ${number}",
     "resetToZero": "Redefinir para 0ms",
     "addTime": "+${amount}${unit}",
     "minusTime": "-${amount}${unit}",

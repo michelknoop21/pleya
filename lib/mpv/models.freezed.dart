@@ -801,7 +801,12 @@ as bool,
 /// @nodoc
 mixin _$SubtitleTrack {
 
- String get id; String? get title; String? get language; String? get codec; bool get isDefault; bool get isForced; bool get isExternal; String? get uri;
+ String get id; String? get title; String? get language; String? get codec; bool get isDefault; bool get isForced; bool get isExternal; String? get uri;/// mpv's `ff-index`: the stream's position in the container as libavformat
+/// numbers it. Unlike [id], which is a per-type 1-based ordinal, this is
+/// directly comparable to a Jellyfin `MediaStreams[].Index`. Null when mpv
+/// did not report it, and never comparable to a Plex stream id, which is a
+/// database key rather than a container position.
+ int? get ffIndex;
 /// Create a copy of SubtitleTrack
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -812,16 +817,16 @@ $SubtitleTrackCopyWith<SubtitleTrack> get copyWith => _$SubtitleTrackCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SubtitleTrack&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.language, language) || other.language == language)&&(identical(other.codec, codec) || other.codec == codec)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.isForced, isForced) || other.isForced == isForced)&&(identical(other.isExternal, isExternal) || other.isExternal == isExternal)&&(identical(other.uri, uri) || other.uri == uri));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SubtitleTrack&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.language, language) || other.language == language)&&(identical(other.codec, codec) || other.codec == codec)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.isForced, isForced) || other.isForced == isForced)&&(identical(other.isExternal, isExternal) || other.isExternal == isExternal)&&(identical(other.uri, uri) || other.uri == uri)&&(identical(other.ffIndex, ffIndex) || other.ffIndex == ffIndex));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,title,language,codec,isDefault,isForced,isExternal,uri);
+int get hashCode => Object.hash(runtimeType,id,title,language,codec,isDefault,isForced,isExternal,uri,ffIndex);
 
 @override
 String toString() {
-  return 'SubtitleTrack(id: $id, title: $title, language: $language, codec: $codec, isDefault: $isDefault, isForced: $isForced, isExternal: $isExternal, uri: $uri)';
+  return 'SubtitleTrack(id: $id, title: $title, language: $language, codec: $codec, isDefault: $isDefault, isForced: $isForced, isExternal: $isExternal, uri: $uri, ffIndex: $ffIndex)';
 }
 
 
@@ -832,7 +837,7 @@ abstract mixin class $SubtitleTrackCopyWith<$Res>  {
   factory $SubtitleTrackCopyWith(SubtitleTrack value, $Res Function(SubtitleTrack) _then) = _$SubtitleTrackCopyWithImpl;
 @useResult
 $Res call({
- String id, String? title, String? language, String? codec, bool isDefault, bool isForced, bool isExternal, String? uri
+ String id, String? title, String? language, String? codec, bool isDefault, bool isForced, bool isExternal, String? uri, int? ffIndex
 });
 
 
@@ -849,7 +854,7 @@ class _$SubtitleTrackCopyWithImpl<$Res>
 
 /// Create a copy of SubtitleTrack
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = freezed,Object? language = freezed,Object? codec = freezed,Object? isDefault = null,Object? isForced = null,Object? isExternal = null,Object? uri = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = freezed,Object? language = freezed,Object? codec = freezed,Object? isDefault = null,Object? isForced = null,Object? isExternal = null,Object? uri = freezed,Object? ffIndex = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -859,7 +864,8 @@ as String?,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore:
 as bool,isForced: null == isForced ? _self.isForced : isForced // ignore: cast_nullable_to_non_nullable
 as bool,isExternal: null == isExternal ? _self.isExternal : isExternal // ignore: cast_nullable_to_non_nullable
 as bool,uri: freezed == uri ? _self.uri : uri // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,ffIndex: freezed == ffIndex ? _self.ffIndex : ffIndex // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 
@@ -941,10 +947,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String? title,  String? language,  String? codec,  bool isDefault,  bool isForced,  bool isExternal,  String? uri)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String? title,  String? language,  String? codec,  bool isDefault,  bool isForced,  bool isExternal,  String? uri,  int? ffIndex)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _SubtitleTrack() when $default != null:
-return $default(_that.id,_that.title,_that.language,_that.codec,_that.isDefault,_that.isForced,_that.isExternal,_that.uri);case _:
+return $default(_that.id,_that.title,_that.language,_that.codec,_that.isDefault,_that.isForced,_that.isExternal,_that.uri,_that.ffIndex);case _:
   return orElse();
 
 }
@@ -962,10 +968,10 @@ return $default(_that.id,_that.title,_that.language,_that.codec,_that.isDefault,
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String? title,  String? language,  String? codec,  bool isDefault,  bool isForced,  bool isExternal,  String? uri)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String? title,  String? language,  String? codec,  bool isDefault,  bool isForced,  bool isExternal,  String? uri,  int? ffIndex)  $default,) {final _that = this;
 switch (_that) {
 case _SubtitleTrack():
-return $default(_that.id,_that.title,_that.language,_that.codec,_that.isDefault,_that.isForced,_that.isExternal,_that.uri);}
+return $default(_that.id,_that.title,_that.language,_that.codec,_that.isDefault,_that.isForced,_that.isExternal,_that.uri,_that.ffIndex);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -979,10 +985,10 @@ return $default(_that.id,_that.title,_that.language,_that.codec,_that.isDefault,
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String? title,  String? language,  String? codec,  bool isDefault,  bool isForced,  bool isExternal,  String? uri)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String? title,  String? language,  String? codec,  bool isDefault,  bool isForced,  bool isExternal,  String? uri,  int? ffIndex)?  $default,) {final _that = this;
 switch (_that) {
 case _SubtitleTrack() when $default != null:
-return $default(_that.id,_that.title,_that.language,_that.codec,_that.isDefault,_that.isForced,_that.isExternal,_that.uri);case _:
+return $default(_that.id,_that.title,_that.language,_that.codec,_that.isDefault,_that.isForced,_that.isExternal,_that.uri,_that.ffIndex);case _:
   return null;
 
 }
@@ -994,7 +1000,7 @@ return $default(_that.id,_that.title,_that.language,_that.codec,_that.isDefault,
 
 
 class _SubtitleTrack extends SubtitleTrack {
-  const _SubtitleTrack({required this.id, this.title, this.language, this.codec, this.isDefault = false, this.isForced = false, this.isExternal = false, this.uri}): super._();
+  const _SubtitleTrack({required this.id, this.title, this.language, this.codec, this.isDefault = false, this.isForced = false, this.isExternal = false, this.uri, this.ffIndex}): super._();
   
 
 @override final  String id;
@@ -1005,6 +1011,12 @@ class _SubtitleTrack extends SubtitleTrack {
 @override@JsonKey() final  bool isForced;
 @override@JsonKey() final  bool isExternal;
 @override final  String? uri;
+/// mpv's `ff-index`: the stream's position in the container as libavformat
+/// numbers it. Unlike [id], which is a per-type 1-based ordinal, this is
+/// directly comparable to a Jellyfin `MediaStreams[].Index`. Null when mpv
+/// did not report it, and never comparable to a Plex stream id, which is a
+/// database key rather than a container position.
+@override final  int? ffIndex;
 
 /// Create a copy of SubtitleTrack
 /// with the given fields replaced by the non-null parameter values.
@@ -1016,16 +1028,16 @@ _$SubtitleTrackCopyWith<_SubtitleTrack> get copyWith => __$SubtitleTrackCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SubtitleTrack&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.language, language) || other.language == language)&&(identical(other.codec, codec) || other.codec == codec)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.isForced, isForced) || other.isForced == isForced)&&(identical(other.isExternal, isExternal) || other.isExternal == isExternal)&&(identical(other.uri, uri) || other.uri == uri));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SubtitleTrack&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.language, language) || other.language == language)&&(identical(other.codec, codec) || other.codec == codec)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.isForced, isForced) || other.isForced == isForced)&&(identical(other.isExternal, isExternal) || other.isExternal == isExternal)&&(identical(other.uri, uri) || other.uri == uri)&&(identical(other.ffIndex, ffIndex) || other.ffIndex == ffIndex));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,title,language,codec,isDefault,isForced,isExternal,uri);
+int get hashCode => Object.hash(runtimeType,id,title,language,codec,isDefault,isForced,isExternal,uri,ffIndex);
 
 @override
 String toString() {
-  return 'SubtitleTrack(id: $id, title: $title, language: $language, codec: $codec, isDefault: $isDefault, isForced: $isForced, isExternal: $isExternal, uri: $uri)';
+  return 'SubtitleTrack(id: $id, title: $title, language: $language, codec: $codec, isDefault: $isDefault, isForced: $isForced, isExternal: $isExternal, uri: $uri, ffIndex: $ffIndex)';
 }
 
 
@@ -1036,7 +1048,7 @@ abstract mixin class _$SubtitleTrackCopyWith<$Res> implements $SubtitleTrackCopy
   factory _$SubtitleTrackCopyWith(_SubtitleTrack value, $Res Function(_SubtitleTrack) _then) = __$SubtitleTrackCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? title, String? language, String? codec, bool isDefault, bool isForced, bool isExternal, String? uri
+ String id, String? title, String? language, String? codec, bool isDefault, bool isForced, bool isExternal, String? uri, int? ffIndex
 });
 
 
@@ -1053,7 +1065,7 @@ class __$SubtitleTrackCopyWithImpl<$Res>
 
 /// Create a copy of SubtitleTrack
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = freezed,Object? language = freezed,Object? codec = freezed,Object? isDefault = null,Object? isForced = null,Object? isExternal = null,Object? uri = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = freezed,Object? language = freezed,Object? codec = freezed,Object? isDefault = null,Object? isForced = null,Object? isExternal = null,Object? uri = freezed,Object? ffIndex = freezed,}) {
   return _then(_SubtitleTrack(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -1063,7 +1075,8 @@ as String?,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore:
 as bool,isForced: null == isForced ? _self.isForced : isForced // ignore: cast_nullable_to_non_nullable
 as bool,isExternal: null == isExternal ? _self.isExternal : isExternal // ignore: cast_nullable_to_non_nullable
 as bool,uri: freezed == uri ? _self.uri : uri // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,ffIndex: freezed == ffIndex ? _self.ffIndex : ffIndex // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 

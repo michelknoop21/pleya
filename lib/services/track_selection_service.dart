@@ -10,6 +10,8 @@ import '../media/track_language_choice.dart';
 import '../utils/future_extensions.dart';
 import '../utils/app_logger.dart';
 import '../utils/language_codes.dart';
+import '../utils/track_metadata_normalizer.dart';
+import '../utils/subtitle_track_resolver.dart';
 
 // These functions match MPV tracks to Plex tracks by properties (language,
 // codec, title, etc.) instead of list index, since the two may be ordered
@@ -619,6 +621,14 @@ class TrackSelectionService {
       return false;
     }
 
+    // Normalised first, so a preference stored before this reached one
+    // vocabulary still matches: every user's store already holds a mix of
+    // "nld", "Dutch" and "en-US". Strictly a widening — the legacy comparison
+    // below still runs for anything the normaliser cannot place.
+    final trackCode = normalizeLanguageCode(trackLanguage);
+    final preferredCode = normalizeLanguageCode(preferredLanguage);
+    if (trackCode != null && preferredCode != null && trackCode == preferredCode) return true;
+
     final track = trackLanguage.toLowerCase();
     final preferred = preferredLanguage.toLowerCase();
 
@@ -651,7 +661,11 @@ class TrackSelectionService {
     final matches = tracks.where((t) => languageMatches(getLanguage(t), language)).toList();
     if (matches.isEmpty) return null;
     if (title == null || title.isEmpty) return matches.first;
-    return matches.where((t) => getTitle(t) == title).firstOrNull ?? matches.first;
+    // Normalised on both sides: the remembered title may now come from the
+    // server where it used to come from mpv, and an exact string compare
+    // would quietly stop breaking the tie.
+    final wanted = normalizeTrackTitle(title);
+    return matches.where((t) => normalizeTrackTitle(getTitle(t)) == wanted).firstOrNull ?? matches.first;
   }
 
   /// Select the best audio track based on priority:
@@ -787,20 +801,28 @@ class TrackSelectionService {
         appLogger.d('Subtitles: honouring remembered off');
         return TrackSelectionResult(SubtitleTrack.off, TrackSelectionPriority.sticky);
       }
+      // Read through the resolver, or the remembered language is invisible to
+      // exactly the track it was learned from: an untagged stream the server
+      // calls Dutch has no `language` of its own to match against.
+      final resolution = SubtitleTrackResolver.resolve(
+        playerTracks: availableTracks,
+        serverTracks: plexMediaInfo?.subtitleTracks ?? const [],
+      );
+      String? languageOf(SubtitleTrack t) => t.language ?? resolution.forTrack(t.id)?.resolvedLanguageCode;
       final forcedMatch = availableTracks.where((t) => t.isForced == sticky.subtitleForced).toList();
       final stickyTrack =
           _matchByLanguage<SubtitleTrack>(
             forcedMatch,
             sticky.subtitleLanguage,
             sticky.subtitleTitle,
-            (t) => t.language,
+            languageOf,
             (t) => t.title,
           ) ??
           _matchByLanguage<SubtitleTrack>(
             availableTracks,
             sticky.subtitleLanguage,
             sticky.subtitleTitle,
-            (t) => t.language,
+            languageOf,
             (t) => t.title,
           );
       if (stickyTrack != null) {

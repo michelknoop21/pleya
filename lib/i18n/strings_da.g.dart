@@ -576,6 +576,8 @@ class _TranslationsVideoControlsDa extends TranslationsVideoControlsEn {
 	// Translations
 	@override String get audioLabel => 'Lyd';
 	@override String get subtitlesLabel => 'Undertekster';
+	@override String subtitleTrackNumber({required Object number}) => 'Undertekst ${number}';
+	@override String audioTrackNumber({required Object number}) => 'Lydspor ${number}';
 	@override String get resetToZero => 'Nulstil til 0ms';
 	@override String addTime({required Object amount, required Object unit}) => '+${amount}${unit}';
 	@override String minusTime({required Object amount, required Object unit}) => '-${amount}${unit}';
@@ -2381,6 +2383,8 @@ extension on TranslationsDa {
 			'tooltips.markAsUnwatched' => 'Markér som uset',
 			'videoControls.audioLabel' => 'Lyd',
 			'videoControls.subtitlesLabel' => 'Undertekster',
+			'videoControls.subtitleTrackNumber' => ({required Object number}) => 'Undertekst ${number}',
+			'videoControls.audioTrackNumber' => ({required Object number}) => 'Lydspor ${number}',
 			'videoControls.resetToZero' => 'Nulstil til 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -2504,10 +2508,10 @@ extension on TranslationsDa {
 			'messages.switchingToCompatiblePlayer' => 'Skifter til kompatibel afspiller...',
 			'messages.serverLimitTitle' => 'Afspilning mislykkedes',
 			'messages.serverLimitBody' => 'Serverfejl (HTTP 500). En båndbredde-/transkodningsgrænse afviste nok sessionen. Bed ejeren om at justere den.',
-			'messages.logsUploaded' => 'Logs uploadet',
-			'messages.logsUploadFailed' => 'Kunne ikke uploade logs',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logsUploaded' => 'Logs uploadet',
+			'messages.logsUploadFailed' => 'Kunne ikke uploade logs',
 			'messages.logId' => 'Log-ID',
 			'subtitlingStyling.text' => 'Tekst',
 			'subtitlingStyling.border' => 'Kant',
@@ -3018,10 +3022,10 @@ extension on TranslationsDa {
 			'companionRemote.pairing.availableDevices' => 'Tilgængelige enheder',
 			'companionRemote.pairing.manualConnection' => 'Manuel forbindelse',
 			'companionRemote.pairing.cryptoInitFailed' => 'Kunne ikke starte sikker forbindelse. Log ind på Plex først.',
-			'companionRemote.pairing.validationHostRequired' => 'Angiv venligst værtsadresse',
-			'companionRemote.pairing.validationHostFormat' => 'Format skal være IP:port (f.eks. 192.168.1.100:48632)',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.validationHostRequired' => 'Angiv venligst værtsadresse',
+			'companionRemote.pairing.validationHostFormat' => 'Format skal være IP:port (f.eks. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Forbindelsen fik timeout. Brug samme netværk på begge enheder.',
 			'companionRemote.pairing.sessionNotFound' => 'Enhed ikke fundet. Sørg for, at Pleya kører på værten.',
 			'companionRemote.pairing.authFailed' => 'Godkendelse mislykkedes. Begge enheder skal bruge samme Plex-konto.',

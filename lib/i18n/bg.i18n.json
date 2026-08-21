@@ -415,6 +415,8 @@
   "videoControls": {
     "audioLabel": "Аудио",
     "subtitlesLabel": "Субтитри",
+    "subtitleTrackNumber": "Субтитри ${number}",
+    "audioTrackNumber": "Аудиозапис ${number}",
     "resetToZero": "Нулирай до 0ms",
     "addTime": "+${amount}${unit}",
     "minusTime": "-${amount}${unit}",

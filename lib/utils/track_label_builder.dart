@@ -1,6 +1,15 @@
 import 'codec_utils.dart';
 import 'language_codes.dart';
 
+/// Builds the label for a track that carries no usable metadata at all, given
+/// its 1-based position in the list. Injected rather than looked up, so this
+/// file stays free of any i18n dependency and its tests stay pure Dart.
+typedef TrackNumberLabel = String Function(int number);
+
+String defaultSubtitleNumberLabel(int number) => 'Subtitle $number';
+
+String defaultAudioNumberLabel(int number) => 'Audio track $number';
+
 /// Two-part track label: [primary] carries the human-readable name (language
 /// first when known), [secondary] the de-emphasized technical detail.
 ///
@@ -127,6 +136,7 @@ class TrackLabelBuilder {
     String? profile,
     String? displayTitle,
     required int index,
+    TrackNumberLabel? numberLabel,
   }) {
     final tech = <String>[];
     if (codec != null && codec.isNotEmpty) tech.add(CodecUtils.formatAudioCodec(codec));
@@ -143,7 +153,7 @@ class TrackLabelBuilder {
       displayTitle: cleanTrackMetadataValue(displayTitle),
       rawLanguageValues: [language, languageCode],
       techParts: tech,
-      fallbackPrefix: 'Audio Track',
+      numberLabel: numberLabel ?? defaultAudioNumberLabel,
       index: index,
     );
   }
@@ -156,6 +166,7 @@ class TrackLabelBuilder {
     bool forced = false,
     String? displayTitle,
     required int index,
+    TrackNumberLabel? numberLabel,
   }) {
     final cleanedTitle = cleanSubtitleTitle(title, codec: codec);
     return _compose(
@@ -164,7 +175,7 @@ class TrackLabelBuilder {
       displayTitle: cleanSubtitleTitle(displayTitle, codec: codec),
       rawLanguageValues: [language, languageCode],
       techParts: [if (codec != null && codec.isNotEmpty) CodecUtils.formatSubtitleCodec(codec)],
-      fallbackPrefix: 'Track',
+      numberLabel: numberLabel ?? defaultSubtitleNumberLabel,
       index: index,
       forced: forced || _saysForced(cleanedTitle),
     );
@@ -179,7 +190,7 @@ class TrackLabelBuilder {
     required String? displayTitle,
     required List<String?> rawLanguageValues,
     required List<String> techParts,
-    required String fallbackPrefix,
+    required TrackNumberLabel numberLabel,
     required int index,
     bool forced = false,
   }) {
@@ -197,7 +208,7 @@ class TrackLabelBuilder {
     } else if (displayTitle != null) {
       primary = displayTitle;
     } else {
-      primary = '$fallbackPrefix ${index + 1}';
+      primary = numberLabel(index + 1);
     }
 
     if (forced && !_saysForced(primary)) {

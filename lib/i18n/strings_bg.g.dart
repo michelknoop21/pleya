@@ -576,6 +576,8 @@ class _TranslationsVideoControlsBg extends TranslationsVideoControlsEn {
 	// Translations
 	@override String get audioLabel => 'Аудио';
 	@override String get subtitlesLabel => 'Субтитри';
+	@override String subtitleTrackNumber({required Object number}) => 'Субтитри ${number}';
+	@override String audioTrackNumber({required Object number}) => 'Аудиозапис ${number}';
 	@override String get resetToZero => 'Нулирай до 0ms';
 	@override String addTime({required Object amount, required Object unit}) => '+${amount}${unit}';
 	@override String minusTime({required Object amount, required Object unit}) => '-${amount}${unit}';
@@ -2381,6 +2383,8 @@ extension on TranslationsBg {
 			'tooltips.markAsUnwatched' => 'Маркирай като негледано',
 			'videoControls.audioLabel' => 'Аудио',
 			'videoControls.subtitlesLabel' => 'Субтитри',
+			'videoControls.subtitleTrackNumber' => ({required Object number}) => 'Субтитри ${number}',
+			'videoControls.audioTrackNumber' => ({required Object number}) => 'Аудиозапис ${number}',
 			'videoControls.resetToZero' => 'Нулирай до 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -2504,10 +2508,10 @@ extension on TranslationsBg {
 			'messages.switchingToCompatiblePlayer' => 'Превключване към съвместим плейър...',
 			'messages.serverLimitTitle' => 'Възпроизвеждането е неуспешно',
 			'messages.serverLimitBody' => 'Грешка на сървъра (HTTP 500). Вероятно лимит за пропускателна способност/транскодиране е отхвърлил тази сесия. Помолете собственика да го коригира.',
-			'messages.logsUploaded' => 'Логовете са качени',
-			'messages.logsUploadFailed' => 'Неуспешно качване на логовете',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logsUploaded' => 'Логовете са качени',
+			'messages.logsUploadFailed' => 'Неуспешно качване на логовете',
 			'messages.logId' => 'ID на лога',
 			'subtitlingStyling.text' => 'Текст',
 			'subtitlingStyling.border' => 'Рамка',
@@ -3018,10 +3022,10 @@ extension on TranslationsBg {
 			'companionRemote.pairing.availableDevices' => 'Налични устройства',
 			'companionRemote.pairing.manualConnection' => 'Ръчно свързване',
 			'companionRemote.pairing.cryptoInitFailed' => 'Не може да се стартира защитена връзка. Първо влезте в Plex.',
-			'companionRemote.pairing.validationHostRequired' => 'Моля, въведете адрес на хоста',
-			'companionRemote.pairing.validationHostFormat' => 'Форматът трябва да е IP:port (напр. 192.168.1.100:48632)',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.validationHostRequired' => 'Моля, въведете адрес на хоста',
+			'companionRemote.pairing.validationHostFormat' => 'Форматът трябва да е IP:port (напр. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Връзката изтече. Използвайте една и съща мрежа на двете устройства.',
 			'companionRemote.pairing.sessionNotFound' => 'Устройството не е намерено. Уверете се, че Pleya работи на хоста.',
 			'companionRemote.pairing.authFailed' => 'Удостоверяването е неуспешно. Двете устройства трябва да използват същия Plex акаунт.',

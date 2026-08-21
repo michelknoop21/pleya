@@ -103,10 +103,10 @@ void main() {
       );
     });
 
-    test('falls back to "Audio Track N"', () {
-      expect(TrackLabelBuilder.audioLabel(index: 0), const TrackLabel('Audio Track 1'));
-      expect(TrackLabelBuilder.audioLabel(index: 3), const TrackLabel('Audio Track 4'));
-      expect(TrackLabelBuilder.audioLabel(codec: 'eac3', index: 0), const TrackLabel('Audio Track 1', 'E-AC3'));
+    test('falls back to a numbered label', () {
+      expect(TrackLabelBuilder.audioLabel(index: 0), const TrackLabel('Audio track 1'));
+      expect(TrackLabelBuilder.audioLabel(index: 3), const TrackLabel('Audio track 4'));
+      expect(TrackLabelBuilder.audioLabel(codec: 'eac3', index: 0), const TrackLabel('Audio track 1', 'E-AC3'));
     });
 
     test('channel counts render as layout names and invalid counts are dropped', () {
@@ -120,6 +120,19 @@ void main() {
     test('omits codec when null or empty', () {
       expect(TrackLabelBuilder.audioLabel(language: 'en', codec: null, index: 0), const TrackLabel('English'));
       expect(TrackLabelBuilder.audioLabel(language: 'en', codec: '', index: 0), const TrackLabel('English'));
+    });
+  });
+
+  group('TrackLabelBuilder numbered fallback injection', () {
+    test('a caller-supplied formatter replaces the English default', () {
+      expect(
+        TrackLabelBuilder.subtitleLabel(index: 1, numberLabel: (n) => 'Ondertiteling $n'),
+        const TrackLabel('Ondertiteling 2'),
+      );
+      expect(
+        TrackLabelBuilder.audioLabel(index: 0, numberLabel: (n) => 'Audiospoor $n'),
+        const TrackLabel('Audiospoor 1'),
+      );
     });
   });
 
@@ -174,9 +187,9 @@ void main() {
       );
     });
 
-    test('falls back to "Track N", keeping the forced suffix', () {
-      expect(TrackLabelBuilder.subtitleLabel(index: 0), const TrackLabel('Track 1'));
-      expect(TrackLabelBuilder.subtitleLabel(forced: true, index: 1), const TrackLabel('Track 2 (Forced)'));
+    test('falls back to a numbered label, keeping the forced suffix', () {
+      expect(TrackLabelBuilder.subtitleLabel(index: 0), const TrackLabel('Subtitle 1'));
+      expect(TrackLabelBuilder.subtitleLabel(forced: true, index: 1), const TrackLabel('Subtitle 2 (Forced)'));
     });
 
     test('displayTitle fallback is codec-stripped like a title', () {

@@ -576,6 +576,8 @@ class _TranslationsVideoControlsEs extends TranslationsVideoControlsEn {
 	// Translations
 	@override String get audioLabel => 'Audio';
 	@override String get subtitlesLabel => 'Subtítulos';
+	@override String subtitleTrackNumber({required Object number}) => 'Subtítulo ${number}';
+	@override String audioTrackNumber({required Object number}) => 'Pista de audio ${number}';
 	@override String get resetToZero => 'Restablecer a 0ms';
 	@override String addTime({required Object amount, required Object unit}) => '+${amount}${unit}';
 	@override String minusTime({required Object amount, required Object unit}) => '-${amount}${unit}';
@@ -2381,6 +2383,8 @@ extension on TranslationsEs {
 			'tooltips.markAsUnwatched' => 'Marcar como no visto',
 			'videoControls.audioLabel' => 'Audio',
 			'videoControls.subtitlesLabel' => 'Subtítulos',
+			'videoControls.subtitleTrackNumber' => ({required Object number}) => 'Subtítulo ${number}',
+			'videoControls.audioTrackNumber' => ({required Object number}) => 'Pista de audio ${number}',
 			'videoControls.resetToZero' => 'Restablecer a 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -2504,10 +2508,10 @@ extension on TranslationsEs {
 			'messages.switchingToCompatiblePlayer' => 'Cambiando a reproductor compatible...',
 			'messages.serverLimitTitle' => 'Error de reproducción',
 			'messages.serverLimitBody' => 'Error del servidor (HTTP 500). Un límite de ancho de banda/transcodificación probablemente rechazó esta sesión. Pide al propietario que lo ajuste.',
-			'messages.logsUploaded' => 'Registros subidos',
-			'messages.logsUploadFailed' => 'Error al subir registros',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logsUploaded' => 'Registros subidos',
+			'messages.logsUploadFailed' => 'Error al subir registros',
 			'messages.logId' => 'ID de registro',
 			'subtitlingStyling.text' => 'Texto',
 			'subtitlingStyling.border' => 'Borde',
@@ -3018,10 +3022,10 @@ extension on TranslationsEs {
 			'companionRemote.pairing.availableDevices' => 'Dispositivos disponibles',
 			'companionRemote.pairing.manualConnection' => 'Conexión manual',
 			'companionRemote.pairing.cryptoInitFailed' => 'No se pudo iniciar la conexión segura. Inicia sesión en Plex primero.',
-			'companionRemote.pairing.validationHostRequired' => 'Ingresa la dirección del host',
-			'companionRemote.pairing.validationHostFormat' => 'El formato debe ser IP:puerto (ej. 192.168.1.100:48632)',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.validationHostRequired' => 'Ingresa la dirección del host',
+			'companionRemote.pairing.validationHostFormat' => 'El formato debe ser IP:puerto (ej. 192.168.1.100:48632)',
 			'companionRemote.pairing.connectionTimedOut' => 'Tiempo de conexión agotado. Usa la misma red en ambos dispositivos.',
 			'companionRemote.pairing.sessionNotFound' => 'Dispositivo no encontrado. Asegúrate de que Pleya esté en ejecución en el host.',
 			'companionRemote.pairing.authFailed' => 'Autenticación fallida. Ambos dispositivos necesitan la misma cuenta Plex.',

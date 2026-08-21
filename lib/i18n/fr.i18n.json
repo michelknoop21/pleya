@@ -415,6 +415,8 @@
   "videoControls": {
     "audioLabel": "Audio",
     "subtitlesLabel": "Sous-titres",
+    "subtitleTrackNumber": "Sous-titre ${number}",
+    "audioTrackNumber": "Piste audio ${number}",
     "resetToZero": "Réinitialiser à 0ms",
     "addTime": "+${amount}${unit}",
     "minusTime": "-${amount}${unit}",

@@ -576,6 +576,8 @@ class _TranslationsVideoControlsJa extends TranslationsVideoControlsEn {
 	// Translations
 	@override String get audioLabel => '音声';
 	@override String get subtitlesLabel => '字幕';
+	@override String subtitleTrackNumber({required Object number}) => '字幕 ${number}';
+	@override String audioTrackNumber({required Object number}) => '音声トラック ${number}';
 	@override String get resetToZero => '0msにリセット';
 	@override String addTime({required Object amount, required Object unit}) => '+${amount}${unit}';
 	@override String minusTime({required Object amount, required Object unit}) => '-${amount}${unit}';
@@ -2381,6 +2383,8 @@ extension on TranslationsJa {
 			'tooltips.markAsUnwatched' => '未視聴にする',
 			'videoControls.audioLabel' => '音声',
 			'videoControls.subtitlesLabel' => '字幕',
+			'videoControls.subtitleTrackNumber' => ({required Object number}) => '字幕 ${number}',
+			'videoControls.audioTrackNumber' => ({required Object number}) => '音声トラック ${number}',
 			'videoControls.resetToZero' => '0msにリセット',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -2504,10 +2508,10 @@ extension on TranslationsJa {
 			'messages.switchingToCompatiblePlayer' => '互換プレーヤーに切替中...',
 			'messages.serverLimitTitle' => '再生に失敗しました',
 			'messages.serverLimitBody' => 'サーバーエラー（HTTP 500）。帯域幅/トランスコード制限により拒否された可能性があります。所有者に調整を依頼してください。',
-			'messages.logsUploaded' => 'ログをアップロードしました',
-			'messages.logsUploadFailed' => 'ログのアップロードに失敗しました',
 			_ => null,
 		} ?? switch (path) {
+			'messages.logsUploaded' => 'ログをアップロードしました',
+			'messages.logsUploadFailed' => 'ログのアップロードに失敗しました',
 			'messages.logId' => 'ログID',
 			'subtitlingStyling.text' => 'テキスト',
 			'subtitlingStyling.border' => '枠線',
@@ -3018,10 +3022,10 @@ extension on TranslationsJa {
 			'companionRemote.pairing.availableDevices' => '利用可能なデバイス',
 			'companionRemote.pairing.manualConnection' => '手動接続',
 			'companionRemote.pairing.cryptoInitFailed' => '安全な接続を開始できませんでした。先にPlexにサインインしてください。',
-			'companionRemote.pairing.validationHostRequired' => 'ホストアドレスを入力してください',
-			'companionRemote.pairing.validationHostFormat' => '形式はIP:ポートである必要があります（例: 192.168.1.100:48632）',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.validationHostRequired' => 'ホストアドレスを入力してください',
+			'companionRemote.pairing.validationHostFormat' => '形式はIP:ポートである必要があります（例: 192.168.1.100:48632）',
 			'companionRemote.pairing.connectionTimedOut' => '接続がタイムアウトしました。両方のデバイスで同じネットワークを使用してください。',
 			'companionRemote.pairing.sessionNotFound' => 'デバイスが見つかりません。ホストでPleyaが実行中か確認してください。',
 			'companionRemote.pairing.authFailed' => '認証に失敗しました。両方のデバイスで同じPlexアカウントが必要です。',
