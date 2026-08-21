@@ -11,6 +11,39 @@ import 'settings_export_service.dart';
 import 'settings_service.dart';
 import 'storage_service.dart';
 
+/// How the key-value-store sync facility is doing on this device.
+///
+/// Availability and health are separate questions, and conflating them is what
+/// made an Apple TV claim it was signed out of iCloud. [unsupported] and
+/// [signedOut] say the facility cannot be used at all; [warning] and [error]
+/// say a usable facility hit a problem. Only the first two may disable the
+/// control.
+enum ICloudSyncStatus {
+  /// No native key-value store on this platform (Android, Linux, Windows), or
+  /// the plugin is missing from the build.
+  unsupported,
+
+  /// An Apple platform whose iCloud account is genuinely absent, so writes
+  /// would stay on this device. iOS and macOS only: tvOS has no account-level
+  /// signal to read, and its entitlement is what authorises the store.
+  signedOut,
+
+  /// Usable, and nothing has failed since the last successful call.
+  ok,
+
+  /// Usable, but something was dropped: a value over the per-key cap, or the
+  /// 1MB store quota. Sync keeps running and picks the key up again later.
+  warning,
+
+  /// Usable in principle, but the last call to the store failed. This is a
+  /// transport fault, not a missing account — the control stays on.
+  error;
+
+  /// Whether the facility can be used at all. [warning] and [error] are health,
+  /// not availability, so they stay usable.
+  bool get isUsable => this == ok || this == warning || this == error;
+}
+
 /// Mirrors user settings across the signed-in user's Apple devices via
 /// NSUbiquitousKeyValueStore (iCloud key-value store).
 ///
@@ -25,7 +58,8 @@ import 'storage_service.dart';
 /// re-fire the local-write hook. [_applyingRemote] is a belt-and-braces guard.
 ///
 /// No-op on Android/Linux/Windows — the native plugin only exists on Apple
-/// platforms (tvOS reports itself as iOS).
+/// platforms (tvOS reports itself as iOS), where it is authorised by the
+/// `com.apple.developer.ubiquity-kvstore-identifier` entitlement.
 class ICloudSyncService {
   ICloudSyncService._(this._settings, this._activeUserScope);
 
@@ -53,13 +87,36 @@ class ICloudSyncService {
   /// state (theme, locale, keyboard shortcuts) — same surface as an import.
   VoidCallback? onRemoteChangesApplied;
 
+  final ValueNotifier<ICloudSyncStatus> _status = ValueNotifier(ICloudSyncStatus.ok);
+
+  /// Live health of the sync facility, for the settings tile to render.
+  /// Starts optimistic so the control is usable before the first probe returns.
+  ValueListenable<ICloudSyncStatus> get status => _status;
+
+  /// Report a status, but never let a [warning] erase a standing [error]:
+  /// a dropped oversized key is the smaller of the two problems, and the
+  /// error clears on the next call that actually succeeds.
+  void _setStatus(ICloudSyncStatus next) {
+    if (next == ICloudSyncStatus.warning && _status.value == ICloudSyncStatus.error) return;
+    _status.value = next;
+  }
+
+  /// A call that reached the store clears a standing transport error, and only
+  /// that: a [warning] (a key we chose to drop) is still true, and an account
+  /// verdict is not ours to overturn from a plumbing call.
+  void _clearTransportError() {
+    if (_status.value == ICloudSyncStatus.error) _status.value = ICloudSyncStatus.ok;
+  }
+
   static ICloudSyncService? _instance;
   static ICloudSyncService? get instance => _instance;
 
-  /// Only Apple platforms ship the native plugin. Overridable for tests.
+  /// Only Apple platforms ship the native plugin — tvOS included, since an
+  /// Apple TV reports itself as iOS. Non-null overrides the platform answer in
+  /// tests, which necessarily run on a host that is itself supported.
   @visibleForTesting
-  static bool debugForceSupported = false;
-  static bool get _supported => debugForceSupported || Platform.isIOS || Platform.isMacOS;
+  static bool? debugSupportedOverride;
+  static bool get _supported => debugSupportedOverride ?? (Platform.isIOS || Platform.isMacOS);
 
   bool get _enabled => _settings.read(SettingsService.icloudSyncEnabled);
 
@@ -77,15 +134,33 @@ class ICloudSyncService {
     if (svc._enabled) await svc._activate();
   }
 
-  /// True when iCloud is signed in (nil ubiquity token = logged out → sync
-  /// would silently no-op, so the UI disables the toggle).
+  /// Whether *Pleya's* key-value settings sync can be used here — not whether
+  /// iCloud Drive exists. The native side answers per platform: iOS and macOS
+  /// read the iCloud account, tvOS answers yes on the strength of its
+  /// `ubiquity-kvstore-identifier` entitlement, because the account token it
+  /// used to read is an iCloud *Drive* signal that is always nil on tvOS.
+  ///
+  /// A channel failure is a transport fault and returns true: the platform is
+  /// still supported, so the control stays usable and the fault shows up as
+  /// [ICloudSyncStatus.error]. Only a missing plugin is treated as genuinely
+  /// unavailable, because then there is no store to talk to at all.
   Future<bool> isAvailable() async {
-    if (!_supported) return false;
+    if (!_supported) {
+      _setStatus(ICloudSyncStatus.unsupported);
+      return false;
+    }
     try {
-      return (await _channel.invokeMethod<bool>('isAvailable')) ?? false;
+      final available = (await _channel.invokeMethod<bool>('isAvailable')) ?? false;
+      _setStatus(available ? ICloudSyncStatus.ok : ICloudSyncStatus.signedOut);
+      return available;
+    } on MissingPluginException catch (e) {
+      appLogger.w('iCloud KVS plugin missing from this build', error: e);
+      _setStatus(ICloudSyncStatus.unsupported);
+      return false;
     } catch (e) {
       appLogger.w('iCloud isAvailable failed', error: e);
-      return false;
+      _setStatus(ICloudSyncStatus.error);
+      return true;
     }
   }
 
@@ -113,6 +188,7 @@ class ICloudSyncService {
       await pushAll();
     } catch (e, st) {
       appLogger.e('iCloud sync activation failed', error: e, stackTrace: st);
+      _setStatus(ICloudSyncStatus.error);
     }
   }
 
@@ -131,6 +207,7 @@ class ICloudSyncService {
     switch (reason) {
       case _reasonQuotaViolation:
         appLogger.w('iCloud KVS quota exceeded — some settings may not sync');
+        _setStatus(ICloudSyncStatus.warning);
         return;
       case _reasonAccountChange:
         // iCloud account switched — re-apply everything from the new store.
@@ -222,6 +299,7 @@ class ICloudSyncService {
     // syncing again as soon as it shrinks below the cap.
     if (encoded.length > maxValueBytes) {
       appLogger.w('iCloud sync: skipping $baseKey (${encoded.length} bytes > $maxValueBytes)');
+      _setStatus(ICloudSyncStatus.warning);
       return;
     }
     unawaited(_set(baseKey, encoded));
@@ -311,9 +389,12 @@ class ICloudSyncService {
   /// [_applyRemoteKeys] and [pushAll] for why the distinction matters.
   Future<Map<String, String>?> _getAll() async {
     try {
-      return (await _channel.invokeMapMethod<String, String>('getAll')) ?? const {};
+      final all = (await _channel.invokeMapMethod<String, String>('getAll')) ?? const <String, String>{};
+      _clearTransportError();
+      return all;
     } catch (e) {
       appLogger.w('iCloud getAll failed', error: e);
+      _setStatus(ICloudSyncStatus.error);
       return null;
     }
   }
@@ -321,16 +402,20 @@ class ICloudSyncService {
   Future<void> _set(String key, String value) async {
     try {
       await _channel.invokeMethod('set', {'key': key, 'value': value});
+      _clearTransportError();
     } catch (e) {
       appLogger.w('iCloud set failed for $key', error: e);
+      _setStatus(ICloudSyncStatus.error);
     }
   }
 
   Future<void> _remove(String key) async {
     try {
       await _channel.invokeMethod('remove', {'key': key});
+      _clearTransportError();
     } catch (e) {
       appLogger.w('iCloud remove failed for $key', error: e);
+      _setStatus(ICloudSyncStatus.error);
     }
   }
 
@@ -356,7 +441,7 @@ class ICloudSyncService {
     String? Function()? activeUserScope,
     VoidCallback? onRemoteChangesApplied,
   }) {
-    debugForceSupported = true;
+    debugSupportedOverride = true;
     final svc = ICloudSyncService._(settings, activeUserScope ?? () => null)
       ..onRemoteChangesApplied = onRemoteChangesApplied;
     _instance = svc;
@@ -371,8 +456,9 @@ class ICloudSyncService {
   @visibleForTesting
   static void debugReset() {
     _instance?._eventSub?.cancel();
+    _instance?._status.dispose();
     _instance = null;
-    debugForceSupported = false;
+    debugSupportedOverride = null;
     BaseSharedPreferencesService.onKeyWritten = null;
   }
 }

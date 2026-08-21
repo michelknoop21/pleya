@@ -16,6 +16,28 @@ final class ICloudKvsPlugin: NSObject, FlutterPlugin {
   private let store = NSUbiquitousKeyValueStore.default
   private var eventSink: FlutterEventSink?
 
+  /// Whether this platform can use the key-value store at all.
+  ///
+  /// Deliberately *not* `ubiquityIdentityToken` on tvOS. That token reports the
+  /// iCloud **Drive** Documents identity, and iCloud Drive does not exist on
+  /// tvOS, so it is nil on a correctly signed-in Apple TV. Gating on it made
+  /// the app claim "sign in to iCloud" and disable the toggle on every Apple
+  /// TV. `NSUbiquitousKeyValueStore` is a separate facility, authorised by the
+  /// `com.apple.developer.ubiquity-kvstore-identifier` entitlement that the
+  /// tvOS target carries, so on tvOS the answer is simply yes. A store that
+  /// then fails to reach the server surfaces as a sync status on the Dart
+  /// side; it does not retroactively make the platform unsupported.
+  ///
+  /// On iOS and macOS the token remains the right question: there the account
+  /// really can be absent, and a nil token means writes would be kept local.
+  private static var isKvsAvailable: Bool {
+    #if os(tvOS)
+      return true
+    #else
+      return FileManager.default.ubiquityIdentityToken != nil
+    #endif
+  }
+
   static func register(with registrar: FlutterPluginRegistrar) {
     let instance = ICloudKvsPlugin()
     let channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger)
@@ -37,7 +59,7 @@ final class ICloudKvsPlugin: NSObject, FlutterPlugin {
   func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     switch call.method {
     case "isAvailable":
-      result(FileManager.default.ubiquityIdentityToken != nil)
+      result(Self.isKvsAvailable)
     case "getAll":
       var out: [String: String] = [:]
       for (key, value) in store.dictionaryRepresentation {

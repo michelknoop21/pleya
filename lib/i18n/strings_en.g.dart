@@ -822,6 +822,15 @@ class TranslationsSettingsEn {
 	/// en: 'Sign in to iCloud on this device to sync settings'
 	String get icloudSyncUnavailable => 'Sign in to iCloud on this device to sync settings';
 
+	/// en: 'This device can't sync settings through iCloud'
+	String get icloudSyncNotSupported => 'This device can\'t sync settings through iCloud';
+
+	/// en: 'Couldn't reach iCloud. Your settings will sync once it's back.'
+	String get icloudSyncError => 'Couldn\'t reach iCloud. Your settings will sync once it\'s back.';
+
+	/// en: 'Some settings were too large to sync and were skipped'
+	String get icloudSyncWarning => 'Some settings were too large to sync and were skipped';
+
 	/// en: 'Could not turn on iCloud settings sync'
 	String get icloudSyncEnableFailed => 'Could not turn on iCloud settings sync';
 
@@ -6032,6 +6041,9 @@ extension on Translations {
 			'settings.icloudSync' => 'Sync Settings via iCloud',
 			'settings.icloudSyncDescription' => 'Keep your preferences in sync across your Apple devices',
 			'settings.icloudSyncUnavailable' => 'Sign in to iCloud on this device to sync settings',
+			'settings.icloudSyncNotSupported' => 'This device can\'t sync settings through iCloud',
+			'settings.icloudSyncError' => 'Couldn\'t reach iCloud. Your settings will sync once it\'s back.',
+			'settings.icloudSyncWarning' => 'Some settings were too large to sync and were skipped',
 			'settings.icloudSyncEnableFailed' => 'Could not turn on iCloud settings sync',
 			'settings.shortcutsReset' => 'Shortcuts reset to defaults',
 			'settings.about' => 'About',
@@ -6320,11 +6332,11 @@ extension on Translations {
 			'videoControls.rotationLockButton' => 'Rotation lock',
 			'videoControls.lockScreen' => 'Lock screen',
 			'videoControls.screenLockButton' => 'Screen lock',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.longPressToUnlock' => 'Long press to unlock',
 			'videoControls.timelineSlider' => 'Video timeline',
 			'videoControls.volumeSlider' => 'Volume level',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.volumeHandledByDevice' => 'Volume is controlled by your audio device during passthrough',
 			'videoControls.endsAt' => ({required Object time}) => 'Ends at ${time}',
 			'videoControls.pipActive' => 'Playing in Picture-in-Picture',
@@ -6834,11 +6846,11 @@ extension on Translations {
 			'watchTogether.joining' => 'Joining...',
 			'watchTogether.controlMode' => 'Control Mode',
 			'watchTogether.controlModeQuestion' => 'Who can control playback?',
+			_ => null,
+		} ?? switch (path) {
 			'watchTogether.hostOnly' => 'Host Only',
 			'watchTogether.anyone' => 'Anyone',
 			'watchTogether.hostingSession' => 'Hosting Session',
-			_ => null,
-		} ?? switch (path) {
 			'watchTogether.inSession' => 'In Session',
 			'watchTogether.sessionCode' => 'Session Code',
 			'watchTogether.hostControlsPlayback' => 'Host controls playback',
@@ -7348,11 +7360,11 @@ extension on Translations {
 			'nowWatching.transcoding' => ({required Object count}) => '${count} transcoding',
 			'nowWatching.directPlay' => 'Direct play',
 			'nowWatching.directStream' => 'Direct stream',
+			_ => null,
+		} ?? switch (path) {
 			'nowWatching.transcode' => 'Transcode',
 			'nowWatching.paused' => 'Paused',
 			'nowWatching.remaining' => ({required Object time}) => '${time} left',
-			_ => null,
-		} ?? switch (path) {
 			'nowWatching.watchingNow' => ({required Object name}) => '${name} is watching this now',
 			'nowWatching.hardware' => 'Hardware',
 			'nowWatching.onLan' => 'On your network',

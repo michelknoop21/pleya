@@ -15,6 +15,7 @@ import '../../focus/focusable_text_field.dart';
 import '../../focus/input_mode_tracker.dart';
 import '../../i18n/strings.g.dart';
 import '../main_screen.dart';
+import 'icloud_sync_tile.dart';
 import '../../mixins/mounted_set_state_mixin.dart';
 import '../../mixins/refreshable.dart';
 import '../../providers/hidden_libraries_provider.dart';
@@ -106,11 +107,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   static const _kIcloudSync = 'icloud_sync';
 
   /// iCloud settings-sync tile is Apple-only (tvOS reports as iOS).
-  static bool get _icloudSyncPlatform => Platform.isIOS || Platform.isMacOS;
-
-  /// Whether iCloud is signed in. null = not yet resolved (tile stays enabled
-  /// optimistically until the check returns).
-  bool? _icloudAvailable;
+  static bool get _icloudSyncPlatform => ICloudSyncTile.isPlatformSupported;
 
   KeyboardShortcutsService? _keyboardService;
   late final bool _keyboardShortcutsSupported = KeyboardShortcutsService.isPlatformSupported();
@@ -137,11 +134,6 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     if (_keyboardShortcutsSupported) {
       KeyboardShortcutsService.getInstance().then((s) {
         setStateIfMounted(() => _keyboardService = s);
-      });
-    }
-    if (_icloudSyncPlatform) {
-      ICloudSyncService.instance?.isAvailable().then((available) {
-        setStateIfMounted(() => _icloudAvailable = available);
       });
     }
   }
@@ -911,39 +903,17 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
             onTap: _showImportSettingsDialog,
           ),
         ],
-        if (_icloudSyncPlatform) _buildIcloudSyncTile(),
+        if (_icloudSyncPlatform)
+          ICloudSyncTile(focusNode: _focusTracker.get(_kIcloudSync), onToggleFailed: _handleIcloudSyncToggleFailure),
       ],
     );
   }
 
-  Widget _buildIcloudSyncTile() {
-    final unavailable = _icloudAvailable == false;
-    return SettingSwitchTile(
-      focusNode: _focusTracker.get(_kIcloudSync),
-      pref: settings.SettingsService.icloudSyncEnabled,
-      icon: Symbols.cloud_sync_rounded,
-      title: t.settings.icloudSync,
-      subtitle: unavailable ? t.settings.icloudSyncUnavailable : t.settings.icloudSyncDescription,
-      enabled: !unavailable,
-      onAfterWrite: _handleIcloudSyncToggle,
-    );
-  }
-
-  Future<void> _handleIcloudSyncToggle(bool enabled) async {
-    final svc = ICloudSyncService.instance;
-    if (svc == null) return;
-    try {
-      if (enabled) {
-        await svc.enable();
-      } else {
-        await svc.disable();
-      }
-    } catch (_) {
-      // Revert the toggle and surface the failure — the write already landed,
-      // so undo it so the UI matches the actual (off) state.
-      await _settingsService.write(settings.SettingsService.icloudSyncEnabled, false);
-      if (mounted) showErrorSnackBar(context, t.settings.icloudSyncEnableFailed);
-    }
+  /// Revert the toggle and surface the failure — the write already landed, so
+  /// undo it so the UI matches the actual (off) state.
+  Future<void> _handleIcloudSyncToggleFailure() async {
+    await _settingsService.write(settings.SettingsService.icloudSyncEnabled, false);
+    if (mounted) showErrorSnackBar(context, t.settings.icloudSyncEnableFailed);
   }
 
   Widget _buildAutoCheckUpdatesOnStartupTile() => SettingSwitchTile(
