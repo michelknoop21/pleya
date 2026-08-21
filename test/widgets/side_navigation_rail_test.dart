@@ -12,7 +12,10 @@ import 'package:pleya/media/media_library.dart';
 import 'package:pleya/navigation/navigation_tabs.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
+import 'package:pleya/media/watch_session.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/providers/now_watching_provider.dart';
+import 'package:pleya/screens/now_watching_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -932,4 +935,214 @@ void main() {
       expect(recorded.selected, isEmpty);
     });
   });
+
+  group('now watching: a conditional row is reachable, not just rendered', () {
+    // The row is TV-only and comes and goes with the streams. It was rendered
+    // while its focus key was missing from both the whitelist and the D-pad
+    // order, so it was painted, its node was disposed on every rebuild, and
+    // up/down walked straight past it. These tests are the fence around that.
+
+    Future<({_FakeNowWatching now, List<NavigationTabId> selected, List<String> contentSelects})> pumpTvRail(
+      WidgetTester tester, {
+      bool hasOthers = true,
+      bool alwaysExpanded = true,
+    }) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+      await SettingsService.getInstance();
+
+      final librariesProvider = LibrariesProvider();
+      addTearDown(librariesProvider.dispose);
+      final hiddenLibrariesProvider = HiddenLibrariesProvider();
+      await hiddenLibrariesProvider.ensureInitialized();
+      addTearDown(hiddenLibrariesProvider.dispose);
+      final manager = MultiServerManager();
+      final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(multiServerProvider.dispose);
+
+      final nowWatching = _FakeNowWatching()..setOthers(hasOthers);
+      addTearDown(nowWatching.dispose);
+
+      final selected = <NavigationTabId>[];
+      final contentSelects = <String>[];
+      final contentNode = FocusNode(debugLabel: 'content');
+      addTearDown(contentNode.dispose);
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<LibrariesProvider>.value(value: librariesProvider),
+              ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibrariesProvider),
+              ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
+              ChangeNotifierProvider<NowWatchingProvider>.value(value: nowWatching),
+            ],
+            child: MaterialApp(
+              theme: ThemeData(extensions: const [_testTokens]),
+              home: Scaffold(
+                body: Row(
+                  children: [
+                    SideNavigationRail(
+                      selectedTab: NavigationTabId.discover,
+                      isSidebarFocused: true,
+                      alwaysExpanded: alwaysExpanded,
+                      onDestinationSelected: (tab) {
+                        selected.add(tab);
+                        contentNode.requestFocus();
+                      },
+                      onLibrarySelected: (_) {},
+                    ),
+                    Expanded(
+                      child: FocusableWrapper(
+                        focusNode: contentNode,
+                        onSelect: () => contentSelects.add('play'),
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      return (now: nowWatching, selected: selected, contentSelects: contentSelects);
+    }
+
+    void focusRow(WidgetTester tester, String label) {
+      tester.widget<NavigationRailItem>(find.widgetWithText(NavigationRailItem, label)).focusNode.requestFocus();
+    }
+
+    bool rowHasFocus(WidgetTester tester, String label) =>
+        tester.widget<NavigationRailItem>(find.widgetWithText(NavigationRailItem, label)).focusNode.hasFocus;
+
+    testWidgets('without the row the existing order and navigation are unchanged', (tester) async {
+      final recorded = await pumpTvRail(tester, hasOthers: false);
+
+      expect(find.widgetWithText(NavigationRailItem, t.nowWatching.sidebarLabel), findsNothing);
+
+      // Downloads is hidden on Apple TV, so the rail is Home, Search, Settings.
+      focusRow(tester, t.common.home);
+      await tester.pumpAndSettle();
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      expect(rowHasFocus(tester, t.common.search), isTrue);
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      expect(rowHasFocus(tester, t.common.settings), isTrue);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(recorded.selected, [NavigationTabId.settings]);
+    });
+
+    testWidgets('with the row it is both rendered and focusable', (tester) async {
+      await pumpTvRail(tester);
+
+      final row = find.widgetWithText(NavigationRailItem, t.nowWatching.sidebarLabel);
+      expect(row, findsOneWidget);
+
+      tester.widget<NavigationRailItem>(row).focusNode.requestFocus();
+      await tester.pumpAndSettle();
+      expect(rowHasFocus(tester, t.nowWatching.sidebarLabel), isTrue);
+    });
+
+    testWidgets('Arrow Down from the row above lands exactly on it', (tester) async {
+      await pumpTvRail(tester);
+
+      focusRow(tester, t.common.search);
+      await tester.pumpAndSettle();
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+
+      expect(rowHasFocus(tester, t.nowWatching.sidebarLabel), isTrue);
+      expect(rowHasFocus(tester, t.common.settings), isFalse);
+    });
+
+    testWidgets('Arrow Up from the row below lands exactly on it', (tester) async {
+      await pumpTvRail(tester);
+
+      focusRow(tester, t.common.settings);
+      await tester.pumpAndSettle();
+      await _press(tester, LogicalKeyboardKey.arrowUp);
+
+      expect(rowHasFocus(tester, t.nowWatching.sidebarLabel), isTrue);
+      expect(rowHasFocus(tester, t.common.search), isFalse);
+    });
+
+    testWidgets('Select opens the now watching screen and activates nothing else', (tester) async {
+      final recorded = await pumpTvRail(tester);
+
+      focusRow(tester, t.nowWatching.sidebarLabel);
+      await tester.pumpAndSettle();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NowWatchingScreen), findsOneWidget);
+      expect(recorded.selected, isEmpty, reason: 'it opens a page, it does not switch tabs');
+      expect(recorded.contentSelects, isEmpty, reason: 'the press never leaks into the content');
+    });
+
+    testWidgets('the collapsed rail walks the same order', (tester) async {
+      await pumpTvRail(tester, alwaysExpanded: false);
+
+      focusRow(tester, t.common.search);
+      await tester.pumpAndSettle();
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+
+      expect(rowHasFocus(tester, t.nowWatching.sidebarLabel), isTrue);
+    });
+
+    testWidgets('the row appearing and disappearing leaves no stale focus node', (tester) async {
+      final recorded = await pumpTvRail(tester);
+
+      final before = tester
+          .widget<NavigationRailItem>(find.widgetWithText(NavigationRailItem, t.nowWatching.sidebarLabel))
+          .focusNode;
+      focusRow(tester, t.nowWatching.sidebarLabel);
+      await tester.pumpAndSettle();
+
+      // The provider polls, so the rail rebuilds under the focused row.
+      recorded.now.setOthers(true);
+      await tester.pumpAndSettle();
+
+      final after = tester
+          .widget<NavigationRailItem>(find.widgetWithText(NavigationRailItem, t.nowWatching.sidebarLabel))
+          .focusNode;
+      expect(identical(before, after), isTrue, reason: 'a rebuild must not swap the node out from under the focus');
+      expect(after.hasFocus, isTrue);
+
+      // And when the last stream ends the row goes away without taking the
+      // walk with it.
+      recorded.now.setOthers(false);
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(NavigationRailItem, t.nowWatching.sidebarLabel), findsNothing);
+
+      focusRow(tester, t.common.search);
+      await tester.pumpAndSettle();
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+      expect(rowHasFocus(tester, t.common.settings), isTrue);
+    });
+  });
+}
+
+/// A [NowWatchingProvider] whose answer to "is anyone else streaming" is set by
+/// the test. The real one needs a Tautulli client and a poll timer, neither of
+/// which says anything about focus.
+class _FakeNowWatching extends NowWatchingProvider {
+  _FakeNowWatching() : super(client: () => null, enabled: () => false);
+
+  NowWatching _state = NowWatching.empty;
+
+  @override
+  NowWatching get now => _state;
+
+  void setOthers(bool hasOthers) {
+    _state = hasOthers
+        ? const NowWatching(
+            sessions: [WatchSession(id: 's1', userName: 'Someone', title: 'A film')],
+          )
+        : NowWatching.empty;
+    notifyListeners();
+  }
 }

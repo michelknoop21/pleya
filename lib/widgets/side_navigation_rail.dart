@@ -27,6 +27,7 @@ import '../providers/seerr_provider.dart';
 import '../services/fullscreen_state_manager.dart';
 import '../theme/mono_tokens.dart';
 import '../widgets/backend_badge.dart';
+import 'side_navigation/nav_destinations.dart';
 import '../i18n/strings.g.dart';
 
 enum _LibraryNavSection { visible, hidden }
@@ -269,15 +270,18 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     return centeredPadding.clamp(0.0, _horizontalPadding).toDouble();
   }
 
-  static const _kHome = 'home';
-  static const _kSearch = 'search';
-  static const _kRequests = 'requests';
-  static const _kWatchlist = 'watchlist';
-  static const _kDownloads = 'downloads';
-  static const _kSettings = 'settings';
-  static const _kNowWatching = 'nowWatching';
-  static const _kReconnect = 'reconnect';
-  static const _kFullscreen = 'fullscreen';
+  // Focus keys come from the destination enum, so the rail cannot hold a key
+  // that no destination owns.
+  static final _kHome = NavRailDestination.home.ownFocusKey!;
+  static final _kSearch = NavRailDestination.search.ownFocusKey!;
+  static final _kRequests = NavRailDestination.requests.ownFocusKey!;
+  static final _kWatchlist = NavRailDestination.watchlist.ownFocusKey!;
+  static final _kDownloads = NavRailDestination.downloads.ownFocusKey!;
+  static final _kSettings = NavRailDestination.settings.ownFocusKey!;
+  static final _kNowWatching = NavRailDestination.nowWatching.ownFocusKey!;
+  static final _kReconnect = NavRailDestination.reconnect.ownFocusKey!;
+  static final _kFullscreen = NavRailDestination.fullscreen.ownFocusKey!;
+  static final _kLiveTv = NavRailDestination.liveTv.ownFocusKey!;
   static const _kServerHeaderPrefix = 'serverHeader';
   static const _kLibraryItemPrefix = 'library';
 
@@ -446,7 +450,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
       case NavigationTabId.settings:
         return _kSettings;
       case NavigationTabId.liveTv:
-        return 'liveTv';
+        return _kLiveTv;
     }
   }
 
@@ -471,26 +475,12 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
 
   Iterable<String> _focusKeysForLibraryRows(List<_LibraryNavRow> rows) => rows.map(_focusKeyForLibraryRow);
 
-  /// Build the set of valid focus keys (main nav + currently rendered library rows).
-  Set<String> _buildValidFocusKeys({
-    required List<_LibraryNavRow> visibleRows,
-    required bool hasLiveTv,
-    required bool hasSeerr,
-    required bool hasWatchlist,
-  }) {
-    return {
-      _kHome,
-      _kSearch,
-      if (hasWatchlist) _kWatchlist,
-      if (hasSeerr) _kRequests,
-      if (_showDownloads) _kDownloads,
-      _kSettings,
-      _kReconnect,
-      if (_showFullscreenToggle) _kFullscreen,
-      if (hasLiveTv) 'liveTv',
-      ..._focusKeysForLibraryRows(visibleRows),
-    };
-  }
+  /// The focus keys the rail currently owns, derived from the destinations it
+  /// is rendering. Anything not in here has its node disposed by
+  /// [FocusMemoryTracker.pruneExcept], so a key missing from this set is a row
+  /// that gets a fresh node on every build and can never hold focus.
+  Set<String> _buildValidFocusKeys(List<NavRailDestination> destinations, List<_LibraryNavRow> visibleRows) =>
+      _buildFocusOrder(destinations, visibleRows).toSet();
 
   /// Build rendered rows inside one library section. This is the single source
   /// of truth for both widget rendering and D-pad focus ordering.
@@ -547,35 +537,31 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     };
   }
 
-  /// Ordered list of focusable keys matching visual top-to-bottom order.
-  List<String> _buildFocusOrder(
-    List<_LibraryNavRow> visibleRows, {
-    required bool hasLiveTv,
-    required bool hasSeerr,
-    required bool hasWatchlist,
-  }) {
-    return [
-      if (widget.isOfflineMode && widget.onReconnect != null) _kReconnect,
-      if (!widget.isOfflineMode) ...[
-        _kHome,
-        ..._focusKeysForLibraryRows(visibleRows),
-        if (hasLiveTv) 'liveTv',
-        _kSearch,
-        if (hasWatchlist) _kWatchlist,
-        if (hasSeerr) _kRequests,
-      ],
-      if (_showDownloads) _kDownloads,
-      _kSettings,
-      if (_showFullscreenToggle) _kFullscreen,
-    ];
-  }
+  /// Ordered list of focusable keys, in the same top-to-bottom order the
+  /// destinations render in. The library entry expands into its own rows.
+  List<String> _buildFocusOrder(List<NavRailDestination> destinations, List<_LibraryNavRow> visibleRows) => [
+    for (final destination in destinations)
+      if (destination.slot == NavRailSlot.libraries)
+        ..._focusKeysForLibraryRows(visibleRows)
+      else
+        destination.ownFocusKey!,
+  ];
 
-  void _debugAssertUniqueFocusOrder(List<String> focusOrder) {
+  void _debugAssertFocusOrder(List<String> focusOrder, List<NavRailDestination> destinations) {
     assert(() {
       final seen = <String>{};
       for (final key in focusOrder) {
         if (!seen.add(key)) {
           throw FlutterError('SideNavigationRail focus order contains duplicate key: $key');
+        }
+      }
+      // Every rendered destination must be walkable. This is true by
+      // construction now that one list feeds both, and the assert is what keeps
+      // it true if someone reintroduces a hand-written list.
+      for (final destination in destinations) {
+        final key = destination.ownFocusKey;
+        if (key != null && !seen.contains(key)) {
+          throw FlutterError('SideNavigationRail renders ${destination.name} but never focuses it');
         }
       }
       return true;
@@ -706,9 +692,20 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     final panelMotion = reduceMotion(context, t.normal);
     final horizontalPadding = horizontalPaddingForContext(context, isCollapsed: isCollapsed);
     final itemHorizontalPadding = itemHorizontalPaddingForContext(context, isCollapsed: isCollapsed);
-    final hasLiveTv = context.watch<MultiServerProvider>().hasLiveTv;
-    final hasSeerr = context.watch<SeerrProvider?>()?.isConfigured ?? false;
-    final hasWatchlist = context.watch<WatchlistProvider?>()?.hasWatchlist ?? false;
+    // Every condition is read once, here, and travels as data. Reading a
+    // provider a second time deeper in the tree is how the rendered rows and
+    // the focus lists drifted apart in the first place.
+    final conditions = NavRailConditions(
+      isOfflineMode: widget.isOfflineMode,
+      canReconnect: widget.onReconnect != null,
+      hasLiveTv: context.watch<MultiServerProvider>().hasLiveTv,
+      hasSeerr: context.watch<SeerrProvider?>()?.isConfigured ?? false,
+      hasWatchlist: context.watch<WatchlistProvider?>()?.hasWatchlist ?? false,
+      showNowWatching: _showNowWatching(context),
+      showDownloads: _showDownloads,
+      showFullscreenToggle: _showFullscreenToggle,
+    );
+    final destinations = buildNavRailDestinations(conditions);
 
     // Listen to fullscreen + groupLibrariesByServer setting so the rail
     // rebuilds when the user toggles "Group libraries by server" in Appearance.
@@ -729,21 +726,9 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
           section: _LibraryNavSection.visible,
           showServerHeaders: showServerHeaders,
         );
-        _focusTracker.pruneExcept(
-          _buildValidFocusKeys(
-            visibleRows: visibleRows,
-            hasLiveTv: hasLiveTv,
-            hasSeerr: hasSeerr,
-            hasWatchlist: hasWatchlist,
-          ),
-        );
-        final focusOrder = _buildFocusOrder(
-          visibleRows,
-          hasLiveTv: hasLiveTv,
-          hasSeerr: hasSeerr,
-          hasWatchlist: hasWatchlist,
-        );
-        _debugAssertUniqueFocusOrder(focusOrder);
+        _focusTracker.pruneExcept(_buildValidFocusKeys(destinations, visibleRows));
+        final focusOrder = _buildFocusOrder(destinations, visibleRows);
+        _debugAssertFocusOrder(focusOrder, destinations);
         return TapRegion(
           onTapOutside: (_) {
             if (_isTouchExpanded) {
@@ -862,142 +847,15 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                                           child: ListView(
                                             padding: .symmetric(horizontal: horizontalPadding),
                                             clipBehavior: Clip.hardEdge,
-                                            children: [
-                                              if (widget.isOfflineMode && widget.onReconnect != null) ...[
-                                                _buildReconnectItem(isCollapsed: isCollapsed),
-                                                const SizedBox(height: 8),
-                                              ],
-                                              if (!widget.isOfflineMode) ...[
-                                                _buildNavItem(
-                                                  icon: Symbols.home_rounded,
-                                                  selectedIcon: Symbols.home_rounded,
-                                                  svgAsset: NavGlyphs.home,
-                                                  label: Translations.of(context).common.home,
-                                                  isSelected: widget.selectedTab == NavigationTabId.discover,
-                                                  isFocused: _focusTracker.isFocused(_kHome),
-                                                  onTap: () => widget.onDestinationSelected(NavigationTabId.discover),
-                                                  focusNode: _focusTracker.get(_kHome),
-                                                  isCollapsed: isCollapsed,
-                                                ),
-                                                const SizedBox(height: 8),
-                                                _buildLibrariesFlat(visibleRows, t, isCollapsed: isCollapsed),
-                                                const SizedBox(height: 8),
-                                                if (context.watch<MultiServerProvider>().hasLiveTv) ...[
-                                                  _buildNavItem(
-                                                    icon: Symbols.live_tv_rounded,
-                                                    selectedIcon: Symbols.live_tv_rounded,
-                                                    svgAsset: NavGlyphs.liveTv,
-                                                    label: Translations.of(context).navigation.liveTv,
-                                                    isSelected: widget.selectedTab == NavigationTabId.liveTv,
-                                                    isFocused: _focusTracker.isFocused('liveTv'),
-                                                    onTap: () => widget.onDestinationSelected(NavigationTabId.liveTv),
-                                                    focusNode: _focusTracker.get('liveTv'),
-                                                    isCollapsed: isCollapsed,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                ],
-                                                _buildNavItem(
-                                                  icon: Symbols.search_rounded,
-                                                  selectedIcon: Symbols.search_rounded,
-                                                  svgAsset: NavGlyphs.search,
-                                                  label: Translations.of(context).common.search,
-                                                  isSelected: widget.selectedTab == NavigationTabId.search,
-                                                  isFocused: _focusTracker.isFocused(_kSearch),
-                                                  onTap: () => widget.onDestinationSelected(NavigationTabId.search),
-                                                  focusNode: _focusTracker.get(_kSearch),
-                                                  isCollapsed: isCollapsed,
-                                                ),
-                                                const SizedBox(height: 8),
-                                                // Watchlist — only when this profile has a
-                                                // source or a snapshot for one.
-                                                if (hasWatchlist) ...[
-                                                  _buildNavItem(
-                                                    icon: Symbols.bookmark_add_rounded,
-                                                    selectedIcon: Symbols.bookmark_add_rounded,
-                                                    svgAsset: NavGlyphs.watchlist,
-                                                    label: Translations.of(context).navigation.watchlist,
-                                                    isSelected: widget.selectedTab == NavigationTabId.watchlist,
-                                                    isFocused: _focusTracker.isFocused(_kWatchlist),
-                                                    onTap: () =>
-                                                        widget.onDestinationSelected(NavigationTabId.watchlist),
-                                                    focusNode: _focusTracker.get(_kWatchlist),
-                                                    isCollapsed: isCollapsed,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                ],
-                                                // Requests (Jellyseerr/Overseerr) — only when configured.
-                                                if (hasSeerr) ...[
-                                                  _buildNavItem(
-                                                    icon: Symbols.playlist_add_rounded,
-                                                    selectedIcon: Symbols.playlist_add_rounded,
-                                                    svgAsset: NavGlyphs.requests,
-                                                    label: Translations.of(context).seerr.title,
-                                                    isSelected: widget.selectedTab == NavigationTabId.requests,
-                                                    isFocused: _focusTracker.isFocused(_kRequests),
-                                                    onTap: () => widget.onDestinationSelected(NavigationTabId.requests),
-                                                    focusNode: _focusTracker.get(_kRequests),
-                                                    isCollapsed: isCollapsed,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                ],
-                                                // Who is streaming right now, TV only: the
-                                                // app bar's overlay panel cannot be reached
-                                                // with a remote, so the rail is the way in
-                                                // and the list opens as a page.
-                                                //
-                                                // Last in the group on purpose. It comes
-                                                // and goes with the streams, and an entry
-                                                // that appears above the fixed ones would
-                                                // shift them under someone's thumb every
-                                                // time a film starts.
-                                                if (_showNowWatching(context)) ...[
-                                                  _buildNavItem(
-                                                    icon: Symbols.sensors_rounded,
-                                                    selectedIcon: Symbols.sensors_rounded,
-                                                    label: Translations.of(context).nowWatching.title,
-                                                    isSelected: false,
-                                                    isFocused: _focusTracker.isFocused(_kNowWatching),
-                                                    onTap: () => Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(builder: (_) => const NowWatchingScreen()),
-                                                    ),
-                                                    focusNode: _focusTracker.get(_kNowWatching),
-                                                    isCollapsed: isCollapsed,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                ],
-                                              ],
-                                              // Downloads (hidden on Apple TV — no user
-                                              // file storage)
-                                              if (_showDownloads) ...[
-                                                _buildNavItem(
-                                                  icon: Symbols.download_rounded,
-                                                  selectedIcon: Symbols.download_rounded,
-                                                  svgAsset: NavGlyphs.downloads,
-                                                  label: Translations.of(context).navigation.downloads,
-                                                  isSelected: widget.selectedTab == NavigationTabId.downloads,
-                                                  isFocused: _focusTracker.isFocused(_kDownloads),
-                                                  onTap: () => widget.onDestinationSelected(NavigationTabId.downloads),
-                                                  focusNode: _focusTracker.get(_kDownloads),
-                                                  isCollapsed: isCollapsed,
-                                                ),
-                                                const SizedBox(height: 8),
-                                              ],
-                                              _buildNavItem(
-                                                icon: Symbols.settings_rounded,
-                                                selectedIcon: Symbols.settings_rounded,
-                                                svgAsset: NavGlyphs.settings,
-                                                label: Translations.of(context).common.settings,
-                                                isSelected: widget.selectedTab == NavigationTabId.settings,
-                                                isFocused: _focusTracker.isFocused(_kSettings),
-                                                onTap: () => widget.onDestinationSelected(NavigationTabId.settings),
-                                                focusNode: _focusTracker.get(_kSettings),
-                                                isCollapsed: isCollapsed,
-                                              ),
-                                            ],
+                                            children: _buildScrollingDestinations(
+                                              destinations,
+                                              visibleRows,
+                                              t,
+                                              isCollapsed: isCollapsed,
+                                            ),
                                           ),
                                         ),
-                                        if (_showFullscreenToggle)
+                                        if (destinations.contains(NavRailDestination.fullscreen))
                                           Padding(
                                             padding: .fromLTRB(horizontalPadding, 0, horizontalPadding, 12),
                                             child: _buildFullscreenItem(isCollapsed: isCollapsed),
@@ -1105,6 +963,131 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
           ),
         ),
       ),
+    );
+  }
+
+  /// The rows inside the scrolling list, one per destination, in list order.
+  /// The gaps sit between entries, which is what the hand-written list did with
+  /// a spacer after every row but the last.
+  List<Widget> _buildScrollingDestinations(
+    List<NavRailDestination> destinations,
+    List<_LibraryNavRow> visibleRows,
+    dynamic t, {
+    required bool isCollapsed,
+  }) {
+    final rows = <Widget>[];
+    for (final destination in destinations) {
+      if (destination.slot == NavRailSlot.footer) continue;
+      if (rows.isNotEmpty) rows.add(const SizedBox(height: 8));
+      rows.add(_buildDestination(destination, visibleRows, t, isCollapsed: isCollapsed));
+    }
+    return rows;
+  }
+
+  /// One destination, one row. The switch is exhaustive on purpose: a new
+  /// destination cannot be added to [NavRailDestination] without the compiler
+  /// asking how it renders.
+  Widget _buildDestination(
+    NavRailDestination destination,
+    List<_LibraryNavRow> visibleRows,
+    dynamic t, {
+    required bool isCollapsed,
+  }) {
+    final labels = Translations.of(context);
+    return switch (destination) {
+      NavRailDestination.reconnect => _buildReconnectItem(isCollapsed: isCollapsed),
+      NavRailDestination.home => _buildTabNavItem(
+        destination,
+        icon: Symbols.home_rounded,
+        svgAsset: NavGlyphs.home,
+        label: labels.common.home,
+        isCollapsed: isCollapsed,
+      ),
+      NavRailDestination.libraries => _buildLibrariesFlat(visibleRows, t, isCollapsed: isCollapsed),
+      NavRailDestination.liveTv => _buildTabNavItem(
+        destination,
+        icon: Symbols.live_tv_rounded,
+        svgAsset: NavGlyphs.liveTv,
+        label: labels.navigation.liveTv,
+        isCollapsed: isCollapsed,
+      ),
+      NavRailDestination.search => _buildTabNavItem(
+        destination,
+        icon: Symbols.search_rounded,
+        svgAsset: NavGlyphs.search,
+        label: labels.common.search,
+        isCollapsed: isCollapsed,
+      ),
+      // Watchlist: only when this profile has a source or a snapshot for one.
+      NavRailDestination.watchlist => _buildTabNavItem(
+        destination,
+        icon: Symbols.bookmark_add_rounded,
+        svgAsset: NavGlyphs.watchlist,
+        label: labels.navigation.watchlist,
+        isCollapsed: isCollapsed,
+      ),
+      // Requests (Jellyseerr/Overseerr): only when configured.
+      NavRailDestination.requests => _buildTabNavItem(
+        destination,
+        icon: Symbols.playlist_add_rounded,
+        svgAsset: NavGlyphs.requests,
+        label: labels.seerr.title,
+        isCollapsed: isCollapsed,
+      ),
+      // Who is streaming right now, TV only: the app bar's overlay panel cannot
+      // be reached with a remote, so the rail is the way in and the list opens
+      // as a page. The push uses the rail's own context, which sits under
+      // ProfileNavigationScope, so it lands on the nested navigator.
+      NavRailDestination.nowWatching => _buildNavItem(
+        icon: Symbols.sensors_rounded,
+        selectedIcon: Symbols.sensors_rounded,
+        label: labels.nowWatching.sidebarLabel,
+        isSelected: false,
+        isFocused: _focusTracker.isFocused(_kNowWatching),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NowWatchingScreen())),
+        focusNode: _focusTracker.get(_kNowWatching),
+        isCollapsed: isCollapsed,
+      ),
+      // Downloads is hidden on Apple TV: no user file storage there.
+      NavRailDestination.downloads => _buildTabNavItem(
+        destination,
+        icon: Symbols.download_rounded,
+        svgAsset: NavGlyphs.downloads,
+        label: labels.navigation.downloads,
+        isCollapsed: isCollapsed,
+      ),
+      NavRailDestination.settings => _buildTabNavItem(
+        destination,
+        icon: Symbols.settings_rounded,
+        svgAsset: NavGlyphs.settings,
+        label: labels.common.settings,
+        isCollapsed: isCollapsed,
+      ),
+      NavRailDestination.fullscreen => _buildFullscreenItem(isCollapsed: isCollapsed),
+    };
+  }
+
+  /// A destination that switches tabs. Selection, focus and activation all read
+  /// the destination's own identity, never a position in a list.
+  Widget _buildTabNavItem(
+    NavRailDestination destination, {
+    required IconData icon,
+    String? svgAsset,
+    required String label,
+    required bool isCollapsed,
+  }) {
+    final focusKey = destination.ownFocusKey!;
+    final tab = destination.tab!;
+    return _buildNavItem(
+      icon: icon,
+      selectedIcon: icon,
+      svgAsset: svgAsset,
+      label: label,
+      isSelected: widget.selectedTab == tab,
+      isFocused: _focusTracker.isFocused(focusKey),
+      onTap: () => widget.onDestinationSelected(tab),
+      focusNode: _focusTracker.get(focusKey),
+      isCollapsed: isCollapsed,
     );
   }
 
