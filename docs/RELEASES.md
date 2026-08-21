@@ -21,10 +21,12 @@ under `Notes`.
 ### New
 - App Store "What's New" automatisch zetten bij het koppelen van een build
 - Tautulli-kijkgeschiedenis als bron voor de smaakengine
+- layer the home billboard, and give iPad portrait its own tier
 
 ### Fixed
 - prefer 16:9 backdrop over square art on narrow iPhone hero
 - import liet elke rij vallen en telde afleveringen dubbel
+- clear the Dynamic Island on iPhone, edge to edge
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 234 · 20 August 2026
