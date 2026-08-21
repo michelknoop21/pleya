@@ -404,7 +404,9 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
           limit: _continueWatchingProbeLimit,
         );
         if (isDisposed) return;
-        _applyOnDeck(mergedOnDeck);
+        // A delta covers only the servers that just came online, so it has no
+        // authority to release a suppression; the next all-servers refresh does.
+        _applyOnDeck(mergedOnDeck, releaseSuppression: false);
         // The stored list is already trimmed, so the merge can't see old items
         // past the cap — a previously-true "more" affordance stays true.
         if (hadMore) _hasMoreContinueWatching = true;
@@ -683,11 +685,17 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     }
   }
 
-  void _applyOnDeck(List<MediaItem> fetched) {
+  /// [releaseSuppression] must be false for a partial view. A delta pass only
+  /// fetches the servers that just came online, so the self-cleaning below
+  /// would drop a suppression belonging to a server it never asked — and the
+  /// next background refresh would bring the finished item straight back.
+  void _applyOnDeck(List<MediaItem> fetched, {bool releaseSuppression = true}) {
     if (_suppressedOnDeckKeys.isNotEmpty) {
       // Self-cleaning: once the server stops returning a suppressed item, its
       // scrobble has landed and the suppression is no longer needed.
-      _suppressedOnDeckKeys.retainAll({for (final item in fetched) item.globalKey});
+      if (releaseSuppression) {
+        _suppressedOnDeckKeys.retainAll({for (final item in fetched) item.globalKey});
+      }
       if (_suppressedOnDeckKeys.isNotEmpty) {
         fetched = fetched.where((item) => !_suppressedOnDeckKeys.contains(item.globalKey)).toList();
       }
@@ -701,8 +709,13 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   /// Watch on-deck items and their parent shows/seasons (an episode's watch
   /// flip changes what Continue Watching should show for its series).
+  ///
+  /// Seeded from the suppressed set for the same reason [_watchedGlobalKeys]
+  /// is: this is the fallback whenever an on-deck item has no serverId, and
+  /// without the seed a suppressed item would stop receiving events entirely
+  /// and could never be un-suppressed by a rewatch.
   Set<String>? get _watchedIds {
-    final keys = <String>{};
+    final keys = <String>{for (final key in _suppressedOnDeckKeys) ?parseGlobalKey(key)?.ratingKey};
     for (final item in _onDeck) {
       keys.add(item.id);
       if (item.parentId != null) keys.add(item.parentId!);
@@ -712,7 +725,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   }
 
   Set<String>? get _watchedGlobalKeys {
-    // Suppressed movies are no longer in _onDeck but must keep receiving
+    // Suppressed completions are no longer in _onDeck but must keep receiving
     // events: a rewatch (unwatched/progress) has to lift the suppression.
     final keys = <String>{..._suppressedOnDeckKeys};
     for (final item in _onDeck) {
@@ -726,25 +739,26 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     return keys;
   }
 
+  /// Kinds whose completion is worth suppressing. An on-deck row is always one
+  /// of these two, so a watched event for a show or season carries a container
+  /// key that could never match a row anyway; the allow-list says that rather
+  /// than leaving it to `retainAll` to quietly discard.
+  static const _suppressibleKinds = {MediaKind.movie, MediaKind.episode};
+
   void _onWatchStateChanged(WatchStateEvent event) {
-    switch (event.changeType) {
-      case WatchStateChangeType.removedFromContinueWatching:
-        _removeFromOnDeck(event.globalKey);
-      case WatchStateChangeType.watched when event.mediaType == MediaKind.movie.id && event.isNowWatched != false:
-        // A finished movie leaves the row for good; suppress its key so the
-        // background refetch can't race the server's scrobble processing and
-        // bring it back with stale in-progress metadata. Episodes are left to
-        // the refetch: the server swaps in the next episode of the series.
-        _suppressedOnDeckKeys.add(event.globalKey);
-        _removeFromOnDeck(event.globalKey);
-      case WatchStateChangeType.unwatched:
-        _suppressedOnDeckKeys.remove(event.globalKey);
-      case WatchStateChangeType.progressUpdate:
-        // A rewatch must resurface immediately, but a trailing near-complete
-        // progress event (isNowWatched) must not undo the watched suppression.
-        if (event.isNowWatched != true) _suppressedOnDeckKeys.remove(event.globalKey);
-      default:
-        break;
+    if (event.changeType == WatchStateChangeType.removedFromContinueWatching) {
+      _removeFromOnDeck(event.globalKey);
+    } else if (event.isCompletionEvidence && _suppressibleKinds.any((k) => k.id == event.mediaType)) {
+      // A finished item leaves the row for good; suppress its key so the
+      // background refetch can't race the server's scrobble processing and
+      // bring it back with stale in-progress metadata. Episodes need this as
+      // much as movies do: the server returns one row per series, so during
+      // that window it hands back the episode just finished, not the next one.
+      // The next episode has a different globalKey and is untouched.
+      _suppressedOnDeckKeys.add(event.globalKey);
+      _removeFromOnDeck(event.globalKey);
+    } else if (event.isResumeEvidence) {
+      _suppressedOnDeckKeys.remove(event.globalKey);
     }
     unawaited(refreshContinueWatching());
   }

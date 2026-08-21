@@ -118,7 +118,15 @@ class DataAggregationService {
     // Watched movies without active progress don't belong in Continue
     // Watching — some servers keep them in the hub while scrobble processing
     // settles, and out-of-band watches (another client) land here too.
-    // Movies only: a series row is the server's next-episode substitution.
+    //
+    // Movies only, and deliberately so. This filter is stateless: it cannot
+    // clean itself up or be lifted by a rewatch, which is exactly what
+    // per-episode completion needs (see DiscoverProvider._suppressedOnDeckKeys).
+    // It would also not catch the scrobble race it looks like it should — in
+    // that window the server still reports the finished item as in progress,
+    // so isUnwatchedOrInProgress is true for it. And a Jellyfin NextUp row is
+    // fetched with EnableResumable false, so a rewatched episode reads here as
+    // watched-without-progress and would be dropped along with its series row.
     filteredOnDeck = filteredOnDeck
         .where((item) => item.kind != MediaKind.movie || item.isUnwatchedOrInProgress)
         .toList();

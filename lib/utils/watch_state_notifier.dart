@@ -64,6 +64,33 @@ class WatchStateEvent with HierarchicalEventMixin {
     this.librarySectionID,
   }) : globalKey = buildGlobalKey(ServerId(serverId), itemId);
 
+  /// Whether this event is terminal evidence that the item finished, however
+  /// the news arrived.
+  ///
+  /// A watched flip is the ordinary route. A threshold-crossing progress
+  /// report is the only route there is when the server report failed or the
+  /// device was offline: no watched event fires until the offline queue
+  /// drains, which can be hours later. The UI must not wait that long, so
+  /// both count, and both are safe to act on twice — a failed completion
+  /// legitimately produces the progress update now and the watched event
+  /// later.
+  ///
+  /// `isNowWatched != false` rather than `== true` on the watched arm: an
+  /// emitter that flips the state without setting the flag still means it.
+  bool get isCompletionEvidence => switch (changeType) {
+    WatchStateChangeType.watched => isNowWatched != false,
+    WatchStateChangeType.progressUpdate => isNowWatched == true,
+    _ => false,
+  };
+
+  /// Whether the item is being watched again from a non-terminal position.
+  /// Mutually exclusive with [isCompletionEvidence], which is what keeps a
+  /// trailing near-complete progress report from undoing a completion while a
+  /// genuine restart still does.
+  bool get isResumeEvidence =>
+      changeType == WatchStateChangeType.unwatched ||
+      (changeType == WatchStateChangeType.progressUpdate && isNowWatched != true);
+
   /// `serverId:librarySectionID`, matching [MediaLibrary.globalKey]. Null when
   /// the library section is unknown; tracker filters treat unknown as allowed
   /// only when no filter is configured.

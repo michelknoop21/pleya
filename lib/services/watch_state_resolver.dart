@@ -34,8 +34,10 @@ class WatchStateResolver {
         hasViewOffsetMs: true,
         viewOffsetMs: 0,
       ),
+      // Same predicate DiscoverProvider filters Continue Watching on, so the
+      // store and the row cannot disagree about what "finished" means.
       WatchStateChangeType.progressUpdate =>
-        event.isNowWatched == true
+        event.isCompletionEvidence
             ? const WatchStateSnapshot(isWatched: true, hasViewOffsetMs: true, viewOffsetMs: 0)
             : WatchStateSnapshot(hasViewOffsetMs: event.viewOffset != null, viewOffsetMs: event.viewOffset),
       WatchStateChangeType.removedFromContinueWatching => const WatchStateSnapshot(),

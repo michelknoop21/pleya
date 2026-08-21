@@ -201,11 +201,15 @@ class PlaybackProgressTracker {
         _notifyProgressIfNeeded(position, duration, force: state == 'stopped');
       } else if (state == 'stopped') {
         // Stopped must complete before disposal
-        final accepted = await _sendOnlineProgress(state, position, duration);
+        await _sendOnlineProgress(state, position, duration);
         _resetBackoff();
-        if (accepted) {
-          _notifyProgressIfNeeded(position, duration, force: true);
-        }
+        // Notified regardless of whether the report session accepted it. The
+        // acceptance flag is the server's opinion; the local UI event belongs
+        // to the player's position, and Continue Watching must not wait on a
+        // backend to agree that the file ended. Idempotent either way:
+        // _notifyProgressIfNeeded bails once a scrobble fired and again on a
+        // second forced call.
+        _notifyProgressIfNeeded(position, duration, force: true);
       } else {
         // Fire-and-forget for playing/paused — avoid blocking the Dart event loop
         unawaited(
@@ -226,6 +230,8 @@ class PlaybackProgressTracker {
                   error: e,
                 );
                 unawaited(_queueOnlineFailureProgress(position, duration));
+                // The queue will report this eventually; the UI is told now.
+                _notifyProgressIfNeeded(position, duration);
               }),
         );
       }
@@ -238,10 +244,13 @@ class PlaybackProgressTracker {
           'skipping next $_ticksToSkip tick(s)',
           error: e,
         );
-        await _queueOnlineFailureProgress(
-          attemptedPosition ?? player.state.position,
-          attemptedDuration ?? player.state.duration,
-        );
+        final position = attemptedPosition ?? player.state.position;
+        final duration = attemptedDuration ?? player.state.duration;
+        await _queueOnlineFailureProgress(position, duration);
+        // A failed report never scrobbles, so without this a completion that
+        // the server refused leaves no local trace at all and the finished
+        // item sits in Continue Watching until the queue drains.
+        _notifyProgressIfNeeded(position, duration, force: state == 'stopped');
       } else {
         appLogger.d('Failed to send progress update (non-critical)', error: e);
       }

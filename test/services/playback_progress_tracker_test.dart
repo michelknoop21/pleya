@@ -865,6 +865,112 @@ void main() {
       expect(action!.viewOffset, 100000);
       expect(action.shouldMarkWatched, isTrue);
     });
+
+    // The queue alone is not enough: without a local event the finished item
+    // sits in Continue Watching until the queue drains, which can be hours.
+    test('a failed completion report still tells the UI, exactly once', () async {
+      final (svc: svc, db: db, mgr: mgr) = await makeOfflineService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+
+      final client = _FakePlexClient()..throwOnNextCall = StateError('offline');
+      final player = _FakePlayer(position: const Duration(seconds: 100), duration: const Duration(seconds: 100));
+      final tracker = PlaybackProgressTracker(
+        client: client,
+        metadata: _meta(ratingKey: 'failed-stop', serverId: ServerId('srv')),
+        player: player,
+        isOffline: false,
+        offlineWatchService: svc,
+        queueOnOnlineFailure: true,
+      );
+      addTearDown(tracker.dispose);
+
+      final events = <WatchStateEvent>[];
+      final sub = WatchStateNotifier().forItem('failed-stop').listen(events.add);
+      addTearDown(sub.cancel);
+
+      await tracker.sendProgress('stopped', positionOverride: const Duration(seconds: 100));
+      client.throwOnNextCall = StateError('offline');
+      await tracker.sendProgress('stopped', positionOverride: const Duration(seconds: 100));
+      await Future<void>.delayed(Duration.zero);
+
+      final completions = events.where((e) => e.isCompletionEvidence).toList();
+      expect(completions, hasLength(1), reason: 'one local completion, however many reports were attempted');
+      expect(completions.single.changeType, WatchStateChangeType.progressUpdate);
+      expect(completions.single.isNowWatched, isTrue);
+      // A failed report must never have scrobbled.
+      expect(client.markWatchedCalls, isEmpty);
+      expect(events.where((e) => e.changeType == WatchStateChangeType.watched), isEmpty);
+    });
+
+    // The sequence a flaky connection produces: the UI is invalidated on the
+    // failure and the server is told on the retry, with one scrobble in total.
+    test('a retry after a failed completion scrobbles exactly once', () async {
+      final (svc: svc, db: db, mgr: mgr) = await makeOfflineService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+
+      final client = _FakePlexClient(thresholdPercent: 90)..throwOnNextCall = StateError('offline');
+      final player = _FakePlayer(position: const Duration(seconds: 100), duration: const Duration(seconds: 100));
+      final tracker = PlaybackProgressTracker(
+        client: client,
+        metadata: _meta(ratingKey: 'retry-stop', serverId: ServerId('srv')),
+        player: player,
+        isOffline: false,
+        offlineWatchService: svc,
+        queueOnOnlineFailure: true,
+      );
+      addTearDown(tracker.dispose);
+
+      final events = <WatchStateEvent>[];
+      final sub = WatchStateNotifier().forItem('retry-stop').listen(events.add);
+      addTearDown(sub.cancel);
+
+      await tracker.sendProgress('stopped', positionOverride: const Duration(seconds: 100));
+      tracker.resumeAfterStoppedReport();
+      await tracker.sendProgress('stopped', positionOverride: const Duration(seconds: 100));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(client.markWatchedCalls, hasLength(1));
+      expect(events.where((e) => e.changeType == WatchStateChangeType.watched), hasLength(1));
+    });
+
+    test('an offline completion tells the UI without a watched event', () async {
+      final (svc: svc, db: db, mgr: mgr) = await makeOfflineService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+
+      final player = _FakePlayer(position: const Duration(seconds: 100), duration: const Duration(seconds: 100));
+      final tracker = PlaybackProgressTracker(
+        client: null,
+        metadata: _meta(ratingKey: 'offline-stop', serverId: ServerId('srv')),
+        player: player,
+        isOffline: true,
+        offlineWatchService: svc,
+      );
+      addTearDown(tracker.dispose);
+
+      final events = <WatchStateEvent>[];
+      final sub = WatchStateNotifier().forItem('offline-stop').listen(events.add);
+      addTearDown(sub.cancel);
+
+      await tracker.sendProgress('stopped', positionOverride: const Duration(seconds: 100));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(events.where((e) => e.changeType == WatchStateChangeType.watched), isEmpty);
+      final completions = events.where((e) => e.isCompletionEvidence).toList();
+      expect(completions, hasLength(1));
+      expect(completions.single.isNowWatched, isTrue);
+    });
   });
 
   // ============================================================
@@ -917,6 +1023,30 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       // No progressUpdate event.
+      expect(events.where((e) => e.changeType == WatchStateChangeType.progressUpdate), isEmpty);
+    });
+
+    test('two stopped reports past the threshold scrobble once and emit one watched', () async {
+      final client = _FakePlexClient(thresholdPercent: 90);
+      final player = _FakePlayer(position: const Duration(seconds: 95), duration: const Duration(seconds: 100));
+      final tracker = PlaybackProgressTracker(
+        client: client,
+        metadata: _meta(ratingKey: 'once', serverId: ServerId('srv')),
+        player: player,
+        isOffline: false,
+      );
+      addTearDown(tracker.dispose);
+
+      final events = <WatchStateEvent>[];
+      final sub = WatchStateNotifier().forItem('once').listen(events.add);
+      addTearDown(sub.cancel);
+
+      await tracker.sendProgress('stopped');
+      await tracker.sendProgress('stopped');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(client.markWatchedCalls, hasLength(1));
+      expect(events.where((e) => e.changeType == WatchStateChangeType.watched), hasLength(1));
       expect(events.where((e) => e.changeType == WatchStateChangeType.progressUpdate), isEmpty);
     });
 

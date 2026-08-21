@@ -25,16 +25,22 @@ import 'package:pleya/utils/watch_state_notifier.dart';
 
 import '../test_helpers/prefs.dart';
 
-MediaItem _item(String id, {String? parentId, String serverId = 'server_1', MediaKind kind = MediaKind.episode}) =>
-    MediaItem(
-      id: id,
-      backend: MediaBackend.plex,
-      kind: kind,
-      title: id,
-      serverId: serverId,
-      serverName: 'Server',
-      parentId: parentId,
-    );
+MediaItem _item(
+  String id, {
+  String? parentId,
+  String? grandparentId,
+  String serverId = 'server_1',
+  MediaKind kind = MediaKind.episode,
+}) => MediaItem(
+  id: id,
+  backend: MediaBackend.plex,
+  kind: kind,
+  title: id,
+  serverId: serverId,
+  serverName: 'Server',
+  parentId: parentId,
+  grandparentId: grandparentId,
+);
 
 MediaHub _hub(
   String id, {
@@ -359,13 +365,128 @@ void main() {
     expect(provider.onDeck.map((i) => i.id), ['ep-1']);
   });
 
-  test('watched episode keeps the series row for the refetch to advance', () async {
-    aggregation.onDeckResult = () => [_item('ep-1')];
+  test('watched episode leaves the row immediately and a stale refetch cannot bring it back', () async {
+    final episode = _item('ep-1', grandparentId: 'show-1');
+    // The refetch keeps returning the finished episode: the server has not
+    // processed the scrobble yet, so it still reports it as in progress.
+    aggregation.onDeckResult = () => [episode];
     await provider.load();
 
-    WatchStateNotifier().notifyWatched(item: _item('ep-1'));
+    WatchStateNotifier().notifyWatched(item: episode);
     await pumpEventQueue();
 
+    expect(provider.onDeck, isEmpty);
+  });
+
+  test('the next episode of a finished series appears as soon as the server offers it', () async {
+    final first = _item('ep-1', grandparentId: 'show-1');
+    aggregation.onDeckResult = () => [first];
+    await provider.load();
+
+    // The server advances the series row while the watch event is in flight.
+    aggregation.onDeckResult = () => [_item('ep-2', grandparentId: 'show-1')];
+    WatchStateNotifier().notifyWatched(item: first);
+    await pumpEventQueue();
+
+    expect(provider.onDeck.map((i) => i.id), ['ep-2']);
+  });
+
+  test('suppression releases once the server stops returning the finished episode', () async {
+    final episode = _item('ep-1', grandparentId: 'show-1');
+    aggregation.onDeckResult = () => [episode];
+    await provider.load();
+
+    WatchStateNotifier().notifyWatched(item: episode);
+    await pumpEventQueue();
+    expect(provider.onDeck, isEmpty);
+
+    // Server catches up and drops it, then offers it again later (a rewatch
+    // started on another client). Nothing is left holding it back.
+    aggregation.onDeckResult = () => [_item('ep-2', grandparentId: 'show-1')];
+    await provider.refreshContinueWatching();
+    aggregation.onDeckResult = () => [episode, _item('ep-2', grandparentId: 'show-1')];
+    await provider.refreshContinueWatching();
+
+    expect(provider.onDeck.map((i) => i.id), ['ep-1', 'ep-2']);
+  });
+
+  test('a threshold-crossing progress update completes an episode on its own', () async {
+    final episode = _item('ep-1', grandparentId: 'show-1');
+    aggregation.onDeckResult = () => [episode];
+    await provider.load();
+
+    // What an offline or failed report produces: no watched event ever fires.
+    WatchStateNotifier().notifyProgress(item: episode, viewOffset: 95000, duration: 100000);
+    await pumpEventQueue();
+
+    expect(provider.onDeck, isEmpty);
+  });
+
+  test('a threshold-crossing progress update completes a movie on its own', () async {
+    final movie = _item('movie-1', kind: MediaKind.movie);
+    aggregation.onDeckResult = () => [movie];
+    await provider.load();
+
+    WatchStateNotifier().notifyProgress(item: movie, viewOffset: 95000, duration: 100000);
+    await pumpEventQueue();
+
+    expect(provider.onDeck, isEmpty);
+  });
+
+  test('restarting a watched episode lifts the suppression', () async {
+    final episode = _item('ep-1', grandparentId: 'show-1');
+    aggregation.onDeckResult = () => [episode];
+    await provider.load();
+
+    WatchStateNotifier().notifyWatched(item: episode);
+    await pumpEventQueue();
+    expect(provider.onDeck, isEmpty);
+
+    WatchStateNotifier().notifyProgress(item: episode, viewOffset: 60000, duration: 7200000);
+    await pumpEventQueue();
+
+    expect(provider.onDeck.map((i) => i.id), ['ep-1']);
+  });
+
+  test('an explicit unwatched lifts the suppression', () async {
+    final episode = _item('ep-1', grandparentId: 'show-1');
+    aggregation.onDeckResult = () => [episode];
+    await provider.load();
+
+    WatchStateNotifier().notifyWatched(item: episode);
+    await pumpEventQueue();
+    expect(provider.onDeck, isEmpty);
+
+    WatchStateNotifier().notifyWatched(item: episode, isNowWatched: false);
+    await pumpEventQueue();
+
+    expect(provider.onDeck.map((i) => i.id), ['ep-1']);
+  });
+
+  // A failed report emits progressUpdate now and a real watched event later,
+  // when the offline queue drains. Both are completion evidence, so the second
+  // one must be a no-op rather than a second removal.
+  test('repeated completion evidence for the same item is idempotent', () async {
+    final episode = _item('ep-1', grandparentId: 'show-1');
+    aggregation.onDeckResult = () => [episode];
+    await provider.load();
+
+    WatchStateNotifier().notifyProgress(item: episode, viewOffset: 95000, duration: 100000);
+    await pumpEventQueue();
+    WatchStateNotifier().notifyWatched(item: episode);
+    await pumpEventQueue();
+
+    expect(provider.onDeck, isEmpty);
+  });
+
+  test('marking a whole show watched does not suppress an on-deck key', () async {
+    aggregation.onDeckResult = () => [_item('ep-1', grandparentId: 'show-1')];
+    await provider.load();
+
+    WatchStateNotifier().notifyWatched(item: _item('show-1', kind: MediaKind.show));
+    await pumpEventQueue();
+
+    // The refetch decides what the row shows; nothing is held back locally.
     expect(provider.onDeck.map((i) => i.id), ['ep-1']);
   });
 
