@@ -30,6 +30,7 @@ import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/widgets/watchlist_card.dart';
 
 import '../test_helpers/prefs.dart';
+import '../test_helpers/notice_layer.dart';
 
 final scope = WatchlistScopeId(profileId: 'p1', backend: MediaBackend.plex, accountId: 'a', userId: 'u');
 
@@ -114,7 +115,12 @@ void main() {
   late WatchlistProvider provider;
   late _StubSource source;
 
+  // A notice keeps an auto-dismiss timer, and the test framework fails a test
+  // that leaves one pending.
+  tearDown(resetNotices);
+
   setUp(() async {
+    resetNotices();
     resetSharedPreferencesForTest();
     await SettingsService.getInstance();
     db = AppDatabase.forTesting(NativeDatabase.memory());
@@ -153,12 +159,14 @@ void main() {
       TranslationProvider(
         child: MaterialApp(
           theme: monoTheme(dark: true),
-          builder: textScaler == null
-              ? null
-              : (context, child) => MediaQuery(
-                  data: MediaQuery.of(context).copyWith(textScaler: textScaler),
-                  child: child!,
-                ),
+          builder: withNoticeLayer(
+            textScaler == null
+                ? null
+                : (context, child) => MediaQuery(
+                    data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+                    child: child!,
+                  ),
+          ),
           // Without an OfflineModeProvider the screen reads absent as online,
           // which is the state most of these tests are about.
           home: MultiProvider(

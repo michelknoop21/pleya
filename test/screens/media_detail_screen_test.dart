@@ -46,11 +46,17 @@ import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
 import '../test_helpers/profile_navigation.dart';
+import '../test_helpers/notice_layer.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  // A notice keeps an auto-dismiss timer, and the test framework fails a test
+  // that leaves one pending.
+  tearDown(resetNotices);
+
   setUp(() {
+    resetNotices();
     resetSharedPreferencesForTest();
     SettingsService.resetForTesting();
     TvDetectionService.debugSetAppleTVOverride(true);
@@ -80,6 +86,7 @@ void main() {
     await tester.pumpWidget(
       TranslationProvider(
         child: MaterialApp(
+          builder: withNoticeLayer(),
           theme: monoTheme(dark: true),
           home: withProfileNavigationScope(child: MediaDetailScreen(metadata: movie)),
         ),
@@ -109,6 +116,7 @@ void main() {
     await tester.pumpWidget(
       TranslationProvider(
         child: MaterialApp(
+          builder: withNoticeLayer(),
           theme: monoTheme(dark: true),
           home: withProfileNavigationScope(child: MediaDetailScreen(metadata: movie)),
         ),
@@ -146,6 +154,7 @@ void main() {
     await tester.pumpWidget(
       TranslationProvider(
         child: MaterialApp(
+          builder: withNoticeLayer(),
           theme: monoTheme(dark: true),
           home: withProfileNavigationScope(child: MediaDetailScreen(metadata: movie)),
         ),
@@ -180,6 +189,7 @@ void main() {
     await tester.pumpWidget(
       TranslationProvider(
         child: MaterialApp(
+          builder: withNoticeLayer(),
           theme: monoTheme(dark: true),
           home: withProfileNavigationScope(child: MediaDetailScreen(metadata: movie)),
         ),
@@ -269,6 +279,7 @@ void main() {
         child: ChangeNotifierProvider<MultiServerProvider>.value(
           value: provider,
           child: MaterialApp(
+            builder: withNoticeLayer(),
             theme: monoTheme(dark: true),
             home: withProfileNavigationScope(
               child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
@@ -308,6 +319,7 @@ void main() {
     await tester.pumpWidget(
       TranslationProvider(
         child: MaterialApp(
+          builder: withNoticeLayer(),
           theme: theme,
           home: withProfileNavigationScope(child: MediaDetailScreen(metadata: movie)),
         ),
@@ -402,6 +414,7 @@ void main() {
         child: ChangeNotifierProvider<MultiServerProvider>.value(
           value: provider,
           child: MaterialApp(
+            builder: withNoticeLayer(),
             theme: monoTheme(dark: true),
             home: withProfileNavigationScope(
               child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
@@ -499,6 +512,7 @@ void main() {
         child: ChangeNotifierProvider<MultiServerProvider>.value(
           value: provider,
           child: MaterialApp(
+            builder: withNoticeLayer(),
             theme: monoTheme(dark: true),
             home: withProfileNavigationScope(
               child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
@@ -590,6 +604,7 @@ void main() {
         child: ChangeNotifierProvider<MultiServerProvider>.value(
           value: provider,
           child: MaterialApp(
+            builder: withNoticeLayer(),
             theme: monoTheme(dark: true),
             home: withProfileNavigationScope(
               child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
@@ -706,6 +721,7 @@ void main() {
               ChangeNotifierProvider<WatchStateStore>.value(value: watchStateOverlay),
             ],
             child: MaterialApp(
+              builder: withNoticeLayer(),
               theme: monoTheme(dark: true),
               home: withProfileNavigationScope(
                 child: MediaDetailScreen(
@@ -970,6 +986,7 @@ void main() {
           child: ChangeNotifierProvider<MultiServerProvider>.value(
             value: provider,
             child: MaterialApp(
+              builder: withNoticeLayer(),
               theme: monoTheme(dark: true),
               home: Navigator(
                 onDidRemovePage: (_) => popped = true,
@@ -1053,6 +1070,7 @@ void main() {
               ChangeNotifierProvider<WatchlistStore>.value(value: watchlistStore),
             ],
             child: MaterialApp(
+              builder: withNoticeLayer(),
               theme: monoTheme(dark: true),
               home: withProfileNavigationScope(child: MediaDetailScreen(metadata: movie)),
             ),

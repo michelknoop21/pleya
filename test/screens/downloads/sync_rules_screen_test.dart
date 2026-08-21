@@ -26,6 +26,7 @@ import 'package:pleya/services/plex_auth_service.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
+import '../../test_helpers/notice_layer.dart';
 
 PlexConnection _plexConnection() {
   return PlexConnection(
@@ -98,7 +99,12 @@ void main() {
   late ConnectionRegistry connectionRegistry;
   late List<Connection> connections;
 
+  // A notice keeps an auto-dismiss timer, and the test framework fails a test
+  // that leaves one pending.
+  tearDown(resetNotices);
+
   setUp(() async {
+    resetNotices();
     resetSharedPreferencesForTest();
     db = AppDatabase.forTesting(NativeDatabase.memory());
     PlexApiCache.initialize(db);
@@ -146,7 +152,7 @@ void main() {
         ChangeNotifierProvider<DownloadProvider>.value(value: downloadProvider),
         ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider!),
       ],
-      child: const MaterialApp(home: SyncRulesScreen()),
+      child: MaterialApp(builder: withNoticeLayer(), home: const SyncRulesScreen()),
     );
 
     if (!keyboardMode) {
@@ -161,7 +167,8 @@ void main() {
       InputModeTracker(
         child: ValueListenableBuilder<bool>(
           valueListenable: showScreen,
-          builder: (context, show, _) => show ? buildScreen() : const MaterialApp(home: SizedBox.shrink()),
+          builder: (context, show, _) =>
+              show ? buildScreen() : MaterialApp(builder: withNoticeLayer(), home: const SizedBox.shrink()),
         ),
       ),
     );

@@ -160,6 +160,24 @@ class NoticeController extends ChangeNotifier {
     dismiss(id);
   }
 
+  /// Drop everything, timers included.
+  ///
+  /// The controller is a singleton, so without this a notice raised by one
+  /// test is still standing in the next one, where the dedupe window quietly
+  /// folds the next identical message into it.
+  /// Pass `notify: false` when clearing from a `dispose()`: the tree is locked
+  /// there, and a listener that rebuilds on the notification trips an assert.
+  @visibleForTesting
+  void debugReset({bool notify = true}) {
+    for (final s in _visible.followedBy(_queued)) {
+      s.cancelTimer();
+    }
+    _visible.clear();
+    _queued.clear();
+    _seq = 0;
+    if (notify) notifyListeners();
+  }
+
   @override
   void dispose() {
     for (final s in _visible.followedBy(_queued)) {

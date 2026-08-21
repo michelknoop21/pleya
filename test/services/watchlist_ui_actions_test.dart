@@ -20,6 +20,7 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
+import '../test_helpers/notice_layer.dart';
 
 final scope = WatchlistScopeId(profileId: 'p1', backend: MediaBackend.plex, accountId: 'acc', userId: 'usr');
 
@@ -85,7 +86,12 @@ void main() {
 
   late AppDatabase db;
 
+  // A notice keeps an auto-dismiss timer, and the test framework fails a test
+  // that leaves one pending.
+  tearDown(resetNotices);
+
   setUp(() async {
+    resetNotices();
     resetSharedPreferencesForTest();
     LocaleSettings.setLocaleSync(AppLocale.en);
     db = AppDatabase.forTesting(NativeDatabase.memory());
@@ -117,6 +123,7 @@ void main() {
             ChangeNotifierProvider<WatchlistStore>.value(value: store),
           ],
           child: MaterialApp(
+            builder: withNoticeLayer(),
             theme: monoTheme(dark: true),
             home: Scaffold(
               body: Builder(
