@@ -141,6 +141,10 @@ class _FakePlexClient implements PlexClient {
   /// If non-null, the next reportPlayback*/markWatched call throws this.
   Object? throwOnNextCall;
 
+  /// While set, every call waits here before it records. Lets a test hold a
+  /// report on the wire and see what the tracker does meanwhile.
+  Completer<void>? gate;
+
   @override
   Future<void> updateProgress(
     String ratingKey, {
@@ -150,6 +154,8 @@ class _FakePlexClient implements PlexClient {
     String? sessionIdentifier,
     PlaybackReportMetadata report = const PlaybackReportMetadata.live(),
   }) async {
+    final held = gate;
+    if (held != null) await held.future;
     if (throwOnNextCall != null) {
       final err = throwOnNextCall!;
       throwOnNextCall = null;
@@ -1533,6 +1539,124 @@ void main() {
 
         expect(client.updateProgressCalls, isEmpty);
       });
+    });
+  });
+
+  // ============================================================
+  // Reporting after a lifecycle stop
+  // ============================================================
+  //
+  // On Apple TV a background cycle ends the session with a `stopped`. The
+  // report session is terminal after that, so unless the resume re-arms it the
+  // app never reports again: Plex Activity and Tautulli stay empty for the rest
+  // of the film and the resume position freezes where the app was backgrounded.
+  group('reporting after a lifecycle stop', () {
+    PlaybackProgressTracker trackerFor(_FakePlexClient client, _FakePlayer player) => PlaybackProgressTracker(
+      client: client,
+      metadata: _meta(),
+      player: player,
+      isOffline: false,
+      updateInterval: const Duration(seconds: 10),
+    );
+
+    test('a resumed player reports again, and its session reopens', () async {
+      final client = _FakePlexClient();
+      final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+      final tracker = trackerFor(client, player);
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+      await tracker.sendStoppedProgressOnce();
+      expect(client.updateProgressCalls.last.state, 'stopped');
+
+      // What the resume path owes the session.
+      tracker.resumeAfterStoppedReport();
+      player.position = const Duration(seconds: 90);
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(client.updateProgressCalls.last, (
+        ratingKey: '42',
+        time: 90000,
+        state: 'playing',
+        duration: 600000,
+      ), reason: 'a stopped session must not swallow everything that follows it');
+    });
+
+    test('the exit position still lands when the resume overtakes an in-flight stop', () async {
+      final client = _FakePlexClient();
+      final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+      final tracker = trackerFor(client, player);
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+
+      // The background stop is on the wire when the app comes back.
+      client.gate = Completer<void>();
+      final backgroundStop = tracker.sendStoppedProgressOnce();
+      await Future<void>.delayed(Duration.zero);
+      tracker.resumeAfterStoppedReport();
+
+      client.gate!.complete();
+      client.gate = null;
+      await backgroundStop;
+
+      // The user watches on and then leaves for real.
+      player.position = const Duration(seconds: 120);
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+      player.position = const Duration(seconds: 150);
+      await tracker.sendStoppedProgressOnce();
+      await Future<void>.delayed(Duration.zero);
+
+      final stops = client.updateProgressCalls.where((call) => call.state == 'stopped').toList();
+      expect(stops.last.time, 150000, reason: 'the real exit position must reach the server');
+      expect(stops.length, 2, reason: 'one stop per session, and the second one is not swallowed');
+    });
+
+    test('an exit during the resume window is not swallowed by the stop still on the wire', () async {
+      final client = _FakePlexClient();
+      final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+      final tracker = trackerFor(client, player);
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+
+      client.gate = Completer<void>();
+      final backgroundStop = tracker.sendStoppedProgressOnce();
+      await Future<void>.delayed(Duration.zero);
+      tracker.resumeAfterStoppedReport();
+
+      // The user comes back and leaves again before the first stop has landed.
+      player.position = const Duration(seconds: 150);
+      final exitStop = tracker.sendStoppedProgressOnce(positionOverride: const Duration(seconds: 150));
+
+      client.gate!.complete();
+      client.gate = null;
+      await backgroundStop;
+      await exitStop;
+      await Future<void>.delayed(Duration.zero);
+
+      final stops = client.updateProgressCalls.where((call) => call.state == 'stopped').toList();
+      expect(stops.last.time, 150000, reason: 'the position the user actually left at must reach the server');
+    });
+
+    test('a stop that was never resumed still reports only once', () async {
+      final client = _FakePlexClient();
+      final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+      final tracker = trackerFor(client, player);
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+      await tracker.sendStoppedProgressOnce();
+      await tracker.sendStoppedProgressOnce();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(client.updateProgressCalls.where((call) => call.state == 'stopped'), hasLength(1));
     });
   });
 }

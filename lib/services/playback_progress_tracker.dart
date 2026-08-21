@@ -94,6 +94,10 @@ class PlaybackProgressTracker {
 
   Future<void>? _stoppedProgressFuture;
 
+  /// A `stopped` that was still in flight when the player resumed. The next
+  /// stop waits for it instead of being answered with it.
+  Future<void>? _stopToDrain;
+
   Duration? _lastProgressNotifiedPosition;
 
   static const Duration _progressNotifyDelta = Duration(seconds: 30);
@@ -260,14 +264,30 @@ class PlaybackProgressTracker {
   Future<void> sendStoppedProgressOnce({Duration? positionOverride}) {
     final existing = _stoppedProgressFuture;
     if (existing != null) return existing;
-    final future = sendProgress('stopped', positionOverride: positionOverride);
+    // A stop that was still on the wire when the player resumed has to land
+    // first. Without the wait this report would reach a session that is still
+    // `stopping`, be answered with the old stop's future, and the position the
+    // user actually left at would never be written.
+    final draining = _stopToDrain;
+    _stopToDrain = null;
+    final future = draining == null
+        ? sendProgress('stopped', positionOverride: positionOverride)
+        : draining.then((_) => sendProgress('stopped', positionOverride: positionOverride));
     _stoppedProgressFuture = future;
     return future;
   }
 
+  /// Re-arm the reporting after a terminal `stopped`, so the player can open a
+  /// new session. Called on autoplay cancel, on an episode change, and on the
+  /// resume that follows a backgrounded player.
+  ///
+  /// The order matters. [PlaybackReportSession.resetAfterStop] knows how to
+  /// defer while a stop is in flight; the tracker's own latch does not, so it is
+  /// handed to [_stopToDrain] instead of being dropped.
   void resumeAfterStoppedReport() {
-    _stoppedProgressFuture = null;
     _reportSession?.resetAfterStop();
+    _stopToDrain = _stoppedProgressFuture;
+    _stoppedProgressFuture = null;
   }
 
   Future<void> _sendProgress(String state, {Duration? positionOverride, bool force = false}) async {
