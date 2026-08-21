@@ -19,52 +19,38 @@ under `Notes`.
 
 <!-- BEGIN GENERATED -->
 ### New
+- Go-service met health, readiness en graceful shutdown
+- PS-1 wire-contract voor Pleya Protocol v1
+- PS-2 read-only catalogus in Go
+- zoeken levert standaard geen seizoenen meer
+- een statische webbundel uit de binary
+- fundering, designsysteem, contract en auth
+- schil, bladeren, zoeken en het serveroverzicht
+- Pleya Server als vijfde backend-identiteit
+- wire-types en mapper voor Pleya Protocol v1
+- authenticatie tegen een Pleya Server
+- clientromp en capabilities uit /info
+- bladeren op een Pleya Server
+- zoeken en artwork op een Pleya Server
+- Pleya Server-verbindingen registreren en herstellen
 - App Store "What's New" automatisch zetten bij het koppelen van een build
+- PS-4, direct play met range en kijkstatus met een eigenaar
 - Tautulli-kijkgeschiedenis als bron voor de smaakengine
+- PleyaServerClient speelt af en schrijft kijkstatus
 - layer the home billboard, and give iPad portrait its own tier
+- één pijplijn voor preference-sync, met een expliciete policy en scoped cloudsleutels
 
 ### Fixed
-- Resume no longer jumps backwards when the same title is open on two devices. A player left
-  paused used to keep writing its own position over a device that was still watching.
-- Jumping to a new position is saved right away instead of at the next ten-second update, so
-  closing straight after a seek keeps the position you jumped to.
-- Playing a downloaded file while online now resumes from whichever position is actually the
-  most recent, rather than always preferring the one stored on this device.
-- A position you jumped to during a network hiccup is no longer lost. It used to be dropped
-  while the app was backing off from a failed update, which left the server on the position
-  from before the jump until playback happened to continue.
-- Turning a setting off on one device now turns it off on your other Apple devices too.
-  Switching something on already travelled; switching it off did not.
+- scanvoortgang toont ook het bestand dat geanalyseerd wordt
+- sidecars die de echte bibliotheek niet kwijt kon
+- een interne fout krijgt de status uit het coderegister
+- de artwork-ETag volgt de bytes en niet het id
+- vier integriteitsgebreken in de scanner en de catalogus
 - prefer 16:9 backdrop over square art on narrow iPhone hero
 - import liet elke rij vallen en telde afleveringen dubbel
 - clear the Dynamic Island on iPhone, edge to edge
 - credential-grens dicht en de koude start hersteld
-- Hidden libraries could come back on your other devices. A list that only held local folders
-  was read as empty by the sync and removed from iCloud, which put the libraries back on every
-  device that read it afterwards.
-- Signing out of iCloud while Pleya is open is noticed right away. Settings sync used to keep
-  reporting itself as healthy while nothing was actually being sent.
-
-### Improved
-- **Settings changed on another device now show up while the app is open.** Hiding a library or
-  reordering your libraries on your Mac reaches the Apple TV without restarting it. The same
-  happens after importing a settings file or resetting settings.
-- **Coming back to Pleya checks for settings changed elsewhere.** A device that was asleep or in
-  the background no longer waits for the next launch to catch up.
-- **Switching profile loads that profile's own settings.** Each profile has had its own place in
-  iCloud since the previous build; now switching also fetches it.
-- **The iCloud switch says what the sync is doing.** One line under it: syncing, when something
-  was last sent, whether iCloud has run out of room for settings, and whether a setting is too
-  large to send. It says what this device sent, never what your other devices received, because
-  iCloud does not report that.
-
-### Notes
-
-- **Settings that describe a device now stay on that device.** Volume, download folder,
-  hardware decoding, HDR and the last used remote-control address were being copied between
-  your Apple devices, where they either meant nothing or were plainly wrong. They are yours
-  per device from now on. Everything that is a genuine preference, like subtitle appearance,
-  theme and playback behaviour, keeps syncing as before.
+- de hervatpositie komt uit één plek, en een gepauzeerde speler schrijft niet meer terug
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 234 · 20 August 2026
