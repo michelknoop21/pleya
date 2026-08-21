@@ -99,9 +99,17 @@ void main() {
       );
       expect(resolved.liveTv, isFalse, reason: 'a Live TV tab that opens on an empty screen is the same failure');
       expect(resolved.serverSideSync, isFalse);
-      expect(resolved.offlineWatchQueue, isFalse);
       expect(resolved.serverFavorites, isFalse);
-      expect(resolved.continueWatchingRemoval, isFalse);
+      expect(
+        resolved.trackPreferencePersistence,
+        isFalse,
+        reason: 'a stored language needs the playback plan to resolve it, and that is PS-9T',
+      );
+      // The two that PS-4 did implement. They are here as the counter-example:
+      // this group proves the resolver gates on the client half, not that the
+      // client half is always false.
+      expect(resolved.offlineWatchQueue, isTrue);
+      expect(resolved.continueWatchingRemoval, isTrue);
     });
   });
 

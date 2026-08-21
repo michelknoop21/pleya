@@ -96,6 +96,21 @@ class PleyaServerSession {
     return _refreshOnce();
   }
 
+  /// The access token this session last minted, or null when there is none or
+  /// it has run out.
+  ///
+  /// Synchronous and therefore never mints. It exists for
+  /// `MediaServerClient.streamHeaders`, which is a getter the player reads at
+  /// open time and cannot await. Handing over an expired token there would be
+  /// worse than handing over nothing: nothing gives a clean 401 the player
+  /// surfaces, an expired one gives the same 401 while looking authorised.
+  String? get cachedAccessToken {
+    final token = _accessToken;
+    final expiry = _accessTokenExpiry;
+    if (token == null || expiry == null) return null;
+    return _now().isBefore(expiry) ? token : null;
+  }
+
   /// Force the next request to mint a fresh token. Called after a 401 on a
   /// request that carried a token the session believed was still good, which
   /// happens when a server restarts and drops its signing key.

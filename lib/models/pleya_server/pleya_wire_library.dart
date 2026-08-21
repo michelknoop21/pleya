@@ -217,6 +217,8 @@ class PleyaUserState {
     required this.watched,
     required this.playCount,
     required this.updatedAt,
+    this.revision,
+    this.ownedByThisSession,
   });
 
   final int positionMs;
@@ -224,11 +226,24 @@ class PleyaUserState {
   final int playCount;
   final DateTime updatedAt;
 
+  /// Server-issued and monotonic. The client stores the last one it saw and
+  /// sends it back as `base_revision`, which is how the server tells an event
+  /// that acted on the current state apart from one that acted on a stale
+  /// view. Null on a server without `watch_state_ownership`.
+  final int? revision;
+
+  /// Whether the session that sent the event may still write the canonical
+  /// position. Only present in the answer to `POST /watch-state`: an item
+  /// answer has no session to answer the question about.
+  final bool? ownedByThisSession;
+
   factory PleyaUserState.fromJson(Map<String, dynamic> json) => PleyaUserState(
     positionMs: integer(json, 'position_ms'),
     watched: boolean(json, 'watched'),
     playCount: integer(json, 'play_count'),
     updatedAt: timestamp(json, 'updated_at'),
+    revision: integerOrNull(json, 'revision'),
+    ownedByThisSession: booleanOrNull(json, 'owned_by_this_session'),
   );
 }
 
@@ -328,6 +343,98 @@ class PleyaItemPage {
     nextCursor: strOrNull(json, 'next_cursor'),
     totalEstimate: integerOrNull(json, 'total_estimate'),
   );
+}
+
+/// `WatchStateEvent`, the write side of watch state.
+///
+/// A typed body rather than a map at the call site, because the schema is
+/// closed (`additionalProperties: false`): a stray key does not get ignored,
+/// it gets the whole request refused. Building it in one place means the three
+/// ownership fields from DEC-049 are decided once, and the contract test can
+/// hold this type against the same fixtures the server validates against.
+class PleyaWatchStateEvent {
+  const PleyaWatchStateEvent({
+    required this.itemId,
+    required this.sessionId,
+    required this.positionMs,
+    required this.occurredAt,
+    this.durationMs,
+    this.completed = false,
+    this.action = 'none',
+    this.cause,
+    this.baseRevision,
+    this.backlog = false,
+  });
+
+  final String itemId;
+  final String sessionId;
+  final int positionMs;
+  final DateTime occurredAt;
+  final int? durationMs;
+  final bool completed;
+  final String action;
+
+  /// Only meaningful with `playback_started`, and only sendable when the server
+  /// advertises `watch_state_ownership`.
+  final String? cause;
+
+  /// The revision this client based its view on. Null means no causal claim,
+  /// which is not the same as zero: zero claims there is no state yet.
+  final int? baseRevision;
+
+  /// This event comes out of an offline queue. A backlog never acquires
+  /// ownership and never moves a newer canonical state.
+  final bool backlog;
+
+  /// The body as the contract wants it.
+  ///
+  /// [ownership] is the server's `watch_state_ownership` flag. When it is false
+  /// the three newer fields are left out entirely and `playback_started` falls
+  /// back to `none`: an older server does not know the enum value and refuses
+  /// the request rather than ignoring it.
+  Map<String, dynamic> toJson({required bool ownership}) => {
+    'item_id': itemId,
+    'session_id': sessionId,
+    'position_ms': positionMs < 0 ? 0 : positionMs,
+    if (durationMs != null) 'duration_ms': durationMs,
+    'occurred_at': _rfc3339(occurredAt),
+    'completed': completed,
+    'explicit_action': ownership || action != 'playback_started' ? action : 'none',
+    if (ownership && cause != null && action == 'playback_started') 'cause': cause,
+    if (ownership && backlog) 'backlog': true,
+    if (ownership && baseRevision != null) 'base_revision': baseRevision,
+  };
+
+  factory PleyaWatchStateEvent.fromJson(Map<String, dynamic> json) => PleyaWatchStateEvent(
+    itemId: str(json, 'item_id'),
+    sessionId: str(json, 'session_id'),
+    positionMs: integer(json, 'position_ms'),
+    occurredAt: timestamp(json, 'occurred_at'),
+    durationMs: integerOrNull(json, 'duration_ms'),
+    completed: booleanOr(json, 'completed', orElse: false),
+    action: str(json, 'explicit_action'),
+    cause: strOrNull(json, 'cause'),
+    baseRevision: integerOrNull(json, 'base_revision'),
+    backlog: booleanOr(json, 'backlog', orElse: false),
+  );
+
+  /// RFC 3339 in UTC with a `Z` suffix, per chapter 2 of the specification.
+  static String _rfc3339(DateTime value) => '${value.toUtc().toIso8601String().split('.').first.replaceAll('Z', '')}Z';
+}
+
+/// `StreamSession`, the answer to `POST /auth/stream-session`.
+///
+/// Carries only the non-secret half; the secret rides in a cookie. This app
+/// does not open stream sessions (its player sets a header), so the type exists
+/// to keep the fixture under contract rather than to be called.
+class PleyaStreamSession {
+  const PleyaStreamSession({required this.streamSessionId, required this.expiresAt});
+
+  final String streamSessionId;
+  final DateTime expiresAt;
+
+  factory PleyaStreamSession.fromJson(Map<String, dynamic> json) =>
+      PleyaStreamSession(streamSessionId: str(json, 'stream_session_id'), expiresAt: timestamp(json, 'expires_at'));
 }
 
 /// `WatchStateEntry`, read side. PS-3 does not call the watch-state endpoints;

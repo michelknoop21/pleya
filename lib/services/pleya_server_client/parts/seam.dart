@@ -12,6 +12,7 @@ mixin _PleyaServerRequests {
   PleyaServerConnection get connection;
   PleyaServerSession get _session;
   PleyaServerCursorLedger get _cursors;
+  PleyaServerWatchLedger get _watchLedger;
 
   /// Capabilities as the server last reported them. Every call in a part gates
   /// on this: an endpoint the server says it does not have is not worth a
@@ -25,4 +26,11 @@ mixin _PleyaServerRequests {
     Duration? timeout,
     AbortController? abort,
   });
+
+  /// POST a protocol path with a JSON body and hand back its JSON object.
+  Future<Map<String, dynamic>?> _postJson(String path, Map<String, dynamic> body);
+
+  /// One item by id. The playback part needs it to turn watch-state rows back
+  /// into items, and the browse part already implements it.
+  Future<MediaItem?> fetchItem(String id);
 }

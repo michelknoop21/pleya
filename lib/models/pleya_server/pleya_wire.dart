@@ -150,6 +150,8 @@ class PleyaCapabilities {
     this.liveTv = false,
     this.realtime = false,
     this.users = false,
+    this.watchStateOwnership = false,
+    this.streamSessions = false,
   });
 
   /// What a client may assume before the first successful `GET /info`.
@@ -176,6 +178,16 @@ class PleyaCapabilities {
   final bool realtime;
   final bool users;
 
+  /// The server knows the ownership model: `base_revision`, the
+  /// `playback_started` acquisition and the backlog marker on a watch-state
+  /// event. `WatchStateEvent` is a closed schema, so a client that sends those
+  /// fields to a server without this flag gets its whole request refused.
+  final bool watchStateOwnership;
+
+  /// The server knows `POST /auth/stream-session` and the `ss` parameter on
+  /// `/stream`. For browsers; this app authorises its player with a header.
+  final bool streamSessions;
+
   factory PleyaCapabilities.fromJson(Map<String, dynamic> json) => PleyaCapabilities(
     browse: boolean(json, 'browse'),
     search: boolean(json, 'search'),
@@ -186,6 +198,8 @@ class PleyaCapabilities {
     downloads: booleanOr(json, 'downloads', orElse: false),
     liveTv: booleanOr(json, 'live_tv', orElse: false),
     realtime: booleanOr(json, 'realtime', orElse: false),
+    watchStateOwnership: booleanOr(json, 'watch_state_ownership', orElse: false),
+    streamSessions: booleanOr(json, 'stream_sessions', orElse: false),
     users: booleanOr(json, 'users', orElse: false),
   );
 }

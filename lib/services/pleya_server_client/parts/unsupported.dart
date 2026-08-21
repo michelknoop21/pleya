@@ -73,16 +73,6 @@ mixin _PleyaServerUnsupportedMethods {
 
   Future<ExternalIds> fetchExternalIds(String itemId) async => const ExternalIds();
 
-  // ── Watch state: PS-4 ──
-
-  Future<void> markWatched(MediaItem item) async {}
-
-  Future<void> markUnwatched(MediaItem item) async {}
-
-  Future<void> removeFromContinueWatching(MediaItem item) async {}
-
-  Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5}) async => const [];
-
   // ── Per-user state: PS-9 ──
 
   Future<void> setFavorite(MediaItem item, bool isFavorite) async {}
@@ -187,44 +177,6 @@ mixin _PleyaServerUnsupportedMethods {
     required MediaSourceInfo mediaSource,
   }) async => null;
 
-  Future<void> reportPlaybackStarted({
-    required String itemId,
-    required Duration position,
-    Duration? duration,
-    String? playSessionId,
-    String? playMethod,
-    String? mediaSourceId,
-    int? audioStreamIndex,
-    int? subtitleStreamIndex,
-  }) async {}
-
-  Future<void> reportPlaybackProgress({
-    required String itemId,
-    required Duration position,
-    required Duration duration,
-    bool isPaused = false,
-    String? playSessionId,
-    String? playMethod,
-    String? mediaSourceId,
-    int? audioStreamIndex,
-    int? subtitleStreamIndex,
-  }) async {}
-
-  Future<void> reportPlaybackStopped({
-    required String itemId,
-    required Duration position,
-    Duration? duration,
-    String? playSessionId,
-    String? mediaSourceId,
-    PlaybackReportMetadata report = const PlaybackReportMetadata.live(),
-  }) async {}
-
-  /// `GET /stream/{version_id}` answers 404 today and streaming is PS-4. An
-  /// empty result is what the playback layer already treats as "this backend
-  /// cannot start playback", which is the truth.
-  Future<PlaybackInitializationResult> getPlaybackInitialization(PlaybackInitializationOptions options) async =>
-      PlaybackInitializationResult(availableVersions: const []);
-
   LiveTvSupport get liveTv => const NoopLiveTvSupport();
 
   LiveTvDvrSupport? get liveTvDvr => null;
@@ -235,6 +187,4 @@ mixin _PleyaServerUnsupportedMethods {
       const DownloadResolution(videoUrl: null);
 
   List<DownloadArtworkSpec> resolveDownloadArtwork(MediaItem item) => const [];
-
-  Future<String?> resolveExternalPlaybackUrl(MediaItem item, {int mediaIndex = 0, String? mediaSourceId}) async => null;
 }

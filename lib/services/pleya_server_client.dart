@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 
 import '../connection/connection.dart';
 import '../exceptions/media_server_exceptions.dart';
@@ -22,6 +24,7 @@ import '../media/media_playlist.dart';
 import '../media/media_server_client.dart';
 import '../media/media_sort.dart';
 import '../media/media_source_info.dart';
+import '../media/media_version.dart';
 import '../media/noop_live_tv_support.dart';
 import '../media/playback_report_metadata.dart';
 import '../media/server_capabilities.dart';
@@ -41,12 +44,14 @@ import 'pleya_server_capabilities.dart';
 import 'pleya_server_cursor_ledger.dart';
 import 'pleya_server_mappers.dart';
 import 'pleya_server_session.dart';
+import 'pleya_server_watch_ledger.dart';
 import 'scrub_preview_source.dart';
 
 part 'pleya_server_client/parts/seam.dart';
 part 'pleya_server_client/parts/artwork.dart';
 part 'pleya_server_client/parts/browse.dart';
 part 'pleya_server_client/parts/search.dart';
+part 'pleya_server_client/parts/playback.dart';
 part 'pleya_server_client/parts/unsupported.dart';
 
 /// [MediaServerClient] over a Pleya Server, speaking Pleya Protocol v1.
@@ -65,11 +70,12 @@ part 'pleya_server_client/parts/unsupported.dart';
 /// connection that has not answered is not a server that browses, and a screen
 /// that assumes otherwise calls an endpoint that may not be there.
 ///
-/// ## What PS-3 covers
+/// ## What this covers
 ///
-/// Libraries, browsing, children, hubs, search and artwork. Playback, watch
-/// state, downloads, playlists, collections and Live TV are later phases and
-/// answer through `_PleyaServerUnsupportedMethods`.
+/// PS-3 brought libraries, browsing, children, hubs, search and artwork. PS-4
+/// adds direct play and watch state, with the ownership model from DEC-049
+/// behind it. Downloads, playlists, collections, favourites, ratings and Live
+/// TV are later phases and answer through `_PleyaServerUnsupportedMethods`.
 // The private fields below are assigned from named constructor parameters
 // rather than through initializing formals, because Dart has no private named
 // parameter. dart_code_linter flags the pattern; here it is unavoidable.
@@ -81,6 +87,7 @@ class PleyaServerClient
         _PleyaServerBrowseMethods,
         _PleyaServerSearchMethods,
         _PleyaServerArtworkMethods,
+        _PleyaServerPlaybackMethods,
         _PleyaServerUnsupportedMethods
     implements MediaServerClient, ScopedMediaServerClient, GracefullyCloseable {
   PleyaServerClient._({required PleyaServerSession session, required MediaServerHttpClient http})
@@ -122,6 +129,9 @@ class PleyaServerClient
 
   @override
   final PleyaServerCursorLedger _cursors = PleyaServerCursorLedger();
+
+  @override
+  final PleyaServerWatchLedger _watchLedger = PleyaServerWatchLedger();
 
   bool _offlineMode = false;
   ServerCapabilities _capabilities = PleyaServerCapabilityResolver.unknown;
@@ -165,21 +175,35 @@ class PleyaServerClient
 
   /// The protocol has no server-side watched threshold. 90% matches what both
   /// other backends use, so the same title crosses the line at the same place
-  /// on every server a profile can reach.
+  /// on every server a profile can reach, and it is the same fraction the
+  /// server falls back to when a report carries no `completed`.
   @override
   double get watchedThreshold => 0.9;
 
-  /// Nothing marks anything watched: there is no watch-state endpoint until
-  /// PS-4, and claiming otherwise would suppress the client-side scrobble that
-  /// a later phase has to replace deliberately.
+  /// A stopped report past the threshold carries `completed: true`, and the
+  /// server marks the item watched from it. The in-player auto-scrobble must
+  /// therefore not also call [markWatched]: that would be a second explicit
+  /// action, a second revision, and on a tracker a second scrobble.
   @override
-  bool get marksWatchedOnPlaybackStopped => false;
+  bool get marksWatchedOnPlaybackStopped => wireCapabilities.watchState;
 
-  /// The access token is a header, never a query parameter, and it is minted
-  /// per request rather than kept on the client. A map captured once would go
-  /// stale the moment the session rotates.
+  /// The access token as a header, never as a query parameter.
+  ///
+  /// mpv can set headers, so the stream token that exists for players that
+  /// cannot stays out of this path: a credential that never enters a URL never
+  /// enters a log, a referrer or a shell history either.
+  ///
+  /// The value is whatever the session last minted. That is not a cache with a
+  /// staleness problem: every progress report during playback goes through the
+  /// authorised path, so the header the player would be handed on a reopen is
+  /// at most one report old. Before the first request there is nothing to hand
+  /// over, and [getPlaybackInitialization] awaits a token precisely so the URL
+  /// it returns is openable straight away.
   @override
-  Map<String, String> get streamHeaders => const {};
+  Map<String, String> get streamHeaders {
+    final token = _session.cachedAccessToken;
+    return token == null ? const {} : {'Authorization': 'Bearer $token'};
+  }
 
   @override
   void close() {
@@ -289,6 +313,48 @@ class PleyaServerClient
       timeout: timeout,
       abort: abort,
     );
+  }
+
+  /// POST a protocol path with a JSON body and hand back its JSON object.
+  ///
+  /// Same null contract as [_getJson]: offline mode, a non-2xx answer and a
+  /// body that is not an object all answer null. A write that could not apply
+  /// is not an error the UI has to render, and the interface says so.
+  @override
+  Future<Map<String, dynamic>?> _postJson(String path, Map<String, dynamic> body) async {
+    if (_offlineMode) return null;
+    try {
+      final response = await _http.post(
+        path,
+        body: jsonEncode(body),
+        headers: await _session.authHeaders(),
+        timeout: MediaServerTimeouts.interactive,
+      );
+      if (response.statusCode == 401) {
+        _session.invalidateAccessToken();
+        final retry = await _http.post(
+          path,
+          body: jsonEncode(body),
+          headers: await _session.authHeaders(),
+          timeout: MediaServerTimeouts.interactive,
+        );
+        return retry.statusCode >= 400 ? null : _asObject(path, retry);
+      }
+      if (response.statusCode >= 400) {
+        final error = PleyaError.tryParse(response.data);
+        appLogger.d('PleyaServerClient: POST $path -> ${response.statusCode} ${error?.code ?? ''}');
+        return null;
+      }
+      return _asObject(path, response);
+    } catch (e) {
+      appLogger.d('PleyaServerClient: POST $path failed', error: e);
+      return null;
+    }
+  }
+
+  Map<String, dynamic>? _asObject(String path, MediaServerResponse response) {
+    final data = response.data;
+    return data is Map<String, dynamic> ? data : null;
   }
 
   /// GET a protocol path and hand back its JSON object, or null.

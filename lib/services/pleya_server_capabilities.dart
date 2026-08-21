@@ -48,10 +48,21 @@ class PleyaServerCapabilityResolver {
     // needs a phase before it needs a flag.
     serverSidePlaylists: false,
 
-    // PS-4 owns watch state. Until then the server answers watch_state: false
-    // and these three have nothing to write to.
-    continueWatchingRemoval: _offered(wire.watchState, implementedHere: false),
-    offlineWatchQueue: _offered(wire.watchState, implementedHere: false),
+    // PS-4 brought watch state, so these two have somewhere to write to.
+    //
+    // Removal from Continue Watching maps onto `mark_unwatched`: the contract
+    // has no separate flag, and position zero with watched false is exactly the
+    // state that keeps a title out of the row. The dedicated flag arrives with
+    // the personal layer in PS-9P.
+    continueWatchingRemoval: _offered(wire.watchState, implementedHere: true),
+    // The offline queue replays with `backlog: true`, and the server treats a
+    // backlog as history: it never acquires ownership and never moves a newer
+    // canonical state (DEC-049, rule 6). That is what makes replaying safe.
+    offlineWatchQueue: _offered(wire.watchState, implementedHere: true),
+    // Track preferences are PS-9T, because they only become true once the
+    // playback plan can resolve a stored language onto the actual streams of
+    // the version it picks. Storing a stream index instead would point at a
+    // different track after any re-encode.
     trackPreferencePersistence: _offered(wire.watchState, implementedHere: false),
 
     // PS-8 on the server, PS-6 for the client's side of the negotiation.

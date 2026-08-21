@@ -23,12 +23,14 @@ void main() {
   final manifest = load('manifest.json');
   final fixtures = (manifest['fixtures'] as List).cast<Map<String, dynamic>>();
 
-  /// Schemas whose Dart type exists in this phase. `WatchStateEvent` is the
-  /// write side of watch state and belongs to PS-4; building the type now would
-  /// be exactly the kind of getting-ahead chapter 23.1 forbids. Listing it here
-  /// rather than skipping it silently means the phase that adds it has to
-  /// remove a line, not discover a hole.
-  const deferredSchemas = {'WatchStateEvent'};
+  /// Schemas no Dart type reads in this phase. Listing them rather than
+  /// skipping them silently means the phase that adds one has to remove a line,
+  /// not discover a hole.
+  ///
+  /// Empty since PS-4: the write side of watch state is now a real type, and
+  /// `StreamSession` is read even though this client never opens one, because a
+  /// fixture nobody parses is a fixture nobody notices breaking.
+  const deferredSchemas = <String>{};
 
   final parsers = <String, void Function(Map<String, dynamic>)>{
     'Info': (json) {
@@ -45,6 +47,21 @@ void main() {
     'ItemPage': (json) => PleyaItemPage.fromJson(json),
     'UserState': (json) => PleyaUserState.fromJson(json),
     'WatchStatePage': (json) => PleyaWatchStateEntry.pageFromJson(json),
+    'StreamSession': (json) => PleyaStreamSession.fromJson(json),
+    'WatchStateEvent': (json) {
+      // Round-trip: parse the fixture and write it back. That proves the type
+      // reads the contract's shape and produces it, which is what matters for a
+      // request body the server validates with a closed schema.
+      final event = PleyaWatchStateEvent.fromJson(json);
+      final written = event.toJson(ownership: true);
+      expect(written['item_id'], json['item_id']);
+      expect(written['session_id'], json['session_id']);
+      expect(written['position_ms'], json['position_ms']);
+      expect(written['explicit_action'], json['explicit_action']);
+      if (json.containsKey('cause')) expect(written['cause'], json['cause']);
+      if (json.containsKey('base_revision')) expect(written['base_revision'], json['base_revision']);
+      if (json['backlog'] == true) expect(written['backlog'], isTrue);
+    },
   };
 
   group('every fixture in the manifest', () {
@@ -58,8 +75,8 @@ void main() {
       );
     });
 
-    test('covers the 25 fixtures the contract ships', () {
-      expect(fixtures, hasLength(25));
+    test('covers the 32 fixtures the contract ships', () {
+      expect(fixtures, hasLength(32));
     });
 
     for (final fixture in fixtures) {

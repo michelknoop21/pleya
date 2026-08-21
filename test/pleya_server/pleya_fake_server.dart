@@ -14,10 +14,27 @@ import 'package:pleya/services/pleya_server_client.dart';
 class PleyaFakeServer {
   PleyaFakeServer({
     this.watchState = false,
+    this.watchStateOwnership = false,
     this.setupRequired = false,
     this.pageSizeCap = 100,
     this.artworkBytes = const [0x89, 0x50, 0x4e, 0x47],
   });
+
+  /// Whether `/info` advertises the ownership model. Off by default, so a test
+  /// that does not opt in proves what an older server sees: no base_revision,
+  /// no cause, no backlog marker on the wire.
+  final bool watchStateOwnership;
+
+  /// Every watch-state event this server received, in order and as sent.
+  final List<Map<String, dynamic>> watchEvents = [];
+
+  /// Canonical state per item, the way the server keeps it. Deliberately thin:
+  /// the six rules are tested against the real Go implementation, and repeating
+  /// them here would test the fake.
+  final Map<String, Map<String, dynamic>> watchStates = {};
+
+  /// The next `POST /watch-state` answers with this owner verdict.
+  bool ownedByThisSession = true;
 
   /// Whether `/info` advertises watch state. Controls whether the client asks
   /// for the two playback hubs at all.
@@ -157,6 +174,38 @@ class PleyaFakeServer {
       return _json(const {'id': 'srv-1', 'name': 'Zolder', 'version': '0.2.0', 'started_at': '2026-08-18T19:25:33Z'});
     }
     if (path == '/libraries') return _json({'items': libraries});
+
+    if (path == '/auth/stream-token') {
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      return _json({'stream_token': 'st-for-${body['version_id']}', 'expires_at': '2026-08-21T21:09:11Z'});
+    }
+
+    if (path == '/watch-state' && request.method == 'POST') {
+      final event = jsonDecode(request.body) as Map<String, dynamic>;
+      watchEvents.add(event);
+      final itemId = event['item_id'] as String;
+      final previous = watchStates[itemId];
+      final revision = ((previous?['revision'] as int?) ?? 0) + 1;
+      final state = {
+        'position_ms': event['position_ms'],
+        'watched': event['completed'] == true || event['explicit_action'] == 'mark_watched',
+        'play_count': (previous?['play_count'] as int?) ?? 0,
+        'updated_at': '2026-08-21T20:00:00Z',
+        if (watchStateOwnership) 'revision': revision,
+        if (watchStateOwnership) 'owned_by_this_session': ownedByThisSession,
+      };
+      watchStates[itemId] = state;
+      return _json(state);
+    }
+
+    if (path == '/watch-state') {
+      return _json({
+        'items': [
+          for (final entry in watchStates.entries) {'item_id': entry.key, 'state': entry.value},
+        ],
+        'next_cursor': null,
+      });
+    }
     if (path.startsWith('/artwork/')) {
       return http.Response.bytes(artworkBytes, 200, headers: const {'content-type': 'image/png'});
     }
@@ -258,6 +307,8 @@ class PleyaFakeServer {
       'live_tv': false,
       'realtime': false,
       'users': false,
+      'watch_state_ownership': watchStateOwnership,
+      'stream_sessions': watchState,
     },
     'auth': {
       'methods': ['password'],

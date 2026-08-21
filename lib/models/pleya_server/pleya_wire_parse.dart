@@ -52,6 +52,13 @@ bool booleanOr(Map<String, dynamic> json, String key, {required bool orElse}) {
   return value is bool ? value : orElse;
 }
 
+/// A boolean the contract marks optional. Absent stays absent: the caller has
+/// to be able to tell "the server did not say" from "the server said false".
+bool? booleanOrNull(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  return value is bool ? value : null;
+}
+
 /// RFC 3339 in UTC per the contract. A timestamp that will not parse is a
 /// contract violation, not something to paper over with the current time.
 DateTime timestamp(Map<String, dynamic> json, String key) {
