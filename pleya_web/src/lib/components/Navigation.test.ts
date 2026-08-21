@@ -17,7 +17,9 @@ const caps: Capabilities = {
   downloads: false,
   live_tv: false,
   realtime: false,
-  users: false
+  users: false,
+  watch_state_ownership: false,
+  stream_sessions: false
 };
 const items = navItems(caps, 2);
 

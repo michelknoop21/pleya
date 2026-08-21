@@ -835,17 +835,31 @@ willekeurig laatste plan.
 
 Verreweg de meeste bestanden in een huishoudelijke bibliotheek zijn afspeelbaar zoals ze zijn. Het
 hoofdpad is dus: `GET /pleya/v1/stream/{versionId}` met volledige HTTP-range-ondersteuning,
-`Accept-Ranges: bytes`, correcte `206`-antwoorden en `If-Range` met een sterke validator. Geen
-sessie, geen state, geen opruimwerk.
+`Accept-Ranges: bytes` en correcte `206`-antwoorden. Geen sessie, geen state, geen opruimwerk.
 
-Over die validator: de eis is dat de `ETag` **verandert zodra de bytes veranderen**, niet dat hij een
-cryptografische hash van het bestand is. Een hash over tachtig gigabyte berekenen om een header te
-kunnen zetten is precies het soort werk dat een NAS onbruikbaar maakt. De server heeft die
-informatie al: de `generation` van de `MediaFile` loopt op zodra de scanner een wijziging vaststelt
-([hoofdstuk 7.3](#73-wat-de-scanner-elke-ronde-doet)), dus een opaque validator over
-`(MediaFile.id, generation)` voldoet en laat de implementatie vrij. Wat niet mag is een validator die
-alleen aan de mtime hangt, want die overleeft een `touch` en een kopieeractie niet. Dit is ook precies wat `share_server` vandaag al doet en waarvan bewezen is dat het
-werkt.
+**Over de validator, herzien op 21 augustus 2026.** Dit hoofdstuk beloofde eerder een sterke
+validator over `(MediaFile.id, generation)`, met de eis dat de `ETag` verandert zodra de bytes
+veranderen. Poort 4 heeft die belofte laten vallen, en
+[DEC-050](DECISIONS.md#dec-050-de-etag-op-stream-is-een-zwakke-validator-en-pleya-belooft-geen-byte-identiteit)
+legt uit waarom: `generation` loopt alleen op wanneer de drielagige detectie iets aanmerkt, laag 2 is
+een steekproef over kop en staart, en een remux die het midden verandert glipt daar doorheen. RFC
+9110 §8.8.1 vraagt strict revision control of een collision-resistant hash, en Pleya beheert de
+bestanden niet.
+
+Wat er staat is een **zwakke** validator (`W/"..."`) uit `(dev, ino, size, mtime_ns, ctime_ns)` plus
+`generation`. Verschillend betekent "er is iets veranderd"; gelijk betekent niets over de bytes.
+`If-Range` levert daarom nooit een `206`: de server negeert de `Range` en antwoordt met `200` en het
+volledige bestand, de terugval uit RFC 9110 §13.1.5. Een gewone `Range` verandert niet, en dat is het
+pad dat elke seek gebruikt, dus afspelen merkt er niets van. Een hash over tachtig gigabyte berekenen
+om een header te kunnen zetten blijft uitgesloten: dat is precies het soort werk dat een NAS
+onbruikbaar maakt.
+
+**Autorisatie op dit pad kent drie vormen.** Een bearer-header voor de app, een streamtoken in de
+querystring voor een externe speler die geen header kan zetten, en sinds
+[DEC-051](DECISIONS.md#dec-051-de-browser-krijgt-een-streamsessie-met-een-cookie-per-sessie-en-het-geheim-komt-nooit-in-een-url)
+een browser-streamsessie: een niet-geheime `ss` in de URL, met het geheim in een cookie waarvan de
+naam die id draagt. De derde bestaat omdat een `<video>`-element zijn range-aanvragen uit `src`
+bouwt en een streamtoken van vijf minuten een lange film op de eerste seek breekt.
 
 ### 11.2 Wanneer er wel een sessie is
 
@@ -1150,15 +1164,30 @@ position_ms      waar
 duration_ms      waarvan
 updated_at       wanneer
 completed        uitgekeken volgens de drempel
-explicit_action  none | mark_watched | mark_unwatched | restart
+explicit_action  none | mark_watched | mark_unwatched | restart | playback_started
+cause            user_started | reclaim, alleen bij playback_started
+base_revision    de revision waarop de client zijn beeld baseerde
+backlog          dit event komt uit een offline wachtrij
 ```
 
 Met dat onderscheid tussen een passieve voortgangsmelding en een expliciete handeling
-(`mark_watched`, `mark_unwatched`, `restart`) is de regel eenvoudig: een expliciete handeling wint
-van elke passieve update die ervoor ligt, en tussen passieve updates onderling beslist een nog te
-kiezen regel. Welke dat is, is een open ontwerpvraag die vóór PS-4 beantwoord moet zijn; zie
-[hoofdstuk 24.2](#242-open-vragen). Wat er niet gebeurt is dat fase 4 stilzwijgend "hoogste positie
-wint" vastlegt en dat daarna in de data zit.
+(`mark_watched`, `mark_unwatched`, `restart`) is de eerste regel eenvoudig: een expliciete handeling
+wint van elke passieve update die ervoor ligt.
+
+**Wat er tussen twee passieve updates gebeurt is beslist op 21 augustus 2026**, in
+[DEC-049](DECISIONS.md#dec-049-kijkstatus-heeft-een-eigenaar-met-een-lease-en-causaliteit-loopt-via-base_revision).
+De server is eigenaar: per `(subject, item)` houdt hij een monotone `revision` bij, een
+eigenaarssessie en een lease op de **serverklok**. Eigendom wordt uitsluitend verworven met
+`playback_started` en een `cause`; een passief voortgangsevent verwerft nooit, ook niet bij een
+verlopen lease. `base_revision` draagt de causaliteit, zodat een client die op een verouderd beeld
+handelde de nieuwere toestand niet overschrijft. Een expliciete handeling negeert de lease en ordent
+op serverontvangst. Een offline backlog is geschiedenis zolang `revision > 0` en vestigt de toestand
+alleen wanneer er nog geen is. De zes regels voluit staan in DEC-049 en in
+[docs/pleya-server-gates.md](pleya-server-gates.md) poort 3.
+
+Wat er niet gebeurt is dat fase 4 stilzwijgend "hoogste positie wint" vastlegt en dat daarna in de
+data zit. Wat er ook niet gebeurt: een geweigerd event wordt in PS-4 **niet** bewaard. Duurzame
+kijkgeschiedenis is PS-9P, en PS-4 mag niet van een tabel uit een latere fase afhangen.
 
 ### 13.3 Wat expliciet niet in v1 zit
 
@@ -2049,17 +2078,28 @@ Afspelen in de browser hangt aan PS-4 en PS-6, de beheerkant aan G6 en G7.
 | Afhankelijkheden | PS-3 |
 | Eerstvolgende fase | PS-5 |
 
-**Scope.** Streaming-endpoint met volledige range-ondersteuning, een sterke validator die meebeweegt
-met `MediaFile.generation`, `If-Range`. Kijkstatus als gebeurtenis met `session_id`, positie, duur,
-tijdstempel, `completed` en `explicit_action`, gebonden aan de bootstrap-eigenaar uit fase 2, met
-rapportage vanuit de speler en terugsynchronisatie vanuit de offline-laag.
+**Scope.** Streaming-endpoint met volledige range-ondersteuning en een **zwakke** validator uit de
+bestandsmetadata plus `MediaFile.generation`, waarbij `If-Range` altijd `200` levert (DEC-050).
+Kijkstatus als gebeurtenis met `session_id`, positie, duur, tijdstempel, `completed` en
+`explicit_action`, gebonden aan de bootstrap-eigenaar uit fase 2, met rapportage vanuit de speler en
+terugsynchronisatie vanuit de offline-laag.
 
-**Poort vóór deze fase begint:** het conflictmodel uit
-[hoofdstuk 13.2](#132-de-server-is-de-bron-van-kijkstatus) is een open ontwerpvraag en moet eerst
-beantwoord zijn. "Hoogste positie wint" is aantoonbaar fout bij een bewuste herstart, dus die regel
-wordt niet als bijproduct van de implementatie vastgelegd. De beoordeling van `MediaServerClient`
-uit [hoofdstuk 5.3](#53-wordt-mediaserverclient-te-breed) valt in deze fase, als meting met het daar
-genoemde criterium.
+**Scope erbij uit de poortbesluiten van 21 augustus 2026.** Deze drie horen bij PS-4 en niet bij een
+latere fase, omdat ze alle drie op `GET /stream` of op `/watch-state` landen:
+
+- **eigendom van de kijkstatus** (DEC-049): `revision`, `owner_session_id`, `owner_lease_until`,
+  `last_explicit_at` en `last_explicit_kind` op `watch_states`, met de zes regels en de capability
+  `watch_state_ownership`. Een geweigerd event wordt **niet** bewaard; kijkgeschiedenis is PS-9P;
+- **de zwakke validator** (DEC-050), inclusief het gedrag dat `If-Range` de `Range` negeert;
+- **de browser-streamsessie** (DEC-051): `POST /auth/stream-session`, de `ss`-parameter op
+  `GET /stream`, de vijf validaties per aanvraag en de grens van acht actieve sessies per subject.
+  De queryparameter zit op een PS-4-endpoint, dus het validatiepad hoort hier en niet in PS-4W.
+
+**Poorten vóór deze fase begint:** poort 3, 4 en 5 staan alle drie dicht, met DEC-049, DEC-050 en
+DEC-051 eronder en de redenering in [docs/pleya-server-gates.md](pleya-server-gates.md). Het
+conflictmodel is dus niet als bijproduct van de implementatie ontstaan. De beoordeling van
+`MediaServerClient` uit [hoofdstuk 5.3](#53-wordt-mediaserverclient-te-breed) valt in deze fase, als
+meting met het daar genoemde criterium.
 
 **Out of scope.** Geen transcoding, geen remux, geen sessies. Een bestand dat het toestel niet
 aankan, faalt hier zichtbaar en met een duidelijke melding; dat is de bedoeling en niet een gat.
@@ -2075,11 +2115,18 @@ meedragen.
 4. Het gekozen conflictmodel is opgeschreven vóór de eerste regel code, en offline gekeken materiaal
    synchroniseert terug volgens dat model, met een test per regel. Minimaal gedekt: een expliciete
    handeling wint van elke passieve update die ervoor ligt, en het herstart-scenario uit 13.2 zet de
-   kijker niet terug.
+   kijker niet terug. De zes regels van DEC-049 vragen zes tests, met het tv/telefoon-scenario en de
+   backlog bij een verlopen lease er letterlijk tussen.
 5. De `MediaServerClient`-beoordeling is uitgevoerd en de uitkomst staat opgeschreven.
+6. `If-Range` levert `200` en nooit een `206`, en geen enkele test beweert dat een gelijke zwakke
+   `ETag` iets over de bytes bewijst.
+7. Twee gelijktijdige browser-streamsessies breken elkaar niet, verlengen onafhankelijk, en de
+   negende actieve sessie wordt geweigerd in plaats van dat de oudste stil sneuvelt. Geen geheim komt
+   voor in een teruggegeven URL of in een logregel.
 
 **Stopcriterium.** Een huishouden kan een avond films kijken vanaf Pleya Server, mits de bestanden
-direct speelbaar zijn.
+direct speelbaar zijn. Gemeten op de DS920+ en niet op een wegwerpstack: de fase raakt de NAS, en
+hoofdstuk 17 van het masterplan maakt dat de norm.
 
 **Risico's.** Range-gedrag verschilt per speler en per platform; de testset uit
 [hoofdstuk 21](#21-teststrategie) is hier de gate. Kijkstatusconflicten zijn moeilijk reproduceerbaar
@@ -2520,30 +2567,34 @@ deploymentrecept en staat in de documentatie, niet in de binary.
 ### 24.2 Open vragen
 
 Twee daarvan waren **gates**: de fase die eronder staat begint niet voordat de vraag beantwoord en
-opgeschreven is. Bij het inplannen van fase 1 zijn er twee bijgekomen, en alle vier staan nu met hun
-stand in [docs/pleya-server-gates.md](pleya-server-gates.md): het wire-contract en de
-bootstrap-authflow vóór PS-2, het conflictmodel voor kijkstatus en de byte-validator vóór PS-4.
+opgeschreven is. Bij het inplannen van fase 1 zijn er twee bijgekomen, en het masterplanonderzoek van
+21 augustus 2026 leverde er een vijfde op. **Alle vijf staan dicht**, met hun stand en hun redenering
+in [docs/pleya-server-gates.md](pleya-server-gates.md):
 
-De vierde is de zwaarste en is nieuw. De belofte in hoofdstuk 11.1 dat de `ETag` verandert zodra de
-bytes veranderen volgt **niet** uit `(MediaFile.id, generation)`, omdat `generation` alleen oploopt
-wanneer de drielagige detectie iets aanmerkt en laag 2 een steekproef over kop en staart is. Precies
-het geval dat hoofdstuk 7.2 zelf noemt, een remux die het midden verandert, glipt daar doorheen.
+| Poort | Dicht vóór | Besluit |
+| --- | --- | --- |
+| Het wire-contract | PS-2 | DEC-038, 18 augustus 2026 |
+| De bootstrap-authflow | PS-2 | DEC-039, 18 augustus 2026 |
+| Het conflictmodel voor kijkstatus | PS-4 | [DEC-049](DECISIONS.md#dec-049-kijkstatus-heeft-een-eigenaar-met-een-lease-en-causaliteit-loopt-via-base_revision), 21 augustus 2026 |
+| De byte-validator en `generation` | PS-4 | [DEC-050](DECISIONS.md#dec-050-de-etag-op-stream-is-een-zwakke-validator-en-pleya-belooft-geen-byte-identiteit), 21 augustus 2026 |
+| De browser playback session | PS-4 | [DEC-051](DECISIONS.md#dec-051-de-browser-krijgt-een-streamsessie-met-een-cookie-per-sessie-en-het-geheim-komt-nooit-in-een-url), 21 augustus 2026 |
 
-De rest hieronder is een gewone open vraag met een beslismoment.
+De vierde was de zwaarste. De belofte in hoofdstuk 11.1 dat de `ETag` verandert zodra de bytes
+veranderen volgt **niet** uit `(MediaFile.id, generation)`, omdat `generation` alleen oploopt wanneer
+de drielagige detectie iets aanmerkt en laag 2 een steekproef over kop en staart is. Precies het
+geval dat hoofdstuk 7.2 zelf noemt, een remux die het midden verandert, glipt daar doorheen. De
+uitkomst is dat de belofte weggaat: DEC-050 vervangt hem door een zwakke validator, en `If-Range`
+antwoordt voortaan altijd met `200` en het volledige bestand.
+
+De rest hieronder is een gewone open vraag met een beslismoment. Eén gate staat er nog:
 
 | Gate | Moet beslist zijn vóór |
 | --- | --- |
-| Het conflictmodel voor kijkstatus | PS-4 begint. Daarna zit de semantiek in de data. |
 | De regel voor de content fingerprint | de eerste scannerlogica die relocatie gebruikt, dus vóór de relocatiepaden in PS-2 of waar ze later landen. |
 
-Deze krijgen bewust geen ADR tot er meer bekend is.
-
-**Het conflictmodel voor kijkstatus, te beantwoorden vóór PS-4.** Dat expliciete intentie wint van
-heuristiek staat vast; wat er tussen twee passieve voortgangsmeldingen gebeurt niet. "Hoogste positie
-wint" faalt bij een bewuste herstart, "laatste update wint" faalt bij een toestel met een scheve klok
-of een late offline-sync, en "per sessie afzonderlijk bijhouden en de meest recente sessie tonen"
-kost een sessiebegrip in de UI dat er nu niet is. De keuze moet gemaakt en opgeschreven zijn voordat
-fase 4 begint, want daarna zit hij in de data. Zie [hoofdstuk 13.2](#132-de-server-is-de-bron-van-kijkstatus).
+Die krijgt bewust geen ADR tot er meer bekend is. Hij deelt zijn mechanisme met poort 4 maar niet
+zijn faalkost: een gemiste wijziging in de `ETag` kost een verouderde cache-entry, een verkeerde
+fingerprint-match hangt kijkstatus aan het verkeerde item.
 
 **Metadata-providers.** TMDB is de eerste keuze, maar de vraag welke providers daarnaast horen en
 onder welk licentiemodel is niet beantwoord. TVDB heeft een ander model, muziekmetadata is een apart

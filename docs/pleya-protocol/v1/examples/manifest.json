@@ -3,9 +3,11 @@
   "fixtures": [
     { "file": "info.json", "schema": "Info", "note": "server met een eigenaar" },
     { "file": "info_setup_required.json", "schema": "Info", "note": "eerste start, nog geen eigenaar" },
+    { "file": "info_ps4.json", "schema": "Info", "note": "PS-4: kijkstatus met eigendom, en streamsessies" },
     { "file": "server_detail.json", "schema": "ServerDetail" },
     { "file": "token_pair.json", "schema": "TokenPair" },
     { "file": "stream_token.json", "schema": "StreamToken" },
+    { "file": "stream_session.json", "schema": "StreamSession", "note": "de id is niet geheim; het geheim zit in de cookie" },
     { "file": "libraries.json", "schema": "LibraryList" },
     { "file": "item_movie.json", "schema": "Item", "note": "film met een externe en een ingebedde ondertitel" },
     { "file": "item_movie_with_edition.json", "schema": "Item", "note": "drie snedes, waarvan een uit twee bestanden" },
@@ -19,12 +21,17 @@
     { "file": "hub_recently_added.json", "schema": "ItemPage" },
     { "file": "hub_continue_watching_empty.json", "schema": "ItemPage", "note": "server zonder kijkstatus" },
     { "file": "user_state.json", "schema": "UserState" },
+    { "file": "user_state_owned.json", "schema": "UserState", "note": "met revision en het eigendom van deze sessie" },
     { "file": "watch_state_event_progress.json", "schema": "WatchStateEvent", "note": "passieve voortgang" },
     { "file": "watch_state_event_restart.json", "schema": "WatchStateEvent", "note": "expliciete handeling" },
+    { "file": "watch_state_event_playback_started.json", "schema": "WatchStateEvent", "note": "eigendom verwerven, cause user_started" },
+    { "file": "watch_state_event_reclaim.json", "schema": "WatchStateEvent", "note": "heroveren na een verlopen lease" },
+    { "file": "watch_state_event_backlog.json", "schema": "WatchStateEvent", "note": "offline wachtrij, verwerft nooit" },
     { "file": "watch_state_page.json", "schema": "WatchStatePage" },
     { "file": "error_not_found.json", "schema": "ErrorEnvelope" },
     { "file": "error_version_multifile.json", "schema": "ErrorEnvelope" },
     { "file": "error_rate_limited.json", "schema": "ErrorEnvelope", "note": "retryable is true bij een 429" },
-    { "file": "error_range_not_satisfiable.json", "schema": "ErrorEnvelope" }
+    { "file": "error_range_not_satisfiable.json", "schema": "ErrorEnvelope" },
+    { "file": "error_stream_session_limit.json", "schema": "ErrorEnvelope", "note": "de negende actieve streamsessie wordt geweigerd" }
   ]
 }

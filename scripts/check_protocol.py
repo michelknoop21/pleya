@@ -213,6 +213,20 @@ def check_validator_bites(document: dict) -> None:
             "Version",
             {"id": "x", "container": "mkv", "duration_ms": 1},
         ),
+        (
+            "een onbekend veld in een gesloten aanvraagbody",
+            "WatchStateEvent",
+            {"item_id": "x", "session_id": "s", "position_ms": 1,
+             "occurred_at": "2026-08-21T20:00:00Z", "explicit_action": "none",
+             "stream_session_id": "ss_1"},
+        ),
+        (
+            "een verzonnen reden voor playback_started",
+            "WatchStateEvent",
+            {"item_id": "x", "session_id": "s", "position_ms": 1,
+             "occurred_at": "2026-08-21T20:00:00Z",
+             "explicit_action": "playback_started", "cause": "steal"},
+        ),
     ]
 
     for description, schema_name, payload in cases:

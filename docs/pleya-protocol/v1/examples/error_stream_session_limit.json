@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "session.stream_session_limit",
+    "message": "Eight active stream sessions already open for this subject",
+    "retryable": false,
+    "details": {
+      "active": 8,
+      "limit": 8
+    }
+  }
+}

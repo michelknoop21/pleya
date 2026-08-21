@@ -32,7 +32,9 @@ Wat er bewust niet in staat, met de fase die het introduceert:
 | Transcode-sessies openen, pingen, verplaatsen, sluiten | PS-8 |
 | Gebruikers, rollen en bibliotheekrechten | PS-9 |
 | Downloads | PS-10 |
-| Verzamelingen, afspeellijsten, kijkgeschiedenis, favorieten, waarderingen | nog geen fase |
+| Verzamelingen en afspeellijsten | PS-9C |
+| Kijkgeschiedenis, favorieten en waarderingen | PS-9P |
+| Spoorvoorkeuren per gebruiker en per titel | PS-9T |
 
 Die oppervlakken worden gespecificeerd in de fase die ze introduceert, binnen dezelfde v1-regels uit
 hoofdstuk 3. Ruimte laten is iets anders dan invullen: `feature_level` bestaat vanaf dag één, de
@@ -142,9 +144,11 @@ Elk ander enum-veld is gesloten. Twee gevallen verdienen een aantekening:
 
 - `profile` in `GET /info` blijft gesloten. Een client moet weten wat een profiel van hem verwacht
   voordat hij ertegen praat, dus een derde profiel is een feature level erbij, geen waarde erbij.
-- De enums in een aanvraag (`sort`, `hub_id`, `explicit_action`) zijn gesloten aan de kant van de
-  client. Dat een server er later méér accepteert breekt niemand, minder accepteren wel. Een client
-  stuurt alleen waarden die deze specificatie noemt.
+- De enums in een aanvraag (`sort`, `hub_id`, `explicit_action`, `cause`) zijn gesloten aan de kant
+  van de client. Dat een server er later méér accepteert breekt niemand, minder accepteren wel. Een
+  client stuurt alleen waarden die deze specificatie noemt. `explicit_action` kreeg bij het sluiten
+  van poort 3 de waarde `playback_started` erbij, en dat is dus een **brekende** wijziging: hij zit
+  achter `capabilities.watch_state_ownership`, en een client stuurt hem pas wanneer die vlag waar is.
 
 ---
 
@@ -285,8 +289,63 @@ token dat na de eerste range vervalt breekt op de tweede.
 Wat het wél draagt: geldig voor twee tot vijf minuten, gebonden aan één identiteit en één
 mediaresource, en zonder enig recht op de rest van de API. Het is een capability-token voor bytes.
 
-Verlopen tijdens een lange film is geen probleem. De bestaande verbinding loopt door, en voor een
-nieuwe range vraagt de client met zijn gewone accesstoken een nieuw streamtoken op.
+Verlopen tijdens een lange film is geen probleem voor een speler die zelf een nieuw token kan halen.
+De bestaande verbinding loopt door, en voor een nieuwe range vraagt de client met zijn gewone
+accesstoken een nieuw streamtoken op. Voor een `<video>`-element in een browser gaat dat niet op: dat
+element bouwt zijn range-aanvragen uit de URL in `src`, en die kan de pagina niet per seek
+herschrijven zonder hapering. Daarvoor bestaat 6.4a.
+
+### 6.4a `POST /pleya/v1/auth/stream-session`
+
+Klasse: **`authenticated`**. Aanwezig wanneer `capabilities.stream_sessions` waar is, en anders niet.
+
+Een browser-streamsessie is een eigen, kortlevend object. De aanvraag noemt de versie:
+
+```json
+{ "version_id": "0198f2a1-..." }
+```
+
+Het antwoord draagt de niet-geheime helft, en de cookie draagt het geheim:
+
+```json
+{ "stream_session_id": "0198f2e1-b2c3-7000-8000-000000000009",
+  "expires_at": "2026-08-21T22:41:00Z" }
+```
+
+```
+Set-Cookie: pleya_ss_0198f2e1-b2c3-7000-8000-000000000009=<geheim>;
+            HttpOnly; SameSite=Strict; Path=/pleya/v1/stream/
+```
+
+De media-URL wordt daarmee `GET /pleya/v1/stream/{version_id}?ss=<stream_session_id>`. **Het geheim
+komt nooit in een URL**, en dus niet in browsergeschiedenis, logs of referrers, en JavaScript op de
+pagina komt er niet bij.
+
+**De cookienaam draagt de sessie-id, en dat is het hele punt.** Een cookie wordt geïdentificeerd door
+naam, domein en pad, dus een tweede `Set-Cookie` met dezelfde drie waarden vervangt de eerste. Eén
+vaste cookienaam zou betekenen dat twee tabbladen, picture-in-picture of het voorladen van de
+volgende aflevering elkaars credential overschrijven, waarna de eerste stream op zijn volgende seek
+breekt. `Path` lost dat niet op: dat beperkt alleen bij welke aanvragen de cookie meegaat en is geen
+securitygrens.
+
+De server valideert per aanvraag vijf dingen: er is een cookie met die naam, het geheim klopt in een
+constant-time vergelijking, het geauthenticeerde subject klopt, de binding aan `version_id` klopt, en
+de sessie is niet verlopen of ingetrokken. Verlengen zet uitsluitend die ene cookie opnieuw, dus
+sessies roteren onafhankelijk van elkaar.
+
+**Ten hoogste acht actieve sessies per subject.** De server ruimt eerst verlopen en ingetrokken
+sessies op. Blijven er acht levende over, dan weigert hij de negende met
+`session.stream_session_limit`. Een nog levende stream wordt niet stilzwijgend beëindigd om plaats te
+maken: dat zou iemand midden in een film afbreken, en dat is erger dan een geweigerde negende stream.
+De grens bestaat omdat browsers het aantal cookies per domein begrenzen.
+
+**Wat dit op een LAN kost, hardop.** Op `http://nas:8832` is er geen secure context, dus `Secure` is
+niet te zetten en het geheim reist in klare tekst over het lokale netwerk. Dat is niet slechter dan
+het streamtoken in de querystring, en het is beter op het punt hierboven. `HttpOnly` is geen
+versleuteling en wordt hier ook niet als zodanig gepresenteerd.
+
+Het streamtoken uit 6.4 verdwijnt hiermee niet. Externe spelers delen geen cookiejar met de browser;
+de twee mechanismen staan naast elkaar en bedienen twee verschillende clients.
 
 ### 6.5 De bootstrap-identiteit
 
@@ -398,13 +457,15 @@ Codes zijn gegroepeerd per domein. Uitbreiden mag; de betekenis van een bestaand
 | `storage.unavailable` | 503 | ja | de opslag achter deze resource is niet bereikbaar |
 | `storage.full` | 507 | nee | de server kan niet schrijven |
 | `session.invalid` | 400 | nee | onbekende of afgesloten kijksessie |
+| `session.stream_session_limit` | 429 | nee | er staan al acht actieve streamsessies voor dit subject |
 
 **`library.not_found` en niet `403`.** Een resource die u niet mag zien bestaat voor u niet, ook niet
 in zoekresultaten en ook niet als u het id raadt. Dat is vandaag nog theoretisch, want er is één
 identiteit, maar de regel staat er nu zodat PS-9 hem niet hoeft te introduceren.
 
-Het domein `session.` is gereserveerd. In deze versie draagt het uitsluitend `session.invalid` voor
-de kijksessie uit hoofdstuk 12; transcode-sessies komen in PS-8.
+Het domein `session.` is gereserveerd. In deze versie draagt het `session.invalid` voor de kijksessie
+uit hoofdstuk 12 en `session.stream_session_limit` voor de browser-streamsessie uit 6.4a;
+transcode-sessies komen in PS-8.
 
 ---
 
@@ -607,9 +668,11 @@ veldenpakket:
 
 ### `GET /pleya/v1/stream/{version_id}`
 
-Klasse: **`authenticated`**, of met `?stream_token=...` in de querystring voor een externe speler.
+Klasse: **`authenticated`**, of met `?stream_token=...` in de querystring voor een externe speler, of
+met `?ss=...` plus de bijbehorende cookie voor een browser-streamsessie uit 6.4a.
 
-Dit is het hoofdpad en verreweg het meeste verkeer. Geen sessie, geen state, geen opruimwerk.
+Dit is het hoofdpad en verreweg het meeste verkeer. Geen sessie, geen state, geen opruimwerk; de
+streamsessie uit 6.4a is een autorisatievorm en geen playbacksessie.
 
 **Antwoorden**
 
@@ -619,6 +682,7 @@ Dit is het hoofdpad en verreweg het meeste verkeer. Geen sessie, geen state, gee
 | geldige `Range` met één bereik | `206` met `Content-Range` |
 | `Range` buiten het bestand | `416` met `playback.range_not_satisfiable` |
 | `Range` met meer dan één bereik | `200` met het hele bestand |
+| `If-Range` aanwezig, met of zonder `Range` | `200` met het hele bestand, zie 13.2 |
 | versie met `file_count > 1` | `409` met `library.version_multifile` |
 
 De server zet `Accept-Ranges: bytes` op elk antwoord.
@@ -635,24 +699,42 @@ zou hem breken.
 
 ### 13.2 De validator
 
-De server zet een `ETag` en ondersteunt `If-Range`.
+De server zet een `ETag`. Die is **zwak**, in de vorm `W/"..."`, en dat is een besluit en geen
+tekortkoming: [DEC-050](DECISIONS.md).
 
-De eis is scherp en het is de reden dat dit hoofdstuk kort is:
+> **Pleya belooft geen byte-identiteit op `/stream`.**
 
-> **De `ETag` verandert zodra de bytes van de versie veranderen.**
+Waarom niet. RFC 9110 §8.8.1 vraagt van een sterke validator twee dingen tegelijk: hij wijzigt bij
+elke wijziging van de representatie, en hij blijft uniek over alle versies ervan. Als onderbouwing
+noemt de RFC strict revision control over de representatie of een collision-resistant hash over de
+bytes. Pleya beheert de mediabestanden niet. Ze staan op mounts die er buiten Pleya om vervangen
+worden, en de scanner ziet zo'n vervanging pas in de volgende ronde. Een validator die aantoonbaar
+iets kan missen en tegelijk "sterk" heet is gevaarlijker dan geen belofte, want een client leunt erop.
 
-Hoe een server dat waarmaakt is geen protocol. Wat wél protocol is, is de belofte, want een client
-gebruikt hem: bij een seek na een netwerkonderbreking stuurt hij `If-Range` met de bewaarde `ETag`,
-en een server die dan `206` antwoordt terwijl de bytes ondertussen zijn veranderd levert een stream
-die half oud en half nieuw is.
+Wat de zwakke validator wel doet:
+
+- **verschillend** betekent: er is iets veranderd, gooi de buffer weg. Dat is de bruikbare richting,
+  en het is genoeg voor cache-revalidatie;
+- **gelijk** betekent niets over de bytes. Een server leidt hem af uit bestandsmetadata plus de
+  generatie van de versie, en een in-place overschrijving van gelijke lengte met teruggezette mtime
+  blijft daaronder de radar, net als een bestandssysteem met een grovere tijdstempelresolutie dan de
+  vergelijking aanneemt.
+
+**`If-Range` levert daarom nooit een `206`.** Zonder sterke validator negeert de server de
+`Range`-header en antwoordt hij `200` met de volledige representatie. Dat is de terugval die RFC 9110
+§13.1.5 voorschrijft, en een conformante client stuurt `If-Range` sowieso niet met een zwakke
+validator.
+
+Hervatten na een onderbreking gaat met een **gewone `Range`-aanvraag**. De speler vraagt het bereik
+dat hij nog nodig heeft en speelt daar verder, zonder ooit te beweren dat twee los opgehaalde stukken
+uit hetzelfde bestand komen. Nergens in Pleya is een gelijke `ETag` grond om ontvangen bytes aan later
+ontvangen bytes te plakken.
 
 Een client mag een `ETag` niet ontleden en er niets uit afleiden.
 
-**Deze belofte is niet gratis.** Een validator die is afgeleid van bestandsgrootte en wijzigingsdatum
-overleeft een kopieeractie niet, en een validator die is afgeleid van een steekproef over kop en
-staart mist een wijziging in het midden bij gelijke grootte. Een implementatie moet aantonen dat zijn
-strategie de belofte waarmaakt op de opslag die hij ondersteunt. Deze specificatie schrijft geen
-strategie voor, maar accepteert ook geen die de belofte niet haalt.
+**Waar byte-identiteit wél telt** is een onderbroken download die later wordt afgemaakt. Daar is een
+HTTP-header niet het juiste bewijs: dat pad hoort zijn eigen digest over het samengestelde bestand te
+verifiëren bij voltooiing.
 
 ### 13.3 Versies met meerdere bestanden
 
@@ -695,10 +777,12 @@ Klasse: **`authenticated`**.
 }
 ```
 
-`explicit_action` is een van `none`, `mark_watched`, `mark_unwatched`, `restart`.
+`explicit_action` is een van `none`, `mark_watched`, `mark_unwatched`, `restart`, en op een server met
+`capabilities.watch_state_ownership` daarnaast `playback_started`.
 
-Het antwoord is de nieuwe `user_state` van het item, zodat een client direct ziet wat de server ervan
-gemaakt heeft.
+Het antwoord is **altijd** de actuele `user_state` van het item, ook wanneer de server het event niet
+heeft toegepast. Een client ziet daarmee direct wat de server ervan gemaakt heeft, en een client die
+achterliep trekt bij in plaats van door te schrijven.
 
 **`session_id` is client-generated.** De client maakt bij het starten van afspelen een UUID aan en
 houdt die aan tot hij stopt. Er zijn in v1 bewust geen serverzijdige playbacksessies, dus er is ook
@@ -708,9 +792,53 @@ onbekend of leeg `session_id` geeft `session.invalid`.
 `occurred_at` is het moment volgens de client. De server bewaart daarnaast zijn eigen
 ontvangstmoment, want een toestel met een scheve klok mag de volgorde niet bepalen.
 
-**Wat er tussen twee passieve updates gebeurt is nog niet vastgelegd.** Wat wel vastligt is dat een
-expliciete handeling wint van elke passieve update die ervoor ligt. De regel voor het overige is een
-open ontwerpvraag die beantwoord moet zijn voordat er een server is die deze endpoint implementeert.
+### 14.1a Wie de kijkstatus bezit
+
+Vastgelegd in [DEC-049](DECISIONS.md); aanwezig wanneer
+`capabilities.watch_state_ownership` waar is. Zonder die vlag geldt alleen de oude regel: een
+expliciete handeling wint van elke passieve update die ervoor ligt.
+
+**De server is eigenaar en wijst het schrijfrecht toe.** Per `(subject, item)` houdt hij een monotone
+`revision` bij, een eigenaarssessie, en een lease tot wanneer dat eigendom geldt. Zes regels:
+
+1. **Eigendom wordt alleen expliciet verworven**, met `explicit_action: "playback_started"` en een
+   `cause`. Bij `user_started` heeft iemand op afspelen gedrukt en neemt die sessie over, ongeacht de
+   lease van een ander. Bij `reclaim` heropent een sessie die zelf nog speelt haar eigendom, en dat
+   lukt alleen wanneer de lease van de huidige eigenaar verlopen is.
+2. **Een passief voortgangsevent verwerft nooit eigendom.** Niet wanneer er geen eigenaar is, en ook
+   niet wanneer de lease verlopen is. Een verlopen lease maakt het item beschikbaar voor de volgende
+   `playback_started`, en meer niet.
+3. **Causaliteit loopt via `base_revision`.** De server accepteert een schrijving alleen wanneer die
+   gelijk is aan de actuele `revision`. Wijkt hij af, dan antwoordt de server met de actuele toestand
+   en verandert er niets. Weglaten mag: dan doet het event geen causale claim en wordt het alleen van
+   de huidige eigenaar met een geldige lease geaccepteerd, zodat een oudere client blijft werken.
+4. **De lease is een schrijfrecht met een houdbaarheidsdatum.** Tweemaal het rapportage-interval met
+   een ondergrens van 90 seconden, gemeten op de **serverklok**, zodat een scheve clientklok er niets
+   aan verandert. Elk geaccepteerd event verzet hem.
+5. **Een expliciete handeling negeert de lease.** `mark_watched`, `mark_unwatched` en `restart` nemen
+   het eigendom over en verhogen `revision`. Ze ordenen op serverontvangst en niet op `occurred_at`,
+   en ze worden ook toegepast met een verouderde `base_revision` zolang ze live binnenkomen: iemand
+   handelde op het scherm dat hij zag, en een achtergrondping van een ander toestel hoort dat niet te
+   blokkeren.
+6. **Een offline backlog is geschiedenis, tenzij er nog niets is.** Een event met `backlog: true`
+   verwerft nooit eigendom en verplaatst de canonieke toestand niet zolang `revision > 0`, ook niet
+   bij een verlopen lease. Bij `revision = 0` is er niets te beschermen en vestigt het laatste event
+   uit de batch de toestand alsnog.
+
+Wat dat op de bekende scenario's doet:
+
+| Scenario | Uitkomst |
+| --- | --- |
+| 85 min op de tv, daarna bewust opnieuw op de telefoon tot 30 min | de telefoon stuurt `playback_started` met `user_started` plus `restart`, neemt over, en 30 min wint |
+| tv 20:00 tot 21:30, telefoon 20:15 tot 20:20 | de telefoon bezit het item tot 90 s na haar laatste event; de tv ziet zijn schrijving geweigerd en herovert om 20:21:30 met `reclaim` |
+| toestel met een scheve klok | `occurred_at` ordent niets; `revision`, de lease en de serverontvangst doen dat |
+| late offline-sync terwijl niemand kijkt | de lease is verlopen, maar de batch is geschiedenis en de canonieke toestand blijft staan |
+| twee toestellen tegelijk | het toestel waar iemand op afspelen drukte bezit hem; het andere mag pas heroveren als de lease vervalt |
+| achtergrondclient die na een crash blijft rapporteren | verwerft niets, want hij stuurt alleen voortgang |
+
+**Een geweigerd event wordt in deze versie niet bewaard.** De server antwoordt met de actuele toestand
+en logt de weigering. Duurzame, gebruikerszichtbare geschiedenis is een latere fase en geen bijproduct
+van dit endpoint.
 
 ### 14.2 Lezen
 
@@ -723,6 +851,10 @@ lijstweergave zonder extra aanvraag.
 { "position_ms": 1830000, "watched": false, "play_count": 0,
   "updated_at": "2026-08-18T20:12:44Z" }
 ```
+
+Op een server met `capabilities.watch_state_ownership` draagt `user_state` daarnaast `revision`, en
+het antwoord op `POST /pleya/v1/watch-state` bovendien `owned_by_this_session`. Een client bewaart de
+laatst geziene `revision` en stuurt hem terug als `base_revision`.
 
 **Als lijst.** `GET /pleya/v1/watch-state` levert de items die de identiteit heeft aangeraakt,
 gepagineerd, gesorteerd op `updated_at` aflopend. Parameters `limit`, `cursor` en `updated_since`.
@@ -763,6 +895,7 @@ fout. Dat is de normale toestand van een catalogusserver die nog niet kan afspel
 | `POST /pleya/v1/auth/login` | `public` | nee |
 | `POST /pleya/v1/auth/refresh` | `public` | nee |
 | `POST /pleya/v1/auth/stream-token` | `authenticated` | nee |
+| `POST /pleya/v1/auth/stream-session` | `authenticated` | nee |
 | `GET /pleya/v1/server` | `authenticated` | nee |
 | `GET /pleya/v1/libraries` | `authenticated` | nee |
 | `GET /pleya/v1/libraries/{id}/items` | `authenticated` | ja |
@@ -772,12 +905,13 @@ fout. Dat is de normale toestand van een catalogusserver die nog niet kan afspel
 | `GET /pleya/v1/hubs/{hub_id}` | `authenticated` | ja |
 | `GET /pleya/v1/artwork/{id}` | `authenticated` | nee |
 | `GET /pleya/v1/subtitles/{id}` | `authenticated` of streamtoken | nee |
-| `GET /pleya/v1/stream/{version_id}` | `authenticated` of streamtoken | nee |
+| `GET /pleya/v1/stream/{version_id}` | `authenticated`, streamtoken of streamsessie | nee |
 | `POST /pleya/v1/watch-state` | `authenticated` | nee |
 | `GET /pleya/v1/watch-state` | `authenticated` | ja |
 
-Zeventien endpoints. Elk ervan wordt door PS-2, PS-3 of PS-4 gebruikt; er staat er geen in die
-alleen later nodig is.
+Achttien endpoints. Elk ervan wordt door PS-2, PS-3 of PS-4 gebruikt; er staat er geen in die alleen
+later nodig is. Het achttiende is `POST /auth/stream-session`, toegevoegd bij het sluiten van poort 5
+omdat de queryparameter die eruit volgt op `GET /stream` zit en dat endpoint PS-4 is.
 
 ---
 

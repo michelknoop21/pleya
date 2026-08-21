@@ -1,0 +1,11 @@
+{
+  "item_id": "0198f2b0-1111-7000-8000-000000000001",
+  "session_id": "0198f2d0-4444-7000-8000-000000000002",
+  "position_ms": 0,
+  "duration_ms": 6720000,
+  "occurred_at": "2026-08-21T20:00:00Z",
+  "completed": false,
+  "explicit_action": "playback_started",
+  "cause": "user_started",
+  "base_revision": 6
+}

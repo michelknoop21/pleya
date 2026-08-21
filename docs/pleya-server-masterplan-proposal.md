@@ -1284,13 +1284,21 @@ Kolommen op `watch_states`:
 2. **Een passief voortgangsevent verwerft nooit eigendom.** Niet wanneer er geen eigenaar is, en
    ook niet wanneer de lease van de eigenaar verlopen is. Een verlopen lease maakt het item
    beschikbaar voor een volgende `playback_started`, en meer niet. Een voortgangsevent van een
-   niet-eigenaar landt in `play_history`, telt mee voor "Bekeken door", en verplaatst de canonieke
-   positie niet. Dit is de regel die verhindert dat een achtergrondrapportage stilletjes de
-   toestand overneemt van het toestel waar iemand naar zit te kijken.
+   niet-eigenaar verplaatst de canonieke positie niet. Dit is de regel die verhindert dat een
+   achtergrondrapportage stilletjes de toestand overneemt van het toestel waar iemand naar zit te
+   kijken.
+
+   **Wat er met zo'n event gebeurt is een fasegrens en geen detail.** Een eerdere versie van deze
+   regel schreef hem naar `play_history`, en die tabel hoort bij PS-9P. PS-4 correct laten zijn ten
+   koste van een tabel uit een latere fase is precies de drift die 23.1 verbiedt, en het zou PS-9P
+   bovendien opzadelen met geschiedenisrijen die geen enkel scherm heeft opgevraagd. In PS-4 wordt
+   een niet-canoniek event dus **niet bewaard**: de server antwoordt met de actuele toestand en logt
+   de weigering met reden, zodat de client bijtrekt. Duurzame, gebruikerszichtbare geschiedenis en
+   "Bekeken door" zijn PS-9P, en die fase bepaalt zelf wat hij vastlegt.
 3. **Causaliteit loopt via `base_revision`.** Elke schrijving draagt de `revision` waarop de client
    zijn beeld baseerde. De server accepteert hem alleen wanneer `base_revision` gelijk is aan
    `watch_states.revision`. Wijkt hij af, dan handelde de client op een toestand die niet meer
-   bestaat: het event gaat naar `play_history`, de server antwoordt met de actuele `revision` en de
+   bestaat: het event wordt niet toegepast, de server antwoordt met de actuele `revision` en de
    actuele toestand, en de client synchroniseert. Elke geaccepteerde schrijving verhoogt `revision`
    met één, en de eigenaar leest de nieuwe waarde uit het antwoord van zijn vorige schrijving.
    Ontbreekt `base_revision`, dan doet het event geen causale claim: dan wordt het alleen
