@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/playback_report_metadata.dart';
 import 'package:pleya/services/playback_report_session.dart';
+import 'package:pleya/services/playback_write_authority.dart';
 
 class _RecordingClient implements MediaServerClient {
   final calls = <String>[];
@@ -196,5 +197,91 @@ void main() {
     expect(session.isIdle, isTrue);
     expect(await session.report(_snapshot('playing', positionMs: 4000)), isTrue);
     expect(client.calls, ['stopped-attempt:3000:null', 'stopped:3000:null', 'started:4000:null:null:null']);
+  });
+
+  group('observed write authority', () {
+    ObservedPlaybackAuthority authority() => ObservedPlaybackAuthority(sessionId: 'this-device', itemId: 'item-1');
+
+    test('a held authority changes nothing', () async {
+      final client = _RecordingClient();
+      final session = PlaybackReportSession(client: client, itemId: 'item-1', authority: authority());
+
+      expect(await session.report(_snapshot('playing', positionMs: 1000)), isTrue);
+
+      expect(client.calls, ['started:1000:null:null:null']);
+    });
+
+    test('a revoked authority blocks a late progress report', () async {
+      final client = _RecordingClient();
+      final held = authority();
+      final session = PlaybackReportSession(client: client, itemId: 'item-1', authority: held);
+      await session.report(_snapshot('playing', positionMs: 1000));
+      client.calls.clear();
+
+      held.observeForeignPlaying(itemId: 'item-1', sessionId: 'apple-tv');
+
+      expect(await session.report(_snapshot('playing', positionMs: 2000)), isFalse);
+      expect(client.calls, isEmpty);
+    });
+
+    test('a revoked authority blocks a late paused report', () async {
+      final client = _RecordingClient();
+      final held = authority();
+      final session = PlaybackReportSession(client: client, itemId: 'item-1', authority: held);
+      await session.report(_snapshot('playing', positionMs: 1000));
+      client.calls.clear();
+
+      held.observeForeignPlaying(itemId: 'item-1', sessionId: 'apple-tv');
+
+      expect(await session.report(_snapshot('paused', positionMs: 2000)), isFalse);
+      expect(client.calls, isEmpty);
+    });
+
+    test('a revoked authority blocks the stopped report, which is the rollback case', () async {
+      // The Mutiny shape: this device sat paused while another played on. Its
+      // stop report carries the older position, so it must never be sent.
+      final client = _RecordingClient();
+      final held = authority();
+      final session = PlaybackReportSession(client: client, itemId: 'item-1', authority: held);
+      await session.report(_snapshot('playing', positionMs: 1000));
+      client.calls.clear();
+
+      held.observeForeignPlaying(itemId: 'item-1', sessionId: 'apple-tv');
+
+      expect(await session.report(_snapshot('stopped', positionMs: 2000)), isFalse);
+      expect(client.calls, isEmpty);
+    });
+
+    test('a revocation during an in-flight stream selection still cancels the write', () async {
+      final client = _RecordingClient();
+      final held = authority();
+      final session = PlaybackReportSession(client: client, itemId: 'item-1', authority: held);
+      final selectionGate = Completer<PlaybackStreamSelection>();
+
+      final startFuture = session.report(
+        _snapshot('playing', positionMs: 1000, resolveStreamSelection: () => selectionGate.future),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      held.observeForeignPlaying(itemId: 'item-1', sessionId: 'apple-tv');
+      selectionGate.complete(PlaybackStreamSelection.none);
+      await startFuture;
+
+      expect(client.calls, isEmpty);
+    });
+
+    test('taking the authority back reopens reporting', () async {
+      final client = _RecordingClient();
+      final held = authority();
+      final session = PlaybackReportSession(client: client, itemId: 'item-1', authority: held);
+      held.observeForeignPlaying(itemId: 'item-1', sessionId: 'apple-tv');
+
+      expect(await session.report(_snapshot('playing', positionMs: 1000)), isFalse);
+
+      held.take(reason: 'user pressed play');
+
+      expect(await session.report(_snapshot('playing', positionMs: 2000)), isTrue);
+      expect(client.calls, ['started:2000:null:null:null']);
+    });
   });
 }

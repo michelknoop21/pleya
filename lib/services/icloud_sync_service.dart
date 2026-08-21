@@ -1,69 +1,76 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 
-import '../utils/app_logger.dart';
+import '../connection/connection.dart';
 import 'base_shared_preferences_service.dart';
-import 'settings_export_service.dart';
+import 'preferences/icloud_kvs_transport.dart';
+import 'preferences/preference_merge_strategies.dart';
+import 'preferences/preference_refresh.dart';
+import 'preferences/portable_server_ids.dart';
+import 'preferences/preference_device_id.dart';
+import 'preferences/preference_sync_coordinator.dart';
+import 'preferences/preference_transport.dart';
 import 'settings_service.dart';
 import 'storage_service.dart';
 
-/// Mirrors user settings across the signed-in user's Apple devices via
-/// NSUbiquitousKeyValueStore (iCloud key-value store).
+/// Mirrors user settings across the signed-in user's Apple devices.
 ///
-/// Per-key, last-writer-wins. Values are the same typed JSON markers the
-/// export uses (`{"type":"int","value":42}`); KVS keys are the export *base*
-/// keys (user prefix stripped). Eligibility, encoding and user-scoping are all
-/// delegated to [SettingsExportService], so the sync and export/import surfaces
-/// can never diverge on what is (and isn't) allowed to leave the device.
+/// This is a facade now. It owns nothing: [PreferenceSyncCoordinator] holds the
+/// mutation pipeline, the policy, the scope, conflict metadata, reconcile and
+/// status, and [ICloudKvsTransport] holds the channels. Keeping the class is
+/// only about the call sites that already say `ICloudSyncService.instance`.
 ///
-/// Loop prevention is by construction: remote changes are applied with direct
-/// `prefs.setX(...)` (never [BaseSharedPreferencesService.write]), so they don't
-/// re-fire the local-write hook. [_applyingRemote] is a belt-and-braces guard.
+/// What changed underneath, and why:
+/// - a removal now reaches the store. The old local-write hook received a key,
+///   read the value back, found `null`, and stopped, so only a full reconcile
+///   ever propagated a delete;
+/// - syncability is decided by an explicit registry instead of an
+///   allow-by-default denylist, so a new preference no longer opts itself in;
+/// - a value that outgrows the transport cap is skipped *and* held back from
+///   the prune. It used to be deleted from the store, because the prune worked
+///   on absence from the push set;
+/// - the write is awaited, so a transport failure lands in the status instead
+///   of an unawaited future.
 ///
-/// No-op on Android/Linux/Windows — the native plugin only exists on Apple
+/// No-op on Android/Linux/Windows: the native plugin only exists on Apple
 /// platforms (tvOS reports itself as iOS).
 class ICloudSyncService {
-  ICloudSyncService._(this._settings, this._activeUserScope);
-
-  static const MethodChannel _channel = MethodChannel('com.pleya/icloud_kvs');
-  static const EventChannel _events = EventChannel('com.pleya/icloud_kvs/events');
-
-  /// Meta key carrying the sync format version. Skipped on apply. Namespaced
-  /// with `__` so it can never collide with a real (denylisted-or-not) pref.
-  static const String metaVersionKey = '__syncFormatVersion';
-  static const int formatVersion = 1;
-
-  // NSUbiquitousKeyValueStoreChangeReason values.
-  static const int _reasonServerChange = 0;
-  static const int _reasonInitialSync = 1;
-  static const int _reasonQuotaViolation = 2;
-  static const int _reasonAccountChange = 3;
+  ICloudSyncService._(this._settings, this._coordinator);
 
   final SettingsService _settings;
-  final String? Function() _activeUserScope;
+  final PreferenceSyncCoordinator _coordinator;
 
-  StreamSubscription<dynamic>? _eventSub;
-  bool _applyingRemote = false;
+  static const String metaVersionKey = PreferenceSyncCoordinator.metaVersionKey;
+  static const int formatVersion = PreferenceSyncCoordinator.formatVersion;
 
-  /// Called after remote changes are applied so the app can reload derived
-  /// state (theme, locale, keyboard shortcuts) — same surface as an import.
-  VoidCallback? onRemoteChangesApplied;
+  /// Per-value size cap, mirrored from the transport for callers that still ask
+  /// this class.
+  static const int maxValueBytes = 100 * 1024;
 
   static ICloudSyncService? _instance;
   static ICloudSyncService? get instance => _instance;
 
-  /// Only Apple platforms ship the native plugin. Overridable for tests.
+  PreferenceSyncCoordinator get coordinator => _coordinator;
+
+  ValueListenable<PreferenceSyncStatus> get status => _coordinator.status;
+
+  /// Called after remote changes are applied so the app can reload derived
+  /// state (theme, locale, keyboard shortcuts): the same surface as an import.
+  set onRemoteChangesApplied(VoidCallback? callback) => _coordinator.onRemoteChangesApplied = callback;
+
   @visibleForTesting
-  static bool debugForceSupported = false;
-  static bool get _supported => debugForceSupported || Platform.isIOS || Platform.isMacOS;
+  static bool get debugForceSupported => ICloudKvsTransport.debugForceSupported;
+
+  @visibleForTesting
+  static set debugForceSupported(bool value) => ICloudKvsTransport.debugForceSupported = value;
+
+  static bool get _supported => ICloudKvsTransport.supported;
 
   bool get _enabled => _settings.read(SettingsService.icloudSyncEnabled);
 
-  /// Wire the local-write hook and, if the toggle is on, subscribe + merge.
+  /// Wire the mutation pipeline and, if the toggle is on, subscribe and merge.
   /// Safe to call on any platform; no-ops off Apple platforms.
   static Future<void> start({
     required SettingsService settings,
@@ -71,308 +78,154 @@ class ICloudSyncService {
     VoidCallback? onRemoteChangesApplied,
   }) async {
     if (!_supported || _instance != null) return;
-    final svc = ICloudSyncService._(settings, storage.activeUserScope)..onRemoteChangesApplied = onRemoteChangesApplied;
+    // A dedicated id, not the Plex client identifier: that one is sent to
+    // plex.tv and identifies the device to a third party.
+    final deviceId = await PreferenceDeviceId.getOrCreate(settings.prefs);
+    final coordinator = PreferenceSyncCoordinator(
+      prefs: settings.prefs,
+      activeProfileId: storage.getActiveProfileId,
+      enabled: () => settings.read(SettingsService.icloudSyncEnabled),
+      deviceId: deviceId,
+      transport: ICloudKvsTransport(),
+      onRemoteChangesApplied: onRemoteChangesApplied,
+      onLocalStateChanged: settings.refreshListenables,
+    )..onRuntimeRefresh = PreferenceRefreshBus.instance.invalidate;
+    final svc = ICloudSyncService._(settings, coordinator);
     _instance = svc;
-    BaseSharedPreferencesService.onKeyWritten = svc._onLocalWrite;
-    if (svc._enabled) await svc._activate();
+    BaseSharedPreferencesService.onMutation = coordinator.apply;
+    // A key-value store can change while the process is suspended, and the
+    // notification for that change can be delivered to nobody. Coming back to
+    // the foreground is therefore a reconcile trigger, not a hope.
+    svc._lifecycle = AppLifecycleListener(
+      onResume: () => unawaited(coordinator.requestReconcile(ReconcileTrigger.foreground)),
+    );
+    await coordinator.refreshAvailability();
+    if (svc._enabled) await coordinator.requestReconcile(ReconcileTrigger.boot);
   }
 
-  /// True when iCloud is signed in (nil ubiquity token = logged out → sync
-  /// would silently no-op, so the UI disables the toggle).
-  Future<bool> isAvailable() async {
-    if (!_supported) return false;
-    try {
-      return (await _channel.invokeMethod<bool>('isAvailable')) ?? false;
-    } catch (e) {
-      appLogger.w('iCloud isAvailable failed', error: e);
-      return false;
-    }
+  AppLifecycleListener? _lifecycle;
+
+  /// Tell the engine which server ids identify the same server everywhere.
+  ///
+  /// Called once the connection registry exists and again whenever connections
+  /// change. Until then nothing library-scoped is transported: a server id
+  /// whose origin is unknown is treated as device-local, not as portable.
+  void updatePortableServerIds(Iterable<Connection> connections) {
+    _coordinator.serverIdPortability = PortableServerIds.fromConnections(connections).predicate;
   }
 
-  /// Turn sync on: persist the toggle, then pull remote (remote wins) and
-  /// upload locally-unique keys.
+  /// True when iCloud is signed in. A nil ubiquity token means logged out, and
+  /// sync would silently no-op, so the UI disables the toggle.
+  Future<bool> isAvailable() async => await _coordinator.transport?.isAvailable() ?? false;
+
+  /// Turn sync on: persist the toggle, then pull remote and upload local keys.
   Future<void> enable() async {
     await _settings.write(SettingsService.icloudSyncEnabled, true);
-    await _activate();
+    await _coordinator.refreshAvailability();
+    await _coordinator.requestReconcile(ReconcileTrigger.enabled);
   }
 
-  /// Turn sync off: persist the toggle and stop listening. KVS contents are
+  /// Turn sync off: persist the toggle and stop listening. Store contents are
   /// left intact so re-enabling later still merges.
   Future<void> disable() async {
     await _settings.write(SettingsService.icloudSyncEnabled, false);
-    await _eventSub?.cancel();
-    _eventSub = null;
+    await _coordinator.dispose();
+    await _coordinator.refreshAvailability();
   }
 
-  /// Enable-flow: subscribe → remote wins → upload local-unique keys.
-  Future<void> _activate() async {
-    _subscribe();
-    try {
-      await _channel.invokeMethod('synchronize');
-      await _applyAllRemote();
-      await pushAll();
-    } catch (e, st) {
-      appLogger.e('iCloud sync activation failed', error: e, stackTrace: st);
-    }
+  /// Reconcile after a bulk local change. Import and reset are the two: both
+  /// rewrote local state deliberately, so neither pulls the store first.
+  Future<void> pushAll({ReconcileTrigger trigger = ReconcileTrigger.imported}) =>
+      _coordinator.requestReconcile(trigger);
+
+  /// [pushAll] only when the toggle is on.
+  Future<void> pushAllIfEnabled({ReconcileTrigger trigger = ReconcileTrigger.imported}) async {
+    if (_enabled) await pushAll(trigger: trigger);
   }
 
-  void _subscribe() {
-    _eventSub ??= _events.receiveBroadcastStream().listen(
-      _onRemoteEvent,
-      onError: (Object e) => appLogger.w('iCloud KVS event error', error: e),
-    );
-  }
-
-  // ---- Remote → local -------------------------------------------------------
-
-  Future<void> _onRemoteEvent(dynamic event) async {
-    if (!_enabled || event is! Map) return;
-    final reason = event['reason'] as int? ?? -1;
-    switch (reason) {
-      case _reasonQuotaViolation:
-        appLogger.w('iCloud KVS quota exceeded — some settings may not sync');
-        return;
-      case _reasonAccountChange:
-        // iCloud account switched — re-apply everything from the new store.
-        await _applyAllRemote();
-        return;
-      case _reasonServerChange:
-      case _reasonInitialSync:
-      default:
-        final keys = (event['changedKeys'] as List?)?.cast<String>() ?? const <String>[];
-        if (keys.isNotEmpty) await _applyRemoteKeys(keys);
-    }
-  }
-
-  Future<void> _applyAllRemote() async {
-    final all = await _getAll();
-    if (all != null && all.isNotEmpty) await _applyEntries(all);
-  }
-
-  Future<void> _applyRemoteKeys(List<String> keys) async {
-    final all = await _getAll();
-    // null = channel read failed. Do NOT infer removals from a failed read —
-    // absent-in-`all` only means "removed remotely" when the read succeeded,
-    // otherwise we'd wipe local settings on a transient channel error.
-    if (all == null) return;
-    final entries = <String, String?>{for (final k in keys) k: all[k]};
-    await _applyEntries(entries);
-  }
-
-  /// Apply KVS base-key entries to local prefs. `null` value = remove.
-  /// Bypasses [BaseSharedPreferencesService.write] so it never echoes to KVS.
-  Future<void> _applyEntries(Map<String, String?> entries) async {
-    final uuid = _activeUserScope();
-    final prefs = _settings.prefs;
-    _applyingRemote = true;
-    var changed = false;
-    try {
-      for (final entry in entries.entries) {
-        final baseKey = entry.key;
-        if (baseKey.startsWith('__')) continue; // meta keys
-        if (!SettingsExportService.isExportable(baseKey)) continue;
-        final scoped = SettingsExportService.isUserScopedBaseKey(baseKey);
-        if (scoped && (uuid == null || uuid.isEmpty)) continue; // no user to scope to
-        final targetKey = scoped ? SettingsExportService.syncTargetKey(baseKey, uuid!) : baseKey;
-
-        final raw = entry.value;
-        if (raw == null) {
-          await prefs.remove(targetKey);
-          changed = true;
-          continue;
-        }
-        final decoded = _decode(raw);
-        if (decoded == null) continue;
-        var value = decoded.$2;
-        // Local playback progress: merge instead of overwrite, so progress
-        // made on another device can never be rolled back by a stale writer
-        // (progress = max, watched = OR — same semantics as the server sync).
-        if (isLocalProgressKey(baseKey) && value is String) {
-          value = mergeProgressMaps(
-            prefs.getString(targetKey),
-            value,
-            watchedMap: baseKey.startsWith('local_watched_'),
-          );
-        }
-        final ok = await SettingsExportService.writeTyped(prefs, targetKey, decoded.$1, value);
-        if (ok) changed = true;
-      }
-    } finally {
-      _applyingRemote = false;
-    }
-    if (changed) {
-      _settings.refreshListenables();
-      onRemoteChangesApplied?.call();
-    }
-  }
-
-  // ---- Local → remote -------------------------------------------------------
-
-  /// Local-write hook. Mirrors one eligible key to KVS. Skips remote-apply
-  /// echoes, disabled state, other users' scopes and denylisted keys.
-  void _onLocalWrite(String fullKey) {
-    if (_applyingRemote || !_enabled) return;
-    final baseKey = SettingsExportService.syncBaseKey(fullKey, currentUserUuid: _activeUserScope());
-    if (baseKey == null) return;
-    final entry = SettingsExportService.encodeValue(_settings.prefs.get(fullKey));
-    if (entry == null) return;
-    final encoded = json.encode(entry);
-    // KVS quota is 1MB total: a huge local-library progress map must not
-    // starve every other setting. Skip oversized values; the map keeps
-    // syncing again as soon as it shrinks below the cap.
-    if (encoded.length > maxValueBytes) {
-      appLogger.w('iCloud sync: skipping $baseKey (${encoded.length} bytes > $maxValueBytes)');
-      return;
-    }
-    unawaited(_set(baseKey, encoded));
-  }
-
-  /// Per-value size cap (KVS totals 1MB across all keys).
-  static const int maxValueBytes = 100 * 1024;
+  // ---- Legacy inbound compatibility ------------------------------------------
 
   static bool isLocalProgressKey(String baseKey) =>
       baseKey.startsWith('local_progress_') || baseKey.startsWith('local_watched_');
 
-  /// Merge two JSON progress maps: progress = max, watched = OR. Unknown
-  /// items from both sides are kept; corrupt input falls back to [local].
-  static String mergeProgressMaps(String? local, String incoming, {required bool watchedMap}) {
-    try {
-      final localMap = local == null ? <String, dynamic>{} : json.decode(local) as Map<String, dynamic>;
-      final incomingMap = json.decode(incoming) as Map<String, dynamic>;
-      final merged = Map<String, dynamic>.from(localMap);
-      incomingMap.forEach((key, value) {
-        final existing = merged[key];
-        if (watchedMap) {
-          merged[key] = (existing == true) || (value == true);
-        } else {
-          final a = existing is num ? existing : 0;
-          final b = value is num ? value : 0;
-          merged[key] = a > b ? a : b;
-        }
-      });
-      return json.encode(merged);
-    } catch (_) {
-      return local ?? incoming;
-    }
-  }
+  /// Merge two JSON progress maps: progress = max, watched = OR.
+  ///
+  /// **Legacy inbound compatibility only.** This never ran on the path it was
+  /// written for. `local_progress_*` and `local_watched_*` are produced by
+  /// `LocalFolderClient`, which uses the legacy `SharedPreferences.getInstance()`
+  /// store, while the sync engine reads the `SharedPreferencesWithCache` store.
+  /// The legacy migration copies once and deletes nothing, so the two have been
+  /// separate ever since: outgoing, the live value is not visible to the push,
+  /// and incoming, the merged result is written where nothing reads it.
+  ///
+  /// It stays only to read progress maps that older Pleya versions already put
+  /// in the cloud without corrupting them. Removal condition: once the sync
+  /// format moves to v2 and no supported client still writes v1 progress
+  /// entries, this and [isLocalProgressKey] go, together with the keys'
+  /// runtime-cache registrations.
+  ///
+  /// The behaviour itself moved to the merge registry, where it is a registered
+  /// family like any other. This is the call site's name for it.
+  static String mergeProgressMaps(String? local, String incoming, {required bool watchedMap}) =>
+      mergeProgressMapJson(local, incoming, watchedMap: watchedMap);
 
-  /// Push every eligible local key to KVS and drop KVS keys that no longer
-  /// exist locally (propagates removals and settings-reset). Used by the
-  /// enable-merge and by bulk paths that bypass [write] (import/reset).
-  Future<void> pushAll() async {
-    if (!_supported) return;
-    final uuid = _activeUserScope();
-    final prefs = _settings.prefs;
-
-    final eligible = <String, String>{};
-    for (final fullKey in prefs.keys) {
-      final baseKey = SettingsExportService.syncBaseKey(fullKey, currentUserUuid: uuid);
-      if (baseKey == null) continue;
-      final entry = SettingsExportService.encodeValue(prefs.get(fullKey));
-      if (entry == null) continue;
-      eligible[baseKey] = json.encode(entry);
-    }
-
-    await _set(metaVersionKey, json.encode({'type': 'int', 'value': formatVersion}));
-    for (final e in eligible.entries) {
-      await _set(e.key, e.value);
-    }
-
-    final remote = await _getAll();
-    if (remote != null) {
-      for (final k in remote.keys) {
-        if (k.startsWith('__')) continue;
-        if (eligible.containsKey(k)) continue;
-        // With no signed-in user, a user-scoped cloud key belongs to some
-        // other account — absence locally means "not mine", not "deleted".
-        // Pruning it here would wipe another device's per-user settings.
-        if ((uuid == null || uuid.isEmpty) && SettingsExportService.isUserScopedBaseKey(k)) continue;
-        await _remove(k);
-      }
-    }
-
-    try {
-      await _channel.invokeMethod('synchronize');
-    } catch (_) {
-      // best-effort flush; the OS coalesces uploads anyway
-    }
-  }
-
-  /// [pushAll] only when the toggle is on. Called after bulk paths that bypass
-  /// [write] (settings import, reset).
-  Future<void> pushAllIfEnabled() async {
-    if (_enabled) await pushAll();
-  }
-
-  // ---- Channel plumbing -----------------------------------------------------
-
-  /// Returns the full KVS contents, or null when the channel read fails.
-  /// Callers must treat null as "unknown", never as "empty" — see
-  /// [_applyRemoteKeys] and [pushAll] for why the distinction matters.
-  Future<Map<String, String>?> _getAll() async {
-    try {
-      return (await _channel.invokeMapMethod<String, String>('getAll')) ?? const {};
-    } catch (e) {
-      appLogger.w('iCloud getAll failed', error: e);
-      return null;
-    }
-  }
-
-  Future<void> _set(String key, String value) async {
-    try {
-      await _channel.invokeMethod('set', {'key': key, 'value': value});
-    } catch (e) {
-      appLogger.w('iCloud set failed for $key', error: e);
-    }
-  }
-
-  Future<void> _remove(String key) async {
-    try {
-      await _channel.invokeMethod('remove', {'key': key});
-    } catch (e) {
-      appLogger.w('iCloud remove failed for $key', error: e);
-    }
-  }
-
-  /// Decode a stored `{"type":..,"value":..}` JSON string to a (type, value)
-  /// pair, or null when malformed.
-  (String, Object?)? _decode(String jsonStr) {
-    try {
-      final m = json.decode(jsonStr);
-      if (m is! Map) return null;
-      final type = m['type'];
-      if (type is! String) return null;
-      return (type, m['value']);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  // ---- Testing --------------------------------------------------------------
+  // ---- Testing ---------------------------------------------------------------
 
   @visibleForTesting
   static ICloudSyncService debugCreate({
     required SettingsService settings,
     String? Function()? activeUserScope,
     VoidCallback? onRemoteChangesApplied,
+    PreferenceTransport? transport,
+    String deviceId = 'test-device',
   }) {
-    debugForceSupported = true;
-    final svc = ICloudSyncService._(settings, activeUserScope ?? () => null)
-      ..onRemoteChangesApplied = onRemoteChangesApplied;
+    ICloudKvsTransport.debugForceSupported = true;
+    final scope = activeUserScope ?? () => null;
+    final coordinator = PreferenceSyncCoordinator(
+      prefs: settings.prefs,
+      // Tests hand in a raw scope value rather than a profile id. A Plex Home
+      // UUID and a bare scope string are the same thing to the storage layer,
+      // so wrap it in the profile-id shape the coordinator expects.
+      activeProfileId: () {
+        final s = scope();
+        return s == null || s.isEmpty ? null : s;
+      },
+      enabled: () => settings.read(SettingsService.icloudSyncEnabled),
+      deviceId: deviceId,
+      transport: transport ?? ICloudKvsTransport(),
+      onRemoteChangesApplied: onRemoteChangesApplied,
+      onLocalStateChanged: settings.refreshListenables,
+    )..onRuntimeRefresh = PreferenceRefreshBus.instance.invalidate;
+    final svc = ICloudSyncService._(settings, coordinator);
     _instance = svc;
-    BaseSharedPreferencesService.onKeyWritten = svc._onLocalWrite;
+    BaseSharedPreferencesService.onMutation = coordinator.apply;
     return svc;
   }
 
   /// Drive the remote-event path directly (fakes an EventChannel emission).
   @visibleForTesting
-  Future<void> debugHandleEvent(Map<String, dynamic> event) => _onRemoteEvent(event);
+  Future<void> debugHandleEvent(Map<String, dynamic> event) async {
+    if (!_enabled) return;
+    final change = ICloudKvsTransport.translateEvent(event);
+    if (change == null) return;
+    switch (change.reason) {
+      case RemoteChangeReason.quotaExceeded:
+        return;
+      case RemoteChangeReason.accountChanged:
+        await _coordinator.refreshAvailability();
+        await _coordinator.requestReconcile(ReconcileTrigger.accountChanged);
+      case RemoteChangeReason.serverChange:
+      case RemoteChangeReason.initialSync:
+        if (change.changedKeys.isNotEmpty) await _coordinator.applyRemoteKeys(change.changedKeys);
+    }
+  }
 
   @visibleForTesting
   static void debugReset() {
-    _instance?._eventSub?.cancel();
+    _instance?._lifecycle?.dispose();
+    unawaited(_instance?._coordinator.dispose());
     _instance = null;
-    debugForceSupported = false;
-    BaseSharedPreferencesService.onKeyWritten = null;
+    ICloudKvsTransport.debugForceSupported = false;
+    BaseSharedPreferencesService.onMutation = null;
   }
 }

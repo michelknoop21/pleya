@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences/util/legacy_to_async_migration_util.dart';
 
+import 'preferences/preference_mutation.dart';
+
 /// Base class for services that use SharedPreferences singleton pattern.
 ///
 /// This class handles the boilerplate for singleton initialization and
@@ -98,19 +100,43 @@ abstract class BaseSharedPreferencesService {
   /// Read a value typed by [pref]; falls back to its `defaultValue`.
   T read<T>(Pref<T> pref) => pref.readFrom(this);
 
-  /// Invoked with the pref key at the end of every [write]. The single
-  /// choke-point for settings writes — [ICloudSyncService] uses it to mirror
-  /// eligible keys to iCloud. Not called for direct `prefs.setX(...)` writes
-  /// (import/reset/remote-apply), which push through [pushAll] instead.
-  static void Function(String key)? onKeyWritten;
+  /// The single choke-point for preference changes.
+  ///
+  /// This used to be `void Function(String key)`, and that shape could not
+  /// carry the job. A bare key cannot say whether the value was set or removed,
+  /// so the consumer read it back, found `null` for a removal, and dropped it:
+  /// that is why a locally deleted preference never reached iCloud. A bare key
+  /// also cannot say who caused the change, so a one-time legacy migration
+  /// looked exactly like the user picking something. And returning `void`
+  /// forced the consumer to start its work with `unawaited(...)`, which threw
+  /// away every transport error.
+  ///
+  /// The replacement carries operation and source, and returns a future the
+  /// writer awaits.
+  static Future<void> Function(PreferenceMutation mutation)? onMutation;
+
+  /// Report a change made outside [write] (a raw `prefs.setX`/`remove`), so it
+  /// still travels the one pipeline. [source] is not optional on purpose:
+  /// deciding what kind of change this is belongs at the call site, which is
+  /// the only place that knows.
+  static Future<void> notifyMutation(PreferenceMutation mutation) async {
+    final hook = onMutation;
+    if (hook == null) return;
+    await hook(mutation);
+  }
 
   /// Write a value typed by [pref]. Pushes the post-transform value into any
   /// listenable previously vended for this key so widgets rebuild automatically.
-  Future<void> write<T>(Pref<T> pref, T value) async {
+  Future<void> write<T>(Pref<T> pref, T value, {PreferenceSource source = PreferenceSource.local}) async {
     await pref.writeTo(this, value);
     final n = _listenables[pref.key];
     if (n != null) (n as ValueNotifier<T>).value = read(pref);
-    onKeyWritten?.call(pref.key);
+    final stored = _cache.get(pref.key);
+    await notifyMutation(
+      stored == null
+          ? PreferenceMutation.remove(pref.key, source: source)
+          : PreferenceMutation.set(pref.key, stored, source: source),
+    );
   }
 
   /// Lazy per-key [ValueNotifier]. Use with [ValueListenableBuilder] to rebuild

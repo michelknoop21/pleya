@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../media/media_hub.dart';
+import '../services/preferences/preference_refresh.dart';
 import '../services/storage_service.dart';
 
 /// Stable identity of a home row: server-scoped, prefers the backend's
@@ -23,9 +26,35 @@ class HomeLayoutProvider extends ChangeNotifier with DisposableChangeNotifierMix
   bool _isInitialized = false;
   Future<void>? _initFuture;
 
-  HomeLayoutProvider({StorageService? storageService, this.profileId}) {
+  HomeLayoutProvider({StorageService? storageService, this.profileId, PreferenceRefreshBus? refreshBus}) {
     _storageService = storageService;
     _initFuture = _initialize();
+    _refreshSub = (refreshBus ?? PreferenceRefreshBus.instance).changes.listen((families) {
+      if (families.contains(PreferenceRefreshFamily.homeLayout)) unawaited(refresh());
+    });
+  }
+
+  StreamSubscription<Set<PreferenceRefreshFamily>>? _refreshSub;
+
+  /// Re-read the layout from storage.
+  ///
+  /// Separate from [_initialize] because that one returns early once
+  /// `_isInitialized` is set, which is right for the constructor race it
+  /// guards and wrong for every later reload: an import, a reset or a remote
+  /// apply left new values in storage that this provider would never read.
+  Future<void> refresh() async {
+    final storage = _storageService ??= await StorageService.getInstance();
+    _hidden = storage.getHiddenHomeRows(profileId);
+    _order = storage.getHomeRowOrder(profileId);
+    _isInitialized = true;
+    safeNotifyListeners();
+  }
+
+  @override
+  void dispose() {
+    unawaited(_refreshSub?.cancel());
+    _refreshSub = null;
+    super.dispose();
   }
 
   Future<void> ensureInitialized() => _initFuture ?? _initialize();

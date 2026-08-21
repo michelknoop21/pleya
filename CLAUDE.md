@@ -7,7 +7,7 @@ Pleya is a Flutter client for **Plex and Jellyfin** across desktop, mobile, and 
 ## Commands
 ```bash
 scripts/codegen.sh                 # slang + build_runner — run after editing models or i18n
-dart run slang                     # regenerate translations only (after strings.i18n.json)
+dart run slang                     # regenerate translations only (after en.i18n.json)
 flutter analyze                    # static analysis (warnings = CI failure)
 flutter test                       # all tests
 flutter test test/path/to/foo_test.dart          # single test file
@@ -44,7 +44,7 @@ apart, anders is een veranderde `.g.dart` niet meer toe te wijzen.
 de voorwaarden waaronder de pin weer los mag.
 
 ## Codegen (gotcha — fails CI if skipped)
-Models use `freezed` + `json_serializable`; i18n uses `slang`. After editing any `@freezed` model or `strings.i18n.json`, run `scripts/codegen.sh`. CI fails if a `.dart` source is newer than its generated `.g.dart`/`.freezed.dart`, and `flutter analyze` **warnings are treated as failures**.
+Models use `freezed` + `json_serializable`; i18n uses `slang`. After editing any `@freezed` model or a `lib/i18n/*.i18n.json` file (the base locale is `lib/i18n/en.i18n.json`; `strings.g.dart` is the generated output), run `scripts/codegen.sh`. CI fails if a `.dart` source is newer than its generated `.g.dart`/`.freezed.dart`, and `flutter analyze` **warnings are treated as failures**.
 
 ## Architecture (big picture)
 - **Dual backend.** Plex and Jellyfin are parallel implementations, not a shared interface: `services/plex_client*` + `plex_mappers` vs `services/jellyfin_client*` + `jellyfin_mappers`. Each has its own auth service and API cache; mappers convert backend responses into the shared `lib/models/` types the UI consumes. When adding a feature, expect to touch both sides.

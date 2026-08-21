@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../media/media_library.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../services/data_aggregation_service.dart';
+import '../services/preferences/preference_refresh.dart';
 import '../services/storage_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/content_utils.dart';
@@ -16,7 +19,14 @@ enum LibrariesLoadState { initial, loading, loaded, error }
 /// Both SideNavigationRail and LibrariesScreen consume this provider
 /// instead of independently fetching library data.
 class LibrariesProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
-  LibrariesProvider({this._storageService, this._multiServer}) {
+  LibrariesProvider({this._storageService, this._multiServer, PreferenceRefreshBus? refreshBus}) {
+    // The order is baked into [_libraries] at load time, so a change to it has
+    // to re-sort the list that is already there. Reloading from the servers
+    // would work too and would cost a network round trip to sort a list this
+    // device is already holding.
+    _refreshSub = (refreshBus ?? PreferenceRefreshBus.instance).changes.listen((families) {
+      if (families.contains(PreferenceRefreshFamily.libraryOrder)) unawaited(reapplyOrder());
+    });
     // Reload libraries when a new server comes online. Servers bind in waves
     // on sign-in / profile switch and slow ones reconnect after the initial
     // load; without this they stay missing from the sidebar until a re-switch
@@ -236,6 +246,27 @@ class LibrariesProvider extends ChangeNotifier with DisposableChangeNotifierMixi
     await loadLibraries();
   }
 
+  StreamSubscription<Set<PreferenceRefreshFamily>>? _refreshSub;
+
+  /// Re-sort the libraries already loaded, from the order in storage.
+  ///
+  /// No network: the set of libraries has not changed, only their sequence.
+  Future<void> reapplyOrder() async {
+    if (_libraries.isEmpty) return;
+    final storage = _storageService ??= await StorageService.getInstance();
+    _libraries = _applyLibraryOrder(_libraries, storage.getLibraryOrder());
+    safeNotifyListeners();
+  }
+
+  /// Seed the loaded list without a backend, so the order path can be tested
+  /// for what it does to the list rather than for what it fetches.
+  @visibleForTesting
+  void debugSetLibraries(List<MediaLibrary> libraries) {
+    _libraries = List.of(libraries);
+    _loadState = LibrariesLoadState.loaded;
+    safeNotifyListeners();
+  }
+
   /// Update the library order and persist it.
   Future<void> updateLibraryOrder(List<MediaLibrary> orderedLibraries) async {
     _libraries = List.from(orderedLibraries);
@@ -264,6 +295,8 @@ class LibrariesProvider extends ChangeNotifier with DisposableChangeNotifierMixi
   @override
   void dispose() {
     _multiServer?.removeOnlineServersListener(syncToOnlineServers);
+    unawaited(_refreshSub?.cancel());
+    _refreshSub = null;
     super.dispose();
   }
 

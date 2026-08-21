@@ -53,6 +53,9 @@ import '../services/playback_initialization_service.dart';
 import '../services/playback_context.dart';
 import '../services/playback_session.dart';
 import '../services/playback_progress_tracker.dart';
+import '../services/playback_lifecycle_report_decision.dart';
+import '../services/playback_resume_resolver.dart';
+import '../services/playback_write_authority.dart';
 import '../services/playback_source_resolver.dart';
 import '../services/offline_watch_sync_service.dart';
 import '../services/display_mode_service.dart';
@@ -233,6 +236,12 @@ class VideoPlayerScreen extends StatefulWidget {
   final String? selectedMediaSourceId;
   final bool isOffline;
 
+  /// Whether [metadata]'s view offset was read from the backend during this
+  /// launch, rather than carried in from a list or detail snapshot. Feeds
+  /// [BackendResumeProgress.isFresh]; a stale offset must not outrank newer
+  /// local progress.
+  final bool resumeProgressIsFresh;
+
   /// Quality preset override for this playback. When `null`, the screen uses
   /// the user's [SettingsService.defaultQualityPreset].
   final TranscodeQualityPreset? selectedQualityPreset;
@@ -257,6 +266,7 @@ class VideoPlayerScreen extends StatefulWidget {
     this.selectedMediaIndex = 0,
     this.selectedMediaSourceId,
     this.isOffline = false,
+    this.resumeProgressIsFresh = false,
     this.selectedQualityPreset,
     this.selectedAudioStreamId,
     this.live,
@@ -455,6 +465,10 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
 
   MediaControlsManager? _mediaControlsManager;
   PlaybackProgressTracker? _progressTracker;
+
+  /// Local observation of whether this player may still write watch state.
+  /// Rebuilt per tracked item alongside [_progressTracker].
+  ObservedPlaybackAuthority? _playbackWriteAuthority;
   VideoFilterManager? _videoFilterManager;
   VideoPIPManager? _videoPIPManager;
   ShaderService? _shaderService;
@@ -696,6 +710,13 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         break;
       case AppLifecycleState.detached:
         _recordLifecycleState('detached');
+        // Safety net for a process teardown that never went through the exit
+        // flow. Same conditions as every other lifecycle write, so a paused
+        // player at an unchanged position still says nothing.
+        _enqueueLifecycleTransition(
+          'detached',
+          () => _flushFinalPlaybackReportForLifecycle('detached', wasPlaying: player?.state.isActive ?? false),
+        );
         break;
     }
   }
@@ -1217,8 +1238,12 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
 
     // Stop progress tracking and send final state. Normal back navigation
     // awaits this before popping; dispose keeps a fallback for externally
-    // removed routes where dispose() cannot await.
-    unawaited(_sendStoppedProgressOnce());
+    // removed routes where dispose() cannot await. The same conditions apply
+    // here: a revoked authority, or a player that neither moved nor was
+    // playing, writes nothing.
+    if (_shouldFlushFinalPlaybackReport('dispose', wasPlaying: player?.state.isActive ?? false)) {
+      unawaited(_sendStoppedProgressOnce());
+    }
     _progressTracker?.stopTracking();
     _progressTracker?.dispose();
     _sendLiveTimeline('stopped');

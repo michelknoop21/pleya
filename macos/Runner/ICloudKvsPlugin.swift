@@ -31,7 +31,24 @@ final class ICloudKvsPlugin: NSObject, FlutterPlugin {
       selector: #selector(storeDidChangeExternally(_:)),
       name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
       object: store)
+    // Signing out of iCloud, or switching account, is not reliably a store
+    // change: the store belongs to the account that just went away. Without
+    // this the Dart side keeps reporting the sync as healthy while every write
+    // goes nowhere.
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(ubiquityIdentityDidChange(_:)),
+      name: .NSUbiquityIdentityDidChange,
+      object: nil)
     store.synchronize()
+  }
+
+  deinit {
+    // The registrar keeps this plugin for the life of the engine, so in a
+    // single-engine app this never runs. It exists for the case that does not
+    // hold: a second engine registers a second instance, and two live
+    // observers would deliver every change twice.
+    NotificationCenter.default.removeObserver(self)
   }
 
   func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -66,6 +83,13 @@ final class ICloudKvsPlugin: NSObject, FlutterPlugin {
     default:
       result(FlutterMethodNotImplemented)
     }
+  }
+
+  /// The iCloud account itself changed. Reported under the store's own
+  /// account-change reason, so the Dart side needs no second vocabulary for it.
+  @objc private func ubiquityIdentityDidChange(_ notification: Notification) {
+    guard let sink = eventSink else { return }
+    sink(["reason": NSUbiquitousKeyValueStoreAccountChange, "changedKeys": [String]()])
   }
 
   @objc private func storeDidChangeExternally(_ notification: Notification) {

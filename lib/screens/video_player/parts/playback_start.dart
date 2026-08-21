@@ -206,6 +206,9 @@ extension _VideoPlayerPlaybackStartMethods on VideoPlayerScreenState {
           metadata: _currentMetadata,
           isOffline: _isOfflinePlayback,
           offlineWatchService: offlineWatchService,
+          // Only the launch flow can have refetched the item; the reload flows
+          // below carry a snapshot that was fetched earlier.
+          backendProgressIsFresh: widget.resumeProgressIsFresh,
         );
         if (!mounted || player != currentPlayer) return;
 

@@ -139,7 +139,8 @@ This project uses `slang` for internationalization with JSON files.
 
 ### Adding New Strings
 
-1. Add your string to `lib/i18n/strings.i18n.json`:
+1. Add your string to the base locale, `lib/i18n/en.i18n.json` (`slang.yaml` reads every
+   `lib/i18n/*.i18n.json`; `strings.g.dart` is the generated output, not a source):
    ```json
    {
      "section": {
