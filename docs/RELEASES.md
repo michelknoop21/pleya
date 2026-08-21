@@ -24,6 +24,7 @@ under `Notes`.
 
 ### Fixed
 - prefer 16:9 backdrop over square art on narrow iPhone hero
+- import liet elke rij vallen en telde afleveringen dubbel
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 234 · 20 August 2026
