@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:pleya/media/ids.dart';
 
 import 'package:drift/native.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -418,6 +419,9 @@ void main() {
 
       await tracker.sendProgress('playing');
       await Future<void>.delayed(Duration.zero);
+      // The position has to move: a report that repeats the previous state and
+      // position is now dropped on purpose.
+      player.position = const Duration(seconds: 15);
       await tracker.sendProgress('playing');
       await Future<void>.delayed(Duration.zero);
       await tracker.sendProgress('stopped');
@@ -554,6 +558,9 @@ void main() {
 
       await tracker.sendProgress('playing');
       await Future<void>.delayed(Duration.zero);
+      // Second report needs a moved position; a repeat of the same state and
+      // position no longer reaches the backend.
+      player.position = player.state.position + const Duration(seconds: 10);
       await tracker.sendProgress('playing');
       await Future<void>.delayed(Duration.zero);
 
@@ -597,6 +604,9 @@ void main() {
 
       await tracker.sendProgress('playing');
       await Future<void>.delayed(Duration.zero);
+      // Second report needs a moved position; a repeat of the same state and
+      // position no longer reaches the backend.
+      player.position = player.state.position + const Duration(seconds: 10);
       await tracker.sendProgress('playing');
       await Future<void>.delayed(Duration.zero);
 
@@ -768,7 +778,9 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(precise.markWatchedAttempts, 1);
 
-      // Retry — markAsWatched now succeeds.
+      // Retry — markAsWatched now succeeds. The position moves because a
+      // report repeating the previous state and position is suppressed.
+      player.position = player.state.position + const Duration(seconds: 1);
       await tracker2.sendProgress('playing');
       await Future<void>.delayed(Duration.zero);
       expect(precise.markWatchedAttempts, 2);
@@ -997,6 +1009,530 @@ void main() {
       tracker.dispose();
       // Calling dispose again must not throw.
       expect(tracker.dispose, returnsNormally);
+    });
+  });
+
+  // ============================================================
+  // Report suppression, seek reporting, and the removed paused heartbeat
+  // ============================================================
+
+  group('report suppression', () {
+    test('a repeat of the same state and position is not written', () async {
+      final client = _FakePlexClient();
+      final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+      final tracker = PlaybackProgressTracker(client: client, metadata: _meta(), player: player, isOffline: false);
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(client.updateProgressCalls.length, 1);
+    });
+
+    test('sub-second drift counts as the same position', () async {
+      final client = _FakePlexClient();
+      final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+      final tracker = PlaybackProgressTracker(client: client, metadata: _meta(), player: player, isOffline: false);
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+      player.position = const Duration(milliseconds: 30400);
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(client.updateProgressCalls.length, 1);
+    });
+
+    test('a moved position is written', () async {
+      final client = _FakePlexClient();
+      final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+      final tracker = PlaybackProgressTracker(client: client, metadata: _meta(), player: player, isOffline: false);
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+      player.position = const Duration(seconds: 45);
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(client.updateProgressCalls.map((c) => c.time), [30000, 45000]);
+    });
+
+    test('a state change at the same position is written once', () async {
+      final client = _FakePlexClient();
+      final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+      final tracker = PlaybackProgressTracker(client: client, metadata: _meta(), player: player, isOffline: false);
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+      await tracker.sendProgress('paused');
+      await Future<void>.delayed(Duration.zero);
+      await tracker.sendProgress('paused');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(client.updateProgressCalls.map((c) => c.state), ['playing', 'paused']);
+    });
+
+    test('force writes a repeat the caller knows is meaningful', () async {
+      final client = _FakePlexClient();
+      final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+      final tracker = PlaybackProgressTracker(client: client, metadata: _meta(), player: player, isOffline: false);
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+      await tracker.sendProgress('playing', force: true);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(client.updateProgressCalls.length, 2);
+    });
+
+    test('hasReportablePositionChange reflects movement since the last report', () async {
+      final client = _FakePlexClient();
+      final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+      final tracker = PlaybackProgressTracker(client: client, metadata: _meta(), player: player, isOffline: false);
+      addTearDown(tracker.dispose);
+
+      expect(tracker.hasReportablePositionChange, isTrue, reason: 'nothing reported yet');
+
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+      expect(tracker.hasReportablePositionChange, isFalse);
+
+      player.position = const Duration(seconds: 45);
+      expect(tracker.hasReportablePositionChange, isTrue);
+    });
+  });
+
+  group('paused heartbeat removal', () {
+    test('a paused player writes nothing on any number of ticks', () {
+      fakeAsync((async) {
+        final client = _FakePlexClient();
+        final player = _FakePlayer(
+          position: const Duration(seconds: 30),
+          duration: const Duration(minutes: 10),
+          playing: false,
+        );
+        final tracker = PlaybackProgressTracker(
+          client: client,
+          metadata: _meta(),
+          player: player,
+          isOffline: false,
+          updateInterval: const Duration(seconds: 10),
+        );
+
+        tracker.startTracking();
+        // The old heartbeat fired every sixth tick (~60s). Ten minutes of
+        // ticks is ten chances for it to write the same stale position.
+        async.elapse(const Duration(minutes: 10));
+        tracker.dispose();
+
+        expect(client.updateProgressCalls, isEmpty);
+      });
+    });
+
+    test('Mutiny: a paused player never re-reports its older position', () {
+      // MacBook paused with 1:03 remaining; the Apple TV plays on. Before the
+      // change, the paused MacBook wrote 'paused' at its own position every
+      // ~60 seconds, and each of those writes moved the server back.
+      fakeAsync((async) {
+        final client = _FakePlexClient();
+        const runtime = Duration(hours: 1, minutes: 40);
+        final macbook = _FakePlayer(position: runtime - const Duration(minutes: 63), duration: runtime, playing: false);
+        final tracker = PlaybackProgressTracker(
+          client: client,
+          metadata: _meta(),
+          player: macbook,
+          isOffline: false,
+          updateInterval: const Duration(seconds: 10),
+        );
+
+        tracker.startTracking();
+        async.elapse(const Duration(minutes: 30));
+        tracker.dispose();
+
+        expect(client.updateProgressCalls, isEmpty);
+      });
+    });
+
+    test('an active player still ticks', () {
+      fakeAsync((async) {
+        final client = _FakePlexClient();
+        final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+        final tracker = PlaybackProgressTracker(
+          client: client,
+          metadata: _meta(),
+          player: player,
+          isOffline: false,
+          updateInterval: const Duration(seconds: 10),
+        );
+
+        tracker.startTracking();
+        async.flushMicrotasks();
+        player.position = const Duration(seconds: 40);
+        async.elapse(const Duration(seconds: 10));
+        async.flushMicrotasks();
+        tracker.dispose();
+
+        expect(client.updateProgressCalls.map((c) => c.time), [30000, 40000]);
+      });
+    });
+  });
+
+  group('seek reporting', () {
+    test('a seek reports after the trailing debounce, without waiting for a tick', () {
+      fakeAsync((async) {
+        final client = _FakePlexClient();
+        final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+        final tracker = PlaybackProgressTracker(
+          client: client,
+          metadata: _meta(),
+          player: player,
+          isOffline: false,
+          updateInterval: const Duration(seconds: 10),
+        );
+        addTearDown(tracker.dispose);
+
+        tracker.startTracking();
+        async.flushMicrotasks();
+        client.updateProgressCalls.clear();
+
+        player.position = const Duration(minutes: 5);
+        tracker.onSeek();
+        async.elapse(const Duration(milliseconds: 600));
+        async.flushMicrotasks();
+
+        expect(client.updateProgressCalls.map((c) => c.time), [300000]);
+      });
+    });
+
+    test('a scrub gesture collapses into one report', () {
+      fakeAsync((async) {
+        final client = _FakePlexClient();
+        final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+        final tracker = PlaybackProgressTracker(
+          client: client,
+          metadata: _meta(),
+          player: player,
+          isOffline: false,
+          updateInterval: const Duration(seconds: 10),
+        );
+        addTearDown(tracker.dispose);
+
+        tracker.startTracking();
+        async.flushMicrotasks();
+        client.updateProgressCalls.clear();
+
+        for (final minute in [2, 3, 4, 5]) {
+          player.position = Duration(minutes: minute);
+          tracker.onSeek();
+          async.elapse(const Duration(milliseconds: 100));
+        }
+        async.elapse(const Duration(milliseconds: 600));
+        async.flushMicrotasks();
+
+        expect(client.updateProgressCalls.map((c) => c.time), [300000]);
+      });
+    });
+
+    test('a seek resets the periodic timer instead of firing alongside it', () {
+      fakeAsync((async) {
+        final client = _FakePlexClient();
+        final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+        final tracker = PlaybackProgressTracker(
+          client: client,
+          metadata: _meta(),
+          player: player,
+          isOffline: false,
+          updateInterval: const Duration(seconds: 10),
+        );
+        addTearDown(tracker.dispose);
+
+        tracker.startTracking();
+        async.flushMicrotasks();
+        client.updateProgressCalls.clear();
+
+        // Seek at t+8s: the pre-change periodic timer would still fire at
+        // t+10s. After the reset the next tick is a full interval past the
+        // seek report, so nothing lands in between.
+        async.elapse(const Duration(seconds: 8));
+        player.position = const Duration(minutes: 5);
+        tracker.onSeek();
+        async.elapse(const Duration(milliseconds: 600));
+        async.flushMicrotasks();
+        expect(client.updateProgressCalls.map((c) => c.time), [300000]);
+
+        async.elapse(const Duration(seconds: 5));
+        async.flushMicrotasks();
+        expect(client.updateProgressCalls.map((c) => c.time), [300000], reason: 'timer was restarted at the seek');
+      });
+    });
+
+    test('the seek report is not swallowed by the 30-second notify throttle', () {
+      fakeAsync((async) {
+        final client = _FakePlexClient();
+        final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+        final tracker = PlaybackProgressTracker(
+          client: client,
+          metadata: _meta(),
+          player: player,
+          isOffline: false,
+          updateInterval: const Duration(seconds: 10),
+        );
+        addTearDown(tracker.dispose);
+
+        final events = <WatchStateEvent>[];
+        final sub = WatchStateNotifier().stream.listen(events.add);
+        addTearDown(sub.cancel);
+
+        tracker.startTracking();
+        async.flushMicrotasks();
+        events.clear();
+
+        // Only 10 seconds further than the last notified position: without
+        // the force flag the delta throttle would drop this entirely.
+        player.position = const Duration(seconds: 40);
+        tracker.onSeek();
+        async.elapse(const Duration(milliseconds: 600));
+        async.flushMicrotasks();
+
+        expect(events.map((e) => e.viewOffset), [40000]);
+      });
+    });
+
+    test('a seek during an active failure backoff is postponed, not dropped', () {
+      fakeAsync((async) {
+        final client = _FakePlexClient();
+        final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+        final tracker = PlaybackProgressTracker(
+          client: client,
+          metadata: _meta(),
+          player: player,
+          isOffline: false,
+          updateInterval: const Duration(seconds: 10),
+        );
+        addTearDown(tracker.dispose);
+
+        tracker.startTracking();
+        async.flushMicrotasks();
+
+        // Fail one report so the backoff arms.
+        client.throwOnNextCall = StateError('network down');
+        player.position = const Duration(seconds: 45);
+        tracker.sendProgress('playing');
+        async.flushMicrotasks();
+        client.updateProgressCalls.clear();
+
+        player.position = const Duration(minutes: 5);
+        tracker.onSeek();
+        async.elapse(const Duration(milliseconds: 600));
+        async.flushMicrotasks();
+
+        expect(client.updateProgressCalls, isEmpty);
+
+        // Positive control: once the backoff has burned its skipped tick, the
+        // very same seek does report. Without this the test above would pass
+        // just as happily if seeks never reported at all.
+        async.elapse(const Duration(seconds: 10));
+        async.flushMicrotasks();
+        client.updateProgressCalls.clear();
+        player.position = const Duration(minutes: 6);
+        tracker.onSeek();
+        async.elapse(const Duration(milliseconds: 600));
+        async.flushMicrotasks();
+
+        expect(client.updateProgressCalls.map((c) => c.time), [360000]);
+      });
+    });
+
+    // A backoff delays a seek report; it must never lose it. The paused case is
+    // the one that actually bit: the periodic timer only runs while something
+    // plays, so a dropped seek on a paused player left the server on the
+    // pre-seek position with nothing left to correct it.
+    test('a seek made during a backoff still arrives once the backoff expires', () {
+      fakeAsync((async) {
+        final client = _FakePlexClient();
+        final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+        final tracker = PlaybackProgressTracker(
+          client: client,
+          metadata: _meta(),
+          player: player,
+          isOffline: false,
+          updateInterval: const Duration(seconds: 10),
+        );
+        addTearDown(tracker.dispose);
+
+        tracker.startTracking();
+        async.flushMicrotasks();
+
+        client.throwOnNextCall = StateError('network down');
+        player.position = const Duration(seconds: 45);
+        tracker.sendProgress('playing');
+        async.flushMicrotasks();
+        client.updateProgressCalls.clear();
+
+        player.position = const Duration(minutes: 5);
+        tracker.onSeek();
+        async.elapse(const Duration(milliseconds: 600));
+        async.flushMicrotasks();
+        expect(client.updateProgressCalls, isEmpty, reason: 'backoff is still active');
+
+        async.elapse(const Duration(seconds: 11));
+        async.flushMicrotasks();
+        expect(
+          client.updateProgressCalls.map((c) => c.time),
+          contains(300000),
+          reason: 'the postponed seek position reaches the backend after the backoff',
+        );
+      });
+    });
+
+    test('a seek during a backoff arrives even while the player is paused', () {
+      fakeAsync((async) {
+        final client = _FakePlexClient();
+        final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+        final tracker = PlaybackProgressTracker(
+          client: client,
+          metadata: _meta(),
+          player: player,
+          isOffline: false,
+          updateInterval: const Duration(seconds: 10),
+        );
+        addTearDown(tracker.dispose);
+
+        tracker.startTracking();
+        async.flushMicrotasks();
+
+        client.throwOnNextCall = StateError('network down');
+        player.position = const Duration(seconds: 45);
+        tracker.sendProgress('playing');
+        async.flushMicrotasks();
+        client.updateProgressCalls.clear();
+
+        // Seek, then pause. The periodic timer now reports nothing at all, so
+        // the deferred seek is the only path left.
+        player.position = const Duration(minutes: 5);
+        tracker.onSeek();
+        player.playing = false;
+
+        async.elapse(const Duration(minutes: 1));
+        async.flushMicrotasks();
+
+        expect(client.updateProgressCalls.map((c) => c.time), [300000]);
+        expect(client.updateProgressCalls.map((c) => c.state), ['paused']);
+      });
+    });
+
+    test('several seeks during one backoff still produce a single report', () {
+      fakeAsync((async) {
+        final client = _FakePlexClient();
+        final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+        final tracker = PlaybackProgressTracker(
+          client: client,
+          metadata: _meta(),
+          player: player,
+          isOffline: false,
+          updateInterval: const Duration(seconds: 10),
+        );
+        addTearDown(tracker.dispose);
+
+        tracker.startTracking();
+        async.flushMicrotasks();
+
+        client.throwOnNextCall = StateError('network down');
+        player.position = const Duration(seconds: 45);
+        tracker.sendProgress('playing');
+        async.flushMicrotasks();
+        client.updateProgressCalls.clear();
+        player.playing = false;
+
+        for (final minute in [2, 3, 4, 5]) {
+          player.position = Duration(minutes: minute);
+          tracker.onSeek();
+          async.elapse(const Duration(milliseconds: 100));
+        }
+        async.elapse(const Duration(minutes: 1));
+        async.flushMicrotasks();
+
+        expect(client.updateProgressCalls.map((c) => c.time), [300000]);
+      });
+    });
+
+    test('a postponed seek is dropped when an ordinary report already delivered that position', () {
+      fakeAsync((async) {
+        final client = _FakePlexClient();
+        final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+        final tracker = PlaybackProgressTracker(
+          client: client,
+          metadata: _meta(),
+          player: player,
+          isOffline: false,
+          updateInterval: const Duration(seconds: 10),
+        );
+        addTearDown(tracker.dispose);
+
+        tracker.startTracking();
+        async.flushMicrotasks();
+
+        client.throwOnNextCall = StateError('network down');
+        player.position = const Duration(seconds: 45);
+        tracker.sendProgress('playing');
+        async.flushMicrotasks();
+        client.updateProgressCalls.clear();
+
+        player.position = const Duration(minutes: 5);
+        tracker.onSeek();
+        async.elapse(const Duration(milliseconds: 600));
+        async.flushMicrotasks();
+
+        // The periodic timer burns the remaining backoff tick and reports the
+        // very same position. The postponed seek must not repeat it.
+        async.elapse(const Duration(seconds: 30));
+        async.flushMicrotasks();
+
+        expect(
+          client.updateProgressCalls.where((c) => c.time == 300000).length,
+          1,
+          reason: 'position 5:00 reaches the backend exactly once',
+        );
+      });
+    });
+
+    test('stopTracking discards a postponed seek instead of firing it later', () {
+      fakeAsync((async) {
+        final client = _FakePlexClient();
+        final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+        final tracker = PlaybackProgressTracker(
+          client: client,
+          metadata: _meta(),
+          player: player,
+          isOffline: false,
+          updateInterval: const Duration(seconds: 10),
+        );
+        addTearDown(tracker.dispose);
+
+        tracker.startTracking();
+        async.flushMicrotasks();
+
+        client.throwOnNextCall = StateError('network down');
+        player.position = const Duration(seconds: 45);
+        tracker.sendProgress('playing');
+        async.flushMicrotasks();
+        client.updateProgressCalls.clear();
+
+        player.position = const Duration(minutes: 5);
+        tracker.onSeek();
+        tracker.stopTracking();
+
+        async.elapse(const Duration(minutes: 2));
+        async.flushMicrotasks();
+
+        expect(client.updateProgressCalls, isEmpty);
+      });
     });
   });
 }

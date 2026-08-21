@@ -15,6 +15,7 @@ import '../media/watch_progress.dart';
 import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
 import 'offline_mode_source.dart';
+import 'playback_resume_resolver.dart';
 import '../utils/watch_state_notifier.dart';
 import 'multi_server_manager.dart';
 import 'plex_client.dart';
@@ -348,6 +349,42 @@ class OfflineWatchSyncService extends ChangeNotifier {
     final snapshot = WatchStateResolver.fromActions(actions);
     final offset = snapshot.hasViewOffsetMs ? snapshot.viewOffsetMs : null;
     return offset != null && offset > 0 ? offset : null;
+  }
+
+  /// The same local view offset as [getLocalViewOffset], carrying the
+  /// timestamp of the action that produced it.
+  ///
+  /// [PlaybackResumeResolver] needs that timestamp: without it the only
+  /// available rule is "local always wins", which is what let a downloaded
+  /// file resume behind a server position another device had already moved
+  /// past. The queue has no field that separates a user seek from a tracker
+  /// tick, so every record reports as passive offline playback; a genuinely
+  /// deliberate local action would have to be recorded as such at its source.
+  Future<LocalResumeProgress?> getLocalResumeProgress(String globalKey, {String? clientScopeId}) async {
+    await _adoptLegacyWatchActionsForActiveProfile();
+    final expectedScope = clientScopeId ?? _activeClientScopeIdForGlobalKey(globalKey);
+    final profileId = _activeProfileId;
+    final actions = await _database.getWatchActionsForKey(
+      globalKey,
+      profileId: profileId,
+      filterProfile: profileId != null,
+      clientScopeId: expectedScope,
+      filterClientScope: expectedScope != null,
+    );
+
+    final latest = WatchStateResolver.latestAction(actions);
+    if (latest == null) return null;
+
+    final snapshot = WatchStateResolver.fromActions(actions);
+    final offset = snapshot.hasViewOffsetMs ? snapshot.viewOffsetMs : null;
+    if (offset == null || offset <= 0) return null;
+
+    return LocalResumeProgress(
+      position: Duration(milliseconds: offset),
+      updatedAt: DateTime.fromMillisecondsSinceEpoch(latest.updatedAt),
+      intent: PlaybackResumeIntent.passive,
+      origin: PlaybackResumeOrigin.offlinePlayback,
+    );
   }
 
   Future<int> getPendingSyncCount() async {

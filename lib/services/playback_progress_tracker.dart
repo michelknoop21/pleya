@@ -9,6 +9,7 @@ import '../media/media_server_client.dart';
 import '../media/media_source_info.dart';
 import 'offline_watch_sync_service.dart';
 import 'playback_report_session.dart';
+import 'playback_write_authority.dart';
 import 'settings_service.dart';
 import 'track_selection_service.dart';
 import '../utils/app_logger.dart';
@@ -55,8 +56,24 @@ class PlaybackProgressTracker {
   /// Jellyfin stream indexes in playback-progress reports.
   final MediaSourceInfo? mediaInfo;
 
+  /// Local observation of whether this player may still write watch state.
+  /// Null keeps the pre-existing behaviour of always reporting.
+  final ObservedPlaybackAuthority? authority;
+
   /// Timer for periodic progress updates
   Timer? _progressTimer;
+
+  /// Trailing debounce for a seek, so scrubbing reports once at the end of the
+  /// gesture instead of once per intermediate position.
+  Timer? _seekReportTimer;
+
+  /// A seek is waiting to be reported. Survives a failure backoff: the report
+  /// is postponed, never dropped.
+  bool _pendingSeekReport = false;
+
+  /// The pending seek has already waited out at least one backoff round. Only
+  /// then is it worth checking whether an ordinary report beat us to it.
+  bool _seekReportDeferred = false;
 
   StreamSubscription<TrackSelection>? _trackSelectionSubscription;
 
@@ -68,9 +85,6 @@ class PlaybackProgressTracker {
 
   /// Timer ticks to skip before retrying after failures (exponential backoff).
   int _ticksToSkip = 0;
-
-  /// Counts timer ticks while paused to send periodic "paused" heartbeats.
-  int _pausedTickCounter = 0;
 
   /// Whether we've already scrobbled (marked as watched) for this playback session.
   bool _scrobbled = false;
@@ -84,6 +98,19 @@ class PlaybackProgressTracker {
 
   static const Duration _progressNotifyDelta = Duration(seconds: 30);
 
+  /// State and position of the last report that actually reached the backend.
+  /// A report that would repeat both is dropped: re-sending the same position
+  /// is how a paused player kept overwriting a further-along one elsewhere.
+  String? _lastReportedState;
+  Duration? _lastReportedPosition;
+
+  /// Sub-second drift is not movement. Anything smaller than this counts as
+  /// the same position.
+  static const Duration _minReportDelta = Duration(seconds: 1);
+
+  /// How long to wait after the last seek before reporting the new position.
+  static const Duration _seekReportDebounce = Duration(milliseconds: 500);
+
   final PlaybackReportSession? _reportSession;
 
   PlaybackProgressTracker({
@@ -96,6 +123,7 @@ class PlaybackProgressTracker {
     this.playMethod,
     this.playSessionId,
     this.mediaInfo,
+    this.authority,
     this.updateInterval = const Duration(seconds: 10),
   }) : assert(!isOffline || offlineWatchService != null, 'offlineWatchService is required when isOffline is true'),
        assert(isOffline || client != null, 'client is required when isOffline is false'),
@@ -106,6 +134,7 @@ class PlaybackProgressTracker {
                itemId: metadata.id,
                playSessionId: playSessionId,
                playMethod: playMethod,
+               authority: authority,
              );
 
   void startTracking() {
@@ -127,45 +156,105 @@ class PlaybackProgressTracker {
       _sendProgress('playing');
     }
 
-    _progressTimer = Timer.periodic(updateInterval, (timer) {
-      if (player.state.isActive) {
-        _pausedTickCounter = 0;
-        // Skip ticks when backing off after consecutive failures to avoid
-        // flooding the network with doomed requests during an outage.
-        if (_ticksToSkip > 0) {
-          _ticksToSkip--;
-          return;
-        }
-        _sendProgress('playing');
-      } else {
-        // Send periodic "paused" updates to keep the server session alive
-        // (~60s with default 10s interval)
-        _pausedTickCounter++;
-        if (_pausedTickCounter >= 6) {
-          _pausedTickCounter = 0;
-          if (_ticksToSkip > 0) {
-            _ticksToSkip--;
-            return;
-          }
-          _sendProgress('paused');
-        }
-      }
-    });
+    _startPeriodicTimer();
 
     appLogger.d('Started progress tracking (interval: ${updateInterval.inSeconds}s, offline: $isOffline)');
+  }
+
+  /// The periodic timer only reports while something is actually playing.
+  ///
+  /// There used to be a paused heartbeat here, firing a `paused` report every
+  /// six ticks "to keep the server session alive". It also re-sent the same
+  /// position indefinitely, so a player left paused on one device kept writing
+  /// its stale position over a device that was still watching. A session
+  /// keep-alive, if one turns out to be needed, belongs in a separate call that
+  /// does not touch the canonical position.
+  void _startPeriodicTimer() {
+    _progressTimer?.cancel();
+    _progressTimer = Timer.periodic(updateInterval, (timer) {
+      if (!player.state.isActive) return;
+      // Skip ticks when backing off after consecutive failures to avoid
+      // flooding the network with doomed requests during an outage.
+      if (_ticksToSkip > 0) {
+        _ticksToSkip--;
+        return;
+      }
+      _sendProgress('playing');
+    });
+  }
+
+  /// Report a seek right away instead of waiting for the next periodic tick.
+  ///
+  /// A jump is the one position change the throttles must not swallow: without
+  /// this, seeking and closing within the tick window left the server on the
+  /// pre-seek position. The trailing debounce collapses a scrub gesture into
+  /// one report, and the periodic timer is restarted so the next tick is a full
+  /// interval away.
+  ///
+  /// A failure backoff delays the report, it does not cancel it. Dropping it
+  /// was worse than it looked: the periodic timer only runs while something is
+  /// playing, so seeking and then pausing during a backoff left the server on
+  /// the pre-seek position until playback happened to resume. The deferred
+  /// re-arm drains [_ticksToSkip] at the same rate a playing timer would, so it
+  /// makes progress while paused too.
+  void onSeek() {
+    _pendingSeekReport = true;
+    _armSeekReportTimer(_seekReportDebounce);
+  }
+
+  void _armSeekReportTimer(Duration delay) {
+    _seekReportTimer?.cancel();
+    _seekReportTimer = Timer(delay, _fireSeekReport);
+  }
+
+  void _fireSeekReport() {
+    _seekReportTimer = null;
+    if (!_pendingSeekReport) return;
+    if (_ticksToSkip > 0) {
+      // Still backing off. Burn one tick's worth of wait and try again, so a
+      // paused player converges instead of holding the seek forever.
+      _ticksToSkip--;
+      _seekReportDeferred = true;
+      _armSeekReportTimer(updateInterval);
+      return;
+    }
+    final wasDeferred = _seekReportDeferred;
+    _pendingSeekReport = false;
+    _seekReportDeferred = false;
+    // A report that had to wait may already have been delivered by an ordinary
+    // progress update in the meantime; a fresh seek is always worth sending.
+    if (wasDeferred && !hasReportablePositionChange) return;
+    _startPeriodicTimer();
+    unawaited(_sendProgress(player.state.isActive ? 'playing' : 'paused', force: true));
+  }
+
+  /// Whether the current position differs enough from the last reported one to
+  /// be worth a write. Used by the lifecycle paths to decide between one final
+  /// report and none at all.
+  bool get hasReportablePositionChange {
+    final last = _lastReportedPosition;
+    if (last == null) return true;
+    return (player.state.position - last).abs() >= _minReportDelta;
   }
 
   void stopTracking() {
     _progressTimer?.cancel();
     _progressTimer = null;
+    _seekReportTimer?.cancel();
+    _seekReportTimer = null;
+    _pendingSeekReport = false;
+    _seekReportDeferred = false;
     _trackSelectionSubscription?.cancel();
     _trackSelectionSubscription = null;
     appLogger.d('Stopped progress tracking');
   }
 
   /// [state] can be 'playing', 'paused', or 'stopped'.
-  Future<void> sendProgress(String state, {Duration? positionOverride}) async {
-    await _sendProgress(state, positionOverride: positionOverride);
+  ///
+  /// [force] bypasses the "same state, same position" suppression for a report
+  /// the caller knows is meaningful even though it repeats the last one.
+  Future<void> sendProgress(String state, {Duration? positionOverride, bool force = false}) async {
+    await _sendProgress(state, positionOverride: positionOverride, force: force);
   }
 
   Future<void> sendStoppedProgressOnce({Duration? positionOverride}) {
@@ -181,7 +270,7 @@ class PlaybackProgressTracker {
     _reportSession?.resetAfterStop();
   }
 
-  Future<void> _sendProgress(String state, {Duration? positionOverride}) async {
+  Future<void> _sendProgress(String state, {Duration? positionOverride, bool force = false}) async {
     Duration? attemptedPosition;
     Duration? attemptedDuration;
     try {
@@ -195,16 +284,22 @@ class PlaybackProgressTracker {
         return;
       }
 
+      if (!force && !_isWorthReporting(state, position)) {
+        return;
+      }
+      _lastReportedState = state;
+      _lastReportedPosition = position;
+
       if (isOffline) {
         // Queue progress update for later sync
         await _sendOfflineProgress(position, duration);
-        _notifyProgressIfNeeded(position, duration, force: state == 'stopped');
+        _notifyProgressIfNeeded(position, duration, isFinal: state == 'stopped', force: force);
       } else if (state == 'stopped') {
         // Stopped must complete before disposal
         final accepted = await _sendOnlineProgress(state, position, duration);
         _resetBackoff();
         if (accepted) {
-          _notifyProgressIfNeeded(position, duration, force: true);
+          _notifyProgressIfNeeded(position, duration, isFinal: true);
         }
       } else {
         // Fire-and-forget for playing/paused — avoid blocking the Dart event loop
@@ -213,7 +308,7 @@ class PlaybackProgressTracker {
               .then((accepted) {
                 _resetBackoff();
                 if (accepted) {
-                  _notifyProgressIfNeeded(position, duration);
+                  _notifyProgressIfNeeded(position, duration, force: force);
                 }
               })
               .catchError((Object e) {
@@ -272,13 +367,31 @@ class PlaybackProgressTracker {
     }
   }
 
-  void _notifyProgressIfNeeded(Duration position, Duration duration, {bool force = false}) {
+  /// Whether this report says anything the backend does not already know.
+  ///
+  /// A state change always does. A position that moved does. Repeating both is
+  /// the write that put an old position back, so it is dropped. `stopped` is
+  /// exempt: the lifecycle layer decides whether to emit one at all, and once
+  /// it does the report is terminal.
+  bool _isWorthReporting(String state, Duration position) {
+    if (state == 'stopped') return true;
+    final lastState = _lastReportedState;
+    final lastPosition = _lastReportedPosition;
+    if (lastState == null || lastPosition == null) return true;
+    if (lastState != state) return true;
+    return (position - lastPosition).abs() >= _minReportDelta;
+  }
+
+  /// [isFinal] is the terminal stop notification, which fires at most once per
+  /// session. [force] only bypasses the 30-second delta, for a jump the user
+  /// made deliberately; it does not consume the terminal latch.
+  void _notifyProgressIfNeeded(Duration position, Duration duration, {bool isFinal = false, bool force = false}) {
     if (_scrobbled) return;
     if (position.inMilliseconds <= 0 || duration.inMilliseconds <= 0) return;
-    if (force) {
+    if (isFinal) {
       if (_stopProgressNotified) return;
       _stopProgressNotified = true;
-    } else {
+    } else if (!force) {
       final last = _lastProgressNotifiedPosition;
       if (last != null && (position - last).abs() < _progressNotifyDelta) return;
     }
