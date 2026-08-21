@@ -74,6 +74,19 @@ class TvBrowseRailLayout {
   /// backdrop stays visible. Trimming it there buys hero without touching the
   /// hubs further down, which only appear once the rail has focus anyway.
   static const double continueWatchingTallPosterScale = 0.7;
+
+  /// Wide-card scale for the continue-watching hub on the TV home screen.
+  ///
+  /// Smaller than the default 1.0 on purpose: at the default scale, the home
+  /// screen's own row of 16:9 continue-watching cards shows roughly four
+  /// full cards before the next one is cut off mid-card, which reads as a
+  /// row that ran out of room rather than one that continues. Trimming it
+  /// here fits a fifth full card plus a small peek of a sixth, matching every
+  /// other TV row's "one more card visible, not fully shown" rhythm. Scoped
+  /// to this one hub via `widePosterScaleForHub` — every other TV rail
+  /// (episode rows on a show-detail screen, etc.) keeps the default 1.0.
+  static const double continueWatchingWidePosterScale = 0.75;
+
   static const double fullCardFocusScale = FocusTheme.fullCardFocusScale;
 
   static double scaleForSize(Size size) => TvLayoutConstants.scaleForSize(size);
@@ -125,6 +138,7 @@ class TvBrowseRailLayout {
     required EpisodePosterMode episodePosterMode,
     bool fullCardLayout = false,
     double tallPosterScale = 1.0,
+    double widePosterScale = 1.0,
   }) {
     final scale = scaleForSize(railSize);
     final metrics = metricsForHub(
@@ -135,6 +149,7 @@ class TvBrowseRailLayout {
       scale: scale,
       fullCardLayout: fullCardLayout,
       tallPosterScale: tallPosterScale,
+      widePosterScale: widePosterScale,
     );
     return railTopPaddingForScale(scale) + hubStripHeightForScale(scale) + metrics.height - metrics.focusExtra;
   }
