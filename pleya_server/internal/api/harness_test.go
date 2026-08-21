@@ -21,6 +21,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
+	"github.com/edde746/plezy/pleya_server/internal/watch"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -52,6 +53,7 @@ type env struct {
 	server  *api.Server
 	store   *catalog.Store
 	auth    *auth.Store
+	watch   *watch.Store
 	pool    *pgxpool.Pool
 	root    string
 	access  string
@@ -107,24 +109,29 @@ func newEnv(t *testing.T) *env {
 	// per login de suite onnodig traag maken.
 	light := auth.Argon2Params{Memory: 8 * 1024, Iterations: 1, Parallelism: 1, SaltLength: 16, KeyLength: 32}
 
+	watchStore := watch.NewStore(pool)
+
 	srv := api.New(api.Options{
-		Catalog:         store,
-		Auth:            authStore,
-		Signer:          signer,
-		Logger:          slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})),
-		Ready:           func() bool { return true },
-		ServerID:        serverID,
-		Name:            "Zolder",
-		Version:         "0.2.0-test",
-		StartedAt:       time.Date(2026, 8, 18, 19, 25, 33, 0, time.UTC),
-		AccessTokenTTL:  15 * time.Minute,
-		RefreshTokenTTL: 24 * time.Hour,
-		StreamTokenTTL:  5 * time.Minute,
-		SetupCodeTTL:    30 * time.Minute,
-		Argon2:          light,
+		Catalog:          store,
+		Auth:             authStore,
+		Watch:            watchStore,
+		Signer:           signer,
+		Logger:           slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})),
+		Ready:            func() bool { return true },
+		ServerID:         serverID,
+		Name:             "Zolder",
+		Version:          "0.2.0-test",
+		StartedAt:        time.Date(2026, 8, 18, 19, 25, 33, 0, time.UTC),
+		AccessTokenTTL:   15 * time.Minute,
+		RefreshTokenTTL:  24 * time.Hour,
+		StreamTokenTTL:   5 * time.Minute,
+		SetupCodeTTL:     30 * time.Minute,
+		StreamSessionTTL: 30 * time.Minute,
+		WatchLease:       watch.MinLease,
+		Argon2:           light,
 	})
 
-	return &env{t: t, server: srv, store: store, auth: authStore, pool: pool,
+	return &env{t: t, server: srv, store: store, auth: authStore, watch: watchStore, pool: pool,
 		root: root, libs: libs, cap: shared}
 }
 
@@ -169,6 +176,30 @@ func (e *env) generation(fileID string) int64 {
 		e.t.Fatalf("generation van %s lezen: %v", fileID, err)
 	}
 	return generation
+}
+
+// revokeStreamSession en expireStreamSession draaien aan de klok en aan de
+// ingetrokken-vlag van een streamsessie.
+//
+// Rechtstreeks op de tabel en niet via een endpoint: het protocol kent geen
+// endpoint om een sessie te beëindigen (dat is de TTL plus het sluiten van het
+// tabblad), en een test die de tijd vooruit zet zou de hele server een
+// testklok moeten geven voor één veld.
+func (e *env) revokeStreamSession(sessionID string) {
+	e.t.Helper()
+	if _, err := e.pool.Exec(context.Background(),
+		`UPDATE stream_sessions SET revoked_at = now() WHERE id = $1`, sessionID); err != nil {
+		e.t.Fatalf("sessie intrekken: %v", err)
+	}
+}
+
+func (e *env) expireStreamSession(sessionID string) {
+	e.t.Helper()
+	if _, err := e.pool.Exec(context.Background(),
+		`UPDATE stream_sessions SET expires_at = now() - interval '1 minute' WHERE id = $1`,
+		sessionID); err != nil {
+		e.t.Fatalf("sessie laten verlopen: %v", err)
+	}
 }
 
 // shared is één opvangpunt voor alle tests in dit pakket.

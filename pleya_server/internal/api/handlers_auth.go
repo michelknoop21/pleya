@@ -35,15 +35,19 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			Browse:  true,
 			Search:  true,
 			Artwork: true,
-			// PS-2 heeft geen kijkstatus. Capabilities is leidend, dus dit is het
-			// volledige antwoord op de vraag of die functie er is.
-			WatchState:   false,
-			PlaybackPlan: false,
-			Transcode:    false,
-			Downloads:    false,
-			LiveTV:       false,
-			Realtime:     false,
-			Users:        false,
+			// Vanaf PS-4 staat kijkstatus aan, en met het eigendomsmodel eronder.
+			// De vlaggen hangen aan de aanwezigheid van de opslag: een server die
+			// zonder watch-store draait zegt dat eerlijk in plaats van een
+			// endpoint aan te bieden dat op een nil-pointer klapt.
+			WatchState:          s.opts.Watch != nil,
+			WatchStateOwnership: s.opts.Watch != nil,
+			StreamSessions:      true,
+			PlaybackPlan:        false,
+			Transcode:           false,
+			Downloads:           false,
+			LiveTV:              false,
+			Realtime:            false,
+			Users:               false,
 		},
 		Auth: InfoAuth{
 			Methods:       []string{"password"},
@@ -248,6 +252,72 @@ func (s *Server) handleStreamToken(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, StreamToken{
 		StreamToken: token,
 		ExpiresAt:   formatTime(time.Unix(claims.ExpiresAt, 0)),
+	})
+}
+
+type streamSessionRequest struct {
+	VersionID string `json:"version_id"`
+}
+
+// handleStreamSession opent een browser-streamsessie (DEC-051).
+//
+// Het antwoord draagt de niet-geheime helft; het geheim gaat in een cookie
+// waarvan de NAAM de sessie-id bevat. Die naamgeving is het hele mechanisme:
+// cookies met dezelfde naam, hetzelfde domein en hetzelfde pad vervangen
+// elkaar, dus één vaste naam zou twee tabbladen elkaars stream laten breken.
+func (s *Server) handleStreamSession(w http.ResponseWriter, r *http.Request) {
+	var req streamSessionRequest
+	if !s.decodeBody(w, r, &req, CodeNotFound) {
+		return
+	}
+
+	versionID, err := id.Parse(strings.TrimSpace(req.VersionID))
+	if err != nil {
+		writeError(w, s.log, CodeNotFound, "version not found", nil)
+		return
+	}
+	if err := s.opts.Catalog.VersionExists(r.Context(), versionID); err != nil {
+		if errors.Is(err, catalog.ErrNotFound) {
+			writeError(w, s.log, CodeNotFound, "version not found", nil)
+			return
+		}
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	now := s.now().UTC()
+	session, err := s.opts.Auth.CreateStreamSession(r.Context(), SubjectOwner, versionID, s.opts.StreamSessionTTL, now)
+	if err != nil {
+		if errors.Is(err, auth.ErrStreamSessionLimit) {
+			active, _ := s.opts.Auth.ActiveStreamSessions(r.Context(), SubjectOwner, now)
+			writeError(w, s.log, CodeStreamSessionLimit, "too many active stream sessions",
+				map[string]any{"active": active, "limit": auth.MaxActiveStreamSessions})
+			return
+		}
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:  session.CookieName(),
+		Value: session.Secret,
+		Path:  auth.StreamCookiePath,
+		// Op http://nas:8832 is er geen secure context, dus Secure valt hier weg
+		// en het geheim reist in klare tekst over het LAN. Dat staat zo in
+		// DEC-051 en is niet slechter dan het streamtoken in de querystring; wat
+		// het beter maakt is dat JavaScript er niet bij kan en dat hij niet in
+		// browsergeschiedenis, logs of referrers belandt. HttpOnly is geen
+		// versleuteling en wordt hier ook niet als zodanig gepresenteerd.
+		Secure:   r.TLS != nil,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		Expires:  session.ExpiresAt,
+		MaxAge:   int(s.opts.StreamSessionTTL.Seconds()),
+	})
+
+	writeJSON(w, http.StatusOK, StreamSession{
+		StreamSessionID: session.ID.String(),
+		ExpiresAt:       formatTime(session.ExpiresAt),
 	})
 }
 

@@ -29,6 +29,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/mounts"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
+	"github.com/edde746/plezy/pleya_server/internal/watch"
 )
 
 // version wordt bij het bouwen gezet met -ldflags "-X main.version=...".
@@ -184,19 +185,22 @@ func run() int {
 	}
 
 	apiServer := api.New(api.Options{
-		Catalog:         catalogStore,
-		Auth:            authStore,
-		Signer:          signer,
-		Logger:          logging.Component(log, "http"),
-		Ready:           ready.ok,
-		ServerID:        serverID,
-		Name:            cfg.ServerName,
-		Version:         version,
-		StartedAt:       startedAt,
-		AccessTokenTTL:  cfg.AccessTokenTTL,
-		RefreshTokenTTL: cfg.RefreshTokenTTL,
-		StreamTokenTTL:  cfg.StreamTokenTTL,
-		SetupCodeTTL:    cfg.SetupCodeTTL,
+		Catalog:          catalogStore,
+		Auth:             authStore,
+		Watch:            watch.NewStore(pool),
+		Signer:           signer,
+		Logger:           logging.Component(log, "http"),
+		Ready:            ready.ok,
+		ServerID:         serverID,
+		Name:             cfg.ServerName,
+		Version:          version,
+		StartedAt:        startedAt,
+		AccessTokenTTL:   cfg.AccessTokenTTL,
+		RefreshTokenTTL:  cfg.RefreshTokenTTL,
+		StreamTokenTTL:   cfg.StreamTokenTTL,
+		SetupCodeTTL:     cfg.SetupCodeTTL,
+		StreamSessionTTL: cfg.StreamSessionTTL,
+		WatchLease:       cfg.WatchLease,
 	})
 
 	srv := httpserver.New(httpserver.Options{

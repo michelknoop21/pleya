@@ -55,6 +55,13 @@ type Capabilities struct {
 	LiveTV       bool `json:"live_tv"`
 	Realtime     bool `json:"realtime"`
 	Users        bool `json:"users"`
+
+	// PS-4. Twee vlaggen die de client vertellen dat hij de velden uit DEC-049
+	// en het endpoint uit DEC-051 mag gebruiken. WatchStateEvent is gesloten,
+	// dus zonder deze onderhandeling zou een client die base_revision meestuurt
+	// een 400 krijgen van een oudere server.
+	WatchStateOwnership bool `json:"watch_state_ownership"`
+	StreamSessions      bool `json:"stream_sessions"`
 }
 
 // ServerDetail is het antwoord van GET /server.
@@ -152,14 +159,63 @@ type Version struct {
 
 // UserState is de leeskant van kijkstatus.
 //
-// In PS-2 is dit altijd null: er is geen kijkstatus, en capabilities zegt dat
-// ook. Het veld staat er omdat het itemantwoord het draagt en een client een
-// item dat nooit is aangeraakt aan null herkent.
+// Een item dat de identiteit nooit heeft aangeraakt draagt null, en dat is hoe
+// een client het verschil ziet tussen "op nul begonnen" en "nooit geopend".
 type UserState struct {
 	PositionMs int64  `json:"position_ms"`
 	Watched    bool   `json:"watched"`
 	PlayCount  int    `json:"play_count"`
 	UpdatedAt  string `json:"updated_at"`
+
+	// Revision is de causaliteitsanker uit DEC-049. De client bewaart hem en
+	// stuurt hem terug als base_revision.
+	Revision *int64 `json:"revision,omitempty"`
+
+	// OwnedByThisSession staat alleen in het antwoord op POST /watch-state.
+	// Weglaten in een itemantwoord is met opzet: daar is er geen sessie om de
+	// vraag op te beantwoorden.
+	OwnedByThisSession *bool `json:"owned_by_this_session,omitempty"`
+}
+
+// WatchStateEvent is de aanvraagbody van POST /watch-state.
+//
+// De velden staan als pointer waar hun afwezigheid betekenis draagt.
+// base_revision is daar het duidelijkste geval: nul is een geldige claim (de
+// toestand bestaat nog niet) en weglaten betekent "geen claim", en die twee
+// mogen niet samenvallen.
+type WatchStateEvent struct {
+	ItemID       string  `json:"item_id"`
+	SessionID    string  `json:"session_id"`
+	PositionMs   int64   `json:"position_ms"`
+	DurationMs   *int64  `json:"duration_ms"`
+	OccurredAt   string  `json:"occurred_at"`
+	Completed    bool    `json:"completed"`
+	Action       string  `json:"explicit_action"`
+	Cause        string  `json:"cause"`
+	BaseRevision *int64  `json:"base_revision"`
+	Backlog      bool    `json:"backlog"`
+}
+
+// WatchStateEntry is één regel in de lijst van GET /watch-state.
+type WatchStateEntry struct {
+	ItemID string    `json:"item_id"`
+	State  UserState `json:"state"`
+}
+
+// WatchStatePage is een pagina kijkstatusregels.
+type WatchStatePage struct {
+	Items         []WatchStateEntry `json:"items"`
+	NextCursor    *string           `json:"next_cursor"`
+	TotalEstimate *int              `json:"total_estimate"`
+}
+
+// StreamSession is het antwoord van POST /auth/stream-session.
+//
+// Draagt uitsluitend de niet-geheime helft. Het geheim reist in de cookie en
+// komt nooit in een body, een URL of een logregel.
+type StreamSession struct {
+	StreamSessionID string `json:"stream_session_id"`
+	ExpiresAt       string `json:"expires_at"`
 }
 
 // Item is één item op de lijn.

@@ -63,11 +63,17 @@ func TestInfoBeforeAndAfterSetup(t *testing.T) {
 	if !before.Capabilities.Browse || !before.Capabilities.Search || !before.Capabilities.Artwork {
 		t.Fatalf("capabilities zijn %+v", before.Capabilities)
 	}
-	// Capabilities is leidend, en PS-2 heeft geen kijkstatus, geen afspeelplan,
-	// geen transcodering en geen gebruikersmodel.
-	if before.Capabilities.WatchState || before.Capabilities.PlaybackPlan ||
-		before.Capabilities.Transcode || before.Capabilities.Downloads ||
-		before.Capabilities.LiveTV || before.Capabilities.Realtime || before.Capabilities.Users {
+	// Capabilities is leidend. Kijkstatus staat sinds PS-4 aan, met het
+	// eigendomsmodel en de streamsessies eronder; een afspeelplan, transcodering,
+	// downloads, Live TV, realtime en gebruikers zijn latere fasen en horen dus
+	// nog steeds uit te staan.
+	if !before.Capabilities.WatchState || !before.Capabilities.WatchStateOwnership ||
+		!before.Capabilities.StreamSessions {
+		t.Fatalf("een capability van deze fase staat uit: %+v", before.Capabilities)
+	}
+	if before.Capabilities.PlaybackPlan || before.Capabilities.Transcode ||
+		before.Capabilities.Downloads || before.Capabilities.LiveTV ||
+		before.Capabilities.Realtime || before.Capabilities.Users {
 		t.Fatalf("een capability staat aan die deze fase niet heeft: %+v", before.Capabilities)
 	}
 	if before.Server.ID == "" {

@@ -85,6 +85,12 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 		"media_streams":       true,
 		"jobs":                true,
 		"scan_runs":           true,
+		// PS-4, uit DEC-049 en DEC-051. Wat er nog steeds NIET staat is even
+		// belangrijk: geen users, geen sessions, geen play_history, geen
+		// play_sessions en geen transcode_sessions. De lijst hieronder is
+		// uitputtend, dus een tabel die vooruitgebouwd wordt valt hier om.
+		"watch_states":        true,
+		"stream_sessions":     true,
 	}
 
 	rows, err := pool.Query(ctx, `
@@ -115,7 +121,7 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 	}
 	for name := range got {
 		if !want[name] {
-			t.Errorf("tabel %s staat niet in de PS-2-scope; hoort die hier wel?", name)
+			t.Errorf("tabel %s staat niet in de scope tot en met PS-4; hoort die hier wel?", name)
 		}
 	}
 }

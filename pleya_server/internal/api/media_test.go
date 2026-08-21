@@ -249,23 +249,26 @@ func TestStreamTokenNeedsAnExistingVersion(t *testing.T) {
 	e.expectCode(rec, api.CodeNotFound)
 }
 
-// TestStreamingIsNotInThisPhase legt de scopegrens vast.
+// TestScopeBoundaryAfterPS4 legt vast wat er ná PS-4 nog steeds niet is.
 //
-// Streaming is PS-4, en poort 3 en 4 uit docs/pleya-server-gates.md staan nog
-// open. Een endpoint dat er half staat is erger dan een endpoint dat er niet is:
-// een client die 404 krijgt weet waar hij aan toe is.
-func TestStreamingIsNotInThisPhase(t *testing.T) {
+// Een endpoint dat er half staat is erger dan een endpoint dat er niet is. Deze
+// test is de tegenhanger van de tabelcontrole in internal/migrate: daar staat
+// welke tabellen er niet horen te zijn, hier welke routes.
+func TestScopeBoundaryAfterPS4(t *testing.T) {
 	e := newEnv(t)
 	e.setup(e.putSetupCode())
 
-	grease := e.findMovie("Grease")
 	for _, path := range []string{
-		"/pleya/v1/stream/" + grease.Versions[0].ID,
-		"/pleya/v1/watch-state",
+		"/pleya/v1/playback/plan",     // PS-6
+		"/pleya/v1/playback/sessions", // PS-8
+		"/pleya/v1/users",             // PS-9
+		"/pleya/v1/collections",       // PS-9C
+		"/pleya/v1/play-history",      // PS-9P
+		"/pleya/v1/admin/libraries",   // PS-11A
 	} {
 		rec := e.do(http.MethodGet, path, nil)
 		if rec.Code != http.StatusNotFound {
-			t.Fatalf("%s gaf %d; dit oppervlak hoort in PS-2 niet te bestaan", path, rec.Code)
+			t.Fatalf("%s gaf %d; dit oppervlak hoort nu niet te bestaan", path, rec.Code)
 		}
 	}
 }

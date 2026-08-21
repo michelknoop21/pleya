@@ -6,9 +6,9 @@ regel in deze map wijzigt.
 
 De werkregels per fase staan in de sectie Pleya Server van [../CLAUDE.md](../CLAUDE.md) en gelden
 onverkort: lees hoofdstuk 23 plus je eigen fase, blijf binnen de Phase ID, bouw niets uit een latere
-fase vooruit, en schrijf geen latere productvereiste weg. **De huidige fase is PS-2.**
+fase vooruit, en schrijf geen latere productvereiste weg. **De huidige fase is PS-4.**
 
-`internal/web/` hoort niet bij PS-2 maar bij PS-3W, een aparte afwijking met een eigen voorstel in
+`internal/web/` hoort niet bij deze fase maar bij PS-3W, een aparte afwijking met een eigen voorstel in
 [../docs/pleya-server-ps3w-proposal.md](../docs/pleya-server-ps3w-proposal.md).
 
 ## Er staat geen Go op deze machine, en dat is opzet
@@ -58,41 +58,63 @@ Er is geen formatteringscontrole. `verify-local.sh` sectie 2 draait `go vet` en 
 ```
 cmd/pleya-server/   main, bootstrap-identiteit, scanwerk als jobhandler, plus het subcommando
                     `healthcheck` dat de Dockerfile als HEALTHCHECK aanroept
-internal/api/       HTTP-laag, wire-types, foutcodes, rate limiter
-internal/auth/      Argon2id, tokens, ondertekensleutel op schijf
+internal/api/       HTTP-laag, wire-types, foutcodes, rate limiter, range en streamsessies
+internal/auth/      Argon2id, tokens, streamsessies, ondertekensleutel op schijf
 internal/catalog/   domeintypes, cursor, store gesplitst in lezen en schrijven
 internal/config/    alle PLEYA_SERVER_*-variabelen, bibliotheken, inodevertrouwen
 internal/ffprobe/   aanroep en omzetting naar detectiemetadata
+internal/fileid/    de stat-tupel achter de zwakke validator, per platform
 internal/id/        eigen UUIDv7, monotoon binnen een milliseconde
 internal/jobs/      duurzame wachtrij in dezelfde database
 internal/migrate/   voorwaartse migraties, sql/ als embed
 internal/scanner/   walk, judge, signature, sidecars, inode per platform
+internal/watch/     het conflictmodel uit DEC-049 als pure functie, plus zijn opslag
 internal/testsupport/  wegwerpschema en mediabestanden voor tests
 ```
 
 ## Regels die je stil kunt breken
 
-**Het wire-contract ligt vast.** `../docs/pleya-protocol/v1/openapi.yaml` is bevroren zolang PS-2
-loopt. Een probleem daarin is een protocolwijziging langs de zes compatibiliteitsregels uit
-hoofdstuk 3 van de specificatie, en niet een aanpassing in de YAML omdat het zo uitkomt.
+**Het wire-contract ligt vast.** `../docs/pleya-protocol/v1/openapi.yaml` is bevroren zolang PS-4
+loopt. Het venster stond één keer open, bij het sluiten van PS-3, voor de drie poortbesluiten
+(DEC-049, DEC-050, DEC-051). Een probleem daarin is een protocolwijziging langs de zes
+compatibiliteitsregels uit hoofdstuk 3 van de specificatie, en niet een aanpassing in de YAML omdat
+het zo uitkomt.
 
 **Wire-types leven alleen in `internal/api`.** Domeintype en wire-type zijn twee dingen met een
 expliciete mapper ertussen (hoofdstuk 12.1). De foutcode is het contract; het bericht is voor logs en
 een client mag er nooit op matchen.
 
-**Endpoints die er niet horen te zijn, blijven weg.** `stream/{version_id}` en beide
-kijkstatus-endpoints geven 404 en `capabilities.watch_state` staat op `false`. Dat is PS-4 met twee
-open poorten eronder, zie [../docs/pleya-server-gates.md](../docs/pleya-server-gates.md).
+**Endpoints die er niet horen te zijn, blijven weg.** Sinds PS-4 antwoorden `stream/{version_id}`,
+beide kijkstatus-endpoints en `POST /auth/stream-session`; `capabilities.watch_state`,
+`watch_state_ownership` en `stream_sessions` staan op `true`. Wat er níét is blijft 404:
+`playback/plan` (PS-6), sessies (PS-8), gebruikers (PS-9), verzamelingen (PS-9C), geschiedenis
+(PS-9P) en beheer (PS-11A). `verify-local.sh` en `TestScopeBoundaryAfterPS4` controleren dat.
 
-**Tabellen uit latere fasen bestaan niet.** Geen `users`, `sessions`, `watch_states`, `external_ids`,
-`metadata_candidates` of `transcode_sessions`. De lijst in hoofdstuk 17.2 beschrijft het hele
-v1-product en niet deze fase; `verify-local.sh` controleert dat ze er niet zijn.
+**Kijkstatus heeft een eigenaar.** De zes regels staan in
+[DEC-049](../docs/DECISIONS.md); de beslissing zelf staat als pure functie in
+`internal/watch/watch.go`, met de database eromheen in `store.go`. Wie een regel wijzigt raakt
+`Decide` en niet een SQL-statement: een regel die alleen in een query bestaat is niet te testen
+zonder een reeks aanvragen na te spelen. `Apply` vergrendelt de rij, want zonder dat lezen twee
+gelijktijdige events dezelfde revision en is de causaliteitsclaim waardeloos.
+
+**De `ETag` op `/stream` is zwak, en dat is een besluit.**
+[DEC-050](../docs/DECISIONS.md) haalt de byte-identity-belofte uit het contract: Pleya beheert de
+bestanden niet, en RFC 9110 §8.8.1 vraagt strict revision control of een hash over de bytes.
+`If-Range` levert daarom altijd `200`. Schrijf nergens code die op een gelijke validator vertrouwt om
+bytes aan elkaar te plakken.
+
+**Tabellen uit latere fasen bestaan niet.** Geen `users`, `sessions`, `play_history`,
+`play_sessions`, `user_item_data`, `external_ids`, `metadata_candidates` of `transcode_sessions`.
+`watch_states` en `stream_sessions` staan er sinds PS-4 wél. De lijst in hoofdstuk 17.2 beschrijft
+het hele v1-product en niet deze fase; `verify-local.sh` en `internal/migrate/migrate_test.go`
+controleren allebei welke tabellen er staan.
 
 **Migraties gaan alleen vooruit.** Genummerd in `internal/migrate/sql/`, uitgevoerd bij het opstarten
 onder een advisory lock, met een checksum per toegepaste migratie. De binary weigert te starten op een
 nieuwere database, en `MinVersion` in `migrate.go` (nu 3) is de ondergrens aan de andere kant: onder
-die schemaversie stopt hij ook. Neerwaartse migraties bestaan bewust niet: terugrollen gebeurt met
-een back-up.
+die schemaversie stopt hij ook. Hij blijft op 3 en niet op 4: hij bewaakt een database waar de
+migraties zijn overgeslagen, en een schema 3 dat deze binary tegenkomt wordt gewoon naar 4 gebracht.
+Neerwaartse migraties bestaan bewust niet: terugrollen gebeurt met een back-up.
 
 **De ffmpeg-pin in de `Dockerfile` is hard**, en de basis is Debian en geen Alpine. Beide staan in
 [DEC-044](../docs/DECISIONS.md#dec-044-debians-ffmpeg-blijft-in-de-image-en-ps-8-is-het-herzieningsmoment) en hoofdstuk 22 uitgelegd; een build die luid faalt op een

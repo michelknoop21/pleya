@@ -34,6 +34,7 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"storage.unavailable":            {503, true},
 		"storage.full":                   {507, false},
 		"session.invalid":                {400, false},
+		"session.stream_session_limit":   {429, false},
 	}
 
 	for code, expect := range want {

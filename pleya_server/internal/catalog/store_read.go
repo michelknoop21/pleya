@@ -425,6 +425,50 @@ func (s *Store) SubtitleFile(ctx context.Context, streamID id.ID) (FileOnDisk, i
 	return f, versionID, err
 }
 
+// ErrVersionMultifile betekent dat de versie uit meer dan één bestand bestaat.
+//
+// Een geldige toestand in het domeinmodel, en het protocol doet niet alsof het
+// dat niet is: v1 begrenst alleen de levering. Aaneenschakelen is een latere
+// fase, en tot dan is dit een eigen foutcode en niet een 404.
+var ErrVersionMultifile = errors.New("versie bestaat uit meer dan een bestand")
+
+// StreamFile zoekt het mediabestand achter een versie-id.
+//
+// Alleen `role = 'media'` en alleen deel nul: direct play accepteert in v1
+// uitsluitend `file_count == 1`. Een versie met meer delen levert
+// ErrVersionMultifile, en een versie waarvan het bestand als verdwenen
+// gemarkeerd staat levert ErrNotFound, want de catalogus kent hem wel maar er
+// zijn geen bytes.
+func (s *Store) StreamFile(ctx context.Context, versionID id.ID) (FileOnDisk, error) {
+	var f FileOnDisk
+	var parts int
+
+	err := s.pool.QueryRow(ctx, `
+		SELECT count(*) FROM media_files
+		WHERE version_id = $1 AND role = 'media' AND missing_since IS NULL`, versionID).Scan(&parts)
+	if err != nil {
+		return f, err
+	}
+	switch {
+	case parts == 0:
+		return f, ErrNotFound
+	case parts > 1:
+		return f, ErrVersionMultifile
+	}
+
+	err = s.pool.QueryRow(ctx, `
+		SELECT f.id, l.root_path || '/' || f.relative_path, f.generation
+		FROM media_files f
+		JOIN storage_locations l ON l.id = f.storage_location_id
+		WHERE f.version_id = $1 AND f.role = 'media' AND f.missing_since IS NULL`, versionID).
+		Scan(&f.ID, &f.AbsPath, &f.Generation)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return f, ErrNotFound
+	}
+	f.Role = RoleMedia
+	return f, err
+}
+
 // VersionExists zegt of een versie bestaat, voor het uitgeven van een
 // streamtoken. Het token is gebonden aan één mediaresource, dus die moet er zijn.
 func (s *Store) VersionExists(ctx context.Context, versionID id.ID) error {

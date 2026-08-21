@@ -54,6 +54,11 @@ const (
 	CodeStorageFull        = "storage.full"
 
 	CodeSessionInvalid = "session.invalid"
+
+	// CodeStreamSessionLimit is de negende actieve streamsessie (DEC-051). Een
+	// stabiele code en geen generieke 429: de client moet het verschil zien met
+	// een rate limiter, want hier helpt wachten niet maar een stream sluiten wel.
+	CodeStreamSessionLimit = "session.stream_session_limit"
 )
 
 // httpStatus koppelt elke code aan zijn status en aan retryable. Het staat in
@@ -85,7 +90,8 @@ var errorTable = map[string]struct {
 	CodeStorageUnavailable: {http.StatusServiceUnavailable, true},
 	CodeStorageFull:        {http.StatusInsufficientStorage, false},
 
-	CodeSessionInvalid: {http.StatusBadRequest, false},
+	CodeSessionInvalid:      {http.StatusBadRequest, false},
+	CodeStreamSessionLimit:  {http.StatusTooManyRequests, false},
 }
 
 // writeError stuurt de foutvorm met de status en retryable die bij de code horen.

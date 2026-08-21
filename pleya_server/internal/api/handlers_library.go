@@ -78,7 +78,7 @@ func (s *Server) handleLibraryItems(w http.ResponseWriter, r *http.Request) {
 		writeInternal(w, s.log, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, mapPage(page, &total))
+	writeJSON(w, http.StatusOK, s.hydratePage(r, mapPage(page, &total)))
 }
 
 func (s *Server) handleItem(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +92,11 @@ func (s *Server) handleItem(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, mapItem(item))
+	// hydrateItems werkt op een slice omdat elke andere aanroeper er een heeft;
+	// een detailscherm is de uitzondering van één.
+	single := []Item{mapItem(item)}
+	s.hydrateItems(r, single)
+	writeJSON(w, http.StatusOK, single[0])
 }
 
 func (s *Server) handleChildren(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +129,7 @@ func (s *Server) handleChildren(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, mapPage(page, nil))
+	writeJSON(w, http.StatusOK, s.hydratePage(r, mapPage(page, nil)))
 }
 
 func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
@@ -171,7 +175,7 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 	// Geen total_estimate bij zoeken: dat zou een telling over de hele
 	// bibliotheek per pagina vragen, en een schatting die duurder is dan de
 	// pagina zelf is geen schatting meer.
-	writeJSON(w, http.StatusOK, mapPage(page, nil))
+	writeJSON(w, http.StatusOK, s.hydratePage(r, mapPage(page, nil)))
 }
 
 func (s *Server) handleHub(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +214,7 @@ func (s *Server) handleHub(w http.ResponseWriter, r *http.Request) {
 			s.writeStoreError(w, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, mapPage(page, nil))
+		writeJSON(w, http.StatusOK, s.hydratePage(r, mapPage(page, nil)))
 
 	case "continue_watching", "next_up":
 		// Een server zonder kijkstatus levert lege lijsten, geen fout. Dat is de

@@ -149,11 +149,16 @@ print(eval(os.environ["PLEYA_EXPR"]))' 2>/dev/null
 
 # Het schema hoort er te staan en /readyz hoort pas daarna groen te zijn.
 tables="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'" 2>/dev/null | tr -d '\r')"
-if [ "${tables:-0}" -ge 12 ]; then ok "schema gemigreerd ($tables tabellen)"; else fail "schema telt $tables tabellen"; fi
+if [ "${tables:-0}" -ge 14 ]; then ok "schema gemigreerd ($tables tabellen)"; else fail "schema telt $tables tabellen"; fi
 
 # Er is geen users- of sessions-tabel. Dat is de drift check uit hoofdstuk 23.1
 # in scriptvorm: tokens uitgeven tegen één identiteit vraagt daar niet om.
-forbidden="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT coalesce(string_agg(table_name, ','), '') FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('users','sessions','library_permissions','watch_states','play_sessions','transcode_sessions','external_ids','metadata_candidates')" 2>/dev/null | tr -d '\r')"
+#
+# watch_states en stream_sessions staan sinds PS-4 wél in het schema (DEC-049 en
+# DEC-051) en zijn daarom uit deze lijst gehaald. play_history en play_sessions
+# staan er nadrukkelijk nog wel in: die horen bij PS-9P, en PS-4 mag niet van een
+# tabel uit een latere fase afhangen.
+forbidden="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT coalesce(string_agg(table_name, ','), '') FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('users','sessions','library_permissions','play_history','play_sessions','user_item_data','transcode_sessions','external_ids','metadata_candidates')" 2>/dev/null | tr -d '\r')"
 if [ -z "$forbidden" ]; then ok "geen tabel uit een latere fase"; else fail "tabellen uit een latere fase: $forbidden"; fi
 
 setup_required="$(api /info | jq_field 'd["auth"]["setup_required"]')"
@@ -235,10 +240,38 @@ else
   fail "een streamtoken opende /libraries"
 fi
 
-# Streaming en kijkstatus horen in deze fase niet te bestaan.
-for path in "/pleya/v1/stream/$VER" "/pleya/v1/watch-state"; do
+# Streaming en kijkstatus bestaan sinds PS-4, en horen dus te antwoorden.
+stream_code="$(curl -s -m 30 -o /dev/null -w '%{http_code}' "${AUTH[@]}" -r 0-1023 "$BASE/pleya/v1/stream/$VER")"
+if [ "$stream_code" = "206" ]; then
+  ok "een bereik van 1 kB levert 206"
+else
+  fail "/stream met een bereik gaf $stream_code"
+fi
+
+# De validator is zwak, dus If-Range levert nooit een deelantwoord (DEC-050).
+etag="$(curl -s -m 30 -o /dev/null -D - "${AUTH[@]}" -r 0-1023 "$BASE/pleya/v1/stream/$VER" | grep -i '^etag:' | tr -d '\r' | cut -d' ' -f2-)"
+case "$etag" in
+  'W/"'*) ok "de validator is zwak: $etag" ;;
+  *)      fail "de validator is $etag; wil de vorm W/\"...\"" ;;
+esac
+ifrange_code="$(curl -s -m 30 -o /dev/null -w '%{http_code}' "${AUTH[@]}" -r 0-1023 -H "If-Range: $etag" "$BASE/pleya/v1/stream/$VER")"
+if [ "$ifrange_code" = "200" ]; then
+  ok "If-Range levert het hele bestand (RFC 9110 §13.1.5)"
+else
+  fail "If-Range gaf $ifrange_code; met een zwakke validator hoort dat 200 te zijn"
+fi
+
+watch_code="$(curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" "$BASE/pleya/v1/watch-state")"
+if [ "$watch_code" = "200" ]; then
+  ok "/watch-state antwoordt (PS-4)"
+else
+  fail "/watch-state gaf $watch_code"
+fi
+
+# En de latere fasen bestaan nog steeds niet.
+for path in "/pleya/v1/playback/plan" "/pleya/v1/users" "/pleya/v1/collections"; do
   if [ "$(curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" "$BASE$path")" = "404" ]; then
-    ok "$path bestaat niet (PS-4)"
+    ok "$path bestaat niet"
   else
     fail "$path gaf $(curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" "$BASE$path")"
   fi

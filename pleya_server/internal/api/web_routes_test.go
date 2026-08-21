@@ -97,8 +97,9 @@ func TestUnknownProtocolRouteIsNotTheSpa(t *testing.T) {
 		"/pleya/v1/",
 		"/pleya/v1/nonexistent",
 		"/pleya/v1/items",
-		"/pleya/v1/watch-state",
-		"/pleya/v1/stream/abc",
+		// /watch-state en /stream/{id} bestaan sinds PS-4 en horen dus niet
+		// meer in deze lijst: die geven een autorisatiefout, en dat is precies
+		// wat een bestaand endpoint zonder token hoort te doen.
 		"/pleya/v1/a/b/c",
 	} {
 		rec := doGet(t, h, path)

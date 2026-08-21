@@ -50,10 +50,14 @@ type Config struct {
 	ScanInterval time.Duration
 	JobWorkers   int
 
-	AccessTokenTTL  time.Duration
-	RefreshTokenTTL time.Duration
-	StreamTokenTTL  time.Duration
-	SetupCodeTTL    time.Duration
+	AccessTokenTTL   time.Duration
+	RefreshTokenTTL  time.Duration
+	StreamTokenTTL   time.Duration
+	SetupCodeTTL     time.Duration
+	StreamSessionTTL time.Duration
+
+	// WatchLease is het schrijfrecht op de kijkstatus (DEC-049 regel 4).
+	WatchLease time.Duration
 }
 
 // Defaults zoals ze in de container gelden. De drie schrijfbare mappen staan
@@ -96,6 +100,19 @@ const (
 	// Lang genoeg om de code van de console over te typen, kort genoeg dat een
 	// server die een nacht onbeheerd draait geen open deur is.
 	DefaultSetupCodeTTL = 30 * time.Minute
+
+	// Een browser-streamsessie leeft langer dan een streamtoken, want een
+	// <video>-element bouwt zijn range-aanvragen uit de URL in src en kan die
+	// niet per seek herschrijven (DEC-051). Een half uur dekt een aflevering
+	// zonder verlengen; verlengen gebeurt bij elke range-aanvraag, dus in de
+	// praktijk verloopt alleen een sessie waar niemand meer naar kijkt.
+	DefaultStreamSessionTTL = 30 * time.Minute
+
+	// Tweemaal een rapportage-interval van 45 s. Het watch-pakket dwingt zijn
+	// eigen ondergrens van 90 s af, dus een te lage waarde hier verkort de lease
+	// niet; hem verhogen betekent dat een gecrashte eigenaar zijn item langer
+	// vasthoudt.
+	DefaultWatchLease = 90 * time.Second
 )
 
 // Getenv leest één omgevingsvariabele. os.Getenv voldoet; de parameter bestaat
@@ -169,6 +186,8 @@ func Load(getenv Getenv) (*Config, error) {
 		{"PLEYA_SERVER_REFRESH_TOKEN_TTL", DefaultRefreshTokenTTL, &cfg.RefreshTokenTTL},
 		{"PLEYA_SERVER_STREAM_TOKEN_TTL", DefaultStreamTokenTTL, &cfg.StreamTokenTTL},
 		{"PLEYA_SERVER_SETUP_CODE_TTL", DefaultSetupCodeTTL, &cfg.SetupCodeTTL},
+		{"PLEYA_SERVER_STREAM_SESSION_TTL", DefaultStreamSessionTTL, &cfg.StreamSessionTTL},
+		{"PLEYA_SERVER_WATCH_LEASE", DefaultWatchLease, &cfg.WatchLease},
 	} {
 		v, err := parseTimeout(valueOr(getenv, d.key, d.def.String()))
 		if err != nil {

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/watch"
 	"github.com/edde746/plezy/pleya_server/internal/web"
 )
 
@@ -26,6 +28,7 @@ const SubjectOwner = "owner"
 type Options struct {
 	Catalog   *catalog.Store
 	Auth      *auth.Store
+	Watch     *watch.Store
 	Signer    *auth.Signer
 	Logger    *slog.Logger
 	Ready     func() bool
@@ -34,10 +37,17 @@ type Options struct {
 	Version   string
 	StartedAt time.Time
 
-	AccessTokenTTL  time.Duration
-	RefreshTokenTTL time.Duration
-	StreamTokenTTL  time.Duration
-	SetupCodeTTL    time.Duration
+	AccessTokenTTL   time.Duration
+	RefreshTokenTTL  time.Duration
+	StreamTokenTTL   time.Duration
+	SetupCodeTTL     time.Duration
+	StreamSessionTTL time.Duration
+
+	// WatchLease is het schrijfrecht uit DEC-049 regel 4: tweemaal het
+	// rapportage-interval, met een ondergrens van 90 s die het watch-pakket zelf
+	// afdwingt. Op de serverklok, zodat een scheve clientklok er niets aan
+	// verandert.
+	WatchLease time.Duration
 
 	Argon2 auth.Argon2Params
 }
@@ -90,6 +100,7 @@ func (s *Server) routes() {
 
 	// Klasse authenticated.
 	s.mux.Handle("POST "+p+"/auth/stream-token", s.authenticated(s.handleStreamToken))
+	s.mux.Handle("POST "+p+"/auth/stream-session", s.authenticated(s.handleStreamSession))
 	s.mux.Handle("GET "+p+"/server", s.authenticated(s.handleServer))
 	s.mux.Handle("GET "+p+"/libraries", s.authenticated(s.handleLibraries))
 	s.mux.Handle("GET "+p+"/libraries/{library_id}/items", s.authenticated(s.handleLibraryItems))
@@ -98,10 +109,17 @@ func (s *Server) routes() {
 	s.mux.Handle("GET "+p+"/search", s.authenticated(s.handleSearch))
 	s.mux.Handle("GET "+p+"/hubs/{hub_id}", s.authenticated(s.handleHub))
 	s.mux.Handle("GET "+p+"/artwork/{artwork_id}", s.authenticated(s.handleArtwork))
+	s.mux.Handle("POST "+p+"/watch-state", s.authenticated(s.handleWatchStateReport))
+	s.mux.Handle("GET "+p+"/watch-state", s.authenticated(s.handleWatchStateList))
 
 	// Klasse authenticated of met een streamtoken in de querystring: een externe
 	// speler kan geen header zetten.
 	s.mux.Handle("GET "+p+"/subtitles/{subtitle_id}", s.streamAuthorized(s.handleSubtitle))
+
+	// Klasse authenticated, met een streamtoken in de querystring, of met een
+	// browser-streamsessie: een niet-geheime ss in de URL plus de cookie
+	// waarvan de naam die id draagt (DEC-051).
+	s.mux.Handle("GET "+p+"/stream/{version_id}", s.streamAuthorized(s.handleStream))
 
 	// Alles wat onder /pleya/v1 valt en hierboven niet staat is een onbekende
 	// protocolroute, en die krijgt de foutvorm van het protocol. Zonder deze
@@ -173,6 +191,15 @@ func (s *Server) streamAuthorized(next func(w http.ResponseWriter, r *http.Reque
 			return
 		}
 
+		if sessionID := strings.TrimSpace(r.URL.Query().Get("ss")); sessionID != "" {
+			scope, ok := s.streamSessionScope(w, r, sessionID)
+			if !ok {
+				return
+			}
+			next(w, r, scope)
+			return
+		}
+
 		raw := strings.TrimSpace(r.URL.Query().Get("stream_token"))
 		if raw == "" {
 			writeError(w, s.log, CodeTokenInvalid, "no bearer token and no stream token", nil)
@@ -190,6 +217,51 @@ func (s *Server) streamAuthorized(next func(w http.ResponseWriter, r *http.Reque
 		}
 		next(w, r, &scope)
 	})
+}
+
+// streamSessionScope valideert een browser-streamsessie en geeft de versie waar
+// hij aan gebonden is.
+//
+// De sessie-id in de URL is niet geheim en op zichzelf niets waard. Het geheim
+// zit in de cookie waarvan de naam die id draagt, en pas de twee samen openen
+// iets. Een aanvraag zonder die cookie is daarmee net zo kansloos als een
+// aanvraag zonder token, en dat is precies de bedoeling: de id mag in
+// browsergeschiedenis en in logs staan.
+func (s *Server) streamSessionScope(w http.ResponseWriter, r *http.Request, rawSessionID string) (*id.ID, bool) {
+	sessionID, err := id.Parse(rawSessionID)
+	if err != nil {
+		writeError(w, s.log, CodeTokenInvalid, "stream session is invalid", nil)
+		return nil, false
+	}
+
+	cookie, err := r.Cookie(auth.StreamCookiePrefix + sessionID.String())
+	if err != nil || cookie.Value == "" {
+		writeError(w, s.log, CodeTokenInvalid, "stream session is invalid", nil)
+		return nil, false
+	}
+
+	versionID, err := id.Parse(r.PathValue("version_id"))
+	if err != nil {
+		writeError(w, s.log, CodeNotFound, "not found", nil)
+		return nil, false
+	}
+
+	now := s.now().UTC()
+	if err := s.opts.Auth.VerifyStreamSession(r.Context(), sessionID, cookie.Value, SubjectOwner, versionID, now); err != nil {
+		if errors.Is(err, auth.ErrStreamSessionInvalid) {
+			writeError(w, s.log, CodeTokenInvalid, "stream session is invalid", nil)
+			return nil, false
+		}
+		writeInternal(w, s.log, err)
+		return nil, false
+	}
+
+	// Verlengen raakt uitsluitend deze sessie. Dat is de reden dat het model
+	// werkt: twee gelijktijdige streams roteren onafhankelijk.
+	if _, err := s.opts.Auth.TouchStreamSession(r.Context(), sessionID, s.opts.StreamSessionTTL, now); err != nil {
+		s.log.Warn("streamsessie verlengen mislukt", "error", err.Error())
+	}
+	return &versionID, true
 }
 
 func (s *Server) writeTokenError(w http.ResponseWriter, err error) {
