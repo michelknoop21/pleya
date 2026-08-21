@@ -2104,7 +2104,7 @@ Afspelen in de browser hangt aan PS-4 en PS-6, de beheerkant aan G6 en G7.
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-4 |
-| Status | **gesloten 21 augustus 2026**: twee migraties, drie endpoints, `internal/watch/` en `lib/services/pleya_server_client/parts/playback.dart`. Gesloten op eigenaarsbesluit met de TV-ronde openstaand, zie criterium 1 |
+| Status | **gesloten 21 augustus 2026**: twee migraties, drie endpoints, `internal/watch/` en `lib/services/pleya_server_client/parts/playback.dart`. Desktop, mobiel en TV zijn alle drie op echte hardware bewezen |
 | Doel | afspelen vanaf Pleya Server met de server als bron van kijkstatus |
 | Bijdrage aan einddoel | dit is het punt waarop Pleya Server een Plex-server functioneel kan vervangen voor het meest voorkomende gebruik |
 | Afhankelijkheden | PS-3 |
@@ -2174,7 +2174,7 @@ daar het meest afwijken.
 
 | Acceptatiecriterium | Stand |
 | --- | --- |
-| 1. Een direct-play-bestand speelt op desktop, mobiel en TV, met werkende seek | **gehaald voor desktop en mobiel, TV aanvaard zonder meting.** macOS en iPhone zijn allebei op echte hardware gedaan, met beeld, geluid en een forse seek; zie de rondes hieronder. De Apple TV-ronde is niet uitgevoerd: build 240 staat op TestFlight, maar er is geen film op het toestel gestart. De eigenaar heeft op 21 augustus 2026 besloten de fase op dit punt te sluiten in plaats van de TV-ronde af te wachten |
+| 1. Een direct-play-bestand speelt op desktop, mobiel en TV, met werkende seek | **gehaald op alle drie de vormfactoren.** macOS, iPhone en Apple TV hebben elk op echte hardware dezelfde film gespeeld, met beeld, geluid en een forse seek; zie de rondes hieronder |
 | 2. Seeken naar een willekeurige positie zonder de stream opnieuw op te bouwen | gehaald en gemeten: een bereik van 1 MB vanaf byte 1.469.339.787 in een bestand van 1,87 GB kwam in 164 ms terug, zonder tweede verbinding |
 | 3. Kijkpositie overleeft het afsluiten en verschijnt op een tweede toestel | **gehaald op twee echte toestellen.** De macOS-app schreef 2.435.371 ms; vijf uur later nam een iPhone hetzelfde item over met `playback_started`, hervatte daar en speelde door tot 2.459.687 ms, met een eigen `owner_session_id` en `revision` 29 naar 31 |
 | 4. Het conflictmodel is opgeschreven vóór de eerste regel code, met een test per regel | gehaald. DEC-049 dateert van vóór de implementatie; `internal/watch/watch_test.go` heeft achttien tests, waaronder een per regel, het tv/telefoon-scenario en de backlog bij een verlopen lease |
@@ -2232,10 +2232,20 @@ tot 2.459.687 ms bij `revision` 31. Vierentwintig seconden voortgang bovenop een
 positie van vijf uur oud, op een ander toestel, zonder dat er iets handmatig is
 overgezet.
 
-**Wat er bij het sluiten open bleef.** De Apple TV-ronde is niet uitgevoerd.
-Build 240 staat op TestFlight en de tvOS-lane is groen, maar er is geen film op
-het toestel gestart, dus over focus, seek met de afstandsbediening en de
-levensduur van de stream-URL op tvOS zegt dit hoofdstuk niets. Ook het
+**De TV-ronde, 21 augustus 2026.** Een Apple TV met TestFlight-build 240 logde om
+21:47:32 in en startte om 21:48:07 hetzelfde item, met een eigen
+`owner_session_id` `c786c4f5-…`, het derde toestel in de keten. Beeld en geluid
+zijn door de eigenaar waargenomen. De positie sprong van de 2.459.687 ms die de
+iPhone had achtergelaten naar 2.931.700 ms bij `revision` 38: bijna acht minuten
+vooruit binnen 23 seconden wandkloktijd, dus een seek met de afstandsbediening
+en geen afspeeltijd. Drie `206`-antwoorden op `/stream/`, waarvan één van 22,7
+seconden, en zeven geaccepteerde watch-state-writes.
+
+Daarmee is de kijkpositie over drie toestellen achter elkaar meegereisd: Mac
+naar iPhone naar Apple TV, met `revision` 29 naar 31 naar 38 en telkens een
+nieuwe eigenaar.
+
+**Wat er bij het sluiten open bleef.** Het
 eigendomsscenario uit DEC-049 is niet op twee echte clients tegelijk gespeeld:
 de zes regels zijn met achttien tests in `internal/watch/watch_test.go` gedekt en
 het overnemen is één keer in het echt gezien (de iPhone nam over van de Mac),

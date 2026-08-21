@@ -67,9 +67,9 @@ PS-0-afwijking staat in `docs/pleya-server-ps0-proposal.md`, de PS-1-afwijking i
 `docs/pleya-server-ps1-scope-deviation.md` en de PS-3W-afwijking in
 `docs/pleya-server-ps3w-proposal.md`. Het masterplan dat er acht fasen bij zet is goedgekeurd op
 21 augustus 2026 en staat in `docs/pleya-server-masterplan-proposal.md`. **PS-4 is gesloten** op
-21 augustus 2026: direct play met HTTP-range, en kijkstatus met de server als eigenaar. Desktop en
-mobiel zijn op echte hardware bewezen, inclusief een kijkpositie die van een Mac naar een iPhone
-oversprong; de Apple TV-ronde is niet uitgevoerd en de fase is op eigenaarsbesluit toch gesloten.
+21 augustus 2026: direct play met HTTP-range, en kijkstatus met de server als eigenaar. Desktop,
+mobiel en TV zijn alle drie op echte hardware bewezen, inclusief een kijkpositie die van een Mac via
+een iPhone naar een Apple TV meereisde.
 **De eerstvolgende fase is PS-5** (`DeviceCapabilities` in de client). Werk dat verder gaat dan de
 PS-5-scope is per definitie te vroeg; transcoderen is PS-8, gebruikers zijn PS-9, en de browserspeler
 is PS-4W.
