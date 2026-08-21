@@ -126,6 +126,58 @@ class PlexHomeService {
     unawaited(_refreshAll());
   }
 
+  /// Resolves once the Home users are actually known, not merely once [start]
+  /// has returned.
+  ///
+  /// The difference matters exactly once per install. [start] reads the cache
+  /// and kicks the network fetch off unawaited, so on a genuine first run it
+  /// completes with nothing in hand. Anything that needs to know *which Plex
+  /// account this profile is* would then resolve nothing and fail closed, with
+  /// no second trigger — which is how a background job silently never runs.
+  /// Waiting for the first non-empty emission closes that, and callers are
+  /// expected to bound the wait: an account with no Home users at all is a
+  /// legitimate state that never emits one.
+  Future<void> whenHomeUsersKnown({Duration timeout = const Duration(seconds: 15)}) async {
+    await start();
+
+    // "Known" means every Plex account has been asked, not that some account
+    // answered. Two states look alike from the outside and are not: a
+    // connection absent from the map has not been fetched yet, while one
+    // mapped to an empty list has been asked and genuinely has no Home users.
+    // Waiting for "any non-empty" would return as soon as the *first* account
+    // answered, and a household whose active profile lives under the second one
+    // would resolve nothing and refuse — the same cold start, one account over.
+    // With no Plex accounts at all there is nothing to wait for.
+    final expected = (await _connections.list()).whereType<PlexAccountConnection>().map((c) => c.id).toSet();
+    bool known() => expected.every(_byConnection.containsKey);
+    if (known()) return;
+
+    // Written out rather than `stream.firstWhere(...)` with a timeout on the
+    // future, because that combination leaks: a deadline on a Future does not
+    // cancel the subscription behind it, and an account that legitimately has
+    // no Home users never emits, so every caller would strand one listener on
+    // `_controller` for the life of the app.
+    final done = Completer<void>();
+    void finish() {
+      if (!done.isCompleted) done.complete();
+    }
+
+    final timer = Timer(timeout, finish);
+    final sub = stream.listen(
+      (_) {
+        if (known()) finish();
+      },
+      onError: (Object _) => finish(),
+      onDone: finish,
+    );
+    try {
+      await done.future;
+    } finally {
+      timer.cancel();
+      await sub.cancel();
+    }
+  }
+
   Future<void> _onChange(List<Connection> current) async {
     final storage = _storage;
     if (storage == null) return;

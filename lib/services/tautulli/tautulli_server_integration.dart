@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../credential_vault.dart';
 import 'tautulli_constants.dart';
+import 'tautulli_integration_status.dart';
 import 'tautulli_session.dart';
 
 /// Whether the admin currently intends this integration to be live.
@@ -86,6 +87,16 @@ class TautulliServerIntegration {
 
   /// The policy as the rest of the app reads it: absent means on.
   bool get historyPolicyEnabled => useHistoryForRecommendations != false;
+
+  /// This record with the credential taken out, which is the only form anything
+  /// outside the admin settings screen ever gets to hold.
+  TautulliIntegrationStatus get status => TautulliIntegrationStatus(
+    machineIdentifier: machineIdentifier,
+    connected: isConnected,
+    hasCredential: hasCredential,
+    historyPolicy: useHistoryForRecommendations,
+    hasUnresolvedConflict: hasUnresolvedConflict,
+  );
 
   /// A session usable by [TautulliClient], or null when there is no credential.
   TautulliSession? get session {
@@ -250,16 +261,3 @@ class TautulliServerIntegration {
       'credential: $hasCredential, policy: ${useHistoryForRecommendations ?? 'default'}, '
       'conflict: $hasUnresolvedConflict)';
 }
-
-/// Whether this integration may feed imported history into the taste engine.
-///
-/// Four independent things all have to hold, and each of them is a state the
-/// admin can put the integration into on purpose. Written once, here, so the
-/// binding, the scoring filter and the importer cannot drift apart on what
-/// "enabled" means.
-bool importEnabled(TautulliServerIntegration? integration) =>
-    integration != null &&
-    integration.isConnected &&
-    integration.hasCredential &&
-    integration.historyPolicyEnabled &&
-    !integration.hasUnresolvedConflict;

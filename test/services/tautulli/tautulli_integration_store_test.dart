@@ -8,6 +8,8 @@ import 'package:pleya/services/tautulli/tautulli_session.dart';
 
 import '../../test_helpers/prefs.dart';
 
+bool _importEnabled(TautulliServerIntegration? integration) => integration?.status.importEnabled ?? false;
+
 TautulliSession _session({
   String url = 'https://tautulli.example',
   String token = 'tok',
@@ -94,7 +96,7 @@ void main() {
       expect(migrated!.machineIdentifier, 'pms-1');
       expect(migrated.token, 'tok');
       expect(migrated.useHistoryForRecommendations, isNull, reason: 'an existing pairing keeps working, on by default');
-      expect(importEnabled(migrated), isTrue);
+      expect(_importEnabled(migrated), isTrue);
       expect(migrated.configuredByProfileId, 'uuid-a');
 
       expect(await store.loadAll(), contains('pms-1'));
@@ -123,7 +125,7 @@ void main() {
 
       final result = await store.migrateLegacySession('uuid-b');
       expect(result!.hasUnresolvedConflict, isFalse);
-      expect(importEnabled(result), isTrue);
+      expect(_importEnabled(result), isTrue);
       expect(await TautulliAccountStore.instance.load('uuid-b'), isNull);
       expect((await store.loadAll()).length, 1);
     });
@@ -139,7 +141,7 @@ void main() {
       final result = await store.migrateLegacySession('uuid-b');
 
       expect(result!.hasUnresolvedConflict, isTrue);
-      expect(importEnabled(result), isFalse, reason: 'no profile consumes it until an admin re-pairs');
+      expect(_importEnabled(result), isFalse, reason: 'no profile consumes it until an admin re-pairs');
       // Credentials are never merged: the surviving record keeps its own.
       expect(result.baseUrl, 'https://a');
       expect(result.token, 'tok-a');
@@ -178,7 +180,7 @@ void main() {
       final after = (await store.loadAll())['pms-1']!;
       expect(after.hasUnresolvedConflict, isFalse);
       expect(after.token, 'tok-chosen');
-      expect(importEnabled(after), isTrue);
+      expect(_importEnabled(after), isTrue);
     });
 
     test('a conflict does not disturb another server', () async {
@@ -198,7 +200,7 @@ void main() {
       final all = await store.loadAll();
       expect(all['pms-1']!.hasUnresolvedConflict, isTrue);
       expect(all['pms-2']!.hasUnresolvedConflict, isFalse);
-      expect(importEnabled(all['pms-2']), isTrue);
+      expect(_importEnabled(all['pms-2']), isTrue);
     });
   });
 }

@@ -474,8 +474,10 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     final service = recommendations;
     if (service == null) return;
     try {
-      // Only rebuild when the sync actually produced new rows; an unchanged
-      // profile costs one no-op call and no extra notify.
+      // Rebuild only when the sync says the rows on screen are out of date:
+      // new imported rows, or rows that were scored before the integration
+      // store had answered. An unchanged warm profile costs one no-op call and
+      // no extra notify, and this path never refetches a hub.
       if (await service.syncImportedHistory()) {
         if (isDisposed || generation != _loadGeneration) return;
         await _loadPersonalizedRows();

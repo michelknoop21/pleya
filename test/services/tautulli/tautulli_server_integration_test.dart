@@ -7,6 +7,11 @@ import 'package:pleya/services/tautulli/tautulli_session.dart';
 
 import '../../test_helpers/prefs.dart';
 
+/// The "may this feed the taste engine" rule lives on the credential-free view,
+/// which is the only form a consumer ever holds. Asked of a record here because
+/// that is what these tests build.
+bool _importEnabled(TautulliServerIntegration? integration) => integration?.status.importEnabled ?? false;
+
 TautulliServerIntegration _integration({
   String machineIdentifier = 'pms-1',
   String? token = 'tok',
@@ -28,33 +33,33 @@ void main() {
 
   group('importEnabled', () {
     test('a fresh pairing with no explicit policy is on', () {
-      expect(importEnabled(_integration()), isTrue);
+      expect(_importEnabled(_integration()), isTrue);
       expect(_integration().historyPolicyEnabled, isTrue);
     });
 
     test('an explicit true is on', () {
-      expect(importEnabled(_integration(policy: true)), isTrue);
+      expect(_importEnabled(_integration(policy: true)), isTrue);
     });
 
     test('an explicit false is off', () {
-      expect(importEnabled(_integration(policy: false)), isFalse);
+      expect(_importEnabled(_integration(policy: false)), isFalse);
     });
 
     test('disconnected is off even with the policy on', () {
-      expect(importEnabled(_integration(state: TautulliConnectionState.disconnected)), isFalse);
+      expect(_importEnabled(_integration(state: TautulliConnectionState.disconnected)), isFalse);
     });
 
     test('a missing credential is off', () {
-      expect(importEnabled(_integration(token: null)), isFalse);
-      expect(importEnabled(_integration(token: '')), isFalse);
+      expect(_importEnabled(_integration(token: null)), isFalse);
+      expect(_importEnabled(_integration(token: '')), isFalse);
     });
 
     test('an unresolved migration conflict is off', () {
-      expect(importEnabled(_integration(conflict: true)), isFalse);
+      expect(_importEnabled(_integration(conflict: true)), isFalse);
     });
 
     test('no integration at all is off', () {
-      expect(importEnabled(null), isFalse);
+      expect(_importEnabled(null), isFalse);
     });
   });
 
@@ -99,13 +104,13 @@ void main() {
       final back = await TautulliServerIntegration.decode(blob);
       expect(back.useHistoryForRecommendations, isNull);
       expect(back.historyPolicyEnabled, isTrue);
-      expect(importEnabled(back), isTrue);
+      expect(_importEnabled(back), isTrue);
     });
 
     test('an explicit false survives a round trip', () async {
       final back = await TautulliServerIntegration.decode(await _integration(policy: false).encode());
       expect(back.useHistoryForRecommendations, isFalse);
-      expect(importEnabled(back), isFalse);
+      expect(_importEnabled(back), isFalse);
     });
 
     test('an unreadable credential keeps the record and the policy', () async {
@@ -122,7 +127,7 @@ void main() {
       expect(back.hasCredential, isFalse);
       expect(back.useHistoryForRecommendations, isFalse);
       expect(back.session, isNull);
-      expect(importEnabled(back), isFalse);
+      expect(_importEnabled(back), isFalse);
     });
 
     test('a payload without an identifier or url is not a record at all', () async {
@@ -144,7 +149,7 @@ void main() {
     test('a brand new server starts with no explicit policy', () {
       final made = TautulliServerIntegration.fromSession(session(), machineIdentifier: 'pms-1', nowMs: 5);
       expect(made.useHistoryForRecommendations, isNull);
-      expect(importEnabled(made), isTrue);
+      expect(_importEnabled(made), isTrue);
       expect(made.configuredAtMs, 5);
     });
 
@@ -157,7 +162,7 @@ void main() {
       expect(made.useHistoryForRecommendations, isFalse);
       expect(made.isConnected, isTrue);
       expect(made.hasCredential, isTrue);
-      expect(importEnabled(made), isFalse);
+      expect(_importEnabled(made), isFalse);
       expect(made.configuredAtMs, 1);
     });
 
@@ -168,7 +173,7 @@ void main() {
         existing: _integration(conflict: true),
       );
       expect(made.hasUnresolvedConflict, isFalse);
-      expect(importEnabled(made), isTrue);
+      expect(_importEnabled(made), isTrue);
     });
   });
 

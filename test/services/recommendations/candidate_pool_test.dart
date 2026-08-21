@@ -31,6 +31,15 @@ class _FakeClient implements MediaServerClient {
   bool failRecent;
   bool failPages;
 
+  /// Library ids whose pages fail, for the half-failed case that a single
+  /// `failPages` flag cannot express.
+  Set<String> failPagesFor = const {};
+
+  /// Delay per page call, so overlapping work is observable rather than assumed.
+  Duration pageDelay = Duration.zero;
+  int pagesInFlight = 0;
+  int peakPagesInFlight = 0;
+
   int recentCalls = 0;
   int libraryCalls = 0;
   final List<({String id, LibraryQuery query, MediaKind? kind})> pageCalls = [];
@@ -69,7 +78,14 @@ class _FakeClient implements MediaServerClient {
     AbortController? abort,
   }) async {
     pageCalls.add((id: libraryId, query: query, kind: libraryKind));
-    if (failPages) throw Exception('no');
+    pagesInFlight++;
+    if (pagesInFlight > peakPagesInFlight) peakPagesInFlight = pagesInFlight;
+    try {
+      if (pageDelay > Duration.zero) await Future<void>.delayed(pageDelay);
+    } finally {
+      pagesInFlight--;
+    }
+    if (failPages || failPagesFor.contains(libraryId)) throw Exception('no');
     final sort = query.sort?.field ?? 'none';
     return LibraryPage(
       items: [for (var i = 0; i < 3; i++) _item('$libraryId-$sort-${query.offset}-$i')],
@@ -84,6 +100,12 @@ class _FakeClient implements MediaServerClient {
 
 MediaLibrary _library(String id, {MediaKind kind = MediaKind.movie, bool hidden = false}) =>
     MediaLibrary(id: id, backend: MediaBackend.plex, title: id, kind: kind, hidden: hidden);
+
+/// A pool whose clock the test can move, for everything about expiry.
+class _MovableClockPool {
+  int now = _nowMs;
+  late final CandidatePool pool = CandidatePool(clock: () => now);
+}
 
 void main() {
   CandidatePool pool({int? now}) => CandidatePool(clock: () => now ?? _nowMs);
@@ -182,6 +204,149 @@ void main() {
     test('everything failing yields an empty pool, never an exception', () async {
       final client = _FakeClient(failLibraries: true, failRecent: true);
       expect(await pool().candidates([client]), isEmpty);
+    });
+  });
+
+  group('an incomplete answer is not cached like a good one', () {
+    // The failure this is about: one bad minute used to cost a full day of
+    // catalogue depth. A page times out, the thin result is written with a
+    // 24-hour stamp, and the rows never ask again even though the server came
+    // back a minute later.
+    test('a complete deep pass holds for the day; a half-failed one does not', () async {
+      final healthy = _FakeClient(libraries: [_library('a'), _library('b')]);
+      final healthyPool = _MovableClockPool();
+      await healthyPool.pool.candidates([healthy]);
+      final afterComplete = healthy.pageCalls.length;
+      healthyPool.now += const Duration(hours: 1).inMilliseconds;
+      await healthyPool.pool.candidates([healthy]);
+      expect(healthy.pageCalls.length, afterComplete, reason: 'a complete answer is good for the full window');
+
+      final flaky = _FakeClient(libraries: [_library('a'), _library('b')])..failPagesFor = {'b'};
+      final flakyPool = _MovableClockPool();
+      await flakyPool.pool.candidates([flaky]);
+      final afterThin = flaky.pageCalls.length;
+      flakyPool.now += const Duration(hours: 1).inMilliseconds;
+      await flakyPool.pool.candidates([flaky]);
+      expect(flaky.pageCalls.length, greaterThan(afterThin), reason: 'an incomplete answer is retried within the hour');
+    });
+
+    test('a recovered server replaces the thin pool with the full one', () async {
+      final flaky = _FakeClient(libraries: [_library('a'), _library('b')])..failPagesFor = {'b'};
+      final harness = _MovableClockPool();
+      final thin = await harness.pool.candidates([flaky]);
+
+      flaky.failPagesFor = const {};
+      harness.now += const Duration(hours: 1).inMilliseconds;
+      final full = await harness.pool.candidates([flaky]);
+
+      expect(full.length, greaterThan(thin.length));
+    });
+
+    test('a thin answer never displaces a richer complete one', () async {
+      final client = _FakeClient(libraries: [_library('a'), _library('b')]);
+      final harness = _MovableClockPool();
+      final complete = await harness.pool.candidates([client]);
+
+      // A day on the entry has expired, and this time half the server is down.
+      client.failPagesFor = {'a', 'b'};
+      harness.now += const Duration(hours: 25).inMilliseconds;
+      final degraded = await harness.pool.candidates([client]);
+
+      expect(degraded.length, complete.length, reason: 'the richer previous answer is kept, not overwritten');
+    });
+
+    test('a failed recently-added pass keeps serving the previous items', () async {
+      final client = _FakeClient(recent: [_item('r1'), _item('r2')]);
+      final harness = _MovableClockPool();
+      expect((await harness.pool.candidates([client])).length, 2);
+
+      client.failRecent = true;
+      harness.now += const Duration(hours: 13).inMilliseconds;
+      expect((await harness.pool.candidates([client])).map((i) => i.id), ['r1', 'r2']);
+
+      // …and does not hammer the server while it stays down.
+      final callsAfterFailure = client.recentCalls;
+      await harness.pool.candidates([client]);
+      expect(client.recentCalls, callsAfterFailure, reason: 'the stale answer holds for the retry window');
+    });
+  });
+
+  group('stale data eventually retires', () {
+    // The trap this closes: re-stamping the whole entry on every failed retry
+    // makes a two-day-old pool look fresh forever, so a title deleted from the
+    // server keeps being recommended for as long as the server stays down.
+    test('a server that stays down stops contributing instead of ageing forever', () async {
+      final client = _FakeClient(recent: [_item('r1')], libraries: [_library('a')]);
+      final harness = _MovableClockPool();
+      expect(await harness.pool.candidates([client]), isNotEmpty);
+
+      client
+        ..failRecent = true
+        ..failLibraries = true;
+
+      // A day in, the previous answer is still the best there is.
+      harness.now += const Duration(hours: 24).inMilliseconds;
+      expect(await harness.pool.candidates([client]), isNotEmpty);
+
+      // Two days in, it is simply too old to keep passing off as a catalogue.
+      harness.now += const Duration(hours: 25).inMilliseconds;
+      expect(await harness.pool.candidates([client]), isEmpty);
+    });
+
+    test('failed retries throttle without making the data look younger', () async {
+      final client = _FakeClient(recent: [_item('r1')]);
+      final harness = _MovableClockPool();
+      await harness.pool.candidates([client]);
+      client.failRecent = true;
+
+      // Well past the normal window, so every pass from here is a retry.
+      harness.now += const Duration(hours: 13).inMilliseconds;
+      var attempts = 0;
+      for (var i = 0; i < 8; i++) {
+        harness.now += const Duration(minutes: 20).inMilliseconds;
+        final before = client.recentCalls;
+        await harness.pool.candidates([client]);
+        if (client.recentCalls > before) attempts++;
+      }
+      expect(attempts, 8, reason: 'one retry per window, not one per home load');
+
+      // …and the data still ages out on its own clock despite all those retries.
+      harness.now += const Duration(hours: 48).inMilliseconds;
+      expect(await harness.pool.candidates([client]), isEmpty);
+    });
+  });
+
+  group('libraries are fetched side by side', () {
+    test('within the same call budget', () async {
+      final client = _FakeClient(libraries: [for (var i = 0; i < 6; i++) _library('lib$i')])
+        ..pageDelay = const Duration(milliseconds: 5);
+      await pool().candidates([client]);
+
+      expect(client.pageCalls.length, kMaxLibraries * 2, reason: 'still exactly two calls per library');
+      expect(client.peakPagesInFlight, greaterThan(1), reason: 'the libraries genuinely overlap');
+      expect(
+        client.peakPagesInFlight,
+        lessThanOrEqualTo(kLibraryConcurrency),
+        reason: 'bounded: one page per library at a time, at most kLibraryConcurrency libraries',
+      );
+    });
+
+    test('one failing library does not hold up or empty the others', () async {
+      final client = _FakeClient(libraries: [_library('a'), _library('b'), _library('c')])..failPagesFor = {'b'};
+      final items = await pool().candidates([client]);
+
+      expect(items.any((i) => i.id.startsWith('a-')), isTrue);
+      expect(items.any((i) => i.id.startsWith('c-')), isTrue);
+      expect(items.any((i) => i.id.startsWith('b-')), isFalse);
+    });
+
+    test('the merged order follows the library listing, not who answered first', () async {
+      final client = _FakeClient(libraries: [_library('a'), _library('b'), _library('c')]);
+      final items = await pool().candidates([client]);
+      int firstOf(String lib) => items.indexWhere((i) => i.id.startsWith('$lib-'));
+      expect(firstOf('a'), isNonNegative);
+      expect(firstOf('a'), lessThan(firstOf('b')));
+      expect(firstOf('b'), lessThan(firstOf('c')));
     });
   });
 

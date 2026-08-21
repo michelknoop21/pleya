@@ -244,7 +244,7 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
             ),
           ),
-        if (provider.adminIntegration != null)
+        if (provider.adminStatus != null)
           SettingSwitchRow(
             focusNode: _historyPolicyFocus,
             value: provider.historyForRecommendations,

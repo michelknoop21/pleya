@@ -32,6 +32,11 @@ const int kOverlapDays = 2;
 /// Metadata lookups in flight at once.
 const int kResolveConcurrency = 4;
 
+/// Attempts per catalogue key inside one pass before a transient-looking
+/// failure is taken at face value. One retry, because the point is to ride out
+/// a blip, not to hammer a server that is genuinely down.
+const int kResolveAttempts = 2;
+
 /// A completed Tautulli view is suppressed only by a positive local playback
 /// interaction this close to it.
 const Duration kCrossSourceWindow = Duration(hours: 6);
@@ -44,8 +49,15 @@ const int kPartialPercent = 50;
 /// fraction of the cap. The gap keeps it from flapping on the boundary.
 const double kBackfillResumeFraction = 0.9;
 
-/// Consecutive truncated forward passes before the window is abandoned with a
+/// Consecutive incomplete forward passes before the range is abandoned with a
 /// loud log line rather than retried forever.
+///
+/// Three different things make a pass incomplete and they share this counter on
+/// purpose, because they mean the same thing to the cursor: the pass did not
+/// see everything in its window, so the watermark must not move over it yet.
+/// The window was truncated by the page budget; the catalogue could not be
+/// reached to resolve metadata; or the source sent rows without a `row_id`.
+/// Each is retried, none forever.
 const int kForwardTruncationLimit = 3;
 
 /// Cursor states. Only [exhausted] is final.
@@ -62,6 +74,12 @@ class TautulliImportOutcome {
   final int deduplicated;
   final int skipped;
   final int unresolvable;
+
+  /// Rows refused because Tautulli gave them no `row_id`. Counted separately
+  /// from [skipped] because it is the only skip reason that means "the source
+  /// is not behaving", and it is what a support log needs to say out loud.
+  final int unidentified;
+
   final bool partial;
 
   const TautulliImportOutcome({
@@ -70,6 +88,7 @@ class TautulliImportOutcome {
     this.deduplicated = 0,
     this.skipped = 0,
     this.unresolvable = 0,
+    this.unidentified = 0,
     this.partial = false,
   });
 
@@ -81,13 +100,14 @@ class TautulliImportOutcome {
     deduplicated: deduplicated + other.deduplicated,
     skipped: skipped + other.skipped,
     unresolvable: unresolvable + other.unresolvable,
+    unidentified: unidentified + other.unidentified,
     partial: partial || other.partial,
   );
 
   @override
   String toString() =>
       'fetched=$fetched imported=$imported deduped=$deduplicated '
-      'skipped=$skipped unresolvable=$unresolvable partial=$partial';
+      'skipped=$skipped unresolvable=$unresolvable unidentified=$unidentified partial=$partial';
 }
 
 /// Pulls one profile's own Tautulli history into [MediaInteractions].
@@ -122,7 +142,67 @@ class TautulliHistoryImporter {
 
   /// Per-sync metadata cache. An episode resolves its *show*, so a binge of
   /// twenty costs exactly one lookup.
+  ///
+  /// A key maps to null when the catalogue answered that the item is gone. A
+  /// key that is *absent* after a resolve attempt means the lookup failed for a
+  /// reason worth retrying, which is a different thing entirely; see
+  /// [_metadataStalled].
   final Map<String, MediaItem?> _itemCache = {};
+
+  /// Catalogue keys whose lookup failed for a reason that is likely temporary.
+  ///
+  /// This is the difference between "this title is gone" and "the catalogue is
+  /// unreachable right now". The first costs one row for good and is correct.
+  /// The second used to cost the same row for good, silently: the row was
+  /// counted unresolvable, the cursor advanced past it, and nothing ever came
+  /// back for it. So a transient failure stops the pass instead, leaving the
+  /// cursor where it was; rows already written this pass deduplicate on the
+  /// retry, so redoing the pages is cheap.
+  ///
+  /// Kept as a set rather than a flag for two reasons. Rows waiting on one of
+  /// these keys must not be counted `unresolvable`, which is a verdict; and the
+  /// rest of the page still resolves, so one bad key costs its own rows and not
+  /// the whole page's.
+  final Set<String> _stalledKeys = {};
+
+  bool get _metadataStalled => _stalledKeys.isNotEmpty;
+
+  /// Stop holding the cursor for rows the source will not produce properly, and
+  /// drain the window anyway.
+  ///
+  /// Set only when a pass has already been held back and retried, and it is the
+  /// difference between losing one bad row and losing everything behind it.
+  /// Stopping at the first bad page and *then* advancing the watermark would
+  /// skip every page after it: the pass runs newest-first, so the watermark
+  /// would land on the newest row of page one and the rest of the window would
+  /// never be asked for again. Re-running the same window with this on drains
+  /// it properly, and only the rows that genuinely cannot be identified or
+  /// resolved are left behind.
+  ///
+  /// Scoped to the one drain that needs it, never to the sync. Letting it stand
+  /// would mean a forward pass that gave up on *its* window silently spending
+  /// the backfill's rows too: a different window, a different failure, possibly
+  /// a plain transient one that deserved its own hold. Each pass earns its own
+  /// escape.
+  ///
+  /// A sync that takes this route spends its page budget twice on the same
+  /// window, which is why it happens once and only after the pass has already
+  /// been held back. The rows written the first time round deduplicate, so the
+  /// second drain costs requests, not duplicates; the counters in the outcome
+  /// do cover both attempts, which is what the log line is meant to show.
+  bool _tolerateSourceGaps = false;
+
+  /// Runs one drain with source gaps written off, and leaves the flag as it
+  /// found it.
+  Future<_PassResult> _drainTolerantly(Future<_PassResult> Function() drain) async {
+    final previous = _tolerateSourceGaps;
+    _tolerateSourceGaps = true;
+    try {
+      return await drain();
+    } finally {
+      _tolerateSourceGaps = previous;
+    }
+  }
 
   TautulliHistoryImporter({
     required AppDatabase database,
@@ -194,7 +274,7 @@ class TautulliHistoryImporter {
     // A first run walks backwards into unknown territory, so it must respect
     // the retention cap. A follow-up forward pass only ever adds records newer
     // than everything stored, which the cap can never make pointless.
-    final pass = await _drain(
+    final firstPass = await _drain(
       after: after,
       before: null,
       startOffset: 0,
@@ -202,7 +282,44 @@ class TautulliHistoryImporter {
       stopAtRetentionCap: firstRun,
       epoch: epoch,
     );
-    if (pass.aborted) return (cursor: cursor, outcome: pass.outcome, aborted: true);
+    if (firstPass.aborted) return (cursor: cursor, outcome: firstPass.outcome, aborted: true);
+
+    // Truncation on a *first* run loses nothing: there is no earlier watermark
+    // to jump over, and everything below `oldestAt` is handed to the frozen
+    // backfill window below. A source that answered incompletely is different,
+    // because the rows it withheld sit *inside* the range this pass claims to
+    // have done, first run or not.
+    var pass = firstPass;
+    var outcome = pass.outcome;
+
+    if (pass.sourceIncomplete) {
+      final tries = cursor.forwardTruncationCount + 1;
+      if (tries < kForwardTruncationLimit) {
+        // The pass stopped at the first page the source mishandled, so nothing
+        // moves: not the watermark, and on a first run not the backfill window
+        // either, so the whole pass is simply redone next sync.
+        appLogger.w('TautulliHistoryImporter: forward pass incomplete (attempt $tries), cursor held');
+        final held = cursor.copyWith(forwardTruncationCount: tries);
+        await _saveCursor(held, epoch);
+        return (cursor: held, outcome: outcome, aborted: false);
+      }
+      // Out of patience. Drain the same window again, this time writing off the
+      // rows the source will not produce properly, so the watermark ends up
+      // past a window that was actually read rather than past page one of it.
+      appLogger.w('TautulliHistoryImporter: forward pass incomplete $tries times, draining it without those rows');
+      pass = await _drainTolerantly(
+        () => _drain(
+          after: after,
+          before: null,
+          startOffset: 0,
+          maxPages: firstRun ? _initialMaxPages : _forwardMaxPages,
+          stopAtRetentionCap: firstRun,
+          epoch: epoch,
+        ),
+      );
+      outcome = outcome.merge(pass.outcome);
+      if (pass.aborted) return (cursor: cursor, outcome: outcome, aborted: true);
+    }
 
     var next = cursor;
     if (pass.newestAt != null) {
@@ -213,24 +330,19 @@ class TautulliHistoryImporter {
         if (tries < kForwardTruncationLimit) {
           appLogger.w('TautulliHistoryImporter: forward pass truncated (attempt $tries), watermark held');
           next = cursor.copyWith(forwardTruncationCount: tries);
-        } else {
-          appLogger.w(
-            'TautulliHistoryImporter: forward pass truncated $tries times, skipping the range '
-            '${_day(cursor.forwardCursorAt)}..${_day(pass.oldestAt ?? cursor.forwardCursorAt)} to keep syncing',
-          );
-          next = cursor.copyWith(
-            forwardCursorAt: pass.newestAt,
-            forwardLastRowId: pass.newestRowId,
-            forwardTruncationCount: 0,
-          );
+          await _saveCursor(next, epoch);
+          return (cursor: next, outcome: outcome, aborted: false);
         }
-      } else {
-        next = cursor.copyWith(
-          forwardCursorAt: pass.newestAt,
-          forwardLastRowId: pass.newestRowId,
-          forwardTruncationCount: 0,
+        appLogger.w(
+          'TautulliHistoryImporter: forward pass truncated $tries times, skipping the range '
+          '${_day(cursor.forwardCursorAt)}..${_day(pass.oldestAt ?? cursor.forwardCursorAt)} to keep syncing',
         );
       }
+      next = cursor.copyWith(
+        forwardCursorAt: pass.newestAt,
+        forwardLastRowId: pass.newestRowId,
+        forwardTruncationCount: 0,
+      );
     }
 
     if (firstRun) {
@@ -249,7 +361,7 @@ class TautulliHistoryImporter {
     }
 
     await _saveCursor(next, epoch);
-    return (cursor: next, outcome: pass.outcome, aborted: false);
+    return (cursor: next, outcome: outcome, aborted: false);
   }
 
   Future<({_Cursor cursor, TautulliImportOutcome outcome})> _runBackfill(_Cursor cursor, int epoch) async {
@@ -285,7 +397,7 @@ class TautulliHistoryImporter {
       return (cursor: done, outcome: const TautulliImportOutcome());
     }
 
-    final pass = await _drain(
+    Future<_PassResult> drain() => _drain(
       after: afterDay,
       before: beforeDay,
       startOffset: cursor.backfillOffset,
@@ -293,7 +405,25 @@ class TautulliHistoryImporter {
       stopAtRetentionCap: true,
       epoch: epoch,
     );
+
+    var pass = await drain();
     if (pass.aborted) return (cursor: cursor, outcome: pass.outcome);
+
+    var outcome = pass.outcome;
+    if (pass.sourceIncomplete) {
+      // The forward pass has its own cross-sync counter in the cursor row and
+      // this one has none, so the retry happens here instead: the same window
+      // once more, then written off. That is not more eager than it looks —
+      // every catalogue key in it has already been asked four times by now,
+      // twice per pass — and the alternative is worse than losing a row. The
+      // backfill offset is the only cursor inside a frozen window, so a page it
+      // refuses to get past is a page it retries forever, and everything older
+      // than that page is never reached again.
+      appLogger.w('TautulliHistoryImporter: backfill pass incomplete, draining it once more without those rows');
+      pass = await _drainTolerantly(drain);
+      outcome = outcome.merge(pass.outcome);
+      if (pass.aborted) return (cursor: cursor, outcome: outcome);
+    }
 
     // The offset is the only cursor inside this window, and the window's upper
     // bound never moves, so a calendar day bigger than one pass simply spans
@@ -306,7 +436,7 @@ class TautulliHistoryImporter {
           : (pass.stoppedAtCap ? kBackfillRetentionCap : kBackfillPending),
     );
     await _saveCursor(next, epoch);
-    return (cursor: next, outcome: pass.outcome);
+    return (cursor: next, outcome: outcome);
   }
 
   // --- one bounded window --------------------------------------------------
@@ -333,7 +463,7 @@ class TautulliHistoryImporter {
       }
       final result = await _access.fetchImportHistory(
         _target.serverId,
-        userId: _target.userId,
+        profileId: _target.activeProfileId,
         length: _pageLength,
         start: startOffset + rowsSeen,
         after: after,
@@ -373,6 +503,25 @@ class TautulliHistoryImporter {
       }
       outcome = outcome.merge(pageOutcome);
 
+      if (!_tolerateSourceGaps && (_metadataStalled || pageOutcome.unidentified > 0)) {
+        // Whatever resolved has been written. Stopping here is what keeps the
+        // rows that did not from being walked past; whether the cursor
+        // actually holds is decided by the caller, which bounds the retries.
+        appLogger.w(
+          _metadataStalled
+              ? 'TautulliHistoryImporter: catalogue lookups are failing, pass stopped short'
+              : 'TautulliHistoryImporter: the source sent rows with no row_id, pass stopped short',
+        );
+        return _PassResult(
+          outcome: outcome.merge(const TautulliImportOutcome(partial: true)),
+          rowsSeen: rowsSeen,
+          newestAt: newestAt,
+          newestRowId: newestRowId,
+          oldestAt: oldestAt,
+          sourceIncomplete: true,
+        );
+      }
+
       if (entries.length < _pageLength) {
         exhausted = true;
         break;
@@ -402,6 +551,7 @@ class TautulliHistoryImporter {
   Future<TautulliImportOutcome?> _ingestPage(List<TautulliHistoryEntry> entries, int epoch) async {
     var skipped = 0;
     var unresolvable = 0;
+    var unidentified = 0;
 
     // Accept only what is provably this user's, on this server.
     //
@@ -424,6 +574,20 @@ class TautulliHistoryImporter {
         skipped++;
         continue;
       }
+      // No `row_id`, no import. This is the row's only stable identity, and
+      // every dedup path is built on it: without one, every such row would
+      // share a single `sourceEventId`, the partial unique index would keep the
+      // first and drop the rest, the pre-write lookup would report the second
+      // one as already imported, and a re-import would be neither idempotent
+      // nor complete. Refusing costs one row; guessing an identity (position,
+      // timestamp, a hash of the fields) would either duplicate on every pass
+      // or silently swallow a genuine second play of the same title. Tautulli
+      // always sends it for ungrouped history, so this is a source-is-broken
+      // signal rather than an expected case.
+      if (_sourceEventIdFor(e) == null) {
+        unidentified++;
+        continue;
+      }
       if (_signalFor(e) == null) {
         skipped++;
         continue;
@@ -435,8 +599,15 @@ class TautulliHistoryImporter {
       }
       usable.add(e);
     }
+    if (unidentified > 0) {
+      // Once per page, with a count and no row content: enough to recognise a
+      // Tautulli that stopped sending row_id, nothing that identifies a title.
+      appLogger.w(
+        'TautulliHistoryImporter: $unidentified of ${entries.length} rows had no row_id and were not imported',
+      );
+    }
     if (usable.isEmpty) {
-      return TautulliImportOutcome(skipped: skipped);
+      return TautulliImportOutcome(skipped: skipped, unidentified: unidentified);
     }
 
     // Which of these we already have. `insertOrIgnore` plus the partial unique
@@ -445,15 +616,26 @@ class TautulliHistoryImporter {
     // rebuild. Asking first is also what keeps the two-day overlap cheap: these
     // rows never reach the metadata lookup below.
     final alreadyImported = await _db.existingImportedEventIds(_target.activeProfileId, {
-      for (final e in usable) _sourceEventIdFor(e),
+      for (final e in usable) _sourceEventIdFor(e)!,
     });
     var deduplicated = alreadyImported.length;
-    final fresh = [
-      for (final e in usable)
-        if (!alreadyImported.contains(_sourceEventIdFor(e))) e,
-    ];
+    // The `seen` set closes the one remaining over-count: rows written by an
+    // earlier page of this same sync are caught by the query above, but two
+    // copies of one row *inside* one page are not, and `insertOrIgnore` would
+    // drop the second silently while the count still claimed it.
+    final seen = <String>{};
+    final fresh = <TautulliHistoryEntry>[];
+    for (final e in usable) {
+      final id = _sourceEventIdFor(e)!;
+      if (alreadyImported.contains(id)) continue;
+      if (!seen.add(id)) {
+        deduplicated++;
+        continue;
+      }
+      fresh.add(e);
+    }
     if (fresh.isEmpty) {
-      return TautulliImportOutcome(deduplicated: deduplicated, skipped: skipped);
+      return TautulliImportOutcome(deduplicated: deduplicated, skipped: skipped, unidentified: unidentified);
     }
 
     // Resolve distinct catalogue keys with bounded concurrency. Episodes
@@ -486,9 +668,13 @@ class TautulliHistoryImporter {
 
     final rows = <MediaInteractionsCompanion>[];
     for (final e in fresh) {
-      final item = _itemCache[_catalogueKeyFor(e)!];
+      final key = _catalogueKeyFor(e)!;
+      final item = _itemCache[key];
       if (item == null) {
-        unresolvable++;
+        // A key that merely could not be reached is not a verdict, and counting
+        // it as unresolvable would put a large number in the support log for
+        // rows that are coming back on the next pass.
+        if (!_stalledKeys.contains(key)) unresolvable++;
         continue;
       }
       final globalKey = _globalKeyFor(e);
@@ -513,6 +699,7 @@ class TautulliHistoryImporter {
       deduplicated: deduplicated,
       skipped: skipped,
       unresolvable: unresolvable,
+      unidentified: unidentified,
     );
   }
 
@@ -536,7 +723,7 @@ class TautulliHistoryImporter {
       communityRating: Value(item.rating),
       seriesKey: Value(seriesKey),
       source: const Value(_kSource),
-      sourceEventId: Value(_sourceEventIdFor(e)),
+      sourceEventId: Value(_sourceEventIdFor(e)!),
       sourceServerId: Value(_target.machineIdentifier),
       completionPercent: Value(e.percentComplete),
       playSeconds: Value(e.playSeconds),
@@ -559,9 +746,14 @@ class TautulliHistoryImporter {
     }
   }
 
-  /// Stable external identity of one Tautulli record. Ungrouped history keeps
-  /// `row_id` stable, which is what makes a re-import a no-op.
-  String _sourceEventIdFor(TautulliHistoryEntry e) => '$_kSource:${_target.machineIdentifier}:${e.rowId}';
+  /// Stable external identity of one Tautulli record, or null when the row
+  /// carries no `row_id`. Ungrouped history keeps `row_id` stable, which is
+  /// what makes a re-import a no-op; a row without one has no identity this
+  /// importer is willing to invent, so it is refused in [_ingestPage].
+  String? _sourceEventIdFor(TautulliHistoryEntry e) {
+    final rowId = e.rowId;
+    return rowId == null ? null : '$_kSource:${_target.machineIdentifier}:$rowId';
+  }
 
   /// The stored identity of the row. An episode is stored under its series, so
   /// it shares an evidence key with the rest of the binge.
@@ -593,18 +785,68 @@ class TautulliHistoryImporter {
   }
 
   Future<void> _resolveAll(Set<String> keys) async {
-    final pending = keys.where((k) => !_itemCache.containsKey(k)).toList();
-    for (var i = 0; i < pending.length; i += kResolveConcurrency) {
-      final slice = pending.skip(i).take(kResolveConcurrency);
-      await Future.wait([
-        for (final key in slice)
-          _client.fetchItem(key).then((item) => _itemCache[key] = item).catchError((Object e) {
-            // A deleted or unreadable item costs one row, never the sync.
-            _itemCache[key] = null;
-            return null;
-          }),
-      ]);
+    // Cleared here rather than only inside the loop: with every key already
+    // cached the loop body never runs, and a leftover stall from an earlier
+    // page would then be read as this page's.
+    _stalledKeys.clear();
+    var pending = keys.where((k) => !_itemCache.containsKey(k)).toList();
+    for (var attempt = 1; attempt <= kResolveAttempts && pending.isNotEmpty; attempt++) {
+      _stalledKeys.clear();
+      for (var i = 0; i < pending.length; i += kResolveConcurrency) {
+        final slice = pending.skip(i).take(kResolveConcurrency);
+        await Future.wait([
+          for (final key in slice)
+            _client.fetchItem(key).then((item) => _itemCache[key] = item).catchError((Object e) {
+              if (_isTransient(e)) {
+                // Left out of the cache on purpose: a null here would be a
+                // permanent verdict on a temporary failure.
+                _stalledKeys.add(key);
+              } else {
+                // Deleted or unreadable for good: costs one row, never the sync.
+                _itemCache[key] = null;
+              }
+              return null;
+            }),
+        ]);
+      }
+      // The rest of the page has resolved either way; only the keys that
+      // actually blipped are worth asking again.
+      pending = _stalledKeys.toList();
     }
+    if (_stalledKeys.isEmpty) return;
+    if (_tolerateSourceGaps) {
+      // Already retried across passes. Recording the verdict is what lets the
+      // rest of the window through, and it costs exactly these rows.
+      appLogger.w('TautulliHistoryImporter: giving up on ${_stalledKeys.length} catalogue lookups');
+      for (final key in _stalledKeys) {
+        _itemCache[key] = null;
+      }
+      _stalledKeys.clear();
+      return;
+    }
+    appLogger.w('TautulliHistoryImporter: ${_stalledKeys.length} catalogue lookups still failing after retry');
+  }
+
+  /// Whether an error is worth retrying rather than recording a verdict on.
+  ///
+  /// String matching, like [_errorCategory] next to it, because the clients
+  /// throw a mix of `SocketException`, `TimeoutException`, `http.ClientException`
+  /// and their own exception types, and the alternative is importing four
+  /// packages here to catch what one substring already tells us.
+  ///
+  /// Deliberately loose. A permanent failure phrased as "no connection to
+  /// server" would be misread as transient, and the cost of that is bounded on
+  /// both sides: one retry inside the pass, and [kForwardTruncationLimit]
+  /// passes before the watermark moves on regardless.
+  static bool _isTransient(Object e) {
+    final text = e.toString().toLowerCase();
+    return text.contains('socket') ||
+        text.contains('timeout') ||
+        text.contains('timed out') ||
+        text.contains('connection') ||
+        text.contains('handshake') ||
+        text.contains('network') ||
+        text.contains('unreachable');
   }
 
   /// Both guards, checked immediately before every write.
@@ -672,6 +914,11 @@ class _PassResult {
   final bool stoppedAtCap;
   final bool truncated;
 
+  /// The pass stopped early because the catalogue could not be reached, or
+  /// because the source sent rows with no stable identity. Both mean rows in
+  /// this window were not processed and the cursor must not move over them.
+  final bool sourceIncomplete;
+
   const _PassResult({
     required this.outcome,
     this.aborted = false,
@@ -682,11 +929,23 @@ class _PassResult {
     this.exhausted = false,
     this.stoppedAtCap = false,
     this.truncated = false,
+    this.sourceIncomplete = false,
   });
+
+  /// Whether the watermark may move past this pass's window.
+  bool get incomplete => truncated || sourceIncomplete;
 }
 
 class _Cursor {
   final int forwardCursorAt;
+
+  /// The `row_id` of the newest record the watermark was set from.
+  ///
+  /// Diagnostic only: nothing queries or filters on it. It is here because
+  /// `forwardCursorAt` is a second-granular timestamp and several records can
+  /// share one, so when a support log has to answer "did this run stop before
+  /// or after that record", the timestamp alone cannot say. Advancing the
+  /// window still goes by date plus the two-day overlap, not by this.
   final int? forwardLastRowId;
   final String? backfillBeforeDay;
   final int backfillOffset;

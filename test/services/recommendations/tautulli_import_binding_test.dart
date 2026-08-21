@@ -52,7 +52,7 @@ TautulliImportBinding _resolve({
   bool hasClient = true,
 }) => resolveTautulliImportBinding(
   personalizedRecommendationsEnabled: personalized,
-  integration: integration ?? _integration(),
+  status: (integration ?? _integration()).status,
   activeProfileId: profileId,
   homeUsers: homeUsers ?? _home,
   registeredServerIds: servers,
@@ -70,7 +70,7 @@ void main() {
     test('no integration', () {
       final binding = resolveTautulliImportBinding(
         personalizedRecommendationsEnabled: true,
-        integration: null,
+        status: null,
         activeProfileId: _adminProfile,
         homeUsers: _home,
         registeredServerIds: const ['pms-1'],

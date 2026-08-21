@@ -132,4 +132,46 @@ class TautulliIntegrationStore {
       TautulliAccountStore.instance.save(userUuid, session);
 
   Future<void> clearLegacySession(String userUuid) => TautulliAccountStore.instance.clear(userUuid);
+
+  /// Drops every profile-scoped pairing for [machineIdentifier], whichever
+  /// profile made it.
+  ///
+  /// Called when an admin commits a server-scoped record, because that record
+  /// is now the household's answer for that server and the old per-profile
+  /// blobs are superseded. Clearing only the *active* profile's is not enough:
+  /// a housemate's stale blob is found by [migrateLegacySession] on whichever
+  /// launch that profile is active, compared against the fresh record, and —
+  /// being a different URL or token — flags it as conflicted. Re-pairing to fix
+  /// an instance would then switch import off one restart later, silently, for
+  /// everyone.
+  ///
+  /// Returns how many were removed, for the log line at the call site. Blobs
+  /// that cannot be decoded are left alone: they cannot be read here, and they
+  /// cannot raise a conflict there either, because the account store reports an
+  /// unreadable session as absent.
+  Future<int> clearLegacySessionsForServer(String machineIdentifier) async {
+    final identifier = machineIdentifier.trim();
+    if (identifier.isEmpty) return 0;
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    var removed = 0;
+    // Both shapes the account store writes, and nothing else: the bare key for
+    // an empty uuid and `user_{uuid}_{baseKey}` for a real one. A loose
+    // `endsWith` would also match any future key that happens to end this way.
+    const base = TautulliAccountStore.baseKey;
+    bool isLegacyKey(String k) => k == base || (k.startsWith('user_') && k.endsWith('_$base'));
+
+    for (final key in prefs.keys.where(isLegacyKey).toList()) {
+      final raw = prefs.getString(key);
+      if (raw == null) continue;
+      try {
+        final session = await TautulliSession.decode(raw);
+        if (session.machineIdentifier?.trim() != identifier) continue;
+      } catch (_) {
+        continue;
+      }
+      await prefs.remove(key);
+      removed++;
+    }
+    return removed;
+  }
 }

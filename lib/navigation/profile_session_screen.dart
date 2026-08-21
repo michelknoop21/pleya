@@ -156,9 +156,15 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   // register after the profile has bound, and the listener so a
                   // late registration re-resolves instead of going unnoticed.
                   final multiServer = context.read<MultiServerProvider>();
+                  final plexHome = context.read<PlexHomeService?>();
                   provider.attachServerResolvers(
                     serverIds: () => multiServer.serverManager.serverIds,
                     isOwnerOrAdmin: multiServer.serverManager.isOwnerOrAdmin,
+                    // The credential is the admin's, so the provider resolves
+                    // whose history it fetches instead of being told. Nullable
+                    // read: without a Home service nothing resolves and the
+                    // import refuses, which is the right answer either way.
+                    selfAccountId: (profileId) => plexSelfAccountIdIn(profileId, plexHome?.current ?? const {}),
                     registryChanges: multiServer,
                   );
                   unawaited(
@@ -251,6 +257,18 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                       hiddenGems: t.discover.hiddenGems,
                     ),
                     enabledImportServerIds: tautulli.enabledImportServerIds,
+                    // The store load is asynchronous and Discover routinely
+                    // wins the race, so the sync waits for the answer instead
+                    // of reading an empty map and concluding nothing is paired.
+                    importSourcesReady: () => Future.wait([
+                      tautulli.whenHydrated(),
+                      // The same race, one provider over: without the Home
+                      // users the binding cannot tell which Plex account this
+                      // profile is and refuses with `ambiguousUser`. Waiting on
+                      // `start` alone is not enough — it returns once the
+                      // *cache* has been read, which on a first run is empty.
+                      plexHome?.whenHomeUsersKnown() ?? Future<void>.value(),
+                    ]),
                     importerFactory: (importProfileId, serverId) {
                       // The binding is re-resolved per sync rather than captured,
                       // so a policy change, a disconnect or a server that only
@@ -258,7 +276,7 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                       final binding = resolveTautulliImportBinding(
                         personalizedRecommendationsEnabled:
                             SettingsService.instanceOrNull?.read(SettingsService.personalizedRecommendations) ?? true,
-                        integration: tautulli.integrationFor(serverId),
+                        status: tautulli.importStatusFor(serverId),
                         activeProfileId: importProfileId,
                         homeUsers: plexHome?.current ?? const {},
                         registeredServerIds: multiServer.serverManager.serverIds,

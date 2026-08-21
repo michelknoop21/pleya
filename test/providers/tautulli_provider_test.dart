@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/providers/tautulli_provider.dart';
@@ -47,7 +49,7 @@ void main() {
       final p = await provider();
       expect(p.isConfigured, isTrue);
       expect(p.client, isNotNull);
-      expect(p.adminIntegration, isNotNull);
+      expect(p.adminStatus, isNotNull);
       expect(p.machineIdentifier, _machine);
       addTearDown(p.dispose);
     });
@@ -60,7 +62,7 @@ void main() {
       expect(p.isConfigured, isFalse);
       expect(p.client, isNull);
       expect(p.session, isNull);
-      expect(p.adminIntegration, isNull);
+      expect(p.adminStatus, isNull);
       expect(p.enabledImportServerIds(), {_machine});
       addTearDown(p.dispose);
     });
@@ -69,7 +71,7 @@ void main() {
       await seedIntegration();
       final p = await provider(servers: const ['other-server']);
       expect(p.isConfigured, isFalse);
-      expect(p.adminIntegration, isNull);
+      expect(p.adminStatus, isNull);
       addTearDown(p.dispose);
     });
 
@@ -94,7 +96,7 @@ void main() {
       await p.commit(_session());
       expect(p.historyForRecommendations, isTrue);
       expect(p.enabledImportServerIds(), {_machine});
-      expect(p.adminIntegration!.useHistoryForRecommendations, isNull);
+      expect(p.adminStatus!.historyPolicy, isNull);
       addTearDown(p.dispose);
     });
 
@@ -105,7 +107,7 @@ void main() {
 
       expect(p.historyForRecommendations, isFalse);
       expect(p.enabledImportServerIds(), isEmpty);
-      expect(p.adminIntegration!.policyChangedAtMs, isNotNull);
+      expect((await TautulliIntegrationStore.instance.loadAll())[_machine]!.policyChangedAtMs, isNotNull);
       // Persisted, not just in memory.
       expect((await TautulliIntegrationStore.instance.loadAll())[_machine]!.useHistoryForRecommendations, isFalse);
       addTearDown(p.dispose);
@@ -117,7 +119,7 @@ void main() {
       await p.setHistoryForRecommendations(false);
       await p.setHistoryForRecommendations(true);
       expect(p.enabledImportServerIds(), {_machine});
-      expect(p.adminIntegration!.useHistoryForRecommendations, isTrue);
+      expect(p.adminStatus!.historyPolicy, isTrue);
       addTearDown(p.dispose);
     });
 
@@ -162,9 +164,78 @@ void main() {
       await seedIntegration(policy: true, token: null);
       final p = await provider();
       expect(p.enabledImportServerIds(), isEmpty);
-      expect(p.adminIntegration, isNotNull);
-      expect(p.adminIntegration!.useHistoryForRecommendations, isTrue);
+      expect(p.adminStatus, isNotNull);
+      expect(p.adminStatus!.historyPolicy, isTrue);
       addTearDown(p.dispose);
+    });
+  });
+
+  group('scoping to what this profile has', () {
+    test('a server the profile does not have is neither scored nor fetched', () async {
+      await seedIntegration();
+      // The record is device-wide by design, so the pairing exists. Having the
+      // *server* is a separate question, and it is the one that decides whether
+      // this profile's taste may be built on history from it.
+      final p = await provider(servers: const ['some-other-server']);
+      expect(p.enabledImportServerIds(), isEmpty);
+      expect(await p.fetchImportHistory(ServerId(_machine), profileId: 'uuid-a', length: 5, start: 0), isNull);
+      addTearDown(p.dispose);
+    });
+
+    test('a server registering late is included from then on', () async {
+      await seedIntegration();
+      var servers = <String>[];
+      final p = TautulliProvider();
+      p.attachServerResolvers(serverIds: () => servers, isOwnerOrAdmin: (_) => true);
+      await p.onActiveProfileChanged('uuid-a');
+      expect(p.enabledImportServerIds(), isEmpty);
+
+      servers = [_machine];
+      p.refreshBinding();
+      expect(p.enabledImportServerIds(), {_machine});
+      addTearDown(p.dispose);
+    });
+  });
+
+  group('hydration readiness', () {
+    test('is not announced before the store has been read', () async {
+      await seedIntegration();
+      final p = TautulliProvider();
+      p.attachServerResolvers(serverIds: () => const [_machine], isOwnerOrAdmin: (_) => true);
+      expect(p.isHydrated, isFalse, reason: 'an empty map before the load is not an answer');
+
+      var ready = false;
+      unawaited(p.whenHydrated().then((_) => ready = true));
+      final load = p.onActiveProfileChanged('uuid-a');
+      expect(p.isHydrated, isFalse);
+
+      await load;
+      await pumpEventQueue();
+      expect(p.isHydrated, isTrue);
+      expect(ready, isTrue);
+      expect(p.enabledImportServerIds(), {_machine});
+      addTearDown(p.dispose);
+    });
+
+    test('a profile switch waits again, and never strands the previous waiter', () async {
+      await seedIntegration();
+      final p = await provider(uuid: 'uuid-a');
+      expect(p.isHydrated, isTrue);
+      final firstWait = p.whenHydrated();
+
+      final second = p.onActiveProfileChanged('uuid-b');
+      expect(p.isHydrated, isFalse, reason: 'the new profile has its own answer to wait for');
+      await firstWait; // completes rather than hanging
+      await second;
+      expect(p.isHydrated, isTrue);
+      addTearDown(p.dispose);
+    });
+
+    test('dispose releases anyone still waiting', () async {
+      final p = TautulliProvider();
+      final waiting = p.whenHydrated();
+      p.dispose();
+      await waiting; // would hang before
     });
   });
 
@@ -205,7 +276,7 @@ void main() {
       final p = await provider();
       await p.commit(_session(id: null));
       expect(p.isConfigured, isTrue, reason: 'the presence surfaces keep working');
-      expect(p.adminIntegration, isNull);
+      expect(p.adminStatus, isNull);
       expect(p.enabledImportServerIds(), isEmpty, reason: 'it can never import');
       expect(await TautulliAccountStore.instance.load('uuid-a'), isNotNull);
       addTearDown(p.dispose);
@@ -214,9 +285,56 @@ void main() {
     test('a legacy session with an identifier migrates on profile bind', () async {
       await TautulliAccountStore.instance.save('uuid-a', _session());
       final p = await provider();
-      expect(p.adminIntegration, isNotNull);
+      expect(p.adminStatus, isNotNull);
       expect(p.enabledImportServerIds(), {_machine});
       expect(await TautulliAccountStore.instance.load('uuid-a'), isNull);
+      addTearDown(p.dispose);
+    });
+
+    test('re-pairing clears this profile\'s superseded legacy blob', () async {
+      // Otherwise the next launch finds a legacy pairing for a server that
+      // already has a record, sees a different URL and token, and flags the
+      // fresh record as conflicted — so fixing a broken instance would switch
+      // import off one restart later, silently.
+      await TautulliAccountStore.instance.save('uuid-a', _session(url: 'https://old', token: 'old-tok'));
+      final p = await provider();
+      await p.commit(_session(url: 'https://new', token: 'new-tok'));
+
+      expect(await TautulliAccountStore.instance.load('uuid-a'), isNull);
+      expect(p.enabledImportServerIds(), {_machine});
+
+      // Prove it survives the restart, which is where the old bug landed.
+      final restarted = await provider();
+      expect(restarted.hasIntegrationConflict, isFalse);
+      expect(restarted.enabledImportServerIds(), {_machine});
+      addTearDown(p.dispose);
+      addTearDown(restarted.dispose);
+    });
+
+    test('re-pairing clears a housemate\'s superseded blob too', () async {
+      // The household version of the same trap. Clearing only the active
+      // profile's blob leaves the other one to be discovered on whichever
+      // launch *that* profile is active, where it flags the fresh record as
+      // conflicted and switches import off for everyone.
+      await TautulliAccountStore.instance.save('uuid-a', _session(url: 'https://old', token: 'old-tok'));
+      await TautulliAccountStore.instance.save('uuid-b', _session(url: 'https://old', token: 'old-tok'));
+
+      final admin = await provider(uuid: 'uuid-a');
+      await admin.commit(_session(url: 'https://new', token: 'new-tok'));
+      expect(await TautulliAccountStore.instance.load('uuid-b'), isNull);
+
+      final housemate = await provider(uuid: 'uuid-b');
+      expect(housemate.hasIntegrationConflict, isFalse);
+      expect(housemate.enabledImportServerIds(), {_machine});
+      addTearDown(admin.dispose);
+      addTearDown(housemate.dispose);
+    });
+
+    test('a pairing for a different server is left alone', () async {
+      await TautulliAccountStore.instance.save('uuid-b', _session(id: 'pms-other', token: 'other-tok'));
+      final p = await provider();
+      await p.commit(_session(token: 'new-tok'));
+      expect(await TautulliAccountStore.instance.load('uuid-b'), isNotNull);
       addTearDown(p.dispose);
     });
 
@@ -241,7 +359,7 @@ void main() {
   test('fetchImportHistory refuses once the integration is no longer enabled', () async {
     await seedIntegration(policy: false);
     final p = await provider();
-    final page = await p.fetchImportHistory(ServerId(_machine), userId: 1, length: 10, start: 0);
+    final page = await p.fetchImportHistory(ServerId(_machine), profileId: 'uuid-a', length: 10, start: 0);
     expect(page, isNull);
     addTearDown(p.dispose);
   });
@@ -249,7 +367,7 @@ void main() {
   test('fetchImportHistory refuses an unknown server', () async {
     await seedIntegration();
     final p = await provider();
-    expect(await p.fetchImportHistory(ServerId('nope'), userId: 1, length: 10, start: 0), isNull);
+    expect(await p.fetchImportHistory(ServerId('nope'), profileId: 'uuid-a', length: 10, start: 0), isNull);
     addTearDown(p.dispose);
   });
 }

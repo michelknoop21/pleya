@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../media/ids.dart';
@@ -7,6 +9,7 @@ import '../utils/app_logger.dart';
 import '../services/tautulli/tautulli_client.dart';
 import '../services/tautulli/tautulli_constants.dart';
 import '../services/tautulli/tautulli_import_access.dart';
+import '../services/tautulli/tautulli_integration_status.dart';
 import '../services/tautulli/tautulli_integration_store.dart';
 import '../services/tautulli/tautulli_server_integration.dart';
 import '../services/tautulli/tautulli_session.dart';
@@ -48,37 +51,82 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   List<String> Function() _serverIds = () => const [];
   bool Function(ServerId) _isOwnerOrAdmin = (_) => false;
 
+  /// The plex.tv account id of a local profile, or null when it cannot be
+  /// resolved exactly. Injected rather than passed per call, because whose
+  /// history the admin's credential is aimed at is not the caller's decision to
+  /// make; see [TautulliImportAccess].
+  int? Function(String profileId) _selfAccountId = (_) => null;
+
   Listenable? _registryChanges;
+
+  /// Completes once the device's integrations have been read from disk for the
+  /// profile that is active now.
+  ///
+  /// Explicit readiness rather than a "did anyone notify yet" guess, because
+  /// the two consumers need opposite things from the same load. The surfaces
+  /// want whatever is known *now* and re-render when it changes; the background
+  /// import wants the answer to "is there a saved, enabled integration", and an
+  /// empty map before hydration is indistinguishable from a real "no". Without
+  /// this, a cold start where Discover ran first simply never imported until
+  /// something else forced a reload.
+  Completer<void> _hydration = Completer<void>();
+
+  /// Whether the authority questions have been wired. Once is all it takes.
+  bool _resolversAttached = false;
 
   /// Wire the multi-server questions.
   ///
   /// [registryChanges] is watched so a server that registers *after* the
   /// profile bound still re-resolves; the listener is dropped in [dispose].
+  ///
+  /// **One-shot on purpose.** These three closures *are* the authority: which
+  /// servers exist, which of them this profile administers, and which Plex
+  /// account this profile is. A second call could replace all three, and then
+  /// any code that can reach the provider could declare itself an admin of an
+  /// arbitrary server and point the credential at an arbitrary account — which
+  /// is precisely the boundary the rest of this class is built to hold. The
+  /// provider tree wires it once, at construction; a second attempt is a bug
+  /// or an attempt, and either way the answer is no.
   void attachServerResolvers({
     required List<String> Function() serverIds,
     required bool Function(ServerId) isOwnerOrAdmin,
+    int? Function(String profileId)? selfAccountId,
     Listenable? registryChanges,
   }) {
+    if (_resolversAttached) {
+      appLogger.w('TautulliProvider: refused a second attempt to wire the server resolvers');
+      return;
+    }
+    _resolversAttached = true;
     _serverIds = serverIds;
     _isOwnerOrAdmin = isOwnerOrAdmin;
+    if (selfAccountId != null) _selfAccountId = selfAccountId;
     _registryChanges?.removeListener(refreshBinding);
     _registryChanges = registryChanges?..addListener(refreshBinding);
     refreshBinding();
   }
 
-  /// The integration for a server this profile *administers*.
+  /// The integration for a server this profile *administers*, credential and
+  /// all. Private: nothing outside this class needs the record itself, and the
+  /// record carries the token.
   ///
   /// This is what every existing Tautulli surface is built on, and it keeps its
   /// old meaning exactly: only an admin ever had a session before, and only an
   /// admin gets one now. A regular profile can consume the integration through
   /// [TautulliImportAccess] without any admin surface opening up for it.
-  TautulliServerIntegration? get adminIntegration {
+  TautulliServerIntegration? get _adminIntegration {
     for (final id in _serverIds()) {
       final integration = _integrations[id];
       if (integration != null && _isOwnerOrAdmin(ServerId(id))) return integration;
     }
     return null;
   }
+
+  /// State of the administered integration for the admin settings screen: what
+  /// it is configured to do, never what it is configured with. Configuration is
+  /// changed through [commit], [setHistoryForRecommendations] and [disconnect],
+  /// which is why nothing here ever needs to hand the existing token back.
+  TautulliIntegrationStatus? get adminStatus => _adminIntegration?.status;
 
   TautulliSession? get session => _session;
   TautulliClient? get client => _client;
@@ -87,11 +135,11 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   /// The admin policy for the integration this profile administers. Absent
   /// means never set, which reads as on.
-  bool get historyForRecommendations => adminIntegration?.historyPolicyEnabled ?? true;
+  bool get historyForRecommendations => _adminIntegration?.historyPolicyEnabled ?? true;
 
   /// Whether two conflicting legacy pairings were found for this server and an
   /// admin has to re-pair before import resumes.
-  bool get hasIntegrationConflict => adminIntegration?.hasUnresolvedConflict ?? false;
+  bool get hasIntegrationConflict => _adminIntegration?.hasUnresolvedConflict ?? false;
 
   /// Host only, for a settings subtitle. Never the token.
   String? get host {
@@ -101,6 +149,15 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   }
 
   String? get serverName => _session?.serverName;
+
+  /// Whether [_integrations] reflects the store rather than the empty default.
+  bool get isHydrated => _hydration.isCompleted;
+
+  /// Resolves when [isHydrated] turns true for the active profile.
+  ///
+  /// Never rejects: a store that cannot be read resolves as "no integrations",
+  /// because a waiter that hangs is worse than one that refuses.
+  Future<void> whenHydrated() => _hydration.future;
 
   /// Machine identifier of the Plex server this instance monitors, which is how
   /// the presence surfaces pick the client that can resolve its rating keys.
@@ -112,17 +169,46 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     final uuid = newUserUuid ?? '';
     final generation = ++_generation;
     _activeUserUuid = uuid;
+    // A new profile resolves its own integrations. Anything already waiting on
+    // the previous profile was released when that load landed, so replacing a
+    // *completed* completer strands nobody; replacing a pending one would.
+    if (_hydration.isCompleted) _hydration = Completer<void>();
 
-    // Runs before the load so a just-migrated record is in the map right away.
-    await _store.migrateLegacySession(uuid);
-    final integrations = await _store.loadAll();
-    final legacy = await _store.loadLegacySession(uuid);
-    if (isDisposed || generation != _generation || uuid != _activeUserUuid) return;
+    try {
+      // Runs before the load so a just-migrated record is in the map right away.
+      await _store.migrateLegacySession(uuid);
+      final integrations = await _store.loadAll();
+      final legacy = await _store.loadLegacySession(uuid);
+      if (isDisposed || generation != _generation || uuid != _activeUserUuid) return;
 
-    _integrations = integrations;
-    _legacySession = legacy;
-    _rebind();
-    safeNotifyListeners();
+      _integrations = integrations;
+      _legacySession = legacy;
+      _rebind();
+      safeNotifyListeners();
+    } catch (e, s) {
+      // Unreadable storage means "no integrations", not "wait forever" and not
+      // "keep whatever was there". Keeping it would be wrong in the one case
+      // that matters: this runs on a profile *switch*, and `_legacySession` is
+      // profile-scoped, so leaving it in place would serve the previous
+      // profile's own pairing to the new one. The waiter below is released
+      // either way, and the import then refuses on an empty set — the same
+      // answer an empty store would give.
+      appLogger.w('TautulliProvider: could not load this device\'s integrations', error: e, stackTrace: s);
+      if (!isDisposed && generation == _generation && uuid == _activeUserUuid) {
+        _integrations = const {};
+        _legacySession = null;
+        _rebind();
+        safeNotifyListeners();
+      }
+    } finally {
+      // Only the newest call owns readiness. A superseded one returning early
+      // must not announce a state it did not write.
+      if (generation == _generation) _markHydrated();
+    }
+  }
+
+  void _markHydrated() {
+    if (!_hydration.isCompleted) _hydration.complete();
   }
 
   /// Re-resolve after the server registry changed. Cheap: it only re-picks from
@@ -134,7 +220,7 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   /// Returns whether anything observable changed.
   bool _rebind() {
-    final integration = adminIntegration;
+    final integration = _adminIntegration;
     // A legacy pairing without a server identifier still drives the presence
     // surfaces for its own profile, exactly as it did before.
     final next = integration?.session ?? (integration == null ? _legacySession : null);
@@ -250,6 +336,22 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       configuredByProfileId: _activeUserUuid.isEmpty ? null : _activeUserUuid,
     );
     await _store.save(integration);
+    // Every profile's legacy blob for this server is now superseded, and
+    // leaving them is not harmless: on the next launch `migrateLegacySession`
+    // finds a pairing for a server that already has a record, sees a different
+    // URL or token, and flags the fresh record as conflicted. Re-pairing to fix
+    // a broken instance would therefore switch import off, silently, one
+    // restart later — and for a household, on whichever launch the *other*
+    // profile happens to be active. The credentials in them also have no reason
+    // to outlive the pairing they belonged to.
+    final removed = await _store.clearLegacySessionsForServer(identifier);
+    if (removed > 0) {
+      appLogger.i('TautulliProvider: dropped $removed superseded profile-scoped pairing(s) for this server');
+    }
+    // Also the active profile's own, which may predate `pms_identifier` and so
+    // would not have matched on the identifier above.
+    await _store.clearLegacySession(_activeUserUuid);
+    _legacySession = null;
     _integrations = {..._integrations, identifier: integration};
     _rebind();
     safeNotifyListeners();
@@ -260,7 +362,7 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// The gate lives here as well as on the settings route, so the decision
   /// cannot be flipped from a code path that skipped the UI.
   Future<void> setHistoryForRecommendations(bool enabled) async {
-    final current = adminIntegration;
+    final current = _adminIntegration;
     if (current == null || !_mayAdminister(current.machineIdentifier)) return;
     if (current.useHistoryForRecommendations == enabled) return;
 
@@ -282,7 +384,7 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// kept but stop counting, because a disconnected integration is not an
   /// enabled one.
   Future<void> disconnect() async {
-    final current = adminIntegration;
+    final current = _adminIntegration;
     if (current == null) {
       // Legacy, profile-scoped pairing.
       final uuid = _activeUserUuid;
@@ -308,36 +410,57 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     return false;
   }
 
-  /// The integration record for one server, regardless of who is looking.
+  /// State of one server's integration, regardless of who is looking.
   ///
-  /// Used by the import binding, which needs the record to decide whether it
-  /// may run. It is not an admin surface and returns no credential of its own;
-  /// the token stays behind [fetchImportHistory].
-  TautulliServerIntegration? integrationFor(ServerId serverId) => _integrations[serverId.toString()];
+  /// Used by the import binding, which needs to know whether it may run. This
+  /// returns the credential-free view on purpose: the binding is resolved in
+  /// every profile's context, so returning the record here would put the
+  /// admin's token one field access away from a non-admin profile. The token
+  /// stays behind [fetchImportHistory].
+  TautulliIntegrationStatus? importStatusFor(ServerId serverId) => _integrations[serverId.toString()]?.status;
 
   // --- TautulliImportAccess ------------------------------------------------
 
   @override
-  Set<String> enabledImportServerIds() => {
-    for (final entry in _integrations.entries)
-      if (importEnabled(entry.value)) entry.key,
-  };
+  Set<String> enabledImportServerIds() {
+    // Intersected with the servers this profile actually has. The record is
+    // device-wide so one admin pairing serves the household, but "the household
+    // shares the pairing" is not "every profile scores every server": a profile
+    // that lost access to a server must stop being recommended on the strength
+    // of what it watched there, and its imported rows stay excluded rather than
+    // being deleted.
+    final visible = _serverIds().toSet();
+    return {
+      for (final entry in _integrations.entries)
+        if (visible.contains(entry.key) && entry.value.status.importEnabled) entry.key,
+    };
+  }
 
   @override
   Future<TautulliHistoryPage?> fetchImportHistory(
     ServerId serverId, {
-    required int userId,
+    required String profileId,
     required int length,
     required int start,
     String? after,
     String? before,
   }) async {
+    // Whose history this is gets decided here, not by the caller. The token is
+    // the admin's, so a `userId` parameter would have let any code in any
+    // profile's tree read any housemate's history through it.
+    if (profileId.isEmpty || profileId != _activeUserUuid) return _refuseFetch('not the active profile');
+    final userId = _selfAccountId(profileId);
+    if (userId == null) return _refuseFetch('no exact Plex account for this profile');
+
     // Re-checked per page, not once per sync: an admin who switches the policy
     // off mid-import stops it immediately instead of at the next page boundary.
+    // The membership check is the same one [enabledImportServerIds] applies, so
+    // a server this profile does not have cannot be fetched either.
+    if (!_serverIds().contains(serverId.toString())) return _refuseFetch('server not registered for this profile');
     final integration = _integrations[serverId.toString()];
-    if (!importEnabled(integration)) return null;
-    final session = integration!.session;
-    if (session == null) return null;
+    if (integration == null || !integration.status.importEnabled) return _refuseFetch('import not enabled');
+    final session = integration.session;
+    if (session == null) return _refuseFetch('no credential');
 
     final client = TautulliClient(session);
     try {
@@ -359,6 +482,15 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     }
   }
 
+  /// A refusal is a diagnostic, never a message: there is no user-facing
+  /// Tautulli surface outside the admin settings screen. Named so a silent
+  /// "no history arrived" is traceable to which gate said no, without the
+  /// reason naming a profile, a server or an address.
+  Null _refuseFetch(String reason) {
+    appLogger.d('TautulliProvider: refused an import fetch ($reason)');
+    return null;
+  }
+
   static String _shortIdentifier(String value) => value.length <= 6 ? value : '${value.substring(0, 6)}…';
 
   void _setSession(TautulliSession? session) {
@@ -369,6 +501,9 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   @override
   void dispose() {
+    // Release anything still waiting, or a background import started just
+    // before a profile switch keeps a pending future alive for the run.
+    _markHydrated();
     _registryChanges?.removeListener(refreshBinding);
     _registryChanges = null;
     _client?.dispose();

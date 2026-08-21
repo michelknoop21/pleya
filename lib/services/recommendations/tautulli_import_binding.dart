@@ -1,7 +1,7 @@
 import '../../media/ids.dart';
 import '../../models/plex/plex_home_user.dart';
 import '../../profiles/plex_self_account.dart';
-import '../tautulli/tautulli_server_integration.dart';
+import '../tautulli/tautulli_integration_status.dart';
 
 /// Why an import will not run. Logged, never shown: there is no user-facing
 /// Tautulli surface outside the admin settings screen, so a refusal is a
@@ -64,9 +64,13 @@ class TautulliImportRefusal extends TautulliImportBinding {
 /// authorised does not, otherwise every household member would need their own
 /// admin credential. What keeps profiles apart is [userId], which is resolved
 /// per profile and fails closed when it cannot be resolved exactly.
+///
+/// [status] is deliberately the credential-free view and not the integration
+/// record: this function runs in every profile's context, so handing it the
+/// record would hand a non-admin profile the admin's token.
 TautulliImportBinding resolveTautulliImportBinding({
   required bool personalizedRecommendationsEnabled,
-  required TautulliServerIntegration? integration,
+  required TautulliIntegrationStatus? status,
   required String? activeProfileId,
   required Map<String, List<PlexHomeUser>> homeUsers,
   required List<String> registeredServerIds,
@@ -75,12 +79,12 @@ TautulliImportBinding resolveTautulliImportBinding({
   if (!personalizedRecommendationsEnabled) {
     return const TautulliImportRefusal(TautulliImportRefusalReason.personalizedRecommendationsOff);
   }
-  if (integration == null) {
+  if (status == null) {
     return const TautulliImportRefusal(TautulliImportRefusalReason.noIntegration);
   }
   // Covers the admin policy, the connection state, a missing or unreadable
   // credential, and an unresolved migration conflict, in one place.
-  if (!importEnabled(integration)) {
+  if (!status.importEnabled) {
     return const TautulliImportRefusal(TautulliImportRefusalReason.importDisabled);
   }
   if (activeProfileId == null || activeProfileId.isEmpty) {
@@ -92,7 +96,7 @@ TautulliImportBinding resolveTautulliImportBinding({
     return const TautulliImportRefusal(TautulliImportRefusalReason.ambiguousUser);
   }
 
-  final identifier = integration.machineIdentifier.trim();
+  final identifier = status.machineIdentifier.trim();
   if (identifier.isEmpty || !registeredServerIds.contains(identifier)) {
     return const TautulliImportRefusal(TautulliImportRefusalReason.serverNotRegistered);
   }
