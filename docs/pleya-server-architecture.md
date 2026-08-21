@@ -2104,7 +2104,7 @@ Afspelen in de browser hangt aan PS-4 en PS-6, de beheerkant aan G6 en G7.
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-4 |
-| Status | **opgeleverd 21 augustus 2026, ter goedkeuring**: twee migraties, drie endpoints, `internal/watch/` en `lib/services/pleya_server_client/parts/playback.dart` |
+| Status | **gesloten 21 augustus 2026**: twee migraties, drie endpoints, `internal/watch/` en `lib/services/pleya_server_client/parts/playback.dart`. Gesloten op eigenaarsbesluit met de TV-ronde openstaand, zie criterium 1 |
 | Doel | afspelen vanaf Pleya Server met de server als bron van kijkstatus |
 | Bijdrage aan einddoel | dit is het punt waarop Pleya Server een Plex-server functioneel kan vervangen voor het meest voorkomende gebruik |
 | Afhankelijkheden | PS-3 |
@@ -2170,13 +2170,13 @@ daar het meest afwijken.
 **Roadmap Drift Check.** Is er een transcode-pad ontstaan omdat een bestand niet speelde? Dat is fase
 8, en de juiste uitkomst hier is een foutmelding.
 
-#### Stand op 21 augustus 2026: opgeleverd, ter goedkeuring
+#### Stand op 21 augustus 2026: gesloten
 
 | Acceptatiecriterium | Stand |
 | --- | --- |
-| 1. Een direct-play-bestand speelt op desktop, mobiel en TV, met werkende seek | **een derde gehaald.** Desktop is gedaan op echte hardware, zie de desktopronde hieronder. Mobiel en TV niet: de iPhone-installatie strandde op een uitgeschakelde ontwikkelaarsmodus en de Apple TV is niet aan de beurt geweest. Dat is de reden dat deze fase "ter goedkeuring" heet en niet "gesloten" |
+| 1. Een direct-play-bestand speelt op desktop, mobiel en TV, met werkende seek | **gehaald voor desktop en mobiel, TV aanvaard zonder meting.** macOS en iPhone zijn allebei op echte hardware gedaan, met beeld, geluid en een forse seek; zie de rondes hieronder. De Apple TV-ronde is niet uitgevoerd: build 240 staat op TestFlight, maar er is geen film op het toestel gestart. De eigenaar heeft op 21 augustus 2026 besloten de fase op dit punt te sluiten in plaats van de TV-ronde af te wachten |
 | 2. Seeken naar een willekeurige positie zonder de stream opnieuw op te bouwen | gehaald en gemeten: een bereik van 1 MB vanaf byte 1.469.339.787 in een bestand van 1,87 GB kwam in 164 ms terug, zonder tweede verbinding |
-| 3. Kijkpositie overleeft het afsluiten en verschijnt op een tweede toestel | **eerste helft gehaald op een echt toestel.** De macOS-app verliet het afspeelscherm op 2.401.045 ms, en een tweede sessie in dezelfde app hervatte daar. De tweede helft, een positie die op een ander toestel opduikt, is nog niet gemeten en hangt aan criterium 1 |
+| 3. Kijkpositie overleeft het afsluiten en verschijnt op een tweede toestel | **gehaald op twee echte toestellen.** De macOS-app schreef 2.435.371 ms; vijf uur later nam een iPhone hetzelfde item over met `playback_started`, hervatte daar en speelde door tot 2.459.687 ms, met een eigen `owner_session_id` en `revision` 29 naar 31 |
 | 4. Het conflictmodel is opgeschreven vóór de eerste regel code, met een test per regel | gehaald. DEC-049 dateert van vóór de implementatie; `internal/watch/watch_test.go` heeft achttien tests, waaronder een per regel, het tv/telefoon-scenario en de backlog bij een verlopen lease |
 | 5. De `MediaServerClient`-beoordeling is uitgevoerd en de uitkomst staat opgeschreven | gehaald, en de uitkomst is dat de klasse te breed is: 28 van de 84 members zijn in drie of meer van de vijf implementaties structureel leeg, tegen een drempel van 21. Zie [hoofdstuk 5.3](#53-wordt-mediaserverclient-te-breed) |
 | 6. `If-Range` levert `200` en nooit een `206` | gehaald, en getest tegen de echte server: `If-Range` met de eigen validator gaf `200` met `Content-Length` 2.012.794.229 en geen `Content-Range` |
@@ -2216,12 +2216,32 @@ Na het verlaten stond de canonieke positie op 2.401.045 ms. Een tweede afspeelro
 verwierf het eigendom opnieuw met een nieuwe `session_id` en liep door naar 2.435.371 ms bij
 `revision` 29.
 
-**Wat er nog niet is gemeten.** Mobiel en TV. De iPhone-build compileerde en tekende (`Apple
-Development`), maar installeren faalde op `Developer Mode disabled` op het toestel zelf; dat is een
-schakelaar en geen bevinding over PS-4. De Apple TV is niet aan de beurt geweest. Daarmee staat ook
-de tweede helft van criterium 3 open: een positie van toestel A die op toestel B opduikt, en het
-eigendomsscenario uit DEC-049 op twee echte clients. Het stopcriterium ("een huishouden kan een
-avond films kijken") hangt daaraan vast.
+**De mobiele ronde en het cross-device-bewijs, 21 augustus 2026.** Een iPhone met
+TestFlight-build 239 (de eerste build waarin `PleyaServerClient` zit) verbond met
+dezelfde server op `https://web.pleya.app` en speelde hetzelfde item. Beeld,
+geluid en seek zijn door de eigenaar waargenomen. Serverzijdig: één login, 44
+bibliotheekaanvragen, 366 artworkaanvragen, acht `206`-antwoorden op
+`/pleya/v1/stream/` en twee geaccepteerde `POST /watch-state`.
+
+Daarmee is criterium 3 in zijn geheel gemeten, en niet meer op protocolniveau
+beredeneerd. De macOS-app liet de canonieke stand om 16:58 op 2.435.371 ms staan
+bij `revision` 29, met `owner_session_id` `8acbd3d2-…`. Om 21:39 nam de iPhone
+hetzelfde item over met `playback_started`, kreeg een eigen `owner_session_id`
+`0b134b18-…`, hervatte op de positie die de Mac had achtergelaten en speelde door
+tot 2.459.687 ms bij `revision` 31. Vierentwintig seconden voortgang bovenop een
+positie van vijf uur oud, op een ander toestel, zonder dat er iets handmatig is
+overgezet.
+
+**Wat er bij het sluiten open bleef.** De Apple TV-ronde is niet uitgevoerd.
+Build 240 staat op TestFlight en de tvOS-lane is groen, maar er is geen film op
+het toestel gestart, dus over focus, seek met de afstandsbediening en de
+levensduur van de stream-URL op tvOS zegt dit hoofdstuk niets. Ook het
+eigendomsscenario uit DEC-049 is niet op twee echte clients tegelijk gespeeld:
+de zes regels zijn met achttien tests in `internal/watch/watch_test.go` gedekt en
+het overnemen is één keer in het echt gezien (de iPhone nam over van de Mac),
+maar de reeks waarin de oude eigenaar blijft rapporteren en na de lease
+terugkomt is niet doorlopen. Wie dat alsnog wil meten, heeft er twee toestellen
+en tien minuten voor nodig; de fase is er niet op blijven wachten.
 
 **Drift check.** Er is geen `PlaybackPlan`, geen transcoder, geen ffmpeg in het streamingpad, geen
 metadataprovider, geen gebruikersmodel, geen `play_history`, geen browserspeler en geen beheer-API.

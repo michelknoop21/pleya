@@ -66,14 +66,17 @@ PS-3 (de vijfde `MediaServerClient`) en PS-3W (Pleya Web) zijn gesloten en bevro
 PS-0-afwijking staat in `docs/pleya-server-ps0-proposal.md`, de PS-1-afwijking in
 `docs/pleya-server-ps1-scope-deviation.md` en de PS-3W-afwijking in
 `docs/pleya-server-ps3w-proposal.md`. Het masterplan dat er acht fasen bij zet is goedgekeurd op
-21 augustus 2026 en staat in `docs/pleya-server-masterplan-proposal.md`. **PS-4 is vrijgegeven**:
-direct play met HTTP-range, en kijkstatus met de server als eigenaar. Werk dat verder gaat dan de
-PS-4-scope is per definitie te vroeg; transcoderen is PS-8, gebruikers zijn PS-9, en de browserspeler
+21 augustus 2026 en staat in `docs/pleya-server-masterplan-proposal.md`. **PS-4 is gesloten** op
+21 augustus 2026: direct play met HTTP-range, en kijkstatus met de server als eigenaar. Desktop en
+mobiel zijn op echte hardware bewezen, inclusief een kijkpositie die van een Mac naar een iPhone
+oversprong; de Apple TV-ronde is niet uitgevoerd en de fase is op eigenaarsbesluit toch gesloten.
+**De eerstvolgende fase is PS-5** (`DeviceCapabilities` in de client). Werk dat verder gaat dan de
+PS-5-scope is per definitie te vroeg; transcoderen is PS-8, gebruikers zijn PS-9, en de browserspeler
 is PS-4W.
 
 **Het protocol ligt vast.** `docs/pleya-protocol/v1/openapi.yaml` is contractueel leidend en bevroren
-zolang PS-4 loopt. Het venster stond één keer open, bij het sluiten van PS-3, voor precies de drie
-poortbesluiten die eronder staan; daarna is het weer dicht. Legt PS-4 een echt probleem bloot, dan is
+zolang PS-5 loopt. Het venster stond één keer open, bij het sluiten van PS-3, voor precies de drie
+poortbesluiten die eronder staan; daarna is het weer dicht. Legt PS-5 een echt probleem bloot, dan is
 dat een protocolwijziging die eerst langs de zes compatibiliteitsregels uit hoofdstuk 3 van de
 specificatie getoetst wordt, niet een aanpassing in de YAML omdat het zo uitkomt.
 `scripts/check_protocol.sh` is de poortwachter.
