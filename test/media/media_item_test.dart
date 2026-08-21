@@ -164,16 +164,17 @@ void main() {
       expect(art?.shouldBlur, isFalse);
     });
 
-    test('a narrow box still prefers the 16:9 backdrop over square art', () {
+    test('a narrow box now prefers square art over the 16:9 backdrop', () {
       final movie = _movie(artPath: '/art', backgroundSquarePath: '/square');
 
-      // The billboard layout shrinks the sharp frame to its own 16:9 ratio on
-      // a narrow box instead of stretching the backdrop across the full hero
-      // (see `homeHeroArtGeometry`), so there is no centre-crop to dodge and
-      // no reason to prefer the square art here — a smaller, calmer backdrop
-      // beats a subject blown up to fill the box.
+      // On a narrow box the sharp layer is a small, cropped-free island (see
+      // `homeHeroArtGeometry`), not a full-bleed fill, so a smaller square
+      // subject reads calmer there than a 16:9 backdrop blown up against a
+      // portrait-ish frame. Square wins when it exists; the backdrop is
+      // still the fallback ahead of the blurred poster/thumb (see the
+      // fallback test below).
       final narrow = movie.billboardArt(containerAspectRatio: 0.78);
-      expect(narrow, const BillboardArt(path: '/art', kind: BillboardArtKind.widescreen));
+      expect(narrow, const BillboardArt(path: '/square', kind: BillboardArtKind.square));
       expect(narrow?.canRenderSharp, isTrue);
       expect(narrow?.shouldBlur, isFalse);
       // Wide box is unchanged: the 16:9 backdrop still wins.
@@ -183,7 +184,7 @@ void main() {
       );
     });
 
-    test('a narrow box on an episode prefers the show backdrop over square art', () {
+    test('a narrow box on an episode prefers square art over the show backdrop', () {
       final episode = MediaItem(
         id: 'e2',
         backend: MediaBackend.plex,
@@ -193,6 +194,29 @@ void main() {
         grandparentArtPath: '/show-art',
         artPath: '/episode-art',
         backgroundSquarePath: '/square',
+        serverId: 's1',
+      );
+
+      expect(
+        episode.billboardArt(containerAspectRatio: 0.78),
+        const BillboardArt(path: '/square', kind: BillboardArtKind.square),
+      );
+      // Wide box is unchanged: the show backdrop still wins over the episode's.
+      expect(
+        episode.billboardArt(containerAspectRatio: 1.6),
+        const BillboardArt(path: '/show-art', kind: BillboardArtKind.widescreen),
+      );
+    });
+
+    test('a narrow box on an episode without square art falls back to the show backdrop', () {
+      final episode = MediaItem(
+        id: 'e3',
+        backend: MediaBackend.plex,
+        kind: MediaKind.episode,
+        title: 'Episode',
+        grandparentTitle: 'Show',
+        grandparentArtPath: '/show-art',
+        artPath: '/episode-art',
         serverId: 's1',
       );
 

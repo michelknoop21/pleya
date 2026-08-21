@@ -45,6 +45,9 @@ import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/utils/video_player_navigation.dart';
 import 'package:pleya/watch_together/watch_together.dart';
 import 'package:pleya/widgets/clickable_cursor.dart';
+import 'package:pleya/widgets/fitting_title_text.dart';
+import 'package:pleya/widgets/hub_section.dart';
+import 'package:pleya/widgets/media_card.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -71,9 +74,20 @@ void main() {
   tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
 
   /// Pumps the screen and returns the observer that records pushed routes.
-  Future<_RouteSpy> pumpDiscover(WidgetTester tester) async {
+  ///
+  /// [size] and [platform] default to the original desktop-ish 1280x800,
+  /// non-iOS pump every existing test in this file already relied on.
+  /// [continueWatching] feeds the rail directly below the hero, so tests can
+  /// measure the real gap between the hero's pagination row and the "Verder
+  /// kijken" heading, or the rail's card count.
+  Future<_RouteSpy> pumpDiscover(
+    WidgetTester tester, {
+    Size size = const Size(1280, 800),
+    TargetPlatform? platform,
+    List<MediaItem> continueWatching = const [],
+  }) async {
     tester.view.devicePixelRatio = 1.0;
-    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.physicalSize = size;
     addTearDown(() {
       tester.view.resetDevicePixelRatio();
       tester.view.resetPhysicalSize();
@@ -97,7 +111,7 @@ void main() {
       durationMs: 7200000,
     );
 
-    final client = _FakeHeroClient(movie);
+    final client = _FakeHeroClient(movie, continueWatching: continueWatching);
     final manager = MultiServerManager()..debugRegisterClientForTesting(client);
     final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
     final hiddenLibrariesProvider = HiddenLibrariesProvider();
@@ -177,8 +191,13 @@ void main() {
             ChangeNotifierProvider<WatchStateStore>.value(value: watchStateStore),
           ],
           child: MaterialApp(
-            theme: monoTheme(dark: true),
+            theme: platform == null ? monoTheme(dark: true) : monoTheme(dark: true).copyWith(platform: platform),
             navigatorObservers: [spy],
+            // MainScreenFocusScope is a plain InheritedModel: on this non-TV
+            // path nothing reads these values (only `_buildTvContent` does),
+            // so they stay at the original hardcoded desktop-ish geometry
+            // regardless of `size` — real per-size layout comes entirely
+            // from `tester.view.physicalSize` via MediaQuery.
             home: MainScreenFocusScope(
               focusSidebar: () {},
               focusContent: () {},
@@ -240,6 +259,193 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  /// The hero has no `clearLogoPath` in these tests (the fake movie carries
+  /// no artwork at all), so it falls back to `FittingTitleText` inside a
+  /// `SizedBox(width: heroLogoWidth, height: heroLogoHeight)` — the same box
+  /// `homeHeroLogoConstraints` sizes. Measuring that box's real rendered rect
+  /// is a direct proof of which `HomeHeroContentTier` the screen resolved to,
+  /// not just of the pure layout function in isolation.
+  Rect measuredLogoBoxRect(WidgetTester tester) =>
+      tester.getRect(find.ancestor(of: find.byType(FittingTitleText), matching: find.byType(SizedBox)).first);
+
+  testWidgets('iPad in portrait resolves the tabletPortrait tier, not the phone formula', (tester) async {
+    // 834x1194: iPad Air-class portrait. `PlatformDetector.isHandheldIOS`
+    // needs `TargetPlatform.iOS`, not just a narrow physical size — a bare
+    // `tester.view.physicalSize` change cannot exercise this branch on its
+    // own, which is exactly what the tabletPortrait tier check depends on.
+    await pumpDiscover(tester, size: const Size(834, 1194), platform: TargetPlatform.iOS);
+    expect(find.text('Movie 1'), findsOneWidget, reason: 'the hero rendered');
+
+    final logoRect = measuredLogoBoxRect(tester);
+    // tabletPortrait at 834pt: width = min(520, min(834*0.55, 834-64)) ≈ 458.7,
+    // height = (834*0.18).clamp(120,160) ≈ 150.1 — see home_hero_layout_test.dart.
+    expect(logoRect.width, closeTo(458.7, 1.0));
+    expect(logoRect.height, closeTo(150.1, 1.0));
+    // The phone formula would have given only ≈400x96 at this width — the
+    // whole point of the tabletPortrait-specific formula.
+    expect(logoRect.width, greaterThan(400));
+    expect(logoRect.height, greaterThan(96));
+
+    final contentAlign = tester.widget<Align>(
+      find.ancestor(of: find.byType(FittingTitleText), matching: find.byType(Align)).first,
+    );
+    expect(contentAlign.alignment, Alignment.center, reason: 'tabletPortrait stays centred like phone');
+
+    final contentPositioned = tester.widget<Positioned>(
+      find.ancestor(of: find.byType(FittingTitleText), matching: find.byType(Positioned)).first,
+    );
+    expect(contentPositioned.bottom, closeTo(48, 0.5), reason: 'tabletPortrait shares the phone contentBottomInset');
+
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('iPad in landscape keeps the existing wide-content layout unchanged', (tester) async {
+    // 1194x834 — width > height, i.e. actually landscape. Same device class
+    // as the portrait case above (834x1194), rotated: orientation is what
+    // must flip the tier here, not the raw width alone.
+    await pumpDiscover(tester, size: const Size(1194, 834), platform: TargetPlatform.iOS);
+    expect(find.text('Movie 1'), findsOneWidget, reason: 'the hero rendered');
+
+    final logoRect = measuredLogoBoxRect(tester);
+    expect(logoRect.width, closeTo(400, 0.5), reason: 'wide tier keeps its fixed 400x120 box');
+    expect(logoRect.height, closeTo(120, 0.5));
+
+    // Direct proof of tier == wide / tabletPortrait == false: the real
+    // Align and Positioned the production tree resolved to, not just the
+    // pure-function output in isolation.
+    final contentAlign = tester.widget<Align>(
+      find.ancestor(of: find.byType(FittingTitleText), matching: find.byType(Align)).first,
+    );
+    expect(contentAlign.alignment, Alignment.centerLeft, reason: 'alignLeft must be true on the wide tier');
+
+    final contentPositioned = tester.widget<Positioned>(
+      find.ancestor(of: find.byType(FittingTitleText), matching: find.byType(Positioned)).first,
+    );
+    expect(contentPositioned.bottom, closeTo(80, 0.5), reason: 'wide tier keeps its unchanged bottom: 80 inset');
+
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  /// A single 16:9 episode so the first rail renders in its wide layout —
+  /// the same shape `_firstRailHeight` sizes the hero against.
+  MediaItem wideOnDeckItem() => MediaItem(
+    id: 'episode_1',
+    backend: MediaBackend.plex,
+    kind: MediaKind.episode,
+    title: 'Episode 1',
+    grandparentTitle: 'Show',
+    serverId: 'server_1',
+    serverName: 'Server',
+    durationMs: 1800000,
+    viewOffsetMs: 60000,
+  );
+
+  Future<void> expectPaginationToRailHeadingWithinBand(
+    WidgetTester tester, {
+    required Size size,
+    TargetPlatform? platform,
+    required num min,
+    required num max,
+  }) async {
+    final settings = await SettingsService.getInstance();
+    await settings.write(SettingsService.episodePosterMode, EpisodePosterMode.episodeThumbnail);
+    await pumpDiscover(tester, size: size, platform: platform, continueWatching: [wideOnDeckItem()]);
+    // The continue-watching fetch resolves asynchronously; give it a couple
+    // more frames to land and rebuild the rail under the hero.
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Movie 1'), findsOneWidget, reason: 'the hero rendered');
+    expect(find.text(t.discover.continueWatching), findsOneWidget, reason: 'the rail rendered');
+
+    final paginationRect = tester.getRect(find.byKey(DiscoverScreen.heroPaginationKey));
+    final headingRect = tester.getRect(find.text(t.discover.continueWatching));
+    final gap = headingRect.top - paginationRect.bottom;
+
+    expect(gap, inInclusiveRange(min, max), reason: 'size=$size platform=$platform gap=$gap');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  }
+
+  testWidgets('phone: the real gap between the pagination row and "Verder kijken" is 16-20pt', (tester) async {
+    await expectPaginationToRailHeadingWithinBand(tester, size: const Size(402, 874), min: 16, max: 20);
+  });
+
+  testWidgets('iPad portrait: the real gap between the pagination row and "Verder kijken" is 16-24pt', (tester) async {
+    await expectPaginationToRailHeadingWithinBand(
+      tester,
+      size: const Size(834, 1194),
+      platform: TargetPlatform.iOS,
+      min: 16,
+      max: 24,
+    );
+  });
+
+  /// Pumps the real screen — real `HubSection`, real `ListView.builder`, real
+  /// `MediaCard`s — with a continue-watching hub of eight 16:9 episodes and
+  /// counts how many card rects land fully inside [width]. `find.byType`
+  /// only returns what `ListView.builder` actually built (its viewport plus
+  /// a small cache extent), so "fully inside the viewport" is a real
+  /// left/right rect check, not an assumption about how many got built.
+  Future<void> expectExactlyThreeFullRailCards(
+    WidgetTester tester, {
+    required double width,
+    required double height,
+  }) async {
+    final settings = await SettingsService.getInstance();
+    await settings.write(SettingsService.episodePosterMode, EpisodePosterMode.episodeThumbnail);
+    await settings.write(SettingsService.libraryDensity, LibraryDensity.defaultValue);
+
+    final items = List.generate(
+      8,
+      (i) => MediaItem(
+        id: 'episode_$i',
+        backend: MediaBackend.plex,
+        kind: MediaKind.episode,
+        title: 'Episode $i',
+        grandparentTitle: 'Show',
+        serverId: 'server_1',
+        serverName: 'Server',
+        durationMs: 1800000,
+      ),
+    );
+
+    await pumpDiscover(tester, size: Size(width, height), platform: TargetPlatform.iOS, continueWatching: items);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Movie 1'), findsOneWidget, reason: 'the hero rendered');
+    expect(find.text(t.discover.continueWatching), findsOneWidget, reason: 'the rail rendered');
+    // No second hub/section: `_FakeHeroClient.fetchGlobalHubs` returns none,
+    // so exactly one HubSection existing is direct proof no next section is
+    // in the tree to peek into the viewport.
+    expect(find.byType(HubSection), findsOneWidget, reason: 'no next section below the rail');
+
+    final cardFinder = find.byType(MediaCard);
+    final cardCount = tester.widgetList(cardFinder).length;
+    final rects = [for (var i = 0; i < cardCount; i++) tester.getRect(cardFinder.at(i))];
+    final fullyVisible = rects.where((r) => r.left >= -0.5 && r.right <= width + 0.5).length;
+
+    expect(fullyVisible, 3, reason: 'width=$width expected exactly 3 full cards, got $fullyVisible from rects=$rects');
+    expect(tester.takeException(), isNull, reason: 'width=$width');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  }
+
+  testWidgets('iPad rail: exactly 3 full 16:9 cards at 768pt, default density', (tester) async {
+    await expectExactlyThreeFullRailCards(tester, width: 768, height: 1024);
+  });
+
+  testWidgets('iPad rail: exactly 3 full 16:9 cards at 834pt, default density', (tester) async {
+    await expectExactlyThreeFullRailCards(tester, width: 834, height: 1194);
+  });
+
+  testWidgets('iPad rail: exactly 3 full 16:9 cards at 1024pt, default density', (tester) async {
+    await expectExactlyThreeFullRailCards(tester, width: 1024, height: 1366);
+  });
 }
 
 /// Records what the screen pushed, then drops it again.
@@ -263,9 +469,10 @@ class _RouteSpy extends NavigatorObserver {
 }
 
 class _FakeHeroClient implements MediaServerClient {
-  _FakeHeroClient(this.movie);
+  _FakeHeroClient(this.movie, {this.continueWatching = const []});
 
   final MediaItem movie;
+  final List<MediaItem> continueWatching;
 
   @override
   ServerId get serverId => ServerId('server_1');
@@ -287,7 +494,7 @@ class _FakeHeroClient implements MediaServerClient {
       const [];
 
   @override
-  Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async => const [];
+  Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async => continueWatching;
 
   @override
   Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5}) async => const [];

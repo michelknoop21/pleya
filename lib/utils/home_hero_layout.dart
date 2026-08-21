@@ -56,86 +56,169 @@ double homeHeroHeight({
   return math.max(fill, sixteenNine).clamp(floor, cap);
 }
 
-/// Geometry for the hero's sharp artwork layer, decoupled from the hero's own
-/// total height.
+/// Geometry for the hero's two artwork layers: a full-hero ambient wash and a
+/// smaller, cropped-free sharp layer on top of it.
 ///
-/// On a wide box the frame fills the whole hero, exactly as before. On a
-/// narrow (phone-portrait) box the frame shrinks to the aspect ratio of its
-/// own source — square or 16:9 — so a server-side crop is never asked to
-/// force a mismatched ratio into the full hero box. [requestHeight] always
-/// matches that frame ratio, which is what keeps the transcoder's crop a
-/// no-op.
+/// On a wide box the sharp layer fills the whole hero with `BoxFit.cover`,
+/// exactly as before — there is no ambient layer, since there is no gap
+/// around the sharp layer for one to fill. On a narrow (phone/tablet-portrait)
+/// box the sharp layer shrinks to the aspect ratio of its own source — square
+/// or 16:9 — so a server-side crop is never asked to force a mismatched ratio
+/// into the full hero box, and the ambient layer (the same source, blurred
+/// and darkened, `BoxFit.cover` across the whole canvas) fills what the sharp
+/// layer leaves empty so the hero never shows a bare panel under it.
+/// [requestWidth]/[requestHeight] always match the sharp layer's own ratio,
+/// which is what keeps the transcoder's crop a no-op.
 class HomeHeroArtGeometry {
   const HomeHeroArtGeometry({
-    required this.width,
-    required this.height,
+    required this.canvasWidth,
+    required this.canvasHeight,
+    required this.sharpWidth,
+    required this.sharpHeight,
+    required this.requestWidth,
     required this.requestHeight,
-    required this.fadeHeight,
+    required this.sharpFadeHeight,
+    required this.hasSharpForeground,
+    required this.useAmbientLayer,
     required this.coversHero,
   });
 
-  /// Frame width, in logical pixels.
-  final double width;
+  /// Full hero canvas width, in logical pixels — what the ambient layer (when
+  /// present) and the full-bleed frame (when [coversHero]) both fill.
+  final double canvasWidth;
 
-  /// Frame height, in logical pixels.
-  final double height;
+  /// Full hero canvas height, in logical pixels.
+  final double canvasHeight;
 
-  /// `maxHeight` to send toward the transcoder, matching the frame's own ratio.
+  /// Sharp (foreground) layer width.
+  final double sharpWidth;
+
+  /// Sharp (foreground) layer height.
+  final double sharpHeight;
+
+  /// `maxWidth` to send toward the transcoder, matching the sharp layer's own
+  /// ratio. The ambient layer reuses this exact request (same URL, same
+  /// cache entry) rather than asking for a second, differently-cropped
+  /// transcode of the same source.
+  final double requestWidth;
+
+  /// `maxHeight` to send toward the transcoder, matching the sharp layer's own
+  /// ratio.
   final double requestHeight;
 
-  /// Height of the bottom band that fades the frame into the scaffold
-  /// background. Zero when the frame already covers the whole hero.
-  final double fadeHeight;
+  /// Height of the band at the bottom of the sharp layer that blends it into
+  /// the ambient layer beneath. Zero when the sharp layer already covers the
+  /// whole hero (nothing beneath it to blend into).
+  final double sharpFadeHeight;
 
-  /// True when the frame fills the entire hero with `BoxFit.cover`, as before
-  /// this change. False when the frame is a shorter island sized to its own
-  /// source ratio.
+  /// True whenever there is an image to draw at all. False only for the
+  /// zero/unusable geometry ([HomeHeroArtGeometry.zero]).
+  final bool hasSharpForeground;
+
+  /// True when a full-hero ambient wash of the same source should be drawn
+  /// beneath the sharp layer — i.e. the sharp layer is a smaller island, not
+  /// a full-bleed cover fill.
+  final bool useAmbientLayer;
+
+  /// True when the sharp layer fills the entire hero with `BoxFit.cover`, as
+  /// before this change (wide box, or no 16:9/square source to shape an
+  /// island from). False when the sharp layer is a shorter/narrower island
+  /// sized to its own source ratio, with an ambient layer filling the rest.
   final bool coversHero;
 
-  static const _zero = HomeHeroArtGeometry(width: 0, height: 0, requestHeight: 0, fadeHeight: 0, coversHero: false);
+  static const zero = HomeHeroArtGeometry(
+    canvasWidth: 0,
+    canvasHeight: 0,
+    sharpWidth: 0,
+    sharpHeight: 0,
+    requestWidth: 0,
+    requestHeight: 0,
+    sharpFadeHeight: 0,
+    hasSharpForeground: false,
+    useAmbientLayer: false,
+    coversHero: false,
+  );
 }
+
+/// The sharp island's width as a fraction of the hero's own width, on a
+/// narrow box. Smaller than the full width on purpose — the mockup's
+/// composition reads as a quiet, centred subject over an atmospheric
+/// background, not another full-width banner.
+const double _sharpIslandWidthFraction = 0.82;
+
+/// How far down the sharp island's own height its blend into the ambient
+/// layer begins. The remaining (1 - this) of the island's height is the
+/// blend band itself (see [HomeHeroArtGeometry.sharpFadeHeight]).
+const double _sharpFadeStartFraction = 0.55;
 
 HomeHeroArtGeometry homeHeroArtGeometry({
   required double screenWidth,
   required double heroHeight,
   required BillboardArtKind kind,
 }) {
-  if (heroHeight <= 0 || screenWidth <= 0) return HomeHeroArtGeometry._zero;
+  if (heroHeight <= 0 || screenWidth <= 0) return HomeHeroArtGeometry.zero;
 
   final isWideBox = screenWidth / heroHeight >= billboardNarrowAspectRatioThreshold;
   if (isWideBox || kind == BillboardArtKind.fallback) {
+    // Full-bleed cover fill: either the box is wide enough that a 16:9
+    // backdrop needs no island treatment, or there is no 16:9/square source
+    // at all (fallback) and the caller draws it blurred as atmosphere. Either
+    // way there is no gap around the frame for an ambient layer to fill.
     return HomeHeroArtGeometry(
-      width: screenWidth,
-      height: heroHeight,
+      canvasWidth: screenWidth,
+      canvasHeight: heroHeight,
+      sharpWidth: screenWidth,
+      sharpHeight: heroHeight,
+      requestWidth: screenWidth,
       requestHeight: math.max(screenWidth * 9 / 16, heroHeight),
-      fadeHeight: 0,
+      sharpFadeHeight: 0,
+      hasSharpForeground: true,
+      useAmbientLayer: false,
       coversHero: true,
     );
   }
 
-  final height = switch (kind) {
-    BillboardArtKind.square => math.min(screenWidth, heroHeight),
-    BillboardArtKind.widescreen => math.min(screenWidth * 9 / 16, heroHeight),
-    BillboardArtKind.fallback => heroHeight, // unreachable: handled above
-  };
-  final requestHeight = switch (kind) {
-    BillboardArtKind.square => screenWidth,
-    BillboardArtKind.widescreen => screenWidth * 9 / 16,
-    BillboardArtKind.fallback => screenWidth * 9 / 16, // unreachable: handled above
-  };
+  final double sharpWidth, sharpHeight;
+  switch (kind) {
+    case BillboardArtKind.square:
+      // Clamped to both the hero's own width and height so a very short hero
+      // (or a very narrow one) never asks for an island bigger than the box
+      // it sits in.
+      final side = math.min(screenWidth * _sharpIslandWidthFraction, math.min(screenWidth, heroHeight));
+      sharpWidth = side;
+      sharpHeight = side;
+    case BillboardArtKind.widescreen:
+      sharpWidth = screenWidth;
+      sharpHeight = math.min(screenWidth * 9 / 16, heroHeight);
+    case BillboardArtKind.fallback:
+      sharpWidth = screenWidth; // unreachable: handled above
+      sharpHeight = heroHeight; // unreachable: handled above
+  }
 
   return HomeHeroArtGeometry(
-    width: screenWidth,
-    height: height,
-    requestHeight: requestHeight,
-    // A long fade: the sharp island is meant to read as a quiet strip, not a
-    // billboard that happens to end early, and the clear-logo needs a calm
-    // dark zone under (or partially over) the fade to land in without
-    // competing with the subject above it.
-    fadeHeight: math.min(height * 0.5, 200.0),
+    canvasWidth: screenWidth,
+    canvasHeight: heroHeight,
+    sharpWidth: sharpWidth,
+    sharpHeight: sharpHeight,
+    requestWidth: sharpWidth,
+    requestHeight: sharpHeight,
+    sharpFadeHeight: sharpHeight * (1 - _sharpFadeStartFraction),
+    hasSharpForeground: true,
+    useAmbientLayer: true,
     coversHero: false,
   );
 }
+
+/// Which content-layout treatment the hero's info column (logo, metadata,
+/// play button, summary, pagination) uses.
+///
+/// [wide] is desktop and iPad-*landscape*: the hero is wide enough that
+/// left-aligned content beside the artwork reads naturally. [tabletPortrait]
+/// is iPad (or a large Android tablet) held in portrait: still centred and
+/// compact like [phone], but on a canvas wide enough that the content column
+/// and clear-logo need their own width cap so they don't stretch across the
+/// whole box. [phone] is every other narrow, portrait box.
+enum HomeHeroContentTier { phone, tabletPortrait, wide }
 
 /// Constraints for the hero's clear-logo (or fallback title) box.
 class HomeHeroLogoMetrics {
@@ -145,16 +228,138 @@ class HomeHeroLogoMetrics {
   final double height;
 }
 
-/// On large screens the logo box stays a fixed 400×120: the hero is wide
-/// enough there that a fixed box never gets squeezed by the surrounding
-/// padding. On phones a fixed 400pt box is wider than the screen itself, so
-/// the padding compresses it — the logo image gets requested at 400px but
-/// drawn at whatever's left, softening it. Scaling both dimensions off the
-/// screen width keeps the request and the drawn size in agreement.
-HomeHeroLogoMetrics homeHeroLogoConstraints({required double screenWidth, required bool isLargeScreen}) {
-  if (isLargeScreen) return const HomeHeroLogoMetrics(width: 400, height: 120);
-
-  final width = math.min(400.0, math.min(screenWidth * 0.78, screenWidth - 48));
-  final height = (screenWidth * 0.23).clamp(90.0, 96.0);
-  return HomeHeroLogoMetrics(width: width, height: height);
+/// On [HomeHeroContentTier.wide] the logo box stays a fixed 400×120: the hero
+/// is wide enough there that a fixed box never gets squeezed by the
+/// surrounding padding. On [HomeHeroContentTier.phone] a fixed 400pt box can
+/// be wider than the screen itself, so the padding would compress it — the
+/// logo image gets requested at 400px but drawn at whatever's left,
+/// softening it. Scaling both dimensions off the screen width keeps the
+/// request and the drawn size in agreement.
+///
+/// [HomeHeroContentTier.tabletPortrait] does *not* reuse the phone formula:
+/// that formula tops out at 400×96 well before iPad widths, which technically
+/// stays under the mockup's roughly-520pt cap but reads visibly smaller than
+/// the mockup's logo. It scales more aggressively instead (0.55× width,
+/// 0.18× height) so the box actually grows with the canvas up to the 520×160
+/// cap, landing at roughly 422×138 (768pt), 459×150 (834pt), and 520×160
+/// (1024pt).
+HomeHeroLogoMetrics homeHeroLogoConstraints({required double screenWidth, required HomeHeroContentTier tier}) {
+  switch (tier) {
+    case HomeHeroContentTier.wide:
+      return const HomeHeroLogoMetrics(width: 400, height: 120);
+    case HomeHeroContentTier.tabletPortrait:
+      final width = math.min(520.0, math.min(screenWidth * 0.55, screenWidth - 64));
+      final height = (screenWidth * 0.18).clamp(120.0, 160.0);
+      return HomeHeroLogoMetrics(width: width, height: height);
+    case HomeHeroContentTier.phone:
+      final width = math.min(400.0, math.min(screenWidth * 0.78, screenWidth - 48));
+      final height = (screenWidth * 0.23).clamp(90.0, 96.0);
+      return HomeHeroLogoMetrics(width: width, height: height);
+  }
 }
+
+/// Vertical rhythm of the hero's info column, plus how far its bottom anchor
+/// and the pagination row sit from the hero's own bottom edge.
+///
+/// [phone] and [tabletPortrait] share one compact rhythm — the mockups show
+/// the same tight, centred composition on both, just on a wider canvas for
+/// the latter — while [wide] keeps the spacing this hero always used.
+class HomeHeroContentMetrics {
+  const HomeHeroContentMetrics({
+    required this.logoToMeta,
+    required this.metaToButton,
+    required this.buttonToSummary,
+    required this.contentToPagination,
+    required this.paginationHeight,
+    required this.paginationBottomInset,
+    required this.contentBottomInset,
+    required this.paginationToRailHeading,
+    required this.maxContentWidth,
+  });
+
+  /// Gap between the logo/title and the metadata line.
+  final double logoToMeta;
+
+  /// Gap between the metadata line and the play button (phone/tabletPortrait
+  /// order: logo, metadata, button, summary).
+  final double metaToButton;
+
+  /// Gap between the play button and the summary.
+  final double buttonToSummary;
+
+  /// Gap the info column's bottom anchor keeps above the pagination row.
+  final double contentToPagination;
+
+  /// Height of the pagination dot row itself.
+  final double paginationHeight;
+
+  /// Distance from the hero's bottom edge to the pagination row.
+  final double paginationBottomInset;
+
+  /// Distance from the hero's bottom edge to the info column's own bottom
+  /// anchor (fed to the content `Positioned.bottom`). Derived from the three
+  /// values above on the narrow tiers so overlap with the pagination row is
+  /// provably impossible; a fixed legacy value on [HomeHeroContentTier.wide].
+  final double contentBottomInset;
+
+  /// Distance from the pagination row's own bottom edge to the top of the
+  /// "Verder kijken" heading directly below the hero. Not enforced by this
+  /// hero widget itself — it exists so tests can pin the gap against
+  /// `HubSection`'s own header padding (see the doc comment at the call
+  /// site) without duplicating that number here.
+  final double paginationToRailHeading;
+
+  /// Cap on the info column's width. Null means unconstrained (phone is
+  /// already narrow enough that it never needs one; wide already limits
+  /// itself via the `right:` inset at the call site).
+  final double? maxContentWidth;
+}
+
+/// `HubSection`'s own top padding above its title row (`vertical: 2` inside
+/// `vertical: 2` — see `HubSectionState.build`), which sits directly below
+/// the hero sliver with nothing in between. Shared here so
+/// [HomeHeroContentMetrics.paginationToRailHeading] can be checked against
+/// the rail's real header offset instead of a number copied by hand.
+const double _railHeaderTopPadding = 4.0;
+
+const HomeHeroContentMetrics _compactContentMetrics = HomeHeroContentMetrics(
+  logoToMeta: 12,
+  metaToButton: 16,
+  buttonToSummary: 12,
+  contentToPagination: 14,
+  paginationHeight: 18,
+  paginationBottomInset: 16,
+  contentBottomInset: 48, // paginationBottomInset + paginationHeight + contentToPagination
+  paginationToRailHeading: 16 + _railHeaderTopPadding, // paginationBottomInset + _railHeaderTopPadding
+  maxContentWidth: null,
+);
+
+HomeHeroContentMetrics homeHeroContentMetrics({required HomeHeroContentTier tier}) => switch (tier) {
+  HomeHeroContentTier.phone => _compactContentMetrics,
+  // Same rhythm as [HomeHeroContentTier.phone] (see the doc comment on
+  // [HomeHeroContentMetrics]) — only `maxContentWidth` differs, so the
+  // values are spelled out again here rather than read off
+  // `_compactContentMetrics.field`, which Dart won't const-evaluate.
+  HomeHeroContentTier.tabletPortrait => const HomeHeroContentMetrics(
+    logoToMeta: 12,
+    metaToButton: 16,
+    buttonToSummary: 12,
+    contentToPagination: 14,
+    paginationHeight: 18,
+    paginationBottomInset: 16,
+    contentBottomInset: 48,
+    paginationToRailHeading: 16 + _railHeaderTopPadding,
+    maxContentWidth: 600,
+  ),
+  HomeHeroContentTier.wide => HomeHeroContentMetrics(
+    logoToMeta: 16,
+    metaToButton: 20,
+    buttonToSummary: 12,
+    contentToPagination: 14,
+    paginationHeight: 18,
+    paginationBottomInset: 16,
+    contentBottomInset: 80,
+    paginationToRailHeading: 16 + _railHeaderTopPadding,
+    maxContentWidth: null,
+  ),
+};

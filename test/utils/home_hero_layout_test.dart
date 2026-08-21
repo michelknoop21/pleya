@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_item.dart' show BillboardArtKind;
 import 'package:pleya/utils/home_hero_layout.dart';
@@ -172,33 +170,52 @@ void main() {
   });
 
   group('homeHeroArtGeometry', () {
+    // (width, heroHeight) pairs shared with home_hero_artwork_test.dart, so
+    // both suites agree on one envelope. iPad-portrait heights are picked
+    // comfortably taller than the width (as the real fill-to-rail formula
+    // produces on a tall iPad viewport) so the square branch's clamp is
+    // exercised by width alone, matching the phone cases below.
     const phones = [(353.0, 500.0), (402.0, 572.0), (430.0, 650.0)];
+    const tabletsPortrait = [(768.0, 968.0), (834.0, 1034.0), (1024.0, 1224.0)];
+    const allNarrow = [...phones, ...tabletsPortrait];
 
-    test('a narrow box with square art frames a square, never wider than the box', () {
-      for (final (width, heroHeight) in phones) {
+    test('a narrow box with square art frames a square at 0.82x the box width', () {
+      for (final (width, heroHeight) in allNarrow) {
         final geometry = homeHeroArtGeometry(screenWidth: width, heroHeight: heroHeight, kind: BillboardArtKind.square);
 
-        expect(geometry.height, geometry.width, reason: 'w=$width h=$heroHeight');
-        expect(geometry.requestHeight, width, reason: 'w=$width h=$heroHeight');
+        expect(geometry.canvasWidth, width, reason: 'w=$width h=$heroHeight');
+        expect(geometry.canvasHeight, heroHeight, reason: 'w=$width h=$heroHeight');
+        expect(geometry.sharpWidth, geometry.sharpHeight, reason: 'w=$width h=$heroHeight');
+        expect(geometry.sharpWidth, closeTo(width * 0.82, 0.01), reason: 'w=$width h=$heroHeight');
+        expect(geometry.requestWidth, geometry.sharpWidth, reason: 'w=$width h=$heroHeight');
+        expect(geometry.requestHeight, geometry.sharpHeight, reason: 'w=$width h=$heroHeight');
+        expect(geometry.useAmbientLayer, isTrue, reason: 'w=$width h=$heroHeight');
         expect(geometry.coversHero, isFalse, reason: 'w=$width h=$heroHeight');
-        expect(geometry.height, lessThanOrEqualTo(heroHeight), reason: 'w=$width h=$heroHeight');
+        expect(geometry.hasSharpForeground, isTrue, reason: 'w=$width h=$heroHeight');
+        expect(geometry.sharpWidth, lessThanOrEqualTo(width), reason: 'w=$width h=$heroHeight');
+        expect(geometry.sharpHeight, lessThanOrEqualTo(heroHeight), reason: 'w=$width h=$heroHeight');
       }
     });
 
-    test('a narrow box with widescreen art frames 16:9, requested at its own ratio', () {
-      for (final (width, heroHeight) in phones) {
+    test('a narrow box with widescreen art frames a screen-wide 16:9 strip', () {
+      for (final (width, heroHeight) in allNarrow) {
         final wide = homeHeroArtGeometry(screenWidth: width, heroHeight: heroHeight, kind: BillboardArtKind.widescreen);
 
-        expect(wide.height, closeTo(width * 9 / 16, 0.01), reason: 'w=$width h=$heroHeight');
-        // Unlike the square branch (which requests a square), the request
-        // follows the 16:9 source ratio too — never the box's own ratio.
-        expect(wide.requestHeight, closeTo(width * 9 / 16, 0.01), reason: 'w=$width h=$heroHeight');
+        expect(wide.canvasWidth, width, reason: 'w=$width h=$heroHeight');
+        expect(wide.canvasHeight, heroHeight, reason: 'w=$width h=$heroHeight');
+        expect(wide.sharpWidth, width, reason: 'w=$width h=$heroHeight');
+        expect(wide.sharpHeight, closeTo(width * 9 / 16, 0.01), reason: 'w=$width h=$heroHeight');
+        // Unlike the square branch (a smaller island), the widescreen island
+        // is already screen-wide — the request follows its own 16:9 ratio.
+        expect(wide.requestWidth, wide.sharpWidth, reason: 'w=$width h=$heroHeight');
+        expect(wide.requestHeight, wide.sharpHeight, reason: 'w=$width h=$heroHeight');
+        expect(wide.useAmbientLayer, isTrue, reason: 'w=$width h=$heroHeight');
         expect(wide.coversHero, isFalse, reason: 'w=$width h=$heroHeight');
       }
     });
 
     test('a fallback source keeps the old full-bleed behaviour on any box', () {
-      for (final (width, heroHeight) in [...phones, (1280.0, 720.0), (1600.0, 750.0)]) {
+      for (final (width, heroHeight) in [...allNarrow, (1280.0, 720.0), (1600.0, 750.0)]) {
         final geometry = homeHeroArtGeometry(
           screenWidth: width,
           heroHeight: heroHeight,
@@ -206,8 +223,11 @@ void main() {
         );
 
         expect(geometry.coversHero, isTrue, reason: 'w=$width h=$heroHeight');
-        expect(geometry.width, width, reason: 'w=$width h=$heroHeight');
-        expect(geometry.height, heroHeight, reason: 'w=$width h=$heroHeight');
+        expect(geometry.useAmbientLayer, isFalse, reason: 'w=$width h=$heroHeight');
+        expect(geometry.hasSharpForeground, isTrue, reason: 'w=$width h=$heroHeight');
+        expect(geometry.sharpWidth, width, reason: 'w=$width h=$heroHeight');
+        expect(geometry.sharpHeight, heroHeight, reason: 'w=$width h=$heroHeight');
+        expect(geometry.sharpFadeHeight, 0, reason: 'w=$width h=$heroHeight');
         expect(
           geometry.requestHeight,
           closeTo((width * 9 / 16).clamp(heroHeight, double.infinity), 0.01),
@@ -222,6 +242,8 @@ void main() {
           final geometry = homeHeroArtGeometry(screenWidth: width, heroHeight: heroHeight, kind: kind);
 
           expect(geometry.coversHero, isTrue, reason: 'kind=$kind w=$width h=$heroHeight');
+          expect(geometry.useAmbientLayer, isFalse, reason: 'kind=$kind w=$width h=$heroHeight');
+          expect(geometry.sharpFadeHeight, 0, reason: 'kind=$kind w=$width h=$heroHeight');
           expect(
             geometry.requestHeight,
             closeTo((width * 9 / 16).clamp(heroHeight, double.infinity), 0.01),
@@ -231,52 +253,54 @@ void main() {
       }
     });
 
-    test('the island frame envelope (width, height, coversHero) is pinned at 353, 402, and 430pt wide', () {
-      for (final (width, heroHeight) in phones) {
+    test('the island envelope (sharpWidth, sharpHeight, coversHero) is pinned at 353/402/430 and 768/834/1024', () {
+      for (final (width, heroHeight) in allNarrow) {
         for (final kind in [BillboardArtKind.widescreen, BillboardArtKind.square]) {
           final geometry = homeHeroArtGeometry(screenWidth: width, heroHeight: heroHeight, kind: kind);
-          expect(geometry.width, width, reason: 'kind=$kind w=$width h=$heroHeight');
           expect(geometry.coversHero, isFalse, reason: 'kind=$kind w=$width h=$heroHeight');
-          final expectedHeight = kind == BillboardArtKind.square ? math.min(width, heroHeight) : width * 9 / 16;
-          expect(geometry.height, closeTo(expectedHeight, 0.01), reason: 'kind=$kind w=$width h=$heroHeight');
+          final expectedWidth = kind == BillboardArtKind.square ? width * 0.82 : width;
+          expect(geometry.sharpWidth, closeTo(expectedWidth, 0.01), reason: 'kind=$kind w=$width h=$heroHeight');
+          final expectedHeight = kind == BillboardArtKind.square ? width * 0.82 : width * 9 / 16;
+          expect(geometry.sharpHeight, closeTo(expectedHeight, 0.01), reason: 'kind=$kind w=$width h=$heroHeight');
         }
       }
     });
 
-    test('the fade is roughly half the frame height, always shorter than the frame', () {
-      for (final (width, heroHeight) in phones) {
+    test('the fade begins at 55% of the sharp island height and always ends fully faded', () {
+      for (final (width, heroHeight) in allNarrow) {
         final geometry = homeHeroArtGeometry(
           screenWidth: width,
           heroHeight: heroHeight,
           kind: BillboardArtKind.widescreen,
         );
 
-        expect(geometry.fadeHeight, greaterThan(0), reason: 'w=$width h=$heroHeight');
-        expect(geometry.fadeHeight, lessThan(geometry.height), reason: 'w=$width h=$heroHeight');
-        expect(
-          geometry.fadeHeight,
-          closeTo(math.min(geometry.height * 0.5, 200.0), 0.01),
-          reason: 'w=$width h=$heroHeight',
-        );
+        expect(geometry.sharpFadeHeight, greaterThan(0), reason: 'w=$width h=$heroHeight');
+        expect(geometry.sharpFadeHeight, lessThan(geometry.sharpHeight), reason: 'w=$width h=$heroHeight');
+        expect(geometry.sharpFadeHeight, closeTo(geometry.sharpHeight * 0.45, 0.01), reason: 'w=$width h=$heroHeight');
       }
     });
 
-    test('a collapsed viewport gives zero geometry, not a bad request', () {
+    test('a collapsed viewport gives zero, unusable geometry, not a bad request', () {
       for (final (width, heroHeight) in [(0.0, 500.0), (402.0, 0.0), (-1.0, 500.0), (402.0, -1.0)]) {
         final geometry = homeHeroArtGeometry(screenWidth: width, heroHeight: heroHeight, kind: BillboardArtKind.square);
 
-        expect(geometry.width, 0, reason: 'w=$width h=$heroHeight');
-        expect(geometry.height, 0, reason: 'w=$width h=$heroHeight');
+        expect(geometry.canvasWidth, 0, reason: 'w=$width h=$heroHeight');
+        expect(geometry.canvasHeight, 0, reason: 'w=$width h=$heroHeight');
+        expect(geometry.sharpWidth, 0, reason: 'w=$width h=$heroHeight');
+        expect(geometry.sharpHeight, 0, reason: 'w=$width h=$heroHeight');
+        expect(geometry.requestWidth, 0, reason: 'w=$width h=$heroHeight');
         expect(geometry.requestHeight, 0, reason: 'w=$width h=$heroHeight');
+        expect(geometry.hasSharpForeground, isFalse, reason: 'w=$width h=$heroHeight');
+        expect(geometry.useAmbientLayer, isFalse, reason: 'w=$width h=$heroHeight');
         expect(geometry.coversHero, isFalse, reason: 'w=$width h=$heroHeight');
       }
     });
   });
 
   group('homeHeroLogoConstraints', () {
-    test('a phone-width logo box stays within the padded hero and the 78% cap', () {
+    test('phone stays within the padded hero and the 78% cap', () {
       for (final width in [353.0, 402.0, 430.0]) {
-        final metrics = homeHeroLogoConstraints(screenWidth: width, isLargeScreen: false);
+        final metrics = homeHeroLogoConstraints(screenWidth: width, tier: HomeHeroContentTier.phone);
 
         expect(metrics.width, lessThanOrEqualTo(width - 48), reason: 'w=$width');
         expect(metrics.width, lessThanOrEqualTo(width * 0.78 + 0.01), reason: 'w=$width');
@@ -285,13 +309,75 @@ void main() {
       }
     });
 
-    test('a large screen keeps the fixed 400x120 box', () {
+    test('tabletPortrait scales up to a visibly larger logo, capped at 520x160', () {
+      // Pinned to the mockup-derived formula: width = min(520, min(w*0.55, w-64)),
+      // height = (w*0.18).clamp(120, 160).
+      const cases = [(768.0, 422.4, 138.24), (834.0, 458.7, 150.12), (1024.0, 520.0, 160.0)];
+      for (final (width, expectedWidth, expectedHeight) in cases) {
+        final metrics = homeHeroLogoConstraints(screenWidth: width, tier: HomeHeroContentTier.tabletPortrait);
+
+        expect(metrics.width, closeTo(expectedWidth, 0.5), reason: 'w=$width');
+        expect(metrics.height, closeTo(expectedHeight, 0.5), reason: 'w=$width');
+        expect(metrics.width, lessThanOrEqualTo(520), reason: 'w=$width');
+        expect(metrics.height, lessThanOrEqualTo(160), reason: 'w=$width');
+        expect(metrics.width, lessThanOrEqualTo(width - 64), reason: 'w=$width');
+        // Visibly bigger than the phone formula would give at this width —
+        // the whole point of the tabletPortrait-specific formula.
+        final phoneMetrics = homeHeroLogoConstraints(screenWidth: width, tier: HomeHeroContentTier.phone);
+        expect(metrics.width, greaterThan(phoneMetrics.width), reason: 'w=$width');
+        expect(metrics.height, greaterThan(phoneMetrics.height), reason: 'w=$width');
+      }
+    });
+
+    test('wide keeps the fixed 400x120 box', () {
       for (final width in [900.0, 1280.0, 1920.0]) {
-        final metrics = homeHeroLogoConstraints(screenWidth: width, isLargeScreen: true);
+        final metrics = homeHeroLogoConstraints(screenWidth: width, tier: HomeHeroContentTier.wide);
 
         expect(metrics.width, 400);
         expect(metrics.height, 120);
       }
+    });
+  });
+
+  group('homeHeroContentMetrics', () {
+    test('phone rhythm: pinned values, no overlap with the pagination row', () {
+      final metrics = homeHeroContentMetrics(tier: HomeHeroContentTier.phone);
+
+      expect(metrics.logoToMeta, 12);
+      expect(metrics.metaToButton, 16);
+      expect(metrics.buttonToSummary, 12);
+      expect(metrics.paginationHeight, 18);
+      expect(metrics.paginationBottomInset, 16);
+      expect(metrics.contentBottomInset, 48);
+      expect(metrics.maxContentWidth, isNull);
+      // The content column's own bottom anchor must sit at or above the
+      // pagination row's top edge, with the declared gap between them.
+      final paginationTop = metrics.paginationBottomInset + metrics.paginationHeight;
+      expect(metrics.contentBottomInset, greaterThanOrEqualTo(paginationTop), reason: 'no overlap');
+      expect(metrics.contentBottomInset - paginationTop, closeTo(metrics.contentToPagination, 0.01));
+      expect(metrics.paginationToRailHeading, inInclusiveRange(16, 20));
+    });
+
+    test('tabletPortrait shares the phone rhythm but caps content width at 600', () {
+      final metrics = homeHeroContentMetrics(tier: HomeHeroContentTier.tabletPortrait);
+      final phoneMetrics = homeHeroContentMetrics(tier: HomeHeroContentTier.phone);
+
+      expect(metrics.logoToMeta, phoneMetrics.logoToMeta);
+      expect(metrics.metaToButton, phoneMetrics.metaToButton);
+      expect(metrics.buttonToSummary, phoneMetrics.buttonToSummary);
+      expect(metrics.contentBottomInset, phoneMetrics.contentBottomInset);
+      expect(metrics.maxContentWidth, 600);
+      expect(metrics.paginationToRailHeading, inInclusiveRange(16, 24));
+    });
+
+    test('wide keeps the hero content rhythm this layout always used', () {
+      final metrics = homeHeroContentMetrics(tier: HomeHeroContentTier.wide);
+
+      expect(metrics.logoToMeta, 16);
+      expect(metrics.metaToButton, 20);
+      expect(metrics.buttonToSummary, 12);
+      expect(metrics.contentBottomInset, 80);
+      expect(metrics.maxContentWidth, isNull);
     });
   });
 }

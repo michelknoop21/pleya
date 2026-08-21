@@ -663,29 +663,37 @@ sealed class MediaItem with _$MediaItem {
 
   /// Best billboard art, or null when the item has no artwork at all.
   ///
-  /// [containerAspectRatio] is the width/height of the box the art fills. A
-  /// 16:9 backdrop always wins when one exists, on any box: the layout (see
-  /// `homeHeroArtGeometry`) shrinks the frame to its own 16:9 ratio on a
-  /// narrow box instead of stretching the backdrop to fill it, so there is no
-  /// centre-crop to avoid and no reason to prefer square art over a sharp,
-  /// smaller widescreen strip. Square background art is a second choice, used
-  /// only when no backdrop exists at all — it carries no baked-in title, so it
-  /// still renders sharp rather than blurred. Wide boxes were never affected
-  /// by [containerAspectRatio] here in the first place.
+  /// [containerAspectRatio] is the width/height of the box the art fills. On
+  /// a wide box (or when no ratio is given at all — `_hasBillboardArt` calls
+  /// it that way) a 16:9 backdrop always wins when one exists. On a narrow
+  /// (phone/tablet-portrait) box, square background art wins instead when it
+  /// exists: the layout (see `homeHeroArtGeometry`) already shrinks the sharp
+  /// layer to a small island rather than a full-bleed fill there, so a
+  /// smaller square subject reads calmer than a 16:9 backdrop blown up
+  /// against a portrait-ish frame. The backdrop is still the fallback ahead
+  /// of the blurred poster/thumb — square is only tried first, never
+  /// instead. Square background art never renders sharp on its own outside
+  /// this narrow-box case; it carries no baked-in title, so it can render
+  /// sharp there instead of only ever being the blurred last resort.
   BillboardArt? billboardArt({double? containerAspectRatio}) {
+    // On a narrow box the sharp layer is a small, cropped-free island (see
+    // `homeHeroArtGeometry`), not a full-bleed fill — so a smaller subject
+    // reads calmer than a 16:9 backdrop blown up to a portrait-ish frame.
+    // Square art wins there when it exists; the backdrop is still the second
+    // choice, ahead of the blurred poster/thumb fallback below.
+    if (containerAspectRatio != null && containerAspectRatio < billboardNarrowAspectRatioThreshold) {
+      final square = backgroundSquarePath;
+      if (square != null && square.isNotEmpty) {
+        return BillboardArt(path: square, kind: BillboardArtKind.square);
+      }
+    }
+
     final backdrops = _dedupedPaths(switch (kind) {
       MediaKind.episode => [grandparentArtPath, artPath],
       _ => [artPath],
     });
     if (backdrops.isNotEmpty) {
       return BillboardArt(path: backdrops.first, kind: BillboardArtKind.widescreen);
-    }
-
-    if (containerAspectRatio != null && containerAspectRatio < billboardNarrowAspectRatioThreshold) {
-      final square = backgroundSquarePath;
-      if (square != null && square.isNotEmpty) {
-        return BillboardArt(path: square, kind: BillboardArtKind.square);
-      }
     }
 
     // No 16:9 frame exists. Square and poster art carry their own baked-in
@@ -697,12 +705,21 @@ sealed class MediaItem with _$MediaItem {
     return fills.isEmpty ? null : BillboardArt(path: fills.first, kind: BillboardArtKind.fallback);
   }
 
-  /// Returns billboard art candidates in display-preference order.
+  /// Returns billboard art candidates in display-preference order, ignoring
+  /// container shape entirely.
   ///
-  /// A billboard carries the app's own title typography (or clear logo) over
-  /// the artwork, so the 16:9 backdrop always wins — regardless of how tall
-  /// the box is. Square and poster art are last-resort fallbacks; see
-  /// [billboardArt] for how they are rendered.
+  /// This is *not* what [billboardArt] uses to decide between a 16:9
+  /// backdrop and square art on a narrow box — that choice is
+  /// [containerAspectRatio]-dependent and lives in [billboardArt] itself.
+  /// This list is the ratio-independent order two other things need: the
+  /// blurred last-resort fallback [billboardArt] falls through to when
+  /// neither a backdrop nor (on a narrow box) square art exists, and
+  /// `_hasBillboardArt` (`discover_screen.dart`), which calls [billboardArt]
+  /// with no ratio at all to decide whether an item still needs an
+  /// art-enrichment fetch — a decision that must not depend on how wide the
+  /// hero happens to be laid out this frame. Square and poster art are
+  /// fallbacks here, never the sharp choice; see [billboardArt] for the one
+  /// case (narrow box, square source) where square *does* render sharp.
   List<String> billboardArtCandidates() {
     final preferred = switch (kind) {
       MediaKind.episode => [grandparentArtPath, artPath, backgroundSquarePath, grandparentThumbPath, thumbPath],

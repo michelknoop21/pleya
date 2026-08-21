@@ -321,6 +321,123 @@ void main() {
       expect(clipMetrics.posterHeight, closeTo(episodeMetrics.posterHeight, 0.001));
     });
 
+    /// Number of full continue-watching cards that fit in [screenWidth] at
+    /// the default library density with [TvBrowseRailLayout
+    /// .continueWatchingWidePosterScale] applied, plus how much of the next
+    /// card peeks past the last full one — the same math the home screen's
+    /// row uses to decide how many cards a user sees without scrolling.
+    ({int fullCards, double peekFraction}) continueWatchingCardFit(double screenWidth, double screenHeight) {
+      final episode = MediaItem(
+        id: 'episode_1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.episode,
+        title: 'Episode 1',
+        thumbPath: '/episode-thumb',
+      );
+      final hub = MediaHub(
+        id: 'continue_watching',
+        title: 'Continue Watching',
+        type: 'mixed',
+        identifier: '_continue_watching_',
+        items: [episode],
+        size: 1,
+      );
+
+      final scale = TvBrowseRailLayout.scaleForSize(Size(screenWidth, screenHeight));
+      final availableWidth = screenWidth - TvBrowseRailLayout.horizontalInsetForScale(scale);
+      final metrics = TvBrowseRailLayout.metricsForHub(
+        hub: hub,
+        availableWidth: availableWidth,
+        density: LibraryDensity.defaultValue,
+        episodePosterMode: EpisodePosterMode.episodeThumbnail,
+        scale: scale,
+        widePosterScale: TvBrowseRailLayout.continueWatchingWidePosterScale,
+      );
+      expect(metrics.useWideLayout, isTrue);
+
+      final itemExtent = metrics.cardWidth + metrics.itemGap;
+      final usable = availableWidth - metrics.railEdgePadding;
+      final fullCards = (usable / itemExtent).floor();
+      final peekFraction = (usable / itemExtent) - fullCards;
+      return (fullCards: fullCards, peekFraction: peekFraction);
+    }
+
+    test('continue-watching wide poster scale fits at least 5 full cards at 1920x1080, at the default density', () {
+      final fit = continueWatchingCardFit(1920, 1080);
+      expect(fit.fullCards, greaterThanOrEqualTo(5), reason: 'fullCards=${fit.fullCards}');
+    });
+
+    test('continue-watching wide poster scale still fits a usable row with a visible peek at 1280x720', () {
+      final fit = continueWatchingCardFit(1280, 720);
+      expect(fit.fullCards, greaterThanOrEqualTo(4), reason: 'fullCards=${fit.fullCards}');
+      expect(fit.peekFraction, greaterThan(0.05), reason: 'peekFraction=${fit.peekFraction} — should read as a peek');
+    });
+
+    test('the default 1.0 wide poster scale is unaffected — every other TV rail keeps its old card count', () {
+      final episode = MediaItem(
+        id: 'episode_1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.episode,
+        title: 'Episode 1',
+        thumbPath: '/episode-thumb',
+      );
+      final hub = MediaHub(id: 'show_episodes', title: 'Episodes', type: 'episode', items: [episode], size: 1);
+      final scale = TvBrowseRailLayout.scaleForSize(const Size(1920, 1080));
+      final availableWidth = 1920 - TvBrowseRailLayout.horizontalInsetForScale(scale);
+
+      final defaultMetrics = TvBrowseRailLayout.metricsForHub(
+        hub: hub,
+        availableWidth: availableWidth,
+        density: LibraryDensity.defaultValue,
+        episodePosterMode: EpisodePosterMode.episodeThumbnail,
+        scale: scale,
+      );
+      final explicitDefaultMetrics = TvBrowseRailLayout.metricsForHub(
+        hub: hub,
+        availableWidth: availableWidth,
+        density: LibraryDensity.defaultValue,
+        episodePosterMode: EpisodePosterMode.episodeThumbnail,
+        scale: scale,
+        widePosterScale: 1.0,
+      );
+
+      expect(defaultMetrics.cardWidth, explicitDefaultMetrics.cardWidth);
+    });
+
+    test('firstHubPeekHeight honours widePosterScale — the continue-watching row peeks less tall', () {
+      final episode = MediaItem(
+        id: 'episode_1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.episode,
+        title: 'Episode 1',
+        thumbPath: '/episode-thumb',
+      );
+      final hub = MediaHub(
+        id: 'continue_watching',
+        title: 'Continue Watching',
+        type: 'mixed',
+        identifier: '_continue_watching_',
+        items: [episode],
+        size: 1,
+      );
+
+      final defaultPeek = TvBrowseRailLayout.firstHubPeekHeight(
+        hub: hub,
+        railSize: const Size(1920, 1080),
+        density: LibraryDensity.defaultValue,
+        episodePosterMode: EpisodePosterMode.episodeThumbnail,
+      );
+      final scaledPeek = TvBrowseRailLayout.firstHubPeekHeight(
+        hub: hub,
+        railSize: const Size(1920, 1080),
+        density: LibraryDensity.defaultValue,
+        episodePosterMode: EpisodePosterMode.episodeThumbnail,
+        widePosterScale: TvBrowseRailLayout.continueWatchingWidePosterScale,
+      );
+
+      expect(scaledPeek, lessThan(defaultPeek));
+    });
+
     test('multi-hub estimate reserves next hub peek height', () {
       final movie = MediaItem(id: 'movie_1', backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Movie');
       final movieHub = MediaHub(id: 'movies', title: 'Movies', type: 'movie', items: [movie], size: 1);
@@ -378,6 +495,54 @@ void main() {
 
     final headerText = tester.widget<Text>(find.text('Season 1'));
     expect(headerText.style?.color, theme.colorScheme.onSurface);
+  });
+
+  testWidgets('widePosterScaleForHub actually renders 5+ full cards through the real production tree', (tester) async {
+    // Pure math (see the TvBrowseRailLayout group above) proves the geometry;
+    // this proves the callback actually reaches metricsForHub through
+    // TvBrowseRail's real widget tree, not just in isolation.
+    final serverManager = MultiServerManager();
+    final items = List.generate(
+      6,
+      (i) => MediaItem(id: 'episode_$i', backend: MediaBackend.plex, kind: MediaKind.episode, title: 'Episode $i'),
+    );
+    final hub = MediaHub(
+      id: 'continue_watching',
+      title: 'Continue Watching',
+      type: 'mixed',
+      identifier: '_continue_watching_',
+      items: items,
+      size: items.length,
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<MultiServerProvider>(
+        create: (_) => MultiServerProvider(serverManager, DataAggregationService(serverManager)),
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: Scaffold(
+            body: SizedBox(
+              width: 1920,
+              height: 1080,
+              child: TvBrowseRail(
+                hubs: [hub],
+                iconForHub: (_, _) => Icons.tv_rounded,
+                widePosterScaleForHub: (h) =>
+                    h.isContinueWatchingHub ? TvBrowseRailLayout.continueWatchingWidePosterScale : 1.0,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    final cardRects = tester.widgetList(find.byType(MediaCard)).map((w) => tester.getRect(find.byWidget(w))).toList();
+    final fullyVisible = cardRects.where((r) => r.left >= -0.5 && r.right <= 1920.5).length;
+
+    expect(fullyVisible, greaterThanOrEqualTo(5), reason: 'rects=$cardRects');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('two hubs sharing a backend id across servers do not collide on card GlobalKeys', (tester) async {
