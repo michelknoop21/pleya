@@ -170,4 +170,20 @@ void main() {
           'scope and sensitivity it deserves.\n${unregistered.join('\n')}',
     );
   });
+
+  group('the Tautulli integration blob stays on the device', () {
+    // Arrived with the Tautulli work while phase A was in flight. It is an
+    // encrypted admin credential for a server, so the only correct answer on
+    // both paths is no.
+    const key = 'tautulli_integration_abc123';
+
+    test('it is not syncable', () {
+      expect(PreferenceSyncPolicyRegistry.maySync(key), isFalse);
+      expect(PreferenceSyncPolicyRegistry.isRegistered(key), isFalse);
+    });
+
+    test('it is not exportable', () {
+      expect(SettingsExportService.isExportable(key), isFalse);
+    });
+  });
 }

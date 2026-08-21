@@ -97,6 +97,13 @@ void main() {
     ),
 
     // -- Credentials and sessions.
+    'lib/services/tautulli/tautulli_integration_store.dart': RawWriteRecord(
+      WriteCategory.secret,
+      3,
+      'the encrypted per-server Tautulli integration blob; device-local by design, denied by prefix '
+      'in the export service and unregistered in the policy registry, so it reaches neither an '
+      'export nor iCloud',
+    ),
     'lib/services/credential_vault.dart': RawWriteRecord(
       WriteCategory.secret,
       1,
@@ -228,8 +235,8 @@ void main() {
     // matching *lines*; this counts matching *calls*, which is the number that
     // actually has to be classified.
     final total = inventory.values.fold<int>(0, (sum, r) => sum + r.count);
-    expect(total, 85, reason: 'total raw preference writes still classified as staying outside the coordinator');
-    expect(inventory.length, 23, reason: 'files containing them');
+    expect(total, 88, reason: 'total raw preference writes still classified as staying outside the coordinator');
+    expect(inventory.length, 24, reason: 'files containing them');
   });
 
   test('no category is a dumping ground', () {
