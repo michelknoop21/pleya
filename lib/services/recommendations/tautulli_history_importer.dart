@@ -404,16 +404,19 @@ class TautulliHistoryImporter {
     var unresolvable = 0;
 
     // Accept only what is provably this user's, on this server.
+    //
+    // The server is pinned by the pairing, not by the row: a Tautulli instance
+    // monitors exactly one Plex server, its `pms_identifier` is read once at
+    // connect time (TautulliProvider._probe) and it is the storage key of the
+    // integration this importer was handed. There is no per-row PMS field to
+    // check against. `machine_id` in `get_history` is the *player* — it sits
+    // next to `platform` and `player`, and the fixture README groups it with
+    // `ip_address` and `session_id` as device-identifying — so comparing it to
+    // the server identifier rejected every real row and imported nothing.
+    // That leaves `user_id`, which is what actually binds a row to this profile.
     final usable = <TautulliHistoryEntry>[];
     for (final e in entries) {
       if (e.userId != _target.userId) {
-        skipped++;
-        continue;
-      }
-      final reported = e.machineId?.trim() ?? '';
-      // Older Tautulli builds omit machine_id, so absence is not a rejection;
-      // a value that disagrees is.
-      if (reported.isNotEmpty && reported != _target.machineIdentifier) {
         skipped++;
         continue;
       }
@@ -459,13 +462,15 @@ class TautulliHistoryImporter {
     if (!_stillOurs(epoch)) return null;
 
     // One bundled lookup for the cross-source window instead of one per row.
+    // Keyed on the *episode*, not the series: see [_localMatchKeyFor].
     final candidates = <String>{};
     var minAt = 1 << 62;
     var maxAt = 0;
     for (final e in fresh) {
       if (_itemCache[_catalogueKeyFor(e)!] == null) continue;
       final atMs = e.date! * 1000;
-      candidates.add(_globalKeyFor(e));
+      final matchKey = _localMatchKeyFor(e);
+      if (matchKey != null) candidates.add(matchKey);
       if (atMs < minAt) minAt = atMs;
       if (atMs > maxAt) maxAt = atMs;
     }
@@ -488,7 +493,8 @@ class TautulliHistoryImporter {
       }
       final globalKey = _globalKeyFor(e);
       final atMs = e.date! * 1000;
-      final nearbyLocal = localPlays[globalKey];
+      final matchKey = _localMatchKeyFor(e);
+      final nearbyLocal = matchKey == null ? null : localPlays[matchKey];
       if (nearbyLocal != null && nearbyLocal.any((t) => (t - atMs).abs() <= windowMs)) {
         // Pleya already recorded this same view. A rewatch days later falls
         // outside the window and is kept.
@@ -560,6 +566,18 @@ class TautulliHistoryImporter {
   /// The stored identity of the row. An episode is stored under its series, so
   /// it shares an evidence key with the rest of the binge.
   String _globalKeyFor(TautulliHistoryEntry e) => buildGlobalKey(_target.serverId, _catalogueKeyFor(e)!);
+
+  /// The key a *local* Pleya row would carry for this same play, which is the
+  /// item itself — `InteractionRecorder` writes `globalKey: event.globalKey`
+  /// (`serverId:episodeRatingKey`) and puts the show in `series_key`. Looking
+  /// the cross-source window up on [_globalKeyFor] therefore never matched an
+  /// episode, and every episode already watched in Pleya was imported a second
+  /// time. Matching on the series key instead would over-dedup: two different
+  /// episodes of one show inside the window would collapse into one.
+  String? _localMatchKeyFor(TautulliHistoryEntry e) {
+    final ratingKey = e.ratingKey?.toString();
+    return ratingKey == null ? null : buildGlobalKey(_target.serverId, ratingKey);
+  }
 
   ({String type, double weight})? _signalFor(TautulliHistoryEntry e) {
     // watched_status is Tautulli's own verdict against the admin's configured

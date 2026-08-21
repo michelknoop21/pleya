@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
@@ -14,6 +15,11 @@ import 'package:pleya/services/tautulli/tautulli_import_access.dart';
 
 const _profile = 'profile-a';
 const _machine = 'pms-1';
+
+/// What `machine_id` actually holds: the client that played the item. The
+/// default deliberately differs from [_machine] — a fixture that reused the
+/// server identifier here is what hid the filter that rejected every real row.
+const _player = 'client-appletv-a1b2';
 const _userId = 4725462;
 
 final _now = DateTime.now().millisecondsSinceEpoch;
@@ -127,7 +133,7 @@ TautulliHistoryEntry _entry({
   int? grandparentRatingKey,
   double watchedStatus = 1,
   int percentComplete = 95,
-  String? machineId = _machine,
+  String? machineId = _player,
   int? playSeconds = 3600,
 }) => TautulliHistoryEntry(
   rowId: rowId,
@@ -315,23 +321,23 @@ void main() {
       expect(rows.single.globalKey, '$_machine:1');
     });
 
-    test('a row from another server is skipped', () async {
+    test('machine_id names the player and never filters a row', () async {
+      // It sits next to `platform` and `player` in the response and identifies
+      // a device, so on a real server it disagrees with the server identifier
+      // on every row. Filtering on it imported nothing at all. The server is
+      // pinned by the pairing; `user_id` is what binds a row to this profile.
       final access = _FakeAccess(
         rows: [
-          _entry(rowId: 1, daysAgo: 1),
-          _entry(rowId: 2, daysAgo: 2, machineId: 'pms-other'),
+          _entry(rowId: 1, daysAgo: 1, machineId: _player),
+          _entry(rowId: 2, daysAgo: 2, machineId: 'client-browser-99'),
+          _entry(rowId: 3, daysAgo: 3, machineId: null),
+          _entry(rowId: 4, daysAgo: 4, machineId: _machine),
         ],
       );
-      final outcome = await importer(access, _FakeClient({'1': _item('1'), '2': _item('2')})).sync();
-      expect(outcome!.imported, 1);
-      expect(outcome.skipped, 1);
-    });
-
-    test('a missing machine_id is not a rejection', () async {
-      // Older Tautulli builds do not send it.
-      final access = _FakeAccess(rows: [_entry(rowId: 1, daysAgo: 1, machineId: null)]);
-      final outcome = await importer(access, _FakeClient({'1': _item('1')})).sync();
-      expect(outcome!.imported, 1);
+      final client = _FakeClient({'1': _item('1'), '2': _item('2'), '3': _item('3'), '4': _item('4')});
+      final outcome = await importer(access, client).sync();
+      expect(outcome!.imported, 4);
+      expect(outcome.skipped, 0);
     });
 
     test('every stored row carries the bound server and a stable event id', () async {
@@ -670,6 +676,52 @@ void main() {
           ),
           profileId: _profile,
         );
+
+    /// A local episode row as `InteractionRecorder` writes it: the *episode*
+    /// under `globalKey`, the show only in `seriesKey`.
+    Future<void> localEpisode(String episodeKey, String seriesKey, {required int atMs}) => db.insertMediaInteraction(
+      MediaInteractionsCompanion.insert(
+        profileId: _profile,
+        globalKey: episodeKey,
+        mediaKind: 'episode',
+        eventType: 'completed',
+        eventWeight: 1.0,
+        occurredAt: atMs,
+        seriesKey: Value(seriesKey),
+      ),
+      profileId: _profile,
+    );
+
+    test('a local episode completion swallows the same view from Tautulli', () async {
+      // The import stores an episode under its series, so looking the window up
+      // on the stored key never matched a local play and every episode already
+      // watched in Pleya came back in a second time.
+      final entry = _entry(rowId: 1, daysAgo: 1, mediaType: 'episode', ratingKey: 1001, grandparentRatingKey: 77);
+      await localEpisode('$_machine:1001', '$_machine:77', atMs: entry.date! * 1000 + 60 * 1000);
+
+      final outcome = await importer(
+        _FakeAccess(rows: [entry]),
+        _FakeClient({'77': _item('77', kind: MediaKind.show)}),
+      ).sync();
+      expect(outcome!.imported, 0);
+      expect(outcome.deduplicated, 1);
+      expect(await db.countMediaInteractions(_profile), 1);
+    });
+
+    test('a different episode of the same show inside the window still imports', () async {
+      // The other half of the same bug: matching on the series key would have
+      // collapsed a binge into one row.
+      final entry = _entry(rowId: 1, daysAgo: 1, mediaType: 'episode', ratingKey: 1002, grandparentRatingKey: 77);
+      await localEpisode('$_machine:1001', '$_machine:77', atMs: entry.date! * 1000 + 60 * 1000);
+
+      final outcome = await importer(
+        _FakeAccess(rows: [entry]),
+        _FakeClient({'77': _item('77', kind: MediaKind.show)}),
+      ).sync();
+      expect(outcome!.imported, 1);
+      expect(outcome.deduplicated, 0);
+      expect(await db.countMediaInteractions(_profile), 2);
+    });
 
     test('a local completion swallows the same view from Tautulli', () async {
       final entry = _entry(rowId: 1, daysAgo: 1);

@@ -98,8 +98,11 @@ class TautulliHistoryEntry {
   /// [playSeconds] so the two can never be swapped by accident.
   final int? playSeconds;
 
-  /// `pms_identifier` of the server the play happened on. Absent on older
-  /// Tautulli builds, which is why a missing value is not a rejection.
+  /// `machine_id`: the machine identifier of the *client* that played this,
+  /// alongside [platform] and [player]. Not the server — a Tautulli instance
+  /// monitors one Plex server and reports its `pms_identifier` per instance,
+  /// never per row. Do not compare this to a server identifier; it identifies
+  /// a device, which is why the fixtures strip it.
   final String? machineId;
 
   final String? platform;
