@@ -2,6 +2,208 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-21] De sync-engine reconcilieert op één plek, en de schermen volgen zonder herstart
+
+Op `main`, nog niet gecommit. Fase A blok 2 (A8 tot en met A16), plus de vijf voorwaarden uit de
+reviewronde op de v2-cutover. Hiermee is fase A af; fase B begint na het architectuurrapport.
+
+### Fixed
+- **De prune verwijderde clouddata van andere toestellen.** De bescherming "staat lokaal, alleen
+  niet syncbaar" vergeleek een genamespacete v2-cloudsleutel met een kale basissleutel, dus hij
+  matchte onder v2 nooit. Een lijst met uitsluitend local-folder-entries werd daardoor bij elke
+  reconcile uit de store gegooid. De vergelijking gaat nu over basissleutels; de test is rood op de
+  oude vergelijking.
+- **Een uitgaande schrijfactie kon entries van een ander toestel overschrijven.** De merge draaide
+  alleen inkomend. Voor de serverlijsten houdt de uitgaande merge nu de entries in de store die van
+  een server zijn waar dit toestel niets over kan zeggen, terwijl een bewuste verwijdering op een
+  gedeelde server gewoon doorreist. Kan de store niet gelezen worden, dan wordt er niet geschreven.
+- **Een geslaagde schrijfactie wiste een quotastop, een transportfout of de legacy-peer-waarschuwing
+  uit beeld.** Er was één `state`-veld, dus `success` overschreef alles wat nog waar was.
+- **Een remote wijziging kwam pas na een herstart op het scherm.** `HiddenLibrariesProvider` las
+  zijn set bij constructie, `HomeLayoutProvider` blokkeerde elke herlaadpoging met
+  `if (_isInitialized) return`, en `LibrariesProvider` bakte de volgorde in zijn lijst.
+- **Uitloggen bij iCloud tijdens een sessie bereikte de app nooit.**
+  `NSUbiquityIdentityDidChangeNotification` werd nergens waargenomen, dus de status bleef gezond
+  terwijl elke schrijfactie nergens heen ging.
+
+### Changed
+- **Eén `PreferenceReconcileScheduler` bezit alle triggers** (boot, inschakelen, foreground,
+  accountwissel, profielwissel, import, reset). Triggers uit dezelfde turn worden één run; een
+  trigger tijdens een lopende run levert precies één vervolgrun. Het venster is een microtask, geen
+  `Future.delayed`. Een profielwissel wordt opgemerkt aan de schrijfactie op `active_app_profile_id`,
+  dus elk pad dat van profiel wisselt is gedekt.
+- **`PreferenceSyncStatus` heeft drie assen** (`availability`, `activity`, `health`) plus
+  `legacyPeerDetected`. De acht toestanden uit het plan zijn een afgeleide getter, dus niets
+  schrijft nog een toestand. Alleen een geslaagde volledige reconcile schoont health op.
+- **`PreferenceMergeRegistry`** vervangt de hardgecodeerde `if` op een sleutelprefix. Een familie
+  registreert `merge(local, remote)` onder de naam die in de policy staat; de engine leert nooit wat
+  de waarden betekenen. `mergeProgressMaps` is daarmee een geregistreerde familie geworden.
+- **`PreferenceRefreshBus`** meldt per batch welke afgeleide families verlopen zijn, en de providers
+  herladen hun eigen plak. Geen herstart, geen globale rebuild. De ponytail-notitie op `main.dart`
+  is daarmee weg.
+- **Instellingen toont één statusregel** onder de iCloud-schakelaar, met nieuwe strings in
+  `lib/i18n/en.i18n.json`. Nooit een sleutel, waarde of telling met identiteit, en nooit de claim
+  dat andere toestellen bij zijn: KVS accepteert een write, het meldt geen aflevering.
+- **Native gewijzigd op precies twee punten** van de negen auditpunten: een `deinit` met
+  `removeObserver`, en waarneming van `NSUbiquityIdentityDidChange`. De volledige audit staat in
+  `docs/qa/icloud-kvs-native-audit.md`, inclusief waarom er géén buffer voor vroege notificaties is
+  gebouwd.
+
+### Added
+- `test/services/preferences/v2_only_invariant_test.dart` bewaakt dat v2-only een invariant is en
+  geen standaardwaarde: geen bestand in `lib/` kiest het formaat, en een volledige levenscyclus over
+  een store vol v1-records laat die records ongemoeid.
+- `test/services/preferences/local_only_bookkeeping_test.dart` bewaakt dat de bootstrap-marker, de
+  install-id, de revisieopslag, de quarantaine en de actieve-profielsleutel het toestel nooit
+  verlaten.
+- `test/services/preferences/log_safety_test.dart` scant de logregels op het syncpad en eist dat elke
+  interpolatie op een veilige lijst staat. Een nieuwe logregel met een waarde erin wordt rood.
+- Verder: `reconcile_scheduler_test`, `reconcile_lifecycle_test`, `runtime_refresh_test`,
+  `sync_status_model_test`, `merge_strategy_test`, `quota_and_oversize_test` en
+  `test/screens/settings/icloud_sync_status_test.dart`. Suite 4068 groen, dezelfde 15 rood als op
+  `8fea407`.
+
+Besluiten: [DEC-038](DECISIONS.md#dec-038) (de v2-cutover als bevroren v1) en
+[DEC-039](DECISIONS.md#dec-039) (scheduler, statusassen, gerichte invalidatie, merge per familie).
+
+## [2026-08-21] Preference-sync kreeg één pijplijn, en de grens met de legacy prefs-store ligt nu vast
+
+Op `main`, nog niet gecommit. Fase A blok 1 van het vijffasenplan (A0 tot en met A5 en A7, plus de
+vier amendementen uit de planreview). Blok 2 (A8 tot en met A16) en de cloudinhoud-migratie (A6)
+volgen apart.
+
+### Fixed
+- **Een seek tijdens een netwerkstoring verdween.** `onSeek()` gooide de debouncetimer weg zodra de
+  foutbackoff liep. Erger dan het lijkt: de periodieke timer draait alleen tijdens afspelen, dus wie
+  seekte en daarna pauzeerde liet de oude positie op de server staan tot er toevallig weer gespeeld
+  werd. De seek wordt nu uitgesteld in plaats van weggegooid, en het uitstel tikt de backoff zelf af
+  zodat een gepauzeerde speler convergeert. Vijf tests erbij; drie ervan zijn rood op de oude code.
+- **Een lokale verwijdering bereikte iCloud niet.** `onKeyWritten` gaf alleen een sleutel door, dus
+  de consument las de waarde terug, vond `null` bij een remove en stopte. Alleen een volledige
+  `pushAll` propageerde nog verwijderingen.
+- **Een waarde die over de 100 KB-grens groeide werd uit de cloud verwijderd in plaats van
+  overgeslagen.** `pushAll` prunede op afwezigheid uit de push-set, en een te grote waarde belandde
+  daar niet in. Oversize-sleutels worden nu expliciet buiten de prune gehouden en leveren een
+  zichtbare waarschuwing.
+- **Een transportfout verdween.** Het `void`-terugtype dwong de consument tot `unawaited(...)`.
+
+### Changed
+- **Het hookcontract is vervangen, niet omwikkeld.** `BaseSharedPreferencesService.onMutation`
+  levert een volledige `PreferenceMutation` met operatie en bron en geeft een `Future` terug.
+- **Nieuwe laag `lib/services/preferences/`**: `PreferenceSyncCoordinator` (mutatie, policy, scope,
+  merge, reconcile, status), `PreferenceTransport` als poort, `ICloudKvsTransport` als enige
+  implementatie. `ICloudSyncService` is een dunne facade geworden en draagt geen syncgedrag meer.
+- **Syncbaarheid is een expliciete registratie.** De allow-by-default denylist is weg: een
+  niet-geregistreerde voorkeur is local-only. Gevolg dat een gebruiker merkt: `volume`,
+  downloadmappen, hardware-decoding, HDR, `custom_relay_url` en het laatst gebruikte LAN-adres
+  synchroniseren niet meer.
+- **Profielidentiteit blijft aan de waarde hangen** via `PreferenceSyncScope`, dat eerlijk is over
+  portabiliteit: een Plex Home-UUID is portable, een `local-<uuid>` niet.
+- **Scalaire conflicten hebben een regel.** `PreferenceRevision`: deterministische last-writer-wins
+  op `(updatedAt, deviceId)` met tombstones, waarbij een `migration` geen gebruikerstijdstempel zet.
+- **De ~35 library- en home-callsites lopen rechtstreeks over de pijplijn**, verwijderingen
+  inbegrepen. Read-path-migraties dragen `source: migration`.
+
+### Added
+- `test/no_raw_preference_write_test.dart`: 81 rauwe prefs-schrijfacties in 20 bestanden, alle 81
+  geclassificeerd met een aantal per bestand. Een nieuwe schrijfactie in een onbekend bestand én een
+  extra schrijfactie in een bekend bestand zijn allebei aantoonbaar rood gemaakt.
+- `test/services/icloud_rolling_upgrade_test.dart`: de uitgebrachte client laat `__`-sleutels met
+  rust in zowel de prune-lus als de apply-lus, met een controle die bewijst dat dezelfde payload in
+  de gewone namespace wél wordt opgeruimd. Daarom krijgt de v2-namespace een `__`-voorvoegsel en is
+  er geen tweefasenuitrol nodig.
+- `docs/qa/preference-sync-and-playback-matrix.md`, met de drie openstaande metingen.
+
+### Notes
+- **De cloudinhoud is niet aangeraakt.** `PreferenceSyncCoordinator.v2CloudFormatEnabled` staat op
+  `false`: de scoped namespace en de envelop bestaan en zijn getest, maar er is geen v2-record
+  geschreven en geen v1-record verwijderd. A6 wacht op een eigen checkpoint, omdat v1-cloudsleutels
+  geen profielidentiteit meer dragen en dus niet aan het toevallig actieve profiel mogen worden
+  toegewezen.
+- **De vijf legacy-services vallen bewust buiten de engine.** `flutter.`-sleutels en de benoemde
+  historische namen bereiken iCloud niet. `mergeProgressMaps` blijft als legacy inbound
+  compatibility, met de verwijderconditie op de methode. Zie DEC-037.
+- **Bij het nalopen van de eigen acceptatie kwam er nog een gat uit.** De prune in `reconcile`
+  verwijderde een cloudsleutel zodra hij niet meer in de push-set zat, dus het omkeren van de
+  denylist zou clouddata van andere toestellen wissen, en een vergeten registratie zou dataverlies
+  zijn in plaats van een gemiste sync. De prune deletet nu alleen wat lokaal echt weg is. In
+  dezelfde controle bleken 26 gedeclareerde voorkeuren niet geregistreerd (`app_locale`,
+  `library_density`, `buffer_size`, `default_playback_speed`, de mpv-configuratie en meer); die zijn
+  alsnog geclassificeerd, en een guard scant voortaan de declaraties.
+- Meting: volledige suite 3909 groen / 15 rood, byte-identiek aan de 15 op `8fea407`.
+  `flutter analyze` zonder fouten of waarschuwingen, `scripts/ci_checks.sh` groen op SDK 3.44.0.
+
+## [2026-08-21] De hervatpositie kwam uit twee plekken die elkaar tegenspraken
+
+Op `main`, nog niet gecommit. Fase C van het vijffasenplan voor voorkeurensynchronisatie en
+kijkvoortgang; A, B, D en E volgen.
+
+### Fixed
+- **Een gepauzeerde speler zette de positie van een spelende speler terug.** De melding: *Mutiny*
+  stond open op de MacBook (gepauzeerd, 1:03 resterend) en op de Apple TV (actief, 0:57
+  resterend), en de MacBook won. De oorzaak stond in `playback_progress_tracker.dart`: de
+  periodieke timer stuurde elke zesde tik een `paused`-rapport "om de serversessie in leven te
+  houden", met steeds dezelfde positie. Die heartbeat is weg. Een rapport dat zowel de staat als
+  de positie van het vorige rapport herhaalt gaat nu niet meer de deur uit.
+- **Een seek bereikte de server pas bij de volgende tik.** Wie sprong en binnen tien seconden
+  afsloot, liet de positie van vóór de sprong staan. `PlaybackProgressTracker.onSeek()` rapporteert
+  na een trailing debounce van 500 ms, herstart daarbij de periodieke timer en respecteert een
+  lopende foutbackoff. De 30 seconden-drempel op `_notifyProgressIfNeeded` slikt de sprong niet
+  meer op.
+- **Een gedownload bestand hervatte op de lokale positie, ook online.** `_resolveOpenResumePosition`
+  las bij offline afspelen eerst de lokaal bijgehouden voortgang en gaf die terug zodra hij groter
+  dan nul was, ongeacht wat de server wist. Een tweede toestel dat verder had gekeken verloor het
+  daarmee altijd.
+- **De verse ophaalactie bij het starten sloeg juist het gevaarlijke geval over.**
+  `navigateToVideoPlayer` haalde het item alleen opnieuw op als het helemaal geen `viewOffsetMs`
+  droeg. Een scherm met een verouderde offset sloeg de ophaalactie dus over en hervatte op die
+  verouderde waarde. `shouldRefetchForFreshResume()` haalt online elke film en aflevering vers op.
+
+### Added
+- **`lib/services/playback_resume_resolver.dart`**: de enige plek die bepaalt waar een open begint.
+  Vijf lagen op intentie, herkomst en tijd, nooit op "welke positie is groter". Een lokale
+  handeling wint alleen van een vers opgehaalde serverwaarde als hij aantoonbaar nieuwer is én
+  als bewuste gebruikershandeling is vastgelegd; tegen een verouderde cachewaarde volstaat een
+  nieuwere tijdstempel. 19 tests.
+- **`lib/services/playback_write_authority.dart`**: `ObservedPlaybackAuthority`, een lokale
+  waarneming van wie mag schrijven. Uitdrukkelijk geen lease: een vertraagd socketevent, een
+  Plex-notificatie zonder bruikbare sessie-informatie of twee spelers die gelijk starten laten
+  twee toestellen tegelijk denken dat ze mogen schrijven. `PlaybackReportSession` weigert bij een
+  ingetrokken autoriteit alle drie de signalen, `stopped` incluis, want juist dat late stopbericht
+  draagt de oude positie. `retakeAfterRefresh` legt de volgorde vast: eerst de serverstaat lezen,
+  dan pas terugnemen. Wat de autoriteit intrekt komt in fase D. 13 tests.
+- **`lib/services/playback_lifecycle_report_decision.dart`**: wat de achtergrond-, detach- en
+  disposepaden schrijven. Ingetrokken autoriteit schrijft niets; een positie die niet bewoog heeft
+  niets toe te voegen; een speler die nog speelde schrijft één keer af, en die schrijfactie kan
+  niets terugzetten omdat hij een al verstuurde positie herhaalt. 12 tests.
+- **`OfflineWatchSyncService.getLocalResumeProgress()`** geeft dezelfde offset als
+  `getLocalViewOffset`, met de tijdstempel van de actie erbij. Zonder die tijdstempel bestaat er
+  maar één regel, "lokaal wint altijd", en dat was de bug.
+
+### Changed
+- **`VideoPlayerScreen` krijgt `resumeProgressIsFresh`.** Alleen de startroute kan zeggen dat de
+  offset deze keer bij de backend is opgehaald; de herlaadroutes dragen een eerder opgehaald
+  moment.
+- **`WatchStateResolver.latestAction()`** staat los van `fromActions()`, omdat de resolver de
+  tijdstempel van de winnende actie nodig heeft en niet alleen de staat die eruit volgt.
+
+### Notes
+- **Het plan schreef dat de verse ophaalactie langs de cache moest.** Dat klopt niet:
+  `fetchWithCacheFallback` (`lib/media/media_server_client.dart:704-732`) gaat network-first en
+  raakt de cache alleen in offlinemodus of nadat het verzoek faalde. `fetchItem` levert online dus
+  al verse data. Het echte gat zat in de `viewOffsetMs == null`-voorwaarde eromheen.
+- **Rood aangetoond op de oude code.** Met de heartbeat teruggezet falen beide
+  heartbeat-tests (`Expected: empty`); met `onSeek` leeggemaakt falen alle vijf de seektests.
+  Daarna 45 van de 45 groen.
+- **Er komt geen permanente DEC voor een leasemodel.** Wat landt is een tijdelijke strategie op
+  basis van waarneming. Een echt toegekende lease wacht op PS-4 in de serverrepo.
+- 89 gerichte tests groen, `flutter analyze` zonder fouten of waarschuwingen, `scripts/ci_checks.sh`
+  groen op de gepinde SDK 3.44.0. De volledige suite geeft 3826 groen en 15 rood; diezelfde 15
+  falen op een schone worktree van `8fea407`, in `logs_screen`, `watchlist`, `sync_rules` en
+  `media_detail`, geen daarvan raakt afspelen.
+- Niet gedaan: verificatie op echte hardware. Twee Apple-toestellen die hetzelfde item openen is de
+  enige manier om te zien dat de terugzetter echt weg is.
+
 ## [2026-08-20] Hero-artwork vroeg de containerratio op, niet die van de bron
 
 Op `main`, één commit: `40d9608`.

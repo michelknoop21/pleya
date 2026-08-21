@@ -1,8 +1,92 @@
 # STATUS · Pleya
 
-_Laatst bijgewerkt: 2026-08-20 (`main`, build 234 met de hero-crop fix staat op TestFlight voor iOS; tvOS en macOS nog niet bevestigd op 234. App Store Connect 2.8.0 hangt op iOS, tvOS en macOS aan build 229 en staat op `PREPARE_FOR_SUBMISSION`)_
+_Laatst bijgewerkt: 2026-08-21 (`main`, build 234 met de hero-crop fix staat op TestFlight voor iOS; tvOS en macOS nog niet bevestigd op 234. App Store Connect 2.8.0 hangt op iOS, tvOS en macOS aan build 229 en staat op `PREPARE_FOR_SUBMISSION`)_
 
 ## Waar was ik
+
+**Fase A is af.** Blok 2 (A8 tot en met A16) sloot de vier gaten die de engine wel correct maar niet
+merkbaar hielden. Reconciliatie heeft nu één scheduler die alle triggers bezit (boot, inschakelen,
+foreground, accountwissel, profielwissel, import, reset), waarbij triggers uit dezelfde turn één run
+worden en een trigger tijdens een lopende run precies één vervolgrun oplevert; het venster is een
+microtask, geen `Future.delayed`. De status bestaat uit drie assen, zodat een geslaagde schrijfactie
+geen quotastop, transportfout of legacy-peer-waarschuwing meer uit beeld wist. Afgeleide schermstaat
+wordt gericht ongeldig verklaard via `PreferenceRefreshBus`, dus een remote wijziging in verborgen
+bibliotheken of bibliotheekvolgorde is meteen zichtbaar in plaats van na een herstart. En de merge
+is een registry geworden waar een familie zich onder een naam inschrijft, inkomend én uitgaand, wat
+fase B nodig heeft. Onderweg kwam er een echte bug uit: de prune vergeleek een genamespacete
+v2-cloudsleutel met een kale basissleutel, waardoor de bescherming "staat lokaal, alleen niet
+syncbaar" onder v2 niets deed en een lijst met uitsluitend local-folder-entries bij elke reconcile
+uit de store verdween. Zie [DEC-038](docs/DECISIONS.md#dec-038) en
+[DEC-039](docs/DECISIONS.md#dec-039).
+
+Native is er op precies twee van de negen auditpunten gewijzigd: een `deinit` met `removeObserver`,
+en waarneming van `NSUbiquityIdentityDidChange`, want uitloggen bij iCloud tijdens een sessie
+bereikte Dart nooit en de status bleef gezond terwijl elke schrijfactie nergens heen ging. De
+volledige audit, inclusief waarom er géén buffer voor vroege notificaties is gebouwd, staat in
+[docs/qa/icloud-kvs-native-audit.md](docs/qa/icloud-kvs-native-audit.md).
+
+Volledige suite 4068 groen / 15 rood, byte-identiek aan de 15 op `8fea407`. `ci_checks.sh` groen op
+SDK 3.44.0. Nog niet gedaan: committen, het architectuurrapport vóór fase B, en de verificatie op
+twee echte Apple-toestellen.
+
+**Voorkeuren gingen naar iCloud zonder dat iemand had besloten dat ze daar hoorden.** Fase A blok 1
+legt dat vast in één pijplijn. Het oude hookcontract was `void Function(String key)`, en die vorm
+kon het werk niet dragen: hij kon `set` niet van `remove` onderscheiden, dus een lokaal gewiste
+voorkeur haalde de cloud alleen via een volledige `pushAll`, en zijn `void`-terugtype dwong de
+consument tot `unawaited(...)`, waarmee elke transportfout verdween. Het contract is vervangen door
+een volledige `PreferenceMutation` met operatie en bron. `PreferenceSyncCoordinator` bezit voortaan
+mutatie, policy, scope, merge, reconcile en status; `ICloudKvsTransport` doet alleen kanaalwerk, en
+`ICloudSyncService` is een dunne facade zonder eigen syncgedrag. De allow-by-default denylist is
+omgekeerd: een niet-geregistreerde voorkeur is local-only, waarmee een LAN-adres en per-tracker
+bibliotheekfilters stoppen met meereizen. Wat een gebruiker merkt: uitzetten synchroniseert nu net
+zo goed als aanzetten, en `volume`, downloadmappen, hardware-decoding en HDR blijven op het toestel
+waar ze gezet zijn. Zie [DEC-037](docs/DECISIONS.md#dec-037).
+
+Blok 1 mat toen 3981 groen / 15 rood, met `flutter analyze` zonder fouten of waarschuwingen en
+`ci_checks.sh` groen op SDK 3.44.0. De verificatie op twee echte Apple-toestellen staat nog open
+(`docs/qa/preference-sync-and-playback-matrix.md`).
+
+**Drie dingen staan hier bewust open, en ze mogen niet stilzwijgend afgevinkt raken:**
+
+1. **De v2-cutover is gedaan, en hij is scherp.** `v2CloudFormatEnabled` staat op `true`: Pleya
+   schrijft alleen nog onder `__pleya_pref_v2/`. v1 is read-only geworden. Globale v1-waarden komen
+   er één keer in met revisie 0, profiel-scoped v1-waarden blijven in quarantaine omdat het formaat
+   hun eigenaar had weggestript, en de bevroren v1-records worden niet verwijderd. Dual-write is
+   bewust afgewezen: v1 heeft geen revisie, dus een v1-schrijf na een v2-schrijf is niet te ordenen.
+   **Gevolg:** een toestel op een oudere Pleya blijft werken maar wisselt geen instellingen meer uit
+   met een bijgewerkt toestel. De app zegt dat ook, onder de iCloud-schakelaar. iOS, iPadOS, macOS en
+   tvOS moeten daarom rond dezelfde release mee.
+2. **Alleen de home-rijen wachten nog, en niet om de reden die het plan noemde.** De aanname dat
+   `serverId` apparaatgebonden is, klopt niet: voor Plex is het de `clientIdentifier` die plex.tv
+   voor die server uitgeeft, voor Jellyfin de `machineId` van de server zelf. De
+   bibliotheekfamilies reizen dus wél, met een filter dat entries van een local-folder- of
+   Pleya Share-backend eruit haalt. `home_row_order` en `hidden_home_rows` staan local-only omdat
+   `hub.identifier` niet is aangetoond als stabiele server-side identiteit over toestellen: de
+   fallback naar `hub.id` en de meting op twee toestellen ontbreken. Groen krijgen van die meting
+   is de hele ingreep; het opgeslagen formaat gebruikt al portable ids.
+3. **Legacy store consolidation.** Vijf services (`local_folder_client`,
+   `favorite_channels_repository`, `local_server_match_service` en de twee `pleya_share`-services)
+   schrijven nog in de legacy-`SharedPreferences`-store, die na de eenmalige migratie los staat van
+   de cache-store. Ze vallen bewust buiten de engine en hun sleutels bereiken iCloud niet. Elke
+   service heeft een eigen datamigratieplan met terugrolstrategie nodig voordat dit opgelost is.
+
+**De hervatpositie kwam uit twee plekken die elkaar tegenspraken, en de gepauzeerde speler won.**
+De melding: *Mutiny* stond tegelijk open op de MacBook (gepauzeerd, 1:03 resterend) en de Apple TV
+(actief, 0:57 resterend), en de MacBook-positie kwam terug. De schuldige was de heartbeat in
+`playback_progress_tracker.dart`, die elke zes tikken een `paused`-rapport met steeds dezelfde
+positie stuurde. Die is weg, samen met elk rapport dat staat én positie van het vorige herhaalt.
+Verder rapporteert een seek nu binnen 500 ms in plaats van bij de volgende tik, bepaalt
+`PlaybackResumeResolver` als enige waar een open begint (vijf lagen op intentie, herkomst en tijd,
+nooit op "welke positie is groter"), en weigert `PlaybackReportSession` alle drie de rapportsignalen
+zodra `ObservedPlaybackAuthority` is ingetrokken. Dat laatste is uitdrukkelijk een waarneming en
+geen lease: wat de autoriteit intrekt komt in fase D, een echt toegekende lease pas op PS-4. Dit is
+fase C van vijf; A (generieke preference-sync), B (trackvoorkeuren), D (realtime waarneming) en E
+(serverdocumenten) volgen. Zie [docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+89 gerichte tests groen, `flutter analyze` zonder fouten of waarschuwingen, `scripts/ci_checks.sh`
+groen op de gepinde SDK 3.44.0. De volledige suite geeft 3826 groen en 15 rood; diezelfde 15 falen
+op een schone worktree van `8fea407` en raken geen van alle het afspelen. Nog niet gedaan:
+committen, en de verificatie op twee echte Apple-toestellen.
 
 **De home-hero croppte op een smalle telefoon de zijkanten van zijn eigen artwork weg, en dat zat al in de serveraanvraag.** `billboardArt()` koos daar terecht het vierkante `backgroundSquarePath` in plaats van een 16:9-backdrop, maar `discover_screen.dart` vroeg nog altijd de volle 16:9-hoogte op (`max(screenWidth*9/16, heroHeight)`), en Plex' `minSize=1&upscale=1` vulde die portret-box door van het midden te croppen vóórdat Flutter iets tekende. `homeHeroArtGeometry()` (`lib/utils/home_hero_layout.dart`) laat de aanvraag voortaan altijd de ratio van de gekozen bron volgen in plaats van de containerratio, en de artworklaag verhuisde naar een eigen `HomeHeroArtwork`-widget zodat de geometrie los van het hele scherm te toetsen is. Onderweg ook het vaste 400×120-logo responsive gemaakt voor telefoon. Een onafhankelijke `/code-review` op de diff ving daarna een echte bug in die nieuwe widget: de fade-gradient onder het (kortere) frame stond gepositioneerd op de onderkant van de hele hero in plaats van op de onderkant van het frame zelf, dus hij rendersde in lege ruimte. Gefixt en met een regressietest vastgelegd. Zie [DEC-035](docs/DECISIONS.md#dec-035).
 
@@ -46,6 +130,18 @@ Nieuw erbij op deze build: op een echt toestel met trackpad of muis de zijbalk n
 
 ## Blockers
 
+- [ ] **De terugzetter is niet op hardware gecontroleerd**: de Mutiny-regressie is met `fakeAsync`
+  vastgelegd en aantoonbaar rood op de oude code, maar twee Apple-toestellen die hetzelfde item
+  openen is de enige manier om te zien dat het gedrag in het echt weg is. Vraagt een build met
+  fase C erin.
+- [ ] **De ingetrokken schrijfautoriteit is nog dood hout**: `ObservedPlaybackAuthority` wordt
+  aangemaakt en gerespecteerd, maar niets trekt hem in tot fase D de serverevents levert. Tot dan
+  leunt de bescherming volledig op het wegvallen van de heartbeat en op het onderdrukken van
+  herhaalde rapporten.
+- [ ] **Een lokale voortgangsactie is niet als bewuste handeling vast te leggen**: de wachtrij in
+  `offline_watch_progress` heeft geen veld dat een gebruikersseek van een trackertik onderscheidt,
+  dus `getLocalResumeProgress` meldt elk record als passief. Laag 2 van `PlaybackResumeResolver`
+  ondersteunt het geval wel, er is alleen nog geen bron die het levert.
 - [ ] **De hero-crop fix is niet visueel geverifieerd**: `homeHeroArtGeometry()` en `HomeHeroArtwork` zijn compleet getest (73 tests, inclusief de frame/fade-rects), maar niemand heeft nog een screenshot bekeken op een echt smal scherm om te zien dat de gezichten/compositie nu wél in beeld staan in plaats van gecropt. Build 234 staat sinds 20 augustus op TestFlight voor iOS, dus dat kan nu op een toestel. Zie [DEC-035](docs/DECISIONS.md#dec-035).
 - [ ] **De hover-band van de zijbalk is niet met de hand geverifieerd**: `cliclick` levert geen synthetische hover- of scrollevents aan deze app, dus dat de balk uitklapt zodra de cursor binnen 220 pixels komt leunt volledig op de widgettest met een echte pointer-gesture. Wat wél met de hand is gezien: een klik op x=150 in het hero-gebied levert de detailpagina op in plaats van een film, en de Afspelen-pil speelt. Vraagt de nieuwe build op een toestel met muis of trackpad.
 - [ ] **`RIGHT OVERFLOWED BY 16 PIXELS` op de tvOS-hero**: de knoppenrij met Resume en View details loopt over. Gezien in de simulator, bestond al vóór het zijbalkwerk en bewust niet in die commit meegenomen. Eigen UI-fix.
