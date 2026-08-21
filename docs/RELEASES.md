@@ -28,6 +28,7 @@ under `Notes`.
 - import liet elke rij vallen en telde afleveringen dubbel
 - clear the Dynamic Island on iPhone, edge to edge
 - credential-grens dicht en de koude start hersteld
+- tvOS-beschikbaarheid losgekoppeld van het iCloud-Drive-token
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 234 · 20 August 2026
