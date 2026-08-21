@@ -1,13 +1,40 @@
 # STATUS · Pleya
 
-_Laatst bijgewerkt: 2026-08-19 (`main` = `8e84f3a`; `feat/pleyaserver` loopt vooruit met het Pleya Server-werk. Er loopt nog steeds een tweede sessie met ongecommit werk in de hoofdmap; het PS-3W-werk in deze worktree is inmiddels gecommit. App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`)_
+_Laatst bijgewerkt: 2026-08-21 (`main` = `8e84f3a`; `feat/pleyaserver` loopt vooruit met het Pleya Server-werk. Er loopt nog steeds een tweede sessie met ongecommit werk in de hoofdmap; het PS-3W-werk in deze worktree is inmiddels gecommit. App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`)_
 
 ## Waar was ik
 
-**PS-3 staat: Pleya Server is een backend in de app.** Een Pleya Server-bibliotheek staat náást Plex
-en Jellyfin, in dezelfde zoekresultaten en op dezelfde schermen. Bladeren, zoeken,
-bibliotheeklijsten, hubs en artwork werken; afspelen is PS-4 en zit er niet half in. Acht commits,
-188 tests in `test/pleya_server/`, de volledige suite op 3695 en groen.
+**PS-4 staat: je kunt afspelen vanaf een Pleya Server, en de server bewaart waar je gebleven bent.**
+De app haalt bytes met HTTP-range, seekt zonder de stream opnieuw op te bouwen, en meldt kijkstatus
+als gebeurtenis. De server beslist wat die gebeurtenis betekent, met een eigenaarsmodel eronder zodat
+een achtergrondrapportage nooit stil de positie overneemt van het toestel waar iemand naar zit te
+kijken. Vier commits deze ronde, 182 Go-tests, 214 Dart-tests in `test/pleya_server/`, de volledige
+suite op 3721 en groen.
+
+Wat er vóór PS-4 dicht moest: drie poorten. **DEC-049** legt het conflictmodel vast (revision,
+eigenaarssessie, lease, `base_revision`). **DEC-050** haalt de byte-identiteitsbelofte uit het
+contract: de `ETag` is zwak en `If-Range` levert altijd het hele bestand, want Pleya beheert de
+bestanden niet en RFC 9110 vraagt daar strict revision control of een hash over alle bytes voor.
+**DEC-051** geeft de browser een streamsessie met een cookienaam per sessie, omdat één cookie op één
+pad breekt zodra er twee tabbladen zijn.
+
+**PS-4 heet "opgeleverd" en niet "gesloten".** Acceptatiecriterium 1 vraagt een film die op desktop,
+mobiel en TV speelt met werkende seek, en die ronde is er niet geweest. Alles wat er staat is gemeten
+op de lijn: 32 controles tegen de draaiende server op de DS920+, waaronder een seek naar 73% van een
+bestand van 1,87 GB die in 164 ms een megabyte teruggaf. De volgende stap is die apparaatronde, en
+daarna sluit de fase.
+
+**Twee dingen om te weten voor de volgende ronde.** De `MediaServerClient`-beoordeling uit criterium
+5 is gedaan en valt negatief uit: 28 van de 84 members zijn in drie of meer van de vijf
+implementaties structureel leeg, tegen een drempel van 21. De klasse is te breed volgens haar eigen
+criterium, en dat vraagt een aparte opsplitsingsronde; hoofdstuk 5.3 noemt de members. En de NAS
+draait nu schema 5 met twee nieuwe tabellen; er staat een `pg_dump` van vóór de migratie in
+`/volume1/docker/pleya-server/backups-pleya-20260821-155814.dump`.
+
+**PS-3 is gesloten**, met de meting die eraan ontbrak: een live test tegen de DS920+ die inlogt, drie
+bibliotheken haalt (Films 461, Kids 5, Series 97), artwork ophaalt, zoekt, en daarna met het bewaarde
+refreshtoken opnieuw begint alsof de app herstart is. Bladeren, zoeken, bibliotheeklijsten, hubs en
+artwork werken; 188 tests plus drie die alleen met de NAS erbij draaien.
 
 Twee dingen kostten de meeste aandacht. Het eerste is dat de app in offsets telt en het protocol met
 cursors pagineert, en dat die twee niet in elkaar om te rekenen zijn: een ledger onthoudt welke
@@ -16,10 +43,6 @@ artwork. `GET /artwork/{id}` accepteert alleen een bearer-header en het contract
 de querystring toe, terwijl de app zijn afbeeldingen met een kale URL tekent. De header hecht nu aan
 op het ene punt waar elke artwork-download langs komt; dat is [DEC-048], en het protocol is niet
 aangeraakt.
-
-**Wat er niet gemeten is:** niets is tegen de draaiende server op de NAS gelegd. De stack draait niet
-en er is niets uitgerold. Acceptatiecriterium 1 en het stopcriterium staan op tests, en daarom heet
-de fase "opgeleverd, ter goedkeuring" en niet "gesloten".
 
 **PS-2 en PS-3W zijn gesloten en bevroren.** Beide fasen stonden inhoudelijk af
 zonder formele afsluiting: PS-2 droeg `opgeleverd, ter goedkeuring` en had geen Roadmap Drift Check,

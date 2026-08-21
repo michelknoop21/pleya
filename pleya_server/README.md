@@ -4,11 +4,25 @@ Een mediaserver in Go met Postgres, bedoeld om naast een bestaande Plex-containe
 te draaien. De roadmap staat in [docs/pleya-server-architecture.md](../docs/pleya-server-architecture.md);
 dit bestand beschrijft wat er nu draait en hoe u het aan de praat krijgt.
 
-**Stand: PS-2, read-only catalogus, plus de meegeleverde webclient uit PS-3W.** De server scant een
-bestandsboom, houdt de catalogus bij in Postgres, en serveert de leeskant van
-[Pleya Protocol v1](../docs/pleya-protocol-v1.md). Er is nog geen streaming, geen kijkstatus, geen
-metadata-provider en geen gebruikersmodel. Dat zijn PS-4, PS-7 en PS-9, en ze staan bewust niet half
-in.
+**Stand: PS-4, catalogus plus afspelen en kijkstatus, met de meegeleverde webclient uit PS-3W.** De
+server scant een bestandsboom, houdt de catalogus bij in Postgres, serveert
+[Pleya Protocol v1](../docs/pleya-protocol-v1.md), levert mediabytes met volledige
+HTTP-range-ondersteuning en is de bron van kijkstatus. Er is nog geen afspeelplan, geen
+transcodering, geen metadata-provider en geen gebruikersmodel. Dat zijn PS-6, PS-8, PS-7 en PS-9, en
+ze staan bewust niet half in.
+
+Drie dingen aan PS-4 zijn een besluit en geen implementatiedetail, en ze staan alle drie in
+[docs/DECISIONS.md](../docs/DECISIONS.md):
+
+- **kijkstatus heeft een eigenaar** (DEC-049). Per gebruiker en item houdt de server een monotone
+  `revision` bij, een eigenaarssessie en een lease. Eigendom wordt alleen verworven met
+  `playback_started`; een achtergrondrapportage neemt de positie nooit stil over van het toestel
+  waar iemand naar zit te kijken;
+- **de `ETag` op `/stream` is zwak** (DEC-050). Pleya beheert de bestanden niet, dus er is geen
+  byte-identiteitsgarantie. `If-Range` levert daarom altijd het hele bestand. Gewone `Range`
+  verandert niet, en dat is het pad dat elke seek gebruikt;
+- **de browser krijgt een streamsessie** (DEC-051), met een cookienaam per sessie zodat twee
+  tabbladen elkaar niet breken, en met het geheim buiten de URL.
 
 Sinds PS-3W zit [Pleya Web](../pleya_web/README.md) in dezelfde binary: een statische bundel op `/`,
 achter de protocolroutes. Dat voegt geen endpoint en geen capability toe.
@@ -16,12 +30,13 @@ achter de protocolroutes. Dat voegt geen endpoint en geen capability toe.
 legt vast dat samen uitgeleverd worden geen extra rechten geeft: wat de webclient toont, gaat over
 `/pleya/v1`, en dus kan de Flutter-client het morgen ook.
 
-PS-0 (de Docker-fundering), PS-1 (het wire-contract), PS-2 en PS-3W zijn gesloten en bevroren; de
-afwijking die PS-0 aan de roadmap toevoegde staat in
+PS-0 (de Docker-fundering), PS-1 (het wire-contract), PS-2, PS-3 en PS-3W zijn gesloten en bevroren;
+de afwijking die PS-0 aan de roadmap toevoegde staat in
 [docs/pleya-server-ps0-proposal.md](../docs/pleya-server-ps0-proposal.md).
 
-De Flutter-app praat er sinds PS-3 zelf mee. Dat voegt niets toe aan deze server: `PleyaServerClient`
-gebruikt dezelfde veertien endpoints als Pleya Web en vraagt geen enkel veld extra.
+De Flutter-app praat er sinds PS-3 zelf mee, en speelt er sinds PS-4 ook vanaf. De speler autoriseert
+met een header en niet met een token in de URL; het streamtoken in de querystring blijft over voor
+externe spelers, die alleen een URL krijgen.
 
 ## Wat de server doet
 
@@ -73,14 +88,26 @@ De lijn draagt het nog niet; dat komt in PS-6 bij de planner. Wat er niet gebeur
 `color_transfer` en het Dolby Vision-configuratierecord gaan er rauw in zoals ffprobe ze geeft, want
 er een HDR-oordeel van maken is planner-beleid.
 
-Wat er níét in staat: geen `users`, geen `sessions`, geen `library_permissions`, geen `watch_states`,
-geen `external_ids`, geen `metadata_candidates`, geen `transcode_sessions`. De tabellenlijst in
-hoofdstuk 17.2 beschrijft het hele v1-product en niet deze fase; `users` en `sessions` staan er ook
-in en zijn voor PS-2 uitdrukkelijk verboden.
+**`watch_states` draagt het conflictmodel in zijn vorm** (DEC-049). Naast positie, gekeken-vlag en
+teller staan er vijf kolommen die zeggen wie mag schrijven: `revision`, `owner_session_id`,
+`owner_lease_until`, `last_explicit_at` en `last_explicit_kind`. Wie de canonieke positie bezit staat
+dus in de rij en niet in de code die hem leest; dat omdraaien geeft een regel die per aanroeper
+anders uitpakt.
+
+**`stream_sessions` is de browserkant van autorisatie** (DEC-051). Kortlevend, gebonden aan één
+subject en één versie, en de server bewaart het geheim niet: er staat een SHA-256 van, net als bij
+een refreshtoken, zodat een databasedump geen speelbare sessies oplevert.
+
+Wat er níét in staat: geen `users`, geen `sessions`, geen `library_permissions`, geen `play_history`,
+geen `play_sessions`, geen `user_item_data`, geen `external_ids`, geen `metadata_candidates`, geen
+`transcode_sessions`. De tabellenlijst in hoofdstuk 17.2 beschrijft het hele v1-product en niet deze
+fase. `play_history` is de opvallendste van de lijst: het masterplan wilde er geweigerde
+kijkstatusevents in schrijven, en die tabel hoort bij PS-9P. PS-4 mag daar niet van afhangen, dus
+een geweigerd event wordt beantwoord met de actuele toestand en gelogd, en verder niet bewaard.
 
 ## Wat er op de lijn zit
 
-Negen endpoints van de zeventien uit het protocol.
+Dertien endpoints van de achttien uit het protocol.
 
 | Endpoint | Klasse |
 | --- | --- |
@@ -93,20 +120,26 @@ Negen endpoints van de zeventien uit het protocol.
 | `GET /pleya/v1/search`, `/hubs/{hub_id}` | geauthenticeerd |
 | `GET /pleya/v1/artwork/{id}` | geauthenticeerd |
 | `GET /pleya/v1/subtitles/{id}` | geauthenticeerd of met een streamtoken |
+| `POST /pleya/v1/auth/stream-session` | geauthenticeerd |
+| `GET /pleya/v1/stream/{version_id}` | geauthenticeerd, met een streamtoken, of met een streamsessie |
+| `POST /pleya/v1/watch-state`, `GET /pleya/v1/watch-state` | geauthenticeerd |
 
 Buiten het protocol staat er nog één route: `GET /` en elk pad dat geen bestand en geen protocolroute is levert
 `index.html` van de webbundel. `/pleya/v1/*`, `/healthz` en `/readyz` houden altijd voorrang, en een
 onbekend pad onder `/pleya/v1` krijgt de foutvorm van het protocol en geen pagina HTML.
 `internal/web` en `internal/api/web_routes_test.go` toetsen dat.
 
-`GET /pleya/v1/stream/{version_id}` en beide kijkstatus-endpoints bestaan niet en geven een 404. Dat
-is opzet: streaming is PS-4, en de twee poorten die daaronder liggen (het conflictmodel voor
-kijkstatus en de byte-validator achter de `ETag`-belofte) staan nog open in
-[docs/pleya-server-gates.md](../docs/pleya-server-gates.md). `capabilities` in `/info` zegt hetzelfde:
-`watch_state` staat op `false`, en capabilities is leidend.
+Wat er nog niet is: `POST /playback/plan` (PS-6), transcode-sessies (PS-8), gebruikers (PS-9),
+verzamelingen en afspeellijsten (PS-9C) en beheer (PS-11A). Die geven een 404, en `capabilities` in
+`/info` zegt hetzelfde: alleen `browse`, `search`, `artwork`, `watch_state`,
+`watch_state_ownership` en `stream_sessions` staan op `true`, en capabilities is leidend.
 
-`continue_watching` en `next_up` leveren een lege lijst en geen fout. De specificatie noemt dat de
-normale toestand van een catalogusserver die nog niet kan afspelen.
+Drie dingen aan `/stream` verrassen als je ze niet verwacht. Eén bereik per aanvraag levert een
+`206`; **meerdere bereiken leveren het hele bestand als `200`**, want `multipart/byteranges` wordt
+niet gebouwd en een `416` zou een speler breken die het toch probeert. **`If-Range` levert altijd
+`200`**, omdat de validator zwak is (DEC-050) en RFC 9110 §13.1.5 dan geen deelantwoord toestaat. En
+een versie die uit meer dan één bestand bestaat levert `409` met `library.version_multifile`: dat is
+een geldige versie in het domeinmodel, en v1 begrenst alleen de levering.
 
 ## Installeren op een Synology NAS
 
@@ -328,6 +361,23 @@ naast een draaiende Plex-container. De bibliotheek staat over twee bestandssyste
 Bij elkaar 28.986 bestanden, 6.951 analyses en 7.300 items, met nul fouten. Elke ronde daarna draaide
 ffprobe geen enkele keer, en de item-ids waren na een herstart byte-identiek.
 
+**PS-4 is op dezelfde NAS gemeten, op 21 augustus 2026**, tegen een film van 1,87 GB in een mkv. Twee
+en dertig controles, nul gefaald:
+
+| Wat | Uitkomst |
+| --- | --- |
+| Eerste megabyte | `206`, 1.048.576 bytes |
+| Seek naar byte 1.469.339.787 (73%) | `206` in 164 ms voor 1 MB, zonder tweede verbinding |
+| Staart van 4 kB, en een bereik voorbij het einde | `206` met 4.096 bytes, en `416` |
+| Validator | `W/"cb7b14f87e6076b6184c0acfb20cc724"` |
+| `If-Range` met diezelfde validator | `200`, `Content-Length` 2.012.794.229, geen `Content-Range` |
+| Kijkstatus | `playback_started` verwerft, de eigenaar verzet de positie, een tweede sessie niet, een backlog niet, en een bewuste herstart met een verouderde `base_revision` wint |
+| Streamsessies | acht actief, de negende geweigerd met `session.stream_session_limit`, en de oudste bleef daarna gewoon bytes leveren |
+
+De catalogus telde bij die meting 7.364 items en overleefde de twee migraties zonder id-verlies. Wat
+er níét gemeten is: de app die op drie vormfactoren een film start. Alles hierboven is gemeten op de
+lijn, met HTTP-antwoorden, headers, bytes en databaserijen.
+
 In rust merkt de scanner nog 108 bestanden als gewijzigd aan, en dat is precies het aantal dat
 nergens aan hangt: mappen met alleen een poster waar de film niet meer staat, en Plex-restanten waar
 de geoptimaliseerde versie verdween maar de ondertitel bleef. Die krijgen elke ronde opnieuw een
@@ -360,8 +410,9 @@ De fundering uit PS-0 staat er nog steeds:
 | Postgres hostpoort | geen |
 | Graceful shutdown | exitcode 0 op SIGTERM |
 
-`scripts/verify-local.sh` draait die hele keten lokaal en doet er de catalogus bij: veertien secties,
-van `go vet` tot een herstart die de ids intact laat.
+`scripts/verify-local.sh` draait die hele keten lokaal en doet er de catalogus en het afspelen bij:
+vijftien secties en 72 controles, van `go vet` tot een kijkstatusronde waarin een tweede sessie de
+positie niet mag verzetten.
 
 ## Ontwikkelen
 
@@ -370,7 +421,7 @@ image die de container bouwt.
 
 ```sh
 scripts/go-tool.sh vet ./...
-scripts/verify-local.sh              # de hele keten, veertien secties
+scripts/verify-local.sh              # de hele keten, vijftien secties, 72 controles
 ```
 
 De tests tegen een echte database en een echte ffprobe vragen twee dingen vooraf. Zonder die twee
@@ -400,11 +451,12 @@ zijn eigen lezing van het contract houden.
 
 ## Wat hier niet in zit
 
-Geen afspelen, ook niet in de webclient. Geen streaming en geen range-verkeer. Geen kijkstatus, in
-geen van beide richtingen. Geen
+Geen afspelen in de webclient: die kan bladeren en zoeken, en de `<video>`-kant is PS-4W. Geen
 metadata-providers, geen matching, geen artwork van buiten de schijf, geen schalen of cachen van
-afbeeldingen. Geen afspeelplan, geen transcodering, geen sessies. Geen gebruikers, rollen of
-bibliotheekrechten. Geen downloads, geen Live TV, geen websockets, geen server-sent events.
+afbeeldingen. Geen afspeelplan, geen transcodering, geen transcode-sessies. Geen gebruikers, rollen
+of bibliotheekrechten. Geen kijkgeschiedenis, favorieten, waarderingen of spoorvoorkeuren. Geen
+downloads, geen Live TV, geen websockets, geen server-sent events. Geen beheerendpoint: een
+bibliotheek toevoegen is nog steeds `.env` wijzigen en herstarten.
 
 `compose.yaml` bevat een uitgecommentarieerd blok voor `/dev/dri` met `group_add: "937"`, de groep
 `videodriver` zoals gemeten op deze NAS. Het is volledig inert zolang het uitstaat en staat er alleen

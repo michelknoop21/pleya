@@ -46,7 +46,7 @@ Gecontroleerd: geen workflow in `.github/workflows/` noemt `pleya_server`, en `s
 er wel is, draai je zelf:
 
 ```sh
-scripts/verify-local.sh        # veertien secties, van go vet tot een herstart die de ids intact laat
+scripts/verify-local.sh        # vijftien secties, 72 controles, van go vet tot een kijkstatusronde
 scripts/verify-protocol.sh     # antwoorden van een draaiende server tegen openapi.yaml
 ../scripts/check_protocol.sh   # het contract zelf, in een gepinde Python-container
 ```

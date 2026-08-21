@@ -210,9 +210,9 @@ versions="$(printf '%s' "$detail" | jq_field 'len(d["versions"])')"
 if [ "$versions" = "2" ]; then ok "twee versies van dezelfde film, één item"; else fail "$versions versies"; fi
 
 if [ "$(printf '%s' "$detail" | jq_field 'd["user_state"] is None')" = "True" ]; then
-  ok "user_state is null; er is in deze fase geen kijkstatus"
+  ok "user_state is null zolang niemand het item heeft aangeraakt"
 else
-  fail "user_state is gevuld terwijl er geen kijkstatus is"
+  fail "user_state is gevuld terwijl niemand het item heeft aangeraakt"
 fi
 
 POSTER="$(printf '%s' "$detail" | jq_field 'd["artwork"]["poster_id"]')"
@@ -266,6 +266,41 @@ if [ "$watch_code" = "200" ]; then
   ok "/watch-state antwoordt (PS-4)"
 else
   fail "/watch-state gaf $watch_code"
+fi
+
+# Een echte kijkstatusronde tegen de draaiende server: verwerven, schrijven,
+# terugzien in het item, en een tweede sessie die de positie niet mag verzetten.
+watch_post() {
+  api /watch-state -X POST "${AUTH[@]}" -H 'Content-Type: application/json' -d "$1"
+}
+started="$(watch_post "{\"item_id\":\"$ITEM\",\"session_id\":\"sessie-tv\",\"position_ms\":0,\"occurred_at\":\"2026-08-21T20:00:00Z\",\"explicit_action\":\"playback_started\",\"cause\":\"user_started\"}")"
+REV="$(printf '%s' "$started" | jq_field 'd["revision"]')"
+if [ "$REV" = "1" ]; then ok "playback_started verwerft het eigendom (revision 1)"; else fail "revision na starten: $REV"; fi
+
+moved="$(watch_post "{\"item_id\":\"$ITEM\",\"session_id\":\"sessie-tv\",\"position_ms\":1800000,\"duration_ms\":6720000,\"occurred_at\":\"2026-08-21T20:30:00Z\",\"explicit_action\":\"none\",\"base_revision\":1}")"
+if [ "$(printf '%s' "$moved" | jq_field 'd["position_ms"]')" = "1800000" ]; then
+  ok "de eigenaar verzet de canonieke positie"
+else
+  fail "positie na voortgang: $moved"
+fi
+
+stranger="$(watch_post "{\"item_id\":\"$ITEM\",\"session_id\":\"sessie-telefoon\",\"position_ms\":10,\"occurred_at\":\"2026-08-21T20:31:00Z\",\"explicit_action\":\"none\",\"base_revision\":2}")"
+if [ "$(printf '%s' "$stranger" | jq_field 'd["position_ms"]')" = "1800000" ]; then
+  ok "een tweede sessie verzet de positie niet zolang de lease loopt"
+else
+  fail "een niet-eigenaar verzette de positie: $stranger"
+fi
+
+if [ "$(api "/items/$ITEM" "${AUTH[@]}" | jq_field 'd["user_state"]["position_ms"]')" = "1800000" ]; then
+  ok "het itemantwoord draagt de kijkstatus zonder tweede aanvraag"
+else
+  fail "user_state staat niet in het itemantwoord"
+fi
+
+if [ "$(api /watch-state "${AUTH[@]}" | jq_field 'len(d["items"])')" = "1" ]; then
+  ok "de kijkstatuslijst bevat het aangeraakte item"
+else
+  fail "de kijkstatuslijst is leeg"
 fi
 
 # En de latere fasen bestaan nog steeds niet.
@@ -400,7 +435,19 @@ section "12. graceful shutdown"
 $COMPOSE stop -t 25 pleya-server >/dev/null 2>&1
 code="$(docker inspect pleya-server --format '{{.State.ExitCode}}' 2>/dev/null)"
 if [ "$code" = "0" ]; then ok "het Go-proces sloot met exitcode 0 op SIGTERM"; else fail "exitcode $code, verwacht 0"; fi
-if $COMPOSE logs pleya-server 2>/dev/null | grep -q "afsluiten voltooid"; then
+# De laatste logregel komt niet altijd meteen mee: `compose stop` keert terug
+# zodra het proces weg is, en het doorgeven van de laatste bytes naar de
+# logdriver loopt daar soms een tel achteraan. Vijf korte pogingen in plaats van
+# één, want een race hier meet de logdriver en niet de afsluiting.
+shutdown_logged=""
+for _ in 1 2 3 4 5; do
+  if $COMPOSE logs pleya-server 2>/dev/null | grep -q "afsluiten voltooid"; then
+    shutdown_logged=yes
+    break
+  fi
+  sleep 1
+done
+if [ -n "$shutdown_logged" ]; then
   ok "de server logde een nette afsluiting"
 else
   fail "geen bewijs van een nette afsluiting in de log"

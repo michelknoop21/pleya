@@ -2,6 +2,56 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-21] PS-4: afspelen en kijkstatus, met drie poorten dicht ervoor
+
+PS-3 is gesloten met de meting die eraan ontbrak. Een live test legt dezelfde route die de app loopt
+tegen de draaiende server op de DS920+: drie bibliotheken (Films 461, Kids 5, Series 97), artwork met
+de header uit DEC-048, zoeken, en daarna een verse client die met het bewaarde refreshtoken opnieuw
+inlogt. De test slaat zichzelf over zonder adres, want een suite die een NAS nodig heeft om groen te
+zijn is geen suite.
+
+Daarmee ging het contractvenster open, en het is weer dicht met drie besluiten erin.
+
+**DEC-049, kijkstatus heeft een eigenaar.** De drie voor de hand liggende conflictregels falen elk op
+een scenario dat gewoon voorkomt, en een vierde (ordenen op sessiestart) breekt op het tv/telefoon-
+geval. Wat er staat is server-authoritative eigendom: een monotone `revision`, een eigenaarssessie en
+een lease op de serverklok. Eigendom wordt alleen verworven met `playback_started`, een passief
+voortgangsevent verwerft nooit, `base_revision` draagt de causaliteit, een expliciete handeling
+negeert de lease, en een offline backlog is geschiedenis zolang er een toestand is. Achttien tests
+dekken de zes regels plus het tv/telefoon-scenario.
+
+**DEC-050, de `ETag` op `/stream` is zwak.** De belofte dat hij verandert zodra de bytes veranderen
+gaat uit het contract. RFC 9110 §8.8.1 vraagt strict revision control of een hash over de bytes, en
+Pleya beheert de bestanden niet. `If-Range` levert daarom altijd het hele bestand; gewone `Range`
+verandert niet, en dat is het pad dat elke seek gebruikt. Gelijkheid van de validator is nergens in
+Pleya grond om bytes aan elkaar te plakken.
+
+**DEC-051, de browser krijgt een streamsessie.** Eén cookie op één pad breekt bij twee tabbladen,
+want cookies met dezelfde naam, domein en pad vervangen elkaar. De cookienaam draagt daarom de
+sessie-id, het geheim staat er als SHA-256 in de database, en er gaan er ten hoogste acht tegelijk
+actief: de negende wordt geweigerd in plaats van dat de oudste stream stil sneuvelt.
+
+Daar bovenop PS-4 zelf: twee voorwaartse migraties, `GET /stream/{version_id}` met volledige
+range-ondersteuning, beide kijkstatus-endpoints, `POST /auth/stream-session`, en aan de clientkant
+een `PleyaServerClient` die afspeelt en kijkstatus schrijft. 182 Go-tests, 214 Dart-tests in
+`test/pleya_server/`, de volledige Flutter-suite op 3721, `verify-local.sh` op 72 controles, en 32
+controles tegen de draaiende server op de DS920+ (seek naar 73% van een bestand van 1,87 GB in 164 ms
+voor 1 MB).
+
+Eén grens is tijdens de uitvoering hersteld. Het masterplan schreef een geweigerd kijkstatusevent
+naar `play_history`, en die tabel hoort bij PS-9P. PS-4 correct laten zijn ten koste van een tabel
+uit een latere fase is precies de drift die hoofdstuk 23.1 verbiedt, dus zo'n event wordt beantwoord
+met de actuele toestand en gelogd, en niet bewaard.
+
+Eén meting viel de andere kant op dan verwacht. De `MediaServerClient`-beoordeling uit PS-4 criterium
+5 komt uit op 28 van de 84 members die in drie of meer van de vijf implementaties structureel leeg
+zijn, tegen een drempel van 21. De klasse is te breed volgens haar eigen criterium; het getal en de
+plek staan in hoofdstuk 5.3 zodat de opsplitsingsronde met een lijst kan beginnen.
+
+**PS-4 staat op "opgeleverd, ter goedkeuring" en niet op "gesloten."** Acceptatiecriterium 1 vraagt
+een direct-play-bestand dat op desktop, mobiel en TV speelt met werkende seek, en er is deze sessie
+geen film gestart vanuit de app. Alles wat hierboven staat is gemeten op de lijn.
+
 ## [2026-08-19] PS-3: Pleya Server is een backend in de app
 
 Vanaf hier staat een Pleya Server-bibliotheek náást Plex en Jellyfin, in dezelfde app, in dezelfde

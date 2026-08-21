@@ -364,6 +364,37 @@ meting in plaats van een voorspelling. Het beoordelingsmoment staat vast in fase
 criterium: als bij vijf implementaties meer dan een kwart van de members in meer dan de helft van de
 implementaties `UnsupportedError` gooit, is de klasse te breed en volgt een aparte opsplitsingsronde.
 
+#### De meting, uitgevoerd in PS-4 op 21 augustus 2026
+
+**Uitkomst: de klasse is te breed.** Achtentwintig van de vierentachtig members (33%) zijn in drie of
+meer van de vijf implementaties structureel leeg, tegen een drempel van een kwart.
+
+| Implementatie | Structureel leeg |
+| --- | --- |
+| Plex | 2 van 84 |
+| Jellyfin | 2 van 84 |
+| Lokale map | 33 van 84 |
+| Pleya Share | 35 van 84 |
+| Pleya Server | 42 van 84 |
+
+**Wat "structureel leeg" hier betekent**, want dat is ruimer dan de letterlijke formulering van het
+criterium. `UnsupportedError` gooien is in deze codebase juist de uitzondering: het error contract
+van de interface schrijft voor dat een read zonder bron leeg antwoordt en een write die niet kan
+`false` teruggeeft. Beide tellen mee, want voor een gebruiker betekenen ze hetzelfde. Wat níét
+meetelt is een getter met een echt antwoord: `marksWatchedOnPlaybackStopped => false` zegt iets over
+dit backend en is geen stub.
+
+**Waar de leegte zit.** Vrijwel volledig in twee clusters: afspeellijsten en verzamelingen
+(twaalf members), en de persoonlijke laag plus metadata-uitstapjes (`setFavorite`, `rate`,
+`findByIdentity`, `fetchExternalIds`, `fetchExtras`, `fetchPersonMedia`, `fetchRelatedHubs`). Dat
+zijn precies twee van de drie breuklijnen die hierboven al benoemd staan, nu met getallen eronder in
+plaats van met een vermoeden.
+
+**Wat dit besluit niet is.** Geen opsplitsing in PS-4. Het criterium zegt dat er een aparte ronde
+volgt, en dat is bewust een aparte ronde: hij raakt vijf implementaties en de vertakkingen eromheen,
+en die diff naast de PS-4-diff leggen maakt allebei onleesbaar. Wat PS-4 opleverde is het getal en
+de plek, zodat die ronde kan beginnen met een lijst in plaats van met een inventarisatie.
+
 ---
 
 ## 6. Serverarchitectuur
@@ -2073,6 +2104,7 @@ Afspelen in de browser hangt aan PS-4 en PS-6, de beheerkant aan G6 en G7.
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-4 |
+| Status | **opgeleverd 21 augustus 2026, ter goedkeuring**: twee migraties, drie endpoints, `internal/watch/` en `lib/services/pleya_server_client/parts/playback.dart` |
 | Doel | afspelen vanaf Pleya Server met de server als bron van kijkstatus |
 | Bijdrage aan einddoel | dit is het punt waarop Pleya Server een Plex-server functioneel kan vervangen voor het meest voorkomende gebruik |
 | Afhankelijkheden | PS-3 |
@@ -2137,6 +2169,39 @@ daar het meest afwijken.
 
 **Roadmap Drift Check.** Is er een transcode-pad ontstaan omdat een bestand niet speelde? Dat is fase
 8, en de juiste uitkomst hier is een foutmelding.
+
+#### Stand op 21 augustus 2026: opgeleverd, ter goedkeuring
+
+| Acceptatiecriterium | Stand |
+| --- | --- |
+| 1. Een direct-play-bestand speelt op desktop, mobiel en TV, met werkende seek | **niet gehaald.** De serverkant is gemeten op de DS920+ en levert bereiken en seeks; wat er niet is, is een ronde waarin de app zelf op drie vormfactoren een film start. Dat is de reden dat deze fase "ter goedkeuring" heet en niet "gesloten" |
+| 2. Seeken naar een willekeurige positie zonder de stream opnieuw op te bouwen | gehaald en gemeten: een bereik van 1 MB vanaf byte 1.469.339.787 in een bestand van 1,87 GB kwam in 164 ms terug, zonder tweede verbinding |
+| 3. Kijkpositie overleeft het afsluiten en verschijnt op een tweede toestel | gehaald op protocolniveau: de positie staat in `watch_states`, komt terug in het itemantwoord en in `GET /watch-state`, en een tweede sessie leest hem. Op twee echte toestellen tegelijk is dit niet gemeten, en dat hangt aan criterium 1 |
+| 4. Het conflictmodel is opgeschreven vóór de eerste regel code, met een test per regel | gehaald. DEC-049 dateert van vóór de implementatie; `internal/watch/watch_test.go` heeft achttien tests, waaronder een per regel, het tv/telefoon-scenario en de backlog bij een verlopen lease |
+| 5. De `MediaServerClient`-beoordeling is uitgevoerd en de uitkomst staat opgeschreven | gehaald, en de uitkomst is dat de klasse te breed is: 28 van de 84 members zijn in drie of meer van de vijf implementaties structureel leeg, tegen een drempel van 21. Zie [hoofdstuk 5.3](#53-wordt-mediaserverclient-te-breed) |
+| 6. `If-Range` levert `200` en nooit een `206` | gehaald, en getest tegen de echte server: `If-Range` met de eigen validator gaf `200` met `Content-Length` 2.012.794.229 en geen `Content-Range` |
+| 7. Twee gelijktijdige streamsessies breken elkaar niet; de negende wordt geweigerd | gehaald. Elf tests plus de meting op de NAS: acht actieve sessies, de negende geweigerd met `session.stream_session_limit`, en de oudste bleef daarna gewoon bytes leveren |
+
+**Wat er staat.** Twee voorwaartse migraties (`watch_states`, `stream_sessions`), het conflictmodel
+uit DEC-049 als pure functie met zijn opslag eromheen, `GET /stream/{version_id}` met volledige
+range-ondersteuning en de zwakke validator uit DEC-050, `POST /auth/stream-session` met het
+cookie-per-sessie-model uit DEC-051, beide kijkstatus-endpoints, en aan de clientkant een
+`PleyaServerClient` die afspeelt en kijkstatus schrijft. 182 Go-tests, 214 Dart-tests in
+`test/pleya_server/`, de volledige Flutter-suite op 3721, `verify-local.sh` op 72 controles, en 32
+controles tegen de draaiende server op de DS920+.
+
+**Wat er nog niet is gemeten.** De app heeft geen film gestart vanaf Pleya Server. Alles wat hier
+staat is gemeten op de lijn: HTTP-antwoorden, headers, bytes en databaserijen. Criterium 1 vraagt
+drie vormfactoren met werkende seek, en dat is een ronde op toestellen die deze sessie niet gedaan
+heeft. Het stopcriterium ("een huishouden kan een avond films kijken") hangt daaraan vast.
+
+**Drift check.** Er is geen `PlaybackPlan`, geen transcoder, geen ffmpeg in het streamingpad, geen
+metadataprovider, geen gebruikersmodel, geen `play_history`, geen browserspeler en geen beheer-API.
+`TestScopeBoundaryAfterPS4` houdt zes endpoints van latere fasen op 404,
+`internal/migrate/migrate_test.go` somt de veertien tabellen uitputtend op, en `verify-local.sh`
+controleert allebei tegen een draaiende stack. Eén grens is tijdens deze fase actief hersteld: het
+masterplan schreef een geweigerd kijkstatusevent naar `play_history`, en die tabel hoort bij PS-9P;
+PS-4 mag daar niet van afhangen, dus zo'n event wordt beantwoord en gelogd en niet bewaard.
 
 ---
 

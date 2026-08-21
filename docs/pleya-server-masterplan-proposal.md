@@ -2848,3 +2848,32 @@ Twee dingen die eerlijkheidshalve open staan, geen van beide een gate.
    hoofdstuk 14.3 zijn daarmee voorstellen en geen gevalideerde waarden.
 2. **De zeer grote testbibliotheek bestaat niet.** Elke uitspraak over 25.000 items is een
    extrapolatie vanaf 7.300. PS-7F maakt hem, en tot dat moment is R4 een echt risico.
+
+---
+
+# 23. Wat er sinds de goedkeuring is doorgevoerd
+
+Dit hoofdstuk staat er omdat de status bovenaan het document naar iets moet verwijzen. Goedgekeurd
+op 21 augustus 2026; wat er diezelfde dag van uitgevoerd is, staat hieronder. De rest van het plan
+blijft staan als plan.
+
+| Onderdeel | Stand |
+| --- | --- |
+| PS-3 sluiten met een meting op de DS920+ | gedaan. Drie bibliotheken (Films 461, Kids 5, Series 97), artwork, zoeken en een herstart via het bewaarde refreshtoken |
+| Poort 3, het conflictmodel | dicht, [DEC-049](DECISIONS.md), en geïmplementeerd in `pleya_server/internal/watch/` |
+| Poort 4, de validator | dicht, [DEC-050](DECISIONS.md). De belofte is uit het contract, de validator is zwak, `If-Range` levert `200` |
+| Poort 5, de browser playback session | dicht, [DEC-051](DECISIONS.md), inclusief het endpoint en de grens van acht |
+| PS-4, de fase zelf | opgeleverd en ter goedkeuring. Zeven acceptatiecriteria, waarvan zes gehaald; criterium 1 vraagt een ronde op drie vormfactoren die nog niet gedaan is |
+| De acht nieuwe fasen | niet begonnen. Ze staan in hoofdstuk 16 en wachten op de fase ervoor |
+
+**Eén correctie op dit plan is tijdens de uitvoering doorgevoerd.** Regel 2 van poort 3 schreef een
+niet-canoniek voortgangsevent naar `play_history`, en die tabel hoort bij PS-9P. PS-4 correct laten
+zijn ten koste van een tabel uit een latere fase is de drift die 23.1 verbiedt, en het zou PS-9P
+opzadelen met geschiedenisrijen die geen enkel scherm heeft opgevraagd. De regel in 12.1 draagt nu
+de juiste grens: zo'n event wordt beantwoord met de actuele toestand, gelogd, en niet bewaard.
+
+**Eén meting uit hoofdstuk 20 is uitgevoerd en viel de andere kant op dan R10 aannam.** De
+`MediaServerClient`-beoordeling uit PS-4 criterium 5 komt uit op 28 van de 84 members die in drie of
+meer van de vijf implementaties structureel leeg zijn, tegen een drempel van 21. De klasse is
+daarmee te breed volgens haar eigen criterium, en er volgt een aparte opsplitsingsronde. Het getal
+en de plek staan in hoofdstuk 5.3 van de architectuur, zodat die ronde met een lijst kan beginnen.

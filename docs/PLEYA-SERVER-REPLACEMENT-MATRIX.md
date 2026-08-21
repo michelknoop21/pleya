@@ -123,7 +123,7 @@ waaraan je ziet dat hij klaar is.
 | Edities onderscheiden | `editionTitle`, Plex-only veld | (A) veld op de versie | PS-2 | Technisch gereed | nee | een Director's Cut naast de bioscoopversie blijft herkenbaar |
 | Technische eigenschappen per bestand | Plex-analyse plus `includeStreams=1` | (A) ffprobe met `detectionStatus` en `source`, [7.4](pleya-server-architecture.md#74-wat-ffprobe-wel-en-niet-betrouwbaar-zegt) | PS-2 | Technisch gereed | nee | PS-2 criterium 1 |
 | Verandersdetectie bij herscan | Plex-scanner | (A) drie lagen, [7.3](pleya-server-architecture.md#73-wat-de-scanner-elke-ronde-doet) | PS-2 | Technisch gereed | nee | PS-2 criterium 2: tweede scan draait ffprobe nul keer |
-| Hernoemen en verplaatsen zonder identiteitsverlies | Plex maakt hier een dubbele entry | (A) inode, plus scan-signature tussen mounts | PS-2 | Technisch gereed, **gate open** | ja | PS-2 criterium 3; poort 4 beslist nog of de signature de `ETag`-belofte draagt |
+| Hernoemen en verplaatsen zonder identiteitsverlies | Plex maakt hier een dubbele entry | (A) inode, plus scan-signature tussen mounts | PS-2 | Technisch gereed | ja | PS-2 criterium 3; poort 4 is dicht en de signature draagt geen `ETag`-belofte meer (DEC-050) |
 | Bibliotheek toevoegen en verwijderen | Plex Web, niet vanuit Pleya | (A) beheerscherm in de client | geen | **Roadmap gap** | ja | een nieuwe bibliotheek is zonder SSH aan te maken |
 | Scan starten vanuit de client | `GET /library/sections/{id}/refresh` | (A) beheer-endpoint plus knop | PS-11 deels | **Roadmap gap** | ja | scan start en de voortgang is zichtbaar |
 | Metadata forceren te verversen | `GET /library/sections/{id}/refresh?force=1` | (A) job opnieuw inplannen | PS-7, PS-11 | **Roadmap gap** | ja | een verkeerd gematchte titel is opnieuw te laten ophalen |
@@ -157,8 +157,8 @@ waaraan je ziet dat hij klaar is.
 | Home-rijen | `GET /hubs/promoted`, `GET /hubs` | (B) de bestaande client-side aanbevelingsmotor (`lib/services/recommendations/`) bouwt de rijen; de server levert de bouwstenen | PS-3, PS-7 | In roadmap | ja | het homescherm is gevuld zonder Plex-hubs |
 | Recent toegevoegd | `GET /library/recentlyAdded` | (A) sorteren op `added_at` | PS-3 | In roadmap | ja | de rij vult zich na een scan |
 | Recent toegevoegde series op serieniveau | `GET /library/all?type=2&sort=addedAt:desc` | (A) zelfde query op itemtype | PS-3 | In roadmap | nee | de serie staat er, niet de losse aflevering |
-| Verder kijken | provider-key of `GET /hubs?identifier=home.continue` | (A) afgeleid uit kijkstatus | PS-4 | In roadmap | ja | PS-4 criterium 3 |
-| Recent bekeken | `GET /library/all?sort=lastViewedAt:desc` | (A) afgeleid uit kijkstatus | PS-4 | In roadmap | nee | de rij vult zich na een kijksessie |
+| Verder kijken | provider-key of `GET /hubs?identifier=home.continue` | (A) afgeleid uit kijkstatus | PS-4 | Technisch gereed | ja | PS-4 criterium 3; de hub leest de kijkstatus die PS-4 schrijft |
+| Recent bekeken | `GET /library/all?sort=lastViewedAt:desc` | (A) afgeleid uit kijkstatus | PS-4 | Technisch gereed | nee | `fetchRecentlyWatched` leest `GET /watch-state` en houdt de uitgekeken titels over |
 | Volgende aflevering bij een serie | `includeOnDeck=1` op de metadata | (A) uit kijkstatus plus afleveringsvolgorde | PS-4 | In roadmap | ja | detailscherm toont de juiste volgende aflevering |
 | Verwante titels | `GET /hubs/metadata/{id}/related` | (A) uit genres, mensen en verzamelingen | PS-7 | **Roadmap gap** | nee | de "meer zoals dit"-rij is gevuld |
 | Sorteeropties per bibliotheek | `GET /library/sections/{id}/sorts` | (A) vaste lijst per bibliotheektype in het protocol | PS-1, PS-3 | In roadmap | ja | de sorteersheet is niet leeg |
@@ -194,9 +194,9 @@ schrijfondersteuning voor heeft.
 
 | Capability | Vandaag bij Plex | Pleya Server-doel | Fase | Status | Blocker | Bewijs |
 | --- | --- | --- | --- | --- | --- | --- |
-| Direct play met HTTP-range | directe part-URL met `X-Plex-Token` | (A) `GET /stream/{versionId}`, [11.1](pleya-server-architecture.md#111-direct-play-is-de-standaard-en-het-meeste-verkeer) | PS-4 | In roadmap | ja | PS-4 criterium 1 |
-| Sterke validator en `If-Range` | Plex-`ETag` | (A) validator over `(MediaFile.id, generation)` | PS-4 | In roadmap | ja | range-testset uit [21](pleya-server-architecture.md#21-teststrategie) |
-| Seeken in een direct-play-stream | range-request | (A) hele bestand seekbaar | PS-4 | In roadmap | ja | PS-4 criterium 2 |
+| Direct play met HTTP-range | directe part-URL met `X-Plex-Token` | (A) `GET /stream/{versionId}`, [11.1](pleya-server-architecture.md#111-direct-play-is-de-standaard-en-het-meeste-verkeer) | PS-4 | Technisch gereed | ja | PS-4 criterium 1; op de DS920+ gemeten, de app-ronde op drie vormfactoren staat nog open |
+| Zwakke validator, en `If-Range` levert het hele bestand | Plex-`ETag` | (A) `W/"..."` uit bestandsmetadata plus `generation`, [DEC-050](DECISIONS.md) | PS-4 | Technisch gereed | nee | de belofte van byte-identiteit is bewust vervallen; een client plakt nergens bytes aan elkaar |
+| Seeken in een direct-play-stream | range-request | (A) hele bestand seekbaar | PS-4 | Technisch gereed | ja | PS-4 criterium 2: 1 MB vanaf byte 1.469.339.787 in 164 ms op de DS920+ |
 | Remux naar een speelbare container | `/video/:/transcode/universal/start` met `protocol=http&container=mkv` | (A) fMP4, HLS waar segmentatie nodig is | PS-8 | In roadmap | ja | PS-8 criterium 1 |
 | Videotranscode | `universal/decision` plus `start` met `maxVideoBitrate` | (A) planner plus ffmpeg-supervisor | PS-6, PS-8 | In roadmap | ja | PS-8 test per `deliveryMode` |
 | Audiotranscode en downmix | `directStreamAudio=0` op de transcode-URL | (A) gescheiden audiobesluit, [10.1](pleya-server-architecture.md#101-de-uitkomst-is-rijker-dan-een-enkel-woord) | PS-6, PS-8 | In roadmap | ja | tabelrij TrueHD Atmos naar stereo |
@@ -204,7 +204,7 @@ schrijfondersteuning voor heeft.
 | Sessie openen, levend houden en sluiten | bestaat niet in de client: `universal/stop` komt nul keer voor in `lib/` | (A) sessiecontract plus watchdog, [11.2](pleya-server-architecture.md#112-wanneer-er-wel-een-sessie-is) | PS-8 | In roadmap | ja | PS-8 criterium 2: geen verweesd ffmpeg-proces |
 | Seekgrenzen als eigenschap van de stream | `backend == plex` in `seeking.dart:17-23` | (A) veld in het plan, [11.4](pleya-server-architecture.md#114-seek-is-een-eigenschap-van-de-stream) | PS-6 | In roadmap | ja | PS-8 criterium 3 |
 | Gelijktijdige sessies begrenzen | Plex-transcoderinstelling | (A) configuratiewaarde met een duidelijke foutcode | PS-8 | In roadmap | ja | PS-8 criterium 4 |
-| Externe speler starten (VLC, MX Player) | directe URL met token in de querystring | (A) kortlevend streamtoken, [12.5](pleya-server-architecture.md#125-de-auth-grens) | PS-4 | In roadmap | nee | VLC speelt de doorgegeven URL |
+| Externe speler starten (VLC, MX Player) | directe URL met token in de querystring | (A) kortlevend streamtoken, [12.5](pleya-server-architecture.md#125-de-auth-grens) | PS-4 | Technisch gereed | nee | `resolveExternalPlaybackUrl` levert de URL met streamtoken; met VLC zelf niet nagelopen |
 
 ### 5.7 Afspeelintelligentie
 
@@ -223,7 +223,7 @@ schrijfondersteuning voor heeft.
 | --- | --- | --- | --- | --- | --- | --- |
 | Audiospoor kiezen | `audioStreamID` op de stream-URL, `PUT /library/parts/{id}` | (A) spoorkeuze in plan en sessie | PS-6, PS-8 | In roadmap | ja | wisselen van audiospoor werkt op elk pad |
 | Ondertitelspoor kiezen (ingebed) | `subtitleStreamID` plus `subtitles=embedded` | (A) ondertitelbesluit in het plan | PS-6, PS-8 | In roadmap | ja | wisselen van ondertitel werkt op elk pad |
-| Externe ondertitels als los bestand leveren | `{track.key}.srt?encoding=utf-8&X-Plex-Token=` | (A) sidecar-endpoint naast de stream | PS-4 | In roadmap | ja | een film met een los `.srt` toont ondertitels |
+| Externe ondertitels als los bestand leveren | `{track.key}.srt?encoding=utf-8&X-Plex-Token=` | (A) sidecar-endpoint naast de stream | PS-2 | Technisch gereed | ja | het endpoint staat er sinds PS-2 en `verify-local.sh` levert er een los `.srt` mee |
 | Ondertitels inbranden | `subtitles=burn` | (A) besluit in het plan, uitgevoerd in de sessie | PS-6, PS-8 | In roadmap | nee | een PGS-spoor op een toestel dat het niet rendert |
 | Spoorkeuze onthouden per titel en gebruiker | `PUT /library/metadata/{id}/prefs` plus `selectStream` | (A) voorkeur per (gebruiker, item) | geen | **Roadmap gap** | ja | dezelfde serie start op elk toestel met dezelfde taalkeuze |
 | Hoofdstukken | `includeChapters=1` | (A) uit ffprobe bij de scan | PS-2, PS-7 | **Roadmap gap** | nee | de hoofdstukkenlijst in de speler is gevuld |
@@ -235,18 +235,18 @@ schrijfondersteuning voor heeft.
 
 | Capability | Vandaag bij Plex | Pleya Server-doel | Fase | Status | Blocker | Bewijs |
 | --- | --- | --- | --- | --- | --- | --- |
-| Kijkvoortgang melden | `GET /:/timeline?state=&time=` | (A) gebeurtenis met `session_id` en `explicit_action`, [13.2](pleya-server-architecture.md#132-de-server-is-de-bron-van-kijkstatus) | PS-4 | In roadmap, **gate open** | ja | PS-4 criterium 4 |
-| Gekeken markeren | `GET /:/scrobble` | (A) `explicit_action: mark_watched` | PS-4 | In roadmap | ja | PS-4 criterium 4 |
-| Niet-gekeken markeren | `GET /:/unscrobble` | (A) `explicit_action: mark_unwatched` | PS-4 | In roadmap | ja | PS-4 criterium 4 |
-| Hervatten op een tweede toestel | `viewOffset` op de metadata | (A) gezaghebbende kijkstatus | PS-4 | In roadmap | ja | PS-4 criterium 3 |
+| Kijkvoortgang melden | `GET /:/timeline?state=&time=` | (A) gebeurtenis met `session_id`, `explicit_action` en `base_revision`, [13.2](pleya-server-architecture.md#132-de-server-is-de-bron-van-kijkstatus) | PS-4 | Technisch gereed | ja | PS-4 criterium 4; poort 3 is dicht met DEC-049 |
+| Gekeken markeren | `GET /:/scrobble` | (A) `explicit_action: mark_watched` | PS-4 | Technisch gereed | ja | PS-4 criterium 4 |
+| Niet-gekeken markeren | `GET /:/unscrobble` | (A) `explicit_action: mark_unwatched` | PS-4 | Technisch gereed | ja | PS-4 criterium 4 |
+| Hervatten op een tweede toestel | `viewOffset` op de metadata | (A) gezaghebbende kijkstatus | PS-4 | Technisch gereed | ja | PS-4 criterium 3 op protocolniveau; op twee echte toestellen tegelijk nog niet gemeten |
 | Uit Verder kijken halen zonder kijkstatus te wijzigen | `PUT /:/unscrobble?identifier=com.plexapp.plugins.library` | (A) aparte vlag naast de kijkstatus | geen | **Roadmap gap** | nee | de rij Verder kijken laat zich opruimen |
-| Drempel voor uitgekeken | `GET /:/prefs`, `LibraryVideoPlayedThreshold` | (A) serverinstelling met een werkende default | PS-4 | **Roadmap gap** | nee | een aflevering telt als gekeken op dezelfde drempel als voorheen |
+| Drempel voor uitgekeken | `GET /:/prefs`, `LibraryVideoPlayedThreshold` | (A) vaste 0,9 op server en client; instelbaar maken is PS-9P | PS-4 | Technisch gereed | nee | een aflevering telt als gekeken op dezelfde drempel als voorheen |
 | Kijkgeschiedenis | `GET /status/sessions/history/all` | (A) `play_sessions` als geschiedenis | geen | **Roadmap gap** | ja | het geschiedenisoverzicht is gevuld na een kijksessie |
 | Wie heeft dit gekeken | `GET /accounts` plus de geschiedenis | (A) geschiedenis per gebruiker binnen het huishouden | geen | **Roadmap gap** | nee | de rij Bekeken door toont de juiste namen |
 | Favorieten | Jellyfin `FavoriteItems`; bij Plex is de kijklijst een accountfunctie in de cloud | (A) favoriet per (gebruiker, item) | geen | **Roadmap gap** | ja | een favoriet overleeft een profielwissel |
 | Waardering geven | Plex `userRating` (0 tot 10) | (A) waardering per (gebruiker, item) | geen | **Roadmap gap** | nee | de sterrenschuif schrijft en leest |
-| Offline gekeken materiaal terugsynchroniseren | `OfflineWatchSyncService` tegen `/:/timeline` | (A) dezelfde gebeurtenissen, in de wachtrij | PS-4, PS-10 | In roadmap | ja | PS-10 criterium 2 |
-| Conflicten tussen toestellen oplossen | Plex: de laatste melding wint | (A) expliciete intentie wint van heuristiek; de passieve regel is nog open | PS-4 | Ontworpen, **gate open** | ja | het herstart-scenario uit 13.2 zet de kijker niet terug |
+| Offline gekeken materiaal terugsynchroniseren | `OfflineWatchSyncService` tegen `/:/timeline` | (A) dezelfde gebeurtenissen, met `backlog: true` | PS-4, PS-10 | Technisch gereed | ja | een backlog verwerft nooit eigendom en zet een nieuwere toestand niet terug (DEC-049, regel 6) |
+| Conflicten tussen toestellen oplossen | Plex: de laatste melding wint | (A) server-authoritative eigendom met een lease en `base_revision`, [DEC-049](DECISIONS.md) | PS-4 | Technisch gereed | ja | het herstart-scenario uit 13.2 zet de kijker niet terug, en achttien tests dekken de zes regels |
 
 ### 5.10 Accounts en huishouden
 
@@ -528,27 +528,41 @@ staat; de gate accepteert geen verborgen fallback.
 
 ### 9.1 Stand van zaken
 
-Bijgewerkt bij het sluiten van PS-2 en PS-3W op 19 augustus 2026. De aantallen zijn uit de matrix in
+Bijgewerkt bij het opleveren van PS-4 op 21 augustus 2026. De aantallen zijn uit de matrix in
 hoofdstuk 5 geteld en niet overgeschreven uit een vorige ronde.
 
 | Meting | Aantal | Vorige ronde |
 | --- | --- | --- |
 | Domeinen | 18 | 18 |
 | Capabilities | 162 | 162 |
-| Technisch gereed | 17 | 0 |
-| Plex-off blockers | 96 | 104 |
-| Blockers met een bestaande fase | 72 | 78 |
-| Blockers zonder fase (roadmap gap) | 22 | 24 |
-| Blockers die op een productbesluit wachten | 2 | 2 |
-| Roadmap gaps in totaal | 37 | 37 |
+| Technisch gereed | 31 | 17 |
+| Plex-off blockers | 95 | 96 |
+| Blockers met een bestaande fase | 71 | 72 |
+| Blockers zonder fase (roadmap gap) | 22 | 22 |
+| Blockers die op een productbesluit wachten | 3 | 2 |
+| Roadmap gaps in totaal | 36 | 37 |
 | Open productbesluiten | 11 | 11 |
 | Bewust buiten scope | 12 | 12 |
 | Bewust anders opgelost | 1 | 1 |
 
+**De blockerteller daalde met één, en niet door een capability te bouwen.** "Sterke validator en
+`If-Range`" is geen blocker meer omdat de belofte eruit is: [DEC-050](DECISIONS.md) laat de
+byte-identiteitsgarantie vallen, en de regel staat er nu als een zwakke validator die geen blocker
+is. Dat is de eerlijke boeking van een productbelofte die vervalt, en niet van een probleem dat
+opgelost is.
+
 De gate staat vandaag **rood**, en dat blijft de verwachte uitkomst: er is een catalogus en een
 webclient, en er is geen afspelen, geen kijkstatus, geen metadata en geen gebruikersmodel.
 
-Wat er wel veranderd is: PS-2 en PS-3W hebben zeventien capabilities op `Technisch gereed` gezet en
+Wat er wel veranderd is: PS-4 zette veertien capabilities erbij op `Technisch gereed`, boven op de
+zeventien van PS-2 en PS-3W. Afspelen met range, seeken, kijkstatus melden, gekeken en niet-gekeken
+markeren, hervatten op een tweede toestel, conflicten oplossen, Verder kijken, Recent bekeken, de
+uitgekeken-drempel, de externe speler, losse ondertitels en het terugsynchroniseren van offline
+gekeken materiaal staan er allemaal, en de eerste tien daarvan zijn tegen de draaiende server op de
+DS920+ gemeten. Wat níét gemeten is, is de app die een film start op drie vormfactoren; PS-4 heet
+daarom "opgeleverd" en niet "gesloten".
+
+De eerdere ronde: PS-2 en PS-3W hebben zeventien capabilities op `Technisch gereed` gezet en
 acht Plex-off blockers gesloten. Dat is de eerste keer dat deze telling beweegt, en hij beweegt in de
 richting die de roadmap voorspelt: identiteit, verandersdetectie, technische analyse, edities,
 migraties en de drie securityregels van de scanner.
