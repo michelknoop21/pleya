@@ -25,9 +25,17 @@ bereikte Dart nooit en de status bleef gezond terwijl elke schrijfactie nergens 
 volledige audit, inclusief waarom er géén buffer voor vroege notificaties is gebouwd, staat in
 [docs/qa/icloud-kvs-native-audit.md](docs/qa/icloud-kvs-native-audit.md).
 
-Volledige suite 4068 groen / 15 rood, byte-identiek aan de 15 op `8fea407`. `ci_checks.sh` groen op
-SDK 3.44.0. Nog niet gedaan: committen, het architectuurrapport vóór fase B, en de verificatie op
-twee echte Apple-toestellen.
+**De vijftien rode tests waren geen product-bug en zijn weg.** Ze stonden sinds 20 augustus rood en
+hielden CI tegen. Eén oorzaak: sinds de notice-herbouw geeft `showErrorSnackBar` de melding aan de
+globale `noticeController`, en `NoticeHost` tekent hem als laag in `MaterialApp.builder` van de
+app-shell. Een test die een kaal `MaterialApp(home: Scherm())` pompt heeft die laag niet, dus de
+melding bereikte de gebruiker wel en de test niet. `test/test_helpers/notice_layer.dart` mount
+dezelfde laag; wie voortaan op een gebruikersmelding test, gebruikt die.
+
+Volledige suite nu **4373 groen, nul rood**, `ci_checks.sh` groen op SDK 3.44.0. Gemerged en gepusht
+naar `origin/main`; TestFlight-build 238 staat op alle drie de platforms. Nog niet gedaan: het
+architectuurrapport bespreken vóór fase B, de verificatie op twee echte Apple-toestellen, en de
+push naar de publieke `github`-remote.
 
 **Voorkeuren gingen naar iCloud zonder dat iemand had besloten dat ze daar hoorden.** Fase A blok 1
 legt dat vast in één pijplijn. Het oude hookcontract was `void Function(String key)`, en die vorm
