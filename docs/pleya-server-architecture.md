@@ -2174,9 +2174,9 @@ daar het meest afwijken.
 
 | Acceptatiecriterium | Stand |
 | --- | --- |
-| 1. Een direct-play-bestand speelt op desktop, mobiel en TV, met werkende seek | **niet gehaald.** De serverkant is gemeten op de DS920+ en levert bereiken en seeks; wat er niet is, is een ronde waarin de app zelf op drie vormfactoren een film start. Dat is de reden dat deze fase "ter goedkeuring" heet en niet "gesloten" |
+| 1. Een direct-play-bestand speelt op desktop, mobiel en TV, met werkende seek | **een derde gehaald.** Desktop is gedaan op echte hardware, zie de desktopronde hieronder. Mobiel en TV niet: de iPhone-installatie strandde op een uitgeschakelde ontwikkelaarsmodus en de Apple TV is niet aan de beurt geweest. Dat is de reden dat deze fase "ter goedkeuring" heet en niet "gesloten" |
 | 2. Seeken naar een willekeurige positie zonder de stream opnieuw op te bouwen | gehaald en gemeten: een bereik van 1 MB vanaf byte 1.469.339.787 in een bestand van 1,87 GB kwam in 164 ms terug, zonder tweede verbinding |
-| 3. Kijkpositie overleeft het afsluiten en verschijnt op een tweede toestel | gehaald op protocolniveau: de positie staat in `watch_states`, komt terug in het itemantwoord en in `GET /watch-state`, en een tweede sessie leest hem. Op twee echte toestellen tegelijk is dit niet gemeten, en dat hangt aan criterium 1 |
+| 3. Kijkpositie overleeft het afsluiten en verschijnt op een tweede toestel | **eerste helft gehaald op een echt toestel.** De macOS-app verliet het afspeelscherm op 2.401.045 ms, en een tweede sessie in dezelfde app hervatte daar. De tweede helft, een positie die op een ander toestel opduikt, is nog niet gemeten en hangt aan criterium 1 |
 | 4. Het conflictmodel is opgeschreven vóór de eerste regel code, met een test per regel | gehaald. DEC-049 dateert van vóór de implementatie; `internal/watch/watch_test.go` heeft achttien tests, waaronder een per regel, het tv/telefoon-scenario en de backlog bij een verlopen lease |
 | 5. De `MediaServerClient`-beoordeling is uitgevoerd en de uitkomst staat opgeschreven | gehaald, en de uitkomst is dat de klasse te breed is: 28 van de 84 members zijn in drie of meer van de vijf implementaties structureel leeg, tegen een drempel van 21. Zie [hoofdstuk 5.3](#53-wordt-mediaserverclient-te-breed) |
 | 6. `If-Range` levert `200` en nooit een `206` | gehaald, en getest tegen de echte server: `If-Range` met de eigen validator gaf `200` met `Content-Length` 2.012.794.229 en geen `Content-Range` |
@@ -2190,10 +2190,38 @@ cookie-per-sessie-model uit DEC-051, beide kijkstatus-endpoints, en aan de clien
 `test/pleya_server/`, de volledige Flutter-suite op 3721, `verify-local.sh` op 72 controles, en 32
 controles tegen de draaiende server op de DS920+.
 
-**Wat er nog niet is gemeten.** De app heeft geen film gestart vanaf Pleya Server. Alles wat hier
-staat is gemeten op de lijn: HTTP-antwoorden, headers, bytes en databaserijen. Criterium 1 vraagt
-drie vormfactoren met werkende seek, en dat is een ronde op toestellen die deze sessie niet gedaan
-heeft. Het stopcriterium ("een huishouden kan een avond films kijken") hangt daaraan vast.
+**De desktopronde, uitgevoerd op 21 augustus 2026.** De macOS-app heeft een echte film gespeeld
+vanaf de Pleya Server op de DS920+, via `PleyaServerClient` en niet via Plex of Jellyfin. Pleya
+v2.8.0+227 uit deze werkkopie, macOS 26.5.1 op een Apple M4 Pro, verbinding naar
+`https://web.pleya.app`, dat via een Cloudflare-tunnel dezelfde instantie bedient (`/info` geeft
+server id `01a016ee-dd33-7000-a1fc-b68096e1bd2f`). Titel: *21 Jump Street*, versie
+`01a016f7-497f-7000-9fcb-424704a22317`, HEVC 1920x804 met AAC 5.1 in een mkv van 2.012.794.229 bytes.
+
+mpv opende `/pleya/v1/stream/{version_id}` met de `Authorization`-header uit `streamHeaders`, koos
+`Video --vid=1 (hevc 1920x804 23.976 fps)` en `Audio --aid=1 (aac 6ch 48000 Hz)`, decodeerde via
+videotoolbox en gaf audio uit op `avfoundation` in 5.1. Beeld en geluid zijn door de gebruiker
+waargenomen; dat deel is geen meting op de lijn en kan dat ook niet zijn.
+
+De seek is het punt waar criterium 2 van een curl-meting naar een spelermeting gaat. Er zijn er twee
+gedaan. De eerste, naar 931,5 s, gaf `stream level seek from 181969932 to 285698380` en `seek done`
+na 76 ms. De tweede, naar 2377,7 s, gaf `stream level seek from 355718208 to 737729721`, dus naar
+byte 737.729.721 in dat bestand van 2 GB, en `seek done` na 161 ms, gevolgd door
+`playback restart complete @ 2381.150000, audio=playing, video=playing`. De server antwoordde op elk
+`/stream`-verzoek met `206` en op geen enkel verzoek met `200`.
+
+De kijkstatus liep mee zoals DEC-049 hem beschrijft: `playback_started` bij de start, daarna
+voortgangsrapportages op een vast ritme van tien seconden, `revision` die opliep tot 21, en
+`owner_lease_until` telkens precies 90 seconden voor de serverklok uit, de ondergrens uit regel 4.
+Na het verlaten stond de canonieke positie op 2.401.045 ms. Een tweede afspeelronde in dezelfde app
+verwierf het eigendom opnieuw met een nieuwe `session_id` en liep door naar 2.435.371 ms bij
+`revision` 29.
+
+**Wat er nog niet is gemeten.** Mobiel en TV. De iPhone-build compileerde en tekende (`Apple
+Development`), maar installeren faalde op `Developer Mode disabled` op het toestel zelf; dat is een
+schakelaar en geen bevinding over PS-4. De Apple TV is niet aan de beurt geweest. Daarmee staat ook
+de tweede helft van criterium 3 open: een positie van toestel A die op toestel B opduikt, en het
+eigendomsscenario uit DEC-049 op twee echte clients. Het stopcriterium ("een huishouden kan een
+avond films kijken") hangt daaraan vast.
 
 **Drift check.** Er is geen `PlaybackPlan`, geen transcoder, geen ffmpeg in het streamingpad, geen
 metadataprovider, geen gebruikersmodel, geen `play_history`, geen browserspeler en geen beheer-API.
@@ -2698,6 +2726,7 @@ Gevonden tijdens het onderzoek, bewust niet gerepareerd, hier vastgelegd zodat h
 | Pleya Share-protocol serveert `MediaItem` als wire-type | `lib/services/pleya_share/pleya_share_protocol.dart:14` | optioneel overzetten op het `minimal`-profiel, na fase 1 |
 | Geen enkele workflow in `.github/workflows/` noemt `pleya_server`, `go` of `check_protocol`; alle serververificatie is lokaal en handmatig | `.github/workflows/` | eigen spoor, bewust buiten PS-3W gehouden zodat die fase geen CI-modernisering wordt |
 | Twee kleuren staan buiten het palet: teal `#54B9C5` en rood `#F42B1F`, dat net naast `kAccent` `#E5140F` zit | `lib/widgets/hub_section.dart:547`, `lib/widgets/video_controls/tv_info_panel/tv_panel_widgets.dart:15` | design debt; app en web samen rechttrekken, niet eenzijdig in de webclient |
+| De play-knop in de hover-overlay op een mediakaart zet de app vast op `Bad state: ProfileNavigationScope is required for profile routes.` De overlay hangt in de root-overlay, dus de knop navigeert vanuit een context zonder profielnavigator, en het detailscherm vult daarna het hele venster met die fout | `lib/widgets/hover_boxart_overlay.dart:109`, `lib/widgets/media_card.dart:395` | gedeelde code, raakt elke backend even hard en dateert van vóór PS-4; los oppakken |
 | `probe_attempts` wordt opgehoogd en nergens gelezen, dus een blijvend onanalyseerbaar bestand gaat elke ronde opnieuw door ffprobe | `pleya_server/internal/catalog/store_write.go:178` | begrensde backoff in `judge`, niet vóór PS-4 tenzij nieuw bewijs de prioriteit verandert |
 | Een mislukte `attach` legt niet dezelfde foutstatus vast als `RecordProbeFailure`, waardoor ook dat pad elke ronde opnieuw geanalyseerd wordt | `pleya_server/internal/scanner/scanner.go:558` | beide faalpaden semantisch gelijktrekken, samen met de backoff hierboven |
 
