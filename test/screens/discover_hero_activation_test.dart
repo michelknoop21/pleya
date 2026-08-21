@@ -47,6 +47,7 @@ import 'package:pleya/watch_together/watch_together.dart';
 import 'package:pleya/widgets/clickable_cursor.dart';
 import 'package:pleya/widgets/fitting_title_text.dart';
 import 'package:pleya/widgets/hub_section.dart';
+import 'package:pleya/widgets/home_hero_artwork.dart';
 import 'package:pleya/widgets/media_card.dart';
 import 'package:provider/provider.dart';
 
@@ -80,17 +81,36 @@ void main() {
   /// [continueWatching] feeds the rail directly below the hero, so tests can
   /// measure the real gap between the hero's pagination row and the "Verder
   /// kijken" heading, or the rail's card count.
+  /// [topViewPadding] fills `MediaQuery.viewPaddingOf(context).top` — the
+  /// Dynamic Island / notch inset the hero's sharp layer has to clear. Set in
+  /// logical pixels; `devicePixelRatio` is pinned to 1.0 just below, so no
+  /// conversion is needed. Left at null the view keeps its default zero
+  /// padding, which is what every pre-existing test in this file relies on.
+  ///
+  /// [heroSquarePath] / [heroArtPath] give the hero item artwork, so
+  /// `HomeHeroArtwork` is actually built and its frame rect can be measured.
+  /// Without either, `billboardArt` returns null and the whole artwork
+  /// subtree is skipped (which is exactly what the activation tests want).
   Future<_RouteSpy> pumpDiscover(
     WidgetTester tester, {
     Size size = const Size(1280, 800),
     TargetPlatform? platform,
     List<MediaItem> continueWatching = const [],
+    double? topViewPadding,
+    String? heroSquarePath,
+    String? heroArtPath,
   }) async {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = size;
+    if (topViewPadding != null) {
+      tester.view.viewPadding = FakeViewPadding(top: topViewPadding);
+      tester.view.padding = FakeViewPadding(top: topViewPadding);
+    }
     addTearDown(() {
       tester.view.resetDevicePixelRatio();
       tester.view.resetPhysicalSize();
+      tester.view.resetViewPadding();
+      tester.view.resetPadding();
     });
 
     final settings = await SettingsService.getInstance();
@@ -98,9 +118,12 @@ void main() {
     // test cannot pass for the wrong reason.
     await settings.write(SettingsService.continueWatchingAction, ContinueWatchingAction.play);
 
-    // No artwork at all: `billboardArt` then returns null and the whole
-    // CachedNetworkImage subtree is skipped, which keeps the fake client out of
-    // image URL territory.
+    // No artwork at all by default: `billboardArt` then returns null and the
+    // whole CachedNetworkImage subtree is skipped, which keeps the fake client
+    // out of image URL territory. Tests that need to measure the artwork layer
+    // pass [heroSquarePath] or [heroArtPath]; `_FakeHeroClient.thumbnailUrl`
+    // then hands back an empty URL, so the image resolves through
+    // `errorBuilder` instead of the network.
     final movie = MediaItem(
       id: 'movie_1',
       backend: MediaBackend.plex,
@@ -109,6 +132,8 @@ void main() {
       serverId: 'server_1',
       serverName: 'Server',
       durationMs: 7200000,
+      artPath: heroArtPath,
+      backgroundSquarePath: heroSquarePath,
     );
 
     final client = _FakeHeroClient(movie, continueWatching: continueWatching);
@@ -343,12 +368,12 @@ void main() {
     viewOffsetMs: 60000,
   );
 
-  Future<void> expectPaginationToRailHeadingWithinBand(
+  /// Returns the measured gap so the caller asserts the band it expects: the
+  /// number belongs in the test, not hidden in a shared helper.
+  Future<double> measurePaginationToRailHeadingGap(
     WidgetTester tester, {
     required Size size,
     TargetPlatform? platform,
-    required num min,
-    required num max,
   }) async {
     final settings = await SettingsService.getInstance();
     await settings.write(SettingsService.episodePosterMode, EpisodePosterMode.episodeThumbnail);
@@ -365,23 +390,22 @@ void main() {
     final headingRect = tester.getRect(find.text(t.discover.continueWatching));
     final gap = headingRect.top - paginationRect.bottom;
 
-    expect(gap, inInclusiveRange(min, max), reason: 'size=$size platform=$platform gap=$gap');
-
     await tester.pumpWidget(const SizedBox.shrink());
+    return gap;
   }
 
   testWidgets('phone: the real gap between the pagination row and "Verder kijken" is 16-20pt', (tester) async {
-    await expectPaginationToRailHeadingWithinBand(tester, size: const Size(402, 874), min: 16, max: 20);
+    final gap = await measurePaginationToRailHeadingGap(tester, size: const Size(402, 874));
+    expect(gap, inInclusiveRange(16, 20), reason: 'gap=$gap');
   });
 
   testWidgets('iPad portrait: the real gap between the pagination row and "Verder kijken" is 16-24pt', (tester) async {
-    await expectPaginationToRailHeadingWithinBand(
+    final gap = await measurePaginationToRailHeadingGap(
       tester,
       size: const Size(834, 1194),
       platform: TargetPlatform.iOS,
-      min: 16,
-      max: 24,
     );
+    expect(gap, inInclusiveRange(16, 24), reason: 'gap=$gap');
   });
 
   /// Pumps the real screen — real `HubSection`, real `ListView.builder`, real
@@ -390,11 +414,9 @@ void main() {
   /// only returns what `ListView.builder` actually built (its viewport plus
   /// a small cache extent), so "fully inside the viewport" is a real
   /// left/right rect check, not an assumption about how many got built.
-  Future<void> expectExactlyThreeFullRailCards(
-    WidgetTester tester, {
-    required double width,
-    required double height,
-  }) async {
+  /// Returns how many rail cards land fully inside [width], so the caller
+  /// asserts the count itself.
+  Future<int> countFullyVisibleRailCards(WidgetTester tester, {required double width, required double height}) async {
     final settings = await SettingsService.getInstance();
     await settings.write(SettingsService.episodePosterMode, EpisodePosterMode.episodeThumbnail);
     await settings.write(SettingsService.libraryDensity, LibraryDensity.defaultValue);
@@ -429,22 +451,184 @@ void main() {
     final rects = [for (var i = 0; i < cardCount; i++) tester.getRect(cardFinder.at(i))];
     final fullyVisible = rects.where((r) => r.left >= -0.5 && r.right <= width + 0.5).length;
 
-    expect(fullyVisible, 3, reason: 'width=$width expected exactly 3 full cards, got $fullyVisible from rects=$rects');
-    expect(tester.takeException(), isNull, reason: 'width=$width');
+    expect(tester.takeException(), isNull, reason: 'width=$width rects=$rects');
 
     await tester.pumpWidget(const SizedBox.shrink());
+    return fullyVisible;
   }
 
   testWidgets('iPad rail: exactly 3 full 16:9 cards at 768pt, default density', (tester) async {
-    await expectExactlyThreeFullRailCards(tester, width: 768, height: 1024);
+    final cards = await countFullyVisibleRailCards(tester, width: 768, height: 1024);
+    expect(cards, 3, reason: 'expected exactly 3 full cards at 768pt, got $cards');
   });
 
   testWidgets('iPad rail: exactly 3 full 16:9 cards at 834pt, default density', (tester) async {
-    await expectExactlyThreeFullRailCards(tester, width: 834, height: 1194);
+    final cards = await countFullyVisibleRailCards(tester, width: 834, height: 1194);
+    expect(cards, 3, reason: 'expected exactly 3 full cards at 834pt, got $cards');
   });
 
   testWidgets('iPad rail: exactly 3 full 16:9 cards at 1024pt, default density', (tester) async {
-    await expectExactlyThreeFullRailCards(tester, width: 1024, height: 1366);
+    final cards = await countFullyVisibleRailCards(tester, width: 1024, height: 1366);
+    expect(cards, 3, reason: 'expected exactly 3 full cards at 1024pt, got $cards');
+  });
+
+  /// The hero's sharp artwork island is top-anchored, so on an iPhone its top
+  /// edge lands under the Dynamic Island. `requestedSharpTopInset` pushes it
+  /// clear, gated to iPhone-portrait only.
+  ///
+  /// These drive the real screen, not the pure layout function: the gate reads
+  /// `Theme.of(context).platform`, `MediaQuery.orientationOf` and
+  /// `MediaQuery.viewPaddingOf`, none of which a unit test on
+  /// `homeHeroArtGeometry` can exercise.
+  ///
+  /// Every case also re-checks the four things this change was explicitly not
+  /// allowed to move: hero height, the content column's bottom anchor, the
+  /// pagination row, and the "Verder kijken" heading below the hero. The
+  /// expected numbers are the measured pre-change baseline.
+  group('sharp layer clears the Dynamic Island', () {
+    /// Baseline captured before the change, with the same fixtures.
+    const paginationBottomPortrait = 665.31, headingTopPortrait = 685.31;
+    const paginationBottomLandscape = 313.64, headingTopLandscape = 333.64;
+    const paginationBottomIpad = 957.64, headingTopIpad = 977.64;
+
+    Future<Rect> pumpAndMeasureFrame(
+      WidgetTester tester, {
+      required Size size,
+      required TargetPlatform platform,
+      required double topViewPadding,
+      required double expectedPaginationBottom,
+      required double expectedHeadingTop,
+      required double expectedFrameWidth,
+      required double expectedFrameHeight,
+      String? heroArtPath,
+    }) async {
+      await pumpDiscover(
+        tester,
+        size: size,
+        platform: platform,
+        topViewPadding: topViewPadding,
+        heroSquarePath: heroArtPath == null ? '/square' : null,
+        heroArtPath: heroArtPath,
+        continueWatching: [wideOnDeckItem()],
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final label = 'size=$size platform=$platform viewPadding=$topViewPadding';
+      expect(find.text('Movie 1'), findsOneWidget, reason: 'the hero rendered: $label');
+
+      final frame = tester.getRect(find.byKey(HomeHeroArtwork.frameKey));
+      expect(frame.width, closeTo(expectedFrameWidth, 0.5), reason: label);
+      expect(frame.height, closeTo(expectedFrameHeight, 0.5), reason: label);
+      expect(frame.center.dx, closeTo(size.width / 2, 0.5), reason: 'horizontally centred: $label');
+
+      // Nothing below the artwork may move.
+      final pagination = tester.getRect(find.byKey(DiscoverScreen.heroPaginationKey));
+      final heading = tester.getRect(find.text(t.discover.continueWatching));
+      expect(pagination.bottom, closeTo(expectedPaginationBottom, 0.5), reason: 'pagination moved: $label');
+      expect(heading.top, closeTo(expectedHeadingTop, 0.5), reason: '"Verder kijken" moved: $label');
+
+      expect(tester.takeException(), isNull, reason: label);
+      addTearDown(() async => tester.pumpWidget(const SizedBox.shrink()));
+      return frame;
+    }
+
+    testWidgets('iPhone portrait with a 62pt inset starts the sharp layer at 70', (tester) async {
+      final frame = await pumpAndMeasureFrame(
+        tester,
+        size: const Size(402, 874),
+        platform: TargetPlatform.iOS,
+        topViewPadding: 62,
+        expectedPaginationBottom: paginationBottomPortrait,
+        expectedHeadingTop: headingTopPortrait,
+        // Edge to edge: the full canvas width, square source so height == width.
+        expectedFrameWidth: 402,
+        expectedFrameHeight: 402,
+      );
+      expect(frame.top, closeTo(62, 0.5), reason: 'exactly viewPadding.top, nothing added');
+      expect(frame.left, closeTo(0, 0.5), reason: 'starts at the left edge');
+      expect(frame.right, closeTo(402, 0.5), reason: 'runs to the right edge');
+    });
+
+    testWidgets('iPhone portrait, widescreen source: full width at the safe-area edge', (tester) async {
+      // What the app actually shows most of the time — a 16:9 backdrop. This
+      // is the case that regressed to a 320pt centred card.
+      final frame = await pumpAndMeasureFrame(
+        tester,
+        size: const Size(402, 874),
+        platform: TargetPlatform.iOS,
+        topViewPadding: 62,
+        expectedPaginationBottom: paginationBottomPortrait,
+        expectedHeadingTop: headingTopPortrait,
+        expectedFrameWidth: 402,
+        expectedFrameHeight: 402 * 9 / 16,
+        heroArtPath: '/backdrop',
+      );
+      expect(frame.top, closeTo(62, 0.5));
+      expect(frame.left, closeTo(0, 0.5));
+      expect(frame.right, closeTo(402, 0.5));
+    });
+
+    testWidgets('iPad portrait keeps the sharp layer at 0', (tester) async {
+      final frame = await pumpAndMeasureFrame(
+        tester,
+        size: const Size(834, 1194),
+        platform: TargetPlatform.iOS,
+        topViewPadding: 24,
+        expectedPaginationBottom: paginationBottomIpad,
+        expectedHeadingTop: headingTopIpad,
+        expectedFrameWidth: 683.88,
+        expectedFrameHeight: 683.88,
+      );
+      expect(frame.top, closeTo(0, 0.5), reason: 'shortestSide 834 is past the 600pt phone breakpoint');
+    });
+
+    testWidgets('iPhone landscape keeps the sharp layer at 0', (tester) async {
+      final frame = await pumpAndMeasureFrame(
+        tester,
+        size: const Size(874, 402),
+        platform: TargetPlatform.iOS,
+        topViewPadding: 62,
+        expectedPaginationBottom: paginationBottomLandscape,
+        expectedHeadingTop: headingTopLandscape,
+        // A wide box: full-bleed cover, which ignores the inset outright.
+        expectedFrameWidth: 874,
+        expectedFrameHeight: 329.64,
+      );
+      expect(frame.top, closeTo(0, 0.5), reason: 'the cutout is on the side in landscape');
+    });
+
+    testWidgets('Android portrait keeps the sharp layer at 0', (tester) async {
+      final frame = await pumpAndMeasureFrame(
+        tester,
+        size: const Size(402, 874),
+        platform: TargetPlatform.android,
+        topViewPadding: 62,
+        expectedPaginationBottom: paginationBottomPortrait,
+        expectedHeadingTop: headingTopPortrait,
+        expectedFrameWidth: 329.64,
+        expectedFrameHeight: 329.64,
+      );
+      expect(frame.top, closeTo(0, 0.5), reason: 'isHandheldIOS is false on android');
+    });
+
+    testWidgets('iPhone portrait without a safe area starts at 0, still full width', (tester) async {
+      // Proves the 62 in the first case comes from `viewPadding` and not from a
+      // constant. The composition is unchanged — full width either way; only
+      // the offset follows the safe area.
+      final frame = await pumpAndMeasureFrame(
+        tester,
+        size: const Size(402, 874),
+        platform: TargetPlatform.iOS,
+        topViewPadding: 0,
+        expectedPaginationBottom: paginationBottomPortrait,
+        expectedHeadingTop: headingTopPortrait,
+        expectedFrameWidth: 402,
+        expectedFrameHeight: 402,
+      );
+      expect(frame.top, closeTo(0, 0.5));
+      expect(frame.left, closeTo(0, 0.5));
+    });
   });
 }
 
@@ -485,6 +669,18 @@ class _FakeHeroClient implements MediaServerClient {
 
   @override
   ServerCapabilities get capabilities => ServerCapabilities.plex;
+
+  /// Empty URL on purpose: `CachedNetworkImage` then resolves straight through
+  /// its `errorBuilder` to a `ColoredBox`, so the artwork layers lay out at
+  /// their real geometry without any network in a widget test.
+  @override
+  String thumbnailUrl(String? path, {int? width, int? height}) => '';
+
+  /// The hero's art-enrichment pass calls this when an item has artwork but no
+  /// clear logo. Handing back the same item keeps that pass a no-op instead of
+  /// letting it throw into `_enrichSpotlightArt`'s catch-all.
+  @override
+  Future<MediaItem?> fetchItem(String id) async => movie;
 
   @override
   Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async => [movie];

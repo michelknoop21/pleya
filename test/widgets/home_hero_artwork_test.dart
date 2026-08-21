@@ -345,7 +345,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the reduced-performance tier skips the ambient blur but keeps the dark wash', (tester) async {
+  testWidgets('the reduced-performance tier flattens the ambient layer instead of blurring it', (tester) async {
     DevicePerformance.debugReset(override: VisualEffectsSetting.reduced);
 
     const screenWidth = 402.0, heroHeight = 572.0;
@@ -361,14 +361,22 @@ void main() {
       heroHeight: heroHeight,
     );
 
-    final blurFilters = tester.widgetList<ImageFiltered>(
-      find.descendant(of: find.byKey(HomeHeroArtwork.ambientKey), matching: find.byType(ImageFiltered)),
+    final ambient = find.byKey(HomeHeroArtwork.ambientKey);
+    expect(
+      find.descendant(of: ambient, matching: find.byType(ImageFiltered)),
+      findsNothing,
+      reason: 'no costly blur on the reduced tier',
     );
-    expect(blurFilters, isNotEmpty);
-    expect(blurFilters.first.enabled, isFalse, reason: 'no costly blur on the reduced tier');
+    // But not left sharp either: an unblurred cover crop of the same artwork
+    // behind the sharp layer reads as a duplicate, so it is flattened instead.
+    expect(
+      find.descendant(of: ambient, matching: find.byType(ColorFiltered)),
+      findsWidgets,
+      reason: 'flattened in the blur\'s place',
+    );
     // The ambient wash and the ambient image itself must still be present —
     // reduced performance must not mean a blank/black gap.
-    expect(find.byKey(HomeHeroArtwork.ambientKey), findsOneWidget);
+    expect(ambient, findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

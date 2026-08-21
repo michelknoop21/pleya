@@ -663,29 +663,34 @@ sealed class MediaItem with _$MediaItem {
 
   /// Best billboard art, or null when the item has no artwork at all.
   ///
-  /// [containerAspectRatio] is the width/height of the box the art fills. On
-  /// a wide box (or when no ratio is given at all — `_hasBillboardArt` calls
-  /// it that way) a 16:9 backdrop always wins when one exists. On a narrow
-  /// (phone/tablet-portrait) box, square background art wins instead when it
-  /// exists: the layout (see `homeHeroArtGeometry`) already shrinks the sharp
-  /// layer to a small island rather than a full-bleed fill there, so a
-  /// smaller square subject reads calmer than a 16:9 backdrop blown up
-  /// against a portrait-ish frame. The backdrop is still the fallback ahead
-  /// of the blurred poster/thumb — square is only tried first, never
-  /// instead. Square background art never renders sharp on its own outside
-  /// this narrow-box case; it carries no baked-in title, so it can render
-  /// sharp there instead of only ever being the blurred last resort.
-  BillboardArt? billboardArt({double? containerAspectRatio}) {
-    // On a narrow box the sharp layer is a small, cropped-free island (see
-    // `homeHeroArtGeometry`), not a full-bleed fill — so a smaller subject
-    // reads calmer than a 16:9 backdrop blown up to a portrait-ish frame.
-    // Square art wins there when it exists; the backdrop is still the second
-    // choice, ahead of the blurred poster/thumb fallback below.
-    if (containerAspectRatio != null && containerAspectRatio < billboardNarrowAspectRatioThreshold) {
-      final square = backgroundSquarePath;
-      if (square != null && square.isNotEmpty) {
-        return BillboardArt(path: square, kind: BillboardArtKind.square);
-      }
+  /// [containerAspectRatio] is the width/height of the box the art fills. On a
+  /// wide box, and when no ratio is given at all (`_hasBillboardArt` calls it
+  /// that way), a 16:9 backdrop always wins when one exists.
+  ///
+  /// On a narrow box the answer depends on how the layout renders the sharp
+  /// layer there, which is what [narrowBoxIsFullWidth] says:
+  ///
+  /// - **A centred island** (iPad portrait, the default). Square art wins when
+  ///   it exists: the layer is only 82% of the box wide, so a square subject
+  ///   reads calmer than a 16:9 backdrop shrunk to fit that island.
+  /// - **Edge to edge** (iPhone portrait). The backdrop wins. A square source
+  ///   run at full width becomes a block as tall as the screen is wide, over
+  ///   half the hero, with the app's own clear-logo drawn across the subject.
+  ///   That is the defect "prefer 16:9 backdrop over square art on narrow
+  ///   iPhone hero" removed, and it is worse at full width than it ever was
+  ///   before that fix.
+  ///
+  /// Square is still the crop-free fallback in both cases when no backdrop
+  /// exists at all: it carries no baked-in title, so it can render sharp
+  /// rather than dropping to the blurred poster/thumb last resort.
+  BillboardArt? billboardArt({double? containerAspectRatio, bool narrowBoxIsFullWidth = false}) {
+    final isNarrowBox = containerAspectRatio != null && containerAspectRatio < billboardNarrowAspectRatioThreshold;
+    final square = backgroundSquarePath;
+    final hasSquare = square != null && square.isNotEmpty;
+
+    // Island on a narrow box: square first (see the doc comment above).
+    if (isNarrowBox && !narrowBoxIsFullWidth && hasSquare) {
+      return BillboardArt(path: square, kind: BillboardArtKind.square);
     }
 
     final backdrops = _dedupedPaths(switch (kind) {
@@ -696,11 +701,17 @@ sealed class MediaItem with _$MediaItem {
       return BillboardArt(path: backdrops.first, kind: BillboardArtKind.widescreen);
     }
 
-    // No 16:9 frame exists. Square and poster art carry their own baked-in
-    // title treatment, so showing one sharp would double the title and crop
-    // through it. Fall back to one anyway — an empty billboard is worse — but
-    // the caller renders it blurred, as atmosphere, and lets the app's own
-    // typography carry the title alone.
+    // No 16:9 frame. On a narrow box a square source still renders sharp and
+    // crop-free at its own ratio, which beats a blurred poster.
+    if (isNarrowBox && hasSquare) {
+      return BillboardArt(path: square, kind: BillboardArtKind.square);
+    }
+
+    // Nothing shaped for a billboard exists. Square and poster art carry their
+    // own baked-in title treatment, so showing one sharp on a wide box would
+    // double the title and crop through it. Fall back to one anyway — an empty
+    // billboard is worse — but the caller renders it blurred, as atmosphere,
+    // and lets the app's own typography carry the title alone.
     final fills = billboardArtCandidates();
     return fills.isEmpty ? null : BillboardArt(path: fills.first, kind: BillboardArtKind.fallback);
   }

@@ -1895,10 +1895,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   /// what catches iPad-portrait widths like 768/834 that sit below that
   /// 900pt threshold. In portrait, `shortestSide == screenWidth`, so this
   /// still excludes every phone (never wider than ~430pt in portrait).
-  /// [PlatformDetector.isHandheldIOS] excludes tvOS and desktop/macOS, so
-  /// this only ever fires for an iPad (or a large Android tablet) held in
-  /// portrait — landscape iPad and desktop keep [HomeHeroContentTier.wide]
-  /// exactly as before.
+  /// [PlatformDetector.isHandheldIOS] is `!isTV() && Theme.platform == iOS`,
+  /// so this only ever fires for an iPad held in portrait: tvOS, desktop and
+  /// macOS are excluded, and so is Android, which reports
+  /// `TargetPlatform.android` and lands on [HomeHeroContentTier.phone] even on
+  /// a large tablet. Landscape iPad and desktop keep
+  /// [HomeHeroContentTier.wide] exactly as before.
   HomeHeroContentTier _heroContentTier(BuildContext context, double screenWidth) {
     final size = MediaQuery.sizeOf(context);
     final isTabletPortrait =
@@ -1953,7 +1955,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               if (!InputModeTracker.isKeyboardMode(context))
                 Positioned(
                   key: DiscoverScreen.heroPaginationKey,
-                  bottom: homeHeroContentMetrics(tier: _heroContentTier(context, w)).paginationBottomInset,
+                  // The same 16 on every tier, so it is read straight from the
+                  // constant: resolving the tier here would add a rotation
+                  // rebuild to this sliver for a value that never varies.
+                  bottom: homeHeroPaginationBottomInset,
                   left: -26,
                   right: 0,
                   child: Row(
@@ -2071,17 +2076,52 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final isLargeScreen = tier == HomeHeroContentTier.wide;
     final alignLeft = isLargeScreen;
     final contentMetrics = homeHeroContentMetrics(tier: tier);
-    // The billboard shows a square subject on a narrow box (phone or
-    // tablet-portrait) when one exists — the layout below shrinks the sharp
-    // frame to a small, cropped-free island there instead of stretching a
-    // 16:9 backdrop across the full hero, so a calmer square subject beats a
-    // blown-up backdrop. The 16:9 backdrop is still the fallback ahead of the
-    // blurred poster/thumb. The title is drawn in app typography either way.
-    // Null only when the item has no artwork at all.
-    final billboardArt = heroItem.billboardArt(containerAspectRatio: screenWidth / heroHeight);
+    // The sharp layer is top-anchored, so on an iPhone its top edge lands under
+    // the Dynamic Island. Push it clear, and run it edge to edge, but only
+    // there: this gate has to exclude iPad-portrait (which keeps the centred
+    // island on a much wider canvas), iPhone-landscape (cutout on the side,
+    // nothing to clear at the top), and every non-iOS platform.
+    //
+    // `isHandheldIOS` is `!isTV() && Theme.of(context).platform ==
+    // TargetPlatform.iOS`, so Android reports `android` and macOS reports
+    // `macOS` and both fall out here without a separate `Platform.isIOS`
+    // check. In portrait `shortestSide` is the screen width, so the
+    // `ScreenBreakpoints.mobile` (600) test keeps iPad's 768/834 out while
+    // letting every phone width through. tvOS never reaches this builder at
+    // all: `_buildDiscoverContent` branches to `_buildTvContent` first.
+    final size = MediaQuery.sizeOf(context);
+    final isIPhonePortrait =
+        PlatformDetector.isHandheldIOS(context) &&
+        MediaQuery.orientationOf(context) == Orientation.portrait &&
+        size.shortestSide < ScreenBreakpoints.mobile;
+    // Edge to edge on a phone. A centred island at 82% reads as a small card
+    // there rather than a hero; iPad keeps the island, where the canvas is
+    // wide enough for it to read as a composition.
+    final sharpPresentation = isIPhonePortrait ? HomeHeroSharpPresentation.fullWidth : HomeHeroSharpPresentation.island;
+    // The source choice follows that composition, which is why it is decided
+    // after it: a square source is the calmer subject inside an island, but at
+    // full width it becomes a block as tall as the screen is wide with the
+    // clear-logo across it. See `MediaItem.billboardArt`. Null only when the
+    // item has no artwork at all.
+    final billboardArt = heroItem.billboardArt(
+      containerAspectRatio: screenWidth / heroHeight,
+      narrowBoxIsFullWidth: isIPhonePortrait,
+    );
+    // `viewPadding`, not `padding`: the hero sits in a Scaffold body that can
+    // zero `padding.top`, and `viewPadding` also stays put when the keyboard
+    // opens. No extra breathing room on top of it — the artwork is meant to
+    // meet the bottom of the hardware safe area exactly.
+    final topViewPadding = MediaQuery.viewPaddingOf(context).top;
+    final requestedSharpTopInset = isIPhonePortrait ? topViewPadding : 0.0;
     final artGeometry = billboardArt == null
         ? null
-        : homeHeroArtGeometry(screenWidth: screenWidth, heroHeight: heroHeight, kind: billboardArt.kind);
+        : homeHeroArtGeometry(
+            screenWidth: screenWidth,
+            heroHeight: heroHeight,
+            kind: billboardArt.kind,
+            requestedSharpTopInset: requestedSharpTopInset,
+            presentation: sharpPresentation,
+          );
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final heroLogoMetrics = homeHeroLogoConstraints(screenWidth: screenWidth, tier: tier);
