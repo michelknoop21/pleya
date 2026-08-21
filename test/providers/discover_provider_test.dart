@@ -13,6 +13,7 @@ import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/recommendations/recommendation_service.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/utils/watch_state_notifier.dart';
 
@@ -88,6 +89,43 @@ class _FakeAggregationService extends DataAggregationService {
     lastHubsServerIds = serverIds;
     return (hubs: hubsResult(), succeededServerIds: hubSucceededServerIds ?? serverIds ?? const {'server_1'});
   }
+}
+
+/// Counts how often the feed asks for personalized rows and what the imported
+/// history sync answered, so the "no new data, no extra work" contract is
+/// measured rather than assumed.
+class _FakeRecommendationService implements RecommendationService {
+  _FakeRecommendationService({this.syncResult = false});
+
+  bool syncResult;
+  int buildCalls = 0;
+  int syncCalls = 0;
+
+  @override
+  String get profileId => 'p1';
+
+  @override
+  Future<List<MediaHub>> buildRows(
+    List<MediaServerClient> clients, {
+    List<MediaItem> hubItems = const [],
+    Set<String> excludeKeys = const {},
+    int? nowMs,
+  }) async {
+    buildCalls++;
+    return const [];
+  }
+
+  @override
+  Future<bool> syncImportedHistory() async {
+    syncCalls++;
+    return syncResult;
+  }
+
+  @override
+  void invalidateCandidates() {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeClient implements MediaServerClient {
@@ -501,5 +539,53 @@ void main() {
 
     await provider.refreshContinueWatching();
     expect(provider.loadGeneration, initial + 1);
+  });
+
+  group('imported history refresh', () {
+    Future<DiscoverProvider> loadWith(_FakeRecommendationService service) async {
+      final p = DiscoverProvider(
+        multiServer,
+        hiddenLibraries,
+        libraries,
+        isProfileBinding: () => isBinding,
+        recommendations: service,
+      );
+      aggregation.onDeckResult = () => [_item('a')];
+      aggregation.hubsResult = () => [_hub('hub-1')];
+      await p.load();
+      // The recommendation pass runs unawaited off the load.
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      return p;
+    }
+
+    test('no new data means one personalized pass and no hub refetch', () async {
+      final service = _FakeRecommendationService(syncResult: false);
+      final p = await loadWith(service);
+      addTearDown(p.dispose);
+
+      expect(service.syncCalls, 1);
+      expect(service.buildCalls, 1, reason: 'nothing new, so nothing to rebuild');
+      expect(aggregation.hubCalls, 1, reason: 'the sync never triggers a hub refetch');
+    });
+
+    test('new data means exactly one extra personalized pass', () async {
+      final service = _FakeRecommendationService(syncResult: true);
+      final p = await loadWith(service);
+      addTearDown(p.dispose);
+
+      expect(service.syncCalls, 1);
+      expect(service.buildCalls, 2, reason: 'once before the sync, once after');
+      expect(aggregation.hubCalls, 1, reason: 'still no hub refetch');
+    });
+
+    test('without a recommendation service the feed behaves exactly as before', () async {
+      aggregation.onDeckResult = () => [_item('a')];
+      aggregation.hubsResult = () => [_hub('hub-1')];
+      await provider.load();
+      await Future<void>.delayed(Duration.zero);
+      expect(provider.hubs.map((h) => h.id), ['hub-1']);
+      expect(aggregation.hubCalls, 1);
+    });
   });
 }

@@ -461,12 +461,28 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// so the personalized rows below them can exclude the seed items (both read
   /// `_seedHubs`/`_hubs`), avoiding the same title appearing in adjacent rows.
   Future<void> _loadRecommendationRows() async {
+    final generation = _loadGeneration;
     try {
       await _loadBecauseYouWatched();
     } catch (e) {
       appLogger.w('DiscoverProvider: seed rows failed', error: e);
     }
+    // Show what is already known first. Pulling external history can take a
+    // round trip or several, and the feed must never wait on it.
     await _loadPersonalizedRows();
+
+    final service = recommendations;
+    if (service == null) return;
+    try {
+      // Only rebuild when the sync actually produced new rows; an unchanged
+      // profile costs one no-op call and no extra notify.
+      if (await service.syncImportedHistory()) {
+        if (isDisposed || generation != _loadGeneration) return;
+        await _loadPersonalizedRows();
+      }
+    } catch (e) {
+      appLogger.w('DiscoverProvider: imported history sync failed', error: e);
+    }
   }
 
   Future<void> _loadBecauseYouWatched() async {

@@ -39,6 +39,22 @@ enum OfflineActionType {
   };
 }
 
+/// Retention for the on-device taste log: the newest [kProfileInteractionCap]
+/// rows per profile, none older than [kInteractionRetentionDays]. The day count
+/// is a ceiling on age, not a promise that a busy year fits.
+const int kProfileInteractionCap = 5000;
+const int kInteractionRetentionDays = 365;
+
+/// [MediaInteractions.source] values.
+const String kInteractionSourceLocal = 'local';
+const String kInteractionSourceTautulli = 'tautulli';
+
+/// Partial unique index; drift's `createAll()` has no way to express one.
+const String _sqlImportedInteractionUniqueIndex =
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_interactions_source_event '
+    'ON media_interactions (profile_id, source_event_id) '
+    'WHERE source_event_id IS NOT NULL';
+
 @DriftDatabase(
   tables: [
     DownloadedMedia,
@@ -52,6 +68,7 @@ enum OfflineActionType {
     ProfileConnections,
     MediaInteractions,
     AffinitySnapshots,
+    HistorySyncCursors,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -63,7 +80,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration {
@@ -79,6 +96,9 @@ class AppDatabase extends _$AppDatabase {
       },
       onCreate: (Migrator m) async {
         await m.createAll();
+        // createAll() cannot express a partial index, so it is issued by hand
+        // here and in the v19 upgrade block.
+        await customStatement(_sqlImportedInteractionUniqueIndex);
       },
       onUpgrade: (Migrator m, int from, int to) async {
         if (from < 7) {
@@ -236,24 +256,76 @@ class AppDatabase extends _$AppDatabase {
             () => m.addColumn(downloadedMedia, downloadedMedia.autoPaused),
           );
         }
+        if (from < 19) {
+          appLogger.i('Adding imported-history columns and cursors (v19 migration)');
+          for (final column in [
+            mediaInteractions.source,
+            mediaInteractions.sourceEventId,
+            mediaInteractions.sourceServerId,
+            mediaInteractions.completionPercent,
+            mediaInteractions.playSeconds,
+          ]) {
+            await _ignoreAlreadyExists(
+              'MediaInteractions.${column.$name} column',
+              () => m.addColumn(mediaInteractions, column),
+            );
+          }
+          await _ignoreAlreadyExists(
+            'AffinitySnapshots.enabledKey column',
+            () => m.addColumn(affinitySnapshots, affinitySnapshots.enabledKey),
+          );
+          await _ignoreAlreadyExists('HistorySyncCursors table', () => m.createTable(historySyncCursors));
+          await _ignoreAlreadyExists('MediaInteractions item index', () => m.createIndex(idxInteractionsProfileItem));
+          await _ignoreAlreadyExists(
+            'MediaInteractions imported-event unique index',
+            () => customStatement(_sqlImportedInteractionUniqueIndex),
+          );
+        }
       },
     );
   }
 
   // --- Recommendation engine (MediaInteractions / AffinitySnapshots) --------
 
+  /// Bumped on every [deleteRecommendationDataForProfile]. A long-running
+  /// import captures the value at the start and re-reads it right before each
+  /// write, so a profile deletion that lands mid-import cannot be followed by
+  /// rows reappearing under the deleted profile. Static because the database
+  /// object itself can be rebuilt with the provider tree.
+  static final Map<String, int> _recommendationEpochs = {};
+
+  static int recommendationEpoch(String profileId) => _recommendationEpochs[profileId] ?? 0;
+
   /// Records one interaction row and prunes history beyond the retention
-  /// window (365 days / 5000 rows per profile) in the same call.
+  /// window in the same call.
   Future<void> insertMediaInteraction(MediaInteractionsCompanion entry, {required String profileId}) async {
     await into(mediaInteractions).insert(entry);
-    final cutoff = DateTime.now().subtract(const Duration(days: 365)).millisecondsSinceEpoch;
+    await _pruneInteractions(profileId);
+  }
+
+  /// Inserts imported rows in one batch and prunes once at the end.
+  ///
+  /// [InsertMode.insertOrIgnore] plus the partial unique index on
+  /// (profile_id, source_event_id) makes a re-import a no-op, so an overlapping
+  /// window costs nothing. Pruning per row the way [insertMediaInteraction]
+  /// does would add two queries per imported record.
+  Future<void> insertImportedInteractions(List<MediaInteractionsCompanion> entries, {required String profileId}) async {
+    if (entries.isEmpty) return;
+    await batch((b) => b.insertAll(mediaInteractions, entries, mode: InsertMode.insertOrIgnore));
+    await _pruneInteractions(profileId);
+  }
+
+  /// Retention: at most [kProfileInteractionCap] rows per profile, none older
+  /// than [kInteractionRetentionDays]. The cap keeps the *newest* rows, which
+  /// is why an import that walks backwards has to stop once it is reached.
+  Future<void> _pruneInteractions(String profileId) async {
+    final cutoff = DateTime.now().subtract(const Duration(days: kInteractionRetentionDays)).millisecondsSinceEpoch;
     await (delete(
       mediaInteractions,
     )..where((t) => t.profileId.equals(profileId) & t.occurredAt.isSmallerThanValue(cutoff))).go();
-    // Row-count cap: delete the oldest rows past 5000.
     final excess = await customSelect(
-      'SELECT id FROM media_interactions WHERE profile_id = ? ORDER BY occurred_at DESC LIMIT -1 OFFSET 5000',
-      variables: [Variable.withString(profileId)],
+      'SELECT id FROM media_interactions WHERE profile_id = ? ORDER BY occurred_at DESC LIMIT -1 OFFSET ?',
+      variables: [Variable.withString(profileId), Variable.withInt(kProfileInteractionCap)],
       readsFrom: {mediaInteractions},
     ).get();
     if (excess.isNotEmpty) {
@@ -262,32 +334,106 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  /// All interactions for a profile, oldest first.
-  Future<List<MediaInteractionRow>> getMediaInteractions(String profileId) =>
+  /// Which rows may feed the taste vector, as a whitelist.
+  ///
+  /// Local rows always count. An imported row counts only when its server is
+  /// explicitly enabled, so an unknown server, a null server id, a disconnected
+  /// integration and a policy set to off all fail closed the same way. An empty
+  /// [enabledImportServerIds] therefore excludes every imported row, and it
+  /// never produces an empty `IN ()`.
+  Expression<bool> _scoringScope(Set<String> enabledImportServerIds) {
+    final imported = mediaInteractions.source.equals(kInteractionSourceTautulli);
+    if (enabledImportServerIds.isEmpty) return imported.not();
+    return imported.not() |
+        (mediaInteractions.sourceServerId.isNotNull() &
+            mediaInteractions.sourceServerId.isIn(enabledImportServerIds.toList()));
+  }
+
+  /// All interactions that may feed the taste vector, oldest first.
+  Future<List<MediaInteractionRow>> getMediaInteractions(
+    String profileId, {
+    Set<String> enabledImportServerIds = const {},
+  }) =>
       (select(mediaInteractions)
-            ..where((t) => t.profileId.equals(profileId))
+            ..where((t) => t.profileId.equals(profileId) & _scoringScope(enabledImportServerIds))
             ..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]))
           .get();
 
-  Future<int> countMediaInteractions(String profileId) async {
+  /// Counts interactions. Pass [enabledImportServerIds] to count exactly the
+  /// rows the vector is built from; omit it for the storage-side count the
+  /// retention cap is about.
+  Future<int> countMediaInteractions(String profileId, {Set<String>? enabledImportServerIds}) async {
     final count = countAll();
     final query = selectOnly(mediaInteractions)
       ..addColumns([count])
-      ..where(mediaInteractions.profileId.equals(profileId));
+      ..where(
+        mediaInteractions.profileId.equals(profileId) &
+            (enabledImportServerIds == null ? const Constant(true) : _scoringScope(enabledImportServerIds)),
+      );
     final row = await query.getSingle();
     return row.read(count) ?? 0;
   }
 
-  /// Timestamp of the most recent interaction, or 0 when there are none. Used
-  /// alongside the row count to detect a stale affinity snapshot even when the
-  /// count is pinned at the retention cap (rows rotate but count stays equal).
-  Future<int> latestInteractionAt(String profileId) async {
+  /// Timestamp of the most recent scoring-eligible interaction, or 0 when there
+  /// are none. Used alongside the row count to detect a stale affinity snapshot
+  /// even when the count is pinned at the retention cap (rows rotate but count
+  /// stays equal).
+  Future<int> latestInteractionAt(String profileId, {Set<String> enabledImportServerIds = const {}}) async {
     final maxAt = mediaInteractions.occurredAt.max();
     final query = selectOnly(mediaInteractions)
       ..addColumns([maxAt])
-      ..where(mediaInteractions.profileId.equals(profileId));
+      ..where(mediaInteractions.profileId.equals(profileId) & _scoringScope(enabledImportServerIds));
     final row = await query.getSingle();
     return row.read(maxAt) ?? 0;
+  }
+
+  /// Which of [sourceEventIds] this profile already has.
+  ///
+  /// `insertOrIgnore` plus the partial unique index would silently drop the
+  /// duplicates anyway, but silently is the problem: without this the importer
+  /// reports rows it sent rather than rows it added, and every overlapping
+  /// forward pass would look like new data and trigger a needless rebuild.
+  Future<Set<String>> existingImportedEventIds(String profileId, Set<String> sourceEventIds) async {
+    if (sourceEventIds.isEmpty) return const {};
+    final rows =
+        await (selectOnly(mediaInteractions)
+              ..addColumns([mediaInteractions.sourceEventId])
+              ..where(
+                mediaInteractions.profileId.equals(profileId) &
+                    mediaInteractions.sourceEventId.isIn(sourceEventIds.toList()),
+              ))
+            .get();
+    return {for (final row in rows) ?row.read(mediaInteractions.sourceEventId)};
+  }
+
+  /// Timestamps of positive *local* playback interactions for the given items
+  /// inside a time window, grouped by global key.
+  ///
+  /// One bundled query per import page instead of one per row. The
+  /// `event_weight > 0` clause is the point: a dismissal must never be treated
+  /// as "we already saw this play" and swallow a completed Tautulli view.
+  Future<Map<String, List<int>>> localPositiveInteractionsIn(
+    String profileId,
+    Set<String> globalKeys,
+    int fromMs,
+    int toMs,
+  ) async {
+    if (globalKeys.isEmpty) return const {};
+    final rows =
+        await (select(mediaInteractions)..where(
+              (t) =>
+                  t.profileId.equals(profileId) &
+                  t.source.equals(kInteractionSourceLocal) &
+                  t.eventWeight.isBiggerThanValue(0) &
+                  t.globalKey.isIn(globalKeys.toList()) &
+                  t.occurredAt.isBetweenValues(fromMs, toMs),
+            ))
+            .get();
+    final out = <String, List<int>>{};
+    for (final row in rows) {
+      out.putIfAbsent(row.globalKey, () => []).add(row.occurredAt);
+    }
+    return out;
   }
 
   Future<void> upsertAffinitySnapshot(AffinitySnapshotsCompanion entry) =>
@@ -296,10 +442,20 @@ class AppDatabase extends _$AppDatabase {
   Future<AffinitySnapshotRow?> getAffinitySnapshot(String profileId) =>
       (select(affinitySnapshots)..where((t) => t.profileId.equals(profileId))).getSingleOrNull();
 
+  Future<HistorySyncCursorRow?> getHistorySyncCursor(String profileId, String serverId, String source) =>
+      (select(historySyncCursors)
+            ..where((t) => t.profileId.equals(profileId) & t.serverId.equals(serverId) & t.source.equals(source)))
+          .getSingleOrNull();
+
+  Future<void> upsertHistorySyncCursor(HistorySyncCursorsCompanion entry) =>
+      into(historySyncCursors).insertOnConflictUpdate(entry);
+
   /// Wipes all taste data for a profile (profile deletion or user request).
   Future<void> deleteRecommendationDataForProfile(String profileId) async {
+    _recommendationEpochs[profileId] = recommendationEpoch(profileId) + 1;
     await (delete(mediaInteractions)..where((t) => t.profileId.equals(profileId))).go();
     await (delete(affinitySnapshots)..where((t) => t.profileId.equals(profileId))).go();
+    await (delete(historySyncCursors)..where((t) => t.profileId.equals(profileId))).go();
   }
 
   Future<void> _ignoreAlreadyExists(String label, Future<void> Function() operation) async {

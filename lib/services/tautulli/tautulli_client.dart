@@ -325,7 +325,9 @@ class TautulliClient {
   /// carries `watched_status`; there is no server-side filter for it, so the
   /// filtering happens here. Meant for movies, where the row count is small.
   Future<List<TautulliHistoryEntry>> watchersOf(String ratingKey, {int limit = 100}) async {
-    final page = await history(ratingKey: ratingKey, length: limit);
+    // Grouped on purpose: this asks "who watched this", so five consecutive
+    // plays by one person should cost one row out of the budget, not five.
+    final page = await history(ratingKey: ratingKey, length: limit, grouping: true);
     final seen = <int>{};
     return [
       for (final e in page.entries)
@@ -335,12 +337,28 @@ class TautulliClient {
 
   /// Raw playback history. Filter by item ([ratingKey]), by series
   /// ([grandparentRatingKey]) or by person ([userId]).
+  ///
+  /// [after] and [before] are `YYYY-MM-DD` and both *inclusive*, which is what
+  /// Tautulli's own docs say ("History after and including the date"). They are
+  /// the time cursor; [start] stays a pagination offset and is never a date.
+  ///
+  /// [grouping] defaults to off. Tautulli's default groups consecutive plays of
+  /// the same item into one synthetic row carrying `group_count`/`group_ids`,
+  /// which makes `row_id` unstable and therefore useless as an idempotency key.
+  /// [includeActivity] defaults to off so a session still in progress does not
+  /// arrive as history.
   Future<TautulliHistoryPage> history({
     String? ratingKey,
     String? grandparentRatingKey,
     int? userId,
     int length = 25,
     int start = 0,
+    bool grouping = false,
+    bool includeActivity = false,
+    String? orderColumn,
+    String? orderDir,
+    String? after,
+    String? before,
   }) async {
     final data = await _call(
       'get_history',
@@ -350,6 +368,12 @@ class TautulliClient {
         'user_id': ?userId,
         'length': length,
         'start': start,
+        'grouping': grouping ? 1 : 0,
+        'include_activity': includeActivity ? 1 : 0,
+        'order_column': ?orderColumn,
+        'order_dir': ?orderDir,
+        'after': ?after,
+        'before': ?before,
       },
     );
     return data is Map<String, dynamic> ? TautulliHistoryPage.fromJson(data) : TautulliHistoryPage.empty;

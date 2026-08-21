@@ -82,6 +82,26 @@ class TautulliHistoryEntry {
   /// Seconds actually played.
   final int? duration;
 
+  /// Seconds actually played, read from `play_duration` with `duration` as a
+  /// fallback.
+  ///
+  /// Inside `get_history` these are literally the same value: `datafactory.py`
+  /// writes `'duration': item['play_duration']` next to
+  /// `'play_duration': item['play_duration']`, and that value is
+  /// `SUM(stopped - started) - SUM(paused_counter)`. The media duration is not
+  /// in this response at all; it is only used internally as the denominator for
+  /// `percent_complete`.
+  ///
+  /// The separate name exists because the same key means something else one
+  /// command over: in `get_activity`, `duration` is the media length in
+  /// milliseconds. Anything reasoning about how much was watched should say
+  /// [playSeconds] so the two can never be swapped by accident.
+  final int? playSeconds;
+
+  /// `pms_identifier` of the server the play happened on. Absent on older
+  /// Tautulli builds, which is why a missing value is not a rejection.
+  final String? machineId;
+
   final String? platform;
   final String? player;
   final String? mediaType;
@@ -103,6 +123,8 @@ class TautulliHistoryEntry {
     required this.percentComplete,
     this.date,
     this.duration,
+    this.playSeconds,
+    this.machineId,
     this.platform,
     this.player,
     this.mediaType,
@@ -131,6 +153,8 @@ class TautulliHistoryEntry {
       percentComplete: _int(json['percent_complete']) ?? 0,
       date: _int(json['date']),
       duration: _int(json['duration']),
+      playSeconds: _int(json['play_duration']) ?? _int(json['duration']),
+      machineId: _str(json['machine_id']),
       platform: _str(json['platform']),
       player: _str(json['player']),
       mediaType: _str(json['media_type']),

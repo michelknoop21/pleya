@@ -36,6 +36,9 @@ import '../services/livetv/plex_favorite_channels_service.dart';
 import '../services/recommendations/interaction_recorder.dart';
 import '../services/recommendations/personalized_rows_builder.dart';
 import '../services/recommendations/recommendation_service.dart';
+import '../services/recommendations/tautulli_history_importer.dart';
+import '../services/recommendations/tautulli_import_binding.dart';
+import '../services/settings_service.dart';
 import '../services/storage_service.dart';
 import '../services/tautulli/tautulli_server_binding.dart';
 import '../utils/app_logger.dart';
@@ -147,6 +150,17 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               ChangeNotifierProvider(
                 create: (context) {
                   final provider = TautulliProvider();
+                  // A Tautulli record belongs to a server, so the provider has
+                  // to be able to ask which servers exist and which of them this
+                  // profile administers. Closures, because a server can still
+                  // register after the profile has bound, and the listener so a
+                  // late registration re-resolves instead of going unnoticed.
+                  final multiServer = context.read<MultiServerProvider>();
+                  provider.attachServerResolvers(
+                    serverIds: () => multiServer.serverManager.serverIds,
+                    isOwnerOrAdmin: multiServer.serverManager.isOwnerOrAdmin,
+                    registryChanges: multiServer,
+                  );
                   unawaited(
                     provider.onActiveProfileChanged(activeId).catchError((Object e, StackTrace s) {
                       appLogger.w('Tautulli profile hydrate failed', error: e, stackTrace: s);
@@ -217,15 +231,58 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               // On-device recommendation learning + serving, scoped to this
               // profile (torn down with the KeyedSubtree on profile switch).
               Provider<RecommendationService>(
-                create: (context) => RecommendationService(
-                  profileId: activeId ?? '',
-                  database: context.read<AppDatabase>(),
-                  titles: PersonalizedRowTitles(
-                    topPicks: t.discover.topPicksForYou,
-                    becauseYouLike: (genre) => t.discover.becauseYouLike(genre: genre),
-                    hiddenGems: t.discover.hiddenGems,
-                  ),
-                ),
+                create: (context) {
+                  final database = context.read<AppDatabase>();
+                  final tautulli = context.read<TautulliProvider>();
+                  final multiServer = context.read<MultiServerProvider>();
+                  final activeProfile = context.read<ActiveProfileProvider>();
+                  // Nullable read: without a Home service there is no way to
+                  // resolve which Plex account this profile is, and the binding
+                  // then refuses with `ambiguousUser` instead of guessing.
+                  final plexHome = context.read<PlexHomeService?>();
+                  final profileId = activeId ?? '';
+
+                  return RecommendationService(
+                    profileId: profileId,
+                    database: database,
+                    titles: PersonalizedRowTitles(
+                      topPicks: t.discover.topPicksForYou,
+                      becauseYouLike: (genre) => t.discover.becauseYouLike(genre: genre),
+                      hiddenGems: t.discover.hiddenGems,
+                    ),
+                    enabledImportServerIds: tautulli.enabledImportServerIds,
+                    importerFactory: (importProfileId, serverId) {
+                      // The binding is re-resolved per sync rather than captured,
+                      // so a policy change, a disconnect or a server that only
+                      // just registered is picked up on the next attempt.
+                      final binding = resolveTautulliImportBinding(
+                        personalizedRecommendationsEnabled:
+                            SettingsService.instanceOrNull?.read(SettingsService.personalizedRecommendations) ?? true,
+                        integration: tautulli.integrationFor(serverId),
+                        activeProfileId: importProfileId,
+                        homeUsers: plexHome?.current ?? const {},
+                        registeredServerIds: multiServer.serverManager.serverIds,
+                        hasCatalogueClient: (id) => multiServer.serverManager.getClient(id) != null,
+                      );
+                      if (binding is TautulliImportRefusal) {
+                        appLogger.d('RecommendationService: import refused (${binding.reason.name})');
+                        return null;
+                      }
+                      final target = binding as TautulliImportTarget;
+                      final client = multiServer.serverManager.getClient(target.serverId);
+                      if (client == null) return null;
+                      return TautulliHistoryImporter(
+                        database: database,
+                        access: tautulli,
+                        target: target,
+                        client: client,
+                        // Re-checked before every write, not just at the start:
+                        // the sync outlives a profile switch otherwise.
+                        isCurrentProfile: () => activeProfile.activeId == importProfileId,
+                      );
+                    },
+                  );
+                },
               ),
               Provider<InteractionRecorder>(
                 lazy: false,

@@ -4594,6 +4594,15 @@ class TranslationsTautulliEn {
 	/// en: 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.'
 	String get adminOnlyNote => 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.';
 
+	/// en: 'Use history for recommendations'
+	String get useHistoryForRecommendations => 'Use history for recommendations';
+
+	/// en: 'Uses viewing history from this Tautulli server to improve personal recommendations for every profile on this device. Each profile only ever gets its own history, and processing stays local in Pleya.'
+	String get useHistoryForRecommendationsDescription => 'Uses viewing history from this Tautulli server to improve personal recommendations for every profile on this device. Each profile only ever gets its own history, and processing stays local in Pleya.';
+
+	/// en: 'Two different Tautulli pairings were found for this server, so history is not being used until you reconnect the one you want to keep.'
+	String get integrationConflictNote => 'Two different Tautulli pairings were found for this server, so history is not being used until you reconnect the one you want to keep.';
+
 	/// en: 'Tautulli address'
 	String get serverUrl => 'Tautulli address';
 
@@ -7304,6 +7313,9 @@ extension on Translations {
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli tracks who watches what on your Plex server. Connect it to see viewers, statistics and live activity inside Pleya.',
 			'tautulli.adminOnlyNote' => 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.',
+			'tautulli.useHistoryForRecommendations' => 'Use history for recommendations',
+			'tautulli.useHistoryForRecommendationsDescription' => 'Uses viewing history from this Tautulli server to improve personal recommendations for every profile on this device. Each profile only ever gets its own history, and processing stays local in Pleya.',
+			'tautulli.integrationConflictNote' => 'Two different Tautulli pairings were found for this server, so history is not being used until you reconnect the one you want to keep.',
 			'tautulli.serverUrl' => 'Tautulli address',
 			'tautulli.serverUrlHint' => 'http://192.168.1.10:8181 or https://tautulli.example.com',
 			'tautulli.authMode' => 'How to connect',
@@ -7339,11 +7351,11 @@ extension on Translations {
 			'nowWatching.transcode' => 'Transcode',
 			'nowWatching.paused' => 'Paused',
 			'nowWatching.remaining' => ({required Object time}) => '${time} left',
+			_ => null,
+		} ?? switch (path) {
 			'nowWatching.watchingNow' => ({required Object name}) => '${name} is watching this now',
 			'nowWatching.hardware' => 'Hardware',
 			'nowWatching.onLan' => 'On your network',
-			_ => null,
-		} ?? switch (path) {
 			'nowWatching.onWan' => 'Remote',
 			'nowWatching.unavailable' => 'Tautulli did not answer',
 			'nowWatching.sidebarLabel' => 'Now watching',

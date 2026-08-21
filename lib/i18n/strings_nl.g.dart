@@ -1995,6 +1995,9 @@ class _TranslationsTautulliNl extends TranslationsTautulliEn {
 	@override String get title => 'Tautulli';
 	@override String get subtitle => 'Tautulli houdt bij wie wat kijkt op je Plex-server. Koppel hem om kijkers, statistieken en live activiteit in Pleya te zien.';
 	@override String get adminOnlyNote => 'Tautulli heeft één sleutel die zijn hele beheer-API opent, dus die blijft op dit toestel en alleen jij ziet wat hij meldt. De mensen met wie je je server deelt merken er niets van en hoeven niets in te stellen.';
+	@override String get useHistoryForRecommendations => 'Kijkgeschiedenis gebruiken voor aanbevelingen';
+	@override String get useHistoryForRecommendationsDescription => 'Gebruikt kijkgeschiedenis van deze Tautulli-server om persoonlijke aanbevelingen te verbeteren voor elk profiel op dit apparaat. Elk profiel krijgt alleen zijn eigen geschiedenis en de verwerking blijft lokaal in Pleya.';
+	@override String get integrationConflictNote => 'Er zijn twee verschillende Tautulli-koppelingen voor deze server gevonden, dus de kijkgeschiedenis wordt niet gebruikt tot je opnieuw koppelt met de koppeling die je wilt houden.';
 	@override String get serverUrl => 'Tautulli-adres';
 	@override String get serverUrlHint => 'http://192.168.1.10:8181 of https://tautulli.voorbeeld.nl';
 	@override String get authMode => 'Hoe koppelen';
@@ -3999,6 +4002,9 @@ extension on TranslationsNl {
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli houdt bij wie wat kijkt op je Plex-server. Koppel hem om kijkers, statistieken en live activiteit in Pleya te zien.',
 			'tautulli.adminOnlyNote' => 'Tautulli heeft één sleutel die zijn hele beheer-API opent, dus die blijft op dit toestel en alleen jij ziet wat hij meldt. De mensen met wie je je server deelt merken er niets van en hoeven niets in te stellen.',
+			'tautulli.useHistoryForRecommendations' => 'Kijkgeschiedenis gebruiken voor aanbevelingen',
+			'tautulli.useHistoryForRecommendationsDescription' => 'Gebruikt kijkgeschiedenis van deze Tautulli-server om persoonlijke aanbevelingen te verbeteren voor elk profiel op dit apparaat. Elk profiel krijgt alleen zijn eigen geschiedenis en de verwerking blijft lokaal in Pleya.',
+			'tautulli.integrationConflictNote' => 'Er zijn twee verschillende Tautulli-koppelingen voor deze server gevonden, dus de kijkgeschiedenis wordt niet gebruikt tot je opnieuw koppelt met de koppeling die je wilt houden.',
 			'tautulli.serverUrl' => 'Tautulli-adres',
 			'tautulli.serverUrlHint' => 'http://192.168.1.10:8181 of https://tautulli.voorbeeld.nl',
 			'tautulli.authMode' => 'Hoe koppelen',

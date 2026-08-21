@@ -5527,6 +5527,60 @@ class $MediaInteractionsTable extends MediaInteractions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('local'),
+  );
+  static const VerificationMeta _sourceEventIdMeta = const VerificationMeta(
+    'sourceEventId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceEventId = GeneratedColumn<String>(
+    'source_event_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceServerIdMeta = const VerificationMeta(
+    'sourceServerId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceServerId = GeneratedColumn<String>(
+    'source_server_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _completionPercentMeta = const VerificationMeta(
+    'completionPercent',
+  );
+  @override
+  late final GeneratedColumn<int> completionPercent = GeneratedColumn<int>(
+    'completion_percent',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _playSecondsMeta = const VerificationMeta(
+    'playSeconds',
+  );
+  @override
+  late final GeneratedColumn<int> playSeconds = GeneratedColumn<int>(
+    'play_seconds',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5544,6 +5598,11 @@ class $MediaInteractionsTable extends MediaInteractions
     year,
     communityRating,
     seriesKey,
+    source,
+    sourceEventId,
+    sourceServerId,
+    completionPercent,
+    playSeconds,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5665,6 +5724,48 @@ class $MediaInteractionsTable extends MediaInteractions
         seriesKey.isAcceptableOrUnknown(data['series_key']!, _seriesKeyMeta),
       );
     }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    if (data.containsKey('source_event_id')) {
+      context.handle(
+        _sourceEventIdMeta,
+        sourceEventId.isAcceptableOrUnknown(
+          data['source_event_id']!,
+          _sourceEventIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_server_id')) {
+      context.handle(
+        _sourceServerIdMeta,
+        sourceServerId.isAcceptableOrUnknown(
+          data['source_server_id']!,
+          _sourceServerIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('completion_percent')) {
+      context.handle(
+        _completionPercentMeta,
+        completionPercent.isAcceptableOrUnknown(
+          data['completion_percent']!,
+          _completionPercentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('play_seconds')) {
+      context.handle(
+        _playSecondsMeta,
+        playSeconds.isAcceptableOrUnknown(
+          data['play_seconds']!,
+          _playSecondsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -5734,6 +5835,26 @@ class $MediaInteractionsTable extends MediaInteractions
         DriftSqlType.string,
         data['${effectivePrefix}series_key'],
       ),
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      sourceEventId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_event_id'],
+      ),
+      sourceServerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_server_id'],
+      ),
+      completionPercent: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}completion_percent'],
+      ),
+      playSeconds: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}play_seconds'],
+      ),
     );
   }
 
@@ -5777,6 +5898,26 @@ class MediaInteractionRow extends DataClass
 
   /// Grandparent (series) global key for episode events
   final String? seriesKey;
+
+  /// Where the row came from: `'local'` for something played in Pleya,
+  /// `'tautulli'` for an imported history record.
+  final String source;
+
+  /// Stable external event id (`tautulli:{machineIdentifier}:{rowId}`), so a
+  /// re-import is a no-op. Null for local rows; a partial unique index on
+  /// (profile_id, source_event_id) enforces it only where it is set.
+  final String? sourceEventId;
+
+  /// The server the import was bound to. Needed to drop a whole server's
+  /// imported history from scoring without deleting it.
+  final String? sourceServerId;
+
+  /// Tautulli `percent_complete` (0-100), for diagnostics and future tuning.
+  final int? completionPercent;
+
+  /// Seconds actually played, from Tautulli `play_duration`. Not the media
+  /// duration: `get_activity` uses the same key for something else entirely.
+  final int? playSeconds;
   const MediaInteractionRow({
     required this.id,
     required this.profileId,
@@ -5793,6 +5934,11 @@ class MediaInteractionRow extends DataClass
     this.year,
     this.communityRating,
     this.seriesKey,
+    required this.source,
+    this.sourceEventId,
+    this.sourceServerId,
+    this.completionPercent,
+    this.playSeconds,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5820,6 +5966,19 @@ class MediaInteractionRow extends DataClass
     if (!nullToAbsent || seriesKey != null) {
       map['series_key'] = Variable<String>(seriesKey);
     }
+    map['source'] = Variable<String>(source);
+    if (!nullToAbsent || sourceEventId != null) {
+      map['source_event_id'] = Variable<String>(sourceEventId);
+    }
+    if (!nullToAbsent || sourceServerId != null) {
+      map['source_server_id'] = Variable<String>(sourceServerId);
+    }
+    if (!nullToAbsent || completionPercent != null) {
+      map['completion_percent'] = Variable<int>(completionPercent);
+    }
+    if (!nullToAbsent || playSeconds != null) {
+      map['play_seconds'] = Variable<int>(playSeconds);
+    }
     return map;
   }
 
@@ -5846,6 +6005,19 @@ class MediaInteractionRow extends DataClass
       seriesKey: seriesKey == null && nullToAbsent
           ? const Value.absent()
           : Value(seriesKey),
+      source: Value(source),
+      sourceEventId: sourceEventId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceEventId),
+      sourceServerId: sourceServerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceServerId),
+      completionPercent: completionPercent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completionPercent),
+      playSeconds: playSeconds == null && nullToAbsent
+          ? const Value.absent()
+          : Value(playSeconds),
     );
   }
 
@@ -5870,6 +6042,11 @@ class MediaInteractionRow extends DataClass
       year: serializer.fromJson<int?>(json['year']),
       communityRating: serializer.fromJson<double?>(json['communityRating']),
       seriesKey: serializer.fromJson<String?>(json['seriesKey']),
+      source: serializer.fromJson<String>(json['source']),
+      sourceEventId: serializer.fromJson<String?>(json['sourceEventId']),
+      sourceServerId: serializer.fromJson<String?>(json['sourceServerId']),
+      completionPercent: serializer.fromJson<int?>(json['completionPercent']),
+      playSeconds: serializer.fromJson<int?>(json['playSeconds']),
     );
   }
   @override
@@ -5891,6 +6068,11 @@ class MediaInteractionRow extends DataClass
       'year': serializer.toJson<int?>(year),
       'communityRating': serializer.toJson<double?>(communityRating),
       'seriesKey': serializer.toJson<String?>(seriesKey),
+      'source': serializer.toJson<String>(source),
+      'sourceEventId': serializer.toJson<String?>(sourceEventId),
+      'sourceServerId': serializer.toJson<String?>(sourceServerId),
+      'completionPercent': serializer.toJson<int?>(completionPercent),
+      'playSeconds': serializer.toJson<int?>(playSeconds),
     };
   }
 
@@ -5910,6 +6092,11 @@ class MediaInteractionRow extends DataClass
     Value<int?> year = const Value.absent(),
     Value<double?> communityRating = const Value.absent(),
     Value<String?> seriesKey = const Value.absent(),
+    String? source,
+    Value<String?> sourceEventId = const Value.absent(),
+    Value<String?> sourceServerId = const Value.absent(),
+    Value<int?> completionPercent = const Value.absent(),
+    Value<int?> playSeconds = const Value.absent(),
   }) => MediaInteractionRow(
     id: id ?? this.id,
     profileId: profileId ?? this.profileId,
@@ -5928,6 +6115,17 @@ class MediaInteractionRow extends DataClass
         ? communityRating.value
         : this.communityRating,
     seriesKey: seriesKey.present ? seriesKey.value : this.seriesKey,
+    source: source ?? this.source,
+    sourceEventId: sourceEventId.present
+        ? sourceEventId.value
+        : this.sourceEventId,
+    sourceServerId: sourceServerId.present
+        ? sourceServerId.value
+        : this.sourceServerId,
+    completionPercent: completionPercent.present
+        ? completionPercent.value
+        : this.completionPercent,
+    playSeconds: playSeconds.present ? playSeconds.value : this.playSeconds,
   );
   MediaInteractionRow copyWithCompanion(MediaInteractionsCompanion data) {
     return MediaInteractionRow(
@@ -5958,6 +6156,19 @@ class MediaInteractionRow extends DataClass
           ? data.communityRating.value
           : this.communityRating,
       seriesKey: data.seriesKey.present ? data.seriesKey.value : this.seriesKey,
+      source: data.source.present ? data.source.value : this.source,
+      sourceEventId: data.sourceEventId.present
+          ? data.sourceEventId.value
+          : this.sourceEventId,
+      sourceServerId: data.sourceServerId.present
+          ? data.sourceServerId.value
+          : this.sourceServerId,
+      completionPercent: data.completionPercent.present
+          ? data.completionPercent.value
+          : this.completionPercent,
+      playSeconds: data.playSeconds.present
+          ? data.playSeconds.value
+          : this.playSeconds,
     );
   }
 
@@ -5978,7 +6189,12 @@ class MediaInteractionRow extends DataClass
           ..write('studio: $studio, ')
           ..write('year: $year, ')
           ..write('communityRating: $communityRating, ')
-          ..write('seriesKey: $seriesKey')
+          ..write('seriesKey: $seriesKey, ')
+          ..write('source: $source, ')
+          ..write('sourceEventId: $sourceEventId, ')
+          ..write('sourceServerId: $sourceServerId, ')
+          ..write('completionPercent: $completionPercent, ')
+          ..write('playSeconds: $playSeconds')
           ..write(')'))
         .toString();
   }
@@ -6000,6 +6216,11 @@ class MediaInteractionRow extends DataClass
     year,
     communityRating,
     seriesKey,
+    source,
+    sourceEventId,
+    sourceServerId,
+    completionPercent,
+    playSeconds,
   );
   @override
   bool operator ==(Object other) =>
@@ -6019,7 +6240,12 @@ class MediaInteractionRow extends DataClass
           other.studio == this.studio &&
           other.year == this.year &&
           other.communityRating == this.communityRating &&
-          other.seriesKey == this.seriesKey);
+          other.seriesKey == this.seriesKey &&
+          other.source == this.source &&
+          other.sourceEventId == this.sourceEventId &&
+          other.sourceServerId == this.sourceServerId &&
+          other.completionPercent == this.completionPercent &&
+          other.playSeconds == this.playSeconds);
 }
 
 class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
@@ -6038,6 +6264,11 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
   final Value<int?> year;
   final Value<double?> communityRating;
   final Value<String?> seriesKey;
+  final Value<String> source;
+  final Value<String?> sourceEventId;
+  final Value<String?> sourceServerId;
+  final Value<int?> completionPercent;
+  final Value<int?> playSeconds;
   const MediaInteractionsCompanion({
     this.id = const Value.absent(),
     this.profileId = const Value.absent(),
@@ -6054,6 +6285,11 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
     this.year = const Value.absent(),
     this.communityRating = const Value.absent(),
     this.seriesKey = const Value.absent(),
+    this.source = const Value.absent(),
+    this.sourceEventId = const Value.absent(),
+    this.sourceServerId = const Value.absent(),
+    this.completionPercent = const Value.absent(),
+    this.playSeconds = const Value.absent(),
   });
   MediaInteractionsCompanion.insert({
     this.id = const Value.absent(),
@@ -6071,6 +6307,11 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
     this.year = const Value.absent(),
     this.communityRating = const Value.absent(),
     this.seriesKey = const Value.absent(),
+    this.source = const Value.absent(),
+    this.sourceEventId = const Value.absent(),
+    this.sourceServerId = const Value.absent(),
+    this.completionPercent = const Value.absent(),
+    this.playSeconds = const Value.absent(),
   }) : profileId = Value(profileId),
        globalKey = Value(globalKey),
        mediaKind = Value(mediaKind),
@@ -6093,6 +6334,11 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
     Expression<int>? year,
     Expression<double>? communityRating,
     Expression<String>? seriesKey,
+    Expression<String>? source,
+    Expression<String>? sourceEventId,
+    Expression<String>? sourceServerId,
+    Expression<int>? completionPercent,
+    Expression<int>? playSeconds,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -6110,6 +6356,11 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
       if (year != null) 'year': year,
       if (communityRating != null) 'community_rating': communityRating,
       if (seriesKey != null) 'series_key': seriesKey,
+      if (source != null) 'source': source,
+      if (sourceEventId != null) 'source_event_id': sourceEventId,
+      if (sourceServerId != null) 'source_server_id': sourceServerId,
+      if (completionPercent != null) 'completion_percent': completionPercent,
+      if (playSeconds != null) 'play_seconds': playSeconds,
     });
   }
 
@@ -6129,6 +6380,11 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
     Value<int?>? year,
     Value<double?>? communityRating,
     Value<String?>? seriesKey,
+    Value<String>? source,
+    Value<String?>? sourceEventId,
+    Value<String?>? sourceServerId,
+    Value<int?>? completionPercent,
+    Value<int?>? playSeconds,
   }) {
     return MediaInteractionsCompanion(
       id: id ?? this.id,
@@ -6146,6 +6402,11 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
       year: year ?? this.year,
       communityRating: communityRating ?? this.communityRating,
       seriesKey: seriesKey ?? this.seriesKey,
+      source: source ?? this.source,
+      sourceEventId: sourceEventId ?? this.sourceEventId,
+      sourceServerId: sourceServerId ?? this.sourceServerId,
+      completionPercent: completionPercent ?? this.completionPercent,
+      playSeconds: playSeconds ?? this.playSeconds,
     );
   }
 
@@ -6197,6 +6458,21 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
     if (seriesKey.present) {
       map['series_key'] = Variable<String>(seriesKey.value);
     }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (sourceEventId.present) {
+      map['source_event_id'] = Variable<String>(sourceEventId.value);
+    }
+    if (sourceServerId.present) {
+      map['source_server_id'] = Variable<String>(sourceServerId.value);
+    }
+    if (completionPercent.present) {
+      map['completion_percent'] = Variable<int>(completionPercent.value);
+    }
+    if (playSeconds.present) {
+      map['play_seconds'] = Variable<int>(playSeconds.value);
+    }
     return map;
   }
 
@@ -6217,7 +6493,12 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
           ..write('studio: $studio, ')
           ..write('year: $year, ')
           ..write('communityRating: $communityRating, ')
-          ..write('seriesKey: $seriesKey')
+          ..write('seriesKey: $seriesKey, ')
+          ..write('source: $source, ')
+          ..write('sourceEventId: $sourceEventId, ')
+          ..write('sourceServerId: $sourceServerId, ')
+          ..write('completionPercent: $completionPercent, ')
+          ..write('playSeconds: $playSeconds')
           ..write(')'))
         .toString();
   }
@@ -6273,12 +6554,25 @@ class $AffinitySnapshotsTable extends AffinitySnapshots
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _enabledKeyMeta = const VerificationMeta(
+    'enabledKey',
+  );
+  @override
+  late final GeneratedColumn<String> enabledKey = GeneratedColumn<String>(
+    'enabled_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     profileId,
     vectorJson,
     eventCount,
     computedAt,
+    enabledKey,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6324,6 +6618,12 @@ class $AffinitySnapshotsTable extends AffinitySnapshots
     } else if (isInserting) {
       context.missing(_computedAtMeta);
     }
+    if (data.containsKey('enabled_key')) {
+      context.handle(
+        _enabledKeyMeta,
+        enabledKey.isAcceptableOrUnknown(data['enabled_key']!, _enabledKeyMeta),
+      );
+    }
     return context;
   }
 
@@ -6349,6 +6649,10 @@ class $AffinitySnapshotsTable extends AffinitySnapshots
         DriftSqlType.int,
         data['${effectivePrefix}computed_at'],
       )!,
+      enabledKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}enabled_key'],
+      )!,
     );
   }
 
@@ -6370,11 +6674,17 @@ class AffinitySnapshotRow extends DataClass
 
   /// Timestamp of computation (milliseconds since epoch)
   final int computedAt;
+
+  /// Sorted, joined set of import server ids that were counted in. Freshness
+  /// compares it, so flipping the admin policy or disconnecting invalidates the
+  /// snapshot immediately. The row count alone would not change at all.
+  final String enabledKey;
   const AffinitySnapshotRow({
     required this.profileId,
     required this.vectorJson,
     required this.eventCount,
     required this.computedAt,
+    required this.enabledKey,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6383,6 +6693,7 @@ class AffinitySnapshotRow extends DataClass
     map['vector_json'] = Variable<String>(vectorJson);
     map['event_count'] = Variable<int>(eventCount);
     map['computed_at'] = Variable<int>(computedAt);
+    map['enabled_key'] = Variable<String>(enabledKey);
     return map;
   }
 
@@ -6392,6 +6703,7 @@ class AffinitySnapshotRow extends DataClass
       vectorJson: Value(vectorJson),
       eventCount: Value(eventCount),
       computedAt: Value(computedAt),
+      enabledKey: Value(enabledKey),
     );
   }
 
@@ -6405,6 +6717,7 @@ class AffinitySnapshotRow extends DataClass
       vectorJson: serializer.fromJson<String>(json['vectorJson']),
       eventCount: serializer.fromJson<int>(json['eventCount']),
       computedAt: serializer.fromJson<int>(json['computedAt']),
+      enabledKey: serializer.fromJson<String>(json['enabledKey']),
     );
   }
   @override
@@ -6415,6 +6728,7 @@ class AffinitySnapshotRow extends DataClass
       'vectorJson': serializer.toJson<String>(vectorJson),
       'eventCount': serializer.toJson<int>(eventCount),
       'computedAt': serializer.toJson<int>(computedAt),
+      'enabledKey': serializer.toJson<String>(enabledKey),
     };
   }
 
@@ -6423,11 +6737,13 @@ class AffinitySnapshotRow extends DataClass
     String? vectorJson,
     int? eventCount,
     int? computedAt,
+    String? enabledKey,
   }) => AffinitySnapshotRow(
     profileId: profileId ?? this.profileId,
     vectorJson: vectorJson ?? this.vectorJson,
     eventCount: eventCount ?? this.eventCount,
     computedAt: computedAt ?? this.computedAt,
+    enabledKey: enabledKey ?? this.enabledKey,
   );
   AffinitySnapshotRow copyWithCompanion(AffinitySnapshotsCompanion data) {
     return AffinitySnapshotRow(
@@ -6441,6 +6757,9 @@ class AffinitySnapshotRow extends DataClass
       computedAt: data.computedAt.present
           ? data.computedAt.value
           : this.computedAt,
+      enabledKey: data.enabledKey.present
+          ? data.enabledKey.value
+          : this.enabledKey,
     );
   }
 
@@ -6450,14 +6769,15 @@ class AffinitySnapshotRow extends DataClass
           ..write('profileId: $profileId, ')
           ..write('vectorJson: $vectorJson, ')
           ..write('eventCount: $eventCount, ')
-          ..write('computedAt: $computedAt')
+          ..write('computedAt: $computedAt, ')
+          ..write('enabledKey: $enabledKey')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(profileId, vectorJson, eventCount, computedAt);
+      Object.hash(profileId, vectorJson, eventCount, computedAt, enabledKey);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -6465,7 +6785,8 @@ class AffinitySnapshotRow extends DataClass
           other.profileId == this.profileId &&
           other.vectorJson == this.vectorJson &&
           other.eventCount == this.eventCount &&
-          other.computedAt == this.computedAt);
+          other.computedAt == this.computedAt &&
+          other.enabledKey == this.enabledKey);
 }
 
 class AffinitySnapshotsCompanion extends UpdateCompanion<AffinitySnapshotRow> {
@@ -6473,12 +6794,14 @@ class AffinitySnapshotsCompanion extends UpdateCompanion<AffinitySnapshotRow> {
   final Value<String> vectorJson;
   final Value<int> eventCount;
   final Value<int> computedAt;
+  final Value<String> enabledKey;
   final Value<int> rowid;
   const AffinitySnapshotsCompanion({
     this.profileId = const Value.absent(),
     this.vectorJson = const Value.absent(),
     this.eventCount = const Value.absent(),
     this.computedAt = const Value.absent(),
+    this.enabledKey = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   AffinitySnapshotsCompanion.insert({
@@ -6486,6 +6809,7 @@ class AffinitySnapshotsCompanion extends UpdateCompanion<AffinitySnapshotRow> {
     required String vectorJson,
     required int eventCount,
     required int computedAt,
+    this.enabledKey = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : profileId = Value(profileId),
        vectorJson = Value(vectorJson),
@@ -6496,6 +6820,7 @@ class AffinitySnapshotsCompanion extends UpdateCompanion<AffinitySnapshotRow> {
     Expression<String>? vectorJson,
     Expression<int>? eventCount,
     Expression<int>? computedAt,
+    Expression<String>? enabledKey,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6503,6 +6828,7 @@ class AffinitySnapshotsCompanion extends UpdateCompanion<AffinitySnapshotRow> {
       if (vectorJson != null) 'vector_json': vectorJson,
       if (eventCount != null) 'event_count': eventCount,
       if (computedAt != null) 'computed_at': computedAt,
+      if (enabledKey != null) 'enabled_key': enabledKey,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6512,6 +6838,7 @@ class AffinitySnapshotsCompanion extends UpdateCompanion<AffinitySnapshotRow> {
     Value<String>? vectorJson,
     Value<int>? eventCount,
     Value<int>? computedAt,
+    Value<String>? enabledKey,
     Value<int>? rowid,
   }) {
     return AffinitySnapshotsCompanion(
@@ -6519,6 +6846,7 @@ class AffinitySnapshotsCompanion extends UpdateCompanion<AffinitySnapshotRow> {
       vectorJson: vectorJson ?? this.vectorJson,
       eventCount: eventCount ?? this.eventCount,
       computedAt: computedAt ?? this.computedAt,
+      enabledKey: enabledKey ?? this.enabledKey,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6538,6 +6866,9 @@ class AffinitySnapshotsCompanion extends UpdateCompanion<AffinitySnapshotRow> {
     if (computedAt.present) {
       map['computed_at'] = Variable<int>(computedAt.value);
     }
+    if (enabledKey.present) {
+      map['enabled_key'] = Variable<String>(enabledKey.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6551,6 +6882,734 @@ class AffinitySnapshotsCompanion extends UpdateCompanion<AffinitySnapshotRow> {
           ..write('vectorJson: $vectorJson, ')
           ..write('eventCount: $eventCount, ')
           ..write('computedAt: $computedAt, ')
+          ..write('enabledKey: $enabledKey, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $HistorySyncCursorsTable extends HistorySyncCursors
+    with TableInfo<$HistorySyncCursorsTable, HistorySyncCursorRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HistorySyncCursorsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _profileIdMeta = const VerificationMeta(
+    'profileId',
+  );
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+    'profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _serverIdMeta = const VerificationMeta(
+    'serverId',
+  );
+  @override
+  late final GeneratedColumn<String> serverId = GeneratedColumn<String>(
+    'server_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _forwardCursorAtMeta = const VerificationMeta(
+    'forwardCursorAt',
+  );
+  @override
+  late final GeneratedColumn<int> forwardCursorAt = GeneratedColumn<int>(
+    'forward_cursor_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _forwardLastRowIdMeta = const VerificationMeta(
+    'forwardLastRowId',
+  );
+  @override
+  late final GeneratedColumn<int> forwardLastRowId = GeneratedColumn<int>(
+    'forward_last_row_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _backfillBeforeDayMeta = const VerificationMeta(
+    'backfillBeforeDay',
+  );
+  @override
+  late final GeneratedColumn<String> backfillBeforeDay =
+      GeneratedColumn<String>(
+        'backfill_before_day',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _backfillOffsetMeta = const VerificationMeta(
+    'backfillOffset',
+  );
+  @override
+  late final GeneratedColumn<int> backfillOffset = GeneratedColumn<int>(
+    'backfill_offset',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _backfillCursorAtMeta = const VerificationMeta(
+    'backfillCursorAt',
+  );
+  @override
+  late final GeneratedColumn<int> backfillCursorAt = GeneratedColumn<int>(
+    'backfill_cursor_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _backfillStateMeta = const VerificationMeta(
+    'backfillState',
+  );
+  @override
+  late final GeneratedColumn<String> backfillState = GeneratedColumn<String>(
+    'backfill_state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _forwardTruncationCountMeta =
+      const VerificationMeta('forwardTruncationCount');
+  @override
+  late final GeneratedColumn<int> forwardTruncationCount = GeneratedColumn<int>(
+    'forward_truncation_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastSyncAtMeta = const VerificationMeta(
+    'lastSyncAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastSyncAt = GeneratedColumn<int>(
+    'last_sync_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    profileId,
+    serverId,
+    source,
+    forwardCursorAt,
+    forwardLastRowId,
+    backfillBeforeDay,
+    backfillOffset,
+    backfillCursorAt,
+    backfillState,
+    forwardTruncationCount,
+    lastSyncAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'history_sync_cursors';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HistorySyncCursorRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('profile_id')) {
+      context.handle(
+        _profileIdMeta,
+        profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_profileIdMeta);
+    }
+    if (data.containsKey('server_id')) {
+      context.handle(
+        _serverIdMeta,
+        serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_serverIdMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('forward_cursor_at')) {
+      context.handle(
+        _forwardCursorAtMeta,
+        forwardCursorAt.isAcceptableOrUnknown(
+          data['forward_cursor_at']!,
+          _forwardCursorAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('forward_last_row_id')) {
+      context.handle(
+        _forwardLastRowIdMeta,
+        forwardLastRowId.isAcceptableOrUnknown(
+          data['forward_last_row_id']!,
+          _forwardLastRowIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('backfill_before_day')) {
+      context.handle(
+        _backfillBeforeDayMeta,
+        backfillBeforeDay.isAcceptableOrUnknown(
+          data['backfill_before_day']!,
+          _backfillBeforeDayMeta,
+        ),
+      );
+    }
+    if (data.containsKey('backfill_offset')) {
+      context.handle(
+        _backfillOffsetMeta,
+        backfillOffset.isAcceptableOrUnknown(
+          data['backfill_offset']!,
+          _backfillOffsetMeta,
+        ),
+      );
+    }
+    if (data.containsKey('backfill_cursor_at')) {
+      context.handle(
+        _backfillCursorAtMeta,
+        backfillCursorAt.isAcceptableOrUnknown(
+          data['backfill_cursor_at']!,
+          _backfillCursorAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('backfill_state')) {
+      context.handle(
+        _backfillStateMeta,
+        backfillState.isAcceptableOrUnknown(
+          data['backfill_state']!,
+          _backfillStateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('forward_truncation_count')) {
+      context.handle(
+        _forwardTruncationCountMeta,
+        forwardTruncationCount.isAcceptableOrUnknown(
+          data['forward_truncation_count']!,
+          _forwardTruncationCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_sync_at')) {
+      context.handle(
+        _lastSyncAtMeta,
+        lastSyncAt.isAcceptableOrUnknown(
+          data['last_sync_at']!,
+          _lastSyncAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {profileId, serverId, source};
+  @override
+  HistorySyncCursorRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HistorySyncCursorRow(
+      profileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_id'],
+      )!,
+      serverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_id'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      forwardCursorAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}forward_cursor_at'],
+      )!,
+      forwardLastRowId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}forward_last_row_id'],
+      ),
+      backfillBeforeDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}backfill_before_day'],
+      ),
+      backfillOffset: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}backfill_offset'],
+      )!,
+      backfillCursorAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}backfill_cursor_at'],
+      ),
+      backfillState: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}backfill_state'],
+      )!,
+      forwardTruncationCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}forward_truncation_count'],
+      )!,
+      lastSyncAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_sync_at'],
+      )!,
+    );
+  }
+
+  @override
+  $HistorySyncCursorsTable createAlias(String alias) {
+    return $HistorySyncCursorsTable(attachedDatabase, alias);
+  }
+}
+
+class HistorySyncCursorRow extends DataClass
+    implements Insertable<HistorySyncCursorRow> {
+  final String profileId;
+  final String serverId;
+
+  /// `'tautulli'` today; the shape is deliberately source-agnostic.
+  final String source;
+
+  /// Epoch millis of the newest fully processed record.
+  final int forwardCursorAt;
+
+  /// Tie-breaker for records sharing [forwardCursorAt].
+  final int? forwardLastRowId;
+
+  /// Frozen upper bound of the backfill window, `YYYY-MM-DD`.
+  final String? backfillBeforeDay;
+
+  /// Pagination offset inside that frozen window.
+  final int backfillOffset;
+
+  /// Epoch millis of the oldest processed record, for logging and the
+  /// 365-day floor check.
+  final int? backfillCursorAt;
+
+  /// `pending`, `exhausted` (window really is empty) or `retentionCap`
+  /// (stopped because there is no storage left). Only `exhausted` is final.
+  final String backfillState;
+
+  /// Consecutive truncated forward passes, for the escalation ladder.
+  final int forwardTruncationCount;
+  final int lastSyncAt;
+  const HistorySyncCursorRow({
+    required this.profileId,
+    required this.serverId,
+    required this.source,
+    required this.forwardCursorAt,
+    this.forwardLastRowId,
+    this.backfillBeforeDay,
+    required this.backfillOffset,
+    this.backfillCursorAt,
+    required this.backfillState,
+    required this.forwardTruncationCount,
+    required this.lastSyncAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['profile_id'] = Variable<String>(profileId);
+    map['server_id'] = Variable<String>(serverId);
+    map['source'] = Variable<String>(source);
+    map['forward_cursor_at'] = Variable<int>(forwardCursorAt);
+    if (!nullToAbsent || forwardLastRowId != null) {
+      map['forward_last_row_id'] = Variable<int>(forwardLastRowId);
+    }
+    if (!nullToAbsent || backfillBeforeDay != null) {
+      map['backfill_before_day'] = Variable<String>(backfillBeforeDay);
+    }
+    map['backfill_offset'] = Variable<int>(backfillOffset);
+    if (!nullToAbsent || backfillCursorAt != null) {
+      map['backfill_cursor_at'] = Variable<int>(backfillCursorAt);
+    }
+    map['backfill_state'] = Variable<String>(backfillState);
+    map['forward_truncation_count'] = Variable<int>(forwardTruncationCount);
+    map['last_sync_at'] = Variable<int>(lastSyncAt);
+    return map;
+  }
+
+  HistorySyncCursorsCompanion toCompanion(bool nullToAbsent) {
+    return HistorySyncCursorsCompanion(
+      profileId: Value(profileId),
+      serverId: Value(serverId),
+      source: Value(source),
+      forwardCursorAt: Value(forwardCursorAt),
+      forwardLastRowId: forwardLastRowId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(forwardLastRowId),
+      backfillBeforeDay: backfillBeforeDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(backfillBeforeDay),
+      backfillOffset: Value(backfillOffset),
+      backfillCursorAt: backfillCursorAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(backfillCursorAt),
+      backfillState: Value(backfillState),
+      forwardTruncationCount: Value(forwardTruncationCount),
+      lastSyncAt: Value(lastSyncAt),
+    );
+  }
+
+  factory HistorySyncCursorRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HistorySyncCursorRow(
+      profileId: serializer.fromJson<String>(json['profileId']),
+      serverId: serializer.fromJson<String>(json['serverId']),
+      source: serializer.fromJson<String>(json['source']),
+      forwardCursorAt: serializer.fromJson<int>(json['forwardCursorAt']),
+      forwardLastRowId: serializer.fromJson<int?>(json['forwardLastRowId']),
+      backfillBeforeDay: serializer.fromJson<String?>(
+        json['backfillBeforeDay'],
+      ),
+      backfillOffset: serializer.fromJson<int>(json['backfillOffset']),
+      backfillCursorAt: serializer.fromJson<int?>(json['backfillCursorAt']),
+      backfillState: serializer.fromJson<String>(json['backfillState']),
+      forwardTruncationCount: serializer.fromJson<int>(
+        json['forwardTruncationCount'],
+      ),
+      lastSyncAt: serializer.fromJson<int>(json['lastSyncAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'profileId': serializer.toJson<String>(profileId),
+      'serverId': serializer.toJson<String>(serverId),
+      'source': serializer.toJson<String>(source),
+      'forwardCursorAt': serializer.toJson<int>(forwardCursorAt),
+      'forwardLastRowId': serializer.toJson<int?>(forwardLastRowId),
+      'backfillBeforeDay': serializer.toJson<String?>(backfillBeforeDay),
+      'backfillOffset': serializer.toJson<int>(backfillOffset),
+      'backfillCursorAt': serializer.toJson<int?>(backfillCursorAt),
+      'backfillState': serializer.toJson<String>(backfillState),
+      'forwardTruncationCount': serializer.toJson<int>(forwardTruncationCount),
+      'lastSyncAt': serializer.toJson<int>(lastSyncAt),
+    };
+  }
+
+  HistorySyncCursorRow copyWith({
+    String? profileId,
+    String? serverId,
+    String? source,
+    int? forwardCursorAt,
+    Value<int?> forwardLastRowId = const Value.absent(),
+    Value<String?> backfillBeforeDay = const Value.absent(),
+    int? backfillOffset,
+    Value<int?> backfillCursorAt = const Value.absent(),
+    String? backfillState,
+    int? forwardTruncationCount,
+    int? lastSyncAt,
+  }) => HistorySyncCursorRow(
+    profileId: profileId ?? this.profileId,
+    serverId: serverId ?? this.serverId,
+    source: source ?? this.source,
+    forwardCursorAt: forwardCursorAt ?? this.forwardCursorAt,
+    forwardLastRowId: forwardLastRowId.present
+        ? forwardLastRowId.value
+        : this.forwardLastRowId,
+    backfillBeforeDay: backfillBeforeDay.present
+        ? backfillBeforeDay.value
+        : this.backfillBeforeDay,
+    backfillOffset: backfillOffset ?? this.backfillOffset,
+    backfillCursorAt: backfillCursorAt.present
+        ? backfillCursorAt.value
+        : this.backfillCursorAt,
+    backfillState: backfillState ?? this.backfillState,
+    forwardTruncationCount:
+        forwardTruncationCount ?? this.forwardTruncationCount,
+    lastSyncAt: lastSyncAt ?? this.lastSyncAt,
+  );
+  HistorySyncCursorRow copyWithCompanion(HistorySyncCursorsCompanion data) {
+    return HistorySyncCursorRow(
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
+      serverId: data.serverId.present ? data.serverId.value : this.serverId,
+      source: data.source.present ? data.source.value : this.source,
+      forwardCursorAt: data.forwardCursorAt.present
+          ? data.forwardCursorAt.value
+          : this.forwardCursorAt,
+      forwardLastRowId: data.forwardLastRowId.present
+          ? data.forwardLastRowId.value
+          : this.forwardLastRowId,
+      backfillBeforeDay: data.backfillBeforeDay.present
+          ? data.backfillBeforeDay.value
+          : this.backfillBeforeDay,
+      backfillOffset: data.backfillOffset.present
+          ? data.backfillOffset.value
+          : this.backfillOffset,
+      backfillCursorAt: data.backfillCursorAt.present
+          ? data.backfillCursorAt.value
+          : this.backfillCursorAt,
+      backfillState: data.backfillState.present
+          ? data.backfillState.value
+          : this.backfillState,
+      forwardTruncationCount: data.forwardTruncationCount.present
+          ? data.forwardTruncationCount.value
+          : this.forwardTruncationCount,
+      lastSyncAt: data.lastSyncAt.present
+          ? data.lastSyncAt.value
+          : this.lastSyncAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HistorySyncCursorRow(')
+          ..write('profileId: $profileId, ')
+          ..write('serverId: $serverId, ')
+          ..write('source: $source, ')
+          ..write('forwardCursorAt: $forwardCursorAt, ')
+          ..write('forwardLastRowId: $forwardLastRowId, ')
+          ..write('backfillBeforeDay: $backfillBeforeDay, ')
+          ..write('backfillOffset: $backfillOffset, ')
+          ..write('backfillCursorAt: $backfillCursorAt, ')
+          ..write('backfillState: $backfillState, ')
+          ..write('forwardTruncationCount: $forwardTruncationCount, ')
+          ..write('lastSyncAt: $lastSyncAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    profileId,
+    serverId,
+    source,
+    forwardCursorAt,
+    forwardLastRowId,
+    backfillBeforeDay,
+    backfillOffset,
+    backfillCursorAt,
+    backfillState,
+    forwardTruncationCount,
+    lastSyncAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HistorySyncCursorRow &&
+          other.profileId == this.profileId &&
+          other.serverId == this.serverId &&
+          other.source == this.source &&
+          other.forwardCursorAt == this.forwardCursorAt &&
+          other.forwardLastRowId == this.forwardLastRowId &&
+          other.backfillBeforeDay == this.backfillBeforeDay &&
+          other.backfillOffset == this.backfillOffset &&
+          other.backfillCursorAt == this.backfillCursorAt &&
+          other.backfillState == this.backfillState &&
+          other.forwardTruncationCount == this.forwardTruncationCount &&
+          other.lastSyncAt == this.lastSyncAt);
+}
+
+class HistorySyncCursorsCompanion
+    extends UpdateCompanion<HistorySyncCursorRow> {
+  final Value<String> profileId;
+  final Value<String> serverId;
+  final Value<String> source;
+  final Value<int> forwardCursorAt;
+  final Value<int?> forwardLastRowId;
+  final Value<String?> backfillBeforeDay;
+  final Value<int> backfillOffset;
+  final Value<int?> backfillCursorAt;
+  final Value<String> backfillState;
+  final Value<int> forwardTruncationCount;
+  final Value<int> lastSyncAt;
+  final Value<int> rowid;
+  const HistorySyncCursorsCompanion({
+    this.profileId = const Value.absent(),
+    this.serverId = const Value.absent(),
+    this.source = const Value.absent(),
+    this.forwardCursorAt = const Value.absent(),
+    this.forwardLastRowId = const Value.absent(),
+    this.backfillBeforeDay = const Value.absent(),
+    this.backfillOffset = const Value.absent(),
+    this.backfillCursorAt = const Value.absent(),
+    this.backfillState = const Value.absent(),
+    this.forwardTruncationCount = const Value.absent(),
+    this.lastSyncAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  HistorySyncCursorsCompanion.insert({
+    required String profileId,
+    required String serverId,
+    required String source,
+    this.forwardCursorAt = const Value.absent(),
+    this.forwardLastRowId = const Value.absent(),
+    this.backfillBeforeDay = const Value.absent(),
+    this.backfillOffset = const Value.absent(),
+    this.backfillCursorAt = const Value.absent(),
+    this.backfillState = const Value.absent(),
+    this.forwardTruncationCount = const Value.absent(),
+    this.lastSyncAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : profileId = Value(profileId),
+       serverId = Value(serverId),
+       source = Value(source);
+  static Insertable<HistorySyncCursorRow> custom({
+    Expression<String>? profileId,
+    Expression<String>? serverId,
+    Expression<String>? source,
+    Expression<int>? forwardCursorAt,
+    Expression<int>? forwardLastRowId,
+    Expression<String>? backfillBeforeDay,
+    Expression<int>? backfillOffset,
+    Expression<int>? backfillCursorAt,
+    Expression<String>? backfillState,
+    Expression<int>? forwardTruncationCount,
+    Expression<int>? lastSyncAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (profileId != null) 'profile_id': profileId,
+      if (serverId != null) 'server_id': serverId,
+      if (source != null) 'source': source,
+      if (forwardCursorAt != null) 'forward_cursor_at': forwardCursorAt,
+      if (forwardLastRowId != null) 'forward_last_row_id': forwardLastRowId,
+      if (backfillBeforeDay != null) 'backfill_before_day': backfillBeforeDay,
+      if (backfillOffset != null) 'backfill_offset': backfillOffset,
+      if (backfillCursorAt != null) 'backfill_cursor_at': backfillCursorAt,
+      if (backfillState != null) 'backfill_state': backfillState,
+      if (forwardTruncationCount != null)
+        'forward_truncation_count': forwardTruncationCount,
+      if (lastSyncAt != null) 'last_sync_at': lastSyncAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  HistorySyncCursorsCompanion copyWith({
+    Value<String>? profileId,
+    Value<String>? serverId,
+    Value<String>? source,
+    Value<int>? forwardCursorAt,
+    Value<int?>? forwardLastRowId,
+    Value<String?>? backfillBeforeDay,
+    Value<int>? backfillOffset,
+    Value<int?>? backfillCursorAt,
+    Value<String>? backfillState,
+    Value<int>? forwardTruncationCount,
+    Value<int>? lastSyncAt,
+    Value<int>? rowid,
+  }) {
+    return HistorySyncCursorsCompanion(
+      profileId: profileId ?? this.profileId,
+      serverId: serverId ?? this.serverId,
+      source: source ?? this.source,
+      forwardCursorAt: forwardCursorAt ?? this.forwardCursorAt,
+      forwardLastRowId: forwardLastRowId ?? this.forwardLastRowId,
+      backfillBeforeDay: backfillBeforeDay ?? this.backfillBeforeDay,
+      backfillOffset: backfillOffset ?? this.backfillOffset,
+      backfillCursorAt: backfillCursorAt ?? this.backfillCursorAt,
+      backfillState: backfillState ?? this.backfillState,
+      forwardTruncationCount:
+          forwardTruncationCount ?? this.forwardTruncationCount,
+      lastSyncAt: lastSyncAt ?? this.lastSyncAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (profileId.present) {
+      map['profile_id'] = Variable<String>(profileId.value);
+    }
+    if (serverId.present) {
+      map['server_id'] = Variable<String>(serverId.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (forwardCursorAt.present) {
+      map['forward_cursor_at'] = Variable<int>(forwardCursorAt.value);
+    }
+    if (forwardLastRowId.present) {
+      map['forward_last_row_id'] = Variable<int>(forwardLastRowId.value);
+    }
+    if (backfillBeforeDay.present) {
+      map['backfill_before_day'] = Variable<String>(backfillBeforeDay.value);
+    }
+    if (backfillOffset.present) {
+      map['backfill_offset'] = Variable<int>(backfillOffset.value);
+    }
+    if (backfillCursorAt.present) {
+      map['backfill_cursor_at'] = Variable<int>(backfillCursorAt.value);
+    }
+    if (backfillState.present) {
+      map['backfill_state'] = Variable<String>(backfillState.value);
+    }
+    if (forwardTruncationCount.present) {
+      map['forward_truncation_count'] = Variable<int>(
+        forwardTruncationCount.value,
+      );
+    }
+    if (lastSyncAt.present) {
+      map['last_sync_at'] = Variable<int>(lastSyncAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HistorySyncCursorsCompanion(')
+          ..write('profileId: $profileId, ')
+          ..write('serverId: $serverId, ')
+          ..write('source: $source, ')
+          ..write('forwardCursorAt: $forwardCursorAt, ')
+          ..write('forwardLastRowId: $forwardLastRowId, ')
+          ..write('backfillBeforeDay: $backfillBeforeDay, ')
+          ..write('backfillOffset: $backfillOffset, ')
+          ..write('backfillCursorAt: $backfillCursorAt, ')
+          ..write('backfillState: $backfillState, ')
+          ..write('forwardTruncationCount: $forwardTruncationCount, ')
+          ..write('lastSyncAt: $lastSyncAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6577,6 +7636,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $MediaInteractionsTable(this);
   late final $AffinitySnapshotsTable affinitySnapshots =
       $AffinitySnapshotsTable(this);
+  late final $HistorySyncCursorsTable historySyncCursors =
+      $HistorySyncCursorsTable(this);
   late final Index idxDownloadedMediaStatus = Index(
     'idx_downloaded_media_status',
     'CREATE INDEX idx_downloaded_media_status ON downloaded_media (status)',
@@ -6633,6 +7694,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_interactions_profile_time',
     'CREATE INDEX idx_interactions_profile_time ON media_interactions (profile_id, occurred_at)',
   );
+  late final Index idxInteractionsProfileItem = Index(
+    'idx_interactions_profile_item',
+    'CREATE INDEX idx_interactions_profile_item ON media_interactions (profile_id, global_key)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6649,6 +7714,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     profileConnections,
     mediaInteractions,
     affinitySnapshots,
+    historySyncCursors,
     idxDownloadedMediaStatus,
     idxDownloadedMediaServer,
     idxDownloadedMediaParent,
@@ -6663,6 +7729,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxProfileConnectionsConnectionId,
     idxProfileConnectionsProfileId,
     idxInteractionsProfileTime,
+    idxInteractionsProfileItem,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -9549,6 +10616,11 @@ typedef $$MediaInteractionsTableCreateCompanionBuilder =
       Value<int?> year,
       Value<double?> communityRating,
       Value<String?> seriesKey,
+      Value<String> source,
+      Value<String?> sourceEventId,
+      Value<String?> sourceServerId,
+      Value<int?> completionPercent,
+      Value<int?> playSeconds,
     });
 typedef $$MediaInteractionsTableUpdateCompanionBuilder =
     MediaInteractionsCompanion Function({
@@ -9567,6 +10639,11 @@ typedef $$MediaInteractionsTableUpdateCompanionBuilder =
       Value<int?> year,
       Value<double?> communityRating,
       Value<String?> seriesKey,
+      Value<String> source,
+      Value<String?> sourceEventId,
+      Value<String?> sourceServerId,
+      Value<int?> completionPercent,
+      Value<int?> playSeconds,
     });
 
 class $$MediaInteractionsTableFilterComposer
@@ -9650,6 +10727,31 @@ class $$MediaInteractionsTableFilterComposer
 
   ColumnFilters<String> get seriesKey => $composableBuilder(
     column: $table.seriesKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceEventId => $composableBuilder(
+    column: $table.sourceEventId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceServerId => $composableBuilder(
+    column: $table.sourceServerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get completionPercent => $composableBuilder(
+    column: $table.completionPercent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get playSeconds => $composableBuilder(
+    column: $table.playSeconds,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -9737,6 +10839,31 @@ class $$MediaInteractionsTableOrderingComposer
     column: $table.seriesKey,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceEventId => $composableBuilder(
+    column: $table.sourceEventId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceServerId => $composableBuilder(
+    column: $table.sourceServerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get completionPercent => $composableBuilder(
+    column: $table.completionPercent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get playSeconds => $composableBuilder(
+    column: $table.playSeconds,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MediaInteractionsTableAnnotationComposer
@@ -9804,6 +10931,29 @@ class $$MediaInteractionsTableAnnotationComposer
 
   GeneratedColumn<String> get seriesKey =>
       $composableBuilder(column: $table.seriesKey, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceEventId => $composableBuilder(
+    column: $table.sourceEventId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceServerId => $composableBuilder(
+    column: $table.sourceServerId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get completionPercent => $composableBuilder(
+    column: $table.completionPercent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get playSeconds => $composableBuilder(
+    column: $table.playSeconds,
+    builder: (column) => column,
+  );
 }
 
 class $$MediaInteractionsTableTableManager
@@ -9861,6 +11011,11 @@ class $$MediaInteractionsTableTableManager
                 Value<int?> year = const Value.absent(),
                 Value<double?> communityRating = const Value.absent(),
                 Value<String?> seriesKey = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String?> sourceEventId = const Value.absent(),
+                Value<String?> sourceServerId = const Value.absent(),
+                Value<int?> completionPercent = const Value.absent(),
+                Value<int?> playSeconds = const Value.absent(),
               }) => MediaInteractionsCompanion(
                 id: id,
                 profileId: profileId,
@@ -9877,6 +11032,11 @@ class $$MediaInteractionsTableTableManager
                 year: year,
                 communityRating: communityRating,
                 seriesKey: seriesKey,
+                source: source,
+                sourceEventId: sourceEventId,
+                sourceServerId: sourceServerId,
+                completionPercent: completionPercent,
+                playSeconds: playSeconds,
               ),
           createCompanionCallback:
               ({
@@ -9895,6 +11055,11 @@ class $$MediaInteractionsTableTableManager
                 Value<int?> year = const Value.absent(),
                 Value<double?> communityRating = const Value.absent(),
                 Value<String?> seriesKey = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String?> sourceEventId = const Value.absent(),
+                Value<String?> sourceServerId = const Value.absent(),
+                Value<int?> completionPercent = const Value.absent(),
+                Value<int?> playSeconds = const Value.absent(),
               }) => MediaInteractionsCompanion.insert(
                 id: id,
                 profileId: profileId,
@@ -9911,6 +11076,11 @@ class $$MediaInteractionsTableTableManager
                 year: year,
                 communityRating: communityRating,
                 seriesKey: seriesKey,
+                source: source,
+                sourceEventId: sourceEventId,
+                sourceServerId: sourceServerId,
+                completionPercent: completionPercent,
+                playSeconds: playSeconds,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -9947,6 +11117,7 @@ typedef $$AffinitySnapshotsTableCreateCompanionBuilder =
       required String vectorJson,
       required int eventCount,
       required int computedAt,
+      Value<String> enabledKey,
       Value<int> rowid,
     });
 typedef $$AffinitySnapshotsTableUpdateCompanionBuilder =
@@ -9955,6 +11126,7 @@ typedef $$AffinitySnapshotsTableUpdateCompanionBuilder =
       Value<String> vectorJson,
       Value<int> eventCount,
       Value<int> computedAt,
+      Value<String> enabledKey,
       Value<int> rowid,
     });
 
@@ -9984,6 +11156,11 @@ class $$AffinitySnapshotsTableFilterComposer
 
   ColumnFilters<int> get computedAt => $composableBuilder(
     column: $table.computedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get enabledKey => $composableBuilder(
+    column: $table.enabledKey,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -10016,6 +11193,11 @@ class $$AffinitySnapshotsTableOrderingComposer
     column: $table.computedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get enabledKey => $composableBuilder(
+    column: $table.enabledKey,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AffinitySnapshotsTableAnnotationComposer
@@ -10042,6 +11224,11 @@ class $$AffinitySnapshotsTableAnnotationComposer
 
   GeneratedColumn<int> get computedAt => $composableBuilder(
     column: $table.computedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get enabledKey => $composableBuilder(
+    column: $table.enabledKey,
     builder: (column) => column,
   );
 }
@@ -10090,12 +11277,14 @@ class $$AffinitySnapshotsTableTableManager
                 Value<String> vectorJson = const Value.absent(),
                 Value<int> eventCount = const Value.absent(),
                 Value<int> computedAt = const Value.absent(),
+                Value<String> enabledKey = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AffinitySnapshotsCompanion(
                 profileId: profileId,
                 vectorJson: vectorJson,
                 eventCount: eventCount,
                 computedAt: computedAt,
+                enabledKey: enabledKey,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -10104,12 +11293,14 @@ class $$AffinitySnapshotsTableTableManager
                 required String vectorJson,
                 required int eventCount,
                 required int computedAt,
+                Value<String> enabledKey = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AffinitySnapshotsCompanion.insert(
                 profileId: profileId,
                 vectorJson: vectorJson,
                 eventCount: eventCount,
                 computedAt: computedAt,
+                enabledKey: enabledKey,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -10141,6 +11332,349 @@ typedef $$AffinitySnapshotsTableProcessedTableManager =
       AffinitySnapshotRow,
       PrefetchHooks Function()
     >;
+typedef $$HistorySyncCursorsTableCreateCompanionBuilder =
+    HistorySyncCursorsCompanion Function({
+      required String profileId,
+      required String serverId,
+      required String source,
+      Value<int> forwardCursorAt,
+      Value<int?> forwardLastRowId,
+      Value<String?> backfillBeforeDay,
+      Value<int> backfillOffset,
+      Value<int?> backfillCursorAt,
+      Value<String> backfillState,
+      Value<int> forwardTruncationCount,
+      Value<int> lastSyncAt,
+      Value<int> rowid,
+    });
+typedef $$HistorySyncCursorsTableUpdateCompanionBuilder =
+    HistorySyncCursorsCompanion Function({
+      Value<String> profileId,
+      Value<String> serverId,
+      Value<String> source,
+      Value<int> forwardCursorAt,
+      Value<int?> forwardLastRowId,
+      Value<String?> backfillBeforeDay,
+      Value<int> backfillOffset,
+      Value<int?> backfillCursorAt,
+      Value<String> backfillState,
+      Value<int> forwardTruncationCount,
+      Value<int> lastSyncAt,
+      Value<int> rowid,
+    });
+
+class $$HistorySyncCursorsTableFilterComposer
+    extends Composer<_$AppDatabase, $HistorySyncCursorsTable> {
+  $$HistorySyncCursorsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get forwardCursorAt => $composableBuilder(
+    column: $table.forwardCursorAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get forwardLastRowId => $composableBuilder(
+    column: $table.forwardLastRowId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get backfillBeforeDay => $composableBuilder(
+    column: $table.backfillBeforeDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get backfillOffset => $composableBuilder(
+    column: $table.backfillOffset,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get backfillCursorAt => $composableBuilder(
+    column: $table.backfillCursorAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get backfillState => $composableBuilder(
+    column: $table.backfillState,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get forwardTruncationCount => $composableBuilder(
+    column: $table.forwardTruncationCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastSyncAt => $composableBuilder(
+    column: $table.lastSyncAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$HistorySyncCursorsTableOrderingComposer
+    extends Composer<_$AppDatabase, $HistorySyncCursorsTable> {
+  $$HistorySyncCursorsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get forwardCursorAt => $composableBuilder(
+    column: $table.forwardCursorAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get forwardLastRowId => $composableBuilder(
+    column: $table.forwardLastRowId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get backfillBeforeDay => $composableBuilder(
+    column: $table.backfillBeforeDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get backfillOffset => $composableBuilder(
+    column: $table.backfillOffset,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get backfillCursorAt => $composableBuilder(
+    column: $table.backfillCursorAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get backfillState => $composableBuilder(
+    column: $table.backfillState,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get forwardTruncationCount => $composableBuilder(
+    column: $table.forwardTruncationCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastSyncAt => $composableBuilder(
+    column: $table.lastSyncAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$HistorySyncCursorsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HistorySyncCursorsTable> {
+  $$HistorySyncCursorsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get profileId =>
+      $composableBuilder(column: $table.profileId, builder: (column) => column);
+
+  GeneratedColumn<String> get serverId =>
+      $composableBuilder(column: $table.serverId, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<int> get forwardCursorAt => $composableBuilder(
+    column: $table.forwardCursorAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get forwardLastRowId => $composableBuilder(
+    column: $table.forwardLastRowId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get backfillBeforeDay => $composableBuilder(
+    column: $table.backfillBeforeDay,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get backfillOffset => $composableBuilder(
+    column: $table.backfillOffset,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get backfillCursorAt => $composableBuilder(
+    column: $table.backfillCursorAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get backfillState => $composableBuilder(
+    column: $table.backfillState,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get forwardTruncationCount => $composableBuilder(
+    column: $table.forwardTruncationCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastSyncAt => $composableBuilder(
+    column: $table.lastSyncAt,
+    builder: (column) => column,
+  );
+}
+
+class $$HistorySyncCursorsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HistorySyncCursorsTable,
+          HistorySyncCursorRow,
+          $$HistorySyncCursorsTableFilterComposer,
+          $$HistorySyncCursorsTableOrderingComposer,
+          $$HistorySyncCursorsTableAnnotationComposer,
+          $$HistorySyncCursorsTableCreateCompanionBuilder,
+          $$HistorySyncCursorsTableUpdateCompanionBuilder,
+          (
+            HistorySyncCursorRow,
+            BaseReferences<
+              _$AppDatabase,
+              $HistorySyncCursorsTable,
+              HistorySyncCursorRow
+            >,
+          ),
+          HistorySyncCursorRow,
+          PrefetchHooks Function()
+        > {
+  $$HistorySyncCursorsTableTableManager(
+    _$AppDatabase db,
+    $HistorySyncCursorsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HistorySyncCursorsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HistorySyncCursorsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HistorySyncCursorsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> profileId = const Value.absent(),
+                Value<String> serverId = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<int> forwardCursorAt = const Value.absent(),
+                Value<int?> forwardLastRowId = const Value.absent(),
+                Value<String?> backfillBeforeDay = const Value.absent(),
+                Value<int> backfillOffset = const Value.absent(),
+                Value<int?> backfillCursorAt = const Value.absent(),
+                Value<String> backfillState = const Value.absent(),
+                Value<int> forwardTruncationCount = const Value.absent(),
+                Value<int> lastSyncAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => HistorySyncCursorsCompanion(
+                profileId: profileId,
+                serverId: serverId,
+                source: source,
+                forwardCursorAt: forwardCursorAt,
+                forwardLastRowId: forwardLastRowId,
+                backfillBeforeDay: backfillBeforeDay,
+                backfillOffset: backfillOffset,
+                backfillCursorAt: backfillCursorAt,
+                backfillState: backfillState,
+                forwardTruncationCount: forwardTruncationCount,
+                lastSyncAt: lastSyncAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String profileId,
+                required String serverId,
+                required String source,
+                Value<int> forwardCursorAt = const Value.absent(),
+                Value<int?> forwardLastRowId = const Value.absent(),
+                Value<String?> backfillBeforeDay = const Value.absent(),
+                Value<int> backfillOffset = const Value.absent(),
+                Value<int?> backfillCursorAt = const Value.absent(),
+                Value<String> backfillState = const Value.absent(),
+                Value<int> forwardTruncationCount = const Value.absent(),
+                Value<int> lastSyncAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => HistorySyncCursorsCompanion.insert(
+                profileId: profileId,
+                serverId: serverId,
+                source: source,
+                forwardCursorAt: forwardCursorAt,
+                forwardLastRowId: forwardLastRowId,
+                backfillBeforeDay: backfillBeforeDay,
+                backfillOffset: backfillOffset,
+                backfillCursorAt: backfillCursorAt,
+                backfillState: backfillState,
+                forwardTruncationCount: forwardTruncationCount,
+                lastSyncAt: lastSyncAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$HistorySyncCursorsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HistorySyncCursorsTable,
+      HistorySyncCursorRow,
+      $$HistorySyncCursorsTableFilterComposer,
+      $$HistorySyncCursorsTableOrderingComposer,
+      $$HistorySyncCursorsTableAnnotationComposer,
+      $$HistorySyncCursorsTableCreateCompanionBuilder,
+      $$HistorySyncCursorsTableUpdateCompanionBuilder,
+      (
+        HistorySyncCursorRow,
+        BaseReferences<
+          _$AppDatabase,
+          $HistorySyncCursorsTable,
+          HistorySyncCursorRow
+        >,
+      ),
+      HistorySyncCursorRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10167,4 +11701,6 @@ class $AppDatabaseManager {
       $$MediaInteractionsTableTableManager(_db, _db.mediaInteractions);
   $$AffinitySnapshotsTableTableManager get affinitySnapshots =>
       $$AffinitySnapshotsTableTableManager(_db, _db.affinitySnapshots);
+  $$HistorySyncCursorsTableTableManager get historySyncCursors =>
+      $$HistorySyncCursorsTableTableManager(_db, _db.historySyncCursors);
 }

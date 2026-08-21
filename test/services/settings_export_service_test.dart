@@ -118,6 +118,22 @@ void main() {
       expect(SettingsExportService.syncBaseKey('user_uuid-1_tautulli_session', currentUserUuid: 'uuid-1'), isNull);
     });
 
+    // The server-scoped record carries the same credential and the admin's
+    // policy. It has no `user_` prefix, so without its own deny prefix nothing
+    // else here would have stopped it from being exported.
+    test('drops server-scoped Tautulli integrations', () async {
+      final prefs = await BaseSharedPreferencesService.sharedCache();
+      await prefs.setString('tautulli_integration_pms-1', 'vault-blob');
+      await prefs.setString('tautulli_integration_pms-2', 'vault-blob');
+
+      final out = SettingsExportService.buildExportMap(prefs, currentUserUuid: 'uuid-1');
+      final p = out['prefs'] as Map<String, dynamic>;
+
+      expect(p.keys.any((k) => k.startsWith('tautulli_integration_')), isFalse);
+      expect(SettingsExportService.isExportable('tautulli_integration_pms-1'), isFalse);
+      expect(SettingsExportService.syncBaseKey('tautulli_integration_pms-1'), isNull);
+    });
+
     test('drops prefix-deny keys', () async {
       final prefs = await BaseSharedPreferencesService.sharedCache();
       await prefs.setString('server_endpoint_srv1', 'http://x');

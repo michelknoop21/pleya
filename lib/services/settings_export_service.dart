@@ -125,6 +125,12 @@ class SettingsExportService {
     'pleya_share_tokens',
     'pleya_share_guests',
     'pleya_share_watch_',
+    // Server-scoped Tautulli integrations (`tautulli_integration_{id}`). Same
+    // reasoning as the `tautulli_session` key above, and a prefix because the
+    // key carries the machine identifier. Worth spelling out: unlike the
+    // per-profile session this key has no `user_` prefix, so nothing else here
+    // would have kept it out of an export.
+    'tautulli_integration_',
   ];
 
   /// Literal prefix used by [StorageService._userPrefix] for any scoped key.
