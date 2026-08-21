@@ -825,6 +825,24 @@ class TranslationsSettingsEn {
 	/// en: 'Could not turn on iCloud settings sync'
 	String get icloudSyncEnableFailed => 'Could not turn on iCloud settings sync';
 
+	/// en: 'Another Apple device is still on an older Pleya version, so settings are not being shared with it. Update Pleya everywhere to sync again.'
+	String get icloudSyncLegacyPeer => 'Another Apple device is still on an older Pleya version, so settings are not being shared with it. Update Pleya everywhere to sync again.';
+
+	/// en: 'Syncing…'
+	String get icloudSyncStatusSyncing => 'Syncing…';
+
+	/// en: 'Last sent to iCloud at ${time}'
+	String icloudSyncStatusLastSent({required Object time}) => 'Last sent to iCloud at ${time}';
+
+	/// en: 'Could not reach iCloud. Your settings are saved on this device.'
+	String get icloudSyncStatusError => 'Could not reach iCloud. Your settings are saved on this device.';
+
+	/// en: 'iCloud has no room left for settings, so not everything is being sent.'
+	String get icloudSyncStatusQuota => 'iCloud has no room left for settings, so not everything is being sent.';
+
+	/// en: 'Some settings are too large to send and stay on this device.'
+	String get icloudSyncStatusOversize => 'Some settings are too large to send and stay on this device.';
+
 	/// en: 'Shortcuts reset to defaults'
 	String get shortcutsReset => 'Shortcuts reset to defaults';
 
@@ -6024,6 +6042,12 @@ extension on Translations {
 			'settings.icloudSyncDescription' => 'Keep your preferences in sync across your Apple devices',
 			'settings.icloudSyncUnavailable' => 'Sign in to iCloud on this device to sync settings',
 			'settings.icloudSyncEnableFailed' => 'Could not turn on iCloud settings sync',
+			'settings.icloudSyncLegacyPeer' => 'Another Apple device is still on an older Pleya version, so settings are not being shared with it. Update Pleya everywhere to sync again.',
+			'settings.icloudSyncStatusSyncing' => 'Syncing…',
+			'settings.icloudSyncStatusLastSent' => ({required Object time}) => 'Last sent to iCloud at ${time}',
+			'settings.icloudSyncStatusError' => 'Could not reach iCloud. Your settings are saved on this device.',
+			'settings.icloudSyncStatusQuota' => 'iCloud has no room left for settings, so not everything is being sent.',
+			'settings.icloudSyncStatusOversize' => 'Some settings are too large to send and stay on this device.',
 			'settings.shortcutsReset' => 'Shortcuts reset to defaults',
 			'settings.about' => 'About',
 			'settings.aboutDescription' => 'App information and licenses',
@@ -6308,14 +6332,14 @@ extension on Translations {
 			'videoControls.fullscreenButton' => 'Enter fullscreen',
 			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
 			'videoControls.alwaysOnTopButton' => 'Always on top',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.rotationLockButton' => 'Rotation lock',
 			'videoControls.lockScreen' => 'Lock screen',
 			'videoControls.screenLockButton' => 'Screen lock',
 			'videoControls.longPressToUnlock' => 'Long press to unlock',
 			'videoControls.timelineSlider' => 'Video timeline',
 			'videoControls.volumeSlider' => 'Volume level',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.volumeHandledByDevice' => 'Volume is controlled by your audio device during passthrough',
 			'videoControls.endsAt' => ({required Object time}) => 'Ends at ${time}',
 			'videoControls.pipActive' => 'Playing in Picture-in-Picture',
@@ -6822,14 +6846,14 @@ extension on Translations {
 			'watchTogether.createSession' => 'Create Session',
 			'watchTogether.creating' => 'Creating...',
 			'watchTogether.joinSession' => 'Join Session',
+			_ => null,
+		} ?? switch (path) {
 			'watchTogether.joining' => 'Joining...',
 			'watchTogether.controlMode' => 'Control Mode',
 			'watchTogether.controlModeQuestion' => 'Who can control playback?',
 			'watchTogether.hostOnly' => 'Host Only',
 			'watchTogether.anyone' => 'Anyone',
 			'watchTogether.hostingSession' => 'Hosting Session',
-			_ => null,
-		} ?? switch (path) {
 			'watchTogether.inSession' => 'In Session',
 			'watchTogether.sessionCode' => 'Session Code',
 			'watchTogether.hostControlsPlayback' => 'Host controls playback',
@@ -7336,14 +7360,14 @@ extension on Translations {
 			'nowWatching.transcoding' => ({required Object count}) => '${count} transcoding',
 			'nowWatching.directPlay' => 'Direct play',
 			'nowWatching.directStream' => 'Direct stream',
+			_ => null,
+		} ?? switch (path) {
 			'nowWatching.transcode' => 'Transcode',
 			'nowWatching.paused' => 'Paused',
 			'nowWatching.remaining' => ({required Object time}) => '${time} left',
 			'nowWatching.watchingNow' => ({required Object name}) => '${name} is watching this now',
 			'nowWatching.hardware' => 'Hardware',
 			'nowWatching.onLan' => 'On your network',
-			_ => null,
-		} ?? switch (path) {
 			'nowWatching.onWan' => 'Remote',
 			'nowWatching.unavailable' => 'Tautulli did not answer',
 			'nowWatching.sidebarLabel' => 'Now watching',

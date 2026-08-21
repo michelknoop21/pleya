@@ -12,6 +12,7 @@ import '../utils/app_logger.dart';
 import '../utils/formatters.dart';
 import '../utils/platform_detector.dart';
 import 'file_picker_service.dart';
+import 'preferences/preference_sync_policy.dart';
 import 'settings_service.dart';
 import 'storage_service.dart';
 
@@ -269,12 +270,11 @@ class SettingsExportService {
 
   /// Base keys that [StorageService] persists under the user prefix. These need
   /// to be re-scoped to the current user on import.
-  static bool isUserScopedBaseKey(String baseKey) {
-    const exact = {'hidden_libraries', 'library_filters', 'library_order', 'home_row_order', 'hidden_home_rows'};
-    if (exact.contains(baseKey)) return true;
-    const prefixes = ['library_filters_', 'library_sort_', 'library_grouping_', 'library_tab_'];
-    return prefixes.any(baseKey.startsWith);
-  }
+  ///
+  /// The list used to live here as method-local constants, duplicating the key
+  /// constants in `StorageService` and the scope decision in the sync layer.
+  /// Three copies of one fact is two too many, so the registry answers it now.
+  static bool isUserScopedBaseKey(String baseKey) => PreferenceSyncPolicyRegistry.isProfileScoped(baseKey);
 
   static Future<bool> writeTyped(SharedPreferencesWithCache prefs, String key, String type, Object? value) async {
     try {

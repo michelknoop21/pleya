@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import '../media/ids.dart';
 
@@ -6,6 +7,8 @@ import 'package:uuid/uuid.dart';
 import '../profiles/profile.dart';
 import '../utils/log_redaction_manager.dart';
 import 'base_shared_preferences_service.dart';
+import 'preferences/preference_mutation.dart';
+import 'preferences/preference_sync_scope.dart';
 
 class StorageService extends BaseSharedPreferencesService {
   static const String _keyPlexToken = 'plex_token';
@@ -17,7 +20,8 @@ class StorageService extends BaseSharedPreferencesService {
   static const String _keyHiddenLibraries = 'hidden_libraries';
   static const String _keyServersList = 'servers_list';
   static const String _keyServerOrder = 'server_order';
-  static const String _keyActiveProfileId = 'active_app_profile_id';
+  // One definition, in the layer that has to recognise a write to it.
+  static const String _keyActiveProfileId = PreferenceSyncScope.activeProfileIdKey;
   static const String _keyHomeRowOrder = 'home_row_order';
   static const String _keyHiddenHomeRows = 'hidden_home_rows';
 
@@ -86,8 +90,11 @@ class StorageService extends BaseSharedPreferencesService {
     // One-time migration from legacy global key
     final legacy = prefs.getString(baseKey);
     if (legacy != null) {
-      prefs.setString(scopedKey, legacy);
-      prefs.remove(baseKey);
+      // A read that promotes a legacy key is bookkeeping, not a choice. It must
+      // not push, and it must not stamp a user timestamp, or the device that
+      // upgrades last would look like the most recent editor of everything.
+      unawaited(_writePreference(scopedKey, legacy, source: PreferenceSource.migration));
+      unawaited(_removePreference(baseKey, source: PreferenceSource.migration));
     }
     return legacy;
   }
@@ -146,7 +153,7 @@ class StorageService extends BaseSharedPreferencesService {
 
   // Selected Library Key (replaces index-based selection)
   Future<void> saveSelectedLibraryKey(String key) async {
-    await prefs.setString('$_userPrefix$_keySelectedLibraryKey', key);
+    await _writePreference('$_userPrefix$_keySelectedLibraryKey', key);
   }
 
   String? getSelectedLibraryKey() {
@@ -158,7 +165,7 @@ class StorageService extends BaseSharedPreferencesService {
     final baseKey = sectionId != null ? '$_prefixLibraryFilters$sectionId' : _keyLibraryFilters;
     // Note: using Map<String, String> which json.encode handles correctly
     final jsonString = json.encode(filters);
-    await prefs.setString('$_userPrefix$baseKey', jsonString);
+    await _writePreference('$_userPrefix$baseKey', jsonString);
   }
 
   Map<String, String> getLibraryFilters({String? sectionId}) {
@@ -190,15 +197,15 @@ class StorageService extends BaseSharedPreferencesService {
     // One-time migration from legacy key
     result = _readJsonMap(baseKey, legacyStringOk: true);
     if (result != null) {
-      _setJsonMap(scopedKey, result);
-      prefs.remove(baseKey);
+      unawaited(_setJsonMap(scopedKey, result, source: PreferenceSource.migration));
+      unawaited(_removePreference(baseKey, source: PreferenceSource.migration));
     }
     return result;
   }
 
   // Library Grouping (per-library, e.g., 'movies', 'shows', 'seasons', 'episodes')
   Future<void> saveLibraryGrouping(String sectionId, String grouping) async {
-    await prefs.setString('$_userPrefix$_prefixLibraryGrouping$sectionId', grouping);
+    await _writePreference('$_userPrefix$_prefixLibraryGrouping$sectionId', grouping);
   }
 
   String? getLibraryGrouping(String sectionId) {
@@ -207,7 +214,7 @@ class StorageService extends BaseSharedPreferencesService {
 
   // Library Tab (per-library, saves last selected tab name)
   Future<void> saveLibraryTab(String sectionId, String tabName) async {
-    await prefs.setString('$_userPrefix$_prefixLibraryTab$sectionId', tabName);
+    await _writePreference('$_userPrefix$_prefixLibraryTab$sectionId', tabName);
   }
 
   String? getLibraryTab(String sectionId) {
@@ -216,7 +223,7 @@ class StorageService extends BaseSharedPreferencesService {
     try {
       return prefs.getString(key);
     } catch (_) {
-      prefs.remove(key);
+      unawaited(_removePreference(key, source: PreferenceSource.migration));
       return null;
     }
   }
@@ -244,8 +251,8 @@ class StorageService extends BaseSharedPreferencesService {
       // scoped provider could steal legacy preferences into the wrong scope.
       final legacy = prefs.getString(_keyHiddenLibraries);
       if (legacy != null) {
-        prefs.setString(scopedKey, legacy);
-        prefs.remove(_keyHiddenLibraries);
+        unawaited(_writePreference(scopedKey, legacy, source: PreferenceSource.migration));
+        unawaited(_removePreference(_keyHiddenLibraries, source: PreferenceSource.migration));
         jsonString = legacy;
       }
     }
@@ -267,15 +274,15 @@ class StorageService extends BaseSharedPreferencesService {
   Future<void> clearLibraryPreferences() async {
     final prefix = _userPrefix;
     await Future.wait([
-      ..._libraryPreferenceKeys.map((k) => prefs.remove('$prefix$k')),
-      prefs.remove('$prefix$_keySelectedLibraryKey'),
+      ..._libraryPreferenceKeys.map((k) => _removePreference('$prefix$k', source: PreferenceSource.reset)),
+      _removePreference('$prefix$_keySelectedLibraryKey', source: PreferenceSource.reset),
       _clearKeysWithPrefix('$prefix$_prefixLibrarySort'),
       _clearKeysWithPrefix('$prefix$_prefixLibraryFilters'),
       _clearKeysWithPrefix('$prefix$_prefixLibraryGrouping'),
       _clearKeysWithPrefix('$prefix$_prefixLibraryTab'),
       if (prefix.isNotEmpty) ...[
-        ..._libraryPreferenceKeys.map(prefs.remove),
-        prefs.remove(_keySelectedLibraryKey),
+        ..._libraryPreferenceKeys.map((k) => _removePreference(k, source: PreferenceSource.reset)),
+        _removePreference(_keySelectedLibraryKey, source: PreferenceSource.reset),
         _clearKeysWithPrefix(_prefixLibrarySort),
         _clearKeysWithPrefix(_prefixLibraryFilters),
         _clearKeysWithPrefix(_prefixLibraryGrouping),
@@ -339,8 +346,8 @@ class StorageService extends BaseSharedPreferencesService {
     // One-time migration from legacy key
     final legacy = _getStringList(baseKey);
     if (legacy != null) {
-      _setStringList(scopedKey, legacy);
-      prefs.remove(baseKey);
+      unawaited(_setStringList(scopedKey, legacy, source: PreferenceSource.migration));
+      unawaited(_removePreference(baseKey, source: PreferenceSource.migration));
     }
     return legacy;
   }
@@ -410,7 +417,11 @@ class StorageService extends BaseSharedPreferencesService {
 
   /// Clear all multi-server data
   Future<void> clearMultiServerData() async {
-    await Future.wait([clearServersList(), clearServerOrder(), _clearKeysWithPrefix(_prefixServerEndpoint)]);
+    await Future.wait([
+      clearServersList(),
+      clearServerOrder(),
+      _clearKeysWithPrefix(_prefixServerEndpoint, source: PreferenceSource.migration),
+    ]);
   }
 
   /// Clear legacy server order.
@@ -422,13 +433,15 @@ class StorageService extends BaseSharedPreferencesService {
 
   String? getActiveProfileId() => prefs.getString(_keyActiveProfileId);
 
-  Future<void> setActiveProfileId(String id) async {
-    await prefs.setString(_keyActiveProfileId, id);
-  }
+  /// Both of these report the mutation even though the key never syncs.
+  ///
+  /// The engine listens for exactly this write: which profile is active decides
+  /// which cloud namespace applies, so switching profiles has to reconcile.
+  /// Writing straight to `prefs` here would have left every path that switches
+  /// profiles — activation, bootstrap, cleanup — silently unreconciled.
+  Future<void> setActiveProfileId(String id) => _writePreference(_keyActiveProfileId, id);
 
-  Future<void> clearActiveProfileId() async {
-    await prefs.remove(_keyActiveProfileId);
-  }
+  Future<void> clearActiveProfileId() => _removePreference(_keyActiveProfileId);
 
   // Per-connection Plex Home users cache. Plex Home profiles are not
   // persisted as Profile rows — they're fetched live by [PlexHomeService]
@@ -448,7 +461,7 @@ class StorageService extends BaseSharedPreferencesService {
   }
 
   Future<void> clearAllPlexHomeUsersCache() async {
-    await _clearKeysWithPrefix(_prefixPlexHomeUsers);
+    await _clearKeysWithPrefix(_prefixPlexHomeUsers, source: PreferenceSource.migration);
   }
 
   // `lastUsedAt` for ordering and future filtering of profiles by recency
@@ -465,7 +478,7 @@ class StorageService extends BaseSharedPreferencesService {
   }
 
   Future<void> clearAllProfileLastUsed() async {
-    await _clearKeysWithPrefix(_prefixProfileLastUsed);
+    await _clearKeysWithPrefix(_prefixProfileLastUsed, source: PreferenceSource.migration);
   }
 
   // Private helper methods
@@ -495,10 +508,14 @@ class StorageService extends BaseSharedPreferencesService {
     return decodeJsonStringToMap(jsonString, legacyStringOk: legacyStringOk);
   }
 
-  /// Remove all keys matching a prefix
-  Future<void> _clearKeysWithPrefix(String prefix) async {
+  /// Remove all keys matching a prefix.
+  ///
+  /// [source] is `reset` for the library and home families, which the sync
+  /// engine owns, and `migration` for the runtime caches it does not: server
+  /// endpoints, the Plex Home user cache, per-profile last-used stamps.
+  Future<void> _clearKeysWithPrefix(String prefix, {PreferenceSource source = PreferenceSource.reset}) async {
     final keys = prefs.keys.where((k) => k.startsWith(prefix)).toList(growable: false);
-    await Future.wait(keys.map((k) => prefs.remove(k)));
+    await Future.wait(keys.map((k) => _removePreference(k, source: source)));
   }
 
   bool _belongsToServer(String value, ServerId serverId) => value.startsWith('$serverId:');
@@ -509,7 +526,7 @@ class StorageService extends BaseSharedPreferencesService {
     final filtered = values.where((value) => !_belongsToServer(value, serverId)).toList(growable: false);
     if (filtered.length == values.length) return;
     if (filtered.isEmpty) {
-      await prefs.remove(key);
+      await _removePreference(key, source: PreferenceSource.reset);
     } else {
       await _setStringList(key, filtered);
     }
@@ -525,7 +542,7 @@ class StorageService extends BaseSharedPreferencesService {
   Future<void> _clearSelectedLibraryForServer(String key, ServerId serverId) async {
     final selected = prefs.getString(key);
     if (selected != null && _belongsToServer(selected, serverId)) {
-      await prefs.remove(key);
+      await _removePreference(key, source: PreferenceSource.reset);
     }
   }
 
@@ -544,7 +561,7 @@ class StorageService extends BaseSharedPreferencesService {
     final keys = prefs.keys
         .where((key) => key.startsWith(keyPrefix) && key.substring(keyPrefix.length).startsWith(serverPrefix))
         .toList(growable: false);
-    await Future.wait(keys.map((key) => prefs.remove(key)));
+    await Future.wait(keys.map((key) => _removePreference(key, source: PreferenceSource.reset)));
   }
 
   Future<void> _clearServerPerLibraryKeysEverywhere(String basePrefix, ServerId serverId) async {
@@ -562,26 +579,36 @@ class StorageService extends BaseSharedPreferencesService {
           return suffix.startsWith(serverPrefix);
         })
         .toList(growable: false);
-    await Future.wait(keys.map((key) => prefs.remove(key)));
+    await Future.wait(keys.map((key) => _removePreference(key, source: PreferenceSource.reset)));
   }
 
   // Public JSON helpers for reducing boilerplate
 
+  // Preference-pipeline helpers.
+  //
+  // Library and home preferences are not `Pref<T>` objects, so they never went
+  // through `write<T>`. Half of them fired the old write hook by hand and half
+  // did not, and none of the *removals* fired it at all: iCloud saw the set and
+  // never the delete. These three helpers put every one of them on the same
+  // path, with the source spelled out at the call site.
+
+  Future<void> _writePreference(String key, String value, {PreferenceSource source = PreferenceSource.local}) async {
+    await prefs.setString(key, value);
+    await BaseSharedPreferencesService.notifyMutation(PreferenceMutation.set(key, value, source: source));
+  }
+
+  Future<void> _removePreference(String key, {PreferenceSource source = PreferenceSource.local}) async {
+    await prefs.remove(key);
+    await BaseSharedPreferencesService.notifyMutation(PreferenceMutation.remove(key, source: source));
+  }
+
   /// Save a JSON-encodable map to storage
-  Future<void> _setJsonMap(String key, Map<String, dynamic> data) async {
-    final jsonString = json.encode(data);
-    await prefs.setString(key, jsonString);
+  Future<void> _setJsonMap(String key, Map<String, dynamic> data, {PreferenceSource source = PreferenceSource.local}) {
+    return _writePreference(key, json.encode(data), source: source);
   }
 
   /// Save a string list as JSON array.
-  ///
-  /// Fires [BaseSharedPreferencesService.onKeyWritten] by hand: these go
-  /// through `prefs.setString` rather than `write<T>`, so without this the
-  /// home layout / library order would only reach iCloud on the next full
-  /// `pushAll` (enable, import, reset) instead of on change.
-  Future<void> _setStringList(String key, List<String> list) async {
-    final jsonString = json.encode(list);
-    await prefs.setString(key, jsonString);
-    BaseSharedPreferencesService.onKeyWritten?.call(key);
+  Future<void> _setStringList(String key, List<String> list, {PreferenceSource source = PreferenceSource.local}) {
+    return _writePreference(key, json.encode(list), source: source);
   }
 }

@@ -235,11 +235,12 @@ Future<void> _bootstrapApp() async {
     settings: settings,
     storage: storage,
     onRemoteChangesApplied: () {
-      // Setting values and theme already refresh through their listenables
-      // (SettingsService.refreshListenables fired by the sync service); reload
-      // the global locale so a remotely-changed language takes effect now.
-      // ponytail: library/keyboard providers re-read on next navigation — wire
-      // a full provider reload here if a device test shows stale library state.
+      // Setting values and theme refresh through their listenables
+      // (SettingsService.refreshListenables fired by the sync service), and the
+      // library, order and home-layout providers reload from
+      // PreferenceRefreshBus, which the coordinator feeds with the families a
+      // batch actually invalidated. What is left here is the global locale,
+      // which is not a provider: it is an app-level call.
       unawaited(LocaleSettings.setLocale(settings.read(SettingsService.appLocale)));
     },
   );
@@ -468,6 +469,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   late final MultiServerManager _serverManager;
   late final DataAggregationService _aggregationService;
   late final AppDatabase _appDatabase;
+  StreamSubscription<List<Connection>>? _portableServerIdSub;
   late final DownloadManagerService _downloadManager;
   late final OfflineWatchSyncService _offlineWatchSyncService;
   late final AppLifecycleListener _appLifecycleListener;
@@ -564,6 +566,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     _syncDebounce?.cancel();
+    _portableServerIdSub?.cancel();
     _watchStateSubscription?.cancel();
     _removeConnectivitySyncListener();
     _memoryCheckTimer?.cancel();
@@ -719,7 +722,20 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
         Provider<SettingsService>.value(value: widget.settings),
         Provider<StorageService>.value(value: widget.storage),
         Provider<AppDatabase>.value(value: _appDatabase),
-        Provider<ConnectionRegistry>(create: (_) => ConnectionRegistry(_appDatabase)),
+        Provider<ConnectionRegistry>(
+          create: (_) {
+            final registry = ConnectionRegistry(_appDatabase);
+            // Preference sync needs to know which server ids mean the same
+            // server on another device: Plex and Jellyfin hand out a server-owned
+            // identity, a local folder does not. The engine starts before the
+            // database is open, so it denies everything until this arrives.
+            _portableServerIdSub?.cancel();
+            _portableServerIdSub = registry.watchConnections().listen(
+              (connections) => ICloudSyncService.instance?.updatePortableServerIds(connections),
+            );
+            return registry;
+          },
+        ),
         Provider<ProfileRegistry>(create: (_) => ProfileRegistry(_appDatabase)),
         Provider<ProfileConnectionRegistry>(create: (_) => ProfileConnectionRegistry(_appDatabase)),
         Provider<PlexHomeService>(

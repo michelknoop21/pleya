@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
+import '../services/preferences/preference_refresh.dart';
 import '../services/storage_service.dart';
 
 /// Provider for managing hidden library state across the app.
@@ -12,9 +15,24 @@ class HiddenLibrariesProvider extends ChangeNotifier with DisposableChangeNotifi
   bool _isInitialized = false;
   Future<void>? _initFuture;
 
-  HiddenLibrariesProvider({this._storageService, this.profileId}) {
+  HiddenLibrariesProvider({this._storageService, this.profileId, PreferenceRefreshBus? refreshBus}) {
     // Start initialization eagerly to reduce race conditions
     _initFuture = _initialize();
+    // A remote change writes the new set into storage; without this the screen
+    // keeps showing the set that was read at construction until the app is
+    // restarted.
+    _refreshSub = (refreshBus ?? PreferenceRefreshBus.instance).changes.listen((families) {
+      if (families.contains(PreferenceRefreshFamily.hiddenLibraries)) unawaited(refresh());
+    });
+  }
+
+  StreamSubscription<Set<PreferenceRefreshFamily>>? _refreshSub;
+
+  @override
+  void dispose() {
+    unawaited(_refreshSub?.cancel());
+    _refreshSub = null;
+    super.dispose();
   }
 
   /// Ensures the provider is initialized. Call this before accessing hidden
