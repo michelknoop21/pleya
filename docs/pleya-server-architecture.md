@@ -1815,7 +1815,7 @@ komen niet langs kijkstatus of bytes.
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-3 |
-| Status | **opgeleverd 19 augustus 2026, ter goedkeuring**: `lib/services/pleya_server_client*`, 188 tests |
+| Status | **gesloten en bevroren, 21 augustus 2026**: `lib/services/pleya_server_client*`, 188 tests plus drie die alleen met de DS920+ erbij draaien |
 | Doel | de vijfde `MediaServerClient`, alleen lezen |
 | Bijdrage aan einddoel | vanaf hier is Pleya Server een echte backend in het product en niet een experiment ernaast |
 | Afhankelijkheden | PS-1, PS-2 |
@@ -1880,10 +1880,29 @@ is niet aangeraakt en `check_protocol.sh` is groen. Er is scope blijven liggen d
 alfabetische sprongbalk en filters kan het bevroren contract niet dragen, en dat staat nu als G13 en
 als een gecorrigeerde matrixregel in plaats van als een client-side benadering.
 
-**Wat er nog niet is gemeten.** De verbinding is niet tegen de draaiende server op de DS920+ gelegd:
-de stack draait niet en er is in deze ronde niets uitgerold. Acceptatiecriterium 1 en het
-stopcriterium staan daarmee op tests en niet op een toestel. Dat is de reden dat deze fase
-"ter goedkeuring" heet en niet "gesloten".
+#### Gesloten op 21 augustus 2026, met de meting op de DS920+
+
+De ene ontbrekende meting is gedaan. `test/pleya_server/pleya_server_live_nas_test.dart` legt
+dezelfde route die de app loopt tegen de draaiende server op de DS920+, via de relay uit
+`pleya_web/scripts/nas-tunnel.ts`, en slaat zichzelf over zonder adres zodat de gewone suite geen
+NAS nodig heeft. Drie tests, alle drie groen:
+
+| Wat | Gemeten |
+| --- | --- |
+| `GET /info` van de echte server | `server=01a016ee-dd33-7000-a1fc-b68096e1bd2f`, `browse`, `search` en `artwork` waar, `watch_state` onwaar, `setup_required` onwaar |
+| Inloggen, bibliotheken, bladeren | drie bibliotheken: Films 461 items, Kids 5, Series 97; eerste pagina van 20, 20 en 5 |
+| Artwork met de header uit DEC-048 | "21 Jump Street" 312.999 bytes, "2 Broke Girls" 57.358 bytes, beide 200 |
+| Zoeken | `q=a`, tien resultaten |
+| Herstart | de rij gaat door een echte drift-database heen, een verse client mint met het bewaarde refreshtoken een sessie en haalt opnieuw drie bibliotheken |
+
+Daarmee staat acceptatiecriterium 1 op een toestel en niet op een nabootsing, en het stopcriterium
+staat op de twee vormfactoren uit commit `48824fc` plus deze meting. De fase is gesloten en
+bevroren.
+
+**Wat het protocolvenster hiermee doet.** Het contract lag bevroren zolang PS-3 liep. Bij het
+sluiten gaat het venster open voor precies de wijzigingen die poort 3, 4 en 5 afdwingen
+([hoofdstuk 24.2](#242-open-vragen), en `docs/pleya-server-gates.md`), en daarna gaat het weer
+dicht voor de duur van PS-4.
 
 ---
 
