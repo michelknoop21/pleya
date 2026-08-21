@@ -160,8 +160,22 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     if (!mounted || currentPlayer != player) return;
 
     if (shouldPauseForBackground) {
+      // Checked again here, not only on entry: pausing the player is an await,
+      // and a resume that lands inside it would otherwise still end the session
+      // with a stop. This is the one side effect that cannot be taken back.
+      if (_lifecycleTransitionSuperseded(enqueuedSequence)) {
+        _recordLifecycleState('hidden', action: 'skipped_superseded_by_resume');
+        return;
+      }
       await _flushFinalPlaybackReportForLifecycle('hidden', wasPlaying: _wasPlayingBeforeInactive);
       if (!mounted || currentPlayer != player) return;
+      // And once more after the report: what follows suspends the live-TV
+      // heartbeat, the media controls and the render layer, none of which
+      // belongs to an app that is back on screen.
+      if (_lifecycleTransitionSuperseded(enqueuedSequence)) {
+        _recordLifecycleState('hidden', action: 'skipped_superseded_by_resume');
+        return;
+      }
     }
 
     _suspendLiveTimelineForBackground();
@@ -188,7 +202,15 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     if (tracker == null || currentPlayer == null) return;
 
     tracker.resumeAfterStoppedReport();
-    unawaited(tracker.sendProgress(currentPlayer.state.isActive ? 'playing' : 'paused'));
+    // Only a playing player opens a session. Opening one goes out as a `started`
+    // report, which Plex records as playing whatever this player is actually
+    // doing, so a paused one would show up in the dashboard as a stream that
+    // is not running. It loses nothing by waiting: pressing play reports
+    // straight away through the playing-state listener, and leaving writes the
+    // position through the exit stop.
+    if (currentPlayer.state.isActive) {
+      unawaited(tracker.sendProgress('playing'));
+    }
   }
 
   /// Flush at most one final report for a lifecycle transition.

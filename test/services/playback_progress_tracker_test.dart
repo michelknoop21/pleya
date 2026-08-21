@@ -1644,6 +1644,115 @@ void main() {
       expect(stops.last.time, 150000, reason: 'the position the user actually left at must reach the server');
     });
 
+    test('a report refused during the stopped window does not silence the next session', () async {
+      // The resume path restores the media controls before it re-arms the
+      // reporting, and that restore can start playback. The `playing` it fires
+      // is refused by the stopped session but still remembered as the last
+      // report, so without clearing that memory the first report of the new
+      // session looks like a duplicate and is dropped. A player that comes back
+      // paused would then never open a session at all.
+      final client = _FakePlexClient();
+      final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+      final tracker = trackerFor(client, player);
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+      await tracker.sendStoppedProgressOnce();
+
+      // Refused: the session is terminal, but the tracker records it.
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+      client.updateProgressCalls.clear();
+
+      tracker.resumeAfterStoppedReport();
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(client.updateProgressCalls, hasLength(1));
+      expect(client.updateProgressCalls.single.state, 'playing');
+      expect(client.updateProgressCalls.single.time, 30000);
+    });
+
+    test('a player that comes back paused opens its session on the next play', () async {
+      // The resume path deliberately does not open a session for a paused
+      // player: opening one is a `started` report, and Plex would show a
+      // stream that is not running. What must work is the press of play right
+      // after, at a position nothing moved from.
+      final client = _FakePlexClient();
+      final player = _FakePlayer(
+        position: const Duration(seconds: 30),
+        duration: const Duration(minutes: 10),
+        playing: false,
+      );
+      final tracker = trackerFor(client, player);
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('paused');
+      await Future<void>.delayed(Duration.zero);
+      await tracker.sendStoppedProgressOnce();
+      client.updateProgressCalls.clear();
+
+      tracker.resumeAfterStoppedReport();
+      player.playing = true;
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(client.updateProgressCalls, hasLength(1));
+      expect(client.updateProgressCalls.single.state, 'playing');
+      expect(client.updateProgressCalls.single.time, 30000);
+    });
+
+    test('re-arming twice does not lose the stop that is still on the wire', () async {
+      // Autoplay cancelled at the end of a film re-arms once; a trip to the
+      // home screen and back re-arms again. If the second call forgets the
+      // first one's drain, the exit stop is answered by the stop still in
+      // flight and the real position is lost.
+      final client = _FakePlexClient();
+      final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+      final tracker = trackerFor(client, player);
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+
+      client.gate = Completer<void>();
+      final slowStop = tracker.sendStoppedProgressOnce();
+      await Future<void>.delayed(Duration.zero);
+      tracker.resumeAfterStoppedReport();
+      tracker.resumeAfterStoppedReport();
+
+      player.position = const Duration(seconds: 200);
+      final exitStop = tracker.sendStoppedProgressOnce(positionOverride: const Duration(seconds: 200));
+
+      client.gate!.complete();
+      client.gate = null;
+      await slowStop;
+      await exitStop;
+      await Future<void>.delayed(Duration.zero);
+
+      final stops = client.updateProgressCalls.where((call) => call.state == 'stopped').toList();
+      expect(stops.last.time, 200000);
+    });
+
+    test('re-arming leaves the position memory alone, so an unmoved player still says nothing', () async {
+      // hasReportablePositionChange feeds the lifecycle decision. Forgetting the
+      // position here would report movement that never happened, and the second
+      // stopped report at an already-reported position is the rollback write.
+      final client = _FakePlexClient();
+      final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));
+      final tracker = trackerFor(client, player);
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+      expect(tracker.hasReportablePositionChange, isFalse);
+
+      tracker.resumeAfterStoppedReport();
+
+      expect(tracker.hasReportablePositionChange, isFalse);
+    });
+
     test('a stop that was never resumed still reports only once', () async {
       final client = _FakePlexClient();
       final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(minutes: 10));

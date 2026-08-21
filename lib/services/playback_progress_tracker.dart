@@ -286,8 +286,23 @@ class PlaybackProgressTracker {
   /// handed to [_stopToDrain] instead of being dropped.
   void resumeAfterStoppedReport() {
     _reportSession?.resetAfterStop();
-    _stopToDrain = _stoppedProgressFuture;
+    // Never overwrite a drain that is still waiting. Two re-arms before the
+    // next stop (autoplay cancelled at the end of a film, then a trip to the
+    // home screen) would otherwise drop the first one, and the exit stop would
+    // again be answered by a stop that is still on the wire.
+    _stopToDrain = _stoppedProgressFuture ?? _stopToDrain;
     _stoppedProgressFuture = null;
+    // The suppression cache describes what a *live* session was told, and a stop
+    // ended that session. It matters because a report fired during the stopped
+    // window is refused by the session but still remembered here: without this
+    // the first report of the new session looks like a repeat of one the server
+    // never received and is dropped.
+    //
+    // Only the state is forgotten, not the position. `hasReportablePositionChange`
+    // reads the position, and a null there would tell the lifecycle layer that
+    // something moved when nothing did, which is the repeat-position write the
+    // whole suppression exists to prevent.
+    _lastReportedState = null;
   }
 
   Future<void> _sendProgress(String state, {Duration? positionOverride, bool force = false}) async {
