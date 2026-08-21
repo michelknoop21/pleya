@@ -14,7 +14,22 @@ class Pressable extends StatefulWidget {
   final double pressedScale;
   final bool haptic;
 
-  const Pressable({super.key, required this.child, this.onTap, this.pressedScale = 0.97, this.haptic = true});
+  /// Hit-test behavior of the underlying [GestureDetector]. The default
+  /// matches Flutter's: with a non-null child that is
+  /// [HitTestBehavior.deferToChild], so only the child's own opaque area
+  /// responds. Pass [HitTestBehavior.opaque] when the tappable area is
+  /// deliberately larger than the glyph inside it, or the enlarged box is a
+  /// lie — it lays out at 48 and still only hits on the 18px icon.
+  final HitTestBehavior behavior;
+
+  const Pressable({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.pressedScale = 0.97,
+    this.haptic = true,
+    this.behavior = HitTestBehavior.deferToChild,
+  });
 
   @override
   State<Pressable> createState() => _PressableState();
@@ -32,6 +47,7 @@ class _PressableState extends State<Pressable> {
     final reduced = DevicePerformance.isReduced;
     final scale = _down && !reduced ? widget.pressedScale : 1.0;
     return GestureDetector(
+      behavior: widget.behavior,
       onTapDown: widget.onTap == null ? null : (_) => _set(true),
       onTapCancel: () => _set(false),
       onTapUp: (_) => _set(false),

@@ -32,6 +32,7 @@ import 'package:pleya/widgets/media_card.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
+import '../test_helpers/notices.dart';
 
 /// Records which navigator each route was pushed onto.
 class _PushSpy extends NavigatorObserver {
@@ -248,6 +249,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text(t.mediaMenu.markAsWatched), findsNothing, reason: 'the menu entry must be clickable');
+
+    drainNotices();
   });
 
   testWidgets('no preview grows on top of a menu opened during the hover dwell', (tester) async {

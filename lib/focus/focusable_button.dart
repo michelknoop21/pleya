@@ -23,6 +23,15 @@ class FocusableButton extends StatefulWidget {
   /// Whether to use background color instead of border for focus indicator.
   final bool useBackgroundFocus;
 
+  /// Accessibility label forwarded to [FocusableWrapper]'s [Semantics].
+  final String? semanticLabel;
+
+  /// Whether to dim to 60% while unfocused in d-pad mode. Set false where the
+  /// button lives outside any focus scope that directional traversal can
+  /// reach (the notice overlay sits above the Navigator), because there the
+  /// dim is permanent rather than a focus hint.
+  final bool dimWhenUnfocused;
+
   const FocusableButton({
     super.key,
     required this.child,
@@ -36,6 +45,8 @@ class FocusableButton extends StatefulWidget {
     this.onBack,
     this.autoScroll = true,
     this.useBackgroundFocus = false,
+    this.semanticLabel,
+    this.dimWhenUnfocused = true,
   });
 
   @override
@@ -51,7 +62,7 @@ class _FocusableButtonState extends State<FocusableButton> {
     final showFocus = _isFocused && isKeyboard;
     final duration = FocusTheme.getAnimationDuration(context);
     // In dpad mode: focused = full opacity, unfocused = dimmed
-    final opacity = isKeyboard && !_isFocused ? 0.6 : 1.0;
+    final opacity = isKeyboard && !_isFocused && widget.dimWhenUnfocused ? 0.6 : 1.0;
 
     return FocusableWrapper(
       autofocus: widget.autofocus,
@@ -62,6 +73,7 @@ class _FocusableButtonState extends State<FocusableButton> {
       descendantsAreFocusable: false,
       onFocusChange: (f) => setState(() => _isFocused = f),
       autoScroll: widget.autoScroll,
+      semanticLabel: widget.semanticLabel,
       onSelect: widget.onPressed,
       onNavigateUp: widget.onNavigateUp,
       onNavigateDown: widget.onNavigateDown,

@@ -77,6 +77,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'utils/navigation_transitions.dart';
 import 'utils/log_redaction_manager.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'widgets/apple_tv_scale.dart';
 import 'widgets/notice/notice_host.dart';
 
 const bool _enableSentry = bool.fromEnvironment('ENABLE_SENTRY', defaultValue: false);
@@ -947,14 +948,20 @@ class _AppShell extends StatelessWidget {
                       key: rootScaffoldMessengerKey,
                       child: Scaffold(
                         backgroundColor: Colors.transparent,
-                        body: Stack(
-                          children: [
-                            _AppleTvScale(child: IntroGate(child: child ?? const SizedBox.shrink())),
-                            // Global notice overlay — deliberately a Stack layer here,
-                            // not a hand-inserted OverlayEntry. See NoticeHost's doc
-                            // comment for why that distinction matters.
-                            const NoticeHost(),
-                          ],
+                        // The notice overlay is a Stack layer here, not a
+                        // hand-inserted OverlayEntry — see NoticeHost's doc
+                        // comment. It sits *inside* AppleTvScale so it is
+                        // drawn in the same coordinate space as the UI it
+                        // covers; as a sibling it rendered at 1× over a
+                        // 1.85× app.
+                        body: AppleTvScale(
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              IntroGate(child: child ?? const SizedBox.shrink()),
+                              const NoticeHost(),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -962,55 +969,6 @@ class _AppShell extends StatelessWidget {
                 ),
               );
             },
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// On Apple TV the system hands Flutter a 1920×1080 surface at
-/// devicePixelRatio 1.0, the same logical pixel count as a phablet. That's
-/// too dense for a 10ft viewing distance, so everything ends up tiny. We
-/// shrink the effective logical size to half and scale the rendered output
-/// back up so fonts, icons, and paddings end up visually ~2× larger — roughly
-/// matching the UI feel of Android TV (which renders at lower logical DPI).
-class _AppleTvScale extends StatelessWidget {
-  final Widget? child;
-  const _AppleTvScale({required this.child});
-
-  static const double _scale = 1.85;
-
-  @override
-  Widget build(BuildContext context) {
-    if (child == null || !PlatformDetector.isAppleTV()) {
-      return child ?? const SizedBox.shrink();
-    }
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final logicalSize = Size(constraints.maxWidth / _scale, constraints.maxHeight / _scale);
-        final outerQ = MediaQuery.of(context);
-        // tvOS reports conservative overscan insets (~60pt top/bottom,
-        // ~90pt left/right). Modern TVs don't overscan, so treat them as
-        // dead margin and zero them out — the UI can use the full surface.
-        return Transform.scale(
-          scale: _scale,
-          alignment: .topLeft,
-          transformHitTests: true,
-          child: SizedBox(
-            width: logicalSize.width,
-            height: logicalSize.height,
-            child: MediaQuery(
-              data: outerQ.copyWith(
-                size: logicalSize,
-                devicePixelRatio: outerQ.devicePixelRatio * _scale,
-                padding: .zero,
-                viewPadding: .zero,
-                viewInsets: .zero,
-                systemGestureInsets: .zero,
-              ),
-              child: child!,
-            ),
           ),
         );
       },

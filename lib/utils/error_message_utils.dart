@@ -229,5 +229,5 @@ Notice noticeForPlaybackLaunchFailure(Object error, {required String actionLabel
     onPressed: () => rootNavigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => const LogsScreen())),
   );
   if (onRetry == null) return (details, null);
-  return (NoticeAction(label: t.common.retry, onPressed: onRetry), details);
+  return (NoticeAction(label: t.common.retry, onPressed: onRetry, recovery: true), details);
 }

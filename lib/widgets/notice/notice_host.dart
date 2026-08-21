@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/platform_detector.dart';
+import 'notice_back_dismisser.dart';
 import 'notice_card.dart';
 import 'notice_controller.dart';
 
@@ -14,8 +15,25 @@ import 'notice_controller.dart';
 /// child at the `MaterialApp.builder` level has no such lifecycle mismatch:
 /// it remounts with the rest of the app shell, never independently. Its own
 /// `BuildContext` is still never used for navigation — see [NoticeAction].
-class NoticeHost extends StatelessWidget {
+class NoticeHost extends StatefulWidget {
   const NoticeHost({super.key});
+
+  @override
+  State<NoticeHost> createState() => _NoticeHostState();
+}
+
+class _NoticeHostState extends State<NoticeHost> {
+  @override
+  void initState() {
+    super.initState();
+    NoticeBackDismisser.install();
+  }
+
+  @override
+  void dispose() {
+    NoticeBackDismisser.uninstall();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +42,21 @@ class NoticeHost extends StatelessWidget {
       builder: (context, _) {
         final entries = noticeController.visible;
         if (entries.isEmpty) return const SizedBox.shrink();
-        if (PlatformDetector.isTV()) return _TvLayer(entries: entries);
-        if (PlatformDetector.isDesktopOS()) return _DesktopLayer(entries: entries);
-        return _MobileLayer(entries: entries);
+        final Widget layer = PlatformDetector.isTV()
+            ? _TvLayer(entries: entries)
+            : PlatformDetector.isDesktopOS()
+            ? _DesktopLayer(entries: entries)
+            : _MobileLayer(entries: entries);
+        // The host is mounted above WidgetsApp's Navigator, so there is no
+        // Overlay in scope. Tooltip resolves one lazily when it is shown, so
+        // without this the close button's tooltip throws on the first hover
+        // or long-press and not a moment earlier.
+        //
+        // Layers position with Align rather than Positioned.fill on purpose:
+        // RenderPositionedBox and _RenderTheatre both leave hitTestSelf at
+        // false, so a pointer that misses a card falls through to the app
+        // behind it. The cards themselves absorb (see NoticeCard's Listener).
+        return Overlay.wrap(child: layer);
       },
     );
   }

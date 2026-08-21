@@ -35,6 +35,7 @@ import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/media_context_menu.dart';
 import 'package:pleya/widgets/notice/notice_controller.dart';
 import 'package:provider/provider.dart';
+import '../test_helpers/notices.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -157,11 +158,7 @@ void main() {
       // No NoticeHost is mounted in this widget tree, so the failure surfaces
       // on the global controller's model rather than as a widget in the tree.
       expect(noticeController.visible, isNotEmpty);
-      addTearDown(() {
-        for (final entry in noticeController.visible.toList()) {
-          noticeController.dismiss(entry.id);
-        }
-      });
+      drainNotices();
       expect(find.text('target'), findsOneWidget);
     });
   });

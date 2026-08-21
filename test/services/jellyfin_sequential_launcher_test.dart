@@ -13,6 +13,8 @@ import 'package:pleya/services/media_list_playback_launcher.dart';
 import 'package:pleya/services/playlist_items_loader.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 
+import '../test_helpers/notices.dart';
+
 /// Recording fake that satisfies [JellyfinClient] via `implements` +
 /// `noSuchMethod`. The launcher only needs the
 /// [MediaServerClient.fetchPlayableDescendants] /
@@ -513,6 +515,7 @@ void main() {
       final result = await launcher.launchFromFolder(folder: folder, shuffle: false, showLoadingIndicator: false);
 
       expect(result, isA<PlayQueueEmpty>());
+      drainNotices();
       expect(playback.isQueueActive, isFalse);
       expect(didNavigate, isFalse);
     });
@@ -644,6 +647,7 @@ void main() {
       final result = await launcher.launchShuffledShow(metadata: show, showLoadingIndicator: false);
 
       expect(result, isA<PlayQueueEmpty>());
+      drainNotices();
       expect(playback.isQueueActive, isFalse);
       expect(didNavigate, isFalse);
     });
@@ -677,6 +681,7 @@ void main() {
       );
 
       expect(result, isA<PlayQueueEmpty>());
+      drainNotices();
       expect(playback.isQueueActive, isFalse);
       expect(didNavigate, isFalse);
     });

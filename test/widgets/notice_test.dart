@@ -23,6 +23,8 @@ double _contrast(Color a, Color b) {
   return (math.max(la, lb) + 0.05) / (math.min(la, lb) + 0.05);
 }
 
+void _noop() {}
+
 void main() {
   MonoTokens tokensOf(ThemeData theme) => theme.extension<MonoTokens>()!;
 
@@ -58,24 +60,106 @@ void main() {
   });
 
   group('Notice duration', () {
-    test('error is persistent (no auto-dismiss)', () {
-      expect(noticeDurationFor(NoticeLevel.error), isNull);
-    });
-
     test('success, info, and warning all auto-dismiss', () {
       expect(noticeDurationFor(NoticeLevel.success), isNotNull);
       expect(noticeDurationFor(NoticeLevel.info), isNotNull);
       expect(noticeDurationFor(NoticeLevel.warning), isNotNull);
     });
+
+    test('an error with no way to fix it still clears itself', () {
+      expect(noticeDurationFor(NoticeLevel.error), kNoticeErrorAutoDismiss);
+    });
+
+    test('only an error offering a recovery action stays put', () {
+      expect(noticeDurationFor(NoticeLevel.error, hasRecoveryAction: true), isNull);
+      for (final level in [NoticeLevel.success, NoticeLevel.info, NoticeLevel.warning]) {
+        expect(noticeDurationFor(level, hasRecoveryAction: true), isNotNull, reason: level.name);
+      }
+    });
+
+    // The machine-checkable form of "every notice is dismissable": the only
+    // cell in the grid that may hang around is error + recovery, and that one
+    // is reachable by pointer, touch and the remote (see NoticeBackDismisser).
+    test('persistence is reachable through exactly one combination', () {
+      const details = NoticeAction(label: 'Details', onPressed: _noop);
+      const retry = NoticeAction(label: 'Retry', onPressed: _noop, recovery: true);
+      final actionSets = <String, (NoticeAction?, NoticeAction?)>{
+        'no actions': (null, null),
+        'details only': (details, null),
+        'retry + details': (retry, details),
+      };
+
+      for (final level in NoticeLevel.values) {
+        for (final entry in actionSets.entries) {
+          final notice = Notice(
+            level: level,
+            title: 't',
+            groupKey: 'g',
+            primary: entry.value.$1,
+            secondary: entry.value.$2,
+          );
+          final shouldPersist = level == NoticeLevel.error && entry.key == 'retry + details';
+          expect(notice.isPersistent, shouldPersist, reason: '${level.name} / ${entry.key}');
+        }
+      }
+    });
+
+    test('durationOverride still wins over the level policy', () {
+      const notice = Notice(
+        level: NoticeLevel.error,
+        title: 't',
+        groupKey: 'g',
+        primary: NoticeAction(label: 'Retry', onPressed: _noop, recovery: true),
+        durationOverride: Duration(seconds: 2),
+      );
+      expect(notice.duration, const Duration(seconds: 2));
+      expect(notice.isPersistent, isFalse);
+    });
   });
 
   group('NoticeController persistence and dismissal', () {
-    test('an error notice stays visible past its would-be duration', () {
+    test('an error offering a retry stays visible past any duration', () {
+      fakeAsync((async) {
+        final controller = NoticeController();
+        controller.show(
+          const Notice(
+            level: NoticeLevel.error,
+            title: 'Boom',
+            groupKey: 'boom',
+            primary: NoticeAction(label: 'Retry', onPressed: _noop, recovery: true),
+          ),
+        );
+        async.elapse(const Duration(minutes: 5));
+        expect(controller.visible, hasLength(1));
+      });
+    });
+
+    test('an error with nothing to retry clears itself after the long window', () {
       fakeAsync((async) {
         final controller = NoticeController();
         controller.show(const Notice(level: NoticeLevel.error, title: 'Boom', groupKey: 'boom'));
-        async.elapse(const Duration(minutes: 5));
+        async.elapse(kNoticeErrorAutoDismiss - const Duration(seconds: 1));
         expect(controller.visible, hasLength(1));
+        async.elapse(const Duration(seconds: 2));
+        expect(controller.visible, isEmpty);
+      });
+    });
+
+    test('a notice promoted out of the queue gets its own timer', () {
+      fakeAsync((async) {
+        final controller = NoticeController();
+        const persistent = NoticeAction(label: 'Retry', onPressed: _noop, recovery: true);
+        for (var i = 0; i < 3; i++) {
+          controller.show(Notice(level: NoticeLevel.error, title: 'p$i', groupKey: 'p$i', primary: persistent));
+        }
+        controller.show(const Notice(level: NoticeLevel.error, title: 'queued', groupKey: 'q'));
+        expect(controller.visible.map((e) => e.notice.title), ['p0', 'p1', 'p2']);
+
+        controller.dismiss(controller.visible.first.id);
+        expect(controller.visible.map((e) => e.notice.title), containsAll(['p1', 'p2', 'queued']));
+
+        async.elapse(kNoticeErrorAutoDismiss + const Duration(seconds: 1));
+        expect(controller.visible.map((e) => e.notice.title), ['p1', 'p2']);
       });
     });
 
