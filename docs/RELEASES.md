@@ -20,6 +20,7 @@ under `Notes`.
 <!-- BEGIN GENERATED -->
 ### New
 - App Store "What's New" automatisch zetten bij het koppelen van een build
+- Tautulli-kijkgeschiedenis als bron voor de smaakengine
 
 ### Fixed
 - prefer 16:9 backdrop over square art on narrow iPhone hero
