@@ -1,8 +1,28 @@
 # STATUS · Pleya
 
-_Laatst bijgewerkt: 2026-08-21 (`main` = `8e84f3a`; `feat/pleyaserver` loopt vooruit met het Pleya Server-werk. Er loopt nog steeds een tweede sessie met ongecommit werk in de hoofdmap; het PS-3W-werk in deze worktree is inmiddels gecommit. App Store Connect 2.8.0 hangt op iOS, tvOS én macOS aan build 220 en staat op alle drie `PREPARE_FOR_SUBMISSION`)_
+_Laatst bijgewerkt: 2026-08-22 (`origin/main` = `cf39291`, en `feat/pleyaserver` staat daar precies op: het Pleya Server-werk is de hoofdlijn op de remote. De lokale `main`-ref hangt nog op `25d192b`, met ongecommit werk van een tweede sessie in de hoofdmap; die kan er met een `git pull --ff-only` overheen zodra die sessie klaar is. Bij App Store Connect dragen tvOS en macOS de releasenotes van build 240; een iOS-build 240 bestaat daar niet)_
 
 ## Waar was ik
+
+**De twee bevindingen uit de PS-4-deviceronde zijn dicht, en de releasenotes staan weer live.**
+Het verlaten van de speler wachtte op de afsluitrapportage van de kijkstatus, dus een connect-timeout
+werd seconden zwart scherm; die schrijving is nu losgekoppeld, binnen vijf seconden begrensd, en wat
+niet landt gaat naar de offline-wachtrij. De log-uploadknop vuurde elf requests in zeven seconden op
+een relay die er één per minuut accepteert; die houdt nu vast tot wanneer er weer gevraagd mag worden
+en leest ook de datumvorm van `Retry-After`. Beide met testdekking, `ci_checks.sh` groen en de
+volledige suite op 4617 geslaagd en 1 overgeslagen, met de gepinde SDK uit `.fvmrc` vooraan in PATH.
+
+Onderweg kwam er iets onder vandaan dat groter is dan allebei: `_postJson` in de Pleya-client vangt
+elke fout af en geeft `null` terug, dus een mislukte `POST /watch-state` bereikt de aanroeper niet.
+Bij de PS-4-ronde bleef dat verborgen omdat de verbinding in een timeout liep en de deadline van de
+speler alsnog aansloeg. Een 404, een 5xx en een snelle verbindingsweigering vallen nog steeds stil
+weg. Het staat als bevinding in hoofdstuk 24 van het architectuurdocument, niet als PS-5-werk.
+
+De documentatiedoorloop heeft daarnaast een terugkerende val gesloten. De Engelse releasenotes stonden
+altijd ín het gegenereerde blok van `docs/RELEASES.md`, dat `gen_release_notes.sh` bij elke run
+overschrijft en dat de site sowieso wegknipt. Daarom walste de pre-push hook ze drie keer plat. Ze
+staan nu ónder `<!-- END GENERATED -->`, build 240 is afgesloten tot een echte versiekop, en een
+tweede run van het script geeft een lege diff.
 
 **PS-4 staat: je kunt afspelen vanaf een Pleya Server, en de server bewaart waar je gebleven bent.**
 De app haalt bytes met HTTP-range, seekt zonder de stream opnieuw op te bouwen, en meldt kijkstatus
@@ -391,6 +411,21 @@ Het Atmos-spoor staat er nog precies zo bij als gisteren: een iOS-log van build 
 
 ## Volgende stap
 
+**Begin met PS-5, `DeviceCapabilities` in de client.** Dat is de vrijgegeven fase; alles wat verder
+gaat is per definitie te vroeg. De `_postJson`-bevinding hierboven hoort daar niet in: die raakt elke
+aanroep van `PleyaServerClient` en vraagt een eigen ronde, met een regressietest voor een snelle 5xx
+door de client heen.
+
+**Twee dingen die niet op de code wachten.** Er staat geen iOS-build 240 bij App Store Connect, dus
+`fastlane notes build:240` faalt daar terwijl tvOS en macOS de tekst wél dragen; upload die build of
+laat iOS bewust achterlopen. En de vier fixes onder "In development" op pleya.app zitten in geen
+enkele build: ze reizen mee met de eerstvolgende upload.
+
+**Het zwarte scherm en de 429-storm zijn op de lijn opgelost, niet op een toestel.** Ze kwamen uit een
+deviceronde, dus ze horen ook op een toestel terug: de speler verlaten met een server die niet
+antwoordt (het scherm hoort meteen terug te komen en de positie hoort na herstel alsnog te kloppen),
+en twee keer snel achter elkaar een log uploaden.
+
 **PS-2 is gebouwd en uitgerold; wat er nog van openstaat is de Roadmap Drift Check.** Daar hoort
 boekhouding bij die nu blijft liggen: G5, G9 en G11 kregen op 18 augustus een fase toegewezen in
 `docs/pleya-server-ps1-scope-deviation.md`, maar staan in hoofdstuk 5 van de replacement matrix nog
@@ -463,6 +498,19 @@ Nieuw erbij op deze build: op een echt toestel met trackpad of muis de zijbalk n
 
 ## Blockers
 
+- [ ] **Er is geen iOS-build 240 bij App Store Connect**: `fastlane notes build:240` wachtte de volle
+  1800 seconden en `notes_show` bevestigt het los met `ios: build 240 niet gevonden`. tvOS en macOS
+  dragen de tekst wel, allebei teruggelezen op 2041 tekens. De upload is nooit aangekomen of nooit
+  VALID geworden; zodra de build er staat is de lane opnieuw draaien genoeg, hij is idempotent.
+- [ ] **De client verzwijgt een mislukte schrijving**: `_postJson` in
+  `lib/services/pleya_server_client.dart` vangt elke fout af en geeft `null` terug, dus een `POST
+  /watch-state` die op een 404, een 5xx of een verbindingsweigering strandt, komt als geslaagd terug
+  bij de aanroeper en de kijkpositie verdwijnt zonder spoor. Alleen de timeout-route is bewezen, want
+  daar sloeg de deadline van de speler alsnog aan. Raakt elke aanroep van de client, dus een eigen
+  ronde met een regressietest voor een snelle 5xx, niet iets voor binnen PS-5.
+- [ ] **Het zwarte scherm en de 429-storm zijn niet op een toestel teruggezien**: beide fixes hebben
+  testdekking, maar ze kwamen uit een deviceronde en horen daar ook bevestigd te worden. Vraagt een
+  build nieuwer dan 240, die er nog niet is.
 - [ ] **De terugzetter is niet op hardware gecontroleerd**: de Mutiny-regressie is met `fakeAsync`
   vastgelegd en aantoonbaar rood op de oude code, maar twee Apple-toestellen die hetzelfde item
   openen is de enige manier om te zien dat het gedrag in het echt weg is. Vraagt een build met
@@ -543,6 +591,13 @@ xcrun devicectl device process launch --console --terminate-existing \
 ```
 
 ## Recente sessies
+
+### 2026-08-22
+- Twee fixes uit de PS-4-deviceronde gecommit (`d5d1fcd`, `19a7701`) plus de bijgewerkte bevindingenlijst (`d5addfb`). Het afsluitpad van de speler wacht niet meer op de kijkstatusschrijving, de tracker begrenst die op vijf seconden en zet weg wat niet landt; de log-upload houdt een 429-venster vast en leest ook de datumvorm van `Retry-After`.
+- `main` erin gemerged (`50966a2`). Alleen `playback_progress_tracker_test.dart` botste, twee keer aanbouw aan het eind van hetzelfde bestand, dus beide groepen staan er nu naast elkaar. Bewijs op de samengevoegde boom: `ci_checks.sh` volledig groen, 4617 tests geslaagd en 1 overgeslagen.
+- `origin/main` bleek al op de oude tip van deze branch te staan, dus de push was een fast-forward (`673d298..cf39291`). De lokale `main`-ref loopt achter en heeft een tweede sessie met ongecommit werk eroverheen staan.
+- `/update-docs` gedraaid: build 240 afgesloten tot een versiekop met het anker op de bump-commit, `settings-reference.md` en `the-home-screen.md` bijgewerkt, site gebouwd, op 390, 1024 en 1440 bekeken en live gezet op pleya.app. tvOS en macOS dragen de nieuwe notes; er is geen iOS-build 240 om ze op te zetten.
+- Structurele oorzaak gevonden achter drie eerdere reverts: de Engelse notes stonden in het gegenereerde blok van `docs/RELEASES.md`, dat het script bij elke run overschrijft en dat de site wegknipt. Ze staan nu eronder, en `gen_release_notes.sh --check` geeft exit 0.
 
 ### 2026-08-19
 - **Vier integriteitsgebreken uit de PS-2-servercode zitten er nu in**, van `fix/ps2-integriteit` fast-forward op `feat/pleyaserver` (`b0283fc`, `340e61c`). Een externe review vond ze en geen ervan werd door een test gedekt. Een root die halverwege een onleesbare map tegenkwam ruimde de rest van de bibliotheek op; een bestand dat vervangen werd door iets onanalyseerbaars bleef de versie, de duur en de sporen van de vorige inhoud serveren; een ondertitel die naar een andere film verhuisde bleef aan de oude hangen; en een cursor met een verkeerd getypeerde sleutel gaf 500 op invoer van de client in plaats van 400.

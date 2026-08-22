@@ -2,6 +2,61 @@
 
 Sessie-voor-sessie logboek. Nieuwste bovenaan.
 
+## [2026-08-22] De twee PS-4-bevindingen dicht, en de releasenotes blijven staan
+
+Het verlaten van de speler wachtte op de afsluitrapportage van de kijkstatus. Het beeld is op dat
+moment al weg en de bibliotheek is nog niet terug, dus een connect-timeout werd letterlijk zwart
+scherm, op 21 augustus op iOS en tvOS tegelijk gemeten (logs `xhs3j` en `kzq7c`). Het rapport vertrekt
+nu zonder dat het afsluitpad erop wacht, `PlaybackProgressTracker` begrenst de schrijving zelf op vijf
+seconden, en wat daarbinnen niet landt gaat naar de offline-wachtrij in plaats van naar de prullenbak.
+Een terminaal rapport negeert daarvoor bewust `queueOnOnlineFailure`: bij de periodieke updates draagt
+de volgende tik de positie alsnog, na een stop is er geen volgende tik. De lokaal weggeschreven
+positie wordt meteen gemeld, anders staat de rij waar de kijker op terugkomt nog op de oude waarde.
+
+De log-uploadknop vuurde elf requests in zeven seconden op een relay die er één per minuut accepteert
+(log `kzq7c`, 21:53:39 tot 21:53:46). De bestaande guard dekte alleen een druk die over een lopende
+request heen valt, en een weigering komt in zo'n zestig milliseconden terug, dus dat gebeurde nooit.
+Het scherm houdt nu vast tot wanneer er weer gevraagd mag worden. Zegt de server met `Retry-After` hoe
+lang, dan is dat het antwoord; zwijgt hij, dan verdubbelt de eigen schatting vanaf de bekende minuut
+tot maximaal vijf. De datumvorm van die header wordt nu ook gelezen: `HttpDate.parse` meldt een
+onleesbare waarde met een `HttpException` en niet met de `FormatException` die de naam suggereert.
+
+Onderweg kwam er iets onder vandaan dat groter is dan allebei. `_postJson` in
+`lib/services/pleya_server_client.dart` vangt elke fout af en geeft `null` terug, dus een mislukte
+`POST /watch-state` bereikt de aanroeper niet. Bij de PS-4-ronde bleef dat verborgen omdat de
+verbinding in een timeout liep en de deadline van de speler alsnog aansloeg; een 404, een 5xx en een
+snelle verbindingsweigering vallen nog steeds stil weg. Staat als bevinding in hoofdstuk 24 van het
+architectuurdocument, met de aantekening dat het elke aanroep van de client raakt en dus niet binnen
+PS-5 hoort.
+
+`main` is erin gemerged. Alleen `playback_progress_tracker_test.dart` botste, en dat was twee keer
+aanbouw aan het eind van hetzelfde bestand, dus beide groepen staan er nu naast elkaar. De begrensde
+stopmelding zit boven op het hervat-pad uit `b1bb268` en `25d192b`: een rapport dat over de deadline
+gaat blijft in de sessie doorlopen, dus het hervatten haalt hem nog steeds in. Bewijs op de
+samengevoegde boom: `ci_checks.sh` volledig groen en 4617 tests geslaagd, 1 overgeslagen, met de
+gepinde SDK uit `.fvmrc` vooraan in PATH. Zonder die pin staat er 3.44.4 op PATH en valt
+`check_flutter_version` om.
+
+Daarna `/update-docs`. Build 240 is afgesloten tot een echte versiekop met het anker op de
+bump-commit, en de regels erin zijn herschreven naar wat iemand merkt. Het serverwerk staat er niet
+in, om dezelfde reden als bij `fbd19f3`. Twee hoofdstukken bijgewerkt: `settings-reference.md` krijgt
+de statusregel onder de iCloud-schakelaar, de instellingen die per toestel blijven en de
+geschiedenisschakelaar op het Tautulli-scherm, en `the-home-screen.md` legt uit waarom je die zou
+aanzetten. Het Pleya Server-scherm blijft ongedocumenteerd zolang er geen server is die iemand kan
+draaien.
+
+**Waarom de releasenotes drie keer waren platgewalst.** `scripts/gen_release_notes.sh` overschrijft
+het hele blok tussen `BEGIN GENERATED` en `END GENERATED` bij elke run, en de pre-push hook draait dat
+script. De site knipt datzelfde blok er sowieso uit (`website/src/lib/server/releases.ts`) en
+publiceert alleen wat eronder staat. De Engelse tekst stond al die tijd ín dat blok, dus hij werd
+overschreven én niet gepubliceerd. Hij staat nu onder `END GENERATED`, `--check` geeft exit 0, en de
+push ging in één keer door zonder `SKIP_HOOKS`. De zin op de site dat die regels nog in commit-taal
+staan klopte daarmee niet meer en is vervangen.
+
+Bij App Store Connect dragen tvOS en macOS de nieuwe tekst, allebei teruggelezen op 2041 tekens. Een
+iOS-build 240 bestaat daar niet: de lane wachtte de volle 1800 seconden en `notes_show` bevestigt het
+los.
+
 ## [2026-08-21] PS-4: afspelen en kijkstatus, met drie poorten dicht ervoor
 
 PS-3 is gesloten met de meting die eraan ontbrak. Een live test legt dezelfde route die de app loopt
