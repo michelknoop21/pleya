@@ -27,11 +27,16 @@ import '../../widgets/desktop_app_bar.dart';
 import '../../widgets/ios_status_bar_tap_scroll_to_top.dart';
 
 class LogsScreen extends StatefulWidget {
-  const LogsScreen({super.key, @visibleForTesting this.uploadClient});
+  const LogsScreen({super.key, @visibleForTesting this.uploadClient, @visibleForTesting this.uploadClock});
 
   /// Overrides the shared [httpClient] for the upload action so tests can
   /// answer with the status codes the relay actually returns.
   final MediaServerHttpClient? uploadClient;
+
+  /// Clock behind the rate-limit cooldown. The wait is measured against the
+  /// wall clock — `pump` does not move it — so a test that wants to be on the
+  /// other side of a minute has to say so.
+  final DateTime Function()? uploadClock;
 
   @override
   State<LogsScreen> createState() => _LogsScreenState();
@@ -41,6 +46,14 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
   List<LogEntry> _logs = [];
   String _deviceInfo = '';
   bool _isUploading = false;
+
+  /// When the relay may be asked again. Set from a 429, cleared by an upload
+  /// that lands.
+  DateTime? _uploadBlockedUntil;
+
+  /// Wait to apply when a 429 arrives without a `Retry-After` to go on.
+  int _uploadBackoffSeconds = _uploadRetryAfterFallback;
+
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -176,14 +189,31 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
   /// sends no `Retry-After`, so this is what the user is actually waiting for.
   static const _uploadRetryAfterFallback = 60;
 
+  /// Ceiling on the guessed wait. Only reached by doubling, and only while the
+  /// relay keeps refusing without saying for how long.
+  static const _uploadRetryAfterCeiling = 300;
+
   Future<void> _uploadLogs() async {
     // A second press while the first upload is in flight would run straight
     // into the relay's one-per-minute limit and report a rate limit the user
     // caused by waiting.
     if (_isUploading) return;
+
+    // The guard above only covers a press that overlaps a request. A refusal
+    // comes back in about sixty milliseconds, so it never does: during the
+    // PS-4 round eleven presses in seven seconds produced eleven POSTs and
+    // eleven 429s, one per press (log kzq7c, 21:53:39 to 21:53:46). Until the
+    // window the relay named has passed, the press costs nothing.
+    final blockedFor = _remainingUploadCooldown();
+    if (blockedFor != null) {
+      showErrorSnackBar(context, t.messages.logsUploadRateLimited(seconds: blockedFor));
+      return;
+    }
+
     final logText = buildLogUploadBody(header: _deviceInfo, entries: _formatLogEntries());
     final abort = AbortController();
-    var retryAfter = _uploadRetryAfterFallback;
+    int? serverRetryAfter;
+    var retryAfter = _uploadBackoffSeconds;
     setStateIfMounted(() => _isUploading = true);
 
     try {
@@ -209,10 +239,12 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
       }
       if (!mounted) return;
 
-      retryAfter = _retryAfterSeconds(response.headers) ?? _uploadRetryAfterFallback;
+      serverRetryAfter = _retryAfterSeconds(response.headers);
+      retryAfter = serverRetryAfter ?? _uploadBackoffSeconds;
       throwIfHttpError(response);
       final data = response.data is String ? jsonDecode(response.data) : response.data;
       final id = (data as Map<String, dynamic>)['id'] as String;
+      _resetUploadCooldown();
 
       unawaited(
         showScopedDialog<void>(
@@ -251,6 +283,9 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
       // every one of them into a FormatException and the same generic line,
       // with nothing in the log to say which one it was.
       appLogger.w('Log upload failed: $e');
+      if (e is MediaServerHttpException && e.statusCode == HttpStatus.tooManyRequests) {
+        retryAfter = _startUploadCooldown(serverRetryAfter);
+      }
       if (!mounted) return;
       showErrorSnackBar(context, _uploadErrorMessage(e, retryAfter));
     } finally {
@@ -258,14 +293,63 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
     }
   }
 
-  /// Seconds the server asks us to wait, when it says so. The relay currently
-  /// sends no `Retry-After`; a date-form value is left to the caller's default
-  /// rather than parsed, since one minute is the only interval it enforces.
+  /// Hold off until the limit has actually passed, and answer with the wait
+  /// the user is looking at.
+  int _startUploadCooldown(int? serverRetryAfter) {
+    final wait = serverRetryAfter ?? _uploadBackoffSeconds;
+    _uploadBlockedUntil = _now().add(Duration(seconds: wait));
+    if (serverRetryAfter == null) {
+      // Nothing to go on, and the window we guessed was evidently too short,
+      // so the next guess is longer. With a `Retry-After` the server's number
+      // is the answer and there is nothing to escalate.
+      _uploadBackoffSeconds = (_uploadBackoffSeconds * 2).clamp(1, _uploadRetryAfterCeiling);
+    }
+    return wait;
+  }
+
+  void _resetUploadCooldown() {
+    _uploadBlockedUntil = null;
+    _uploadBackoffSeconds = _uploadRetryAfterFallback;
+  }
+
+  DateTime _now() => (widget.uploadClock ?? DateTime.now)();
+
+  /// Seconds left before the relay may be asked again, or null when it may.
+  int? _remainingUploadCooldown() {
+    final until = _uploadBlockedUntil;
+    if (until == null) return null;
+    final left = until.difference(_now());
+    if (left <= Duration.zero) {
+      _uploadBlockedUntil = null;
+      return null;
+    }
+    return (left.inMilliseconds / Duration.millisecondsPerSecond).ceil();
+  }
+
+  /// Seconds the server asks us to wait, when it says so.
+  ///
+  /// Both forms the spec allows are read. The date form used to be left to the
+  /// caller's default, which cost a wrong number in one message; now the value
+  /// decides how long the action stays shut, so skipping it would mean
+  /// overruling the server. A moment that has already passed means "ask again",
+  /// which is the shortest wait rather than none: the request that just came
+  /// back was still a refusal.
   int? _retryAfterSeconds(Map<String, String> headers) {
     for (final entry in headers.entries) {
       if (entry.key.toLowerCase() != 'retry-after') continue;
-      final seconds = int.tryParse(entry.value.trim());
-      if (seconds != null && seconds > 0) return seconds;
+      final value = entry.value.trim();
+      final seconds = int.tryParse(value);
+      if (seconds != null) return seconds > 0 ? seconds : 1;
+      try {
+        final left = HttpDate.parse(value).difference(_now());
+        return left <= Duration.zero ? 1 : (left.inMilliseconds / Duration.millisecondsPerSecond).ceil();
+      } on HttpException {
+        // Neither form. `HttpDate.parse` signals that with an `HttpException`,
+        // not the `FormatException` the name suggests, and an uncaught one
+        // here would be reported to the user as a failed upload. Nothing to
+        // honour, so the caller's own guess stands.
+        return null;
+      }
     }
     return null;
   }
