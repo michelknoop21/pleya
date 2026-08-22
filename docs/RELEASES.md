@@ -18,34 +18,51 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### New
-- App Store "What's New" automatisch zetten bij het koppelen van een build
-- Tautulli-kijkgeschiedenis als bron voor de smaakengine
-- layer the home billboard, and give iPad portrait its own tier
+### Fixed
+- de zijbalk kent één lijst bestemmingen, dus "nu aan het kijken" is ook bereikbaar
+- een achtergrondcyclus legt de rapportage naar Plex niet meer stil
+- drie randen van de hervat-rapportage dichtgezet na review
+- het verlaten van de speler wacht niet meer op de server
+- een geweigerde log-upload wordt niet meteen opnieuw geprobeerd
+<!-- END GENERATED -->
 
 ### Fixed
-- Resume no longer jumps backwards when the same title is open on two devices. A player left
-  paused used to keep writing its own position over a device that was still watching.
-- Jumping to a new position is saved right away instead of at the next ten-second update, so
-  closing straight after a seek keeps the position you jumped to.
-- Playing a downloaded file while online now resumes from whichever position is actually the
-  most recent, rather than always preferring the one stored on this device.
-- A position you jumped to during a network hiccup is no longer lost. It used to be dropped
-  while the app was backing off from a failed update, which left the server on the position
-  from before the jump until playback happened to continue.
-- Turning a setting off on one device now turns it off on your other Apple devices too.
-  Switching something on already travelled; switching it off did not.
-- prefer 16:9 backdrop over square art on narrow iPhone hero
-- import liet elke rij vallen en telde afleveringen dubbel
-- clear the Dynamic Island on iPhone, edge to edge
-- credential-grens dicht en de koude start hersteld
-- Hidden libraries could come back on your other devices. A list that only held local folders
-  was read as empty by the sync and removed from iCloud, which put the libraries back on every
-  device that read it afterwards.
-- Signing out of iCloud while Pleya is open is noticed right away. Settings sync used to keep
-  reporting itself as healthy while nothing was actually being sent.
+
+- **Leaving the player gives you the library back straight away.** Closing a title used to wait
+  for the server to confirm where you stopped, and on a slow or unreachable connection that was
+  several seconds of black screen. The position is written in the background now, and if it does
+  not reach the server it is kept on the device and sent with the next sync.
+- **Playback keeps reporting to Plex after the app has been in the background.** Coming back to
+  Pleya on Apple TV could close the reporting session for good: nothing showed in Plex or
+  Tautulli for the rest of the film, and the resume position stayed frozen at the moment you put
+  the app away. Coming back opens a fresh session, and the position you actually stopped at is
+  written.
+- **"Now playing" in the sidebar can be reached with a remote.** It was drawn but skipped by
+  D-pad navigation, so on Apple TV you could see it and never select it.
+- **Sending a log no longer runs into the same refusal again and again.** The relay accepts one
+  upload per minute. A second press inside that minute now tells you how much of the minute is
+  left instead of firing another request that comes back refused.
+
+## 2.8.0 · build 240 · 21 August 2026
+
+<!-- commit: 6f28619 -->
+
+### New
+
+- **Recommendations can start from what you watched before you had Pleya.** The taste engine
+  only ever learned from what you played in Pleya itself, so a server you had used for years
+  through other clients still left you with an empty profile. If that server is monitored by
+  Tautulli, you can connect it and import that history into the same engine. It reads your own
+  watch history only, and the profile it builds stays on your device.
 
 ### Improved
+
+- **The home billboard no longer crops its artwork.** It is drawn in two layers: a blurred,
+  darkened copy fills the canvas and the artwork itself sits on top in its own shape, so nothing
+  is cut off and no bare panel shows around it. Both layers come from one image, so this costs
+  no second download. On iPhone the artwork clears the Dynamic Island and runs the full width of
+  the screen. On iPad in portrait the title is drawn at the size that screen deserves instead of
+  at phone size.
 - **Settings changed on another device now show up while the app is open.** Hiding a library or
   reordering your libraries on your Mac reaches the Apple TV without restarting it. The same
   happens after importing a settings file or resetting settings.
@@ -58,6 +75,39 @@ under `Notes`.
   large to send. It says what this device sent, never what your other devices received, because
   iCloud does not report that.
 
+### Fixed
+
+- Resume no longer jumps backwards when the same title is open on two devices. A player left
+  paused used to keep writing its own position over a device that was still watching.
+- Jumping to a new position is saved right away instead of at the next ten-second update, so
+  closing straight after a seek keeps the position you jumped to.
+- Playing a downloaded file while online now resumes from whichever position is actually the
+  most recent, rather than always preferring the one stored on this device.
+- A position you jumped to during a network hiccup is no longer lost. It used to be dropped
+  while the app was backing off from a failed update, which left the server on the position
+  from before the jump until playback happened to continue.
+- Turning a setting off on one device now turns it off on your other Apple devices too.
+  Switching something on already travelled; switching it off did not.
+- Hidden libraries could come back on your other devices. A list that only held local folders
+  was read as empty by the sync and removed from iCloud, which put the libraries back on every
+  device that read it afterwards.
+- Signing out of iCloud while Pleya is open is noticed right away. Settings sync used to keep
+  reporting itself as healthy while nothing was actually being sent.
+- Importing history from Tautulli brought in nothing at all, or counted episodes twice. Every
+  row was checked against a value that names the player rather than the server, so on a real
+  server each one was skipped and the import quietly did nothing. Episodes you had also watched
+  in Pleya were looked up under the wrong key and came in a second time.
+- A saved Tautulli connection stayed idle after a cold start. Discover finished before the
+  stored connection had been read, concluded nothing was connected, and did not ask again until
+  the next launch.
+- Importing history could reach beyond your own account. A profile without admin rights was
+  handed the full connection record, key included, and could name whose history to fetch. On a
+  shared server that meant one profile could be pointed at another person's viewing. The import
+  now decides that itself, and the key never leaves the integration.
+- The home screen hero prefers a wide backdrop again on narrow phones. Square art is used only
+  when a title has no backdrop at all, where it used to be blown up to fill the box with the
+  clear logo drawn on top of it.
+
 ### Notes
 
 - **Settings that describe a device now stay on that device.** Volume, download folder,
@@ -65,7 +115,9 @@ under `Notes`.
   your Apple devices, where they either meant nothing or were plainly wrong. They are yours
   per device from now on. Everything that is a genuine preference, like subtitle appearance,
   theme and playback behaviour, keeps syncing as before.
-<!-- END GENERATED -->
+- **TestFlight builds carry these notes themselves now.** Attaching a build fills its "What to
+  Test" from this file, and the App Store version page gets the same text, so you do not have to
+  open the site to see what a build changed.
 
 ## 2.8.0 · build 234 · 20 August 2026
 

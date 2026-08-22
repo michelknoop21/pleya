@@ -5,7 +5,7 @@ order: 17
 group: Devices and settings
 icon: settings
 summary: Every settings group, what each option changes, and which ones matter most.
-updated: 2026-08-18
+updated: 2026-08-22
 ---
 
 # Settings reference
@@ -70,7 +70,10 @@ visible. This is also where a server that is no longer reachable gets removed.
 - **Requests** connects Jellyseerr or Overseerr, see [Requests](/docs/requests)
 - **Pleya Share** hosts or joins a device share, see [Pleya Share](/docs/pleya-share)
 - **Tautulli** adds viewers, watch statistics and live activity to Pleya, see
-  [Movie and show details](/docs/movie-and-show-details)
+  [Movie and show details](/docs/movie-and-show-details). Its own screen carries **Use history
+  for recommendations**, which lets the taste rows on Home learn from what that server recorded
+  before you had Pleya. Each profile only ever gets its own history, and the processing happens
+  in Pleya on this device
 
 ## Advanced
 
@@ -81,7 +84,15 @@ visible. This is also where a server that is no longer reachable gets removed.
 - **Logs**, and the button that uploads one when you are reporting a problem
 - **About**, with version information and licences
 
-Settings also sync through iCloud on Apple devices, so a new device starts configured. Two
-things are deliberately excluded from both export and iCloud: Pleya Share pairing secrets,
-and the flag recording that this specific device has a broken system keyboard, since that is
-a judgement about one piece of hardware.
+Settings also sync through iCloud on Apple devices, so a new device starts configured. A
+change made on your Mac reaches the Apple TV while both are open, and a device that was
+asleep checks for changes when you come back to it. Under the iCloud switch one line says
+what the sync is doing: syncing, when something was last sent, whether iCloud has run out of
+room for settings, and whether a setting is too large to send. That line describes what this
+device sent, never what your other devices received, because iCloud does not report that.
+
+Not everything travels. Pleya Share pairing secrets and the flag recording that this specific
+device has a broken system keyboard stay out of both export and iCloud. Settings that describe
+one piece of hardware stay on that hardware as well: volume, download folder, hardware
+decoding, HDR and the last remote-control address you used. Genuine preferences, like subtitle
+appearance, theme and playback behaviour, sync as before.

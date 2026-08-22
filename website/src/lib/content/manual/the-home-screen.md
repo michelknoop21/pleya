@@ -5,7 +5,7 @@ order: 4
 group: Watching
 icon: home
 summary: The billboard, the rows, and the quick menu behind every poster.
-updated: 2026-08-19
+updated: 2026-08-22
 ---
 
 # The home screen
@@ -28,7 +28,10 @@ of posters underneath.
   server publishes such a list.
 - **Recommended for you**, **Because you watched X** and **Hidden gems**, built on this
   device from what you watched. Nothing about your taste is uploaded, and there is a switch
-  in Settings to turn the rows off.
+  in Settings to turn the rows off. A server you used for years through other apps leaves
+  these rows with little to go on, so if it is monitored by Tautulli you can let that history
+  count too: **Use history for recommendations**, on the Tautulli screen under Integrations.
+  Your own history only, read once and processed here.
 
 Hover a row title (desktop) or navigate to it and choose **See all** to open the whole row.
 

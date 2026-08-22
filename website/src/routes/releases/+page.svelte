@@ -108,8 +108,8 @@
           <div class="release-body">
             {#if release.unreleased}
               <p class="raw-note">
-                Landed in the repository, still written in the words of the commits that
-                made them. They get rewritten when the next build goes out.
+                Landed in the repository and not in a build yet. They reach TestFlight with the
+                next one.
               </p>
             {/if}
             {#each release.sections as section (section.kind)}
