@@ -54,6 +54,39 @@ void main() {
     });
   });
 
+  group('a background transition overtaken by the resume', () {
+    // The device log that started this: 23:25:31 hidden, 23:33:27 the app comes
+    // back and tvOS delivers hidden, inactive and resumed within 2 ms. The
+    // queued hidden handler ran anyway and sent `stopped` to a session that was
+    // playing, after which nothing was reported for the remaining 19 minutes.
+    bool superseded({required int enqueued, required int latest, required bool foreground}) =>
+        PlaybackLifecycleReportDecision.isTransitionSuperseded(
+          enqueuedSequence: enqueued,
+          latestSequence: latest,
+          latestIsForeground: foreground,
+        );
+
+    test('nothing newer arrived, so the handler runs', () {
+      expect(superseded(enqueued: 7, latest: 7, foreground: false), isFalse);
+    });
+
+    test('a foreground event arrived while it waited its turn, so it is skipped', () {
+      expect(superseded(enqueued: 7, latest: 9, foreground: true), isTrue);
+    });
+
+    test('the app is on screen but no newer event exists, so the handler still runs', () {
+      // A resume that has already been processed leaves the flag true. Only a
+      // *newer* event may cancel a queued transition.
+      expect(superseded(enqueued: 9, latest: 9, foreground: true), isFalse);
+    });
+
+    test('a newer event that is still background does not cancel it', () {
+      // hidden followed by paused is the ordinary way out; the background work
+      // must not be skipped there.
+      expect(superseded(enqueued: 7, latest: 8, foreground: false), isFalse);
+    });
+  });
+
   test('the full truth table', () {
     final table = <(bool, bool, bool), PlaybackLifecycleReport>{
       (true, true, true): PlaybackLifecycleReport.finalReport,

@@ -451,6 +451,16 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   VoidCallback? _autoPipEnteringCallback;
   int _rewindOnResume = 0;
   Future<void> _lifecycleTransition = Future<void>.value();
+
+  /// Counts lifecycle events as they arrive, before any of them is handled.
+  /// A queued transition compares its own number against this to find out that
+  /// the world moved on while it was waiting.
+  int _lifecycleEventSequence = 0;
+
+  /// Whether the most recent lifecycle event put the app on screen. Set
+  /// synchronously with [_lifecycleEventSequence], because the whole point is
+  /// to know the truth at the moment a queued handler finally runs.
+  bool _lifecycleLatestIsForeground = true;
   String _playerBackendLabel = 'unknown';
   Timer? _tvBackgroundMediaControlResumeTimer;
 
@@ -675,6 +685,11 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
+    // Stamped for every event, before anything is queued: a handler that runs
+    // later needs to know whether it is still describing the current world.
+    _lifecycleEventSequence++;
+    _lifecycleLatestIsForeground = state == AppLifecycleState.resumed;
+
     switch (state) {
       case AppLifecycleState.inactive:
         _recordLifecycleState('inactive');
@@ -715,7 +730,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         // player at an unchanged position still says nothing.
         _enqueueLifecycleTransition(
           'detached',
-          () => _flushFinalPlaybackReportForLifecycle('detached', wasPlaying: player?.state.isActive ?? false),
+          (_) => _flushFinalPlaybackReportForLifecycle('detached', wasPlaying: player?.state.isActive ?? false),
         );
         break;
     }

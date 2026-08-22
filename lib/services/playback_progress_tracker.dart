@@ -104,6 +104,10 @@ class PlaybackProgressTracker {
 
   Future<void>? _stoppedProgressFuture;
 
+  /// A `stopped` that was still in flight when the player resumed. The next
+  /// stop waits for it instead of being answered with it.
+  Future<void>? _stopToDrain;
+
   Duration? _lastProgressNotifiedPosition;
 
   static const Duration _progressNotifyDelta = Duration(seconds: 30);
@@ -271,14 +275,45 @@ class PlaybackProgressTracker {
   Future<void> sendStoppedProgressOnce({Duration? positionOverride}) {
     final existing = _stoppedProgressFuture;
     if (existing != null) return existing;
-    final future = sendProgress('stopped', positionOverride: positionOverride);
+    // A stop that was still on the wire when the player resumed has to land
+    // first. Without the wait this report would reach a session that is still
+    // `stopping`, be answered with the old stop's future, and the position the
+    // user actually left at would never be written.
+    final draining = _stopToDrain;
+    _stopToDrain = null;
+    final future = draining == null
+        ? sendProgress('stopped', positionOverride: positionOverride)
+        : draining.then((_) => sendProgress('stopped', positionOverride: positionOverride));
     _stoppedProgressFuture = future;
     return future;
   }
 
+  /// Re-arm the reporting after a terminal `stopped`, so the player can open a
+  /// new session. Called on autoplay cancel, on an episode change, and on the
+  /// resume that follows a backgrounded player.
+  ///
+  /// The order matters. [PlaybackReportSession.resetAfterStop] knows how to
+  /// defer while a stop is in flight; the tracker's own latch does not, so it is
+  /// handed to [_stopToDrain] instead of being dropped.
   void resumeAfterStoppedReport() {
-    _stoppedProgressFuture = null;
     _reportSession?.resetAfterStop();
+    // Never overwrite a drain that is still waiting. Two re-arms before the
+    // next stop (autoplay cancelled at the end of a film, then a trip to the
+    // home screen) would otherwise drop the first one, and the exit stop would
+    // again be answered by a stop that is still on the wire.
+    _stopToDrain = _stoppedProgressFuture ?? _stopToDrain;
+    _stoppedProgressFuture = null;
+    // The suppression cache describes what a *live* session was told, and a stop
+    // ended that session. It matters because a report fired during the stopped
+    // window is refused by the session but still remembered here: without this
+    // the first report of the new session looks like a repeat of one the server
+    // never received and is dropped.
+    //
+    // Only the state is forgotten, not the position. `hasReportablePositionChange`
+    // reads the position, and a null there would tell the lifecycle layer that
+    // something moved when nothing did, which is the repeat-position write the
+    // whole suppression exists to prevent.
+    _lastReportedState = null;
   }
 
   Future<void> _sendProgress(String state, {Duration? positionOverride, bool force = false}) async {

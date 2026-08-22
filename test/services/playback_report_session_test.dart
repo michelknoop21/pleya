@@ -199,6 +199,42 @@ void main() {
     expect(client.calls, ['stopped-attempt:3000:null', 'stopped:3000:null', 'started:4000:null:null:null']);
   });
 
+  test('resetAfterStop on a completed stop reopens reporting with a fresh start', () async {
+    // The background path on a TV: the stop lands, the app comes back, and the
+    // resume has to be able to open a new session. Without this the session
+    // stays terminal and every later report is refused.
+    final client = _RecordingClient();
+    final session = PlaybackReportSession(client: client, itemId: 'item-1');
+
+    await session.report(_snapshot('playing', positionMs: 1000));
+    await session.report(_snapshot('stopped', positionMs: 3000));
+    expect(session.isStopped, isTrue);
+    client.calls.clear();
+
+    session.resetAfterStop();
+    expect(session.isIdle, isTrue);
+    expect(await session.report(_snapshot('playing', positionMs: 3000)), isTrue);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(client.calls, ['started:3000:null:null:null']);
+  });
+
+  test('resetAfterStop while nothing was stopped is a no-op', () async {
+    final client = _RecordingClient();
+    final session = PlaybackReportSession(client: client, itemId: 'item-1');
+
+    session.resetAfterStop();
+    expect(session.isIdle, isTrue);
+
+    await session.report(_snapshot('playing', positionMs: 1000));
+    session.resetAfterStop();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(await session.report(_snapshot('playing', positionMs: 2000)), isTrue);
+    await Future<void>.delayed(Duration.zero);
+    expect(client.calls, ['started:1000:null:null:null', 'playing:2000']);
+  });
+
   group('observed write authority', () {
     ObservedPlaybackAuthority authority() => ObservedPlaybackAuthority(sessionId: 'this-device', itemId: 'item-1');
 

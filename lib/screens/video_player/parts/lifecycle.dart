@@ -1,7 +1,11 @@
 part of '../../video_player_screen.dart';
 
 extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
-  void _enqueueLifecycleTransition(String label, Future<void> Function() transition) {
+  /// Queue a lifecycle transition behind the ones already running, remembering
+  /// which event it came from. Transitions are serialized, so a handler can
+  /// start running long after its event; [enqueuedSequence] is how it finds out.
+  void _enqueueLifecycleTransition(String label, Future<void> Function(int enqueuedSequence) transition) {
+    final enqueuedSequence = _lifecycleEventSequence;
     _lifecycleTransition = _lifecycleTransition
         .catchError((Object error, StackTrace stackTrace) {
           appLogger.w('Previous lifecycle transition failed', error: error, stackTrace: stackTrace);
@@ -9,12 +13,20 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
         .then((_) async {
           if (!mounted) return;
           try {
-            await transition();
+            await transition(enqueuedSequence);
           } catch (e, stackTrace) {
             appLogger.w('Lifecycle transition failed during $label', error: e, stackTrace: stackTrace);
           }
         });
   }
+
+  /// Whether the app came back to the foreground while this transition waited
+  /// its turn. See [PlaybackLifecycleReportDecision.isTransitionSuperseded].
+  bool _lifecycleTransitionSuperseded(int enqueuedSequence) => PlaybackLifecycleReportDecision.isTransitionSuperseded(
+    enqueuedSequence: enqueuedSequence,
+    latestSequence: _lifecycleEventSequence,
+    latestIsForeground: _lifecycleLatestIsForeground,
+  );
 
   void _recordLifecycleState(String state, {String? action}) {
     final isTv = PlatformDetector.isTV();
@@ -93,7 +105,16 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     }
   }
 
-  Future<void> _handleAppHidden() async {
+  Future<void> _handleAppHidden(int enqueuedSequence) async {
+    // tvOS delivers hidden, inactive and resumed back to back on the way in.
+    // Running the background handler then pauses a player that is on screen and
+    // ends a Plex session that is still streaming, and a stopped session never
+    // reports again. Skip the whole handler, not only its report.
+    if (_lifecycleTransitionSuperseded(enqueuedSequence)) {
+      _recordLifecycleState('hidden', action: 'skipped_superseded_by_resume');
+      return;
+    }
+
     if (_shouldSkipForPip) {
       _recordLifecycleState('hidden', action: 'skipped_for_pip');
       return;
@@ -139,8 +160,22 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     if (!mounted || currentPlayer != player) return;
 
     if (shouldPauseForBackground) {
+      // Checked again here, not only on entry: pausing the player is an await,
+      // and a resume that lands inside it would otherwise still end the session
+      // with a stop. This is the one side effect that cannot be taken back.
+      if (_lifecycleTransitionSuperseded(enqueuedSequence)) {
+        _recordLifecycleState('hidden', action: 'skipped_superseded_by_resume');
+        return;
+      }
       await _flushFinalPlaybackReportForLifecycle('hidden', wasPlaying: _wasPlayingBeforeInactive);
       if (!mounted || currentPlayer != player) return;
+      // And once more after the report: what follows suspends the live-TV
+      // heartbeat, the media controls and the render layer, none of which
+      // belongs to an app that is back on screen.
+      if (_lifecycleTransitionSuperseded(enqueuedSequence)) {
+        _recordLifecycleState('hidden', action: 'skipped_superseded_by_resume');
+        return;
+      }
     }
 
     _suspendLiveTimelineForBackground();
@@ -154,6 +189,28 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     _hiddenForBackground = true;
     await currentPlayer.setVisible(false, restoreOnWindowVisible: Platform.isMacOS);
     _recordLifecycleState('hidden', action: 'render_hidden');
+  }
+
+  /// Re-arm the progress reporting and open the session again with one report.
+  ///
+  /// Safe to call when nothing was stopped: `resumeAfterStoppedReport` is a
+  /// no-op on a live session, and the report goes through the same suppression
+  /// as every other one, so an unchanged position writes nothing.
+  void _reopenPlaybackReportingAfterResume() {
+    final tracker = _progressTracker;
+    final currentPlayer = player;
+    if (tracker == null || currentPlayer == null) return;
+
+    tracker.resumeAfterStoppedReport();
+    // Only a playing player opens a session. Opening one goes out as a `started`
+    // report, which Plex records as playing whatever this player is actually
+    // doing, so a paused one would show up in the dashboard as a stream that
+    // is not running. It loses nothing by waiting: pressing play reports
+    // straight away through the playing-state listener, and leaving writes the
+    // position through the exit stop.
+    if (currentPlayer.state.isActive) {
+      unawaited(tracker.sendProgress('playing'));
+    }
   }
 
   /// Flush at most one final report for a lifecycle transition.
@@ -187,7 +244,7 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     return true;
   }
 
-  Future<void> _handleAppResumed() async {
+  Future<void> _handleAppResumed(int enqueuedSequence) async {
     _recordLifecycleState('resumed', action: 'begin');
     _watchTogetherProvider?.setBackgrounded(false);
 
@@ -227,6 +284,15 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     // position it has not reconciled, which is the overwrite the authority
     // exists to prevent.
     await _reconcileAndRetakeWriteAuthorityAfterResume();
+    if (!mounted) return;
+
+    // A backgrounded player ends its session with a `stopped`, and a stopped
+    // report session answers everything after it with a refusal. Without this,
+    // one trip to the home screen silenced the rest of the film: no session on
+    // the server, and a resume position frozen where the app went away. Opening
+    // a new session belongs on the way back in, after the position above has
+    // been reconciled, never before.
+    _reopenPlaybackReportingAfterResume();
 
     _recordLifecycleState('resumed', action: 'complete');
   }

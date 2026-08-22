@@ -41,11 +41,18 @@ S11 en S12 zijn nieuw en toetsen een bewuste gedragswijziging: die sleutels zijn
 | P7 | Externe SRT zonder taalcode | Bij hervatten hetzelfde spoor | open (fase B) |
 | P8 | Twee ondertitels met dezelfde taal | Geen willekeurige keuze | open (fase B) |
 | P9 | Speler open laten staan, gepauzeerd, langer dan een uur | Geen terugval | open |
-| P10 | App naar achtergrond en terug tijdens afspelen | Hooguit één rapport, met de juiste positie | open |
+| P10 | App naar achtergrond en terug tijdens afspelen | Hooguit één rapport met de juiste positie, en na terugkeer loopt de rapportage door | open |
 | P11 | Seeken tijdens een netwerkstoring, daarna pauzeren | De positie komt alsnog aan zodra het netwerk terug is | open |
 
 P11 hoort bij de A0-fix. In unit-tests staat het vast met `fakeAsync`; op hardware is het niet
 gemeten.
+
+P10 is aangescherpt na de meting in device-log `ngovs` (22 aug, Apple TV, build 238). "Hooguit één
+rapport" was daar waar en toch kapot: het rapport was een `stopped` die tijdens de terugkeer werd
+verstuurd, en daarna zweeg de speler 19 minuten lang. Wat de rij nu vraagt is dus de tweede helft.
+Op het toestel controleer je drie dingen: bij het wegzetten precies één `state=stopped`, in de log
+`skipped_superseded_by_resume` wanneer tvOS zijn `hidden` tijdens de terugkeer aflevert, en binnen
+één interval na terugkeer weer `state=playing` plus een zichtbare stream in Plex en Tautulli.
 
 ## Metingen die een ontwerpbeslissing openhouden
 
@@ -59,6 +66,11 @@ mogelijk wel de serversessie levend, en dat doel mag niet stil verdwijnen.
 Meten: lang pauzeren op een echte Plex-server, kijken of de sessie uit `/status/sessions` verdwijnt
 en of dat ergens functioneel pijn doet (transcode-sessie afgebroken, hervatten dat faalt). Alleen
 als het pijn doet komt er een aparte keepalive, en die raakt de canonieke voortgang niet aan.
+
+De meting is sinds 22 aug scherper te stellen. Achtergrond en pauze zijn twee verschillende dingen
+geworden: wegzetten sluit de sessie bewust af met een `stopped` en terugkomen opent een nieuwe, dus
+wat hier nog openstaat is alleen de speler die gepauzeerd op de voorgrond blijft staan. Verdwijnt
+díe uit `/status/sessions`, en zo ja, merkt iemand dat.
 
 Status: open.
 
