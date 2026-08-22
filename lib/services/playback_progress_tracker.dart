@@ -80,6 +80,16 @@ class PlaybackProgressTracker {
   /// Update interval (default: 10 seconds)
   final Duration updateInterval;
 
+  /// Ceiling on how long the final `stopped` report may hold anyone up.
+  ///
+  /// The write itself is terminal and best-effort, but it fires from the exit
+  /// path, when the picture is already gone and the library is not back yet.
+  /// A connection that is timing out stretches that gap to the full connect
+  /// timeout: during the PS-4 round, with two devices sharing one tunnel,
+  /// that was seconds of black screen per exit. Whatever does not land inside
+  /// this window goes to the offline queue instead of being waited for.
+  final Duration stoppedReportTimeout;
+
   /// Counts consecutive online progress failures for backoff logic.
   int _consecutiveFailures = 0;
 
@@ -125,6 +135,7 @@ class PlaybackProgressTracker {
     this.mediaInfo,
     this.authority,
     this.updateInterval = const Duration(seconds: 10),
+    this.stoppedReportTimeout = const Duration(seconds: 5),
   }) : assert(!isOffline || offlineWatchService != null, 'offlineWatchService is required when isOffline is true'),
        assert(isOffline || client != null, 'client is required when isOffline is false'),
        _reportSession = isOffline || client == null
@@ -295,8 +306,10 @@ class PlaybackProgressTracker {
         await _sendOfflineProgress(position, duration);
         _notifyProgressIfNeeded(position, duration, isFinal: state == 'stopped', force: force);
       } else if (state == 'stopped') {
-        // Stopped must complete before disposal
-        final accepted = await _sendOnlineProgress(state, position, duration);
+        // Bounded on purpose — see [stoppedReportTimeout]. The report keeps
+        // running inside the session either way; this only caps how long the
+        // caller is held.
+        final accepted = await _sendOnlineProgress(state, position, duration).timeout(stoppedReportTimeout);
         _resetBackoff();
         if (accepted) {
           _notifyProgressIfNeeded(position, duration, isFinal: true);
@@ -325,7 +338,19 @@ class PlaybackProgressTracker {
         );
       }
     } catch (e) {
-      if (!isOffline) {
+      if (isOffline) {
+        appLogger.d('Failed to send progress update (non-critical)', error: e);
+      } else if (state == 'stopped') {
+        // Nothing retries a terminal report, and this is the one position
+        // PS-4 hangs on, so it goes to the offline queue rather than the bin.
+        // Backing off is pointless here: the session is over.
+        appLogger.w('Final stopped report did not land; queued for the next sync', error: e);
+        await _queueOnlineFailureProgress(
+          attemptedPosition ?? player.state.position,
+          attemptedDuration ?? player.state.duration,
+          force: true,
+        );
+      } else {
         _consecutiveFailures++;
         _ticksToSkip = (1 << (_consecutiveFailures - 1)).clamp(1, 6);
         appLogger.d(
@@ -337,8 +362,6 @@ class PlaybackProgressTracker {
           attemptedPosition ?? player.state.position,
           attemptedDuration ?? player.state.duration,
         );
-      } else {
-        appLogger.d('Failed to send progress update (non-critical)', error: e);
       }
     }
   }
@@ -350,14 +373,23 @@ class PlaybackProgressTracker {
     return position;
   }
 
-  Future<void> _queueOnlineFailureProgress(Duration position, Duration duration) async {
-    if (!queueOnOnlineFailure || offlineWatchService == null) return;
+  /// [force] queues regardless of [queueOnOnlineFailure]. Only the terminal
+  /// stopped report sets it: for the periodic updates the next tick carries
+  /// the position anyway, but there is no next tick after a stop.
+  Future<void> _queueOnlineFailureProgress(Duration position, Duration duration, {bool force = false}) async {
+    if (!force && !queueOnOnlineFailure) return;
+    if (offlineWatchService == null) return;
     if (duration.inMilliseconds == 0) return;
+    final clamped = _clampPosition(position, duration);
     try {
-      await _sendOfflineProgress(_clampPosition(position, duration), duration);
+      await _sendOfflineProgress(clamped, duration);
     } catch (e) {
       appLogger.d('Failed to queue fallback progress after online report failure', error: e);
+      return;
     }
+    // The position is recorded, just not on the server yet. Saying so locally
+    // keeps the row the user lands back on from showing the old position.
+    if (force) _notifyProgressIfNeeded(clamped, duration, isFinal: true);
   }
 
   void _resetBackoff() {

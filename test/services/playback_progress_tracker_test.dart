@@ -1535,6 +1535,145 @@ void main() {
       });
     });
   });
+
+  // ============================================================
+  // The exit path must not wait on the final report
+  // ============================================================
+
+  group('stopped report deadline', () {
+    Future<({OfflineWatchSyncService svc, AppDatabase db, MultiServerManager mgr})> makeOfflineService() async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final mgr = MultiServerManager();
+      return (svc: OfflineWatchSyncService(database: db, serverManager: mgr), db: db, mgr: mgr);
+    }
+
+    test('a stop report that never answers releases the caller and is queued locally', () async {
+      // The PS-4 acceptance round, in one test: two devices on one tunnel, the
+      // watch-state POST sitting in a connect timeout, and the player teardown
+      // waiting behind it. Twelve seconds of black screen (log kzq7c, back at
+      // 21:52:44.566, POST failed at 21:52:56.559). Whoever calls this gets
+      // control back inside the deadline; the position goes to the queue.
+      final (svc: svc, db: db, mgr: mgr) = await makeOfflineService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+
+      final client = _HangingStopClient();
+      final player = _FakePlayer(position: const Duration(seconds: 30), duration: const Duration(seconds: 100));
+      final tracker = PlaybackProgressTracker(
+        client: client,
+        metadata: _meta(ratingKey: '42', serverId: ServerId('srv')),
+        player: player,
+        isOffline: false,
+        offlineWatchService: svc,
+        // Deliberately NOT queueOnOnlineFailure: the terminal report queues
+        // regardless, because nothing comes after it to carry the position.
+        stoppedReportTimeout: const Duration(milliseconds: 50),
+      );
+      addTearDown(tracker.dispose);
+
+      final stopwatch = Stopwatch()..start();
+      await tracker.sendStoppedProgressOnce(positionOverride: const Duration(seconds: 30));
+      stopwatch.stop();
+
+      expect(
+        client.stopCompleter.isCompleted,
+        isFalse,
+        reason: 'the report is still in flight — the caller was released, not the request',
+      );
+      expect(
+        stopwatch.elapsed,
+        lessThan(const Duration(seconds: 2)),
+        reason: 'returned after the deadline, not after the connect timeout',
+      );
+
+      final action = await db.getLatestWatchAction('srv:42');
+      expect(action, isNotNull, reason: 'the position PS-4 hangs on must not be dropped');
+      expect(action!.actionType, 'progress');
+      expect(action.viewOffset, 30000);
+    });
+
+    test('a stop report that fails outright is queued without queueOnOnlineFailure', () async {
+      final (svc: svc, db: db, mgr: mgr) = await makeOfflineService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+
+      final client = _FakePlexClient()..throwOnNextCall = StateError('connect timed out');
+      final player = _FakePlayer(position: const Duration(seconds: 20), duration: const Duration(seconds: 100));
+      final tracker = PlaybackProgressTracker(
+        client: client,
+        metadata: _meta(ratingKey: '42', serverId: ServerId('srv')),
+        player: player,
+        isOffline: false,
+        offlineWatchService: svc,
+      );
+      addTearDown(tracker.dispose);
+
+      await tracker.sendStoppedProgressOnce(positionOverride: const Duration(seconds: 20));
+
+      final action = await db.getLatestWatchAction('srv:42');
+      expect(action, isNotNull);
+      expect(action!.viewOffset, 20000);
+    });
+
+    test('an ordinary progress failure still respects queueOnOnlineFailure', () async {
+      // The forced queue is the stop report's alone. A periodic tick has a next
+      // tick to carry the position, so nothing changes for it.
+      final (svc: svc, db: db, mgr: mgr) = await makeOfflineService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+
+      final client = _FakePlexClient()..throwOnNextCall = StateError('network down');
+      final player = _FakePlayer(position: const Duration(seconds: 20), duration: const Duration(seconds: 100));
+      final tracker = PlaybackProgressTracker(
+        client: client,
+        metadata: _meta(ratingKey: '42', serverId: ServerId('srv')),
+        player: player,
+        isOffline: false,
+        offlineWatchService: svc,
+      );
+      addTearDown(tracker.dispose);
+
+      await tracker.sendProgress('playing');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(await svc.getPendingSyncCount(), 0);
+    });
+  });
+}
+
+/// A stop report that never answers — the connect-timeout case, without the
+/// wall-clock wait.
+class _HangingStopClient extends _FakePlexClient {
+  final Completer<void> stopCompleter = Completer<void>();
+
+  @override
+  Future<void> reportPlaybackStopped({
+    required String itemId,
+    required Duration position,
+    Duration? duration,
+    String? playSessionId,
+    String? mediaSourceId,
+    PlaybackReportMetadata report = const PlaybackReportMetadata.live(),
+  }) async {
+    await stopCompleter.future;
+    return super.reportPlaybackStopped(
+      itemId: itemId,
+      position: position,
+      duration: duration,
+      playSessionId: playSessionId,
+      mediaSourceId: mediaSourceId,
+      report: report,
+    );
+  }
 }
 
 /// A more precise fake than [_FakePlexClient]: lets the test independently

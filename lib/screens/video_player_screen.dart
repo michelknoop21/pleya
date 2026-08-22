@@ -1156,8 +1156,11 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
               _isExiting.value = true;
               final exitPosition = await _pauseAndHidePlayerForRouteExit();
               if (!mounted) return;
-              await _sendStoppedProgressOnce(positionOverride: exitPosition);
-              if (!mounted) return;
+              // Fired, not awaited. The picture is already gone here and the
+              // library is not back yet, so every millisecond spent on the
+              // network is a millisecond of black screen. The tracker bounds
+              // the write itself and queues what does not land.
+              unawaited(_sendStoppedProgressOnce(positionOverride: exitPosition));
               await _restoreSystemUiAndOrientation();
               if (!mounted) return;
               navigator.pop(true);
@@ -1174,8 +1177,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         _isExiting.value = true;
         final exitPosition = await _pauseAndHidePlayerForRouteExit();
         if (!mounted) return;
-        await _sendStoppedProgressOnce(positionOverride: exitPosition);
-        if (!mounted) return;
+        // Fired, not awaited — same reason as the leave-session path above.
+        unawaited(_sendStoppedProgressOnce(positionOverride: exitPosition));
         await _restoreSystemUiAndOrientation();
         if (!mounted) return;
         navigator.pop(true);
