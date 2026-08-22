@@ -15,6 +15,15 @@ Future<void> removeProfileConnectionAndCleanup({
 }) async {
   final removedServerIds = _serverIdsForConnection(connection);
   await profileConnections.remove(profileId, connection.id);
+  await _tearDownRuntimeServersForActiveProfile(
+    profileId: profileId,
+    connection: connection,
+    removedServerIds: removedServerIds,
+    profileConnections: profileConnections,
+    connections: connections,
+    storage: storage,
+    serverManager: serverManager,
+  );
   await _clearProfileServerPrefsNoLongerReferenced(
     profileId: profileId,
     removedServerIds: removedServerIds,
@@ -176,6 +185,52 @@ Future<void> _removeJellyfinConnection(
   if (serverId != null &&
       !await _isServerReferenced(serverId, profileConnections: profileConnections, connections: connections)) {
     await storage.clearLibraryPreferencesForServerEverywhere(serverId);
+  }
+}
+
+/// Close the runtime clients for the servers this profile just gave up.
+///
+/// Disconnecting has to land locally on its own. The screens that remove a
+/// connection follow up with [ActiveProfileBinder.rebindIfActive], and that is
+/// what used to take the server out of [MultiServerManager] — but a rebind is
+/// asynchronous, can be deferred, and can fail against a server that is down,
+/// which is the state a user is in when they reach for "disconnect" in the
+/// first place. Until it lands the client stays registered, its health probes
+/// keep running, and its "session expired" banner keeps standing over a
+/// connection the user has already deleted.
+///
+/// Only for the active profile, and only for servers no remaining connection
+/// of that profile still reaches: removing a shared account from a *different*
+/// profile must not close the clients the active one is using.
+Future<void> _tearDownRuntimeServersForActiveProfile({
+  required String profileId,
+  required Connection connection,
+  required Set<ServerId> removedServerIds,
+  required ProfileConnectionRegistry profileConnections,
+  required ConnectionRegistry connections,
+  required StorageService storage,
+  MultiServerManager? serverManager,
+}) async {
+  if (serverManager == null || removedServerIds.isEmpty) return;
+  if (storage.getActiveProfileId() != profileId) return;
+
+  final remaining = await _serverIdsForProfile(
+    profileId,
+    profileConnections: profileConnections,
+    connections: connections,
+  );
+  for (final serverId in removedServerIds) {
+    if (remaining.contains(serverId)) continue;
+    // Jellyfin is keyed twice: one client per user, plus whichever of those is
+    // currently the machine's active client. [MultiServerManager.removeServer]
+    // takes a machine id and closes *every* user's client on it, including the
+    // one another profile has parked there for its next switch. Removing by
+    // connection closes only this user's.
+    if (connection is JellyfinConnection) {
+      serverManager.removeJellyfinConnection(connection);
+      continue;
+    }
+    serverManager.removeServer(serverId);
   }
 }
 

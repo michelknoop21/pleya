@@ -946,6 +946,7 @@ void main() {
       WidgetTester tester, {
       bool hasOthers = true,
       bool alwaysExpanded = true,
+      bool isSidebarFocused = true,
     }) async {
       TvDetectionService.debugSetAppleTVOverride(true);
       addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
@@ -984,7 +985,7 @@ void main() {
                   children: [
                     SideNavigationRail(
                       selectedTab: NavigationTabId.discover,
-                      isSidebarFocused: true,
+                      isSidebarFocused: isSidebarFocused,
                       alwaysExpanded: alwaysExpanded,
                       onDestinationSelected: (tab) {
                         selected.add(tab);
@@ -1122,6 +1123,59 @@ void main() {
       await tester.pumpAndSettle();
       await _press(tester, LogicalKeyboardKey.arrowDown);
       expect(rowHasFocus(tester, t.common.settings), isTrue);
+    });
+
+    // A conditional row does not wait for the focus to leave before it goes.
+    // "Now watching" disappears the moment the last stream stops, the
+    // reconnect row the moment the server answers again, Live TV and Requests
+    // when their server drops. Disposing the node that holds the focus hands
+    // primary focus up to the enclosing scope, and a rail that holds the focus
+    // with no item on it is a rail that is drawn open, cannot be moved within,
+    // and has no key that leads out of it.
+    testWidgets('a row that vanishes under the focus hands it to the row that took its place', (tester) async {
+      final recorded = await pumpTvRail(tester);
+
+      focusRow(tester, t.nowWatching.sidebarLabel);
+      await tester.pumpAndSettle();
+      expect(rowHasFocus(tester, t.nowWatching.sidebarLabel), isTrue);
+
+      recorded.now.setOthers(false);
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(NavigationRailItem, t.nowWatching.sidebarLabel), findsNothing);
+      final focusedRows = tester
+          .widgetList<NavigationRailItem>(find.byType(NavigationRailItem))
+          .where((item) => item.focusNode.hasFocus)
+          .length;
+      expect(focusedRows, 1, reason: 'exactly one surviving row must hold the focus');
+
+      // And the walk still works from wherever it landed, which is what
+      // "the user can leave again" comes down to on a remote.
+      await _press(tester, LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widgetList<NavigationRailItem>(find.byType(NavigationRailItem))
+            .where((item) => item.focusNode.hasFocus)
+            .length,
+        1,
+      );
+    });
+
+    testWidgets('a row vanishing while the rail is not focused does not pull the focus back', (tester) async {
+      final recorded = await pumpTvRail(tester, isSidebarFocused: false);
+
+      focusRow(tester, t.nowWatching.sidebarLabel);
+      await tester.pumpAndSettle();
+
+      recorded.now.setOthers(false);
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widgetList<NavigationRailItem>(find.byType(NavigationRailItem)).where((item) => item.focusNode.hasFocus),
+        isEmpty,
+        reason: 'the shell has the focus elsewhere; recovering it here would be the late callback winning',
+      );
     });
   });
 }
