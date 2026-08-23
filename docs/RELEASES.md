@@ -18,7 +18,14 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### New
+- respijtvenster op refreshtokenrotatie (DEC-063)
+- token bucket op de relay, en meldingen die vouwen in plaats van stapelen
+- compacte sessieregel, en de commit-sha in elke TestFlight-build
+
+### Fixed
+- "Opnieuw aanmelden" probeert eerst één echte refresh
+- Nederlands compleet tegen Engels, met een test die dat afdwingt
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 242 · 23 August 2026
