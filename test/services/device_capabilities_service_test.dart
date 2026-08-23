@@ -21,6 +21,15 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(displayChannel, handler);
   }
 
+  /// Detection on its own. `refresh()` returns the snapshot *with* overrides
+  /// applied, and the shipped audio default (auto plus evenVolume) already
+  /// clears the passthrough list, so a test about detection has to look at the
+  /// layer underneath it.
+  Future<DeviceCapabilities> detect(DeviceCapabilitiesService service) async {
+    await service.refresh();
+    return service.detected;
+  }
+
   DeviceCapabilitiesService serviceFor({
     PlayerEngine engine = PlayerEngine.mpv,
     bool isWindows = false,
@@ -134,7 +143,7 @@ void main() {
         supportsMultichannelContent: true,
       );
 
-      final caps = await serviceFor(hasAppleAudioRoute: true, route: appleTvOnReceiver).refresh();
+      final caps = await detect(serviceFor(hasAppleAudioRoute: true, route: appleTvOnReceiver));
 
       expect(caps.audio.maxChannels.isKnown, isFalse);
       expect(caps.audio.passthroughCodecs.value, appleBitstreamCodecs);
@@ -149,7 +158,7 @@ void main() {
         isDigitalPassthroughPort: true,
       );
 
-      final caps = await serviceFor(hasAppleAudioRoute: true, route: wide).refresh();
+      final caps = await detect(serviceFor(hasAppleAudioRoute: true, route: wide));
 
       expect(caps.audio.maxChannels.value, 8);
       expect(caps.audio.isMultichannel, isTrue);
@@ -163,7 +172,7 @@ void main() {
         spatialAudioEnabled: true,
       );
 
-      final caps = await serviceFor(hasAppleAudioRoute: true, route: airPods).refresh();
+      final caps = await detect(serviceFor(hasAppleAudioRoute: true, route: airPods));
 
       expect(caps.audio.maxChannels.value, 2);
       expect(caps.audio.passthroughCodecs.value, isEmpty);
@@ -171,7 +180,7 @@ void main() {
     });
 
     test('a route that has not reported yet stays unknown', () async {
-      final caps = await serviceFor(hasAppleAudioRoute: true).refresh();
+      final caps = await detect(serviceFor(hasAppleAudioRoute: true));
 
       expect(caps.audio.maxChannels.isKnown, isFalse);
       expect(caps.audio.passthroughCodecs.isKnown, isFalse);
@@ -180,7 +189,7 @@ void main() {
 
   group('audio elsewhere', () {
     test('desktop infers the full device-passthrough list', () async {
-      final caps = await serviceFor(supportsAudioPassthrough: true).refresh();
+      final caps = await detect(serviceFor(supportsAudioPassthrough: true));
 
       expect(caps.audio.passthroughCodecs.value, desktopBitstreamCodecs);
       expect(caps.audio.passthroughCodecs.confidence, CapabilityConfidence.inferred);
@@ -192,14 +201,14 @@ void main() {
     // a missing model, and unknown is a state the PS-6 planner has to handle
     // anyway.
     test('the channel count stays unknown off Apple', () async {
-      final caps = await serviceFor(engine: PlayerEngine.exoPlayer, supportsAudioPassthrough: true).refresh();
+      final caps = await detect(serviceFor(engine: PlayerEngine.exoPlayer, supportsAudioPassthrough: true));
 
       expect(caps.audio.maxChannels.isKnown, isFalse);
       expect(caps.audio.isMultichannel, isFalse);
     });
 
     test('a phone without passthrough infers an empty list', () async {
-      final caps = await serviceFor().refresh();
+      final caps = await detect(serviceFor());
 
       expect(caps.audio.passthroughCodecs.value, isEmpty);
       expect(caps.audio.passthroughCodecs.confidence, CapabilityConfidence.inferred);

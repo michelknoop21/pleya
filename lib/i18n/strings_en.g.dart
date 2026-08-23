@@ -669,6 +669,18 @@ class TranslationsSettingsEn {
 	/// en: 'Used when starting playback. Lower values reduce bandwidth.'
 	String get defaultQualityDescription => 'Used when starting playback. Lower values reduce bandwidth.';
 
+	/// en: 'Maximum Resolution'
+	String get displayMaxResolutionTitle => 'Maximum Resolution';
+
+	/// en: 'Caps what this device asks a server for, even when the file is larger.'
+	String get displayMaxResolutionDescription => 'Caps what this device asks a server for, even when the file is larger.';
+
+	/// en: 'detected: ${resolution}'
+	String displayMaxResolutionNow({required Object resolution}) => 'detected: ${resolution}';
+
+	late final TranslationsSettingsDisplayMaxResolutionOptionsEn displayMaxResolutionOptions = TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(_root);
+	late final TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn displayMaxResolutionOptionDescriptions = TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn.internal(_root);
+
 	/// en: 'Subtitle Styling'
 	String get subtitleStyling => 'Subtitle Styling';
 
@@ -5143,6 +5155,42 @@ class TranslationsPleyaShareEn {
 	String get scanningSubnet => 'Scanning the network…';
 }
 
+// Path: settings.displayMaxResolutionOptions
+class TranslationsSettingsDisplayMaxResolutionOptionsEn {
+	TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Auto'
+	String get auto => 'Auto';
+
+	/// en: '1080p'
+	String get hd1080 => '1080p';
+
+	/// en: '4K'
+	String get uhd2160 => '4K';
+}
+
+// Path: settings.displayMaxResolutionOptionDescriptions
+class TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn {
+	TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Follow the display where the app can read it'
+	String get auto => 'Follow the display where the app can read it';
+
+	/// en: 'Never ask for more than 1920x1080'
+	String get hd1080 => 'Never ask for more than 1920x1080';
+
+	/// en: 'Never ask for more than 3840x2160'
+	String get uhd2160 => 'Never ask for more than 3840x2160';
+}
+
 // Path: search.filters
 class TranslationsSearchFiltersEn {
 	TranslationsSearchFiltersEn.internal(this._root);
@@ -6047,6 +6095,15 @@ extension on Translations {
 			'settings.bufferSizeWarning' => ({required Object heap, required Object size}) => '${heap}MB memory available. A ${size}MB buffer may affect playback.',
 			'settings.defaultQualityTitle' => 'Default Quality',
 			'settings.defaultQualityDescription' => 'Used when starting playback. Lower values reduce bandwidth.',
+			'settings.displayMaxResolutionTitle' => 'Maximum Resolution',
+			'settings.displayMaxResolutionDescription' => 'Caps what this device asks a server for, even when the file is larger.',
+			'settings.displayMaxResolutionNow' => ({required Object resolution}) => 'detected: ${resolution}',
+			'settings.displayMaxResolutionOptions.auto' => 'Auto',
+			'settings.displayMaxResolutionOptions.hd1080' => '1080p',
+			'settings.displayMaxResolutionOptions.uhd2160' => '4K',
+			'settings.displayMaxResolutionOptionDescriptions.auto' => 'Follow the display where the app can read it',
+			'settings.displayMaxResolutionOptionDescriptions.hd1080' => 'Never ask for more than 1920x1080',
+			'settings.displayMaxResolutionOptionDescriptions.uhd2160' => 'Never ask for more than 3840x2160',
 			'settings.subtitleStyling' => 'Subtitle Styling',
 			'settings.subtitleStylingDescription' => 'Customize subtitle appearance',
 			'settings.smallSkipDuration' => 'Small Skip Duration',
@@ -6380,6 +6437,8 @@ extension on Translations {
 			'videoControls.ambientLighting' => 'Ambient lighting',
 			'videoControls.ambientIntensitySubtle' => 'Subtle',
 			'videoControls.ambientIntensityBalanced' => 'Balanced',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.ambientIntensityBright' => 'Bright',
 			'videoControls.tvPanel.information' => 'Information',
 			'videoControls.tvPanel.audio' => 'Audio',
@@ -6389,8 +6448,6 @@ extension on Translations {
 			'videoControls.fullscreenButton' => 'Enter fullscreen',
 			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
 			'videoControls.alwaysOnTopButton' => 'Always on top',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.rotationLockButton' => 'Rotation lock',
 			'videoControls.lockScreen' => 'Lock screen',
 			'videoControls.screenLockButton' => 'Screen lock',
@@ -6894,6 +6951,8 @@ extension on Translations {
 			'playlists.selectPlaylist' => 'Select Playlist',
 			'playlists.errorCreating' => 'Failed to create playlist',
 			'playlists.errorDeleting' => 'Failed to delete playlist',
+			_ => null,
+		} ?? switch (path) {
 			'playlists.errorLoading' => 'Failed to load playlists',
 			'playlists.errorAdding' => 'Failed to add to playlist',
 			'playlists.errorReordering' => 'Failed to reorder playlist item',
@@ -6903,8 +6962,6 @@ extension on Translations {
 			'watchTogether.createSession' => 'Create Session',
 			'watchTogether.creating' => 'Creating...',
 			'watchTogether.joinSession' => 'Join Session',
-			_ => null,
-		} ?? switch (path) {
 			'watchTogether.joining' => 'Joining...',
 			'watchTogether.controlMode' => 'Control Mode',
 			'watchTogether.controlModeQuestion' => 'Who can control playback?',
@@ -7408,6 +7465,8 @@ extension on Translations {
 			'tautulli.errorAuth' => 'Tautulli rejected this key.',
 			'tautulli.errorTokenExpired' => 'Tautulli rejected this token. A device token is only valid for five minutes, so generate a new one and try again.',
 			'tautulli.errorModeMismatch' => 'Tautulli rejected this token, and it looks like your permanent API key rather than a device token. Switch to API key above, or register a device in Tautulli and paste that token.',
+			_ => null,
+		} ?? switch (path) {
 			'tautulli.errorUrlRequired' => 'Enter the address of your Tautulli server.',
 			'tautulli.errorTokenRequired' => 'Enter a token.',
 			'tautulli.errorNotTautulli' => 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.',
@@ -7417,8 +7476,6 @@ extension on Translations {
 			'nowWatching.tooltip' => 'See who is watching now',
 			'nowWatching.streams' => ({required Object count}) => '${count} streams',
 			'nowWatching.oneStream' => '1 stream',
-			_ => null,
-		} ?? switch (path) {
 			'nowWatching.transcoding' => ({required Object count}) => '${count} transcoding',
 			'nowWatching.directPlay' => 'Direct play',
 			'nowWatching.directStream' => 'Direct stream',

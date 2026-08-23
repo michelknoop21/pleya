@@ -5,6 +5,24 @@ library;
 
 import 'device_capability.dart';
 
+/// A ceiling the user puts on the display layer.
+///
+/// This is the "never transcode above 1080p" from architecture 9.3: a hardware
+/// capability override, which is why it is device-local and never travels to
+/// another device over iCloud. [auto] leaves detection alone.
+enum DisplayResolutionCap {
+  auto(null, null),
+  hd1080(1920, 1080),
+  uhd2160(3840, 2160);
+
+  const DisplayResolutionCap(this.width, this.height);
+
+  final int? width;
+  final int? height;
+
+  bool get isAuto => this == DisplayResolutionCap.auto;
+}
+
 /// Resolution, refresh rates and HDR transfer functions of the output this
 /// device is currently driving.
 ///

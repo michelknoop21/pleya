@@ -29,6 +29,7 @@ import 'screens/profile/pin_entry_dialog.dart';
 import 'screens/profile/profile_switch_screen.dart';
 import 'services/storage_service.dart';
 import 'services/device_capabilities_service.dart';
+import 'services/device_capability_overrides.dart';
 import 'services/device_performance.dart';
 import 'services/macos_window_service.dart';
 import 'services/native_window_service.dart';
@@ -200,7 +201,7 @@ Future<void> _bootstrapApp() async {
   final deviceCapabilities = DeviceCapabilitiesService.configure(
     useExoPlayer: settings.read(SettingsService.useExoPlayer),
   );
-  futures.add(deviceCapabilities.refresh());
+  futures.add(deviceCapabilities.refresh(overrides: DeviceCapabilityOverrides.fromSettings(settings)));
   if (Platform.isAndroid) {
     PipService();
   }

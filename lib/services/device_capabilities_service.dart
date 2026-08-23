@@ -10,6 +10,7 @@ import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
 import 'apple_audio_session_service.dart';
 import 'audio_output_decision.dart';
+import 'device_capability_overrides.dart';
 
 /// The platform facts detection branches on, gathered in one injectable place.
 ///
@@ -101,15 +102,43 @@ class DeviceCapabilitiesService {
 
   StreamSubscription<AppleAudioRoute>? _routeSubscription;
 
+  DeviceCapabilities _detected = DeviceCapabilities.unknown;
+  DeviceCapabilityOverrides _overrides = DeviceCapabilityOverrides.defaults;
   DeviceCapabilities _current = DeviceCapabilities.unknown;
 
+  /// Detection with the user's overrides applied. This is what a profile
+  /// builder should be handed.
   DeviceCapabilities get current => _current;
 
+  /// Detection on its own, before any override. Kept so the settings UI can
+  /// show what the device said next to what the user asked for.
+  DeviceCapabilities get detected => _detected;
+
+  /// What this platform can bitstream at all. Forcing passthrough asserts this
+  /// list and cannot conjure a codec the platform has no path for.
+  Set<String> get platformBitstreamCodecs {
+    if (probe.hasAppleAudioRoute) return appleBitstreamCodecs;
+    return probe.supportsAudioPassthrough ? desktopBitstreamCodecs : const <String>{};
+  }
+
   /// Re-runs every detection source and replaces [current].
-  Future<DeviceCapabilities> refresh() async {
+  Future<DeviceCapabilities> refresh({DeviceCapabilityOverrides? overrides}) async {
+    if (overrides != null) _overrides = overrides;
     final display = await _detectDisplay();
     final audio = await _detectAudio();
-    _current = _current.copyWith(decoder: _detectDecoder(), display: display, audio: audio);
+    _detected = _detected.copyWith(decoder: _detectDecoder(), display: display, audio: audio);
+    return _republish();
+  }
+
+  /// Re-applies the overrides without touching the hardware. What a settings
+  /// screen calls after a write.
+  DeviceCapabilities applyOverrides(DeviceCapabilityOverrides overrides) {
+    _overrides = overrides;
+    return _republish();
+  }
+
+  DeviceCapabilities _republish() {
+    _current = applyCapabilityOverrides(_detected, _overrides, platformBitstreamCodecs: platformBitstreamCodecs);
     return _current;
   }
 
@@ -119,7 +148,8 @@ class DeviceCapabilitiesService {
   void watchAudioRoute() {
     if (!probe.hasAppleAudioRoute || _routeSubscription != null) return;
     _routeSubscription = AppleAudioSessionService.instance.routeChanges.listen((route) {
-      _current = _current.copyWith(audio: _audioFromAppleRoute(route));
+      _detected = _detected.copyWith(audio: _audioFromAppleRoute(route));
+      _republish();
     });
   }
 

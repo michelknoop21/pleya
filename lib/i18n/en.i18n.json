@@ -182,6 +182,19 @@
     "bufferSizeWarning": "${heap}MB memory available. A ${size}MB buffer may affect playback.",
     "defaultQualityTitle": "Default Quality",
     "defaultQualityDescription": "Used when starting playback. Lower values reduce bandwidth.",
+    "displayMaxResolutionTitle": "Maximum Resolution",
+    "displayMaxResolutionDescription": "Caps what this device asks a server for, even when the file is larger.",
+    "displayMaxResolutionNow": "detected: ${resolution}",
+    "displayMaxResolutionOptions": {
+      "auto": "Auto",
+      "hd1080": "1080p",
+      "uhd2160": "4K"
+    },
+    "displayMaxResolutionOptionDescriptions": {
+      "auto": "Follow the display where the app can read it",
+      "hd1080": "Never ask for more than 1920x1080",
+      "uhd2160": "Never ask for more than 3840x2160"
+    },
     "subtitleStyling": "Subtitle Styling",
     "subtitleStylingDescription": "Customize subtitle appearance",
     "smallSkipDuration": "Small Skip Duration",
