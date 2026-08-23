@@ -66,9 +66,22 @@ class PleyaServerSession {
   DateTime? _accessTokenExpiry;
   Future<String>? _inFlight;
 
-  /// True once the refresh chain is gone. The session stays dead until a new
-  /// interactive sign-in replaces the connection, because retrying a revoked
-  /// token only re-triggers the revocation.
+  /// True once this session has stopped trusting its refresh token. It stays
+  /// dead for the rest of its own life, because retrying a token the server
+  /// just rejected only re-triggers the rejection.
+  ///
+  /// In memory only, and deliberately so. This used to also erase the token
+  /// from the connection row, which turned a single bad answer into a
+  /// permanent condition: the empty token survived the restart, every launch
+  /// then failed before it reached the network, and the only way out was
+  /// typing the server address again. Three things reach this line without
+  /// anything having been revoked — a rotation whose response was lost, a
+  /// second session spending the same token, and a 401 from a proxy or captive
+  /// portal that never reached Pleya — so the token is kept and the next
+  /// launch is allowed to try it. A chain that really is dead costs one failed
+  /// refresh per launch; a chain that was fine recovers on its own.
+  ///
+  /// The connection itself is only ever removed by the user.
   bool get isRevoked => _revoked;
   bool _revoked = false;
 
@@ -133,26 +146,21 @@ class PleyaServerSession {
     final refreshToken = _connection.refreshToken;
     if (refreshToken.isEmpty) {
       _revoked = true;
-      throw const MediaServerAuthException('No stored credentials for this server');
+      throw const PleyaNoStoredCredentialsException();
     }
     final PleyaTokenPair pair;
     try {
       pair = await _auth.refresh(baseUrl: _connection.baseUrl, refreshToken: refreshToken);
     } on PleyaRefreshChainRevokedException {
-      // Drop the dead token from the row. Leaving it there means every launch
-      // presents a retired token and re-triggers the revocation, which looks
-      // to a user like a server that logs them out at random.
+      // Dead for this session, but the token stays on disk. See the note on
+      // [isRevoked] for why erasing it was worse than keeping it.
       _revoked = true;
-      _connection = _connection.copyWith(refreshToken: '', status: ConnectionStatus.authError);
-      await _persist();
       rethrow;
     } on MediaServerAuthException catch (e) {
-      // A plain 401 on refresh is also a dead chain: the token is either
-      // expired or revoked, and neither gets better by retrying.
+      // A 401 or 403 means this token did not work. That is a reason to stop
+      // spending it for now, not a reason to destroy it.
       if (e.statusCode == 401 || e.statusCode == 403) {
         _revoked = true;
-        _connection = _connection.copyWith(refreshToken: '', status: ConnectionStatus.authError);
-        await _persist();
       }
       rethrow;
     }

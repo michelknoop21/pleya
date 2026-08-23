@@ -264,12 +264,35 @@ class PleyaServerClient
         }
       }
       return HealthStatus.online;
-    } on MediaServerAuthException {
-      return HealthStatus.authError;
+    } on MediaServerAuthException catch (e) {
+      return _provesSignedOut(e) ? HealthStatus.authError : HealthStatus.offline;
     } catch (_) {
       return HealthStatus.offline;
     }
   }
+
+  /// Whether [error] is evidence that the session is actually gone, as opposed
+  /// to evidence that this attempt did not work.
+  ///
+  /// [MediaServerAuthException] is a family, and minting a token throws more
+  /// than rejections: a rate limiter saying "later", a proxy answering the
+  /// refresh with an HTML page, a wire-contract mismatch, a 409. Catching the
+  /// family and calling all of it `authError` is what put "Sessie verlopen"
+  /// over a server that was merely throttled. Plex and Jellyfin already gate on
+  /// a proven 401 or 403; this brings Pleya Server in line.
+  static bool _provesSignedOut(MediaServerAuthException error) => switch (error) {
+    // Throttled. Retrying later is exactly right, and telling someone to sign
+    // in again does nothing for them.
+    PleyaRateLimitedException() => false,
+    // No token at all. Nothing to retry, only a sign-in helps.
+    PleyaNoStoredCredentialsException() => true,
+    // Pleya's own verdict, both of them carrying a protocol code.
+    PleyaRefreshChainRevokedException() => true,
+    PleyaAuthRejectedException() => true,
+    // Anything else: a 409 conflict, a refresh answer that was not the
+    // contract, a bare 401 from a box in between. None of those is proof.
+    _ => false,
+  };
 
   @override
   Future<bool> isHealthy() async => (await checkHealth()) == HealthStatus.online;
