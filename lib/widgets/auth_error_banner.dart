@@ -47,33 +47,43 @@ class _AuthErrorBannerState extends State<AuthErrorBanner> {
         ? t.connections.sessionExpiredOne(name: entries.first.displayName)
         : t.connections.sessionExpiredMany(count: entries.length);
 
+    // A status row, not a card. The durable place for this state is the row
+    // in Settings → Connections; this strip only has to point there, so it
+    // stays within two text lines, a small icon and a compact action instead
+    // of a full-width call-to-action.
     return Material(
       color: mono.surfaceElevated,
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+          padding: const EdgeInsets.fromLTRB(12, 4, 8, 4),
           child: Row(
             children: [
-              AppIcon(Symbols.error_rounded, fill: 1, color: errorColor),
-              const SizedBox(width: 12),
+              AppIcon(Symbols.error_rounded, fill: 1, size: 18, color: errorColor),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   label,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: mono.text, fontWeight: .w500),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(color: mono.text, fontWeight: .w500),
                 ),
               ),
               const SizedBox(width: 8),
               FocusableButton(
                 onPressed: _retrying ? null : () => _retryThenReauth(context, entries),
-                child: FilledButton.tonal(
-                  style: FilledButton.styleFrom(backgroundColor: errorColor, foregroundColor: mono.surfaceElevated),
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: errorColor,
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  ),
                   onPressed: _retrying ? null : () => _retryThenReauth(context, entries),
                   child: _retrying
                       ? SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: mono.surfaceElevated),
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: errorColor),
                         )
                       : Text(t.connections.signInAgain),
                 ),

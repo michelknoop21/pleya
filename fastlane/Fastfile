@@ -472,10 +472,19 @@ rescue => e
   UI.important("Later herstellen met: fastlane attach_builds platform:#{platform} build:#{build_number}")
 end
 
+# De korte sha van de sourcecommit, als dart-define voor de logheader en
+# Sentry. Zonder deze define toont een TestFlight-build "Pleya v2.8.0 (242)"
+# zonder sha en moest de herkomst achteraf uit buildtijden gereconstrueerd
+# worden; Android en CI geven hem al jaren mee.
+def git_commit_define
+  sha = `git -C #{PROJECT_ROOT} rev-parse --short HEAD`.strip
+  sha.empty? ? "" : " --dart-define=GIT_COMMIT=#{sha}"
+end
+
 desc "iOS → TestFlight"
 lane :ios_beta do
   build_number = ensure_build_number("ios")
-  flutter_sh("flutter build ios --config-only --release")
+  flutter_sh("flutter build ios --config-only --release#{git_commit_define}")
   patch_spm_min_ios
   build_app(
     workspace: File.join(PROJECT_ROOT, "ios/Runner.xcworkspace"),
@@ -502,7 +511,7 @@ lane :tvos_beta do
   # fetch_engine.sh is idempotent (slaat de download over als de cache al klopt)
   # en herschrijft Generated.xcconfig — daarom ná ensure_build_number, want het
   # neemt het buildnummer uit pubspec.yaml over.
-  sh("cd #{PROJECT_ROOT} && tvos/scripts/fetch_engine.sh")
+  sh("cd #{PROJECT_ROOT} && PLEYA_GIT_COMMIT=$(git rev-parse --short HEAD) tvos/scripts/fetch_engine.sh")
   build_app(
     workspace: File.join(PROJECT_ROOT, "tvos/Runner.xcworkspace"),
     scheme: "Runner",
@@ -518,7 +527,7 @@ end
 desc "macOS → TestFlight (pkg)"
 lane :macos_beta do
   build_number = ensure_build_number("osx")
-  flutter_sh("flutter build macos --config-only --release")
+  flutter_sh("flutter build macos --config-only --release#{git_commit_define}")
   # Buildnummer/-naam expliciet aan xcodebuild meegeven: DerivedData herprocesst
   # de Info.plist niet altijd als alleen de ephemeral xcconfig wijzigt → stale
   # CFBundleVersion in de archive (158-upload-rejectie terwijl de xcconfig al
