@@ -210,6 +210,85 @@ void main() {
       client.close();
     });
 
+    // Minting a token throws more than rejections. Catching the whole
+    // MediaServerAuthException family and calling it authError is what put
+    // "Sessie verlopen" over servers that were merely busy or behind a proxy.
+    group('a failure that does not prove the session is gone', () {
+      Future<HealthStatus> healthWhenRefreshAnswers(http.Response Function() answer) async {
+        // The stored access token is refused once, so the probe is forced
+        // through /auth/refresh, which is where the interesting failures live.
+        final client = PleyaServerClient.create(
+          connection(),
+          httpClientFactory: () => MockClient((request) async {
+            if (request.url.path.endsWith('/info')) return json(infoBody());
+            if (request.url.path.endsWith('/auth/refresh')) return answer();
+            return json(const {
+              'error': {'code': 'auth.invalid_token', 'message': 'no', 'retryable': false},
+            }, status: 401);
+          }),
+        );
+        final status = await client.checkHealth();
+        client.close();
+        return status;
+      }
+
+      test('a rate limiter is offline, not a dead session', () async {
+        expect(
+          await healthWhenRefreshAnswers(
+            () => json(const {
+              'error': {
+                'code': 'auth.rate_limited',
+                'message': 'slow down',
+                'retryable': true,
+                'details': {'retry_after_ms': 5000},
+              },
+            }, status: 429),
+          ),
+          HealthStatus.offline,
+          reason: 'the server said "later", and telling someone to sign in again does nothing for them',
+        );
+      });
+
+      test('a 5xx is offline, not a dead session', () async {
+        expect(
+          await healthWhenRefreshAnswers(
+            () => json(const {
+              'error': {'code': 'storage.unavailable', 'message': 'database down', 'retryable': true},
+            }, status: 503),
+          ),
+          HealthStatus.offline,
+        );
+      });
+
+      test('a 200 that is not the contract is offline, not a dead session', () async {
+        expect(
+          await healthWhenRefreshAnswers(() => http.Response('<html>sign in to the wifi</html>', 200)),
+          HealthStatus.offline,
+          reason: 'a captive portal answering the refresh says nothing about the session',
+        );
+      });
+
+      test('a 401 without a protocol envelope is offline, because it was not Pleya speaking', () async {
+        expect(
+          await healthWhenRefreshAnswers(() => http.Response('<html>401</html>', 401)),
+          HealthStatus.offline,
+          reason: 'a proxy, a gateway or an ISP answers 401 too; only Pleya own envelope is evidence',
+        );
+      });
+
+      test('but Pleya own 401 still is a dead session, on the first probe', () async {
+        expect(
+          await healthWhenRefreshAnswers(
+            () => json(const {
+              'error': {'code': 'auth.invalid_token', 'message': 'no', 'retryable': false},
+            }, status: 401),
+          ),
+          HealthStatus.authError,
+          reason: 'the fix must not make a real expired session slower to surface',
+        );
+      });
+    });
+
     test('an unreachable server is offline, not authError', () async {
       final client = PleyaServerClient.create(
         connection(),

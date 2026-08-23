@@ -290,7 +290,7 @@ void main() {
       expect(refreshCalls, 2);
     });
 
-    test('a reused refresh token revokes the session and clears the stored token', () async {
+    test('a reused refresh token stops this session and keeps the token on disk', () async {
       final service = PleyaServerAuthService(
         httpClientFactory: () => MockClient(
           (_) async => json(const {
@@ -306,13 +306,43 @@ void main() {
       );
       await expectLater(session.accessToken(), throwsA(isA<PleyaRefreshChainRevokedException>()));
       expect(session.isRevoked, isTrue);
-      expect(persisted.single.refreshToken, isEmpty, reason: 'a dead token left on disk re-triggers revocation');
-      expect(persisted.single.status, ConnectionStatus.authError);
+      // "Reused" is also what a rotation whose response was lost looks like,
+      // and what a second session spending the same token looks like. Erasing
+      // the row on that evidence turned a bad minute into a dead connection
+      // that no restart could repair.
+      expect(persisted, isEmpty, reason: 'a failed refresh writes nothing at all');
+      expect(session.connection.refreshToken, 'rt-dead');
       // A second attempt must not go near the network again.
       await expectLater(session.accessToken(), throwsA(isA<PleyaRefreshChainRevokedException>()));
     });
 
-    test('a plain 401 on refresh is also a dead chain', () async {
+    test('a fresh session may try the kept token again after a restart', () async {
+      var attempt = 0;
+      PleyaServerAuthService service() => PleyaServerAuthService(
+        httpClientFactory: () => MockClient((_) async {
+          attempt++;
+          // The first launch is told the token was reused; the second gets a
+          // real answer, which is what a lost rotation response looks like
+          // once the server has moved on.
+          if (attempt == 1) {
+            return json(const {
+              'error': {'code': 'auth.refresh_token_reused', 'message': 'seen before', 'retryable': false},
+            }, status: 401);
+          }
+          return json(tokenPair('at-live', 'rt-next'));
+        }),
+      );
+
+      final first = PleyaServerSession(connection: connectionWith('rt-kept'), auth: service());
+      await expectLater(first.accessToken(), throwsA(isA<PleyaRefreshChainRevokedException>()));
+
+      // Restart: the row still carries the token, so a new session can try it.
+      final second = PleyaServerSession(connection: connectionWith('rt-kept'), auth: service());
+      expect(await second.accessToken(), 'at-live');
+      expect(second.isRevoked, isFalse);
+    });
+
+    test('a plain 401 on refresh stops the session without touching the row', () async {
       final service = PleyaServerAuthService(
         httpClientFactory: () => MockClient(
           (_) async => json(const {
@@ -320,9 +350,18 @@ void main() {
           }, status: 401),
         ),
       );
-      final session = PleyaServerSession(connection: connectionWith('rt-old'), auth: service);
+      final persisted = <PleyaServerConnection>[];
+      final session = PleyaServerSession(
+        connection: connectionWith('rt-old'),
+        auth: service,
+        onTokensRotated: (connection) async => persisted.add(connection),
+      );
       await expectLater(session.accessToken(), throwsA(isA<MediaServerAuthException>()));
       expect(session.isRevoked, isTrue);
+      // A 401 can come from a proxy, a captive portal or a gateway that Pleya
+      // never spoke to. None of those is a reason to destroy a credential.
+      expect(persisted, isEmpty);
+      expect(session.connection.refreshToken, 'rt-old');
     });
 
     test('an unreachable server does not revoke anything', () async {

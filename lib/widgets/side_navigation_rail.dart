@@ -290,6 +290,60 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
   // Unified focus state tracker for all nav items (main + libraries)
   late final FocusMemoryTracker _focusTracker;
 
+  /// The focus order of the previous build, so a row that disappears can be
+  /// replaced by whatever now stands in its place rather than by a guess.
+  List<String> _lastFocusOrder = const [];
+
+  /// Where a scheduled focus recovery is currently aiming, or null when none
+  /// is pending. A burst of rebuilds (rows arriving one provider at a time)
+  /// queues one recovery, and the newest prune decides its target: the older
+  /// aim may itself have been pruned in the meantime, and a recovery pointing
+  /// at a node that no longer exists is the orphaned focus this exists to
+  /// prevent.
+  String? _pendingFocusRecoveryKey;
+
+  /// A rail row can vanish under the focus that is on it: the reconnect entry
+  /// the moment the server answers again, "now watching" when the last stream
+  /// stops, Live TV or Requests when their server drops, a library while the
+  /// list reloads. [FocusMemoryTracker.pruneExcept] disposes that node, and a
+  /// disposed node hands primary focus up to the enclosing scope — the rail
+  /// keeps the focus without any item holding it, so the shell still counts
+  /// the sidebar as focused and the rail stays open with nothing on it. On a
+  /// remote there is then no key that leads out.
+  ///
+  /// So focus moves to whatever took the row's place: same index in the new
+  /// order, clamped to its end. When the row was not in the previous order at
+  /// all — the first build of a rail that was rebuilt from scratch — the
+  /// current selection is a better guess than the top of the list, which would
+  /// silently move the remote to Home. Deferred to the next frame because
+  /// pruning happens inside build, where requesting focus is not allowed.
+  void _recoverFocusAfterPrune(String? prunedFocusedKey, List<String> focusOrder) {
+    if (prunedFocusedKey == null || focusOrder.isEmpty) return;
+    final previousIndex = _lastFocusOrder.indexOf(prunedFocusedKey);
+    final targetKey = previousIndex < 0
+        ? (_resolveSelectedFocusKey() ?? focusOrder.first)
+        : focusOrder[previousIndex.clamp(0, focusOrder.length - 1)];
+    final alreadyPending = _pendingFocusRecoveryKey != null;
+    // Retarget rather than drop: a second prune in the same frame may have
+    // taken the row the pending recovery was aiming at.
+    _pendingFocusRecoveryKey = targetKey;
+    if (alreadyPending) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final key = _pendingFocusRecoveryKey;
+      _pendingFocusRecoveryKey = null;
+      if (!mounted || key == null) return;
+      // Only when the rail still owns the focus. If the shell has meanwhile
+      // moved focus into the content — the far more common reason a rail row
+      // disappears — pulling it back would be the late callback overwriting
+      // the newer state.
+      if (!widget.isSidebarFocused) return;
+      final node =
+          _mountedFocusNodeFor(key) ?? _mountedFocusNodeFor(_resolveSelectedFocusKey()) ?? _mountedFocusNodeFor(_kHome);
+      if (node == null || node.hasFocus) return;
+      _requestFocusAndReveal(node);
+    });
+  }
+
   /// Whether the sidebar should be expanded (always, hover, or focus)
   bool get _shouldExpand => widget.alwaysExpanded || _isHovered || _isTouchExpanded || widget.isSidebarFocused;
 
@@ -726,9 +780,11 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
           section: _LibraryNavSection.visible,
           showServerHeaders: showServerHeaders,
         );
-        _focusTracker.pruneExcept(_buildValidFocusKeys(destinations, visibleRows));
+        final prunedFocusedKey = _focusTracker.pruneExcept(_buildValidFocusKeys(destinations, visibleRows));
         final focusOrder = _buildFocusOrder(destinations, visibleRows);
         _debugAssertFocusOrder(focusOrder, destinations);
+        _recoverFocusAfterPrune(prunedFocusedKey, focusOrder);
+        _lastFocusOrder = focusOrder;
         return TapRegion(
           onTapOutside: (_) {
             if (_isTouchExpanded) {

@@ -761,7 +761,11 @@
     "editJellyfinIntro": "Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency.",
     "localSources": "Sources on this device",
     "removeSource": "Remove source",
-    "removeSourceConfirm": "Remove \"$name\" from this device? Downloaded items are kept."
+    "removeSourceConfirm": "Remove \"$name\" from this device? Downloaded items are kept.",
+    "pleyaServers": "Pleya Servers",
+    "disconnectServer": "Disconnect",
+    "disconnectServerConfirm": "Disconnect from \"$name\"? The sign-in for this server is removed from this device. Downloaded items are kept.",
+    "reauthRequired": "Sign-in required"
   },
   "discover": {
     "title": "Discover",

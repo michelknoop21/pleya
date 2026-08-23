@@ -78,6 +78,10 @@ class PleyaFakeServer {
   /// does. Distinct from a 401: offline is not signed out.
   bool unreachable = false;
 
+  /// How `/auth/refresh` should answer, for the failures that are not a
+  /// rejection but used to be treated as one.
+  PleyaFakeRefreshOutcome refreshOutcome = PleyaFakeRefreshOutcome.rotate;
+
   void addLibrary({required String id, required String title, required String kind, int? itemCount}) {
     libraries.add({'id': id, 'title': title, 'kind': kind, 'item_count': itemCount ?? 0});
     libraryItems.putIfAbsent(id, () => []);
@@ -158,6 +162,39 @@ class PleyaFakeServer {
 
     if (path == '/info') return _json(_info());
     if (path == '/auth/refresh') {
+      switch (refreshOutcome) {
+        case PleyaFakeRefreshOutcome.rotate:
+          break;
+        case PleyaFakeRefreshOutcome.rateLimited:
+          return _json(const {
+            'error': {
+              'code': 'auth.rate_limited',
+              'message': 'slow down',
+              'retryable': true,
+              'details': {'retry_after_ms': 5000},
+            },
+          }, status: 429);
+        case PleyaFakeRefreshOutcome.serverError:
+          return _json(const {
+            'error': {'code': 'storage.unavailable', 'message': 'database down', 'retryable': true},
+          }, status: 503);
+        case PleyaFakeRefreshOutcome.notTheContract:
+          // A proxy or captive portal answering 200 with something that is not
+          // the envelope. Used to be indistinguishable from a dead session.
+          return http.Response('<html>sign in to the wifi</html>', 200);
+        case PleyaFakeRefreshOutcome.bareUnauthorized:
+          // A 401 with no protocol envelope: a gateway in front of the server,
+          // not Pleya speaking.
+          return http.Response('<html>401</html>', 401);
+        case PleyaFakeRefreshOutcome.rejected:
+          return _json(const {
+            'error': {'code': 'auth.invalid_token', 'message': 'no', 'retryable': false},
+          }, status: 401);
+        case PleyaFakeRefreshOutcome.reused:
+          return _json(const {
+            'error': {'code': 'auth.refresh_token_reused', 'message': 'seen before', 'retryable': false},
+          }, status: 401);
+      }
       refreshCount++;
       return _json({
         'access_token': 'at-$refreshCount',
@@ -332,4 +369,32 @@ class PleyaFakeServerUnreachable implements Exception {
 
   @override
   String toString() => 'PleyaFakeServerUnreachable';
+}
+
+/// How the fake answers `/auth/refresh`.
+///
+/// The four in the middle are the ones that matter for classification: none of
+/// them proves the session is gone, and all four used to raise "session
+/// expired" anyway.
+enum PleyaFakeRefreshOutcome {
+  /// Normal: mint a new pair and rotate.
+  rotate,
+
+  /// 429 with `auth.rate_limited`.
+  rateLimited,
+
+  /// 503 from the server itself.
+  serverError,
+
+  /// 200 whose body is not the protocol envelope.
+  notTheContract,
+
+  /// 401 without a protocol envelope, so not Pleya speaking.
+  bareUnauthorized,
+
+  /// 401 with `auth.invalid_token`: Pleya's own verdict.
+  rejected,
+
+  /// 401 with `auth.refresh_token_reused`.
+  reused,
 }

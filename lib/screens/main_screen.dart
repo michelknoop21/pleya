@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:ui' show ImageFilter;
 import '../media/ids.dart';
 import '../navigation/main_screen_scope.dart';
+import '../navigation/sidebar_focus_coordinator.dart';
 import '../theme/mono_theme.dart' show kAccent;
 import 'dart:io' show Platform, exit;
 
@@ -288,9 +289,11 @@ class _MainScreenState extends State<MainScreen>
   final GlobalKey<SideNavigationRailState> _sideNavKey = GlobalKey();
 
   // Focus management for sidebar/content switching
-  final FocusScopeNode _sidebarFocusScope = FocusScopeNode(debugLabel: 'Sidebar');
-  final FocusScopeNode _contentFocusScope = FocusScopeNode(debugLabel: 'Content');
-  bool _isSidebarFocused = false;
+  final SidebarFocusCoordinator _focus = SidebarFocusCoordinator();
+
+  FocusScopeNode get _sidebarFocusScope => _focus.sidebarScope;
+  FocusScopeNode get _contentFocusScope => _focus.contentScope;
+  bool get _isSidebarFocused => _focus.isSidebarFocused;
   bool _isSidebarInteractionExpanded = false;
   bool _isOverlaySheetOpen = false;
 
@@ -346,6 +349,7 @@ class _MainScreenState extends State<MainScreen>
     _offlineUntilConnected = widget.isOfflineMode;
 
     WidgetsBinding.instance.addObserver(this);
+    _focus.addListener(_handleSidebarFocusChanged);
     _listenForExternalSearchQueries();
 
     if (PlatformDetector.isDesktopOS()) {
@@ -938,8 +942,8 @@ class _MainScreenState extends State<MainScreen>
     _serverStatusSub?.cancel();
     _startupSettleTimeout?.cancel();
     _startupSettleTimeout = null;
-    _sidebarFocusScope.dispose();
-    _contentFocusScope.dispose();
+    _focus.removeListener(_handleSidebarFocusChanged);
+    _focus.dispose();
     _setTvosMenuPassthrough(false);
 
     // Clean up companion remote callbacks
@@ -1205,37 +1209,33 @@ class _MainScreenState extends State<MainScreen>
     // Capture target before requestFocus() auto-focuses a sidebar descendant
     // and overwrites lastFocusedKey (e.g. to the Libraries toggle button).
     final targetKey = _sideNavKey.currentState?.lastFocusedKey;
-    setState(() => _isSidebarFocused = true);
-    _updateTvosMenuPassthrough();
-    _sidebarFocusScope.requestFocus();
-    // Focus the active item after the focus scope has focus
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _sideNavKey.currentState?.focusActiveItem(targetKey: targetKey);
-    });
+    _focus.focusSidebar(
+      focusActiveItem: () {
+        if (!mounted) return;
+        _sideNavKey.currentState?.focusActiveItem(targetKey: targetKey);
+      },
+    );
   }
 
   void _focusContent({bool restorePreviousFocus = true}) {
-    setState(() => _isSidebarFocused = false);
-    _updateTvosMenuPassthrough();
-    if (restorePreviousFocus) {
-      _contentFocusScope.requestFocus();
-    }
-    // Only programmatically focus if the scope didn't auto-restore a child.
-    // This preserves the user's focus position when returning from sidebar.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (restorePreviousFocus) {
-        if (_contentFocusScope.focusedChild == null) {
-          if (_screenKeyFor(_currentTab)?.currentState case final FocusableTab focusable) {
-            focusable.focusActiveTabIfReady();
-          }
-        }
-      } else {
+    _focus.focusContent(
+      restorePreviousFocus: restorePreviousFocus,
+      focusDefault: () {
+        if (!mounted) return;
         if (_screenKeyFor(_currentTab)?.currentState case final FocusableTab focusable) {
           focusable.focusActiveTabIfReady();
         }
-      }
-    });
+      },
+    );
+  }
+
+  /// The rail is drawn from [SidebarFocusCoordinator.isSidebarFocused], so the
+  /// screen has to rebuild when it moves — including when it moves because the
+  /// focus tree moved rather than because this screen asked for it.
+  void _handleSidebarFocusChanged() {
+    if (!mounted) return;
+    setStateIfMounted(() {});
+    _updateTvosMenuPassthrough();
   }
 
   void _handleSidebarInteractionExpandedChanged(bool expanded) {

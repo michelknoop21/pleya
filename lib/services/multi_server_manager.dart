@@ -55,6 +55,36 @@ class MultiServerManager {
   /// show a "Sign in again" banner instead of a generic offline state.
   final Set<String> _authErrorServers = {};
 
+  /// Ownership token per server id — the "connection generation".
+  ///
+  /// Every async task that will write server state back when it finishes (a
+  /// health probe, a reconnect race, a share poll) takes the token for its
+  /// server *before* it awaits, and drops its result if the token has moved on
+  /// by the time it returns. Removing a server releases its token, so a probe
+  /// that outlived a deliberate disconnect cannot mark that server online
+  /// again, cannot re-raise its auth-error banner, and cannot put a client back
+  /// into [_clients]. Re-adding the same id mints a *new* token rather than
+  /// reusing the old one, so the stale task loses that race too.
+  ///
+  /// Identity checks (`_clients[id] != client`) cover the "client was
+  /// replaced" case but not "the server is gone" or "the server came back as a
+  /// different connection", which is exactly what a manual disconnect looks
+  /// like from inside an in-flight probe.
+  final Map<String, int> _serverGenerations = {};
+  int _nextGeneration = 0;
+
+  /// The current token for [serverId], minting one if this is the first async
+  /// task to ask. Call before awaiting; pass the result to [ownsGeneration].
+  int generationFor(ServerId serverId) => _serverGenerations[serverId] ??= ++_nextGeneration;
+
+  /// Whether [generation] is still the live token for [serverId]. False once
+  /// the server has been removed, and false again if it was re-added since.
+  bool ownsGeneration(ServerId serverId, int generation) => _serverGenerations[serverId] == generation;
+
+  /// Drop [serverId]'s token. Every removal path must call this, or an
+  /// in-flight task will still believe it owns the server.
+  void _releaseGeneration(ServerId serverId) => _serverGenerations.remove(serverId);
+
   /// Stream controller for server status changes
   final _statusController = StreamController<Map<String, bool>>.broadcast();
 
@@ -440,6 +470,7 @@ class MultiServerManager {
     _plexServers.remove(serverId);
     _serverStatus.remove(serverId);
     _authErrorServers.remove(serverId);
+    _releaseGeneration(serverId);
     _statusController.add(Map.from(_serverStatus));
     appLogger.i('Removed server: $serverId');
   }
@@ -585,6 +616,7 @@ class MultiServerManager {
       _authErrorServers.remove(id);
       _clientIdByServer.remove(id);
       _unreachableSince.remove(id);
+      _releaseGeneration(ServerId(id));
     }
     _statusController.add(Map.from(_serverStatus));
   }
@@ -711,6 +743,13 @@ class MultiServerManager {
     final client = _clients.remove(connection.serverId);
     if (client != null) _closeClient(client);
     _serverStatus.remove(connection.serverId);
+    // A rejected session is what sends people to "disconnect" in the first
+    // place, so this is the common path, not the edge: leave the id in
+    // [_authErrorServers] and the re-auth bar keeps standing over a connection
+    // that no longer exists. Releasing the generation stops an in-flight probe
+    // from putting it back.
+    _authErrorServers.remove(connection.serverId);
+    _releaseGeneration(ServerId(connection.serverId));
     _statusController.add(Map.from(_serverStatus));
   }
 
@@ -778,6 +817,13 @@ class MultiServerManager {
     final client = _clients.remove(connection.id);
     if (client != null) _closeClient(client);
     _serverStatus.remove(connection.id);
+    // A share host that rejected our pairing sits in [_authErrorServers]. It
+    // has to come out here too, or unpairing the host leaves the re-auth
+    // banner up for a connection the user has just deleted — with the raw id
+    // where its name used to be, because the client that carried the name is
+    // gone.
+    _authErrorServers.remove(connection.id);
+    _releaseGeneration(ServerId(connection.id));
     _statusController.add(Map.from(_serverStatus));
     _ensureSharePolling();
   }
@@ -799,11 +845,21 @@ class MultiServerManager {
     return doubled > const Duration(minutes: 3) ? const Duration(minutes: 3) : doubled;
   }
 
-  static const _sharePollInitialDelay = Duration(seconds: 45);
-  Duration _sharePollDelay = _sharePollInitialDelay;
+  static const sharePollInitialDelay = Duration(seconds: 45);
+  Duration _sharePollDelay = sharePollInitialDelay;
+
+  @visibleForTesting
+  Duration get debugSharePollDelay => _sharePollDelay;
+
+  @visibleForTesting
+  void debugSetSharePollDelayForTesting(Duration delay) => _sharePollDelay = delay;
+
+  /// The last recorded health for one Jellyfin user's client, or `null` when
+  /// no row is held for it.
+  HealthStatus? getJellyfinHealthForConnection(String compoundId) => _jellyfinHealthByCompoundId[compoundId];
 
   void resetSharePollBackoff() {
-    _sharePollDelay = _sharePollInitialDelay;
+    _sharePollDelay = sharePollInitialDelay;
     if (_sharePollTimer != null) {
       _sharePollTimer?.cancel();
       _sharePollTimer = null;
@@ -818,7 +874,7 @@ class MultiServerManager {
     if (offlineShares.isEmpty) {
       _sharePollTimer?.cancel();
       _sharePollTimer = null;
-      _sharePollDelay = _sharePollInitialDelay;
+      _sharePollDelay = sharePollInitialDelay;
       return;
     }
     _sharePollTimer ??= Timer(_sharePollDelay, () async {
@@ -834,8 +890,10 @@ class MultiServerManager {
             .where((e) => e.value is PleyaShareClient && !(_serverStatus[e.key] ?? false))
             .toList();
         for (final entry in entries) {
+          final generation = generationFor(ServerId(entry.key));
           final health = await entry.value.checkHealth();
           if (_clients[entry.key] != entry.value) continue;
+          if (!ownsGeneration(ServerId(entry.key), generation)) continue;
           _applyHealth(ServerId(entry.key), health);
         }
       } finally {
@@ -862,6 +920,8 @@ class MultiServerManager {
     // id resolves its bookmark fresh instead of reusing a dead scope.
     SecureFolderService.instance.forget(connection.id);
     _serverStatus.remove(connection.id);
+    _authErrorServers.remove(connection.id);
+    _releaseGeneration(ServerId(connection.id));
     _statusController.add(Map.from(_serverStatus));
     appLogger.i('Removed local folder source: ${connection.displayName}');
   }
@@ -904,6 +964,7 @@ class MultiServerManager {
       _clients.remove(machineId);
       _serverStatus.remove(machineId);
       _authErrorServers.remove(machineId);
+      _releaseGeneration(ServerId(machineId));
       _statusController.add(Map.from(_serverStatus));
     }
   }
@@ -971,8 +1032,19 @@ class MultiServerManager {
       final serverId = entry.key;
       final client = entry.value;
       final expectedJellyfinCompoundId = client is JellyfinClient ? client.connection.id : null;
+      // Taken before the await: a probe against an unreachable server runs to
+      // its timeout, and the user disconnecting that server is exactly what
+      // they do while they wait.
+      final generation = generationFor(ServerId(serverId));
 
       final status = await client.checkHealth();
+      // Ownership first, and before the per-user health row is written: that
+      // row is what `isClientOnline` reads, so writing it for a machine the
+      // user disconnected reports a deleted connection as online.
+      if (!ownsGeneration(ServerId(serverId), generation)) {
+        appLogger.d('Ignoring health result for $serverId — the connection was closed while the probe ran');
+        return;
+      }
       if (client is JellyfinClient) {
         final compoundId = expectedJellyfinCompoundId ?? client.connection.id;
         _jellyfinHealthByCompoundId[compoundId] = status;
@@ -980,6 +1052,10 @@ class MultiServerManager {
           appLogger.d('Ignoring stale Jellyfin health result for ${client.connection.serverName}');
           return;
         }
+      }
+      if (_clients[serverId] != client) {
+        appLogger.d('Ignoring health result for $serverId — its client was replaced while the probe ran');
+        return;
       }
       _applyHealth(ServerId(serverId), status);
       if (status != HealthStatus.online) {
@@ -1054,10 +1130,18 @@ class MultiServerManager {
   }
 
   /// Re-optimize all connected servers and attempt reconnection for offline ones
+  /// The Plex servers a connectivity-driven sweep should touch: everything
+  /// except the ones whose token was rejected. Same reasoning as
+  /// [reconnectCandidateServerIds] — a new network does not repair an expired
+  /// session, and WiFi flapping would otherwise start a full candidate race
+  /// per flap for as long as the session stays expired.
+  List<String> reoptimizeCandidateServerIds() =>
+      _plexServers.keys.where((id) => !_authErrorServers.contains(id)).toList();
+
   void _reoptimizeAllServers({required String reason}) {
-    for (final entry in _plexServers.entries) {
-      final serverId = entry.key;
-      final server = entry.value;
+    for (final serverId in reoptimizeCandidateServerIds()) {
+      final server = _plexServers[serverId];
+      if (server == null) continue;
 
       // Skip if optimization/reconnection already running for this server
       if (_activeOptimizations.containsKey(serverId)) {
@@ -1150,9 +1234,20 @@ class MultiServerManager {
       return;
     }
 
+    final generation = generationFor(serverId);
     try {
       appLogger.d('Attempting reconnection for ${server.name}');
       final client = await _createClientForServer(server: server, clientIdentifier: clientId);
+
+      // The candidate race can take the full 15s budget. If the user
+      // disconnected this server in the meantime, the connection it belongs to
+      // no longer exists: close what we just built instead of putting a live
+      // client back under a server the user removed.
+      if (!ownsGeneration(serverId, generation)) {
+        appLogger.d('Discarding reconnect for ${server.name} — the connection was closed while it ran');
+        _closeClient(client);
+        return;
+      }
 
       final oldClient = _clients[serverId];
       if (oldClient != null) _closeClient(oldClient);
@@ -1174,9 +1269,14 @@ class MultiServerManager {
   /// entry.
   Future<void> _reconnectJellyfinServer(String machineId, JellyfinClient client) async {
     final expectedCompoundId = client.connection.id;
+    final generation = generationFor(ServerId(machineId));
     try {
       appLogger.d('Attempting reconnection for Jellyfin server ${client.connection.serverName}');
       final status = await client.checkHealth();
+      if (!ownsGeneration(ServerId(machineId), generation)) {
+        appLogger.d('Ignoring Jellyfin reconnection result for $machineId — the connection was closed while it ran');
+        return;
+      }
       _jellyfinHealthByCompoundId[expectedCompoundId] = status;
       if (_activeJellyfinMachine[machineId] != expectedCompoundId) {
         appLogger.d('Ignoring stale Jellyfin reconnection result for ${client.connection.serverName}');
@@ -1221,8 +1321,22 @@ class MultiServerManager {
     }
   }
 
+  /// The offline servers an automatic sweep should actually retry.
+  ///
+  /// A rejected token is not a transport problem, and racing every endpoint
+  /// candidate against it again cannot repair it — it only produces a fresh
+  /// round of failures on every resume, connectivity flap and health sweep,
+  /// for as long as the session stays expired. Those servers wait for the
+  /// re-auth banner instead.
+  ///
+  /// An explicit "reconnect" from the user ([forceRediscovery]) still includes
+  /// them: they may have repaired the session elsewhere — a Plex Home switch,
+  /// a token refresh — and asking again is exactly what they asked for.
+  List<String> reconnectCandidateServerIds({required bool forceRediscovery}) =>
+      forceRediscovery ? offlineServerIds : offlineServerIds.where((id) => !_authErrorServers.contains(id)).toList();
+
   Future<void> _doReconnectOfflineServers({required bool forceRediscovery}) async {
-    final offline = offlineServerIds;
+    final offline = reconnectCandidateServerIds(forceRediscovery: forceRediscovery);
     if (offline.isEmpty) return;
 
     appLogger.d('Attempting reconnection for ${offline.length} offline servers');
@@ -1355,8 +1469,15 @@ class MultiServerManager {
     _plexServers.clear();
     _serverStatus.clear();
     _authErrorServers.clear();
+    _serverGenerations.clear();
     _clientIdByServer.clear();
     _activeOptimizations.clear();
+    _sharePollTimer?.cancel();
+    _sharePollTimer = null;
+    // Not just the timer: a delay that had backed off to three minutes would
+    // be inherited by the next session, so a share host that is away after a
+    // profile switch takes minutes to be noticed instead of 45 seconds.
+    _sharePollDelay = sharePollInitialDelay;
     if (!_statusController.isClosed) {
       _statusController.add({});
     }

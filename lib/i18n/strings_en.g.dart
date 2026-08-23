@@ -2284,6 +2284,18 @@ class TranslationsConnectionsEn {
 
 	/// en: 'Remove "$name" from this device? Downloaded items are kept.'
 	String removeSourceConfirm({required Object name}) => 'Remove "${name}" from this device? Downloaded items are kept.';
+
+	/// en: 'Pleya Servers'
+	String get pleyaServers => 'Pleya Servers';
+
+	/// en: 'Disconnect'
+	String get disconnectServer => 'Disconnect';
+
+	/// en: 'Disconnect from "$name"? The sign-in for this server is removed from this device. Downloaded items are kept.'
+	String disconnectServerConfirm({required Object name}) => 'Disconnect from "${name}"? The sign-in for this server is removed from this device. Downloaded items are kept.';
+
+	/// en: 'Sign-in required'
+	String get reauthRequired => 'Sign-in required';
 }
 
 // Path: discover
@@ -6635,6 +6647,10 @@ extension on Translations {
 			'connections.localSources' => 'Sources on this device',
 			'connections.removeSource' => 'Remove source',
 			'connections.removeSourceConfirm' => ({required Object name}) => 'Remove "${name}" from this device? Downloaded items are kept.',
+			'connections.pleyaServers' => 'Pleya Servers',
+			'connections.disconnectServer' => 'Disconnect',
+			'connections.disconnectServerConfirm' => ({required Object name}) => 'Disconnect from "${name}"? The sign-in for this server is removed from this device. Downloaded items are kept.',
+			'connections.reauthRequired' => 'Sign-in required',
 			'discover.title' => 'Discover',
 			'discover.switchProfile' => 'Switch Profile',
 			'discover.noContentAvailable' => 'No content available',
@@ -6947,12 +6963,12 @@ extension on Translations {
 			'playlists.created' => 'Playlist created',
 			'playlists.deleted' => 'Playlist deleted',
 			'playlists.itemAdded' => 'Added to playlist',
+			_ => null,
+		} ?? switch (path) {
 			'playlists.itemRemoved' => 'Removed from playlist',
 			'playlists.selectPlaylist' => 'Select Playlist',
 			'playlists.errorCreating' => 'Failed to create playlist',
 			'playlists.errorDeleting' => 'Failed to delete playlist',
-			_ => null,
-		} ?? switch (path) {
 			'playlists.errorLoading' => 'Failed to load playlists',
 			'playlists.errorAdding' => 'Failed to add to playlist',
 			'playlists.errorReordering' => 'Failed to reorder playlist item',
@@ -7461,12 +7477,12 @@ extension on Translations {
 			'tautulli.disconnectConfirm' => 'Disconnect Tautulli?',
 			'tautulli.disconnectConfirmBody' => 'Pleya forgets the address and the token. Viewers, statistics and live activity disappear until you connect again.',
 			'tautulli.setupOnDesktopNote' => 'Easier on your phone or computer: the address and token are long to type with a remote.',
+			_ => null,
+		} ?? switch (path) {
 			'tautulli.errorNetwork' => 'Could not reach Tautulli. Check the address and whether it is reachable from this device.',
 			'tautulli.errorAuth' => 'Tautulli rejected this key.',
 			'tautulli.errorTokenExpired' => 'Tautulli rejected this token. A device token is only valid for five minutes, so generate a new one and try again.',
 			'tautulli.errorModeMismatch' => 'Tautulli rejected this token, and it looks like your permanent API key rather than a device token. Switch to API key above, or register a device in Tautulli and paste that token.',
-			_ => null,
-		} ?? switch (path) {
 			'tautulli.errorUrlRequired' => 'Enter the address of your Tautulli server.',
 			'tautulli.errorTokenRequired' => 'Enter a token.',
 			'tautulli.errorNotTautulli' => 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.',

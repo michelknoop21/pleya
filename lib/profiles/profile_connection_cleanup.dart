@@ -15,6 +15,15 @@ Future<void> removeProfileConnectionAndCleanup({
 }) async {
   final removedServerIds = _serverIdsForConnection(connection);
   await profileConnections.remove(profileId, connection.id);
+  await _tearDownRuntimeServersForActiveProfile(
+    profileId: profileId,
+    connection: connection,
+    removedServerIds: removedServerIds,
+    profileConnections: profileConnections,
+    connections: connections,
+    storage: storage,
+    serverManager: serverManager,
+  );
   await _clearProfileServerPrefsNoLongerReferenced(
     profileId: profileId,
     removedServerIds: removedServerIds,
@@ -41,6 +50,20 @@ Future<void> removeProfileConnectionAndCleanup({
     await connections.remove(connection.id);
     serverManager?.removeLocalSource(connection);
     final serverId = ServerId.tryParse(connection.id);
+    if (serverId != null) {
+      await storage.clearLibraryPreferencesForServerEverywhere(serverId);
+    }
+  }
+
+  // Een Pleya Server-verbinding draagt het refreshtoken van deze gebruiker op
+  // die server. Verwijst geen enkel profiel er nog naar, dan hoort de rij weg:
+  // niets anders in de app verwijdert er ooit een, dus wat hier blijft staan
+  // blijft voorgoed staan, met een geldig geheim erin voor een verbinding die
+  // de gebruiker net heeft verbroken.
+  if (connection is PleyaServerConnection && (await profileConnections.listForConnection(connection.id)).isEmpty) {
+    await connections.remove(connection.id);
+    serverManager?.removePleyaServerSource(connection);
+    final serverId = ServerId.tryParse(connection.serverId);
     if (serverId != null) {
       await storage.clearLibraryPreferencesForServerEverywhere(serverId);
     }
@@ -81,11 +104,15 @@ Future<void> removeConnectionCompletely({
   }
   // Orphan (no bindings) — the per-profile path never ran; clean up directly.
   if (await connections.get(connection.id) != null &&
-      (connection is LocalFolderConnection || connection is PleyaShareConnection)) {
+      (connection is LocalFolderConnection ||
+          connection is PleyaShareConnection ||
+          connection is PleyaServerConnection)) {
     await connections.remove(connection.id);
     if (connection is LocalFolderConnection) serverManager?.removeLocalSource(connection);
     if (connection is PleyaShareConnection) serverManager?.removePleyaShareSource(connection);
-    final serverId = ServerId.tryParse(connection.id);
+    if (connection is PleyaServerConnection) serverManager?.removePleyaServerSource(connection);
+    // Pleya Server keys on its own `serverId`, not on the row id.
+    final serverId = ServerId.tryParse(connection is PleyaServerConnection ? connection.serverId : connection.id);
     if (serverId != null) {
       await storage.clearLibraryPreferencesForServerEverywhere(serverId);
     }
@@ -176,6 +203,52 @@ Future<void> _removeJellyfinConnection(
   if (serverId != null &&
       !await _isServerReferenced(serverId, profileConnections: profileConnections, connections: connections)) {
     await storage.clearLibraryPreferencesForServerEverywhere(serverId);
+  }
+}
+
+/// Close the runtime clients for the servers this profile just gave up.
+///
+/// Disconnecting has to land locally on its own. The screens that remove a
+/// connection follow up with [ActiveProfileBinder.rebindIfActive], and that is
+/// what used to take the server out of [MultiServerManager] — but a rebind is
+/// asynchronous, can be deferred, and can fail against a server that is down,
+/// which is the state a user is in when they reach for "disconnect" in the
+/// first place. Until it lands the client stays registered, its health probes
+/// keep running, and its "session expired" banner keeps standing over a
+/// connection the user has already deleted.
+///
+/// Only for the active profile, and only for servers no remaining connection
+/// of that profile still reaches: removing a shared account from a *different*
+/// profile must not close the clients the active one is using.
+Future<void> _tearDownRuntimeServersForActiveProfile({
+  required String profileId,
+  required Connection connection,
+  required Set<ServerId> removedServerIds,
+  required ProfileConnectionRegistry profileConnections,
+  required ConnectionRegistry connections,
+  required StorageService storage,
+  MultiServerManager? serverManager,
+}) async {
+  if (serverManager == null || removedServerIds.isEmpty) return;
+  if (storage.getActiveProfileId() != profileId) return;
+
+  final remaining = await _serverIdsForProfile(
+    profileId,
+    profileConnections: profileConnections,
+    connections: connections,
+  );
+  for (final serverId in removedServerIds) {
+    if (remaining.contains(serverId)) continue;
+    // Jellyfin is keyed twice: one client per user, plus whichever of those is
+    // currently the machine's active client. [MultiServerManager.removeServer]
+    // takes a machine id and closes *every* user's client on it, including the
+    // one another profile has parked there for its next switch. Removing by
+    // connection closes only this user's.
+    if (connection is JellyfinConnection) {
+      serverManager.removeJellyfinConnection(connection);
+      continue;
+    }
+    serverManager.removeServer(serverId);
   }
 }
 

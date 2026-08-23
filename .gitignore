@@ -82,3 +82,5 @@ pleya_server/testdata/media/
 pleya_server/.responses/
 # Sessie-id van de codex-CLI, lokaal per machine.
 /.context/
+# Claude Code-instellingen per machine; de gedeelde .claude/ blijft wel getrackt.
+/.claude/settings.local.json

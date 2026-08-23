@@ -18,12 +18,19 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
+### New
+- een Pleya Server is te ontkoppelen waar Verbindingen zegt dat het kan
+
 ### Fixed
 - de zijbalk kent één lijst bestemmingen, dus "nu aan het kijken" is ook bereikbaar
 - een achtergrondcyclus legt de rapportage naar Plex niet meer stil
 - drie randen van de hervat-rapportage dichtgezet na review
 - het verlaten van de speler wacht niet meer op de server
 - een geweigerde log-upload wordt niet meteen opnieuw geprobeerd
+- zijbalk, sessiebalk en verbreken hingen alle drie aan een toestand die niemand bezat
+- een verbroken Pleya Server-verbinding liet zijn rij en zijn refreshtoken achter
+- een mislukte refresh maakte de verbinding kapot in plaats van hem te markeren
+- de buildnummers van iOS, tvOS en macOS lopen weer gelijk
 <!-- END GENERATED -->
 
 ### Fixed
