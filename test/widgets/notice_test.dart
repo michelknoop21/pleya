@@ -100,6 +100,22 @@ void main() {
       expect(controller.visible.single.count, 5);
     });
 
+    test('a changing countdown folds into one card carrying the newest text', () {
+      // The rate-limit message renders its remaining seconds into the text,
+      // so the rendered string is a different dedupe key every second.
+      // Callers pass a stable groupKey for exactly this case, and the fold
+      // keeps the newest text so the number on screen does not go stale.
+      final controller = NoticeController();
+      controller.show(
+        const Notice(level: NoticeLevel.error, title: 'Try again in 60 seconds', groupKey: 'logs.upload.rateLimited'),
+      );
+      controller.show(
+        const Notice(level: NoticeLevel.error, title: 'Try again in 58 seconds', groupKey: 'logs.upload.rateLimited'),
+      );
+      expect(controller.visible, hasLength(1));
+      expect(controller.visible.single.notice.title, 'Try again in 58 seconds');
+    });
+
     test('different groupKeys do not fold', () {
       final controller = NoticeController();
       controller.show(const Notice(level: NoticeLevel.error, title: 'A', groupKey: 'a'));

@@ -15,6 +15,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -1132,17 +1133,53 @@ func TestLogsRoundTrip(t *testing.T) {
 	}
 }
 
-func TestLogsUploadRateLimitedPerIP(t *testing.T) {
+func TestLogsUploadBurstThenRateLimited(t *testing.T) {
 	h := newRelayHarness(t)
-	r1 := postLog(t, h.baseURL, "7.0.0.2", []byte("first"))
-	r1.Body.Close()
-	if r1.StatusCode != http.StatusOK {
-		t.Fatalf("first post status=%d", r1.StatusCode)
+	// Een diagnoseronde is drie tot vijf uploads binnen enkele seconden: log
+	// vóór de actie, na "Opnieuw verbinden", na het opnieuw aanmelden. Die
+	// horen allemaal te slagen zonder ergens een minuut uit te zitten.
+	for i := 0; i < logRateBurst; i++ {
+		r := postLog(t, h.baseURL, "7.0.0.2", []byte("diagnostic"))
+		r.Body.Close()
+		if r.StatusCode != http.StatusOK {
+			t.Fatalf("post %d status=%d, de burst hoort te slagen", i+1, r.StatusCode)
+		}
 	}
-	r2 := postLog(t, h.baseURL, "7.0.0.2", []byte("second"))
-	r2.Body.Close()
-	if r2.StatusCode != http.StatusTooManyRequests {
-		t.Fatalf("second post status=%d want 429", r2.StatusCode)
+	// Een echte flood daarboven blijft geweigerd, mét een Retry-After die de
+	// client kan parsen in plaats van de gok van zestig seconden.
+	flood := postLog(t, h.baseURL, "7.0.0.2", []byte("flood"))
+	flood.Body.Close()
+	if flood.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("flood status=%d want 429", flood.StatusCode)
+	}
+	retryAfter, err := strconv.Atoi(flood.Header.Get("Retry-After"))
+	if err != nil || retryAfter < 1 || retryAfter > int(logRateRefill/time.Second) {
+		t.Fatalf("Retry-After=%q, hoort 1..%d seconden te zijn", flood.Header.Get("Retry-After"), int(logRateRefill/time.Second))
+	}
+	// Per IP: een ander adres heeft zijn eigen burst.
+	other := postLog(t, h.baseURL, "7.0.0.9", []byte("elsewhere"))
+	other.Body.Close()
+	if other.StatusCode != http.StatusOK {
+		t.Fatalf("other ip status=%d", other.StatusCode)
+	}
+}
+
+func TestLogsRejectedUploadDoesNotSpendTheBudget(t *testing.T) {
+	h := newRelayHarness(t)
+	// Het oude ontwerp stempelde vóór de validatie, dus een 413 verbrandde de
+	// hele minuut. Een afgekeurde upload hoort de eerstvolgende echte niet te
+	// belasten.
+	tooBig := postLog(t, h.baseURL, "7.0.0.4", make([]byte, maxLogSize+1))
+	tooBig.Body.Close()
+	if tooBig.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversize status=%d", tooBig.StatusCode)
+	}
+	for i := 0; i < logRateBurst; i++ {
+		r := postLog(t, h.baseURL, "7.0.0.4", []byte("still fine"))
+		r.Body.Close()
+		if r.StatusCode != http.StatusOK {
+			t.Fatalf("post %d na een 413 status=%d, de burst hoort intact te zijn", i+1, r.StatusCode)
+		}
 	}
 }
 
