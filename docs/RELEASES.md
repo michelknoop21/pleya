@@ -18,33 +18,39 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### New
-- DeviceCapabilities-model met vier lagen en een expliciete confidence
-- detectie per laag, met de host als injecteerbaar argument
-- overrides op het model, plus display_max_resolution
-- Jellyfin-DeviceProfile uit het model, gedragsneutraal
-- Plex-transcoderequest uit het model, gedragsneutraal
-- TrueHD in de Jellyfin direct-play-lijst op mpv-platforms
-- de resolutiecap van de gebruiker bereikt de Jellyfin-profielcondities
-- een Pleya Server is te ontkoppelen waar Verbindingen zegt dat het kan
-
-### Improved
-- semantische bronaudit op codec- en containerlijsten
-
-### Fixed
-- de zijbalk kent één lijst bestemmingen, dus "nu aan het kijken" is ook bereikbaar
-- een achtergrondcyclus legt de rapportage naar Plex niet meer stil
-- drie randen van de hervat-rapportage dichtgezet na review
-- het verlaten van de speler wacht niet meer op de server
-- een geweigerde log-upload wordt niet meteen opnieuw geprobeerd
-- zijbalk, sessiebalk en verbreken hingen alle drie aan een toestand die niemand bezat
-- een verbroken Pleya Server-verbinding liet zijn rij en zijn refreshtoken achter
-- een mislukte refresh maakte de verbinding kapot in plaats van hem te markeren
-- de buildnummers van iOS, tvOS en macOS lopen weer gelijk
+Nothing user-facing since the last published build.
 <!-- END GENERATED -->
 
+## 2.8.0 · build 242 · 23 August 2026
+
+<!-- commit: aa74004 -->
+
+### New
+
+- **A "Maximum Resolution" setting for playback.** Under Settings → Playback → Maximum
+  Resolution, you can cap what the app asks a server for, even when the file itself is larger.
+  Useful on a connection where 4K would be more than the link should carry.
+- **A Pleya Server can be disconnected from Settings → Connections.** It had no entry there at
+  all before; removing one meant going two screens deeper into a profile's management screen,
+  and if the session there had expired, that screen only offered to sign back in.
+
+### Improved
+
+- **Jellyfin now plays TrueHD audio tracks directly instead of transcoding them**, on desktop,
+  iPhone, iPad and Apple TV. Nothing about the video or the audio changes: the app simply stops
+  asking the server to re-encode a track it could already decode itself.
+
 ### Fixed
 
+- **A "Session expired" banner that kept coming back after every restart is gone.** Reconnecting
+  cleared it once, but the very next launch showed it again, with re-entering the server address
+  from scratch as the only way out. A session that was not actually dead now recovers on its own.
+- **Disconnecting a Pleya Server now removes it for good.** It could keep the connection around
+  behind the scenes, so a stale reconnect banner came back, sometimes only after restarting the
+  app.
+- **The sidebar no longer gets stuck open with nothing selected.** It could happen when the row
+  you were focused on, such as the reconnect prompt or "Now watching", disappeared on its own
+  while you were on it.
 - **Leaving the player gives you the library back straight away.** Closing a title used to wait
   for the server to confirm where you stopped, and on a slow or unreachable connection that was
   several seconds of black screen. The position is written in the background now, and if it does
