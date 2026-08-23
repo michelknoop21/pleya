@@ -24,6 +24,8 @@ under `Notes`.
 - drie randen van de hervat-rapportage dichtgezet na review
 - het verlaten van de speler wacht niet meer op de server
 - een geweigerde log-upload wordt niet meteen opnieuw geprobeerd
+- zijbalk, sessiebalk en verbreken hingen alle drie aan een toestand die niemand bezat
+- een verbroken Pleya Server-verbinding liet zijn rij en zijn refreshtoken achter
 <!-- END GENERATED -->
 
 ### Fixed
