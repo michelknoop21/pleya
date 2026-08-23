@@ -4,6 +4,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 
 import '../../media/media_display_criteria.dart';
+import '../../services/audio_output_decision.dart';
 import '../../services/secure_folder_service.dart';
 import '../../utils/app_logger.dart';
 import '../disc_source.dart';
@@ -395,10 +396,17 @@ class PlayerNative extends PlayerBase {
   @override
   bool get audioPassthroughActive => audioPath.appliedPassthrough ?? false;
 
-  /// Codecs the platform can take as a bitstream. On iOS/tvOS compressed
-  /// audio goes through the system renderer, which only handles Dolby
-  /// Digital (Plus); desktop does real device passthrough for the full list.
-  static final String _passthroughCodecs = Platform.isIOS ? 'ac3,eac3' : 'ac3,eac3,dts,dts-hd,truehd';
+  /// Codecs the platform can take as a bitstream, in mpv's spelling. On
+  /// iOS/tvOS compressed audio goes through the system renderer, which only
+  /// handles Dolby Digital (Plus); desktop does real device passthrough for the
+  /// full list.
+  ///
+  /// The sets themselves live with `decideAudioOutput`, which decides on the
+  /// same question. Keeping a second copy here is what let `dts-hd` and `dtshd`
+  /// drift apart in the first place.
+  static final String _passthroughCodecs = spdifCodecList(
+    Platform.isIOS ? appleBitstreamCodecs : desktopBitstreamCodecs,
+  );
 
   @override
   Future<void> setAudioPassthrough(bool enabled) async {
