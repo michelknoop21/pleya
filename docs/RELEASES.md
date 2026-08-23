@@ -19,7 +19,17 @@ under `Notes`.
 
 <!-- BEGIN GENERATED -->
 ### New
+- DeviceCapabilities-model met vier lagen en een expliciete confidence
+- detectie per laag, met de host als injecteerbaar argument
+- overrides op het model, plus display_max_resolution
+- Jellyfin-DeviceProfile uit het model, gedragsneutraal
+- Plex-transcoderequest uit het model, gedragsneutraal
+- TrueHD in de Jellyfin direct-play-lijst op mpv-platforms
+- de resolutiecap van de gebruiker bereikt de Jellyfin-profielcondities
 - een Pleya Server is te ontkoppelen waar Verbindingen zegt dat het kan
+
+### Improved
+- semantische bronaudit op codec- en containerlijsten
 
 ### Fixed
 - de zijbalk kent één lijst bestemmingen, dus "nu aan het kijken" is ook bereikbaar
