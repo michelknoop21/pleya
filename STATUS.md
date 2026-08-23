@@ -1,8 +1,36 @@
 # STATUS · Pleya
 
-_Laatst bijgewerkt: 2026-08-22 (`origin/main` = `cf39291`, en `feat/pleyaserver` staat daar precies op: het Pleya Server-werk is de hoofdlijn op de remote. De lokale `main`-ref hangt nog op `25d192b`, met ongecommit werk van een tweede sessie in de hoofdmap; die kan er met een `git pull --ff-only` overheen zodra die sessie klaar is. Bij App Store Connect dragen tvOS en macOS de releasenotes van build 240; een iOS-build 240 bestaat daar niet)_
+_Laatst gewerkt: 2026-08-23 op `feat/pleyaserver` (PS-5 opgeleverd, negen commits vanaf `409ba45`). `origin/main` = `cf39291`. Bij App Store Connect dragen tvOS en macOS de releasenotes van build 240; een iOS-build 240 bestaat daar niet_
 
 ## Waar was ik
+
+**PS-5 is opgeleverd: het toestel vertelt de backend eindelijk wat het aankan.**
+`DeviceCapabilities` staat er met vier lagen (decoder, weergave, audio, verbinding), detectie per
+platform met de host als injecteerbaar argument, en de vier overrides die er al waren plus één
+nieuwe. De hardgecodeerde Jellyfin-`DeviceProfile` en de vaste Plex-clause-lijst zijn weg; beide
+komen nu uit twee pure builders. `ci_checks.sh` volledig groen, 4697 tests geslaagd en 1 overgeslagen,
+met de gepinde SDK uit `.fvmrc` vooraan in PATH.
+
+De regel die de fase veilig maakt: een unknown capability levert exact de string op die de app vóór
+PS-5 stuurde. Vijf van de acht codecommits veranderen daardoor geen byte op de lijn. Er zijn twee
+bewuste gedragswijzigingen, elk in een eigen commit en los terug te draaien: `truehd` in de Jellyfin
+direct-play-audiolijst op mpv-platforms, en de nieuwe `display_max_resolution` als `Width`- en
+`Height`-conditie. Plex `location` blijft `lan` en HDR blijft volledig van de lijn.
+
+**PS-5 heet "opgeleverd" en niet "gesloten".** Acceptatiecriterium 4 vraagt geen regressie op echte
+hardware, minimaal tvOS plus één desktopplatform. Die ronde is er niet geweest en vraagt een
+TestFlight-build; drie andere blokkades hieronder wachten al op een build nieuwer dan 240, dus ze kan
+gecombineerd worden. Per toestel dezelfde vier: een Plex-titel die vandaag direct playt, een
+Jellyfin-titel die vandaag direct playt, een titel die vandaag transcodeert met een niet-originele
+preset, en een TrueHD- of Dolby-titel op een AVR. Die laatste is de enige plek waar de gewijzigde
+Jellyfin-audiolijst zichtbaar wordt.
+
+**Vooraf ging de volgorde-afwijking erdoor.** De fasetabellen droegen zowel "Afhankelijkheden" als
+"Eerstvolgende fase" zonder dat ergens stond wat het tweede veld betekent zodra de graaf vertakt.
+`docs/pleya-server-phase-order-deviation.md` maakt "Afhankelijkheden" bindend en legt de doorloop
+vast: PS-5, PS-9, PS-11A, daarna PS-6 tot en met PS-8. De eerstvolgende fase na PS-5 is dus **PS-9**
+(gebruikers, profielen en rechten), en daarna PS-11A (serverbeheer via het protocol), het grootste
+enkele productgat richting Plex.
 
 **De twee bevindingen uit de PS-4-deviceronde zijn dicht, en de releasenotes staan weer live.**
 Het verlaten van de speler wachtte op de afsluitrapportage van de kijkstatus, dus een connect-timeout

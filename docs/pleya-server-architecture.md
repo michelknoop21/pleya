@@ -2283,6 +2283,7 @@ PS-4 mag daar niet van afhangen, dus zo'n event wordt beantwoord en gelogd en ni
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-5 |
+| Status | **opgeleverd 23 augustus 2026, nog niet gesloten**: acht commits, `lib/media/device_*.dart`, `lib/services/device_capabilities_service.dart` en de twee builders. Acceptatiecriterium 4 vraagt hardware en is open |
 | Doel | de client stelt vast wat dit toestel aankan, en stuurt dat naar elke backend |
 | Bijdrage aan einddoel | dit is de ontbrekende abstractie uit de samenvatting; hij is zelfstandig waardevol, ook zonder Pleya Server |
 | Afhankelijkheden | PS-4 (voor de Pleya Server-kant), verder geen |
@@ -2320,6 +2321,42 @@ plus hardwareverificatie op minimaal Apple TV met een multichannel-uitgang.
 
 **Roadmap Drift Check.** Is er iets in het model geslopen dat geen antwoord geeft op "kan dit toestel
 deze bytes weergeven"? Dat is een gebruikersinstelling en hoort elders.
+
+**Uitkomst van de drift check, 23 augustus 2026.** Nee. De vier lagen dragen codecs, containers,
+resolutie, refresh-rates, HDR-transfers, kanalen, passthrough, locality en bandbreedte, en verder
+niets. Taal, ondertitelstijl en afspeelsnelheid zijn er niet in gekomen.
+`TranscodeQualityPreset` houdt zijn tweede rol buiten het model: `playback_source_resolver.dart`
+leest hem rechtstreeks om te bepalen of de gedownloade kopie voorgaat op de serverstream, en dat is
+een bronkeuze en geen capability.
+
+Wat er in de andere richting is blijven liggen, en met opzet: de spelerconfiguratie vertakt nog
+steeds per platform (`_getHwdecValue`, de `Player()`-factory, shaders, ambient lighting, PiP,
+display-matching, buffer- en heaptiers). Dat is geen profiel richting een backend en het hoort niet
+in dit model.
+
+Twee dingen zijn gemeld in plaats van weggeschreven. De decoderlaag is `inferred` en niet `detected`,
+omdat niets in deze app `decoder-list`, `audio-device-list` of `hwdec-interop` aan mpv vraagt; dat
+markeert waar de volgende winst zit in plaats van hem te verbergen. En de audiolaag meldt `unknown`
+op kanalen buiten Apple, want er is geen Android-equivalent van `AppleAudioRoute`; Android TV en Fire
+TV krijgen in PS-5 dus geen betere audio. Het model hoeft daar niet voor te veranderen, er komt een
+bron bij.
+
+**De vijf acceptatiecriteria, per stuk.**
+
+| # | Criterium | Stand |
+| --- | --- | --- |
+| 1 | twee toestellen, aantoonbaar verschillende capabilities, in een test met een gemocked platform | gehaald. `test/media/device_capabilities_fixtures.dart` draagt vijf toestellen, en `device_capabilities_service_test.dart` draait de detectie met de host als argument in plaats van uit `Platform.is…` |
+| 2 | de Jellyfin- en Plex-profielen komen uit het model, de oude constanten bestaan niet meer | gehaald. `buildJellyfinDeviceProfile` en `buildPlexTranscodeParams` zijn pure functies; de constante in `jellyfin_client/parts/playback.dart` en de clause-lijst in `plex_client.dart` zijn weg |
+| 3 | een override is zichtbaar als override, en de gedetecteerde waarde blijft bekend | gehaald. `Capability.observed` houdt de waarneming vast, `isOverride` maakt hem zichtbaar, en de confidence blijft die van de waarneming: een override van een `inferred` waarde wordt geen meting |
+| 4 | geen regressie op bestaand afspeelgedrag, aangetoond op echte hardware voor tvOS plus één desktopplatform | **open.** Vraagt een TestFlight-build en een ronde op toestellen |
+| 5 | (stopcriterium) het model is de enige bron voor alle drie de profielen | gehaald voor de twee die bestaan. Het derde profiel is het Pleya Server-oppervlak, en dat is PS-6-scope: het protocol kent geen `DeviceCapabilities`-schema en is niet aangeraakt |
+
+**Twee bewuste gedragswijzigingen, elk in een eigen commit.** `truehd` in de Jellyfin
+direct-play-audiolijst op mpv-platforms, en de resolutiecap van de gebruiker als `Width`- en
+`Height`-conditie. Beide zijn los terug te draaien als de deviceronde krap wordt. Wat er
+uitdrukkelijk **niet** in zit: Plex `location` blijft `lan`, omdat een privé-adrescheck op de
+server-URL geen bewijs is en Plex het als harde invoer behandelt; en HDR blijft volledig van de lijn,
+omdat alleen Windows het paneel kan bevragen.
 
 ---
 

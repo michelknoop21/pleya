@@ -4,6 +4,86 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-08-23] PS-5: het toestel vertelt de backend eindelijk wat het aankan
+
+Twee profielen gingen naar Plex en Jellyfin zonder ook maar iets van het toestel te weten. Jellyfin
+kreeg `CodecProfiles: []`, dus nul condities, en één `DirectPlayProfiles`-rij voor elk toestel dat
+Pleya draait. Plex kreeg `location: 'lan'` ongeacht waar de server staat en een clause-lijst zonder
+resolutie, HDR, bitdiepte of kanaalaantal. Het enige signaal dat varieerde was een bandbreedtekeuze
+uit een menu. Ondertussen weet de app via `AppleAudioRoute` precies hoeveel kanalen de route aankan
+en of hij een Dolby-bitstream neemt, en dat hoorde geen enkele backend.
+
+`DeviceCapabilities` staat er nu, met vier lagen en een `device_`-prefix zodat hij niet te verwarren
+is met `ServerCapabilities`, dat over een backend gaat en niet over dit toestel. Handgeschreven
+const-klassen, geen freezed: er is geen JSON en geen diepe waardegelijkheid nodig, serialisatie is
+PS-6.
+
+**De correctie die het type de moeite waard maakt.** Een override draagt de confidence van de
+waarneming die hij vervangt, niet zijn eigen. Zonder die regel stempelt elke override `detected` op
+wat eronder zit, en dan wordt een gegokte decoderlijst een meting zodra iemand hem aanzet. Precies
+dat veld leest de planner in PS-6 om per eigenschap de veilige kant te kiezen. Het veld heet daarom
+`observed` en niet `detected`: er kan net zo goed een `inferred` of `unknown` waarneming onder zitten.
+
+**Wat elke laag eerlijk zegt.** De decoder is `inferred` en nooit `detected`, want niets in deze app
+vraagt mpv om `decoder-list`, `audio-device-list` of `hwdec-interop`; `hwdec-current` wordt alleen
+voor de prestatie-overlay uitgelezen. De weergave is alleen op Windows `detected`, want daar wordt de
+echte modelijst gelezen en vraagt `isHDRSupported` de OS naar het paneel; dat de app mpv
+`hdr-enabled` meegeeft zegt wat de speler moest doen en niet wat het scherm kan tonen. De audio komt
+op Apple uit de route, waarbij het kanaalaantal op een digitale poort `unknown` blijft in plaats van
+twee, want daar rapporteerde `maximumOutputNumberOfChannels` 2 terwijl dezelfde sessie mpv 8 gaf. En
+locality blijft `unknown`: een privé-adrescheck op de server-URL is geen bewijs, want VPN, split DNS,
+relay en gewone lokale routering krijgen hem in beide richtingen fout.
+
+Onderweg is één stilzwijgende fout gerepareerd. Boven de Jellyfin-codeclijst stond dat mpv HEVC
+natief decodeert op elk platform dat wij shippen. Dat is nooit waar geweest voor een standaard
+Android-installatie: `use_exoplayer` staat default op `true`. De decoderlaag leest daarom de
+spelersoort en niet het platform.
+
+**De regel die de fase veilig maakt.** Een unknown capability levert exact de string op die de app
+vóór PS-5 stuurde; alleen een detected of inferred waarde mag ervan afwijken. De twee builders dragen
+dat bevroren record als eigen constanten, los van de inferred baseline, en de tabeltests leggen per
+veld vast dat het zo blijft. Vijf van de acht commits veranderen daardoor geen byte op de lijn.
+
+**Twee gedragswijzigingen, elk in een eigen commit en los terug te draaien.** `truehd` staat nu in de
+Jellyfin direct-play-audiolijst op mpv-platforms: de oude lijst noemde `dts` maar niet `truehd`, dus
+elke TrueHD-track kostte een transcode die de speler niet nodig had. Het bewijs staat in
+`audio_output_decision.dart` en werkt beide kanten op, want desktop bitstreamt hem en Apple laat hem
+juist weg omdat de systeemdecoder hem niet kan nemen, waarna mpv hem decodeert. ExoPlayer krijgt hem
+niet, want zijn echte set komt per toestel uit `MediaCodecList` en die vraagt niemand op. De tweede is
+`display_max_resolution`, de nieuwe override, die als `Width`- en `Height`-conditie op de lijn komt.
+De gemeten kant blijft er bewust naast staan: een paneel dat 1080p meet is een feit, maar een server
+vragen 4K daarnaartoe te transcoderen is beleid, en beleid is PS-6.
+
+**De duplicaten zijn semantisch bekeken en niet blind samengevoegd.** Elf bestanden in `lib/` noemen
+drie of meer codec- of containertokens, en die trekken zes verschillende grenzen. Wat de scanner als
+video herkent, wat een download mag houden en wat een backend mag direct-playen zijn drie
+verschillende dingen die toevallig tokens delen; die samenvoegen zou ze koppelen.
+`test/architecture/device_capability_sources_test.dart` eist per bestand een soort, een reden en een
+exacte telling. Eén samenvoeging was wel terecht: de mpv `audio-spdif`-lijst stond in
+`player_native.dart` en `player_android.dart` als eigen constante, in een spelling die al uit elkaar
+gelopen was (`dts-hd` daar, `dtshd` in de normalisatie). Eén gat is gevonden en bewust niet gedicht:
+`pleya_share_protocol.dart` trekt dezelfde discovery-grens als `local_folder_client.dart` maar mist
+`.iso`.
+
+Twee bestanden zijn onderweg kleiner geworden omdat ze toch werden aangeraakt. `plex_client.dart`
+gaat van 4397 naar 4241 regels, en daarmee vervalt `buildTranscodeParamsForTesting`: die seam bestond
+alleen omdat de builder op een klasse van vierduizend regels zat.
+`playback_settings_screen.dart` stond op 508 en staat nu op 454, mét de nieuwe tegel erin; de
+audiosectie is ongewijzigd naar `playback/audio_section.dart` getild.
+
+**Vooraf: de volgorde-afwijking.** De fasetabellen dragen zowel "Afhankelijkheden" als "Eerstvolgende
+fase", en nergens stond wat het tweede veld betekent zodra de graaf vertakt. Bij PS-4 vertakt hij, dus
+de twee velden spraken elkaar tegen. `docs/pleya-server-phase-order-deviation.md` definieert
+"Eerstvolgende fase" als leeswijzer, laat "Afhankelijkheden" plus de mermaid bindend zijn, en legt de
+doorloop vast: PS-5, PS-9, PS-11A, daarna PS-6 tot en met PS-8. Vier documentcorrecties liften mee,
+waaronder twee telfouten in `pleya_server/README.md` die de tabel eronder tegenspraken.
+
+**PS-5 heet "opgeleverd" en niet "gesloten".** Acceptatiecriterium 4 vraagt geen regressie op echte
+hardware, minimaal tvOS plus één desktopplatform, en die ronde is er niet geweest. Bewijs dat er wel
+is: `ci_checks.sh` volledig groen en 4697 tests geslaagd, 1 overgeslagen, met de gepinde SDK uit
+`.fvmrc` vooraan in PATH. Die ronde vraagt een TestFlight-build, en drie andere blokkades wachten al
+op een build nieuwer dan 240, dus ze kan gecombineerd worden.
+
 ## [2026-08-22] De twee PS-4-bevindingen dicht, en de releasenotes blijven staan
 
 Het verlaten van de speler wachtte op de afsluitrapportage van de kijkstatus. Het beeld is op dat
