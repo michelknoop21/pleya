@@ -22,6 +22,8 @@ import '../media/ids.dart';
 import '../media/media_server_client.dart';
 import '../media/playback_report_metadata.dart';
 import '../media/server_capabilities.dart';
+import 'device_capabilities_service.dart';
+import 'plex_client/plex_client_profile.dart';
 import '../utils/external_ids.dart';
 import 'bif_thumbnail_service.dart';
 import 'download_artwork_helpers.dart';
@@ -2990,7 +2992,9 @@ class PlexClient
     int? offsetMs,
   }) async {
     try {
-      final allParams = _buildTranscodeParams(
+      final allParams = buildPlexTranscodeParams(
+        config: config,
+        capabilities: DeviceCapabilitiesService.currentSnapshot,
         ratingKey: ratingKey,
         mediaIndex: mediaIndex,
         partIndex: partIndex,
@@ -3002,7 +3006,7 @@ class PlexClient
         offsetMs: offsetMs,
       );
 
-      final queryString = allParams.entries.map((e) => '${_plexEncode(e.key)}=${_plexEncode(e.value)}').join('&');
+      final queryString = allParams.entries.map((e) => '${plexEncode(e.key)}=${plexEncode(e.value)}').join('&');
 
       final decisionClient = MediaServerHttpClient(
         connectTimeout: MediaServerTimeouts.connect,
@@ -3041,164 +3045,13 @@ class PlexClient
 
   String _buildTranscodeStartPathFromParams(Map<String, String> params) {
     final startParams = Map<String, String>.from(params)..remove('X-Plex-Token');
-    final startQuery = startParams.entries.map((e) => '${_plexEncode(e.key)}=${_plexEncode(e.value)}').join('&');
+    final startQuery = startParams.entries.map((e) => '${plexEncode(e.key)}=${plexEncode(e.value)}').join('&');
     return '/video/:/transcode/universal/start?$startQuery';
   }
 
   @visibleForTesting
   String buildTranscodeStartPathFromParamsForTesting(Map<String, String> params) {
     return _buildTranscodeStartPathFromParams(params);
-  }
-
-  Map<String, String> _buildTranscodeParams({
-    required String ratingKey,
-    required int mediaIndex,
-    int partIndex = 0,
-    required TranscodeQualityPreset preset,
-    required String sessionIdentifier,
-    required String transcodeSessionId,
-    int? audioStreamId,
-    MediaSubtitleTrack? selectedSubtitleTrack,
-    int? offsetMs,
-  }) {
-    final isOriginal = preset.isOriginal;
-    final selectedEmbeddedSubtitle = _shouldEmbedSubtitleInHttpTranscode(selectedSubtitleTrack)
-        ? selectedSubtitleTrack
-        : null;
-    // Only text subtitles get `advancedSubtitles=text`; image subtitles
-    // (PGS/VOBSUB) are copied into the MKV as-is for the player to render.
-    final embedSubtitleAsText =
-        selectedEmbeddedSubtitle != null && _canTranscodeSubtitleAsText(selectedEmbeddedSubtitle);
-
-    // Build the client profile from scratch via X-Plex-Client-Profile-Extra.
-    // We use the `Generic` base platform (see [_transcodePlatformName]) which
-    // has no pre-installed transcode targets, so we must `add-transcode-target`
-    // rather than `append-transcode-target-codec` (which only edits existing
-    // targets — empty on Generic, hence Plex returned decision code 2000
-    // "neither direct play nor conversion is available").
-    //
-    // For non-original presets we also add a bitrate limitation that caps
-    // the video codec; with `replace=true` it overrides any default limit.
-    //
-    // See openapi.md §"Profile Augmentations" for the DSL reference.
-    final profileExtraClauses = <String>['add-settings(DirectPlayStreamSelection=true)'];
-    if (!isOriginal && preset.videoBitrateKbps != null) {
-      profileExtraClauses.add(
-        'add-limitation(scope=videoCodec&scopeName=*&type=upperBound'
-        '&name=video.bitrate&value=${preset.videoBitrateKbps}&replace=true)',
-      );
-    }
-    // Match Plex Desktop's stable HTTP/MKV transcode target. Codec-list commas
-    // are pre-encoded as `%2C` — see the profile-extra encoding note above.
-    profileExtraClauses.add(
-      'add-transcode-target(type=videoProfile&context=streaming'
-      '&protocol=http&container=mkv&videoCodec=h264%2Chevc%2C*'
-      '&audioCodec=opus%2Cvorbis%2Cflac%2C*&subtitleCodec=ass%2Cpgs%2Cvobsub%2C*)',
-    );
-    profileExtraClauses.add(
-      'add-transcode-target-settings(type=videoProfile&context=streaming'
-      '&protocol=http&CopyMatroskaAttachments=true)',
-    );
-    final clientProfileExtra = profileExtraClauses.join('+');
-
-    // HTTP/MKV matches Plex Desktop and lets MPV see embedded subtitle streams.
-    // HLS `subtitles=segmented` was accepted by Plex but produced manifests
-    // with only video/audio renditions for MPV.
-    return <String, String>{
-      'hasMDE': '1',
-      'path': '/library/metadata/$ratingKey',
-      'mediaIndex': mediaIndex.toString(),
-      'partIndex': partIndex.toString(),
-      'protocol': 'http',
-      'fastSeek': '1',
-      'directPlay': isOriginal ? '1' : '0',
-      'directStream': isOriginal ? '1' : '0',
-      'subtitleSize': '100',
-      'audioBoost': '100',
-      'location': 'lan',
-      if (!isOriginal && preset.videoBitrateKbps != null) 'maxVideoBitrate': preset.videoBitrateKbps.toString(),
-      'addDebugOverlay': '0',
-      'autoAdjustQuality': '0',
-      'directStreamAudio': '0',
-      'mediaBufferSize': '102400',
-      'session': transcodeSessionId,
-      // Embed the selected subtitle in the MKV stream: text codecs are
-      // converted to text, image codecs (PGS/VOBSUB) are copied as-is and
-      // rendered by the player — never burned into the video. Unselected tracks
-      // and keyed sidecars stay at `none`.
-      'subtitles': selectedEmbeddedSubtitle != null ? 'embedded' : 'none',
-      if (selectedEmbeddedSubtitle != null) 'subtitleStreamID': selectedEmbeddedSubtitle.id.toString(),
-      if (embedSubtitleAsText) 'advancedSubtitles': 'text',
-      // Preserve source timestamps for the HTTP/MKV stream so player seeks and
-      // sidecar subtitles stay aligned with Plex source time.
-      'copyts': '1',
-      if (audioStreamId != null) 'audioStreamID': audioStreamId.toString(),
-      'Accept-Language': 'en',
-      'X-Plex-Session-Identifier': sessionIdentifier,
-      'X-Plex-Client-Profile-Extra': clientProfileExtra,
-      'X-Plex-Chunked': '1',
-      'X-Plex-Features': 'external-media,indirect-media',
-      'X-Plex-Model': 'standalone',
-      'X-Plex-Language': 'en',
-      'X-Plex-Product': config.product,
-      'X-Plex-Version': config.version,
-      'X-Plex-Client-Identifier': config.clientIdentifier,
-      // Plex's server rejects unknown platform names with HTTP 400 and maps
-      // known names to codec/bitrate base profiles. Our usual "Flutter"
-      // platform, plus "MacOSX" / "Linux", are all rejected; swap to a
-      // Plex-recognized name just for transcode requests. See
-      // [_transcodePlatformName] for the mapping.
-      'X-Plex-Platform': _transcodePlatformName(),
-      if (config.device != null) 'X-Plex-Device': config.device!,
-      if (offsetMs != null) 'offset': (offsetMs ~/ 1000).toString(),
-      if (config.token != null) 'X-Plex-Token': config.token!,
-    };
-  }
-
-  @visibleForTesting
-  Map<String, String> buildTranscodeParamsForTesting({
-    required String ratingKey,
-    required int mediaIndex,
-    int partIndex = 0,
-    required TranscodeQualityPreset preset,
-    required String sessionIdentifier,
-    required String transcodeSessionId,
-    int? audioStreamId,
-    MediaSubtitleTrack? selectedSubtitleTrack,
-    int? offsetMs,
-  }) {
-    return _buildTranscodeParams(
-      ratingKey: ratingKey,
-      mediaIndex: mediaIndex,
-      partIndex: partIndex,
-      preset: preset,
-      sessionIdentifier: sessionIdentifier,
-      transcodeSessionId: transcodeSessionId,
-      audioStreamId: audioStreamId,
-      selectedSubtitleTrack: selectedSubtitleTrack,
-      offsetMs: offsetMs,
-    );
-  }
-
-  /// Platform name Plex Media Server accepts on the transcode decision
-  /// endpoint for arbitrary clients. Our default "Flutter" returns HTTP 400,
-  /// and the known-OS names (`MacOSX`, `Mac`, `Linux`) are also rejected.
-  /// `Generic` is accepted and comes with no preset transcode targets — we
-  /// build the profile ourselves via `X-Plex-Client-Profile-Extra` with
-  /// `add-transcode-target`.
-  static String _transcodePlatformName() => 'Generic';
-
-  /// Strict percent-encoder matching Plex Web's URL encoder — escapes the
-  /// extra characters `(`, `)`, `*`, `'`, `!` that Dart's [Uri.encodeComponent]
-  /// leaves literal. Required for `X-Plex-Client-Profile-Extra` whose parens
-  /// and asterisks must appear as `%28`, `%29`, `%2A` on the wire.
-  static String _plexEncode(String value) {
-    return Uri.encodeComponent(value)
-        .replaceAll('(', '%28')
-        .replaceAll(')', '%29')
-        .replaceAll('*', '%2A')
-        .replaceAll("'", '%27')
-        .replaceAll('!', '%21');
   }
 
   /// Parse decision response for outcome. Any decision code >= 2000 = error
@@ -3514,16 +3367,6 @@ class PlexClient
     if (token == null) return null;
     final ext = CodecUtils.getSubtitleExtension(track.codec);
     return '${config.baseUrl}${track.key}.$ext?encoding=utf-8&X-Plex-Token=$token';
-  }
-
-  bool _canTranscodeSubtitleAsText(MediaSubtitleTrack track) {
-    return CodecUtils.isTextSubtitleCodec(track.codec);
-  }
-
-  bool _shouldEmbedSubtitleInHttpTranscode(MediaSubtitleTrack? track) {
-    if (track == null) return false;
-    if (track.key != null && track.key!.isNotEmpty) return false;
-    return CodecUtils.isEmbeddableSubtitleCodec(track.codec);
   }
 
   SubtitleTrack _subtitleTrackFromMediaTrack(MediaSubtitleTrack track, String url) {
