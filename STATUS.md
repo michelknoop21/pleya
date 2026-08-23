@@ -152,263 +152,6 @@ seizoenen, en `season` er 5 naast dezelfde 396. Dat is nu weg: seizoenen blijven
 geeft 24 treffers zonder seizoen, `kind=season` levert ze alsnog, en zonder token is het `401` tegen
 `200` met token.
 
-## Eerder op 18 augustus: PS-1, het wire-contract
-
-**Het wire-contract is goedgekeurd, PS-1 is gesloten en bevroren, en PS-2 is vrijgegeven.**
-`docs/pleya-protocol/v1/openapi.yaml` ligt vast: zeventien endpoints, een prozaspecificatie die
-uitlegt waarom, en 25 fixtures die PS-2, PS-3 en PS-4 aan elkaar knopen.
-
-De goedkeuring vroeg eerst drie invarianten hard te maken, en die staan er nu in. Een nieuw veld mag
-in een antwoord, een nieuw verplicht veld in een aanvraag is breken, en omdat elk verzoekschema
-`additionalProperties: false` draagt wijst een server een onbekend optioneel aanvraagveld af in
-plaats van het te negeren. Een nieuwe enum-waarde mag alleen waar het veld unknown-safe is: vier
-velden zijn dat, `openapi.yaml` draagt het als `x-unknown-safe`, en `check_protocol.sh` weigert een
-enum zonder markering, zodat een nieuw enum-veld de keuze afdwingt in plaats van hem te erven. En
-6.5 legt vast hoe de auth-state bewaard wordt: eenmalige en niet-leesbaar opgeslagen setupcode,
-refreshtokens waarvan alleen een niet-terugrekenbare identificatie in de database staat, de
-Argon2id-parameters in de hash zelf, en de ondertekensleutel alleen in de eigen `/data`. Geen van
-de drie voegt een endpoint, een veld of een categorie persistente state toe.
-
-OpenAPI en niet losse JSON-schema's, omdat schema's alleen bodies dekken. Methode, pad, headers,
-authenticatieklasse, `Range`, `If-Range`, statuscodes en responseheaders zijn net zo goed contract,
-en juist die zijn het onderwerp van PS-4. `scripts/check_protocol.sh` valideert het document als
-OpenAPI 3.1 in een gepinde container, controleert dat elke verwijzing uitkomt, toetst elke fixture,
-en voert drie plausibele fouten in om te bewijzen dat de validator werkelijk afkeurt.
-
-Vier gaten in de architectuur zijn onderweg opgelost. Snake_case op de lijn zonder uitzondering.
-Artwork krijgt zijn vorm hier en zijn inhoud in PS-2. Een versie met meerdere bestanden blijft geldig
-in het domeinmodel; alleen direct play begrenst zich in v1 tot één bestand. Eén bereik per aanvraag,
-en meerdere bereiken geven het volledige bestand als `200` in plaats van een `416` die de speler zou
-breken.
-
-`DEC-030` tot en met `DEC-037` zijn geschreven, zoals hoofdstuk 24.1 voorschrijft zodra fase 1 wordt
-ingepland.
-
-**De twee gates uit 24.2 zijn er vier geworden**, en ze staan met hun stand in
-[docs/pleya-server-gates.md](docs/pleya-server-gates.md). De nieuwe vierde is de zwaarste en kwam uit
-je eigen review: de belofte dat de `ETag` verandert zodra de bytes veranderen volgt **niet** uit
-`(MediaFile.id, generation)`. `generation` loopt alleen op wanneer de drielagige detectie iets
-aanmerkt, en laag 2 is een steekproef over kop en staart. Een remux die het midden verandert bij
-gelijke grootte glipt daar doorheen, `If-Range` slaagt, en de speler plakt oude en nieuwe bytes aan
-elkaar. Dat moet dicht vóór PS-4.
-
-## Eerder op 18 augustus
-
-**Pleya Server draait op de NAS, en hij doet nog niets. Dat is het resultaat.** PS-0 Docker
-Foundation staat in `pleya_server/`: een Go-service met Postgres in Docker, naast de bestaande
-Plex-container op de DS920+, met de mediabibliotheek read-only gemount.
-
-De aanleiding was een meting. De roadmap begon bij PS-1 en nam stilzwijgend aan dat de
-uitvoeringsomgeving een gegeven is. Dat is ze niet: DSM 7.3.2 draait op **kernel 4.4.302** met
-**cgroups v1**, Docker meldt daar als security options **alleen AppArmor**, en een deel van de
-bibliotheek staat op **fuseblk.ntfs**. Vier aannames die elke latere fase dragen waren onbewezen, en
-ze halverwege PS-2 tegenkomen kost het fundament van die fase. Daarom is PS-0 toegevoegd als
-goedgekeurde afwijking, met de zes onderdelen uit 23.1 in
-[docs/pleya-server-ps0-proposal.md](docs/pleya-server-ps0-proposal.md). **PS-1 tot en met PS-13
-behouden hun nummer, doel, scope en stopcriterium; er vervalt geen scope.**
-
-Wat er op de echte DS920+ bewezen is, naast een draaiende Plex:
-
-| Meting | Uitkomst |
-| --- | --- |
-| PostgreSQL 18.6 op kernel 4.4.302, cgroups v1 | draait, healthcheck groen |
-| `/healthz` en `/readyz` | 200 |
-| Gebruiker in de container | `1026:100`, niet root |
-| Media lezen / schrijven | lukt / `Read-only file system` |
-| `read_only` rootfs, `cap_drop: ALL` | toegepast; `CapEff` is `0000000000000000` |
-| `no-new-privileges` | gezet, maar op deze kernel niet uit `/proc` af te lezen |
-| Postgres hostpoort | geen |
-| Database weg / terug | `/readyz` 503 / weer 200 zonder rebuild |
-| Graceful shutdown | exitcode 0 op SIGTERM |
-| Idle server / Postgres | **0,00% CPU, 10,6 MiB** / 0,00%, 27,3 MiB |
-| Plex tijdens en na de test | ongewijzigd, `Up 13 days (healthy)` |
-
-Twee dingen kwamen onderweg boven die anders pas in PS-2 pijn hadden gedaan. **Postgres 18 zet
-`PGDATA` op `/var/lib/postgresql/18/docker`**, niet meer op `/var/lib/postgresql/data`; het oude pad
-mounten levert een stack op die draait en niets bewaart. En **`statfs` liegt over read-only mounts**
-op de laag die Docker Desktop gebruikt, dus de `:ro`-controle leest nu `/proc/self/mountinfo`, wat
-meteen een echte bestandssysteemnaam per mediamount oplevert.
-
-De service is met opzet leeg: geen protocol, geen schema, geen tabel, geen scanner, geen ffmpeg.
-`compose.yaml` heeft een uitgecommentarieerd `/dev/dri`-blok met `group_add: "937"`, de groep
-`videodriver` zoals gemeten, volledig inert tot PS-8.
-
-## Eerder op 18 augustus
-
-**De replacement matrix laat zien dat de roadmap Plex nog niet uitzet, en waar dat aan ligt.** Het
-architectuurdocument beschreef goed *hoe* Pleya Server gebouwd wordt, maar nergens stond de volledige
-lijst serververantwoordelijkheden die Pleya vandaag bij Plex afneemt. Zonder die lijst is niet vast
-te stellen of dertien fasen genoeg zijn.
-
-Die lijst staat nu in [docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md](docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md):
-156 capabilities over 17 domeinen, opgebouwd uit `lib/media/media_server_client.dart`, de twintig
-vlaggen in `server_capabilities.dart` die elk hun Plex-endpoint benoemen, de Live TV-interfaces en
-`lib/metadata_edit/`. Per capability een bestemming, een fase, een status en een oordeel of hij de
-Plex-off gate blokkeert.
-
-De uitkomst: **104 van de 156 zijn blocker. Achtenzeventig hangen aan een bestaande fase,
-zesentwintig aan geen enkele.** In totaal 37 roadmap gaps en 11 open productbesluiten. De grootste
-gaten zijn verzamelingen en afspeellijsten (de client heeft er volledige CRUD voor, de roadmap noemt
-ze niet), kijkgeschiedenis, favorieten en waarderingen, intro- en aftitelingsmarkers, externe
-ondertitels als los bestand, bibliotheekbeheer vanuit de client, en back-up, restore, upgrade en
-terugrollen. Onderweg kwam één tegenstrijdigheid boven: hoofdstuk 14 beschrijft een websocket-hub,
-PS-2 zet hem buiten scope, PS-11 gaat ervan uit dat hij bestaat, en geen enkele fase bouwt hem.
-
-In het architectuurdocument staan nu vier grenzen die dit borgen: hoofdstuk 1.1 met het
-niet-onderhandelbare einddoel, hoofdstuk 25 met de Definition of Done en
-`PLEX_OFFLINE_REPLACEMENT_GATE`, een bidirectionele scope-discipline in 23.1 (build for extension is
-niet hetzelfde als build the extension early), en één ontwerpcontrole bij PS-1 die zijn scope niet
-vergroot. **De roadmap is niet gewijzigd.** De gaten zijn bevindingen; ze worden pas een fase via een
-Roadmap deviation proposal. Er is geen regel code aangeraakt.
-
-## Eerder op 18 augustus
-
-**Het architectuurontwerp voor Pleya Server ligt er, en het onderzoek keerde de opdracht om.** De aanname was dat de client eerst van Plex losgemaakt moest worden voordat serverwerk zin heeft. Die volgorde klopt niet: `lib/media/media_server_client.dart` is 766 regels met ruim tachtig members en draagt al vier backends, waarvan `LocalFolderClient` en `PleyaShareClient` geen enkele Plex-eigenschap hebben, en `data_aggregation_service.dart` noemt Plex en Jellyfin alleen nog in commentaar. Ook fase B uit de opdracht draait al: `share_server/` staat op de NAS met een scanner, code-pairing en range-streaming.
-
-Waar het gat wél zit is de playbackbeslissing. De client stelt geen enkele device-capability vast. `plex_client.dart:3072-3110` en `jellyfin_client/parts/playback.dart:504-543` sturen allebei een hardgecodeerde constante, identiek op een Apple TV 4K en een oude tablet, en de enige knop is `TranscodeQualityPreset`, dat in zijn eigen doc-comment naar Plex Web verwijst. De kernzin van het document: de grootste ontbrekende abstractie is niet een generieke media-backend, want die bestaat al, maar een expliciet capability- en playbackcontract tussen client en server.
-
-Het resultaat is [docs/pleya-server-architecture.md](docs/pleya-server-architecture.md), 1870 regels, 24 hoofdstukken plus een bijlage met de weerlegde aannames. Het bevat een roadmap van dertien fasen waarin elke fase een expliciete scope, out-of-scope, acceptatiecriteria, stopcriterium en drift check draagt, en acht voorgestelde DEC-besluiten (DEC-030 tot en met DEC-037) die pas geschreven worden als fase 1 wordt ingepland. **Er is geen code geschreven**, niets in `lib/`, `share_server/` of `server/` aangeraakt, en het releasewerk is ongemoeid gebleven.
-
-Daarna volgde een reviewronde met acht aanscherpingen die er vóór implementation freeze in moesten. De architecturale kern bleef staan; wat veranderde zijn de grenzen die tijdens implementatie het snelst vervagen. Fase 1 mag alleen nog het oppervlak tot en met fase 4 specificeren, `capabilities` wint van `feature_level`, scan-signature is geen identiteit, `confidence` is vervangen door `detectionStatus` plus `source`, de planner is een filter met een score, bootstrap-identiteit staat los van multi-user, streamtokens zijn kortlevend maar niet eenmalig, en de `transcode_workers`-tabel is uit v1 verdwenen. Er kwam één anti-driftregel bij: een latere fase mag niets afdwingen in een eerdere fase om een migratie te vermijden. Het conflictmodel voor kijkstatus staat nu als open vraag die vóór fase 4 beantwoord moet zijn, omdat "hoogste positie wint" een bewuste herstart terugdraait.
-
-## Gisteren, 17 augustus
-
-**Drie tvOS-ingrepen, waarvan de derde uitlegde waarom de app zo groot aanvoelt.** De herotekst op Libraries liep over de kop van de eerste posterrij omdat de onderrand van het tekstblok met de peek-formule van het homescherm werd berekend, terwijl de rail daar gedokt staat en zijn volle hoogte bezet. De gefocuste settings-rij was onzichtbaar omdat de Material-inktvlek op de Scaffold landt en de nieuwe kaart van `SettingsGroup` er meteen overheen schildert; navigeren werkte al die tijd gewoon, je zag alleen niet waar je stond. Zie [DEC-027](docs/DECISIONS.md#dec-027) en de CHANGELOG-entry van vandaag.
-
-_Laatst bijgewerkt: 2026-08-21 (`main`, build 234 met de hero-crop fix staat op TestFlight voor iOS; tvOS en macOS nog niet bevestigd op 234. App Store Connect 2.8.0 hangt op iOS, tvOS en macOS aan build 229 en staat op `PREPARE_FOR_SUBMISSION`)_
-
-## Waar was ik
-
-**Fase A is af.** Blok 2 (A8 tot en met A16) sloot de vier gaten die de engine wel correct maar niet
-merkbaar hielden. Reconciliatie heeft nu één scheduler die alle triggers bezit (boot, inschakelen,
-foreground, accountwissel, profielwissel, import, reset), waarbij triggers uit dezelfde turn één run
-worden en een trigger tijdens een lopende run precies één vervolgrun oplevert; het venster is een
-microtask, geen `Future.delayed`. De status bestaat uit drie assen, zodat een geslaagde schrijfactie
-geen quotastop, transportfout of legacy-peer-waarschuwing meer uit beeld wist. Afgeleide schermstaat
-wordt gericht ongeldig verklaard via `PreferenceRefreshBus`, dus een remote wijziging in verborgen
-bibliotheken of bibliotheekvolgorde is meteen zichtbaar in plaats van na een herstart. En de merge
-is een registry geworden waar een familie zich onder een naam inschrijft, inkomend én uitgaand, wat
-fase B nodig heeft. Onderweg kwam er een echte bug uit: de prune vergeleek een genamespacete
-v2-cloudsleutel met een kale basissleutel, waardoor de bescherming "staat lokaal, alleen niet
-syncbaar" onder v2 niets deed en een lijst met uitsluitend local-folder-entries bij elke reconcile
-uit de store verdween. Zie [DEC-060](docs/DECISIONS.md#dec-060) en
-[DEC-061](docs/DECISIONS.md#dec-061).
-
-Native is er op precies twee van de negen auditpunten gewijzigd: een `deinit` met `removeObserver`,
-en waarneming van `NSUbiquityIdentityDidChange`, want uitloggen bij iCloud tijdens een sessie
-bereikte Dart nooit en de status bleef gezond terwijl elke schrijfactie nergens heen ging. De
-volledige audit, inclusief waarom er géén buffer voor vroege notificaties is gebouwd, staat in
-[docs/qa/icloud-kvs-native-audit.md](docs/qa/icloud-kvs-native-audit.md).
-
-**De vijftien rode tests waren geen product-bug en zijn weg.** Ze stonden sinds 20 augustus rood en
-hielden CI tegen. Eén oorzaak: sinds de notice-herbouw geeft `showErrorSnackBar` de melding aan de
-globale `noticeController`, en `NoticeHost` tekent hem als laag in `MaterialApp.builder` van de
-app-shell. Een test die een kaal `MaterialApp(home: Scherm())` pompt heeft die laag niet, dus de
-melding bereikte de gebruiker wel en de test niet. `test/test_helpers/notice_layer.dart` mount
-dezelfde laag; wie voortaan op een gebruikersmelding test, gebruikt die.
-
-Volledige suite nu **4373 groen, nul rood**, `ci_checks.sh` groen op SDK 3.44.0. Gemerged en gepusht
-naar `origin/main`; TestFlight-build 238 staat op alle drie de platforms. Nog niet gedaan: het
-architectuurrapport bespreken vóór fase B, de verificatie op twee echte Apple-toestellen, en de
-push naar de publieke `github`-remote.
-
-**Voorkeuren gingen naar iCloud zonder dat iemand had besloten dat ze daar hoorden.** Fase A blok 1
-legt dat vast in één pijplijn. Het oude hookcontract was `void Function(String key)`, en die vorm
-kon het werk niet dragen: hij kon `set` niet van `remove` onderscheiden, dus een lokaal gewiste
-voorkeur haalde de cloud alleen via een volledige `pushAll`, en zijn `void`-terugtype dwong de
-consument tot `unawaited(...)`, waarmee elke transportfout verdween. Het contract is vervangen door
-een volledige `PreferenceMutation` met operatie en bron. `PreferenceSyncCoordinator` bezit voortaan
-mutatie, policy, scope, merge, reconcile en status; `ICloudKvsTransport` doet alleen kanaalwerk, en
-`ICloudSyncService` is een dunne facade zonder eigen syncgedrag. De allow-by-default denylist is
-omgekeerd: een niet-geregistreerde voorkeur is local-only, waarmee een LAN-adres en per-tracker
-bibliotheekfilters stoppen met meereizen. Wat een gebruiker merkt: uitzetten synchroniseert nu net
-zo goed als aanzetten, en `volume`, downloadmappen, hardware-decoding en HDR blijven op het toestel
-waar ze gezet zijn. Zie [DEC-059](docs/DECISIONS.md#dec-059).
-
-## Eerder op 17 augustus
-
-**De reviewbuild hing niet aan de versie, en dat koppelen doet de lane nu zelf.** De 2.1(a)-afwijzing was allang uitgezocht en gerepareerd, maar de drie App Store-versies stonden nog op build 156: precies de build die Apple afwees. Build 220 met de inlogfix stond sinds 15 augustus in TestFlight, macOS had zelfs helemaal geen build gekoppeld. Alle drie zijn nu op 220 gezet, waarmee iOS uit `REJECTED` kwam. Omdat dit de derde keer is dat de stap tussen "geüpload" en "indienbaar" stil misgaat, koppelen `ios_beta`, `tvos_beta` en `macos_beta` de build voortaan zelf, met `fastlane attach_builds` als vangnet. Zie [DEC-022](docs/DECISIONS.md#dec-022). Reviewnotities, demo-account en demoserver zijn opnieuw nagelopen en kloppen: `demo.pleya.app` antwoordt in 296 ms, het account `applereview` authenticeert en de drie Blender-films staan er.
-
-## Eerder op 17 augustus
-
-Blok 1 mat toen 3981 groen / 15 rood, met `flutter analyze` zonder fouten of waarschuwingen en
-`ci_checks.sh` groen op SDK 3.44.0. De verificatie op twee echte Apple-toestellen staat nog open
-(`docs/qa/preference-sync-and-playback-matrix.md`).
-
-**Drie dingen staan hier bewust open, en ze mogen niet stilzwijgend afgevinkt raken:**
-
-1. **De v2-cutover is gedaan, en hij is scherp.** `v2CloudFormatEnabled` staat op `true`: Pleya
-   schrijft alleen nog onder `__pleya_pref_v2/`. v1 is read-only geworden. Globale v1-waarden komen
-   er één keer in met revisie 0, profiel-scoped v1-waarden blijven in quarantaine omdat het formaat
-   hun eigenaar had weggestript, en de bevroren v1-records worden niet verwijderd. Dual-write is
-   bewust afgewezen: v1 heeft geen revisie, dus een v1-schrijf na een v2-schrijf is niet te ordenen.
-   **Gevolg:** een toestel op een oudere Pleya blijft werken maar wisselt geen instellingen meer uit
-   met een bijgewerkt toestel. De app zegt dat ook, onder de iCloud-schakelaar. iOS, iPadOS, macOS en
-   tvOS moeten daarom rond dezelfde release mee.
-2. **Alleen de home-rijen wachten nog, en niet om de reden die het plan noemde.** De aanname dat
-   `serverId` apparaatgebonden is, klopt niet: voor Plex is het de `clientIdentifier` die plex.tv
-   voor die server uitgeeft, voor Jellyfin de `machineId` van de server zelf. De
-   bibliotheekfamilies reizen dus wél, met een filter dat entries van een local-folder- of
-   Pleya Share-backend eruit haalt. `home_row_order` en `hidden_home_rows` staan local-only omdat
-   `hub.identifier` niet is aangetoond als stabiele server-side identiteit over toestellen: de
-   fallback naar `hub.id` en de meting op twee toestellen ontbreken. Groen krijgen van die meting
-   is de hele ingreep; het opgeslagen formaat gebruikt al portable ids.
-3. **Legacy store consolidation.** Vijf services (`local_folder_client`,
-   `favorite_channels_repository`, `local_server_match_service` en de twee `pleya_share`-services)
-   schrijven nog in de legacy-`SharedPreferences`-store, die na de eenmalige migratie los staat van
-   de cache-store. Ze vallen bewust buiten de engine en hun sleutels bereiken iCloud niet. Elke
-   service heeft een eigen datamigratieplan met terugrolstrategie nodig voordat dit opgelost is.
-
-**De hervatpositie kwam uit twee plekken die elkaar tegenspraken, en de gepauzeerde speler won.**
-De melding: *Mutiny* stond tegelijk open op de MacBook (gepauzeerd, 1:03 resterend) en de Apple TV
-(actief, 0:57 resterend), en de MacBook-positie kwam terug. De schuldige was de heartbeat in
-`playback_progress_tracker.dart`, die elke zes tikken een `paused`-rapport met steeds dezelfde
-positie stuurde. Die is weg, samen met elk rapport dat staat én positie van het vorige herhaalt.
-Verder rapporteert een seek nu binnen 500 ms in plaats van bij de volgende tik, bepaalt
-`PlaybackResumeResolver` als enige waar een open begint (vijf lagen op intentie, herkomst en tijd,
-nooit op "welke positie is groter"), en weigert `PlaybackReportSession` alle drie de rapportsignalen
-zodra `ObservedPlaybackAuthority` is ingetrokken. Dat laatste is uitdrukkelijk een waarneming en
-geen lease: wat de autoriteit intrekt komt in fase D, een echt toegekende lease pas op PS-4. Dit is
-fase C van vijf; A (generieke preference-sync), B (trackvoorkeuren), D (realtime waarneming) en E
-(serverdocumenten) volgen. Zie [docs/CHANGELOG.md](docs/CHANGELOG.md).
-
-89 gerichte tests groen, `flutter analyze` zonder fouten of waarschuwingen, `scripts/ci_checks.sh`
-groen op de gepinde SDK 3.44.0. De volledige suite geeft 3826 groen en 15 rood; diezelfde 15 falen
-op een schone worktree van `8fea407` en raken geen van alle het afspelen. Nog niet gedaan:
-committen, en de verificatie op twee echte Apple-toestellen.
-
-**De home-hero croppte op een smalle telefoon de zijkanten van zijn eigen artwork weg, en dat zat al in de serveraanvraag.** `billboardArt()` koos daar terecht het vierkante `backgroundSquarePath` in plaats van een 16:9-backdrop, maar `discover_screen.dart` vroeg nog altijd de volle 16:9-hoogte op (`max(screenWidth*9/16, heroHeight)`), en Plex' `minSize=1&upscale=1` vulde die portret-box door van het midden te croppen vóórdat Flutter iets tekende. `homeHeroArtGeometry()` (`lib/utils/home_hero_layout.dart`) laat de aanvraag voortaan altijd de ratio van de gekozen bron volgen in plaats van de containerratio, en de artworklaag verhuisde naar een eigen `HomeHeroArtwork`-widget zodat de geometrie los van het hele scherm te toetsen is. Onderweg ook het vaste 400×120-logo responsive gemaakt voor telefoon. Een onafhankelijke `/code-review` op de diff ving daarna een echte bug in die nieuwe widget: de fade-gradient onder het (kortere) frame stond gepositioneerd op de onderkant van de hele hero in plaats van op de onderkant van het frame zelf, dus hij rendersde in lege ruimte. Gefixt en met een regressietest vastgelegd. Zie [DEC-057](docs/DECISIONS.md#dec-057).
-
-`flutter test`, `flutter analyze` en `scripts/ci_checks.sh` zijn schoon voor de geraakte bestanden (73 gerichte tests groen). Nog niet gedaan: committen, en de verplichte visuele verificatie met een screenshot op een echt smal scherm dat de crop nu klopt.
-
-**Eerdere twee UI-meldingen lagen allebei op dezelfde as: een control die te veel gewicht opeist, en een klik die bij het verkeerde terechtkomt.** Eerst openden Filters, Sorteren en Groepering op een desktopvenster rechtsonder. Dat zat niet in de bibliotheekpagina maar in de gedeelde overlay-sheet: die geeft op desktop de laatste muis-x als anker, wat klopt voor een contextmenu en voor niets anders, plus een vaste hoogte van 400. De host heeft nu een presentatiestand en de plaatsing staat in een pure functie. In dezelfde ronde kreeg Ontdekken via Aanvragen de bibliotheekheader zelf in plaats van omlijnde pillen: van 92px naar 42px chroom. Zie [DEC-054](docs/DECISIONS.md#dec-054).
-
-**De fix van die tweede melding sloeg door en is dezelfde avond hersteld.** Zie de alinea eronder: de balk claimde de hele strook tot 220 zodra de pointer erin kwam, ook stil ingeklapt, en daarmee de contentknoppen die daar staan. Op macOS was Aanbevolen op een bibliotheekpagina niet meer aan te klikken.
-
-Daarna de melding dat een klik in het zijmenu op de achtergrond een film startte. Het log bewees dat de zijbalk die klik nooit zag. De balk tekent niet buiten zijn hitbox, dus het verschil zit in de tijd: `isCollapsed` klapt synchroon om en de breedte animeert er 200 ms achteraan, waardoor de cursor de animatie kan inhalen en bij het inklappen zichtbare rijen al dood zijn. De balk bezit zijn band nu via de getekende breedte, en het billboard is geen verborgen afspeelknop meer. Zie [DEC-055](docs/DECISIONS.md#dec-055).
-
-## 17 augustus, avond
-
-**De reviewbuild hing niet aan de versie, en dat koppelen doet de lane nu zelf.** De 2.1(a)-afwijzing was allang uitgezocht en gerepareerd, maar de drie App Store-versies stonden nog op build 156: precies de build die Apple afwees. Build 220 met de inlogfix stond sinds 15 augustus in TestFlight, macOS had zelfs helemaal geen build gekoppeld. Alle drie zijn nu op 220 gezet, waarmee iOS uit `REJECTED` kwam. Omdat dit de derde keer is dat de stap tussen "geüpload" en "indienbaar" stil misgaat, koppelen `ios_beta`, `tvos_beta` en `macos_beta` de build voortaan zelf, met `fastlane attach_builds` als vangnet. Zie [DEC-022](docs/DECISIONS.md#dec-022). Reviewnotities, demo-account en demoserver zijn opnieuw nagelopen en kloppen: `demo.pleya.app` antwoordt in 296 ms, het account `applereview` authenticeert en de drie Blender-films staan er.
-
-## 17 augustus
-
-**De kijklijst is af en het Live TV-tokenlek is dicht.** De kijklijst kreeg zijn laatste twee stukken: Nederlandse vertalingen plus [DEC-020](docs/DECISIONS.md#dec-020), en alsnog de sorteerkeuze die het plan beloofde maar het scherm niet had (recent toegevoegd, titel, jaar, volledig client-side). Daarna het lek dat sinds fase 0 als losse fix openstond: de favorieten van Live TV gingen via `PlexClient` naar `epg.provider.plex.tv`, en die client draagt de PMS-servertoken in `defaultHeaders` die ook bij een absolute URL meegaat. Eerst gemeten tegen een echt account, daarna in negen commits verhuisd naar `PlexCloudHttpClient`, de gedeelde transportgrens waar de kijklijst nu ook op staat. Zie [DEC-021](docs/DECISIONS.md#dec-021).
-
-Twee dingen kwamen onderweg boven die er los van stonden. De leescall liep door `FailoverHttpClient`, die alleen `get` overridet, dus een 5xx bij plex.tv kon de endpoint-cascade van je eigen server starten. En een mislukte lees gaf `[]`, waarna één ster aantikken die leegte terugschreef als de volledige lijst van het account. Beide dicht.
-
-## 15 en 16 augustus
-
-Gisteren landde de kijklijst zelf: identiteit en het multi-membership-model, de Plex-cloudclient op een gemeten contract, artwork zonder token in de cachekey, repository, beschikbaarheid met eerlijke dekking, offline-snapshot, provider, Mijn Pleya op mobiel met Watchlist in de sidebar, het kijklijst-scherm en de schrijfacties. Vijftien commits van `310ace8` tot `11ec313`; de details staan in [docs/CHANGELOG.md](docs/CHANGELOG.md).
-
-Eergisteren reageerde het systeemtoetsenbord op Apple TV weer op de Siri Remote, bevestigd op het toestel met build 219. De engine claimt elke press al in `sendEvent:` en slaat de originele implementatie over, dus UIKit begint zijn responder chain nooit; het eigendom ligt nu terug op `PleyaFlutterViewController.tvosHandlePress(fromUIEvent:)`. Zie [DEC-019](docs/DECISIONS.md#dec-019) en de gotcha in `CLAUDE.md`.
-
-## Eerder werk, ongewijzigd
-
-Twee opstartbugs dichtgezet en 2.8.0 klaargemaakt voor herindiening. De Apple-afwijzing van 6 juli (2.1(a), *"Authentication timed out"*) bleek geen app-fout: die string komt uit precies één plek, de Plex PIN-flow, dus de reviewer koos "Sign in with Plex" met het Jellyfin-demoaccount. De uitweg naar Jellyfin bestond al, maar hing in het foutblok: en de poll staat op vijf minuten, dus hij kwam pas ná vijf minuten staren. Hij staat nu ook onder de PIN zelf, en breekt de lopende poging af (anders navigeert een alsnog geclaimde PIN dwars door het Jellyfin-scherm heen). Zie [DEC-015](docs/DECISIONS.md#dec-015). Het lege profielscherm op macOS bleek twee dingen tegelijk: één toestand voor "laadt nog", "leeg" en "stilgevallen", en een toevoeg-knop die structureel ónder de vouw stond omdat macOS in pointer-modus start en niets hem in beeld scrolt. Beide los, plus een logregel die bij de volgende koude start moet verklappen wélke van de vier bronnen stilvalt. Zie [DEC-016](docs/DECISIONS.md#dec-016). Het Atmos-onderzoek staat ongewijzigd stil op de meting hieronder.
-
-Het Atmos-spoor staat er nog precies zo bij als gisteren: een iOS-log van build 211 laat zien dat de bitstream-keten gewoon wérkt: `spdif_eac3` komt op, de avfoundation-sink pakt hem, en de fork logt `JOC=yes`, dus de Atmos-objecten van Ted Lasso S4E1 bereiken de renderer. Daarmee vallen twee van de drie oorspronkelijke verdachten af: `audio-exclusive` heeft in deze libmpv geen enkele consument (geen coreaudio, geen wasapi), en een MPVKit-bisect is zinloos omdat de sink in 1.0.16 aantoonbaar functioneert. Wat er wél uit kwam: de app kan niet zien dát Atmos loopt, want `AVAudioSession.renderingMode` geeft tijdens de werkende bitstream `not-applicable` en de badge hangt volledig aan die property. En loudness-normalisatie sluit passthrough uit zonder dat iets dat coördineert, terwijl Android TV datzelfde conflict al arbitreert maar precies andersom. Zie [DEC-013](docs/DECISIONS.md#dec-013). Verder ontdekt dat `ice.pleya.app` nooit heeft bestaan, waardoor de log-uploadknop altijd stil faalde; de Go-relay stond al klaar in `server/`, alleen op de verkeerde hostnaam. Zie [DEC-014](docs/DECISIONS.md#dec-014).
-
 ## Volgende stap
 
 **Begin met PS-5, `DeviceCapabilities` in de client.** Dat is de vrijgegeven fase; alles wat verder
@@ -426,32 +169,15 @@ deviceronde, dus ze horen ook op een toestel terug: de speler verlaten met een s
 antwoordt (het scherm hoort meteen terug te komen en de positie hoort na herstel alsnog te kloppen),
 en twee keer snel achter elkaar een log uploaden.
 
-**PS-2 is gebouwd en uitgerold; wat er nog van openstaat is de Roadmap Drift Check.** Daar hoort
-boekhouding bij die nu blijft liggen: G5, G9 en G11 kregen op 18 augustus een fase toegewezen in
-`docs/pleya-server-ps1-scope-deviation.md`, maar staan in hoofdstuk 5 van de replacement matrix nog
-op `Roadmap gap`. Bij het sluiten van de fase krijgen ze hun Phase ID, verdwijnen ze uit de gattenlijst
-in hoofdstuk 7, en gaat de telling in 9.1 van 37 naar 34 gaps en van 24 naar 21 blockers zonder fase.
-In diezelfde ronde hoort de zin onder 9.1 weg dat er nog geen regel servercode geschreven is.
+**PS-0 tot en met PS-4 zijn gesloten en bevroren, en alle vijf de poorten staan dicht.** De
+boekhouding die hier stond is afgehandeld: G5, G9 en G11 hebben hun Phase ID, de tellingen in de
+matrix kloppen weer, en de zin dat er nog geen regel servercode bestaat is eruit. De stand per poort
+staat in `docs/pleya-server-gates.md`, de stand per fase in hoofdstuk 23 van het architectuurdocument.
 
-Wat er niet mag gebeuren zolang PS-4 niet begonnen is: geen streamingcode naar voren trekken, want
-het streampad is PS-4 en poort 4 staat daar nog open. Legt implementatiewerk een echt probleem in het
-protocol bloot, dan is dat een protocolwijziging met een compatibiliteitstoets langs de zes regels
-uit hoofdstuk 3, niet een aanpassing in `openapi.yaml` omdat het zo uitkomt.
-
-**Twee poorten blijven open, en ze horen dicht vóór PS-4.** Het conflictmodel voor kijkstatus en de
-byte-validator achter de `ETag`-belofte. Ze raken PS-2 niet en hoeven dus nu niet beantwoord te
-worden, maar ze mogen ook niet als bijproduct van implementatiewerk ontstaan.
-
-**PS-0 is gesloten en bevroren.** De drift check is schoon en alle
-zeven acceptatiecriteria zijn op de echte NAS gehaald, dus er gaat niets meer bij aan de Docker
-Foundation voordat serverfunctionaliteit erom vraagt. Dat verandert niets aan de volgorde daarna:
-fase 3 is de eerste die de app raakt, en die wil je niet naast een lopende indiening hebben.
-
-PS-1 erft wel een betere uitgangspositie. Runtimedoel, database, mediamounts, mapindeling, poorten
-en de twee health-endpoints zijn geen ontwerpaannames meer maar gemeten deploymentgegevens; ze staan
-op een rij in de PS-0-sectie van het architectuurdocument. Met één regel eromheen: **geen van die
-gegevens hoort in het protocol.** `GET /pleya/v1/info` weet niets van Postgres, Synology, Docker,
-containerpaden of poortnummers.
+Wat er niet mag gebeuren binnen PS-5: geen transcoderen (PS-8), geen gebruikers (PS-9), geen
+browserspeler (PS-4W). Legt implementatiewerk een echt probleem in het protocol bloot, dan is dat een
+protocolwijziging met een compatibiliteitstoets langs de zes regels uit hoofdstuk 3, niet een
+aanpassing in `openapi.yaml` omdat het zo uitkomt.
 
 **Besluiten wat er met de 26 blockers zonder fase gebeurt.** Twaalf
 gegroepeerde gaten staan in
@@ -599,6 +325,12 @@ xcrun devicectl device process launch --console --terminate-existing \
 - `/update-docs` gedraaid: build 240 afgesloten tot een versiekop met het anker op de bump-commit, `settings-reference.md` en `the-home-screen.md` bijgewerkt, site gebouwd, op 390, 1024 en 1440 bekeken en live gezet op pleya.app. tvOS en macOS dragen de nieuwe notes; er is geen iOS-build 240 om ze op te zetten.
 - Structurele oorzaak gevonden achter drie eerdere reverts: de Engelse notes stonden in het gegenereerde blok van `docs/RELEASES.md`, dat het script bij elke run overschrijft en dat de site wegknipt. Ze staan nu eronder, en `gen_release_notes.sh --check` geeft exit 0.
 
+### 2026-08-20
+- De home-hero croppte op een smalle telefoon de zijkanten van het gekozen artwork weg, want de server-aanvraag volgde de containerratio in plaats van de bronratio. `homeHeroArtGeometry()` (`lib/utils/home_hero_layout.dart`) koppelt de framehoogte nu los van `heroHeight` en laat de aanvraag altijd de ratio van de bron (vierkant of 16:9) volgen; de artworklaag verhuisde naar `HomeHeroArtwork` (`lib/widgets/home_hero_artwork.dart`). Zie [DEC-057](docs/DECISIONS.md#dec-057).
+- Onderweg ook het vaste 400×120-herologo responsive gemaakt op telefoon (`homeHeroLogoConstraints()`).
+- Een onafhankelijke `/code-review` op de diff ving een echte bug: de fade-gradient onder het frame stond op de onderkant van de hele hero in plaats van op de onderkant van het (kortere) frame. Gefixt, met een regressietest die de fade-rect tegen de frame-rect toetst.
+- 73 gerichte tests groen, `flutter analyze` en `scripts/ci_checks.sh` schoon voor de geraakte bestanden. Gecommit als `40d9608` op `main`. Nog open: visuele verificatie op een echt smal scherm.
+
 ### 2026-08-19
 - **Vier integriteitsgebreken uit de PS-2-servercode zitten er nu in**, van `fix/ps2-integriteit` fast-forward op `feat/pleyaserver` (`b0283fc`, `340e61c`). Een externe review vond ze en geen ervan werd door een test gedekt. Een root die halverwege een onleesbare map tegenkwam ruimde de rest van de bibliotheek op; een bestand dat vervangen werd door iets onanalyseerbaars bleef de versie, de duur en de sporen van de vorige inhoud serveren; een ondertitel die naar een andere film verhuisde bleef aan de oude hangen; en een cursor met een verkeerd getypeerde sleutel gaf 500 op invoer van de client in plaats van 400.
 - Alle vier hebben een regressietest, en de drie randgevallen die de eindreview nog open zag zijn er los bij getest: een verplaatste sidecar die op zijn nieuwe plek geen eigenaar vindt, een gestapelde versie waarvan één deel onanalyseerbaar wordt, en de vraag of het cursorvangnet niets anders maskeert. Acht tests in totaal, alle acht eerst zien falen.
@@ -608,19 +340,6 @@ xcrun devicectl device process launch --console --terminate-existing \
 - Bewijs: `0002_catalog.sql:97` draagt de kolom, `nameparse.go:38` leest de marker, `scanner.go:562` en `:631` geven hem door aan `ResolveVersion`. `TestParseMovie` en `TestMultipleVersionsAndEditions` slagen, die laatste tegen een echte Postgres met ffprobe. Protocolimpact is nul: `edition` staat al in het bevroren `openapi.yaml` en in de fixtures.
 - Besluit: de matrix blijft ongewijzigd tot PS-2 sluit, want onderhoudsregel 1 verspringt de status bij het afsluiten van een fase en PS-2 loopt nog. Geen bestand gewijzigd, geen commit.
 - `docs/CHANGELOG.md` liep tot 3 juli terug en stond op 740 regels. Alles van vóór 10 augustus staat nu in [docs/archive/CHANGELOG-tot-2026-08-06.md](docs/archive/CHANGELOG-tot-2026-08-06.md); het hoofdbestand houdt 569 regels over.
-
-### 2026-08-18
-- Architectuurontwerp voor Pleya Server opgeleverd als [docs/pleya-server-architecture.md](docs/pleya-server-architecture.md): 24 hoofdstukken, een roadmap van dertien fasen met per fase een expliciete scope en drift check, en acht voorgestelde DEC-besluiten (DEC-030 tot en met DEC-037). Document-only, geen commit, geen regel code.
-- Het onderzoek keerde de opdracht om. De neutrale laag bestaat al en draagt vier backends; het gat zit in de playbackbeslissing, waar de client op elk toestel dezelfde hardgecodeerde profielen stuurt. `DeviceCapabilities` en `PlaybackPlan` staan daarom vóór metadata in de roadmap.
-- Reviewronde erachteraan met acht blokkerende aanscherpingen: fase 1 specificeert alleen het oppervlak tot en met fase 4, `capabilities` wint van `feature_level`, scan-signature los van identiteit, `detectionStatus` in plaats van `confidence`, planner als filter met score, reden als domeincode, bootstrap-identiteit los van multi-user, streamtokens niet eenmalig, `ETag` zonder verplichte contenthash, en geen `transcode_workers` in v1. Plus een anti-driftregel en twee nieuwe open vragen.
-- Geverifieerd na de laatste ronde: 16 regelverwijzingen tegen de code (twee gecorrigeerd), 6 Mermaid-blokken parsen, 64 interne ankers resolven, `anti-slop-check.sh` schoon.
-- Eerder op de dag geland op `main` (`34f2c5f` tot `8e84f3a`): de publieke releasenotes gaan als "What to Test" mee op elke TestFlight-build, met `verify_build_notes` die terugleest wat er daadwerkelijk op de build staat, plus zeven bijgewerkte hoofdstukken van de handleiding.
-
-### 2026-08-20
-- De home-hero croppte op een smalle telefoon de zijkanten van het gekozen artwork weg, want de server-aanvraag volgde de containerratio in plaats van de bronratio. `homeHeroArtGeometry()` (`lib/utils/home_hero_layout.dart`) koppelt de framehoogte nu los van `heroHeight` en laat de aanvraag altijd de ratio van de bron (vierkant of 16:9) volgen; de artworklaag verhuisde naar `HomeHeroArtwork` (`lib/widgets/home_hero_artwork.dart`). Zie [DEC-057](docs/DECISIONS.md#dec-057).
-- Onderweg ook het vaste 400×120-herologo responsive gemaakt op telefoon (`homeHeroLogoConstraints()`).
-- Een onafhankelijke `/code-review` op de diff ving een echte bug: de fade-gradient onder het frame stond op de onderkant van de hele hero in plaats van op de onderkant van het (kortere) frame. Gefixt, met een regressietest die de fade-rect tegen de frame-rect toetst.
-- 73 gerichte tests groen, `flutter analyze` en `scripts/ci_checks.sh` schoon voor de geraakte bestanden. Gecommit als `40d9608` op `main`. Nog open: visuele verificatie op een echt smal scherm.
 
 ### 2026-08-18 en 2026-08-19
 - De aanvragen-schermen in zeven commits van `02d5b71` tot `da1bbab`: echte titel en poster per regel via `SeerrClient.hydrateRequests`, de kaart herschikt met samengevatte seizoenen, filterbalk en zoekveld rechtgezet, kwaliteitsprofiel en rootmap toegevoegd, en de posterbadge binnen zijn kaart.
@@ -634,31 +353,9 @@ xcrun devicectl device process launch --console --terminate-existing \
 - 3631 tests groen, `scripts/ci_checks.sh` schoon. De tvOS-variant van de zijbalkbug is onderzocht in de simulator en niet aangetoond.
 - Releasenotes van 229 tot en met 231 samengevoegd tot één sectie voor build 231, met de drie deviceronde-checks erin als *Worth checking*. Vier handleidinghoofdstukken bij: Aanvragen (geavanceerde opties, de aanvraaglijst, de nieuwe header), Ondertitels en audio (wat er bij inbranden nodig is), het beginscherm (het billboard opent details) en de kijklijst (sorteren en filteren).
 
-### 2026-08-17 (avond)
-- Drie tvOS-ingrepen op `main`: de hero-clearance boven een gedokte rail (`d16fa4f`), de focusmarkering in Instellingen (`e2c123f`) en de Apple TV-vergroting van 2,00 naar 1,85 (`0f780f9`). Zie [DEC-027](docs/DECISIONS.md#dec-027) en [DEC-028](docs/DECISIONS.md#dec-028).
-- De densitymeting legde de oorzaak bloot: het canvas is 960x540 en niet 1920x1080, waarna `scaleForHeight` op zijn clamp van 0,85 blijft steken. Samen 1,7 keer het ontwerpdoel. Gemeten met een tijdelijke logregel, bevestigd op de schermafdruk via de icoonbadge van 36 punten die 138 fysieke pixels meet, en daarna weer verwijderd.
-- Vijf van de acht richtwaarden uit de opdracht bleken niet te kloppen. De tekst is op tv niet groot, de chrome eromheen wel: een settings-rij is 81 punten hoog met een titel van 13 punten en heeft geen enkele tv-tak.
-- 3465 tests groen, `scripts/ci_checks.sh` schoon. Twee nieuwe regressietests: de hero-bounds tegen een echte rail, en het focusvlak per settings-rij in donker en licht.
-- Bewust niet gedaan: de componentronde over rijhoogtes, bibliotheekkop, railmaten en focusschaal, plus de clamp in `scaleForHeight`. Eerst één dimensie tegelijk.
-
-### 2026-08-17
-- Dependency-onderhoud kreeg een proces, geland op `main` van `9575b6c` tot `8009300`: `.fvmrc` plus preflight, `classify_lock_diff.sh`, 27 ring-1-pakketten, GitHub Actions bijgewerkt en third-party op SHA, `check_updates.sh` met de `dependency-health`-workflow, en [DEC-025](docs/DECISIONS.md#dec-025) plus [DEC-026](docs/DECISIONS.md#dec-026).
-- Het landen zelf vroeg één ingreep. `pubspec.lock` is niet met de hand gemerged maar opnieuw opgebouwd vanaf de lockfile van `main`, met een gerichte `flutter pub upgrade` op de 27 pakketten. De uitkomst is de vereniging van beide kanten: `classify_lock_diff.sh` meldt 27 gewijzigd met ring1=27 en geen UNKNOWN, en `mobile_scanner` blijft op 7.4.0. Op de combinatie is de gegenereerde diff leeg, `ci_checks.sh` groen, `flutter test` 3308 groen en `check_updates.sh --strict-through-ring 1` exit 0.
-- De analyzer-stack en `rate_limiter` vielen af doordat de bewijsstap ze ving, niet de classificatie. De drift-regressie is nu vastgelegd in `test/database/drift_relations_test.dart`.
-- Eerste GitHub Actions-runs ooit op deze repo. Twee bestaande Linux-only testfouten zichtbaar geworden; de controle-run op `main` bevestigt dat ze er al waren.
-- Kijklijst afgemaakt: Nederlandse vertalingen (`195904e`), [DEC-020](docs/DECISIONS.md#dec-020) (`dd75c69`) en alsnog de sorteerkeuze op recent, titel en jaar (`3634fa0`), volledig client-side zodat hij offline blijft werken.
-- Het Live TV-tokenlek gedicht in negen commits (`a089264` tot `d867260`), na een meting tegen een echt account. `PlexCloudHttpClient` is nu de transportgrens naar plex.tv en de kijklijst staat er ook op. Onderweg twee losse defecten mee: de cloudcall kon de endpoint-failover van je eigen server triggeren, en een mislukte lees wiste je favorieten bij de eerstvolgende tik. Zie [DEC-021](docs/DECISIONS.md#dec-021).
-- 3264 tests groen (was 3202), `scripts/ci_checks.sh` schoon, gepusht naar beide remotes. De upload van build 221 is gestart maar heeft App Store Connect nooit bereikt.
-- App Store Connect rechtgezet: build 220 gekoppeld aan de versies 2.8.0 van iOS, tvOS en macOS, die alle drie nog op de afgewezen build 156 stonden (macOS op niets). iOS ging daarmee uit `REJECTED`.
-- Het koppelen geautomatiseerd in `fastlane/Fastfile`, met `fastlane attach_builds` als losse lane, plus documentatie in `docs/TESTFLIGHT.md`. Zie [DEC-022](docs/DECISIONS.md#dec-022) en commit `f7b583f`.
-- Demoserver en reviewnotities nagelopen en in orde bevonden; het antwoord in `docs/app-review-reply-2026-08.md` is bijgewerkt en klaar om te versturen.
-
-### 2026-08-16
-- Mijn Pleya en de kijklijst gebouwd, vijftien commits van `310ace8` tot `11ec313`: datalaag met multi-membership, Plex-cloudclient op een gemeten contract, beschikbaarheid met eerlijke dekking, offline-snapshot, navigatie, scherm en schrijfacties.
-- Het API-contract eerst gemeten en gesaniteerd vastgelegd in `test/fixtures/watchlist/`; vier planaannames sneuvelden daarop.
-
-Ouder dan dit (2026-08-15 en eerder): zie [docs/CHANGELOG.md](docs/CHANGELOG.md).
-
-Ouder dan dit: zie [docs/CHANGELOG.md](docs/CHANGELOG.md).
-
-Zie [docs/DECISIONS.md](docs/DECISIONS.md) voor keuzes, [docs/CHANGELOG.md](docs/CHANGELOG.md) voor details en [docs/PLEYA_SHARE.md](docs/PLEYA_SHARE.md) voor de share-architectuur.
+### 2026-08-18
+- Architectuurontwerp voor Pleya Server opgeleverd als [docs/pleya-server-architecture.md](docs/pleya-server-architecture.md): 24 hoofdstukken, een roadmap van dertien fasen met per fase een expliciete scope en drift check, en acht voorgestelde DEC-besluiten (DEC-030 tot en met DEC-037). Document-only, geen commit, geen regel code.
+- Het onderzoek keerde de opdracht om. De neutrale laag bestaat al en draagt vier backends; het gat zit in de playbackbeslissing, waar de client op elk toestel dezelfde hardgecodeerde profielen stuurt. `DeviceCapabilities` en `PlaybackPlan` staan daarom vóór metadata in de roadmap.
+- Reviewronde erachteraan met acht blokkerende aanscherpingen: fase 1 specificeert alleen het oppervlak tot en met fase 4, `capabilities` wint van `feature_level`, scan-signature los van identiteit, `detectionStatus` in plaats van `confidence`, planner als filter met score, reden als domeincode, bootstrap-identiteit los van multi-user, streamtokens niet eenmalig, `ETag` zonder verplichte contenthash, en geen `transcode_workers` in v1. Plus een anti-driftregel en twee nieuwe open vragen.
+- Geverifieerd na de laatste ronde: 16 regelverwijzingen tegen de code (twee gecorrigeerd), 6 Mermaid-blokken parsen, 64 interne ankers resolven, `anti-slop-check.sh` schoon.
+- Eerder op de dag geland op `main` (`34f2c5f` tot `8e84f3a`): de publieke releasenotes gaan als "What to Test" mee op elke TestFlight-build, met `verify_build_notes` die terugleest wat er daadwerkelijk op de build staat, plus zeven bijgewerkte hoofdstukken van de handleiding.
