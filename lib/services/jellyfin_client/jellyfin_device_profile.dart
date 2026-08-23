@@ -20,8 +20,8 @@ Map<String, Object?> buildJellyfinDeviceProfile(DeviceCapabilities capabilities,
     // Conditions on profile, level, bit depth or HDR would each be a claim
     // about the decoder, and the decoder layer cannot make one yet: nothing
     // asks mpv for `decoder-list`. An invented condition is worse than none,
-    // so this stays empty until a real limit is detected.
-    'CodecProfiles': decoder.hasCodecShapeLimits ? _codecProfilesFor(decoder) : const <Map<String, Object?>>[],
+    // so those stay absent until a real limit is detected.
+    'CodecProfiles': _codecProfilesFor(decoder, capabilities.display),
     // Comma-separated codec lists are order-sensitive — first entry wins when
     // the server picks an output codec. HEVC is listed ahead of H.264 so a
     // server that has "Allow encoding in HEVC format" enabled will actually
@@ -65,11 +65,23 @@ Map<String, Object?> buildJellyfinDeviceProfile(DeviceCapabilities capabilities,
 
 String _join(Set<String>? known, String fallback) => known == null || known.isEmpty ? fallback : known.join(',');
 
-/// Only reached once the decoder can state a real limit, which it cannot in
-/// PS-5. Written out so the shape is settled rather than invented later under
-/// time pressure.
-List<Map<String, Object?>> _codecProfilesFor(DeviceDecoderCapabilities decoder) {
+/// The conditions a server has to respect for direct play.
+///
+/// The resolution ceiling is here only when the user set one. A ceiling that
+/// detection found on its own stays in the model and off the wire: a panel that
+/// measures 1080p is a fact, but asking a server to transcode 4K down to it is
+/// a policy decision, and policy is the PS-6 planner's job. An instruction from
+/// the user is not a policy decision, which is why that half ships now.
+///
+/// The decoder conditions cannot fire in PS-5. They are written out so the
+/// shape is settled rather than invented later under time pressure.
+List<Map<String, Object?>> _codecProfilesFor(DeviceDecoderCapabilities decoder, DeviceDisplayCapabilities display) {
+  final capped = display.maxWidth.isOverride && display.maxHeight.isOverride;
   final conditions = <Map<String, Object?>>[
+    if (capped) ...[
+      {'Condition': 'LessThanEqual', 'Property': 'Width', 'Value': '${display.maxWidth.value}', 'IsRequired': false},
+      {'Condition': 'LessThanEqual', 'Property': 'Height', 'Value': '${display.maxHeight.value}', 'IsRequired': false},
+    ],
     if (decoder.maxVideoLevel.isKnown)
       {
         'Condition': 'LessThanEqual',

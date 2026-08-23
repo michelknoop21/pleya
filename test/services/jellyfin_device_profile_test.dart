@@ -139,14 +139,39 @@ void main() {
     });
   });
 
-  group('the display layer does not reach the wire yet', () {
-    test('no MaxWidth, MaxHeight or VideoRangeType, even on a measured display', () {
+  group('the resolution ceiling', () {
+    List<Map<String, Object?>> conditions(DeviceCapabilities capabilities) {
+      final profiles = buildJellyfinDeviceProfile(capabilities)['CodecProfiles']! as List<Map<String, Object?>>;
+      if (profiles.isEmpty) return const <Map<String, Object?>>[];
+      return profiles.single['Conditions']! as List<Map<String, Object?>>;
+    }
+
+    // A panel that measures 1080p is a fact. Asking a server to transcode 4K
+    // down to it is a policy decision, and policy is the PS-6 planner's job.
+    test('a measured display alone puts nothing on the wire', () {
+      expect(appleTvHd.display.hasResolutionCeiling, isTrue);
+      expect(buildJellyfinDeviceProfile(appleTvHd)['CodecProfiles'], isEmpty);
+    });
+
+    test('a user cap does, because an instruction is not a policy decision', () {
+      final capped = appleTv4kOnReceiver.copyWith(
+        display: DeviceDisplayCapabilities(
+          maxWidth: const Capability<int>.unknown().overriddenWith(1920),
+          maxHeight: const Capability<int>.unknown().overriddenWith(1080),
+        ),
+      );
+
+      expect(conditions(capped), [
+        {'Condition': 'LessThanEqual', 'Property': 'Width', 'Value': '1920', 'IsRequired': false},
+        {'Condition': 'LessThanEqual', 'Property': 'Height', 'Value': '1080', 'IsRequired': false},
+      ]);
+    });
+
+    test('HDR stays off the wire entirely in PS-5', () {
       final profile = buildJellyfinDeviceProfile(appleTvHd);
 
-      expect(appleTvHd.display.hasResolutionCeiling, isTrue);
-      expect(profile.containsKey('MaxWidth'), isFalse);
-      expect(profile.containsKey('MaxHeight'), isFalse);
       expect(profile.containsKey('VideoRangeType'), isFalse);
+      expect(profile.toString(), isNot(contains('VideoRangeType')));
     });
   });
 }
