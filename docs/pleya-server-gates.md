@@ -22,8 +22,8 @@ sessieparameter zit op `GET /stream`.
 | 5 | De browser playback session | PS-4 | **dicht**, goedgekeurd 21 augustus 2026, [DEC-051](DECISIONS.md#dec-051-de-browser-krijgt-een-streamsessie-met-een-cookie-per-sessie-en-het-geheim-komt-nooit-in-een-url) |
 
 **Alle vijf staan dicht.** Poort 3, 4 en 5 zijn gesloten in het contractvenster dat bij het sluiten
-van PS-3 openging. Daarna is `docs/pleya-protocol/v1/openapi.yaml` opnieuw bevroren, nu voor de duur
-van PS-4.
+van PS-3 openging. Daarna is `docs/pleya-protocol/v1/openapi.yaml` opnieuw bevroren. PS-4 is op
+21 augustus 2026 gesloten, dus de vriezing loopt nu zolang PS-5 loopt, gelijk aan `CLAUDE.md`.
 
 ---
 

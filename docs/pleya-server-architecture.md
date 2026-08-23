@@ -670,9 +670,17 @@ nergens bestaat.
 app, toestel, uitgang en verbinding op dit moment aan? Vier lagen, elk met een eigen bron van
 waarheid:
 
-**Decoder.** Welke videocodecs, profielen, levels en bitdieptes de speler daadwerkelijk decodeert.
-Bron is de mpv/MPVKit-laag plus platformkennis, niet een aanname. Een Apple TV 4K en een Apple TV HD
-verschillen hier.
+**Decoder.** Welke videocodecs, profielen, levels en bitdieptes de speler daadwerkelijk decodeert,
+en welke **containers** hij als bron accepteert. Bron is de mpv/MPVKit-laag plus platformkennis, niet
+een aanname. Een Apple TV 4K en een Apple TV HD verschillen hier.
+
+De containerlijst hangt aan de demuxer en hoort daarom bij deze laag. Hij staat er omdat een browser
+MP4 en WebM neemt en geen MKV, terwijl de Flutter-speler vrijwel alles neemt: dat verschil is een
+capability en geen clienttype, en
+[hoofdstuk 10.4](#104-waar-de-planner-nooit-op-vertakt) verbiedt de planner expliciet om op het
+clienttype te vertakken. Zonder de lijst in het model zou een browser alleen te bedienen zijn door
+die regel te breken. Vastgelegd in hoofdstuk 11.1 van
+[het masterplan](pleya-server-masterplan-proposal.md).
 
 **Weergave.** Resolutie, refresh-rates, HDR-transferfuncties die het aangesloten scherm accepteert.
 Op tvOS en Android TV is dit uit het systeem te lezen; op desktop is het deels bekend en deels een
@@ -1559,6 +1567,13 @@ flowchart LR
   P8 --> P13["13. Externe workers"]
 ```
 
+**Wat de twee volgordevelden in de fasetabellen betekenen.** Bindend is uitsluitend
+**Afhankelijkheden**, samen met deze graaf. Het veld **Eerstvolgende fase** is een leeswijzer die de
+hoofdlijn aanwijst; het is geen uitvoeringsopdracht en geen tweede afhankelijkheidsregel. Waar de
+graaf vertakt mag elke fase waarvan de afhankelijkheden gesloten zijn als volgende worden opgepakt.
+De gekozen doorloop na PS-4 is PS-5, PS-9, PS-11A, en daarna PS-6, PS-7, PS-8, vastgelegd in
+[docs/pleya-server-phase-order-deviation.md](pleya-server-phase-order-deviation.md).
+
 Fase 0 staat vooraan omdat hij niets over het product zegt en alles over de grond eronder. Hij is
 toegevoegd nadat de doelhardware gemeten bleek af te wijken van wat hoofdstuk 22 stilzwijgend
 aanneemt; zie [docs/pleya-server-ps0-proposal.md](pleya-server-ps0-proposal.md).
@@ -2271,7 +2286,7 @@ PS-4 mag daar niet van afhangen, dus zo'n event wordt beantwoord en gelogd en ni
 | Doel | de client stelt vast wat dit toestel aankan, en stuurt dat naar elke backend |
 | Bijdrage aan einddoel | dit is de ontbrekende abstractie uit de samenvatting; hij is zelfstandig waardevol, ook zonder Pleya Server |
 | Afhankelijkheden | PS-4 (voor de Pleya Server-kant), verder geen |
-| Eerstvolgende fase | PS-6 |
+| Eerstvolgende fase | PS-9, en daarna PS-11A; PS-6 volgt op de terugweg. Zie [de volgorde-afwijking](pleya-server-phase-order-deviation.md) |
 
 **Scope.** Het model uit [hoofdstuk 9](#9-device-capabilities-in-de-client) met vier lagen: decoder,
 weergave, audio-uitgang, verbinding. Detectie per platform, met gebruikersoverrides die naast de

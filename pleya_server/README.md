@@ -63,13 +63,15 @@ verandert.
 
 ## Wat het schema draagt
 
-Twaalf tabellen, in drie migraties.
+Dertien tabellen, in vijf migraties.
 
 | Groep | Tabellen | Waarvoor |
 | --- | --- | --- |
 | Identiteit en auth | `server_instance`, `auth_owner`, `auth_refresh_tokens` | de bootstrap-identiteit uit specificatie 6.5, en niets daarbuiten |
 | Catalogus | `libraries`, `storage_locations`, `media_items`, `media_versions`, `media_files`, `media_streams` | het domeinmodel uit hoofdstuk 7.1 |
 | Werk | `jobs`, `scan_runs` | duurzame jobs en meetbare scanvoortgang |
+| Kijkstatus | `watch_states` | het conflictmodel uit DEC-049, met de eigenaar in de rij |
+| Streamsessies | `stream_sessions` | de browserkant van autorisatie uit DEC-051 |
 
 Drie keuzes die uitleg verdienen, en die als [DEC-040](../docs/DECISIONS.md#dec-040-grouping-key-en-identiteit-zijn-twee-dingen-in-het-catalogusschema)
 tot en met [DEC-043](../docs/DECISIONS.md#dec-043-de-inodebetrouwbaarheid-staat-per-root-in-de-database-en-wordt-gemeten-en-niet-aangenomen)
@@ -107,7 +109,7 @@ een geweigerd event wordt beantwoord met de actuele toestand en gelogd, en verde
 
 ## Wat er op de lijn zit
 
-Dertien endpoints van de achttien uit het protocol.
+Achttien operaties op zeventien paden, en dat is het hele protocoloppervlak van v1.
 
 | Endpoint | Klasse |
 | --- | --- |

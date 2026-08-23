@@ -2863,8 +2863,9 @@ blijft staan als plan.
 | Poort 3, het conflictmodel | dicht, [DEC-049](DECISIONS.md), en geïmplementeerd in `pleya_server/internal/watch/` |
 | Poort 4, de validator | dicht, [DEC-050](DECISIONS.md). De belofte is uit het contract, de validator is zwak, `If-Range` levert `200` |
 | Poort 5, de browser playback session | dicht, [DEC-051](DECISIONS.md), inclusief het endpoint en de grens van acht |
-| PS-4, de fase zelf | opgeleverd en ter goedkeuring. Zeven acceptatiecriteria, waarvan zes gehaald; criterium 1 vraagt een ronde op drie vormfactoren die nog niet gedaan is |
+| PS-4, de fase zelf | gesloten op 21 augustus 2026. Alle zeven acceptatiecriteria gehaald, inclusief de ronde op drie vormfactoren: desktop, mobiel en TV op echte hardware, met een kijkpositie die van een Mac via een iPhone naar een Apple TV meereisde |
 | De acht nieuwe fasen | niet begonnen. Ze staan in hoofdstuk 16 en wachten op de fase ervoor |
+| De uitvoeringsvolgorde na PS-4 | PS-5, PS-9, PS-11A, en daarna PS-6, PS-7, PS-8. Een geldige doorloop van dezelfde graaf; vastgelegd in [docs/pleya-server-phase-order-deviation.md](pleya-server-phase-order-deviation.md) |
 
 **Eén correctie op dit plan is tijdens de uitvoering doorgevoerd.** Regel 2 van poort 3 schreef een
 niet-canoniek voortgangsevent naar `play_history`, en die tabel hoort bij PS-9P. PS-4 correct laten

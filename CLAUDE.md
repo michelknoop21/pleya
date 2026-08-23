@@ -64,15 +64,18 @@ opnieuw geopend.
 **Vrijgave is per fase.** PS-0 (Docker Foundation), PS-1 (wire-contract), PS-2 (catalogus in Go),
 PS-3 (de vijfde `MediaServerClient`) en PS-3W (Pleya Web) zijn gesloten en bevroren; de
 PS-0-afwijking staat in `docs/pleya-server-ps0-proposal.md`, de PS-1-afwijking in
-`docs/pleya-server-ps1-scope-deviation.md` en de PS-3W-afwijking in
-`docs/pleya-server-ps3w-proposal.md`. Het masterplan dat er acht fasen bij zet is goedgekeurd op
+`docs/pleya-server-ps1-scope-deviation.md`, de PS-3W-afwijking in
+`docs/pleya-server-ps3w-proposal.md` en de volgorde-afwijking in
+`docs/pleya-server-phase-order-deviation.md`. Het masterplan dat er acht fasen bij zet is goedgekeurd op
 21 augustus 2026 en staat in `docs/pleya-server-masterplan-proposal.md`. **PS-4 is gesloten** op
 21 augustus 2026: direct play met HTTP-range, en kijkstatus met de server als eigenaar. Desktop,
 mobiel en TV zijn alle drie op echte hardware bewezen, inclusief een kijkpositie die van een Mac via
 een iPhone naar een Apple TV meereisde.
-**De eerstvolgende fase is PS-5** (`DeviceCapabilities` in de client). Werk dat verder gaat dan de
-PS-5-scope is per definitie te vroeg; transcoderen is PS-8, gebruikers zijn PS-9, en de browserspeler
-is PS-4W.
+**De huidige fase is PS-5** (`DeviceCapabilities` in de client). De gekozen doorloop daarna is
+PS-9, dan PS-11A, en pas dan terug naar PS-6, PS-7, PS-8; die volgorde is een geldige doorloop van
+dezelfde afhankelijkheidsgraaf en staat in `docs/pleya-server-phase-order-deviation.md`. Bindend is
+het veld **Afhankelijkheden** in de fasetabellen, niet het veld "Eerstvolgende fase". Werk dat verder
+gaat dan de PS-5-scope is nog steeds te vroeg: transcoderen is PS-8 en de browserspeler is PS-4W.
 
 **Het protocol ligt vast.** `docs/pleya-protocol/v1/openapi.yaml` is contractueel leidend en bevroren
 zolang PS-5 loopt. Het venster stond één keer open, bij het sluiten van PS-3, voor precies de drie
