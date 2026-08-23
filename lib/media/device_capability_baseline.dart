@@ -13,9 +13,24 @@ library;
 /// are order-sensitive on both backends.
 const kInferredVideoCodecs = {'hevc', 'h264', 'h265', 'vp8', 'vp9', 'av1', 'mpeg4', 'mpeg2video'};
 
-/// Audio codecs the player decodes. Separate from passthrough, which is about
-/// not decoding at all.
-const kInferredAudioCodecs = {'aac', 'mp3', 'mp2', 'ac3', 'eac3', 'flac', 'opus', 'vorbis', 'dts'};
+/// Audio codecs mpv decodes. Separate from passthrough, which is about not
+/// decoding at all.
+///
+/// `truehd` is in this list and was not in the one the app sent before PS-5,
+/// which cost a transcode on every TrueHD track. The evidence that mpv handles
+/// it is in `audio_output_decision.dart`: `desktopBitstreamCodecs` hands TrueHD
+/// to the receiver untouched, and `appleBitstreamCodecs` leaves it out
+/// precisely because the Apple system decoder cannot take it, so those titles
+/// "take the multichannel-PCM path instead" — which is mpv decoding them.
+/// Both halves of that comment say the player handles TrueHD.
+const kInferredAudioCodecs = {'aac', 'mp3', 'mp2', 'ac3', 'eac3', 'flac', 'opus', 'vorbis', 'dts', 'truehd'};
+
+/// Audio codecs ExoPlayer is credited with.
+///
+/// The pre-PS-5 list, without the TrueHD addition. ExoPlayer's real set comes
+/// per device from `MediaCodecList` and nobody queries it, so widening it here
+/// would be a guess that changes Android playback with nothing behind it.
+const kInferredAudioCodecsExoPlayer = {'aac', 'mp3', 'mp2', 'ac3', 'eac3', 'flac', 'opus', 'vorbis', 'dts'};
 
 /// Containers we are willing to have a backend direct-play.
 ///

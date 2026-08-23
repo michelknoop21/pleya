@@ -16,8 +16,13 @@ import 'package:pleya/media/device_capabilities.dart';
 /// Video codecs the Flutter player is credited with today, in wire order.
 const kMpvVideoCodecs = {'hevc', 'h264', 'h265', 'vp8', 'vp9', 'av1', 'mpeg4', 'mpeg2video'};
 
-/// Audio codecs the Flutter player decodes, in wire order.
-const kMpvAudioCodecs = {'aac', 'mp3', 'mp2', 'ac3', 'eac3', 'flac', 'opus', 'vorbis', 'dts'};
+/// Audio codecs the Flutter player decodes, in wire order. TrueHD is in here
+/// and was not in the pre-PS-5 wire list; see `device_capability_baseline.dart`
+/// for why the player is credited with it.
+const kMpvAudioCodecs = {'aac', 'mp3', 'mp2', 'ac3', 'eac3', 'flac', 'opus', 'vorbis', 'dts', 'truehd'};
+
+/// What ExoPlayer is credited with: the pre-PS-5 list, unchanged.
+const kExoPlayerAudioCodecs = {'aac', 'mp3', 'mp2', 'ac3', 'eac3', 'flac', 'opus', 'vorbis', 'dts'};
 
 /// Containers we declare for direct play, in wire order.
 const kMpvContainers = {'mp4', 'mkv', 'm4v', 'webm', 'mov', 'ts'};
@@ -101,7 +106,7 @@ const androidTvExoPlayer = DeviceCapabilities(
   decoder: DeviceDecoderCapabilities(
     engine: PlayerEngine.exoPlayer,
     videoCodecs: Capability.inferred(kMpvVideoCodecs),
-    audioCodecs: Capability.inferred(kMpvAudioCodecs),
+    audioCodecs: Capability.inferred(kExoPlayerAudioCodecs),
     containers: Capability.inferred(kMpvContainers),
   ),
   display: DeviceDisplayCapabilities.unknown,

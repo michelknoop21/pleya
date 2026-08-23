@@ -60,9 +60,11 @@ void main() {
     // -- The source, and the two frozen records it may not be confused with.
     'lib/media/device_capability_baseline.dart': CapabilityListRecord(
       CapabilityListKind.playerCapability,
-      23,
+      24,
       'what the detection layer publishes as inferred: the video codecs, audio '
-      'codecs and containers the Flutter player is credited with',
+      'codecs and containers the Flutter player is credited with, plus the '
+      'narrower audio list ExoPlayer gets. One token more than the frozen wire '
+      'record, and that token is truehd',
     ),
     'lib/services/jellyfin_client/jellyfin_device_profile.dart': CapabilityListRecord(
       CapabilityListKind.wireFallback,

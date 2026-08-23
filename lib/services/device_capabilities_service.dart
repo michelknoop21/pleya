@@ -177,7 +177,9 @@ class DeviceCapabilitiesService {
     return DeviceDecoderCapabilities(
       engine: probe.engine,
       videoCodecs: const Capability.inferred(kInferredVideoCodecs),
-      audioCodecs: const Capability.inferred(kInferredAudioCodecs),
+      audioCodecs: probe.engine == PlayerEngine.mpv
+          ? const Capability.inferred(kInferredAudioCodecs)
+          : const Capability.inferred(kInferredAudioCodecsExoPlayer),
       containers: const Capability.inferred(kInferredContainers),
     );
   }

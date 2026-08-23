@@ -94,9 +94,12 @@ void main() {
   });
 
   group('per device', () {
-    test('every mpv device is byte-identical to the old constant', () {
+    test('every mpv device differs from the old constant in exactly one token', () {
       for (final name in ['appleTv4kOnReceiver', 'iPhoneWithAirPods', 'macOsDesktop']) {
-        expect(directPlay(allDeviceFixtures[name]!), directPlay(nothingKnown), reason: name);
+        final profile = directPlay(allDeviceFixtures[name]!);
+        expect(profile['Container'], directPlay(nothingKnown)['Container'], reason: name);
+        expect(profile['VideoCodec'], directPlay(nothingKnown)['VideoCodec'], reason: name);
+        expect(profile['AudioCodec'], '${directPlay(nothingKnown)['AudioCodec']},truehd', reason: name);
       }
     });
 
@@ -116,7 +119,27 @@ void main() {
     });
   });
 
-  group('the display and audio layers do not reach the wire in PS-5', () {
+  group('TrueHD comes from the decoder, not from passthrough', () {
+    // The pre-PS-5 list named `dts` but not `truehd`, so every TrueHD track
+    // cost a transcode the player never needed. What credits the player with it
+    // is that mpv decodes it, which is a decoder property and holds whether or
+    // not the route can carry a bitstream.
+    test('a device that cannot bitstream anything still declares it', () {
+      expect(iPhoneWithAirPods.audio.passthroughCodecs.value, isEmpty);
+      expect(directPlay(iPhoneWithAirPods)['AudioCodec'], contains('truehd'));
+    });
+
+    test('ExoPlayer does not get it, because nobody queried MediaCodecList', () {
+      expect(directPlay(androidTvExoPlayer)['AudioCodec'], isNot(contains('truehd')));
+      expect(directPlay(androidTvExoPlayer)['AudioCodec'], directPlay(nothingKnown)['AudioCodec']);
+    });
+
+    test('an unknown device still sends the pre-PS-5 list', () {
+      expect(directPlay(nothingKnown)['AudioCodec'], 'aac,mp3,mp2,ac3,eac3,flac,opus,vorbis,dts');
+    });
+  });
+
+  group('the display layer does not reach the wire yet', () {
     test('no MaxWidth, MaxHeight or VideoRangeType, even on a measured display', () {
       final profile = buildJellyfinDeviceProfile(appleTvHd);
 
@@ -124,11 +147,6 @@ void main() {
       expect(profile.containsKey('MaxWidth'), isFalse);
       expect(profile.containsKey('MaxHeight'), isFalse);
       expect(profile.containsKey('VideoRangeType'), isFalse);
-    });
-
-    test('passthrough does not widen the direct-play audio list', () {
-      expect(macOsDesktop.audio.carriesBitstream('truehd'), isTrue);
-      expect(directPlay(macOsDesktop)['AudioCodec'], isNot(contains('truehd')));
     });
   });
 }
