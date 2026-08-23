@@ -5,7 +5,7 @@ order: 16
 group: Devices and settings
 icon: settings_remote
 summary: Driving Pleya from the sofa: the Siri Remote, D-pad focus, and the Companion Remote.
-updated: 2026-08-17
+updated: 2026-08-23
 ---
 
 # Apple TV and remotes
@@ -15,6 +15,22 @@ a white ring, and the directional pad moves that highlight. Everything reachable
 reached that way.
 
 ![The sidebar with the focus ring on one item](/docs-media/tv-sidebar.png)
+
+## The sidebar
+
+The sidebar carries the destinations: home, your libraries, search, downloads, settings. It
+opens when the focus moves into it, which is what pressing left from the leftmost item on a
+screen does, and what Menu does from anywhere that is not the sidebar already. It closes the
+moment the focus leaves. Picking a destination does both in one press: the screen opens, the
+highlight lands inside it, and the sidebar closes behind you.
+
+Two ways it used to get stuck are gone. A row can disappear while the highlight sits on it,
+which is what happens when the last stream ends and "Now playing" goes away. That left the
+sidebar standing open with nothing highlighted and no button that led out of it; the
+highlight now moves to whatever took the row's place. The other way round, choosing a
+destination whose screen was not ready yet, Libraries before you have picked a library for
+instance, kept the highlight on the sidebar item you had just pressed while the sidebar
+closed around it.
 
 ## The Siri Remote
 
