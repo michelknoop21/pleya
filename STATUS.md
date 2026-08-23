@@ -1,6 +1,6 @@
 # STATUS · Pleya
 
-_Laatst gewerkt: 2026-08-23 op `feat/pleyaserver` (PS-5 opgeleverd, negen commits vanaf `409ba45`). `origin/main` = `cf39291`. Bij App Store Connect dragen tvOS en macOS de releasenotes van build 240; een iOS-build 240 bestaat daar niet_
+_Laatst gewerkt: 2026-08-23 op `feat/pleyaserver`, gepusht tot `dcb3832`. PS-5 opgeleverd, daarna `main` erin gemerged en **build 242 naar TestFlight** voor alle drie de platforms (iOS 16:48, tvOS 16:51, macOS 16:56, alle drie geslaagd). `origin/main` hangt nog op `c6e1ab3`; de vier commits daarboven reisden via deze branch mee_
 
 ## Waar was ik
 
@@ -18,9 +18,9 @@ direct-play-audiolijst op mpv-platforms, en de nieuwe `display_max_resolution` a
 `Height`-conditie. Plex `location` blijft `lan` en HDR blijft volledig van de lijn.
 
 **PS-5 heet "opgeleverd" en niet "gesloten".** Acceptatiecriterium 4 vraagt geen regressie op echte
-hardware, minimaal tvOS plus één desktopplatform. Die ronde is er niet geweest en vraagt een
-TestFlight-build; drie andere blokkades hieronder wachten al op een build nieuwer dan 240, dus ze kan
-gecombineerd worden. Per toestel dezelfde vier: een Plex-titel die vandaag direct playt, een
+hardware, minimaal tvOS plus één desktopplatform. **Build 242 staat klaar** en draagt PS-5 plus het
+werk van `main`, dus die ronde kan nu, samen met de drie andere blokkades hieronder die op een build
+nieuwer dan 240 wachtten. Per toestel dezelfde vier: een Plex-titel die vandaag direct playt, een
 Jellyfin-titel die vandaag direct playt, een titel die vandaag transcodeert met een niet-originele
 preset, en een TrueHD- of Dolby-titel op een AVR. Die laatste is de enige plek waar de gewijzigde
 Jellyfin-audiolijst zichtbaar wordt.
@@ -252,10 +252,12 @@ Nieuw erbij op deze build: op een echt toestel met trackpad of muis de zijbalk n
 
 ## Blockers
 
-- [ ] **Er is geen iOS-build 240 bij App Store Connect**: `fastlane notes build:240` wachtte de volle
-  1800 seconden en `notes_show` bevestigt het los met `ios: build 240 niet gevonden`. tvOS en macOS
-  dragen de tekst wel, allebei teruggelezen op 2041 tekens. De upload is nooit aangekomen of nooit
-  VALID geworden; zodra de build er staat is de lane opnieuw draaien genoeg, hij is idempotent.
+- [x] **Er was geen iOS-build 240 bij App Store Connect.** Opgelost op 23 augustus: de run van 11:06
+  zette iOS alsnog op 240, en `86c05e9` haalde daarna de oorzaak weg. `ensure_build_number` bepaalde
+  het nummer per platform en herschreef `pubspec.yaml` halverwege de run, dus een platform dat een
+  build miste bleef structureel achter. Het nummer komt nu één keer per run uit het maximum over de
+  drie platforms plus één, en build 242 is het eerste bewijs dat dat tegen App Store Connect werkt:
+  241 → 242 voor alle drie tegelijk.
 - [ ] **De client verzwijgt een mislukte schrijving**: `_postJson` in
   `lib/services/pleya_server_client.dart` vangt elke fout af en geeft `null` terug, dus een `POST
   /watch-state` die op een 404, een 5xx of een verbindingsweigering strandt, komt als geslaagd terug
@@ -263,8 +265,8 @@ Nieuw erbij op deze build: op een echt toestel met trackpad of muis de zijbalk n
   daar sloeg de deadline van de speler alsnog aan. Raakt elke aanroep van de client, dus een eigen
   ronde met een regressietest voor een snelle 5xx, niet iets voor binnen PS-5.
 - [ ] **Het zwarte scherm en de 429-storm zijn niet op een toestel teruggezien**: beide fixes hebben
-  testdekking, maar ze kwamen uit een deviceronde en horen daar ook bevestigd te worden. Vraagt een
-  build nieuwer dan 240, die er nog niet is.
+  testdekking, maar ze kwamen uit een deviceronde en horen daar ook bevestigd te worden. Build 242
+  draagt ze; de ronde zelf moet nog.
 - [ ] **De terugzetter is niet op hardware gecontroleerd**: de Mutiny-regressie is met `fakeAsync`
   vastgelegd en aantoonbaar rood op de oude code, maar twee Apple-toestellen die hetzelfde item
   openen is de enige manier om te zien dat het gedrag in het echt weg is. Vraagt een build met
