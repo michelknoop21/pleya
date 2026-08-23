@@ -326,6 +326,49 @@ void main() {
     });
   });
 
+  group('tearing down a Pleya Server source', () {
+    PleyaServerConnection connection() => PleyaServerConnection(
+      id: 'pleyaServer.srv-1',
+      baseUrl: 'http://nas.lan:8832',
+      serverId: 'srv-1',
+      serverName: 'Zolder',
+      userName: 'michel',
+      refreshToken: 'rt-1',
+      createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+    );
+
+    test('it clears the auth-error state, like every other removal path', () {
+      final manager = MultiServerManager();
+      addTearDown(manager.dispose);
+
+      manager.debugRegisterClientForTesting(_ProbeClient('srv-1'), online: false);
+      manager.debugMarkAuthErrorForTesting(ServerId('srv-1'));
+      expect(manager.authErrorServerIds, ['srv-1']);
+
+      manager.removePleyaServerSource(connection());
+
+      expect(manager.authErrorServerIds, isEmpty);
+      expect(manager.serverIds, isEmpty);
+    });
+
+    test('a probe that outlives it cannot bring the server back', () async {
+      final manager = MultiServerManager();
+      addTearDown(manager.dispose);
+
+      final client = _ProbeClient('srv-1', status: HealthStatus.authError)..gate = Completer<void>();
+      manager.debugRegisterClientForTesting(client);
+
+      final sweep = manager.checkServerHealth();
+      await Future<void>.delayed(Duration.zero);
+      manager.removePleyaServerSource(connection());
+      client.gate!.complete();
+      await sweep;
+
+      expect(manager.serverIds, isEmpty);
+      expect(manager.authErrorServerIds, isEmpty);
+    });
+  });
+
   group('ownership tokens', () {
     test('a token stops matching once the server is removed', () {
       final manager = MultiServerManager();

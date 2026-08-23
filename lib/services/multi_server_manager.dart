@@ -743,6 +743,13 @@ class MultiServerManager {
     final client = _clients.remove(connection.serverId);
     if (client != null) _closeClient(client);
     _serverStatus.remove(connection.serverId);
+    // A rejected session is what sends people to "disconnect" in the first
+    // place, so this is the common path, not the edge: leave the id in
+    // [_authErrorServers] and the re-auth bar keeps standing over a connection
+    // that no longer exists. Releasing the generation stops an in-flight probe
+    // from putting it back.
+    _authErrorServers.remove(connection.serverId);
+    _releaseGeneration(ServerId(connection.serverId));
     _statusController.add(Map.from(_serverStatus));
   }
 

@@ -55,6 +55,20 @@ Future<void> removeProfileConnectionAndCleanup({
     }
   }
 
+  // Een Pleya Server-verbinding draagt het refreshtoken van deze gebruiker op
+  // die server. Verwijst geen enkel profiel er nog naar, dan hoort de rij weg:
+  // niets anders in de app verwijdert er ooit een, dus wat hier blijft staan
+  // blijft voorgoed staan, met een geldig geheim erin voor een verbinding die
+  // de gebruiker net heeft verbroken.
+  if (connection is PleyaServerConnection && (await profileConnections.listForConnection(connection.id)).isEmpty) {
+    await connections.remove(connection.id);
+    serverManager?.removePleyaServerSource(connection);
+    final serverId = ServerId.tryParse(connection.serverId);
+    if (serverId != null) {
+      await storage.clearLibraryPreferencesForServerEverywhere(serverId);
+    }
+  }
+
   // Zelfde verhaal voor een Pleya Share-koppeling: ongerefereerd = unpair.
   if (connection is PleyaShareConnection && (await profileConnections.listForConnection(connection.id)).isEmpty) {
     await connections.remove(connection.id);
@@ -90,11 +104,15 @@ Future<void> removeConnectionCompletely({
   }
   // Orphan (no bindings) — the per-profile path never ran; clean up directly.
   if (await connections.get(connection.id) != null &&
-      (connection is LocalFolderConnection || connection is PleyaShareConnection)) {
+      (connection is LocalFolderConnection ||
+          connection is PleyaShareConnection ||
+          connection is PleyaServerConnection)) {
     await connections.remove(connection.id);
     if (connection is LocalFolderConnection) serverManager?.removeLocalSource(connection);
     if (connection is PleyaShareConnection) serverManager?.removePleyaShareSource(connection);
-    final serverId = ServerId.tryParse(connection.id);
+    if (connection is PleyaServerConnection) serverManager?.removePleyaServerSource(connection);
+    // Pleya Server keys on its own `serverId`, not on the row id.
+    final serverId = ServerId.tryParse(connection is PleyaServerConnection ? connection.serverId : connection.id);
     if (serverId != null) {
       await storage.clearLibraryPreferencesForServerEverywhere(serverId);
     }

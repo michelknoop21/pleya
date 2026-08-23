@@ -62,6 +62,18 @@ PlexAccountConnection _plex() {
   );
 }
 
+PleyaServerConnection _pleyaServer({String id = 'pleyaServer.srv-1', String serverId = 'srv-1'}) {
+  return PleyaServerConnection(
+    id: id,
+    baseUrl: 'http://nas.lan:8832',
+    serverId: serverId,
+    serverName: 'Zolder',
+    userName: 'michel',
+    refreshToken: 'rt-1',
+    createdAt: DateTime.fromMillisecondsSinceEpoch(1_000_000),
+  );
+}
+
 PleyaShareConnection _pleyaShare({String id = 'share-1'}) {
   return PleyaShareConnection(
     id: id,
@@ -444,6 +456,86 @@ void main() {
         reason: 'the other profile\'s client is kept for a future switch and must survive this',
       );
       expect(await connections.get(theirs.id), isNotNull);
+    });
+
+    // A Pleya Server connection is the one the reports were actually about, and
+    // it was the only kind the cleanup had no branch for: the join row went,
+    // the runtime client and the stored row stayed. Nothing else in the app
+    // deletes a connection row, so that row — and the refresh token in it —
+    // stayed on disk for good.
+    test('disconnecting a Pleya Server takes the stored row and its refresh token with it', () async {
+      final conn = _pleyaServer();
+      await connections.upsert(conn);
+      await profileConnections.upsert(
+        ProfileConnection(profileId: 'p1', connectionId: conn.id, userIdentifier: conn.userName),
+      );
+      await storage.setActiveProfileId('p1');
+
+      manager.debugRegisterClientForTesting(_OfflineClient(conn.serverId), online: false);
+      manager.debugMarkAuthErrorForTesting(ServerId(conn.serverId));
+
+      await removeProfileConnectionAndCleanup(
+        profileId: 'p1',
+        connection: conn,
+        profileConnections: profileConnections,
+        connections: connections,
+        storage: storage,
+        serverManager: manager,
+      );
+
+      expect(manager.serverIds, isEmpty);
+      expect(manager.authErrorServerIds, isEmpty);
+      expect(await profileConnections.listForConnection(conn.id), isEmpty);
+      expect(
+        await connections.get(conn.id),
+        isNull,
+        reason: 'the row carries the refresh token; leaving it behind leaves a live secret for a deleted server',
+      );
+    });
+
+    test('a Pleya Server another profile still uses keeps its stored row', () async {
+      final conn = _pleyaServer();
+      await connections.upsert(conn);
+      for (final profile in ['p1', 'p2']) {
+        await profileConnections.upsert(
+          ProfileConnection(profileId: profile, connectionId: conn.id, userIdentifier: conn.userName),
+        );
+      }
+      await storage.setActiveProfileId('p1');
+
+      await removeProfileConnectionAndCleanup(
+        profileId: 'p1',
+        connection: conn,
+        profileConnections: profileConnections,
+        connections: connections,
+        storage: storage,
+        serverManager: manager,
+      );
+
+      expect(await connections.get(conn.id), isNotNull, reason: 'p2 still signs in with this row');
+      expect((await profileConnections.listForConnection(conn.id)).single.profileId, 'p2');
+    });
+
+    test('a disconnected Pleya Server stays gone across a restart', () async {
+      final conn = _pleyaServer();
+      await connections.upsert(conn);
+      await profileConnections.upsert(
+        ProfileConnection(profileId: 'p1', connectionId: conn.id, userIdentifier: conn.userName),
+      );
+      await storage.setActiveProfileId('p1');
+
+      await removeConnectionCompletely(
+        connection: conn,
+        profileConnections: profileConnections,
+        connections: connections,
+        storage: storage,
+        serverManager: manager,
+      );
+
+      final restarted = ConnectionRegistry(db);
+      expect(await restarted.get(conn.id), isNull);
+      expect(await restarted.listPleyaServers(), isEmpty);
+      expect(await ProfileConnectionRegistry(db).listAll(), isEmpty);
     });
 
     test('a disconnected Jellyfin connection stays gone across a restart', () async {
