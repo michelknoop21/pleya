@@ -28,6 +28,7 @@ import 'widgets/intro_splash.dart';
 import 'screens/profile/pin_entry_dialog.dart';
 import 'screens/profile/profile_switch_screen.dart';
 import 'services/storage_service.dart';
+import 'services/device_capabilities_service.dart';
 import 'services/device_performance.dart';
 import 'services/macos_window_service.dart';
 import 'services/native_window_service.dart';
@@ -193,6 +194,13 @@ Future<void> _bootstrapApp() async {
   }
   // Visual-effects tier (auto-detects low-end Android; full elsewhere).
   futures.add(DevicePerformance.getInstance(override: settings.read(SettingsService.visualEffects)));
+  // What this device can actually play: decoder, display, audio route,
+  // connection. Read via DeviceCapabilitiesService.currentSnapshot at the
+  // moment a backend profile is built, never cached by a caller.
+  final deviceCapabilities = DeviceCapabilitiesService.configure(
+    useExoPlayer: settings.read(SettingsService.useExoPlayer),
+  );
+  futures.add(deviceCapabilities.refresh());
   if (Platform.isAndroid) {
     PipService();
   }
@@ -205,6 +213,9 @@ Future<void> _bootstrapApp() async {
 
   await Future.wait(futures);
   final storage = await storageFuture;
+  // Unplugging an AV receiver changes what this device can carry, so the
+  // snapshot follows the route instead of being taken once.
+  deviceCapabilities.watchAudioRoute();
 
   // Configure image cache — keep budget modest to leave headroom for Skia
   // decode buffers. Runs after the futures so the effects tier is resolved.
@@ -225,7 +236,8 @@ Future<void> _bootstrapApp() async {
   }
   appLogger.i(
     'Pleya v${packageInfo.version}+${packageInfo.buildNumber}$commitSuffix$renderer'
-    ' [effects: ${DevicePerformance.describeSync()}]',
+    ' [effects: ${DevicePerformance.describeSync()}]'
+    ' [device: ${DeviceCapabilitiesService.currentSnapshot.describe()}]',
   );
 
   await DownloadStorageService.instance.initialize(settings);
