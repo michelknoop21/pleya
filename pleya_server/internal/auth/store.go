@@ -170,14 +170,31 @@ const (
 	RefreshExpired
 	// RefreshOK: het token is geldig en zojuist ingetrokken.
 	RefreshOK
+	// RefreshReplayed: dit token is net geroteerd, maar zijn opvolger is nooit
+	// gebruikt. Dat is de vingerafdruk van een verloren antwoord, niet van een
+	// aanvaller: wie het antwoord wél ontving zou de opvolger uitgeven, niet
+	// het oude token. De nooit-geziene opvolger wordt ingetrokken en de
+	// aanvrager krijgt een verse rotatie.
+	RefreshReplayed
 )
 
 // RotateRefreshToken wisselt een refreshtoken in.
 //
 // Het oude vervalt onmiddellijk en het nieuwe komt ervoor in de plaats, in
-// dezelfde transactie. Komt een al gebruikt token terug, dan wordt de hele keten
-// ongeldig; met één identiteit is dat elke uitstaande rij.
-func (s *Store) RotateRefreshToken(ctx context.Context, oldHash, newHash []byte, newExpires, now time.Time) (RefreshOutcome, error) {
+// dezelfde transactie, met replaced_by als wijzer naar de opvolger. Komt een
+// al gebruikt token terug, dan zijn er twee gevallen. Is de opvolger nooit
+// gebruikt en ligt de rotatie korter dan [grace] terug, dan is dit de
+// herhaling van een antwoord dat de client nooit bereikte: de intrekking van
+// dat antwoord is voor beide partijen onzichtbaar geweest, dus de
+// nooit-geziene opvolger gaat eruit en de aanvrager krijgt een verse rotatie
+// (RefreshReplayed). Alles daarbuiten — een gebruikte opvolger, of een
+// herhaling buiten het venster — maakt de hele keten ongeldig; met één
+// identiteit is dat elke uitstaande rij.
+//
+// Het venster rekt niet op: revoked_at van het oude token blijft de
+// oorspronkelijke rotatie, dus herhalingen zijn alleen mogelijk binnen
+// [grace] van dat ene moment.
+func (s *Store) RotateRefreshToken(ctx context.Context, oldHash, newHash []byte, newExpires, now time.Time, grace time.Duration) (RefreshOutcome, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return RefreshUnknown, err
@@ -186,9 +203,10 @@ func (s *Store) RotateRefreshToken(ctx context.Context, oldHash, newHash []byte,
 
 	var expiresAt time.Time
 	var revokedAt *time.Time
+	var replacedBy []byte
 	err = tx.QueryRow(ctx,
-		`SELECT expires_at, revoked_at FROM auth_refresh_tokens WHERE token_hash = $1 FOR UPDATE`,
-		oldHash).Scan(&expiresAt, &revokedAt)
+		`SELECT expires_at, revoked_at, replaced_by FROM auth_refresh_tokens WHERE token_hash = $1 FOR UPDATE`,
+		oldHash).Scan(&expiresAt, &revokedAt, &replacedBy)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return RefreshUnknown, nil
 	}
@@ -197,6 +215,13 @@ func (s *Store) RotateRefreshToken(ctx context.Context, oldHash, newHash []byte,
 	}
 
 	if revokedAt != nil {
+		if replacedBy != nil && grace > 0 && now.Sub(*revokedAt) <= grace {
+			outcome, err := s.replayLostRotation(ctx, tx, oldHash, replacedBy, newHash, newExpires, now)
+			if err != nil || outcome == RefreshReplayed {
+				return outcome, err
+			}
+			// De opvolger blijkt wél gebruikt: door naar de intrekking.
+		}
 		if _, err := tx.Exec(ctx,
 			`UPDATE auth_refresh_tokens SET revoked_at = $1 WHERE revoked_at IS NULL`, now); err != nil {
 			return RefreshUnknown, err
@@ -218,10 +243,58 @@ func (s *Store) RotateRefreshToken(ctx context.Context, oldHash, newHash []byte,
 		`INSERT INTO auth_refresh_tokens (token_hash, expires_at) VALUES ($1, $2)`, newHash, newExpires); err != nil {
 		return RefreshUnknown, err
 	}
+	if _, err := tx.Exec(ctx,
+		`UPDATE auth_refresh_tokens SET replaced_by = $1 WHERE token_hash = $2`, newHash, oldHash); err != nil {
+		return RefreshUnknown, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return RefreshUnknown, err
 	}
 	return RefreshOK, nil
+}
+
+// replayLostRotation handelt de herhaling van een verloren rotatie-antwoord af.
+//
+// De server bewaart alleen hashes, dus de opvolger die de client nooit zag is
+// niet opnieuw uit te geven: hij wordt ingetrokken en [newHash] komt ervoor in
+// de plaats, met replaced_by van het oude token doorgeschoven zodat een
+// volgende herhaling binnen hetzelfde venster opnieuw herkenbaar is. Geeft
+// (RefreshReused, nil) zonder te committen wanneer de opvolger wél gebruikt
+// blijkt; de aanroeper voert dan de ketenintrekking uit.
+func (s *Store) replayLostRotation(ctx context.Context, tx pgx.Tx, oldHash, successorHash, newHash []byte, newExpires, now time.Time) (RefreshOutcome, error) {
+	var succRevoked *time.Time
+	var succReplaced []byte
+	err := tx.QueryRow(ctx,
+		`SELECT revoked_at, replaced_by FROM auth_refresh_tokens WHERE token_hash = $1 FOR UPDATE`,
+		successorHash).Scan(&succRevoked, &succReplaced)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return RefreshReused, nil
+	}
+	if err != nil {
+		return RefreshUnknown, fmt.Errorf("opvolger lezen: %w", err)
+	}
+	// Een ingetrokken of doorgeroteerde opvolger is bij de client aangekomen,
+	// dus het oude token in deze aanvraag is echt hergebruik.
+	if succRevoked != nil || succReplaced != nil {
+		return RefreshReused, nil
+	}
+
+	if _, err := tx.Exec(ctx,
+		`UPDATE auth_refresh_tokens SET revoked_at = $1 WHERE token_hash = $2`, now, successorHash); err != nil {
+		return RefreshUnknown, err
+	}
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO auth_refresh_tokens (token_hash, expires_at) VALUES ($1, $2)`, newHash, newExpires); err != nil {
+		return RefreshUnknown, err
+	}
+	if _, err := tx.Exec(ctx,
+		`UPDATE auth_refresh_tokens SET replaced_by = $1 WHERE token_hash = $2`, newHash, oldHash); err != nil {
+		return RefreshUnknown, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return RefreshUnknown, err
+	}
+	return RefreshReplayed, nil
 }
 
 // PurgeExpiredRefreshTokens ruimt op wat niemand meer kan gebruiken. Verlopen

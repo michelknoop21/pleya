@@ -37,11 +37,12 @@ type Options struct {
 	Version   string
 	StartedAt time.Time
 
-	AccessTokenTTL   time.Duration
-	RefreshTokenTTL  time.Duration
-	StreamTokenTTL   time.Duration
-	SetupCodeTTL     time.Duration
-	StreamSessionTTL time.Duration
+	AccessTokenTTL     time.Duration
+	RefreshTokenTTL    time.Duration
+	RefreshGraceWindow time.Duration
+	StreamTokenTTL     time.Duration
+	SetupCodeTTL       time.Duration
+	StreamSessionTTL   time.Duration
 
 	// WatchLease is het schrijfrecht uit DEC-049 regel 4: tweemaal het
 	// rapportage-interval, met een ondergrens van 90 s die het watch-pakket zelf

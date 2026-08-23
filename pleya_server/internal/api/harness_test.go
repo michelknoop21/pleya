@@ -124,6 +124,7 @@ func newEnv(t *testing.T) *env {
 		StartedAt:        time.Date(2026, 8, 18, 19, 25, 33, 0, time.UTC),
 		AccessTokenTTL:   15 * time.Minute,
 		RefreshTokenTTL:  24 * time.Hour,
+		RefreshGraceWindow: 2 * time.Minute,
 		StreamTokenTTL:   5 * time.Minute,
 		SetupCodeTTL:     30 * time.Minute,
 		StreamSessionTTL: 30 * time.Minute,

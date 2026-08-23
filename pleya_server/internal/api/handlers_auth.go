@@ -187,13 +187,19 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 
 	now := s.now().UTC()
 	outcome, err := s.opts.Auth.RotateRefreshToken(r.Context(),
-		auth.HashOpaque(req.RefreshToken), newHash, now.Add(s.opts.RefreshTokenTTL), now)
+		auth.HashOpaque(req.RefreshToken), newHash, now.Add(s.opts.RefreshTokenTTL), now,
+		s.opts.RefreshGraceWindow)
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
 	}
 
 	switch outcome {
+	case auth.RefreshReplayed:
+		// Meetbaar apart van een gewone rotatie: elke regel hier is een
+		// antwoord dat de lijn eerder kwijtraakte, en dat hoort zeldzaam te
+		// zijn.
+		s.log.Info("rotatie-antwoord verloren; herhaling binnen het respijt bediend")
 	case auth.RefreshReused:
 		// De hele keten is nu ongeldig. Een van de twee partijen die dit token
 		// draagt is de aanvaller, en welke dat is valt niet vast te stellen.

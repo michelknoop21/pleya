@@ -568,3 +568,14 @@ Wat bewust open blijft staan:
 - Een legacy Tautulli-sessie zonder `pms_identifier` blijft profielgebonden werken voor de aanwezigheidsoppervlakken en importeert niet, tot iemand opnieuw koppelt.
 - `settings.personalizedRecommendationsDescription` is niet herschreven: de bestaande tekst zegt al "Nothing leaves your device", wat sterker is dan de geplande formulering, en herschrijven zou veertien andere locales invalideren zonder winst.
 
+
+## DEC-063: Refreshtokenrotatie krijgt een respijtvenster voor een verloren antwoord
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** `RotateRefreshToken` trok het oude token in vóór het antwoord de client bereikte, in dezelfde transactie die de opvolger uitgaf. Een antwoord dat verloren ging (timeout, achtergrondwissel, netwerkwissel) liet de client dus met het oude token achter, en de eerstvolgende poging was per definitie hergebruik: de reuse-detectie legde de hele keten om, voor elk apparaat tegelijk, want `auth_refresh_tokens` draagt bewust geen apparaatkolom tot PS-9. Log jv19q op build 242 liet het gevolg zien: "Sessie verlopen voor Zolder" na een rotatie die niemand had ingetrokken, met een volledige herlogin als enige uitweg. De app verdubbelde de kans door direct na elke login nóg een rotatie te doen.
+
+**Decision:** Migratie 6 voegt `replaced_by` toe: elke geslaagde rotatie wijst naar zijn opvolger. Biedt een client een ingetrokken token aan waarvan de opvolger *nooit is gebruikt* en de rotatie korter dan `PLEYA_SERVER_REFRESH_GRACE_WINDOW` (default twee minuten) terug ligt, dan is dat de vingerafdruk van een verloren antwoord en geen aanval: wie het antwoord wél ontving zou de opvolger uitgeven. De nooit-geziene opvolger wordt ingetrokken en de aanvrager krijgt een verse rotatie (`RefreshReplayed`, met een eigen logregel zodat de frequentie meetbaar is). De server bewaart alleen hashes, dus de oorspronkelijke opvolger opnieuw uitgeven kán niet; vervangen is het enige dat de hash-only-opslag toelaat. Het venster rekt niet op: `revoked_at` blijft het moment van de oorspronkelijke rotatie. Alles daarbuiten — een gebruikte opvolger, een herhaling buiten het venster, of het aanbieden van een nooit-uitgeleverde opvolger zelf — blijft de bestaande ketenintrekking.
+
+**Consequences:** Een verloren rotatie-antwoord herstelt zichzelf in plaats van een herlogin op elk apparaat te kosten. De aanvalsruimte die erbij komt is smal en benoemd: een dief van het oude token moet binnen twee minuten na de rotatie toeslaan én de echte client mag het antwoord dan net niet ontvangen hebben; daarbuiten verandert er niets aan de detectie. De bestaande api-test kon niet blijven staan zoals hij was, want het scenario dat hij als hergebruik bestempelde ís het verloren-antwoord-scenario; hij toetst nu beide kanten, inclusief dat het aanbieden van de vervangen opvolger de keten alsnog omlegt.

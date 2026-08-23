@@ -50,11 +50,12 @@ type Config struct {
 	ScanInterval time.Duration
 	JobWorkers   int
 
-	AccessTokenTTL   time.Duration
-	RefreshTokenTTL  time.Duration
-	StreamTokenTTL   time.Duration
-	SetupCodeTTL     time.Duration
-	StreamSessionTTL time.Duration
+	AccessTokenTTL     time.Duration
+	RefreshTokenTTL    time.Duration
+	RefreshGraceWindow time.Duration
+	StreamTokenTTL     time.Duration
+	SetupCodeTTL       time.Duration
+	StreamSessionTTL   time.Duration
 
 	// WatchLease is het schrijfrecht op de kijkstatus (DEC-049 regel 4).
 	WatchLease time.Duration
@@ -91,6 +92,14 @@ const (
 
 	DefaultAccessTokenTTL  = 15 * time.Minute
 	DefaultRefreshTokenTTL = 30 * 24 * time.Hour
+
+	// Respijt op refreshtokenrotatie: binnen dit venster geldt de herhaling
+	// van een rotatie waarvan de opvolger nooit is gebruikt als een verloren
+	// antwoord, niet als hergebruik. Lang genoeg voor een timeout plus een
+	// netwerkwissel, kort genoeg dat een gestolen token geen bruikbaar
+	// venster overhoudt: de dief moet binnen twee minuten na de rotatie
+	// toeslaan én de echte client mag het antwoord dan net niet gehad hebben.
+	DefaultRefreshGraceWindow = 2 * time.Minute
 
 	// Specificatie 6.4: twee tot vijf minuten. Kortlevend en smal, maar niet
 	// eenmalig: een speler doet een HEAD, dan een open range, dan losse ranges
@@ -184,6 +193,7 @@ func Load(getenv Getenv) (*Config, error) {
 		{"PLEYA_SERVER_FFPROBE_TIMEOUT", DefaultFFprobeTimeout, &cfg.FFprobeTimeout},
 		{"PLEYA_SERVER_ACCESS_TOKEN_TTL", DefaultAccessTokenTTL, &cfg.AccessTokenTTL},
 		{"PLEYA_SERVER_REFRESH_TOKEN_TTL", DefaultRefreshTokenTTL, &cfg.RefreshTokenTTL},
+		{"PLEYA_SERVER_REFRESH_GRACE_WINDOW", DefaultRefreshGraceWindow, &cfg.RefreshGraceWindow},
 		{"PLEYA_SERVER_STREAM_TOKEN_TTL", DefaultStreamTokenTTL, &cfg.StreamTokenTTL},
 		{"PLEYA_SERVER_SETUP_CODE_TTL", DefaultSetupCodeTTL, &cfg.SetupCodeTTL},
 		{"PLEYA_SERVER_STREAM_SESSION_TTL", DefaultStreamSessionTTL, &cfg.StreamSessionTTL},

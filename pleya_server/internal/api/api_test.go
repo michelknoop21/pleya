@@ -165,16 +165,60 @@ func TestLoginAndRefreshRotation(t *testing.T) {
 		t.Fatal("het refreshtoken roteerde niet")
 	}
 
-	// Hergebruik van het oude token wordt herkend en maakt de keten ongeldig.
-	reused := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
+	// Het oude token opnieuw aanbieden terwijl zijn opvolger nooit is gebruikt
+	// is sinds het rotatierespijt geen hergebruik maar de herhaling van een
+	// verloren antwoord: de aanvrager krijgt een verse rotatie en de
+	// nooit-geziene opvolger vervalt.
+	replayed := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
 		map[string]string{"refresh_token": pair.RefreshToken}, withoutAuth)
+	if replayed.Code != http.StatusOK {
+		t.Fatalf("herhaling binnen het respijt hoort bediend te worden, kreeg %d", replayed.Code)
+	}
+	var replayPair api.TokenPair
+	if err := json.Unmarshal(replayed.Body.Bytes(), &replayPair); err != nil {
+		t.Fatal(err)
+	}
+	// Echt hergebruik: de keten is inmiddels doorgeroteerd, dus de opvolger
+	// van replayPair is aantoonbaar bij een client aangekomen. Het oude token
+	// daarna nog eens aanbieden maakt de hele keten ongeldig.
+	next := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
+		map[string]string{"refresh_token": replayPair.RefreshToken}, withoutAuth)
+	if next.Code != http.StatusOK {
+		t.Fatalf("verse rotatie hoort te werken, kreeg %d", next.Code)
+	}
+	var nextPair api.TokenPair
+	if err := json.Unmarshal(next.Body.Bytes(), &nextPair); err != nil {
+		t.Fatal(err)
+	}
+	next2 := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
+		map[string]string{"refresh_token": nextPair.RefreshToken}, withoutAuth)
+	if next2.Code != http.StatusOK {
+		t.Fatalf("verse rotatie hoort te werken, kreeg %d", next2.Code)
+	}
+	var next2Pair api.TokenPair
+	if err := json.Unmarshal(next2.Body.Bytes(), &next2Pair); err != nil {
+		t.Fatal(err)
+	}
+	// replayPair's opvolger is nu aantoonbaar doorgeroteerd, dus dit is geen
+	// verloren antwoord meer maar een tweede partij met hetzelfde token.
+	reused := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
+		map[string]string{"refresh_token": replayPair.RefreshToken}, withoutAuth)
 	e.expectCode(reused, api.CodeRefreshTokenReused)
 	e.record("ErrorEnvelope", http.MethodPost, "/pleya/v1/auth/refresh", reused)
 
 	afterBreach := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
-		map[string]string{"refresh_token": rotated.RefreshToken}, withoutAuth)
+		map[string]string{"refresh_token": next2Pair.RefreshToken}, withoutAuth)
 	if afterBreach.Code == http.StatusOK {
 		t.Fatal("na hergebruikdetectie hoort de hele keten ongeldig te zijn")
+	}
+
+	// De opvolger die de replay verving heeft nooit een client bereikt; wie
+	// hem aanbiedt kan alleen de server zelf zijn geweest. Niet eerder in de
+	// test proberen: het aanbieden ervan is zelf een ketenintrekking.
+	staleSuccessor := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
+		map[string]string{"refresh_token": rotated.RefreshToken}, withoutAuth)
+	if staleSuccessor.Code == http.StatusOK {
+		t.Fatal("de door de replay vervangen opvolger hoort niet meer te werken")
 	}
 }
 
