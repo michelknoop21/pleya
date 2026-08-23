@@ -27,6 +27,8 @@ import '../media/ids.dart';
 import '../media/media_server_client.dart';
 import '../media/playback_report_metadata.dart';
 import '../media/server_capabilities.dart';
+import 'device_capabilities_service.dart';
+import 'jellyfin_client/jellyfin_device_profile.dart';
 import '../models/jellyfin/jellyfin_user_profile.dart';
 import '../models/livetv_capture_buffer.dart';
 import '../models/livetv_channel.dart';
