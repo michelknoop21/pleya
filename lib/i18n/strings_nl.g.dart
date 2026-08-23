@@ -911,6 +911,10 @@ class _TranslationsConnectionsNl extends TranslationsConnectionsEn {
 	@override String get localSources => 'Bronnen op dit apparaat';
 	@override String get removeSource => 'Bron verwijderen';
 	@override String removeSourceConfirm({required Object name}) => '"${name}" verwijderen van dit apparaat? Gedownloade items blijven staan.';
+	@override String get pleyaServers => 'Pleya Servers';
+	@override String get disconnectServer => 'Verbinding verbreken';
+	@override String disconnectServerConfirm({required Object name}) => 'Verbinding met "${name}" verbreken? De aanmelding voor deze server wordt van dit apparaat verwijderd. Gedownloade items blijven staan.';
+	@override String get reauthRequired => 'Opnieuw aanmelden vereist';
 }
 
 // Path: discover
@@ -3085,6 +3089,10 @@ extension on TranslationsNl {
 			'connections.localSources' => 'Bronnen op dit apparaat',
 			'connections.removeSource' => 'Bron verwijderen',
 			'connections.removeSourceConfirm' => ({required Object name}) => '"${name}" verwijderen van dit apparaat? Gedownloade items blijven staan.',
+			'connections.pleyaServers' => 'Pleya Servers',
+			'connections.disconnectServer' => 'Verbinding verbreken',
+			'connections.disconnectServerConfirm' => ({required Object name}) => 'Verbinding met "${name}" verbreken? De aanmelding voor deze server wordt van dit apparaat verwijderd. Gedownloade items blijven staan.',
+			'connections.reauthRequired' => 'Opnieuw aanmelden vereist',
 			'discover.title' => 'Ontdekken',
 			'discover.switchProfile' => 'Wissel van profiel',
 			'discover.noContentAvailable' => 'Geen inhoud beschikbaar',
@@ -3448,12 +3456,12 @@ extension on TranslationsNl {
 			'watchTogether.currentPlayback' => 'Huidige weergave',
 			'watchTogether.joinCurrentPlayback' => 'Deelnemen aan huidige weergave',
 			'watchTogether.joinCurrentPlaybackDescription' => 'Ga terug naar wat de host nu kijkt',
+			_ => null,
+		} ?? switch (path) {
 			'watchTogether.failedToOpenCurrentPlayback' => 'Huidige weergave kon niet worden geopend',
 			'watchTogether.participantJoined' => ({required Object name}) => '${name} is toegetreden',
 			'watchTogether.participantLeft' => ({required Object name}) => '${name} heeft de sessie verlaten',
 			'watchTogether.participantPaused' => ({required Object name}) => '${name} heeft gepauzeerd',
-			_ => null,
-		} ?? switch (path) {
 			'watchTogether.participantResumed' => ({required Object name}) => '${name} heeft hervat',
 			'watchTogether.participantSeeked' => ({required Object name}) => '${name} heeft gespoeld',
 			'watchTogether.participantBuffering' => ({required Object name}) => '${name} is aan het bufferen',
@@ -3962,12 +3970,12 @@ extension on TranslationsNl {
 			'seerr.showAll' => 'Alles tonen',
 			'seerr.fourK' => 'In 4K aanvragen',
 			'seerr.fourKBadge' => '4K',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
 			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => 'Nog ${remaining} van ${limit} aanvragen',
 			'seerr.quotaUnlimited' => 'Onbeperkt aanvragen',
 			'seerr.advancedOptions' => 'Geavanceerde opties',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.server' => 'Server',
 			'seerr.qualityProfile' => 'Kwaliteitsprofiel',
 			'seerr.rootFolder' => 'Hoofdmap',

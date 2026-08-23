@@ -706,7 +706,11 @@
     "editJellyfinIntro": "Voeg URL's voor ${serverName} toe of verwijder ze. Pleya gebruikt de bereikbare URL met de laagste latentie.",
     "localSources": "Bronnen op dit apparaat",
     "removeSource": "Bron verwijderen",
-    "removeSourceConfirm": "\"$name\" verwijderen van dit apparaat? Gedownloade items blijven staan."
+    "removeSourceConfirm": "\"$name\" verwijderen van dit apparaat? Gedownloade items blijven staan.",
+    "pleyaServers": "Pleya Servers",
+    "disconnectServer": "Verbinding verbreken",
+    "disconnectServerConfirm": "Verbinding met \"$name\" verbreken? De aanmelding voor deze server wordt van dit apparaat verwijderd. Gedownloade items blijven staan.",
+    "reauthRequired": "Opnieuw aanmelden vereist"
   },
   "discover": {
     "title": "Ontdekken",

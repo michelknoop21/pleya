@@ -2272,6 +2272,18 @@ class TranslationsConnectionsEn {
 
 	/// en: 'Remove "$name" from this device? Downloaded items are kept.'
 	String removeSourceConfirm({required Object name}) => 'Remove "${name}" from this device? Downloaded items are kept.';
+
+	/// en: 'Pleya Servers'
+	String get pleyaServers => 'Pleya Servers';
+
+	/// en: 'Disconnect'
+	String get disconnectServer => 'Disconnect';
+
+	/// en: 'Disconnect from "$name"? The sign-in for this server is removed from this device. Downloaded items are kept.'
+	String disconnectServerConfirm({required Object name}) => 'Disconnect from "${name}"? The sign-in for this server is removed from this device. Downloaded items are kept.';
+
+	/// en: 'Sign-in required'
+	String get reauthRequired => 'Sign-in required';
 }
 
 // Path: discover
@@ -6578,6 +6590,10 @@ extension on Translations {
 			'connections.localSources' => 'Sources on this device',
 			'connections.removeSource' => 'Remove source',
 			'connections.removeSourceConfirm' => ({required Object name}) => 'Remove "${name}" from this device? Downloaded items are kept.',
+			'connections.pleyaServers' => 'Pleya Servers',
+			'connections.disconnectServer' => 'Disconnect',
+			'connections.disconnectServerConfirm' => ({required Object name}) => 'Disconnect from "${name}"? The sign-in for this server is removed from this device. Downloaded items are kept.',
+			'connections.reauthRequired' => 'Sign-in required',
 			'discover.title' => 'Discover',
 			'discover.switchProfile' => 'Switch Profile',
 			'discover.noContentAvailable' => 'No content available',
@@ -6899,12 +6915,12 @@ extension on Translations {
 			'playlists.errorReordering' => 'Failed to reorder playlist item',
 			'playlists.errorRemoving' => 'Failed to remove from playlist',
 			'watchTogether.title' => 'Watch Together',
+			_ => null,
+		} ?? switch (path) {
 			'watchTogether.description' => 'Watch content in sync with friends and family',
 			'watchTogether.createSession' => 'Create Session',
 			'watchTogether.creating' => 'Creating...',
 			'watchTogether.joinSession' => 'Join Session',
-			_ => null,
-		} ?? switch (path) {
 			'watchTogether.joining' => 'Joining...',
 			'watchTogether.controlMode' => 'Control Mode',
 			'watchTogether.controlModeQuestion' => 'Who can control playback?',
@@ -7413,12 +7429,12 @@ extension on Translations {
 			'tautulli.errorNotTautulli' => 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.',
 			'tautulli.errorServer' => ({required Object code}) => 'Tautulli reported a server error (HTTP ${code}).',
 			'tautulli.errorGeneric' => 'Connecting failed.',
+			_ => null,
+		} ?? switch (path) {
 			'nowWatching.title' => 'Now watching',
 			'nowWatching.tooltip' => 'See who is watching now',
 			'nowWatching.streams' => ({required Object count}) => '${count} streams',
 			'nowWatching.oneStream' => '1 stream',
-			_ => null,
-		} ?? switch (path) {
 			'nowWatching.transcoding' => ({required Object count}) => '${count} transcoding',
 			'nowWatching.directPlay' => 'Direct play',
 			'nowWatching.directStream' => 'Direct stream',
