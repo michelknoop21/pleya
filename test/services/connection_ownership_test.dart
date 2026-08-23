@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -9,6 +10,7 @@ import 'package:pleya/services/plex_auth_service.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/pleya_server_client.dart';
 
 import '../test_helpers/prefs.dart';
 
@@ -365,6 +367,132 @@ void main() {
       await sweep;
 
       expect(manager.serverIds, isEmpty);
+      expect(manager.authErrorServerIds, isEmpty);
+    });
+  });
+
+  group('one real auth attempt for a rejected Pleya session', () {
+    PleyaServerConnection connection() => PleyaServerConnection(
+      id: 'pleyaServer.srv-1',
+      baseUrl: 'http://nas.lan:8832',
+      serverId: 'srv-1',
+      serverName: 'Zolder',
+      userName: 'michel',
+      refreshToken: 'rt-kept',
+      createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+    );
+
+    Map<String, dynamic> infoBody() => const {
+      'protocol': {'major': 1, 'feature_level': 1, 'profile': 'full'},
+      'server': {'id': 'srv-1'},
+      'capabilities': {'browse': true, 'search': true, 'artwork': true, 'watch_state': true},
+      'auth': {
+        'methods': ['password'],
+        'setup_required': false,
+      },
+    };
+
+    http.Response json(Object body, {int status = 200}) =>
+        http.Response(jsonEncode(body), status, headers: const {'content-type': 'application/json'});
+
+    /// A real [PleyaServerClient] whose refresh endpoint rejects until [heal]
+    /// is flipped. This is the shape of log jv19q: a rejected session probes
+    /// health forever without one POST to /auth/refresh, because the
+    /// revocation is an in-memory short-circuit.
+    (PleyaServerClient, void Function(), int Function()) rejectedClient() {
+      var refreshCalls = 0;
+      var reject = true;
+      final client = PleyaServerClient.create(
+        connection(),
+        httpClientFactory: () => MockClient((request) async {
+          if (request.url.path.endsWith('/info')) return json(infoBody());
+          if (request.url.path.endsWith('/auth/refresh')) {
+            refreshCalls++;
+            if (reject) {
+              return json(const {
+                'error': {'code': 'auth.invalid_token', 'message': 'no', 'retryable': false},
+              }, status: 401);
+            }
+            return json(const {
+              'access_token': 'at-2',
+              'refresh_token': 'rt-2',
+              'token_type': 'bearer',
+              'expires_in_ms': 900000,
+            });
+          }
+          return json(const {
+            'id': 'srv-1',
+            'name': 'Zolder',
+            'version': '0.2.0',
+            'started_at': '2026-08-18T19:25:33Z',
+          });
+        }),
+      );
+      return (client, () => reject = false, () => refreshCalls);
+    }
+
+    test('retryPleyaServerAuth spends one refresh and clears the banner state', () async {
+      final manager = MultiServerManager();
+      addTearDown(manager.dispose);
+      final (client, heal, refreshCalls) = rejectedClient();
+      manager.debugRegisterClientForTesting(client, online: false);
+
+      expect(await client.checkHealth(), HealthStatus.authError);
+      manager.debugMarkAuthErrorForTesting(ServerId('srv-1'));
+      // The probe alone never reaches the network again: same call count.
+      final before = refreshCalls();
+      expect(await client.checkHealth(), HealthStatus.authError);
+      expect(refreshCalls(), before);
+
+      heal();
+      final health = await manager.retryPleyaServerAuth(ServerId('srv-1'));
+
+      expect(health, HealthStatus.online);
+      expect(refreshCalls(), before + 1);
+      expect(manager.authErrorServerIds, isEmpty);
+    });
+
+    test('a chain that really is dead lands back on authError', () async {
+      final manager = MultiServerManager();
+      addTearDown(manager.dispose);
+      final (client, _, refreshCalls) = rejectedClient();
+      manager.debugRegisterClientForTesting(client, online: false);
+      expect(await client.checkHealth(), HealthStatus.authError);
+      manager.debugMarkAuthErrorForTesting(ServerId('srv-1'));
+
+      final health = await manager.retryPleyaServerAuth(ServerId('srv-1'));
+
+      expect(health, HealthStatus.authError);
+      expect(refreshCalls(), 2, reason: 'one real attempt per explicit user action');
+      expect(manager.authErrorServerIds, ['srv-1']);
+    });
+
+    test('a non-Pleya client answers null so the caller escalates to sign-in', () async {
+      final manager = MultiServerManager();
+      addTearDown(manager.dispose);
+      manager.debugRegisterClientForTesting(_ProbeClient('srv-1', status: HealthStatus.authError));
+
+      expect(await manager.retryPleyaServerAuth(ServerId('srv-1')), isNull);
+    });
+
+    test('the user-driven reconnect sweep now reaches a Pleya Server', () async {
+      final manager = MultiServerManager();
+      addTearDown(manager.dispose);
+      final (client, heal, refreshCalls) = rejectedClient();
+      manager.debugRegisterClientForTesting(client, online: false);
+      expect(await client.checkHealth(), HealthStatus.authError);
+      manager.debugMarkAuthErrorForTesting(ServerId('srv-1'));
+      final before = refreshCalls();
+
+      heal();
+      // Bounded: the sweep used to deadlock on a whenComplete that returned
+      // its own future out of Map.remove, and a regression there must fail
+      // fast instead of eating the 30-second test timeout.
+      await manager.reconnectOfflineServers(forceRediscovery: true).timeout(const Duration(seconds: 5));
+
+      // Before this branch existed the sweep fell through to a no-op for this
+      // kind, which is why log jv19q names only the Plex server.
+      expect(refreshCalls(), before + 1);
       expect(manager.authErrorServerIds, isEmpty);
     });
   });
