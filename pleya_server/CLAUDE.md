@@ -116,12 +116,13 @@ fase; `verify-local.sh` en `internal/migrate/migrate_test.go` controleren allebe
 staan.
 
 **`watch_states.subject` en `stream_sessions.subject` zijn sinds migratie 0007 `uuid` met een FK naar
-`users(id)`.** De vaste string `"owner"` (`api.SubjectOwner`) is daar niet meer geldig voor;
-`auth.Store.OwnerUserID(ctx)` lost het subject nu dynamisch op, want de owner krijgt sinds PS-9 een
-echte, per installatie verschillende `users.id` (vóór een migratie via `gen_random_uuid()`, bij een
-verse setup via `id.New()`). `handlers_watch.go` is de laatste plek die `SubjectOwner` nog rechtstreeks
-gebruikt; dat is een bewust tussenstadium binnen de PS-9-implementatievolgorde (Claims.Subject nog
-niet door de context laten stromen) en geen vergeten call-site.
+`users(id)`.** De vaste string `"owner"` (het vroegere `api.SubjectOwner`, sinds AC2 verwijderd) is
+daar niet meer geldig voor. `handlers_watch.go` en `authorize.go` lezen het subject nu overal via
+`s.subjectID(r)` (`claims.Subject`, gevalideerd met `id.Parse`) rechtstreeks uit de context van de
+aanvraag; `auth.Store.OwnerUserID(ctx)` blijft alleen bestaan voor setup, login en refresh, die geen
+aanvraag met claims hebben om uit te lezen. De owner krijgt sinds PS-9 een echte, per installatie
+verschillende `users.id` (vóór een migratie via `gen_random_uuid()`, bij een verse setup via
+`id.New()`).
 
 **Migraties gaan alleen vooruit.** Genummerd in `internal/migrate/sql/`, uitgevoerd bij het opstarten
 onder een advisory lock, met een checksum per toegepaste migratie. De binary weigert te starten op een

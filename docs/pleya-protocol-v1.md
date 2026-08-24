@@ -21,8 +21,9 @@ stopcriterium van deze fase en tegelijk de maatstaf waaraan elke zin hier is afg
 
 ## 1. Wat deze versie wel en niet dekt
 
-Deze specificatie beschrijft **uitsluitend het oppervlak dat nodig is tot en met PS-4**: ontdekken,
-authenticeren, bladeren, zoeken, artwork, streamen en kijkstatus.
+Deze specificatie beschrijft **het oppervlak dat nodig is tot en met PS-9**: ontdekken,
+authenticeren, bladeren, zoeken, artwork, streamen, kijkstatus, en gebruikers, rollen,
+bibliotheekrechten en sessiebeheer.
 
 Wat er bewust niet in staat, met de fase die het introduceert:
 
@@ -30,7 +31,6 @@ Wat er bewust niet in staat, met de fase die het introduceert:
 | --- | --- |
 | `POST /playback/plan` en de vorm van een afspeelplan | PS-6 |
 | Transcode-sessies openen, pingen, verplaatsen, sluiten | PS-8 |
-| Gebruikers, rollen en bibliotheekrechten | PS-9 |
 | Downloads | PS-10 |
 | Verzamelingen en afspeellijsten | PS-9C |
 | Kijkgeschiedenis, favorieten en waarderingen | PS-9P |
@@ -164,10 +164,10 @@ kent mag het".
 | `owner` | de eigenaar van de betrokken resource of sessie |
 | `admin` | een beheerder |
 
-Tot PS-9 bestaat er precies één identiteit, de server-owner. `authenticated`, `owner` en `admin`
-vallen daarmee vandaag samen. Ze staan nu al uit elkaar omdat de betekenis van een endpoint niet mag
-veranderen wanneer het gebruikersmodel er in PS-9 bijkomt; dat zou regel 3 uit hoofdstuk 3
-breken.
+Vóór PS-9 bestond er precies één identiteit, de server-owner, en vielen de vier klassen daarmee
+samen. Vanaf PS-9 zijn ze echt uit elkaar: zie hoofdstuk 16 voor de vier rollen (`owner`, `admin`,
+`member`, `restricted`) die achter `owner` en `admin` in deze tabel schuilgaan, en hoofdstuk 17 voor
+sessies en intrekking.
 
 ---
 
@@ -189,16 +189,23 @@ Precies daarom staat er zo weinig in.
     "search": true,
     "artwork": true,
     "watch_state": true,
+    "watch_state_ownership": true,
+    "stream_sessions": true,
+    "sessions": true,
     "playback_plan": false,
     "transcode": false,
     "downloads": false,
     "live_tv": false,
     "realtime": false,
-    "users": false
+    "users": true
   },
   "auth": { "methods": ["password"], "setup_required": false }
 }
 ```
+
+`capabilities.users` staat aan zodra de server echte gebruikers kent (hoofdstuk 16);
+`capabilities.sessions` staat aan zodra hij device-scoped sessies kent (hoofdstuk 17) en dus
+`device_id`/`device_name` op `/auth/login` en `/auth/setup` verstaat.
 
 `server.id` is er om de server te herkennen tussen opgeslagen verbindingen. Verder staat er geen
 gebruikersgegeven in, geen padnaam, en **geen servernaam, versie of buildnummer**. Die drie zijn
@@ -255,6 +262,18 @@ Klasse: **`public`**.
 
 Een onbekende gebruiker en een verkeerd wachtwoord geven hetzelfde antwoord, `auth.invalid_credentials`,
 zodat het bestaan van een account niet lekt.
+
+**`device_id` en `device_name` zijn optioneel op zowel `/auth/login` als `/auth/setup`**, en alleen te
+sturen wanneer `capabilities.sessions` waar is (hoofdstuk 17):
+
+```json
+{ "username": "michel", "password": "...",
+  "device_id": "b3f1c9e0-...", "device_name": "iPhone van Michel" }
+```
+
+`device_id` is het `PreferenceDeviceId` van de client: stabiel, niet gesynchroniseerd, en geen
+Plex-clientidentifier. Stuurt een client geen van beide, of kent hij de capability niet, dan krijgt de
+sessie `device_id NULL` en een vaste plaatshouder als naam, hetzelfde gedrag als vóór PS-9.
 
 ### 6.3 `POST /pleya/v1/auth/refresh`
 
@@ -347,19 +366,29 @@ versleuteling en wordt hier ook niet als zodanig gepresenteerd.
 Het streamtoken uit 6.4 verdwijnt hiermee niet. Externe spelers delen geen cookiejar met de browser;
 de twee mechanismen staan naast elkaar en bedienen twee verschillende clients.
 
+### 6.4b `POST /pleya/v1/auth/logout`
+
+Klasse: **`authenticated`**.
+
+Geen aanvraagbody en geen antwoordbody: `204 No Content`. Trekt uitsluitend de sessie in waarvan het
+accesstoken op deze aanvraag de `sid` draagt, dus **alleen het huidige toestel**.
+
+Dit is nadrukkelijk geen vervanging van `DELETE /pleya/v1/sessions/{id}` uit hoofdstuk 17: een ander
+toestel uitloggen kan met dit endpoint niet.
+
 ### 6.5 De bootstrap-identiteit
 
-Tot PS-9 bestaat er **precies één identiteit**: de server-owner, aangemaakt met de setupcode. Er zijn
-geen gebruikers, geen profielen, geen rollen en geen bibliotheekrechten.
+**Vóór PS-9** bestond er precies één identiteit: de server-owner, aangemaakt met de setupcode. Er
+waren geen gebruikers, geen profielen, geen rollen en geen bibliotheekrechten.
 
 Op de lijn is die identiteit zichtbaar als een `subject`: een ondoorzichtige string die in het
-accesstoken zit en die de client nooit hoeft te lezen. Een client stuurt hem nergens mee. Zodra PS-9
-echte gebruikers introduceert verandert er aan deze specificatie niets: dezelfde tokens, dezelfde
-endpoints, en `subject` wijst dan naar een rij in plaats van naar de enige identiteit. Dat is de
-reden dat de vier autorisatieklassen uit hoofdstuk 4 nu al uit elkaar staan.
+accesstoken zit en die de client nooit hoeft te lezen. Een client stuurt hem nergens mee. **Vanaf
+PS-9** wijst `subject` naar een rij in de `users`-tabel (hoofdstuk 16) in plaats van naar de enige
+identiteit, zonder dat er aan deze specificatie iets verandert: dezelfde tokens, dezelfde endpoints.
+Dat is de reden dat de vier autorisatieklassen uit hoofdstuk 4 al vóór PS-9 uit elkaar stonden.
 
-**Welke persistente auth-state een server hiervoor mag hebben.** Deze specificatie schrijft geen
-tabellen voor, maar wel het minimum en het maximum, zodat een implementatie het contract kan
+**Welke persistente auth-state een server tot PS-9 mocht hebben.** Deze specificatie schreef geen
+tabellen voor, maar wel het minimum en het maximum, zodat een implementatie het contract kon
 waarmaken zonder alsnog protocol te ontwerpen:
 
 | Nodig | Waarom |
@@ -369,12 +398,11 @@ waarmaken zonder alsnog protocol te ontwerpen:
 | per uitgegeven refreshtoken: een identificatie, een vervalmoment en een ingetrokken-vlag | om rotatie en hergebruikdetectie te kunnen doen |
 | de setupcode, niet leesbaar bewaard, plus de vlag of setup al gedaan is | om `setup_required` te kunnen beantwoorden |
 
-Meer niet. **Geen `users`-tabel en geen `sessions`-tabel**: die dragen rollen, rechten en
-apparaatbeheer, en dat is PS-9. Eén credential met één refreshtokenketen vraagt daar niet om, en ze
-alvast aanleggen omdat er toch tokens nodig zijn is precies de drift die hoofdstuk 23.1 verbiedt.
-
-**Vier eigenschappen die een implementatie niet zelf mag invullen.** Ze bepalen de opslagvorm, dus na
-PS-2 zijn ze alleen met een migratie te wijzigen.
+Meer niet, tot PS-9. **Geen `users`-tabel en geen `sessions`-tabel** vóór die fase: die dragen rollen,
+rechten en apparaatbeheer, en die alvast aanleggen omdat er toch tokens nodig waren was precies de
+drift die hoofdstuk 23.1 verbiedt. Vanaf PS-9 bestaan beide tabellen wel, en hoofdstuk 16 en 17
+beschrijven wat ze op de lijn betekenen; de vier eigenschappen hieronder blijven onveranderd gelden,
+ook met die twee tabellen erbij.
 
 1. **De setupcode is kortlevend en eenmalig.** Hij vervalt bij de eerste geslaagde inwisseling, en
    daarnaast na een korte tijd vanzelf. Zolang hij persistent staat, staat hij er niet leesbaar in:
@@ -458,14 +486,22 @@ Codes zijn gegroepeerd per domein. Uitbreiden mag; de betekenis van een bestaand
 | `storage.full` | 507 | nee | de server kan niet schrijven |
 | `session.invalid` | 400 | nee | onbekende of afgesloten kijksessie |
 | `session.stream_session_limit` | 429 | nee | er staan al acht actieve streamsessies voor dit subject |
+| `auth.user_not_found` | 404 | nee | de gebruiker bestaat niet, of niet voor u; zie hoofdstuk 16 |
+| `auth.username_taken` | 409 | nee | die gebruikersnaam is al in gebruik |
+| `auth.owner_immutable` | 409 | nee | de owner kan niet verwijderd of gedegradeerd worden |
+| `auth.session_not_found` | 404 | nee | de sessie bestaat niet, of niet voor u; zie hoofdstuk 17 |
 
-**`library.not_found` en niet `403`.** Een resource die u niet mag zien bestaat voor u niet, ook niet
-in zoekresultaten en ook niet als u het id raadt. Dat is vandaag nog theoretisch, want er is één
-identiteit, maar de regel staat er nu zodat PS-9 hem niet hoeft te introduceren.
+**`404` en niet `403`, overal.** Een resource die u niet mag zien bestaat voor u niet, ook niet in
+zoekresultaten en ook niet als u het id raadt. Dat gold vóór PS-9 al als regel, hoewel er toen nog
+maar één identiteit was; vanaf PS-9 is de regel voor het eerst echt te toetsen, en `auth.user_not_found`
+en `auth.session_not_found` volgen hem net zo goed als `library.not_found`. De volledige
+autorisatiematrix staat in hoofdstuk 16.4.
 
-Het domein `session.` is gereserveerd. In deze versie draagt het `session.invalid` voor de kijksessie
-uit hoofdstuk 12 en `session.stream_session_limit` voor de browser-streamsessie uit 6.4a;
-transcode-sessies komen in PS-8.
+Het domein `session.` is gereserveerd voor de **kijksessie** (hoofdstuk 14, `session_id` in
+`WatchStateEvent`) en de **browser-streamsessie** (6.4a): `session.invalid` en
+`session.stream_session_limit`. De sessies uit hoofdstuk 17 (login/device-sessies) zijn een ander
+begrip en gebruiken daarom bewust het domein `auth.`, niet `session.`, om verwarring tussen de twee
+te voorkomen.
 
 ---
 
@@ -886,7 +922,153 @@ fout. Dat is de normale toestand van een catalogusserver die nog niet kan afspel
 
 ---
 
-## 16. Endpointoverzicht
+## 16. Gebruikers en rechten
+
+Beschikbaar wanneer `capabilities.users` waar is. Introduceert vier rollen en een geordende
+rechtenladder per bibliotheek.
+
+### 16.1 Vier rollen
+
+| Rol | Aantal | Bevoegdheden |
+| --- | --- | --- |
+| `owner` | precies één | alles van `admin`, plus: niet te verwijderen of te degraderen |
+| `admin` | nul of meer | gebruikers aanmaken, rollen toekennen, bibliotheekrechten toekennen, wachtwoorden van anderen zetten, sessies van anderen intrekken |
+| `member` | nul of meer | eigen wachtwoord, eigen sessies, krijgt bibliotheekrechten toegewezen |
+| `restricted` | nul of meer | als `member`, met drie verschillen: kan nooit `manage` krijgen, beheert zijn eigen wachtwoord niet, en ziet in `GET /users` alleen zichzelf |
+
+`owner` en `admin` omzeilen bibliotheekrechten via de rol: ze hebben geen rijen in de rechtentabel en
+zien elke bibliotheek die de server kent.
+
+### 16.2 De rechtenladder
+
+```
+view  <  download  <  manage
+```
+
+Eén waarde per `(gebruiker, bibliotheek)`, nooit drie losse vlaggen: `download` impliceert `view`,
+`manage` impliceert beide. `view` en `download` worden in deze fase gehandhaafd; `manage` wordt
+opgeslagen en teruggegeven, maar handhaaft pas iets zodra metadata-bewerken en bibliotheekbeheer
+bestaan (latere fasen).
+
+### 16.3 De endpoints
+
+| Methode en pad | Klasse |
+| --- | --- |
+| `POST /pleya/v1/users` | `admin` |
+| `GET /pleya/v1/users` | `authenticated`, gefilterd |
+| `PATCH /pleya/v1/users/{id}` | `admin`, of `owner` op zichzelf |
+| `DELETE /pleya/v1/users/{id}` | `admin` |
+| `PUT /pleya/v1/users/{id}/permissions` | `admin` |
+
+`POST /pleya/v1/users`:
+
+```json
+{ "username": "sanne", "password": "...", "role": "member" }
+```
+
+```json
+{ "id": "0198f2c0-...", "username": "sanne", "role": "member" }
+```
+
+`role` mag bij aanmaken nooit `owner` zijn; die rol ontstaat uitsluitend via `/auth/setup`.
+
+`GET /pleya/v1/users`: `owner` en `admin` zien iedereen; `member` en `restricted` zien in dit antwoord
+uitsluitend zichzelf.
+
+`PATCH /pleya/v1/users/{id}` accepteert `role`, `password`, of beide; minimaal één veld is verplicht.
+Een poging om de owner te degraderen geeft `auth.owner_immutable`.
+
+`DELETE /pleya/v1/users/{id}`: de owner verwijderen geeft `auth.owner_immutable`.
+
+`PUT /pleya/v1/users/{id}/permissions` vervangt de volledige rechtenlijst van die gebruiker:
+
+```json
+{ "permissions": [
+  { "library_id": "0198f2a1-...", "permission": "view" },
+  { "library_id": "0198f2a2-...", "permission": "download" }
+] }
+```
+
+```json
+{ "items": [
+  { "library_id": "0198f2a1-...", "permission": "view" },
+  { "library_id": "0198f2a2-...", "permission": "download" }
+] }
+```
+
+### 16.4 De autorisatiematrix
+
+Vijftien regels, elk met minstens één test tegen een gebruiker zonder recht:
+
+| # | Endpoint | Lekvector | Vereiste controle |
+| --- | --- | --- | --- |
+| 1 | `GET /libraries` | lijst | filter op zichtbare bibliotheken |
+| 2 | `GET /libraries/{library_id}/items` | direct id | recht op de bibliotheek, anders `404` |
+| 3 | `GET /items/{item_id}` | direct id | bibliotheek van het item, anders `404` |
+| 4 | `GET /items/{item_id}/children` | direct id | idem |
+| 5 | `GET /search` | resultaten | filter; een verborgen titel komt niet terug |
+| 6 | `GET /hubs/{hub_id}` | resultaten **en** `?library_id=` | filter, plus `404` op een verboden `library_id` |
+| 7 | `GET /artwork/{artwork_id}` | direct id | via het item, anders `404` |
+| 8 | `GET /subtitles/{subtitle_id}` | direct id, **plus streamtokenpad** | anders `404`, ook met een geldig streamtoken |
+| 9 | `GET /stream/{version_id}` | direct id, **plus streamtoken en streamsessie** | anders `404`, op alle drie de paden |
+| 10 | `POST /auth/stream-token` | `version_id` in de body | `404` bij geen recht, zodat het bestaan niet lekt |
+| 11 | `POST /auth/stream-session` | `version_id` in de body | idem |
+| 12 | `POST /watch-state` | `item_id` in de body | `404` bij geen recht |
+| 13 | `GET /watch-state` | lijst met item-ids | filter op nu zichtbare items, niet alleen op de gebruiker |
+| 14 | `GET /users` | lijst | `member`/`restricted` zien alleen zichzelf |
+| 15 | `GET /sessions`, `DELETE /sessions/{id}` | sessie-id | eigen sessies, of `admin`; anders `404` |
+
+Regel 8 tot en met 11 zijn de subtiele: een streamtoken of streamsessie leeft twee tot vijf minuten
+zelfstandig nadat hij is uitgegeven. De rechtencontrole staat daarom op het **aanvraagpad**, niet
+alleen op het mint-moment; anders overleeft een ingetrokken recht precies zo lang als het token.
+Regel 13 is de gemakkelijkst vergetene: kijkstatus is per gebruiker gescheiden, maar een rij blijft
+bestaan nadat het recht op de bijbehorende bibliotheek is ingetrokken.
+
+---
+
+## 17. Sessies en intrekking
+
+Beschikbaar wanneer `capabilities.sessions` waar is. Een sessie is één toestel, niet één gebruiker:
+intrekking van sessie A logt niet de andere toestellen van dezelfde gebruiker uit.
+
+### 17.1 Inzage en intrekking
+
+| Methode en pad | Klasse |
+| --- | --- |
+| `GET /pleya/v1/sessions` | `owner` op eigen sessies, `?user_id=` voor `owner`/`admin` |
+| `DELETE /pleya/v1/sessions/{id}` | `owner` op eigen sessies, `admin` op elke sessie |
+
+```json
+{ "items": [
+  { "id": "0198f2d0-...", "device_name": "iPhone van Sanne",
+    "created_at": "2026-08-24T09:12:00Z", "last_seen_at": "2026-08-24T10:41:22Z",
+    "current": true },
+  { "id": "0198f2d0-...", "device_name": "Legacy device",
+    "created_at": "2026-08-10T18:03:00Z", "last_seen_at": "2026-08-23T21:00:05Z",
+    "current": false }
+] }
+```
+
+`current: true` markeert de sessie die de aanvraag zelf doet. Een sessie-id dat niet van de
+aanvrager is en waar de aanvrager geen recht op heeft geeft `404` (`auth.session_not_found`), dezelfde
+regel als overal.
+
+`DELETE /pleya/v1/sessions/{id}` geeft `204`, zet `revoked_at`, en trekt daarmee ook de refreshtokens
+en browserstreamsessies van die sessie in.
+
+`POST /pleya/v1/auth/logout` (6.4b) doet uitsluitend de eigen, huidige sessie en vervangt dit endpoint
+niet: een ander toestel intrekken kan alleen met `DELETE /sessions/{id}`.
+
+### 17.2 De maximale revocatielatentie is twee seconden
+
+Een ingetrokken sessie is binnen **ten hoogste twee seconden** ongeldig, ook voor een lopende
+`GET /stream`-aanvraag met een streamtoken die op het intrekkingsmoment al onderweg was. Dit geldt
+symmetrisch voor het accesstoken, het streamtoken en de browser-streamsessie: alle drie falen zodra
+hun sessie ingetrokken is.
+
+---
+
+## 18. Endpointoverzicht
 
 | Methode en pad | Klasse | Gepagineerd |
 | --- | --- | --- |
@@ -896,6 +1078,7 @@ fout. Dat is de normale toestand van een catalogusserver die nog niet kan afspel
 | `POST /pleya/v1/auth/refresh` | `public` | nee |
 | `POST /pleya/v1/auth/stream-token` | `authenticated` | nee |
 | `POST /pleya/v1/auth/stream-session` | `authenticated` | nee |
+| `POST /pleya/v1/auth/logout` | `authenticated` | nee |
 | `GET /pleya/v1/server` | `authenticated` | nee |
 | `GET /pleya/v1/libraries` | `authenticated` | nee |
 | `GET /pleya/v1/libraries/{id}/items` | `authenticated` | ja |
@@ -908,19 +1091,26 @@ fout. Dat is de normale toestand van een catalogusserver die nog niet kan afspel
 | `GET /pleya/v1/stream/{version_id}` | `authenticated`, streamtoken of streamsessie | nee |
 | `POST /pleya/v1/watch-state` | `authenticated` | nee |
 | `GET /pleya/v1/watch-state` | `authenticated` | ja |
+| `POST /pleya/v1/users` | `admin` | nee |
+| `GET /pleya/v1/users` | `authenticated`, gefilterd | nee |
+| `PATCH /pleya/v1/users/{id}` | `admin`, of `owner` op zichzelf | nee |
+| `DELETE /pleya/v1/users/{id}` | `admin` | nee |
+| `PUT /pleya/v1/users/{id}/permissions` | `admin` | nee |
+| `GET /pleya/v1/sessions` | `owner`, of `admin` via `?user_id=` | nee |
+| `DELETE /pleya/v1/sessions/{id}` | `owner`, of `admin` op elke sessie | nee |
 
-Achttien endpoints. Elk ervan wordt door PS-2, PS-3 of PS-4 gebruikt; er staat er geen in die alleen
-later nodig is. Het achttiende is `POST /auth/stream-session`, toegevoegd bij het sluiten van poort 5
-omdat de queryparameter die eruit volgt op `GET /stream` zit en dat endpoint PS-4 is.
+Vijfentwintig endpoints. De eerste achttien komen van PS-2 tot en met PS-4; de laatste zeven zijn het
+PS-9-oppervlak uit hoofdstuk 16 en 17.
 
 ---
 
-## 17. Wat er bewust niet in zit
+## 19. Wat er bewust niet in zit
 
 Geen afspeelplan en geen `delivery_mode`. Geen transcode-sessies. Geen device-capabilities. Geen
-gebruikers, rollen of bibliotheekrechten. Geen downloads. Geen verzamelingen, afspeellijsten,
-kijkgeschiedenis, favorieten of waarderingen. Geen metadata-providers, geen match-correctie, geen
-artwork-upload. Geen websockets en geen server-sent events. Geen Live TV.
+downloads. Geen verzamelingen, afspeellijsten, kijkgeschiedenis, favorieten of waarderingen. Geen
+metadata-providers, geen match-correctie, geen artwork-upload. Geen websockets en geen
+server-sent events. Geen Live TV. Geen beheerscherm voor gebruikers of bibliotheekrechten: hoofdstuk
+16 levert de API, niet het scherm.
 
 Voor elk daarvan geldt hetzelfde: het wordt gespecificeerd door de fase die het introduceert, binnen
 de regels uit hoofdstuk 3. Een client die vandaag tegen deze specificatie bouwt hoeft daarvoor

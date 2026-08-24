@@ -4,6 +4,7 @@
     { "file": "info.json", "schema": "Info", "note": "server met een eigenaar" },
     { "file": "info_setup_required.json", "schema": "Info", "note": "eerste start, nog geen eigenaar" },
     { "file": "info_ps4.json", "schema": "Info", "note": "PS-4: kijkstatus met eigendom, en streamsessies" },
+    { "file": "info_ps9.json", "schema": "Info", "note": "PS-9: users en sessions aan" },
     { "file": "server_detail.json", "schema": "ServerDetail" },
     { "file": "token_pair.json", "schema": "TokenPair" },
     { "file": "stream_token.json", "schema": "StreamToken" },
@@ -32,6 +33,19 @@
     { "file": "error_version_multifile.json", "schema": "ErrorEnvelope" },
     { "file": "error_rate_limited.json", "schema": "ErrorEnvelope", "note": "retryable is true bij een 429" },
     { "file": "error_range_not_satisfiable.json", "schema": "ErrorEnvelope" },
-    { "file": "error_stream_session_limit.json", "schema": "ErrorEnvelope", "note": "de negende actieve streamsessie wordt geweigerd" }
+    { "file": "error_stream_session_limit.json", "schema": "ErrorEnvelope", "note": "de negende actieve streamsessie wordt geweigerd" },
+    { "file": "user_owner.json", "schema": "User", "note": "de owner" },
+    { "file": "user_member.json", "schema": "User" },
+    { "file": "user_list.json", "schema": "UserList" },
+    { "file": "create_user_request.json", "schema": "CreateUserRequest" },
+    { "file": "update_user_request.json", "schema": "UpdateUserRequest", "note": "alleen role, password weggelaten" },
+    { "file": "permissions_request.json", "schema": "PermissionsRequest" },
+    { "file": "library_permission_list.json", "schema": "LibraryPermissionList" },
+    { "file": "session.json", "schema": "Session" },
+    { "file": "session_list.json", "schema": "SessionList", "note": "een device-gebonden sessie naast een legacy-sessie" },
+    { "file": "error_user_not_found.json", "schema": "ErrorEnvelope" },
+    { "file": "error_session_not_found.json", "schema": "ErrorEnvelope" },
+    { "file": "error_owner_immutable.json", "schema": "ErrorEnvelope" },
+    { "file": "error_username_taken.json", "schema": "ErrorEnvelope" }
   ]
 }

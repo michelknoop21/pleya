@@ -2529,13 +2529,31 @@ leeftijdsgrenzen. Geen herstructurering van `UserProfileProvider` voor Plex of J
 
 **Risico's.** Autorisatie die alleen op lijstniveau zit is de meest voorkomende fout; criterium 2 is
 daar de gate op. De `clientScopeId`-ambiguïteit uit [hoofdstuk 4.4](#44-cachescope-neemt-de-server-als-eenheid)
-wordt hier scherper, en de migratie die scope expliciet maakt hoort in deze fase.
+wordt hier scherper, en de migratie die scope expliciet maakt hoort in deze fase. Drie risico's kwamen
+pas bij het PS-9-ontwerp scherp in beeld, vastgelegd in
+[DEC-065](DECISIONS.md#dec-065-rollen--en-rechtenmodel-voor-ps-9-vier-rollen-een-ladder-precies-één-owner)
+tot en met
+[DEC-072](DECISIONS.md#dec-072-de-endpoint--en-autorisatiematrix-is-de-bindende-testmatrix-niet-een-beschrijving):
 
-**Tests.** Autorisatietests per endpoint met een gebruiker zonder recht. Migratietest op de
-scope-kolommen met bestaande rijen.
+- **Server-globale state die per gebruiker of per sessie had gemoeten.** De reuse-intrekking op
+  refreshtokens (`internal/auth/store.go:226`) en de rate limiter draaiden tot nu toe met precies één
+  identiteit in gedachten. Dat wordt pas zichtbaar met een tweede echte gebruiker, niet door een test
+  die met één identiteit blijft testen.
+- **De haalbaarheid van AC3 tegen een lopende `io.CopyN`.** DEC-066 legt de bovengrens vast op twee
+  seconden, gemeten, niet booleaans afgevinkt; `copyRange` moet daarvoor een onderbreekbare lus worden.
+- **De migratie van actieve refreshketens op de live NAS.** Het risico is "iedereen moet opnieuw
+  inloggen", niet "de migratie faalt": elke actieve keten krijgt een eigen `legacy`-sessie, zodat
+  hergebruik door het ene toestel niet het revoke-domein van een ander toestel raakt.
+
+**Tests.** Autorisatietests per endpoint met een gebruiker zonder recht (de vijftien regels uit de
+autorisatiematrix, hoofdstuk 8). Migratietest op de scope-kolommen met bestaande rijen, inclusief een
+fixture-DB met twee actieve refreshketens en een limitertest met twee sleutels.
 
 **Roadmap Drift Check.** Is er een rechtenmodel gebouwd dat verder gaat dan bibliotheekniveau? Dat is
-niet gevraagd en maakt het model moeilijker uitlegbaar.
+niet gevraagd en maakt het model moeilijker uitlegbaar. Is er een revocatiemechanisme gebouwd dat
+verder gaat dan sessie- en streamtokenintrekking? Een generieke pub/sub-laag is PS-11 of later, zie
+DEC-066. Handhaaft `manage` iets binnen PS-9? Dat hoort bij PS-7 en PS-11A; in PS-9 wordt hij alleen
+opgeslagen en teruggegeven.
 
 ---
 
@@ -2739,6 +2757,14 @@ een sessie en een levenscyclus. fMP4 en HLS op het transcode-pad, geen DASH.
 server correct werkt achter HTTPS en achter een omgekeerde proxy; hoe die proxy tot stand komt is een
 deploymentrecept en staat in de documentatie, niet in de binary.
 
+`DEC-065` tot en met `DEC-072` **zijn geschreven** op 24 augustus 2026, bij het ontwerpen van fase 9,
+en sluiten alle blokkerende gaten van het PS-9-ontwerp: het rollen- en rechtenmodel (DEC-065), de
+revocatie-architectuur voor AC3 (DEC-066), de gebruikersbeheer-API (DEC-067), het protocolvenster voor
+PS-9 met de ontkoppeling van de vriezing van PS-5 (DEC-068), de sessie-, device- en tokenketen
+(DEC-069), de sessie-inzage- en -intrekkings-API (DEC-070), de migratie van bestaande refreshketens
+naar `legacy`-sessies (DEC-071), en de endpoint- en autorisatiematrix als bindende testmatrix
+(DEC-072). Zie [docs/DECISIONS.md](DECISIONS.md) voor de volledige tekst.
+
 ### 24.2 Open vragen
 
 Twee daarvan waren **gates**: de fase die eronder staat begint niet voordat de vraag beantwoord en
@@ -2826,7 +2852,7 @@ is een andere vraag. Dertien geslaagde fasen zijn geen bewijs dat Plex uit kan.
 > blocker staan de status Productgereed hebben, en de `PLEX_OFFLINE_REPLACEMENT_GATE` slaagt zonder
 > ook maar één runtimeaanroep naar Plex.**
 
-Daarnaast draagt elke overige capability op dat moment precies één expliciete status: Productgereed,
+Elke overige capability draagt op dat moment ook precies één expliciete status: Productgereed,
 Bewust anders opgelost, of Bewust buiten scope. **Geen enkele capability mag bij de vrijgave van de
 replacement-release op onbekend staan.** De lijst zelf staat in
 [docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md](PLEYA-SERVER-REPLACEMENT-MATRIX.md) en wordt daar

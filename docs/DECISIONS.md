@@ -592,3 +592,316 @@ Wat bewust open blijft staan:
 Voor PS-5 concreet: acceptatiecriterium 4 blijft **open** en **niet gehaald**. PS-9 mag beginnen. Deze afwijking dekt uitsluitend het starten van PS-9; ze sluit PS-5 niet af, verandert niets aan wat PS-5 moet bewijzen, en geldt niet automatisch voor een volgende keer dat dit patroon zich voordoet. Elke herhaling wordt opnieuw langs deze vier voorwaarden getoetst. De hardwareronde blijft schuld: ze moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of PS-9-gedrag meeneemt alsnog gedraaid worden, een TestFlight-indiening naar App Review of een merge van `feat/pleyaserver` naar `main`, wat zich het eerst voordoet.
 
 **Consequences:** PS-9 kan starten zonder op de deviceronde te wachten. `docs/pleya-server-architecture.md` en `STATUS.md` blijven PS-5's status tonen als "opgeleverd, niet gesloten" met criterium 4 expliciet open, en verwijzen hiernaartoe. Wie de PS-5-hardwareronde later draait en hem laat slagen, sluit PS-5 formeel af zoals elke andere fase: met een Roadmap Drift Check. Faalt de ronde, dan is dat een regressie op bestaand afspeelgedrag en gaat de reparatie voor PS-9-werk, ongeacht hoever PS-9 dan gevorderd is.
+
+## DEC-065: Rollen- en rechtenmodel voor PS-9, vier rollen, een ladder, precies één owner
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** Drie documenten claimden al "vier rollen, drie rechten" zonder ze ooit te definiëren: het
+masterplan (gemarkeerd **VASTGELEGD**), de replacement matrix, en de PS-9-fasetabel zelf. Zonder een
+opgeschreven model is elke schemakeuze in migratie 0007 een aanname. Vier vragen moesten beantwoord
+worden: welke rollen bestaan er en wat mogen ze; omzeilen `owner` en `admin` de bibliotheekrechten of
+krijgen ze rijen zoals iedereen; wat is het functionele verschil tussen `member` en `restricted`; en
+impliceren `view`, `download` en `manage` elkaar.
+
+**Decision:**
+
+1. **Vier rollen.** `owner` (precies één, afgedwongen met een partiële unieke index
+   `CREATE UNIQUE INDEX users_single_owner_idx ON users ((role)) WHERE role = 'owner'`, kan niet
+   verwijderd of gedegradeerd worden), `admin` (nul of meer, kan door de owner worden teruggedraaid),
+   `member` (nul of meer, eigen wachtwoord en sessies), `restricted` (nul of meer, als `member` met
+   drie verschillen).
+2. **`owner` en `admin` omzeilen bibliotheekrechten via de rol en krijgen geen permission-rijen.**
+   Bibliotheken ontstaan tot PS-11A uit `PLEYA_SERVER_LIBRARIES` en een herstart, zonder beheerscherm;
+   expliciete rijen zouden een nieuwe bibliotheek onzichtbaar maken voor de owner zelf, op een server
+   zonder UI om dat recht te zetten. `internal/catalog` krijgt daarom precies twee rechtenfuncties,
+   `VisibleLibraries(ctx, user)` en `MayAccess(ctx, user, libraryID, need)`, en elke query en handler
+   gaat daarlangs. Geen tweede plek mag deze beslissing herhalen.
+3. **`member` versus `restricted`, drie functionele verschillen:** `restricted` kan nooit `manage`
+   krijgen (een CHECK op de permission-rij, niet alleen UI), `restricted` beheert zijn eigen
+   wachtwoord niet (alleen `owner`/`admin` zet het, het Plex Home-kinderprofiel), en `restricted` ziet
+   in `GET /users` alleen zichzelf. `member` is de gewone huisgenoot.
+4. **Rechten vormen een geordende ladder**, niet drie booleans: `view < download < manage`, opgeslagen
+   als één kolom `permission text NOT NULL CHECK (permission IN ('view','download','manage'))` per
+   `(user_id, library_id)`. `download` impliceert `view`, `manage` impliceert beide, per constructie
+   in plaats van als afspraak die elders afgedwongen moet worden. `view` en `download` krijgen in PS-9
+   een echt handhavingspunt; `manage` wordt opgeslagen en teruggegeven maar handhaaft pas iets bij
+   metadata-bewerken (PS-7) en bibliotheekbeheer (PS-11A), dezelfde vooruitgedragen-kolom-redenering
+   als `watch_states.subject` in PS-4 (`0004_watch.sql:19-21`).
+5. **Cascadegedrag:** bibliotheek of gebruiker weg → permission-rijen weg (`ON DELETE CASCADE` op
+   beide FK's); gebruiker weg → sessies, refreshtokens (via sessions), kijkstatus en
+   browserstreamsessies weg (`watch_states.subject` en `stream_sessions.subject` worden `uuid` met FK
+   `ON DELETE CASCADE`, precedent: `watch_states.item_id` in `0004_watch.sql:22`); `owner` verwijderen
+   wordt geweigerd door de partiële unieke index plus een expliciete controle in de handler.
+
+**Consequences:** Migratie 0007 kan gebouwd worden tegen een vastliggend model in plaats van een
+aanname. De rol-gebaseerde bypass voor `owner`/`admin` betekent dat een audit van bibliotheekrechten
+altijd via de rol én de permission-tabel moet lezen, nooit via de tabel alleen; dat staat als
+verwachting in de testmatrix (hoofdstuk 8, autorisatiematrix). `manage` bestaat vanaf PS-9 in het
+schema maar handhaaft niets tot PS-7/PS-11A; de Roadmap Drift Check voor PS-9 bewaakt dat expliciet
+zodat niemand die kolom per ongeluk als "af" leest.
+
+## DEC-066: AC3 ("onmiddellijk ongeldig") wordt een in-process intrekkingsregister met een grens van twee seconden
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** AC3 van PS-9 eist dat een ingetrokken sessie onmiddellijk ongeldig is, ook voor een
+lopende stream met een streamtoken. "Onmiddellijk" was niet ingevuld: een generieke propagatielaag
+(`LISTEN`/`NOTIFY`, pub/sub) is een andere klasse oplossing dan een booleaanse check per aanvraag, en
+de keuze bepaalt of `copyRange` (`handlers_stream.go:216-227`) herschreven moet worden of niet.
+`pleya_server/compose.yaml` draagt één `pleya-server`-service zonder `replicas` of `deploy`, en de
+bestaande rate limiter is al "in het geheugen en per proces" (`README.md:308-310`); er is nergens in
+de huidige deployment een aanname van meerdere instanties.
+
+**Decision:** AC3 blijft ongewijzigd. De invulling is een in-process register: een set van
+ingetrokken, nog niet verlopen sessie-ids in het geheugen, gevuld bij het opstarten uit de database en
+bijgewerkt bij elke intrekking, met een O(1)-lookup zonder databaseronde per aanvraag. Geen
+`LISTEN`/`NOTIFY`, geen pub/sub-laag; dat is de opvolger zodra er een tweede instantie komt, en past
+dan binnen DEC-033 (Postgres als enige verplichte dependency). `copyRange` wordt een lus die per blok
+het register raadpleegt en de context annuleert zodra de sessie ingetrokken is. **De maximale
+revocatielatentie is vastgelegd op ten hoogste twee seconden**, gemeten met een tijdmeting in de test
+(stap 6 van hoofdstuk 8), niet met een booleaanse assert. Dit geldt symmetrisch voor het accesstoken
+(`sid`-check), het streamtoken en de browserstreamsessie: alle drie dragen `sid` en falen zodra hun
+sessie in het register staat.
+
+**Consequences:** Geen nieuwe infrastructuurdependency. Het risico dat dit ontwerp bewust niet oplost
+, revocatie over meerdere serverinstanties, staat als vraag in de Roadmap Drift Check van PS-9: "Is
+er een revocatiemechanisme gebouwd dat verder gaat dan sessie- en streamtokenintrekking? Een generieke
+pub/sub-laag is PS-11 of later." Een tweede instantie zonder die opvolger zou intrekking onbetrouwbaar
+maken; dat is voor nu een geaccepteerde grens van de huidige één-instantie-deployment, niet een gat dat
+onopgemerkt zou blijven.
+
+## DEC-067: PS-9 levert een gebruikersbeheer-API; het scherm is PS-11A
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** `/admin/users` komt twee keer voor in het masterplan (`:803`, `:949`), beide keren als
+Pleya Web-route in de doelarchitectuur van de webclient, nooit als endpoint in het protocol. Het
+protocol kent nergens een route onder `/users` (`pleya-protocol-v1.md:893-910`, achttien endpoints op
+dat moment). AC1 en het stopcriterium van PS-9 eisen twee echte gebruikers op de NAS; zonder API is de
+enige weg handmatige SQL, wat geen ondersteund productpad is.
+
+**Decision:** PS-9 levert de minimale gebruikersbeheer-API:
+
+- `POST /pleya/v1/users` (`admin`): gebruiker aanmaken met `username`, `password`, `role`.
+- `GET /pleya/v1/users` (`authenticated`): `owner`/`admin` zien iedereen, `member`/`restricted` zien
+  alleen zichzelf.
+- `PATCH /pleya/v1/users/{id}` (`admin`, of `owner` op zichzelf): rol wijzigen, wachtwoord zetten.
+- `DELETE /pleya/v1/users/{id}` (`admin`): gebruiker verwijderen; de owner weigeren.
+- `PUT /pleya/v1/users/{id}/permissions` (`admin`): bibliotheekrechten zetten als lijst van
+  `(library_id, permission)`.
+
+Een `member` die het id van een ander opvraagt krijgt `404`, dezelfde regel als overal
+(`internal/catalog/store.go:25-29`). De sessie-endpoints (`GET/DELETE /pleya/v1/sessions` en
+`POST /pleya/v1/auth/logout`) staan los van deze set en zijn vastgelegd in DEC-070.
+
+Het ondersteunde pad in PS-9 is de API plus een gedocumenteerd `curl`-recept in
+`pleya_server/README.md`, in dezelfde vorm als de bestaande recepten voor bladeren, zoeken en setup.
+Er komt in PS-9 geen scherm, geen navigatie en geen beheeroverzicht; dat is PS-11A en wordt hier niet
+vooruitgebouwd.
+
+**Consequences:** AC1 is uitvoerbaar zonder handmatige SQL. De endpoints landen in het protocol als
+wijziging 4 en 5 uit hoofdstuk 3 van het PS-9-ontwerp, onder het contractvenster van DEC-068. PS-11A
+erft een werkende API en bouwt er alleen het scherm boven; PS-9 mag dat scherm niet vooruitbouwen
+(Roadmap Drift Check).
+
+## DEC-068: het protocolvenster gaat open voor PS-9 en de vriezingsformulering ontkoppelt van PS-5
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** `CLAUDE.md` en `docs/pleya-server-gates.md:26` zeiden allebei dat
+`docs/pleya-protocol/v1/openapi.yaml` bevroren is "zolang PS-5 loopt". PS-5 is met DEC-064 bewust
+opengelaten op alleen zijn hardwarecriterium en loopt dus voor onbepaalde tijd door, terwijl PS-9 zeven
+protocoltoevoegingen nodig heeft: `capabilities.users` van `false` naar `true`, een nieuw
+`capabilities.sessions`-veld op `/info`, optionele `device_id`/`device_name` op `LoginRequest` en
+`SetupRequest` (DEC-069), de gebruikers-endpoints (DEC-067), de sessie-endpoints (DEC-070),
+`POST /auth/logout` (DEC-070), en nieuwe foutcodes voor rolconflicten. Elk van de zeven is getoetst aan de zes
+compatibiliteitsregels uit hoofdstuk 3 van de specificatie: geen enkele hernoemt, verwijdert of
+verandert de betekenis van een bestaand veld; de nieuwe aanvraagvelden zijn optioneel en staan achter
+een capability-vlag, met `watch_state_ownership` (`openapi.yaml:774-782`) als precedent voor exact dit
+patroon. Zonder een expliciet besluit staat "bevroren zolang PS-5 loopt" en "PS-9 heeft
+protocolwijzigingen nodig" tegenover elkaar.
+
+**Decision:** Het contractvenster gaat open voor **precies de zeven wijzigingen** hierboven, op
+dezelfde manier als het venster dat één keer eerder openging bij het sluiten van PS-3 voor de drie
+poortbesluiten (DEC-049/050/051). Zodra `openapi.yaml`, `pleya-protocol-v1.md` en de fixtures zijn
+bijgewerkt (stap 1 van de PS-9-implementatievolgorde) en `scripts/check_protocol.sh` slaagt, sluit het
+venster weer.
+
+Tegelijk wordt de vriezingsformulering losgekoppeld van een specifiek fasenummer: "bevroren zolang
+PS-5 loopt" wordt "bevroren zolang de huidige ontwikkelfase loopt". PS-5's anker klopte al niet meer
+sinds `faef53a` (PS-9 vrijgegeven met PS-5 nog open); een vriezing die aan een vast fasenummer hangt in
+plaats van aan "de fase die nu loopt" veroudert stilzwijgend bij elke volgende fasewissel met een
+opengelaten voorganger.
+
+**Consequences:** `CLAUDE.md` en `docs/pleya-server-gates.md` zijn bijgewerkt: de vriezing volgt de
+lopende fase, niet PS-5. `docs/pleya-server-gates.md` krijgt een zesde regel voor het PS-9-venster,
+analoog aan de PS-3-sluiting. Elke toekomstige fase die protocoltoevoegingen nodig heeft, doorloopt
+dezelfde procedure: expliciet venster, toetsing aan de zes regels, sluiten zodra `check_protocol.sh`
+slaagt, geen stilzwijgende heropening. De volledige set PS-9-besluiten die dit venster invult staat in
+DEC-065 (rollenmodel), DEC-066 (revocatie-architectuur en de 2-secondengrens), DEC-067
+(gebruikersbeheer-API), DEC-069 (sessieketen en toestel-id), DEC-070 (sessie-inzage en -intrekking) en
+DEC-071 (migratie van bestaande refreshketens); DEC-072 legt de autorisatiematrix vast die dit venster
+moet dekken.
+
+## DEC-069: `sid` loopt door de volledige authketen; sessie-intrekking wordt device-scoped
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** `subject` identificeert de gebruiker, niet het toestel. Een intrekking die alleen op
+`subject` kan controleren zet elk toestel van die gebruiker buiten de deur; dat is uitloggen op alle
+apparaten, niet de sessie-intrekking die AC3 vraagt. `internal/auth/store.go:226` trekt vandaag een
+refreshketen in met `UPDATE auth_refresh_tokens SET revoked_at = $1 WHERE revoked_at IS NULL`, zonder
+enige scope, en DEC-063 noemt dat zelf al PS-9-werk: *"want er is geen apparaatkolom"*
+(`0006_refresh_grace.sql:3-4`). Er moest daarom expliciet vastliggen hoe een stabiele sessie-identiteit
+door elke stap van login tot streambytes reist, en hoe een toestel aan die sessie gekoppeld wordt.
+
+**Decision:** Een nieuwe tabel `sessions` (`id`, `user_id`, `device_id`, `device_name`, `created_at`,
+`last_seen_at`, `revoked_at`) is de ankerentiteit. `sid` loopt door de volledige keten:
+
+| Stap | Draagt `sid` via |
+| --- | --- |
+| login / setup | maakt de `sessions`-rij aan |
+| accesstoken | `Mint` krijgt een parameter erbij; `Claims` krijgt `sid` naast `sub` |
+| refreshtoken | `auth_refresh_tokens.session_id uuid NOT NULL REFERENCES sessions(id) ON DELETE CASCADE` |
+| refresh | zoekt het token op, leest `session_id`, **weigert als de sessie ingetrokken is**, roteert binnen dezelfde sessie, mint met dezelfde `sid` |
+| streamtoken | `Mint` met `sub`, `sid` en `res` = version_id |
+| browserstreamsessie | `stream_sessions.session_id` als FK, zodat intrekking van de sessie ook de browsersessies meeneemt |
+
+`sid` in `Claims` is geen protocolwijziging: `Claims` is de inhoud van een ondoorzichtige string en
+het protocol zegt uitdrukkelijk dat de client hem nooit hoeft te lezen (`pleya-protocol-v1.md:355-359`).
+Na intrekking van sessie A faalt elk credential met `sid = A`: accesstoken, streamtoken en
+browserstreamsessie. Sessie B van dezelfde gebruiker blijft geldig, want die draagt een andere `sid`.
+De reuse-intrekking op `internal/auth/store.go:226` wordt daarom sessie-scoped:
+`... WHERE revoked_at IS NULL AND session_id = $2`, in dezelfde commit als het schema, niet in een
+opruimronde erna.
+
+**Het toestel-id.** De client heeft al een stabiel, niet-Plex, niet-gesynchroniseerd toestel-id,
+`PreferenceDeviceId` (`lib/services/preferences/preference_device_id.dart`), en dat wordt hergebruikt.
+Een IP-adres of User-Agent is geen toestelidentiteit en wordt niet gebruikt. `device_id` en
+`device_name` zijn optionele velden op `LoginRequest` en `SetupRequest`, alleen gestuurd wanneer
+`capabilities.sessions` waar is (protocolwijziging 2 en 3 van DEC-068). Capability negotiation vóór
+login bestaat al structureel: `GET /info` is `public` en draagt `capabilities`, en de client roept hem
+vandaag al aan vóór elke login (`add_pleya_server_screen.dart:88-103` → `_findServer`/`probe` vóór
+`_submit`/`login` op `:135-144`). Ontbreekt de capability, of stuurt een oudere client niets, dan maakt
+de server een sessie met `device_id IS NULL` en `device_name` op een vaste plaatshouder, wat het oude
+gedrag reproduceert (compatibiliteitsregel 4).
+
+**Consequences:** Sessie-intrekking is vanaf PS-9 een echte device-scoped operatie in plaats van een
+impliciete user-wide logout. Elke aanroeper van `Mint` krijgt een verplichte `sid`-parameter; er is
+geen pad meer waarop een token zonder sessiebinding wordt uitgegeven. Migratie 0007 moet bestaande
+actieve refreshketens van een sessie voorzien voordat deze keten geldt; dat is DEC-071.
+
+## DEC-070: Sessie-identificatie, -inzage en -intrekking krijgen een eigen API; `logout` vervangt dat niet
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** AC3 test "trek B's sessie in", maar zonder een API is er geen ondersteunde manier om dat
+te doen. De sessieketen uit DEC-069 maakt sessies identificeerbaar; dit besluit legt vast hoe een
+gebruiker en een beheerder daar via het protocol bij komen, en scheidt dat expliciet van
+`POST /auth/logout`, dat een ander, kleiner doel dient.
+
+**Decision:** Sessies zijn `sessions.id` (uuid).
+
+- **Inzage:** `GET /pleya/v1/sessions` geeft per sessie `id`, `device_name`, `created_at`,
+  `last_seen_at`, en `current: true` voor de sessie die de aanvraag zelf doet. Een gebruiker ziet zijn
+  eigen sessies; `owner` en `admin` kunnen die van een ander opvragen met `?user_id=`.
+- **Intrekken van precies één sessie:** `DELETE /pleya/v1/sessions/{id}`. Autorisatie: een gebruiker
+  mag zijn eigen sessies intrekken, `owner` en `admin` die van iedereen. Een sessie-id dat niet van de
+  aanvrager is en waar de aanvrager geen recht op heeft geeft `404`, dezelfde regel als overal
+  (`internal/catalog/store.go:25-29`). Intrekken zet `revoked_at`, cascadeert naar de refreshtokens en
+  de browserstreamsessies van die sessie, en meldt het id aan het intrekkingsregister uit DEC-066.
+- **`POST /auth/logout` doet uitsluitend de huidige sessie.** Het is het gemak-endpoint voor "log mij
+  hier uit" en vervangt `DELETE /pleya/v1/sessions/{id}` nadrukkelijk niet: een ander toestel intrekken
+  kan er niet mee. Het stond in het masterplan als **voorstel** (`:764-768`), niet als vastgelegd
+  besluit, en valt onder het contractvenster van DEC-068.
+
+**Consequences:** De sessie-API landt als protocolwijziging 5 en 6 van DEC-068. `GET/DELETE
+/pleya/v1/sessions/{id}` en `POST /pleya/v1/auth/logout` zijn drie afzonderlijke handlers met drie
+afzonderlijke autorisatieregels; ze delen het intrekkingsmechanisme van DEC-066 maar niet de scope.
+Regel 15 van de autorisatiematrix (DEC-072) toetst dit expliciet.
+
+## DEC-071: Bestaande actieve refreshketens krijgen elk een eigen `legacy`-sessie
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** DEC-069 maakt `session_id` verplicht op elke refreshketen, maar de bestaande rijen in
+`auth_refresh_tokens` dragen geen toestelidentiteit, en die wordt niet verzonnen. Migratie 0007 moet
+dus een regel hebben voor wat er met de rijen gebeurt die al bestaan, zonder een van beide fouten te
+maken: bestaande sessies stuk laten lopen, of twee onafhankelijke toestellen stilzwijgend hetzelfde
+revoke-domein laten delen.
+
+**Decision:** Elke actieve tokenketen krijgt zijn **eigen** `legacy`-sessie. Voor elke rij met
+`revoked_at IS NULL AND expires_at > now()` komt er één `sessions`-rij met `device_id = NULL` en
+`device_name` op een vaste plaatshouder, en de tokenrij krijgt die `session_id`. Ingetrokken en
+verlopen rijen houden `session_id NULL`; dat is geschiedenis en hoeft geen sessie. Eén sessie per
+keten, niet één gedeelde sessie, is het hele punt: twee oude clients delen daarmee geen revoke-domein,
+en hergebruik van de ene keten raakt de andere niet.
+
+De koppeling aan een echt toestel volgt bij de eerstvolgende geslaagde refresh: stuurt de client dan
+een `device_id` (capability-gated, zie DEC-069), dan vult de server `device_id` en `device_name` op de
+bestaande sessierij in. Een client die niets stuurt houdt zijn `legacy`-sessie, en die blijft gewoon
+werken. Gemeten op de NAS op 24 augustus 2026: 191 tokenrijen, waarvan 1 actief; in de praktijk is dit
+dus één legacy-sessie, maar het ontwerp is algemeen en gaat over elk aantal actieve ketens.
+
+**Consequences:** Migratie 0007 kan niet los van deze regel getest worden. De testmatrix voor stap 2
+van de implementatievolgorde (hoofdstuk 8) vraagt drie dingen op een fixture-DB met een bestaande
+`auth_owner`-rij: bestaande geldige clients kunnen na 0007 doorgaan, twee oude actieve ketens krijgen
+twee aparte sessies, en reuse van de ene keten trekt de andere niet in. Zonder deze drie tests bewijst
+een groene migratietest niets over het scenario dat er werkelijk toe doet.
+
+## DEC-072: De endpoint- en autorisatiematrix is de bindende testmatrix, niet een beschrijving
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** AC2 noemt expliciet "ook op stream- en plan-endpoints", en het risico dat autorisatie
+alleen op lijstniveau zit (gefilterde catalogusquery) terwijl een direct id nog steeds toegang geeft is
+de meest voorkomende fout in dit soort ontwerpen. Zonder een uitputtende, vooraf vastgelegde lijst is
+"de catalogus is gefilterd, dus klaar" een aanname die niet getoetst wordt, en juist de subtiele paden
+(streamtoken, streamsessie, kijkstatus na rechtverlies) worden dan gemist.
+
+**Decision:** Onderstaande vijftien regels zijn de bindende autorisatiematrix voor PS-9 en tegelijk de
+testmatrix: elke regel krijgt minimaal één test met een gebruiker zonder recht.
+
+| # | Endpoint | Lekvector | Vereiste controle |
+| --- | --- | --- | --- |
+| 1 | `GET /libraries` | lijst | filter op `VisibleLibraries` |
+| 2 | `GET /libraries/{library_id}/items` | direct id | `MayAccess(view)`, anders `404` |
+| 3 | `GET /items/{item_id}` | direct id | bibliotheek van het item, anders `404` |
+| 4 | `GET /items/{item_id}/children` | direct id | idem |
+| 5 | `GET /search` | resultaten | filter; een verborgen titel komt niet terug |
+| 6 | `GET /hubs/{hub_id}` | resultaten **en** `?library_id=` | filter, plus `404` op een verboden `library_id` |
+| 7 | `GET /artwork/{artwork_id}` | direct id | via het item, anders `404` |
+| 8 | `GET /subtitles/{subtitle_id}` | direct id, **plus streamtokenpad** | anders `404`, ook met een geldig streamtoken |
+| 9 | `GET /stream/{version_id}` | direct id, **plus streamtoken en streamsessie** | anders `404`, op alle drie de paden |
+| 10 | `POST /auth/stream-token` | `version_id` in de body | `404` bij geen recht, zodat het bestaan niet lekt |
+| 11 | `POST /auth/stream-session` | `version_id` in de body | idem |
+| 12 | `POST /watch-state` | `item_id` in de body | `404` bij geen recht |
+| 13 | `GET /watch-state` | lijst met item-ids | filter op nu zichtbare items, niet alleen op `subject` |
+| 14 | `GET /users` | lijst | `member`/`restricted` zien alleen zichzelf |
+| 15 | `GET /sessions`, `DELETE /sessions/{id}` | sessie-id | eigen sessies, of `admin`; anders `404` |
+
+Regel 8, 9, 10 en 11 zijn de subtiele: een streamtoken wordt gemint terwijl het recht bestaat en leeft
+daarna twee tot vijf minuten zelfstandig. De rechtencontrole moet dus op het **aanvraagpad** staan, niet
+alleen op het mint-moment, anders overleeft een ingetrokken recht precies zo lang als het token. Regel
+13 is de gemakkelijkst vergetene: `GET /watch-state` is vandaag al per `subject` gescheiden, maar een
+gebruiker die het recht op een bibliotheek verliest houdt zijn oude kijkstatusrijen, die item-ids uit
+een voor hem niet meer bestaande bibliotheek dragen.
+
+Plan-endpoints (`POST /playback/plan`) bestaan nog niet; die zijn PS-6 en geven vandaag `404`. De regel
+uit AC2 blijft voor hen staan zodra ze er komen, en dat wordt vastgelegd in de PS-6-fasetabel, niet
+hier vooruitgebouwd.
+
+**Consequences:** Stap 5 van de implementatievolgorde (hoofdstuk 8) mag pas als voltooid gelden wanneer
+alle vijftien regels een eigen test hebben, niet wanneer de catalogusfilter werkt en de rest impliciet
+wordt aangenomen. Een nieuw endpoint dat een library-, item-, version-, file- of stream-identiteit
+blootlegt en niet in deze tabel staat is een gat in dit besluit en moet er expliciet aan toegevoegd
+worden voordat het endpoint als PS-9-compleet geldt.

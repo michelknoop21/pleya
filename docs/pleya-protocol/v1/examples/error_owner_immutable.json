@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "auth.owner_immutable",
+    "message": "The owner cannot be deleted or demoted",
+    "retryable": false
+  }
+}
