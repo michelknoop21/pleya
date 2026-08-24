@@ -41,10 +41,16 @@ var (
 // Claims is de inhoud van een token.
 //
 // Klein gehouden met opzet. Een accesstoken hoeft niets te dragen behalve wie
-// hij is en tot wanneer; een streamtoken daarnaast één resource, want hij mag
-// niets anders openen.
+// hij is, van welke sessie, en tot wanneer; een streamtoken daarnaast één
+// resource, want hij mag niets anders openen.
+//
+// Sid is geen protocolwijziging (DEC-069): Claims is de inhoud van een
+// ondoorzichtige string en het protocol zegt uitdrukkelijk dat de client hem
+// nooit hoeft te lezen. Na intrekking van sessie A faalt elk credential met
+// sid = A; sessie B van dezelfde gebruiker blijft geldig.
 type Claims struct {
 	Subject   string    `json:"sub"`
+	Sid       string    `json:"sid"`
 	Type      TokenType `json:"typ"`
 	IssuedAt  int64     `json:"iat"`
 	ExpiresAt int64     `json:"exp"`
@@ -74,10 +80,11 @@ func NewSigner(key []byte) (*Signer, error) {
 func (s *Signer) SetClock(now func() time.Time) { s.now = now }
 
 // Mint geeft een ondertekend token uit.
-func (s *Signer) Mint(subject string, typ TokenType, ttl time.Duration, resource string) (string, Claims, error) {
+func (s *Signer) Mint(subject, sid string, typ TokenType, ttl time.Duration, resource string) (string, Claims, error) {
 	now := s.now().UTC()
 	claims := Claims{
 		Subject:   subject,
+		Sid:       sid,
 		Type:      typ,
 		IssuedAt:  now.Unix(),
 		ExpiresAt: now.Add(ttl).Unix(),

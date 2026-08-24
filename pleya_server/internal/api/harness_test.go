@@ -60,6 +60,7 @@ type env struct {
 	refresh string
 	cap     *capture
 	libs    []catalog.Library
+	argon2  auth.Argon2Params
 }
 
 func newEnv(t *testing.T) *env {
@@ -133,7 +134,7 @@ func newEnv(t *testing.T) *env {
 	})
 
 	return &env{t: t, server: srv, store: store, auth: authStore, watch: watchStore, pool: pool,
-		root: root, libs: libs, cap: shared}
+		root: root, libs: libs, cap: shared, argon2: light}
 }
 
 // scanAll draait één volledige scanronde over elke bibliotheek.

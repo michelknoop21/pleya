@@ -62,6 +62,12 @@ type Capabilities struct {
 	// een 400 krijgen van een oudere server.
 	WatchStateOwnership bool `json:"watch_state_ownership"`
 	StreamSessions      bool `json:"stream_sessions"`
+
+	// Sessions (DEC-069). Nog steeds false: het schema en de tokenketen bestaan
+	// vanaf deze stap, maar GET/DELETE /sessions en POST /auth/logout komen pas
+	// in een latere stap van PS-9. Deze vlag gaat pas aan zodra die endpoints er
+	// werkelijk zijn, dezelfde regel als Users hieronder.
+	Sessions bool `json:"sessions"`
 }
 
 // ServerDetail is het antwoord van GET /server.

@@ -53,11 +53,15 @@ func (s StreamSession) CookieName() string { return StreamCookiePrefix + s.ID.St
 
 // CreateStreamSession opent een sessie voor één subject en één versie.
 //
+// sid is de auth-sessie (DEC-069) waarvan dit verzoek werd gedaan; hij komt in
+// stream_sessions.session_id te staan zodat intrekking van die sessie ook deze
+// browserstreamsessie meeneemt.
+//
 // De volgorde is niet vrij. Eerst verlopen en ingetrokken sessies opruimen, dan
 // pas tellen: anders weigert de server de negende terwijl er drie dood in de
 // tabel staan. Beide stappen zitten in dezelfde transactie, zodat twee
 // tabbladen die tegelijk beginnen niet allebei op zeven uitkomen.
-func (s *Store) CreateStreamSession(ctx context.Context, subject string, versionID id.ID, ttl time.Duration, now time.Time) (StreamSession, error) {
+func (s *Store) CreateStreamSession(ctx context.Context, subject id.ID, sid id.ID, versionID id.ID, ttl time.Duration, now time.Time) (StreamSession, error) {
 	var out StreamSession
 
 	raw := make([]byte, 32)
@@ -91,9 +95,9 @@ func (s *Store) CreateStreamSession(ctx context.Context, subject string, version
 	sessionID := id.New()
 	expires := now.Add(ttl)
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO stream_sessions (id, subject, version_id, secret_hash, created_at, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6)`,
-		sessionID, subject, versionID, HashOpaque(secret), now, expires); err != nil {
+		INSERT INTO stream_sessions (id, subject, version_id, secret_hash, created_at, expires_at, session_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		sessionID, subject, versionID, HashOpaque(secret), now, expires, sid); err != nil {
 		return out, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -109,9 +113,9 @@ func (s *Store) CreateStreamSession(ctx context.Context, subject string, version
 //
 // Het geheim staat niet in de database; er staat een SHA-256 van, net als bij een
 // refreshtoken. Een databasedump levert dus geen speelbare sessies op.
-func (s *Store) VerifyStreamSession(ctx context.Context, sessionID id.ID, secret, subject string, versionID id.ID, now time.Time) error {
+func (s *Store) VerifyStreamSession(ctx context.Context, sessionID id.ID, secret string, subject id.ID, versionID id.ID, now time.Time) error {
 	var storedHash []byte
-	var storedSubject string
+	var storedSubject id.ID
 	var storedVersion id.ID
 	var expiresAt time.Time
 	var revokedAt *time.Time
@@ -162,7 +166,7 @@ func (s *Store) RevokeStreamSession(ctx context.Context, sessionID id.ID, now ti
 
 // ActiveStreamSessions telt wat er nu open staat. Voor tests en voor de
 // foutdetails bij een geweigerde negende.
-func (s *Store) ActiveStreamSessions(ctx context.Context, subject string, now time.Time) (int, error) {
+func (s *Store) ActiveStreamSessions(ctx context.Context, subject id.ID, now time.Time) (int, error) {
 	var n int
 	err := s.pool.QueryRow(ctx,
 		`SELECT count(*) FROM stream_sessions WHERE subject = $1 AND revoked_at IS NULL AND expires_at > $2`,

@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -14,8 +15,31 @@ import (
 )
 
 // maxBodyBytes begrenst een aanvraagbody. De grootste die dit protocol kent is
-// een setupverzoek met drie korte velden.
+// een setupverzoek met drie korte velden, plus sinds PS-9 optioneel device_id
+// en device_name.
 const maxBodyBytes = 8 << 10
+
+// unknownDeviceName is de vaste plaatshouder voor een sessie zonder bekend
+// toestel (DEC-069): geen capability, of een client die niets stuurt.
+const unknownDeviceName = "Unknown device"
+
+// deviceID geeft nil wanneer de client geen toestel-id meestuurde.
+func deviceID(v string) *string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return nil
+	}
+	return &v
+}
+
+// deviceName vult de vaste plaatshouder in wanneer de client niets stuurde.
+func deviceName(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return unknownDeviceName
+	}
+	return v
+}
 
 func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 	setupRequired, err := s.opts.Auth.SetupRequired(r.Context())
@@ -48,6 +72,10 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			LiveTV:              false,
 			Realtime:            false,
 			Users:               false,
+			// Sessions: het schema en de tokenketen bestaan vanaf PS-9-stap 2,
+			// maar GET/DELETE /sessions en POST /auth/logout komen pas in een
+			// latere stap. Zie de vlag zelf in wire.go.
+			Sessions: false,
 		},
 		Auth: InfoAuth{
 			Methods:       []string{"password"},
@@ -66,9 +94,11 @@ func (s *Server) handleServer(w http.ResponseWriter, _ *http.Request) {
 }
 
 type setupRequest struct {
-	SetupCode string `json:"setup_code"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
+	SetupCode  string `json:"setup_code"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	DeviceID   string `json:"device_id"`
+	DeviceName string `json:"device_name"`
 }
 
 func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
@@ -110,22 +140,36 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.limiter.reset("setup")
-	s.issueTokens(w, r)
-}
-
-type loginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
-	if !s.rateLimit(w, "login") {
+	ownerID, err := s.opts.Auth.OwnerUserID(r.Context())
+	if err != nil {
+		writeInternal(w, s.log, err)
 		return
 	}
 
+	s.limiter.reset("setup")
+	s.issueTokens(w, r, ownerID, deviceID(req.DeviceID), deviceName(req.DeviceName))
+}
+
+type loginRequest struct {
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	DeviceID   string `json:"device_id"`
+	DeviceName string `json:"device_name"`
+}
+
+func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var req loginRequest
 	if !s.decodeBody(w, r, &req, CodeInvalidCredentials) {
+		return
+	}
+
+	// Sleutel per gebruikersnaam (DEC-069-aangrenzend): met meerdere
+	// gebruikers zou een gedeelde "login"-sleutel betekenen dat iemand die
+	// zijn eigen wachtwoord vijf keer verkeerd typt de login van een
+	// huisgenoot blokkeert. De gebruikersnaam hoeft hier niet te bestaan; de
+	// sleutel is een emmer, geen claim.
+	limiterKey := "login:" + req.Username
+	if !s.rateLimit(w, limiterKey) {
 		return
 	}
 
@@ -161,8 +205,14 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.limiter.reset("login")
-	s.issueTokens(w, r)
+	ownerID, err := s.opts.Auth.OwnerUserID(r.Context())
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	s.limiter.reset(limiterKey)
+	s.issueTokens(w, r, ownerID, deviceID(req.DeviceID), deviceName(req.DeviceName))
 }
 
 type refreshRequest struct {
@@ -186,7 +236,7 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := s.now().UTC()
-	outcome, err := s.opts.Auth.RotateRefreshToken(r.Context(),
+	outcome, sid, subjectID, err := s.opts.Auth.RotateRefreshToken(r.Context(),
 		auth.HashOpaque(req.RefreshToken), newHash, now.Add(s.opts.RefreshTokenTTL), now,
 		s.opts.RefreshGraceWindow)
 	if err != nil {
@@ -201,17 +251,21 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		// zijn.
 		s.log.Info("rotatie-antwoord verloren; herhaling binnen het respijt bediend")
 	case auth.RefreshReused:
-		// De hele keten is nu ongeldig. Een van de twee partijen die dit token
-		// draagt is de aanvaller, en welke dat is valt niet vast te stellen.
-		s.log.Warn("refreshtoken hergebruikt; alle tokens ingetrokken")
+		// De hele keten van DEZE sessie is nu ongeldig (DEC-069, sessie-scoped
+		// sinds PS-9). Een van de twee partijen die dit token droeg is de
+		// aanvaller, en welke dat is valt niet vast te stellen.
+		s.log.Warn("refreshtoken hergebruikt; de tokens van deze sessie zijn ingetrokken")
 		writeError(w, s.log, CodeRefreshTokenReused, "refresh token reused", nil)
+		return
+	case auth.RefreshSessionRevoked:
+		writeError(w, s.log, CodeTokenInvalid, "session revoked", nil)
 		return
 	case auth.RefreshExpired, auth.RefreshUnknown:
 		writeError(w, s.log, CodeTokenInvalid, "refresh token invalid", nil)
 		return
 	}
 
-	access, claims, err := s.opts.Signer.Mint(SubjectOwner, auth.TokenAccess, s.opts.AccessTokenTTL, "")
+	access, claims, err := s.opts.Signer.Mint(subjectID.String(), sid.String(), auth.TokenAccess, s.opts.AccessTokenTTL, "")
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
@@ -249,7 +303,13 @@ func (s *Server) handleStreamToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, claims, err := s.opts.Signer.Mint(SubjectOwner, auth.TokenStream, s.opts.StreamTokenTTL, versionID.String())
+	sid, ownerID, err := s.currentSessionSubject(r)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	token, claims, err := s.opts.Signer.Mint(ownerID.String(), sid.String(), auth.TokenStream, s.opts.StreamTokenTTL, versionID.String())
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
@@ -291,11 +351,17 @@ func (s *Server) handleStreamSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sid, ownerID, err := s.currentSessionSubject(r)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+
 	now := s.now().UTC()
-	session, err := s.opts.Auth.CreateStreamSession(r.Context(), SubjectOwner, versionID, s.opts.StreamSessionTTL, now)
+	session, err := s.opts.Auth.CreateStreamSession(r.Context(), ownerID, sid, versionID, s.opts.StreamSessionTTL, now)
 	if err != nil {
 		if errors.Is(err, auth.ErrStreamSessionLimit) {
-			active, _ := s.opts.Auth.ActiveStreamSessions(r.Context(), SubjectOwner, now)
+			active, _ := s.opts.Auth.ActiveStreamSessions(r.Context(), ownerID, now)
 			writeError(w, s.log, CodeStreamSessionLimit, "too many active stream sessions",
 				map[string]any{"active": active, "limit": auth.MaxActiveStreamSessions})
 			return
@@ -327,9 +393,18 @@ func (s *Server) handleStreamSession(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// issueTokens geeft een vers paar uit na setup of login.
-func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request) {
-	access, claims, err := s.opts.Signer.Mint(SubjectOwner, auth.TokenAccess, s.opts.AccessTokenTTL, "")
+// issueTokens opent een sessie en geeft een vers paar uit na setup of login
+// (DEC-069). deviceID is nil zonder capability of zonder een toestel-id van de
+// client; deviceName draagt in dat geval al de vaste plaatshouder.
+func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID id.ID, deviceID *string, deviceName string) {
+	now := s.now().UTC()
+	sessionID, err := s.opts.Auth.CreateSession(r.Context(), userID, deviceID, deviceName, now)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	access, claims, err := s.opts.Signer.Mint(userID.String(), sessionID.String(), auth.TokenAccess, s.opts.AccessTokenTTL, "")
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
@@ -340,7 +415,7 @@ func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request) {
 		writeInternal(w, s.log, err)
 		return
 	}
-	if err := s.opts.Auth.StoreRefreshToken(r.Context(), hash, s.now().UTC().Add(s.opts.RefreshTokenTTL)); err != nil {
+	if err := s.opts.Auth.StoreRefreshToken(r.Context(), hash, sessionID, now.Add(s.opts.RefreshTokenTTL)); err != nil {
 		writeInternal(w, s.log, err)
 		return
 	}
@@ -351,6 +426,30 @@ func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request) {
 		TokenType:    "bearer",
 		ExpiresInMs:  (claims.ExpiresAt - claims.IssuedAt) * 1000,
 	})
+}
+
+// currentSessionSubject lost sid en subject op voor een aanvraag die al
+// authenticated() doorliep.
+//
+// sid komt uit de Claims van het eigen accesstoken van deze aanvraag: die zet
+// authenticated() in de context, dus dit is al de sid die stap 3 verder laat
+// doorstromen. Het subject blijft tijdelijk de owner (SubjectOwner-commentaar
+// in server.go legt uit waarom): er bestaat nog geen tweede gebruiker om mee
+// te verwarren, dus dat is vandaag geen aanname maar een feit.
+func (s *Server) currentSessionSubject(r *http.Request) (sid id.ID, owner id.ID, err error) {
+	claims, ok := claimsFromContext(r.Context())
+	if !ok {
+		return id.Nil, id.Nil, errors.New("geen claims in context; authenticated() ontbreekt")
+	}
+	sid, err = id.Parse(claims.Sid)
+	if err != nil {
+		return id.Nil, id.Nil, fmt.Errorf("sid in claims is geen geldig id: %w", err)
+	}
+	owner, err = s.opts.Auth.OwnerUserID(r.Context())
+	if err != nil {
+		return id.Nil, id.Nil, err
+	}
+	return sid, owner, nil
 }
 
 func (s *Server) rateLimit(w http.ResponseWriter, key string) bool {

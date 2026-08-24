@@ -6,7 +6,7 @@ regel in deze map wijzigt.
 
 De werkregels per fase staan in de sectie Pleya Server van [../CLAUDE.md](../CLAUDE.md) en gelden
 onverkort: lees hoofdstuk 23 plus je eigen fase, blijf binnen de Phase ID, bouw niets uit een latere
-fase vooruit, en schrijf geen latere productvereiste weg. **De huidige fase is PS-4.**
+fase vooruit, en schrijf geen latere productvereiste weg. **De huidige fase is PS-9.**
 
 `internal/web/` hoort niet bij deze fase maar bij PS-3W, een aparte afwijking met een eigen voorstel in
 [../docs/pleya-server-ps3w-proposal.md](../docs/pleya-server-ps3w-proposal.md).
@@ -74,11 +74,15 @@ internal/testsupport/  wegwerpschema en mediabestanden voor tests
 
 ## Regels die je stil kunt breken
 
-**Het wire-contract ligt vast.** `../docs/pleya-protocol/v1/openapi.yaml` is bevroren zolang PS-4
-loopt. Het venster stond één keer open, bij het sluiten van PS-3, voor de drie poortbesluiten
-(DEC-049, DEC-050, DEC-051). Een probleem daarin is een protocolwijziging langs de zes
-compatibiliteitsregels uit hoofdstuk 3 van de specificatie, en niet een aanpassing in de YAML omdat
-het zo uitkomt.
+**Het wire-contract ligt vast.** `../docs/pleya-protocol/v1/openapi.yaml` is bevroren zolang de
+lopende fase loopt, niet aan een vast fasenummer gehangen (DEC-068): een anker op een specifiek
+nummer veroudert stilzwijgend zodra die fase een opengelaten voorganger heeft. Het venster ging twee
+keer eerder open: bij het sluiten van PS-3, voor de drie poortbesluiten (DEC-049, DEC-050, DEC-051),
+en voor PS-9, voor precies de zeven wijzigingen uit DEC-068 (gebruikers-, sessie- en
+logout-endpoints, `device_id`/`device_name`, `capabilities.sessions`, nieuwe foutcodes). Dat venster
+is na stap 1 van de PS-9-implementatievolgorde alweer gesloten. Een probleem daarin is een
+protocolwijziging langs de zes compatibiliteitsregels uit hoofdstuk 3 van de specificatie, en niet een
+aanpassing in de YAML omdat het zo uitkomt.
 
 **Wire-types leven alleen in `internal/api`.** Domeintype en wire-type zijn twee dingen met een
 expliciete mapper ertussen (hoofdstuk 12.1). De foutcode is het contract; het bericht is voor logs en
@@ -103,11 +107,21 @@ bestanden niet, en RFC 9110 §8.8.1 vraagt strict revision control of een hash o
 `If-Range` levert daarom altijd `200`. Schrijf nergens code die op een gelijke validator vertrouwt om
 bytes aan elkaar te plakken.
 
-**Tabellen uit latere fasen bestaan niet.** Geen `users`, `sessions`, `play_history`,
-`play_sessions`, `user_item_data`, `external_ids`, `metadata_candidates` of `transcode_sessions`.
-`watch_states` en `stream_sessions` staan er sinds PS-4 wél. De lijst in hoofdstuk 17.2 beschrijft
-het hele v1-product en niet deze fase; `verify-local.sh` en `internal/migrate/migrate_test.go`
-controleren allebei welke tabellen er staan.
+**Tabellen uit latere fasen bestaan niet.** Geen `play_history`, `play_sessions`, `user_item_data`,
+`external_ids`, `metadata_candidates` of `transcode_sessions`. `watch_states` en `stream_sessions`
+staan er sinds PS-4; `users`, `sessions` en `library_permissions` sinds migratie 0007 (PS-9, DEC-065
+en DEC-069). De lijst in hoofdstuk 17.2 (die van het protocol; het schema staat in hoofdstuk 16 en
+17 van [de specificatie](../docs/pleya-protocol-v1.md)) beschrijft het hele v1-product en niet deze
+fase; `verify-local.sh` en `internal/migrate/migrate_test.go` controleren allebei welke tabellen er
+staan.
+
+**`watch_states.subject` en `stream_sessions.subject` zijn sinds migratie 0007 `uuid` met een FK naar
+`users(id)`.** De vaste string `"owner"` (`api.SubjectOwner`) is daar niet meer geldig voor;
+`auth.Store.OwnerUserID(ctx)` lost het subject nu dynamisch op, want de owner krijgt sinds PS-9 een
+echte, per installatie verschillende `users.id` (vóór een migratie via `gen_random_uuid()`, bij een
+verse setup via `id.New()`). `handlers_watch.go` is de laatste plek die `SubjectOwner` nog rechtstreeks
+gebruikt; dat is een bewust tussenstadium binnen de PS-9-implementatievolgorde (Claims.Subject nog
+niet door de context laten stromen) en geen vergeten call-site.
 
 **Migraties gaan alleen vooruit.** Genummerd in `internal/migrate/sql/`, uitgevoerd bij het opstarten
 onder een advisory lock, met een checksum per toegepaste migratie. De binary weigert te starten op een

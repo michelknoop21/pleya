@@ -16,12 +16,14 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/web"
 )
 
-// SubjectOwner is de enige identiteit die vóór PS-9 bestaat.
+// SubjectOwner was de enige identiteit die vóór PS-9 bestond.
 //
-// Op de lijn heet hij subject: een ondoorzichtige string die in het accesstoken
-// zit en die de client nooit hoeft te lezen. Zodra PS-9 echte gebruikers
-// introduceert wijst hij naar een rij in plaats van naar de enige identiteit, en
-// aan de specificatie verandert er niets.
+// Sinds migratie 0007 is watch_states.subject een echte FK naar users(id)
+// (DEC-065) en accepteert hij deze string niet meer. handlers_watch.go is de
+// laatste plek die hem nog gebruikt: dat is bewust zo, en het is precies het
+// werk van de volgende PS-9-stap (Claims.Subject door de context laten
+// stromen, DEC-069) om ook die drie call-sites te vervangen. Elders in dit
+// pakket is hij al vervangen door auth.Store.OwnerUserID.
 const SubjectOwner = "owner"
 
 // Options bundelt wat de HTTP-laag nodig heeft.
@@ -160,6 +162,21 @@ func (s *Server) handleReadyz(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 }
 
+// claimsContextKey draagt de geverifieerde Claims van de huidige aanvraag.
+type claimsContextKey struct{}
+
+// withClaims zet de claims van een geverifieerd accesstoken in de context.
+func withClaims(ctx context.Context, claims auth.Claims) context.Context {
+	return context.WithValue(ctx, claimsContextKey{}, claims)
+}
+
+// claimsFromContext leest ze terug. Elke handler achter authenticated() kan
+// hiervan uitgaan: de middleware zet ze altijd voordat next wordt aangeroepen.
+func claimsFromContext(ctx context.Context) (auth.Claims, bool) {
+	claims, ok := ctx.Value(claimsContextKey{}).(auth.Claims)
+	return claims, ok
+}
+
 // authenticated eist een geldig accesstoken in de Authorization-header.
 func (s *Server) authenticated(next http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -168,11 +185,12 @@ func (s *Server) authenticated(next http.HandlerFunc) http.Handler {
 			writeError(w, s.log, CodeTokenInvalid, "no bearer token", nil)
 			return
 		}
-		if _, err := s.opts.Signer.Verify(token, auth.TokenAccess); err != nil {
+		claims, err := s.opts.Signer.Verify(token, auth.TokenAccess)
+		if err != nil {
 			s.writeTokenError(w, err)
 			return
 		}
-		next(w, r)
+		next(w, r.WithContext(withClaims(r.Context(), claims)))
 	})
 }
 
@@ -248,7 +266,12 @@ func (s *Server) streamSessionScope(w http.ResponseWriter, r *http.Request, rawS
 	}
 
 	now := s.now().UTC()
-	if err := s.opts.Auth.VerifyStreamSession(r.Context(), sessionID, cookie.Value, SubjectOwner, versionID, now); err != nil {
+	ownerID, err := s.opts.Auth.OwnerUserID(r.Context())
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return nil, false
+	}
+	if err := s.opts.Auth.VerifyStreamSession(r.Context(), sessionID, cookie.Value, ownerID, versionID, now); err != nil {
 		if errors.Is(err, auth.ErrStreamSessionInvalid) {
 			writeError(w, s.log, CodeTokenInvalid, "stream session is invalid", nil)
 			return nil, false
