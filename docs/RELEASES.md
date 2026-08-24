@@ -31,6 +31,8 @@ under `Notes`.
 - Nederlands compleet tegen Engels, met een test die dat afdwingt
 - cloudflared blijvend op het netwerk van de Pleya Server
 - verify-local.sh's drift check kende PS-9's eigen tabellen niet
+- schema.d.ts liep achter op de PS-9-protocoltoevoegingen
+- continue_watching en next_up leverden onvoorwaardelijk niets
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 242 · 23 August 2026
