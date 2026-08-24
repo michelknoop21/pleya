@@ -190,16 +190,16 @@ type UserState struct {
 // toestand bestaat nog niet) en weglaten betekent "geen claim", en die twee
 // mogen niet samenvallen.
 type WatchStateEvent struct {
-	ItemID       string  `json:"item_id"`
-	SessionID    string  `json:"session_id"`
-	PositionMs   int64   `json:"position_ms"`
-	DurationMs   *int64  `json:"duration_ms"`
-	OccurredAt   string  `json:"occurred_at"`
-	Completed    bool    `json:"completed"`
-	Action       string  `json:"explicit_action"`
-	Cause        string  `json:"cause"`
-	BaseRevision *int64  `json:"base_revision"`
-	Backlog      bool    `json:"backlog"`
+	ItemID       string `json:"item_id"`
+	SessionID    string `json:"session_id"`
+	PositionMs   int64  `json:"position_ms"`
+	DurationMs   *int64 `json:"duration_ms"`
+	OccurredAt   string `json:"occurred_at"`
+	Completed    bool   `json:"completed"`
+	Action       string `json:"explicit_action"`
+	Cause        string `json:"cause"`
+	BaseRevision *int64 `json:"base_revision"`
+	Backlog      bool   `json:"backlog"`
 }
 
 // WatchStateEntry is één regel in de lijst van GET /watch-state.
