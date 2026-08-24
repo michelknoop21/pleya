@@ -18,6 +18,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
+	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
@@ -61,6 +62,7 @@ type env struct {
 	cap     *capture
 	libs    []catalog.Library
 	argon2  auth.Argon2Params
+	signer  *auth.Signer
 }
 
 func newEnv(t *testing.T) *env {
@@ -134,7 +136,7 @@ func newEnv(t *testing.T) *env {
 	})
 
 	return &env{t: t, server: srv, store: store, auth: authStore, watch: watchStore, pool: pool,
-		root: root, libs: libs, cap: shared, argon2: light}
+		root: root, libs: libs, cap: shared, argon2: light, signer: signer}
 }
 
 // scanAll draait één volledige scanronde over elke bibliotheek.
@@ -202,6 +204,77 @@ func (e *env) expireStreamSession(sessionID string) {
 		sessionID); err != nil {
 		e.t.Fatalf("sessie laten verlopen: %v", err)
 	}
+}
+
+// createUser legt rechtstreeks een gebruiker vast, buiten het protocol om: er
+// bestaat nog geen aanmaakendpoint (capabilities.users is false), en AC2 vraagt
+// om echte users- en library_permissions-rijen in de fixture, geen
+// hardgecodeerd owner-subject.
+func (e *env) createUser(role, username string) id.ID {
+	e.t.Helper()
+	uid := id.New()
+	hash, err := auth.HashPassword("een-lang-genoeg-wachtwoord", e.argon2)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	if _, err := e.pool.Exec(context.Background(), `
+		INSERT INTO users (id, username, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, now(), now())`, uid, username, hash, role); err != nil {
+		e.t.Fatalf("gebruiker %s aanmaken: %v", username, err)
+	}
+	return uid
+}
+
+// grantLibrary legt een library_permissions-rij vast.
+func (e *env) grantLibrary(userID, libraryID id.ID, permission string) {
+	e.t.Helper()
+	if _, err := e.pool.Exec(context.Background(), `
+		INSERT INTO library_permissions (user_id, library_id, permission) VALUES ($1, $2, $3)`,
+		userID, libraryID, permission); err != nil {
+		e.t.Fatalf("bibliotheekrecht toekennen: %v", err)
+	}
+}
+
+// revokeLibrary trekt een eerder toegekend recht in, rechtstreeks op de tabel:
+// er bestaat nog geen endpoint om een library_permissions-rij te verwijderen
+// (dat is DEC-067, niet deze fase). Voor het bewijs dat een streamtoken of
+// -sessie het recht op het aanvraagpad toetst en niet alleen bij het minten
+// (DEC-072, hoofdstuk 16.4 regel 9), moet een test het recht na het minten
+// weg kunnen halen.
+func (e *env) revokeLibrary(userID, libraryID id.ID) {
+	e.t.Helper()
+	if _, err := e.pool.Exec(context.Background(),
+		`DELETE FROM library_permissions WHERE user_id = $1 AND library_id = $2`,
+		userID, libraryID); err != nil {
+		e.t.Fatalf("bibliotheekrecht intrekken: %v", err)
+	}
+}
+
+// tokenFor mint rechtstreeks een accesstoken voor userID, buiten login om: de
+// autorisatiematrix test de bibliotheekcontrole en niet de inlogstroom.
+//
+// De sid draagt een echte sessions-rij en geen losse uuid: stream-session
+// (stream_sessions.session_id) heeft een FK naar sessions(id), dus een
+// verzonnen sid laat elke POST /auth/stream-session voor deze gebruiker op een
+// foreign-key-violation stuklopen in plaats van op de rechtencontrole die de
+// test wil bewijzen.
+func (e *env) tokenFor(userID id.ID) string {
+	e.t.Helper()
+	sessionID, err := e.auth.CreateSession(context.Background(), userID, nil, "test device", time.Now().UTC())
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	access, _, err := e.signer.Mint(userID.String(), sessionID.String(), auth.TokenAccess, 15*time.Minute, "")
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	return access
+}
+
+// asUser overschrijft de Authorization-header van deze ene aanvraag, voor een
+// verzoek namens een andere gebruiker dan e.access.
+func asUser(token string) func(*http.Request) {
+	return func(r *http.Request) { r.Header.Set("Authorization", "Bearer "+token) }
 }
 
 // shared is één opvangpunt voor alle tests in dit pakket.

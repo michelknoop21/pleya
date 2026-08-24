@@ -12,22 +12,6 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/watch"
 )
 
-// watchSubject leest het subject van de kijkstatus uit de claims van de eigen
-// aanvraag.
-//
-// authenticated() zet ze altijd voordat een handler achter deze routes wordt
-// aangeroepen, dus het ontbreken ervan is een programmeerfout en geen
-// clientfout. claims.Subject is de echte, per gebruiker verschillende
-// users.id die login/setup/refresh minten (stap 2); dit vervangt de laatste
-// drie call-sites van de vaste string SubjectOwner (stap 3).
-func watchSubject(r *http.Request) (string, error) {
-	claims, ok := claimsFromContext(r.Context())
-	if !ok {
-		return "", errors.New("geen claims in context; authenticated() ontbreekt")
-	}
-	return claims.Subject, nil
-}
-
 // handleWatchStateReport neemt één gebeurtenis aan.
 //
 // Het antwoord is ALTIJD de actuele toestand, ook wanneer de server het event
@@ -68,6 +52,30 @@ func (s *Server) handleWatchStateReport(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	userID, err := s.subjectID(r)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	// DEC-072 regel 12: het item bestaat voor deze aanvrager niet zonder view op
+	// zijn bibliotheek, en een niet-bestaand item geeft dezelfde 404 als een
+	// bestaand item in een verboden bibliotheek (authorizeLibraryFor). Dit staat
+	// vóór Apply en niet erna: watch.Store kent geen bibliotheekrechten, alleen
+	// subjects en items.
+	libraryID, err := s.opts.Catalog.ItemLibrary(r.Context(), itemID)
+	if err != nil {
+		if errors.Is(err, catalog.ErrNotFound) {
+			writeError(w, s.log, CodeNotFound, "not found", nil)
+			return
+		}
+		writeInternal(w, s.log, err)
+		return
+	}
+	if !s.authorizeLibraryFor(w, r, userID, libraryID) {
+		return
+	}
+
 	ev := watch.Event{
 		SessionID:    req.SessionID,
 		PositionMs:   req.PositionMs,
@@ -79,11 +87,7 @@ func (s *Server) handleWatchStateReport(w http.ResponseWriter, r *http.Request) 
 		Backlog:      req.Backlog,
 	}
 
-	subject, err := watchSubject(r)
-	if err != nil {
-		writeInternal(w, s.log, err)
-		return
-	}
+	subject := userID.String()
 
 	outcome, err := s.opts.Watch.Apply(r.Context(), subject, itemID, ev, s.now().UTC(), s.opts.WatchLease)
 	if err != nil {
@@ -135,14 +139,25 @@ func (s *Server) handleWatchStateList(w http.ResponseWriter, r *http.Request) {
 		since = &parsed
 	}
 
-	subject, err := watchSubject(r)
+	userID, err := s.subjectID(r)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+	subject := userID.String()
+
+	// DEC-072 regel 13: kijkstatus blijft bestaan na een ingetrokken
+	// bibliotheekrecht, maar wordt onzichtbaar. De filter staat hier in de
+	// query en niet als naloop in Go, anders zou pagineren op een grotere
+	// verborgen verzameling gaten en verkeerde cursors opleveren.
+	visibleLibraryIDs, err := s.opts.Catalog.VisibleLibraries(r.Context(), userID)
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
 	}
 
 	page, err := s.opts.Watch.List(r.Context(), subject, since, limit,
-		strings.TrimSpace(r.URL.Query().Get("cursor")))
+		strings.TrimSpace(r.URL.Query().Get("cursor")), visibleLibraryIDs)
 	if err != nil {
 		if errors.Is(err, watch.ErrCursorInvalid) {
 			writeError(w, s.log, CodeCursorInvalid, "cursor is invalid", nil)
@@ -241,13 +256,13 @@ func (s *Server) hydrateItems(r *http.Request, items []Item) {
 		ids = append(ids, parsed)
 	}
 
-	subject, err := watchSubject(r)
+	userID, err := s.subjectID(r)
 	if err != nil {
 		s.log.Warn("kijkstatus bij items ophalen mislukt", slog.String("error", err.Error()))
 		return
 	}
 
-	states, err := s.opts.Watch.ForItems(r.Context(), subject, ids)
+	states, err := s.opts.Watch.ForItems(r.Context(), userID.String(), ids)
 	if err != nil {
 		s.log.Warn("kijkstatus bij items ophalen mislukt", slog.String("error", err.Error()))
 		return

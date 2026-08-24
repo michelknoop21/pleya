@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -15,16 +16,6 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/watch"
 	"github.com/edde746/plezy/pleya_server/internal/web"
 )
-
-// SubjectOwner was de enige identiteit die vóór PS-9 bestond.
-//
-// Sinds migratie 0007 is watch_states.subject een echte FK naar users(id)
-// (DEC-065) en accepteert hij deze string niet meer. handlers_watch.go is de
-// laatste plek die hem nog gebruikt: dat is bewust zo, en het is precies het
-// werk van de volgende PS-9-stap (Claims.Subject door de context laten
-// stromen, DEC-069) om ook die drie call-sites te vervangen. Elders in dit
-// pakket is hij al vervangen door auth.Store.OwnerUserID.
-const SubjectOwner = "owner"
 
 // Options bundelt wat de HTTP-laag nodig heeft.
 type Options struct {
@@ -202,11 +193,15 @@ func (s *Server) authenticated(next http.HandlerFunc) http.Handler {
 func (s *Server) streamAuthorized(next func(w http.ResponseWriter, r *http.Request, versionScope *id.ID)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if token, ok := bearerToken(r); ok {
-			if _, err := s.opts.Signer.Verify(token, auth.TokenAccess); err != nil {
+			claims, err := s.opts.Signer.Verify(token, auth.TokenAccess)
+			if err != nil {
 				s.writeTokenError(w, err)
 				return
 			}
-			next(w, r, nil)
+			// De claims moeten de context in: bij een gewoon accesstoken (geen
+			// versionScope) leest handleStream/handleSubtitle ze voor de
+			// bibliotheekcontrole van AC2 (PS-9).
+			next(w, r.WithContext(withClaims(r.Context(), claims)), nil)
 			return
 		}
 
@@ -232,6 +227,18 @@ func (s *Server) streamAuthorized(next func(w http.ResponseWriter, r *http.Reque
 		scope, err := id.Parse(claims.Resource)
 		if err != nil {
 			writeError(w, s.log, CodeTokenInvalid, "stream token carries no resource", nil)
+			return
+		}
+		subject, err := id.Parse(claims.Subject)
+		if err != nil {
+			writeInternal(w, s.log, fmt.Errorf("subject in streamtoken is geen geldig id: %w", err))
+			return
+		}
+		// Aanvraagpad, niet alleen mint-moment (DEC-072, hoofdstuk 16.4 regel 8
+		// en 9): een streamtoken leeft tot vijf minuten zelfstandig na het
+		// minten, dus een ingetrokken bibliotheekrecht moet hier meteen gelden
+		// en niet pas wanneer het token vanzelf verloopt.
+		if !s.authorizeVersionFor(w, r, subject, scope) {
 			return
 		}
 		next(w, r, &scope)
@@ -266,17 +273,22 @@ func (s *Server) streamSessionScope(w http.ResponseWriter, r *http.Request, rawS
 	}
 
 	now := s.now().UTC()
-	ownerID, err := s.opts.Auth.OwnerUserID(r.Context())
+	subject, err := s.opts.Auth.VerifyStreamSession(r.Context(), sessionID, cookie.Value, versionID, now)
 	if err != nil {
-		writeInternal(w, s.log, err)
-		return nil, false
-	}
-	if err := s.opts.Auth.VerifyStreamSession(r.Context(), sessionID, cookie.Value, ownerID, versionID, now); err != nil {
 		if errors.Is(err, auth.ErrStreamSessionInvalid) {
 			writeError(w, s.log, CodeTokenInvalid, "stream session is invalid", nil)
 			return nil, false
 		}
 		writeInternal(w, s.log, err)
+		return nil, false
+	}
+
+	// Aanvraagpad, niet alleen mint-moment (DEC-072, hoofdstuk 16.4 regel 9):
+	// het geheim en de versie kloppen, maar dat bewijst niet dat subject nog
+	// recht heeft op de bibliotheek erachter. Een streamsessie leeft tot 30
+	// minuten zelfstandig na het minten, dus een ingetrokken recht moet hier
+	// meteen gelden.
+	if !s.authorizeVersionFor(w, r, subject, versionID) {
 		return nil, false
 	}
 

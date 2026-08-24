@@ -229,7 +229,7 @@ func TestListPagesAndFilters(t *testing.T) {
 		}
 	}
 
-	page, err := store.List(ctx, subject, nil, 2, "")
+	page, err := store.List(ctx, subject, nil, 2, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestListPagesAndFilters(t *testing.T) {
 		t.Fatal("de lijst staat niet op updated_at aflopend")
 	}
 
-	second, err := store.List(ctx, subject, nil, 2, page.NextCursor)
+	second, err := store.List(ctx, subject, nil, 2, page.NextCursor, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +260,7 @@ func TestListPagesAndFilters(t *testing.T) {
 	}
 
 	since := when.Add(30 * time.Second)
-	filtered, err := store.List(ctx, subject, &since, 10, "")
+	filtered, err := store.List(ctx, subject, &since, 10, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,7 +268,7 @@ func TestListPagesAndFilters(t *testing.T) {
 		t.Fatalf("updated_since leverde %d regels, wil 2", len(filtered.Entries))
 	}
 
-	if _, err := store.List(ctx, subject, nil, 10, "geen-geldige-cursor"); err != watch.ErrCursorInvalid {
+	if _, err := store.List(ctx, subject, nil, 10, "geen-geldige-cursor", nil); err != watch.ErrCursorInvalid {
 		t.Fatalf("een kapotte cursor gaf %v", err)
 	}
 }
@@ -332,7 +332,7 @@ func TestSubjectsAreIsolated(t *testing.T) {
 		t.Fatalf("tweede subject: %+v", gotSecond)
 	}
 
-	firstList, err := store.List(ctx, first, nil, 10, "")
+	firstList, err := store.List(ctx, first, nil, 10, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/auth"
-	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
@@ -294,22 +293,17 @@ func (s *Server) handleStreamToken(w http.ResponseWriter, r *http.Request) {
 		writeError(w, s.log, CodeNotFound, "version not found", nil)
 		return
 	}
-	if err := s.opts.Catalog.VersionExists(r.Context(), versionID); err != nil {
-		if errors.Is(err, catalog.ErrNotFound) {
-			writeError(w, s.log, CodeNotFound, "version not found", nil)
-			return
-		}
-		writeInternal(w, s.log, err)
+	if !s.authorizeVersion(w, r, versionID) {
 		return
 	}
 
-	sid, ownerID, err := s.currentSessionSubject(r)
+	sid, subject, err := s.currentSessionSubject(r)
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
 	}
 
-	token, claims, err := s.opts.Signer.Mint(ownerID.String(), sid.String(), auth.TokenStream, s.opts.StreamTokenTTL, versionID.String())
+	token, claims, err := s.opts.Signer.Mint(subject.String(), sid.String(), auth.TokenStream, s.opts.StreamTokenTTL, versionID.String())
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
@@ -342,26 +336,21 @@ func (s *Server) handleStreamSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, s.log, CodeNotFound, "version not found", nil)
 		return
 	}
-	if err := s.opts.Catalog.VersionExists(r.Context(), versionID); err != nil {
-		if errors.Is(err, catalog.ErrNotFound) {
-			writeError(w, s.log, CodeNotFound, "version not found", nil)
-			return
-		}
-		writeInternal(w, s.log, err)
+	if !s.authorizeVersion(w, r, versionID) {
 		return
 	}
 
-	sid, ownerID, err := s.currentSessionSubject(r)
+	sid, subject, err := s.currentSessionSubject(r)
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
 	}
 
 	now := s.now().UTC()
-	session, err := s.opts.Auth.CreateStreamSession(r.Context(), ownerID, sid, versionID, s.opts.StreamSessionTTL, now)
+	session, err := s.opts.Auth.CreateStreamSession(r.Context(), subject, sid, versionID, s.opts.StreamSessionTTL, now)
 	if err != nil {
 		if errors.Is(err, auth.ErrStreamSessionLimit) {
-			active, _ := s.opts.Auth.ActiveStreamSessions(r.Context(), ownerID, now)
+			active, _ := s.opts.Auth.ActiveStreamSessions(r.Context(), subject, now)
 			writeError(w, s.log, CodeStreamSessionLimit, "too many active stream sessions",
 				map[string]any{"active": active, "limit": auth.MaxActiveStreamSessions})
 			return
@@ -431,12 +420,13 @@ func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID id.I
 // currentSessionSubject lost sid en subject op voor een aanvraag die al
 // authenticated() doorliep.
 //
-// sid komt uit de Claims van het eigen accesstoken van deze aanvraag: die zet
-// authenticated() in de context, dus dit is al de sid die stap 3 verder laat
-// doorstromen. Het subject blijft tijdelijk de owner (SubjectOwner-commentaar
-// in server.go legt uit waarom): er bestaat nog geen tweede gebruiker om mee
-// te verwarren, dus dat is vandaag geen aanname maar een feit.
-func (s *Server) currentSessionSubject(r *http.Request) (sid id.ID, owner id.ID, err error) {
+// Allebei komen uit de Claims van het eigen accesstoken van deze aanvraag: die
+// zet authenticated() in de context. Vóór AC2 (PS-9) loste dit subject nog via
+// auth.Store.OwnerUserID op, wat correct was zolang er geen tweede gebruiker
+// bestond om mee te verwarren; met een echte member/restricted-gebruiker zou
+// dat het streamtoken of de streamsessie altijd op de owner binden, ongeacht
+// wie de aanvraag werkelijk deed (DEC-072, hoofdstuk 16.4 regel 10 en 11).
+func (s *Server) currentSessionSubject(r *http.Request) (sid id.ID, subject id.ID, err error) {
 	claims, ok := claimsFromContext(r.Context())
 	if !ok {
 		return id.Nil, id.Nil, errors.New("geen claims in context; authenticated() ontbreekt")
@@ -445,11 +435,11 @@ func (s *Server) currentSessionSubject(r *http.Request) (sid id.ID, owner id.ID,
 	if err != nil {
 		return id.Nil, id.Nil, fmt.Errorf("sid in claims is geen geldig id: %w", err)
 	}
-	owner, err = s.opts.Auth.OwnerUserID(r.Context())
+	subject, err = s.subjectID(r)
 	if err != nil {
 		return id.Nil, id.Nil, err
 	}
-	return sid, owner, nil
+	return sid, subject, nil
 }
 
 func (s *Server) rateLimit(w http.ResponseWriter, key string) bool {

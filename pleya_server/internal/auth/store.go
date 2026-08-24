@@ -37,6 +37,35 @@ type Owner struct {
 // ErrNoOwner betekent dat setup nog niet gedaan is.
 var ErrNoOwner = errors.New("er is nog geen eigenaar aangemaakt")
 
+// ErrUserNotFound betekent dat er geen rij in users staat met dit id.
+var ErrUserNotFound = errors.New("gebruiker bestaat niet")
+
+// Role is de waarde van users.role. Vier stuks (migratie 0007, DEC-065): owner
+// precies één, admin/member/restricted nul of meer. De ladder in
+// library_permissions (view < download < manage) is er los van: owner en
+// admin krijgen daar nooit een rij, hun toegang volgt uit de rol zelf.
+type Role string
+
+const (
+	RoleOwner      Role = "owner"
+	RoleAdmin      Role = "admin"
+	RoleMember     Role = "member"
+	RoleRestricted Role = "restricted"
+)
+
+// UserRole leest de rol van een gebruiker.
+func (s *Store) UserRole(ctx context.Context, userID id.ID) (Role, error) {
+	var role Role
+	err := s.pool.QueryRow(ctx, `SELECT role FROM users WHERE id = $1`, userID).Scan(&role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrUserNotFound
+	}
+	if err != nil {
+		return "", fmt.Errorf("rol lezen: %w", err)
+	}
+	return role, nil
+}
+
 // ErrSetupCompleted betekent dat er al een eigenaar is.
 var ErrSetupCompleted = errors.New("er is al een eigenaar")
 
@@ -152,13 +181,13 @@ func (s *Store) CompleteSetup(ctx context.Context, code, username, passwordHash 
 
 // OwnerUserID leest het users.id van de owner-rij.
 //
-// Tijdelijke overbrugging: setup, login, refresh, streamtoken en streamsessie
-// lossen hun subject hiermee op, in plaats van met de vaste "owner"-string
-// van vóór PS-9, want watch_states.subject en stream_sessions.subject zijn nu
-// een echte FK naar users(id) (DEC-065) en accepteren die string niet meer.
-// handlers_watch.go doet dat nog niet: dat is stap 3 (Claims.Subject door de
-// context laten stromen, DEC-069), waar de resterende SubjectOwner-call-sites
-// vervangen worden.
+// Setup, login en refresh lossen hun subject hiermee op, in plaats van met de
+// vaste "owner"-string van vóór PS-9, want watch_states.subject en
+// stream_sessions.subject zijn nu een echte FK naar users(id) (DEC-065) en
+// accepteren die string niet meer. Elders (handlers_watch.go, authorize.go)
+// loopt Claims.Subject inmiddels rechtstreeks door de context (DEC-069,
+// stap 3); dat gebruikt deze functie niet meer, want daar staat het
+// aanvragende subject al vast.
 func (s *Store) OwnerUserID(ctx context.Context) (id.ID, error) {
 	var uid id.ID
 	err := s.pool.QueryRow(ctx, `SELECT id FROM users WHERE role = 'owner'`).Scan(&uid)

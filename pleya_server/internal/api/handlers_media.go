@@ -36,11 +36,14 @@ func (s *Server) handleArtwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, err := s.opts.Catalog.ArtworkFile(r.Context(), artworkID)
+	file, libraryID, err := s.opts.Catalog.ArtworkFile(r.Context(), artworkID)
 	if err != nil {
 		// Een artwork-id dat de server niet heeft is een normale toestand en geen
 		// storing: in v1 levert hij uitsluitend afbeeldingen die op schijf staan.
 		s.writeStoreError(w, err)
+		return
+	}
+	if !s.authorizeLibrary(w, r, libraryID) {
 		return
 	}
 
@@ -94,16 +97,32 @@ func (s *Server) handleSubtitle(w http.ResponseWriter, r *http.Request, versionS
 		return
 	}
 
-	file, versionID, err := s.opts.Catalog.SubtitleFile(r.Context(), streamID)
+	file, versionID, libraryID, err := s.opts.Catalog.SubtitleFile(r.Context(), streamID)
 	if err != nil {
 		s.writeStoreError(w, err)
 		return
 	}
 
-	if versionScope != nil && *versionScope != versionID {
-		// Het token is smal. Een ondertitel van een andere versie valt erbuiten,
-		// en dat is een tokenfout en geen 404: het bestand bestaat wel.
-		writeError(w, s.log, CodeTokenInvalid, "stream token is for another resource", nil)
+	if versionScope != nil {
+		if *versionScope != versionID {
+			// Het token is smal: een ondertitel van een andere versie valt erbuiten.
+			// Dit was eerder een tokenfout (401), maar dat lekte bestaan: een
+			// niet-bestaand subtitle_id gaf 404 via de lookup hierboven, een
+			// bestaand-maar-verboden id gaf 401, en die twee statuscodes samen
+			// waren een oracle waarmee elke geldige streamtoken (voor om het even
+			// welke versie) het bestaan van elk subtitle_id in de hele catalogus
+			// kon aftasten, ongeacht bibliotheekrecht. DEC-072 regel 8 eist
+			// expliciet "anders 404, ook met een geldig streamtoken"; dezelfde
+			// respons als writeStoreError(catalog.ErrNotFound) hieronder maakt
+			// bestaat-niet en mag-niet weer ononderscheidbaar.
+			writeError(w, s.log, CodeNotFound, "not found", nil)
+			return
+		}
+		// Een streamtoken of -sessie is al op het aanvraagpad gecontroleerd, in
+		// streamAuthorized/streamSessionScope (DEC-072, hoofdstuk 16.4 regel 8),
+		// vóórdat deze handler draait — tegen het subject van het token of de
+		// sessie, niet alleen bij het minten.
+	} else if !s.authorizeLibrary(w, r, libraryID) {
 		return
 	}
 

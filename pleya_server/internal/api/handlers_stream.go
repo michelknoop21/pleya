@@ -49,7 +49,7 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request, versionSco
 		return
 	}
 
-	file, err := s.opts.Catalog.StreamFile(r.Context(), versionID)
+	file, libraryID, err := s.opts.Catalog.StreamFile(r.Context(), versionID)
 	if err != nil {
 		if errors.Is(err, catalog.ErrVersionMultifile) {
 			writeError(w, s.log, CodeVersionMultifile, "this version consists of more than one file",
@@ -57,6 +57,15 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request, versionSco
 			return
 		}
 		s.writeStoreError(w, err)
+		return
+	}
+	// Een streamtoken of -sessie is al op het aanvraagpad gecontroleerd, in
+	// streamAuthorized/streamSessionScope (DEC-072, hoofdstuk 16.4 regel 9):
+	// dat gebeurt vóórdat deze handler draait, tegen het subject dat bij het
+	// token of de sessie hoort, niet alleen bij het minten. Alleen het gewone
+	// accesstoken (versionScope == nil) draagt claims en vraagt hier nog om de
+	// controle.
+	if versionScope == nil && !s.authorizeLibrary(w, r, libraryID) {
 		return
 	}
 

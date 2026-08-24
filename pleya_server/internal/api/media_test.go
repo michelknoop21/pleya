@@ -209,7 +209,9 @@ func TestSubtitleWithBearerAndStreamToken(t *testing.T) {
 		t.Fatalf("ondertitel met streamtoken gaf %d: %s", withToken.Code, withToken.Body.String())
 	}
 
-	// Het token is smal: het opent één mediaresource en verder niets.
+	// Het token is smal: het opent één mediaresource en verder niets. Dat geeft
+	// hier 404 en geen 401 (tokenfout), anders lekt de statuscode zelf of het
+	// gevraagde subtitle_id bestaat: zie de toelichting bij handleSubtitle.
 	other := e.findMovie("Blade Runner")
 	otherTokenRec := e.do(http.MethodPost, "/pleya/v1/auth/stream-token",
 		map[string]string{"version_id": other.Versions[0].ID})
@@ -218,10 +220,10 @@ func TestSubtitleWithBearerAndStreamToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	wrongScope := e.do(http.MethodGet, *external.URL+"?stream_token="+otherToken.StreamToken, nil, withoutAuth)
-	if wrongScope.Code != http.StatusUnauthorized {
-		t.Fatalf("een streamtoken van een andere versie gaf %d, verwacht 401", wrongScope.Code)
+	if wrongScope.Code != http.StatusNotFound {
+		t.Fatalf("een streamtoken van een andere versie gaf %d, verwacht 404", wrongScope.Code)
 	}
-	e.expectCode(wrongScope, api.CodeTokenInvalid)
+	e.expectCode(wrongScope, api.CodeNotFound)
 
 	// En het geeft geen enkel recht op de rest van de API.
 	elsewhere := e.do(http.MethodGet, "/pleya/v1/libraries?stream_token="+token.StreamToken, nil, withoutAuth)

@@ -10,11 +10,17 @@ import (
 )
 
 func (s *Server) handleLibraries(w http.ResponseWriter, r *http.Request) {
+	allowed, ok := s.accessibleLibraryIDs(w, r)
+	if !ok {
+		return
+	}
+
 	libs, err := s.opts.Catalog.Libraries(r.Context())
 	if err != nil {
 		writeInternal(w, s.log, err)
 		return
 	}
+	libs = filterLibraries(libs, allowed)
 
 	// Een lege lijst is [] en nooit null.
 	out := LibraryList{Items: make([]Library, 0, len(libs))}
@@ -29,9 +35,31 @@ func (s *Server) handleLibraries(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// filterLibraries beperkt tot allowed. nil betekent geen beperking
+// (owner/admin, zie catalog.Store.VisibleLibraries).
+func filterLibraries(libs []catalog.Library, allowed []id.ID) []catalog.Library {
+	if allowed == nil {
+		return libs
+	}
+	set := make(map[id.ID]struct{}, len(allowed))
+	for _, a := range allowed {
+		set[a] = struct{}{}
+	}
+	out := make([]catalog.Library, 0, len(libs))
+	for _, l := range libs {
+		if _, ok := set[l.ID]; ok {
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
 func (s *Server) handleLibraryItems(w http.ResponseWriter, r *http.Request) {
 	libraryID, ok := s.pathID(w, r, "library_id")
 	if !ok {
+		return
+	}
+	if !s.authorizeLibrary(w, r, libraryID) {
 		return
 	}
 
@@ -92,6 +120,9 @@ func (s *Server) handleItem(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err)
 		return
 	}
+	if !s.authorizeLibrary(w, r, item.LibraryID) {
+		return
+	}
 	// hydrateItems werkt op een slice omdat elke andere aanroeper er een heeft;
 	// een detailscherm is de uitzondering van één.
 	single := []Item{mapItem(item)}
@@ -107,8 +138,14 @@ func (s *Server) handleChildren(w http.ResponseWriter, r *http.Request) {
 
 	// Bestaat het item niet, dan is dat een 404. Voor een film is het antwoord
 	// een lege lijst en geen fout: die heeft geen kinderen, maar hij bestaat wel.
-	if _, err := s.opts.Catalog.Item(r.Context(), itemID); err != nil {
+	// Een seizoen of aflevering deelt altijd de bibliotheek van zijn voorouder,
+	// dus de autorisatie van het item hierboven dekt de kinderen mee.
+	item, err := s.opts.Catalog.Item(r.Context(), itemID)
+	if err != nil {
 		s.writeStoreError(w, err)
+		return
+	}
+	if !s.authorizeLibrary(w, r, item.LibraryID) {
 		return
 	}
 
@@ -139,6 +176,11 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	allowed, ok := s.accessibleLibraryIDs(w, r)
+	if !ok {
+		return
+	}
+
 	// Zonder kind levert zoeken movie, show en episode. Een seizoen heet
 	// "Season 3" en draagt niets van wat iemand intypt, dus het matcht alleen op
 	// termen die toevallig in het woord Season zitten, en dan komen ze met
@@ -162,11 +204,12 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	limit, _ := queryInt(r, "limit")
 	page, err := s.opts.Catalog.Items(r.Context(), catalog.Query{
-		Search: term,
-		Kinds:  kinds,
-		Sort:   catalog.SortTitle,
-		Cursor: cursor,
-		Limit:  limit,
+		LibraryIDs: allowed,
+		Search:     term,
+		Kinds:      kinds,
+		Sort:       catalog.SortTitle,
+		Cursor:     cursor,
+		Limit:      limit,
 	})
 	if err != nil {
 		s.writeStoreError(w, err)
@@ -182,6 +225,7 @@ func (s *Server) handleHub(w http.ResponseWriter, r *http.Request) {
 	hub := r.PathValue("hub_id")
 
 	var libraryID *id.ID
+	var allowed []id.ID
 	if raw := strings.TrimSpace(r.URL.Query().Get("library_id")); raw != "" {
 		parsed, err := id.Parse(raw)
 		if err != nil {
@@ -192,7 +236,16 @@ func (s *Server) handleHub(w http.ResponseWriter, r *http.Request) {
 			s.writeStoreError(w, err)
 			return
 		}
+		if !s.authorizeLibrary(w, r, parsed) {
+			return
+		}
 		libraryID = &parsed
+	} else {
+		var ok bool
+		allowed, ok = s.accessibleLibraryIDs(w, r)
+		if !ok {
+			return
+		}
 	}
 
 	switch hub {
@@ -204,11 +257,12 @@ func (s *Server) handleHub(w http.ResponseWriter, r *http.Request) {
 		}
 		limit, _ := queryInt(r, "limit")
 		page, err := s.opts.Catalog.Items(r.Context(), catalog.Query{
-			LibraryID: libraryID,
-			Kinds:     []string{"movie", "episode"},
-			Sort:      catalog.SortAddedAtDesc,
-			Cursor:    cursor,
-			Limit:     limit,
+			LibraryID:  libraryID,
+			LibraryIDs: allowed,
+			Kinds:      []string{"movie", "episode"},
+			Sort:       catalog.SortAddedAtDesc,
+			Cursor:     cursor,
+			Limit:      limit,
 		})
 		if err != nil {
 			s.writeStoreError(w, err)
