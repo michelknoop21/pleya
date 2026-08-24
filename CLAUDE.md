@@ -71,11 +71,19 @@ PS-0-afwijking staat in `docs/pleya-server-ps0-proposal.md`, de PS-1-afwijking i
 21 augustus 2026: direct play met HTTP-range, en kijkstatus met de server als eigenaar. Desktop,
 mobiel en TV zijn alle drie op echte hardware bewezen, inclusief een kijkpositie die van een Mac via
 een iPhone naar een Apple TV meereisde.
-**De huidige fase is PS-5** (`DeviceCapabilities` in de client). De gekozen doorloop daarna is
-PS-9, dan PS-11A, en pas dan terug naar PS-6, PS-7, PS-8; die volgorde is een geldige doorloop van
-dezelfde afhankelijkheidsgraaf en staat in `docs/pleya-server-phase-order-deviation.md`. Bindend is
-het veld **Afhankelijkheden** in de fasetabellen, niet het veld "Eerstvolgende fase". Werk dat verder
-gaat dan de PS-5-scope is nog steeds te vroeg: transcoderen is PS-8 en de browserspeler is PS-4W.
+**De huidige ontwikkelfase is PS-9** (gebruikers, profielen en rechten). PS-5
+(`DeviceCapabilities` in de client) is code complete maar niet gesloten: acceptatiecriterium 4, de
+regressieronde op echte hardware voor tvOS en minimaal één desktopplatform, blijft expliciet open en
+niet gehaald. Die hardwarevalidatie is bewust uitgesteld en blokkeert PS-9 niet, conform
+[DEC-064](docs/DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet).
+Het starten of afronden van PS-9 mag nooit worden geïnterpreteerd als bewijs dat PS-5-criterium 4 is
+gehaald; de bestaande hardwaretest moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of
+PS-9-gedrag bevat alsnog worden uitgevoerd. Na PS-9 is de gekozen doorloop PS-11A, en pas dan terug
+naar PS-6, PS-7, PS-8; die volgorde is een geldige doorloop van dezelfde afhankelijkheidsgraaf en
+staat in `docs/pleya-server-phase-order-deviation.md`. Bindend is het veld **Afhankelijkheden** in de
+fasetabellen, niet het veld "Eerstvolgende fase". Werk buiten de vrijgegeven fasevolgorde blijft te
+vroeg. PS-9 is nu toegestaan; latere fasen worden alleen gestart volgens hun vastgelegde
+afhankelijkheden en poorten, zoals transcoderen (PS-8) en de browserspeler (PS-4W).
 
 **Het protocol ligt vast.** `docs/pleya-protocol/v1/openapi.yaml` is contractueel leidend en bevroren
 zolang PS-5 loopt. Het venster stond één keer open, bij het sluiten van PS-3, voor precies de drie

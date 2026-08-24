@@ -182,10 +182,24 @@ geeft 24 treffers zonder seizoen, `kind=season` levert ze alsnog, en zonder toke
 
 ## Volgende stap
 
-**Begin met PS-5, `DeviceCapabilities` in de client.** Dat is de vrijgegeven fase; alles wat verder
-gaat is per definitie te vroeg. De `_postJson`-bevinding hierboven hoort daar niet in: die raakt elke
-aanroep van `PleyaServerClient` en vraagt een eigen ronde, met een regressietest voor een snelle 5xx
-door de client heen.
+**PS-5 is code complete; de eerstvolgende ontwikkelfase is PS-9** (gebruikers, profielen en
+rechten), volgens de doorloop in `docs/pleya-server-phase-order-deviation.md`. PS-5 blijft
+**opgeleverd, niet gesloten**: acceptatiecriterium 4, geen regressie op echte hardware voor minimaal
+tvOS plus één desktopplatform, staat expliciet open. Er is nu geen tijd voor die ronde, dus de test is
+bewust uitgesteld en niet gehaald of geschrapt. Build 242 draagt PS-5 en staat al op TestFlight; alleen
+de deviceronde zelf ontbreekt, met de bestaande testmatrix van vier titels per toestel (zie de
+PS-5-fasetabel in het architectuurdocument).
+
+Dat een openstaand hardwarecriterium het starten van PS-9 niet blokkeert, is vastgelegd als een
+beperkte governance-afwijking, [DEC-064](docs/DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet).
+Ze geldt uitsluitend voor het starten van een volgende ontwikkelfase en is geen bewijs dat Plex- of
+Jellyfin-afspelen op echte hardware geverifieerd is; die verificatie ontbreekt gewoon nog. De
+hardwareronde blijft als openstaande schuld op de PS-5-fasetabel staan en moet uiterlijk vóór de
+eerstvolgende publieke release die PS-5- of PS-9-gedrag meeneemt alsnog gedraaid worden.
+
+De `_postJson`-bevinding hierboven hoort niet in PS-9: die raakt elke aanroep van
+`PleyaServerClient` en vraagt een eigen ronde, met een regressietest voor een snelle 5xx door de
+client heen.
 
 **Twee dingen die niet op de code wachten.** Er staat geen iOS-build 240 bij App Store Connect, dus
 `fastlane notes build:240` faalt daar terwijl tvOS en macOS de tekst wél dragen; upload die build of
@@ -202,10 +216,11 @@ boekhouding die hier stond is afgehandeld: G5, G9 en G11 hebben hun Phase ID, de
 matrix kloppen weer, en de zin dat er nog geen regel servercode bestaat is eruit. De stand per poort
 staat in `docs/pleya-server-gates.md`, de stand per fase in hoofdstuk 23 van het architectuurdocument.
 
-Wat er niet mag gebeuren binnen PS-5: geen transcoderen (PS-8), geen gebruikers (PS-9), geen
-browserspeler (PS-4W). Legt implementatiewerk een echt probleem in het protocol bloot, dan is dat een
-protocolwijziging met een compatibiliteitstoets langs de zes regels uit hoofdstuk 3, niet een
-aanpassing in `openapi.yaml` omdat het zo uitkomt.
+Wat er niet mag gebeuren binnen PS-9: geen gedeelde bibliotheken tussen huishoudens, geen
+e-mailuitnodigingen, geen leeftijdsgrenzen, geen herstructurering van de bestaande Plex- en
+Jellyfin-profielpaden, geen playbackplanner (PS-6). Legt implementatiewerk een echt probleem in het
+protocol bloot, dan is dat een protocolwijziging met een compatibiliteitstoets langs de zes regels uit
+hoofdstuk 3, niet een aanpassing in `openapi.yaml` omdat het zo uitkomt.
 
 **Besluiten wat er met de 26 blockers zonder fase gebeurt.** Twaalf
 gegroepeerde gaten staan in

@@ -20,8 +20,8 @@ De fasetabellen in hoofdstuk 23 dragen twee velden die over volgorde gaan: **Afh
 door naar PS-7, en zo verder. Gelezen als een ketting beschrijven die velden samen één lineair pad:
 PS-5, PS-6, PS-7, PS-8, en pas daarna de rest.
 
-`CLAUDE.md` heeft die lezing overgenomen. Er staat dat PS-5 de eerstvolgende fase is en dat werk
-buiten de PS-5-scope per definitie te vroeg is, met gebruikers (PS-9) er expliciet bij genoemd als
+`CLAUDE.md` had die lezing overgenomen. Daar stond dat PS-5 de eerstvolgende fase was en dat werk
+buiten de PS-5-scope per definitie te vroeg was, met gebruikers (PS-9) er expliciet bij genoemd als
 voorbeeld van te vroeg.
 
 Achter beide zit dezelfde aanname: dat "Eerstvolgende fase" een uitvoeringsopdracht is, en niet een
