@@ -905,3 +905,79 @@ alle vijftien regels een eigen test hebben, niet wanneer de catalogusfilter werk
 wordt aangenomen. Een nieuw endpoint dat een library-, item-, version-, file- of stream-identiteit
 blootlegt en niet in deze tabel staat is een gat in dit besluit en moet er expliciet aan toegevoegd
 worden voordat het endpoint als PS-9-compleet geldt.
+
+## DEC-073: PS-4E, PS-7N en PS-7A komen erbij, PS-4W wordt geknipt, en de lege hubs zijn een PS-4-defect
+
+**Date:** 2026-08-24
+**Status:** accepted
+
+**Context:** PS-3W-voorstel 5.4 belooft dat Pleya Web de primaire beheerinterface wordt, maar geen
+enkele fase pakt die belofte op. De aanname eronder was dat webfunctionaliteit vanzelf meekomt met
+latere fasen die de webclient toch al raken. Vijf bevindingen ondergraven die aanname, en ze staan
+uitgeschreven in `docs/pleya-server-ps4e-proposal.md`. Twee ervan sturen dit besluit.
+
+De eerste is een defect in een gesloten fase. `handleHub` (`internal/api/handlers_library.go`) geeft
+voor `continue_watching` en `next_up` onvoorwaardelijk een lege `ItemPage`, met een commentaar dat
+uitlegt dat dit de normale toestand is van een catalogusserver die nog niet kan afspelen. Dat
+commentaar dateert van vóór PS-4. Sinds PS-4 gesloten is staat `capabilities.watch_state` op `true`
+zodra de watch-store bestaat (`handlers_auth.go:65`), en dat is in elke productieconfiguratie het
+geval. De server adverteert dus een capability die hij op dit ene punt niet levert.
+`docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md:160` zet "Verder kijken" al op Technisch gereed,
+vooruitlopend op precies dat. In de Flutter-app valt de rij weg omdat `fetchGlobalHubs` lege hubs
+filtert (`lib/services/pleya_server_client/parts/browse.dart:239`).
+
+De tweede is een grensprobleem in PS-4W. Dat masterplanfase zet "de rijen Verder kijken en Nieuwe
+afleveringen op Home, en voortgangsbalken op `MediaCard`" in zijn scope, naast de browserspeler, en
+belooft tegelijk "Backendwijzigingen: geen". Acceptatiecriterium 5 van PS-4W ("de rijen vullen zich
+na een kijksessie") is vandaag onhaalbaar zonder de bovenstaande reparatie, die qua onderwerp bij
+PS-4 hoort en niet bij PS-4W. Een voortgangsbalk is bovendien presentatie van bestaande watch state
+die al meekomt op elke item- en hubresponse via `hydrateItems`; wie op de webclient alleen bladert
+en in de Flutter-app kijkt, zou zijn voortgang anders nooit in de browser zien.
+
+**Decision:** Drie fasen komen erbij, één fase wordt geknipt, en één gat wordt als defect
+gecorrigeerd.
+
+**PS-4E (Pleya Web: app-paritaire beleving)** krijgt de schil, de hero-carrousel, de kaarten en de
+detailpagina, plus het **tonen** van bestaande watch state. Afhankelijk van PS-3W en PS-4. **PS-7N**
+is een uitsnede van PS-7 voor `summary`, `genres` en `content_rating` uit lokale sidecars,
+voorwaardelijk op de coverage-gate uit 4.4 van het voorstel. **PS-7A** maakt `?width=` werkend.
+
+**PS-4W behoudt zijn Phase ID en zijn doel.** Twee scope-items verhuizen naar PS-4E, en de grens is:
+PS-4E leest bestaande watch state en toont die waar de app dat ook doet, en introduceert geen nieuwe
+watch-state-writes vanuit de browser; PS-4W blijft verantwoordelijk voor seek- en playbackrapportage
+en voor het bijwerken van die state tijdens browserplayback. Daarbovenop krijgt PS-4W een voorwaarde
+die er nog niet was: zonder een gemeten percentage direct afspeelbare media op de echte bibliotheek
+wordt de fase niet afgesloten met de claim dat Pleya Web media kan afspelen.
+
+**De hub-implementatie is een defectcorrectie in PS-4, geen nieuwe fase.** Ze landt met haar eigen
+tests en met de matrixcorrectie in dezelfde commit, conform onderhoudsregel 3 van de matrix.
+
+**Het contractvenster gaat open voor precies één wijziging:** de `description` van `/hubs/{hub_id}`
+in `docs/pleya-protocol/v1/openapi.yaml`, plus de bijbehorende normatieve tekst in hoofdstuk 15 van
+`docs/pleya-protocol-v1.md`. Er verandert geen schema, geen enum, geen veld en geen statuscode.
+Getoetst aan de zes compatibiliteitsregels uit hoofdstuk 3: geen ervan wordt geraakt, want een
+`description` beschrijft gedrag dat het contract vandaag helemaal niet vastlegt. Het venster sluit
+zodra `scripts/check_protocol.sh` daarna slaagt. Dit is dezelfde procedure als DEC-068, en de reden
+dat een tekstwijziging hem doorloopt is dat de betekenis van een hub wél deel van het contract is:
+web en Flutter-client mogen `next_up` nooit verschillend lezen.
+
+De vastgelegde semantiek: per serie precies één rij, de laagst genummerde ongekeken aflevering na de
+hoogst genummerde aflevering waar deze identiteit kijkstatus op heeft. Specials (`season.item_index
+= 0`) en ongenummerde afleveringen tellen niet mee, niet als kandidaat en niet als ankerpunt. Een
+serie zonder enige kijkactiviteit staat niet in de hub, en een serie die uit is verdwijnt eruit.
+`continue_watching` en `next_up` zijn daarmee disjunct: een halfgekeken aflevering staat in de
+eerste, zijn opvolger in de tweede, nooit dezelfde in allebei.
+
+**Consequences:** `docs/pleya-server-architecture.md` hoofdstuk 23 krijgt de drie fasen en het
+diagram in 23.2 de vijf nieuwe pijlen. `docs/pleya-server-masterplan-proposal.md` 16.3 krijgt de
+knip. De matrix krijgt de correctie plus nieuwe regels voor wat PS-4E, PS-7N en PS-7A afleveren.
+
+Eén regel gaat expliciet **niet** mee. "Volgende aflevering bij een serie" (`:162`) blijft In
+roadmap: de bewijskolom van die regel noemt het detailscherm, en dat is een per-item on-deck dat het
+protocol niet kent en dat `fetchItemWithOnDeck` nog steeds als `null` beantwoordt. De hub krijgt een
+eigen regel. Ze omkatten zou het gat onzichtbaar maken in plaats van sluiten.
+
+PS-7N heeft later een eigen venster nodig voor zijn drie velden, met een eigen DEC eronder; dit
+besluit opent dat venster niet. `pleya_web/src/lib/api/schema.d.ts` wordt uit de gewijzigde YAML
+opnieuw gegenereerd (`pleya_web/scripts/gen-api-types.sh`), want `check-api-types.sh` slaat anders
+aan op een achterlopend bestand.

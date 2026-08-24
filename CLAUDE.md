@@ -80,7 +80,18 @@ Het starten of afronden van PS-9 mag nooit worden geïnterpreteerd als bewijs da
 gehaald; de bestaande hardwaretest moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of
 PS-9-gedrag bevat alsnog worden uitgevoerd. Na PS-9 is de gekozen doorloop PS-11A, en pas dan terug
 naar PS-6, PS-7, PS-8; die volgorde is een geldige doorloop van dezelfde afhankelijkheidsgraaf en
-staat in `docs/pleya-server-phase-order-deviation.md`. Bindend is het veld **Afhankelijkheden** in de
+staat in `docs/pleya-server-phase-order-deviation.md`.
+
+**Op 24 augustus 2026 zijn er drie fasen bij gekomen**, goedgekeurd in
+`docs/pleya-server-ps4e-proposal.md` en vastgelegd in
+[DEC-073](docs/DECISIONS.md): **PS-4E** (Pleya Web naar app-pariteit, inclusief het *tonen* van
+bestaande kijkstatus), **PS-7N** (`summary`, `genres` en `content_rating` uit lokale `.nfo`-sidecars,
+voorwaardelijk op een coverage-gate van 80 procent per bibliotheek) en **PS-7A** (`?width=` op
+artwork werkend maken). PS-4W behoudt zijn Phase ID maar raakt twee scope-items kwijt aan PS-4E: de
+grens is dat PS-4E kijkstatus **leest en toont** en nooit schrijft, en dat PS-4W verantwoordelijk
+blijft voor seek- en playbackrapportage. Datzelfde besluit merkt de lege hubs `continue_watching` en
+`next_up` aan als **defect in het gesloten PS-4**, niet als nieuwe fase: die correctie mag dus lopen
+terwijl PS-9 de huidige fase is, met haar tests en haar matrixcorrectie in dezelfde commit. Bindend is het veld **Afhankelijkheden** in de
 fasetabellen, niet het veld "Eerstvolgende fase". Werk buiten de vrijgegeven fasevolgorde blijft te
 vroeg. PS-9 is nu toegestaan; latere fasen worden alleen gestart volgens hun vastgelegde
 afhankelijkheden en poorten, zoals transcoderen (PS-8) en de browserspeler (PS-4W).
