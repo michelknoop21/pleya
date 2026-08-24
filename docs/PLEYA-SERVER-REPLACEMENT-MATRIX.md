@@ -160,6 +160,7 @@ waaraan je ziet dat hij klaar is.
 | Verder kijken | provider-key of `GET /hubs?identifier=home.continue` | (A) afgeleid uit kijkstatus | PS-4 | Technisch gereed | ja | PS-4 criterium 3; de hub leest de kijkstatus die PS-4 schrijft |
 | Recent bekeken | `GET /library/all?sort=lastViewedAt:desc` | (A) afgeleid uit kijkstatus | PS-4 | Technisch gereed | nee | `fetchRecentlyWatched` leest `GET /watch-state` en houdt de uitgekeken titels over |
 | Volgende aflevering bij een serie | `includeOnDeck=1` op de metadata | (A) uit kijkstatus plus afleveringsvolgorde | PS-4 | In roadmap | ja | detailscherm toont de juiste volgende aflevering |
+| Nieuwe afleveringen (hub) | `GET /hubs?identifier=home.nextup` | (A) uit kijkstatus plus afleveringsvolgorde, normatief in specificatie 15 | PS-4 | Technisch gereed | ja | de `next_up`-hub levert per begonnen serie precies de volgende aflevering |
 | Verwante titels | `GET /hubs/metadata/{id}/related` | (A) uit genres, mensen en verzamelingen | PS-7 | **Roadmap gap** | nee | de "meer zoals dit"-rij is gevuld |
 | Sorteeropties per bibliotheek | `GET /library/sections/{id}/sorts` | (A) vaste lijst per bibliotheektype in het protocol | PS-1, PS-3 | In roadmap | ja | de sorteersheet is niet leeg |
 | Filtercategorieën en filterwaarden | `GET /library/sections/{id}/filters` | (A) categorieën uit de catalogus | geen | **Roadmap gap** | ja | filteren op genre en jaar werkt |

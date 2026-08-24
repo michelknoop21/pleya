@@ -961,12 +961,23 @@ zodra `scripts/check_protocol.sh` daarna slaagt. Dit is dezelfde procedure als D
 dat een tekstwijziging hem doorloopt is dat de betekenis van een hub wél deel van het contract is:
 web en Flutter-client mogen `next_up` nooit verschillend lezen.
 
-De vastgelegde semantiek: per serie precies één rij, de laagst genummerde ongekeken aflevering na de
-hoogst genummerde aflevering waar deze identiteit kijkstatus op heeft. Specials (`season.item_index
-= 0`) en ongenummerde afleveringen tellen niet mee, niet als kandidaat en niet als ankerpunt. Een
-serie zonder enige kijkactiviteit staat niet in de hub, en een serie die uit is verdwijnt eruit.
-`continue_watching` en `next_up` zijn daarmee disjunct: een halfgekeken aflevering staat in de
-eerste, zijn opvolger in de tweede, nooit dezelfde in allebei.
+De vastgelegde semantiek: per serie precies één rij, de laagst genummerde aflevering **vanaf** de
+hoogst genummerde aflevering waar deze identiteit kijkstatus op heeft, die ongekeken is en waaraan
+nog niet begonnen is. Specials (een seizoen met `item_index` nul) en ongenummerde afleveringen
+tellen niet mee, niet als kandidaat en niet als ankerpunt. Een serie zonder enige kijkactiviteit
+staat niet in de hub, en een serie die uit is verdwijnt eruit. `continue_watching` en `next_up` zijn
+daarmee disjunct: een halfgekeken aflevering staat in de eerste, haar opvolger in de tweede, nooit
+dezelfde in allebei.
+
+**Gecorrigeerd tijdens de implementatie, 24 augustus 2026.** Dit besluit zei eerst "na" in plaats
+van "vanaf", en noemde alleen `watched` als voorwaarde. Dat liet een gat vallen dat pas bij het
+schrijven van de query zichtbaar werd: `applyExplicit` (`internal/watch/watch.go:239`) zet
+`mark_unwatched` op `watched = false` met `position_ms = 0`. Zo'n aflevering is meteen het hoogst
+genummerde ankerpunt, en met "strikt na" is zij dus zelf geen kandidaat meer. Zij viel daarmee uit
+`continue_watching` (de positie is nul) én uit `next_up` (zij is het anker), terwijl iemand die iets
+op ongekeken zet precies dat wil terugzien. "Vanaf", plus de eis dat er nog niet aan begonnen is,
+sluit dat gat zonder de disjunctie tussen de twee hubs op te geven. De correctie staat hier en niet
+alleen in de code, want deze alinea is de normatieve tekst.
 
 **Consequences:** `docs/pleya-server-architecture.md` hoofdstuk 23 krijgt de drie fasen en het
 diagram in 23.2 de vijf nieuwe pijlen. `docs/pleya-server-masterplan-proposal.md` 16.3 krijgt de

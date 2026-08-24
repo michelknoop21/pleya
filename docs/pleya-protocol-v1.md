@@ -918,7 +918,46 @@ de aanbevelingslogica zit al in de client en werkt voor elke backend, en een ser
 voorschrijft zou die logica doubleren.
 
 **Een server zonder kijkstatus levert lege lijsten voor `continue_watching` en `next_up`**, geen
-fout. Dat is de normale toestand van een catalogusserver die nog niet kan afspelen.
+fout. Dat is de toestand van een catalogusserver die nog niet kan afspelen. Zodra
+`capabilities.watch_state` waar is, is het omgekeerde de norm: dan zijn de twee hubs gevuld met wat
+hieronder staat, en is een lege lijst alleen nog het antwoord op "u bent nergens aan begonnen".
+
+#### De inhoud van `continue_watching`
+
+Films en afleveringen waar deze identiteit aan begonnen is en die zij niet heeft uitgekeken:
+`watched` is onwaar en `position_ms` is groter dan nul. Series en seizoenen staan er niet in, want
+die dragen geen positie. Aflopend gesorteerd op wanneer de kijkstatus voor het laatst wijzigde.
+
+Een item dat op `mark_unwatched` is gezet staat op positie nul en valt hier dus uit. Dat is opzet:
+dat is niet verder kijken maar opnieuw beginnen, en voor een aflevering is het precies het geval dat
+in `next_up` thuishoort.
+
+#### De inhoud van `next_up`, normatief
+
+Per serie precies één aflevering, en nooit meer dan één. Welke, in drie stappen:
+
+1. **Wat meetelt.** Alleen afleveringen met een `item_index` in een seizoen met `item_index >= 1`.
+   Specials (seizoen `item_index = 0`) en ongenummerde afleveringen tellen niet mee, niet als
+   kandidaat en niet in stap 2. Wie een special kijkt schuift zijn serie dus niet op.
+2. **Het ankerpunt.** De hoogst genummerde aflevering van die serie waar deze identiteit kijkstatus
+   op heeft, geordend op `(seizoen, aflevering)`. Heeft een serie nergens kijkstatus, dan heeft zij
+   geen ankerpunt en staat zij niet in de hub. Een serie verschijnt hier dus nooit voordat er iets
+   mee gebeurd is.
+3. **De keuze.** De laagst genummerde aflevering vanaf het ankerpunt die ongekeken is en waar niemand
+   aan begonnen is: `watched` onwaar én `position_ms` nul. Is die er niet, dan is de serie uit en
+   staat zij niet in de hub.
+
+Vanaf het ankerpunt en niet erna, zodat een aflevering die zojuist op `mark_unwatched` is gezet de
+volgende is in plaats van uit beide hubs te vallen. De eis dat er nog niet aan begonnen is houdt de
+twee hubs uit elkaar: **`continue_watching` en `next_up` leveren nooit hetzelfde item.** Een
+halfgekeken aflevering staat in de eerste, haar opvolger in de tweede.
+
+Series onderling zijn aflopend geordend op de laatste kijkactiviteit binnen die serie, en niet op de
+kijkstatus van het ankerpunt. Wie vandaag de eerste aflevering als bekeken markeert nadat hij vorig
+jaar tot halverwege seizoen twee keek, ziet die serie bovenaan.
+
+Beide hubs zijn gepagineerd met dezelfde cursorvorm als de rest van hoofdstuk 9.4. Een cursor hoort
+bij de hub die hem uitgaf; hem op de andere hub aanbieden levert `library.cursor_invalid`.
 
 ---
 

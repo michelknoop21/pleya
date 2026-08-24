@@ -554,6 +554,21 @@ paths:
         De server levert bouwstenen en geen schermindeling; de client bouwt zijn
         eigen rijen. Een server zonder kijkstatus levert lege lijsten voor
         continue_watching en next_up, en geen fout.
+
+        Staat capabilities.watch_state op true, dan geldt hoofdstuk 15 van de
+        specificatie, dat de inhoud van beide hubs normatief vastlegt.
+        continue_watching bevat films en afleveringen met watched false en
+        position_ms boven nul, aflopend op het moment van de laatste wijziging.
+        next_up bevat per serie precies een aflevering: de laagst genummerde
+        aflevering vanaf de hoogst genummerde aflevering waar deze identiteit
+        kijkstatus op heeft, die ongekeken is en waaraan nog niet begonnen is.
+        Specials (seizoen met item_index 0) en ongenummerde afleveringen tellen
+        niet mee, niet als kandidaat en niet als ankerpunt. Een serie zonder
+        kijkstatus staat niet in next_up, en een serie die uit is verdwijnt
+        eruit. De twee hubs leveren nooit hetzelfde item.
+
+        Een cursor hoort bij de hub die hem uitgaf; hem op een andere hub
+        aanbieden levert library.cursor_invalid.
       parameters:
         - name: hub_id
           in: path

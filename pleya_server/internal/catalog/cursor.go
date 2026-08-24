@@ -29,6 +29,22 @@ const (
 	SortIndex       Sort = "index"
 )
 
+// De twee sorteringen achter de kijkstatushubs. Net als SortIndex komen ze niet
+// uit een aanvraag: ParseSort accepteert ze niet, de hub kiest ze zelf.
+//
+// Ze bestaan als eigen Sort-waarde omdat DecodeCursor de sortering in de cursor
+// vergelijkt met de sortering die de aanroeper verwacht. Zonder eigen waarde zou
+// een cursor van Verder kijken op Nieuwe afleveringen passen, en dan bladert de
+// client met een sleutel uit de ene ordening door de andere.
+const (
+	// SortWatchUpdatedDesc ordent op wanneer deze identiteit het item voor het
+	// laatst aanraakte, aflopend.
+	SortWatchUpdatedDesc Sort = "-watch_updated_at"
+	// SortNextUpDesc ordent series op hun laatste kijkactiviteit, aflopend. De
+	// sleutel hangt dus aan de serie en niet aan de aflevering die getoond wordt.
+	SortNextUpDesc Sort = "-next_up_activity"
+)
+
 // ParseSort leest de sort-parameter. Leeg levert de default.
 func ParseSort(raw string, def Sort) (Sort, bool) {
 	if raw == "" {
@@ -60,6 +76,10 @@ func (s Sort) keyExpression() string {
 		return "coalesce(i.year, 0)"
 	case SortIndex:
 		return "coalesce(i.item_index, 0)"
+	case SortWatchUpdatedDesc:
+		return "w.updated_at"
+	case SortNextUpDesc:
+		return "a.activity_at"
 	default:
 		return "coalesce(i.sort_title, i.title)"
 	}
@@ -68,7 +88,7 @@ func (s Sort) keyExpression() string {
 // castSuffix typeert de cursorwaarde in de vergelijking.
 func (s Sort) castSuffix() string {
 	switch s {
-	case SortAddedAt, SortAddedAtDesc:
+	case SortAddedAt, SortAddedAtDesc, SortWatchUpdatedDesc, SortNextUpDesc:
 		return "::timestamptz"
 	case SortYear, SortYearDesc, SortIndex:
 		return "::integer"

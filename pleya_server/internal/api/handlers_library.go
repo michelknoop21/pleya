@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -270,15 +271,64 @@ func (s *Server) handleHub(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, s.hydratePage(r, mapPage(page, nil)))
 
-	case "continue_watching", "next_up":
-		// Een server zonder kijkstatus levert lege lijsten, geen fout. Dat is de
-		// normale toestand van een catalogusserver die nog niet kan afspelen, en
-		// de specificatie zegt dat met zoveel woorden.
-		writeJSON(w, http.StatusOK, ItemPage{Items: []Item{}})
+	case "continue_watching":
+		s.writeWatchHub(w, r, libraryID, allowed, catalog.SortWatchUpdatedDesc,
+			s.opts.Catalog.ContinueWatching)
+
+	case "next_up":
+		s.writeWatchHub(w, r, libraryID, allowed, catalog.SortNextUpDesc,
+			s.opts.Catalog.NextUp)
 
 	default:
 		writeError(w, s.log, CodeNotFound, "unknown hub", nil)
 	}
+}
+
+// writeWatchHub beantwoordt een hub die uit kijkstatus volgt.
+//
+// De twee hubs verschillen alleen in hun sortering en hun query; alles eromheen
+// is hetzelfde als recently_added, inclusief hydratePage en het ontbreken van
+// total_estimate. Een telling over de hele hub zou per pagina een tweede,
+// duurdere query vragen dan de pagina zelf.
+//
+// Zonder watch-store is er geen kijkstatus en dus geen hub. Dat is de toestand
+// waar de oude implementatie onvoorwaardelijk van uitging, en sinds PS-4 is hij
+// het tegenovergestelde van de normale: capabilities.watch_state staat waar
+// zodra deze store bestaat.
+func (s *Server) writeWatchHub(w http.ResponseWriter, r *http.Request,
+	libraryID *id.ID, allowed []id.ID, sort catalog.Sort,
+	query func(context.Context, catalog.HubQuery) (catalog.Page, error),
+) {
+	if s.opts.Watch == nil {
+		writeJSON(w, http.StatusOK, ItemPage{Items: []Item{}})
+		return
+	}
+
+	userID, err := s.subjectID(r)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	cursor, err := catalog.DecodeCursor(r.URL.Query().Get("cursor"), sort)
+	if err != nil {
+		writeError(w, s.log, CodeCursorInvalid, err.Error(), nil)
+		return
+	}
+
+	limit, _ := queryInt(r, "limit")
+	page, err := query(r.Context(), catalog.HubQuery{
+		Subject:    userID.String(),
+		LibraryID:  libraryID,
+		LibraryIDs: allowed,
+		Cursor:     cursor,
+		Limit:      limit,
+	})
+	if err != nil {
+		s.writeStoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, s.hydratePage(r, mapPage(page, nil)))
 }
 
 // searchDefaultKinds is de verzameling die een zoekopdracht zonder kind levert.
