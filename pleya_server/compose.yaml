@@ -1,7 +1,7 @@
 # Pleya Server.
 #
 # Twee services in een eigen privaat netwerk. Compose noemt dat
-# pleya_server_default, wat niet botst met de bestaande pleya_default en
+# pleya-server_default, wat niet botst met de bestaande pleya_default en
 # pleya-relay_default op de NAS.
 
 services:
