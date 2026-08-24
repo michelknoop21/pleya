@@ -22,11 +22,15 @@ under `Notes`.
 - respijtvenster op refreshtokenrotatie (DEC-063)
 - token bucket op de relay, en meldingen die vouwen in plaats van stapelen
 - compacte sessieregel, en de commit-sha in elke TestFlight-build
+- migratie 0007, sessie-scoped tokenketen en begrensde loginlimiter (PS-9-stap 2)
+- scope watch state to authenticated users
+- PS-9 AC2, volledige autorisatiematrix en DEC-065-alignment
 
 ### Fixed
 - "Opnieuw aanmelden" probeert eerst één echte refresh
 - Nederlands compleet tegen Engels, met een test die dat afdwingt
 - cloudflared blijvend op het netwerk van de Pleya Server
+- verify-local.sh's drift check kende PS-9's eigen tabellen niet
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 242 · 23 August 2026
