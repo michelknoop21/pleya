@@ -12,6 +12,22 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/watch"
 )
 
+// watchSubject leest het subject van de kijkstatus uit de claims van de eigen
+// aanvraag.
+//
+// authenticated() zet ze altijd voordat een handler achter deze routes wordt
+// aangeroepen, dus het ontbreken ervan is een programmeerfout en geen
+// clientfout. claims.Subject is de echte, per gebruiker verschillende
+// users.id die login/setup/refresh minten (stap 2); dit vervangt de laatste
+// drie call-sites van de vaste string SubjectOwner (stap 3).
+func watchSubject(r *http.Request) (string, error) {
+	claims, ok := claimsFromContext(r.Context())
+	if !ok {
+		return "", errors.New("geen claims in context; authenticated() ontbreekt")
+	}
+	return claims.Subject, nil
+}
+
 // handleWatchStateReport neemt één gebeurtenis aan.
 //
 // Het antwoord is ALTIJD de actuele toestand, ook wanneer de server het event
@@ -63,7 +79,13 @@ func (s *Server) handleWatchStateReport(w http.ResponseWriter, r *http.Request) 
 		Backlog:      req.Backlog,
 	}
 
-	outcome, err := s.opts.Watch.Apply(r.Context(), SubjectOwner, itemID, ev, s.now().UTC(), s.opts.WatchLease)
+	subject, err := watchSubject(r)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	outcome, err := s.opts.Watch.Apply(r.Context(), subject, itemID, ev, s.now().UTC(), s.opts.WatchLease)
 	if err != nil {
 		if errors.Is(err, watch.ErrItemNotFound) {
 			writeError(w, s.log, CodeNotFound, "item not found", nil)
@@ -113,7 +135,13 @@ func (s *Server) handleWatchStateList(w http.ResponseWriter, r *http.Request) {
 		since = &parsed
 	}
 
-	page, err := s.opts.Watch.List(r.Context(), SubjectOwner, since, limit,
+	subject, err := watchSubject(r)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	page, err := s.opts.Watch.List(r.Context(), subject, since, limit,
 		strings.TrimSpace(r.URL.Query().Get("cursor")))
 	if err != nil {
 		if errors.Is(err, watch.ErrCursorInvalid) {
@@ -213,7 +241,13 @@ func (s *Server) hydrateItems(r *http.Request, items []Item) {
 		ids = append(ids, parsed)
 	}
 
-	states, err := s.opts.Watch.ForItems(r.Context(), SubjectOwner, ids)
+	subject, err := watchSubject(r)
+	if err != nil {
+		s.log.Warn("kijkstatus bij items ophalen mislukt", slog.String("error", err.Error()))
+		return
+	}
+
+	states, err := s.opts.Watch.ForItems(r.Context(), subject, ids)
 	if err != nil {
 		s.log.Warn("kijkstatus bij items ophalen mislukt", slog.String("error", err.Error()))
 		return
