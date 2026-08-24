@@ -151,14 +151,15 @@ print(eval(os.environ["PLEYA_EXPR"]))' 2>/dev/null
 tables="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'" 2>/dev/null | tr -d '\r')"
 if [ "${tables:-0}" -ge 14 ]; then ok "schema gemigreerd ($tables tabellen)"; else fail "schema telt $tables tabellen"; fi
 
-# Er is geen users- of sessions-tabel. Dat is de drift check uit hoofdstuk 23.1
-# in scriptvorm: tokens uitgeven tegen één identiteit vraagt daar niet om.
+# Dat is de drift check uit hoofdstuk 23.1 in scriptvorm: geen enkele fase mag
+# van een tabel uit een latere fase afhangen.
 #
-# watch_states en stream_sessions staan sinds PS-4 wél in het schema (DEC-049 en
-# DEC-051) en zijn daarom uit deze lijst gehaald. play_history en play_sessions
-# staan er nadrukkelijk nog wel in: die horen bij PS-9P, en PS-4 mag niet van een
-# tabel uit een latere fase afhangen.
-forbidden="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT coalesce(string_agg(table_name, ','), '') FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('users','sessions','library_permissions','play_history','play_sessions','user_item_data','transcode_sessions','external_ids','metadata_candidates')" 2>/dev/null | tr -d '\r')"
+# watch_states en stream_sessions staan sinds PS-4 in het schema (DEC-049 en
+# DEC-051); users, sessions en library_permissions sinds PS-9, migratie 0007
+# (DEC-065, DEC-069). Alle vijf zijn daarom uit deze lijst gehaald. play_history
+# en play_sessions staan er nadrukkelijk nog wel in: die horen bij PS-9P, en
+# PS-9 mag daar niet van afhangen.
+forbidden="$($COMPOSE exec -T postgres psql -U pleya -d pleya -tAc "SELECT coalesce(string_agg(table_name, ','), '') FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('play_history','play_sessions','user_item_data','transcode_sessions','external_ids','metadata_candidates')" 2>/dev/null | tr -d '\r')"
 if [ -z "$forbidden" ]; then ok "geen tabel uit een latere fase"; else fail "tabellen uit een latere fase: $forbidden"; fi
 
 setup_required="$(api /info | jq_field 'd["auth"]["setup_required"]')"
