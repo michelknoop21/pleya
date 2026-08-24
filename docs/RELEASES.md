@@ -26,6 +26,7 @@ under `Notes`.
 ### Fixed
 - "Opnieuw aanmelden" probeert eerst één echte refresh
 - Nederlands compleet tegen Engels, met een test die dat afdwingt
+- cloudflared blijvend op het netwerk van de Pleya Server
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 242 · 23 August 2026
