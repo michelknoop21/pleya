@@ -1556,9 +1556,14 @@ flowchart LR
   P2 --> P3["3. PleyaServerClient"]
   P2 --> P3W["3W. Pleya Web"]
   P3 --> P4["4. Direct play +<br/>watch state"]
+  P3W --> P4E["4E. Pleya Web:<br/>app-paritaire beleving"]
+  P4 --> P4E
+  P4E --> P4W["4W. Pleya Web:<br/>afspelen"]
   P4 --> P5["5. DeviceCapabilities"]
   P5 --> P6["6. PlaybackPlan"]
   P6 --> P7["7. Metadata"]
+  P2 --> P7N["7N. Sidecar-metadata"]
+  P2 --> P7A["7A. Artworkformaten"]
   P6 --> P8["8. Transcoding"]
   P4 --> P9["9. Users + rechten"]
   P8 --> P10["10. Downloads"]
@@ -1581,6 +1586,15 @@ aanneemt; zie [docs/pleya-server-ps0-proposal.md](pleya-server-ps0-proposal.md).
 Capabilities en het playbackplan staan vóór metadata omdat daar de architecturale vernieuwing zit;
 metadata blokkeert de playbackkern niet en kan later. Fase 3 is de eerste die de app raakt, en dan
 achter een nieuwe `ConnectionKind` naast de bestaande vier.
+
+PS-4E, PS-7N en PS-7A zijn er op 24 augustus 2026 bij gekomen, vastgelegd in
+[docs/pleya-server-ps4e-proposal.md](pleya-server-ps4e-proposal.md) en
+[DEC-073](DECISIONS.md). Alle drie hangen ze aan fasen die al gesloten zijn, en geen ervan voegt een
+afhankelijkheid toe aan PS-9 of PS-11A. PS-4E tilt de webbeleving naar app-pariteit en zet zich
+tussen PS-3W en PS-4W; PS-7N en PS-7A zijn uitsnedes van PS-7 die alleen PS-2 nodig hebben. PS-4W
+verliest daarbij twee scope-items aan PS-4E, en die knip staat in
+[docs/pleya-server-masterplan-proposal.md](pleya-server-masterplan-proposal.md) 16.3. Net als bij
+PS-3W behouden PS-1 tot en met PS-13 hun nummer.
 
 PS-3W hangt naast PS-3 en niet erachter. Het is een tweede client op hetzelfde protocol, en de twee
 fasen raken elkaars bestanden nergens: PS-3 wijzigt `lib/`, PS-3W wijzigt dat niet en voegt
@@ -2278,6 +2292,68 @@ PS-4 mag daar niet van afhangen, dus zo'n event wordt beantwoord en gelogd en ni
 
 ---
 
+### Fase 4E. Pleya Web: app-paritaire beleving
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-4E |
+| Doel | Pleya Web krijgt herkenbaar dezelfde Pleya-interface als de app, en toont de kijkstatus die er al is |
+| Bijdrage aan einddoel | de belofte uit PS-3W-voorstel 5.4 dat Pleya Web de primaire interface wordt, krijgt een fase die hem draagt in plaats van bijvangst van latere fasen te zijn |
+| Afhankelijkheden | PS-3W, PS-4 (inclusief de hub-correctie uit onderdeel 4.2 van het voorstel) |
+| Eerstvolgende fase | PS-4W |
+
+Toegevoegd als goedgekeurde afwijking, vastgelegd in
+[docs/pleya-server-ps4e-proposal.md](pleya-server-ps4e-proposal.md) en
+[DEC-073](DECISIONS.md). PS-1 tot en met PS-13 behouden hun nummer, doel, scope en stopcriterium.
+
+Het doel staat expliciet in twee helften, omdat elke helft zonder de andere een geslaagde oplevering
+zou lijken zonder er een te zijn:
+
+> Pleya Web moet zowel herkenbaar dezelfde Pleya-interface krijgen als de bestaande app, als
+> daadwerkelijk bruikbaar worden om media te bladeren, openen en afspelen. Visuele pariteit zonder
+> bruikbaarheid is onvoldoende, maar bruikbaarheid met een afwijkende generieke webinterface is
+> eveneens geen geslaagde oplevering.
+
+**Scope.** De schil en de navigatie op app-niveau, een hero-carrousel, kaarten met NEW-badge,
+watched-vinkje en voortgangsbalk, en een detailpagina met samenvatting en genres waar PS-7N die
+levert. Home draagt de drie hubs: Verder kijken, Nieuwe afleveringen en Recent toegevoegd. De
+voortgang die de kaarten tonen komt uit `user_state` op de bestaande item- en hubantwoorden, die
+`hydrateItems` er vandaag al aan hangt.
+
+De stijlvolgorde bij elke twijfel: de app-screenshots bepalen de compositie, de Flutter-code bepaalt
+de exacte maten, tokens en gedrag, en een bestaand webcomponent is nooit een reden om van allebei af
+te wijken.
+
+**Out of scope.** De speler zelf, en elke vorm van kijkstatus **schrijven** vanuit de browser. Geen
+seek- of playbackrapportage, geen `session_id`, geen `base_revision`. PS-4E introduceert geen enkele
+nieuwe watch-state-write: wat een gebruiker op de webclient ziet, is uitsluitend een weergave van
+state die de app of een eerdere sessie al heeft geschreven. Geen backend-, schema- of
+protocolwijziging.
+
+**Acceptatiecriteria.**
+1. Home toont de drie hubs, en een rij die leeg is tekent zichzelf niet.
+2. Een aflevering die in de Flutter-app half gekeken is, verschijnt zonder tussenkomst met de juiste
+   voortgangsbalk op de webclient.
+3. De netwerklaag laat zien dat de webclient geen `POST /watch-state` doet, in geen enkele flow.
+4. De schil, de kaarten en de detailpagina zijn naast de app-screenshots te leggen zonder dat de
+   afwijkingen op maat, ruimte of typografie opvallen.
+5. Elke route blijft met het toetsenbord bedienbaar en levert geen axe-overtreding op, op dezelfde
+   vijf breedtes als PS-3W.
+
+**Stopcriterium.** Iemand opent Pleya Web, herkent de Pleya-interface zonder uitleg, en ziet op Home
+waar hij in de app gebleven was.
+
+**Risico's.** De verleiding is de speler: de rijen vullen zich, de kaart toont voortgang, en dan is
+op de kaart klikken om te kijken één stap. Dat is PS-4W. Het tweede risico is de omgekeerde: een
+webcomponent dat er "goed genoeg" uitziet en de Flutter-maten niet volgt, waarna pariteit per PR
+wordt heronderhandeld.
+
+**Tests.** Componenttests op de kaart met en zonder voortgang, op de drie hubs inclusief de lege
+staat, en op de hero. End-to-end tegen de echte binary met een kijkstatus die vooraf via
+`POST /watch-state` is gezet, zodat criterium 2 op echte data rust en niet op een fixture.
+
+---
+
 ### Fase 5. `DeviceCapabilities` in de client
 
 | Veld | Inhoud |
@@ -2449,6 +2525,60 @@ bewijst dat een correctie een providerronde overleeft.
 staat de server straks te wachten op een externe API tijdens een gebruikersaanvraag.
 
 ---
+### Fase 7N. Lokale sidecar-metadata
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-7N |
+| Doel | `summary`, `genres` en `content_rating` uit de `.nfo`-bestanden die naast de media staan |
+| Bijdrage aan einddoel | een detailpagina zonder samenvatting is in geen enkele client af; laag 2 van de vijf metadatabronnen levert dat zonder providerladder |
+| Afhankelijkheden | PS-2 |
+| Eerstvolgende fase | geen; PS-7 neemt de rest |
+
+Toegevoegd als goedgekeurde afwijking, vastgelegd in
+[docs/pleya-server-ps4e-proposal.md](pleya-server-ps4e-proposal.md) en
+[DEC-073](DECISIONS.md).
+
+**Voorwaardelijk.** PS-7N wordt pas uitgevoerd nadat de coverage-gate uit onderdeel 4.4 van het
+voorstel gemeten is: het percentage films en series per bibliotheek met een geldige, parsebare `.nfo`
+én een niet-lege `<plot>`. Bij 80 procent of meer per meetellende bibliotheek gaat de fase door.
+Blijft een bibliotheek daaronder, dan is PS-7N voor die bibliotheek geen oplossing en volgt er een
+apart voorstel voor een minimale provider-slice. "Geen metadata" is daarbij geen terugvaloptie.
+
+**Scope.** Drie velden, uit lokale sidecars, met een protocolvenster dat er alleen voor opengaat.
+
+**Out of scope.** Cast, beoordelingen, studio, tagline, releasedatum, externe ids, logo-artwork,
+matching en de providerladder zelf blijven bij PS-7. `detection`, de herkomstlaag met bron en status
+per veld die `media_versions` en `media_streams` al kennen, komt hier bewust niet mee: met precies
+één bron per veld valt er niets te onderscheiden. Dat is een bekende toekomstige migratie voor PS-7,
+hier vastgelegd en niet vooruitgebouwd.
+
+---
+
+### Fase 7A. Afgeleide artworkformaten
+
+| Veld | Inhoud |
+| --- | --- |
+| Phase ID | PS-7A |
+| Doel | `?width=` op `GET /artwork/{artwork_id}` werkend maken |
+| Bijdrage aan einddoel | een raster van dertig posters op ware grootte laden is op een NAS en op mobiel het verschil tussen bruikbaar en niet |
+| Afhankelijkheden | PS-2 |
+| Eerstvolgende fase | geen; PS-7 neemt de rest van artwork |
+
+Toegevoegd als goedgekeurde afwijking, vastgelegd in
+[docs/pleya-server-ps4e-proposal.md](pleya-server-ps4e-proposal.md) en
+[DEC-073](DECISIONS.md).
+
+**Scope.** De parameter staat al in het contract en wordt vandaag bewust genegeerd; de doc-comment op
+`handleArtwork` legt uit waarom. PS-7A maakt hem waar: schalen, een cache op schijf, single-flight
+bij een gelijktijdige cache miss op hetzelfde formaat, en terugval op het origineel wanneer het
+bronformaat niet te decoderen is. Geen protocolwijziging: het contract belooft dit al.
+
+**Out of scope.** Andere artworksoorten dan wat de scanner vandaag vindt, en elke vorm van
+artwork ophalen bij een externe bron. Dat is PS-7.
+
+---
+
 ### Fase 8. Remux, transcoding en sessielevenscyclus
 
 | Veld | Inhoud |

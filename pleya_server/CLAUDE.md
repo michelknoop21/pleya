@@ -8,6 +8,11 @@ De werkregels per fase staan in de sectie Pleya Server van [../CLAUDE.md](../CLA
 onverkort: lees hoofdstuk 23 plus je eigen fase, blijf binnen de Phase ID, bouw niets uit een latere
 fase vooruit, en schrijf geen latere productvereiste weg. **De huidige fase is PS-9.**
 
+Eén stuk werk loopt daar bewust naast: de lege hubs `continue_watching` en `next_up` in `handleHub`
+zijn met [DEC-073](../docs/DECISIONS.md) aangemerkt als defect in het gesloten PS-4, en worden als
+zodanig gecorrigeerd. Datzelfde besluit voegt PS-4E, PS-7N en PS-7A toe aan de roadmap; geen van
+drieën is begonnen.
+
 `internal/web/` hoort niet bij deze fase maar bij PS-3W, een aparte afwijking met een eigen voorstel in
 [../docs/pleya-server-ps3w-proposal.md](../docs/pleya-server-ps3w-proposal.md).
 
