@@ -93,41 +93,42 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 	args = append(args, limit+1)
 
 	sql := fmt.Sprintf(`
-		SELECT i.id, i.library_id, i.parent_id, i.kind, i.title,
-		       coalesce(i.sort_title, i.title), i.year, i.item_index, i.added_at,
-		       %s::text
+		SELECT %s, %s::text
 		FROM media_items i
 		WHERE %s
 		ORDER BY %s %s, i.id %s
 		LIMIT $%d`,
-		key, strings.Join(where, " AND "), key, direction, direction, len(args))
+		itemColumns, key, strings.Join(where, " AND "), key, direction, direction, len(args))
 
+	return s.itemPage(ctx, sql, args, q.Sort, limit, q.Cursor)
+}
+
+// itemColumns is de kolomlijst die scanItems verwacht, met i als alias voor
+// media_items.
+//
+// Eén plek, want Items en de twee kijkstatushubs lezen dezelfde rijvorm uit drie
+// verschillende queries. Een kolom die op één van de drie plekken verschuift is
+// een scanfout die pas op een specifieke bibliotheek opvalt.
+const itemColumns = `i.id, i.library_id, i.parent_id, i.kind, i.title,
+		       coalesce(i.sort_title, i.title), i.year, i.item_index, i.added_at`
+
+// itemPage voert een query uit die itemColumns plus een sorteersleutel levert,
+// knipt de pagina op limit, zet de volgende cursor en hydrateert.
+func (s *Store) itemPage(ctx context.Context, sql string, args []any, sort Sort, limit int, cursor *Cursor) (Page, error) {
 	rows, err := s.pool.Query(ctx, sql, args...)
 	if err != nil {
-		return Page{}, cursorOrWrap(q.Cursor, err, "items lezen")
+		return Page{}, cursorOrWrap(cursor, err, "items lezen")
 	}
 
-	var page Page
-	keys := []string{}
-	for rows.Next() {
-		var it Item
-		var sortKey string
-		if err := rows.Scan(&it.ID, &it.LibraryID, &it.ParentID, &it.Kind, &it.Title,
-			&it.SortTitle, &it.Year, &it.Index, &it.AddedAt, &sortKey); err != nil {
-			rows.Close()
-			return Page{}, err
-		}
-		page.Items = append(page.Items, it)
-		keys = append(keys, sortKey)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return Page{}, cursorOrWrap(q.Cursor, err, "items lezen")
+	items, keys, err := scanItems(rows)
+	if err != nil {
+		return Page{}, cursorOrWrap(cursor, err, "items lezen")
 	}
 
+	page := Page{Items: items}
 	if len(page.Items) > limit {
 		last := page.Items[limit-1]
-		page.NextCursor = Cursor{Sort: q.Sort, Key: keys[limit-1], ID: last.ID.String()}.Encode()
+		page.NextCursor = Cursor{Sort: sort, Key: keys[limit-1], ID: last.ID.String()}.Encode()
 		page.Items = page.Items[:limit]
 	}
 
@@ -135,6 +136,28 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 		return Page{}, err
 	}
 	return page, nil
+}
+
+// scanItems leest itemColumns plus de sorteersleutel en sluit rows zelf.
+func scanItems(rows pgx.Rows) ([]Item, []string, error) {
+	defer rows.Close()
+
+	var items []Item
+	keys := []string{}
+	for rows.Next() {
+		var it Item
+		var sortKey string
+		if err := rows.Scan(&it.ID, &it.LibraryID, &it.ParentID, &it.Kind, &it.Title,
+			&it.SortTitle, &it.Year, &it.Index, &it.AddedAt, &sortKey); err != nil {
+			return nil, nil, err
+		}
+		items = append(items, it)
+		keys = append(keys, sortKey)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	return items, keys, nil
 }
 
 // Item geeft één item, volledig gevuld.

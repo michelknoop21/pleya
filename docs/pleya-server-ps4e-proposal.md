@@ -160,10 +160,12 @@ bewijs. Alles in dezelfde commit als de codefix, niet losstaand.
 De `next_up`-semantiek wordt bij die fix normatief vastgelegd in hoofdstuk 15 van
 `docs/pleya-protocol-v1.md` en in de hub-beschrijving van `docs/pleya-protocol/v1/openapi.yaml`,
 zodat web en Flutter-client nooit een verschillende betekenis aan dezelfde hub kunnen geven: per
-serie precies één rij, de laagst genummerde ongekeken aflevering na de hoogst genummerde aflevering
-waar deze identiteit kijkstatus op heeft, met `season.item_index >= 1` en een niet-lege `item_index`,
-dus met specials en ongenummerde afleveringen uitgesloten als kandidaat én als ankerpunt. Een serie
-zonder kijkactiviteit staat niet in de hub.
+serie precies één rij, de laagst genummerde aflevering vanaf de hoogst genummerde aflevering waar
+deze identiteit kijkstatus op heeft die ongekeken is en waaraan nog niet begonnen is, met
+`season.item_index >= 1` en een niet-lege `item_index`, dus met specials en ongenummerde
+afleveringen uitgesloten als kandidaat én als ankerpunt. Een serie zonder kijkactiviteit staat niet
+in de hub. Waarom "vanaf" en niet "na" staat in DEC-073; dat is een correctie die tijdens de
+implementatie boven kwam.
 
 Die tekst is vóór implementatie getoetst aan wat de Flutter-client vandaag al van `next_up` verwacht,
 met de afspraak dat de bestaande clientverwachting wint bij een afwijking. Er is er geen: `_hub()`
