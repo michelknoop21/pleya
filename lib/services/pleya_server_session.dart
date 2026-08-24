@@ -194,6 +194,15 @@ class PleyaServerSession {
     );
   }
 
+  /// A failed write leaves the rotated token stranded in memory: disk still
+  /// has the token this rotation just spent, and by the time anyone tries
+  /// again the server has already moved past it. A cold start before the
+  /// next successful persist would present that stale token as reuse and
+  /// revoke the whole chain — the exact failure this class exists to avoid.
+  /// Swallowing the error here used to let that happen silently. Propagating
+  /// it instead fails this call: [_accessToken] is never set, so the next
+  /// [accessToken] retries the refresh — spending one more rotation against
+  /// the token already sitting in [_connection], which tries the write again.
   Future<void> _persist() async {
     final listener = onTokensRotated;
     if (listener == null) return;
@@ -201,6 +210,7 @@ class PleyaServerSession {
       await listener(_connection);
     } catch (e, st) {
       appLogger.e('PleyaServerSession: failed to persist rotated refresh token', error: e, stackTrace: st);
+      rethrow;
     }
   }
 
