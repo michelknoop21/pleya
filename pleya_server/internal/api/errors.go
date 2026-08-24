@@ -90,8 +90,8 @@ var errorTable = map[string]struct {
 	CodeStorageUnavailable: {http.StatusServiceUnavailable, true},
 	CodeStorageFull:        {http.StatusInsufficientStorage, false},
 
-	CodeSessionInvalid:      {http.StatusBadRequest, false},
-	CodeStreamSessionLimit:  {http.StatusTooManyRequests, false},
+	CodeSessionInvalid:     {http.StatusBadRequest, false},
+	CodeStreamSessionLimit: {http.StatusTooManyRequests, false},
 }
 
 // writeError stuurt de foutvorm met de status en retryable die bij de code horen.
