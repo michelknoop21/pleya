@@ -1,0 +1,35 @@
+# Read by pleya_verify/runner/lib/src/impact/resolver.dart. Maps a changed
+# path to the scenario tags a CI run (or a human deciding what to re-verify)
+# should select. `default_suite` is what an unrecognized path falls back
+# to — never an empty selection, see resolver.dart's ImpactResult.tags doc.
+default_suite: smoke
+
+rules:
+  - pattern: "lib/screens/discover_screen.dart"
+    tags: [discover]
+  - pattern: "lib/focus/**"
+    tags: [tvos-focus, navigation]
+  - pattern: "lib/widgets/side_navigation_rail.dart"
+    tags: [tvos-focus, navigation, sidebar]
+  - pattern: "lib/screens/media_detail_screen.dart"
+    tags: [media-detail]
+  - pattern: "lib/media/season_episode_pager.dart"
+    tags: [media-detail]
+  - pattern: "lib/screens/libraries/**"
+    tags: [library]
+  - pattern: "lib/mpv/**"
+    tags: [player]
+  - pattern: "lib/automation/**"
+    tags: [smoke]
+
+ignored:
+  - pattern: "**/*.g.dart"
+    reason: "generated code, never hand-edited"
+  - pattern: "**/*.freezed.dart"
+    reason: "generated code, never hand-edited"
+  - pattern: "lib/i18n/**"
+    reason: "translation strings don't change scenario-visible behavior"
+  - pattern: "test/**"
+    reason: "test-only changes are covered by flutter test itself, not a scenario re-run"
+  - pattern: "docs/**"
+    reason: "documentation has no runtime behavior to verify"

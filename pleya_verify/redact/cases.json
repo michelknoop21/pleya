@@ -1,0 +1,23 @@
+{
+  "comment": "Shared test vectors for the static part of LogRedactionManager's denylist (lib/utils/log_redaction_manager.dart) and its Dart port, pleya_verify/runner/lib/src/redact.dart. Both test/utils/log_redaction_manager_parity_test.dart (app side) and pleya_verify/runner/test/redact_test.dart (runner side) read this same file and check redact(input) == expected, so a pattern the app knows and the runner misses (or vice versa) fails on whichever side has not been updated to match. Registered-value redaction (registerToken/registerServerUrl) has no equivalent here — these vectors only exercise the always-on, pattern-based rules.",
+  "cases": [
+    {"description": "a benign line with nothing to redact is untouched", "input": "GET /library/sections returned 200", "expected": "GET /library/sections returned 200"},
+    {"description": "IPv4 with dot separators is masked", "input": "server at 192.168.1.42 responded", "expected": "server at 192.x.x.42 responded"},
+    {"description": "IPv4 with dash separators is masked", "input": "host 10-0-0-5 is down", "expected": "host 10-x-x-5 is down"},
+    {"description": "Plex token query param", "input": "GET /library?X-Plex-Token=abc123secret", "expected": "GET /library?X-Plex-Token=[REDACTED]"},
+    {"description": "Jellyfin api_key query param", "input": "GET /Items?api_key=xyz789secret", "expected": "GET /Items?api_key=[REDACTED]"},
+    {"description": "Jellyfin Quick Connect secret query param", "input": "GET /QuickConnect/Connect?secret=foo123", "expected": "GET /QuickConnect/Connect?secret=[REDACTED]"},
+    {"description": "Emby token header, colon form", "input": "X-Emby-Token: abcdef123456", "expected": "X-Emby-Token: [REDACTED]"},
+    {"description": "Emby token header, equals form", "input": "X-Emby-Token=abcdef123456", "expected": "X-Emby-Token= [REDACTED]"},
+    {"description": "MediaBrowser quoted token field", "input": "Authorization: MediaBrowser Client=\"Pleya\", Token=\"abc123secret\"", "expected": "Authorization: MediaBrowser Client=\"Pleya\", Token=\"[REDACTED]\""},
+    {"description": "generic secret query param without a separator (the Tautulli apikey= case)", "input": "callback?apikey=secretvalue123", "expected": "callback?apikey=[REDACTED]"},
+    {"description": "generic secret query param with an underscore before the field name", "input": "GET /api?pms_token=abc123", "expected": "GET /api?pms_token=[REDACTED]"},
+    {"description": "generic quoted secret field", "input": "login {password=\"hunter2\"}", "expected": "login {password=\"[REDACTED]\"}"},
+    {"description": "Bearer scheme credential keeps the scheme, drops the token", "input": "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig", "expected": "Authorization: Bearer [REDACTED]"},
+    {"description": "Cookie header is redacted wholesale via the credential-header fallback", "input": "Cookie: session=abc123xyz", "expected": "Cookie: [REDACTED]"},
+    {"description": "an already-redacted Bearer value is left alone (idempotent)", "input": "Authorization: Bearer [REDACTED]", "expected": "Authorization: Bearer [REDACTED]"},
+    {"description": "an already-redacted Cookie value is left alone (idempotent)", "input": "Cookie: [REDACTED]", "expected": "Cookie: [REDACTED]"},
+    {"description": "a query string with no secret-shaped param is untouched", "input": "GET /library/sections?type=1&sort=titleSort", "expected": "GET /library/sections?type=1&sort=titleSort"},
+    {"description": "multiple secrets on one line are all redacted", "input": "GET /a?X-Plex-Token=aaa and /b?api_key=bbb", "expected": "GET /a?X-Plex-Token=[REDACTED] and /b?api_key=[REDACTED]"}
+  ]
+}
