@@ -62,7 +62,13 @@ class NoticeCard extends StatelessWidget {
         style: TextStyle(color: primary ? t.text : t.textMuted, fontWeight: FontWeight.w600, fontSize: 13 * scale),
       ),
     );
-    return tv ? FocusableButton(onPressed: onPressed, child: child) : Pressable(onTap: onPressed, child: child);
+    return tv
+        ? FocusableButton(
+            onPressed: onPressed,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusSm)),
+            child: child,
+          )
+        : Pressable(onTap: onPressed, child: child);
   }
 
   @override
@@ -73,7 +79,7 @@ class NoticeCard extends StatelessWidget {
 
     final closeButton = AppIcon(Symbols.close_rounded, color: t.textMuted, size: 18 * scale, fill: 0, weight: 500);
     final closeTap = tv
-        ? FocusableButton(onPressed: onDismiss, child: closeButton)
+        ? FocusableButton(onPressed: onDismiss, shape: const CircleBorder(), child: closeButton)
         : Pressable(onTap: onDismiss, haptic: false, child: closeButton);
 
     return Container(

@@ -158,7 +158,7 @@ class _LiveTvShowScheduleScreenState extends State<LiveTvShowScheduleScreen>
                   autofocus: index == 0,
                   autoScroll: true,
                   useComfortableZone: true,
-                  useBackgroundFocus: true,
+                  mode: FocusIndicatorMode.fill,
                   disableScale: true,
                   onSelect: onTap,
                   onBack: () => Navigator.pop(context),

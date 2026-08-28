@@ -433,7 +433,7 @@ class _FolderTreeItemState extends State<FolderTreeItem> with ContextMenuTapMixi
             onLongPress: hasMenu ? _showRowMenu : null,
             onNavigateUp: widget.onNavigateUp,
             onNavigateLeft: widget.onNavigateLeft,
-            useBackgroundFocus: true,
+            mode: FocusIndicatorMode.fill,
             disableScale: true,
             descendantsAreFocusable: false,
             child: gesture,
@@ -443,7 +443,8 @@ class _FolderTreeItemState extends State<FolderTreeItem> with ContextMenuTapMixi
         // Play/Shuffle buttons for folders when the backend supports them.
         if (widget.isFolder && playAll != null) ...[
           FocusableButton(
-            useBackgroundFocus: true,
+            mode: FocusIndicatorMode.fill,
+            shape: const CircleBorder(),
             onPressed: playAll,
             child: IconButton(
               onPressed: playAll,
@@ -463,7 +464,8 @@ class _FolderTreeItemState extends State<FolderTreeItem> with ContextMenuTapMixi
         ],
         if (widget.isFolder && shuffle != null) ...[
           FocusableButton(
-            useBackgroundFocus: true,
+            mode: FocusIndicatorMode.fill,
+            shape: const CircleBorder(),
             onPressed: shuffle,
             child: IconButton(
               onPressed: shuffle,

@@ -133,7 +133,7 @@ class SeerrPosterCard extends StatelessWidget {
       onSelect: onTap,
       focusNode: focusNode,
       borderRadius: t.radiusSm,
-      delegateFocusBorder: true,
+      mode: FocusIndicatorMode.delegated,
       semanticLabel: media.title,
       child: Pressable(
         onTap: onTap,
@@ -260,7 +260,7 @@ class SeerrLoadMoreTile extends StatelessWidget {
         if (focused) onActivate();
       },
       borderRadius: radius,
-      delegateFocusBorder: true,
+      mode: FocusIndicatorMode.delegated,
       semanticLabel: t.seerr.loadMore,
       child: Pressable(
         onTap: onActivate,

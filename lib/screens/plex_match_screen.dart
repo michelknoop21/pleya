@@ -198,16 +198,12 @@ class _PlexMatchScreenState extends State<PlexMatchScreen> with ControllerDispos
         const SizedBox(height: 12),
         FocusableButton(
           focusNode: _searchFocus,
-          useBackgroundFocus: true,
           onPressed: _isSearching ? null : _search,
           child: FilledButton.icon(
             onPressed: _isSearching ? null : _search,
             icon: const AppIcon(Symbols.search_rounded),
             label: Text(t.matchScreen.search),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              shape: const StadiumBorder(),
-            ),
+            style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14)),
           ),
         ),
       ],

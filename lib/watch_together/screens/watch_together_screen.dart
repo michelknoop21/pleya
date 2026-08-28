@@ -413,7 +413,7 @@ class _RecentRoomTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: FocusableWrapper(
-        useBackgroundFocus: true,
+        mode: FocusIndicatorMode.fill,
         borderRadius: 12,
         // Hold SELECT/OK to open the rename/remove menu on TV/dpad (matches media cards).
         enableLongPress: true,
@@ -744,7 +744,7 @@ class _SessionCodeRow extends StatelessWidget {
     final theme = Theme.of(context);
 
     return FocusableWrapper(
-      useBackgroundFocus: true,
+      mode: FocusIndicatorMode.fill,
       disableScale: true,
       borderRadius: 4,
       onSelect: () => _copySessionCode(context),

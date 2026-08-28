@@ -168,7 +168,7 @@ class _SyncOffsetControlState extends State<SyncOffsetControl> {
       onSelect: onTap,
       borderRadius: 18,
       autoScroll: false,
-      useBackgroundFocus: true,
+      mode: FocusIndicatorMode.fill,
       child: GestureDetector(
         onTap: onTap,
         onLongPressStart: (_) => onLongPressStart(),
@@ -201,7 +201,7 @@ class _SyncOffsetControlState extends State<SyncOffsetControl> {
       onSelect: onTap,
       borderRadius: 18,
       autoScroll: false,
-      useBackgroundFocus: true,
+      mode: FocusIndicatorMode.fill,
       child: GestureDetector(
         onTap: onTap,
         onLongPressStart: (_) => onLongPressStart(),
@@ -285,7 +285,7 @@ class _SyncOffsetControlState extends State<SyncOffsetControl> {
             onSelect: _currentOffset != 0 ? _resetOffset : null,
             borderRadius: 18,
             autoScroll: false,
-            useBackgroundFocus: true,
+            mode: FocusIndicatorMode.fill,
             child: GestureDetector(
               onTap: _currentOffset != 0 ? _resetOffset : null,
               child: Container(

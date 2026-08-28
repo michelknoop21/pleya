@@ -237,7 +237,7 @@ class _SyncRuleTileState extends State<_SyncRuleTile> {
           autofocus: widget.autofocus,
           focusNode: _rowFocusNode,
           disableScale: true,
-          useBackgroundFocus: true,
+          mode: FocusIndicatorMode.fill,
           borderRadius: 12,
           onSelect: () => _onTap(context),
           onNavigateRight: () => _switchFocusNode.requestFocus(),
@@ -260,7 +260,7 @@ class _SyncRuleTileState extends State<_SyncRuleTile> {
               trailing: FocusableWrapper(
                 focusNode: _switchFocusNode,
                 disableScale: true,
-                useBackgroundFocus: true,
+                mode: FocusIndicatorMode.fill,
                 descendantsAreFocusable: false,
                 borderRadius: 20,
                 onSelect: () => downloadProvider.setSyncRuleEnabled(rule.globalKey, !rule.enabled),

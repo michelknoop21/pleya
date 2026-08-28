@@ -118,6 +118,7 @@ class StateView extends StatelessWidget {
           SizedBox(height: space * 1.5),
           FocusableButton(
             onPressed: onRetry,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusSm)),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(color: surfaceElevated, borderRadius: BorderRadius.circular(radiusSm)),

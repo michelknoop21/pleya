@@ -108,7 +108,6 @@ class _EditJellyfinConnectionScreenState extends State<EditJellyfinConnectionScr
                   const SizedBox(height: 16),
                   FocusableButton(
                     focusNode: _saveFocus,
-                    useBackgroundFocus: true,
                     onPressed: busy ? null : _save,
                     child: FilledButton.icon(
                       onPressed: busy ? null : _save,
