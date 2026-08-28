@@ -21,6 +21,11 @@ Elk `/v1/*`-verzoek:
   is met `PLEYA_VERIFY_TOKEN` gezet. Ontbreekt hij dan of klopt hij niet, dan
   401. `X-Pleya-Verify` wordt nergens als tokenwaarde gelezen.
 
+Elk pad hieronder heeft precies één toegestane HTTP-methode (`GET` of `POST`,
+zie de kop per endpoint). Een bestaand pad met de verkeerde methode (bv.
+`POST /v1/health`) geeft 405, ná de drie auth-checks hierboven maar vóór de
+route zelf draait. Een pad dat niet in deze spec staat geeft 404.
+
 ## Endpoints
 
 ### `GET /v1/health`
@@ -89,9 +94,20 @@ JSON:
 {"events": [{"seq": 1, "name": "focus.changed", "data": {"from": "...", "to": "..."}, "at": "<ISO8601>"}]}
 ```
 
-Zie de event-vocabulaire in het Pleya Verify-plan voor de volledige lijst van
-event-namen; op dit moment emit alleen `focus.changed` (uit
-`AutomationFocusLog`). Triggert geen events (het is zelf de bron).
+Emitted vandaag, met de bron per naam:
+
+- `focus.changed` (`{"from": "...", "to": "..."}`) — `AutomationFocusLog`, elke
+  focuswissel.
+- `screen.changed` (`AutomationRouteObserver`) — een routetransitie.
+- `screen.ready` (`{"id": "..."}`, `AutomationScreen`) — het moment dat een
+  gemount scherm z'n readiness-transitie naar `ready` maakt.
+- `navigation.tab_changed` (`{"from": "...", "to": "..."}`, `main_screen.dart`)
+  — de navigatietab wisselt.
+
+Zie de event-vocabulaire in het Pleya Verify-plan voor de volledige, nog
+groeiende lijst (`library.items_loaded`, `media_detail.ready`,
+`input.received` volgen in Fase 5). Triggert geen events zelf (het is zelf de
+bron).
 
 ### `GET /v1/screens`
 
@@ -106,6 +122,57 @@ Eén entry per gemount `AutomationScreen`. `state` is `loading`/`ready`/`error`,
 lui berekend — pas geëvalueerd op het moment van deze call, geen achtergrond-
 polling. Elke transitie naar `ready` heeft al een `screen.ready`-event in
 `/v1/events` achtergelaten op het moment dat hij daadwerkelijk plaatsvond.
+
+### `GET /v1/automation_ids`
+
+Geen parameters. 200 met JSON:
+
+```json
+{"ids": [{"id": "screen.discover", "role": "screen"}, {"id": "nav.discover", "role": "nav"}]}
+```
+
+De **statische, autoritatieve** `AutomationIds`-catalogus
+(`AutomationIds.catalog()`) — niet een dump van de op dat moment gemounte
+`AutomationRegistry` (dat is `/v1/ui_tree`'s `declared`). Het verschil is
+bewust: de runtime-registry bevat alleen wat toevallig gemount is (nooit alle
+schermen tegelijk), terwijl scenariovalidatie zonder simulator (Fase 6) een
+volledige, schermonafhankelijke bron nodig heeft. Groeit mee met de
+id-uitbreidingen in Fase 5, inclusief `instanceable`-metadata voor
+instance-suffixed ids (`library.grid.item[n]` en vergelijkbaar). Triggert
+geen events.
+
+### `GET /v1/viewport`
+
+Geen parameters. 200 met JSON:
+
+```json
+{"available": true, "width": 1920.0, "height": 1080.0, "devicePixelRatio": 2.0, "safeArea": {"top": 0.0, "right": 0.0, "bottom": 0.0, "left": 0.0}}
+```
+
+`{"available": false}` wanneer er nog geen gemounte `Navigator` is (vroege
+boot, of een test zonder widget-tree) — nooit een crash. Waarden komen uit
+`MediaQuery` op `rootNavigatorKey`'s huidige context, dezelfde
+"overleeft-profielsessie-remounts"-seam die `main.dart`'s `_rootPinPrompt`
+gebruikt. Nodig voor `insideViewport`-geometrie (Fase 7). Triggert geen
+events.
+
+### `GET /v1/logs?since=N`
+
+`since` (optioneel, default `0`): alleen entries met `seq > since`. 200 met
+JSON:
+
+```json
+{"entries": [{"seq": 1, "at": "<ISO8601>", "level": "debug", "message": "...", "error": "..."}]}
+```
+
+`error` ontbreekt wanneer de entry er geen had. Bron is `MemoryLogOutput`
+(dezelfde ringbuffer als het instellingenscherm `LogsScreen` toont); `seq` is
+monotoon binnen het app-proces en blijft geldig als oude entries uit de
+ringbuffer vallen (in tegenstelling tot lijstpositie). `message`/`error` zijn
+al ge-redact bij het schrijven (`MemoryAwareLogPrinter`) en worden hier nog
+een keer door `LogRedactionManager.redact()` gehaald — verdediging in
+diepte tegen een waarde die pas ná het bufferen geregistreerd werd. Triggert
+geen events.
 
 ### `POST /v1/wait`
 

@@ -18,4 +18,19 @@ class AutomationIds {
   static const String screenDiscover = 'screen.discover';
   static const String screenLibraries = 'screen.libraries';
   static const String screenMediaDetail = 'screen.media_detail';
+
+  /// The static, autoritative id catalogue `GET /v1/automation_ids` serves.
+  /// Deliberately not a dump of [AutomationRegistry]'s live-mounted nodes —
+  /// that registry only ever holds whatever screen happens to be on screen,
+  /// while a scenario needs the full, screen-independent set. Grows in step
+  /// with the consts above; instance-suffixed ids (`library.grid.item[n]`
+  /// and friends) and their `instanceable` metadata land with the Fase 5
+  /// id rollout.
+  static List<Map<String, Object?>> catalog() => [
+    {'id': screenMain, 'role': 'screen'},
+    {'id': screenDiscover, 'role': 'screen'},
+    {'id': screenLibraries, 'role': 'screen'},
+    {'id': screenMediaDetail, 'role': 'screen'},
+    for (final tab in NavigationTabId.values) {'id': navTab(tab), 'role': 'nav'},
+  ];
 }

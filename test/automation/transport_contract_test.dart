@@ -65,6 +65,24 @@ void main() {
       expect(response.statusCode, HttpStatus.forbidden);
     });
 
+    test('a spec endpoint called with the wrong HTTP method is rejected with 405', () async {
+      // GET where the spec documents POST, and vice versa — proves method
+      // validation runs for both directions, not just "any GET rejected".
+      for (final MapEntry(key: path, value: method) in {'/v1/health': 'GET', '/v1/wait': 'POST'}.entries) {
+        final wrongMethod = method == 'GET' ? 'POST' : 'GET';
+        final uri = Uri.parse('http://127.0.0.1:${server.port}$path');
+        final request = await HttpClient().openUrl(wrongMethod, uri);
+        request.headers.set('X-Pleya-Verify', kAutomationProtocolMarker);
+        final response = await request.close();
+        await response.drain<void>();
+        expect(
+          response.statusCode,
+          HttpStatus.methodNotAllowed,
+          reason: '$wrongMethod $path should 405 — the spec declares $method',
+        );
+      }
+    });
+
     test('/v1/health responds with the documented shape', () async {
       final uri = Uri.parse('http://127.0.0.1:${server.port}/v1/health');
       final request = await HttpClient().openUrl('GET', uri);

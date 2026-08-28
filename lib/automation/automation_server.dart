@@ -6,9 +6,13 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:flutter/gestures.dart' show Offset;
+import 'package:flutter/widgets.dart' show BuildContext, MediaQuery;
 
+import '../main.dart' show rootNavigatorKey;
 import '../utils/app_logger.dart';
+import '../utils/log_redaction_manager.dart';
 import 'automation_event_log.dart';
+import 'automation_ids.dart';
 import 'automation_input.dart';
 import 'automation_overlay.dart';
 import 'automation_focus_log.dart';
@@ -38,6 +42,28 @@ const String _kGitCommit = String.fromEnvironment('GIT_COMMIT');
 ///  - `Host` must be a loopback host. Wrong → 403.
 ///  - `Authorization: Bearer <token>` is the actual auth, only enforced when
 ///    `PLEYA_VERIFY_TOKEN` was set at build time. Missing/wrong → 401.
+
+/// One entry per `/v1/*` route, in the same order as the switch below —
+/// the single source of truth `_route` checks the HTTP method against
+/// before dispatch, so a wrong verb (`POST /v1/health`) 405s instead of
+/// running the GET handler.
+const Map<String, String> _kRouteMethods = {
+  '/v1/health': 'GET',
+  '/v1/ui_tree': 'GET',
+  '/v1/focus': 'GET',
+  '/v1/screens': 'GET',
+  '/v1/focus/log': 'GET',
+  '/v1/events': 'GET',
+  '/v1/automation_ids': 'GET',
+  '/v1/viewport': 'GET',
+  '/v1/logs': 'GET',
+  '/v1/wait': 'POST',
+  '/v1/input/key': 'POST',
+  '/v1/input/pointer': 'POST',
+  '/v1/overlay': 'POST',
+  '/v1/screenshot': 'GET',
+};
+
 class AutomationServer {
   HttpServer? _server;
   final DateTime _bootedAt = DateTime.now();
@@ -119,6 +145,18 @@ class AutomationServer {
       }
     }
 
+    final expectedMethod = _kRouteMethods[request.uri.path];
+    if (expectedMethod == null) {
+      request.response.statusCode = HttpStatus.notFound;
+      await request.response.close();
+      return;
+    }
+    if (request.method != expectedMethod) {
+      request.response.statusCode = HttpStatus.methodNotAllowed;
+      await request.response.close();
+      return;
+    }
+
     switch (request.uri.path) {
       case '/v1/health':
         await _respondJson(request, {
@@ -142,6 +180,14 @@ class AutomationServer {
       case '/v1/events':
         await _respondJson(request, {
           'events': [for (final e in AutomationEventLog.instance.since(_sinceParam(request))) e.toJson()],
+        });
+      case '/v1/automation_ids':
+        await _respondJson(request, {'ids': AutomationIds.catalog()});
+      case '/v1/viewport':
+        await _respondJson(request, _viewportSnapshot());
+      case '/v1/logs':
+        await _respondJson(request, {
+          'entries': [for (final e in MemoryLogOutput.since(_sinceParam(request))) _logEntryToJson(e)],
         });
       case '/v1/wait':
         final body = await _readJsonBody(request);
@@ -179,12 +225,62 @@ class AutomationServer {
         request.response.add(png);
         await request.response.close();
       default:
-        request.response.statusCode = HttpStatus.notFound;
+        // Unreachable unless _kRouteMethods and this switch drift apart —
+        // every key above is validated against _kRouteMethods before the
+        // switch runs. A Dart string-switch with no matching case completes
+        // silently without responding, which would hang the caller forever
+        // (the same failure mode _handle's catch-all guards against), so
+        // this stays as the guard against that specific drift.
+        appLogger.w('[PleyaVerify] route in _kRouteMethods with no switch case: ${request.uri.path}');
+        request.response.statusCode = HttpStatus.internalServerError;
         await request.response.close();
     }
   }
 
   int _sinceParam(HttpRequest request) => int.tryParse(request.uri.queryParameters['since'] ?? '') ?? 0;
+
+  /// Reads `MediaQuery` off [rootNavigatorKey]'s current context — the same
+  /// "survives profile-session remounts" seam `_rootPinPrompt` in main.dart
+  /// already uses. `{"available": false}` before the app has a mounted
+  /// `Navigator` (early boot, or a plain non-widget test), never a crash.
+  Map<String, Object?> _viewportSnapshot() {
+    BuildContext? context;
+    try {
+      // Requires a live WidgetsBinding — GlobalKey.currentContext reaches
+      // into it internally. Absent before the app has booted (or in a
+      // plain, non-widget test); degrade rather than fail the request.
+      context = rootNavigatorKey.currentContext;
+    } catch (_) {
+      return {'available': false};
+    }
+    if (context == null || !context.mounted) return {'available': false};
+    final mediaQuery = MediaQuery.maybeOf(context);
+    if (mediaQuery == null) return {'available': false};
+    return {
+      'available': true,
+      'width': mediaQuery.size.width,
+      'height': mediaQuery.size.height,
+      'devicePixelRatio': mediaQuery.devicePixelRatio,
+      'safeArea': {
+        'top': mediaQuery.padding.top,
+        'right': mediaQuery.padding.right,
+        'bottom': mediaQuery.padding.bottom,
+        'left': mediaQuery.padding.left,
+      },
+    };
+  }
+
+  /// `message`/`error` already went through [LogRedactionManager.redact] once
+  /// at write time (`MemoryAwareLogPrinter.log`); redacting again here is
+  /// defense-in-depth against a value registered for redaction after the
+  /// entry was already buffered.
+  Map<String, Object?> _logEntryToJson(LogEntry entry) => {
+    'seq': entry.seq,
+    'at': entry.timestamp.toIso8601String(),
+    'level': entry.level.name,
+    'message': LogRedactionManager.redact(entry.message),
+    if (entry.error != null) 'error': LogRedactionManager.redact(entry.error.toString()),
+  };
 
   Future<void> _respondInputResult(HttpRequest request, AutomationInputResult result) async {
     switch (result) {
