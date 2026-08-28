@@ -87,6 +87,11 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   fake_async: ^1.3.3
   build_runner: ^2.13.0
+  # Pleya Verify's fixture-server routing kernel — shared by
+  # test/pleya_server/pleya_fake_server.dart (an http.MockClient adapter)
+  # and pleya_verify/fixture_server's dart:io adapter (Deel B Fase 1/2).
+  pleya_verify_fixture_server:
+    path: pleya_verify/fixture_server
   json_serializable: ^6.7.1
   slang_build_runner: ^4.14.0
   sentry_dart_plugin: ^3.3.0

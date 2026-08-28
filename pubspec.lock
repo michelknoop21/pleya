@@ -908,6 +908,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  pleya_verify_fixture_server:
+    dependency: "direct dev"
+    description:
+      path: "pleya_verify/fixture_server"
+      relative: true
+    source: path
+    version: "0.1.0"
   plugin_platform_interface:
     dependency: "direct dev"
     description:
