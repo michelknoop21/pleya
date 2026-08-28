@@ -82,6 +82,10 @@ class NavigationRailItem extends StatelessWidget {
   /// fullscreen toggle).
   final String? automationId;
 
+  /// Disambiguates repeated [automationId]s across a list — the registered
+  /// id becomes `automationId[automationInstance]`.
+  final String? automationInstance;
+
   const NavigationRailItem({
     super.key,
     required this.icon,
@@ -101,6 +105,7 @@ class NavigationRailItem extends StatelessWidget {
     this.suppressSelectedBackground = false,
     this.onNavigateRight,
     this.automationId,
+    this.automationInstance,
   });
 
   @override
@@ -110,6 +115,7 @@ class NavigationRailItem extends StatelessWidget {
 
     return AutomationNode(
       id: automationId,
+      instance: automationInstance,
       role: 'nav.item',
       state: () => {'selected': isSelected, 'collapsed': isCollapsed},
       focusNode: focusNode,
@@ -777,202 +783,206 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
 
     // Listen to fullscreen + groupLibrariesByServer setting so the rail
     // rebuilds when the user toggles "Group libraries by server" in Appearance.
-    return ListenableBuilder(
-      listenable: Listenable.merge([
-        FullscreenStateManager(),
-        SettingsService.instance.listenable(SettingsService.groupLibrariesByServer),
-      ]),
-      builder: (context, _) {
-        // Server grouping: only when multi-server AND the user-facing toggle is on.
-        final groupByServerSetting = SettingsService.instance.read(SettingsService.groupLibrariesByServer);
-        final showServerHeaders = serverIds.length > 1 && groupByServerSetting;
-        _collapsedServerGroupKeys.retainAll(
-          _buildServerGroupStateKeys(visibleLibraries, hiddenLibraries, showServerHeaders: showServerHeaders),
-        );
-        final visibleRows = _buildLibraryRows(
-          visibleLibraries,
-          section: _LibraryNavSection.visible,
-          showServerHeaders: showServerHeaders,
-        );
-        final prunedFocusedKey = _focusTracker.pruneExcept(_buildValidFocusKeys(destinations, visibleRows));
-        final focusOrder = _buildFocusOrder(destinations, visibleRows);
-        _debugAssertFocusOrder(focusOrder, destinations);
-        _recoverFocusAfterPrune(prunedFocusedKey, focusOrder);
-        _lastFocusOrder = focusOrder;
-        return TapRegion(
-          onTapOutside: (_) {
-            if (_isTouchExpanded) {
-              setState(() => _isTouchExpanded = false);
-              _notifyInteractionExpandedIfNeeded();
-            }
-          },
-          // Mirrors the panel's width animation so every layer below can ask
-          // "how wide is the rail *right now*" instead of reading a boolean
-          // that flipped 200ms ago. A mirror tween rather than a latch released
-          // by AnimatedContainer.onEnd: a missed onEnd (reduced motion, dispose
-          // race) would freeze the band, and a frozen band is a dead zone over
-          // the content — the opposite failure.
-          child: TweenAnimationBuilder<double>(
-            tween: Tween<double>(end: railTargetWidth),
-            duration: panelMotion,
-            curve: Curves.easeOutCubic,
-            builder: (context, paintedWidth, _) {
-              // What the rail owns right now, and the whole of the ownership
-              // rule in one line. Shut and idle the target is the collapsed
-              // rail, so this is 80 and the strip beside it belongs to the
-              // content. Once a pointer has entered over the rail the target is
-              // already the expanded width, so ownership jumps there on the
-              // first frame and the pointer cannot outrun the easeOutCubic.
-              // Collapsing, the target drops back while the paint lags, so the
-              // pixels still on screen stay owned until they are gone.
-              final owned = paintedWidth < railTargetWidth ? railTargetWidth : paintedWidth;
-              // The rows are live for as long as they are visible. Keying this
-              // off `isCollapsed` killed them the instant the collapse timer
-              // fired, while the panel stood at full width for another 200ms.
-              final panelInteractive = paintedWidth > effectiveCollapsedWidth + 0.5;
-              return SizedBox(
-                width: bandWidth,
-                child: Stack(
-                  children: [
-                    // Layer 1 — the band, claimed for exactly as long as the rail
-                    // owns it.
-                    Positioned(
-                      top: 0,
-                      bottom: 0,
-                      left: 0,
-                      width: owned,
-                      child: AbsorbPointer(absorbing: owned > effectiveCollapsedWidth + 0.5),
-                    ),
-                    // Layer 2 — the rail itself. No `width` on the Positioned: a
-                    // tight constraint would kill the width animation.
-                    Positioned(
-                      top: 0,
-                      bottom: 0,
-                      left: 0,
-                      child: MouseRegion(
-                        // Cursor only. Hover *state* lives on layer 3, or moving
-                        // from the panel into the empty band would fire onExit and
-                        // start collapsing while the pointer is still in the band.
-                        cursor: isCollapsed ? SystemMouseCursors.click : MouseCursor.defer,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: panelInteractive ? null : _expandForTouch,
-                          child: AnimatedContainer(
-                            duration: panelMotion,
-                            curve: Curves.easeOutCubic,
-                            width: railTargetWidth,
-                            clipBehavior: Clip.hardEdge,
-                            decoration: const BoxDecoration(),
-                            child: Stack(
-                              children: [
-                                // TV: left-to-right gradient scrim (Netflix-TV nav) so the
-                                // rail reads over the billboard without a hard panel.
-                                // Non-TV: solid surface panel.
-                                //
-                                // The labels on top are theme-coloured, so the scrim has to
-                                // follow: a black veil under near-black light-mode text is
-                                // unreadable. Dark keeps its original pure-black ramp;
-                                // light washes with the page background, harder and further
-                                // (the artwork stays bright, the ink does not).
-                                Positioned.fill(
-                                  child: PlatformDetector.isTV()
-                                      ? DecoratedBox(
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              begin: Alignment.centerLeft,
-                                              end: Alignment.centerRight,
-                                              colors: t.isLight
-                                                  ? [
-                                                      t.artworkScrim.withValues(alpha: 0.97),
-                                                      t.artworkScrim.withValues(alpha: 0.70),
-                                                      const Color(0x00000000),
-                                                    ]
-                                                  : const [Color(0xE6000000), Color(0x00000000)],
-                                              stops: t.isLight ? const [0.0, 0.62, 1.0] : null,
+    return AutomationNode(
+      id: AutomationIds.sidebarRail,
+      role: 'sidebar',
+      child: ListenableBuilder(
+        listenable: Listenable.merge([
+          FullscreenStateManager(),
+          SettingsService.instance.listenable(SettingsService.groupLibrariesByServer),
+        ]),
+        builder: (context, _) {
+          // Server grouping: only when multi-server AND the user-facing toggle is on.
+          final groupByServerSetting = SettingsService.instance.read(SettingsService.groupLibrariesByServer);
+          final showServerHeaders = serverIds.length > 1 && groupByServerSetting;
+          _collapsedServerGroupKeys.retainAll(
+            _buildServerGroupStateKeys(visibleLibraries, hiddenLibraries, showServerHeaders: showServerHeaders),
+          );
+          final visibleRows = _buildLibraryRows(
+            visibleLibraries,
+            section: _LibraryNavSection.visible,
+            showServerHeaders: showServerHeaders,
+          );
+          final prunedFocusedKey = _focusTracker.pruneExcept(_buildValidFocusKeys(destinations, visibleRows));
+          final focusOrder = _buildFocusOrder(destinations, visibleRows);
+          _debugAssertFocusOrder(focusOrder, destinations);
+          _recoverFocusAfterPrune(prunedFocusedKey, focusOrder);
+          _lastFocusOrder = focusOrder;
+          return TapRegion(
+            onTapOutside: (_) {
+              if (_isTouchExpanded) {
+                setState(() => _isTouchExpanded = false);
+                _notifyInteractionExpandedIfNeeded();
+              }
+            },
+            // Mirrors the panel's width animation so every layer below can ask
+            // "how wide is the rail *right now*" instead of reading a boolean
+            // that flipped 200ms ago. A mirror tween rather than a latch released
+            // by AnimatedContainer.onEnd: a missed onEnd (reduced motion, dispose
+            // race) would freeze the band, and a frozen band is a dead zone over
+            // the content — the opposite failure.
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: railTargetWidth),
+              duration: panelMotion,
+              curve: Curves.easeOutCubic,
+              builder: (context, paintedWidth, _) {
+                // What the rail owns right now, and the whole of the ownership
+                // rule in one line. Shut and idle the target is the collapsed
+                // rail, so this is 80 and the strip beside it belongs to the
+                // content. Once a pointer has entered over the rail the target is
+                // already the expanded width, so ownership jumps there on the
+                // first frame and the pointer cannot outrun the easeOutCubic.
+                // Collapsing, the target drops back while the paint lags, so the
+                // pixels still on screen stay owned until they are gone.
+                final owned = paintedWidth < railTargetWidth ? railTargetWidth : paintedWidth;
+                // The rows are live for as long as they are visible. Keying this
+                // off `isCollapsed` killed them the instant the collapse timer
+                // fired, while the panel stood at full width for another 200ms.
+                final panelInteractive = paintedWidth > effectiveCollapsedWidth + 0.5;
+                return SizedBox(
+                  width: bandWidth,
+                  child: Stack(
+                    children: [
+                      // Layer 1 — the band, claimed for exactly as long as the rail
+                      // owns it.
+                      Positioned(
+                        top: 0,
+                        bottom: 0,
+                        left: 0,
+                        width: owned,
+                        child: AbsorbPointer(absorbing: owned > effectiveCollapsedWidth + 0.5),
+                      ),
+                      // Layer 2 — the rail itself. No `width` on the Positioned: a
+                      // tight constraint would kill the width animation.
+                      Positioned(
+                        top: 0,
+                        bottom: 0,
+                        left: 0,
+                        child: MouseRegion(
+                          // Cursor only. Hover *state* lives on layer 3, or moving
+                          // from the panel into the empty band would fire onExit and
+                          // start collapsing while the pointer is still in the band.
+                          cursor: isCollapsed ? SystemMouseCursors.click : MouseCursor.defer,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: panelInteractive ? null : _expandForTouch,
+                            child: AnimatedContainer(
+                              duration: panelMotion,
+                              curve: Curves.easeOutCubic,
+                              width: railTargetWidth,
+                              clipBehavior: Clip.hardEdge,
+                              decoration: const BoxDecoration(),
+                              child: Stack(
+                                children: [
+                                  // TV: left-to-right gradient scrim (Netflix-TV nav) so the
+                                  // rail reads over the billboard without a hard panel.
+                                  // Non-TV: solid surface panel.
+                                  //
+                                  // The labels on top are theme-coloured, so the scrim has to
+                                  // follow: a black veil under near-black light-mode text is
+                                  // unreadable. Dark keeps its original pure-black ramp;
+                                  // light washes with the page background, harder and further
+                                  // (the artwork stays bright, the ink does not).
+                                  Positioned.fill(
+                                    child: PlatformDetector.isTV()
+                                        ? DecoratedBox(
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                begin: Alignment.centerLeft,
+                                                end: Alignment.centerRight,
+                                                colors: t.isLight
+                                                    ? [
+                                                        t.artworkScrim.withValues(alpha: 0.97),
+                                                        t.artworkScrim.withValues(alpha: 0.70),
+                                                        const Color(0x00000000),
+                                                      ]
+                                                    : const [Color(0xE6000000), Color(0x00000000)],
+                                                stops: t.isLight ? const [0.0, 0.62, 1.0] : null,
+                                              ),
+                                            ),
+                                          )
+                                        : ColoredBox(color: t.surface),
+                                  ),
+                                  IgnorePointer(
+                                    // Live for as long as the row is visible.
+                                    // Keying this off `isCollapsed` killed every
+                                    // row the instant the collapse timer fired,
+                                    // while the panel stood at full width for
+                                    // another 200ms.
+                                    ignoring: !panelInteractive,
+                                    child: Focus(
+                                      canRequestFocus: false,
+                                      skipTraversal: true,
+                                      onKeyEvent: (node, event) => _handleVerticalNavigation(node, event, focusOrder),
+                                      child: Column(
+                                        children: [
+                                          SizedBox(height: _getTopPadding(context)),
+                                          _buildBrandHeader(
+                                            isCollapsed: isCollapsed,
+                                            horizontalPadding: horizontalPadding,
+                                            itemHorizontalPadding: itemHorizontalPadding,
+                                          ),
+                                          Expanded(
+                                            child: ListView(
+                                              padding: .symmetric(horizontal: horizontalPadding),
+                                              clipBehavior: Clip.hardEdge,
+                                              children: _buildScrollingDestinations(
+                                                destinations,
+                                                visibleRows,
+                                                t,
+                                                isCollapsed: isCollapsed,
+                                              ),
                                             ),
                                           ),
-                                        )
-                                      : ColoredBox(color: t.surface),
-                                ),
-                                IgnorePointer(
-                                  // Live for as long as the row is visible.
-                                  // Keying this off `isCollapsed` killed every
-                                  // row the instant the collapse timer fired,
-                                  // while the panel stood at full width for
-                                  // another 200ms.
-                                  ignoring: !panelInteractive,
-                                  child: Focus(
-                                    canRequestFocus: false,
-                                    skipTraversal: true,
-                                    onKeyEvent: (node, event) => _handleVerticalNavigation(node, event, focusOrder),
-                                    child: Column(
-                                      children: [
-                                        SizedBox(height: _getTopPadding(context)),
-                                        _buildBrandHeader(
-                                          isCollapsed: isCollapsed,
-                                          horizontalPadding: horizontalPadding,
-                                          itemHorizontalPadding: itemHorizontalPadding,
-                                        ),
-                                        Expanded(
-                                          child: ListView(
-                                            padding: .symmetric(horizontal: horizontalPadding),
-                                            clipBehavior: Clip.hardEdge,
-                                            children: _buildScrollingDestinations(
-                                              destinations,
-                                              visibleRows,
-                                              t,
-                                              isCollapsed: isCollapsed,
+                                          if (destinations.contains(NavRailDestination.fullscreen))
+                                            Padding(
+                                              padding: .fromLTRB(horizontalPadding, 0, horizontalPadding, 12),
+                                              child: _buildFullscreenItem(isCollapsed: isCollapsed),
                                             ),
-                                          ),
-                                        ),
-                                        if (destinations.contains(NavRailDestination.fullscreen))
-                                          Padding(
-                                            padding: .fromLTRB(horizontalPadding, 0, horizontalPadding, 12),
-                                            child: _buildFullscreenItem(isCollapsed: isCollapsed),
-                                          ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    // Layer 3 — watches what the rail owns and takes nothing. A
-                    // translucent MouseRegion joins the hit path (so the
-                    // MouseTracker fires enter/exit across the whole of it) while
-                    // its hitTest returns false, so the Stack keeps walking down
-                    // to the panel and out to the content. It registers no
-                    // gesture recognizer, so nothing here competes with the hero.
-                    //
-                    // Sized to `owned`, never to [bandWidth]. A permanent
-                    // expanded-width watcher turned every approach to a control
-                    // beside the shut rail into an entry into the menu, which
-                    // then swallowed the click and slid the control out from
-                    // under the cursor: the Recommended tab on a library page
-                    // became unclickable on macOS. Ownership is earned by
-                    // entering over the rail, not reserved in advance.
-                    Positioned(
-                      top: 0,
-                      bottom: 0,
-                      left: 0,
-                      width: owned,
-                      child: MouseRegion(
-                        opaque: false,
-                        hitTestBehavior: HitTestBehavior.translucent,
-                        onEnter: (_) => _onHoverEnter(),
-                        onExit: (_) => _onHoverExit(),
+                      // Layer 3 — watches what the rail owns and takes nothing. A
+                      // translucent MouseRegion joins the hit path (so the
+                      // MouseTracker fires enter/exit across the whole of it) while
+                      // its hitTest returns false, so the Stack keeps walking down
+                      // to the panel and out to the content. It registers no
+                      // gesture recognizer, so nothing here competes with the hero.
+                      //
+                      // Sized to `owned`, never to [bandWidth]. A permanent
+                      // expanded-width watcher turned every approach to a control
+                      // beside the shut rail into an entry into the menu, which
+                      // then swallowed the click and slid the control out from
+                      // under the cursor: the Recommended tab on a library page
+                      // became unclickable on macOS. Ownership is earned by
+                      // entering over the rail, not reserved in advance.
+                      Positioned(
+                        top: 0,
+                        bottom: 0,
+                        left: 0,
+                        width: owned,
+                        child: MouseRegion(
+                          opaque: false,
+                          hitTestBehavior: HitTestBehavior.translucent,
+                          onEnter: (_) => _onHoverEnter(),
+                          onExit: (_) => _onHoverExit(),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        );
-      },
+                    ],
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -1473,6 +1483,8 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
         iconSize: 18,
         suppressSelectedBackground: widget.isSidebarFocused,
         onNavigateRight: widget.onNavigateToContent,
+        automationId: AutomationIds.sidebarLibraryRow,
+        automationInstance: library.globalKey,
       ),
     );
   }

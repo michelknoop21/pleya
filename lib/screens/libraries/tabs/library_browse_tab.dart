@@ -1,5 +1,9 @@
 import 'dart:async';
 import '../../../media/ids.dart';
+import '../../../automation/automation_event_log.dart';
+import '../../../automation/automation_ids.dart';
+import '../../../automation/automation_node.dart';
+import '../../../automation/pleya_verify.dart';
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -694,6 +698,9 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       });
 
       hasLoadedData = true;
+      if (kPleyaVerify) {
+        AutomationEventLog.instance.emit('library.items_loaded', {'count': totalSize});
+      }
       if (!preserveFocus) {
         tryFocus();
       }
@@ -1609,6 +1616,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
         onNavigateUp: widget.onBack,
         onNavigateRight: groupingNavigateRight,
         onBack: widget.onBack,
+        automationId: AutomationIds.libraryFilterGrouping,
       ),
     );
 
@@ -1616,6 +1624,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       actions.add(
         LibraryHeaderAction(
           label: t.libraries.filters,
+          automationId: AutomationIds.libraryFilterFilters,
           // No value while nothing is selected: next to "Grouping All" a second
           // "All" reads as if the two belong together.
           value: _selectedFilters.isEmpty ? null : '${_selectedFilters.length}',
@@ -1635,6 +1644,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       actions.add(
         LibraryHeaderAction(
           label: t.libraries.sort,
+          automationId: AutomationIds.libraryFilterSort,
           value: _selectedSort?.title,
           focusNode: _sortChipFocusNode,
           onPressed: _showSortBottomSheet,
@@ -1708,14 +1718,19 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     }
 
     return [
-      SettingsBuilder(
-        prefs: const [
-          SettingsService.viewMode,
-          SettingsService.libraryDensity,
-          SettingsService.episodePosterMode,
-          SettingsService.tvFullCardLayout,
-        ],
-        builder: (context) => _buildItemsSliver(context),
+      AutomationNode(
+        id: AutomationIds.libraryGrid,
+        role: 'grid',
+        state: () => {'child_count': totalSize},
+        child: SettingsBuilder(
+          prefs: const [
+            SettingsService.viewMode,
+            SettingsService.libraryDensity,
+            SettingsService.episodePosterMode,
+            SettingsService.tvFullCardLayout,
+          ],
+          builder: (context) => _buildItemsSliver(context),
+        ),
       ),
     ];
   }
@@ -1921,6 +1936,8 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       onFocusChange: (hasFocus) => trackGridItemFocus(index, hasFocus),
       onListRefresh: _loadItems,
       fullBleedImage: fullBleedImage,
+      automationId: AutomationIds.libraryGridItem,
+      automationInstance: '$index',
     );
   }
 

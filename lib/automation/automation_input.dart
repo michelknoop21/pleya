@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../utils/key_event_simulator.dart';
 import '../utils/native_input_session.dart';
+import 'automation_event_log.dart';
 
 /// Maps the `key` names `POST /v1/input/key` accepts to a
 /// `LogicalKeyboardKey` — the same vocabulary as `scripts/tvos_sim.sh key`
@@ -39,6 +40,7 @@ AutomationInputResult dispatchAutomationKey(String key) {
   final logicalKey = automationKeyNames[key];
   if (logicalKey == null) return AutomationInputResult.unknownKey;
   simulateKeyPress(logicalKey);
+  AutomationEventLog.instance.emit('input.received', {'source': 'transport', 'key': key});
   return AutomationInputResult.dispatched;
 }
 
@@ -58,5 +60,6 @@ AutomationInputResult dispatchAutomationPointerTap(Offset position) {
   binding.handlePointerEvent(PointerDownEvent(pointer: pointer, position: position));
   binding.handlePointerEvent(PointerUpEvent(pointer: pointer, position: position));
   binding.handlePointerEvent(PointerRemovedEvent(position: position));
+  AutomationEventLog.instance.emit('input.received', {'source': 'transport', 'x': position.dx, 'y': position.dy});
   return AutomationInputResult.dispatched;
 }

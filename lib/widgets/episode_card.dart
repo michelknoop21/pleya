@@ -40,6 +40,14 @@ class EpisodeCard extends StatefulWidget {
   final FocusNode? focusNode;
   final VoidCallback? onNavigateUp;
 
+  /// Stable automation ID (see lib/automation/automation_ids.dart), null on
+  /// call sites Pleya Verify doesn't need to address individually.
+  final String? automationId;
+
+  /// Disambiguates repeated [automationId]s across a list — the registered
+  /// id becomes `automationId[automationInstance]`.
+  final String? automationInstance;
+
   const EpisodeCard({
     super.key,
     required this.episode,
@@ -52,6 +60,8 @@ class EpisodeCard extends StatefulWidget {
     this.localPosterPath,
     this.focusNode,
     this.onNavigateUp,
+    this.automationId,
+    this.automationInstance,
   });
 
   @override
@@ -140,6 +150,8 @@ class _EpisodeCardState extends State<EpisodeCard> with ContextMenuTapMixin<Epis
       child: MergeSemantics(
         child: FocusableWrapper(
           focusNode: widget.focusNode,
+          automationId: widget.automationId,
+          automationInstance: widget.automationInstance,
           autofocus: widget.autofocus,
           enableLongPress: true,
           onNavigateUp: widget.onNavigateUp,

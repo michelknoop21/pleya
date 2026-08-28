@@ -6,8 +6,11 @@ import 'dart:io';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../automation/automation_event_log.dart';
 import '../automation/automation_ids.dart';
+import '../automation/automation_node.dart';
 import '../automation/automation_screen.dart';
+import '../automation/pleya_verify.dart';
 import '../navigation/profile_navigation_scope.dart';
 import '../services/device_performance.dart';
 import '../services/image_cache_service.dart';
@@ -246,6 +249,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   final FocusNode _loadingFocusNode = FocusNode(debugLabel: 'MediaDetailLoading');
   bool _tvDetailRevealed = false;
   bool _tvDetailRevealScheduled = false;
+
+  /// Tracks the loading→ready flip for `media_detail.ready`, alongside — not
+  /// instead of — `AutomationScreen`'s own generic `screen.ready`. Separate
+  /// state so a lazy `/v1/screens` poll re-evaluating `_detailReadiness()`
+  /// can't cause a spurious re-emit.
+  bool _mediaDetailReadyEventEmitted = false;
   bool _hasLoadedSeasons = false;
   bool _hasLoadedEpisodes = false;
   double? _tvDetailPendingRailHeight;
@@ -2657,53 +2666,68 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   Widget _buildEpisodesList() {
     final client = _getMediaClientForMetadata(context);
     final hasPinnedLastEpisode = _hasPinnedLastEpisodeInList;
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: .zero,
-      itemCount: _episodes.length + (_episodeListHasMore || _episodeListLoadingMore || _episodeListPageError ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == _episodes.length) {
-          return _buildEpisodeListTail();
-        }
-        final episode = _episodes[index];
-        String? localPosterPath;
-        if (widget.isOffline && episode.serverId != null) {
-          final artworkRef = context.read<DownloadProvider>().getArtworkPaths(episode.globalKey);
-          localPosterPath = artworkRef?.getLocalPath(DownloadStorageService.instance, ServerId(episode.serverId!));
-        }
-        return EpisodeCard(
-          episode: episode,
-          client: client,
-          isOffline: widget.isOffline,
-          autofocus: false,
-          focusNode: _episodeListFocusNode(episode: episode, index: index, hasPinnedLastEpisode: hasPinnedLastEpisode),
-          onNavigateUp: index == 0
-              ? () {
-                  if (!_showEpisodesDirectly) {
-                    _focusSelectedSeasonTab();
-                  } else if (!PlatformDetector.isTV() && (_fullMetadata ?? _metadata).summary?.isNotEmpty == true) {
-                    _overviewFocusNode.requestFocus();
-                    _scrollSectionIntoView(_overviewSectionKey);
-                  } else {
-                    _scrollController.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
-                    _playButtonFocusNode.requestFocus();
+    return AutomationNode(
+      id: AutomationIds.mediaDetailEpisodeList,
+      role: 'list',
+      state: () => {'child_count': _episodes.length},
+      child: ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: .zero,
+        itemCount: _episodes.length + (_episodeListHasMore || _episodeListLoadingMore || _episodeListPageError ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == _episodes.length) {
+            return _buildEpisodeListTail();
+          }
+          final episode = _episodes[index];
+          String? localPosterPath;
+          if (widget.isOffline && episode.serverId != null) {
+            final artworkRef = context.read<DownloadProvider>().getArtworkPaths(episode.globalKey);
+            localPosterPath = artworkRef?.getLocalPath(DownloadStorageService.instance, ServerId(episode.serverId!));
+          }
+          return EpisodeCard(
+            episode: episode,
+            client: client,
+            isOffline: widget.isOffline,
+            autofocus: false,
+            focusNode: _episodeListFocusNode(
+              episode: episode,
+              index: index,
+              hasPinnedLastEpisode: hasPinnedLastEpisode,
+            ),
+            onNavigateUp: index == 0
+                ? () {
+                    if (!_showEpisodesDirectly) {
+                      _focusSelectedSeasonTab();
+                    } else if (!PlatformDetector.isTV() && (_fullMetadata ?? _metadata).summary?.isNotEmpty == true) {
+                      _overviewFocusNode.requestFocus();
+                      _scrollSectionIntoView(_overviewSectionKey);
+                    } else {
+                      _scrollController.animateTo(
+                        0,
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOut,
+                      );
+                      _playButtonFocusNode.requestFocus();
+                    }
                   }
-                }
-              : null,
-          localPosterPath: localPosterPath,
-          onTap: () async {
-            await navigateToVideoPlayerWithRefresh(
-              context,
-              metadata: episode,
-              isOffline: widget.isOffline,
-              onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: episode.id)),
-            );
-          },
-          onRefresh: widget.isOffline ? null : _refreshItemInPlace,
-          onListRefresh: widget.isOffline ? null : _refreshCurrentEpisodes,
-        );
-      },
+                : null,
+            localPosterPath: localPosterPath,
+            onTap: () async {
+              await navigateToVideoPlayerWithRefresh(
+                context,
+                metadata: episode,
+                isOffline: widget.isOffline,
+                onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: episode.id)),
+              );
+            },
+            onRefresh: widget.isOffline ? null : _refreshItemInPlace,
+            onListRefresh: widget.isOffline ? null : _refreshCurrentEpisodes,
+            automationId: AutomationIds.mediaDetailEpisodeListItem,
+            automationInstance: '$index',
+          );
+        },
+      ),
     );
   }
 
@@ -3283,7 +3307,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   AutomationReadiness _detailReadiness() {
     if (_isLoadingMetadata) return const AutomationReadiness.loading('metadata');
     final metadata = _fresh(_fullMetadata ?? _metadata);
-    if (!_isTvDetailReadyToReveal(metadata)) return const AutomationReadiness.loading('sections');
+    final ready = _isTvDetailReadyToReveal(metadata);
+    if (kPleyaVerify && ready && !_mediaDetailReadyEventEmitted) {
+      _mediaDetailReadyEventEmitted = true;
+      AutomationEventLog.instance.emit('media_detail.ready', {'id': AutomationIds.screenMediaDetail});
+    }
+    if (!ready) return const AutomationReadiness.loading('sections');
     return const AutomationReadiness.ready();
   }
 

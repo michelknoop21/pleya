@@ -1,5 +1,6 @@
 import 'dart:async';
 import '../automation/automation_ids.dart';
+import '../automation/automation_node.dart';
 import '../automation/automation_screen.dart';
 import '../media/ids.dart';
 import 'dart:io' show Platform;
@@ -1939,123 +1940,127 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       firstRailHeight: _firstRailHeight(w),
     );
     return SliverToBoxAdapter(
-      child: Focus(
-        focusNode: _heroFocusNode,
-        onKeyEvent: _handleHeroKeyEvent,
-        child: SizedBox(
-          height: heroHeight,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              PageView.builder(
-                controller: _heroController,
-                itemCount: _latestMovies.length,
-                onPageChanged: (index) {
-                  // Validate index is within bounds before updating
-                  if (index >= 0 && index < _latestMovies.length) {
-                    setState(() {
-                      _currentHeroIndex = index;
-                    });
-                    _resetAutoScrollTimer();
-                    _ensureHeroArt(index);
-                  }
-                },
-                itemBuilder: (context, index) {
-                  final item = _latestMovies[index];
-                  return _buildHeroItem(_spotlightArtCache[item.globalKey] ?? item, heroHeight);
-                },
-              ),
-              // Page indicators with animated progress and pause/play button
-              if (!InputModeTracker.isKeyboardMode(context))
-                Positioned(
-                  key: DiscoverScreen.heroPaginationKey,
-                  // The same 16 on every tier, so it is read straight from the
-                  // constant: resolving the tier here would add a rotation
-                  // rebuild to this sliver for a value that never varies.
-                  bottom: homeHeroPaginationBottomInset,
-                  left: -26,
-                  right: 0,
-                  child: Row(
-                    mainAxisAlignment: .center,
-                    children: [
-                      // Pause/Play button
-                      ClickableCursor(
-                        child: GestureDetector(
-                          onTap: () {
-                            if (_isAutoScrollPaused) {
-                              _resumeAutoScroll();
-                            } else {
-                              _pauseAutoScroll();
-                            }
-                          },
-                          child: AppIcon(
-                            _isAutoScrollPaused ? Symbols.play_arrow_rounded : Symbols.pause_rounded,
-                            fill: 1,
-                            color: Theme.of(context).colorScheme.onSurface,
-                            size: 18,
-                            semanticLabel: '${_isAutoScrollPaused ? t.common.play : t.common.pause} auto-scroll',
+      child: AutomationNode(
+        id: AutomationIds.discoverHero,
+        role: 'hero',
+        child: Focus(
+          focusNode: _heroFocusNode,
+          onKeyEvent: _handleHeroKeyEvent,
+          child: SizedBox(
+            height: heroHeight,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                PageView.builder(
+                  controller: _heroController,
+                  itemCount: _latestMovies.length,
+                  onPageChanged: (index) {
+                    // Validate index is within bounds before updating
+                    if (index >= 0 && index < _latestMovies.length) {
+                      setState(() {
+                        _currentHeroIndex = index;
+                      });
+                      _resetAutoScrollTimer();
+                      _ensureHeroArt(index);
+                    }
+                  },
+                  itemBuilder: (context, index) {
+                    final item = _latestMovies[index];
+                    return _buildHeroItem(_spotlightArtCache[item.globalKey] ?? item, heroHeight);
+                  },
+                ),
+                // Page indicators with animated progress and pause/play button
+                if (!InputModeTracker.isKeyboardMode(context))
+                  Positioned(
+                    key: DiscoverScreen.heroPaginationKey,
+                    // The same 16 on every tier, so it is read straight from the
+                    // constant: resolving the tier here would add a rotation
+                    // rebuild to this sliver for a value that never varies.
+                    bottom: homeHeroPaginationBottomInset,
+                    left: -26,
+                    right: 0,
+                    child: Row(
+                      mainAxisAlignment: .center,
+                      children: [
+                        // Pause/Play button
+                        ClickableCursor(
+                          child: GestureDetector(
+                            onTap: () {
+                              if (_isAutoScrollPaused) {
+                                _resumeAutoScroll();
+                              } else {
+                                _pauseAutoScroll();
+                              }
+                            },
+                            child: AppIcon(
+                              _isAutoScrollPaused ? Symbols.play_arrow_rounded : Symbols.pause_rounded,
+                              fill: 1,
+                              color: Theme.of(context).colorScheme.onSurface,
+                              size: 18,
+                              semanticLabel: '${_isAutoScrollPaused ? t.common.play : t.common.pause} auto-scroll',
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      ...() {
-                        final range = _getVisibleDotRange();
-                        return List.generate(range.end - range.start + 1, (i) {
-                          final index = range.start + i;
-                          final isActive = _currentHeroIndex == index;
-                          final dotSize = _getDotSize(index, range.start, range.end);
+                        const SizedBox(width: 8),
+                        ...() {
+                          final range = _getVisibleDotRange();
+                          return List.generate(range.end - range.start + 1, (i) {
+                            final index = range.start + i;
+                            final isActive = _currentHeroIndex == index;
+                            final dotSize = _getDotSize(index, range.start, range.end);
 
-                          return isActive
-                              // Progress indicator for active page (~5fps via Timer)
-                              ? ValueListenableBuilder<double>(
-                                  valueListenable: _indicatorProgress,
-                                  builder: (context, progress, child) {
-                                    final maxWidth = dotSize * 3; // 24px for normal, 15px for small
-                                    final fillWidth = dotSize + ((maxWidth - dotSize) * progress);
-                                    final onSurface = Theme.of(context).colorScheme.onSurface;
-                                    return Container(
-                                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                                      width: maxWidth,
-                                      height: dotSize,
-                                      decoration: BoxDecoration(
-                                        color: onSurface.withValues(alpha: 0.4),
-                                        borderRadius: BorderRadius.circular(dotSize / 2),
-                                      ),
-                                      child: Align(
-                                        alignment: .centerLeft,
-                                        child: Container(
-                                          width: fillWidth,
-                                          height: dotSize,
-                                          decoration: BoxDecoration(
-                                            color: onSurface,
-                                            borderRadius: BorderRadius.circular(dotSize / 2),
+                            return isActive
+                                // Progress indicator for active page (~5fps via Timer)
+                                ? ValueListenableBuilder<double>(
+                                    valueListenable: _indicatorProgress,
+                                    builder: (context, progress, child) {
+                                      final maxWidth = dotSize * 3; // 24px for normal, 15px for small
+                                      final fillWidth = dotSize + ((maxWidth - dotSize) * progress);
+                                      final onSurface = Theme.of(context).colorScheme.onSurface;
+                                      return Container(
+                                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                                        width: maxWidth,
+                                        height: dotSize,
+                                        decoration: BoxDecoration(
+                                          color: onSurface.withValues(alpha: 0.4),
+                                          borderRadius: BorderRadius.circular(dotSize / 2),
+                                        ),
+                                        child: Align(
+                                          alignment: .centerLeft,
+                                          child: Container(
+                                            width: fillWidth,
+                                            height: dotSize,
+                                            decoration: BoxDecoration(
+                                              color: onSurface,
+                                              borderRadius: BorderRadius.circular(dotSize / 2),
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    );
-                                  },
-                                )
-                              // Static indicator for inactive pages
-                              : AnimatedContainer(
-                                  duration: tokens(context).slow,
-                                  curve: Curves.easeInOut,
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                                  width: dotSize,
-                                  height: dotSize,
-                                  decoration: BoxDecoration(
-                                    // Inactive dot, sitting on the billboard.
-                                    // 40% ink is a visible hint white-on-dark
-                                    // but disappears as black over artwork.
-                                    color: tokens(context).onArtworkInk(dark: 0.4, light: 0.62),
-                                    borderRadius: BorderRadius.circular(dotSize / 2),
-                                  ),
-                                );
-                        });
-                      }(),
-                    ],
+                                      );
+                                    },
+                                  )
+                                // Static indicator for inactive pages
+                                : AnimatedContainer(
+                                    duration: tokens(context).slow,
+                                    curve: Curves.easeInOut,
+                                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                                    width: dotSize,
+                                    height: dotSize,
+                                    decoration: BoxDecoration(
+                                      // Inactive dot, sitting on the billboard.
+                                      // 40% ink is a visible hint white-on-dark
+                                      // but disappears as black over artwork.
+                                      color: tokens(context).onArtworkInk(dark: 0.4, light: 0.62),
+                                      borderRadius: BorderRadius.circular(dotSize / 2),
+                                    ),
+                                  );
+                          });
+                        }(),
+                      ],
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -2429,45 +2434,49 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         // hero itself (_heroFocusNode), not on this button.
         const foregroundColor = Colors.black;
         const textStyle = TextStyle(color: foregroundColor, fontSize: 14, fontWeight: FontWeight.w600);
-        return InkWell(
-          onTap: () {
-            appLogger.d('Playing: ${heroItem.title}');
-            navigateToVideoPlayer(context, metadata: heroItem);
-          },
-          borderRadius: const BorderRadius.all(Radius.circular(24)),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.all(Radius.circular(24))),
-            child: Row(
-              mainAxisSize: .min,
-              children: [
-                const AppIcon(Symbols.play_arrow_rounded, fill: 1, size: 20, color: foregroundColor),
-                const SizedBox(width: 8),
-                if (hasProgress) ...[
-                  // Progress bar
-                  Container(
-                    width: 40,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: foregroundColor.withValues(alpha: 0.25),
-                      borderRadius: const BorderRadius.all(Radius.circular(3)),
-                    ),
-                    child: FractionallySizedBox(
-                      alignment: .centerLeft,
-                      widthFactor: progress,
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: foregroundColor,
-                          borderRadius: BorderRadius.all(Radius.circular(2)),
+        return AutomationNode(
+          id: AutomationIds.discoverHeroPlay,
+          role: 'button',
+          child: InkWell(
+            onTap: () {
+              appLogger.d('Playing: ${heroItem.title}');
+              navigateToVideoPlayer(context, metadata: heroItem);
+            },
+            borderRadius: const BorderRadius.all(Radius.circular(24)),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.all(Radius.circular(24))),
+              child: Row(
+                mainAxisSize: .min,
+                children: [
+                  const AppIcon(Symbols.play_arrow_rounded, fill: 1, size: 20, color: foregroundColor),
+                  const SizedBox(width: 8),
+                  if (hasProgress) ...[
+                    // Progress bar
+                    Container(
+                      width: 40,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: foregroundColor.withValues(alpha: 0.25),
+                        borderRadius: const BorderRadius.all(Radius.circular(3)),
+                      ),
+                      child: FractionallySizedBox(
+                        alignment: .centerLeft,
+                        widthFactor: progress,
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            color: foregroundColor,
+                            borderRadius: BorderRadius.all(Radius.circular(2)),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(t.discover.minutesLeft(minutes: minutesLeft), style: textStyle),
-                ] else
-                  Text(t.common.play, style: textStyle),
-              ],
+                    const SizedBox(width: 8),
+                    Text(t.discover.minutesLeft(minutes: minutesLeft), style: textStyle),
+                  ] else
+                    Text(t.common.play, style: textStyle),
+                ],
+              ),
             ),
           ),
         );

@@ -73,6 +73,14 @@ class FocusableMediaCard extends StatefulWidget {
   /// Used to track which grid item was last focused.
   final ValueChanged<bool>? onFocusChange;
 
+  /// Stable automation ID (see lib/automation/automation_ids.dart), null on
+  /// call sites Pleya Verify doesn't need to address individually.
+  final String? automationId;
+
+  /// Disambiguates repeated [automationId]s across a list — the registered
+  /// id becomes `automationId[automationInstance]`.
+  final String? automationInstance;
+
   const FocusableMediaCard({
     super.key,
     required this.item,
@@ -99,6 +107,8 @@ class FocusableMediaCard extends StatefulWidget {
     this.onNavigateRight,
     this.onBack,
     this.onFocusChange,
+    this.automationId,
+    this.automationInstance,
   }) : usesContinueWatchingAction = usesContinueWatchingAction ?? isInContinueWatching;
 
   @override
@@ -112,6 +122,8 @@ class _FocusableMediaCardState extends State<FocusableMediaCard> {
   Widget build(BuildContext context) {
     return FocusableWrapper(
       focusNode: widget.focusNode,
+      automationId: widget.automationId,
+      automationInstance: widget.automationInstance,
       onSelect: () => _mediaCardKey.currentState?.handleTap(),
       onLongPress: () => _mediaCardKey.currentState?.showContextMenu(),
       onNavigateUp: widget.onNavigateUp,

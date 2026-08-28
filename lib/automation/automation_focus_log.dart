@@ -81,6 +81,12 @@ class AutomationFocusLog {
 
   KeyEventResult _captureCause(KeyEvent event) {
     _pendingCause = 'key:${event.logicalKey.keyLabel}';
+    // Sees every real key event as it enters Flutter's normal pipeline —
+    // including a genuine tvOS HID press via the geswizzelde `sendEvent:`
+    // layer (see the tvOS-invoerroute-invariant, [C2]) — which is why this
+    // has to be a *second* producer alongside dispatchAutomationKey's: a
+    // scenario step injected via `/v1/input/key` never reaches here.
+    AutomationEventLog.instance.emit('input.received', {'source': 'hardware', 'key': event.logicalKey.keyLabel});
     return KeyEventResult.ignored;
   }
 

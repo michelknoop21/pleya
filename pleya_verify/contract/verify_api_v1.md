@@ -103,11 +103,23 @@ Emitted vandaag, met de bron per naam:
   gemount scherm z'n readiness-transitie naar `ready` maakt.
 - `navigation.tab_changed` (`{"from": "...", "to": "..."}`, `main_screen.dart`)
   — de navigatietab wisselt.
+- `library.items_loaded` (`{"count": N}`, `LibraryBrowseTab._loadItems()`) —
+  een library-grid-fetch is voltooid (filter/sort/paginatie).
+- `media_detail.ready` (`{"id": "screen.media_detail"}`,
+  `MediaDetailScreen._detailReadiness()`) — dezelfde
+  `_isTvDetailReadyToReveal`-transitie die ook `screen.ready` triggert, als
+  eigen genoemd event zodat een scenario er direct op kan wachten zonder de
+  generieke schermregistratie te hoeven kennen.
+- `input.received` (`{"source": "hardware"|"transport", "key": "..."}` of
+  `{"source": "transport", "x": ..., "y": ...}`) — **twee producers**, niet
+  één: `AutomationFocusLog`'s early-key-event-handler ziet elke echte
+  hardware-/HID-press (het pad dat een tvOS-scenario via idb gebruikt, zie
+  [C2]), en `dispatchAutomationKey`/`dispatchAutomationPointerTap`
+  (`lib/automation/automation_input.dart`) zien een via `/v1/input/*`
+  geïnjecteerde toets/tap. Geen van beide paden verandert focusgedrag.
 
-Zie de event-vocabulaire in het Pleya Verify-plan voor de volledige, nog
-groeiende lijst (`library.items_loaded`, `media_detail.ready`,
-`input.received` volgen in Fase 5). Triggert geen events zelf (het is zelf de
-bron).
+Zie de event-vocabulaire in het Pleya Verify-plan voor de volledige lijst.
+Triggert geen events zelf (het is zelf de bron).
 
 ### `GET /v1/screens`
 
@@ -128,7 +140,11 @@ polling. Elke transitie naar `ready` heeft al een `screen.ready`-event in
 Geen parameters. 200 met JSON:
 
 ```json
-{"ids": [{"id": "screen.discover", "role": "screen"}, {"id": "nav.discover", "role": "nav"}]}
+{"ids": [
+  {"id": "screen.discover", "role": "screen", "instanceable": false},
+  {"id": "nav.discover", "role": "nav", "instanceable": false},
+  {"id": "library.grid.item", "role": "grid.item", "instanceable": true}
+]}
 ```
 
 De **statische, autoritatieve** `AutomationIds`-catalogus
@@ -136,9 +152,11 @@ De **statische, autoritatieve** `AutomationIds`-catalogus
 `AutomationRegistry` (dat is `/v1/ui_tree`'s `declared`). Het verschil is
 bewust: de runtime-registry bevat alleen wat toevallig gemount is (nooit alle
 schermen tegelijk), terwijl scenariovalidatie zonder simulator (Fase 6) een
-volledige, schermonafhankelijke bron nodig heeft. Groeit mee met de
-id-uitbreidingen in Fase 5, inclusief `instanceable`-metadata voor
-instance-suffixed ids (`library.grid.item[n]` en vergelijkbaar). Triggert
+volledige, schermonafhankelijke bron nodig heeft. `instanceable: true`
+markeert een base-id die een scenario als `id[instance]` mag aanspreken (bv.
+`library.grid.item[3]`) — hetzelfde bestand staat, gegenereerd, ook in
+`pleya_verify/automation_ids.yaml` (`tool/generate_automation_ids_yaml.dart`,
+bewaakt door `test/architecture/automation_ids_yaml_test.dart`). Triggert
 geen events.
 
 ### `GET /v1/viewport`
