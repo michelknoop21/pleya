@@ -72,17 +72,25 @@ void main() {
 
   /// The row's focus surface: the [AnimatedContainer] the row wrapper paints
   /// around the tile. One per row, so `.first` is unambiguous.
-  BoxDecoration decorationOf(WidgetTester tester, int index) {
+  AnimatedContainer surfaceOf(WidgetTester tester, int index) {
     final row = find.byType(SettingNavigationTile).at(index);
-    final container = tester.widget<AnimatedContainer>(
-      find.descendant(of: row, matching: find.byType(AnimatedContainer)).first,
-    );
-    return container.decoration! as BoxDecoration;
+    return tester.widget<AnimatedContainer>(find.descendant(of: row, matching: find.byType(AnimatedContainer)).first);
+  }
+
+  /// The fill: `decoration`, painted behind the tile.
+  BoxDecoration fillOf(WidgetTester tester, int index) => surfaceOf(tester, index).decoration! as BoxDecoration;
+
+  /// The marker: `foregroundDecoration`'s border, painted on top of the tile.
+  /// Never affects layout, unlike the border this replaced.
+  Border markerOf(WidgetTester tester, int index) {
+    final decoration = surfaceOf(tester, index).foregroundDecoration! as BoxDecoration;
+    return decoration.border! as Border;
   }
 
   bool looksFocused(WidgetTester tester, int index, MonoTokens t) {
-    final decoration = decorationOf(tester, index);
-    return decoration.color == t.surfaceElevated && decoration.border?.top.color.a != 0;
+    final fill = fillOf(tester, index);
+    final marker = markerOf(tester, index);
+    return fill.color == t.surfaceElevated && marker.left.color.a != 0;
   }
 
   MonoTokens tokensOf(WidgetTester tester) =>
@@ -109,15 +117,37 @@ void main() {
           );
         }
 
-        final focused = decorationOf(tester, focusedIndex);
-        final resting = decorationOf(tester, (focusedIndex + 1) % _rowTitles.length);
-        expect(focused.color, isNot(resting.color), reason: 'focus must not resolve to the card surface itself');
-        expect(focused.color, isNot(t.surface), reason: 'a focused row the colour of the card is invisible');
+        final restingIndex = (focusedIndex + 1) % _rowTitles.length;
+        final focusedFill = fillOf(tester, focusedIndex);
+        final restingFill = fillOf(tester, restingIndex);
         expect(
-          focused.border?.top.color.a,
-          greaterThan(0.5),
-          reason: 'the focused row carries a solid border on top of the fill',
+          focusedFill.color,
+          isNot(restingFill.color),
+          reason: 'focus must not resolve to the card surface itself',
         );
+        expect(focusedFill.color, isNot(t.surface), reason: 'a focused row the colour of the card is invisible');
+        expect(focusedFill.borderRadius, isNull, reason: 'the fill must not clip a pill inside the card');
+
+        final focusedMarker = markerOf(tester, focusedIndex);
+        expect(
+          focusedMarker.left.color.a,
+          greaterThan(0.5),
+          reason: 'the focused row carries a solid marker on its leading edge',
+        );
+        expect(
+          focusedMarker.top.width,
+          0,
+          reason: 'the marker must not draw a top perimeter, that is SettingsRows\' separator to own',
+        );
+        expect(focusedMarker.right.width, 0, reason: 'the marker must not draw a right perimeter');
+        expect(
+          focusedMarker.bottom.width,
+          0,
+          reason: 'the marker must not draw a bottom perimeter, that is the next separator\'s to own',
+        );
+
+        final restingMarker = markerOf(tester, restingIndex);
+        expect(restingMarker.left.color.a, 0, reason: 'a resting row must carry no visible marker at all');
       }
     });
   }
@@ -141,14 +171,21 @@ void main() {
   testWidgets('focus does not move or resize the rows', (tester) async {
     await pumpRows(tester, dark: true);
 
-    final before = [for (final title in _rowTitles) tester.getRect(find.text(title))];
+    final titlesBefore = [for (final title in _rowTitles) tester.getRect(find.text(title))];
+    final iconsBefore = [
+      for (var i = 0; i < _rowTitles.length; i++) tester.getRect(find.byType(SettingsIconBadge).at(i)),
+    ];
 
     nodes[1].requestFocus();
     await tester.pumpAndSettle();
 
-    final after = [for (final title in _rowTitles) tester.getRect(find.text(title))];
+    final titlesAfter = [for (final title in _rowTitles) tester.getRect(find.text(title))];
+    final iconsAfter = [
+      for (var i = 0; i < _rowTitles.length; i++) tester.getRect(find.byType(SettingsIconBadge).at(i)),
+    ];
     for (var i = 0; i < _rowTitles.length; i++) {
-      expect(after[i], before[i], reason: 'row "${_rowTitles[i]}" shifted when a row took focus');
+      expect(titlesAfter[i], titlesBefore[i], reason: 'row "${_rowTitles[i]}" text shifted when a row took focus');
+      expect(iconsAfter[i], iconsBefore[i], reason: 'row "${_rowTitles[i]}" icon shifted when a row took focus');
     }
   });
 
@@ -166,6 +203,19 @@ void main() {
     await tester.tap(find.text('Last row'));
     await tester.pumpAndSettle();
     expect(taps, ['Middle row', 'Last row']);
+  });
+
+  testWidgets('focusing a row does not change how many separators the group paints', (tester) async {
+    await pumpRows(tester, dark: true);
+    final render = tester.renderObject<RenderSettingsRows>(find.byType(SettingsRows));
+    final atRest = render.separatorRects.length;
+    expect(atRest, _rowTitles.length - 1);
+
+    for (final node in nodes) {
+      node.requestFocus();
+      await tester.pumpAndSettle();
+      expect(render.separatorRects.length, atRest, reason: 'a focused row must not add or remove a separator');
+    }
   });
 
   testWidgets('each row is a single focus stop', (tester) async {

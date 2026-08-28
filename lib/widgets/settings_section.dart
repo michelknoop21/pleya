@@ -146,7 +146,7 @@ class SettingsGroup extends StatelessWidget {
 /// extra press on the way down, and focus visuals on the wrapper while Enter is
 /// handled by the child.
 ///
-/// Pointer input is untouched — `descendantsAreFocusable` governs focus, not hit
+/// Pointer input is untouched: `descendantsAreFocusable` governs focus, not hit
 /// testing, so the tile keeps its own `onTap`, ripple and hover.
 class SettingRowFocus extends StatelessWidget {
   final Widget child;
@@ -190,14 +190,20 @@ class _SettingRowSurface extends StatelessWidget {
     return AnimatedContainer(
       duration: FocusTheme.getAnimationDuration(context),
       curve: Curves.easeOutCubic,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(t.radiusSm),
-        color: focused ? t.surfaceElevated : Colors.transparent,
-        // The border is present in both states and only changes colour. One
-        // that appears on focus would inset the content and make the row jump.
-        border: Border.all(
-          color: focused ? t.text.withValues(alpha: 0.85) : Colors.transparent,
-          width: FocusTheme.focusBorderWidth,
+      // The fill only, so it never competes with SettingsRows' separators or
+      // SettingsGroup's outer border: both painted by an ancestor, after
+      // this row.
+      decoration: BoxDecoration(color: focused ? t.surfaceElevated : Colors.transparent),
+      // A leading marker instead of a perimeter: it does not sit on the
+      // group's own hairlines or corners, so it cannot double up with them.
+      // In foregroundDecoration, so unlike the old full border it never
+      // becomes implicit padding and never nudges the row's content.
+      foregroundDecoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(
+            color: focused ? t.text.withValues(alpha: kSettingsFocusBarAlpha) : Colors.transparent,
+            width: kSettingsFocusBarWidth,
+          ),
         ),
       ),
       child: child,
