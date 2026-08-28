@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pleya/widgets/app_icon.dart';
+import 'package:pleya/widgets/pleya_logo.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -50,7 +51,7 @@ class AboutScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         const SizedBox(height: 24),
-                        Image.asset('assets/branding/pleya_logo.png', width: 88, height: 88),
+                        const PleyaLogo(size: 88),
                         const SizedBox(height: 16),
                         Text(appName, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: .bold)),
                         const SizedBox(height: 8),

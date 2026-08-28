@@ -25,6 +25,7 @@ import 'mixins/mounted_set_state_mixin.dart';
 import 'profiles/plex_home_service.dart';
 import 'screens/auth_screen.dart';
 import 'widgets/intro_splash.dart';
+import 'widgets/pleya_logo.dart';
 import 'screens/profile/pin_entry_dialog.dart';
 import 'screens/profile/profile_switch_screen.dart';
 import 'services/storage_service.dart';
@@ -1412,18 +1413,7 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin, Si
               child: SizedBox(width: 230, height: 230),
             ),
           ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: const [
-                BoxShadow(color: Color(0xCCE5140F), blurRadius: 50, offset: Offset(0, 20), spreadRadius: -18),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: Image.asset('assets/branding/pleya_logo.png', width: 132, height: 132),
-            ),
-          ),
+          const PleyaLogo(size: 132),
         ],
       ),
     );

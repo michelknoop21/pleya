@@ -179,6 +179,9 @@ if os.path.isdir(LI):
     for suf, s in (("", 256), ("@2x", 512), ("@3x", 768)):
         save(mark_canvas(s, s, 0.90), f"{LI}/LaunchImage{suf}.png")
 
+# ---- Flutter-app: vrijstaande P voor topbar, zijbalk, splash, auth en about ----
+save(mark_canvas(512, 512, 0.96), f"{ROOT}/assets/branding/pleya_logo.png")
+
 # ---- Website ----
 W = f"{ROOT}/website/src/lib/assets"
 save(mark_canvas(1024, 1024, 0.92), f"{W}/pleya_logo.png")   # footer + hero-watermark (transparant)
