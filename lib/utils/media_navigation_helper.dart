@@ -123,8 +123,8 @@ bool shouldOpenEpisodeDetailsForActivation({
 }
 
 /// Decides what runs after a direct-to-player activation returns, for
-/// [navigateToMediaItem]'s episode/clip and movie branches. Pure — like
-/// [shouldOpenEpisodeDetailsForActivation] — so the "[onPlaybackReturned]
+/// [navigateToMediaItem]'s episode/clip and movie branches. Pure, like
+/// [shouldOpenEpisodeDetailsForActivation], so the "[onPlaybackReturned]
 /// supersedes [onRefresh]'s `result == true` gate" behavior is unit
 /// testable without driving a real player route.
 void handlePlaybackReturn(
@@ -160,7 +160,7 @@ void handlePlaybackReturn(
 /// the detail screen, allowing the caller to refresh state.
 ///
 /// [onPlaybackReturned] runs after the two direct-to-player branches
-/// (episode/clip, movie) regardless of what the player route popped with —
+/// (episode/clip, movie) regardless of what the player route popped with,
 /// unlike [onRefresh], which only fires there when the result is `true`.
 /// `VideoPlayerScreen` only ever pops `true` from its own `_handleBack`; any
 /// other exit (system back, a route replaced under it) pops `false`/`null`

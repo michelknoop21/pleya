@@ -419,7 +419,7 @@ class TvBrowseRail extends StatefulWidget {
   final void Function(String)? onRefresh;
 
   /// Runs after a direct-to-player activation returns, regardless of the
-  /// player route's pop result — see [navigateToMediaItem]'s doc for why
+  /// player route's pop result: see [navigateToMediaItem]'s doc for why
   /// [onRefresh] alone (gated on `result == true`) isn't reliable for this.
   final ValueChanged<MediaItem>? onPlaybackReturned;
   final VoidCallback? onRemoveFromContinueWatching;

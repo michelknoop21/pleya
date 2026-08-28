@@ -46,6 +46,7 @@ import '../media/media_kind.dart';
 import '../media/media_role.dart';
 import '../media/paged_media_list_state.dart';
 import '../media/season_episode_pager.dart';
+import '../utils/resume_probe_cooldown.dart';
 import '../widgets/media_card.dart';
 import '../widgets/media_rating_badge.dart';
 import '../i18n/strings.g.dart';
@@ -129,7 +130,7 @@ const String _tvDetailActorPersonIdRawKey = 'tvDetailActorPersonId';
 enum _SyncRuleAction { edit, remove, delete }
 
 /// Contract implemented by [_MediaDetailScreenState] for "the player closed"
-/// and "the app resumed" — the two cases where a background-added episode or
+/// and "the app resumed": the two cases where a background-added episode or
 /// watch-state change needs to reach an already-mounted detail screen.
 /// [playedItemId] is null when the screen doesn't know what was played (e.g.
 /// shuffle over a whole show).
@@ -256,11 +257,9 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   List<FocusNode> _seasonTabFocusNodes = [];
   bool _flattenEpisodesRevalidationInFlight = false;
 
-  /// Cooldown for [didChangeAppLifecycleState] resume probes, mirroring
-  /// `main.dart`'s `_lastResumeProbe`: desktop's `resumed` fires on every
-  /// window focus (alt-tab), so an unthrottled probe would refetch on every
-  /// switch back to the app.
-  DateTime _lastResumeRevalidation = DateTime(0);
+  /// Same cooldown shape `main.dart`'s own resume probe uses, see
+  /// [ResumeProbeCooldown].
+  final _resumeCooldown = ResumeProbeCooldown();
 
   PagedMediaListState<MediaItem> get _selectedSeasonEpisodeState {
     if (_selectedSeasonIndex < 0 || _selectedSeasonIndex >= _seasons.length) {
@@ -582,7 +581,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     // Backend-neutral. Plex bundles metadata + on-deck in one round-trip
     // (`?includeOnDeck=1`); Jellyfin's [fetchItemWithOnDeck] chains a second
     // request to `/Shows/NextUp` for shows, so this costs one request on
-    // Plex and two on Jellyfin — still far lighter than [_loadFullMetadata].
+    // Plex and two on Jellyfin, still far lighter than [_loadFullMetadata].
     final mediaClient = _getMediaClientForMetadata(context);
     if (mediaClient == null) return;
     final serverId = _metadata.serverId;
@@ -668,19 +667,19 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   /// Same trigger as a player return, minus the played-item id: an app resume
   /// can only mean "something may have changed server-side while we were
-  /// away", never "this specific item was just played".
+  /// away", never "this specific item was just played". Routes through
+  /// [refreshAfterPlayback] rather than calling [_revalidateVisibleEpisodes]
+  /// directly, so on-deck/watch-state also gets a chance to catch up (e.g.
+  /// watching further on another device while this app was backgrounded).
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
     if (widget.isOffline) return;
     // A detail screen sitting under an open player/route isn't the active
-    // screen — its own return path (refreshAfterPlayback) already covers it.
+    // screen: its own return path (refreshAfterPlayback) already covers it.
     if (_route?.isCurrent != true) return;
-    final now = DateTime.now();
-    final cooldown = (Platform.isIOS || Platform.isAndroid) ? const Duration(seconds: 10) : const Duration(minutes: 2);
-    if (now.difference(_lastResumeRevalidation) < cooldown) return;
-    _lastResumeRevalidation = now;
-    unawaited(_revalidateVisibleEpisodes());
+    if (!_resumeCooldown.shouldProbe()) return;
+    unawaited(refreshAfterPlayback());
   }
 
   bool _consumeBackAfterChildPop(KeyEvent event) {
@@ -1839,7 +1838,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         _seasons[seasonIndex].id == seasonId;
   }
 
-  /// Returns whether the page was actually applied — false when a newer
+  /// Returns whether the page was actually applied: false when a newer
   /// generation superseded this one in the meantime (season switch, or
   /// another load starting mid-flight).
   bool _completeSeasonEpisodesLoad({
@@ -2787,14 +2786,16 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   }
 
   /// The screen's single refresh contract for "the player closed" and "the
-  /// app resumed" — see [MediaDetailPlaybackRefresh]. Three steps, cheapest
+  /// app resumed": see [MediaDetailPlaybackRefresh]. Three steps, cheapest
   /// and most-likely-to-matter first:
   ///
   /// 1. [_revalidateVisibleEpisodes] re-fetches the visible episode window in
   ///    place (atomic swap, no spinner, no season jump) so a server-side
-  ///    addition shows up without a full reload.
+  ///    addition shows up without a full reload. Runs alongside step 3, not
+  ///    before it: the two touch disjoint state, so there's no reason to pay
+  ///    for two sequential round-trips.
   /// 2. [_refreshItemInPlace] is a safety net, only for [playedItemId] and only
-  ///    when step 1 didn't already cover it — a failed/skipped revalidation
+  ///    when step 1 didn't already cover it: a failed/skipped revalidation
   ///    (offline, mid-flight load, network error) must not silently drop the
   ///    watch-state update for the item that was actually just played.
   /// 3. [_refreshWatchState] is already lightweight (show metadata, on-deck,
@@ -2802,13 +2803,14 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   @override
   Future<void> refreshAfterPlayback({String? playedItemId}) async {
     if (!mounted) return;
-    final revalidatedIds = await _revalidateVisibleEpisodes();
+    final revalidationFuture = _revalidateVisibleEpisodes();
+    final watchStateFuture = _refreshWatchState();
+    final revalidatedIds = await revalidationFuture;
+    await watchStateFuture;
     if (!mounted) return;
     if (playedItemId != null && (revalidatedIds == null || !revalidatedIds.contains(playedItemId))) {
       await _refreshItemInPlace(playedItemId);
-      if (!mounted) return;
     }
-    await _refreshWatchState();
   }
 
   /// Re-fetches the currently visible episode window (selected season, or the
@@ -2816,18 +2818,19 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   /// state, no season-index rewrite. Returns the ids present in the freshly
   /// applied page, or null when the revalidation was skipped (offline, a
   /// paging op already in flight) or failed, so callers can tell "definitely
-  /// fresh" from "unknown — fall back".
+  /// fresh" from "unknown, fall back".
   Future<Set<String>?> _revalidateVisibleEpisodes() async {
     if (widget.isOffline) return null;
     return _isFlattenEpisodeList ? _revalidateFlattenedEpisodes() : _revalidateSeasonEpisodes();
   }
 
   /// Growth window for a revalidation request: if the current page already
-  /// knows there's more beyond it, re-fetching the same window is enough —
-  /// forcing an extra page every time would make a post-playback refresh on a
-  /// 200/1000-loaded list balloon to 400 unprompted. Once the window is known
-  /// to be complete (`!hasMore`), grow by one page so a newly appended
-  /// episode just past the old total is actually visible in the response.
+  /// knows there's more beyond it, re-fetching the same window is enough,
+  /// since forcing an extra page every time would make a post-playback
+  /// refresh on a 200/1000-loaded list balloon to 400 unprompted. Once the
+  /// window is known to be complete (`!hasMore`), grow by one page so a newly
+  /// appended episode just past the old total is actually visible in the
+  /// response.
   int _revalidationPageSize({required int loaded, required bool hasMore}) {
     if (hasMore) return loaded < _episodesPageSize ? _episodesPageSize : loaded;
     return loaded + _episodesPageSize;
@@ -2845,6 +2848,16 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     // generation check fails and it returns before resetting the flag).
     if (state.isLoadingMore) return null;
     if (!_seasonEpisodePager.beginFirstPageLoad(seasonId)) return null;
+    // Also hold the "more load" slot for this season while revalidating.
+    // completeFirstPage below replaces the item list wholesale (atomic swap,
+    // by design, see the class doc). Without this, a load-more that starts
+    // after this check but resolves before this fetch does would append its
+    // page, and that append would then be silently discarded the moment this
+    // revalidation's stale, from-offset-0 response lands.
+    if (!_seasonEpisodePager.beginMoreLoad(seasonId)) {
+      _seasonEpisodePager.endFirstPageLoad(seasonId);
+      return null;
+    }
 
     final generation = ++_episodesLoadGeneration;
     try {
@@ -2867,6 +2880,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       return null;
     } finally {
       _seasonEpisodePager.endFirstPageLoad(seasonId);
+      _seasonEpisodePager.endMoreLoad(seasonId);
     }
   }
 
@@ -3048,7 +3062,16 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   /// Load the next page of the flatten/all-episodes list (single-season show or
   /// season detail) on demand and append it.
   Future<void> _loadMoreAllEpisodes() async {
-    if (widget.isOffline || !_allEpisodes.hasMore || _allEpisodes.isLoadingMore) return;
+    // The revalidation-in-flight guard also blocks a load-more from starting
+    // here: _revalidateFlattenedEpisodes's completeInitialLoad replaces the
+    // item list wholesale, which would silently discard whatever a
+    // concurrent load-more just appended.
+    if (widget.isOffline ||
+        !_allEpisodes.hasMore ||
+        _allEpisodes.isLoadingMore ||
+        _flattenEpisodesRevalidationInFlight) {
+      return;
+    }
     final serverId = _metadata.serverId;
     final client = serverId == null ? null : context.tryGetMediaClientForServer(ServerId(serverId));
     if (serverId == null || client == null) return;
@@ -3247,7 +3270,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     if (result is PlayQueueSuccess && mounted) {
       // Shuffle over a whole show: this screen never learns which episode the
       // queue actually landed on, so refreshAfterPlayback runs without a
-      // playedItemId — the episode-list revalidation plus watch-state refresh
+      // playedItemId. The episode-list revalidation plus watch-state refresh
       // is the most it can target.
       unawaited(refreshAfterPlayback());
     }

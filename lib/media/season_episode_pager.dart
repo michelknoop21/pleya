@@ -3,7 +3,7 @@ import 'paged_media_list_state.dart';
 
 /// Per-season paging state for a show's episode lists, keyed by season id.
 ///
-/// Owned by the detail screen's `State` — not persisted, not shared across
+/// Owned by the detail screen's `State`: not persisted, not shared across
 /// screens. [completeFirstPage]/[completeMoreLoad] swap the underlying
 /// [PagedMediaListState] atomically, so a caller applying a fresh page never
 /// exposes an intermediate empty state.
