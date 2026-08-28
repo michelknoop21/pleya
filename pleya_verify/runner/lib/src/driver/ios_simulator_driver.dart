@@ -1,0 +1,302 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import '../transport/verify_client.dart';
+import 'verification_driver.dart';
+
+/// Drives a local iOS-simulator build of Pleya via `xcrun simctl`.
+///
+/// **No bundle-id-rewrite trick here, unlike [MacosDriver].** A macOS build
+/// shares the developer's real `~/Library/Application Support/
+/// nl.michelknoop.pleya` because it *is* the developer's Mac; a simulator
+/// device is its own on-disk data store
+/// (`~/Library/Developer/CoreSimulator/Devices/<udid>/data/…`), isolated by
+/// construction from both the developer's real device and every other
+/// simulator, regardless of bundle id. [installFresh] therefore just
+/// uninstalls the app from the target device — CoreSimulator deletes its
+/// whole container with it — rather than juggling a second identifier.
+///
+/// **Pointer/key input goes through the transport**, unlike the tvOS driver
+/// (Fase 10): iOS-sim has no HID-injection requirement equivalent to the
+/// tvOS-invoerroute-invariant ([C2]) — a touch-driven target's own
+/// `/v1/input/*` is a faithful enough stand-in for a tap. [screenshot] still
+/// always goes through `simctl io … screenshot`, the [C5] authoritative
+/// capture, never `/v1/screenshot`.
+class IosSimulatorDriver implements VerificationDriver {
+  final Directory repoRoot;
+  final String bundleId;
+  final int port;
+  final void Function(String line)? onDriverLog;
+
+  /// Overrides device auto-resolution — an already-booted iOS simulator, or
+  /// (falling back) `PLEYA_VERIFY_IOS_UDID` env var. Mirrors
+  /// `TVOS_SIM_UDID` in `scripts/tvos_sim.sh`.
+  final String? deviceUdidOverride;
+
+  String? _resolvedUdid;
+  final List<String> _driverLog = [];
+  VerifyClient? _client;
+
+  IosSimulatorDriver({
+    required this.repoRoot,
+    this.bundleId = 'nl.michelknoop.pleya',
+    this.port = 47317,
+    this.onDriverLog,
+    this.deviceUdidOverride,
+  });
+
+  @override
+  String get target => 'ios-sim';
+
+  @override
+  VerifyClient? get client => _client;
+
+  @override
+  String get inputRoute => 'transport';
+
+  Directory get _sourceAppDir => Directory('${repoRoot.path}/build/ios/iphonesimulator/Runner.app');
+
+  void _log(String line) {
+    _driverLog.add(line);
+    onDriverLog?.call(line);
+  }
+
+  @override
+  List<String> get driverLog => List.unmodifiable(_driverLog);
+
+  @override
+  Future<DriverDoctorReport> doctor() async {
+    final checks = <String, Object?>{};
+
+    final flutterVersion = await _run('flutter', ['--version']);
+    checks['flutter'] = flutterVersion.exitCode == 0;
+
+    final xcodebuild = await _run('xcodebuild', ['-version']);
+    checks['xcodebuild'] = xcodebuild.exitCode == 0;
+
+    checks['sourceAppBuilt'] = _sourceAppDir.existsSync();
+
+    String? deviceError;
+    try {
+      checks['device'] = await _resolveDevice();
+    } catch (e) {
+      deviceError = '$e';
+      checks['device'] = false;
+    }
+
+    final ready = deviceError == null && checks.values.every((v) => v == true || v is! bool);
+    return DriverDoctorReport(ready: ready, checks: checks);
+  }
+
+  @override
+  Future<void> build() async {
+    _log('flutter build ios --simulator --debug --dart-define=PLEYA_VERIFY=true');
+    final gitCommit = await _gitCommit();
+    final result = await _run('flutter', [
+      'build',
+      'ios',
+      '--simulator',
+      '--debug',
+      '--dart-define=PLEYA_VERIFY=true',
+      if (gitCommit != null) '--dart-define=GIT_COMMIT=$gitCommit',
+    ], workingDirectory: repoRoot.path);
+    _log(result.stdout.toString());
+    if (result.exitCode != 0) {
+      _log(result.stderr.toString());
+      throw StateError('flutter build ios --simulator failed (exit ${result.exitCode})');
+    }
+    if (!_sourceAppDir.existsSync()) {
+      throw StateError('flutter build ios --simulator reported success but ${_sourceAppDir.path} does not exist');
+    }
+  }
+
+  @override
+  Future<void> installFresh() async {
+    final udid = await _resolveDevice();
+    await _boot(udid);
+    await _run('xcrun', ['simctl', 'terminate', udid, bundleId]);
+    await _run('xcrun', ['simctl', 'uninstall', udid, bundleId]);
+    _log('installFresh: uninstalled $bundleId from $udid');
+  }
+
+  @override
+  Future<void> launch({Duration timeout = const Duration(seconds: 20)}) async {
+    if (!_sourceAppDir.existsSync()) {
+      throw StateError('${_sourceAppDir.path} does not exist — call build() first');
+    }
+    final udid = await _resolveDevice();
+    await _boot(udid);
+
+    _log('installing ${_sourceAppDir.path} on $udid');
+    final install = await _run('xcrun', ['simctl', 'install', udid, _sourceAppDir.path]);
+    if (install.exitCode != 0) {
+      throw StateError('simctl install failed (exit ${install.exitCode}): ${install.stderr}');
+    }
+
+    _log('launching $bundleId on $udid');
+    final launch = await _run('xcrun', ['simctl', 'launch', udid, bundleId]);
+    if (launch.exitCode != 0) {
+      throw StateError('simctl launch failed (exit ${launch.exitCode}): ${launch.stderr}');
+    }
+
+    // Simulator networking shares the host's loopback stack, so the runner
+    // (also on this Mac) reaches the app the same way MacosDriver does.
+    _client = VerifyClient(baseUri: Uri.parse('http://127.0.0.1:$port'));
+
+    final deadline = DateTime.now().add(timeout);
+    Object? lastError;
+    while (DateTime.now().isBefore(deadline)) {
+      try {
+        await _client!.health();
+        _log('health check succeeded');
+        return;
+      } catch (e) {
+        lastError = e;
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+      }
+    }
+    throw StateError('app did not respond on /v1/health within $timeout (last error: $lastError)');
+  }
+
+  @override
+  Future<void> terminate() async {
+    final udid = _resolvedUdid;
+    if (udid == null) return;
+    _log('terminating $bundleId on $udid');
+    await _run('xcrun', ['simctl', 'terminate', udid, bundleId]);
+    _client?.close();
+    _client = null;
+  }
+
+  @override
+  Future<Map<String, Object?>> uiTree() => _requireClient().uiTree();
+
+  @override
+  Future<Map<String, Object?>> focus() => _requireClient().focus();
+
+  @override
+  Future<List<Map<String, Object?>>> screensSnapshot() async {
+    final result = await _requireClient().screens();
+    return (result['screens'] as List).cast<Map<String, Object?>>();
+  }
+
+  @override
+  Future<List<Map<String, Object?>>> eventsSince(int since) async {
+    final result = await _requireClient().events(since: since);
+    return (result['events'] as List).cast<Map<String, Object?>>();
+  }
+
+  @override
+  Future<List<Map<String, Object?>>> focusLogSince(int since) async {
+    final result = await _requireClient().focusLog(since: since);
+    return (result['entries'] as List).cast<Map<String, Object?>>();
+  }
+
+  @override
+  Future<List<Map<String, Object?>>> logsSince(int since) async {
+    final result = await _requireClient().logs(since: since);
+    return (result['entries'] as List).cast<Map<String, Object?>>();
+  }
+
+  @override
+  Future<Uint8List> screenshot() async {
+    final udid = await _resolveDevice();
+    final tempFile = File(
+      '${Directory.systemTemp.path}/pleya-verify-ios-sim-screenshot-${DateTime.now().microsecondsSinceEpoch}.png',
+    );
+    // The [C5] authoritative capture: CoreSimulator's own compositor, not
+    // Flutter's `/v1/screenshot` (diagnostic-only).
+    final result = await _run('xcrun', ['simctl', 'io', udid, 'screenshot', tempFile.path]);
+    if (result.exitCode != 0 || !tempFile.existsSync()) {
+      throw StateError('simctl io screenshot failed (exit ${result.exitCode}): ${result.stderr}');
+    }
+    final bytes = tempFile.readAsBytesSync();
+    tempFile.deleteSync();
+    return bytes;
+  }
+
+  @override
+  Future<void> press(String key) async {
+    await _requireClient().inputKey(key);
+  }
+
+  @override
+  Future<void> typeText(String text) {
+    throw UnsupportedError(
+      'typeText: no /v1/input/text endpoint exists yet — not needed by any Fase 8-11 scenario so far',
+    );
+  }
+
+  @override
+  Future<void> tap(double x, double y) async {
+    await _requireClient().inputPointer(x, y);
+  }
+
+  VerifyClient _requireClient() {
+    final c = _client;
+    if (c == null) throw StateError('driver not launched — call launch() first');
+    return c;
+  }
+
+  /// An already-booted iOS simulator wins (that is what a developer sees on
+  /// screen), else the newest available iPhone runtime — resolved once and
+  /// cached, mirroring `scripts/tvos_sim.sh`'s `resolve_device()`. Overrides:
+  /// [deviceUdidOverride] constructor param, then `PLEYA_VERIFY_IOS_UDID`.
+  Future<String> _resolveDevice() async {
+    final cached = _resolvedUdid;
+    if (cached != null) return cached;
+
+    final override = deviceUdidOverride ?? Platform.environment['PLEYA_VERIFY_IOS_UDID'];
+    if (override != null && override.isNotEmpty) {
+      _resolvedUdid = override;
+      return override;
+    }
+
+    final result = await _run('xcrun', ['simctl', 'list', 'devices', 'available', '--json']);
+    if (result.exitCode != 0) {
+      throw StateError('xcrun simctl list devices failed (exit ${result.exitCode}): ${result.stderr}');
+    }
+    final decoded = jsonDecode(result.stdout as String) as Map<String, Object?>;
+    final devicesByRuntime = decoded['devices'] as Map<String, Object?>;
+
+    String? booted;
+    String? fallback;
+    for (final entry in devicesByRuntime.entries) {
+      if (!entry.key.contains('iOS')) continue;
+      for (final raw in entry.value as List) {
+        final device = raw as Map<String, Object?>;
+        final name = device['name'] as String;
+        if (!name.startsWith('iPhone')) continue;
+        final udid = device['udid'] as String;
+        if (device['state'] == 'Booted') booted = udid;
+        fallback = udid;
+      }
+    }
+    final udid = booted ?? fallback;
+    if (udid == null) {
+      throw StateError('no iOS simulator found (xcrun simctl list devices available)');
+    }
+    _resolvedUdid = udid;
+    return udid;
+  }
+
+  Future<void> _boot(String udid) async {
+    final list = await _run('xcrun', ['simctl', 'list', 'devices']);
+    final alreadyBooted = RegExp('$udid.*Booted').hasMatch(list.stdout as String);
+    if (alreadyBooted) return;
+    _log('booting $udid');
+    await _run('xcrun', ['simctl', 'boot', udid]);
+    await _run('xcrun', ['simctl', 'bootstatus', udid, '-b']);
+  }
+
+  Future<ProcessResult> _run(String executable, List<String> args, {String? workingDirectory}) =>
+      Process.run(executable, args, workingDirectory: workingDirectory);
+
+  Future<String?> _gitCommit() async {
+    final result = await _run('git', ['rev-parse', 'HEAD'], workingDirectory: repoRoot.path);
+    if (result.exitCode != 0) return null;
+    return (result.stdout as String).trim();
+  }
+}

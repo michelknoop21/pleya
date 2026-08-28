@@ -19,6 +19,23 @@ import 'automation_ids.dart';
 import 'automation_navigation_hooks.dart';
 import 'automation_screen.dart';
 
+/// Polls for [rootNavigatorKey]'s context becoming available — the same
+/// "polled, never a sleep" style [handleAutomationOpen] already uses for
+/// screen readiness. `/v1/signin`/`/v1/connections/seed` run as the very
+/// next setup step after `launch`, and `/v1/health` only proves the
+/// automation HTTP server itself is bound, not that the widget tree has
+/// painted its first frame — on iOS-sim that gap was wide enough for a
+/// single unretried check to fail every run.
+Future<BuildContext?> _waitForRootContext({Duration timeout = const Duration(seconds: 5)}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (true) {
+    final context = rootNavigatorKey.currentContext;
+    if (context != null && context.mounted) return context;
+    if (DateTime.now().isAfter(deadline)) return null;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  }
+}
+
 /// `POST /v1/signin` body: `{"base_url", "username", "password",
 /// "setup_code"?}`. Drives the exact chain
 /// `lib/screens/settings/add_pleya_server_screen.dart`'s `_submit()`/
@@ -41,8 +58,8 @@ Future<Map<String, Object?>> handleAutomationSignIn(Map<String, Object?> body) a
     return {'ok': false, 'error': 'base_url, username and password are required'};
   }
 
-  final context = rootNavigatorKey.currentContext;
-  if (context == null || !context.mounted) {
+  final context = await _waitForRootContext();
+  if (context == null) {
     return {'ok': false, 'error': 'no root context available yet — the app has not finished booting'};
   }
 
@@ -99,8 +116,8 @@ Future<Map<String, Object?>> handleAutomationConnectionsSeed(Map<String, Object?
     return {'ok': false, 'error': 'base_url, server_id, server_name, user_name and refresh_token are required'};
   }
 
-  final context = rootNavigatorKey.currentContext;
-  if (context == null || !context.mounted) {
+  final context = await _waitForRootContext();
+  if (context == null) {
     return {'ok': false, 'error': 'no root context available yet — the app has not finished booting'};
   }
 
@@ -116,6 +133,7 @@ Future<Map<String, Object?>> handleAutomationConnectionsSeed(Map<String, Object?
     lastAuthenticatedAt: DateTime.now(),
   );
 
+  if (!context.mounted) return {'ok': false, 'error': 'context unmounted mid-signin'};
   return _persistConnectionAndBindProfile(context, connection);
 }
 

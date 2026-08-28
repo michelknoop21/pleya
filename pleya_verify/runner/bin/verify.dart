@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:pleya_verify_runner/src/driver/ios_simulator_driver.dart';
 import 'package:pleya_verify_runner/src/driver/macos_driver.dart';
 import 'package:pleya_verify_runner/src/driver/verification_driver.dart';
 import 'package:pleya_verify_runner/src/engine/run_scenario.dart';
@@ -93,6 +94,8 @@ Future<void> _runScenarioCommand(List<String> args, {required bool jsonOutput}) 
   switch (scenario.target) {
     case 'macos':
       driver = MacosDriver(repoRoot: _repoRoot);
+    case 'ios-sim':
+      driver = IosSimulatorDriver(repoRoot: _repoRoot);
     default:
       stderr.writeln('run: no driver implemented yet for target "${scenario.target}"');
       exitCode = 64;

@@ -106,7 +106,12 @@ Future<ScenarioRunResult> runScenario({
           bundle.saveScreenshot(name, bytes);
           record['screenshot'] = '$name.png';
         case 'settle':
-          await Future<void>.delayed(const Duration(milliseconds: 500));
+          // Bare `- settle` keeps the old fixed 500ms; `- settle: 3000` lets
+          // a scenario wait out something with no automation-observable
+          // signal of its own — e.g. IntroGate's ~2.8s cosmetic splash
+          // overlay, which mounts *above* an already-ready screen rather
+          // than gating it, so no `wait_until` can see it finish.
+          await Future<void>.delayed(Duration(milliseconds: (step.args as int?) ?? 500));
         case 'press':
           record['input_route'] = driver.inputRoute;
           await driver.press(step.args as String);
