@@ -68,7 +68,9 @@ duplication-report/
 
 **/fastlane/**/
 **/fastlane/report.xml
-maestro/**/*.png
+
+pleya_verify/**/.dart_tool/
+pleya_verify/**/build/
 
 server/deploy.sh
 
