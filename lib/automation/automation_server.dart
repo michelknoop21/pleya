@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../utils/app_logger.dart';
+import 'automation_registry.dart';
 import 'pleya_verify.dart';
 
 /// `PLEYA_VERIFY_PORT` dart-define, or the first free port from this one
@@ -76,6 +77,20 @@ class AutomationServer {
   }
 
   Future<void> _handle(HttpRequest request) async {
+    try {
+      await _route(request);
+    } catch (e, st) {
+      // A route handler that throws must still answer — an unanswered
+      // request hangs the caller forever instead of failing fast.
+      appLogger.d('[PleyaVerify] route handler error', error: e, stackTrace: st);
+      try {
+        request.response.statusCode = HttpStatus.internalServerError;
+        await request.response.close();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _route(HttpRequest request) async {
     final host = request.headers.host ?? '';
     if (!(host.startsWith('127.0.0.1') || host.startsWith('localhost'))) {
       request.response.statusCode = HttpStatus.forbidden;
@@ -106,6 +121,8 @@ class AutomationServer {
           'booted': true,
           'bootedAt': _bootedAt.toIso8601String(),
         });
+      case '/v1/ui_tree':
+        await _respondJson(request, AutomationRegistry.instance.snapshot());
       default:
         request.response.statusCode = HttpStatus.notFound;
         await request.response.close();

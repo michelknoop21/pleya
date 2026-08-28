@@ -39,3 +39,22 @@ Geen parameters. 200 met JSON:
 ```
 
 Triggert geen events.
+
+### `GET /v1/ui_tree`
+
+Geen parameters. 200 met JSON:
+
+```json
+{
+  "declared": [{"id": "nav.discover", "role": "...", "label": "..."}],
+  "discovered": [{"label": "...", "focused": false, "canRequestFocus": true, "bounds": {"x": 0, "y": 0, "width": 0, "height": 0}}],
+  "duplicates": ["<declared id die dubbel geregistreerd was>"]
+}
+```
+
+`declared` is leeg totdat widgets een `AutomationDeclaredNode` registreren (zie
+A.2/A.8 in het Pleya Verify-plan); `discovered` komt uit een live walk van
+`FocusManager.instance.rootScope.traversalDescendants` en is dus altijd
+gevuld zodra er een gefocust widget bestaat. `bounds` ontbreekt op een node
+zonder gemount `RenderBox` (bv. niet zichtbaar). Labels lopen door
+`LogRedactionManager.redact()`. Triggert geen events.

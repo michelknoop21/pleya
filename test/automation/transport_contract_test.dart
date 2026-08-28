@@ -47,8 +47,8 @@ void main() {
         await response.drain<void>();
         expect(
           response.statusCode,
-          isNot(HttpStatus.notFound),
-          reason: '${endpoint.method} ${endpoint.path} from the spec has no route on AutomationServer',
+          HttpStatus.ok,
+          reason: '${endpoint.method} ${endpoint.path} from the spec did not respond 200 on AutomationServer',
         );
       }
     });
