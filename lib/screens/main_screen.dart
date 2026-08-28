@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:ui' show ImageFilter;
 import '../automation/automation_event_log.dart';
 import '../automation/automation_ids.dart';
+import '../automation/automation_navigation_hooks.dart';
 import '../automation/automation_screen.dart';
 import '../automation/pleya_verify.dart';
 import '../media/ids.dart';
@@ -388,6 +389,10 @@ class _MainScreenState extends State<MainScreen>
         ? preferredStartup
         : null;
     _screens = _buildScreens(_isOffline);
+
+    if (kPleyaVerify) {
+      AutomationNavigationHooks.instance.registerSelectTab(_selectTab);
+    }
 
     // Warm the TV keyboard's text-layout caches off the first real open
     // (measured ~315ms first-open frame on low-end boxes, mostly cold font
@@ -930,6 +935,9 @@ class _MainScreenState extends State<MainScreen>
 
   @override
   void dispose() {
+    if (kPleyaVerify) {
+      AutomationNavigationHooks.instance.unregisterSelectTab(_selectTab);
+    }
     WidgetsBinding.instance.removeObserver(this);
     _profileRouteObserver?.unsubscribe(this);
     if (PlatformDetector.isDesktopOS()) {

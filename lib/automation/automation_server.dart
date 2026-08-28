@@ -18,6 +18,7 @@ import 'automation_overlay.dart';
 import 'automation_focus_log.dart';
 import 'automation_registry.dart';
 import 'automation_screen.dart';
+import 'automation_signin.dart';
 import 'automation_wait.dart';
 import 'pleya_verify.dart';
 
@@ -62,6 +63,9 @@ const Map<String, String> _kRouteMethods = {
   '/v1/input/pointer': 'POST',
   '/v1/overlay': 'POST',
   '/v1/screenshot': 'GET',
+  '/v1/signin': 'POST',
+  '/v1/connections/seed': 'POST',
+  '/v1/open': 'POST',
 };
 
 class AutomationServer {
@@ -224,6 +228,15 @@ class AutomationServer {
         request.response.headers.contentType = ContentType('image', 'png');
         request.response.add(png);
         await request.response.close();
+      case '/v1/signin':
+        final body = await _readJsonBody(request);
+        await _respondAutomationResult(request, await handleAutomationSignIn(body));
+      case '/v1/connections/seed':
+        final body = await _readJsonBody(request);
+        await _respondAutomationResult(request, await handleAutomationConnectionsSeed(body));
+      case '/v1/open':
+        final body = await _readJsonBody(request);
+        await _respondAutomationResult(request, await handleAutomationOpen(body));
       default:
         // Unreachable unless _kRouteMethods and this switch drift apart —
         // every key above is validated against _kRouteMethods before the
@@ -281,6 +294,14 @@ class AutomationServer {
     'message': LogRedactionManager.redact(entry.message),
     if (entry.error != null) 'error': LogRedactionManager.redact(entry.error.toString()),
   };
+
+  /// `/v1/signin`, `/v1/connections/seed` and `/v1/open` all answer
+  /// `{"ok": bool, ...}` — 200 when true, 400 (a clear, readable `error`
+  /// field, never a crash) when false.
+  Future<void> _respondAutomationResult(HttpRequest request, Map<String, Object?> result) async {
+    if (result['ok'] != true) request.response.statusCode = HttpStatus.badRequest;
+    await _respondJson(request, result);
+  }
 
   Future<void> _respondInputResult(HttpRequest request, AutomationInputResult result) async {
     switch (result) {

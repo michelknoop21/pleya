@@ -252,3 +252,62 @@ diagnostisch: bevestigt Flutter's eigen renderstate (bv. dat de overlay
 tekende wat `/v1/ui_tree` rapporteerde), of als terugvaloptie op een target
 zonder simulator-equivalent. Een vergelijking die hierop leunt draagt
 expliciet `"source": "flutter_repaint_boundary"`.
+
+### `POST /v1/signin`
+
+Body: `{"base_url": "...", "username": "...", "password": "...", "setup_code": "..."}`
+(`setup_code` alleen nodig wanneer `GET /info` op `base_url`
+`auth.setup_required: true` teruggeeft). Drijft exact de keten die
+`lib/screens/settings/add_pleya_server_screen.dart`'s `_submit()`/
+`_persist()` ook gebruiken: probe → login of setup (de server beslist welke)
+→ `persistAndBindConnection` → bij het eerste profiel: `Profile.local(...)`
+aanmaken en activeren → `rebindIfActive` wanneer het gebonden profiel het
+actieve is. Geen tweede verbindings- of profielarchitectuur.
+
+Gebruikt `rootNavigatorKey`'s context (`lib/main.dart`), niet
+`profileNavigationRegistry`'s: dit endpoint kan het allereerste profiel
+aanmaken, dus draait per definitie vóórdat een profielsessie bestaat.
+
+Conventie voor scenario's: `verify-owner` / `verify-password` — publiek en
+waardeloos, zodat een screenshot van het inlogscherm per constructie geen
+geheim bevat. Werkt tegen een verse fixture (`setupRequired: true`, het
+standaardgeval) via `PleyaFakeServer.setupCode` als `setup_code`.
+
+200 `{"ok": true, "profileId": "...", "connectionId": "..."}`; 400
+`{"ok": false, "error": "..."}` op een ontbrekend veld, een falende
+probe/login/setup, of een nog niet gebootstrapte app (geen root-context).
+
+### `POST /v1/connections/seed`
+
+Body: `{"base_url": "...", "server_id": "...", "server_name": "...", "user_name": "...", "refresh_token": "..."}`.
+De snelle route voor een scenario dat alleen een werkende verbinding nodig
+heeft en niet elke run opnieuw de sign-in-UI wil bewijzen: slaat de
+probe/login-HTTP-omweg over en bouwt de `PleyaServerConnection` rechtstreeks
+uit velden die de aanroeper al kent (typisch: net teruggegeven door de
+fixture na een eigen `/__verify/seed`). Deelt daarna dezelfde
+persist-en-bind-staart als `/v1/signin` — de twee endpoints verschillen
+alleen in hoe de connection gebouwd wordt.
+
+200/400-vorm gelijk aan `/v1/signin`.
+
+### `POST /v1/open`
+
+Body: `{"screen": "screen.discover", "timeoutMs": 5000}`. `screen` is een id
+uit `GET /v1/automation_ids`. Op dit moment ondersteund: `screen.main` (geen
+tabwissel nodig, altijd gemount), `screen.discover` en `screen.libraries`
+(wisselen via dezelfde `_selectTab` als de zijbalk/tabbar, nooit een tweede
+navigatiepad). `screen.media_detail` heeft nog geen item-parameter en geeft
+dus een duidelijke 400 in plaats van te raden.
+
+Gebruikt `profileNavigationRegistry`'s context (`lib/navigation/
+profile_navigation_scope.dart`), niet `rootNavigatorKey`'s: die registry
+bestaat pas zodra een profielsessie gemount is, wat precies de voorwaarde is
+om "open een scherm" betekenis te geven. Vóór een sessie gemount is: 400,
+geen crash op een null-context.
+
+Keert pas terug als het doelscherm `ready` is via `GET /v1/screens`
+(gepolld, dezelfde stijl als `POST /v1/wait`) — nooit een sleep.
+
+200 `{"ok": true, "screen": "..."}`; 400 `{"ok": false, "error": "..."}` op
+een onbekend/nog-niet-ondersteund scherm, een niet-gemounte
+`MainScreen`-hook, of een timeout tijdens het wachten op readiness.
