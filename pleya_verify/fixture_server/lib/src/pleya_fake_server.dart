@@ -589,7 +589,12 @@ class PleyaFakeServer {
       start = int.parse(startText);
       end = endText.isEmpty ? total - 1 : int.parse(endText).clamp(0, total - 1);
     }
-    if (start >= total) throw const _RangeNotSatisfiable();
+    // Both "past the end" and "reversed" (bytes=5-2) are not satisfiable.
+    // Without this, a reversal of exactly 1 (bytes=2-1) computed an empty
+    // sublist silently (start == end+1, which satisfies sublist's start<=end
+    // requirement trivially) and a larger reversal (bytes=5-2) threw an
+    // uncaught RangeError instead of the documented 416.
+    if (start >= total || start > end) throw const _RangeNotSatisfiable();
     return (start: start, end: end);
   }
 

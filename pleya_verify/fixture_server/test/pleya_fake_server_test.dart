@@ -360,5 +360,30 @@ void main() {
       final response = await _get(server, '/pleya/v1/stream/does-not-exist-v1');
       expect(response.statusCode, 404);
     });
+
+    test('a reversed range (start > end) 416s instead of an empty body or a crash', () async {
+      // A reversal of exactly 1 byte used to compute an empty sublist
+      // silently instead of erroring: start == end + 1 trivially satisfies
+      // sublist's start <= end requirement.
+      final server = _serverWithOneLibrary();
+      final response = await _get(server, '/pleya/v1/stream/item-1-v1', headers: {'Range': 'bytes=2-1'});
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      expect(response.statusCode, 416);
+      expect((body['error'] as Map)['code'], 'playback.range_not_satisfiable');
+    });
+
+    test('a larger reversed range 416s instead of throwing an uncaught RangeError', () async {
+      // bytes=5-2 computes sublist(5, 3): start(5) > end(3) throws a raw
+      // RangeError from List.sublist, uncaught by the existing
+      // _RangeNotSatisfiable handler — a 500-shaped crash, not the
+      // documented 416.
+      final server = _serverWithOneLibrary();
+      final response = await _get(server, '/pleya/v1/stream/item-1-v1', headers: {'Range': 'bytes=5-2'});
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      expect(response.statusCode, 416);
+      expect((body['error'] as Map)['code'], 'playback.range_not_satisfiable');
+    });
   });
 }
