@@ -45,6 +45,7 @@ import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../media/media_role.dart';
 import '../media/paged_media_list_state.dart';
+import '../media/season_episode_pager.dart';
 import '../widgets/media_card.dart';
 import '../widgets/media_rating_badge.dart';
 import '../i18n/strings.g.dart';
@@ -127,89 +128,13 @@ const String _tvDetailActorPersonIdRawKey = 'tvDetailActorPersonId';
 
 enum _SyncRuleAction { edit, remove, delete }
 
-class _SeasonEpisodePager {
-  final Map<String, PagedMediaListState<MediaItem>> _states = {};
-  final Set<String> _firstPageLoadsInFlight = {};
-  final Set<String> _moreLoadsInFlight = {};
-
-  PagedMediaListState<MediaItem> stateFor(String seasonId) {
-    return _states[seasonId] ?? const PagedMediaListState<MediaItem>();
-  }
-
-  bool hasState(String seasonId) => _states.containsKey(seasonId);
-
-  bool beginFirstPageLoad(String seasonId) => _firstPageLoadsInFlight.add(seasonId);
-  void endFirstPageLoad(String seasonId) => _firstPageLoadsInFlight.remove(seasonId);
-
-  bool beginMoreLoad(String seasonId) => _moreLoadsInFlight.add(seasonId);
-  void endMoreLoad(String seasonId) => _moreLoadsInFlight.remove(seasonId);
-
-  void markFirstPageLoading(String seasonId) {
-    _states[seasonId] = stateFor(seasonId).startInitialLoad();
-  }
-
-  void completeFirstPage(String seasonId, List<MediaItem> episodes, int total) {
-    _states[seasonId] = stateFor(seasonId).completeInitialLoad(episodes, total);
-  }
-
-  void failFirstPage(String seasonId) {
-    _states[seasonId] = stateFor(seasonId).failInitialLoad();
-  }
-
-  void markMoreLoading(String seasonId) {
-    _states[seasonId] = stateFor(seasonId).startLoadMore();
-  }
-
-  void completeMoreLoad(
-    String seasonId, {
-    required int expectedOffset,
-    required List<MediaItem> episodes,
-    required int total,
-  }) {
-    _states[seasonId] = stateFor(
-      seasonId,
-    ).completeLoadMore(expectedOffset: expectedOffset, pageItems: episodes, total: total);
-  }
-
-  void failMoreLoad(String seasonId) {
-    _states[seasonId] = stateFor(seasonId).failLoadMore();
-  }
-
-  void resetSeason(String seasonId) {
-    _states.remove(seasonId);
-    _firstPageLoadsInFlight.remove(seasonId);
-    _moreLoadsInFlight.remove(seasonId);
-  }
-
-  void removeEpisode(String episodeId) {
-    for (final entry in _states.entries.toList()) {
-      _states[entry.key] = entry.value.removeWhere((episode) => episode.id == episodeId);
-    }
-  }
-
-  void updateEpisode(String seasonId, int index, MediaItem updated) {
-    final state = _states[seasonId];
-    if (state == null || index < 0 || index >= state.items.length) return;
-    final next = List<MediaItem>.of(state.items);
-    next[index] = updated;
-    _states[seasonId] = state.replaceItems(next);
-  }
-
-  void patchEpisode(String episodeId, MediaItem Function(MediaItem existing) patch) {
-    for (final entry in _states.entries.toList()) {
-      var changed = false;
-      final next = <MediaItem>[];
-      for (final episode in entry.value.items) {
-        if (episode.id == episodeId) {
-          changed = true;
-          next.add(patch(episode));
-        } else {
-          next.add(episode);
-        }
-      }
-      if (changed) _states[entry.key] = entry.value.replaceItems(next);
-    }
-  }
+/// Contract implemented by [_MediaDetailScreenState] for "the player closed"
+/// and "the app resumed" — the two cases where a background-added episode or
+/// watch-state change needs to reach an already-mounted detail screen.
+/// [playedItemId] is null when the screen doesn't know what was played (e.g.
+/// shuffle over a whole show).
+abstract class MediaDetailPlaybackRefresh {
+  Future<void> refreshAfterPlayback({String? playedItemId});
 }
 
 class MediaDetailScreen extends StatefulWidget {
@@ -284,7 +209,8 @@ PageRoute<bool> mediaDetailRoute({
 }
 
 class _MediaDetailScreenState extends State<MediaDetailScreen>
-    with WatchStateAware, DeletionAware, MountedSetStateMixin, ServerBoundMediaMixin, RouteAware {
+    with WatchStateAware, DeletionAware, MountedSetStateMixin, ServerBoundMediaMixin, RouteAware, WidgetsBindingObserver
+    implements MediaDetailPlaybackRefresh {
   /// Public input alias — used as the live source of truth until the detail
   /// fetch returns. Holds backend-neutral [MediaItem] data.
   MediaItem get _metadata => _fullMetadata ?? widget.metadata;
@@ -326,8 +252,15 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   // Inline season tabs
   int _selectedSeasonIndex = 0;
-  final _seasonEpisodePager = _SeasonEpisodePager();
+  final _seasonEpisodePager = SeasonEpisodePager();
   List<FocusNode> _seasonTabFocusNodes = [];
+  bool _flattenEpisodesRevalidationInFlight = false;
+
+  /// Cooldown for [didChangeAppLifecycleState] resume probes, mirroring
+  /// `main.dart`'s `_lastResumeProbe`: desktop's `resumed` fires on every
+  /// window focus (alt-tab), so an unthrottled probe would refetch on every
+  /// switch back to the app.
+  DateTime _lastResumeRevalidation = DateTime(0);
 
   PagedMediaListState<MediaItem> get _selectedSeasonEpisodeState {
     if (_selectedSeasonIndex < 0 || _selectedSeasonIndex >= _seasons.length) {
@@ -647,9 +580,9 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   /// Lightweight refresh for watch state changes - no loader, preserves scroll
   Future<void> _refreshWatchState() async {
     // Backend-neutral. Plex bundles metadata + on-deck in one round-trip
-    // (`?includeOnDeck=1`); Jellyfin's [fetchItemWithOnDeck] returns
-    // onDeckEpisode=null and on-deck repopulates from cached lists on
-    // the next navigation.
+    // (`?includeOnDeck=1`); Jellyfin's [fetchItemWithOnDeck] chains a second
+    // request to `/Shows/NextUp` for shows, so this costs one request on
+    // Plex and two on Jellyfin — still far lighter than [_loadFullMetadata].
     final mediaClient = _getMediaClientForMetadata(context);
     if (mediaClient == null) return;
     final serverId = _metadata.serverId;
@@ -688,6 +621,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
     _lastEpisodeFocusNode.addListener(_onLastEpisodeFocusChanged);
@@ -730,6 +664,23 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         if (mounted) _suppressBackAfterPop = false;
       });
     });
+  }
+
+  /// Same trigger as a player return, minus the played-item id: an app resume
+  /// can only mean "something may have changed server-side while we were
+  /// away", never "this specific item was just played".
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    if (widget.isOffline) return;
+    // A detail screen sitting under an open player/route isn't the active
+    // screen — its own return path (refreshAfterPlayback) already covers it.
+    if (_route?.isCurrent != true) return;
+    final now = DateTime.now();
+    final cooldown = (Platform.isIOS || Platform.isAndroid) ? const Duration(seconds: 10) : const Duration(minutes: 2);
+    if (now.difference(_lastResumeRevalidation) < cooldown) return;
+    _lastResumeRevalidation = now;
+    unawaited(_revalidateVisibleEpisodes());
   }
 
   bool _consumeBackAfterChildPop(KeyEvent event) {
@@ -831,6 +782,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _routeObserver?.unsubscribe(this);
     _loadingFocusNode.dispose();
     _scrollController.dispose();
@@ -1369,8 +1321,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     try {
       // Backend-neutral lookup. Plex returns the OnDeck episode bundled in
       // the same response (`?includeOnDeck=1`); Jellyfin's
-      // [fetchItemWithOnDeck] returns onDeckEpisode=null and the UI
-      // populates resume separately if needed.
+      // [fetchItemWithOnDeck] chains a second request to `/Shows/NextUp`.
       final client = getServerBoundMediaClient(context);
       if (client == null) {
         // Truly orphaned item (server gone) — fall back to widget metadata
@@ -1888,21 +1839,28 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         _seasons[seasonIndex].id == seasonId;
   }
 
-  void _completeSeasonEpisodesLoad({
+  /// Returns whether the page was actually applied — false when a newer
+  /// generation superseded this one in the meantime (season switch, or
+  /// another load starting mid-flight).
+  bool _completeSeasonEpisodesLoad({
     required int seasonIndex,
     required String seasonId,
     required List<MediaItem> episodes,
     required int total,
     required int generation,
+    bool prefetchAdjacent = true,
   }) {
-    if (generation != _episodesLoadGeneration) return;
+    if (generation != _episodesLoadGeneration) return false;
     setStateIfMounted(() {
       _seasonEpisodePager.completeFirstPage(seasonId, episodes, total);
       if (_isSelectedSeason(seasonIndex, seasonId)) {
         _episodes = List.of(_seasonEpisodePager.stateFor(seasonId).items);
       }
     });
-    if (_isSelectedSeason(seasonIndex, seasonId)) unawaited(_prefetchAdjacentSeasonEpisodePages(seasonIndex));
+    if (prefetchAdjacent && _isSelectedSeason(seasonIndex, seasonId)) {
+      unawaited(_prefetchAdjacentSeasonEpisodePages(seasonIndex));
+    }
+    return true;
   }
 
   /// Load extras (trailers, featurettes, behind-the-scenes, etc.).
@@ -2736,7 +2694,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
               context,
               metadata: episode,
               isOffline: widget.isOffline,
-              onRefresh: () => unawaited(_refreshItemInPlace(episode.id)),
+              onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: episode.id)),
             );
           },
           onRefresh: widget.isOffline ? null : _refreshItemInPlace,
@@ -2825,6 +2783,118 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       final season = _seasons[_selectedSeasonIndex];
       _seasonEpisodePager.resetSeason(season.id);
       await _fetchSeasonEpisodes(_selectedSeasonIndex);
+    }
+  }
+
+  /// The screen's single refresh contract for "the player closed" and "the
+  /// app resumed" — see [MediaDetailPlaybackRefresh]. Three steps, cheapest
+  /// and most-likely-to-matter first:
+  ///
+  /// 1. [_revalidateVisibleEpisodes] re-fetches the visible episode window in
+  ///    place (atomic swap, no spinner, no season jump) so a server-side
+  ///    addition shows up without a full reload.
+  /// 2. [_refreshItemInPlace] is a safety net, only for [playedItemId] and only
+  ///    when step 1 didn't already cover it — a failed/skipped revalidation
+  ///    (offline, mid-flight load, network error) must not silently drop the
+  ///    watch-state update for the item that was actually just played.
+  /// 3. [_refreshWatchState] is already lightweight (show metadata, on-deck,
+  ///    counters) and deliberately leaves the lists alone.
+  @override
+  Future<void> refreshAfterPlayback({String? playedItemId}) async {
+    if (!mounted) return;
+    final revalidatedIds = await _revalidateVisibleEpisodes();
+    if (!mounted) return;
+    if (playedItemId != null && (revalidatedIds == null || !revalidatedIds.contains(playedItemId))) {
+      await _refreshItemInPlace(playedItemId);
+      if (!mounted) return;
+    }
+    await _refreshWatchState();
+  }
+
+  /// Re-fetches the currently visible episode window (selected season, or the
+  /// flattened all-episodes list) in place: no `resetSeason`, no loading
+  /// state, no season-index rewrite. Returns the ids present in the freshly
+  /// applied page, or null when the revalidation was skipped (offline, a
+  /// paging op already in flight) or failed, so callers can tell "definitely
+  /// fresh" from "unknown — fall back".
+  Future<Set<String>?> _revalidateVisibleEpisodes() async {
+    if (widget.isOffline) return null;
+    return _isFlattenEpisodeList ? _revalidateFlattenedEpisodes() : _revalidateSeasonEpisodes();
+  }
+
+  /// Growth window for a revalidation request: if the current page already
+  /// knows there's more beyond it, re-fetching the same window is enough —
+  /// forcing an extra page every time would make a post-playback refresh on a
+  /// 200/1000-loaded list balloon to 400 unprompted. Once the window is known
+  /// to be complete (`!hasMore`), grow by one page so a newly appended
+  /// episode just past the old total is actually visible in the response.
+  int _revalidationPageSize({required int loaded, required bool hasMore}) {
+    if (hasMore) return loaded < _episodesPageSize ? _episodesPageSize : loaded;
+    return loaded + _episodesPageSize;
+  }
+
+  Future<Set<String>?> _revalidateSeasonEpisodes() async {
+    final seasonIndex = _selectedSeasonIndex;
+    if (seasonIndex < 0 || seasonIndex >= _seasons.length) return null;
+    final season = _seasons[seasonIndex];
+    final seasonId = season.id;
+    final state = _seasonEpisodePager.stateFor(seasonId);
+    // A page (initial or "more") already in flight for this season owns the
+    // next generation bump; piling another one on top is how a load-more
+    // response ends up permanently stuck on `isLoadingMore: true` (its
+    // generation check fails and it returns before resetting the flag).
+    if (state.isLoadingMore) return null;
+    if (!_seasonEpisodePager.beginFirstPageLoad(seasonId)) return null;
+
+    final generation = ++_episodesLoadGeneration;
+    try {
+      final mediaClient = _getMediaClientForMetadata(context);
+      if (mediaClient == null) return null;
+      final size = _revalidationPageSize(loaded: state.items.length, hasMore: state.hasMore);
+      final page = await fetchSeasonEpisodePage(mediaClient, show: _metadata, season: season, start: 0, size: size);
+      if (!mounted) return null;
+      final applied = _completeSeasonEpisodesLoad(
+        seasonIndex: seasonIndex,
+        seasonId: seasonId,
+        episodes: page.items,
+        total: page.totalCount,
+        generation: generation,
+        prefetchAdjacent: false,
+      );
+      return applied ? page.items.map((episode) => episode.id).toSet() : null;
+    } catch (e) {
+      appLogger.d('Episode revalidation failed for season $seasonId', error: e);
+      return null;
+    } finally {
+      _seasonEpisodePager.endFirstPageLoad(seasonId);
+    }
+  }
+
+  Future<Set<String>?> _revalidateFlattenedEpisodes() async {
+    if (_flattenEpisodesRevalidationInFlight) return null;
+    if (_allEpisodes.isInitialLoading || _allEpisodes.isLoadingMore) return null;
+    if (_seasons.isEmpty) return null;
+    final serverId = _metadata.serverId;
+    if (serverId == null) return null;
+    final client = context.tryGetMediaClientForServer(ServerId(serverId));
+    if (client == null) return null;
+
+    _flattenEpisodesRevalidationInFlight = true;
+    final generation = ++_episodesLoadGeneration;
+    try {
+      final size = _revalidationPageSize(loaded: _allEpisodes.items.length, hasMore: _allEpisodes.hasMore);
+      final page = await _fetchFlattenedEpisodePage(client, ServerId(serverId), start: 0, size: size);
+      if (!mounted || generation != _episodesLoadGeneration) return null;
+      setStateIfMounted(() {
+        _allEpisodes = _allEpisodes.completeInitialLoad(page.items, page.totalCount);
+        _episodes = _allEpisodes.items;
+      });
+      return page.items.map((episode) => episode.id).toSet();
+    } catch (e) {
+      appLogger.d('Flattened episode revalidation failed', error: e);
+      return null;
+    } finally {
+      _flattenEpisodesRevalidationInFlight = false;
     }
   }
 
@@ -3146,11 +3216,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       );
       if (mounted) {
         appLogger.d('Playing first episode: ${episodeWithServerId.title}');
+        final playedId = episodeWithServerId.id;
         await navigateToVideoPlayerWithRefresh(
           context,
           metadata: episodeWithServerId,
           isOffline: widget.isOffline,
-          onRefresh: _loadFullMetadata,
+          onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
         );
       }
     } catch (e) {
@@ -3174,7 +3245,11 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     final launcher = MediaListPlaybackLauncher.forItem(context, metadata);
     final result = await launcher.launchShuffledShow(metadata: metadata);
     if (result is PlayQueueSuccess && mounted) {
-      unawaited(_loadFullMetadata());
+      // Shuffle over a whole show: this screen never learns which episode the
+      // queue actually landed on, so refreshAfterPlayback runs without a
+      // playedItemId — the episode-list revalidation plus watch-state refresh
+      // is the most it can target.
+      unawaited(refreshAfterPlayback());
     }
   }
 
@@ -3558,6 +3633,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
               iconForHub: _getTvDetailHubIcon,
               onFocusedHubItemChanged: _handleTvDetailFocusedRailItemChanged,
               onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
+              onPlaybackReturned: (item) => unawaited(refreshAfterPlayback(playedItemId: item.id)),
               onActiveHubChanged: _handleTvDetailHubChanged,
               onActivateItem: _handleTvDetailRailItemActivated,
               trailingForHub: _tvDetailTrailingState,
