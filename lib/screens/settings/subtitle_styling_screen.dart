@@ -156,7 +156,6 @@ class SubtitleStylingScreen extends StatelessWidget {
           icon: Symbols.format_color_fill_rounded,
           title: t.subtitlingStyling.backgroundColor,
         ),
-        const SizedBox(height: 24),
       ],
     );
   }

@@ -117,8 +117,6 @@ class TrackerLibraryFilterScreen extends StatelessWidget {
               }
             }
 
-            children.add(const SizedBox(height: 24));
-
             return SettingsPage(title: title, children: children);
           },
         );

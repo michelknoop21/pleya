@@ -4,6 +4,9 @@ import '../focus/focus_theme.dart';
 import '../focus/focusable_wrapper.dart';
 import '../theme/mono_tokens.dart';
 import 'app_icon.dart';
+import 'settings_rows.dart';
+
+export 'settings_rows.dart';
 
 /// Widest the settings content grows on desktop and TV. Full-width rows on a
 /// 1440pt window put the switch a hand's width away from its label, so the
@@ -13,6 +16,30 @@ const double kSettingsMaxWidth = 880;
 /// Row inset used by every settings tile. Slightly wider than the Material
 /// default so the icon badge does not touch the card edge.
 const EdgeInsets kSettingRowPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 6);
+
+/// Alpha of a [SettingsGroup]'s outer card border, against [MonoTokens.outline].
+const double kSettingsOutlineAlpha = 0.6;
+
+/// Alpha of the hairline [SettingsRows] paints between two visible rows.
+const double kSettingsSeparatorAlpha = 0.5;
+
+/// Width of the leading focus marker a settings row paints instead of a border.
+const double kSettingsFocusBarWidth = 3;
+
+/// Alpha of the focus marker, against [MonoTokens.text].
+const double kSettingsFocusBarAlpha = 0.85;
+
+/// The one card-border colour every settings surface shares: [MonoTokens.outline]
+/// at [kSettingsOutlineAlpha]. Anything that draws its own settings-style card
+/// (there are a couple, outside [SettingsGroup] itself) reads this instead of
+/// re-deriving the alpha by hand.
+Color settingsOutlineColor(BuildContext context) => tokens(context).outline.withValues(alpha: kSettingsOutlineAlpha);
+
+/// The row-separator colour every [SettingsRows] paints: [MonoTokens.outline]
+/// at [kSettingsSeparatorAlpha]. Exposed so a [SettingsRows] built outside
+/// [SettingsGroup] (e.g. a nested connections list) matches it exactly.
+Color settingsSeparatorColor(BuildContext context) =>
+    tokens(context).outline.withValues(alpha: kSettingsSeparatorAlpha);
 
 /// Centers settings content once the window is wider than [kSettingsMaxWidth].
 /// On phones it is a plain horizontal inset, so mobile layout is unchanged.
@@ -67,6 +94,13 @@ class SettingsSectionHeader extends StatelessWidget {
 /// Material *before* its descendants, so without one here they land on the
 /// Scaffold underneath and this card's opaque surface paints straight over
 /// them. That is what made focus in settings invisible.
+///
+/// [children] is rendered as-is now, unlike the old implementation: a plain
+/// `SizedBox(height: N)` used to be silently dropped (it was filtered by
+/// type) and no longer is. [SettingsRows] instead decides visibility from
+/// laid-out height, so any child with real height becomes a real row with
+/// hairline separators around it. A spacer that only wants bottom margin
+/// should not be a child here; the card's own margin already provides one.
 class SettingsGroup extends StatelessWidget {
   final String? title;
   final List<Widget> children;
@@ -76,31 +110,26 @@ class SettingsGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = tokens(context);
-    final rows = children.where((c) => c is! SizedBox).toList(growable: false);
-    if (rows.isEmpty) return const SizedBox.shrink();
+    if (children.isEmpty) return const SizedBox.shrink();
+    final radius = BorderRadius.circular(t.radiusMd);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (title != null) SettingsSectionHeader(title!),
         Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          decoration: BoxDecoration(
-            color: t.surface,
-            borderRadius: BorderRadius.circular(t.radiusMd),
-            border: Border.all(color: t.outline.withValues(alpha: 0.6)),
+          // The border lives in foregroundDecoration, painted after the rows
+          // (see SettingsRows below) so it always wins over a full-bleed
+          // focus fill instead of being painted over by the first/last row.
+          decoration: BoxDecoration(color: t.surface, borderRadius: radius),
+          foregroundDecoration: BoxDecoration(
+            borderRadius: radius,
+            border: Border.all(color: settingsOutlineColor(context)),
           ),
           clipBehavior: Clip.antiAlias,
           child: Material(
             type: MaterialType.transparency,
-            child: Column(
-              children: [
-                for (var i = 0; i < rows.length; i++) ...[
-                  if (i > 0)
-                    Divider(height: 1, thickness: 1, indent: 68, endIndent: 0, color: t.outline.withValues(alpha: 0.5)),
-                  rows[i],
-                ],
-              ],
-            ),
+            child: SettingsRows(separatorColor: settingsSeparatorColor(context), children: children),
           ),
         ),
       ],

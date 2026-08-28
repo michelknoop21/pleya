@@ -20,6 +20,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/profiles/plex_home_service.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/settings_section.dart';
 
 import '../../test_helpers/prefs.dart';
 
@@ -33,10 +34,10 @@ PleyaServerConnection _server({String serverId = 'srv-1', String name = 'Zolder'
   createdAt: DateTime.fromMillisecondsSinceEpoch(0),
 );
 
-LocalFolderConnection _folder() => LocalFolderConnection(
-  id: 'local-1',
-  directoryUri: '/tmp/media',
-  displayName: 'Films lokaal',
+LocalFolderConnection _folder({String id = 'local-1', String name = 'Films lokaal'}) => LocalFolderConnection(
+  id: id,
+  directoryUri: '/tmp/$id',
+  displayName: name,
   libraryType: 'movies',
   createdAt: DateTime.fromMillisecondsSinceEpoch(0),
 );
@@ -216,6 +217,62 @@ void main() {
         isNotNull,
         reason: 'you must not have to sign in to a server in order to get rid of it',
       );
+    });
+  });
+
+  // The regression test on "sometimes the line is double": a separator keyed
+  // to list position draws one either side of a collapsed StreamBuilder, and
+  // two collapsed builders in a row stack two separators on top of each
+  // other. Counting every SettingsRows' separatorRects across the whole
+  // section proves that never happens, for every shape the two streams can
+  // take.
+  group('no separator stands next to another with nothing visible between them', () {
+    int totalSeparators() {
+      var total = 0;
+      for (final element in find.byType(SettingsRows).evaluate()) {
+        total += (element.renderObject! as RenderSettingsRows).separatorRects.length;
+      }
+      return total;
+    }
+
+    testWidgets('neither a server nor a source', (tester) async {
+      await pumpSection(tester);
+      // Just "add connection" and "share host": one line between the two.
+      expect(totalSeparators(), 1);
+    });
+
+    testWidgets('a server only', (tester) async {
+      await pumpSection(tester, seed: [_server()]);
+      // add / share / servers-block: two lines, and none inside the
+      // single-row servers block.
+      expect(totalSeparators(), 2);
+    });
+
+    testWidgets('a source only', (tester) async {
+      await pumpSection(tester, seed: [_folder()]);
+      expect(totalSeparators(), 2);
+    });
+
+    testWidgets('a server and a source side by side', (tester) async {
+      await pumpSection(tester, seed: [_server(), _folder()]);
+      // add / share / servers-block / sources-block: three lines, and none
+      // inside either single-row block.
+      expect(totalSeparators(), 3);
+    });
+
+    testWidgets('multiple servers and multiple sources', (tester) async {
+      await pumpSection(
+        tester,
+        seed: [
+          _server(serverId: 'srv-1', name: 'Zolder'),
+          _server(serverId: 'srv-2', name: 'Kelder'),
+          _folder(id: 'local-1', name: 'Films lokaal'),
+          _folder(id: 'local-2', name: 'Series lokaal'),
+        ],
+      );
+      // The three outer lines, plus one inside the two-row servers block and
+      // one inside the two-row sources block.
+      expect(totalSeparators(), 5);
     });
   });
 }
