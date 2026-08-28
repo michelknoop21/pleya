@@ -3,6 +3,7 @@ import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import '../../models/hotkey_model.dart';
 import '../../widgets/hotkey_recorder.dart';
+import '../../widgets/settings_section.dart';
 import '../../i18n/strings.g.dart';
 
 class HotKeyRecorderWidget extends StatefulWidget {
@@ -52,7 +53,7 @@ class _HotKeyRecorderWidgetState extends State<HotKeyRecorderWidget> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  border: Border.fromBorderSide(BorderSide(color: Theme.of(context).dividerColor)),
+                  border: Border.fromBorderSide(BorderSide(color: settingsOutlineColor(context))),
                   borderRadius: const BorderRadius.all(Radius.circular(6)),
                 ),
                 child: Row(
