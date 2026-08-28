@@ -126,3 +126,32 @@ predicaat voldaan is, of `{"ok": false, "reason": "timeout"}` na `timeoutMs`
 `declared`+`discovered` nodes. `stableFrames` wacht dat aantal frames via
 `SchedulerBinding.endOfFrame` (no-op zonder `WidgetsBinding`). Triggert geen
 events zelf.
+
+### `POST /v1/input/key`
+
+Body: `{"key": "select"}`. Sleutelwoorden: `up`, `down`, `left`, `right`,
+`select`, `menu`, `delete` — dezelfde vocabulaire als `scripts/tvos_sim.sh
+key`. Loopt via `lib/utils/key_event_simulator.dart` (hetzelfde pad als
+gamepad/companion-remote), en respecteert `NativeInputSession.isActive`.
+
+200 `{"result": "dispatched"}`; 409 `{"result": "blockedByNativeSession"}`
+wanneer een native invoersessie (bv. het tvOS-systeemtoetsenbord) de remote
+bezit; 400 `{"result": "unknownKey"}` op een onbekend sleutelwoord.
+
+**Verboden als uitvoeringsroute voor een tvOS-scenariostap** — zie de
+tvOS-invoerroute-invariant hierboven. `TvosSimulatorDriver.press()` roept dit
+endpoint nooit aan.
+
+### `POST /v1/input/pointer`
+
+Body: `{"x": 100.0, "y": 200.0}` (logische pixels). Synthetiseert een tap
+(down + up) via `GestureBinding.handlePointerEvent`, door de echte hit-test-
+pipeline — geen directe callback-aanroep. Forceert eerst pointer-mode via
+`AutomationInput.onPointerModeRequested` (`InputModeTracker`'s hook, naar het
+model van `GamepadService.onGamepadInput`), anders zou de app-brede
+`IgnorePointer` tijdens D-pad-navigatie de tap slikken.
+
+200 `{"result": "dispatched"}`; 409 bij een actieve native invoersessie; 400
+wanneer `x`/`y` ontbreken. Geen pointer-equivalent op tvOS (geen aanraakvlak
+in de zin van deze API) — het endpoint bestaat er wel, maar een scenario-stap
+roept het net als `/v1/input/key` nooit aan op een tvOS-target.

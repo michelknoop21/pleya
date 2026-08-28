@@ -5,8 +5,11 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:flutter/gestures.dart' show Offset;
+
 import '../utils/app_logger.dart';
 import 'automation_event_log.dart';
+import 'automation_input.dart';
 import 'automation_focus_log.dart';
 import 'automation_registry.dart';
 import 'automation_screen.dart';
@@ -142,6 +145,19 @@ class AutomationServer {
       case '/v1/wait':
         final body = await _readJsonBody(request);
         await _respondJson(request, await const AutomationWait().resolve(body));
+      case '/v1/input/key':
+        final body = await _readJsonBody(request);
+        await _respondInputResult(request, dispatchAutomationKey(body['key'] as String? ?? ''));
+      case '/v1/input/pointer':
+        final body = await _readJsonBody(request);
+        final x = (body['x'] as num?)?.toDouble();
+        final y = (body['y'] as num?)?.toDouble();
+        if (x == null || y == null) {
+          request.response.statusCode = HttpStatus.badRequest;
+          await request.response.close();
+          return;
+        }
+        await _respondInputResult(request, dispatchAutomationPointerTap(Offset(x, y)));
       default:
         request.response.statusCode = HttpStatus.notFound;
         await request.response.close();
@@ -149,6 +165,19 @@ class AutomationServer {
   }
 
   int _sinceParam(HttpRequest request) => int.tryParse(request.uri.queryParameters['since'] ?? '') ?? 0;
+
+  Future<void> _respondInputResult(HttpRequest request, AutomationInputResult result) async {
+    switch (result) {
+      case AutomationInputResult.dispatched:
+        await _respondJson(request, {'result': 'dispatched'});
+      case AutomationInputResult.blockedByNativeSession:
+        request.response.statusCode = HttpStatus.conflict;
+        await _respondJson(request, {'result': 'blockedByNativeSession'});
+      case AutomationInputResult.unknownKey:
+        request.response.statusCode = HttpStatus.badRequest;
+        await _respondJson(request, {'result': 'unknownKey'});
+    }
+  }
 
   Future<Map<String, Object?>> _readJsonBody(HttpRequest request) async {
     final raw = await utf8.decoder.bind(request).join();

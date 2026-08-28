@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../automation/automation_input.dart';
 import '../utils/platform_detector.dart';
 import '../services/gamepad_service.dart';
 import 'dpad_navigator.dart';
@@ -70,6 +71,10 @@ class _InputModeTrackerState extends State<InputModeTracker> {
 
     // Register callback for companion remote input to switch to keyboard mode
     CompanionRemoteReceiver.onRemoteInput = () => _setMode(InputMode.keyboard);
+
+    // Pleya Verify's synthetic pointer taps need pointer mode forced first,
+    // or this widget's own IgnorePointer (below) would swallow them.
+    AutomationInput.onPointerModeRequested = () => _setMode(InputMode.pointer);
   }
 
   @override
@@ -77,6 +82,7 @@ class _InputModeTrackerState extends State<InputModeTracker> {
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     GamepadService.onGamepadInput = null;
     CompanionRemoteReceiver.onRemoteInput = null;
+    AutomationInput.onPointerModeRequested = null;
     super.dispose();
   }
 
