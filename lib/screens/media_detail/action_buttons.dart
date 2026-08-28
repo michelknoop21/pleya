@@ -16,11 +16,12 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       if (metadata.isShow) {
         if (_onDeckEpisode != null) {
           appLogger.d('Playing on deck episode: ${_onDeckEpisode!.title}');
+          final playedId = _onDeckEpisode!.id;
           await navigateToVideoPlayerWithRefresh(
             context,
             metadata: _onDeckEpisode!,
             isOffline: widget.isOffline,
-            onRefresh: _loadFullMetadata,
+            onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
           );
         } else {
           // No on deck episode, fetch first episode of first season
@@ -29,11 +30,12 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       } else if (metadata.isSeason) {
         // For seasons, play the first episode
         if (_episodes.isNotEmpty) {
+          final playedId = _episodes.first.id;
           await navigateToVideoPlayerWithRefresh(
             context,
             metadata: _episodes.first,
             isOffline: widget.isOffline,
-            onRefresh: _loadFullMetadata,
+            onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
           );
         } else {
           await _playFirstEpisode();
@@ -41,11 +43,12 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       } else {
         appLogger.d('Playing: ${metadata.title}');
         // For movies or episodes, play directly
+        final playedId = metadata.id;
         await navigateToVideoPlayerWithRefresh(
           context,
           metadata: metadata,
           isOffline: widget.isOffline,
-          onRefresh: _loadFullMetadata,
+          onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
         );
       }
     }

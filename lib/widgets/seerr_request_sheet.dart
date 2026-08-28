@@ -261,7 +261,6 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
             padding: const EdgeInsets.all(16),
             child: FocusableButton(
               autofocus: true,
-              useBackgroundFocus: true,
               onPressed: _canSubmit ? _submit : null,
               child: FilledButton.icon(
                 onPressed: _canSubmit ? _submit : null,

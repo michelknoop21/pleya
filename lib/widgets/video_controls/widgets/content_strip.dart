@@ -468,7 +468,7 @@ class ContentStripState extends State<ContentStrip> {
                   },
                   borderRadius: 6,
                   autoScroll: false,
-                  useBackgroundFocus: true,
+                  mode: FocusIndicatorMode.fill,
                   child: item,
                 ),
               );
@@ -565,7 +565,7 @@ class ContentStripState extends State<ContentStrip> {
                     },
                     borderRadius: 6,
                     autoScroll: false,
-                    useBackgroundFocus: true,
+                    mode: FocusIndicatorMode.fill,
                     child: stripItem,
                   ),
                 );

@@ -504,7 +504,6 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
         const SizedBox(height: 16),
         FocusableButton(
           focusNode: _findServerFocus,
-          useBackgroundFocus: true,
           onNavigateUp: _focusLastDiscoveredServerOrUrl,
           onPressed: busy ? null : _probe,
           child: FilledButton.icon(
@@ -550,7 +549,6 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
         const SizedBox(height: 16),
         FocusableButton(
           focusNode: _signInFocus,
-          useBackgroundFocus: true,
           onPressed: busy ? null : _signIn,
           child: FilledButton.icon(
             onPressed: busy ? null : _signIn,
@@ -562,7 +560,6 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
           const SizedBox(height: 12),
           FocusableButton(
             focusNode: _quickConnectFocus,
-            useBackgroundFocus: true,
             onPressed: busy ? null : _startQuickConnect,
             child: OutlinedButton.icon(
               onPressed: busy ? null : _startQuickConnect,
@@ -604,7 +601,6 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
           ),
           FocusableButton(
             focusNode: _changeServerFocus,
-            useBackgroundFocus: true,
             onNavigateUp: () => _urlFocus.requestFocus(),
             onNavigateDown: () => _usernameFocus.requestFocus(),
             onPressed: busy
@@ -719,7 +715,6 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
           const SizedBox(height: 32),
           FocusableButton(
             focusNode: _cancelQuickConnectFocus,
-            useBackgroundFocus: true,
             onPressed: _cancelQuickConnect,
             child: OutlinedButton.icon(
               onPressed: _cancelQuickConnect,
@@ -763,7 +758,7 @@ class _DiscoveredJellyfinServerTile extends StatelessWidget {
       focusNode: focusNode,
       disableScale: true,
       // Border drawn by CardFocusBorder so it paints over the opaque Material.
-      delegateFocusBorder: true,
+      mode: FocusIndicatorMode.delegated,
       descendantsAreFocusable: false,
       onSelect: onTap,
       onNavigateUp: onNavigateUp,

@@ -100,4 +100,62 @@ void main() {
       );
     });
   });
+
+  group('post-playback return handling', () {
+    // TvBrowseRail's episode activation goes through navigateToMediaItem's
+    // direct-to-player branch, and VideoPlayerScreen only ever pops `true`
+    // from its own _handleBack — every other exit (system back, a route
+    // replaced under it) pops `false` or `null`. A caller relying on
+    // onRefresh alone (gated on `result == true`) misses those. Without
+    // onPlaybackReturned, this is exactly that old, narrower behavior.
+    final episode = MediaItem(id: 'episode-1', backend: MediaBackend.plex, kind: MediaKind.episode, title: 'Episode 1');
+
+    for (final result in [false, null]) {
+      test('onRefresh alone does not fire when the player pops $result', () {
+        var onRefreshCalls = 0;
+        handlePlaybackReturn(
+          episode,
+          playerPopResult: result,
+          onRefresh: (_) => onRefreshCalls++,
+          onPlaybackReturned: null,
+        );
+        expect(onRefreshCalls, 0);
+      });
+
+      test('onPlaybackReturned fires when the player pops $result', () {
+        MediaItem? returned;
+        handlePlaybackReturn(
+          episode,
+          playerPopResult: result,
+          onRefresh: (_) => fail('onRefresh should be superseded'),
+          onPlaybackReturned: (item) => returned = item,
+        );
+        expect(returned, same(episode));
+      });
+    }
+
+    test('onRefresh alone fires when the player pops true', () {
+      String? refreshedId;
+      handlePlaybackReturn(
+        episode,
+        playerPopResult: true,
+        onRefresh: (id) => refreshedId = id,
+        onPlaybackReturned: null,
+      );
+      expect(refreshedId, episode.id);
+    });
+
+    test('onPlaybackReturned supersedes onRefresh even when the player pops true', () {
+      var onRefreshCalls = 0;
+      MediaItem? returned;
+      handlePlaybackReturn(
+        episode,
+        playerPopResult: true,
+        onRefresh: (_) => onRefreshCalls++,
+        onPlaybackReturned: (item) => returned = item,
+      );
+      expect(returned, same(episode));
+      expect(onRefreshCalls, 0, reason: 'a caller supplying both should not pay for two refreshes of the same return');
+    });
+  });
 }

@@ -53,7 +53,7 @@ class _JoinSessionDialogState extends State<JoinSessionDialog> with ControllerDi
                     Expanded(child: Text(t.watchTogether.joinWatchSession, style: theme.textTheme.titleLarge)),
                     FocusableWrapper(
                       focusNode: _closeFocusNode,
-                      useBackgroundFocus: true,
+                      mode: FocusIndicatorMode.fill,
                       disableScale: true,
                       borderRadius: 20,
                       descendantsAreFocusable: false,

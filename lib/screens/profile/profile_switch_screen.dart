@@ -21,6 +21,7 @@ import '../../profiles/profile_registry.dart';
 import '../../profiles/profiles_view.dart';
 import '../../services/app_exit_service.dart';
 import '../../services/storage_service.dart';
+import '../../theme/mono_shapes.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/dialogs.dart';
 import '../../utils/snackbar_helper.dart';
@@ -250,8 +251,7 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
                     sliver: SliverToBoxAdapter(
                       child: FocusableWrapper(
                         disableScale: true,
-                        borderRadius: 100,
-                        useBackgroundFocus: true,
+                        focusShapeBorder: MonoShapes.cta,
                         descendantsAreFocusable: false,
                         onSelect: _switching ? null : _addLocalProfile,
                         child: OutlinedButton.icon(
@@ -373,7 +373,6 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
                 style: OutlinedButton.styleFrom(
                   foregroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   side: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
-                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
                 child: Text(t.screens.manageProfiles.toUpperCase(), style: const TextStyle(letterSpacing: 1.5)),

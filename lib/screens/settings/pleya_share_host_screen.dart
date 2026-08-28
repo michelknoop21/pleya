@@ -142,7 +142,7 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
       decoration: BoxDecoration(
         color: tk.surface,
         borderRadius: BorderRadius.circular(tk.radiusMd),
-        border: Border.all(color: tk.outline.withValues(alpha: 0.6)),
+        border: Border.all(color: settingsOutlineColor(context)),
       ),
       child: child,
     );

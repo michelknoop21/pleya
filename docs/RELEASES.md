@@ -21,6 +21,10 @@ under `Notes`.
 ### New
 - een Pleya Server is te ontkoppelen waar Verbindingen zegt dat het kan
 
+### Improved
+- scheidingslijnen volgen de werkelijke rijhoogte
+- één shape-contract voor CTA-knop en focusring
+
 ### Fixed
 - de zijbalk kent één lijst bestemmingen, dus "nu aan het kijken" is ook bereikbaar
 - een achtergrondcyclus legt de rapportage naar Plex niet meer stil
@@ -31,6 +35,13 @@ under `Notes`.
 - een verbroken Pleya Server-verbinding liet zijn rij en zijn refreshtoken achter
 - een mislukte refresh maakte de verbinding kapot in plaats van hem te markeren
 - de buildnummers van iOS, tvOS en macOS lopen weer gelijk
+- een mislukte persist van een rotatie blijft niet onopgemerkt
+- een geopende serie-detailpagina laat nieuwe afleveringen na afspelen zien
+- de gefocuste rij krijgt een markering in plaats van een omlijning
+- verbindingsrijen krijgen dezelfde focusweergave als de rest van instellingen
+- Over en Pleya Share volgen het gedeelde kaartcontract
+- kaders rond toetscombinaties volgen de gedeelde lijnkleur
+- revalidatie mag een gelijktijdige load-more niet stilzwijgend overschrijven
 <!-- END GENERATED -->
 
 ### Fixed

@@ -8,6 +8,7 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/providers/playback_state_provider.dart';
 import 'package:pleya/screens/video_player/widgets/player_prompt_overlays.dart';
 import 'package:pleya/services/pip_service.dart';
+import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/video_controls/player_chrome_controller.dart';
 import 'package:provider/provider.dart';
 
@@ -67,19 +68,18 @@ void main() {
       ),
     );
 
-    final confirmShape = tester
-        .widget<FilledButton>(find.byType(FilledButton))
-        .style
-        ?.shape
-        ?.resolve(const <WidgetState>{});
-    final cancelShape = tester
-        .widget<OutlinedButton>(find.byType(OutlinedButton))
-        .style
-        ?.shape
-        ?.resolve(const <WidgetState>{});
+    // The buttons no longer carry a local shape override (removed in favor of
+    // the app theme's MonoShapes.cta), so read the shape the button actually
+    // painted with rather than its raw, now-null local style.
+    final confirmMaterial = tester.widget<Material>(
+      find.descendant(of: find.byType(FilledButton), matching: find.byType(Material)).first,
+    );
+    final cancelMaterial = tester.widget<Material>(
+      find.descendant(of: find.byType(OutlinedButton), matching: find.byType(Material)).first,
+    );
 
-    expect(confirmShape, isA<StadiumBorder>());
-    expect(cancelShape, isA<StadiumBorder>());
+    expect(confirmMaterial.shape, isA<StadiumBorder>());
+    expect(cancelMaterial.shape, isA<StadiumBorder>());
   });
 
   testWidgets('hovering play next prompt holds chrome visible and stable', (tester) async {
@@ -206,6 +206,7 @@ Widget _wrapPrompt(Widget child) {
   return ChangeNotifierProvider(
     create: (_) => PlaybackStateProvider(),
     child: MaterialApp(
+      theme: monoTheme(dark: true),
       home: Scaffold(body: Stack(children: [child])),
     ),
   );

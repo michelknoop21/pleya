@@ -163,7 +163,7 @@ class WatchlistUnavailableCard extends StatelessWidget {
       onSelect: onTap,
       focusNode: focusNode,
       borderRadius: tk.radiusSm,
-      delegateFocusBorder: true,
+      mode: FocusIndicatorMode.delegated,
       semanticLabel: entry.item.title,
       child: Pressable(
         onTap: onTap,

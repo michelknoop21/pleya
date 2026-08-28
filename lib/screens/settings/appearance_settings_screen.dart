@@ -178,7 +178,6 @@ class AppearanceSettingsScreen extends StatelessWidget {
           title: t.settings.autoHidePerformanceOverlay,
           subtitle: t.settings.autoHidePerformanceOverlayDescription,
         ),
-        const SizedBox(height: 24),
       ],
     );
   }

@@ -8,6 +8,7 @@ import '../../utils/dialogs.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../focus/focusable_button.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
+import '../../widgets/settings_section.dart';
 import 'hotkey_recorder_widget.dart';
 
 class KeyboardShortcutsScreen extends StatelessWidget {
@@ -54,7 +55,7 @@ class KeyboardShortcutsScreen extends StatelessWidget {
                       trailing: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          border: Border.fromBorderSide(BorderSide(color: Theme.of(context).dividerColor)),
+                          border: Border.fromBorderSide(BorderSide(color: settingsOutlineColor(context))),
                           borderRadius: const BorderRadius.all(Radius.circular(6)),
                         ),
                         child: Text(

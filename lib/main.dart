@@ -72,6 +72,7 @@ import 'utils/app_logger.dart';
 import 'utils/managed_http_client.dart';
 import 'utils/media_server_http_client.dart';
 import 'utils/orientation_helper.dart';
+import 'utils/resume_probe_cooldown.dart';
 import 'utils/watch_state_notifier.dart';
 import 'i18n/strings.g.dart';
 import 'services/secure_folder_service.dart';
@@ -500,8 +501,8 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   bool _lastConnectivityWasWifi = false;
   bool _shutdownStarted = false;
 
-  /// Last time server health probes ran from a resume event (cooldown for desktop)
-  DateTime _lastResumeProbe = DateTime(0);
+  /// Cooldown for server health probes triggered by a resume event.
+  final _resumeProbeCooldown = ResumeProbeCooldown();
 
   /// Periodic memory check timer for desktop platforms
   Timer? _memoryCheckTimer;
@@ -696,12 +697,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
         // Re-probe servers — mobile OS may have dropped TCP connections during doze/sleep.
         // On desktop, resumed fires on every window focus (alt-tab), so apply a cooldown
         // to avoid piling up network probes from rapid alt-tabbing.
-        final now = DateTime.now();
-        final cooldown = (Platform.isIOS || Platform.isAndroid)
-            ? const Duration(seconds: 10)
-            : const Duration(minutes: 2);
-        if (now.difference(_lastResumeProbe) >= cooldown) {
-          _lastResumeProbe = now;
+        if (_resumeProbeCooldown.shouldProbe()) {
           // Await health check before reconnecting so stale "online" servers
           // get marked offline and included in the reconnection sweep.
           unawaited(() async {

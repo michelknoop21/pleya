@@ -704,7 +704,7 @@ class _RatingRow extends StatelessWidget {
         borderRadius: 12,
         autoScroll: true,
         disableScale: true,
-        useBackgroundFocus: true,
+        mode: FocusIndicatorMode.fill,
         descendantsAreFocusable: false,
         onSelect: enabled ? onSubmit : null,
         onNavigateUp: onNavigateUp,

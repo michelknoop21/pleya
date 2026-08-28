@@ -80,6 +80,7 @@ class _TagEditDialogState extends State<TagEditDialog> with ControllerDisposerMi
                 labelText: t.metadataEdit.addTag,
                 suffixIcon: FocusableButton(
                   onPressed: _addTag,
+                  shape: const CircleBorder(),
                   child: IconButton(icon: const AppIcon(Symbols.add_rounded), onPressed: _addTag),
                 ),
               ),
