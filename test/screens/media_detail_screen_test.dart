@@ -953,6 +953,196 @@ void main() {
       expect(episodeRowHasProgress(tester, 'Episode S1E1'), isFalse);
       expect(episodeRowWatched(tester, 'Episode S1E1'), isTrue);
     });
+
+    MediaDetailPlaybackRefresh refresherFor(WidgetTester tester) =>
+        tester.state(find.byType(MediaDetailScreen)) as MediaDetailPlaybackRefresh;
+
+    testWidgets('refreshAfterPlayback reveals a server-side episode without a season jump or spinner', (tester) async {
+      final show = buildShow();
+      final season1 = buildSeason(show, 1);
+      final season2 = buildSeason(show, 2);
+      final episode10 = buildEpisode(show, season1, 10);
+      final client = _FakeMediaServerClient(
+        show: show,
+        childrenByParent: {
+          show.id: [season1, season2],
+          season1.id: [for (var i = 1; i <= 10; i++) buildEpisode(show, season1, i)],
+          season2.id: [buildEpisode(show, season2, 1)],
+        },
+      );
+
+      await pumpPhoneDetail(tester, client, show);
+      expect(find.text('Episode S1E10'), findsOneWidget);
+      expect(find.text('Episode S1E11'), findsNothing);
+
+      // Server gained an episode while the screen stayed mounted — the
+      // scenario the player's own episode queue already saw fresh, but the
+      // detail screen's pager never re-fetched.
+      client.childrenByParent[season1.id] = [for (var i = 1; i <= 11; i++) buildEpisode(show, season1, i)];
+
+      await refresherFor(tester).refreshAfterPlayback(playedItemId: episode10.id);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Episode S1E11'), findsOneWidget);
+      // Still season 1 — a season jump would mean _loadFullMetadata/_loadSeasons
+      // ran and rewrote _selectedSeasonIndex to the on-deck season.
+      expect(find.text('Episode S1E1'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    });
+
+    testWidgets('revalidation grows the request past an exact page boundary (200 -> 201)', (tester) async {
+      final show = buildShow();
+      final season1 = buildSeason(show, 1);
+      final client = _FakeMediaServerClient(
+        show: show,
+        childrenByParent: {
+          show.id: [season1],
+          season1.id: [for (var i = 1; i <= 200; i++) buildEpisode(show, season1, i)],
+        },
+      );
+
+      await pumpPhoneDetail(tester, client, show);
+      expect(find.text('Episode S1E200'), findsOneWidget);
+      expect(find.text('Episode S1E201'), findsNothing);
+      // Sanity: the initial load already asked for exactly one page (200);
+      // hasMore was therefore false (200/200), which is what should trigger
+      // growth below. max(pageSize, loaded) would ask for 200 again here and
+      // miss the 201st episode entirely.
+      expect(client.childrenPageCalls.where((c) => c.parentId == season1.id).last.size, 200);
+
+      client.childrenByParent[season1.id] = [for (var i = 1; i <= 201; i++) buildEpisode(show, season1, i)];
+
+      await refresherFor(tester).refreshAfterPlayback(playedItemId: 'season_1_episode_200');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Episode S1E201'), findsOneWidget);
+      expect(client.childrenPageCalls.where((c) => c.parentId == season1.id).last.size, greaterThan(200));
+    });
+
+    testWidgets('refreshAfterPlayback makes exactly one season-page request and skips fetchItem when covered', (
+      tester,
+    ) async {
+      final show = buildShow();
+      final season1 = buildSeason(show, 1);
+      final episodes = [buildEpisode(show, season1, 1), buildEpisode(show, season1, 2), buildEpisode(show, season1, 3)];
+      final client = _FakeMediaServerClient(
+        show: show,
+        childrenByParent: {
+          show.id: [season1],
+          season1.id: episodes,
+        },
+      );
+
+      await pumpPhoneDetail(tester, client, show);
+      final pageCallsBefore = client.childrenPageCalls.where((c) => c.parentId == season1.id).length;
+
+      await refresherFor(tester).refreshAfterPlayback(playedItemId: episodes[1].id);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final pageCallsAfter = client.childrenPageCalls.where((c) => c.parentId == season1.id).length;
+      expect(pageCallsAfter - pageCallsBefore, 1, reason: 'exactly one structural refresh, no duplicate');
+      expect(client.fetchItemCalls, isEmpty, reason: 'the played episode was already in the revalidated page');
+    });
+
+    testWidgets('refreshAfterPlayback without a playedItemId (shuffle) still revalidates, never calls fetchItem', (
+      tester,
+    ) async {
+      final show = buildShow();
+      final season1 = buildSeason(show, 1);
+      final episodes = [buildEpisode(show, season1, 1), buildEpisode(show, season1, 2)];
+      final client = _FakeMediaServerClient(
+        show: show,
+        childrenByParent: {
+          show.id: [season1],
+          season1.id: episodes,
+        },
+      );
+
+      await pumpPhoneDetail(tester, client, show);
+      final pageCallsBefore = client.childrenPageCalls.where((c) => c.parentId == season1.id).length;
+
+      await refresherFor(tester).refreshAfterPlayback();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final pageCallsAfter = client.childrenPageCalls.where((c) => c.parentId == season1.id).length;
+      expect(pageCallsAfter - pageCallsBefore, 1);
+      expect(client.fetchItemCalls, isEmpty);
+    });
+
+    testWidgets('two concurrent refreshAfterPlayback calls do not leave the list stuck loading', (tester) async {
+      final show = buildShow();
+      final season1 = buildSeason(show, 1);
+      final episodes = [buildEpisode(show, season1, 1), buildEpisode(show, season1, 2)];
+      final client = _FakeMediaServerClient(
+        show: show,
+        childrenByParent: {
+          show.id: [season1],
+          season1.id: episodes,
+        },
+      );
+
+      await pumpPhoneDetail(tester, client, show);
+      final refresher = refresherFor(tester);
+
+      // Fired back-to-back, not awaited individually: the second call's
+      // beginFirstPageLoad guard must see the first still in flight and skip,
+      // rather than bumping the generation out from under it.
+      final first = refresher.refreshAfterPlayback(playedItemId: episodes.first.id);
+      final second = refresher.refreshAfterPlayback(playedItemId: episodes.first.id);
+      await Future.wait([first, second]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('Episode S1E1'), findsOneWidget);
+      expect(find.text('Episode S1E2'), findsOneWidget);
+    });
+
+    testWidgets('app resume revalidates the visible episodes, with a cooldown against repeat probes', (tester) async {
+      final show = buildShow();
+      final season1 = buildSeason(show, 1);
+      final client = _FakeMediaServerClient(
+        show: show,
+        childrenByParent: {
+          show.id: [season1],
+          season1.id: [buildEpisode(show, season1, 1)],
+        },
+      );
+
+      await pumpPhoneDetail(tester, client, show);
+      expect(find.text('Episode S1E2'), findsNothing);
+
+      client.childrenByParent[season1.id] = [buildEpisode(show, season1, 1), buildEpisode(show, season1, 2)];
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump();
+      expect(find.text('Episode S1E2'), findsNothing, reason: 'paused/inactive must not trigger a revalidation');
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Episode S1E2'), findsOneWidget);
+
+      // A second resume right after must be suppressed by the cooldown, not
+      // fire another request.
+      client.childrenByParent[season1.id] = [
+        buildEpisode(show, season1, 1),
+        buildEpisode(show, season1, 2),
+        buildEpisode(show, season1, 3),
+      ];
+      final pageCallsBeforeSecondResume = client.childrenPageCalls.where((c) => c.parentId == season1.id).length;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Episode S1E3'), findsNothing);
+      expect(client.childrenPageCalls.where((c) => c.parentId == season1.id).length, pageCallsBeforeSecondResume);
+    });
   });
 
   group('metadata loading is escapable', () {
@@ -1158,6 +1348,7 @@ class _FakeMediaServerClient implements MediaServerClient {
   final Map<String, Object> childrenPageErrors;
   final Future<List<MediaItem>>? pendingPlayableDescendants;
   final childrenPageCalls = <({String parentId, int? start, int? size})>[];
+  final fetchItemCalls = <String>[];
 
   _FakeMediaServerClient({
     required this.show,
@@ -1221,6 +1412,18 @@ class _FakeMediaServerClient implements MediaServerClient {
 
   @override
   Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async => const [];
+
+  @override
+  Future<MediaItem?> fetchItem(String id) async {
+    fetchItemCalls.add(id);
+    if (id == show.id) return show;
+    for (final items in childrenByParent.values) {
+      for (final item in items) {
+        if (item.id == id) return item;
+      }
+    }
+    return null;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

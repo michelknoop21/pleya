@@ -417,6 +417,11 @@ class TvBrowseRail extends StatefulWidget {
   final ValueChanged<MediaItem>? onFocusedItemChanged;
   final void Function(MediaHub hub, MediaItem item)? onFocusedHubItemChanged;
   final void Function(String)? onRefresh;
+
+  /// Runs after a direct-to-player activation returns, regardless of the
+  /// player route's pop result: see [navigateToMediaItem]'s doc for why
+  /// [onRefresh] alone (gated on `result == true`) isn't reliable for this.
+  final ValueChanged<MediaItem>? onPlaybackReturned;
   final VoidCallback? onRemoveFromContinueWatching;
   final bool Function(MediaHub hub)? isContinueWatchingHub;
   final bool Function(MediaHub hub)? usesContinueWatchingAction;
@@ -462,6 +467,7 @@ class TvBrowseRail extends StatefulWidget {
     this.onFocusedItemChanged,
     this.onFocusedHubItemChanged,
     this.onRefresh,
+    this.onPlaybackReturned,
     this.onRemoveFromContinueWatching,
     this.isContinueWatchingHub,
     this.usesContinueWatchingAction,
@@ -1214,6 +1220,7 @@ class TvBrowseRailState extends State<TvBrowseRail> {
       context,
       item,
       onRefresh: widget.onRefresh,
+      onPlaybackReturned: widget.onPlaybackReturned,
       playDirectly: _usesContinueWatchingAction(hub),
       traceId: traceId,
     );

@@ -40,6 +40,8 @@ under `Notes`.
 - verbindingsrijen krijgen dezelfde focusweergave als de rest van instellingen
 - Over en Pleya Share volgen het gedeelde kaartcontract
 - kaders rond toetscombinaties volgen de gedeelde lijnkleur
+- een geopende serie-detailpagina laat nieuwe afleveringen na afspelen zien
+- revalidatie mag een gelijktijdige load-more niet stilzwijgend overschrijven
 <!-- END GENERATED -->
 
 ### Fixed

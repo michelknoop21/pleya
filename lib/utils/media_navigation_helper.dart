@@ -122,6 +122,24 @@ bool shouldOpenEpisodeDetailsForActivation({
   return episodeAction == EpisodeAction.details;
 }
 
+/// Decides what runs after a direct-to-player activation returns, for
+/// [navigateToMediaItem]'s episode/clip and movie branches. Pure, like
+/// [shouldOpenEpisodeDetailsForActivation], so the "[onPlaybackReturned]
+/// supersedes [onRefresh]'s `result == true` gate" behavior is unit
+/// testable without driving a real player route.
+void handlePlaybackReturn(
+  MediaItem playedItem, {
+  required bool? playerPopResult,
+  required void Function(String)? onRefresh,
+  required ValueChanged<MediaItem>? onPlaybackReturned,
+}) {
+  if (onPlaybackReturned != null) {
+    onPlaybackReturned(playedItem);
+  } else if (playerPopResult == true) {
+    onRefresh?.call(playedItem.id);
+  }
+}
+
 /// Navigates to the appropriate screen based on the item type.
 ///
 /// Accepts a [MediaItem] or a [MediaPlaylist] (typed as [Object] because Dart
@@ -141,6 +159,16 @@ bool shouldOpenEpisodeDetailsForActivation({
 /// The [onRefresh] callback is invoked with the item's id after returning from
 /// the detail screen, allowing the caller to refresh state.
 ///
+/// [onPlaybackReturned] runs after the two direct-to-player branches
+/// (episode/clip, movie) regardless of what the player route popped with,
+/// unlike [onRefresh], which only fires there when the result is `true`.
+/// `VideoPlayerScreen` only ever pops `true` from its own `_handleBack`; any
+/// other exit (system back, a route replaced under it) pops `false`/`null`
+/// and would otherwise leave a caller relying on `onRefresh` alone unrefreshed.
+/// When both are supplied, [onPlaybackReturned] supersedes [onRefresh] in
+/// those two branches so a caller doesn't pay for two refreshes of the same
+/// return; [onRefresh] keeps its exact current behaviour everywhere else.
+///
 /// Set [isOffline] to true for downloaded content without server access.
 ///
 /// Set [playDirectly] to true for Continue Watching / Next Up / On Deck
@@ -159,6 +187,7 @@ Future<MediaNavigationResult> navigateToMediaItem(
   bool playDirectly = false,
   Object? heroTag,
   String? traceId,
+  ValueChanged<MediaItem>? onPlaybackReturned,
 }) async {
   final recorder = SelectTraceRecorder.instance;
   if (item is MediaPlaylist) {
@@ -230,8 +259,8 @@ Future<MediaNavigationResult> navigateToMediaItem(
       }
       recorder.close(traceId, SelectTraceOutcome.player);
       final result = await navigateToVideoPlayer(context, metadata: mi, isOffline: isOffline);
-      if (result == true && context.mounted) {
-        onRefresh?.call(mi.id);
+      if (context.mounted) {
+        handlePlaybackReturn(mi, playerPopResult: result, onRefresh: onRefresh, onPlaybackReturned: onPlaybackReturned);
       }
       return MediaNavigationResult.navigated;
 
@@ -239,8 +268,13 @@ Future<MediaNavigationResult> navigateToMediaItem(
       if (playDirectly && !shouldOpenContinueWatchingDetails) {
         recorder.close(traceId, SelectTraceOutcome.player);
         final result = await navigateToVideoPlayer(context, metadata: mi, isOffline: isOffline);
-        if (result == true && context.mounted) {
-          onRefresh?.call(mi.id);
+        if (context.mounted) {
+          handlePlaybackReturn(
+            mi,
+            playerPopResult: result,
+            onRefresh: onRefresh,
+            onPlaybackReturned: onPlaybackReturned,
+          );
         }
         return MediaNavigationResult.navigated;
       }
