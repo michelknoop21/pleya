@@ -36,11 +36,11 @@ under `Notes`.
 - een mislukte refresh maakte de verbinding kapot in plaats van hem te markeren
 - de buildnummers van iOS, tvOS en macOS lopen weer gelijk
 - een mislukte persist van een rotatie blijft niet onopgemerkt
+- een geopende serie-detailpagina laat nieuwe afleveringen na afspelen zien
 - de gefocuste rij krijgt een markering in plaats van een omlijning
 - verbindingsrijen krijgen dezelfde focusweergave als de rest van instellingen
 - Over en Pleya Share volgen het gedeelde kaartcontract
 - kaders rond toetscombinaties volgen de gedeelde lijnkleur
-- een geopende serie-detailpagina laat nieuwe afleveringen na afspelen zien
 - revalidatie mag een gelijktijdige load-more niet stilzwijgend overschrijven
 <!-- END GENERATED -->
 
