@@ -1,5 +1,6 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:pleya/connection/connection.dart';
@@ -216,6 +217,28 @@ void main() {
         tester.widget<FocusableWrapper>(row).onSelect,
         isNotNull,
         reason: 'you must not have to sign in to a server in order to get rid of it',
+      );
+    });
+
+    testWidgets('SELECT on the focused row opens the same confirm a tap does', (tester) async {
+      await pumpSection(tester, seed: [_server()], appleTv: true);
+
+      final row = rowFor('Zolder');
+      final focusNode = tester.widget<Focus>(find.descendant(of: row, matching: find.byType(Focus)).first).focusNode!;
+      focusNode.requestFocus();
+      await tester.pump();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      // A dialog is a route with an entrance animation, so it needs frames.
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(
+        find.text(t.connections.disconnectServerConfirm(name: 'Zolder')),
+        findsOneWidget,
+        reason:
+            'a remote landing SELECT on the row, not just a mouse landing on its delete button, must reach onRemove',
       );
     });
   });

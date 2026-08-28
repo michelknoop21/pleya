@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 
 import '../../connection/connection.dart';
 import '../../connection/connection_registry.dart';
-import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
 import '../../profiles/active_profile_binder.dart';
 import '../../profiles/profile.dart';
@@ -192,21 +191,17 @@ class _ConnectionsSectionState extends State<ConnectionsSection> {
     required VoidCallback onRemove,
   }) {
     final theme = Theme.of(context);
-    return FocusableWrapper(
-      disableScale: true,
-      borderRadius: 12,
+    return SettingRowFocus(
       onSelect: onRemove,
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        child: ListTile(
-          leading: Icon(icon, fill: 1, color: theme.colorScheme.primary),
-          title: Text(title),
-          subtitle: subtitle == null ? null : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-          trailing: IconButton(
-            tooltip: removeTooltip,
-            icon: Icon(Symbols.delete_outline_rounded, color: theme.colorScheme.error),
-            onPressed: onRemove,
-          ),
+      child: ListTile(
+        contentPadding: kSettingRowPadding,
+        leading: Icon(icon, fill: 1, color: theme.colorScheme.primary),
+        title: Text(title),
+        subtitle: subtitle == null ? null : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+        trailing: IconButton(
+          tooltip: removeTooltip,
+          icon: Icon(Symbols.delete_outline_rounded, color: theme.colorScheme.error),
+          onPressed: onRemove,
         ),
       ),
     );
