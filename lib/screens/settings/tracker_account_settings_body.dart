@@ -81,13 +81,11 @@ class TrackerAccountSettingsBody extends StatelessWidget {
             );
           },
         ),
-        const Divider(height: 32),
         ListTile(
           leading: AppIcon(Symbols.link_off_rounded, fill: 1, color: Theme.of(context).colorScheme.error),
           title: Text(t.common.disconnect, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           onTap: () => unawaited(Future<void>.sync(onDisconnect)),
         ),
-        const SizedBox(height: 24),
       ],
     );
   }

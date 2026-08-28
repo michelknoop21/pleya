@@ -228,7 +228,6 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
           subtitle: t.settings.creditsPatternDescription,
           defaultValue: SettingsService.defaultCreditsPattern,
         ),
-        const SizedBox(height: 24),
       ],
     );
   }
