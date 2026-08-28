@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
+import 'fixtures/named_fixtures.dart';
 import 'pleya_fake_server.dart';
 
 /// A real, loopback-only `dart:io` HTTP server around a [PleyaFakeServer]:
@@ -100,11 +101,72 @@ class FixtureHttpServer {
           'libraryCount': server.libraries.length,
           'itemCount': server.items.length,
           'snapshotHash': _snapshotHash(),
+          'setupCode': server.setupCode,
         });
+      case '/__verify/seed':
+        final body = await _readJsonBody(request);
+        final fixture = body['fixture'] as String?;
+        if (fixture == null || !applyNamedFixture(server, fixture)) {
+          request.response.statusCode = HttpStatus.badRequest;
+          await _json(request, {'error': 'unknown fixture', 'fixture': fixture});
+          return;
+        }
+        await _json(request, {'ok': true, 'fixture': fixture});
+      case '/__verify/add_episode':
+        final body = await _readJsonBody(request);
+        final parentId = body['parent_id'] as String?;
+        final id = parentId == null
+            ? null
+            : server.addEpisode(
+                parentId: parentId,
+                title: body['title'] as String?,
+                durationMs: (body['duration_ms'] as num?)?.toInt(),
+              );
+        if (id == null) {
+          request.response.statusCode = HttpStatus.notFound;
+          await _json(request, {'error': 'unknown parent_id', 'parent_id': parentId});
+          return;
+        }
+        await _json(request, {'ok': true, 'id': id});
+      case '/__verify/mark_watched':
+        final body = await _readJsonBody(request);
+        final itemId = body['item_id'] as String?;
+        if (itemId == null || !server.items.containsKey(itemId)) {
+          request.response.statusCode = HttpStatus.notFound;
+          await _json(request, {'error': 'unknown item_id', 'item_id': itemId});
+          return;
+        }
+        server.markWatched(itemId);
+        await _json(request, {'ok': true});
+      case '/__verify/expire_session':
+        server.rejectCurrentAccessTokens = true;
+        await _json(request, {'ok': true});
+      case '/__verify/fail_next':
+        final body = await _readJsonBody(request);
+        server.queueFailure(
+          pathPrefix: body['path_prefix'] as String?,
+          status: (body['status'] as num?)?.toInt() ?? 500,
+          errorCode: body['error_code'] as String? ?? 'storage.unavailable',
+        );
+        await _json(request, {'ok': true});
+      case '/__verify/latency':
+        final body = await _readJsonBody(request);
+        server.queueLatency(
+          Duration(milliseconds: (body['ms'] as num?)?.toInt() ?? 0),
+          count: (body['count'] as num?)?.toInt() ?? 1,
+        );
+        await _json(request, {'ok': true});
       default:
         request.response.statusCode = HttpStatus.notFound;
         await request.response.close();
     }
+  }
+
+  Future<Map<String, dynamic>> _readJsonBody(HttpRequest request) async {
+    final raw = await utf8.decoder.bind(request).join();
+    if (raw.isEmpty) return const {};
+    final decoded = jsonDecode(raw);
+    return decoded is Map ? decoded.cast<String, dynamic>() : const {};
   }
 
   /// Deterministic over library/item/watch-state content only — never
