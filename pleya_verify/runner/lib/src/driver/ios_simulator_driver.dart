@@ -8,15 +8,24 @@ import 'verification_driver.dart';
 
 /// Drives a local iOS-simulator build of Pleya via `xcrun simctl`.
 ///
-/// **No bundle-id-rewrite trick here, unlike [MacosDriver].** A macOS build
-/// shares the developer's real `~/Library/Application Support/
-/// nl.michelknoop.pleya` because it *is* the developer's Mac; a simulator
-/// device is its own on-disk data store
-/// (`~/Library/Developer/CoreSimulator/Devices/<udid>/data/…`), isolated by
-/// construction from both the developer's real device and every other
-/// simulator, regardless of bundle id. [installFresh] therefore just
-/// uninstalls the app from the target device — CoreSimulator deletes its
-/// whole container with it — rather than juggling a second identifier.
+/// **Bundle-id-rewrite trick, same as [MacosDriver] — proven necessary by
+/// hand, not just assumed harmless.** The original reasoning here was that a
+/// simulator device's on-disk container
+/// (`~/Library/Developer/CoreSimulator/Devices/<udid>/data/…`) is isolated
+/// by construction, so no rewrite would be needed. That reasoning missed a
+/// second channel: `ios/Runner/Runner.entitlements` (and macOS's, and
+/// tvOS's) all declare `com.apple.developer.ubiquity-kvstore-identifier` as
+/// `$(TeamIdentifierPrefix)$(CFBundleIdentifier)` — a cross-device sync
+/// identifier keyed by bundle id, not by device. Running the *real* bundle
+/// id (`nl.michelknoop.pleya`) on a brand-new, never-before-used **tvOS**
+/// simulator surfaced a real signed-in "applereview" Jellyfin session within
+/// seconds of first launch, before any fixture sign-in ran — proven by hand
+/// during Fase 10, not hypothetical. iOS shares the identical entitlement
+/// pattern, so it gets the identical fix even though a Fase-9 run happened
+/// not to observe contamination (most likely timing, not a structural
+/// difference): [build] copies the compiled `.app`, rewrites
+/// `CFBundleIdentifier` to [verifyBundleId], and re-signs ad hoc — the same
+/// technique [MacosDriver] already validated.
 ///
 /// **Pointer/key input goes through the transport**, unlike the tvOS driver
 /// (Fase 10): iOS-sim has no HID-injection requirement equivalent to the
@@ -26,7 +35,7 @@ import 'verification_driver.dart';
 /// capture, never `/v1/screenshot`.
 class IosSimulatorDriver implements VerificationDriver {
   final Directory repoRoot;
-  final String bundleId;
+  final String verifyBundleId;
   final int port;
   final void Function(String line)? onDriverLog;
 
@@ -41,7 +50,7 @@ class IosSimulatorDriver implements VerificationDriver {
 
   IosSimulatorDriver({
     required this.repoRoot,
-    this.bundleId = 'nl.michelknoop.pleya',
+    this.verifyBundleId = 'nl.michelknoop.pleya.verify',
     this.port = 47317,
     this.onDriverLog,
     this.deviceUdidOverride,
@@ -57,6 +66,11 @@ class IosSimulatorDriver implements VerificationDriver {
   String get inputRoute => 'transport';
 
   Directory get _sourceAppDir => Directory('${repoRoot.path}/build/ios/iphonesimulator/Runner.app');
+
+  /// The isolated, re-signed copy this driver actually installs — kept
+  /// outside any per-run evidence bundle so repeated runs reuse one build
+  /// instead of copying+re-signing the `.app` every time.
+  Directory get isolatedAppDir => Directory('${repoRoot.path}/.build/pleya-verify/ios-app/Runner.app');
 
   void _log(String line) {
     _driverLog.add(line);
@@ -77,6 +91,7 @@ class IosSimulatorDriver implements VerificationDriver {
     checks['xcodebuild'] = xcodebuild.exitCode == 0;
 
     checks['sourceAppBuilt'] = _sourceAppDir.existsSync();
+    checks['isolatedAppReady'] = isolatedAppDir.existsSync();
 
     String? deviceError;
     try {
@@ -110,33 +125,49 @@ class IosSimulatorDriver implements VerificationDriver {
     if (!_sourceAppDir.existsSync()) {
       throw StateError('flutter build ios --simulator reported success but ${_sourceAppDir.path} does not exist');
     }
+
+    if (isolatedAppDir.existsSync()) {
+      isolatedAppDir.deleteSync(recursive: true);
+    }
+    isolatedAppDir.parent.createSync(recursive: true);
+    _log('copying ${_sourceAppDir.path} -> ${isolatedAppDir.path}');
+    await _run('cp', ['-R', _sourceAppDir.path, isolatedAppDir.path]);
+
+    final infoPlist = File('${isolatedAppDir.path}/Info.plist');
+    await _run('plutil', ['-replace', 'CFBundleIdentifier', '-string', verifyBundleId, infoPlist.path]);
+
+    _log('codesign --force --deep --sign - ${isolatedAppDir.path}');
+    final sign = await _run('codesign', ['--force', '--deep', '--sign', '-', isolatedAppDir.path]);
+    if (sign.exitCode != 0) {
+      throw StateError('codesign failed on the isolated app copy (exit ${sign.exitCode}): ${sign.stderr}');
+    }
   }
 
   @override
   Future<void> installFresh() async {
     final udid = await _resolveDevice();
     await _boot(udid);
-    await _run('xcrun', ['simctl', 'terminate', udid, bundleId]);
-    await _run('xcrun', ['simctl', 'uninstall', udid, bundleId]);
-    _log('installFresh: uninstalled $bundleId from $udid');
+    await _run('xcrun', ['simctl', 'terminate', udid, verifyBundleId]);
+    await _run('xcrun', ['simctl', 'uninstall', udid, verifyBundleId]);
+    _log('installFresh: uninstalled $verifyBundleId from $udid');
   }
 
   @override
   Future<void> launch({Duration timeout = const Duration(seconds: 20)}) async {
-    if (!_sourceAppDir.existsSync()) {
-      throw StateError('${_sourceAppDir.path} does not exist — call build() first');
+    if (!isolatedAppDir.existsSync()) {
+      throw StateError('${isolatedAppDir.path} does not exist — call build() first');
     }
     final udid = await _resolveDevice();
     await _boot(udid);
 
-    _log('installing ${_sourceAppDir.path} on $udid');
-    final install = await _run('xcrun', ['simctl', 'install', udid, _sourceAppDir.path]);
+    _log('installing ${isolatedAppDir.path} on $udid');
+    final install = await _run('xcrun', ['simctl', 'install', udid, isolatedAppDir.path]);
     if (install.exitCode != 0) {
       throw StateError('simctl install failed (exit ${install.exitCode}): ${install.stderr}');
     }
 
-    _log('launching $bundleId on $udid');
-    final launch = await _run('xcrun', ['simctl', 'launch', udid, bundleId]);
+    _log('launching $verifyBundleId on $udid');
+    final launch = await _run('xcrun', ['simctl', 'launch', udid, verifyBundleId]);
     if (launch.exitCode != 0) {
       throw StateError('simctl launch failed (exit ${launch.exitCode}): ${launch.stderr}');
     }
@@ -164,8 +195,8 @@ class IosSimulatorDriver implements VerificationDriver {
   Future<void> terminate() async {
     final udid = _resolvedUdid;
     if (udid == null) return;
-    _log('terminating $bundleId on $udid');
-    await _run('xcrun', ['simctl', 'terminate', udid, bundleId]);
+    _log('terminating $verifyBundleId on $udid');
+    await _run('xcrun', ['simctl', 'terminate', udid, verifyBundleId]);
     _client?.close();
     _client = null;
   }

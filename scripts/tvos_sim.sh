@@ -8,13 +8,17 @@
 # twee TestFlight-builds overleefde was hier in één run zichtbaar.
 #
 #   scripts/tvos_sim.sh doctor           # kan ik knoppen sturen?
+#   scripts/tvos_sim.sh doctor --json    # hetzelfde, machinaal leesbaar (Pleya Verify)
+#   scripts/tvos_sim.sh device           # opgeloste simulator-UDID
 #   scripts/tvos_sim.sh build            # xcodebuild voor de simulator
 #   scripts/tvos_sim.sh run              # boot + install + launch
+#   scripts/tvos_sim.sh run --env K=V    # idem, met SIMCTL_CHILD_K=V vóór de launch (herhaalbaar)
 #   scripts/tvos_sim.sh login            # demoserver koppelen (faalt als het misgaat)
 #   scripts/tvos_sim.sh goto search      # deterministisch navigeren
 #   scripts/tvos_sim.sh type "sintel"    # tekst typen (leestekens kloppen)
 #   scripts/tvos_sim.sh key menu         # één toets
 #   scripts/tvos_sim.sh keys down down select
+#   scripts/tvos_sim.sh keys down:3 select   # "down" driemaal, dan "select" — één idb-call
 #   scripts/tvos_sim.sh shot out.png     # screenshot (werkt ook vergrendeld)
 #   scripts/tvos_sim.sh logs NativeText  # gefilterde log, laatste 30s
 #   scripts/tvos_sim.sh wait "cancel"    # wacht tot een logregel verschijnt
@@ -129,6 +133,21 @@ send_key() {
     IDB_UDID="$DEVICE" idb ui key "$(hid_code_for "$1")" >/dev/null 2>&1 && return 0
   fi
   send_code "$(key_code_for "$1")"
+}
+
+# "select:3" -> "select select select"; a bare "select" -> "select". Used by
+# `keys` to batch a repeated press into one idb call instead of N.
+expand_key_spec() {
+  local spec="$1" name count i
+  if [[ "$spec" == *:* ]]; then
+    name="${spec%%:*}"
+    count="${spec##*:}"
+    [[ "$count" =~ ^[0-9]+$ && "$count" -gt 0 ]] || die "ongeldige herhaling in '$spec' (gebruik naam:aantal, bv. down:3)"
+  else
+    name="$spec"
+    count=1
+  fi
+  for ((i = 0; i < count; i++)); do printf '%s ' "$name"; done
 }
 
 # De simulator vertaalt sommige leestekens verkeerd (een getypte '.' komt aan
@@ -422,24 +441,42 @@ check_select() {
 resolve_device
 case "${1:-}" in
   doctor)
-    echo "toestel:   $DEVICE"
-    echo "app-build: $([[ -d $APP ]] && echo aanwezig || echo 'ontbreekt — draai: scripts/tvos_sim.sh build')"
     boot
+    APP_BUILD_BOOL=false; [[ -d "$APP" ]] && APP_BUILD_BOOL=true
     if idb_available; then
-      echo "invoer:    OK via idb — geen venster nodig, pikt je focus niet af"
+      INPUT_KIND="idb"
     elif window_input_available; then
-      echo "invoer:    OK via AppleScript — LET OP: elke druk activeert Simulator en"
-      echo "           pakt je focus. Installeer idb om dat te voorkomen:"
-      echo "           brew trust facebook/fb && brew install idb-companion && pip install fb-idb"
+      INPUT_KIND="applescript"
     else
-      echo "invoer:    NIET beschikbaar. Geen idb, en het Mac-scherm is vergrendeld of"
-      echo "           slaapt — dan toont Simulator geen venster en verdwijnen toetsen"
-      echo "           geruisloos. Installeer idb, of ontgrendel het scherm."
-      echo "           Screenshots en logs werken ondertussen wel."
+      INPUT_KIND="none"
     fi
     load_env
-    echo "demo-login: $([[ -n "${PLEYA_DEMO_USER:-}" ]] && echo 'PLEYA_DEMO_* gezet' || echo 'ontbreekt in .env')"
+    DEMO_LOGIN_BOOL=false; [[ -n "${PLEYA_DEMO_USER:-}" ]] && DEMO_LOGIN_BOOL=true
+
+    if [[ "${2:-}" == "--json" ]]; then
+      printf '{"device":"%s","app_build":%s,"input":"%s","demo_login":%s}\n' \
+        "$DEVICE" "$APP_BUILD_BOOL" "$INPUT_KIND" "$DEMO_LOGIN_BOOL"
+    else
+      echo "toestel:   $DEVICE"
+      echo "app-build: $($APP_BUILD_BOOL && echo aanwezig || echo 'ontbreekt — draai: scripts/tvos_sim.sh build')"
+      case "$INPUT_KIND" in
+        idb) echo "invoer:    OK via idb — geen venster nodig, pikt je focus niet af" ;;
+        applescript)
+          echo "invoer:    OK via AppleScript — LET OP: elke druk activeert Simulator en"
+          echo "           pakt je focus. Installeer idb om dat te voorkomen:"
+          echo "           brew trust facebook/fb && brew install idb-companion && pip install fb-idb"
+          ;;
+        none)
+          echo "invoer:    NIET beschikbaar. Geen idb, en het Mac-scherm is vergrendeld of"
+          echo "           slaapt — dan toont Simulator geen venster en verdwijnen toetsen"
+          echo "           geruisloos. Installeer idb, of ontgrendel het scherm."
+          echo "           Screenshots en logs werken ondertussen wel."
+          ;;
+      esac
+      echo "demo-login: $($DEMO_LOGIN_BOOL && echo 'PLEYA_DEMO_* gezet' || echo 'ontbreekt in .env')"
+    fi
     ;;
+  device) echo "$DEVICE" ;;
   build)
     # Zelfde valkuil als in de tvos_beta-lane: tvOS bouwt op een eigen
     # engine-fork, en zonder deze stap faalt de build op "unable to resolve
@@ -451,12 +488,33 @@ case "${1:-}" in
       build CODE_SIGNING_ALLOWED=NO
     ;;
   run)
+    shift
+    RUN_ENV_PAIRS=()
+    while [[ "${1:-}" == "--env" ]]; do
+      [[ -n "${2:-}" ]] || die "gebruik: $0 run [--env K=V ...]"
+      RUN_ENV_PAIRS+=("$2")
+      shift 2
+    done
     boot
     [[ -d "$APP" ]] || die "geen build op $APP — draai eerst: $0 build"
     open -a Simulator >/dev/null 2>&1 || true
     xcrun simctl terminate "$DEVICE" "$BUNDLE_ID" >/dev/null 2>&1 || true
     xcrun simctl install "$DEVICE" "$APP"
     enable_debug_logging || note "debug-logging niet gezet — 'login' kan zijn succes-marker dan niet zien"
+    # `simctl launch` strips the SIMCTL_CHILD_ prefix and hands the rest to
+    # the launched app's own environment — this is generic runtime-config
+    # passthrough, *not* a way to override PLEYA_VERIFY_PORT/PLEYA_VERIFY_TOKEN:
+    # those are `int.fromEnvironment`/`String.fromEnvironment` consts, resolved
+    # by the Dart compiler at build time from `-D`/`--dart-define`, and are
+    # unreachable from any process environment at launch time.
+    # bash 3.2 (macOS's /bin/bash) treats an empty array's "${arr[@]}" as
+    # unbound under `set -u` — guard the expansion, don't just rely on the
+    # loop never executing.
+    if ((${#RUN_ENV_PAIRS[@]})); then
+      for RUN_ENV_PAIR in "${RUN_ENV_PAIRS[@]}"; do
+        export "SIMCTL_CHILD_${RUN_ENV_PAIR}"
+      done
+    fi
     xcrun simctl launch "$DEVICE" "$BUNDLE_ID"
     ;;
   reset)
@@ -474,7 +532,28 @@ case "${1:-}" in
          wait_for_log "$2" "${3:-15}" && echo "gevonden: $2" || die "niet gezien binnen ${3:-15}s: $2" ;;
   key)   [[ $# -ge 2 ]] || die "gebruik: $0 key <up|down|left|right|select|menu|delete>"
          require_input; send_key "$2" ;;
-  keys)  shift; require_input; for k in "$@"; do send_key "$k"; sleep 0.6; done ;;
+  keys)
+    shift
+    [[ $# -ge 1 ]] || die "gebruik: $0 keys <toets[:aantal]> [...]"
+    require_input
+    KEYS_EXPANDED=()
+    for KEYS_SPEC in "$@"; do
+      read -ra KEYS_NAMES <<< "$(expand_key_spec "$KEYS_SPEC")"
+      # bash 3.2 (macOS's /bin/bash) treats an empty array's "${arr[@]}" as
+      # unbound under `set -u`; expand_key_spec always yields >=1 name, but
+      # guard anyway rather than lean on that invariant holding forever.
+      ((${#KEYS_NAMES[@]})) && KEYS_EXPANDED+=("${KEYS_NAMES[@]}")
+    done
+    if idb_available; then
+      KEYS_CODES=()
+      for k in "${KEYS_EXPANDED[@]}"; do KEYS_CODES+=("$(hid_code_for "$k")"); done
+      # One idb-companion round trip for the whole batch instead of one
+      # process spawn (and its own connect cost) per key.
+      IDB_UDID="$DEVICE" idb ui key-sequence "${KEYS_CODES[@]}" >/dev/null 2>&1
+    else
+      for k in "${KEYS_EXPANDED[@]}"; do send_key "$k"; sleep 0.6; done
+    fi
+    ;;
   type)  [[ $# -ge 2 ]] || die "gebruik: $0 type <tekst>"; require_input; type_text "$2" ;;
   goto)  [[ $# -ge 2 ]] || die "gebruik: $0 goto <home|movies|search|settings>"; goto_tab "$2" ;;
   login) shift; do_login "${1:-}" ;;
