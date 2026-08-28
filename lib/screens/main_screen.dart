@@ -3,6 +3,10 @@ import 'watchlist_screen.dart';
 import 'my_pleya_screen.dart';
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
+import '../automation/automation_event_log.dart';
+import '../automation/automation_ids.dart';
+import '../automation/automation_screen.dart';
+import '../automation/pleya_verify.dart';
 import '../media/ids.dart';
 import '../navigation/main_screen_scope.dart';
 import '../navigation/sidebar_focus_coordinator.dart';
@@ -1530,6 +1534,13 @@ class _MainScreenState extends State<MainScreen>
     _updateTvosMenuPassthrough();
 
     if (previousTab != tab) {
+      // Only AutomationScreen/AutomationRouteObserver gate this internally;
+      // a bare AutomationEventLog.emit() call needs its own guard so a
+      // normal build never accumulates event history for nothing.
+      if (kPleyaVerify) {
+        AutomationEventLog.instance.emit('navigation.tab_changed', {'from': previousTab.name, 'to': tab.name});
+      }
+
       // Notify previous screen it's being hidden
       if (_screenKeyFor(previousTab)?.currentState case final TabVisibilityAware aware) {
         aware.onTabHidden();
@@ -1787,7 +1798,11 @@ class _MainScreenState extends State<MainScreen>
         });
       });
     }
-    return _buildContent(context, useSideNav);
+    return AutomationScreen(
+      id: AutomationIds.screenMain,
+      readiness: () => const AutomationReadiness.ready(),
+      child: _buildContent(context, useSideNav),
+    );
   }
 
   Widget _buildContent(BuildContext context, bool useSideNav) {

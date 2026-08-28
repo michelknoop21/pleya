@@ -1,0 +1,127 @@
+import 'package:flutter/widgets.dart';
+
+import 'automation_event_log.dart';
+import 'pleya_verify.dart';
+
+enum AutomationReadinessState { loading, ready, error }
+
+/// Whether a registered screen is ready for an agent to act on, and — when
+/// it isn't — why. `reason` is free text (e.g. `'metadata'`,
+/// `'seasons'`) for a report to show, not a machine-matched enum.
+@immutable
+class AutomationReadiness {
+  final AutomationReadinessState state;
+  final String? reason;
+
+  const AutomationReadiness.ready() : state = AutomationReadinessState.ready, reason = null;
+
+  const AutomationReadiness.loading([this.reason]) : state = AutomationReadinessState.loading;
+
+  const AutomationReadiness.error([this.reason]) : state = AutomationReadinessState.error;
+
+  bool get isReady => state == AutomationReadinessState.ready;
+
+  Map<String, Object?> toJson() => {'state': state.name, 'ready': isReady, if (reason != null) 'reason': reason};
+}
+
+/// Registry backing `GET /v1/screens` — one entry per mounted
+/// [AutomationScreen], polled lazily (only when a snapshot is actually
+/// requested), never on a timer.
+class AutomationScreenRegistry {
+  AutomationScreenRegistry._();
+
+  static AutomationScreenRegistry instance = AutomationScreenRegistry._();
+
+  @visibleForTesting
+  static void debugSetInstance(AutomationScreenRegistry? registry) {
+    instance = registry ?? AutomationScreenRegistry._();
+  }
+
+  final Map<int, ({String id, ValueGetter<AutomationReadiness> readiness})> _screens = {};
+  int _nextToken = 0;
+
+  int register(String id, ValueGetter<AutomationReadiness> readiness) {
+    final token = _nextToken++;
+    _screens[token] = (id: id, readiness: readiness);
+    return token;
+  }
+
+  void unregister(int token) => _screens.remove(token);
+
+  List<Map<String, Object?>> snapshot() => [
+    for (final entry in _screens.values) {'id': entry.id, ...entry.readiness().toJson()},
+  ];
+}
+
+/// Wraps a screen with a stable automation id and a lazily-invoked readiness
+/// callback. Pure pass-through in the render tree — never changes what's
+/// built, only observes it — so wrapping a screen with this cannot change
+/// real behavior, on any platform, regardless of what [readiness] returns.
+///
+/// Readiness transitions are detected off the screen's own rebuild cadence
+/// (`didUpdateWidget` fires whenever the parent — which already rebuilds on
+/// its own loading-state changes — recreates this widget), not an
+/// independent poll: a `screen.ready` event fires the moment a rebuild
+/// reveals the flip from not-ready to ready.
+class AutomationScreen extends StatefulWidget {
+  final String id;
+  final ValueGetter<AutomationReadiness> readiness;
+  final Widget child;
+
+  const AutomationScreen({super.key, required this.id, required this.readiness, required this.child});
+
+  @override
+  State<AutomationScreen> createState() => _AutomationScreenState();
+}
+
+class _AutomationScreenState extends State<AutomationScreen> {
+  int? _token;
+  bool? _lastReady;
+
+  @override
+  void initState() {
+    super.initState();
+    _register();
+    _checkReadiness();
+  }
+
+  @override
+  void didUpdateWidget(AutomationScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.id != widget.id) {
+      _unregister();
+      _register();
+    }
+    _checkReadiness();
+  }
+
+  void _register() {
+    if (!kPleyaVerify) return;
+    _token = AutomationScreenRegistry.instance.register(widget.id, widget.readiness);
+  }
+
+  void _unregister() {
+    final token = _token;
+    if (token != null) AutomationScreenRegistry.instance.unregister(token);
+    _token = null;
+  }
+
+  void _checkReadiness() {
+    if (!kPleyaVerify) return;
+    final isReady = widget.readiness().isReady;
+    if (_lastReady == isReady) return;
+    _lastReady = isReady;
+    if (isReady) {
+      AutomationEventLog.instance.emit('screen.ready', {'id': widget.id});
+    }
+  }
+
+  @override
+  void dispose() {
+    _unregister();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}

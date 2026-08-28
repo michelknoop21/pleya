@@ -9,6 +9,7 @@ import '../utils/app_logger.dart';
 import 'automation_event_log.dart';
 import 'automation_focus_log.dart';
 import 'automation_registry.dart';
+import 'automation_screen.dart';
 import 'automation_wait.dart';
 import 'pleya_verify.dart';
 
@@ -128,6 +129,8 @@ class AutomationServer {
         await _respondJson(request, AutomationRegistry.instance.snapshot());
       case '/v1/focus':
         await _respondJson(request, AutomationRegistry.instance.focusSnapshot() ?? {'focused': false});
+      case '/v1/screens':
+        await _respondJson(request, {'screens': AutomationScreenRegistry.instance.snapshot()});
       case '/v1/focus/log':
         await _respondJson(request, {
           'entries': [for (final e in AutomationFocusLog.instance.since(_sinceParam(request))) e.toJson()],

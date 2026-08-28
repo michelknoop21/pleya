@@ -93,6 +93,20 @@ Zie de event-vocabulaire in het Pleya Verify-plan voor de volledige lijst van
 event-namen; op dit moment emit alleen `focus.changed` (uit
 `AutomationFocusLog`). Triggert geen events (het is zelf de bron).
 
+### `GET /v1/screens`
+
+Geen parameters. 200 met JSON:
+
+```json
+{"screens": [{"id": "screen.discover", "state": "ready", "ready": true}]}
+```
+
+Eén entry per gemount `AutomationScreen`. `state` is `loading`/`ready`/`error`,
+`reason` (optioneel) staat erbij zolang `state != "ready"`. Readiness wordt
+lui berekend — pas geëvalueerd op het moment van deze call, geen achtergrond-
+polling. Elke transitie naar `ready` heeft al een `screen.ready`-event in
+`/v1/events` achtergelaten op het moment dat hij daadwerkelijk plaatsvond.
+
 ### `POST /v1/wait`
 
 Body (alle velden optioneel, precies één van `event`/`node` gebruiken, anders

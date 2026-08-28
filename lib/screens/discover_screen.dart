@@ -1,4 +1,6 @@
 import 'dart:async';
+import '../automation/automation_ids.dart';
+import '../automation/automation_screen.dart';
 import '../media/ids.dart';
 import 'dart:io' show Platform;
 import 'dart:math' as math;
@@ -1410,17 +1412,27 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
+  AutomationReadiness _discoverReadiness() {
+    if (_discover.isLoading) return const AutomationReadiness.loading('onDeck');
+    if (_discover.areHubsLoading) return const AutomationReadiness.loading('hubs');
+    return const AutomationReadiness.ready();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SettingsBuilder(
-      prefs: const [
-        SettingsService.showServerNameOnHubs,
-        SettingsService.showHeroSection,
-        SettingsService.hideSpoilers,
-        SettingsService.libraryDensity,
-        SettingsService.episodePosterMode,
-      ],
-      builder: (context) => _buildContent(context),
+    return AutomationScreen(
+      id: AutomationIds.screenDiscover,
+      readiness: _discoverReadiness,
+      child: SettingsBuilder(
+        prefs: const [
+          SettingsService.showServerNameOnHubs,
+          SettingsService.showHeroSection,
+          SettingsService.hideSpoilers,
+          SettingsService.libraryDensity,
+          SettingsService.episodePosterMode,
+        ],
+        builder: (context) => _buildContent(context),
+      ),
     );
   }
 

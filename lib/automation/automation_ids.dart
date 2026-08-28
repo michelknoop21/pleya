@@ -13,4 +13,9 @@ class AutomationIds {
   /// `nav.<NavigationTabId.name>` — derived from the enum itself, not a
   /// second hand-written list that could drift out of sync with it.
   static String navTab(NavigationTabId id) => 'nav.${id.name}';
+
+  static const String screenMain = 'screen.main';
+  static const String screenDiscover = 'screen.discover';
+  static const String screenLibraries = 'screen.libraries';
+  static const String screenMediaDetail = 'screen.media_detail';
 }

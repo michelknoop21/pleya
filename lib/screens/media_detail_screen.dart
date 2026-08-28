@@ -6,6 +6,8 @@ import 'dart:io';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../automation/automation_ids.dart';
+import '../automation/automation_screen.dart';
 import '../navigation/profile_navigation_scope.dart';
 import '../services/device_performance.dart';
 import '../services/image_cache_service.dart';
@@ -3178,8 +3180,23 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     }
   }
 
+  AutomationReadiness _detailReadiness() {
+    if (_isLoadingMetadata) return const AutomationReadiness.loading('metadata');
+    final metadata = _fresh(_fullMetadata ?? _metadata);
+    if (!_isTvDetailReadyToReveal(metadata)) return const AutomationReadiness.loading('sections');
+    return const AutomationReadiness.ready();
+  }
+
   @override
   Widget build(BuildContext context) {
+    return AutomationScreen(
+      id: AutomationIds.screenMediaDetail,
+      readiness: _detailReadiness,
+      child: _buildInner(context),
+    );
+  }
+
+  Widget _buildInner(BuildContext context) {
     // Session-fresh hero: server snapshot resolved against the watch-state
     // store (onWatchStateChanged rebuilds on relevant events).
     final metadata = _fresh(_fullMetadata ?? _metadata);
