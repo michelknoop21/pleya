@@ -6,7 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../utils/app_logger.dart';
+import 'automation_event_log.dart';
+import 'automation_focus_log.dart';
 import 'automation_registry.dart';
+import 'automation_wait.dart';
 import 'pleya_verify.dart';
 
 /// `PLEYA_VERIFY_PORT` dart-define, or the first free port from this one
@@ -123,10 +126,32 @@ class AutomationServer {
         });
       case '/v1/ui_tree':
         await _respondJson(request, AutomationRegistry.instance.snapshot());
+      case '/v1/focus':
+        await _respondJson(request, AutomationRegistry.instance.focusSnapshot() ?? {'focused': false});
+      case '/v1/focus/log':
+        await _respondJson(request, {
+          'entries': [for (final e in AutomationFocusLog.instance.since(_sinceParam(request))) e.toJson()],
+        });
+      case '/v1/events':
+        await _respondJson(request, {
+          'events': [for (final e in AutomationEventLog.instance.since(_sinceParam(request))) e.toJson()],
+        });
+      case '/v1/wait':
+        final body = await _readJsonBody(request);
+        await _respondJson(request, await const AutomationWait().resolve(body));
       default:
         request.response.statusCode = HttpStatus.notFound;
         await request.response.close();
     }
+  }
+
+  int _sinceParam(HttpRequest request) => int.tryParse(request.uri.queryParameters['since'] ?? '') ?? 0;
+
+  Future<Map<String, Object?>> _readJsonBody(HttpRequest request) async {
+    final raw = await utf8.decoder.bind(request).join();
+    if (raw.isEmpty) return const {};
+    final decoded = jsonDecode(raw);
+    return decoded is Map ? decoded.cast<String, Object?>() : const {};
   }
 
   Future<void> _respondJson(HttpRequest request, Map<String, Object?> body) async {

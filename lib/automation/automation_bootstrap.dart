@@ -1,3 +1,4 @@
+import 'automation_focus_log.dart';
 import 'automation_server.dart';
 import 'pleya_verify.dart';
 
@@ -15,6 +16,7 @@ class AutomationBootstrap {
 
   static Future<void> start() async {
     if (!kPleyaVerify) return;
+    AutomationFocusLog.instance.start();
     final server = AutomationServer();
     _instance = server;
     await server.start();

@@ -79,6 +79,27 @@ class AutomationRegistry {
     return {'declared': declared, 'discovered': _discoveredFocusables(), 'duplicates': duplicates};
   }
 
+  /// The `GET /v1/focus` payload: whatever `FocusManager` currently reports
+  /// as primary focus, shaped like a discovered node. `null` when nothing is
+  /// focused or no `WidgetsBinding` exists yet.
+  Map<String, Object?>? focusSnapshot() {
+    FocusNode? node;
+    try {
+      node = FocusManager.instance.primaryFocus;
+    } catch (_) {
+      return null;
+    }
+    if (node == null) return null;
+    final label = node.debugLabel;
+    final bounds = _boundsOf(node.context);
+    return {
+      if (label != null) 'label': LogRedactionManager.redact(label),
+      'focused': node.hasFocus,
+      'canRequestFocus': node.canRequestFocus,
+      if (bounds != null) 'bounds': _boundsToJson(bounds),
+    };
+  }
+
   List<Map<String, Object?>> _discoveredFocusables() {
     final discovered = <Map<String, Object?>>[];
     Iterable<FocusNode> focusNodes;
