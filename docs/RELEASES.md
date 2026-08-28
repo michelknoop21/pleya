@@ -22,11 +22,13 @@ under `Notes`.
 - App Store "What's New" automatisch zetten bij het koppelen van een build
 - Tautulli-kijkgeschiedenis als bron voor de smaakengine
 - layer the home billboard, and give iPad portrait its own tier
+- one PleyaLogo widget for every place the mark appears
 
 ### Fixed
 - prefer 16:9 backdrop over square art on narrow iPhone hero
 - import liet elke rij vallen en telde afleveringen dubbel
 - clear the Dynamic Island on iPhone, edge to edge
+- run the artwork behind the topbar, and give the strip its own height
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 234 · 20 August 2026
