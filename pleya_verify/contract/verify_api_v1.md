@@ -155,3 +155,33 @@ model van `GamepadService.onGamepadInput`), anders zou de app-brede
 wanneer `x`/`y` ontbreken. Geen pointer-equivalent op tvOS (geen aanraakvlak
 in de zin van deze API) — het endpoint bestaat er wel, maar een scenario-stap
 roept het net als `/v1/input/key` nooit aan op een tvOS-target.
+
+### `POST /v1/overlay`
+
+Body (alle velden optioneel, ontbrekend = ongewijzigd):
+`{"enabled": true, "showIds": true, "showBounds": true}`. 200 met
+`{"enabled": <huidige staat>}`.
+
+Zet/toggelt de diagnostic-overlay — een `IgnorePointer`+`CustomPaint`-laag die
+exact dezelfde `AutomationRegistry.snapshot()` tekent als `/v1/ui_tree`
+teruggeeft (declared node-ids altijd, discovered-labels alleen bij
+`showIds`). De **flow** voor autoritatieve diagnostic evidence:
+
+1. `POST /v1/overlay {"enabled": true}`
+2. platform-/simulatorscreenshot (buiten deze API — `xcrun simctl io …
+   screenshot` op tvOS/iOS, macOS-capture op desktop)
+3. `POST /v1/overlay {"enabled": false}`
+
+De screenshot zelf komt **altijd** van de driver/simulator, nooit van
+`/v1/screenshot` — zie [C5] in het Pleya Verify-plan.
+
+### `GET /v1/screenshot`
+
+Geen parameters. 200 met `image/png`, of 404 wanneer de
+`RepaintBoundary` nog niet gemount is. Een Flutter-`RepaintBoundary`-capture
+van de hele app — slaat platformcompositing, mpv/native player-lagen en
+systeem-chrome over. **Nooit de bron voor een visual-PASS.** Uitsluitend
+diagnostisch: bevestigt Flutter's eigen renderstate (bv. dat de overlay
+tekende wat `/v1/ui_tree` rapporteerde), of als terugvaloptie op een target
+zonder simulator-equivalent. Een vergelijking die hierop leunt draagt
+expliciet `"source": "flutter_repaint_boundary"`.

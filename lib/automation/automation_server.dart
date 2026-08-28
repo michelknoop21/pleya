@@ -10,6 +10,7 @@ import 'package:flutter/gestures.dart' show Offset;
 import '../utils/app_logger.dart';
 import 'automation_event_log.dart';
 import 'automation_input.dart';
+import 'automation_overlay.dart';
 import 'automation_focus_log.dart';
 import 'automation_registry.dart';
 import 'automation_screen.dart';
@@ -158,6 +159,25 @@ class AutomationServer {
           return;
         }
         await _respondInputResult(request, dispatchAutomationPointerTap(Offset(x, y)));
+      case '/v1/overlay':
+        final body = await _readJsonBody(request);
+        final current = AutomationOverlayController.instance.value;
+        AutomationOverlayController.instance.value = current.copyWith(
+          enabled: body['enabled'] as bool?,
+          showIds: body['showIds'] as bool?,
+          showBounds: body['showBounds'] as bool?,
+        );
+        await _respondJson(request, {'enabled': AutomationOverlayController.instance.value.enabled});
+      case '/v1/screenshot':
+        final png = await captureAutomationScreenshot();
+        if (png == null) {
+          request.response.statusCode = HttpStatus.notFound;
+          await request.response.close();
+          return;
+        }
+        request.response.headers.contentType = ContentType('image', 'png');
+        request.response.add(png);
+        await request.response.close();
       default:
         request.response.statusCode = HttpStatus.notFound;
         await request.response.close();
