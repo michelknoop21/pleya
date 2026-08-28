@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:provider/provider.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'automation/automation_bootstrap.dart';
 import 'connection/connection.dart';
 import 'connection/connection_bootstrap.dart';
 import 'connection/connection_registry.dart';
@@ -127,6 +128,10 @@ Future<void> main() async {
   // target in Flutter's tool), so register platform stores manually for
   // the plugins we use.
   _registerTvosPlatformPlugins();
+
+  // No-op unless built with --dart-define=PLEYA_VERIFY=true (see
+  // lib/automation/pleya_verify.dart).
+  unawaited(AutomationBootstrap.start());
 
   if (_enableSentry && _sentryDsn.isNotEmpty) {
     final packageInfo = await PackageInfo.fromPlatform();
