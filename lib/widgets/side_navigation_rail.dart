@@ -9,6 +9,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../automation/automation_ids.dart';
+import '../automation/automation_node.dart';
 import '../focus/dpad_navigator.dart';
 import '../focus/focus_memory_tracker.dart';
 import '../media/media_library.dart';
@@ -75,6 +77,11 @@ class NavigationRailItem extends StatelessWidget {
   /// Called when RIGHT arrow is pressed to navigate to content area.
   final VoidCallback? onNavigateRight;
 
+  /// Stable automation ID (see lib/automation/automation_ids.dart), null on
+  /// items Pleya Verify doesn't need to address individually (reconnect,
+  /// fullscreen toggle).
+  final String? automationId;
+
   const NavigationRailItem({
     super.key,
     required this.icon,
@@ -93,6 +100,7 @@ class NavigationRailItem extends StatelessWidget {
     this.horizontalPadding = 17,
     this.suppressSelectedBackground = false,
     this.onNavigateRight,
+    this.automationId,
   });
 
   @override
@@ -100,97 +108,103 @@ class NavigationRailItem extends StatelessWidget {
     final t = tokens(context);
     final showSelectedBackground = isSelected && !suppressSelectedBackground;
 
-    return Focus(
+    return AutomationNode(
+      id: automationId,
+      role: 'nav.item',
+      state: () => {'selected': isSelected, 'collapsed': isCollapsed},
       focusNode: focusNode,
-      autofocus: autofocus,
-      onKeyEvent: (node, event) {
-        if (event is! KeyDownEvent) return KeyEventResult.ignored;
-        if (event.logicalKey.isSelectKey) {
-          onTap();
-          return KeyEventResult.handled;
-        }
-        if (event.logicalKey == LogicalKeyboardKey.arrowRight && onNavigateRight != null) {
-          onNavigateRight!();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          canRequestFocus: false,
-          onTap: onTap,
-          borderRadius: borderRadius,
-          child: Stack(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: () {
-                    // A neutral wash is white-on-dark in dark mode but
-                    // black-on-white in light mode, and black at 6% is
-                    // #F0F0F0 — indistinguishable from the rail. Light mode
-                    // needs a heavier wash to read as the same cue.
-                    if (isCollapsed) {
-                      return isFocused ? t.onArtworkInk(dark: 0.12, light: 0.22) : null;
-                    }
-                    if (isFocused) return t.accent.withValues(alpha: showSelectedBackground ? 0.18 : 0.12);
-                    // Netflix-style active row: subtle neutral wash, the
-                    // red bar carries the accent.
-                    if (showSelectedBackground) return t.onArtworkInk(dark: 0.06, light: 0.13);
-                    return null;
-                  }(),
-                  borderRadius: borderRadius,
-                ),
-                clipBehavior: Clip.hardEdge,
-                child: UnconstrainedBox(
-                  alignment: .centerLeft,
-                  constrainedAxis: Axis.vertical,
+      child: Focus(
+        focusNode: focusNode,
+        autofocus: autofocus,
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          if (event.logicalKey.isSelectKey) {
+            onTap();
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowRight && onNavigateRight != null) {
+            onNavigateRight!();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            canRequestFocus: false,
+            onTap: onTap,
+            borderRadius: borderRadius,
+            child: Stack(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: () {
+                      // A neutral wash is white-on-dark in dark mode but
+                      // black-on-white in light mode, and black at 6% is
+                      // #F0F0F0 — indistinguishable from the rail. Light mode
+                      // needs a heavier wash to read as the same cue.
+                      if (isCollapsed) {
+                        return isFocused ? t.onArtworkInk(dark: 0.12, light: 0.22) : null;
+                      }
+                      if (isFocused) return t.accent.withValues(alpha: showSelectedBackground ? 0.18 : 0.12);
+                      // Netflix-style active row: subtle neutral wash, the
+                      // red bar carries the accent.
+                      if (showSelectedBackground) return t.onArtworkInk(dark: 0.06, light: 0.13);
+                      return null;
+                    }(),
+                    borderRadius: borderRadius,
+                  ),
                   clipBehavior: Clip.hardEdge,
-                  child: SizedBox(
-                    width: SideNavigationRailState.expandedWidth - 24,
-                    child: Padding(
-                      padding: .symmetric(vertical: 12, horizontal: horizontalPadding),
-                      child: Row(
-                        children: [
-                          NavGlyph(
-                            svgAsset: svgAsset,
-                            icon: isSelected && selectedIcon != null ? selectedIcon! : icon,
-                            size: iconSize,
-                            color: isSelected ? t.text : t.textMuted,
-                          ),
-                          const SizedBox(width: 11),
-                          Expanded(
-                            child: () {
-                              // Simple-layout items (library sub-rows) still must
-                              // hide their label when the rail collapses, otherwise
-                              // the text bleeds through the narrow clipped rail.
-                              if (useSimpleLayout && !isCollapsed) return label;
-                              final opacity = isCollapsed ? 0.0 : 1.0;
-                              return AnimatedOpacity(
-                                opacity: opacity,
-                                duration: reduceMotion(context, t.fast),
-                                child: label,
-                              );
-                            }(),
-                          ),
-                        ],
+                  child: UnconstrainedBox(
+                    alignment: .centerLeft,
+                    constrainedAxis: Axis.vertical,
+                    clipBehavior: Clip.hardEdge,
+                    child: SizedBox(
+                      width: SideNavigationRailState.expandedWidth - 24,
+                      child: Padding(
+                        padding: .symmetric(vertical: 12, horizontal: horizontalPadding),
+                        child: Row(
+                          children: [
+                            NavGlyph(
+                              svgAsset: svgAsset,
+                              icon: isSelected && selectedIcon != null ? selectedIcon! : icon,
+                              size: iconSize,
+                              color: isSelected ? t.text : t.textMuted,
+                            ),
+                            const SizedBox(width: 11),
+                            Expanded(
+                              child: () {
+                                // Simple-layout items (library sub-rows) still must
+                                // hide their label when the rail collapses, otherwise
+                                // the text bleeds through the narrow clipped rail.
+                                if (useSimpleLayout && !isCollapsed) return label;
+                                final opacity = isCollapsed ? 0.0 : 1.0;
+                                return AnimatedOpacity(
+                                  opacity: opacity,
+                                  duration: reduceMotion(context, t.fast),
+                                  child: label,
+                                );
+                              }(),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              // Solid red accent bar on the active item.
-              if (showSelectedBackground)
-                Positioned(
-                  left: 0,
-                  top: 8,
-                  bottom: 8,
-                  child: Container(
-                    width: 3,
-                    decoration: BoxDecoration(color: t.accent, borderRadius: BorderRadius.circular(2)),
+                // Solid red accent bar on the active item.
+                if (showSelectedBackground)
+                  Positioned(
+                    left: 0,
+                    top: 8,
+                    bottom: 8,
+                    child: Container(
+                      width: 3,
+                      decoration: BoxDecoration(color: t.accent, borderRadius: BorderRadius.circular(2)),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1144,6 +1158,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
       onTap: () => widget.onDestinationSelected(tab),
       focusNode: _focusTracker.get(focusKey),
       isCollapsed: isCollapsed,
+      automationId: AutomationIds.navTab(tab),
     );
   }
 
@@ -1158,6 +1173,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     required FocusNode focusNode,
     required bool isCollapsed,
     bool autofocus = false,
+    String? automationId,
   }) {
     final t = tokens(context);
     final itemHorizontalPadding = itemHorizontalPaddingForContext(context, isCollapsed: isCollapsed);
@@ -1182,6 +1198,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
       onTap: onTap,
       focusNode: focusNode,
       autofocus: autofocus,
+      automationId: automationId,
       horizontalPadding: itemHorizontalPadding,
       suppressSelectedBackground: widget.isSidebarFocused,
       onNavigateRight: widget.onNavigateToContent,

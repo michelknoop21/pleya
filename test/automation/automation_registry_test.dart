@@ -47,4 +47,45 @@ void main() {
     expect(bounds['width'], 40);
     expect(bounds['height'], 20);
   });
+
+  testWidgets('declared nodes report live bounds, focus and state', (tester) async {
+    final focusNode = FocusNode(debugLabel: 'declared-probe');
+    addTearDown(focusNode.dispose);
+    late BuildContext capturedContext;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              capturedContext = context;
+              return Focus(focusNode: focusNode, child: const SizedBox(width: 30, height: 10));
+            },
+          ),
+        ),
+      ),
+    );
+
+    final token = AutomationRegistry.instance.register(
+      AutomationDeclaredNode(
+        id: 'declared-probe',
+        role: 'button',
+        focusNode: focusNode,
+        contextGetter: () => capturedContext,
+        state: () => {'selected': true},
+      ),
+    );
+    addTearDown(() => AutomationRegistry.instance.unregister(token));
+
+    focusNode.requestFocus();
+    await tester.pump();
+
+    final snapshot = AutomationRegistry.instance.snapshot();
+    final declared = (snapshot['declared'] as List).cast<Map<String, Object?>>();
+    final node = declared.firstWhere((n) => n['id'] == 'declared-probe');
+
+    expect(node['focused'], isTrue);
+    expect(node['bounds'], {'x': 0.0, 'y': 0.0, 'width': 30.0, 'height': 10.0});
+    expect(node['state'], {'selected': true});
+  });
 }

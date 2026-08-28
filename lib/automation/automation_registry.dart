@@ -6,12 +6,27 @@ import '../utils/log_redaction_manager.dart';
 /// `kPleyaVerify`. Populated starting with the automation-ID rollout (A.2 in
 /// the Pleya Verify plan); the registry works — and `/v1/ui_tree` reports
 /// discovered focusables — before any widget registers one.
+///
+/// [focusNode] and [contextGetter] are how `snapshot()` resolves live focus
+/// and bounds — the same pattern `_discoveredFocusables()` already uses for
+/// nodes it walks off `FocusManager`, so a declared node ends up shaped the
+/// same as a discovered one, just with a stable [id] besides.
 class AutomationDeclaredNode {
   final String id;
   final String role;
   final String? label;
+  final FocusNode? focusNode;
+  final BuildContext? Function()? contextGetter;
+  final Object? Function()? state;
 
-  const AutomationDeclaredNode({required this.id, required this.role, this.label});
+  const AutomationDeclaredNode({
+    required this.id,
+    required this.role,
+    this.label,
+    this.focusNode,
+    this.contextGetter,
+    this.state,
+  });
 }
 
 /// Declared nodes (explicit `AutomationDeclaredNode` registrations) merged
@@ -54,6 +69,10 @@ class AutomationRegistry {
         'id': id,
         'role': node.role,
         if (node.label != null) 'label': LogRedactionManager.redact(node.label!),
+        'focused': node.focusNode?.hasFocus ?? false,
+        if (node.focusNode != null) 'canRequestFocus': node.focusNode!.canRequestFocus,
+        if (_boundsOf(node.contextGetter?.call()) case final bounds?) 'bounds': _boundsToJson(bounds),
+        'state': ?node.state?.call(),
       });
     }
 
@@ -73,22 +92,28 @@ class AutomationRegistry {
     }
     for (final focusNode in focusNodes) {
       final label = focusNode.debugLabel;
-      Rect? bounds;
-      final context = focusNode.context;
-      if (context != null && context.mounted) {
-        final renderObject = context.findRenderObject();
-        if (renderObject is RenderBox && renderObject.attached && renderObject.hasSize) {
-          bounds = renderObject.localToGlobal(Offset.zero) & renderObject.size;
-        }
-      }
+      final bounds = _boundsOf(focusNode.context);
       discovered.add({
         if (label != null) 'label': LogRedactionManager.redact(label),
         'focused': focusNode.hasFocus,
         'canRequestFocus': focusNode.canRequestFocus,
-        if (bounds != null)
-          'bounds': {'x': bounds.left, 'y': bounds.top, 'width': bounds.width, 'height': bounds.height},
+        if (bounds != null) 'bounds': _boundsToJson(bounds),
       });
     }
     return discovered;
   }
+
+  Rect? _boundsOf(BuildContext? context) {
+    if (context == null || !context.mounted) return null;
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.attached || !renderObject.hasSize) return null;
+    return renderObject.localToGlobal(Offset.zero) & renderObject.size;
+  }
+
+  Map<String, Object?> _boundsToJson(Rect bounds) => {
+    'x': bounds.left,
+    'y': bounds.top,
+    'width': bounds.width,
+    'height': bounds.height,
+  };
 }
