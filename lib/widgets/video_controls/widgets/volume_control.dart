@@ -183,7 +183,7 @@ class _VolumeControlState extends State<VolumeControl> {
                       onFocusChange: _handleFocusChange,
                       borderRadius: 20,
                       autoScroll: false,
-                      useBackgroundFocus: true,
+                      mode: FocusIndicatorMode.fill,
                       disableScale: true,
                       semanticLabel: () {
                         if (external) return t.videoControls.volumeHandledByDevice;

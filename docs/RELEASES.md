@@ -21,6 +21,9 @@ under `Notes`.
 ### New
 - een Pleya Server is te ontkoppelen waar Verbindingen zegt dat het kan
 
+### Improved
+- één shape-contract voor CTA-knop en focusring
+
 ### Fixed
 - de zijbalk kent één lijst bestemmingen, dus "nu aan het kijken" is ook bereikbaar
 - een achtergrondcyclus legt de rapportage naar Plex niet meer stil
@@ -31,6 +34,7 @@ under `Notes`.
 - een verbroken Pleya Server-verbinding liet zijn rij en zijn refreshtoken achter
 - een mislukte refresh maakte de verbinding kapot in plaats van hem te markeren
 - de buildnummers van iOS, tvOS en macOS lopen weer gelijk
+- een mislukte persist van een rotatie blijft niet onopgemerkt
 <!-- END GENERATED -->
 
 ### Fixed

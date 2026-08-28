@@ -655,7 +655,7 @@ class _DownloadTreeItemState extends State<_DownloadTreeItem> {
         onBack: widget.onBack,
         borderRadius: 8.0,
         disableScale: true,
-        useBackgroundFocus: true,
+        mode: FocusIndicatorMode.fill,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: canExpand ? widget.onToggleExpansion : null,
@@ -944,7 +944,7 @@ class _DownloadTreeItemState extends State<_DownloadTreeItem> {
       onBack: widget.onBack,
       borderRadius: 20.0,
       disableScale: true,
-      useBackgroundFocus: true,
+      mode: FocusIndicatorMode.fill,
       autoScroll: false,
       child: Tooltip(
         message: tooltip,

@@ -13,7 +13,6 @@ import '../widgets/focusable_list_tile.dart';
 import 'focus_utils.dart';
 
 const _buttonPadding = EdgeInsets.symmetric(horizontal: 18, vertical: 14);
-const _buttonShape = StadiumBorder();
 
 /// Shows a dialog on the nearest navigator instead of Flutter's default root
 /// navigator. Use this for profile/session-owned modal routes so they are
@@ -54,7 +53,7 @@ Future<bool> showConfirmDialog(
             onPressed: () => Navigator.pop(dialogContext, false),
             child: TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              style: TextButton.styleFrom(padding: _buttonPadding, shape: _buttonShape),
+              style: TextButton.styleFrom(padding: _buttonPadding),
               child: Text(cancelText ?? t.common.cancel),
             ),
           ),
@@ -196,7 +195,7 @@ class _CancellableLoadingDialog extends StatelessWidget {
                   onPressed: onCancel,
                   child: TextButton(
                     onPressed: onCancel,
-                    style: TextButton.styleFrom(padding: _buttonPadding, shape: _buttonShape),
+                    style: TextButton.styleFrom(padding: _buttonPadding),
                     child: Text(t.common.cancel),
                   ),
                 ),
@@ -228,7 +227,7 @@ Future<bool> showServerLimitDialog(BuildContext context, {bool canTryLowerQualit
             onPressed: () => Navigator.of(ctx).pop(true),
             child: FilledButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              style: FilledButton.styleFrom(padding: _buttonPadding, shape: _buttonShape),
+              style: FilledButton.styleFrom(padding: _buttonPadding),
               child: Text(t.videoSettings.tryLowerQuality),
             ),
           ),
@@ -239,7 +238,7 @@ Future<bool> showServerLimitDialog(BuildContext context, {bool canTryLowerQualit
               ? TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.common.close))
               : FilledButton(
                   onPressed: () => Navigator.of(ctx).pop(false),
-                  style: FilledButton.styleFrom(padding: _buttonPadding, shape: _buttonShape),
+                  style: FilledButton.styleFrom(padding: _buttonPadding),
                   child: Text(t.common.close),
                 ),
         ),

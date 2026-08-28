@@ -1219,7 +1219,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
       onFocusChange: _onFocusChange,
       borderRadius: 20,
       autoScroll: false,
-      useBackgroundFocus: true,
+      mode: FocusIndicatorMode.fill,
       semanticLabel: semanticLabel,
       child: Semantics(
         label: semanticLabel,

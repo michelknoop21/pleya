@@ -16,8 +16,8 @@ class FocusablePopupMenuButton<T> extends StatefulWidget {
   final VoidCallback? onNavigateLeft;
   final VoidCallback? onNavigateRight;
   final String? semanticLabel;
-  final double borderRadius;
-  final bool useBackgroundFocus;
+  final OutlinedBorder shape;
+  final FocusIndicatorMode mode;
   final bool enableLongPress;
 
   const FocusablePopupMenuButton({
@@ -33,8 +33,8 @@ class FocusablePopupMenuButton<T> extends StatefulWidget {
     this.onNavigateLeft,
     this.onNavigateRight,
     this.semanticLabel,
-    this.borderRadius = 100,
-    this.useBackgroundFocus = true,
+    this.shape = const CircleBorder(),
+    this.mode = FocusIndicatorMode.fill,
     this.enableLongPress = true,
   });
 
@@ -54,8 +54,8 @@ class _FocusablePopupMenuButtonState<T> extends State<FocusablePopupMenuButton<T
     return FocusableWrapper(
       focusNode: widget.focusNode,
       disableScale: true,
-      borderRadius: widget.borderRadius,
-      useBackgroundFocus: widget.useBackgroundFocus,
+      focusShapeBorder: widget.shape,
+      mode: widget.mode,
       descendantsAreFocusable: false,
       semanticLabel: widget.semanticLabel ?? widget.tooltip,
       enableLongPress: widget.enableLongPress,

@@ -360,7 +360,7 @@ class _BoolSettingRow extends StatelessWidget {
     return FocusableWrapper(
       autofocus: autofocus,
       autoScroll: true,
-      useBackgroundFocus: true,
+      mode: FocusIndicatorMode.fill,
       onSelect: toggle,
       child: InkWell(
         canRequestFocus: false,
@@ -427,7 +427,7 @@ class _EnumSettingRow extends StatelessWidget {
     return FocusableWrapper(
       autofocus: autofocus,
       autoScroll: true,
-      useBackgroundFocus: true,
+      mode: FocusIndicatorMode.fill,
       onSelect: () => _openPicker(context),
       child: InkWell(
         canRequestFocus: false,

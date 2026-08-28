@@ -9,6 +9,7 @@ import '../../services/settings_service.dart';
 import '../../utils/dialogs.dart';
 import '../../utils/error_message_utils.dart';
 import '../../focus/focusable_button.dart';
+import '../../focus/focusable_wrapper.dart';
 import '../../focus/key_event_utils.dart';
 
 class RemoteSessionDialog extends StatefulWidget {
@@ -130,7 +131,6 @@ class _RemoteSessionDialogState extends State<RemoteSessionDialog> with MountedS
                   onPressed: _close,
                   onBack: _close,
                   onNavigateRight: () => _errorRetryFocusNode.requestFocus(),
-                  useBackgroundFocus: true,
                   child: TextButton(onPressed: _close, child: Text(t.common.close)),
                 ),
                 FocusableButton(
@@ -138,7 +138,6 @@ class _RemoteSessionDialogState extends State<RemoteSessionDialog> with MountedS
                   onPressed: _startServer,
                   onBack: _close,
                   onNavigateLeft: () => _errorCloseFocusNode.requestFocus(),
-                  useBackgroundFocus: true,
                   child: TextButton(onPressed: _startServer, child: Text(t.common.retry)),
                 ),
               ],
@@ -173,7 +172,8 @@ class _RemoteSessionDialogState extends State<RemoteSessionDialog> with MountedS
                           onPressed: _close,
                           onBack: _close,
                           onNavigateDown: () => _toggleFocusNode.requestFocus(),
-                          useBackgroundFocus: true,
+                          mode: FocusIndicatorMode.fill,
+                          shape: const CircleBorder(),
                           child: IconButton(icon: const Icon(Icons.close), onPressed: _close),
                         ),
                       ],
@@ -198,7 +198,6 @@ class _RemoteSessionDialogState extends State<RemoteSessionDialog> with MountedS
                           onBack: _close,
                           onNavigateUp: () => _closeFocusNode.requestFocus(),
                           onNavigateRight: () => _minimizeFocusNode.requestFocus(),
-                          useBackgroundFocus: true,
                           child: TextButton.icon(
                             onPressed: _toggleServer,
                             icon: Icon(provider.isHostServerRunning ? Icons.stop : Icons.play_arrow),
@@ -216,7 +215,6 @@ class _RemoteSessionDialogState extends State<RemoteSessionDialog> with MountedS
                           onBack: _close,
                           onNavigateUp: () => _closeFocusNode.requestFocus(),
                           onNavigateLeft: () => _toggleFocusNode.requestFocus(),
-                          useBackgroundFocus: true,
                           child: FilledButton(onPressed: _close, child: Text(t.companionRemote.session.minimize)),
                         ),
                       ],

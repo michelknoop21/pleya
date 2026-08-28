@@ -70,7 +70,6 @@ class SkipMarkerButton extends StatelessWidget {
       borderRadius: tokens(context).radiusSm,
       // Border ring, not the background tint: the tint sits behind an opaque
       // white button and is invisible.
-      useBackgroundFocus: false,
       autoScroll: false,
       onNavigateUp: onFocusExit,
       onNavigateLeft: onFocusExit,

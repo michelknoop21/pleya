@@ -180,7 +180,6 @@ class _AddPlexAccountScreenState extends State<AddPlexAccountScreen> with AsyncF
                         crossAxisAlignment: .stretch,
                         children: [
                           FocusableButton(
-                            useBackgroundFocus: true,
                             onPressed: busy || this.busy ? null : browser,
                             child: FilledButton.icon(
                               onPressed: busy || this.busy ? null : browser,
@@ -190,7 +189,6 @@ class _AddPlexAccountScreenState extends State<AddPlexAccountScreen> with AsyncF
                           ),
                           const SizedBox(height: 12),
                           FocusableButton(
-                            useBackgroundFocus: true,
                             onPressed: busy || this.busy ? null : qr,
                             child: OutlinedButton.icon(
                               onPressed: busy || this.busy ? null : qr,

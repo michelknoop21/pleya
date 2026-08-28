@@ -401,6 +401,53 @@ void main() {
       expect(session.connection.refreshToken, 'rt-login');
     });
 
+    test('a failed persist fails the call instead of handing out an unstored token', () async {
+      var refreshCalls = 0;
+      final service = PleyaServerAuthService(
+        httpClientFactory: () => MockClient((_) async {
+          refreshCalls++;
+          return json(tokenPair('at-$refreshCalls', 'rt-$refreshCalls'));
+        }),
+      );
+      final session = PleyaServerSession(
+        connection: connectionWith('rt-0'),
+        auth: service,
+        onTokensRotated: (_) async => throw Exception('disk full'),
+      );
+      await expectLater(session.accessToken(), throwsA(isA<Exception>()));
+      expect(session.isRevoked, isFalse, reason: 'a storage failure is not an auth rejection');
+      // The rotated token lives on in memory even though the write failed, so
+      // a retry spends it rather than presenting the server with something
+      // already spent.
+      expect(session.connection.refreshToken, 'rt-1');
+    });
+
+    test('a retry after a failed persist reuses the unstored token and can still succeed', () async {
+      var refreshCalls = 0;
+      var failPersist = true;
+      final service = PleyaServerAuthService(
+        httpClientFactory: () => MockClient((request) async {
+          refreshCalls++;
+          expect(jsonDecode(request.body), {'refresh_token': refreshCalls == 1 ? 'rt-0' : 'rt-1'});
+          return json(tokenPair('at-$refreshCalls', 'rt-$refreshCalls'));
+        }),
+      );
+      final persisted = <PleyaServerConnection>[];
+      final session = PleyaServerSession(
+        connection: connectionWith('rt-0'),
+        auth: service,
+        onTokensRotated: (connection) async {
+          if (failPersist) throw Exception('disk full');
+          persisted.add(connection);
+        },
+      );
+      await expectLater(session.accessToken(), throwsA(isA<Exception>()));
+      failPersist = false;
+      expect(await session.accessToken(), 'at-2');
+      expect(refreshCalls, 2);
+      expect(persisted.single.refreshToken, 'rt-2');
+    });
+
     test('invalidating the access token forces one refresh and keeps the chain', () async {
       var calls = 0;
       final service = PleyaServerAuthService(

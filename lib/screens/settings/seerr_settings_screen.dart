@@ -186,7 +186,6 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
         const SizedBox(height: 16),
         FocusableButton(
           focusNode: _saveFocus,
-          useBackgroundFocus: true,
           onPressed: busy
               ? null
               : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SeerrRequestsScreen())),
@@ -201,7 +200,6 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
         const SizedBox(height: 12),
         FocusableButton(
           focusNode: _testFocus,
-          useBackgroundFocus: true,
           onPressed: busy ? null : _disconnect,
           child: OutlinedButton.icon(
             onPressed: busy ? null : _disconnect,
@@ -258,7 +256,6 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
       const SizedBox(height: 20),
       FocusableButton(
         focusNode: _testFocus,
-        useBackgroundFocus: true,
         onPressed: busy ? null : _test,
         child: FilledButton.icon(
           onPressed: busy ? null : _test,
@@ -272,7 +269,6 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
         const SizedBox(height: 12),
         FocusableButton(
           focusNode: _saveFocus,
-          useBackgroundFocus: true,
           onPressed: busy ? null : _save,
           child: FilledButton.icon(
             onPressed: busy ? null : _save,
@@ -300,7 +296,6 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: FocusableButton(
-              useBackgroundFocus: true,
               onPressed: busy
                   ? null
                   : () => setState(() {

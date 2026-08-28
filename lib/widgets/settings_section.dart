@@ -142,7 +142,7 @@ class SettingRowFocus extends StatelessWidget {
       // the wrapper's white-on-artwork defaults: a settings row sits on an
       // opaque card that flips with the theme, where a white ring on white is
       // no ring at all.
-      delegateFocusBorder: true,
+      mode: FocusIndicatorMode.delegated,
       onSelect: enabled ? onSelect : null,
       child: _SettingRowSurface(child: child),
     );

@@ -974,7 +974,9 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
           onSelect: activate,
           borderRadius: 100,
           disableScale: true,
-          useBackgroundFocus: true,
+          // Colors swap on the chip's own focus listener above, so the
+          // wrapper delegates instead of drawing a fill of its own.
+          mode: FocusIndicatorMode.delegated,
           onKeyEvent: (_, event) {
             if (!event.isActionable) return KeyEventResult.ignored;
             final key = event.logicalKey;

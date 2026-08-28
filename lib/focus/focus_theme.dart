@@ -83,4 +83,35 @@ class FocusTheme {
       color: isFocused ? Colors.white.withValues(alpha: 0.2) : Colors.transparent,
     );
   }
+
+  /// Shape-aware focus ring: the ring is the button's own [shape], carrying a
+  /// [BorderSide] instead of a reconstructed geometry. Meant for
+  /// [FocusableWrapper.focusShapeBorder] — painted in `foregroundDecoration`
+  /// so it isn't occluded by an opaque Material child.
+  static ShapeDecoration shapeFocusRing(
+    BuildContext context, {
+    required bool isFocused,
+    required OutlinedBorder shape,
+    Color? color,
+  }) {
+    final focusColor = color ?? getFocusBorderColor(context);
+    return ShapeDecoration(
+      shape: shape.copyWith(
+        side: BorderSide(
+          color: isFocused ? focusColor : Colors.transparent,
+          width: focusBorderWidth,
+          strokeAlign: BorderSide.strokeAlignOutside,
+        ),
+      ),
+    );
+  }
+
+  /// Shape-aware focus fill: the native hover-style background tint, clipped
+  /// to [shape]. Carries [BorderSide.none] so it contributes no padding.
+  static ShapeDecoration shapeFocusFill({required bool isFocused, required OutlinedBorder shape}) {
+    return ShapeDecoration(
+      shape: shape.copyWith(side: BorderSide.none),
+      color: isFocused ? Colors.white.withValues(alpha: 0.2) : Colors.transparent,
+    );
+  }
 }

@@ -21,6 +21,20 @@ void _logFocusableWrapper(String message) {
   TextInputDiagnostics.log('FocusableWrapper', message);
 }
 
+/// What a [FocusableWrapper] does to show focus.
+enum FocusIndicatorMode {
+  /// The wrapper paints a ring around the child. Default.
+  ring,
+
+  /// The wrapper paints a background fill instead of a ring — the native
+  /// hover look used by the video controls.
+  fill,
+
+  /// The wrapper paints nothing; the child draws its own focus, via
+  /// [CardFocusScope] or directly on its own focus node.
+  delegated,
+}
+
 /// A wrapper widget that makes its child focusable with D-pad navigation support.
 ///
 /// Provides:
@@ -101,13 +115,21 @@ class FocusableWrapper extends StatefulWidget {
   /// Duration for long-press detection.
   final Duration longPressDuration;
 
-  /// Whether to use background color instead of border for focus indicator.
-  /// Useful for video controls where outline doesn't look good.
-  final bool useBackgroundFocus;
+  /// What the focus indicator does: draws a ring (default), draws a
+  /// background fill, or is delegated to the child.
+  final FocusIndicatorMode mode;
 
-  /// Custom color for the focus border. Only used when [useBackgroundFocus] is false.
+  /// Custom color for the focus border. Only used in [FocusIndicatorMode.ring].
   /// Useful for filled buttons where the default primary border blends in.
   final Color? focusColor;
+
+  /// Shape the focus ring/fill follows, expressed as the same [OutlinedBorder]
+  /// the child's Material shape uses (e.g. [MonoShapes.cta]). When set, the
+  /// ring is painted in `foregroundDecoration` (so an opaque child doesn't
+  /// occlude it) and [borderRadius]/[focusShape] are ignored. When null,
+  /// behavior is unchanged: [borderRadius]/[focusShape] drive a
+  /// [BoxDecoration]-based indicator painted behind the child.
+  final OutlinedBorder? focusShapeBorder;
 
   /// Whether to disable the scale animation on focus.
   /// Useful for elements like sliders where scaling looks odd.
@@ -118,11 +140,6 @@ class FocusableWrapper extends StatefulWidget {
 
   /// Whether to draw a glow around the focused widget.
   final bool useFocusGlow;
-
-  /// Skip drawing the focus border here and expose the focus state through a
-  /// [CardFocusScope] instead, so the child places the border on the exact
-  /// rect it wants highlighted (e.g. MediaCard's poster image).
-  final bool delegateFocusBorder;
 
   /// Whether descendants can receive focus.
   /// Set to false when the child widget has its own Focus (e.g. buttons)
@@ -152,12 +169,12 @@ class FocusableWrapper extends StatefulWidget {
     this.onKeyEvent,
     this.enableLongPress = false,
     this.longPressDuration = const Duration(milliseconds: 500),
-    this.useBackgroundFocus = false,
+    this.mode = FocusIndicatorMode.ring,
     this.focusColor,
+    this.focusShapeBorder,
     this.disableScale = false,
     this.focusScale = FocusTheme.focusScale,
     this.useFocusGlow = false,
-    this.delegateFocusBorder = false,
     this.descendantsAreFocusable = true,
   });
 
@@ -502,28 +519,56 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
           // The glow (full-bleed cards) is drawn in an overlay above siblings so
           // it stays symmetric; the in-card decoration only carries the border.
           Widget card;
-          if (widget.delegateFocusBorder) {
-            card = CardFocusScope(showFocus: showFocus, child: widget.child);
-          } else {
-            final focusDecoration = widget.useBackgroundFocus
-                ? FocusTheme.focusBackgroundDecoration(
-                    isFocused: showFocus,
-                    borderRadius: widget.borderRadius,
-                    shape: widget.focusShape,
-                  )
-                : FocusTheme.focusDecoration(
+          final shape = widget.focusShapeBorder;
+          switch (widget.mode) {
+            case FocusIndicatorMode.delegated:
+              card = CardFocusScope(showFocus: showFocus, child: widget.child);
+            case FocusIndicatorMode.fill:
+              card = AnimatedContainer(
+                duration: duration,
+                curve: Curves.easeOutCubic,
+                decoration: shape != null
+                    ? FocusTheme.shapeFocusFill(isFocused: showFocus, shape: shape)
+                    : FocusTheme.focusBackgroundDecoration(
+                        isFocused: showFocus,
+                        borderRadius: widget.borderRadius,
+                        shape: widget.focusShape,
+                      ),
+                child: widget.child,
+              );
+            case FocusIndicatorMode.ring:
+              if (shape != null) {
+                // The ring paints in foregroundDecoration so an opaque
+                // Material child doesn't occlude it; the surrounding Padding
+                // reserves the same halo the old inside-aligned border did.
+                card = Padding(
+                  padding: const EdgeInsets.all(FocusTheme.focusBorderWidth),
+                  child: AnimatedContainer(
+                    duration: duration,
+                    curve: Curves.easeOutCubic,
+                    foregroundDecoration: FocusTheme.shapeFocusRing(
+                      context,
+                      isFocused: showFocus,
+                      shape: shape,
+                      color: widget.focusColor,
+                    ),
+                    child: widget.child,
+                  ),
+                );
+              } else {
+                card = AnimatedContainer(
+                  duration: duration,
+                  curve: Curves.easeOutCubic,
+                  decoration: FocusTheme.focusDecoration(
                     context,
                     isFocused: showFocus,
                     borderRadius: widget.borderRadius,
                     color: widget.focusColor,
                     shape: widget.focusShape,
-                  );
-            card = AnimatedContainer(
-              duration: duration,
-              curve: Curves.easeOutCubic,
-              decoration: focusDecoration,
-              child: widget.child,
-            );
+                  ),
+                  child: widget.child,
+                );
+              }
           }
           if (widget.useFocusGlow) {
             card = FocusGlowOverlay(

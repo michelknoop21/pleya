@@ -1196,7 +1196,7 @@ class _CompactSyncBarState extends State<_CompactSyncBar> {
           onNavigateLeft: () => _resetFocusNode.requestFocus(),
           borderRadius: 18,
           autoScroll: false,
-          useBackgroundFocus: true,
+          mode: FocusIndicatorMode.fill,
           child: GestureDetector(
             onTap: () => OverlaySheetController.of(context).close(),
             child: Container(
