@@ -1,0 +1,11 @@
+# `library.grid` is instanceable: false (only `library.grid.item` is) — an
+# instance suffix on it must be rejected for the same reason the plan's
+# second example gives: "een scenario met `library.grid.item[3]` waar
+# `library.grid.item` niet `instanceable` is" (here inverted onto a real
+# non-instanceable base id from the current catalog).
+name: fixture.invalid_instance_not_instanceable
+target: macos
+setup:
+  - reset_app
+steps:
+  - assert: {id: "library.grid[3]"}

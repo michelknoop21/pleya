@@ -1,0 +1,9 @@
+# A step verb used in setup — must be rejected on file+line, per the plan's
+# example: "een scenario met `setup: [- press: down]` dat afgewezen moet
+# worden op bestand + regel".
+name: fixture.invalid_setup_verb
+target: macos
+setup:
+  - press: down
+steps:
+  - assert: {id: screen.main}
