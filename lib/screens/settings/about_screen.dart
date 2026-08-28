@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
+import '../../widgets/setting_tile.dart';
+import '../../widgets/settings_section.dart';
 import '../../i18n/strings.g.dart';
 import 'licenses_screen.dart';
 
@@ -86,48 +87,45 @@ class AboutScreen extends StatelessWidget {
 
                   const SizedBox(height: 8),
 
-                  Card(
-                    child: Column(
-                      children: [
-                        ListTile(
-                          leading: const AppIcon(Symbols.code_rounded, fill: 1),
-                          title: Text(t.about.sourceCode),
-                          subtitle: Text(t.about.sourceCodeDescription),
-                          trailing: const AppIcon(Symbols.open_in_new_rounded, fill: 1),
-                          onTap: () => _open(_sourceUrl),
-                        ),
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: const AppIcon(Symbols.fork_right_rounded, fill: 1),
-                          title: Text(t.about.basedOnPlezy),
-                          subtitle: Text(t.about.upstreamProject),
-                          trailing: const AppIcon(Symbols.open_in_new_rounded, fill: 1),
-                          onTap: () => _open(_upstreamUrl),
-                        ),
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: const AppIcon(Symbols.privacy_tip_rounded, fill: 1),
-                          title: Text(t.about.privacyPolicy),
-                          trailing: const AppIcon(Symbols.open_in_new_rounded, fill: 1),
-                          onTap: () => _open(_privacyUrl),
-                        ),
-                      ],
-                    ),
+                  SettingsGroup(
+                    children: [
+                      SettingNavigationTile(
+                        icon: Symbols.code_rounded,
+                        title: t.about.sourceCode,
+                        subtitle: t.about.sourceCodeDescription,
+                        trailingIcon: Symbols.open_in_new_rounded,
+                        onTap: () => _open(_sourceUrl),
+                      ),
+                      SettingNavigationTile(
+                        icon: Symbols.fork_right_rounded,
+                        title: t.about.basedOnPlezy,
+                        subtitle: t.about.upstreamProject,
+                        trailingIcon: Symbols.open_in_new_rounded,
+                        onTap: () => _open(_upstreamUrl),
+                      ),
+                      SettingNavigationTile(
+                        icon: Symbols.privacy_tip_rounded,
+                        title: t.about.privacyPolicy,
+                        trailingIcon: Symbols.open_in_new_rounded,
+                        onTap: () => _open(_privacyUrl),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 8),
 
                   // Open Source Licenses
-                  Card(
-                    child: ListTile(
-                      leading: const AppIcon(Symbols.description_rounded, fill: 1),
-                      title: Text(t.about.openSourceLicenses),
-                      subtitle: Text(t.about.viewLicensesDescription),
-                      trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
-                      onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const LicensesScreen()));
-                      },
-                    ),
+                  SettingsGroup(
+                    children: [
+                      SettingNavigationTile(
+                        icon: Symbols.description_rounded,
+                        title: t.about.openSourceLicenses,
+                        subtitle: t.about.viewLicensesDescription,
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const LicensesScreen()));
+                        },
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 24),
