@@ -35,6 +35,8 @@ under `Notes`.
 - een mislukte refresh maakte de verbinding kapot in plaats van hem te markeren
 - de buildnummers van iOS, tvOS en macOS lopen weer gelijk
 - een mislukte persist van een rotatie blijft niet onopgemerkt
+- een geopende serie-detailpagina laat nieuwe afleveringen na afspelen zien
+- revalidatie mag een gelijktijdige load-more niet stilzwijgend overschrijven
 <!-- END GENERATED -->
 
 ### Fixed
