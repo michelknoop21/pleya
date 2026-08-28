@@ -51,16 +51,21 @@ void main() {
   }
 
   /// The sharp layer used to be top-anchored at `y = 0`, hiding its top edge
-  /// under the Dynamic Island. On a phone it now starts at the bottom of the
-  /// safe area and runs edge to edge.
-  group('full-width sharp layer under the safe area', () {
-    const inset = 62.0; // viewPadding.top, with nothing added
+  /// under the Dynamic Island. On a phone it now starts below whatever top
+  /// anchor the caller hands it (`DiscoverScreen` derives that from
+  /// `homeHeroSharpTopAnchors`; see home_hero_layout_test.dart) and runs edge
+  /// to edge. This widget only proves the primitive echoes an arbitrary
+  /// anchor — it does not know or care what it represents. No opaque anchor
+  /// here (top == opaque, so no blend band): that is covered by its own
+  /// group below.
+  group('full-width sharp layer at a caller-supplied inset', () {
+    const inset = 62.0; // an arbitrary inset handed to the primitive, not derived here
 
     HomeHeroArtGeometry fullWidth(double width, double height, BillboardArtKind kind) => homeHeroArtGeometry(
       screenWidth: width,
       heroHeight: height,
       kind: kind,
-      requestedSharpTopInset: inset,
+      requestedSharpTop: const HomeHeroSharpTopAnchors(top: inset, opaque: inset),
       presentation: HomeHeroSharpPresentation.fullWidth,
     );
 
@@ -85,7 +90,7 @@ void main() {
       );
     }
 
-    testWidgets('402pt square: left 0, top 62, width 402, height 402', (tester) async {
+    testWidgets('402pt square: left 0, at the given inset, width 402, height 402', (tester) async {
       await pumpFullWidth(tester, width: 402, height: 572, kind: BillboardArtKind.square);
 
       final rect = tester.getRect(find.byKey(HomeHeroArtwork.frameKey));
@@ -97,15 +102,49 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('402pt widescreen: left 0, top 62, width 402, height 226.1', (tester) async {
+    testWidgets('402pt widescreen: left 0, at the given inset, width 402, height 289.44', (tester) async {
       await pumpFullWidth(tester, width: 402, height: 572, kind: BillboardArtKind.widescreen);
 
       final rect = tester.getRect(find.byKey(HomeHeroArtwork.frameKey));
       expect(rect.left, closeTo(0, 0.5));
       expect(rect.top, closeTo(62, 0.5));
       expect(rect.width, closeTo(402, 0.5));
-      expect(rect.height, closeTo(402 * 9 / 16, 0.5));
+      // No longer 402 * 9/16: the box height is its own viewport-height
+      // formula (min(402 * 0.72, 292)), and `cover` crops the 16:9 source
+      // into it instead of the box following the source ratio.
+      expect(rect.height, closeTo(402 * 0.72, 0.5));
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the widescreen strip draws with BoxFit.cover and requests a widened transcode', (tester) async {
+      final client = _RecordingClient();
+      tester.view.physicalSize = const Size(402, 572);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await pumpArtwork(
+        tester,
+        client: client,
+        art: const BillboardArt(path: '/art', kind: BillboardArtKind.widescreen),
+        geometry: fullWidth(402, 572, BillboardArtKind.widescreen),
+        screenWidth: 402,
+        heroHeight: 572,
+      );
+
+      final rect = tester.getRect(find.byKey(HomeHeroArtwork.frameKey));
+      expect(rect.width, closeTo(402, 0.5), reason: 'still full width — cover crops, the box never narrows');
+      expect(rect.height, closeTo(402 * 0.72, 0.5));
+
+      final images = tester.widgetList<CachedNetworkImage>(find.byType(CachedNetworkImage)).toList();
+      expect(images.last.fit, BoxFit.cover, reason: 'the box is no longer the source ratio, contain would letterbox');
+
+      // Proof the request was widened, not just the display box: at dpr 1 the
+      // requested width should clear the 402pt box by a wide margin.
+      expect(client.requests, isNotEmpty);
+      final (requestedWidth, _) = client.requests.last;
+      expect(requestedWidth, isNotNull);
+      expect(requestedWidth!, greaterThan(420), reason: 'wider than the 402pt box, not clamped to it');
     });
 
     testWidgets('353 and 430pt also run edge to edge, both kinds, no overflow', (tester) async {
@@ -195,7 +234,7 @@ void main() {
       // rect. Had the Padding gone inside the mask, this would be `sharpHeight
       // + inset` tall and the 55% start would slide up the image.
       final maskRect = tester.getRect(find.byKey(HomeHeroArtwork.fadeKey));
-      expect(maskRect.height, closeTo(402 * 9 / 16, 0.5));
+      expect(maskRect.height, closeTo(402 * 0.72, 0.5));
       expect(maskRect.top, closeTo(inset, 0.5));
     });
 
@@ -222,7 +261,7 @@ void main() {
         screenWidth: 402,
         heroHeight: 572,
         kind: BillboardArtKind.square,
-        requestedSharpTopInset: 573,
+        requestedSharpTop: const HomeHeroSharpTopAnchors(top: 573, opaque: 573),
         presentation: HomeHeroSharpPresentation.fullWidth,
       );
       expect(geometry.hasSharpForeground, isFalse, reason: 'precondition');
@@ -262,14 +301,19 @@ void main() {
   /// its first pixel row jumps straight from ambient to fully sharp. Measured
   /// on a 402pt simulator screenshot, average row luminance went 20 -> 51 in a
   /// single row at y=62: a hard seam right under the Dynamic Island.
+  ///
+  /// [inset]/[opaque] mirror the real iPhone contract (`viewPadding.top` and
+  /// `homeHeroSharpOpaqueInset(statusBarHeight: 62)`), so the band under test
+  /// here is the real 64pt one, not an arbitrary non-zero value.
   group('top blend under the safe area', () {
     const inset = 62.0;
+    const opaque = 126.0;
 
     HomeHeroArtGeometry fw(double width, double height, BillboardArtKind kind) => homeHeroArtGeometry(
       screenWidth: width,
       heroHeight: height,
       kind: kind,
-      requestedSharpTopInset: inset,
+      requestedSharpTop: const HomeHeroSharpTopAnchors(top: inset, opaque: opaque),
       presentation: HomeHeroSharpPresentation.fullWidth,
     );
 
@@ -295,7 +339,7 @@ void main() {
           final band = g.sharpTopBlendHeight;
           final label = 'w=$width kind=$kind band=$band';
 
-          expect(band, inInclusiveRange(36.0, 64.0), reason: label);
+          expect(band, closeTo(opaque - inset, 0.001), reason: label);
 
           final mask = HomeHeroArtwork.verticalFadeMask(
             sharpHeight: g.sharpHeight,
@@ -304,7 +348,12 @@ void main() {
           );
           expect(mask.colors.first.a, 0.0, reason: 'top edge is fully transparent: $label');
           expect(alphaAt(mask, 0, g.sharpHeight), closeTo(0.0, 0.001), reason: label);
-          expect(alphaAt(mask, band / 2, g.sharpHeight), closeTo(0.5, 0.05), reason: 'ramps: $label');
+          // The four points the cubic ease-in (t^3) is specified against,
+          // read from the actual generated gradient rather than from the
+          // `topBlendAlpha` helper directly — so a stops/colours list wired
+          // up wrong still fails this even if the helper itself is correct.
+          expect(alphaAt(mask, band * 4 / 8, g.sharpHeight), closeTo(0.125, 0.01), reason: 't=4/8: $label');
+          expect(alphaAt(mask, band * 7 / 8, g.sharpHeight), closeTo(0.6699, 0.01), reason: 't=7/8: $label');
           expect(alphaAt(mask, band, g.sharpHeight), closeTo(1.0, 0.001), reason: 'opaque after the band: $label');
           // Still opaque through the middle, all the way to the bottom fade.
           final bottomFadeStart = g.sharpHeight - g.sharpFadeHeight;
@@ -314,7 +363,12 @@ void main() {
             closeTo(0.0, 0.001),
             reason: 'bottom fade intact: $label',
           );
-          expect(mask.stops!, orderedEquals(List.of(mask.stops!)..sort()), reason: 'stops ascend: $label');
+          // Non-decreasing, not strictly ascending: on a short layer the last
+          // ease-in stop can land exactly on fadeStart (see the clamp test
+          // below), where both are the colour white at the same position.
+          for (var i = 1; i < mask.stops!.length; i++) {
+            expect(mask.stops![i], greaterThanOrEqualTo(mask.stops![i - 1]), reason: 'stops=${mask.stops}: $label');
+          }
         }
       }
     });
@@ -341,6 +395,20 @@ void main() {
       }
     });
 
+    test('a zero band still gives exactly the three-stop ramp this mask has always had', () {
+      final mask = HomeHeroArtwork.verticalFadeMask(sharpHeight: 226.125, fadeHeight: 101.76, topBlendHeight: 0);
+      expect(mask.stops, hasLength(3));
+      expect(mask.colors, hasLength(3));
+      expect(mask.colors.first.a, 1.0, reason: 'opaque at the very top, no fade-in');
+    });
+
+    test('topBlendAlpha is the cubic ease-in the top band is specified against', () {
+      expect(HomeHeroArtwork.topBlendAlpha(0), 0);
+      expect(HomeHeroArtwork.topBlendAlpha(0.5), closeTo(0.125, 0.0001));
+      expect(HomeHeroArtwork.topBlendAlpha(7 / 8), closeTo(0.6699, 0.0001));
+      expect(HomeHeroArtwork.topBlendAlpha(1), 1);
+    });
+
     test('a layer too short for both bands keeps its stops ascending', () {
       // Contrived: the top band would otherwise overlap the bottom fade.
       final mask = HomeHeroArtwork.verticalFadeMask(sharpHeight: 50, fadeHeight: 30, topBlendHeight: 40);
@@ -361,6 +429,7 @@ void main() {
           requestHeight: h,
           sharpFadeHeight: h * 0.45,
           sharpTopInset: inset,
+          sharpOpaqueTopInset: opaque,
           hasSharpForeground: true,
           useAmbientLayer: true,
           coversHero: false,
@@ -498,7 +567,7 @@ void main() {
         screenWidth: 402,
         heroHeight: 572,
         kind: BillboardArtKind.widescreen,
-        requestedSharpTopInset: 62,
+        requestedSharpTop: const HomeHeroSharpTopAnchors(top: 62, opaque: 62),
         presentation: HomeHeroSharpPresentation.fullWidth,
       );
       await pumpArtwork(
@@ -536,7 +605,7 @@ void main() {
         screenWidth: 402,
         heroHeight: 572,
         kind: BillboardArtKind.widescreen,
-        requestedSharpTopInset: 62,
+        requestedSharpTop: const HomeHeroSharpTopAnchors(top: 62, opaque: 62),
         presentation: HomeHeroSharpPresentation.fullWidth,
       );
       await pumpArtwork(

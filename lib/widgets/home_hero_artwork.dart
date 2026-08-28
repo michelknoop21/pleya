@@ -156,9 +156,10 @@ class HomeHeroArtwork extends StatelessWidget {
   /// it always ends fully transparent) can be pinned without pumping a
   /// widget tree.
   /// [topBlendHeight] adds a matching fade-in at the top edge, for a full-width
-  /// layer whose first row would otherwise butt straight against the ambient
-  /// layer and draw a hard seam. Zero (the default, and every island) returns
-  /// exactly the three-stop ramp this mask has always had.
+  /// layer that is drawn behind the control row and needs to still read
+  /// mostly-ambient there, not butt straight against it and draw a hard seam.
+  /// Zero (the default, and every island) returns exactly the three-stop ramp
+  /// this mask has always had.
   @visibleForTesting
   static LinearGradient verticalFadeMask({
     required double sharpHeight,
@@ -177,13 +178,32 @@ class HomeHeroArtwork extends StatelessWidget {
     // Clamped against `fadeStart` so the stops never stop ascending on a layer
     // too short to hold both bands.
     final topStop = (topBlendHeight / sharpHeight).clamp(0.0, fadeStart);
+    // Eight linear segments approximating the cubic ease-in below, sampled at
+    // t = 0, 1/8, ..., 8/8: with 8 steps, t = 4/8 and t = 7/8 land exactly on
+    // a stop, so the curve's two specified control points (0.125 at the
+    // halfway point, ~0.67 at 7/8) are sampled exactly rather than linearly
+    // interpolated between neighbouring stops.
+    final easeSteps = List<double>.generate(9, (k) => k / 8);
     return LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
-      colors: const [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
-      stops: [0.0, topStop, fadeStart, 1.0],
+      colors: [
+        for (final t in easeSteps) Colors.white.withValues(alpha: topBlendAlpha(t)),
+        Colors.white,
+        Colors.transparent,
+      ],
+      stops: [for (final t in easeSteps) t * topStop, fadeStart, 1.0],
     );
   }
+
+  /// Cubic ease-in used for the top blend band: slow to start, so the layer
+  /// stays mostly ambient behind the control row and only races to fully
+  /// sharp in the last stretch before it. A linear ramp over the same band
+  /// would already be ~88% opaque by the bottom of the row, putting a
+  /// near-sharp subject right behind the buttons — the exact seam this band
+  /// exists to hide.
+  @visibleForTesting
+  static double topBlendAlpha(double t) => t * t * t;
 
   /// Alpha mask for the square island's left/right blend. See
   /// [verticalFadeMask] for why only the alpha ramp matters.
@@ -326,10 +346,13 @@ class HomeHeroArtwork extends StatelessWidget {
       cacheKey: cacheKey,
       cacheManager: PlexImageCacheManager.instance,
       // A full-bleed frame (`coversHero`) fills a box with a different ratio
-      // than the source, so it still needs `cover`. The island frame is
-      // already sized to the source's own ratio (see `homeHeroArtGeometry`),
-      // so `contain` there is crop-free rather than a no-op.
-      fit: geometry.coversHero ? BoxFit.cover : BoxFit.contain,
+      // than the source, so it still needs `cover`. Same for the full-width
+      // widescreen strip on a narrow phone (`sharpUsesCoverFit`): its box
+      // height is no longer derived from the 16:9 source, so `cover` crops
+      // left/right instead of letterboxing. Every other frame is already
+      // sized to the source's own ratio (see `homeHeroArtGeometry`), so
+      // `contain` there is crop-free rather than a no-op.
+      fit: (geometry.coversHero || geometry.sharpUsesCoverFit) ? BoxFit.cover : BoxFit.contain,
       alignment: Alignment.topCenter,
       memCacheHeight: memHeight,
       placeholder: (context, url) => ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
@@ -380,7 +403,10 @@ class HomeHeroArtwork extends StatelessWidget {
 
     // The inset sits *outside* both ShaderMasks on purpose. Inside, the mask
     // rect would span `sharpHeight + sharpTopInset` and the blend would start
-    // proportionally higher up the image than the 55% it is calibrated at.
+    // proportionally higher up the image than the 55% it is calibrated at —
+    // now more load-bearing than before: with a 64pt top band, folding the
+    // inset into the mask would shift `fadeStart` by 64/sharpHeight instead
+    // of leaving it exactly where `sharpTopBlendHeight` says it is.
     return Align(
       alignment: Alignment.topCenter,
       child: Padding(

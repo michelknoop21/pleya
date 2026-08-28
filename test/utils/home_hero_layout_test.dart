@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart' show kMinInteractiveDimension;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_item.dart' show BillboardArtKind;
 import 'package:pleya/utils/home_hero_layout.dart';
@@ -298,18 +301,65 @@ void main() {
   });
 
   /// The sharp layer used to be top-anchored at `y = 0`, which on an iPhone
-  /// hid its top edge under the Dynamic Island. `requestedSharpTopInset` moves
-  /// it clear, and `presentation` decides the composition: edge-to-edge on a
-  /// phone, the 0.82 island everywhere else.
+  /// hid its top edge under the Dynamic Island. `requestedSharpTop` moves its
+  /// top edge clear and, on iPhone portrait, tells it where to become fully
+  /// opaque; `presentation` decides the composition: edge-to-edge on a phone,
+  /// the 0.82 island everywhere else.
   ///
-  /// The inset only ever offsets. An earlier attempt shrank the layer by the
-  /// inset and let the width follow the source ratio, which turned a 402pt
-  /// hero into a 320pt centred card.
+  /// The top anchor only ever offsets. An earlier attempt shrank the layer by
+  /// the inset and let the width follow the source ratio, which turned a
+  /// 402pt hero into a 320pt centred card.
+  group('homeHeroSharpOpaqueInset', () {
+    test('adds the control row and its padding on top of the safe-area', () {
+      expect(homeHeroSharpOpaqueInset(statusBarHeight: 62), closeTo(126, 0.001));
+      expect(homeHeroSharpOpaqueInset(statusBarHeight: 20), closeTo(84, 0.001));
+      expect(homeHeroSharpOpaqueInset(statusBarHeight: 0), closeTo(64, 0.001));
+      expect(homeHeroSharpOpaqueInset(statusBarHeight: 59), closeTo(123, 0.001));
+    });
+
+    test('matches the sum of the four shared constants, not a copied literal', () {
+      for (final statusBarHeight in [0.0, 20.0, 59.0, 62.0]) {
+        expect(
+          homeHeroSharpOpaqueInset(statusBarHeight: statusBarHeight),
+          closeTo(
+            statusBarHeight + homeAppBarControlVerticalPadding + homeAppBarControlRowHeight + homeHeroArtworkTopGap,
+            0.001,
+          ),
+          reason: 'statusBarHeight=$statusBarHeight',
+        );
+      }
+    });
+
+    test('the control row height matches a Material tap target', () {
+      expect(homeAppBarControlRowHeight, kMinInteractiveDimension);
+    });
+
+    test('the outer bottom padding is not part of the formula', () {
+      // It belongs to the appbar box's own layout tail, not to the artwork
+      // above it — pinned here so it never sneaks into the sum above.
+      expect(homeAppBarOuterBottomPadding, 8.0);
+      expect(
+        homeHeroSharpOpaqueInset(statusBarHeight: 62),
+        isNot(
+          closeTo(
+            62 +
+                homeAppBarControlVerticalPadding +
+                homeAppBarControlRowHeight +
+                homeHeroArtworkTopGap +
+                homeAppBarOuterBottomPadding,
+            0.001,
+          ),
+        ),
+      );
+    });
+  });
+
   group('homeHeroArtGeometry with a sharp top inset', () {
     const phones = [(353.0, 500.0), (402.0, 572.0), (430.0, 650.0)];
     const kinds = [BillboardArtKind.square, BillboardArtKind.widescreen];
 
-    /// The iPhone case: `viewPadding.top`, with nothing added to it.
+    /// The iPhone case: `viewPadding.top`, with nothing added to it — no
+    /// opaque anchor, so no fade-in band either.
     const inset = 62.0;
 
     HomeHeroArtGeometry fullWidth(double width, double height, BillboardArtKind kind, {double topInset = inset}) =>
@@ -317,7 +367,7 @@ void main() {
           screenWidth: width,
           heroHeight: height,
           kind: kind,
-          requestedSharpTopInset: topInset,
+          requestedSharpTop: HomeHeroSharpTopAnchors(top: topInset, opaque: topInset),
           presentation: HomeHeroSharpPresentation.fullWidth,
         );
 
@@ -334,15 +384,21 @@ void main() {
       }
     });
 
-    test('the source ratio survives exactly: square 1:1, widescreen 16:9', () {
+    test('the square branch holds its source ratio exactly; the widescreen strip gets its own box height', () {
       for (final (width, height) in phones) {
         final square = fullWidth(width, height, BillboardArtKind.square);
         expect(square.sharpHeight, closeTo(width, 0.001), reason: 'w=$width');
         expect(square.sharpWidth / square.sharpHeight, closeTo(1.0, 0.001), reason: 'w=$width');
 
+        // The widescreen box is no longer derived from the 16:9 source: its
+        // height is `min(width * 0.72, 292)`, clamped by whatever the hero
+        // leaves under the inset — `cover` crops the source to fit, it does
+        // not shrink the box.
         final wide = fullWidth(width, height, BillboardArtKind.widescreen);
-        expect(wide.sharpHeight, closeTo(width * 9 / 16, 0.001), reason: 'w=$width');
-        expect(wide.sharpWidth / wide.sharpHeight, closeTo(16 / 9, 0.001), reason: 'w=$width');
+        final expectedHeight = math.min(math.min(width * 0.72, 292.0), height - inset);
+        expect(wide.sharpHeight, closeTo(expectedHeight, 0.01), reason: 'w=$width');
+        expect(wide.sharpWidth, closeTo(width, 0.001), reason: 'still full width: w=$width');
+        expect(wide.sharpUsesCoverFit, isTrue, reason: 'w=$width');
       }
     });
 
@@ -359,38 +415,108 @@ void main() {
           expect(at0.sharpTopInset, 0, reason: label);
           // The whole layer moves down by the inset, nothing is trimmed.
           expect(at62.sharpTopInset + at62.sharpHeight, closeTo(at0.sharpHeight + inset, 0.001), reason: label);
+
+          // Neither does the opaque anchor: it only shifts where the layer
+          // reaches full opacity, never its size.
+          final withOpaque = homeHeroArtGeometry(
+            screenWidth: width,
+            heroHeight: height,
+            kind: kind,
+            requestedSharpTop: const HomeHeroSharpTopAnchors(top: 62, opaque: 126),
+            presentation: HomeHeroSharpPresentation.fullWidth,
+          );
+          expect(withOpaque.sharpWidth, closeTo(at62.sharpWidth, 0.001), reason: 'width unchanged: $label');
+          expect(withOpaque.sharpHeight, closeTo(at62.sharpHeight, 0.001), reason: 'height unchanged: $label');
+          expect(withOpaque.sharpOpaqueTopInset, closeTo(126, 0.001), reason: label);
         }
       }
     });
 
-    test('sharpTopInset is viewPadding.top, with no breathing room added', () {
+    test('the geometry echoes whatever anchors it is handed', () {
+      // homeHeroArtGeometry never derives the anchors itself — they are a
+      // pure offset, and it is the caller's job (homeHeroSharpTopAnchors,
+      // exercised above) to decide what they mean.
       for (final topInset in [0.0, 44.0, 59.0, 62.0]) {
         final g = fullWidth(402, 572, BillboardArtKind.widescreen, topInset: topInset);
         expect(g.sharpTopInset, closeTo(topInset, 0.001), reason: 'topInset=$topInset');
       }
+
+      // An incoherent pair (opaque above top) reads as "no blend", not as a
+      // negative band.
+      final incoherent = homeHeroArtGeometry(
+        screenWidth: 402,
+        heroHeight: 572,
+        kind: BillboardArtKind.widescreen,
+        requestedSharpTop: const HomeHeroSharpTopAnchors(top: 62, opaque: 10),
+        presentation: HomeHeroSharpPresentation.fullWidth,
+      );
+      expect(incoherent.sharpTopInset, closeTo(62, 0.001));
+      expect(incoherent.sharpOpaqueTopInset, closeTo(62, 0.001), reason: 'clamped up to the top anchor');
+      expect(incoherent.sharpTopBlendHeight, 0);
     });
 
-    test('the request size matches the sharp rect exactly', () {
-      for (final (width, height) in phones) {
-        for (final kind in kinds) {
-          final g = fullWidth(width, height, kind);
-          final label = 'w=$width h=$height kind=$kind';
-          expect(g.requestWidth, g.sharpWidth, reason: label);
-          expect(g.requestHeight, g.sharpHeight, reason: label);
+    test(
+      'the request size matches the sharp rect exactly, except the widescreen strip which requests wider for its cover crop',
+      () {
+        for (final (width, height) in phones) {
+          for (final kind in kinds) {
+            final g = fullWidth(width, height, kind);
+            final label = 'w=$width h=$height kind=$kind';
+            expect(g.requestHeight, g.sharpHeight, reason: label);
+            if (kind == BillboardArtKind.widescreen) {
+              // The box is no longer 16:9, so the transcode request asks for
+              // the full 16:9-ratio width at the target height instead of the
+              // (narrower) box width — otherwise `BoxFit.cover` would crop a
+              // too-small image rather than the source.
+              expect(g.requestWidth, closeTo(g.sharpHeight * 16 / 9, 0.01), reason: label);
+            } else {
+              expect(g.requestWidth, g.sharpWidth, reason: label);
+            }
+          }
         }
-      }
-    });
+      },
+    );
 
     test('the 402pt iPhone lands on the numbers this change was specified with', () {
-      final square = fullWidth(402, 572, BillboardArtKind.square);
+      // This is the caller's contract, not the primitive's: DiscoverScreen
+      // passes homeHeroSharpTopAnchors(statusBarHeight: 62) — top at the raw
+      // 62pt safe-area, opaque at homeHeroSharpOpaqueInset(...) == 126.
+      final anchors = homeHeroSharpTopAnchors(statusBarHeight: 62);
+      expect(anchors.top, closeTo(62, 0.001));
+      expect(anchors.opaque, closeTo(126, 0.001));
+      expect(anchors.blend, closeTo(64, 0.001));
+
+      final square = homeHeroArtGeometry(
+        screenWidth: 402,
+        heroHeight: 572,
+        kind: BillboardArtKind.square,
+        requestedSharpTop: anchors,
+        presentation: HomeHeroSharpPresentation.fullWidth,
+      );
       expect(square.sharpWidth, closeTo(402, 0.01));
       expect(square.sharpHeight, closeTo(402, 0.01));
       expect(square.sharpTopInset, closeTo(62, 0.01));
+      expect(square.sharpOpaqueTopInset, closeTo(126, 0.01));
+      expect(square.sharpTopBlendHeight, closeTo(64, 0.01));
 
-      final wide = fullWidth(402, 572, BillboardArtKind.widescreen);
+      final wide = homeHeroArtGeometry(
+        screenWidth: 402,
+        heroHeight: 572,
+        kind: BillboardArtKind.widescreen,
+        requestedSharpTop: anchors,
+        presentation: HomeHeroSharpPresentation.fullWidth,
+      );
       expect(wide.sharpWidth, closeTo(402, 0.01));
-      expect(wide.sharpHeight, closeTo(226.125, 0.01));
+      // 402 * 0.72 = 289.44, under the 292 cap and under the 510pt this hero
+      // leaves under the inset — the fraction wins.
+      expect(wide.sharpHeight, closeTo(289.44, 0.01));
       expect(wide.sharpTopInset, closeTo(62, 0.01));
+      expect(wide.sharpOpaqueTopInset, closeTo(126, 0.01));
+      expect(wide.sharpTopBlendHeight, closeTo(64, 0.01));
+      // This is the one shape whose request width diverges from its box
+      // width: the box height no longer matches the source's 16:9 ratio, so
+      // the request asks for the full ratio at the target height.
+      expect(wide.requestWidth, closeTo(289.44 * 16 / 9, 0.01));
     });
 
     test('the fade band stays at 45% of the sharp height', () {
@@ -410,7 +536,7 @@ void main() {
             screenWidth: width,
             heroHeight: height,
             kind: kind,
-            requestedSharpTopInset: 0,
+            requestedSharpTop: HomeHeroSharpTopAnchors.none,
             presentation: HomeHeroSharpPresentation.island,
           );
           final label = 'w=$width h=$height kind=$kind';
@@ -440,16 +566,17 @@ void main() {
       }
     });
 
-    test('the full-bleed branch ignores both the inset and the presentation', () {
+    test('the full-bleed branch ignores both the anchors and the presentation', () {
       final wideBox = homeHeroArtGeometry(
         screenWidth: 1280,
         heroHeight: 500,
         kind: BillboardArtKind.widescreen,
-        requestedSharpTopInset: 62,
+        requestedSharpTop: const HomeHeroSharpTopAnchors(top: 62, opaque: 126),
         presentation: HomeHeroSharpPresentation.fullWidth,
       );
       expect(wideBox.coversHero, isTrue);
       expect(wideBox.sharpTopInset, 0);
+      expect(wideBox.sharpOpaqueTopInset, 0);
       expect(wideBox.sharpHeight, 500);
       expect(wideBox.sharpWidth, 1280);
 
@@ -457,11 +584,12 @@ void main() {
         screenWidth: 402,
         heroHeight: 572,
         kind: BillboardArtKind.fallback,
-        requestedSharpTopInset: 62,
+        requestedSharpTop: const HomeHeroSharpTopAnchors(top: 62, opaque: 126),
         presentation: HomeHeroSharpPresentation.fullWidth,
       );
       expect(fallback.coversHero, isTrue);
       expect(fallback.sharpTopInset, 0);
+      expect(fallback.sharpOpaqueTopInset, 0);
       expect(fallback.sharpHeight, 572);
       expect(fallback.sharpWidth, 402);
     });
@@ -476,7 +604,7 @@ void main() {
         screenWidth: 375,
         heroHeight: 360,
         kind: BillboardArtKind.square,
-        requestedSharpTopInset: 20,
+        requestedSharpTop: const HomeHeroSharpTopAnchors(top: 20, opaque: 20),
         presentation: HomeHeroSharpPresentation.fullWidth,
       );
       expect(g.sharpHeight, closeTo(340, 0.001), reason: 'heroHeight 360 minus the 20pt inset');
@@ -484,42 +612,105 @@ void main() {
       expect(g.sharpTopInset + g.sharpHeight, lessThanOrEqualTo(360.001), reason: 'fits under the inset');
     });
 
-    test('a short hero clamps the full-width widescreen strip on its height, keeping 16:9', () {
+    test('a square source on a real 402pt iPhone: no size change once the top moves to 62', () {
+      // heroHeight 470 is above the new fitScale-1 threshold (>= 464) but
+      // below the old one (>= 528): under the old 126pt inset this would have
+      // scaled down; under the new 62pt top anchor it does not.
+      final anchors = homeHeroSharpTopAnchors(statusBarHeight: 62);
+      final g = homeHeroArtGeometry(
+        screenWidth: 402,
+        heroHeight: 470,
+        kind: BillboardArtKind.square,
+        requestedSharpTop: anchors,
+        presentation: HomeHeroSharpPresentation.fullWidth,
+      );
+      expect(g.sharpWidth, closeTo(402, 0.001));
+      expect(g.sharpHeight, closeTo(402, 0.001));
+      expect(g.sharpTopInset, closeTo(62, 0.001));
+      expect(g.sharpTopBlendHeight, closeTo(64, 0.001));
+    });
+
+    test('a square source below the new threshold is genuinely larger than the old inset gave it', () {
+      // heroHeight 410 is below both thresholds, so both old (126) and new
+      // (62) insets scale the layer down — but the new one leaves 64pt more
+      // room, so the layer (and its bottom fade) comes out larger, not just
+      // shifted.
+      const oldInset = 126.0;
+      final old = homeHeroArtGeometry(
+        screenWidth: 402,
+        heroHeight: 410,
+        kind: BillboardArtKind.square,
+        requestedSharpTop: const HomeHeroSharpTopAnchors(top: oldInset, opaque: oldInset),
+        presentation: HomeHeroSharpPresentation.fullWidth,
+      );
+      final anchors = homeHeroSharpTopAnchors(statusBarHeight: 62);
+      final g = homeHeroArtGeometry(
+        screenWidth: 402,
+        heroHeight: 410,
+        kind: BillboardArtKind.square,
+        requestedSharpTop: anchors,
+        presentation: HomeHeroSharpPresentation.fullWidth,
+      );
+      expect(old.sharpHeight, closeTo(284.0, 0.5), reason: '410 - 126, scaled 1:1');
+      expect(g.sharpHeight, closeTo(348.0, 0.5), reason: '410 - 62, scaled 1:1');
+      expect(g.sharpHeight - old.sharpHeight, closeTo(64.0, 0.5), reason: 'the full 64pt shows up as size, not shift');
+      expect(g.sharpWidth, closeTo(g.sharpHeight, 0.001), reason: 'still exactly 1:1');
+      expect(g.sharpFadeHeight, greaterThan(old.sharpFadeHeight), reason: 'the bottom fade scales with the layer');
+    });
+
+    test('a short hero clamps the full-width widescreen strip on its height, keeping it full width', () {
       // 375/270 = 1.389, just inside the 1.39 narrow-box threshold, so this
       // still takes the island/full-width path rather than the full-bleed one.
-      // Natural 16:9 height is 210.9 and only 208 is left under a 62pt inset.
+      // The box's natural height (min(375*0.72, 292) = 270) is taller than the
+      // 208pt left under a 62pt inset, so the height clamp bites.
       final g = homeHeroArtGeometry(
         screenWidth: 375,
         heroHeight: 270,
         kind: BillboardArtKind.widescreen,
-        requestedSharpTopInset: 62,
+        requestedSharpTop: const HomeHeroSharpTopAnchors(top: 62, opaque: 62),
         presentation: HomeHeroSharpPresentation.fullWidth,
       );
       expect(g.coversHero, isFalse, reason: 'precondition: still a narrow box');
       expect(g.sharpHeight, closeTo(208, 0.001), reason: '270 minus the 62pt inset');
-      expect(g.sharpWidth / g.sharpHeight, closeTo(16 / 9, 0.001), reason: 'still exactly 16:9');
       expect(g.sharpTopInset + g.sharpHeight, lessThanOrEqualTo(270.001));
-      expect(g.sharpWidth, lessThan(375), reason: 'width follows the ratio down');
+      // Unlike the old contain-fit box, the height clamp never shrinks the
+      // width: `cover` crops the source instead, so the strip stays edge to
+      // edge.
+      expect(g.sharpWidth, closeTo(375, 0.001), reason: 'stays full width');
+      expect(g.sharpUsesCoverFit, isTrue);
     });
 
-    test('every full-width layer fits under its own inset, across a sweep of hero heights', () {
+    test('every full-width layer fits under its own anchors, across a sweep of hero heights', () {
       for (final width in [353.0, 375.0, 402.0, 430.0]) {
         for (final height in [360.0, 400.0, 460.0, 500.0, 572.0, 650.0]) {
           for (final kind in [BillboardArtKind.square, BillboardArtKind.widescreen]) {
-            for (final inset in [0.0, 44.0, 62.0, 59.0]) {
+            for (final top in [0.0, 44.0, 62.0, 59.0]) {
+              // Mirrors the real iPhone contract (opaque 64pt past top) so the
+              // sweep also exercises sharpTopBlendHeight's own clamp, not just
+              // the position math.
               final g = homeHeroArtGeometry(
                 screenWidth: width,
                 heroHeight: height,
                 kind: kind,
-                requestedSharpTopInset: inset,
+                requestedSharpTop: HomeHeroSharpTopAnchors(top: top, opaque: top + 64),
                 presentation: HomeHeroSharpPresentation.fullWidth,
               );
               if (!g.hasSharpForeground) continue;
-              final label = 'w=$width h=$height kind=$kind inset=$inset';
+              final label = 'w=$width h=$height kind=$kind top=$top';
               expect(g.sharpTopInset + g.sharpHeight, lessThanOrEqualTo(height + 0.001), reason: label);
               expect(g.sharpWidth, lessThanOrEqualTo(width + 0.001), reason: label);
-              final ratio = kind == BillboardArtKind.square ? 1.0 : 16 / 9;
-              expect(g.sharpWidth / g.sharpHeight, closeTo(ratio, 0.001), reason: 'ratio held: $label');
+              if (kind == BillboardArtKind.square) {
+                expect(g.sharpWidth / g.sharpHeight, closeTo(1.0, 0.001), reason: 'ratio held: $label');
+              } else {
+                // The widescreen strip no longer holds the source ratio in
+                // its own box — it stays full width and lets `cover` crop.
+                expect(g.sharpWidth, closeTo(width, 0.001), reason: 'always full width: $label');
+                expect(
+                  g.sharpHeight,
+                  lessThanOrEqualTo(math.min(width * 0.72, 292.0) + 0.001),
+                  reason: 'clamped by the viewport-height formula: $label',
+                );
+              }
               expect(
                 g.sharpTopBlendHeight + g.sharpFadeHeight,
                 lessThanOrEqualTo(g.sharpHeight + 0.001),
@@ -529,6 +720,45 @@ void main() {
           }
         }
       }
+    });
+
+    test('the widescreen strip height formula: fraction, cap, and available-height each get their own case', () {
+      // Fraction bites: 402 * 0.72 = 289.44, well under the 292 cap and under
+      // what a tall hero leaves under the inset.
+      final fractionWins = homeHeroArtGeometry(
+        screenWidth: 402,
+        heroHeight: 800,
+        kind: BillboardArtKind.widescreen,
+        requestedSharpTop: const HomeHeroSharpTopAnchors(top: 62, opaque: 62),
+        presentation: HomeHeroSharpPresentation.fullWidth,
+      );
+      expect(fractionWins.sharpHeight, closeTo(289.44, 0.01));
+      expect(fractionWins.sharpWidth, closeTo(402, 0.001));
+
+      // Cap bites: 500 * 0.72 = 360 > 292, so the 292 ceiling wins on a wide
+      // phone/tall hero, not the fraction.
+      final capWins = homeHeroArtGeometry(
+        screenWidth: 500,
+        heroHeight: 800,
+        kind: BillboardArtKind.widescreen,
+        requestedSharpTop: const HomeHeroSharpTopAnchors(top: 62, opaque: 62),
+        presentation: HomeHeroSharpPresentation.fullWidth,
+      );
+      expect(capWins.sharpHeight, closeTo(292.0, 0.01));
+      expect(capWins.sharpWidth, closeTo(500, 0.001));
+
+      // availableSharpHeight bites: a short hero leaves less room than either
+      // the fraction or the cap would ask for, and the strip stays full width
+      // regardless — `cover` crops the source, the box never narrows.
+      final availableWins = homeHeroArtGeometry(
+        screenWidth: 402,
+        heroHeight: 300,
+        kind: BillboardArtKind.widescreen,
+        requestedSharpTop: const HomeHeroSharpTopAnchors(top: 62, opaque: 62),
+        presentation: HomeHeroSharpPresentation.fullWidth,
+      );
+      expect(availableWins.sharpHeight, closeTo(238, 0.01), reason: '300 - 62');
+      expect(availableWins.sharpWidth, closeTo(402, 0.001));
     });
 
     test('the full-bleed branch reports the presentation it was handed', () {

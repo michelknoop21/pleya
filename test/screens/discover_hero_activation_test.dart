@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,6 +42,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/utils/home_hero_layout.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/utils/video_player_navigation.dart';
 import 'package:pleya/watch_together/watch_together.dart';
@@ -473,8 +475,13 @@ void main() {
   });
 
   /// The hero's sharp artwork island is top-anchored, so on an iPhone its top
-  /// edge lands under the Dynamic Island. `requestedSharpTopInset` pushes it
-  /// clear, gated to iPhone-portrait only.
+  /// edge used to land under the Dynamic Island, and after that fix, under the
+  /// overlaid appbar's own title/actions row — a hard seam right under it, or
+  /// a grey-blue haze if the fade-in band was stretched to hide it.
+  /// `requestedSharpTop` now starts the layer at the hardware safe area and
+  /// draws it *behind* the whole control row, fading it in across the row so
+  /// it reaches full opacity `homeHeroArtworkTopGap` below it — gated to
+  /// iPhone-portrait only.
   ///
   /// These drive the real screen, not the pure layout function: the gate reads
   /// `Theme.of(context).platform`, `MediaQuery.orientationOf` and
@@ -485,7 +492,7 @@ void main() {
   /// allowed to move: hero height, the content column's bottom anchor, the
   /// pagination row, and the "Verder kijken" heading below the hero. The
   /// expected numbers are the measured pre-change baseline.
-  group('sharp layer clears the Dynamic Island', () {
+  group('sharp layer runs behind the control row', () {
     /// Baseline captured before the change, with the same fixtures.
     const paginationBottomPortrait = 665.31, headingTopPortrait = 685.31;
     const paginationBottomLandscape = 313.64, headingTopLandscape = 333.64;
@@ -501,6 +508,7 @@ void main() {
       required double expectedFrameWidth,
       required double expectedFrameHeight,
       String? heroArtPath,
+      bool checkControlRowGap = false,
     }) async {
       await pumpDiscover(
         tester,
@@ -528,12 +536,42 @@ void main() {
       expect(pagination.bottom, closeTo(expectedPaginationBottom, 0.5), reason: 'pagination moved: $label');
       expect(heading.top, closeTo(expectedHeadingTop, 0.5), reason: '"Verder kijken" moved: $label');
 
+      if (checkControlRowGap) {
+        // The anchor is the control row itself (the 48pt tap-target Row), not
+        // the appbar's decorated box around it: the box's own bottom padding
+        // belongs to its layout tail, not to the artwork above it.
+        final controls = tester.getRect(find.byKey(DiscoverScreen.appBarControlsKey));
+        // The layer's own top sits at the safe area and runs *behind* the
+        // control row — it no longer clears it. What still lands
+        // homeHeroArtworkTopGap below the row is the point where the top
+        // blend finishes, i.e. frame.top + the blend band.
+        final blend = homeHeroSharpTopAnchors(statusBarHeight: topViewPadding).blend;
+        expect(frame.top, closeTo(topViewPadding, 0.5), reason: 'sharp layer starts at the safe area: $label');
+        expect(
+          frame.top + blend,
+          closeTo(controls.bottom + homeHeroArtworkTopGap, 0.5),
+          reason: 'sharp layer reaches full opacity homeHeroArtworkTopGap below the control row: $label',
+        );
+        expect(frame.top, lessThan(controls.bottom), reason: 'sharp layer runs behind the control row: $label');
+        expect(frame.left, closeTo(0, 0.5), reason: 'still runs edge to edge: $label');
+        expect(frame.width, closeTo(size.width, 0.5), reason: 'still full width, not shrunk: $label');
+
+        final artwork = tester.getRect(find.byKey(HomeHeroArtwork.artworkKey));
+        final ambient = tester.getRect(find.byKey(HomeHeroArtwork.ambientKey));
+        expect(ambient.top, lessThanOrEqualTo(0), reason: 'ambient wash still covers y=0: $label');
+        expect(
+          ambient.bottom,
+          greaterThanOrEqualTo(artwork.bottom),
+          reason: 'ambient wash still covers the hero floor: $label',
+        );
+      }
+
       expect(tester.takeException(), isNull, reason: label);
       addTearDown(() async => tester.pumpWidget(const SizedBox.shrink()));
       return frame;
     }
 
-    testWidgets('iPhone portrait with a 62pt inset starts the sharp layer at 70', (tester) async {
+    testWidgets('iPhone portrait with a 62pt safe area starts the sharp layer at the safe area', (tester) async {
       final frame = await pumpAndMeasureFrame(
         tester,
         size: const Size(402, 874),
@@ -544,15 +582,20 @@ void main() {
         // Edge to edge: the full canvas width, square source so height == width.
         expectedFrameWidth: 402,
         expectedFrameHeight: 402,
+        checkControlRowGap: true,
       );
-      expect(frame.top, closeTo(62, 0.5), reason: 'exactly viewPadding.top, nothing added');
+      expect(frame.top, closeTo(62, 0.5), reason: 'viewPadding.top, not homeHeroSharpOpaqueInset(statusBarHeight: 62)');
       expect(frame.left, closeTo(0, 0.5), reason: 'starts at the left edge');
       expect(frame.right, closeTo(402, 0.5), reason: 'runs to the right edge');
     });
 
-    testWidgets('iPhone portrait, widescreen source: full width at the safe-area edge', (tester) async {
+    testWidgets('iPhone portrait, widescreen source: full width behind the control row', (tester) async {
       // What the app actually shows most of the time — a 16:9 backdrop. This
       // is the case that regressed to a 320pt centred card.
+      //
+      // The strip height is no longer 402 * 9/16: it is the strip's own
+      // viewport-height formula (min(402 * 0.72, 292)), with `BoxFit.cover`
+      // cropping the 16:9 source into a taller box.
       final frame = await pumpAndMeasureFrame(
         tester,
         size: const Size(402, 874),
@@ -561,12 +604,16 @@ void main() {
         expectedPaginationBottom: paginationBottomPortrait,
         expectedHeadingTop: headingTopPortrait,
         expectedFrameWidth: 402,
-        expectedFrameHeight: 402 * 9 / 16,
+        expectedFrameHeight: 402 * 0.72,
         heroArtPath: '/backdrop',
+        checkControlRowGap: true,
       );
-      expect(frame.top, closeTo(62, 0.5));
+      expect(frame.top, closeTo(62, 0.5), reason: 'viewPadding.top, not homeHeroSharpOpaqueInset(statusBarHeight: 62)');
       expect(frame.left, closeTo(0, 0.5));
       expect(frame.right, closeTo(402, 0.5));
+
+      final images = tester.widgetList<CachedNetworkImage>(find.byType(CachedNetworkImage)).toList();
+      expect(images.last.fit, BoxFit.cover, reason: 'the box is no longer the source ratio; contain would letterbox');
     });
 
     testWidgets('iPad portrait keeps the sharp layer at 0', (tester) async {
@@ -612,10 +659,14 @@ void main() {
       expect(frame.top, closeTo(0, 0.5), reason: 'isHandheldIOS is false on android');
     });
 
-    testWidgets('iPhone portrait without a safe area starts at 0, still full width', (tester) async {
-      // Proves the 62 in the first case comes from `viewPadding` and not from a
-      // constant. The composition is unchanged — full width either way; only
-      // the offset follows the safe area.
+    testWidgets('iPhone portrait without a safe area: the control row is still there, at 64', (tester) async {
+      // Proves the opaque anchor follows the safe area on top of a fixed
+      // control-row block, not a constant on its own: with no hardware safe
+      // area, the layer's top starts at y = 0 (nothing to clear), but the
+      // control row is still there, so it only reaches full opacity at
+      // homeHeroSharpOpaqueInset(statusBarHeight: 0) == 64, not 0 — that is
+      // what checkControlRowGap verifies via the blend band. The composition
+      // is unchanged — full width either way.
       final frame = await pumpAndMeasureFrame(
         tester,
         size: const Size(402, 874),
@@ -625,8 +676,9 @@ void main() {
         expectedHeadingTop: headingTopPortrait,
         expectedFrameWidth: 402,
         expectedFrameHeight: 402,
+        checkControlRowGap: true,
       );
-      expect(frame.top, closeTo(0, 0.5));
+      expect(frame.top, closeTo(0, 0.5), reason: 'no safe area to start behind');
       expect(frame.left, closeTo(0, 0.5));
     });
   });
