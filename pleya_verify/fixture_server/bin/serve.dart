@@ -20,7 +20,12 @@ Future<void> main(List<String> args) async {
   }
 
   final controlToken = FixtureHttpServer.generateControlToken();
-  final adapter = FixtureHttpServer(server: PleyaFakeServer(), controlToken: controlToken);
+  // `setupRequired: true` — the standard case verify_api_v1.md's /v1/signin
+  // documents (a fresh fixture, first sign-in exercises the real
+  // probe -> setup -> persist flow). `PleyaFakeServer()`'s own constructor
+  // default is `false`, which would leave `/auth/login` with no registered
+  // credentials to check against and no way to ever register one.
+  final adapter = FixtureHttpServer(server: PleyaFakeServer(setupRequired: true), controlToken: controlToken);
   await adapter.start(port: port);
 
   stdout.writeln(jsonEncode({'port': adapter.port, 'controlToken': controlToken}));

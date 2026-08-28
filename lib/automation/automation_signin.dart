@@ -132,6 +132,7 @@ Future<Map<String, Object?>> _persistConnectionAndBindProfile(
   if (!context.mounted) return {'ok': false, 'error': 'context unmounted mid-signin'};
 
   var boundProfile = activeProvider.active;
+  final createdFirstProfile = boundProfile == null;
   if (boundProfile == null) {
     final now = DateTime.now();
     final profile = Profile.local(
@@ -167,6 +168,21 @@ Future<Map<String, Object?>> _persistConnectionAndBindProfile(
   if (!context.mounted) return {'ok': false, 'error': 'context unmounted mid-signin'};
   if (boundToActive) {
     await context.read<ActiveProfileBinder>().rebindIfActive(bindProfile.id);
+  }
+
+  // A real user reaches this exact state by tapping through AddPleyaServerScreen/
+  // AddJellyfinScreen, which pop back into AuthScreen, and AuthScreen's own
+  // handler pushes ProfileSessionScreen once the first profile is bound
+  // (lib/screens/auth_screen.dart:182-184). This endpoint never goes through
+  // that screen, so nothing else ever fires that transition — without this,
+  // the app is left showing AuthScreen forever with a fully bound profile
+  // underneath it. Routed through AutomationNavigationHooks rather than a
+  // hardcoded `Navigator.pushReplacement(..., ProfileSessionScreen())` here:
+  // that widget's full provider tree only exists in the real app, and a
+  // no-op when nothing registered the hook (e.g. a narrower widget test)
+  // beats a crash on an unmountable widget.
+  if (createdFirstProfile) {
+    AutomationNavigationHooks.instance.handoffToFirstProfile();
   }
 
   return {'ok': true, 'profileId': bindProfile.id, 'connectionId': connection.id};

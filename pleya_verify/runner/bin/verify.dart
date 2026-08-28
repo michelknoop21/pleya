@@ -1,10 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:pleya_verify_runner/src/driver/macos_driver.dart';
+import 'package:pleya_verify_runner/src/driver/verification_driver.dart';
+import 'package:pleya_verify_runner/src/engine/run_scenario.dart';
 import 'package:pleya_verify_runner/src/scenario/automation_id_catalog.dart';
 import 'package:pleya_verify_runner/src/scenario/model.dart';
 import 'package:pleya_verify_runner/src/scenario/parser.dart';
 import 'package:pleya_verify_runner/src/scenario/validator.dart';
+
+/// This package's root is every subcommand's working-directory assumption
+/// (`dart run bin/verify.dart` from `pleya_verify/runner/`); the repo root
+/// two levels up is where `.build/pleya-verify/` and `flutter build` live.
+final Directory _repoRoot = Directory('../..');
 
 /// The three targets a driver exists for from Fase 8 on. A fixed list, not
 /// derived from anything scanned at runtime — there is no fourth target to
@@ -33,6 +41,8 @@ Future<void> main(List<String> args) async {
       await _runValidate(positional.skip(1).toList(), jsonOutput: jsonOutput);
     case 'list':
       await _runList(positional.skip(1).toList(), jsonOutput: jsonOutput);
+    case 'run':
+      await _runScenarioCommand(positional.skip(1).toList(), jsonOutput: jsonOutput);
     default:
       _printUsage();
       exitCode = 64;
@@ -45,7 +55,73 @@ Usage:
   dart run bin/verify.dart validate <scenario.yaml> [--json]
   dart run bin/verify.dart list scenarios [--dir <dir>] [--json]
   dart run bin/verify.dart list targets [--json]
+  dart run bin/verify.dart run <scenario.yaml> [--json]
 ''');
+}
+
+Future<void> _runScenarioCommand(List<String> args, {required bool jsonOutput}) async {
+  if (args.isEmpty) {
+    stderr.writeln('run requires a scenario file path');
+    exitCode = 64;
+    return;
+  }
+  final file = File(args.first);
+  if (!file.existsSync()) {
+    stderr.writeln('${args.first}: no such file');
+    exitCode = 66;
+    return;
+  }
+
+  Scenario scenario;
+  try {
+    scenario = parseScenarioFile(file);
+  } on ScenarioParseException catch (e) {
+    _reportErrors(file.path, [e.error], jsonOutput: jsonOutput);
+    exitCode = 1;
+    return;
+  }
+
+  final catalog = AutomationIdCatalog.fromFile(_automationIdsFile);
+  final validationErrors = validateScenario(scenario, catalog);
+  if (validationErrors.isNotEmpty) {
+    _reportErrors(file.path, validationErrors, jsonOutput: jsonOutput);
+    exitCode = 1;
+    return;
+  }
+
+  final VerificationDriver driver;
+  switch (scenario.target) {
+    case 'macos':
+      driver = MacosDriver(repoRoot: _repoRoot);
+    default:
+      stderr.writeln('run: no driver implemented yet for target "${scenario.target}"');
+      exitCode = 64;
+      return;
+  }
+
+  final result = await runScenario(
+    scenario: scenario,
+    scenarioSource: file.readAsStringSync(),
+    driver: driver,
+    repoRoot: _repoRoot,
+  );
+
+  if (jsonOutput) {
+    stdout.writeln(
+      jsonEncode({
+        'ok': result.passed,
+        'result': result.passed ? 'PASS' : 'FAILED',
+        'bundle': result.bundleDir.path,
+        if (result.failureMessage != null) 'failureMessage': result.failureMessage,
+      }),
+    );
+  } else if (result.passed) {
+    stdout.writeln('PASS: ${scenario.name} — evidence at ${result.bundleDir.path}');
+  } else {
+    stderr.writeln('FAILED: ${scenario.name} — ${result.failureMessage}');
+    stderr.writeln('evidence at ${result.bundleDir.path}');
+  }
+  exitCode = result.passed ? 0 : 1;
 }
 
 Future<void> _runValidate(List<String> args, {required bool jsonOutput}) async {
