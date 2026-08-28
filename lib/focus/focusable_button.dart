@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/mono_shapes.dart';
 import 'focus_theme.dart';
 import 'focusable_wrapper.dart';
 import 'input_mode_tracker.dart';
@@ -20,8 +21,15 @@ class FocusableButton extends StatefulWidget {
   /// Whether to scroll the widget into view when focused.
   final bool autoScroll;
 
-  /// Whether to use background color instead of border for focus indicator.
-  final bool useBackgroundFocus;
+  /// What the focus indicator does: draws a ring (default), draws a
+  /// background fill, or is delegated to the child.
+  final FocusIndicatorMode mode;
+
+  /// The shape the focus indicator follows. Defaults to the CTA contract
+  /// ([MonoShapes.cta]) because a [FocusableButton]'s child is usually a
+  /// Material text button. Set explicitly for a child with its own shape
+  /// (round icon, card).
+  final OutlinedBorder shape;
 
   const FocusableButton({
     super.key,
@@ -35,7 +43,8 @@ class FocusableButton extends StatefulWidget {
     this.onNavigateRight,
     this.onBack,
     this.autoScroll = true,
-    this.useBackgroundFocus = false,
+    this.mode = FocusIndicatorMode.ring,
+    this.shape = MonoShapes.cta,
   });
 
   @override
@@ -57,8 +66,8 @@ class _FocusableButtonState extends State<FocusableButton> {
       autofocus: widget.autofocus,
       focusNode: widget.focusNode,
       disableScale: true,
-      borderRadius: 100,
-      useBackgroundFocus: widget.useBackgroundFocus,
+      mode: widget.mode,
+      focusShapeBorder: widget.shape,
       descendantsAreFocusable: false,
       onFocusChange: (f) => setState(() => _isFocused = f),
       autoScroll: widget.autoScroll,

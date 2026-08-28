@@ -113,7 +113,6 @@ class _AddLocalProfileScreenState extends State<AddLocalProfileScreen> with Cont
               if (_pinHash == null)
                 FocusableButton(
                   focusNode: _setPinFocus,
-                  useBackgroundFocus: true,
                   onPressed: _setPin,
                   child: OutlinedButton.icon(
                     onPressed: _setPin,
@@ -126,7 +125,6 @@ class _AddLocalProfileScreenState extends State<AddLocalProfileScreen> with Cont
               const SizedBox(height: 32),
               FocusableButton(
                 focusNode: _continueFocus,
-                useBackgroundFocus: true,
                 onPressed: _saving || _nameController.text.trim().isEmpty ? null : _saveAndContinue,
                 onNavigateUp: () => (_pinHash == null ? _setPinFocus : _nameFocus).requestFocus(),
                 child: FilledButton(
@@ -137,7 +135,6 @@ class _AddLocalProfileScreenState extends State<AddLocalProfileScreen> with Cont
               const SizedBox(height: 8),
               FocusableButton(
                 focusNode: _cancelFocus,
-                useBackgroundFocus: true,
                 onPressed: _saving ? null : () => Navigator.of(context).pop(),
                 child: TextButton(
                   onPressed: _saving ? null : () => Navigator.of(context).pop(),

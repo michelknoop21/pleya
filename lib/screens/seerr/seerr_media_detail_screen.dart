@@ -392,7 +392,6 @@ class _RequestButton extends StatelessWidget {
     );
     return FocusableButton(
       autofocus: true,
-      useBackgroundFocus: true,
       onPressed: onPressed,
       child: Pressable(
         onTap: onPressed,

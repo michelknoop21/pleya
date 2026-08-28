@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../focus/focusable_button.dart';
+import '../focus/focusable_wrapper.dart';
 
 /// A dialog action button that wraps [FocusableButton] around a [TextButton]
 /// (or [FilledButton] when [isPrimary] is true).
@@ -35,7 +36,7 @@ class DialogActionButton extends StatelessWidget {
     return FocusableButton(
       focusNode: focusNode,
       onPressed: onPressed,
-      useBackgroundFocus: isPrimary,
+      mode: FocusIndicatorMode.ring,
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
       onNavigateLeft: onNavigateLeft,

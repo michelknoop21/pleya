@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'gapped_track_shape.dart';
+import 'mono_shapes.dart';
 import 'mono_tokens.dart';
 
 /// Pleya brand red (sampled from the thick-P logo). Applied sparingly.
@@ -76,7 +77,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     (states) => states.contains(WidgetState.disabled) ? MouseCursor.defer : SystemMouseCursors.click,
   );
 
-  // Play/More-Info buttons: square-ish corners (radius 4), primary is
+  // Play/More-Info buttons: capsule shape (MonoShapes.cta), primary is
   // white-on-black. Secondary actions get a translucent grey fill elsewhere.
   final buttonStyle = ButtonStyle(
     mouseCursor: clickableCursor,
@@ -84,7 +85,7 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     elevation: const WidgetStatePropertyAll(0),
     backgroundColor: WidgetStatePropertyAll(c.text),
     foregroundColor: WidgetStatePropertyAll(isDark ? c.bg : Colors.white),
-    shape: const WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(4)))),
+    shape: const WidgetStatePropertyAll(MonoShapes.cta),
   );
 
   final base = ThemeData(
@@ -179,8 +180,12 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
     inputDecorationTheme: _inputDecorationTheme(c.text, c.textMuted),
     elevatedButtonTheme: ElevatedButtonThemeData(style: buttonStyle),
     filledButtonTheme: FilledButtonThemeData(style: buttonStyle),
-    textButtonTheme: TextButtonThemeData(style: ButtonStyle(mouseCursor: clickableCursor)),
-    outlinedButtonTheme: OutlinedButtonThemeData(style: ButtonStyle(mouseCursor: clickableCursor)),
+    textButtonTheme: TextButtonThemeData(
+      style: ButtonStyle(mouseCursor: clickableCursor, shape: const WidgetStatePropertyAll(MonoShapes.cta)),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: ButtonStyle(mouseCursor: clickableCursor, shape: const WidgetStatePropertyAll(MonoShapes.cta)),
+    ),
     iconButtonTheme: IconButtonThemeData(style: ButtonStyle(mouseCursor: clickableCursor)),
     sliderTheme: SliderThemeData(
       trackHeight: 16,

@@ -133,7 +133,7 @@ class _LiveTimelineBarState extends State<LiveTimelineBar> {
       onFocusChange: widget.onFocusChange,
       borderRadius: 8,
       autoScroll: false,
-      useBackgroundFocus: true,
+      mode: FocusIndicatorMode.fill,
       disableScale: true,
       child: Builder(
         builder: (context) {

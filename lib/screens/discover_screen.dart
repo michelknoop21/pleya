@@ -11,6 +11,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import '../focus/focusable_action_bar.dart';
 import '../focus/focusable_button.dart';
+import '../focus/focusable_wrapper.dart';
 import '../focus/focus_theme.dart';
 import '../focus/input_mode_tracker.dart';
 import '../focus/key_event_utils.dart';
@@ -1764,9 +1765,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         FocusableButton(
           focusNode: _tvHeroPlayFocusNode,
           autoScroll: false,
-          // Solid-white focused pill fully covers the wrapper's background-focus
-          // fill, so useBackgroundFocus suppresses the default white ring.
-          useBackgroundFocus: true,
+          // The pill draws its own focus fully (ListenableBuilder on the
+          // focusNode below), so the wrapper delegates instead of drawing a
+          // ring or fill of its own.
+          mode: FocusIndicatorMode.delegated,
           onPressed: () => navigateToMediaItem(context, billboard, playDirectly: true),
           onNavigateDown: () => _focusTvBrowseRailWhenReady(immediate: true),
           onNavigateUp: _focusTopActions,
@@ -1786,7 +1788,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         FocusableButton(
           focusNode: _tvHeroInfoFocusNode,
           autoScroll: false,
-          useBackgroundFocus: true,
+          mode: FocusIndicatorMode.delegated,
           onPressed: () => navigateToMediaItem(context, billboard),
           onNavigateDown: () => _focusTvBrowseRailWhenReady(immediate: true),
           onNavigateUp: _focusTopActions,

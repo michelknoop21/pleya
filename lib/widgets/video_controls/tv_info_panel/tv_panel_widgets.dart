@@ -86,7 +86,7 @@ class TvPanelRow extends StatelessWidget {
       onNavigateUp: onNavigateUp,
       borderRadius: 10,
       autoScroll: true,
-      useBackgroundFocus: true,
+      mode: FocusIndicatorMode.fill,
       // Rows already show a background highlight on focus; the default scale-up
       // pushes the trailing value past the panel's clip edge, truncating it
       // mid-word ("Letterbo…"). Disable scaling here.

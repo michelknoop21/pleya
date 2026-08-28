@@ -126,7 +126,7 @@ class _FocusableMediaCardState extends State<FocusableMediaCard> {
       useFocusGlow: widget.fullBleedImage,
       // MediaCard draws the focus border itself, on the rect its layout
       // highlights (poster for standard grid cards, whole card otherwise).
-      delegateFocusBorder: true,
+      mode: FocusIndicatorMode.delegated,
       useComfortableZone: !PlatformDetector.isTV(), // Always center on TV
       scrollAlignment: 0.5,
       child: MediaCard(

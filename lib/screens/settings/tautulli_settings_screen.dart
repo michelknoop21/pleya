@@ -256,7 +256,6 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
         const SizedBox(height: 16),
         FocusableButton(
           focusNode: _testFocus,
-          useBackgroundFocus: true,
           onPressed: busy ? null : _disconnect,
           child: OutlinedButton.icon(
             onPressed: busy ? null : _disconnect,
@@ -330,7 +329,6 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
       const SizedBox(height: 20),
       FocusableButton(
         focusNode: _testFocus,
-        useBackgroundFocus: true,
         onPressed: busy ? null : _test,
         child: FilledButton.icon(
           onPressed: busy ? null : _test,
@@ -344,7 +342,6 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
         const SizedBox(height: 12),
         FocusableButton(
           focusNode: _saveFocus,
-          useBackgroundFocus: true,
           onPressed: busy ? null : _save,
           child: FilledButton.icon(
             onPressed: busy ? null : _save,
@@ -371,7 +368,6 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: FocusableButton(
-              useBackgroundFocus: true,
               onPressed: busy ? null : () => _selectMode(mode),
               child: _mode == mode
                   ? FilledButton(

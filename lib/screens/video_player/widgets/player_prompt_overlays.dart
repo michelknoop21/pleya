@@ -223,9 +223,6 @@ class VideoPlayerPlayNextOverlay extends StatelessWidget {
                               foregroundColor: Colors.white,
                               side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
                               padding: const EdgeInsets.symmetric(vertical: 12),
-                              // Pill, so the FocusableButton ring (radius 100)
-                              // follows the button instead of boxing it.
-                              shape: const StadiumBorder(),
                             ),
                             child: Text(t.common.cancel),
                           ),
@@ -246,9 +243,6 @@ class VideoPlayerPlayNextOverlay extends StatelessWidget {
                               backgroundColor: Colors.white,
                               foregroundColor: Colors.black,
                               padding: const EdgeInsets.symmetric(vertical: 12),
-                              // The app theme gives filled buttons radius 4;
-                              // the focus ring is a pill. Match the ring here.
-                              shape: const StadiumBorder(),
                             ),
                             child: Row(
                               mainAxisAlignment: .center,

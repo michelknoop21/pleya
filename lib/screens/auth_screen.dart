@@ -353,7 +353,7 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  /// Primary CTA using the global FilledButton theme (white-on-black, radius 4).
+  /// Primary CTA using the global FilledButton theme (white-on-black, capsule shape).
   Widget _primaryCta({required VoidCallback? onPressed, required Widget child}) {
     return FilledButton(
       onPressed: onPressed,

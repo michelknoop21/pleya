@@ -326,7 +326,7 @@ class _DiscoveryViewState extends State<DiscoveryView> with ControllerDisposerMi
       children: [
         FocusableWrapper(
           focusNode: _manualToggleFocusNode,
-          useBackgroundFocus: true,
+          mode: FocusIndicatorMode.fill,
           disableScale: true,
           borderRadius: 8,
           onSelect: () => setState(() => _showManualEntry = !_showManualEntry),
