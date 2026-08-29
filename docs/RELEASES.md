@@ -29,6 +29,7 @@ under `Notes`.
 - import liet elke rij vallen en telde afleveringen dubbel
 - clear the Dynamic Island on iPhone, edge to edge
 - run the artwork behind the topbar, and give the strip its own height
+- fade the full-width strip out later instead of zooming it in
 <!-- END GENERATED -->
 
 ## 2.8.0 · build 234 · 20 August 2026
