@@ -95,7 +95,11 @@ end
 def auth_xcargs
   creds = asc_credentials
   key_path = File.join(asc_key_dir, "AuthKey_#{creds[:key_id]}.p8")
-  FileUtils.mkdir_p(asc_key_dir, mode: 0o700)
+  FileUtils.mkdir_p(asc_key_dir)
+  # De mode-parameter van mkdir_p geldt alleen bij aanmaken, en deze map kan al
+  # bestaan (tweede lane in dezelfde run). Hier mag het wél een losse chmod
+  # zijn: de map is op dit moment nog leeg, de key komt er hieronder pas in.
+  File.chmod(0o700, asc_key_dir)
   # De rechten staan op de open-aanroep en niet op een chmod erna: `File.write`
   # maakt het bestand op umask (meestal 0644) aan en pas de chmod haalt dat weg,
   # en daartussen is de private key zelf wereldleesbaar. De mode van `File.open`
