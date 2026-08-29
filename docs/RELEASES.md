@@ -20,6 +20,7 @@ under `Notes`.
 <!-- BEGIN GENERATED -->
 ### New
 - een Pleya Server is te ontkoppelen waar Verbindingen zegt dat het kan
+- one PleyaLogo widget for every place the mark appears
 
 ### Improved
 - scheidingslijnen volgen de werkelijke rijhoogte
@@ -42,6 +43,8 @@ under `Notes`.
 - Over en Pleya Share volgen het gedeelde kaartcontract
 - kaders rond toetscombinaties volgen de gedeelde lijnkleur
 - revalidatie mag een gelijktijdige load-more niet stilzwijgend overschrijven
+- run the artwork behind the topbar, and give the strip its own height
+- fade the full-width strip out later instead of zooming it in
 <!-- END GENERATED -->
 
 ### Fixed

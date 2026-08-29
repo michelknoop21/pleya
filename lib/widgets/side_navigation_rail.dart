@@ -5,6 +5,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:pleya/widgets/app_icon.dart';
+import 'package:pleya/widgets/pleya_logo.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -988,23 +989,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
             width: expandedWidth - 24,
             child: Row(
               children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(9),
-                    boxShadow: [
-                      BoxShadow(
-                        color: t.accent.withValues(alpha: 0.5),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                        spreadRadius: -6,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(9),
-                    child: Image.asset('assets/branding/pleya_logo.png', width: logoSize, height: logoSize),
-                  ),
-                ),
+                const PleyaLogo(size: logoSize),
                 const SizedBox(width: 12),
                 AnimatedOpacity(
                   opacity: isCollapsed ? 0.0 : 1.0,

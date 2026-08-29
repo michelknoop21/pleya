@@ -83,6 +83,7 @@ class HomeHeroArtGeometry {
     required this.useAmbientLayer,
     required this.coversHero,
     this.presentation = HomeHeroSharpPresentation.island,
+    this.sharpOpaqueTopInset = 0,
   });
 
   /// Full hero canvas width, in logical pixels — what the ambient layer (when
@@ -115,11 +116,11 @@ class HomeHeroArtGeometry {
 
   /// Where the sharp layer starts, measured from the top of the canvas.
   ///
-  /// Non-zero only on the island branch, and only when the caller asked for it
-  /// through `requestedSharpTopInset` — on an iPhone in portrait that is the
-  /// Dynamic Island / notch inset, which the sharp layer has to clear or its
-  /// top edge disappears under the cutout. The ambient layer ignores this
-  /// entirely and keeps filling the canvas from `y = 0`.
+  /// Non-zero only when the caller asked for it through [requestedSharpTop] —
+  /// on an iPhone in portrait that is the hardware safe area, which the sharp
+  /// layer's own top edge sits at so it clears the Dynamic Island / notch. The
+  /// ambient layer ignores this entirely and keeps filling the canvas from
+  /// `y = 0`.
   final double sharpTopInset;
 
   /// True whenever there is a sharp layer to draw. False for the zero/unusable
@@ -146,6 +147,16 @@ class HomeHeroArtGeometry {
   /// canvas edges.
   final HomeHeroSharpPresentation presentation;
 
+  /// Where the sharp layer reaches full opacity, measured from the top of the
+  /// canvas.
+  ///
+  /// Equal to [sharpTopInset] whenever there is no fade-in. On iPhone portrait
+  /// it sits 8pt below the control row while [sharpTopInset] is the safe area,
+  /// so the layer is drawn *behind* the row and fades in across it. This is
+  /// the requested anchor; [sharpTopBlendHeight] is the band actually used,
+  /// which is shorter on a layer too short to hold both blend bands.
+  final double sharpOpaqueTopInset;
+
   /// Height of the band at the *top* of the sharp layer that fades it in from
   /// the ambient layer beneath.
   ///
@@ -153,7 +164,9 @@ class HomeHeroArtGeometry {
   /// first pixel row jumps straight from ambient to fully sharp and draws a
   /// hard horizontal seam right under the Dynamic Island. Fading in over this
   /// band lets the ambient wash bleed through the top edge instead, the same
-  /// trick the island's left/right blend uses, turned vertical.
+  /// trick the island's left/right blend uses, turned vertical. The band
+  /// itself is the distance between [sharpTopInset] and [sharpOpaqueTopInset]
+  /// — two known screen coordinates, not a fraction of the layer.
   ///
   /// Zero for [HomeHeroSharpPresentation.island]: an island's top edge already
   /// sits inside the ambient field with nothing to butt up against.
@@ -163,9 +176,11 @@ class HomeHeroArtGeometry {
     // A covering frame has no ambient layer underneath, so there is nothing
     // for its top edge to blend into.
     if (coversHero || !useAmbientLayer) return 0;
-    final band = (sharpHeight * _sharpTopBlendFraction).clamp(_sharpTopBlendMin, _sharpTopBlendMax);
-    // The top band can never run into the bottom fade: on a very short layer
-    // the two would cross and the alpha stops would stop ascending.
+    final band = math.max(0.0, sharpOpaqueTopInset - sharpTopInset);
+    // The top band can never run into the bottom fade: on a layer shorter than
+    // band / (1 - _sharpFadeStartFraction) the two would cross and the alpha
+    // stops would stop ascending. Reaching full opacity early is the harmless
+    // failure; a non-monotone gradient is not.
     return math.min(band, math.max(0.0, sharpHeight - sharpFadeHeight));
   }
 
@@ -195,19 +210,21 @@ const double _sharpIslandWidthFraction = 0.82;
 /// blend band itself (see [HomeHeroArtGeometry.sharpFadeHeight]).
 const double _sharpFadeStartFraction = 0.55;
 
-/// The full-width layer's top fade-in band, as a fraction of its own height,
-/// clamped to a range that stays visible on a short 16:9 strip without eating
-/// the subject on a tall square. See [HomeHeroArtGeometry.sharpTopBlendHeight].
-const double _sharpTopBlendFraction = 0.18;
-const double _sharpTopBlendMin = 36.0;
-const double _sharpTopBlendMax = 64.0;
+/// Waar de bottomfade begint op de full-width widescreen-strook, als fractie
+/// van de laaghoogte. Hoger dan [_sharpFadeStartFraction] omdat die strook op
+/// een 402pt-scherm maar 226pt hoog is: op 0,55 begon de fade al op y ≈ 186,
+/// ruim boven de afspeelknop, waardoor het beeld te vroeg verdween terwijl de
+/// geometrie zelf klopte. Dit verlengt het volledig scherpe deel zonder de
+/// bron te vergroten of de zijkanten af te snijden — de fout van een eerdere
+/// poging, die de doos verhoogde en met `BoxFit.cover` ±28% inzoomde.
+const double _fullWidthWidescreenSharpFadeStartFraction = 0.68;
 
 /// How the sharp layer is composed on a narrow box.
 ///
 /// This is an explicit choice by the caller, not something inferred from a
-/// non-zero [homeHeroArtGeometry.requestedSharpTopInset]: the inset says
-/// *where* the sharp layer starts, never *how wide* it is, and reading
-/// full-width out of "the inset happens to be non-zero" would tie two
+/// non-zero [homeHeroArtGeometry.requestedSharpTop]: the anchors say *where*
+/// the sharp layer starts, never *how wide* it is, and reading full-width out
+/// of "the inset happens to be non-zero" would tie two
 /// unrelated decisions together.
 enum HomeHeroSharpPresentation {
   /// A centred subject at [_sharpIslandWidthFraction] of the box width, blended
@@ -222,18 +239,23 @@ enum HomeHeroSharpPresentation {
   fullWidth,
 }
 
-/// [requestedSharpTopInset] moves the sharp layer down from the top of the
-/// canvas so its top edge clears an iPhone's Dynamic Island. It only ever
-/// offsets — it never resizes the layer, which is what turned the hero into a
-/// small centred card. The full-bleed branch ignores it entirely, as does
-/// every caller that passes the default 0 (iPad, Android, macOS, desktop).
+/// [requestedSharpTop] starts the sharp layer at the hardware safe area —
+/// right under the Dynamic Island / notch, not below it — and, on iPhone
+/// portrait, draws it *behind* the control row, fading in across the row
+/// rather than starting below it. Legibility there comes from the fade-in
+/// curve, not from distance: the layer is never pushed down far enough to
+/// clear the row. [requestedSharpTop] only ever offsets and fades, never
+/// resizes the layer, which is what turned the hero into a small centred
+/// card. The full-bleed branch ignores it entirely, as does every caller that
+/// passes the default [HomeHeroSharpTopAnchors.none] (iPad, Android, macOS,
+/// desktop).
 ///
 /// [presentation] picks the composition; see [HomeHeroSharpPresentation].
 HomeHeroArtGeometry homeHeroArtGeometry({
   required double screenWidth,
   required double heroHeight,
   required BillboardArtKind kind,
-  double requestedSharpTopInset = 0,
+  HomeHeroSharpTopAnchors requestedSharpTop = HomeHeroSharpTopAnchors.none,
   HomeHeroSharpPresentation presentation = HomeHeroSharpPresentation.island,
 }) {
   if (heroHeight <= 0 || screenWidth <= 0) return HomeHeroArtGeometry.zero;
@@ -268,7 +290,11 @@ HomeHeroArtGeometry homeHeroArtGeometry({
 
   // The inset offsets, it never resizes. Shrinking the layer by the inset is
   // what turned a full-width hero into a small centred card.
-  final effectiveSharpTopInset = math.max(0.0, requestedSharpTopInset);
+  final effectiveSharpTopInset = math.max(0.0, requestedSharpTop.top);
+  // Clamped up to the top anchor, not down: an opaque anchor above the
+  // layer's own top edge is incoherent, and "no fade-in" is its only sane
+  // reading.
+  final effectiveSharpOpaqueInset = math.max(effectiveSharpTopInset, requestedSharpTop.opaque);
 
   // What is left under the inset. A full-width layer has to fit inside it: the
   // widget hands the layer loose constraints capped at this height, so an
@@ -315,6 +341,15 @@ HomeHeroArtGeometry homeHeroArtGeometry({
   final sharpWidth = naturalWidth * fitScale;
   final sharpHeight = naturalHeight * fitScale;
 
+  // Only the full-width widescreen strip fades out later. It is the one layer
+  // whose own height is dictated by a 16:9 source on a narrow canvas — 226pt
+  // on a 402pt phone — so the shared 55% start put the fade above the play
+  // button. Square (in any presentation), every island, and the full-bleed
+  // branch keep 0.55.
+  final fadeStartFraction = presentation == HomeHeroSharpPresentation.fullWidth && kind == BillboardArtKind.widescreen
+      ? _fullWidthWidescreenSharpFadeStartFraction
+      : _sharpFadeStartFraction;
+
   if (availableSharpHeight <= 0) {
     // The inset pushes the sharp layer entirely off the canvas. Falling back
     // to inset 0 would put it straight back under the cutout, which is the
@@ -344,12 +379,13 @@ HomeHeroArtGeometry homeHeroArtGeometry({
     sharpHeight: sharpHeight,
     requestWidth: sharpWidth,
     requestHeight: sharpHeight,
-    sharpFadeHeight: sharpHeight * (1 - _sharpFadeStartFraction),
+    sharpFadeHeight: sharpHeight * (1 - fadeStartFraction),
     sharpTopInset: effectiveSharpTopInset,
     hasSharpForeground: true,
     useAmbientLayer: true,
     coversHero: false,
     presentation: presentation,
+    sharpOpaqueTopInset: effectiveSharpOpaqueInset,
   );
 }
 
@@ -480,6 +516,65 @@ const double _railHeaderTopPadding = 4.0;
 /// constant. [HomeHeroContentMetrics.paginationBottomInset] still carries it
 /// so the metrics object stays self-describing.
 const double homeHeroPaginationBottomInset = 16.0;
+
+/// Verticale ritmiek van de overlaid home-appbar, gedeeld met de hero zodat de
+/// scherpe laag onder de bedieningsrij kan beginnen zonder een RenderBox te meten.
+
+/// De symmetrische padding rond de bedieningsrij. Boven de rij duwt hij de
+/// afbeelding mee omlaag, onder de rij niet: daar begint de staart van de
+/// appbar-box, waar de gradient al vrijwel transparant is.
+const double homeAppBarControlVerticalPadding = 8.0;
+
+/// Hoogte van de bedieningsrij zelf: het taptarget van een Material IconButton.
+/// De appbar zet deze waarde niet, hij komt eruit voort; een test pint hem tegen
+/// `kMinInteractiveDimension` en tegen de werkelijk gemeten rij.
+const double homeAppBarControlRowHeight = 48.0;
+
+/// De buitenste onderrand van de appbar-box, onder de symmetrische padding.
+/// Hoort bij de box, niet bij de afbeelding.
+const double homeAppBarOuterBottomPadding = 8.0;
+
+/// Rust tussen de bedieningsrij en waar de scherpe hero-laag volledig opaak is.
+const double homeHeroArtworkTopGap = 8.0;
+
+/// Waar de scherpe laag volledig opaak is op een iPhone in portret: onder de
+/// volledige bedieningsrij, niet onder de hardware-safe-area. Zonder
+/// safe-area staat de bedieningsrij er nog steeds, dus dit wordt daar 64 en
+/// niet 0. De laag zelf begint eerder, bij de safe-area — zie
+/// [HomeHeroSharpTopAnchors] en [homeHeroSharpTopAnchors].
+double homeHeroSharpOpaqueInset({required double statusBarHeight}) =>
+    statusBarHeight + homeAppBarControlVerticalPadding + homeAppBarControlRowHeight + homeHeroArtworkTopGap;
+
+/// Waar de scherpe laag begint en waar hij volledig opaak is, beide gemeten
+/// vanaf y = 0 van het hero-canvas.
+///
+/// Twee ankers in plaats van één omdat de laag op een iPhone in portret áchter
+/// de bedieningsrij doorloopt: hij begint bij de safe area en is pas voorbij
+/// de rij volledig ingefaded. De afstand ertussen is de topblend-band — geen
+/// fractie van de laag, maar het gat tussen twee bekende schermcoördinaten.
+class HomeHeroSharpTopAnchors {
+  const HomeHeroSharpTopAnchors({required this.top, required this.opaque});
+
+  /// Elke aanroeper die de scherpe laag zonder inflooi vanaf y = 0 tekent:
+  /// iPad-island, Android, macOS, tvOS, de full-bleed-tak.
+  static const none = HomeHeroSharpTopAnchors(top: 0, opaque: 0);
+
+  final double top;
+  final double opaque;
+
+  /// Nooit negatief: een [opaque]-anker boven [top] is incoherent, en de
+  /// coherente lezing daarvan is "geen blend".
+  double get blend => math.max(0.0, opaque - top);
+}
+
+/// Het iPhone-portret-paar. [HomeHeroSharpTopAnchors.top] is de
+/// hardware-safe-area — de afbeelding begint direct onder de inkeping en loopt
+/// door achter de bedieningsrij — en [HomeHeroSharpTopAnchors.opaque] is
+/// [homeHeroSharpOpaqueInset], 8pt voorbij de onderkant van die rij.
+HomeHeroSharpTopAnchors homeHeroSharpTopAnchors({required double statusBarHeight}) => HomeHeroSharpTopAnchors(
+  top: statusBarHeight,
+  opaque: homeHeroSharpOpaqueInset(statusBarHeight: statusBarHeight),
+);
 
 const HomeHeroContentMetrics _compactContentMetrics = HomeHeroContentMetrics(
   logoToMeta: 12,

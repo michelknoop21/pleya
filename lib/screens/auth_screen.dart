@@ -26,6 +26,7 @@ import '../navigation/profile_session_screen.dart';
 import '../utils/navigation_transitions.dart';
 import '../widgets/backend_badge.dart';
 import '../widgets/dialog_action_button.dart';
+import '../widgets/pleya_logo.dart';
 import 'auth/plex_pin_auth_flow.dart';
 import 'profile/profile_switch_screen.dart';
 import 'settings/add_jellyfin_screen.dart';
@@ -314,10 +315,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final textColor = Theme.of(context).colorScheme.onSurface;
     return Column(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: Image.asset('assets/branding/pleya_logo.png', width: 96, height: 96),
-        ),
+        const PleyaLogo(size: 96),
         const SizedBox(height: 22),
         Text(
           'PLEYA',

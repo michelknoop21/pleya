@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HardwareKeyboard, LogicalKeyboardKey;
 import 'package:pleya/widgets/app_icon.dart';
+import 'package:pleya/widgets/pleya_logo.dart';
 import '../widgets/server_activities_button.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -80,6 +81,11 @@ class DiscoverScreen extends StatefulWidget {
   /// The hero's pagination-dot row, so tests can measure its real rect
   /// against the "Verder kijken" heading directly below the hero.
   static const Key heroPaginationKey = Key('home-hero-pagination');
+
+  /// The overlaid appbar's control row (logo/title plus the action cluster),
+  /// so tests can measure its real rect against the hero's sharp artwork
+  /// layer directly below it.
+  static const Key appBarControlsKey = Key('home-appbar-controls');
 
   @override
   State<DiscoverScreen> createState() => _DiscoverScreenState();
@@ -1198,8 +1204,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return ListenableBuilder(listenable: FullscreenStateManager(), builder: (context, _) => _buildOverlaidAppBarBody());
   }
 
+  /// De ene safe-area waar zowel de overlaid appbar als de scherpe hero-laag uit
+  /// rekenen. `viewPadding`, niet `padding`: de hero zit in een Scaffold-body die
+  /// `padding.top` kan nullen, en `viewPadding` blijft ook staan als het
+  /// toetsenbord opengaat.
+  double _statusBarInset(BuildContext context) => MediaQuery.viewPaddingOf(context).top;
+
   Widget _buildOverlaidAppBarBody() {
-    final statusBarHeight = MediaQuery.paddingOf(context).top;
+    final statusBarHeight = _statusBarInset(context);
     final colorScheme = Theme.of(context).colorScheme;
     final overlayColor = colorScheme.brightness == Brightness.dark ? Colors.black : colorScheme.surface;
     final foregroundColor = colorScheme.onSurface;
@@ -1229,182 +1241,182 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         ),
       ),
       child: Padding(
-        padding: .only(top: statusBarHeight, left: leftInset, right: 16, bottom: 8),
+        padding: .only(top: statusBarHeight, left: leftInset, right: 16, bottom: homeAppBarOuterBottomPadding),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: [
-              // Desktop Netflix nav (wordmark + tabs) replaces the page title,
-              // staying transparent over the billboard. Expanded fills space up
-              // to the actions so the action cluster stays flush right.
-              // Phone/tablet (bottom nav) fall back to the brand mark + wordmark
-              // per the navigation mockup; the sidebar already carries the brand
-              // on desktop, so side-nav keeps the plain title.
-              Expanded(
-                child: PlatformDetector.isTV()
-                    ? const SizedBox.shrink()
-                    : PlatformDetector.shouldUseSideNavigation(context)
-                    ? Text(
-                        t.discover.title,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleLarge?.copyWith(color: foregroundColor, fontWeight: .bold),
-                      )
-                    : Row(
-                        mainAxisSize: .min,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.asset('assets/branding/pleya_logo.png', width: 28, height: 28),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'PLEYA',
-                            style: TextStyle(
-                              color: foregroundColor,
-                              fontSize: 14,
-                              fontWeight: .w800,
-                              letterSpacing: 3.6,
+          padding: const EdgeInsets.symmetric(vertical: homeAppBarControlVerticalPadding),
+          child: KeyedSubtree(
+            key: DiscoverScreen.appBarControlsKey,
+            child: Row(
+              children: [
+                // Desktop Netflix nav (wordmark + tabs) replaces the page title,
+                // staying transparent over the billboard. Expanded fills space up
+                // to the actions so the action cluster stays flush right.
+                // Phone/tablet (bottom nav) fall back to the brand mark + wordmark
+                // per the navigation mockup; the sidebar already carries the brand
+                // on desktop, so side-nav keeps the plain title.
+                Expanded(
+                  child: PlatformDetector.isTV()
+                      ? const SizedBox.shrink()
+                      : PlatformDetector.shouldUseSideNavigation(context)
+                      ? Text(
+                          t.discover.title,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleLarge?.copyWith(color: foregroundColor, fontWeight: .bold),
+                        )
+                      : Row(
+                          mainAxisSize: .min,
+                          children: [
+                            const PleyaLogo(size: 28),
+                            const SizedBox(width: 10),
+                            Text(
+                              'PLEYA',
+                              style: TextStyle(
+                                color: foregroundColor,
+                                fontSize: 14,
+                                fontWeight: .w800,
+                                letterSpacing: 3.6,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-              ),
-              Consumer2<WatchTogetherProvider, CompanionRemoteProvider>(
-                builder: (context, watchTogether, companionRemote, _) {
-                  final isDesktop = PlatformDetector.shouldActAsRemoteHost(context);
+                          ],
+                        ),
+                ),
+                Consumer2<WatchTogetherProvider, CompanionRemoteProvider>(
+                  builder: (context, watchTogether, companionRemote, _) {
+                    final isDesktop = PlatformDetector.shouldActAsRemoteHost(context);
 
-                  return FocusableActionBar(
-                    key: _actionBarKey,
-                    onNavigateLeft: _navigateToSidebar,
-                    onNavigateDown: _focusContentFromAppBar,
-                    actions: [
-                      FocusableAction(
-                        onPressed: _handleRefreshPressed,
-                        child: DiscoverRefreshAction(color: foregroundColor, onPressed: _handleRefreshPressed),
-                      ),
-                      // Who is streaming right now. The action only exists
-                      // while someone else is watching, so the bar keeps no
-                      // empty slot. Not on TV: its panel is a pointer overlay,
-                      // and there the sidebar carries this instead.
-                      if (!PlatformDetector.isTV() && (context.watch<NowWatchingProvider?>()?.now.hasOthers ?? false))
+                    return FocusableActionBar(
+                      key: _actionBarKey,
+                      onNavigateLeft: _navigateToSidebar,
+                      onNavigateDown: _focusContentFromAppBar,
+                      actions: [
                         FocusableAction(
-                          onPressed: () => _nowWatchingButtonKey.currentState?.togglePanel(),
-                          child: NowWatchingButton(key: _nowWatchingButtonKey),
+                          onPressed: _handleRefreshPressed,
+                          child: DiscoverRefreshAction(color: foregroundColor, onPressed: _handleRefreshPressed),
                         ),
-                      // Watch Together
-                      FocusableAction(
-                        onPressed: () =>
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const WatchTogetherScreen())),
-                        child: Stack(
-                          children: [
-                            IconButton(
-                              icon: AppIcon(
-                                Symbols.group_rounded,
-                                fill: watchTogether.isInSession ? 1 : 0,
-                                color: watchTogether.isInSession ? colorScheme.primary : foregroundColor,
+                        // Who is streaming right now. The action only exists
+                        // while someone else is watching, so the bar keeps no
+                        // empty slot. Not on TV: its panel is a pointer overlay,
+                        // and there the sidebar carries this instead.
+                        if (!PlatformDetector.isTV() && (context.watch<NowWatchingProvider?>()?.now.hasOthers ?? false))
+                          FocusableAction(
+                            onPressed: () => _nowWatchingButtonKey.currentState?.togglePanel(),
+                            child: NowWatchingButton(key: _nowWatchingButtonKey),
+                          ),
+                        // Watch Together
+                        FocusableAction(
+                          onPressed: () =>
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const WatchTogetherScreen())),
+                          child: Stack(
+                            children: [
+                              IconButton(
+                                icon: AppIcon(
+                                  Symbols.group_rounded,
+                                  fill: watchTogether.isInSession ? 1 : 0,
+                                  color: watchTogether.isInSession ? colorScheme.primary : foregroundColor,
+                                ),
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const WatchTogetherScreen()),
+                                ),
+                                tooltip: t.watchTogether.title,
                               ),
-                              onPressed: () => Navigator.push(
+                              if (watchTogether.isInSession && watchTogether.participantCount > 1)
+                                Positioned(
+                                  top: 6,
+                                  right: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.primary,
+                                      borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                    ),
+                                    child: Text(
+                                      '${watchTogether.participantCount}',
+                                      style: TextStyle(color: colorScheme.onPrimary, fontSize: 10, fontWeight: .bold),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        // Companion Remote
+                        FocusableAction(
+                          onPressed: () {
+                            if (isDesktop) {
+                              RemoteSessionDialog.show(context);
+                            } else {
+                              Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const WatchTogetherScreen()),
+                                MaterialPageRoute(builder: (context) => const MobileRemoteScreen()),
+                              );
+                            }
+                          },
+                          child: Stack(
+                            children: [
+                              IconButton(
+                                icon: AppIcon(
+                                  Symbols.phone_android_rounded,
+                                  fill: companionRemote.isConnected ? 1 : 0,
+                                  color: companionRemote.isConnected ? colorScheme.primary : foregroundColor,
+                                ),
+                                onPressed: () {
+                                  if (isDesktop) {
+                                    RemoteSessionDialog.show(context);
+                                  } else {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const MobileRemoteScreen()),
+                                    );
+                                  }
+                                },
+                                tooltip: t.companionRemote.title,
                               ),
-                              tooltip: t.watchTogether.title,
-                            ),
-                            if (watchTogether.isInSession && watchTogether.participantCount > 1)
-                              Positioned(
-                                top: 6,
-                                right: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.primary,
-                                    borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                  ),
-                                  child: Text(
-                                    '${watchTogether.participantCount}',
-                                    style: TextStyle(color: colorScheme.onPrimary, fontSize: 10, fontWeight: .bold),
+                              if (companionRemote.isConnected)
+                                Positioned(
+                                  top: 6,
+                                  right: 6,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: Colors.green,
+                                      shape: BoxShape.circle,
+                                      border: Border.fromBorderSide(BorderSide(color: foregroundColor, width: 1)),
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      // Companion Remote
-                      FocusableAction(
-                        onPressed: () {
-                          if (isDesktop) {
-                            RemoteSessionDialog.show(context);
-                          } else {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const MobileRemoteScreen()),
-                            );
-                          }
-                        },
-                        child: Stack(
-                          children: [
-                            IconButton(
-                              icon: AppIcon(
-                                Symbols.phone_android_rounded,
-                                fill: companionRemote.isConnected ? 1 : 0,
-                                color: companionRemote.isConnected ? colorScheme.primary : foregroundColor,
-                              ),
-                              onPressed: () {
-                                if (isDesktop) {
-                                  RemoteSessionDialog.show(context);
-                                } else {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const MobileRemoteScreen()),
-                                  );
-                                }
-                              },
-                              tooltip: t.companionRemote.title,
-                            ),
-                            if (companionRemote.isConnected)
-                              Positioned(
-                                top: 6,
-                                right: 6,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: Colors.green,
-                                    shape: BoxShape.circle,
-                                    border: Border.fromBorderSide(BorderSide(color: foregroundColor, width: 1)),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      // Server Tasks — Plex-only (`/activities` API has no
-                      // Jellyfin equivalent), hide the button entirely on
-                      // Jellyfin-only profiles so the chrome doesn't show
-                      // a permanently empty popover. Excluded on TV: the panel
-                      // is a pointer/hover popover that can't be focused with
-                      // the remote, so it read as a dead button on Apple TV
-                      // (isDesktop is true there because isMobile excludes TV).
-                      if (PlatformDetector.isDesktop(context) &&
-                          !PlatformDetector.isTV() &&
-                          context.select<MultiServerProvider, bool>((p) => p.hasOnlinePlexServers))
-                        FocusableAction(
-                          onPressed: () => _serverActivitiesButtonKey.currentState?.togglePanel(),
-                          child: ServerActivitiesButton(key: _serverActivitiesButtonKey),
-                        ),
-                      // User menu: profiles and sign out. Gone on mobile, because the
-                      // bottom bar's My Pleya slot is the personal destination
-                      // there and carries the same three actions. Desktop and
-                      // TV keep it, because their sidebar has no My Pleya.
-                      // Same predicate that gates the tab, so the actions are
-                      // never in two places and never in none.
-                      if (showsHeaderAccountMenu(isMobile: PlatformDetector.isMobile(context)))
-                        _buildUserMenuAction(context),
-                    ],
-                  );
-                },
-              ),
-            ],
+                        // Server Tasks — Plex-only (`/activities` API has no
+                        // Jellyfin equivalent), hide the button entirely on
+                        // Jellyfin-only profiles so the chrome doesn't show
+                        // a permanently empty popover. Excluded on TV: the panel
+                        // is a pointer/hover popover that can't be focused with
+                        // the remote, so it read as a dead button on Apple TV
+                        // (isDesktop is true there because isMobile excludes TV).
+                        if (PlatformDetector.isDesktop(context) &&
+                            !PlatformDetector.isTV() &&
+                            context.select<MultiServerProvider, bool>((p) => p.hasOnlinePlexServers))
+                          FocusableAction(
+                            onPressed: () => _serverActivitiesButtonKey.currentState?.togglePanel(),
+                            child: ServerActivitiesButton(key: _serverActivitiesButtonKey),
+                          ),
+                        // User menu: profiles and sign out. Gone on mobile, because the
+                        // bottom bar's My Pleya slot is the personal destination
+                        // there and carries the same three actions. Desktop and
+                        // TV keep it, because their sidebar has no My Pleya.
+                        // Same predicate that gates the tab, so the actions are
+                        // never in two places and never in none.
+                        if (showsHeaderAccountMenu(isMobile: PlatformDetector.isMobile(context)))
+                          _buildUserMenuAction(context),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -2109,19 +2121,20 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       containerAspectRatio: screenWidth / heroHeight,
       narrowBoxIsFullWidth: isIPhonePortrait,
     );
-    // `viewPadding`, not `padding`: the hero sits in a Scaffold body that can
-    // zero `padding.top`, and `viewPadding` also stays put when the keyboard
-    // opens. No extra breathing room on top of it — the artwork is meant to
-    // meet the bottom of the hardware safe area exactly.
-    final topViewPadding = MediaQuery.viewPaddingOf(context).top;
-    final requestedSharpTopInset = isIPhonePortrait ? topViewPadding : 0.0;
+    // Same safe-area the overlaid appbar reads, so the two never drift apart.
+    // The sharp layer's top sits at the safe area and runs behind the control
+    // row, fading in across it: the appbar's title/actions row sits inside
+    // that band, not below it.
+    final statusBarInset = _statusBarInset(context);
     final artGeometry = billboardArt == null
         ? null
         : homeHeroArtGeometry(
             screenWidth: screenWidth,
             heroHeight: heroHeight,
             kind: billboardArt.kind,
-            requestedSharpTopInset: requestedSharpTopInset,
+            requestedSharpTop: isIPhonePortrait
+                ? homeHeroSharpTopAnchors(statusBarHeight: statusBarInset)
+                : HomeHeroSharpTopAnchors.none,
             presentation: sharpPresentation,
           );
     final theme = Theme.of(context);
