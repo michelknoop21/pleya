@@ -254,6 +254,231 @@ void main() {
 
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_browse_rail');
   });
+
+  // Fase-0 baseline for Pleya Unified TV 2026 (docs/tvos-unified-experience.md
+  // hoofdstuk 27): this group locks in the existing Home-focus traversal that
+  // fase 0 must not change before any unified-catalog work begins. It asserts
+  // what DiscoverScreen actually does today on TV — including where it
+  // diverges from the intended hoofdstuk 7 focus contract (e.g. Up from the
+  // browse rail always lands on the hero Play pill, never on a "last used"
+  // hero CTA) — not what a future phase should make it do.
+  group('Home-focus baseline (TV)', () {
+    testWidgets('cold TV focus lands on the hero Play pill when a spotlight item exists', (tester) async {
+      final key = await _pumpTvDiscoverScreen(tester);
+      addTearDown(key.disposeAll);
+
+      await tester.pumpAndSettle();
+
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_hero_play');
+    });
+
+    testWidgets('Down from the hero Play pill reaches the first browse row', (tester) async {
+      final key = await _pumpTvDiscoverScreen(tester);
+      addTearDown(key.disposeAll);
+
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_hero_play');
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      await tester.pump();
+
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_browse_rail');
+    });
+
+    testWidgets('Up from the first browse row returns focus to the hero Play pill', (tester) async {
+      final key = await _pumpTvDiscoverScreen(tester);
+      addTearDown(key.disposeAll);
+
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_hero_play');
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_browse_rail');
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowUp);
+      // _focusTvHeroPlay drops the rail reveal and re-requests focus on the
+      // next frame, so this needs more than one pump to settle.
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_hero_play');
+    });
+
+    testWidgets('Right from hero Play moves to hero More-info, and Left moves back', (tester) async {
+      final key = await _pumpTvDiscoverScreen(tester);
+      addTearDown(key.disposeAll);
+
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_hero_play');
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_hero_info');
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_hero_play');
+    });
+  });
+}
+
+/// Bundle of everything a pumped [DiscoverScreen] test harness needs to keep
+/// alive for the duration of one test, plus a single teardown entry point.
+class _TvDiscoverHarness {
+  _TvDiscoverHarness({
+    required this.discoverProvider,
+    required this.activeProfileProvider,
+    required this.companionRemoteProvider,
+    required this.watchTogetherProvider,
+    required this.librariesProvider,
+    required this.hiddenLibrariesProvider,
+    required this.multiServerProvider,
+    required this.plexHome,
+    required this.db,
+  });
+
+  final DiscoverProvider discoverProvider;
+  final ActiveProfileProvider activeProfileProvider;
+  final CompanionRemoteProvider companionRemoteProvider;
+  final WatchTogetherProvider watchTogetherProvider;
+  final LibrariesProvider librariesProvider;
+  final HiddenLibrariesProvider hiddenLibrariesProvider;
+  final MultiServerProvider multiServerProvider;
+  final PlexHomeService plexHome;
+  final AppDatabase db;
+
+  Future<void> disposeAll() async {
+    discoverProvider.dispose();
+    activeProfileProvider.dispose();
+    companionRemoteProvider.dispose();
+    watchTogetherProvider.dispose();
+    librariesProvider.dispose();
+    hiddenLibrariesProvider.dispose();
+    multiServerProvider.dispose();
+    await plexHome.dispose();
+    await db.close();
+  }
+}
+
+/// Mounts [DiscoverScreen] on a 1280x720 TV-mode surface, wired with the same
+/// fake providers/registries as the single pre-existing test above, with one
+/// global hub ('hub_1') carrying one item so a hero spotlight item always
+/// exists (see [DiscoverScreenState._defaultSpotlightItem]). Reused by the
+/// Home-focus baseline tests so they exercise the real focus wiring instead
+/// of a hand-rolled substitute.
+Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(WidgetTester tester) async {
+  final settings = await SettingsService.getInstance();
+  await settings.write(SettingsService.libraryDensity, LibraryDensity.max);
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = const Size(1280, 720);
+  addTearDown(() {
+    tester.view.resetDevicePixelRatio();
+    tester.view.resetPhysicalSize();
+  });
+
+  final item = MediaItem(
+    id: 'movie_1',
+    backend: MediaBackend.plex,
+    kind: MediaKind.movie,
+    title: 'Movie 1',
+    serverId: 'server_1',
+    serverName: 'Server',
+  );
+  final hub = MediaHub(id: 'hub_1', title: 'Recommended', type: 'movie', items: [item], size: 1);
+  final client = _FakeMediaServerClient(hubs: [hub]);
+  final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+  final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+  final hiddenLibrariesProvider = HiddenLibrariesProvider();
+  final librariesProvider = LibrariesProvider();
+  final watchTogetherProvider = WatchTogetherProvider();
+  final companionRemoteProvider = CompanionRemoteProvider();
+
+  final db = AppDatabase.forTesting(NativeDatabase.memory());
+  final profileRegistry = _FakeProfileRegistry(db);
+  final connectionRegistry = _FakeConnectionRegistry(db);
+  final profileConnectionRegistry = _FakeProfileConnectionRegistry(db);
+  final storage = await StorageService.getInstance();
+  final plexHome = PlexHomeService(
+    connections: connectionRegistry,
+    profileConnections: profileConnectionRegistry,
+    storage: storage,
+    plexHomeUserFetcher: (_) async => const [],
+  );
+  final activeProfileProvider = ActiveProfileProvider(
+    registry: profileRegistry,
+    plexHome: plexHome,
+    connections: connectionRegistry,
+    storage: storage,
+  );
+  final discoverProvider = DiscoverProvider(
+    multiServerProvider,
+    hiddenLibrariesProvider,
+    librariesProvider,
+    isProfileBinding: () => activeProfileProvider.isBinding,
+  );
+  final discoverKey = GlobalKey<State<DiscoverScreen>>();
+  const foregroundWidth = 1280 - SideNavigationRailState.tvCollapsedWidth;
+
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
+          ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibrariesProvider),
+          ChangeNotifierProvider<HomeLayoutProvider>(create: (_) => HomeLayoutProvider()),
+          ChangeNotifierProvider<LibrariesProvider>.value(value: librariesProvider),
+          ChangeNotifierProvider<WatchTogetherProvider>.value(value: watchTogetherProvider),
+          ChangeNotifierProvider<CompanionRemoteProvider>.value(value: companionRemoteProvider),
+          ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfileProvider),
+          ChangeNotifierProvider<DiscoverProvider>.value(value: discoverProvider),
+        ],
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: MainScreenFocusScope(
+            focusSidebar: () {},
+            focusContent: () {},
+            isSidebarFocused: false,
+            sideNavigationWidth: SideNavigationRailState.expandedWidth,
+            reservedSideNavigationWidth: SideNavigationRailState.tvCollapsedWidth,
+            foregroundLeft: 120.0,
+            foregroundWidth: foregroundWidth,
+            viewportWidth: 1280,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                width: foregroundWidth,
+                height: 720,
+                child: DiscoverScreen(key: discoverKey),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  return _TvDiscoverHarness(
+    discoverProvider: discoverProvider,
+    activeProfileProvider: activeProfileProvider,
+    companionRemoteProvider: companionRemoteProvider,
+    watchTogetherProvider: watchTogetherProvider,
+    librariesProvider: librariesProvider,
+    hiddenLibrariesProvider: hiddenLibrariesProvider,
+    multiServerProvider: multiServerProvider,
+    plexHome: plexHome,
+    db: db,
+  );
 }
 
 class _FakeMediaServerClient implements MediaServerClient {

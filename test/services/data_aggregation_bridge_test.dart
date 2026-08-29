@@ -22,11 +22,13 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/plex_client.dart';
 
-JellyfinConnection _conn() => JellyfinConnection(
-  id: 'srv-1/user-1',
-  baseUrl: 'https://jf.example.com',
+JellyfinConnection _conn() => _connFor(serverId: 'srv-1', baseUrl: 'https://jf.example.com');
+
+JellyfinConnection _connFor({required String serverId, required String baseUrl}) => JellyfinConnection(
+  id: '$serverId/user-1',
+  baseUrl: baseUrl,
   serverName: 'Home',
-  serverMachineId: 'srv-1',
+  serverMachineId: serverId,
   userId: 'user-1',
   userName: 'edde',
   accessToken: 'tok-abc',
@@ -692,6 +694,86 @@ void main() {
       expect(hubs.single.items, hasLength(7));
       expect(captured.map((uri) => uri.path), ['/hubs/promoted']);
       expect(captured.single.queryParameters['count'], defaultHubPreviewLimit.toString());
+    });
+  });
+
+  // Fase-0 baseline for Pleya Unified TV 2026 (docs/tvos-unified-experience.md
+  // hoofdstuk 27): this group locks in the existing DataAggregationService
+  // call-count behavior that fase 0 must not change before any
+  // unified-catalog/pagination work (hoofdstuk 12) lands. It is a tripwire,
+  // not a correctness test: if a later phase changes the fan-out shape (e.g.
+  // batches libraries into one request, or adds a prefetch call), this test
+  // goes red and forces an explicit decision instead of a silent drift in how
+  // many requests Home/Libraries makes per server.
+  group('DataAggregationService call-count baseline', () {
+    test('call-count baseline: 5 libraries across 2 servers fetch in exactly 7 network calls', () async {
+      var serverACalls = 0;
+      var serverBCalls = 0;
+
+      final clientA = JellyfinClient.forTesting(
+        connection: _connFor(serverId: 'srv-a', baseUrl: 'https://jf-a.example.com'),
+        httpClient: MockClient((req) async {
+          serverACalls++;
+          if (req.url.path == '/Users/user-1/Views') {
+            return _json({
+              'Items': [
+                {'Id': 'lib-a1', 'Name': 'Movies A', 'CollectionType': 'movies'},
+                {'Id': 'lib-a2', 'Name': 'Shows A', 'CollectionType': 'tvshows'},
+              ],
+            });
+          }
+          if (req.url.path == '/Users/user-1/Items/Latest') {
+            final parentId = req.url.queryParameters['ParentId']!;
+            return _json({
+              'Items': [
+                {'Id': 'item-$parentId', 'Type': 'Movie', 'Name': 'Latest $parentId', 'ParentLibraryId': parentId},
+              ],
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      final clientB = JellyfinClient.forTesting(
+        connection: _connFor(serverId: 'srv-b', baseUrl: 'https://jf-b.example.com'),
+        httpClient: MockClient((req) async {
+          serverBCalls++;
+          if (req.url.path == '/Users/user-1/Views') {
+            return _json({
+              'Items': [
+                {'Id': 'lib-b1', 'Name': 'Movies B', 'CollectionType': 'movies'},
+                {'Id': 'lib-b2', 'Name': 'Shows B', 'CollectionType': 'tvshows'},
+                {'Id': 'lib-b3', 'Name': 'Docs B', 'CollectionType': 'movies'},
+              ],
+            });
+          }
+          if (req.url.path == '/Users/user-1/Items/Latest') {
+            final parentId = req.url.queryParameters['ParentId']!;
+            return _json({
+              'Items': [
+                {'Id': 'item-$parentId', 'Type': 'Movie', 'Name': 'Latest $parentId', 'ParentLibraryId': parentId},
+              ],
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      addTearDown(clientA.close);
+      addTearDown(clientB.close);
+      manager.debugRegisterJellyfinClientForTesting(clientA);
+      manager.debugRegisterJellyfinClientForTesting(clientB);
+
+      final result = await service.getHubsFromAllServers(useGlobalHubs: false, includePlaybackHubs: false);
+
+      expect(result.succeededServerIds, {'srv-a', 'srv-b'});
+      expect(result.hubs, hasLength(5), reason: 'one hub per library across both servers');
+      // Per server: 1 library-list call ("Views") + 1 "Latest" call per
+      // visible library. Server A has 2 libraries (3 calls), server B has 3
+      // (4 calls). This is the exact, named baseline — not a bound — so a
+      // change in fan-out shape (batching, an added prefetch, a dropped
+      // library-list call) shows up as a hard failure here.
+      expect(serverACalls, 3, reason: '1 Views + 2 Latest for server A (2 libraries)');
+      expect(serverBCalls, 4, reason: '1 Views + 3 Latest for server B (3 libraries)');
+      expect(serverACalls + serverBCalls, 7, reason: 'total network calls for 5 libraries across 2 servers');
     });
   });
 }

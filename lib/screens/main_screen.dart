@@ -192,6 +192,23 @@ bool shouldPassTvosMenuToSystem({
       isCurrentTabRoot;
 }
 
+/// Which visible tab `onTabNext`/`onTabPrevious` (companion remote) should
+/// move to from [currentTab], wrapping around the ends of [visibleTabs].
+/// Returns `null` when [currentTab] isn't among [visibleTabs] — the caller
+/// then leaves the selection untouched, matching the original inline
+/// `idx >= 0` guard.
+@visibleForTesting
+NavigationTabId? mainScreenAdjacentTabId({
+  required List<NavigationTab> visibleTabs,
+  required NavigationTabId currentTab,
+  required bool forward,
+}) {
+  final idx = visibleTabs.indexWhere((t) => t.id == currentTab);
+  if (idx < 0) return null;
+  final nextIdx = forward ? (idx + 1) % visibleTabs.length : (idx - 1 + visibleTabs.length) % visibleTabs.length;
+  return visibleTabs[nextIdx].id;
+}
+
 @visibleForTesting
 enum ProfileInvalidationAction { none, waitForProfileSwitch, invalidateNow }
 
@@ -214,6 +231,46 @@ ProfileInvalidationAction profileInvalidationAction({
     return ProfileInvalidationAction.invalidateNow;
   }
   return ProfileInvalidationAction.none;
+}
+
+/// The distinct outcomes of a Menu/back press on the main shell, decided
+/// purely from the caller's already-computed inputs — see `_handleMainBack`,
+/// which reads `_lastBackPressAt`/context to build those inputs and then
+/// performs the side effect (navigate home, exit, arm the snackbar, or the
+/// tvOS no-op) that matches the outcome below.
+@visibleForTesting
+enum MainBackDecision {
+  /// No tabs are visible at all (e.g. mid-teardown) — swallow the press.
+  noVisibleTabs,
+
+  /// Not on the home tab yet — Back/Menu navigates there first.
+  goHome,
+
+  /// On tvOS, already on the home tab: the engine normally passes root Menu
+  /// presses through to UIKit, so a stale event reaching here should not
+  /// show an exit prompt that cannot be honored app-side.
+  tvMenuPassthroughStale,
+
+  /// On the home tab, a second press landed within the exit window — exit.
+  exitNow,
+
+  /// On the home tab, first press (or the window lapsed) — arm the
+  /// "press back again to exit" prompt.
+  armExitPrompt,
+}
+
+@visibleForTesting
+MainBackDecision mainBackKeyDecision({
+  required bool hasVisibleTabs,
+  required bool isAtHomeTab,
+  required bool isAppleTV,
+  required bool hasRecentBackPress,
+}) {
+  if (!hasVisibleTabs) return MainBackDecision.noVisibleTabs;
+  if (!isAtHomeTab) return MainBackDecision.goHome;
+  if (isAppleTV) return MainBackDecision.tvMenuPassthroughStale;
+  if (hasRecentBackPress) return MainBackDecision.exitNow;
+  return MainBackDecision.armExitPrompt;
 }
 
 class MainScreen extends StatefulWidget {
@@ -875,14 +932,20 @@ class _MainScreenState extends State<MainScreen>
     final receiver = CompanionRemoteReceiver.instance;
 
     receiver.onTabNext = () {
-      final tabs = _getVisibleTabs(_isOffline);
-      final idx = tabs.indexWhere((t) => t.id == _currentTab);
-      if (idx >= 0) _selectTab(tabs[(idx + 1) % tabs.length].id);
+      final next = mainScreenAdjacentTabId(
+        visibleTabs: _getVisibleTabs(_isOffline),
+        currentTab: _currentTab,
+        forward: true,
+      );
+      if (next != null) _selectTab(next);
     };
     receiver.onTabPrevious = () {
-      final tabs = _getVisibleTabs(_isOffline);
-      final idx = tabs.indexWhere((t) => t.id == _currentTab);
-      if (idx >= 0) _selectTab(tabs[(idx - 1 + tabs.length) % tabs.length].id);
+      final previous = mainScreenAdjacentTabId(
+        visibleTabs: _getVisibleTabs(_isOffline),
+        currentTab: _currentTab,
+        forward: false,
+      );
+      if (previous != null) _selectTab(previous);
     };
     receiver.onTabDiscover = () => _selectTab(NavigationTabId.discover);
     receiver.onTabLibraries = () => _selectTab(NavigationTabId.libraries);
@@ -1286,34 +1349,40 @@ class _MainScreenState extends State<MainScreen>
 
   KeyEventResult _handleMainBack() {
     final tabs = _getVisibleTabs(_isOffline);
-    if (tabs.isEmpty) return KeyEventResult.handled;
-
-    final homeTab = tabs.first.id;
-    if (_currentTab != homeTab) {
-      _selectTab(homeTab);
-      _lastBackPressAt = null;
-      return KeyEventResult.handled;
-    }
-
-    // The tvOS engine normally passes root Menu presses through to UIKit. If a
-    // stale event still reaches Flutter, avoid showing an exit prompt that
-    // cannot be honored app-side.
-    if (PlatformDetector.isAppleTV()) {
-      _lastBackPressAt = null;
-      return KeyEventResult.handled;
-    }
-
+    final homeTab = tabs.isNotEmpty ? tabs.first.id : null;
     final now = DateTime.now();
     final lastBackPressAt = _lastBackPressAt;
-    if (lastBackPressAt != null && now.difference(lastBackPressAt) < _backExitWindow) {
-      _lastBackPressAt = null;
-      unawaited(AppExitService.requestExit());
-      return KeyEventResult.handled;
-    }
+    final hasRecentBackPress = lastBackPressAt != null && now.difference(lastBackPressAt) < _backExitWindow;
 
-    _lastBackPressAt = now;
-    showMainSnackBar(t.common.pressBackAgainToExit, duration: _backExitWindow);
-    return KeyEventResult.handled;
+    final decision = mainBackKeyDecision(
+      hasVisibleTabs: tabs.isNotEmpty,
+      isAtHomeTab: homeTab != null && _currentTab == homeTab,
+      isAppleTV: PlatformDetector.isAppleTV(),
+      hasRecentBackPress: hasRecentBackPress,
+    );
+
+    switch (decision) {
+      case MainBackDecision.noVisibleTabs:
+        return KeyEventResult.handled;
+      case MainBackDecision.goHome:
+        _selectTab(homeTab!);
+        _lastBackPressAt = null;
+        return KeyEventResult.handled;
+      case MainBackDecision.tvMenuPassthroughStale:
+        // The tvOS engine normally passes root Menu presses through to UIKit.
+        // If a stale event still reaches Flutter, avoid showing an exit
+        // prompt that cannot be honored app-side.
+        _lastBackPressAt = null;
+        return KeyEventResult.handled;
+      case MainBackDecision.exitNow:
+        _lastBackPressAt = null;
+        unawaited(AppExitService.requestExit());
+        return KeyEventResult.handled;
+      case MainBackDecision.armExitPrompt:
+        _lastBackPressAt = now;
+        showMainSnackBar(t.common.pressBackAgainToExit, duration: _backExitWindow);
+        return KeyEventResult.handled;
+    }
   }
 
   KeyEventResult _handleMainBackKeyAction(KeyEvent event) {

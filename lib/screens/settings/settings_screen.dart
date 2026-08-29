@@ -9,6 +9,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../config/dev_flags.dart';
 import '../../focus/focus_memory_tracker.dart';
 import '../../media/ids.dart';
 import '../../focus/focusable_text_field.dart';
@@ -766,6 +767,13 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
             final end = DateTime.now().add(const Duration(seconds: 10));
             while (DateTime.now().isBefore(end)) {}
           },
+        ),
+        SettingSwitchRow(
+          icon: Symbols.science_rounded,
+          title: 'Unified TV experience',
+          subtitle: 'Pleya Unified TV 2026 development gate — not a real setting',
+          value: DevFlags.tvUnifiedExperience,
+          onChanged: (v) => setState(() => DevFlags.tvUnifiedExperience = v),
         ),
       ],
     );
