@@ -583,6 +583,9 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   Future<MediaItem?> findByIdentity(MediaIdentity identity) async => null;
 
   @override
+  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async => const [];
+
+  @override
   Future<LibraryPage<MediaItem>> fetchFavorites({MediaKind? kind, int offset = 0, int limit = 100}) async {
     return LibraryPage<MediaItem>(items: const [], totalCount: 0, offset: offset);
   }

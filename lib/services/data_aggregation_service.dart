@@ -31,13 +31,18 @@ class DataAggregationService {
   DataAggregationService(this._serverManager);
 
   /// Online clients, optionally restricted to [serverIds] — delta refreshes
-  /// fan out to newly-online servers only.
+  /// fan out to newly-online servers only. Always visibility-filtered: a
+  /// server the active profile has hidden never contributes here, regardless
+  /// of [serverIds]. [MultiServerManager.onlineClients] itself is NOT
+  /// visibility-filtered (profile visibility lives on the manager but isn't
+  /// applied there), so every aggregation entry point must go through this
+  /// method rather than reading `onlineClients` directly.
   Map<String, MediaServerClient> _clientsFor(Set<String>? serverIds) {
     final clients = _serverManager.onlineClients;
-    if (serverIds == null) return clients;
     return {
       for (final entry in clients.entries)
-        if (serverIds.contains(entry.key)) entry.key: entry.value,
+        if (_serverManager.isServerVisible(ServerId(entry.key)) && (serverIds == null || serverIds.contains(entry.key)))
+          entry.key: entry.value,
     };
   }
 

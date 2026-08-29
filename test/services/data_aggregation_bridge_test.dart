@@ -777,6 +777,84 @@ void main() {
     });
   });
 
+  // Fase 2 (docs/tvos-unified-experience.md hoofdstuk 27, hoofdstuk 1.1 punt 2):
+  // MultiServerManager.onlineClients itself is NOT visibility-filtered — the
+  // profile visibility filter lives on the manager but only MultiServerProvider
+  // applied it. DataAggregationService._clientsFor() used to read onlineClients
+  // directly, so a profile-hidden server's items could still reach every
+  // cross-server aggregation call. This closes that gap ahead of the unified
+  // fan-out (findAllByIdentity in a later phase), which must never let a
+  // hidden server's items reach identity/grouping.
+  group('DataAggregationService respects profile visibility', () {
+    test('getMediaLibrariesFromAllServers excludes a server hidden by the active profile', () async {
+      final visible = JellyfinClient.forTesting(
+        connection: _connFor(serverId: 'srv-visible', baseUrl: 'https://jf-visible.example.com'),
+        httpClient: MockClient((req) async {
+          if (req.url.path == '/Users/user-1/Views') {
+            return _json({
+              'Items': [
+                {'Id': 'lib-visible', 'Name': 'Visible Library', 'CollectionType': 'movies'},
+              ],
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      final hidden = JellyfinClient.forTesting(
+        connection: _connFor(serverId: 'srv-hidden', baseUrl: 'https://jf-hidden.example.com'),
+        httpClient: MockClient((req) async => http.Response('server should never be called', 500)),
+      );
+      addTearDown(visible.close);
+      addTearDown(hidden.close);
+      manager.debugRegisterJellyfinClientForTesting(visible);
+      manager.debugRegisterJellyfinClientForTesting(hidden);
+      manager.setVisibleServerIds({'srv-visible'});
+
+      final result = await service.getMediaLibrariesFromAllServers();
+
+      expect(result.libraries.map((l) => l.id), ['lib-visible']);
+      expect(result.succeededServerIds, {'srv-visible'});
+    });
+
+    test('an explicit serverIds restriction never re-admits a profile-hidden server', () async {
+      final hidden = JellyfinClient.forTesting(
+        connection: _connFor(serverId: 'srv-hidden', baseUrl: 'https://jf-hidden.example.com'),
+        httpClient: MockClient((req) async => http.Response('server should never be called', 500)),
+      );
+      addTearDown(hidden.close);
+      manager.debugRegisterJellyfinClientForTesting(hidden);
+      manager.setVisibleServerIds(const {});
+
+      final result = await service.getMediaLibrariesFromAllServers(serverIds: {'srv-hidden'});
+
+      expect(result.libraries, isEmpty);
+      expect(result.succeededServerIds, isEmpty);
+    });
+
+    test('a null visibility filter (no active restriction) still sees every online server', () async {
+      final client = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((req) async {
+          if (req.url.path == '/Users/user-1/Views') {
+            return _json({
+              'Items': [
+                {'Id': 'lib-1', 'Name': 'Library 1', 'CollectionType': 'movies'},
+              ],
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      addTearDown(client.close);
+      manager.debugRegisterJellyfinClientForTesting(client);
+      expect(manager.visibleServerIds, isNull);
+
+      final result = await service.getMediaLibrariesFromAllServers();
+
+      expect(result.succeededServerIds, {'srv-1'});
+    });
+  });
+
   // Fase-0 baseline for Pleya Unified TV 2026 (docs/tvos-unified-experience.md
   // hoofdstuk 27): this group locks in the existing DataAggregationService
   // call-count behavior that fase 0 must not change before any
