@@ -19,8 +19,33 @@ void main() {
     final declared = (snapshot['declared'] as List).cast<Map<String, Object?>>();
     final ids = declared.map((n) => n['id']).toList();
 
-    expect(ids, containsAll(['dup-a', 'dup-a#1']));
+    // `#2` for the second occurrence, matching snapshot()'s own doc. The
+    // suffix used to be `seen.length` at collision time, which made this
+    // `#1` — off by one, and worse, not per-id (see the next test).
+    expect(ids, containsAll(['dup-a', 'dup-a#2']));
     expect(snapshot['duplicates'], contains('dup-a'));
+  });
+
+  test('interleaved duplicates of different ids stay unique — the suffix counts per id', () {
+    // With one shared counter, `a, a, b, b, a` produced `a#2, b#4, a#4`:
+    // two nodes sharing an id in the snapshot, which is exactly what the
+    // suffix exists to prevent and what snapshot()'s doc promises never
+    // happens.
+    final tokens = [
+      for (final id in ['dup-x', 'dup-x', 'dup-y', 'dup-y', 'dup-x'])
+        AutomationRegistry.instance.register(AutomationDeclaredNode(id: id, role: 'button')),
+    ];
+    addTearDown(() {
+      for (final token in tokens) {
+        AutomationRegistry.instance.unregister(token);
+      }
+    });
+
+    final declared = (AutomationRegistry.instance.snapshot()['declared'] as List).cast<Map<String, Object?>>();
+    final ids = declared.map((n) => n['id'] as String).where((id) => id.startsWith('dup-')).toList();
+
+    expect(ids.toSet().length, ids.length, reason: 'every reported id must be unique: $ids');
+    expect(ids, containsAll(['dup-x', 'dup-x#2', 'dup-x#3', 'dup-y', 'dup-y#2']));
   });
 
   testWidgets('discovered focusables are reported with bounds', (tester) async {

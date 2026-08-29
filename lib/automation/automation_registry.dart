@@ -58,12 +58,18 @@ class AutomationRegistry {
   Map<String, Object?> snapshot() {
     final declared = <Map<String, Object?>>[];
     final duplicates = <String>[];
-    final seen = <String>{};
+    // Per base id, not one shared counter. `seen.length` counts *all*
+    // distinct ids emitted so far, so with several colliding ids in one
+    // tree the same suffix can be handed out twice — `a`,`a`,`b`,`b`,`a`
+    // produced `a#2`, `b#4`, `a#4` — and two nodes sharing an id in the
+    // snapshot is precisely what this suffix exists to prevent.
+    final occurrences = <String, int>{};
     for (final node in _declared.values) {
       var id = node.id;
-      if (!seen.add(id)) {
+      final seenBefore = occurrences.update(id, (n) => n + 1, ifAbsent: () => 1);
+      if (seenBefore > 1) {
         duplicates.add(node.id);
-        id = '${node.id}#${seen.length}';
+        id = '${node.id}#$seenBefore';
       }
       declared.add({
         'id': id,

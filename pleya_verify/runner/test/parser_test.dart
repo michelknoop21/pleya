@@ -45,6 +45,31 @@ void main() {
     );
   });
 
+  test('a scalar setup: fails with file+line, not a raw TypeError', () {
+    // bin/verify.dart only catches ScenarioParseException, so anything else
+    // escaping this parser breaks the CLI's "one clean file:line: message"
+    // contract on exactly the malformed input it exists to explain.
+    const yaml = 'name: x\ntarget: macos\nsetup: hallo\nsteps:\n  - press: down\n';
+    try {
+      parseScenarioString(yaml, sourcePath: 'inline.yaml');
+      fail('expected ScenarioParseException');
+    } on ScenarioParseException catch (e) {
+      expect(e.error.sourcePath, 'inline.yaml');
+      expect(e.error.line, 3);
+      expect(e.error.message, contains('setup must be a list'));
+    }
+  });
+
+  test('a mapping setup: fails the same way', () {
+    expect(
+      () => parseScenarioString(
+        'name: x\ntarget: macos\nsetup: {launch: true}\nsteps:\n  - press: down\n',
+        sourcePath: 'inline.yaml',
+      ),
+      throwsA(isA<ScenarioParseException>().having((e) => e.error.message, 'message', contains('setup must be a list'))),
+    );
+  });
+
   test('a setup/step entry with two keys fails with file+line', () {
     const yaml = 'name: x\ntarget: macos\nsteps:\n  - press: down\n    tap: {x: 1, y: 2}\n';
     try {

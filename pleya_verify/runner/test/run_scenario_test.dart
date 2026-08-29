@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:pleya_verify_runner/src/driver/instance_discovery.dart';
 import 'package:pleya_verify_runner/src/driver/verification_driver.dart';
 import 'package:pleya_verify_runner/src/engine/run_scenario.dart';
 import 'package:pleya_verify_runner/src/scenario/parser.dart';
@@ -14,17 +15,26 @@ import 'package:test/test.dart';
 /// Fase 8 commit message for how it was verified by hand).
 class FakeDriver implements VerificationDriver {
   bool freshInstallDone = false;
+  bool terminateCalled = false;
   final List<String> _log = [];
   final Set<String> readyScreens;
   final bool failWaitUntil;
 
-  FakeDriver({this.readyScreens = const {'screen.main'}, this.failWaitUntil = false});
+  /// Simulates the real hazard: a `launch()` that starts a process and
+  /// *then* throws (a health-check timeout, an instance-identity mismatch).
+  final bool failLaunch;
+
+  FakeDriver({this.readyScreens = const {'screen.main'}, this.failWaitUntil = false, this.failLaunch = false});
 
   @override
   String get target => 'macos';
 
   @override
   VerifyClient? get client => null;
+
+  @override
+  VerifyInstance? get instance =>
+      const VerifyInstance(port: 47319, protocolVersion: 1, pid: 4242, source: 'fake');
 
   @override
   String get inputRoute => 'transport';
@@ -47,10 +57,14 @@ class FakeDriver implements VerificationDriver {
   @override
   Future<void> launch({Duration timeout = const Duration(seconds: 20)}) async {
     _log.add('launch');
+    if (failLaunch) {
+      throw StateError('app did not respond on /v1/health within 20s');
+    }
   }
 
   @override
   Future<void> terminate() async {
+    terminateCalled = true;
     _log.add('terminate');
   }
 
@@ -189,6 +203,66 @@ void main() {
 
     expect(result.passed, isFalse);
     expect(result.failureMessage, contains('does not implement verb "open"'));
+  });
+
+  test('a launch() that throws still gets terminated — no process left owning the port', () async {
+    // The zombie mechanism behind the port-47317 contamination traced by
+    // hand in Fase 10: `launch()` starts the app, then fails its health
+    // check. Gating teardown on a *successful* launch leaves that process
+    // running, and it answers the next run's health check convincingly.
+    final scenario = parseScenarioString(
+      'name: fixture.launch_fail\ntarget: macos\nsetup:\n  - launch\nsteps:\n  - assert: {id: screen.main}\n',
+      sourcePath: 'inline.yaml',
+    );
+    final driver = FakeDriver(failLaunch: true);
+
+    final result = await runScenario(
+      scenario: scenario,
+      scenarioSource: 'name: fixture.launch_fail\n...',
+      driver: driver,
+      repoRoot: repoRoot,
+    );
+
+    expect(result.passed, isFalse);
+    expect(driver.terminateCalled, isTrue, reason: 'a started-but-unhealthy app must still be torn down');
+  });
+
+  test('a run that never launched does not call terminate', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.no_launch\ntarget: macos\nsteps:\n  - assert: {id: screen.main}\n',
+      sourcePath: 'inline.yaml',
+    );
+    final driver = FakeDriver();
+
+    await runScenario(
+      scenario: scenario,
+      scenarioSource: 'name: fixture.no_launch\n...',
+      driver: driver,
+      repoRoot: repoRoot,
+    );
+
+    expect(driver.terminateCalled, isFalse);
+  });
+
+  test('the manifest names the instance the run actually drove', () async {
+    // Without this a bundle cannot answer "was this the app you launched?",
+    // which is the question the port-discovery work exists to make
+    // answerable.
+    final scenario = parseScenarioString(
+      'name: fixture.instance\ntarget: macos\nsetup:\n  - launch\nsteps:\n  - assert: {id: screen.main}\n',
+      sourcePath: 'inline.yaml',
+    );
+
+    final result = await runScenario(
+      scenario: scenario,
+      scenarioSource: 'name: fixture.instance\n...',
+      driver: FakeDriver(),
+      repoRoot: repoRoot,
+    );
+
+    final manifest = File('${result.bundleDir.path}/manifest.json').readAsStringSync();
+    expect(manifest, contains('"port": 47319'));
+    expect(manifest, contains('"source": "fake"'));
   });
 
   test('run-id directories are unique and land under .build/pleya-verify/', () async {

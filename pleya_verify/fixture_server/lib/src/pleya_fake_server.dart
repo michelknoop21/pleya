@@ -143,27 +143,41 @@ class PleyaFakeServer {
     _queuedLatencyCount = count;
   }
 
-  /// Clears every mutable field back to a fresh instance's state. Used by
-  /// the `/__verify/reset` control-plane route between scenario runs.
-  void reset() {
-    watchEvents.clear();
-    watchStates.clear();
-    ownedByThisSession = true;
-    requests.clear();
+  /// Empties the media catalog and nothing else — no credentials, no
+  /// session, no counters, no clock.
+  ///
+  /// Seeding a named fixture needs exactly this, and used to call [reset]
+  /// instead. That made step order silently load-bearing: a scenario doing
+  /// `sign_in` and then `seed` had its just-created session wiped by the
+  /// seed, and every later authenticated step failed with an error about a
+  /// dead session that pointed nowhere near the seed step that killed it.
+  /// Nothing in the scenario grammar forbids that order, so the fixture is
+  /// the right place to stop being order-sensitive.
+  void resetCatalog() {
     items.clear();
     libraries.clear();
     libraryItems.clear();
     children.clear();
     hubs.updateAll((_, __) => []);
     searchResults.clear();
+    artworkById.clear();
+    versionBytes.clear();
+  }
+
+  /// Clears every mutable field back to a fresh instance's state. Used by
+  /// the `/__verify/reset` control-plane route between scenario runs.
+  void reset() {
+    resetCatalog();
+    watchEvents.clear();
+    watchStates.clear();
+    ownedByThisSession = true;
+    requests.clear();
     refreshCount = 0;
     rejectCurrentAccessTokens = false;
     unreachable = false;
     refreshOutcome = PleyaFakeRefreshOutcome.rotate;
     setupRequired = _initialSetupRequired;
     _credentials.clear();
-    artworkById.clear();
-    versionBytes.clear();
     clock.resetToStart();
     _queuedFailure = null;
     _queuedLatency = Duration.zero;

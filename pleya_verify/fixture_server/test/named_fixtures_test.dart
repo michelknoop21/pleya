@@ -1,8 +1,84 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
 import 'package:pleya_verify_fixture_server/named_fixtures.dart';
 import 'package:pleya_verify_fixture_server/pleya_fake_server.dart';
 import 'package:test/test.dart';
 
+Future<http.Response> _post(PleyaFakeServer server, String path, Object body) {
+  final request = http.Request('POST', Uri.parse('http://fixture$path'))..body = jsonEncode(body);
+  return server.handle(request);
+}
+
 void main() {
+  group('seeding preserves the session', () {
+    // `seed` used to call the full reset(), which also wiped credentials,
+    // refreshCount and the clock. Nothing in the scenario grammar forbids
+    // `sign_in` before `seed`, so that made step order silently
+    // load-bearing: the seed invalidated the session the sign_in had just
+    // created, and every later authenticated step failed with an error
+    // about a dead session that pointed nowhere near the real cause.
+    Future<PleyaFakeServer> signedInServer() async {
+      // `setupRequired: true` is what a scenario's `sign_in` step meets: a
+      // fresh server offering setup once, which registers the owner.
+      final server = PleyaFakeServer(setupRequired: true);
+      final setup = await _post(server, '/pleya/v1/auth/setup', {
+        'setup_code': server.setupCode,
+        'username': 'verify-owner',
+        'password': 'verify-password',
+      });
+      expect(setup.statusCode, 200, reason: 'precondition: the fixture owner must exist');
+      return server;
+    }
+
+    test('a catalog seed after sign_in leaves the credentials usable', () async {
+      final server = await signedInServer();
+
+      applyNamedFixture(server, 'catalog.shows.v1');
+
+      final login = await _post(server, '/pleya/v1/auth/login', {
+        'username': 'verify-owner',
+        'password': 'verify-password',
+      });
+      expect(login.statusCode, 200, reason: 'the seed must not invalidate the session sign_in created');
+      expect(server.setupRequired, isFalse);
+    });
+
+    test('every named fixture preserves the session, not just one', () async {
+      for (final name in ['catalog.shows.v1', 'catalog.mixed.v1', 'catalog.empty.v1']) {
+        final server = await signedInServer();
+        applyNamedFixture(server, name);
+
+        final login = await _post(server, '/pleya/v1/auth/login', {
+          'username': 'verify-owner',
+          'password': 'verify-password',
+        });
+        expect(login.statusCode, 200, reason: '$name wiped the credentials');
+      }
+    });
+
+    test('a seed still replaces the catalog rather than appending to it', () {
+      final server = PleyaFakeServer();
+      applyNamedFixture(server, 'catalog.shows.v1');
+      final afterShows = server.libraries.length;
+
+      applyNamedFixture(server, 'catalog.mixed.v1');
+
+      expect(server.libraries.length, lessThanOrEqualTo(afterShows + 1));
+      expect(
+        server.libraries.where((l) => l['title'] == 'Shows').length,
+        lessThanOrEqualTo(1),
+        reason: 'seeding twice must not stack duplicate libraries',
+      );
+    });
+
+    test('a seed does not reset counters the scenario may be asserting on', () {
+      final server = PleyaFakeServer()..refreshCount = 3;
+      applyNamedFixture(server, 'catalog.shows.v1');
+      expect(server.refreshCount, 3);
+    });
+  });
+
   test('applyNamedFixture returns false and mutates nothing for an unknown name', () {
     final server = PleyaFakeServer();
     final applied = applyNamedFixture(server, 'catalog.does-not-exist');

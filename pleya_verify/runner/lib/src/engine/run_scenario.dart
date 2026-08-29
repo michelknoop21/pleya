@@ -3,8 +3,10 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 
+import '../driver/instance_discovery.dart';
 import '../driver/verification_driver.dart';
 import '../fixture/fixture_server_handle.dart';
+import '../redact.dart';
 import '../scenario/model.dart';
 import 'evidence_bundle.dart';
 
@@ -44,8 +46,18 @@ Future<ScenarioRunResult> runScenario({
   final stepRecords = <Map<String, Object?>>[];
   var passed = true;
   String? failureMessage;
+  // Two flags, deliberately. [launchAttempted] is set *before* `launch()`
+  // and gates teardown: a `launch()` that throws (a health-check timeout, an
+  // identity mismatch) has usually already started a process, and gating
+  // `terminate()` on success leaves it running. That leftover process then
+  // owns the automation port and answers a later run's health check
+  // convincingly — the exact contamination traced by hand in Fase 10.
+  // [launched] gates only the transport evidence, which genuinely needs a
+  // live client.
+  var launchAttempted = false;
   var launched = false;
   FixtureServerHandle? fixture;
+  VerifyInstance? instance;
   String? snapshotHash;
 
   Object resolvePlaceholders(Object? value, FixtureServerHandle? fixture, String? setupCode) {
@@ -76,8 +88,13 @@ Future<ScenarioRunResult> runScenario({
           // install onto.
           break;
         case 'launch':
+          launchAttempted = true;
           await driver.launch();
           launched = true;
+          // Captured now, because terminate() clears it — the manifest has
+          // to name the instance this run actually drove.
+          instance = driver.instance;
+          record['instance'] = instance?.toJson();
         case 'sign_in':
           final setupCode = fixture == null ? null : (await fixture.verifyState())['setupCode'] as String?;
           final args = resolvePlaceholders(step.args, fixture, setupCode) as Map<String, Object?>;
@@ -128,7 +145,10 @@ Future<ScenarioRunResult> runScenario({
       record['ok'] = true;
     } catch (e) {
       record['ok'] = false;
-      record['error'] = '$e';
+      // Redacted at the point it enters the bundle: an error string can
+      // quote a request URL or an Authorization header, and manifest.json
+      // plus report.md are files a developer pastes into an issue.
+      record['error'] = redact('$e');
       rethrow;
     } finally {
       stepRecords.add(record);
@@ -168,11 +188,20 @@ Future<ScenarioRunResult> runScenario({
       } catch (_) {
         bundle.writeAppLog(const []);
       }
-      await driver.terminate();
     } else {
       bundle.saveUiTree('final', const {});
       bundle.writeFocusTrace(const []);
       bundle.writeAppLog(const []);
+    }
+    if (launchAttempted) {
+      try {
+        await driver.terminate();
+      } catch (e) {
+        // Never let teardown overwrite the real failure — record it and
+        // move on, but do record it: a terminate that fails is how a
+        // leftover process survives into the next run.
+        stepRecords.add({'verb': 'terminate', 'ok': false, 'error': '$e'});
+      }
     }
     if (fixture != null) {
       try {
@@ -199,9 +228,13 @@ Future<ScenarioRunResult> runScenario({
     'os': Platform.operatingSystemVersion,
     'scenario_hash': sha256.convert(utf8.encode(scenarioSource)).toString(),
     'snapshot_hash': snapshotHash,
+    // Which app instance produced this evidence, and how it was identified.
+    // Without it a bundle cannot answer "was this really the app you
+    // launched?" — see instance_discovery.dart.
+    'instance': instance?.toJson(),
     'result': passed ? 'PASS' : 'FAILED',
     'duration_ms': stopwatch.elapsedMilliseconds,
-    if (failureMessage != null) 'failure_message': failureMessage,
+    if (failureMessage != null) 'failure_message': redact(failureMessage),
     'steps': stepRecords,
   };
   bundle.writeManifest(manifest);

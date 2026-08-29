@@ -618,6 +618,22 @@ BuildApp() {
 
   local build_mode="$(echo "${FLUTTER_BUILD_MODE:-${CONFIGURATION}}" | tr "[:upper:]" "[:lower:]")"
 
+  # PLEYA_VERIFY compiles the automation HTTP control plane into the binary
+  # (see lib/automation/pleya_verify.dart). It is read from the ambient
+  # environment on lines further down, which is right for a simulator build
+  # driven by pleya_verify's tvOS driver and wrong for anything shippable:
+  # a developer or CI job that still has PLEYA_VERIFY=true exported when it
+  # later invokes scripts/testflight_release.sh would archive an app that
+  # opens a local control plane on every launch. Refuse, loudly, rather than
+  # rely on the caller having unset it. Simulator builds are unaffected —
+  # that is the case the flag exists for.
+  if [[ "${PLEYA_VERIFY:-false}" == "true" && "$PLATFORM_NAME" != "appletvsimulator" && "$build_mode" =~ "release" ]]; then
+    echo " └─ERROR: PLEYA_VERIFY=true on a device release build (PLATFORM_NAME=$PLATFORM_NAME," >&2
+    echo "          build_mode=$build_mode). That would ship the Pleya Verify automation server." >&2
+    echo "          Unset PLEYA_VERIFY (or set it to false) before archiving." >&2
+    return 1
+  fi
+
   echo "Compiling Flutter/App.Framework"
   echo " └─version $FLUTTER_BUILD_NAME ($FLUTTER_BUILD_NUMBER)"
 

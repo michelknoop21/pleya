@@ -97,7 +97,14 @@ class _AutomationScreenState extends State<AutomationScreen> {
 
   void _register() {
     if (!kPleyaVerify) return;
-    _token = AutomationScreenRegistry.instance.register(widget.id, widget.readiness);
+    // An indirection through this State, not the closure `widget.readiness`
+    // happens to be at registration time. Screens build that closure inline
+    // over their own loading fields, so every rebuild produces a new one
+    // over new values; registering the first would freeze `/v1/screens` at
+    // the readiness this screen had when it mounted — permanently "loading"
+    // for a screen that has since finished, which is exactly what a
+    // `wait_until: {id: screen.…}` step blocks on.
+    _token = AutomationScreenRegistry.instance.register(widget.id, () => widget.readiness());
   }
 
   void _unregister() {

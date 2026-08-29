@@ -75,3 +75,36 @@ String redact(String message) {
 
   return redacted;
 }
+
+/// A field name whose *value* is a credential regardless of what the value
+/// looks like — the structural counterpart to [redact]'s pattern matching.
+final RegExp _secretKey = RegExp(
+  r'^(?:' + _secretNames + r'|authorization|proxy-authorization|x-api-key|x-auth-token|cookie|set-cookie)$',
+  caseSensitive: false,
+);
+
+/// Redacts a decoded JSON value in place of its encoded text.
+///
+/// [redact] alone is wrong for JSON, in both directions. It is *lossy*:
+/// `X-Plex-Token=[^&#\s]+` has no reason to stop at a quote, so on an
+/// encoded line it eats the closing `"}` too and leaves invalid JSON in an
+/// evidence file meant to be machine-readable. And it is *incomplete*:
+/// those patterns want `header: value`, while JSON writes
+/// `"Authorization":"Bearer …"`, where the quote between the colon and the
+/// value defeats every one of them — a real token would have travelled into
+/// the bundle untouched.
+///
+/// So: walk the structure, apply [redact] to each string on its own (where
+/// the patterns work as designed and encoding happens afterwards), and
+/// replace outright any value whose *key* names a credential.
+Object? redactJson(Object? value) {
+  if (value is String) return redact(value);
+  if (value is List) return [for (final item in value) redactJson(item)];
+  if (value is Map) {
+    return {
+      for (final entry in value.entries)
+        '${entry.key}': _secretKey.hasMatch('${entry.key}') ? '[REDACTED]' : redactJson(entry.value),
+    };
+  }
+  return value;
+}

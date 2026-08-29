@@ -9,6 +9,10 @@ import 'deterministic_png.dart';
 /// {fixture}` in the control plane — see `FixtureHttpServer`). Unknown
 /// names are the caller's problem, not this function's: it returns `false`
 /// rather than throwing, so the control-plane route can answer 400.
+///
+/// Each branch replaces the *catalog* only ([PleyaFakeServer.resetCatalog]),
+/// never the whole server: seeding after `sign_in` is a legal scenario
+/// order and must not invalidate the session that step just created.
 bool applyNamedFixture(PleyaFakeServer server, String name) {
   switch (name) {
     case 'catalog.shows.v1':
@@ -18,7 +22,7 @@ bool applyNamedFixture(PleyaFakeServer server, String name) {
       _applyCatalogMixedV1(server);
       return true;
     case 'catalog.empty.v1':
-      server.reset();
+      server.resetCatalog();
       return true;
     default:
       return false;
@@ -49,7 +53,7 @@ String _registerArtwork(PleyaFakeServer server, String itemId) {
 /// fixture.
 void _applyCatalogShowsV1(PleyaFakeServer server) {
   const fixture = 'catalog.shows.v1';
-  server.reset();
+  server.resetCatalog();
 
   final libraryId = fixtureItemId(fixture, 'library', 'shows');
   server.addLibrary(id: libraryId, title: 'Shows', kind: 'shows', itemCount: 1);
@@ -101,7 +105,7 @@ void _applyCatalogShowsV1(PleyaFakeServer server) {
 /// content shape on screen at once.
 void _applyCatalogMixedV1(PleyaFakeServer server) {
   const fixture = 'catalog.mixed.v1';
-  server.reset();
+  server.resetCatalog();
 
   final moviesLibraryId = fixtureItemId(fixture, 'library', 'movies');
   server.addLibrary(id: moviesLibraryId, title: 'Movies', kind: 'movies', itemCount: 3);

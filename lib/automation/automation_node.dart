@@ -45,7 +45,15 @@ class _AutomationNodeState extends State<AutomationNode> {
   @override
   void didUpdateWidget(AutomationNode oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.id != widget.id || oldWidget.instance != widget.instance) {
+    // `role`, `label` and `focusNode` are captured by value at registration
+    // time, so a change to any of them needs a fresh registration. `state`
+    // deliberately is not in this list: it is registered as an indirection
+    // (see [_register]) and therefore always reads the current widget.
+    if (oldWidget.id != widget.id ||
+        oldWidget.instance != widget.instance ||
+        oldWidget.role != widget.role ||
+        oldWidget.label != widget.label ||
+        !identical(oldWidget.focusNode, widget.focusNode)) {
       _unregister();
       _register();
     }
@@ -62,7 +70,16 @@ class _AutomationNodeState extends State<AutomationNode> {
         label: widget.label,
         focusNode: widget.focusNode,
         contextGetter: () => mounted ? context : null,
-        state: widget.state,
+        // Registered as an indirection through this State, not as the
+        // closure `widget.state` happens to be right now — the same shape
+        // `contextGetter` uses one line up, and for the same reason.
+        // Callers build this closure inline over their own fields
+        // (`NavigationRailItem` captures `selected`/`collapsed` that way),
+        // so a rebuild hands us a *new* closure over *new* values while the
+        // registry would keep answering from the first one. `/v1/ui_tree`
+        // then reports the nav state from before the tab switch, and a
+        // scenario asserting on it passes or fails against stale truth.
+        state: () => widget.state?.call(),
       ),
     );
   }

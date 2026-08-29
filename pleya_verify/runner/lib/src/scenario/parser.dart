@@ -56,8 +56,19 @@ Scenario parseScenarioString(String contents, {required String sourcePath}) {
 
   final setupNode = root['setup'];
   if (setupNode != null && setupNode is! YamlList) {
+    // `root['setup']` unwraps a scalar to its plain Dart value, so casting
+    // it to YamlNode for a line number is exactly the case this branch is
+    // here to report — `setup: hallo` used to die on a raw _TypeError,
+    // which `bin/verify.dart` does not catch, so the CLI's "one clean
+    // file:line: message" contract broke on the malformed input it was
+    // supposed to explain. Take the span from the key's own node instead.
+    final keyNode = root.nodes.keys.whereType<YamlNode>().where((k) => k.value == 'setup').firstOrNull;
     throw ScenarioParseException(
-      ScenarioError(sourcePath: sourcePath, line: _line(setupNode as YamlNode), message: 'setup must be a list'),
+      ScenarioError(
+        sourcePath: sourcePath,
+        line: _line(keyNode ?? root),
+        message: 'setup must be a list',
+      ),
     );
   }
 

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../transport/verify_client.dart';
+import 'instance_discovery.dart';
 
 /// What `doctor()` reports — printable, and machine-readable enough for a
 /// future `--json` (Fase 10 gives `tvos_sim.sh doctor --json` the same
@@ -31,6 +32,13 @@ abstract class VerificationDriver {
   /// The transport client bound to this driver's running instance. Only
   /// valid after [launch] — null before that or after [terminate].
   VerifyClient? get client;
+
+  /// Which app instance [launch] bound to — the port it actually announced
+  /// and how that was discovered. Null before a successful [launch]. A
+  /// driver must never assume the base port here; see
+  /// `instance_discovery.dart` for why that assumption silently produces a
+  /// PASS against the wrong process.
+  VerifyInstance? get instance;
 
   Future<DriverDoctorReport> doctor();
 

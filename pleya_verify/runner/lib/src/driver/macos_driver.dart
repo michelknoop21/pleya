@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../transport/verify_client.dart';
+import 'instance_discovery.dart';
 import 'verification_driver.dart';
 
 /// Drives a local macOS build of Pleya.
@@ -22,19 +23,32 @@ import 'verification_driver.dart';
 class MacosDriver implements VerificationDriver {
   final Directory repoRoot;
   final String verifyBundleId;
-  final int port;
+
+  /// Escape hatch only: skips [launch]'s port discovery and talks to this
+  /// port directly. Leave it null — the app picks its own port (walking
+  /// `47317..47326` when the base is taken) and announces it, and assuming
+  /// the base port is exactly how a run ends up driving a leftover
+  /// instance. See `instance_discovery.dart`.
+  final int? portOverride;
   final void Function(String line)? onDriverLog;
 
   Process? _process;
   final List<String> _driverLog = [];
   VerifyClient? _client;
+  VerifyInstance? _instance;
 
   MacosDriver({
     required this.repoRoot,
     this.verifyBundleId = 'nl.michelknoop.pleya.verify',
-    this.port = 47317,
+    this.portOverride,
     this.onDriverLog,
   });
+
+  /// The instance [launch] actually bound to — null before a successful
+  /// launch. `run_scenario.dart` records it in the evidence manifest so a
+  /// bundle says which app instance produced it.
+  @override
+  VerifyInstance? get instance => _instance;
 
   @override
   String get target => 'macos';
@@ -108,15 +122,47 @@ class MacosDriver implements VerificationDriver {
     }
     isolatedAppDir.parent.createSync(recursive: true);
     _log('copying ${_sourceAppDir.path} -> ${isolatedAppDir.path}');
-    await _run('cp', ['-R', _sourceAppDir.path, isolatedAppDir.path]);
+    final copy = await _run('cp', ['-R', _sourceAppDir.path, isolatedAppDir.path]);
+    if (copy.exitCode != 0) {
+      throw StateError('cp of the app bundle failed (exit ${copy.exitCode}): ${copy.stderr}');
+    }
 
     final infoPlist = File('${isolatedAppDir.path}/Contents/Info.plist');
-    await _run('plutil', ['-replace', 'CFBundleIdentifier', '-string', verifyBundleId, infoPlist.path]);
+    final rewrite = await _run('plutil', [
+      '-replace',
+      'CFBundleIdentifier',
+      '-string',
+      verifyBundleId,
+      infoPlist.path,
+    ]);
+    if (rewrite.exitCode != 0) {
+      throw StateError(
+        'rewriting CFBundleIdentifier failed (exit ${rewrite.exitCode}): ${rewrite.stderr} — '
+        'without it this driver would launch under the real bundle id and share the developer\'s app state',
+      );
+    }
+    await _assertBundleId(infoPlist, expected: verifyBundleId);
 
     _log('codesign --force --deep --sign - ${isolatedAppDir.path}');
     final sign = await _run('codesign', ['--force', '--deep', '--sign', '-', isolatedAppDir.path]);
     if (sign.exitCode != 0) {
       throw StateError('codesign failed on the isolated app copy (exit ${sign.exitCode}): ${sign.stderr}');
+    }
+  }
+
+  /// Reads the identifier back out of the plist and compares it. A zero exit
+  /// from `plutil -replace` says the command ran, not that the bundle now
+  /// carries the isolated identity — and that identity is the entire
+  /// isolation guarantee (see this class's doc, and the tvOS driver's
+  /// entitlement note). Cheap enough to assert every build.
+  Future<void> _assertBundleId(File plist, {required String expected}) async {
+    final read = await _run('plutil', ['-extract', 'CFBundleIdentifier', 'raw', plist.path]);
+    final actual = (read.stdout as String).trim();
+    if (read.exitCode != 0 || actual != expected) {
+      throw StateError(
+        '${plist.path} reports CFBundleIdentifier "$actual" after the rewrite, expected "$expected" — '
+        'refusing to launch, an app under the real bundle id shares the developer\'s real app state',
+      );
     }
   }
 
@@ -129,6 +175,15 @@ class MacosDriver implements VerificationDriver {
     _log('installFresh: cleared $verifyBundleId app state');
   }
 
+  /// Where `AutomationServer` publishes its port. `path_provider`'s
+  /// `getTemporaryDirectory()` on a non-sandboxed macOS app is
+  /// `NSTemporaryDirectory()`, i.e. `$TMPDIR`, and a process started by
+  /// [Process.start] inherits this runner's `TMPDIR` — so the two agree on
+  /// this path. [launch] falls back to the app's own boot log line if they
+  /// ever do not.
+  File get _instanceFile => File('${Platform.environment['TMPDIR'] ?? Directory.systemTemp.path}'
+      '/pleya-verify/instance.json');
+
   @override
   Future<void> launch({Duration timeout = const Duration(seconds: 20)}) async {
     final binary = File('${isolatedAppDir.path}/Contents/MacOS/Pleya');
@@ -136,27 +191,59 @@ class MacosDriver implements VerificationDriver {
       throw StateError('${binary.path} does not exist — call build() first');
     }
 
+    final launchedAt = DateTime.now().subtract(const Duration(seconds: 1));
+    clearInstanceFile(_instanceFile);
+
     _log('launching ${binary.path}');
     final process = await Process.start(binary.path, const [], mode: ProcessStartMode.normal);
     _process = process;
     process.stdout.transform(const SystemEncoding().decoder).listen(_log);
     process.stderr.transform(const SystemEncoding().decoder).listen(_log);
 
-    _client = VerifyClient(baseUri: Uri.parse('http://127.0.0.1:$port'));
+    final instance = await _resolveInstance(launchedAt: launchedAt, timeout: timeout);
+    _instance = instance;
+    _log('resolved instance: $instance');
+    _client = VerifyClient(baseUri: Uri.parse('http://127.0.0.1:${instance.port}'));
 
     final deadline = DateTime.now().add(timeout);
     Object? lastError;
     while (DateTime.now().isBefore(deadline)) {
       try {
-        await _client!.health();
-        _log('health check succeeded');
+        final health = await _client!.health();
+        assertHealthIdentity(health, instance: instance, notBefore: launchedAt);
+        _log('health check succeeded on port ${instance.port}');
         return;
+      } on InstanceDiscoveryException {
+        // An identity mismatch is never transient — retrying would just
+        // keep talking to the wrong app.
+        rethrow;
       } catch (e) {
         lastError = e;
         await Future<void>.delayed(const Duration(milliseconds: 300));
       }
     }
     throw StateError('app did not respond on /v1/health within $timeout (last error: $lastError)');
+  }
+
+  /// [portOverride] wins; otherwise the app's `instance.json`; otherwise its
+  /// `[PleyaVerify] listening on …` boot line, already captured in
+  /// [driverLog]. Never a hardcoded base port — that assumption is exactly
+  /// how a run ends up driving a leftover instance.
+  Future<VerifyInstance> _resolveInstance({required DateTime launchedAt, required Duration timeout}) async {
+    final override = portOverride;
+    if (override != null) {
+      return VerifyInstance(port: override, protocolVersion: 1, source: 'portOverride');
+    }
+    try {
+      return await awaitInstance(file: _instanceFile, notBefore: launchedAt, timeout: timeout);
+    } on InstanceDiscoveryException catch (e) {
+      final fromLog = parseListeningPort(_driverLog);
+      if (fromLog != null) {
+        _log('instance.json unavailable ($e) — using the app boot log line instead');
+        return fromLog;
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -175,6 +262,7 @@ class MacosDriver implements VerificationDriver {
     _log('process exited with code $exited');
     _client?.close();
     _client = null;
+    _instance = null;
     _process = null;
   }
 

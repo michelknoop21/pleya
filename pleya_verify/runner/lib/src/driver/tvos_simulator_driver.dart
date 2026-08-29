@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../transport/verify_client.dart';
+import 'instance_discovery.dart';
 import 'verification_driver.dart';
 
 /// Drives a tvOS-simulator build of Pleya through `scripts/tvos_sim.sh` —
@@ -49,7 +50,11 @@ import 'verification_driver.dart';
 class TvosSimulatorDriver implements VerificationDriver {
   final Directory repoRoot;
   final String verifyBundleId;
-  final int port;
+
+  /// Escape hatch only — see [MacosDriver.portOverride] and
+  /// `instance_discovery.dart`. Leave null so [launch] discovers the port
+  /// the app actually bound.
+  final int? portOverride;
   final void Function(String line)? onDriverLog;
   final String? deviceUdidOverride;
 
@@ -60,11 +65,12 @@ class TvosSimulatorDriver implements VerificationDriver {
   String? _resolvedUdid;
   final List<String> _driverLog = [];
   VerifyClient? _client;
+  VerifyInstance? _instance;
 
   TvosSimulatorDriver({
     required this.repoRoot,
     this.verifyBundleId = 'nl.michelknoop.pleya.verify',
-    this.port = 47317,
+    this.portOverride,
     this.onDriverLog,
     this.deviceUdidOverride,
   });
@@ -74,6 +80,9 @@ class TvosSimulatorDriver implements VerificationDriver {
 
   @override
   VerifyClient? get client => _client;
+
+  @override
+  VerifyInstance? get instance => _instance;
 
   @override
   String get inputRoute => 'idb';
@@ -151,7 +160,10 @@ class TvosSimulatorDriver implements VerificationDriver {
     }
     isolatedAppDir.parent.createSync(recursive: true);
     _log('copying ${_sourceAppDir.path} -> ${isolatedAppDir.path}');
-    await _run('cp', ['-R', _sourceAppDir.path, isolatedAppDir.path]);
+    final copy = await _run('cp', ['-R', _sourceAppDir.path, isolatedAppDir.path]);
+    if (copy.exitCode != 0) {
+      throw StateError('cp of the app bundle failed (exit ${copy.exitCode}): ${copy.stderr}');
+    }
 
     await _rewriteBundleIds();
 
@@ -172,7 +184,7 @@ class TvosSimulatorDriver implements VerificationDriver {
   /// swap.
   Future<void> _rewriteBundleIds() async {
     final infoPlist = File('${isolatedAppDir.path}/Info.plist');
-    await _run('plutil', ['-replace', 'CFBundleIdentifier', '-string', verifyBundleId, infoPlist.path]);
+    await _rewriteBundleId(infoPlist, to: verifyBundleId);
 
     final plugins = Directory('${isolatedAppDir.path}/PlugIns');
     if (!plugins.existsSync()) return;
@@ -180,12 +192,37 @@ class TvosSimulatorDriver implements VerificationDriver {
       if (entity is! Directory || !entity.path.endsWith('.appex')) continue;
       final extPlist = File('${entity.path}/Info.plist');
       final current = await _run('plutil', ['-extract', 'CFBundleIdentifier', 'raw', extPlist.path]);
+      if (current.exitCode != 0) {
+        throw StateError('could not read CFBundleIdentifier from ${extPlist.path} (exit ${current.exitCode}): '
+            '${current.stderr}');
+      }
       final currentId = (current.stdout as String).trim();
       if (!currentId.startsWith('$_realBundleId.')) continue;
       final suffix = currentId.substring(_realBundleId.length);
       final newId = '$verifyBundleId$suffix';
       _log('rewriting ${entity.path} CFBundleIdentifier: $currentId -> $newId');
-      await _run('plutil', ['-replace', 'CFBundleIdentifier', '-string', newId, extPlist.path]);
+      await _rewriteBundleId(extPlist, to: newId);
+    }
+  }
+
+  /// Rewrites and then reads back. A zero exit from `plutil -replace` says
+  /// the command ran, not that the bundle now carries the isolated identity
+  /// — and that identity is the entire isolation guarantee this class's doc
+  /// describes: under the real identifier, the KVS entitlement pulled a real
+  /// signed-in session onto a brand-new simulator within seconds.
+  Future<void> _rewriteBundleId(File plist, {required String to}) async {
+    final rewrite = await _run('plutil', ['-replace', 'CFBundleIdentifier', '-string', to, plist.path]);
+    if (rewrite.exitCode != 0) {
+      throw StateError('rewriting CFBundleIdentifier in ${plist.path} failed (exit ${rewrite.exitCode}): '
+          '${rewrite.stderr}');
+    }
+    final read = await _run('plutil', ['-extract', 'CFBundleIdentifier', 'raw', plist.path]);
+    final actual = (read.stdout as String).trim();
+    if (read.exitCode != 0 || actual != to) {
+      throw StateError(
+        '${plist.path} reports CFBundleIdentifier "$actual" after the rewrite, expected "$to" — '
+        'refusing to install, the isolation this driver depends on did not hold',
+      );
     }
   }
 
@@ -212,27 +249,72 @@ class TvosSimulatorDriver implements VerificationDriver {
       throw StateError('simctl install failed (exit ${install.exitCode}): ${install.stderr}');
     }
 
+    // The simulator shares this Mac's loopback stack, so the base port can
+    // be owned by an unrelated leftover process that answers /v1/health
+    // convincingly. Clear the announcement first: whatever appears after
+    // this point was written by the instance below.
+    final launchedAt = DateTime.now().subtract(const Duration(seconds: 1));
+    final instanceFile = await _instanceFile(udid);
+    if (instanceFile != null) clearInstanceFile(instanceFile);
+
     _log('launching $verifyBundleId on $udid');
     final launch = await _run('xcrun', ['simctl', 'launch', udid, verifyBundleId]);
     if (launch.exitCode != 0) {
       throw StateError('simctl launch failed (exit ${launch.exitCode}): ${launch.stderr}');
     }
 
-    _client = VerifyClient(baseUri: Uri.parse('http://127.0.0.1:$port'));
+    final instance = await _resolveInstance(udid: udid, launchedAt: launchedAt, timeout: timeout);
+    _instance = instance;
+    _log('resolved instance: $instance');
+    _client = VerifyClient(baseUri: Uri.parse('http://127.0.0.1:${instance.port}'));
 
     final deadline = DateTime.now().add(timeout);
     Object? lastError;
     while (DateTime.now().isBefore(deadline)) {
       try {
-        await _client!.health();
-        _log('health check succeeded');
+        final health = await _client!.health();
+        assertHealthIdentity(health, instance: instance, notBefore: launchedAt);
+        _log('health check succeeded on port ${instance.port}');
         return;
+      } on InstanceDiscoveryException {
+        rethrow;
       } catch (e) {
         lastError = e;
         await Future<void>.delayed(const Duration(milliseconds: 300));
       }
     }
     throw StateError('app did not respond on /v1/health within $timeout (last error: $lastError)');
+  }
+
+  /// `getTemporaryDirectory()` inside a simulator app is `<data container>/
+  /// tmp`; `simctl get_app_container … data` names that container from the
+  /// host. Null when it cannot be resolved (app not installed yet).
+  Future<File?> _instanceFile(String udid) async {
+    final result = await _run('xcrun', ['simctl', 'get_app_container', udid, verifyBundleId, 'data']);
+    if (result.exitCode != 0) return null;
+    final dataDir = (result.stdout as String).trim();
+    if (dataDir.isEmpty) return null;
+    return File('$dataDir/tmp/pleya-verify/instance.json');
+  }
+
+  Future<VerifyInstance> _resolveInstance({
+    required String udid,
+    required DateTime launchedAt,
+    required Duration timeout,
+  }) async {
+    final override = portOverride;
+    if (override != null) {
+      return VerifyInstance(port: override, protocolVersion: 1, source: 'portOverride');
+    }
+    final file = await _instanceFile(udid);
+    if (file == null) {
+      throw InstanceDiscoveryException(
+        'could not resolve the data container for $verifyBundleId on $udid — '
+        'no way to read which port the app bound, and assuming the base port is how a run ends up '
+        'driving a leftover instance',
+      );
+    }
+    return awaitInstance(file: file, notBefore: launchedAt, timeout: timeout);
   }
 
   @override
@@ -243,6 +325,7 @@ class TvosSimulatorDriver implements VerificationDriver {
     await _run('xcrun', ['simctl', 'terminate', udid, verifyBundleId]);
     _client?.close();
     _client = null;
+    _instance = null;
   }
 
   @override
