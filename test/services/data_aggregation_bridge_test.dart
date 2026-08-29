@@ -409,6 +409,86 @@ void main() {
       expect(result.succeededServerIds, {'plex-1'});
     });
 
+    // Fase 1 (docs/DECISIONS.md#dec-063) rewires Continue Watching dedup onto
+    // the shared unified-catalog identity primitives. The new
+    // `grouping_service.dart` those primitives feed *does* merge on title+year
+    // alone when nothing conflicts (hoofdstuk 11.6) — a real capability
+    // improvement fase 3+ eventually gives Continue Watching too. This test
+    // pins that Continue Watching itself does not get that behavior yet: its
+    // compatibility shim in `identity_resolver.dart` only ever merges on
+    // shared external ids/guid, matching every pre-fase-1 build, so this
+    // scenario keeps both movies instead of silently starting to merge them.
+    test(
+      'getOnDeckFromAllServers never merges two movies on title+year alone, unlike the new grouping engine',
+      () async {
+        final client = PlexClient.forTesting(
+          config: PlexConfig(
+            baseUrl: 'https://plex.example.com',
+            token: 'token',
+            clientIdentifier: 'client-id',
+            product: 'Plezy',
+            version: 'test',
+          ),
+          serverId: ServerId('plex-1'),
+          serverName: 'Plex',
+          httpClient: MockClient((req) async {
+            if (req.url.path == '/hubs') {
+              return _json({
+                'MediaContainer': {
+                  'Hub': [
+                    {
+                      'key': '/hubs/home/continueWatching',
+                      'title': 'Continue Watching',
+                      'type': 'mixed',
+                      'hubIdentifier': 'home.continue',
+                      'size': 2,
+                      'Metadata': [
+                        {
+                          'ratingKey': 'old-movie',
+                          'type': 'movie',
+                          'title': 'Shared Title',
+                          'year': 2019,
+                          'viewOffsetMs': 100,
+                          'duration': 1000,
+                          'lastViewedAt': 100,
+                        },
+                        {
+                          'ratingKey': 'new-movie',
+                          'type': 'movie',
+                          'title': 'Shared Title',
+                          'year': 2019,
+                          'viewOffsetMs': 100,
+                          'duration': 1000,
+                          'lastViewedAt': 200,
+                        },
+                      ],
+                    },
+                  ],
+                },
+              });
+            }
+            if (req.url.path == '/library/metadata/old-movie' || req.url.path == '/library/metadata/new-movie') {
+              return _json({
+                'MediaContainer': {
+                  'Metadata': [
+                    {'ratingKey': req.url.pathSegments.last, 'type': 'movie', 'title': 'Shared Title'},
+                  ],
+                },
+              });
+            }
+            return http.Response('unexpected request', 500);
+          }),
+        );
+        addTearDown(client.close);
+        manager.debugRegisterClientForTesting(client);
+
+        final result = await service.getOnDeckFromAllServers(limit: 10);
+
+        expect(result.items.map((item) => item.id), ['new-movie', 'old-movie']);
+        expect(result.succeededServerIds, {'plex-1'});
+      },
+    );
+
     test('getLatestMoviesFromAllServers sorts by release date, films only, addedAt sinks the dateless', () async {
       final client = PlexClient.forTesting(
         config: PlexConfig(

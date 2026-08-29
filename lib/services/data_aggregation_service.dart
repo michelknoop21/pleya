@@ -6,9 +6,11 @@ import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/media_server_client.dart';
+import '../media/unified/unified_media_source.dart';
+import '../services/unified_catalog/grouping_service.dart';
+import '../services/unified_catalog/identity_resolver.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_timeouts.dart';
-import '../utils/external_ids.dart';
 import '../utils/global_key_utils.dart';
 import '../utils/search_relevance.dart';
 import 'multi_server_manager.dart';
@@ -294,138 +296,78 @@ class DataAggregationService {
     return limit != null && limit < deduped.length ? deduped.sublist(0, limit) : deduped;
   }
 
+  /// Same dedup this method has always done — bucket by scope+title, then
+  /// only for a shared bucket check whether two items' external ids/guid
+  /// actually agree — now built on the shared unified identity/grouping layer
+  /// (`unified_catalog/identity_resolver.dart`, `unified_catalog/grouping_service.dart`)
+  /// instead of ad hoc private helpers, per
+  /// [DEC-063](../../docs/DECISIONS.md#dec-063) fase 1. `allowWeakFallback:
+  /// false` keeps the merge rule itself exactly what it always was: Continue
+  /// Watching has only ever merged on shared external ids/guid, never on
+  /// title+year alone (see `continueWatchingBucketKey`'s doc comment) — that
+  /// bucket key only ever decides which items are worth an external-id fetch,
+  /// same as before.
   Future<List<MediaItem>> _deduplicateContinueWatching(List<MediaItem> items) async {
     if (items.length < 2) return items;
 
+    final duplicateBuckets = <String>{};
     final bucketCounts = <String, int>{};
     for (final item in items) {
-      final bucket = _continueWatchingTitleBucket(item);
+      final bucket = continueWatchingBucketKey(item);
       if (bucket == null) continue;
-      bucketCounts[bucket] = (bucketCounts[bucket] ?? 0) + 1;
+      final count = (bucketCounts[bucket] ?? 0) + 1;
+      bucketCounts[bucket] = count;
+      if (count > 1) duplicateBuckets.add(bucket);
     }
-
-    final duplicateBuckets = {
-      for (final entry in bucketCounts.entries)
-        if (entry.value > 1) entry.key,
-    };
     if (duplicateBuckets.isEmpty) return items;
 
-    final externalIdLoads = <String, Future<ExternalIds>>{};
-    final identityKeysByIndex = <int, Set<String>>{};
-    final identityKeyLoads = <Future<void>>[];
-    for (var i = 0; i < items.length; i++) {
-      if (!duplicateBuckets.contains(_continueWatchingTitleBucket(items[i]))) continue;
-      final index = i;
-      identityKeyLoads.add(
-        _continueWatchingIdentityKeys(items[index], externalIdLoads).then((keys) => identityKeysByIndex[index] = keys),
-      );
-    }
-    await Future.wait(identityKeyLoads);
+    final resolver = UnifiedIdentityResolver(
+      fetchExternalIds: (serverId, targetId) async {
+        try {
+          final client = _serverManager.getClient(ServerId(serverId));
+          if (client == null) throw StateError('No online client for server $serverId');
+          return await client.fetchExternalIds(targetId);
+        } catch (e, stackTrace) {
+          appLogger.d(
+            'Failed to resolve Continue Watching identity for $serverId:$targetId',
+            error: e,
+            stackTrace: stackTrace,
+          );
+          rethrow;
+        }
+      },
+    );
+    final resolvables = [
+      for (final item in items)
+        ResolvableItem(
+          item: item,
+          scope: continueWatchingScope(item) ?? '',
+          bucketKeyOverride: continueWatchingBucketKey(item),
+          externalIdTarget: _hasOnlineClient(item) ? continueWatchingExternalIdTarget(item) : null,
+          // An episode/season row groups at its *show*'s scope (see
+          // continueWatchingScope), so its own item-level guid must not
+          // contribute evidence: two different episodes correctly sharing one
+          // show group would otherwise disagree on that episode guid.
+          includeGuidEvidence: item.kind != MediaKind.episode && item.kind != MediaKind.season,
+        ),
+    ];
+    final evidence = await resolver.resolveEvidence(resolvables);
 
-    final seenKeys = <String>{};
-    final result = <MediaItem>[];
-    for (var i = 0; i < items.length; i++) {
-      final item = items[i];
-      if (!duplicateBuckets.contains(_continueWatchingTitleBucket(item))) {
-        result.add(item);
-        continue;
-      }
+    final candidates = [
+      for (var i = 0; i < items.length; i++)
+        GroupingCandidate(source: UnifiedMediaSource.fromItem(items[i]), evidence: evidence[i]),
+    ];
+    final groups = groupUnifiedMediaSources(candidates, allowWeakFallback: false);
 
-      final identityKeys = identityKeysByIndex[i] ?? const <String>{};
-      if (identityKeys.isEmpty) {
-        result.add(item);
-        continue;
-      }
-
-      if (identityKeys.any(seenKeys.contains)) continue;
-
-      seenKeys.addAll(identityKeys);
-      result.add(item);
-    }
-
-    return result;
+    // `sources` preserves candidates' original (recency-sorted) order, so the
+    // first source in each group is the one with the highest recency —
+    // exactly the representative this method has always projected.
+    return [for (final group in groups) group.sources.first.item];
   }
 
-  String? _continueWatchingTitleBucket(MediaItem item) {
-    final scope = _continueWatchingIdentityScope(item);
-    if (scope == null) return null;
-
-    final title = switch (item.kind) {
-      MediaKind.episode || MediaKind.season => item.grandparentTitle ?? item.parentTitle ?? item.title,
-      _ => item.title,
-    };
-    final normalized = title?.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-    if (normalized == null || normalized.isEmpty) return null;
-    return '$scope:$normalized';
-  }
-
-  Future<Set<String>> _continueWatchingIdentityKeys(
-    MediaItem item,
-    Map<String, Future<ExternalIds>> externalIdLoads,
-  ) async {
-    final scope = _continueWatchingIdentityScope(item);
-    if (scope == null) return const {};
-
-    final keys = <String>{};
+  bool _hasOnlineClient(MediaItem item) {
     final serverId = item.serverId;
-    final targetId = _continueWatchingIdentityTargetId(item);
-    final client = serverId == null ? null : _serverManager.getClient(ServerId(serverId));
-
-    if (client != null && targetId != null && targetId.isNotEmpty) {
-      try {
-        final cacheKey = buildGlobalKey(ServerId(serverId!), targetId);
-        final externalIds = await externalIdLoads.putIfAbsent(cacheKey, () => client.fetchExternalIds(targetId));
-        _addExternalIdentityKeys(keys, scope, externalIds);
-      } catch (e, stackTrace) {
-        appLogger.d(
-          'Failed to resolve Continue Watching identity for ${item.globalKey}',
-          error: e,
-          stackTrace: stackTrace,
-        );
-      }
-    }
-
-    final stableGuid = _stableMediaGuid(item.guid);
-    if (stableGuid != null) {
-      final guidScope = item.kind == MediaKind.episode ? 'episode' : scope;
-      keys.add('$guidScope:guid:$stableGuid');
-    }
-
-    return keys;
-  }
-
-  String? _continueWatchingIdentityScope(MediaItem item) {
-    return switch (item.kind) {
-      MediaKind.episode || MediaKind.season || MediaKind.show => 'show',
-      MediaKind.movie => 'movie',
-      _ => null,
-    };
-  }
-
-  String? _continueWatchingIdentityTargetId(MediaItem item) {
-    return switch (item.kind) {
-      MediaKind.episode => item.grandparentId,
-      MediaKind.season => item.grandparentId ?? item.parentId,
-      MediaKind.show || MediaKind.movie => item.id,
-      _ => null,
-    };
-  }
-
-  void _addExternalIdentityKeys(Set<String> keys, String scope, ExternalIds externalIds) {
-    final imdb = externalIds.imdb?.trim().toLowerCase();
-    if (imdb != null && imdb.isNotEmpty) keys.add('$scope:imdb:$imdb');
-    final tmdb = externalIds.tmdb;
-    if (tmdb != null) keys.add('$scope:tmdb:$tmdb');
-    final tvdb = externalIds.tvdb;
-    if (tvdb != null) keys.add('$scope:tvdb:$tvdb');
-  }
-
-  String? _stableMediaGuid(String? guid) {
-    final value = guid?.trim();
-    if (value == null || value.isEmpty) return null;
-    if (!value.contains('://')) return null;
-    if (value.contains('agents.none://')) return null;
-    return value.toLowerCase();
+    return serverId != null && _serverManager.getClient(ServerId(serverId)) != null;
   }
 
   /// Fetch recommendation hubs from all servers as neutral [MediaHub]s.

@@ -15,8 +15,9 @@ het afvinkbare register; het architectuurdocument houdt alleen de regels en de c
   afvinken; het register als geheel sluit pas bij de laatste fase die het raakt.
 - Rijen worden nooit verwijderd. Een geschrapt scenario gaat naar `n.v.t.` met een korte reden.
 
-Bijgewerkt: 2026-08-29, aangemaakt in fase 0. Nog geen enkele rij is `covered`: fase 0 bouwt geen
-schermen of unified-code vooruit.
+Bijgewerkt: 2026-08-29, aangemaakt in fase 0. Fase 1 (unified identity foundation) dekt register C
+(C1-C24) volledig af — zie de vindplaatsen in de tabel hieronder. De overige categorieën blijven
+`open` tot de fase die ze raakt.
 
 ## A. Server- en topologycases
 
@@ -70,30 +71,30 @@ en `test/services/unified_grouping_service_test.dart`).
 
 | # | Case | Test | Status |
 |---|---|---|---|
-| C1 | Zelfde TMDB-ID | | open |
-| C2 | Zelfde IMDb-ID | | open |
-| C3 | Zelfde TVDB-ID voor serie | | open |
-| C4 | Zelfde stabiele GUID | | open |
-| C5 | Gelijke titel en jaar zonder IDs, ondubbelzinnig | | open |
-| C6 | Gelijke titel met verschillend jaar | | open |
-| C7 | Gelijke titel en jaar met conflicterende IDs | | open |
-| C8 | Gelijke titel zonder jaar | | open |
-| C9 | Remake met dezelfde titel | | open |
-| C10 | Movie en serie met dezelfde titel | | open |
-| C11 | `agents.none://` GUID | | open |
-| C12 | Serverlokale GUID | | open |
-| C13 | Director's Cut en theatrical edition | | open |
-| C14 | Zelfde item met meerdere media versions | | open |
-| C15 | Unicode, leestekens en diakritische titels | | open |
-| C16 | Alternatieve of originele titel | | open |
-| C17 | Verkeerd serverjaar | | open |
-| C18 | Eén bron heeft jaar, andere niet | | open |
-| C19 | Meerdere kandidaten op één server | | open |
-| C20 | External-ID-fetch faalt | | open |
-| C21 | External IDs veranderen na metadata-refresh | | open |
-| C22 | Group krijgt later sterker bewijs | | open |
-| C23 | Groupingconflict in een connected component | | open |
-| C24 | Pleya Server/local item zonder external IDs | | open |
+| C1 | Zelfde TMDB-ID | test/media/canonical_media_identity_test.dart (`externalIdTokens C1`); test/services/unified_grouping_service_test.dart (`C1`) | covered |
+| C2 | Zelfde IMDb-ID | test/media/canonical_media_identity_test.dart (`externalIdTokens C2`) | covered |
+| C3 | Zelfde TVDB-ID voor serie | test/media/canonical_media_identity_test.dart (`externalIdTokens C3`) | covered |
+| C4 | Zelfde stabiele GUID | test/media/canonical_media_identity_test.dart (`normalizeStableGuid C4`, `guidTokens C4`) | covered |
+| C5 | Gelijke titel en jaar zonder IDs, ondubbelzinnig | test/services/unified_grouping_service_test.dart (`two sources with no strong evidence still merge via title+year when unambiguous`) | covered |
+| C6 | Gelijke titel met verschillend jaar | test/media/canonical_media_identity_test.dart (`bucketKey C6/C9`) | covered |
+| C7 | Gelijke titel en jaar met conflicterende IDs | test/services/unified_grouping_service_test.dart (`C7`) | covered |
+| C8 | Gelijke titel zonder jaar | test/media/canonical_media_identity_test.dart (`bucketKey C8`) | covered |
+| C9 | Remake met dezelfde titel | test/services/unified_grouping_service_test.dart (`C9`); test/media/canonical_media_identity_test.dart (`bucketKey C6/C9`) | covered |
+| C10 | Movie en serie met dezelfde titel | test/media/canonical_media_identity_test.dart (`bucketKey C10`, `canonicalIdentityOf C10`) | covered |
+| C11 | `agents.none://` GUID | test/media/canonical_media_identity_test.dart (`normalizeStableGuid C11`, `guidTokens C11/C12`) | covered |
+| C12 | Serverlokale GUID | test/media/canonical_media_identity_test.dart (`normalizeStableGuid C12`, `guidTokens C11/C12`) | covered |
+| C13 | Director's Cut en theatrical edition | test/services/unified_grouping_service_test.dart (`C13`) | covered |
+| C14 | Zelfde item met meerdere media versions | test/services/unified_grouping_service_test.dart (`C14`) | covered |
+| C15 | Unicode, leestekens en diakritische titels | test/media/canonical_media_identity_test.dart (`bucketKey C15`) | covered |
+| C16 | Alternatieve of originele titel | test/services/unified_grouping_service_test.dart (`C16`) | covered |
+| C17 | Verkeerd serverjaar | test/services/unified_grouping_service_test.dart (`C17`); test/media/canonical_media_identity_test.dart (`yearAgreesWith C17`) | covered |
+| C18 | Eén bron heeft jaar, andere niet | test/media/canonical_media_identity_test.dart (`yearAgreesWith C18`) | covered |
+| C19 | Meerdere kandidaten op één server | test/services/unified_grouping_service_test.dart (`C19`) | covered |
+| C20 | External-ID-fetch faalt | test/services/unified_catalog/identity_resolver_test.dart (`C20`) | covered |
+| C21 | External IDs veranderen na metadata-refresh | test/services/unified_catalog/identity_resolver_test.dart (`C21`) | covered |
+| C22 | Group krijgt later sterker bewijs | test/services/unified_grouping_service_test.dart (`C22`) — alleen inhoudelijke stabiliteit; sessie-stabiliteit van `groupId` volgt pas met fase 3's `UnifiedCatalogProvider` | covered |
+| C23 | Groupingconflict in een connected component | test/services/unified_grouping_service_test.dart (`C23`) | covered |
+| C24 | Pleya Server/local item zonder external IDs | test/media/canonical_media_identity_test.dart (`externalIdTokens C24`); test/services/unified_grouping_service_test.dart (`C24`) | covered |
 
 ## D. Series- en episodecases
 
