@@ -102,49 +102,52 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('402pt widescreen: left 0, at the given inset, width 402, height 289.44', (tester) async {
+    testWidgets('402pt widescreen: left 0, at the given inset, width 402, height 226.1', (tester) async {
       await pumpFullWidth(tester, width: 402, height: 572, kind: BillboardArtKind.widescreen);
 
       final rect = tester.getRect(find.byKey(HomeHeroArtwork.frameKey));
       expect(rect.left, closeTo(0, 0.5));
       expect(rect.top, closeTo(62, 0.5));
       expect(rect.width, closeTo(402, 0.5));
-      // No longer 402 * 9/16: the box height is its own viewport-height
-      // formula (min(402 * 0.72, 292)), and `cover` crops the 16:9 source
-      // into it instead of the box following the source ratio.
-      expect(rect.height, closeTo(402 * 0.72, 0.5));
+      expect(rect.height, closeTo(402 * 9 / 16, 0.5));
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the widescreen strip draws with BoxFit.cover and requests a widened transcode', (tester) async {
+    testWidgets('the widescreen strip stays crop-free: contain, source ratio, no widened request', (tester) async {
+      // The regression pin for the enlarged 0.72 box drawn with `BoxFit.cover`,
+      // which zoomed the source ~28% and cut ~56pt off each side.
       final client = _RecordingClient();
       tester.view.physicalSize = const Size(402, 572);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
+      final geometry = fullWidth(402, 572, BillboardArtKind.widescreen);
       await pumpArtwork(
         tester,
         client: client,
         art: const BillboardArt(path: '/art', kind: BillboardArtKind.widescreen),
-        geometry: fullWidth(402, 572, BillboardArtKind.widescreen),
+        geometry: geometry,
         screenWidth: 402,
         heroHeight: 572,
       );
 
       final rect = tester.getRect(find.byKey(HomeHeroArtwork.frameKey));
-      expect(rect.width, closeTo(402, 0.5), reason: 'still full width — cover crops, the box never narrows');
-      expect(rect.height, closeTo(402 * 0.72, 0.5));
+      expect(rect.width, closeTo(402, 0.5));
+      expect(rect.height, closeTo(226.125, 0.5));
 
       final images = tester.widgetList<CachedNetworkImage>(find.byType(CachedNetworkImage)).toList();
-      expect(images.last.fit, BoxFit.cover, reason: 'the box is no longer the source ratio, contain would letterbox');
+      expect(images.last.fit, BoxFit.contain, reason: 'crop-free; cover would zoom and cut the sides');
 
-      // Proof the request was widened, not just the display box: at dpr 1 the
-      // requested width should clear the 402pt box by a wide margin.
-      expect(client.requests, isNotEmpty);
-      final (requestedWidth, _) = client.requests.last;
-      expect(requestedWidth, isNotNull);
-      expect(requestedWidth!, greaterThan(420), reason: 'wider than the 402pt box, not clamped to it');
+      // The request never asks for more than the box: a widened request only
+      // makes sense to feed a crop, and there is no crop here. Asserted on the
+      // geometry rather than on `client.requests`, because `ImageType.art`
+      // applies a 1.1x cover overshoot and then rounds to a cache bucket —
+      // both 402 and the old cover-crop's 514.6 land on the same bucket, so
+      // the client-side number cannot tell the two apart.
+      expect(geometry.requestWidth, closeTo(geometry.sharpWidth, 0.001));
+      expect(geometry.requestHeight, closeTo(geometry.sharpHeight, 0.001));
+      expect(geometry.requestWidth / geometry.requestHeight, closeTo(16 / 9, 0.001));
     });
 
     testWidgets('353 and 430pt also run edge to edge, both kinds, no overflow', (tester) async {
@@ -234,7 +237,7 @@ void main() {
       // rect. Had the Padding gone inside the mask, this would be `sharpHeight
       // + inset` tall and the 55% start would slide up the image.
       final maskRect = tester.getRect(find.byKey(HomeHeroArtwork.fadeKey));
-      expect(maskRect.height, closeTo(402 * 0.72, 0.5));
+      expect(maskRect.height, closeTo(402 * 9 / 16, 0.5));
       expect(maskRect.top, closeTo(inset, 0.5));
     });
 
@@ -462,6 +465,83 @@ void main() {
       const box = canvas + (2 * overscan);
       expect(g.stops!.first, closeTo(overscan / box, 0.001), reason: 'stop 0 sits at canvas y = 0');
       expect(g.stops![2], closeTo((overscan + (0.32 * canvas)) / box, 0.001));
+    });
+
+    /// Ungraded, the wash holds 0.55 flat from canvas 32% down: one even haze
+    /// under the artwork, and a hero that still ends at 55% where the rail
+    /// below cuts to the scaffold background. The graded tail keeps more of
+    /// the artwork through the band where the sharp layer fades out, then
+    /// descends to fully opaque background behind the summary and pagination.
+    group('graded ambient wash (iPhone portrait only)', () {
+      const bg = Color(0xFF000000);
+      const overscan = 32.0, canvas = 572.0;
+      const box = canvas + (2 * overscan);
+      double mapped(double canvasStop) => (overscan + (canvasStop * canvas)) / box;
+
+      test('the top of the ramp is byte-identical to the ungraded one', () {
+        for (final reduced in [false, true]) {
+          final plain = HomeHeroArtwork.ambientWashGradient(background: bg, canvasHeight: canvas, reduced: reduced);
+          final graded = HomeHeroArtwork.ambientWashGradient(
+            background: bg,
+            canvasHeight: canvas,
+            reduced: reduced,
+            graded: true,
+          );
+          // The control row sits against these two; they must not shift.
+          expect(graded.colors[0], plain.colors[0], reason: 'reduced=$reduced');
+          expect(graded.colors[1], plain.colors[1], reason: 'reduced=$reduced');
+          expect(graded.stops![0], closeTo(plain.stops![0], 0.0001), reason: 'reduced=$reduced');
+          expect(graded.stops![1], closeTo(plain.stops![1], 0.0001), reason: 'reduced=$reduced');
+          expect(graded.stops!.length, greaterThan(plain.stops!.length), reason: 'reduced=$reduced');
+        }
+      });
+
+      test('the tail descends to fully opaque background by canvas 82%', () {
+        for (final reduced in [false, true]) {
+          final g = HomeHeroArtwork.ambientWashGradient(
+            background: bg,
+            canvasHeight: canvas,
+            reduced: reduced,
+            graded: true,
+          );
+          final label = 'reduced=$reduced';
+
+          expect(g.colors.last.a, closeTo(1.0, 0.001), reason: 'fully dark behind the text: $label');
+          expect(g.stops!.last, closeTo(mapped(0.82), 0.001), reason: 'and it gets there at 82%: $label');
+
+          // Non-decreasing, not strictly ascending: both tiers land on 1.0.
+          for (var i = 1; i < g.colors.length; i++) {
+            expect(g.colors[i].a, greaterThanOrEqualTo(g.colors[i - 1].a), reason: 'alpha $i: $label');
+            expect(g.stops![i], greaterThan(g.stops![i - 1]), reason: 'stop $i: $label');
+          }
+        }
+      });
+
+      test('the fade-out band keeps more artwork than the flat 0.55 tail did', () {
+        final plain = HomeHeroArtwork.ambientWashGradient(background: bg, canvasHeight: canvas);
+        final graded = HomeHeroArtwork.ambientWashGradient(background: bg, canvasHeight: canvas, graded: true);
+
+        double alphaAt(LinearGradient g, double canvasStop) {
+          final t = mapped(canvasStop);
+          final stops = g.stops!;
+          if (t <= stops.first) return g.colors.first.a;
+          for (var i = 1; i < stops.length; i++) {
+            if (t <= stops[i]) {
+              final span = stops[i] - stops[i - 1];
+              final f = span <= 0 ? 1.0 : (t - stops[i - 1]) / span;
+              return g.colors[i - 1].a + ((g.colors[i].a - g.colors[i - 1].a) * f);
+            }
+          }
+          return g.colors.last.a;
+        }
+
+        // Lighter where the sharp layer fades out, so colour and shape survive.
+        expect(alphaAt(graded, 0.28), lessThan(alphaAt(plain, 0.28)));
+        expect(alphaAt(graded, 0.32), lessThan(alphaAt(plain, 0.32)));
+        // Then decisively darker behind the summary and pagination.
+        expect(alphaAt(graded, 0.68), greaterThan(alphaAt(plain, 0.68)));
+        expect(alphaAt(graded, 0.90), greaterThan(alphaAt(plain, 0.90)));
+      });
     });
 
     testWidgets('the rendered top band is not a flat dark bar: ambient shows through', (tester) async {

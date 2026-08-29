@@ -70,10 +70,44 @@ class HomeHeroArtwork extends StatelessWidget {
   static const double _reducedAmbientWashAlpha = 0.68;
 
   /// Where the ramp sits, as a fraction of the hero canvas (not of the
-  /// overscanned ambient box — see [_ambientWashGradient], which maps these
+  /// overscanned ambient box — see [ambientWashGradient], which maps these
   /// into the larger box so they land where these numbers say).
   static const double _ambientWashMidStop = 0.18;
   static const double _ambientWashEndStop = 0.32;
+
+  /// The graded tail, used only where the sharp layer is full width — an
+  /// iPhone in portrait (see [ambientWashGradient]'s `graded`).
+  ///
+  /// Without it the wash holds [_ambientWashAlpha] flat from
+  /// [_ambientWashEndStop] all the way down, which reads as one even haze
+  /// under the artwork and leaves the hero ending at 55% right where the rail
+  /// below it cuts to the scaffold background. The tail instead stays lighter
+  /// through the band where the sharp layer fades out — so more colour and
+  /// shape from the artwork survives there — and only then descends to fully
+  /// opaque background behind the summary and pagination.
+  ///
+  /// The list starts below the control row on purpose. [_ambientWashAlphaTop]
+  /// and [_ambientWashAlphaMid] carry that row's readability and must not
+  /// shift, so the graded gradient reuses them verbatim; the tail takes over
+  /// from there, standing in for [_ambientWashEndStop] rather than following
+  /// it.
+  static const List<(double stop, double alpha)> _ambientWashGradedTail = [
+    (0.28, 0.44),
+    (0.48, 0.54),
+    (0.68, 0.78),
+    (0.82, 1.0),
+  ];
+
+  /// The same tail on the reduced tier, which runs darker throughout (see
+  /// [_reducedAmbientWashAlphaTop]). Both tiers land on 1.0: fully dark is
+  /// fully dark, so the reduced tail is *not* strictly darker at every stop
+  /// the way the three base alphas are.
+  static const List<(double stop, double alpha)> _reducedAmbientWashGradedTail = [
+    (0.28, 0.58),
+    (0.48, 0.68),
+    (0.68, 0.86),
+    (0.82, 1.0),
+  ];
 
   /// Flattens the ambient layer on the reduced visual-effects tier.
   ///
@@ -114,16 +148,31 @@ class HomeHeroArtwork extends StatelessWidget {
   /// than the canvas. Mapping the stops through that difference keeps
   /// [_ambientWashMidStop] and [_ambientWashEndStop] meaning what they say
   /// relative to the hero the viewer actually sees.
+  ///
+  /// [graded] swaps the third stop for [_ambientWashGradedTail] — the
+  /// full-width (iPhone portrait) treatment. The two stops above it, the ones
+  /// the control row sits against, are byte-identical either way, and every
+  /// other platform keeps exactly the gradient it had. It is a replacement and
+  /// not an addition: see the comment at the `tail` local for why appending
+  /// the tail after [_ambientWashEndStop] would not even build.
   @visibleForTesting
   static LinearGradient ambientWashGradient({
     required Color background,
     required double canvasHeight,
     bool reduced = false,
+    bool graded = false,
   }) {
     final boxHeight = canvasHeight + (2 * _ambientOverscan);
     final offset = boxHeight <= 0 ? 0.0 : _ambientOverscan / boxHeight;
     final scale = boxHeight <= 0 ? 1.0 : canvasHeight / boxHeight;
     double mapped(double canvasStop) => (offset + (canvasStop * scale)).clamp(0.0, 1.0);
+
+    // The tail starts at 0.28, above [_ambientWashEndStop]'s 0.32, so it
+    // *replaces* that third stop rather than following it — appending both
+    // would make the stops descend, which `LinearGradient` will not accept.
+    // The two stops above it, the ones the control row sits against, are the
+    // same either way.
+    final tail = reduced ? _reducedAmbientWashGradedTail : _ambientWashGradedTail;
 
     return LinearGradient(
       begin: Alignment.topCenter,
@@ -131,9 +180,16 @@ class HomeHeroArtwork extends StatelessWidget {
       colors: [
         background.withValues(alpha: reduced ? _reducedAmbientWashAlphaTop : _ambientWashAlphaTop),
         background.withValues(alpha: reduced ? _reducedAmbientWashAlphaMid : _ambientWashAlphaMid),
-        background.withValues(alpha: reduced ? _reducedAmbientWashAlpha : _ambientWashAlpha),
+        if (!graded)
+          background.withValues(alpha: reduced ? _reducedAmbientWashAlpha : _ambientWashAlpha)
+        else
+          for (final (_, alpha) in tail) background.withValues(alpha: alpha),
       ],
-      stops: [mapped(0), mapped(_ambientWashMidStop), mapped(_ambientWashEndStop)],
+      stops: [
+        mapped(0),
+        mapped(_ambientWashMidStop),
+        if (!graded) mapped(_ambientWashEndStop) else for (final (stop, _) in tail) mapped(stop),
+      ],
     );
   }
 
@@ -323,6 +379,10 @@ class HomeHeroArtwork extends StatelessWidget {
                   background: Theme.of(context).scaffoldBackgroundColor,
                   canvasHeight: geometry.canvasHeight,
                   reduced: DevicePerformance.isReduced,
+                  // Full width is exactly iPhone portrait: `DiscoverScreen`
+                  // picks the presentation as `isIPhonePortrait ? fullWidth :
+                  // island`. iPad, Android, macOS and tvOS stay ungraded.
+                  graded: geometry.presentation == HomeHeroSharpPresentation.fullWidth,
                 ),
               ),
             ),
@@ -346,13 +406,10 @@ class HomeHeroArtwork extends StatelessWidget {
       cacheKey: cacheKey,
       cacheManager: PlexImageCacheManager.instance,
       // A full-bleed frame (`coversHero`) fills a box with a different ratio
-      // than the source, so it still needs `cover`. Same for the full-width
-      // widescreen strip on a narrow phone (`sharpUsesCoverFit`): its box
-      // height is no longer derived from the 16:9 source, so `cover` crops
-      // left/right instead of letterboxing. Every other frame is already
-      // sized to the source's own ratio (see `homeHeroArtGeometry`), so
-      // `contain` there is crop-free rather than a no-op.
-      fit: (geometry.coversHero || geometry.sharpUsesCoverFit) ? BoxFit.cover : BoxFit.contain,
+      // than the source, so it still needs `cover`. The island frame is
+      // already sized to the source's own ratio (see `homeHeroArtGeometry`),
+      // so `contain` there is crop-free rather than a no-op.
+      fit: geometry.coversHero ? BoxFit.cover : BoxFit.contain,
       alignment: Alignment.topCenter,
       memCacheHeight: memHeight,
       placeholder: (context, url) => ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),

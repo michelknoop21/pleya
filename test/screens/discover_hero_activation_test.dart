@@ -592,10 +592,6 @@ void main() {
     testWidgets('iPhone portrait, widescreen source: full width behind the control row', (tester) async {
       // What the app actually shows most of the time — a 16:9 backdrop. This
       // is the case that regressed to a 320pt centred card.
-      //
-      // The strip height is no longer 402 * 9/16: it is the strip's own
-      // viewport-height formula (min(402 * 0.72, 292)), with `BoxFit.cover`
-      // cropping the 16:9 source into a taller box.
       final frame = await pumpAndMeasureFrame(
         tester,
         size: const Size(402, 874),
@@ -604,7 +600,7 @@ void main() {
         expectedPaginationBottom: paginationBottomPortrait,
         expectedHeadingTop: headingTopPortrait,
         expectedFrameWidth: 402,
-        expectedFrameHeight: 402 * 0.72,
+        expectedFrameHeight: 402 * 9 / 16,
         heroArtPath: '/backdrop',
         checkControlRowGap: true,
       );
@@ -613,7 +609,7 @@ void main() {
       expect(frame.right, closeTo(402, 0.5));
 
       final images = tester.widgetList<CachedNetworkImage>(find.byType(CachedNetworkImage)).toList();
-      expect(images.last.fit, BoxFit.cover, reason: 'the box is no longer the source ratio; contain would letterbox');
+      expect(images.last.fit, BoxFit.contain, reason: 'crop-free: cover would zoom the source and cut its sides');
     });
 
     testWidgets('iPad portrait keeps the sharp layer at 0', (tester) async {

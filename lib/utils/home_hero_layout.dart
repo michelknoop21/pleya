@@ -84,7 +84,6 @@ class HomeHeroArtGeometry {
     required this.coversHero,
     this.presentation = HomeHeroSharpPresentation.island,
     this.sharpOpaqueTopInset = 0,
-    this.sharpUsesCoverFit = false,
   });
 
   /// Full hero canvas width, in logical pixels — what the ambient layer (when
@@ -185,13 +184,6 @@ class HomeHeroArtGeometry {
     return math.min(band, math.max(0.0, sharpHeight - sharpFadeHeight));
   }
 
-  /// True voor de full-width widescreen-strook op een smalle telefoon: die
-  /// tekent met `BoxFit.cover` en knipt links/rechts, in plaats van de
-  /// crop-vrije `BoxFit.contain` die elke andere niet-`coversHero`-laag
-  /// gebruikt. De beslissing staat hier, niet in de widget, om `presentation`
-  /// en `kind` niet buiten dit bestand te hoeven combineren.
-  final bool sharpUsesCoverFit;
-
   static const zero = HomeHeroArtGeometry(
     canvasWidth: 0,
     canvasHeight: 0,
@@ -218,15 +210,14 @@ const double _sharpIslandWidthFraction = 0.82;
 /// blend band itself (see [HomeHeroArtGeometry.sharpFadeHeight]).
 const double _sharpFadeStartFraction = 0.55;
 
-/// Hoogte van de full-width widescreen-strook op een smalle telefoon, als
-/// fractie van de canvasbreedte — niet meer de bronverhouding zelf. Boven de
-/// 226pt die `screenWidth * 9/16` op 402pt geeft was de bottomfade al voor de
-/// afspeelknop begonnen; deze fractie geeft de strook een eigen, hogere
-/// doosvorm en laat `BoxFit.cover` de 16:9-bron erin croppen in plaats van
-/// hem 1:1 te laten bepalen. Geklemd op [_fullWidthWidescreenViewportHeightMax]
-/// zodat een brede telefoon niet onbeperkt meegroeit.
-const double _fullWidthWidescreenViewportHeightFraction = 0.72;
-const double _fullWidthWidescreenViewportHeightMax = 292.0;
+/// Waar de bottomfade begint op de full-width widescreen-strook, als fractie
+/// van de laaghoogte. Hoger dan [_sharpFadeStartFraction] omdat die strook op
+/// een 402pt-scherm maar 226pt hoog is: op 0,55 begon de fade al op y ≈ 186,
+/// ruim boven de afspeelknop, waardoor het beeld te vroeg verdween terwijl de
+/// geometrie zelf klopte. Dit verlengt het volledig scherpe deel zonder de
+/// bron te vergroten of de zijkanten af te snijden — de fout van een eerdere
+/// poging, die de doos verhoogde en met `BoxFit.cover` ±28% inzoomde.
+const double _fullWidthWidescreenSharpFadeStartFraction = 0.68;
 
 /// How the sharp layer is composed on a narrow box.
 ///
@@ -328,10 +319,7 @@ HomeHeroArtGeometry homeHeroArtGeometry({
       naturalHeight = screenWidth;
     case (HomeHeroSharpPresentation.fullWidth, BillboardArtKind.widescreen):
       naturalWidth = screenWidth;
-      naturalHeight = math.min(
-        screenWidth * _fullWidthWidescreenViewportHeightFraction,
-        _fullWidthWidescreenViewportHeightMax,
-      );
+      naturalHeight = screenWidth * 9 / 16;
     case (HomeHeroSharpPresentation.island, BillboardArtKind.square):
       // Clamped to both the hero's own width and height so a very short hero
       // (or a very narrow one) never asks for an island bigger than the box
@@ -347,34 +335,20 @@ HomeHeroArtGeometry homeHeroArtGeometry({
       naturalHeight = heroHeight; // unreachable: handled above
   }
 
-  // Only this one shape crops with `BoxFit.cover` instead of holding its
-  // source ratio with `contain`: the full-width widescreen strip on a narrow
-  // phone, whose box height is no longer derived from the 16:9 source (see
-  // the constants above). Decided here, not read off `presentation`/`kind`
-  // separately at each use site below, so the two stay in lockstep.
-  final isWidescreenCoverCrop =
-      presentation == HomeHeroSharpPresentation.fullWidth && kind == BillboardArtKind.widescreen;
+  // Fit it under the inset, holding the source ratio exactly: height is what
+  // gets trimmed, width follows from the ratio.
+  final fitScale = naturalHeight <= 0 ? 1.0 : math.min(1.0, availableSharpHeight / naturalHeight);
+  final sharpWidth = naturalWidth * fitScale;
+  final sharpHeight = naturalHeight * fitScale;
 
-  final double sharpWidth, sharpHeight;
-  if (isWidescreenCoverCrop) {
-    // Alleen in de hoogte klemmen: `cover` heeft geen bronverhouding te
-    // beschermen, en breedte meeschalen zou de strook van de canvasrand
-    // halen.
-    sharpWidth = naturalWidth;
-    sharpHeight = math.min(naturalHeight, availableSharpHeight);
-  } else {
-    // Fit it under the inset, holding the source ratio exactly: height is
-    // what gets trimmed, width follows from the ratio.
-    final fitScale = naturalHeight <= 0 ? 1.0 : math.min(1.0, availableSharpHeight / naturalHeight);
-    sharpWidth = naturalWidth * fitScale;
-    sharpHeight = naturalHeight * fitScale;
-  }
-
-  // Alleen deze tak knipt met BoxFit.cover, dus alleen hier moet de
-  // transcode-aanvraag breder zijn dan de doos: op de doelhoogte, in de eigen
-  // 16:9-bronverhouding, zodat BoxFit.cover een scherpe crop tekent in plaats
-  // van een wazige upscale van een te smal plaatje.
-  final effectiveRequestWidth = isWidescreenCoverCrop ? sharpHeight * 16 / 9 : sharpWidth;
+  // Only the full-width widescreen strip fades out later. It is the one layer
+  // whose own height is dictated by a 16:9 source on a narrow canvas — 226pt
+  // on a 402pt phone — so the shared 55% start put the fade above the play
+  // button. Square (in any presentation), every island, and the full-bleed
+  // branch keep 0.55.
+  final fadeStartFraction = presentation == HomeHeroSharpPresentation.fullWidth && kind == BillboardArtKind.widescreen
+      ? _fullWidthWidescreenSharpFadeStartFraction
+      : _sharpFadeStartFraction;
 
   if (availableSharpHeight <= 0) {
     // The inset pushes the sharp layer entirely off the canvas. Falling back
@@ -403,16 +377,15 @@ HomeHeroArtGeometry homeHeroArtGeometry({
     canvasHeight: heroHeight,
     sharpWidth: sharpWidth,
     sharpHeight: sharpHeight,
-    requestWidth: effectiveRequestWidth,
+    requestWidth: sharpWidth,
     requestHeight: sharpHeight,
-    sharpFadeHeight: sharpHeight * (1 - _sharpFadeStartFraction),
+    sharpFadeHeight: sharpHeight * (1 - fadeStartFraction),
     sharpTopInset: effectiveSharpTopInset,
     hasSharpForeground: true,
     useAmbientLayer: true,
     coversHero: false,
     presentation: presentation,
     sharpOpaqueTopInset: effectiveSharpOpaqueInset,
-    sharpUsesCoverFit: isWidescreenCoverCrop,
   );
 }
 
