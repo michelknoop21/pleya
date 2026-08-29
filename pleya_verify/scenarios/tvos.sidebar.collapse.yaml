@@ -1,0 +1,47 @@
+name: tvos.sidebar.collapse
+target: tvos-sim
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - wait_until: {id: discover.hero, timeout: 30000}
+  # IntroGate's cold-start splash paints over an already-ready screen.
+  - settle: 3500
+
+  # Collapsed: the rail is on screen and the hero sits beside it, not under
+  # it. `side_navigation_rail_test.dart` guards the hit-test ownership of
+  # this band as a widget test; here it is the real thing, laid out by the
+  # real engine on a real tvOS surface.
+  - assert: {id: sidebar.rail, insideViewport: true}
+  - assert: {id: discover.hero, notOverlapping: sidebar.rail, rightOf: sidebar.rail}
+  - snapshot: sidebar-collapsed
+
+  # Left moves focus into the rail, which expands. Every press goes through
+  # idb HID into UIKit — never through the automation transport ([C2]), so
+  # this exercises the engine's own press-claiming path, the one that
+  # bypasses the responder chain.
+  - press: left
+  - settle: 1000
+  - assert: {id: sidebar.rail, insideViewport: true}
+  - snapshot: sidebar-expanded
+
+  # Expanded, the rail is wider and the hero must still not be underneath
+  # it. The regression this catches is the animating band: `isCollapsed`
+  # flips synchronously while the width animates for 200ms behind it, and
+  # anything that reads the boolean instead of the drawn width gets the
+  # ownership of that band wrong.
+  - assert: {id: discover.hero, notOverlapping: sidebar.rail}
+
+  # Down inside the rail, then Select. The tab actually changing is the
+  # proof that the press was claimed by the rail and did not leak through to
+  # the content underneath — the property the widget test asserts with a
+  # synthetic pointer, now under a real remote press.
+  - press: down
+  - settle: 800
+  - press: select
+  - wait_until: {event: navigation.tab_changed, timeout: 10000}
+  - settle: 2000
+  - snapshot: sidebar-after-select

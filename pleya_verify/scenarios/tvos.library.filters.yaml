@@ -1,0 +1,41 @@
+name: tvos.library.filters
+target: tvos-sim
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  # Straight to the library instead of navigating there by remote presses:
+  # `goto_tab` in tvos_sim.sh is timing-based and fragile, and this scenario
+  # is about the filters, not about how you reach them.
+  - open: screen.libraries
+steps:
+  - wait_until: {id: screen.libraries, timeout: 30000}
+  # The grid is populated by its own fetch, so wait for the event rather
+  # than for the screen — a ready screen with no items would pass a
+  # presence check and measure nothing.
+  - wait_until: {event: library.items_loaded, timeout: 30000}
+  - settle: 2000
+
+  - assert: {id: library.grid, insideViewport: true}
+  - snapshot: library-grid
+
+  # The three filter controls have to be on screen and hittable. On a
+  # 1920x1080 TV surface a chip that renders but sits outside the viewport
+  # is unreachable by remote, and no widget test sees the difference.
+  - assert: {id: library.filter.filters, insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: library.filter.sort, insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: library.filter.grouping, insideViewport: true, minimumTapTarget: 44}
+
+  # The filter row sits above the grid it filters. Stated as geometry
+  # because "above" is the thing a reader can check against the screenshot.
+  - assert: {id: library.grid, below: library.filter.filters}
+
+  # Reach the filters by remote and open one. Focus moving there at all is
+  # the reachability half; the grid reloading is the effect half.
+  - press: up
+  - settle: 1000
+  - snapshot: library-filters-focused
+  - press: select
+  - settle: 1500
+  - snapshot: library-filters-open

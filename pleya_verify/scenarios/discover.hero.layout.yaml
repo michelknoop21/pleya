@@ -14,10 +14,15 @@ steps:
   # wait_until races the second pass. Wait for the hero itself — the node the
   # assertion is about — instead of inferring it from the screen.
   - wait_until: {id: discover.hero, timeout: 15000}
-  - assert: {id: discover.hero}
   # IntroGate's cold-start splash overlay (~2.8s) paints on top of an
   # already-ready DiscoverScreen — it has no automation id, so no
-  # wait_until can see it finish; settle past it before the screenshot.
+  # wait_until can see it finish; settle past it before measuring.
   - settle: 3500
+  # The layout properties, not just "it exists". The hero has to be on
+  # screen, and its play button has to be big enough to actually hit — the
+  # regression this catches is a hero that renders off-viewport or a control
+  # that shrinks below the tap minimum, neither of which changes any
+  # widget-test assertion.
+  - assert: {id: discover.hero, insideViewport: true}
+  - assert: {id: discover.hero.play, insideViewport: true, minimumTapTarget: 44}
   - snapshot: discover-hero
-

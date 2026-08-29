@@ -163,11 +163,30 @@ Future<ScenarioRunResult> runScenario({
         case 'assert':
           final geometry = await _dispatchAssert(step, driver);
           if (geometry.isNotEmpty) record['geometry'] = [for (final g in geometry) g.toJson()];
+        case 'overlay':
+          // The diagnostic overlay draws ids and bounds *into the app's own
+          // render tree*, so a screenshot taken while it is on shows what
+          // the runner thinks it is measuring. Turn it on, capture, turn it
+          // off — never leave it on across an assertion, because it changes
+          // what is on screen.
+          final raw = step.args;
+          final overlayArgs = raw is Map<String, Object?> ? raw : {'enabled': raw == true};
+          await _requireClient(driver, 'overlay').overlay(
+            enabled: overlayArgs['enabled'] as bool?,
+            showIds: overlayArgs['showIds'] as bool?,
+            showBounds: overlayArgs['showBounds'] as bool?,
+          );
         case 'snapshot':
           final name = step.args is String ? step.args as String : 'step-${step.line}';
           final bytes = await driver.screenshot();
           bundle.saveScreenshot(name, bytes);
           record['screenshot'] = '$name.png';
+          // [C5]: every image in a bundle says where it came from. These are
+          // always the platform compositor's own capture (screencapture,
+          // simctl io) — never Flutter's `/v1/screenshot`, which is
+          // diagnostic-only and would happily agree with a broken layout
+          // because it renders from the same tree the layout came from.
+          record['screenshot_source'] = 'platform-compositor';
         case 'settle':
           // Bare `- settle` keeps the old fixed 500ms; `- settle: 3000` lets
           // a scenario wait out something with no automation-observable

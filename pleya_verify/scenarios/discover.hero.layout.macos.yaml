@@ -1,0 +1,51 @@
+name: discover.hero.layout.macos
+target: macos
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 20000}
+  # Same two-load-pass race as the iOS variant: screen.discover reports ready
+  # at the end of the first, empty pass. Wait for the hero itself.
+  - wait_until: {id: discover.hero, timeout: 20000}
+  - settle: 3500
+  # Desktop puts the app behind a side rail, so this target can state layout
+  # properties the phone cannot.
+  #
+  # The rail deliberately *overlays* the content rather than pushing it:
+  # content is laid out from `collapsedWidth` (80), while the rail's own band
+  # runs to `expandedWidth` (220), so an expanded rail covers 140px of what
+  # is underneath. That overlap is the design — it is exactly why hit-test
+  # ownership of the band is what `side_navigation_rail_test.dart` guards —
+  # and a first draft of this scenario asserting `notOverlapping` on the hero
+  # was wrong about the app, not the other way round.
+  #
+  # What genuinely must hold is that the rail never covers the hero's primary
+  # action. Measured here: play at x=370, rail band ending at 220. A rail that
+  # expands further, or a play button that drifts left, breaks a user's
+  # ability to start playback and changes no widget-test assertion.
+  - assert: {id: sidebar.rail, insideViewport: true}
+  - assert: {id: discover.hero, insideViewport: true}
+  - assert: {id: discover.hero.play, insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: discover.hero.play, notOverlapping: sidebar.rail}
+  # The nav items have to stay reachable inside the band and be hittable.
+  - assert: {id: nav.discover, insideViewport: true, minimumTapTarget: 44}
+  # No screenshot step on this target, deliberately.
+  #
+  # macOS visual evidence is not obtainable in the environment this runs in:
+  # `screencapture` refuses both its rect mode (`-R`) and its window mode
+  # (`-l`) — for any app, not just this one — while only whole-display
+  # capture works, and a whole-display grab puts whatever else is on screen
+  # into the bundle. It also captured the developer's browser once, which is
+  # the reason MacosDriver now refuses that fallback outright rather than
+  # writing it as evidence.
+  #
+  # The geometry assertions above are the evidence for this target, and they
+  # are real evidence: measured from the live render tree, on the platform,
+  # at runtime. Visual comparison lives on iOS and tvOS, where
+  # `simctl io screenshot` captures the simulator device and nothing else.
+  # `MacosDriver.screenshot()` keeps its window-scoped implementation for an
+  # environment where the window is on-screen and the capture modes are
+  # permitted; it fails loudly instead of degrading.

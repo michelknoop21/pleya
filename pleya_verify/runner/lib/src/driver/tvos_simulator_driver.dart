@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import '../transport/verify_client.dart';
 import 'instance_discovery.dart';
+import 'screenshot_probe.dart';
 import 'verification_driver.dart';
 
 /// Drives a tvOS-simulator build of Pleya through `scripts/tvos_sim.sh` —
@@ -392,6 +393,11 @@ class TvosSimulatorDriver implements VerificationDriver {
     }
     final bytes = tempFile.readAsBytesSync();
     tempFile.deleteSync();
+    assertNotBlankScreenshot(
+      bytes,
+      context: 'simctl io screenshot',
+      hint: 'Check that the simulator is booted and has actually rendered a frame.',
+    );
     return bytes;
   }
 

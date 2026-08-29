@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import '../transport/verify_client.dart';
 import 'instance_discovery.dart';
+import 'screenshot_probe.dart';
 import 'verification_driver.dart';
 
 /// Drives a local iOS-simulator build of Pleya via `xcrun simctl`.
@@ -341,6 +342,11 @@ class IosSimulatorDriver implements VerificationDriver {
     }
     final bytes = tempFile.readAsBytesSync();
     tempFile.deleteSync();
+    assertNotBlankScreenshot(
+      bytes,
+      context: 'simctl io screenshot',
+      hint: 'Check that the simulator is booted and has actually rendered a frame.',
+    );
     return bytes;
   }
 

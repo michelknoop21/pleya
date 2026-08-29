@@ -23,6 +23,7 @@ const Set<String> stepVerbs = {
   'settle',
   'back',
   'fixture_mutate',
+  'overlay',
 };
 
 /// One entry of a scenario's `setup:` or `steps:` list.

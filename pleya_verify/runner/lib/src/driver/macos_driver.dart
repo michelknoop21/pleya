@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import '../transport/verify_client.dart';
 import 'instance_discovery.dart';
+import 'screenshot_probe.dart';
 import 'verification_driver.dart';
 
 /// Drives a local macOS build of Pleya.
@@ -304,19 +305,123 @@ class MacosDriver implements VerificationDriver {
     return (result['entries'] as List).cast<Map<String, Object?>>();
   }
 
+  /// Source and cache location for the window-geometry helper.
+  ///
+  /// `System Events` was the first attempt and does not work here: it reads
+  /// windows through the Accessibility API, so without that permission the
+  /// process is found but `window 1` is an invalid index — the same answer
+  /// it gives for an app that genuinely has no window. `CGWindowList` needs
+  /// no such permission, so `tool/macos_window_bounds.swift` asks the window
+  /// server directly. Compiling it costs a few seconds, hence the cache.
+  File get _windowBoundsSource => File('${repoRoot.path}/pleya_verify/runner/tool/macos_window_bounds.swift');
+
+  /// Raising the app by pid. This one *is* AppleScript, and it is fine that
+  /// it can fail: it only affects what is on top of the window, and the
+  /// blank-capture check is the net underneath.
+  static String _activateScript(int pid) =>
+      'tell application "System Events" to set frontmost of (first process whose unix id is $pid) to true';
+
+  File get _windowBoundsBinary => File('${repoRoot.path}/.build/pleya-verify/bin/macos_window_bounds');
+
+  Future<File?> _ensureWindowBoundsBinary() async {
+    final binary = _windowBoundsBinary;
+    final source = _windowBoundsSource;
+    if (!source.existsSync()) return null;
+    if (binary.existsSync() && binary.lastModifiedSync().isAfter(source.lastModifiedSync())) {
+      return binary;
+    }
+    binary.parent.createSync(recursive: true);
+    _log('compiling ${source.path}');
+    final result = await _run('swiftc', ['-O', source.path, '-o', binary.path]);
+    if (result.exitCode != 0) {
+      _log('swiftc failed: ${result.stderr}');
+      return null;
+    }
+    return binary;
+  }
+
+  /// The app window's screen rect, addressed by the pid this driver
+  /// launched — the one identifier it knows for certain, because it started
+  /// the process itself. Matching on a process *name* is a guess about how
+  /// the binary presents itself to the window server, and a first attempt
+  /// doing that found nothing at all.
+  ///
+  /// Null when the window cannot be located — never a guess, because every
+  /// caller turns this answer into evidence.
+  Future<({int windowId, int x, int y, int width, int height})?> _windowRect() async {
+    final pid = _process?.pid;
+    if (pid == null) return null;
+    final binary = await _ensureWindowBoundsBinary();
+    if (binary == null) return null;
+
+    final result = await _run(binary.path, ['$pid']);
+    if (result.exitCode != 0) {
+      _log('window lookup failed: ${result.stderr}');
+      return null;
+    }
+    final numbers = (result.stdout as String).trim().split(',').map(int.tryParse).toList();
+    if (numbers.length < 5 || numbers.any((n) => n == null)) return null;
+    return (windowId: numbers[0]!, x: numbers[1]!, y: numbers[2]!, width: numbers[3]!, height: numbers[4]!);
+  }
+
   @override
   Future<Uint8List> screenshot() async {
     final tempFile = File(
       '${Directory.systemTemp.path}/pleya-verify-macos-screenshot-${DateTime.now().microsecondsSinceEpoch}.png',
     );
+
+    // Bring the app forward first: `-R` captures a screen *region*, so
+    // anything sitting on top of the window would be captured instead of it.
+    final pid = _process?.pid;
+    if (pid != null) {
+      // `-R` captures a screen *region*, so anything sitting on top of the
+      // window would land in the bundle instead of it. Raising the app by
+      // pid keeps that from happening; if the raise fails the capture still
+      // proceeds and the blank/again-wrong-content check below is the net.
+      await _run('osascript', ['-e', _activateScript(pid)]);
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    }
+
+    final rect = await _windowRect();
+    if (rect == null) {
+      throw StateError(
+        'could not locate the Pleya window via System Events, so there is nothing safe to capture. '
+        'Falling back to the whole display is not an option: it would put whatever else is on screen into '
+        'the evidence bundle, and it would prove nothing about the app.',
+      );
+    }
+
+    _log('capturing window ${rect.windowId} at ${rect.x},${rect.y} ${rect.width}x${rect.height}');
+
     // The [C5] authoritative capture: the real macOS compositor, not
     // Flutter's own RepaintBoundary (`/v1/screenshot`, diagnostic-only).
-    final result = await _run('screencapture', ['-x', tempFile.path]);
+    //
+    // Scoped to the window, not the display, and deliberately so. A plain
+    // `screencapture -x` grabs the entire screen, so the evidence shows
+    // whatever happened to be frontmost — in one real run, the developer's
+    // browser with their work documents in it — while the run still reported
+    // PASS, because the geometry assertions read the transport and never look
+    // at the image. A bundle has to contain a picture of the app and nothing
+    // else, both to be evidence and to stay private.
+    // `-l<windowid>`, not `-R<rect>`: the window id names the window itself,
+    // so the capture is right regardless of which of the attached displays
+    // it sits on and of what overlaps it. `-R` has to reason about a
+    // coordinate space spanning every display and failed outright here with
+    // "could not create image from rect" on a three-display setup. `-o`
+    // drops the drop-shadow, so the image is the window and nothing else.
+    final result = await _run('screencapture', ['-x', '-o', '-l${rect.windowId}', tempFile.path]);
     if (result.exitCode != 0 || !tempFile.existsSync()) {
       throw StateError('screencapture failed (exit ${result.exitCode}): ${result.stderr}');
     }
     final bytes = tempFile.readAsBytesSync();
     tempFile.deleteSync();
+    assertNotBlankScreenshot(
+      bytes,
+      context: 'screencapture of Pleya window ${rect.windowId} (${rect.width}x${rect.height})',
+      hint:
+          'Check that the display is awake and unlocked, and that this process has Screen Recording '
+          'permission (System Settings > Privacy & Security > Screen Recording).',
+    );
     return bytes;
   }
 
