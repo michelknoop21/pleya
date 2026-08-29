@@ -112,9 +112,16 @@ class WatchlistAvailabilityResolver {
         for (final result in batch) {
           if (!result.ok) continue;
           checked++;
-          // First match in the deterministic server order wins, so the same
-          // watchlist resolves to the same server on every device.
-          match ??= result.matches.firstOrNull;
+          // A server answering with more than one candidate is ambiguous —
+          // "ambiguity never resolves" ([MediaIdentity.pickMatch]'s own rule —
+          // ambiguity never picks a first result. That server contributes no
+          // match, but still counts as checked; another server may still
+          // answer unambiguously. First unambiguous match in the
+          // deterministic server order wins, so the same watchlist resolves
+          // to the same server on every device.
+          if (match == null && result.matches.length == 1) {
+            match = result.matches.single;
+          }
         }
         return match != null;
       },

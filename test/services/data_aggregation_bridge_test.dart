@@ -409,6 +409,31 @@ void main() {
       expect(result.succeededServerIds, {'plex-1'});
     });
 
+    test('mergeContinueWatching keeps a row with no resolvable server id instead of crashing', () async {
+      // `UnifiedMediaSource.fromItem` throws on a null/empty serverId; a
+      // batch that contains any duplicate bucket must not let that throw
+      // escape and take down every other row in the merge.
+      final dup1 = MediaItem(
+        id: 'dup-1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Foo',
+        serverId: 'srv-1',
+      );
+      final dup2 = MediaItem(
+        id: 'dup-2',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'Foo',
+        serverId: 'srv-2',
+      );
+      final malformed = MediaItem(id: 'mal-1', backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Bar');
+
+      final result = await service.mergeContinueWatching([dup1, dup2, malformed], const []);
+
+      expect(result.map((i) => i.id), containsAll(['dup-1', 'dup-2', 'mal-1']));
+    });
+
     // Fase 1 (docs/DECISIONS.md#dec-063) rewires Continue Watching dedup onto
     // the shared unified-catalog identity primitives. The new
     // `grouping_service.dart` those primitives feed *does* merge on title+year
@@ -852,6 +877,29 @@ void main() {
       final result = await service.getMediaLibrariesFromAllServers();
 
       expect(result.succeededServerIds, {'srv-1'});
+    });
+
+    test('searchAcrossServers excludes a server hidden by the active profile', () async {
+      final visible = JellyfinClient.forTesting(
+        connection: _connFor(serverId: 'srv-visible', baseUrl: 'https://jf-visible.example.com'),
+        httpClient: MockClient((req) async => _json({'Items': <Map<String, dynamic>>[]})),
+      );
+      final hidden = JellyfinClient.forTesting(
+        connection: _connFor(serverId: 'srv-hidden', baseUrl: 'https://jf-hidden.example.com'),
+        // Answers successfully, unlike the other tests in this group — a
+        // request that reaches this server at all must never be mistaken for
+        // one that was correctly skipped.
+        httpClient: MockClient((req) async => _json({'Items': <Map<String, dynamic>>[]})),
+      );
+      addTearDown(visible.close);
+      addTearDown(hidden.close);
+      manager.debugRegisterJellyfinClientForTesting(visible);
+      manager.debugRegisterJellyfinClientForTesting(hidden);
+      manager.setVisibleServerIds({'srv-visible'});
+
+      final result = await service.searchAcrossServers('sintel');
+
+      expect(result.succeededServerIds, {'srv-visible'});
     });
   });
 

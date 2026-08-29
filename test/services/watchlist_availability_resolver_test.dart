@@ -18,9 +18,13 @@ import 'fake_favorites_client.dart';
 /// now dispatches per server through the shared fan-out (hoofdstuk 4.3),
 /// which calls that rather than [findByIdentity].
 class _MatchingClient extends FakeFavoritesClient {
-  _MatchingClient({this.match, this.throws = false}) : super(favorites: const []);
+  _MatchingClient({this.match, this.matches, this.throws = false}) : super(favorites: const []);
 
   final MediaItem? match;
+
+  /// Overrides [match] with more than one candidate, for an ambiguous-answer
+  /// test — a real server can genuinely hold two physical copies of a title.
+  final List<MediaItem>? matches;
   final bool throws;
 
   int lookups = 0;
@@ -29,6 +33,7 @@ class _MatchingClient extends FakeFavoritesClient {
   Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async {
     lookups++;
     if (throws) throw StateError('server down mid-flight');
+    if (matches != null) return matches!;
     return match == null ? const [] : [match!];
   }
 }
@@ -56,6 +61,7 @@ EligibleServer server(
   String id, {
   MediaBackend backend = MediaBackend.plex,
   MediaItem? match,
+  List<MediaItem>? matches,
   bool online = true,
   bool throws = false,
   bool noClient = false,
@@ -63,7 +69,7 @@ EligibleServer server(
   return (
     serverId: ServerId(id),
     backend: backend,
-    client: noClient || !online ? null : _MatchingClient(match: match, throws: throws),
+    client: noClient || !online ? null : _MatchingClient(match: match, matches: matches, throws: throws),
     online: online,
   );
 }
@@ -148,6 +154,36 @@ void main() {
       final result = await resolverFor([first, second]).resolve(entry());
 
       expect(result.match?.serverId, 's1');
+    });
+
+    test('an ambiguous server (more than one candidate) never guesses; an unambiguous one still wins', () async {
+      final ambiguous = server(
+        's1',
+        matches: [
+          serverItem('s1', id: 'copy-1'),
+          serverItem('s1', id: 'copy-2'),
+        ],
+      );
+      final unambiguous = server('s2', match: serverItem('s2'));
+
+      final result = await resolverFor([ambiguous, unambiguous]).resolve(entry());
+
+      expect(result.match?.serverId, 's2', reason: 'ambiguity never resolves — s1 must not be picked by default');
+    });
+
+    test('a server answering only with ambiguous candidates still counts as checked', () async {
+      final ambiguous = server(
+        's1',
+        matches: [
+          serverItem('s1', id: 'copy-1'),
+          serverItem('s1', id: 'copy-2'),
+        ],
+      );
+
+      final result = await resolverFor([ambiguous]).resolve(entry());
+
+      expect(result.match, isNull);
+      expect(result.coverageComplete, isTrue);
     });
 
     test('stops asking once a server answered yes', () async {

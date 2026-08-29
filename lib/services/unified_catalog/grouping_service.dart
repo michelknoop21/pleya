@@ -60,11 +60,11 @@ List<UnifiedMediaGroup> groupUnifiedMediaSources(List<GroupingCandidate> candida
   if (candidates.isEmpty) return const [];
 
   final poolable = <int>[];
-  final groups = <int, List<UnifiedMediaGroup>>{};
+  final groupByIndex = <int, UnifiedMediaGroup>{};
 
   for (var i = 0; i < candidates.length; i++) {
     if (_neverMergedBackends.contains(candidates[i].source.backend)) {
-      groups[i] = [_buildSingleSourceGroup(candidates[i])];
+      groupByIndex[i] = _buildSingleSourceGroup(candidates[i]);
     } else {
       poolable.add(i);
     }
@@ -73,15 +73,14 @@ List<UnifiedMediaGroup> groupUnifiedMediaSources(List<GroupingCandidate> candida
   if (poolable.isNotEmpty) {
     final components = _unionFind(candidates, poolable, allowWeakFallback: allowWeakFallback);
     for (final members in components) {
-      final finalized = _finalizeComponent(members, candidates);
-      groups[members.first] = finalized;
+      groupByIndex.addAll(_finalizeComponent(members, candidates));
     }
   }
 
   final ordered = <UnifiedMediaGroup>[];
   for (var i = 0; i < candidates.length; i++) {
-    final forThis = groups[i];
-    if (forThis != null) ordered.addAll(forThis);
+    final group = groupByIndex[i];
+    if (group != null) ordered.add(group);
   }
   return ordered;
 }
@@ -172,14 +171,23 @@ bool _hasConflictingToken(Set<IdentityToken> a, Set<IdentityToken> b) {
   return false;
 }
 
-List<UnifiedMediaGroup> _finalizeComponent(List<int> members, List<GroupingCandidate> candidates) {
+/// Maps each finalized group to the candidate index it should appear at.
+/// A clean merge collapses to one group at [members]' first index — the
+/// existing "position of the first candidate" contract. A namespace-conflict
+/// fallback splits back into one singleton group *per member*, and each one
+/// must keep its own original index: bunching every fallback singleton at
+/// `members.first`'s position (as a single-index map entry once did) silently
+/// reorders any member whose own index isn't first, exactly when its
+/// conflicting evidence made it *not* merge — the case where preserving input
+/// order matters most.
+Map<int, UnifiedMediaGroup> _finalizeComponent(List<int> members, List<GroupingCandidate> candidates) {
   if (members.length == 1) {
-    return [_buildSingleSourceGroup(candidates[members.single])];
+    return {members.single: _buildSingleSourceGroup(candidates[members.single])};
   }
   if (_componentHasNamespaceConflict(members, candidates)) {
-    return [for (final i in members) _buildSingleSourceGroup(candidates[i])];
+    return {for (final i in members) i: _buildSingleSourceGroup(candidates[i])};
   }
-  return [_buildMergedGroup(members, candidates)];
+  return {members.first: _buildMergedGroup(members, candidates)};
 }
 
 /// Hoofdstuk 11.5: a component reached only through transitive strong-token

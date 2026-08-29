@@ -358,16 +358,42 @@ class DataAggregationService {
     ];
     final evidence = await resolver.resolveEvidence(resolvables);
 
-    final candidates = [
+    // A row missing a resolvable server id can never become a
+    // [UnifiedMediaSource] (its sourceKey is `serverId:id`) and never
+    // legitimately merges with anything either way — keep it, verbatim, at
+    // its own recency position, rather than let one malformed row crash
+    // grouping for the whole batch.
+    final ungroupableIndexes = <int>{
       for (var i = 0; i < items.length; i++)
-        GroupingCandidate(source: UnifiedMediaSource.fromItem(items[i]), evidence: evidence[i]),
-    ];
+        if (items[i].serverId == null || items[i].serverId!.isEmpty) i,
+    };
+
+    final originalIndexBySourceKey = <String, int>{};
+    final candidates = <GroupingCandidate>[];
+    for (var i = 0; i < items.length; i++) {
+      if (ungroupableIndexes.contains(i)) continue;
+      final source = UnifiedMediaSource.fromItem(items[i]);
+      originalIndexBySourceKey[source.sourceKey] = i;
+      candidates.add(GroupingCandidate(source: source, evidence: evidence[i]));
+    }
     final groups = groupUnifiedMediaSources(candidates, allowWeakFallback: false);
 
     // `sources` preserves candidates' original (recency-sorted) order, so the
     // first source in each group is the one with the highest recency —
-    // exactly the representative this method has always projected.
-    return [for (final group in groups) group.sources.first.item];
+    // exactly the representative this method has always projected. Merged
+    // back in original-index order with the ungroupable rows, so a malformed
+    // row keeps its own position instead of being dropped or resorted to the
+    // end.
+    final positioned = <MapEntry<int, MediaItem>>[
+      for (final group in groups)
+        MapEntry(
+          group.sources.map((s) => originalIndexBySourceKey[s.sourceKey]!).reduce((a, b) => a < b ? a : b),
+          group.sources.first.item,
+        ),
+      for (final i in ungroupableIndexes) MapEntry(i, items[i]),
+    ]..sort((a, b) => a.key.compareTo(b.key));
+
+    return [for (final entry in positioned) entry.value];
   }
 
   bool _hasOnlineClient(MediaItem item) {
@@ -519,7 +545,7 @@ class DataAggregationService {
       return (items: const <MediaItem>[], succeededServerIds: const <String>{});
     }
 
-    final clients = _serverManager.onlineClients;
+    final clients = _clientsFor(null);
     if (clients.isEmpty) return (items: const <MediaItem>[], succeededServerIds: const <String>{});
 
     final resultLimit = limit ?? defaultMediaSearchLimit;
