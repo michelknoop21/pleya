@@ -5,7 +5,7 @@ order: 17
 group: Devices and settings
 icon: settings
 summary: Every settings group, what each option changes, and which ones matter most.
-updated: 2026-08-18
+updated: 2026-08-29
 ---
 
 # Settings reference
@@ -70,7 +70,11 @@ visible. This is also where a server that is no longer reachable gets removed.
 - **Requests** connects Jellyseerr or Overseerr, see [Requests](/docs/requests)
 - **Pleya Share** hosts or joins a device share, see [Pleya Share](/docs/pleya-share)
 - **Tautulli** adds viewers, watch statistics and live activity to Pleya, see
-  [Movie and show details](/docs/movie-and-show-details)
+  [Movie and show details](/docs/movie-and-show-details). Its **Use history for
+  recommendations** switch feeds that server's watch history into the on-device taste rows on
+  Home, so profiles that mostly used other apps to watch still get **Recommended for you**
+  and **Because you watched X**. Turned on once per server; every profile on this device that
+  uses that server gets its own history processed, never anyone else's.
 
 ## Advanced
 

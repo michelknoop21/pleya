@@ -18,19 +18,47 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
+Nothing user-facing since the last published build.
+<!-- END GENERATED -->
+
+## 2.8.0 · build 244 · 29 August 2026
+
+<!-- commit: 7cb6a85 -->
+
 ### New
-- App Store "What's New" automatisch zetten bij het koppelen van een build
-- Tautulli-kijkgeschiedenis als bron voor de smaakengine
-- layer the home billboard, and give iPad portrait its own tier
-- one PleyaLogo widget for every place the mark appears
+
+- **Pleya can now set the App Store "What's New" text for you.** Attaching a build to an App
+  Store version fills that in straight from these release notes, alongside the TestFlight
+  notes it already wrote.
+- **The on-device taste engine can now learn from your Tautulli watch history, not just what
+  you played inside Pleya.** If you have used your Plex server for years through other
+  clients, that history now feeds the same recommendations instead of leaving your taste
+  profile empty. A server's owner turns it on once, per server.
+- **The home screen hero got a rebuild: the full picture instead of a centre-crop, and iPad in
+  portrait now gets its own layout.** A blurred, full-bleed version of the artwork fills the
+  whole billboard while the sharp picture sits on top at its own shape, so nothing is cropped
+  to fit a box it was never meant for. iPad in portrait no longer borrows the phone's smaller
+  logo size.
+- **One logo everywhere.** The Pleya mark now looks and glows the same in the top bar,
+  sidebar, splash screen, login and about page, and the file behind it is less than half the
+  size it was.
 
 ### Fixed
-- prefer 16:9 backdrop over square art on narrow iPhone hero
-- import liet elke rij vallen en telde afleveringen dubbel
-- clear the Dynamic Island on iPhone, edge to edge
-- run the artwork behind the topbar, and give the strip its own height
-- fade the full-width strip out later instead of zooming it in
-<!-- END GENERATED -->
+
+- **The home hero on narrow iPhones picks the right kind of artwork again.** It was reaching
+  for square art first, which blew the picture up and buried the show's own logo underneath.
+  It now prefers the wide backdrop, and only falls back to square art when nothing else is
+  available.
+- **Importing Tautulli watch history was silently skipping almost everything, and
+  double-counting the rest.** A mixed-up identity check meant nearly every row got skipped,
+  and episodes you had already watched in Pleya could be imported a second time.
+- **The hero no longer sits under the Dynamic Island on iPhone.** The artwork now starts below
+  it and fades in smoothly instead of leaving a flat band across the top.
+- **The hero's artwork now runs behind the top bar instead of stopping short of it**, and the
+  wide strip on smaller phones no longer ends in a black gap above the play button.
+- **A last-minute fix to that same strip cropped faces out of two-person artwork; this undoes
+  it.** The strip keeps its full picture and simply fades out later, instead of zooming in to
+  fill more height.
 
 ## 2.8.0 · build 234 · 20 August 2026
 
