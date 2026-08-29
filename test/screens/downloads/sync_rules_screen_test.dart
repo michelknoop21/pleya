@@ -25,6 +25,7 @@ import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/plex_auth_service.dart';
 import 'package:provider/provider.dart';
 
+import '../../test_helpers/notices.dart';
 import '../../test_helpers/prefs.dart';
 
 PlexConnection _plexConnection() {
@@ -239,6 +240,8 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Remove sync rule'));
     await tester.pumpAndSettle();
 
+    resetNotices();
+
     expect(downloadProvider.syncRules, isEmpty);
     expect(find.text('76672'), findsNothing);
     expect(find.text('No sync rules'), findsOneWidget);
@@ -293,6 +296,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
+
+    resetNotices();
 
     expect(downloadProvider.syncRules, isEmpty);
     expect(find.text('No sync rules'), findsOneWidget);

@@ -20,6 +20,7 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
+import '../test_helpers/notices.dart';
 
 final scope = WatchlistScopeId(profileId: 'p1', backend: MediaBackend.plex, accountId: 'acc', userId: 'usr');
 
@@ -81,6 +82,9 @@ class _RecordingSource implements WatchlistSource {
 }
 
 void main() {
+  // The notice controller is global and caps how many notices are visible,
+  // so a leftover from the previous test would hide this one's own message.
+  setUp(resetNotices);
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late AppDatabase db;
@@ -232,6 +236,10 @@ void main() {
       // spinner over a list that is already right.
       expect(source.fetches, 0);
       expect(provider.entryForKey('plex:abc'), isNotNull);
+
+      // Confirmations/errors go through the global notice controller; its
+      // auto-dismiss timer would outlive this tree and trip !timersPending.
+      resetNotices();
     });
 
     testWidgets('a second toggle removes the entry it just added', (tester) async {
@@ -252,6 +260,10 @@ void main() {
       expect(store.isOnWatchlistByKey('plex:abc'), isFalse);
       expect(provider.entryForKey('plex:abc'), isNull);
       expect(source.fetches, 0);
+
+      // Confirmations/errors go through the global notice controller; its
+      // auto-dismiss timer would outlive this tree and trip !timersPending.
+      resetNotices();
     });
 
     testWidgets('a failed removal that compensated cleanly leaves the entry in place', (tester) async {
@@ -305,7 +317,11 @@ void main() {
       expect(second.removed, hasLength(1));
       expect(first.added, hasLength(1), reason: 'the compensating write was attempted');
       expect(first.fetches, 1, reason: 'the list is read back rather than guessed at');
-      expect(find.text(t.watchlist.partiallyFailed), findsOneWidget);
+      expect(noticeTitles(), contains(t.watchlist.partiallyFailed));
+
+      // Confirmations/errors go through the global notice controller; its
+      // auto-dismiss timer would outlive this tree and trip !timersPending.
+      resetNotices();
     });
 
     testWidgets('offline is refused and the user is told', (tester) async {
@@ -322,7 +338,11 @@ void main() {
 
       expect(outcome, WatchlistOutcome.offlineRejected);
       expect(source.added, isEmpty);
-      expect(find.text(t.watchlist.offlineRejected), findsOneWidget);
+      expect(noticeTitles(), contains(t.watchlist.offlineRejected));
+
+      // Confirmations/errors go through the global notice controller; its
+      // auto-dismiss timer would outlive this tree and trip !timersPending.
+      resetNotices();
     });
   });
 }

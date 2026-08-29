@@ -44,6 +44,7 @@ import 'package:pleya/widgets/media_progress_bar.dart';
 import 'package:pleya/widgets/tv_browse_rail.dart';
 import 'package:provider/provider.dart';
 
+import '../test_helpers/notices.dart';
 import '../test_helpers/prefs.dart';
 import '../test_helpers/profile_navigation.dart';
 
@@ -1074,6 +1075,10 @@ void main() {
       expect(find.byIcon(Symbols.bookmark_add_rounded), findsNothing);
       // The icon turned over on the optimistic patch; nothing was re-read.
       expect(source.fetches, 1);
+
+      // Adding confirms through the global notice controller; its auto-dismiss
+      // timer would outlive this tree and trip !timersPending.
+      resetNotices();
     });
   });
 }

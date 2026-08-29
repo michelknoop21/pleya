@@ -14,6 +14,8 @@ import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/utils/log_upload.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 
+import '../test_helpers/notices.dart';
+
 /// Swallows console output. Entries still land in [MemoryLogOutput] because
 /// recording happens in the printer, not the output — so the buffer fills
 /// without 400 lines of noise in every test run.
@@ -96,6 +98,10 @@ void main() {
 
   setUp(() {
     MemoryLogOutput.clearLogs();
+    // The notice controller is global and caps how many notices are visible at
+    // once, so a message left behind by the previous test pushes this test's
+    // own message into the queue, where `noticeTitles()` cannot see it.
+    resetNotices();
     previousLogger = appLogger;
     appLogger = Logger(printer: MemoryAwareLogPrinter(SimplePrinter()), output: _SilentOutput(), level: Level.info);
   });
@@ -161,14 +167,14 @@ void main() {
   testWidgets('names the size limit on 413 instead of the generic failure', (tester) async {
     await pumpAndUpload(tester, _answering(413, 'Log too large (max 1MB)\n'));
 
-    expect(find.text(t.messages.logsUploadTooLarge), findsOneWidget);
-    expect(find.text(t.messages.logsUploadFailed), findsNothing);
+    expect(noticeTitles(), contains(t.messages.logsUploadTooLarge));
+    expect(noticeTitles(), isNot(contains(t.messages.logsUploadFailed)));
   });
 
   testWidgets('says how long to wait on 429', (tester) async {
     await pumpAndUpload(tester, _answering(429, 'Rate limited: 1 upload per minute\n'));
 
-    expect(find.text(t.messages.logsUploadRateLimited(seconds: 60)), findsOneWidget);
+    expect(noticeTitles(), contains(t.messages.logsUploadRateLimited(seconds: 60)));
   });
 
   testWidgets('honours Retry-After when the server sends one', (tester) async {
@@ -177,32 +183,32 @@ void main() {
       _answering(429, 'Rate limited\n', headers: const {'content-type': 'text/plain', 'retry-after': '20'}),
     );
 
-    expect(find.text(t.messages.logsUploadRateLimited(seconds: 20)), findsOneWidget);
+    expect(noticeTitles(), contains(t.messages.logsUploadRateLimited(seconds: 20)));
   });
 
   testWidgets('names a refused upload as a refusal', (tester) async {
     await pumpAndUpload(tester, _answering(400, 'Empty body\n'));
 
-    expect(find.text(t.messages.logsUploadRefused(status: 400)), findsOneWidget);
+    expect(noticeTitles(), contains(t.messages.logsUploadRefused(status: 400)));
   });
 
   testWidgets('names a server-side failure as the server having a problem', (tester) async {
     await pumpAndUpload(tester, _answering(503, 'Log store full\n'));
 
-    expect(find.text(t.messages.logsUploadServerError(status: 503)), findsOneWidget);
+    expect(noticeTitles(), contains(t.messages.logsUploadServerError(status: 503)));
   });
 
   testWidgets('reports an unreachable server as a network problem', (tester) async {
     await pumpAndUpload(tester, _Relay((_) async => throw http.ClientException('Failed host lookup')));
 
-    expect(find.text(t.messages.logsUploadNetworkError), findsOneWidget);
-    expect(find.text(t.messages.logsUploadFailed), findsNothing);
+    expect(noticeTitles(), contains(t.messages.logsUploadNetworkError));
+    expect(noticeTitles(), isNot(contains(t.messages.logsUploadFailed)));
   });
 
   testWidgets('reports a timeout as a network problem', (tester) async {
     await pumpAndUpload(tester, _Relay((_) async => throw TimeoutException('connect')));
 
-    expect(find.text(t.messages.logsUploadNetworkError), findsOneWidget);
+    expect(noticeTitles(), contains(t.messages.logsUploadNetworkError));
   });
 
   testWidgets('a second press while uploading does not fire a second request', (tester) async {

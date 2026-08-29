@@ -29,6 +29,7 @@ import 'package:pleya/widgets/watchlist_sort_sheet.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/widgets/watchlist_card.dart';
 
+import '../test_helpers/notices.dart';
 import '../test_helpers/prefs.dart';
 
 final scope = WatchlistScopeId(profileId: 'p1', backend: MediaBackend.plex, accountId: 'a', userId: 'u');
@@ -115,6 +116,10 @@ void main() {
   late _StubSource source;
 
   setUp(() async {
+    // The notice controller is global, so `noticeTitles()` would otherwise see
+    // a message left behind by an earlier test — and a `contains` on it would
+    // pass without this test's action having done anything.
+    resetNotices();
     resetSharedPreferencesForTest();
     await SettingsService.getInstance();
     db = AppDatabase.forTesting(NativeDatabase.memory());
@@ -521,7 +526,8 @@ void main() {
 
     // No TMDB id on the entry, so the request cannot be filed and the screen
     // says that rather than opening an empty sheet.
-    expect(find.text(t.seerr.errorGeneric), findsOneWidget);
+    expect(noticeTitles(), contains(t.seerr.errorGeneric));
+    resetNotices();
     expect(source.removed, isEmpty);
   });
 
