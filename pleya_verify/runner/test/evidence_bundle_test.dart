@@ -75,7 +75,10 @@ void main() {
 
   test('manifest.json is written verbatim — it is machine-read, and its free-text fields '
       'are redacted where they are produced', () {
-    EvidenceBundle(dir).writeManifest({'result': 'PASS', 'instance': {'port': 47318}});
+    EvidenceBundle(dir).writeManifest({
+      'result': 'PASS',
+      'instance': {'port': 47318},
+    });
 
     final manifest = read('manifest.json');
     expect(manifest, contains('"port": 47318'));

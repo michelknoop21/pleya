@@ -7,6 +7,13 @@ setup:
   - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
 steps:
   - wait_until: {id: screen.discover, timeout: 15000}
+  # screen.discover readiness is per *load pass*, and there are two: an empty
+  # one that runs before the fixture session is bound (app log: "Fetched 0
+  # latest movies") and the real one after it ("Fetched 3"). The screen goes
+  # ready at the end of the first, so asserting the hero straight after
+  # wait_until races the second pass. Wait for the hero itself — the node the
+  # assertion is about — instead of inferring it from the screen.
+  - wait_until: {id: discover.hero, timeout: 15000}
   - assert: {id: discover.hero}
   # IntroGate's cold-start splash overlay (~2.8s) paints on top of an
   # already-ready DiscoverScreen — it has no automation id, so no

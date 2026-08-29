@@ -66,7 +66,9 @@ void main() {
         'name: x\ntarget: macos\nsetup: {launch: true}\nsteps:\n  - press: down\n',
         sourcePath: 'inline.yaml',
       ),
-      throwsA(isA<ScenarioParseException>().having((e) => e.error.message, 'message', contains('setup must be a list'))),
+      throwsA(
+        isA<ScenarioParseException>().having((e) => e.error.message, 'message', contains('setup must be a list')),
+      ),
     );
   });
 

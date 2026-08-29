@@ -25,7 +25,10 @@ void main() {
     test('reads the port the app announced, not the base port', () async {
       final file = writeInstance({'port': 47321, 'protocolVersion': 1, 'pid': 999});
 
-      final instance = await awaitInstance(file: file, notBefore: DateTime.now().subtract(const Duration(minutes: 1)));
+      final instance = await awaitInstance(
+        candidates: [file],
+        notBefore: DateTime.now().subtract(const Duration(minutes: 1)),
+      );
 
       expect(instance.port, 47321);
       expect(instance.pid, 999);
@@ -36,13 +39,13 @@ void main() {
       // The stale-file case: clearInstanceFile could not remove it and the
       // app never rewrote it. Silently trusting it is how a run drives a
       // leftover instance and reports PASS on the wrong app.
-      final file = writeInstance(
-        {'port': 47317, 'protocolVersion': 1},
-        modified: DateTime.now().subtract(const Duration(hours: 2)),
-      );
+      final file = writeInstance({
+        'port': 47317,
+        'protocolVersion': 1,
+      }, modified: DateTime.now().subtract(const Duration(hours: 2)));
 
       await expectLater(
-        awaitInstance(file: file, notBefore: DateTime.now(), timeout: const Duration(milliseconds: 400)),
+        awaitInstance(candidates: [file], notBefore: DateTime.now(), timeout: const Duration(milliseconds: 400)),
         throwsA(
           isA<InstanceDiscoveryException>().having(
             (e) => e.message,
@@ -57,18 +60,54 @@ void main() {
       final file = File('${tempDir.path}/instance.json');
       final notBefore = DateTime.now().subtract(const Duration(seconds: 1));
 
-      final pending = awaitInstance(file: file, notBefore: notBefore, timeout: const Duration(seconds: 5));
+      final pending = awaitInstance(candidates: [file], notBefore: notBefore, timeout: const Duration(seconds: 5));
       await Future<void>.delayed(const Duration(milliseconds: 300));
       file.writeAsStringSync(jsonEncode({'port': 47318, 'protocolVersion': 1}));
 
       expect((await pending).port, 47318);
     });
 
+    test('falls through to a later candidate when the first path is not the one the app used', () async {
+      // Exactly the case a real iOS run hit: `getTemporaryDirectory()` maps
+      // to NSCachesDirectory, so the file landed under Library/Caches while
+      // the driver watched tmp/ and the launch failed. Probing an ordered
+      // list keeps a path_provider change from breaking every scenario.
+      final wrong = File('${tempDir.path}/tmp/pleya-verify/instance.json');
+      final actual = File('${tempDir.path}/Library/Caches/pleya-verify/instance.json')
+        ..parent.createSync(recursive: true)
+        ..writeAsStringSync(jsonEncode({'port': 47322, 'protocolVersion': 1}));
+
+      final instance = await awaitInstance(
+        candidates: [wrong, actual],
+        notBefore: DateTime.now().subtract(const Duration(minutes: 1)),
+        timeout: const Duration(seconds: 2),
+      );
+
+      expect(instance.port, 47322);
+      expect(instance.source, actual.path);
+    });
+
+    test('the timeout message names every path it watched', () async {
+      final a = File('${tempDir.path}/a.json');
+      final b = File('${tempDir.path}/b.json');
+
+      await expectLater(
+        awaitInstance(candidates: [a, b], notBefore: DateTime.now(), timeout: const Duration(milliseconds: 300)),
+        throwsA(
+          isA<InstanceDiscoveryException>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains(a.path), contains(b.path)),
+          ),
+        ),
+      );
+    });
+
     test('a missing file times out with the path in the message — never a base-port fallback', () async {
       final file = File('${tempDir.path}/nope.json');
 
       await expectLater(
-        awaitInstance(file: file, notBefore: DateTime.now(), timeout: const Duration(milliseconds: 300)),
+        awaitInstance(candidates: [file], notBefore: DateTime.now(), timeout: const Duration(milliseconds: 300)),
         throwsA(isA<InstanceDiscoveryException>().having((e) => e.message, 'message', contains(file.path))),
       );
     });
@@ -77,10 +116,10 @@ void main() {
   group('clearInstanceFile', () {
     test('removes an existing announcement and tolerates a missing one', () {
       final file = writeInstance({'port': 47317, 'protocolVersion': 1});
-      clearInstanceFile(file);
+      clearInstanceFile([file]);
       expect(file.existsSync(), isFalse);
 
-      clearInstanceFile(File('${tempDir.path}/never-existed.json'));
+      clearInstanceFile([File('${tempDir.path}/never-existed.json')]);
     });
   });
 
@@ -106,9 +145,7 @@ void main() {
           instance: instance,
           notBefore: launchedAt,
         ),
-        throwsA(
-          isA<InstanceDiscoveryException>().having((e) => e.message, 'message', contains('refusing to drive')),
-        ),
+        throwsA(isA<InstanceDiscoveryException>().having((e) => e.message, 'message', contains('refusing to drive'))),
       );
     });
 

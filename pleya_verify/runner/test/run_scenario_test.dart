@@ -33,8 +33,7 @@ class FakeDriver implements VerificationDriver {
   VerifyClient? get client => null;
 
   @override
-  VerifyInstance? get instance =>
-      const VerifyInstance(port: 47319, protocolVersion: 1, pid: 4242, source: 'fake');
+  VerifyInstance? get instance => const VerifyInstance(port: 47319, protocolVersion: 1, pid: 4242, source: 'fake');
 
   @override
   String get inputRoute => 'transport';

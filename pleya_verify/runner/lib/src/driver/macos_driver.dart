@@ -128,13 +128,7 @@ class MacosDriver implements VerificationDriver {
     }
 
     final infoPlist = File('${isolatedAppDir.path}/Contents/Info.plist');
-    final rewrite = await _run('plutil', [
-      '-replace',
-      'CFBundleIdentifier',
-      '-string',
-      verifyBundleId,
-      infoPlist.path,
-    ]);
+    final rewrite = await _run('plutil', ['-replace', 'CFBundleIdentifier', '-string', verifyBundleId, infoPlist.path]);
     if (rewrite.exitCode != 0) {
       throw StateError(
         'rewriting CFBundleIdentifier failed (exit ${rewrite.exitCode}): ${rewrite.stderr} — '
@@ -175,14 +169,22 @@ class MacosDriver implements VerificationDriver {
     _log('installFresh: cleared $verifyBundleId app state');
   }
 
-  /// Where `AutomationServer` publishes its port. `path_provider`'s
-  /// `getTemporaryDirectory()` on a non-sandboxed macOS app is
-  /// `NSTemporaryDirectory()`, i.e. `$TMPDIR`, and a process started by
-  /// [Process.start] inherits this runner's `TMPDIR` — so the two agree on
-  /// this path. [launch] falls back to the app's own boot log line if they
-  /// ever do not.
-  File get _instanceFile => File('${Platform.environment['TMPDIR'] ?? Directory.systemTemp.path}'
-      '/pleya-verify/instance.json');
+  /// Where `AutomationServer` publishes its port, most-likely path first.
+  ///
+  /// `path_provider`'s `getTemporaryDirectory()` does not resolve to
+  /// `NSTemporaryDirectory()` on Apple platforms despite the name: it maps
+  /// to `NSCachesDirectory`, so the file lands in
+  /// `~/Library/Caches/<bundle id>/pleya-verify/` for this non-sandboxed
+  /// build (`macos/Runner/DebugProfile.entitlements`, what [build] compiles
+  /// against, declares no `com.apple.security.app-sandbox`). Established by
+  /// running it, not assumed. `$TMPDIR` stays a second candidate so a
+  /// `path_provider` change degrades into "still works" rather than "every
+  /// scenario fails to launch"; [launch] falls back to the app's own boot
+  /// log line if neither appears.
+  List<File> get _instanceFiles => [
+    File('$_homeLibrary/Caches/$verifyBundleId/pleya-verify/instance.json'),
+    File('${Platform.environment['TMPDIR'] ?? Directory.systemTemp.path}/pleya-verify/instance.json'),
+  ];
 
   @override
   Future<void> launch({Duration timeout = const Duration(seconds: 20)}) async {
@@ -191,8 +193,11 @@ class MacosDriver implements VerificationDriver {
       throw StateError('${binary.path} does not exist — call build() first');
     }
 
+    // A second of slack absorbs filesystem mtime granularity and any host/
+    // guest clock skew. It does not weaken the leftover-instance check:
+    // a process from an earlier run is minutes old, not sub-second.
     final launchedAt = DateTime.now().subtract(const Duration(seconds: 1));
-    clearInstanceFile(_instanceFile);
+    clearInstanceFile(_instanceFiles);
 
     _log('launching ${binary.path}');
     final process = await Process.start(binary.path, const [], mode: ProcessStartMode.normal);
@@ -235,7 +240,7 @@ class MacosDriver implements VerificationDriver {
       return VerifyInstance(port: override, protocolVersion: 1, source: 'portOverride');
     }
     try {
-      return await awaitInstance(file: _instanceFile, notBefore: launchedAt, timeout: timeout);
+      return await awaitInstance(candidates: _instanceFiles, notBefore: launchedAt, timeout: timeout);
     } on InstanceDiscoveryException catch (e) {
       final fromLog = parseListeningPort(_driverLog);
       if (fromLog != null) {

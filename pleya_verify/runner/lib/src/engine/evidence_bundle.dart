@@ -49,8 +49,7 @@ class EvidenceBundle {
   void writeAppLog(List<Map<String, Object?>> entries) =>
       File('${dir.path}/app.log').writeAsStringSync(_redactedJsonLines(entries));
 
-  void writeDriverLog(List<String> lines) =>
-      File('${dir.path}/driver.log').writeAsStringSync(redact(lines.join('\n')));
+  void writeDriverLog(List<String> lines) => File('${dir.path}/driver.log').writeAsStringSync(redact(lines.join('\n')));
 
   /// Empty when the scenario never talked to a fixture server — still
   /// created, per the plan's "volledige bundel" requirement, rather than

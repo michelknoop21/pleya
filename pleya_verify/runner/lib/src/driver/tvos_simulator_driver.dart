@@ -193,8 +193,10 @@ class TvosSimulatorDriver implements VerificationDriver {
       final extPlist = File('${entity.path}/Info.plist');
       final current = await _run('plutil', ['-extract', 'CFBundleIdentifier', 'raw', extPlist.path]);
       if (current.exitCode != 0) {
-        throw StateError('could not read CFBundleIdentifier from ${extPlist.path} (exit ${current.exitCode}): '
-            '${current.stderr}');
+        throw StateError(
+          'could not read CFBundleIdentifier from ${extPlist.path} (exit ${current.exitCode}): '
+          '${current.stderr}',
+        );
       }
       final currentId = (current.stdout as String).trim();
       if (!currentId.startsWith('$_realBundleId.')) continue;
@@ -213,8 +215,10 @@ class TvosSimulatorDriver implements VerificationDriver {
   Future<void> _rewriteBundleId(File plist, {required String to}) async {
     final rewrite = await _run('plutil', ['-replace', 'CFBundleIdentifier', '-string', to, plist.path]);
     if (rewrite.exitCode != 0) {
-      throw StateError('rewriting CFBundleIdentifier in ${plist.path} failed (exit ${rewrite.exitCode}): '
-          '${rewrite.stderr}');
+      throw StateError(
+        'rewriting CFBundleIdentifier in ${plist.path} failed (exit ${rewrite.exitCode}): '
+        '${rewrite.stderr}',
+      );
     }
     final read = await _run('plutil', ['-extract', 'CFBundleIdentifier', 'raw', plist.path]);
     final actual = (read.stdout as String).trim();
@@ -253,9 +257,11 @@ class TvosSimulatorDriver implements VerificationDriver {
     // be owned by an unrelated leftover process that answers /v1/health
     // convincingly. Clear the announcement first: whatever appears after
     // this point was written by the instance below.
+    // A second of slack absorbs filesystem mtime granularity and any host/
+    // guest clock skew. It does not weaken the leftover-instance check:
+    // a process from an earlier run is minutes old, not sub-second.
     final launchedAt = DateTime.now().subtract(const Duration(seconds: 1));
-    final instanceFile = await _instanceFile(udid);
-    if (instanceFile != null) clearInstanceFile(instanceFile);
+    clearInstanceFile(await _instanceFiles(udid));
 
     _log('launching $verifyBundleId on $udid');
     final launch = await _run('xcrun', ['simctl', 'launch', udid, verifyBundleId]);
@@ -286,15 +292,26 @@ class TvosSimulatorDriver implements VerificationDriver {
     throw StateError('app did not respond on /v1/health within $timeout (last error: $lastError)');
   }
 
-  /// `getTemporaryDirectory()` inside a simulator app is `<data container>/
-  /// tmp`; `simctl get_app_container … data` names that container from the
-  /// host. Null when it cannot be resolved (app not installed yet).
-  Future<File?> _instanceFile(String udid) async {
+  /// Where `AutomationServer` publishes its port inside the simulator's data
+  /// container, most-likely path first. `simctl get_app_container … data`
+  /// names that container from the host.
+  ///
+  /// `path_provider`'s `getTemporaryDirectory()` maps to `NSCachesDirectory`
+  /// on Apple platforms despite the name, so the file lands in
+  /// `Library/Caches/pleya-verify/`, not `tmp/` — established by running it,
+  /// after a first attempt that assumed otherwise found nothing and failed
+  /// the launch. `tmp/` stays a second candidate so a `path_provider` change
+  /// degrades into "still works". Empty when the container cannot be
+  /// resolved (the app is not installed yet).
+  Future<List<File>> _instanceFiles(String udid) async {
     final result = await _run('xcrun', ['simctl', 'get_app_container', udid, verifyBundleId, 'data']);
-    if (result.exitCode != 0) return null;
+    if (result.exitCode != 0) return const [];
     final dataDir = (result.stdout as String).trim();
-    if (dataDir.isEmpty) return null;
-    return File('$dataDir/tmp/pleya-verify/instance.json');
+    if (dataDir.isEmpty) return const [];
+    return [
+      File('$dataDir/Library/Caches/pleya-verify/instance.json'),
+      File('$dataDir/tmp/pleya-verify/instance.json'),
+    ];
   }
 
   Future<VerifyInstance> _resolveInstance({
@@ -306,15 +323,15 @@ class TvosSimulatorDriver implements VerificationDriver {
     if (override != null) {
       return VerifyInstance(port: override, protocolVersion: 1, source: 'portOverride');
     }
-    final file = await _instanceFile(udid);
-    if (file == null) {
+    final files = await _instanceFiles(udid);
+    if (files.isEmpty) {
       throw InstanceDiscoveryException(
         'could not resolve the data container for $verifyBundleId on $udid — '
         'no way to read which port the app bound, and assuming the base port is how a run ends up '
         'driving a leftover instance',
       );
     }
-    return awaitInstance(file: file, notBefore: launchedAt, timeout: timeout);
+    return awaitInstance(candidates: files, notBefore: launchedAt, timeout: timeout);
   }
 
   @override

@@ -19,6 +19,16 @@
 /// that reappears after deletion can only have been written by the process
 /// this driver started.
 ///
+/// **Drivers pass a *list* of candidate paths, not one.** "Where
+/// `getTemporaryDirectory()` points" is a `path_provider` implementation
+/// detail, and not the one its name suggests: on both iOS and macOS it
+/// resolves to `NSCachesDirectory`, so the file lands under
+/// `Library/Caches/pleya-verify/`, not under `tmp/`. This was established by
+/// running it, after a first attempt that assumed `NSTemporaryDirectory()`
+/// found nothing and failed the launch. Probing the observed path first and
+/// the plausible alternative second means a `path_provider` bump degrades
+/// into "still works" instead of "every scenario fails to launch".
+///
 /// Pure `dart:io` — no Flutter import, so the driver-less Ubuntu CI job can
 /// still load this library.
 library;
@@ -62,18 +72,22 @@ class InstanceDiscoveryException implements Exception {
   String toString() => 'InstanceDiscoveryException: $message';
 }
 
-/// Removes a previous run's announcement so [awaitInstance] cannot read it.
-/// Safe to call when the file (or its whole directory) does not exist.
-void clearInstanceFile(File file) {
-  try {
-    if (file.existsSync()) file.deleteSync();
-  } on FileSystemException {
-    // Left in place — [awaitInstance]'s `notBefore` check still rejects it.
+/// Removes a previous run's announcement from every candidate path, so
+/// [awaitInstance] cannot read one. Safe when a file (or its whole
+/// directory) does not exist.
+void clearInstanceFile(Iterable<File> candidates) {
+  for (final file in candidates) {
+    try {
+      if (file.existsSync()) file.deleteSync();
+    } on FileSystemException {
+      // Left in place — [awaitInstance]'s `notBefore` check still rejects it.
+    }
   }
 }
 
-/// Polls [file] until it holds an announcement written no earlier than
-/// [notBefore], then decodes it.
+/// Polls [candidates] until one holds an announcement written no earlier
+/// than [notBefore], then decodes it. Candidates are checked in order, so
+/// put the path the app is known to use first.
 ///
 /// A file older than [notBefore] is *not* an error to report immediately —
 /// it means [clearInstanceFile] could not remove it and the app has not yet
@@ -81,34 +95,40 @@ void clearInstanceFile(File file) {
 /// mentions it. That keeps the "stale file" case loud instead of letting it
 /// resolve to a wrong-but-plausible port.
 Future<VerifyInstance> awaitInstance({
-  required File file,
+  required List<File> candidates,
   required DateTime notBefore,
   Duration timeout = const Duration(seconds: 20),
   Duration pollInterval = const Duration(milliseconds: 200),
 }) async {
+  if (candidates.isEmpty) {
+    throw const InstanceDiscoveryException('no candidate instance.json path to watch');
+  }
   final deadline = DateTime.now().add(timeout);
   var sawStale = false;
   Object? lastDecodeError;
 
   while (DateTime.now().isBefore(deadline)) {
-    if (file.existsSync()) {
-      final modified = file.lastModifiedSync();
-      if (modified.isBefore(notBefore)) {
+    for (final file in candidates) {
+      if (!file.existsSync()) continue;
+      if (file.lastModifiedSync().isBefore(notBefore)) {
         sawStale = true;
-      } else {
-        try {
-          return _decode(file.readAsStringSync(), source: file.path);
-        } catch (e) {
-          // A half-written file — the app writes it in one go, but a read
-          // can still land mid-write. Retry rather than fail the launch.
-          lastDecodeError = e;
-        }
+        continue;
+      }
+      try {
+        return _decode(file.readAsStringSync(), source: file.path);
+      } catch (e) {
+        // A half-written file — the app writes it in one go, but a read
+        // can still land mid-write. Retry rather than fail the launch.
+        lastDecodeError = e;
       }
     }
     await Future<void>.delayed(pollInterval);
   }
 
-  final detail = StringBuffer('no Pleya Verify instance announced itself at ${file.path} within $timeout');
+  final detail = StringBuffer(
+    'no Pleya Verify instance announced itself within $timeout at any of: '
+    '${candidates.map((f) => f.path).join(', ')}',
+  );
   if (sawStale) {
     detail.write(
       ' — a file from before this launch is still there, which means the app never (re)wrote it: '
@@ -150,7 +170,11 @@ VerifyInstance _decode(String json, {required String source}) {
 ///
 /// A missing field is a hard failure too — an old build without these keys
 /// is exactly the kind of mismatch worth stopping on.
-void assertHealthIdentity(Map<String, Object?> health, {required VerifyInstance instance, required DateTime notBefore}) {
+void assertHealthIdentity(
+  Map<String, Object?> health, {
+  required VerifyInstance instance,
+  required DateTime notBefore,
+}) {
   final port = health['port'];
   if (port != instance.port) {
     throw InstanceDiscoveryException(

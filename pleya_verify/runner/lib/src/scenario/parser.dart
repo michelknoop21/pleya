@@ -64,11 +64,7 @@ Scenario parseScenarioString(String contents, {required String sourcePath}) {
     // supposed to explain. Take the span from the key's own node instead.
     final keyNode = root.nodes.keys.whereType<YamlNode>().where((k) => k.value == 'setup').firstOrNull;
     throw ScenarioParseException(
-      ScenarioError(
-        sourcePath: sourcePath,
-        line: _line(keyNode ?? root),
-        message: 'setup must be a list',
-      ),
+      ScenarioError(sourcePath: sourcePath, line: _line(keyNode ?? root), message: 'setup must be a list'),
     );
   }
 
