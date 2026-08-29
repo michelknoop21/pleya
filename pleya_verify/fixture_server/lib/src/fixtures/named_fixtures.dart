@@ -36,6 +36,18 @@ bool applyNamedFixture(PleyaFakeServer server, String name) {
 String fixtureItemId(String fixture, String kind, String slug) =>
     sha256.convert(utf8.encode('$fixture/$kind/$slug')).toString().substring(0, 16);
 
+/// [fixtureItemId], plus a note in [PleyaFakeServer.seededIds] under
+/// `"<kind>/<slug>"`.
+///
+/// Every id a fixture mints goes through here, so a scenario can name the
+/// season it wants to add an episode to by its readable slug instead of a
+/// hash it has no way to know. `/__verify/state` publishes the map.
+String _mintId(PleyaFakeServer server, String fixture, String kind, String slug) {
+  final id = fixtureItemId(fixture, kind, slug);
+  server.seededIds['$kind/$slug'] = id;
+  return id;
+}
+
 /// Registers a small, deterministic-but-distinguishable poster for [itemId]
 /// (color derived from `sha256(itemId)`) and returns the poster id to pass
 /// as `addItem`'s `posterId` — the item's own id doubles as its artwork id,
@@ -55,10 +67,10 @@ void _applyCatalogShowsV1(PleyaFakeServer server) {
   const fixture = 'catalog.shows.v1';
   server.resetCatalog();
 
-  final libraryId = fixtureItemId(fixture, 'library', 'shows');
+  final libraryId = _mintId(server, fixture, 'library', 'shows');
   server.addLibrary(id: libraryId, title: 'Shows', kind: 'shows', itemCount: 1);
 
-  final showId = fixtureItemId(fixture, 'show', 'testserie');
+  final showId = _mintId(server, fixture, 'show', 'testserie');
   server.addItem(
     id: showId,
     kind: 'show',
@@ -70,7 +82,7 @@ void _applyCatalogShowsV1(PleyaFakeServer server) {
     posterId: _registerArtwork(server, showId),
   );
 
-  final seasonId = fixtureItemId(fixture, 'season', 'testserie-s01');
+  final seasonId = _mintId(server, fixture, 'season', 'testserie-s01');
   server.addItem(
     id: seasonId,
     kind: 'season',
@@ -86,7 +98,7 @@ void _applyCatalogShowsV1(PleyaFakeServer server) {
   for (final slug in episodeSlugs) {
     final match = RegExp(r'e(\d+)$').firstMatch(slug)!;
     final episodeIndex = int.parse(match.group(1)!);
-    final episodeId = fixtureItemId(fixture, 'episode', slug);
+    final episodeId = _mintId(server, fixture, 'episode', slug);
     server.addItem(
       id: episodeId,
       kind: 'episode',
@@ -107,13 +119,13 @@ void _applyCatalogMixedV1(PleyaFakeServer server) {
   const fixture = 'catalog.mixed.v1';
   server.resetCatalog();
 
-  final moviesLibraryId = fixtureItemId(fixture, 'library', 'movies');
+  final moviesLibraryId = _mintId(server, fixture, 'library', 'movies');
   server.addLibrary(id: moviesLibraryId, title: 'Movies', kind: 'movies', itemCount: 3);
 
   final movieSlugs = ['aurora', 'basalt', 'cascade']..sort();
   final movieIds = <String>[];
   for (final slug in movieSlugs) {
-    final movieId = fixtureItemId(fixture, 'movie', slug);
+    final movieId = _mintId(server, fixture, 'movie', slug);
     movieIds.add(movieId);
     server.addItem(
       id: movieId,
@@ -126,10 +138,10 @@ void _applyCatalogMixedV1(PleyaFakeServer server) {
     );
   }
 
-  final showsLibraryId = fixtureItemId(fixture, 'library', 'shows');
+  final showsLibraryId = _mintId(server, fixture, 'library', 'shows');
   server.addLibrary(id: showsLibraryId, title: 'Shows', kind: 'shows', itemCount: 1);
 
-  final showId = fixtureItemId(fixture, 'show', 'driftwood');
+  final showId = _mintId(server, fixture, 'show', 'driftwood');
   server.addItem(
     id: showId,
     kind: 'show',
@@ -140,7 +152,7 @@ void _applyCatalogMixedV1(PleyaFakeServer server) {
     episodeCount: 3,
     posterId: _registerArtwork(server, showId),
   );
-  final seasonId = fixtureItemId(fixture, 'season', 'driftwood-s01');
+  final seasonId = _mintId(server, fixture, 'season', 'driftwood-s01');
   server.addItem(
     id: seasonId,
     kind: 'season',
@@ -156,7 +168,7 @@ void _applyCatalogMixedV1(PleyaFakeServer server) {
   for (final slug in episodeSlugs) {
     final match = RegExp(r'e(\d+)$').firstMatch(slug)!;
     final episodeIndex = int.parse(match.group(1)!);
-    final episodeId = fixtureItemId(fixture, 'episode', slug);
+    final episodeId = _mintId(server, fixture, 'episode', slug);
     episodeIds.add(episodeId);
     server.addItem(
       id: episodeId,

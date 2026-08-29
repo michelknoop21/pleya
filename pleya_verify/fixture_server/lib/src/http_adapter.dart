@@ -102,6 +102,7 @@ class FixtureHttpServer {
           'itemCount': server.items.length,
           'snapshotHash': _snapshotHash(),
           'setupCode': server.setupCode,
+          'seededIds': server.seededIds,
         });
       case '/__verify/seed':
         final body = await _readJsonBody(request);

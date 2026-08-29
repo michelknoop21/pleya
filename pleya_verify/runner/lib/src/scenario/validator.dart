@@ -1,3 +1,4 @@
+import '../engine/geometry_assertions.dart';
 import 'automation_id_catalog.dart';
 import 'automation_id_grammar.dart';
 import 'model.dart';
@@ -105,10 +106,17 @@ void _validateStepBody(ScenarioStep step, Scenario scenario, AutomationIdCatalog
 /// Walks a step's `args` (a scalar, a `Map`, or a `List`, arbitrarily
 /// nested) for every `id:` field, so `assert: {node: {id: ...}}` is caught
 /// the same as a top-level `assert: {id: ...}`.
+///
+/// A binary geometry predicate's value is an automation id too
+/// (`notOverlapping: sidebar.rail`), just not under an `id` key. Those are
+/// yielded as well, so a typo there fails validation in milliseconds rather
+/// than after a full build, install and launch — the same reason every other
+/// id reference is checked here.
 Iterable<String> _findIdRefs(Object? args) sync* {
   if (args is Map) {
     for (final entry in args.entries) {
       if (entry.key == 'id' && entry.value is String) yield entry.value as String;
+      if (binaryGeometryPredicates.contains(entry.key) && entry.value is String) yield entry.value as String;
       yield* _findIdRefs(entry.value);
     }
   } else if (args is List) {

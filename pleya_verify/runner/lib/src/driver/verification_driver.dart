@@ -63,6 +63,11 @@ abstract class VerificationDriver {
 
   Future<Map<String, Object?>> focus();
 
+  /// `/v1/viewport` — the live view's size and safe-area insets, the frame
+  /// geometry assertions measure against. `{'available': false}` when the
+  /// app has no `WidgetsBinding` yet.
+  Future<Map<String, Object?>> viewport();
+
   /// `/v1/screens`'s `screens` list — one entry per mounted
   /// `AutomationScreen`, `{id, state, ready}`.
   Future<List<Map<String, Object?>>> screensSnapshot();

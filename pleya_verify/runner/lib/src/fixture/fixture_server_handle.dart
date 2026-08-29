@@ -48,6 +48,30 @@ class FixtureServerHandle {
 
   Future<void> seed(String fixtureName) => _controlPost('/__verify/seed', {'fixture': fixtureName});
 
+  /// One `fixture_mutate` step: `POST /__verify/<op>` with the step's other
+  /// fields as the body.
+  ///
+  /// Deliberately a thin pass-through rather than a method per operation.
+  /// The fixture server's control plane is the contract; a switch here would
+  /// be a second, silently-drifting copy of it, and adding a mutation would
+  /// mean editing two packages instead of one.
+  Future<Map<String, Object?>> mutate(String op, Map<String, Object?> body) async {
+    final result = await _controlPost('/__verify/$op', body);
+    if (result['ok'] != true) {
+      throw StateError('fixture_mutate "$op" failed: $result');
+    }
+    return result;
+  }
+
+  /// `"<kind>/<slug>"` -> fixture id, as published by `/__verify/state`.
+  /// Empty before anything is seeded.
+  Future<Map<String, String>> seededIds() async {
+    final state = await verifyState();
+    final ids = state['seededIds'];
+    if (ids is! Map) return const {};
+    return {for (final e in ids.entries) '${e.key}': '${e.value}'};
+  }
+
   Future<Map<String, Object?>> _controlGet(String path) async {
     final client = HttpClient();
     try {

@@ -278,6 +278,9 @@ class MacosDriver implements VerificationDriver {
   Future<Map<String, Object?>> focus() => _requireClient().focus();
 
   @override
+  Future<Map<String, Object?>> viewport() => _requireClient().viewport();
+
+  @override
   Future<List<Map<String, Object?>>> screensSnapshot() async {
     final result = await _requireClient().screens();
     return (result['screens'] as List).cast<Map<String, Object?>>();

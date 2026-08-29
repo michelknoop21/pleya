@@ -86,6 +86,16 @@ class PleyaFakeServer {
   /// version it creates. `GET /stream/{version_id}` serves from here.
   final Map<String, List<int>> versionBytes = {};
 
+  /// `"<kind>/<slug>"` -> the id [applyNamedFixture] generated for it.
+  ///
+  /// Fixture ids are `sha256(fixture/kind/slug)` truncations: stable, but
+  /// not something a scenario author can write down. A step like
+  /// `fixture_mutate: {op: add_episode, parent_id: …}` needs the season's
+  /// real id, so the seeder publishes what it made and `/__verify/state`
+  /// hands it to the runner. Recomputing the hash on the runner side would
+  /// work until the day the formula changes on one side only.
+  final Map<String, String> seededIds = {};
+
   /// Every path the client asked for, in order. The assertions about "did it
   /// ask twice" read this.
   final List<String> requests = [];
@@ -162,6 +172,7 @@ class PleyaFakeServer {
     searchResults.clear();
     artworkById.clear();
     versionBytes.clear();
+    seededIds.clear();
   }
 
   /// Clears every mutable field back to a fresh instance's state. Used by

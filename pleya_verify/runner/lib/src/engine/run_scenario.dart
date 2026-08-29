@@ -7,8 +7,10 @@ import '../driver/instance_discovery.dart';
 import '../driver/verification_driver.dart';
 import '../fixture/fixture_server_handle.dart';
 import '../redact.dart';
+import '../transport/verify_client.dart';
 import '../scenario/model.dart';
 import 'evidence_bundle.dart';
+import 'geometry_assertions.dart';
 
 class ScenarioRunResult {
   final bool passed;
@@ -60,7 +62,12 @@ Future<ScenarioRunResult> runScenario({
   VerifyInstance? instance;
   String? snapshotHash;
 
-  Object resolvePlaceholders(Object? value, FixtureServerHandle? fixture, String? setupCode) {
+  Object resolvePlaceholders(
+    Object? value,
+    FixtureServerHandle? fixture,
+    String? setupCode, {
+    Map<String, String> seededIds = const {},
+  }) {
     if (value is String) {
       if (value == '{{fixture}}') {
         return fixture?.baseUrl ?? (throw StateError('"{{fixture}}" used but no fixture server is running'));
@@ -68,10 +75,26 @@ Future<ScenarioRunResult> runScenario({
       if (value == '{{fixture_setup_code}}') {
         return setupCode ?? (throw StateError('"{{fixture_setup_code}}" used but no fixture server is running'));
       }
+      // `{{fixture_id:season/testserie-s01}}` — fixture ids are truncated
+      // sha256 hashes, so a scenario names the thing it means by the slug
+      // the fixture seeded it under and the server hands back the id. See
+      // `PleyaFakeServer.seededIds`.
+      if (value.startsWith('{{fixture_id:') && value.endsWith('}}')) {
+        final key = value.substring('{{fixture_id:'.length, value.length - 2);
+        final id = seededIds[key];
+        if (id == null) {
+          throw StateError(
+            '"$value" does not match anything the fixture seeded — known keys: ${seededIds.keys.join(', ')}',
+          );
+        }
+        return id;
+      }
       return value;
     }
     if (value is Map<String, Object?>) {
-      return {for (final e in value.entries) e.key: resolvePlaceholders(e.value, fixture, setupCode)};
+      return {
+        for (final e in value.entries) e.key: resolvePlaceholders(e.value, fixture, setupCode, seededIds: seededIds),
+      };
     }
     return value ?? '';
   }
@@ -98,7 +121,7 @@ Future<ScenarioRunResult> runScenario({
         case 'sign_in':
           final setupCode = fixture == null ? null : (await fixture.verifyState())['setupCode'] as String?;
           final args = resolvePlaceholders(step.args, fixture, setupCode) as Map<String, Object?>;
-          final signinResult = await driver.client!.signin(
+          final signinResult = await _requireClient(driver, 'sign_in').signin(
             baseUrl: args['base_url'] as String,
             username: args['username'] as String,
             password: args['password'] as String,
@@ -113,10 +136,33 @@ Future<ScenarioRunResult> runScenario({
           } else {
             throw ArgumentError('seed needs a fixture name: ${step.args}');
           }
+        case 'fixture_mutate':
+          if (fixture == null) {
+            throw StateError('fixture_mutate needs a fixture server, but this scenario never starts one');
+          }
+          final raw = step.args;
+          if (raw is! Map<String, Object?> || raw['op'] is! String) {
+            throw ArgumentError('fixture_mutate needs an "op" field naming a /__verify/ route: $raw');
+          }
+          final args =
+              resolvePlaceholders(raw, fixture, null, seededIds: await fixture.seededIds()) as Map<String, Object?>;
+          final op = args.remove('op') as String;
+          record['op'] = op;
+          record['result'] = await fixture.mutate(op, args);
+        case 'open':
+          final screen = step.args;
+          if (screen is! String) {
+            throw ArgumentError('open needs a screen id: $screen');
+          }
+          final result = await _requireClient(driver, 'open').open(screen);
+          if (result['ok'] != true) {
+            throw StateError('open "$screen" failed: ${result['error']} (full response: $result)');
+          }
         case 'wait_until':
           await _dispatchWaitUntil(step, driver);
         case 'assert':
-          await _dispatchAssert(step, driver);
+          final geometry = await _dispatchAssert(step, driver);
+          if (geometry.isNotEmpty) record['geometry'] = [for (final g in geometry) g.toJson()];
         case 'snapshot':
           final name = step.args is String ? step.args as String : 'step-${step.line}';
           final bytes = await driver.screenshot();
@@ -245,6 +291,18 @@ Future<ScenarioRunResult> runScenario({
   return ScenarioRunResult(passed: passed, failureMessage: failureMessage, bundleDir: bundle.dir);
 }
 
+/// The transport client, or a message naming the verb that needed it.
+/// `driver.client` is null until a successful `launch`, and a scenario that
+/// forgets that step should read "sign_in needs a launched app", not a null
+/// dereference from inside the engine.
+VerifyClient _requireClient(VerificationDriver driver, String verb) {
+  final client = driver.client;
+  if (client == null) {
+    throw StateError('$verb needs a launched app — add a `launch` step to this scenario\'s setup first');
+  }
+  return client;
+}
+
 Future<void> _dispatchWaitUntil(ScenarioStep step, VerificationDriver driver) async {
   final args = step.args as Map<String, Object?>;
   final timeoutMs = (args['timeout'] as num).toInt();
@@ -266,12 +324,35 @@ Future<void> _dispatchWaitUntil(ScenarioStep step, VerificationDriver driver) as
   throw StateError('wait_until timed out after ${timeoutMs}ms: $args');
 }
 
-Future<void> _dispatchAssert(ScenarioStep step, VerificationDriver driver) async {
+/// Presence first, then any geometry predicates the step carries. Returns
+/// the evaluated verdicts so the caller can record them — including the
+/// passing ones, because "the hero is 12px inside the viewport" is the
+/// measurement a later regression gets compared against.
+///
+/// A failing verdict throws with every measured number in the message: the
+/// point of `GeometryVerdict` is that a red run explains itself without
+/// anyone re-deriving the geometry by hand.
+Future<List<GeometryAssertionResult>> _dispatchAssert(ScenarioStep step, VerificationDriver driver) async {
   final args = step.args as Map<String, Object?>;
   final id = args['id'] as String;
   if (!await _idReady(driver, id)) {
     throw StateError('assert failed: "$id" is not ready/present');
   }
+
+  if (!args.keys.any(geometryPredicates.contains)) return const [];
+
+  // One fetch of each, shared by every predicate on this step: two
+  // predicates measured against different frames would not be comparable.
+  final results = evaluateGeometryAssertions(args, uiTree: await driver.uiTree(), viewport: await driver.viewport());
+
+  final failed = results.where((r) => !r.verdict.ok).toList();
+  if (failed.isNotEmpty) {
+    final detail = failed
+        .map((r) => '${r.predicate}(${r.subjectId}${r.otherId == null ? '' : ', ${r.otherId}'}): ${r.verdict.message}')
+        .join('; ');
+    throw StateError('assert failed: $detail');
+  }
+  return results;
 }
 
 /// `screen.*` ids are checked against `/v1/screens` (readiness); anything

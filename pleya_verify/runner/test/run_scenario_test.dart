@@ -24,7 +24,16 @@ class FakeDriver implements VerificationDriver {
   /// *then* throws (a health-check timeout, an instance-identity mismatch).
   final bool failLaunch;
 
-  FakeDriver({this.readyScreens = const {'screen.main'}, this.failWaitUntil = false, this.failLaunch = false});
+  /// Gives `sidebar.rail` a measurable rect, so geometry predicates have
+  /// something to evaluate against.
+  final bool boundsForSidebar;
+
+  FakeDriver({
+    this.readyScreens = const {'screen.main'},
+    this.failWaitUntil = false,
+    this.failLaunch = false,
+    this.boundsForSidebar = false,
+  });
 
   @override
   String get target => 'macos';
@@ -70,7 +79,11 @@ class FakeDriver implements VerificationDriver {
   @override
   Future<Map<String, Object?>> uiTree() async => {
     'declared': [
-      {'id': 'sidebar.rail', 'role': 'sidebar'},
+      {
+        'id': 'sidebar.rail',
+        'role': 'sidebar',
+        if (boundsForSidebar) 'bounds': {'x': 0.0, 'y': 0.0, 'width': 200.0, 'height': 800.0},
+      },
     ],
     'discovered': [],
     'duplicates': [],
@@ -78,6 +91,9 @@ class FakeDriver implements VerificationDriver {
 
   @override
   Future<Map<String, Object?>> focus() async => {'focused': false};
+
+  @override
+  Future<Map<String, Object?>> viewport() async => {'available': true, 'width': 1280.0, 'height': 800.0};
 
   @override
   Future<List<Map<String, Object?>>> screensSnapshot() async => [
@@ -188,20 +204,21 @@ void main() {
 
   test('an unimplemented verb fails cleanly instead of silently no-opping', () async {
     final scenario = parseScenarioString(
-      'name: fixture.open\ntarget: macos\nsetup:\n  - open: screen.discover\nsteps:\n  - assert: {id: screen.main}\n',
+      'name: fixture.set_pref\ntarget: macos\nsetup:\n  - set_pref: {key: x, value: y}\nsteps:\n'
+      '  - assert: {id: screen.main}\n',
       sourcePath: 'inline.yaml',
     );
     final driver = FakeDriver();
 
     final result = await runScenario(
       scenario: scenario,
-      scenarioSource: 'name: fixture.open\n...',
+      scenarioSource: 'name: fixture.set_pref\n...',
       driver: driver,
       repoRoot: repoRoot,
     );
 
     expect(result.passed, isFalse);
-    expect(result.failureMessage, contains('does not implement verb "open"'));
+    expect(result.failureMessage, contains('does not implement verb "set_pref"'));
   });
 
   test('a launch() that throws still gets terminated — no process left owning the port', () async {
@@ -262,6 +279,71 @@ void main() {
     final manifest = File('${result.bundleDir.path}/manifest.json').readAsStringSync();
     expect(manifest, contains('"port": 47319'));
     expect(manifest, contains('"source": "fake"'));
+  });
+
+  group('verbs that used to reach UnsupportedError only after a full build', () {
+    // `fixture_mutate` and `open` were in the validator's vocabulary but had
+    // no engine case, so a scenario using them validated fine and then died
+    // at runtime — after a build, install and launch. These now fail on
+    // their own preconditions, with a message that names what is missing.
+    test('open before launch names the missing step rather than dereferencing null', () async {
+      final scenario = parseScenarioString(
+        'name: fixture.open_no_launch\ntarget: macos\nsetup:\n  - open: screen.discover\nsteps:\n'
+        '  - assert: {id: screen.main}\n',
+        sourcePath: 'inline.yaml',
+      );
+
+      final result = await runScenario(
+        scenario: scenario,
+        scenarioSource: 'name: fixture.open_no_launch\n...',
+        driver: FakeDriver(),
+        repoRoot: repoRoot,
+      );
+
+      expect(result.passed, isFalse);
+      expect(result.failureMessage, contains('needs a launched app'));
+    });
+  });
+
+  test('a geometry assertion records its measurements in the manifest, passing ones included', () async {
+    // A passing measurement is the baseline a later regression is compared
+    // against, so it belongs in the bundle just as much as a failing one.
+    final scenario = parseScenarioString(
+      'name: fixture.geometry\ntarget: macos\nsteps:\n'
+      '  - assert: {id: sidebar.rail, insideViewport: true}\n',
+      sourcePath: 'inline.yaml',
+    );
+
+    final result = await runScenario(
+      scenario: scenario,
+      scenarioSource: 'name: fixture.geometry\n...',
+      driver: FakeDriver(boundsForSidebar: true),
+      repoRoot: repoRoot,
+    );
+
+    expect(result.passed, isTrue, reason: result.failureMessage);
+    final manifest = File('${result.bundleDir.path}/manifest.json').readAsStringSync();
+    expect(manifest, contains('"predicate": "insideViewport"'));
+    expect(manifest, contains('"ok": true'));
+  });
+
+  test('a failing geometry assertion fails the run and says by how much', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.geometry_fail\ntarget: macos\nsteps:\n'
+      '  - assert: {id: sidebar.rail, minimumTapTarget: 999}\n',
+      sourcePath: 'inline.yaml',
+    );
+
+    final result = await runScenario(
+      scenario: scenario,
+      scenarioSource: 'name: fixture.geometry_fail\n...',
+      driver: FakeDriver(boundsForSidebar: true),
+      repoRoot: repoRoot,
+    );
+
+    expect(result.passed, isFalse);
+    expect(result.failureMessage, contains('minimumTapTarget'));
+    expect(result.failureMessage, contains('smaller than'));
   });
 
   test('run-id directories are unique and land under .build/pleya-verify/', () async {
