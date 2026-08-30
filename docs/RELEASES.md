@@ -67,6 +67,7 @@ under `Notes`.
 - reject a reversed Range instead of empty-body or crash
 - geen PASS meer op bewijs uit de verkeerde app-instantie
 - poortdiscovery leest Library/Caches, en de scenario wacht op de hero zelf
+- back-suppressie causaal maken, filters-scenario eerlijk hernoemen, evidence-gat dicht
 <!-- END GENERATED -->
 
 ### Fixed
