@@ -35,10 +35,11 @@ MediaItem tvGoldenMovie({
   String serverName = 'NAS',
   MediaBackend backend = MediaBackend.plex,
   int? artwork,
+  MediaKind kind = MediaKind.movie,
 }) => MediaItem(
   id: id,
   backend: backend,
-  kind: MediaKind.movie,
+  kind: kind,
   title: title,
   year: year,
   durationMs: 9960000,
@@ -121,6 +122,111 @@ List<UnifiedMediaGroup> tvGoldenCatalog() {
         inProgress: titles[i].progress,
       ),
   ];
+}
+
+/// The Series counterpart, and it is deliberately *not* the Films list with
+/// the titles swapped.
+///
+/// Series and Films share one design system — hoofdstuk 10.2's 2:3 poster on
+/// one grid rhythm, and 33.3's landscape clearlogo variant is explicitly
+/// richtinggevend rather than binding — so the chrome in these pictures must be
+/// identical to the Films ones. What is not identical is the content: a shelf
+/// of series skews lighter and warmer than a shelf of films, and it should be
+/// allowed to. The palettes here start from the bright end of
+/// `TvGoldenArtwork`'s set for that reason, so the two pages can be compared
+/// side by side and the only thing that changed is the library.
+///
+/// The identity is `CanonicalMediaIdentity.show`, and the kind is
+/// [MediaKind.show], because a Series card that is secretly a movie group would
+/// picture a code path the Series page never takes.
+List<UnifiedMediaGroup> tvGoldenSeriesCatalog() {
+  const titles = <({String title, String genre, int artwork, int sources, bool watched, bool progress, int? offset})>[
+    (title: 'Bluey', genre: 'Family', artwork: 0, sources: 2, watched: false, progress: true, offset: 900000),
+    (
+      title: 'The Great British Bake Off',
+      genre: 'Comedy',
+      artwork: 6,
+      sources: 1,
+      watched: false,
+      progress: false,
+      offset: null,
+    ),
+    (title: 'Our Planet', genre: 'Documentary', artwork: 5, sources: 2, watched: false, progress: false, offset: null),
+    (title: 'Adventure Time', genre: 'Animation', artwork: 2, sources: 1, watched: true, progress: false, offset: null),
+    (title: 'Ted Lasso', genre: 'Comedy', artwork: 9, sources: 3, watched: false, progress: true, offset: 1800000),
+    (
+      title: 'Studio Ghibli Shorts',
+      genre: 'Fantasy',
+      artwork: 10,
+      sources: 1,
+      watched: false,
+      progress: false,
+      offset: null,
+    ),
+    (title: 'Severance', genre: 'Thriller', artwork: 7, sources: 2, watched: false, progress: false, offset: null),
+    (
+      title: 'Foundation',
+      genre: 'Science fiction',
+      artwork: 1,
+      sources: 1,
+      watched: true,
+      progress: false,
+      offset: null,
+    ),
+    (title: 'Shōgun', genre: 'Drama', artwork: 8, sources: 2, watched: false, progress: false, offset: null),
+    (title: 'Fleabag', genre: 'Comedy', artwork: 4, sources: 1, watched: false, progress: false, offset: null),
+    (
+      title: 'Planet Earth',
+      genre: 'Documentary',
+      artwork: 5,
+      sources: 2,
+      watched: false,
+      progress: false,
+      offset: null,
+    ),
+    (title: 'The Bear', genre: 'Drama', artwork: 3, sources: 1, watched: false, progress: false, offset: null),
+  ];
+  return [
+    for (var i = 0; i < titles.length; i++)
+      tvGoldenShowGroup(
+        'sg$i',
+        [
+          for (var s = 0; s < titles[i].sources; s++)
+            tvGoldenMovie(
+              id: 's$i-$s',
+              title: titles[i].title,
+              year: 2015 + (i % 9),
+              genre: titles[i].genre,
+              artwork: titles[i].artwork,
+              kind: MediaKind.show,
+              viewOffsetMs: s == 0 ? titles[i].offset : null,
+              viewCount: s == 0 && titles[i].watched ? 1 : null,
+              serverId: ['nas', 'attic', 'shed'][s],
+              serverName: ['NAS', 'Zolder', 'Schuur'][s],
+              backend: s == 1 ? MediaBackend.jellyfin : MediaBackend.plex,
+            ),
+        ],
+        watched: titles[i].watched,
+        inProgress: titles[i].progress,
+      ),
+  ];
+}
+
+/// [tvGoldenGroup] for shows: same shape, `CanonicalMediaIdentity.show`.
+UnifiedMediaGroup tvGoldenShowGroup(String id, List<MediaItem> items, {bool watched = false, bool inProgress = false}) {
+  final sources = [for (final item in items) UnifiedMediaSource.fromItem(item)];
+  return UnifiedMediaGroup(
+    groupId: id,
+    identity: CanonicalMediaIdentity.show(title: items.first.title, year: items.first.year),
+    sources: sources,
+    representativeSourceKey: sources.first.sourceKey,
+    watchState: UnifiedWatchState(
+      representativeSourceKey: sources.first.sourceKey,
+      isWatched: watched,
+      hasActiveProgress: inProgress,
+      lastViewedAt: inProgress || watched ? 1 : null,
+    ),
+  );
 }
 
 /// Three libraries on three servers, one per backend — which is what makes the

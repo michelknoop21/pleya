@@ -79,6 +79,8 @@ Widget _page({
   required List<FocusNode> actionNodes,
   int filterBadge = 0,
   String? sourcesValue,
+  String? title,
+  String? sortValue,
   bool isComplete = false,
   bool isLoadingMore = false,
   int failedLibraries = 0,
@@ -87,7 +89,7 @@ Widget _page({
   crossAxisAlignment: CrossAxisAlignment.stretch,
   children: [
     TvCatalogHeaderBar(
-      title: t.unifiedCatalog.moviesTitle,
+      title: title ?? t.unifiedCatalog.moviesTitle,
       actions: [
         TvCatalogHeaderAction(
           icon: Symbols.dns_rounded,
@@ -111,7 +113,7 @@ Widget _page({
           icon: Symbols.swap_vert_rounded,
           action: LibraryHeaderAction(
             label: t.unifiedCatalog.sort.title,
-            value: sortLabel(UnifiedCatalogSort.titleAsc),
+            value: sortValue ?? sortLabel(UnifiedCatalogSort.titleAsc),
             focusNode: actionNodes[2],
             onPressed: () {},
           ),
@@ -443,5 +445,71 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_filter_panel_multi');
+  });
+
+  // ## Series
+  //
+  // Same widget, same tokens, same grid — `TvSeriesScreen` is a thin wrapper
+  // around the very screen Films uses, and hoofdstuk 10.2 puts 2:3 posters on
+  // both pages. So what these two pictures are for is precisely to be held next
+  // to the Films ones: if anything but the title and the content differs, the
+  // two pages have drifted apart.
+  //
+  // The content does differ, and should. A shelf of series skews lighter and
+  // warmer than a shelf of films, and Pleya's job is to present that rather
+  // than to grade both pages to the same mood.
+  testWidgets('series, default state', (tester) async {
+    setGoldenSurfaceSize(tester);
+    await tester.pumpWidget(
+      _shell(_page(groups: tvGoldenSeriesCatalog(), actionNodes: nodes(tester), title: t.unifiedCatalog.seriesTitle)),
+    );
+    await tester.pumpAndSettle();
+    await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_series_default');
+  });
+
+  testWidgets('series, a card focused', (tester) async {
+    setGoldenSurfaceSize(tester);
+    await tester.pumpWidget(
+      _shell(_page(groups: tvGoldenSeriesCatalog(), actionNodes: nodes(tester), title: t.unifiedCatalog.seriesTitle)),
+    );
+    await tester.pumpAndSettle();
+    Focus.of(tester.element(find.text('Ted Lasso'))).requestFocus();
+    await tester.pumpAndSettle();
+    await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_series_card_focused');
+  });
+
+  // Hoofdstuk 25's long translations, on the page as a whole rather than on one
+  // card: the page title, all three header capsules and the card titles are
+  // under pressure in the same frame. The header is the part with nowhere to go
+  // — it is one line by design — so this is where a layout that only works in
+  // English shows.
+  //
+  // **The long labels are passed in rather than reached by switching locale,
+  // and that is a limitation, not a preference.** Every locale but the base one
+  // is deferred-loaded here, and a deferred library does not load inside
+  // `flutter test`: `setLocaleSync` throws `_DeferredNotLoadedError`, and
+  // awaiting `setLocale` never returns — in fake async or inside `runAsync`.
+  // No test in this repository renders a non-base locale, for that reason. The
+  // strings below are the real German ones from `de.i18n.json`, so what this
+  // golden proves is that the composition survives labels of that length. What
+  // it cannot prove is that the German file says what it should; a render of a
+  // genuinely switched locale stays outstanding alongside hardware
+  // verification.
+  testWidgets('films, labels at the length a long locale produces', (tester) async {
+    setGoldenSurfaceSize(tester);
+    await tester.pumpWidget(
+      _shell(
+        _page(
+          groups: tvGoldenCatalog(),
+          actionNodes: nodes(tester),
+          title: 'Filme',
+          filterBadge: 2,
+          sourcesValue: 'Alle Quellen',
+          sortValue: 'Zuletzt hinzugefügt',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_films_long_locale');
   });
 }
