@@ -1,0 +1,212 @@
+name: Pleya Verify
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    # Weekly extended run for the tvOS gate (idb-dependent, not required on
+    # every push). Portable and macOS jobs also run here — they are cheap
+    # enough that a weekly re-check costs nothing extra.
+    - cron: "17 4 * * 1"
+
+jobs:
+  # Required-candidate gate. Pure Dart, no simulator, no Xcode, no secrets.
+  # Covers pleya_verify/{fixture_server,runner,mcp} unit tests plus a
+  # portable schema check (list + validate) over every scenario file — all
+  # of it deterministic and network-free.
+  portable:
+    name: Verify - portable (Linux)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: "stable"
+          flutter-version-file: .fvmrc
+          cache: true
+          pub-cache: false
+
+      - name: Cache Pub dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.pub-cache
+          key: ${{ runner.os }}-pub-verify-v1-${{ hashFiles('pleya_verify/**/pubspec.yaml', 'pleya_verify/**/pubspec.lock') }}
+
+      - name: fixture_server tests
+        working-directory: pleya_verify/fixture_server
+        run: |
+          dart pub get --enforce-lockfile
+          dart test
+
+      - name: runner tests
+        working-directory: pleya_verify/runner
+        run: |
+          dart pub get --enforce-lockfile
+          dart test
+
+      - name: mcp tests
+        working-directory: pleya_verify/mcp
+        run: |
+          dart pub get --enforce-lockfile
+          dart test
+
+      - name: Scenario schema check (list + validate, no driver dispatch)
+        working-directory: pleya_verify/runner
+        run: |
+          set -euo pipefail
+          echo "Known scenarios:"
+          dart run bin/verify.dart list scenarios --json
+          echo
+          status=0
+          for f in ../scenarios/*.yaml; do
+            echo "--- validate $f ---"
+            if ! dart run bin/verify.dart validate "$f" --json; then
+              status=1
+            fi
+            echo
+          done
+          exit "$status"
+
+  # Apple/simulator gate: macOS driver + iOS-simulator driver, neither of
+  # which needs idb (macOS talks HTTP transport, the iOS-sim driver drives
+  # the simulator through `xcrun simctl` directly). Genuinely runs the
+  # existing CLI end to end (build -> install -> launch -> assert ->
+  # evidence) via `verify run`, exactly as a contributor would locally.
+  # Kept out of branch-protection required status (none is configured on
+  # this repository, see DEC-066) because Fase 13 already found a
+  # window-scoped `screencapture` permission failure in a real session on
+  # this exact code path; whether GitHub's hosted macOS runner behaves
+  # differently is exactly what this job exists to find out, honestly.
+  macos-verify:
+    name: Verify - macOS + iOS simulator
+    runs-on: macos-26
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: "stable"
+          flutter-version-file: .fvmrc
+          cache: true
+          pub-cache: false
+
+      - name: Cache Pub dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.pub-cache
+          key: ${{ runner.os }}-${{ runner.arch }}-pub-v2-${{ hashFiles('pubspec.yaml', 'pubspec.lock') }}
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v6
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: Install app dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: runner dependencies
+        working-directory: pleya_verify/runner
+        run: dart pub get --enforce-lockfile
+
+      - name: macos.smoke.boot (target macos)
+        working-directory: pleya_verify/runner
+        run: dart run bin/verify.dart run ../scenarios/macos.smoke.boot.yaml --json
+
+      - name: discover.hero.layout (target ios-sim)
+        if: always()
+        working-directory: pleya_verify/runner
+        run: dart run bin/verify.dart run ../scenarios/discover.hero.layout.yaml --json
+
+      - name: Upload evidence bundles
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pleya-verify-macos-evidence-${{ github.run_id }}
+          path: .build/pleya-verify/
+          if-no-files-found: warn
+          retention-days: 14
+
+  # tvOS gate: the only driver that needs idb (Siri-Remote HID input has no
+  # transport-level equivalent, see CONTRIBUTING.md). Deliberately NOT on
+  # push/pull_request — idb-companion/fb-idb are unmaintained and their
+  # behavior on a fresh hosted runner is unproven, so this stays a visible,
+  # honestly-failing, non-blocking gate (workflow_dispatch + weekly
+  # schedule) until it has a real-run track record. See DEC-066.
+  tvos-verify:
+    name: Verify - tvOS (extended, not required)
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: macos-26
+    permissions:
+      contents: read
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: "stable"
+          flutter-version-file: .fvmrc
+          cache: true
+          pub-cache: false
+
+      - name: Cache Pub dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.pub-cache
+          key: ${{ runner.os }}-${{ runner.arch }}-pub-v2-${{ hashFiles('pubspec.yaml', 'pubspec.lock') }}
+
+      - name: Install app dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: runner dependencies
+        working-directory: pleya_verify/runner
+        run: dart pub get --enforce-lockfile
+
+      - name: Install idb (best-effort, driver requires it for HID input)
+        run: |
+          brew trust facebook/fb || true
+          brew install idb-companion
+          python3 -m pip install --break-system-packages fb-idb || python3 -m pip install --user fb-idb
+
+      - name: tvos_sim.sh doctor
+        run: scripts/tvos_sim.sh doctor --json || true
+
+      - name: tvos.smoke.boot (target tvos-sim)
+        working-directory: pleya_verify/runner
+        run: dart run bin/verify.dart run ../scenarios/tvos.smoke.boot.yaml --json
+
+      - name: Upload evidence bundle
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pleya-verify-tvos-evidence-${{ github.run_id }}
+          path: .build/pleya-verify/
+          if-no-files-found: warn
+          retention-days: 14
