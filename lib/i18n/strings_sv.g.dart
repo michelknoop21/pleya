@@ -2078,6 +2078,7 @@ class _TranslationsUnifiedCatalogFiltersSv extends TranslationsUnifiedCatalogFil
 	@override String get all => 'Alla';
 	@override String get unwatched => 'Osedda';
 	@override String get unsupported => 'Inte tillgängligt för de aktuella källorna';
+	@override String get someUnavailable => 'Vissa filter är inte tillgängliga för de valda källorna';
 	@override String get noValues => 'Inget att välja';
 }
 
@@ -3500,6 +3501,7 @@ extension on TranslationsSv {
 			'unifiedCatalog.filters.all' => 'Alla',
 			'unifiedCatalog.filters.unwatched' => 'Osedda',
 			'unifiedCatalog.filters.unsupported' => 'Inte tillgängligt för de aktuella källorna',
+			'unifiedCatalog.filters.someUnavailable' => 'Vissa filter är inte tillgängliga för de valda källorna',
 			'unifiedCatalog.filters.noValues' => 'Inget att välja',
 			'unifiedCatalog.states.emptyTitle' => 'Den här katalogen är tom',
 			'unifiedCatalog.states.emptyBody' => 'Inget synligt bibliotek innehåller något för den här sidan.',

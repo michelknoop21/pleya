@@ -6079,6 +6079,9 @@ class TranslationsUnifiedCatalogFiltersEn {
 	/// en: 'Not available for the current sources'
 	String get unsupported => 'Not available for the current sources';
 
+	/// en: 'Some filters are unavailable for the selected sources'
+	String get someUnavailable => 'Some filters are unavailable for the selected sources';
+
 	/// en: 'Nothing to choose from'
 	String get noValues => 'Nothing to choose from';
 }
@@ -7892,6 +7895,7 @@ extension on Translations {
 			'unifiedCatalog.filters.all' => 'All',
 			'unifiedCatalog.filters.unwatched' => 'Unwatched',
 			'unifiedCatalog.filters.unsupported' => 'Not available for the current sources',
+			'unifiedCatalog.filters.someUnavailable' => 'Some filters are unavailable for the selected sources',
 			'unifiedCatalog.filters.noValues' => 'Nothing to choose from',
 			'unifiedCatalog.states.emptyTitle' => 'This catalog is empty',
 			'unifiedCatalog.states.emptyBody' => 'No visible library holds anything for this page.',

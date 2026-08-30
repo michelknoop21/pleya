@@ -289,7 +289,12 @@ void main() {
       expect(find.text(t.unifiedCatalog.filters.apply), findsOneWidget);
     });
 
-    testWidgets('Close discards the draft', (tester) async {
+    // The panel has no Close capsule: Menu, Back and Escape already close it,
+    // and a third footer button of the same weight as Apply was what made the
+    // first render read as a settings dialog. This asserts the surviving
+    // contract — backing out does not apply the draft — through the gesture a
+    // remote actually uses.
+    testWidgets('backing out discards the draft', (tester) async {
       await tester.pumpWidget(_shell((context) => const SizedBox()));
       UnifiedCatalogFilterSelection? result;
       await tester.pumpWidget(
@@ -314,8 +319,9 @@ void main() {
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
       await _activateByLabel(tester, t.unifiedCatalog.filters.unwatched);
-      await _activateByLabel(tester, t.common.close);
-      expect(result, isNull, reason: 'Menu/Close closes without applying');
+      await _press(tester, LogicalKeyboardKey.escape);
+      expect(find.text(t.unifiedCatalog.filters.apply), findsNothing, reason: 'the panel is gone');
+      expect(result, isNull, reason: 'Menu/Back/Escape closes without applying');
     });
 
     testWidgets('Apply returns exactly what was ticked', (tester) async {
@@ -352,9 +358,11 @@ void main() {
     });
 
     // Hoofdstuk 10.4's capability rule, seen from the panel: a backend that
-    // cannot execute genre and year makes those sections say so rather than
-    // offering choices that would silently not apply.
-    testWidgets('a backend that cannot filter suppresses genre and year, not servers', (tester) async {
+    // cannot execute a refinement takes that category out of the rail
+    // altogether, and one quiet line says something was left out. Greying the
+    // category and apologising under it was the first build, and it is what put
+    // three dead headings in front of the two categories that still worked.
+    testWidgets('a backend that cannot filter omits genre, year and status, not servers', (tester) async {
       await openPanel(
         tester,
         withLibraries: [
@@ -370,11 +378,128 @@ void main() {
         section: TvCatalogFilterSection.servers,
       );
 
-      expect(find.text(t.unifiedCatalog.filters.unsupported), findsNWidgets(3));
-      // The source sections are backend-independent — they are executed by
+      for (final omitted in [
+        t.unifiedCatalog.filters.genre,
+        t.unifiedCatalog.filters.year,
+        t.unifiedCatalog.filters.status,
+      ]) {
+        expect(find.text(omitted), findsNothing, reason: '$omitted cannot be executed, so it is not offered');
+      }
+      expect(find.text(t.unifiedCatalog.filters.someUnavailable), findsOneWidget);
+      // The source categories are backend-independent — they are executed by
       // leaving a cursor out of the merge — so they stay live.
+      expect(find.text(t.unifiedCatalog.filters.servers), findsOneWidget);
+      expect(find.text(t.unifiedCatalog.filters.libraries), findsOneWidget);
       expect(find.text('Schuur'), findsWidgets);
       expect(find.text(t.unifiedCatalog.filters.apply), findsOneWidget);
+    });
+
+    // The other half of hoofdstuk 10.4's rule, and the reason omitting is safe:
+    // a suppressed refinement is not applied, but the user's stored choice
+    // survives the round trip, so excluding the server that suppressed it
+    // brings both the category and the old selection back.
+    testWidgets('an omitted category keeps its stored selection through Apply', (tester) async {
+      UnifiedCatalogFilterSelection? result;
+      final withPleyaServer = <CatalogLibrary>[
+        ...libraries,
+        (
+          serverId: ServerId('shed'),
+          serverName: 'Schuur',
+          libraryId: '3',
+          libraryTitle: 'Archief',
+          backend: MediaBackend.pleyaServer,
+        ),
+      ];
+      await tester.pumpWidget(
+        _shell(
+          (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () async => result = await showTvCatalogFilterPanel(
+                  context,
+                  selection: const UnifiedCatalogFilterSelection(
+                    genres: {'Comedy'},
+                    watchState: UnifiedWatchFilter.unwatched,
+                  ),
+                  capabilities: unifiedFilterCapabilitiesFor(withPleyaServer.map((l) => l.backend)),
+                  libraries: withPleyaServer,
+                  initialSection: TvCatalogFilterSection.servers,
+                  clientFor: (_) => null,
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await _activateByLabel(tester, t.unifiedCatalog.filters.apply);
+      await tester.pumpAndSettle();
+
+      expect(result?.genres, {'Comedy'}, reason: 'a suppressed refinement is not applied, but it is not thrown away');
+      expect(result?.watchState, UnifiedWatchFilter.unwatched);
+    });
+
+    // The two-zone panel's whole traversal contract, on a remote that has no
+    // pointer: RIGHT and Select go into the list, LEFT comes back out of it.
+    //
+    // Worth its own test because the first build deferred the entry to a
+    // post-frame callback, and `addPostFrameCallback` does not schedule a
+    // frame — on a settled panel, which is exactly what a panel is when the
+    // user presses RIGHT, the callback never ran and the press did nothing.
+    group('two-zone traversal', () {
+      Future<void> open(WidgetTester tester) => openPanel(tester, section: TvCatalogFilterSection.servers);
+
+      String? focusedLabel() => FocusManager.instance.primaryFocus?.debugLabel;
+
+      testWidgets('RIGHT enters the options column', (tester) async {
+        await open(tester);
+        await _press(tester, LogicalKeyboardKey.arrowRight);
+        expect(focusedLabel(), 'TvCatalogFilterOption0');
+      });
+
+      testWidgets('Select enters the options column too', (tester) async {
+        await open(tester);
+        await _press(tester, LogicalKeyboardKey.select);
+        expect(focusedLabel(), 'TvCatalogFilterOption0');
+      });
+
+      testWidgets('LEFT out of the options returns to the category it belongs to', (tester) async {
+        await open(tester);
+        await _press(tester, LogicalKeyboardKey.arrowRight);
+        await _press(tester, LogicalKeyboardKey.arrowLeft);
+        expect(
+          focusedLabel(),
+          anyOf('TvCatalogFilterRail.servers', 'TvCatalogFilterInitialFocus'),
+          reason: 'the active category is Servers, whichever node is carrying it',
+        );
+      });
+    });
+
+    // Opening on a category this source set cannot execute must not leave the
+    // initial focus on nothing: the rail falls back to its first entry, which
+    // is always one of the two unconditional source categories.
+    testWidgets('opening on a suppressed category falls back to the first available one', (tester) async {
+      await openPanel(
+        tester,
+        withLibraries: [
+          ...libraries,
+          (
+            serverId: ServerId('shed'),
+            serverName: 'Schuur',
+            libraryId: '3',
+            libraryTitle: 'Archief',
+            backend: MediaBackend.pleyaServer,
+          ),
+        ],
+        section: TvCatalogFilterSection.genre,
+      );
+
+      expect(find.text(t.unifiedCatalog.filters.genre), findsNothing);
+      // Servers is first in the rail, so its rows are the ones on the right.
+      expect(find.text('Schuur'), findsWidgets);
+      expect(tester.takeException(), isNull);
     });
   });
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -429,5 +430,86 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_filter_panel_available');
+  });
+
+  // The Libraries category, with the focus moved into the options column.
+  //
+  // This is the picture the rail exists to be judged on: the white ring is on
+  // the right, so the only thing still saying which list is on screen is the
+  // active category's own fill. An earlier build had that fill at 0.10 and the
+  // rail went blank here.
+  testWidgets('filter panel, libraries category with focus in the options', (tester) async {
+    setGoldenSurfaceSize(tester);
+    final supported = _libraries.take(2).toList();
+    await tester.pumpWidget(
+      _shell(
+        Builder(
+          builder: (context) => Stack(
+            children: [
+              _page(groups: _catalog(), actionNodes: nodes(tester)),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () => showTvCatalogFilterPanel(
+                    context,
+                    selection: const UnifiedCatalogFilterSelection(libraryKeys: {'attic:2'}),
+                    capabilities: unifiedFilterCapabilitiesFor(supported.map((l) => l.backend)),
+                    libraries: supported,
+                    initialSection: TvCatalogFilterSection.libraries,
+                    clientFor: (_) => null,
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    // RIGHT out of the rail is the production gesture into the options column.
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_filter_panel_libraries');
+  });
+
+  // Several categories narrowing at once, which is what the count chips are
+  // for: the rail has to say where the filters are without the user opening
+  // each category to find out.
+  testWidgets('filter panel, several categories active at once', (tester) async {
+    setGoldenSurfaceSize(tester);
+    final supported = _libraries.take(2).toList();
+    await tester.pumpWidget(
+      _shell(
+        Builder(
+          builder: (context) => Stack(
+            children: [
+              _page(groups: _catalog(), actionNodes: nodes(tester)),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () => showTvCatalogFilterPanel(
+                    context,
+                    selection: const UnifiedCatalogFilterSelection(
+                      serverIds: {'nas', 'attic'},
+                      libraryKeys: {'nas:1'},
+                      watchState: UnifiedWatchFilter.unwatched,
+                    ),
+                    capabilities: unifiedFilterCapabilitiesFor(supported.map((l) => l.backend)),
+                    libraries: supported,
+                    initialSection: TvCatalogFilterSection.servers,
+                    clientFor: (_) => null,
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_filter_panel_multi');
   });
 }

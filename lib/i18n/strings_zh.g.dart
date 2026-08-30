@@ -2078,6 +2078,7 @@ class _TranslationsUnifiedCatalogFiltersZh extends TranslationsUnifiedCatalogFil
 	@override String get all => '全部';
 	@override String get unwatched => '未观看';
 	@override String get unsupported => '当前来源不支持';
+	@override String get someUnavailable => '所选来源不支持部分筛选条件';
 	@override String get noValues => '没有可选项';
 }
 
@@ -3500,6 +3501,7 @@ extension on TranslationsZh {
 			'unifiedCatalog.filters.all' => '全部',
 			'unifiedCatalog.filters.unwatched' => '未观看',
 			'unifiedCatalog.filters.unsupported' => '当前来源不支持',
+			'unifiedCatalog.filters.someUnavailable' => '所选来源不支持部分筛选条件',
 			'unifiedCatalog.filters.noValues' => '没有可选项',
 			'unifiedCatalog.states.emptyTitle' => '此目录为空',
 			'unifiedCatalog.states.emptyBody' => '可见的媒体库中没有适用于此页面的内容。',

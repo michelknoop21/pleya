@@ -2078,6 +2078,7 @@ class _TranslationsUnifiedCatalogFiltersIt extends TranslationsUnifiedCatalogFil
 	@override String get all => 'Tutti';
 	@override String get unwatched => 'Non visti';
 	@override String get unsupported => 'Non disponibile per le fonti attuali';
+	@override String get someUnavailable => 'Alcuni filtri non sono disponibili per le fonti selezionate';
 	@override String get noValues => 'Niente da scegliere';
 }
 
@@ -3500,6 +3501,7 @@ extension on TranslationsIt {
 			'unifiedCatalog.filters.all' => 'Tutti',
 			'unifiedCatalog.filters.unwatched' => 'Non visti',
 			'unifiedCatalog.filters.unsupported' => 'Non disponibile per le fonti attuali',
+			'unifiedCatalog.filters.someUnavailable' => 'Alcuni filtri non sono disponibili per le fonti selezionate',
 			'unifiedCatalog.filters.noValues' => 'Niente da scegliere',
 			'unifiedCatalog.states.emptyTitle' => 'Questo catalogo è vuoto',
 			'unifiedCatalog.states.emptyBody' => 'Nessuna libreria visibile contiene qualcosa per questa pagina.',

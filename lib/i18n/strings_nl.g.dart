@@ -2514,6 +2514,7 @@ class _TranslationsUnifiedCatalogFiltersNl extends TranslationsUnifiedCatalogFil
 	@override String get all => 'Alle';
 	@override String get unwatched => 'Niet bekeken';
 	@override String get unsupported => 'Niet beschikbaar voor de huidige bronnen';
+	@override String get someUnavailable => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen';
 	@override String get noValues => 'Niets om uit te kiezen';
 }
 
@@ -4231,6 +4232,7 @@ extension on TranslationsNl {
 			'unifiedCatalog.filters.all' => 'Alle',
 			'unifiedCatalog.filters.unwatched' => 'Niet bekeken',
 			'unifiedCatalog.filters.unsupported' => 'Niet beschikbaar voor de huidige bronnen',
+			'unifiedCatalog.filters.someUnavailable' => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen',
 			'unifiedCatalog.filters.noValues' => 'Niets om uit te kiezen',
 			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
 			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',

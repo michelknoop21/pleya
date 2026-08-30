@@ -2078,6 +2078,7 @@ class _TranslationsUnifiedCatalogFiltersNb extends TranslationsUnifiedCatalogFil
 	@override String get all => 'Alle';
 	@override String get unwatched => 'Ikke sett';
 	@override String get unsupported => 'Ikke tilgjengelig for de gjeldende kildene';
+	@override String get someUnavailable => 'Noen filtre er ikke tilgjengelige for de valgte kildene';
 	@override String get noValues => 'Ingenting å velge';
 }
 
@@ -3500,6 +3501,7 @@ extension on TranslationsNb {
 			'unifiedCatalog.filters.all' => 'Alle',
 			'unifiedCatalog.filters.unwatched' => 'Ikke sett',
 			'unifiedCatalog.filters.unsupported' => 'Ikke tilgjengelig for de gjeldende kildene',
+			'unifiedCatalog.filters.someUnavailable' => 'Noen filtre er ikke tilgjengelige for de valgte kildene',
 			'unifiedCatalog.filters.noValues' => 'Ingenting å velge',
 			'unifiedCatalog.states.emptyTitle' => 'Denne katalogen er tom',
 			'unifiedCatalog.states.emptyBody' => 'Ingen synlig bibliotek inneholder noe for denne siden.',

@@ -2078,6 +2078,7 @@ class _TranslationsUnifiedCatalogFiltersKo extends TranslationsUnifiedCatalogFil
 	@override String get all => '전체';
 	@override String get unwatched => '미시청';
 	@override String get unsupported => '현재 소스에서는 사용할 수 없음';
+	@override String get someUnavailable => '선택한 소스에서는 일부 필터를 사용할 수 없습니다';
 	@override String get noValues => '선택할 항목이 없음';
 }
 
@@ -3500,6 +3501,7 @@ extension on TranslationsKo {
 			'unifiedCatalog.filters.all' => '전체',
 			'unifiedCatalog.filters.unwatched' => '미시청',
 			'unifiedCatalog.filters.unsupported' => '현재 소스에서는 사용할 수 없음',
+			'unifiedCatalog.filters.someUnavailable' => '선택한 소스에서는 일부 필터를 사용할 수 없습니다',
 			'unifiedCatalog.filters.noValues' => '선택할 항목이 없음',
 			'unifiedCatalog.states.emptyTitle' => '이 카탈로그가 비어 있습니다',
 			'unifiedCatalog.states.emptyBody' => '표시된 라이브러리에 이 페이지에 해당하는 항목이 없습니다.',

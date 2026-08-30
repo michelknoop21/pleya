@@ -1901,6 +1901,7 @@
       "all": "All",
       "unwatched": "Unwatched",
       "unsupported": "Not available for the current sources",
+      "someUnavailable": "Some filters are unavailable for the selected sources",
       "noValues": "Nothing to choose from"
     },
     "states": {

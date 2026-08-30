@@ -1506,6 +1506,7 @@
       "all": "Alle",
       "unwatched": "Ungesehen",
       "unsupported": "Für die aktuellen Quellen nicht verfügbar",
+      "someUnavailable": "Einige Filter sind für die ausgewählten Quellen nicht verfügbar",
       "noValues": "Nichts zur Auswahl"
     },
     "states": {

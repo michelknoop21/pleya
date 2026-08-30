@@ -1506,6 +1506,7 @@
       "all": "すべて",
       "unwatched": "未視聴",
       "unsupported": "現在のソースでは利用できません",
+      "someUnavailable": "選択したソースでは一部のフィルターを利用できません",
       "noValues": "選択できる項目がありません"
     },
     "states": {

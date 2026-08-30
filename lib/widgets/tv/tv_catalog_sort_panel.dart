@@ -168,6 +168,8 @@ class TvCatalogOptionRow extends StatelessWidget {
     this.focusNode,
     this.onNavigateUp,
     this.onNavigateDown,
+    this.onNavigateLeft,
+    this.onNavigateRight,
   });
 
   final String label;
@@ -183,6 +185,12 @@ class TvCatalogOptionRow extends StatelessWidget {
   final VoidCallback? onNavigateUp;
   final VoidCallback? onNavigateDown;
 
+  /// Sideways exits. The sort panel is one column and leaves both null; the
+  /// filter panel is two zones and uses LEFT to hand focus back to its category
+  /// rail, which is the only way out of the options column on a remote.
+  final VoidCallback? onNavigateLeft;
+  final VoidCallback? onNavigateRight;
+
   @override
   Widget build(BuildContext context) {
     final mono = tokens(context);
@@ -194,6 +202,8 @@ class TvCatalogOptionRow extends StatelessWidget {
       onSelect: enabled ? onPressed : null,
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
+      onNavigateLeft: onNavigateLeft,
+      onNavigateRight: onNavigateRight,
       borderRadius: TvSourcePickerLayout.rowRadius * scale,
       disableScale: true,
       semanticLabel: label,

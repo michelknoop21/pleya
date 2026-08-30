@@ -2078,6 +2078,7 @@ class _TranslationsUnifiedCatalogFiltersPl extends TranslationsUnifiedCatalogFil
 	@override String get all => 'Wszystkie';
 	@override String get unwatched => 'Nieobejrzane';
 	@override String get unsupported => 'Niedostępne dla bieżących źródeł';
+	@override String get someUnavailable => 'Niektóre filtry są niedostępne dla wybranych źródeł';
 	@override String get noValues => 'Brak opcji do wyboru';
 }
 
@@ -3500,6 +3501,7 @@ extension on TranslationsPl {
 			'unifiedCatalog.filters.all' => 'Wszystkie',
 			'unifiedCatalog.filters.unwatched' => 'Nieobejrzane',
 			'unifiedCatalog.filters.unsupported' => 'Niedostępne dla bieżących źródeł',
+			'unifiedCatalog.filters.someUnavailable' => 'Niektóre filtry są niedostępne dla wybranych źródeł',
 			'unifiedCatalog.filters.noValues' => 'Brak opcji do wyboru',
 			'unifiedCatalog.states.emptyTitle' => 'Ten katalog jest pusty',
 			'unifiedCatalog.states.emptyBody' => 'Żadna widoczna biblioteka nie zawiera nic dla tej strony.',

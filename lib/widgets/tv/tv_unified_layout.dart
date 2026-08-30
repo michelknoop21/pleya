@@ -227,6 +227,46 @@ class TvCatalogLayout {
   static const double optionRowPaddingVertical = 8;
   static const double optionRowGap = 7;
 
+  /// The filter panel's category rail (hoofdstuk 10.6), as a fraction of the
+  /// panel's own inner width rather than a fixed number of pixels.
+  ///
+  /// The panel itself is a proportion of the viewport, so a rail in logical
+  /// pixels would be a third of the panel on the canonical canvas and half of it
+  /// in a small simulator window. The bounds are what keep the split readable
+  /// where the fraction alone would not: below the floor a category label
+  /// ellipsises, above the ceiling the options column — the half the user is
+  /// actually choosing in — gets narrower than the rail that indexes it.
+  static const double filterRailFraction = 0.34;
+  static const double filterRailMinWidth = 120;
+  static const double filterRailMaxWidth = 260;
+
+  /// Gap between the category rail and the options column. Wide enough to read
+  /// as two zones; a hairline divider was tried first and turned the panel back
+  /// into a settings window.
+  static const double filterZoneGap = 18;
+
+  /// The count chip on a category that has active selections.
+  static const double filterCountFontSize = 10.5;
+  static const double filterCountPaddingHorizontal = 6;
+  static const double filterCountPaddingVertical = 2;
+
+  /// Fill and outline of the *active* category in the rail, as alphas on
+  /// `MonoTokens.text`.
+  ///
+  /// Well above [TvSourcePickerLayout.idleRowFill], and that gap is the whole
+  /// point. An inactive category carries no fill at all, so this number is not
+  /// "a row, slightly lighter" — it is the entire difference between a label
+  /// and a chip. The first attempt used 0.10 and the active category was
+  /// legible only while it also held the focus ring; the moment the user moved
+  /// RIGHT into the options the rail stopped saying which list was on screen,
+  /// which is precisely the failure [DEC-053] is about.
+  static const double filterActiveCategoryFill = 0.14;
+  static const double filterActiveCategoryOutline = 0.2;
+
+  /// Ink on an inactive category. Below [inkSecondary]: the rail is an index,
+  /// and four of its five entries should sit behind the list they point at.
+  static const double filterIdleCategoryInk = 0.55;
+
   /// The multi-source badge of hoofdstuk 10.3.
   static const double badgeFontSize = 10.5;
   static const double badgePaddingHorizontal = 7;

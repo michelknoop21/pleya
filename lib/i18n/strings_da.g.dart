@@ -2078,6 +2078,7 @@ class _TranslationsUnifiedCatalogFiltersDa extends TranslationsUnifiedCatalogFil
 	@override String get all => 'Alle';
 	@override String get unwatched => 'Ikke set';
 	@override String get unsupported => 'Ikke tilgængelig for de aktuelle kilder';
+	@override String get someUnavailable => 'Nogle filtre er ikke tilgængelige for de valgte kilder';
 	@override String get noValues => 'Intet at vælge';
 }
 
@@ -3500,6 +3501,7 @@ extension on TranslationsDa {
 			'unifiedCatalog.filters.all' => 'Alle',
 			'unifiedCatalog.filters.unwatched' => 'Ikke set',
 			'unifiedCatalog.filters.unsupported' => 'Ikke tilgængelig for de aktuelle kilder',
+			'unifiedCatalog.filters.someUnavailable' => 'Nogle filtre er ikke tilgængelige for de valgte kilder',
 			'unifiedCatalog.filters.noValues' => 'Intet at vælge',
 			'unifiedCatalog.states.emptyTitle' => 'Dette katalog er tomt',
 			'unifiedCatalog.states.emptyBody' => 'Intet synligt bibliotek indeholder noget til denne side.',

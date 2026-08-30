@@ -2078,6 +2078,7 @@ class _TranslationsUnifiedCatalogFiltersRu extends TranslationsUnifiedCatalogFil
 	@override String get all => 'Все';
 	@override String get unwatched => 'Непросмотренные';
 	@override String get unsupported => 'Недоступно для текущих источников';
+	@override String get someUnavailable => 'Некоторые фильтры недоступны для выбранных источников';
 	@override String get noValues => 'Нечего выбрать';
 }
 
@@ -3500,6 +3501,7 @@ extension on TranslationsRu {
 			'unifiedCatalog.filters.all' => 'Все',
 			'unifiedCatalog.filters.unwatched' => 'Непросмотренные',
 			'unifiedCatalog.filters.unsupported' => 'Недоступно для текущих источников',
+			'unifiedCatalog.filters.someUnavailable' => 'Некоторые фильтры недоступны для выбранных источников',
 			'unifiedCatalog.filters.noValues' => 'Нечего выбрать',
 			'unifiedCatalog.states.emptyTitle' => 'Этот каталог пуст',
 			'unifiedCatalog.states.emptyBody' => 'Ни одна видимая библиотека не содержит ничего для этой страницы.',

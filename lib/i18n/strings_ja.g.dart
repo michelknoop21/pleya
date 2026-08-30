@@ -2078,6 +2078,7 @@ class _TranslationsUnifiedCatalogFiltersJa extends TranslationsUnifiedCatalogFil
 	@override String get all => 'すべて';
 	@override String get unwatched => '未視聴';
 	@override String get unsupported => '現在のソースでは利用できません';
+	@override String get someUnavailable => '選択したソースでは一部のフィルターを利用できません';
 	@override String get noValues => '選択できる項目がありません';
 }
 
@@ -3500,6 +3501,7 @@ extension on TranslationsJa {
 			'unifiedCatalog.filters.all' => 'すべて',
 			'unifiedCatalog.filters.unwatched' => '未視聴',
 			'unifiedCatalog.filters.unsupported' => '現在のソースでは利用できません',
+			'unifiedCatalog.filters.someUnavailable' => '選択したソースでは一部のフィルターを利用できません',
 			'unifiedCatalog.filters.noValues' => '選択できる項目がありません',
 			'unifiedCatalog.states.emptyTitle' => 'このカタログは空です',
 			'unifiedCatalog.states.emptyBody' => '表示中のライブラリにこのページの項目はありません。',
