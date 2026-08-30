@@ -67,10 +67,4 @@ class MediaServerTimeouts {
   /// Best-effort `/Sessions/Logout` timeout — short because the call is
   /// fire-and-forget; the token is removed locally regardless.
   static const jellyfinSignOut = Duration(seconds: 5);
-
-  /// Per-library budget for one page fetch during unified-catalog k-way
-  /// merge paging (hoofdstuk 12.6 of docs/tvos-unified-experience.md). A
-  /// slow library must not hold up the page the other, healthy libraries
-  /// already produced — same principle as [searchPerServer].
-  static const unifiedCatalogLibraryPage = Duration(seconds: 10);
 }
