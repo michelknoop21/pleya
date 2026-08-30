@@ -16,6 +16,13 @@ import 'package:pleya/widgets/tv/tv_catalog_sort_panel.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/library_filter_result.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_filter.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/server_capabilities.dart';
+
 import '../test_helpers/golden.dart';
 import '../test_helpers/tv_catalog_artwork.dart';
 import '../test_helpers/tv_catalog_fixtures.dart';
@@ -48,6 +55,60 @@ import '../test_helpers/tv_catalog_fixtures.dart';
 ///
 /// Regenerate after an intentional visual change:
 /// `flutter test --update-goldens test/goldens/tv_unified_catalog_golden_test.dart`
+
+/// A Jellyfin-shaped client that answers the filter call and nothing else.
+///
+/// Jellyfin returns categories *and* their values in one response, which is the
+/// branch `loadUnifiedFilterOptions` can satisfy without a second round trip —
+/// so this is the smallest honest way to picture a filter category that has
+/// something in it. Every other call goes to `noSuchMethod`, because the panel
+/// makes no other call and a fake that pretended to would be lying about the
+/// surface under test.
+class _FilterValuesClient implements MediaServerClient {
+  _FilterValuesClient(this.id);
+
+  final String id;
+
+  @override
+  ServerId get serverId => ServerId(id);
+
+  @override
+  String? get serverName => id;
+
+  @override
+  MediaBackend get backend => MediaBackend.jellyfin;
+
+  @override
+  ServerCapabilities get capabilities => ServerCapabilities.jellyfin;
+
+  @override
+  Future<LibraryFilterResult> fetchLibraryFiltersWithValues(String libraryId) async => LibraryFilterResult(
+    filters: const [],
+    cachedValues: {
+      'genre': [
+        for (final genre in const [
+          'Action',
+          'Adventure',
+          'Animation',
+          'Comedy',
+          'Crime',
+          'Documentary',
+          'Drama',
+          'Family',
+          'Fantasy',
+          'Science fiction',
+        ])
+          MediaFilterValue(key: genre, title: genre),
+      ],
+      'year': [
+        for (final year in const ['2024', '2023', '2022', '2021', '2020']) MediaFilterValue(key: year, title: year),
+      ],
+    },
+  );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 /// The production shell: `InputModeTracker` (which is what makes TV default to
 /// keyboard mode, and therefore what makes the focus ring paint at all) and
@@ -511,5 +572,46 @@ void main() {
     );
     await tester.pumpAndSettle();
     await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_films_long_locale');
+  });
+
+  // A refinement category with something in it, which is the state every other
+  // filter golden deliberately does not show: `clientFor` returns null there,
+  // so Genre and Year are empty and the right zone says so.
+  //
+  // This is where the two-zone split earns itself. Ten genres is more than fits
+  // beside a five-row rail, so the options column scrolls on its own while the
+  // rail stays put — the stacked version had to scroll the whole panel, taking
+  // the categories off screen with it.
+  testWidgets('filter panel, a category with values', (tester) async {
+    setGoldenSurfaceSize(tester);
+    final supported = tvGoldenLibraries.take(2).toList();
+    final client = _FilterValuesClient('nas');
+    await tester.pumpWidget(
+      _shell(
+        Builder(
+          builder: (context) => Stack(
+            children: [
+              _page(groups: tvGoldenCatalog(), actionNodes: nodes(tester)),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () => showTvCatalogFilterPanel(
+                    context,
+                    selection: const UnifiedCatalogFilterSelection(genres: {'Animation', 'Documentary'}),
+                    capabilities: unifiedFilterCapabilitiesFor(supported.map((l) => l.backend)),
+                    libraries: supported,
+                    initialSection: TvCatalogFilterSection.genre,
+                    clientFor: (_) => client,
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_filter_panel_values');
   });
 }
