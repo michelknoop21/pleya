@@ -1,4 +1,4 @@
-name: tvos.library.filters
+name: tvos.library.sort
 target: tvos-sim
 setup:
   - reset_app
@@ -56,19 +56,21 @@ steps:
   - assert: {id: "library.grid.item[0]", insideViewport: true}
   - snapshot: library-grid
 
-  # Grouping and Sort are always present for this fixture; Filters is not,
-  # and that is a protocol-scope fact rather than a UI bug this scenario
-  # could paper over. The Pleya Server client's `fetchLibraryFiltersWithValues`
-  # is hardcoded to `LibraryFilterResult.empty` — `unsupported.dart`'s own
-  # comment: "the contract has ... no filter parameter at all" (G13 in the
-  # replacement matrix) — so `library.filter.filters` never mounts against
-  # a fixture-backed sign-in, on any library, ever, until a later phase
-  # (past PS-5) adds filtering to the wire contract. Asserting its presence
-  # here would assert something that cannot be true yet. Sort has no such
-  # gap: three sort keys are hardcoded client-side in `fetchSortOptions`
-  # and the fixture's own `_sorted()` actually reorders by them — so Sort,
-  # not Filters, is the one control this scenario can prove end to end
-  # under the protocol as it stands today.
+  # Grouping and Sort are always present for this fixture; there is no
+  # equivalent tvos.library.filters scenario, and that is a protocol-scope
+  # fact, not a gap this file should paper over under a misleading name. The
+  # Pleya Server client's `fetchLibraryFiltersWithValues` is hardcoded to
+  # `LibraryFilterResult.empty` — `unsupported.dart`'s own comment: "the
+  # contract has ... no filter parameter at all" — tracked as G13 in
+  # `docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md`, assigned to "een catalogusfase,
+  # of een contractvraag vóór PS-7", explicitly not scheduled. So
+  # `library.filter.filters` never mounts against a fixture-backed sign-in, on
+  # any library, until that contract question is resolved — client-side
+  # filtering over a cursored list is the matrix's own rejected answer, not a
+  # substitute this scenario should reach for. Sort has no such gap: three
+  # sort keys are hardcoded client-side in `fetchSortOptions` and the
+  # fixture's own `_sorted()` actually reorders by them, which is what this
+  # file — named for what it actually proves — exercises end to end.
   # Finding, not a workaround: `library.filter.grouping`/`.sort` measure
   # present (`_idReady`) fine, but their reported `bounds` do not match
   # where the screenshot shows them actually rendered (well inside the

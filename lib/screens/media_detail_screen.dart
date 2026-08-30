@@ -245,7 +245,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   final ScrollController _extrasScrollController = ScrollController();
   bool _watchStateChanged = false;
   final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0);
-  DateTime? _backAfterChildPopUntil;
+  bool _suppressBackAfterPop = false;
   final FocusNode _loadingFocusNode = FocusNode(debugLabel: 'MediaDetailLoading');
   bool _tvDetailRevealed = false;
   bool _tvDetailRevealScheduled = false;
@@ -666,28 +666,41 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     routeObserver.subscribe(this, route);
   }
 
-  /// How long after a child route (e.g. the video player) pops back to this
-  /// screen a Back/Menu press is treated as a stray duplicate of the one
-  /// that closed that child, rather than a fresh user action here. tvOS has
-  /// been observed delivering a *second*, independent Escape `KeyDownEvent`
-  /// roughly two seconds after the first — not the KeyDown+KeyUp-of-the-
-  /// same-press pattern `SelectKeyUpSuppressor` and friends guard against
-  /// elsewhere, which lands within milliseconds. The previous guard (two
-  /// chained `addPostFrameCallback`s, ~33ms) cleared long before that
-  /// straggler arrived, so `_popMediaDetailIfBackNotSuppressed` treated it
-  /// as a fresh press and popped this screen too — reproduced
-  /// deterministically (two independent runs) via the player-return step
-  /// in `media-detail.episode-refresh.yaml`.
-  static const Duration _backAfterChildPopWindow = Duration(milliseconds: 3000);
-
-  bool get _suppressBackAfterPop {
-    final until = _backAfterChildPopUntil;
-    return until != null && DateTime.now().isBefore(until);
-  }
-
+  /// Guards against the *same physical Back/Menu press* that closed a child
+  /// route (e.g. the video player) leaking its own stray KeyUp into this
+  /// screen once it's visible again — not a delayed, independent second
+  /// press, which is ordinary new input and must never be swallowed.
+  ///
+  /// Two conditions make that stray KeyUp possible, and only that
+  /// combination arms this:
+  /// - The pop actually happened while a back key was physically down
+  ///   ([BackKeyPressTracker.isBackKeyDown]). A route that closes for any
+  ///   other reason (playback reaching its natural end, a UI close button,
+  ///   `Navigator.pop` called from code) has no orphaned key event trailing
+  ///   it, so arming here would only ever eat a *later, unrelated* press —
+  ///   exactly the bug an earlier version of this guard had, using a blind
+  ///   multi-second window instead of this check.
+  /// - We are not on AppleTV. There, `handleBackKeyAction` only ever calls
+  ///   `onBack` on `KeyDownEvent` and silently swallows every `KeyUpEvent`
+  ///   regardless of origin (see its own doc comment), so the orphaned KeyUp
+  ///   this guard exists for is structurally harmless already — arming
+  ///   would add nothing but a window in which a genuine, fast follow-up
+  ///   press could be eaten. [BackKeySuppressorObserver] draws exactly this
+  ///   same line for the identical reason.
+  ///
+  /// Scoped to a couple of frames (not a duration) because the race is
+  /// "this key event's pair, still in flight" — a real subsequent press
+  /// cannot physically land within that window.
   @override
   void didPopNext() {
-    _backAfterChildPopUntil = DateTime.now().add(_backAfterChildPopWindow);
+    if (PlatformDetector.isAppleTV()) return;
+    if (!BackKeyPressTracker.isBackKeyDown) return;
+    _suppressBackAfterPop = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _suppressBackAfterPop = false;
+      });
+    });
   }
 
   /// Same trigger as a player return, minus the played-item id: an app resume
@@ -709,7 +722,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   bool _consumeBackAfterChildPop(KeyEvent event) {
     if (!_suppressBackAfterPop || !event.logicalKey.isBackKey) return false;
-    if (event is KeyUpEvent) _backAfterChildPopUntil = null;
+    if (event is KeyUpEvent) _suppressBackAfterPop = false;
     return true;
   }
 
@@ -727,7 +740,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   void _popMediaDetailIfBackNotSuppressed() {
     if (_suppressBackAfterPop) {
-      _backAfterChildPopUntil = null;
+      _suppressBackAfterPop = false;
       return;
     }
     Navigator.pop(context, _watchStateChanged);

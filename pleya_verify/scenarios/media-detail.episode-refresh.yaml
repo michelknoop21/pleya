@@ -10,7 +10,7 @@ steps:
   # IntroGate's cold-start splash paints over an already-ready screen.
   - settle: 3500
 
-  # Same reachability finding `tvos.library.filters` documents: `open:
+  # Same reachability finding `tvos.library.sort` documents: `open:
   # screen.libraries` selects no library, so reach the one
   # `catalog.shows.v1` seeds ("Shows") through the sidebar, the same path
   # `tvos.sidebar.collapse` already proves lands on `screen.libraries`.
@@ -24,7 +24,7 @@ steps:
   # `screen.libraries` readiness only tracks the library *list* fetch; a
   # freshly selected library lands on `LibraryTabType.recommended` (index
   # 0 of `LibraryTabType.values`), not `browse` — see
-  # `tvos.library.filters.yaml`'s own note on the same finding. There, the
+  # `tvos.library.sort.yaml`'s own note on the same finding. There, the
   # library's Recommended tab has hub content, so focus after Select lands
   # *inside* that content and Menu is needed first to reach the tab bar.
   # Here `catalog.shows.v1`'s single show has nothing to recommend, so

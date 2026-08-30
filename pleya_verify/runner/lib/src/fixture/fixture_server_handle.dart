@@ -41,9 +41,19 @@ class FixtureServerHandle {
 
   Future<Map<String, Object?>> verifyState() => _controlGet('/__verify/state');
 
+  /// `PleyaFakeServer.requests` (and so the `/__verify/requests` response)
+  /// is a list of bare path strings, not records — casting straight to
+  /// `Map<String, Object?>` threw on every real run, and the exception was
+  /// swallowed by `runScenario`'s own catch, so every bundle's
+  /// `fixture/requests.jsonl` was silently empty. Wrapping each path here
+  /// keeps the bundle format (one JSON object per line) without changing
+  /// the server's wire shape.
   Future<List<Map<String, Object?>>> requestsSince(int since) async {
     final result = await _controlGet('/__verify/requests?since=$since');
-    return (result['requests'] as List).cast<Map<String, Object?>>();
+    final raw = result['requests'] as List;
+    return [
+      for (final entry in raw) entry is Map ? entry.cast<String, Object?>() : {'path': entry},
+    ];
   }
 
   Future<void> seed(String fixtureName) => _controlPost('/__verify/seed', {'fixture': fixtureName});
