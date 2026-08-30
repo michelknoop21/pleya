@@ -466,7 +466,7 @@ void main() {
     await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
     await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
-    await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_filter_paneltvGoldenLibraries');
+    await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_filter_panel_libraries');
   });
 
   // Several categories narrowing at once, which is what the count chips are
