@@ -579,3 +579,38 @@ Wat bewust open blijft staan:
 
 **Consequences:** `tvos.library.sort` blijft als aparte, geldige regressie-/acceptatiescenario staan en vervangt `tvos.library.filters` niet inhoudelijk. `pleya_verify/scenarios/README.md` benoemt de DEFERRED-status expliciet naast de bestaande uitleg over G13. Reactivering hoort bij het moment waarop het cataloguscontract een filterparameter of filterendpoint krijgt, niet bij een latere Verify-fase op eigen initiatief.
 
+## DEC-064: Fase 12 gesloten, false-PASS-aanval op `tvos.sidebar.collapse` bewijst dat Verify een echte regressie rood maakt
+
+**Date:** 2026-08-30
+**Status:** accepted
+
+**Context:** Fase 11 bewijst dat Pleya Verify een goede build groen kan verklaren. Dat bewijst niet dat een kapotte build ook echt rood wordt met een bruikbare FAILED-evidencebundel, en dat is precies het gat waar een niet-bestaand scenario of een timergebaseerde suppressie zich achter kan verschuilen, zoals de Fase-11-audit al bij Back/Menu vond. Fase 12 sluit dat gat met een echte, lokale, nooit-gecommitte sabotage tegen een scenario dat vóór de sabotage aantoonbaar groen was.
+
+**Decision:** Gekozen gate: `tvos.sidebar.collapse` (2x PASS bewezen op tvOS in Fase 11, opnieuw bevestigd deze sessie op commit `d021ffd`, working tree schoon). Gekozen sabotage: `lib/widgets/side_navigation_rail.dart:120`. `state: () => {'selected': isSelected, 'collapsed': isCollapsed}` werd `state: () => {'selected': isSelected, 'collapsed': !isCollapsed}`. Dit breekt geen layout en geen navigatie; het laat `NavigationRailItem` zijn eigen automation-state omgekeerd rapporteren aan `AutomationNode`, hetzelfde booleaans veld dat het scenario op regel 28 toetst. Een echte automation-observatie-invariant, geen YAML-truc.
+
+Cyclus, alle runs deze sessie zelf uitgevoerd:
+
+1. Baseline PASS vóór sabotage: run `tvos-sidebar-collapse-1788112629069`, commit `d021ffd`, dirty=false.
+2. Sabotage toegepast (ongecommit), app herbouwd (`scripts/tvos_sim.sh build && run`).
+3. FAILED run `tvos-sidebar-collapse-1788112762601`: `assert failed: state(nav.discover.collapsed): 'nav.discover'.state.collapsed is false, expected true`. `manifest.json` toont commit `d021ffd`, dirty=true, target tvos-sim, het juiste app-instance, en alle zeven voorgaande stappen op ok=true met precies de falende stap als achtste. `ui-tree/final.json` bevat `nav.discover` met `bounds.width: 48.0` (de bekende collapsed-breedte) naast `state.collapsed: false`, de tegenstrijdigheid die de bug bewijst zonder de run opnieuw te hoeven zien. `focus-trace.json` (3 overgangen), `fixture/requests.jsonl` (41 echte paden), `app.log`, `driver.log` en `report.md` zijn alle aanwezig en niet leeg. Geen `screenshots/`: de scenario-stap die ze maakt (regel 29) komt na de falende assert op regel 28 en draait dus per scenariocontract niet, geen bundelgat.
+4. Sabotage exact gereverteerd (`git checkout -- lib/widgets/side_navigation_rail.dart`); `git status` schoon; app herbouwd.
+5. PASS run `tvos-sidebar-collapse-1788112895441`: commit `d021ffd`, dirty=false, ander run-id en ander instance-pid dan de FAILED run (geen hergebruikte evidence), alle drie de screenshots aanwezig, geverifieerd als echte 3840×2160 RGBA-captures met volle luminantierange (niet zwart/leeg), en de state-assertion op regel 28 toont weer `actual: true`.
+
+False-PASS attack-matrix (bestaande hardening getoetst, geen nieuwe infrastructuur nodig: alle negen categorieën zijn al gedekt):
+
+| Aanval | Guard | Bewijs | Status |
+| --- | --- | --- | --- |
+| Verkeerde/stale app-instance | `instance_discovery.dart` verwerpt een announcement op de verkeerde poort of van vóór deze launch | `instance_discovery_test.dart` (13 tests) + Fase-11-fix `05e5e81` | gedekt |
+| Launch failure | `runScenario` termineert het proces ook als `launch()` gooit; een run die nooit launchte roept nooit terminate | `run_scenario_test.dart`: "a launch() that throws still gets terminated", "a run that never launched does not call terminate" | gedekt |
+| Zwarte/lege screenshot | `screenshot_probe.dart` verwerpt een capture met te weinig distincte pixelwaarden | `screenshot_probe_test.dart` (7 tests, incl. "rejects the all-black capture") + handmatige luminantiecheck op de PASS-bundel van vandaag (0–255 op alle drie) | gedekt |
+| Stale UI tree | elke `assert`/`wait_until`/eindbundel haalt `driver.uiTree()` opnieuw op; geen cachelaag in `run_scenario.dart` | codeonderzoek vandaag (`run_scenario.dart:253,380,406`) + `media-detail.episode-refresh` (Fase-11-audit: child_count 10→11 na fixture-mutatie tijdens playback) | gedekt |
+| Lege focus trace | `AutomationFocusLog` start vóór het eerste frame, één persistente callback per proces | `automation_focus_log_test.dart` (4 tests) + niet-lege focus-trace.json in zowel de FAILED- als de PASS-bundel van vandaag | gedekt |
+| Ontbrekende fixture requests | `requestsSince()`-castfix (`7c20720`) | echte requestpaden in de FAILED-bundel van vandaag (41 regels) | gedekt |
+| Overgeslagen scenario-stap | een onbekend verb faalt hard in plaats van te no-oppen; het manifest legt elke uitgevoerde stap in volgorde vast | `run_scenario_test.dart`: "an unimplemented verb fails cleanly instead of silently no-opping" + FAILED-manifest van vandaag toont alle voorgaande stappen plus precies de falende stap | gedekt |
+| Wait/event meldt te vroeg succes | `wait_until` pollt elke 150ms tegen live staat; een event-wacht leest altijd `eventsSince(0)`, dus geen gemist-en-toch-aangenomen event | codeonderzoek (`run_scenario.dart:336-354`) + `run_scenario_test.dart`: "wait_until times out and the run fails with a clear message" | gedekt |
+| Onvolledige evidencebundel | elke schrijver produceert zijn bestand ook als de onderliggende inhoud leeg is | `evidence_bundle_test.dart`: "an empty log still produces the file, so a bundle is never silently incomplete" + handmatige inspectie van alle acht bewijsklassen in de FAILED-bundel van vandaag | gedekt |
+
+Testbewijs, alle drie deze sessie zelf gedraaid: `flutter test` 4787 passed / 9 skipped / 0 failed. `pleya_verify/runner`: `dart test` 198/198. `pleya_verify/fixture_server`: `dart test` 75/75.
+
+**Consequences:** Fase 11 en Fase 12 zijn beide gesloten voor Verify Core 1.0. `tvos.sidebar.collapse` blijft de referentiegate voor een toekomstige false-PASS-regressietoets op een ander scenario. Er is geen productcode of testinfrastructuur bijgekomen: de negen aanvalscategorieën waren al gedekt, en de sabotage van vandaag bestaat nergens meer buiten deze DEC en de niet-ingecheckte `.build/pleya-verify/`-evidencebundels op deze machine. `working tree` was bij het schrijven van deze DEC schoon op `d021ffd` plus deze documentatiewijziging.
+
