@@ -1,0 +1,6 @@
+name: fixture.valid_scenario_unknown_target
+target: android-sim
+setup:
+  - reset_app
+steps:
+  - assert: {id: screen.main}

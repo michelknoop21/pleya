@@ -57,4 +57,39 @@ void main() {
     expect(result.exitCode, 0);
     expect(result.stdout, contains('valid_scenario.yaml'));
   });
+
+  test('run --json on a missing scenario file reports ERROR, not FAILED', () async {
+    final result = await _run(['run', 'test/fixtures/does_not_exist.yaml', '--json']);
+    expect(result.exitCode, 66);
+    final decoded = jsonDecode(result.stdout as String) as Map<String, Object?>;
+    expect(decoded['ok'], false);
+    expect(decoded['result'], 'ERROR');
+    expect(decoded['scenario'], isNull);
+    expect(decoded['bundle_dir'], isNull);
+    expect(decoded['failure_message'], contains('no such file'));
+    expect(decoded['exit_code'], 66);
+    expect(decoded['command'], contains('test/fixtures/does_not_exist.yaml'));
+  });
+
+  test('run --json on a scenario with an invalid setup verb reports ERROR with the parse errors', () async {
+    final result = await _run(['run', 'test/fixtures/invalid_setup_verb.yaml', '--json']);
+    expect(result.exitCode, 1);
+    final decoded = jsonDecode(result.stdout as String) as Map<String, Object?>;
+    expect(decoded['ok'], false);
+    expect(decoded['result'], 'ERROR');
+    final errors = decoded['errors'] as List<Object?>;
+    expect(errors, isNotEmpty);
+    expect((errors.single as Map<String, Object?>)['path'], 'test/fixtures/invalid_setup_verb.yaml');
+  });
+
+  test('run --json on a scenario with no implemented driver reports ERROR with scenario/target populated', () async {
+    final result = await _run(['run', 'test/fixtures/valid_scenario_unknown_target.yaml', '--json']);
+    expect(result.exitCode, 64);
+    final decoded = jsonDecode(result.stdout as String) as Map<String, Object?>;
+    expect(decoded['ok'], false);
+    expect(decoded['result'], 'ERROR');
+    expect(decoded['scenario'], 'fixture.valid_scenario_unknown_target');
+    expect(decoded['target'], 'android-sim');
+    expect(decoded['bundle_dir'], isNull);
+  });
 }

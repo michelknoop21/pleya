@@ -1,0 +1,15 @@
+name: pleya_verify_mcp
+description: >
+  A thin MCP (Model Context Protocol) stdio adapter over the existing Pleya
+  Verify CLI (`pleya_verify/runner/bin/verify.dart`). Every tool call shells
+  out to that CLI's `--json` mode and passes its result through: this
+  package holds no scenario, fixture, driver, or assertion logic of its own.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^5.0.0

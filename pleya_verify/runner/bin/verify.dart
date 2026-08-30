@@ -61,16 +61,77 @@ Usage:
 ''');
 }
 
+/// The exact argv a contributor can paste to reproduce a `run` invocation
+/// outside the MCP layer, kept as one place so the reproduced command can
+/// never drift from what this subcommand actually accepts.
+List<String> _runCommand(String scenarioPath, {required bool jsonOutput}) => [
+  'run',
+  'bin/verify.dart',
+  'run',
+  scenarioPath,
+  if (jsonOutput) '--json',
+];
+
+/// The single JSON envelope every exit path of `run --json` produces (PASS,
+/// FAILED, and every configuration/invocation error alike), so a caller
+/// (the MCP layer included) never has to guess which shape it got back.
+/// `result` is `PASS`/`FAILED` only when a scenario actually executed;
+/// anything that short-circuits before or during dispatch (missing file,
+/// parse error, validation error, no driver for the target) is `ERROR`,
+/// never disguised as a scenario FAIL.
+void _emitRunResult({
+  required bool jsonOutput,
+  required String scenarioPath,
+  required int exitCodeValue,
+  required String result,
+  String? scenarioName,
+  String? target,
+  String? bundleDir,
+  String? failureMessage,
+  List<Map<String, Object?>>? errors,
+  required String humanText,
+  required bool humanIsError,
+}) {
+  if (jsonOutput) {
+    stdout.writeln(
+      jsonEncode({
+        'ok': result == 'PASS',
+        'result': result,
+        'scenario': scenarioName,
+        'target': target,
+        'bundle_dir': bundleDir,
+        'failure_message': failureMessage,
+        if (errors != null) 'errors': errors,
+        'exit_code': exitCodeValue,
+        'command': _runCommand(scenarioPath, jsonOutput: jsonOutput),
+      }),
+    );
+  } else if (humanIsError) {
+    stderr.writeln(humanText);
+  } else {
+    stdout.writeln(humanText);
+  }
+  exitCode = exitCodeValue;
+}
+
 Future<void> _runScenarioCommand(List<String> args, {required bool jsonOutput}) async {
   if (args.isEmpty) {
     stderr.writeln('run requires a scenario file path');
     exitCode = 64;
     return;
   }
-  final file = File(args.first);
+  final scenarioPath = args.first;
+  final file = File(scenarioPath);
   if (!file.existsSync()) {
-    stderr.writeln('${args.first}: no such file');
-    exitCode = 66;
+    _emitRunResult(
+      jsonOutput: jsonOutput,
+      scenarioPath: scenarioPath,
+      exitCodeValue: 66,
+      result: 'ERROR',
+      failureMessage: '$scenarioPath: no such file',
+      humanText: '$scenarioPath: no such file',
+      humanIsError: true,
+    );
     return;
   }
 
@@ -78,16 +139,46 @@ Future<void> _runScenarioCommand(List<String> args, {required bool jsonOutput}) 
   try {
     scenario = parseScenarioFile(file);
   } on ScenarioParseException catch (e) {
-    _reportErrors(file.path, [e.error], jsonOutput: jsonOutput);
-    exitCode = 1;
+    if (jsonOutput) {
+      _emitRunResult(
+        jsonOutput: true,
+        scenarioPath: scenarioPath,
+        exitCodeValue: 1,
+        result: 'ERROR',
+        errors: [
+          {'path': e.error.sourcePath, 'line': e.error.line, 'message': e.error.message},
+        ],
+        humanText: '',
+        humanIsError: true,
+      );
+    } else {
+      _reportErrors(file.path, [e.error], jsonOutput: false);
+      exitCode = 1;
+    }
     return;
   }
 
   final catalog = AutomationIdCatalog.fromFile(_automationIdsFile);
   final validationErrors = validateScenario(scenario, catalog);
   if (validationErrors.isNotEmpty) {
-    _reportErrors(file.path, validationErrors, jsonOutput: jsonOutput);
-    exitCode = 1;
+    if (jsonOutput) {
+      _emitRunResult(
+        jsonOutput: true,
+        scenarioPath: scenarioPath,
+        exitCodeValue: 1,
+        result: 'ERROR',
+        scenarioName: scenario.name,
+        target: scenario.target,
+        errors: [
+          for (final err in validationErrors) {'path': err.sourcePath, 'line': err.line, 'message': err.message},
+        ],
+        humanText: '',
+        humanIsError: true,
+      );
+    } else {
+      _reportErrors(file.path, validationErrors, jsonOutput: false);
+      exitCode = 1;
+    }
     return;
   }
 
@@ -100,8 +191,17 @@ Future<void> _runScenarioCommand(List<String> args, {required bool jsonOutput}) 
     case 'tvos-sim':
       driver = TvosSimulatorDriver(repoRoot: _repoRoot);
     default:
-      stderr.writeln('run: no driver implemented yet for target "${scenario.target}"');
-      exitCode = 64;
+      _emitRunResult(
+        jsonOutput: jsonOutput,
+        scenarioPath: scenarioPath,
+        exitCodeValue: 64,
+        result: 'ERROR',
+        scenarioName: scenario.name,
+        target: scenario.target,
+        failureMessage: 'no driver implemented yet for target "${scenario.target}"',
+        humanText: 'run: no driver implemented yet for target "${scenario.target}"',
+        humanIsError: true,
+      );
       return;
   }
 
@@ -112,22 +212,20 @@ Future<void> _runScenarioCommand(List<String> args, {required bool jsonOutput}) 
     repoRoot: _repoRoot,
   );
 
-  if (jsonOutput) {
-    stdout.writeln(
-      jsonEncode({
-        'ok': result.passed,
-        'result': result.passed ? 'PASS' : 'FAILED',
-        'bundle': result.bundleDir.path,
-        if (result.failureMessage != null) 'failureMessage': result.failureMessage,
-      }),
-    );
-  } else if (result.passed) {
-    stdout.writeln('PASS: ${scenario.name} — evidence at ${result.bundleDir.path}');
-  } else {
-    stderr.writeln('FAILED: ${scenario.name} — ${result.failureMessage}');
-    stderr.writeln('evidence at ${result.bundleDir.path}');
-  }
-  exitCode = result.passed ? 0 : 1;
+  _emitRunResult(
+    jsonOutput: jsonOutput,
+    scenarioPath: scenarioPath,
+    exitCodeValue: result.passed ? 0 : 1,
+    result: result.passed ? 'PASS' : 'FAILED',
+    scenarioName: scenario.name,
+    target: scenario.target,
+    bundleDir: result.bundleDir.path,
+    failureMessage: result.failureMessage,
+    humanText: result.passed
+        ? 'PASS: ${scenario.name}, evidence at ${result.bundleDir.path}'
+        : 'FAILED: ${scenario.name}: ${result.failureMessage}\nevidence at ${result.bundleDir.path}',
+    humanIsError: !result.passed,
+  );
 }
 
 Future<void> _runValidate(List<String> args, {required bool jsonOutput}) async {
