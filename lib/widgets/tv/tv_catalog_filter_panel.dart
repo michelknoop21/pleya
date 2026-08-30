@@ -491,27 +491,35 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
     if (rows.isEmpty) {
       return _PanelNote(text: _isLoadingOptions ? t.common.loading : t.unifiedCatalog.filters.noValues, scale: scale);
     }
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < rows.length; i++) ...[
-            if (i > 0) SizedBox(height: TvCatalogLayout.optionRowGap * scale),
-            TvCatalogOptionRow(
-              label: rows[i].label,
-              secondary: rows[i].secondary,
-              isSelected: rows[i].isSelected,
-              scale: scale,
-              focusNode: _optionNodes[i],
-              // LEFT is the only way out of this column on a remote, and it
-              // goes to the category the list belongs to rather than to
-              // wherever the traversal policy would land.
-              onNavigateLeft: () => _railNodeFor(_active).requestFocus(),
-              onPressed: rows[i].onPressed,
-            ),
+    return _FadingEdges(
+      // A category can hold far more rows than the panel is tall — ten genres
+      // against a five-entry rail is the ordinary case, not the extreme one —
+      // so the list is cut by the panel's bottom edge. Cut flat, the last
+      // visible row is a half-height rectangle that reads as a rendering fault
+      // rather than as "there is more below this". The fade is the affordance,
+      // and it appears only on an edge that actually has something past it.
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < rows.length; i++) ...[
+              if (i > 0) SizedBox(height: TvCatalogLayout.optionRowGap * scale),
+              TvCatalogOptionRow(
+                label: rows[i].label,
+                secondary: rows[i].secondary,
+                isSelected: rows[i].isSelected,
+                scale: scale,
+                focusNode: _optionNodes[i],
+                // LEFT is the only way out of this column on a remote, and it
+                // goes to the category the list belongs to rather than to
+                // wherever the traversal policy would land.
+                onNavigateLeft: () => _railNodeFor(_active).requestFocus(),
+                onPressed: rows[i].onPressed,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -682,6 +690,98 @@ class _CountChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Fades whichever end of a scrollable has content past it.
+///
+/// Deliberately state-driven rather than a permanent gradient at both ends: a
+/// list that fits, or one scrolled to its end, has nothing below it, and fading
+/// the last row there would dim a real choice for no reason. The mask is only a
+/// hint that the list continues.
+///
+/// A [ShaderMask] costs a `saveLayer`, which is why this is not something to
+/// scatter over a grid. Inside a modal that is already compositing its own
+/// shadow, over a list of at most a few dozen rows, it is the cheapest honest
+/// way to say "there is more".
+class _FadingEdges extends StatefulWidget {
+  const _FadingEdges({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_FadingEdges> createState() => _FadingEdgesState();
+}
+
+class _FadingEdgesState extends State<_FadingEdges> {
+  bool _hasAbove = false;
+  bool _hasBelow = false;
+
+  /// How much of each end the fade covers, as a fraction of the column's
+  /// height. Small: this is an edge treatment, and a fade deep enough to dim a
+  /// whole row would be hiding the list rather than hinting at it.
+  static const double _extent = 0.08;
+
+  /// Applies [metrics], deferred to the end of the frame.
+  ///
+  /// Deferred because the notification that matters most arrives *during
+  /// layout* — see [build] — and calling `setState` there is illegal. The
+  /// post-frame callback is safe here, unlike in a focus handler, precisely
+  /// because a frame is already running: it fires at the end of this one, and
+  /// the `setState` inside it schedules the next.
+  void _update(ScrollMetrics metrics) {
+    final above = metrics.extentBefore > 1;
+    final below = metrics.extentAfter > 1;
+    if (above == _hasAbove && below == _hasBelow) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || (above == _hasAbove && below == _hasBelow)) return;
+      setState(() {
+        _hasAbove = above;
+        _hasBelow = below;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Two listeners, because one of them does not fire on the case this widget
+    // exists for. `ScrollNotification` is dispatched when the user scrolls; a
+    // list that overflows the moment it is built has never scrolled, and the
+    // first version listened only for that and so never faded anything. The
+    // metrics of an untouched-but-overflowing list arrive as
+    // `ScrollMetricsNotification`, which is not a `ScrollNotification` at all
+    // and is dispatched during layout.
+    final listener = NotificationListener<ScrollMetricsNotification>(
+      onNotification: (notification) {
+        _update(notification.metrics);
+        return false;
+      },
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          _update(notification.metrics);
+          return false;
+        },
+        child: widget.child,
+      ),
+    );
+
+    if (!_hasAbove && !_hasBelow) return listener;
+
+    return ShaderMask(
+      shaderCallback: (bounds) => LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          if (_hasAbove) const Color(0x00FFFFFF) else const Color(0xFFFFFFFF),
+          const Color(0xFFFFFFFF),
+          const Color(0xFFFFFFFF),
+          if (_hasBelow) const Color(0x00FFFFFF) else const Color(0xFFFFFFFF),
+        ],
+        stops: const [0, _extent, 1 - _extent, 1],
+      ).createShader(bounds),
+      blendMode: BlendMode.dstIn,
+      child: listener,
     );
   }
 }
