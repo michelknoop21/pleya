@@ -70,6 +70,7 @@ under `Notes`.
 - poortdiscovery leest Library/Caches, en de scenario wacht op de hero zelf
 - back-suppressie causaal maken, filters-scenario eerlijk hernoemen, evidence-gat dicht
 - geen --enforce-lockfile voor pleya_verify subpackages
+- evidence-artifact upload sluit app-installcaches uit
 <!-- END GENERATED -->
 
 ### Fixed
