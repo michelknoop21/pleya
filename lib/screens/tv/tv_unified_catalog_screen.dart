@@ -387,7 +387,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
     final snapshot = catalog.snapshot;
 
     if (!_preferencesLoaded || (catalog.isInitialLoading && snapshot.groups.isEmpty)) {
-      return const Center(child: CircularProgressIndicator());
+      return const _SkeletonGrid(key: tvCatalogSkeletonKey);
     }
 
     // Hoofdstuk 29: a full-page error only when there is no usable catalog at
@@ -437,6 +437,147 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
 
 /// Centred title, body and one optional action — the shape all four of
 /// hoofdstuk 29's non-content states share, so they cannot drift apart.
+/// Finds the loading placeholder. Public so a test can assert *which* waiting
+/// state is on screen rather than merely that the grid is absent.
+const Key tvCatalogSkeletonKey = ValueKey('tvCatalogSkeleton');
+
+/// What the page looks like before the first round of results lands.
+///
+/// A centred spinner on an otherwise empty page was the first build, and it is
+/// the one frame that undoes the rest: the user presses Films and gets a black
+/// screen with a small red circle in it, then the catalogue appears all at
+/// once. Nothing about it says a wall of posters is coming.
+///
+/// So the placeholder is the page, on the page's own geometry —
+/// [TvCatalogGrid.forWidth] is the same call the real grid makes, so the
+/// columns, the card width, the gutter and the outer inset are not
+/// approximated here, they are identical. The posters resolve in place instead
+/// of replacing something shaped differently, and the first thing the eye is
+/// given is the layout it is about to read.
+///
+/// Deliberately still. A shimmer is the reflex, and it would cost the goldens
+/// their determinism — `pumpAndSettle` never returns under a repeating
+/// animation — for motion that a 10-foot surface reads as flicker rather than
+/// as progress.
+class _SkeletonGrid extends StatelessWidget {
+  const _SkeletonGrid({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final mono = tokens(context);
+    final scale = TvLayoutConstants.scaleOf(context);
+    final grid = TvCatalogGrid.forWidth(MediaQuery.sizeOf(context).width, scale: scale);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardHeight = grid.cardWidth / TvCatalogLayout.posterAspectRatio;
+        // Enough rows to reach the bottom edge, so the placeholder fills the
+        // surface it is standing in for rather than floating in the top half of
+        // it. Partly-visible rows count: the real grid has them too.
+        final rows = constraints.maxHeight.isFinite
+            ? ((constraints.maxHeight + grid.gutter) / (cardHeight + grid.gutter)).ceil().clamp(1, 6)
+            : 2;
+
+        // Not a bare ClipRect: the bottom row is meant to run off the edge the
+        // way the real grid's does, and a Column that overtops its constraints
+        // asserts before anything gets clipped. A scroll view the user cannot
+        // scroll gives the Column the unbounded height it needs and clips the
+        // result — which is also, structurally, what the real grid is.
+        return SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: grid.inset),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var row = 0; row < rows; row++) ...[
+                  if (row > 0) SizedBox(height: grid.gutter),
+                  Row(
+                    children: [
+                      for (var column = 0; column < grid.columns; column++) ...[
+                        if (column > 0) SizedBox(width: grid.gutter),
+                        _SkeletonCard(width: grid.cardWidth, scale: scale, mono: mono),
+                      ],
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// One placeholder card: the poster block and the two text bars under it, on
+/// the metrics [TvUnifiedMediaCard] uses for the real thing.
+class _SkeletonCard extends StatelessWidget {
+  const _SkeletonCard({required this.width, required this.scale, required this.mono});
+
+  final double width;
+  final double scale;
+  final MonoTokens mono;
+
+  @override
+  Widget build(BuildContext context) {
+    final barHeight = TvCatalogLayout.cardTitleFontSize * scale;
+    final metaHeight = TvCatalogLayout.cardMetaFontSize * scale;
+
+    return SizedBox(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: width,
+            height: width / TvCatalogLayout.posterAspectRatio,
+            decoration: BoxDecoration(
+              color: mono.text.withValues(alpha: TvCatalogLayout.skeletonArtworkFill),
+              borderRadius: BorderRadius.circular(TvCatalogLayout.cardRadius * scale),
+            ),
+          ),
+          SizedBox(height: TvCatalogLayout.cardFooterPaddingVertical * scale),
+          _SkeletonBar(
+            width: width * TvCatalogLayout.skeletonTitleWidthFraction,
+            height: barHeight,
+            scale: scale,
+            mono: mono,
+          ),
+          SizedBox(height: TvCatalogLayout.cardFooterLineGap * scale * 2),
+          _SkeletonBar(
+            width: width * TvCatalogLayout.skeletonMetaWidthFraction,
+            height: metaHeight,
+            scale: scale,
+            mono: mono,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkeletonBar extends StatelessWidget {
+  const _SkeletonBar({required this.width, required this.height, required this.scale, required this.mono});
+
+  final double width;
+  final double height;
+  final double scale;
+  final MonoTokens mono;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: mono.text.withValues(alpha: TvCatalogLayout.skeletonTextFill),
+        borderRadius: BorderRadius.circular(TvCatalogLayout.skeletonBarRadius * scale),
+      ),
+    );
+  }
+}
+
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.title, required this.body, this.actionLabel, this.onAction});
 

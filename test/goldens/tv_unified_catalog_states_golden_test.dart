@@ -358,17 +358,21 @@ void main() {
     final harness = harnessFor(_ServerBehaviour.hang);
     await tester.pumpWidget(_screenShell(harness));
 
-    // A fixed pump schedule instead of `pumpAndSettle`: the indicator never
-    // settles, and a golden of an animation needs the same elapsed time on
-    // every run. Ten frames is comfortably past the preference read and the
-    // merge start, both of which resolve on the microtask queue.
+    // A fixed pump schedule rather than `pumpAndSettle`: the fetch is hung by
+    // design here, so there is no settled state to wait for. Ten frames is
+    // comfortably past the preference read and the merge start, both of which
+    // resolve on the microtask queue.
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
     expect(harness.catalog.isInitialLoading, isTrue);
     expect(harness.catalog.snapshot.groups, isEmpty);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    // The placeholder grid, not a spinner: this state is meant to show the
+    // shape of the page that is coming. A spinner reappearing here would be the
+    // regression.
+    expect(find.byKey(tvCatalogSkeletonKey), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
     await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_state_loading');
 
     // The picture is taken; let the fetch go so its timeout timer is cancelled

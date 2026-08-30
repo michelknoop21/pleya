@@ -418,34 +418,39 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
                         TvCatalogLayout.filterRailMaxWidth,
                       )
                       .toDouble();
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Flexible(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(width: railWidth, child: _buildRail(sections, scale)),
-                            SizedBox(width: TvCatalogLayout.filterZoneGap * scale),
-                            Expanded(child: _buildOptions(rows, scale)),
-                          ],
-                        ),
-                      ),
-                      // Indented to the options column rather than to the panel
-                      // edge. Flush left it starts under the rail and reads as
-                      // a caption *of the rail*, which is the one thing it is
-                      // not about — the categories it explains are the ones not
-                      // in the rail.
-                      if (sections.length != _railOrder.length)
-                        Padding(
-                          padding: EdgeInsets.only(
-                            left: railWidth + TvCatalogLayout.filterZoneGap * scale,
-                            top: TvSourcePickerLayout.rowGap * scale,
+                  final noteShown = sections.length != _railOrder.length;
+                  return SizedBox(
+                    height: _zoneHeight(scale, constraints.maxHeight),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(width: railWidth, child: _buildRail(sections, scale)),
+                        SizedBox(width: TvCatalogLayout.filterZoneGap * scale),
+                        // The note lives *inside* the options column, under the
+                        // list rather than under the whole zone. It belongs to
+                        // the options either way — the categories it explains
+                        // are the ones missing from the rail, so as a caption of
+                        // the rail it would be about the wrong half — but with
+                        // the zone now a fixed height, a note placed under the
+                        // zone floats a hundred pixels below the last option in
+                        // any category short enough not to fill it, and reads as
+                        // unrelated to anything. Under a loose list it stays
+                        // against the row it is talking about.
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Flexible(fit: FlexFit.loose, child: _buildOptions(rows, scale)),
+                              if (noteShown)
+                                Padding(
+                                  padding: EdgeInsets.only(top: TvSourcePickerLayout.rowGap * scale),
+                                  child: _PanelNote(text: t.unifiedCatalog.filters.someUnavailable, scale: scale),
+                                ),
+                            ],
                           ),
-                          child: _PanelNote(text: t.unifiedCatalog.filters.someUnavailable, scale: scale),
                         ),
-                    ],
+                      ],
+                    ),
                   );
                 },
               ),
@@ -456,6 +461,24 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
         ),
       ),
     );
+  }
+
+  /// The height of the zone area, which is deliberately *not* the height of
+  /// what is in it.
+  ///
+  /// See [TvCatalogLayout.filterZoneRows]: a panel sized to its active category
+  /// jumps every time the focus moves down the rail. This makes the two zones
+  /// one stable box, so the rail, the options and the footer all stay where the
+  /// user left them and only the contents of the right-hand column change.
+  ///
+  /// The clamp is what keeps that promise honest on a surface too short to keep
+  /// it: below the ideal height the zone takes what there is, and the fade over
+  /// the options takes over from there.
+  double _zoneHeight(double scale, double available) {
+    const rows = TvCatalogLayout.filterZoneRows;
+    final ideal = (TvCatalogLayout.optionRowMinHeight * rows + TvCatalogLayout.optionRowGap * (rows - 1)) * scale;
+    if (!available.isFinite) return ideal;
+    return math.max(0, math.min(ideal, available));
   }
 
   /// The left zone: one row per available category.

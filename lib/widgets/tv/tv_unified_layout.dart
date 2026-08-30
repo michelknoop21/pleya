@@ -235,6 +235,23 @@ class TvCatalogLayout {
   static const double cardFooterPaddingVertical = 8;
   static const double cardFooterLineGap = 3;
 
+  /// The loading placeholder's fills, as alphas on `MonoTokens.text`.
+  ///
+  /// Two values rather than one because the placeholder is a card, not a
+  /// rectangle: the poster block carries the eye and the two text bars under it
+  /// have to read as subordinate to it, exactly as the real title and meta line
+  /// do. Flat at one alpha the skeleton reads as a grid of grey slabs, which is
+  /// the "Flutter database grid" impression the page exists to avoid.
+  static const double skeletonArtworkFill = 0.055;
+  static const double skeletonTextFill = 0.085;
+
+  /// Widths of the two placeholder text bars, as fractions of the card. Unequal
+  /// on purpose: two bars of the same length are a shape, two of these lengths
+  /// are a title with a shorter line under it.
+  static const double skeletonTitleWidthFraction = 0.72;
+  static const double skeletonMetaWidthFraction = 0.45;
+  static const double skeletonBarRadius = 3;
+
   /// Density of a panel option row — one line of text, sometimes two.
   ///
   /// Its own set rather than [TvSourcePickerLayout]'s row metrics: a source row
@@ -264,6 +281,24 @@ class TvCatalogLayout {
   /// as two zones; a hairline divider was tried first and turned the panel back
   /// into a settings window.
   static const double filterZoneGap = 18;
+
+  /// How many option rows the zone area is tall, regardless of how many the
+  /// active category actually has.
+  ///
+  /// Without this the panel is as tall as its content, and content is whatever
+  /// category the focus is on: Servers has three rows, Genre has ten. Walking
+  /// DOWN the rail then resized the panel by some 165 logical pixels a step and
+  /// — because the sheet is centred — slid it up and down the screen while the
+  /// user was only moving between two labels. The footer moved under the
+  /// pointer of attention every press.
+  ///
+  /// Six is chosen against both zones, not just one: it is taller than a full
+  /// five-category rail (5 * 38 + 4 * 7 = 218 against 263), so the rail never
+  /// sets the height and the split never reflows, and it leaves the short
+  /// categories with quiet space under them rather than a cramped box. Longer
+  /// lists keep scrolling under [_FadingEdges], which is the affordance that
+  /// already says "there is more below".
+  static const int filterZoneRows = 6;
 
   /// The count chip on a category that has active selections.
   static const double filterCountFontSize = 10.5;
