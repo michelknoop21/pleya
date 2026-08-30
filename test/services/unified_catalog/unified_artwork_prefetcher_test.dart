@@ -16,6 +16,7 @@ import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/services/unified_catalog/unified_artwork_prefetcher.dart';
+import 'package:pleya/widgets/optimized_media_image.dart';
 
 /// A Jellyfin-shaped self-contained artwork URL. `getOptimizedImageUrl` sizes
 /// these without needing a client at all, which keeps the fixtures honest:
@@ -241,12 +242,12 @@ void main() {
       expect(precache.requests.single.cacheKey, startsWith('plex_optimized_'));
       // A rotated token must not invalidate the entry: same image, same key.
       expect(
-        artworkCacheKey('https://jf.test/Items/0/Images/Primary?api_key=one&maxWidth=400'),
-        artworkCacheKey('https://jf.test/Items/0/Images/Primary?api_key=two&maxWidth=400'),
+        OptimizedMediaImage.artworkCacheKey('https://jf.test/Items/0/Images/Primary?api_key=one&maxWidth=400'),
+        OptimizedMediaImage.artworkCacheKey('https://jf.test/Items/0/Images/Primary?api_key=two&maxWidth=400'),
       );
       expect(
-        artworkCacheKey('https://plex.test/photo?url=%2Fthumb&X-Plex-Token=aaa'),
-        artworkCacheKey('https://plex.test/photo?url=%2Fthumb&X-Plex-Token=bbb'),
+        OptimizedMediaImage.artworkCacheKey('https://plex.test/photo?url=%2Fthumb&X-Plex-Token=aaa'),
+        OptimizedMediaImage.artworkCacheKey('https://plex.test/photo?url=%2Fthumb&X-Plex-Token=bbb'),
       );
     });
   });

@@ -26,6 +26,25 @@
 /// the header while UP anywhere else stays in the grid — a distinction the
 /// default policy cannot make. Rows are explicit, and each card names its four
 /// neighbours.
+///
+/// ## What that costs, and what the prefetcher does about it
+///
+/// Building every row eagerly means every card is mounted, so every poster is
+/// requested as soon as the page is built — not when it comes into view. The
+/// prefetcher below therefore does *not* buy laziness here; what it buys is
+/// ordering and a ceiling. It warms the cards nearest the user first and holds
+/// itself to fewer in-flight requests than `image_cache_service.dart` grants
+/// artwork globally, so the warm-up can never occupy every slot and starve the
+/// row on screen.
+///
+/// **Known debt, deliberately not paid in fase 5.** Making the grid lazy is the
+/// change that would turn a loaded page of several hundred titles into a
+/// viewport's worth of image requests, and it is the change that would make the
+/// prefetcher load-bearing rather than merely well-behaved. It is not a
+/// swap of one scroll widget for another: it reopens exactly the traversal
+/// question the paragraph above settles, on a platform where the only honest
+/// verification is hardware that is not available until after fase 10A. It is
+/// recorded here rather than attempted.
 library;
 
 import 'package:flutter/material.dart';
@@ -33,6 +52,7 @@ import 'package:flutter/material.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
+import '../../services/unified_catalog/unified_artwork_prefetcher.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import 'tv_unified_layout.dart';
@@ -51,6 +71,7 @@ class TvUnifiedMediaGrid extends StatefulWidget {
     this.onExitLeft,
     this.footer,
     this.controller,
+    this.precache,
   });
 
   final List<UnifiedMediaGroup> groups;
@@ -82,6 +103,12 @@ class TvUnifiedMediaGrid extends StatefulWidget {
 
   final ScrollController? controller;
 
+  /// Replaces the artwork warm-up call. Null in production, where the
+  /// prefetcher uses `precacheImage`; a test injects its own to assert *which*
+  /// posters a focus move warms, without a network.
+  @visibleForTesting
+  final UnifiedArtworkPrecache? precache;
+
   @override
   State<TvUnifiedMediaGrid> createState() => TvUnifiedMediaGridState();
 }
@@ -94,6 +121,15 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
   /// where the user was standing.
   String? _focusedGroupId;
 
+  late final UnifiedArtworkPrefetcher _prefetcher = UnifiedArtworkPrefetcher(
+    clientFor: (serverId) => widget.clientFor?.call(serverId),
+    precache: widget.precache,
+  );
+
+  /// The last resolved grid, so a focus change can turn a card index into a
+  /// visible range without re-deriving the column count from the viewport.
+  TvCatalogGrid? _grid;
+
   @override
   void didUpdateWidget(TvUnifiedMediaGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -102,10 +138,32 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
 
   @override
   void dispose() {
+    _prefetcher.dispose();
     for (final node in _nodes.values) {
       node.dispose();
     }
     super.dispose();
+  }
+
+  /// Warms artwork around the row [index] sits in.
+  ///
+  /// Driven by focus rather than by scroll offset, because on this platform
+  /// focus *is* the cursor: a remote moves the selection and the view follows
+  /// it, so the focused card is a truer statement of where the user is than any
+  /// pixel offset. The prefetcher adds its own margin on both sides, so a row's
+  /// worth of range here is enough.
+  void _warmAround(int index) {
+    final grid = _grid;
+    if (grid == null || widget.groups.isEmpty) return;
+    final row = index ~/ grid.columns;
+    final first = row * grid.columns;
+    _prefetcher.prefetchAround(
+      context: context,
+      groups: widget.groups,
+      firstVisibleIndex: first,
+      lastVisibleIndex: first + grid.columns - 1,
+      posterSize: Size(grid.cardWidth, grid.cardWidth / TvCatalogLayout.posterAspectRatio),
+    );
   }
 
   /// Focuses the first card, for the header's DOWN exit (hoofdstuk 7.4: "Down
@@ -184,6 +242,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
     final grid = TvCatalogGrid.forWidth(MediaQuery.sizeOf(context).width, scale: scale);
+    _grid = grid;
     final rows = <Widget>[];
 
     for (var start = 0; start < widget.groups.length; start += grid.columns) {
@@ -234,7 +293,9 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       focusNode: _nodeFor(group),
       onSelect: () => widget.onActivate(group),
       onFocusChange: (hasFocus) {
-        if (hasFocus) _focusedGroupId = group.groupId;
+        if (!hasFocus) return;
+        _focusedGroupId = group.groupId;
+        _warmAround(index);
       },
       onNavigateUp: isFirstRow ? widget.onExitTop : null,
       // DOWN on the last row is what asks for the next page. It fires the load

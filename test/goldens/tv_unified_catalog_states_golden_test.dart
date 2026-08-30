@@ -14,11 +14,8 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
-import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/unified_media_group.dart';
-import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/media/unified/unified_route_context.dart';
-import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
@@ -46,6 +43,8 @@ import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/golden.dart';
+import '../test_helpers/tv_catalog_artwork.dart';
+import '../test_helpers/tv_catalog_fixtures.dart';
 import '../test_helpers/prefs.dart';
 
 /// Visual acceptance for the Films page's **non-default** states
@@ -88,88 +87,6 @@ import '../test_helpers/prefs.dart';
 // ---------------------------------------------------------------------------
 // Fixtures — private to this file on purpose; shared catalog fixtures are Main's
 // ---------------------------------------------------------------------------
-
-MediaItem _movie({
-  required String id,
-  required String title,
-  int? year = 2024,
-  String? genre = 'Science fiction',
-  int? viewOffsetMs,
-  int? viewCount,
-  String serverId = 'nas',
-  String serverName = 'NAS',
-  MediaBackend backend = MediaBackend.plex,
-}) => MediaItem(
-  id: id,
-  backend: backend,
-  kind: MediaKind.movie,
-  title: title,
-  year: year,
-  durationMs: 9960000,
-  viewOffsetMs: viewOffsetMs,
-  viewCount: viewCount,
-  genres: genre == null ? null : [genre],
-  serverId: serverId,
-  serverName: serverName,
-);
-
-UnifiedMediaGroup _group(String id, List<MediaItem> items, {bool watched = false, bool inProgress = false}) {
-  final sources = [for (final item in items) UnifiedMediaSource.fromItem(item)];
-  return UnifiedMediaGroup(
-    groupId: id,
-    identity: CanonicalMediaIdentity.movie(title: items.first.title, year: items.first.year),
-    sources: sources,
-    representativeSourceKey: sources.first.sourceKey,
-    watchState: UnifiedWatchState(
-      representativeSourceKey: sources.first.sourceKey,
-      isWatched: watched,
-      hasActiveProgress: inProgress,
-      lastViewedAt: inProgress || watched ? 1 : null,
-    ),
-  );
-}
-
-/// A page's worth of groups, mixing single and multi source with watched and
-/// in-progress state — the same rationale as next door: a grid of identical
-/// cards would say nothing about how the badge, the tick and the resume bar
-/// share one row.
-List<UnifiedMediaGroup> _catalog() {
-  const titles = <({String title, int sources, bool watched, bool progress, int? offset})>[
-    (title: 'Dune: Part Two', sources: 2, watched: false, progress: true, offset: 2538000),
-    (title: 'Oppenheimer', sources: 3, watched: true, progress: false, offset: null),
-    (title: 'The Batman', sources: 1, watched: false, progress: true, offset: 6400000),
-    (title: 'Godzilla Minus One', sources: 2, watched: false, progress: false, offset: null),
-    (title: 'Poor Things', sources: 1, watched: true, progress: false, offset: null),
-    (title: 'Everything Everywhere All at Once', sources: 2, watched: false, progress: false, offset: null),
-    (title: 'The Last House', sources: 1, watched: false, progress: false, offset: null),
-    (title: 'Mutiny', sources: 2, watched: false, progress: true, offset: 3100000),
-    (title: 'A Quiet Place', sources: 1, watched: true, progress: false, offset: null),
-    (title: 'Blade Runner 2049', sources: 3, watched: false, progress: false, offset: null),
-    (title: 'Arrival', sources: 1, watched: false, progress: false, offset: null),
-    (title: 'Sicario', sources: 2, watched: false, progress: false, offset: null),
-  ];
-  return [
-    for (var i = 0; i < titles.length; i++)
-      _group(
-        'g$i',
-        [
-          for (var s = 0; s < titles[i].sources; s++)
-            _movie(
-              id: 'i$i-$s',
-              title: titles[i].title,
-              year: 2017 + (i % 8),
-              viewOffsetMs: s == 0 ? titles[i].offset : null,
-              viewCount: s == 0 && titles[i].watched ? 1 : null,
-              serverId: ['nas', 'attic', 'shed'][s],
-              serverName: ['NAS', 'Zolder', 'Schuur'][s],
-              backend: s == 1 ? MediaBackend.jellyfin : MediaBackend.plex,
-            ),
-        ],
-        watched: titles[i].watched,
-        inProgress: titles[i].progress,
-      ),
-  ];
-}
 
 // ---------------------------------------------------------------------------
 // A server that behaves the way one state needs it to
@@ -389,9 +306,13 @@ void main() {
   setUpAll(() async {
     await loadAppFontsForGoldens();
     TvDetectionService.debugSetAppleTVOverride(true);
+    TvGoldenArtwork.install();
   });
 
-  tearDownAll(() => TvDetectionService.debugSetAppleTVOverride(null));
+  tearDownAll(() {
+    TvDetectionService.debugSetAppleTVOverride(null);
+    TvGoldenArtwork.remove();
+  });
 
   setUp(() async {
     // The three store-backed screens all read `UnifiedCatalogQueryStore`
@@ -470,7 +391,7 @@ void main() {
     await tester.pumpWidget(
       _shell(
         _page(
-          groups: _catalog(),
+          groups: tvGoldenCatalog(),
           actionNodes: nodes(tester),
           onActivate: (_) {},
           isLoadingMore: true,
@@ -534,7 +455,7 @@ void main() {
   // picker a test opened by hand.
   testWidgets('films, source picker over the grid', (tester) async {
     setGoldenSurfaceSize(tester);
-    final groups = _catalog();
+    final groups = tvGoldenCatalog();
     // Two online sources on the focused title, and no preferred server stored,
     // which is precisely `ShowSourcePicker`'s territory (hoofdstuk 14.6: one
     // usable source is not a question, so it is not asked).

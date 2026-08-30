@@ -3,15 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
-import 'package:pleya/media/ids.dart';
-import 'package:pleya/media/media_backend.dart';
-import 'package:pleya/media/media_item.dart';
-import 'package:pleya/media/media_kind.dart';
-import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/unified_media_group.dart';
-import 'package:pleya/media/unified/unified_media_source.dart';
-import 'package:pleya/media/unified/unified_watch_state.dart';
-import 'package:pleya/services/unified_catalog/source_cursor.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
@@ -26,6 +18,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../test_helpers/golden.dart';
 import '../test_helpers/tv_catalog_artwork.dart';
+import '../test_helpers/tv_catalog_fixtures.dart';
 
 /// Visual acceptance for the fase-5 Films and Series pages
 /// (docs/tvos-unified-experience.md hoofdstuk 10, 33.2, 33.3, 34).
@@ -55,119 +48,6 @@ import '../test_helpers/tv_catalog_artwork.dart';
 ///
 /// Regenerate after an intentional visual change:
 /// `flutter test --update-goldens test/goldens/tv_unified_catalog_golden_test.dart`
-
-MediaItem _movie({
-  required String id,
-  required String title,
-  int? year = 2024,
-  String? genre = 'Science fiction',
-  int? viewOffsetMs,
-  int? viewCount,
-  String serverId = 'nas',
-  String serverName = 'NAS',
-  MediaBackend backend = MediaBackend.plex,
-  int? artwork,
-}) => MediaItem(
-  id: id,
-  backend: backend,
-  kind: MediaKind.movie,
-  title: title,
-  year: year,
-  durationMs: 9960000,
-  viewOffsetMs: viewOffsetMs,
-  viewCount: viewCount,
-  genres: genre == null ? null : [genre],
-  serverId: serverId,
-  serverName: serverName,
-  // Null renders the no-artwork panel, which is a state worth keeping
-  // reachable; every catalog fixture passes an index.
-  thumbPath: artwork == null ? null : TvGoldenArtwork.pathFor(artwork),
-);
-
-UnifiedMediaGroup _group(String id, List<MediaItem> items, {bool watched = false, bool inProgress = false}) {
-  final sources = [for (final item in items) UnifiedMediaSource.fromItem(item)];
-  return UnifiedMediaGroup(
-    groupId: id,
-    identity: CanonicalMediaIdentity.movie(title: items.first.title, year: items.first.year),
-    sources: sources,
-    representativeSourceKey: sources.first.sourceKey,
-    watchState: UnifiedWatchState(
-      representativeSourceKey: sources.first.sourceKey,
-      isWatched: watched,
-      hasActiveProgress: inProgress,
-      lastViewedAt: inProgress || watched ? 1 : null,
-    ),
-  );
-}
-
-/// A page's worth of groups: a mix of single and multi source, watched,
-/// in-progress and untouched, plus one title long enough to hit the two-line
-/// cap. That mix is the point — a grid of identical cards proves nothing about
-/// whether the badge, the tick and the resume bar can coexist in one row.
-List<UnifiedMediaGroup> _catalog() {
-  final titles = <({String title, String genre, int sources, bool watched, bool progress, int? offset})>[
-    (title: 'Paddington in Peru', genre: 'Family', sources: 2, watched: false, progress: true, offset: 2538000),
-    (title: 'Dune: Part Two', genre: 'Science fiction', sources: 3, watched: true, progress: false, offset: null),
-    (title: 'Inside Out 2', genre: 'Animation', sources: 1, watched: false, progress: true, offset: 6400000),
-    (title: 'The Zone of Interest', genre: 'Drama', sources: 2, watched: false, progress: false, offset: null),
-    (title: 'Poor Things', genre: 'Comedy', sources: 1, watched: true, progress: false, offset: null),
-    (
-      title: 'Everything Everywhere All at Once',
-      genre: 'Adventure',
-      sources: 2,
-      watched: false,
-      progress: false,
-      offset: null,
-    ),
-    (title: 'Planet Earth III', genre: 'Documentary', sources: 1, watched: false, progress: false, offset: null),
-    (title: 'The Batman', genre: 'Crime', sources: 2, watched: false, progress: true, offset: 3100000),
-    (title: 'Lawrence of Arabia', genre: 'Epic', sources: 1, watched: true, progress: false, offset: null),
-    (title: 'Past Lives', genre: 'Romance', sources: 3, watched: false, progress: false, offset: null),
-    (title: 'Princess Mononoke', genre: 'Fantasy', sources: 1, watched: false, progress: false, offset: null),
-    (title: 'Casablanca', genre: 'Classic', sources: 2, watched: false, progress: false, offset: null),
-  ];
-  return [
-    for (var i = 0; i < titles.length; i++)
-      _group(
-        'g$i',
-        [
-          for (var s = 0; s < titles[i].sources; s++)
-            _movie(
-              id: 'i$i-$s',
-              title: titles[i].title,
-              year: 2017 + (i % 8),
-              genre: titles[i].genre,
-              artwork: i,
-              viewOffsetMs: s == 0 ? titles[i].offset : null,
-              viewCount: s == 0 && titles[i].watched ? 1 : null,
-              serverId: ['nas', 'attic', 'shed'][s],
-              serverName: ['NAS', 'Zolder', 'Schuur'][s],
-              backend: s == 1 ? MediaBackend.jellyfin : MediaBackend.plex,
-            ),
-        ],
-        watched: titles[i].watched,
-        inProgress: titles[i].progress,
-      ),
-  ];
-}
-
-final _libraries = <CatalogLibrary>[
-  (serverId: ServerId('nas'), serverName: 'NAS', libraryId: '1', libraryTitle: 'Films 4K', backend: MediaBackend.plex),
-  (
-    serverId: ServerId('attic'),
-    serverName: 'Zolder',
-    libraryId: '2',
-    libraryTitle: 'Movies',
-    backend: MediaBackend.jellyfin,
-  ),
-  (
-    serverId: ServerId('shed'),
-    serverName: 'Schuur',
-    libraryId: '3',
-    libraryTitle: 'Archief',
-    backend: MediaBackend.pleyaServer,
-  ),
-];
 
 /// The production shell: `InputModeTracker` (which is what makes TV default to
 /// keyboard mode, and therefore what makes the focus ring paint at all) and
@@ -202,6 +82,7 @@ Widget _page({
   bool isComplete = false,
   bool isLoadingMore = false,
   int failedLibraries = 0,
+  ScrollController? controller,
 }) => Column(
   crossAxisAlignment: CrossAxisAlignment.stretch,
   children: [
@@ -239,6 +120,7 @@ Widget _page({
     ),
     Expanded(
       child: TvUnifiedMediaGrid(
+        controller: controller,
         groups: groups,
         onActivate: (_) {},
         hasMore: !isComplete,
@@ -282,7 +164,7 @@ void main() {
   // the type hierarchy — which is exactly what should be able to carry it.
   testWidgets('films, default state', (tester) async {
     setGoldenSurfaceSize(tester);
-    await tester.pumpWidget(_shell(_page(groups: _catalog(), actionNodes: nodes(tester))));
+    await tester.pumpWidget(_shell(_page(groups: tvGoldenCatalog(), actionNodes: nodes(tester))));
     await tester.pumpAndSettle();
     await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_films_default');
   });
@@ -293,7 +175,7 @@ void main() {
   testWidgets('films, a card focused', (tester) async {
     setGoldenSurfaceSize(tester);
     final actionNodes = nodes(tester);
-    await tester.pumpWidget(_shell(_page(groups: _catalog(), actionNodes: actionNodes)));
+    await tester.pumpWidget(_shell(_page(groups: tvGoldenCatalog(), actionNodes: actionNodes)));
     await tester.pumpAndSettle();
     final card = find.byType(TvUnifiedMediaGrid);
     expect(card, findsOneWidget);
@@ -313,7 +195,7 @@ void main() {
     await tester.pumpWidget(
       _shell(
         _page(
-          groups: _catalog(),
+          groups: tvGoldenCatalog(),
           actionNodes: actionNodes,
           filterBadge: 3,
           sourcesValue: t.unifiedCatalog.sources(count: 2),
@@ -329,11 +211,29 @@ void main() {
   // Hoofdstuk 10.7 and 29 together: an exhausted catalog states its exact
   // total, and a library that did not answer says so quietly under the grid
   // instead of over it.
+  //
+  // **Scrolled to the bottom, and that is the whole point of the test.** The
+  // footer this state exists to picture lives under the last row, which on the
+  // canonical 584-high canvas is well below the fold. Captured unscrolled, this
+  // golden was byte-identical to `films_default` — it would have passed while
+  // the count line and the amber notice were broken, missing or absent.
   testWidgets('films, complete with one library missing', (tester) async {
     setGoldenSurfaceSize(tester);
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
     await tester.pumpWidget(
-      _shell(_page(groups: _catalog(), actionNodes: nodes(tester), isComplete: true, failedLibraries: 1)),
+      _shell(
+        _page(
+          groups: tvGoldenCatalog(),
+          actionNodes: nodes(tester),
+          isComplete: true,
+          failedLibraries: 1,
+          controller: controller,
+        ),
+      ),
     );
+    await tester.pumpAndSettle();
+    controller.jumpTo(controller.position.maxScrollExtent);
     await tester.pumpAndSettle();
     await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_films_partial');
   });
@@ -344,20 +244,27 @@ void main() {
   testWidgets('films, long titles', (tester) async {
     setGoldenSurfaceSize(tester);
     final groups = [
-      _group('long1', [
-        _movie(id: 'l1', title: 'The Assassination of Jesse James by the Coward Robert Ford', artwork: 8),
-        _movie(
+      tvGoldenGroup('long1', [
+        tvGoldenMovie(id: 'l1', title: 'The Assassination of Jesse James by the Coward Robert Ford', artwork: 8),
+        tvGoldenMovie(
           id: 'l1b',
           title: 'The Assassination of Jesse James by the Coward Robert Ford',
           serverId: 'attic',
           artwork: 8,
         ),
       ]),
-      _group('long2', [_movie(id: 'l2', title: 'Birdman or (The Unexpected Virtue of Ignorance)', artwork: 6)]),
-      _group('long3', [
-        _movie(id: 'l3', title: 'Everything Everywhere All at Once', genre: 'Wetenschappelijke fictie', artwork: 5),
+      tvGoldenGroup('long2', [
+        tvGoldenMovie(id: 'l2', title: 'Birdman or (The Unexpected Virtue of Ignorance)', artwork: 6),
       ]),
-      ..._catalog().take(9),
+      tvGoldenGroup('long3', [
+        tvGoldenMovie(
+          id: 'l3',
+          title: 'Everything Everywhere All at Once',
+          genre: 'Wetenschappelijke fictie',
+          artwork: 5,
+        ),
+      ]),
+      ...tvGoldenCatalog().take(9),
     ];
     await tester.pumpWidget(_shell(_page(groups: groups, actionNodes: nodes(tester))));
     await tester.pumpAndSettle();
@@ -371,7 +278,7 @@ void main() {
         Builder(
           builder: (context) => Stack(
             children: [
-              _page(groups: _catalog(), actionNodes: nodes(tester)),
+              _page(groups: tvGoldenCatalog(), actionNodes: nodes(tester)),
               Center(
                 child: ElevatedButton(
                   onPressed: () => showTvCatalogSortPanel(context, selected: UnifiedCatalogSort.recentlyAdded),
@@ -399,14 +306,14 @@ void main() {
         Builder(
           builder: (context) => Stack(
             children: [
-              _page(groups: _catalog(), actionNodes: nodes(tester)),
+              _page(groups: tvGoldenCatalog(), actionNodes: nodes(tester)),
               Center(
                 child: ElevatedButton(
                   onPressed: () => showTvCatalogFilterPanel(
                     context,
                     selection: const UnifiedCatalogFilterSelection(serverIds: {'nas'}),
-                    capabilities: unifiedFilterCapabilitiesFor(_libraries.map((l) => l.backend)),
-                    libraries: _libraries,
+                    capabilities: unifiedFilterCapabilitiesFor(tvGoldenLibraries.map((l) => l.backend)),
+                    libraries: tvGoldenLibraries,
                     initialSection: TvCatalogFilterSection.servers,
                     clientFor: (_) => null,
                   ),
@@ -427,13 +334,13 @@ void main() {
   // the one where every section is live.
   testWidgets('filter panel with every section available', (tester) async {
     setGoldenSurfaceSize(tester);
-    final supported = _libraries.take(2).toList();
+    final supported = tvGoldenLibraries.take(2).toList();
     await tester.pumpWidget(
       _shell(
         Builder(
           builder: (context) => Stack(
             children: [
-              _page(groups: _catalog(), actionNodes: nodes(tester)),
+              _page(groups: tvGoldenCatalog(), actionNodes: nodes(tester)),
               Center(
                 child: ElevatedButton(
                   onPressed: () => showTvCatalogFilterPanel(
@@ -465,13 +372,13 @@ void main() {
   // rail went blank here.
   testWidgets('filter panel, libraries category with focus in the options', (tester) async {
     setGoldenSurfaceSize(tester);
-    final supported = _libraries.take(2).toList();
+    final supported = tvGoldenLibraries.take(2).toList();
     await tester.pumpWidget(
       _shell(
         Builder(
           builder: (context) => Stack(
             children: [
-              _page(groups: _catalog(), actionNodes: nodes(tester)),
+              _page(groups: tvGoldenCatalog(), actionNodes: nodes(tester)),
               Center(
                 child: ElevatedButton(
                   onPressed: () => showTvCatalogFilterPanel(
@@ -496,7 +403,7 @@ void main() {
     await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
     await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
-    await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_filter_panel_libraries');
+    await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_filter_paneltvGoldenLibraries');
   });
 
   // Several categories narrowing at once, which is what the count chips are
@@ -504,13 +411,13 @@ void main() {
   // each category to find out.
   testWidgets('filter panel, several categories active at once', (tester) async {
     setGoldenSurfaceSize(tester);
-    final supported = _libraries.take(2).toList();
+    final supported = tvGoldenLibraries.take(2).toList();
     await tester.pumpWidget(
       _shell(
         Builder(
           builder: (context) => Stack(
             children: [
-              _page(groups: _catalog(), actionNodes: nodes(tester)),
+              _page(groups: tvGoldenCatalog(), actionNodes: nodes(tester)),
               Center(
                 child: ElevatedButton(
                   onPressed: () => showTvCatalogFilterPanel(

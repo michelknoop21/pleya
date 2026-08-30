@@ -42,16 +42,14 @@
 library;
 
 import 'dart:collection';
-import 'dart:convert';
 
 import 'package:cached_network_image_ce/cached_network_image.dart';
-import 'package:crypto/crypto.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../utils/media_image_helper.dart';
-import '../download_artwork_helpers.dart';
+import '../../widgets/optimized_media_image.dart';
 import '../image_cache_service.dart';
 
 /// Resolves the client that can sign a group's artwork URL, by server id.
@@ -298,7 +296,9 @@ class UnifiedArtworkPrefetcher {
       imageType: ImageType.poster,
     );
 
-    final cacheKey = artworkCacheKey(url);
+    // The image widget's own key, not a copy of it: a warmed entry stored
+    // under a different key is a second copy the card never finds.
+    final cacheKey = OptimizedMediaImage.artworkCacheKey(url);
     final provider = CachedNetworkImageProvider(
       url,
       cacheKey: cacheKey,
@@ -382,19 +382,6 @@ class UnifiedArtworkPrefetcher {
   @visibleForTesting
   int get inFlightCount => _inFlight;
 }
-
-/// The disk-cache key `OptimizedMediaImage` stores this artwork under.
-///
-/// Duplicated from `OptimizedMediaImage._generateCacheKey`, which is private,
-/// and it has to be byte-identical or the warmed entry is a second copy the
-/// card never finds. Both hash the token-free form of the URL
-/// ([artworkStorageKey]): auth tokens rotate between sessions and would
-/// otherwise invalidate the whole disk cache on every re-auth.
-///
-/// The right end state is one public helper on the image widget and no copy
-/// here; that file is not this change's to edit.
-@visibleForTesting
-String artworkCacheKey(String imageUrl) => 'plex_optimized_${sha1.convert(utf8.encode(artworkStorageKey(imageUrl)))}';
 
 /// The default seam: Flutter's own [precacheImage], on the context the caller
 /// handed to [UnifiedArtworkPrefetcher.prefetchAround].
