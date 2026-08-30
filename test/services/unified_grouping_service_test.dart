@@ -246,6 +246,71 @@ void main() {
       expect(groups.every((g) => g.sources.length == 1), isTrue);
     });
 
+    // Confirmed independently against an unauthorized remote commit's claim
+    // (see fase-2 handoff) against this function's own documented ordering
+    // contract before writing this test.
+    test('a namespace-conflict split places each singleton at its own original index, not all at the first', () {
+      final item1 = MediaItem(
+        id: 's1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'X',
+        year: 2020,
+        serverId: 'srv-1',
+        serverName: '1',
+      );
+      final unrelated = MediaItem(
+        id: 'unrelated',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Completely Different Title',
+        year: 1999,
+        serverId: 'srv-unrelated',
+        serverName: 'unrelated',
+      );
+      final item2 = MediaItem(
+        id: 's2',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'X',
+        year: 2020,
+        serverId: 'srv-2',
+        serverName: '2',
+      );
+      final item3 = MediaItem(
+        id: 's3',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'X',
+        year: 2020,
+        serverId: 'srv-3',
+        serverName: '3',
+      );
+
+      // Same transitive-conflict shape as C23 (item1~item2 share tmdb:100,
+      // item2~item3 share imdb:tt1, item1/item3 disagree on tmdb) but with an
+      // unrelated candidate sitting between item1 and item2 in the input.
+      // The component still splits into three singletons; each one must land
+      // at its own original index, not all bunched at item1's — the
+      // function's own doc comment says a group appears "at the position of
+      // the first candidate that belongs to it", and for a singleton that is
+      // the member itself.
+      final groups = groupUnifiedMediaSources([
+        _candidateFromItem(item1, ids: const ExternalIds(tmdb: 100)),
+        _candidateFromItem(unrelated),
+        _candidateFromItem(item2, ids: const ExternalIds(tmdb: 100, imdb: 'tt1')),
+        _candidateFromItem(item3, ids: const ExternalIds(tmdb: 200, imdb: 'tt1')),
+      ]);
+
+      expect(groups, hasLength(4));
+      expect(groups.every((g) => g.sources.length == 1), isTrue);
+      expect(
+        groups.map((g) => g.sources.single.item.id),
+        ['s1', 'unrelated', 's2', 's3'],
+        reason: 'the unrelated candidate must stay at its own position, not get pushed after the whole split group',
+      );
+    });
+
     test('every source from the input appears in exactly one output group — none dropped, none duplicated', () {
       final all = [
         ...serverACandidates(),

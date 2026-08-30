@@ -853,6 +853,107 @@ void main() {
 
       expect(result.succeededServerIds, {'srv-1'});
     });
+
+    // searchAcrossServers reads MultiServerManager.onlineClients directly
+    // instead of going through _clientsFor(), so it missed the fix above:
+    // a profile-hidden server's items could still surface in cross-server
+    // search results. Confirmed independently against an unauthorized
+    // remote commit's claim (see fase-2 handoff) before writing this test.
+    test('searchAcrossServers excludes a server hidden by the active profile', () async {
+      final visible = PlexClient.forTesting(
+        config: PlexConfig(
+          baseUrl: 'https://plex-visible.example.com',
+          token: 'token',
+          clientIdentifier: 'client-id',
+          product: 'Plezy',
+          version: 'test',
+        ),
+        serverId: ServerId('plex-visible'),
+        serverName: 'Visible',
+        httpClient: MockClient((req) async {
+          if (req.url.path == '/library/search') {
+            return _json({
+              'MediaContainer': {
+                'SearchResult': [
+                  {
+                    'score': 100,
+                    'Metadata': {'ratingKey': 'visible-movie', 'type': 'movie', 'title': 'Visible Movie'},
+                  },
+                ],
+              },
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      // A 500 response alone is not a strong enough canary: searchAcrossServers
+      // already contains a per-server search failure, so a hidden server that
+      // gets contacted and errors would still leave the final result looking
+      // correct by accident. Track requests directly instead.
+      final hiddenRequests = <Uri>[];
+      final hidden = PlexClient.forTesting(
+        config: PlexConfig(
+          baseUrl: 'https://plex-hidden.example.com',
+          token: 'token',
+          clientIdentifier: 'client-id',
+          product: 'Plezy',
+          version: 'test',
+        ),
+        serverId: ServerId('plex-hidden'),
+        serverName: 'Hidden',
+        httpClient: MockClient((req) async {
+          hiddenRequests.add(req.url);
+          return http.Response('server should never be called', 500);
+        }),
+      );
+      addTearDown(visible.close);
+      addTearDown(hidden.close);
+      manager.debugRegisterClientForTesting(visible);
+      manager.debugRegisterClientForTesting(hidden);
+      manager.setVisibleServerIds({'plex-visible'});
+
+      final result = await service.searchAcrossServers('Visible Movie');
+
+      expect(result.items.map((i) => i.id), ['visible-movie']);
+      expect(result.succeededServerIds, {'plex-visible'});
+      expect(hiddenRequests, isEmpty, reason: 'a profile-hidden server must never even be asked');
+    });
+  });
+
+  // _deduplicateContinueWatching calls UnifiedMediaSource.fromItem
+  // unconditionally for every item once any duplicate bucket exists in the
+  // batch, and that factory throws on a null/empty MediaItem.serverId (every
+  // MediaItem variant's serverId is a plain nullable String, so this is a
+  // real, reachable shape, not a hypothetical). Confirmed independently
+  // against an unauthorized remote commit's claim (see fase-2 handoff)
+  // before writing this test.
+  group('DataAggregationService Continue Watching tolerates a malformed row', () {
+    test('a duplicate bucket elsewhere in the batch must not crash dedup for a row missing serverId', () async {
+      final good = MediaItem(
+        id: 'good',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Shared Movie',
+        year: 2020,
+        serverId: 's1',
+        lastViewedAt: 200,
+      );
+      // Shares good's bucket key (same normalized title) so
+      // duplicateBuckets is non-empty and the vulnerable path runs, but its
+      // own serverId is missing — the malformed row.
+      final malformed = MediaItem(
+        id: 'malformed',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Shared Movie',
+        year: 2020,
+        lastViewedAt: 100,
+      );
+
+      final result = await service.mergeContinueWatching(const [], [good, malformed]);
+
+      expect(result.map((i) => i.id), ['good', 'malformed'], reason: 'both rows survive at their own recency position');
+    });
   });
 
   // Fase-0 baseline for Pleya Unified TV 2026 (docs/tvos-unified-experience.md

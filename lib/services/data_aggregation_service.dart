@@ -358,16 +358,38 @@ class DataAggregationService {
     ];
     final evidence = await resolver.resolveEvidence(resolvables);
 
-    final candidates = [
+    // A row with no serverId can never become a UnifiedMediaSource — its
+    // sourceKey is `serverId:id` — and can never legitimately merge with
+    // anything either way. Such a row is set aside before grouping and
+    // spliced back in at its own original position afterward, rather than
+    // letting one malformed item throw and crash dedup for the whole batch
+    // (every other per-item path in this file contains a bad row the same
+    // way instead of losing the good ones next to it).
+    final malformedIndexes = <int>{
       for (var i = 0; i < items.length; i++)
-        GroupingCandidate(source: UnifiedMediaSource.fromItem(items[i]), evidence: evidence[i]),
-    ];
+        if (items[i].serverId == null || items[i].serverId!.isEmpty) i,
+    };
+
+    final originalIndexOf = <String, int>{};
+    final candidates = <GroupingCandidate>[];
+    for (var i = 0; i < items.length; i++) {
+      if (malformedIndexes.contains(i)) continue;
+      final source = UnifiedMediaSource.fromItem(items[i]);
+      originalIndexOf[source.sourceKey] = i;
+      candidates.add(GroupingCandidate(source: source, evidence: evidence[i]));
+    }
     final groups = groupUnifiedMediaSources(candidates, allowWeakFallback: false);
 
     // `sources` preserves candidates' original (recency-sorted) order, so the
     // first source in each group is the one with the highest recency —
-    // exactly the representative this method has always projected.
-    return [for (final group in groups) group.sources.first.item];
+    // exactly the representative this method has always projected. Grouped
+    // representatives and the set-aside malformed rows are merged back by
+    // original index, so nothing silently changes position.
+    final resultByIndex = <int, MediaItem>{
+      for (final group in groups) originalIndexOf[group.sources.first.sourceKey]!: group.sources.first.item,
+      for (final i in malformedIndexes) i: items[i],
+    };
+    return [for (final i in resultByIndex.keys.toList()..sort()) resultByIndex[i]!];
   }
 
   bool _hasOnlineClient(MediaItem item) {
@@ -519,7 +541,7 @@ class DataAggregationService {
       return (items: const <MediaItem>[], succeededServerIds: const <String>{});
     }
 
-    final clients = _serverManager.onlineClients;
+    final clients = _clientsFor(null);
     if (clients.isEmpty) return (items: const <MediaItem>[], succeededServerIds: const <String>{});
 
     final resultLimit = limit ?? defaultMediaSearchLimit;
