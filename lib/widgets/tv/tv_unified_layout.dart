@@ -324,13 +324,20 @@ class TvCatalogLayout {
   /// Fill of the badge capsule, as an alpha on black over the artwork.
   ///
   /// Black rather than a theme colour: it sits on a poster, not on a surface,
-  /// and hoofdstuk 10.3 asks for "kleine donkere/transparante capsule". The
-  /// value came down from 0.62 once the goldens carried colour — against grey
-  /// placeholders an almost-opaque capsule looked like part of the design, and
-  /// against a pastel poster it looked like a debug label stuck on the artwork.
-  /// This is the floor that still holds white text at AA over the brightest
-  /// fixture in the set.
-  static const double badgeFill = 0.46;
+  /// and hoofdstuk 10.3 asks for "kleine donkere/transparante capsule".
+  ///
+  /// **The number is a contrast floor, not a taste.** It came down from 0.62
+  /// once the goldens carried real colour — against grey placeholders an
+  /// almost-opaque capsule looked like part of the design, and against a pastel
+  /// poster it looked like a debug label stuck onto the artwork. But it can
+  /// only come down so far: the label is 10.5px semibold, which is small text
+  /// by WCAG, so it needs 4.5:1. Measured off the brightest poster in the
+  /// golden set (a near-white pastel, RGB 228/235/255 under the capsule), 0.46
+  /// gives 4.00:1 and fails; 0.50 gives 4.55:1 and is the actual floor. This
+  /// sits one step above it, at 5.4:1, so a poster brighter than anything in
+  /// the fixture set still has somewhere to go before the badge stops being
+  /// readable.
+  static const double badgeFill = 0.55;
 
   /// The placeholder behind artwork that has not loaded, and behind a source
   /// with no poster at all.
