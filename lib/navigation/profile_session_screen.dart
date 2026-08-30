@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 
 import '../focus/key_event_utils.dart';
 import '../media/ids.dart';
+import '../media/media_kind.dart';
 import '../media/media_server_client.dart';
 import '../profiles/active_profile_provider.dart';
 import '../providers/companion_remote_provider.dart';
@@ -27,6 +28,7 @@ import '../profiles/plex_self_account.dart';
 import '../providers/now_watching_provider.dart';
 import '../providers/trakt_account_provider.dart';
 import '../providers/trackers_provider.dart';
+import '../providers/unified_catalog_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../providers/watch_state_store.dart';
 import '../database/app_database.dart';
@@ -233,6 +235,22 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   storageService: context.read<StorageService>(),
                   multiServer: context.read<MultiServerProvider>(),
                 ),
+              ),
+              // Fase 3's lifecycle owner for the unified Films catalog
+              // (hoofdstuk 27 of docs/tvos-unified-experience.md). Profile-scoped
+              // like LibrariesProvider/HiddenLibrariesProvider above — hoofdstuk
+              // 22 requires unified providers to be disposed on profile switch,
+              // which this KeyedSubtree already does for free. Lazy: building it
+              // starts no catalog load; a Films screen (fase 5) opts in by
+              // calling ensureStarted().
+              ChangeNotifierProvider(
+                create: (context) => UnifiedCatalogProvider(
+                  multiServer: context.read<MultiServerProvider>(),
+                  libraries: context.read<LibrariesProvider>(),
+                  hiddenLibraries: context.read<HiddenLibrariesProvider>(),
+                  kind: MediaKind.movie,
+                ),
+                lazy: true,
               ),
               // On-device recommendation learning + serving, scoped to this
               // profile (torn down with the KeyedSubtree on profile switch).
