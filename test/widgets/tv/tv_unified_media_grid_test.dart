@@ -9,6 +9,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -132,6 +133,54 @@ void main() {
 
     expect(warmed.length, before);
     expect(tester.takeException(), isNull);
+  });
+
+  // Pleya ships sixteen locales and not one of them is right-to-left (see
+  // `AppLocale` in `strings.g.dart`: en, bg, da, de, es, fr, it, ja, ko, nb,
+  // nl, pl, pt, ru, sv, zh). So there is no RTL *acceptance render* to make —
+  // it would picture a state no user can reach — and claiming one would be
+  // claiming coverage that does not exist.
+  //
+  // What is worth having is this: the grid resolves its own columns, gutters
+  // and insets from the viewport and wires LEFT and RIGHT by hand, so it is
+  // exactly the kind of widget that throws or mirrors badly the first time a
+  // right-to-left locale is added. One assertion now is much cheaper than
+  // finding out during that translation.
+  testWidgets('builds under a right-to-left directionality without breaking', (tester) async {
+    warmed.clear();
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          locale: const Locale('ar'),
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
+          supportedLocales: const [Locale('ar'), Locale('en')],
+          home: InputModeTracker(
+            child: Scaffold(
+              body: TvUnifiedMediaGrid(
+                groups: [for (var i = 0; i < 12; i++) _group(i)],
+                onActivate: (_) {},
+                hasMore: false,
+                isLoadingMore: false,
+                onLoadMore: () {},
+                precache: (request, context) async => warmed.add(request.groupId),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(Directionality.of(tester.element(find.text('Title 0'))), TextDirection.rtl);
+    // The same twelve cards, laid out on the same grid: the column count comes
+    // from the viewport width, which has no handedness.
+    expect(find.text('Title 11'), findsOneWidget);
+
+    Focus.of(tester.element(find.text('Title 0'))).requestFocus();
+    await tester.pumpAndSettle();
+    expect(warmed, contains('g0'));
   });
 
   // The seam itself: production passes nothing, and the grid must then still
