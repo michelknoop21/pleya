@@ -36,3 +36,19 @@ the generic `assert.state`/geometry assertions can already carry it. It is a
 product contract that does not exist yet. The requirement stays in the Fase
 11 Definition of Done rather than being dropped, and becomes active again
 once Pleya Server ships a real filter endpoint.
+
+## CI (Fase 14, [DEC-066](../../docs/DECISIONS.md#dec-066-pleya-verify-ci-drie-gescheiden-gates-geen-tweede-execution-path))
+
+`.github/workflows/pleya-verify.yml` runs three separate jobs, none of
+which re-implement scenario or driver logic, they only call the CLI
+commands above:
+
+- **`portable`** (Linux, required-candidate): `list scenarios --json` plus
+  `validate` on every file here, no driver dispatch.
+- **`macos-verify`** (macOS): `macos.smoke.boot` and `discover.hero.layout`
+  via `dart run bin/verify.dart run <scenario> --json`.
+- **`tvos-verify`** (macOS, `workflow_dispatch`/`schedule` only, not
+  required): `tvos.smoke.boot`.
+
+Scenario selection there is deliberately small (one representative per
+target/category), not the full regression set from Fase 11.
