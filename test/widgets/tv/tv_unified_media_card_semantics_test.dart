@@ -35,6 +35,7 @@ UnifiedMediaGroup _group({
   int sources = 1,
   bool watched = false,
   bool inProgress = false,
+  int? durationMs = 9960000,
 }) => tvGoldenGroup(
   'g-$title',
   [
@@ -48,6 +49,7 @@ UnifiedMediaGroup _group({
         // hoofdstuk 13.2 produces: one representative source speaks for the
         // group.
         viewOffsetMs: s == 0 && inProgress ? 2538000 : null,
+        durationMs: durationMs,
         viewCount: s == 0 && watched ? 1 : null,
         serverId: const ['nas', 'attic', 'shed'][s],
         serverName: const ['NAS', 'Zolder', 'Schuur'][s],
@@ -112,11 +114,25 @@ void main() {
       );
     });
 
-    test('a title with active progress says so instead', () {
-      expect(
-        semanticLabelFor(_group(title: 'The Batman', inProgress: true)),
-        endsWith(t.unifiedCatalog.semantics.inProgress),
-      );
+    test('a title with active progress is announced as a percentage', () {
+      // Hoofdstuk 25's card reads "Dune, 2021, 42 procent bekeken, 3 bronnen":
+      // the number, not the word "in progress". It is the same fraction the bar
+      // under the artwork draws, which is why both come from
+      // `resumeFractionFor` — a second computation is how the picture and the
+      // announcement drift apart.
+      final group = _group(title: 'The Batman', inProgress: true);
+      final percent = (resumeFractionFor(group)! * 100).round();
+      expect(semanticLabelFor(group), endsWith(t.accessibility.mediaCardPartiallyWatched(percent: percent)));
+    });
+
+    test('progress without a runtime falls back to the wordier phrase', () {
+      // The one case the percentage cannot cover: the representative source
+      // reports an offset but no duration, so there is nothing to be a
+      // percentage *of* — and no bar is drawn either. Saying "0 percent
+      // watched" there would be a number the app invented.
+      final group = _group(title: 'Casablanca', inProgress: true, durationMs: null);
+      expect(resumeFractionFor(group), isNull);
+      expect(semanticLabelFor(group), endsWith(t.unifiedCatalog.semantics.inProgress));
     });
 
     test('watched and in progress are mutually exclusive, and watched wins', () {
@@ -128,18 +144,24 @@ void main() {
       final label = semanticLabelFor(_group(title: 'Paddington in Peru', watched: true, inProgress: true));
       expect(label, contains(t.unifiedCatalog.semantics.watched));
       expect(label, isNot(contains(t.unifiedCatalog.semantics.inProgress)));
+      expect(label, isNot(contains('percent')));
     });
 
-    test('the parts are joined title, year, sources, state with ", "', () {
+    test('the parts are joined title, year, state, sources with ", "', () {
       // The whole order in one string, on the only group that carries every
       // part at once. Asserted literally rather than by reassembling the parts
       // from `t` — a test that builds its expectation the same way the code
       // does would follow a reordering straight through and prove nothing.
       // English is the base locale, so this is the label as written in
       // lib/i18n/en.i18n.json.
+      //
+      // The order is hoofdstuk 25's own: "Dune, 2021, 42 procent bekeken, 3
+      // bronnen" — watch state before the source count. The first build had the
+      // count before the state and this literal is what makes the two disagree
+      // out loud.
       expect(
         semanticLabelFor(_group(title: 'Dune: Part Two', year: 2024, sources: 3, watched: true)),
-        'Dune: Part Two, 2024, 3 sources, Watched',
+        'Dune: Part Two, 2024, Watched, 3 sources',
       );
     });
 
@@ -205,16 +227,13 @@ void main() {
     /// The card's one semantics node, found by the label the pure function
     /// produced.
     ///
-    /// Matched on the *start* of the node label, not on the whole of it. The
-    /// card's `Semantics` is not a container, so the visible title and context
-    /// line merge into the same node behind the label — today a card really
-    /// announces "Dune: Part Two, 2024, 3 sources, Watched" and then the title
-    /// and year a second time. That duplication is a separate finding (see the
-    /// note at the end of this group); what this helper pins is the part that
-    /// is the contract: [semanticLabelFor] leads the node, verbatim, so the
-    /// pure assertions above are assertions about what a listener hears. If the
-    /// duplication is ever closed by giving the node its own container, this
-    /// still holds.
+    /// Matched on the *start* of the node label rather than the whole of it,
+    /// which is deliberately more permissive than the card currently needs.
+    /// The visible title and context line are under an `ExcludeSemantics`, so
+    /// the node label is [semanticLabelFor] and nothing else — hoofdstuk 25's
+    /// "uitgesloten van dubbele semantiek", which before this fase really did
+    /// read the title and year twice on every card. A prefix match keeps the
+    /// helper honest if a future card ever appends something of its own.
     SemanticsNode cardSemantics(WidgetTester tester, UnifiedMediaGroup group) =>
         tester.getSemantics(find.bySemanticsLabel(RegExp('^${RegExp.escape(semanticLabelFor(group))}')));
 
@@ -233,7 +252,7 @@ void main() {
           isFocusable: true,
         ),
       );
-      expect(cardSemantics(tester, group).label, startsWith('Dune: Part Two, 2024, 3 sources, Watched'));
+      expect(cardSemantics(tester, group).label, 'Dune: Part Two, 2024, Watched, 3 sources');
       handle.dispose();
     });
 

@@ -108,18 +108,26 @@ class TvUnifiedMediaCard extends StatelessWidget {
         borderRadius: radius,
         focusScale: FocusTheme.fullCardFocusScale,
         semanticLabel: semanticLabelFor(group),
-        child: Padding(
-          padding: EdgeInsets.all(TvCatalogLayout.cardFocusRingGap * scale),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(radius),
-                child: _Artwork(group: group, scale: scale, clientFor: clientFor),
-              ),
-              _Footer(group: group, scale: scale, tk: tk),
-            ],
+        // Hoofdstuk 25: "Decoratieve backdrops en clearlogo's worden uitgesloten
+        // van dubbele semantiek." Without this the wrapper's composed label is
+        // read *and then* every visible string under it, so VoiceOver says the
+        // title and the year twice on every card — the composed sentence, then
+        // the title, then the meta line. The label above is the whole reading;
+        // the artwork, the badge and the footer are how it is drawn.
+        child: ExcludeSemantics(
+          child: Padding(
+            padding: EdgeInsets.all(TvCatalogLayout.cardFocusRingGap * scale),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(radius),
+                  child: _Artwork(group: group, scale: scale, clientFor: clientFor),
+                ),
+                _Footer(group: group, scale: scale, tk: tk),
+              ],
+            ),
           ),
         ),
       ),
@@ -138,13 +146,52 @@ String semanticLabelFor(UnifiedMediaGroup group) {
   final parts = <String>[
     item.displayTitle,
     if (item.year != null) '${item.year}',
+    ?_watchStatePhrase(group),
     if (group.hasMultipleSources) t.unifiedCatalog.sources(count: group.sources.length),
-    if (group.watchState.isWatched)
-      t.unifiedCatalog.semantics.watched
-    else if (group.watchState.hasActiveProgress)
-      t.unifiedCatalog.semantics.inProgress,
   ];
   return parts.join(', ');
+}
+
+/// How far through the title this group is, in words, or null when there is
+/// nothing worth saying.
+///
+/// Hoofdstuk 25's card example is "Dune, 2021, 42 procent bekeken, 3 bronnen",
+/// so a partly-watched title is announced as a *percentage* rather than as
+/// "in progress" — the number is the part a listener can act on, and it is the
+/// same number the bar under the artwork draws. `inProgress` is what is left
+/// when the representative source reports progress without a runtime to measure
+/// it against, which is the one case where the bar cannot be drawn either.
+String? _watchStatePhrase(UnifiedMediaGroup group) {
+  if (group.watchState.isWatched) return t.unifiedCatalog.semantics.watched;
+  if (!group.watchState.hasActiveProgress) return null;
+  final fraction = resumeFractionFor(group);
+  if (fraction == null) return t.unifiedCatalog.semantics.inProgress;
+  return t.accessibility.mediaCardPartiallyWatched(percent: (fraction * 100).round());
+}
+
+/// How far through this title the group is, as a fraction, or null when there
+/// is nothing to draw.
+///
+/// Read off the *representative* source's item, which hoofdstuk 13.2 already
+/// chose as the one whose progress speaks for the group — so a film half
+/// watched on the laptop server and untouched on the NAS shows one bar, not an
+/// average of two runtimes that are not comparable.
+///
+/// Top-level and pure because two callers need the same number: the bar the
+/// card draws, and the percentage [semanticLabelFor] speaks. Computing it twice
+/// is how the picture and the announcement drift apart.
+double? resumeFractionFor(UnifiedMediaGroup group) {
+  if (!group.watchState.hasActiveProgress) return null;
+  final item = group.sources
+      .firstWhere(
+        (s) => s.sourceKey == group.watchState.representativeSourceKey,
+        orElse: () => group.representativeSource,
+      )
+      .item;
+  final offset = item.viewOffsetMs;
+  final duration = item.durationMs;
+  if (offset == null || duration == null || duration <= 0) return null;
+  return (offset / duration).clamp(0.0, 1.0);
 }
 
 class _Artwork extends StatelessWidget {
@@ -203,26 +250,7 @@ class _Artwork extends StatelessWidget {
     );
   }
 
-  /// How far through this title the group is, or null when there is nothing to
-  /// draw.
-  ///
-  /// Read off the *representative* source's item, which hoofdstuk 13.2 already
-  /// chose as the one whose progress speaks for the group — so a film half
-  /// watched on the laptop server and untouched on the NAS shows one bar, not
-  /// an average of two runtimes that are not comparable.
-  double? get _resumeFraction {
-    if (!group.watchState.hasActiveProgress) return null;
-    final item = group.sources
-        .firstWhere(
-          (s) => s.sourceKey == group.watchState.representativeSourceKey,
-          orElse: () => group.representativeSource,
-        )
-        .item;
-    final offset = item.viewOffsetMs;
-    final duration = item.durationMs;
-    if (offset == null || duration == null || duration <= 0) return null;
-    return (offset / duration).clamp(0.0, 1.0);
-  }
+  double? get _resumeFraction => resumeFractionFor(group);
 }
 
 /// Hoofdstuk 10.3's "N bronnen" capsule.

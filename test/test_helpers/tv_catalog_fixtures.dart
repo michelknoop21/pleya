@@ -31,6 +31,10 @@ MediaItem tvGoldenMovie({
   String? genre = 'Science fiction',
   int? viewOffsetMs,
   int? viewCount,
+  // Overridable so the one case that has an offset but nothing to measure it
+  // against stays reachable: no runtime means no progress bar and no spoken
+  // percentage.
+  int? durationMs = 9960000,
   String serverId = 'nas',
   String serverName = 'NAS',
   MediaBackend backend = MediaBackend.plex,
@@ -42,7 +46,7 @@ MediaItem tvGoldenMovie({
   kind: kind,
   title: title,
   year: year,
-  durationMs: 9960000,
+  durationMs: durationMs,
   viewOffsetMs: viewOffsetMs,
   viewCount: viewCount,
   genres: genre == null ? null : [genre],
