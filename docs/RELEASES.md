@@ -42,6 +42,7 @@ under `Notes`.
 - hero-layout op macOS + iOS, en een screenshot die bewijs is
 - focus-trace vult zich altijd, sidebar-scenario op semantiek (Fase 11)
 - laatste Fase 11-scenario groen, twee echte tvOS-bugs gefixt
+- Fase 13 afgerond, MCP-laag als dunne adapter boven de bestaande CLI
 
 ### Improved
 - scheidingslijnen volgen de werkelijke rijhoogte
