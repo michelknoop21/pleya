@@ -52,6 +52,49 @@ void main() {
     expect(events.last.data, {'from': 'a', 'to': 'b'});
   });
 
+  testWidgets('records focus changes when start() ran before any widget existed', (tester) async {
+    // The real bootstrap order, and the one every other test in this file
+    // gets wrong: `AutomationBootstrap` calls start() before the first
+    // frame, when `primaryFocus` is null. The node listener then has nothing
+    // to attach to, and since only that node's own notification re-points
+    // it, it never attached to anything afterwards either.
+    //
+    // Every evidence bundle written up to Fase 11 had an empty
+    // focus-trace.json because of this — on iOS, macOS and tvOS — while
+    // focus was visibly moving. Starting first is the whole point of this
+    // test; pumping first hides the bug.
+    AutomationFocusLog.instance.start();
+
+    final first = FocusNode(debugLabel: 'first');
+    final second = FocusNode(debugLabel: 'second');
+    addTearDown(() {
+      first.dispose();
+      second.dispose();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              Focus(focusNode: first, child: const SizedBox(width: 5, height: 5)),
+              Focus(focusNode: second, child: const SizedBox(width: 5, height: 5)),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    first.requestFocus();
+    await tester.pump();
+    second.requestFocus();
+    await tester.pump();
+
+    final labels = AutomationFocusLog.instance.since(0).map((e) => e.to).toList();
+    expect(labels, contains('first'));
+    expect(labels, contains('second'));
+  });
+
   testWidgets('seq is monotone across multiple changes', (tester) async {
     final nodes = List.generate(3, (i) => FocusNode(debugLabel: 'n$i'));
     addTearDown(() {

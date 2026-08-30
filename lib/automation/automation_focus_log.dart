@@ -37,6 +37,23 @@ class AutomationFocusLogEntry {
 /// listener attached to whichever node is currently primary, re-pointing it
 /// every time that node's own notification fires (which happens right when
 /// it loses focus to someone else).
+///
+/// **That listener alone is not enough, and the gap was silent.** It can only
+/// be re-pointed by a notification from the node it is *already* attached to,
+/// and [start] runs from `AutomationBootstrap` before the first frame — when
+/// `primaryFocus` is null. So it attached to nothing, had nothing to hear
+/// from, and never re-attached: every evidence bundle written up to Fase 11
+/// contained an empty `focus-trace.json`, on iOS, macOS and tvOS alike, while
+/// focus was demonstrably moving (a Left press visibly expanded the tvOS rail
+/// from 48 to 220 logical pixels in the same run). Nothing failed; the
+/// evidence was simply absent.
+///
+/// A per-frame re-check closes it. It costs one identity comparison per
+/// frame, runs only under `kPleyaVerify`, and catches focus moving for
+/// reasons no key event precedes — a programmatic `requestFocus` after a tab
+/// switch, for instance, which is exactly what the TV navigation rail does.
+/// The node listener stays as the fast path: it reports within the same
+/// frame, the callback is the net underneath it.
 class AutomationFocusLog {
   AutomationFocusLog._();
 
@@ -55,6 +72,7 @@ class AutomationFocusLog {
   FocusNode? _observedNode;
   String? _pendingCause;
   bool _started = false;
+  bool _frameWatchInstalled = false;
 
   /// Gated by callers (`AutomationBootstrap` only calls this under
   /// `kPleyaVerify`) rather than internally, so this class stays directly
@@ -65,6 +83,31 @@ class AutomationFocusLog {
     _started = true;
     FocusManager.instance.addEarlyKeyEventHandler(_captureCause);
     _reattach(initial: true);
+    _installFrameWatch();
+  }
+
+  /// Re-checks the primary focus once per frame.
+  ///
+  /// A persistent frame callback cannot be removed once registered, so it
+  /// guards on [_started] instead — [stop] therefore still fully disables
+  /// this, which matters for tests that swap the instance out. Registered
+  /// at most once per binding.
+  ///
+  /// Degrades silently without a `WidgetsBinding`, in the same shape as
+  /// `AutomationRegistry._discoveredFocusables()`: this is diagnostic
+  /// infrastructure and must never be the reason something else fails.
+  void _installFrameWatch() {
+    if (_frameWatchInstalled) return;
+    try {
+      WidgetsBinding.instance.addPersistentFrameCallback((_) {
+        if (!_started) return;
+        _reattach();
+      });
+      _frameWatchInstalled = true;
+    } catch (_) {
+      // No binding (a plain unit test) — the node listener still works for
+      // anything that focuses after a node is already primary.
+    }
   }
 
   void stop() {
