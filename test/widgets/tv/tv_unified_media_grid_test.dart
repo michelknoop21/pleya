@@ -9,7 +9,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -135,6 +134,26 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // Hoofdstuk 10.2b: focus on the complete catalogus is "ruimtelijk stabiel".
+  // The grid is a Column of `Row`s, and a `Row` is as tall as its tallest
+  // child — so any part of the card that grows on focus grows the whole row and
+  // pushes every row under it down, while the user is looking at it. That makes
+  // this a property of the grid, not of the card: the only place it is visible
+  // is with neighbours present.
+  testWidgets('focus moves nothing but the focused card', (tester) async {
+    await pumpGrid(tester, count: 40);
+    // Every card except the one about to take focus. That one is excluded on
+    // purpose: `FocusableWrapper` scales it, and a scale transform moves the
+    // text it paints without moving anything in the layout.
+    final before = {for (var i = 1; i < 40; i++) i: tester.getTopLeft(find.text('Title $i'))};
+
+    Focus.of(tester.element(find.text('Title 0'))).requestFocus();
+    await tester.pumpAndSettle();
+
+    final after = {for (var i = 1; i < 40; i++) i: tester.getTopLeft(find.text('Title $i'))};
+    expect(after, before, reason: 'a card that grows on focus lifts its whole row and shifts the rows beneath it');
+  });
+
   // Pleya ships sixteen locales and not one of them is right-to-left (see
   // `AppLocale` in `strings.g.dart`: en, bg, da, de, es, fr, it, ja, ko, nb,
   // nl, pl, pt, ru, sv, zh). So there is no RTL *acceptance render* to make —
@@ -152,18 +171,23 @@ void main() {
       TranslationProvider(
         child: MaterialApp(
           theme: monoTheme(dark: true),
-          locale: const Locale('ar'),
-          localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          supportedLocales: const [Locale('ar'), Locale('en')],
-          home: InputModeTracker(
-            child: Scaffold(
-              body: TvUnifiedMediaGrid(
-                groups: [for (var i = 0; i < 12; i++) _group(i)],
-                onActivate: (_) {},
-                hasMore: false,
-                isLoadingMore: false,
-                onLoadMore: () {},
-                precache: (request, context) async => warmed.add(request.groupId),
+          // Directionality straight from the widget tree rather than from a
+          // locale plus `GlobalMaterialLocalizations`: what this test asserts
+          // is that the grid survives RTL, and imposing the direction directly
+          // states that without pulling `flutter_localizations` — an
+          // undeclared, transitive-only package here — into a test dependency.
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: InputModeTracker(
+              child: Scaffold(
+                body: TvUnifiedMediaGrid(
+                  groups: [for (var i = 0; i < 12; i++) _group(i)],
+                  onActivate: (_) {},
+                  hasMore: false,
+                  isLoadingMore: false,
+                  onLoadMore: () {},
+                  precache: (request, context) async => warmed.add(request.groupId),
+                ),
               ),
             ),
           ),

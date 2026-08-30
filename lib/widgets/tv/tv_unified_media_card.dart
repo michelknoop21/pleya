@@ -480,11 +480,17 @@ class _Footer extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(
         // Horizontal padding only once the surface is there to need it: idle,
         // the title has to line up with the poster's left edge or the column
-        // the whole page hangs on breaks.
+        // the whole page hangs on breaks. Inset horizontally, the text stays
+        // inside a card whose width the grid fixes, so nothing beside it moves.
         isFocused ? TvCatalogLayout.cardFooterPaddingVertical * scale : 0,
         TvCatalogLayout.cardFooterPaddingVertical * scale,
         isFocused ? TvCatalogLayout.cardFooterPaddingVertical * scale : 0,
-        isFocused ? TvCatalogLayout.cardFooterPaddingVertical * scale : 0,
+        // The bottom is reserved whether the surface is there or not. Paying
+        // for it only on focus made the focused card taller than the five
+        // beside it, and a taller card in row one pushed row two down while
+        // the eye was on it — the opposite of the "ruimtelijk stabiel" focus
+        // hoofdstuk 10.2b requires of the complete catalogus.
+        TvCatalogLayout.cardFooterPaddingVertical * scale,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

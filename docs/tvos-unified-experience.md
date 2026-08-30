@@ -637,12 +637,52 @@ gereserveerde ruimte gecontroleerd weg.
 
 ## 10. Films en Series
 
+> **Geamendeerd op 30 augustus 2026 — [DEC-064](DECISIONS.md#dec-064).** Films en Series zijn
+> **twee niveaus**, geen één pagina. De oorspronkelijke 10.2 beschreef Films/Series als één
+> gridpagina; dat is nu uitsluitend het tweede niveau. Behandel de oude formulering niet
+> opnieuw als blocker — zie 10.2a/10.2b.
+
 ### 10.1 Doel
 
 Films toont standaard alle zichtbare filmlibraries van alle toegestane servers. Series toont alle
 zichtbare serielibraries. Server en library zijn filters, niet de primaire informatiearchitectuur.
 
-### 10.2 Layout
+Dat doel wordt op twee niveaus geleverd:
+
+| Niveau | Route | Karakter | Fase |
+|---|---|---|---|
+| **Landing** | `Films` / `Series` | Row-based discovery, focus verandert de compositie | 6 |
+| **Complete catalogus** | `Films ▸ Alles bekijken` / `Series ▸ Alles bekijken` | Stabiel postergrid met filters en sortering | 5 |
+
+Discovery en catalogus worden **niet** door elkaar gehaald. Discovery is geen grid; de catalogus
+is geen expanderende discovery-rail. Die scheiding is hard.
+
+### 10.2a Landing — discovery (fase 6)
+
+```
+Films
+Aanbevolen voor jou
+[═════ EXPANDED FOCUS ═════][klein][klein][klein]
+Recent toegevoegd
+[═════ EXPANDED FOCUS ═════][klein][klein][klein]
+Alle films                                    Alles bekijken →
+```
+
+Row-based. Het gefocuste item wordt breder en toont pas dan zijn rijkere context; buren blijven
+zichtbaar; metadata verschijnt voornamelijk bij focus; landscape/wide presentatie waar de artwork
+dat toelaat.
+
+**Minimale chrome.** Geen permanente `[Alle bronnen] [Filters] [Sorteren]` boven de eerste rail —
+de landing is content-first. Een compacte refinement-actie mag hier later alléén bij aantoonbaar
+productbewijs bijkomen, niet als standaard.
+
+Rows komen uit de fase-6 projectielaag. Een TV-widget mag **nooit** zelf een pseudo-discoveryhub uit
+de complete catalogus construeren.
+
+**"Alles bekijken" is een eerste-klas route**, remote-first bereikbaar — geen minuscuul tekstlinkje
+waar focus moeilijk komt.
+
+### 10.2b Complete catalogus — "Alles bekijken" (fase 5)
 
 ```
 Films                    [Alle bronnen] [Filters 2] [Titel A–Z]
@@ -650,10 +690,13 @@ Films                    [Alle bronnen] [Filters 2] [Titel A–Z]
 [poster] [poster] [poster] [poster] [poster] [poster]
 ```
 
-Geen grote hero op deze pagina's. Vaste topnav. Een compacte sticky page header. Grid met 6–7 kolommen
+Geen grote hero op deze pagina. Vaste topnav. Een compacte sticky page header. Grid met 6–7 kolommen
 afhankelijk van dichtheid. Bestaande TV-cardscale en focusring. Posters 2:3. Titels maximaal twee
 regels. Jaar optioneel onder titel. Progress en watched-status blijven zichtbaar. Nieuw-badge blijft
 bestaan. Multi-sourcebadge alleen bij meer dan één bekende bron.
+
+Focus is hier **ruimtelijk stabiel**: witte ring, kleine scale, lift en schaduw — géén expanded
+landscape-transformatie. Dat is precies wat snel door een grote bibliotheek bladeren mogelijk maakt.
 
 ### 10.3 Multi-sourcebadge
 
@@ -1604,7 +1647,12 @@ preference; focusrestore; source switch op detail; alternate source na playbacki
 picker; gekozen `serverId:itemId` is exact de route-input; cancel herstelt focus; geen
 root-overlaycontext; geen playerwijziging buiten het foutalternatief.
 
-### Fase 5: Films en Series GUI
+### Fase 5: Unified Complete Catalog — All Movies en All Series
+
+> Geamendeerd op 30 augustus 2026 ([DEC-064](DECISIONS.md#dec-064)). Deze fase heette
+> "Films en Series GUI" en gold als de eindbestemming van beide topnav-items. Ze levert nu
+> het **tweede** niveau: `Films ▸ Alles bekijken` en `Series ▸ Alles bekijken` (hoofdstuk
+> 10.2b). De discovery-landing is fase 6. Er volgt **geen** nieuwe fase-5-ontwerpronde.
 
 **Toevoegen.**
 
@@ -1619,12 +1667,23 @@ lib/widgets/tv/tv_catalog_sort_panel.dart
 ```
 
 **Werk.** Page header; filters; sort; grid; source badge; loading/empty/partial/error states; TV-focus;
-persisted queryvoorkeuren; image prefetch.
+persisted queryvoorkeuren; image prefetch; source activation; querystate en restoration.
 
 **Definition of Done.** Alle films en series uit alle zichtbare libraries; correcte grouping; volledige
 remote-navigatie; visuele tests; geavanceerde Libraries blijft onaangetast.
 
-### Fase 6: Home-, Search- en Continue Watching-projectie
+**Acceptatiecriterium (geamendeerd).** De eis is *niet* dat deze pagina eruitziet als de
+definitieve Netflix-achtige Films-pagina — dat is met de tweeniveaustructuur de verkeerde eis, en
+hij verklaart waarom vroege fase-5-renders tegenvielen: discovery-rows (fase 6) en horizontale
+rootnavigatie (fase 7) waren toen bewust nog niet gebouwd. De eis is dat *All Movies* en
+*All Series* een **uitstekende premium TV-catalogusgrid** zijn: mooie posters, goede schaal,
+witte focus, sterke filtermodal, geen databasegevoel, goede typografie, snelle remote-navigatie.
+Expliciet **geen** expanded discovery-card in het grid.
+
+### Fase 6: Unified Discovery — Home, Films/Series landing, Search en Continue Watching
+
+> Uitgebreid op 30 augustus 2026 ([DEC-064](DECISIONS.md#dec-064)) met de Films- en
+> Series-discoverylanding (hoofdstuk 10.2a) en de herbruikbare discovery-rail.
 
 **Toevoegen.**
 
@@ -1632,16 +1691,30 @@ remote-navigatie; visuele tests; geavanceerde Libraries blijft onaangetast.
 lib/services/unified_catalog/home_projection_service.dart
 lib/media/unified/unified_media_hub.dart
 lib/services/unified_catalog/featured_selector.dart
+lib/screens/tv/tv_movies_landing_screen.dart
+lib/screens/tv/tv_series_landing_screen.dart
+lib/widgets/tv/tv_discovery_rail.dart
+lib/widgets/tv/tv_expandable_media_tile.dart
+lib/widgets/tv/tv_section_header.dart
+lib/widgets/tv/tv_view_all_action.dart
 ```
 
 **Wijzigen.** `DiscoverProvider`; `DiscoverScreen`, alleen TV-pad; Search TV-pad; Verder kijken;
-recommendations/hub dedup; snapshotversie; TV-cards en contextmenus.
+recommendations/hub dedup; snapshotversie; TV-cards en contextmenus; `tv_movies_screen.dart` en
+`tv_series_screen.dart` worden de *Alles bekijken*-bestemming achter de nieuwe landing.
 
 **Werk.** Groups in Home-rijen; globale row semantics; sourcepreserving Continue Watching; mixed
-featured selector; Search grouping; activation via de coordinator.
+featured selector; Search grouping; activation via de coordinator; Movies- en Series-landing­projectie;
+`TvDiscoveryRail` met expanded-focuspresentatie; "Alles bekijken"-routes naar de fase-5-catalogus.
+
+**Architectuurgrens.** Discovery-rows komen **uitsluitend** uit deze projectielaag. Een TV-widget mag
+nooit zelf een pseudo-discoveryhub uit de complete catalogus construeren — dat zou een tweede
+projectiearchitectuur naast deze zijn, en die scheiding is precies waarom deze fase bestaat.
 
 **Definition of Done.** Geen duplicate titel in één Home-rij; geen duplicate hero-slide; Search toont
-één resultaatgroep; mobile/desktop blijven functioneel; rowfocus verandert de hero niet meer.
+één resultaatgroep; mobile/desktop blijven functioneel; rowfocus verandert de hero niet meer;
+Films- en Series-landing tonen row-based discovery met minimale chrome; "Alles bekijken" is
+remote-first bereikbaar vanaf beide landings.
 
 ### Fase 7: TV-root-shell en Mijn Pleya
 
@@ -1961,27 +2034,34 @@ alleen spaarzaam toe; de oranje focusring; **"Emby archief" als server** — zie
 | 4 | Paars/blauw/groen tegelicoon (my-pleya) | Mono-thema; rood/amber spaarzaam; geen paarse styling | **Code/plan** | hoofdstuk 8.2, 34 |
 | 5 | "1–10 van 342 resultaten" | Geen exact totaal voordat alle bronstreams uitgeput zijn; wél "N titels geladen" | **Plan** | hoofdstuk 10.7 |
 | 6 | Vijf permanente carousel-dots (home) | Geen permanente reeks dots; alleen tijdelijke segmentindicator | **Plan** | hoofdstuk 9.6 |
-| 7 | "Gepland" / "Beschikbaar 24 mei" in het filmgrid | Niet gespecificeerd in hoofdstuk 1–32. Aanvragen blijft onder Mijn Pleya (hoofdstuk 2, 20) | **Open** | uitgesteld bij het sluiten van fase 5, zie hieronder |
-| 8 | De **"Onthoud mijn keuze"-optie** in de source picker | Hoofdstuk 14.8 onthoudt de laatst gekozen source *altijd*, zonder opt-in, en gebruikt hem alleen voor focus; 14.8a voegt daar een expliciete voorkeursserver-actie aan toe. Een derde, per-titel opt-in bestaat in geen van beide | **Open** | ontdekt in fase 4; uitgesteld bij het sluiten van fase 5, zie hieronder |
+| 7 | "Gepland" / "Beschikbaar 24 mei" in het filmgrid | Niet gespecificeerd in hoofdstuk 1–32. Aanvragen blijft onder Mijn Pleya (hoofdstuk 2, 20) | **Code/plan** | **Besloten 30-08-2026**, zie hieronder |
+| 8 | De **"Onthoud mijn keuze"-optie** in de source picker | Hoofdstuk 14.8 onthoudt de laatst gekozen source *altijd*, zonder opt-in, en gebruikt hem alleen voor focus; 14.8a voegt daar een expliciete voorkeursserver-actie aan toe. Een derde, per-titel opt-in bestaat in geen van beide | **Code/plan** | **Besloten 30-08-2026**, zie hieronder |
 
 Punt 3 verdient nadruk: waar de mockups "Emby" tonen, is de bedoelde derde backend in de canonieke
 fixture (hoofdstuk 28) **Pleya Server** of **Pleya Share**. Een `UnifiedMediaGroup` mag zo'n bron wel
 als single-source tonen, maar hij wordt niet cross-server gemerged met Plex of Jellyfin — zie
 hoofdstuk 11 en [DEC-063](DECISIONS.md#dec-063).
 
-**Punt 7 en 8 zijn bij het sluiten van fase 5 uitgesteld, niet beslist.** Bij punt 7 stond
-"te beslissen vóór fase 5"; die datum is nu gepasseerd en het antwoord is dat fase 5 hem niet nodig
-had. De Definition of Done van fase 5 (hoofdstuk 27) vraagt om alle films en series uit alle
-zichtbare libraries, correcte grouping, volledige remote-navigatie en visuele tests — een
-beschikbaarheidsbadge op een filmkaart komt daar in geen van de vier voor, en Aanvragen woont per
-hoofdstuk 2 en 20 onder Mijn Pleya, dat pas in fase 7 een scherm krijgt. Punt 8 raakt de source
-picker, die in fase 4 gesloten is op het gedrag dat hoofdstuk 14.8 en 14.8a wél vastleggen; een
-per-titel opt-in is een derde bewaarplaats naast die twee en verandert niets aan wat fase 5 rendert.
+**Punt 7 en 8 zijn op 30 augustus 2026 beslist** ([DEC-064](DECISIONS.md#dec-064)). Ze stonden
+daarvóór als uitgesteld genoteerd; dat is nu vervangen door een besluit.
 
-Geen van beide is dus ingevuld, en dat is opzet: zelf productgedrag verzinnen om een fase te kunnen
-afvinken is precies wat hoofdstuk 23.1 verbiedt. Punt 7 hoort thuis in de fase die aanvraagstatus
-daadwerkelijk tekent, punt 8 in de fase die de bronvoorkeur opnieuw aanraakt. Beide blijven **Open**
-en beide blijven een beslissing voor Michel.
+**Punt 7 — geen generieke beschikbaarheidsbadge.** "Gepland" en "Beschikbaar 24 mei" worden **niet**
+generiek in Films/Series gebouwd. Aanvraagstatus blijft op de surfaces waar betrouwbare requestdata
+bestaat; Aanvragen woont per hoofdstuk 2 en 20 onder Mijn Pleya. Dit volgt de regel dat Pleya geen
+contentsemantiek presenteert die het niet betrouwbaar heeft: een releasedatum in een catalogus die
+alleen weet wat er op de servers staat, is verzonnen precisie.
+
+**Punt 8 — geen "Onthoud mijn keuze".** Er zijn precies twee bewaarcontracten rond bronkeuze, en er
+komt geen derde bij:
+
+| Contract | Betekenis | Scope |
+|---|---|---|
+| `preferredServerId` | Automatische bronselectie | Profielbreed |
+| Last-used title source | Alleen de initiële focus in de picker | Per titel |
+
+Een per-titel opt-in zou een derde bewaarplaats naast die twee zijn en verandert niets aan wat de
+catalogus rendert. De source picker blijft op het fase-4-gedrag dat hoofdstuk 14.8 en 14.8a
+vastleggen.
 
 ---
 

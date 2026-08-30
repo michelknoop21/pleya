@@ -271,7 +271,7 @@ en `test/services/unified_grouping_service_test.dart`).
 | J4 | Overscan | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A | open |
 | J5 | Lange vertaling | test/goldens/tv_unified_catalog_golden_test.dart (`films, labels at the length a long locale produces`, `films, long titles`) — de labels hebben de lengte van de Duitse strings; een echt omgeschakelde locale is in `flutter test` niet te renderen, want elke niet-basislocale is deferred | covered |
 | J6 | Grote tekst | | open |
-| J7 | RTL | | open |
+| J7 | RTL | test/widgets/tv/tv_unified_media_grid_test.dart (`builds under a right-to-left directionality without breaking`) bewijst dat het raster onder een omgekeerde `Directionality` bouwt, de kaarten vindt en zijn prefetch nog steeds start. Dat is een guard, geen RTL-acceptatie: geen van de zestien locales van Pleya is rechts-naar-links, dus er valt vandaag geen beeld te keuren dat een gebruiker kan bereiken | open |
 | J8 | VoiceOver | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A. test/widgets/tv/tv_media_source_picker_test.dart (`a row announces its position and everything it actually shows`) en test/widgets/tv/tv_unified_media_card_semantics_test.dart leggen de semantics van een source row en van een catalogkaart vast — inclusief dat de kaart één node aanbiedt en niet titel en jaar dubbel uitspreekt — maar niet wat VoiceOver ervan maakt | open |
 | J9 | Reduce Motion | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A | open |
 | J10 | Light theme | | open |
@@ -280,17 +280,20 @@ en `test/services/unified_grouping_service_test.dart`).
 | J13 | Panel met veel sources | | open |
 | J14 | Lege panelsecties | | open |
 | J15 | Selected versus focused | | open |
+| J16 | Focus verandert de layout niet | test/widgets/tv/tv_unified_media_grid_test.dart (`focus moves nothing but the focused card`) — het raster is een `Column` van `Row`s en een `Row` is zo hoog als zijn hoogste kind, dus een kaart die bij focus groeit tilt zijn hele rij op en duwt de rijen eronder omlaag terwijl de gebruiker ernaar kijkt. De test legt alle negenendertig andere kaarten vast vóór en na de focus. Toegevoegd in fase 5; het gedrag zelf staat in hoofdstuk 10.2b ("ruimtelijk stabiel") | covered |
 
 ## Totaal
 
-180 cases: A20, B15, C24, D15, E15, F21, G14, H21, I20, J15. Nul `covered` bij aanmaak (fase 0).
-F21 kwam er in fase 4 bij, samen met het gedrag dat hij beschrijft (hoofdstuk 14.8a).
+181 cases: A20, B15, C24, D15, E15, F21, G14, H21, I20, J16. Nul `covered` bij aanmaak (fase 0).
+F21 kwam er in fase 4 bij, samen met het gedrag dat hij beschrijft (hoofdstuk 14.8a). J16 kwam er bij
+het sluiten van fase 5 bij, langs dezelfde regel: het gedrag stond al vast in hoofdstuk 10.2b, de
+situatie — een focus die de rij eronder verschuift — was alleen nog niet als rij benoemd.
 
-Stand na fase 5: 69 `covered` en 111 `open`. Dat is de stand na fase 4 — C1-C24, F1-F18, F20-F21 en
+Stand na fase 5: 70 `covered` en 111 `open`. Dat is de stand na fase 4 — C1-C24, F1-F18, F20-F21 en
 G9, samen 45 rijen, hier eerder als 46 opgeteld — plus de vierentwintig rijen die fase 5 heeft
 nagelopen: A2, A6-A11, A13, B1-B3, B7, B9, D5-D7, E3, E4, E9, E11, I7, I15, J1 en J5. Per categorie
 is dat A 8 van 20, B 5 van 15, C 24 van 24, D 3 van 15, E 4 van 15, F 20 van 21, G 1 van 14, H 0 van
-21, I 2 van 20 en J 2 van 15.
+21, I 2 van 20 en J 3 van 16 — J16 meegeteld.
 
 Register F is nog steeds volledig op één rij na: F19 (detailroute faalt) heeft nog geen vastgelegd
 productgedrag en wacht daarop, niet op een test.
