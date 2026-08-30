@@ -40,6 +40,7 @@ under `Notes`.
 - tvOS-driver via idb HID + isolatiefix (Deel B Fase 10)
 - geometrie-assertions, fixture_mutate en open in de engine (Fase 11)
 - hero-layout op macOS + iOS, en een screenshot die bewijs is
+- focus-trace vult zich altijd, sidebar-scenario op semantiek (Fase 11)
 
 ### Improved
 - scheidingslijnen volgen de werkelijke rijhoogte
