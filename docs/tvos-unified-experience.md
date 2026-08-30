@@ -1961,13 +1961,27 @@ alleen spaarzaam toe; de oranje focusring; **"Emby archief" als server** — zie
 | 4 | Paars/blauw/groen tegelicoon (my-pleya) | Mono-thema; rood/amber spaarzaam; geen paarse styling | **Code/plan** | hoofdstuk 8.2, 34 |
 | 5 | "1–10 van 342 resultaten" | Geen exact totaal voordat alle bronstreams uitgeput zijn; wél "N titels geladen" | **Plan** | hoofdstuk 10.7 |
 | 6 | Vijf permanente carousel-dots (home) | Geen permanente reeks dots; alleen tijdelijke segmentindicator | **Plan** | hoofdstuk 9.6 |
-| 7 | "Gepland" / "Beschikbaar 24 mei" in het filmgrid | Niet gespecificeerd in hoofdstuk 1–32. Aanvragen blijft onder Mijn Pleya (hoofdstuk 2, 20) | **Open** | te beslissen vóór fase 5 |
-| 8 | De **"Onthoud mijn keuze"-optie** in de source picker | Hoofdstuk 14.8 onthoudt de laatst gekozen source *altijd*, zonder opt-in, en gebruikt hem alleen voor focus; 14.8a voegt daar een expliciete voorkeursserver-actie aan toe. Een derde, per-titel opt-in bestaat in geen van beide | **Open** | ontdekt in fase 4; niet zelf ingevuld |
+| 7 | "Gepland" / "Beschikbaar 24 mei" in het filmgrid | Niet gespecificeerd in hoofdstuk 1–32. Aanvragen blijft onder Mijn Pleya (hoofdstuk 2, 20) | **Open** | uitgesteld bij het sluiten van fase 5, zie hieronder |
+| 8 | De **"Onthoud mijn keuze"-optie** in de source picker | Hoofdstuk 14.8 onthoudt de laatst gekozen source *altijd*, zonder opt-in, en gebruikt hem alleen voor focus; 14.8a voegt daar een expliciete voorkeursserver-actie aan toe. Een derde, per-titel opt-in bestaat in geen van beide | **Open** | ontdekt in fase 4; uitgesteld bij het sluiten van fase 5, zie hieronder |
 
 Punt 3 verdient nadruk: waar de mockups "Emby" tonen, is de bedoelde derde backend in de canonieke
 fixture (hoofdstuk 28) **Pleya Server** of **Pleya Share**. Een `UnifiedMediaGroup` mag zo'n bron wel
 als single-source tonen, maar hij wordt niet cross-server gemerged met Plex of Jellyfin — zie
 hoofdstuk 11 en [DEC-063](DECISIONS.md#dec-063).
+
+**Punt 7 en 8 zijn bij het sluiten van fase 5 uitgesteld, niet beslist.** Bij punt 7 stond
+"te beslissen vóór fase 5"; die datum is nu gepasseerd en het antwoord is dat fase 5 hem niet nodig
+had. De Definition of Done van fase 5 (hoofdstuk 27) vraagt om alle films en series uit alle
+zichtbare libraries, correcte grouping, volledige remote-navigatie en visuele tests — een
+beschikbaarheidsbadge op een filmkaart komt daar in geen van de vier voor, en Aanvragen woont per
+hoofdstuk 2 en 20 onder Mijn Pleya, dat pas in fase 7 een scherm krijgt. Punt 8 raakt de source
+picker, die in fase 4 gesloten is op het gedrag dat hoofdstuk 14.8 en 14.8a wél vastleggen; een
+per-titel opt-in is een derde bewaarplaats naast die twee en verandert niets aan wat fase 5 rendert.
+
+Geen van beide is dus ingevuld, en dat is opzet: zelf productgedrag verzinnen om een fase te kunnen
+afvinken is precies wat hoofdstuk 23.1 verbiedt. Punt 7 hoort thuis in de fase die aanvraagstatus
+daadwerkelijk tekent, punt 8 in de fase die de bronvoorkeur opnieuw aanraakt. Beide blijven **Open**
+en beide blijven een beslissing voor Michel.
 
 ---
 
