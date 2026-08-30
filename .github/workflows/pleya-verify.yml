@@ -147,7 +147,13 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: pleya-verify-macos-evidence-${{ github.run_id }}
-          path: .build/pleya-verify/
+          # Only the per-run evidence bundles, not the isolated app-install
+          # caches (`.build/pleya-verify/{macos,ios}-app/`) the drivers keep
+          # around between runs — those are multi-hundred-MB build output,
+          # not evidence.
+          path: |
+            .build/pleya-verify/*
+            !.build/pleya-verify/*-app
           if-no-files-found: warn
           retention-days: 14
 
@@ -208,6 +214,8 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: pleya-verify-tvos-evidence-${{ github.run_id }}
-          path: .build/pleya-verify/
+          path: |
+            .build/pleya-verify/*
+            !.build/pleya-verify/*-app
           if-no-files-found: warn
           retention-days: 14
