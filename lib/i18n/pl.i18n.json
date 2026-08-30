@@ -1447,5 +1447,30 @@
     "notificationText": "Inne urządzenia Pleya mogą streamować twoje lokalne foldery",
     "hostDescriptionAndroid": "Inne urządzenia Pleya w tej sieci mogą przeglądać, odtwarzać i pobierać twoje lokalne foldery. Udostępnianie działa dalej w tle z powiadomieniem.",
     "scanningSubnet": "Skanowanie sieci…"
+  },
+  "sourcePicker": {
+    "playTitle": "Wybierz, gdzie odtworzyć",
+    "detailsTitle": "Wybierz źródło dla szczegółów",
+    "availableOnOneServer": "Dostępne na 1 serwerze",
+    "availableOnManyServers": "Dostępne na serwerach: ${count}",
+    "oneServerUnchecked": "Nie udało się sprawdzić 1 serwera",
+    "manyServersUnchecked": "Nie udało się sprawdzić serwerów: ${count}",
+    "checkingMoreSources": "Sprawdzanie kolejnych źródeł…",
+    "lastUsed": "Ostatnio używane",
+    "currentSource": "Bieżące źródło",
+    "unavailable": "Niedostępne",
+    "signInRequired": "Wymagane ponowne logowanie",
+    "resumeAt": "Wznów od ${position}",
+    "watched": "Obejrzane",
+    "noneReachableTitle": "Żadne źródło nie jest teraz osiągalne.",
+    "reauthRequiredTitle": "Zaloguj się ponownie, aby otworzyć ten tytuł.",
+    "manageServers": "Zarządzaj serwerami",
+    "sourceLabel": "Źródło: ${source}",
+    "change": "Zmień",
+    "playbackFailedTitle": "Nie udało się odtworzyć tego źródła.",
+    "chooseAnotherSource": "Wybierz inne źródło",
+    "rowSemantics": "Źródło ${index} z ${count}: ${description}",
+    "preferredServer": "Preferowany serwer",
+    "setPreferredServer": "Zawsze używaj ${server}"
   }
 }

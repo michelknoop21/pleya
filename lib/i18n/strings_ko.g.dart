@@ -87,6 +87,7 @@ class TranslationsKo extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerKo addServer = _TranslationsAddServerKo._(_root);
 	@override late final _TranslationsAddLocalFolderKo addLocalFolder = _TranslationsAddLocalFolderKo._(_root);
 	@override late final _TranslationsPleyaShareKo pleyaShare = _TranslationsPleyaShareKo._(_root);
+	@override late final _TranslationsSourcePickerKo sourcePicker = _TranslationsSourcePickerKo._(_root);
 }
 
 // Path: app
@@ -1707,6 +1708,38 @@ class _TranslationsPleyaShareKo extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => '네트워크 검색 중…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerKo extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => '재생할 위치 선택';
+	@override String get detailsTitle => '세부 정보를 볼 소스 선택';
+	@override String get availableOnOneServer => '서버 1개에서 사용 가능';
+	@override String availableOnManyServers({required Object count}) => '서버 ${count}개에서 사용 가능';
+	@override String get oneServerUnchecked => '서버 1개를 확인하지 못했습니다';
+	@override String manyServersUnchecked({required Object count}) => '서버 ${count}개를 확인하지 못했습니다';
+	@override String get checkingMoreSources => '다른 소스 확인 중…';
+	@override String get lastUsed => '최근 사용';
+	@override String get currentSource => '현재 소스';
+	@override String get unavailable => '사용할 수 없음';
+	@override String get signInRequired => '다시 로그인해야 합니다';
+	@override String resumeAt({required Object position}) => '${position}부터 계속';
+	@override String get watched => '시청함';
+	@override String get noneReachableTitle => '현재 연결할 수 있는 소스가 없습니다.';
+	@override String get reauthRequiredTitle => '이 콘텐츠를 보려면 다시 로그인하세요.';
+	@override String get manageServers => '서버 관리';
+	@override String sourceLabel({required Object source}) => '소스: ${source}';
+	@override String get change => '변경';
+	@override String get playbackFailedTitle => '이 소스를 재생할 수 없습니다.';
+	@override String get chooseAnotherSource => '다른 소스 선택';
+	@override String rowSemantics({required Object count, required Object index, required Object description}) => '소스 ${count}개 중 ${index}번째: ${description}';
+	@override String get preferredServer => '기본 서버';
+	@override String setPreferredServer({required Object server}) => '항상 ${server} 사용';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsKo extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsKo._(TranslationsKo root) : this._root = root, super.internal(root);
@@ -3323,6 +3356,29 @@ extension on TranslationsKo {
 			'pleyaShare.notificationText' => '다른 Pleya 기기가 로컬 폴더를 스트리밍할 수 있습니다',
 			'pleyaShare.hostDescriptionAndroid' => '이 네트워크의 다른 Pleya 기기가 로컬 폴더를 탐색, 스트리밍, 다운로드할 수 있습니다. 공유는 알림과 함께 백그라운드에서 계속됩니다.',
 			'pleyaShare.scanningSubnet' => '네트워크 검색 중…',
+			'sourcePicker.playTitle' => '재생할 위치 선택',
+			'sourcePicker.detailsTitle' => '세부 정보를 볼 소스 선택',
+			'sourcePicker.availableOnOneServer' => '서버 1개에서 사용 가능',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => '서버 ${count}개에서 사용 가능',
+			'sourcePicker.oneServerUnchecked' => '서버 1개를 확인하지 못했습니다',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '서버 ${count}개를 확인하지 못했습니다',
+			'sourcePicker.checkingMoreSources' => '다른 소스 확인 중…',
+			'sourcePicker.lastUsed' => '최근 사용',
+			'sourcePicker.currentSource' => '현재 소스',
+			'sourcePicker.unavailable' => '사용할 수 없음',
+			'sourcePicker.signInRequired' => '다시 로그인해야 합니다',
+			'sourcePicker.resumeAt' => ({required Object position}) => '${position}부터 계속',
+			'sourcePicker.watched' => '시청함',
+			'sourcePicker.noneReachableTitle' => '현재 연결할 수 있는 소스가 없습니다.',
+			'sourcePicker.reauthRequiredTitle' => '이 콘텐츠를 보려면 다시 로그인하세요.',
+			'sourcePicker.manageServers' => '서버 관리',
+			'sourcePicker.sourceLabel' => ({required Object source}) => '소스: ${source}',
+			'sourcePicker.change' => '변경',
+			'sourcePicker.playbackFailedTitle' => '이 소스를 재생할 수 없습니다.',
+			'sourcePicker.chooseAnotherSource' => '다른 소스 선택',
+			'sourcePicker.rowSemantics' => ({required Object count, required Object index, required Object description}) => '소스 ${count}개 중 ${index}번째: ${description}',
+			'sourcePicker.preferredServer' => '기본 서버',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => '항상 ${server} 사용',
 			_ => null,
 		};
 	}

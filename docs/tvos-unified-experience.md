@@ -934,9 +934,19 @@ houden.
 
 ### 14.1 Presentatie
 
-Een gecentreerde TV-modal binnen de profielnavigator: scrim over achtergrond; breedte circa
-900–1040; hoogte dynamisch, maximaal veilige viewport; hoekradius 20–24; links kleine poster of
+Een gecentreerde TV-modal binnen de profielnavigator: scrim over achtergrond; **visuele breedte
+overeenkomstig de 900–1040px-referentie op 1920×1080-output** — vertaal dit via `TvLayoutConstants`
+en de actuele viewport-constraints naar de werkelijke tvOS logical viewport (DEC-028 zet de render
+scale op 1.85, dus circa 1038×584 logical) en houd duidelijke veilige buitenmarges; hoogte dynamisch,
+maximaal veilige viewport; hoekradius 20–24 op diezelfde referentieschaal; links kleine poster of
 backdropthumbnail; rechts titel, jaar en intent; daaronder verticale lijst met bronnen.
+
+`resolveOverlaySheetGeometry` bezit deze vertaling voor álle TV-panels: de referentiematen staan daar
+als fracties van het 1920×1080-vlak en worden met de levende viewport vermenigvuldigd. Op het
+canonieke canvas is dat rekenkundig gelijk aan `referentie / 1.85`, en op elk ander oppervlak
+(simulator, 720p-uitvoer, de Linux-goldenharness) degradeert het correct. Dit is bewust *niet*
+`TvLayoutConstants.scaleForHeight`: die schaal is geklemd op `[0.85, 1.35]` juist omdat 10-voets
+*typografie* niet lineair met het canvas mag krimpen. Doosgeometrie wel, tekst niet.
 
 **Geen handmatig root-`OverlayEntry`.** `CLAUDE.md` waarschuwt expliciet dat root-overlaycontexten
 buiten `ProfileNavigationScope` navigeren en als gevolg een zwart foutscherm kunnen opleveren
@@ -997,6 +1007,86 @@ Pleya onthoudt per profiel en canonical title de laatst gekozen source. Alleen o
 zetten. Meerdere bronnen blijven de picker openen. Verwijderde of offline voorkeur valt terug naar de
 beste online bron. De voorkeursmap krijgt een LRU-cap om onbeperkte groei te voorkomen. Profiel
 verwijderen wist de voorkeuren.
+
+#### 14.8a Voorkeursserver per profiel
+
+> **Contractwijziging, vastgesteld tijdens fase 4.** Dit supersedeert **uitsluitend** de regel dat
+> iedere bronvoorkeur alleen de initiële pickerfocus mag zetten. Er bestaan vanaf nu twee
+> voorkeuren met verschillend gezag. Een DEC-nummer is nog niet toegekend.
+
+| | scope | sleutel | mag zelf kiezen |
+| --- | --- | --- | --- |
+| **voorkeursserver** | profiel | stabiele `serverId` | **ja** |
+| laatst gekozen source (14.8) | profiel + `CanonicalMediaIdentity.bucketKey` | `bucketKey` | nee — alleen focus |
+
+De reden is de ervaring, niet de opslag: wie één hoofdserver draait hoort niet bij iedere
+gedupliceerde titel dezelfde vraag te krijgen, terwijl "de bron die ik voor déze film toevallig
+koos" een te zwak signaal is om een vraag mee over te slaan.
+
+**De voorkeursserver is één instelling per profiel en geldt voor álle content.** Hij wordt
+opgeslagen als `profileScope -> serverId` en dus uitdrukkelijk **niet** als
+`CanonicalMediaIdentity -> serverId`, `groupId -> serverId` of `itemId -> serverId`. Er komt geen
+enkele regel per film, serie of aflevering bij; het is één waarde die iedere `UnifiedMediaGroup`
+binnen dat profiel beantwoordt. `PreferredServerStore.read()` neemt daarom geen identity-argument —
+er is niets om er een mee te sleutelen.
+
+Met `preferredServerId = NAS` op het profiel Michel:
+
+| Titel | Bronnen | Uitkomst |
+| --- | --- | --- |
+| Film A | NAS + Zolder | NAS, direct |
+| Film B | NAS + Jellyfin | NAS, direct |
+| Serie C | NAS + Zolder | NAS, direct |
+| Film D | alleen Zolder | Zolder, direct |
+| Film E | NAS offline, alleen Zolder online | Zolder, direct |
+| Film F | NAS offline, Zolder + Server 3 online | picker |
+
+Een voorkeursserver die offline is, een auth-error geeft, verborgen is of deze titel niet bezit,
+wordt **voor die ene activatie** genegeerd; de voorkeur zelf blijft staan en geldt onverminderd voor
+de volgende titel. Heeft dezelfde logische titel meerdere copies op de voorkeursserver, dan kiest de
+deterministische rangorde van 4.7 welke — nooit responsvolgorde, nooit toeval; een andere copy of
+edition kiest de gebruiker desgewenst via `Wijzigen`.
+
+**Activatievolgorde.**
+
+```
+1. expliciet gekozen source binnen de huidige flow  → die source
+2. voorkeursserver heeft een bruikbare source       → beste source op die server, direct
+3. precies één bruikbare source                     → direct (14.6)
+4. meerdere bruikbaar, voorkeur niet toepasbaar     → picker
+```
+
+Regel 1 vraagt geen aparte code: een detailroute is al brongebonden, dus Afspelen daar gebruikt de
+concrete `MediaItem` van die pagina, en Next Episode blijft op diezelfde server.
+
+Een voorkeursserver die offline is, een auth-error geeft, verborgen is voor het profiel of geen
+source in deze groep heeft, wordt niet gekozen; activatie valt dan terug op regel 3 en 4. De sleutel
+is altijd de stabiele `serverId` en nooit de servernaam: namen zijn bewerkbaar en kunnen botsen
+(case A7), dus een naam-gesleutelde voorkeur zou stil op een andere machine gaan wijzen.
+
+**Expliciete bronkeuze omzeilt de voorkeursserver.** `Wijzigen` (hoofdstuk 15) en
+`Andere bron kiezen` (hoofdstuk 15, na een mislukte playbackstart) zijn expliciete
+source-selection-intents en openen altijd de picker, óók wanneer een voorkeursserver bestaat — een
+staande default mag geen vraag beantwoorden die de gebruiker net stelde.
+
+**En na zo'n keuze wint hij binnen die flow.** Kiest de gebruiker op de detailpagina van Dune via
+`Wijzigen` voor Zolder, dan is die detailpagina Zolder: Afspelen gebruikt Zolder, en Next Episode
+binnen diezelfde afspeelsessie blijft op Zolder. Pleya springt daar niet stil terug naar NAS. Dat
+volgt uit de vorm en niet uit een extra regel: de detailroute is brongebonden en draagt één concreet
+`MediaItem` (hoofdstuk 4.1), dus er is geen tweede kandidaat om naar terug te vallen. De globale
+voorkeur is pas weer aan zet bij een *nieuwe* normale activatie — vanuit Home, Films, Series of
+Search.
+
+**In de picker** wordt de voorkeursserver herkenbaar maar rustig gemarkeerd (`Voorkeursserver`),
+zichtbaar anders dan `Laatst gebruikt`. De picker biedt daarnaast een expliciete actie om de
+gefocuste server tot voorkeursserver te maken; die actie kiest niets, hij verzet alleen de markering.
+De definitieve instelling krijgt later een vaste plek onder Mijn Pleya → Instellingen → Afspelen
+(hoofdstuk 18), met de keuzes "Automatisch / geen voorkeur" plus iedere voor het profiel zichtbare
+server, en als uitleg: "Gebruik deze server standaard wanneer dezelfde content op meerdere servers
+beschikbaar is." Fase 4 bouwt daarvan het model, het storagecontract en het coordinatorgedrag; het
+scherm zelf hoort bij de fase die Mijn Pleya verbouwt.
+
+Profiel verwijderen wist ook deze voorkeur (hoofdstuk 22).
 
 ---
 
@@ -1496,7 +1586,10 @@ streams compleet zijn; geen volledige catalogus vooraf in RAM.
 
 ```
 lib/services/unified_catalog/unified_activation_coordinator.dart
+lib/services/unified_catalog/preferred_server_store.dart      (14.8a)
 lib/widgets/tv/tv_media_source_picker.dart
+lib/widgets/tv/tv_source_row_descriptor.dart                  (14.3)
+lib/widgets/tv/tv_unified_layout.dart                         (hoofdstuk 8)
 lib/screens/tv/tv_media_source_picker_route.dart
 lib/media/unified/unified_route_context.dart
 ```
@@ -1869,6 +1962,7 @@ alleen spaarzaam toe; de oranje focusring; **"Emby archief" als server** — zie
 | 5 | "1–10 van 342 resultaten" | Geen exact totaal voordat alle bronstreams uitgeput zijn; wél "N titels geladen" | **Plan** | hoofdstuk 10.7 |
 | 6 | Vijf permanente carousel-dots (home) | Geen permanente reeks dots; alleen tijdelijke segmentindicator | **Plan** | hoofdstuk 9.6 |
 | 7 | "Gepland" / "Beschikbaar 24 mei" in het filmgrid | Niet gespecificeerd in hoofdstuk 1–32. Aanvragen blijft onder Mijn Pleya (hoofdstuk 2, 20) | **Open** | te beslissen vóór fase 5 |
+| 8 | De **"Onthoud mijn keuze"-optie** in de source picker | Hoofdstuk 14.8 onthoudt de laatst gekozen source *altijd*, zonder opt-in, en gebruikt hem alleen voor focus; 14.8a voegt daar een expliciete voorkeursserver-actie aan toe. Een derde, per-titel opt-in bestaat in geen van beide | **Open** | ontdekt in fase 4; niet zelf ingevuld |
 
 Punt 3 verdient nadruk: waar de mockups "Emby" tonen, is de bedoelde derde backend in de canonieke
 fixture (hoofdstuk 28) **Pleya Server** of **Pleya Share**. Een `UnifiedMediaGroup` mag zo'n bron wel

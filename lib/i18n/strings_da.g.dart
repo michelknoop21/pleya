@@ -87,6 +87,7 @@ class TranslationsDa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerDa addServer = _TranslationsAddServerDa._(_root);
 	@override late final _TranslationsAddLocalFolderDa addLocalFolder = _TranslationsAddLocalFolderDa._(_root);
 	@override late final _TranslationsPleyaShareDa pleyaShare = _TranslationsPleyaShareDa._(_root);
+	@override late final _TranslationsSourcePickerDa sourcePicker = _TranslationsSourcePickerDa._(_root);
 }
 
 // Path: app
@@ -1707,6 +1708,38 @@ class _TranslationsPleyaShareDa extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => 'Scanner netværket…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerDa extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => 'Vælg hvor du vil afspille';
+	@override String get detailsTitle => 'Vælg en kilde til detaljerne';
+	@override String get availableOnOneServer => 'Tilgængelig på 1 server';
+	@override String availableOnManyServers({required Object count}) => 'Tilgængelig på ${count} servere';
+	@override String get oneServerUnchecked => '1 server kunne ikke kontrolleres';
+	@override String manyServersUnchecked({required Object count}) => '${count} servere kunne ikke kontrolleres';
+	@override String get checkingMoreSources => 'Søger efter flere kilder…';
+	@override String get lastUsed => 'Senest brugt';
+	@override String get currentSource => 'Nuværende kilde';
+	@override String get unavailable => 'Ikke tilgængelig';
+	@override String get signInRequired => 'Log ind igen';
+	@override String resumeAt({required Object position}) => 'Genoptag ved ${position}';
+	@override String get watched => 'Set';
+	@override String get noneReachableTitle => 'Ingen kilde kan nås lige nu.';
+	@override String get reauthRequiredTitle => 'Log ind igen for at nå denne titel.';
+	@override String get manageServers => 'Administrer servere';
+	@override String sourceLabel({required Object source}) => 'Kilde: ${source}';
+	@override String get change => 'Skift';
+	@override String get playbackFailedTitle => 'Denne kilde kunne ikke afspilles.';
+	@override String get chooseAnotherSource => 'Vælg en anden kilde';
+	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Kilde ${index} af ${count}: ${description}';
+	@override String get preferredServer => 'Foretrukken server';
+	@override String setPreferredServer({required Object server}) => 'Brug altid ${server}';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsDa extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsDa._(TranslationsDa root) : this._root = root, super.internal(root);
@@ -3323,6 +3356,29 @@ extension on TranslationsDa {
 			'pleyaShare.notificationText' => 'Andre Pleya-enheder kan streame dine lokale mapper',
 			'pleyaShare.hostDescriptionAndroid' => 'Andre Pleya-enheder på dette netværk kan gennemse, streame og downloade dine lokale mapper. Delingen fortsætter i baggrunden med en notifikation.',
 			'pleyaShare.scanningSubnet' => 'Scanner netværket…',
+			'sourcePicker.playTitle' => 'Vælg hvor du vil afspille',
+			'sourcePicker.detailsTitle' => 'Vælg en kilde til detaljerne',
+			'sourcePicker.availableOnOneServer' => 'Tilgængelig på 1 server',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Tilgængelig på ${count} servere',
+			'sourcePicker.oneServerUnchecked' => '1 server kunne ikke kontrolleres',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servere kunne ikke kontrolleres',
+			'sourcePicker.checkingMoreSources' => 'Søger efter flere kilder…',
+			'sourcePicker.lastUsed' => 'Senest brugt',
+			'sourcePicker.currentSource' => 'Nuværende kilde',
+			'sourcePicker.unavailable' => 'Ikke tilgængelig',
+			'sourcePicker.signInRequired' => 'Log ind igen',
+			'sourcePicker.resumeAt' => ({required Object position}) => 'Genoptag ved ${position}',
+			'sourcePicker.watched' => 'Set',
+			'sourcePicker.noneReachableTitle' => 'Ingen kilde kan nås lige nu.',
+			'sourcePicker.reauthRequiredTitle' => 'Log ind igen for at nå denne titel.',
+			'sourcePicker.manageServers' => 'Administrer servere',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'Kilde: ${source}',
+			'sourcePicker.change' => 'Skift',
+			'sourcePicker.playbackFailedTitle' => 'Denne kilde kunne ikke afspilles.',
+			'sourcePicker.chooseAnotherSource' => 'Vælg en anden kilde',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Kilde ${index} af ${count}: ${description}',
+			'sourcePicker.preferredServer' => 'Foretrukken server',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Brug altid ${server}',
 			_ => null,
 		};
 	}

@@ -87,6 +87,7 @@ class TranslationsNb extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerNb addServer = _TranslationsAddServerNb._(_root);
 	@override late final _TranslationsAddLocalFolderNb addLocalFolder = _TranslationsAddLocalFolderNb._(_root);
 	@override late final _TranslationsPleyaShareNb pleyaShare = _TranslationsPleyaShareNb._(_root);
+	@override late final _TranslationsSourcePickerNb sourcePicker = _TranslationsSourcePickerNb._(_root);
 }
 
 // Path: app
@@ -1707,6 +1708,38 @@ class _TranslationsPleyaShareNb extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => 'Skanner nettverket…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerNb extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerNb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => 'Velg hvor du vil spille av';
+	@override String get detailsTitle => 'Velg en kilde for detaljene';
+	@override String get availableOnOneServer => 'Tilgjengelig på 1 server';
+	@override String availableOnManyServers({required Object count}) => 'Tilgjengelig på ${count} servere';
+	@override String get oneServerUnchecked => '1 server kunne ikke kontrolleres';
+	@override String manyServersUnchecked({required Object count}) => '${count} servere kunne ikke kontrolleres';
+	@override String get checkingMoreSources => 'Søker etter flere kilder…';
+	@override String get lastUsed => 'Sist brukt';
+	@override String get currentSource => 'Gjeldende kilde';
+	@override String get unavailable => 'Ikke tilgjengelig';
+	@override String get signInRequired => 'Du må logge inn igjen';
+	@override String resumeAt({required Object position}) => 'Fortsett ved ${position}';
+	@override String get watched => 'Sett';
+	@override String get noneReachableTitle => 'Ingen kilde er tilgjengelig akkurat nå.';
+	@override String get reauthRequiredTitle => 'Logg inn igjen for å nå denne tittelen.';
+	@override String get manageServers => 'Administrer servere';
+	@override String sourceLabel({required Object source}) => 'Kilde: ${source}';
+	@override String get change => 'Endre';
+	@override String get playbackFailedTitle => 'Denne kilden kunne ikke spilles av.';
+	@override String get chooseAnotherSource => 'Velg en annen kilde';
+	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Kilde ${index} av ${count}: ${description}';
+	@override String get preferredServer => 'Foretrukket server';
+	@override String setPreferredServer({required Object server}) => 'Bruk alltid ${server}';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsNb extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsNb._(TranslationsNb root) : this._root = root, super.internal(root);
@@ -3323,6 +3356,29 @@ extension on TranslationsNb {
 			'pleyaShare.notificationText' => 'Andre Pleya-enheter kan strømme de lokale mappene dine',
 			'pleyaShare.hostDescriptionAndroid' => 'Andre Pleya-enheter på dette nettverket kan bla i, strømme og laste ned de lokale mappene dine. Delingen fortsetter i bakgrunnen med et varsel.',
 			'pleyaShare.scanningSubnet' => 'Skanner nettverket…',
+			'sourcePicker.playTitle' => 'Velg hvor du vil spille av',
+			'sourcePicker.detailsTitle' => 'Velg en kilde for detaljene',
+			'sourcePicker.availableOnOneServer' => 'Tilgjengelig på 1 server',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Tilgjengelig på ${count} servere',
+			'sourcePicker.oneServerUnchecked' => '1 server kunne ikke kontrolleres',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servere kunne ikke kontrolleres',
+			'sourcePicker.checkingMoreSources' => 'Søker etter flere kilder…',
+			'sourcePicker.lastUsed' => 'Sist brukt',
+			'sourcePicker.currentSource' => 'Gjeldende kilde',
+			'sourcePicker.unavailable' => 'Ikke tilgjengelig',
+			'sourcePicker.signInRequired' => 'Du må logge inn igjen',
+			'sourcePicker.resumeAt' => ({required Object position}) => 'Fortsett ved ${position}',
+			'sourcePicker.watched' => 'Sett',
+			'sourcePicker.noneReachableTitle' => 'Ingen kilde er tilgjengelig akkurat nå.',
+			'sourcePicker.reauthRequiredTitle' => 'Logg inn igjen for å nå denne tittelen.',
+			'sourcePicker.manageServers' => 'Administrer servere',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'Kilde: ${source}',
+			'sourcePicker.change' => 'Endre',
+			'sourcePicker.playbackFailedTitle' => 'Denne kilden kunne ikke spilles av.',
+			'sourcePicker.chooseAnotherSource' => 'Velg en annen kilde',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Kilde ${index} av ${count}: ${description}',
+			'sourcePicker.preferredServer' => 'Foretrukket server',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Bruk alltid ${server}',
 			_ => null,
 		};
 	}

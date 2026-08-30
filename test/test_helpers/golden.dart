@@ -31,6 +31,15 @@ Future<void> loadAppFontsForGoldens() async {
   const fontsByFamily = {
     'Inter': ['assets/fonts/Inter-Regular.otf', 'assets/fonts/Inter-Medium.otf', 'assets/fonts/Inter-Bold.otf'],
     'ArchivoBlack': ['assets/fonts/ArchivoBlack-Regular.ttf'],
+    // The icon font. `Symbols.*` declares `fontFamily: 'MaterialSymbolsRounded'`
+    // with `fontPackage: 'material_symbols_icons'`, which Flutter resolves as
+    // the prefixed family below — registering the bare name instead loads a
+    // font nothing asks for, and every icon still renders as the missing-glyph
+    // box. In a golden that reads as a design fault rather than a test setup
+    // one, and an icon meant to be subtle is exactly where it misreads worst.
+    'packages/material_symbols_icons/MaterialSymbolsRounded': [
+      'packages/material_symbols_icons/lib/fonts/MaterialSymbolsRounded.ttf',
+    ],
   };
   for (final entry in fontsByFamily.entries) {
     final loader = FontLoader(entry.key);

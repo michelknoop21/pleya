@@ -95,6 +95,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsAddServerEn addServer = TranslationsAddServerEn.internal(_root);
 	late final TranslationsAddLocalFolderEn addLocalFolder = TranslationsAddLocalFolderEn.internal(_root);
 	late final TranslationsPleyaShareEn pleyaShare = TranslationsPleyaShareEn.internal(_root);
+	late final TranslationsSourcePickerEn sourcePicker = TranslationsSourcePickerEn.internal(_root);
 }
 
 // Path: states
@@ -5155,6 +5156,84 @@ class TranslationsPleyaShareEn {
 	String get scanningSubnet => 'Scanning the network…';
 }
 
+// Path: sourcePicker
+class TranslationsSourcePickerEn {
+	TranslationsSourcePickerEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Choose where to play'
+	String get playTitle => 'Choose where to play';
+
+	/// en: 'Choose a source for the details'
+	String get detailsTitle => 'Choose a source for the details';
+
+	/// en: 'Available on 1 server'
+	String get availableOnOneServer => 'Available on 1 server';
+
+	/// en: 'Available on ${count} servers'
+	String availableOnManyServers({required Object count}) => 'Available on ${count} servers';
+
+	/// en: '1 server could not be checked'
+	String get oneServerUnchecked => '1 server could not be checked';
+
+	/// en: '${count} servers could not be checked'
+	String manyServersUnchecked({required Object count}) => '${count} servers could not be checked';
+
+	/// en: 'Checking more sources…'
+	String get checkingMoreSources => 'Checking more sources…';
+
+	/// en: 'Last used'
+	String get lastUsed => 'Last used';
+
+	/// en: 'Current source'
+	String get currentSource => 'Current source';
+
+	/// en: 'Not available'
+	String get unavailable => 'Not available';
+
+	/// en: 'Sign in required'
+	String get signInRequired => 'Sign in required';
+
+	/// en: 'Resume at ${position}'
+	String resumeAt({required Object position}) => 'Resume at ${position}';
+
+	/// en: 'Watched'
+	String get watched => 'Watched';
+
+	/// en: 'No source is currently reachable.'
+	String get noneReachableTitle => 'No source is currently reachable.';
+
+	/// en: 'Sign in again to reach this title.'
+	String get reauthRequiredTitle => 'Sign in again to reach this title.';
+
+	/// en: 'Manage servers'
+	String get manageServers => 'Manage servers';
+
+	/// en: 'Source: ${source}'
+	String sourceLabel({required Object source}) => 'Source: ${source}';
+
+	/// en: 'Change'
+	String get change => 'Change';
+
+	/// en: 'This source could not be played.'
+	String get playbackFailedTitle => 'This source could not be played.';
+
+	/// en: 'Choose another source'
+	String get chooseAnotherSource => 'Choose another source';
+
+	/// en: 'Source ${index} of ${count}: ${description}'
+	String rowSemantics({required Object index, required Object count, required Object description}) => 'Source ${index} of ${count}: ${description}';
+
+	/// en: 'Preferred server'
+	String get preferredServer => 'Preferred server';
+
+	/// en: 'Always use ${server}'
+	String setPreferredServer({required Object server}) => 'Always use ${server}';
+}
+
 // Path: search.filters
 class TranslationsSearchFiltersEn {
 	TranslationsSearchFiltersEn.internal(this._root);
@@ -7584,6 +7663,29 @@ extension on Translations {
 			'pleyaShare.notificationText' => 'Other Pleya devices can stream your local folders',
 			'pleyaShare.hostDescriptionAndroid' => 'Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running in the background with a notification.',
 			'pleyaShare.scanningSubnet' => 'Scanning the network…',
+			'sourcePicker.playTitle' => 'Choose where to play',
+			'sourcePicker.detailsTitle' => 'Choose a source for the details',
+			'sourcePicker.availableOnOneServer' => 'Available on 1 server',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Available on ${count} servers',
+			'sourcePicker.oneServerUnchecked' => '1 server could not be checked',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers could not be checked',
+			'sourcePicker.checkingMoreSources' => 'Checking more sources…',
+			'sourcePicker.lastUsed' => 'Last used',
+			'sourcePicker.currentSource' => 'Current source',
+			'sourcePicker.unavailable' => 'Not available',
+			'sourcePicker.signInRequired' => 'Sign in required',
+			'sourcePicker.resumeAt' => ({required Object position}) => 'Resume at ${position}',
+			'sourcePicker.watched' => 'Watched',
+			'sourcePicker.noneReachableTitle' => 'No source is currently reachable.',
+			'sourcePicker.reauthRequiredTitle' => 'Sign in again to reach this title.',
+			'sourcePicker.manageServers' => 'Manage servers',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'Source: ${source}',
+			'sourcePicker.change' => 'Change',
+			'sourcePicker.playbackFailedTitle' => 'This source could not be played.',
+			'sourcePicker.chooseAnotherSource' => 'Choose another source',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Source ${index} of ${count}: ${description}',
+			'sourcePicker.preferredServer' => 'Preferred server',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Always use ${server}',
 			_ => null,
 		};
 	}

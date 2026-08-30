@@ -84,3 +84,4 @@ pleya_server/.responses/
 /.context/
 # Claude Code-instellingen per machine; de gedeelde .claude/ blijft wel getrackt.
 /.claude/settings.local.json
+test/goldens/failures/

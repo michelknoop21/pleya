@@ -1771,5 +1771,30 @@
     "onWan": "Van buiten",
     "unavailable": "Tautulli gaf geen antwoord",
     "sidebarLabel": "Nu aan het kijken"
+  },
+  "sourcePicker": {
+    "playTitle": "Kies waar je wilt afspelen",
+    "detailsTitle": "Kies een bron voor de details",
+    "availableOnOneServer": "Beschikbaar op 1 server",
+    "availableOnManyServers": "Beschikbaar op ${count} servers",
+    "oneServerUnchecked": "1 server kon niet worden gecontroleerd",
+    "manyServersUnchecked": "${count} servers konden niet worden gecontroleerd",
+    "checkingMoreSources": "Meer bronnen controleren…",
+    "lastUsed": "Laatst gebruikt",
+    "currentSource": "Huidige bron",
+    "unavailable": "Niet beschikbaar",
+    "signInRequired": "Opnieuw aanmelden vereist",
+    "resumeAt": "Hervatten op ${position}",
+    "watched": "Bekeken",
+    "noneReachableTitle": "Geen bron is momenteel bereikbaar.",
+    "reauthRequiredTitle": "Meld je opnieuw aan om deze titel te bereiken.",
+    "manageServers": "Servers beheren",
+    "sourceLabel": "Bron: ${source}",
+    "change": "Wijzigen",
+    "playbackFailedTitle": "Deze bron kon niet worden afgespeeld.",
+    "chooseAnotherSource": "Andere bron kiezen",
+    "rowSemantics": "Bron ${index} van ${count}: ${description}",
+    "preferredServer": "Voorkeursserver",
+    "setPreferredServer": "Altijd ${server} gebruiken"
   }
 }

@@ -1447,5 +1447,30 @@
     "notificationText": "Les autres appareils Pleya peuvent diffuser vos dossiers locaux",
     "hostDescriptionAndroid": "Les autres appareils Pleya de ce réseau peuvent parcourir, diffuser et télécharger vos dossiers locaux. Le partage continue en arrière-plan avec une notification.",
     "scanningSubnet": "Analyse du réseau…"
+  },
+  "sourcePicker": {
+    "playTitle": "Choisissez où lire",
+    "detailsTitle": "Choisissez une source pour les détails",
+    "availableOnOneServer": "Disponible sur 1 serveur",
+    "availableOnManyServers": "Disponible sur ${count} serveurs",
+    "oneServerUnchecked": "1 serveur n'a pas pu être vérifié",
+    "manyServersUnchecked": "${count} serveurs n'ont pas pu être vérifiés",
+    "checkingMoreSources": "Recherche d'autres sources…",
+    "lastUsed": "Dernière utilisée",
+    "currentSource": "Source actuelle",
+    "unavailable": "Indisponible",
+    "signInRequired": "Reconnexion requise",
+    "resumeAt": "Reprendre à ${position}",
+    "watched": "Vu",
+    "noneReachableTitle": "Aucune source n'est accessible pour le moment.",
+    "reauthRequiredTitle": "Reconnectez-vous pour accéder à ce titre.",
+    "manageServers": "Gérer les serveurs",
+    "sourceLabel": "Source : ${source}",
+    "change": "Modifier",
+    "playbackFailedTitle": "Cette source n'a pas pu être lue.",
+    "chooseAnotherSource": "Choisir une autre source",
+    "rowSemantics": "Source ${index} sur ${count} : ${description}",
+    "preferredServer": "Serveur préféré",
+    "setPreferredServer": "Toujours utiliser ${server}"
   }
 }

@@ -1447,5 +1447,30 @@
     "notificationText": "Други устройства Pleya могат да стриймват локалните ви папки",
     "hostDescriptionAndroid": "Други устройства Pleya в тази мрежа могат да разглеждат, стриймват и изтеглят локалните ви папки. Споделянето продължава във фонов режим с известие.",
     "scanningSubnet": "Сканиране на мрежата…"
+  },
+  "sourcePicker": {
+    "playTitle": "Изберете къде да се възпроизведе",
+    "detailsTitle": "Изберете източник за подробностите",
+    "availableOnOneServer": "Достъпно на 1 сървър",
+    "availableOnManyServers": "Достъпно на ${count} сървъра",
+    "oneServerUnchecked": "1 сървър не можа да бъде проверен",
+    "manyServersUnchecked": "${count} сървъра не можаха да бъдат проверени",
+    "checkingMoreSources": "Проверка за още източници…",
+    "lastUsed": "Последно използван",
+    "currentSource": "Текущ източник",
+    "unavailable": "Не е налично",
+    "signInRequired": "Необходимо е повторно влизане",
+    "resumeAt": "Продължаване от ${position}",
+    "watched": "Гледано",
+    "noneReachableTitle": "В момента няма достъпен източник.",
+    "reauthRequiredTitle": "Влезте отново, за да достигнете това заглавие.",
+    "manageServers": "Управление на сървърите",
+    "sourceLabel": "Източник: ${source}",
+    "change": "Промяна",
+    "playbackFailedTitle": "Този източник не можа да бъде възпроизведен.",
+    "chooseAnotherSource": "Изберете друг източник",
+    "rowSemantics": "Източник ${index} от ${count}: ${description}",
+    "preferredServer": "Предпочитан сървър",
+    "setPreferredServer": "Винаги използвай ${server}"
   }
 }

@@ -87,6 +87,7 @@ class TranslationsJa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerJa addServer = _TranslationsAddServerJa._(_root);
 	@override late final _TranslationsAddLocalFolderJa addLocalFolder = _TranslationsAddLocalFolderJa._(_root);
 	@override late final _TranslationsPleyaShareJa pleyaShare = _TranslationsPleyaShareJa._(_root);
+	@override late final _TranslationsSourcePickerJa sourcePicker = _TranslationsSourcePickerJa._(_root);
 }
 
 // Path: app
@@ -1707,6 +1708,38 @@ class _TranslationsPleyaShareJa extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => 'ネットワークをスキャン中…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerJa extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => '再生する場所を選択';
+	@override String get detailsTitle => '詳細を表示するソースを選択';
+	@override String get availableOnOneServer => '1 台のサーバーで利用可能';
+	@override String availableOnManyServers({required Object count}) => '${count} 台のサーバーで利用可能';
+	@override String get oneServerUnchecked => '1 台のサーバーを確認できませんでした';
+	@override String manyServersUnchecked({required Object count}) => '${count} 台のサーバーを確認できませんでした';
+	@override String get checkingMoreSources => '他のソースを確認中…';
+	@override String get lastUsed => '前回使用';
+	@override String get currentSource => '現在のソース';
+	@override String get unavailable => '利用できません';
+	@override String get signInRequired => '再サインインが必要です';
+	@override String resumeAt({required Object position}) => '${position} から再開';
+	@override String get watched => '視聴済み';
+	@override String get noneReachableTitle => '現在、利用できるソースがありません。';
+	@override String get reauthRequiredTitle => 'このタイトルにアクセスするには再度サインインしてください。';
+	@override String get manageServers => 'サーバーを管理';
+	@override String sourceLabel({required Object source}) => 'ソース: ${source}';
+	@override String get change => '変更';
+	@override String get playbackFailedTitle => 'このソースは再生できませんでした。';
+	@override String get chooseAnotherSource => '別のソースを選択';
+	@override String rowSemantics({required Object count, required Object index, required Object description}) => 'ソース ${count} 件中 ${index} 件目: ${description}';
+	@override String get preferredServer => '優先サーバー';
+	@override String setPreferredServer({required Object server}) => '常に ${server} を使用';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsJa extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsJa._(TranslationsJa root) : this._root = root, super.internal(root);
@@ -3323,6 +3356,29 @@ extension on TranslationsJa {
 			'pleyaShare.notificationText' => '他のPleyaデバイスがローカルフォルダーをストリーミングできます',
 			'pleyaShare.hostDescriptionAndroid' => 'このネットワーク上の他のPleyaデバイスが、ローカルフォルダーの閲覧・ストリーミング・ダウンロードを行えます。共有は通知とともにバックグラウンドで継続されます。',
 			'pleyaShare.scanningSubnet' => 'ネットワークをスキャン中…',
+			'sourcePicker.playTitle' => '再生する場所を選択',
+			'sourcePicker.detailsTitle' => '詳細を表示するソースを選択',
+			'sourcePicker.availableOnOneServer' => '1 台のサーバーで利用可能',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => '${count} 台のサーバーで利用可能',
+			'sourcePicker.oneServerUnchecked' => '1 台のサーバーを確認できませんでした',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} 台のサーバーを確認できませんでした',
+			'sourcePicker.checkingMoreSources' => '他のソースを確認中…',
+			'sourcePicker.lastUsed' => '前回使用',
+			'sourcePicker.currentSource' => '現在のソース',
+			'sourcePicker.unavailable' => '利用できません',
+			'sourcePicker.signInRequired' => '再サインインが必要です',
+			'sourcePicker.resumeAt' => ({required Object position}) => '${position} から再開',
+			'sourcePicker.watched' => '視聴済み',
+			'sourcePicker.noneReachableTitle' => '現在、利用できるソースがありません。',
+			'sourcePicker.reauthRequiredTitle' => 'このタイトルにアクセスするには再度サインインしてください。',
+			'sourcePicker.manageServers' => 'サーバーを管理',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'ソース: ${source}',
+			'sourcePicker.change' => '変更',
+			'sourcePicker.playbackFailedTitle' => 'このソースは再生できませんでした。',
+			'sourcePicker.chooseAnotherSource' => '別のソースを選択',
+			'sourcePicker.rowSemantics' => ({required Object count, required Object index, required Object description}) => 'ソース ${count} 件中 ${index} 件目: ${description}',
+			'sourcePicker.preferredServer' => '優先サーバー',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => '常に ${server} を使用',
 			_ => null,
 		};
 	}

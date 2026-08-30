@@ -354,6 +354,70 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     );
   }
 
+  /// Hoofdstuk 15's `Bron: NAS • Films 4K   [ Wijzigen ]`.
+  ///
+  /// Rendered only when the page was reached through a unified group that
+  /// actually has more than one source — a single-source title has nothing to
+  /// change to, and a line saying so would be chrome. Returns a zero-size box
+  /// otherwise, which is every entry point that is not a unified activation.
+  Widget _buildUnifiedSourceLine() {
+    final routeContext = widget.unifiedRouteContext;
+    if (routeContext == null || !routeContext.hasAlternativeSources) return const SizedBox.shrink();
+
+    final isTv = PlatformDetector.isTV();
+    final tvScale = TvLayoutConstants.scaleOf(context);
+    final mono = tokens(context);
+    final parts = [
+      _metadata.serverName ?? routeContext.sourceKey.split(':').first,
+      if ((_metadata.libraryTitle ?? '').trim().isNotEmpty) _metadata.libraryTitle!.trim(),
+    ];
+    final label = t.sourcePicker.sourceLabel(source: parts.join(' • '));
+    final fontSize = isTv ? 13.0 * tvScale : 13.0;
+    final onChangeSource = widget.onChangeSource;
+
+    return Padding(
+      padding: EdgeInsets.only(top: isTv ? 10 * tvScale : 12),
+      child: Row(
+        mainAxisSize: .min,
+        children: [
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: .ellipsis,
+              style: TextStyle(color: mono.textMuted, fontSize: fontSize, fontWeight: .w500),
+            ),
+          ),
+          if (onChangeSource != null) ...[
+            SizedBox(width: isTv ? 10 * tvScale : 12),
+            FocusableWrapper(
+              borderRadius: 999,
+              disableScale: true,
+              semanticLabel: t.sourcePicker.change,
+              onSelect: () {
+                // The picker opens a route; suppress this press's key-up so it
+                // does not land on whatever takes focus next (CLAUDE.md).
+                SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
+                unawaited(onChangeSource(context));
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: isTv ? 14 * tvScale : 14, vertical: isTv ? 6 * tvScale : 6),
+                decoration: BoxDecoration(
+                  color: mono.text.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  t.sourcePicker.change,
+                  style: TextStyle(color: mono.text, fontSize: fontSize, fontWeight: .w700),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   /// Resolve the item's TMDB id and open the seerr request sheet. The id
   /// lookup happens on press (not preemptively) so the detail screen stays
   /// cheap; a missing id just surfaces a non-fatal error.

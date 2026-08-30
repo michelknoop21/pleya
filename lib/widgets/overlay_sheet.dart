@@ -752,19 +752,28 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
                 right: true,
                 top: false,
                 bottom: false,
-                child: Material(
-                  key: _sheetKey,
-                  color: _explicitBackgroundColor ?? colorScheme.surface,
+                // The shadow is drawn *outside* the Material, because the
+                // Material clips to `borderRadius` and would eat it. Only the
+                // centred 10-foot panel asks for one (`geometry.shadows`);
+                // every other presentation gets a const-empty list and the
+                // wrapper collapses to the Material it always was.
+                child: _CastShadow(
+                  shadows: geometry.shadows,
                   borderRadius: borderRadius,
-                  clipBehavior: Clip.antiAlias,
-                  // A floating panel touches no edge, so it needs no notch or
-                  // home-indicator padding; an edge-hugging sheet does.
-                  child: SafeArea(
-                    top: !geometry.isCentered && isTop,
-                    bottom: !geometry.isCentered && !isTop,
-                    left: false,
-                    right: false,
-                    child: ConstrainedBox(constraints: effectiveConstraints, child: sheetContent),
+                  child: Material(
+                    key: _sheetKey,
+                    color: _explicitBackgroundColor ?? colorScheme.surface,
+                    borderRadius: borderRadius,
+                    clipBehavior: Clip.antiAlias,
+                    // A floating panel touches no edge, so it needs no notch or
+                    // home-indicator padding; an edge-hugging sheet does.
+                    child: SafeArea(
+                      top: !geometry.isCentered && isTop,
+                      bottom: !geometry.isCentered && !isTop,
+                      left: false,
+                      right: false,
+                      child: ConstrainedBox(constraints: effectiveConstraints, child: sheetContent),
+                    ),
                   ),
                 ),
               ),
@@ -805,6 +814,25 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     }
 
     return sheet;
+  }
+}
+
+/// Paints [shadows] behind [child], or gets out of the way entirely when there
+/// are none — which is every presentation except the centred 10-foot panel.
+class _CastShadow extends StatelessWidget {
+  const _CastShadow({required this.shadows, required this.borderRadius, required this.child});
+
+  final List<BoxShadow> shadows;
+  final BorderRadius borderRadius;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (shadows.isEmpty) return child;
+    return DecoratedBox(
+      decoration: BoxDecoration(borderRadius: borderRadius, boxShadow: shadows),
+      child: child,
+    );
   }
 }
 

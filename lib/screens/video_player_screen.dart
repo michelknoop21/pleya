@@ -255,6 +255,18 @@ class VideoPlayerScreen extends StatefulWidget {
   /// state (see [LiveTvSessionArgs]).
   final LiveTvSessionArgs? live;
 
+  /// Reports, once, that playback never started (hoofdstuk 15 of
+  /// docs/tvos-unified-experience.md).
+  ///
+  /// The player says only *that* it failed; it is told nothing about groups,
+  /// sources or alternatives, and it neither offers nor takes one. Hoofdstuk
+  /// 4.4 keeps source choice strictly before this route, so the activation site
+  /// — which is the only thing holding the live group — owns the
+  /// "[ Andere bron kiezen ]" offer after this screen is gone. Null for every
+  /// launch that did not come through a unified activation, which is all of
+  /// them today except that one.
+  final VoidCallback? onPlaybackInitFailed;
+
   bool get isLive => live != null;
 
   const VideoPlayerScreen({
@@ -270,6 +282,7 @@ class VideoPlayerScreen extends StatefulWidget {
     this.selectedQualityPreset,
     this.selectedAudioStreamId,
     this.live,
+    this.onPlaybackInitFailed,
   });
 
   @override
@@ -278,6 +291,18 @@ class VideoPlayerScreen extends StatefulWidget {
 
 class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindingObserver, MountedSetStateMixin {
   static const int _liveEdgeThresholdSeconds = 5;
+
+  /// Guards [_notePlaybackInitFailed] against a retry chain reporting twice.
+  bool _reportedPlaybackInitFailure = false;
+
+  /// Tells the activation site that playback never started. Idempotent: a live
+  /// fallback that fails at every level, or an error arriving after the start
+  /// path already gave up, must not produce two offers.
+  void _notePlaybackInitFailed() {
+    if (_reportedPlaybackInitFailure) return;
+    _reportedPlaybackInitFailure = true;
+    widget.onPlaybackInitFailed?.call();
+  }
 
   // Track the currently active video to guard against duplicate navigation
   static String? _activeId;

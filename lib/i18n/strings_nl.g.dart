@@ -94,6 +94,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsSeerrNl seerr = _TranslationsSeerrNl._(_root);
 	@override late final _TranslationsTautulliNl tautulli = _TranslationsTautulliNl._(_root);
 	@override late final _TranslationsNowWatchingNl nowWatching = _TranslationsNowWatchingNl._(_root);
+	@override late final _TranslationsSourcePickerNl sourcePicker = _TranslationsSourcePickerNl._(_root);
 }
 
 // Path: states
@@ -2052,6 +2053,38 @@ class _TranslationsNowWatchingNl extends TranslationsNowWatchingEn {
 	@override String get onWan => 'Van buiten';
 	@override String get unavailable => 'Tautulli gaf geen antwoord';
 	@override String get sidebarLabel => 'Nu aan het kijken';
+}
+
+// Path: sourcePicker
+class _TranslationsSourcePickerNl extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => 'Kies waar je wilt afspelen';
+	@override String get detailsTitle => 'Kies een bron voor de details';
+	@override String get availableOnOneServer => 'Beschikbaar op 1 server';
+	@override String availableOnManyServers({required Object count}) => 'Beschikbaar op ${count} servers';
+	@override String get oneServerUnchecked => '1 server kon niet worden gecontroleerd';
+	@override String manyServersUnchecked({required Object count}) => '${count} servers konden niet worden gecontroleerd';
+	@override String get checkingMoreSources => 'Meer bronnen controleren…';
+	@override String get lastUsed => 'Laatst gebruikt';
+	@override String get currentSource => 'Huidige bron';
+	@override String get unavailable => 'Niet beschikbaar';
+	@override String get signInRequired => 'Opnieuw aanmelden vereist';
+	@override String resumeAt({required Object position}) => 'Hervatten op ${position}';
+	@override String get watched => 'Bekeken';
+	@override String get noneReachableTitle => 'Geen bron is momenteel bereikbaar.';
+	@override String get reauthRequiredTitle => 'Meld je opnieuw aan om deze titel te bereiken.';
+	@override String get manageServers => 'Servers beheren';
+	@override String sourceLabel({required Object source}) => 'Bron: ${source}';
+	@override String get change => 'Wijzigen';
+	@override String get playbackFailedTitle => 'Deze bron kon niet worden afgespeeld.';
+	@override String get chooseAnotherSource => 'Andere bron kiezen';
+	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Bron ${index} van ${count}: ${description}';
+	@override String get preferredServer => 'Voorkeursserver';
+	@override String setPreferredServer({required Object server}) => 'Altijd ${server} gebruiken';
 }
 
 // Path: search.filters
@@ -4054,6 +4087,29 @@ extension on TranslationsNl {
 			'nowWatching.onWan' => 'Van buiten',
 			'nowWatching.unavailable' => 'Tautulli gaf geen antwoord',
 			'nowWatching.sidebarLabel' => 'Nu aan het kijken',
+			'sourcePicker.playTitle' => 'Kies waar je wilt afspelen',
+			'sourcePicker.detailsTitle' => 'Kies een bron voor de details',
+			'sourcePicker.availableOnOneServer' => 'Beschikbaar op 1 server',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Beschikbaar op ${count} servers',
+			'sourcePicker.oneServerUnchecked' => '1 server kon niet worden gecontroleerd',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers konden niet worden gecontroleerd',
+			'sourcePicker.checkingMoreSources' => 'Meer bronnen controleren…',
+			'sourcePicker.lastUsed' => 'Laatst gebruikt',
+			'sourcePicker.currentSource' => 'Huidige bron',
+			'sourcePicker.unavailable' => 'Niet beschikbaar',
+			'sourcePicker.signInRequired' => 'Opnieuw aanmelden vereist',
+			'sourcePicker.resumeAt' => ({required Object position}) => 'Hervatten op ${position}',
+			'sourcePicker.watched' => 'Bekeken',
+			'sourcePicker.noneReachableTitle' => 'Geen bron is momenteel bereikbaar.',
+			'sourcePicker.reauthRequiredTitle' => 'Meld je opnieuw aan om deze titel te bereiken.',
+			'sourcePicker.manageServers' => 'Servers beheren',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'Bron: ${source}',
+			'sourcePicker.change' => 'Wijzigen',
+			'sourcePicker.playbackFailedTitle' => 'Deze bron kon niet worden afgespeeld.',
+			'sourcePicker.chooseAnotherSource' => 'Andere bron kiezen',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Bron ${index} van ${count}: ${description}',
+			'sourcePicker.preferredServer' => 'Voorkeursserver',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Altijd ${server} gebruiken',
 			_ => null,
 		};
 	}

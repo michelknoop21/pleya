@@ -1447,5 +1447,30 @@
     "notificationText": "其他 Pleya 设备可以串流你的本地文件夹",
     "hostDescriptionAndroid": "此网络上的其他 Pleya 设备可以浏览、串流和下载你的本地文件夹。共享会在后台继续运行并显示通知。",
     "scanningSubnet": "正在扫描网络…"
+  },
+  "sourcePicker": {
+    "playTitle": "选择在哪里播放",
+    "detailsTitle": "选择查看详情的来源",
+    "availableOnOneServer": "1 台服务器可用",
+    "availableOnManyServers": "${count} 台服务器可用",
+    "oneServerUnchecked": "有 1 台服务器无法检查",
+    "manyServersUnchecked": "有 ${count} 台服务器无法检查",
+    "checkingMoreSources": "正在检查更多来源…",
+    "lastUsed": "上次使用",
+    "currentSource": "当前来源",
+    "unavailable": "不可用",
+    "signInRequired": "需要重新登录",
+    "resumeAt": "从 ${position} 继续",
+    "watched": "已观看",
+    "noneReachableTitle": "当前没有可用的来源。",
+    "reauthRequiredTitle": "请重新登录以访问该标题。",
+    "manageServers": "管理服务器",
+    "sourceLabel": "来源：${source}",
+    "change": "更改",
+    "playbackFailedTitle": "无法播放此来源。",
+    "chooseAnotherSource": "选择其他来源",
+    "rowSemantics": "第 ${index} 个来源，共 ${count} 个：${description}",
+    "preferredServer": "首选服务器",
+    "setPreferredServer": "始终使用 ${server}"
   }
 }

@@ -1447,5 +1447,30 @@
     "notificationText": "他のPleyaデバイスがローカルフォルダーをストリーミングできます",
     "hostDescriptionAndroid": "このネットワーク上の他のPleyaデバイスが、ローカルフォルダーの閲覧・ストリーミング・ダウンロードを行えます。共有は通知とともにバックグラウンドで継続されます。",
     "scanningSubnet": "ネットワークをスキャン中…"
+  },
+  "sourcePicker": {
+    "playTitle": "再生する場所を選択",
+    "detailsTitle": "詳細を表示するソースを選択",
+    "availableOnOneServer": "1 台のサーバーで利用可能",
+    "availableOnManyServers": "${count} 台のサーバーで利用可能",
+    "oneServerUnchecked": "1 台のサーバーを確認できませんでした",
+    "manyServersUnchecked": "${count} 台のサーバーを確認できませんでした",
+    "checkingMoreSources": "他のソースを確認中…",
+    "lastUsed": "前回使用",
+    "currentSource": "現在のソース",
+    "unavailable": "利用できません",
+    "signInRequired": "再サインインが必要です",
+    "resumeAt": "${position} から再開",
+    "watched": "視聴済み",
+    "noneReachableTitle": "現在、利用できるソースがありません。",
+    "reauthRequiredTitle": "このタイトルにアクセスするには再度サインインしてください。",
+    "manageServers": "サーバーを管理",
+    "sourceLabel": "ソース: ${source}",
+    "change": "変更",
+    "playbackFailedTitle": "このソースは再生できませんでした。",
+    "chooseAnotherSource": "別のソースを選択",
+    "rowSemantics": "ソース ${count} 件中 ${index} 件目: ${description}",
+    "preferredServer": "優先サーバー",
+    "setPreferredServer": "常に ${server} を使用"
   }
 }

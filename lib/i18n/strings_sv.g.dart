@@ -87,6 +87,7 @@ class TranslationsSv extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerSv addServer = _TranslationsAddServerSv._(_root);
 	@override late final _TranslationsAddLocalFolderSv addLocalFolder = _TranslationsAddLocalFolderSv._(_root);
 	@override late final _TranslationsPleyaShareSv pleyaShare = _TranslationsPleyaShareSv._(_root);
+	@override late final _TranslationsSourcePickerSv sourcePicker = _TranslationsSourcePickerSv._(_root);
 }
 
 // Path: app
@@ -1707,6 +1708,38 @@ class _TranslationsPleyaShareSv extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => 'Skannar nätverket…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerSv extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => 'Välj var du vill spela upp';
+	@override String get detailsTitle => 'Välj en källa för detaljerna';
+	@override String get availableOnOneServer => 'Tillgänglig på 1 server';
+	@override String availableOnManyServers({required Object count}) => 'Tillgänglig på ${count} servrar';
+	@override String get oneServerUnchecked => '1 server kunde inte kontrolleras';
+	@override String manyServersUnchecked({required Object count}) => '${count} servrar kunde inte kontrolleras';
+	@override String get checkingMoreSources => 'Söker fler källor…';
+	@override String get lastUsed => 'Senast använd';
+	@override String get currentSource => 'Aktuell källa';
+	@override String get unavailable => 'Inte tillgänglig';
+	@override String get signInRequired => 'Inloggning krävs igen';
+	@override String resumeAt({required Object position}) => 'Återuppta vid ${position}';
+	@override String get watched => 'Sedd';
+	@override String get noneReachableTitle => 'Ingen källa går att nå just nu.';
+	@override String get reauthRequiredTitle => 'Logga in igen för att nå den här titeln.';
+	@override String get manageServers => 'Hantera servrar';
+	@override String sourceLabel({required Object source}) => 'Källa: ${source}';
+	@override String get change => 'Ändra';
+	@override String get playbackFailedTitle => 'Den här källan kunde inte spelas upp.';
+	@override String get chooseAnotherSource => 'Välj en annan källa';
+	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Källa ${index} av ${count}: ${description}';
+	@override String get preferredServer => 'Föredragen server';
+	@override String setPreferredServer({required Object server}) => 'Använd alltid ${server}';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsSv extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsSv._(TranslationsSv root) : this._root = root, super.internal(root);
@@ -3323,6 +3356,29 @@ extension on TranslationsSv {
 			'pleyaShare.notificationText' => 'Andra Pleya-enheter kan strömma dina lokala mappar',
 			'pleyaShare.hostDescriptionAndroid' => 'Andra Pleya-enheter i det här nätverket kan bläddra, strömma och ladda ner dina lokala mappar. Delningen fortsätter i bakgrunden med en avisering.',
 			'pleyaShare.scanningSubnet' => 'Skannar nätverket…',
+			'sourcePicker.playTitle' => 'Välj var du vill spela upp',
+			'sourcePicker.detailsTitle' => 'Välj en källa för detaljerna',
+			'sourcePicker.availableOnOneServer' => 'Tillgänglig på 1 server',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Tillgänglig på ${count} servrar',
+			'sourcePicker.oneServerUnchecked' => '1 server kunde inte kontrolleras',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servrar kunde inte kontrolleras',
+			'sourcePicker.checkingMoreSources' => 'Söker fler källor…',
+			'sourcePicker.lastUsed' => 'Senast använd',
+			'sourcePicker.currentSource' => 'Aktuell källa',
+			'sourcePicker.unavailable' => 'Inte tillgänglig',
+			'sourcePicker.signInRequired' => 'Inloggning krävs igen',
+			'sourcePicker.resumeAt' => ({required Object position}) => 'Återuppta vid ${position}',
+			'sourcePicker.watched' => 'Sedd',
+			'sourcePicker.noneReachableTitle' => 'Ingen källa går att nå just nu.',
+			'sourcePicker.reauthRequiredTitle' => 'Logga in igen för att nå den här titeln.',
+			'sourcePicker.manageServers' => 'Hantera servrar',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'Källa: ${source}',
+			'sourcePicker.change' => 'Ändra',
+			'sourcePicker.playbackFailedTitle' => 'Den här källan kunde inte spelas upp.',
+			'sourcePicker.chooseAnotherSource' => 'Välj en annan källa',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Källa ${index} av ${count}: ${description}',
+			'sourcePicker.preferredServer' => 'Föredragen server',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Använd alltid ${server}',
 			_ => null,
 		};
 	}

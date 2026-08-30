@@ -1447,5 +1447,30 @@
     "notificationText": "Andre Pleya-enheter kan strømme de lokale mappene dine",
     "hostDescriptionAndroid": "Andre Pleya-enheter på dette nettverket kan bla i, strømme og laste ned de lokale mappene dine. Delingen fortsetter i bakgrunnen med et varsel.",
     "scanningSubnet": "Skanner nettverket…"
+  },
+  "sourcePicker": {
+    "playTitle": "Velg hvor du vil spille av",
+    "detailsTitle": "Velg en kilde for detaljene",
+    "availableOnOneServer": "Tilgjengelig på 1 server",
+    "availableOnManyServers": "Tilgjengelig på ${count} servere",
+    "oneServerUnchecked": "1 server kunne ikke kontrolleres",
+    "manyServersUnchecked": "${count} servere kunne ikke kontrolleres",
+    "checkingMoreSources": "Søker etter flere kilder…",
+    "lastUsed": "Sist brukt",
+    "currentSource": "Gjeldende kilde",
+    "unavailable": "Ikke tilgjengelig",
+    "signInRequired": "Du må logge inn igjen",
+    "resumeAt": "Fortsett ved ${position}",
+    "watched": "Sett",
+    "noneReachableTitle": "Ingen kilde er tilgjengelig akkurat nå.",
+    "reauthRequiredTitle": "Logg inn igjen for å nå denne tittelen.",
+    "manageServers": "Administrer servere",
+    "sourceLabel": "Kilde: ${source}",
+    "change": "Endre",
+    "playbackFailedTitle": "Denne kilden kunne ikke spilles av.",
+    "chooseAnotherSource": "Velg en annen kilde",
+    "rowSemantics": "Kilde ${index} av ${count}: ${description}",
+    "preferredServer": "Foretrukket server",
+    "setPreferredServer": "Bruk alltid ${server}"
   }
 }

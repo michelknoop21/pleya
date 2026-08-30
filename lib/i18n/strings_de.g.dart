@@ -87,6 +87,7 @@ class TranslationsDe extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerDe addServer = _TranslationsAddServerDe._(_root);
 	@override late final _TranslationsAddLocalFolderDe addLocalFolder = _TranslationsAddLocalFolderDe._(_root);
 	@override late final _TranslationsPleyaShareDe pleyaShare = _TranslationsPleyaShareDe._(_root);
+	@override late final _TranslationsSourcePickerDe sourcePicker = _TranslationsSourcePickerDe._(_root);
 }
 
 // Path: app
@@ -1707,6 +1708,38 @@ class _TranslationsPleyaShareDe extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => 'Netzwerk wird gescannt…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerDe extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerDe._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => 'Wähle, wo abgespielt werden soll';
+	@override String get detailsTitle => 'Wähle eine Quelle für die Details';
+	@override String get availableOnOneServer => 'Auf 1 Server verfügbar';
+	@override String availableOnManyServers({required Object count}) => 'Auf ${count} Servern verfügbar';
+	@override String get oneServerUnchecked => '1 Server konnte nicht geprüft werden';
+	@override String manyServersUnchecked({required Object count}) => '${count} Server konnten nicht geprüft werden';
+	@override String get checkingMoreSources => 'Weitere Quellen werden geprüft…';
+	@override String get lastUsed => 'Zuletzt verwendet';
+	@override String get currentSource => 'Aktuelle Quelle';
+	@override String get unavailable => 'Nicht verfügbar';
+	@override String get signInRequired => 'Erneute Anmeldung erforderlich';
+	@override String resumeAt({required Object position}) => 'Fortsetzen bei ${position}';
+	@override String get watched => 'Gesehen';
+	@override String get noneReachableTitle => 'Derzeit ist keine Quelle erreichbar.';
+	@override String get reauthRequiredTitle => 'Melde dich erneut an, um diesen Titel zu erreichen.';
+	@override String get manageServers => 'Server verwalten';
+	@override String sourceLabel({required Object source}) => 'Quelle: ${source}';
+	@override String get change => 'Ändern';
+	@override String get playbackFailedTitle => 'Diese Quelle konnte nicht abgespielt werden.';
+	@override String get chooseAnotherSource => 'Andere Quelle wählen';
+	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Quelle ${index} von ${count}: ${description}';
+	@override String get preferredServer => 'Bevorzugter Server';
+	@override String setPreferredServer({required Object server}) => 'Immer ${server} verwenden';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsDe extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsDe._(TranslationsDe root) : this._root = root, super.internal(root);
@@ -3323,6 +3356,29 @@ extension on TranslationsDe {
 			'pleyaShare.notificationText' => 'Andere Pleya-Geräte können deine lokalen Ordner streamen',
 			'pleyaShare.hostDescriptionAndroid' => 'Andere Pleya-Geräte in diesem Netzwerk können deine lokalen Ordner durchsuchen, streamen und herunterladen. Das Teilen läuft mit einer Benachrichtigung im Hintergrund weiter.',
 			'pleyaShare.scanningSubnet' => 'Netzwerk wird gescannt…',
+			'sourcePicker.playTitle' => 'Wähle, wo abgespielt werden soll',
+			'sourcePicker.detailsTitle' => 'Wähle eine Quelle für die Details',
+			'sourcePicker.availableOnOneServer' => 'Auf 1 Server verfügbar',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Auf ${count} Servern verfügbar',
+			'sourcePicker.oneServerUnchecked' => '1 Server konnte nicht geprüft werden',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} Server konnten nicht geprüft werden',
+			'sourcePicker.checkingMoreSources' => 'Weitere Quellen werden geprüft…',
+			'sourcePicker.lastUsed' => 'Zuletzt verwendet',
+			'sourcePicker.currentSource' => 'Aktuelle Quelle',
+			'sourcePicker.unavailable' => 'Nicht verfügbar',
+			'sourcePicker.signInRequired' => 'Erneute Anmeldung erforderlich',
+			'sourcePicker.resumeAt' => ({required Object position}) => 'Fortsetzen bei ${position}',
+			'sourcePicker.watched' => 'Gesehen',
+			'sourcePicker.noneReachableTitle' => 'Derzeit ist keine Quelle erreichbar.',
+			'sourcePicker.reauthRequiredTitle' => 'Melde dich erneut an, um diesen Titel zu erreichen.',
+			'sourcePicker.manageServers' => 'Server verwalten',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'Quelle: ${source}',
+			'sourcePicker.change' => 'Ändern',
+			'sourcePicker.playbackFailedTitle' => 'Diese Quelle konnte nicht abgespielt werden.',
+			'sourcePicker.chooseAnotherSource' => 'Andere Quelle wählen',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Quelle ${index} von ${count}: ${description}',
+			'sourcePicker.preferredServer' => 'Bevorzugter Server',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Immer ${server} verwenden',
 			_ => null,
 		};
 	}

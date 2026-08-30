@@ -41,6 +41,9 @@ import '../diagnostics/select_trace.dart';
 import '../diagnostics/select_trace_recorder.dart';
 import '../media/media_item.dart';
 import '../media/episode_collection.dart';
+import '../media/unified/unified_route_context.dart';
+import '../theme/mono_tokens.dart';
+import '../utils/media_navigation_helper.dart';
 import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../media/media_role.dart';
@@ -157,6 +160,20 @@ class MediaDetailScreen extends StatefulWidget {
   /// activation. See [SelectTraceRecorder].
   final String? traceId;
 
+  /// The group this concrete item was reached through (hoofdstuk 15 of
+  /// docs/tvos-unified-experience.md), when it was reached through one.
+  ///
+  /// The page stays source-bound: this adds the "Bron: NAS • Films 4K
+  /// [ Wijzigen ]" line and nothing else. It carries source *keys*, never a
+  /// second [MediaItem], so there is no way for this screen to render a half
+  /// merged page with seasons from one server and metadata from another.
+  final UnifiedMediaRouteContext? unifiedRouteContext;
+
+  /// Reopens the picker in details mode. Supplied by the activation site,
+  /// which is the only thing holding the live group; null when the caller
+  /// cannot replace this route.
+  final UnifiedSourceChangeCallback? onChangeSource;
+
   const MediaDetailScreen({
     super.key,
     required this.metadata,
@@ -166,6 +183,8 @@ class MediaDetailScreen extends StatefulWidget {
     this.initialEpisodeId,
     this.heroTag,
     this.traceId,
+    this.unifiedRouteContext,
+    this.onChangeSource,
   });
 
   @override
@@ -180,6 +199,8 @@ PageRoute<bool> mediaDetailRoute({
   String? initialEpisodeId,
   Object? heroTag,
   String? traceId,
+  UnifiedMediaRouteContext? unifiedRouteContext,
+  UnifiedSourceChangeCallback? onChangeSource,
 }) {
   // Built here, not in a lazy builder: the id has to be on the widget before
   // [State.initState] runs, otherwise the first link the screen records would
@@ -192,6 +213,8 @@ PageRoute<bool> mediaDetailRoute({
     initialEpisodeId: initialEpisodeId,
     heroTag: heroTag,
     traceId: traceId,
+    unifiedRouteContext: unifiedRouteContext,
+    onChangeSource: onChangeSource,
   );
   if (!PlatformDetector.isTV()) return MaterialPageRoute<bool>(builder: (_) => page);
 
@@ -3834,6 +3857,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                     ],
                     SizedBox(height: actionGap),
                     SizedBox(height: actionHeight, child: _buildActionButtons(metadata)),
+                    _buildUnifiedSourceLine(),
                     // Live viewer, then the "Watched by …" row (Plex, owned
                     // servers only).
                     NowWatchingLine(ratingKey: _metadata.id),
@@ -4617,6 +4641,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                       ],
                       if (chipActionGap > 0) SizedBox(height: chipActionGap),
                       if (showActions) SizedBox(height: actionHeight, child: _buildActionButtons(metadata)),
+                      if (showActions) _buildUnifiedSourceLine(),
                     ],
                   ),
                 ),

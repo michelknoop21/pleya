@@ -87,6 +87,7 @@ class TranslationsZh extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerZh addServer = _TranslationsAddServerZh._(_root);
 	@override late final _TranslationsAddLocalFolderZh addLocalFolder = _TranslationsAddLocalFolderZh._(_root);
 	@override late final _TranslationsPleyaShareZh pleyaShare = _TranslationsPleyaShareZh._(_root);
+	@override late final _TranslationsSourcePickerZh sourcePicker = _TranslationsSourcePickerZh._(_root);
 }
 
 // Path: app
@@ -1707,6 +1708,38 @@ class _TranslationsPleyaShareZh extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => '正在扫描网络…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerZh extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => '选择在哪里播放';
+	@override String get detailsTitle => '选择查看详情的来源';
+	@override String get availableOnOneServer => '1 台服务器可用';
+	@override String availableOnManyServers({required Object count}) => '${count} 台服务器可用';
+	@override String get oneServerUnchecked => '有 1 台服务器无法检查';
+	@override String manyServersUnchecked({required Object count}) => '有 ${count} 台服务器无法检查';
+	@override String get checkingMoreSources => '正在检查更多来源…';
+	@override String get lastUsed => '上次使用';
+	@override String get currentSource => '当前来源';
+	@override String get unavailable => '不可用';
+	@override String get signInRequired => '需要重新登录';
+	@override String resumeAt({required Object position}) => '从 ${position} 继续';
+	@override String get watched => '已观看';
+	@override String get noneReachableTitle => '当前没有可用的来源。';
+	@override String get reauthRequiredTitle => '请重新登录以访问该标题。';
+	@override String get manageServers => '管理服务器';
+	@override String sourceLabel({required Object source}) => '来源：${source}';
+	@override String get change => '更改';
+	@override String get playbackFailedTitle => '无法播放此来源。';
+	@override String get chooseAnotherSource => '选择其他来源';
+	@override String rowSemantics({required Object index, required Object count, required Object description}) => '第 ${index} 个来源，共 ${count} 个：${description}';
+	@override String get preferredServer => '首选服务器';
+	@override String setPreferredServer({required Object server}) => '始终使用 ${server}';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsZh extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsZh._(TranslationsZh root) : this._root = root, super.internal(root);
@@ -3323,6 +3356,29 @@ extension on TranslationsZh {
 			'pleyaShare.notificationText' => '其他 Pleya 设备可以串流你的本地文件夹',
 			'pleyaShare.hostDescriptionAndroid' => '此网络上的其他 Pleya 设备可以浏览、串流和下载你的本地文件夹。共享会在后台继续运行并显示通知。',
 			'pleyaShare.scanningSubnet' => '正在扫描网络…',
+			'sourcePicker.playTitle' => '选择在哪里播放',
+			'sourcePicker.detailsTitle' => '选择查看详情的来源',
+			'sourcePicker.availableOnOneServer' => '1 台服务器可用',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => '${count} 台服务器可用',
+			'sourcePicker.oneServerUnchecked' => '有 1 台服务器无法检查',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '有 ${count} 台服务器无法检查',
+			'sourcePicker.checkingMoreSources' => '正在检查更多来源…',
+			'sourcePicker.lastUsed' => '上次使用',
+			'sourcePicker.currentSource' => '当前来源',
+			'sourcePicker.unavailable' => '不可用',
+			'sourcePicker.signInRequired' => '需要重新登录',
+			'sourcePicker.resumeAt' => ({required Object position}) => '从 ${position} 继续',
+			'sourcePicker.watched' => '已观看',
+			'sourcePicker.noneReachableTitle' => '当前没有可用的来源。',
+			'sourcePicker.reauthRequiredTitle' => '请重新登录以访问该标题。',
+			'sourcePicker.manageServers' => '管理服务器',
+			'sourcePicker.sourceLabel' => ({required Object source}) => '来源：${source}',
+			'sourcePicker.change' => '更改',
+			'sourcePicker.playbackFailedTitle' => '无法播放此来源。',
+			'sourcePicker.chooseAnotherSource' => '选择其他来源',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => '第 ${index} 个来源，共 ${count} 个：${description}',
+			'sourcePicker.preferredServer' => '首选服务器',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => '始终使用 ${server}',
 			_ => null,
 		};
 	}

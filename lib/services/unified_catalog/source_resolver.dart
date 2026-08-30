@@ -87,8 +87,13 @@ bool isIdentityEligibleBackend(MediaBackend backend) => switch (backend) {
 /// explain a coverage gap. [hasAuthError] is separate from [online]: an
 /// auth-rejected server is not online, but hoofdstuk 27's "auth/offline
 /// onderscheid" wants the coverage UI to say which.
-typedef EligibleSourceServer =
-    ({ServerId serverId, MediaBackend backend, MediaServerClient? client, bool online, bool hasAuthError});
+typedef EligibleSourceServer = ({
+  ServerId serverId,
+  MediaBackend backend,
+  MediaServerClient? client,
+  bool online,
+  bool hasAuthError,
+});
 
 /// Result of [SourceAllResolver.resolveAllSourcesForGroup]: every concrete
 /// item found across every eligible server, plus how much of the expected
@@ -110,7 +115,13 @@ typedef GroupSourceResolution = ({List<MediaItem> items, SourceCoverageState cov
 /// that did not answer, and caching that as "not available" would be wrong
 /// for up to [negativeTtl].
 class SourceAllResolver {
-  SourceAllResolver({required this.profileId, required this.serversFor, required this.cache, this.maxConcurrent = 4, this.now});
+  SourceAllResolver({
+    required this.profileId,
+    required this.serversFor,
+    required this.cache,
+    this.maxConcurrent = 4,
+    this.now,
+  });
 
   /// The profile these answers belong to. Part of every cache key: a result
   /// is only meaningful for the servers one profile can reach.
@@ -139,7 +150,23 @@ class SourceAllResolver {
   DateTime get _now => (now ?? DateTime.now)();
 
   /// Resolve every source for [identity].
-  Future<GroupSourceResolution> resolveAllSourcesForGroup(MediaIdentity identity) async {
+  ///
+  /// [isCancelled] is polled between batches. Hoofdstuk 14.5 opens the source
+  /// picker on the sources already known and enriches coverage behind it, and
+  /// requires that "kiezen annuleert resterende niet-essentiële lookups" — so
+  /// a user who picks a server while three others are still being asked stops
+  /// paying for the rest. Omitting it keeps the exhaustive behaviour every
+  /// existing caller has: every eligible server gets asked.
+  ///
+  /// A cancelled resolution reports the coverage it actually achieved, with
+  /// the servers it never reached marked [UncheckedSourceReason.lookupFailed]
+  /// — they were not checked, and saying coverage is complete because we
+  /// stopped asking would be the one lie [SourceCoverageState] exists to
+  /// prevent. Nothing partial is cached, for the same reason.
+  Future<GroupSourceResolution> resolveAllSourcesForGroup(
+    MediaIdentity identity, {
+    bool Function()? isCancelled,
+  }) async {
     if (!identity.isSearchable) {
       return (items: const <MediaItem>[], coverage: SourceCoverageState.none);
     }
@@ -160,6 +187,7 @@ class SourceAllResolver {
     };
 
     final reachable = eligible.where((s) => s.online && s.client != null).toList();
+    var cancelled = false;
     await fanOutFindAllByIdentity(
       servers: [for (final s in reachable) (serverId: s.serverId, client: s.client, online: s.online)],
       identity: identity,
@@ -174,9 +202,19 @@ class SourceAllResolver {
             uncheckedReasons[id] = UncheckedSourceReason.lookupFailed;
           }
         }
-        return false; // never stop early — every eligible server gets asked
+        // Without a caller-supplied rule this never stops early: every
+        // eligible server gets asked, exactly as before.
+        cancelled = isCancelled?.call() ?? false;
+        return cancelled;
       },
     );
+
+    for (final server in reachable) {
+      final id = server.serverId.toString();
+      if (!checked.contains(id) && !uncheckedReasons.containsKey(id)) {
+        uncheckedReasons[id] = UncheckedSourceReason.lookupFailed;
+      }
+    }
 
     final coverage = SourceCoverageState(
       expectedServerIds: expectedIds,
@@ -184,7 +222,9 @@ class SourceAllResolver {
       uncheckedReasons: uncheckedReasons,
     );
 
-    await _writeCache(cacheKey, items: items, coverage: coverage);
+    // A cancelled run asked fewer servers than it was going to; caching that
+    // would freeze a deliberately partial answer for the full positive TTL.
+    if (!cancelled) await _writeCache(cacheKey, items: items, coverage: coverage);
     return (items: items, coverage: coverage);
   }
 
@@ -244,7 +284,11 @@ class SourceAllResolver {
       };
       return (
         items: items,
-        coverage: SourceCoverageState(expectedServerIds: expectedIds, checkedServerIds: checkedIds, uncheckedReasons: uncheckedReasons),
+        coverage: SourceCoverageState(
+          expectedServerIds: expectedIds,
+          checkedServerIds: checkedIds,
+          uncheckedReasons: uncheckedReasons,
+        ),
       );
     }
 

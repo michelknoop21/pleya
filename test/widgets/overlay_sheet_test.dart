@@ -307,7 +307,11 @@ void main() {
       expect(find.text('Item 0'), findsNothing);
     });
 
-    testWidgets('on TV a panel lands exactly where a sheet lands', (tester) async {
+    // Until fase 4 a TV panel fell through to the compact bottom sheet, so the
+    // source picker of hoofdstuk 14.1 would have opened as a mobile sheet on a
+    // television. The two presentations now mean different things on TV, and
+    // the sheet's own numbers are unchanged — which is what these two pin.
+    testWidgets('on TV a panel is a centred modal, not the compact sheet', (tester) async {
       TvDetectionService.debugSetAppleTVOverride(true);
       addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
 
@@ -319,8 +323,30 @@ void main() {
       await pumpHost(tester, presentation: OverlaySheetPresentation.panel);
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
+      final panel = sheetRect(tester);
 
-      expect(sheetRect(tester), sheet);
+      expect(panel, isNot(sheet));
+      expect(panel.center.dx, moreOrLessEquals(viewport.width / 2, epsilon: 1));
+      expect(panel.center.dy, moreOrLessEquals(viewport.height / 2, epsilon: 1));
+      expect(panel.width, greaterThan(sheet.width));
+      // Generous outer margins: a 10-foot modal floats, it does not fill. The
+      // width band of 14.1 is a reference measurement on a 1920x1080 output,
+      // so it is checked as a proportion — see `overlay_sheet_geometry_test`.
+      expect(panel.left, greaterThan(viewport.width * 0.2));
+      expect(panel.right, lessThan(viewport.width * 0.8));
+    });
+
+    testWidgets('on TV the sheet keeps its own compact placement', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+
+      await pumpHost(tester, presentation: OverlaySheetPresentation.sheet);
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      final sheet = sheetRect(tester);
+      expect(sheet.width, lessThanOrEqualTo(400));
+      expect(sheet.bottom, moreOrLessEquals(viewport.height, epsilon: 1), reason: 'still hangs off the bottom edge');
     });
   });
 }

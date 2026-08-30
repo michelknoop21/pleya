@@ -42,6 +42,10 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
       return;
     }
 
+    // Fatal for this source: the notice is the report, the back is the exit,
+    // and the activation site is told so it can offer another source once this
+    // route is gone (hoofdstuk 15). Nothing here chooses one.
+    _notePlaybackInitFailed();
     noticeController.show(noticeForPlaybackFailure(_redactPlayerError(_lastLogError ?? err.message)));
     _handleBackButton();
   }

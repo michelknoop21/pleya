@@ -87,6 +87,7 @@ class TranslationsBg extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddServerBg addServer = _TranslationsAddServerBg._(_root);
 	@override late final _TranslationsAddLocalFolderBg addLocalFolder = _TranslationsAddLocalFolderBg._(_root);
 	@override late final _TranslationsPleyaShareBg pleyaShare = _TranslationsPleyaShareBg._(_root);
+	@override late final _TranslationsSourcePickerBg sourcePicker = _TranslationsSourcePickerBg._(_root);
 }
 
 // Path: app
@@ -1707,6 +1708,38 @@ class _TranslationsPleyaShareBg extends TranslationsPleyaShareEn {
 	@override String get scanningSubnet => 'Сканиране на мрежата…';
 }
 
+// Path: sourcePicker
+class _TranslationsSourcePickerBg extends TranslationsSourcePickerEn {
+	_TranslationsSourcePickerBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get playTitle => 'Изберете къде да се възпроизведе';
+	@override String get detailsTitle => 'Изберете източник за подробностите';
+	@override String get availableOnOneServer => 'Достъпно на 1 сървър';
+	@override String availableOnManyServers({required Object count}) => 'Достъпно на ${count} сървъра';
+	@override String get oneServerUnchecked => '1 сървър не можа да бъде проверен';
+	@override String manyServersUnchecked({required Object count}) => '${count} сървъра не можаха да бъдат проверени';
+	@override String get checkingMoreSources => 'Проверка за още източници…';
+	@override String get lastUsed => 'Последно използван';
+	@override String get currentSource => 'Текущ източник';
+	@override String get unavailable => 'Не е налично';
+	@override String get signInRequired => 'Необходимо е повторно влизане';
+	@override String resumeAt({required Object position}) => 'Продължаване от ${position}';
+	@override String get watched => 'Гледано';
+	@override String get noneReachableTitle => 'В момента няма достъпен източник.';
+	@override String get reauthRequiredTitle => 'Влезте отново, за да достигнете това заглавие.';
+	@override String get manageServers => 'Управление на сървърите';
+	@override String sourceLabel({required Object source}) => 'Източник: ${source}';
+	@override String get change => 'Промяна';
+	@override String get playbackFailedTitle => 'Този източник не можа да бъде възпроизведен.';
+	@override String get chooseAnotherSource => 'Изберете друг източник';
+	@override String rowSemantics({required Object index, required Object count, required Object description}) => 'Източник ${index} от ${count}: ${description}';
+	@override String get preferredServer => 'Предпочитан сървър';
+	@override String setPreferredServer({required Object server}) => 'Винаги използвай ${server}';
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsBg extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsBg._(TranslationsBg root) : this._root = root, super.internal(root);
@@ -3323,6 +3356,29 @@ extension on TranslationsBg {
 			'pleyaShare.notificationText' => 'Други устройства Pleya могат да стриймват локалните ви папки',
 			'pleyaShare.hostDescriptionAndroid' => 'Други устройства Pleya в тази мрежа могат да разглеждат, стриймват и изтеглят локалните ви папки. Споделянето продължава във фонов режим с известие.',
 			'pleyaShare.scanningSubnet' => 'Сканиране на мрежата…',
+			'sourcePicker.playTitle' => 'Изберете къде да се възпроизведе',
+			'sourcePicker.detailsTitle' => 'Изберете източник за подробностите',
+			'sourcePicker.availableOnOneServer' => 'Достъпно на 1 сървър',
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Достъпно на ${count} сървъра',
+			'sourcePicker.oneServerUnchecked' => '1 сървър не можа да бъде проверен',
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} сървъра не можаха да бъдат проверени',
+			'sourcePicker.checkingMoreSources' => 'Проверка за още източници…',
+			'sourcePicker.lastUsed' => 'Последно използван',
+			'sourcePicker.currentSource' => 'Текущ източник',
+			'sourcePicker.unavailable' => 'Не е налично',
+			'sourcePicker.signInRequired' => 'Необходимо е повторно влизане',
+			'sourcePicker.resumeAt' => ({required Object position}) => 'Продължаване от ${position}',
+			'sourcePicker.watched' => 'Гледано',
+			'sourcePicker.noneReachableTitle' => 'В момента няма достъпен източник.',
+			'sourcePicker.reauthRequiredTitle' => 'Влезте отново, за да достигнете това заглавие.',
+			'sourcePicker.manageServers' => 'Управление на сървърите',
+			'sourcePicker.sourceLabel' => ({required Object source}) => 'Източник: ${source}',
+			'sourcePicker.change' => 'Промяна',
+			'sourcePicker.playbackFailedTitle' => 'Този източник не можа да бъде възпроизведен.',
+			'sourcePicker.chooseAnotherSource' => 'Изберете друг източник',
+			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Източник ${index} от ${count}: ${description}',
+			'sourcePicker.preferredServer' => 'Предпочитан сървър',
+			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Винаги използвай ${server}',
 			_ => null,
 		};
 	}

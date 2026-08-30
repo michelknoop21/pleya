@@ -1447,5 +1447,30 @@
     "notificationText": "Andre Pleya-enheder kan streame dine lokale mapper",
     "hostDescriptionAndroid": "Andre Pleya-enheder på dette netværk kan gennemse, streame og downloade dine lokale mapper. Delingen fortsætter i baggrunden med en notifikation.",
     "scanningSubnet": "Scanner netværket…"
+  },
+  "sourcePicker": {
+    "playTitle": "Vælg hvor du vil afspille",
+    "detailsTitle": "Vælg en kilde til detaljerne",
+    "availableOnOneServer": "Tilgængelig på 1 server",
+    "availableOnManyServers": "Tilgængelig på ${count} servere",
+    "oneServerUnchecked": "1 server kunne ikke kontrolleres",
+    "manyServersUnchecked": "${count} servere kunne ikke kontrolleres",
+    "checkingMoreSources": "Søger efter flere kilder…",
+    "lastUsed": "Senest brugt",
+    "currentSource": "Nuværende kilde",
+    "unavailable": "Ikke tilgængelig",
+    "signInRequired": "Log ind igen",
+    "resumeAt": "Genoptag ved ${position}",
+    "watched": "Set",
+    "noneReachableTitle": "Ingen kilde kan nås lige nu.",
+    "reauthRequiredTitle": "Log ind igen for at nå denne titel.",
+    "manageServers": "Administrer servere",
+    "sourceLabel": "Kilde: ${source}",
+    "change": "Skift",
+    "playbackFailedTitle": "Denne kilde kunne ikke afspilles.",
+    "chooseAnotherSource": "Vælg en anden kilde",
+    "rowSemantics": "Kilde ${index} af ${count}: ${description}",
+    "preferredServer": "Foretrukken server",
+    "setPreferredServer": "Brug altid ${server}"
   }
 }

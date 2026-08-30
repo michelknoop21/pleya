@@ -1447,5 +1447,30 @@
     "notificationText": "Otros dispositivos Pleya pueden transmitir tus carpetas locales",
     "hostDescriptionAndroid": "Otros dispositivos Pleya en esta red pueden explorar, transmitir y descargar tus carpetas locales. Compartir sigue funcionando en segundo plano con una notificación.",
     "scanningSubnet": "Escaneando la red…"
+  },
+  "sourcePicker": {
+    "playTitle": "Elige dónde reproducir",
+    "detailsTitle": "Elige una fuente para los detalles",
+    "availableOnOneServer": "Disponible en 1 servidor",
+    "availableOnManyServers": "Disponible en ${count} servidores",
+    "oneServerUnchecked": "No se pudo comprobar 1 servidor",
+    "manyServersUnchecked": "No se pudieron comprobar ${count} servidores",
+    "checkingMoreSources": "Buscando más fuentes…",
+    "lastUsed": "Última usada",
+    "currentSource": "Fuente actual",
+    "unavailable": "No disponible",
+    "signInRequired": "Es necesario iniciar sesión de nuevo",
+    "resumeAt": "Reanudar en ${position}",
+    "watched": "Visto",
+    "noneReachableTitle": "Ninguna fuente está disponible en este momento.",
+    "reauthRequiredTitle": "Vuelve a iniciar sesión para acceder a este título.",
+    "manageServers": "Gestionar servidores",
+    "sourceLabel": "Fuente: ${source}",
+    "change": "Cambiar",
+    "playbackFailedTitle": "No se pudo reproducir esta fuente.",
+    "chooseAnotherSource": "Elegir otra fuente",
+    "rowSemantics": "Fuente ${index} de ${count}: ${description}",
+    "preferredServer": "Servidor preferido",
+    "setPreferredServer": "Usar siempre ${server}"
   }
 }

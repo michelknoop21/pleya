@@ -15,9 +15,19 @@ het afvinkbare register; het architectuurdocument houdt alleen de regels en de c
   afvinken; het register als geheel sluit pas bij de laatste fase die het raakt.
 - Rijen worden nooit verwijderd. Een geschrapt scenario gaat naar `n.v.t.` met een korte reden.
 
-Bijgewerkt: 2026-08-29, aangemaakt in fase 0. Fase 1 (unified identity foundation) dekt register C
+Bijgewerkt: 2026-08-30 (fase 4 afgerond). Aangemaakt in fase 0. Fase 1 (unified identity foundation) dekt register C
 (C1-C24) volledig af — zie de vindplaatsen in de tabel hieronder. De overige categorieën blijven
 `open` tot de fase die ze raakt.
+
+**Fase 4 en register F.** Fase 4 was intern gesplitst in een headless deel (activation coordinator,
+ranking, voorkeur, cancellation) en een GUI-deel (de source picker zelf). Het headless deel bewees
+per case *het besluit*; of de gebruiker dat besluit ook ziet en met de afstandsbediening kan bedienen
+was pas bewezen toen de picker-widgettests er waren. Beide helften staan er nu, dus register F is
+gesloten op F19 na — dat scenario heeft nog geen vastgelegd productgedrag en is niet zelf ingevuld.
+
+F21 is in fase 4 toegevoegd: de voorkeursserver van hoofdstuk 14.8a mag zélf een bron kiezen, en dat
+is een nieuw scenario met eigen gedrag, geen herformulering van een bestaand. De regel bovenaan
+schrijft voor dat gedrag eerst wordt vastgelegd — dat is gebeurd in 14.8a — en pas daarna een rij.
 
 ## A. Server- en topologycases
 
@@ -138,28 +148,36 @@ en `test/services/unified_grouping_service_test.dart`).
 
 ## F. Source-pickercases
 
+`ACT` = test/services/unified_catalog/unified_activation_coordinator_test.dart.
+`RES` = test/services/unified_catalog/source_resolver_test.dart.
+`PREF` = test/services/unified_catalog/source_preference_store_test.dart.
+`PICK` = test/widgets/tv/tv_media_source_picker_test.dart.
+`ROW` = test/widgets/tv/tv_source_row_descriptor_test.dart.
+`GOLD` = test/goldens/tv_media_source_picker_golden_test.dart.
+
 | # | Case | Test | Status |
 |---|---|---|---|
-| F1 | Eén source | | open |
-| F2 | Twee sources | | open |
-| F3 | Tien sources met scroll | | open |
-| F4 | Alle sources online | | open |
-| F5 | Eén source offline | | open |
-| F6 | Alle sources offline | | open |
-| F7 | Auth-error | | open |
-| F8 | Coverage nog bezig | | open |
-| F9 | Coverage incompleet | | open |
-| F10 | Nieuwe source arriveert terwijl modal open is | | open |
-| F11 | Source verdwijnt terwijl modal open is | | open |
-| F12 | Duplicaatservernamen | | open |
-| F13 | Geen quality metadata | | open |
-| F14 | Afwijkende editions | | open |
-| F15 | Afwijkende progress | | open |
-| F16 | Last-used source offline | | open |
-| F17 | Cancel | | open |
-| F18 | Playerstart faalt | | open |
-| F19 | Detailroute faalt | | open |
-| F20 | Terugkeer behoudt focus | | open |
+| F1 | Eén source | ACT (`F1: exactly one online source skips the picker and routes directly`) — de picker gaat niet open, dus er is geen visueel deel meer | covered |
+| F2 | Twee sources | ACT (`F2: two online sources open the picker`) plus PICK (`the row the coordinator named is the one that starts focused`, `Select activates exactly the focused source, not its neighbour`) en GOLD (`two online sources`) | covered |
+| F3 | Tien sources met scroll | PICK (`F10: a late source lands at the bottom without moving the focus`) bewijst het groeien; de lijst scrollt binnen het paneel en vervaagt aan de rand die nog inhoud heeft (GOLD `mixed states`) | covered |
+| F4 | Alle sources online | ACT (`F4/F9: the route context carries coverage and every source key`, plus de ranking-groep) en PICK (`complete coverage says nothing about unchecked servers`) | covered |
+| F5 | Eén source offline | ACT (`F5/14.6: one online source plus an offline one still skips the picker`) — de picker gaat niet open | covered |
+| F6 | Alle sources offline | ACT (`F6: every source offline reports allOffline, keeping all rows`, `F6: with nothing online there is still a focused row`) en PICK (`with nothing reachable the two panel actions appear and take the focus`, beide headline-tests) plus GOLD (`nothing reachable`) | covered |
+| F7 | Auth-error | ACT (`F7: an auth error outranks offline…`), ROW (`an unusable row says why, and outranks every other marking`) en PICK (`F7: an auth error says something else than an offline server`) | covered |
+| F8 | Coverage nog bezig | RES (`cancellation (hoofdstuk 14.5)`, vier tests) en PICK (`F8: the resolving line shows without blocking the list`) plus GOLD (`still resolving`) | covered |
+| F9 | Coverage incompleet | ACT (`F4/F9: …`), RES (`a cancelled run reports the servers it never reached as unchecked`) en PICK (`F9: partial coverage is stated in the header`) | covered |
+| F10 | Nieuwe source arriveert terwijl modal open is | ACT (`F10: sources arriving while the modal is open`, vier tests) en PICK (`F10: a late source lands at the bottom without moving the focus`) | covered |
+| F11 | Source verdwijnt terwijl modal open is | ACT (`focus after a source stops being usable`, vijf tests) en PICK (`F11: the focused source going offline moves focus to the nearest usable row`) | covered |
+| F12 | Duplicaatservernamen | ACT (`F12: duplicate server names fall through to server id, then item id`) en PICK (`F12: two servers with one name stay tellable apart by their library`) | covered |
+| F13 | Geen quality metadata | ROW (`F13: a source with no media versions has no quality line at all`, plus de hele `quality line`-groep) en PICK (`F13: a source with no quality metadata simply has one line fewer`) | covered |
+| F14 | Afwijkende editions | ROW (`context line`-groep: edition, library en backend worden alleen getoond wanneer ze bestaan) en GOLD (`two online sources`, met Director's Cut) | covered |
+| F15 | Afwijkende progress | ACT (`F15: with no remembered source, the most recent progress takes focus`) en ROW (`progress`-groep, vier tests) | covered |
+| F16 | Last-used source offline | ACT (`F16: an offline remembered source falls back…`), PREF en PICK (`F16: an offline remembered source is not focused and is not marked`) | covered |
+| F17 | Cancel | test/diagnostics/select_trace_test.dart (`a picker cancel that opened nothing is ordinary, not an anomaly`) en PICK (`Menu closes the picker, activates nothing, and restores the exact CTA`) | covered |
+| F18 | Playerstart faalt | ACT (`F18: playback failure offers an alternative but never takes it`, vijf tests) en PICK (`offers a choice and a way out, and takes neither by itself`) plus GOLD (`playback failure alternative`) | covered |
+| F19 | Detailroute faalt | gedrag nog niet vastgelegd in hoofdstuk 15 — niet zelf ingevuld, zie de regel bovenaan dit bestand | open |
+| F20 | Terugkeer behoudt focus | PICK (`Menu closes the picker, activates nothing, and restores the exact CTA`) — de overlay geeft de focus terug aan exact de node die hem had | covered |
+| F21 | Voorkeursserver kiest zelf (14.8a) | ACT (`preferred server (profile default)` elf tests + `the preferred server is global to the profile, not per title` acht tests, incl. de A-t/m-G-tabel uit 14.8a), test/services/unified_catalog/preferred_server_store_test.dart (elf tests, incl. de sleutelvorm) en PICK (`the preferred server can be set from here`, `explicit source selection bypasses the global preference`) | covered |
 
 ## G. Watch-statecases
 
@@ -173,7 +191,7 @@ en `test/services/unified_grouping_service_test.dart`).
 | G6 | Geen timestamps | | open |
 | G7 | Verschillende runtimes | | open |
 | G8 | Scrobble race | | open |
-| G9 | Playback return met null route result | | open |
+| G9 | Playback return met null route result | test/utils/media_navigation_helper_test.dart (`onPlaybackReturned fires when the player pops null`, `onRefresh alone does not fire when the player pops null`) — `handlePlaybackReturn` is puur en heeft geen visueel deel | covered |
 | G10 | Remove Continue gedeeltelijk mislukt | | open |
 | G11 | Offline suppressie wordt later gereplayed | | open |
 | G12 | Mark watched op één source | | open |
@@ -253,4 +271,16 @@ en `test/services/unified_grouping_service_test.dart`).
 
 ## Totaal
 
-179 cases: A20, B15, C24, D15, E15, F20, G14, H21, I20, J15. Nul `covered` bij aanmaak (fase 0).
+180 cases: A20, B15, C24, D15, E15, F21, G14, H21, I20, J15. Nul `covered` bij aanmaak (fase 0).
+F21 kwam er in fase 4 bij, samen met het gedrag dat hij beschrijft (hoofdstuk 14.8a).
+
+Stand na fase 4: 46 `covered` (C1-C24, F1-F18 en F20-F21, G9). Register F is daarmee volledig op één
+rij na: F19 (detailroute faalt) heeft nog geen vastgelegd productgedrag en wacht daarop, niet op een
+test.
+
+De F-rijen dragen nu beide helften: het besluit (coordinator, resolver, stores) én het zichtbare en
+met de afstandsbediening bedienbare deel (`test/widgets/tv/tv_media_source_picker_test.dart`,
+`test/widgets/tv/tv_source_row_descriptor_test.dart`). De goldens in
+`test/goldens/tv_media_source_picker_golden_test.dart` renderen dezelfde toestanden op het
+tvOS-canvas van DEC-028; ze bewaken compositie op dit platform en vervangen geen hardwareverificatie
+(hoofdstuk 29).

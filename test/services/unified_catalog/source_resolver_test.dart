@@ -30,8 +30,14 @@ class _MatchingClient implements MediaServerClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-MediaItem _item(String serverId, {String id = 'item-1'}) =>
-    MediaItem(id: id, backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Sintel', year: 2010, serverId: serverId);
+MediaItem _item(String serverId, {String id = 'item-1'}) => MediaItem(
+  id: id,
+  backend: MediaBackend.plex,
+  kind: MediaKind.movie,
+  title: 'Sintel',
+  year: 2010,
+  serverId: serverId,
+);
 
 const _identity = MediaIdentity(guid: 'plex://movie/abc', title: 'Sintel', year: 2010, kind: MediaKind.movie);
 
@@ -126,15 +132,20 @@ void main() {
       expect(result.coverage.expectedServerIds, {'s1'});
     });
 
-    test('a server absent from serversFor() (hidden/profile-inaccessible) contributes nothing and is never asked', () async {
-      // Only s1 is visible to this profile — a hidden server never even
-      // reaches the resolver, matching hoofdstuk 1.1 point 2: visibility
-      // closes before the fan-out, not inside it.
-      final result = await resolverFor([_server('s1', matches: [_item('s1')])]).resolveAllSourcesForGroup(_identity);
+    test(
+      'a server absent from serversFor() (hidden/profile-inaccessible) contributes nothing and is never asked',
+      () async {
+        // Only s1 is visible to this profile — a hidden server never even
+        // reaches the resolver, matching hoofdstuk 1.1 point 2: visibility
+        // closes before the fan-out, not inside it.
+        final result = await resolverFor([
+          _server('s1', matches: [_item('s1')]),
+        ]).resolveAllSourcesForGroup(_identity);
 
-      expect(result.items.map((i) => i.serverId), ['s1']);
-      expect(result.coverage.expectedServerIds, {'s1'});
-    });
+        expect(result.items.map((i) => i.serverId), ['s1']);
+        expect(result.coverage.expectedServerIds, {'s1'});
+      },
+    );
 
     test('an identity with nothing to match on costs no request and is vacuously complete', () async {
       final s1 = _server('s1', matches: [_item('s1')]);
@@ -183,7 +194,9 @@ void main() {
     });
 
     test('a positive answer expires after a week', () async {
-      await resolverFor([_server('s1', matches: [_item('s1')])]).resolveAllSourcesForGroup(_identity);
+      await resolverFor([
+        _server('s1', matches: [_item('s1')]),
+      ]).resolveAllSourcesForGroup(_identity);
 
       clock = clock.add(const Duration(days: 8));
       final again = _server('s1', matches: [_item('s1')]);
@@ -193,7 +206,9 @@ void main() {
     });
 
     test('a hit naming a server that went offline is revalidated, not trusted', () async {
-      await resolverFor([_server('s1', matches: [_item('s1')])]).resolveAllSourcesForGroup(_identity);
+      await resolverFor([
+        _server('s1', matches: [_item('s1')]),
+      ]).resolveAllSourcesForGroup(_identity);
 
       final result = await resolverFor([_server('s1', online: false)]).resolveAllSourcesForGroup(_identity);
 
@@ -201,7 +216,9 @@ void main() {
     });
 
     test('invalidate clears the warm answers', () async {
-      final resolver = resolverFor([_server('s1', matches: [_item('s1')])]);
+      final resolver = resolverFor([
+        _server('s1', matches: [_item('s1')]),
+      ]);
       await resolver.resolveAllSourcesForGroup(_identity);
       await resolver.invalidate();
 
@@ -212,7 +229,9 @@ void main() {
     });
 
     test('answers are keyed per profile', () async {
-      await resolverFor([_server('s1', matches: [_item('s1')])]).resolveAllSourcesForGroup(_identity);
+      await resolverFor([
+        _server('s1', matches: [_item('s1')]),
+      ]).resolveAllSourcesForGroup(_identity);
 
       final otherProfile = _server('s1', matches: [_item('s1')]);
       await SourceAllResolver(
@@ -259,6 +278,79 @@ void main() {
 
       expect(result.items, hasLength(6));
       expect(maxActive, lessThanOrEqualTo(2));
+    });
+  });
+
+  group('cancellation (hoofdstuk 14.5)', () {
+    List<EligibleSourceServer> countingServers(int count, {required void Function() onCall}) => [
+      for (var i = 0; i < count; i++)
+        (
+          serverId: ServerId('s$i'),
+          backend: MediaBackend.plex,
+          client: _CountingClient(
+            onCall: () async {
+              onCall();
+              return [_item('s$i')];
+            },
+          ),
+          online: true,
+          hasAuthError: false,
+        ),
+    ];
+
+    SourceAllResolver boundedResolver(List<EligibleSourceServer> servers) => SourceAllResolver(
+      profileId: 'profile-1',
+      serversFor: () => servers,
+      cache: cache,
+      maxConcurrent: 2,
+      now: () => clock,
+    );
+
+    test('choosing a source stops the servers that had not been asked yet', () async {
+      var calls = 0;
+      final servers = countingServers(6, onCall: () => calls++);
+
+      final result = await boundedResolver(servers).resolveAllSourcesForGroup(_identity, isCancelled: () => true);
+
+      // One batch of two ran; the remaining four were never asked.
+      expect(calls, 2);
+      expect(result.items, hasLength(2));
+    });
+
+    test('a cancelled run reports the servers it never reached as unchecked', () async {
+      final servers = countingServers(6, onCall: () {});
+
+      final result = await boundedResolver(servers).resolveAllSourcesForGroup(_identity, isCancelled: () => true);
+
+      expect(result.coverage.isComplete, isFalse);
+      expect(result.coverage.checkedServerIds, hasLength(2));
+      expect(result.coverage.uncheckedCount, 4);
+      expect(result.coverage.uncheckedReasons.values, everyElement(UncheckedSourceReason.lookupFailed));
+    });
+
+    test('a cancelled run is never cached, so the next open re-asks', () async {
+      var calls = 0;
+      final servers = countingServers(6, onCall: () => calls++);
+      final resolver = boundedResolver(servers);
+
+      await resolver.resolveAllSourcesForGroup(_identity, isCancelled: () => true);
+      expect(calls, 2);
+
+      final full = await resolver.resolveAllSourcesForGroup(_identity);
+
+      expect(calls, 8);
+      expect(full.coverage.isComplete, isTrue);
+      expect(full.items, hasLength(6));
+    });
+
+    test('a predicate that never fires leaves the exhaustive behaviour untouched', () async {
+      var calls = 0;
+      final servers = countingServers(6, onCall: () => calls++);
+
+      final result = await boundedResolver(servers).resolveAllSourcesForGroup(_identity, isCancelled: () => false);
+
+      expect(calls, 6);
+      expect(result.coverage.isComplete, isTrue);
     });
   });
 }

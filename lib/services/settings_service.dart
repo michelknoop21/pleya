@@ -10,6 +10,7 @@ import 'package:pleya/utils/app_logger.dart';
 import '../i18n/strings.g.dart';
 import '../models/mpv_config_models.dart';
 import '../media/track_language_choice.dart';
+import '../media/unified/remembered_source_choice.dart';
 import '../mpv/models.dart' show AudioNormalizationMode;
 import 'audio_output_decision.dart' show AudioOutputMode, AudioPriority;
 import '../models/external_player_models.dart';
@@ -578,6 +579,44 @@ class SettingsService extends BaseSharedPreferencesService {
       (key, value) => MapEntry(key, TrackLanguageChoice.fromJson(value as Map<String, dynamic>)),
     ),
   );
+
+  /// Last hand-picked unified source per canonical title, keyed by
+  /// `{profileScope}|{CanonicalMediaIdentity.bucketKey}` (hoofdstuk 14.8).
+  /// Same shape and same reasoning as [trackLanguagePreferences]: the profile
+  /// scope lives in the key rather than the pref name, so two Plex Home users
+  /// on one device keep separate choices while the whole map still travels as
+  /// one iCloud key-value entry. Read and written through
+  /// `SourcePreferenceStore` — never directly, or the LRU cap and the write
+  /// lock are bypassed.
+  static final unifiedSourcePreferences = JsonPref<Map<String, RememberedSourceChoice>>(
+    'unified_source_preferences',
+    defaultValue: const {},
+    encode: (v) => json.encode(v.map((key, choice) => MapEntry(key, choice.toJson()))),
+    decode: (raw) => (raw as Map<String, dynamic>).map(
+      (key, value) => MapEntry(key, RememberedSourceChoice.fromJson(value as Map<String, dynamic>)),
+    ),
+  );
+
+  /// The profile's default server for duplicate content, keyed by
+  /// `{profileScope}` and holding a stable `serverId`.
+  ///
+  /// A different kind of preference from [unifiedSourcePreferences], and
+  /// deliberately a separate pref rather than another entry in that map: this
+  /// one is global to the profile and *may* select a source without asking,
+  /// while a remembered per-title choice only ever sets the picker's focus.
+  /// Collapsing them would make one storage key mean two different amounts of
+  /// authority. Read and written through `PreferredServerStore`.
+  ///
+  /// The value is a server id and never a server name: names are user-editable
+  /// and duplicate across servers (case A7), so a name-keyed preference would
+  /// silently follow a rename onto the wrong machine.
+  static final preferredUnifiedServer = JsonPref<Map<String, String>>(
+    'preferred_unified_server',
+    defaultValue: const {},
+    encode: json.encode,
+    decode: (raw) => (raw as Map<String, dynamic>).map((key, value) => MapEntry(key, value as String)),
+  );
+
   static final customShaderPresets = JsonPref<List<Map<String, dynamic>>>(
     'custom_shader_presets',
     defaultValue: const [],

@@ -1842,5 +1842,30 @@
     "notificationText": "Other Pleya devices can stream your local folders",
     "hostDescriptionAndroid": "Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running in the background with a notification.",
     "scanningSubnet": "Scanning the network…"
+  },
+  "sourcePicker": {
+    "playTitle": "Choose where to play",
+    "detailsTitle": "Choose a source for the details",
+    "availableOnOneServer": "Available on 1 server",
+    "availableOnManyServers": "Available on ${count} servers",
+    "oneServerUnchecked": "1 server could not be checked",
+    "manyServersUnchecked": "${count} servers could not be checked",
+    "checkingMoreSources": "Checking more sources…",
+    "lastUsed": "Last used",
+    "currentSource": "Current source",
+    "unavailable": "Not available",
+    "signInRequired": "Sign in required",
+    "resumeAt": "Resume at ${position}",
+    "watched": "Watched",
+    "noneReachableTitle": "No source is currently reachable.",
+    "reauthRequiredTitle": "Sign in again to reach this title.",
+    "manageServers": "Manage servers",
+    "sourceLabel": "Source: ${source}",
+    "change": "Change",
+    "playbackFailedTitle": "This source could not be played.",
+    "chooseAnotherSource": "Choose another source",
+    "rowSemantics": "Source ${index} of ${count}: ${description}",
+    "preferredServer": "Preferred server",
+    "setPreferredServer": "Always use ${server}"
   }
 }

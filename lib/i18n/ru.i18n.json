@@ -1447,5 +1447,30 @@
     "notificationText": "Другие устройства Pleya могут стримить ваши локальные папки",
     "hostDescriptionAndroid": "Другие устройства Pleya в этой сети могут просматривать, воспроизводить и скачивать ваши локальные папки. Общий доступ продолжает работать в фоне с уведомлением.",
     "scanningSubnet": "Сканирование сети…"
+  },
+  "sourcePicker": {
+    "playTitle": "Выберите, где воспроизвести",
+    "detailsTitle": "Выберите источник для сведений",
+    "availableOnOneServer": "Доступно на 1 сервере",
+    "availableOnManyServers": "Доступно на ${count} серверах",
+    "oneServerUnchecked": "Не удалось проверить 1 сервер",
+    "manyServersUnchecked": "Не удалось проверить: ${count} серв.",
+    "checkingMoreSources": "Проверка других источников…",
+    "lastUsed": "Использован последним",
+    "currentSource": "Текущий источник",
+    "unavailable": "Недоступно",
+    "signInRequired": "Требуется повторный вход",
+    "resumeAt": "Продолжить с ${position}",
+    "watched": "Просмотрено",
+    "noneReachableTitle": "Сейчас ни один источник недоступен.",
+    "reauthRequiredTitle": "Войдите снова, чтобы открыть эту запись.",
+    "manageServers": "Управление серверами",
+    "sourceLabel": "Источник: ${source}",
+    "change": "Изменить",
+    "playbackFailedTitle": "Не удалось воспроизвести этот источник.",
+    "chooseAnotherSource": "Выбрать другой источник",
+    "rowSemantics": "Источник ${index} из ${count}: ${description}",
+    "preferredServer": "Предпочитаемый сервер",
+    "setPreferredServer": "Всегда использовать ${server}"
   }
 }
