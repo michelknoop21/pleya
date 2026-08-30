@@ -15,7 +15,7 @@ het afvinkbare register; het architectuurdocument houdt alleen de regels en de c
   afvinken; het register als geheel sluit pas bij de laatste fase die het raakt.
 - Rijen worden nooit verwijderd. Een geschrapt scenario gaat naar `n.v.t.` met een korte reden.
 
-Bijgewerkt: 2026-08-30 (fase 4 afgerond). Aangemaakt in fase 0. Fase 1 (unified identity foundation) dekt register C
+Bijgewerkt: 2026-08-30 (fase 5 afgerond). Aangemaakt in fase 0. Fase 1 (unified identity foundation) dekt register C
 (C1-C24) volledig af — zie de vindplaatsen in de tabel hieronder. De overige categorieën blijven
 `open` tot de fase die ze raakt.
 
@@ -29,23 +29,35 @@ F21 is in fase 4 toegevoegd: de voorkeursserver van hoofdstuk 14.8a mag zélf ee
 is een nieuw scenario met eigen gedrag, geen herformulering van een bestaand. De regel bovenaan
 schrijft voor dat gedrag eerst wordt vastgelegd — dat is gebeurd in 14.8a — en pas daarna een rij.
 
+**Fase 5 en de nagelopen rijen.** Fase 5 bouwde Films en Series, en daarmee de merge, de paging, de
+filters en het raster. Bij het sluiten is het register nagelopen tegen álles wat er sinds fase 1 aan
+tests bij is gekomen: vierentwintig rijen in A, B, D, E, I en J bleken al bewezen en waren alleen
+nooit ingevuld. Er is voor die rijen geen test bijgeschreven, alleen de vindplaats opgezocht en de
+test gelezen. Een rij die niet precies het scenario van die rij bewijst is `open` gebleven, ook waar
+een test er dichtbij kwam; een te optimistisch register is erger dan een leeg.
+
+**Hardware.** J2 (4K-output), J4 (overscan), J8 (VoiceOver) en J9 (Reduce Motion) zijn niet in een
+test vast te leggen — ze vragen een echte Apple TV. Ze staan op `open` met die reden in de
+Test-kolom en horen bij de eindacceptatie na fase 10A (hoofdstuk 29), niet bij de gate van een fase.
+Ze gelden dan voor de hele TV-UI, dus ook voor de schermen die er nu nog niet zijn.
+
 ## A. Server- en topologycases
 
 | # | Case | Test | Status |
 |---|---|---|---|
 | A1 | Geen servers geconfigureerd | | open |
-| A2 | Eén Plex-server | | open |
+| A2 | Eén Plex-server | test/providers/unified_catalog_provider_test.dart (`ensureStarted loads the first page and settles into the snapshot`) — één Plex-client, één library, en de snapshot die de grid tekent | covered |
 | A3 | Eén Jellyfin-server | | open |
 | A4 | Eén Pleya Server | | open |
 | A5 | Plex plus Jellyfin | | open |
-| A6 | Drie of meer servers | | open |
-| A7 | Twee servers met dezelfde displaynaam | | open |
-| A8 | Eén server offline bij twee online servers | | open |
-| A9 | Eén server met auth-error | | open |
-| A10 | Alle servers offline | | open |
-| A11 | Server komt laat online | | open |
+| A6 | Drie of meer servers | test/services/unified_catalog_service_test.dart (`merges two libraries into one globally title-ordered stream, collapsing a shared duplicate`, drie servers in één merge); test/services/unified_catalog/source_resolver_test.dart (`the same film on three servers yields three concrete sources`) | covered |
+| A7 | Twee servers met dezelfde displaynaam | test/services/unified_catalog/unified_activation_coordinator_test.dart (`F12: duplicate server names fall through to server id, then item id`); test/widgets/tv/tv_media_source_picker_test.dart (`F12: two servers with one name stay tellable apart by their library`) | covered |
+| A8 | Eén server offline bij twee online servers | test/services/unified_catalog_service_test.dart (`one library erroring leaves the healthy results in place, and is retried on the next call`); test/services/unified_catalog/source_resolver_test.dart (`an offline expected server makes coverage incomplete`); test/goldens/tv_unified_catalog_golden_test.dart (`films, complete with one library missing`) voor de melding onder de grid | covered |
+| A9 | Eén server met auth-error | test/services/unified_catalog/source_resolver_test.dart (`an auth-errored server is distinguished from a plain offline one`); test/services/unified_catalog/unified_activation_coordinator_test.dart (`F7: an auth error outranks offline…`); test/widgets/tv/tv_media_source_picker_test.dart (`F7: an auth error says something else than an offline server`) | covered |
+| A10 | Alle servers offline | test/services/unified_catalog_service_test.dart (`every library failing on the very first round reports initialLoadFailed`); test/goldens/tv_unified_catalog_states_golden_test.dart (`films, nothing answered`) | covered |
+| A11 | Server komt laat online | test/providers/unified_catalog_provider_test.dart (`a late server coming online reconciles the eligible library set`) | covered |
 | A12 | Server valt weg tijdens paging | | open |
-| A13 | Server valt weg in source picker | | open |
+| A13 | Server valt weg in source picker | test/services/unified_catalog/unified_activation_coordinator_test.dart (`focus after a source stops being usable`, vijf tests); test/widgets/tv/tv_media_source_picker_test.dart (`F11: the focused source going offline moves focus to the nearest usable row`) | covered |
 | A14 | Server valt weg tijdens detail load | | open |
 | A15 | Server valt weg tijdens playerstart | | open |
 | A16 | Server wordt verwijderd | | open |
@@ -58,15 +70,15 @@ schrijft voor dat gedrag eerst wordt vastgelegd — dat is gebeurd in 14.8a — 
 
 | # | Case | Test | Status |
 |---|---|---|---|
-| B1 | Eén movie library | | open |
-| B2 | Meerdere movie libraries op dezelfde server | | open |
-| B3 | Movie libraries op meerdere servers | | open |
+| B1 | Eén movie library | test/providers/unified_catalog_provider_test.dart (`ensureStarted loads the first page and settles into the snapshot`); test/services/unified_catalog/source_cursor_test.dart (`restricts to the requested kind`) | covered |
+| B2 | Meerdere movie libraries op dezelfde server | test/services/unified_catalog_service_test.dart (`paging target is a group count: it stops at groupsPerPage new groups, not a raw item count`) — twee libraries op één server, allebei in de merge | covered |
+| B3 | Movie libraries op meerdere servers | test/services/unified_catalog_service_test.dart (`merges two libraries into one globally title-ordered stream, collapsing a shared duplicate`) | covered |
 | B4 | Series-only profiel | | open |
 | B5 | Movies-only profiel | | open |
 | B6 | Mixed/shared Plex library | | open |
-| B7 | Verborgen library als enige bron | | open |
+| B7 | Verborgen library als enige bron | test/providers/unified_catalog_provider_test.dart (`server.hidden excludes a library from the merge, matching eligibleCatalogLibraries`, `a hidden-library change after starting reconciles and reloads with the library excluded`); test/services/unified_catalog/source_cursor_test.dart (`excludes a library the user hid, even though its server is visible`) | covered |
 | B8 | Verborgen library als tweede duplicate bron | | open |
-| B9 | Library wordt tijdens gebruik verborgen | | open |
+| B9 | Library wordt tijdens gebruik verborgen | test/providers/unified_catalog_provider_test.dart (`a hidden-library change after starting reconciles and reloads with the library excluded`) | covered |
 | B10 | Library wordt verwijderd | | open |
 | B11 | Library heeft geen items | | open |
 | B12 | Library fetch geeft timeout | | open |
@@ -114,9 +126,9 @@ en `test/services/unified_grouping_service_test.dart`).
 | D2 | Verschillende seizoensdekking | | open |
 | D3 | Zelfde episode met sterke ID | | open |
 | D4 | Zelfde episode via serie-ID plus S/E | | open |
-| D5 | Specials seizoen 0 | | open |
-| D6 | Ontbrekend seizoennummer | | open |
-| D7 | Ontbrekend afleveringsnummer | | open |
+| D5 | Specials seizoen 0 | test/media/canonical_media_identity_test.dart (`D5: season 0 (specials) is a real, distinct, bucketable season index`) | covered |
+| D6 | Ontbrekend seizoennummer | test/media/canonical_media_identity_test.dart (`D6/D7: a missing season or episode index makes the episode bucket unusable`, `D6: an episode missing its season index has no bucketable identity`) | covered |
+| D7 | Ontbrekend afleveringsnummer | test/media/canonical_media_identity_test.dart (`D6/D7: a missing season or episode index makes the episode bucket unusable`) | covered |
 | D8 | Double episode | | open |
 | D9 | Absolute numbering versus season numbering | | open |
 | D10 | Eén bron loopt één aflevering achter | | open |
@@ -132,15 +144,15 @@ en `test/services/unified_grouping_service_test.dart`).
 |---|---|---|---|
 | E1 | Bronnen met verschillende page sizes | | open |
 | E2 | Eén bron veel groter dan de andere | | open |
-| E3 | Veel duplicates waardoor één fetchronde weinig groups oplevert | | open |
-| E4 | Duplicate verschijnt pas veel pagina's later | | open |
+| E3 | Veel duplicates waardoor één fetchronde weinig groups oplevert | test/services/unified_catalog_service_test.dart (`paging target is a group count: it stops at groupsPerPage new groups, not a raw item count`) — vier ruwe items voor twee groups | covered |
+| E4 | Duplicate verschijnt pas veel pagina's later | test/services/unified_catalog_service_test.dart (`a duplicate arriving many pages later merges into the existing group instead of creating a new one`) | covered |
 | E5 | Eén bron is veel trager | | open |
 | E6 | Eén bron faalt na eerdere succesvolle pagina's | | open |
 | E7 | Total ontbreekt | | open |
 | E8 | Total verandert tijdens paging | | open |
-| E9 | Sort key ontbreekt | | open |
+| E9 | Sort key ontbreekt | test/services/unified_catalog/unified_catalog_query_test.dart (`release-date sort sinks a dateless item to the end regardless of direction`, `addedAt sort sinks a missing value to the end`, `recentlyWatched sort compares lastViewedAt, missing sinks to the end`) | covered |
 | E10 | Sort key verschilt tussen duplicate sources | | open |
-| E11 | Query verandert met requests in flight | | open |
+| E11 | Query verandert met requests in flight | test/services/unified_catalog_service_test.dart (`a stale in-flight fetch from before a query change never lands in the new state`) | covered |
 | E12 | Profiel wisselt met requests in flight | | open |
 | E13 | Filter verwijdert de gefocuste group | | open |
 | E14 | Late merge zou zichtbare sortpositie wijzigen | | open |
@@ -234,7 +246,7 @@ en `test/services/unified_grouping_service_test.dart`).
 | I4 | First row terug naar hero | | open |
 | I5 | Root Back naar topnav | | open |
 | I6 | Topnav Back naar systeem | | open |
-| I7 | Source picker Back | | open |
+| I7 | Source picker Back | test/widgets/tv/tv_media_source_picker_test.dart (`Menu closes the picker, activates nothing, and restores the exact CTA`) | covered |
 | I8 | Nested Mijn Pleya Back | | open |
 | I9 | Profile picker Back | | open |
 | I10 | Native keyboard Back | | open |
@@ -242,7 +254,7 @@ en `test/services/unified_grouping_service_test.dart`).
 | I12 | Live TV-item verdwijnt | | open |
 | I13 | Actieve destination opnieuw selecteren | | open |
 | I14 | Tab wisselen met overlay open | | open |
-| I15 | Select KeyUp na focusverplaatsing | | open |
+| I15 | Select KeyUp na focusverplaatsing | test/focus/focusable_wrapper_select_test.dart (`key-up landing on a wrapper that never saw the key-down fires nothing`); test/focus/dpad_navigator_suppressor_test.dart (`armed suppressor eats the in-flight select key-up and clears`) | covered |
 | I16 | Trackpad swipe versus D-pad | | open |
 | I17 | Android TV back | | open |
 | I18 | Focused item verdwijnt | | open |
@@ -253,15 +265,15 @@ en `test/services/unified_grouping_service_test.dart`).
 
 | # | Case | Test | Status |
 |---|---|---|---|
-| J1 | 1080p | | open |
-| J2 | 4K-output | | open |
+| J1 | 1080p | test/goldens/tv_unified_catalog_golden_test.dart (`films, default state`, `series, default state`) en test/goldens/tv_unified_catalog_states_golden_test.dart — elke catalogusgolden rendert op het DEC-028-canvas, 1920x1080 gedeeld door 1,85 | covered |
+| J2 | 4K-output | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A | open |
 | J3 | Laagste ondersteunde TV-surface | | open |
-| J4 | Overscan | | open |
-| J5 | Lange vertaling | | open |
+| J4 | Overscan | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A | open |
+| J5 | Lange vertaling | test/goldens/tv_unified_catalog_golden_test.dart (`films, labels at the length a long locale produces`, `films, long titles`) — de labels hebben de lengte van de Duitse strings; een echt omgeschakelde locale is in `flutter test` niet te renderen, want elke niet-basislocale is deferred | covered |
 | J6 | Grote tekst | | open |
 | J7 | RTL | | open |
-| J8 | VoiceOver | | open |
-| J9 | Reduce Motion | | open |
+| J8 | VoiceOver | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A. test/widgets/tv/tv_media_source_picker_test.dart (`a row announces its position and everything it actually shows`) legt de semantics van een source row vast, niet wat VoiceOver ervan maakt | open |
+| J9 | Reduce Motion | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A | open |
 | J10 | Light theme | | open |
 | J11 | OLED theme | | open |
 | J12 | Focusglow bij eerste/laatste card | | open |
@@ -274,9 +286,14 @@ en `test/services/unified_grouping_service_test.dart`).
 180 cases: A20, B15, C24, D15, E15, F21, G14, H21, I20, J15. Nul `covered` bij aanmaak (fase 0).
 F21 kwam er in fase 4 bij, samen met het gedrag dat hij beschrijft (hoofdstuk 14.8a).
 
-Stand na fase 4: 46 `covered` (C1-C24, F1-F18 en F20-F21, G9). Register F is daarmee volledig op één
-rij na: F19 (detailroute faalt) heeft nog geen vastgelegd productgedrag en wacht daarop, niet op een
-test.
+Stand na fase 5: 69 `covered` en 111 `open`. Dat is de stand na fase 4 — C1-C24, F1-F18, F20-F21 en
+G9, samen 45 rijen, hier eerder als 46 opgeteld — plus de vierentwintig rijen die fase 5 heeft
+nagelopen: A2, A6-A11, A13, B1-B3, B7, B9, D5-D7, E3, E4, E9, E11, I7, I15, J1 en J5. Per categorie
+is dat A 8 van 20, B 5 van 15, C 24 van 24, D 3 van 15, E 4 van 15, F 20 van 21, G 1 van 14, H 0 van
+21, I 2 van 20 en J 2 van 15.
+
+Register F is nog steeds volledig op één rij na: F19 (detailroute faalt) heeft nog geen vastgelegd
+productgedrag en wacht daarop, niet op een test.
 
 De F-rijen dragen nu beide helften: het besluit (coordinator, resolver, stores) én het zichtbare en
 met de afstandsbediening bedienbare deel (`test/widgets/tv/tv_media_source_picker_test.dart`,
@@ -284,3 +301,22 @@ met de afstandsbediening bedienbare deel (`test/widgets/tv/tv_media_source_picke
 `test/goldens/tv_media_source_picker_golden_test.dart` renderen dezelfde toestanden op het
 tvOS-canvas van DEC-028; ze bewaken compositie op dit platform en vervangen geen hardwareverificatie
 (hoofdstuk 29).
+
+De rijen die fase 5 heeft ingevuld leunen op de merge-engine
+(`test/services/unified_catalog_service_test.dart`) en op de provider die hem aanstuurt. Waar zo'n
+rij ook een zichtbaar deel heeft staat dat ernaast: A8 en A10 wijzen naar de goldens, want een
+library die niet antwoordde meldt zich onder de grid en een catalogus waar niets uit kwam vult de
+hele pagina. D5-D7 zijn identityrijen en worden, net als register C, door de identiteitstests alleen
+bewezen; er is nog geen serie- of afleveringscherm waar iets van te zien zou zijn.
+
+Wat bewust `open` is gebleven, en waarom. Register H staat nog helemaal open: de hero bestaat niet,
+die komt in fase 6 en 8. Register I is op twee rijen na een zaak van fase 7 (topnav en Mijn Pleya);
+alleen I7 en I15 gaan over mechanismen die er nu al zijn. Register G is op G9 na open, en dat is de
+zwaarste post: `selectRepresentativeWatchState` — de functie die per group beslist wélke bron de
+kijkstatus levert, inclusief de klok-skew, de ontbrekende timestamps en de afwijkende runtimes uit
+G5 tot en met G7 — heeft geen enkele eigen test. In A, B en E zijn de rijen die over een tweede ronde
+gaan open gebleven (A12 server valt weg tijdens paging, B13 lege pagina vóór total, E6 bron faalt ná
+geslaagde pagina's, E8 total verandert onderweg, E15 dezelfde source twee keer): de tests die er het
+dichtst bij komen falen of stoppen in de eerste ronde, en dat is een ander pad door dezelfde code.
+Elke fake client in de catalogustests is bovendien een Plex-client, dus A3 (Jellyfin), A4 (Pleya
+Server) en A5 (Plex plus Jellyfin) zijn niet aangetoond, hoe klein het verschil ook lijkt.
