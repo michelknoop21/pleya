@@ -51,10 +51,17 @@ class TvCatalogHeaderBar extends StatelessWidget {
       // canonical canvas that is ~30 logical pixels; the first render used
       // `14 * scale`, twelve, and the page title sat visibly on the overscan
       // line.
+      // The horizontal inset is the grid's, plus the same amount a card spends
+      // inside its own column before its artwork starts. Without that second
+      // term the page title began six logical pixels left of every poster and
+      // every card title under it: on a page with no hero, no divider and no
+      // change of background, that content column is the only vertical line the
+      // composition has, and the heading sitting above it was the one element
+      // off it.
       padding: EdgeInsets.fromLTRB(
-        grid.inset,
+        grid.inset + TvCatalogLayout.cardContentInset(scale),
         MediaQuery.sizeOf(context).height * (TvCatalogLayout.topSafeInset / 1080),
-        grid.inset,
+        grid.inset + TvCatalogLayout.cardContentInset(scale),
         TvCatalogLayout.headerContentGap * scale,
       ),
       child: Row(

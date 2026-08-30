@@ -36,6 +36,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../focus/focus_theme.dart';
 import '../../media/ids.dart';
 import '../../media/media_backend.dart';
 import '../../media/media_kind.dart';
@@ -58,6 +59,7 @@ import '../../widgets/tv/tv_catalog_header_bar.dart';
 import '../../widgets/tv/tv_panel_primitives.dart';
 import '../../widgets/tv/tv_catalog_sort_panel.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
+import '../../widgets/tv/tv_unified_media_card.dart';
 import '../../widgets/tv/tv_unified_media_grid.dart';
 import 'tv_media_source_picker_route.dart';
 import 'tv_unified_activation.dart';
@@ -387,7 +389,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
     final snapshot = catalog.snapshot;
 
     if (!_preferencesLoaded || (catalog.isInitialLoading && snapshot.groups.isEmpty)) {
-      return const _SkeletonGrid(key: tvCatalogSkeletonKey);
+      return const TvCatalogSkeletonGrid(key: tvCatalogSkeletonKey);
     }
 
     // Hoofdstuk 29: a full-page error only when there is no usable catalog at
@@ -459,8 +461,8 @@ const Key tvCatalogSkeletonKey = ValueKey('tvCatalogSkeleton');
 /// their determinism — `pumpAndSettle` never returns under a repeating
 /// animation — for motion that a 10-foot surface reads as flicker rather than
 /// as progress.
-class _SkeletonGrid extends StatelessWidget {
-  const _SkeletonGrid({super.key});
+class TvCatalogSkeletonGrid extends StatelessWidget {
+  const TvCatalogSkeletonGrid({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -470,7 +472,8 @@ class _SkeletonGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cardHeight = grid.cardWidth / TvCatalogLayout.posterAspectRatio;
+        final inset = TvCatalogLayout.cardContentInset(scale);
+        final cardHeight = (grid.cardWidth - inset * 2) / TvCatalogLayout.posterAspectRatio;
         // Enough rows to reach the bottom edge, so the placeholder fills the
         // surface it is standing in for rather than floating in the top half of
         // it. Partly-visible rows count: the real grid has them too.
@@ -524,34 +527,50 @@ class _SkeletonCard extends StatelessWidget {
     final barHeight = TvCatalogLayout.cardTitleFontSize * scale;
     final metaHeight = TvCatalogLayout.cardMetaFontSize * scale;
 
+    // The same inset the real card carries, and it is made of two things.
+    // `TvUnifiedMediaCard` sizes the *wrapper* to the grid's card width, and
+    // inside that wrapper `FocusableWrapper` draws its ring as a border — which
+    // costs [FocusTheme.focusBorderWidth] a side whether or not the card has the
+    // focus — before the card's own focus-ring gap pads it again. Sizing the
+    // placeholder poster to the full column made every poster on screen shrink
+    // and shift at the moment the data landed, which is the one frame this
+    // placeholder exists to make uneventful. Counting only the gap and not the
+    // border left two thirds of that jump in place.
+    final inset = TvCatalogLayout.cardContentInset(scale);
+    final posterWidth = width - inset * 2;
+
     return SizedBox(
       width: width,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: width,
-            height: width / TvCatalogLayout.posterAspectRatio,
-            decoration: BoxDecoration(
-              color: mono.text.withValues(alpha: TvCatalogLayout.skeletonArtworkFill),
-              borderRadius: BorderRadius.circular(TvCatalogLayout.cardRadius * scale),
+      child: Padding(
+        padding: EdgeInsets.all(inset),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              key: tvCatalogPosterKey,
+              width: posterWidth,
+              height: posterWidth / TvCatalogLayout.posterAspectRatio,
+              decoration: BoxDecoration(
+                color: mono.text.withValues(alpha: TvCatalogLayout.skeletonArtworkFill),
+                borderRadius: BorderRadius.circular(TvCatalogLayout.cardRadius * scale),
+              ),
             ),
-          ),
-          SizedBox(height: TvCatalogLayout.cardFooterPaddingVertical * scale),
-          _SkeletonBar(
-            width: width * TvCatalogLayout.skeletonTitleWidthFraction,
-            height: barHeight,
-            scale: scale,
-            mono: mono,
-          ),
-          SizedBox(height: TvCatalogLayout.cardFooterLineGap * scale * 2),
-          _SkeletonBar(
-            width: width * TvCatalogLayout.skeletonMetaWidthFraction,
-            height: metaHeight,
-            scale: scale,
-            mono: mono,
-          ),
-        ],
+            SizedBox(height: TvCatalogLayout.cardFooterPaddingVertical * scale),
+            _SkeletonBar(
+              width: posterWidth * TvCatalogLayout.skeletonTitleWidthFraction,
+              height: barHeight,
+              scale: scale,
+              mono: mono,
+            ),
+            SizedBox(height: TvCatalogLayout.cardFooterLineGap * scale * 2),
+            _SkeletonBar(
+              width: posterWidth * TvCatalogLayout.skeletonMetaWidthFraction,
+              height: metaHeight,
+              scale: scale,
+              mono: mono,
+            ),
+          ],
+        ),
       ),
     );
   }

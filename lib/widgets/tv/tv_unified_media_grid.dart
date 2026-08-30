@@ -252,7 +252,15 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
 
     return SingleChildScrollView(
       controller: widget.controller,
-      padding: EdgeInsets.symmetric(horizontal: grid.inset),
+      // A bottom inset as well as the side ones. Hoofdstuk 8.1: "geen tekst of
+      // focusring binnen de buitenste 56 pixels". With only the horizontal
+      // padding the last row's count line and the partial-coverage notice sat
+      // some 18 logical pixels off the bottom edge — inside the overscan band on
+      // a real set, which is where a warning that the catalogue is incomplete is
+      // the worst thing to lose. Focus is the sharper case: directional
+      // traversal scrolls with `keepVisibleAtEnd`, so a focused bottom-row card
+      // parked its ring flush against the viewport edge at zero margin.
+      padding: EdgeInsets.fromLTRB(grid.inset, 0, grid.inset, grid.bottomSafeInset),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

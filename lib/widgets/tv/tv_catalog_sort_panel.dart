@@ -156,7 +156,7 @@ class _TvCatalogSortPanelState extends State<TvCatalogSortPanel> {
 /// Selected and focused stay two different states, which is the other half of
 /// DEC-053: the tick says "this is the answer", the white ring says "this is
 /// where I am", and a row can be either, both or neither.
-class TvCatalogOptionRow extends StatelessWidget {
+class TvCatalogOptionRow extends StatefulWidget {
   const TvCatalogOptionRow({
     super.key,
     required this.label,
@@ -192,27 +192,48 @@ class TvCatalogOptionRow extends StatelessWidget {
   final VoidCallback? onNavigateRight;
 
   @override
+  State<TvCatalogOptionRow> createState() => _TvCatalogOptionRowState();
+}
+
+class _TvCatalogOptionRowState extends State<TvCatalogOptionRow> {
+  bool _isFocused = false;
+
+  @override
   Widget build(BuildContext context) {
     final mono = tokens(context);
+    final scale = widget.scale;
+    final label = widget.label;
+    final secondary = widget.secondary;
+    final enabled = widget.enabled;
+    final isSelected = widget.isSelected;
     final ink = enabled ? TvSourcePickerLayout.inkPrimary : TvSourcePickerLayout.inkDisabledPrimary;
 
+    // Three tiers on one ladder, because selected and focused are independent:
+    // the base says whether this is the answer, the sheen says whether this is
+    // where the remote is, and a row carrying both has to read as both.
+    final baseFill = isSelected ? TvCatalogLayout.optionSelectedFill : TvSourcePickerLayout.idleRowFill;
+    final fill = _isFocused ? baseFill + TvCatalogLayout.optionFocusedSheen : baseFill;
+    final outline = isSelected ? TvCatalogLayout.optionSelectedOutline : TvSourcePickerLayout.idleRowOutline;
+
     return FocusableWrapper(
-      focusNode: focusNode,
+      focusNode: widget.focusNode,
       canRequestFocus: enabled,
-      onSelect: enabled ? onPressed : null,
-      onNavigateUp: onNavigateUp,
-      onNavigateDown: onNavigateDown,
-      onNavigateLeft: onNavigateLeft,
-      onNavigateRight: onNavigateRight,
+      onSelect: enabled ? widget.onPressed : null,
+      onFocusChange: (focused) => setState(() => _isFocused = focused),
+      onNavigateUp: widget.onNavigateUp,
+      onNavigateDown: widget.onNavigateDown,
+      onNavigateLeft: widget.onNavigateLeft,
+      onNavigateRight: widget.onNavigateRight,
       borderRadius: TvSourcePickerLayout.rowRadius * scale,
       disableScale: true,
       semanticLabel: label,
-      child: Container(
+      child: AnimatedContainer(
+        duration: mono.fast,
         constraints: BoxConstraints(minHeight: TvCatalogLayout.optionRowMinHeight * scale),
         decoration: BoxDecoration(
-          color: mono.text.withValues(alpha: TvSourcePickerLayout.idleRowFill),
+          color: mono.text.withValues(alpha: enabled ? fill : TvSourcePickerLayout.idleRowFill),
           borderRadius: BorderRadius.circular(TvSourcePickerLayout.rowRadius * scale),
-          border: Border.all(color: mono.text.withValues(alpha: TvSourcePickerLayout.idleRowOutline), width: 1),
+          border: Border.all(color: mono.text.withValues(alpha: outline), width: 1),
         ),
         padding: EdgeInsets.symmetric(
           horizontal: TvCatalogLayout.optionRowPaddingHorizontal * scale,
@@ -238,7 +259,7 @@ class TvCatalogOptionRow extends StatelessWidget {
                   if (secondary != null) ...[
                     SizedBox(height: TvSourcePickerLayout.rowLineGap * scale),
                     Text(
-                      secondary!,
+                      secondary,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

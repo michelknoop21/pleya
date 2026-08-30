@@ -66,16 +66,25 @@ import 'tv_unified_layout.dart';
 /// these — what the rail is a list of.
 enum TvCatalogFilterSection { status, genre, year, servers, libraries }
 
-/// Rail order (hoofdstuk 10.6's own listing): the two source categories first,
-/// because they are the only ones no backend can take away, then the metadata
-/// refinements, then watch status. Anything that can be omitted is therefore
-/// omitted from the bottom, and the top of the rail never moves.
+/// Rail order, which is hoofdstuk 10.6's listing verbatim: "Status; Genre;
+/// Jaar; Servers; Bibliotheken".
+///
+/// The first build ran the other way round — the two source categories at the
+/// top, because they are the only ones no backend can take away, so anything
+/// omittable fell off the bottom and the top of the rail never moved. That is a
+/// real property and this order gives it up. It was still the wrong trade:
+/// leading with Servers and Bibliotheken leads with infrastructure, and those
+/// are administration words. Someone narrowing a wall of posters wants
+/// "Unwatched", and in that order it was fifth of five — while the Filters
+/// capsule opens the panel on Status, so the default state put the cursor at the
+/// bottom of the rail with four skipped labels above it. A settings window is
+/// exactly what that reads as.
 const List<TvCatalogFilterSection> _railOrder = [
-  TvCatalogFilterSection.servers,
-  TvCatalogFilterSection.libraries,
+  TvCatalogFilterSection.status,
   TvCatalogFilterSection.genre,
   TvCatalogFilterSection.year,
-  TvCatalogFilterSection.status,
+  TvCatalogFilterSection.servers,
+  TvCatalogFilterSection.libraries,
 ];
 
 /// Opens the panel and returns the new selection, or null when the user backed

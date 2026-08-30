@@ -26,6 +26,7 @@ library;
 
 import 'dart:math' as math;
 
+import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
 
 /// Base metrics for the source picker of hoofdstuk 14. Multiply by
@@ -216,6 +217,16 @@ class TvCatalogLayout {
   /// nothing anyone can see.
   static const double cardFocusRingGap = 5;
 
+  /// How far inside its own column a card's content actually starts.
+  ///
+  /// Two terms, and forgetting the first is the usual bug: `FocusableWrapper`
+  /// draws its ring as a *border*, which costs [FocusTheme.focusBorderWidth] a
+  /// side whether or not the card holds the focus, and only then does the card
+  /// pad by [cardFocusRingGap]. Anything that has to line up with the posters —
+  /// the page heading above them, a placeholder standing in for them — has to
+  /// count both.
+  static double cardContentInset(double scale) => FocusTheme.focusBorderWidth + cardFocusRingGap * scale;
+
   /// Title and context line inside the footer. 14 renders at ~11.9 logical,
   /// ~22 reference px — inside hoofdstuk 8.3's "card title 18–21" at the top,
   /// which is where a two-line title still reads at three metres.
@@ -263,6 +274,23 @@ class TvCatalogLayout {
   static const double optionRowPaddingHorizontal = 16;
   static const double optionRowPaddingVertical = 8;
   static const double optionRowGap = 7;
+
+  /// Fill and outline of a *selected* option row, as alphas on `MonoTokens.text`.
+  ///
+  /// [DEC-053] again, and the same failure it names: the row used to draw
+  /// `idleRowFill` whether it was chosen or not, so "All" and "Unwatched" sat at
+  /// the same grey and the only thing separating them was a tick glyph parked
+  /// some 280 logical pixels away at the far end of the row. At three metres
+  /// that is not a selection state, it is a rumour. The numbers match the
+  /// category rail's active chip, because it is the same idea one zone over.
+  static const double optionSelectedFill = 0.14;
+  static const double optionSelectedOutline = 0.2;
+
+  /// Added on top of whichever of the two fills the row already carries when it
+  /// holds the focus. Deliberately additive rather than a third absolute value:
+  /// selected and focused are independent states (a row can be either, both or
+  /// neither), so the focused fill has to be legible over both.
+  static const double optionFocusedSheen = 0.06;
 
   /// The filter panel's category rail (hoofdstuk 10.6), as a fraction of the
   /// panel's own inner width rather than a fixed number of pixels.
@@ -388,12 +416,32 @@ class TvCatalogLayout {
 /// output, in a simulator window and in the golden harness — and what stops a
 /// hardcoded 6 from producing 40 logical pixels of poster on a narrow surface.
 class TvCatalogGrid {
-  const TvCatalogGrid({required this.columns, required this.cardWidth, required this.gutter, required this.inset});
+  const TvCatalogGrid({
+    required this.columns,
+    required this.cardWidth,
+    required this.gutter,
+    required this.inset,
+    required this.bottomSafeInset,
+  });
 
   final int columns;
   final double cardWidth;
   final double gutter;
   final double inset;
+
+  /// Room under the last row, so nothing the user needs to read — or the focus
+  /// ring — ends up in hoofdstuk 8.1's outer 56 reference pixels.
+  ///
+  /// Two parts. The safe margin itself converts like every other box
+  /// measurement here, as a fraction of the viewport: on a 16:9 surface
+  /// `56/1080` of the height is exactly `56/1920` of the width, so the vertical
+  /// margin falls out of the same reference the horizontal one uses. On top of
+  /// that comes the room a focused card needs to grow into, because
+  /// [FocusTheme.fullCardFocusScale] enlarges it about its centre and the bottom
+  /// row has nothing below it to grow into — and directional traversal scrolls
+  /// with `keepVisibleAtEnd`, so without this the ring lands flush against the
+  /// edge of the screen.
+  final double bottomSafeInset;
 
   /// Ideal card width on the 1920-wide reference surface, expressed as a
   /// fraction so it converts like every other box measurement in this file
@@ -443,6 +491,14 @@ class TvCatalogGrid {
     final raw = ideal <= 0 ? minColumns : ((available + gutter) / (ideal + gutter)).round();
     final columns = raw.clamp(minColumns, maxColumns);
     final cardWidth = math.max(0.0, (available - gutter * (columns - 1)) / columns);
-    return TvCatalogGrid(columns: columns, cardWidth: cardWidth, gutter: gutter, inset: inset);
+    final cardHeight = cardWidth / TvCatalogLayout.posterAspectRatio;
+    final focusGrowth = cardHeight * (FocusTheme.fullCardFocusScale - 1) / 2;
+    return TvCatalogGrid(
+      columns: columns,
+      cardWidth: cardWidth,
+      gutter: gutter,
+      inset: inset,
+      bottomSafeInset: width * (TvCatalogLayout.topSafeInset / _referenceWidth) + focusGrowth,
+    );
   }
 }

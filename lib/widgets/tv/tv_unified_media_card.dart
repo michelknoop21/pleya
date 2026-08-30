@@ -38,6 +38,7 @@ import '../../i18n/strings.g.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../theme/mono_tokens.dart';
+import '../new_content_badge.dart';
 import '../../utils/layout_constants.dart';
 import '../optimized_media_image.dart';
 import 'tv_unified_layout.dart';
@@ -122,6 +123,7 @@ class TvUnifiedMediaCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 ClipRRect(
+                  key: tvCatalogPosterKey,
                   borderRadius: BorderRadius.circular(radius),
                   child: _Artwork(group: group, scale: scale, clientFor: clientFor),
                 ),
@@ -134,6 +136,14 @@ class TvUnifiedMediaCard extends StatelessWidget {
     );
   }
 }
+
+/// The artwork box of a catalog card — the real one and the loading
+/// placeholder both carry it.
+///
+/// Shared deliberately: the placeholder's whole contract is that it occupies the
+/// box the poster is about to, and one key on both is what lets a test assert
+/// that rather than trust it.
+const Key tvCatalogPosterKey = ValueKey('tvCatalogPoster');
 
 /// What VoiceOver reads for one card (hoofdstuk 25).
 ///
@@ -232,11 +242,27 @@ class _Artwork extends StatelessWidget {
             ),
           // Opposite corner from the source badge, so a title that is both
           // duplicated and watched carries two markers that never collide.
+          //
+          // NEW shares that corner with the watched tick, and the two cannot
+          // both appear: `newBadgeLabel` returns null for a film with a view
+          // count and for a show with every episode seen, so "new" and "watched"
+          // are mutually exclusive by construction rather than by a rule this
+          // widget has to keep. Hoofdstuk 10.2 ("Nieuw-badge blijft bestaan")
+          // and 33.3, which binds the marking for Series; the same
+          // `NewContentBadge` every other card in the app already uses, so the
+          // one place the brand gradient reaches the grid looks the same here as
+          // it does everywhere else.
           if (group.watchState.isWatched)
             Positioned(
               top: inset,
               right: inset,
               child: _WatchedBadge(scale: scale),
+            )
+          else
+            Positioned(
+              top: inset,
+              right: inset,
+              child: NewContentBadge(item: group.representativeSource.item),
             ),
           if (_resumeFraction != null)
             Positioned(
