@@ -2100,6 +2100,8 @@ class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
 	@override String sources({required Object count}) => '${count} bronnen';
 	@override String get allSources => 'Alle bronnen';
 	@override String get oneSource => '1 bron';
+	@override String seasons({required Object count}) => '${count} seizoenen';
+	@override String get oneSeason => '1 seizoen';
 	@override String titleCount({required Object count}) => '${count} titels';
 	@override String get oneTitle => '1 titel';
 	@override String titlesLoaded({required Object count}) => '${count} titels geladen';
@@ -4208,6 +4210,8 @@ extension on TranslationsNl {
 			'unifiedCatalog.sources' => ({required Object count}) => '${count} bronnen',
 			'unifiedCatalog.allSources' => 'Alle bronnen',
 			'unifiedCatalog.oneSource' => '1 bron',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seizoenen',
+			'unifiedCatalog.oneSeason' => '1 seizoen',
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titels',
 			'unifiedCatalog.oneTitle' => '1 titel',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titels geladen',

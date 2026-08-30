@@ -1753,6 +1753,8 @@ class _TranslationsUnifiedCatalogPl extends TranslationsUnifiedCatalogEn {
 	@override String sources({required Object count}) => 'źródła: ${count}';
 	@override String get allSources => 'Wszystkie źródła';
 	@override String get oneSource => '1 źródło';
+	@override String seasons({required Object count}) => '${count} sezony';
+	@override String get oneSeason => '1 sezon';
 	@override String titleCount({required Object count}) => 'Tytuły: ${count}';
 	@override String get oneTitle => '1 tytuł';
 	@override String titlesLoaded({required Object count}) => 'Wczytano tytuły: ${count}';
@@ -3477,6 +3479,8 @@ extension on TranslationsPl {
 			'unifiedCatalog.sources' => ({required Object count}) => 'źródła: ${count}',
 			'unifiedCatalog.allSources' => 'Wszystkie źródła',
 			'unifiedCatalog.oneSource' => '1 źródło',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} sezony',
+			'unifiedCatalog.oneSeason' => '1 sezon',
 			'unifiedCatalog.titleCount' => ({required Object count}) => 'Tytuły: ${count}',
 			'unifiedCatalog.oneTitle' => '1 tytuł',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => 'Wczytano tytuły: ${count}',

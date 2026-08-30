@@ -1479,6 +1479,8 @@
     "sources": "${count} kilder",
     "allSources": "Alle kilder",
     "oneSource": "1 kilde",
+    "seasons": "${count} sesonger",
+    "oneSeason": "1 sesong",
     "titleCount": "${count} titler",
     "oneTitle": "1 tittel",
     "titlesLoaded": "${count} titler lastet",

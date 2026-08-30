@@ -1753,6 +1753,8 @@ class _TranslationsUnifiedCatalogNb extends TranslationsUnifiedCatalogEn {
 	@override String sources({required Object count}) => '${count} kilder';
 	@override String get allSources => 'Alle kilder';
 	@override String get oneSource => '1 kilde';
+	@override String seasons({required Object count}) => '${count} sesonger';
+	@override String get oneSeason => '1 sesong';
 	@override String titleCount({required Object count}) => '${count} titler';
 	@override String get oneTitle => '1 tittel';
 	@override String titlesLoaded({required Object count}) => '${count} titler lastet';
@@ -3477,6 +3479,8 @@ extension on TranslationsNb {
 			'unifiedCatalog.sources' => ({required Object count}) => '${count} kilder',
 			'unifiedCatalog.allSources' => 'Alle kilder',
 			'unifiedCatalog.oneSource' => '1 kilde',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} sesonger',
+			'unifiedCatalog.oneSeason' => '1 sesong',
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titler',
 			'unifiedCatalog.oneTitle' => '1 tittel',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titler lastet',

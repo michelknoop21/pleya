@@ -35,6 +35,10 @@ MediaItem tvGoldenMovie({
   // against stays reachable: no runtime means no progress bar and no spoken
   // percentage.
   int? durationMs = 9960000,
+
+  /// Season count, for the show fixtures. Films leave it null and keep the
+  /// genre in their context line.
+  int? childCount,
   String serverId = 'nas',
   String serverName = 'NAS',
   MediaBackend backend = MediaBackend.plex,
@@ -49,6 +53,7 @@ MediaItem tvGoldenMovie({
   durationMs: durationMs,
   viewOffsetMs: viewOffsetMs,
   viewCount: viewCount,
+  childCount: childCount,
   genres: genre == null ? null : [genre],
   serverId: serverId,
   serverName: serverName,
@@ -203,6 +208,10 @@ List<UnifiedMediaGroup> tvGoldenSeriesCatalog() {
               genre: titles[i].genre,
               artwork: titles[i].artwork,
               kind: MediaKind.show,
+              // Varied on purpose, and one of them singular: the Series context
+              // line is the one thing that is meant to read differently from a
+              // film's, so the fixture has to exercise both plural and singular.
+              childCount: 1 + (i % 5),
               viewOffsetMs: s == 0 ? titles[i].offset : null,
               viewCount: s == 0 && titles[i].watched ? 1 : null,
               serverId: ['nas', 'attic', 'shed'][s],

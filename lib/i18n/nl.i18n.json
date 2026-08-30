@@ -1803,6 +1803,8 @@
     "sources": "${count} bronnen",
     "allSources": "Alle bronnen",
     "oneSource": "1 bron",
+    "seasons": "${count} seizoenen",
+    "oneSeason": "1 seizoen",
     "titleCount": "${count} titels",
     "oneTitle": "1 titel",
     "titlesLoaded": "${count} titels geladen",

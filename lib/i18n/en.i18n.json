@@ -1874,6 +1874,8 @@
     "sources": "${count} sources",
     "allSources": "All sources",
     "oneSource": "1 source",
+    "seasons": "${count} seasons",
+    "oneSeason": "1 season",
     "titleCount": "${count} titles",
     "oneTitle": "1 title",
     "titlesLoaded": "${count} titles loaded",

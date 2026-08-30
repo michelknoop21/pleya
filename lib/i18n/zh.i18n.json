@@ -1479,6 +1479,8 @@
     "sources": "${count} 个来源",
     "allSources": "全部来源",
     "oneSource": "1 个来源",
+    "seasons": "${count} 季",
+    "oneSeason": "1 季",
     "titleCount": "${count} 部",
     "oneTitle": "1 部",
     "titlesLoaded": "已加载 ${count} 部",

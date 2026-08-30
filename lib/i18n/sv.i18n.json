@@ -1479,6 +1479,8 @@
     "sources": "${count} källor",
     "allSources": "Alla källor",
     "oneSource": "1 källa",
+    "seasons": "${count} säsonger",
+    "oneSeason": "1 säsong",
     "titleCount": "${count} titlar",
     "oneTitle": "1 titel",
     "titlesLoaded": "${count} titlar inlästa",

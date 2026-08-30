@@ -1753,6 +1753,8 @@ class _TranslationsUnifiedCatalogBg extends TranslationsUnifiedCatalogEn {
 	@override String sources({required Object count}) => 'Източници: ${count}';
 	@override String get allSources => 'Всички източници';
 	@override String get oneSource => '1 източник';
+	@override String seasons({required Object count}) => '${count} сезона';
+	@override String get oneSeason => '1 сезон';
 	@override String titleCount({required Object count}) => 'Заглавия: ${count}';
 	@override String get oneTitle => '1 заглавие';
 	@override String titlesLoaded({required Object count}) => 'Заредени заглавия: ${count}';
@@ -3477,6 +3479,8 @@ extension on TranslationsBg {
 			'unifiedCatalog.sources' => ({required Object count}) => 'Източници: ${count}',
 			'unifiedCatalog.allSources' => 'Всички източници',
 			'unifiedCatalog.oneSource' => '1 източник',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} сезона',
+			'unifiedCatalog.oneSeason' => '1 сезон',
 			'unifiedCatalog.titleCount' => ({required Object count}) => 'Заглавия: ${count}',
 			'unifiedCatalog.oneTitle' => '1 заглавие',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => 'Заредени заглавия: ${count}',

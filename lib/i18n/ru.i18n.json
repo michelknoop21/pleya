@@ -1479,6 +1479,8 @@
     "sources": "Источников: ${count}",
     "allSources": "Все источники",
     "oneSource": "1 источник",
+    "seasons": "Сезонов: ${count}",
+    "oneSeason": "1 сезон",
     "titleCount": "Названий: ${count}",
     "oneTitle": "1 название",
     "titlesLoaded": "Загружено названий: ${count}",

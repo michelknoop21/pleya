@@ -1753,6 +1753,8 @@ class _TranslationsUnifiedCatalogKo extends TranslationsUnifiedCatalogEn {
 	@override String sources({required Object count}) => '소스 ${count}개';
 	@override String get allSources => '모든 소스';
 	@override String get oneSource => '소스 1개';
+	@override String seasons({required Object count}) => '시즌 ${count}개';
+	@override String get oneSeason => '시즌 1개';
 	@override String titleCount({required Object count}) => '${count}개 작품';
 	@override String get oneTitle => '1개 작품';
 	@override String titlesLoaded({required Object count}) => '${count}개 작품 불러옴';
@@ -3477,6 +3479,8 @@ extension on TranslationsKo {
 			'unifiedCatalog.sources' => ({required Object count}) => '소스 ${count}개',
 			'unifiedCatalog.allSources' => '모든 소스',
 			'unifiedCatalog.oneSource' => '소스 1개',
+			'unifiedCatalog.seasons' => ({required Object count}) => '시즌 ${count}개',
+			'unifiedCatalog.oneSeason' => '시즌 1개',
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count}개 작품',
 			'unifiedCatalog.oneTitle' => '1개 작품',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count}개 작품 불러옴',

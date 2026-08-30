@@ -1479,6 +1479,8 @@
     "sources": "${count} fuentes",
     "allSources": "Todas las fuentes",
     "oneSource": "1 fuente",
+    "seasons": "${count} temporadas",
+    "oneSeason": "1 temporada",
     "titleCount": "${count} títulos",
     "oneTitle": "1 título",
     "titlesLoaded": "${count} títulos cargados",

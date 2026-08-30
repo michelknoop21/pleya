@@ -1479,6 +1479,8 @@
     "sources": "${count} 件のソース",
     "allSources": "すべてのソース",
     "oneSource": "1 件のソース",
+    "seasons": "${count} シーズン",
+    "oneSeason": "1 シーズン",
     "titleCount": "${count} 作品",
     "oneTitle": "1 作品",
     "titlesLoaded": "${count} 作品を読み込みました",

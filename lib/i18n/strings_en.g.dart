@@ -5258,6 +5258,12 @@ class TranslationsUnifiedCatalogEn {
 	/// en: '1 source'
 	String get oneSource => '1 source';
 
+	/// en: '${count} seasons'
+	String seasons({required Object count}) => '${count} seasons';
+
+	/// en: '1 season'
+	String get oneSeason => '1 season';
+
 	/// en: '${count} titles'
 	String titleCount({required Object count}) => '${count} titles';
 
@@ -7871,6 +7877,8 @@ extension on Translations {
 			'unifiedCatalog.sources' => ({required Object count}) => '${count} sources',
 			'unifiedCatalog.allSources' => 'All sources',
 			'unifiedCatalog.oneSource' => '1 source',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seasons',
+			'unifiedCatalog.oneSeason' => '1 season',
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titles',
 			'unifiedCatalog.oneTitle' => '1 title',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titles loaded',

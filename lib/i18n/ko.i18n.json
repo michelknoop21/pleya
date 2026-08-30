@@ -1479,6 +1479,8 @@
     "sources": "소스 ${count}개",
     "allSources": "모든 소스",
     "oneSource": "소스 1개",
+    "seasons": "시즌 ${count}개",
+    "oneSeason": "시즌 1개",
     "titleCount": "${count}개 작품",
     "oneTitle": "1개 작품",
     "titlesLoaded": "${count}개 작품 불러옴",

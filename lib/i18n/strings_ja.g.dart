@@ -1753,6 +1753,8 @@ class _TranslationsUnifiedCatalogJa extends TranslationsUnifiedCatalogEn {
 	@override String sources({required Object count}) => '${count} 件のソース';
 	@override String get allSources => 'すべてのソース';
 	@override String get oneSource => '1 件のソース';
+	@override String seasons({required Object count}) => '${count} シーズン';
+	@override String get oneSeason => '1 シーズン';
 	@override String titleCount({required Object count}) => '${count} 作品';
 	@override String get oneTitle => '1 作品';
 	@override String titlesLoaded({required Object count}) => '${count} 作品を読み込みました';
@@ -3477,6 +3479,8 @@ extension on TranslationsJa {
 			'unifiedCatalog.sources' => ({required Object count}) => '${count} 件のソース',
 			'unifiedCatalog.allSources' => 'すべてのソース',
 			'unifiedCatalog.oneSource' => '1 件のソース',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} シーズン',
+			'unifiedCatalog.oneSeason' => '1 シーズン',
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} 作品',
 			'unifiedCatalog.oneTitle' => '1 作品',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} 作品を読み込みました',

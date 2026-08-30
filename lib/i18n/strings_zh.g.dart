@@ -1753,6 +1753,8 @@ class _TranslationsUnifiedCatalogZh extends TranslationsUnifiedCatalogEn {
 	@override String sources({required Object count}) => '${count} 个来源';
 	@override String get allSources => '全部来源';
 	@override String get oneSource => '1 个来源';
+	@override String seasons({required Object count}) => '${count} 季';
+	@override String get oneSeason => '1 季';
 	@override String titleCount({required Object count}) => '${count} 部';
 	@override String get oneTitle => '1 部';
 	@override String titlesLoaded({required Object count}) => '已加载 ${count} 部';
@@ -3477,6 +3479,8 @@ extension on TranslationsZh {
 			'unifiedCatalog.sources' => ({required Object count}) => '${count} 个来源',
 			'unifiedCatalog.allSources' => '全部来源',
 			'unifiedCatalog.oneSource' => '1 个来源',
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} 季',
+			'unifiedCatalog.oneSeason' => '1 季',
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} 部',
 			'unifiedCatalog.oneTitle' => '1 部',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '已加载 ${count} 部',

@@ -35,6 +35,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../focus/focus_theme.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
+import '../../media/media_item.dart';
+import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../theme/mono_tokens.dart';
@@ -532,9 +534,33 @@ class _Footer extends StatelessWidget {
   /// information. Empty when neither is known, which keeps the line's height
   /// reserved — dropping the row instead would make cards in the same row
   /// different heights and break the grid's baseline.
+  /// The line under the title, and the one place a show is allowed to look
+  /// unlike a film.
+  ///
+  /// A series is a different object from a film: you resume into an episode,
+  /// not into a runtime, and "2015 · Family" under *Bluey* tells a viewer
+  /// nothing they can act on. So a show spends its second slot on how much
+  /// there is of it rather than on a genre — hoofdstuk 33.3's "S/A-aanduiding
+  /// onder de titel". Films keep the genre, which is the fact that separates
+  /// two films of the same year.
+  ///
+  /// Falls back to the genre when the backend did not report a season count, so
+  /// a show whose `childCount` is missing gets a film's line rather than a line
+  /// with a hole in it.
   String get _contextLine {
     final item = group.representativeSource.item;
+    final parts = <String>[if (item.year != null) '${item.year}', ?_seasonsOrGenre(item)];
+    return parts.join('  ·  ');
+  }
+
+  String? _seasonsOrGenre(MediaItem item) {
+    if (item.kind == MediaKind.show) {
+      final seasons = item.childCount ?? 0;
+      if (seasons > 0) {
+        return seasons == 1 ? t.unifiedCatalog.oneSeason : t.unifiedCatalog.seasons(count: seasons);
+      }
+    }
     final genre = (item.genres ?? const <String>[]).firstOrNull;
-    return [if (item.year != null) '${item.year}', if (genre != null && genre.isNotEmpty) genre].join('  ·  ');
+    return genre != null && genre.isNotEmpty ? genre : null;
   }
 }
