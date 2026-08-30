@@ -36,7 +36,6 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../../i18n/strings.g.dart';
-import '../../focus/focus_theme.dart';
 import '../../media/ids.dart';
 import '../../media/media_backend.dart';
 import '../../media/media_kind.dart';
@@ -322,8 +321,24 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
   @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
-    return ColoredBox(
-      color: tk.bg,
+    // Not a flat fill. A very slight lift towards the top of the frame gives the
+    // page a horizon, so the grid stands in a room rather than floating on a
+    // uniform slab — the same reason a cinema wall is never one value. It is
+    // deliberately almost subliminal: two per cent over the whole height, well
+    // under any banding threshold, and the posters still sit on `MonoTokens.bg`
+    // wherever they actually are.
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color.alphaBlend(tk.text.withValues(alpha: TvCatalogLayout.pageLift), tk.bg),
+            tk.bg,
+          ],
+          stops: const [0, 0.55],
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

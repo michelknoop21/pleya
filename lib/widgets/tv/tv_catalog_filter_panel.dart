@@ -523,6 +523,12 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
     if (rows.isEmpty) {
       return _PanelNote(text: _isLoadingOptions ? t.common.loading : t.unifiedCatalog.filters.noValues, scale: scale);
     }
+    // Centred when the list is shorter than the zone. The fixed zone height is
+    // what stops the panel resizing as the focus walks the rail, but top-aligned
+    // it left a two-option category — Status, which is the one the Filters
+    // capsule opens on — as two rows clinging to the ceiling of a box two thirds
+    // empty. Centring spends the same space as breathing room instead of as a
+    // void.
     return _FadingEdges(
       // A category can hold far more rows than the panel is tall — ten genres
       // against a five-entry rail is the ordinary case, not the extreme one —
@@ -531,26 +537,30 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
       // rather than as "there is more below this". The fade is the affordance,
       // and it appears only on an edge that actually has something past it.
       child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < rows.length; i++) ...[
-              if (i > 0) SizedBox(height: TvCatalogLayout.optionRowGap * scale),
-              TvCatalogOptionRow(
-                label: rows[i].label,
-                secondary: rows[i].secondary,
-                isSelected: rows[i].isSelected,
-                scale: scale,
-                focusNode: _optionNodes[i],
-                // LEFT is the only way out of this column on a remote, and it
-                // goes to the category the list belongs to rather than to
-                // wherever the traversal policy would land.
-                onNavigateLeft: () => _railNodeFor(_active).requestFocus(),
-                onPressed: rows[i].onPressed,
-              ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: _zoneHeight(scale, double.infinity)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < rows.length; i++) ...[
+                if (i > 0) SizedBox(height: TvCatalogLayout.optionRowGap * scale),
+                TvCatalogOptionRow(
+                  label: rows[i].label,
+                  secondary: rows[i].secondary,
+                  isSelected: rows[i].isSelected,
+                  scale: scale,
+                  focusNode: _optionNodes[i],
+                  // LEFT is the only way out of this column on a remote, and it
+                  // goes to the category the list belongs to rather than to
+                  // wherever the traversal policy would land.
+                  onNavigateLeft: () => _railNodeFor(_active).requestFocus(),
+                  onPressed: rows[i].onPressed,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

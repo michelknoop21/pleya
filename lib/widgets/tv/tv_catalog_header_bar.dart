@@ -132,8 +132,17 @@ class _ActionCapsule extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
+    // An idle action carries no outline at all. Three outlined capsules in a row
+    // are three objects competing with a one-word page title, which is the
+    // desktop-toolbar feel the header is meant not to have; without the line
+    // they settle into one quiet control cluster and "Movies" leads again. The
+    // outline comes back the moment the action is *doing* something — a filter
+    // count, a narrowed scope — because then it is information rather than
+    // decoration.
     final shape = StadiumBorder(
-      side: BorderSide(color: tk.text.withValues(alpha: TvCatalogLayout.cardOutline), width: 1),
+      side: action.badgeCount > 0
+          ? BorderSide(color: tk.text.withValues(alpha: TvCatalogLayout.cardOutline), width: 1)
+          : BorderSide.none,
     );
 
     return FocusableWrapper(
@@ -176,7 +185,13 @@ class _ActionCapsule extends StatelessWidget {
                 style: TextStyle(
                   fontSize: TvCatalogLayout.actionFontSize * scale,
                   fontWeight: FontWeight.w600,
-                  color: tk.text,
+                  // Secondary ink while the action is idle. Full white on three
+                  // labels next to a full-white title is four things shouting;
+                  // the value is still perfectly readable at three metres one
+                  // step down, and the title gets the top of the hierarchy back.
+                  color: tk.text.withValues(
+                    alpha: action.badgeCount > 0 ? TvCatalogLayout.inkPrimary : TvCatalogLayout.inkSecondary,
+                  ),
                   height: 1.1,
                 ),
               ),

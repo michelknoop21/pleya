@@ -217,6 +217,48 @@ class TvCatalogLayout {
   /// nothing anyone can see.
   static const double cardFocusRingGap = 5;
 
+  /// The shadow every poster casts, and the deeper one the focused poster casts.
+  ///
+  /// This is the difference between artwork that sits *on* the page and artwork
+  /// that reads as a hole cut into it. On a `#141414` ground a black shadow has
+  /// somewhere to go — the room is not actually black — so a soft dark pool
+  /// under each poster gives the grid a surface to stand on, which is most of
+  /// what separates a premium TV wall from a Flutter grid of flat swatches.
+  ///
+  /// Focus roughly doubles it and drops it further. Depth, not decoration: the
+  /// focused card has to look nearer the viewer than its neighbours, and a ring
+  /// alone cannot say that — a ring is a line on the same plane.
+  static const double cardShadowBlur = 14;
+  static const double cardShadowOffsetY = 5;
+  static const double cardShadowAlpha = 0.55;
+  static const double cardFocusShadowBlur = 30;
+  static const double cardFocusShadowOffsetY = 12;
+  static const double cardFocusShadowAlpha = 0.75;
+
+  /// What the artwork of a focused card does. A small brightness lift, so the
+  /// content itself answers the remote rather than only the chrome around it —
+  /// the poster the user is standing on gets a little more light than the wall.
+  static const double cardFocusArtworkLift = 0.10;
+
+  /// How much lighter the top of the page is than the bottom, as an alpha on
+  /// `MonoTokens.text` blended into `MonoTokens.bg`. Small on purpose: this is a
+  /// horizon, not a gradient anyone should be able to name.
+  static const double pageLift = 0.022;
+
+  /// The surface under a *focused* card's title and meta line.
+  ///
+  /// Unfocused, the text sits straight on the page and the poster is the only
+  /// object — which is right, and is what keeps a wall of twelve from reading as
+  /// twelve filing-cabinet entries. Focused, that leaves the ring drawing a box
+  /// around a poster and two lines of page-coloured nothing, so the one card the
+  /// user is standing on is the one that looks least like an object.
+  ///
+  /// With a fill the poster and its text become a single raised card for exactly
+  /// as long as the focus is on it. Hoofdstuk 10.2 allows precisely this — an
+  /// "geïntegreerde donkere gradient/surface" — and rules out the thing this is
+  /// not: a permanent grey block under every poster.
+  static const double cardFocusFooterFill = 0.07;
+
   /// How far inside its own column a card's content actually starts.
   ///
   /// Two terms, and forgetting the first is the usual bug: `FocusableWrapper`
@@ -243,7 +285,7 @@ class TvCatalogLayout {
   /// the title starts on the poster's own left edge, which is what makes a
   /// column of cards line up as a column. The vertical value is the gap between
   /// the poster and its title.
-  static const double cardFooterPaddingVertical = 8;
+  static const double cardFooterPaddingVertical = 6;
   static const double cardFooterLineGap = 3;
 
   /// The loading placeholder's fills, as alphas on `MonoTokens.text`.
@@ -270,9 +312,9 @@ class TvCatalogLayout {
   /// for that, and inheriting it made the sort panel's seven fixed options
   /// overflow a panel they should never have needed to scroll. A list a remote
   /// has to walk is better when the whole list is on screen.
-  static const double optionRowMinHeight = 38;
+  static const double optionRowMinHeight = 44;
   static const double optionRowPaddingHorizontal = 16;
-  static const double optionRowPaddingVertical = 8;
+  static const double optionRowPaddingVertical = 10;
   static const double optionRowGap = 7;
 
   /// Fill and outline of a *selected* option row, as alphas on `MonoTokens.text`.
@@ -452,8 +494,20 @@ class TvCatalogGrid {
   /// rather than seven because hoofdstuk 10.2's band is 6–7 "afhankelijk van
   /// dichtheid", and on a 2:3 poster the wider end is what keeps a card title
   /// readable from three metres — the whole reason the band has a bottom.
-  static const double _referenceCardWidth = 274;
-  static const double _referenceGutter = 26;
+  static const double _referenceCardWidth = 281;
+  static const double _referenceGutter = 22;
+
+  /// The page's own side margin, in reference pixels, rather than
+  /// [TvLayoutConstants.horizontalInset].
+  ///
+  /// 72 is the shared TV inset and it stays that for every other surface; a
+  /// panel or a source row is content in the middle of the screen and can
+  /// afford it. A wall of posters cannot: sixteen reference pixels a side is
+  /// most of a gutter, and on this page it was margin bought at the posters'
+  /// expense. 56 is hoofdstuk 8.1's actual floor — "geen tekst of focusring
+  /// binnen de buitenste 56 pixels" — so this spends the slack the shared
+  /// constant was holding in reserve, and spends it on artwork.
+  static const double _referenceInset = 56;
   static const double _referenceWidth = 1920;
 
   /// Hard bounds on the result. Six and seven are the contract's band; the
@@ -479,7 +533,7 @@ class TvCatalogGrid {
   /// card *content* inside it needs it; it deliberately does not enter the box
   /// arithmetic.
   factory TvCatalogGrid.forWidth(double width, {required double scale}) {
-    final inset = width * (TvLayoutConstants.horizontalInset / _referenceWidth);
+    final inset = width * (_referenceInset / _referenceWidth);
     final gutter = width * (_referenceGutter / _referenceWidth);
     final available = math.max(0.0, width - inset * 2);
     final ideal = width * (_referenceCardWidth / _referenceWidth);

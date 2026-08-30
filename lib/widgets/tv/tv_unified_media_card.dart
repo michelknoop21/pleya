@@ -43,7 +43,7 @@ import '../../utils/layout_constants.dart';
 import '../optimized_media_image.dart';
 import 'tv_unified_layout.dart';
 
-class TvUnifiedMediaCard extends StatelessWidget {
+class TvUnifiedMediaCard extends StatefulWidget {
   const TvUnifiedMediaCard({
     super.key,
     required this.group,
@@ -84,10 +84,22 @@ class TvUnifiedMediaCard extends StatelessWidget {
   final ValueChanged<bool>? onFocusChange;
 
   @override
+  State<TvUnifiedMediaCard> createState() => _TvUnifiedMediaCardState();
+}
+
+class _TvUnifiedMediaCardState extends State<TvUnifiedMediaCard> {
+  /// Focus is a compositing input here, not just something the ring reacts to:
+  /// the card's elevation and the brightness of its artwork both read it.
+  bool _isFocused = false;
+
+  @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
     final scale = TvLayoutConstants.scaleOf(context);
     final radius = TvCatalogLayout.cardRadius * scale;
+    final isFocused = _isFocused;
+    final group = widget.group;
+    final clientFor = widget.clientFor;
 
     // The width bounds the *wrapper*, not the card content. `FocusableWrapper`
     // draws its ring as a border on a container around the child, which adds
@@ -96,16 +108,19 @@ class TvUnifiedMediaCard extends StatelessWidget {
     // six-column row would overflow by thirty. Constraining the outside lets the
     // ring eat into the card rather than out of the gutter.
     return SizedBox(
-      width: width,
+      width: widget.width,
       child: FocusableWrapper(
-        focusNode: focusNode,
-        autofocus: autofocus,
-        onSelect: onSelect,
-        onFocusChange: onFocusChange,
-        onNavigateUp: onNavigateUp,
-        onNavigateDown: onNavigateDown,
-        onNavigateLeft: onNavigateLeft,
-        onNavigateRight: onNavigateRight,
+        focusNode: widget.focusNode,
+        autofocus: widget.autofocus,
+        onSelect: widget.onSelect,
+        onFocusChange: (focused) {
+          setState(() => _isFocused = focused);
+          widget.onFocusChange?.call(focused);
+        },
+        onNavigateUp: widget.onNavigateUp,
+        onNavigateDown: widget.onNavigateDown,
+        onNavigateLeft: widget.onNavigateLeft,
+        onNavigateRight: widget.onNavigateRight,
         borderRadius: radius,
         focusScale: FocusTheme.fullCardFocusScale,
         semanticLabel: semanticLabelFor(group),
@@ -122,12 +137,38 @@ class TvUnifiedMediaCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ClipRRect(
-                  key: tvCatalogPosterKey,
-                  borderRadius: BorderRadius.circular(radius),
-                  child: _Artwork(group: group, scale: scale, clientFor: clientFor),
+                // The shadow lives outside the clip, so it is a pool the poster
+                // casts on the page rather than something drawn inside the
+                // poster. `AnimatedContainer` rather than a swap, because the
+                // whole point is that the card *rises* under the focus instead
+                // of snapping to a second appearance.
+                AnimatedContainer(
+                  duration: tk.fast,
+                  curve: Curves.easeOut,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(radius),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                          alpha: isFocused ? TvCatalogLayout.cardFocusShadowAlpha : TvCatalogLayout.cardShadowAlpha,
+                        ),
+                        blurRadius:
+                            (isFocused ? TvCatalogLayout.cardFocusShadowBlur : TvCatalogLayout.cardShadowBlur) * scale,
+                        offset: Offset(
+                          0,
+                          (isFocused ? TvCatalogLayout.cardFocusShadowOffsetY : TvCatalogLayout.cardShadowOffsetY) *
+                              scale,
+                        ),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    key: tvCatalogPosterKey,
+                    borderRadius: BorderRadius.circular(radius),
+                    child: _Artwork(group: group, scale: scale, clientFor: clientFor, isFocused: isFocused),
+                  ),
                 ),
-                _Footer(group: group, scale: scale, tk: tk),
+                _Footer(group: group, scale: scale, tk: tk, isFocused: isFocused, radius: radius),
               ],
             ),
           ),
@@ -205,11 +246,12 @@ double? resumeFractionFor(UnifiedMediaGroup group) {
 }
 
 class _Artwork extends StatelessWidget {
-  const _Artwork({required this.group, required this.scale, required this.clientFor});
+  const _Artwork({required this.group, required this.scale, required this.clientFor, required this.isFocused});
 
   final UnifiedMediaGroup group;
   final double scale;
   final MediaServerClient? Function(String serverId)? clientFor;
+  final bool isFocused;
 
   @override
   Widget build(BuildContext context) {
@@ -231,6 +273,14 @@ class _Artwork extends StatelessWidget {
               fit: BoxFit.cover,
               fallbackIcon: Symbols.movie_rounded,
             ),
+          ),
+          // Above the image and below every marker, so the poster brightens but
+          // the badges keep the contrast they were measured for. The content
+          // itself answers the remote, rather than only the chrome around it.
+          AnimatedOpacity(
+            duration: tk.fast,
+            opacity: isFocused ? 1 : 0,
+            child: ColoredBox(color: Colors.white.withValues(alpha: TvCatalogLayout.cardFocusArtworkLift)),
           ),
           // Hoofdstuk 10.3: only above one known source, and never a server
           // name or logo.
@@ -396,19 +446,44 @@ class _ResumeBar extends StatelessWidget {
 /// text as one shape. That is the same containment the fill used to provide,
 /// drawn only when it is needed.
 class _Footer extends StatelessWidget {
-  const _Footer({required this.group, required this.scale, required this.tk});
+  const _Footer({
+    required this.group,
+    required this.scale,
+    required this.tk,
+    required this.isFocused,
+    required this.radius,
+  });
 
   final UnifiedMediaGroup group;
   final double scale;
   final MonoTokens tk;
+
+  /// Focused, the text gets a surface and the card becomes one raised object;
+  /// idle, it sits on the page and the poster is the only thing on the wall.
+  final bool isFocused;
+  final double radius;
 
   @override
   Widget build(BuildContext context) {
     final item = group.representativeSource.item;
     final context_ = _contextLine;
 
-    return Padding(
-      padding: EdgeInsets.only(top: TvCatalogLayout.cardFooterPaddingVertical * scale),
+    return AnimatedContainer(
+      duration: tk.fast,
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        color: tk.text.withValues(alpha: isFocused ? TvCatalogLayout.cardFocusFooterFill : 0),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        // Horizontal padding only once the surface is there to need it: idle,
+        // the title has to line up with the poster's left edge or the column
+        // the whole page hangs on breaks.
+        isFocused ? TvCatalogLayout.cardFooterPaddingVertical * scale : 0,
+        TvCatalogLayout.cardFooterPaddingVertical * scale,
+        isFocused ? TvCatalogLayout.cardFooterPaddingVertical * scale : 0,
+        isFocused ? TvCatalogLayout.cardFooterPaddingVertical * scale : 0,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
