@@ -67,12 +67,26 @@ class AutomationFocusLog {
 
   static const int _maxEntries = 200;
 
+  // One persistent frame callback for the whole process/binding, installed
+  // at most once, ever. `addPersistentFrameCallback` cannot be
+  // unregistered, so making this per-instance state (as it was originally)
+  // meant every `debugSetInstance` swap that reached `start()` left one more
+  // permanent callback behind — each one harmless on its own (a replaced
+  // instance's `_started` gate turns it into a no-op after `stop()`), but
+  // that made "registered at most once per binding" false. This callback
+  // closes over nothing but the class itself: it re-reads [instance] every
+  // frame, so it always redirects to whichever instance is currently live,
+  // no matter how many times [debugSetInstance] has swapped it out.
+  static bool _frameWatchInstalled = false;
+
+  @visibleForTesting
+  static int debugFrameWatchInstallCount = 0;
+
   final List<AutomationFocusLogEntry> _entries = [];
   int _nextSeq = 1;
   FocusNode? _observedNode;
   String? _pendingCause;
   bool _started = false;
-  bool _frameWatchInstalled = false;
 
   /// Gated by callers (`AutomationBootstrap` only calls this under
   /// `kPleyaVerify`) rather than internally, so this class stays directly
@@ -88,25 +102,24 @@ class AutomationFocusLog {
 
   /// Re-checks the primary focus once per frame.
   ///
-  /// A persistent frame callback cannot be removed once registered, so it
-  /// guards on [_started] instead — [stop] therefore still fully disables
-  /// this, which matters for tests that swap the instance out. Registered
-  /// at most once per binding.
-  ///
   /// Degrades silently without a `WidgetsBinding`, in the same shape as
   /// `AutomationRegistry._discoveredFocusables()`: this is diagnostic
   /// infrastructure and must never be the reason something else fails.
-  void _installFrameWatch() {
+  static void _installFrameWatch() {
     if (_frameWatchInstalled) return;
     try {
       WidgetsBinding.instance.addPersistentFrameCallback((_) {
-        if (!_started) return;
-        _reattach();
+        final current = instance;
+        if (!current._started) return;
+        current._reattach();
       });
       _frameWatchInstalled = true;
+      debugFrameWatchInstallCount++;
     } catch (_) {
-      // No binding (a plain unit test) — the node listener still works for
-      // anything that focuses after a node is already primary.
+      // No binding yet (a plain unit test) — the node listener still works
+      // for anything that focuses after a node is already primary. The next
+      // start() that does have a binding tries again, since this branch
+      // never flips [_frameWatchInstalled].
     }
   }
 

@@ -123,4 +123,52 @@ void main() {
     final seqs = entries.map((e) => e.seq).toList();
     expect(seqs, List.generate(seqs.length, (i) => i + 1));
   });
+
+  testWidgets('the frame watch installs at most once across repeated instance replacement', (tester) async {
+    // `addPersistentFrameCallback` cannot be unregistered, so a per-instance
+    // callback would leak one every time a test swaps the singleton — this
+    // file's own setUp/tearDown does exactly that between every test. What
+    // is reliably testable without reaching into Flutter internals (no API
+    // reports "how many persistent callbacks are registered") is our own
+    // call count into that API, via the `@visibleForTesting` counter.
+    final before = AutomationFocusLog.debugFrameWatchInstallCount;
+
+    final nodes = List.generate(4, (i) => FocusNode(debugLabel: 'swap$i'));
+    addTearDown(() {
+      for (final n in nodes) {
+        n.dispose();
+      }
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [for (final n in nodes) Focus(focusNode: n, child: const SizedBox(width: 5, height: 5))],
+          ),
+        ),
+      ),
+    );
+
+    // Swap the singleton and start() a fresh instance several times within
+    // one test — the real shape of this file's setUp/tearDown, repeated
+    // here so a leaked extra callback would actually show up in the count.
+    for (var i = 0; i < nodes.length; i++) {
+      AutomationFocusLog.debugSetInstance(null);
+      AutomationFocusLog.instance.start();
+      nodes[i].requestFocus();
+      await tester.pump();
+    }
+
+    // Installed at most once more than before this test ran (zero if some
+    // earlier test in this binding already installed it) — never once per
+    // swap, which is what the old per-instance callback would have done.
+    expect(AutomationFocusLog.debugFrameWatchInstallCount, lessThanOrEqualTo(before + 1));
+
+    // And the currently-live instance still tracks correctly: the one
+    // static callback redirects to whichever instance is current, not
+    // whichever one first installed it.
+    final labels = AutomationFocusLog.instance.since(0).map((e) => e.to).toList();
+    expect(labels, contains('swap3'));
+  });
 }

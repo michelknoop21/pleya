@@ -1,0 +1,139 @@
+name: media-detail.episode-refresh
+target: tvos-sim
+setup:
+  - reset_app
+  - seed: catalog.shows.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  # IntroGate's cold-start splash paints over an already-ready screen.
+  - settle: 3500
+
+  # Same reachability finding `tvos.library.filters` documents: `open:
+  # screen.libraries` selects no library, so reach the one
+  # `catalog.shows.v1` seeds ("Shows") through the sidebar, the same path
+  # `tvos.sidebar.collapse` already proves lands on `screen.libraries`.
+  - press: left
+  - settle: 1200
+  - press: down
+  - settle: 800
+  - press: select
+  - wait_until: {id: screen.libraries, timeout: 15000}
+
+  # `screen.libraries` readiness only tracks the library *list* fetch; a
+  # freshly selected library lands on `LibraryTabType.recommended` (index
+  # 0 of `LibraryTabType.values`), not `browse` — see
+  # `tvos.library.filters.yaml`'s own note on the same finding. There, the
+  # library's Recommended tab has hub content, so focus after Select lands
+  # *inside* that content and Menu is needed first to reach the tab bar.
+  # Here `catalog.shows.v1`'s single show has nothing to recommend, so
+  # `LibraryRecommendedTab` has no focusable content of its own and focus
+  # lands directly on the tab bar's Recommended chip — the focus-trace
+  # confirms it (`Content -> tab_chip_recommended` on the very Select that
+  # opened the library). A `press: menu` here overshoots past the tab bar
+  # to the sidebar (its own `onBack` escalates outward, same as any other
+  # already-topmost focus target, and Right from the sidebar just restores
+  # the remembered tab chip instead of switching tabs) — Right switches
+  # straight from Recommended to Browse while already on the tab bar,
+  # Select enters it.
+  - press: right
+  - settle: 800
+  - press: select
+  - wait_until: {event: library.items_loaded, timeout: 15000}
+  - settle: 1500
+  - assert: {id: library.grid, state: {child_count: 1}}
+
+  # `_loadItems`'s own `tryFocus()` already put focus on the grid's single
+  # item (Testserie) — Select opens it straight into its detail page.
+  # `_tvDetailHubs()`'s own doc comment: a single-season, flattened show
+  # (`_showEpisodesDirectly`) gets one `'detail_episodes'` hub with every
+  # episode, which is why this fixture (`named_fixtures.dart`'s own comment:
+  # "the base fixture for media-detail.episode-refresh") seeds exactly one
+  # season.
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+
+  # `screen.media_detail` becomes ready as soon as the screen mounts, before
+  # `_showEpisodesDirectly`'s own `_fetchAllEpisodes()` (a separate, awaited
+  # fetch that runs after the seasons-load `setState`, per
+  # `media_detail_screen.dart`'s own season-load method) resolves — until
+  # then the `'detail_episodes'` hub is empty and `media-detail.episode-list`
+  # is not in the tree at all, not merely at the wrong count (`isTv` returns
+  # `_buildTvDetailScreen()` from `_buildInner`, which builds this hub row
+  # through `TvBrowseRail`, not the desktop `_buildEpisodesList()` — see
+  # `_tvDetailAutomationIdForHub`). A fixed settle guessed wrong here; wait
+  # on the node's own presence instead.
+  - wait_until: {id: media-detail.episode-list, timeout: 15000}
+  - settle: 1500
+  - assert: {id: media-detail.episode-list, state: {child_count: 10}}
+  - snapshot: detail-10-episodes
+
+  # Reach S01E10 (item index 9) and play it. On tvOS, episodes are not a
+  # vertical `ListView` (that's the desktop/mobile `_buildEpisodesList()`
+  # layout, which `_buildInner` never reaches — `isTv` returns early into
+  # `_buildTvDetailScreen()`). They are one horizontal hub row inside
+  # `TvBrowseRail`, `detailHubs`'s first entry for a single-season,
+  # flattened show (`_tvDetailHubs()`): Down from the Play button enters the
+  # rail and lands on item index 0 of that row, then Right moves *within*
+  # the row (Down would move to the next hub instead), so nine more Rights
+  # reach index 9.
+  - press: down
+  - settle: 400
+  - press: right
+  - settle: 400
+  - press: right
+  - settle: 400
+  - press: right
+  - settle: 400
+  - press: right
+  - settle: 400
+  - press: right
+  - settle: 400
+  - press: right
+  - settle: 400
+  - press: right
+  - settle: 400
+  - press: right
+  - settle: 400
+  - press: right
+  - settle: 400
+  - press: select
+  - wait_until: {id: player.surface, timeout: 15000}
+
+  # The mutation must land *before* the player has any chance to reach
+  # end-of-playback on its own: `sampleMediaMp4Bytes` is a real, very short
+  # clip (its `duration_ms` metadata is a fixture fiction, decoupled from
+  # actual playable length), and mpv reaching its real end auto-returns to
+  # `MediaDetailScreen` exactly like a Menu press would — `refreshAfterPlayback`
+  # then runs on its own, before any scripted `press: menu`. A `settle: 2500`
+  # here previously gave it exactly that chance: the timestamped fixture-server
+  # log showed the revalidation GET landing ~0.6s *before* `addEpisode` ran,
+  # meaning the screen had already refreshed (to the old count) by the time
+  # this mutation applied, and the scripted Menu press afterward closed nothing
+  # (the player was already gone) — the assertion then failed on a stale 10,
+  # not on the bug this scenario exists to catch. No settle at all here keeps
+  # the mutation's local HTTP round-trip (tens of ms) far inside the clip's
+  # real playable length.
+  #
+  # The mutation happens while the player is the foreground screen and the
+  # detail screen underneath is not visible — the regression this proves is
+  # that the *already-mounted* `MediaDetailScreen` picks the change up on
+  # return via `refreshAfterPlayback`, not that a fresh navigation would
+  # have (any correctly written screen gets that for free). `add_episode`
+  # keeps the season's `child_count` in sync — see
+  # `PleyaFakeServer.addEpisode`'s own doc comment, "the mutation
+  # media-detail.episode-refresh needs".
+  - fixture_mutate: {op: add_episode, parent_id: "{{fixture_id:season/testserie-s01}}"}
+
+  # Menu pops the player over idb HID — the real remote-press path ([C2]),
+  # not a synthetic pop — landing back on the same `MediaDetailScreen`
+  # instance rather than a freshly re-navigated one: nothing in this
+  # scenario ever leaves the sidebar-to-detail path a second time. Harmless
+  # if the clip already auto-returned on its own by this point (`onBack`'s
+  # own suppression, or simply nothing left to pop for a stray press).
+  - press: menu
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - settle: 2500
+  - assert: {id: media-detail.episode-list, state: {child_count: 11}}
+  - snapshot: detail-11-episodes

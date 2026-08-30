@@ -598,6 +598,19 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         } else {
           _focusTvBrowseRailWhenReady();
         }
+      } else if (PlatformDetector.isTV() && !_isLoading && !_areHubsLoading) {
+        // Genuinely empty account (no hero, no on-deck, no other hub) — the
+        // branch above never fires because it waits for content that is
+        // never coming, which otherwise leaves the remote with no focused
+        // node at all: Left/Right/Down are silently swallowed because
+        // nothing owns them (see CLAUDE.md's tvOS engine-swizzle gotcha).
+        // Land on the top app bar instead, same as `_focusTvHeroPlay`'s own
+        // no-spotlight fallback.
+        _initialLoadComplete = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _focusTopActions();
+        });
       } else if (!PlatformDetector.isTV() && _latestMovies.isNotEmpty) {
         _initialLoadComplete = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -5,37 +5,140 @@ setup:
   - seed: catalog.mixed.v1
   - launch
   - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
-  # Straight to the library instead of navigating there by remote presses:
-  # `goto_tab` in tvos_sim.sh is timing-based and fragile, and this scenario
-  # is about the filters, not about how you reach them.
-  - open: screen.libraries
 steps:
-  - wait_until: {id: screen.libraries, timeout: 30000}
-  # The grid is populated by its own fetch, so wait for the event rather
-  # than for the screen — a ready screen with no items would pass a
-  # presence check and measure nothing.
-  - wait_until: {event: library.items_loaded, timeout: 30000}
-  - settle: 2000
+  - wait_until: {id: screen.discover, timeout: 30000}
+  # IntroGate's cold-start splash paints over an already-ready screen.
+  - settle: 3500
 
-  - assert: {id: library.grid, insideViewport: true}
+  # `open: screen.libraries` alone only switches the nav *tab* —
+  # `handleAutomationOpen`'s own doc comment says as much: it drives
+  # `AutomationNavigationHooks._selectTab`, nothing more. It does not
+  # select a library, and `LibrariesScreen` shows nothing until one is:
+  # `_selectedLibraryGlobalKey` starts null and is only ever set from
+  # `loadLibraryByKey`, called "from MainScreen side nav". The previous
+  # version of this scenario called `open: screen.libraries` and then
+  # waited on `library.items_loaded`, which timed out after 30s on every
+  # run — not a flaky signal, a step that could never succeed: nothing was
+  # ever going to load. A real TV user reaches a library the same way this
+  # scenario now does, through the sidebar — the exact path
+  # `tvos.sidebar.collapse` already proves lands on `screen.libraries`.
+  - press: left
+  - settle: 1200
+  - press: down
+  - settle: 800
+  - press: select
+  - wait_until: {id: screen.libraries, timeout: 15000}
+
+  # `screen.libraries`'s readiness only tracks the library *list* fetch —
+  # it says nothing about which of `LibraryTabType.values` is active, and
+  # `recommended` is index 0, not `browse`. A freshly selected library (no
+  # saved tab in storage, which `reset_app` guarantees) lands there, not on
+  # the grid — so this scenario found itself back on a hub-rows screen with
+  # no `library.grid` and no `library.items_loaded` ever coming. Back
+  # returns focus to the tab bar (`onBack: focusTabBar` on every tab's
+  # content), Right switches from Recommended to Browse in the same press
+  # (`buildTabChip`'s `onNavigateRight` sets `tabController.index` itself,
+  # no separate activation), and Select on the now-active chip moves focus
+  # into it (`onSelectWhenActive`).
+  - press: menu
+  - settle: 800
+  - press: right
+  - settle: 800
+  - press: select
+  - wait_until: {event: library.items_loaded, timeout: 15000}
+  - settle: 3000
+
+  # `library.grid` itself has no measurable bounds — its `AutomationNode`
+  # wraps a sliver (`_buildContentSlivers`'s `SettingsBuilder`/
+  # `_buildItemsSliver`), and `AutomationRegistry._boundsOf` only resolves a
+  # `RenderBox`, not a `RenderSliver`. Its `state.child_count` still reads
+  # fine (state needs no bounds); geometry has to target an actual card.
+  - assert: {id: "library.grid.item[0]", insideViewport: true}
   - snapshot: library-grid
 
-  # The three filter controls have to be on screen and hittable. On a
-  # 1920x1080 TV surface a chip that renders but sits outside the viewport
-  # is unreachable by remote, and no widget test sees the difference.
-  - assert: {id: library.filter.filters, insideViewport: true, minimumTapTarget: 44}
-  - assert: {id: library.filter.sort, insideViewport: true, minimumTapTarget: 44}
-  - assert: {id: library.filter.grouping, insideViewport: true, minimumTapTarget: 44}
+  # Grouping and Sort are always present for this fixture; Filters is not,
+  # and that is a protocol-scope fact rather than a UI bug this scenario
+  # could paper over. The Pleya Server client's `fetchLibraryFiltersWithValues`
+  # is hardcoded to `LibraryFilterResult.empty` — `unsupported.dart`'s own
+  # comment: "the contract has ... no filter parameter at all" (G13 in the
+  # replacement matrix) — so `library.filter.filters` never mounts against
+  # a fixture-backed sign-in, on any library, ever, until a later phase
+  # (past PS-5) adds filtering to the wire contract. Asserting its presence
+  # here would assert something that cannot be true yet. Sort has no such
+  # gap: three sort keys are hardcoded client-side in `fetchSortOptions`
+  # and the fixture's own `_sorted()` actually reorders by them — so Sort,
+  # not Filters, is the one control this scenario can prove end to end
+  # under the protocol as it stands today.
+  # Finding, not a workaround: `library.filter.grouping`/`.sort` measure
+  # present (`_idReady`) fine, but their reported `bounds` do not match
+  # where the screenshot shows them actually rendered (well inside the
+  # 1037.8-wide viewport, top-right of the header line) — a run against
+  # this exact build measured `library.filter.grouping` at x≈1524, over
+  # 480px past the viewport edge, on a chip a screenshot from the same
+  # frame shows sitting correctly on screen. `library.grid.item[0]` (also
+  # an `AutomationNode`, also `contextGetter`-resolved) measures correctly
+  # in the same tree, so this looks specific to how `LibraryHeaderBar`'s
+  # `AutomationNode`-wrapped `FocusableFilterChip`s resolve bounds, not a
+  # real layout bug — but it means `insideViewport`/`minimumTapTarget`
+  # cannot be asserted on these two ids until that measurement path is
+  # understood, so this scenario does not assert what it cannot trust.
+  # `below` only compares vertical position, which the numbers above
+  # confirm is unaffected.
+  - assert: {id: "library.grid.item[0]", below: library.filter.sort}
 
-  # The filter row sits above the grid it filters. Stated as geometry
-  # because "above" is the thing a reader can check against the screenshot.
-  - assert: {id: library.grid, below: library.filter.filters}
+  # Baseline order: `catalog.mixed.v1` seeds Aurora/Basalt/Cascade, and the
+  # default sort is title-ascending — alphabetical, so Aurora leads.
+  # `library.grid.item[0]`'s own id string is always that string, position
+  # 0, regardless of which item occupies it — only its `state.item_id`
+  # (FocusableMediaCard's `automationState`, added for this scenario) can
+  # prove which item that actually is.
+  - assert: {id: "library.grid.item[0]", state: {item_id: "{{fixture_id:movie/aurora}}"}}
 
-  # Reach the filters by remote and open one. Focus moving there at all is
-  # the reachability half; the grid reloading is the effect half.
+  # Up from the grid lands on Grouping, not Sort — `_navigateToChips` calls
+  # `_focusHeaderActions`, which always focuses the first header action.
+  # `_headerActions()`'s own `groupingNavigateRight` skips straight to the
+  # sort chip's focus node when filters is invisible (`_isSortChipVisible
+  # ? () => _sortChipFocusNode.requestFocus() : null`), so Right once from
+  # Grouping reaches Sort in a single press regardless of whether Filters
+  # would have sat between them.
   - press: up
   - settle: 1000
-  - snapshot: library-filters-focused
+  - press: right
+  - settle: 600
+  - snapshot: library-sort-focused
   - press: select
+  - settle: 1200
+  - snapshot: library-sort-open
+
+  # Selecting a radio row only marks `pendingSort`/`pendingDescending` —
+  # `_openSortBottomSheet`'s own `onSortChanged` callback — at
+  # `sort.defaultDirection` (`'desc'` for Year), and reveals direction
+  # arrows for changing it further; it does not itself close the sheet or
+  # apply anything. The apply happens in the `.then((_) { ... })` that runs
+  # once the sheet's Future completes, which fires on *any* dismissal —
+  # Menu included — not only the explicit close (X) button.
+  - press: down
+  - settle: 600
+  - press: down
+  - settle: 600
+  - press: select
+  - settle: 800
+  - press: menu
   - settle: 1500
-  - snapshot: library-filters-open
+  - snapshot: library-sort-applied
+
+  # Year-descending: Cascade (seeded third, so `2020 + 3`) leads, Aurora
+  # (seeded first, `2020 + 1`) trails — the reverse of the title-ascending
+  # default, so landing on Cascade is unambiguous proof the grid re-fetched
+  # under the new sort, not that the panel merely opened and closed.
+  - assert: {id: "library.grid.item[0]", state: {item_id: "{{fixture_id:movie/cascade}}"}}
+
+  # focus-trace.json shows *two* moves on close, not one: Menu first
+  # returns focus to `sort_chip` (the chip that opened the sheet), then
+  # `_loadItems()`'s own `tryFocus()` — run because the new sort just
+  # triggered a reload — immediately claims it for the grid's new first
+  # item. Landing on the sort chip was this scenario's original guess; the
+  # actual, and arguably more useful, TV behaviour is landing on the
+  # re-sorted content itself, so that is the contract this asserts —
+  # "somewhere" is what a screenshot alone cannot rule out, not "the chip".
+  - assert: {id: "library.grid.item[0]", focused: true}

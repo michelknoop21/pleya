@@ -28,11 +28,18 @@ class FakeDriver implements VerificationDriver {
   /// something to evaluate against.
   final bool boundsForSidebar;
 
+  /// Gives `sidebar.rail` a `state` map, so `state`/`focused` predicates
+  /// have something to evaluate against.
+  final Map<String, Object?>? stateForSidebar;
+  final bool focusedForSidebar;
+
   FakeDriver({
     this.readyScreens = const {'screen.main'},
     this.failWaitUntil = false,
     this.failLaunch = false,
     this.boundsForSidebar = false,
+    this.stateForSidebar,
+    this.focusedForSidebar = false,
   });
 
   @override
@@ -82,7 +89,9 @@ class FakeDriver implements VerificationDriver {
       {
         'id': 'sidebar.rail',
         'role': 'sidebar',
+        'focused': focusedForSidebar,
         if (boundsForSidebar) 'bounds': {'x': 0.0, 'y': 0.0, 'width': 200.0, 'height': 800.0},
+        if (stateForSidebar != null) 'state': stateForSidebar,
       },
     ],
     'discovered': [],
@@ -344,6 +353,128 @@ void main() {
     expect(result.passed, isFalse);
     expect(result.failureMessage, contains('minimumTapTarget'));
     expect(result.failureMessage, contains('smaller than'));
+  });
+
+  test('a state assertion records its measurement in the manifest, passing ones included', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.state\ntarget: macos\nsteps:\n'
+      '  - assert: {id: sidebar.rail, state: {collapsed: true}}\n',
+      sourcePath: 'inline.yaml',
+    );
+
+    final result = await runScenario(
+      scenario: scenario,
+      scenarioSource: 'name: fixture.state\n...',
+      driver: FakeDriver(stateForSidebar: const {'collapsed': true}),
+      repoRoot: repoRoot,
+    );
+
+    expect(result.passed, isTrue, reason: result.failureMessage);
+    final manifest = File('${result.bundleDir.path}/manifest.json').readAsStringSync();
+    expect(manifest, contains('"predicate": "state"'));
+    expect(manifest, contains('"key": "collapsed"'));
+    expect(manifest, contains('"ok": true'));
+  });
+
+  test('a failing state assertion fails the run and names the actual value', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.state_fail\ntarget: macos\nsteps:\n'
+      '  - assert: {id: sidebar.rail, state: {collapsed: true}}\n',
+      sourcePath: 'inline.yaml',
+    );
+
+    final result = await runScenario(
+      scenario: scenario,
+      scenarioSource: 'name: fixture.state_fail\n...',
+      driver: FakeDriver(stateForSidebar: const {'collapsed': false}),
+      repoRoot: repoRoot,
+    );
+
+    expect(result.passed, isFalse);
+    expect(result.failureMessage, contains('state(sidebar.rail.collapsed)'));
+    expect(result.failureMessage, contains('expected true'));
+  });
+
+  test('asserting state on a node with no state callback fails clearly', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.state_missing\ntarget: macos\nsteps:\n'
+      '  - assert: {id: sidebar.rail, state: {collapsed: true}}\n',
+      sourcePath: 'inline.yaml',
+    );
+
+    final result = await runScenario(
+      scenario: scenario,
+      scenarioSource: 'name: fixture.state_missing\n...',
+      driver: FakeDriver(),
+      repoRoot: repoRoot,
+    );
+
+    expect(result.passed, isFalse);
+    expect(result.failureMessage, contains('does not publish an AutomationNode.state'));
+  });
+
+  test('a focused assertion fails the run when focus is elsewhere', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.focused_fail\ntarget: macos\nsteps:\n'
+      '  - assert: {id: sidebar.rail, focused: true}\n',
+      sourcePath: 'inline.yaml',
+    );
+
+    final result = await runScenario(
+      scenario: scenario,
+      scenarioSource: 'name: fixture.focused_fail\n...',
+      driver: FakeDriver(focusedForSidebar: false),
+      repoRoot: repoRoot,
+    );
+
+    expect(result.passed, isFalse);
+    expect(result.failureMessage, contains('focused(sidebar.rail)'));
+  });
+
+  test('geometry and state predicates on the same step both land in the manifest', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.mixed\ntarget: macos\nsteps:\n'
+      '  - assert: {id: sidebar.rail, insideViewport: true, state: {collapsed: true}}\n',
+      sourcePath: 'inline.yaml',
+    );
+
+    final result = await runScenario(
+      scenario: scenario,
+      scenarioSource: 'name: fixture.mixed\n...',
+      driver: FakeDriver(boundsForSidebar: true, stateForSidebar: const {'collapsed': true}),
+      repoRoot: repoRoot,
+    );
+
+    expect(result.passed, isTrue, reason: result.failureMessage);
+    final manifest = File('${result.bundleDir.path}/manifest.json').readAsStringSync();
+    expect(manifest, contains('"geometry"'));
+    expect(manifest, contains('"state"'));
+  });
+
+  test('a {{fixture_id:...}} in an assert step fails clearly rather than comparing the literal text', () async {
+    // Before this, assert steps never went through resolvePlaceholders at
+    // all — only sign_in/fixture_mutate did — so a `{{fixture_id:kind/slug}}`
+    // inside `state:` silently compared the *literal placeholder string*
+    // against whatever the driver reported, instead of resolving it. That
+    // failure mode is strictly worse: a scenario with a real typo would
+    // report "expected {{fixture_id:x}}" instead of naming the actual
+    // resolution problem. No fixture verb here, so resolution still fails —
+    // the point is *how* it fails.
+    final scenario = parseScenarioString(
+      'name: fixture.placeholder\ntarget: macos\nsteps:\n'
+      '  - assert: {id: sidebar.rail, state: {item_id: "{{fixture_id:movie/aurora}}"}}\n',
+      sourcePath: 'inline.yaml',
+    );
+
+    final result = await runScenario(
+      scenario: scenario,
+      scenarioSource: 'name: fixture.placeholder\n...',
+      driver: FakeDriver(stateForSidebar: const {'item_id': 'not-a-placeholder'}),
+      repoRoot: repoRoot,
+    );
+
+    expect(result.passed, isFalse);
+    expect(result.failureMessage, contains('does not match anything the fixture seeded'));
   });
 
   test('run-id directories are unique and land under .build/pleya-verify/', () async {

@@ -245,7 +245,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   final ScrollController _extrasScrollController = ScrollController();
   bool _watchStateChanged = false;
   final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0);
-  bool _suppressBackAfterPop = false;
+  DateTime? _backAfterChildPopUntil;
   final FocusNode _loadingFocusNode = FocusNode(debugLabel: 'MediaDetailLoading');
   bool _tvDetailRevealed = false;
   bool _tvDetailRevealScheduled = false;
@@ -666,14 +666,28 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     routeObserver.subscribe(this, route);
   }
 
+  /// How long after a child route (e.g. the video player) pops back to this
+  /// screen a Back/Menu press is treated as a stray duplicate of the one
+  /// that closed that child, rather than a fresh user action here. tvOS has
+  /// been observed delivering a *second*, independent Escape `KeyDownEvent`
+  /// roughly two seconds after the first — not the KeyDown+KeyUp-of-the-
+  /// same-press pattern `SelectKeyUpSuppressor` and friends guard against
+  /// elsewhere, which lands within milliseconds. The previous guard (two
+  /// chained `addPostFrameCallback`s, ~33ms) cleared long before that
+  /// straggler arrived, so `_popMediaDetailIfBackNotSuppressed` treated it
+  /// as a fresh press and popped this screen too — reproduced
+  /// deterministically (two independent runs) via the player-return step
+  /// in `media-detail.episode-refresh.yaml`.
+  static const Duration _backAfterChildPopWindow = Duration(milliseconds: 3000);
+
+  bool get _suppressBackAfterPop {
+    final until = _backAfterChildPopUntil;
+    return until != null && DateTime.now().isBefore(until);
+  }
+
   @override
   void didPopNext() {
-    _suppressBackAfterPop = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _suppressBackAfterPop = false;
-      });
-    });
+    _backAfterChildPopUntil = DateTime.now().add(_backAfterChildPopWindow);
   }
 
   /// Same trigger as a player return, minus the played-item id: an app resume
@@ -695,7 +709,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   bool _consumeBackAfterChildPop(KeyEvent event) {
     if (!_suppressBackAfterPop || !event.logicalKey.isBackKey) return false;
-    if (event is KeyUpEvent) _suppressBackAfterPop = false;
+    if (event is KeyUpEvent) _backAfterChildPopUntil = null;
     return true;
   }
 
@@ -713,7 +727,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   void _popMediaDetailIfBackNotSuppressed() {
     if (_suppressBackAfterPop) {
-      _suppressBackAfterPop = false;
+      _backAfterChildPopUntil = null;
       return;
     }
     Navigator.pop(context, _watchStateChanged);
@@ -3716,6 +3730,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
               initialHubId: _tvDetailInitialHubId(metadata),
               initialItemId: _tvDetailInitialItemId(metadata),
               episodePosterModeForHub: _tvDetailEpisodePosterModeForHub,
+              automationIdForHub: _tvDetailAutomationIdForHub,
             ),
           ),
       ],
@@ -4123,6 +4138,17 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   bool _isTvDetailEpisodeHub(MediaHub hub) {
     return hub.id.startsWith(_tvDetailSeasonHubIdPrefix) || hub.id == 'detail_episodes';
+  }
+
+  /// Only the flattened `'detail_episodes'` hub gets the shared
+  /// [AutomationIds.mediaDetailEpisodeList] id — the desktop/mobile
+  /// `_buildEpisodesList()` counterpart addresses exactly one list too
+  /// (`(isShow && _showEpisodesDirectly) || isSeason`, one season at a
+  /// time). The per-season hubs from `_tvDetailHubs()`'s season-tabs branch
+  /// are all mounted simultaneously, so giving every one of them the same
+  /// id would register duplicates.
+  String? _tvDetailAutomationIdForHub(MediaHub hub, int hubIndex) {
+    return hub.id == 'detail_episodes' ? AutomationIds.mediaDetailEpisodeList : null;
   }
 
   EpisodePosterMode _tvDetailEpisodePosterModeForHub(MediaHub hub) {

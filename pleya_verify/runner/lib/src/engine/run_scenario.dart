@@ -11,6 +11,7 @@ import '../transport/verify_client.dart';
 import '../scenario/model.dart';
 import 'evidence_bundle.dart';
 import 'geometry_assertions.dart';
+import 'node_assertions.dart';
 
 class ScenarioRunResult {
   final bool passed;
@@ -161,8 +162,18 @@ Future<ScenarioRunResult> runScenario({
         case 'wait_until':
           await _dispatchWaitUntil(step, driver);
         case 'assert':
-          final geometry = await _dispatchAssert(step, driver);
+          // `{{fixture_id:kind/slug}}` is as legitimate inside an assert's
+          // `state:`/binary-predicate values as it is inside `fixture_mutate`
+          // — a scenario naming an item by the fixture's own seeded slug
+          // rather than a hash it has no way to know. Resolved unconditionally
+          // (a `{{fixture_id:...}}` in an assert step with no running fixture
+          // throws the same clear error `fixture_mutate` already does).
+          final resolvedArgs =
+              resolvePlaceholders(step.args, fixture, null, seededIds: fixture == null ? const {} : await fixture.seededIds())
+                  as Map<String, Object?>;
+          final (:geometry, :node) = await _dispatchAssert(resolvedArgs, driver);
           if (geometry.isNotEmpty) record['geometry'] = [for (final g in geometry) g.toJson()];
+          if (node.isNotEmpty) record['state'] = [for (final n in node) n.toJson()];
         case 'overlay':
           // The diagnostic overlay draws ids and bounds *into the app's own
           // render tree*, so a screenshot taken while it is on shows what
@@ -343,35 +354,44 @@ Future<void> _dispatchWaitUntil(ScenarioStep step, VerificationDriver driver) as
   throw StateError('wait_until timed out after ${timeoutMs}ms: $args');
 }
 
-/// Presence first, then any geometry predicates the step carries. Returns
-/// the evaluated verdicts so the caller can record them — including the
-/// passing ones, because "the hero is 12px inside the viewport" is the
-/// measurement a later regression gets compared against.
+/// Presence first, then any geometry and/or `state`/`focused` predicates the
+/// step carries. Returns the evaluated verdicts so the caller can record
+/// them — including the passing ones, because "the hero is 12px inside the
+/// viewport" is the measurement a later regression gets compared against.
 ///
-/// A failing verdict throws with every measured number in the message: the
-/// point of `GeometryVerdict` is that a red run explains itself without
-/// anyone re-deriving the geometry by hand.
-Future<List<GeometryAssertionResult>> _dispatchAssert(ScenarioStep step, VerificationDriver driver) async {
-  final args = step.args as Map<String, Object?>;
+/// A failing verdict throws with every measured value in the message: the
+/// point of `GeometryVerdict`/`NodeAssertionResult` is that a red run
+/// explains itself without anyone re-deriving the measurement by hand.
+Future<({List<GeometryAssertionResult> geometry, List<NodeAssertionResult> node})> _dispatchAssert(
+  Map<String, Object?> args,
+  VerificationDriver driver,
+) async {
   final id = args['id'] as String;
   if (!await _idReady(driver, id)) {
     throw StateError('assert failed: "$id" is not ready/present');
   }
 
-  if (!args.keys.any(geometryPredicates.contains)) return const [];
+  final hasGeometry = args.keys.any(geometryPredicates.contains);
+  final hasNode = args.keys.any(nodeFieldPredicates.contains);
+  if (!hasGeometry && !hasNode) return (geometry: const <GeometryAssertionResult>[], node: const <NodeAssertionResult>[]);
 
-  // One fetch of each, shared by every predicate on this step: two
-  // predicates measured against different frames would not be comparable.
-  final results = evaluateGeometryAssertions(args, uiTree: await driver.uiTree(), viewport: await driver.viewport());
+  // One fetch of each, shared by every predicate on this step: predicates
+  // measured against different frames would not be comparable.
+  final uiTree = await driver.uiTree();
+  final geometry = hasGeometry
+      ? evaluateGeometryAssertions(args, uiTree: uiTree, viewport: await driver.viewport())
+      : const <GeometryAssertionResult>[];
+  final node = hasNode ? evaluateNodeAssertions(args, uiTree: uiTree) : const <NodeAssertionResult>[];
 
-  final failed = results.where((r) => !r.verdict.ok).toList();
-  if (failed.isNotEmpty) {
-    final detail = failed
-        .map((r) => '${r.predicate}(${r.subjectId}${r.otherId == null ? '' : ', ${r.otherId}'}): ${r.verdict.message}')
-        .join('; ');
-    throw StateError('assert failed: $detail');
+  final failures = <String>[
+    for (final r in geometry.where((r) => !r.verdict.ok))
+      '${r.predicate}(${r.subjectId}${r.otherId == null ? '' : ', ${r.otherId}'}): ${r.verdict.message}',
+    for (final r in node.where((r) => !r.ok)) '${r.predicate}(${r.subjectId}${r.key == null ? '' : '.${r.key}'}): ${r.message}',
+  ];
+  if (failures.isNotEmpty) {
+    throw StateError('assert failed: ${failures.join('; ')}');
   }
-  return results;
+  return (geometry: geometry, node: node);
 }
 
 /// `screen.*` ids are checked against `/v1/screens` (readiness); anything
