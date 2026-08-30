@@ -69,6 +69,7 @@ under `Notes`.
 - geen PASS meer op bewijs uit de verkeerde app-instantie
 - poortdiscovery leest Library/Caches, en de scenario wacht op de hero zelf
 - back-suppressie causaal maken, filters-scenario eerlijk hernoemen, evidence-gat dicht
+- geen --enforce-lockfile voor pleya_verify subpackages
 <!-- END GENERATED -->
 
 ### Fixed
