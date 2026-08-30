@@ -108,16 +108,19 @@ class TvUnifiedMediaCard extends StatelessWidget {
         borderRadius: radius,
         focusScale: FocusTheme.fullCardFocusScale,
         semanticLabel: semanticLabelFor(group),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
-              child: _Artwork(group: group, scale: scale, clientFor: clientFor),
-            ),
-            _Footer(group: group, scale: scale, radius: radius, tk: tk),
-          ],
+        child: Padding(
+          padding: EdgeInsets.all(TvCatalogLayout.cardFocusRingGap * scale),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(radius),
+                child: _Artwork(group: group, scale: scale, clientFor: clientFor),
+              ),
+              _Footer(group: group, scale: scale, tk: tk),
+            ],
+          ),
         ),
       ),
     );
@@ -323,13 +326,26 @@ class _ResumeBar extends StatelessWidget {
   }
 }
 
-/// Title plus one context line, on a strip that closes the card off.
+/// Title plus one context line, directly under the artwork.
+///
+/// **There is no strip.** The first build drew this on a filled panel with the
+/// artwork's bottom corners squared into it, so a card was a poster glued to a
+/// caption bar. Against grey placeholders that read as one object, which is
+/// what it was for; against real artwork it read as a grey slab bolted under
+/// every image, and twelve of them turned a colourful grid into a filing
+/// cabinet. Text on the page background costs the "one object" reading and buys
+/// back the thing hoofdstuk 10.2 actually ranks first — the artwork is now the
+/// only surface on the card, fully rounded on all four corners, and nothing
+/// competes with it.
+///
+/// What still binds the two together is the focus ring, which wraps poster and
+/// text as one shape. That is the same containment the fill used to provide,
+/// drawn only when it is needed.
 class _Footer extends StatelessWidget {
-  const _Footer({required this.group, required this.scale, required this.radius, required this.tk});
+  const _Footer({required this.group, required this.scale, required this.tk});
 
   final UnifiedMediaGroup group;
   final double scale;
-  final double radius;
   final MonoTokens tk;
 
   @override
@@ -337,15 +353,8 @@ class _Footer extends StatelessWidget {
     final item = group.representativeSource.item;
     final context_ = _contextLine;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: tk.text.withValues(alpha: TvCatalogLayout.cardFooterFill),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
-      ),
-      padding: EdgeInsets.symmetric(
-        horizontal: TvCatalogLayout.cardFooterPaddingHorizontal * scale,
-        vertical: TvCatalogLayout.cardFooterPaddingVertical * scale,
-      ),
+    return Padding(
+      padding: EdgeInsets.only(top: TvCatalogLayout.cardFooterPaddingVertical * scale),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

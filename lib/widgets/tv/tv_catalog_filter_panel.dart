@@ -489,10 +489,7 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
   /// why there are none.
   Widget _buildOptions(List<_RowSpec> rows, double scale) {
     if (rows.isEmpty) {
-      return _PanelNote(
-        text: _isLoadingOptions ? t.common.loading : t.unifiedCatalog.filters.noValues,
-        scale: scale,
-      );
+      return _PanelNote(text: _isLoadingOptions ? t.common.loading : t.unifiedCatalog.filters.noValues, scale: scale);
     }
     return SingleChildScrollView(
       child: Column(

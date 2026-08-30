@@ -147,7 +147,7 @@ class _ActionCapsule extends StatelessWidget {
         child: Container(
           decoration: ShapeDecoration(
             shape: shape,
-            color: tk.text.withValues(alpha: TvCatalogLayout.cardFooterFill),
+            color: tk.text.withValues(alpha: TvCatalogLayout.actionFill),
           ),
           padding: EdgeInsets.symmetric(
             horizontal: TvCatalogLayout.actionPaddingHorizontal * scale,

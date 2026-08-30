@@ -202,6 +202,20 @@ class TvCatalogLayout {
   static const double posterAspectRatio = 2 / 3;
   static const double cardRadius = 10;
 
+  /// Band of page background between the card's content and its focus ring —
+  /// the same device, and the same reason, as
+  /// [TvSourcePickerLayout.buttonFocusRingGap].
+  ///
+  /// Without it the ring is drawn flush against the artwork, and two things go
+  /// wrong that a grid of grey placeholders could never show. A 2.5px white
+  /// ring laid directly onto a bright poster has almost nothing to contrast
+  /// with, so focus stops reading at three metres on exactly the cards that
+  /// are most eye-catching; and the title underneath starts at the ring's inner
+  /// edge, so the focused card is the one card whose text looks cropped. A
+  /// couple of pixels of `MonoTokens.bg` fixes both, and costs the artwork
+  /// nothing anyone can see.
+  static const double cardFocusRingGap = 5;
+
   /// Title and context line inside the footer. 14 renders at ~11.9 logical,
   /// ~22 reference px — inside hoofdstuk 8.3's "card title 18–21" at the top,
   /// which is where a two-line title still reads at three metres.
@@ -211,8 +225,14 @@ class TvCatalogLayout {
   /// it whether the title needs both or not — see the card's own comment.
   static const double cardTitleLineHeight = 1.2;
   static const double cardMetaFontSize = 11.5;
-  static const double cardFooterPaddingHorizontal = 10;
-  static const double cardFooterPaddingVertical = 9;
+
+  /// The meta block under the artwork.
+  ///
+  /// No horizontal padding, because there is no longer a box to pad inside of:
+  /// the title starts on the poster's own left edge, which is what makes a
+  /// column of cards line up as a column. The vertical value is the gap between
+  /// the poster and its title.
+  static const double cardFooterPaddingVertical = 8;
   static const double cardFooterLineGap = 3;
 
   /// Density of a panel option row — one line of text, sometimes two.
@@ -291,17 +311,26 @@ class TvCatalogLayout {
   static const double inkPrimary = 1;
   static const double inkSecondary = 0.62;
 
-  /// Fill and outline of a card's meta footer, as alphas on `MonoTokens.text`
-  /// over the page background. Low enough that the artwork stays the loudest
-  /// thing on the page; high enough that a card reads as one object rather than
-  /// as a poster with text floating under it.
-  static const double cardFooterFill = 0.05;
+  /// Fill and outline of a header action capsule, as alphas on
+  /// `MonoTokens.text` over the page background.
+  ///
+  /// Deliberately faint. Hoofdstuk 10.2 wants the page title to own the header
+  /// and the three actions to sit under it, and the first build had them at the
+  /// card footer's old fill — which, once the grid behind them carried real
+  /// artwork, read as three solid buttons competing with a one-word title.
+  static const double actionFill = 0.035;
   static const double cardOutline = 0.06;
 
-  /// Fill of the badge capsule, as an alpha on black over the artwork. Black
-  /// rather than a theme colour: it sits on a poster, not on a surface, and
-  /// hoofdstuk 10.3 asks for "kleine donkere/transparante capsule".
-  static const double badgeFill = 0.62;
+  /// Fill of the badge capsule, as an alpha on black over the artwork.
+  ///
+  /// Black rather than a theme colour: it sits on a poster, not on a surface,
+  /// and hoofdstuk 10.3 asks for "kleine donkere/transparante capsule". The
+  /// value came down from 0.62 once the goldens carried colour — against grey
+  /// placeholders an almost-opaque capsule looked like part of the design, and
+  /// against a pastel poster it looked like a debug label stuck on the artwork.
+  /// This is the floor that still holds white text at AA over the brightest
+  /// fixture in the set.
+  static const double badgeFill = 0.46;
 
   /// The placeholder behind artwork that has not loaded, and behind a source
   /// with no poster at all.

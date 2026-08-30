@@ -207,6 +207,32 @@ class OptimizedMediaImage extends StatelessWidget {
          localFilePath: localFilePath,
        );
 
+  /// Stands in for the decoded image in golden tests.
+  ///
+  /// Every path below ends in a network or file image, so a widget test can
+  /// only ever render the placeholder — which is why the first Films/Series
+  /// goldens were a grid of identical grey tiles. Those pictures could prove
+  /// the rhythm and the type, and could not prove the one thing the phase's
+  /// art direction is actually about: that Pleya's dark chrome presents bright,
+  /// warm and colourful artwork without flattening it.
+  ///
+  /// The seam is here rather than on the card because it is the *image* that
+  /// cannot be rendered offline, and because putting it on the card would leave
+  /// every other artwork surface untestable for the same reason.
+  ///
+  /// Null in production, and nothing in `lib/` ever assigns it.
+  @visibleForTesting
+  static Widget Function(BuildContext context, String? imagePath)? debugImageBuilder;
+
+  /// The disk cache key for [imageUrl].
+  ///
+  /// Public because anything that *warms* the cache has to produce a key that
+  /// is byte-identical to the one the widget reads with, or the warmed entry is
+  /// a second copy nothing ever finds — see `UnifiedArtworkPrefetcher`. One
+  /// definition, used by both.
+  static String artworkCacheKey(String imageUrl) =>
+      'plex_optimized_${sha1.convert(utf8.encode(artworkStorageKey(imageUrl)))}';
+
   /// Whether both width and height are explicitly set to finite positive values,
   /// meaning we can skip the LayoutBuilder.
   bool get _hasKnownDimensions =>
@@ -214,6 +240,9 @@ class OptimizedMediaImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final debugBuilder = debugImageBuilder;
+    if (debugBuilder != null) return debugBuilder(context, imagePath);
+
     final localFile = localFilePath != null ? File(localFilePath!) : null;
     final hasLocal = localFile != null && localFile.existsSync();
 
@@ -396,13 +425,11 @@ class OptimizedMediaImage extends StatelessWidget {
   Widget _buildFallback(BuildContext context) =>
       _surfacePlaceholder(context, icon: fallbackIcon ?? Symbols.image_not_supported_rounded);
 
-  String _generateCacheKey(String imageUrl) {
-    // URL already encodes bucketed transcode dimensions via roundDimensions,
-    // so the URL hash alone uniquely identifies the bytes on disk. Including
-    // mem-cache dimensions here would re-introduce churn on every pixel of
-    // window resize and defeat getMemCacheDimensions' bucketing.
-    // Hash the token-free URL: auth tokens rotate between sessions and would
-    // otherwise invalidate the entire disk cache on every re-auth.
-    return 'plex_optimized_${sha1.convert(utf8.encode(artworkStorageKey(imageUrl)))}';
-  }
+  // URL already encodes bucketed transcode dimensions via roundDimensions, so
+  // the URL hash alone uniquely identifies the bytes on disk. Including
+  // mem-cache dimensions would re-introduce churn on every pixel of window
+  // resize and defeat getMemCacheDimensions' bucketing. Hashing the token-free
+  // URL keeps auth-token rotation from invalidating the whole disk cache on
+  // every re-auth. See [artworkCacheKey].
+  String _generateCacheKey(String imageUrl) => artworkCacheKey(imageUrl);
 }

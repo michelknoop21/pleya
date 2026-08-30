@@ -25,6 +25,7 @@ import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../test_helpers/golden.dart';
+import '../test_helpers/tv_catalog_artwork.dart';
 
 /// Visual acceptance for the fase-5 Films and Series pages
 /// (docs/tvos-unified-experience.md hoofdstuk 10, 33.2, 33.3, 34).
@@ -41,12 +42,16 @@ import '../test_helpers/golden.dart';
 /// composition regression on this platform; they do not replace hardware
 /// verification, which stays outstanding until after fase 10A.
 ///
-/// Artwork is deliberately absent. `OptimizedMediaImage` needs a live client to
-/// sign a URL, and a golden that depended on a network image would be a golden
-/// about the network. Every card therefore renders its placeholder, which is
-/// also the honest picture of a first frame and of an offline server — and it
-/// puts the whole weight of the composition on the things this phase decides:
-/// rhythm, density, type and focus.
+/// Artwork is synthetic, and that is a deliberate reversal. The first version
+/// of this file rendered every card's placeholder, on the reasoning that a
+/// golden depending on a network image would be a golden about the network.
+/// True, but it cost more than it saved: twelve identical grey tiles cannot
+/// show whether Pleya's dark chrome *presents* colourful content or flattens
+/// it, and that question is most of what this phase's art direction is about.
+/// `TvGoldenArtwork` fills the seam with deterministic panels spanning the
+/// range a real library holds — sunny, neon, green, pastel, muted, near-black.
+/// No network, same bytes everywhere, and the composition is finally judged
+/// against content rather than against grey.
 ///
 /// Regenerate after an intentional visual change:
 /// `flutter test --update-goldens test/goldens/tv_unified_catalog_golden_test.dart`
@@ -61,6 +66,7 @@ MediaItem _movie({
   String serverId = 'nas',
   String serverName = 'NAS',
   MediaBackend backend = MediaBackend.plex,
+  int? artwork,
 }) => MediaItem(
   id: id,
   backend: backend,
@@ -73,14 +79,12 @@ MediaItem _movie({
   genres: genre == null ? null : [genre],
   serverId: serverId,
   serverName: serverName,
+  // Null renders the no-artwork panel, which is a state worth keeping
+  // reachable; every catalog fixture passes an index.
+  thumbPath: artwork == null ? null : TvGoldenArtwork.pathFor(artwork),
 );
 
-UnifiedMediaGroup _group(
-  String id,
-  List<MediaItem> items, {
-  bool watched = false,
-  bool inProgress = false,
-}) {
+UnifiedMediaGroup _group(String id, List<MediaItem> items, {bool watched = false, bool inProgress = false}) {
   final sources = [for (final item in items) UnifiedMediaSource.fromItem(item)];
   return UnifiedMediaGroup(
     groupId: id,
@@ -101,19 +105,26 @@ UnifiedMediaGroup _group(
 /// cap. That mix is the point — a grid of identical cards proves nothing about
 /// whether the badge, the tick and the resume bar can coexist in one row.
 List<UnifiedMediaGroup> _catalog() {
-  final titles = <({String title, int sources, bool watched, bool progress, int? offset})>[
-    (title: 'Dune: Part Two', sources: 2, watched: false, progress: true, offset: 2538000),
-    (title: 'Oppenheimer', sources: 3, watched: true, progress: false, offset: null),
-    (title: 'The Batman', sources: 1, watched: false, progress: true, offset: 6400000),
-    (title: 'Godzilla Minus One', sources: 2, watched: false, progress: false, offset: null),
-    (title: 'Poor Things', sources: 1, watched: true, progress: false, offset: null),
-    (title: 'Everything Everywhere All at Once', sources: 2, watched: false, progress: false, offset: null),
-    (title: 'The Last House', sources: 1, watched: false, progress: false, offset: null),
-    (title: 'Mutiny', sources: 2, watched: false, progress: true, offset: 3100000),
-    (title: 'A Quiet Place', sources: 1, watched: true, progress: false, offset: null),
-    (title: 'Blade Runner 2049', sources: 3, watched: false, progress: false, offset: null),
-    (title: 'Arrival', sources: 1, watched: false, progress: false, offset: null),
-    (title: 'Sicario', sources: 2, watched: false, progress: false, offset: null),
+  final titles = <({String title, String genre, int sources, bool watched, bool progress, int? offset})>[
+    (title: 'Paddington in Peru', genre: 'Family', sources: 2, watched: false, progress: true, offset: 2538000),
+    (title: 'Dune: Part Two', genre: 'Science fiction', sources: 3, watched: true, progress: false, offset: null),
+    (title: 'Inside Out 2', genre: 'Animation', sources: 1, watched: false, progress: true, offset: 6400000),
+    (title: 'The Zone of Interest', genre: 'Drama', sources: 2, watched: false, progress: false, offset: null),
+    (title: 'Poor Things', genre: 'Comedy', sources: 1, watched: true, progress: false, offset: null),
+    (
+      title: 'Everything Everywhere All at Once',
+      genre: 'Adventure',
+      sources: 2,
+      watched: false,
+      progress: false,
+      offset: null,
+    ),
+    (title: 'Planet Earth III', genre: 'Documentary', sources: 1, watched: false, progress: false, offset: null),
+    (title: 'The Batman', genre: 'Crime', sources: 2, watched: false, progress: true, offset: 3100000),
+    (title: 'Lawrence of Arabia', genre: 'Epic', sources: 1, watched: true, progress: false, offset: null),
+    (title: 'Past Lives', genre: 'Romance', sources: 3, watched: false, progress: false, offset: null),
+    (title: 'Princess Mononoke', genre: 'Fantasy', sources: 1, watched: false, progress: false, offset: null),
+    (title: 'Casablanca', genre: 'Classic', sources: 2, watched: false, progress: false, offset: null),
   ];
   return [
     for (var i = 0; i < titles.length; i++)
@@ -125,6 +136,8 @@ List<UnifiedMediaGroup> _catalog() {
               id: 'i$i-$s',
               title: titles[i].title,
               year: 2017 + (i % 8),
+              genre: titles[i].genre,
+              artwork: i,
               viewOffsetMs: s == 0 ? titles[i].offset : null,
               viewCount: s == 0 && titles[i].watched ? 1 : null,
               serverId: ['nas', 'attic', 'shed'][s],
@@ -246,9 +259,13 @@ void main() {
   setUpAll(() async {
     await loadAppFontsForGoldens();
     TvDetectionService.debugSetAppleTVOverride(true);
+    TvGoldenArtwork.install();
   });
 
-  tearDownAll(() => TvDetectionService.debugSetAppleTVOverride(null));
+  tearDownAll(() {
+    TvDetectionService.debugSetAppleTVOverride(null);
+    TvGoldenArtwork.remove();
+  });
 
   List<FocusNode> nodes(WidgetTester tester) {
     final list = [for (var i = 0; i < 3; i++) FocusNode(debugLabel: 'action$i')];
@@ -280,7 +297,10 @@ void main() {
     await tester.pumpAndSettle();
     final card = find.byType(TvUnifiedMediaGrid);
     expect(card, findsOneWidget);
-    Focus.of(tester.element(find.text('Oppenheimer'))).requestFocus();
+    // A bright card on purpose: a white focus ring over near-white artwork is
+    // the case where focus is most at risk of vanishing, and it is the one a
+    // grid of grey placeholders could never have tested.
+    Focus.of(tester.element(find.text('Inside Out 2'))).requestFocus();
     await tester.pumpAndSettle();
     await expectMatchesGolden(find.byType(MaterialApp), 'tv_catalog_films_card_focused');
   });
@@ -325,12 +345,17 @@ void main() {
     setGoldenSurfaceSize(tester);
     final groups = [
       _group('long1', [
-        _movie(id: 'l1', title: 'The Assassination of Jesse James by the Coward Robert Ford'),
-        _movie(id: 'l1b', title: 'The Assassination of Jesse James by the Coward Robert Ford', serverId: 'attic'),
+        _movie(id: 'l1', title: 'The Assassination of Jesse James by the Coward Robert Ford', artwork: 8),
+        _movie(
+          id: 'l1b',
+          title: 'The Assassination of Jesse James by the Coward Robert Ford',
+          serverId: 'attic',
+          artwork: 8,
+        ),
       ]),
-      _group('long2', [_movie(id: 'l2', title: 'Birdman or (The Unexpected Virtue of Ignorance)')]),
+      _group('long2', [_movie(id: 'l2', title: 'Birdman or (The Unexpected Virtue of Ignorance)', artwork: 6)]),
       _group('long3', [
-        _movie(id: 'l3', title: 'Everything Everywhere All at Once', genre: 'Wetenschappelijke fictie'),
+        _movie(id: 'l3', title: 'Everything Everywhere All at Once', genre: 'Wetenschappelijke fictie', artwork: 5),
       ]),
       ..._catalog().take(9),
     ];
