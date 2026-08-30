@@ -1472,5 +1472,57 @@
     "rowSemantics": "Kilde ${index} av ${count}: ${description}",
     "preferredServer": "Foretrukket server",
     "setPreferredServer": "Bruk alltid ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Filmer",
+    "seriesTitle": "Serier",
+    "sources": "${count} kilder",
+    "allSources": "Alle kilder",
+    "oneSource": "1 kilde",
+    "titleCount": "${count} titler",
+    "oneTitle": "1 tittel",
+    "titlesLoaded": "${count} titler lastet",
+    "loadMore": "Last inn flere",
+    "loadingMore": "Laster flere…",
+    "sort": {
+      "title": "Sorter",
+      "titleAsc": "Tittel A–Å",
+      "titleDesc": "Tittel Å–A",
+      "recentlyAdded": "Nylig lagt til",
+      "oldestAdded": "Først lagt til",
+      "newestRelease": "Nyeste utgivelse",
+      "oldestRelease": "Eldste utgivelse",
+      "recentlyWatched": "Nylig sett"
+    },
+    "filters": {
+      "title": "Filtre",
+      "status": "Status",
+      "genre": "Sjanger",
+      "year": "År",
+      "servers": "Servere",
+      "libraries": "Biblioteker",
+      "apply": "Bruk",
+      "clearAll": "Tøm alt",
+      "all": "Alle",
+      "unwatched": "Ikke sett",
+      "unsupported": "Ikke tilgjengelig for de gjeldende kildene",
+      "noValues": "Ingenting å velge"
+    },
+    "states": {
+      "emptyTitle": "Denne katalogen er tom",
+      "emptyBody": "Ingen synlig bibliotek inneholder noe for denne siden.",
+      "filterEmptyTitle": "Ingenting samsvarer med disse filtrene",
+      "filterEmptyBody": "Tøm et filter for å se flere titler.",
+      "clearFilters": "Tøm filtre",
+      "errorTitle": "Katalogen kunne ikke lastes",
+      "errorBody": "Ingen server svarte. Sjekk tilkoblingen og prøv igjen.",
+      "partialOne": "1 bibliotek svarte ikke",
+      "partialMany": "${count} biblioteker svarte ikke"
+    },
+    "semantics": {
+      "watched": "Sett",
+      "inProgress": "Påbegynt",
+      "loadingMore": "Laster flere titler"
+    }
   }
 }

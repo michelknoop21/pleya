@@ -1472,5 +1472,57 @@
     "rowSemantics": "Источник ${index} из ${count}: ${description}",
     "preferredServer": "Предпочитаемый сервер",
     "setPreferredServer": "Всегда использовать ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Фильмы",
+    "seriesTitle": "Сериалы",
+    "sources": "Источников: ${count}",
+    "allSources": "Все источники",
+    "oneSource": "1 источник",
+    "titleCount": "Названий: ${count}",
+    "oneTitle": "1 название",
+    "titlesLoaded": "Загружено названий: ${count}",
+    "loadMore": "Загрузить ещё",
+    "loadingMore": "Загрузка…",
+    "sort": {
+      "title": "Сортировка",
+      "titleAsc": "Название А–Я",
+      "titleDesc": "Название Я–А",
+      "recentlyAdded": "Недавно добавленные",
+      "oldestAdded": "Давно добавленные",
+      "newestRelease": "Новые по выходу",
+      "oldestRelease": "Старые по выходу",
+      "recentlyWatched": "Недавно просмотренные"
+    },
+    "filters": {
+      "title": "Фильтры",
+      "status": "Статус",
+      "genre": "Жанр",
+      "year": "Год",
+      "servers": "Серверы",
+      "libraries": "Библиотеки",
+      "apply": "Применить",
+      "clearAll": "Очистить всё",
+      "all": "Все",
+      "unwatched": "Непросмотренные",
+      "unsupported": "Недоступно для текущих источников",
+      "noValues": "Нечего выбрать"
+    },
+    "states": {
+      "emptyTitle": "Этот каталог пуст",
+      "emptyBody": "Ни одна видимая библиотека не содержит ничего для этой страницы.",
+      "filterEmptyTitle": "Ничего не соответствует этим фильтрам",
+      "filterEmptyBody": "Сбросьте фильтр, чтобы увидеть больше названий.",
+      "clearFilters": "Сбросить фильтры",
+      "errorTitle": "Не удалось загрузить каталог",
+      "errorBody": "Ни один сервер не ответил. Проверьте подключение и повторите попытку.",
+      "partialOne": "1 библиотека не ответила",
+      "partialMany": "Не ответило библиотек: ${count}"
+    },
+    "semantics": {
+      "watched": "Просмотрено",
+      "inProgress": "В процессе",
+      "loadingMore": "Загрузка других названий"
+    }
   }
 }

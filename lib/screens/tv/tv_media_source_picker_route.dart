@@ -481,14 +481,17 @@ Future<UnifiedMediaSource?> showUnifiedSourcePicker(
   // for focus itself — which is how the footer button, not the source, ended up
   // focused. `_PickerSessionState` disposes it.
   final initialFocusNode = FocusNode(debugLabel: 'TvSourcePickerInitialFocus');
-  // Hoofdstuk 14.4: "annuleren herstelt exacte kaart of CTA". The overlay sheet
-  // is not a route, so nothing pops focus back for us — and the card that
-  // opened the picker is still mounted with its node intact, so the honest
-  // restore is to hand the focus back to exactly the node that had it.
-  final opener = FocusManager.instance.primaryFocus;
   return OverlaySheetController.showAdaptive<UnifiedMediaSource>(
     context,
     initialFocusNode: initialFocusNode,
+    // Hoofdstuk 14.4: "annuleren herstelt exacte kaart of CTA". The overlay
+    // sheet is not a route, so nothing pops focus back for us; the shared
+    // launcher restore hands it to exactly the node that opened this — and to
+    // nothing at all when that node has since left the tree, which is what a
+    // picker ending in a route replacement leaves behind. Fase 5A generalised
+    // it out of this file so the filter and sort panels use one system rather
+    // than a third copy.
+    restoreLauncherFocus: true,
     // The centred 10-foot modal of hoofdstuk 14.1. On TV,
     // `resolveOverlaySheetGeometry` turns this into the proportional panel;
     // off TV it is the existing centred/bottom behaviour, unchanged.
@@ -509,13 +512,7 @@ Future<UnifiedMediaSource?> showUnifiedSourcePicker(
       onChosen: (source) => OverlaySheetController.closeAdaptive(sheetContext, source),
       onClose: () => OverlaySheetController.closeAdaptive(sheetContext, null),
     ),
-  ).whenComplete(() {
-    // After the close animation, and only if the opener is still in the tree:
-    // a picker that led to a route replacement has no card to go back to.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (opener != null && opener.context != null && opener.canRequestFocus) opener.requestFocus();
-    });
-  });
+  );
 }
 
 /// The stateful half of one open picker: the three things hoofdstuk 14 allows

@@ -1867,5 +1867,57 @@
     "rowSemantics": "Source ${index} of ${count}: ${description}",
     "preferredServer": "Preferred server",
     "setPreferredServer": "Always use ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Movies",
+    "seriesTitle": "Series",
+    "sources": "${count} sources",
+    "allSources": "All sources",
+    "oneSource": "1 source",
+    "titleCount": "${count} titles",
+    "oneTitle": "1 title",
+    "titlesLoaded": "${count} titles loaded",
+    "loadMore": "Load more",
+    "loadingMore": "Loading more…",
+    "sort": {
+      "title": "Sort",
+      "titleAsc": "Title A–Z",
+      "titleDesc": "Title Z–A",
+      "recentlyAdded": "Recently added",
+      "oldestAdded": "Oldest added",
+      "newestRelease": "Newest release",
+      "oldestRelease": "Oldest release",
+      "recentlyWatched": "Recently watched"
+    },
+    "filters": {
+      "title": "Filters",
+      "status": "Status",
+      "genre": "Genre",
+      "year": "Year",
+      "servers": "Servers",
+      "libraries": "Libraries",
+      "apply": "Apply",
+      "clearAll": "Clear all",
+      "all": "All",
+      "unwatched": "Unwatched",
+      "unsupported": "Not available for the current sources",
+      "noValues": "Nothing to choose from"
+    },
+    "states": {
+      "emptyTitle": "This catalog is empty",
+      "emptyBody": "No visible library holds anything for this page.",
+      "filterEmptyTitle": "Nothing matches these filters",
+      "filterEmptyBody": "Clear a filter to see more titles.",
+      "clearFilters": "Clear filters",
+      "errorTitle": "The catalog could not be loaded",
+      "errorBody": "No server answered. Check your connection and try again.",
+      "partialOne": "1 library did not answer",
+      "partialMany": "${count} libraries did not answer"
+    },
+    "semantics": {
+      "watched": "Watched",
+      "inProgress": "In progress",
+      "loadingMore": "Loading more titles"
+    }
   }
 }

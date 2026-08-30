@@ -28,6 +28,8 @@ enum NavRailSlot {
 enum NavRailDestination {
   reconnect(ownFocusKey: 'reconnect'),
   home(ownFocusKey: 'home', tab: NavigationTabId.discover),
+  movies(ownFocusKey: 'movies', tab: NavigationTabId.movies),
+  series(ownFocusKey: 'series', tab: NavigationTabId.series),
   libraries(slot: NavRailSlot.libraries),
   liveTv(ownFocusKey: 'liveTv', tab: NavigationTabId.liveTv),
   search(ownFocusKey: 'search', tab: NavigationTabId.search),
@@ -62,6 +64,7 @@ class NavRailConditions {
     required this.showNowWatching,
     required this.showDownloads,
     required this.showFullscreenToggle,
+    this.showUnifiedCatalogs = false,
   });
 
   final bool isOfflineMode;
@@ -72,6 +75,14 @@ class NavRailConditions {
   final bool showNowWatching;
   final bool showDownloads;
   final bool showFullscreenToggle;
+
+  /// Whether the unified Films and Series catalogs are reachable from here.
+  ///
+  /// TV only in fase 5 (hoofdstuk 10 of docs/tvos-unified-experience.md), and a
+  /// condition rather than a `PlatformDetector` call inside
+  /// [buildNavRailDestinations] so this list stays a pure function of its
+  /// input — which is what its tests rely on.
+  final bool showUnifiedCatalogs;
 }
 
 /// The rail's destinations in visual top-to-bottom order.
@@ -83,6 +94,7 @@ List<NavRailDestination> buildNavRailDestinations(NavRailConditions c) => [
   if (c.isOfflineMode && c.canReconnect) NavRailDestination.reconnect,
   if (!c.isOfflineMode) ...[
     NavRailDestination.home,
+    if (c.showUnifiedCatalogs) ...[NavRailDestination.movies, NavRailDestination.series],
     NavRailDestination.libraries,
     if (c.hasLiveTv) NavRailDestination.liveTv,
     NavRailDestination.search,

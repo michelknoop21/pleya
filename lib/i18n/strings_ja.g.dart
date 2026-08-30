@@ -88,6 +88,7 @@ class TranslationsJa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddLocalFolderJa addLocalFolder = _TranslationsAddLocalFolderJa._(_root);
 	@override late final _TranslationsPleyaShareJa pleyaShare = _TranslationsPleyaShareJa._(_root);
 	@override late final _TranslationsSourcePickerJa sourcePicker = _TranslationsSourcePickerJa._(_root);
+	@override late final _TranslationsUnifiedCatalogJa unifiedCatalog = _TranslationsUnifiedCatalogJa._(_root);
 }
 
 // Path: app
@@ -1740,6 +1741,29 @@ class _TranslationsSourcePickerJa extends TranslationsSourcePickerEn {
 	@override String setPreferredServer({required Object server}) => '常に ${server} を使用';
 }
 
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogJa extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => '映画';
+	@override String get seriesTitle => 'シリーズ';
+	@override String sources({required Object count}) => '${count} 件のソース';
+	@override String get allSources => 'すべてのソース';
+	@override String get oneSource => '1 件のソース';
+	@override String titleCount({required Object count}) => '${count} 作品';
+	@override String get oneTitle => '1 作品';
+	@override String titlesLoaded({required Object count}) => '${count} 作品を読み込みました';
+	@override String get loadMore => 'さらに読み込む';
+	@override String get loadingMore => '読み込み中…';
+	@override late final _TranslationsUnifiedCatalogSortJa sort = _TranslationsUnifiedCatalogSortJa._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersJa filters = _TranslationsUnifiedCatalogFiltersJa._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesJa states = _TranslationsUnifiedCatalogStatesJa._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsJa semantics = _TranslationsUnifiedCatalogSemanticsJa._(_root);
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsJa extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsJa._(TranslationsJa root) : this._root = root, super.internal(root);
@@ -2017,6 +2041,74 @@ class _TranslationsTrackersLibraryFilterJa extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => '下でチェックしたライブラリのみ同期します。';
 	@override String get libraries => 'ライブラリ';
 	@override String get noLibraries => '利用できるライブラリがありません';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortJa extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '並べ替え';
+	@override String get titleAsc => 'タイトル昇順';
+	@override String get titleDesc => 'タイトル降順';
+	@override String get recentlyAdded => '追加が新しい順';
+	@override String get oldestAdded => '追加が古い順';
+	@override String get newestRelease => '公開が新しい順';
+	@override String get oldestRelease => '公開が古い順';
+	@override String get recentlyWatched => '最近見た順';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersJa extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'フィルター';
+	@override String get status => 'ステータス';
+	@override String get genre => 'ジャンル';
+	@override String get year => '年';
+	@override String get servers => 'サーバー';
+	@override String get libraries => 'ライブラリ';
+	@override String get apply => '適用';
+	@override String get clearAll => 'すべてクリア';
+	@override String get all => 'すべて';
+	@override String get unwatched => '未視聴';
+	@override String get unsupported => '現在のソースでは利用できません';
+	@override String get noValues => '選択できる項目がありません';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesJa extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => 'このカタログは空です';
+	@override String get emptyBody => '表示中のライブラリにこのページの項目はありません。';
+	@override String get filterEmptyTitle => 'このフィルターに一致する項目はありません';
+	@override String get filterEmptyBody => 'フィルターをクリアすると作品が増えます。';
+	@override String get clearFilters => 'フィルターをクリア';
+	@override String get errorTitle => 'カタログを読み込めませんでした';
+	@override String get errorBody => '応答したサーバーがありません。接続を確認してやり直してください。';
+	@override String get partialOne => '1 つのライブラリが応答しませんでした';
+	@override String partialMany({required Object count}) => '${count} つのライブラリが応答しませんでした';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsJa extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => '視聴済み';
+	@override String get inProgress => '視聴中';
+	@override String get loadingMore => '作品をさらに読み込み中';
 }
 
 /// The flat map containing all translations for locale <ja>.
@@ -3379,6 +3471,48 @@ extension on TranslationsJa {
 			'sourcePicker.rowSemantics' => ({required Object count, required Object index, required Object description}) => 'ソース ${count} 件中 ${index} 件目: ${description}',
 			'sourcePicker.preferredServer' => '優先サーバー',
 			'sourcePicker.setPreferredServer' => ({required Object server}) => '常に ${server} を使用',
+			'unifiedCatalog.moviesTitle' => '映画',
+			'unifiedCatalog.seriesTitle' => 'シリーズ',
+			'unifiedCatalog.sources' => ({required Object count}) => '${count} 件のソース',
+			'unifiedCatalog.allSources' => 'すべてのソース',
+			'unifiedCatalog.oneSource' => '1 件のソース',
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} 作品',
+			'unifiedCatalog.oneTitle' => '1 作品',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} 作品を読み込みました',
+			'unifiedCatalog.loadMore' => 'さらに読み込む',
+			'unifiedCatalog.loadingMore' => '読み込み中…',
+			'unifiedCatalog.sort.title' => '並べ替え',
+			'unifiedCatalog.sort.titleAsc' => 'タイトル昇順',
+			'unifiedCatalog.sort.titleDesc' => 'タイトル降順',
+			'unifiedCatalog.sort.recentlyAdded' => '追加が新しい順',
+			'unifiedCatalog.sort.oldestAdded' => '追加が古い順',
+			'unifiedCatalog.sort.newestRelease' => '公開が新しい順',
+			'unifiedCatalog.sort.oldestRelease' => '公開が古い順',
+			'unifiedCatalog.sort.recentlyWatched' => '最近見た順',
+			'unifiedCatalog.filters.title' => 'フィルター',
+			'unifiedCatalog.filters.status' => 'ステータス',
+			'unifiedCatalog.filters.genre' => 'ジャンル',
+			'unifiedCatalog.filters.year' => '年',
+			'unifiedCatalog.filters.servers' => 'サーバー',
+			'unifiedCatalog.filters.libraries' => 'ライブラリ',
+			'unifiedCatalog.filters.apply' => '適用',
+			'unifiedCatalog.filters.clearAll' => 'すべてクリア',
+			'unifiedCatalog.filters.all' => 'すべて',
+			'unifiedCatalog.filters.unwatched' => '未視聴',
+			'unifiedCatalog.filters.unsupported' => '現在のソースでは利用できません',
+			'unifiedCatalog.filters.noValues' => '選択できる項目がありません',
+			'unifiedCatalog.states.emptyTitle' => 'このカタログは空です',
+			'unifiedCatalog.states.emptyBody' => '表示中のライブラリにこのページの項目はありません。',
+			'unifiedCatalog.states.filterEmptyTitle' => 'このフィルターに一致する項目はありません',
+			'unifiedCatalog.states.filterEmptyBody' => 'フィルターをクリアすると作品が増えます。',
+			'unifiedCatalog.states.clearFilters' => 'フィルターをクリア',
+			'unifiedCatalog.states.errorTitle' => 'カタログを読み込めませんでした',
+			'unifiedCatalog.states.errorBody' => '応答したサーバーがありません。接続を確認してやり直してください。',
+			'unifiedCatalog.states.partialOne' => '1 つのライブラリが応答しませんでした',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} つのライブラリが応答しませんでした',
+			'unifiedCatalog.semantics.watched' => '視聴済み',
+			'unifiedCatalog.semantics.inProgress' => '視聴中',
+			'unifiedCatalog.semantics.loadingMore' => '作品をさらに読み込み中',
 			_ => null,
 		};
 	}

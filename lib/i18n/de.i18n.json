@@ -1472,5 +1472,57 @@
     "rowSemantics": "Quelle ${index} von ${count}: ${description}",
     "preferredServer": "Bevorzugter Server",
     "setPreferredServer": "Immer ${server} verwenden"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Filme",
+    "seriesTitle": "Serien",
+    "sources": "${count} Quellen",
+    "allSources": "Alle Quellen",
+    "oneSource": "1 Quelle",
+    "titleCount": "${count} Titel",
+    "oneTitle": "1 Titel",
+    "titlesLoaded": "${count} Titel geladen",
+    "loadMore": "Mehr laden",
+    "loadingMore": "Mehr wird geladen…",
+    "sort": {
+      "title": "Sortieren",
+      "titleAsc": "Titel A–Z",
+      "titleDesc": "Titel Z–A",
+      "recentlyAdded": "Zuletzt hinzugefügt",
+      "oldestAdded": "Zuerst hinzugefügt",
+      "newestRelease": "Neueste Veröffentlichung",
+      "oldestRelease": "Älteste Veröffentlichung",
+      "recentlyWatched": "Zuletzt gesehen"
+    },
+    "filters": {
+      "title": "Filter",
+      "status": "Status",
+      "genre": "Genre",
+      "year": "Jahr",
+      "servers": "Server",
+      "libraries": "Bibliotheken",
+      "apply": "Anwenden",
+      "clearAll": "Alles zurücksetzen",
+      "all": "Alle",
+      "unwatched": "Ungesehen",
+      "unsupported": "Für die aktuellen Quellen nicht verfügbar",
+      "noValues": "Nichts zur Auswahl"
+    },
+    "states": {
+      "emptyTitle": "Dieser Katalog ist leer",
+      "emptyBody": "Keine sichtbare Bibliothek enthält etwas für diese Seite.",
+      "filterEmptyTitle": "Nichts entspricht diesen Filtern",
+      "filterEmptyBody": "Entferne einen Filter, um mehr Titel zu sehen.",
+      "clearFilters": "Filter zurücksetzen",
+      "errorTitle": "Der Katalog konnte nicht geladen werden",
+      "errorBody": "Kein Server hat geantwortet. Prüfe deine Verbindung und versuche es erneut.",
+      "partialOne": "1 Bibliothek hat nicht geantwortet",
+      "partialMany": "${count} Bibliotheken haben nicht geantwortet"
+    },
+    "semantics": {
+      "watched": "Gesehen",
+      "inProgress": "Angefangen",
+      "loadingMore": "Weitere Titel werden geladen"
+    }
   }
 }

@@ -13,6 +13,7 @@ import '../../providers/download_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../services/storage_service.dart';
 import '../../services/unified_catalog/preferred_server_store.dart';
+import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../services/unified_catalog/source_preference_store.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/dialogs.dart';
@@ -59,6 +60,10 @@ Future<void> deleteProfile(BuildContext context, Profile profile) async {
   // Same rule for the profile's default server: which machine someone watches
   // from goes with the profile, it does not linger for the next one.
   await PreferredServerStore.clearForProfileScope(storage.userScopeForProfileId(profile.id));
+  // And how they had Films and Series set up (hoofdstuk 22): a genre or a
+  // library selection describes what someone browses, so it leaves with them
+  // rather than greeting the next profile on this device.
+  await UnifiedCatalogQueryStore.clearForProfileScope(storage.userScopeForProfileId(profile.id));
   await removeAllProfileConnectionsAndCleanup(
     profileId: profile.id,
     profileConnections: pcRegistry,

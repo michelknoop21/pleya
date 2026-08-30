@@ -40,7 +40,7 @@ import '../../mixins/refreshable.dart';
 import '../../mixins/item_updatable.dart';
 import '../../i18n/strings.g.dart';
 import '../../theme/mono_tokens.dart';
-import 'library_header.dart';
+import '../../widgets/library_header_bar.dart';
 import 'state_messages.dart';
 import 'tabs/library_browse_tab.dart';
 import 'tabs/library_recommended_tab.dart';

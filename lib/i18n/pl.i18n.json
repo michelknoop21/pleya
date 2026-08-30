@@ -1472,5 +1472,57 @@
     "rowSemantics": "Źródło ${index} z ${count}: ${description}",
     "preferredServer": "Preferowany serwer",
     "setPreferredServer": "Zawsze używaj ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Filmy",
+    "seriesTitle": "Seriale",
+    "sources": "źródła: ${count}",
+    "allSources": "Wszystkie źródła",
+    "oneSource": "1 źródło",
+    "titleCount": "Tytuły: ${count}",
+    "oneTitle": "1 tytuł",
+    "titlesLoaded": "Wczytano tytuły: ${count}",
+    "loadMore": "Wczytaj więcej",
+    "loadingMore": "Wczytywanie…",
+    "sort": {
+      "title": "Sortuj",
+      "titleAsc": "Tytuł A–Z",
+      "titleDesc": "Tytuł Z–A",
+      "recentlyAdded": "Ostatnio dodane",
+      "oldestAdded": "Najdawniej dodane",
+      "newestRelease": "Najnowsza premiera",
+      "oldestRelease": "Najstarsza premiera",
+      "recentlyWatched": "Ostatnio oglądane"
+    },
+    "filters": {
+      "title": "Filtry",
+      "status": "Status",
+      "genre": "Gatunek",
+      "year": "Rok",
+      "servers": "Serwery",
+      "libraries": "Biblioteki",
+      "apply": "Zastosuj",
+      "clearAll": "Wyczyść wszystko",
+      "all": "Wszystkie",
+      "unwatched": "Nieobejrzane",
+      "unsupported": "Niedostępne dla bieżących źródeł",
+      "noValues": "Brak opcji do wyboru"
+    },
+    "states": {
+      "emptyTitle": "Ten katalog jest pusty",
+      "emptyBody": "Żadna widoczna biblioteka nie zawiera nic dla tej strony.",
+      "filterEmptyTitle": "Nic nie pasuje do tych filtrów",
+      "filterEmptyBody": "Wyczyść filtr, aby zobaczyć więcej tytułów.",
+      "clearFilters": "Wyczyść filtry",
+      "errorTitle": "Nie udało się wczytać katalogu",
+      "errorBody": "Żaden serwer nie odpowiedział. Sprawdź połączenie i spróbuj ponownie.",
+      "partialOne": "1 biblioteka nie odpowiedziała",
+      "partialMany": "Biblioteki, które nie odpowiedziały: ${count}"
+    },
+    "semantics": {
+      "watched": "Obejrzane",
+      "inProgress": "W trakcie",
+      "loadingMore": "Wczytywanie kolejnych tytułów"
+    }
   }
 }

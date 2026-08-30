@@ -274,6 +274,8 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
   // Focus keys come from the destination enum, so the rail cannot hold a key
   // that no destination owns.
   static final _kHome = NavRailDestination.home.ownFocusKey!;
+  static final _kMovies = NavRailDestination.movies.ownFocusKey!;
+  static final _kSeries = NavRailDestination.series.ownFocusKey!;
   static final _kSearch = NavRailDestination.search.ownFocusKey!;
   static final _kRequests = NavRailDestination.requests.ownFocusKey!;
   static final _kWatchlist = NavRailDestination.watchlist.ownFocusKey!;
@@ -482,6 +484,10 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     switch (widget.selectedTab) {
       case NavigationTabId.discover:
         return _kHome;
+      case NavigationTabId.movies:
+        return _kMovies;
+      case NavigationTabId.series:
+        return _kSeries;
       case NavigationTabId.libraries:
         final libKey = widget.selectedLibraryKey;
         if (libKey != null) {
@@ -759,6 +765,9 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
       showNowWatching: _showNowWatching(context),
       showDownloads: _showDownloads,
       showFullscreenToggle: _showFullscreenToggle,
+      // Fase 5: the unified Films and Series catalogs are 10-foot surfaces and
+      // reachable on TV only. Desktop keeps Bibliotheken as its browse entry.
+      showUnifiedCatalogs: PlatformDetector.isTV(),
     );
     final destinations = buildNavRailDestinations(conditions);
 
@@ -1042,6 +1051,20 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
         icon: Symbols.home_rounded,
         svgAsset: NavGlyphs.home,
         label: labels.common.home,
+        isCollapsed: isCollapsed,
+      ),
+      NavRailDestination.movies => _buildTabNavItem(
+        destination,
+        icon: Symbols.movie_rounded,
+        svgAsset: NavGlyphs.libMovie,
+        label: labels.unifiedCatalog.moviesTitle,
+        isCollapsed: isCollapsed,
+      ),
+      NavRailDestination.series => _buildTabNavItem(
+        destination,
+        icon: Symbols.live_tv_rounded,
+        svgAsset: NavGlyphs.libShow,
+        label: labels.unifiedCatalog.seriesTitle,
         isCollapsed: isCollapsed,
       ),
       NavRailDestination.libraries => _buildLibrariesFlat(visibleRows, t, isCollapsed: isCollapsed),

@@ -1472,5 +1472,57 @@
     "rowSemantics": "ソース ${count} 件中 ${index} 件目: ${description}",
     "preferredServer": "優先サーバー",
     "setPreferredServer": "常に ${server} を使用"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "映画",
+    "seriesTitle": "シリーズ",
+    "sources": "${count} 件のソース",
+    "allSources": "すべてのソース",
+    "oneSource": "1 件のソース",
+    "titleCount": "${count} 作品",
+    "oneTitle": "1 作品",
+    "titlesLoaded": "${count} 作品を読み込みました",
+    "loadMore": "さらに読み込む",
+    "loadingMore": "読み込み中…",
+    "sort": {
+      "title": "並べ替え",
+      "titleAsc": "タイトル昇順",
+      "titleDesc": "タイトル降順",
+      "recentlyAdded": "追加が新しい順",
+      "oldestAdded": "追加が古い順",
+      "newestRelease": "公開が新しい順",
+      "oldestRelease": "公開が古い順",
+      "recentlyWatched": "最近見た順"
+    },
+    "filters": {
+      "title": "フィルター",
+      "status": "ステータス",
+      "genre": "ジャンル",
+      "year": "年",
+      "servers": "サーバー",
+      "libraries": "ライブラリ",
+      "apply": "適用",
+      "clearAll": "すべてクリア",
+      "all": "すべて",
+      "unwatched": "未視聴",
+      "unsupported": "現在のソースでは利用できません",
+      "noValues": "選択できる項目がありません"
+    },
+    "states": {
+      "emptyTitle": "このカタログは空です",
+      "emptyBody": "表示中のライブラリにこのページの項目はありません。",
+      "filterEmptyTitle": "このフィルターに一致する項目はありません",
+      "filterEmptyBody": "フィルターをクリアすると作品が増えます。",
+      "clearFilters": "フィルターをクリア",
+      "errorTitle": "カタログを読み込めませんでした",
+      "errorBody": "応答したサーバーがありません。接続を確認してやり直してください。",
+      "partialOne": "1 つのライブラリが応答しませんでした",
+      "partialMany": "${count} つのライブラリが応答しませんでした"
+    },
+    "semantics": {
+      "watched": "視聴済み",
+      "inProgress": "視聴中",
+      "loadingMore": "作品をさらに読み込み中"
+    }
   }
 }

@@ -18,10 +18,15 @@
 ///   at 18.7 logical on the canonical canvas, which is ~34 reference px — inside
 ///   hoofdstuk 8.3's "source picker titel 32–38".
 ///
-/// This grows one phase at a time. Fase 4 needs the source picker only; the
-/// billboard, page-header and carousel tokens hoofdstuk 8 also lists land in the
-/// phases that build those surfaces, rather than being invented here first.
+/// This grows one phase at a time. Fase 4 added the source picker; fase 5 adds
+/// the Films/Series page header, grid and card ([TvCatalogLayout]). The
+/// billboard and carousel tokens hoofdstuk 8 also lists land in the phases that
+/// build those surfaces, rather than being invented here first.
 library;
+
+import 'dart:math' as math;
+
+import '../../utils/layout_constants.dart';
 
 /// Base metrics for the source picker of hoofdstuk 14. Multiply by
 /// [TvLayoutConstants.scaleOf] at the use site.
@@ -144,4 +149,189 @@ class TvSourcePickerLayout {
 
   /// Track behind the red resume fill.
   static const double progressTrack = 0.16;
+}
+
+/// Base metrics for the Films and Series pages of hoofdstuk 10. Multiply the
+/// type and density values by [TvLayoutConstants.scaleOf] at the use site; the
+/// column count and the gutters come from [TvCatalogGrid.forWidth], which needs
+/// the live viewport.
+class TvCatalogLayout {
+  const TvCatalogLayout._();
+
+  /// Hoofdstuk 8.1's vertical breathing room above the header, as a reference
+  /// measurement: no text and no focus ring inside the outer 56 px.
+  static const double topSafeInset = 56;
+
+  /// Page heading, hoofdstuk 8.3's "paginaheading Films/Series 38–44" divided
+  /// by the [TvLayoutConstants.scaleForHeight] clamp: 27 renders at ~23 logical
+  /// on the canonical canvas, which is ~42 reference px — the upper half of the
+  /// band. Deliberately not the top of it: this is the only permanent piece of
+  /// chrome that says which catalog you are in, so it has to win the page, but
+  /// at 47 reference px it started competing with the posters instead of
+  /// introducing them.
+  static const double pageTitleFontSize = 27;
+
+  /// Gap between the page title and the header actions beside it.
+  static const double titleActionGap = 26;
+
+  /// Gap between the header line and the first grid row. Roomy on purpose: it
+  /// is the whole separation between chrome and content on a page with no
+  /// hero, no divider and no background change to do that job.
+  static const double headerContentGap = 20;
+
+  /// A header action's capsule.
+  static const double actionFontSize = 15;
+  static const double actionPaddingHorizontal = 15;
+  static const double actionPaddingVertical = 8;
+  static const double actionGap = 10;
+  static const double actionRadius = 999;
+  static const double actionIconSize = 17;
+  static const double actionIconGap = 8;
+
+  /// Gap between a capsule and its focus ring, for the same reason
+  /// [TvSourcePickerLayout.buttonFocusRingGap] exists: a white ring drawn onto
+  /// a pale capsule reads as a slightly fatter capsule, not as focus.
+  static const double actionFocusRingGap = 3;
+
+  /// The count badge on the Filters action (hoofdstuk 10.6).
+  static const double actionBadgeSize = 18;
+  static const double actionBadgeFontSize = 11;
+
+  /// Card metrics. The poster is 2:3 (hoofdstuk 10.2, binding for both pages);
+  /// the meta footer below it is the shared card language both mockups use.
+  static const double posterAspectRatio = 2 / 3;
+  static const double cardRadius = 10;
+
+  /// Title and context line inside the footer. 14 renders at ~11.9 logical,
+  /// ~22 reference px — inside hoofdstuk 8.3's "card title 18–21" at the top,
+  /// which is where a two-line title still reads at three metres.
+  static const double cardTitleFontSize = 14;
+
+  /// Line height of a card title, and the multiplier that reserves two lines of
+  /// it whether the title needs both or not — see the card's own comment.
+  static const double cardTitleLineHeight = 1.2;
+  static const double cardMetaFontSize = 11.5;
+  static const double cardFooterPaddingHorizontal = 10;
+  static const double cardFooterPaddingVertical = 9;
+  static const double cardFooterLineGap = 3;
+
+  /// Density of a panel option row — one line of text, sometimes two.
+  ///
+  /// Its own set rather than [TvSourcePickerLayout]'s row metrics: a source row
+  /// carries server, library, quality and progress on three tiers and is sized
+  /// for that, and inheriting it made the sort panel's seven fixed options
+  /// overflow a panel they should never have needed to scroll. A list a remote
+  /// has to walk is better when the whole list is on screen.
+  static const double optionRowMinHeight = 38;
+  static const double optionRowPaddingHorizontal = 16;
+  static const double optionRowPaddingVertical = 8;
+  static const double optionRowGap = 7;
+
+  /// The multi-source badge of hoofdstuk 10.3.
+  static const double badgeFontSize = 10.5;
+  static const double badgePaddingHorizontal = 7;
+  static const double badgePaddingVertical = 3;
+  static const double badgeRadius = 5;
+  static const double badgeInset = 7;
+
+  /// Progress bar along the bottom edge of the artwork.
+  static const double progressBarHeight = 4;
+
+  /// The watched tick, which sits on the artwork rather than in the context
+  /// line. In the line it had to share a row with the genre, so at card width
+  /// the genre truncated to make room for a 15px glyph and the result read as a
+  /// broken string next to a dot. On the artwork it is a state marker beside
+  /// the source badge, which is what it is.
+  static const double watchedIconSize = 17;
+  static const double watchedBadgePadding = 4;
+
+  /// Ink ladder, as alphas on `MonoTokens.text` — the same three tiers and the
+  /// same reasoning as [TvSourcePickerLayout]'s, so a card and a source row
+  /// read as one design system rather than two.
+  static const double inkPrimary = 1;
+  static const double inkSecondary = 0.62;
+
+  /// Fill and outline of a card's meta footer, as alphas on `MonoTokens.text`
+  /// over the page background. Low enough that the artwork stays the loudest
+  /// thing on the page; high enough that a card reads as one object rather than
+  /// as a poster with text floating under it.
+  static const double cardFooterFill = 0.05;
+  static const double cardOutline = 0.06;
+
+  /// Fill of the badge capsule, as an alpha on black over the artwork. Black
+  /// rather than a theme colour: it sits on a poster, not on a surface, and
+  /// hoofdstuk 10.3 asks for "kleine donkere/transparante capsule".
+  static const double badgeFill = 0.62;
+
+  /// The placeholder behind artwork that has not loaded, and behind a source
+  /// with no poster at all.
+  static const double artworkPlaceholderFill = 0.06;
+}
+
+/// A resolved Films/Series grid: how many columns fit, and how wide a card is.
+///
+/// Hoofdstuk 10.2 asks for "6–7 kolommen afhankelijk van dichtheid", which is a
+/// *result*, not an input: it is what a 2:3 poster at a readable 10-foot size
+/// works out to inside the safe area on the canonical canvas. Deriving it from
+/// the live width instead of hardcoding it is what keeps that true on a 720p
+/// output, in a simulator window and in the golden harness — and what stops a
+/// hardcoded 6 from producing 40 logical pixels of poster on a narrow surface.
+class TvCatalogGrid {
+  const TvCatalogGrid({required this.columns, required this.cardWidth, required this.gutter, required this.inset});
+
+  final int columns;
+  final double cardWidth;
+  final double gutter;
+  final double inset;
+
+  /// Ideal card width on the 1920-wide reference surface, expressed as a
+  /// fraction so it converts like every other box measurement in this file
+  /// (see `overlay_sheet_geometry.dart`'s TV panel section for the same rule).
+  ///
+  /// It is derived, not chosen: 1920 minus two 72px safe insets is 1776, and
+  /// six columns with five 26px gutters divide that into 274px cards. Six
+  /// rather than seven because hoofdstuk 10.2's band is 6–7 "afhankelijk van
+  /// dichtheid", and on a 2:3 poster the wider end is what keeps a card title
+  /// readable from three metres — the whole reason the band has a bottom.
+  static const double _referenceCardWidth = 274;
+  static const double _referenceGutter = 26;
+  static const double _referenceWidth = 1920;
+
+  /// Hard bounds on the result. Six and seven are the contract's band; the
+  /// clamp exists for surfaces the contract does not describe, where honouring
+  /// the band literally would be worse than leaving it (a 640-wide window
+  /// cannot show six readable posters, and pretending otherwise renders six
+  /// unreadable ones).
+  static const int minColumns = 3;
+  static const int maxColumns = 8;
+
+  /// Resolves the grid for a viewport [width].
+  ///
+  /// **The insets and gutters are viewport fractions, not `scale` multiples.**
+  /// This file's own header states the rule — box composition is a proportion
+  /// of the viewport, type and density go through the clamped
+  /// [TvLayoutConstants.scaleOf] — and getting it wrong here is expensive:
+  /// `72 * 0.85` is 61 logical pixels, which on the canonical canvas is 113
+  /// *reference* pixels, half again as wide as hoofdstuk 8.1's margin. That
+  /// wider margin is what pushed the first render down to six cramped columns
+  /// with the page's whole left edge in the wrong place.
+  ///
+  /// [scale] is still taken, because a caller resolving a grid has one and the
+  /// card *content* inside it needs it; it deliberately does not enter the box
+  /// arithmetic.
+  factory TvCatalogGrid.forWidth(double width, {required double scale}) {
+    final inset = width * (TvLayoutConstants.horizontalInset / _referenceWidth);
+    final gutter = width * (_referenceGutter / _referenceWidth);
+    final available = math.max(0.0, width - inset * 2);
+    final ideal = width * (_referenceCardWidth / _referenceWidth);
+
+    // Round to the column count whose cards land closest to the ideal width,
+    // rather than flooring: flooring biases every surface towards cards wider
+    // than intended, and on the canonical canvas it is the difference between
+    // six columns and five.
+    final raw = ideal <= 0 ? minColumns : ((available + gutter) / (ideal + gutter)).round();
+    final columns = raw.clamp(minColumns, maxColumns);
+    final cardWidth = math.max(0.0, (available - gutter * (columns - 1)) / columns);
+    return TvCatalogGrid(columns: columns, cardWidth: cardWidth, gutter: gutter, inset: inset);
+  }
 }

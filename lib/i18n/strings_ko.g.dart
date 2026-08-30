@@ -88,6 +88,7 @@ class TranslationsKo extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddLocalFolderKo addLocalFolder = _TranslationsAddLocalFolderKo._(_root);
 	@override late final _TranslationsPleyaShareKo pleyaShare = _TranslationsPleyaShareKo._(_root);
 	@override late final _TranslationsSourcePickerKo sourcePicker = _TranslationsSourcePickerKo._(_root);
+	@override late final _TranslationsUnifiedCatalogKo unifiedCatalog = _TranslationsUnifiedCatalogKo._(_root);
 }
 
 // Path: app
@@ -1740,6 +1741,29 @@ class _TranslationsSourcePickerKo extends TranslationsSourcePickerEn {
 	@override String setPreferredServer({required Object server}) => '항상 ${server} 사용';
 }
 
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogKo extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => '영화';
+	@override String get seriesTitle => '시리즈';
+	@override String sources({required Object count}) => '소스 ${count}개';
+	@override String get allSources => '모든 소스';
+	@override String get oneSource => '소스 1개';
+	@override String titleCount({required Object count}) => '${count}개 작품';
+	@override String get oneTitle => '1개 작품';
+	@override String titlesLoaded({required Object count}) => '${count}개 작품 불러옴';
+	@override String get loadMore => '더 불러오기';
+	@override String get loadingMore => '불러오는 중…';
+	@override late final _TranslationsUnifiedCatalogSortKo sort = _TranslationsUnifiedCatalogSortKo._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersKo filters = _TranslationsUnifiedCatalogFiltersKo._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesKo states = _TranslationsUnifiedCatalogStatesKo._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsKo semantics = _TranslationsUnifiedCatalogSemanticsKo._(_root);
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsKo extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsKo._(TranslationsKo root) : this._root = root, super.internal(root);
@@ -2017,6 +2041,74 @@ class _TranslationsTrackersLibraryFilterKo extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => '아래에 선택한 라이브러리만 동기화합니다.';
 	@override String get libraries => '라이브러리';
 	@override String get noLibraries => '사용 가능한 라이브러리가 없습니다';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortKo extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '정렬';
+	@override String get titleAsc => '제목 오름차순';
+	@override String get titleDesc => '제목 내림차순';
+	@override String get recentlyAdded => '최근 추가순';
+	@override String get oldestAdded => '오래전 추가순';
+	@override String get newestRelease => '최신 개봉순';
+	@override String get oldestRelease => '오래된 개봉순';
+	@override String get recentlyWatched => '최근 시청순';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersKo extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '필터';
+	@override String get status => '상태';
+	@override String get genre => '장르';
+	@override String get year => '연도';
+	@override String get servers => '서버';
+	@override String get libraries => '라이브러리';
+	@override String get apply => '적용';
+	@override String get clearAll => '모두 지우기';
+	@override String get all => '전체';
+	@override String get unwatched => '미시청';
+	@override String get unsupported => '현재 소스에서는 사용할 수 없음';
+	@override String get noValues => '선택할 항목이 없음';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesKo extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => '이 카탈로그가 비어 있습니다';
+	@override String get emptyBody => '표시된 라이브러리에 이 페이지에 해당하는 항목이 없습니다.';
+	@override String get filterEmptyTitle => '이 필터와 일치하는 항목이 없습니다';
+	@override String get filterEmptyBody => '필터를 지우면 더 많은 작품을 볼 수 있습니다.';
+	@override String get clearFilters => '필터 지우기';
+	@override String get errorTitle => '카탈로그를 불러오지 못했습니다';
+	@override String get errorBody => '응답한 서버가 없습니다. 연결을 확인한 뒤 다시 시도하세요.';
+	@override String get partialOne => '라이브러리 1개가 응답하지 않았습니다';
+	@override String partialMany({required Object count}) => '라이브러리 ${count}개가 응답하지 않았습니다';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsKo extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => '시청함';
+	@override String get inProgress => '시청 중';
+	@override String get loadingMore => '작품을 더 불러오는 중';
 }
 
 /// The flat map containing all translations for locale <ko>.
@@ -3379,6 +3471,48 @@ extension on TranslationsKo {
 			'sourcePicker.rowSemantics' => ({required Object count, required Object index, required Object description}) => '소스 ${count}개 중 ${index}번째: ${description}',
 			'sourcePicker.preferredServer' => '기본 서버',
 			'sourcePicker.setPreferredServer' => ({required Object server}) => '항상 ${server} 사용',
+			'unifiedCatalog.moviesTitle' => '영화',
+			'unifiedCatalog.seriesTitle' => '시리즈',
+			'unifiedCatalog.sources' => ({required Object count}) => '소스 ${count}개',
+			'unifiedCatalog.allSources' => '모든 소스',
+			'unifiedCatalog.oneSource' => '소스 1개',
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count}개 작품',
+			'unifiedCatalog.oneTitle' => '1개 작품',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count}개 작품 불러옴',
+			'unifiedCatalog.loadMore' => '더 불러오기',
+			'unifiedCatalog.loadingMore' => '불러오는 중…',
+			'unifiedCatalog.sort.title' => '정렬',
+			'unifiedCatalog.sort.titleAsc' => '제목 오름차순',
+			'unifiedCatalog.sort.titleDesc' => '제목 내림차순',
+			'unifiedCatalog.sort.recentlyAdded' => '최근 추가순',
+			'unifiedCatalog.sort.oldestAdded' => '오래전 추가순',
+			'unifiedCatalog.sort.newestRelease' => '최신 개봉순',
+			'unifiedCatalog.sort.oldestRelease' => '오래된 개봉순',
+			'unifiedCatalog.sort.recentlyWatched' => '최근 시청순',
+			'unifiedCatalog.filters.title' => '필터',
+			'unifiedCatalog.filters.status' => '상태',
+			'unifiedCatalog.filters.genre' => '장르',
+			'unifiedCatalog.filters.year' => '연도',
+			'unifiedCatalog.filters.servers' => '서버',
+			'unifiedCatalog.filters.libraries' => '라이브러리',
+			'unifiedCatalog.filters.apply' => '적용',
+			'unifiedCatalog.filters.clearAll' => '모두 지우기',
+			'unifiedCatalog.filters.all' => '전체',
+			'unifiedCatalog.filters.unwatched' => '미시청',
+			'unifiedCatalog.filters.unsupported' => '현재 소스에서는 사용할 수 없음',
+			'unifiedCatalog.filters.noValues' => '선택할 항목이 없음',
+			'unifiedCatalog.states.emptyTitle' => '이 카탈로그가 비어 있습니다',
+			'unifiedCatalog.states.emptyBody' => '표시된 라이브러리에 이 페이지에 해당하는 항목이 없습니다.',
+			'unifiedCatalog.states.filterEmptyTitle' => '이 필터와 일치하는 항목이 없습니다',
+			'unifiedCatalog.states.filterEmptyBody' => '필터를 지우면 더 많은 작품을 볼 수 있습니다.',
+			'unifiedCatalog.states.clearFilters' => '필터 지우기',
+			'unifiedCatalog.states.errorTitle' => '카탈로그를 불러오지 못했습니다',
+			'unifiedCatalog.states.errorBody' => '응답한 서버가 없습니다. 연결을 확인한 뒤 다시 시도하세요.',
+			'unifiedCatalog.states.partialOne' => '라이브러리 1개가 응답하지 않았습니다',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => '라이브러리 ${count}개가 응답하지 않았습니다',
+			'unifiedCatalog.semantics.watched' => '시청함',
+			'unifiedCatalog.semantics.inProgress' => '시청 중',
+			'unifiedCatalog.semantics.loadingMore' => '작품을 더 불러오는 중',
 			_ => null,
 		};
 	}

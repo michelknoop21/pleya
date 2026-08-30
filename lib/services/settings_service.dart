@@ -11,6 +11,7 @@ import '../i18n/strings.g.dart';
 import '../models/mpv_config_models.dart';
 import '../media/track_language_choice.dart';
 import '../media/unified/remembered_source_choice.dart';
+import 'unified_catalog/unified_catalog_filters.dart';
 import '../mpv/models.dart' show AudioNormalizationMode;
 import 'audio_output_decision.dart' show AudioOutputMode, AudioPriority;
 import '../models/external_player_models.dart';
@@ -610,6 +611,25 @@ class SettingsService extends BaseSharedPreferencesService {
   /// The value is a server id and never a server name: names are user-editable
   /// and duplicate across servers (case A7), so a name-keyed preference would
   /// silently follow a rename onto the wrong machine.
+  /// How each profile last left the Films and Series pages — sort plus the
+  /// filters it applied — keyed `{profileScope}|{kind}`.
+  ///
+  /// A *view* setting, and deliberately a third pref rather than a field on
+  /// either of the two above: [unifiedSourcePreferences] and
+  /// [preferredUnifiedServer] both answer "which concrete source opens", while
+  /// this one answers "what does this page show, in what order", and may never
+  /// select a source for anyone. At most two entries per profile, so unlike
+  /// [unifiedSourcePreferences] there is no LRU cap to keep. Read and written
+  /// through `UnifiedCatalogQueryStore`.
+  static final unifiedCatalogPreferences = JsonPref<Map<String, UnifiedCatalogPreferences>>(
+    'unified_catalog_preferences',
+    defaultValue: const {},
+    encode: (v) => json.encode(v.map((key, prefs) => MapEntry(key, prefs.toJson()))),
+    decode: (raw) => (raw as Map<String, dynamic>).map(
+      (key, value) => MapEntry(key, UnifiedCatalogPreferences.fromJson(value as Map<String, dynamic>)),
+    ),
+  );
+
   static final preferredUnifiedServer = JsonPref<Map<String, String>>(
     'preferred_unified_server',
     defaultValue: const {},

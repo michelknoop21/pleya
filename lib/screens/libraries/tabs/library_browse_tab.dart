@@ -65,10 +65,19 @@ import '../../../utils/platform_detector.dart';
 import '../../../i18n/strings.g.dart';
 import '../../main_screen.dart';
 import 'base_library_tab.dart';
-import '../library_header.dart';
+import '../../../widgets/library_header_bar.dart';
 
 /// Browse tab for library screen
 /// Shows library items with grouping, filtering, and sorting
+/// The three actions this tab contributes to the screen header, as an identity
+/// rather than as three focus nodes.
+///
+/// Fase 5A needs to remember *which* action was last opened so UP from the grid
+/// can return to it (hoofdstuk 7.4 read with 7.6's focus memory), and a
+/// remembered `FocusNode` would be a remembered pointer at a chip that may have
+/// been hidden since — clearing every filter removes the Filters chip.
+enum _LibraryHeaderAction { grouping, filters, sort }
+
 class LibraryBrowseTab extends BaseLibraryTab<MediaItem> {
   /// Invoked whenever the tab resets its inner scroll position to the top
   /// (filter/sort change, library reload, etc.). Lets the parent resync the
@@ -466,21 +475,58 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     _focusHeaderActions();
   }
 
-  /// Focus the first of our header actions. The header publishes them one frame
-  /// behind this tab's build (see [_publishHeaderInfo]), so a request that
-  /// arrives before the chip is mounted gets one retry on the next frame
-  /// instead of silently dropping focus.
+  /// Focus the header action UP from the content should land on.
+  ///
+  /// Not always the first one. Fase 5A of docs/tvos-unified-experience.md fixes
+  /// the order as: the action the user last opened, when it is still on screen;
+  /// otherwise Filters; otherwise Sorteren; otherwise Groepering. Filters leads
+  /// the fallbacks because it is the action that changes the list most and the
+  /// one that carries a count — landing on Groepering every time made the two
+  /// actions people actually use a second and third press away.
+  ///
+  /// The header publishes its actions one frame behind this tab's build (see
+  /// [_publishHeaderInfo]), so a request that arrives before the chip is
+  /// mounted gets one retry on the next frame instead of silently dropping
+  /// focus.
   void _focusHeaderActions() {
     void request() {
       if (!mounted) return;
-      if (_groupingChipFocusNode.context == null) return;
-      if (_groupingChipFocusNode.hasFocus) return;
-      _groupingChipFocusNode.requestFocus();
+      final node = _preferredHeaderActionNode();
+      if (node == null || node.context == null) return;
+      if (node.hasFocus) return;
+      node.requestFocus();
     }
 
     request();
     WidgetsBinding.instance.addPostFrameCallback((_) => request());
   }
+
+  /// The node [_focusHeaderActions] should hand focus to, or null when this tab
+  /// contributes no actions at all.
+  ///
+  /// "Still on screen" is the whole reason [_lastUsedHeaderAction] is checked
+  /// against the visibility getters rather than trusted: clearing every filter
+  /// hides the Filters chip, and a remembered pointer at a chip that no longer
+  /// exists would send focus nowhere.
+  FocusNode? _preferredHeaderActionNode() {
+    final remembered = _lastUsedHeaderAction;
+    if (remembered != null && _isHeaderActionVisible(remembered)) return _headerActionNode(remembered);
+    if (_isFiltersChipVisible) return _filtersChipFocusNode;
+    if (_isSortChipVisible) return _sortChipFocusNode;
+    return _groupingChipFocusNode;
+  }
+
+  bool _isHeaderActionVisible(_LibraryHeaderAction action) => switch (action) {
+    _LibraryHeaderAction.grouping => true,
+    _LibraryHeaderAction.filters => _isFiltersChipVisible,
+    _LibraryHeaderAction.sort => _isSortChipVisible,
+  };
+
+  FocusNode _headerActionNode(_LibraryHeaderAction action) => switch (action) {
+    _LibraryHeaderAction.grouping => _groupingChipFocusNode,
+    _LibraryHeaderAction.filters => _filtersChipFocusNode,
+    _LibraryHeaderAction.sort => _sortChipFocusNode,
+  };
 
   /// Show the mobile browse options sheet from the parent app bar.
   void showBrowseOptionsSheet() {
@@ -1579,6 +1625,13 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
     }
   }
 
+  /// Which header action the user last opened, for [_preferredHeaderActionNode].
+  ///
+  /// Deliberately not persisted and deliberately per-tab: it is a memory of
+  /// where the remote was a moment ago, not a setting. Reset with the tab, so a
+  /// different library starts from the default order again.
+  _LibraryHeaderAction? _lastUsedHeaderAction;
+
   /// Whether the filters chip is visible
   bool get _isFiltersChipVisible =>
       (_filters.isNotEmpty || _selectedFilters.isNotEmpty) && _selectedGrouping != 'folders';
@@ -1621,7 +1674,10 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
           value: _selectedFilters.isEmpty ? null : '${_selectedFilters.length}',
           isActive: _selectedFilters.isNotEmpty,
           focusNode: _filtersChipFocusNode,
-          onPressed: _showFiltersBottomSheet,
+          onPressed: () {
+            _lastUsedHeaderAction = _LibraryHeaderAction.filters;
+            _showFiltersBottomSheet();
+          },
           onNavigateDown: _navigateToGrid,
           onNavigateUp: widget.onBack,
           onNavigateLeft: () => _groupingChipFocusNode.requestFocus(),
@@ -1637,7 +1693,10 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
           label: t.libraries.sort,
           value: _selectedSort?.title,
           focusNode: _sortChipFocusNode,
-          onPressed: _showSortBottomSheet,
+          onPressed: () {
+            _lastUsedHeaderAction = _LibraryHeaderAction.sort;
+            _showSortBottomSheet();
+          },
           onNavigateDown: _navigateToGrid,
           onNavigateUp: widget.onBack,
           onNavigateLeft: _isFiltersChipVisible

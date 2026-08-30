@@ -88,6 +88,7 @@ class TranslationsRu extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddLocalFolderRu addLocalFolder = _TranslationsAddLocalFolderRu._(_root);
 	@override late final _TranslationsPleyaShareRu pleyaShare = _TranslationsPleyaShareRu._(_root);
 	@override late final _TranslationsSourcePickerRu sourcePicker = _TranslationsSourcePickerRu._(_root);
+	@override late final _TranslationsUnifiedCatalogRu unifiedCatalog = _TranslationsUnifiedCatalogRu._(_root);
 }
 
 // Path: app
@@ -1740,6 +1741,29 @@ class _TranslationsSourcePickerRu extends TranslationsSourcePickerEn {
 	@override String setPreferredServer({required Object server}) => 'Всегда использовать ${server}';
 }
 
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogRu extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => 'Фильмы';
+	@override String get seriesTitle => 'Сериалы';
+	@override String sources({required Object count}) => 'Источников: ${count}';
+	@override String get allSources => 'Все источники';
+	@override String get oneSource => '1 источник';
+	@override String titleCount({required Object count}) => 'Названий: ${count}';
+	@override String get oneTitle => '1 название';
+	@override String titlesLoaded({required Object count}) => 'Загружено названий: ${count}';
+	@override String get loadMore => 'Загрузить ещё';
+	@override String get loadingMore => 'Загрузка…';
+	@override late final _TranslationsUnifiedCatalogSortRu sort = _TranslationsUnifiedCatalogSortRu._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersRu filters = _TranslationsUnifiedCatalogFiltersRu._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesRu states = _TranslationsUnifiedCatalogStatesRu._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsRu semantics = _TranslationsUnifiedCatalogSemanticsRu._(_root);
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsRu extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsRu._(TranslationsRu root) : this._root = root, super.internal(root);
@@ -2017,6 +2041,74 @@ class _TranslationsTrackersLibraryFilterRu extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => 'Синхронизировать только библиотеки, отмеченные ниже.';
 	@override String get libraries => 'Библиотеки';
 	@override String get noLibraries => 'Библиотеки недоступны';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortRu extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Сортировка';
+	@override String get titleAsc => 'Название А–Я';
+	@override String get titleDesc => 'Название Я–А';
+	@override String get recentlyAdded => 'Недавно добавленные';
+	@override String get oldestAdded => 'Давно добавленные';
+	@override String get newestRelease => 'Новые по выходу';
+	@override String get oldestRelease => 'Старые по выходу';
+	@override String get recentlyWatched => 'Недавно просмотренные';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersRu extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Фильтры';
+	@override String get status => 'Статус';
+	@override String get genre => 'Жанр';
+	@override String get year => 'Год';
+	@override String get servers => 'Серверы';
+	@override String get libraries => 'Библиотеки';
+	@override String get apply => 'Применить';
+	@override String get clearAll => 'Очистить всё';
+	@override String get all => 'Все';
+	@override String get unwatched => 'Непросмотренные';
+	@override String get unsupported => 'Недоступно для текущих источников';
+	@override String get noValues => 'Нечего выбрать';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesRu extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => 'Этот каталог пуст';
+	@override String get emptyBody => 'Ни одна видимая библиотека не содержит ничего для этой страницы.';
+	@override String get filterEmptyTitle => 'Ничего не соответствует этим фильтрам';
+	@override String get filterEmptyBody => 'Сбросьте фильтр, чтобы увидеть больше названий.';
+	@override String get clearFilters => 'Сбросить фильтры';
+	@override String get errorTitle => 'Не удалось загрузить каталог';
+	@override String get errorBody => 'Ни один сервер не ответил. Проверьте подключение и повторите попытку.';
+	@override String get partialOne => '1 библиотека не ответила';
+	@override String partialMany({required Object count}) => 'Не ответило библиотек: ${count}';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsRu extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => 'Просмотрено';
+	@override String get inProgress => 'В процессе';
+	@override String get loadingMore => 'Загрузка других названий';
 }
 
 /// The flat map containing all translations for locale <ru>.
@@ -3379,6 +3471,48 @@ extension on TranslationsRu {
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Источник ${index} из ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Предпочитаемый сервер',
 			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Всегда использовать ${server}',
+			'unifiedCatalog.moviesTitle' => 'Фильмы',
+			'unifiedCatalog.seriesTitle' => 'Сериалы',
+			'unifiedCatalog.sources' => ({required Object count}) => 'Источников: ${count}',
+			'unifiedCatalog.allSources' => 'Все источники',
+			'unifiedCatalog.oneSource' => '1 источник',
+			'unifiedCatalog.titleCount' => ({required Object count}) => 'Названий: ${count}',
+			'unifiedCatalog.oneTitle' => '1 название',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => 'Загружено названий: ${count}',
+			'unifiedCatalog.loadMore' => 'Загрузить ещё',
+			'unifiedCatalog.loadingMore' => 'Загрузка…',
+			'unifiedCatalog.sort.title' => 'Сортировка',
+			'unifiedCatalog.sort.titleAsc' => 'Название А–Я',
+			'unifiedCatalog.sort.titleDesc' => 'Название Я–А',
+			'unifiedCatalog.sort.recentlyAdded' => 'Недавно добавленные',
+			'unifiedCatalog.sort.oldestAdded' => 'Давно добавленные',
+			'unifiedCatalog.sort.newestRelease' => 'Новые по выходу',
+			'unifiedCatalog.sort.oldestRelease' => 'Старые по выходу',
+			'unifiedCatalog.sort.recentlyWatched' => 'Недавно просмотренные',
+			'unifiedCatalog.filters.title' => 'Фильтры',
+			'unifiedCatalog.filters.status' => 'Статус',
+			'unifiedCatalog.filters.genre' => 'Жанр',
+			'unifiedCatalog.filters.year' => 'Год',
+			'unifiedCatalog.filters.servers' => 'Серверы',
+			'unifiedCatalog.filters.libraries' => 'Библиотеки',
+			'unifiedCatalog.filters.apply' => 'Применить',
+			'unifiedCatalog.filters.clearAll' => 'Очистить всё',
+			'unifiedCatalog.filters.all' => 'Все',
+			'unifiedCatalog.filters.unwatched' => 'Непросмотренные',
+			'unifiedCatalog.filters.unsupported' => 'Недоступно для текущих источников',
+			'unifiedCatalog.filters.noValues' => 'Нечего выбрать',
+			'unifiedCatalog.states.emptyTitle' => 'Этот каталог пуст',
+			'unifiedCatalog.states.emptyBody' => 'Ни одна видимая библиотека не содержит ничего для этой страницы.',
+			'unifiedCatalog.states.filterEmptyTitle' => 'Ничего не соответствует этим фильтрам',
+			'unifiedCatalog.states.filterEmptyBody' => 'Сбросьте фильтр, чтобы увидеть больше названий.',
+			'unifiedCatalog.states.clearFilters' => 'Сбросить фильтры',
+			'unifiedCatalog.states.errorTitle' => 'Не удалось загрузить каталог',
+			'unifiedCatalog.states.errorBody' => 'Ни один сервер не ответил. Проверьте подключение и повторите попытку.',
+			'unifiedCatalog.states.partialOne' => '1 библиотека не ответила',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => 'Не ответило библиотек: ${count}',
+			'unifiedCatalog.semantics.watched' => 'Просмотрено',
+			'unifiedCatalog.semantics.inProgress' => 'В процессе',
+			'unifiedCatalog.semantics.loadingMore' => 'Загрузка других названий',
 			_ => null,
 		};
 	}

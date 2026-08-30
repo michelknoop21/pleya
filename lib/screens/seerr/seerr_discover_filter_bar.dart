@@ -10,7 +10,7 @@ import '../../widgets/focusable_list_tile.dart';
 import '../../widgets/focusable_tab_chip.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../widgets/overlay_sheet_geometry.dart';
-import '../libraries/library_header.dart';
+import '../../widgets/library_header_bar.dart';
 
 /// Discover/search type filter. `all` shows the mixed shelves; `movies` / `tv`
 /// narrow the shelves (and enable the genre picker in discover, client-side type

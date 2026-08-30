@@ -88,6 +88,7 @@ class TranslationsBg extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddLocalFolderBg addLocalFolder = _TranslationsAddLocalFolderBg._(_root);
 	@override late final _TranslationsPleyaShareBg pleyaShare = _TranslationsPleyaShareBg._(_root);
 	@override late final _TranslationsSourcePickerBg sourcePicker = _TranslationsSourcePickerBg._(_root);
+	@override late final _TranslationsUnifiedCatalogBg unifiedCatalog = _TranslationsUnifiedCatalogBg._(_root);
 }
 
 // Path: app
@@ -1740,6 +1741,29 @@ class _TranslationsSourcePickerBg extends TranslationsSourcePickerEn {
 	@override String setPreferredServer({required Object server}) => 'Винаги използвай ${server}';
 }
 
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogBg extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => 'Филми';
+	@override String get seriesTitle => 'Сериали';
+	@override String sources({required Object count}) => 'Източници: ${count}';
+	@override String get allSources => 'Всички източници';
+	@override String get oneSource => '1 източник';
+	@override String titleCount({required Object count}) => 'Заглавия: ${count}';
+	@override String get oneTitle => '1 заглавие';
+	@override String titlesLoaded({required Object count}) => 'Заредени заглавия: ${count}';
+	@override String get loadMore => 'Зареди още';
+	@override String get loadingMore => 'Зареждане…';
+	@override late final _TranslationsUnifiedCatalogSortBg sort = _TranslationsUnifiedCatalogSortBg._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersBg filters = _TranslationsUnifiedCatalogFiltersBg._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesBg states = _TranslationsUnifiedCatalogStatesBg._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsBg semantics = _TranslationsUnifiedCatalogSemanticsBg._(_root);
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsBg extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsBg._(TranslationsBg root) : this._root = root, super.internal(root);
@@ -2017,6 +2041,74 @@ class _TranslationsTrackersLibraryFilterBg extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => 'Синхронизирай само отметнатите по-долу библиотеки.';
 	@override String get libraries => 'Библиотеки';
 	@override String get noLibraries => 'Няма налични библиотеки';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortBg extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Сортиране';
+	@override String get titleAsc => 'Заглавие А–Я';
+	@override String get titleDesc => 'Заглавие Я–А';
+	@override String get recentlyAdded => 'Наскоро добавени';
+	@override String get oldestAdded => 'Най-отдавна добавени';
+	@override String get newestRelease => 'Най-нова премиера';
+	@override String get oldestRelease => 'Най-стара премиера';
+	@override String get recentlyWatched => 'Наскоро гледани';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersBg extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Филтри';
+	@override String get status => 'Статус';
+	@override String get genre => 'Жанр';
+	@override String get year => 'Година';
+	@override String get servers => 'Сървъри';
+	@override String get libraries => 'Библиотеки';
+	@override String get apply => 'Приложи';
+	@override String get clearAll => 'Изчисти всичко';
+	@override String get all => 'Всички';
+	@override String get unwatched => 'Негледани';
+	@override String get unsupported => 'Недостъпно за текущите източници';
+	@override String get noValues => 'Няма какво да се избере';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesBg extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => 'Този каталог е празен';
+	@override String get emptyBody => 'Никоя видима библиотека не съдържа нищо за тази страница.';
+	@override String get filterEmptyTitle => 'Нищо не отговаря на тези филтри';
+	@override String get filterEmptyBody => 'Изчисти филтър, за да видиш повече заглавия.';
+	@override String get clearFilters => 'Изчисти филтрите';
+	@override String get errorTitle => 'Каталогът не може да бъде зареден';
+	@override String get errorBody => 'Никой сървър не отговори. Провери връзката и опитай отново.';
+	@override String get partialOne => '1 библиотека не отговори';
+	@override String partialMany({required Object count}) => 'Библиотеки без отговор: ${count}';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsBg extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => 'Гледано';
+	@override String get inProgress => 'Започнато';
+	@override String get loadingMore => 'Зареждане на още заглавия';
 }
 
 /// The flat map containing all translations for locale <bg>.
@@ -3379,6 +3471,48 @@ extension on TranslationsBg {
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Източник ${index} от ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Предпочитан сървър',
 			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Винаги използвай ${server}',
+			'unifiedCatalog.moviesTitle' => 'Филми',
+			'unifiedCatalog.seriesTitle' => 'Сериали',
+			'unifiedCatalog.sources' => ({required Object count}) => 'Източници: ${count}',
+			'unifiedCatalog.allSources' => 'Всички източници',
+			'unifiedCatalog.oneSource' => '1 източник',
+			'unifiedCatalog.titleCount' => ({required Object count}) => 'Заглавия: ${count}',
+			'unifiedCatalog.oneTitle' => '1 заглавие',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => 'Заредени заглавия: ${count}',
+			'unifiedCatalog.loadMore' => 'Зареди още',
+			'unifiedCatalog.loadingMore' => 'Зареждане…',
+			'unifiedCatalog.sort.title' => 'Сортиране',
+			'unifiedCatalog.sort.titleAsc' => 'Заглавие А–Я',
+			'unifiedCatalog.sort.titleDesc' => 'Заглавие Я–А',
+			'unifiedCatalog.sort.recentlyAdded' => 'Наскоро добавени',
+			'unifiedCatalog.sort.oldestAdded' => 'Най-отдавна добавени',
+			'unifiedCatalog.sort.newestRelease' => 'Най-нова премиера',
+			'unifiedCatalog.sort.oldestRelease' => 'Най-стара премиера',
+			'unifiedCatalog.sort.recentlyWatched' => 'Наскоро гледани',
+			'unifiedCatalog.filters.title' => 'Филтри',
+			'unifiedCatalog.filters.status' => 'Статус',
+			'unifiedCatalog.filters.genre' => 'Жанр',
+			'unifiedCatalog.filters.year' => 'Година',
+			'unifiedCatalog.filters.servers' => 'Сървъри',
+			'unifiedCatalog.filters.libraries' => 'Библиотеки',
+			'unifiedCatalog.filters.apply' => 'Приложи',
+			'unifiedCatalog.filters.clearAll' => 'Изчисти всичко',
+			'unifiedCatalog.filters.all' => 'Всички',
+			'unifiedCatalog.filters.unwatched' => 'Негледани',
+			'unifiedCatalog.filters.unsupported' => 'Недостъпно за текущите източници',
+			'unifiedCatalog.filters.noValues' => 'Няма какво да се избере',
+			'unifiedCatalog.states.emptyTitle' => 'Този каталог е празен',
+			'unifiedCatalog.states.emptyBody' => 'Никоя видима библиотека не съдържа нищо за тази страница.',
+			'unifiedCatalog.states.filterEmptyTitle' => 'Нищо не отговаря на тези филтри',
+			'unifiedCatalog.states.filterEmptyBody' => 'Изчисти филтър, за да видиш повече заглавия.',
+			'unifiedCatalog.states.clearFilters' => 'Изчисти филтрите',
+			'unifiedCatalog.states.errorTitle' => 'Каталогът не може да бъде зареден',
+			'unifiedCatalog.states.errorBody' => 'Никой сървър не отговори. Провери връзката и опитай отново.',
+			'unifiedCatalog.states.partialOne' => '1 библиотека не отговори',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => 'Библиотеки без отговор: ${count}',
+			'unifiedCatalog.semantics.watched' => 'Гледано',
+			'unifiedCatalog.semantics.inProgress' => 'Започнато',
+			'unifiedCatalog.semantics.loadingMore' => 'Зареждане на още заглавия',
 			_ => null,
 		};
 	}

@@ -1472,5 +1472,57 @@
     "rowSemantics": "Източник ${index} от ${count}: ${description}",
     "preferredServer": "Предпочитан сървър",
     "setPreferredServer": "Винаги използвай ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Филми",
+    "seriesTitle": "Сериали",
+    "sources": "Източници: ${count}",
+    "allSources": "Всички източници",
+    "oneSource": "1 източник",
+    "titleCount": "Заглавия: ${count}",
+    "oneTitle": "1 заглавие",
+    "titlesLoaded": "Заредени заглавия: ${count}",
+    "loadMore": "Зареди още",
+    "loadingMore": "Зареждане…",
+    "sort": {
+      "title": "Сортиране",
+      "titleAsc": "Заглавие А–Я",
+      "titleDesc": "Заглавие Я–А",
+      "recentlyAdded": "Наскоро добавени",
+      "oldestAdded": "Най-отдавна добавени",
+      "newestRelease": "Най-нова премиера",
+      "oldestRelease": "Най-стара премиера",
+      "recentlyWatched": "Наскоро гледани"
+    },
+    "filters": {
+      "title": "Филтри",
+      "status": "Статус",
+      "genre": "Жанр",
+      "year": "Година",
+      "servers": "Сървъри",
+      "libraries": "Библиотеки",
+      "apply": "Приложи",
+      "clearAll": "Изчисти всичко",
+      "all": "Всички",
+      "unwatched": "Негледани",
+      "unsupported": "Недостъпно за текущите източници",
+      "noValues": "Няма какво да се избере"
+    },
+    "states": {
+      "emptyTitle": "Този каталог е празен",
+      "emptyBody": "Никоя видима библиотека не съдържа нищо за тази страница.",
+      "filterEmptyTitle": "Нищо не отговаря на тези филтри",
+      "filterEmptyBody": "Изчисти филтър, за да видиш повече заглавия.",
+      "clearFilters": "Изчисти филтрите",
+      "errorTitle": "Каталогът не може да бъде зареден",
+      "errorBody": "Никой сървър не отговори. Провери връзката и опитай отново.",
+      "partialOne": "1 библиотека не отговори",
+      "partialMany": "Библиотеки без отговор: ${count}"
+    },
+    "semantics": {
+      "watched": "Гледано",
+      "inProgress": "Започнато",
+      "loadingMore": "Зареждане на още заглавия"
+    }
   }
 }

@@ -95,7 +95,19 @@ bool showsHeaderAccountMenu({required bool isMobile}) => !isMobile;
 /// Order here is not the display order (that is [allNavigationTabs]) and the
 /// enum position is not persisted either: `EnumPref` serialises on `.name`, so
 /// inserting a value cannot shift a stored `startup_section`.
-enum NavigationTabId { discover, libraries, liveTv, search, watchlist, requests, downloads, settings, myPleya }
+enum NavigationTabId {
+  discover,
+  movies,
+  series,
+  libraries,
+  liveTv,
+  search,
+  watchlist,
+  requests,
+  downloads,
+  settings,
+  myPleya,
+}
 
 /// Represents a navigation tab with its configuration
 class NavigationTab {
@@ -172,6 +184,14 @@ class NavigationTab {
       if (tab.id == NavigationTabId.watchlist && !hasWatchlist) return false;
       if (tab.id == NavigationTabId.myPleya && !isMobile) return false;
       if (tab.id == NavigationTabId.downloads && PlatformDetector.isAppleTV()) return false;
+      // The unified Films and Series catalogs are 10-foot surfaces (hoofdstuk
+      // 10 of docs/tvos-unified-experience.md) and exist on TV only for now.
+      // Desktop and mobile keep browsing through Bibliotheken, which is the
+      // advanced, source-specific interface and stays untouched by fase 5 —
+      // that is also what keeps this addition invisible to iOS and macOS.
+      if ((tab.id == NavigationTabId.movies || tab.id == NavigationTabId.series) && !PlatformDetector.isTV()) {
+        return false;
+      }
       return true;
     }).toList();
   }
@@ -208,6 +228,8 @@ class NavigationTab {
 
 // Label getters (must be top-level for const constructor)
 String _getHomeLabel() => t.common.home;
+String _getMoviesLabel() => t.unifiedCatalog.moviesTitle;
+String _getSeriesLabel() => t.unifiedCatalog.seriesTitle;
 String _getLibrariesLabel() => t.navigation.libraries;
 String _getLiveTvLabel() => t.navigation.liveTv;
 String _getSearchLabel() => t.common.search;
@@ -245,6 +267,24 @@ const allNavigationTabs = [
     icon: Symbols.home_rounded,
     svgAsset: NavGlyphs.home,
     getLabel: _getHomeLabel,
+  ),
+  // Films and Series sit directly under Home, matching the order the Unified
+  // TV mockups put them in (Home · Films · Series · Live TV · Mijn Pleya) and
+  // the information architecture of hoofdstuk 3. Visible on TV only; see
+  // [NavigationTab.getVisibleTabs].
+  NavigationTab(
+    id: NavigationTabId.movies,
+    onlineOnly: true,
+    icon: Symbols.movie_rounded,
+    svgAsset: NavGlyphs.libMovie,
+    getLabel: _getMoviesLabel,
+  ),
+  NavigationTab(
+    id: NavigationTabId.series,
+    onlineOnly: true,
+    icon: Symbols.live_tv_rounded,
+    svgAsset: NavGlyphs.libShow,
+    getLabel: _getSeriesLabel,
   ),
   NavigationTab(
     id: NavigationTabId.libraries,

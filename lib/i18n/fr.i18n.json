@@ -1472,5 +1472,57 @@
     "rowSemantics": "Source ${index} sur ${count} : ${description}",
     "preferredServer": "Serveur préféré",
     "setPreferredServer": "Toujours utiliser ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Films",
+    "seriesTitle": "Séries",
+    "sources": "${count} sources",
+    "allSources": "Toutes les sources",
+    "oneSource": "1 source",
+    "titleCount": "${count} titres",
+    "oneTitle": "1 titre",
+    "titlesLoaded": "${count} titres chargés",
+    "loadMore": "Charger plus",
+    "loadingMore": "Chargement…",
+    "sort": {
+      "title": "Trier",
+      "titleAsc": "Titre A–Z",
+      "titleDesc": "Titre Z–A",
+      "recentlyAdded": "Ajoutés récemment",
+      "oldestAdded": "Ajoutés en premier",
+      "newestRelease": "Sortie la plus récente",
+      "oldestRelease": "Sortie la plus ancienne",
+      "recentlyWatched": "Regardés récemment"
+    },
+    "filters": {
+      "title": "Filtres",
+      "status": "Statut",
+      "genre": "Genre",
+      "year": "Année",
+      "servers": "Serveurs",
+      "libraries": "Bibliothèques",
+      "apply": "Appliquer",
+      "clearAll": "Tout effacer",
+      "all": "Tous",
+      "unwatched": "Non regardés",
+      "unsupported": "Indisponible pour les sources actuelles",
+      "noValues": "Rien à choisir"
+    },
+    "states": {
+      "emptyTitle": "Ce catalogue est vide",
+      "emptyBody": "Aucune bibliothèque visible ne contient quoi que ce soit pour cette page.",
+      "filterEmptyTitle": "Rien ne correspond à ces filtres",
+      "filterEmptyBody": "Effacez un filtre pour voir plus de titres.",
+      "clearFilters": "Effacer les filtres",
+      "errorTitle": "Le catalogue n'a pas pu être chargé",
+      "errorBody": "Aucun serveur n'a répondu. Vérifiez votre connexion et réessayez.",
+      "partialOne": "1 bibliothèque n'a pas répondu",
+      "partialMany": "${count} bibliothèques n'ont pas répondu"
+    },
+    "semantics": {
+      "watched": "Regardé",
+      "inProgress": "En cours",
+      "loadingMore": "Chargement d'autres titres"
+    }
   }
 }

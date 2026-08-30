@@ -1472,5 +1472,57 @@
     "rowSemantics": "Källa ${index} av ${count}: ${description}",
     "preferredServer": "Föredragen server",
     "setPreferredServer": "Använd alltid ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Filmer",
+    "seriesTitle": "Serier",
+    "sources": "${count} källor",
+    "allSources": "Alla källor",
+    "oneSource": "1 källa",
+    "titleCount": "${count} titlar",
+    "oneTitle": "1 titel",
+    "titlesLoaded": "${count} titlar inlästa",
+    "loadMore": "Läs in fler",
+    "loadingMore": "Läser in fler…",
+    "sort": {
+      "title": "Sortera",
+      "titleAsc": "Titel A–Ö",
+      "titleDesc": "Titel Ö–A",
+      "recentlyAdded": "Nyligen tillagda",
+      "oldestAdded": "Först tillagda",
+      "newestRelease": "Senaste släpp",
+      "oldestRelease": "Äldsta släpp",
+      "recentlyWatched": "Nyligen sedda"
+    },
+    "filters": {
+      "title": "Filter",
+      "status": "Status",
+      "genre": "Genre",
+      "year": "År",
+      "servers": "Servrar",
+      "libraries": "Bibliotek",
+      "apply": "Använd",
+      "clearAll": "Rensa allt",
+      "all": "Alla",
+      "unwatched": "Osedda",
+      "unsupported": "Inte tillgängligt för de aktuella källorna",
+      "noValues": "Inget att välja"
+    },
+    "states": {
+      "emptyTitle": "Den här katalogen är tom",
+      "emptyBody": "Inget synligt bibliotek innehåller något för den här sidan.",
+      "filterEmptyTitle": "Inget matchar de här filtren",
+      "filterEmptyBody": "Rensa ett filter för att se fler titlar.",
+      "clearFilters": "Rensa filter",
+      "errorTitle": "Katalogen kunde inte läsas in",
+      "errorBody": "Ingen server svarade. Kontrollera anslutningen och försök igen.",
+      "partialOne": "1 bibliotek svarade inte",
+      "partialMany": "${count} bibliotek svarade inte"
+    },
+    "semantics": {
+      "watched": "Sedd",
+      "inProgress": "Påbörjad",
+      "loadingMore": "Läser in fler titlar"
+    }
   }
 }

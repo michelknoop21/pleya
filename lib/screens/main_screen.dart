@@ -69,6 +69,8 @@ import 'seerr/seerr_discover_screen.dart';
 import 'downloads/downloads_screen.dart';
 import 'settings/settings_screen.dart';
 import 'profile/profile_switch_screen.dart';
+import 'tv/tv_movies_screen.dart';
+import 'tv/tv_series_screen.dart';
 import '../services/system_shelf_service.dart';
 import '../watch_together/watch_together.dart';
 
@@ -156,7 +158,13 @@ NavigationTabId mainScreenSelectedBarTab({
   required List<NavigationTabId> barTabs,
 }) {
   final preferred = switch (currentTab) {
+    // Films and Series are TV-only and never appear in a bottom bar, so they
+    // can only be `currentTab` here on a device that has no bar at all. They
+    // still need a case: the mapping is exhaustive by design, and the answer
+    // for a browse destination offline is Downloads, same as its neighbours.
     NavigationTabId.discover ||
+    NavigationTabId.movies ||
+    NavigationTabId.series ||
     NavigationTabId.libraries ||
     NavigationTabId.liveTv ||
     NavigationTabId.search => isOffline ? NavigationTabId.downloads : currentTab,
@@ -336,6 +344,11 @@ class _MainScreenState extends State<MainScreen>
 
   late List<Widget> _screens;
   final GlobalKey<State<DiscoverScreen>> _discoverKey = GlobalKey();
+  // Plain keys: both are stateless wrappers over the shared catalog screen, so
+  // there is no state to reach into — the key only keeps each page's element
+  // identity stable across a tab switch.
+  final GlobalKey _moviesKey = GlobalKey();
+  final GlobalKey _seriesKey = GlobalKey();
   final GlobalKey<State<LibrariesScreen>> _librariesKey = GlobalKey();
   final GlobalKey<State<LiveTvScreen>> _liveTvKey = GlobalKey();
   final GlobalKey<State<SearchScreen>> _searchKey = GlobalKey();
@@ -1087,6 +1100,17 @@ class _MainScreenState extends State<MainScreen>
       for (final tab in _getVisibleTabs(offline))
         switch (tab.id) {
           NavigationTabId.discover => DiscoverScreen(key: _discoverKey),
+          // Fase 5 of docs/tvos-unified-experience.md. `onManageServers` is
+          // hoofdstuk 14.7's escape from a source picker with nothing
+          // reachable, and only this shell can change tab.
+          NavigationTabId.movies => TvMoviesScreen(
+            key: _moviesKey,
+            onManageServers: () => _selectTab(NavigationTabId.settings),
+          ),
+          NavigationTabId.series => TvSeriesScreen(
+            key: _seriesKey,
+            onManageServers: () => _selectTab(NavigationTabId.settings),
+          ),
           NavigationTabId.libraries => LibrariesScreen(
             key: _librariesKey,
             onLibraryOrderChanged: _onLibraryOrderChanged,
@@ -1751,6 +1775,8 @@ class _MainScreenState extends State<MainScreen>
   GlobalKey? _screenKeyFor(NavigationTabId tab) {
     return switch (tab) {
       NavigationTabId.discover => _discoverKey,
+      NavigationTabId.movies => _moviesKey,
+      NavigationTabId.series => _seriesKey,
       NavigationTabId.libraries => _librariesKey,
       NavigationTabId.liveTv => _liveTvKey,
       NavigationTabId.search => _searchKey,

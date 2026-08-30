@@ -1472,5 +1472,57 @@
     "rowSemantics": "Fonte ${index} de ${count}: ${description}",
     "preferredServer": "Servidor preferido",
     "setPreferredServer": "Usar sempre ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Filmes",
+    "seriesTitle": "Séries",
+    "sources": "${count} fontes",
+    "allSources": "Todas as fontes",
+    "oneSource": "1 fonte",
+    "titleCount": "${count} títulos",
+    "oneTitle": "1 título",
+    "titlesLoaded": "${count} títulos carregados",
+    "loadMore": "Carregar mais",
+    "loadingMore": "A carregar mais…",
+    "sort": {
+      "title": "Ordenar",
+      "titleAsc": "Título A–Z",
+      "titleDesc": "Título Z–A",
+      "recentlyAdded": "Adicionados recentemente",
+      "oldestAdded": "Adicionados primeiro",
+      "newestRelease": "Lançamento mais recente",
+      "oldestRelease": "Lançamento mais antigo",
+      "recentlyWatched": "Vistos recentemente"
+    },
+    "filters": {
+      "title": "Filtros",
+      "status": "Estado",
+      "genre": "Género",
+      "year": "Ano",
+      "servers": "Servidores",
+      "libraries": "Bibliotecas",
+      "apply": "Aplicar",
+      "clearAll": "Limpar tudo",
+      "all": "Todos",
+      "unwatched": "Por ver",
+      "unsupported": "Indisponível para as fontes atuais",
+      "noValues": "Nada para escolher"
+    },
+    "states": {
+      "emptyTitle": "Este catálogo está vazio",
+      "emptyBody": "Nenhuma biblioteca visível contém algo para esta página.",
+      "filterEmptyTitle": "Nada corresponde a estes filtros",
+      "filterEmptyBody": "Limpa um filtro para ver mais títulos.",
+      "clearFilters": "Limpar filtros",
+      "errorTitle": "Não foi possível carregar o catálogo",
+      "errorBody": "Nenhum servidor respondeu. Verifica a ligação e tenta novamente.",
+      "partialOne": "1 biblioteca não respondeu",
+      "partialMany": "${count} bibliotecas não responderam"
+    },
+    "semantics": {
+      "watched": "Visto",
+      "inProgress": "A meio",
+      "loadingMore": "A carregar mais títulos"
+    }
   }
 }

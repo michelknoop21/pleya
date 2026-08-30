@@ -112,7 +112,24 @@ class OverlaySheetController {
     Alignment alignment = Alignment.bottomCenter,
     bool showDragHandle = false,
     OverlaySheetPresentation presentation = OverlaySheetPresentation.sheet,
+    bool restoreLauncherFocus = false,
   }) {
+    if (restoreLauncherFocus) {
+      return _withLauncherFocusRestore(
+        () => showAdaptive<T>(
+          context,
+          builder: builder,
+          constraints: constraints,
+          backgroundColor: backgroundColor,
+          barrierDismissible: barrierDismissible,
+          isScrollControlled: isScrollControlled,
+          initialFocusNode: initialFocusNode,
+          alignment: alignment,
+          showDragHandle: showDragHandle,
+          presentation: presentation,
+        ),
+      );
+    }
     final controller = maybeOf(context);
     if (controller != null) {
       return controller.show<T>(
@@ -147,6 +164,38 @@ class OverlaySheetController {
       barrierColor: Colors.black54,
       isScrollControlled: isScrollControlled,
     );
+  }
+
+  /// Runs [show] with the launcher's focus captured up front and handed back
+  /// once the surface is gone.
+  ///
+  /// An overlay sheet is not a route, so nothing pops focus back for it. Every
+  /// remote-driven launcher — a header action opening a filter panel, a card
+  /// opening the source picker — needs the same three-line dance, and the
+  /// version that lived inside `showUnifiedSourcePicker` was about to be copied
+  /// a second and third time. It lives here instead, opt-in so no existing
+  /// pointer-driven caller changes behaviour (hoofdstuk 14.4's "annuleren
+  /// herstelt exacte kaart of CTA", generalised in fase 5A).
+  ///
+  /// Three properties it has to hold, and why each is where it is:
+  ///
+  /// * **Nested drill-down never overwrites the launcher.** The capture happens
+  ///   once, at `show` time; `push` (a panel's own sub-page) does not capture,
+  ///   so closing the whole stack still restores the node that opened it.
+  /// * **A detached launcher is safe.** A picker that ended in a route
+  ///   replacement has no card left to go back to, so the node is re-checked
+  ///   for `context != null` at restore time rather than trusted.
+  /// * **It runs after the close animation.** Restoring inside the frame that
+  ///   is still tearing the surface down would hand focus to a node the sheet's
+  ///   own scope is about to take back.
+  static Future<T?> _withLauncherFocusRestore<T>(Future<T?> Function() show) {
+    final opener = FocusManager.instance.primaryFocus;
+    return show().whenComplete(() {
+      if (opener == null) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (opener.context != null && opener.canRequestFocus) opener.requestFocus();
+      });
+    });
   }
 
   static void _scheduleFallbackFocus(FocusNode? node) {

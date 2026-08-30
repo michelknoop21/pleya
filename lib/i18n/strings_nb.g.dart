@@ -88,6 +88,7 @@ class TranslationsNb extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddLocalFolderNb addLocalFolder = _TranslationsAddLocalFolderNb._(_root);
 	@override late final _TranslationsPleyaShareNb pleyaShare = _TranslationsPleyaShareNb._(_root);
 	@override late final _TranslationsSourcePickerNb sourcePicker = _TranslationsSourcePickerNb._(_root);
+	@override late final _TranslationsUnifiedCatalogNb unifiedCatalog = _TranslationsUnifiedCatalogNb._(_root);
 }
 
 // Path: app
@@ -1740,6 +1741,29 @@ class _TranslationsSourcePickerNb extends TranslationsSourcePickerEn {
 	@override String setPreferredServer({required Object server}) => 'Bruk alltid ${server}';
 }
 
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogNb extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogNb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => 'Filmer';
+	@override String get seriesTitle => 'Serier';
+	@override String sources({required Object count}) => '${count} kilder';
+	@override String get allSources => 'Alle kilder';
+	@override String get oneSource => '1 kilde';
+	@override String titleCount({required Object count}) => '${count} titler';
+	@override String get oneTitle => '1 tittel';
+	@override String titlesLoaded({required Object count}) => '${count} titler lastet';
+	@override String get loadMore => 'Last inn flere';
+	@override String get loadingMore => 'Laster flere…';
+	@override late final _TranslationsUnifiedCatalogSortNb sort = _TranslationsUnifiedCatalogSortNb._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersNb filters = _TranslationsUnifiedCatalogFiltersNb._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesNb states = _TranslationsUnifiedCatalogStatesNb._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsNb semantics = _TranslationsUnifiedCatalogSemanticsNb._(_root);
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsNb extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsNb._(TranslationsNb root) : this._root = root, super.internal(root);
@@ -2017,6 +2041,74 @@ class _TranslationsTrackersLibraryFilterNb extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => 'Synkroniser kun bibliotekene du markerer nedenfor.';
 	@override String get libraries => 'Biblioteker';
 	@override String get noLibraries => 'Ingen biblioteker tilgjengelige';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortNb extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortNb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Sorter';
+	@override String get titleAsc => 'Tittel A–Å';
+	@override String get titleDesc => 'Tittel Å–A';
+	@override String get recentlyAdded => 'Nylig lagt til';
+	@override String get oldestAdded => 'Først lagt til';
+	@override String get newestRelease => 'Nyeste utgivelse';
+	@override String get oldestRelease => 'Eldste utgivelse';
+	@override String get recentlyWatched => 'Nylig sett';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersNb extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersNb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Filtre';
+	@override String get status => 'Status';
+	@override String get genre => 'Sjanger';
+	@override String get year => 'År';
+	@override String get servers => 'Servere';
+	@override String get libraries => 'Biblioteker';
+	@override String get apply => 'Bruk';
+	@override String get clearAll => 'Tøm alt';
+	@override String get all => 'Alle';
+	@override String get unwatched => 'Ikke sett';
+	@override String get unsupported => 'Ikke tilgjengelig for de gjeldende kildene';
+	@override String get noValues => 'Ingenting å velge';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesNb extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesNb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => 'Denne katalogen er tom';
+	@override String get emptyBody => 'Ingen synlig bibliotek inneholder noe for denne siden.';
+	@override String get filterEmptyTitle => 'Ingenting samsvarer med disse filtrene';
+	@override String get filterEmptyBody => 'Tøm et filter for å se flere titler.';
+	@override String get clearFilters => 'Tøm filtre';
+	@override String get errorTitle => 'Katalogen kunne ikke lastes';
+	@override String get errorBody => 'Ingen server svarte. Sjekk tilkoblingen og prøv igjen.';
+	@override String get partialOne => '1 bibliotek svarte ikke';
+	@override String partialMany({required Object count}) => '${count} biblioteker svarte ikke';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsNb extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsNb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => 'Sett';
+	@override String get inProgress => 'Påbegynt';
+	@override String get loadingMore => 'Laster flere titler';
 }
 
 /// The flat map containing all translations for locale <nb>.
@@ -3379,6 +3471,48 @@ extension on TranslationsNb {
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Kilde ${index} av ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Foretrukket server',
 			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Bruk alltid ${server}',
+			'unifiedCatalog.moviesTitle' => 'Filmer',
+			'unifiedCatalog.seriesTitle' => 'Serier',
+			'unifiedCatalog.sources' => ({required Object count}) => '${count} kilder',
+			'unifiedCatalog.allSources' => 'Alle kilder',
+			'unifiedCatalog.oneSource' => '1 kilde',
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titler',
+			'unifiedCatalog.oneTitle' => '1 tittel',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titler lastet',
+			'unifiedCatalog.loadMore' => 'Last inn flere',
+			'unifiedCatalog.loadingMore' => 'Laster flere…',
+			'unifiedCatalog.sort.title' => 'Sorter',
+			'unifiedCatalog.sort.titleAsc' => 'Tittel A–Å',
+			'unifiedCatalog.sort.titleDesc' => 'Tittel Å–A',
+			'unifiedCatalog.sort.recentlyAdded' => 'Nylig lagt til',
+			'unifiedCatalog.sort.oldestAdded' => 'Først lagt til',
+			'unifiedCatalog.sort.newestRelease' => 'Nyeste utgivelse',
+			'unifiedCatalog.sort.oldestRelease' => 'Eldste utgivelse',
+			'unifiedCatalog.sort.recentlyWatched' => 'Nylig sett',
+			'unifiedCatalog.filters.title' => 'Filtre',
+			'unifiedCatalog.filters.status' => 'Status',
+			'unifiedCatalog.filters.genre' => 'Sjanger',
+			'unifiedCatalog.filters.year' => 'År',
+			'unifiedCatalog.filters.servers' => 'Servere',
+			'unifiedCatalog.filters.libraries' => 'Biblioteker',
+			'unifiedCatalog.filters.apply' => 'Bruk',
+			'unifiedCatalog.filters.clearAll' => 'Tøm alt',
+			'unifiedCatalog.filters.all' => 'Alle',
+			'unifiedCatalog.filters.unwatched' => 'Ikke sett',
+			'unifiedCatalog.filters.unsupported' => 'Ikke tilgjengelig for de gjeldende kildene',
+			'unifiedCatalog.filters.noValues' => 'Ingenting å velge',
+			'unifiedCatalog.states.emptyTitle' => 'Denne katalogen er tom',
+			'unifiedCatalog.states.emptyBody' => 'Ingen synlig bibliotek inneholder noe for denne siden.',
+			'unifiedCatalog.states.filterEmptyTitle' => 'Ingenting samsvarer med disse filtrene',
+			'unifiedCatalog.states.filterEmptyBody' => 'Tøm et filter for å se flere titler.',
+			'unifiedCatalog.states.clearFilters' => 'Tøm filtre',
+			'unifiedCatalog.states.errorTitle' => 'Katalogen kunne ikke lastes',
+			'unifiedCatalog.states.errorBody' => 'Ingen server svarte. Sjekk tilkoblingen og prøv igjen.',
+			'unifiedCatalog.states.partialOne' => '1 bibliotek svarte ikke',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} biblioteker svarte ikke',
+			'unifiedCatalog.semantics.watched' => 'Sett',
+			'unifiedCatalog.semantics.inProgress' => 'Påbegynt',
+			'unifiedCatalog.semantics.loadingMore' => 'Laster flere titler',
 			_ => null,
 		};
 	}

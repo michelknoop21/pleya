@@ -1472,5 +1472,57 @@
     "rowSemantics": "第 ${index} 个来源，共 ${count} 个：${description}",
     "preferredServer": "首选服务器",
     "setPreferredServer": "始终使用 ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "电影",
+    "seriesTitle": "剧集",
+    "sources": "${count} 个来源",
+    "allSources": "全部来源",
+    "oneSource": "1 个来源",
+    "titleCount": "${count} 部",
+    "oneTitle": "1 部",
+    "titlesLoaded": "已加载 ${count} 部",
+    "loadMore": "加载更多",
+    "loadingMore": "正在加载…",
+    "sort": {
+      "title": "排序",
+      "titleAsc": "标题 A–Z",
+      "titleDesc": "标题 Z–A",
+      "recentlyAdded": "最近添加",
+      "oldestAdded": "最早添加",
+      "newestRelease": "最新上映",
+      "oldestRelease": "最早上映",
+      "recentlyWatched": "最近观看"
+    },
+    "filters": {
+      "title": "筛选",
+      "status": "状态",
+      "genre": "类型",
+      "year": "年份",
+      "servers": "服务器",
+      "libraries": "媒体库",
+      "apply": "应用",
+      "clearAll": "全部清除",
+      "all": "全部",
+      "unwatched": "未观看",
+      "unsupported": "当前来源不支持",
+      "noValues": "没有可选项"
+    },
+    "states": {
+      "emptyTitle": "此目录为空",
+      "emptyBody": "可见的媒体库中没有适用于此页面的内容。",
+      "filterEmptyTitle": "没有符合这些筛选条件的内容",
+      "filterEmptyBody": "清除一个筛选条件以查看更多。",
+      "clearFilters": "清除筛选",
+      "errorTitle": "无法加载目录",
+      "errorBody": "没有服务器响应。请检查连接后重试。",
+      "partialOne": "1 个媒体库未响应",
+      "partialMany": "${count} 个媒体库未响应"
+    },
+    "semantics": {
+      "watched": "已观看",
+      "inProgress": "观看中",
+      "loadingMore": "正在加载更多内容"
+    }
   }
 }

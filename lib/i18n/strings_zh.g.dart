@@ -88,6 +88,7 @@ class TranslationsZh extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddLocalFolderZh addLocalFolder = _TranslationsAddLocalFolderZh._(_root);
 	@override late final _TranslationsPleyaShareZh pleyaShare = _TranslationsPleyaShareZh._(_root);
 	@override late final _TranslationsSourcePickerZh sourcePicker = _TranslationsSourcePickerZh._(_root);
+	@override late final _TranslationsUnifiedCatalogZh unifiedCatalog = _TranslationsUnifiedCatalogZh._(_root);
 }
 
 // Path: app
@@ -1740,6 +1741,29 @@ class _TranslationsSourcePickerZh extends TranslationsSourcePickerEn {
 	@override String setPreferredServer({required Object server}) => '始终使用 ${server}';
 }
 
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogZh extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => '电影';
+	@override String get seriesTitle => '剧集';
+	@override String sources({required Object count}) => '${count} 个来源';
+	@override String get allSources => '全部来源';
+	@override String get oneSource => '1 个来源';
+	@override String titleCount({required Object count}) => '${count} 部';
+	@override String get oneTitle => '1 部';
+	@override String titlesLoaded({required Object count}) => '已加载 ${count} 部';
+	@override String get loadMore => '加载更多';
+	@override String get loadingMore => '正在加载…';
+	@override late final _TranslationsUnifiedCatalogSortZh sort = _TranslationsUnifiedCatalogSortZh._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersZh filters = _TranslationsUnifiedCatalogFiltersZh._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesZh states = _TranslationsUnifiedCatalogStatesZh._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsZh semantics = _TranslationsUnifiedCatalogSemanticsZh._(_root);
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsZh extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsZh._(TranslationsZh root) : this._root = root, super.internal(root);
@@ -2017,6 +2041,74 @@ class _TranslationsTrackersLibraryFilterZh extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => '仅同步下方勾选的媒体库。';
 	@override String get libraries => '媒体库';
 	@override String get noLibraries => '没有可用的媒体库';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortZh extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '排序';
+	@override String get titleAsc => '标题 A–Z';
+	@override String get titleDesc => '标题 Z–A';
+	@override String get recentlyAdded => '最近添加';
+	@override String get oldestAdded => '最早添加';
+	@override String get newestRelease => '最新上映';
+	@override String get oldestRelease => '最早上映';
+	@override String get recentlyWatched => '最近观看';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersZh extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '筛选';
+	@override String get status => '状态';
+	@override String get genre => '类型';
+	@override String get year => '年份';
+	@override String get servers => '服务器';
+	@override String get libraries => '媒体库';
+	@override String get apply => '应用';
+	@override String get clearAll => '全部清除';
+	@override String get all => '全部';
+	@override String get unwatched => '未观看';
+	@override String get unsupported => '当前来源不支持';
+	@override String get noValues => '没有可选项';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesZh extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => '此目录为空';
+	@override String get emptyBody => '可见的媒体库中没有适用于此页面的内容。';
+	@override String get filterEmptyTitle => '没有符合这些筛选条件的内容';
+	@override String get filterEmptyBody => '清除一个筛选条件以查看更多。';
+	@override String get clearFilters => '清除筛选';
+	@override String get errorTitle => '无法加载目录';
+	@override String get errorBody => '没有服务器响应。请检查连接后重试。';
+	@override String get partialOne => '1 个媒体库未响应';
+	@override String partialMany({required Object count}) => '${count} 个媒体库未响应';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsZh extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => '已观看';
+	@override String get inProgress => '观看中';
+	@override String get loadingMore => '正在加载更多内容';
 }
 
 /// The flat map containing all translations for locale <zh>.
@@ -3379,6 +3471,48 @@ extension on TranslationsZh {
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => '第 ${index} 个来源，共 ${count} 个：${description}',
 			'sourcePicker.preferredServer' => '首选服务器',
 			'sourcePicker.setPreferredServer' => ({required Object server}) => '始终使用 ${server}',
+			'unifiedCatalog.moviesTitle' => '电影',
+			'unifiedCatalog.seriesTitle' => '剧集',
+			'unifiedCatalog.sources' => ({required Object count}) => '${count} 个来源',
+			'unifiedCatalog.allSources' => '全部来源',
+			'unifiedCatalog.oneSource' => '1 个来源',
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} 部',
+			'unifiedCatalog.oneTitle' => '1 部',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '已加载 ${count} 部',
+			'unifiedCatalog.loadMore' => '加载更多',
+			'unifiedCatalog.loadingMore' => '正在加载…',
+			'unifiedCatalog.sort.title' => '排序',
+			'unifiedCatalog.sort.titleAsc' => '标题 A–Z',
+			'unifiedCatalog.sort.titleDesc' => '标题 Z–A',
+			'unifiedCatalog.sort.recentlyAdded' => '最近添加',
+			'unifiedCatalog.sort.oldestAdded' => '最早添加',
+			'unifiedCatalog.sort.newestRelease' => '最新上映',
+			'unifiedCatalog.sort.oldestRelease' => '最早上映',
+			'unifiedCatalog.sort.recentlyWatched' => '最近观看',
+			'unifiedCatalog.filters.title' => '筛选',
+			'unifiedCatalog.filters.status' => '状态',
+			'unifiedCatalog.filters.genre' => '类型',
+			'unifiedCatalog.filters.year' => '年份',
+			'unifiedCatalog.filters.servers' => '服务器',
+			'unifiedCatalog.filters.libraries' => '媒体库',
+			'unifiedCatalog.filters.apply' => '应用',
+			'unifiedCatalog.filters.clearAll' => '全部清除',
+			'unifiedCatalog.filters.all' => '全部',
+			'unifiedCatalog.filters.unwatched' => '未观看',
+			'unifiedCatalog.filters.unsupported' => '当前来源不支持',
+			'unifiedCatalog.filters.noValues' => '没有可选项',
+			'unifiedCatalog.states.emptyTitle' => '此目录为空',
+			'unifiedCatalog.states.emptyBody' => '可见的媒体库中没有适用于此页面的内容。',
+			'unifiedCatalog.states.filterEmptyTitle' => '没有符合这些筛选条件的内容',
+			'unifiedCatalog.states.filterEmptyBody' => '清除一个筛选条件以查看更多。',
+			'unifiedCatalog.states.clearFilters' => '清除筛选',
+			'unifiedCatalog.states.errorTitle' => '无法加载目录',
+			'unifiedCatalog.states.errorBody' => '没有服务器响应。请检查连接后重试。',
+			'unifiedCatalog.states.partialOne' => '1 个媒体库未响应',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} 个媒体库未响应',
+			'unifiedCatalog.semantics.watched' => '已观看',
+			'unifiedCatalog.semantics.inProgress' => '观看中',
+			'unifiedCatalog.semantics.loadingMore' => '正在加载更多内容',
 			_ => null,
 		};
 	}

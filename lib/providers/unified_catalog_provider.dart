@@ -67,10 +67,48 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
   bool _isLoadingMore = false;
   Set<String> _lastSeenLibraryKeys = const {};
 
+  /// The caller's source restriction; see [setQuery]. Held across reconciles so
+  /// a server coming online under an active "only this server" filter is
+  /// evaluated against that filter rather than silently joining the merge.
+  bool Function(CatalogLibrary library)? _librarySelector;
+
   UnifiedCatalogQuery get query => _query;
   UnifiedCatalogSnapshot get snapshot => _snapshot;
+
+  /// Every library this catalog *could* draw from — visible server, visible
+  /// library, right kind — before the caller's own restriction.
+  ///
+  /// This is what a source filter panel lists: a server the user has excluded
+  /// still has to appear, with its tick off, or there is no way back to it.
+  List<CatalogLibrary> get eligibleLibraries => eligibleCatalogLibraries(
+    libraries: _libraries.libraries,
+    kind: _query.kind,
+    isServerVisible: _multiServer.serverManager.isServerVisible,
+    hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
+  );
+
+  /// The libraries actually taking part in the current merge — [eligibleLibraries]
+  /// with [setQuery]'s `librarySelector` applied.
+  ///
+  /// Read by the filter surface to decide which *item* filters may be offered
+  /// at all: a filter is a promise about the whole result list, so it can only
+  /// be offered when every backend behind these libraries executes it. Because
+  /// this follows the restriction rather than preceding it, excluding a backend
+  /// that cannot filter is enough to get those filters back.
+  List<CatalogLibrary> get participatingLibraries => _eligibleLibraries();
   bool get isInitialLoading => _loadState == UnifiedCatalogLoadState.loading;
   bool get isLoadingMore => _isLoadingMore;
+
+  /// Whether the last restart ended in the unexpected-error branch of
+  /// [_restart].
+  ///
+  /// Distinct from `snapshot.initialLoadFailed`, which is the merge engine
+  /// reporting that every participating library failed. This one covers the
+  /// case that never reaches the engine at all — no library was eligible to be
+  /// asked, or something threw outside the per-library error handling — and a
+  /// surface showing a full-page error needs both, because either one leaves it
+  /// with nothing to draw.
+  bool get loadFailed => _loadState == UnifiedCatalogLoadState.error;
 
   /// Whether [ensureStarted] (or an equivalent) has been called at least
   /// once — the one bit that distinguishes "never asked" from "asked, still
@@ -108,8 +146,20 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
 
   /// Applies a new sort/filter/kind, replacing the in-flight merge entirely
   /// (hoofdstuk 12.7: abandons every outstanding fetch via generation IDs).
-  Future<void> setQuery(UnifiedCatalogQuery query) {
+  ///
+  /// [librarySelector] narrows which of the eligible libraries take part —
+  /// hoofdstuk 10.4's server and library filters. They are executed here, by
+  /// leaving a cursor out of the merge, rather than by dropping items after it:
+  /// an excluded server is then never asked at all, and — the reason it has to
+  /// work this way — a page that fetched enough items for twenty groups still
+  /// produces twenty, instead of three plus a hole in the paging count.
+  ///
+  /// Passing null clears any previous restriction, so "Alle bronnen" is the
+  /// absence of a selector rather than a list that has to be kept in step with
+  /// the server registry.
+  Future<void> setQuery(UnifiedCatalogQuery query, {bool Function(CatalogLibrary library)? librarySelector}) {
     _query = query;
+    _librarySelector = librarySelector;
     return _restart();
   }
 
@@ -141,12 +191,11 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
     safeNotifyListeners();
   }
 
-  List<CatalogLibrary> _eligibleLibraries() => eligibleCatalogLibraries(
-    libraries: _libraries.libraries,
-    kind: _query.kind,
-    isServerVisible: _multiServer.serverManager.isServerVisible,
-    hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
-  );
+  List<CatalogLibrary> _eligibleLibraries() {
+    final eligible = eligibleLibraries;
+    final selector = _librarySelector;
+    return selector == null ? eligible : eligible.where(selector).toList();
+  }
 
   Set<String> _libraryKeys(List<CatalogLibrary> libraries) => {
     for (final library in libraries) buildGlobalKey(library.serverId, library.libraryId),

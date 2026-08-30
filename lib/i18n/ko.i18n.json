@@ -1472,5 +1472,57 @@
     "rowSemantics": "소스 ${count}개 중 ${index}번째: ${description}",
     "preferredServer": "기본 서버",
     "setPreferredServer": "항상 ${server} 사용"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "영화",
+    "seriesTitle": "시리즈",
+    "sources": "소스 ${count}개",
+    "allSources": "모든 소스",
+    "oneSource": "소스 1개",
+    "titleCount": "${count}개 작품",
+    "oneTitle": "1개 작품",
+    "titlesLoaded": "${count}개 작품 불러옴",
+    "loadMore": "더 불러오기",
+    "loadingMore": "불러오는 중…",
+    "sort": {
+      "title": "정렬",
+      "titleAsc": "제목 오름차순",
+      "titleDesc": "제목 내림차순",
+      "recentlyAdded": "최근 추가순",
+      "oldestAdded": "오래전 추가순",
+      "newestRelease": "최신 개봉순",
+      "oldestRelease": "오래된 개봉순",
+      "recentlyWatched": "최근 시청순"
+    },
+    "filters": {
+      "title": "필터",
+      "status": "상태",
+      "genre": "장르",
+      "year": "연도",
+      "servers": "서버",
+      "libraries": "라이브러리",
+      "apply": "적용",
+      "clearAll": "모두 지우기",
+      "all": "전체",
+      "unwatched": "미시청",
+      "unsupported": "현재 소스에서는 사용할 수 없음",
+      "noValues": "선택할 항목이 없음"
+    },
+    "states": {
+      "emptyTitle": "이 카탈로그가 비어 있습니다",
+      "emptyBody": "표시된 라이브러리에 이 페이지에 해당하는 항목이 없습니다.",
+      "filterEmptyTitle": "이 필터와 일치하는 항목이 없습니다",
+      "filterEmptyBody": "필터를 지우면 더 많은 작품을 볼 수 있습니다.",
+      "clearFilters": "필터 지우기",
+      "errorTitle": "카탈로그를 불러오지 못했습니다",
+      "errorBody": "응답한 서버가 없습니다. 연결을 확인한 뒤 다시 시도하세요.",
+      "partialOne": "라이브러리 1개가 응답하지 않았습니다",
+      "partialMany": "라이브러리 ${count}개가 응답하지 않았습니다"
+    },
+    "semantics": {
+      "watched": "시청함",
+      "inProgress": "시청 중",
+      "loadingMore": "작품을 더 불러오는 중"
+    }
   }
 }

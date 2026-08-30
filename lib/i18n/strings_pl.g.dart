@@ -88,6 +88,7 @@ class TranslationsPl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsAddLocalFolderPl addLocalFolder = _TranslationsAddLocalFolderPl._(_root);
 	@override late final _TranslationsPleyaSharePl pleyaShare = _TranslationsPleyaSharePl._(_root);
 	@override late final _TranslationsSourcePickerPl sourcePicker = _TranslationsSourcePickerPl._(_root);
+	@override late final _TranslationsUnifiedCatalogPl unifiedCatalog = _TranslationsUnifiedCatalogPl._(_root);
 }
 
 // Path: app
@@ -1740,6 +1741,29 @@ class _TranslationsSourcePickerPl extends TranslationsSourcePickerEn {
 	@override String setPreferredServer({required Object server}) => 'Zawsze używaj ${server}';
 }
 
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogPl extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogPl._(TranslationsPl root) : this._root = root, super.internal(root);
+
+	final TranslationsPl _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => 'Filmy';
+	@override String get seriesTitle => 'Seriale';
+	@override String sources({required Object count}) => 'źródła: ${count}';
+	@override String get allSources => 'Wszystkie źródła';
+	@override String get oneSource => '1 źródło';
+	@override String titleCount({required Object count}) => 'Tytuły: ${count}';
+	@override String get oneTitle => '1 tytuł';
+	@override String titlesLoaded({required Object count}) => 'Wczytano tytuły: ${count}';
+	@override String get loadMore => 'Wczytaj więcej';
+	@override String get loadingMore => 'Wczytywanie…';
+	@override late final _TranslationsUnifiedCatalogSortPl sort = _TranslationsUnifiedCatalogSortPl._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersPl filters = _TranslationsUnifiedCatalogFiltersPl._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesPl states = _TranslationsUnifiedCatalogStatesPl._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsPl semantics = _TranslationsUnifiedCatalogSemanticsPl._(_root);
+}
+
 // Path: hotkeys.actions
 class _TranslationsHotkeysActionsPl extends TranslationsHotkeysActionsEn {
 	_TranslationsHotkeysActionsPl._(TranslationsPl root) : this._root = root, super.internal(root);
@@ -2017,6 +2041,74 @@ class _TranslationsTrackersLibraryFilterPl extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => 'Synchronizuj tylko biblioteki zaznaczone poniżej.';
 	@override String get libraries => 'Biblioteki';
 	@override String get noLibraries => 'Brak dostępnych bibliotek';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortPl extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortPl._(TranslationsPl root) : this._root = root, super.internal(root);
+
+	final TranslationsPl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Sortuj';
+	@override String get titleAsc => 'Tytuł A–Z';
+	@override String get titleDesc => 'Tytuł Z–A';
+	@override String get recentlyAdded => 'Ostatnio dodane';
+	@override String get oldestAdded => 'Najdawniej dodane';
+	@override String get newestRelease => 'Najnowsza premiera';
+	@override String get oldestRelease => 'Najstarsza premiera';
+	@override String get recentlyWatched => 'Ostatnio oglądane';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersPl extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersPl._(TranslationsPl root) : this._root = root, super.internal(root);
+
+	final TranslationsPl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Filtry';
+	@override String get status => 'Status';
+	@override String get genre => 'Gatunek';
+	@override String get year => 'Rok';
+	@override String get servers => 'Serwery';
+	@override String get libraries => 'Biblioteki';
+	@override String get apply => 'Zastosuj';
+	@override String get clearAll => 'Wyczyść wszystko';
+	@override String get all => 'Wszystkie';
+	@override String get unwatched => 'Nieobejrzane';
+	@override String get unsupported => 'Niedostępne dla bieżących źródeł';
+	@override String get noValues => 'Brak opcji do wyboru';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesPl extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesPl._(TranslationsPl root) : this._root = root, super.internal(root);
+
+	final TranslationsPl _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => 'Ten katalog jest pusty';
+	@override String get emptyBody => 'Żadna widoczna biblioteka nie zawiera nic dla tej strony.';
+	@override String get filterEmptyTitle => 'Nic nie pasuje do tych filtrów';
+	@override String get filterEmptyBody => 'Wyczyść filtr, aby zobaczyć więcej tytułów.';
+	@override String get clearFilters => 'Wyczyść filtry';
+	@override String get errorTitle => 'Nie udało się wczytać katalogu';
+	@override String get errorBody => 'Żaden serwer nie odpowiedział. Sprawdź połączenie i spróbuj ponownie.';
+	@override String get partialOne => '1 biblioteka nie odpowiedziała';
+	@override String partialMany({required Object count}) => 'Biblioteki, które nie odpowiedziały: ${count}';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsPl extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsPl._(TranslationsPl root) : this._root = root, super.internal(root);
+
+	final TranslationsPl _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => 'Obejrzane';
+	@override String get inProgress => 'W trakcie';
+	@override String get loadingMore => 'Wczytywanie kolejnych tytułów';
 }
 
 /// The flat map containing all translations for locale <pl>.
@@ -3379,6 +3471,48 @@ extension on TranslationsPl {
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Źródło ${index} z ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Preferowany serwer',
 			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Zawsze używaj ${server}',
+			'unifiedCatalog.moviesTitle' => 'Filmy',
+			'unifiedCatalog.seriesTitle' => 'Seriale',
+			'unifiedCatalog.sources' => ({required Object count}) => 'źródła: ${count}',
+			'unifiedCatalog.allSources' => 'Wszystkie źródła',
+			'unifiedCatalog.oneSource' => '1 źródło',
+			'unifiedCatalog.titleCount' => ({required Object count}) => 'Tytuły: ${count}',
+			'unifiedCatalog.oneTitle' => '1 tytuł',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => 'Wczytano tytuły: ${count}',
+			'unifiedCatalog.loadMore' => 'Wczytaj więcej',
+			'unifiedCatalog.loadingMore' => 'Wczytywanie…',
+			'unifiedCatalog.sort.title' => 'Sortuj',
+			'unifiedCatalog.sort.titleAsc' => 'Tytuł A–Z',
+			'unifiedCatalog.sort.titleDesc' => 'Tytuł Z–A',
+			'unifiedCatalog.sort.recentlyAdded' => 'Ostatnio dodane',
+			'unifiedCatalog.sort.oldestAdded' => 'Najdawniej dodane',
+			'unifiedCatalog.sort.newestRelease' => 'Najnowsza premiera',
+			'unifiedCatalog.sort.oldestRelease' => 'Najstarsza premiera',
+			'unifiedCatalog.sort.recentlyWatched' => 'Ostatnio oglądane',
+			'unifiedCatalog.filters.title' => 'Filtry',
+			'unifiedCatalog.filters.status' => 'Status',
+			'unifiedCatalog.filters.genre' => 'Gatunek',
+			'unifiedCatalog.filters.year' => 'Rok',
+			'unifiedCatalog.filters.servers' => 'Serwery',
+			'unifiedCatalog.filters.libraries' => 'Biblioteki',
+			'unifiedCatalog.filters.apply' => 'Zastosuj',
+			'unifiedCatalog.filters.clearAll' => 'Wyczyść wszystko',
+			'unifiedCatalog.filters.all' => 'Wszystkie',
+			'unifiedCatalog.filters.unwatched' => 'Nieobejrzane',
+			'unifiedCatalog.filters.unsupported' => 'Niedostępne dla bieżących źródeł',
+			'unifiedCatalog.filters.noValues' => 'Brak opcji do wyboru',
+			'unifiedCatalog.states.emptyTitle' => 'Ten katalog jest pusty',
+			'unifiedCatalog.states.emptyBody' => 'Żadna widoczna biblioteka nie zawiera nic dla tej strony.',
+			'unifiedCatalog.states.filterEmptyTitle' => 'Nic nie pasuje do tych filtrów',
+			'unifiedCatalog.states.filterEmptyBody' => 'Wyczyść filtr, aby zobaczyć więcej tytułów.',
+			'unifiedCatalog.states.clearFilters' => 'Wyczyść filtry',
+			'unifiedCatalog.states.errorTitle' => 'Nie udało się wczytać katalogu',
+			'unifiedCatalog.states.errorBody' => 'Żaden serwer nie odpowiedział. Sprawdź połączenie i spróbuj ponownie.',
+			'unifiedCatalog.states.partialOne' => '1 biblioteka nie odpowiedziała',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => 'Biblioteki, które nie odpowiedziały: ${count}',
+			'unifiedCatalog.semantics.watched' => 'Obejrzane',
+			'unifiedCatalog.semantics.inProgress' => 'W trakcie',
+			'unifiedCatalog.semantics.loadingMore' => 'Wczytywanie kolejnych tytułów',
 			_ => null,
 		};
 	}

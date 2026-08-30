@@ -66,10 +66,10 @@ import '../../media/unified/source_availability.dart';
 import '../../media/unified/source_coverage_state.dart';
 import '../../media/unified/unified_media_source.dart';
 import '../../media/unified/unified_route_context.dart';
-import '../../theme/mono_shapes.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../overlay_sheet_geometry.dart';
+import 'tv_panel_primitives.dart';
 import 'tv_source_row_descriptor.dart';
 import 'tv_unified_layout.dart';
 
@@ -188,7 +188,7 @@ class TvMediaSourcePicker extends StatelessWidget {
     final radius = tvPanelBorderRadius(MediaQuery.sizeOf(context));
 
     return DecoratedBox(
-      decoration: _panelDecoration(mono, radius),
+      decoration: tvPanelDecoration(mono, radius),
       child: Padding(
         padding: EdgeInsets.all(TvSourcePickerLayout.panelPadding * scale),
         child: Column(
@@ -236,32 +236,6 @@ class TvMediaSourcePicker extends StatelessWidget {
   /// both would hide the actionable case behind the hopeless one.
   bool get _authRequired => sources.any((s) => s.availability == SourceAvailability.authError);
 }
-
-/// The panel's own surface, shared by the picker and the playback-failure
-/// alternative so the two never drift apart.
-///
-/// The hairline lands on the host's clipped edge rather than near it — the host
-/// clips to exactly [radius], which is why `tvPanelBorderRadius` is exported.
-/// It is what separates #1F1F1F from a #141414 canvas at three metres, where a
-/// 10-point luminance step on its own does not read as an edge.
-///
-/// The wash is the same top-lit gradient a focused row gets, one step fainter.
-/// It costs nothing and it is what ties the layers together: with the panel
-/// flat and the rows lit, the rows read as stickers on a rectangle; with both
-/// lit from the same direction, the picker reads as one object standing in
-/// front of the page.
-BoxDecoration _panelDecoration(MonoTokens mono, double radius) => BoxDecoration(
-  border: Border.all(color: mono.outline, width: 1),
-  borderRadius: BorderRadius.circular(radius),
-  gradient: LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [
-      Color.alphaBlend(mono.text.withValues(alpha: TvSourcePickerLayout.panelSheen), mono.surface),
-      mono.surface,
-    ],
-  ),
-);
 
 /// Hoofdstuk 14.7's headline, as part of the picker rather than as an alert
 /// dropped into it.
@@ -1007,7 +981,7 @@ class _Footer extends StatelessWidget {
           Expanded(
             child: Align(
               alignment: Alignment.centerLeft,
-              child: _PanelButton(
+              child: TvPanelButton(
                 scale: scale,
                 // Named, not generic: from the couch "Altijd NAS gebruiken"
                 // says what will happen, "Voorkeursserver instellen" asks the
@@ -1020,7 +994,7 @@ class _Footer extends StatelessWidget {
             ),
           ),
         if (onManageServers != null) ...[
-          _PanelButton(
+          TvPanelButton(
             scale: scale,
             label: t.sourcePicker.manageServers,
             onPressed: onManageServers!,
@@ -1029,7 +1003,7 @@ class _Footer extends StatelessWidget {
           ),
           SizedBox(width: 12 * scale),
         ],
-        _PanelButton(
+        TvPanelButton(
           scale: scale,
           label: t.common.close,
           onPressed: onClose,
@@ -1037,117 +1011,6 @@ class _Footer extends StatelessWidget {
           focusNode: onManageServers == null ? focusNode : null,
         ),
       ],
-    );
-  }
-}
-
-/// A panel button in Pleya's CTA language: [MonoShapes.cta]'s capsule, the
-/// detail screen's tonal idle fill, and the same focused treatment the action
-/// bar uses — the surface inverts and the white focus ring follows the shape
-/// rather than boxing it.
-///
-/// The primary variant is white on dark. Hoofdstuk 34 pins that ("de primaire
-/// Play-CTA is wit"), and 33.6 #2 records that the mockup's red button loses.
-///
-/// **The ring is held off the capsule by [TvSourcePickerLayout.buttonFocusRingGap].**
-/// `FocusableWrapper` paints the ring on its child's bounds, so a white ring
-/// around an already-white capsule merged into it and the primary action had no
-/// visible focus state at all — the first render's "Servers beheren" is exactly
-/// that. Padding the capsule inside the wrapper puts a band of panel surface
-/// between the two, which is the only way to keep both of hoofdstuk 34's pins
-/// (white CTA, white ring) and still be able to tell them apart.
-///
-/// A secondary button carries no fill, only a hairline. That is what keeps
-/// "Altijd &lt;server&gt; gebruiken" (hoofdstuk 14.8a) quieter than the source rows
-/// it sits under: it is an adjustment to a standing setting, not one of the
-/// choices being offered.
-class _PanelButton extends StatefulWidget {
-  const _PanelButton({
-    required this.scale,
-    required this.label,
-    required this.onPressed,
-    required this.primary,
-    this.icon,
-    this.focusNode,
-  });
-
-  final double scale;
-  final String label;
-  final VoidCallback onPressed;
-  final bool primary;
-  final IconData? icon;
-  final FocusNode? focusNode;
-
-  @override
-  State<_PanelButton> createState() => _PanelButtonState();
-}
-
-class _PanelButtonState extends State<_PanelButton> {
-  bool _isFocused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final scale = widget.scale;
-    final mono = tokens(context);
-    final colors = Theme.of(context).colorScheme;
-    final filled = widget.primary || _isFocused;
-
-    return FocusableWrapper(
-      focusNode: widget.focusNode,
-      focusShapeBorder: MonoShapes.cta,
-      // Scale stays on here, unlike on a row. A primary button is already
-      // white, so a white ring on it has almost nothing to contrast against;
-      // the lift is what makes "this is where I am" survive on the one control
-      // whose fill cannot change. Buttons are small and sit in their own row,
-      // so nothing is pushed around.
-      semanticLabel: widget.label,
-      onFocusChange: (focused) => setState(() => _isFocused = focused),
-      onSelect: () {
-        SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
-        widget.onPressed();
-      },
-      child: Padding(
-        padding: EdgeInsets.all(TvSourcePickerLayout.buttonFocusRingGap * scale),
-        child: AnimatedContainer(
-          duration: mono.fast,
-          padding: EdgeInsets.symmetric(horizontal: 26 * scale, vertical: 11 * scale),
-          decoration: ShapeDecoration(
-            shape: MonoShapes.cta.copyWith(side: filled ? BorderSide.none : BorderSide(color: mono.outline, width: 1)),
-            // Unfilled is, by the line above, always "secondary and not
-            // focused". No tonal wash there: an outline-only capsule is what
-            // keeps the footer from competing with the rows above it, and it is
-            // the state both footer buttons are in while the user is still
-            // reading the sources.
-            color: filled ? colors.inverseSurface : Colors.transparent,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.icon != null) ...[
-                Icon(
-                  widget.icon,
-                  size: TvSourcePickerLayout.buttonFontSize * scale,
-                  color: filled ? colors.onInverseSurface : mono.accentAlt,
-                ),
-                SizedBox(width: 8 * scale),
-              ],
-              Flexible(
-                child: Text(
-                  widget.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: filled ? colors.onInverseSurface : mono.text,
-                    fontSize: TvSourcePickerLayout.buttonFontSize * scale,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.1,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -1171,7 +1034,7 @@ class TvPlaybackFailureAlternative extends StatelessWidget {
     final radius = tvPanelBorderRadius(MediaQuery.sizeOf(context));
 
     return DecoratedBox(
-      decoration: _panelDecoration(mono, radius),
+      decoration: tvPanelDecoration(mono, radius),
       child: Padding(
         padding: EdgeInsets.all(TvSourcePickerLayout.panelPadding * scale),
         child: Column(
@@ -1225,13 +1088,13 @@ class TvPlaybackFailureAlternative extends StatelessWidget {
               spacing: 12 * scale,
               runSpacing: 10 * scale,
               children: [
-                _PanelButton(
+                TvPanelButton(
                   scale: scale,
                   label: t.sourcePicker.chooseAnotherSource,
                   onPressed: onChooseAnother,
                   primary: true,
                 ),
-                _PanelButton(scale: scale, label: t.common.close, onPressed: onClose, primary: false),
+                TvPanelButton(scale: scale, label: t.common.close, onPressed: onClose, primary: false),
               ],
             ),
           ],

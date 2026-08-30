@@ -1796,5 +1796,57 @@
     "rowSemantics": "Bron ${index} van ${count}: ${description}",
     "preferredServer": "Voorkeursserver",
     "setPreferredServer": "Altijd ${server} gebruiken"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Films",
+    "seriesTitle": "Series",
+    "sources": "${count} bronnen",
+    "allSources": "Alle bronnen",
+    "oneSource": "1 bron",
+    "titleCount": "${count} titels",
+    "oneTitle": "1 titel",
+    "titlesLoaded": "${count} titels geladen",
+    "loadMore": "Meer laden",
+    "loadingMore": "Meer laden…",
+    "sort": {
+      "title": "Sorteren",
+      "titleAsc": "Titel A–Z",
+      "titleDesc": "Titel Z–A",
+      "recentlyAdded": "Recent toegevoegd",
+      "oldestAdded": "Oudst toegevoegd",
+      "newestRelease": "Nieuwste release",
+      "oldestRelease": "Oudste release",
+      "recentlyWatched": "Recent bekeken"
+    },
+    "filters": {
+      "title": "Filters",
+      "status": "Status",
+      "genre": "Genre",
+      "year": "Jaar",
+      "servers": "Servers",
+      "libraries": "Bibliotheken",
+      "apply": "Toepassen",
+      "clearAll": "Alles wissen",
+      "all": "Alle",
+      "unwatched": "Niet bekeken",
+      "unsupported": "Niet beschikbaar voor de huidige bronnen",
+      "noValues": "Niets om uit te kiezen"
+    },
+    "states": {
+      "emptyTitle": "Deze catalogus is leeg",
+      "emptyBody": "Geen zichtbare bibliotheek bevat iets voor deze pagina.",
+      "filterEmptyTitle": "Niets voldoet aan deze filters",
+      "filterEmptyBody": "Wis een filter om meer titels te zien.",
+      "clearFilters": "Filters wissen",
+      "errorTitle": "De catalogus kon niet worden geladen",
+      "errorBody": "Geen enkele server antwoordde. Controleer je verbinding en probeer het opnieuw.",
+      "partialOne": "1 bibliotheek antwoordde niet",
+      "partialMany": "${count} bibliotheken antwoordden niet"
+    },
+    "semantics": {
+      "watched": "Bekeken",
+      "inProgress": "Bezig",
+      "loadingMore": "Meer titels laden"
+    }
   }
 }

@@ -95,6 +95,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsTautulliNl tautulli = _TranslationsTautulliNl._(_root);
 	@override late final _TranslationsNowWatchingNl nowWatching = _TranslationsNowWatchingNl._(_root);
 	@override late final _TranslationsSourcePickerNl sourcePicker = _TranslationsSourcePickerNl._(_root);
+	@override late final _TranslationsUnifiedCatalogNl unifiedCatalog = _TranslationsUnifiedCatalogNl._(_root);
 }
 
 // Path: states
@@ -2087,6 +2088,29 @@ class _TranslationsSourcePickerNl extends TranslationsSourcePickerEn {
 	@override String setPreferredServer({required Object server}) => 'Altijd ${server} gebruiken';
 }
 
+// Path: unifiedCatalog
+class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
+	_TranslationsUnifiedCatalogNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get moviesTitle => 'Films';
+	@override String get seriesTitle => 'Series';
+	@override String sources({required Object count}) => '${count} bronnen';
+	@override String get allSources => 'Alle bronnen';
+	@override String get oneSource => '1 bron';
+	@override String titleCount({required Object count}) => '${count} titels';
+	@override String get oneTitle => '1 titel';
+	@override String titlesLoaded({required Object count}) => '${count} titels geladen';
+	@override String get loadMore => 'Meer laden';
+	@override String get loadingMore => 'Meer laden…';
+	@override late final _TranslationsUnifiedCatalogSortNl sort = _TranslationsUnifiedCatalogSortNl._(_root);
+	@override late final _TranslationsUnifiedCatalogFiltersNl filters = _TranslationsUnifiedCatalogFiltersNl._(_root);
+	@override late final _TranslationsUnifiedCatalogStatesNl states = _TranslationsUnifiedCatalogStatesNl._(_root);
+	@override late final _TranslationsUnifiedCatalogSemanticsNl semantics = _TranslationsUnifiedCatalogSemanticsNl._(_root);
+}
+
 // Path: search.filters
 class _TranslationsSearchFiltersNl extends TranslationsSearchFiltersEn {
 	_TranslationsSearchFiltersNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -2453,6 +2477,74 @@ class _TranslationsTrackersLibraryFilterNl extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => 'Synchroniseer alleen de hieronder aangevinkte bibliotheken.';
 	@override String get libraries => 'Bibliotheken';
 	@override String get noLibraries => 'Geen bibliotheken beschikbaar';
+}
+
+// Path: unifiedCatalog.sort
+class _TranslationsUnifiedCatalogSortNl extends TranslationsUnifiedCatalogSortEn {
+	_TranslationsUnifiedCatalogSortNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Sorteren';
+	@override String get titleAsc => 'Titel A–Z';
+	@override String get titleDesc => 'Titel Z–A';
+	@override String get recentlyAdded => 'Recent toegevoegd';
+	@override String get oldestAdded => 'Oudst toegevoegd';
+	@override String get newestRelease => 'Nieuwste release';
+	@override String get oldestRelease => 'Oudste release';
+	@override String get recentlyWatched => 'Recent bekeken';
+}
+
+// Path: unifiedCatalog.filters
+class _TranslationsUnifiedCatalogFiltersNl extends TranslationsUnifiedCatalogFiltersEn {
+	_TranslationsUnifiedCatalogFiltersNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Filters';
+	@override String get status => 'Status';
+	@override String get genre => 'Genre';
+	@override String get year => 'Jaar';
+	@override String get servers => 'Servers';
+	@override String get libraries => 'Bibliotheken';
+	@override String get apply => 'Toepassen';
+	@override String get clearAll => 'Alles wissen';
+	@override String get all => 'Alle';
+	@override String get unwatched => 'Niet bekeken';
+	@override String get unsupported => 'Niet beschikbaar voor de huidige bronnen';
+	@override String get noValues => 'Niets om uit te kiezen';
+}
+
+// Path: unifiedCatalog.states
+class _TranslationsUnifiedCatalogStatesNl extends TranslationsUnifiedCatalogStatesEn {
+	_TranslationsUnifiedCatalogStatesNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get emptyTitle => 'Deze catalogus is leeg';
+	@override String get emptyBody => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.';
+	@override String get filterEmptyTitle => 'Niets voldoet aan deze filters';
+	@override String get filterEmptyBody => 'Wis een filter om meer titels te zien.';
+	@override String get clearFilters => 'Filters wissen';
+	@override String get errorTitle => 'De catalogus kon niet worden geladen';
+	@override String get errorBody => 'Geen enkele server antwoordde. Controleer je verbinding en probeer het opnieuw.';
+	@override String get partialOne => '1 bibliotheek antwoordde niet';
+	@override String partialMany({required Object count}) => '${count} bibliotheken antwoordden niet';
+}
+
+// Path: unifiedCatalog.semantics
+class _TranslationsUnifiedCatalogSemanticsNl extends TranslationsUnifiedCatalogSemanticsEn {
+	_TranslationsUnifiedCatalogSemanticsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get watched => 'Bekeken';
+	@override String get inProgress => 'Bezig';
+	@override String get loadingMore => 'Meer titels laden';
 }
 
 /// The flat map containing all translations for locale <nl>.
@@ -4110,6 +4202,48 @@ extension on TranslationsNl {
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Bron ${index} van ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Voorkeursserver',
 			'sourcePicker.setPreferredServer' => ({required Object server}) => 'Altijd ${server} gebruiken',
+			'unifiedCatalog.moviesTitle' => 'Films',
+			'unifiedCatalog.seriesTitle' => 'Series',
+			'unifiedCatalog.sources' => ({required Object count}) => '${count} bronnen',
+			'unifiedCatalog.allSources' => 'Alle bronnen',
+			'unifiedCatalog.oneSource' => '1 bron',
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titels',
+			'unifiedCatalog.oneTitle' => '1 titel',
+			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titels geladen',
+			'unifiedCatalog.loadMore' => 'Meer laden',
+			'unifiedCatalog.loadingMore' => 'Meer laden…',
+			'unifiedCatalog.sort.title' => 'Sorteren',
+			'unifiedCatalog.sort.titleAsc' => 'Titel A–Z',
+			'unifiedCatalog.sort.titleDesc' => 'Titel Z–A',
+			'unifiedCatalog.sort.recentlyAdded' => 'Recent toegevoegd',
+			'unifiedCatalog.sort.oldestAdded' => 'Oudst toegevoegd',
+			'unifiedCatalog.sort.newestRelease' => 'Nieuwste release',
+			'unifiedCatalog.sort.oldestRelease' => 'Oudste release',
+			'unifiedCatalog.sort.recentlyWatched' => 'Recent bekeken',
+			'unifiedCatalog.filters.title' => 'Filters',
+			'unifiedCatalog.filters.status' => 'Status',
+			'unifiedCatalog.filters.genre' => 'Genre',
+			'unifiedCatalog.filters.year' => 'Jaar',
+			'unifiedCatalog.filters.servers' => 'Servers',
+			'unifiedCatalog.filters.libraries' => 'Bibliotheken',
+			'unifiedCatalog.filters.apply' => 'Toepassen',
+			'unifiedCatalog.filters.clearAll' => 'Alles wissen',
+			'unifiedCatalog.filters.all' => 'Alle',
+			'unifiedCatalog.filters.unwatched' => 'Niet bekeken',
+			'unifiedCatalog.filters.unsupported' => 'Niet beschikbaar voor de huidige bronnen',
+			'unifiedCatalog.filters.noValues' => 'Niets om uit te kiezen',
+			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
+			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',
+			'unifiedCatalog.states.filterEmptyTitle' => 'Niets voldoet aan deze filters',
+			'unifiedCatalog.states.filterEmptyBody' => 'Wis een filter om meer titels te zien.',
+			'unifiedCatalog.states.clearFilters' => 'Filters wissen',
+			'unifiedCatalog.states.errorTitle' => 'De catalogus kon niet worden geladen',
+			'unifiedCatalog.states.errorBody' => 'Geen enkele server antwoordde. Controleer je verbinding en probeer het opnieuw.',
+			'unifiedCatalog.states.partialOne' => '1 bibliotheek antwoordde niet',
+			'unifiedCatalog.states.partialMany' => ({required Object count}) => '${count} bibliotheken antwoordden niet',
+			'unifiedCatalog.semantics.watched' => 'Bekeken',
+			'unifiedCatalog.semantics.inProgress' => 'Bezig',
+			'unifiedCatalog.semantics.loadingMore' => 'Meer titels laden',
 			_ => null,
 		};
 	}

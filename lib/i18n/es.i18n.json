@@ -1472,5 +1472,57 @@
     "rowSemantics": "Fuente ${index} de ${count}: ${description}",
     "preferredServer": "Servidor preferido",
     "setPreferredServer": "Usar siempre ${server}"
+  },
+  "unifiedCatalog": {
+    "moviesTitle": "Películas",
+    "seriesTitle": "Series",
+    "sources": "${count} fuentes",
+    "allSources": "Todas las fuentes",
+    "oneSource": "1 fuente",
+    "titleCount": "${count} títulos",
+    "oneTitle": "1 título",
+    "titlesLoaded": "${count} títulos cargados",
+    "loadMore": "Cargar más",
+    "loadingMore": "Cargando más…",
+    "sort": {
+      "title": "Ordenar",
+      "titleAsc": "Título A–Z",
+      "titleDesc": "Título Z–A",
+      "recentlyAdded": "Añadido recientemente",
+      "oldestAdded": "Añadido primero",
+      "newestRelease": "Estreno más reciente",
+      "oldestRelease": "Estreno más antiguo",
+      "recentlyWatched": "Visto recientemente"
+    },
+    "filters": {
+      "title": "Filtros",
+      "status": "Estado",
+      "genre": "Género",
+      "year": "Año",
+      "servers": "Servidores",
+      "libraries": "Bibliotecas",
+      "apply": "Aplicar",
+      "clearAll": "Borrar todo",
+      "all": "Todos",
+      "unwatched": "Sin ver",
+      "unsupported": "No disponible para las fuentes actuales",
+      "noValues": "Nada que elegir"
+    },
+    "states": {
+      "emptyTitle": "Este catálogo está vacío",
+      "emptyBody": "Ninguna biblioteca visible contiene nada para esta página.",
+      "filterEmptyTitle": "Nada coincide con estos filtros",
+      "filterEmptyBody": "Borra un filtro para ver más títulos.",
+      "clearFilters": "Borrar filtros",
+      "errorTitle": "No se pudo cargar el catálogo",
+      "errorBody": "Ningún servidor respondió. Comprueba tu conexión e inténtalo de nuevo.",
+      "partialOne": "1 biblioteca no respondió",
+      "partialMany": "${count} bibliotecas no respondieron"
+    },
+    "semantics": {
+      "watched": "Visto",
+      "inProgress": "En curso",
+      "loadingMore": "Cargando más títulos"
+    }
   }
 }
