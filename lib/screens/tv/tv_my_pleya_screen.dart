@@ -144,6 +144,16 @@ List<TvMyPleyaGroup> buildTvMyPleyaGroups({
             title: t.tvMyPleya.activity,
             subtitle: t.tvMyPleya.activitySubtitle,
           ),
+        // Fase 8: this used to hang off the Home billboard's overlaid action
+        // bar, which the rounded in-page hero replaced. See
+        // `TvMyPleyaSection.watchTogether` for why it landed here rather than
+        // being dropped with the bar — and why Pleya Remote did not follow it.
+        TvMyPleyaTile(
+          section: TvMyPleyaSection.watchTogether,
+          icon: Symbols.group_rounded,
+          title: t.watchTogether.title,
+          subtitle: t.tvMyPleya.watchTogetherSubtitle,
+        ),
       ],
     ),
     TvMyPleyaGroup(

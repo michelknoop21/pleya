@@ -1768,6 +1768,7 @@ class _TranslationsUnifiedCatalogBg extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogStatesBg states = _TranslationsUnifiedCatalogStatesBg._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsBg semantics = _TranslationsUnifiedCatalogSemanticsBg._(_root);
 	@override late final _TranslationsUnifiedCatalogDiscoveryBg discovery = _TranslationsUnifiedCatalogDiscoveryBg._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeBg home = _TranslationsUnifiedCatalogHomeBg._(_root);
 }
 
 // Path: tvNavigation
@@ -1804,6 +1805,7 @@ class _TranslationsTvMyPleyaBg extends TranslationsTvMyPleyaEn {
 	@override String get librariesSubtitle => 'Медия, колекции, плейлисти';
 	@override String get serversSubtitle => 'Връзки и локални източници';
 	@override String get activitySubtitle => 'Гледа се сега, съвместно гледане, дистанционно';
+	@override String get watchTogetherSubtitle => 'Гледайте синхронно с приятели';
 	@override String get settingsSubtitle => 'Изглед, плейър, тракери';
 	@override String get logsSubtitle => 'Файлове с дневници и доклади за сривове';
 	@override String get aboutSubtitle => 'Версия и лицензи';
@@ -2188,6 +2190,16 @@ class _TranslationsUnifiedCatalogDiscoveryBg extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => 'Все още няма нищо за откриване';
 	@override String get emptyBody => 'Нито една видима библиотека няма какво да покаже тук.';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsBg semantics = _TranslationsUnifiedCatalogDiscoverySemanticsBg._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeBg extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => 'Препоръчано';
 }
 
 // Path: tvMyPleya.semantics
@@ -3635,6 +3647,7 @@ extension on TranslationsBg {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} от ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Виж всички филми, отваря пълния каталог',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Виж всички сериали, отваря пълния каталог',
+			'unifiedCatalog.home.featured' => 'Препоръчано',
 			'tvNavigation.activeDestination' => 'текущ раздел',
 			'tvMyPleya.groupContent' => 'Моето съдържание',
 			'tvMyPleya.groupSources' => 'Библиотеки и източници',
@@ -3653,6 +3666,7 @@ extension on TranslationsBg {
 			'tvMyPleya.librariesSubtitle' => 'Медия, колекции, плейлисти',
 			'tvMyPleya.serversSubtitle' => 'Връзки и локални източници',
 			'tvMyPleya.activitySubtitle' => 'Гледа се сега, съвместно гледане, дистанционно',
+			'tvMyPleya.watchTogetherSubtitle' => 'Гледайте синхронно с приятели',
 			'tvMyPleya.settingsSubtitle' => 'Изглед, плейър, тракери',
 			'tvMyPleya.logsSubtitle' => 'Файлове с дневници и доклади за сривове',
 			'tvMyPleya.aboutSubtitle' => 'Версия и лицензи',

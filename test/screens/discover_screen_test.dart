@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:drift/native.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:flutter/material.dart';
@@ -19,7 +17,6 @@ import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/mixins/refreshable.dart';
 import 'package:pleya/mixins/tab_visibility_aware.dart';
 import 'package:pleya/profiles/active_profile_provider.dart';
-import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/profiles/plex_home_service.dart';
 import 'package:pleya/profiles/profile.dart';
 import 'package:pleya/profiles/profile_connection.dart';
@@ -39,12 +36,11 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
-import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/watch_together/watch_together.dart';
 import 'package:pleya/widgets/side_navigation_rail.dart';
-import 'package:pleya/widgets/tv_browse_rail.dart';
-import 'package:pleya/widgets/tv_spotlight_background.dart';
+import 'package:pleya/widgets/tv/tv_content_feed.dart';
+import 'package:pleya/widgets/tv/tv_hero_billboard_carousel.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -63,7 +59,7 @@ void main() {
     TvDetectionService.debugSetAppleTVOverride(null);
   });
 
-  testWidgets('TV tab focus returns to discover browse rail instead of reload action', (tester) async {
+  testWidgets('TV tab focus returns to the Home feed instead of the reload action', (tester) async {
     final settings = await SettingsService.getInstance();
     await settings.write(SettingsService.libraryDensity, LibraryDensity.max);
     tester.view.devicePixelRatio = 1.0;
@@ -177,91 +173,45 @@ void main() {
     );
 
     await tester.pumpAndSettle();
-    expect(find.byType(TvBrowseRail), findsOneWidget);
+    // Fase 8: Home is a `TvContentFeed` — a rounded in-page carousel over the
+    // projected hero groups, with projected unified rows under it. The
+    // spotlight/browse-rail geometry this test used to assert (the full-bleed
+    // background's contentLeft/contentBottom, the rail's resting peek, the
+    // sidebar bleed layers) has no subject any more: fase 7 removed the
+    // sidebar and fase 8 removed the full-bleed billboard. What is left, and
+    // what this test is named for, is the focus round trip.
+    expect(find.byType(TvContentFeed), findsOneWidget);
+    expect(find.byType(TvHeroBillboardCarousel), findsOneWidget, reason: 'the hub fallback billboard (hoofdstuk 9.5)');
 
-    final scale = TvLayoutConstants.scaleForSize(const Size(1280, 720));
-    final spotlightLeft = (24 * scale).clamp(18.0, 40.0).toDouble();
-    final spotlightBackground = tester.widget<TvSpotlightBackground>(find.byType(TvSpotlightBackground));
-    expect(spotlightBackground.contentLeft, closeTo(spotlightLeft + currentForegroundLeft, 0.001));
-
-    final railHeight = TvBrowseRailLayout.estimateHeight(
-      size: const Size(foregroundWidth, 720),
-      hubs: [hub],
-      density: LibraryDensity.max,
-      episodePosterMode: settings.read(SettingsService.episodePosterMode),
-      fullCardLayout: settings.read(SettingsService.tvFullCardLayout),
-      tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
-    );
-    // Netflix landing: at rest the rail shows its first hub in full and the hero
-    // owns what's left (mirrors the spotlightBottom math in DiscoverScreen).
-    final spotlightTop = (720 * MonoTokens.tvHeroContentTopFraction).clamp(64.0 * scale, 120.0 * scale).toDouble();
-    final railScale = TvBrowseRailLayout.scaleForSize(const Size(foregroundWidth, 720));
-    final firstHubMetrics = TvBrowseRailLayout.metricsForHub(
-      hub: hub,
-      availableWidth: foregroundWidth - TvBrowseRailLayout.horizontalInsetForScale(railScale),
-      density: LibraryDensity.max,
-      episodePosterMode: settings.read(SettingsService.episodePosterMode),
-      scale: railScale,
-      fullCardLayout: settings.read(SettingsService.tvFullCardLayout),
-      tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
-    );
-    // The bottom focus-ring reserve is not part of the resting peek.
-    final firstHubPeek =
-        TvBrowseRailLayout.railTopPaddingForScale(railScale) +
-        TvBrowseRailLayout.hubStripHeightForScale(railScale) +
-        firstHubMetrics.height -
-        firstHubMetrics.focusExtra;
-    final railPeek = math.min(railHeight, math.min(firstHubPeek, 720 * MonoTokens.tvHomeRailMaxPeekFraction));
-    final maxSpotlightBottom = (720 - spotlightTop - (MonoTokens.tvHeroMinInfoHeight * scale))
-        .clamp(0.0, double.infinity)
-        .toDouble();
-    final expectedSpotlightBottom = (railPeek + MonoTokens.tvHeroRailGap * scale)
-        .clamp(0.0, maxSpotlightBottom)
-        .toDouble();
-    expect(spotlightBackground.contentBottom, closeTo(expectedSpotlightBottom, 0.001));
-
-    // The rail no longer receives the bleed via constructor (a per-flip param
-    // would rebuild the whole rail); its bleed layer reads the scope's
-    // sideNavigationWidth itself. Assert the rendered bleed position instead.
-    final browseRail = tester.widget<TvBrowseRail>(find.byType(TvBrowseRail));
-    expect(browseRail.backgroundBleedLeft, isNull);
-    final railBleedPositions = tester
-        .widgetList<Positioned>(find.descendant(of: find.byType(TvBrowseRail), matching: find.byType(Positioned)))
-        .where((p) => p.left == -targetSidebarOffset);
-    expect(railBleedPositions, isNotEmpty, reason: 'rail bleed layer positions at -sideNavigationWidth');
-
-    final backgroundPosition = tester.widget<Positioned>(
-      find.ancestor(of: find.byType(TvSpotlightBackground), matching: find.byType(Positioned)).first,
-    );
-    expect(backgroundPosition.left, -currentForegroundLeft);
-    expect(backgroundPosition.width, 1280);
-
-    tester.state<FocusableActionBarState>(find.byType(FocusableActionBar)).requestFocusOnFirst();
-    await tester.pump();
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'ActionBar[0]');
-
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_browse_rail');
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pump();
-
-    tester.state<FocusableActionBarState>(find.byType(FocusableActionBar)).requestFocusOnFirst();
-    await tester.pump();
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'ActionBar[0]');
+    // The overlaid Home action bar is gone from TV with fase 8: 33.1's binding
+    // composition has no chrome between the top navigation and the hero card,
+    // and hoofdstuk 7.3 ("Up vanaf hero gaat naar de actieve
+    // topnavbestemming") left it on no focus path at all. What the shell asks
+    // for is the destination's primary focus, and that is what it gets.
+    expect(find.byType(FocusableActionBar), findsNothing);
 
     (discoverKey.currentState! as FocusableTab).focusActiveTabIfReady();
+    await tester.pump();
+    await tester.pump();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
+
+    // Leaving the destination must not move the focus by itself — the shell
+    // owns that — and coming back must land on the hero again rather than on
+    // whatever traversal would have picked.
     (discoverKey.currentState! as TabVisibilityAware).onTabHidden();
     await tester.pump();
     await tester.pump();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
 
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'ActionBar[0]');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump();
 
     (discoverKey.currentState! as TabVisibilityAware).onTabShown();
     (discoverKey.currentState! as FocusableTab).focusActiveTabIfReady();
     await tester.pump();
     await tester.pump();
 
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_browse_rail');
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
   });
 
   // Fase-0 baseline for Pleya Unified TV 2026 (docs/tvos-unified-experience.md
@@ -271,6 +221,11 @@ void main() {
   // diverges from the intended hoofdstuk 7 focus contract (e.g. Up from the
   // browse rail always lands on the hero Play pill, never on a "last used"
   // hero CTA) — not what a future phase should make it do.
+  // The four fase-0 Home-focus baselines, unchanged in what they assert and
+  // re-pointed at the fase-8 surface: the hero CTAs are the carousel's
+  // (`tvHeroPlay` / `tvHeroMoreInfo`) and the row below it is a
+  // `TvContentRow`, whose focus nodes are per logical card rather than one
+  // node for the whole rail.
   group('Home-focus baseline (TV)', () {
     testWidgets('cold TV focus lands on the hero Play pill when a spotlight item exists', (tester) async {
       final key = await _pumpTvDiscoverScreen(tester);
@@ -278,7 +233,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_hero_play');
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
     });
 
     testWidgets('Down from the hero Play pill reaches the first browse row', (tester) async {
@@ -286,14 +241,17 @@ void main() {
       addTearDown(key.disposeAll);
 
       await tester.pumpAndSettle();
-      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_hero_play');
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
 
       await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
       await tester.pump();
       await tester.pump();
 
-      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_browse_rail');
+      // The first content row's tile, keyed by logical group id — fase 8
+      // replaced the single `tv_browse_rail` node with per-card nodes
+      // (hoofdstuk 7.6: focus identity is the group, never an index).
+      expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('tvDiscoveryTile_'));
     });
 
     testWidgets('Up from the first browse row returns focus to the hero Play pill', (tester) async {
@@ -301,23 +259,21 @@ void main() {
       addTearDown(key.disposeAll);
 
       await tester.pumpAndSettle();
-      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_hero_play');
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
 
       await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
       await tester.pump();
       await tester.pump();
-      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_browse_rail');
+      expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('tvDiscoveryTile_'));
 
       await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowUp);
-      // _focusTvHeroPlay drops the rail reveal and re-requests focus on the
-      // next frame, so this needs more than one pump to settle.
       await tester.pump();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
 
-      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_hero_play');
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
     });
 
     testWidgets('Right from hero Play moves to hero More-info, and Left moves back', (tester) async {
@@ -325,19 +281,19 @@ void main() {
       addTearDown(key.disposeAll);
 
       await tester.pumpAndSettle();
-      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_hero_play');
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
 
       await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
 
-      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_hero_info');
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroMoreInfo');
 
       await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowLeft);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowLeft);
       await tester.pump();
 
-      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_hero_play');
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
     });
   });
 }
@@ -382,10 +338,11 @@ class _TvDiscoverHarness {
 
 /// Mounts [DiscoverScreen] on a 1280x720 TV-mode surface, wired with the same
 /// fake providers/registries as the single pre-existing test above, with one
-/// global hub ('hub_1') carrying one item so a hero spotlight item always
-/// exists (see [DiscoverScreenState._defaultSpotlightItem]). Reused by the
-/// Home-focus baseline tests so they exercise the real focus wiring instead
-/// of a hand-rolled substitute.
+/// global hub ('hub_1') carrying one item. There are no recent films here, so
+/// this exercises hoofdstuk 9.5's fallback billboard — the hub's first logical
+/// title — which is exactly the shape these baselines were written against.
+/// Reused by the Home-focus baseline tests so they exercise the real focus
+/// wiring instead of a hand-rolled substitute.
 Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(WidgetTester tester) async {
   final settings = await SettingsService.getInstance();
   await settings.write(SettingsService.libraryDensity, LibraryDensity.max);

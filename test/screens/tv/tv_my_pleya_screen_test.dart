@@ -266,17 +266,19 @@ void main() {
       await pump(tester);
 
       // This harness has no watchlist, no Seerr, no downloads and no Plex
-      // source, so the rendered hub is exactly Bibliotheken · Servers, then the
-      // Pleya group — which makes Servers the last tile before a group boundary.
-      // The walk has to cross it rather than dead-end mid-page.
-      state(tester).focusKey(TvMyPleyaSection.servers.tileFocusKey);
+      // source, so the rendered hub is exactly Bibliotheken · Servers · Watch
+      // Together, then the Pleya group — which makes Watch Together the last
+      // tile before a group boundary (fase 8 added it, see
+      // `TvMyPleyaSection.watchTogether`). The walk has to cross the boundary
+      // rather than dead-end mid-page.
+      state(tester).focusKey(TvMyPleyaSection.watchTogether.tileFocusKey);
       await tester.pump();
       await press(tester, LogicalKeyboardKey.arrowRight);
 
       expect(focusedLabel(), TvMyPleyaSection.settings.tileFocusKey);
 
       await press(tester, LogicalKeyboardKey.arrowLeft);
-      expect(focusedLabel(), TvMyPleyaSection.servers.tileFocusKey);
+      expect(focusedLabel(), TvMyPleyaSection.watchTogether.tileFocusKey);
     });
 
     testWidgets('a menu tile announces its title and what it is for', (tester) async {

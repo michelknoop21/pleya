@@ -1768,6 +1768,7 @@ class _TranslationsUnifiedCatalogKo extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogStatesKo states = _TranslationsUnifiedCatalogStatesKo._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsKo semantics = _TranslationsUnifiedCatalogSemanticsKo._(_root);
 	@override late final _TranslationsUnifiedCatalogDiscoveryKo discovery = _TranslationsUnifiedCatalogDiscoveryKo._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeKo home = _TranslationsUnifiedCatalogHomeKo._(_root);
 }
 
 // Path: tvNavigation
@@ -1804,6 +1805,7 @@ class _TranslationsTvMyPleyaKo extends TranslationsTvMyPleyaEn {
 	@override String get librariesSubtitle => '미디어, 컬렉션, 재생목록';
 	@override String get serversSubtitle => '연결 및 로컬 소스';
 	@override String get activitySubtitle => '지금 시청 중, 함께 보기, 리모컨';
+	@override String get watchTogetherSubtitle => '친구와 동기화하여 시청';
 	@override String get settingsSubtitle => '화면, 플레이어, 트래커';
 	@override String get logsSubtitle => '로그 파일 및 오류 보고서';
 	@override String get aboutSubtitle => '버전 및 라이선스';
@@ -2188,6 +2190,16 @@ class _TranslationsUnifiedCatalogDiscoveryKo extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => '아직 발견할 항목이 없습니다';
 	@override String get emptyBody => '표시할 항목이 있는 라이브러리가 없습니다.';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsKo semantics = _TranslationsUnifiedCatalogDiscoverySemanticsKo._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeKo extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => '추천 작품';
 }
 
 // Path: tvMyPleya.semantics
@@ -3635,6 +3647,7 @@ extension on TranslationsKo {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object count, required Object position}) => '${count}개 중 ${position}번째',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => '모든 영화 보기, 전체 카탈로그 열기',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => '모든 시리즈 보기, 전체 카탈로그 열기',
+			'unifiedCatalog.home.featured' => '추천 작품',
 			'tvNavigation.activeDestination' => '현재 섹션',
 			'tvMyPleya.groupContent' => '내 콘텐츠',
 			'tvMyPleya.groupSources' => '라이브러리 및 소스',
@@ -3653,6 +3666,7 @@ extension on TranslationsKo {
 			'tvMyPleya.librariesSubtitle' => '미디어, 컬렉션, 재생목록',
 			'tvMyPleya.serversSubtitle' => '연결 및 로컬 소스',
 			'tvMyPleya.activitySubtitle' => '지금 시청 중, 함께 보기, 리모컨',
+			'tvMyPleya.watchTogetherSubtitle' => '친구와 동기화하여 시청',
 			'tvMyPleya.settingsSubtitle' => '화면, 플레이어, 트래커',
 			'tvMyPleya.logsSubtitle' => '로그 파일 및 오류 보고서',
 			'tvMyPleya.aboutSubtitle' => '버전 및 라이선스',

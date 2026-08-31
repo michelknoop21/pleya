@@ -1548,6 +1548,9 @@
         "viewAllMovies": "Visa alla filmer, öppnar hela katalogen",
         "viewAllSeries": "Visa alla serier, öppnar hela katalogen"
       }
+    },
+    "home": {
+      "featured": "Utvalt"
     }
   },
   "tvNavigation": {
@@ -1571,6 +1574,7 @@
     "librariesSubtitle": "Media, samlingar, spellistor",
     "serversSubtitle": "Anslutningar och lokala källor",
     "activitySubtitle": "Ses just nu, se tillsammans, fjärrkontroll",
+    "watchTogetherSubtitle": "Titta synkroniserat med vänner",
     "settingsSubtitle": "Visning, spelare, trackers",
     "logsSubtitle": "Loggfiler och kraschrapporter",
     "aboutSubtitle": "Version och licenser",

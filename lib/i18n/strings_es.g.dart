@@ -1768,6 +1768,7 @@ class _TranslationsUnifiedCatalogEs extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogStatesEs states = _TranslationsUnifiedCatalogStatesEs._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsEs semantics = _TranslationsUnifiedCatalogSemanticsEs._(_root);
 	@override late final _TranslationsUnifiedCatalogDiscoveryEs discovery = _TranslationsUnifiedCatalogDiscoveryEs._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeEs home = _TranslationsUnifiedCatalogHomeEs._(_root);
 }
 
 // Path: tvNavigation
@@ -1804,6 +1805,7 @@ class _TranslationsTvMyPleyaEs extends TranslationsTvMyPleyaEn {
 	@override String get librariesSubtitle => 'Medios, colecciones, listas';
 	@override String get serversSubtitle => 'Conexiones y fuentes locales';
 	@override String get activitySubtitle => 'Viendo ahora, ver juntos, mando';
+	@override String get watchTogetherSubtitle => 'Míralo sincronizado con amigos';
 	@override String get settingsSubtitle => 'Pantalla, reproductor, trackers';
 	@override String get logsSubtitle => 'Archivos de registro e informes de fallos';
 	@override String get aboutSubtitle => 'Versión y licencias';
@@ -2188,6 +2190,16 @@ class _TranslationsUnifiedCatalogDiscoveryEs extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => 'Aún no hay nada que descubrir';
 	@override String get emptyBody => 'Ninguna biblioteca visible tiene nada que mostrar aquí.';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsEs semantics = _TranslationsUnifiedCatalogDiscoverySemanticsEs._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeEs extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeEs._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => 'Destacado';
 }
 
 // Path: tvMyPleya.semantics
@@ -3635,6 +3647,7 @@ extension on TranslationsEs {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} de ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Ver todas las películas, abre el catálogo completo',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Ver todas las series, abre el catálogo completo',
+			'unifiedCatalog.home.featured' => 'Destacado',
 			'tvNavigation.activeDestination' => 'sección actual',
 			'tvMyPleya.groupContent' => 'Mi contenido',
 			'tvMyPleya.groupSources' => 'Bibliotecas y fuentes',
@@ -3653,6 +3666,7 @@ extension on TranslationsEs {
 			'tvMyPleya.librariesSubtitle' => 'Medios, colecciones, listas',
 			'tvMyPleya.serversSubtitle' => 'Conexiones y fuentes locales',
 			'tvMyPleya.activitySubtitle' => 'Viendo ahora, ver juntos, mando',
+			'tvMyPleya.watchTogetherSubtitle' => 'Míralo sincronizado con amigos',
 			'tvMyPleya.settingsSubtitle' => 'Pantalla, reproductor, trackers',
 			'tvMyPleya.logsSubtitle' => 'Archivos de registro e informes de fallos',
 			'tvMyPleya.aboutSubtitle' => 'Versión y licencias',

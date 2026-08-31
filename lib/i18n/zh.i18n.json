@@ -1548,6 +1548,9 @@
         "viewAllMovies": "查看所有电影，打开完整目录",
         "viewAllSeries": "查看所有剧集，打开完整目录"
       }
+    },
+    "home": {
+      "featured": "精选"
     }
   },
   "tvNavigation": {
@@ -1571,6 +1574,7 @@
     "librariesSubtitle": "媒体、合集、播放列表",
     "serversSubtitle": "连接与本地来源",
     "activitySubtitle": "正在观看、一起看、遥控",
+    "watchTogetherSubtitle": "与好友同步观看",
     "settingsSubtitle": "显示、播放器、追踪器",
     "logsSubtitle": "日志文件与崩溃报告",
     "aboutSubtitle": "版本与许可",

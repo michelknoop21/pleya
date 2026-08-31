@@ -15,6 +15,20 @@ enum TvMyPleyaSection {
   libraries,
   servers,
   activity,
+  // Fase 8: Watch Together's only entry point was the Home billboard's overlaid
+  // action bar, which 33.1's composition does not have and hoofdstuk 7.3 left
+  // on no focus path. Removing that bar without giving it a home would have
+  // made a working feature unreachable on TV, so it moved to the destination
+  // hoofdstuk 18 already defines as "everything personal that is not browsing".
+  //
+  // Pleya Remote deliberately did *not* come with it. On TV that action opened
+  // the **host** surface (`RemoteSessionDialog`, via
+  // `PlatformDetector.shouldActAsRemoteHost`) — pairing status, start/stop —
+  // and a host surface has no screen form to push here; `MobileRemoteScreen` is
+  // the *client*, which on a TV is the opposite role. Manufacturing the missing
+  // screen is functional integration, which is fase 9. The gap is registered in
+  // [DEC-070] rather than papered over with the wrong screen.
+  watchTogether,
   settings,
   logs,
   about;
@@ -29,6 +43,7 @@ enum TvMyPleyaSection {
     TvMyPleyaSection.libraries => t.navigation.libraries,
     TvMyPleyaSection.servers => t.tvMyPleya.servers,
     TvMyPleyaSection.activity => t.tvMyPleya.activity,
+    TvMyPleyaSection.watchTogether => t.watchTogether.title,
     TvMyPleyaSection.settings => t.common.settings,
     TvMyPleyaSection.logs => t.tvMyPleya.logs,
     TvMyPleyaSection.about => t.about.title,

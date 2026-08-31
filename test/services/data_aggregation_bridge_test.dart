@@ -263,7 +263,17 @@ void main() {
       expect(result.succeededServerIds, {'plex-1'});
     });
 
-    test('getOnDeckFromAllServers hides duplicate show entries by stable show ids', () async {
+    // Hoofdstuk 11.8, upstream half. `_deduplicateContinueWatching` runs
+    // *before* any Home projection sees the row, so a fold here is invisible
+    // downstream — these two tests pin both directions at the aggregation
+    // boundary itself.
+    //
+    // Here: one show sitting in two Plex library sections, so the same next-up
+    // episode is listed twice. Neither row's own guid is usable (Plex's
+    // `agents.none://` marker), so the *only* evidence is the show's tvdb
+    // narrowed by the episode ordinal — edge case D4 — and the duplicate has
+    // to collapse on it.
+    test('getOnDeckFromAllServers hides the same episode listed twice under one stable show id', () async {
       final client = PlexClient.forTesting(
         config: PlexConfig(
           baseUrl: 'https://plex.example.com',
@@ -289,20 +299,24 @@ void main() {
                       {
                         'ratingKey': 'old-episode',
                         'type': 'episode',
-                        'title': 'Episode 1',
+                        'title': 'The Fourth Crossing',
                         'grandparentRatingKey': 'old-show',
                         'grandparentTitle': 'Shared Show',
-                        'guid': 'plex://episode/shared-episode-1',
+                        'guid': 'com.plexapp.agents.none://old-episode',
+                        'parentIndex': 2,
+                        'index': 4,
                         'lastViewedAt': 100,
                         'librarySectionID': 1,
                       },
                       {
                         'ratingKey': 'new-episode',
                         'type': 'episode',
-                        'title': 'Episode 2',
+                        'title': 'The Fourth Crossing',
                         'grandparentRatingKey': 'new-show',
                         'grandparentTitle': 'Shared Show',
-                        'guid': 'plex://episode/shared-episode-2',
+                        'guid': 'com.plexapp.agents.none://new-episode',
+                        'parentIndex': 2,
+                        'index': 4,
                         'lastViewedAt': 200,
                         'librarySectionID': 2,
                       },
@@ -338,6 +352,95 @@ void main() {
 
       expect(result.items.map((item) => item.id), ['new-episode']);
       expect(result.succeededServerIds, {'plex-1'});
+    });
+
+    // The other direction, and the regression that catches the old
+    // series-wide fold: same show, same show tvdb, same everything except the
+    // episode number. Two Continue Watching rows, and the upstream dedup must
+    // not reduce them to one before the Home projection ever sees them.
+    test('getOnDeckFromAllServers keeps two different episodes of one show under one stable show id', () async {
+      final client = PlexClient.forTesting(
+        config: PlexConfig(
+          baseUrl: 'https://plex.example.com',
+          token: 'token',
+          clientIdentifier: 'client-id',
+          product: 'Plezy',
+          version: 'test',
+        ),
+        serverId: ServerId('plex-1'),
+        serverName: 'Plex',
+        httpClient: MockClient((req) async {
+          if (req.url.path == '/hubs') {
+            return _json({
+              'MediaContainer': {
+                'Hub': [
+                  {
+                    'key': '/hubs/home/continueWatching',
+                    'title': 'Continue Watching',
+                    'type': 'mixed',
+                    'hubIdentifier': 'home.continue',
+                    'size': 2,
+                    'Metadata': [
+                      {
+                        'ratingKey': 'episode-s2e4',
+                        'type': 'episode',
+                        'title': 'The Fourth Crossing',
+                        'grandparentRatingKey': 'old-show',
+                        'grandparentTitle': 'Shared Show',
+                        'guid': 'com.plexapp.agents.none://episode-s2e4',
+                        'parentIndex': 2,
+                        'index': 4,
+                        'lastViewedAt': 100,
+                        'librarySectionID': 1,
+                      },
+                      {
+                        'ratingKey': 'episode-s2e5',
+                        'type': 'episode',
+                        'title': 'Slack Water',
+                        'grandparentRatingKey': 'new-show',
+                        'grandparentTitle': 'Shared Show',
+                        'guid': 'com.plexapp.agents.none://episode-s2e5',
+                        'parentIndex': 2,
+                        'index': 5,
+                        'lastViewedAt': 200,
+                        'librarySectionID': 2,
+                      },
+                    ],
+                  },
+                ],
+              },
+            });
+          }
+          if (req.url.path == '/library/metadata/old-show' || req.url.path == '/library/metadata/new-show') {
+            return _json({
+              'MediaContainer': {
+                'Metadata': [
+                  {
+                    'ratingKey': req.url.pathSegments.last,
+                    'type': 'show',
+                    'title': 'Shared Show',
+                    'Guid': [
+                      {'id': 'tvdb://12345'},
+                    ],
+                  },
+                ],
+              },
+            });
+          }
+          return http.Response('unexpected request', 500);
+        }),
+      );
+      addTearDown(client.close);
+      manager.debugRegisterClientForTesting(client);
+
+      final result = await service.getOnDeckFromAllServers(limit: 10);
+
+      expect(
+        result.items.map((item) => item.id),
+        ['episode-s2e5', 'episode-s2e4'],
+        reason: 'hoofdstuk 11.8: S02E04 and S02E05 are two Continue Watching entries, not one',
+      );
+      expect(result.items.map((item) => (item.parentIndex, item.index)), [(2, 5), (2, 4)]);
     });
 
     test('getOnDeckFromAllServers keeps duplicate titles without stable ids', () async {

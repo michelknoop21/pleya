@@ -1768,6 +1768,7 @@ class _TranslationsUnifiedCatalogSv extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogStatesSv states = _TranslationsUnifiedCatalogStatesSv._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsSv semantics = _TranslationsUnifiedCatalogSemanticsSv._(_root);
 	@override late final _TranslationsUnifiedCatalogDiscoverySv discovery = _TranslationsUnifiedCatalogDiscoverySv._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeSv home = _TranslationsUnifiedCatalogHomeSv._(_root);
 }
 
 // Path: tvNavigation
@@ -1804,6 +1805,7 @@ class _TranslationsTvMyPleyaSv extends TranslationsTvMyPleyaEn {
 	@override String get librariesSubtitle => 'Media, samlingar, spellistor';
 	@override String get serversSubtitle => 'Anslutningar och lokala källor';
 	@override String get activitySubtitle => 'Ses just nu, se tillsammans, fjärrkontroll';
+	@override String get watchTogetherSubtitle => 'Titta synkroniserat med vänner';
 	@override String get settingsSubtitle => 'Visning, spelare, trackers';
 	@override String get logsSubtitle => 'Loggfiler och kraschrapporter';
 	@override String get aboutSubtitle => 'Version och licenser';
@@ -2188,6 +2190,16 @@ class _TranslationsUnifiedCatalogDiscoverySv extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => 'Inget att upptäcka ännu';
 	@override String get emptyBody => 'Inget synligt bibliotek har något att visa här.';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsSv semantics = _TranslationsUnifiedCatalogDiscoverySemanticsSv._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeSv extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => 'Utvalt';
 }
 
 // Path: tvMyPleya.semantics
@@ -3635,6 +3647,7 @@ extension on TranslationsSv {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} av ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Visa alla filmer, öppnar hela katalogen',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Visa alla serier, öppnar hela katalogen',
+			'unifiedCatalog.home.featured' => 'Utvalt',
 			'tvNavigation.activeDestination' => 'aktuellt avsnitt',
 			'tvMyPleya.groupContent' => 'Mitt innehåll',
 			'tvMyPleya.groupSources' => 'Bibliotek och källor',
@@ -3653,6 +3666,7 @@ extension on TranslationsSv {
 			'tvMyPleya.librariesSubtitle' => 'Media, samlingar, spellistor',
 			'tvMyPleya.serversSubtitle' => 'Anslutningar och lokala källor',
 			'tvMyPleya.activitySubtitle' => 'Ses just nu, se tillsammans, fjärrkontroll',
+			'tvMyPleya.watchTogetherSubtitle' => 'Titta synkroniserat med vänner',
 			'tvMyPleya.settingsSubtitle' => 'Visning, spelare, trackers',
 			'tvMyPleya.logsSubtitle' => 'Loggfiler och kraschrapporter',
 			'tvMyPleya.aboutSubtitle' => 'Version och licenser',

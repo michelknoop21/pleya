@@ -1,24 +1,18 @@
 import 'dart:async';
 import '../media/ids.dart';
 import 'dart:io' show Platform;
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HardwareKeyboard, LogicalKeyboardKey;
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:pleya/widgets/pleya_logo.dart';
 import '../widgets/server_activities_button.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import '../focus/focusable_action_bar.dart';
-import '../focus/focusable_button.dart';
-import '../focus/focusable_wrapper.dart';
-import '../focus/focus_theme.dart';
 import '../focus/input_mode_tracker.dart';
 import '../focus/key_event_utils.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 
-import '../services/apple_tv_remote_touch_service.dart';
 import '../services/download_artwork_helpers.dart';
 import '../services/image_cache_service.dart';
 import '../media/media_item.dart';
@@ -28,11 +22,8 @@ import '../media/media_hub.dart';
 import '../utils/media_image_helper.dart';
 import '../widgets/optimized_media_image.dart' show blurArtwork;
 import '../widgets/home_hero_artwork.dart';
-import '../media/unified/unified_media_group.dart';
-import '../media/unified/unified_route_context.dart';
 import '../providers/discover_provider.dart';
 import '../providers/multi_server_provider.dart';
-import '../providers/tv_home_projection_provider.dart';
 import 'tv/tv_discovery_activation_mixin.dart';
 import '../providers/home_layout_provider.dart';
 import '../providers/watch_state_store.dart';
@@ -42,6 +33,7 @@ import '../widgets/app_menu.dart';
 import '../widgets/clickable_cursor.dart';
 import '../widgets/skeletons.dart';
 import '../widgets/state_view.dart';
+import '../widgets/tv/tv_content_feed.dart';
 import '../widgets/profile_switching_overlay.dart';
 import '../profiles/active_profile_provider.dart';
 import '../profiles/profile.dart';
@@ -53,8 +45,6 @@ import '../providers/now_watching_provider.dart';
 import '../widgets/now_watching/now_watching_button.dart';
 import '../widgets/settings_builder.dart';
 import '../widgets/fitting_title_text.dart';
-import '../widgets/tv_browse_rail.dart';
-import '../widgets/tv_spotlight_background.dart';
 import '../mixins/refreshable.dart';
 import '../mixins/tab_visibility_aware.dart';
 import '../i18n/strings.g.dart';
@@ -126,25 +116,21 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // tvHomeRailMaxPeekFraction, tvHeroRailGap, tvHeroMinInfoHeight).
 
   /// Data + refresh policy live in [DiscoverProvider]; this state keeps only
-  /// UI concerns (hero carousel, focus, spotlight). The proxy getters keep
+  /// UI concerns (hero carousel, focus). The proxy getters keep
   /// the build code reading naturally.
   late final DiscoverProvider _discover;
   int _seenLoadGeneration = 0;
 
   List<MediaItem> get _onDeck => _discover.onDeck;
-  // Hero source: newest released films (release-date ordered), not on-deck.
-  // On phone/desktop this *is* the hero list. On TV it is only the raw input
-  // the fase-6 projection turns into [_tvHeroSlides] — read [_heroItems]
-  // there, never this (DEC-067).
+  // Hero source on phone/desktop: newest released films (release-date
+  // ordered), not on-deck. The TV hero no longer reads this at all — it reads
+  // `TvHomeProjectionProvider.heroGroups` through `TvContentFeed` (DEC-067).
   List<MediaItem> get _latestMovies => _discover.latestMovies;
   HomeLayoutProvider? _homeLayout;
-  // Fase 6 (DEC-067): the TV hero's slide list. Bound in
-  // didChangeDependencies for the same reason _homeLayout is — the instance
-  // is swapped on a profile switch, and listening to a stale one would leave
-  // the hero on the previous user's films.
-  TvHomeProjectionProvider? _tvHomeProjection;
-  // User layout (hide + reorder) applied here, the single choke point both the
-  // mobile sliver loop and the TV rail read from.
+  // User layout (hide + reorder) applied here for the phone/desktop sliver
+  // loop. The TV feed applies the same preferences to its *unified* rows
+  // instead (`home_row_layout.dart`), because a merged row has more than one
+  // legacy id and `apply`'s single `idOf` cannot express that.
   List<MediaHub> get _hubs => _homeLayout?.apply(_discover.hubs, _hubIdentity) ?? _discover.hubs;
   bool get _hasMoreContinueWatching => _discover.hasMoreContinueWatching;
   bool get _isLoading => _discover.isLoading;
@@ -157,45 +143,22 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   int _currentHeroIndex = 0;
   Timer? _autoScrollTimer;
   Timer? _indicatorTimer;
-  Timer? _tvHeroManualPauseTimer;
   final ValueNotifier<double> _indicatorProgress = ValueNotifier(0.0);
   bool _isAutoScrollPaused = false;
   bool _heroFocusPausedAutoScroll = false;
-  // ValueNotifier (not setState) so a spotlight swap rebuilds only the
-  // TvSpotlightBackground subtree, never the rail/rows.
-  final ValueNotifier<MediaItem?> _spotlightItem = ValueNotifier(null);
-
-  /// True once something other than the default pinned the spotlight (rail
-  /// focus, manual hero navigation, auto-rotate). While false the hero keeps
-  /// following [_defaultSpotlightItem] — a mount-time focus echo from the rail
-  /// must not pin Continue Watching before the latest movies land.
-  bool _spotlightUserDriven = false;
-
-  /// Rail focus fires per D-pad step; without this every tile passed over
-  /// would trigger a cross-fade and a backdrop fetch.
-  Timer? _spotlightDebounce;
   bool _isTabVisible = true;
 
   // Track initial load so we can focus hero when content first appears
   bool _initialLoadComplete = false;
-  bool _pendingTvBrowseRailFocus = false;
-
-  // tvOS "Netflix landing": at rest the hero fills the screen and the browse
-  // rail only peeks at the bottom. Focusing the rail reveals it (slides up over
-  // the hero); focusing the hero actions hides it again.
-  bool _tvRailRevealed = false;
 
   // Hub navigation keys
   GlobalKey<HubSectionState>? _continueWatchingHubKey;
   final Map<String, GlobalKey<HubSectionState>> _hubKeysByIdentity = {};
   List<GlobalKey<HubSectionState>> _orderedHubKeys = const [];
-  final _tvBrowseRailKey = GlobalKey<TvBrowseRailState>();
+  final _tvFeedKey = GlobalKey<TvContentFeedState>();
 
   // Hero and app bar focus
   late FocusNode _heroFocusNode;
-  // TV Netflix-style billboard action buttons (Play / More info).
-  final FocusNode _tvHeroPlayFocusNode = FocusNode(debugLabel: 'tv_hero_play');
-  final FocusNode _tvHeroInfoFocusNode = FocusNode(debugLabel: 'tv_hero_info');
   final _actionBarKey = GlobalKey<FocusableActionBarState>();
   final _serverActivitiesButtonKey = GlobalKey<ServerActivitiesButtonState>();
   final _nowWatchingButtonKey = GlobalKey<NowWatchingButtonState>();
@@ -253,124 +216,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   /// check — so this stays on the raw `latestMovies` PageView list.
   bool get _isHeroSectionVisible => _latestMovies.isNotEmpty && context.settingsRead(SettingsService.showHeroSection);
 
-  MediaItem? get _defaultSpotlightItem {
-    final heroItems = _heroItems;
-    if (heroItems.isNotEmpty) return heroItems.first;
-    // Still loading: don't flash a Continue Watching item as the hero — the
-    // latest-movies row usually lands a beat after on-deck.
-    if (_areHubsLoading) return null;
-    // Movies-empty libraries (e.g. show-only servers — latest movies is
-    // films-only) still have Continue Watching + hubs; fall back to those so
-    // the TV billboard is never blank while the rail shows content. _onDeck is
-    // the first row on TV, so it precedes the generic hubs.
-    if (_onDeck.isNotEmpty) return _onDeck.first;
-    for (final hub in _hubs) {
-      if (hub.items.isNotEmpty) return hub.items.first;
-    }
-    return null;
-  }
-
-  List<MediaHub> get _tvBrowseHubs {
-    final hubs = <MediaHub>[];
-    if (_onDeck.isNotEmpty) {
-      hubs.add(
-        MediaHub(
-          id: 'continue_watching',
-          title: t.discover.continueWatching,
-          type: 'mixed',
-          identifier: '_continue_watching_',
-          size: _onDeck.length + (_hasMoreContinueWatching ? 1 : 0),
-          more: _hasMoreContinueWatching,
-          items: _onDeck,
-        ),
-      );
-    }
-    // Recently Added rail directly under Continue Watching — same set that feeds
-    // the hero, surfaced as a browsable row.
-    if (_latestMovies.isNotEmpty) {
-      hubs.add(
-        MediaHub(
-          id: 'latest_movies',
-          title: t.discover.recentlyReleased,
-          type: 'movie',
-          identifier: '_latest_movies_',
-          size: _latestMovies.length,
-          items: _latestMovies,
-        ),
-      );
-    }
-    hubs.addAll(_hubs.where((hub) => hub.items.isNotEmpty));
-    return hubs;
-  }
-
-  /// The TV Home hero's slides (hoofdstuk 9.5, DEC-067) — the one ordered
-  /// list that decides which slides exist, in what order, and which
-  /// [UnifiedMediaGroup] each one activates. Empty on phone/desktop, which
-  /// keep their own `latestMovies` PageView.
-  ///
-  /// Recomputed by [_recomputeTvHeroSlides] rather than derived per call:
-  /// [_defaultSpotlightItem] alone is read several times per build, and both
-  /// notifiers that can change the answer already rebuild the screen.
-  List<_TvHeroSlide> _tvHeroSlides = const [];
-  List<MediaItem> _tvHeroItems = const [];
-
-  /// What the hero rotates over on this platform: the projected logical
-  /// slides on TV, the raw release-ordered films on phone/desktop.
-  List<MediaItem> get _heroItems => PlatformDetector.isTV() ? _tvHeroItems : _latestMovies;
-
-  /// Turn [TvHomeProjectionProvider.heroGroups] into slides, or hold today's
-  /// raw-`latestMovies` hero while the projection catches up.
-  ///
-  /// The distinction matters and is why `projectedLatestMovies` exists: an
-  /// empty `heroGroups` for the list Home is *currently* showing is an
-  /// answer — every recent film was ineligible, or there is no visible film
-  /// library — and the billboard should fall through to on-deck/hub content
-  /// exactly as it did before fase 6. An empty `heroGroups` because the
-  /// projection has not yet consumed the films that just landed is not an
-  /// answer, and blanking the billboard for it would be a visible regression
-  /// on every cold load.
-  void _recomputeTvHeroSlides() {
-    if (!PlatformDetector.isTV()) {
-      _tvHeroSlides = const [];
-      _tvHeroItems = const [];
-      return;
-    }
-    final projection = _tvHomeProjection;
-    final caughtUp = projection != null && identical(projection.projectedLatestMovies, _discover.latestMovies);
-    _tvHeroSlides = caughtUp
-        ? [for (final group in projection.heroGroups) _TvHeroSlide(group: group, item: group.representativeSource.item)]
-        // Not caught up: today's behaviour, unchanged, until it is. Activation
-        // still resolves per slide below, so this window is never less safe
-        // than fase 5 was — only less deduplicated.
-        : [for (final item in _latestMovies) _TvHeroSlide(group: null, item: item)];
-    _tvHeroItems = [for (final slide in _tvHeroSlides) slide.item];
-  }
-
-  /// The slide [item] is currently occupying, or `null` when the billboard is
-  /// showing something that is not a hero slide (rail focus, or the on-deck /
-  /// hub fallback for an empty hero).
-  _TvHeroSlide? _tvHeroSlideFor(MediaItem item) {
-    for (final slide in _tvHeroSlides) {
-      if (slide.item.globalKey == item.globalKey) return slide;
-    }
-    return null;
-  }
-
-  MediaItem? get _effectiveSpotlightItem {
-    // Until the user actually drives the spotlight (rail focus, manual hero
-    // navigation, auto-rotate), keep tracking the default so the hero upgrades
-    // itself the moment the latest-movies row arrives.
-    if (!_spotlightUserDriven) return _defaultSpotlightItem;
-    final current = _spotlightItem.value;
-    if (current == null) return _defaultSpotlightItem;
-    if (_heroItems.any((item) => item.globalKey == current.globalKey)) return current;
-    if (_onDeck.any((item) => item.globalKey == current.globalKey)) return current;
-    for (final hub in _hubs) {
-      if (hub.items.any((item) => item.globalKey == current.globalKey)) return current;
-    }
-    return _defaultSpotlightItem;
-  }
-
   void _scrollToTop() {
     if (!_scrollController.hasClients) return;
     _scrollController.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
@@ -404,7 +249,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   void _focusContentFromAppBar() {
     if (PlatformDetector.isTV()) {
-      _focusTvBrowseRailWhenReady(immediate: true);
+      _tvFeedKey.currentState?.focusPrimary();
       return;
     }
 
@@ -419,89 +264,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     }
   }
 
-  void _focusTvBrowseRailWhenReady({bool immediate = false}) {
-    if (!PlatformDetector.isTV()) return;
-    final suppressSelectUntilKeyUp = _isSelectKeyPressed;
-    if (!_isTabVisible || !(ModalRoute.of(context)?.isCurrent ?? false)) {
-      _pendingTvBrowseRailFocus = false;
-      return;
-    }
-
-    _pendingTvBrowseRailFocus = true;
-    if (immediate && _tvBrowseHubs.isNotEmpty) {
-      final rail = _tvBrowseRailKey.currentState;
-      if (rail != null) {
-        _pendingTvBrowseRailFocus = false;
-        rail.requestFocus();
-        if (suppressSelectUntilKeyUp) rail.suppressSelectUntilKeyUp();
-        return;
-      }
-    }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (!_isTabVisible || !(ModalRoute.of(context)?.isCurrent ?? false)) {
-        _pendingTvBrowseRailFocus = false;
-        return;
-      }
-      if (_tvBrowseHubs.isEmpty) return;
-      final rail = _tvBrowseRailKey.currentState;
-      if (rail == null) return;
-      _pendingTvBrowseRailFocus = false;
-      rail.requestFocus();
-      if (suppressSelectUntilKeyUp) rail.suppressSelectUntilKeyUp();
-    });
-  }
-
-  bool get _isSelectKeyPressed {
-    return HardwareKeyboard.instance.logicalKeysPressed.any(
-      (key) =>
-          key == LogicalKeyboardKey.enter ||
-          key.keyId == 0x0d ||
-          key == LogicalKeyboardKey.numpadEnter ||
-          key == LogicalKeyboardKey.select ||
-          key == LogicalKeyboardKey.gameButtonA,
-    );
-  }
-
-  void _applyPendingTvBrowseRailFocus() {
-    if (_pendingTvBrowseRailFocus) _focusTvBrowseRailWhenReady();
-  }
-
-  /// Reveal (rail slides up over the hero) or hide (only peeks) the TV browse
-  /// rail. Driven by focus: the rail focusing reveals it, a hero action focusing
-  /// hides it.
-  void _setTvRailRevealed(bool revealed) {
-    if (!mounted || _tvRailRevealed == revealed) return;
-    setState(() => _tvRailRevealed = revealed);
-    if (revealed) {
-      // Rail focus drives the hero now — stop auto-rotate so it doesn't fight
-      // the focus-follow.
-      _autoScrollTimer?.cancel();
-      _stopIndicatorProgress();
-    } else {
-      // Focus left the rail (back to hero): restore the featured item and resume.
-      // Skip the restart when a route is pushed over us (e.g. opening a detail
-      // from a rail item) so the timer doesn't churn the hidden hero.
-      _spotlightUserDriven = false;
-      _spotlightItem.value = _defaultSpotlightItem;
-      final isCurrent = ModalRoute.of(context)?.isCurrent ?? false;
-      if (_isTabVisible && !_isAutoScrollPaused && isCurrent) _startAutoScroll();
-    }
-  }
-
   /// Handle vertical navigation between hubs
   /// Returns true if the navigation was handled
   bool _handleVerticalNavigation(int hubIndex, bool isUp) {
     final keys = _allHubKeys;
     if (keys.isEmpty) return false;
 
-    // UP from first hub: navigate to hero when visible, otherwise app bar
+    // UP from first hub: navigate to hero when visible, otherwise app bar.
+    // Phone/desktop only — the TV feed owns its own vertical traversal
+    // (hoofdstuk 7.3), and `_allHubKeys` is never populated on that path.
     if (isUp && hubIndex == 0) {
-      if (PlatformDetector.isTV()) {
-        _focusTopActions();
-        return true;
-      }
       _focusTopBoundary();
       return true;
     }
@@ -529,66 +301,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     MainScreenFocusScope.of(context, listen: false)?.focusSidebar();
   }
 
-  /// Focus the TV billboard's primary (Play) action. Falls back to the top app
-  /// bar when no billboard item is present (buttons not mounted).
-  void _focusTvHeroPlay() {
-    if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
-    if (_effectiveSpotlightItem == null) {
-      _focusTopActions();
-      return;
-    }
-    // While the rail is revealed the hero info is faded out and its actions sit
-    // under an ExcludeFocus (see TvSpotlightBackground), so the Play node can't
-    // take focus yet. Drop the reveal first, then focus once the rebuild
-    // re-enables the node — otherwise UP from the top row falls through to the
-    // app bar and the hero becomes unreachable.
-    if (_tvRailRevealed) {
-      _setTvRailRevealed(false);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        if (_tvHeroPlayFocusNode.canRequestFocus) {
-          _tvHeroPlayFocusNode.requestFocus();
-        } else {
-          _focusTopActions();
-        }
-      });
-      return;
-    }
-    if (_tvHeroPlayFocusNode.canRequestFocus) {
-      _tvHeroPlayFocusNode.requestFocus();
-    } else {
-      _focusTopActions();
-    }
-  }
-
-  /// Move focus from the billboard's Play pill to the More-info pill. Falls
-  /// back to advancing the hero carousel when the info node isn't mounted, so
-  /// RIGHT never becomes a dead key.
-  void _focusTvHeroInfoOrAdvance() {
-    if (_tvHeroInfoFocusNode.canRequestFocus) {
-      _tvHeroInfoFocusNode.requestFocus();
-    } else {
-      _moveTvHero(1);
-    }
-  }
-
-  /// Mirror of [_focusTvHeroInfoOrAdvance] for LEFT from the More-info pill.
-  void _focusTvHeroPlayOrAdvance() {
-    if (_tvHeroPlayFocusNode.canRequestFocus) {
-      _tvHeroPlayFocusNode.requestFocus();
-    } else {
-      _moveTvHero(-1);
-    }
-  }
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _heroFocusNode = FocusNode(debugLabel: 'hero_section');
     _heroFocusNode.addListener(_onHeroFocusChanged);
-    _tvHeroPlayFocusNode.addListener(_onTvHeroActionFocusChanged);
-    _tvHeroInfoFocusNode.addListener(_onTvHeroActionFocusChanged);
     _discover = context.read<DiscoverProvider>();
     _seenLoadGeneration = _discover.loadGeneration;
     _discover.addListener(_onDiscoverChanged);
@@ -613,15 +331,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       _nowWatching = nowWatching?..watchAmbient();
     }
 
-    if (PlatformDetector.isTV()) {
-      final projection = Provider.of<TvHomeProjectionProvider>(context, listen: false);
-      if (!identical(projection, _tvHomeProjection)) {
-        _tvHomeProjection?.removeListener(_onTvHomeProjectionChanged);
-        _tvHomeProjection = projection..addListener(_onTvHomeProjectionChanged);
-        _recomputeTvHeroSlides();
-      }
-    }
-
     // Resolve with listen: true so this rebinds when the provider instance is
     // swapped (profile switch / session subtree rebuild). Binding once in
     // initState left us listening to a stale notifier: the settings screen
@@ -638,31 +347,22 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     setState(_updateHubKeys);
   }
 
-  /// A finished projection changes which slides the hero has, so it has to
-  /// clamp the carousel index the same way a fresh `DiscoverProvider` load
-  /// does — dedup can shrink the rotation under a user who is standing on the
-  /// last slide.
-  void _onTvHomeProjectionChanged() {
-    if (!mounted) return;
-    setState(() {
-      _recomputeTvHeroSlides();
-      if (_currentHeroIndex >= _heroItems.length) _currentHeroIndex = 0;
-    });
-  }
-
-  /// Mirror provider changes into this state's UI concerns: rebuild, apply
-  /// pending TV-rail focus, and keep the hero carousel index in sync — a
-  /// fresh [DiscoverProvider.load] resets it, a background Continue Watching
-  /// refresh only clamps it.
+  /// Mirror provider changes into this state's UI concerns: rebuild, and keep
+  /// the phone/desktop hero carousel index in sync — a fresh
+  /// [DiscoverProvider.load] resets it, a background Continue Watching refresh
+  /// only clamps it.
+  ///
+  /// Nothing here touches the TV hero any more. Fase 8 moved that state into
+  /// [TvContentFeed]/`TvHeroBillboardCarousel`, which follow
+  /// `TvHomeProjectionProvider.heroGroups` by group id — so a re-projection
+  /// that shortens the rotation keeps the viewer on the film they were on
+  /// instead of resetting an index this screen used to own.
   void _onDiscoverChanged() {
     if (!mounted) return;
     final generation = _discover.loadGeneration;
     final isNewLoad = generation != _seenLoadGeneration;
     _seenLoadGeneration = generation;
-    // `latestMovies` may have just been replaced, which un-catches-up the
-    // projection: recompute before anything reads the hero list.
-    _recomputeTvHeroSlides();
-    final heroOutOfBounds = _currentHeroIndex >= _heroItems.length;
+    final heroOutOfBounds = _currentHeroIndex >= _latestMovies.length;
 
     setState(() {
       if (isNewLoad || heroOutOfBounds) {
@@ -670,12 +370,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       }
       _updateHubKeys();
     });
-    _applyPendingTvBrowseRailFocus();
 
     // Row endpoints omit art/clearLogo, so the first hero page would render a
     // blurred poster until the user swipes. Prime the visible page + neighbours
     // once per load, off the build phase.
-    if ((isNewLoad || heroOutOfBounds) && _heroItems.isNotEmpty) {
+    if ((isNewLoad || heroOutOfBounds) && _latestMovies.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _ensureHeroArt(_currentHeroIndex);
@@ -693,20 +392,22 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       _heroFocusNode.requestFocus();
     }
 
-    // On initial load, focus content so the user doesn't start on the toolbar
+    // On initial load, focus content so the user doesn't start on the toolbar.
+    //
+    // TV needs this as well as the fase-7 shell's own `focusActiveTabIfReady`,
+    // and the two are not redundant: the shell asks on a *destination switch*,
+    // which on a cold start happens before any server has answered, so there is
+    // no hero and no row to land on yet. This is the second ask, once content
+    // exists. Where it points is the only fase-8 change — the feed's primary
+    // focus (hoofdstuk 7.1: Afspelen, or the first row when there is no hero)
+    // instead of the removed browse rail.
     if (!_initialLoadComplete) {
       if (PlatformDetector.isTV() && (_latestMovies.isNotEmpty || _onDeck.isNotEmpty || _hubs.isNotEmpty)) {
         _initialLoadComplete = true;
-        // Netflix-style: land focus on the billboard Play button when a
-        // spotlight item exists; otherwise fall back to the content rail.
-        if (_effectiveSpotlightItem != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            _focusTvHeroPlay();
-          });
-        } else {
-          _focusTvBrowseRailWhenReady();
-        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
+          _tvFeedKey.currentState?.focusPrimary();
+        });
       } else if (!PlatformDetector.isTV() && _latestMovies.isNotEmpty) {
         _initialLoadComplete = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -735,37 +436,17 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     }
   }
 
-  void _onTvHeroActionFocusChanged() {
-    if (!PlatformDetector.isTV()) return;
-    if (_tvHeroPlayFocusNode.hasFocus || _tvHeroInfoFocusNode.hasFocus) {
-      _autoScrollTimer?.cancel();
-      _stopIndicatorProgress();
-    } else if (_isTabVisible && !_isAutoScrollPaused) {
-      _startAutoScroll();
-    }
-  }
-
-  /// Settle the billboard on the item the user actually stopped on. Nulls
-  /// apply immediately — that's a focus leave, not a scroll-through.
-  void _setSpotlightDebounced(MediaItem? item) {
-    _spotlightDebounce?.cancel();
-    if (item == null) {
-      _spotlightItem.value = null;
-      return;
-    }
-    _spotlightDebounce = Timer(const Duration(milliseconds: 180), () {
-      if (!mounted) return;
-      _spotlightUserDriven = true;
-      _spotlightItem.value = _spotlightArtCache[item.globalKey] ?? item;
-      _enrichSpotlightArt(item);
-    });
-  }
-
+  /// Phone/desktop hero art, warmed one page at a time.
+  ///
   /// Row items come from list endpoints that often omit art/clearLogo the
   /// server does have. Fetch the full item (the show, for episodes) once and
-  /// merge its art in, so the billboard shows real fitted artwork instead of
-  /// the blurred poster fallback. Failures cache too — no fetch storms.
-  final Map<String, MediaItem?> _spotlightArtCache = {};
+  /// merge its art in, so the hero shows real fitted artwork instead of the
+  /// blurred poster fallback. Failures cache too — no fetch storms.
+  ///
+  /// TV has no part in this any more: the fase-8 carousel resolves its own
+  /// artwork per slide (`tv_hero_artwork.dart`) from the box it is actually
+  /// drawing into, which is what keeps the DEC-057 request-ratio invariant.
+  final Map<String, MediaItem?> _heroArtCache = {};
 
   // Ask the same question the renderer asks: does this item already resolve to
   // a real 16:9 backdrop? `backgroundSquarePath` counts as art but *not* as a
@@ -773,11 +454,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // a blurred stand-in.
   bool _hasBillboardArt(MediaItem item) => item.billboardArt()?.canRenderSharp == true;
 
-  Future<void> _enrichSpotlightArt(MediaItem item) async {
+  Future<void> _enrichHeroArt(MediaItem item) async {
     final key = item.globalKey;
-    if (_spotlightArtCache.containsKey(key)) return;
+    if (_heroArtCache.containsKey(key)) return;
     if (_hasBillboardArt(item) && (item.clearLogoPath?.isNotEmpty ?? false)) return;
-    _spotlightArtCache[key] = null; // in-flight / failed marker
+    _heroArtCache[key] = null; // in-flight / failed marker
     try {
       final client = _getMediaClientForItem(item);
       if (client == null) return;
@@ -791,13 +472,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         backgroundSquarePath: item.backgroundSquarePath ?? full.backgroundSquarePath,
         clearLogoPath: item.clearLogoPath ?? full.clearLogoPath,
       );
-      _spotlightArtCache[key] = enriched;
+      _heroArtCache[key] = enriched;
       if (!mounted) return;
       // Still the focused item? Swap in place — the AnimatedSwitcher
       // crossfades from the blurred fill to the real artwork.
-      if (_spotlightItem.value?.globalKey == key) {
-        _spotlightItem.value = enriched;
-      } else if (_heroItems.any((m) => m.globalKey == key)) {
+      if (_latestMovies.any((m) => m.globalKey == key)) {
         // Phone hero: the PageView reads straight from _latestMovies through
         // the cache, so a rebuild is what swaps the blurred poster for the
         // real backdrop.
@@ -811,42 +490,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   /// Enrich the hero page at [index] plus its immediate neighbours, so a swipe
   /// lands on already-fetched art. Bounded to 3 items — never the whole row.
   void _ensureHeroArt(int index) {
-    final heroItems = _heroItems;
     for (var i = index - 1; i <= index + 1; i++) {
-      if (i < 0 || i >= heroItems.length) continue;
-      unawaited(_enrichSpotlightArt(heroItems[i]));
+      if (i < 0 || i >= _latestMovies.length) continue;
+      unawaited(_enrichHeroArt(_latestMovies[i]));
     }
-  }
-
-  void _moveTvHero(int delta) {
-    final heroItems = _heroItems;
-    if (heroItems.isEmpty) return;
-    final current = _effectiveSpotlightItem;
-    final currentIndex = current == null ? -1 : heroItems.indexWhere((m) => m.globalKey == current.globalKey);
-    final baseIndex = currentIndex == -1 ? _currentHeroIndex.clamp(0, heroItems.length - 1).toInt() : currentIndex;
-    final nextIndex = baseIndex + delta;
-    // Finite carousel, same convention as the phone hero and the browse rails:
-    // left off the first item exits into the sidebar, right off the last stays put.
-    if (nextIndex < 0) {
-      _navigateToSidebar();
-      return;
-    }
-    if (nextIndex >= heroItems.length) return;
-    setState(() => _currentHeroIndex = nextIndex);
-    _spotlightUserDriven = true;
-    _spotlightItem.value = heroItems[nextIndex];
-    _pauseTvHeroAutoScrollForManualNavigation();
-  }
-
-  void _pauseTvHeroAutoScrollForManualNavigation() {
-    if (!PlatformDetector.isTV()) return;
-    _autoScrollTimer?.cancel();
-    _tvHeroManualPauseTimer?.cancel();
-    _tvHeroManualPauseTimer = Timer(_heroAutoScrollDuration, () {
-      if (!mounted || !_isTabVisible || _isAutoScrollPaused) return;
-      if (_tvHeroPlayFocusNode.hasFocus || _tvHeroInfoFocusNode.hasFocus) return;
-      _startAutoScroll();
-    });
   }
 
   /// Handle key events for the hero section.
@@ -887,24 +534,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   @override
   void dispose() {
     _discover.removeListener(_onDiscoverChanged);
-    _tvHomeProjection?.removeListener(_onTvHomeProjectionChanged);
     _homeLayout?.removeListener(_onHomeLayoutChanged);
     _nowWatching?.releaseAmbient();
     WidgetsBinding.instance.removeObserver(this);
     _autoScrollTimer?.cancel();
     _indicatorTimer?.cancel();
-    _tvHeroManualPauseTimer?.cancel();
-    _spotlightDebounce?.cancel();
-    _spotlightItem.dispose();
     _indicatorProgress.dispose();
     _heroController.dispose();
     _scrollController.dispose();
     _heroFocusNode.removeListener(_onHeroFocusChanged);
     _heroFocusNode.dispose();
-    _tvHeroPlayFocusNode.removeListener(_onTvHeroActionFocusChanged);
-    _tvHeroInfoFocusNode.removeListener(_onTvHeroActionFocusChanged);
-    _tvHeroPlayFocusNode.dispose();
-    _tvHeroInfoFocusNode.dispose();
     super.dispose();
   }
 
@@ -929,26 +568,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _autoScrollTimer?.cancel();
     if (_isAutoScrollPaused) return;
 
-    if (PlatformDetector.isTV()) {
-      // TV billboard cycles through the newest releases. Timer is created up
-      // front (content loads async); each tick bails until items are present
-      // and while the hero actions are focused, so the Play/Info target never
-      // shifts under the user mid-press.
-      _autoScrollTimer = Timer.periodic(_heroAutoScrollDuration, (timer) {
-        final heroItems = _heroItems;
-        if (!mounted || _isAutoScrollPaused || heroItems.length < 2) return;
-        if (_tvHeroPlayFocusNode.hasFocus || _tvHeroInfoFocusNode.hasFocus) return;
-        // Rail revealed → the hero follows rail focus; don't let auto-rotate
-        // mutate the spotlight out from under it (order-independent guard so a
-        // stray timer restart can't fight focus-follow).
-        if (_tvRailRevealed) return;
-        final current = _spotlightItem.value ?? _defaultSpotlightItem;
-        final idx = current == null ? -1 : heroItems.indexWhere((m) => m.globalKey == current.globalKey);
-        _spotlightUserDriven = true;
-        _spotlightItem.value = heroItems[(idx + 1) % heroItems.length];
-      });
-      return;
-    }
+    // TV does not rotate from here any more: `TvHeroBillboardCarousel` owns its
+    // own 8-second timer and every hoofdstuk 9.6 pause condition, because the
+    // thing being rotated is now its own state rather than a notifier this
+    // screen held (DEC-070).
+    if (PlatformDetector.isTV()) return;
 
     _startIndicatorProgress();
     _autoScrollTimer = Timer.periodic(_heroAutoScrollDuration, (timer) {
@@ -1018,7 +642,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   @override
   void onTabHidden() {
     _isTabVisible = false;
-    _pendingTvBrowseRailFocus = false;
+    // Hoofdstuk 9.6 / fase-8 brief §9: leaving Home stops the carousel's timer.
+    // A flag on the still-mounted feed, not a dispose — coming back finds the
+    // scroll position, the focused card and the active slide where they were.
+    _tvFeedKey.currentState?.setDestinationActive(false);
     _autoScrollTimer?.cancel();
     _stopIndicatorProgress();
   }
@@ -1026,6 +653,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   @override
   void onTabShown() {
     _isTabVisible = true;
+    _tvFeedKey.currentState?.setDestinationActive(true);
     if (!_isAutoScrollPaused) {
       _startAutoScroll();
     }
@@ -1034,7 +662,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   @override
   void focusActiveTabIfReady() {
     if (PlatformDetector.isTV()) {
-      _focusTvBrowseRailWhenReady();
+      // Hoofdstuk 7.1/7.3: DOWN out of the top navigation lands on the hero's
+      // Afspelen pill, and on the first row only when there is no hero.
+      _tvFeedKey.currentState?.focusPrimary();
       return;
     }
     _focusTopBoundary();
@@ -1659,366 +1289,35 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
-  /// Tall-poster scale per hub on the TV home rail.
+  /// The fase-8 TV Home (hoofdstuk 9, north star 33.1/33.2).
   ///
-  /// Continue-watching sits under the resting hero and is the one row whose
-  /// height decides how much backdrop survives, so it runs smaller than the
-  /// hubs below it. Used for both the rail itself and the peek math, so the
-  /// two always agree on how tall that first row is.
-  static double _tvTallPosterScaleForHub(MediaHub hub) => hub.isContinueWatchingHub
-      ? TvBrowseRailLayout.continueWatchingTallPosterScale
-      : TvBrowseRailLayout.compactTallPosterScale;
-
-  /// Wide-card (16:9) scale override for the home screen's continue-watching
-  /// row — see [TvBrowseRailLayout.continueWatchingWidePosterScale]. Every
-  /// other TV rail keeps the default 1.0.
-  static double _tvWidePosterScaleForHub(MediaHub hub) =>
-      hub.isContinueWatchingHub ? TvBrowseRailLayout.continueWatchingWidePosterScale : 1.0;
-
+  /// Everything this method used to compose — a fullscreen
+  /// `TvSpotlightBackground`, a `TvBrowseRail` sliding up over it on
+  /// `_tvRailRevealed`, and `_setSpotlightDebounced` making row focus replace
+  /// the billboard — is gone rather than ported. [TvContentFeed] owns the
+  /// composition now: a rounded in-page carousel over
+  /// `TvHomeProjectionProvider.heroGroups`, and projected unified rows under
+  /// it, each independent of the other's focus (DEC-070).
+  ///
+  /// What is left here is what a screen still owns: the profile-switch
+  /// overlay, and the scaffold colour under the feed.
   Widget _buildTvContent(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final theme = Theme.of(context);
-    final svc = SettingsService.instance;
-    final hideSpoilers = svc.read(SettingsService.hideSpoilers);
-    final showServerNameOnHubs = svc.read(SettingsService.showServerNameOnHubs);
-    final hubsSpanMultipleServers = _hubsSpanMultipleServers();
-    final browseHubs = _tvBrowseHubs;
-    final scale = TvLayoutConstants.scaleForSize(size);
-    // Only layout-aspect (flip-stable) scope values may be read here: an
-    // offset-aspect read at this level would rebuild the whole screen on
-    // every sidebar focus flip. Offset values are read in small Builders
-    // around the widgets that position against them.
-    final railSize = MainScreenFocusScope.foregroundSizeOf(context);
-    final fullBleedWidth = MainScreenFocusScope.fullBleedWidthOf(context);
-    final railHeight = browseHubs.isEmpty
-        ? 0.0
-        : TvBrowseRailLayout.estimateHeight(
-            size: railSize,
-            hubs: browseHubs,
-            density: svc.read(SettingsService.libraryDensity),
-            episodePosterMode: svc.read(SettingsService.episodePosterMode),
-            fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
-            tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
-            tallPosterScaleForHub: _tvTallPosterScaleForHub,
-            widePosterScaleForHub: _tvWidePosterScaleForHub,
-          );
-    final spotlightTop = (size.height * MonoTokens.tvHeroContentTopFraction)
-        .clamp(64.0 * scale, 120.0 * scale)
-        .toDouble();
-    // Netflix landing: at rest the rail shows its first hub in full — strip plus
-    // one complete card row with its labels — so "continue watching" is readable
-    // without moving. What stays below the fold is the next-hub peek and the
-    // rail's own bottom margin; focusing the rail slides those up (see
-    // [_tvRailRevealed]). The reveal is a translate, so the hero content keeps
-    // its resting position and the rail slides up over it.
-    //
-    // The row's bottom focus-ring reserve (`focusExtra`) is deliberately left
-    // out of the peek: nothing in the rail has focus while it rests, and the
-    // reveal brings the reserve into view before any ring is drawn. Keeping it
-    // would only pad dead space under the labels.
-    //
-    // The peek is derived from the same inputs as the estimateHeight call
-    // above, so the two can't drift apart.
-    final firstHubPeek = browseHubs.isEmpty
-        ? 0.0
-        : TvBrowseRailLayout.firstHubPeekHeight(
-            hub: browseHubs.first,
-            railSize: railSize,
-            density: svc.read(SettingsService.libraryDensity),
-            episodePosterMode: svc.read(SettingsService.episodePosterMode),
-            fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
-            tallPosterScale: _tvTallPosterScaleForHub(browseHubs.first),
-            widePosterScale: _tvWidePosterScaleForHub(browseHubs.first),
-          );
-    final railPeek = browseHubs.isEmpty
-        ? 0.0
-        : math.min(railHeight, math.min(firstHubPeek, size.height * MonoTokens.tvHomeRailMaxPeekFraction));
-    final railSafetyBottom = browseHubs.isEmpty ? 0.0 : railPeek + (MonoTokens.tvHeroRailGap * scale);
-    final maxSpotlightBottom = (size.height - spotlightTop - (MonoTokens.tvHeroMinInfoHeight * scale))
-        .clamp(0.0, double.infinity)
-        .toDouble();
-    final spotlightBottom = railSafetyBottom.clamp(0.0, maxSpotlightBottom).toDouble();
-    final spotlightLeft = (24 * scale).clamp(18.0, 40.0).toDouble();
-
     return Material(
-      color: theme.scaffoldBackgroundColor,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Stack(
-        clipBehavior: Clip.none,
         children: [
-          // The animated -bleed mirrors the content-slide tween in MainScreen,
-          // keeping the full-bleed background viewport-pinned while the
-          // content box slides during sidebar expansion. The Builder scopes
-          // the offset-aspect dependency to just this subtree.
-          Builder(
-            builder: (context) {
-              final foregroundLeft = MainScreenFocusScope.foregroundLeftOf(context);
-              return SideNavigationBleedBuilder(
-                targetBleed: foregroundLeft,
-                child: ValueListenableBuilder<MediaItem?>(
-                  valueListenable: _spotlightItem,
-                  builder: (context, _, _) {
-                    final rawSpotlight = _effectiveSpotlightItem;
-                    final spotlight = rawSpotlight == null ? null : context.withFreshWatchState(rawSpotlight);
-                    // Netflix-style billboard: full hero treatment (large logo,
-                    // metadata, summary) with focusable Play / More-info actions
-                    // anchored just above the content rail. The billboard is a
-                    // fixed featured item, decoupled from row focus.
-                    return TvSpotlightBackground(
-                      item: spotlight,
-                      client: _getMediaClientForItem(spotlight),
-                      hideSpoilers: hideSpoilers,
-                      contentTop: spotlightTop,
-                      contentBottom: spotlightBottom,
-                      contentLeft: spotlightLeft + foregroundLeft,
-                      // Compact presentation at rest as well: the first hub now
-                      // claims real estate the full-size logo used to hold, and
-                      // rail focus already rendered compact — so the resting
-                      // hero no longer jumps in logo size when focus moves down.
-                      compact: true,
-                      showPrimaryAction: false,
-                      deepBottomScrim: true,
-                      kenBurns: true,
-                      // Rail revealed → the billboard shrinks to logo + metadata
-                      // for the focused row item and the backdrop dims; it never
-                      // disappears, so the artwork keeps identifying the selection.
-                      railRevealed: _tvRailRevealed,
-                      actions: spotlight == null ? null : _buildTvHeroActions(context, spotlight, scale),
-                    );
-                  },
-                ),
-                builder: (context, animatedBleed, child) =>
-                    Positioned(top: 0, bottom: 0, left: -animatedBleed, width: fullBleedWidth, child: child!),
-              );
-            },
-          ),
-          if (_isLoading || (_areHubsLoading && browseHubs.isEmpty)) const Center(child: CircularProgressIndicator()),
-          if (_errorMessage != null)
-            StateView.error(title: _errorMessage!, icon: Symbols.error_outline_rounded, onRetry: _discover.load),
-          if (!_isLoading && _errorMessage == null && browseHubs.isEmpty && !_areHubsLoading)
-            Center(
-              child: Column(
-                mainAxisAlignment: .center,
-                children: [
-                  const AppIcon(Symbols.movie_rounded, fill: 1, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text(t.discover.noContentAvailable),
-                  const SizedBox(height: 8),
-                  Text(t.discover.addMediaToLibraries, style: const TextStyle(color: Colors.grey)),
-                ],
-              ),
-            ),
-          if (browseHubs.isNotEmpty)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              // At rest the rail is slid down so [railPeek] shows: the first hub
-              // complete, everything below it out of frame. Focusing it slides
-              // the remainder up over the hero's lower edge (Netflix landing).
-              // Slide fraction is relative to the rail's own height, so no fixed
-              // height is forced on it.
-              child: AnimatedSlide(
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.easeOutCubic,
-                offset: Offset(0, _tvRailRevealed || railHeight <= 0 ? 0.0 : 1 - (railPeek / railHeight)),
-                // Reveal follows actual rail-subtree focus, not just the explicit
-                // navigate-down call site — so restored focus, sidebar→content, or
-                // internal traversal into the rail also reveals it.
-                child: Focus(
-                  canRequestFocus: false,
-                  skipTraversal: true,
-                  onFocusChange: (hasFocus) => _setTvRailRevealed(hasFocus),
-                  child: TvBrowseRail(
-                    key: _tvBrowseRailKey,
-                    hubs: browseHubs,
-                    showServerName: showServerNameOnHubs || hubsSpanMultipleServers,
-                    // Hero follows rail focus: as the user moves through rows the
-                    // billboard becomes the focused item. Only the
-                    // ValueListenableBuilder on _spotlightItem rebuilds, not the rows.
-                    // Auto-rotate is paused while the rail is revealed (see
-                    // _setTvRailRevealed) so it doesn't fight the focus-follow.
-                    onFocusedItemChanged: _setSpotlightDebounced,
-                    onRefresh: _discover.updateItem,
-                    onRemoveFromContinueWatching: _discover.refreshContinueWatching,
-                    isContinueWatchingHub: (hub) => hub.isContinueWatchingHub,
-                    usesContinueWatchingAction: (hub) => hub.usesContinueWatchingAction,
-                    loadMoreItems: (hub) =>
-                        hub.id == 'continue_watching' ? _discover.loadAllContinueWatching() : Future.value(hub.items),
-                    onNavigateUp: _focusTvHeroPlay,
-                    onNavigateToSidebar: _navigateToSidebar,
-                    tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
-                    tallPosterScaleForHub: _tvTallPosterScaleForHub,
-                    widePosterScaleForHub: _tvWidePosterScaleForHub,
-                    selectSuppressionGestureSignal: PlatformDetector.isAppleTV()
-                        ? AppleTvRemoteTouchService.instance.touchActiveListenable
-                        : null,
-                  ),
-                ),
-              ),
-            ),
-          Builder(
-            builder: (context) => SideNavigationBleedBuilder(
-              targetBleed: MainScreenFocusScope.sideNavigationBleedOf(context),
-              child: ExcludeFocusTraversal(child: _buildOverlaidAppBar()),
-              builder: (context, animatedBleed, child) =>
-                  Positioned(top: 0, left: -animatedBleed, width: fullBleedWidth, child: child!),
-            ),
+          TvContentFeed(
+            key: _tvFeedKey,
+            onManageServers: widget.onManageServers,
+            // Hoofdstuk 7.3: "Up vanaf hero gaat naar de actieve
+            // topnavbestemming" — the fase-7 shell's bar, reached the way every
+            // other content screen reaches it.
+            onNavigateUp: _navigateToSidebar,
+            onBack: _navigateToSidebar,
           ),
           if (_switchingProfile) ProfileSwitchingOverlay(onCancel: _cancelProfileSwitch),
         ],
       ),
-    );
-  }
-
-  /// Netflix-style billboard actions for the TV home hero: a primary
-  /// Play/Resume pill and a secondary More-info pill, focus-wired to the rail
-  /// (down), the app bar (up), and the sidebar (left/back).
-  Widget _buildTvHeroActions(BuildContext context, MediaItem rawBillboard, double scale) {
-    // Bridge the store patch so resume state / progress never lags the on-deck
-    // snapshot (mirrors _buildSmartPlayButton).
-    final billboard = context.withFreshWatchState(rawBillboard);
-    final resume = billboard.hasActiveProgress;
-    final progress = resume && billboard.durationMs != null && billboard.viewOffsetMs != null
-        ? (billboard.viewOffsetMs! / billboard.durationMs!).clamp(0.0, 1.0).toDouble()
-        : null;
-    // Fase 6 (hoofdstuk 9.5, DEC-067). Display and activation read the same
-    // list: when the billboard is a hero slide, its group comes from that
-    // slide — never from a second lookup that could disagree about what the
-    // current slide is.
-    //
-    // The billboard is not always a hero slide, though. Rail focus puts any
-    // rail item there (fase 8 decouples that; until then it stays), and an
-    // empty hero falls back to on-deck/hub content. `featuredGroupFor`
-    // covers those from the wider projected pool, so they activate through
-    // the coordinator too. Only an item the projection has never seen at all
-    // — the pre-projection window, or a filtered-out title — keeps the direct
-    // path, so the hero is never dead.
-    //
-    // Either way a single-source title resolves exactly as it always has; a
-    // multi-source one now offers the picker instead of silently playing
-    // whichever server the representative happened to come from.
-    final projection = context.watch<TvHomeProjectionProvider>();
-    final featuredGroup = _tvHeroSlideFor(billboard)?.group ?? projection.featuredGroupFor(billboard);
-    void Function() activation({required UnifiedActivationIntent intent, required bool playDirectly}) {
-      if (featuredGroup != null) {
-        return () => activateDiscoveryGroup(
-          featuredGroup,
-          intent: intent,
-          playDirectly: playDirectly,
-          onManageServers: widget.onManageServers,
-        );
-      }
-      return () => navigateToMediaItem(context, billboard, playDirectly: playDirectly);
-    }
-
-    return Row(
-      mainAxisSize: .min,
-      children: [
-        FocusableButton(
-          focusNode: _tvHeroPlayFocusNode,
-          autoScroll: false,
-          // The pill draws its own focus fully (ListenableBuilder on the
-          // focusNode below), so the wrapper delegates instead of drawing a
-          // ring or fill of its own.
-          mode: FocusIndicatorMode.delegated,
-          onPressed: activation(intent: UnifiedActivationIntent.play, playDirectly: true),
-          onNavigateDown: () => _focusTvBrowseRailWhenReady(immediate: true),
-          onNavigateUp: _focusTopActions,
-          onNavigateLeft: () => _moveTvHero(-1),
-          onNavigateRight: _focusTvHeroInfoOrAdvance,
-          onBack: _navigateToSidebar,
-          child: _tvHeroPill(
-            context,
-            focusNode: _tvHeroPlayFocusNode,
-            icon: Symbols.play_arrow_rounded,
-            label: resume ? t.common.resume : t.common.play,
-            scale: scale,
-            progress: progress,
-          ),
-        ),
-        SizedBox(width: 16 * scale),
-        FocusableButton(
-          focusNode: _tvHeroInfoFocusNode,
-          autoScroll: false,
-          mode: FocusIndicatorMode.delegated,
-          onPressed: activation(intent: UnifiedActivationIntent.details, playDirectly: false),
-          onNavigateDown: () => _focusTvBrowseRailWhenReady(immediate: true),
-          onNavigateUp: _focusTopActions,
-          onNavigateLeft: _focusTvHeroPlayOrAdvance,
-          onNavigateRight: () => _moveTvHero(1),
-          onBack: _navigateToSidebar,
-          child: _tvHeroPill(
-            context,
-            focusNode: _tvHeroInfoFocusNode,
-            icon: Symbols.info_rounded,
-            label: t.mediaMenu.viewDetails,
-            scale: scale,
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// A Netflix-style billboard pill. Inverts on focus (solid white + dark
-  /// content) and optionally embeds a resume progress bar.
-  Widget _tvHeroPill(
-    BuildContext context, {
-    required FocusNode focusNode,
-    required IconData icon,
-    required String label,
-    required double scale,
-    double? progress,
-  }) {
-    return ListenableBuilder(
-      listenable: focusNode,
-      builder: (context, _) {
-        final cs = Theme.of(context).colorScheme;
-        final showFocus = focusNode.hasFocus && InputModeTracker.isKeyboardMode(context);
-        final fg = showFocus ? cs.surface : cs.onSurface;
-        // Unfocused, the pill is a translucent tint of the text colour. On a
-        // dark surface that reads as a soft grey pill; on a light one it is
-        // near-black text on a 24%-black veil over bright artwork, which is
-        // the worst pairing on screen. Light mode fills the pill instead.
-        final isLight = cs.brightness == Brightness.light;
-        final bg = showFocus
-            ? cs.onSurface
-            : (isLight ? cs.surface.withValues(alpha: 0.92) : cs.onSurface.withValues(alpha: 0.24));
-        return AnimatedContainer(
-          duration: FocusTheme.getAnimationDuration(context),
-          curve: Curves.easeOutCubic,
-          padding: .symmetric(horizontal: 28 * scale, vertical: 15 * scale),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(100)),
-          child: Row(
-            mainAxisSize: .min,
-            children: [
-              AppIcon(icon, fill: 1, size: 27 * scale, color: fg),
-              SizedBox(width: 10 * scale),
-              if (progress != null) ...[
-                Container(
-                  width: 56 * scale,
-                  height: 8 * scale,
-                  decoration: BoxDecoration(
-                    color: fg.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(4 * scale),
-                  ),
-                  child: FractionallySizedBox(
-                    alignment: .centerLeft,
-                    widthFactor: progress,
-                    child: Container(
-                      decoration: BoxDecoration(color: fg, borderRadius: BorderRadius.circular(4 * scale)),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10 * scale),
-              ],
-              Text(
-                label,
-                style: TextStyle(color: fg, fontSize: 21 * scale, fontWeight: .w600),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 
@@ -2102,7 +1401,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 },
                 itemBuilder: (context, index) {
                   final item = _latestMovies[index];
-                  return _buildHeroItem(_spotlightArtCache[item.globalKey] ?? item, heroHeight);
+                  return _buildHeroItem(_heroArtCache[item.globalKey] ?? item, heroHeight);
                 },
               ),
               // Page indicators with animated progress and pause/play button
@@ -2224,7 +1523,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final showName = heroItem.grandparentTitle ?? heroItem.displayTitle;
     final screenWidth = MediaQuery.sizeOf(context).width;
     // TV never reaches this builder: `_buildDiscoverContent` returns
-    // `_buildTvContent` (TvSpotlightBackground) before the hero sliver is
+    // `_buildTvContent` (the fase-8 `TvContentFeed`) before the hero sliver is
     // built, so this layout only ever serves desktop/tablet/phone.
     final tier = _heroContentTier(context, screenWidth);
     final isLargeScreen = tier == HomeHeroContentTier.wide;
@@ -2565,9 +1864,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
         final progress = hasProgress ? heroItem.viewOffsetMs! / heroItem.durationMs! : 0.0;
 
-        // Fixed white pill: the TV focus ring that used to live here is now
-        // TvSpotlightBackground's job, and desktop keyboard focus lands on the
-        // hero itself (_heroFocusNode), not on this button.
+        // Fixed white pill: TV does not reach this builder at all (its hero is
+        // `TvHeroBillboardCarousel`, which draws its own focus), and desktop
+        // keyboard focus lands on the hero itself (_heroFocusNode), not on this
+        // button.
         const foregroundColor = Colors.black;
         const textStyle = TextStyle(color: foregroundColor, fontSize: 14, fontWeight: FontWeight.w600);
         return InkWell(
@@ -2615,26 +1915,4 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       },
     );
   }
-}
-
-/// One slide of the TV Home hero (hoofdstuk 9.5, DEC-067).
-///
-/// The two fields are deliberately not interchangeable, and keeping them in
-/// one object is what stops them drifting apart: [group] is the logical
-/// title — what the slide *is*, and the only thing allowed to decide what
-/// Play and More info do — while [item] is one concrete copy of it, carried
-/// solely because the existing hero widgets take a `MediaItem` for backdrop,
-/// clearlogo, title and metadata. Which server that copy came from is an
-/// artefact of projection order, so activating it directly would pick a
-/// source the viewer never chose (hoofdstuk 4.4/4.6).
-class _TvHeroSlide {
-  const _TvHeroSlide({required this.group, required this.item});
-
-  /// `null` only while the projection has not yet caught up with the films
-  /// `DiscoverProvider` is currently showing — see
-  /// `_DiscoverScreenState._recomputeTvHeroSlides`.
-  final UnifiedMediaGroup? group;
-
-  /// Presentation only. Never activated directly when [group] is non-null.
-  final MediaItem item;
 }

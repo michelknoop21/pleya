@@ -29,6 +29,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../navigation/tv/tv_navigation_coordinator.dart';
+import '../../watch_together/screens/watch_together_screen.dart';
 import '../now_watching_screen.dart';
 import '../downloads/downloads_screen.dart';
 import '../libraries/libraries_screen.dart';
@@ -66,6 +67,7 @@ TvNestedRoute tvMyPleyaNestedRoute(TvMyPleyaSection section, {GlobalKey? librari
     TvMyPleyaSection.libraries => LibrariesScreen(key: librariesKey),
     TvMyPleyaSection.servers => const TvServersScreen(),
     TvMyPleyaSection.activity => const NowWatchingScreen(),
+    TvMyPleyaSection.watchTogether => const WatchTogetherScreen(),
     TvMyPleyaSection.settings => const SettingsScreen(),
     TvMyPleyaSection.logs => const LogsScreen(),
     TvMyPleyaSection.about => const AboutScreen(),

@@ -54,11 +54,13 @@ MediaItem _episode(
   int episode = 1,
   int viewOffsetMs = 100,
   int? lastViewedAt,
+  String? guid,
 }) => MediaItem(
   id: id,
   backend: MediaBackend.plex,
   kind: MediaKind.episode,
   title: 'Episode',
+  guid: guid,
   grandparentId: showId,
   grandparentTitle: showTitle,
   parentIndex: season,
@@ -334,16 +336,18 @@ void main() {
       multiServer.serverManager.debugRegisterClientForTesting(_FakeClient(serverId: serverId, externalIds: showIds));
     }
 
-    test('one series watched on two servers is one card carrying both concrete episodes', () async {
-      // Continue Watching has always merged on the *show's* shared external
-      // ids, and a card is a series. What must survive is that its sources
-      // stay the concrete resumable episodes each server actually has —
-      // different season/episode included.
+    test('D1: the same episode of one series on two servers is one card carrying both sources', () async {
+      // Hoofdstuk 11.8: Continue Watching groups on the exact episode. Two
+      // servers holding the viewer at S02E04 of one series are one card, and
+      // its sources stay the concrete resumable episodes each server has.
+      // The shared *series* tmdb is what carries the merge across backends —
+      // narrowed to `s2e4` before it becomes evidence, so it identifies this
+      // episode and not the series.
       registerServerWithShowIds('server_1', {'show-1': const ExternalIds(tmdb: 95396)});
       registerServerWithShowIds('server_2', {'show-1': const ExternalIds(tmdb: 95396)});
       aggregation.onDeckResult = () => [
-        _episode('ep-a', showTitle: 'Harbourlight', showId: 'show-1', serverId: 'server_1', season: 1, episode: 3),
-        _episode('ep-b', showTitle: 'Harbourlight', showId: 'show-1', serverId: 'server_2', season: 2, episode: 7),
+        _episode('ep-a', showTitle: 'Harbourlight', showId: 'show-1', serverId: 'server_1', season: 2, episode: 4),
+        _episode('ep-b', showTitle: 'Harbourlight', showId: 'show-1', serverId: 'server_2', season: 2, episode: 4),
       ];
       await discover.load();
 
@@ -353,11 +357,36 @@ void main() {
 
       final cw = landing.movieRails.first;
       expect(cw.title, 'Continue Watching');
-      expect(cw.groups, hasLength(1), reason: 'one series, not two cards');
+      expect(cw.groups, hasLength(1), reason: 'one episode, one card');
       final sources = cw.groups.single.sources;
       expect(sources.map((s) => s.item.serverId).toSet(), {'server_1', 'server_2'});
       expect(sources.every((s) => s.item.kind == MediaKind.episode), isTrue);
-      expect(sources.map((s) => (s.item.parentIndex, s.item.index)).toSet(), {(1, 3), (2, 7)});
+      expect(sources.map((s) => (s.item.parentIndex, s.item.index)).toSet(), {(2, 4)});
+    });
+
+    test('D1: two episodes of one series on two servers stay two cards', () async {
+      // The other half of D1, and the regression that catches the old
+      // series-wide fold: both rows resolve the *same* series tmdb, and both
+      // carry the same show title and show id. Only the episode ordinal
+      // separates them, and it has to be enough.
+      registerServerWithShowIds('server_1', {'show-1': const ExternalIds(tmdb: 95396)});
+      registerServerWithShowIds('server_2', {'show-1': const ExternalIds(tmdb: 95396)});
+      aggregation.onDeckResult = () => [
+        _episode('ep-a', showTitle: 'Harbourlight', showId: 'show-1', serverId: 'server_1', season: 2, episode: 4),
+        _episode('ep-b', showTitle: 'Harbourlight', showId: 'show-1', serverId: 'server_2', season: 2, episode: 5),
+      ];
+      await discover.load();
+
+      final landing = makeLanding();
+      addTearDown(landing.dispose);
+      await _settle(landing);
+
+      final cw = landing.movieRails.first;
+      expect(cw.groups, hasLength(2), reason: 'S02E04 and S02E05 are two Continue Watching entries');
+      expect(
+        {for (final g in cw.groups) (g.representativeSource.item.parentIndex, g.representativeSource.item.index)},
+        {(2, 4), (2, 5)},
+      );
     });
 
     test('two series with no shared identity stay two cards', () async {

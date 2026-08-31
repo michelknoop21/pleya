@@ -151,13 +151,13 @@ en `test/services/unified_grouping_service_test.dart`).
 
 | # | Case | Test | Status |
 |---|---|---|---|
-| D1 | Zelfde serie op twee servers | test/providers/tv_discovery_landing_provider_test.dart (`one series watched on two servers is one card carrying both concrete episodes`) — één kaart, twee bronnen, en de bronnen blijven de concrete afleveringen die elke server zelf heeft (S1E3 naast S2E7); test/services/unified_catalog/home_projection_service_test.dart (`a group's sources stay the concrete resumable episodes, never a series item`) voor dezelfde regel op serviceniveau | covered |
+| D1 | Zelfde serie op twee servers | test/providers/tv_discovery_landing_provider_test.dart (`D1: the same episode of one series on two servers is one card carrying both sources`, `D1: two episodes of one series on two servers stay two cards`) — beide helften van de rij, door de productieprovider heen; test/services/unified_catalog/home_projection_service_test.dart (`C: the same episode on two servers is one card, and its sources stay the concrete episodes`, `A/E: two episodes of one series stay two cards, on one shared series-wide id`, `B: two seasons of one series stay two cards`) voor dezelfde regel op serviceniveau. In alle vijf krijgen beide rijen dezelfde serie-brede tmdb/tvdb, dus geen ervan slaagt doordat de externe ids leeg waren | covered |
 | D2 | Verschillende seizoensdekking | | open |
-| D3 | Zelfde episode met sterke ID | | open |
-| D4 | Zelfde episode via serie-ID plus S/E | | open |
+| D3 | Zelfde episode met sterke ID | test/services/unified_catalog/identity_resolver_test.dart (`D3: an episode guid is exact-episode evidence and contributes on its own`); test/services/unified_catalog/home_projection_service_test.dart (`D: two servers reporting the same strong episode guid merge without any external id`, `D/E: a strong episode guid never merges two different episodes of one series`) | covered |
+| D4 | Zelfde episode via serie-ID plus S/E | test/services/unified_catalog/identity_resolver_test.dart (`D4: a series-wide external id becomes exact-episode evidence, not series evidence`, `E: two episodes forced into one bucket still get different tokens from one series id`); test/services/data_aggregation_bridge_test.dart (`getOnDeckFromAllServers hides the same episode listed twice under one stable show id`, `getOnDeckFromAllServers keeps two different episodes of one show under one stable show id`) — de upstream-dedup, die vóór elke Home-projectie draait | covered |
 | D5 | Specials seizoen 0 | test/media/canonical_media_identity_test.dart (`D5: season 0 (specials) is a real, distinct, bucketable season index`) | covered |
-| D6 | Ontbrekend seizoennummer | test/media/canonical_media_identity_test.dart (`D6/D7: a missing season or episode index makes the episode bucket unusable`, `D6: an episode missing its season index has no bucketable identity`) | covered |
-| D7 | Ontbrekend afleveringsnummer | test/media/canonical_media_identity_test.dart (`D6/D7: a missing season or episode index makes the episode bucket unusable`) | covered |
+| D6 | Ontbrekend seizoennummer | test/media/canonical_media_identity_test.dart (`D6/D7: a missing season or episode index makes the episode bucket unusable`, `D6: an episode missing its season index has no bucketable identity`); test/services/unified_catalog/identity_resolver_test.dart (`D6/D7: an episode with no usable ordinal has no bucket at all, so it never buys a series id`) voor de Verder kijken-helft | covered |
+| D7 | Ontbrekend afleveringsnummer | test/media/canonical_media_identity_test.dart (`D6/D7: a missing season or episode index makes the episode bucket unusable`); test/services/unified_catalog/identity_resolver_test.dart (`D6/D7: an episode with no usable ordinal has no bucket at all, so it never buys a series id`), plus test/services/unified_catalog/home_projection_service_test.dart (`G: episodes with no usable season or episode index never merge on their series alone`) | covered |
 | D8 | Double episode | | open |
 | D9 | Absolute numbering versus season numbering | | open |
 | D10 | Eén bron loopt één aflevering achter | | open |
@@ -243,36 +243,36 @@ en `test/services/unified_grouping_service_test.dart`).
 
 | # | Case | Test | Status |
 |---|---|---|---|
-| H1 | Clearlogo aanwezig | | open |
-| H2 | Geen clearlogo | | open |
-| H3 | Landscape-art | | open |
-| H4 | Square-art | | open |
-| H5 | Alleen poster | | open |
-| H6 | Geen artwork | | open |
-| H7 | Lange titel | | open |
-| H8 | Geen synopsis | | open |
+| H1 | Clearlogo aanwezig | `tv_hero_billboard_card.dart` `_titleBlock` tekent de clearlogo in dezelfde gereserveerde band als de titeltypografie, zodat de metaregel eronder niet verschuift; de band is een constante van [TvHomeLayout.heroLogoMaxHeight] | covered |
+| H2 | Geen clearlogo | idem — de titelfallback vult exact dezelfde band, `test/goldens/tv_home_production_golden_test.dart` rendert die tak (de fixtures dragen geen clearlogo) | covered |
+| H3 | Landscape-art | test/widgets/tv_hero_artwork_test.dart (`a real backdrop is drawn sharp`, `the backdrop wins over the poster…`) | covered |
+| H4 | Square-art | test/widgets/tv_hero_artwork_test.dart (`square background art is sharp on a wide card only when no backdrop exists`) — op een 2.465:1-kaart wint de backdrop, square is de fallback (DEC-057's ratio-invariant) | covered |
+| H5 | Alleen poster | test/widgets/tv_hero_artwork_test.dart (`poster-only art becomes a blurred fill, never a sharp crop`) | covered |
+| H6 | Geen artwork | test/widgets/tv_hero_artwork_test.dart (`a title with no artwork at all resolves to nothing, not to a stand-in`) plus `_EmptyHeroArt`'s themagradiënt | covered |
+| H7 | Lange titel | test/goldens/tv_home_production_golden_test.dart (`Home with long titles and prose`) — titel, metaregel en synopsis kappen af binnen hun gereserveerde hoogtes; de knoppenrij staat op exact dezelfde plaats als in `Home at rest` | covered |
+| H8 | Geen synopsis | `tv_hero_billboard_card.dart` reserveert de synopsisband ook zonder tekst, dus een titel zonder samenvatting verplaatst de CTA-rij niet | covered |
 | H9 | Spoilers verbergen | | open |
 | H10 | Watched titel | | open |
 | H11 | In-progress titel | | open |
 | H12 | Meerdere bronnen | test/screens/discover_screen_tv_hero_test.dart (`a mergeable duplicate becomes one slide carrying both sources`, `two concrete copies of one recent film are one hero slide, not two`) — één slide per logische titel, met beide bronnen erin, gereden door het echte `DiscoverScreen`; de tweede test legt ook vast dat een titel waarvan de identiteit niet te bewijzen is één bron houdt in plaats van er stilzwijgend een bij te verzinnen | covered |
-| H13 | Source valt weg | | open |
-| H14 | Hero-data komt laat | | open |
+| H13 | Source valt weg | test/screens/tv/tv_content_feed_test.dart (`a row whose sources did not all answer says so, and still shows what it has`) — de projectie markeert partial, de rij toont wat er is; de hero verliest een slide pas als de logische groep zelf verdwijnt, en volgt dan zijn groep en niet zijn index (test/widgets/tv_hero_billboard_carousel_test.dart, `the carousel follows its group, not its index, when the list shortens`) | covered |
+| H14 | Hero-data komt laat | test/screens/tv/tv_content_feed_test.dart — `TvContentFeed` onderscheidt "nog niet geprojecteerd" van "authoritatief leeg" via `hasProjectedHero` + `projectedLatestMovies`, en reserveert in het eerste geval de billboardruimte (hoofdstuk 9.7) in plaats van een fallback te tonen die een tel later omklapt | covered |
 | H15 | Geen hero-kandidaten | test/screens/discover_screen_tv_hero_test.dart (`zero recent films keeps the existing hub fallback billboard`) en test/providers/tv_home_projection_provider_test.dart (`a hero with no eligible recent film is empty rather than padded from hubs`) — een lege filmpool valt terug op het bestaande on-deck/hub-billboard en wordt niet met hubs opgevuld (DEC-067) | covered |
-| H16 | Alleen series beschikbaar | | open |
-| H17 | Auto-rotation tijdens focus | | open |
-| H18 | App gaat background | | open |
-| H19 | Reduce Motion | | open |
+| H16 | Alleen series beschikbaar | test/screens/tv/tv_content_feed_test.dart (`no recent films falls back to the first Continue Watching title`) — een filmloze bibliotheek valt terug op het bestaande on-deck/hub-billboard, met één slide en zonder rotatie | covered |
+| H17 | Auto-rotation tijdens focus | test/widgets/tv_hero_billboard_carousel_test.dart (`an interaction pauses the rotation for the inactivity window`) en test/screens/tv/tv_content_feed_test.dart (`a focused content row holds the rotation and fades the hero text`) — zie [DEC-070](../DECISIONS.md#dec-070) punt 1 voor waarom 9.6's lijst niet letterlijk kan gelden | covered |
+| H18 | App gaat background | test/widgets/tv_hero_billboard_carousel_test.dart (`autoplayEnabled false stops the rotation, and restoring it resumes deterministically`) en test/screens/tv/tv_content_feed_test.dart (`leaving the destination stops the rotation, and returning resumes it`) — `TvContentFeed` observeert de lifecycle en vouwt hem samen met de overige pauzeredenen in één vlag | covered |
+| H19 | Reduce Motion | test/widgets/tv_hero_billboard_carousel_test.dart (`reduced motion stops the rotation but not the remote`) — geen automatische wissel, handmatige navigatie blijft werken; hardwarebevestiging blijft J9 | covered |
 | H20 | Light theme | | open |
-| H21 | Artworkrequest faalt | | open |
+| H21 | Artworkrequest faalt | `tv_hero_artwork.dart` geeft `_EmptyHeroArt` als zowel `placeholder` als `errorWidget` mee, dus een mislukte request valt terug op de themagradiënt in plaats van op een lege of kapotte laag | covered |
 
 ## I. Navigatiecases
 
 | # | Case | Test | Status |
 |---|---|---|---|
 | I1 | Cold-start focus | test/screens/tv/tv_my_pleya_screen_test.dart (`Down from the top navigation lands on the profile action`) en test/screens/tv/tv_root_shell_test.dart (`the scope every content screen already talks to reaches the bar`) — de shell verplaatst focus uitsluitend expliciet, er staat geen `autofocus` op de contentscope | covered |
-| I2 | Topnav naar hero | | open |
-| I3 | Hero naar row | | open |
-| I4 | First row terug naar hero | | open |
+| I2 | Topnav naar hero | test/screens/discover_screen_test.dart (`TV tab focus returns to the Home feed instead of the reload action`) — de shell vraagt `focusActiveTabIfReady` en landt op `tvHeroPlay` (hoofdstuk 7.1/7.3) | covered |
+| I3 | Hero naar row | test/screens/discover_screen_test.dart (`Down from the hero Play pill reaches the first browse row`) en test/widgets/tv_hero_billboard_carousel_test.dart (`Down leaves for the content feed and Up for the top navigation`) | covered |
+| I4 | First row terug naar hero | test/screens/tv/tv_content_feed_test.dart (`walking a content row leaves the featured slide exactly where it was`, `the hero keeps its slide across a row focus round trip`) — UP keert terug naar de *laatst gebruikte* CTA, en haalt de carousel eerst terug in beeld wanneer de feed hem weggescrold had | covered |
 | I5 | Root Back naar topnav | test/screens/tv/tv_back_chain_test.dart (`step 4: root content hands the focus to the top navigation`) | covered |
 | I6 | Topnav Back naar systeem | test/screens/tv/tv_back_chain_test.dart (`step 5: the top navigation at the root defers to the system contract`, `Menu reaches the system only from the root destination with the bar focused`) — het bestaande `shouldPassTvosMenuToSystem`-predicaat, ongewijzigd van vorm; wat de engine daarna met de press doet is hardware (DEC-019) | covered |
 | I7 | Source picker Back | test/widgets/tv/tv_media_source_picker_test.dart (`Menu closes the picker, activates nothing, and restores the exact CTA`) | covered |
@@ -492,8 +492,9 @@ G 1 van 14, H 2 van 21, I 2 van 20 en J 3 van 16.
 De stand na fase 5 was 70 `covered` en 111 `open`. Dat was de stand na fase 4 — C1-C24, F1-F18, F20-F21 en
 G9, samen 45 rijen, hier eerder als 46 opgeteld — plus de vierentwintig rijen die fase 5 heeft
 nagelopen: A2, A6-A11, A13, B1-B3, B7, B9, D5-D7, E3, E4, E9, E11, I7, I15, J1 en J5. Per categorie
-is dat A 8 van 20, B 5 van 15, C 24 van 24, D 3 van 15, E 4 van 15, F 20 van 21, G 1 van 14, H 0 van
-21, I 2 van 20 en J 3 van 16 — J16 meegeteld.
+is dat A 8 van 20, B 5 van 15, C 24 van 24, D 3 van 15, E 4 van 15, F 20 van 21, G 1 van 14, H 17 van
+21, I 5 van 20 en J 3 van 16 — J16 meegeteld. (H en I zijn bijgewerkt bij het sluiten van fase 8;
+de overige tellingen zijn die van fase 6/7.)
 
 Register F is nog steeds volledig op één rij na: F19 (detailroute faalt) heeft nog geen vastgelegd
 productgedrag en wacht daarop, niet op een test.
@@ -515,11 +516,73 @@ nadrukkelijk `open` blijft, met reden:
 - **G1-G8 (watch-state merge).** `every source keeps its own watch state` bewijst hoofdstuk 13.1
   (bronstate blijft intact) voor Continue Watching, maar geen van die rijen vraagt dát — ze vragen
   welke voortgang de kaart *toont* (hoofdstuk 13.2). Die keuze is niet apart vastgelegd in een test.
-- **D2 (verschillende seizoensdekking).** D1's test heeft twee servers op verschillende afleveringen,
-  niet twee servers met een verschillend seizoensbereik.
+- **D2 (verschillende seizoensdekking).** D1's tests hebben twee servers op dezelfde en op
+  verschillende afleveringen, niet twee servers met een verschillend seizoensbereik. *(Bijgewerkt bij
+  de fase-8-sluiting: D1's fixtures zijn herschreven naar exact-episode-semantiek, zie de noot
+  daarover verderop. D2 blijft om dezelfde reden open.)*
 
 De overige fase-6-rijen (H1-H11, H13, H17-H21) hangen aan hero-*presentatie* en horen bij fase 8;
 I1-I6 en I8-I14 hangen aan de topnav en de root-shell en horen bij fase 7.
+
+**Fase 8 en de zeventien rijen die erbij komen.** Fase 8 bouwde de definitieve Home: de afgeronde
+in-page carousel, de unified contentfeed eronder, en het loskoppelen van rijfocus en hero
+([DEC-070](../DECISIONS.md#dec-070)). Register H gaat daarmee van 2 van 21 naar 17 van 21, en I2,
+I3 en I4 sluiten. Dezelfde strengheid als altijd: een rij verschuift alleen als er een test of een
+constructie is die precies dát scenario aantoont, en H14 is een goed voorbeeld van wat dat betekent
+— hij stond hier als "half bewezen is niet covered", en sluit nu pas omdat de layoutkant van
+hoofdstuk 9.7 er is (`TvContentFeed` reserveert de billboardruimte tijdens een onafgeronde
+projectie in plaats van een fallback te tonen die een tel later omklapt).
+
+Wat in register H **open** blijft, en waarom:
+
+- **H9 (spoilers verbergen)** en **H10/H11 (watched / in-progress titel).** De hero leest
+  `hideSpoilers` en tekent een resumebalk in de primaire pil, en `_HeroPill`'s `progress` komt uit
+  `resumeFractionFor(group)` — maar geen test rijdt die drie toestanden af, en de hero draagt per
+  hoofdstuk 9.5 alleen films en series, dus de spoilerregel bijt er in de praktijk alleen op een
+  fallbackbillboard. Ongetest is ongetest.
+- **H20 (light theme).** Alle Home-renders staan op het donkere thema. De kaart leest zijn kleuren
+  uit `MonoTokens`, dus er is geen hardgecodeerde donkere aanname, maar dat is een argument en geen
+  bewijs.
+
+**De tegenspraak tussen hoofdstuk 11.8 en rij D1 over Verder kijken is opgeheven.** Geregistreerd op
+1 september 2026 bij het naverifiëren van de fase-8-sluiting, en op dezelfde dag opgelost door de
+identiteitslaag naar het hoofdstuk toe te brengen in plaats van andersom.
+
+Hoofdstuk 11.8 schrijft voor: *"Verder kijken groepeert op exacte aflevering: `show identity +
+season + episode`. Nooit: alle afleveringen van dezelfde serie als één Continue Watching-item."* De
+implementatie deed dat niet. `continueWatchingScope` gaf `'show'` voor een aflevering,
+`continueWatchingBucketKey` bucket'te op `grandparentTitle`, en de externe ids kwamen van de *serie*,
+zodat twee verschillende afleveringen die hetzelfde serie-brede tmdb/tvdb oplosten één sterk token
+deelden en één kaart werden.
+
+Wat er is veranderd, in `lib/services/unified_catalog/identity_resolver.dart` en
+`lib/media/unified/identity_evidence.dart` — de smalste plek die deze regel bezit, en de enige twee
+bestanden met een gedragswijziging:
+
+- een aflevering wordt gescoped op `episode` en een seizoen op `season`, niet meer allebei op `show`;
+- `continueWatchingOrdinal` levert de ordinaal (`s2e4`, `s2`), die als `discriminator` aan
+  `externalIdTokens` meegaat: een serie-breed `tmdb:95396` wordt daarmee `episode:tmdb:95396/s2e4`,
+  dus bewijs over één aflevering in plaats van over de hele serie (rij D4);
+- dezelfde ordinaal zit in de bucketsleutel, dus twee verschillende afleveringen delen geen bucket
+  meer en kopen die serie-brede id niet eens meer op;
+- de eigen guid van een aflevering telt weer mee — die is al exact-aflevering-bewijs en is nu
+  precies de granulariteit waarop gegroepeerd wordt (rij D3);
+- een aflevering zonder bruikbare seizoen- of afleveringsindex heeft géén bucket, dus valt terug op
+  alleen zijn guid: hoofdstuk 11.8's "ontbrekende indexen vereisen een sterk episode-ID", en de
+  invariant dat een false merge erger is dan een false negative (rijen D6/D7).
+
+Beide kanten zijn met een negatieve controle bewezen. Met de identiteit tijdelijk terug op
+serie-breed vallen tien tests over vijf bestanden om, in de identity-laag, de upstream dedup, de
+productieprovider, de serviceprojectie én de Home-feed; met alleen de token-discriminator
+uitgeschakeld vallen de twee identity-tests om die precies dát isoleren. De vier tests die het oude
+contract vastlegden zijn herschreven in plaats van verwijderd, en de gedeelde fixture
+(`tvDiscoveryEpisodeGroup`, `disc-cw-two-servers`) draagt nu één aflevering op twee servers in plaats
+van twee verschillende afleveringen in één groep — met een assert die dat afdwingt. Geen enkele
+golden veranderde: de representative source van die groep rendert byte-identiek.
+
+Register D gaat daarmee van 4 van 15 naar 6 van 15: D3 en D4 sluiten op de tests hierboven, en D1
+blijft `covered` maar nu zonder voorbehoud. D2 blijft open — seizoensdekking is niet wat deze
+correctie aantoont — en D8-D15 evenmin.
 
 De F-rijen dragen nu beide helften: het besluit (coordinator, resolver, stores) én het zichtbare en
 met de afstandsbediening bedienbare deel (`test/widgets/tv/tv_media_source_picker_test.dart`,
@@ -535,9 +598,11 @@ library die niet antwoordde meldt zich onder de grid en een catalogus waar niets
 hele pagina. D5-D7 zijn identityrijen en worden, net als register C, door de identiteitstests alleen
 bewezen; er is nog geen serie- of afleveringscherm waar iets van te zien zou zijn.
 
-Wat bewust `open` is gebleven, en waarom. Register H staat nog helemaal open: de hero bestaat niet,
-die komt in fase 6 en 8. Register I is op twee rijen na een zaak van fase 7 (topnav en Mijn Pleya);
-alleen I7 en I15 gaan over mechanismen die er nu al zijn. Register G is op G9 na open, en dat is de
+Wat bewust `open` is gebleven, en waarom. *(Deze alinea is geschreven bij het sluiten van fase 5 en
+beschrijft de stand van toen; de fase-6- en fase-8-alinea's hierboven zijn de actuele lezing van H
+en I.)* Register H staat nog helemaal open: de hero bestaat niet, die komt in fase 6 en 8. Register I
+is op twee rijen na een zaak van fase 7 (topnav en Mijn Pleya); alleen I7 en I15 gaan over
+mechanismen die er nu al zijn. Register G is op G9 na open, en dat is de
 zwaarste post: `selectRepresentativeWatchState` — de functie die per group beslist wélke bron de
 kijkstatus levert, inclusief de klok-skew, de ontbrekende timestamps en de afwijkende runtimes uit
 G5 tot en met G7 — heeft geen enkele eigen test. In A, B en E zijn de rijen die over een tweede ronde

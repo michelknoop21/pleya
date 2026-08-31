@@ -31,6 +31,18 @@ class FocusableButton extends StatefulWidget {
   /// (round icon, card).
   final OutlinedBorder shape;
 
+  /// Whether an unfocused button recedes to 60% in D-pad mode.
+  ///
+  /// On by default, and right for almost everything: a wall of cards or a
+  /// column of settings rows reads better when the one under the remote is the
+  /// bright one. It is wrong for a control whose *resting* colour is part of a
+  /// binding design — the TV Home's `Afspelen` capsule is specified white
+  /// (hoofdstuk 33.1), and multiplying it by 0.6 renders it grey until it is
+  /// focused, which is a state the north star never shows. Such a control
+  /// already draws its own focus ([FocusIndicatorMode.delegated]) and can opt
+  /// out of the dim as well.
+  final bool dimWhenUnfocused;
+
   const FocusableButton({
     super.key,
     required this.child,
@@ -45,6 +57,7 @@ class FocusableButton extends StatefulWidget {
     this.autoScroll = true,
     this.mode = FocusIndicatorMode.ring,
     this.shape = MonoShapes.cta,
+    this.dimWhenUnfocused = true,
   });
 
   @override
@@ -60,7 +73,7 @@ class _FocusableButtonState extends State<FocusableButton> {
     final showFocus = _isFocused && isKeyboard;
     final duration = FocusTheme.getAnimationDuration(context);
     // In dpad mode: focused = full opacity, unfocused = dimmed
-    final opacity = isKeyboard && !_isFocused ? 0.6 : 1.0;
+    final opacity = widget.dimWhenUnfocused && isKeyboard && !_isFocused ? 0.6 : 1.0;
 
     return FocusableWrapper(
       autofocus: widget.autofocus,

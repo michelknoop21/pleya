@@ -1768,6 +1768,7 @@ class _TranslationsUnifiedCatalogZh extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogStatesZh states = _TranslationsUnifiedCatalogStatesZh._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsZh semantics = _TranslationsUnifiedCatalogSemanticsZh._(_root);
 	@override late final _TranslationsUnifiedCatalogDiscoveryZh discovery = _TranslationsUnifiedCatalogDiscoveryZh._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeZh home = _TranslationsUnifiedCatalogHomeZh._(_root);
 }
 
 // Path: tvNavigation
@@ -1804,6 +1805,7 @@ class _TranslationsTvMyPleyaZh extends TranslationsTvMyPleyaEn {
 	@override String get librariesSubtitle => '媒体、合集、播放列表';
 	@override String get serversSubtitle => '连接与本地来源';
 	@override String get activitySubtitle => '正在观看、一起看、遥控';
+	@override String get watchTogetherSubtitle => '与好友同步观看';
 	@override String get settingsSubtitle => '显示、播放器、追踪器';
 	@override String get logsSubtitle => '日志文件与崩溃报告';
 	@override String get aboutSubtitle => '版本与许可';
@@ -2188,6 +2190,16 @@ class _TranslationsUnifiedCatalogDiscoveryZh extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => '暂时没有可发现的内容';
 	@override String get emptyBody => '没有可见的媒体库可在此显示内容。';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsZh semantics = _TranslationsUnifiedCatalogDiscoverySemanticsZh._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeZh extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => '精选';
 }
 
 // Path: tvMyPleya.semantics
@@ -3635,6 +3647,7 @@ extension on TranslationsZh {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '第${position}个，共${count}个',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => '查看所有电影，打开完整目录',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => '查看所有剧集，打开完整目录',
+			'unifiedCatalog.home.featured' => '精选',
 			'tvNavigation.activeDestination' => '当前板块',
 			'tvMyPleya.groupContent' => '我的内容',
 			'tvMyPleya.groupSources' => '媒体库与来源',
@@ -3653,6 +3666,7 @@ extension on TranslationsZh {
 			'tvMyPleya.librariesSubtitle' => '媒体、合集、播放列表',
 			'tvMyPleya.serversSubtitle' => '连接与本地来源',
 			'tvMyPleya.activitySubtitle' => '正在观看、一起看、遥控',
+			'tvMyPleya.watchTogetherSubtitle' => '与好友同步观看',
 			'tvMyPleya.settingsSubtitle' => '显示、播放器、追踪器',
 			'tvMyPleya.logsSubtitle' => '日志文件与崩溃报告',
 			'tvMyPleya.aboutSubtitle' => '版本与许可',

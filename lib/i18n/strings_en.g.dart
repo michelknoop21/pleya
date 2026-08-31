@@ -5286,6 +5286,7 @@ class TranslationsUnifiedCatalogEn {
 	late final TranslationsUnifiedCatalogStatesEn states = TranslationsUnifiedCatalogStatesEn.internal(_root);
 	late final TranslationsUnifiedCatalogSemanticsEn semantics = TranslationsUnifiedCatalogSemanticsEn.internal(_root);
 	late final TranslationsUnifiedCatalogDiscoveryEn discovery = TranslationsUnifiedCatalogDiscoveryEn.internal(_root);
+	late final TranslationsUnifiedCatalogHomeEn home = TranslationsUnifiedCatalogHomeEn.internal(_root);
 }
 
 // Path: tvNavigation
@@ -5358,6 +5359,9 @@ class TranslationsTvMyPleyaEn {
 
 	/// en: 'Now watching, watch together, remote'
 	String get activitySubtitle => 'Now watching, watch together, remote';
+
+	/// en: 'Watch in sync with friends'
+	String get watchTogetherSubtitle => 'Watch in sync with friends';
 
 	/// en: 'Display, player, trackers'
 	String get settingsSubtitle => 'Display, player, trackers';
@@ -6265,6 +6269,18 @@ class TranslationsUnifiedCatalogDiscoveryEn {
 	String get emptyBody => 'No visible library has anything to show here.';
 
 	late final TranslationsUnifiedCatalogDiscoverySemanticsEn semantics = TranslationsUnifiedCatalogDiscoverySemanticsEn.internal(_root);
+}
+
+// Path: unifiedCatalog.home
+class TranslationsUnifiedCatalogHomeEn {
+	TranslationsUnifiedCatalogHomeEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Featured'
+	String get featured => 'Featured';
 }
 
 // Path: tvMyPleya.semantics
@@ -8085,6 +8101,7 @@ extension on Translations {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} of ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'View all movies, opens the complete catalog',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
+			'unifiedCatalog.home.featured' => 'Featured',
 			'tvNavigation.activeDestination' => 'current section',
 			'tvMyPleya.groupContent' => 'My content',
 			'tvMyPleya.groupSources' => 'Libraries and sources',
@@ -8103,6 +8120,7 @@ extension on Translations {
 			'tvMyPleya.librariesSubtitle' => 'Media, collections, playlists',
 			'tvMyPleya.serversSubtitle' => 'Connections and local sources',
 			'tvMyPleya.activitySubtitle' => 'Now watching, watch together, remote',
+			'tvMyPleya.watchTogetherSubtitle' => 'Watch in sync with friends',
 			'tvMyPleya.settingsSubtitle' => 'Display, player, trackers',
 			'tvMyPleya.logsSubtitle' => 'Log files and crash reporting',
 			'tvMyPleya.aboutSubtitle' => 'Version and licences',

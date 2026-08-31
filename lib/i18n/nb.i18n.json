@@ -1548,6 +1548,9 @@
         "viewAllMovies": "Se alle filmer, åpner den komplette katalogen",
         "viewAllSeries": "Se alle serier, åpner den komplette katalogen"
       }
+    },
+    "home": {
+      "featured": "Fremhevet"
     }
   },
   "tvNavigation": {
@@ -1571,6 +1574,7 @@
     "librariesSubtitle": "Medier, samlinger, spillelister",
     "serversSubtitle": "Tilkoblinger og lokale kilder",
     "activitySubtitle": "Ser nå, se sammen, fjernkontroll",
+    "watchTogetherSubtitle": "Se synkront med venner",
     "settingsSubtitle": "Visning, spiller, trackere",
     "logsSubtitle": "Loggfiler og krasjrapporter",
     "aboutSubtitle": "Versjon og lisenser",

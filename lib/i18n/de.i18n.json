@@ -1548,6 +1548,9 @@
         "viewAllMovies": "Alle Filme anzeigen, öffnet den vollständigen Katalog",
         "viewAllSeries": "Alle Serien anzeigen, öffnet den vollständigen Katalog"
       }
+    },
+    "home": {
+      "featured": "Empfohlen"
     }
   },
   "tvNavigation": {
@@ -1571,6 +1574,7 @@
     "librariesSubtitle": "Medien, Sammlungen, Wiedergabelisten",
     "serversSubtitle": "Verbindungen und lokale Quellen",
     "activitySubtitle": "Läuft gerade, gemeinsam ansehen, Remote",
+    "watchTogetherSubtitle": "Synchron mit Freunden schauen",
     "settingsSubtitle": "Darstellung, Player, Tracker",
     "logsSubtitle": "Protokolldateien und Absturzberichte",
     "aboutSubtitle": "Version und Lizenzen",

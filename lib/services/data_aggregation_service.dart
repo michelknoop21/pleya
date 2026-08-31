@@ -349,11 +349,13 @@ class DataAggregationService {
           scope: continueWatchingScope(item) ?? '',
           bucketKeyOverride: continueWatchingBucketKey(item),
           externalIdTarget: _hasOnlineClient(item) ? continueWatchingExternalIdTarget(item) : null,
-          // An episode/season row groups at its *show*'s scope (see
-          // continueWatchingScope), so its own item-level guid must not
-          // contribute evidence: two different episodes correctly sharing one
-          // show group would otherwise disagree on that episode guid.
-          includeGuidEvidence: item.kind != MediaKind.episode && item.kind != MediaKind.season,
+          // An episode/season row's external ids are fetched from its
+          // *series*, so they are narrowed to the exact row before they
+          // become a token (hoofdstuk 11.8) — otherwise every episode of one
+          // series would share `episode:tmdb:<series id>` and fold into one
+          // entry. Its own guid needs no such narrowing: it already names the
+          // concrete episode, which is the granularity this groups at.
+          externalIdDiscriminator: continueWatchingOrdinal(item),
         ),
     ];
     final evidence = await resolver.resolveEvidence(resolvables);

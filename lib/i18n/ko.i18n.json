@@ -1548,6 +1548,9 @@
         "viewAllMovies": "모든 영화 보기, 전체 카탈로그 열기",
         "viewAllSeries": "모든 시리즈 보기, 전체 카탈로그 열기"
       }
+    },
+    "home": {
+      "featured": "추천 작품"
     }
   },
   "tvNavigation": {
@@ -1571,6 +1574,7 @@
     "librariesSubtitle": "미디어, 컬렉션, 재생목록",
     "serversSubtitle": "연결 및 로컬 소스",
     "activitySubtitle": "지금 시청 중, 함께 보기, 리모컨",
+    "watchTogetherSubtitle": "친구와 동기화하여 시청",
     "settingsSubtitle": "화면, 플레이어, 트래커",
     "logsSubtitle": "로그 파일 및 오류 보고서",
     "aboutSubtitle": "버전 및 라이선스",

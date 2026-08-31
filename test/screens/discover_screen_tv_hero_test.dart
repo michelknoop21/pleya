@@ -1,13 +1,20 @@
-/// Fase 6 (hoofdstuk 9.5, DEC-067): the TV Home hero's *slide list*.
+/// Fase 6 (hoofdstuk 9.5, DEC-067) and fase 8: the TV Home hero's *slide
+/// list*, now read off the production carousel that replaced the spotlight.
 ///
 /// These drive the real `DiscoverScreen` on a TV surface with real
 /// `DiscoverProvider` + `TvHomeProjectionProvider` instances over fake
-/// clients, and read the answer off the rendered `TvSpotlightBackground` —
+/// clients, and read the answer off the rendered `TvHeroBillboardCard` —
 /// there is deliberately no test-only hero list here. Before DEC-067 the
 /// hero rotated over `DiscoverProvider.latestMovies`, so a film present on
 /// two servers under two different guids took two rotation slots — the light
 /// upstream dedup collapses identical guids only. Three of the tests below
 /// are red against that hero.
+///
+/// Fase 8 changed *where the answer is read*, not what it should be: the
+/// slide is `TvHeroBillboardCard.group`, so these assertions now run against
+/// the logical group the carousel is showing rather than against a concrete
+/// `MediaItem` a full-bleed background happened to hold. Every expectation is
+/// the fase-6 one.
 library;
 
 import 'package:drift/native.dart';
@@ -48,7 +55,8 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/watch_together/watch_together.dart';
 import 'package:pleya/widgets/side_navigation_rail.dart';
-import 'package:pleya/widgets/tv_spotlight_background.dart';
+import 'package:pleya/widgets/tv/tv_hero_billboard_card.dart';
+import 'package:pleya/widgets/tv/tv_hero_billboard_carousel.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -249,8 +257,11 @@ void main() {
       ],
     );
 
-    // Unchanged pre-fase-6 behaviour: an empty film pool falls through to
-    // on-deck, then hub content, so the billboard is never blank.
+    // Unchanged behaviour through fase 8 (hoofdstuk 9.5's last sentence): an
+    // empty film pool falls through to Continue Watching, then hub content, so
+    // the billboard is never blank. What changed is only that the fallback is
+    // now a `UnifiedMediaGroup` too, so its Afspelen resolves through the
+    // fase-4 coördinator instead of the representative-source shortcut.
     expect(_spotlightTitle(tester), 'Fallback Billboard');
   });
 
@@ -286,11 +297,11 @@ void main() {
     );
 
     expect(harness.discover.latestMovies, hasLength(2), reason: 'the phone PageView still has two pages');
-    expect(find.byType(TvSpotlightBackground), findsNothing, reason: 'no TV billboard off TV');
+    expect(find.byType(TvHeroBillboardCarousel), findsNothing, reason: 'no TV billboard off TV');
     // The projection still runs here only because this harness always builds
     // it; the phone screen never reads it. In the app it is not even in the
-    // tree off TV — `_recomputeTvHeroSlides` returns early on
-    // `!PlatformDetector.isTV()`, so the hero list stays `latestMovies`.
+    // tree off TV — `DiscoverScreen` branches to `_buildTvContent` (and so to
+    // `TvContentFeed`) only on TV, so the phone hero stays `latestMovies`.
     expect(find.byType(PageView), findsOneWidget);
   });
 }
@@ -303,29 +314,36 @@ String? _spotlightTitle(WidgetTester tester) => _spotlightItem(tester)?.title;
 /// duplicate tests.
 String? _spotlightId(WidgetTester tester) => _spotlightItem(tester)?.id;
 
-MediaItem? _spotlightItem(WidgetTester tester) =>
-    tester.widget<TvSpotlightBackground>(find.byType(TvSpotlightBackground)).item;
+/// The *representative* item of the slide the carousel is showing. Read
+/// through the card, so what these tests assert on is the same object the
+/// production hero renders — and the group behind it is one hop away, which is
+/// what the source-count assertions use.
+MediaItem? _spotlightItem(WidgetTester tester) {
+  final cards = tester.widgetList<TvHeroBillboardCard>(find.byType(TvHeroBillboardCard));
+  if (cards.isEmpty) return null;
+  return cards.single.group.representativeSource.item;
+}
 
 /// Move the hero one slide right through the production key path: focus the
-/// Play pill, then send Arrow Right, which `_buildTvHeroActions` wires to
-/// `_moveTvHero(1)`.
+/// Play pill, then send Arrow Right, which the carousel wires to More info and
+/// then to the next slide (hoofdstuk 7.3).
 Future<void> _pressRight(WidgetTester tester) async {
   final playNode = _heroPlayNode(tester);
   playNode.requestFocus();
   await tester.pump();
   await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
   await tester.pump();
-  // Right off Play lands on More info; from there Right is _moveTvHero(1).
+  // Right off Play lands on More info; from there Right advances the slide.
   if (_heroPlayNode(tester).hasFocus) return;
   await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-  await tester.pump();
+  await tester.pumpAndSettle();
 }
 
 FocusNode _heroPlayNode(WidgetTester tester) => tester
     .widgetList<Focus>(find.byType(Focus))
     .map((f) => f.focusNode)
     .whereType<FocusNode>()
-    .firstWhere((node) => node.debugLabel == 'tv_hero_play');
+    .firstWhere((node) => node.debugLabel == 'tvHeroPlay');
 
 class _TvHeroHarness {
   _TvHeroHarness({required this.discover, required this.projection});

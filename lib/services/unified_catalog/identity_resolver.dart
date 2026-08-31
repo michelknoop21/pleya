@@ -18,7 +18,7 @@ import '../../utils/external_ids.dart';
 
 /// Where to fetch external ids for one item: which server, and which id on
 /// that server to ask about (not always the item's own id — an episode's
-/// evidence is fetched for its *show*, see [continueWatchingExternalIdTargetId]).
+/// evidence is fetched for its *show*, see [continueWatchingExternalIdTarget]).
 typedef ExternalIdTarget = ({String serverId, String targetId});
 
 /// One item plus the pure facts already known about it before any network
@@ -46,17 +46,25 @@ class ResolvableItem {
 
   final ExternalIdTarget? externalIdTarget;
 
+  /// Narrows the *fetched* external ids down to what this item actually is,
+  /// for a caller whose [externalIdTarget] is coarser than [scope] — Continue
+  /// Watching fetching an episode's ids from its **series**. See
+  /// [externalIdTokens]'s `discriminator`; null (the default) means the
+  /// fetched ids describe the item itself and need no narrowing.
+  final String? externalIdDiscriminator;
+
   /// Whether [item]'s own guid should contribute a strong token
-  /// ([guidTokens]). Defaults to true. A caller that groups at a coarser
-  /// granularity than [item]'s own kind — Continue Watching grouping an
-  /// episode at its *show*'s scope — sets this false for episode/season
-  /// items: [guidTokens] always scopes an episode's guid to `episode`
-  /// (hoofdstuk 11.1 — an episode guid is never valid evidence for its show),
-  /// so two different episodes correctly contributing to the same show group
-  /// would otherwise disagree on that `episode:guid` namespace and trip
-  /// `grouping_service.dart`'s hoofdstuk 11.5 conflict check, which is built
-  /// to catch a namespace disagreeing about the *group's own* identity — not
-  /// two sources legitimately reporting two different child rows.
+  /// ([guidTokens]). Defaults to true. A caller that groups at a *coarser*
+  /// granularity than [item]'s own kind sets this false: [guidTokens] always
+  /// scopes an episode's guid to `episode` (hoofdstuk 11.1 — an episode guid
+  /// is never valid evidence for its show), so two different episodes
+  /// contributing to one show-scoped group would disagree on that
+  /// `episode:guid` namespace and trip `grouping_service.dart`'s hoofdstuk
+  /// 11.5 conflict check, which is built to catch a namespace disagreeing
+  /// about the *group's own* identity — not two sources legitimately
+  /// reporting two different child rows. Continue Watching is no longer such
+  /// a caller (it groups episodes at episode granularity, hoofdstuk 11.8), so
+  /// the episode guid is exactly the right evidence there and stays on.
   final bool includeGuidEvidence;
 
   const ResolvableItem({
@@ -65,6 +73,7 @@ class ResolvableItem {
     required this.scope,
     this.bucketKeyOverride,
     this.externalIdTarget,
+    this.externalIdDiscriminator,
     this.includeGuidEvidence = true,
   });
 
@@ -126,7 +135,7 @@ class UnifiedIdentityResolver {
             identity: entry.identity ?? CanonicalMediaIdentity.opaque(),
             strongTokens: {
               ..._guidTokensFor(entry),
-              ...externalIdTokens(scope: entry.scope, ids: ids),
+              ...externalIdTokens(scope: entry.scope, ids: ids, discriminator: entry.externalIdDiscriminator),
             },
           );
         } catch (_) {
@@ -164,37 +173,81 @@ Future<void> _runBounded(List<int> indices, int maxConcurrent, Future<void> Func
   await Future.wait(List.generate(workerCount, (_) => worker()));
 }
 
-// -- Continue Watching compatibility mapping --------------------------------
+// -- Continue Watching identity --------------------------------------------
 //
-// Extracted from data_aggregation_service.dart's pre-fase-1
-// `_deduplicateContinueWatching` unchanged, so movie/show/season/episode rows
-// keep bucketing and merging exactly as before (fase 1's DoD: byte-identical
-// Continue Watching output). An episode or season's identity is its *show's*
-// — a Continue Watching row tracks progress on a title, not one airing,
-// matching hoofdstuk 1's "a series row is the server's next-episode
-// substitution".
+// Hoofdstuk 11.8 is binding: Verder kijken groups on the **exact episode** —
+// `show identity + season + episode` — and never folds every episode of one
+// series into a single Continue Watching entry. Two servers holding the
+// viewer at S02E04 are one card with two sources; S02E04 and S02E05 are two
+// cards, even when both resolve the same series-wide tmdb/tvdb/Plex show
+// identity.
 //
-// This deliberately does not go through [CanonicalMediaIdentity]'s hoofdstuk
-// 11.2 bucket (which also folds in release year and full punctuation-stripped
-// title normalization) or `grouping_service.dart`'s weak title+year fallback
-// (hoofdstuk 11.6): Continue Watching has never merged on title alone, only
-// on shared external ids/guid, and changing that now would silently change
-// what viewers see merged on their Home screen. Folding Continue Watching
-// into the full shared pipeline belongs to the fase that builds its unified
-// projection (hoofdstuk 27, fase 3+), not this extraction.
+// That is why an episode's series-wide external ids are never used raw here:
+// a backend asked for an episode's ids answers with the *series'* id, which
+// identifies the series and nothing finer. It is narrowed by
+// [continueWatchingOrdinal] into `episode:tmdb:95396/s2e4` (edge case D4),
+// and the episode's own stable guid — the strongest exact-episode evidence
+// there is — contributes alongside it (edge case D3).
+//
+// The invariant a missing ordinal falls back on is the general one: a false
+// merge is worse than a false negative. An episode with no usable season or
+// episode index has no exact-episode bucket at all, so it never buys a
+// series-wide id it could be folded on; its guid stays its only evidence,
+// which is hoofdstuk 11.8's "ontbrekende indexen vereisen een sterk
+// episode-ID" (edge cases D6/D7).
+//
+// This deliberately still does not go through [CanonicalMediaIdentity]'s
+// hoofdstuk 11.2 bucket (which also folds in release year and full
+// punctuation-stripped title normalization) or `grouping_service.dart`'s weak
+// title+year fallback (hoofdstuk 11.6): Continue Watching merges on shared
+// external ids/guid only, never on title alone.
 
 /// Continue Watching's token scope for [item], or null when its kind never
 /// contributes to Continue Watching dedup.
+///
+/// Each kind is scoped at its own granularity — an episode at `episode`, not
+/// at its show — so a token collected for one episode can never serve as
+/// evidence about a sibling episode (hoofdstuk 11.8).
 String? continueWatchingScope(MediaItem item) => switch (item.kind) {
-  MediaKind.episode || MediaKind.season || MediaKind.show => 'show',
+  MediaKind.episode => 'episode',
+  MediaKind.season => 'season',
+  MediaKind.show => 'show',
   MediaKind.movie => 'movie',
   _ => null,
 };
 
-/// Continue Watching's cheap duplicate-bucket key: scope plus a
-/// whitespace-collapsed, lower-cased title — no year, no punctuation
-/// stripping. Distinct from [CanonicalMediaIdentity.bucketKey] on purpose;
-/// see the section comment above.
+/// The ordinal that narrows a *series-wide* external id down to the exact
+/// child row [item] is — `s2e4` for an episode, `s2` for a season — or null
+/// when [item] is not a child row or its indexes are missing.
+///
+/// Passed to [externalIdTokens] as its `discriminator`, and appended to
+/// [continueWatchingBucketKey], so both the cheap bucket and the strong token
+/// carry the same season/episode specificity.
+String? continueWatchingOrdinal(MediaItem item) {
+  switch (item.kind) {
+    case MediaKind.episode:
+      final season = item.parentIndex;
+      final episode = item.index;
+      if (season == null || episode == null) return null;
+      return 's${season}e$episode';
+    case MediaKind.season:
+      final season = item.index;
+      if (season == null) return null;
+      return 's$season';
+    default:
+      return null;
+  }
+}
+
+/// Continue Watching's cheap duplicate-bucket key: scope, a
+/// whitespace-collapsed lower-cased title, and — for an episode or season —
+/// its [continueWatchingOrdinal]. No year, no punctuation stripping; distinct
+/// from [CanonicalMediaIdentity.bucketKey] on purpose (see the section
+/// comment above).
+///
+/// Returns null for an episode or season whose ordinal is unknown: without it
+/// there is no exact-episode bucket, and bucketing such a row on its series
+/// alone is precisely the fold hoofdstuk 11.8 forbids.
 String? continueWatchingBucketKey(MediaItem item) {
   final scope = continueWatchingScope(item);
   if (scope == null) return null;
@@ -204,12 +257,19 @@ String? continueWatchingBucketKey(MediaItem item) {
   };
   final normalized = title?.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
   if (normalized == null || normalized.isEmpty) return null;
-  return '$scope:$normalized';
+  if (item.kind != MediaKind.episode && item.kind != MediaKind.season) return '$scope:$normalized';
+  final ordinal = continueWatchingOrdinal(item);
+  if (ordinal == null) return null;
+  return '$scope:$normalized:$ordinal';
 }
 
 /// Which id, on which server, Continue Watching fetches external ids for:
 /// the show's id for an episode/season row, the item's own id for a show or
 /// movie row.
+///
+/// Coarser than the row itself for episodes and seasons on purpose — that is
+/// the only id a backend answers for them — which is exactly why the result
+/// is narrowed by [continueWatchingOrdinal] before it becomes a token.
 ExternalIdTarget? continueWatchingExternalIdTarget(MediaItem item) {
   final serverId = item.serverId;
   if (serverId == null || serverId.isEmpty) return null;

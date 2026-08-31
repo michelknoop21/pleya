@@ -1768,6 +1768,7 @@ class _TranslationsUnifiedCatalogDa extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogStatesDa states = _TranslationsUnifiedCatalogStatesDa._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsDa semantics = _TranslationsUnifiedCatalogSemanticsDa._(_root);
 	@override late final _TranslationsUnifiedCatalogDiscoveryDa discovery = _TranslationsUnifiedCatalogDiscoveryDa._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeDa home = _TranslationsUnifiedCatalogHomeDa._(_root);
 }
 
 // Path: tvNavigation
@@ -1804,6 +1805,7 @@ class _TranslationsTvMyPleyaDa extends TranslationsTvMyPleyaEn {
 	@override String get librariesSubtitle => 'Medier, samlinger, playlister';
 	@override String get serversSubtitle => 'Forbindelser og lokale kilder';
 	@override String get activitySubtitle => 'Ser nu, se sammen, fjernbetjening';
+	@override String get watchTogetherSubtitle => 'Se synkront med venner';
 	@override String get settingsSubtitle => 'Visning, afspiller, trackere';
 	@override String get logsSubtitle => 'Logfiler og nedbrudsrapporter';
 	@override String get aboutSubtitle => 'Version og licenser';
@@ -2188,6 +2190,16 @@ class _TranslationsUnifiedCatalogDiscoveryDa extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => 'Intet at opdage endnu';
 	@override String get emptyBody => 'Intet synligt bibliotek har noget at vise her.';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsDa semantics = _TranslationsUnifiedCatalogDiscoverySemanticsDa._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeDa extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => 'Fremhævet';
 }
 
 // Path: tvMyPleya.semantics
@@ -3635,6 +3647,7 @@ extension on TranslationsDa {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} af ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Se alle film, åbner det komplette katalog',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Se alle serier, åbner det komplette katalog',
+			'unifiedCatalog.home.featured' => 'Fremhævet',
 			'tvNavigation.activeDestination' => 'nuværende sektion',
 			'tvMyPleya.groupContent' => 'Mit indhold',
 			'tvMyPleya.groupSources' => 'Biblioteker og kilder',
@@ -3653,6 +3666,7 @@ extension on TranslationsDa {
 			'tvMyPleya.librariesSubtitle' => 'Medier, samlinger, playlister',
 			'tvMyPleya.serversSubtitle' => 'Forbindelser og lokale kilder',
 			'tvMyPleya.activitySubtitle' => 'Ser nu, se sammen, fjernbetjening',
+			'tvMyPleya.watchTogetherSubtitle' => 'Se synkront med venner',
 			'tvMyPleya.settingsSubtitle' => 'Visning, afspiller, trackere',
 			'tvMyPleya.logsSubtitle' => 'Logfiler og nedbrudsrapporter',
 			'tvMyPleya.aboutSubtitle' => 'Version og licenser',

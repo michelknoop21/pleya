@@ -1936,6 +1936,9 @@
         "viewAllMovies": "View all movies, opens the complete catalog",
         "viewAllSeries": "View all series, opens the complete catalog"
       }
+    },
+    "home": {
+      "featured": "Featured"
     }
   },
   "tvNavigation": {
@@ -1959,6 +1962,7 @@
     "librariesSubtitle": "Media, collections, playlists",
     "serversSubtitle": "Connections and local sources",
     "activitySubtitle": "Now watching, watch together, remote",
+    "watchTogetherSubtitle": "Watch in sync with friends",
     "settingsSubtitle": "Display, player, trackers",
     "logsSubtitle": "Log files and crash reporting",
     "aboutSubtitle": "Version and licences",

@@ -442,7 +442,7 @@ Top navigation → Hero actions of page header → First content row or grid →
 - Down vanaf beide CTA's gaat naar de eerste kaart van de eerste rij.
 - Up vanaf de eerste rij gaat terug naar de laatst gebruikte hero-CTA.
 - Up vanaf hero gaat naar de actieve topnavbestemming.
-- **Rijfocus verandert de featured hero niet.** (Fase 8 maakt dit waar; tot dan blijft het bestaande `_setSpotlightDebounced`-gedrag bewust in stand — hoofdstuk 27 fase 6 DoD.)
+- **Rijfocus verandert de featured hero niet.** Geleverd in fase 8: de actieve slide is privéstate van `TvHeroBillboardCarousel` en een contentrij heeft geen parameter waarmee hij hem kan bereiken ([DEC-070](DECISIONS.md#dec-070) punt 2). `_setSpotlightDebounced` bestaat niet meer.
 
 ### 7.4 Films en Series
 
@@ -641,6 +641,15 @@ gebruikersinteractie pauzeert. De timer blijft gepauzeerd zolang: een hero-CTA f
 contentrij focus heeft; een overlay open is; een source picker open is; de app niet actief is; Home
 niet op scrollpositie nul staat. Na echte inactiviteit mag de carousel hervatten. Handmatige
 navigatie met links/rechts reset de timer.
+
+> **Uitvoering, fase 8 — [DEC-070](DECISIONS.md#dec-070) punt 1.** De pauzelijst hierboven en de
+> eerste zin kunnen niet allebei letterlijk gelden: hoofdstuk 7.1 legt de rustfocus van Home op een
+> hero-CTA, dus "een hero-CTA focus heeft" zou de rotatie permanent uitzetten. De laatste zin is de
+> doorslag: een interactie stopt de rotatie en start een inactiviteitsvenster van dezelfde acht
+> seconden, en pas daarna hervat hij. De overige toestanden blijven onvoorwaardelijke pauzes. Focus
+> op de topnavigatie is er géén — die staat buiten de feed, en een kijker die op de balk staat
+> terwijl het billboard doorloopt is het geval dat deze alinea beschrijft. Onder Reduce Motion
+> roteert de carousel helemaal niet.
 
 **Geen permanente reeks kleine webachtige dots.** Tijdens handmatig wisselen verschijnt optioneel een
 korte segmentindicator, die na twee seconden verdwijnt.
@@ -1848,10 +1857,16 @@ juiste rootgrens.
 lib/widgets/tv/tv_hero_billboard_carousel.dart
 lib/widgets/tv/tv_hero_billboard_card.dart
 lib/widgets/tv/tv_hero_artwork.dart
-lib/widgets/tv/tv_ambient_background.dart
 lib/widgets/tv/tv_content_feed.dart
 lib/widgets/tv/tv_content_row.dart
 ```
+
+`lib/widgets/tv/tv_ambient_background.dart` stond hier ook, en is **niet geleverd**: hoofdstuk 9.3's
+ambient tint is een eigen subsysteem (pixelpad, dominante-kleurextractie, cache, performance-tier)
+dat bovendien niet tegen de bindende north star te accepteren is, want `01-home.jpg` toont een vlakke
+grond rond de kaart. Verplaatst naar fase 9 met een
+[roadmap deviation proposal](tvos-unified-fase8-ambient-background-deviation.md); hoofdstuk 9.3 zelf
+is ongewijzigd.
 
 **Refactor.** Uit `TvSpotlightBackground` hergebruiken of extraheren: artwork URL-resolutie;
 posterfallback; clearlogo; metadata; spoilerlogic; scrimtokens; reduced-performancegedrag.
@@ -1877,6 +1892,34 @@ alleen waargemaakt worden in `tv_browse_rail.dart`, en deze fase vervangt dat op
 productie-consument — dus de nieuwe feed leest die in plaats van `DiscoverProvider` rechtstreeks.
 Gevolg voor de gebruiker: een multi-source titel in een Home-rij krijgt dan dezelfde source picker
 als overal elders, in plaats van stilzwijgend één server.
+
+**Gesloten op 31 augustus 2026**, met één geregistreerde uitzondering. Elk punt van de Definition of
+Done hierboven is geleverd en bewezen, en de twee uit fase 6 verplaatste eisen zijn daarmee ook
+gesloten (dat deviation proposal is bijgewerkt met de datum en de tests eronder). Wat *niet* geleverd
+is, is de ambient background uit de **Toevoegen**-lijst — geen DoD-punt, wel een fase-onderdeel — en
+dat staat hierboven met zijn eigen voorstel eronder. Wat deze fase daarnaast opleverde en niet in de lijst hierboven stond, staat in
+[DEC-070](DECISIONS.md#dec-070): de uitvoering van 9.6's pauzecontract, de architectonische
+onmogelijkheid van rowfocus-op-hero, en het verdwijnen van de overlaid Home-actiebalk (met Watch
+Together en Pleya Remote naar Mijn Pleya, en de verversknop als geregistreerd fase-9-gat).
+`TvHomeProjectionProvider.latestMovies` is erbij gekomen omdat de "Recent uitgebracht"-rij dezelfde
+projectie moet lezen als de hero en niet dezelfde aftopping op acht mag erven.
+
+Eén bevinding buiten de scope is meegenomen omdat Home hem blootlegde: `TvDiscoveryRail` liet RECHTS
+voorbij de laatste tegel door de geometrische traversal vallen, wat op een gestapelde feed de eerste
+tegel van de *volgende* rij is. De rij-uiteinden zijn nu harde stops, ook op de fase-6-landings.
+
+**Bij het naverifiëren van de sluiting, op 1 september 2026, bleek Verder kijken hoofdstuk 11.8 niet
+te volgen**, en dat is alsnog binnen deze fase gerepareerd. De identiteitslaag groepeerde een
+aflevering op zijn *serie*: twee afleveringen van één serie die hetzelfde serie-brede tmdb/tvdb
+oplosten werden één Continue Watching-kaart, terwijl 11.8 exacte-afleveringssemantiek voorschrijft
+(`show identity + season + episode`). De correctie zit in `identity_resolver.dart` en
+`identity_evidence.dart` — een aflevering scopet op `episode`, en een serie-brede externe id wordt
+door de seizoen/aflevering-ordinaal genarrowd voordat hij bewijs wordt — en verder nergens: geen
+MediaIdentity-herontwerp, geen adapterwijziging, geen andere source- of watch-state-semantiek. De
+volledige redenering, de tests en de twee negatieve controles staan in
+[het edge-caseregister](qa/tvos-unified-edge-cases.md), onder *"De tegenspraak tussen hoofdstuk 11.8
+en rij D1 over Verder kijken is opgeheven"*. Rijen D3 en D4 sluiten daarmee, en de geregistreerde
+uitzondering onder D1 vervalt.
 
 ### Fase 9: functionele integratie en uitzonderingen
 

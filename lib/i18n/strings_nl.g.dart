@@ -2114,6 +2114,7 @@ class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogStatesNl states = _TranslationsUnifiedCatalogStatesNl._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsNl semantics = _TranslationsUnifiedCatalogSemanticsNl._(_root);
 	@override late final _TranslationsUnifiedCatalogDiscoveryNl discovery = _TranslationsUnifiedCatalogDiscoveryNl._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeNl home = _TranslationsUnifiedCatalogHomeNl._(_root);
 }
 
 // Path: tvNavigation
@@ -2150,6 +2151,7 @@ class _TranslationsTvMyPleyaNl extends TranslationsTvMyPleyaEn {
 	@override String get librariesSubtitle => 'Media, collecties, afspeellijsten';
 	@override String get serversSubtitle => 'Verbindingen en lokale bronnen';
 	@override String get activitySubtitle => 'Nu kijken, samen kijken, remote';
+	@override String get watchTogetherSubtitle => 'Kijk gelijk met vrienden';
 	@override String get settingsSubtitle => 'Weergave, speler, trackers';
 	@override String get logsSubtitle => 'Logbestanden en crashrapportage';
 	@override String get aboutSubtitle => 'Versie en licenties';
@@ -2609,6 +2611,16 @@ class _TranslationsUnifiedCatalogDiscoveryNl extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => 'Nog niets te ontdekken';
 	@override String get emptyBody => 'Geen zichtbare bibliotheek heeft hier iets te tonen.';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsNl semantics = _TranslationsUnifiedCatalogDiscoverySemanticsNl._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeNl extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => 'Uitgelicht';
 }
 
 // Path: tvMyPleya.semantics
@@ -4346,6 +4358,7 @@ extension on TranslationsNl {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} van ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Alle films bekijken, opent de volledige catalogus',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Alle series bekijken, opent de volledige catalogus',
+			'unifiedCatalog.home.featured' => 'Uitgelicht',
 			'tvNavigation.activeDestination' => 'huidige sectie',
 			'tvMyPleya.groupContent' => 'Mijn content',
 			'tvMyPleya.groupSources' => 'Bibliotheken en bronnen',
@@ -4364,6 +4377,7 @@ extension on TranslationsNl {
 			'tvMyPleya.librariesSubtitle' => 'Media, collecties, afspeellijsten',
 			'tvMyPleya.serversSubtitle' => 'Verbindingen en lokale bronnen',
 			'tvMyPleya.activitySubtitle' => 'Nu kijken, samen kijken, remote',
+			'tvMyPleya.watchTogetherSubtitle' => 'Kijk gelijk met vrienden',
 			'tvMyPleya.settingsSubtitle' => 'Weergave, speler, trackers',
 			'tvMyPleya.logsSubtitle' => 'Logbestanden en crashrapportage',
 			'tvMyPleya.aboutSubtitle' => 'Versie en licenties',

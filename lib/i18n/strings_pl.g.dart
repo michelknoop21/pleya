@@ -1768,6 +1768,7 @@ class _TranslationsUnifiedCatalogPl extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogStatesPl states = _TranslationsUnifiedCatalogStatesPl._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsPl semantics = _TranslationsUnifiedCatalogSemanticsPl._(_root);
 	@override late final _TranslationsUnifiedCatalogDiscoveryPl discovery = _TranslationsUnifiedCatalogDiscoveryPl._(_root);
+	@override late final _TranslationsUnifiedCatalogHomePl home = _TranslationsUnifiedCatalogHomePl._(_root);
 }
 
 // Path: tvNavigation
@@ -1804,6 +1805,7 @@ class _TranslationsTvMyPleyaPl extends TranslationsTvMyPleyaEn {
 	@override String get librariesSubtitle => 'Media, kolekcje, playlisty';
 	@override String get serversSubtitle => 'Połączenia i źródła lokalne';
 	@override String get activitySubtitle => 'Teraz oglądane, wspólne oglądanie, pilot';
+	@override String get watchTogetherSubtitle => 'Oglądaj zsynchronizowany ze znajomymi';
 	@override String get settingsSubtitle => 'Wygląd, odtwarzacz, trackery';
 	@override String get logsSubtitle => 'Pliki dzienników i raporty awarii';
 	@override String get aboutSubtitle => 'Wersja i licencje';
@@ -2188,6 +2190,16 @@ class _TranslationsUnifiedCatalogDiscoveryPl extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => 'Nie ma jeszcze nic do odkrycia';
 	@override String get emptyBody => 'Żadna widoczna biblioteka nie ma tu nic do pokazania.';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsPl semantics = _TranslationsUnifiedCatalogDiscoverySemanticsPl._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomePl extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomePl._(TranslationsPl root) : this._root = root, super.internal(root);
+
+	final TranslationsPl _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => 'Polecane';
 }
 
 // Path: tvMyPleya.semantics
@@ -3635,6 +3647,7 @@ extension on TranslationsPl {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} z ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Zobacz wszystkie filmy, otwiera pełny katalog',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Zobacz wszystkie seriale, otwiera pełny katalog',
+			'unifiedCatalog.home.featured' => 'Polecane',
 			'tvNavigation.activeDestination' => 'bieżąca sekcja',
 			'tvMyPleya.groupContent' => 'Moje treści',
 			'tvMyPleya.groupSources' => 'Biblioteki i źródła',
@@ -3653,6 +3666,7 @@ extension on TranslationsPl {
 			'tvMyPleya.librariesSubtitle' => 'Media, kolekcje, playlisty',
 			'tvMyPleya.serversSubtitle' => 'Połączenia i źródła lokalne',
 			'tvMyPleya.activitySubtitle' => 'Teraz oglądane, wspólne oglądanie, pilot',
+			'tvMyPleya.watchTogetherSubtitle' => 'Oglądaj zsynchronizowany ze znajomymi',
 			'tvMyPleya.settingsSubtitle' => 'Wygląd, odtwarzacz, trackery',
 			'tvMyPleya.logsSubtitle' => 'Pliki dzienników i raporty awarii',
 			'tvMyPleya.aboutSubtitle' => 'Wersja i licencje',

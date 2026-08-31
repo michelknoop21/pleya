@@ -1768,6 +1768,7 @@ class _TranslationsUnifiedCatalogFr extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogStatesFr states = _TranslationsUnifiedCatalogStatesFr._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsFr semantics = _TranslationsUnifiedCatalogSemanticsFr._(_root);
 	@override late final _TranslationsUnifiedCatalogDiscoveryFr discovery = _TranslationsUnifiedCatalogDiscoveryFr._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeFr home = _TranslationsUnifiedCatalogHomeFr._(_root);
 }
 
 // Path: tvNavigation
@@ -1804,6 +1805,7 @@ class _TranslationsTvMyPleyaFr extends TranslationsTvMyPleyaEn {
 	@override String get librariesSubtitle => 'Médias, collections, playlists';
 	@override String get serversSubtitle => 'Connexions et sources locales';
 	@override String get activitySubtitle => 'En cours, visionnage groupé, télécommande';
+	@override String get watchTogetherSubtitle => 'Regardez en synchronisation avec vos amis';
 	@override String get settingsSubtitle => 'Affichage, lecteur, trackers';
 	@override String get logsSubtitle => 'Fichiers journaux et rapports de plantage';
 	@override String get aboutSubtitle => 'Version et licences';
@@ -2188,6 +2190,16 @@ class _TranslationsUnifiedCatalogDiscoveryFr extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => 'Rien à découvrir pour l\'instant';
 	@override String get emptyBody => 'Aucune bibliothèque visible n\'a quoi que ce soit à montrer ici.';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsFr semantics = _TranslationsUnifiedCatalogDiscoverySemanticsFr._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeFr extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeFr._(TranslationsFr root) : this._root = root, super.internal(root);
+
+	final TranslationsFr _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => 'À la une';
 }
 
 // Path: tvMyPleya.semantics
@@ -3635,6 +3647,7 @@ extension on TranslationsFr {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} sur ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Voir tous les films, ouvre le catalogue complet',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Voir toutes les séries, ouvre le catalogue complet',
+			'unifiedCatalog.home.featured' => 'À la une',
 			'tvNavigation.activeDestination' => 'section actuelle',
 			'tvMyPleya.groupContent' => 'Mon contenu',
 			'tvMyPleya.groupSources' => 'Bibliothèques et sources',
@@ -3653,6 +3666,7 @@ extension on TranslationsFr {
 			'tvMyPleya.librariesSubtitle' => 'Médias, collections, playlists',
 			'tvMyPleya.serversSubtitle' => 'Connexions et sources locales',
 			'tvMyPleya.activitySubtitle' => 'En cours, visionnage groupé, télécommande',
+			'tvMyPleya.watchTogetherSubtitle' => 'Regardez en synchronisation avec vos amis',
 			'tvMyPleya.settingsSubtitle' => 'Affichage, lecteur, trackers',
 			'tvMyPleya.logsSubtitle' => 'Fichiers journaux et rapports de plantage',
 			'tvMyPleya.aboutSubtitle' => 'Version et licences',

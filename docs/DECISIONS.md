@@ -765,3 +765,127 @@ positie al; twee schrijvers per bestemming zouden twee antwoorden op dezelfde vr
 sluitend wórdt — dat ziet eruit alsof er niets gebeurde (geen Live TV ervoor, geen erna) maar het is
 het enige moment waarop een onthouden capability met recht ingetrokken mag worden. De
 `SideNavigationRail` blijft ongewijzigd de root van desktop; niets aan het niet-TV-pad is verlegd.
+
+## DEC-070: De Home-carousel roteert na inactiviteit, en Home-rijen zijn geen hero-invoer meer
+
+**Date:** 31 augustus 2026
+**Status:** Accepted
+**Phase:** Fase 8 (Final TV Home Experience)
+
+**Context.** Fase 8 vervangt de fullscreen `TvSpotlightBackground`-home door de afgeronde in-page
+carousel van hoofdstuk 33.1. Drie dingen bleken daarbij beslissingen in plaats van
+implementatiedetails, en alle drie zijn ze het soort keuze dat later opnieuw gemaakt wordt als er
+geen reden bij staat.
+
+### 1. Hoofdstuk 9.6's pauzelijst kan niet letterlijk gelden, en lost dat zelf op
+
+9.6 vraagt om een automatische wissel per acht seconden en somt daarna de toestanden op waarin de
+timer gepauzeerd blijft — waaronder "een hero-CTA focus heeft". Letterlijk gelezen is dat een
+carousel die nooit draait: hoofdstuk 7.1 legt de rustfocus van Home juist op een hero-CTA
+(topnav → hero actions), dus de pauzevoorwaarde is altijd waar. De eerste en de laatste zin van
+diezelfde alinea kunnen dan niet allebei waar zijn.
+
+De alinea draagt zijn eigen oplossing: "Na echte inactiviteit mag de carousel hervatten." Dat is
+geïmplementeerd, en het is het enige punt waarop van de letterlijke tekst wordt afgeweken:
+
+- iedere interactie — een slidewissel, een druk, aankomen op een CTA — stopt de rotatie en start een
+  inactiviteitsvenster van dezelfde acht seconden;
+- de rotatie hervat pas als dat venster verstrijkt zonder invoer;
+- de toestanden uit 9.6 die *niet* over de handen van de kijker gaan — Home niet actief, app niet op
+  de voorgrond, een overlay of source picker open, de feed niet op scrollpositie nul, een contentrij
+  met focus — blijven onvoorwaardelijke pauzes, en die rapporteert `TvContentFeed` via één vlag.
+
+**Wat expliciet géén pauzevoorwaarde is: focus op de topnavigatie.** Die zit buiten de feed, en een
+kijker die op de balk staat terwijl het billboard doorloopt is precies het geval dat 9.6 beschrijft,
+niet een dat het uitsluit. Een eerdere versie gebruikte "heeft de feed focus" als proxy voor "staat
+er een overlay overheen"; dat leest als hetzelfde en is het niet. `ModalRoute.isCurrent` beantwoordt
+die vraag wél, en is het predicaat dat de oude Home er al voor gebruikte.
+
+Onder Reduce Motion draait de rotatie helemaal niet. Een automatische wissel van het grootste element
+op het scherm is precies de beweging waar die instelling om vraagt hem niet te doen; links/rechts
+blijft gewoon werken.
+
+### 2. Rijfocus is geen hero-state, en dat is nu architectonisch waar
+
+`TvBrowseRail.onFocusedItemChanged` voedde `DiscoverScreen._setSpotlightDebounced`, en 180 ms na een
+D-pad-stap werd het billboard het gefocuste rij-item. Hoofdstuk 7.3 en 31.9 verbieden dat;
+[DEC-066](#dec-066) punt 3 en [DEC-067](#dec-067) punt 3 stelden het verwijderen uit tot deze fase.
+
+Het is niet uitgezet maar onmogelijk gemaakt op de plek die telt: de actieve slide is privéstate van
+`TvHeroBillboardCarousel`, en die klasse heeft geen setter, geen callback en geen constructorveld
+waarmee iets van buiten hem kan verzetten. `initialGroupId` wordt één keer bij mount gelezen; alles
+daarna is `_index`, privé.
+
+De precieze formulering is hier belangrijk, want de eerste versie van deze alinea beweerde te veel.
+`TvContentRow` heeft wél een parameter die de identiteit van de gefocuste kaart draagt —
+`onFocusedGroupChanged`, waarmee `TvDiscoveryRail` bij iedere focuswinst zijn `groupId` doorgeeft.
+Die is nodig voor restauratie (hoofdstuk 7.6) en gaat in `TvContentFeed` naar
+`_focusedGroupIdByRowId` en nergens anders heen; `_heroGroupId` wordt alleen door de carousel zelf
+gevoed. De garantie is dus niet "er is geen parameter met die informatie" maar "de feed geeft hem
+niet door, en de carousel zou hem niet kunnen ontvangen" — en die tweede helft is de harde: er is
+geen ingang. Beide helften staan onder test.
+
+### 3. De overlaid Home-actiebalk verdwijnt, en twee acties verhuizen mee
+
+De oude TV-home tekende bovenop het billboard een `FocusableActionBar` (verversen, Watch Together,
+Pleya Remote, gebruikersmenu). 33.1 tekent tussen de balk en de kaart niets, en hoofdstuk 7.3 zegt
+"Up vanaf hero gaat naar de actieve topnavbestemming" — waarmee die balk na fase 8 op geen enkel
+focuspad meer ligt. Hij was dus niet zozeer overbodig geworden als wel onbereikbaar.
+
+Weghalen zonder meer zou werkende functies van TV af halen, dus **Watch Together** is een tegel in
+Mijn Pleya geworden — de bestemming die hoofdstuk 18 al definieert als alles persoonlijks dat geen
+browsen is. Het hergebruikt zijn bestaande scherm; de tegel kreeg één nieuwe ondertitelstring, in
+alle zestien locales. Het gebruikersmenu was al gedekt door de profielchip in de topnav en door Mijn
+Pleya zelf.
+
+**Pleya Remote is bewust níet meeverhuisd**, en dat is de correctie die een onafhankelijke audit
+afdwong. De actie op de balk vertakte op `PlatformDetector.shouldActAsRemoteHost`, en dat predicaat
+is op TV waar — de balk opende daar dus de **host**-kant (`RemoteSessionDialog`: koppelstatus,
+starten en stoppen), niet de client. Een tegel die `MobileRemoteScreen` opent geeft precies de
+omgekeerde rol: een televisie die op zoek gaat naar een ander apparaat om te bedienen. De hostkant
+bestaat alleen als dialoog en heeft geen schermvorm om als geneste route te pushen, en die maken is
+functionele integratie — fase 9. Liever een geregistreerd gat dan het verkeerde scherm.
+
+**Wat hierdoor vervalt, en waar het geregistreerd staat.** Twee dingen, allebei fase 9:
+
+1. de expliciete verversknop op TV-Home — Home laadt bij mount en bij profielwissel, en hoofdstuk
+   7.2 verbiedt uitdrukkelijk een netwerkrefresh bij het opnieuw kiezen van de actieve bestemming,
+   dus er is geen plek waar hij vanzelf terugkomt;
+2. de Pleya Remote **host**-sessie op TV. De capability zelf blijft aan/uit te zetten
+   (`enableCompanionRemoteServer` in de afspeelinstellingen); alleen het statuspaneel is onbereikbaar.
+
+### 4. Twee dingen die de visuele audit terecht rood maakte
+
+Een onafhankelijke read-only visuele audit tegen `01-home.jpg` gaf elf van twaalf punten groen en
+twee echte bevindingen, beide gecorrigeerd:
+
+- **De scrim was een L, geen lokale linksonder.** Twee onafhankelijke full-card gradiënten — één
+  ondoorzichtig langs de linkerrand, één langs de onderrand — tellen niet op tot "alleen lokaal
+  linksonder": hun vereniging donkert de hele linkerkolom tot bovenaan en de hele onderrand tot
+  rechts, waardoor de kaart zijn rechteronderhoek in de paginagrond verloor. De leesgradiënt is nu
+  een *product* (horizontaal, gemaskeerd op hoogte) met daarnaast een duidelijk zwakkere onderrand
+  die alleen de kaartrand in de pagina laat overlopen.
+- **De witte `Afspelen`-capsule was grijs tot hij focus had.** `FocusableButton` dimt een
+  ongefocuste knop in D-pad-modus naar 60%, wat juist is voor een muur van kaarten en verkeerd voor
+  een control waarvan de rustkleur bindend is (33.1: "witte `▶ Afspelen`-capsule"). De knop heeft er
+  een `dimWhenUnfocused`-opt-out bij die alleen de twee hero-pillen zetten; de acht andere
+  `delegated`-aanroepers zijn byte-identiek gebleven.
+
+Een derde, kleine bevinding: de "long locale"-golden was dood bewijs — slang's vertalingen zijn
+deferred en een testbinary laadt alleen de basislocale, dus een Material-`Locale` veranderde niets en
+de render was identiek aan `play_focused`. Vervangen door een render met werkelijk lange
+fixture-titels en -prosa, die de gereserveerde hoogtes wél op de proef stelt.
+
+**Consequences.** `lib/widgets/tv/tv_content_feed.dart`, `tv_content_row.dart`,
+`tv_hero_billboard_carousel.dart`, `tv_hero_billboard_card.dart` en `tv_hero_artwork.dart` zijn
+nieuw; `TvHomeLayout` staat naast `TvDiscoveryLayout` in `tv_unified_layout.dart`.
+`TvHomeProjectionProvider` kreeg er één getter bij (`latestMovies`, de ongelimiteerde geprojecteerde
+"Recent uitgebracht"-rij naast de op acht afgetopte `heroGroups`); `FocusableButton` kreeg er één
+parameter bij (`dimWhenUnfocused`, default `true`, zie punt 4). `tv_browse_rail.dart` en
+`tv_spotlight_background.dart` blijven bestaan en ongewijzigd: `library_recommended_tab.dart`,
+`media_detail_screen.dart` en `seerr_poster_card.dart` gebruiken ze terecht nog. De vier fase-0
+Home-focusbaselines uit `test/screens/discover_screen_test.dart` beweren hetzelfde als altijd en
+wijzen nu naar de nieuwe knopen. Eén bevinding buiten de fase-8-scope is onderweg meegenomen omdat
+Home hem blootlegde: `TvDiscoveryRail` liet RECHTS voorbij de laatste tegel door de geometrische
+traversal vallen, die op een gestapelde feed de eerste tegel van de *volgende* rij is — de rij-uiteinden
+zijn nu harde stops, ook op de fase-6-landings.

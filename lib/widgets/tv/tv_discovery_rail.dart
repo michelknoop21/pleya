@@ -322,6 +322,16 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
             },
             onNavigateUp: widget.onNavigateUp,
             onNavigateDown: widget.onNavigateDown,
+            // Hard stops at both ends of the row. Left as `null` these fall
+            // through to Flutter's geometric traversal, and on a stacked feed
+            // the nearest focusable to the right of a row's last tile is the
+            // *next row's* first tile — so RIGHT off the end of Continue
+            // Watching silently dropped the viewer a row down, which reads as
+            // the remote having a mind of its own. A row is horizontal; its
+            // ends are ends (the same convention the top navigation states as
+            // "geen wrap van laatste naar eerste").
+            onNavigateLeft: index == 0 ? () {} : null,
+            onNavigateRight: index == widget.groups.length - 1 ? () {} : null,
           ),
         );
       },

@@ -1768,6 +1768,7 @@ class _TranslationsUnifiedCatalogRu extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogStatesRu states = _TranslationsUnifiedCatalogStatesRu._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsRu semantics = _TranslationsUnifiedCatalogSemanticsRu._(_root);
 	@override late final _TranslationsUnifiedCatalogDiscoveryRu discovery = _TranslationsUnifiedCatalogDiscoveryRu._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeRu home = _TranslationsUnifiedCatalogHomeRu._(_root);
 }
 
 // Path: tvNavigation
@@ -1804,6 +1805,7 @@ class _TranslationsTvMyPleyaRu extends TranslationsTvMyPleyaEn {
 	@override String get librariesSubtitle => 'Медиа, коллекции, плейлисты';
 	@override String get serversSubtitle => 'Подключения и локальные источники';
 	@override String get activitySubtitle => 'Сейчас смотрят, совместный просмотр, пульт';
+	@override String get watchTogetherSubtitle => 'Смотрите синхронно с друзьями';
 	@override String get settingsSubtitle => 'Отображение, плеер, трекеры';
 	@override String get logsSubtitle => 'Файлы журналов и отчёты о сбоях';
 	@override String get aboutSubtitle => 'Версия и лицензии';
@@ -2188,6 +2190,16 @@ class _TranslationsUnifiedCatalogDiscoveryRu extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => 'Пока нечего открывать';
 	@override String get emptyBody => 'Ни в одной видимой библиотеке здесь нечего показать.';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsRu semantics = _TranslationsUnifiedCatalogDiscoverySemanticsRu._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeRu extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeRu._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => 'Рекомендуем';
 }
 
 // Path: tvMyPleya.semantics
@@ -3635,6 +3647,7 @@ extension on TranslationsRu {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} из ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Показать все фильмы, открывает полный каталог',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Показать все сериалы, открывает полный каталог',
+			'unifiedCatalog.home.featured' => 'Рекомендуем',
 			'tvNavigation.activeDestination' => 'текущий раздел',
 			'tvMyPleya.groupContent' => 'Мой контент',
 			'tvMyPleya.groupSources' => 'Библиотеки и источники',
@@ -3653,6 +3666,7 @@ extension on TranslationsRu {
 			'tvMyPleya.librariesSubtitle' => 'Медиа, коллекции, плейлисты',
 			'tvMyPleya.serversSubtitle' => 'Подключения и локальные источники',
 			'tvMyPleya.activitySubtitle' => 'Сейчас смотрят, совместный просмотр, пульт',
+			'tvMyPleya.watchTogetherSubtitle' => 'Смотрите синхронно с друзьями',
 			'tvMyPleya.settingsSubtitle' => 'Отображение, плеер, трекеры',
 			'tvMyPleya.logsSubtitle' => 'Файлы журналов и отчёты о сбоях',
 			'tvMyPleya.aboutSubtitle' => 'Версия и лицензии',

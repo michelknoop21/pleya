@@ -100,6 +100,7 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
   final FeaturedSelector _featuredSelector;
 
   UnifiedMediaHub? _continueWatching;
+  UnifiedMediaHub? _latestMoviesRow;
   List<UnifiedMediaGroup> _heroGroups = const [];
   List<UnifiedMediaHub> _hubs = const [];
   bool _hasProjectedHero = false;
@@ -177,6 +178,16 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
   /// `tv_browse_rail.dart` with `tv_content_feed`/`tv_content_row`, and names
   /// this getter and [continueWatching] as the data source those read.
   List<UnifiedMediaHub> get hubs => _hubs;
+
+  /// The projected "Recently Released" row — the same films the hero is built
+  /// from, deduplicated the same way, but **uncapped**: [heroGroups] is
+  /// `FeaturedSelector` over this and stops at hoofdstuk 9.5's eight, while the
+  /// row is a row and shows what there is.
+  ///
+  /// Two consumers of one projection rather than two projections of one input,
+  /// so the row and the billboard can never disagree about which films are
+  /// recent or about how many logical titles that is. `null` when empty.
+  UnifiedMediaHub? get latestMovies => _latestMoviesRow;
 
   /// **The** ordered TV Home hero list: which slides exist, in what order,
   /// and which [UnifiedMediaGroup] each one activates (see class doc).
@@ -278,6 +289,8 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
       final otherHubs = results[2] as List<UnifiedMediaHub>;
 
       _continueWatching = continueWatching.isEmpty ? null : continueWatching;
+      final latestRow = latestMoviesProjected.isEmpty ? null : latestMoviesProjected.first;
+      _latestMoviesRow = latestRow == null || latestRow.isEmpty ? null : latestRow;
       _hubs = otherHubs;
       // The hero, from the projected recent-films row and nothing else
       // (DEC-067). `FeaturedSelector` never re-ranks, so

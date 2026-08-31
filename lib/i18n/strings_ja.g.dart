@@ -1768,6 +1768,7 @@ class _TranslationsUnifiedCatalogJa extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogStatesJa states = _TranslationsUnifiedCatalogStatesJa._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsJa semantics = _TranslationsUnifiedCatalogSemanticsJa._(_root);
 	@override late final _TranslationsUnifiedCatalogDiscoveryJa discovery = _TranslationsUnifiedCatalogDiscoveryJa._(_root);
+	@override late final _TranslationsUnifiedCatalogHomeJa home = _TranslationsUnifiedCatalogHomeJa._(_root);
 }
 
 // Path: tvNavigation
@@ -1804,6 +1805,7 @@ class _TranslationsTvMyPleyaJa extends TranslationsTvMyPleyaEn {
 	@override String get librariesSubtitle => 'メディア、コレクション、プレイリスト';
 	@override String get serversSubtitle => '接続とローカルソース';
 	@override String get activitySubtitle => '再生中、一緒に視聴、リモート';
+	@override String get watchTogetherSubtitle => '友だちと同期して見る';
 	@override String get settingsSubtitle => '表示、プレーヤー、トラッカー';
 	@override String get logsSubtitle => 'ログファイルとクラッシュレポート';
 	@override String get aboutSubtitle => 'バージョンとライセンス';
@@ -2188,6 +2190,16 @@ class _TranslationsUnifiedCatalogDiscoveryJa extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => 'まだ何も見つかりません';
 	@override String get emptyBody => '表示できるライブラリにここに表示するものがありません。';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsJa semantics = _TranslationsUnifiedCatalogDiscoverySemanticsJa._(_root);
+}
+
+// Path: unifiedCatalog.home
+class _TranslationsUnifiedCatalogHomeJa extends TranslationsUnifiedCatalogHomeEn {
+	_TranslationsUnifiedCatalogHomeJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get featured => '注目作品';
 }
 
 // Path: tvMyPleya.semantics
@@ -3635,6 +3647,7 @@ extension on TranslationsJa {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object count, required Object position}) => '${count}件中${position}件目',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'すべての映画を表示、完全なカタログを開きます',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'すべてのシリーズを表示、完全なカタログを開きます',
+			'unifiedCatalog.home.featured' => '注目作品',
 			'tvNavigation.activeDestination' => '現在のセクション',
 			'tvMyPleya.groupContent' => 'マイコンテンツ',
 			'tvMyPleya.groupSources' => 'ライブラリとソース',
@@ -3653,6 +3666,7 @@ extension on TranslationsJa {
 			'tvMyPleya.librariesSubtitle' => 'メディア、コレクション、プレイリスト',
 			'tvMyPleya.serversSubtitle' => '接続とローカルソース',
 			'tvMyPleya.activitySubtitle' => '再生中、一緒に視聴、リモート',
+			'tvMyPleya.watchTogetherSubtitle' => '友だちと同期して見る',
 			'tvMyPleya.settingsSubtitle' => '表示、プレーヤー、トラッカー',
 			'tvMyPleya.logsSubtitle' => 'ログファイルとクラッシュレポート',
 			'tvMyPleya.aboutSubtitle' => 'バージョンとライセンス',

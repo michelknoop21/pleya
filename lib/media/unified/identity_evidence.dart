@@ -91,19 +91,31 @@ Set<IdentityToken> guidTokens({required String scope, required String? guid, req
 }
 
 /// Builds the strong tokens an [ExternalIds] triple contributes at [scope].
-Set<IdentityToken> externalIdTokens({required String scope, required ExternalIds ids}) {
+///
+/// [discriminator] narrows a *coarser* id into evidence about a finer thing.
+/// Backends answer an episode's external-id lookup with the **series'**
+/// tmdb/tvdb id, which on its own identifies the whole series and would merge
+/// every episode of it into one entry. Passing the episode's ordinal
+/// (`s2e4`) appends it to each value, so `episode:tmdb:95396/s2e4` says "the
+/// episode of series 95396 at season 2, episode 4" — hoofdstuk 11.8's
+/// `show identity + season + episode`, and edge case D4. The suffix rides on
+/// the *value*, not the scope, so two sources claiming the same ordinal under
+/// two different series ids still collide in one namespace and are caught as
+/// a conflict rather than quietly ignoring each other.
+Set<IdentityToken> externalIdTokens({required String scope, required ExternalIds ids, String? discriminator}) {
+  final suffix = (discriminator == null || discriminator.isEmpty) ? '' : '/$discriminator';
   final tokens = <IdentityToken>{};
   final imdb = ids.imdb?.trim().toLowerCase();
   if (imdb != null && imdb.isNotEmpty) {
-    tokens.add(IdentityToken(scope: scope, namespace: identityTokenNamespaceImdb, value: imdb));
+    tokens.add(IdentityToken(scope: scope, namespace: identityTokenNamespaceImdb, value: '$imdb$suffix'));
   }
   final tmdb = ids.tmdb;
   if (tmdb != null) {
-    tokens.add(IdentityToken(scope: scope, namespace: identityTokenNamespaceTmdb, value: '$tmdb'));
+    tokens.add(IdentityToken(scope: scope, namespace: identityTokenNamespaceTmdb, value: '$tmdb$suffix'));
   }
   final tvdb = ids.tvdb;
   if (tvdb != null) {
-    tokens.add(IdentityToken(scope: scope, namespace: identityTokenNamespaceTvdb, value: '$tvdb'));
+    tokens.add(IdentityToken(scope: scope, namespace: identityTokenNamespaceTvdb, value: '$tvdb$suffix'));
   }
   return tokens;
 }

@@ -36,16 +36,18 @@ MediaItem _episode(
   required String serverId,
   String show = 'Severance',
   String showId = 'show-1',
-  int season = 1,
-  int episode = 3,
+  int? season = 1,
+  int? episode = 3,
   int? lastViewedAt,
   int? viewOffsetMs = 600000,
+  String? guid,
   String serverName = 'Plex Familie',
 }) => MediaItem(
   id: id,
   backend: MediaBackend.plex,
   kind: MediaKind.episode,
   title: 'Episode $episode',
+  guid: guid,
   grandparentId: showId,
   grandparentTitle: show,
   parentIndex: season,
@@ -439,10 +441,14 @@ void main() {
   });
 
   group('projectContinueWatching', () {
-    test('a group\'s sources stay the concrete resumable episodes, never a series item', () async {
+    // Hoofdstuk 11.8, binding: Continue Watching groups on the exact episode —
+    // `show identity + season + episode`. Every fixture below hands both rows
+    // the *same* series-wide tmdb on purpose, so nothing here is green merely
+    // because the external ids came back empty.
+    test('C: the same episode on two servers is one card, and its sources stay the concrete episodes', () async {
       final onDeck = [
-        _episode('a-e3', serverId: 'a', season: 1, episode: 3, lastViewedAt: 200),
-        _episode('b-e7', serverId: 'b', season: 2, episode: 7, lastViewedAt: 100, serverName: 'Jellyfin'),
+        _episode('a-e4', serverId: 'a', season: 2, episode: 4, lastViewedAt: 200),
+        _episode('b-e4', serverId: 'b', season: 2, episode: 4, lastViewedAt: 100, serverName: 'Jellyfin'),
       ];
       final service = _service(
         ids: {'a:show-1': const ExternalIds(tmdb: 95396), 'b:show-1': const ExternalIds(tmdb: 95396)},
@@ -450,12 +456,146 @@ void main() {
 
       final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
 
-      expect(row.groups, hasLength(1), reason: 'one card per series, as Continue Watching has always merged');
+      expect(row.groups, hasLength(1), reason: 'one card per logical episode');
       final sources = row.groups.single.sources;
       expect(sources, hasLength(2));
       expect(sources.every((s) => s.item.kind == MediaKind.episode), isTrue);
-      expect(sources.map((s) => s.item.id), ['a-e3', 'b-e7']);
-      expect(sources.map((s) => (s.item.parentIndex, s.item.index)), [(1, 3), (2, 7)]);
+      expect(sources.map((s) => s.item.id), ['a-e4', 'b-e4']);
+      expect(sources.map((s) => (s.item.parentIndex, s.item.index)), [(2, 4), (2, 4)]);
+    });
+
+    test('A/E: two episodes of one series stay two cards, on one shared series-wide id', () async {
+      final onDeck = [
+        _episode('a-e4', serverId: 'a', season: 2, episode: 4, lastViewedAt: 200),
+        _episode('b-e5', serverId: 'b', season: 2, episode: 5, lastViewedAt: 100, serverName: 'Jellyfin'),
+      ];
+      // The same series tmdb *and* tvdb on both sides: the exact evidence the
+      // old series-wide fold merged on.
+      final service = _service(
+        ids: {
+          'a:show-1': const ExternalIds(tmdb: 95396, tvdb: 371980),
+          'b:show-1': const ExternalIds(tmdb: 95396, tvdb: 371980),
+        },
+      );
+
+      final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(2), reason: 'S02E04 and S02E05 are two Continue Watching cards');
+      expect([for (final g in row.groups) g.representativeSource.item.id], ['a-e4', 'b-e5']);
+      expect(row.groups.first.groupId, isNot(row.groups.last.groupId));
+    });
+
+    test('B: two seasons of one series stay two cards', () async {
+      final onDeck = [
+        _episode('a-s1e4', serverId: 'a', season: 1, episode: 4, lastViewedAt: 200),
+        _episode('b-s2e4', serverId: 'b', season: 2, episode: 4, lastViewedAt: 100, serverName: 'Jellyfin'),
+      ];
+      final service = _service(
+        ids: {'a:show-1': const ExternalIds(tmdb: 95396), 'b:show-1': const ExternalIds(tmdb: 95396)},
+      );
+
+      final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(2), reason: 'S01E04 and S02E04 are two Continue Watching cards');
+      expect(
+        {for (final g in row.groups) (g.representativeSource.item.parentIndex, g.representativeSource.item.index)},
+        {(1, 4), (2, 4)},
+      );
+    });
+
+    test('D: two servers reporting the same strong episode guid merge without any external id', () async {
+      final onDeck = [
+        _episode('a-e4', serverId: 'a', season: 2, episode: 4, guid: 'plex://episode/5d9c08', lastViewedAt: 200),
+        _episode(
+          'b-e4',
+          serverId: 'b',
+          season: 2,
+          episode: 4,
+          guid: 'plex://episode/5d9c08',
+          lastViewedAt: 100,
+          serverName: 'Plex Zolder',
+        ),
+      ];
+
+      // No external ids at all: the episode guid is the whole case.
+      final row = await _service().projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(1));
+      expect(row.groups.single.sources.map((s) => s.item.id), ['a-e4', 'b-e4']);
+    });
+
+    test('D/E: a strong episode guid never merges two different episodes of one series', () async {
+      final onDeck = [
+        _episode('a-e4', serverId: 'a', season: 2, episode: 4, guid: 'plex://episode/5d9c08'),
+        _episode('a-e5', serverId: 'a', season: 2, episode: 5, guid: 'plex://episode/5d9c09'),
+      ];
+      final service = _service(ids: {'a:show-1': const ExternalIds(tmdb: 95396)});
+
+      final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(2));
+    });
+
+    test('F: distinct episodes with no external ids at all stay distinct', () async {
+      final onDeck = [
+        _episode('a-e4', serverId: 'a', season: 2, episode: 4),
+        _episode('a-e5', serverId: 'a', season: 2, episode: 5),
+      ];
+
+      final row = await _service().projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(2));
+      expect({for (final g in row.groups) g.groupId}, hasLength(2), reason: 'two cards need two stable ids');
+    });
+
+    test('G: episodes with no usable season or episode index never merge on their series alone', () async {
+      // Hoofdstuk 11.8: ontbrekende indexen vereisen een sterk episode-ID.
+      // Both rows resolve the same series tmdb and neither can prove which
+      // episode it is, so the false-merge-is-worse-than-false-negative
+      // invariant keeps them apart.
+      final fetchLog = <String>[];
+      final onDeck = [
+        _episode('a-unknown', serverId: 'a', season: null, episode: null),
+        _episode('b-unknown', serverId: 'b', season: null, episode: null, serverName: 'Jellyfin'),
+      ];
+      final service = _service(
+        ids: {'a:show-1': const ExternalIds(tmdb: 95396), 'b:show-1': const ExternalIds(tmdb: 95396)},
+        fetchLog: fetchLog,
+      );
+
+      final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(2));
+      expect(fetchLog, isEmpty, reason: 'no exact-episode bucket means no series-wide id is even fetched');
+    });
+
+    test('J: the exact-episode identity leaves progress, ordering and the activation source alone', () async {
+      // The identity fix must not become a watch-state or ordering change by
+      // accident: every source keeps its own offset, cards stay in recency
+      // order, and the group still activates through its own sources.
+      final onDeck = [
+        _episode('a-e4', serverId: 'a', season: 2, episode: 4, viewOffsetMs: 100, lastViewedAt: 300),
+        _episode('b-e4', serverId: 'b', season: 2, episode: 4, viewOffsetMs: 800, lastViewedAt: 200, serverName: 'JF'),
+        _episode('a-e5', serverId: 'a', season: 2, episode: 5, viewOffsetMs: 400, lastViewedAt: 900),
+      ];
+      final service = _service(
+        ids: {'a:show-1': const ExternalIds(tmdb: 95396), 'b:show-1': const ExternalIds(tmdb: 95396)},
+      );
+
+      final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(
+        [for (final g in row.groups) (g.representativeSource.item.parentIndex, g.representativeSource.item.index)],
+        [(2, 5), (2, 4)],
+        reason: 'newest recency first, unchanged by the identity fix',
+      );
+      final merged = row.groups.last;
+      expect({for (final s in merged.sources) s.item.serverId!: s.item.viewOffsetMs}, {'a': 100, 'b': 800});
+      expect(
+        merged.sources.map((s) => s.sourceKey),
+        contains(merged.representativeSourceKey),
+        reason: 'the representative is one of the group\'s own sources, never a substitute',
+      );
     });
 
     test('cards sort on the newest recency among their own sources', () async {

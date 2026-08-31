@@ -2,7 +2,7 @@
 
 **Datum:** 31 augustus 2026
 **Fase:** 6 (Unified Discovery)
-**Status:** goedgekeurd door Michel, 31 augustus 2026
+**Status:** goedgekeurd door Michel, 31 augustus 2026 — **geleverd en gesloten in fase 8, 31 augustus 2026**
 **Vorm:** de zes onderdelen uit hoofdstuk 23.1 van `docs/pleya-server-architecture.md`
 
 Aanleiding: een onafhankelijke read-only systeemaudit op de volledige fase-6-diff
@@ -111,3 +111,32 @@ de huidige fase hem niet nodig heeft.
 - **Is er scope blijven liggen?** Ja, één regel, en dit voorstel is die registratie.
 - **Klopt de volgende fase nog?** Fase 7 (topnav, root-shell, Mijn Pleya) is niet geraakt. Fase 8
   krijgt er twee expliciete DoD-punten bij, hierboven onder 4.
+
+---
+
+## Sluiting — fase 8, 31 augustus 2026
+
+Beide verplaatste eisen zijn geleverd. Ze zitten niet in een controle die de UI uitvoert maar in de
+data die hij krijgt en in de ene aanroep die hij doet, wat precies is waarom ze pas hier konden:
+
+1. **Geen duplicate logische titel in één Home-rij.** `TvContentFeed` leest
+   `TvHomeProjectionProvider.continueWatching`, `.latestMovies` en `.hubs` — `UnifiedMediaHub`s
+   waarvan de identiteitspijplijn de kaarten al heeft samengevouwen, met iedere concrete bron nog op
+   `group.sources`. De rij dedupliceert zelf niets en voegt geen title-only fuzzy merge toe. De
+   zichtbare fout die dit voorstel registreerde — dezelfde film op twee servers als twee kaarten in
+   "Recent uitgebracht", direct onder een hero die ze tot één slide samenvouwt — bestaat niet meer.
+2. **Home-rij-activatie via de fase-4-coördinator.** `TvContentRow.onActivate` is
+   `ValueChanged<UnifiedMediaGroup>` en de feed geeft die groep door aan
+   `TvDiscoveryActivationMixin.activateDiscoveryGroup`. `navigateToMediaItem` komt op dit pad niet
+   meer voor. Een multi-source titel in een Home-rij krijgt daarmee dezelfde source picker als
+   overal elders.
+
+`TvHomeProjectionProvider.continueWatching` en `.hubs` hebben sinds deze fase een productie-consument;
+`.latestMovies` is erbij gekomen omdat de "Recent uitgebracht"-rij dezelfde projectie moet lezen als
+de hero zonder diens aftopping op acht te erven.
+
+**Waar het bewijs staat.** `test/screens/tv/tv_content_feed_test.dart` — "one logical title on two
+servers is one card, carrying both sources", "a title the pipeline cannot prove equal stays two
+cards", "every row activates through the group, never through a concrete item" — plus de
+Continue-Watching- en partial-projectietests in hetzelfde bestand, en de negen productierenders in
+`test/goldens/tv_home_production_golden_test.dart`.

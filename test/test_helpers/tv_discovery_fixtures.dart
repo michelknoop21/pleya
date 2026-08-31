@@ -185,20 +185,31 @@ UnifiedMediaGroup tvDiscoveryShowGroup(
   inProgress: inProgress,
 );
 
-/// A Continue Watching group whose sources are episodes of one show.
+/// A Continue Watching group whose sources are all the **same** episode of one
+/// show, held on one or more servers.
 ///
-/// The identity is the **show's**, not the episode's, and that is not a
-/// shortcut. Two servers can hold a viewer at different points in the same
-/// series, and those two sources are genuinely one Continue Watching entry;
-/// they cannot share an episode identity because they are not the same episode.
-/// Grouping them at show granularity is the honest model, and it is exactly the
-/// case [tvDiscoveryContinueWatchingRow] carries so the rail has to face it.
-UnifiedMediaGroup tvDiscoveryEpisodeGroup(String id, List<MediaItem> episodes, {String? showTitle}) => _group(
-  id,
-  episodes,
-  CanonicalMediaIdentity.show(title: showTitle ?? episodes.first.grandparentTitle, year: episodes.first.year),
-  inProgress: true,
-);
+/// The identity is the episode's — show title plus season plus episode — and
+/// that is hoofdstuk 11.8, not a detail: Verder kijken groups on the exact
+/// aflevering, so two servers holding the viewer at S01E08 are one entry with
+/// two sources, while S01E08 and S02E03 are two entries. A fixture that put
+/// two different episodes in one group would encode a card the identity layer
+/// can no longer produce.
+UnifiedMediaGroup tvDiscoveryEpisodeGroup(String id, List<MediaItem> episodes, {String? showTitle}) {
+  assert(
+    episodes.every((e) => e.parentIndex == episodes.first.parentIndex && e.index == episodes.first.index),
+    'a Continue Watching group is one exact episode (hoofdstuk 11.8), not a series',
+  );
+  return _group(
+    id,
+    episodes,
+    CanonicalMediaIdentity.episode(
+      showTitle: showTitle ?? episodes.first.grandparentTitle,
+      seasonIndex: episodes.first.parentIndex,
+      episodeIndex: episodes.first.index,
+    ),
+    inProgress: true,
+  );
+}
 
 UnifiedMediaGroup _group(
   String id,
@@ -510,10 +521,10 @@ List<UnifiedMediaGroup> tvDiscoverySeriesRow() => [
 /// by accident.
 ///
 /// `disc-cw-two-servers` is the case a single-source model gets wrong: one
-/// show, two servers, and the viewer is at a different episode on each. Both
-/// sources are preserved (hoofdstuk 4.2 never drops one) and the group is
-/// identified at show granularity, since two different episodes cannot share an
-/// episode identity. See [tvDiscoveryEpisodeGroup].
+/// episode the viewer is partway through on two different servers, on two
+/// different backends, at two different offsets. Both sources are preserved
+/// (hoofdstuk 4.2 never drops one) and the group is identified at exact-episode
+/// granularity (hoofdstuk 11.8). See [tvDiscoveryEpisodeGroup].
 List<UnifiedMediaGroup> tvDiscoveryContinueWatchingRow() => [
   tvDiscoveryEpisodeGroup('disc-cw-harbourlight', [
     tvDiscoveryEpisode(
@@ -559,7 +570,8 @@ List<UnifiedMediaGroup> tvDiscoveryContinueWatchingRow() => [
       artwork: TvDiscoveryArtwork.indexOfMood(TvDiscoveryMood.greenNature),
     ),
   ]),
-  // One show, two servers, two different episodes in progress.
+  // One episode, two servers, two backends — and two different offsets, so a
+  // card that averaged its sources' progress away would be visible.
   tvDiscoveryEpisodeGroup('disc-cw-two-servers', [
     tvDiscoveryEpisode(
       id: 'disc-cw-two-servers-nas',
@@ -578,12 +590,12 @@ List<UnifiedMediaGroup> tvDiscoveryContinueWatchingRow() => [
     tvDiscoveryEpisode(
       id: 'disc-cw-two-servers-attic',
       showTitle: 'Kite Street',
-      episodeTitle: 'Crosswind',
-      season: 2,
-      episode: 3,
+      episodeTitle: 'The Tail End',
+      season: 1,
+      episode: 8,
       durationMs: 26 * kTvDiscoveryMinuteMs,
       viewOffsetMs: 20 * kTvDiscoveryMinuteMs,
-      summary: 'A borrowed roof, a borrowed ladder, and one very specific apology.',
+      summary: 'The workshop misses a deadline and decides to make the delay part of the design.',
       artwork: TvDiscoveryArtwork.indexOfMood(TvDiscoveryMood.familyAnimation),
       serverId: 'attic',
       serverName: 'Zolder',

@@ -1865,6 +1865,9 @@
         "viewAllMovies": "Alle films bekijken, opent de volledige catalogus",
         "viewAllSeries": "Alle series bekijken, opent de volledige catalogus"
       }
+    },
+    "home": {
+      "featured": "Uitgelicht"
     }
   },
   "tvNavigation": {
@@ -1888,6 +1891,7 @@
     "librariesSubtitle": "Media, collecties, afspeellijsten",
     "serversSubtitle": "Verbindingen en lokale bronnen",
     "activitySubtitle": "Nu kijken, samen kijken, remote",
+    "watchTogetherSubtitle": "Kijk gelijk met vrienden",
     "settingsSubtitle": "Weergave, speler, trackers",
     "logsSubtitle": "Logbestanden en crashrapportage",
     "aboutSubtitle": "Versie en licenties",
