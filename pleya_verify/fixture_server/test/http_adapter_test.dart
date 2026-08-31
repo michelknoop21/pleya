@@ -99,6 +99,24 @@ void main() {
     });
   });
 
+  group('/__verify/echo', () {
+    test('hands the posted body back verbatim, merged under ok: true', () async {
+      final response = await verify(
+        'POST',
+        '/__verify/echo',
+        body: {
+          'nested': {'oldPassword': 'hunter2'},
+        },
+      );
+      final body = await jsonBody(response);
+      expect(response.statusCode, HttpStatus.ok);
+      expect(body, {
+        'ok': true,
+        'nested': {'oldPassword': 'hunter2'},
+      });
+    });
+  });
+
   group('/__verify/add_episode', () {
     test('appends an episode under a seeded season and is reflected on /items/{id}/children', () async {
       await verify('POST', '/__verify/seed', body: {'fixture': 'catalog.shows.v1'});

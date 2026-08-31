@@ -149,7 +149,13 @@ Future<ScenarioRunResult> runScenario({
               resolvePlaceholders(raw, fixture, null, seededIds: await fixture.seededIds()) as Map<String, Object?>;
           final op = args.remove('op') as String;
           record['op'] = op;
-          record['result'] = await fixture.mutate(op, args);
+          // A generic pass-through to the fixture's own control plane (see
+          // `fixture.mutate`'s doc) — a future op is free to echo back
+          // whatever the caller sent it, including a credential-shaped
+          // field, and this record lands straight in `manifest.json`. Same
+          // invariant as `record['error']` below: redact at the point data
+          // enters the bundle, not by trusting every future op to be benign.
+          record['result'] = redactJson(await fixture.mutate(op, args));
         case 'open':
           final screen = step.args;
           if (screen is! String) {
@@ -275,8 +281,11 @@ Future<ScenarioRunResult> runScenario({
       } catch (e) {
         // Never let teardown overwrite the real failure — record it and
         // move on, but do record it: a terminate that fails is how a
-        // leftover process survives into the next run.
-        stepRecords.add({'verb': 'terminate', 'ok': false, 'error': '$e'});
+        // leftover process survives into the next run. Redacted the same
+        // way every other step's `error` field is (see `runStep`'s catch
+        // clause) — a terminate failure can quote the same URLs/headers a
+        // step failure can.
+        stepRecords.add({'verb': 'terminate', 'ok': false, 'error': redact('$e')});
       }
     }
     if (fixture != null) {

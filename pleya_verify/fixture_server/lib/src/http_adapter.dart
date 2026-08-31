@@ -157,6 +157,14 @@ class FixtureHttpServer {
           count: (body['count'] as num?)?.toInt() ?? 1,
         );
         await _json(request, {'ok': true});
+      case '/__verify/echo':
+        // Test-support only: hands the caller's own body back verbatim
+        // (merged under `ok: true`). Nothing in this fixture reads or
+        // stores it. Exists so a `fixture_mutate` scenario/test can exercise
+        // an arbitrarily-shaped response — including a credential-shaped
+        // one — without needing a real op that happens to echo one back.
+        final body = await _readJsonBody(request);
+        await _json(request, {'ok': true, ...body});
       default:
         request.response.statusCode = HttpStatus.notFound;
         await request.response.close();

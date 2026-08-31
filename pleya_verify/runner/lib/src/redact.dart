@@ -76,12 +76,59 @@ String redact(String message) {
   return redacted;
 }
 
+/// Every field-name alternative [_isSecretKey] matches on, including the
+/// header names outside [_secretNames] proper.
+const String _secretKeyNames =
+    '$_secretNames|authorization|proxy-authorization|x-api-key|x-auth-token|cookie|set-cookie';
+
+/// [_secretKeyNames], each alternative split into its underscore-delimited
+/// word sequence — `access[_-]?token` -> `['access', 'token']`,
+/// `x-plex-token` -> `['x', 'plex', 'token']`. The structural counterpart to
+/// [redact]'s pattern matching, driving [_isSecretKey]'s word-subsequence
+/// check rather than an exact full-name match.
+final List<List<String>> _secretKeySegmentSequences = _secretKeyNames
+    .split('|')
+    .map((alt) => alt.replaceAll('[_-]?', '_').replaceAll('-', '_').split('_').where((s) => s.isNotEmpty).toList())
+    .toList();
+
+/// Splits a JSON key into lowercase, underscore/hyphen/case-boundary
+/// delimited words: `userAccessToken` and `server-api-key` both become
+/// `['user', 'access', 'token']`-shaped lists, the same normal form
+/// `_secretKeySegmentSequences` was built in.
+List<String> _keySegments(String key) {
+  final snake = key
+      .replaceAllMapped(RegExp(r'([a-z0-9])([A-Z])'), (m) => '${m[1]}_${m[2]}')
+      .replaceAll(RegExp(r'[-\s]+'), '_')
+      .toLowerCase();
+  return snake.split('_').where((s) => s.isNotEmpty).toList();
+}
+
+/// Whether [needle] occurs in [segments] as a contiguous run of whole words
+/// — `['access', 'token']` matches `['user', 'access', 'token']` (from
+/// `userAccessToken`) but not `['tokenizer']` (no case boundary to split on,
+/// so it stays one word and never collides with the bare `token` rule).
+bool _containsWordSequence(List<String> segments, List<String> needle) {
+  if (needle.isEmpty || needle.length > segments.length) return false;
+  for (var i = 0; i <= segments.length - needle.length; i++) {
+    if (Iterable.generate(needle.length, (j) => segments[i + j]).toList().join('_') == needle.join('_')) return true;
+  }
+  return false;
+}
+
 /// A field name whose *value* is a credential regardless of what the value
 /// looks like — the structural counterpart to [redact]'s pattern matching.
-final RegExp _secretKey = RegExp(
-  r'^(?:' + _secretNames + r'|authorization|proxy-authorization|x-api-key|x-auth-token|cookie|set-cookie)$',
-  caseSensitive: false,
-);
+///
+/// Word-boundary matching, not a substring or exact-name match: a composite
+/// field like `oldPassword`, `userAccessToken` or `server-api-key` redacts
+/// the same as its bare form would, while a key that merely contains one of
+/// these words as part of a single, unsplit word (`tokenizer`,
+/// `passwordless` — neither has a case boundary or separator to split on)
+/// is left alone: only a whole word (or whole word sequence) match counts.
+bool _isSecretKey(String key) {
+  final segments = _keySegments(key);
+  if (segments.isEmpty) return false;
+  return _secretKeySegmentSequences.any((needle) => _containsWordSequence(segments, needle));
+}
 
 /// Redacts a decoded JSON value in place of its encoded text.
 ///
@@ -103,7 +150,7 @@ Object? redactJson(Object? value) {
   if (value is Map) {
     return {
       for (final entry in value.entries)
-        '${entry.key}': _secretKey.hasMatch('${entry.key}') ? '[REDACTED]' : redactJson(entry.value),
+        '${entry.key}': _isSecretKey('${entry.key}') ? '[REDACTED]' : redactJson(entry.value),
     };
   }
   return value;

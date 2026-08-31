@@ -211,23 +211,29 @@ void main() {
     expect(result.failureMessage, contains('timed out'));
   });
 
-  test('an unimplemented verb fails cleanly instead of silently no-opping', () async {
+  test('a verb the engine genuinely has no case for fails cleanly instead of silently no-opping', () async {
+    // Every verb the validator's vocabulary advertises (`model.dart`'s
+    // setupVerbs/stepVerbs) has a real case in run_scenario.dart's switch —
+    // see `validator_test.dart`'s parity test for that invariant. This
+    // exercises the engine's own default-case guard directly, bypassing
+    // validation, so a *future* vocabulary/engine drift (a verb added to
+    // one without the other) still fails the run cleanly rather than
+    // reaching an engine no-op or a null dereference.
     final scenario = parseScenarioString(
-      'name: fixture.set_pref\ntarget: macos\nsetup:\n  - set_pref: {key: x, value: y}\nsteps:\n'
-      '  - assert: {id: screen.main}\n',
+      'name: fixture.unimplemented_verb\ntarget: macos\nsteps:\n  - swipe: left\n',
       sourcePath: 'inline.yaml',
     );
     final driver = FakeDriver();
 
     final result = await runScenario(
       scenario: scenario,
-      scenarioSource: 'name: fixture.set_pref\n...',
+      scenarioSource: 'name: fixture.unimplemented_verb\n...',
       driver: driver,
       repoRoot: repoRoot,
     );
 
     expect(result.passed, isFalse);
-    expect(result.failureMessage, contains('does not implement verb "set_pref"'));
+    expect(result.failureMessage, contains('does not implement verb "swipe"'));
   });
 
   test('a launch() that throws still gets terminated — no process left owning the port', () async {
@@ -313,6 +319,46 @@ void main() {
       expect(result.failureMessage, contains('needs a launched app'));
     });
   });
+
+  test(
+    'a fixture_mutate response is redacted before it reaches the manifest, not written verbatim',
+    () async {
+      // `fixture.mutate` is a generic pass-through to the fixture server's
+      // own control plane (see its doc) — a future op is free to echo back
+      // whatever the caller sent it, and `/__verify/echo` stands in for
+      // exactly that here. Proves the fix at the real boundary: a live
+      // fixture server, the real `runScenario` engine, and the actual
+      // bytes written to `manifest.json` — not just `redactJson` in
+      // isolation (see `redact_test.dart` for that).
+      final scenario = parseScenarioString(
+        'name: fixture.redact_mutate\ntarget: macos\nsteps:\n'
+        '  - fixture_mutate: {op: echo, nested: {oldPassword: "hunter2-super-secret", '
+        'userAccessToken: "eyJ-plaintext-token"}}\n',
+        sourcePath: 'inline.yaml',
+      );
+
+      final result = await runScenario(
+        scenario: scenario,
+        scenarioSource: 'name: fixture.redact_mutate\n...',
+        driver: FakeDriver(),
+        // Not the fake `repoRoot` every other test in this file uses: this
+        // scenario needs `_needsFixture` to spawn a *real*
+        // `pleya_verify/fixture_server` process, so it needs the real repo
+        // root to find that package under — the same `../..` convention
+        // `bin/verify.dart`'s own `_repoRoot` uses from this package's
+        // directory. `.build/pleya-verify/` is gitignored, so the evidence
+        // bundle this writes under the real repo root is harmless.
+        repoRoot: Directory('../..'),
+      );
+
+      expect(result.passed, isTrue, reason: result.failureMessage);
+      final manifest = File('${result.bundleDir.path}/manifest.json').readAsStringSync();
+      expect(manifest, isNot(contains('hunter2-super-secret')));
+      expect(manifest, isNot(contains('eyJ-plaintext-token')));
+      expect(manifest, contains('[REDACTED]'));
+    },
+    timeout: const Timeout(Duration(seconds: 30)),
+  );
 
   test('a geometry assertion records its measurements in the manifest, passing ones included', () async {
     // A passing measurement is the baseline a later regression is compared
