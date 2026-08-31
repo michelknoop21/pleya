@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:pleya_verify_runner/src/scenario/automation_id_catalog.dart';
+import 'package:pleya_verify_runner/src/scenario/model.dart';
 import 'package:pleya_verify_runner/src/scenario/parser.dart';
 import 'package:pleya_verify_runner/src/scenario/validator.dart';
 import 'package:test/test.dart';
@@ -74,5 +75,38 @@ void main() {
     final errors = validateScenario(scenario, catalog);
     expect(errors, hasLength(1));
     expect(errors.single.message, contains("unknown verb 'swipe'"));
+  });
+
+  test('every verb setupVerbs/stepVerbs advertise has a real case in the engine switch', () {
+    // A verb that validates but has no engine case only fails after a full
+    // build, install and launch (see `run_scenario_test.dart`'s "verbs that
+    // used to reach UnsupportedError only after a full build" — the exact
+    // failure mode `set_pref`/`focus`/`back` used to have before they were
+    // removed). Source-scanned rather than run through the engine, so this
+    // catches the drift the moment a verb is added to one side and not the
+    // other, without needing a driver/build for every verb.
+    final engineSource = File('lib/src/engine/run_scenario.dart').readAsStringSync();
+    final caseVerbs = RegExp(
+      r"case '([a-z_]+)':",
+    ).allMatches(engineSource).map((m) => m.group(1)!).toSet();
+
+    final advertisedVerbs = {...setupVerbs, ...stepVerbs};
+
+    final advertisedButNotImplemented = advertisedVerbs.difference(caseVerbs);
+    expect(
+      advertisedButNotImplemented,
+      isEmpty,
+      reason:
+          'setupVerbs/stepVerbs advertise a verb with no `case` in run_scenario.dart\'s switch — a scenario '
+          'using it would validate fine and only fail after a full build/install/launch',
+    );
+
+    final implementedButNotAdvertised = caseVerbs.difference(advertisedVerbs);
+    expect(
+      implementedButNotAdvertised,
+      isEmpty,
+      reason: 'run_scenario.dart implements a verb no scenario can ever reach — it is missing from '
+          'setupVerbs/stepVerbs in model.dart',
+    );
   });
 }

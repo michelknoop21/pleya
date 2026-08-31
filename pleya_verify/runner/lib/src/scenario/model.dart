@@ -1,30 +1,21 @@
 /// Setup vocabulary — disjoint from [stepVerbs] per [C9]: a scenario's
 /// `setup:` block only prepares state, it never presses keys or asserts.
-const Set<String> setupVerbs = {
-  'reset_app',
-  'seed',
-  'sign_in',
-  'open',
-  'set_pref',
-  'focus',
-  'install',
-  'launch',
-  'fixture_mutate',
-};
+///
+/// `set_pref` and `focus` used to be advertised here with no engine case in
+/// `run_scenario.dart` and no defined semantics anywhere — a scenario using
+/// either validated fine and only found out it was unimplemented after a
+/// full build, install and launch (`UnsupportedError`). Removed rather than
+/// implemented: nothing defines what either verb should actually do. Add
+/// them back only alongside a real engine case and a real contract for what
+/// they mean.
+const Set<String> setupVerbs = {'reset_app', 'seed', 'sign_in', 'open', 'install', 'launch', 'fixture_mutate'};
 
 /// Step vocabulary — disjoint from [setupVerbs].
-const Set<String> stepVerbs = {
-  'press',
-  'tap',
-  'type',
-  'wait_until',
-  'assert',
-  'snapshot',
-  'settle',
-  'back',
-  'fixture_mutate',
-  'overlay',
-};
+///
+/// `back` had the same problem as `set_pref`/`focus` above — advertised,
+/// validated, never implemented, never defined — and is removed for the
+/// same reason.
+const Set<String> stepVerbs = {'press', 'tap', 'type', 'wait_until', 'assert', 'snapshot', 'settle', 'fixture_mutate', 'overlay'};
 
 /// One entry of a scenario's `setup:` or `steps:` list.
 ///
