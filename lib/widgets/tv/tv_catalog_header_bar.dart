@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
+import '../../screens/tv/tv_root_shell.dart';
 import '../library_header_bar.dart';
 import 'tv_unified_layout.dart';
 
@@ -58,9 +59,17 @@ class TvCatalogHeaderBar extends StatelessWidget {
       // change of background, that content column is the only vertical line the
       // composition has, and the heading sitting above it was the one element
       // off it.
+      // The top inset is the page's overscan margin, and the fase-7 shell
+      // already spent it on the top navigation and the gap under it. Spending
+      // it again pushed the heading from thirteen to twenty-two per cent of the
+      // canvas and the first grid row from eighteen to thirty-one, which is a
+      // band of dead space the north star does not have. Standalone — a golden,
+      // a focus test — this page still owns its own top margin.
       padding: EdgeInsets.fromLTRB(
         grid.inset + TvCatalogLayout.cardContentInset(scale),
-        MediaQuery.sizeOf(context).height * (TvCatalogLayout.topSafeInset / 1080),
+        TvShellSurface.isPresent(context)
+            ? 0
+            : MediaQuery.sizeOf(context).height * (TvCatalogLayout.topSafeInset / 1080),
         grid.inset + TvCatalogLayout.cardContentInset(scale),
         TvCatalogLayout.headerContentGap * scale,
       ),

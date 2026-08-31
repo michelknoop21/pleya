@@ -166,10 +166,16 @@ class NavigationTab {
 
   /// Get tabs filtered by offline mode and feature availability.
   ///
-  /// [isMobile] gates My Pleya, which exists only on phones. It is an answer
-  /// to a five-slot bottom bar, not a new information architecture: the
-  /// sidebar has room for Downloads, Requests and Settings as first-class
-  /// destinations and keeps them.
+  /// [isMobile] gates My Pleya on phones, where it is an answer to a five-slot
+  /// bottom bar rather than a new information architecture: the desktop sidebar
+  /// has room for Downloads, Requests and Settings as first-class destinations
+  /// and keeps them.
+  ///
+  /// TV gets it for the opposite reason. Fase 7's horizontal bar has no room
+  /// for eleven destinations either, and hoofdstuk 18.2 moves Bibliotheken,
+  /// Kijklijst, Aanvragen and Instellingen inside Mijn Pleya there. So the
+  /// destination is visible on mobile **and** TV, and `PlatformDetector.isTV()`
+  /// is checked separately because [isMobile] returns false on a TV.
   static List<NavigationTab> getVisibleTabs({
     required bool isOffline,
     bool hasLiveTv = false,
@@ -182,7 +188,13 @@ class NavigationTab {
       if (tab.id == NavigationTabId.liveTv && !hasLiveTv) return false;
       if (tab.id == NavigationTabId.requests && !hasSeerr) return false;
       if (tab.id == NavigationTabId.watchlist && !hasWatchlist) return false;
-      if (tab.id == NavigationTabId.myPleya && !isMobile) return false;
+      // Mobile *and* TV. Fase 7 made Mijn Pleya a TV destination in its own
+      // right ([DEC-063] replacing the TV half of [DEC-023]), and `isMobile` is
+      // deliberately false on TV — so gating on it alone filtered the
+      // destination out of the tab list, which is the list `_buildScreens` and
+      // `_selectTab` both walk. The pill rendered, the screen was never built,
+      // and every route inside Mijn Pleya was unreachable.
+      if (tab.id == NavigationTabId.myPleya && !isMobile && !PlatformDetector.isTV()) return false;
       if (tab.id == NavigationTabId.downloads && PlatformDetector.isAppleTV()) return false;
       // The unified Films and Series catalogs are 10-foot surfaces (hoofdstuk
       // 10 of docs/tvos-unified-experience.md) and exist on TV only for now.

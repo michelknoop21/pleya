@@ -674,3 +674,94 @@ Wat bewust open blijft staan:
 5. **Routing en state veranderen niet.** De actie pusht exact de bestaande fase-5-catalogus (`TvMoviesScreen` / `TvSeriesScreen`); geen tweede scherm, provider, catalog engine, query-state, paging of filterset. Er komt ook geen aparte `Ontdekken`-tab bij: de discovery-landing *is* de defaultpagina.
 
 **Consequences:** `TvViewAllAction` is herschreven van een paginabrede rij naar een compacte tekstactie; `title`+`actionLabel` zijn één `label` geworden en de i18n-sleutel `unifiedCatalog.discovery.viewAll` ("Alles bekijken") is uit alle zestien locales verwijderd omdat hij nergens meer gerenderd wordt. `TvDiscoveryLayout` verliest `viewAllRowHeight`, `viewAllTitleFontSize` en `viewAllOutline` en wint `viewAllPaddingVertical` en `pageTitleActionGap`. De landing houdt zijn rails nu ook in een `GlobalKey<TvDiscoveryRailState>` bij, zodat omlaag vanuit de header de eerste rail kan bereiken. Eén bestaande testeigenschap is bewust vervallen: de landing bewaarde een niet-nul scrollpositie over een push+pop heen, en dat kán niet meer wanneer de teruggezette focus in de header ligt — de header in beeld brengen ís scrollen. De test bewijst nu wat er wél geldt: de focus keert terug op de actie, de rail onthoudt zijn eigen tegel, en de pagina staat weer bovenaan. De semantics-labels (`Alle films bekijken` / `Alle series bekijken`, al 16/16) zijn ongewijzigd gebleven; ze zeggen meer dan de zichtbare tekst en dat is precies wat een screenreader nodig heeft.
+
+## DEC-069: De TV-root heeft één geneste-routestapel die géén Navigator is, en Live TV is een onthouden capability
+
+**Date:** 31 augustus 2026
+**Status:** Accepted
+**Phase:** Fase 7 (TV-root-shell en Mijn Pleya)
+
+**Context.** Fase 7 vervangt op TV de verticale `SideNavigationRail` door een horizontale topnav
+(hoofdstuk 6.2). Twee dingen die daar niet in de roadmap stonden bleken tijdens de bouw beslissingen
+in plaats van implementatiedetails, en allebei zijn ze het soort keuze dat later opnieuw gemaakt
+wordt als er geen reden bij staat.
+
+### 1. Een geneste route binnen een bestemming is een expliciete stapel, geen `Navigator`
+
+Hoofdstuk 6.3 vraagt om "een eigen geneste navigator" voor Mijn Pleya. De voor de hand liggende
+lezing — een Flutter `Navigator` in de contentzone — is onjuist, en het kost een halve fase om erachter
+te komen waarom.
+
+`Navigator.push` zoekt de *dichtstbijzijnde* navigator. De helft van wat een TV-oppervlak pusht is
+media-detail: een kaart in Bibliotheken, in de Kijklijst of in een discovery-rail roept
+`navigateToMediaItem` aan. Met een navigator in de shell zou dát detailscherm er ook in gevangen
+worden en *onder de topnav* renderen in plaats van full-bleed over de hele shell, zoals het vandaag op
+elk ander oppervlak doet. Erger nog: hoofdstuk 7.5 wordt er dubbelzinnig van, want stap 2 (een
+geneste Mijn Pleya-route poppen) en stap 3 (een detailroute poppen) zouden dan dezelfde pop op
+dezelfde stapel zijn.
+
+Dus nesten is expliciet en opt-in: `TvNestedRoute` op `TvNavigationCoordinator`. Wie binnen de shell
+wil blijven pusht er één; al het andere gaat ongewijzigd naar de profielnavigator die
+`ProfileSessionScreen` bezit. `media_navigation_helper.dart` hoefde daardoor niet aangeraakt te
+worden.
+
+**Gevolg dat wél de roadmap raakt.** De complete catalogus (`Alle films` / `Alle series`) verhuist
+van een push op de profielnavigator naar zo'n geneste route. Dat is geen smaakkwestie: de gedeelde
+shell van hoofdstuk 33 is **bindend op alle acht** referentiebeelden, en 33.5 en 33.6 tekenen die
+pagina's mét de topnav erboven en de bestemming nog steeds opgelicht. Een fullscreen push had dat
+onmogelijk gemaakt. De landing eronder blijft gemonteerd (offstage, met `TickerMode` uit), dus terug
+kost geen herlaadbeurt (hoofdstuk 24).
+
+Eén stapel voor alle bestemmingen, niet één voor Mijn Pleya en één voor de landings: twee
+mechanismen zouden twee backketens en twee antwoorden op "wat staat er open" betekenen.
+`tv_my_pleya_navigator.dart` is daarom de routetabel van Mijn Pleya geworden en niet een tweede
+stapel.
+
+### 2. Live TV-zichtbaarheid is een onthouden profielcapability, geen pollresultaat
+
+`MultiServerProvider.hasLiveTv` is de uitkomst van `checkLiveTvAvailability()`, en die kan "dit
+profiel heeft geen tuner" niet onderscheiden van "de server met de tuner antwoordde net niet": een
+offline server komt de lus niet eens in, en een die gooit wordt gevangen en overgeslagen. Op een
+verticale balk verdwijnt daardoor een rij; in een horizontale balk schuift Mijn Pleya en alles
+ertussen zijwaarts weg onder de duim van de kijker, en de pil waar hij op mikte staat ergens anders.
+Hoofdstuk 19 verbiedt dat met zoveel woorden.
+
+De regel is bewust asymmetrisch, omdat het bewijs dat is:
+
+- **Onthouden bij elke waarneming.** Eén bereikbare DVR bewijst de capability.
+- **Vergeten alleen bij een sluitende meting.** Een poll die niets vond bewijst niets tenzij élke
+  verwachte server online was én antwoordde — de nieuwe
+  `MultiServerProvider.lastLiveTvCheckWasConclusive`. Alles daaronder is een uitspraak over het
+  netwerk, niet over het profiel.
+
+Opslag volgt `PreferredServerStore`: één `JsonPref`-entry per profielscope, en hij gaat mee met het
+profiel als dat verwijderd wordt (hoofdstuk 22). `resolveLiveTvCapability` is een pure functie, omdat
+het de productregel is en niet de opslag.
+
+### Sluitingsamendement, 31 augustus 2026 — waar de plek van een geneste route woont
+
+De zin hierboven, "de landing eronder blijft gemonteerd … dus terug kost geen herlaadbeurt", was
+waar voor *poppen* en niet voor *van bestemming wisselen*. Alleen de actieve bestemming bouwt zijn
+bovenste route, dus naar Series gaan en terugkomen bouwde `Alle films` opnieuw op. Dat kostte twee
+dingen die hoofdstuk 7.4, 7.6 en 24 al vastleggen: de geladen pagina's, en de plek van de kijker.
+Beide zijn bij het sluiten van fase 7 gerepareerd, en het amendement staat hier omdat het de
+consequentie is van precies deze beslissing.
+
+De keuze die eronder ligt is *waar* die plek woont. Elke geneste route mounten van elke bestemming
+zou het probleem ook oplossen, en is verworpen: het houdt schermen in leven om state te bewaren die
+in één record past, en het is precies de brute-force die deze architectuur elders vermijdt. De plek
+gaat dus naar `TvNavigationCoordinator`, die de wissel al overleeft, als hoofdstuk 7.6's
+`TvDestinationFocusMemory` — waarmee die memory ook zijn eerste productieconsument krijgt. De
+pagina's blijven waar ze al stonden: `UnifiedCatalogProvider` leeft in de profielsubtree boven de
+shell, en de enige reden dat een remount hem leegde was dat het scherm bij het opstarten
+onvoorwaardelijk `setQuery` riep.
+
+Eén regel volgt hieruit en staat in de code: **alleen een surface die de wissel niet overleeft
+schrijft in die memory.** Een bestemmingsroot staat in de `IndexedStack` en bewaart zijn eigen
+positie al; twee schrijvers per bestemming zouden twee antwoorden op dezelfde vraag zijn.
+
+**Consequences.** `TvNestedRoute`, `TvNavigationCoordinator` en `TvLiveTvCapabilityStore` zijn nieuw;
+`MultiServerProvider` krijgt er één afgeleide vlag bij en notificeert nu ook wanneer een meting
+sluitend wórdt — dat ziet eruit alsof er niets gebeurde (geen Live TV ervoor, geen erna) maar het is
+het enige moment waarop een onthouden capability met recht ingetrokken mag worden. De
+`SideNavigationRail` blijft ongewijzigd de root van desktop; niets aan het niet-TV-pad is verlegd.

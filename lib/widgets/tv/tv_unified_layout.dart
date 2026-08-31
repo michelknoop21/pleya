@@ -765,3 +765,152 @@ class TvDiscoveryLayout {
   static const double inkSecondary = 0.7;
   static const double inkTertiary = 0.56;
 }
+
+/// The TV root shell's top navigation (fase 7, hoofdstuk 6.2 and the shared
+/// shell of hoofdstuk 33).
+///
+/// Reference measurements come from the frozen north star: the bar sits at
+/// y≈44..96 on a 1920×1080 surface, the labelled items are 24px Inter 500 with
+/// a 40px gap, the search glyph is 26, the profile chip 44, and the wordmark
+/// lockup stands on the same 52px band. Base values below are pre-divided by
+/// the `[0.85, 1.35]` clamp exactly as [TvCatalogLayout]'s are, so
+/// `base * TvLayoutConstants.scaleOf(context)` lands back on the reference
+/// number on the canonical canvas.
+class TvTopNavLayout {
+  const TvTopNavLayout._();
+
+  /// Space above the bar. The same overscan reasoning as
+  /// [TvCatalogLayout.topSafeInset]: nothing, focus ring included, inside the
+  /// outer band.
+  static const double topInset = 28;
+
+  /// Height of the bar's row. The pill, the glyph and the wordmark all centre
+  /// on it, so it is what keeps them on one optical line.
+  ///
+  /// A *minimum*, not a fixed height — see [TvTopNavigation]. A locale with
+  /// taller metrics must push the bar down rather than have its labels cut off
+  /// at the top edge, which is what a hard `SizedBox` did.
+  static const double barHeight = 33;
+
+  /// Gap below the bar, before a destination's own content starts.
+  static const double contentGap = 22;
+
+  /// Left/right page inset, shared with [TvDiscoveryLayout.pageInset] so the
+  /// profile chip and the wordmark line up with the content beneath them
+  /// instead of floating on their own margin.
+  static const double pageInset = 48;
+
+  /// A labelled destination.
+  static const double itemFontSize = 15;
+  static const double itemGap = 25;
+
+  /// The active pill. A capsule, so the radius is deliberately unbounded
+  /// rather than a number that would need re-tuning with the height.
+  ///
+  /// The vertical padding is derived, not chosen: the north star draws a 42px
+  /// pill inside a 52px band on the 1920 reference, which is 27 and 33 here.
+  /// A 15px label sets about 18 tall, so (27 − 18) / 2 leaves 4.5 either side,
+  /// and the remaining 6 is the focus-ring gap top and bottom. Rounding this up
+  /// is what made the first render clip its own pills against [barHeight].
+  static const double pillPaddingHorizontal = 17;
+  static const double pillPaddingVertical = 4.5;
+  static const double pillRadius = 999;
+
+  /// Gap between a destination's own box and its focus ring, for the reason
+  /// [TvCatalogLayout.actionFocusRingGap] exists: a white ring drawn straight
+  /// onto the white active pill reads as a slightly fatter pill, not as focus.
+  /// This gap is what keeps "where I am" and "what is open" tellable apart
+  /// ([DEC-053]).
+  static const double focusRingGap = 3;
+
+  /// The compact Search control.
+  static const double searchIconSize = 17;
+
+  /// The profile chip at the far left.
+  static const double profileChipSize = 28;
+
+  /// The wordmark lockup at the far right. Sized by height; the asset's own
+  /// aspect ratio gives the width, because hoofdstuk 33 forbids a clipped or
+  /// re-proportioned mark.
+  ///
+  /// Hoofdstuk 33 puts it "op navhoogte 52", so this is [barHeight] and not a
+  /// separately chosen number. An earlier 23 rendered the lockup about thirty
+  /// per cent narrower than the reference against an otherwise correctly
+  /// proportioned bar.
+  static const double wordmarkHeight = barHeight;
+
+  /// Ink on `MonoTokens.text` for an inactive destination — present, readable
+  /// at three metres, and clearly quieter than the active pill. Hoofdstuk 33:
+  /// "inactive destinations = rustige white/muted text".
+  static const double inactiveInk = 0.72;
+
+  /// Focus transition duration (hoofdstuk 8.4: "Topnav-focus 150–180 ms").
+  static const Duration focusDuration = Duration(milliseconds: 160);
+}
+
+/// Mijn Pleya on TV (hoofdstuk 18.1 and north star 08).
+class TvMyPleyaLayout {
+  const TvMyPleyaLayout._();
+
+  /// Page heading, matching [TvCatalogLayout.pageTitleFontSize]'s band so the
+  /// three root surfaces introduce themselves at the same weight.
+  static const double pageTitleFontSize = 27;
+
+  /// Gap under the page heading, and between the groups below it.
+  static const double titleGap = 16;
+  static const double groupGap = 18;
+
+  /// The profile header card.
+  static const double headerRadius = 12;
+  static const double headerPadding = 18;
+  static const double avatarSize = 46;
+  static const double headerNameFontSize = 22;
+  static const double headerMetaFontSize = 13;
+  static const double headerGap = 16;
+
+  /// The server list on the header's right-hand side.
+  static const double serverRowFontSize = 13;
+  static const double serverRowGap = 6;
+  static const double serverDotSize = 6;
+
+  /// A group heading ("Mijn content", "Bibliotheken en bronnen", "Pleya").
+  static const double groupLabelFontSize = 14;
+  static const double groupLabelGap = 9;
+
+  /// A menu tile. Four to a row on the reference width, and the tile keeps its
+  /// height whether or not it carries a count, so a group with one counted tile
+  /// does not sit taller than its neighbours.
+  static const int tilesPerRow = 4;
+  static const double tileGap = 14;
+  static const double tileRadius = 10;
+  static const double tilePadding = 14;
+  static const double tileMinHeight = 74;
+  static const double tileIconSize = 19;
+  static const double tileTitleFontSize = 15;
+  static const double tileSubtitleFontSize = 12;
+  static const double tileCountFontSize = 15;
+  static const double tileIconTitleGap = 14;
+  static const double tileTitleSubtitleGap = 3;
+
+  /// Fill of a tile at rest, and when it holds the focus.
+  ///
+  /// **Menu tiles do not scale on focus** (hoofdstuk 33.8): a wall of twelve
+  /// boxes where one grows pushes nothing but still reads as unstable, and the
+  /// ring plus the lighter fill already say where you are. That is the
+  /// difference between this surface and a poster grid, where the scale is the
+  /// point.
+  static const double tileFillAlpha = 0.055;
+  static const double tileFocusedFillAlpha = 0.13;
+
+  /// Gap between a tile and its focus ring.
+  static const double tileFocusRingGap = 3;
+
+  /// The footer line ("Aangemeld als … · Pleya x.y.z").
+  static const double footerFontSize = 12;
+  static const double footerGap = 18;
+
+  /// Ink tiers on `MonoTokens.text`.
+  static const double inkPrimary = 1;
+  static const double inkSecondary = 0.7;
+  static const double inkTertiary = 0.5;
+}

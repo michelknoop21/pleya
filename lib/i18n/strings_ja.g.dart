@@ -89,6 +89,8 @@ class TranslationsJa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsPleyaShareJa pleyaShare = _TranslationsPleyaShareJa._(_root);
 	@override late final _TranslationsSourcePickerJa sourcePicker = _TranslationsSourcePickerJa._(_root);
 	@override late final _TranslationsUnifiedCatalogJa unifiedCatalog = _TranslationsUnifiedCatalogJa._(_root);
+	@override late final _TranslationsTvNavigationJa tvNavigation = _TranslationsTvNavigationJa._(_root);
+	@override late final _TranslationsTvMyPleyaJa tvMyPleya = _TranslationsTvMyPleyaJa._(_root);
 }
 
 // Path: app
@@ -1768,6 +1770,47 @@ class _TranslationsUnifiedCatalogJa extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogDiscoveryJa discovery = _TranslationsUnifiedCatalogDiscoveryJa._(_root);
 }
 
+// Path: tvNavigation
+class _TranslationsTvNavigationJa extends TranslationsTvNavigationEn {
+	_TranslationsTvNavigationJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get activeDestination => '現在のセクション';
+}
+
+// Path: tvMyPleya
+class _TranslationsTvMyPleyaJa extends TranslationsTvMyPleyaEn {
+	_TranslationsTvMyPleyaJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get groupContent => 'マイコンテンツ';
+	@override String get groupSources => 'ライブラリとソース';
+	@override String get groupPleya => 'Pleya';
+	@override String serversOnline({required Object total, required Object online}) => '${total} 台中 ${online} 台のサーバーがオンライン';
+	@override String get noServers => '接続中のサーバーはありません';
+	@override String get statusOnline => 'オンライン';
+	@override String get statusOffline => 'オフライン';
+	@override String get servers => 'サーバー';
+	@override String get activity => 'アクティビティ';
+	@override String get logs => 'ログと診断';
+	@override String signedInAs({required Object name, required Object version}) => '${name} でログイン中 · Pleya ${version}';
+	@override String get watchlistSubtitle => '保存した映画とシリーズ';
+	@override String get requestsSubtitle => 'リクエストと発見';
+	@override String get downloadsSubtitle => 'オフラインと同期ルール';
+	@override String get librariesSubtitle => 'メディア、コレクション、プレイリスト';
+	@override String get serversSubtitle => '接続とローカルソース';
+	@override String get activitySubtitle => '再生中、一緒に視聴、リモート';
+	@override String get settingsSubtitle => '表示、プレーヤー、トラッカー';
+	@override String get logsSubtitle => 'ログファイルとクラッシュレポート';
+	@override String get aboutSubtitle => 'バージョンとライセンス';
+	@override String get logoutSubtitle => 'このデバイスからログアウト';
+	@override late final _TranslationsTvMyPleyaSemanticsJa semantics = _TranslationsTvMyPleyaSemanticsJa._(_root);
+}
+
 // Path: search.filters
 class _TranslationsSearchFiltersJa extends TranslationsSearchFiltersEn {
 	_TranslationsSearchFiltersJa._(TranslationsJa root) : this._root = root, super.internal(root);
@@ -2145,6 +2188,17 @@ class _TranslationsUnifiedCatalogDiscoveryJa extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => 'まだ何も見つかりません';
 	@override String get emptyBody => '表示できるライブラリにここに表示するものがありません。';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsJa semantics = _TranslationsUnifiedCatalogDiscoverySemanticsJa._(_root);
+}
+
+// Path: tvMyPleya.semantics
+class _TranslationsTvMyPleyaSemanticsJa extends TranslationsTvMyPleyaSemanticsEn {
+	_TranslationsTvMyPleyaSemanticsJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -3581,6 +3635,30 @@ extension on TranslationsJa {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object count, required Object position}) => '${count}件中${position}件目',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'すべての映画を表示、完全なカタログを開きます',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'すべてのシリーズを表示、完全なカタログを開きます',
+			'tvNavigation.activeDestination' => '現在のセクション',
+			'tvMyPleya.groupContent' => 'マイコンテンツ',
+			'tvMyPleya.groupSources' => 'ライブラリとソース',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object total, required Object online}) => '${total} 台中 ${online} 台のサーバーがオンライン',
+			'tvMyPleya.noServers' => '接続中のサーバーはありません',
+			'tvMyPleya.statusOnline' => 'オンライン',
+			'tvMyPleya.statusOffline' => 'オフライン',
+			'tvMyPleya.servers' => 'サーバー',
+			'tvMyPleya.activity' => 'アクティビティ',
+			'tvMyPleya.logs' => 'ログと診断',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => '${name} でログイン中 · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => '保存した映画とシリーズ',
+			'tvMyPleya.requestsSubtitle' => 'リクエストと発見',
+			'tvMyPleya.downloadsSubtitle' => 'オフラインと同期ルール',
+			'tvMyPleya.librariesSubtitle' => 'メディア、コレクション、プレイリスト',
+			'tvMyPleya.serversSubtitle' => '接続とローカルソース',
+			'tvMyPleya.activitySubtitle' => '再生中、一緒に視聴、リモート',
+			'tvMyPleya.settingsSubtitle' => '表示、プレーヤー、トラッカー',
+			'tvMyPleya.logsSubtitle' => 'ログファイルとクラッシュレポート',
+			'tvMyPleya.aboutSubtitle' => 'バージョンとライセンス',
+			'tvMyPleya.logoutSubtitle' => 'このデバイスからログアウト',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
 			_ => null,
 		};
 	}

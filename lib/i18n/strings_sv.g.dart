@@ -89,6 +89,8 @@ class TranslationsSv extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsPleyaShareSv pleyaShare = _TranslationsPleyaShareSv._(_root);
 	@override late final _TranslationsSourcePickerSv sourcePicker = _TranslationsSourcePickerSv._(_root);
 	@override late final _TranslationsUnifiedCatalogSv unifiedCatalog = _TranslationsUnifiedCatalogSv._(_root);
+	@override late final _TranslationsTvNavigationSv tvNavigation = _TranslationsTvNavigationSv._(_root);
+	@override late final _TranslationsTvMyPleyaSv tvMyPleya = _TranslationsTvMyPleyaSv._(_root);
 }
 
 // Path: app
@@ -1768,6 +1770,47 @@ class _TranslationsUnifiedCatalogSv extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogDiscoverySv discovery = _TranslationsUnifiedCatalogDiscoverySv._(_root);
 }
 
+// Path: tvNavigation
+class _TranslationsTvNavigationSv extends TranslationsTvNavigationEn {
+	_TranslationsTvNavigationSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get activeDestination => 'aktuellt avsnitt';
+}
+
+// Path: tvMyPleya
+class _TranslationsTvMyPleyaSv extends TranslationsTvMyPleyaEn {
+	_TranslationsTvMyPleyaSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get groupContent => 'Mitt innehåll';
+	@override String get groupSources => 'Bibliotek och källor';
+	@override String get groupPleya => 'Pleya';
+	@override String serversOnline({required Object online, required Object total}) => '${online} av ${total} servrar online';
+	@override String get noServers => 'Inga servrar anslutna';
+	@override String get statusOnline => 'Online';
+	@override String get statusOffline => 'Offline';
+	@override String get servers => 'Servrar';
+	@override String get activity => 'Aktivitet';
+	@override String get logs => 'Loggar och diagnostik';
+	@override String signedInAs({required Object name, required Object version}) => 'Inloggad som ${name} · Pleya ${version}';
+	@override String get watchlistSubtitle => 'Sparade filmer och serier';
+	@override String get requestsSubtitle => 'Förfrågningar och upptäck';
+	@override String get downloadsSubtitle => 'Offline och synkroniseringsregler';
+	@override String get librariesSubtitle => 'Media, samlingar, spellistor';
+	@override String get serversSubtitle => 'Anslutningar och lokala källor';
+	@override String get activitySubtitle => 'Ses just nu, se tillsammans, fjärrkontroll';
+	@override String get settingsSubtitle => 'Visning, spelare, trackers';
+	@override String get logsSubtitle => 'Loggfiler och kraschrapporter';
+	@override String get aboutSubtitle => 'Version och licenser';
+	@override String get logoutSubtitle => 'Logga ut på den här enheten';
+	@override late final _TranslationsTvMyPleyaSemanticsSv semantics = _TranslationsTvMyPleyaSemanticsSv._(_root);
+}
+
 // Path: search.filters
 class _TranslationsSearchFiltersSv extends TranslationsSearchFiltersEn {
 	_TranslationsSearchFiltersSv._(TranslationsSv root) : this._root = root, super.internal(root);
@@ -2145,6 +2188,17 @@ class _TranslationsUnifiedCatalogDiscoverySv extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => 'Inget att upptäcka ännu';
 	@override String get emptyBody => 'Inget synligt bibliotek har något att visa här.';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsSv semantics = _TranslationsUnifiedCatalogDiscoverySemanticsSv._(_root);
+}
+
+// Path: tvMyPleya.semantics
+class _TranslationsTvMyPleyaSemanticsSv extends TranslationsTvMyPleyaSemanticsEn {
+	_TranslationsTvMyPleyaSemanticsSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -3581,6 +3635,30 @@ extension on TranslationsSv {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} av ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Visa alla filmer, öppnar hela katalogen',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Visa alla serier, öppnar hela katalogen',
+			'tvNavigation.activeDestination' => 'aktuellt avsnitt',
+			'tvMyPleya.groupContent' => 'Mitt innehåll',
+			'tvMyPleya.groupSources' => 'Bibliotek och källor',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} av ${total} servrar online',
+			'tvMyPleya.noServers' => 'Inga servrar anslutna',
+			'tvMyPleya.statusOnline' => 'Online',
+			'tvMyPleya.statusOffline' => 'Offline',
+			'tvMyPleya.servers' => 'Servrar',
+			'tvMyPleya.activity' => 'Aktivitet',
+			'tvMyPleya.logs' => 'Loggar och diagnostik',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Inloggad som ${name} · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => 'Sparade filmer och serier',
+			'tvMyPleya.requestsSubtitle' => 'Förfrågningar och upptäck',
+			'tvMyPleya.downloadsSubtitle' => 'Offline och synkroniseringsregler',
+			'tvMyPleya.librariesSubtitle' => 'Media, samlingar, spellistor',
+			'tvMyPleya.serversSubtitle' => 'Anslutningar och lokala källor',
+			'tvMyPleya.activitySubtitle' => 'Ses just nu, se tillsammans, fjärrkontroll',
+			'tvMyPleya.settingsSubtitle' => 'Visning, spelare, trackers',
+			'tvMyPleya.logsSubtitle' => 'Loggfiler och kraschrapporter',
+			'tvMyPleya.aboutSubtitle' => 'Version och licenser',
+			'tvMyPleya.logoutSubtitle' => 'Logga ut på den här enheten',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
 			_ => null,
 		};
 	}

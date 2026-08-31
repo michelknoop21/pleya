@@ -89,6 +89,8 @@ class TranslationsKo extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsPleyaShareKo pleyaShare = _TranslationsPleyaShareKo._(_root);
 	@override late final _TranslationsSourcePickerKo sourcePicker = _TranslationsSourcePickerKo._(_root);
 	@override late final _TranslationsUnifiedCatalogKo unifiedCatalog = _TranslationsUnifiedCatalogKo._(_root);
+	@override late final _TranslationsTvNavigationKo tvNavigation = _TranslationsTvNavigationKo._(_root);
+	@override late final _TranslationsTvMyPleyaKo tvMyPleya = _TranslationsTvMyPleyaKo._(_root);
 }
 
 // Path: app
@@ -1768,6 +1770,47 @@ class _TranslationsUnifiedCatalogKo extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogDiscoveryKo discovery = _TranslationsUnifiedCatalogDiscoveryKo._(_root);
 }
 
+// Path: tvNavigation
+class _TranslationsTvNavigationKo extends TranslationsTvNavigationEn {
+	_TranslationsTvNavigationKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get activeDestination => '현재 섹션';
+}
+
+// Path: tvMyPleya
+class _TranslationsTvMyPleyaKo extends TranslationsTvMyPleyaEn {
+	_TranslationsTvMyPleyaKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get groupContent => '내 콘텐츠';
+	@override String get groupSources => '라이브러리 및 소스';
+	@override String get groupPleya => 'Pleya';
+	@override String serversOnline({required Object total, required Object online}) => '${total}개 중 ${online}개 서버 온라인';
+	@override String get noServers => '연결된 서버 없음';
+	@override String get statusOnline => '온라인';
+	@override String get statusOffline => '오프라인';
+	@override String get servers => '서버';
+	@override String get activity => '활동';
+	@override String get logs => '로그 및 진단';
+	@override String signedInAs({required Object name, required Object version}) => '${name}(으)로 로그인됨 · Pleya ${version}';
+	@override String get watchlistSubtitle => '저장한 영화 및 시리즈';
+	@override String get requestsSubtitle => '요청 및 둘러보기';
+	@override String get downloadsSubtitle => '오프라인 및 동기화 규칙';
+	@override String get librariesSubtitle => '미디어, 컬렉션, 재생목록';
+	@override String get serversSubtitle => '연결 및 로컬 소스';
+	@override String get activitySubtitle => '지금 시청 중, 함께 보기, 리모컨';
+	@override String get settingsSubtitle => '화면, 플레이어, 트래커';
+	@override String get logsSubtitle => '로그 파일 및 오류 보고서';
+	@override String get aboutSubtitle => '버전 및 라이선스';
+	@override String get logoutSubtitle => '이 기기에서 로그아웃';
+	@override late final _TranslationsTvMyPleyaSemanticsKo semantics = _TranslationsTvMyPleyaSemanticsKo._(_root);
+}
+
 // Path: search.filters
 class _TranslationsSearchFiltersKo extends TranslationsSearchFiltersEn {
 	_TranslationsSearchFiltersKo._(TranslationsKo root) : this._root = root, super.internal(root);
@@ -2145,6 +2188,17 @@ class _TranslationsUnifiedCatalogDiscoveryKo extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => '아직 발견할 항목이 없습니다';
 	@override String get emptyBody => '표시할 항목이 있는 라이브러리가 없습니다.';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsKo semantics = _TranslationsUnifiedCatalogDiscoverySemanticsKo._(_root);
+}
+
+// Path: tvMyPleya.semantics
+class _TranslationsTvMyPleyaSemanticsKo extends TranslationsTvMyPleyaSemanticsEn {
+	_TranslationsTvMyPleyaSemanticsKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -3581,6 +3635,30 @@ extension on TranslationsKo {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object count, required Object position}) => '${count}개 중 ${position}번째',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => '모든 영화 보기, 전체 카탈로그 열기',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => '모든 시리즈 보기, 전체 카탈로그 열기',
+			'tvNavigation.activeDestination' => '현재 섹션',
+			'tvMyPleya.groupContent' => '내 콘텐츠',
+			'tvMyPleya.groupSources' => '라이브러리 및 소스',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object total, required Object online}) => '${total}개 중 ${online}개 서버 온라인',
+			'tvMyPleya.noServers' => '연결된 서버 없음',
+			'tvMyPleya.statusOnline' => '온라인',
+			'tvMyPleya.statusOffline' => '오프라인',
+			'tvMyPleya.servers' => '서버',
+			'tvMyPleya.activity' => '활동',
+			'tvMyPleya.logs' => '로그 및 진단',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => '${name}(으)로 로그인됨 · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => '저장한 영화 및 시리즈',
+			'tvMyPleya.requestsSubtitle' => '요청 및 둘러보기',
+			'tvMyPleya.downloadsSubtitle' => '오프라인 및 동기화 규칙',
+			'tvMyPleya.librariesSubtitle' => '미디어, 컬렉션, 재생목록',
+			'tvMyPleya.serversSubtitle' => '연결 및 로컬 소스',
+			'tvMyPleya.activitySubtitle' => '지금 시청 중, 함께 보기, 리모컨',
+			'tvMyPleya.settingsSubtitle' => '화면, 플레이어, 트래커',
+			'tvMyPleya.logsSubtitle' => '로그 파일 및 오류 보고서',
+			'tvMyPleya.aboutSubtitle' => '버전 및 라이선스',
+			'tvMyPleya.logoutSubtitle' => '이 기기에서 로그아웃',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
 			_ => null,
 		};
 	}

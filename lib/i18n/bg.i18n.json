@@ -1549,5 +1549,35 @@
         "viewAllSeries": "Виж всички сериали, отваря пълния каталог"
       }
     }
+  },
+  "tvNavigation": {
+    "activeDestination": "текущ раздел"
+  },
+  "tvMyPleya": {
+    "groupContent": "Моето съдържание",
+    "groupSources": "Библиотеки и източници",
+    "groupPleya": "Pleya",
+    "serversOnline": "${online} от ${total} сървъра онлайн",
+    "noServers": "Няма свързани сървъри",
+    "statusOnline": "Онлайн",
+    "statusOffline": "Офлайн",
+    "servers": "Сървъри",
+    "activity": "Активност",
+    "logs": "Дневници и диагностика",
+    "signedInAs": "Влезли сте като ${name} · Pleya ${version}",
+    "watchlistSubtitle": "Запазени филми и сериали",
+    "requestsSubtitle": "Заявки и откриване",
+    "downloadsSubtitle": "Офлайн и правила за синхронизация",
+    "librariesSubtitle": "Медия, колекции, плейлисти",
+    "serversSubtitle": "Връзки и локални източници",
+    "activitySubtitle": "Гледа се сега, съвместно гледане, дистанционно",
+    "settingsSubtitle": "Изглед, плейър, тракери",
+    "logsSubtitle": "Файлове с дневници и доклади за сривове",
+    "aboutSubtitle": "Версия и лицензи",
+    "logoutSubtitle": "Изход от това устройство",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
   }
 }

@@ -350,4 +350,42 @@ void main() {
     await press(tester, LogicalKeyboardKey.arrowLeft);
     expect(harness.sidebarFocusCalls, 1);
   });
+
+  // Fase 7 added `onNavigateUp: _focusSidebar` to all three header actions: on
+  // the TV shell "the sidebar" is the top navigation, so UP out of the header
+  // is how a viewer reaches the bar from the catalog. Nothing pressed UP from a
+  // header action before this test — every other `arrowUp` in the suite leaves
+  // a grid or a rail — so the contract was wired and unproven.
+  //
+  // What this asserts is the screen's half: it *asks* the shell to move focus.
+  // That the bar then takes it is the shell's half, proven in
+  // `tv_root_shell_test.dart`; the two meet in `MainScreen._focusSidebar`,
+  // which no test mounts (see that file's note).
+  testWidgets('UP from every header action reaches for the top navigation', (tester) async {
+    final harness = await pump(tester, kind: MediaKind.movie);
+
+    const walk = <String, List<LogicalKeyboardKey>>{
+      'TvCatalogSourcesAction': [LogicalKeyboardKey.arrowLeft],
+      'TvCatalogFiltersAction': [],
+      'TvCatalogSortAction': [LogicalKeyboardKey.arrowRight],
+    };
+
+    var expectedCalls = 0;
+    for (final entry in walk.entries) {
+      focusGrid(tester);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      for (final key in entry.value) {
+        await press(tester, key);
+      }
+      expect(focusedLabel(), entry.key);
+      expect(harness.sidebarFocusCalls, expectedCalls, reason: 'reaching ${entry.key} must not call for the bar');
+
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(++expectedCalls, harness.sidebarFocusCalls, reason: 'UP from ${entry.key} should ask for the bar');
+      // The screen asks; it does not move the ring itself. Moving focus here
+      // too would race the shell and leave the ring somewhere neither owns.
+      expect(focusedLabel(), entry.key, reason: 'UP from ${entry.key} must leave the ring where it was');
+    }
+  });
 }

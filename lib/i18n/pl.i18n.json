@@ -1549,5 +1549,35 @@
         "viewAllSeries": "Zobacz wszystkie seriale, otwiera pełny katalog"
       }
     }
+  },
+  "tvNavigation": {
+    "activeDestination": "bieżąca sekcja"
+  },
+  "tvMyPleya": {
+    "groupContent": "Moje treści",
+    "groupSources": "Biblioteki i źródła",
+    "groupPleya": "Pleya",
+    "serversOnline": "${online} z ${total} serwerów online",
+    "noServers": "Brak połączonych serwerów",
+    "statusOnline": "Online",
+    "statusOffline": "Offline",
+    "servers": "Serwery",
+    "activity": "Aktywność",
+    "logs": "Dzienniki i diagnostyka",
+    "signedInAs": "Zalogowano jako ${name} · Pleya ${version}",
+    "watchlistSubtitle": "Zapisane filmy i seriale",
+    "requestsSubtitle": "Prośby i odkrywanie",
+    "downloadsSubtitle": "Offline i reguły synchronizacji",
+    "librariesSubtitle": "Media, kolekcje, playlisty",
+    "serversSubtitle": "Połączenia i źródła lokalne",
+    "activitySubtitle": "Teraz oglądane, wspólne oglądanie, pilot",
+    "settingsSubtitle": "Wygląd, odtwarzacz, trackery",
+    "logsSubtitle": "Pliki dzienników i raporty awarii",
+    "aboutSubtitle": "Wersja i licencje",
+    "logoutSubtitle": "Wyloguj się na tym urządzeniu",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
   }
 }

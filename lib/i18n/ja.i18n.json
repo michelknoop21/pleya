@@ -1549,5 +1549,35 @@
         "viewAllSeries": "すべてのシリーズを表示、完全なカタログを開きます"
       }
     }
+  },
+  "tvNavigation": {
+    "activeDestination": "現在のセクション"
+  },
+  "tvMyPleya": {
+    "groupContent": "マイコンテンツ",
+    "groupSources": "ライブラリとソース",
+    "groupPleya": "Pleya",
+    "serversOnline": "${total} 台中 ${online} 台のサーバーがオンライン",
+    "noServers": "接続中のサーバーはありません",
+    "statusOnline": "オンライン",
+    "statusOffline": "オフライン",
+    "servers": "サーバー",
+    "activity": "アクティビティ",
+    "logs": "ログと診断",
+    "signedInAs": "${name} でログイン中 · Pleya ${version}",
+    "watchlistSubtitle": "保存した映画とシリーズ",
+    "requestsSubtitle": "リクエストと発見",
+    "downloadsSubtitle": "オフラインと同期ルール",
+    "librariesSubtitle": "メディア、コレクション、プレイリスト",
+    "serversSubtitle": "接続とローカルソース",
+    "activitySubtitle": "再生中、一緒に視聴、リモート",
+    "settingsSubtitle": "表示、プレーヤー、トラッカー",
+    "logsSubtitle": "ログファイルとクラッシュレポート",
+    "aboutSubtitle": "バージョンとライセンス",
+    "logoutSubtitle": "このデバイスからログアウト",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
   }
 }

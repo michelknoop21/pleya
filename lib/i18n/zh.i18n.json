@@ -1549,5 +1549,35 @@
         "viewAllSeries": "查看所有剧集，打开完整目录"
       }
     }
+  },
+  "tvNavigation": {
+    "activeDestination": "当前板块"
+  },
+  "tvMyPleya": {
+    "groupContent": "我的内容",
+    "groupSources": "媒体库与来源",
+    "groupPleya": "Pleya",
+    "serversOnline": "${total} 台服务器中 ${online} 台在线",
+    "noServers": "未连接服务器",
+    "statusOnline": "在线",
+    "statusOffline": "离线",
+    "servers": "服务器",
+    "activity": "活动",
+    "logs": "日志与诊断",
+    "signedInAs": "已登录为 ${name} · Pleya ${version}",
+    "watchlistSubtitle": "已保存的电影和剧集",
+    "requestsSubtitle": "请求与发现",
+    "downloadsSubtitle": "离线与同步规则",
+    "librariesSubtitle": "媒体、合集、播放列表",
+    "serversSubtitle": "连接与本地来源",
+    "activitySubtitle": "正在观看、一起看、遥控",
+    "settingsSubtitle": "显示、播放器、追踪器",
+    "logsSubtitle": "日志文件与崩溃报告",
+    "aboutSubtitle": "版本与许可",
+    "logoutSubtitle": "在此设备上退出登录",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
   }
 }

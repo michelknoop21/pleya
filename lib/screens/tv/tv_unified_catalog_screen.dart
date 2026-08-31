@@ -41,7 +41,10 @@ import '../../media/media_backend.dart';
 import '../../media/media_kind.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_route_context.dart';
+import '../../mixins/refreshable.dart';
 import '../../navigation/main_screen_scope.dart';
+import '../../navigation/tv/tv_navigation_coordinator.dart';
+import 'tv_root_shell.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/unified_catalog_provider.dart';
@@ -67,8 +70,19 @@ import 'tv_unified_activation.dart';
 /// together with 7.6's focus memory).
 enum _HeaderSlot { sources, filters, sort }
 
+/// How many frames [_TvUnifiedCatalogScreenState._scheduleRestore] waits for a
+/// scrollable to exist before giving up.
+const int _restoreAttempts = 8;
+
 class TvUnifiedCatalogScreen extends StatefulWidget {
-  const TvUnifiedCatalogScreen({super.key, required this.catalog, required this.title, this.onManageServers});
+  const TvUnifiedCatalogScreen({
+    super.key,
+    required this.catalog,
+    required this.title,
+    this.onManageServers,
+    this.restoreFrom = TvDestinationFocusMemory.empty,
+    this.onRemember,
+  });
 
   /// Built and owned by `UnifiedCatalogs` in the profile subtree, never here:
   /// a screen-local catalog would restart its merge on every tab switch.
@@ -80,11 +94,30 @@ class TvUnifiedCatalogScreen extends StatefulWidget {
   /// because only it can change tab.
   final VoidCallback? onManageServers;
 
+  /// Where this page was left last time (hoofdstuk 7.6).
+  ///
+  /// This screen is the one TV surface that genuinely cannot keep its own
+  /// place: on the fase-7 shell it is a `TvNestedRoute`, so switching to
+  /// another destination and back builds it again from nothing while every
+  /// destination *root* stays mounted in the `IndexedStack`. So the place lives
+  /// one level up, in `TvNavigationCoordinator`, and is handed in here.
+  ///
+  /// Empty on a standalone mount (a golden, a focus test) and on the very first
+  /// visit, which is simply "start at the top".
+  final TvDestinationFocusMemory restoreFrom;
+
+  /// Reports the place back, so the next mount can be handed it.
+  ///
+  /// Called on teardown rather than on every scroll notification: the value is
+  /// only ever read by the next build of this screen, so writing it once per
+  /// visit is enough and a per-frame write would be noise on the hot path.
+  final ValueChanged<TvDestinationFocusMemory>? onRemember;
+
   @override
   State<TvUnifiedCatalogScreen> createState() => _TvUnifiedCatalogScreenState();
 }
 
-class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
+class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> implements FocusableTab {
   final _gridKey = GlobalKey<TvUnifiedMediaGridState>();
   final _scrollController = ScrollController();
   final _sourcesFocus = FocusNode(debugLabel: 'TvCatalogSourcesAction');
@@ -100,6 +133,22 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
   /// operated, so a second visit to Filters does not start at Sources again.
   _HeaderSlot _lastUsedSlot = _HeaderSlot.filters;
 
+  /// The card the remote is on, by stable `groupId` — mirrored out of the grid
+  /// so it can be handed on after the grid itself is gone.
+  String? _focusedGroupId;
+
+  /// The scroll offset, mirrored off the controller for the same reason: by the
+  /// time [deactivate] runs the viewport may already be detached, and reading
+  /// `offset` then throws.
+  double _scrollOffset = 0;
+
+  /// The place still to be applied to this mount, cleared once it has been.
+  /// Non-null only between [initState] and the first frame that has both the
+  /// grid and its viewport, which is at least one frame away: the stored
+  /// preferences are read asynchronously and the skeleton stands in until they
+  /// land.
+  TvDestinationFocusMemory? _pendingRestore;
+
   SourceAllResolver? _resolver;
   String? _resolverProfileId;
 
@@ -107,12 +156,37 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
   void initState() {
     super.initState();
     widget.catalog.addListener(_onCatalogChanged);
+    _scrollController.addListener(_rememberScrollOffset);
+    final place = widget.restoreFrom;
+    _focusedGroupId = place.groupId;
+    if (place.focusedElementId case final String slot) {
+      _lastUsedSlot = _HeaderSlot.values.firstWhere((s) => s.name == slot, orElse: () => _lastUsedSlot);
+    }
+    if (!place.isEmpty) _pendingRestore = place;
     unawaited(_restorePreferences());
+  }
+
+  /// Hands the place up before the element goes away.
+  ///
+  /// `deactivate` rather than `dispose`: it runs while this subtree is still
+  /// attached, and it is the one callback guaranteed to run on the teardown a
+  /// destination switch causes.
+  @override
+  void deactivate() {
+    widget.onRemember?.call(
+      TvDestinationFocusMemory(
+        focusedElementId: _lastUsedSlot.name,
+        groupId: _focusedGroupId,
+        scrollOffset: _scrollOffset,
+      ),
+    );
+    super.deactivate();
   }
 
   @override
   void dispose() {
     widget.catalog.removeListener(_onCatalogChanged);
+    _scrollController.removeListener(_rememberScrollOffset);
     _scrollController.dispose();
     _sourcesFocus.dispose();
     _filtersFocus.dispose();
@@ -122,6 +196,41 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
 
   void _onCatalogChanged() {
     if (mounted) setState(() {});
+    _scheduleRestore();
+  }
+
+  void _rememberScrollOffset() {
+    if (_scrollController.hasClients) _scrollOffset = _scrollController.offset;
+  }
+
+  /// Puts the viewer back where they were, once there is something to put them
+  /// back on.
+  ///
+  /// The grid is only built after the stored preferences have loaded *and* the
+  /// merge has yielded its first groups, so this cannot run in [initState]; it
+  /// is retried on every catalog change until it succeeds, and then never
+  /// again. The card itself needs no work here — the grid is handed the same
+  /// `groupId` as [TvUnifiedMediaGrid.initialFocusedGroupId], so DOWN out of
+  /// the header already lands on it.
+  void _scheduleRestore({int attempt = 0}) {
+    if (_pendingRestore == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final place = _pendingRestore;
+      if (!mounted || place == null) return;
+      if (!_scrollController.hasClients) {
+        // The grid is not on screen yet — the skeleton is. A handful of frames
+        // rather than an open-ended retry: after that the page has settled on
+        // an empty or error state, and there is nothing to scroll.
+        if (attempt < _restoreAttempts) _scheduleRestore(attempt: attempt + 1);
+        return;
+      }
+      _pendingRestore = null;
+      final offset = place.scrollOffset;
+      if (offset == null || offset <= 0) return;
+      // Clamped: the catalog can come back shorter than it was left.
+      final position = _scrollController.position;
+      _scrollController.jumpTo(offset.clamp(position.minScrollExtent, position.maxScrollExtent));
+    });
   }
 
   /// Loads the stored setup, prunes sources that no longer exist, and starts
@@ -142,6 +251,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
       _preferencesLoaded = true;
     });
     if (pruned != stored) unawaited(UnifiedCatalogQueryStore.write(widget.catalog.query.kind, pruned));
+    _scheduleRestore();
     await _applyQuery(startIfNeeded: true);
   }
 
@@ -178,7 +288,14 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
       preferences: _preferences,
       capabilities: capabilities,
     );
-    if (!startIfNeeded && query == widget.catalog.query && !_restrictionChanged(selection)) {
+    // `startIfNeeded` means "start it if it is not running", not "start it
+    // again". On the fase-7 shell this screen is rebuilt from nothing every
+    // time the viewer leaves the destination and comes back, and restarting a
+    // merge that is already loaded would throw away every page it holds and
+    // re-ask every server for them — the reload hoofdstuk 24 forbids and
+    // [DEC-069] promises this nested route does not cost.
+    final alreadyRunning = !startIfNeeded || widget.catalog.hasStarted;
+    if (alreadyRunning && query == widget.catalog.query && !_restrictionChanged(selection)) {
       return Future<void>.value();
     }
     return widget.catalog.setQuery(query, librarySelector: selection.restrictsSources ? selection.selects : null);
@@ -314,7 +431,20 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
     if (node.canRequestFocus) node.requestFocus();
   }
 
+  /// UP or LEFT out of the header, into the root navigation.
+  ///
+  /// Hoofdstuk 7.4 asks for UP; the shell resolves what is up there. On the
+  /// fase-7 TV root that is the top navigation, on the desktop rail it is the
+  /// rail — see [TvRootShell] on why one method serves both.
   void _focusSidebar() => MainScreenFocusScope.of(context, listen: false)?.focusSidebar();
+
+  /// DOWN out of the top navigation, per hoofdstuk 7.4: "Down vanaf topnav
+  /// focust de eerste headeractie."
+  @override
+  void focusActiveTabIfReady() {
+    if (!mounted) return;
+    _focusHeader();
+  }
 
   // ---------------------------------------------------------------------------
 
@@ -327,18 +457,26 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
     // deliberately almost subliminal: two per cent over the whole height, well
     // under any banding threshold, and the posters still sit on `MonoTokens.bg`
     // wherever they actually are.
+    //
+    // Inside the fase-7 shell the shell paints it instead, across the whole
+    // viewport. Painting it again here would start a second gradient at the
+    // bottom edge of the top navigation and leave a hard step there; the lift
+    // belongs to the page, and under a top bar the page starts above this box.
+    final framedByShell = TvShellSurface.isPresent(context);
     return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color.alphaBlend(tk.text.withValues(alpha: TvCatalogLayout.pageLift), tk.bg),
-            tk.bg,
-          ],
-          stops: const [0, 0.55],
-        ),
-      ),
+      decoration: framedByShell
+          ? const BoxDecoration()
+          : BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color.alphaBlend(tk.text.withValues(alpha: TvCatalogLayout.pageLift), tk.bg),
+                  tk.bg,
+                ],
+                stops: const [0, 0.55],
+              ),
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -362,6 +500,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
           onPressed: () => _openFilters(initialSection: TvCatalogFilterSection.servers),
           onNavigateRight: () => _filtersFocus.requestFocus(),
           onNavigateLeft: _focusSidebar,
+          onNavigateUp: _focusSidebar,
           onNavigateDown: _focusGrid,
         ),
       ),
@@ -375,6 +514,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
           onPressed: () => _openFilters(initialSection: TvCatalogFilterSection.status),
           onNavigateLeft: () => _sourcesFocus.requestFocus(),
           onNavigateRight: () => _sortFocus.requestFocus(),
+          onNavigateUp: _focusSidebar,
           onNavigateDown: _focusGrid,
         ),
       ),
@@ -386,6 +526,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
           focusNode: _sortFocus,
           onPressed: _openSort,
           onNavigateLeft: () => _filtersFocus.requestFocus(),
+          onNavigateUp: _focusSidebar,
           onNavigateDown: _focusGrid,
         ),
       ),
@@ -434,6 +575,8 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> {
     return TvUnifiedMediaGrid(
       key: _gridKey,
       controller: _scrollController,
+      initialFocusedGroupId: _focusedGroupId,
+      onFocusedGroupChanged: (groupId) => _focusedGroupId = groupId,
       groups: snapshot.groups,
       hasMore: snapshot.hasMore,
       isLoadingMore: catalog.isLoadingMore,

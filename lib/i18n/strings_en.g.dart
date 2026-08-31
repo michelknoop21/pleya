@@ -97,6 +97,8 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsPleyaShareEn pleyaShare = TranslationsPleyaShareEn.internal(_root);
 	late final TranslationsSourcePickerEn sourcePicker = TranslationsSourcePickerEn.internal(_root);
 	late final TranslationsUnifiedCatalogEn unifiedCatalog = TranslationsUnifiedCatalogEn.internal(_root);
+	late final TranslationsTvNavigationEn tvNavigation = TranslationsTvNavigationEn.internal(_root);
+	late final TranslationsTvMyPleyaEn tvMyPleya = TranslationsTvMyPleyaEn.internal(_root);
 }
 
 // Path: states
@@ -5286,6 +5288,92 @@ class TranslationsUnifiedCatalogEn {
 	late final TranslationsUnifiedCatalogDiscoveryEn discovery = TranslationsUnifiedCatalogDiscoveryEn.internal(_root);
 }
 
+// Path: tvNavigation
+class TranslationsTvNavigationEn {
+	TranslationsTvNavigationEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'current section'
+	String get activeDestination => 'current section';
+}
+
+// Path: tvMyPleya
+class TranslationsTvMyPleyaEn {
+	TranslationsTvMyPleyaEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'My content'
+	String get groupContent => 'My content';
+
+	/// en: 'Libraries and sources'
+	String get groupSources => 'Libraries and sources';
+
+	/// en: 'Pleya'
+	String get groupPleya => 'Pleya';
+
+	/// en: '${online} of ${total} servers online'
+	String serversOnline({required Object online, required Object total}) => '${online} of ${total} servers online';
+
+	/// en: 'No servers connected'
+	String get noServers => 'No servers connected';
+
+	/// en: 'Online'
+	String get statusOnline => 'Online';
+
+	/// en: 'Offline'
+	String get statusOffline => 'Offline';
+
+	/// en: 'Servers'
+	String get servers => 'Servers';
+
+	/// en: 'Activity'
+	String get activity => 'Activity';
+
+	/// en: 'Logs and diagnostics'
+	String get logs => 'Logs and diagnostics';
+
+	/// en: 'Signed in as ${name} · Pleya ${version}'
+	String signedInAs({required Object name, required Object version}) => 'Signed in as ${name} · Pleya ${version}';
+
+	/// en: 'Saved films and series'
+	String get watchlistSubtitle => 'Saved films and series';
+
+	/// en: 'Requests and discovery'
+	String get requestsSubtitle => 'Requests and discovery';
+
+	/// en: 'Offline and sync rules'
+	String get downloadsSubtitle => 'Offline and sync rules';
+
+	/// en: 'Media, collections, playlists'
+	String get librariesSubtitle => 'Media, collections, playlists';
+
+	/// en: 'Connections and local sources'
+	String get serversSubtitle => 'Connections and local sources';
+
+	/// en: 'Now watching, watch together, remote'
+	String get activitySubtitle => 'Now watching, watch together, remote';
+
+	/// en: 'Display, player, trackers'
+	String get settingsSubtitle => 'Display, player, trackers';
+
+	/// en: 'Log files and crash reporting'
+	String get logsSubtitle => 'Log files and crash reporting';
+
+	/// en: 'Version and licences'
+	String get aboutSubtitle => 'Version and licences';
+
+	/// en: 'Sign out on this device'
+	String get logoutSubtitle => 'Sign out on this device';
+
+	late final TranslationsTvMyPleyaSemanticsEn semantics = TranslationsTvMyPleyaSemanticsEn.internal(_root);
+}
+
 // Path: search.filters
 class TranslationsSearchFiltersEn {
 	TranslationsSearchFiltersEn.internal(this._root);
@@ -6177,6 +6265,21 @@ class TranslationsUnifiedCatalogDiscoveryEn {
 	String get emptyBody => 'No visible library has anything to show here.';
 
 	late final TranslationsUnifiedCatalogDiscoverySemanticsEn semantics = TranslationsUnifiedCatalogDiscoverySemanticsEn.internal(_root);
+}
+
+// Path: tvMyPleya.semantics
+class TranslationsTvMyPleyaSemanticsEn {
+	TranslationsTvMyPleyaSemanticsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '${title}. ${subtitle}'
+	String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+
+	/// en: '${title}. ${subtitle}. ${count}'
+	String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -7982,6 +8085,30 @@ extension on Translations {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} of ${count}',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'View all movies, opens the complete catalog',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
+			'tvNavigation.activeDestination' => 'current section',
+			'tvMyPleya.groupContent' => 'My content',
+			'tvMyPleya.groupSources' => 'Libraries and sources',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} of ${total} servers online',
+			'tvMyPleya.noServers' => 'No servers connected',
+			'tvMyPleya.statusOnline' => 'Online',
+			'tvMyPleya.statusOffline' => 'Offline',
+			'tvMyPleya.servers' => 'Servers',
+			'tvMyPleya.activity' => 'Activity',
+			'tvMyPleya.logs' => 'Logs and diagnostics',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Signed in as ${name} · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => 'Saved films and series',
+			'tvMyPleya.requestsSubtitle' => 'Requests and discovery',
+			'tvMyPleya.downloadsSubtitle' => 'Offline and sync rules',
+			'tvMyPleya.librariesSubtitle' => 'Media, collections, playlists',
+			'tvMyPleya.serversSubtitle' => 'Connections and local sources',
+			'tvMyPleya.activitySubtitle' => 'Now watching, watch together, remote',
+			'tvMyPleya.settingsSubtitle' => 'Display, player, trackers',
+			'tvMyPleya.logsSubtitle' => 'Log files and crash reporting',
+			'tvMyPleya.aboutSubtitle' => 'Version and licences',
+			'tvMyPleya.logoutSubtitle' => 'Sign out on this device',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
 			_ => null,
 		};
 	}

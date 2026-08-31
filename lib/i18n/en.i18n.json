@@ -1937,5 +1937,35 @@
         "viewAllSeries": "View all series, opens the complete catalog"
       }
     }
+  },
+  "tvNavigation": {
+    "activeDestination": "current section"
+  },
+  "tvMyPleya": {
+    "groupContent": "My content",
+    "groupSources": "Libraries and sources",
+    "groupPleya": "Pleya",
+    "serversOnline": "${online} of ${total} servers online",
+    "noServers": "No servers connected",
+    "statusOnline": "Online",
+    "statusOffline": "Offline",
+    "servers": "Servers",
+    "activity": "Activity",
+    "logs": "Logs and diagnostics",
+    "signedInAs": "Signed in as ${name} · Pleya ${version}",
+    "watchlistSubtitle": "Saved films and series",
+    "requestsSubtitle": "Requests and discovery",
+    "downloadsSubtitle": "Offline and sync rules",
+    "librariesSubtitle": "Media, collections, playlists",
+    "serversSubtitle": "Connections and local sources",
+    "activitySubtitle": "Now watching, watch together, remote",
+    "settingsSubtitle": "Display, player, trackers",
+    "logsSubtitle": "Log files and crash reporting",
+    "aboutSubtitle": "Version and licences",
+    "logoutSubtitle": "Sign out on this device",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
   }
 }

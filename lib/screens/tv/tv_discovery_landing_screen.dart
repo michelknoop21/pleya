@@ -29,6 +29,8 @@ import '../../media/ids.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
 import '../../providers/discover_provider.dart';
+import '../../mixins/refreshable.dart';
+import '../../navigation/main_screen_scope.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/tv_discovery_landing_provider.dart';
 import '../../theme/mono_tokens.dart';
@@ -48,6 +50,7 @@ class TvDiscoveryLandingScreen extends StatefulWidget {
     required this.railsOf,
     required this.buildAllScreen,
     this.onManageServers,
+    this.onOpenAll,
   });
 
   final String title;
@@ -67,11 +70,24 @@ class TvDiscoveryLandingScreen extends StatefulWidget {
 
   final VoidCallback? onManageServers;
 
+  /// Opens the complete catalog inside the fase-7 shell, so the top navigation
+  /// stays on screen — hoofdstuk 33's shared shell is binding on all eight
+  /// references, and 33.5 draws "Alle films" with the bar above it and Films
+  /// still lit.
+  ///
+  /// Null falls back to a plain push on this landing's own navigator, which is
+  /// what a standalone mount does (a golden, a focus test). The fallback is
+  /// kept rather than made required so this screen stays mountable on its own;
+  /// production always passes the callback.
+  final VoidCallback? onOpenAll;
+
   @override
   State<TvDiscoveryLandingScreen> createState() => _TvDiscoveryLandingScreenState();
 }
 
-class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen> with TvDiscoveryActivationMixin {
+class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
+    with TvDiscoveryActivationMixin
+    implements FocusableTab {
   final _scrollController = ScrollController();
   final _viewAllFocus = FocusNode(debugLabel: 'TvDiscoveryViewAll');
 
@@ -181,9 +197,10 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen> wit
                         semanticLabel: widget.viewAllSemanticLabel,
                         // DOWN out of the header lands on the first rail's
                         // current tile — the short path the whole change exists
-                        // for. UP is left to the shell: above the header is the
-                        // topnav, which is fase 7's to own.
+                        // for. UP goes to the top navigation, which fase 7 put
+                        // above this header (hoofdstuk 7.4).
                         onNavigateDown: _focusFirstRail,
+                        onNavigateUp: _focusTopNavigation,
                       ),
                     ),
                   ],
@@ -245,6 +262,31 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen> wit
     if (_viewAllFocus.canRequestFocus) _viewAllFocus.requestFocus();
   }
 
+  /// UP out of the header, into the root navigation (hoofdstuk 7.4: "Up vanaf
+  /// header gaat naar topnav").
+  ///
+  /// Through [MainScreenFocusScope] rather than a callback of its own: every
+  /// content screen already leaves content this way, and on the TV shell that
+  /// target is the top navigation. A screen should not have to know which root
+  /// it is mounted under.
+  void _focusTopNavigation() => MainScreenFocusScope.of(context, listen: false)?.focusSidebar();
+
+  /// DOWN out of the top navigation lands on the page header, per hoofdstuk
+  /// 7.1's "Top navigation → page header → first content row". The header, not
+  /// the first card: it is the one control on this page that changes where you
+  /// are, and starting under it would make it reachable only by going back up.
+  @override
+  void focusActiveTabIfReady() {
+    if (!mounted) return;
+    if (_viewAllFocus.canRequestFocus) {
+      _viewAllFocus.requestFocus();
+      return;
+    }
+    // No header yet (still loading, or an empty projection): the rails are the
+    // only thing to land on, and landing on nothing would strand the remote.
+    _focusFirstRail();
+  }
+
   Iterable<TvDiscoveryRailState> _railStates() sync* {
     for (final key in _railKeys.values) {
       final state = key.currentState;
@@ -257,6 +299,11 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen> wit
   /// nested one `ProfileNavigationScope` owns — so popping it returns focus
   /// and scroll to exactly this screen, still mounted underneath.
   void _openAllScreen() {
+    final inShell = widget.onOpenAll;
+    if (inShell != null) {
+      inShell();
+      return;
+    }
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => widget.buildAllScreen()));
   }
 

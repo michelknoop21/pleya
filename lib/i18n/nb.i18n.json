@@ -1549,5 +1549,35 @@
         "viewAllSeries": "Se alle serier, åpner den komplette katalogen"
       }
     }
+  },
+  "tvNavigation": {
+    "activeDestination": "gjeldende del"
+  },
+  "tvMyPleya": {
+    "groupContent": "Mitt innhold",
+    "groupSources": "Biblioteker og kilder",
+    "groupPleya": "Pleya",
+    "serversOnline": "${online} av ${total} servere tilkoblet",
+    "noServers": "Ingen servere tilkoblet",
+    "statusOnline": "Tilkoblet",
+    "statusOffline": "Frakoblet",
+    "servers": "Servere",
+    "activity": "Aktivitet",
+    "logs": "Logger og diagnostikk",
+    "signedInAs": "Logget inn som ${name} · Pleya ${version}",
+    "watchlistSubtitle": "Lagrede filmer og serier",
+    "requestsSubtitle": "Forespørsler og oppdagelse",
+    "downloadsSubtitle": "Frakoblet og synkroniseringsregler",
+    "librariesSubtitle": "Medier, samlinger, spillelister",
+    "serversSubtitle": "Tilkoblinger og lokale kilder",
+    "activitySubtitle": "Ser nå, se sammen, fjernkontroll",
+    "settingsSubtitle": "Visning, spiller, trackere",
+    "logsSubtitle": "Loggfiler og krasjrapporter",
+    "aboutSubtitle": "Versjon og lisenser",
+    "logoutSubtitle": "Logg ut på denne enheten",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
   }
 }

@@ -1551,10 +1551,29 @@ downstream code op een gebroken fundament te stapelen.
 WIP-commits mogen tijdens het werk, maar worden gesquasht tot de betreffende fasecommit voordat de
 volgende fase begint, zodat iedere fase afzonderlijk inspecteerbaar en revertbaar blijft.
 
-**Runtime handshake fase 5–10.** Nadat alle in-container gates groen zijn, stopt het werk vóór de
-volgende fase en wordt exact de benodigde Mac/Apple TV-verificatiechecklist opgeleverd. Pas na een
-expliciete runtime-go geldt de fase als volledig geverifieerd. Voor de pure datafasen 1–4 geldt dit
-niet.
+**Runtime handshake fase 5–10 — gecorrigeerd op 31 augustus 2026.** Dit stond hier eerst als: het
+werk stopt vóór de volgende fase, er wordt een Mac/Apple TV-verificatiechecklist opgeleverd, en pas
+na een expliciete runtime-go geldt de fase als volledig geverifieerd. Die formulering liep uit de pas
+met de uitvoeringspolicy die al elders in deze repo vastligt: `docs/qa/tvos-unified-edge-cases.md`
+legt hardwaregebonden rijen (J2 4K-output, J4 overscan, J8 VoiceOver, J9 Reduce Motion) expliciet
+neer als debt dat bij **de eindacceptatie na fase 10A** hoort en *niet* bij de gate van een fase. Twee
+plekken die iets anders zeiden over hetzelfde onderwerp is documentatiedrift, geen tweede besluit, en
+dit is de tekstuele correctie daarvan — geen nieuwe productbeslissing en geen DEC.
+
+Wat er nu geldt:
+
+- Een fase wordt afgesloten op **automatisch bewijs**: de in-container gates, widget-, focus- en
+  goldentests, en de deterministische renders. Groen daarop is de gate.
+- De verificatiechecklist blijft bestaan, maar als **hardware-debt-checklist**: wat alleen op een
+  echte Mac/Apple TV vast te stellen is, wordt per fase geregistreerd in plaats van afgewacht.
+- Er is **geen tussentijdse fysieke Apple TV-, simulator- of TestFlight-acceptatie door Michel in
+  fase 0–9**. De fysieke runtime-go gebeurt één keer, bij de eindacceptatie na fase 10A, en geldt dan
+  voor de hele TV-UI tegelijk — dezelfde afspraak die het edge-caseregister al hanteert.
+- Tot die run kan de roadmap maximaal als **automatisch bewezen** gelden. Een fase die daarop groen
+  staat gaat door; ze heet niet "op hardware bewezen", en dat onderscheid blijft in de fasecommit en
+  in het register staan.
+
+Voor de pure datafasen 1–4 was hardwarebewijs sowieso niet aan de orde.
 
 ### Fase 0: baseline, contract en tijdelijke ontwikkelpoort
 
@@ -1791,6 +1810,35 @@ Back/Menu-contract; Live TV-state; desktop sidebar behouden.
 **Definition of Done.** Iedere huidige TV-functie heeft een bereikbare nieuwe plek; geen unsupported
 Downloads op Apple TV; desktopzijbalk ongewijzigd; topnavfocus stabiel; system Menu alleen op de
 juiste rootgrens.
+
+> **Geleverd op 31 augustus 2026.** Twee dingen die tijdens de bouw beslissingen bleken in plaats
+> van implementatiedetails staan in [DEC-069](DECISIONS.md#dec-069): nesten binnen een bestemming is
+> een expliciete stapel en géén Flutter `Navigator` (anders vangt hij de media-detailroutes op en
+> worden stap 2 en stap 3 van hoofdstuk 7.5 dezelfde pop), en Live TV-zichtbaarheid is een onthouden
+> profielcapability die alleen door een sluitende meting ingetrokken wordt.
+>
+> Eén gevolg raakt de vorige fase en is geen scopeuitbreiding maar het naleven van hoofdstuk 33:
+> de complete catalogus (`Alle films` / `Alle series`) opent nu als geneste route binnen de
+> bestemming in plaats van als push op de profielnavigator. De gedeelde shell is *bindend op alle
+> acht* referentiebeelden, en 33.5 en 33.6 tekenen die pagina's mét de topnav erboven; een fullscreen
+> push had dat onmogelijk gemaakt. Inhoud, provider, paging en filters van fase 5 zijn ongewijzigd.
+>
+> **Niet in deze fase, bewust.** De nieuwe Home-compositie (hero-billboard, contentfeed, ambient)
+> blijft fase 8; fase 7 zet de definitieve topnav boven de bestaande Home-presentatie. De fase-6
+> Home-rij-debt (duplicate titel, activatie via de fase-4-coördinator) blijft staan waar het
+> goedgekeurde [deviation proposal](tvos-unified-fase6-home-rows-deviation.md) hem heeft neergezet.
+>
+> **Gesloten op 31 augustus 2026, na reconciliatie.** Twee bevindingen uit de systeemaudit stonden
+> eerst als debt geregistreerd (I22 en I23 in `docs/qa/tvos-unified-edge-cases.md`) en zijn bij het
+> sluiten alsnog gerepareerd, omdat ze geen edge cases bleken maar hoofdstuk 7.4, 7.6 en 24: de
+> complete catalogus is een geneste route, alleen de actieve bestemming bouwt die, en een
+> bestemmingswissel gooide daardoor de geladen pagina's, de scrollpositie én de gefocuste kaart weg.
+> Vóór fase 7 was die pagina een fullscreen push waaruit de balk niet te bereiken was, dus fase 7 is
+> ook de fase die het scenario heeft laten bestaan. Hoofdstuk 7.6's focusgeheugen krijgt daarmee zijn
+> eerste productieconsument; zie het sluitingsamendement onder [DEC-069](DECISIONS.md#dec-069).
+> Home en Search hebben nu ook een productierender ín de shell
+> (`test/goldens/tv_shell_home.png`, `tv_shell_search.png`), zodat de "gedeelde shell is bindend op
+> alle acht" van hoofdstuk 33 niet meer op alleen de vier gefotografeerde oppervlakken rust.
 
 ### Fase 8: nieuwe rounded billboard Home
 

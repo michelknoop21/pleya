@@ -36,10 +36,39 @@ nooit ingevuld. Er is voor die rijen geen test bijgeschreven, alleen de vindplaa
 test gelezen. Een rij die niet precies het scenario van die rij bewijst is `open` gebleven, ook waar
 een test er dichtbij kwam; een te optimistisch register is erger dan een leeg.
 
+**Fase 7 en register I.** Fase 7 bouwde de TV-root: de horizontale topnav, de gedeelde
+geneste-routestapel en Mijn Pleya. Daarmee is register I van "leeg" naar acht ingevulde rijen
+gegaan (I1, I5, I6, I8, I11, I12, I13, plus I7 en I15 die er al stonden). I18 is bewust op `open`
+gebleven: de topnav-helft is bewezen, het griditem-geval niet, en een half bewezen rij hoort niet
+`covered` te heten. I2, I3, I4 gaan over de hero en horen bij fase 8; I9, I10, I14, I16, I17, I19
+en I20 raken paden die fase 7 niet heeft aangelegd. I21 is er tijdens fase 7 bijgekomen als
+*bevinding over fase-5-code* en bewust niet opgelost — zie de noot onder register I. I22 en I23
+kwamen uit de fase-7-systeemaudit en zijn bij het sluiten van de fase alsnog gerepareerd, omdat ze
+allebei gedrag raken dat hoofdstuk 7.4, 7.6 en 24 al vastleggen en dat fase 7 zélf gebroken heeft:
+vóór fase 7 was de complete catalogus een fullscreen push, waaruit de balk niet te bereiken was, dus
+het scenario bestond niet. I24 is er als laatste bijgekomen en is geen gedragsrij maar een
+dekkingsrij: de keten klopt in productie, maar geen test loopt er in zijn geheel doorheen — zie de
+noot onder register I voor waarom dat coverage debt is en geen productbug.
+
 **Hardware.** J2 (4K-output), J4 (overscan), J8 (VoiceOver) en J9 (Reduce Motion) zijn niet in een
 test vast te leggen — ze vragen een echte Apple TV. Ze staan op `open` met die reden in de
 Test-kolom en horen bij de eindacceptatie na fase 10A (hoofdstuk 29), niet bij de gate van een fase.
 Ze gelden dan voor de hele TV-UI, dus ook voor de schermen die er nu nog niet zijn.
+
+Fase 7 voegt daar geen nieuwe categorie aan toe, maar wel drie concrete gevallen die onder J8 en J9
+vallen en die pas na 10A afgetekend kunnen worden:
+
+- **VoiceOver op de topnav (J8).** `tv_top_navigation_test.dart` legt vast dát de actieve
+  bestemming zichzelf anders aankondigt dan de gefocuste (`Films, current section` tegenover
+  `Films`), en dat het label niet dubbel in de node zit. Wat VoiceOver er hoorbaar van maakt — en of
+  het onderscheid op een echte Apple TV ook als onderscheid *landt* — is hardware.
+- **Reduce Motion op de navfocus (J9).** De focus-transitie duurt 160 ms (hoofdstuk 8.4). Of hij
+  onder Reduce Motion kort genoeg of instant hoort te zijn is alleen op het toestel te beoordelen.
+- **De Menu-press op de root (J8/J9-buur).** De engine claimt presses vóór de responder chain
+  (`CLAUDE.md`, [DEC-019](../DECISIONS.md#dec-019)). Fase 7 heeft dat pad níet aangeraakt en voert
+  Menu door hetzelfde `shouldPassTvosMenuToSystem`-predicaat als de zijbalk, dus er is geen nieuw
+  native gedrag om te bewijzen — maar dat de nieuwe rootgrens op echte hardware op dezelfde plek
+  ligt, is wel een runtimewaarneming.
 
 ## A. Server- en topologycases
 
@@ -240,26 +269,193 @@ en `test/services/unified_grouping_service_test.dart`).
 
 | # | Case | Test | Status |
 |---|---|---|---|
-| I1 | Cold-start focus | | open |
+| I1 | Cold-start focus | test/screens/tv/tv_my_pleya_screen_test.dart (`Down from the top navigation lands on the profile action`) en test/screens/tv/tv_root_shell_test.dart (`the scope every content screen already talks to reaches the bar`) — de shell verplaatst focus uitsluitend expliciet, er staat geen `autofocus` op de contentscope | covered |
 | I2 | Topnav naar hero | | open |
 | I3 | Hero naar row | | open |
 | I4 | First row terug naar hero | | open |
-| I5 | Root Back naar topnav | | open |
-| I6 | Topnav Back naar systeem | | open |
+| I5 | Root Back naar topnav | test/screens/tv/tv_back_chain_test.dart (`step 4: root content hands the focus to the top navigation`) | covered |
+| I6 | Topnav Back naar systeem | test/screens/tv/tv_back_chain_test.dart (`step 5: the top navigation at the root defers to the system contract`, `Menu reaches the system only from the root destination with the bar focused`) — het bestaande `shouldPassTvosMenuToSystem`-predicaat, ongewijzigd van vorm; wat de engine daarna met de press doet is hardware (DEC-019) | covered |
 | I7 | Source picker Back | test/widgets/tv/tv_media_source_picker_test.dart (`Menu closes the picker, activates nothing, and restores the exact CTA`) | covered |
-| I8 | Nested Mijn Pleya Back | | open |
+| I8 | Nested Mijn Pleya Back | test/screens/tv/tv_back_chain_test.dart (`step 2 comes first`, `step 2 beats the focus test, wherever the remote happens to be`) en test/navigation/tv/tv_navigation_coordinator_test.dart (de nested-routegroep) en test/screens/tv/tv_root_shell_test.dart (`popping brings the destination back`) | covered |
 | I9 | Profile picker Back | | open |
 | I10 | Native keyboard Back | | open |
-| I11 | Live TV-item verschijnt | | open |
-| I12 | Live TV-item verdwijnt | | open |
-| I13 | Actieve destination opnieuw selecteren | | open |
+| I11 | Live TV-item verschijnt | test/widgets/tv/tv_top_navigation_test.dart (`a Live TV slot appearing does not replace the focus node of an existing item`) en test/screens/tv/tv_root_shell_test.dart (`appears and disappears without disturbing its neighbours`) — het nieuwe item krijgt een eigen stabiele id, en de buren houden hun focusnode én hun volgorde | covered |
+| I12 | Live TV-item verdwijnt | test/screens/tv/tv_root_shell_test.dart (`losing it while it is open moves the viewer to Home`) en test/navigation/tv/tv_live_tv_capability_test.dart (`a transient outage does not retire a remembered capability`) — een tijdelijke storing laat het item staan, alleen een sluitende meting haalt het weg (DEC-069) | covered |
+| I13 | Actieve destination opnieuw selecteren | test/navigation/tv/tv_navigation_coordinator_test.dart (activate op de reeds actieve bestemming geeft `false` en notificeert niet, dus geen rebuild en geen refetch — hoofdstuk 7.2) | covered |
 | I14 | Tab wisselen met overlay open | | open |
 | I15 | Select KeyUp na focusverplaatsing | test/focus/focusable_wrapper_select_test.dart (`key-up landing on a wrapper that never saw the key-down fires nothing`); test/focus/dpad_navigator_suppressor_test.dart (`armed suppressor eats the in-flight select key-up and clears`) | covered |
 | I16 | Trackpad swipe versus D-pad | | open |
 | I17 | Android TV back | | open |
-| I18 | Focused item verdwijnt | | open |
+| I18 | Focused item verdwijnt | test/navigation/tv/tv_navigation_coordinator_test.dart (Live TV verdwijnt terwijl het alleen de focusring droeg: de ring verhuist in plaats van naar een verdwenen bestemming te wijzen). Alleen bewezen voor de topnav; het griditem-geval blijft open | open |
 | I19 | Return uit player | | open |
 | I20 | Return uit settings | | open |
+| I21 | Filters bereiken vanaf diep in het grid | gedrag ligt vast in hoofdstuk 7.4 en 10.6, maar de snelkoppeling is niet gebouwd — zie de noot onder deze tabel | open |
+| I22 | Terugkeren op dezelfde kaart binnen een bestemming | test/screens/tv/tv_destination_restoration_test.dart (`All movies`/`All series comes back to the card and the scroll region it was left on`, `the Films landing comes back to the rail tile it was left on`) — binnenkomen vanaf de balk landt op de primaire focus van het scherm (hoofdstuk 7.1/7.4), en DOWN daaruit landt op de kaart waar de kijker stond; de catalogus leest die kaart uit `TvNavigationCoordinator.contentFocusFor`, de landing uit zijn eigen rails | covered |
+| I23 | Bestemming wisselen met een geneste route open | test/screens/tv/tv_root_shell_test.dart (`belongs to its own destination and does not follow the viewer elsewhere`) bewijst dat de route bij zijn eigen bestemming blijft; test/screens/tv/tv_destination_restoration_test.dart (`coming back does not restart the merge that is already loaded`, plus de twee restauratierijen hierboven) bewijst dat terugkeren de geladen pagina's, de scrollpositie en de gefocuste kaart houdt | covered |
+| I24 | Vanuit content de balk bereiken, end-to-end | beide helften bewezen, de schakel ertussen niet; geclassificeerd als *integration-test coverage debt* en niet als productiedefect — zie de noot onder deze tabel | open (coverage debt) |
+
+**I24 — de content→balk-keten is aan beide uiteinden bewezen en in het midden met de hand
+geknoopt.** Toegevoegd op 31 augustus 2026, na fase 7.
+
+De keten die een kijker gebruikt om vanuit een pagina bij de balk te komen loopt in drie schakels:
+
+1. het scherm vraagt erom — `onNavigateUp`/`onNavigateLeft` → `MainScreenFocusScope.focusSidebar`
+   (`tv_unified_catalog_screen.dart:503,517,529` en `:586`);
+2. `MainScreen._focusSidebar` (`main_screen.dart:1419`) vertaalt dat op TV naar
+   `SidebarFocusCoordinator.focusSidebar(focusActiveItem: …)` en focust de node van
+   `TvNavigationCoordinator.focusedDestination`;
+3. de balk krijgt de ring.
+
+Schakel 1 is bewezen in `test/screens/tv/tv_unified_catalog_focus_test.dart` (`UP from every header
+action reaches for the top navigation`, plus de twee LEFT-rijen), schakel 3 in
+`test/screens/tv/tv_root_shell_test.dart` (`reaching the bar puts the ring on a destination in it`).
+Schakel 2 wordt door geen enkele test uitgevoerd: niets in de suite monteert `MainScreen` — met
+`grep -rln "MainScreen(" test/` is de uitkomst leeg — en de twee tests die eromheen staan stoppen
+allebei op een stub (de ene op een `focusSidebar`-teller, de andere op een `onFocusNav` die het
+lichaam van `_focusSidebar` nabouwt).
+
+Het gevolg is scherp: een breuk in die zes regels productiecode zou groen door CI komen. Het staat
+hier omdat het opschrijven eerlijker is dan een testcommentaar dat suggereert dat de keten sluit.
+Repareren betekent `MainScreen` monteerbaar maken in een test of die TV-tak eruit trekken naar iets
+dat los te testen is; dat is groter dan het gat dat fase 7 achterliet en hoort in een eigen stuk werk
+thuis, niet als bijvangst van een testuitbreiding.
+
+**Wat I24 wél en niet is.** Bij het sluiten van fase 7 is schakel 2 één keer statisch nagelopen, om
+te bepalen of hier een productiebug onder zit of alleen een gat in de dekking. Er zit geen bug
+onder, en dat is aantoonbaar uit vier regels die allemaal naar hetzelfde exemplaar wijzen:
+
+- `_tvNavNodes` is één `FocusMemoryTracker` (`main_screen.dart:413`) en gaat als `navNodes` naar
+  `TvRootShell` (`:2186`), die hem ongewijzigd doorgeeft aan `TvTopNavigation.nodes`;
+- de balk maakt zijn nodes met `nodes.get(destinations[i].focusKey, …)`
+  (`tv_top_navigation.dart:133`), en `_focusSidebar` vraagt er één op met
+  `_tvNavNodes.get(_tvNav.focusedDestination.focusKey)` (`main_screen.dart:1431`) — dezelfde
+  tracker, en dezelfde sleutelafleiding (`TvDestinationId.focusKey`);
+- `_tvNav` is één `TvNavigationCoordinator` (`:408`) en gaat als `coordinator` naar diezelfde shell
+  (`:2185`), dus `focusedDestination` en de getekende items komen uit één bron;
+- `onFocusNav: _focusSidebar` (`:2193`) is wat `TvRootShell` als
+  `MainScreenFocusScope.focusSidebar` publiceert, en dat is precies wat schakel 1 aanroept.
+
+Er is dus geen tweede tracker, geen tweede coördinator en geen tweede sleutelconventie waar de
+keten op mis kan lopen. Daarmee is I24 **integration-test coverage debt** en geen productbug: het
+risico is een toekomstige regressie die niemand ziet, niet gedrag dat vandaag stuk is. Een
+`MainScreen`-harnas bouwen om zes regels bedrading te dekken zou meer testoppervlak toevoegen dan
+het bewijst, dus dat is bewust niet gedaan.
+
+Dezelfde vaststelling geldt voor een tweede stuk bedrading, en dat hoort er eerlijk bij:
+`_openTvCompleteCatalog` bindt `restoreFrom: _tvNav.contentFocusFor(destination)` en
+`onRemember: (place) => _tvNav.rememberContentFocus(destination, place)`
+(`main_screen.dart:1901,1902,1907,1908`). De restauratietests uit I22/I23 draaien op de
+productieschermen en de productiecoördinator, maar de `_ShellHost`-harnas legt díe twee regels zelf
+weer aan in plaats van ze uit `MainScreen` te halen. Ook hier wijzen beide kanten naar hetzelfde
+`_tvNav`-exemplaar en is de binding eenduidig; ook hier zou een breuk groen door CI komen. Wie I24
+ooit oplost, lost deze in dezelfde beweging op — het is één gat met twee uitgangen, niet twee
+problemen.
+
+**I21 — de filterknop ligt ver weg vanaf rij zes.** Toegevoegd op 31 augustus 2026, tijdens fase 7,
+over fase-5-code. `TvUnifiedMediaGrid` geeft de uitgang naar de header alleen aan de bovenste rij
+(`onNavigateUp: isFirstRow ? widget.onExitTop : null`, `tv_unified_media_grid.dart:313`). Dat is op
+zichzelf correct spatial navigation — omhoog is omhoog — maar het betekent dat iemand die op rij zes
+van vijfhonderd films staat zes keer Up plus Right nodig heeft om bij Filters te komen.
+
+Hoofdstuk 7.4 en 10.6 hebben daar allebei al een antwoord op staan: *"Play/Pause mag als zichtbare
+snelkoppeling het filterpaneel openen, maar filters blijven ook met een normale focusbare knop
+bereikbaar"*, en *"De zichtbare knop blijft de primaire route; Play/Pause is hooguit een
+snelkoppeling"*. Het gedrag is dus vastgelegd — wat ontbreekt is de implementatie: er is geen enkele
+Play/Pause-afhandeling op het catalogusscherm.
+
+Dit is geen regressie van fase 7, en fase 7 heeft het pad juist één stap korter gemaakt door
+`Up` vanaf de header op de topnav aan te sluiten. Het staat hier omdat het tot nu toe nergens stond:
+het was stilzwijgend blijven liggen als "mag" in plaats van als "moet nog", en dat is precies hoe een
+bereikbaarheidsgat een release haalt. **De positie van de controls is niet het probleem en staat niet
+ter discussie** — hoofdstuk 33.5 legt die als bindend vast (rustige controls rechts naast de kop,
+ondergeschikt, geen CTA-pillen).
+
+Niet ingevuld tijdens fase 7, met opzet: het catalogusscherm is fase-5-scope, en een snelkoppeling
+erbij bouwen zou werk uit een andere fase vooruittrekken (hoofdstuk 27, regel 4). Het hoort thuis bij
+fase 9 (functionele integratie en uitzonderingen) of bij een gerichte fase-5-aanvulling.
+
+**I22 en I23 — wat de fase-7 systeemaudit vond en wat er niet aan gedaan is.** Een read-only audit
+op de volledige fase-7-diff vond één blokkerend defect en acht kleinere. Het blokkerende is
+gerepareerd en heeft nu een test die er zonder de fix rood van gaat
+(`test/navigation/tv/tv_destination_test.dart`, `the bar cannot name a destination the screens list
+will not build`): Mijn Pleya stond in de balk maar werd door `getVisibleTabs` op TV weggefilterd,
+omdat de poort op `isMobile` stond en dat op een TV onwaar is. De pil lichtte op, het scherm werd
+nooit gebouwd, en élke route erbinnen — Instellingen, Servers, Bibliotheken, de hoofdstuk-6.4-adapter
+— was onbereikbaar. Dat geen enkele test het zag komt doordat ze allemaal het scherm rechtstreeks
+monteerden in plaats van via de schermenlijst; de nieuwe test loopt wél door de productiepoort.
+
+Vier kleinere bevindingen zijn ook gerepareerd: opnieuw selecteren van de actieve bestemming deed een
+netwerkrefresh (hoofdstuk 7.2 verbiedt dat); `lastLiveTvCheckWasConclusive` was waar wanneer er
+*niets* gevraagd was, waardoor een meting die met geen enkele server sprak een onthouden capability
+kon intrekken; `TvLiveTvCapabilityStore.clearForProfileScope` werd nergens aangeroepen bij het
+verwijderen van een profiel; en een geneste Mijn Pleya-sectie opende zonder gefocust element.
+
+Twee zijn eerst geregistreerd in plaats van opgelost. Bij het sluiten van fase 7 zijn ze allebei
+alsnog gerepareerd — ze bleken één defect met twee namen, en het was fase 7 dat het introduceerde:
+
+- **I22 — kaartniveau focusherstel.** `TvNavigationCoordinator.rememberContentFocus` bestond en was
+  getest, maar had geen productieconsument, dus de map bleef in de praktijk leeg en
+  `clearFocusMemory` wiste niets. De reparatie is die consument, niet een tweede mechanisme: de
+  memory is nu hoofdstuk 7.6's `TvDestinationFocusMemory` (gefocust element, `groupId`,
+  scrolloffset) en `TvUnifiedCatalogScreen` schrijft hem weg bij `deactivate` en leest hem terug bij
+  `initState`. Alleen de catalogus schrijft: elk ander bestemmingsscherm staat in de `IndexedStack`
+  en bewaart zijn eigen positie al — de rails van een landing houden hun tegel in
+  `TvDiscoveryRailState`, Mijn Pleya zijn tegel in zijn `FocusMemoryTracker` — en twee schrijvers per
+  bestemming zouden twee antwoorden op dezelfde vraag zijn.
+
+  Wat daarmee *niet* verandert, en ook niet hoort te veranderen: binnenkomen vanaf de balk landt op
+  de primaire focus van het scherm en niet meteen op een kaart. Hoofdstuk 7.1 en 7.4 schrijven dat
+  voor ("Down vanaf topnav focust de eerste headeractie"), en de kaart is één stap verder: DOWN
+  daaruit landt op de kaart waar de kijker stond.
+- **I23 — de complete catalogus herlaadde bij bestemmingswissel.** De landing eronder blijft
+  gemonteerd, de geneste catalogus niet: alleen de *actieve* bestemming bouwt zijn bovenste route, dus
+  naar Series wisselen en terug bouwde `Alle films` opnieuw op. Twee dingen gingen daarbij verloren
+  en allebei zijn ze nu gedicht. De pagina's: `_applyQuery(startIfNeeded: true)` riep
+  onvoorwaardelijk `setQuery`, wat de merge van generatie wisselt en elke geladen pagina weggooit —
+  `startIfNeeded` betekent nu "start hem als hij niet loopt" in plaats van "start hem opnieuw", wat
+  precies de belofte uit [DEC-069](../DECISIONS.md#dec-069) en hoofdstuk 24 is dat een geneste route
+  geen herlaadbeurt kost. En de plek: die reist via de memory uit I22.
+
+  De doccommentaren die het tegenovergestelde beweerden (`TvRootShell.child`: "switching
+  destinations never … throws away a loaded catalogue") zijn meegecorrigeerd. Een commentaar dat een
+  contract claimt dat de code niet nakomt is de duurste soort fout in dit register: hij zorgt dat
+  niemand meer kijkt.
+
+**Wie wat onthoudt, per bestemming.** Bij het sluiten van fase 7 is per bestemming nagelopen welke
+laag daadwerkelijk bewaard wordt, omdat "focusherstel werkt" op deze shell twee verschillende
+mechanismen kan betekenen en het verschil precies is waar I22 en I23 zaten. De scheidslijn is of het
+scherm gemonteerd blijft:
+
+| Oppervlak | Scherm blijft staan | Rij/sectie | Exacte kaart/tegel | Scrolloffset | Binnenkomst vanaf de balk |
+| --- | --- | --- | --- | --- | --- |
+| Home | ja — `IndexedStack` (`main_screen.dart:1190`, `_discoverKey`) | `TvBrowseRailState._hubIndex` | `TvBrowseRailState`, via `requestFocus()` (`tv_browse_rail.dart:544`) | `DiscoverScreen._scrollController` (`:156`) + de rail zelf | `focusActiveTabIfReady` → `_focusTvBrowseRailWhenReady` (`discover_screen.dart:1035,422`) |
+| Films landing | ja — `IndexedStack` (`:1198`, `_moviesKey`) | `_railKeys`, gesleuteld op `hubId` (`tv_discovery_landing_screen.dart:104`) | `_focusedGroupIdByHubId` → `initialFocusedGroupId` (`:101,226`) | `_scrollController` (`:91`) | `focusActiveTabIfReady` → `_viewAllFocus`, de paginakop (`:279`) — hoofdstuk 7.1, niet de kaart |
+| Series landing | ja — `IndexedStack` (`:1203`, `_seriesKey`) | idem (zelfde `TvDiscoveryLandingScreen`) | idem | idem | idem |
+| Search | ja — `IndexedStack` (`:1214`, `_searchKey`) | `_firstTvRailKey` (`search_screen.dart:119`) | `TvDiscoveryRailState`, eigen nodes op `groupId` | met het scherm; query en resultaten ook | `focusActiveTabIfReady` → `_searchFocusNode`, het invoerveld (`:538`) |
+| Mijn Pleya | ja — `IndexedStack` (`:1225`, `_tvMyPleyaKey`) | tegelgroepen in één scherm | `nodes.lastFocusedKey` op de eigen `FocusMemoryTracker` (`tv_my_pleya_screen.dart:204,235`) | `SingleChildScrollView`'s eigen positie (`:286`) | `focusActiveTabIfReady` → de laatst gefocuste tegel (`:235`) |
+| Alle films | **nee** — `TvNestedRoute`, alleen de actieve bestemming bouwt hem | n.v.t., één plat grid | `TvDestinationFocusMemory.groupId` → `initialFocusedGroupId` (`tv_unified_catalog_screen.dart:578`) | `TvDestinationFocusMemory.scrollOffset`, geklemd toegepast in `_scheduleRestore` (`:215`) | `focusActiveTabIfReady` → `focusedElementId`, de laatst gebruikte headeractie (hoofdstuk 7.4) |
+| Alle series | **nee** — idem | n.v.t. | idem | idem | idem |
+
+Vijf van de zeven oppervlakken bewaren dus niets *ergens anders*: ze staan in de `IndexedStack` van
+`MainScreen`, worden nooit afgebroken, en houden hun scrollpositie, hun rails en hun focusnodes
+gewoon in hun eigen `State`. Alleen de complete catalogus wordt bij een bestemmingswissel
+afgebroken, en alleen die schrijft daarom naar `TvNavigationCoordinator` — bij `deactivate`
+(`tv_unified_catalog_screen.dart:175`) en terug bij `initState` (`:156`). Dat is met opzet precies
+één schrijver per bestemming; twee zouden twee antwoorden op dezelfde vraag zijn.
+
+De kolom "binnenkomst vanaf de balk" staat er los in, omdat hij een andere vraag beantwoordt dan de
+rest van de rij en dat verschil bij het sluiten van fase 7 twee keer voor verwarring zorgde. Down
+uit de balk landt op de *primaire focus van het scherm* — een paginakop, een invoerveld, een
+headeractie — en niet meteen op een kaart. Hoofdstuk 7.1 en 7.4 schrijven dat zo voor. De onthouden
+kaart ligt één stap verder: DOWN daaruit. Een matrixrij die "exacte kaart" leest en "landt op de
+kaart" betekent, zou dus de verkeerde eis zijn.
+
+Daarnaast drie noteringen zonder rij, omdat ze geen scenario zijn maar een tekortkoming: bij het
+wegvallen van Live TV terwijl het open staat gaat Pleya wél naar Home maar zónder de korte melding
+die hoofdstuk 19 noemt; `TvLiveTvCapabilityStore` bepaalt zijn profielscope op het moment van
+schrijven in plaats van bij de aanroep, zodat een schrijfactie die over een profielwissel heen
+uitloopt in de verkeerde entry kan landen; en de vijf schermen die op TV via Mijn Pleya geopend
+worden staan óók nog in de `IndexedStack`, zodat er twee exemplaren tegelijk gemonteerd zijn.
 
 ## J. Accessibility en layoutcases
 
@@ -269,7 +465,7 @@ en `test/services/unified_grouping_service_test.dart`).
 | J2 | 4K-output | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A | open |
 | J3 | Laagste ondersteunde TV-surface | | open |
 | J4 | Overscan | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A | open |
-| J5 | Lange vertaling | test/goldens/tv_unified_catalog_golden_test.dart (`films, labels at the length a long locale produces`, `films, long titles`) — de labels hebben de lengte van de Duitse strings; een echt omgeschakelde locale is in `flutter test` niet te renderen, want elke niet-basislocale is deferred | covered |
+| J5 | Lange vertaling | test/goldens/tv_unified_catalog_golden_test.dart (`films, labels at the length a long locale produces`, `films, long titles`) — de labels hebben de lengte van de Duitse strings; een echt omgeschakelde locale is in `flutter test` niet te renderen, want elke niet-basislocale is deferred. Fase 7 voegt de topnav toe: test/widgets/tv/tv_top_navigation_test.dart (`a long locale keeps every destination on one line and the bar one row high`) en test/goldens/tv_shell_long_locale.png | covered |
 | J6 | Grote tekst | | open |
 | J7 | RTL | test/widgets/tv/tv_unified_media_grid_test.dart (`builds under a right-to-left directionality without breaking`) bewijst dat het raster onder een omgekeerde `Directionality` bouwt, de kaarten vindt en zijn prefetch nog steeds start. Dat is een guard, geen RTL-acceptatie: geen van de zestien locales van Pleya is rechts-naar-links, dus er valt vandaag geen beeld te keuren dat een gebruiker kan bereiken | open |
 | J8 | VoiceOver | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A. test/widgets/tv/tv_media_source_picker_test.dart (`a row announces its position and everything it actually shows`) en test/widgets/tv/tv_unified_media_card_semantics_test.dart leggen de semantics van een source row en van een catalogkaart vast — inclusief dat de kaart één node aanbiedt en niet titel en jaar dubbel uitspreekt — maar niet wat VoiceOver ervan maakt | open |

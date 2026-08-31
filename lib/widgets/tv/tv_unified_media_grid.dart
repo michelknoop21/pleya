@@ -71,6 +71,8 @@ class TvUnifiedMediaGrid extends StatefulWidget {
     this.onExitLeft,
     this.footer,
     this.controller,
+    this.initialFocusedGroupId,
+    this.onFocusedGroupChanged,
     this.precache,
   });
 
@@ -103,6 +105,18 @@ class TvUnifiedMediaGrid extends StatefulWidget {
 
   final ScrollController? controller;
 
+  /// Restoration: the card to come back to, by the same stable `groupId` the
+  /// nodes are keyed on (hoofdstuk 7.6). Ignored when that group is no longer
+  /// in [groups] — a title a filter removed cannot be focused, and the first
+  /// card is the honest fallback. Same shape as [TvDiscoveryRail]'s, because it
+  /// is the same contract seen on a different surface.
+  final String? initialFocusedGroupId;
+
+  /// Reports the card the remote moved to, so a screen that will be torn down
+  /// can hand it to whatever outlives it. Fires on focus, not on scroll: on
+  /// this platform focus *is* the cursor.
+  final ValueChanged<String>? onFocusedGroupChanged;
+
   /// Replaces the artwork warm-up call. Null in production, where the
   /// prefetcher uses `precacheImage`; a test injects its own to assert *which*
   /// posters a focus move warms, without a network.
@@ -118,8 +132,24 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
   final Map<String, FocusNode> _nodes = {};
 
   /// The group that currently holds focus, so a rebuild that drops it knows
-  /// where the user was standing.
+  /// where the user was standing. Seeded from
+  /// [TvUnifiedMediaGrid.initialFocusedGroupId] so a freshly built grid already
+  /// knows where DOWN out of the header belongs, before anything has been
+  /// focused at all.
   String? _focusedGroupId;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusedGroupId = _restoredGroupId();
+  }
+
+  /// The remembered card, but only while it is still in the list.
+  String? _restoredGroupId() {
+    final wanted = widget.initialFocusedGroupId;
+    if (wanted == null) return null;
+    return widget.groups.any((group) => group.groupId == wanted) ? wanted : null;
+  }
 
   late final UnifiedArtworkPrefetcher _prefetcher = UnifiedArtworkPrefetcher(
     clientFor: (serverId) => widget.clientFor?.call(serverId),
@@ -134,6 +164,10 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
   void didUpdateWidget(TvUnifiedMediaGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
     _reconcileNodes(previous: oldWidget.groups);
+    // The first page can land after this grid was built empty, which is the
+    // ordinary case on a restored mount: the remembered card only becomes
+    // resolvable once it is actually in the list.
+    _focusedGroupId ??= _restoredGroupId();
   }
 
   @override
@@ -173,7 +207,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
   /// from a detail page or closing a panel lands where the user was rather than
   /// at the top-left every time.
   void focusGrid() {
-    final remembered = _focusedGroupId;
+    final remembered = _focusedGroupId ?? _restoredGroupId();
     final node = (remembered != null ? _nodes[remembered] : null) ?? _nodes[widget.groups.firstOrNull?.groupId];
     if (node != null && node.canRequestFocus) node.requestFocus();
   }
@@ -308,6 +342,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       onFocusChange: (hasFocus) {
         if (!hasFocus) return;
         _focusedGroupId = group.groupId;
+        widget.onFocusedGroupChanged?.call(group.groupId);
         _warmAround(index);
       },
       onNavigateUp: isFirstRow ? widget.onExitTop : null,

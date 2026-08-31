@@ -89,6 +89,8 @@ class TranslationsZh extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsPleyaShareZh pleyaShare = _TranslationsPleyaShareZh._(_root);
 	@override late final _TranslationsSourcePickerZh sourcePicker = _TranslationsSourcePickerZh._(_root);
 	@override late final _TranslationsUnifiedCatalogZh unifiedCatalog = _TranslationsUnifiedCatalogZh._(_root);
+	@override late final _TranslationsTvNavigationZh tvNavigation = _TranslationsTvNavigationZh._(_root);
+	@override late final _TranslationsTvMyPleyaZh tvMyPleya = _TranslationsTvMyPleyaZh._(_root);
 }
 
 // Path: app
@@ -1768,6 +1770,47 @@ class _TranslationsUnifiedCatalogZh extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogDiscoveryZh discovery = _TranslationsUnifiedCatalogDiscoveryZh._(_root);
 }
 
+// Path: tvNavigation
+class _TranslationsTvNavigationZh extends TranslationsTvNavigationEn {
+	_TranslationsTvNavigationZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get activeDestination => '当前板块';
+}
+
+// Path: tvMyPleya
+class _TranslationsTvMyPleyaZh extends TranslationsTvMyPleyaEn {
+	_TranslationsTvMyPleyaZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get groupContent => '我的内容';
+	@override String get groupSources => '媒体库与来源';
+	@override String get groupPleya => 'Pleya';
+	@override String serversOnline({required Object total, required Object online}) => '${total} 台服务器中 ${online} 台在线';
+	@override String get noServers => '未连接服务器';
+	@override String get statusOnline => '在线';
+	@override String get statusOffline => '离线';
+	@override String get servers => '服务器';
+	@override String get activity => '活动';
+	@override String get logs => '日志与诊断';
+	@override String signedInAs({required Object name, required Object version}) => '已登录为 ${name} · Pleya ${version}';
+	@override String get watchlistSubtitle => '已保存的电影和剧集';
+	@override String get requestsSubtitle => '请求与发现';
+	@override String get downloadsSubtitle => '离线与同步规则';
+	@override String get librariesSubtitle => '媒体、合集、播放列表';
+	@override String get serversSubtitle => '连接与本地来源';
+	@override String get activitySubtitle => '正在观看、一起看、遥控';
+	@override String get settingsSubtitle => '显示、播放器、追踪器';
+	@override String get logsSubtitle => '日志文件与崩溃报告';
+	@override String get aboutSubtitle => '版本与许可';
+	@override String get logoutSubtitle => '在此设备上退出登录';
+	@override late final _TranslationsTvMyPleyaSemanticsZh semantics = _TranslationsTvMyPleyaSemanticsZh._(_root);
+}
+
 // Path: search.filters
 class _TranslationsSearchFiltersZh extends TranslationsSearchFiltersEn {
 	_TranslationsSearchFiltersZh._(TranslationsZh root) : this._root = root, super.internal(root);
@@ -2145,6 +2188,17 @@ class _TranslationsUnifiedCatalogDiscoveryZh extends TranslationsUnifiedCatalogD
 	@override String get emptyTitle => '暂时没有可发现的内容';
 	@override String get emptyBody => '没有可见的媒体库可在此显示内容。';
 	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsZh semantics = _TranslationsUnifiedCatalogDiscoverySemanticsZh._(_root);
+}
+
+// Path: tvMyPleya.semantics
+class _TranslationsTvMyPleyaSemanticsZh extends TranslationsTvMyPleyaSemanticsEn {
+	_TranslationsTvMyPleyaSemanticsZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
+	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -3581,6 +3635,30 @@ extension on TranslationsZh {
 			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '第${position}个，共${count}个',
 			'unifiedCatalog.discovery.semantics.viewAllMovies' => '查看所有电影，打开完整目录',
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => '查看所有剧集，打开完整目录',
+			'tvNavigation.activeDestination' => '当前板块',
+			'tvMyPleya.groupContent' => '我的内容',
+			'tvMyPleya.groupSources' => '媒体库与来源',
+			'tvMyPleya.groupPleya' => 'Pleya',
+			'tvMyPleya.serversOnline' => ({required Object total, required Object online}) => '${total} 台服务器中 ${online} 台在线',
+			'tvMyPleya.noServers' => '未连接服务器',
+			'tvMyPleya.statusOnline' => '在线',
+			'tvMyPleya.statusOffline' => '离线',
+			'tvMyPleya.servers' => '服务器',
+			'tvMyPleya.activity' => '活动',
+			'tvMyPleya.logs' => '日志与诊断',
+			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => '已登录为 ${name} · Pleya ${version}',
+			'tvMyPleya.watchlistSubtitle' => '已保存的电影和剧集',
+			'tvMyPleya.requestsSubtitle' => '请求与发现',
+			'tvMyPleya.downloadsSubtitle' => '离线与同步规则',
+			'tvMyPleya.librariesSubtitle' => '媒体、合集、播放列表',
+			'tvMyPleya.serversSubtitle' => '连接与本地来源',
+			'tvMyPleya.activitySubtitle' => '正在观看、一起看、遥控',
+			'tvMyPleya.settingsSubtitle' => '显示、播放器、追踪器',
+			'tvMyPleya.logsSubtitle' => '日志文件与崩溃报告',
+			'tvMyPleya.aboutSubtitle' => '版本与许可',
+			'tvMyPleya.logoutSubtitle' => '在此设备上退出登录',
+			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
+			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
 			_ => null,
 		};
 	}

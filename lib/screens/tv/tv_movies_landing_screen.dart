@@ -14,14 +14,24 @@ import 'tv_discovery_landing_screen.dart';
 import 'tv_movies_screen.dart';
 
 class TvMoviesLandingScreen extends StatelessWidget {
-  const TvMoviesLandingScreen({super.key, this.onManageServers});
+  const TvMoviesLandingScreen({super.key, this.onManageServers, this.landingKey, this.onOpenAll});
 
   /// Hoofdstuk 14.7's "Servers beheren", forwarded to both this landing's own
   /// activation and the fase-5 catalog behind "Alles bekijken".
   final VoidCallback? onManageServers;
 
+  /// Placed on the inner [TvDiscoveryLandingScreen] rather than on this
+  /// wrapper, because that is the `State` the shell's focus contract talks to:
+  /// this widget is stateless and its own key would resolve to nothing.
+  final Key? landingKey;
+
+  /// Forwarded to [TvDiscoveryLandingScreen.onOpenAll].
+  final VoidCallback? onOpenAll;
+
   @override
   Widget build(BuildContext context) => TvDiscoveryLandingScreen(
+    key: landingKey,
+    onOpenAll: onOpenAll,
     title: t.unifiedCatalog.moviesTitle,
     allTitle: t.unifiedCatalog.discovery.allMovies,
     viewAllSemanticLabel: t.unifiedCatalog.discovery.semantics.viewAllMovies,

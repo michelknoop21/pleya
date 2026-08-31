@@ -1866,5 +1866,35 @@
         "viewAllSeries": "Alle series bekijken, opent de volledige catalogus"
       }
     }
+  },
+  "tvNavigation": {
+    "activeDestination": "huidige sectie"
+  },
+  "tvMyPleya": {
+    "groupContent": "Mijn content",
+    "groupSources": "Bibliotheken en bronnen",
+    "groupPleya": "Pleya",
+    "serversOnline": "${online} van ${total} servers online",
+    "noServers": "Geen servers verbonden",
+    "statusOnline": "Online",
+    "statusOffline": "Offline",
+    "servers": "Servers",
+    "activity": "Activiteit",
+    "logs": "Logs en diagnose",
+    "signedInAs": "Aangemeld als ${name} · Pleya ${version}",
+    "watchlistSubtitle": "Bewaarde films en series",
+    "requestsSubtitle": "Verzoeken en ontdekken",
+    "downloadsSubtitle": "Offline en synchronisatieregels",
+    "librariesSubtitle": "Media, collecties, afspeellijsten",
+    "serversSubtitle": "Verbindingen en lokale bronnen",
+    "activitySubtitle": "Nu kijken, samen kijken, remote",
+    "settingsSubtitle": "Weergave, speler, trackers",
+    "logsSubtitle": "Logbestanden en crashrapportage",
+    "aboutSubtitle": "Versie en licenties",
+    "logoutSubtitle": "Afmelden op dit apparaat",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
   }
 }

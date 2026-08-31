@@ -1549,5 +1549,35 @@
         "viewAllSeries": "Visa alla serier, öppnar hela katalogen"
       }
     }
+  },
+  "tvNavigation": {
+    "activeDestination": "aktuellt avsnitt"
+  },
+  "tvMyPleya": {
+    "groupContent": "Mitt innehåll",
+    "groupSources": "Bibliotek och källor",
+    "groupPleya": "Pleya",
+    "serversOnline": "${online} av ${total} servrar online",
+    "noServers": "Inga servrar anslutna",
+    "statusOnline": "Online",
+    "statusOffline": "Offline",
+    "servers": "Servrar",
+    "activity": "Aktivitet",
+    "logs": "Loggar och diagnostik",
+    "signedInAs": "Inloggad som ${name} · Pleya ${version}",
+    "watchlistSubtitle": "Sparade filmer och serier",
+    "requestsSubtitle": "Förfrågningar och upptäck",
+    "downloadsSubtitle": "Offline och synkroniseringsregler",
+    "librariesSubtitle": "Media, samlingar, spellistor",
+    "serversSubtitle": "Anslutningar och lokala källor",
+    "activitySubtitle": "Ses just nu, se tillsammans, fjärrkontroll",
+    "settingsSubtitle": "Visning, spelare, trackers",
+    "logsSubtitle": "Loggfiler och kraschrapporter",
+    "aboutSubtitle": "Version och licenser",
+    "logoutSubtitle": "Logga ut på den här enheten",
+    "semantics": {
+      "tile": "${title}. ${subtitle}",
+      "tileWithCount": "${title}. ${subtitle}. ${count}"
+    }
   }
 }

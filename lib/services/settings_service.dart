@@ -630,6 +630,18 @@ class SettingsService extends BaseSharedPreferencesService {
     ),
   );
 
+  /// Whether a profile is known to have Live TV — keyed by profile scope.
+  ///
+  /// A capability, not an availability: read and written through
+  /// `TvLiveTvCapabilityStore`, which explains why a negative poll may not
+  /// clear it. One entry per profile, so no cap is needed.
+  static final tvLiveTvCapability = JsonPref<Map<String, bool>>(
+    'tv_live_tv_capability',
+    defaultValue: const {},
+    encode: json.encode,
+    decode: (raw) => (raw as Map<String, dynamic>).map((key, value) => MapEntry(key, value as bool)),
+  );
+
   static final preferredUnifiedServer = JsonPref<Map<String, String>>(
     'preferred_unified_server',
     defaultValue: const {},

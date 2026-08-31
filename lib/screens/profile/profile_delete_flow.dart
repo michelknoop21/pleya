@@ -12,6 +12,7 @@ import '../../profiles/profile_registry.dart';
 import '../../providers/download_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../services/storage_service.dart';
+import '../../navigation/tv/tv_live_tv_capability.dart';
 import '../../services/unified_catalog/preferred_server_store.dart';
 import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../services/unified_catalog/source_preference_store.dart';
@@ -64,6 +65,11 @@ Future<void> deleteProfile(BuildContext context, Profile profile) async {
   // library selection describes what someone browses, so it leaves with them
   // rather than greeting the next profile on this device.
   await UnifiedCatalogQueryStore.clearForProfileScope(storage.userScopeForProfileId(profile.id));
+  // And what this profile's servers turned out to offer ([DEC-069]): a
+  // remembered Live TV capability describes someone else's tuner, and a scope
+  // that gets reused would otherwise hand the next profile a navigation item
+  // for a source it has never seen.
+  await TvLiveTvCapabilityStore.clearForProfileScope(storage.userScopeForProfileId(profile.id));
   await removeAllProfileConnectionsAndCleanup(
     profileId: profile.id,
     profileConnections: pcRegistry,
