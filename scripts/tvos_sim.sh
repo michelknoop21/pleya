@@ -483,6 +483,12 @@ case "${1:-}" in
     # module dependency: 'Flutter'" — een fout die nergens naar de oorzaak
     # wijst. Het script is idempotent, dus altijd draaien is goedkoop.
     tvos/scripts/fetch_engine.sh >/dev/null
+    # tvos/Pods/ staat in .gitignore, dus een verse checkout (of hosted CI-
+    # runner) heeft hem nooit. Zonder deze stap faalt xcodebuild pas diep in
+    # de build op "Unable to load contents of file list:
+    # .../Pods-Runner-frameworks-Debug-input-files.xcfilelist", wat naar een
+    # kapotte build lijkt in plaats van naar ontbrekende Pods. Ook idempotent.
+    tvos/scripts/pod_install.sh >/dev/null
     xcodebuild -workspace tvos/Runner.xcworkspace -scheme Runner -configuration Debug \
       -destination 'generic/platform=tvOS Simulator' -derivedDataPath tvos/build/dd \
       build CODE_SIGNING_ALLOWED=NO
