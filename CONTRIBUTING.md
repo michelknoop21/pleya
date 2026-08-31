@@ -99,7 +99,8 @@ scripts/tvos_sim.sh check-keyboard  # regressietest: Menu sluit het toetsenbord
 Punten die anders tijd kosten:
 
 - **Installeer `idb` voor invoer**:
-  `brew trust facebook/fb && brew install idb-companion && pip install fb-idb`.
+  `brew install facebook/fb/idb` (metapackage uit de `facebook/fb`-tap, haalt
+  zowel de `idb`-cli als `idb_companion` binnen).
   idb injecteert HID-events rechtstreeks in de simulator: geen venster nodig,
   het werkt met een vergrendeld scherm en het pikt je focus niet af, dus je kunt
   gewoon doorwerken terwijl een test loopt. Zonder idb valt het script terug op

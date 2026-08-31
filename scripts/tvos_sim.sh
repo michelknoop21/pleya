@@ -464,7 +464,7 @@ case "${1:-}" in
         applescript)
           echo "invoer:    OK via AppleScript — LET OP: elke druk activeert Simulator en"
           echo "           pakt je focus. Installeer idb om dat te voorkomen:"
-          echo "           brew trust facebook/fb && brew install idb-companion && pip install fb-idb"
+          echo "           brew install facebook/fb/idb"
           ;;
         none)
           echo "invoer:    NIET beschikbaar. Geen idb, en het Mac-scherm is vergrendeld of"

@@ -168,7 +168,7 @@ jobs:
     runs-on: macos-26
     permissions:
       contents: read
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -195,11 +195,28 @@ jobs:
         working-directory: pleya_verify/runner
         run: dart pub get
 
-      - name: Install idb (best-effort, driver requires it for HID input)
+      - name: Install idb (facebook/fb tap, required for Siri-Remote HID input)
         run: |
-          brew trust facebook/fb || true
-          brew install idb-companion
-          python3 -m pip install --break-system-packages fb-idb || python3 -m pip install --user fb-idb
+          brew tap facebook/fb
+          brew trust --tap facebook/fb
+          brew install facebook/fb/idb
+
+      - name: Verify idb toolchain
+        run: |
+          which idb
+          which idb_companion
+          idb --help
+          idb_companion --version
+
+      - name: Simulator runtimes (diagnostic) + ensure tvOS runtime
+        run: |
+          xcrun simctl list runtimes
+          xcrun simctl list devices available
+          if ! xcrun simctl list runtimes | grep -q tvOS; then
+            echo "no tvOS runtime on this image; attempting one-time platform download"
+            sudo xcodebuild -downloadPlatform tvOS || \
+              echo "tvOS platform download failed; the scenario below will report this honestly"
+          fi
 
       - name: tvos_sim.sh doctor
         run: scripts/tvos_sim.sh doctor --json || true
