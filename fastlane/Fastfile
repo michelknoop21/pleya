@@ -15,13 +15,59 @@ ASC_PLATFORM = {
   "osx" => "MAC_OS",
 }.freeze
 
+# De drie ASC-waarden, één keer uit de omgeving gelezen en er daarna meteen
+# uit verwijderd.
+#
+# Dat weghalen is de hele reden dat deze helper bestaat. fastlane laadt .env in
+# ENV, ENV gaat mee naar elk kindproces, en xcodebuild echoot bij *iedere* Run
+# Script-fase de volledige omgeving als `export NAAM=waarde`. Een Flutter-project
+# heeft altijd zo'n fase (xcode_backend.sh), dus zolang deze drie in ENV staan
+# belandt ASC_KEY_CONTENT — de base64 van de .p8, oftewel de private key zelf —
+# integraal in het buildlog, naast ASC_ISSUER_ID en ASC_KEY_ID. Buildlogs worden
+# gedeeld en bewaard; een private key hoort daar niet in.
+#
+# Elke lane roept `ensure_build_number` als eerste aan, en die komt via
+# [asc_api_key] hier langs, dus het opschonen gebeurt vóór de eerste build.
+def asc_credentials
+  $asc_credentials ||= begin
+    creds = {
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_content: ENV.fetch("ASC_KEY_CONTENT"),
+    }.freeze
+    %w[ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_CONTENT].each { |name| ENV.delete(name) }
+    creds
+  end
+end
+
 def asc_api_key
+  creds = asc_credentials
   app_store_connect_api_key(
-    key_id: ENV.fetch("ASC_KEY_ID"),
-    issuer_id: ENV.fetch("ASC_ISSUER_ID"),
-    key_content: ENV.fetch("ASC_KEY_CONTENT"),
+    key_id: creds[:key_id],
+    issuer_id: creds[:issuer_id],
+    key_content: creds[:key_content],
     is_key_content_base64: true,
   )
+end
+
+# Map waar [auth_xcargs] de gedecodeerde .p8 neerzet, uniek per proces.
+#
+# Het bestand zelf houdt de canonieke naam AuthKey_<KEYID>.p8 — het pad gaat als
+# -authenticationKeyPath naar xcodebuild, dus de naam mag niet gaan zwerven. Het
+# procesnummer zit daarom in de map en niet in de bestandsnaam. Dat maakt
+# opruimen ook exact: een parallelle fastlane-run heeft zijn eigen map en raakt
+# die van ons niet, en wij niet die van hem.
+def asc_key_dir
+  File.join(PROJECT_ROOT, "build", "fastlane", "asc-key-#{Process.pid}")
+end
+
+# De gedecodeerde .p8 die [auth_xcargs] wegschrijft. xcodebuild wil een pad, geen
+# waarde, dus de key staat tijdens de build in platte tekst op schijf; hij hoort
+# er daarna niet te blijven liggen.
+def remove_decoded_asc_key
+  FileUtils.rm_rf(asc_key_dir)
+rescue StandardError => e
+  UI.important("Kon #{asc_key_dir} niet opruimen: #{e.message}")
 end
 
 # Flutter shelt uit naar `pod`; fastlane's eigen GEM_HOME/GEM_PATH/RUBYOPT
@@ -47,13 +93,26 @@ end
 # Cloud-signing flags voor xcodebuild: automatic signing werkt dan headless
 # en maakt zonodig Apple Distribution certs + App Store profielen aan.
 def auth_xcargs
-  key_path = File.join(PROJECT_ROOT, "build", "AuthKey_#{ENV.fetch('ASC_KEY_ID')}.p8")
-  FileUtils.mkdir_p(File.dirname(key_path))
-  File.write(key_path, Base64.decode64(ENV.fetch("ASC_KEY_CONTENT")))
+  creds = asc_credentials
+  key_path = File.join(asc_key_dir, "AuthKey_#{creds[:key_id]}.p8")
+  FileUtils.mkdir_p(asc_key_dir)
+  # De mode-parameter van mkdir_p geldt alleen bij aanmaken, en deze map kan al
+  # bestaan (tweede lane in dezelfde run). Hier mag het wél een losse chmod
+  # zijn: de map is op dit moment nog leeg, de key komt er hieronder pas in.
+  File.chmod(0o700, asc_key_dir)
+  # De rechten staan op de open-aanroep en niet op een chmod erna: `File.write`
+  # maakt het bestand op umask (meestal 0644) aan en pas de chmod haalt dat weg,
+  # en daartussen is de private key zelf wereldleesbaar. De mode van `File.open`
+  # geldt alleen bij aanmaken, dus een restant van een vorige run moet eerst weg.
+  # Opgeruimd door [remove_decoded_asc_key] als de lane klaar is.
+  FileUtils.rm_f(key_path)
+  File.open(key_path, File::WRONLY | File::CREAT | File::EXCL, 0o600) do |f|
+    f.write(Base64.decode64(creds[:key_content]))
+  end
   "-allowProvisioningUpdates " \
     "-authenticationKeyPath #{key_path} " \
-    "-authenticationKeyID #{ENV.fetch('ASC_KEY_ID')} " \
-    "-authenticationKeyIssuerID #{ENV.fetch('ASC_ISSUER_ID')}"
+    "-authenticationKeyID #{creds[:key_id]} " \
+    "-authenticationKeyIssuerID #{creds[:issuer_id]}"
 end
 
 # Bepaalt het buildnummer voor één platform en houdt platforms in de pas.
@@ -156,12 +215,20 @@ end
 # versierecord: die blijft in TestFlight staan tot iemand hem selecteert. Dat
 # ging fout bij de 2.1(a)-hertest — de versies hingen nog aan de afgewezen build
 # 156 terwijl 220 al een maand klaarstond. Sindsdien doen de lanes het zelf.
+#
+# Leest via [asc_credentials] en niet uit ENV: die drie namen bestaan daar op dit
+# moment niet meer. Elke lane begint met `ensure_build_number`, dat komt langs
+# `asc_api_key` en dus langs `asc_credentials`, en die verwijdert ze. Een
+# `ENV.fetch` hier gaf een KeyError die `attach_after_upload` opvangt en alleen
+# logt — de build stond dan wel op TestFlight maar werd stil nooit aan het
+# versierecord gekoppeld, precies de fout waar deze helper voor bestaat.
 def spaceship_app
   $spaceship_app ||= begin
+    creds = asc_credentials
     Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
-      key_id: ENV.fetch("ASC_KEY_ID"),
-      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
-      key: Base64.decode64(ENV.fetch("ASC_KEY_CONTENT")),
+      key_id: creds[:key_id],
+      issuer_id: creds[:issuer_id],
+      key: Base64.decode64(creds[:key_content]),
     )
     app = Spaceship::ConnectAPI::App.find(BUNDLE_ID)
     UI.user_error!("App #{BUNDLE_ID} niet gevonden in App Store Connect") unless app
@@ -826,4 +893,14 @@ lane :beta do
     UI.important("Later herstellen met: fastlane attach_builds platform:#{platform} build:#{number}")
   end
   UI.user_error!("TestFlight upload mislukt voor: #{failures.join(', ')}") unless failures.empty?
+end
+
+# Ook na een gefaalde lane: de gedecodeerde private key mag niet blijven staan
+# omdat de build halverwege stukliep.
+after_all do |_lane|
+  remove_decoded_asc_key
+end
+
+error do |_lane, _exception|
+  remove_decoded_asc_key
 end
