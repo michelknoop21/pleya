@@ -1,0 +1,4 @@
+name: fixture.malformed_yaml_syntax
+target: macos
+steps:
+  - assert: {id: screen.main

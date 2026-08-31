@@ -6,6 +6,7 @@ import 'package:pleya_verify_runner/src/driver/macos_driver.dart';
 import 'package:pleya_verify_runner/src/driver/tvos_simulator_driver.dart';
 import 'package:pleya_verify_runner/src/driver/verification_driver.dart';
 import 'package:pleya_verify_runner/src/engine/run_scenario.dart';
+import 'package:pleya_verify_runner/src/redact.dart';
 import 'package:pleya_verify_runner/src/scenario/automation_id_catalog.dart';
 import 'package:pleya_verify_runner/src/scenario/model.dart';
 import 'package:pleya_verify_runner/src/scenario/parser.dart';
@@ -121,6 +122,36 @@ Future<void> _runScenarioCommand(List<String> args, {required bool jsonOutput}) 
     return;
   }
   final scenarioPath = args.first;
+  try {
+    await _runScenarioCommandBody(scenarioPath, jsonOutput: jsonOutput);
+  } catch (e, st) {
+    // Every exception the body below could throw and doesn't already turn
+    // into a specific PASS/FAILED/ERROR envelope — a malformed
+    // automation_ids.yaml, an unexpected I/O failure while reading the
+    // scenario file, anything else — still has to answer with exactly the
+    // one JSON object `--json` promises, never a raw stack trace on stdout
+    // and never an uncaught Future error with no envelope at all. This is
+    // the top-level backstop for that promise, not a substitute for a
+    // narrower catch closer to where something can actually go wrong.
+    _emitRunResult(
+      jsonOutput: jsonOutput,
+      scenarioPath: scenarioPath,
+      exitCodeValue: 70, // EX_SOFTWARE
+      result: 'ERROR',
+      failureMessage: redact('$e'),
+      humanText: 'run: unexpected error: ${redact('$e')}',
+      humanIsError: true,
+    );
+    // Diagnostic only, stderr-only, and only the stack trace half — the
+    // message itself already reached the caller above through
+    // failure_message/humanText. Redacted for the same reason every other
+    // failure message in this tool is: `$st` can quote source lines that
+    // themselves quote a URL or header.
+    stderr.writeln(redact('$st'));
+  }
+}
+
+Future<void> _runScenarioCommandBody(String scenarioPath, {required bool jsonOutput}) async {
   final file = File(scenarioPath);
   if (!file.existsSync()) {
     _emitRunResult(
@@ -241,6 +272,23 @@ Future<void> _runValidate(List<String> args, {required bool jsonOutput}) async {
     return;
   }
 
+  try {
+    await _runValidateBody(file, jsonOutput: jsonOutput);
+  } catch (e) {
+    // Same backstop as `_runScenarioCommand`'s catch — a malformed
+    // automation_ids.yaml or any other unexpected failure here must still
+    // produce the one JSON error object `--json` promises, not an
+    // uncaught Future error with nothing on stdout at all.
+    _reportErrors(
+      file.path,
+      [ScenarioError(sourcePath: file.path, message: 'unexpected error: ${redact('$e')}')],
+      jsonOutput: jsonOutput,
+    );
+    exitCode = 70; // EX_SOFTWARE
+  }
+}
+
+Future<void> _runValidateBody(File file, {required bool jsonOutput}) async {
   Scenario scenario;
   try {
     scenario = parseScenarioFile(file);

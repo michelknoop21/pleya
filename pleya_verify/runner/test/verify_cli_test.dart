@@ -31,6 +31,18 @@ void main() {
     expect((errors.single as Map<String, Object?>)['message'], contains('requires a timeout field'));
   });
 
+  test('validate --json on a scenario the parser rejects with a raw exception still emits one clean error object', () async {
+    // Same backstop as the `run --json` case below, for `_runValidate`.
+    final result = await _run(['validate', 'test/fixtures/malformed_yaml_syntax.yaml', '--json']);
+    expect(result.exitCode, 70, reason: 'stderr: ${result.stderr}');
+    final lines = (result.stdout as String).trim().split('\n');
+    expect(lines, hasLength(1));
+    final decoded = jsonDecode(lines.single) as Map<String, Object?>;
+    expect(decoded['ok'], false);
+    final errors = decoded['errors'] as List<Object?>;
+    expect((errors.single as Map<String, Object?>)['message'], contains('parsing a flow mapping'));
+  });
+
   test('validate on a missing file exits with EX_NOINPUT', () async {
     final result = await _run(['validate', 'test/fixtures/does_not_exist.yaml']);
     expect(result.exitCode, 66);
@@ -81,6 +93,28 @@ void main() {
     expect(errors, isNotEmpty);
     expect((errors.single as Map<String, Object?>)['path'], 'test/fixtures/invalid_setup_verb.yaml');
   });
+
+  test(
+    'run --json on a scenario the parser rejects with a raw exception still emits one clean ERROR envelope',
+    () async {
+      // `test/fixtures/malformed_yaml_syntax.yaml` fails at `loadYamlNode`
+      // itself — a YamlException, not the ScenarioParseException
+      // `_runScenarioCommandBody`'s narrower catch expects. Before the
+      // top-level dispatch/catch in bin/verify.dart, this crashed main()
+      // uncaught: no JSON on stdout at all, just a stack trace and a
+      // generic nonzero exit. Proves the backstop, not the narrower catch.
+      final result = await _run(['run', 'test/fixtures/malformed_yaml_syntax.yaml', '--json']);
+      expect(result.exitCode, 70, reason: 'stderr: ${result.stderr}');
+      // Exactly one line of JSON on stdout — never a raw stack trace mixed
+      // in, and never more than the single envelope the contract promises.
+      final lines = (result.stdout as String).trim().split('\n');
+      expect(lines, hasLength(1));
+      final decoded = jsonDecode(lines.single) as Map<String, Object?>;
+      expect(decoded['ok'], false);
+      expect(decoded['result'], 'ERROR');
+      expect(decoded['failure_message'], contains('parsing a flow mapping'));
+    },
+  );
 
   test('run --json on a scenario with no implemented driver reports ERROR with scenario/target populated', () async {
     final result = await _run(['run', 'test/fixtures/valid_scenario_unknown_target.yaml', '--json']);
