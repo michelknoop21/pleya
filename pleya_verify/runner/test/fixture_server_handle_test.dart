@@ -77,4 +77,85 @@ void main() {
 
     expect((await fixture.verifyState())['itemCount'], first);
   });
+
+  group('control-plane calls are bounded', () {
+    late HttpServer deadServer;
+    late Process dummyProcess;
+    late FixtureServerHandle handleAgainstDeadServer;
+
+    setUp(() async {
+      // A real socket that accepts every connection and then never answers
+      // — the "endpoint/server die accepteert maar niet antwoordt" case:
+      // proves _controlGet/_controlPost fail fast rather than hang forever,
+      // against a real hung request rather than a mocked-out Future.
+      deadServer = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      deadServer.listen((request) {
+        // Deliberately never touches request.response — the connection
+        // just sits open past whatever deadline the test below sets.
+      });
+      dummyProcess = await Process.start(Platform.resolvedExecutable, const ['--version']);
+      handleAgainstDeadServer = FixtureServerHandle.debugForTesting(
+        process: dummyProcess,
+        port: deadServer.port,
+        controlToken: 'irrelevant-for-this-test',
+        timeout: const Duration(milliseconds: 300),
+      );
+    });
+
+    tearDown(() async {
+      await deadServer.close(force: true);
+    });
+
+    test('a GET control call that never gets a response times out', () async {
+      await expectLater(
+        handleAgainstDeadServer.verifyState(),
+        throwsA(
+          isA<FixtureControlTimeoutException>().having((e) => e.path, 'path', '/__verify/state'),
+        ),
+      );
+    });
+
+    test('a POST control call that never gets a response times out', () async {
+      await expectLater(
+        handleAgainstDeadServer.seed('catalog.shows.v1'),
+        throwsA(isA<FixtureControlTimeoutException>().having((e) => e.path, 'path', '/__verify/seed')),
+      );
+    });
+  });
+
+  test('start() kills the child process on a malformed boot line, rather than leaving it running', () async {
+    // A package dir with a `bin/serve.dart` that immediately prints
+    // something that is not the {port, controlToken} JSON start() expects,
+    // then hangs — exercises the same catch-and-kill path start()'s doc
+    // covers for every startup failure (timeout, early stdout close,
+    // malformed JSON, missing fields), without paying for the real 30s
+    // boot-line timeout to prove it.
+    final packageDir = Directory.systemTemp.createTempSync('pleya-verify-fixture-start-orphan-test');
+    addTearDown(() {
+      if (packageDir.existsSync()) packageDir.deleteSync(recursive: true);
+    });
+    File(
+      '${packageDir.path}/pubspec.yaml',
+    ).writeAsStringSync('name: fake_fixture_server\nenvironment:\n  sdk: ">=3.0.0 <4.0.0"\n');
+    Directory('${packageDir.path}/bin').createSync();
+    File('${packageDir.path}/bin/serve.dart').writeAsStringSync('''
+import 'dart:io';
+void main() {
+  // A pid file so the test can watch it, then a line start() cannot
+  // decode as JSON, then a hang — proves the process is actually killed
+  // rather than merely that start() eventually throws.
+  File('pid').writeAsStringSync('\$pid');
+  print('not valid json');
+  sleep(const Duration(hours: 1));
+}
+''');
+
+    await expectLater(FixtureServerHandle.start(fixtureServerPackageDir: packageDir), throwsA(anything));
+
+    final pidFile = File('${packageDir.path}/pid');
+    expect(pidFile.existsSync(), isTrue, reason: 'the child should have started and announced its own pid');
+    final pid = pidFile.readAsStringSync().trim();
+    final aliveCheck = await Process.run('kill', ['-0', pid]);
+    expect(aliveCheck.exitCode, isNot(0), reason: 'pid $pid should not still be running after start() threw');
+  }, timeout: const Timeout(Duration(seconds: 30)));
 }

@@ -106,12 +106,25 @@ class VerifyCli {
 
   const VerifyCli({required this.runner, required this.runnerPackageDir});
 
+  /// Runs [runner] and turns a [ProcessRunTimeoutException] into a
+  /// [VerifyCliInfraError] — the same "the subprocess itself could not be
+  /// trusted" category as a non-zero exit or non-JSON stdout below, never a
+  /// scenario result. [RealProcessRunner] has already killed the child by
+  /// the time this exception reaches here; this is purely about reporting.
+  Future<ProcessRunResult> _runBounded(List<String> args) async {
+    try {
+      return await runner.run(args, workingDirectory: runnerPackageDir);
+    } on ProcessRunTimeoutException catch (e) {
+      throw VerifyCliInfraError('verify CLI "${args.join(' ')}" $e');
+    }
+  }
+
   /// Lists every scenario the CLI itself can discover under its default
   /// scenarios directory, the same call `pleya_verify/scenarios/README.md`
   /// already documents as "used by CI and the MCP layer".
   Future<List<ScenarioListEntry>> listScenarios() async {
     final args = ['run', 'bin/verify.dart', 'list', 'scenarios', '--json'];
-    final result = await runner.run(args, workingDirectory: runnerPackageDir);
+    final result = await _runBounded(args);
     if (result.exitCode != 0) {
       throw VerifyCliInfraError(
         'verify CLI "list scenarios --json" exited ${result.exitCode}: ${result.stderr.trim()}',
@@ -153,7 +166,7 @@ class VerifyCli {
     final scenarioPath = matches.single.path;
 
     final args = ['run', 'bin/verify.dart', 'run', scenarioPath, '--json'];
-    final result = await runner.run(args, workingDirectory: runnerPackageDir);
+    final result = await _runBounded(args);
     final command = 'cd pleya_verify/runner && dart ${args.join(' ')}';
 
     final Object? decoded;
