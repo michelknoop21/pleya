@@ -71,6 +71,13 @@ under `Notes`.
 - back-suppressie causaal maken, filters-scenario eerlijk hernoemen, evidence-gat dicht
 - geen --enforce-lockfile voor pleya_verify subpackages
 - evidence-artifact upload sluit app-installcaches uit
+- idb-installatie in tvOS-gate repareren, DEC-066 rechtzetten
+- tvOS build ontbrak pod_install.sh voor niet-gecommitte tvos/Pods/
+- sluit de automation-controlplane fail-closed af
+- maak evidence-redactie structureel in plaats van exact-match
+- bind elke subprocess- en fixture-controlcall aan een echte deadline
+- garandeer één JSON-envelope op run/validate --json, ook bij een onverwachte crash
+- verwijder set_pref/focus/back uit de scenario-vocabulaire
 <!-- END GENERATED -->
 
 ### Fixed
