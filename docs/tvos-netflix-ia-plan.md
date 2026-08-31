@@ -1,7 +1,10 @@
 # Pleya Unified TV 2026 — Netflix-referentie IA/UX-plan
 
-**Status:** goedgekeurd op 2026-08-30, met bindende correcties van Michel verwerkt.
-Vastgelegd in [DEC-064](DECISIONS.md#dec-064); hoofdstuk 10, 27 en 33.6 van de baseline
+**Status:** goedgekeurd op 2026-08-30, met bindende correcties van Michel verwerkt; de
+**visuele north star is op 30-08-2026 bevroren** — acht referentiebeelden in
+`docs/assets/tvos-unified/northstar/`, bindend per hoofdstuk 33 van de baseline en
+[DEC-065](DECISIONS.md#dec-065).
+Vastgelegd in [DEC-064](DECISIONS.md#dec-064); hoofdstuk 10, 27 en 33.10 (voorheen 33.6) van de baseline
 zijn navenant geamendeerd. Dit document is het uitvoeringsplan, niet meer het voorstel.
 **Datum:** 2026-08-30
 **Basis:** origin `00d22e1`, fase 5 in uitvoering.
@@ -205,7 +208,7 @@ positie gereserveerd op basis van *profielcapability*, niet van live serverstatu
 **Hero-gedrag:** links/rechts = vorige/volgende featured; omlaag = eerste rail; omhoog =
 topnav. Autorotatie ~8s (bestaand contract), **pauzeert** bij interactie, focusgebruik,
 open modal en achtergrond-lifecycle; hervat niet direct na interactie. Geen audio.
-Geen permanente dots — hooguit een tijdelijke segmentindicator (ch. 9.6/33.6 #6).
+Geen permanente dots — hooguit een tijdelijke segmentindicator (ch. 9.6/33.10 #6).
 
 **Hero mag de contentfocus nooit stelen** (prompt §10, §40). Dat is precies de omkering
 van het huidige `_spotlightItem`-gedrag, waar rowfocus de hero stuurde.
@@ -378,7 +381,7 @@ Onder de nieuwe acceptatie was dit een korte lijst — geen redesign. Stand bij 
    gebleven. **J7 (RTL)** heeft nu de vindplaats van de guard erbij staan maar blijft `open` —
    geen van de zestien locales is rechts-naar-links, dus er is geen bereikbaar beeld te keuren.
    **J16 is nieuw** (zie punt 5).
-3. ✅ 33.6 #7 en #8 staan op *besloten* (DEC-064, sectie 20).
+3. ✅ 33.10 (voorheen 33.6) #7 en #8 staan op *besloten* (DEC-064, sectie 20).
 4. ✅ Route herbestemd op papier: `TvMoviesScreen`/`TvSeriesScreen` zijn vanaf nu de
    *Alles bekijken*-bestemming, niet de eindlanding. Tot fase 6 blijven ze bereikbaar via
    de bestaande topnav-items; dat is een bewuste tussenstate, geen eindbeeld.
@@ -475,7 +478,7 @@ anders ontstaat exact de verwarring die dit plan net heeft opgelost:
 | ch. 10 titel | "Films en Series" | Splitsen: landing (discovery) versus complete catalogus |
 | ch. 27 fase 5 | "Films en Series GUI" | "Unified Complete Catalog — All Movies/All Series" |
 | ch. 27 fase 6 | "Home-, Search- en Continue Watching-projectie" | "+ Movies/Series landing projections, `TvDiscoveryRail`" |
-| ch. 33.6 #7/#8 | `Open` | `Besloten` (zie hieronder) |
+| ch. 33.10 #7/#8 | `Open` | `Besloten` (zie hieronder) |
 
 Ch. 23.1 vraagt voor een afwijking van de baseline een *roadmap deviation proposal*. Dit
 besluit is door Michel zelf genomen en vastgelegd; ik stel voor het als amendement in
@@ -514,10 +517,10 @@ nieuwe landing ervóór.
 
 ### Overige openstaande punten — nu gesloten
 
-- **33.6 #7** — "Gepland"/"Beschikbaar 24 mei"-badges in het filmgrid: **niet tonen**.
+- **33.10 #7** — "Gepland"/"Beschikbaar 24 mei"-badges in het filmgrid: **niet tonen**.
   Onder §30 (geen fake contentsemantiek) mag Pleya geen release-status presenteren die het
   niet betrouwbaar heeft. Als Seerr-data dat later wél levert is dat een eigen voorstel.
-- **33.6 #8** — "Onthoud mijn keuze" per titel in de source picker: **niet bouwen**.
+- **33.10 #8** — "Onthoud mijn keuze" per titel in de source picker: **niet bouwen**.
   §32 houdt activation op het bestaande fase-4-contract: preferred server is globaal per
   profiel, last-used source stuurt alleen picker-focus. Een derde per-titel opt-in bestaat
   in geen enkel hoofdstuk en wordt niet geïntroduceerd.

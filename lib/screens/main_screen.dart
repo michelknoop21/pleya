@@ -69,8 +69,8 @@ import 'seerr/seerr_discover_screen.dart';
 import 'downloads/downloads_screen.dart';
 import 'settings/settings_screen.dart';
 import 'profile/profile_switch_screen.dart';
-import 'tv/tv_movies_screen.dart';
-import 'tv/tv_series_screen.dart';
+import 'tv/tv_movies_landing_screen.dart';
+import 'tv/tv_series_landing_screen.dart';
 import '../services/system_shelf_service.dart';
 import '../watch_together/watch_together.dart';
 
@@ -1099,15 +1099,23 @@ class _MainScreenState extends State<MainScreen>
     return [
       for (final tab in _getVisibleTabs(offline))
         switch (tab.id) {
-          NavigationTabId.discover => DiscoverScreen(key: _discoverKey),
-          // Fase 5 of docs/tvos-unified-experience.md. `onManageServers` is
-          // hoofdstuk 14.7's escape from a source picker with nothing
-          // reachable, and only this shell can change tab.
-          NavigationTabId.movies => TvMoviesScreen(
+          // `onManageServers` is hoofdstuk 14.7's escape from a source
+          // picker with nothing reachable, and only this shell can change
+          // tab — same reasoning as the discovery landings below, extended
+          // to the Home hero's fase-6 activation wiring.
+          NavigationTabId.discover => DiscoverScreen(
+            key: _discoverKey,
+            onManageServers: () => _selectTab(NavigationTabId.settings),
+          ),
+          // Fase 6 of docs/tvos-unified-experience.md (hoofdstuk 10.2a,
+          // DEC-064): the discovery landing, one level above the fase-5
+          // complete catalog those screens still are behind "Alles
+          // bekijken".
+          NavigationTabId.movies => TvMoviesLandingScreen(
             key: _moviesKey,
             onManageServers: () => _selectTab(NavigationTabId.settings),
           ),
-          NavigationTabId.series => TvSeriesScreen(
+          NavigationTabId.series => TvSeriesLandingScreen(
             key: _seriesKey,
             onManageServers: () => _selectTab(NavigationTabId.settings),
           ),
@@ -1117,7 +1125,10 @@ class _MainScreenState extends State<MainScreen>
             onLibrarySelected: _handleLibrariesScreenSelected,
           ),
           NavigationTabId.liveTv => LiveTvScreen(key: _liveTvKey),
-          NavigationTabId.search => SearchScreen(key: _searchKey),
+          NavigationTabId.search => SearchScreen(
+            key: _searchKey,
+            onManageServers: () => _selectTab(NavigationTabId.settings),
+          ),
           NavigationTabId.requests => const SeerrDiscoverScreen(),
           NavigationTabId.downloads => DownloadsScreen(key: _downloadsKey),
           NavigationTabId.settings => SettingsScreen(key: _settingsKey),

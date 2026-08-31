@@ -442,7 +442,7 @@ Top navigation → Hero actions of page header → First content row or grid →
 - Down vanaf beide CTA's gaat naar de eerste kaart van de eerste rij.
 - Up vanaf de eerste rij gaat terug naar de laatst gebruikte hero-CTA.
 - Up vanaf hero gaat naar de actieve topnavbestemming.
-- **Rijfocus verandert de featured hero niet.**
+- **Rijfocus verandert de featured hero niet.** (Fase 8 maakt dit waar; tot dan blijft het bestaande `_setSpotlightDebounced`-gedrag bewust in stand — hoofdstuk 27 fase 6 DoD.)
 
 ### 7.4 Films en Series
 
@@ -600,15 +600,39 @@ eigen constraint-gebaseerde geometry.
 
 ### 9.5 Featured selectie
 
-De hero bevat alleen films of series, geen losse afleveringen. Kandidaatbronnen, in volgorde:
-persoonlijke Top Picks met geschikt artwork; recent uitgebrachte films; recent toegevoegde series;
-redactionele of backend-featuredhubs; fallback op recente film/serie.
+> **Geamendeerd op 31 augustus 2026 — [DEC-067](DECISIONS.md#dec-067).** De kandidaatketen hieronder
+> beschreef Top Picks, recent toegevoegde series en hubs als vulling zodra er "te weinig" recente
+> films waren. Dat is vervangen door de bindende regel eronder: recente films zijn de exclusieve
+> bron zolang de gededupliceerde pool niet leeg is. Behandel de oude formulering niet opnieuw als
+> contract.
 
-Selectieregels: 5 tot 8 unieke `UnifiedMediaGroup`s; geen dubbele bronnen als losse slides; geen
-unreleased titel door foute toekomstige metadata; geen item zonder bruikbare titel; stabiele volgorde
-tijdens een sessie; een bron die offline gaat verwijdert de slide niet zolang een andere bron
-bruikbaar blijft; als alle bronnen wegvallen verdwijnt de slide pas bij een veilige refreshgrens en
-niet terwijl de gebruiker de CTA focust.
+De hero bevat alleen films of series, geen losse afleveringen.
+
+**Bron: recent uitgebrachte films, exclusief.** Zolang de pool van geschikte, gededupliceerde
+recent uitgebrachte films niet leeg is bevat de hero uitsluitend die films, op releasedatum geordend,
+in de volgorde die `DiscoverProvider.latestMovies` al oplevert (besluit Michel, 30 augustus 2026: de
+hero blijft de etalage van wat nieuw uit is, niet van wat het aanbevelingsmodel kiest). Deduplicatie
+mag het aantal slides verkleinen — twaalf concrete films die tot vijf logische titels samenvallen
+geven vijf slides — en dat gat wordt **niet** gevuld met Top Picks, gepersonaliseerde hubs, recent
+toegevoegde series of andere rijen. Er is geen ondergrens waar naartoe wordt aangevuld. Pas wanneer
+de pool echt leeg is geldt het bestaande fallbackgedrag van vandaag: `DiscoverScreen` toont zijn
+Continue Watching- of hub-item als billboard. Dat is bestaand gedrag, geen nieuwe fallbacksemantiek.
+
+Wil fase 8 alsnog gemengde hero-kandidaten, dan is dat een nieuw expliciet productbesluit, geen
+implementatiedetail.
+
+Selectieregels: ten hoogste 8 unieke `UnifiedMediaGroup`s (de bovengrens van de oude 5-tot-8-band; de
+ondergrens is geen quotum, zie hierboven); geen dubbele bronnen als losse slides; geen unreleased
+titel door foute toekomstige metadata; geen item zonder bruikbare titel; stabiele volgorde tijdens
+een sessie; een bron die offline gaat verwijdert de slide niet zolang een andere bron bruikbaar
+blijft; als alle bronnen wegvallen verdwijnt de slide pas bij een veilige refreshgrens en niet
+terwijl de gebruiker de CTA focust.
+
+**Eén lijst, voor weergave én activatie.** `TvHomeProjectionProvider.heroGroups` bepaalt welke slides
+bestaan, in welke volgorde, en bij welke `UnifiedMediaGroup` iedere zichtbare slide hoort. De
+bestaande hero-presentatie rendert per groep een *representatieve* concrete `MediaItem` — backdrop,
+clearlogo, titel, metadata — maar die representant is presentatie en beslist nooit de activatie
+(hoofdstuk 4.4/4.6).
 
 ### 9.6 Carouselcontract
 
@@ -652,20 +676,23 @@ Dat doel wordt op twee niveaus geleverd:
 | Niveau | Route | Karakter | Fase |
 |---|---|---|---|
 | **Landing** | `Films` / `Series` | Row-based discovery, focus verandert de compositie | 6 |
-| **Complete catalogus** | `Films ▸ Alles bekijken` / `Series ▸ Alles bekijken` | Stabiel postergrid met filters en sortering | 5 |
+| **Complete catalogus** | `Films ▸ Alle films` / `Series ▸ Alle series` | Stabiel postergrid met filters en sortering | 5 |
 
 Discovery en catalogus worden **niet** door elkaar gehaald. Discovery is geen grid; de catalogus
 is geen expanderende discovery-rail. Die scheiding is hard.
 
 ### 10.2a Landing — discovery (fase 6)
 
+> **Geamendeerd op 31 augustus 2026 — [DEC-068](DECISIONS.md#dec-068).** De route naar de complete
+> catalogus staat niet meer als rij onderaan de pagina, maar als compacte actie **naast de
+> paginatitel**, en is de enige launcher op de landing. De schets hieronder is bijgewerkt.
+
 ```
-Films
+Films   Alle films ›
 Aanbevolen voor jou
 [═════ EXPANDED FOCUS ═════][klein][klein][klein]
 Recent toegevoegd
 [═════ EXPANDED FOCUS ═════][klein][klein][klein]
-Alle films                                    Alles bekijken →
 ```
 
 Row-based. Het gefocuste item wordt breder en toont pas dan zijn rijkere context; buren blijven
@@ -1711,10 +1738,36 @@ featured selector; Search grouping; activation via de coordinator; Movies- en Se
 nooit zelf een pseudo-discoveryhub uit de complete catalogus construeren — dat zou een tweede
 projectiearchitectuur naast deze zijn, en die scheiding is precies waarom deze fase bestaat.
 
-**Definition of Done.** Geen duplicate titel in één Home-rij; geen duplicate hero-slide; Search toont
-één resultaatgroep; mobile/desktop blijven functioneel; rowfocus verandert de hero niet meer;
-Films- en Series-landing tonen row-based discovery met minimale chrome; "Alles bekijken" is
-remote-first bereikbaar vanaf beide landings.
+**Definition of Done.** Geen duplicate titel in één discovery-rij op de Films- of Series-landing;
+**geen duplicate hero-slide**; unified Continue Watching als geprojecteerde rij; Search toont één
+resultaatgroep; mobile/desktop blijven functioneel; Films- en Series-landing tonen row-based
+discovery met minimale chrome; de complete catalogus is remote-first bereikbaar vanaf beide landings.
+
+> **Geamendeerd op 31 augustus 2026 — [roadmap deviation proposal](tvos-unified-fase6-home-rows-deviation.md),
+> goedgekeurd.** "Geen duplicate titel in één **Home**-rij" stond hier en is verplaatst naar fase 8.
+> De Home-rijen worden getekend door `tv_browse_rail.dart`, dat fase 8 hoe dan ook vervangt door
+> `tv_content_feed.dart`/`tv_content_row.dart`; die widget nu op de projectielaag zetten zou focus,
+> scroll, long-press, contextmenu en activatie herbouwen in code die één fase later verdwijnt — exact
+> het argument waarop de rowfocus-deferral al is geaccepteerd. De eis is verplaatst, niet geschrapt.
+> Tot fase 8 kan één titel die op twee servers onder verschillende guids bestaat twee kaarten in één
+> Home-rij innemen; dat is bestaand gedrag van vóór fase 6, nu met een datum eronder.
+
+*Hero-data en -deduplicatie — geleverd in deze fase* ([DEC-067](DECISIONS.md#dec-067)).
+`TvHomeProjectionProvider.heroGroups` is de ene geordende hero-lijst: `FeaturedSelector` over de
+geprojecteerde `latestMovies`-rij, met de releasevolgorde exact behouden. Weergave en activatie
+lezen diezelfde lijst, dus een titel die op twee servers staat neemt één rotatieslot in plaats van
+twee, en de zichtbare slide en de groep die Play/Meer info activeert kunnen niet meer uiteenlopen.
+Hubs vullen een niet-lege hero niet aan (hoofdstuk 9.5). Activation loopt voor iedere slide via de
+fase-4-coördinator in plaats van de representative source direct af te spelen;
+`featuredGroupFor` dekt daarnaast de billboards die géén hero-slide zijn (railfocus, en het
+on-deck/hub-fallbackitem bij een lege hero).
+
+*Rowfocus verandert de hero niet — bewust nog niet in deze fase.* Het bestaande
+`_setSpotlightDebounced`-pad (`discover_screen.dart`) blijft in fase 6 ongewijzigd: dat gedrag zit
+onder de spotlight-presentatie die fase 8 toch volledig vervangt (zie de "Verwijderen"-lijst
+hieronder), dus loskoppelen in fase 6 zou tijdelijke code bouwen die één fase later weer verdwijnt.
+Fase 6 verandert alleen waar de hero-DATA vandaan komt; fase 8 verandert de presentatie en maakt de
+featured carousel pas onafhankelijk van railfocus (zie diens Definition of Done).
 
 ### Fase 7: TV-root-shell en Mijn Pleya
 
@@ -1761,6 +1814,21 @@ bleed-afhankelijkheid op Home.
 
 **Definition of Done.** Rounded hero; eerste row volledig zichtbaar; pinned topnav; onafhankelijke
 featured carousel; smooth crossfade; geen focus- of artworkjank; light/OLED/reduced motion bewezen.
+Rowfocus verandert de hero niet meer (hoofdstuk 7.3, 31.9) — dit is de fase die dat daadwerkelijk
+waarmaakt, door `_spotlightItem`/`_setSpotlightDebounced` te vervangen; fase 6 leverde alleen de
+onderliggende hero-data (`TvHomeProjectionProvider.heroGroups`) al featured-carousel-klaar. De
+nieuwe carousel leest diezelfde lijst; hero-deduplicatie is in fase 6 gesloten
+([DEC-067](DECISIONS.md#dec-067)) en hoeft hier niet opnieuw geleverd te worden.
+
+**Geen duplicate titel in één Home-rij**, en **Home-rij-activatie via de fase-4-coördinator** in
+plaats van `navigateToMediaItem`. Beide zijn op 31 augustus 2026 uit fase 6 hierheen verplaatst met
+een goedgekeurd [roadmap deviation proposal](tvos-unified-fase6-home-rows-deviation.md): ze konden
+alleen waargemaakt worden in `tv_browse_rail.dart`, en deze fase vervangt dat op Home door
+`tv_content_feed.dart`/`tv_content_row.dart`. De databron ligt er al —
+`TvHomeProjectionProvider.continueWatching` en `.hubs`, geprojecteerd en getest, tot dan zonder
+productie-consument — dus de nieuwe feed leest die in plaats van `DiscoverProvider` rechtstreeks.
+Gevolg voor de gebruiker: een multi-source titel in een Home-rij krijgt dan dezelfde source picker
+als overal elders, in plaats van stilzwijgend één server.
 
 ### Fase 9: functionele integratie en uitzonderingen
 
@@ -1875,7 +1943,7 @@ Een groene golden vervangt nooit een ontbrekende fysieke Apple TV-verificatie.
 6. Root-`OverlayEntry` gebruiken voor de source picker.
 7. Bibliotheken verwijderen.
 8. Collections en Playlists kunstmatig globaal samenvoegen.
-9. Rowfocus de featured hero laten vervangen.
+9. Rowfocus de featured hero laten vervangen. (Bindend eindbeeld vanaf fase 8; hoofdstuk 27 fase 6 DoD.)
 10. Netflix-rood of Netflix-naamgeving kopiëren.
 11. De speler automatisch naar een andere source laten overspringen.
 12. Een destructive action op de representative artworksource uitvoeren.
@@ -1930,67 +1998,166 @@ Dat is de releasegrens. Alles daaronder is nog geen volwaardige Pleya Unified TV
 
 ## 33. Visuele referenties en acceptatiemapping
 
-De goedgekeurde mockups staan als versiebare assets in `docs/assets/tvos-unified/`. Ze bepalen
-**compositie en information hierarchy**. `MonoTokens`, `FocusTheme`, de branding-assets en de
-bestaande componentcontracts bepalen **kleur, focus en exacte componentstijl**.
+**De bindende referentieset is de northstar-set van 30-08-2026** in
+`docs/assets/tvos-unified/northstar/` — acht schermen, door Michel goedgekeurd en bevroren
+([DEC-065](DECISIONS.md#dec-065)). Ze bepalen **compositie en information hierarchy** voor fase
+6–8. `MonoTokens`, `FocusTheme`, de branding-assets en de bestaande componentcontracts bepalen
+**kleur, focus en exacte componentstijl**. De 2025-set (`home-reference.png` e.d.) is historisch;
+de bestanden blijven staan omdat het conflictregister (33.10) er tekstueel naar verwijst.
 
-> **Een image-generation-artefact dat botst met de codebase is nooit een ontwerpbesluit.** De
-> conflictentabel in 33.6 is daarom bindend: waar mockup en code botsen, wint de code.
+Anders dan de 2025-set zijn de northstar-beelden geen image-generation-artefacten: ze zijn als
+HTML tegen de echte tokens gebouwd en met headless Chromium op exact 1920×1080 geschoten, met
+echt TMDb-artwork van echte titels. De getoonde titels en hun artwork zijn **niet bindend** —
+de UI eromheen wél. Maten hieronder zijn 1920-referentiepixels (DEC-028: logical ≈ ref ÷ 1.57).
 
-### 33.1 home-reference.png
+**Gedeelde shell (bindend op alle acht):** achtergrond `#141414`; topnav op y≈44..96 met de
+cluster (zoekicoon 26 + items Inter 500/24, gap 40) horizontaal **gecentreerd**, profielchip
+44 los uiterst links, en rechts het **wordmark-lockup** `assets/branding/pleya_wordmark.png`
+(het P-merk als de letter P, gevolgd door LEYA) op navhoogte 52 — nooit het losse icoon met
+tekst ernaast, nooit een geclipt/gevuld merk. Actieve bestemming = witte capsule met
+`#141414`-tekst; navvolgorde Home · Series · Films · [Live TV] · Mijn Pleya (Series vóór
+Films, DEC-064; Live TV conditioneel maar positioneel stabiel). Rood `#E5140F` uitsluitend
+als progreslijn; amber alleen als klein semantisch punt; alle focus wit.
 
-![Home](assets/tvos-unified/home-reference.png)
+### 33.1 01-home.jpg
 
-**BINDEND:** information hierarchy; compacte top-navigation met de volgorde Zoeken · Home · Films ·
-Series · Live TV · Mijn Pleya; de hero als grote afgeronde billboard ín de pagina, niet
-schermvullend; content direct onder de billboard; de eerste contentrij volledig zichtbaar; de
-"2 BRONNEN"-indicator in de hero-metadata; wide cards met resterende tijd in Verder kijken;
-posterrij eronder; **witte primaire Afspelen-CTA**; rode progressbalken.
+![Home](assets/tvos-unified/northstar/01-home.jpg)
 
-**RICHTINGGEVEND:** exacte artworkinhoud; filmtitels; het aantal zichtbare kaarten; de "+"-knop naast
-de CTA's (watchlist-toevoeging is toegestaan maar niet in hoofdstuk 9.1 gespecificeerd); de
-zoek-/instellingen-/avatarcluster rechts in de topnav.
+**BINDEND:** de featured card als afgeronde kaart ín de pagina (1770×718 op inset 75, radius 18,
+~66% van de hoogte, beeldverhouding ~2.4:1) — nooit full bleed; scrim alleen lokaal linksonder;
+titel/metaregel/synopsis (max 2 regels) linksonder met witte `▶ Afspelen`-capsule en donkere
+`Meer info`; **geen broncount-badge in de hero**; geen dots of pijlen; daaronder alléén het
+sectielabel "Verder kijken" met de bovenkanten van de 2:3-rij, afgesneden door de onderrand en
+aflopend over de rechterrand. De hero is functioneel een carrousel van recent uitgebrachte films
+(hoofdstuk 9.6-gedrag; de mockup toont één stand).
 
-**NIET BINDEND:** gegenereerde pixelkleuren; verzonnen logo-details; fictieve metadata; **de vijf
-permanente carousel-dots linksonder** — hoofdstuk 9.6 verbiedt een permanente reeks dots expliciet
-en staat alleen een tijdelijke segmentindicator toe die na twee seconden verdwijnt.
+**RICHTINGGEVEND:** de crop/object-position van de backdrop; het aantal peek-kaarten.
 
-**CODE IS LEIDEND VOOR:** `MonoTokens`; CTA shape; focus treatment; spacing tokens; het werkelijke
-Pleya branding-asset.
+**NIET BINDEND:** de getoonde titels en hun artwork; de metadata-inhoud.
 
-### 33.2 movies-reference.png
+**CODE IS LEIDEND VOOR:** `MonoTokens`; `FocusTheme`; de carrousel-timing (hoofdstuk 9.6).
 
-![Films](assets/tvos-unified/movies-reference.png)
+### 33.2 02-home-rail-focus.jpg
 
-**BINDEND:** paginakop "Films" met de drie headeracties Alle bronnen · Filters · sortering; de
-filtercount-badge op de Filter-knop; postergrid 2:3; de "N bronnen"-badge linksboven op de kaart;
-titel, jaar, runtime en genre onder de kaart; watched-vinkje; progressbalk; geen hero op deze pagina.
+![Home met railfocus](assets/tvos-unified/northstar/02-home-rail-focus.jpg)
 
-**RICHTINGGEVEND:** vijf kolommen (hoofdstuk 10.2 noemt 6–7 afhankelijk van dichtheid); exacte
-filmselectie; de exacte plaatsing van het watched-vinkje.
+**BINDEND:** de toestand één D-pad-stap omlaag: de hero schuift onder de topnav weg (onderste
+strook met afgeronde onderhoeken zichtbaar, tekstblok gefaded), de CW-rail toont zijn volle
+band (400) met het gefocuste item als 16:9 (711 breed, witte ring 4 met gap 8) naast 2:3-buren
+(267), en daaronder titel (36) + metaregel (24) van alléén het gefocuste item; de volgende
+sectiekop peekt onderaan. Focusverlies op de hero dooft zijn tekst; de topnav blijft staan.
 
-**NIET BINDEND:** de oranje/rode focusring om de gefocuste kaart — zie 33.6; de rode actieve
-navigatiepil (toegestaan, maar de exacte tint volgt `kAccent`); de exacte count-formulering
-"1–10 van 342 resultaten" — zie 33.6; de badges "Gepland" en "Beschikbaar 24 mei" — zie 33.6.
+**RICHTINGGEVEND:** exact hoeveel hero-strook zichtbaar blijft; de scroll-easing.
 
-**CODE IS LEIDEND VOOR:** `FocusTheme` focusring; `MonoTokens`; cardscale; `TvLayoutConstants`.
+**NIET BINDEND:** titels/artwork.
 
-### 33.3 series-reference.png
+**CODE IS LEIDEND VOOR:** `TvDiscoveryLayout` (band, breedtes, metablok); `FocusTheme`.
 
-![Series](assets/tvos-unified/series-reference.png)
+### 33.3 03-films-landing.jpg
 
-**BINDEND:** dezelfde structuur als Films met een eigen sorteerset; "N bronnen"-badge; de
-"Nieuwe aflevering"-markering; S/A-aanduiding onder de titel; resterende tijd bij een serie met
-progress; landscape-kaarten met clearlogo in plaats van 2:3-posters is **richtinggevend**, niet
-bindend — hoofdstuk 10.2 specificeert posters 2:3 voor beide pagina's.
+![Films landing](assets/tvos-unified/northstar/03-films-landing.jpg)
 
-**NIET BINDEND:** de oranje focusring; de exacte serieselectie.
+**BINDEND:** geen hero en **geen filter-/sorteerchrome waar dan ook**; paginakop "Films" (47);
+eerste rail met expanded focus: band 400, focused 16:9 ≈40% van de contentbreedte, **drie**
+volle 2:3-buren + partial vierde over de rechterrand; metadata (titel 36 / metaregel 24 /
+synopsis, ellipsized) alléén onder het gefocuste item, begrensd op zijn breedte; buren tonen
+puur artwork met hooguit rode progreslijn of `2 bronnen`-capsule; tweede raillabel + duidelijk
+peekende postertoppen (~20–25%) met fade; onderaan de view-all-regel "Alle films — Alles
+bekijken ›" als rustige typografische regel, geen knop. **Railvolgorde is de canonieke
+providervolgorde** (`tv_discovery_landing_provider.dart`): CW eerst wanneer gevuld, daarna de
+aanbevelingsrijen in `DiscoverProvider`-volgorde met hun bestaande i18n-labels ("Aanbevolen
+voor jou", "Omdat je … gekeken hebt", …) — nooit verzonnen raillabels.
 
-**Openstaand punt.** De mockup toont Series met brede clearlogo-kaarten, hoofdstuk 10.2 met
-2:3-posters. Dit is een echte inhoudelijke afwijking en moet vóór fase 5 beslist worden; hij is
-bewust niet stilzwijgend opgelost.
+**RICHTINGGEVEND:** welke rij bovenaan staat (hier is CW leeg, dus opent "Aanbevolen voor jou").
 
-### 33.4 source-picker-reference.png
+**NIET BINDEND:** titels/artwork; de synopsis-tekst.
+
+**CODE IS LEIDEND VOOR:** `TvDiscoveryLayout`; de hub-projectie en rijvolgorde.
+
+### 33.4 04-series-landing.jpg
+
+![Series landing](assets/tvos-unified/northstar/04-series-landing.jpg)
+
+**BINDEND:** zelfde systeem als 33.3 met CW bovenaan (series hebben vrijwel altijd een
+resume-state); **het gefocuste CW-item draagt de episode-still van de concrete aflevering**
+waar beschikbaar (serie-artwork is de fallback), met het canonieke metadataformaat
+`S2 E4 · 18 min resterend · jaar · genre · 2 bronnen`; compacte buren blijven serieposters.
+
+**RICHTINGGEVEND:** de contentmix (drama/comedy/animatie) — wel: géén kopie van de
+Films-compositie met alleen andere labels.
+
+**NIET BINDEND:** titels/artwork.
+
+**CODE IS LEIDEND VOOR:** episode-still-resolutie via de bestaande clients; `TvDiscoveryLayout`.
+
+### 33.5 05-alle-films.jpg
+
+![Alle films](assets/tvos-unified/northstar/05-alle-films.jpg)
+
+**BINDEND:** het bewust ándere interactiemodel: stabiel 6-koloms 2:3-grid (kaart 281×422,
+gutter 22, inset 56), rij 1 volledig met footers, rij 2 door de onderrand gesneden; paginakop
+"Alle films" (42) met rechts **rustige** controls `Bronnen · Filters (badge) · Titel A–Z` —
+subtiel `#1F1F1F`, wit 72%, duidelijk ondergeschikt aan de kop, geen drie CTA-pillen; footers
+titel (22, twee regels gereserveerd) + `jaar · genre` (18); states spaarzaam (`2 bronnen`
+linksboven, wit vinkje rechtsboven, rode progreslijn onderaan). **Focus: witte ring rond het
+artwork alléén, kleine scale (~1.05), lift en shadow — de footer krijgt géén fill en doet niet
+mee als elevated paneel; geometrie verandert niet, geen enkele buurkaart verschuift.** Dit
+vervangt de fase-5-focusstijl met kaartbrede ring en footerfill ([DEC-065](DECISIONS.md#dec-065)).
+
+**RICHTINGGEVEND:** welke kaart de focus draagt; de verdeling van de states.
+
+**NIET BINDEND:** titels/artwork; de badgeaantallen.
+
+**CODE IS LEIDEND VOOR:** `TvCatalogGrid.forWidth`; `TvCatalogLayout`; `FocusTheme`.
+
+### 33.6 06-alle-series.jpg
+
+![Alle series](assets/tvos-unified/northstar/06-alle-series.jpg)
+
+**BINDEND:** ruimtelijk identiek aan 33.5; footers tonen seizoenen waar bekend
+(`2022 · 2 seizoenen`), anders `jaar · genre`; hooguit één klein amber punt als
+nieuwe-afleveringstate, nooit gestapeld met andere badges.
+
+**RICHTINGGEVEND / NIET BINDEND / CODE IS LEIDEND VOOR:** als 33.5.
+
+### 33.7 07-filters.jpg
+
+![Filters](assets/tvos-unified/northstar/07-filters.jpg)
+
+**BINDEND:** paneel `#1F1F1F` (≈1100×760, radius 20) boven het gedimde maar herkenbare grid;
+tweekoloms met links de categorieën en rechts de opties; **drie duidelijk verschillende
+sterktes**: actieve categorie = subtiele band (wit ~5%) met smalle witte indicatorstreep —
+géén zware selected-rechthoek; selectie = elevated fill + wit vinkje; focus = witte ring, en
+wit is gereserveerd voor het écht gefocuste control; footer met precies twee acties: `Wissen`
+(rustige tekst) en `TOEPASSEN` (witte capsule). Geen checkboxes, geen settings-look.
+
+**RICHTINGGEVEND:** de exacte paneelmaat; welke categorie actief is.
+
+**NIET BINDEND:** de optieteksten buiten de bestaande i18n-strings.
+
+**CODE IS LEIDEND VOOR:** `TvCatalogLayout`-filterpaneeltokens; de bestaande optiesets.
+
+### 33.8 08-mijn-pleya.jpg
+
+![Mijn Pleya](assets/tvos-unified/northstar/08-mijn-pleya.jpg)
+
+**BINDEND:** de hoofdstuk-18.1-structuur letterlijk: profielheader (avatar, naam, "N van M
+servers online", `Profiel wisselen`-capsule, rechts de serverlijst met status-stippen en de
+18.4-authfoutregel in amber — geen blokkerende rode banner) en daaronder de drie groepen
+**Mijn content** (Kijklijst · Aanvragen · Downloads), **Bibliotheken en bronnen**
+(Bibliotheken · Servers · Activiteit) en **Pleya** (Instellingen · Logs en diagnose · Over
+Pleya · Uitloggen) als tegelrijen; tegels met icoon, titel, ondertitel en optionele count;
+**menutegels schalen niet bij focus** — witte ring + lichtere fill volstaan; conditionele
+tegels (18.3: Downloads niet op Apple TV, Aanvragen alleen met Seerr) vallen weg zonder gat
+in de groepsstructuur.
+
+**RICHTINGGEVEND:** de ondertitels per tegel; de counts; de voettekstregel.
+
+**NIET BINDEND:** het avatar-artwork.
+
+**CODE IS LEIDEND VOOR:** hoofdstuk 18.2-functiemapping; `nav_destinations.dart`-condities.
+
+### 33.9 source-picker-reference.png (fase 4, van kracht)
 
 ![Source picker](assets/tvos-unified/source-picker-reference.png)
 
@@ -2002,29 +2169,17 @@ detailweergave.
 
 **RICHTINGGEVEND:** exacte rijhoogte; iconografie per backend; de plaatsing van de radioknop.
 
-**NIET BINDEND:** de oranje focusring en oranje checkmark — zie 33.6; **de rode Afspelen-knop op de
+**NIET BINDEND:** de oranje focusring en oranje checkmark — zie 33.10; **de rode Afspelen-knop op de
 achtergrond** — die is wit in `home-reference.png` en wit is de norm, zie hoofdstuk 34; **"Emby" als
-backend** — zie 33.6.
+backend** — zie 33.10.
 
-### 33.5 my-pleya-reference.png
+### 33.10 Conflictregister mockup versus code (voorheen 33.6)
 
-![Mijn Pleya](assets/tvos-unified/my-pleya-reference.png)
-
-**BINDEND:** paginakop met profielkaart en "Profiel wisselen"; het serverstatusblok "2 van 3 servers
-online"; een tegelraster voor Kijklijst, Aanvragen, Bibliotheken, Servers, Activiteit, Instellingen,
-Diagnostiek en Uitloggen; de serverlijst rechts met per server een online/offline-indicator; "Servers
-opnieuw controleren"; **Downloads ontbreekt**, wat correct is voor Apple TV.
-
-**RICHTINGGEVEND:** de tweekolomsindeling; de ringmeter bij het serverstatusblok; de voettekst met
-versienummer.
-
-**NIET BINDEND:** de meerkleurige tegelicoontjes, met name het **paarse** map-icoon voor
-Bibliotheken — het contract verbiedt paarse styling expliciet en hoofdstuk 8.2 staat rood/amber
-alleen spaarzaam toe; de oranje focusring; **"Emby archief" als server** — zie 33.6.
-
-**Ontbreekt nog t.o.v. hoofdstuk 18.1:** "Over Pleya". Toe te voegen in fase 7.
-
-### 33.6 Conflictregister mockup versus code
+> Dit register is geschreven tegen de 2025-referentieset en blijft van kracht: elk punt geldt
+> onverkort voor de northstar-set, die er juist op gebouwd is. Het openstaande punt uit de oude
+> 33.3 (Series met clearlogo-kaarten versus 2:3-posters) is beslist door
+> [DEC-064](DECISIONS.md#dec-064)/[DEC-065](DECISIONS.md#dec-065): de complete catalogus toont 2:3,
+> de landing toont 16:9 alléén op het gefocuste item.
 
 | # | Mockup toont | Code/plan zegt | Wint | Vindplaats |
 | --- | --- | --- | --- | --- |

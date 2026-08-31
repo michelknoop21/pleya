@@ -444,6 +444,7 @@ class _TranslationsSearchKo extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => '다른 검색어를 시도해 보세요';
 	@override String get searchYourMedia => '미디어 검색';
 	@override String get enterTitleActorOrKeyword => '제목, 배우 또는 키워드를 입력하세요';
+	@override late final _TranslationsSearchFiltersKo filters = _TranslationsSearchFiltersKo._(_root);
 }
 
 // Path: hotkeys
@@ -1764,6 +1765,22 @@ class _TranslationsUnifiedCatalogKo extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogFiltersKo filters = _TranslationsUnifiedCatalogFiltersKo._(_root);
 	@override late final _TranslationsUnifiedCatalogStatesKo states = _TranslationsUnifiedCatalogStatesKo._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsKo semantics = _TranslationsUnifiedCatalogSemanticsKo._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryKo discovery = _TranslationsUnifiedCatalogDiscoveryKo._(_root);
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersKo extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => '전체';
+	@override String get movies => '영화';
+	@override String get shows => 'TV 프로그램';
+	@override String get episodes => '에피소드';
+	@override String get people => '인물';
+	@override String get other => '기타';
 }
 
 // Path: hotkeys.actions
@@ -2114,6 +2131,35 @@ class _TranslationsUnifiedCatalogSemanticsKo extends TranslationsUnifiedCatalogS
 	@override String get loadingMore => '작품을 더 불러오는 중';
 }
 
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryKo extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => '모든 영화';
+	@override String get allSeries => '모든 시리즈';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => '일부 소스가 응답하지 않았습니다';
+	@override String get emptyTitle => '아직 발견할 항목이 없습니다';
+	@override String get emptyBody => '표시할 항목이 있는 라이브러리가 없습니다.';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsKo semantics = _TranslationsUnifiedCatalogDiscoverySemanticsKo._(_root);
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsKo extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsKo._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}, 타이틀 ${count}개';
+	@override String position({required Object count, required Object position}) => '${count}개 중 ${position}번째';
+	@override String get viewAllMovies => '모든 영화 보기, 전체 카탈로그 열기';
+	@override String get viewAllSeries => '모든 시리즈 보기, 전체 카탈로그 열기';
+}
+
 /// The flat map containing all translations for locale <ko>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -2414,6 +2460,12 @@ extension on TranslationsKo {
 			'search.tryDifferentTerm' => '다른 검색어를 시도해 보세요',
 			'search.searchYourMedia' => '미디어 검색',
 			'search.enterTitleActorOrKeyword' => '제목, 배우 또는 키워드를 입력하세요',
+			'search.filters.all' => '전체',
+			'search.filters.movies' => '영화',
+			'search.filters.shows' => 'TV 프로그램',
+			'search.filters.episodes' => '에피소드',
+			'search.filters.people' => '인물',
+			'search.filters.other' => '기타',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => '${actionName}에 대한 단축키 설정',
 			'hotkeys.clearShortcut' => '단축키 삭제',
 			'hotkeys.noShortcutSet' => '설정된 단축키 없음',
@@ -2628,14 +2680,14 @@ extension on TranslationsKo {
 			'messages.sleepTimerSet' => ({required Object label}) => '수면 타이머가 ${label}로 설정 되었습니다',
 			'messages.noItemsAvailable' => '사용 가능한 항목이 없습니다',
 			'messages.failedToCreatePlayQueueNoItems' => '재생 대기열 생성 실패 - 항목 없음',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => '${action}을(를) 수행할 수 없습니다',
 			'messages.switchingToCompatiblePlayer' => '호환되는 플레이어로 전환 중...',
 			'messages.serverLimitTitle' => '재생 실패',
 			'messages.serverLimitBody' => '서버 오류(HTTP 500). 대역폭/트랜스코딩 제한으로 세션이 거부된 것 같습니다. 소유자에게 조정을 요청하세요.',
 			'messages.logsUploaded' => '로그 업로드 완료',
 			'messages.logsUploadFailed' => '로그 업로드 실패',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => '로그 ID',
 			'subtitlingStyling.text' => '텍스트',
 			'subtitlingStyling.border' => '테두리',
@@ -3142,14 +3194,14 @@ extension on TranslationsKo {
 			'companionRemote.pairing.connecting' => '연결 중...',
 			'companionRemote.pairing.searchingForDevices' => '기기 검색 중...',
 			'companionRemote.pairing.noDevicesFound' => '네트워크에서 기기를 찾을 수 없습니다',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.noDevicesHint' => '데스크톱에서 Pleya를 열고 같은 WiFi를 사용하세요',
 			'companionRemote.pairing.availableDevices' => '사용 가능한 기기',
 			'companionRemote.pairing.manualConnection' => '수동 연결',
 			'companionRemote.pairing.cryptoInitFailed' => '보안 연결을 시작할 수 없습니다. 먼저 Plex에 로그인하세요.',
 			'companionRemote.pairing.validationHostRequired' => '호스트 주소를 입력하세요',
 			'companionRemote.pairing.validationHostFormat' => '형식은 IP:포트여야 합니다 (예: 192.168.1.100:48632)',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => '연결 시간이 초과되었습니다. 두 기기에서 같은 네트워크를 사용하세요.',
 			'companionRemote.pairing.sessionNotFound' => '기기를 찾을 수 없습니다. 호스트에서 Pleya가 실행 중인지 확인하세요.',
 			'companionRemote.pairing.authFailed' => '인증에 실패했습니다. 두 기기 모두 같은 Plex 계정이 필요합니다.',
@@ -3519,6 +3571,16 @@ extension on TranslationsKo {
 			'unifiedCatalog.semantics.watched' => '시청함',
 			'unifiedCatalog.semantics.inProgress' => '시청 중',
 			'unifiedCatalog.semantics.loadingMore' => '작품을 더 불러오는 중',
+			'unifiedCatalog.discovery.allMovies' => '모든 영화',
+			'unifiedCatalog.discovery.allSeries' => '모든 시리즈',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => '일부 소스가 응답하지 않았습니다',
+			'unifiedCatalog.discovery.emptyTitle' => '아직 발견할 항목이 없습니다',
+			'unifiedCatalog.discovery.emptyBody' => '표시할 항목이 있는 라이브러리가 없습니다.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, 타이틀 ${count}개',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object count, required Object position}) => '${count}개 중 ${position}번째',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => '모든 영화 보기, 전체 카탈로그 열기',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => '모든 시리즈 보기, 전체 카탈로그 열기',
 			_ => null,
 		};
 	}

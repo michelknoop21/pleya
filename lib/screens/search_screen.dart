@@ -22,11 +22,17 @@ import 'seerr/seerr_media_detail_screen.dart';
 import '../mixins/controller_disposer_mixin.dart';
 import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
+import '../media/unified/unified_media_group.dart';
+import '../media/ids.dart';
 import '../providers/multi_server_provider.dart';
+import '../services/unified_catalog/search_projection.dart';
+import '../utils/external_ids_fetcher.dart';
+
 import '../services/apple_tv_native_text_entry.dart';
 import '../services/settings_service.dart';
 import '../services/speech_search_service.dart';
 import '../utils/app_logger.dart';
+import '../utils/layout_constants.dart';
 import '../utils/native_input_session.dart';
 import '../utils/platform_detector.dart';
 import '../utils/snackbar_helper.dart';
@@ -35,7 +41,11 @@ import '../widgets/pill_input_decoration.dart';
 import '../widgets/focusable_media_card.dart';
 import '../widgets/skeletons.dart';
 import '../widgets/state_view.dart';
+import '../widgets/tv/tv_discovery_rail.dart';
+import '../widgets/tv/tv_unified_layout.dart';
 import '../widgets/tv_virtual_keyboard.dart';
+import 'tv/tv_discovery_activation_mixin.dart';
+
 import '../utils/focus_utils.dart';
 import 'main_screen.dart';
 
@@ -67,7 +77,13 @@ class _AllServersFailed implements Exception {
 const int _searchHistoryLimit = 15;
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.onManageServers});
+
+  /// Hoofdstuk 14.7's escape hatch from the unified source picker's
+  /// `NoUsableSource` state — the same affordance the discovery landings
+  /// and the Home hero offer for the same situation. Used by TV search's
+  /// `activateDiscoveryGroup` calls.
+  final VoidCallback? onManageServers;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -80,11 +96,27 @@ class _SearchScreenState extends State<SearchScreen>
         SearchInputFocusable,
         FocusableTab,
         ControllerDisposerMixin,
-        MountedSetStateMixin {
+        MountedSetStateMixin,
+        TvDiscoveryActivationMixin {
   late final _searchController = createTextEditingController();
   final _searchFocusNode = FocusNode(debugLabel: 'SearchInput');
   final _firstResultFocusNode = FocusNode(debugLabel: 'SearchFirstResult');
   List<MediaItem> _searchResults = [];
+  // TV only (hoofdstuk 16.1/16.2): the unified projection of the same
+  // `_searchResults` this screen already fetched. Built alongside
+  // `_searchResults` rather than derived from it in `build()`, because the
+  // projection is async (identity resolution needs a network round trip per
+  // ambiguous title) and `build()` cannot await. Non-TV never reads this —
+  // desktop/mobile search stays exactly the source-concrete list it always
+  // was (DEC pending: fase 6 is a TV phase, `search_screen.dart` is shared).
+  UnifiedSearchProjection? _tvProjection;
+  // TV only: the rail rendering the first non-empty group section, so the
+  // existing "focus the first result" call sites (OSK Done, keyboard
+  // navigate-down, submit-while-results-loaded) can land on it the same way
+  // they landed on `_firstResultFocusNode`'s card in the non-TV list. Rebuilt
+  // fresh every render — `TvDiscoveryRail` keys its own tiles on `groupId`,
+  // this key only ever needs to reach whichever rail is first right now.
+  final _firstTvRailKey = GlobalKey<TvDiscoveryRailState>();
   bool _isSearching = false;
   bool _hasSearched = false;
   late final Debounce _searchDebounce;
@@ -277,6 +309,7 @@ class _SearchScreenState extends State<SearchScreen>
     if (query.isEmpty) {
       setStateIfMounted(() {
         _searchResults = [];
+        _tvProjection = null;
         _hasSearched = false;
         _searchError = null;
       });
@@ -335,8 +368,22 @@ class _SearchScreenState extends State<SearchScreen>
         throw const _AllServersFailed();
       }
       final neutral = aggregated.items;
+      // TV only (hoofdstuk 16.1/16.2, fase 6): project onto the unified
+      // model — "Dune (2021) — 3 bronnen", not one row per server. Runs
+      // after the staleness check above and rechecks it again below, since
+      // this await (identity resolution) is exactly the kind of network
+      // round trip `isStale()` exists to guard against — a slower "bat"
+      // landing after a faster "batman" must not overwrite the newer query's
+      // projection either. Desktop/mobile never take this branch, so their
+      // search stays the source-concrete list it always was.
+      UnifiedSearchProjection? tvProjection;
+      if (PlatformDetector.isTV()) {
+        tvProjection = await searchProjection(neutral, fetchExternalIds: externalIdsFetcherFor(multiServerProvider));
+        if (!mounted || isStale()) return;
+      }
       setStateIfMounted(() {
         _searchResults = neutral;
+        _tvProjection = tvProjection;
         _isSearching = false;
         _lastSearchedQuery = query;
         _activeFilter = _SearchFilter.all;
@@ -354,6 +401,7 @@ class _SearchScreenState extends State<SearchScreen>
         // connection problem.
         _searchError = e is _NoServersAvailable ? _SearchError.noServers : _SearchError.network;
         _searchResults = const [];
+        _tvProjection = null;
         // Reset the filter too: keeping it would leave an active chip whose
         // row is now hidden, i.e. an apparently empty list with no way back.
         _activeFilter = _SearchFilter.all;
@@ -448,7 +496,7 @@ class _SearchScreenState extends State<SearchScreen>
     if (query.isEmpty) return;
 
     if (_searchResults.isNotEmpty && !_isSearching && query == _lastSearchedQuery.trim()) {
-      _firstResultFocusNode.requestFocus();
+      _focusFirstResult();
       return;
     }
 
@@ -466,7 +514,9 @@ class _SearchScreenState extends State<SearchScreen>
     _focusResultsForQuery = null;
     if (results.isEmpty) return;
     if (_searchController.text.trim() != query.trim()) return; // user kept editing
-    FocusUtils.requestFocusAfterBuild(this, _firstResultFocusNode);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusFirstResult();
+    });
   }
 
   @override
@@ -557,7 +607,7 @@ class _SearchScreenState extends State<SearchScreen>
     if (_isSearching) return;
     if (FocusScope.of(context).focusInDirection(TraversalDirection.down)) return;
     if (_searchResults.isNotEmpty) {
-      _firstResultFocusNode.requestFocus();
+      _focusFirstResult();
     }
   }
 
@@ -671,6 +721,113 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
+  /// TV only (hoofdstuk 16.1/16.2, fase 6): renders the unified sections
+  /// instead of [_buildFilterChips] + [_buildResultsList]. Films/Series/
+  /// Afleveringen are unified rows — one tile per logical title — activated
+  /// through the same fase-4 coordinator the discovery landings use
+  /// ([TvDiscoveryActivationMixin.activateDiscoveryGroup]), never a
+  /// representative-source shortcut. Collections, playlists, people and
+  /// anything hoofdstuk 16.1 does not name stay source-concrete, rendered
+  /// exactly like the non-TV result list — there is no identity rule to merge
+  /// them on, and hoofdstuk 16.1 says so outright.
+  List<Widget> _buildTvResultSections(BuildContext context) {
+    final projection = _tvProjection;
+    if (projection == null) return const [];
+    final multiServer = context.watch<MultiServerProvider>();
+    final scale = TvLayoutConstants.scaleOf(context);
+
+    // Which section is first is derived from the data — hoofdstuk 16.1's own
+    // section order, evaluated once — rather than from the order these
+    // section-builders happen to be *called* in below. A closure-order flag
+    // would silently break "focus the first result" the moment a future edit
+    // reordered one of the seven `if` lines without also reordering the flag
+    // logic; a value computed from `projection` itself can't drift from what
+    // is actually rendered first.
+    final firstNonEmptySection = [
+      if (projection.movies.isNotEmpty) 'movies',
+      if (projection.shows.isNotEmpty) 'shows',
+      if (projection.episodes.isNotEmpty) 'episodes',
+      if (projection.collections.isNotEmpty) 'collections',
+      if (projection.playlists.isNotEmpty) 'playlists',
+      if (projection.people.isNotEmpty) 'people',
+      if (projection.other.isNotEmpty) 'other',
+    ].firstOrNull;
+
+    List<Widget> groupSection(String key, String title, List<UnifiedMediaGroup> groups) {
+      final isFirst = key == firstNonEmptySection;
+      return [
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: TvDiscoveryLayout.railSectionHeight(scale),
+            child: TvDiscoveryRail(
+              key: isFirst ? _firstTvRailKey : ValueKey('search-rail-$title'),
+              title: title,
+              groups: groups,
+              clientFor: (serverId) => multiServer.serverManager.getClient(ServerId(serverId)),
+              onActivate: (group) => activateDiscoveryGroup(group, onManageServers: widget.onManageServers),
+            ),
+          ),
+        ),
+      ];
+    }
+
+    List<Widget> itemSection(String key, String title, List<MediaItem> items) {
+      final isFirst = key == firstNonEmptySection;
+      return [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final item = items[index];
+              return FocusableMediaCard(
+                key: Key(item.globalKey),
+                item: item,
+                forceListMode: true,
+                disableScale: true,
+                focusNode: isFirst && index == 0 ? _firstResultFocusNode : null,
+                onRefresh: updateItem,
+                onListRefresh: () => updateItem(item.id),
+                onNavigateLeft: _navigateToSidebar,
+                showServerName: multiServer.totalServerCount > 1,
+              );
+            }, childCount: items.length),
+          ),
+        ),
+      ];
+    }
+
+    return [
+      if (projection.movies.isNotEmpty) ...groupSection('movies', t.unifiedCatalog.moviesTitle, projection.movies),
+      if (projection.shows.isNotEmpty) ...groupSection('shows', t.unifiedCatalog.seriesTitle, projection.shows),
+      if (projection.episodes.isNotEmpty) ...groupSection('episodes', t.search.filters.episodes, projection.episodes),
+      if (projection.collections.isNotEmpty) ...itemSection('collections', t.collections.title, projection.collections),
+      if (projection.playlists.isNotEmpty) ...itemSection('playlists', t.playlists.title, projection.playlists),
+      if (projection.people.isNotEmpty) ...itemSection('people', t.search.filters.people, projection.people),
+      if (projection.other.isNotEmpty) ...itemSection('other', t.search.filters.other, projection.other),
+    ];
+  }
+
+  /// The one "focus the first result" target every submit/keyboard-navigate
+  /// call site already used before TV got unified sections. On TV, "first
+  /// result" is the first tile of the first discovery rail when one was
+  /// rendered — `_firstTvRailKey` reaches it via
+  /// `TvDiscoveryRailState.focusCurrent()`, the same API the discovery
+  /// landing uses for restoration — and falls back to `_firstResultFocusNode`
+  /// when the projection has no group sections (search matched only
+  /// collections/playlists/people). Non-TV never rendered a rail, so it
+  /// always falls straight to `_firstResultFocusNode`, unchanged from before
+  /// this projection existed.
+  void _focusFirstResult() {
+    if (_firstTvRailKey.currentState?.focusCurrent() ?? false) return;
+    _firstResultFocusNode.requestFocus();
+  }
+
   /// Type filter chips shown above the results. A filter with no matches in the
   /// current result set is hidden so the row only offers useful narrowing.
   Widget _buildFilterChips(BuildContext context) {
@@ -767,9 +924,7 @@ class _SearchScreenState extends State<SearchScreen>
                     // same fix already applied to the Seerr search field.
                     tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
                     onNavigateLeft: _navigateToSidebar,
-                    onNavigateDown: _searchResults.isNotEmpty && !_isSearching
-                        ? _firstResultFocusNode.requestFocus
-                        : null,
+                    onNavigateDown: _searchResults.isNotEmpty && !_isSearching ? _focusFirstResult : null,
                     onEditingComplete: PlatformDetector.isTV() ? _handleSearchSubmit : null,
                     onBack: () {
                       if (_searchController.text.isNotEmpty) {
@@ -846,7 +1001,10 @@ class _SearchScreenState extends State<SearchScreen>
                     icon: Symbols.search_off_rounded,
                   ),
                 )
-            else ...[
+            else if (PlatformDetector.isTV()) ...[
+              ..._buildTvResultSections(context),
+              if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),
+            ] else ...[
               SliverToBoxAdapter(child: _buildFilterChips(context)),
               _buildResultsList(context),
               if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),

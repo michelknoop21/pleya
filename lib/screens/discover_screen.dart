@@ -28,8 +28,12 @@ import '../media/media_hub.dart';
 import '../utils/media_image_helper.dart';
 import '../widgets/optimized_media_image.dart' show blurArtwork;
 import '../widgets/home_hero_artwork.dart';
+import '../media/unified/unified_media_group.dart';
+import '../media/unified/unified_route_context.dart';
 import '../providers/discover_provider.dart';
 import '../providers/multi_server_provider.dart';
+import '../providers/tv_home_projection_provider.dart';
+import 'tv/tv_discovery_activation_mixin.dart';
 import '../providers/home_layout_provider.dart';
 import '../providers/watch_state_store.dart';
 import '../widgets/discover_refresh_action.dart';
@@ -76,7 +80,15 @@ import '../widgets/companion_remote/remote_session_dialog.dart';
 import 'companion_remote/mobile_remote_screen.dart';
 
 class DiscoverScreen extends StatefulWidget {
-  const DiscoverScreen({super.key});
+  const DiscoverScreen({super.key, this.onManageServers});
+
+  /// Hoofdstuk 14.7's escape hatch from the unified source picker's
+  /// `NoUsableSource` state ("every source for this title is
+  /// offline/auth-failing") to the Servers settings tab — the same
+  /// affordance every other unified-catalog surface offers for the same
+  /// situation. Used by [_buildTvHeroActions] when a featured Home-hero
+  /// title routes through the fase-4 activation coordinator.
+  final VoidCallback? onManageServers;
 
   /// The hero's pagination-dot row, so tests can measure its real rect
   /// against the "Verder kijken" heading directly below the hero.
@@ -92,7 +104,13 @@ class DiscoverScreen extends StatefulWidget {
 }
 
 class _DiscoverScreenState extends State<DiscoverScreen>
-    with Refreshable, FullRefreshable, TabVisibilityAware, FocusableTab, WidgetsBindingObserver {
+    with
+        Refreshable,
+        FullRefreshable,
+        TabVisibilityAware,
+        FocusableTab,
+        WidgetsBindingObserver,
+        TvDiscoveryActivationMixin {
   static const Duration _heroAutoScrollDuration = Duration(seconds: 8);
   static const Duration _indicatorUpdateInterval = Duration(milliseconds: 200);
   // Home rows are a touch shorter than the shared compact scale so the billboard
@@ -115,8 +133,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   List<MediaItem> get _onDeck => _discover.onDeck;
   // Hero source: newest released films (release-date ordered), not on-deck.
+  // On phone/desktop this *is* the hero list. On TV it is only the raw input
+  // the fase-6 projection turns into [_tvHeroSlides] — read [_heroItems]
+  // there, never this (DEC-067).
   List<MediaItem> get _latestMovies => _discover.latestMovies;
   HomeLayoutProvider? _homeLayout;
+  // Fase 6 (DEC-067): the TV hero's slide list. Bound in
+  // didChangeDependencies for the same reason _homeLayout is — the instance
+  // is swapped on a profile switch, and listening to a stale one would leave
+  // the hero on the previous user's films.
+  TvHomeProjectionProvider? _tvHomeProjection;
   // User layout (hide + reorder) applied here, the single choke point both the
   // mobile sliver loop and the TV rail read from.
   List<MediaHub> get _hubs => _homeLayout?.apply(_discover.hubs, _hubIdentity) ?? _discover.hubs;
@@ -223,10 +249,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return keys;
   }
 
+  /// Phone/desktop only — both call sites sit behind a `PlatformDetector`
+  /// check — so this stays on the raw `latestMovies` PageView list.
   bool get _isHeroSectionVisible => _latestMovies.isNotEmpty && context.settingsRead(SettingsService.showHeroSection);
 
   MediaItem? get _defaultSpotlightItem {
-    if (_latestMovies.isNotEmpty) return _latestMovies.first;
+    final heroItems = _heroItems;
+    if (heroItems.isNotEmpty) return heroItems.first;
     // Still loading: don't flash a Continue Watching item as the hero — the
     // latest-movies row usually lands a beat after on-deck.
     if (_areHubsLoading) return null;
@@ -274,6 +303,59 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return hubs;
   }
 
+  /// The TV Home hero's slides (hoofdstuk 9.5, DEC-067) — the one ordered
+  /// list that decides which slides exist, in what order, and which
+  /// [UnifiedMediaGroup] each one activates. Empty on phone/desktop, which
+  /// keep their own `latestMovies` PageView.
+  ///
+  /// Recomputed by [_recomputeTvHeroSlides] rather than derived per call:
+  /// [_defaultSpotlightItem] alone is read several times per build, and both
+  /// notifiers that can change the answer already rebuild the screen.
+  List<_TvHeroSlide> _tvHeroSlides = const [];
+  List<MediaItem> _tvHeroItems = const [];
+
+  /// What the hero rotates over on this platform: the projected logical
+  /// slides on TV, the raw release-ordered films on phone/desktop.
+  List<MediaItem> get _heroItems => PlatformDetector.isTV() ? _tvHeroItems : _latestMovies;
+
+  /// Turn [TvHomeProjectionProvider.heroGroups] into slides, or hold today's
+  /// raw-`latestMovies` hero while the projection catches up.
+  ///
+  /// The distinction matters and is why `projectedLatestMovies` exists: an
+  /// empty `heroGroups` for the list Home is *currently* showing is an
+  /// answer — every recent film was ineligible, or there is no visible film
+  /// library — and the billboard should fall through to on-deck/hub content
+  /// exactly as it did before fase 6. An empty `heroGroups` because the
+  /// projection has not yet consumed the films that just landed is not an
+  /// answer, and blanking the billboard for it would be a visible regression
+  /// on every cold load.
+  void _recomputeTvHeroSlides() {
+    if (!PlatformDetector.isTV()) {
+      _tvHeroSlides = const [];
+      _tvHeroItems = const [];
+      return;
+    }
+    final projection = _tvHomeProjection;
+    final caughtUp = projection != null && identical(projection.projectedLatestMovies, _discover.latestMovies);
+    _tvHeroSlides = caughtUp
+        ? [for (final group in projection.heroGroups) _TvHeroSlide(group: group, item: group.representativeSource.item)]
+        // Not caught up: today's behaviour, unchanged, until it is. Activation
+        // still resolves per slide below, so this window is never less safe
+        // than fase 5 was — only less deduplicated.
+        : [for (final item in _latestMovies) _TvHeroSlide(group: null, item: item)];
+    _tvHeroItems = [for (final slide in _tvHeroSlides) slide.item];
+  }
+
+  /// The slide [item] is currently occupying, or `null` when the billboard is
+  /// showing something that is not a hero slide (rail focus, or the on-deck /
+  /// hub fallback for an empty hero).
+  _TvHeroSlide? _tvHeroSlideFor(MediaItem item) {
+    for (final slide in _tvHeroSlides) {
+      if (slide.item.globalKey == item.globalKey) return slide;
+    }
+    return null;
+  }
+
   MediaItem? get _effectiveSpotlightItem {
     // Until the user actually drives the spotlight (rail focus, manual hero
     // navigation, auto-rotate), keep tracking the default so the hero upgrades
@@ -281,7 +363,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (!_spotlightUserDriven) return _defaultSpotlightItem;
     final current = _spotlightItem.value;
     if (current == null) return _defaultSpotlightItem;
-    if (_latestMovies.any((item) => item.globalKey == current.globalKey)) return current;
+    if (_heroItems.any((item) => item.globalKey == current.globalKey)) return current;
     if (_onDeck.any((item) => item.globalKey == current.globalKey)) return current;
     for (final hub in _hubs) {
       if (hub.items.any((item) => item.globalKey == current.globalKey)) return current;
@@ -531,6 +613,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       _nowWatching = nowWatching?..watchAmbient();
     }
 
+    if (PlatformDetector.isTV()) {
+      final projection = Provider.of<TvHomeProjectionProvider>(context, listen: false);
+      if (!identical(projection, _tvHomeProjection)) {
+        _tvHomeProjection?.removeListener(_onTvHomeProjectionChanged);
+        _tvHomeProjection = projection..addListener(_onTvHomeProjectionChanged);
+        _recomputeTvHeroSlides();
+      }
+    }
+
     // Resolve with listen: true so this rebinds when the provider instance is
     // swapped (profile switch / session subtree rebuild). Binding once in
     // initState left us listening to a stale notifier: the settings screen
@@ -547,6 +638,18 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     setState(_updateHubKeys);
   }
 
+  /// A finished projection changes which slides the hero has, so it has to
+  /// clamp the carousel index the same way a fresh `DiscoverProvider` load
+  /// does — dedup can shrink the rotation under a user who is standing on the
+  /// last slide.
+  void _onTvHomeProjectionChanged() {
+    if (!mounted) return;
+    setState(() {
+      _recomputeTvHeroSlides();
+      if (_currentHeroIndex >= _heroItems.length) _currentHeroIndex = 0;
+    });
+  }
+
   /// Mirror provider changes into this state's UI concerns: rebuild, apply
   /// pending TV-rail focus, and keep the hero carousel index in sync — a
   /// fresh [DiscoverProvider.load] resets it, a background Continue Watching
@@ -556,7 +659,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final generation = _discover.loadGeneration;
     final isNewLoad = generation != _seenLoadGeneration;
     _seenLoadGeneration = generation;
-    final heroOutOfBounds = _currentHeroIndex >= _latestMovies.length;
+    // `latestMovies` may have just been replaced, which un-catches-up the
+    // projection: recompute before anything reads the hero list.
+    _recomputeTvHeroSlides();
+    final heroOutOfBounds = _currentHeroIndex >= _heroItems.length;
 
     setState(() {
       if (isNewLoad || heroOutOfBounds) {
@@ -569,7 +675,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     // Row endpoints omit art/clearLogo, so the first hero page would render a
     // blurred poster until the user swipes. Prime the visible page + neighbours
     // once per load, off the build phase.
-    if ((isNewLoad || heroOutOfBounds) && _latestMovies.isNotEmpty) {
+    if ((isNewLoad || heroOutOfBounds) && _heroItems.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _ensureHeroArt(_currentHeroIndex);
@@ -691,7 +797,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       // crossfades from the blurred fill to the real artwork.
       if (_spotlightItem.value?.globalKey == key) {
         _spotlightItem.value = enriched;
-      } else if (_latestMovies.any((m) => m.globalKey == key)) {
+      } else if (_heroItems.any((m) => m.globalKey == key)) {
         // Phone hero: the PageView reads straight from _latestMovies through
         // the cache, so a rebuild is what swaps the blurred poster for the
         // real backdrop.
@@ -705,17 +811,19 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   /// Enrich the hero page at [index] plus its immediate neighbours, so a swipe
   /// lands on already-fetched art. Bounded to 3 items — never the whole row.
   void _ensureHeroArt(int index) {
+    final heroItems = _heroItems;
     for (var i = index - 1; i <= index + 1; i++) {
-      if (i < 0 || i >= _latestMovies.length) continue;
-      unawaited(_enrichSpotlightArt(_latestMovies[i]));
+      if (i < 0 || i >= heroItems.length) continue;
+      unawaited(_enrichSpotlightArt(heroItems[i]));
     }
   }
 
   void _moveTvHero(int delta) {
-    if (_latestMovies.isEmpty) return;
+    final heroItems = _heroItems;
+    if (heroItems.isEmpty) return;
     final current = _effectiveSpotlightItem;
-    final currentIndex = current == null ? -1 : _latestMovies.indexWhere((m) => m.globalKey == current.globalKey);
-    final baseIndex = currentIndex == -1 ? _currentHeroIndex.clamp(0, _latestMovies.length - 1).toInt() : currentIndex;
+    final currentIndex = current == null ? -1 : heroItems.indexWhere((m) => m.globalKey == current.globalKey);
+    final baseIndex = currentIndex == -1 ? _currentHeroIndex.clamp(0, heroItems.length - 1).toInt() : currentIndex;
     final nextIndex = baseIndex + delta;
     // Finite carousel, same convention as the phone hero and the browse rails:
     // left off the first item exits into the sidebar, right off the last stays put.
@@ -723,10 +831,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       _navigateToSidebar();
       return;
     }
-    if (nextIndex >= _latestMovies.length) return;
+    if (nextIndex >= heroItems.length) return;
     setState(() => _currentHeroIndex = nextIndex);
     _spotlightUserDriven = true;
-    _spotlightItem.value = _latestMovies[nextIndex];
+    _spotlightItem.value = heroItems[nextIndex];
     _pauseTvHeroAutoScrollForManualNavigation();
   }
 
@@ -779,6 +887,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   @override
   void dispose() {
     _discover.removeListener(_onDiscoverChanged);
+    _tvHomeProjection?.removeListener(_onTvHomeProjectionChanged);
     _homeLayout?.removeListener(_onHomeLayoutChanged);
     _nowWatching?.releaseAmbient();
     WidgetsBinding.instance.removeObserver(this);
@@ -826,16 +935,17 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       // and while the hero actions are focused, so the Play/Info target never
       // shifts under the user mid-press.
       _autoScrollTimer = Timer.periodic(_heroAutoScrollDuration, (timer) {
-        if (!mounted || _isAutoScrollPaused || _latestMovies.length < 2) return;
+        final heroItems = _heroItems;
+        if (!mounted || _isAutoScrollPaused || heroItems.length < 2) return;
         if (_tvHeroPlayFocusNode.hasFocus || _tvHeroInfoFocusNode.hasFocus) return;
         // Rail revealed → the hero follows rail focus; don't let auto-rotate
         // mutate the spotlight out from under it (order-independent guard so a
         // stray timer restart can't fight focus-follow).
         if (_tvRailRevealed) return;
         final current = _spotlightItem.value ?? _defaultSpotlightItem;
-        final idx = current == null ? -1 : _latestMovies.indexWhere((m) => m.globalKey == current.globalKey);
+        final idx = current == null ? -1 : heroItems.indexWhere((m) => m.globalKey == current.globalKey);
         _spotlightUserDriven = true;
-        _spotlightItem.value = _latestMovies[(idx + 1) % _latestMovies.length];
+        _spotlightItem.value = heroItems[(idx + 1) % heroItems.length];
       });
       return;
     }
@@ -1771,6 +1881,36 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final progress = resume && billboard.durationMs != null && billboard.viewOffsetMs != null
         ? (billboard.viewOffsetMs! / billboard.durationMs!).clamp(0.0, 1.0).toDouble()
         : null;
+    // Fase 6 (hoofdstuk 9.5, DEC-067). Display and activation read the same
+    // list: when the billboard is a hero slide, its group comes from that
+    // slide — never from a second lookup that could disagree about what the
+    // current slide is.
+    //
+    // The billboard is not always a hero slide, though. Rail focus puts any
+    // rail item there (fase 8 decouples that; until then it stays), and an
+    // empty hero falls back to on-deck/hub content. `featuredGroupFor`
+    // covers those from the wider projected pool, so they activate through
+    // the coordinator too. Only an item the projection has never seen at all
+    // — the pre-projection window, or a filtered-out title — keeps the direct
+    // path, so the hero is never dead.
+    //
+    // Either way a single-source title resolves exactly as it always has; a
+    // multi-source one now offers the picker instead of silently playing
+    // whichever server the representative happened to come from.
+    final projection = context.watch<TvHomeProjectionProvider>();
+    final featuredGroup = _tvHeroSlideFor(billboard)?.group ?? projection.featuredGroupFor(billboard);
+    void Function() activation({required UnifiedActivationIntent intent, required bool playDirectly}) {
+      if (featuredGroup != null) {
+        return () => activateDiscoveryGroup(
+          featuredGroup,
+          intent: intent,
+          playDirectly: playDirectly,
+          onManageServers: widget.onManageServers,
+        );
+      }
+      return () => navigateToMediaItem(context, billboard, playDirectly: playDirectly);
+    }
+
     return Row(
       mainAxisSize: .min,
       children: [
@@ -1781,7 +1921,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           // focusNode below), so the wrapper delegates instead of drawing a
           // ring or fill of its own.
           mode: FocusIndicatorMode.delegated,
-          onPressed: () => navigateToMediaItem(context, billboard, playDirectly: true),
+          onPressed: activation(intent: UnifiedActivationIntent.play, playDirectly: true),
           onNavigateDown: () => _focusTvBrowseRailWhenReady(immediate: true),
           onNavigateUp: _focusTopActions,
           onNavigateLeft: () => _moveTvHero(-1),
@@ -1801,7 +1941,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           focusNode: _tvHeroInfoFocusNode,
           autoScroll: false,
           mode: FocusIndicatorMode.delegated,
-          onPressed: () => navigateToMediaItem(context, billboard),
+          onPressed: activation(intent: UnifiedActivationIntent.details, playDirectly: false),
           onNavigateDown: () => _focusTvBrowseRailWhenReady(immediate: true),
           onNavigateUp: _focusTopActions,
           onNavigateLeft: _focusTvHeroPlayOrAdvance,
@@ -2475,4 +2615,26 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       },
     );
   }
+}
+
+/// One slide of the TV Home hero (hoofdstuk 9.5, DEC-067).
+///
+/// The two fields are deliberately not interchangeable, and keeping them in
+/// one object is what stops them drifting apart: [group] is the logical
+/// title — what the slide *is*, and the only thing allowed to decide what
+/// Play and More info do — while [item] is one concrete copy of it, carried
+/// solely because the existing hero widgets take a `MediaItem` for backdrop,
+/// clearlogo, title and metadata. Which server that copy came from is an
+/// artefact of projection order, so activating it directly would pick a
+/// source the viewer never chose (hoofdstuk 4.4/4.6).
+class _TvHeroSlide {
+  const _TvHeroSlide({required this.group, required this.item});
+
+  /// `null` only while the projection has not yet caught up with the films
+  /// `DiscoverProvider` is currently showing — see
+  /// `_DiscoverScreenState._recomputeTvHeroSlides`.
+  final UnifiedMediaGroup? group;
+
+  /// Presentation only. Never activated directly when [group] is non-null.
+  final MediaItem item;
 }

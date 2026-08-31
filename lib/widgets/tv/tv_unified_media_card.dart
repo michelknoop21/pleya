@@ -125,6 +125,11 @@ class _TvUnifiedMediaCardState extends State<TvUnifiedMediaCard> {
         onNavigateRight: widget.onNavigateRight,
         borderRadius: radius,
         focusScale: FocusTheme.fullCardFocusScale,
+        // DEC-065 punt 4: the ring goes round the *artwork alone*, so the
+        // wrapper keeps the focus, the scale and the lift but stops drawing
+        // the box — the ring below is drawn around the poster block instead.
+        // The wrapper still owns `focusScale`, which applies in every mode.
+        mode: FocusIndicatorMode.delegated,
         semanticLabel: semanticLabelFor(group),
         // Hoofdstuk 25: "Decoratieve backdrops en clearlogo's worden uitgesloten
         // van dubbele semantiek." Without this the wrapper's composed label is
@@ -133,18 +138,32 @@ class _TvUnifiedMediaCardState extends State<TvUnifiedMediaCard> {
         // the title, then the meta line. The label above is the whole reading;
         // the artwork, the badge and the footer are how it is drawn.
         child: ExcludeSemantics(
-          child: Padding(
-            padding: EdgeInsets.all(TvCatalogLayout.cardFocusRingGap * scale),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // The ring, round the poster block and nothing else (DEC-065
+              // punt 4). It is drawn in `foregroundDecoration` on a container
+              // whose padding is exactly the inset the wrapper's own border +
+              // gap used to cost, so the poster keeps the size and position
+              // the grid budgeted for it: the ring lands on the card's outer
+              // bounds with `cardFocusRingGap` of page between it and the
+              // artwork, and the footer below sits outside it entirely.
+              AnimatedContainer(
+                duration: tk.fast,
+                curve: Curves.easeOut,
+                padding: EdgeInsets.all(TvCatalogLayout.cardContentInset(scale)),
+                foregroundDecoration: FocusTheme.focusDecoration(
+                  context,
+                  isFocused: isFocused,
+                  borderRadius: radius + TvCatalogLayout.cardFocusRingGap * scale,
+                ),
                 // The shadow lives outside the clip, so it is a pool the poster
                 // casts on the page rather than something drawn inside the
                 // poster. `AnimatedContainer` rather than a swap, because the
                 // whole point is that the card *rises* under the focus instead
                 // of snapping to a second appearance.
-                AnimatedContainer(
+                child: AnimatedContainer(
                   duration: tk.fast,
                   curve: Curves.easeOut,
                   decoration: BoxDecoration(
@@ -170,9 +189,12 @@ class _TvUnifiedMediaCardState extends State<TvUnifiedMediaCard> {
                     child: _Artwork(group: group, scale: scale, clientFor: clientFor, isFocused: isFocused),
                   ),
                 ),
-                _Footer(group: group, scale: scale, tk: tk, isFocused: isFocused, radius: radius),
-              ],
-            ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: TvCatalogLayout.cardContentInset(scale)),
+                child: _Footer(group: group, scale: scale, tk: tk, isFocused: isFocused),
+              ),
+            ],
           ),
         ),
       ),
@@ -444,53 +466,39 @@ class _ResumeBar extends StatelessWidget {
 /// only surface on the card, fully rounded on all four corners, and nothing
 /// competes with it.
 ///
-/// What still binds the two together is the focus ring, which wraps poster and
-/// text as one shape. That is the same containment the fill used to provide,
-/// drawn only when it is needed.
+/// **And no fill under focus either** ([DEC-065](../../../docs/DECISIONS.md)
+/// punt 4). The first correction kept a faint surface behind the text while
+/// the card held the focus, on the reasoning that the ring otherwise drew a
+/// box round a poster and two lines of page-coloured nothing. The north star
+/// answers that differently and more simply: the ring goes round the artwork
+/// alone, so there is no box wanting a floor, and the focused card's text sits
+/// on the same page as its eleven neighbours. What marks it out is the poster
+/// — ring, scale, lift, shadow — which is where hoofdstuk 10.2 wanted the
+/// attention in the first place.
 class _Footer extends StatelessWidget {
-  const _Footer({
-    required this.group,
-    required this.scale,
-    required this.tk,
-    required this.isFocused,
-    required this.radius,
-  });
+  const _Footer({required this.group, required this.scale, required this.tk, required this.isFocused});
 
   final UnifiedMediaGroup group;
   final double scale;
   final MonoTokens tk;
 
-  /// Focused, the text gets a surface and the card becomes one raised object;
-  /// idle, it sits on the page and the poster is the only thing on the wall.
+  /// Text emphasis only — the focused title brightens, nothing gains a
+  /// surface (see the class doc).
   final bool isFocused;
-  final double radius;
 
   @override
   Widget build(BuildContext context) {
     final item = group.representativeSource.item;
     final context_ = _contextLine;
 
-    return AnimatedContainer(
-      duration: tk.fast,
-      curve: Curves.easeOut,
-      decoration: BoxDecoration(
-        color: tk.text.withValues(alpha: isFocused ? TvCatalogLayout.cardFocusFooterFill : 0),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
-      ),
-      padding: EdgeInsets.fromLTRB(
-        // Horizontal padding only once the surface is there to need it: idle,
-        // the title has to line up with the poster's left edge or the column
-        // the whole page hangs on breaks. Inset horizontally, the text stays
-        // inside a card whose width the grid fixes, so nothing beside it moves.
-        isFocused ? TvCatalogLayout.cardFooterPaddingVertical * scale : 0,
-        TvCatalogLayout.cardFooterPaddingVertical * scale,
-        isFocused ? TvCatalogLayout.cardFooterPaddingVertical * scale : 0,
-        // The bottom is reserved whether the surface is there or not. Paying
-        // for it only on focus made the focused card taller than the five
-        // beside it, and a taller card in row one pushed row two down while
-        // the eye was on it — the opposite of the "ruimtelijk stabiel" focus
-        // hoofdstuk 10.2b requires of the complete catalogus.
-        TvCatalogLayout.cardFooterPaddingVertical * scale,
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        // The bottom is reserved whether the card holds the focus or not.
+        // Paying for it only on focus made the focused card taller than the
+        // five beside it, and a taller card in row one pushed row two down
+        // while the eye was on it — the opposite of the "ruimtelijk stabiel"
+        // focus hoofdstuk 10.2b requires of the complete catalogus.
+        vertical: TvCatalogLayout.cardFooterPaddingVertical * scale,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

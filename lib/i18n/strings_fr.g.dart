@@ -444,6 +444,7 @@ class _TranslationsSearchFr extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => 'Essayez un autre terme de recherche';
 	@override String get searchYourMedia => 'Rechercher dans vos médias';
 	@override String get enterTitleActorOrKeyword => 'Entrez un titre, un acteur ou un mot-clé';
+	@override late final _TranslationsSearchFiltersFr filters = _TranslationsSearchFiltersFr._(_root);
 }
 
 // Path: hotkeys
@@ -1764,6 +1765,22 @@ class _TranslationsUnifiedCatalogFr extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogFiltersFr filters = _TranslationsUnifiedCatalogFiltersFr._(_root);
 	@override late final _TranslationsUnifiedCatalogStatesFr states = _TranslationsUnifiedCatalogStatesFr._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsFr semantics = _TranslationsUnifiedCatalogSemanticsFr._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryFr discovery = _TranslationsUnifiedCatalogDiscoveryFr._(_root);
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersFr extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersFr._(TranslationsFr root) : this._root = root, super.internal(root);
+
+	final TranslationsFr _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'Tous';
+	@override String get movies => 'Films';
+	@override String get shows => 'Séries';
+	@override String get episodes => 'Épisodes';
+	@override String get people => 'Personnes';
+	@override String get other => 'Autre';
 }
 
 // Path: hotkeys.actions
@@ -2114,6 +2131,35 @@ class _TranslationsUnifiedCatalogSemanticsFr extends TranslationsUnifiedCatalogS
 	@override String get loadingMore => 'Chargement d\'autres titres';
 }
 
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryFr extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryFr._(TranslationsFr root) : this._root = root, super.internal(root);
+
+	final TranslationsFr _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => 'Tous les films';
+	@override String get allSeries => 'Toutes les séries';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => 'Certaines sources n\'ont pas répondu';
+	@override String get emptyTitle => 'Rien à découvrir pour l\'instant';
+	@override String get emptyBody => 'Aucune bibliothèque visible n\'a quoi que ce soit à montrer ici.';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsFr semantics = _TranslationsUnifiedCatalogDiscoverySemanticsFr._(_root);
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsFr extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsFr._(TranslationsFr root) : this._root = root, super.internal(root);
+
+	final TranslationsFr _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}, ${count} titres';
+	@override String position({required Object position, required Object count}) => '${position} sur ${count}';
+	@override String get viewAllMovies => 'Voir tous les films, ouvre le catalogue complet';
+	@override String get viewAllSeries => 'Voir toutes les séries, ouvre le catalogue complet';
+}
+
 /// The flat map containing all translations for locale <fr>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -2414,6 +2460,12 @@ extension on TranslationsFr {
 			'search.tryDifferentTerm' => 'Essayez un autre terme de recherche',
 			'search.searchYourMedia' => 'Rechercher dans vos médias',
 			'search.enterTitleActorOrKeyword' => 'Entrez un titre, un acteur ou un mot-clé',
+			'search.filters.all' => 'Tous',
+			'search.filters.movies' => 'Films',
+			'search.filters.shows' => 'Séries',
+			'search.filters.episodes' => 'Épisodes',
+			'search.filters.people' => 'Personnes',
+			'search.filters.other' => 'Autre',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Définir un raccourci pour ${actionName}',
 			'hotkeys.clearShortcut' => 'Effacer le raccourci',
 			'hotkeys.noShortcutSet' => 'Aucun raccourci défini',
@@ -2628,14 +2680,14 @@ extension on TranslationsFr {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Minuterie de mise en veille réglée sur ${label}',
 			'messages.noItemsAvailable' => 'Aucun élément disponible',
 			'messages.failedToCreatePlayQueueNoItems' => 'Échec de la création de la file d\'attente de lecture - aucun élément',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Echec de ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Passage au lecteur compatible...',
 			'messages.serverLimitTitle' => 'Échec de la lecture',
 			'messages.serverLimitBody' => 'Erreur serveur (HTTP 500). Une limite de bande passante/transcodage a probablement rejeté cette session. Demandez au propriétaire de l\'ajuster.',
 			'messages.logsUploaded' => 'Logs envoyés',
 			'messages.logsUploadFailed' => 'Échec de l\'envoi des logs',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => 'ID du log',
 			'subtitlingStyling.text' => 'Texte',
 			'subtitlingStyling.border' => 'Bordure',
@@ -3142,14 +3194,14 @@ extension on TranslationsFr {
 			'companionRemote.pairing.connecting' => 'Connexion...',
 			'companionRemote.pairing.searchingForDevices' => 'Recherche d\'appareils...',
 			'companionRemote.pairing.noDevicesFound' => 'Aucun appareil trouvé sur votre réseau',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.noDevicesHint' => 'Ouvrez Pleya sur ordinateur et utilisez le même WiFi',
 			'companionRemote.pairing.availableDevices' => 'Appareils disponibles',
 			'companionRemote.pairing.manualConnection' => 'Connexion manuelle',
 			'companionRemote.pairing.cryptoInitFailed' => 'Impossible de démarrer la connexion sécurisée. Connectez-vous d\'abord à Plex.',
 			'companionRemote.pairing.validationHostRequired' => 'Veuillez entrer l\'adresse de l\'hôte',
 			'companionRemote.pairing.validationHostFormat' => 'Le format doit être IP:port (ex. 192.168.1.100:48632)',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => 'Connexion expirée. Utilisez le même réseau sur les deux appareils.',
 			'companionRemote.pairing.sessionNotFound' => 'Appareil introuvable. Assurez-vous que Pleya fonctionne sur l\'hôte.',
 			'companionRemote.pairing.authFailed' => 'Échec de l\'authentification. Les deux appareils doivent utiliser le même compte Plex.',
@@ -3519,6 +3571,16 @@ extension on TranslationsFr {
 			'unifiedCatalog.semantics.watched' => 'Regardé',
 			'unifiedCatalog.semantics.inProgress' => 'En cours',
 			'unifiedCatalog.semantics.loadingMore' => 'Chargement d\'autres titres',
+			'unifiedCatalog.discovery.allMovies' => 'Tous les films',
+			'unifiedCatalog.discovery.allSeries' => 'Toutes les séries',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => 'Certaines sources n\'ont pas répondu',
+			'unifiedCatalog.discovery.emptyTitle' => 'Rien à découvrir pour l\'instant',
+			'unifiedCatalog.discovery.emptyBody' => 'Aucune bibliothèque visible n\'a quoi que ce soit à montrer ici.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titres',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} sur ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Voir tous les films, ouvre le catalogue complet',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Voir toutes les séries, ouvre le catalogue complet',
 			_ => null,
 		};
 	}

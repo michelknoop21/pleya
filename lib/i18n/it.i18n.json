@@ -303,7 +303,15 @@
     "hint": "Cerca film. spettacoli, musica...",
     "tryDifferentTerm": "Prova altri termini di ricerca",
     "searchYourMedia": "Cerca nei tuoi media",
-    "enterTitleActorOrKeyword": "Inserisci un titolo, attore o parola chiave"
+    "enterTitleActorOrKeyword": "Inserisci un titolo, attore o parola chiave",
+    "filters": {
+      "all": "Tutti",
+      "movies": "Film",
+      "shows": "Serie TV",
+      "episodes": "Episodi",
+      "people": "Persone",
+      "other": "Altro"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "Imposta scorciatoia per ${actionName}",
@@ -1526,6 +1534,20 @@
       "watched": "Visto",
       "inProgress": "In corso",
       "loadingMore": "Caricamento di altri titoli"
+    },
+    "discovery": {
+      "allMovies": "Tutti i film",
+      "allSeries": "Tutte le serie",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "Alcune sorgenti non hanno risposto",
+      "emptyTitle": "Ancora niente da scoprire",
+      "emptyBody": "Nessuna libreria visibile ha qualcosa da mostrare qui.",
+      "semantics": {
+        "section": "${title}, ${count} titoli",
+        "position": "${position} di ${count}",
+        "viewAllMovies": "Vedi tutti i film, apre il catalogo completo",
+        "viewAllSeries": "Vedi tutte le serie, apre il catalogo completo"
+      }
     }
   }
 }

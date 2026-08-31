@@ -67,7 +67,15 @@ class TvCatalogHeaderBar extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Flexible(
+          // Hoofdstuk 33.5 is explicit that the controls sit *right* — the
+          // heading owns the left edge and the quiet controls balance it
+          // against the opposite page inset. `Expanded` rather than a
+          // `Spacer` beside a `Flexible` title: a Spacer claims the slack
+          // first and leaves the action row too narrow, which clipped "Alle
+          // bronnen" inside its own reverse scroll view. Letting the *title*
+          // take the slack pushes the actions to the margin and still lets
+          // them keep their natural width.
+          Expanded(
             child: Text(
               title,
               maxLines: 1,

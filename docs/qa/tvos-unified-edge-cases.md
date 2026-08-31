@@ -15,7 +15,7 @@ het afvinkbare register; het architectuurdocument houdt alleen de regels en de c
   afvinken; het register als geheel sluit pas bij de laatste fase die het raakt.
 - Rijen worden nooit verwijderd. Een geschrapt scenario gaat naar `n.v.t.` met een korte reden.
 
-Bijgewerkt: 2026-08-30 (fase 5 afgerond). Aangemaakt in fase 0. Fase 1 (unified identity foundation) dekt register C
+Bijgewerkt: 2026-08-31 (fase 6 afgerond). Aangemaakt in fase 0. Fase 1 (unified identity foundation) dekt register C
 (C1-C24) volledig af — zie de vindplaatsen in de tabel hieronder. De overige categorieën blijven
 `open` tot de fase die ze raakt.
 
@@ -122,7 +122,7 @@ en `test/services/unified_grouping_service_test.dart`).
 
 | # | Case | Test | Status |
 |---|---|---|---|
-| D1 | Zelfde serie op twee servers | | open |
+| D1 | Zelfde serie op twee servers | test/providers/tv_discovery_landing_provider_test.dart (`one series watched on two servers is one card carrying both concrete episodes`) — één kaart, twee bronnen, en de bronnen blijven de concrete afleveringen die elke server zelf heeft (S1E3 naast S2E7); test/services/unified_catalog/home_projection_service_test.dart (`a group's sources stay the concrete resumable episodes, never a series item`) voor dezelfde regel op serviceniveau | covered |
 | D2 | Verschillende seizoensdekking | | open |
 | D3 | Zelfde episode met sterke ID | | open |
 | D4 | Zelfde episode via serie-ID plus S/E | | open |
@@ -225,10 +225,10 @@ en `test/services/unified_grouping_service_test.dart`).
 | H9 | Spoilers verbergen | | open |
 | H10 | Watched titel | | open |
 | H11 | In-progress titel | | open |
-| H12 | Meerdere bronnen | | open |
+| H12 | Meerdere bronnen | test/screens/discover_screen_tv_hero_test.dart (`a mergeable duplicate becomes one slide carrying both sources`, `two concrete copies of one recent film are one hero slide, not two`) — één slide per logische titel, met beide bronnen erin, gereden door het echte `DiscoverScreen`; de tweede test legt ook vast dat een titel waarvan de identiteit niet te bewijzen is één bron houdt in plaats van er stilzwijgend een bij te verzinnen | covered |
 | H13 | Source valt weg | | open |
 | H14 | Hero-data komt laat | | open |
-| H15 | Geen hero-kandidaten | | open |
+| H15 | Geen hero-kandidaten | test/screens/discover_screen_tv_hero_test.dart (`zero recent films keeps the existing hub fallback billboard`) en test/providers/tv_home_projection_provider_test.dart (`a hero with no eligible recent film is empty rather than padded from hubs`) — een lege filmpool valt terug op het bestaande on-deck/hub-billboard en wordt niet met hubs opgevuld (DEC-067) | covered |
 | H16 | Alleen series beschikbaar | | open |
 | H17 | Auto-rotation tijdens focus | | open |
 | H18 | App gaat background | | open |
@@ -289,7 +289,11 @@ F21 kwam er in fase 4 bij, samen met het gedrag dat hij beschrijft (hoofdstuk 14
 het sluiten van fase 5 bij, langs dezelfde regel: het gedrag stond al vast in hoofdstuk 10.2b, de
 situatie — een focus die de rij eronder verschuift — was alleen nog niet als rij benoemd.
 
-Stand na fase 5: 70 `covered` en 111 `open`. Dat is de stand na fase 4 — C1-C24, F1-F18, F20-F21 en
+Stand na fase 6: 73 `covered` en 108 `open`. Fase 5 sloot op 70/111; fase 6 voegt D1, H12 en H15
+toe. Per categorie is dat A 8 van 20, B 5 van 15, C 24 van 24, D 4 van 15, E 4 van 15, F 20 van 21,
+G 1 van 14, H 2 van 21, I 2 van 20 en J 3 van 16.
+
+De stand na fase 5 was 70 `covered` en 111 `open`. Dat was de stand na fase 4 — C1-C24, F1-F18, F20-F21 en
 G9, samen 45 rijen, hier eerder als 46 opgeteld — plus de vierentwintig rijen die fase 5 heeft
 nagelopen: A2, A6-A11, A13, B1-B3, B7, B9, D5-D7, E3, E4, E9, E11, I7, I15, J1 en J5. Per categorie
 is dat A 8 van 20, B 5 van 15, C 24 van 24, D 3 van 15, E 4 van 15, F 20 van 21, G 1 van 14, H 0 van
@@ -297,6 +301,29 @@ is dat A 8 van 20, B 5 van 15, C 24 van 24, D 3 van 15, E 4 van 15, F 20 van 21,
 
 Register F is nog steeds volledig op één rij na: F19 (detailroute faalt) heeft nog geen vastgelegd
 productgedrag en wacht daarop, niet op een test.
+
+**Fase 6 en de drie rijen die erbij komen.** Fase 6 bouwde de discovery-landings, de unified Search
+op de TV-tak, de Continue Watching-projectie en — na [DEC-067](../DECISIONS.md#dec-067) — de
+gededupliceerde TV-hero. Bij het sluiten is het register nagelopen tegen wat die fase daadwerkelijk
+bewijst, met dezelfde strengheid als fase 5: een rij verschuift alleen als er een test is die
+precies dát scenario aantoont. Dat leverde er drie op — D1, H12 en H15 — en niet meer. Wat
+nadrukkelijk `open` blijft, met reden:
+
+- **H14 (hero-data komt laat).** De datakant is bewezen (`hasProjectedHero` en
+  `projectedLatestMovies` scheiden een nog niet afgeronde projectie van een echt lege filmpool, en
+  het billboard valt tijdens een koude load niet leeg), maar hoofdstuk 9.7's layoutregel — een hero
+  die pas wordt toegepast wanneer Home weer bovenaan staat en er geen interactie loopt — is
+  presentatie en daarmee fase-8-werk. Half bewezen is hier niet `covered`.
+- **H16 (alleen series beschikbaar).** De lege-filmpool-test gebruikt een filmhub als fallback, niet
+  een bibliotheek die alleen series heeft. Dat is een ander scenario.
+- **G1-G8 (watch-state merge).** `every source keeps its own watch state` bewijst hoofdstuk 13.1
+  (bronstate blijft intact) voor Continue Watching, maar geen van die rijen vraagt dát — ze vragen
+  welke voortgang de kaart *toont* (hoofdstuk 13.2). Die keuze is niet apart vastgelegd in een test.
+- **D2 (verschillende seizoensdekking).** D1's test heeft twee servers op verschillende afleveringen,
+  niet twee servers met een verschillend seizoensbereik.
+
+De overige fase-6-rijen (H1-H11, H13, H17-H21) hangen aan hero-*presentatie* en horen bij fase 8;
+I1-I6 en I8-I14 hangen aan de topnav en de root-shell en horen bij fase 7.
 
 De F-rijen dragen nu beide helften: het besluit (coordinator, resolver, stores) én het zichtbare en
 met de afstandsbediening bedienbare deel (`test/widgets/tv/tv_media_source_picker_test.dart`,

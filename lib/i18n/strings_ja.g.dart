@@ -444,6 +444,7 @@ class _TranslationsSearchJa extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => '別の検索語をお試しください';
 	@override String get searchYourMedia => 'メディアを検索';
 	@override String get enterTitleActorOrKeyword => 'タイトル、俳優、またはキーワードを入力';
+	@override late final _TranslationsSearchFiltersJa filters = _TranslationsSearchFiltersJa._(_root);
 }
 
 // Path: hotkeys
@@ -1764,6 +1765,22 @@ class _TranslationsUnifiedCatalogJa extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogFiltersJa filters = _TranslationsUnifiedCatalogFiltersJa._(_root);
 	@override late final _TranslationsUnifiedCatalogStatesJa states = _TranslationsUnifiedCatalogStatesJa._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsJa semantics = _TranslationsUnifiedCatalogSemanticsJa._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryJa discovery = _TranslationsUnifiedCatalogDiscoveryJa._(_root);
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersJa extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'すべて';
+	@override String get movies => '映画';
+	@override String get shows => 'テレビ番組';
+	@override String get episodes => 'エピソード';
+	@override String get people => '人物';
+	@override String get other => 'その他';
 }
 
 // Path: hotkeys.actions
@@ -2114,6 +2131,35 @@ class _TranslationsUnifiedCatalogSemanticsJa extends TranslationsUnifiedCatalogS
 	@override String get loadingMore => '作品をさらに読み込み中';
 }
 
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryJa extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => 'すべての映画';
+	@override String get allSeries => 'すべてのシリーズ';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => '一部のソースが応答しませんでした';
+	@override String get emptyTitle => 'まだ何も見つかりません';
+	@override String get emptyBody => '表示できるライブラリにここに表示するものがありません。';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsJa semantics = _TranslationsUnifiedCatalogDiscoverySemanticsJa._(_root);
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsJa extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsJa._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}、${count}件のタイトル';
+	@override String position({required Object count, required Object position}) => '${count}件中${position}件目';
+	@override String get viewAllMovies => 'すべての映画を表示、完全なカタログを開きます';
+	@override String get viewAllSeries => 'すべてのシリーズを表示、完全なカタログを開きます';
+}
+
 /// The flat map containing all translations for locale <ja>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -2414,6 +2460,12 @@ extension on TranslationsJa {
 			'search.tryDifferentTerm' => '別の検索語をお試しください',
 			'search.searchYourMedia' => 'メディアを検索',
 			'search.enterTitleActorOrKeyword' => 'タイトル、俳優、またはキーワードを入力',
+			'search.filters.all' => 'すべて',
+			'search.filters.movies' => '映画',
+			'search.filters.shows' => 'テレビ番組',
+			'search.filters.episodes' => 'エピソード',
+			'search.filters.people' => '人物',
+			'search.filters.other' => 'その他',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => '${actionName}のショートカットを設定',
 			'hotkeys.clearShortcut' => 'ショートカットをクリア',
 			'hotkeys.noShortcutSet' => 'ショートカット未設定',
@@ -2628,14 +2680,14 @@ extension on TranslationsJa {
 			'messages.sleepTimerSet' => ({required Object label}) => 'スリープタイマーを${label}に設定しました',
 			'messages.noItemsAvailable' => 'アイテムがありません',
 			'messages.failedToCreatePlayQueueNoItems' => '再生キューの作成に失敗しました - アイテムがありません',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => '${action}に失敗しました',
 			'messages.switchingToCompatiblePlayer' => '互換プレーヤーに切替中...',
 			'messages.serverLimitTitle' => '再生に失敗しました',
 			'messages.serverLimitBody' => 'サーバーエラー（HTTP 500）。帯域幅/トランスコード制限により拒否された可能性があります。所有者に調整を依頼してください。',
 			'messages.logsUploaded' => 'ログをアップロードしました',
 			'messages.logsUploadFailed' => 'ログのアップロードに失敗しました',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => 'ログID',
 			'subtitlingStyling.text' => 'テキスト',
 			'subtitlingStyling.border' => '枠線',
@@ -3142,14 +3194,14 @@ extension on TranslationsJa {
 			'companionRemote.pairing.connecting' => '接続中...',
 			'companionRemote.pairing.searchingForDevices' => 'デバイスを検索中...',
 			'companionRemote.pairing.noDevicesFound' => 'ネットワーク上にデバイスが見つかりません',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.noDevicesHint' => 'デスクトップでPleyaを開き、同じWiFiを使用してください',
 			'companionRemote.pairing.availableDevices' => '利用可能なデバイス',
 			'companionRemote.pairing.manualConnection' => '手動接続',
 			'companionRemote.pairing.cryptoInitFailed' => '安全な接続を開始できませんでした。先にPlexにサインインしてください。',
 			'companionRemote.pairing.validationHostRequired' => 'ホストアドレスを入力してください',
 			'companionRemote.pairing.validationHostFormat' => '形式はIP:ポートである必要があります（例: 192.168.1.100:48632）',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => '接続がタイムアウトしました。両方のデバイスで同じネットワークを使用してください。',
 			'companionRemote.pairing.sessionNotFound' => 'デバイスが見つかりません。ホストでPleyaが実行中か確認してください。',
 			'companionRemote.pairing.authFailed' => '認証に失敗しました。両方のデバイスで同じPlexアカウントが必要です。',
@@ -3519,6 +3571,16 @@ extension on TranslationsJa {
 			'unifiedCatalog.semantics.watched' => '視聴済み',
 			'unifiedCatalog.semantics.inProgress' => '視聴中',
 			'unifiedCatalog.semantics.loadingMore' => '作品をさらに読み込み中',
+			'unifiedCatalog.discovery.allMovies' => 'すべての映画',
+			'unifiedCatalog.discovery.allSeries' => 'すべてのシリーズ',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => '一部のソースが応答しませんでした',
+			'unifiedCatalog.discovery.emptyTitle' => 'まだ何も見つかりません',
+			'unifiedCatalog.discovery.emptyBody' => '表示できるライブラリにここに表示するものがありません。',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}、${count}件のタイトル',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object count, required Object position}) => '${count}件中${position}件目',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'すべての映画を表示、完全なカタログを開きます',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'すべてのシリーズを表示、完全なカタログを開きます',
 			_ => null,
 		};
 	}

@@ -2111,6 +2111,7 @@ class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogFiltersNl filters = _TranslationsUnifiedCatalogFiltersNl._(_root);
 	@override late final _TranslationsUnifiedCatalogStatesNl states = _TranslationsUnifiedCatalogStatesNl._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsNl semantics = _TranslationsUnifiedCatalogSemanticsNl._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryNl discovery = _TranslationsUnifiedCatalogDiscoveryNl._(_root);
 }
 
 // Path: search.filters
@@ -2125,6 +2126,7 @@ class _TranslationsSearchFiltersNl extends TranslationsSearchFiltersEn {
 	@override String get shows => 'Series';
 	@override String get episodes => 'Afleveringen';
 	@override String get people => 'Personen';
+	@override String get other => 'Overig';
 }
 
 // Path: hotkeys.actions
@@ -2550,6 +2552,35 @@ class _TranslationsUnifiedCatalogSemanticsNl extends TranslationsUnifiedCatalogS
 	@override String get loadingMore => 'Meer titels laden';
 }
 
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryNl extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => 'Alle films';
+	@override String get allSeries => 'Alle series';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} A${episode}';
+	@override String get partial => 'Niet alle bronnen antwoordden';
+	@override String get emptyTitle => 'Nog niets te ontdekken';
+	@override String get emptyBody => 'Geen zichtbare bibliotheek heeft hier iets te tonen.';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsNl semantics = _TranslationsUnifiedCatalogDiscoverySemanticsNl._(_root);
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsNl extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}, ${count} titels';
+	@override String position({required Object position, required Object count}) => '${position} van ${count}';
+	@override String get viewAllMovies => 'Alle films bekijken, opent de volledige catalogus';
+	@override String get viewAllSeries => 'Alle series bekijken, opent de volledige catalogus';
+}
+
 /// The flat map containing all translations for locale <nl>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -2881,6 +2912,7 @@ extension on TranslationsNl {
 			'search.filters.shows' => 'Series',
 			'search.filters.episodes' => 'Afleveringen',
 			'search.filters.people' => 'Personen',
+			'search.filters.other' => 'Overig',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Stel sneltoets in voor ${actionName}',
 			'hotkeys.clearShortcut' => 'Wis sneltoets',
 			'hotkeys.noShortcutSet' => 'Geen sneltoets ingesteld',
@@ -3069,9 +3101,9 @@ extension on TranslationsNl {
 			'videoControls.airplayButton' => 'AirPlay',
 			'userStatus.admin' => 'Beheerder',
 			'userStatus.restricted' => 'Beperkt',
-			'userStatus.protected' => 'Beschermd',
 			_ => null,
 		} ?? switch (path) {
+			'userStatus.protected' => 'Beschermd',
 			'userStatus.current' => 'HUIDIG',
 			'messages.markedAsWatched' => 'Gemarkeerd als gekeken',
 			'messages.markedAsUnwatched' => 'Gemarkeerd als ongekeken',
@@ -3583,9 +3615,9 @@ extension on TranslationsNl {
 			'watchTogether.reconnectingToHost' => 'Opnieuw verbinden met host...',
 			'watchTogether.currentPlayback' => 'Huidige weergave',
 			'watchTogether.joinCurrentPlayback' => 'Deelnemen aan huidige weergave',
-			'watchTogether.joinCurrentPlaybackDescription' => 'Ga terug naar wat de host nu kijkt',
 			_ => null,
 		} ?? switch (path) {
+			'watchTogether.joinCurrentPlaybackDescription' => 'Ga terug naar wat de host nu kijkt',
 			'watchTogether.failedToOpenCurrentPlayback' => 'Huidige weergave kon niet worden geopend',
 			'watchTogether.participantJoined' => ({required Object name}) => '${name} is toegetreden',
 			'watchTogether.participantLeft' => ({required Object name}) => '${name} heeft de sessie verlaten',
@@ -4097,9 +4129,9 @@ extension on TranslationsNl {
 			'seerr.byStreamingService' => 'Per streamingdienst',
 			'seerr.showAll' => 'Alles tonen',
 			'seerr.fourK' => 'In 4K aanvragen',
-			'seerr.fourKBadge' => '4K',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.fourKBadge' => '4K',
 			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
 			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => 'Nog ${remaining} van ${limit} aanvragen',
 			'seerr.quotaUnlimited' => 'Onbeperkt aanvragen',
@@ -4250,6 +4282,16 @@ extension on TranslationsNl {
 			'unifiedCatalog.semantics.watched' => 'Bekeken',
 			'unifiedCatalog.semantics.inProgress' => 'Bezig',
 			'unifiedCatalog.semantics.loadingMore' => 'Meer titels laden',
+			'unifiedCatalog.discovery.allMovies' => 'Alle films',
+			'unifiedCatalog.discovery.allSeries' => 'Alle series',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} A${episode}',
+			'unifiedCatalog.discovery.partial' => 'Niet alle bronnen antwoordden',
+			'unifiedCatalog.discovery.emptyTitle' => 'Nog niets te ontdekken',
+			'unifiedCatalog.discovery.emptyBody' => 'Geen zichtbare bibliotheek heeft hier iets te tonen.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titels',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} van ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Alle films bekijken, opent de volledige catalogus',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Alle series bekijken, opent de volledige catalogus',
 			_ => null,
 		};
 	}

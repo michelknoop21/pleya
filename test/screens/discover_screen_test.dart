@@ -27,6 +27,7 @@ import 'package:pleya/profiles/profile_connection_registry.dart';
 import 'package:pleya/profiles/profile_registry.dart';
 import 'package:pleya/providers/companion_remote_provider.dart';
 import 'package:pleya/providers/discover_provider.dart';
+import 'package:pleya/providers/tv_home_projection_provider.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/home_layout_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
@@ -141,6 +142,14 @@ void main() {
             ChangeNotifierProvider<CompanionRemoteProvider>.value(value: companionRemoteProvider),
             ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfileProvider),
             ChangeNotifierProvider<DiscoverProvider>.value(value: discoverProvider),
+            ChangeNotifierProvider<TvHomeProjectionProvider>(
+              create: (context) => TvHomeProjectionProvider(
+                discover: discoverProvider,
+                multiServer: multiServerProvider,
+                continueWatchingTitle: t.discover.continueWatching,
+                latestMoviesTitle: t.discover.recentlyReleased,
+              ),
+            ),
           ],
           child: MaterialApp(
             theme: monoTheme(dark: true),
@@ -442,6 +451,14 @@ Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(WidgetTester tester) async {
           ChangeNotifierProvider<CompanionRemoteProvider>.value(value: companionRemoteProvider),
           ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfileProvider),
           ChangeNotifierProvider<DiscoverProvider>.value(value: discoverProvider),
+          ChangeNotifierProvider<TvHomeProjectionProvider>(
+            create: (context) => TvHomeProjectionProvider(
+              discover: discoverProvider,
+              multiServer: multiServerProvider,
+              continueWatchingTitle: t.discover.continueWatching,
+              latestMoviesTitle: t.discover.recentlyReleased,
+            ),
+          ),
         ],
         child: MaterialApp(
           theme: monoTheme(dark: true),

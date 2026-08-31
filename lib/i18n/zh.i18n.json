@@ -303,7 +303,15 @@
     "hint": "搜索电影、系列、音乐...",
     "tryDifferentTerm": "尝试不同的搜索词",
     "searchYourMedia": "搜索媒体",
-    "enterTitleActorOrKeyword": "输入标题、演员或关键词"
+    "enterTitleActorOrKeyword": "输入标题、演员或关键词",
+    "filters": {
+      "all": "全部",
+      "movies": "电影",
+      "shows": "剧集",
+      "episodes": "单集",
+      "people": "人物",
+      "other": "其他"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "为 ${actionName} 设置快捷键",
@@ -1526,6 +1534,20 @@
       "watched": "已观看",
       "inProgress": "观看中",
       "loadingMore": "正在加载更多内容"
+    },
+    "discovery": {
+      "allMovies": "所有电影",
+      "allSeries": "所有剧集",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "部分来源未响应",
+      "emptyTitle": "暂时没有可发现的内容",
+      "emptyBody": "没有可见的媒体库可在此显示内容。",
+      "semantics": {
+        "section": "${title}，共${count}个标题",
+        "position": "第${position}个，共${count}个",
+        "viewAllMovies": "查看所有电影，打开完整目录",
+        "viewAllSeries": "查看所有剧集，打开完整目录"
+      }
     }
   }
 }

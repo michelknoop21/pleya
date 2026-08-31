@@ -303,7 +303,15 @@
     "hint": "영화, 시리즈, 음악 등을 검색하세요...",
     "tryDifferentTerm": "다른 검색어를 시도해 보세요",
     "searchYourMedia": "미디어 검색",
-    "enterTitleActorOrKeyword": "제목, 배우 또는 키워드를 입력하세요"
+    "enterTitleActorOrKeyword": "제목, 배우 또는 키워드를 입력하세요",
+    "filters": {
+      "all": "전체",
+      "movies": "영화",
+      "shows": "TV 프로그램",
+      "episodes": "에피소드",
+      "people": "인물",
+      "other": "기타"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "${actionName}에 대한 단축키 설정",
@@ -1526,6 +1534,20 @@
       "watched": "시청함",
       "inProgress": "시청 중",
       "loadingMore": "작품을 더 불러오는 중"
+    },
+    "discovery": {
+      "allMovies": "모든 영화",
+      "allSeries": "모든 시리즈",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "일부 소스가 응답하지 않았습니다",
+      "emptyTitle": "아직 발견할 항목이 없습니다",
+      "emptyBody": "표시할 항목이 있는 라이브러리가 없습니다.",
+      "semantics": {
+        "section": "${title}, 타이틀 ${count}개",
+        "position": "${count}개 중 ${position}번째",
+        "viewAllMovies": "모든 영화 보기, 전체 카탈로그 열기",
+        "viewAllSeries": "모든 시리즈 보기, 전체 카탈로그 열기"
+      }
     }
   }
 }

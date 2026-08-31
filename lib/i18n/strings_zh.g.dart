@@ -444,6 +444,7 @@ class _TranslationsSearchZh extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => '尝试不同的搜索词';
 	@override String get searchYourMedia => '搜索媒体';
 	@override String get enterTitleActorOrKeyword => '输入标题、演员或关键词';
+	@override late final _TranslationsSearchFiltersZh filters = _TranslationsSearchFiltersZh._(_root);
 }
 
 // Path: hotkeys
@@ -1764,6 +1765,22 @@ class _TranslationsUnifiedCatalogZh extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogFiltersZh filters = _TranslationsUnifiedCatalogFiltersZh._(_root);
 	@override late final _TranslationsUnifiedCatalogStatesZh states = _TranslationsUnifiedCatalogStatesZh._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsZh semantics = _TranslationsUnifiedCatalogSemanticsZh._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryZh discovery = _TranslationsUnifiedCatalogDiscoveryZh._(_root);
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersZh extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => '全部';
+	@override String get movies => '电影';
+	@override String get shows => '剧集';
+	@override String get episodes => '单集';
+	@override String get people => '人物';
+	@override String get other => '其他';
 }
 
 // Path: hotkeys.actions
@@ -2114,6 +2131,35 @@ class _TranslationsUnifiedCatalogSemanticsZh extends TranslationsUnifiedCatalogS
 	@override String get loadingMore => '正在加载更多内容';
 }
 
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryZh extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => '所有电影';
+	@override String get allSeries => '所有剧集';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => '部分来源未响应';
+	@override String get emptyTitle => '暂时没有可发现的内容';
+	@override String get emptyBody => '没有可见的媒体库可在此显示内容。';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsZh semantics = _TranslationsUnifiedCatalogDiscoverySemanticsZh._(_root);
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsZh extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsZh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}，共${count}个标题';
+	@override String position({required Object position, required Object count}) => '第${position}个，共${count}个';
+	@override String get viewAllMovies => '查看所有电影，打开完整目录';
+	@override String get viewAllSeries => '查看所有剧集，打开完整目录';
+}
+
 /// The flat map containing all translations for locale <zh>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -2414,6 +2460,12 @@ extension on TranslationsZh {
 			'search.tryDifferentTerm' => '尝试不同的搜索词',
 			'search.searchYourMedia' => '搜索媒体',
 			'search.enterTitleActorOrKeyword' => '输入标题、演员或关键词',
+			'search.filters.all' => '全部',
+			'search.filters.movies' => '电影',
+			'search.filters.shows' => '剧集',
+			'search.filters.episodes' => '单集',
+			'search.filters.people' => '人物',
+			'search.filters.other' => '其他',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => '为 ${actionName} 设置快捷键',
 			'hotkeys.clearShortcut' => '清除快捷键',
 			'hotkeys.noShortcutSet' => '未设置快捷键',
@@ -2628,14 +2680,14 @@ extension on TranslationsZh {
 			'messages.sleepTimerSet' => ({required Object label}) => '睡眠定时器已设置为 ${label}',
 			'messages.noItemsAvailable' => '没有可用的项目',
 			'messages.failedToCreatePlayQueueNoItems' => '创建播放队列失败 - 没有项目',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => '无法${action}',
 			'messages.switchingToCompatiblePlayer' => '正在切换到兼容的播放器...',
 			'messages.serverLimitTitle' => '播放失败',
 			'messages.serverLimitBody' => '服务器错误 (HTTP 500)。带宽/转码限制可能拒绝了此会话。请让所有者调整。',
 			'messages.logsUploaded' => '日志已上传',
 			'messages.logsUploadFailed' => '上传日志失败',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => '日志 ID',
 			'subtitlingStyling.text' => '文本',
 			'subtitlingStyling.border' => '边框',
@@ -3142,14 +3194,14 @@ extension on TranslationsZh {
 			'companionRemote.pairing.connecting' => '正在连接...',
 			'companionRemote.pairing.searchingForDevices' => '正在搜索设备...',
 			'companionRemote.pairing.noDevicesFound' => '未在网络上找到设备',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.noDevicesHint' => '在桌面端打开 Pleya 并使用同一 WiFi',
 			'companionRemote.pairing.availableDevices' => '可用设备',
 			'companionRemote.pairing.manualConnection' => '手动连接',
 			'companionRemote.pairing.cryptoInitFailed' => '无法启动安全连接。请先登录 Plex。',
 			'companionRemote.pairing.validationHostRequired' => '请输入主机地址',
 			'companionRemote.pairing.validationHostFormat' => '格式必须为IP:端口（例如 192.168.1.100:48632）',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => '连接超时。请在两台设备上使用同一网络。',
 			'companionRemote.pairing.sessionNotFound' => '未找到设备。请确认 Pleya 正在主机上运行。',
 			'companionRemote.pairing.authFailed' => '认证失败。两台设备需要使用同一 Plex 账号。',
@@ -3519,6 +3571,16 @@ extension on TranslationsZh {
 			'unifiedCatalog.semantics.watched' => '已观看',
 			'unifiedCatalog.semantics.inProgress' => '观看中',
 			'unifiedCatalog.semantics.loadingMore' => '正在加载更多内容',
+			'unifiedCatalog.discovery.allMovies' => '所有电影',
+			'unifiedCatalog.discovery.allSeries' => '所有剧集',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => '部分来源未响应',
+			'unifiedCatalog.discovery.emptyTitle' => '暂时没有可发现的内容',
+			'unifiedCatalog.discovery.emptyBody' => '没有可见的媒体库可在此显示内容。',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}，共${count}个标题',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '第${position}个，共${count}个',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => '查看所有电影，打开完整目录',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => '查看所有剧集，打开完整目录',
 			_ => null,
 		};
 	}

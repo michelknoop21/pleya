@@ -337,7 +337,8 @@
       "movies": "Films",
       "shows": "Series",
       "episodes": "Afleveringen",
-      "people": "Personen"
+      "people": "Personen",
+      "other": "Overig"
     }
   },
   "hotkeys": {
@@ -1850,6 +1851,20 @@
       "watched": "Bekeken",
       "inProgress": "Bezig",
       "loadingMore": "Meer titels laden"
+    },
+    "discovery": {
+      "allMovies": "Alle films",
+      "allSeries": "Alle series",
+      "episodeLabel": "S${season} A${episode}",
+      "partial": "Niet alle bronnen antwoordden",
+      "emptyTitle": "Nog niets te ontdekken",
+      "emptyBody": "Geen zichtbare bibliotheek heeft hier iets te tonen.",
+      "semantics": {
+        "section": "${title}, ${count} titels",
+        "position": "${position} van ${count}",
+        "viewAllMovies": "Alle films bekijken, opent de volledige catalogus",
+        "viewAllSeries": "Alle series bekijken, opent de volledige catalogus"
+      }
     }
   }
 }

@@ -303,7 +303,15 @@
     "hint": "Търсене на филми, сериали, музика...",
     "tryDifferentTerm": "Опитайте с различна дума за търсене",
     "searchYourMedia": "Търсете във вашата медия",
-    "enterTitleActorOrKeyword": "Въведете заглавие, актьор или ключова дума"
+    "enterTitleActorOrKeyword": "Въведете заглавие, актьор или ключова дума",
+    "filters": {
+      "all": "Всички",
+      "movies": "Филми",
+      "shows": "ТВ сериали",
+      "episodes": "Епизоди",
+      "people": "Хора",
+      "other": "Друго"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "Задай клавишна комбинация за ${actionName}",
@@ -1526,6 +1534,20 @@
       "watched": "Гледано",
       "inProgress": "Започнато",
       "loadingMore": "Зареждане на още заглавия"
+    },
+    "discovery": {
+      "allMovies": "Всички филми",
+      "allSeries": "Всички сериали",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "Някои източници не отговориха",
+      "emptyTitle": "Все още няма нищо за откриване",
+      "emptyBody": "Нито една видима библиотека няма какво да покаже тук.",
+      "semantics": {
+        "section": "${title}, ${count} заглавия",
+        "position": "${position} от ${count}",
+        "viewAllMovies": "Виж всички филми, отваря пълния каталог",
+        "viewAllSeries": "Виж всички сериали, отваря пълния каталог"
+      }
     }
   }
 }

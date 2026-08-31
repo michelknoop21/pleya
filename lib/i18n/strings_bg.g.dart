@@ -444,6 +444,7 @@ class _TranslationsSearchBg extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => 'Опитайте с различна дума за търсене';
 	@override String get searchYourMedia => 'Търсете във вашата медия';
 	@override String get enterTitleActorOrKeyword => 'Въведете заглавие, актьор или ключова дума';
+	@override late final _TranslationsSearchFiltersBg filters = _TranslationsSearchFiltersBg._(_root);
 }
 
 // Path: hotkeys
@@ -1764,6 +1765,22 @@ class _TranslationsUnifiedCatalogBg extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogFiltersBg filters = _TranslationsUnifiedCatalogFiltersBg._(_root);
 	@override late final _TranslationsUnifiedCatalogStatesBg states = _TranslationsUnifiedCatalogStatesBg._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsBg semantics = _TranslationsUnifiedCatalogSemanticsBg._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryBg discovery = _TranslationsUnifiedCatalogDiscoveryBg._(_root);
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersBg extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'Всички';
+	@override String get movies => 'Филми';
+	@override String get shows => 'ТВ сериали';
+	@override String get episodes => 'Епизоди';
+	@override String get people => 'Хора';
+	@override String get other => 'Друго';
 }
 
 // Path: hotkeys.actions
@@ -2114,6 +2131,35 @@ class _TranslationsUnifiedCatalogSemanticsBg extends TranslationsUnifiedCatalogS
 	@override String get loadingMore => 'Зареждане на още заглавия';
 }
 
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryBg extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => 'Всички филми';
+	@override String get allSeries => 'Всички сериали';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => 'Някои източници не отговориха';
+	@override String get emptyTitle => 'Все още няма нищо за откриване';
+	@override String get emptyBody => 'Нито една видима библиотека няма какво да покаже тук.';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsBg semantics = _TranslationsUnifiedCatalogDiscoverySemanticsBg._(_root);
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsBg extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsBg._(TranslationsBg root) : this._root = root, super.internal(root);
+
+	final TranslationsBg _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}, ${count} заглавия';
+	@override String position({required Object position, required Object count}) => '${position} от ${count}';
+	@override String get viewAllMovies => 'Виж всички филми, отваря пълния каталог';
+	@override String get viewAllSeries => 'Виж всички сериали, отваря пълния каталог';
+}
+
 /// The flat map containing all translations for locale <bg>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -2414,6 +2460,12 @@ extension on TranslationsBg {
 			'search.tryDifferentTerm' => 'Опитайте с различна дума за търсене',
 			'search.searchYourMedia' => 'Търсете във вашата медия',
 			'search.enterTitleActorOrKeyword' => 'Въведете заглавие, актьор или ключова дума',
+			'search.filters.all' => 'Всички',
+			'search.filters.movies' => 'Филми',
+			'search.filters.shows' => 'ТВ сериали',
+			'search.filters.episodes' => 'Епизоди',
+			'search.filters.people' => 'Хора',
+			'search.filters.other' => 'Друго',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Задай клавишна комбинация за ${actionName}',
 			'hotkeys.clearShortcut' => 'Изчисти клавишната комбинация',
 			'hotkeys.noShortcutSet' => 'Няма зададена клавишна комбинация',
@@ -2628,14 +2680,14 @@ extension on TranslationsBg {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Таймерът за заспиване е зададен за ${label}',
 			'messages.noItemsAvailable' => 'Няма налични елементи',
 			'messages.failedToCreatePlayQueueNoItems' => 'Неуспешно създаване на опашка за възпроизвеждане - няма елементи',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Неуспешно ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Превключване към съвместим плейър...',
 			'messages.serverLimitTitle' => 'Възпроизвеждането е неуспешно',
 			'messages.serverLimitBody' => 'Грешка на сървъра (HTTP 500). Вероятно лимит за пропускателна способност/транскодиране е отхвърлил тази сесия. Помолете собственика да го коригира.',
 			'messages.logsUploaded' => 'Логовете са качени',
 			'messages.logsUploadFailed' => 'Неуспешно качване на логовете',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => 'ID на лога',
 			'subtitlingStyling.text' => 'Текст',
 			'subtitlingStyling.border' => 'Рамка',
@@ -3142,14 +3194,14 @@ extension on TranslationsBg {
 			'companionRemote.pairing.connecting' => 'Свързване...',
 			'companionRemote.pairing.searchingForDevices' => 'Търсене на устройства...',
 			'companionRemote.pairing.noDevicesFound' => 'Не са намерени устройства във вашата мрежа',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.noDevicesHint' => 'Отворете Pleya на настолен компютър и използвайте същия WiFi',
 			'companionRemote.pairing.availableDevices' => 'Налични устройства',
 			'companionRemote.pairing.manualConnection' => 'Ръчно свързване',
 			'companionRemote.pairing.cryptoInitFailed' => 'Не може да се стартира защитена връзка. Първо влезте в Plex.',
 			'companionRemote.pairing.validationHostRequired' => 'Моля, въведете адрес на хоста',
 			'companionRemote.pairing.validationHostFormat' => 'Форматът трябва да е IP:port (напр. 192.168.1.100:48632)',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => 'Връзката изтече. Използвайте една и съща мрежа на двете устройства.',
 			'companionRemote.pairing.sessionNotFound' => 'Устройството не е намерено. Уверете се, че Pleya работи на хоста.',
 			'companionRemote.pairing.authFailed' => 'Удостоверяването е неуспешно. Двете устройства трябва да използват същия Plex акаунт.',
@@ -3519,6 +3571,16 @@ extension on TranslationsBg {
 			'unifiedCatalog.semantics.watched' => 'Гледано',
 			'unifiedCatalog.semantics.inProgress' => 'Започнато',
 			'unifiedCatalog.semantics.loadingMore' => 'Зареждане на още заглавия',
+			'unifiedCatalog.discovery.allMovies' => 'Всички филми',
+			'unifiedCatalog.discovery.allSeries' => 'Всички сериали',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => 'Някои източници не отговориха',
+			'unifiedCatalog.discovery.emptyTitle' => 'Все още няма нищо за откриване',
+			'unifiedCatalog.discovery.emptyBody' => 'Нито една видима библиотека няма какво да покаже тук.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} заглавия',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} от ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Виж всички филми, отваря пълния каталог',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Виж всички сериали, отваря пълния каталог',
 			_ => null,
 		};
 	}

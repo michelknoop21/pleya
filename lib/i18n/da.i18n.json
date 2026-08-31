@@ -303,7 +303,15 @@
     "hint": "Søg film, serier, musik...",
     "tryDifferentTerm": "Prøv en anden søgning",
     "searchYourMedia": "Søg i dine medier",
-    "enterTitleActorOrKeyword": "Indtast titel, skuespiller eller nøgleord"
+    "enterTitleActorOrKeyword": "Indtast titel, skuespiller eller nøgleord",
+    "filters": {
+      "all": "Alle",
+      "movies": "Film",
+      "shows": "TV-serier",
+      "episodes": "Episoder",
+      "people": "Personer",
+      "other": "Andet"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "Indstil genvej for ${actionName}",
@@ -1526,6 +1534,20 @@
       "watched": "Set",
       "inProgress": "I gang",
       "loadingMore": "Indlæser flere titler"
+    },
+    "discovery": {
+      "allMovies": "Alle film",
+      "allSeries": "Alle serier",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "Nogle kilder svarede ikke",
+      "emptyTitle": "Intet at opdage endnu",
+      "emptyBody": "Intet synligt bibliotek har noget at vise her.",
+      "semantics": {
+        "section": "${title}, ${count} titler",
+        "position": "${position} af ${count}",
+        "viewAllMovies": "Se alle film, åbner det komplette katalog",
+        "viewAllSeries": "Se alle serier, åbner det komplette katalog"
+      }
     }
   }
 }

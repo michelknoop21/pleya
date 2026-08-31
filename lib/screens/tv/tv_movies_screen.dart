@@ -26,7 +26,13 @@ class TvMoviesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => TvUnifiedCatalogScreen(
     catalog: context.read<UnifiedCatalogs>().movies,
-    title: t.unifiedCatalog.moviesTitle,
+    // The *complete catalog* heading, not the landing's (hoofdstuk 33.5:
+    // the north star titles this page "Alle films"). Since DEC-068 the
+    // landing above is titled "Films" with an "Alle films ›" action beside
+    // it, so reusing that same word here would leave the two levels
+    // indistinguishable — the viewer presses "Alle films" and arrives on a
+    // page that still says "Films".
+    title: t.unifiedCatalog.discovery.allMovies,
     onManageServers: onManageServers,
   );
 }

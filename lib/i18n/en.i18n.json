@@ -366,7 +366,8 @@
       "movies": "Movies",
       "shows": "Shows",
       "episodes": "Episodes",
-      "people": "People"
+      "people": "People",
+      "other": "Other"
     },
     "errorTitle": "Search failed",
     "errorNetwork": "Couldn't reach your servers. Check your connection and try again.",
@@ -1921,6 +1922,20 @@
       "watched": "Watched",
       "inProgress": "In progress",
       "loadingMore": "Loading more titles"
+    },
+    "discovery": {
+      "allMovies": "All movies",
+      "allSeries": "All series",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "Some sources did not answer",
+      "emptyTitle": "Nothing to discover yet",
+      "emptyBody": "No visible library has anything to show here.",
+      "semantics": {
+        "section": "${title}, ${count} titles",
+        "position": "${position} of ${count}",
+        "viewAllMovies": "View all movies, opens the complete catalog",
+        "viewAllSeries": "View all series, opens the complete catalog"
+      }
     }
   }
 }

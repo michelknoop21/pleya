@@ -303,7 +303,15 @@
     "hint": "Sök filmer, serier, musik...",
     "tryDifferentTerm": "Prova en annan sökterm",
     "searchYourMedia": "Sök i dina media",
-    "enterTitleActorOrKeyword": "Ange en titel, skådespelare eller nyckelord"
+    "enterTitleActorOrKeyword": "Ange en titel, skådespelare eller nyckelord",
+    "filters": {
+      "all": "Alla",
+      "movies": "Filmer",
+      "shows": "Serier",
+      "episodes": "Avsnitt",
+      "people": "Personer",
+      "other": "Övrigt"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "Sätt genväg för ${actionName}",
@@ -1526,6 +1534,20 @@
       "watched": "Sedd",
       "inProgress": "Påbörjad",
       "loadingMore": "Läser in fler titlar"
+    },
+    "discovery": {
+      "allMovies": "Alla filmer",
+      "allSeries": "Alla serier",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "Vissa källor svarade inte",
+      "emptyTitle": "Inget att upptäcka ännu",
+      "emptyBody": "Inget synligt bibliotek har något att visa här.",
+      "semantics": {
+        "section": "${title}, ${count} titlar",
+        "position": "${position} av ${count}",
+        "viewAllMovies": "Visa alla filmer, öppnar hela katalogen",
+        "viewAllSeries": "Visa alla serier, öppnar hela katalogen"
+      }
     }
   }
 }

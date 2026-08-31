@@ -303,7 +303,15 @@
     "hint": "Поиск фильмов, сериалов, музыки...",
     "tryDifferentTerm": "Попробуйте другой запрос",
     "searchYourMedia": "Поиск в вашей медиатеке",
-    "enterTitleActorOrKeyword": "Введите название, актёра или ключевое слово"
+    "enterTitleActorOrKeyword": "Введите название, актёра или ключевое слово",
+    "filters": {
+      "all": "Все",
+      "movies": "Фильмы",
+      "shows": "Сериалы",
+      "episodes": "Эпизоды",
+      "people": "Люди",
+      "other": "Другое"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "Назначить клавишу для ${actionName}",
@@ -1526,6 +1534,20 @@
       "watched": "Просмотрено",
       "inProgress": "В процессе",
       "loadingMore": "Загрузка других названий"
+    },
+    "discovery": {
+      "allMovies": "Все фильмы",
+      "allSeries": "Все сериалы",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "Некоторые источники не ответили",
+      "emptyTitle": "Пока нечего открывать",
+      "emptyBody": "Ни в одной видимой библиотеке здесь нечего показать.",
+      "semantics": {
+        "section": "${title}, названий: ${count}",
+        "position": "${position} из ${count}",
+        "viewAllMovies": "Показать все фильмы, открывает полный каталог",
+        "viewAllSeries": "Показать все сериалы, открывает полный каталог"
+      }
     }
   }
 }

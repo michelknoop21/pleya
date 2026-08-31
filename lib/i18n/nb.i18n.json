@@ -303,7 +303,15 @@
     "hint": "Søk i filmer, serier, musikk...",
     "tryDifferentTerm": "Prøv et annet søkeord",
     "searchYourMedia": "Søk i mediene dine",
-    "enterTitleActorOrKeyword": "Skriv inn tittel, skuespiller eller nøkkelord"
+    "enterTitleActorOrKeyword": "Skriv inn tittel, skuespiller eller nøkkelord",
+    "filters": {
+      "all": "Alle",
+      "movies": "Filmer",
+      "shows": "TV-serier",
+      "episodes": "Episoder",
+      "people": "Personer",
+      "other": "Annet"
+    }
   },
   "hotkeys": {
     "setShortcutFor": "Angi snarvei for ${actionName}",
@@ -1526,6 +1534,20 @@
       "watched": "Sett",
       "inProgress": "Påbegynt",
       "loadingMore": "Laster flere titler"
+    },
+    "discovery": {
+      "allMovies": "Alle filmer",
+      "allSeries": "Alle serier",
+      "episodeLabel": "S${season} E${episode}",
+      "partial": "Noen kilder svarte ikke",
+      "emptyTitle": "Ingenting å oppdage ennå",
+      "emptyBody": "Ingen synlige biblioteker har noe å vise her.",
+      "semantics": {
+        "section": "${title}, ${count} titler",
+        "position": "${position} av ${count}",
+        "viewAllMovies": "Se alle filmer, åpner den komplette katalogen",
+        "viewAllSeries": "Se alle serier, åpner den komplette katalogen"
+      }
     }
   }
 }

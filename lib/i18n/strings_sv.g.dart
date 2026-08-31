@@ -444,6 +444,7 @@ class _TranslationsSearchSv extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => 'Prova en annan sökterm';
 	@override String get searchYourMedia => 'Sök i dina media';
 	@override String get enterTitleActorOrKeyword => 'Ange en titel, skådespelare eller nyckelord';
+	@override late final _TranslationsSearchFiltersSv filters = _TranslationsSearchFiltersSv._(_root);
 }
 
 // Path: hotkeys
@@ -1764,6 +1765,22 @@ class _TranslationsUnifiedCatalogSv extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogFiltersSv filters = _TranslationsUnifiedCatalogFiltersSv._(_root);
 	@override late final _TranslationsUnifiedCatalogStatesSv states = _TranslationsUnifiedCatalogStatesSv._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsSv semantics = _TranslationsUnifiedCatalogSemanticsSv._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoverySv discovery = _TranslationsUnifiedCatalogDiscoverySv._(_root);
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersSv extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'Alla';
+	@override String get movies => 'Filmer';
+	@override String get shows => 'Serier';
+	@override String get episodes => 'Avsnitt';
+	@override String get people => 'Personer';
+	@override String get other => 'Övrigt';
 }
 
 // Path: hotkeys.actions
@@ -2114,6 +2131,35 @@ class _TranslationsUnifiedCatalogSemanticsSv extends TranslationsUnifiedCatalogS
 	@override String get loadingMore => 'Läser in fler titlar';
 }
 
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoverySv extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoverySv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => 'Alla filmer';
+	@override String get allSeries => 'Alla serier';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => 'Vissa källor svarade inte';
+	@override String get emptyTitle => 'Inget att upptäcka ännu';
+	@override String get emptyBody => 'Inget synligt bibliotek har något att visa här.';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsSv semantics = _TranslationsUnifiedCatalogDiscoverySemanticsSv._(_root);
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsSv extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsSv._(TranslationsSv root) : this._root = root, super.internal(root);
+
+	final TranslationsSv _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}, ${count} titlar';
+	@override String position({required Object position, required Object count}) => '${position} av ${count}';
+	@override String get viewAllMovies => 'Visa alla filmer, öppnar hela katalogen';
+	@override String get viewAllSeries => 'Visa alla serier, öppnar hela katalogen';
+}
+
 /// The flat map containing all translations for locale <sv>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -2414,6 +2460,12 @@ extension on TranslationsSv {
 			'search.tryDifferentTerm' => 'Prova en annan sökterm',
 			'search.searchYourMedia' => 'Sök i dina media',
 			'search.enterTitleActorOrKeyword' => 'Ange en titel, skådespelare eller nyckelord',
+			'search.filters.all' => 'Alla',
+			'search.filters.movies' => 'Filmer',
+			'search.filters.shows' => 'Serier',
+			'search.filters.episodes' => 'Avsnitt',
+			'search.filters.people' => 'Personer',
+			'search.filters.other' => 'Övrigt',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Sätt genväg för ${actionName}',
 			'hotkeys.clearShortcut' => 'Rensa genväg',
 			'hotkeys.noShortcutSet' => 'Ingen genväg angiven',
@@ -2628,14 +2680,14 @@ extension on TranslationsSv {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sovtimer inställd för ${label}',
 			'messages.noItemsAvailable' => 'Inga objekt tillgängliga',
 			'messages.failedToCreatePlayQueueNoItems' => 'Det gick inte att skapa uppspelningskö – inga objekt',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Kunde inte ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Byter till kompatibel spelare...',
 			'messages.serverLimitTitle' => 'Uppspelningen misslyckades',
 			'messages.serverLimitBody' => 'Serverfel (HTTP 500). En bandbredds-/transkodningsgräns avvisade troligen sessionen. Be ägaren justera den.',
 			'messages.logsUploaded' => 'Loggar uppladdade',
 			'messages.logsUploadFailed' => 'Uppladdning av loggar misslyckades',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => 'Logg-ID',
 			'subtitlingStyling.text' => 'Text',
 			'subtitlingStyling.border' => 'Kantlinje',
@@ -3142,14 +3194,14 @@ extension on TranslationsSv {
 			'companionRemote.pairing.connecting' => 'Ansluter...',
 			'companionRemote.pairing.searchingForDevices' => 'Söker efter enheter...',
 			'companionRemote.pairing.noDevicesFound' => 'Inga enheter hittades i ditt nätverk',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.noDevicesHint' => 'Öppna Pleya på desktop och använd samma WiFi',
 			'companionRemote.pairing.availableDevices' => 'Tillgängliga enheter',
 			'companionRemote.pairing.manualConnection' => 'Manuell anslutning',
 			'companionRemote.pairing.cryptoInitFailed' => 'Kunde inte starta säker anslutning. Logga in på Plex först.',
 			'companionRemote.pairing.validationHostRequired' => 'Ange värdadress',
 			'companionRemote.pairing.validationHostFormat' => 'Format måste vara IP:port (t.ex. 192.168.1.100:48632)',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => 'Anslutningen tog för lång tid. Använd samma nätverk på båda enheter.',
 			'companionRemote.pairing.sessionNotFound' => 'Enhet hittades inte. Kontrollera att Pleya körs på värden.',
 			'companionRemote.pairing.authFailed' => 'Autentisering misslyckades. Båda enheter behöver samma Plex-konto.',
@@ -3519,6 +3571,16 @@ extension on TranslationsSv {
 			'unifiedCatalog.semantics.watched' => 'Sedd',
 			'unifiedCatalog.semantics.inProgress' => 'Påbörjad',
 			'unifiedCatalog.semantics.loadingMore' => 'Läser in fler titlar',
+			'unifiedCatalog.discovery.allMovies' => 'Alla filmer',
+			'unifiedCatalog.discovery.allSeries' => 'Alla serier',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => 'Vissa källor svarade inte',
+			'unifiedCatalog.discovery.emptyTitle' => 'Inget att upptäcka ännu',
+			'unifiedCatalog.discovery.emptyBody' => 'Inget synligt bibliotek har något att visa här.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titlar',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} av ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Visa alla filmer, öppnar hela katalogen',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Visa alla serier, öppnar hela katalogen',
 			_ => null,
 		};
 	}

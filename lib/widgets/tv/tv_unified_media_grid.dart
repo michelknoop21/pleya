@@ -260,7 +260,12 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       // the worst thing to lose. Focus is the sharper case: directional
       // traversal scrolls with `keepVisibleAtEnd`, so a focused bottom-row card
       // parked its ring flush against the viewport edge at zero margin.
-      padding: EdgeInsets.fromLTRB(grid.inset, 0, grid.inset, grid.bottomSafeInset),
+      // The top inset is the same problem seen from the other end, and it was
+      // missed the first time: a focused card scales up about its centre, so
+      // row one's ring reaches *above* the first row's box. At zero top
+      // padding the scroll viewport clipped it, and the row the remote lands
+      // on first was the one row whose focus ring had no top edge.
+      padding: EdgeInsets.fromLTRB(grid.inset, grid.focusRingHeadroom, grid.inset, grid.bottomSafeInset),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -17,7 +17,10 @@ import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/tv/tv_discovery_rail.dart';
+import 'package:pleya/widgets/tv/tv_expandable_media_tile.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -87,7 +90,11 @@ void main() {
 
     // The inline keyboard stays put; Done only jumps focus to the results.
     expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'SearchFirstResult');
+    // TV renders unified discovery rails now (fase 6, hoofdstuk 16.1/16.2):
+    // "the first result" is the first tile of the first rail, not a
+    // source-concrete card, so its debug label carries the rail's own
+    // per-group prefix instead of the non-TV list's fixed 'SearchFirstResult'.
+    expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('tvDiscoveryTile_'));
     expect(find.text('Movie 1'), findsOneWidget);
 
     // Dispose the screen so its still-armed debounce timer is cancelled.
@@ -108,7 +115,11 @@ void main() {
 
     expect(client.queries, ['movie']);
     expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget);
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'SearchFirstResult');
+    // TV renders unified discovery rails now (fase 6, hoofdstuk 16.1/16.2):
+    // "the first result" is the first tile of the first rail, not a
+    // source-concrete card, so its debug label carries the rail's own
+    // per-group prefix instead of the non-TV list's fixed 'SearchFirstResult'.
+    expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('tvDiscoveryTile_'));
   });
 
   testWidgets('TV history chips are focusable and run their query on select', (tester) async {
@@ -162,7 +173,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(_keyboardDoneKey());
     await tester.pumpAndSettle();
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'SearchFirstResult');
+    // TV renders unified discovery rails now (fase 6, hoofdstuk 16.1/16.2):
+    // "the first result" is the first tile of the first rail, not a
+    // source-concrete card, so its debug label carries the rail's own
+    // per-group prefix instead of the non-TV list's fixed 'SearchFirstResult'.
+    expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('tvDiscoveryTile_'));
 
     // A new search swaps the results sliver for skeletons (zero focusables) —
     // without the safety net, primary focus dies with the unmounted card.
@@ -173,6 +188,107 @@ void main() {
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'SearchInput');
 
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('TV search projects equivalent multi-server results onto one unified tile', (tester) async {
+    // hoofdstuk 16.1/16.2: "Dune (2021) — 3 bronnen", never one row per
+    // server. Two servers answer the same query with the same title and
+    // matching external ids — production merge evidence — so the unified
+    // rail must render exactly one tile carrying both sources, not two.
+    TvDetectionService.debugSetAppleTVOverride(null);
+    await TvDetectionService.getInstance(forceTv: true);
+    TvDetectionService.setForceTVSync(true);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1280, 720);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
+    final clientA = _FakeMediaServerClient(
+      items: [_dune('dune-a', 'server_a')],
+      serverId: 'server_a',
+      serverName: 'Server A',
+      externalIdsByItemId: {'dune-a': const ExternalIds(tmdb: 438631)},
+    );
+    final clientB = _FakeMediaServerClient(
+      items: [_dune('dune-b', 'server_b')],
+      serverId: 'server_b',
+      serverName: 'Server B',
+      externalIdsByItemId: {'dune-b': const ExternalIds(tmdb: 438631)},
+    );
+    final manager = MultiServerManager()
+      ..debugRegisterClientForTesting(clientA)
+      ..debugRegisterClientForTesting(clientB);
+    final provider = MultiServerProvider(manager, DataAggregationService(manager));
+    addTearDown(provider.dispose);
+
+    final key = GlobalKey<State<SearchScreen>>();
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: ChangeNotifierProvider<MultiServerProvider>.value(
+          value: provider,
+          child: MaterialApp(
+            theme: monoTheme(dark: true),
+            home: SearchScreen(key: key),
+          ),
+        ),
+      ),
+    );
+    (key.currentState! as SearchInputFocusable).setSearchQuery('dune');
+    (key.currentState! as Refreshable).refresh();
+    await tester.pumpAndSettle();
+
+    // One rail (Films), one tile, carrying both sources — not two rows for
+    // one title.
+    expect(find.byType(TvDiscoveryRail), findsOneWidget);
+    expect(find.byType(TvSourceCountBadge), findsOneWidget);
+    expect(find.descendant(of: find.byType(TvSourceCountBadge), matching: find.text('2')), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('non-TV search stays source-concrete for the same multi-server match', (tester) async {
+    // Same fixture as the TV dedup test above, pumped through the ordinary
+    // (non-TV) SearchScreen: mobile/desktop must keep showing one card per
+    // server, unchanged by the TV projection this fase adds.
+    final clientA = _FakeMediaServerClient(
+      items: [_dune('dune-a', 'server_a')],
+      serverId: 'server_a',
+      serverName: 'Server A',
+      externalIdsByItemId: {'dune-a': const ExternalIds(tmdb: 438631)},
+    );
+    final clientB = _FakeMediaServerClient(
+      items: [_dune('dune-b', 'server_b')],
+      serverId: 'server_b',
+      serverName: 'Server B',
+      externalIdsByItemId: {'dune-b': const ExternalIds(tmdb: 438631)},
+    );
+    final manager = MultiServerManager()
+      ..debugRegisterClientForTesting(clientA)
+      ..debugRegisterClientForTesting(clientB);
+    final provider = MultiServerProvider(manager, DataAggregationService(manager));
+    addTearDown(provider.dispose);
+
+    final key = GlobalKey<State<SearchScreen>>();
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: ChangeNotifierProvider<MultiServerProvider>.value(
+          value: provider,
+          child: MaterialApp(
+            theme: monoTheme(dark: true),
+            home: SearchScreen(key: key),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    (key.currentState! as SearchInputFocusable).setSearchQuery('dune');
+    (key.currentState! as Refreshable).refresh();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TvDiscoveryRail), findsNothing);
+    expect(find.text('Dune'), findsNWidgets(2));
   });
 
   testWidgets('a slow earlier search cannot overwrite a newer one', (tester) async {
@@ -257,6 +373,18 @@ MediaItem _item(String id, String title) => MediaItem(
   title: title,
   serverId: 'server_1',
   serverName: 'Server',
+);
+
+// Same title, deliberately different serverId per call — the shape a real
+// multi-server merge candidate takes. `_item` above always claims
+// 'server_1', which is wrong for these fixtures' per-server fake clients.
+MediaItem _dune(String id, String serverId) => MediaItem(
+  id: id,
+  backend: MediaBackend.plex,
+  kind: MediaKind.movie,
+  title: 'Dune',
+  serverId: serverId,
+  serverName: serverId,
 );
 
 Future<GlobalKey<State<SearchScreen>>> _pumpSearchScreen(WidgetTester tester, MediaServerClient client) async {
@@ -371,14 +499,27 @@ Finder _keyboardDoneKey() {
 class _FakeMediaServerClient implements MediaServerClient {
   final List<MediaItem> items;
   final List<String> queries = [];
+  final String _serverId;
+  final String _serverName;
+  // Keyed by item id. A missing entry degrades that item to guid-only
+  // evidence (search_projection.dart's own documented failure mode) rather
+  // than crashing the test — same contract `_fetchExternalIds` relies on in
+  // production.
+  final Map<String, ExternalIds> externalIdsByItemId;
 
-  _FakeMediaServerClient({required this.items});
+  _FakeMediaServerClient({
+    required this.items,
+    String serverId = 'server_1',
+    String serverName = 'Server',
+    this.externalIdsByItemId = const {},
+  }) : _serverId = serverId,
+       _serverName = serverName;
 
   @override
-  ServerId get serverId => ServerId('server_1');
+  ServerId get serverId => ServerId(_serverId);
 
   @override
-  String? get serverName => 'Server';
+  String? get serverName => _serverName;
 
   @override
   MediaBackend get backend => MediaBackend.plex;
@@ -391,6 +532,9 @@ class _FakeMediaServerClient implements MediaServerClient {
     queries.add(query);
     return items;
   }
+
+  @override
+  Future<ExternalIds> fetchExternalIds(String itemId) async => externalIdsByItemId[itemId] ?? const ExternalIds();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

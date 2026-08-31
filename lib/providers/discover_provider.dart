@@ -147,6 +147,16 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       : [?_latestShowsHub, ..._seedHubs, ..._personalizedHubs, ..._hubs];
   bool get hasMoreContinueWatching => _hasMoreContinueWatching;
 
+  /// Online servers whose hub or Continue Watching fetch has not succeeded in
+  /// the current load — the `failedServerIds` the fase-6 discovery projection
+  /// needs (hoofdstuk 21.4 and 41 of docs/tvos-unified-experience.md).
+  ///
+  /// It has to be published rather than derived by the projection, because a
+  /// server that failed contributed no hub at all: it left no trace in [hubs]
+  /// for anything downstream to notice it was ever expected. This provider is
+  /// the only place that knows both halves — who was asked, and who answered.
+  Set<String> get unansweredServerIds => _multiServer.onlineServerIds.toSet().difference(_fullyLoadedServerIds);
+
   /// Localized, display-ready load failure — already run through
   /// [friendlyError], never the raw exception. The screen shows it as-is.
   String? get errorMessage => _errorMessage;

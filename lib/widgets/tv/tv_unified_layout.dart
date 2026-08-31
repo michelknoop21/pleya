@@ -245,28 +245,18 @@ class TvCatalogLayout {
   /// horizon, not a gradient anyone should be able to name.
   static const double pageLift = 0.022;
 
-  /// The surface under a *focused* card's title and meta line.
-  ///
-  /// Unfocused, the text sits straight on the page and the poster is the only
-  /// object — which is right, and is what keeps a wall of twelve from reading as
-  /// twelve filing-cabinet entries. Focused, that leaves the ring drawing a box
-  /// around a poster and two lines of page-coloured nothing, so the one card the
-  /// user is standing on is the one that looks least like an object.
-  ///
-  /// With a fill the poster and its text become a single raised card for exactly
-  /// as long as the focus is on it. Hoofdstuk 10.2 allows precisely this — an
-  /// "geïntegreerde donkere gradient/surface" — and rules out the thing this is
-  /// not: a permanent grey block under every poster.
-  static const double cardFocusFooterFill = 0.07;
-
   /// How far inside its own column a card's content actually starts.
   ///
-  /// Two terms, and forgetting the first is the usual bug: `FocusableWrapper`
-  /// draws its ring as a *border*, which costs [FocusTheme.focusBorderWidth] a
-  /// side whether or not the card holds the focus, and only then does the card
-  /// pad by [cardFocusRingGap]. Anything that has to line up with the posters —
-  /// the page heading above them, a placeholder standing in for them — has to
-  /// count both.
+  /// Two terms, and forgetting the first is the usual bug: the focus ring is a
+  /// *border*, which costs [FocusTheme.focusBorderWidth] a side whether or not
+  /// the card holds the focus, and only then does the card pad by
+  /// [cardFocusRingGap]. Anything that has to line up with the posters — the
+  /// page heading above them, a placeholder standing in for them, the card's
+  /// own footer — has to count both.
+  ///
+  /// DEC-065 punt 4 moved the ring from around the whole card to around the
+  /// artwork alone, but not the inset: the poster still starts here, so every
+  /// other measurement on the page still lines up against this one.
   static double cardContentInset(double scale) => FocusTheme.focusBorderWidth + cardFocusRingGap * scale;
 
   /// Title and context line inside the footer. 14 renders at ~11.9 logical,
@@ -464,6 +454,7 @@ class TvCatalogGrid {
     required this.gutter,
     required this.inset,
     required this.bottomSafeInset,
+    required this.focusRingHeadroom,
   });
 
   final int columns;
@@ -484,6 +475,17 @@ class TvCatalogGrid {
   /// with `keepVisibleAtEnd`, so without this the ring lands flush against the
   /// edge of the screen.
   final double bottomSafeInset;
+
+  /// Room *above* the first row, for the half of a focused card's growth that
+  /// goes upward.
+  ///
+  /// [bottomSafeInset] has carried the downward half since fase 5, and the
+  /// upward half was simply missed: the grid's own top padding was zero, so
+  /// row one — the row directional traversal lands on first — had its focus
+  /// ring clipped flat against the top of the scroll viewport. The heading
+  /// above already pays the hoofdstuk 8.1 safe margin, so this is only the
+  /// focus growth, not the margin again.
+  final double focusRingHeadroom;
 
   /// Ideal card width on the 1920-wide reference surface, expressed as a
   /// fraction so it converts like every other box measurement in this file
@@ -553,6 +555,213 @@ class TvCatalogGrid {
       gutter: gutter,
       inset: inset,
       bottomSafeInset: width * (TvCatalogLayout.topSafeInset / _referenceWidth) + focusGrowth,
+      focusRingHeadroom: focusGrowth,
     );
   }
+}
+
+/// Geometry of the fase-6 discovery landing (hoofdstuk 10.2a, DEC-064): the
+/// row-based surface that sits *in front of* the catalog [TvCatalogLayout]
+/// draws, and deliberately does not look like it.
+///
+/// The two live in one file because they are one design system seen from two
+/// distances, and splitting them is how they drift. What separates them is a
+/// single decision about what focus is allowed to do. In the catalog, focus
+/// must not move anything: you are walking a wall of five hundred posters and
+/// the wall has to hold still under you. On a discovery landing, focus *is*
+/// the composition — the item you are standing on becomes a wide frame with its
+/// own context, and its neighbours stay beside it, smaller.
+///
+/// ## Why one height and two widths
+///
+/// The expansion is expressed entirely in width. Every tile in a rail is
+/// [cardHeight] tall whether it is focused or not; what changes is whether it is
+/// [posterAspectRatio] wide (2:3) or [wideAspectRatio] wide (16:9). That is not
+/// a styling preference, it is the fix for the failure fase 5 already paid for
+/// once: a row whose height depends on which item holds the focus drags every
+/// row beneath it up and down the screen while the user is trying to read them.
+/// With the height fixed, the band is reserved at its maximum from the first
+/// frame, neighbours slide horizontally, and nothing below the rail moves at
+/// all — see hoofdstuk 20 of the fase-6 brief and [railBandHeight].
+///
+/// The metadata block under a rail is reserved the same way and for the same
+/// reason: it is [metaBlockHeight] tall whether anything is focused or not, so
+/// a title with a two-line synopsis and a title with none occupy identical
+/// space and the rail below never shifts.
+class TvDiscoveryLayout {
+  const TvDiscoveryLayout._();
+
+  /// Page heading. Deliberately *not* [TvCatalogLayout.pageTitleFontSize] any
+  /// more: the two started shared, on the argument that "Films" is the same
+  /// word at both levels, but the visual gate against the Netflix TV reference
+  /// showed the landing needs a heading that owns a much larger composition —
+  /// one dominant rail instead of a wall of posters. 30 renders at 25.5
+  /// logical on the canonical canvas (~47 reference px); the catalog keeps its
+  /// own 27, and the one-size step on the way into Alles bekijken is the
+  /// honest price of the landing reading as a stage rather than an index.
+  static const double pageTitleFontSize = 30;
+
+  /// Left/right page inset. Wider than the catalog's, because a rail runs off
+  /// the right edge by design and needs a visible margin to run off *from*.
+  static const double pageInset = 48;
+
+  /// Gap between the page heading and the first rail's own heading.
+  static const double titleRailGap = 22;
+
+  /// A rail's own heading — hoofdstuk 8.3's section title band. Under the page
+  /// title and above the content it names, so it has to be clearly subordinate
+  /// to the first and clearly dominant over the second.
+  static const double sectionTitleFontSize = 20;
+  static const double sectionHeaderGap = 12;
+
+  /// Tile height, constant across focused and unfocused (see the class comment).
+  ///
+  /// The number is the whole difference between a discovery rail and a bigger
+  /// catalog row, so it is worth stating what it buys on the canonical
+  /// 1038×584 canvas (scale 0.85): 270 renders the tile band 229.5 tall, the
+  /// focused 16:9 frame ~408 wide — about 40% of the usable content width —
+  /// and a 2:3 neighbour ~153 wide, which leaves room for roughly *three*
+  /// neighbours beside the focused item. That is the Netflix TV composition
+  /// the reference screenshots show. The first build used 172, which put six
+  /// neighbours on screen and made the landing read as a slightly larger
+  /// catalog grid — the exact impression the phase exists to avoid.
+  static const double cardHeight = 270;
+  static const double posterAspectRatio = 2 / 3;
+  static const double wideAspectRatio = 16 / 9;
+  static const double cardRadius = 10;
+  static const double itemGap = 16;
+
+  /// Band of page background between a tile's artwork and its focus ring, for
+  /// the reason [TvCatalogLayout.cardFocusRingGap] spells out: a 2.5px white
+  /// ring laid straight onto bright artwork has nothing to contrast with, and
+  /// stops reading at three metres on exactly the tiles that catch the eye.
+  static const double cardFocusRingGap = 5;
+
+  /// Brightness lift on the focused tile's artwork. Small on purpose, and
+  /// smaller than the catalog's: at discovery scale the artwork *is* the
+  /// composition, and at 0.14 the lift read as a white wash over exactly the
+  /// picture the user is choosing by. Focus is carried by the geometry
+  /// expansion, the white ring, and the shadow; this is only the faintest
+  /// confirmation that the light follows the remote.
+  static const double cardFocusArtworkLift = 0.05;
+
+  /// What an *unfocused* neighbour's artwork is dimmed by. Small: neighbours
+  /// must stay visible (hoofdstuk 19), so this is a recession, not a curtain —
+  /// and at 0.18 it was becoming one, a spotlight where only the focused
+  /// artwork still lived. The neighbours are colourful content, not backdrop.
+  static const double neighbourDim = 0.10;
+
+  static const double cardShadowBlur = 14;
+  static const double cardShadowOffsetY = 5;
+  static const double cardShadowAlpha = 0.38;
+  static const double cardFocusShadowBlur = 38;
+  static const double cardFocusShadowOffsetY = 10;
+  static const double cardFocusShadowAlpha = 0.5;
+
+  /// The focused item's context block, under the rail (hoofdstuk 10.2a's own
+  /// sketch puts it there rather than over the artwork). Three tiers: title,
+  /// one meta line, up to two lines of synopsis.
+  ///
+  /// Sized against the ~408-wide focused frame above it, not against the old
+  /// compact band: a 16px title under a frame that large read as a caption.
+  /// Rendered on the canonical canvas these come to ~20 / 13.6 / 12.3 logical
+  /// — readable from a sofa, still clearly three tiers.
+  static const double metaTitleFontSize = 23.5;
+  static const double metaContextFontSize = 16;
+  static const double metaSynopsisFontSize = 14.5;
+  static const double metaLineHeight = 1.3;
+  static const int metaSynopsisMaxLines = 2;
+  static const double railMetaGap = 16;
+  static const double metaLineGap = 6;
+
+  /// Reserved height of that block, computed rather than guessed so a font-size
+  /// change cannot silently start moving the rail below it.
+  static double metaBlockHeight(double scale) =>
+      (metaTitleFontSize * metaLineHeight +
+          metaLineGap +
+          metaContextFontSize * metaLineHeight +
+          metaLineGap +
+          metaSynopsisFontSize * metaLineHeight * metaSynopsisMaxLines) *
+      scale;
+
+  /// Height of the tile band alone — the tallest a tile can draw, focus ring
+  /// and its gap included, so an expanded tile never overflows the band it was
+  /// given and never asks the column to re-measure.
+  static double railBandHeight(double scale) =>
+      cardHeight * scale + (cardFocusRingGap * scale + FocusTheme.focusBorderWidth) * 2;
+
+  /// Full vertical extent of one rail: heading, tiles, and the context block.
+  /// Constant by construction — nothing in it depends on where focus is.
+  static double railSectionHeight(double scale) =>
+      sectionTitleFontSize * metaLineHeight * scale +
+      sectionHeaderGap * scale +
+      railBandHeight(scale) +
+      railMetaGap * scale +
+      metaBlockHeight(scale);
+
+  static double posterWidth(double scale) => cardHeight * scale * posterAspectRatio;
+  static double wideWidth(double scale) => cardHeight * scale * wideAspectRatio;
+
+  /// The "Alle films ▸ Alles bekijken" section action that closes a landing
+  /// (hoofdstuk 10.2a, DEC-064 punt 3). A full-width row rather than a text
+  /// link: it is a first-class route, and a remote has to be able to land on it
+  /// without aiming.
+  ///
+  /// Low-chrome on purpose. The first build gave the idle row a fill and an
+  /// outline, and against the Netflix reference it read as a settings row —
+  /// a form control parked under the content. Idle it is now just type on the
+  /// page, sized like a section heading with its action beside it; the fill
+  /// appears only under focus, where the white ring already says where you
+  /// are. Reachability is untouched: still full-width, still one DOWN from
+  /// the last rail.
+  static const double viewAllRadius = 10;
+  static const double viewAllPaddingHorizontal = 12;
+  static const double viewAllPaddingVertical = 6;
+
+  /// Half the page title's size, near enough. The gap is what makes the two
+  /// read as heading and sibling action rather than as two headings — at 20
+  /// against the title's 30 they competed, and the band started looking like
+  /// a toolbar.
+  static const double viewAllActionFontSize = 16;
+  static const double viewAllIconSize = 18;
+  static const double viewAllIconGap = 4;
+  static const double viewAllFocusRingGap = 4;
+  static const double viewAllFill = 0;
+  static const double viewAllFocusedFill = 0.08;
+
+  /// How far up from the bottom edge the page fades out (hoofdstuk 33.3).
+  ///
+  /// The next row's posters are meant to peek, and a peek that is chopped off
+  /// square reads as a rendering bug rather than as "there is more below".
+  /// Short enough that it only ever touches the strip already half out of
+  /// view — a longer fade starts dimming content the viewer is reading.
+  static const double pageBottomFade = 26;
+
+  /// Space between the page title and the action beside it.
+  ///
+  /// Two failure modes to stay between, and both are visible at a glance:
+  /// too little and the action reads as part of the heading ("FilmsAlle
+  /// films"), too much and it drifts to the page edge, which is the
+  /// right-aligned variant DEC-068 rejected — it costs horizontal remote
+  /// travel for no gain. This is a fixed gap, not a `Spacer`, precisely so a
+  /// long locale moves the action a little further out instead of parking it
+  /// against the margin.
+  static const double pageTitleActionGap = 28;
+
+  /// Vertical gap between two rails, and between the last rail and the
+  /// view-all row.
+  static const double sectionGap = 26;
+
+  /// Progress bar on a tile that has an active resume position.
+  static const double progressBarHeight = 5;
+  static const double progressTrackAlpha = 0.22;
+
+  /// The multi-source capsule (hoofdstuk 10.3), same language as the catalog
+  /// card's so one badge means one thing across both levels.
+  static const double badgeInset = 7;
+
+  /// Ink alphas on `MonoTokens.text` for the context block's three tiers.
+  static const double inkPrimary = 1;
+  static const double inkSecondary = 0.7;
+  static const double inkTertiary = 0.56;
 }

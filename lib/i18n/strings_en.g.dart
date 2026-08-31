@@ -5283,6 +5283,7 @@ class TranslationsUnifiedCatalogEn {
 	late final TranslationsUnifiedCatalogFiltersEn filters = TranslationsUnifiedCatalogFiltersEn.internal(_root);
 	late final TranslationsUnifiedCatalogStatesEn states = TranslationsUnifiedCatalogStatesEn.internal(_root);
 	late final TranslationsUnifiedCatalogSemanticsEn semantics = TranslationsUnifiedCatalogSemanticsEn.internal(_root);
+	late final TranslationsUnifiedCatalogDiscoveryEn discovery = TranslationsUnifiedCatalogDiscoveryEn.internal(_root);
 }
 
 // Path: search.filters
@@ -5307,6 +5308,9 @@ class TranslationsSearchFiltersEn {
 
 	/// en: 'People'
 	String get people => 'People';
+
+	/// en: 'Other'
+	String get other => 'Other';
 }
 
 // Path: hotkeys.actions
@@ -6146,6 +6150,56 @@ class TranslationsUnifiedCatalogSemanticsEn {
 	String get loadingMore => 'Loading more titles';
 }
 
+// Path: unifiedCatalog.discovery
+class TranslationsUnifiedCatalogDiscoveryEn {
+	TranslationsUnifiedCatalogDiscoveryEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'All movies'
+	String get allMovies => 'All movies';
+
+	/// en: 'All series'
+	String get allSeries => 'All series';
+
+	/// en: 'S${season} E${episode}'
+	String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+
+	/// en: 'Some sources did not answer'
+	String get partial => 'Some sources did not answer';
+
+	/// en: 'Nothing to discover yet'
+	String get emptyTitle => 'Nothing to discover yet';
+
+	/// en: 'No visible library has anything to show here.'
+	String get emptyBody => 'No visible library has anything to show here.';
+
+	late final TranslationsUnifiedCatalogDiscoverySemanticsEn semantics = TranslationsUnifiedCatalogDiscoverySemanticsEn.internal(_root);
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	TranslationsUnifiedCatalogDiscoverySemanticsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '${title}, ${count} titles'
+	String section({required Object title, required Object count}) => '${title}, ${count} titles';
+
+	/// en: '${position} of ${count}'
+	String position({required Object position, required Object count}) => '${position} of ${count}';
+
+	/// en: 'View all movies, opens the complete catalog'
+	String get viewAllMovies => 'View all movies, opens the complete catalog';
+
+	/// en: 'View all series, opens the complete catalog'
+	String get viewAllSeries => 'View all series, opens the complete catalog';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -6506,6 +6560,7 @@ extension on Translations {
 			'search.filters.shows' => 'Shows',
 			'search.filters.episodes' => 'Episodes',
 			'search.filters.people' => 'People',
+			'search.filters.other' => 'Other',
 			'search.errorTitle' => 'Search failed',
 			'search.errorNetwork' => 'Couldn\'t reach your servers. Check your connection and try again.',
 			'search.noServersTitle' => 'No servers available',
@@ -6665,9 +6720,9 @@ extension on Translations {
 			'videoControls.tvPanel.more' => 'More…',
 			'videoControls.fullscreenButton' => 'Enter fullscreen',
 			'videoControls.exitFullscreenButton' => 'Exit fullscreen',
-			'videoControls.alwaysOnTopButton' => 'Always on top',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.alwaysOnTopButton' => 'Always on top',
 			'videoControls.rotationLockButton' => 'Rotation lock',
 			'videoControls.lockScreen' => 'Lock screen',
 			'videoControls.screenLockButton' => 'Screen lock',
@@ -7179,9 +7234,9 @@ extension on Translations {
 			'playlists.errorAdding' => 'Failed to add to playlist',
 			'playlists.errorReordering' => 'Failed to reorder playlist item',
 			'playlists.errorRemoving' => 'Failed to remove from playlist',
-			'watchTogether.title' => 'Watch Together',
 			_ => null,
 		} ?? switch (path) {
+			'watchTogether.title' => 'Watch Together',
 			'watchTogether.description' => 'Watch content in sync with friends and family',
 			'watchTogether.createSession' => 'Create Session',
 			'watchTogether.creating' => 'Creating...',
@@ -7693,9 +7748,9 @@ extension on Translations {
 			'tautulli.errorTokenRequired' => 'Enter a token.',
 			'tautulli.errorNotTautulli' => 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.',
 			'tautulli.errorServer' => ({required Object code}) => 'Tautulli reported a server error (HTTP ${code}).',
-			'tautulli.errorGeneric' => 'Connecting failed.',
 			_ => null,
 		} ?? switch (path) {
+			'tautulli.errorGeneric' => 'Connecting failed.',
 			'nowWatching.title' => 'Now watching',
 			'nowWatching.tooltip' => 'See who is watching now',
 			'nowWatching.streams' => ({required Object count}) => '${count} streams',
@@ -7917,6 +7972,16 @@ extension on Translations {
 			'unifiedCatalog.semantics.watched' => 'Watched',
 			'unifiedCatalog.semantics.inProgress' => 'In progress',
 			'unifiedCatalog.semantics.loadingMore' => 'Loading more titles',
+			'unifiedCatalog.discovery.allMovies' => 'All movies',
+			'unifiedCatalog.discovery.allSeries' => 'All series',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => 'Some sources did not answer',
+			'unifiedCatalog.discovery.emptyTitle' => 'Nothing to discover yet',
+			'unifiedCatalog.discovery.emptyBody' => 'No visible library has anything to show here.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titles',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} of ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'View all movies, opens the complete catalog',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
 			_ => null,
 		};
 	}

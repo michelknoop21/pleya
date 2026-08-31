@@ -444,6 +444,7 @@ class _TranslationsSearchDa extends TranslationsSearchEn {
 	@override String get tryDifferentTerm => 'Prøv en anden søgning';
 	@override String get searchYourMedia => 'Søg i dine medier';
 	@override String get enterTitleActorOrKeyword => 'Indtast titel, skuespiller eller nøgleord';
+	@override late final _TranslationsSearchFiltersDa filters = _TranslationsSearchFiltersDa._(_root);
 }
 
 // Path: hotkeys
@@ -1764,6 +1765,22 @@ class _TranslationsUnifiedCatalogDa extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogFiltersDa filters = _TranslationsUnifiedCatalogFiltersDa._(_root);
 	@override late final _TranslationsUnifiedCatalogStatesDa states = _TranslationsUnifiedCatalogStatesDa._(_root);
 	@override late final _TranslationsUnifiedCatalogSemanticsDa semantics = _TranslationsUnifiedCatalogSemanticsDa._(_root);
+	@override late final _TranslationsUnifiedCatalogDiscoveryDa discovery = _TranslationsUnifiedCatalogDiscoveryDa._(_root);
+}
+
+// Path: search.filters
+class _TranslationsSearchFiltersDa extends TranslationsSearchFiltersEn {
+	_TranslationsSearchFiltersDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'Alle';
+	@override String get movies => 'Film';
+	@override String get shows => 'TV-serier';
+	@override String get episodes => 'Episoder';
+	@override String get people => 'Personer';
+	@override String get other => 'Andet';
 }
 
 // Path: hotkeys.actions
@@ -2114,6 +2131,35 @@ class _TranslationsUnifiedCatalogSemanticsDa extends TranslationsUnifiedCatalogS
 	@override String get loadingMore => 'Indlæser flere titler';
 }
 
+// Path: unifiedCatalog.discovery
+class _TranslationsUnifiedCatalogDiscoveryDa extends TranslationsUnifiedCatalogDiscoveryEn {
+	_TranslationsUnifiedCatalogDiscoveryDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String get allMovies => 'Alle film';
+	@override String get allSeries => 'Alle serier';
+	@override String episodeLabel({required Object season, required Object episode}) => 'S${season} E${episode}';
+	@override String get partial => 'Nogle kilder svarede ikke';
+	@override String get emptyTitle => 'Intet at opdage endnu';
+	@override String get emptyBody => 'Intet synligt bibliotek har noget at vise her.';
+	@override late final _TranslationsUnifiedCatalogDiscoverySemanticsDa semantics = _TranslationsUnifiedCatalogDiscoverySemanticsDa._(_root);
+}
+
+// Path: unifiedCatalog.discovery.semantics
+class _TranslationsUnifiedCatalogDiscoverySemanticsDa extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
+	_TranslationsUnifiedCatalogDiscoverySemanticsDa._(TranslationsDa root) : this._root = root, super.internal(root);
+
+	final TranslationsDa _root; // ignore: unused_field
+
+	// Translations
+	@override String section({required Object title, required Object count}) => '${title}, ${count} titler';
+	@override String position({required Object position, required Object count}) => '${position} af ${count}';
+	@override String get viewAllMovies => 'Se alle film, åbner det komplette katalog';
+	@override String get viewAllSeries => 'Se alle serier, åbner det komplette katalog';
+}
+
 /// The flat map containing all translations for locale <da>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -2414,6 +2460,12 @@ extension on TranslationsDa {
 			'search.tryDifferentTerm' => 'Prøv en anden søgning',
 			'search.searchYourMedia' => 'Søg i dine medier',
 			'search.enterTitleActorOrKeyword' => 'Indtast titel, skuespiller eller nøgleord',
+			'search.filters.all' => 'Alle',
+			'search.filters.movies' => 'Film',
+			'search.filters.shows' => 'TV-serier',
+			'search.filters.episodes' => 'Episoder',
+			'search.filters.people' => 'Personer',
+			'search.filters.other' => 'Andet',
 			'hotkeys.setShortcutFor' => ({required Object actionName}) => 'Indstil genvej for ${actionName}',
 			'hotkeys.clearShortcut' => 'Ryd genvej',
 			'hotkeys.noShortcutSet' => 'Ingen genvej angivet',
@@ -2628,14 +2680,14 @@ extension on TranslationsDa {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sove-timer indstillet til ${label}',
 			'messages.noItemsAvailable' => 'Ingen elementer tilgængelige',
 			'messages.failedToCreatePlayQueueNoItems' => 'Kunne ikke oprette afspilningskø — ingen elementer',
+			_ => null,
+		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Kunne ikke ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Skifter til kompatibel afspiller...',
 			'messages.serverLimitTitle' => 'Afspilning mislykkedes',
 			'messages.serverLimitBody' => 'Serverfejl (HTTP 500). En båndbredde-/transkodningsgrænse afviste nok sessionen. Bed ejeren om at justere den.',
 			'messages.logsUploaded' => 'Logs uploadet',
 			'messages.logsUploadFailed' => 'Kunne ikke uploade logs',
-			_ => null,
-		} ?? switch (path) {
 			'messages.logId' => 'Log-ID',
 			'subtitlingStyling.text' => 'Tekst',
 			'subtitlingStyling.border' => 'Kant',
@@ -3142,14 +3194,14 @@ extension on TranslationsDa {
 			'companionRemote.pairing.connecting' => 'Opretter forbindelse...',
 			'companionRemote.pairing.searchingForDevices' => 'Søger efter enheder...',
 			'companionRemote.pairing.noDevicesFound' => 'Ingen enheder fundet på dit netværk',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.pairing.noDevicesHint' => 'Åbn Pleya på desktop, og brug samme WiFi',
 			'companionRemote.pairing.availableDevices' => 'Tilgængelige enheder',
 			'companionRemote.pairing.manualConnection' => 'Manuel forbindelse',
 			'companionRemote.pairing.cryptoInitFailed' => 'Kunne ikke starte sikker forbindelse. Log ind på Plex først.',
 			'companionRemote.pairing.validationHostRequired' => 'Angiv venligst værtsadresse',
 			'companionRemote.pairing.validationHostFormat' => 'Format skal være IP:port (f.eks. 192.168.1.100:48632)',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.connectionTimedOut' => 'Forbindelsen fik timeout. Brug samme netværk på begge enheder.',
 			'companionRemote.pairing.sessionNotFound' => 'Enhed ikke fundet. Sørg for, at Pleya kører på værten.',
 			'companionRemote.pairing.authFailed' => 'Godkendelse mislykkedes. Begge enheder skal bruge samme Plex-konto.',
@@ -3519,6 +3571,16 @@ extension on TranslationsDa {
 			'unifiedCatalog.semantics.watched' => 'Set',
 			'unifiedCatalog.semantics.inProgress' => 'I gang',
 			'unifiedCatalog.semantics.loadingMore' => 'Indlæser flere titler',
+			'unifiedCatalog.discovery.allMovies' => 'Alle film',
+			'unifiedCatalog.discovery.allSeries' => 'Alle serier',
+			'unifiedCatalog.discovery.episodeLabel' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'unifiedCatalog.discovery.partial' => 'Nogle kilder svarede ikke',
+			'unifiedCatalog.discovery.emptyTitle' => 'Intet at opdage endnu',
+			'unifiedCatalog.discovery.emptyBody' => 'Intet synligt bibliotek har noget at vise her.',
+			'unifiedCatalog.discovery.semantics.section' => ({required Object title, required Object count}) => '${title}, ${count} titler',
+			'unifiedCatalog.discovery.semantics.position' => ({required Object position, required Object count}) => '${position} af ${count}',
+			'unifiedCatalog.discovery.semantics.viewAllMovies' => 'Se alle film, åbner det komplette katalog',
+			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'Se alle serier, åbner det komplette katalog',
 			_ => null,
 		};
 	}
