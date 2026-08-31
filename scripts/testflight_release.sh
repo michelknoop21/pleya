@@ -37,6 +37,16 @@ LOG_PREFIX="[testflight $(date '+%Y-%m-%d %H:%M')]"
 # is niet dezelfde build.
 scripts/check_flutter_version.sh
 
+# Pleya Verify's automatiseringsserver hoort in geen enkele release te zitten.
+# tvos/scripts/xcode_appletv.sh leest PLEYA_VERIFY uit de omliggende omgeving —
+# terecht voor een simulatorbuild van de verify-driver, fataal voor een archive.
+# Een lane die op de aanroeper vertrouwt is er één die een keer een verkeerde
+# build uploadt, dus zet hij zijn eigen omgeving dicht. De build-script-guard in
+# xcode_appletv.sh blijft daarnaast staan: die vangt de aanroep die dit script
+# overslaat.
+export PLEYA_VERIFY=false
+unset PLEYA_VERIFY_TOKEN PLEYA_VERIFY_PORT
+
 if [[ ! -f .env ]]; then
   echo "$LOG_PREFIX FOUT: .env ontbreekt (zie .env.example)" >&2
   exit 1

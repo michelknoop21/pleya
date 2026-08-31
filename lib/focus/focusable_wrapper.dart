@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../automation/automation_registry.dart';
+import '../automation/pleya_verify.dart';
 import '../widgets/clickable_cursor.dart';
 import '../utils/text_input_diagnostics.dart';
 import 'card_focus_scope.dart';
@@ -146,6 +148,23 @@ class FocusableWrapper extends StatefulWidget {
   /// that would compete with this wrapper's focus handling.
   final bool descendantsAreFocusable;
 
+  /// Stable automation ID (see lib/automation/automation_ids.dart). Null on
+  /// most wrappers — only set where Pleya Verify needs to address this
+  /// specific widget.
+  final String? automationId;
+
+  /// Disambiguates repeated [automationId]s across a list — the registered
+  /// id becomes `automationId[automationInstance]`.
+  final String? automationInstance;
+
+  /// Automation role reported alongside [automationId]. Defaults to
+  /// `'focusable'` when unset.
+  final String? automationRole;
+
+  /// Extra state exposed on the automation snapshot for this node (e.g.
+  /// `{'selected': true}`). Called lazily, only when a snapshot is taken.
+  final Object? Function()? automationState;
+
   const FocusableWrapper({
     super.key,
     required this.child,
@@ -176,6 +195,10 @@ class FocusableWrapper extends StatefulWidget {
     this.focusScale = FocusTheme.focusScale,
     this.useFocusGlow = false,
     this.descendantsAreFocusable = true,
+    this.automationId,
+    this.automationInstance,
+    this.automationRole,
+    this.automationState,
   });
 
   @override
@@ -194,11 +217,39 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
   Timer? _longPressTimer;
   bool _isSelectKeyDown = false;
 
+  int? _automationToken;
+
   @override
   void initState() {
     super.initState();
     _initFocusNode();
     _initAnimations();
+    _registerAutomationNode();
+  }
+
+  String? get _resolvedAutomationId =>
+      widget.automationInstance != null ? '${widget.automationId}[${widget.automationInstance}]' : widget.automationId;
+
+  void _registerAutomationNode() {
+    if (!kPleyaVerify) return;
+    final id = _resolvedAutomationId;
+    if (id == null) return;
+    _automationToken = AutomationRegistry.instance.register(
+      AutomationDeclaredNode(
+        id: id,
+        role: widget.automationRole ?? 'focusable',
+        label: widget.semanticLabel,
+        focusNode: _focusNode,
+        contextGetter: () => mounted ? context : null,
+        state: widget.automationState,
+      ),
+    );
+  }
+
+  void _unregisterAutomationNode() {
+    final token = _automationToken;
+    if (token != null) AutomationRegistry.instance.unregister(token);
+    _automationToken = null;
   }
 
   void _initFocusNode() {
@@ -247,6 +298,12 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
     if (widget.focusScale != oldWidget.focusScale) {
       _scaleAnimation = _createScaleAnimation();
     }
+
+    if (kPleyaVerify &&
+        (widget.automationId != oldWidget.automationId || widget.automationInstance != oldWidget.automationInstance)) {
+      _unregisterAutomationNode();
+      _registerAutomationNode();
+    }
   }
 
   @override
@@ -256,6 +313,7 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
     if (_ownsNode) {
       _focusNode.dispose();
     }
+    _unregisterAutomationNode();
     super.dispose();
   }
 
@@ -586,6 +644,13 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
     // Add semantics if label provided
     if (widget.semanticLabel != null) {
       result = Semantics(label: widget.semanticLabel, button: widget.onSelect != null, child: result);
+    }
+
+    // Free accessibilityIdentifier (iOS/tvOS) / resource-id (Android) for
+    // idb/XCUITest-style native lookups, tree-shaken out with everything
+    // else under kPleyaVerify.
+    if (kPleyaVerify && _resolvedAutomationId != null) {
+      result = Semantics(identifier: _resolvedAutomationId, child: result);
     }
 
     if (widget.onSelect != null || widget.onLongPress != null) {

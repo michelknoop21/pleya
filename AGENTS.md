@@ -45,6 +45,7 @@
 - Connection/bootstrap flow matters for cross-server work: `lib/connection/`, `lib/services/server_registry.dart`, `lib/services/multi_server_manager.dart`, `lib/services/data_aggregation_service.dart`, and `lib/providers/multi_server_provider.dart`.
 - Playback-related work is centered around `lib/mpv/`; offline/download persistence is in `lib/database/` plus offline providers/services.
 - TV/D-pad behavior is handled separately in `lib/focus/`; do not assume touch-only interactions when editing screens/widgets.
+- `pleya_verify/` is the end-to-end verification layer (real scenarios against a real macOS/iOS-sim/tvOS-sim build). See `docs/architecture/pleya-verify.md` for the design and `docs/testing/pleya-verify-for-agents.md` for how to run or write a scenario.
 
 ## Repo-Specific Gotchas
 - Many dependencies are pinned to `edde746/*` git forks in `pubspec.yaml`; do not casually replace them with pub.dev versions.
@@ -62,3 +63,4 @@
 - If you touch native code under `android/`, `ios/`, `macos/`, `tvos/`, `linux/`, `windows/`, or `shared/`, run `scripts/format_native.sh --check`.
 - If you add a feature in one media backend path, check whether Plex and Jellyfin both need equivalent support before stopping.
 - In user-facing docs/strings/comments about the product, use `Pleya`, not `Plezy`.
+- A relevant UI/focus change is not fully verified without matching Pleya Verify assertions and visual evidence, unless the environment provably cannot run a supported target; in that case, report exactly what evidence is missing instead of calling the change verified. This is not a heavy gate for pure backend code.

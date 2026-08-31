@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../automation/automation_node.dart';
 import '../../theme/mono_tokens.dart';
 import '../../widgets/focusable_filter_chip.dart';
 
@@ -28,6 +29,10 @@ class LibraryHeaderAction {
   final VoidCallback? onNavigateDown;
   final VoidCallback? onBack;
 
+  /// Stable automation ID (see lib/automation/automation_ids.dart), null on
+  /// call sites Pleya Verify doesn't need to address individually.
+  final String? automationId;
+
   const LibraryHeaderAction({
     required this.label,
     required this.focusNode,
@@ -39,6 +44,7 @@ class LibraryHeaderAction {
     this.onNavigateUp,
     this.onNavigateDown,
     this.onBack,
+    this.automationId,
   });
 
   /// Compares what is on screen, not the callbacks: those are closures rebuilt
@@ -219,18 +225,23 @@ class LibraryHeaderBar extends StatelessWidget {
           children: [
             for (var i = 0; i < actions.length; i++) ...[
               if (i > 0) const SizedBox(width: 2),
-              FocusableFilterChip(
-                variant: FilterChipVariant.text,
-                label: actions[i].label,
-                value: actions[i].value,
-                selected: actions[i].isActive,
+              AutomationNode(
+                id: actions[i].automationId,
+                role: 'filter',
                 focusNode: actions[i].focusNode,
-                onPressed: actions[i].onPressed,
-                onNavigateLeft: actions[i].onNavigateLeft ?? (i == 0 ? onActionsExitLeft : null),
-                onNavigateRight: actions[i].onNavigateRight ?? (i == actions.length - 1 ? onActionsExitRight : null),
-                onNavigateUp: actions[i].onNavigateUp,
-                onNavigateDown: actions[i].onNavigateDown,
-                onBack: actions[i].onBack,
+                child: FocusableFilterChip(
+                  variant: FilterChipVariant.text,
+                  label: actions[i].label,
+                  value: actions[i].value,
+                  selected: actions[i].isActive,
+                  focusNode: actions[i].focusNode,
+                  onPressed: actions[i].onPressed,
+                  onNavigateLeft: actions[i].onNavigateLeft ?? (i == 0 ? onActionsExitLeft : null),
+                  onNavigateRight: actions[i].onNavigateRight ?? (i == actions.length - 1 ? onActionsExitRight : null),
+                  onNavigateUp: actions[i].onNavigateUp,
+                  onNavigateDown: actions[i].onNavigateDown,
+                  onBack: actions[i].onBack,
+                ),
               ),
             ],
           ],

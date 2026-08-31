@@ -10,6 +10,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../automation/automation_ids.dart';
+import '../automation/automation_node.dart';
 import '../focus/dpad_navigator.dart';
 import '../focus/focus_memory_tracker.dart';
 import '../media/media_library.dart';
@@ -76,6 +78,15 @@ class NavigationRailItem extends StatelessWidget {
   /// Called when RIGHT arrow is pressed to navigate to content area.
   final VoidCallback? onNavigateRight;
 
+  /// Stable automation ID (see lib/automation/automation_ids.dart), null on
+  /// items Pleya Verify doesn't need to address individually (reconnect,
+  /// fullscreen toggle).
+  final String? automationId;
+
+  /// Disambiguates repeated [automationId]s across a list — the registered
+  /// id becomes `automationId[automationInstance]`.
+  final String? automationInstance;
+
   const NavigationRailItem({
     super.key,
     required this.icon,
@@ -94,6 +105,8 @@ class NavigationRailItem extends StatelessWidget {
     this.horizontalPadding = 17,
     this.suppressSelectedBackground = false,
     this.onNavigateRight,
+    this.automationId,
+    this.automationInstance,
   });
 
   @override
@@ -101,97 +114,104 @@ class NavigationRailItem extends StatelessWidget {
     final t = tokens(context);
     final showSelectedBackground = isSelected && !suppressSelectedBackground;
 
-    return Focus(
+    return AutomationNode(
+      id: automationId,
+      instance: automationInstance,
+      role: 'nav.item',
+      state: () => {'selected': isSelected, 'collapsed': isCollapsed},
       focusNode: focusNode,
-      autofocus: autofocus,
-      onKeyEvent: (node, event) {
-        if (event is! KeyDownEvent) return KeyEventResult.ignored;
-        if (event.logicalKey.isSelectKey) {
-          onTap();
-          return KeyEventResult.handled;
-        }
-        if (event.logicalKey == LogicalKeyboardKey.arrowRight && onNavigateRight != null) {
-          onNavigateRight!();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          canRequestFocus: false,
-          onTap: onTap,
-          borderRadius: borderRadius,
-          child: Stack(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: () {
-                    // A neutral wash is white-on-dark in dark mode but
-                    // black-on-white in light mode, and black at 6% is
-                    // #F0F0F0 — indistinguishable from the rail. Light mode
-                    // needs a heavier wash to read as the same cue.
-                    if (isCollapsed) {
-                      return isFocused ? t.onArtworkInk(dark: 0.12, light: 0.22) : null;
-                    }
-                    if (isFocused) return t.accent.withValues(alpha: showSelectedBackground ? 0.18 : 0.12);
-                    // Netflix-style active row: subtle neutral wash, the
-                    // red bar carries the accent.
-                    if (showSelectedBackground) return t.onArtworkInk(dark: 0.06, light: 0.13);
-                    return null;
-                  }(),
-                  borderRadius: borderRadius,
-                ),
-                clipBehavior: Clip.hardEdge,
-                child: UnconstrainedBox(
-                  alignment: .centerLeft,
-                  constrainedAxis: Axis.vertical,
+      child: Focus(
+        focusNode: focusNode,
+        autofocus: autofocus,
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          if (event.logicalKey.isSelectKey) {
+            onTap();
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowRight && onNavigateRight != null) {
+            onNavigateRight!();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            canRequestFocus: false,
+            onTap: onTap,
+            borderRadius: borderRadius,
+            child: Stack(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: () {
+                      // A neutral wash is white-on-dark in dark mode but
+                      // black-on-white in light mode, and black at 6% is
+                      // #F0F0F0 — indistinguishable from the rail. Light mode
+                      // needs a heavier wash to read as the same cue.
+                      if (isCollapsed) {
+                        return isFocused ? t.onArtworkInk(dark: 0.12, light: 0.22) : null;
+                      }
+                      if (isFocused) return t.accent.withValues(alpha: showSelectedBackground ? 0.18 : 0.12);
+                      // Netflix-style active row: subtle neutral wash, the
+                      // red bar carries the accent.
+                      if (showSelectedBackground) return t.onArtworkInk(dark: 0.06, light: 0.13);
+                      return null;
+                    }(),
+                    borderRadius: borderRadius,
+                  ),
                   clipBehavior: Clip.hardEdge,
-                  child: SizedBox(
-                    width: SideNavigationRailState.expandedWidth - 24,
-                    child: Padding(
-                      padding: .symmetric(vertical: 12, horizontal: horizontalPadding),
-                      child: Row(
-                        children: [
-                          NavGlyph(
-                            svgAsset: svgAsset,
-                            icon: isSelected && selectedIcon != null ? selectedIcon! : icon,
-                            size: iconSize,
-                            color: isSelected ? t.text : t.textMuted,
-                          ),
-                          const SizedBox(width: 11),
-                          Expanded(
-                            child: () {
-                              // Simple-layout items (library sub-rows) still must
-                              // hide their label when the rail collapses, otherwise
-                              // the text bleeds through the narrow clipped rail.
-                              if (useSimpleLayout && !isCollapsed) return label;
-                              final opacity = isCollapsed ? 0.0 : 1.0;
-                              return AnimatedOpacity(
-                                opacity: opacity,
-                                duration: reduceMotion(context, t.fast),
-                                child: label,
-                              );
-                            }(),
-                          ),
-                        ],
+                  child: UnconstrainedBox(
+                    alignment: .centerLeft,
+                    constrainedAxis: Axis.vertical,
+                    clipBehavior: Clip.hardEdge,
+                    child: SizedBox(
+                      width: SideNavigationRailState.expandedWidth - 24,
+                      child: Padding(
+                        padding: .symmetric(vertical: 12, horizontal: horizontalPadding),
+                        child: Row(
+                          children: [
+                            NavGlyph(
+                              svgAsset: svgAsset,
+                              icon: isSelected && selectedIcon != null ? selectedIcon! : icon,
+                              size: iconSize,
+                              color: isSelected ? t.text : t.textMuted,
+                            ),
+                            const SizedBox(width: 11),
+                            Expanded(
+                              child: () {
+                                // Simple-layout items (library sub-rows) still must
+                                // hide their label when the rail collapses, otherwise
+                                // the text bleeds through the narrow clipped rail.
+                                if (useSimpleLayout && !isCollapsed) return label;
+                                final opacity = isCollapsed ? 0.0 : 1.0;
+                                return AnimatedOpacity(
+                                  opacity: opacity,
+                                  duration: reduceMotion(context, t.fast),
+                                  child: label,
+                                );
+                              }(),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              // Solid red accent bar on the active item.
-              if (showSelectedBackground)
-                Positioned(
-                  left: 0,
-                  top: 8,
-                  bottom: 8,
-                  child: Container(
-                    width: 3,
-                    decoration: BoxDecoration(color: t.accent, borderRadius: BorderRadius.circular(2)),
+                // Solid red accent bar on the active item.
+                if (showSelectedBackground)
+                  Positioned(
+                    left: 0,
+                    top: 8,
+                    bottom: 8,
+                    child: Container(
+                      width: 3,
+                      decoration: BoxDecoration(color: t.accent, borderRadius: BorderRadius.circular(2)),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -764,202 +784,206 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
 
     // Listen to fullscreen + groupLibrariesByServer setting so the rail
     // rebuilds when the user toggles "Group libraries by server" in Appearance.
-    return ListenableBuilder(
-      listenable: Listenable.merge([
-        FullscreenStateManager(),
-        SettingsService.instance.listenable(SettingsService.groupLibrariesByServer),
-      ]),
-      builder: (context, _) {
-        // Server grouping: only when multi-server AND the user-facing toggle is on.
-        final groupByServerSetting = SettingsService.instance.read(SettingsService.groupLibrariesByServer);
-        final showServerHeaders = serverIds.length > 1 && groupByServerSetting;
-        _collapsedServerGroupKeys.retainAll(
-          _buildServerGroupStateKeys(visibleLibraries, hiddenLibraries, showServerHeaders: showServerHeaders),
-        );
-        final visibleRows = _buildLibraryRows(
-          visibleLibraries,
-          section: _LibraryNavSection.visible,
-          showServerHeaders: showServerHeaders,
-        );
-        final prunedFocusedKey = _focusTracker.pruneExcept(_buildValidFocusKeys(destinations, visibleRows));
-        final focusOrder = _buildFocusOrder(destinations, visibleRows);
-        _debugAssertFocusOrder(focusOrder, destinations);
-        _recoverFocusAfterPrune(prunedFocusedKey, focusOrder);
-        _lastFocusOrder = focusOrder;
-        return TapRegion(
-          onTapOutside: (_) {
-            if (_isTouchExpanded) {
-              setState(() => _isTouchExpanded = false);
-              _notifyInteractionExpandedIfNeeded();
-            }
-          },
-          // Mirrors the panel's width animation so every layer below can ask
-          // "how wide is the rail *right now*" instead of reading a boolean
-          // that flipped 200ms ago. A mirror tween rather than a latch released
-          // by AnimatedContainer.onEnd: a missed onEnd (reduced motion, dispose
-          // race) would freeze the band, and a frozen band is a dead zone over
-          // the content — the opposite failure.
-          child: TweenAnimationBuilder<double>(
-            tween: Tween<double>(end: railTargetWidth),
-            duration: panelMotion,
-            curve: Curves.easeOutCubic,
-            builder: (context, paintedWidth, _) {
-              // What the rail owns right now, and the whole of the ownership
-              // rule in one line. Shut and idle the target is the collapsed
-              // rail, so this is 80 and the strip beside it belongs to the
-              // content. Once a pointer has entered over the rail the target is
-              // already the expanded width, so ownership jumps there on the
-              // first frame and the pointer cannot outrun the easeOutCubic.
-              // Collapsing, the target drops back while the paint lags, so the
-              // pixels still on screen stay owned until they are gone.
-              final owned = paintedWidth < railTargetWidth ? railTargetWidth : paintedWidth;
-              // The rows are live for as long as they are visible. Keying this
-              // off `isCollapsed` killed them the instant the collapse timer
-              // fired, while the panel stood at full width for another 200ms.
-              final panelInteractive = paintedWidth > effectiveCollapsedWidth + 0.5;
-              return SizedBox(
-                width: bandWidth,
-                child: Stack(
-                  children: [
-                    // Layer 1 — the band, claimed for exactly as long as the rail
-                    // owns it.
-                    Positioned(
-                      top: 0,
-                      bottom: 0,
-                      left: 0,
-                      width: owned,
-                      child: AbsorbPointer(absorbing: owned > effectiveCollapsedWidth + 0.5),
-                    ),
-                    // Layer 2 — the rail itself. No `width` on the Positioned: a
-                    // tight constraint would kill the width animation.
-                    Positioned(
-                      top: 0,
-                      bottom: 0,
-                      left: 0,
-                      child: MouseRegion(
-                        // Cursor only. Hover *state* lives on layer 3, or moving
-                        // from the panel into the empty band would fire onExit and
-                        // start collapsing while the pointer is still in the band.
-                        cursor: isCollapsed ? SystemMouseCursors.click : MouseCursor.defer,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: panelInteractive ? null : _expandForTouch,
-                          child: AnimatedContainer(
-                            duration: panelMotion,
-                            curve: Curves.easeOutCubic,
-                            width: railTargetWidth,
-                            clipBehavior: Clip.hardEdge,
-                            decoration: const BoxDecoration(),
-                            child: Stack(
-                              children: [
-                                // TV: left-to-right gradient scrim (Netflix-TV nav) so the
-                                // rail reads over the billboard without a hard panel.
-                                // Non-TV: solid surface panel.
-                                //
-                                // The labels on top are theme-coloured, so the scrim has to
-                                // follow: a black veil under near-black light-mode text is
-                                // unreadable. Dark keeps its original pure-black ramp;
-                                // light washes with the page background, harder and further
-                                // (the artwork stays bright, the ink does not).
-                                Positioned.fill(
-                                  child: PlatformDetector.isTV()
-                                      ? DecoratedBox(
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              begin: Alignment.centerLeft,
-                                              end: Alignment.centerRight,
-                                              colors: t.isLight
-                                                  ? [
-                                                      t.artworkScrim.withValues(alpha: 0.97),
-                                                      t.artworkScrim.withValues(alpha: 0.70),
-                                                      const Color(0x00000000),
-                                                    ]
-                                                  : const [Color(0xE6000000), Color(0x00000000)],
-                                              stops: t.isLight ? const [0.0, 0.62, 1.0] : null,
+    return AutomationNode(
+      id: AutomationIds.sidebarRail,
+      role: 'sidebar',
+      child: ListenableBuilder(
+        listenable: Listenable.merge([
+          FullscreenStateManager(),
+          SettingsService.instance.listenable(SettingsService.groupLibrariesByServer),
+        ]),
+        builder: (context, _) {
+          // Server grouping: only when multi-server AND the user-facing toggle is on.
+          final groupByServerSetting = SettingsService.instance.read(SettingsService.groupLibrariesByServer);
+          final showServerHeaders = serverIds.length > 1 && groupByServerSetting;
+          _collapsedServerGroupKeys.retainAll(
+            _buildServerGroupStateKeys(visibleLibraries, hiddenLibraries, showServerHeaders: showServerHeaders),
+          );
+          final visibleRows = _buildLibraryRows(
+            visibleLibraries,
+            section: _LibraryNavSection.visible,
+            showServerHeaders: showServerHeaders,
+          );
+          final prunedFocusedKey = _focusTracker.pruneExcept(_buildValidFocusKeys(destinations, visibleRows));
+          final focusOrder = _buildFocusOrder(destinations, visibleRows);
+          _debugAssertFocusOrder(focusOrder, destinations);
+          _recoverFocusAfterPrune(prunedFocusedKey, focusOrder);
+          _lastFocusOrder = focusOrder;
+          return TapRegion(
+            onTapOutside: (_) {
+              if (_isTouchExpanded) {
+                setState(() => _isTouchExpanded = false);
+                _notifyInteractionExpandedIfNeeded();
+              }
+            },
+            // Mirrors the panel's width animation so every layer below can ask
+            // "how wide is the rail *right now*" instead of reading a boolean
+            // that flipped 200ms ago. A mirror tween rather than a latch released
+            // by AnimatedContainer.onEnd: a missed onEnd (reduced motion, dispose
+            // race) would freeze the band, and a frozen band is a dead zone over
+            // the content — the opposite failure.
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: railTargetWidth),
+              duration: panelMotion,
+              curve: Curves.easeOutCubic,
+              builder: (context, paintedWidth, _) {
+                // What the rail owns right now, and the whole of the ownership
+                // rule in one line. Shut and idle the target is the collapsed
+                // rail, so this is 80 and the strip beside it belongs to the
+                // content. Once a pointer has entered over the rail the target is
+                // already the expanded width, so ownership jumps there on the
+                // first frame and the pointer cannot outrun the easeOutCubic.
+                // Collapsing, the target drops back while the paint lags, so the
+                // pixels still on screen stay owned until they are gone.
+                final owned = paintedWidth < railTargetWidth ? railTargetWidth : paintedWidth;
+                // The rows are live for as long as they are visible. Keying this
+                // off `isCollapsed` killed them the instant the collapse timer
+                // fired, while the panel stood at full width for another 200ms.
+                final panelInteractive = paintedWidth > effectiveCollapsedWidth + 0.5;
+                return SizedBox(
+                  width: bandWidth,
+                  child: Stack(
+                    children: [
+                      // Layer 1 — the band, claimed for exactly as long as the rail
+                      // owns it.
+                      Positioned(
+                        top: 0,
+                        bottom: 0,
+                        left: 0,
+                        width: owned,
+                        child: AbsorbPointer(absorbing: owned > effectiveCollapsedWidth + 0.5),
+                      ),
+                      // Layer 2 — the rail itself. No `width` on the Positioned: a
+                      // tight constraint would kill the width animation.
+                      Positioned(
+                        top: 0,
+                        bottom: 0,
+                        left: 0,
+                        child: MouseRegion(
+                          // Cursor only. Hover *state* lives on layer 3, or moving
+                          // from the panel into the empty band would fire onExit and
+                          // start collapsing while the pointer is still in the band.
+                          cursor: isCollapsed ? SystemMouseCursors.click : MouseCursor.defer,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: panelInteractive ? null : _expandForTouch,
+                            child: AnimatedContainer(
+                              duration: panelMotion,
+                              curve: Curves.easeOutCubic,
+                              width: railTargetWidth,
+                              clipBehavior: Clip.hardEdge,
+                              decoration: const BoxDecoration(),
+                              child: Stack(
+                                children: [
+                                  // TV: left-to-right gradient scrim (Netflix-TV nav) so the
+                                  // rail reads over the billboard without a hard panel.
+                                  // Non-TV: solid surface panel.
+                                  //
+                                  // The labels on top are theme-coloured, so the scrim has to
+                                  // follow: a black veil under near-black light-mode text is
+                                  // unreadable. Dark keeps its original pure-black ramp;
+                                  // light washes with the page background, harder and further
+                                  // (the artwork stays bright, the ink does not).
+                                  Positioned.fill(
+                                    child: PlatformDetector.isTV()
+                                        ? DecoratedBox(
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                begin: Alignment.centerLeft,
+                                                end: Alignment.centerRight,
+                                                colors: t.isLight
+                                                    ? [
+                                                        t.artworkScrim.withValues(alpha: 0.97),
+                                                        t.artworkScrim.withValues(alpha: 0.70),
+                                                        const Color(0x00000000),
+                                                      ]
+                                                    : const [Color(0xE6000000), Color(0x00000000)],
+                                                stops: t.isLight ? const [0.0, 0.62, 1.0] : null,
+                                              ),
+                                            ),
+                                          )
+                                        : ColoredBox(color: t.surface),
+                                  ),
+                                  IgnorePointer(
+                                    // Live for as long as the row is visible.
+                                    // Keying this off `isCollapsed` killed every
+                                    // row the instant the collapse timer fired,
+                                    // while the panel stood at full width for
+                                    // another 200ms.
+                                    ignoring: !panelInteractive,
+                                    child: Focus(
+                                      canRequestFocus: false,
+                                      skipTraversal: true,
+                                      onKeyEvent: (node, event) => _handleVerticalNavigation(node, event, focusOrder),
+                                      child: Column(
+                                        children: [
+                                          SizedBox(height: _getTopPadding(context)),
+                                          _buildBrandHeader(
+                                            isCollapsed: isCollapsed,
+                                            horizontalPadding: horizontalPadding,
+                                            itemHorizontalPadding: itemHorizontalPadding,
+                                          ),
+                                          Expanded(
+                                            child: ListView(
+                                              padding: .symmetric(horizontal: horizontalPadding),
+                                              clipBehavior: Clip.hardEdge,
+                                              children: _buildScrollingDestinations(
+                                                destinations,
+                                                visibleRows,
+                                                t,
+                                                isCollapsed: isCollapsed,
+                                              ),
                                             ),
                                           ),
-                                        )
-                                      : ColoredBox(color: t.surface),
-                                ),
-                                IgnorePointer(
-                                  // Live for as long as the row is visible.
-                                  // Keying this off `isCollapsed` killed every
-                                  // row the instant the collapse timer fired,
-                                  // while the panel stood at full width for
-                                  // another 200ms.
-                                  ignoring: !panelInteractive,
-                                  child: Focus(
-                                    canRequestFocus: false,
-                                    skipTraversal: true,
-                                    onKeyEvent: (node, event) => _handleVerticalNavigation(node, event, focusOrder),
-                                    child: Column(
-                                      children: [
-                                        SizedBox(height: _getTopPadding(context)),
-                                        _buildBrandHeader(
-                                          isCollapsed: isCollapsed,
-                                          horizontalPadding: horizontalPadding,
-                                          itemHorizontalPadding: itemHorizontalPadding,
-                                        ),
-                                        Expanded(
-                                          child: ListView(
-                                            padding: .symmetric(horizontal: horizontalPadding),
-                                            clipBehavior: Clip.hardEdge,
-                                            children: _buildScrollingDestinations(
-                                              destinations,
-                                              visibleRows,
-                                              t,
-                                              isCollapsed: isCollapsed,
+                                          if (destinations.contains(NavRailDestination.fullscreen))
+                                            Padding(
+                                              padding: .fromLTRB(horizontalPadding, 0, horizontalPadding, 12),
+                                              child: _buildFullscreenItem(isCollapsed: isCollapsed),
                                             ),
-                                          ),
-                                        ),
-                                        if (destinations.contains(NavRailDestination.fullscreen))
-                                          Padding(
-                                            padding: .fromLTRB(horizontalPadding, 0, horizontalPadding, 12),
-                                            child: _buildFullscreenItem(isCollapsed: isCollapsed),
-                                          ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    // Layer 3 — watches what the rail owns and takes nothing. A
-                    // translucent MouseRegion joins the hit path (so the
-                    // MouseTracker fires enter/exit across the whole of it) while
-                    // its hitTest returns false, so the Stack keeps walking down
-                    // to the panel and out to the content. It registers no
-                    // gesture recognizer, so nothing here competes with the hero.
-                    //
-                    // Sized to `owned`, never to [bandWidth]. A permanent
-                    // expanded-width watcher turned every approach to a control
-                    // beside the shut rail into an entry into the menu, which
-                    // then swallowed the click and slid the control out from
-                    // under the cursor: the Recommended tab on a library page
-                    // became unclickable on macOS. Ownership is earned by
-                    // entering over the rail, not reserved in advance.
-                    Positioned(
-                      top: 0,
-                      bottom: 0,
-                      left: 0,
-                      width: owned,
-                      child: MouseRegion(
-                        opaque: false,
-                        hitTestBehavior: HitTestBehavior.translucent,
-                        onEnter: (_) => _onHoverEnter(),
-                        onExit: (_) => _onHoverExit(),
+                      // Layer 3 — watches what the rail owns and takes nothing. A
+                      // translucent MouseRegion joins the hit path (so the
+                      // MouseTracker fires enter/exit across the whole of it) while
+                      // its hitTest returns false, so the Stack keeps walking down
+                      // to the panel and out to the content. It registers no
+                      // gesture recognizer, so nothing here competes with the hero.
+                      //
+                      // Sized to `owned`, never to [bandWidth]. A permanent
+                      // expanded-width watcher turned every approach to a control
+                      // beside the shut rail into an entry into the menu, which
+                      // then swallowed the click and slid the control out from
+                      // under the cursor: the Recommended tab on a library page
+                      // became unclickable on macOS. Ownership is earned by
+                      // entering over the rail, not reserved in advance.
+                      Positioned(
+                        top: 0,
+                        bottom: 0,
+                        left: 0,
+                        width: owned,
+                        child: MouseRegion(
+                          opaque: false,
+                          hitTestBehavior: HitTestBehavior.translucent,
+                          onEnter: (_) => _onHoverEnter(),
+                          onExit: (_) => _onHoverExit(),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        );
-      },
+                    ],
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -1129,6 +1153,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
       onTap: () => widget.onDestinationSelected(tab),
       focusNode: _focusTracker.get(focusKey),
       isCollapsed: isCollapsed,
+      automationId: AutomationIds.navTab(tab),
     );
   }
 
@@ -1143,6 +1168,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
     required FocusNode focusNode,
     required bool isCollapsed,
     bool autofocus = false,
+    String? automationId,
   }) {
     final t = tokens(context);
     final itemHorizontalPadding = itemHorizontalPaddingForContext(context, isCollapsed: isCollapsed);
@@ -1167,6 +1193,7 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
       onTap: onTap,
       focusNode: focusNode,
       autofocus: autofocus,
+      automationId: automationId,
       horizontalPadding: itemHorizontalPadding,
       suppressSelectedBackground: widget.isSidebarFocused,
       onNavigateRight: widget.onNavigateToContent,
@@ -1441,6 +1468,8 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
         iconSize: 18,
         suppressSelectedBackground: widget.isSidebarFocused,
         onNavigateRight: widget.onNavigateToContent,
+        automationId: AutomationIds.sidebarLibraryRow,
+        automationInstance: library.globalKey,
       ),
     );
   }

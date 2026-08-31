@@ -1,0 +1,10 @@
+name: fixture.valid_scenario
+target: macos
+setup:
+  - reset_app
+  - seed: catalog.shows.v1
+steps:
+  - press: down
+  - wait_until: {event: focus.changed, timeout: 5000}
+  - assert: {id: sidebar.rail}
+  - assert: {id: "library.grid.item[3]"}

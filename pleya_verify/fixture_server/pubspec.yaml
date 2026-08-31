@@ -1,0 +1,19 @@
+name: pleya_verify_fixture_server
+description: >
+  Deterministic Pleya-protocol-v1 fixture server for Pleya Verify — a
+  routing kernel shared between an in-process http.MockClient adapter
+  (test/pleya_server/pleya_fake_server.dart) and a real dart:io HTTP
+  server, plus a /__verify control plane for test-only mutations.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+
+dependencies:
+  crypto: ^3.0.0
+  http: ^1.2.0
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^5.0.0

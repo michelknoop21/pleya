@@ -1,0 +1,76 @@
+{
+  "comment": "Shared test vectors for pleya_verify/runner/lib/src/geometry.dart, read by pleya_verify/runner/test/geometry_test.dart. Rects are {x, y, width, height} in logical pixels, the same shape /v1/ui_tree and /v1/viewport report bounds in. See SPEC.md for the per-function argument shape.",
+  "cases": [
+    {"function": "insideViewport", "description": "fully inside", "args": {"rect": {"x": 10, "y": 10, "width": 100, "height": 50}, "viewport": {"x": 0, "y": 0, "width": 400, "height": 800}}, "expectOk": true},
+    {"function": "insideViewport", "description": "exactly matches viewport bounds", "args": {"rect": {"x": 0, "y": 0, "width": 400, "height": 800}, "viewport": {"x": 0, "y": 0, "width": 400, "height": 800}}, "expectOk": true},
+    {"function": "insideViewport", "description": "overflows left", "args": {"rect": {"x": -5, "y": 10, "width": 100, "height": 50}, "viewport": {"x": 0, "y": 0, "width": 400, "height": 800}}, "expectOk": false},
+    {"function": "insideViewport", "description": "overflows right", "args": {"rect": {"x": 350, "y": 10, "width": 100, "height": 50}, "viewport": {"x": 0, "y": 0, "width": 400, "height": 800}}, "expectOk": false},
+    {"function": "insideViewport", "description": "overflows top and bottom", "args": {"rect": {"x": 10, "y": -20, "width": 50, "height": 900}, "viewport": {"x": 0, "y": 0, "width": 400, "height": 800}}, "expectOk": false},
+    {"function": "insideViewport", "description": "overflows all four edges", "args": {"rect": {"x": -10, "y": -10, "width": 420, "height": 820}, "viewport": {"x": 0, "y": 0, "width": 400, "height": 800}}, "expectOk": false},
+
+    {"function": "notClipped", "description": "fully inside clip bounds", "args": {"rect": {"x": 30, "y": 30, "width": 50, "height": 50}, "clipBounds": {"x": 20, "y": 20, "width": 200, "height": 400}}, "expectOk": true},
+    {"function": "notClipped", "description": "exactly matches clip bounds", "args": {"rect": {"x": 20, "y": 20, "width": 200, "height": 400}, "clipBounds": {"x": 20, "y": 20, "width": 200, "height": 400}}, "expectOk": true},
+    {"function": "notClipped", "description": "overflows left", "args": {"rect": {"x": 10, "y": 30, "width": 50, "height": 50}, "clipBounds": {"x": 20, "y": 20, "width": 200, "height": 400}}, "expectOk": false},
+    {"function": "notClipped", "description": "overflows right", "args": {"rect": {"x": 180, "y": 30, "width": 60, "height": 50}, "clipBounds": {"x": 20, "y": 20, "width": 200, "height": 400}}, "expectOk": false},
+    {"function": "notClipped", "description": "overflows top and bottom", "args": {"rect": {"x": 30, "y": 0, "width": 50, "height": 450}, "clipBounds": {"x": 20, "y": 20, "width": 200, "height": 400}}, "expectOk": false},
+    {"function": "notClipped", "description": "overflows all four edges", "args": {"rect": {"x": 0, "y": 0, "width": 250, "height": 450}, "clipBounds": {"x": 20, "y": 20, "width": 200, "height": 400}}, "expectOk": false},
+
+    {"function": "notOverlapping", "description": "far apart", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 100, "y": 100, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "notOverlapping", "description": "touching left/right edge", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 50, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "notOverlapping", "description": "partial overlap", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 25, "y": 25, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "notOverlapping", "description": "one fully inside another", "args": {"a": {"x": 0, "y": 0, "width": 100, "height": 100}, "b": {"x": 25, "y": 25, "width": 20, "height": 20}}, "expectOk": false},
+    {"function": "notOverlapping", "description": "identical rects", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "notOverlapping", "description": "sliver overlap", "args": {"a": {"x": 0, "y": 0, "width": 10, "height": 10}, "b": {"x": 9, "y": 9, "width": 10, "height": 10}}, "expectOk": false},
+    {"function": "notOverlapping", "description": "touching at a single corner only", "args": {"a": {"x": 0, "y": 0, "width": 10, "height": 10}, "b": {"x": 10, "y": 10, "width": 10, "height": 10}}, "expectOk": true},
+    {"function": "notOverlapping", "description": "side by side with a gap", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 60, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
+
+    {"function": "below", "description": "clearly below", "args": {"a": {"x": 0, "y": 100, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "below", "description": "exactly touching", "args": {"a": {"x": 0, "y": 50, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "below", "description": "overlapping vertically", "args": {"a": {"x": 0, "y": 30, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "below", "description": "actually above", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 100, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "below", "description": "same rect", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "below", "description": "far below", "args": {"a": {"x": 0, "y": 200, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
+
+    {"function": "above", "description": "clearly above", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 100, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "above", "description": "exactly touching", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 50, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "above", "description": "overlapping vertically", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 80}, "b": {"x": 0, "y": 50, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "above", "description": "actually below", "args": {"a": {"x": 0, "y": 100, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "above", "description": "same rect", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "above", "description": "far above", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 20}, "b": {"x": 0, "y": 200, "width": 50, "height": 50}}, "expectOk": true},
+
+    {"function": "leftOf", "description": "clearly left", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 100, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "leftOf", "description": "exactly touching", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 50, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "leftOf", "description": "overlapping horizontally", "args": {"a": {"x": 0, "y": 0, "width": 80, "height": 50}, "b": {"x": 50, "y": 0, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "leftOf", "description": "actually right", "args": {"a": {"x": 100, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "leftOf", "description": "same rect", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "leftOf", "description": "far left", "args": {"a": {"x": 0, "y": 0, "width": 20, "height": 50}, "b": {"x": 200, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
+
+    {"function": "rightOf", "description": "clearly right", "args": {"a": {"x": 100, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "rightOf", "description": "exactly touching", "args": {"a": {"x": 50, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "rightOf", "description": "overlapping horizontally", "args": {"a": {"x": 30, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "rightOf", "description": "actually left", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 100, "y": 0, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "rightOf", "description": "same rect", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "rightOf", "description": "far right", "args": {"a": {"x": 200, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 20, "height": 50}}, "expectOk": true},
+
+    {"function": "minimumTapTarget", "description": "exactly at the 44pt boundary", "args": {"rect": {"x": 0, "y": 0, "width": 44, "height": 44}}, "expectOk": true},
+    {"function": "minimumTapTarget", "description": "larger than the boundary", "args": {"rect": {"x": 0, "y": 0, "width": 60, "height": 60}}, "expectOk": true},
+    {"function": "minimumTapTarget", "description": "width under the boundary", "args": {"rect": {"x": 0, "y": 0, "width": 30, "height": 44}}, "expectOk": false},
+    {"function": "minimumTapTarget", "description": "height under the boundary", "args": {"rect": {"x": 0, "y": 0, "width": 44, "height": 30}}, "expectOk": false},
+    {"function": "minimumTapTarget", "description": "both dimensions under the boundary", "args": {"rect": {"x": 0, "y": 0, "width": 20, "height": 20}}, "expectOk": false},
+    {"function": "minimumTapTarget", "description": "custom larger minSize rejects the default boundary", "args": {"rect": {"x": 0, "y": 0, "width": 44, "height": 44}, "minSize": 48}, "expectOk": false},
+
+    {"function": "sameRow", "description": "identical centers", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "sameRow", "description": "within default tolerance", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 0.5, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "sameRow", "description": "exactly at the default tolerance boundary", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 1, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "sameRow", "description": "past the default tolerance", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 2, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "sameRow", "description": "custom larger tolerance allows a bigger delta", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 20, "width": 50, "height": 50}, "tolerance": 25}, "expectOk": true},
+    {"function": "sameRow", "description": "custom smaller tolerance rejects a delta the default would allow", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 0.6, "width": 50, "height": 50}, "tolerance": 0.5}, "expectOk": false},
+
+    {"function": "sameColumn", "description": "identical centers", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "sameColumn", "description": "within default tolerance", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0.5, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "sameColumn", "description": "exactly at the default tolerance boundary", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 1, "y": 0, "width": 50, "height": 50}}, "expectOk": true},
+    {"function": "sameColumn", "description": "past the default tolerance", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 2, "y": 0, "width": 50, "height": 50}}, "expectOk": false},
+    {"function": "sameColumn", "description": "custom larger tolerance allows a bigger delta", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 20, "y": 0, "width": 50, "height": 50}, "tolerance": 25}, "expectOk": true},
+    {"function": "sameColumn", "description": "custom smaller tolerance rejects a delta the default would allow", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0.6, "y": 0, "width": 50, "height": 50}, "tolerance": 0.5}, "expectOk": false}
+  ]
+}

@@ -25,13 +25,24 @@ String _redactSensitiveData(String message) {
 
 /// Represents a single log entry stored in memory
 class LogEntry {
+  /// Monotonic within the app process — unlike list position, survives the
+  /// buffer's FIFO eviction, so a `since`-style cursor (`GET /v1/logs`) never
+  /// jumps backward when old entries fall out of the ring buffer.
+  final int seq;
   final DateTime timestamp;
   final Level level;
   final String message;
   final Object? error;
   final StackTrace? stackTrace;
 
-  const LogEntry({required this.timestamp, required this.level, required this.message, this.error, this.stackTrace});
+  const LogEntry({
+    required this.seq,
+    required this.timestamp,
+    required this.level,
+    required this.message,
+    this.error,
+    this.stackTrace,
+  });
 
   /// Estimate the memory size of this log entry in bytes
   int get estimatedSize {
@@ -57,10 +68,19 @@ class MemoryLogOutput extends LogOutput {
   static const int maxLogSizeBytes = 5 * 1024 * 1024;
   static final ListQueue<LogEntry> _logs = ListQueue<LogEntry>();
   static int _currentSize = 0;
+  static int _nextSeq = 1;
 
   static final _consoleOutput = ConsoleOutput();
 
   static List<LogEntry> getLogs() => _logs.toList().reversed.toList();
+
+  /// Chronological (oldest first), filtered to `entry.seq > since` — the
+  /// shape `GET /v1/logs?since=N` needs, matching how `/v1/events` and
+  /// `/v1/focus/log` read a `since` cursor.
+  static List<LogEntry> since(int since) => [
+    for (final e in _logs)
+      if (e.seq > since) e,
+  ];
 
   static void clearLogs() {
     _logs.clear();
@@ -91,6 +111,7 @@ class MemoryAwareLogPrinter extends LogPrinter {
     final error = event.error != null ? _redactSensitiveData(event.error.toString()) : null;
 
     final logEntry = LogEntry(
+      seq: MemoryLogOutput._nextSeq++,
       timestamp: DateTime.now(),
       level: event.level,
       message: message,

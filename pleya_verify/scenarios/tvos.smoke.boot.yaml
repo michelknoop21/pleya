@@ -1,0 +1,12 @@
+name: tvos.smoke.boot
+target: tvos-sim
+setup:
+  - reset_app
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.main, timeout: 20000}
+  - assert: {id: screen.main}
+  - press: menu
+  - settle: 3500
+  - snapshot: boot

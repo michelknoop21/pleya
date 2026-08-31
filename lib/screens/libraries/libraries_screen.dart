@@ -6,6 +6,8 @@ import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_screen.dart';
 import '../../focus/focus_theme.dart';
 import '../../focus/focusable_action_bar.dart';
 import '../../focus/dpad_navigator.dart';
@@ -1258,7 +1260,12 @@ class _LibrariesScreenState extends State<LibrariesScreen>
       child: body,
     );
 
-    return Scaffold(body: scrollBody);
+    return AutomationScreen(
+      id: AutomationIds.screenLibraries,
+      readiness: () =>
+          isLoadingLibraries ? const AutomationReadiness.loading('libraries') : const AutomationReadiness.ready(),
+      child: Scaffold(body: scrollBody),
+    );
   }
 }
 

@@ -7,6 +7,7 @@ analyzer:
     # Standalone Dart package with its own pubspec/analysis; resolved and
     # analyzed on its own, not as part of the Flutter app tree.
     - "share_server/**"
+    - "pleya_verify/**"
   plugins:
     - dart_code_linter
 

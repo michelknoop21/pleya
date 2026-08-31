@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../automation/automation_node.dart';
 import '../diagnostics/select_trace.dart';
 import '../diagnostics/select_trace_recorder.dart';
 import '../focus/card_focus_scope.dart';
@@ -447,6 +448,13 @@ class TvBrowseRail extends StatefulWidget {
   final double Function(MediaHub hub)? widePosterScaleForHub;
   final double Function(MediaHub hub)? tallPosterScaleForHub;
 
+  /// Stable automation id for a hub's row, or null to leave it unaddressed.
+  /// [TvBrowseRail] is shared across screens with unrelated hub semantics
+  /// (discover, library tabs, media detail), so it never assumes what a
+  /// hub *means* — the caller decides which of its own hubs, if any, needs
+  /// an [AutomationNode] and under which id.
+  final String? Function(MediaHub hub, int hubIndex)? automationIdForHub;
+
   /// Explicit background bleed override. When null, the bleed target is read
   /// from [MainScreenFocusScope] (offset aspect) inside the bleed widget
   /// itself, so sidebar flips never rebuild the rail — only the bleed layer.
@@ -489,6 +497,7 @@ class TvBrowseRail extends StatefulWidget {
     this.tallPosterScaleForHub,
     this.backgroundBleedLeft,
     this.selectSuppressionGestureSignal,
+    this.automationIdForHub,
   });
 
   @override
@@ -1421,21 +1430,25 @@ class TvBrowseRailState extends State<TvBrowseRail> {
             children: [
               _buildHubHeader(context, hub: hub, hubIndex: hubIndex, isActive: isActive, scale: scale),
               SizedBox(height: TvBrowseRailLayout.hubStripGapForScale(scale)),
-              AnimatedOpacity(
-                opacity: isActive ? 1 : _inactiveHubContentOpacity,
-                duration: FocusTheme.getAnimationDuration(context),
-                curve: Curves.easeOutCubic,
-                child: _buildHubRail(
-                  hub: hub,
-                  hubIndex: hubIndex,
-                  hasFocus: hasFocus,
-                  episodePosterMode: modes[hubIndex],
-                  metrics: metrics,
-                  scale: scale,
-                  fullCardLayout: fullCardLayout,
-                  leftOverflow: leftOverflow,
-                  interactionExpansion: interactionExpansion,
-                  railViewportWidth: railViewportWidth,
+              _wrapHubRailForAutomation(
+                hub: hub,
+                hubIndex: hubIndex,
+                child: AnimatedOpacity(
+                  opacity: isActive ? 1 : _inactiveHubContentOpacity,
+                  duration: FocusTheme.getAnimationDuration(context),
+                  curve: Curves.easeOutCubic,
+                  child: _buildHubRail(
+                    hub: hub,
+                    hubIndex: hubIndex,
+                    hasFocus: hasFocus,
+                    episodePosterMode: modes[hubIndex],
+                    metrics: metrics,
+                    scale: scale,
+                    fullCardLayout: fullCardLayout,
+                    leftOverflow: leftOverflow,
+                    interactionExpansion: interactionExpansion,
+                    railViewportWidth: railViewportWidth,
+                  ),
                 ),
               ),
             ],
@@ -1514,6 +1527,19 @@ class TvBrowseRailState extends State<TvBrowseRail> {
         ),
       ),
     );
+  }
+
+  /// Wraps a hub's row in an [AutomationNode] under the caller-assigned id,
+  /// reporting the hub's *current* item count. The `state` closure captures
+  /// [hub] by reference from this build, not a snapshot — `hub` is a fresh
+  /// `MediaHub` every rebuild of this `itemBuilder`, and `AutomationNode`
+  /// re-reads `widget.state` on every registry poll rather than only at
+  /// registration, so a later rebuild (e.g. after `fixture_mutate` adds an
+  /// episode) is what keeps `child_count` current — no manual refresh needed.
+  Widget _wrapHubRailForAutomation({required MediaHub hub, required int hubIndex, required Widget child}) {
+    final id = widget.automationIdForHub?.call(hub, hubIndex);
+    if (id == null) return child;
+    return AutomationNode(id: id, role: 'list', state: () => {'child_count': hub.items.length}, child: child);
   }
 
   Widget _buildHubRail({
