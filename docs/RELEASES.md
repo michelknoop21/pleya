@@ -20,7 +20,6 @@ under `Notes`.
 <!-- BEGIN GENERATED -->
 ### New
 - een Pleya Server is te ontkoppelen waar Verbindingen zegt dat het kan
-- one PleyaLogo widget for every place the mark appears
 - lege huls voor het automation-contract (Fase 0)
 - declared+discovered registry en GET /v1/ui_tree (Fase 1)
 - automation-ids, AutomationNode en FocusableWrapper-ids (Fase 2)
@@ -31,12 +30,13 @@ under `Notes`.
 - fixture-server routingkernel + dart:io-adapter (Deel B Fase 1)
 - PleyaFakeServer op de gedeelde fixture-kernel (Deel B Fase 2)
 - drie waarnemingsendpoints + methodevalidatie (Deel A Fase 2)
-- fixture-server compleet: auth, klok, control-plane, media (Deel B Fase 3)
-- setup-control-plane: /v1/signin, /v1/connections/seed, /v1/open (Deel A Fase 4)
+- fixture-server compleet — auth, klok, control-plane, media (Deel B Fase 3)
+- setup-control-plane — /v1/signin, /v1/connections/seed, /v1/open (Deel A Fase 4)
 - ID-adoptie op sidebar/library/discover/media-detail/player + 3 events (Deel A Fase 5)
 - runner-skelet, scenariogrammatica, transport-client (Deel B Fase 6)
 - geometrie + impact-resolver (Deel B Fase 7)
 - macOS-driver, eerste scenario end-to-end (Deel B Fase 8)
+- one PleyaLogo widget for every place the mark appears
 - iOS-simulatordriver + discover.hero.layout (Deel B Fase 9)
 - tvOS-driver via idb HID + isolatiefix (Deel B Fase 10)
 - geometrie-assertions, fixture_mutate en open in de engine (Fase 11)
@@ -66,9 +66,9 @@ under `Notes`.
 - Over en Pleya Share volgen het gedeelde kaartcontract
 - kaders rond toetscombinaties volgen de gedeelde lijnkleur
 - revalidatie mag een gelijktijdige load-more niet stilzwijgend overschrijven
+- reject a reversed Range instead of empty-body or crash
 - run the artwork behind the topbar, and give the strip its own height
 - fade the full-width strip out later instead of zooming it in
-- reject a reversed Range instead of empty-body or crash
 - geen PASS meer op bewijs uit de verkeerde app-instantie
 - poortdiscovery leest Library/Caches, en de scenario wacht op de hero zelf
 - back-suppressie causaal maken, filters-scenario eerlijk hernoemen, evidence-gat dicht
