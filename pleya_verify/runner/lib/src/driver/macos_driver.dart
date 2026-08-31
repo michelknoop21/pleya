@@ -31,6 +31,13 @@ class MacosDriver implements VerificationDriver {
   /// the base port is exactly how a run ends up driving a leftover
   /// instance. See `instance_discovery.dart`.
   final int? portOverride;
+
+  /// Paired with [portOverride] — see `instance_discovery.dart`'s auth note.
+  /// `/v1/*` now requires a bearer token unconditionally, so bypassing
+  /// discovery via [portOverride] with no token would just trade "wrong
+  /// instance" for "every request 401s". Leave both null for the normal
+  /// path, which reads the real per-launch token out of `instance.json`.
+  final String? tokenOverride;
   final void Function(String line)? onDriverLog;
 
   Process? _process;
@@ -42,6 +49,7 @@ class MacosDriver implements VerificationDriver {
     required this.repoRoot,
     this.verifyBundleId = 'nl.michelknoop.pleya.verify',
     this.portOverride,
+    this.tokenOverride,
     this.onDriverLog,
   });
 
@@ -209,7 +217,7 @@ class MacosDriver implements VerificationDriver {
     final instance = await _resolveInstance(launchedAt: launchedAt, timeout: timeout);
     _instance = instance;
     _log('resolved instance: $instance');
-    _client = VerifyClient(baseUri: Uri.parse('http://127.0.0.1:${instance.port}'));
+    _client = VerifyClient(baseUri: Uri.parse('http://127.0.0.1:${instance.port}'), token: instance.token);
 
     final deadline = DateTime.now().add(timeout);
     Object? lastError;
@@ -238,7 +246,7 @@ class MacosDriver implements VerificationDriver {
   Future<VerifyInstance> _resolveInstance({required DateTime launchedAt, required Duration timeout}) async {
     final override = portOverride;
     if (override != null) {
-      return VerifyInstance(port: override, protocolVersion: 1, source: 'portOverride');
+      return VerifyInstance(port: override, protocolVersion: 1, token: tokenOverride, source: 'portOverride');
     }
     try {
       return await awaitInstance(candidates: _instanceFiles, notBefore: launchedAt, timeout: timeout);

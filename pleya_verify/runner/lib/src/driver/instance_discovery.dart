@@ -13,7 +13,10 @@
 ///
 /// The app already publishes what is needed: `AutomationServer` writes
 /// `<temporary dir>/pleya-verify/instance.json` (`{port, protocolVersion,
-/// pid}`) before it logs its `listening on` line. Drivers [clearInstanceFile]
+/// pid, token}`) before it logs its `listening on` line. `token` is the
+/// per-launch bearer secret every `/v1/*` request now requires (see
+/// [VerifyInstance.token]) — only this file carries it, and only a driver
+/// reading it here ever sees it. Drivers [clearInstanceFile]
 /// it *before* launching and [awaitInstance] afterwards, which makes a stale
 /// read structurally impossible rather than heuristically unlikely: a file
 /// that reappears after deletion can only have been written by the process
@@ -42,12 +45,28 @@ class VerifyInstance {
   final int protocolVersion;
   final int? pid;
 
+  /// The per-launch bearer token `AutomationServer.start()` minted and
+  /// wrote into `instance.json` alongside `port`/`pid` — see the auth
+  /// contract on `AutomationServer` (`lib/automation/automation_server.dart`)
+  /// and `pleya_verify/contract/verify_api_v1.md`. A driver reads it here
+  /// and threads it into its [VerifyClient]; nothing else in this class
+  /// exposes it. Deliberately absent from [toJson] and [toString] — an
+  /// evidence bundle records *which* instance a run drove, never the secret
+  /// that let it drive it.
+  final String? token;
+
   /// Where this came from — an `instance.json` path, or `'driver log'` for
   /// [parseListeningPort]'s fallback. Recorded in the evidence bundle so a
   /// run says which channel identified the instance it drove.
   final String source;
 
-  const VerifyInstance({required this.port, required this.protocolVersion, this.pid, required this.source});
+  const VerifyInstance({
+    required this.port,
+    required this.protocolVersion,
+    this.pid,
+    this.token,
+    required this.source,
+  });
 
   Map<String, Object?> toJson() => {
     'port': port,
@@ -154,6 +173,7 @@ VerifyInstance _decode(String json, {required String source}) {
     port: port,
     protocolVersion: decoded['protocolVersion'] is int ? decoded['protocolVersion'] as int : 0,
     pid: decoded['pid'] is int ? decoded['pid'] as int : null,
+    token: decoded['token'] is String ? decoded['token'] as String : null,
     source: source,
   );
 }

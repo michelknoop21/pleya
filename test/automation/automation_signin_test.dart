@@ -233,4 +233,66 @@ void main() {
     expect(openAfter['error'], contains('timeout'), reason: openAfter.toString());
     expect(profileNavigationRegistry.navigator, isNotNull);
   });
+
+  group('rejectNonLoopbackBaseUrl', () {
+    test('accepts a literal loopback origin with a port — the only shape {{fixture}} ever produces', () {
+      expect(rejectNonLoopbackBaseUrl('http://127.0.0.1:47500'), isNull);
+    });
+
+    test('accepts the IPv6 loopback literal', () {
+      expect(rejectNonLoopbackBaseUrl('http://[::1]:47500'), isNull);
+    });
+
+    test('rejects https, even to a loopback host', () {
+      expect(rejectNonLoopbackBaseUrl('https://127.0.0.1:47500'), contains('scheme'));
+    });
+
+    test('rejects an arbitrary internet host', () {
+      expect(rejectNonLoopbackBaseUrl('http://example.com:80'), contains('loopback'));
+    });
+
+    test('rejects a LAN address', () {
+      expect(rejectNonLoopbackBaseUrl('http://192.168.1.5:32400'), contains('loopback'));
+    });
+
+    test('rejects the cloud metadata service address', () {
+      expect(rejectNonLoopbackBaseUrl('http://169.254.169.254/latest/meta-data/'), contains('loopback'));
+    });
+
+    test('rejects the hostname "localhost" — a literal IP only, never a name to resolve', () {
+      expect(rejectNonLoopbackBaseUrl('http://localhost:47500'), contains('loopback'));
+    });
+
+    test('rejects an unparseable URL', () {
+      expect(rejectNonLoopbackBaseUrl('not a url'), isNotNull);
+    });
+  });
+
+  group('SSRF boundary: base_url is rejected before any network call or context wait', () {
+    // No widget is pumped in either test below — proving the rejection
+    // happens before `_waitForRootContext()` even runs, let alone before
+    // any HTTP request. A version of this check that ran after the context
+    // wait or the probe would report a different, misleading error instead.
+    test('handleAutomationSignIn rejects a non-loopback base_url', () async {
+      final result = await handleAutomationSignIn({
+        'base_url': 'http://169.254.169.254/latest/meta-data/',
+        'username': 'verify-owner',
+        'password': 'verify-password',
+      });
+      expect(result['ok'], isFalse);
+      expect(result['error'], contains('loopback'));
+    });
+
+    test('handleAutomationConnectionsSeed rejects a non-loopback base_url', () async {
+      final result = await handleAutomationConnectionsSeed({
+        'base_url': 'https://attacker.example.com',
+        'server_id': 'srv',
+        'server_name': 'Evil',
+        'user_name': 'someone',
+        'refresh_token': 'token',
+      });
+      expect(result['ok'], isFalse);
+      expect(result['error'], contains('scheme'));
+    });
+  });
 }

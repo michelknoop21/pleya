@@ -17,9 +17,17 @@ Elk `/v1/*`-verzoek:
 - `Host` moet `127.0.0.1[:port]` of `localhost[:port]` zijn, anders 403.
 - `X-Pleya-Verify: PleyaVerify/1` is verplicht — een constante protocolmarker,
   nooit een geheim. Ontbreekt hij of klopt hij niet, dan 403.
-- `Authorization: Bearer <token>` is alleen verplicht wanneer de app gebouwd
-  is met `PLEYA_VERIFY_TOKEN` gezet. Ontbreekt hij dan of klopt hij niet, dan
-  401. `X-Pleya-Verify` wordt nergens als tokenwaarde gelezen.
+- `Authorization: Bearer <token>` is altijd verplicht, zonder uitzondering.
+  `AutomationServer.start()` genereert per launch een eigen, cryptografisch
+  willekeurige token (`Random.secure()`, base64url, hetzelfde patroon als
+  `FixtureHttpServer.generateControlToken` in `pleya_verify/fixture_server`)
+  en schrijft die alleen in `instance.json` naast `port`/`protocolVersion`/
+  `pid`. Er bestaat geen bouwtijd-token en geen pad waarop deze check
+  overgeslagen wordt. Ontbreekt de header of klopt hij niet, dan 401.
+  `X-Pleya-Verify` wordt nergens als tokenwaarde gelezen, en de token zelf
+  komt nooit terug in een `/v1/*`-respons, het manifest of een andere
+  evidencebundel — alleen `instance.json` draagt hem, en `AutomationServer.
+  stop()` verwijdert dat bestand weer.
 
 Elk pad hieronder heeft precies één toegestane HTTP-methode (`GET` of `POST`,
 zie de kop per endpoint). Een bestaand pad met de verkeerde methode (bv.

@@ -43,6 +43,7 @@ void main() {
         final uri = Uri.parse('http://127.0.0.1:${server.port}${endpoint.path}');
         final request = await HttpClient().openUrl(endpoint.method, uri);
         request.headers.set('X-Pleya-Verify', kAutomationProtocolMarker);
+        request.headers.set(HttpHeaders.authorizationHeader, 'Bearer ${server.debugToken}');
         final response = await request.close();
         await response.drain<void>();
         // Not always 200: a POST with an empty body (e.g. /v1/input/key
@@ -73,6 +74,7 @@ void main() {
         final uri = Uri.parse('http://127.0.0.1:${server.port}$path');
         final request = await HttpClient().openUrl(wrongMethod, uri);
         request.headers.set('X-Pleya-Verify', kAutomationProtocolMarker);
+        request.headers.set(HttpHeaders.authorizationHeader, 'Bearer ${server.debugToken}');
         final response = await request.close();
         await response.drain<void>();
         expect(
@@ -87,6 +89,7 @@ void main() {
       final uri = Uri.parse('http://127.0.0.1:${server.port}/v1/health');
       final request = await HttpClient().openUrl('GET', uri);
       request.headers.set('X-Pleya-Verify', kAutomationProtocolMarker);
+      request.headers.set(HttpHeaders.authorizationHeader, 'Bearer ${server.debugToken}');
       final response = await request.close();
       final body = jsonDecode(await response.transform(utf8.decoder).join()) as Map<String, dynamic>;
       expect(response.statusCode, HttpStatus.ok);

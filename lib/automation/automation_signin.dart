@@ -26,6 +26,41 @@ import 'automation_screen.dart';
 /// automation HTTP server itself is bound, not that the widget tree has
 /// painted its first frame — on iOS-sim that gap was wide enough for a
 /// single unretried check to fail every run.
+/// Loopback-only guard for every `base_url` this control plane accepts —
+/// shared by [handleAutomationSignIn] and [handleAutomationConnectionsSeed]
+/// so the two endpoints can never drift into two subtly different SSRF
+/// boundaries. Pleya Verify's automation sign-in exists to reach the local
+/// fixture server: `{{fixture}}` always resolves to a literal
+/// `http://127.0.0.1:<port>` (see `resolvePlaceholders` in
+/// `pleya_verify/runner/lib/src/engine/run_scenario.dart`), never a real
+/// server anywhere else. Accepting an arbitrary caller-supplied origin here
+/// would turn a loopback-only automation endpoint into an open proxy that
+/// probes, logs into, and persists credentials against whatever URL it is
+/// handed — including a LAN host, a cloud metadata service, or anything
+/// else reachable from wherever the app happens to be running.
+///
+/// Checked before any network call or persistence happens, and deliberately
+/// conservative: `http` only (never `https`, which nothing on this path
+/// needs), and a literal loopback address, never a hostname — resolving
+/// `localhost` still means trusting whatever `/etc/hosts` or the resolver
+/// says, and a literal check has no such dependency. Returns an error
+/// message when [rawUrl] is not an accepted loopback origin, `null` when it
+/// is.
+String? rejectNonLoopbackBaseUrl(String rawUrl) {
+  final uri = Uri.tryParse(rawUrl);
+  if (uri == null) return '"$rawUrl" is not a valid URL';
+  if (uri.scheme != 'http') {
+    return 'base_url must be a plain http:// loopback address — got scheme "${uri.scheme}" ($rawUrl)';
+  }
+  if (uri.host != '127.0.0.1' && uri.host != '::1') {
+    return 'base_url must point at a literal loopback address (127.0.0.1 or ::1) — got host "${uri.host}" ($rawUrl)';
+  }
+  if (!uri.hasPort || uri.port <= 0 || uri.port > 65535) {
+    return 'base_url must include a valid port ($rawUrl)';
+  }
+  return null;
+}
+
 Future<BuildContext?> _waitForRootContext({Duration timeout = const Duration(seconds: 5)}) async {
   final deadline = DateTime.now().add(timeout);
   while (true) {
@@ -58,6 +93,15 @@ Future<Map<String, Object?>> handleAutomationSignIn(Map<String, Object?> body) a
     return {'ok': false, 'error': 'base_url, username and password are required'};
   }
 
+  final String baseUrl;
+  try {
+    baseUrl = PleyaServerAuthService.normaliseBaseUrl(baseUrlInput);
+  } on MediaServerException catch (e) {
+    return {'ok': false, 'error': e.toString()};
+  }
+  final rejectedBaseUrl = rejectNonLoopbackBaseUrl(baseUrl);
+  if (rejectedBaseUrl != null) return {'ok': false, 'error': rejectedBaseUrl};
+
   final context = await _waitForRootContext();
   if (context == null) {
     return {'ok': false, 'error': 'no root context available yet — the app has not finished booting'};
@@ -65,7 +109,6 @@ Future<Map<String, Object?>> handleAutomationSignIn(Map<String, Object?> body) a
 
   final auth = PleyaServerAuthService();
   try {
-    final baseUrl = PleyaServerAuthService.normaliseBaseUrl(baseUrlInput);
     final info = await auth.probe(baseUrl);
     final authResult = info.auth.setupRequired
         ? await auth.completeSetup(
@@ -115,6 +158,8 @@ Future<Map<String, Object?>> handleAutomationConnectionsSeed(Map<String, Object?
   if (baseUrl == null || serverId == null || serverName == null || userName == null || refreshToken == null) {
     return {'ok': false, 'error': 'base_url, server_id, server_name, user_name and refresh_token are required'};
   }
+  final rejectedBaseUrl = rejectNonLoopbackBaseUrl(baseUrl);
+  if (rejectedBaseUrl != null) return {'ok': false, 'error': rejectedBaseUrl};
 
   final context = await _waitForRootContext();
   if (context == null) {

@@ -43,6 +43,13 @@ class IosSimulatorDriver implements VerificationDriver {
   /// `instance_discovery.dart`. Leave null so [launch] discovers the port
   /// the app actually bound.
   final int? portOverride;
+
+  /// Paired with [portOverride] — see `instance_discovery.dart`'s auth note.
+  /// `/v1/*` now requires a bearer token unconditionally, so bypassing
+  /// discovery via [portOverride] with no token would just trade "wrong
+  /// instance" for "every request 401s". Leave both null for the normal
+  /// path, which reads the real per-launch token out of `instance.json`.
+  final String? tokenOverride;
   final void Function(String line)? onDriverLog;
 
   /// Overrides device auto-resolution — an already-booted iOS simulator, or
@@ -59,6 +66,7 @@ class IosSimulatorDriver implements VerificationDriver {
     required this.repoRoot,
     this.verifyBundleId = 'nl.michelknoop.pleya.verify',
     this.portOverride,
+    this.tokenOverride,
     this.onDriverLog,
     this.deviceUdidOverride,
   });
@@ -220,7 +228,7 @@ class IosSimulatorDriver implements VerificationDriver {
     final instance = await _resolveInstance(udid: udid, launchedAt: launchedAt, timeout: timeout);
     _instance = instance;
     _log('resolved instance: $instance');
-    _client = VerifyClient(baseUri: Uri.parse('http://127.0.0.1:${instance.port}'));
+    _client = VerifyClient(baseUri: Uri.parse('http://127.0.0.1:${instance.port}'), token: instance.token);
 
     final deadline = DateTime.now().add(timeout);
     Object? lastError;
@@ -269,7 +277,7 @@ class IosSimulatorDriver implements VerificationDriver {
   }) async {
     final override = portOverride;
     if (override != null) {
-      return VerifyInstance(port: override, protocolVersion: 1, source: 'portOverride');
+      return VerifyInstance(port: override, protocolVersion: 1, token: tokenOverride, source: 'portOverride');
     }
     // Re-resolve after launch: the container exists by now even if it did
     // not before install.

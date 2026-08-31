@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -28,10 +29,6 @@ import 'pleya_verify.dart';
 const int _kBasePort = int.fromEnvironment('PLEYA_VERIFY_PORT', defaultValue: 47317);
 const int _kPortWalkAttempts = 10;
 
-/// Bearer token required on `Authorization` when `PLEYA_VERIFY_TOKEN` is set
-/// at build time (used on shared CI runners). Empty locally.
-const String _kToken = String.fromEnvironment('PLEYA_VERIFY_TOKEN');
-
 const String _kGitCommit = String.fromEnvironment('GIT_COMMIT');
 
 /// Loopback-only HTTP control plane for Pleya Verify. Only ever constructed
@@ -41,8 +38,14 @@ const String _kGitCommit = String.fromEnvironment('GIT_COMMIT');
 ///  - `X-Pleya-Verify: <kAutomationProtocolMarker>` is always the protocol
 ///    marker, never a secret. Missing/wrong → 403.
 ///  - `Host` must be a loopback host. Wrong → 403.
-///  - `Authorization: Bearer <token>` is the actual auth, only enforced when
-///    `PLEYA_VERIFY_TOKEN` was set at build time. Missing/wrong → 401.
+///  - `Authorization: Bearer <token>` is the actual auth, and it is never
+///    optional: [start] mints a fresh, cryptographically random token for
+///    this one process (same [Random.secure] + base64url shape
+///    `FixtureHttpServer.generateControlToken` already uses in
+///    `pleya_verify/fixture_server`) and requires it on every request.
+///    Missing/wrong → 401. There is no build-time token and no code path
+///    that skips this check — a control plane that could start with auth
+///    optional or empty is exactly the hole this replaced.
 
 /// One entry per `/v1/*` route, in the same order as the switch below —
 /// the single source of truth `_route` checks the HTTP method against
@@ -72,7 +75,38 @@ class AutomationServer {
   HttpServer? _server;
   final DateTime _bootedAt = DateTime.now();
 
+  /// Minted fresh in [start] — see the class doc's auth contract. Never
+  /// logged, never returned by any `/v1/*` response, and stripped out of
+  /// [instance.json]'s own JSON-adjacent debug surfaces on purpose: the only
+  /// place it is written to disk is the `token` field [_writeDiscoveryFile]
+  /// puts in `instance.json` itself, which only a driver on this same
+  /// machine, launched by this same process tree, ever reads.
+  late final String _token;
+
+  /// The discovery file [start] wrote, so [stop] can remove exactly that
+  /// file — and with it the token — rather than guessing a path a second
+  /// time or leaving a stale announcement (with a now-dead token) on disk
+  /// for the next launch to trip over.
+  File? _discoveryFile;
+
   int get port => _server?.port ?? 0;
+
+  /// Test seam only — same spirit as [AutomationBootstrap.debugSetInstance].
+  /// Never sent over HTTP, never logged; exists purely so
+  /// `test/automation/automation_auth_test.dart` can exercise the
+  /// correct-token path without a build-time secret. Null before [start].
+  @visibleForTesting
+  String? get debugToken => _server == null ? null : _token;
+
+  /// A fresh, unguessable per-instance token: same shape
+  /// `FixtureHttpServer.generateControlToken` in `pleya_verify/fixture_server`
+  /// already uses — `Random.secure()` bytes, base64url-encoded. 24 bytes
+  /// (192 bits) before encoding, well past the point where guessing it is a
+  /// realistic attack on a loopback-only socket.
+  static String _generateToken() {
+    final random = Random.secure();
+    return base64Url.encode(List<int>.generate(24, (_) => random.nextInt(256)));
+  }
 
   Future<void> start() async {
     HttpServer? bound;
@@ -88,6 +122,7 @@ class AutomationServer {
       appLogger.w('[PleyaVerify] no free port in $_kBasePort..${_kBasePort + _kPortWalkAttempts - 1}');
       return;
     }
+    _token = _generateToken();
     _server = bound;
     bound.listen(_handle, onError: (Object e) => appLogger.d('[PleyaVerify] server error', error: e));
     await _writeDiscoveryFile(bound.port);
@@ -98,6 +133,15 @@ class AutomationServer {
   }
 
   Future<void> stop() async {
+    final discoveryFile = _discoveryFile;
+    if (discoveryFile != null) {
+      try {
+        if (await discoveryFile.exists()) await discoveryFile.delete();
+      } catch (e) {
+        appLogger.d('[PleyaVerify] could not remove discovery file', error: e);
+      }
+      _discoveryFile = null;
+    }
     await _server?.close(force: true);
     _server = null;
   }
@@ -108,7 +152,8 @@ class AutomationServer {
       final dir = Directory('${tempDir.path}/pleya-verify');
       await dir.create(recursive: true);
       final file = File('${dir.path}/instance.json');
-      await file.writeAsString(jsonEncode({'port': port, 'protocolVersion': 1, 'pid': pid}));
+      await file.writeAsString(jsonEncode({'port': port, 'protocolVersion': 1, 'pid': pid, 'token': _token}));
+      _discoveryFile = file;
     } catch (e) {
       appLogger.d('[PleyaVerify] could not write discovery file', error: e);
     }
@@ -140,13 +185,11 @@ class AutomationServer {
       await request.response.close();
       return;
     }
-    if (_kToken.isNotEmpty) {
-      final auth = request.headers.value(HttpHeaders.authorizationHeader);
-      if (auth != 'Bearer $_kToken') {
-        request.response.statusCode = HttpStatus.unauthorized;
-        await request.response.close();
-        return;
-      }
+    final auth = request.headers.value(HttpHeaders.authorizationHeader);
+    if (auth != 'Bearer $_token') {
+      request.response.statusCode = HttpStatus.unauthorized;
+      await request.response.close();
+      return;
     }
 
     final expectedMethod = _kRouteMethods[request.uri.path];
