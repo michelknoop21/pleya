@@ -503,7 +503,15 @@ void main() {
       await tester.pumpWidget(
         shell(
           const SearchScreen(),
-          withProviders: (child) => ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer, child: child),
+          // SearchScreen resolves hidden-library visibility, which the
+          // profile session supplies in production.
+          withProviders: (child) => MultiProvider(
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
+              ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hidden),
+            ],
+            child: child,
+          ),
         ),
       );
       await precacheWordmark(tester);

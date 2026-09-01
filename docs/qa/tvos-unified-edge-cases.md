@@ -70,6 +70,110 @@ vallen en die pas na 10A afgetekend kunnen worden:
   native gedrag om te bewijzen — maar dat de nieuwe rootgrens op echte hardware op dezelfde plek
   ligt, is wel een runtimewaarneming.
 
+## Fase-9-classificatie van de open rijen
+
+Vastgesteld op 1 september 2026, aan het begin van fase 9. Fase 9 is de laatste **functionele** fase
+vóór 10A-hardening. Daarom geldt voor iedere nog niet-`covered` rij:
+
+> **DEFAULT OWNER = FASE 9**, als en alleen als de rij automatiseerbaar is, productmatig voldoende
+> gedefinieerd is, functioneel gedrag betreft, en niet al een expliciete andere owner of
+> defer-status heeft.
+
+Een rij mag alleen buiten fase 9 blijven met een van deze vier concrete redenen:
+
+| Klasse | Betekenis |
+| --- | --- |
+| **A. Hardware-only** | Alleen op een echt toestel vast te stellen → eindacceptatie na 10A. |
+| **B. Accepted registered debt** | Eerder expliciet geaccepteerd, en alleen zolang fase-9-code die seam niet wijzigt. |
+| **C. Unresolved product decision** | Gedrag nog niet vastgelegd. Niet zelf invullen. |
+| **D. Explicit later owner** | Alleen wanneer dit document of een DEC werkelijk een latere fase noemt. |
+
+Er is bewust **geen numerieke scope-cap**. Omdat er na fase 9 geen functionele fase meer komt, mag
+er geen verzameling gewone functionele edge cases overblijven met als enige reden "die hebben we
+niet geraakt".
+
+**Uitkomst over de 83 open rijen: 4 hardware, 2 debt, 1 onopgelost, 76 fase-9-owned.**
+
+### Buiten fase 9 (7 rijen)
+
+| # | Klasse | Reden |
+| --- | --- | --- |
+| J2 | A | 4K-output is alleen op een echte Apple TV vast te stellen. |
+| J4 | A | Overscan idem. |
+| J8 | A | Of VoiceOver het onderscheid hóórbaar maakt, idem. |
+| J9 | A | Of de 160 ms-transitie onder Reduce Motion kort genoeg is, idem. |
+| I21 | B | Geregistreerde fase-5-debt: 7.4 en 10.6 noemen de Play/Pause-snelkoppeling "mag", en de zichtbare knop blijft de primaire route. Vervalt als fase-9-code het catalogusheaderpad wijzigt. |
+| I24 | B | Geregistreerde integration-test debt: schakel 2 loopt door `MainScreen`, dat geen enkele test monteert. Geen productiebug (statisch nagelopen). Vervalt als fase-9-code `_focusSidebar` of de nav-nodes raakt. |
+| F19 | C | Hoofdstuk 15 legt geen gedrag vast voor een falende detailroute. Niet zelf invullen. |
+
+### Fase-9-owned (76 rijen), met het werkpakket dat ze sluit
+
+| Werkpakket | Rijen |
+| --- | --- |
+| WP1 — hidden-library lekken | B8 |
+| WP2 — contextmenu + write-scope | G12, G13 |
+| WP3 — auth-status, Mijn Pleya, deep links | I9, I10, I14 |
+| WP4 — all-source verwijderen uit Verder kijken | G10, G11 |
+| WP6 — playbackreturn en detailfouten | A14, A15, D14, D15, I19, I20 |
+| WP7 — profielwissel en serverlevenscyclus | A16, A17, A18, A19, E12 |
+| WP8 — volgende aflevering | D11 |
+| WP10 — Live TV-melding | A20 |
+| WP11 — resterende registerrijen | A1, A3, A4, A5, A12, B4, B5, B6, B10, B11, B12, B13, B14, B15, D2, D8, D9, D10, D12, D13, E1, E2, E5, E6, E7, E8, E10, E13, E14, E15, G1, G2, G3, G4, G5, G6, G7, G8, G14, H9, H10, H11, H20, I16, I17, I18, J3, J6, J7, J10, J11, J12, J13, J14, J15 |
+
+Drie aantekeningen bij die verdeling:
+
+- **I18 en J7 zijn half bewezen, niet onbewezen.** I18's topnav-helft en J7's rasterhelft staan er;
+  wat ontbreekt is het griditem-geval respectievelijk de RTL-sweep over de fase-6/7/8-oppervlakken.
+  Een half bewezen rij hoort geen `covered` te heten, dus ze blijven fase-9-werk.
+- **J3, J6, J10, J11, J12, J13, J14, J15 zijn wél automatiseerbaar** en horen daarom niet bij de
+  vier hardwarerijen. `monoTheme({dark, oled})` maakt de themavarianten goedkoop, en een kleinere
+  logische surface is een `binding.window`-instelling, geen toestel.
+- **G1–G8 hangen aan één functie** zonder eigen test, `selectRepresentativeWatchState`. Die functie
+  wijkt op drie punten af van hoofdstuk 13.2; dat gaat als deviation proposal mee, niet als een
+  stille aanpassing van de rijen.
+
+### WP2 — contextmenu-bereikbaarheid: het besluit staat, de bouw niet
+
+Vastgesteld op 1 september 2026. De bevinding is bevestigd in code: **geen enkele fase-6/7/8-TV-kaart
+heeft een contextmenu.** `grep` op `onLongPress`, `enableLongPress`, `isContextMenuKey`,
+`MediaContextMenu` en `showContextMenu` over `lib/widgets/tv/` en `lib/screens/tv/` geeft nul hits.
+Markeer bekeken/onbekeken, rate, verwijder uit Verder kijken en Kijklijst zijn daarmee onbereikbaar
+vanaf Home, de Films- en Series-landings, de complete catalogus en TV-Search. De legacy-oppervlakken
+(`tv_browse_rail.dart:937`, `hub_section.dart:574`) hebben hem wél — dit is dus een regressie van de
+rewrite, geen ontbrekende functie.
+
+**De naad is bekend en klein.** Beide unified tegels wrappen al in `FocusableWrapper`:
+`tv_expandable_media_tile.dart:126` (Home-rijen, beide landings, TV-Search) en
+`tv_unified_media_card.dart:114` (complete catalogus). `FocusableWrapper` draagt het
+TV-contextmenucontract al — `onLongPress` vuurt op `key.isContextMenuKey` en op een lange Select,
+met `SelectKeyUpSuppressor.suppressSelectUntilKeyUp()` ertegen. Er is dus geen nieuwe gesture nodig,
+alleen een `onContextMenu`-callback op die twee tegels en een menu dat hem invult.
+
+**Het write-scopecontract is beslist** (hoofdstuk 13.4, 13.5 en 23, plus DEC-020):
+
+| Semantiek | Gedrag |
+| --- | --- |
+| `logical` | Alle memberships, geen bronkeuze. Kijklijst-remove is dit per DEC-020. |
+| `sourceSpecificWithAllSources` | Eén bron → direct. Meerdere → expliciete chooser mét "Alle bronnen". Hoofdstuk 13.5 noemt markeer bekeken/onbekeken hier bij naam. |
+| `sourceSpecific` | Eén bron → direct. Meerdere → chooser met alleen concrete bronnen; een all-sources-optie zou verzonnen semantiek zijn. |
+
+De volgorde is **actie eerst, scope daarna** — niet eerst een bron kiezen en dan opnieuw het menu.
+En de harde regel: een write kiest **nooit** stilzwijgend `representativeSource` of de preferred
+server. Die twee zijn activation/playback-conveniences; een verkeerd gelande write is onzichtbaar en
+permanent. Playback-picker en action-scope-picker mogen dezelfde presentatie delen, hun semantiek
+niet.
+
+Een uitgewerkte `resolveUnifiedActionTarget` met acht groene tests — inclusief de twee negatieve
+controles die de gebruiker vroeg (representative wordt niet stilzwijgend gekozen; een offline bron is
+geen kandidaat) — is in deze sessie geschreven en weer teruggedraaid, omdat
+`check-unused-code lib` een functie zonder productie-aanroeper afkeurt en het menu zelf niet meer in
+deze sessie paste. Een half bedraad contextmenu in de boom is erger dan een schone naad. Het bestand
+en zijn test staan klaar om als eerste commit van WP2 terug te komen; daarna volgen het menu, de
+chooser, de dispatch en het focusherstel.
+
+Rijen die hierop wachten: **G12** (markeer bekeken op één source) en **G13** (markeer bekeken op alle
+sources, gedeeltelijk mislukt).
+
 ## A. Server- en topologycases
 
 | # | Case | Test | Status |
@@ -106,7 +210,7 @@ vallen en die pas na 10A afgetekend kunnen worden:
 | B5 | Movies-only profiel | | open |
 | B6 | Mixed/shared Plex library | | open |
 | B7 | Verborgen library als enige bron | test/providers/unified_catalog_provider_test.dart (`server.hidden excludes a library from the merge, matching eligibleCatalogLibraries`, `a hidden-library change after starting reconciles and reloads with the library excluded`); test/services/unified_catalog/source_cursor_test.dart (`excludes a library the user hid, even though its server is visible`) | covered |
-| B8 | Verborgen library als tweede duplicate bron | | open |
+| B8 | Verborgen library als tweede duplicate bron | zoekhelft bewezen: test/services/data_aggregation_bridge_test.dart (`searchAcrossServers applies hidden-library visibility`, negen tests). Resolverhelft nog open — zie de noot onder deze tabel | open |
 | B9 | Library wordt tijdens gebruik verborgen | test/providers/unified_catalog_provider_test.dart (`a hidden-library change after starting reconciles and reloads with the library excluded`) | covered |
 | B10 | Library wordt verwijderd | | open |
 | B11 | Library heeft geen items | | open |
@@ -114,6 +218,25 @@ vallen en die pas na 10A afgetekend kunnen worden:
 | B13 | Library antwoordt met lege pagina vóór total bereikt | | open |
 | B14 | Backend herhaalt item op twee pagina's | | open |
 | B15 | Item verhuist tussen libraries | | open |
+
+
+**B8 is halverwege, en dat is met opzet niet `covered`.** Fase 9 heeft de zoekhelft gesloten:
+`DataAggregationService.searchAcrossServers` was de enige aggregatie-ingang zonder
+`hiddenLibraryKeys` — servers werden door `_clientsFor` uitgesloten, libraries door niemand — en
+filtert nu vóór ranking en trimmen, met een gedeelde `filterHiddenLibraryItems` die de drie
+gedupliceerde inline-predicaten in on-deck, latest movies en hubs vervangt. Negen tests dekken de
+gevallen; zonder de filter gaan er zeven van rood, en de twee die groen blijven zijn de
+fail-open-controles (een item zonder `libraryId` — een Plex Discover-hit uit `includeExternalMedia`
+bijvoorbeeld — zit in geen enkele library, dus geen verborgen sleutel kan hem noemen).
+
+Wat nog open staat is de **resolverhelft**, en die is bevestigd aanwezig:
+`SourceAllResolver.findAllByIdentity` (`lib/services/unified_catalog/source_resolver.dart`) kent
+`hiddenLibraryKeys` niet en leest `libraryId` nergens, dus hij vraagt elke bereikbare server serverbreed
+om matches. Het scenario van deze rij is daarmee nog steeds bereikbaar langs de andere kant: de kaart
+zegt terecht "1 bron", en even later voegt de resolver de verborgen bibliotheek alsnog als pickerrij
+toe. Let bij het repareren op de cache — het antwoord wordt zeven dagen bewaard, dus een filter die
+ná de cache zit lost het niet op.
+
 
 ## C. Identitycases
 

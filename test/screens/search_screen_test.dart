@@ -11,6 +11,7 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/mixins/refreshable.dart';
+import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/screens/search_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
@@ -46,9 +47,14 @@ void main() {
   testWidgets('stale callbacks are no-ops after SearchScreen is disposed', (tester) async {
     final key = GlobalKey<State<SearchScreen>>();
 
+    final hiddenLibraries = HiddenLibrariesProvider();
+    addTearDown(hiddenLibraries.dispose);
     await tester.pumpWidget(
       TranslationProvider(
-        child: MaterialApp(home: SearchScreen(key: key)),
+        child: ChangeNotifierProvider<HiddenLibrariesProvider>.value(
+          value: hiddenLibraries,
+          child: MaterialApp(home: SearchScreen(key: key)),
+        ),
       ),
     );
 
@@ -222,12 +228,17 @@ void main() {
       ..debugRegisterClientForTesting(clientB);
     final provider = MultiServerProvider(manager, DataAggregationService(manager));
     addTearDown(provider.dispose);
+    final hiddenLibraries = HiddenLibrariesProvider();
+    addTearDown(hiddenLibraries.dispose);
 
     final key = GlobalKey<State<SearchScreen>>();
     await tester.pumpWidget(
       TranslationProvider(
-        child: ChangeNotifierProvider<MultiServerProvider>.value(
-          value: provider,
+        child: MultiProvider(
+          providers: [
+            ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
+            ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
+          ],
           child: MaterialApp(
             theme: monoTheme(dark: true),
             home: SearchScreen(key: key),
@@ -269,12 +280,17 @@ void main() {
       ..debugRegisterClientForTesting(clientB);
     final provider = MultiServerProvider(manager, DataAggregationService(manager));
     addTearDown(provider.dispose);
+    final hiddenLibraries = HiddenLibrariesProvider();
+    addTearDown(hiddenLibraries.dispose);
 
     final key = GlobalKey<State<SearchScreen>>();
     await tester.pumpWidget(
       TranslationProvider(
-        child: ChangeNotifierProvider<MultiServerProvider>.value(
-          value: provider,
+        child: MultiProvider(
+          providers: [
+            ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
+            ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
+          ],
           child: MaterialApp(
             theme: monoTheme(dark: true),
             home: SearchScreen(key: key),
@@ -378,13 +394,14 @@ MediaItem _item(String id, String title) => MediaItem(
 // Same title, deliberately different serverId per call — the shape a real
 // multi-server merge candidate takes. `_item` above always claims
 // 'server_1', which is wrong for these fixtures' per-server fake clients.
-MediaItem _dune(String id, String serverId) => MediaItem(
+MediaItem _dune(String id, String serverId, {String? libraryId}) => MediaItem(
   id: id,
   backend: MediaBackend.plex,
   kind: MediaKind.movie,
   title: 'Dune',
   serverId: serverId,
   serverName: serverId,
+  libraryId: libraryId,
 );
 
 Future<GlobalKey<State<SearchScreen>>> _pumpSearchScreen(WidgetTester tester, MediaServerClient client) async {
@@ -398,12 +415,17 @@ Future<GlobalKey<State<SearchScreen>>> _pumpSearchScreen(WidgetTester tester, Me
   final manager = MultiServerManager()..debugRegisterClientForTesting(client);
   final provider = MultiServerProvider(manager, DataAggregationService(manager));
   addTearDown(provider.dispose);
+  final hiddenLibraries = HiddenLibrariesProvider();
+  addTearDown(hiddenLibraries.dispose);
 
   final key = GlobalKey<State<SearchScreen>>();
   await tester.pumpWidget(
     TranslationProvider(
-      child: ChangeNotifierProvider<MultiServerProvider>.value(
-        value: provider,
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
+          ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
+        ],
         child: MaterialApp(
           theme: monoTheme(dark: true),
           home: SearchScreen(key: key),
@@ -473,12 +495,17 @@ Future<(_FakeMediaServerClient, GlobalKey<State<SearchScreen>>)> _pumpTvSearchSc
   final manager = MultiServerManager()..debugRegisterClientForTesting(client);
   final provider = MultiServerProvider(manager, DataAggregationService(manager));
   addTearDown(provider.dispose);
+  final hiddenLibraries = HiddenLibrariesProvider();
+  addTearDown(hiddenLibraries.dispose);
 
   final key = GlobalKey<State<SearchScreen>>();
   await tester.pumpWidget(
     TranslationProvider(
-      child: ChangeNotifierProvider<MultiServerProvider>.value(
-        value: provider,
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
+          ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
+        ],
         child: MaterialApp(
           theme: monoTheme(dark: true),
           home: SearchScreen(key: key),

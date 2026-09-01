@@ -134,6 +134,138 @@ void main() {
       expect(jellyfinRequests.single.queryParameters['Limit'], '100');
     });
 
+    // B8 / hoofdstuk 22: a hidden library is a hard visibility boundary, and
+    // search is a fan-out like every other. Servers were already excluded by
+    // _clientsFor; libraries were excluded by nobody, so a title in a hidden
+    // library reached the results and — on TV — became a source under a
+    // unified group. These cases pin the boundary at the aggregation layer,
+    // which is where the sibling fan-outs already apply it.
+    group('searchAcrossServers applies hidden-library visibility', () {
+      _StubSearchClient clientWith(List<MediaItem> items, {String id = 'srv-a'}) =>
+          _StubSearchClient(id: id, items: items);
+
+      test('A: a result that only exists in a hidden library is not returned', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([_stubItem('hidden-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-hidden')]),
+        );
+
+        final result = await service.searchAcrossServers('Dune', hiddenLibraryKeys: {'srv-a:lib-hidden'});
+
+        expect(result.items, isEmpty);
+        // The server still answered — this is "nothing visible", not "nothing
+        // reachable", and the screen must not render a connection failure.
+        expect(result.succeededServerIds, {'srv-a'});
+      });
+
+      test('B: the same title in a visible and a hidden library keeps only the visible source', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([
+            _stubItem('visible-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-visible'),
+            _stubItem('hidden-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-hidden'),
+          ]),
+        );
+
+        final result = await service.searchAcrossServers('Dune', hiddenLibraryKeys: {'srv-a:lib-hidden'});
+
+        expect(result.items.map((i) => i.id), ['visible-1']);
+      });
+
+      test('C: every membership hidden makes the result disappear entirely', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([
+            _stubItem('hidden-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-hidden'),
+            _stubItem('hidden-2', 'Dune', serverId: 'srv-a', libraryId: 'lib-also-hidden'),
+          ]),
+        );
+
+        final result = await service.searchAcrossServers(
+          'Dune',
+          hiddenLibraryKeys: {'srv-a:lib-hidden', 'srv-a:lib-also-hidden'},
+        );
+
+        expect(result.items, isEmpty);
+      });
+
+      test('D: a hidden source never reaches the caller, so it can never be activated', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([
+            _stubItem('visible-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-visible'),
+            _stubItem('hidden-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-hidden'),
+          ]),
+        );
+
+        final result = await service.searchAcrossServers('Dune', hiddenLibraryKeys: {'srv-a:lib-hidden'});
+
+        // Activation resolves against exactly what aggregation returns, so
+        // absence here is the whole guarantee.
+        expect(result.items.any((i) => i.libraryId == 'lib-hidden'), isFalse);
+      });
+
+      test('E: hiding a library and searching again drops the now-stale source', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([
+            _stubItem('visible-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-visible'),
+            _stubItem('hidden-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-hidden'),
+          ]),
+        );
+
+        final before = await service.searchAcrossServers('Dune', hiddenLibraryKeys: const {});
+        expect(before.items.map((i) => i.id), containsAll(['visible-1', 'hidden-1']));
+
+        final after = await service.searchAcrossServers('Dune', hiddenLibraryKeys: {'srv-a:lib-hidden'});
+        expect(after.items.map((i) => i.id), ['visible-1']);
+      });
+
+      test('F: unhiding the library brings its source back', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([_stubItem('hidden-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-hidden')]),
+        );
+
+        expect((await service.searchAcrossServers('Dune', hiddenLibraryKeys: {'srv-a:lib-hidden'})).items, isEmpty);
+        expect((await service.searchAcrossServers('Dune', hiddenLibraryKeys: const {})).items.map((i) => i.id), [
+          'hidden-1',
+        ]);
+      });
+
+      test('the key is scoped per server: the same library id elsewhere stays visible', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([_stubItem('a-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-1')], id: 'srv-a'),
+        );
+        manager.debugRegisterClientForTesting(
+          clientWith([_stubItem('b-1', 'Dune', serverId: 'srv-b', libraryId: 'lib-1')], id: 'srv-b'),
+        );
+
+        final result = await service.searchAcrossServers('Dune', hiddenLibraryKeys: {'srv-a:lib-1'});
+
+        expect(result.items.map((i) => i.id), ['b-1']);
+      });
+
+      test('H: callers that pass nothing are unaffected — non-TV keeps its results', () async {
+        manager.debugRegisterClientForTesting(
+          clientWith([
+            _stubItem('visible-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-visible'),
+            _stubItem('hidden-1', 'Dune', serverId: 'srv-a', libraryId: 'lib-hidden'),
+          ]),
+        );
+
+        final result = await service.searchAcrossServers('Dune');
+
+        expect(result.items.map((i) => i.id), containsAll(['visible-1', 'hidden-1']));
+      });
+
+      test('an item with no library is kept — nothing hidden can name it', () async {
+        // Plex /library/search returns Discover hits (includeExternalMedia)
+        // with no librarySectionID. Those are in no library at all, so the
+        // fail-open branch is correct rather than a hole. Same semantics as
+        // the on-deck, latest-movies and hubs fan-outs.
+        manager.debugRegisterClientForTesting(clientWith([_stubItem('no-library', 'Dune', serverId: 'srv-a')]));
+
+        final result = await service.searchAcrossServers('Dune', hiddenLibraryKeys: {'srv-a:lib-hidden'});
+
+        expect(result.items.map((i) => i.id), ['no-library']);
+      });
+    });
+
     test('a hanging server does not hold back the healthy ones', () {
       // FakeAsync so the per-server timeout elapses without a real 8s wait.
       fakeAsync((async) {
@@ -1140,13 +1272,14 @@ void main() {
   });
 }
 
-MediaItem _stubItem(String id, String title) => MediaItem(
+MediaItem _stubItem(String id, String title, {String serverId = 'healthy', String? libraryId}) => MediaItem(
   id: id,
   backend: MediaBackend.plex,
   kind: MediaKind.movie,
   title: title,
-  serverId: 'healthy',
+  serverId: serverId,
   serverName: 'Healthy',
+  libraryId: libraryId,
 );
 
 /// Minimal search-only client. With [hang] it never answers, standing in for a
