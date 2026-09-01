@@ -1247,7 +1247,9 @@ void main() {
         child: MaterialApp(
           builder: withNoticeLayer(),
           theme: monoTheme(dark: true),
-          home: InputModeTracker(child: OverlaySheetHost(child: withProfileNavigationScope(child: child))),
+          home: InputModeTracker(
+            child: OverlaySheetHost(child: withProfileNavigationScope(child: child)),
+          ),
         ),
       ),
     );
@@ -1280,20 +1282,15 @@ void main() {
       );
       await tester.pump();
       await tester.pump();
-      // See `_ignoringKnownHeroOverflow`'s own doc: this hero's action row
-      // overflows once its reveal animation settles with the "[ Wijzigen ]"
-      // source line present, a pre-existing defect unrelated to this test.
-      await _ignoringKnownHeroOverflow(() async {
-        for (var i = 0; i < 6; i++) {
-          await tester.pump(const Duration(milliseconds: 16));
-        }
-      });
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
 
       expect(find.text(t.sourcePicker.detailLoadFailedTitle), findsOneWidget);
       final chooseAnother = find.text(t.sourcePicker.chooseAnotherSource);
       expect(chooseAnother, findsOneWidget);
 
-      await _ignoringKnownHeroOverflow(() => _activateByLabel(tester, t.sourcePicker.chooseAnotherSource));
+      await _activateByLabel(tester, t.sourcePicker.chooseAnotherSource);
 
       expect(chooseAnotherCalled, isTrue);
     });
@@ -1325,13 +1322,11 @@ void main() {
       );
       await tester.pump();
       await tester.pump();
-      await _ignoringKnownHeroOverflow(() async {
-        for (var i = 0; i < 6; i++) {
-          await tester.pump(const Duration(milliseconds: 16));
-        }
-      });
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
 
-      await _ignoringKnownHeroOverflow(() => _activateByLabel(tester, t.common.close));
+      await _activateByLabel(tester, t.common.close);
 
       // No silent failover happened: the same (stale-fallback) metadata is
       // still what is on screen, not a swapped-in different source.
@@ -1422,11 +1417,9 @@ void main() {
       );
       await tester.pump();
       await tester.pump();
-      await _ignoringKnownHeroOverflow(() async {
-        for (var i = 0; i < 6; i++) {
-          await tester.pump(const Duration(milliseconds: 16));
-        }
-      });
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
 
       expect(find.text(t.sourcePicker.detailLoadFailedTitle), findsNothing);
     });
@@ -1509,35 +1502,6 @@ void main() {
       expect(source.fetches, 1);
     });
   });
-}
-
-/// Runs [action] with Flutter's render-overflow assertion demoted to a log
-/// line instead of a test failure.
-///
-/// Scoped to the F19/A14 tests: `MediaDetailScreen`'s TV hero reserves a
-/// fixed height for its action row (`_tvDetailActionSize`) that does not
-/// grow for hoofdstuk 15's "[ Wijzigen ]" source line
-/// (`action_buttons.dart`'s `_buildUnifiedSourceLine`), so any detail route
-/// opened with `unifiedRouteContext.hasAlternativeSources` genuinely
-/// overflows that box by one row's height once its own reveal animation
-/// settles — reproducible with or without this file's changes, on a plain
-/// successful load, with no failure panel involved. That defect is real and
-/// worth its own fix, but it is not what F19/A14 is about, and letting it
-/// fail these tests would hide the actual regression coverage they exist
-/// to add. Flagged for a follow-up rather than fixed here.
-Future<T> _ignoringKnownHeroOverflow<T>(Future<T> Function() action) async {
-  final previous = FlutterError.onError;
-  FlutterError.onError = (details) {
-    if (details.exception is FlutterError && details.exception.toString().contains('overflowed by')) {
-      return;
-    }
-    previous?.call(details);
-  };
-  try {
-    return await action();
-  } finally {
-    FlutterError.onError = previous;
-  }
 }
 
 Future<void> _press(WidgetTester tester, LogicalKeyboardKey key) async {
@@ -1710,7 +1674,6 @@ class _FakeMediaServerClient implements MediaServerClient {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
-
 
 /// Always throws from `fetchItemWithOnDeck` — the genuine-failure case, as
 /// distinct from `_HangingMetadataClient`'s never-resolves one.

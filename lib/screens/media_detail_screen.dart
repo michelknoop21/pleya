@@ -21,6 +21,7 @@ import '../focus/dpad_navigator.dart';
 import '../focus/focusable_action_bar.dart';
 import '../focus/focusable_button.dart';
 import '../focus/focusable_wrapper.dart';
+import '../focus/focus_theme.dart';
 import '../focus/key_event_utils.dart';
 import '../focus/input_mode_tracker.dart';
 import '../utils/media_server_timeouts.dart';
@@ -3806,6 +3807,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         final summaryLineHeight = summaryFontSize * 1.35;
         final actionHeight = _tvDetailActionSize * scale;
         final actionGap = 12 * scale;
+        final sourceLineHeight = _unifiedSourceLineHeight(context);
         final hasDescription = description != null && description.isNotEmpty;
         // Genres come from the show/movie, not the focused episode, so the line
         // stays stable as episode rows gain focus.
@@ -3817,7 +3819,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         for (var lines = hasDescription ? 3 : 0; lines >= 0; lines--) {
           final descriptionHeight = lines > 0 ? summaryGap + (summaryLineHeight * lines) : 0.0;
           final reservedHeight =
-              logoMetadataGap + metadataLineHeight + genreBlockHeight + descriptionHeight + actionGap + actionHeight;
+              logoMetadataGap +
+              metadataLineHeight +
+              genreBlockHeight +
+              descriptionHeight +
+              actionGap +
+              actionHeight +
+              sourceLineHeight;
           final remainingForLogo = availableHeight - reservedHeight;
           if (remainingForLogo >= minLogoHeight || lines == 0) {
             summaryMaxLines = lines;
@@ -3834,7 +3842,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
             genreBlockHeight +
             descriptionHeight +
             actionGap +
-            actionHeight;
+            actionHeight +
+            sourceLineHeight;
         final logoWidth = desiredLogoWidth < constraints.maxWidth ? desiredLogoWidth : constraints.maxWidth;
 
         return ClipRect(
@@ -4608,7 +4617,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         final genreChips = [for (final genre in metadata.genres ?? const <String>[]) _buildMetadataChip(genre)];
 
         final showActions = availableHeight >= actionHeight;
-        final remainingAfterActions = availableHeight - (showActions ? actionHeight : 0);
+        final sourceLineHeight = showActions ? _unifiedSourceLineHeight(context) : 0.0;
+        final remainingAfterActions = availableHeight - (showActions ? actionHeight : 0) - sourceLineHeight;
         final showChips = chips.isNotEmpty && remainingAfterActions >= 88;
         final chipHeight = showChips ? (remainingAfterActions >= 170 ? 68.0 : 32.0) : 0.0;
         final chipActionGap = showChips && showActions ? (availableHeight < 180 ? 8.0 : 16.0) : 0.0;
@@ -4635,7 +4645,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
             chipHeight +
             genreBlockHeight +
             chipActionGap +
-            (showActions ? actionHeight : 0.0);
+            (showActions ? actionHeight : 0.0) +
+            sourceLineHeight;
 
         return ClipRect(
           child: SizedBox(
