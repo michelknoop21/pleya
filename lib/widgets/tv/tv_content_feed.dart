@@ -256,10 +256,37 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
       openDiscoveryContextMenu(
         group,
         isInContinueWatching: isInContinueWatching,
-        // The projection recomputes from the watch-state events the writes
-        // already emit, so a row does not need to be told twice.
-        onChanged: null,
+        onChanged: () => _refreshGroupSources(group),
       );
+
+  /// Refreshes every source [group] carries after a hoofdstuk-23 write landed.
+  ///
+  /// **Not "the projection recomputes on its own" — that is true of Continue
+  /// Watching alone, and this menu opens on every row, not only that one.**
+  /// `DiscoverProvider._onWatchStateChanged` reacts to every
+  /// [WatchStateEvent] and calls `refreshContinueWatching()`, whose own doc
+  /// says it "never refetches hubs" — by design, it is a background poll of
+  /// one row, not a general invalidation. A markeer bekeken/onbekeken done
+  /// from a Top Picks or Recently Released card is exactly the case that
+  /// misses: `_hubs` stays the list that was already there, so
+  /// [TvHomeProjectionProvider]'s own change guard (element-identity
+  /// `listEquals`) never fires and that card's watched badge — read straight
+  /// off the projected `group.watchState`, hoofdstuk 12's groups carry no
+  /// live patch of their own — is stale until the next full [DiscoverProvider.load].
+  ///
+  /// [DiscoverProvider.updateItem] is the same incremental refresh I19 already
+  /// gives a playback return (`activateDiscoveryGroup`'s `onPlaybackReturned`):
+  /// refetch one item, swap it into on-deck/hubs by id, notify. Looping every
+  /// source rather than only the representative one is deliberate — "Alle
+  /// bronnen" writes every membership, so every membership's card (a title can
+  /// appear once per server it is on) needs the same refresh, not just the one
+  /// the group happens to display first.
+  void _refreshGroupSources(UnifiedMediaGroup group) {
+    final discover = context.read<DiscoverProvider>();
+    for (final source in group.sources) {
+      unawaited(discover.updateItem(source.item.id));
+    }
+  }
 
   Future<void> _activateHero(
     UnifiedMediaGroup group, {

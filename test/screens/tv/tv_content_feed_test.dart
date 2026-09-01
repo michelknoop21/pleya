@@ -20,6 +20,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/focus/dpad_navigator.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
@@ -34,6 +35,7 @@ import 'package:pleya/providers/discover_provider.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/providers/offline_mode_provider.dart';
 import 'package:pleya/providers/tv_home_projection_provider.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -166,6 +168,37 @@ class _FakeClient implements MediaServerClient {
   @override
   Future<ExternalIds> fetchExternalIds(String itemId) async => externalIds[itemId] ?? const ExternalIds();
 
+  /// What `WatchActions.setWatched`'s server write should record, and what
+  /// `DiscoverProvider.updateItem`'s follow-up refetch should answer with —
+  /// two different calls on the same client, both needed to prove the
+  /// context menu's write actually reaches the card: [markWatchedCalls] shows
+  /// the write landed, [fetchItemCalls] plus [fetchItemResult] show whether
+  /// anything asked the server for the refreshed item afterwards.
+  final List<String> markWatchedCalls = [];
+  final List<String> markUnwatchedCalls = [];
+  final List<String> fetchItemCalls = [];
+
+  /// Keyed by item id — what [fetchItem] answers, so a test can hand back the
+  /// post-write item (e.g. `withWatchedFlag(true)`) the way a real server
+  /// would once the mark-watched call above has landed.
+  final Map<String, MediaItem> fetchItemResult = {};
+
+  @override
+  Future<void> markWatched(MediaItem item) async {
+    markWatchedCalls.add(item.id);
+  }
+
+  @override
+  Future<void> markUnwatched(MediaItem item) async {
+    markUnwatchedCalls.add(item.id);
+  }
+
+  @override
+  Future<MediaItem?> fetchItem(String id) async {
+    fetchItemCalls.add(id);
+    return fetchItemResult[id];
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -182,6 +215,12 @@ void main() {
   late MultiServerProvider multiServer;
   late DiscoverProvider discover;
   late TvHomeProjectionProvider projection;
+  late MultiServerManager manager;
+
+  /// The fake client `boot()` registered for [serverId], so a test can
+  /// program its write/refetch behaviour (`markWatchedCalls`,
+  /// `fetchItemResult`) before driving a context-menu write.
+  _FakeClient fakeClient(String serverId) => manager.getClient(ServerId(serverId)) as _FakeClient;
 
   Future<void> boot(
     WidgetTester tester, {
@@ -196,7 +235,7 @@ void main() {
     await SettingsService.getInstance();
     LocaleSettings.setLocaleSync(AppLocale.en);
 
-    final manager = MultiServerManager();
+    manager = MultiServerManager();
     for (final server in _servers) {
       manager.debugRegisterClientForTesting(
         _FakeClient(serverId: server.id, backend: server.backend, externalIds: externalIds),
@@ -231,12 +270,15 @@ void main() {
     }
 
     setGoldenSurfaceSize(tester);
+    final offlineMode = OfflineModeProvider(manager, multiServerProvider: multiServer);
+    addTearDown(offlineMode.dispose);
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
           ChangeNotifierProvider<DiscoverProvider>.value(value: discover),
           ChangeNotifierProvider<TvHomeProjectionProvider>.value(value: projection),
+          ChangeNotifierProvider<OfflineModeProvider>.value(value: offlineMode),
         ],
         child: TranslationProvider(
           child: MaterialApp(
@@ -266,6 +308,34 @@ void main() {
     await tester.sendKeyUpEvent(key);
     await tester.pump();
     await tester.pump();
+  }
+
+  /// A content-row tile's own focus node — `tv_discovery_rail.dart` labels it
+  /// `tvDiscoveryTile_$groupId`, so a test can focus one card without walking
+  /// the remote across every tile in front of it.
+  FocusNode tileNode(WidgetTester tester, String groupId) => heroNode(tester, 'tvDiscoveryTile_$groupId');
+
+  /// Holds Select past `FocusableWrapper`'s long-press threshold — the
+  /// hoofdstuk 23 gesture that opens a card's context menu, per
+  /// `tv_unified_context_menu_reachability_test.dart`.
+  Future<void> holdSelect(WidgetTester tester) async {
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+  }
+
+  /// Focuses the control showing [label] inside an open overlay sheet and
+  /// presses Select on it — `FocusableWrapper`/`TvPanelButton` carry no tap
+  /// handler, so `tester.tap` silently does nothing on one of these (see
+  /// `media_detail_screen_test.dart`'s helper of the same name).
+  Future<void> activateByLabel(WidgetTester tester, String label) async {
+    final focus = Focus.maybeOf(tester.element(find.text(label)), scopeOk: true)!;
+    focus.requestFocus();
+    await tester.pump();
+    expect(focus.hasPrimaryFocus, isTrue, reason: 'the control under test must actually hold the focus');
+    SelectKeyUpSuppressor.clearSuppression();
+    await press(tester, LogicalKeyboardKey.select);
   }
 
   List<MediaItem> twoRecentFilms() => [
@@ -664,6 +734,48 @@ void main() {
       expect(keysAfter, keysBefore);
       expect(keysBefore.toSet(), hasLength(keysBefore.length), reason: 'no two rows may share a GlobalKey');
       expect(rows(tester).map((r) => r.railKey), everyElement(isA<GlobalKey<TvDiscoveryRailState>>()));
+    });
+  });
+
+  group('hoofdstuk 23\'s menu reacts on every row, not only Continue Watching', () {
+    testWidgets('marking a hub-row title watched updates that exact card', (tester) async {
+      final movie = _film('dune-nas', title: 'Dune', releasedAt: '2024-01-01');
+      await boot(tester, hubs: [_hub('top-picks', 'Top Picks', [movie])]);
+      addTearDown(SelectKeyUpSuppressor.clearSuppression);
+
+      final groupId = rows(tester).single.hub.groups.single.groupId;
+      expect(rows(tester).single.hub.groups.single.watchState.isWatched, isFalse, reason: 'starts unwatched');
+
+      // What the server answers once `markWatched` has actually landed —
+      // proof the refresh this test is about really asked for it, not just
+      // that a write happened somewhere.
+      fakeClient('nas').fetchItemResult['dune-nas'] = movie.withWatchedFlag(true);
+
+      tileNode(tester, groupId).requestFocus();
+      await tester.pump();
+      SelectKeyUpSuppressor.clearSuppression();
+      await holdSelect(tester);
+      expect(find.text(t.mediaMenu.markAsWatched), findsOneWidget, reason: 'the long press must open the menu');
+
+      await activateByLabel(tester, t.mediaMenu.markAsWatched);
+      // The write, the notify and the incremental refetch are all async;
+      // settle every microtask/timer this scenario schedules.
+      await tester.pumpAndSettle();
+
+      expect(fakeClient('nas').markWatchedCalls, contains('dune-nas'), reason: 'the write itself must still happen');
+      expect(
+        fakeClient('nas').fetchItemCalls,
+        contains('dune-nas'),
+        reason:
+            'onChanged must ask DiscoverProvider to refresh this exact item — '
+            'refreshContinueWatching() never refetches hubs, so without this '
+            'call nothing on this row ever asks the server again',
+      );
+      expect(
+        rows(tester).single.hub.groups.single.watchState.isWatched,
+        isTrue,
+        reason: 'the card the user pressed menu on must show the mark it just made, not a stale badge',
+      );
     });
   });
 }

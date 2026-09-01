@@ -118,10 +118,17 @@ class TvHeroBillboardCard extends StatelessWidget {
   /// this only ever bites on a fallback billboard.
   final bool hideSpoilers;
 
-  /// 33.2: "Focusverlies op de hero dooft zijn tekst". The carousel drives
-  /// this to zero once a content row holds the focus, so the billboard reads
-  /// as the picture it has become rather than as a second, competing block of
-  /// type under the row the viewer is actually reading.
+  /// 33.2: "Focusverlies op de hero dooft zijn tekst". Set to zero once a
+  /// content row holds the focus, so the billboard reads as the picture it
+  /// has become rather than as a second, competing block of type under the
+  /// row the viewer is actually reading.
+  ///
+  /// Not this card's own decision, nor the carousel's either — [_rowHasFocus]
+  /// is state `TvContentFeed` owns (the library doc's "two independent state
+  /// machines"), which the carousel only forwards unchanged as this
+  /// parameter. Naming the carousel here would be exactly the kind of
+  /// misattributed "who decides this" this file otherwise guards against for
+  /// activation (see the class doc's "Presentation only").
   final double textOpacity;
 
   @override

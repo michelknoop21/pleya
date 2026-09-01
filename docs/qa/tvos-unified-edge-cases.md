@@ -468,6 +468,33 @@ en `test/services/unified_grouping_service_test.dart`).
 | G13 | Mark watched op alle sources gedeeltelijk mislukt | test/screens/tv/tv_unified_context_actions_test.dart (`two usable sources ask, with an explicit all-sources row`, `a logical action still skips an unreachable membership` voor de partial-semantiek); test/widgets/tv/tv_action_scope_picker_test.dart (`the all-sources row leads the list, and answering it returns every source`) — de melding zelf komt uit `_applyToSources` in lib/screens/tv/tv_unified_context_menu.dart, die per bron telt en `doneOnSome` toont in plaats van te rollbacken | covered |
 | G14 | Episodeprogress op verkeerde serie mag niet mergen | test/services/unified_catalog/home_projection_service_test.dart (`G14: the same season/episode of two different series never share a card`, `G14: two series with no external ids at all still never merge on ordinals`, `G14: one series' progress stays on its own card when the other is further along`) — dezelfde S02E04 op twee series blijft twee kaarten, met en zonder externe ids, en 13.2 kiest alleen uit de eigen bronnen van een groep | covered |
 
+**Contextmenu op een hub-rij liet zijn eigen kaart stil staan.** Gevonden bij de
+commentaar-versus-code-audit van `tv_content_feed.dart` (fase 9, taak "misleidende comments"), niet
+bij een vooraf gevlagde registerrij — het commentaar zelf was het eerste bewijs: `_openContextMenu`
+gaf `onChanged: null` mee met de motivering "de projectie rekent zelf al opnieuw vanaf de
+watch-state-events die de writes al zenden, dus een rij hoeft niet twee keer verteld te worden". Dat
+klopt voor Verder kijken — `DiscoverProvider._onWatchStateChanged` draait `refreshContinueWatching()`
+op elk event — maar dat commentaar staat op de menu-opening voor **elke** rij, en dezelfde
+`refreshContinueWatching()` zegt in zijn eigen doc-comment expliciet "nooit opnieuw hubs ophalen".
+Markeer bekeken/onbekeken vanaf een Top Picks- of Recently Released-kaart raakte dus precies het gat:
+`_hubs` bleef de al aanwezige lijst, `TvHomeProjectionProvider`'s eigen change-guard
+(`listEquals`, element-identiteit) vuurde niet, en de kaart die de gebruiker net aansprak — zijn
+`watchState.isWatched` komt rechtstreeks uit de geprojecteerde groep, geen live patch-laag — bleef de
+oude staat tonen tot de volgende volledige `load()`. Het commentaar was niet zomaar onnauwkeurig; het
+beschreef een garantie die voor de meeste rijen op dit scherm niet bestond.
+
+De reparatie geeft `onChanged` een echte callback: `_refreshGroupSources` roept
+`DiscoverProvider.updateItem` voor elke bron in de groep, dezelfde incrementele refresh die I19 al aan
+een playbackreturn geeft. test/screens/tv/tv_content_feed_test.dart (groep "hoofdstuk 23's menu
+reageert op elke rij, niet alleen Verder kijken", `marking a hub-row title watched updates that exact
+card`) drijft het echte pad — lange Select opent het menu, "Markeer als bekeken" kiezen schrijft naar
+de fake client — en bewijst zowel de write (`markWatchedCalls`) als de refetch (`fetchItemCalls`) als
+het zichtbare effect (`watchState.isWatched` na de herprojectie); zonder de fix faalt precies de
+refetch-assertie, negatief gecontroleerd door de fix tijdelijk terug te draaien. Het tweede
+commentaar dat de audit meenam — `tv_hero_billboard_card.dart`'s `textOpacity`-doc, die "de carousel"
+crediteerde voor een waarde die feitelijk `TvContentFeed` bepaalt en de carousel alleen doorgeeft —
+was code die al klopte; alleen het commentaar is gecorrigeerd, zonder test.
+
 **WP4 — verwijderen uit Verder kijken onthoudt nu wat het niet bereikte.** Gebouwd in fase 9. Twee
 dingen waren stuk, en het tweede was het ergste.
 
