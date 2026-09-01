@@ -111,7 +111,7 @@ niet geraakt".
 | Werkpakket | Rijen |
 | --- | --- |
 | WP1 — hidden-library lekken ✅ gesloten | B8 |
-| WP2 — contextmenu + write-scope | G12, G13 |
+| WP2 — contextmenu + write-scope ✅ gesloten | G12, G13 |
 | WP3 — auth-status, Mijn Pleya, deep links | I9, I10, I14 |
 | WP4 — all-source verwijderen uit Verder kijken | G10, G11 |
 | WP6 — playbackreturn en detailfouten | A14, A15, D14, D15, I19, I20 |
@@ -132,10 +132,10 @@ Drie aantekeningen bij die verdeling:
   wijkt op drie punten af van hoofdstuk 13.2; dat gaat als deviation proposal mee, niet als een
   stille aanpassing van de rijen.
 
-### WP2 — contextmenu-bereikbaarheid: het besluit staat, de bouw niet
+### WP2 — contextmenu-bereikbaarheid: gebouwd
 
-Vastgesteld op 1 september 2026. De bevinding is bevestigd in code: **geen enkele fase-6/7/8-TV-kaart
-heeft een contextmenu.** `grep` op `onLongPress`, `enableLongPress`, `isContextMenuKey`,
+Vastgesteld op 1 september 2026, gebouwd dezelfde dag. De bevinding was bevestigd in code: **geen
+enkele fase-6/7/8-TV-kaart had een contextmenu.** `grep` op `onLongPress`, `enableLongPress`, `isContextMenuKey`,
 `MediaContextMenu` en `showContextMenu` over `lib/widgets/tv/` en `lib/screens/tv/` geeft nul hits.
 Markeer bekeken/onbekeken, rate, verwijder uit Verder kijken en Kijklijst zijn daarmee onbereikbaar
 vanaf Home, de Films- en Series-landings, de complete catalogus en TV-Search. De legacy-oppervlakken
@@ -163,16 +163,40 @@ server. Die twee zijn activation/playback-conveniences; een verkeerd gelande wri
 permanent. Playback-picker en action-scope-picker mogen dezelfde presentatie delen, hun semantiek
 niet.
 
-Een uitgewerkte `resolveUnifiedActionTarget` met acht groene tests — inclusief de twee negatieve
-controles die de gebruiker vroeg (representative wordt niet stilzwijgend gekozen; een offline bron is
-geen kandidaat) — is in deze sessie geschreven en weer teruggedraaid, omdat
-`check-unused-code lib` een functie zonder productie-aanroeper afkeurt en het menu zelf niet meer in
-deze sessie paste. Een half bedraad contextmenu in de boom is erger dan een schone naad. Het bestand
-en zijn test staan klaar om als eerste commit van WP2 terug te komen; daarna volgen het menu, de
-chooser, de dispatch en het focusherstel.
+**Wat er staat.** Vier lagen, elk met één verantwoordelijkheid:
 
-Rijen die hierop wachten: **G12** (markeer bekeken op één source) en **G13** (markeer bekeken op alle
-sources, gedeeltelijk mislukt).
+| Laag | Bestand | Wat het beslist |
+| --- | --- | --- |
+| scope | `lib/screens/tv/tv_unified_context_actions.dart` | welke scope een actie heeft, en welke bronnen kandidaat zijn |
+| menu | `lib/screens/tv/tv_unified_context_menu.dart` | welke acties dit oppervlak aanbiedt, en de dispatch |
+| chooser | `lib/widgets/tv/tv_action_scope_picker.dart` | de vraag "waar landt dit", met of zonder Alle bronnen |
+| rijen | `lib/widgets/tv/tv_source_row.dart` | de presentatie, gedeeld met de playbackpicker |
+
+Die laatste is een extractie, geen nieuw bestand: `_SourceList` en `_SourceRow` zaten privé in
+`tv_media_source_picker.dart` en zijn er ongewijzigd uit gelicht, met `TvSourceRowDescriptor` als
+naad in plaats van `UnifiedMediaSource`. Daardoor rendert de action-scopepicker letterlijk dezelfde
+rijen en focusmechaniek als de playbackpicker, en past "Alle bronnen" erin als een descriptor zoals
+elke andere. De dertig bestaande pickertests bleven groen over de extractie heen.
+
+**De semantiek blijft gescheiden.** Zelfde UI-primitive, andere vraag. De action-scopepicker krijgt
+geen `preferredSourceKey`, geen `preferredServerId`, geen `onSetPreferredServer` en geen route: hij
+geeft een keuze terug en stopt. Een onthouden playbackkeuze die in een *schrijf*vraag naar boven
+drijft is een antwoord dat de gebruiker nooit op deze vraag gaf, en de bovenste rij is de rij die een
+haastige gebruiker indrukt. `no row is marked as a remembered or preferred choice` bewaakt dat van de
+UI-kant, de drie negatieve controles in `tv_unified_context_actions_test.dart` van de beslissingskant.
+
+**De hero heeft bewust geen menu.** Hoofdstuk 7.3 somt het heromodel uitputtend op — Afspelen en Meer
+info, met links/rechts gebonden aan het wisselen van slide — en kent daar geen contextmenu. Een lange
+Select op een CTA die "start dit nu" betekent is een nieuw gebaar op een knop, geen kaartactie. Niet
+toegevoegd, dus, en niet om symmetrie.
+
+**Wat er níét in zit, en waarom.** `_applyToSources` meldt een gedeeltelijke mislukking eerlijk
+(`doneOnSome`) in plaats van te rollbacken, wat 13.4 punt 5 en 13.5's "mislukte subset" vragen. De
+lokale suppressie en het opnieuw uitvoeren bij reconnect — 13.4 punten 3 en 4 — zijn **G10 en G11**
+en horen bij WP4. Dat is de grens: WP2 vertelt de waarheid over de bronnen die het niet bereikte,
+WP4 onthoudt ze.
+
+Rijen die hierop wachtten: **G12** en **G13**, beide nu `covered`.
 
 ## A. Server- en topologycases
 
@@ -388,8 +412,8 @@ en `test/services/unified_grouping_service_test.dart`).
 | G9 | Playback return met null route result | test/utils/media_navigation_helper_test.dart (`onPlaybackReturned fires when the player pops null`, `onRefresh alone does not fire when the player pops null`) — `handlePlaybackReturn` is puur en heeft geen visueel deel | covered |
 | G10 | Remove Continue gedeeltelijk mislukt | | open |
 | G11 | Offline suppressie wordt later gereplayed | | open |
-| G12 | Mark watched op één source | | open |
-| G13 | Mark watched op alle sources gedeeltelijk mislukt | | open |
+| G12 | Mark watched op één source | test/screens/tv/tv_unified_context_actions_test.dart (`a single usable source is written to without a question (14.6)`, `two sources with only one reachable is still not a question`, `an offline source is not offered as a scope`); test/widgets/tv/tv_action_scope_picker_test.dart (`choosing one server returns that server and nothing else`) | covered |
+| G13 | Mark watched op alle sources gedeeltelijk mislukt | test/screens/tv/tv_unified_context_actions_test.dart (`two usable sources ask, with an explicit all-sources row`, `a logical action still skips an unreachable membership` voor de partial-semantiek); test/widgets/tv/tv_action_scope_picker_test.dart (`the all-sources row leads the list, and answering it returns every source`) — de melding zelf komt uit `_applyToSources` in lib/screens/tv/tv_unified_context_menu.dart, die per bron telt en `doneOnSome` toont in plaats van te rollbacken | covered |
 | G14 | Episodeprogress op verkeerde serie mag niet mergen | | open |
 
 ## H. Herocases

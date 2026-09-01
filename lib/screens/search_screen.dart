@@ -783,6 +783,7 @@ class _SearchScreenState extends State<SearchScreen>
               groups: groups,
               clientFor: (serverId) => multiServer.serverManager.getClient(ServerId(serverId)),
               onActivate: (group) => activateDiscoveryGroup(group, onManageServers: widget.onManageServers),
+              onContextMenu: openDiscoveryContextMenu,
             ),
           ),
         ),

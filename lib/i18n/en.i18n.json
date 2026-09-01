@@ -1971,5 +1971,18 @@
       "tile": "${title}. ${subtitle}",
       "tileWithCount": "${title}. ${subtitle}. ${count}"
     }
+  },
+  "tvContextMenu": {
+    "title": "Actions",
+    "menuSemantics": "Action ${index} of ${count}: ${label}",
+    "scopeTitleMarkWatched": "Mark as watched on",
+    "scopeTitleMarkUnwatched": "Mark as unwatched on",
+    "scopeTitleRate": "Rate on",
+    "allSources": "All sources",
+    "allSourcesDetail": "Apply to all ${count} sources",
+    "noUsableSource": "No source is currently reachable, so this cannot be changed right now.",
+    "doneOnAll": "Done on all ${count} sources",
+    "doneOnSome": "Done on ${done} of ${total} sources. The rest will be retried when they are back online.",
+    "failed": "That did not work"
   }
 }

@@ -99,6 +99,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsUnifiedCatalogEn unifiedCatalog = TranslationsUnifiedCatalogEn.internal(_root);
 	late final TranslationsTvNavigationEn tvNavigation = TranslationsTvNavigationEn.internal(_root);
 	late final TranslationsTvMyPleyaEn tvMyPleya = TranslationsTvMyPleyaEn.internal(_root);
+	late final TranslationsTvContextMenuEn tvContextMenu = TranslationsTvContextMenuEn.internal(_root);
 }
 
 // Path: states
@@ -5378,6 +5379,48 @@ class TranslationsTvMyPleyaEn {
 	late final TranslationsTvMyPleyaSemanticsEn semantics = TranslationsTvMyPleyaSemanticsEn.internal(_root);
 }
 
+// Path: tvContextMenu
+class TranslationsTvContextMenuEn {
+	TranslationsTvContextMenuEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Actions'
+	String get title => 'Actions';
+
+	/// en: 'Action ${index} of ${count}: ${label}'
+	String menuSemantics({required Object index, required Object count, required Object label}) => 'Action ${index} of ${count}: ${label}';
+
+	/// en: 'Mark as watched on'
+	String get scopeTitleMarkWatched => 'Mark as watched on';
+
+	/// en: 'Mark as unwatched on'
+	String get scopeTitleMarkUnwatched => 'Mark as unwatched on';
+
+	/// en: 'Rate on'
+	String get scopeTitleRate => 'Rate on';
+
+	/// en: 'All sources'
+	String get allSources => 'All sources';
+
+	/// en: 'Apply to all ${count} sources'
+	String allSourcesDetail({required Object count}) => 'Apply to all ${count} sources';
+
+	/// en: 'No source is currently reachable, so this cannot be changed right now.'
+	String get noUsableSource => 'No source is currently reachable, so this cannot be changed right now.';
+
+	/// en: 'Done on all ${count} sources'
+	String doneOnAll({required Object count}) => 'Done on all ${count} sources';
+
+	/// en: 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.'
+	String doneOnSome({required Object done, required Object total}) => 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.';
+
+	/// en: 'That did not work'
+	String get failed => 'That did not work';
+}
+
 // Path: search.filters
 class TranslationsSearchFiltersEn {
 	TranslationsSearchFiltersEn.internal(this._root);
@@ -8127,6 +8170,17 @@ extension on Translations {
 			'tvMyPleya.logoutSubtitle' => 'Sign out on this device',
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => 'Actions',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Action ${index} of ${count}: ${label}',
+			'tvContextMenu.scopeTitleMarkWatched' => 'Mark as watched on',
+			'tvContextMenu.scopeTitleMarkUnwatched' => 'Mark as unwatched on',
+			'tvContextMenu.scopeTitleRate' => 'Rate on',
+			'tvContextMenu.allSources' => 'All sources',
+			'tvContextMenu.allSourcesDetail' => ({required Object count}) => 'Apply to all ${count} sources',
+			'tvContextMenu.noUsableSource' => 'No source is currently reachable, so this cannot be changed right now.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Done on all ${count} sources',
+			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.',
+			'tvContextMenu.failed' => 'That did not work',
 			_ => null,
 		};
 	}

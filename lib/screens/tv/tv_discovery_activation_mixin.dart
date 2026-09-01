@@ -28,9 +28,11 @@ import '../../media/unified/unified_route_context.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../providers/hidden_libraries_provider.dart';
 import '../../providers/multi_server_provider.dart';
+import '../../providers/offline_mode_provider.dart';
 import '../../services/api_cache.dart';
 import '../../services/unified_catalog/source_resolver.dart';
 import 'tv_media_source_picker_route.dart';
+import 'tv_unified_context_menu.dart';
 import 'tv_unified_activation.dart';
 
 mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
@@ -80,6 +82,33 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
   /// The hoofdstuk 12.8 fan-out, built once per profile — same caching
   /// rationale as the fase-5 catalog's own resolver: rebuilding it per
   /// activation would throw away its positive/negative cache between titles.
+  /// The hoofdstuk 23 context menu for [group], on the same live health read
+  /// activation uses.
+  ///
+  /// It sits next to [activateDiscoveryGroup] rather than in the menu file
+  /// because the two share exactly one thing — "what does the world look like
+  /// right now" — and that is worth having in one place per surface. What the
+  /// menu then *does* with that is entirely its own.
+  Future<void> openDiscoveryContextMenu(
+    UnifiedMediaGroup group, {
+    bool isInContinueWatching = false,
+    VoidCallback? onChanged,
+  }) async {
+    final manager = context.read<MultiServerProvider>().serverManager;
+    final health = unifiedServerHealth(
+      isOnline: manager.isServerOnline,
+      authErrorServerIds: manager.authErrorServerIds,
+    );
+    await showTvUnifiedContextMenu(
+      context,
+      group: group,
+      availabilityFor: (source) => unifiedSourceAvailability(source, health),
+      isInContinueWatching: isInContinueWatching,
+      isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
+      onChanged: onChanged,
+    );
+  }
+
   SourceAllResolver? _sourceResolver(MultiServerProvider multiServer) {
     final profileId = context.read<ActiveProfileProvider>().activeId;
     if (profileId == null) return null;

@@ -48,6 +48,7 @@ import 'tv_root_shell.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../providers/hidden_libraries_provider.dart';
 import '../../providers/multi_server_provider.dart';
+import '../../providers/offline_mode_provider.dart';
 import '../../providers/unified_catalog_provider.dart';
 import '../../services/api_cache.dart';
 import '../../services/unified_catalog/source_resolver.dart';
@@ -66,6 +67,7 @@ import '../../widgets/tv/tv_unified_media_card.dart';
 import '../../widgets/tv/tv_unified_media_grid.dart';
 import 'tv_media_source_picker_route.dart';
 import 'tv_unified_activation.dart';
+import 'tv_unified_context_menu.dart';
 
 /// Which header action UP from the grid returns to (hoofdstuk 7.4 read
 /// together with 7.6's focus memory).
@@ -356,6 +358,25 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     );
   }
 
+  /// Hoofdstuk 23's menu, on the same live health read [_activate] uses.
+  ///
+  /// `isInContinueWatching` stays false: the complete catalogus is a library
+  /// wall, and "Verwijder uit Verder kijken" on a card that is not in Verder
+  /// kijken is an action with nothing to act on.
+  Future<void> _openContextMenu(UnifiedMediaGroup group) async {
+    final manager = context.read<MultiServerProvider>().serverManager;
+    final health = unifiedServerHealth(
+      isOnline: manager.isServerOnline,
+      authErrorServerIds: manager.authErrorServerIds,
+    );
+    await showTvUnifiedContextMenu(
+      context,
+      group: group,
+      availabilityFor: (source) => unifiedSourceAvailability(source, health),
+      isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
+    );
+  }
+
   /// The hoofdstuk 12.8 fan-out, built once per profile.
   ///
   /// Cached on the profile id rather than rebuilt per activation so its
@@ -590,6 +611,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       isLoadingMore: catalog.isLoadingMore,
       onLoadMore: catalog.loadMore,
       onActivate: _activate,
+      onContextMenu: _openContextMenu,
       onExitTop: _focusHeader,
       onExitLeft: _focusSidebar,
       clientFor: (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),

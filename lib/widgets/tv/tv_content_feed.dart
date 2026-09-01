@@ -246,6 +246,21 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
   Future<void> _activate(UnifiedMediaGroup group) =>
       activateDiscoveryGroup(group, onManageServers: widget.onManageServers);
 
+  /// Hoofdstuk 23's menu on a Home row.
+  ///
+  /// [isInContinueWatching] is passed per row rather than derived from the
+  /// group, because it is a fact about *where the card is*: the same title can
+  /// sit in Verder kijken and in a recommendation row on one screen, and
+  /// "Verwijder uit Verder kijken" only means something on the first.
+  Future<void> _openContextMenu(UnifiedMediaGroup group, {required bool isInContinueWatching}) =>
+      openDiscoveryContextMenu(
+        group,
+        isInContinueWatching: isInContinueWatching,
+        // The projection recomputes from the watch-state events the writes
+        // already emit, so a row does not need to be told twice.
+        onChanged: null,
+      );
+
   Future<void> _activateHero(
     UnifiedMediaGroup group, {
     required UnifiedActivationIntent intent,
@@ -306,6 +321,10 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
     final discover = context.watch<DiscoverProvider>();
     final layout = context.watch<HomeLayoutProvider?>();
     final rows = _rows(projection, layout);
+    // Read off the projection's own row rather than matched against a slug
+    // literal: the slug is a parameter of `projectContinueWatching`, so a
+    // literal here would be a second definition that can drift from it.
+    final continueWatchingHubId = projection.continueWatching?.hubId;
 
     // Hoofdstuk 9.7: an empty `heroGroups` for the films Home is *currently*
     // showing is an answer; an empty one because the projection has not yet
@@ -404,6 +423,8 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
                           initialFocusedGroupId: _focusedGroupIdByRowId[rows[i].hubId],
                           onFocusedGroupChanged: (id) => _focusedGroupIdByRowId[rows[i].hubId] = id,
                           onActivate: _activate,
+                          onContextMenu: (group) =>
+                              _openContextMenu(group, isInContinueWatching: rows[i].hubId == continueWatchingHubId),
                           onNavigateUp: i == 0 && heroGroups.isNotEmpty ? _focusHeroFromFirstRow : null,
                         ),
                       ),

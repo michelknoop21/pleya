@@ -51,6 +51,7 @@ class TvContentRow extends StatelessWidget {
     super.key,
     required this.hub,
     required this.onActivate,
+    this.onContextMenu,
     required this.railKey,
     this.clientFor,
     this.initialFocusedGroupId,
@@ -64,6 +65,9 @@ class TvContentRow extends StatelessWidget {
   final UnifiedMediaHub hub;
 
   final ValueChanged<UnifiedMediaGroup> onActivate;
+
+  /// Hoofdstuk 23's menu, handed straight down to the rail.
+  final ValueChanged<UnifiedMediaGroup>? onContextMenu;
 
   /// Owned by the feed and keyed on [UnifiedMediaHub.hubId], so a
   /// re-projection that reorders rows keeps each row's own focus nodes and
@@ -94,6 +98,7 @@ class TvContentRow extends StatelessWidget {
       initialFocusedGroupId: initialFocusedGroupId,
       onFocusedGroupChanged: onFocusedGroupChanged,
       onActivate: onActivate,
+      onContextMenu: onContextMenu,
       onNavigateUp: onNavigateUp,
     );
   }

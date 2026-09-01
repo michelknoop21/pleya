@@ -51,6 +51,7 @@ class TvUnifiedMediaCard extends StatefulWidget {
     required this.group,
     required this.width,
     required this.onSelect,
+    this.onContextMenu,
     this.clientFor,
     this.focusNode,
     this.autofocus = false,
@@ -71,6 +72,12 @@ class TvUnifiedMediaCard extends StatefulWidget {
   /// hands the *group* upwards and the fase-4 coordinator decides which
   /// concrete source anything opens (hoofdstuk 4.4).
   final VoidCallback onSelect;
+
+  /// Opens the hoofdstuk 23 context menu. Null on a surface that has no
+  /// actions to offer, which also leaves `FocusableWrapper.onLongPress` null
+  /// so a long Select stays a plain Select and the context-menu key falls
+  /// through unhandled rather than arming the select suppressor for nothing.
+  final VoidCallback? onContextMenu;
 
   /// Resolves the client that can sign this group's artwork URL. Null renders
   /// the placeholder, which is what an offline or not-yet-bound server should
@@ -115,6 +122,8 @@ class _TvUnifiedMediaCardState extends State<TvUnifiedMediaCard> {
         focusNode: widget.focusNode,
         autofocus: widget.autofocus,
         onSelect: widget.onSelect,
+        onLongPress: widget.onContextMenu,
+        enableLongPress: widget.onContextMenu != null,
         onFocusChange: (focused) {
           setState(() => _isFocused = focused);
           widget.onFocusChange?.call(focused);

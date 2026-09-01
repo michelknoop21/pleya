@@ -81,6 +81,7 @@ class TvExpandableMediaTile extends StatefulWidget {
     super.key,
     required this.group,
     required this.onSelect,
+    this.onContextMenu,
     required this.semanticLabel,
     this.clientFor,
     this.focusNode,
@@ -97,6 +98,12 @@ class TvExpandableMediaTile extends StatefulWidget {
   /// Hoofdstuk 27: activation goes through the fase-4 coordinator. This tile
   /// never resolves a source and never picks one — it reports a press.
   final VoidCallback onSelect;
+
+  /// Opens the hoofdstuk 23 context menu. Null on a surface that has no
+  /// actions to offer, which also leaves `FocusableWrapper.onLongPress` null
+  /// so a long Select stays a plain Select and the context-menu key falls
+  /// through unhandled rather than arming the select suppressor for nothing.
+  final VoidCallback? onContextMenu;
 
   /// Built by the rail, because only the rail knows the position in it.
   final String semanticLabel;
@@ -127,6 +134,8 @@ class _TvExpandableMediaTileState extends State<TvExpandableMediaTile> {
       focusNode: widget.focusNode,
       autofocus: widget.autofocus,
       onSelect: widget.onSelect,
+      onLongPress: widget.onContextMenu,
+      enableLongPress: widget.onContextMenu != null,
       onNavigateUp: widget.onNavigateUp,
       onNavigateDown: widget.onNavigateDown,
       onNavigateLeft: widget.onNavigateLeft,
