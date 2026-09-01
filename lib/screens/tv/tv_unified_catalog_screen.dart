@@ -393,17 +393,17 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     final hiddenLibraries = context.read<HiddenLibrariesProvider>();
     return _resolver = SourceAllResolver(
       profileId: profileId,
-      serversFor: () => [
-        for (final serverId in manager.serverIds)
-          if (manager.isServerVisible(ServerId(serverId)))
-            (
-              serverId: ServerId(serverId),
-              backend: manager.getClient(ServerId(serverId))?.backend ?? MediaBackend.plex,
-              client: manager.getClient(ServerId(serverId)),
-              online: manager.isServerOnline(ServerId(serverId)),
-              hasAuthError: manager.authErrorServerIds.contains(serverId),
-            ),
-      ],
+      // A19: the denominator is the profile's topology, not the live client
+      // map. `eligibleSourceServers` documents why an expected server without
+      // a client has to stay in the list instead of quietly leaving coverage
+      // complete.
+      serversFor: () => eligibleSourceServers(
+        expectedServerIds: multiServer.expectedServerIds,
+        visibleServerIds: multiServer.serverIds,
+        clientFor: manager.getClient,
+        isOnline: manager.isServerOnline,
+        authErrorServerIds: manager.authErrorServerIds,
+      ),
       // Library visibility, read live: the resolver is cached per profile and
       // must see a hide that lands after it was built. Server visibility is
       // already closed by the `isServerVisible` guard above; this closes the

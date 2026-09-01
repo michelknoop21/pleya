@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
@@ -18,6 +20,11 @@ class _MatchingClient implements MediaServerClient {
   final List<MediaItem> matches;
   final bool throws;
   int lookups = 0;
+
+  /// `eligibleSourceServers` reads this to decide identity eligibility, so it
+  /// has to be a real answer rather than a `noSuchMethod` throw.
+  @override
+  MediaBackend get backend => MediaBackend.plex;
 
   @override
   Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async {
@@ -597,6 +604,173 @@ void main() {
 
       expect(calls, 6);
       expect(result.coverage.isComplete, isTrue);
+    });
+  });
+
+  // A19: the coverage denominator is the profile's topology, not the clients
+  // that happen to exist. Every test here asks the same question — did this
+  // server get to count as "should have answered"?
+  group('A19: expected-server denominator', () {
+    MediaServerClient? clientForNone(ServerId _) => null;
+
+    test('an expected server with no live client is still expected, and unchecked', () async {
+      final servers = eligibleSourceServers(
+        expectedServerIds: const ['s1', 's2'],
+        visibleServerIds: const ['s1'],
+        clientFor: (id) => id.value == 's1' ? _MatchingClient(matches: [_item('s1')]) : null,
+        isOnline: (id) => id.value == 's1',
+        authErrorServerIds: const {},
+      );
+
+      final result = await resolverFor(servers).resolveAllSourcesForGroup(_identity);
+
+      expect(result.coverage.expectedServerIds, {'s1', 's2'});
+      expect(result.coverage.checkedServerIds, {'s1'});
+      expect(result.coverage.isComplete, isFalse);
+      expect(result.coverage.uncheckedReasons['s2'], UncheckedSourceReason.offline);
+    });
+
+    test('a client map that has forgotten the server does not shrink the denominator', () {
+      // The pre-fase-9 shape: build the list from live clients only. The
+      // expected server is simply not in it, and coverage would call itself
+      // complete on one answer out of two.
+      final fromClientsOnly = eligibleSourceServers(
+        expectedServerIds: const [],
+        visibleServerIds: const ['s1'],
+        clientFor: clientForNone,
+        isOnline: (_) => false,
+        authErrorServerIds: const {},
+      );
+      final fromTopology = eligibleSourceServers(
+        expectedServerIds: const ['s1', 's2'],
+        visibleServerIds: const ['s1'],
+        clientFor: clientForNone,
+        isOnline: (_) => false,
+        authErrorServerIds: const {},
+      );
+
+      expect(fromClientsOnly.map((s) => s.serverId.value), ['s1']);
+      expect(fromTopology.map((s) => s.serverId.value), ['s1', 's2']);
+    });
+
+    test('an expected server that is online but never answers is unchecked, not absent', () async {
+      final servers = eligibleSourceServers(
+        expectedServerIds: const ['s1', 's2'],
+        visibleServerIds: const ['s1', 's2'],
+        clientFor: (id) =>
+            id.value == 's1' ? _MatchingClient(matches: [_item('s1')]) : _MatchingClient(throws: true),
+        isOnline: (_) => true,
+        authErrorServerIds: const {},
+      );
+
+      final result = await resolverFor(servers).resolveAllSourcesForGroup(_identity);
+
+      expect(result.coverage.isComplete, isFalse);
+      expect(result.coverage.uncheckedReasons['s2'], UncheckedSourceReason.lookupFailed);
+    });
+
+    test('an auth-errored expected server says so instead of reading as plain offline', () async {
+      final servers = eligibleSourceServers(
+        expectedServerIds: const ['s1', 's2'],
+        visibleServerIds: const ['s1'],
+        clientFor: (id) => id.value == 's1' ? _MatchingClient(matches: [_item('s1')]) : null,
+        isOnline: (id) => id.value == 's1',
+        authErrorServerIds: const {'s2'},
+      );
+
+      final result = await resolverFor(servers).resolveAllSourcesForGroup(_identity);
+
+      expect(result.coverage.uncheckedReasons['s2'], UncheckedSourceReason.authError);
+    });
+
+    test('a server the profile does not expect and does not see never enters the denominator', () {
+      // Visibility closes upstream (hoofdstuk 1.1 point 2): a hidden server
+      // appears in neither set, so there is nothing here to re-admit it.
+      final servers = eligibleSourceServers(
+        expectedServerIds: const ['s1'],
+        visibleServerIds: const ['s1'],
+        clientFor: clientForNone,
+        isOnline: (_) => false,
+        authErrorServerIds: const {},
+      );
+
+      expect(servers.map((s) => s.serverId.value), ['s1']);
+    });
+
+    test('a visible server the expectation has not caught up with is added, not dropped', () {
+      // The union is one-directional on purpose: it can only add a live
+      // server mid-bind, never re-admit one the profile hides.
+      final servers = eligibleSourceServers(
+        expectedServerIds: const ['s1'],
+        visibleServerIds: const ['s1', 's2'],
+        clientFor: clientForNone,
+        isOnline: (_) => false,
+        authErrorServerIds: const {},
+      );
+
+      expect(servers.map((s) => s.serverId.value), ['s1', 's2']);
+    });
+
+    test('every expected server answering is complete', () async {
+      final servers = eligibleSourceServers(
+        expectedServerIds: const ['s1', 's2'],
+        visibleServerIds: const ['s1', 's2'],
+        clientFor: (id) => _MatchingClient(matches: [_item(id.value)]),
+        isOnline: (_) => true,
+        authErrorServerIds: const {},
+      );
+
+      final result = await resolverFor(servers).resolveAllSourcesForGroup(_identity);
+
+      expect(result.coverage.isComplete, isTrue);
+      expect(result.items, hasLength(2));
+    });
+
+    // The helper above is only the honest answer if it is the one production
+    // actually uses. Two screens build a resolver, both from the same five
+    // lines, and the failure mode is silent: hand-rolling the list back to
+    // `manager.serverIds` compiles, passes every behaviour test in this file,
+    // and quietly restores the lie. This guards the call sites the way
+    // `test/no_bare_text_field_test.dart` guards the text fields.
+    test('every SourceAllResolver in lib/ takes its server list from eligibleSourceServers', () {
+      final offenders = <String>[];
+      for (final entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        final relative = entity.path.replaceAll(r'\', '/');
+        final source = entity.readAsStringSync();
+        if (!source.contains('SourceAllResolver(')) continue;
+        for (final match in RegExp(r'serversFor:\s*([\s\S]{0,40})').allMatches(source)) {
+          if (!match.group(1)!.contains('eligibleSourceServers(')) {
+            offenders.add('$relative: serversFor does not call eligibleSourceServers');
+          }
+        }
+      }
+
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'A19: the coverage denominator must come from the profile topology. '
+            'Build the list with eligibleSourceServers() instead of from the live client map.\n'
+            '${offenders.join('\n')}',
+      );
+    });
+
+    test('a clientless expected server has no known backend, and counts anyway', () {
+      // "We do not know what it is and it never answered" has to read as a
+      // gap. Reporting it as a backend that cannot carry identity would
+      // exempt it from coverage entirely.
+      final servers = eligibleSourceServers(
+        expectedServerIds: const ['s2'],
+        visibleServerIds: const [],
+        clientFor: clientForNone,
+        isOnline: (_) => false,
+        authErrorServerIds: const {},
+      );
+
+      expect(isIdentityEligibleBackend(servers.single.backend), isTrue);
+      expect(servers.single.client, isNull);
+      expect(servers.single.online, isFalse);
     });
   });
 }

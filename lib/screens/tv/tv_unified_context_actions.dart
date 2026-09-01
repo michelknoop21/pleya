@@ -54,6 +54,23 @@ enum UnifiedGroupAction {
   rate,
   removeFromContinueWatching;
 
+  /// Whether a membership this action targets but cannot reach right now is
+  /// *held* rather than dropped.
+  ///
+  /// Only remove-from-Continue-Watching. Hoofdstuk 13.4 is the one action
+  /// contract that defines both halves of a deferral — point 3 stores a local
+  /// suppression for unreachable sources, point 4 replays it on reconnect —
+  /// and point 5's own example message ("Verwijderd op 2 van 3 bronnen") shows
+  /// a denominator that counts a membership which was never online.
+  ///
+  /// Nothing else may borrow that. 13.5's markeer bekeken/onbekeken asks the
+  /// user for a scope and then reports a "mislukte subset"; it defines no
+  /// queue, and inventing one would silently promise a retry the contract
+  /// never made. The watchlist actions are refused offline outright (DEC-020),
+  /// for a reason a queue would reintroduce: a deferred write has no merge
+  /// rule against what the same account did on plex.tv meanwhile.
+  bool get queuesUnreachableMemberships => this == UnifiedGroupAction.removeFromContinueWatching;
+
   /// Hoofdstuk 23's two lists, as a total function.
   ///
   /// Watchlist add and remove are both [logical]: DEC-020 established that an
@@ -92,9 +109,26 @@ sealed class UnifiedActionTarget {
 /// [UnifiedActionScope.logical] — never by a source-specific action that
 /// happens to have one candidate, which is [ApplyActionToSource].
 final class ApplyActionToAllSources extends UnifiedActionTarget {
-  const ApplyActionToAllSources(this.sources);
+  const ApplyActionToAllSources(this.sources, {this.deferredSources = const []});
 
+  /// The memberships that can be written to now.
   final List<UnifiedMediaSource> sources;
+
+  /// The memberships the action contract targets but that are not reachable,
+  /// for an action whose contract says to hold them
+  /// ([UnifiedGroupAction.queuesUnreachableMemberships]). Always empty for
+  /// every other action.
+  ///
+  /// They are a separate list rather than folded into [sources] because the
+  /// caller has to do two different things with them — write now versus queue
+  /// — while counting them as one denominator. Hoofdstuk 13.4 point 5's
+  /// message is "verwijderd op 2 van 3", and the 3 is [intendedTargetCount].
+  final List<UnifiedMediaSource> deferredSources;
+
+  /// How many memberships this action set out to affect. The honest
+  /// denominator: reporting "klaar op alle 2" while a third membership was
+  /// never touched is the failure hoofdstuk 13.4 point 5 is written against.
+  int get intendedTargetCount => sources.length + deferredSources.length;
 }
 
 /// Write to exactly [source], without a question.
@@ -138,11 +172,24 @@ final class ActionUnavailable extends UnifiedActionTarget {
 /// the stamped value may predate the last server health change, and an action
 /// menu can sit open across one.
 ///
-/// Only usable sources are candidates, including for the [logical] scope. A
+/// Only usable sources are written to, including for the [logical] scope. A
 /// write to an offline server is not a write; it is an error the user did not
 /// ask for. That does mean a logical action can reach fewer sources than the
 /// group has, which is precisely the partial case the callers report on
 /// (hoofdstuk 13.4 point 5 and 13.5's "mislukte subset").
+///
+/// Unreachable is not the same as out of scope, though, and for an action with
+/// [UnifiedGroupAction.queuesUnreachableMemberships] the difference is the
+/// whole of hoofdstuk 13.4 points 3-5. Those memberships come back as
+/// [ApplyActionToAllSources.deferredSources]: still counted in the
+/// denominator, not written to now, and the caller's cue to queue them. An
+/// [SourceAvailability.authError] source is deliberately **not** deferred —
+/// reconnecting does not sign the user back in, so holding it would be a
+/// promise nothing keeps — and it is reported as a plain failure instead.
+///
+/// The same rule decides [ActionUnavailable]: with nothing online but a
+/// deferrable membership present there is real work to do (hold it, and let
+/// the replay finish it), so answering "no usable source" would be wrong.
 UnifiedActionTarget resolveUnifiedActionTarget({
   required UnifiedGroupAction action,
   required UnifiedMediaGroup group,
@@ -154,11 +201,23 @@ UnifiedActionTarget resolveUnifiedActionTarget({
       if (availabilityFor(source).isUsable) source,
   ]);
 
-  if (usable.isEmpty) return const ActionUnavailable(UnifiedActionBlocker.noUsableSource);
+  // Deferrable = targeted by the contract, not reachable now, and reachable
+  // again by nothing more than the server coming back. `unknown` counts:
+  // hoofdstuk 4.2 keeps it distinct from offline precisely because it means
+  // "not asked", and a membership nobody asked about is exactly one whose
+  // removal should be held rather than silently dropped.
+  final deferred = action.queuesUnreachableMemberships
+      ? [
+          for (final source in group.sources)
+            if (_isDeferrable(availabilityFor(source))) source,
+        ]
+      : const <UnifiedMediaSource>[];
+
+  if (usable.isEmpty && deferred.isEmpty) return const ActionUnavailable(UnifiedActionBlocker.noUsableSource);
 
   switch (action.scope) {
     case UnifiedActionScope.logical:
-      return ApplyActionToAllSources(usable);
+      return ApplyActionToAllSources(usable, deferredSources: deferred);
 
     case UnifiedActionScope.sourceSpecificWithAllSources:
       if (usable.length == 1) return ApplyActionToSource(usable.single);
@@ -169,3 +228,14 @@ UnifiedActionTarget resolveUnifiedActionTarget({
       return AskForActionScope(sources: usable, allowAllSources: false);
   }
 }
+
+/// Whether an unreachable source is one a reconnect would fix.
+///
+/// [SourceAvailability.authError] is not: the server answered and refused, and
+/// only the user signing in again changes that. Queueing it would leave a row
+/// that retries until it hits its attempt cap, under a message that told the
+/// user it would be retried "zodra deze online is" — which it already is.
+bool _isDeferrable(SourceAvailability availability) => switch (availability) {
+  SourceAvailability.offline || SourceAvailability.unknown => true,
+  SourceAvailability.online || SourceAvailability.authError => false,
+};

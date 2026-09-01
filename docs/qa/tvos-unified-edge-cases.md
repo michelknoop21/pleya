@@ -190,11 +190,11 @@ info, met links/rechts gebonden aan het wisselen van slide — en kent daar geen
 Select op een CTA die "start dit nu" betekent is een nieuw gebaar op een knop, geen kaartactie. Niet
 toegevoegd, dus, en niet om symmetrie.
 
-**Wat er níét in zit, en waarom.** `_applyToSources` meldt een gedeeltelijke mislukking eerlijk
+**Wat er níét in zat, en waarom.** `_applyToSources` meldde een gedeeltelijke mislukking eerlijk
 (`doneOnSome`) in plaats van te rollbacken, wat 13.4 punt 5 en 13.5's "mislukte subset" vragen. De
-lokale suppressie en het opnieuw uitvoeren bij reconnect — 13.4 punten 3 en 4 — zijn **G10 en G11**
-en horen bij WP4. Dat is de grens: WP2 vertelt de waarheid over de bronnen die het niet bereikte,
-WP4 onthoudt ze.
+lokale suppressie en het opnieuw uitvoeren bij reconnect — 13.4 punten 3 en 4 — waren **G10 en G11**
+en hoorden bij WP4. Dat was de grens: WP2 vertelde de waarheid over de bronnen die het niet bereikte,
+WP4 onthoudt ze. **WP4 is inmiddels gebouwd** — zie de noot onder register G.
 
 Rijen die hierop wachtten: **G12** en **G13**, beide nu `covered`.
 
@@ -269,8 +269,8 @@ Visueel bewijs: `test/goldens/tv_shell_auth_attention.png` en `tv_shell_auth_my_
 | A16 | Server wordt verwijderd | | open |
 | A17 | Server wordt hernoemd | | open |
 | A18 | Server wordt opnieuw toegevoegd met ander ID | | open |
-| A19 | Profiel verwacht server die nog geen live client heeft | | open |
-| A20 | Live TV-capability komt laat binnen | | open |
+| A19 | Profiel verwacht server die nog geen live client heeft | test/services/unified_catalog/source_resolver_test.dart (groep `A19: expected-server denominator`, negen tests: geen client, online maar geen antwoord, auth-error, niet-verwacht-en-niet-zichtbaar, zichtbaar-maar-nog-niet-verwacht, alles beantwoord, en de onbekende backend die tóch meetelt), plus de bronbewaker `every SourceAllResolver in lib/ takes its server list from eligibleSourceServers` die de twee aanroeppunten aan `eligibleSourceServers` bindt | covered |
+| A20 | Live TV-capability komt laat binnen | test/navigation/tv/tv_live_tv_capability_test.dart (`a fresh sighting is visible and gets stored`, `a sighting that is already remembered is visible and does not trigger a redundant write`) voor het besluit; test/screens/tv/tv_root_shell_test.dart (`appears and disappears without disturbing its neighbours`) en test/widgets/tv/tv_top_navigation_test.dart (`a Live TV slot appearing does not replace the focus node of an existing item`) voor de balk die er al stond toen de capability binnenkwam | covered |
 
 ## B. Librarycases
 
@@ -289,8 +289,8 @@ Visueel bewijs: `test/goldens/tv_shell_auth_attention.png` en `tv_shell_auth_my_
 | B11 | Library heeft geen items | | open |
 | B12 | Library fetch geeft timeout | | open |
 | B13 | Library antwoordt met lege pagina vóór total bereikt | | open |
-| B14 | Backend herhaalt item op twee pagina's | | open |
-| B15 | Item verhuist tussen libraries | | open |
+| B14 | Backend herhaalt item op twee pagina's | test/services/unified_catalog_service_test.dart (`B14: an item the backend repeats on the next page does not become a second card`) door de echte pagingmotor; test/services/unified_grouping_service_test.dart (groep `concrete-source dedup (B14/B15/E15)`: `B14: an item the backend repeats on a later page does not become a second card`, `B14: the repeat never moves the card off the position its first sighting won`) | covered |
+| B15 | Item verhuist tussen libraries | test/services/unified_grouping_service_test.dart (`B15: an item reported under two libraries is one membership, keeping the first library`) — `sourceKey` is `serverId:id`, dus beide waarnemingen zijn dezelfde concrete membership en de eerste wint | covered |
 
 
 **B8 had twee helften, en fase 9 heeft ze allebei gesloten.** Eerst de zoekhelft:
@@ -391,7 +391,7 @@ en `test/services/unified_grouping_service_test.dart`).
 | D12 | Verschillende editions/runtimes van aflevering | | open |
 | D13 | Show watched count verschilt | | open |
 | D14 | Bronwissel op open seriesdetail | | open |
-| D15 | Nieuwe episode verschijnt terwijl details openstaat | | open |
+| D15 | Nieuwe episode verschijnt terwijl details openstaat | test/screens/media_detail_screen_test.dart (`refreshAfterPlayback reveals a server-side episode without a season jump or spinner`, `revalidation grows the request past an exact page boundary (200 -> 201)`, `app resume revalidates the visible episodes, with a cooldown against repeat probes`) — het open detailscherm neemt de nieuwe aflevering op zonder van seizoen te springen, zonder spinner en zonder de tweede probe die een resume anders uitlokt | covered |
 
 ## E. Paginationcases
 
@@ -411,7 +411,7 @@ en `test/services/unified_grouping_service_test.dart`).
 | E12 | Profiel wisselt met requests in flight | | open |
 | E13 | Filter verwijdert de gefocuste group | | open |
 | E14 | Late merge zou zichtbare sortpositie wijzigen | | open |
-| E15 | Bron geeft dezelfde source twee keer terug | | open |
+| E15 | Bron geeft dezelfde source twee keer terug | test/services/unified_grouping_service_test.dart (`E15: the same source returned twice inside one page is one membership`, `E15: a page replayed after a retry adds nothing`, `a duplicate sourceKey never trips C19 into refusing a genuine weak merge`), met twee negatieve controles die bewijzen dat het concrete-source-dedup is en geen media-identity-dedup | covered |
 
 ## F. Source-pickercases
 
@@ -450,20 +450,59 @@ en `test/services/unified_grouping_service_test.dart`).
 
 | # | Case | Test | Status |
 |---|---|---|---|
-| G1 | Eén actieve progress | | open |
-| G2 | Twee verschillende progressposities | | open |
-| G3 | Oudere bron heeft hogere progress | | open |
-| G4 | Nieuwere bron is watched | | open |
-| G5 | Clock skew | | open |
-| G6 | Geen timestamps | | open |
-| G7 | Verschillende runtimes | | open |
-| G8 | Scrobble race | | open |
+| G1 | Eén actieve progress | test/media/unified/unified_watch_state_test.dart (`G1: one source with active progress speaks for the group`) | covered |
+| G2 | Twee verschillende progressposities | test/media/unified/unified_watch_state_test.dart (`G2: two different positions are decided by the newer reliable timestamp`) | covered |
+| G3 | Oudere bron heeft hogere progress | test/media/unified/unified_watch_state_test.dart (`G3: an older source with higher progress does not outrank a newer one`) — 13.2's openingszin, expliciet getest | covered |
+| G4 | Nieuwere bron is watched | test/media/unified/unified_watch_state_test.dart (`G4: a demonstrably newer watched state beats older active progress` en het spiegelgeval `G4: a stale watched bit does not bury a position the viewer is sitting at`) — tier 2 sluit dit af vóór tier 3 erbij komt | covered |
+| G5 | Clock skew | test/media/unified/unified_watch_state_test.dart (`G5: a difference inside the reliability margin does not order the sources`, `G5: one second past the margin the newer source is believed`, `G5: the margin is the one WatchStateStore already uses`) — de marge is `watchStateReliabilityMargin`, dezelfde 30 seconden als `WatchStateStore.serverWinsMargin` | covered |
+| G6 | Geen timestamps | test/media/unified/unified_watch_state_test.dart (`G6: with no timestamps anywhere the progress tiers decide`, `G6: a source with no timestamp loses to one that has any`, `G6: no timestamps and no progress is still deterministic`) | covered |
+| G7 | Verschillende runtimes | test/media/unified/unified_watch_state_test.dart (groep `G7: runtime compatibility gate`, zeven tests: PAL-tolerantie, extended cut, de hogere ruwe offset die niet wint, actieve progress die niet geprojecteerd wordt, recency die wél blijft gelden, onbekende runtime, en één incompatibel paar dat de hele groep brongebonden maakt) | covered |
+| G8 | Scrobble race | test/media/unified/unified_watch_state_test.dart (`G8: a scrobble race lands inside the margin and is not resolved by the clock`) — twee servers die dezelfde kijkbeurt seconden na elkaar noteren vallen binnen de marge, dus de klok beslist niet en de kaart flikkert niet tussen twee kopieën | covered |
 | G9 | Playback return met null route result | test/utils/media_navigation_helper_test.dart (`onPlaybackReturned fires when the player pops null`, `onRefresh alone does not fire when the player pops null`) — `handlePlaybackReturn` is puur en heeft geen visueel deel | covered |
-| G10 | Remove Continue gedeeltelijk mislukt | | open |
-| G11 | Offline suppressie wordt later gereplayed | | open |
+| G10 | Remove Continue gedeeltelijk mislukt | test/screens/tv/tv_unified_context_actions_test.dart (groep `G10: the intended target count`, vijf tests: de onbereikbare membership blijft in de noemer, `unknown` telt mee, auth-error nooit, geen andere actie stelt uit, alles online stelt niets uit) plus `a removal with nothing online is deferred, not refused`; test/widgets/tv/tv_unified_context_menu_reachability_test.dart (groep `the outcome message tells the truth about what landed`, zes tests, inclusief de negatieve controle dat de retry-belofte wegvalt zonder wachtrij-entry); test/providers/discover_provider_test.dart (`G10: a removed row does not come back while the server still lists it`, `G10: the suppression lifts once the server stops listing the row`) | covered |
+| G11 | Offline suppressie wordt later gereplayed | test/services/offline_watch_sync_service_test.dart (groep `G11: remove from Continue Watching replays on reconnect`, acht tests: de wachtrij-entry, de replay die hem opruimt, idempotentie, de server die nog plat ligt, de backend zonder endpoint, de her-aankondiging na herstart, geen her-aankondiging na een geslaagde replay, en de id-round-trip); test/exceptions/media_server_write_retry_test.dart (zeven tests over wat wél en niet in de wachtrij mag) | covered |
 | G12 | Mark watched op één source | test/screens/tv/tv_unified_context_actions_test.dart (`a single usable source is written to without a question (14.6)`, `two sources with only one reachable is still not a question`, `an offline source is not offered as a scope`); test/widgets/tv/tv_action_scope_picker_test.dart (`choosing one server returns that server and nothing else`) | covered |
 | G13 | Mark watched op alle sources gedeeltelijk mislukt | test/screens/tv/tv_unified_context_actions_test.dart (`two usable sources ask, with an explicit all-sources row`, `a logical action still skips an unreachable membership` voor de partial-semantiek); test/widgets/tv/tv_action_scope_picker_test.dart (`the all-sources row leads the list, and answering it returns every source`) — de melding zelf komt uit `_applyToSources` in lib/screens/tv/tv_unified_context_menu.dart, die per bron telt en `doneOnSome` toont in plaats van te rollbacken | covered |
-| G14 | Episodeprogress op verkeerde serie mag niet mergen | | open |
+| G14 | Episodeprogress op verkeerde serie mag niet mergen | test/services/unified_catalog/home_projection_service_test.dart (`G14: the same season/episode of two different series never share a card`, `G14: two series with no external ids at all still never merge on ordinals`, `G14: one series' progress stays on its own card when the other is further along`) — dezelfde S02E04 op twee series blijft twee kaarten, met en zonder externe ids, en 13.2 kiest alleen uit de eigen bronnen van een groep | covered |
+
+**WP4 — verwijderen uit Verder kijken onthoudt nu wat het niet bereikte.** Gebouwd in fase 9. Twee
+dingen waren stuk, en het tweede was het ergste.
+
+De **noemer** telde alleen de bereikbare bronnen. `resolveUnifiedActionTarget` gaf voor een logische
+actie `ApplyActionToAllSources(usable)`, dus een titel op drie servers waarvan er één plat lag
+meldde "klaar op alle 2". Hoofdstuk 13.4 punt 5 schrijft letterlijk "Verwijderd op 2 van 3 bronnen"
+voor, en die 3 telt een membership mee dat nooit online was. `ApplyActionToAllSources` draagt daarom
+nu ook `deferredSources`, met `intendedTargetCount` als de eerlijke noemer.
+
+En de melding beloofde een herkansing die niet bestond. `doneOnSome` eindigt op "The rest will be
+retried when they are back online", terwijl er nergens een wachtrij-entry werd aangemaakt. Dat is de
+duurste soort onwaarheid in dit register: de gebruiker doet niets meer, want het is toegezegd.
+
+De reparatie is één actie breed, met opzet. `UnifiedGroupAction.queuesUnreachableMemberships` is
+alleen waar voor verwijder-uit-Verder-kijken, omdat 13.4 als enige actiecontract *beide* helften van
+een uitstel vastlegt — punt 3 bewaart, punt 4 speelt af. 13.5's markeer bekeken/onbekeken kent geen
+wachtrij en leent die belofte dus niet: die krijgt `doneOnSomeNoRetry`, dezelfde telling zonder de
+laatste zin. De kijklijstacties blijven offline helemaal weg (DEC-020).
+
+De wachtrij-entry **is** de lokale suppressie. Geen tweede mechanisme ernaast: de rij overleeft een
+herstart, staat op dezelfde `serverId:itemId` als de on-deck-lijst, en verdwijnt precies wanneer de
+write landt. `OfflineActionType.removedFromContinueWatching` vroeg geen driftmigratie —
+`actionType` is een kale tekstkolom zonder constraint — maar wél een replaytak in `_syncAction`, en
+dat is het onderdeel dat je stil kwijtraakt: een rij waarvan niemand het type afhandelt wordt netjes
+opgeruimd zonder ooit iets te doen.
+
+Twee dingen worden **niet** in de wachtrij gezet, en dat is de kern van punt 7 van het
+lifecycle-contract: een `authError`-bron (opnieuw verbinden logt niemand in) en een backend die het
+endpoint helemaal niet heeft — Jellyfins `removeFromContinueWatching` gooit `UnsupportedError`.
+`isRetryableServerWriteFailure` is die scheidslijn, met de veilige richting expliciet gekozen: bij
+twijfel wél in de wachtrij, want een kansloze rij loopt tegen `maxSyncAttempts` aan, terwijl een
+weggegooide rij een write is waarvan de gebruiker te horen kreeg dat hij onthouden was.
+
+Ten slotte: `DiscoverProvider` *onderdrukte* een verwijderde rij niet, hij haalde hem alleen weg.
+Zolang de replay nog niet geland is blijft de server de titel noemen, dus de kaart kwam bij de
+eerstvolgende verversing terug — hoofdstuk 13.4 punt 6. Hij gaat nu in dezelfde zelfopruimende
+`_suppressedOnDeckKeys` als een uitgekeken film, en `_reannouncePendingContinueWatchingRemovals`
+herstelt die verzameling na een herstart uit de wachtrij.
 
 ## H. Herocases
 
@@ -504,13 +543,13 @@ en `test/services/unified_grouping_service_test.dart`).
 | I7 | Source picker Back | test/widgets/tv/tv_media_source_picker_test.dart (`Menu closes the picker, activates nothing, and restores the exact CTA`) | covered |
 | I8 | Nested Mijn Pleya Back | test/screens/tv/tv_back_chain_test.dart (`step 2 comes first`, `step 2 beats the focus test, wherever the remote happens to be`) en test/navigation/tv/tv_navigation_coordinator_test.dart (de nested-routegroep) en test/screens/tv/tv_root_shell_test.dart (`popping brings the destination back`) | covered |
 | I9 | Profile picker Back | | open |
-| I10 | Native keyboard Back | | open |
+| I10 | Native keyboard Back | test/services/apple_tv_native_text_entry_key_gate_test.dart (`a back key that reaches Dart is consumed without a platform call`, `real key events are blocked while the native keyboard owns the remote`, `the session ends after a submit`) — een Back die de gate bereikt betekent dat de native hook faalde, en wordt geconsumeerd in plaats van doorgegeven aan de backketen; de native helft (UIKit sluit zijn eigen toetsenbord) is de simulatorregressie `scripts/tvos_sim.sh check-keyboard`, zie [DEC-019](../DECISIONS.md#dec-019) | covered |
 | I11 | Live TV-item verschijnt | test/widgets/tv/tv_top_navigation_test.dart (`a Live TV slot appearing does not replace the focus node of an existing item`) en test/screens/tv/tv_root_shell_test.dart (`appears and disappears without disturbing its neighbours`) — het nieuwe item krijgt een eigen stabiele id, en de buren houden hun focusnode én hun volgorde | covered |
 | I12 | Live TV-item verdwijnt | test/screens/tv/tv_root_shell_test.dart (`losing it while it is open moves the viewer to Home`) en test/navigation/tv/tv_live_tv_capability_test.dart (`a transient outage does not retire a remembered capability`) — een tijdelijke storing laat het item staan, alleen een sluitende meting haalt het weg (DEC-069) | covered |
 | I13 | Actieve destination opnieuw selecteren | test/navigation/tv/tv_navigation_coordinator_test.dart (activate op de reeds actieve bestemming geeft `false` en notificeert niet, dus geen rebuild en geen refetch — hoofdstuk 7.2) | covered |
 | I14 | Tab wisselen met overlay open | | open |
 | I15 | Select KeyUp na focusverplaatsing | test/focus/focusable_wrapper_select_test.dart (`key-up landing on a wrapper that never saw the key-down fires nothing`); test/focus/dpad_navigator_suppressor_test.dart (`armed suppressor eats the in-flight select key-up and clears`) | covered |
-| I16 | Trackpad swipe versus D-pad | | open |
+| I16 | Trackpad swipe versus D-pad | test/services/apple_tv_remote_touch_service_test.dart (`synthetic swipe followed by matching native arrow down and up moves once`, `synthetic swipe also suppresses a native arrow on the other axis`, `native directional press claims the gesture and mutes the accumulator`, `native-only directional press still passes through`, `native arrow after the grace expires passes through again`) — één gebaar wordt nooit twee stappen, welk pad hem ook eerst claimt, en een kale D-pad-druk blijft ongemoeid | covered |
 | I17 | Android TV back | | open |
 | I18 | Focused item verdwijnt | test/navigation/tv/tv_navigation_coordinator_test.dart (Live TV verdwijnt terwijl het alleen de focusring droeg: de ring verhuist in plaats van naar een verdwenen bestemming te wijzen). Alleen bewezen voor de topnav; het griditem-geval blijft open | open |
 | I19 | Return uit player | | open |

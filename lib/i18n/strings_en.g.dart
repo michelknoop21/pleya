@@ -5420,6 +5420,9 @@ class TranslationsTvContextMenuEn {
 	/// en: 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.'
 	String doneOnSome({required Object done, required Object total}) => 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.';
 
+	/// en: 'Done on ${done} of ${total} sources.'
+	String doneOnSomeNoRetry({required Object done, required Object total}) => 'Done on ${done} of ${total} sources.';
+
 	/// en: 'That did not work'
 	String get failed => 'That did not work';
 }
@@ -8184,6 +8187,7 @@ extension on Translations {
 			'tvContextMenu.noUsableSource' => 'No source is currently reachable, so this cannot be changed right now.',
 			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Done on all ${count} sources',
 			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Done on ${done} of ${total} sources.',
 			'tvContextMenu.failed' => 'That did not work',
 			_ => null,
 		};

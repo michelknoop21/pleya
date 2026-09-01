@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../media/media_item.dart';
+import '../media/watch_progress.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../services/watch_state_resolver.dart';
 import '../utils/global_key_utils.dart';
@@ -72,8 +73,12 @@ class WatchStateStore extends ChangeNotifier with DisposableChangeNotifierMixin 
   /// exists for would collapse and "minutes left" would lag again. Anything
   /// beyond the margin cannot be this session's own report; it is another
   /// device that watched further, and then the server is the better source.
-  /// Matches the progress tracker's own notify delta.
-  static const Duration serverWinsMargin = Duration(seconds: 30);
+  ///
+  /// The same threshold answers hoofdstuk 13.2's tier 2 — which of two
+  /// sources' timestamps may be trusted to order them — so it lives in
+  /// `lib/media/watch_progress.dart` next to the other shared watch decision
+  /// and is aliased here rather than written twice.
+  static const Duration serverWinsMargin = watchStateReliabilityMargin;
 
   final DateTime Function() _now;
 

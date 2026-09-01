@@ -739,6 +739,12 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   void _onWatchStateChanged(WatchStateEvent event) {
     switch (event.changeType) {
       case WatchStateChangeType.removedFromContinueWatching:
+        // Suppress, not merely remove. Hoofdstuk 13.4 point 6: the card must
+        // not come back because the server is slow to stop listing it, and
+        // for a membership whose removal is still queued (point 3) it will
+        // keep listing it until the replay lands. The suppression is
+        // self-cleaning in [_applyOnDeck].
+        _suppressedOnDeckKeys.add(event.globalKey);
         _removeFromOnDeck(event.globalKey);
       case WatchStateChangeType.watched when event.mediaType == MediaKind.movie.id && event.isNowWatched != false:
         // A finished movie leaves the row for good; suppress its key so the

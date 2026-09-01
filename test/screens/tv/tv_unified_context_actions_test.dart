@@ -38,9 +38,18 @@ UnifiedMediaGroup _group(List<UnifiedMediaSource> sources, {String? representati
   );
 }
 
-/// Everything online unless named in [offline].
-SourceAvailability Function(UnifiedMediaSource) _health({Set<String> offline = const {}}) =>
-    (source) => offline.contains(source.serverId.value) ? SourceAvailability.offline : SourceAvailability.online;
+/// Everything online unless named in [offline], [authError] or [unknown].
+SourceAvailability Function(UnifiedMediaSource) _health({
+  Set<String> offline = const {},
+  Set<String> authError = const {},
+  Set<String> unknown = const {},
+}) => (source) {
+  final id = source.serverId.value;
+  if (offline.contains(id)) return SourceAvailability.offline;
+  if (authError.contains(id)) return SourceAvailability.authError;
+  if (unknown.contains(id)) return SourceAvailability.unknown;
+  return SourceAvailability.online;
+};
 
 void main() {
   group('write scope follows the contract, not the action name', () {
@@ -162,8 +171,8 @@ void main() {
   });
 
   group('nothing reachable', () {
-    test('every action reports the blocker rather than picking a dead source', () {
-      for (final action in UnifiedGroupAction.values) {
+    test('every action but the deferrable one reports the blocker rather than picking a dead source', () {
+      for (final action in UnifiedGroupAction.values.where((a) => !a.queuesUnreachableMemberships)) {
         final target = resolveUnifiedActionTarget(
           action: action,
           group: _group([_source('s1'), _source('s2')]),
@@ -173,6 +182,109 @@ void main() {
         expect(target, isA<ActionUnavailable>(), reason: '${action.name} must not fall through to a dead source');
         expect((target as ActionUnavailable).blocker, UnifiedActionBlocker.noUsableSource);
       }
+    });
+
+    test('a removal with nothing online is deferred, not refused', () {
+      // Hoofdstuk 13.4 point 3 gives this case real work to do: hold the
+      // removal so the card goes away now and the write lands on reconnect.
+      // "No usable source" would be the wrong answer to a question the
+      // contract already answers.
+      final target = resolveUnifiedActionTarget(
+        action: UnifiedGroupAction.removeFromContinueWatching,
+        group: _group([_source('s1'), _source('s2')]),
+        availabilityFor: _health(offline: {'s1', 's2'}),
+      );
+
+      expect(target, isA<ApplyActionToAllSources>());
+      final apply = target as ApplyActionToAllSources;
+      expect(apply.sources, isEmpty);
+      expect(apply.deferredSources.map((s) => s.serverId.value), ['s1', 's2']);
+      expect(apply.intendedTargetCount, 2);
+    });
+
+    test('a removal with nothing but an auth-errored source is still refused', () {
+      // Reconnecting does not sign the user back in, so there is nothing to
+      // hold: the queue entry would retry until it hit its attempt cap under
+      // a message promising otherwise.
+      final target = resolveUnifiedActionTarget(
+        action: UnifiedGroupAction.removeFromContinueWatching,
+        group: _group([_source('s1')]),
+        availabilityFor: _health(authError: {'s1'}),
+      );
+
+      expect(target, isA<ActionUnavailable>());
+    });
+  });
+
+  // G10/G11: hoofdstuk 13.4's denominator is the intent, not the reachable
+  // subset. "Verwijderd op 2 van 3 bronnen" only exists as a sentence if the
+  // third membership is counted.
+  group('G10: the intended target count', () {
+    test('an unreachable membership stays in the denominator and is handed back to be queued', () {
+      final target = resolveUnifiedActionTarget(
+        action: UnifiedGroupAction.removeFromContinueWatching,
+        group: _group([_source('s1'), _source('s2'), _source('s3')]),
+        availabilityFor: _health(offline: {'s3'}),
+      );
+
+      final apply = target as ApplyActionToAllSources;
+      expect(apply.sources.map((s) => s.serverId.value), unorderedEquals(['s1', 's2']));
+      expect(apply.deferredSources.map((s) => s.serverId.value), ['s3']);
+      expect(apply.intendedTargetCount, 3, reason: 'the message says 2 of 3, so the 3 has to be real');
+    });
+
+    test('an unchecked server is deferrable too', () {
+      // hoofdstuk 4.2 keeps `unknown` distinct from offline because it means
+      // "not asked". A membership nobody asked about is exactly one whose
+      // removal should be held rather than dropped.
+      final target = resolveUnifiedActionTarget(
+        action: UnifiedGroupAction.removeFromContinueWatching,
+        group: _group([_source('s1'), _source('s2')]),
+        availabilityFor: _health(unknown: {'s2'}),
+      );
+
+      expect((target as ApplyActionToAllSources).deferredSources.map((s) => s.serverId.value), ['s2']);
+    });
+
+    test('an auth-errored membership is never deferred, so nothing promises it a retry', () {
+      final target = resolveUnifiedActionTarget(
+        action: UnifiedGroupAction.removeFromContinueWatching,
+        group: _group([_source('s1'), _source('s2')]),
+        availabilityFor: _health(authError: {'s2'}),
+      );
+
+      final apply = target as ApplyActionToAllSources;
+      expect(apply.deferredSources, isEmpty);
+      expect(apply.intendedTargetCount, 1);
+    });
+
+    test('no other action defers anything, however unreachable its memberships are', () {
+      for (final action in UnifiedGroupAction.values.where((a) => a != UnifiedGroupAction.removeFromContinueWatching)) {
+        expect(action.queuesUnreachableMemberships, isFalse, reason: action.name);
+      }
+
+      final target = resolveUnifiedActionTarget(
+        action: UnifiedGroupAction.removeFromWatchlist,
+        group: _group([_source('s1'), _source('s2')]),
+        availabilityFor: _health(offline: {'s2'}),
+      );
+
+      final apply = target as ApplyActionToAllSources;
+      expect(apply.deferredSources, isEmpty);
+      expect(apply.intendedTargetCount, 1);
+    });
+
+    test('everything online defers nothing and counts every membership', () {
+      final target = resolveUnifiedActionTarget(
+        action: UnifiedGroupAction.removeFromContinueWatching,
+        group: _group([_source('s1'), _source('s2')]),
+        availabilityFor: _health(),
+      );
+
+      final apply = target as ApplyActionToAllSources;
+      expect(apply.deferredSources, isEmpty);
+      expect(apply.intendedTargetCount, 2);
+      expect(apply.sources, hasLength(2));
     });
   });
 

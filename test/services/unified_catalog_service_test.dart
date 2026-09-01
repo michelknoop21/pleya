@@ -184,6 +184,36 @@ void main() {
       expect(snapshot.isComplete, isFalse);
     });
 
+    test('B14: an item the backend repeats on the next page does not become a second card', () async {
+      // Offset paging over a library that changed underneath the reader: the
+      // second page opens with the item the first page already delivered. The
+      // repeat is the same concrete membership, not a second copy.
+      final client = _FakeLibraryClient(
+        itemsByLibrary: {
+          'A': [
+            _movie('a1', title: 'Alpha', serverId: 's1'),
+            _movie('a2', title: 'Bravo', serverId: 's1'),
+            _movie('a1', title: 'Alpha', serverId: 's1'),
+            _movie('a3', title: 'Charlie', serverId: 's1'),
+          ],
+        },
+      );
+
+      final service = UnifiedCatalogService(
+        query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+        libraries: [_library('s1', 'A')],
+        clientFor: (_) => client,
+        pageSize: 2,
+        groupsPerPage: 20,
+      );
+
+      final snapshot = await service.loadMore();
+
+      expect(snapshot.groups.map((g) => g.representativeSource.item.id), ['a1', 'a2', 'a3']);
+      expect(snapshot.groups.every((g) => g.sources.length == 1), isTrue, reason: 'one file, one bron');
+      expect(snapshot.isComplete, isTrue);
+    });
+
     test('one library erroring leaves the healthy results in place, and is retried on the next call', () async {
       final healthy = _FakeLibraryClient(
         itemsByLibrary: {

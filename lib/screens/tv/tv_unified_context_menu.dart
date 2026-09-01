@@ -26,6 +26,8 @@ import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_source.dart';
 import 'package:provider/provider.dart';
 
+import '../../exceptions/media_server_exceptions.dart';
+import '../../providers/offline_watch_provider.dart';
 import '../../providers/watchlist_provider.dart';
 import '../../providers/watchlist_store.dart';
 import '../../services/watch_actions.dart';
@@ -178,8 +180,15 @@ Future<void> runUnifiedGroupAction(
     case ApplyActionToSource(:final source):
       await _applyToSources(context, action: action, group: group, sources: [source], onChanged: onChanged);
 
-    case ApplyActionToAllSources(:final sources):
-      await _applyToSources(context, action: action, group: group, sources: sources, onChanged: onChanged);
+    case ApplyActionToAllSources(:final sources, :final deferredSources):
+      await _applyToSources(
+        context,
+        action: action,
+        group: group,
+        sources: sources,
+        deferredSources: deferredSources,
+        onChanged: onChanged,
+      );
 
     case AskForActionScope(:final sources, :final allowAllSources):
       final choice = await _askForActionScope(
@@ -255,17 +264,36 @@ String labelForUnifiedGroupAction(UnifiedGroupAction action) => switch (action) 
 ///
 /// A partial failure is reported, never swallowed and never rolled back —
 /// hoofdstuk 13.4 point 5 and 13.5's "mislukte subset" both ask for one clear
-/// message rather than a rollback that pretends nothing happened. The local
-/// suppression and its replay on reconnect (13.4 points 3 and 4) belong to
-/// G10/G11 and are not built here; what this does is tell the user the truth
-/// about the sources it could not reach.
+/// message rather than a rollback that pretends nothing happened.
+///
+/// **The denominator is the intent, not the reachable subset.** [sources] is
+/// what can be written to now and [deferredSources] is what the contract also
+/// targets but that is currently unreachable; the tally counts both. Saying
+/// "klaar op alle 2" while a third membership was never touched is the exact
+/// sentence hoofdstuk 13.4 point 5 exists to forbid.
+///
+/// **The retry promise is only made when a retry exists.** For an action with
+/// [UnifiedGroupAction.queuesUnreachableMemberships] every deferred membership
+/// — and every write that failed for a retryable reason — is put on the offline
+/// queue, so "de rest wordt opnieuw geprobeerd" names a row that really is
+/// waiting. For every other action nothing is queued, and the message says so
+/// by leaving that clause out rather than promising a retry nothing performs.
+/// A failure a reconnect cannot fix (an auth rejection, a backend without the
+/// endpoint at all) is never queued either way.
 Future<void> _applyToSources(
   BuildContext context, {
   required UnifiedGroupAction action,
   required UnifiedMediaGroup group,
   required List<UnifiedMediaSource> sources,
+  List<UnifiedMediaSource> deferredSources = const [],
   VoidCallback? onChanged,
 }) async {
+  // Read before the first write. The queue is what makes the partial message
+  // true, so it must survive the surface being torn down halfway through a
+  // fan-out — holding the provider itself rather than reaching back through a
+  // BuildContext after several awaits is what guarantees that.
+  final offlineWatch = action.queuesUnreachableMemberships ? context.read<OfflineWatchProvider?>() : null;
+
   // The logical watchlist actions are not per-source at all: DEC-020 gives the
   // entry a list of memberships and `WatchlistUiActions` already writes to all
   // of them, so fanning out here would write the same list N times.
@@ -293,6 +321,9 @@ Future<void> _applyToSources(
     return;
   }
 
+  final total = sources.length + deferredSources.length;
+  final toQueue = action.queuesUnreachableMemberships ? [...deferredSources] : <UnifiedMediaSource>[];
+
   var done = 0;
   for (final source in sources) {
     if (!context.mounted) return;
@@ -301,20 +332,68 @@ Future<void> _applyToSources(
       done++;
     } catch (e, st) {
       appLogger.w('Unified context action ${action.name} failed on ${source.sourceKey}', error: e, stackTrace: st);
+      // A write that failed on a server that *was* online is still a write
+      // the contract wanted; if the reason is one a reconnect fixes, it joins
+      // the queue instead of being reported and forgotten.
+      if (action.queuesUnreachableMemberships && isRetryableServerWriteFailure(e)) toQueue.add(source);
     }
   }
 
-  if (!context.mounted) return;
-  if (done > 0) onChanged?.call();
+  final queued = await _queueDeferred(offlineWatch, toQueue);
 
-  if (done == sources.length) {
-    // A single-source write needs no tally; it either worked or it did not.
-    if (sources.length > 1) showAppSnackBar(context, t.tvContextMenu.doneOnAll(count: sources.length));
-  } else if (done == 0) {
-    showAppSnackBar(context, t.tvContextMenu.failed);
-  } else {
-    showAppSnackBar(context, t.tvContextMenu.doneOnSome(done: done, total: sources.length));
+  if (!context.mounted) return;
+  if (done > 0 || queued > 0) onChanged?.call();
+
+  final message = unifiedActionOutcomeMessage(done: done, total: total, queued: queued);
+  if (message != null) showAppSnackBar(context, message);
+}
+
+/// The one sentence the user gets after a fan-out, or null when there is
+/// nothing worth saying.
+///
+/// Pure and top-level so the honesty rule is testable without a server, a
+/// queue and a widget tree — the rule *is* the feature, and it was wrong in
+/// two different ways before fase 9: the denominator counted only the sources
+/// that happened to be reachable, and the message promised a retry for actions
+/// that queue nothing.
+///
+/// - Everything landed: a tally only when there was more than one target. A
+///   single write either worked or it did not, and "klaar op alle 1 bronnen"
+///   is noise.
+/// - Nothing landed and nothing was held: a plain failure.
+/// - Something is held: hoofdstuk 13.4 point 5's message, retry clause and
+///   all — there is a queue entry behind it. This is also the branch a fully
+///   deferred removal takes (done 0, queued 3), which is a success the user
+///   should see rather than the failure it would otherwise read as.
+/// - Something landed but nothing is held: the same tally without the retry
+///   clause, because nothing is going to be retried.
+String? unifiedActionOutcomeMessage({required int done, required int total, required int queued}) {
+  if (done == total) return total > 1 ? t.tvContextMenu.doneOnAll(count: total) : null;
+  if (done == 0 && queued == 0) return t.tvContextMenu.failed;
+  if (queued > 0) return t.tvContextMenu.doneOnSome(done: done, total: total);
+  return t.tvContextMenu.doneOnSomeNoRetry(done: done, total: total);
+}
+
+/// Puts every membership in [sources] on the offline queue, and returns how
+/// many entries actually landed.
+///
+/// The count matters: it is what decides whether the user is told the rest
+/// will be retried. A queue write that itself fails leaves nothing waiting,
+/// and the message has to fall back to the plain tally rather than describe a
+/// row that does not exist.
+Future<int> _queueDeferred(OfflineWatchProvider? offlineWatch, List<UnifiedMediaSource> sources) async {
+  if (offlineWatch == null || sources.isEmpty) return 0;
+
+  var queued = 0;
+  for (final source in sources) {
+    try {
+      await offlineWatch.queueRemoveFromContinueWatching(source.item);
+      queued++;
+    } catch (e, st) {
+      appLogger.w('Could not queue Continue Watching removal for ${source.sourceKey}', error: e, stackTrace: st);
+    }
   }
+  return queued;
 }
 
 Future<void> _applyToOneSource(

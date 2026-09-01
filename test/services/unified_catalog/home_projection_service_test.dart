@@ -569,6 +569,62 @@ void main() {
       expect(fetchLog, isEmpty, reason: 'no exact-episode bucket means no series-wide id is even fetched');
     });
 
+    test('G14: the same season/episode of two different series never share a card', () async {
+      // The failure this guards is the worst one Continue Watching can make:
+      // your position in Severance showing up as your position in Andor
+      // because both happen to be S02E04. The ordinals match exactly; only
+      // the show identity separates them, and it has to be enough.
+      final onDeck = [
+        _episode('a-sev-e4', serverId: 'a', show: 'Severance', showId: 'show-1', season: 2, episode: 4),
+        _episode('b-andor-e4', serverId: 'b', show: 'Andor', showId: 'show-2', season: 2, episode: 4),
+      ];
+      final service = _service(
+        ids: {'a:show-1': const ExternalIds(tmdb: 95396), 'b:show-2': const ExternalIds(tmdb: 83867)},
+      );
+
+      final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(2));
+      expect({for (final g in row.groups) g.groupId}, hasLength(2));
+      expect(
+        {for (final g in row.groups) g.representativeSource.item.grandparentTitle: g.sources.length},
+        {'Severance': 1, 'Andor': 1},
+        reason: 'neither card may borrow the other series\' source',
+      );
+    });
+
+    test('G14: two series with no external ids at all still never merge on ordinals', () async {
+      // Same shape with the identity evidence removed, because "they did not
+      // merge" is only worth something when a merge was actually available.
+      final onDeck = [
+        _episode('a-sev-e4', serverId: 'a', show: 'Severance', showId: 'show-1', season: 2, episode: 4),
+        _episode('b-andor-e4', serverId: 'b', show: 'Andor', showId: 'show-2', season: 2, episode: 4),
+      ];
+
+      final row = await _service().projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(2));
+    });
+
+    test('G14: one series\' progress stays on its own card when the other is further along', () async {
+      // The watch-state half: hoofdstuk 13.2 only ever chooses among a
+      // group's own sources, so a neighbouring series cannot donate a
+      // position no matter how much further into its episode it is.
+      final onDeck = [
+        _episode('a-sev-e4', serverId: 'a', show: 'Severance', showId: 'show-1', season: 2, episode: 4,
+            viewOffsetMs: 60000, lastViewedAt: 300),
+        _episode('b-andor-e4', serverId: 'b', show: 'Andor', showId: 'show-2', season: 2, episode: 4,
+            viewOffsetMs: 2000000, lastViewedAt: 900),
+      ];
+
+      final row = await _service().projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect({
+        for (final g in row.groups)
+          g.representativeSource.item.grandparentTitle!: g.representativeSource.item.viewOffsetMs,
+      }, {'Severance': 60000, 'Andor': 2000000});
+    });
+
     test('J: the exact-episode identity leaves progress, ordering and the activation source alone', () async {
       // The identity fix must not become a watch-state or ordering change by
       // accident: every source keeps its own offset, cards stay in recency

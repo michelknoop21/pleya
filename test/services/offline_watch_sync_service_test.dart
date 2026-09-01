@@ -131,6 +131,19 @@ class _RecordingMediaClient implements MediaServerClient {
     WatchStateNotifier().notifyWatched(item: item, isNowWatched: true);
   }
 
+  final removedFromContinueWatching = <String>[];
+
+  /// Set to have the endpoint refuse, the way Jellyfin's does.
+  bool refusesContinueWatchingRemoval = false;
+
+  @override
+  Future<void> removeFromContinueWatching(MediaItem item) async {
+    if (refusesContinueWatchingRemoval) {
+      throw UnsupportedError('This backend does not support removing items from Continue Watching.');
+    }
+    removedFromContinueWatching.add(item.id);
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -442,6 +455,158 @@ void main() {
   // queueProgressUpdate (also exercised so we can test the progress branches
   // of getLocalWatchStatus / getLocalViewOffset).
   // ============================================================
+
+  // G11: hoofdstuk 13.4 point 4 — the removal a server could not take is
+  // performed the moment it is back. The queue row is also point 3's local
+  // suppression, so its lifecycle is the whole feature: it exists while the
+  // write is owed, and only then.
+  group('G11: remove from Continue Watching replays on reconnect', () {
+    test('a queued removal is a pending action addressed to its own server', () async {
+      final (svc: svc, db: db, mgr: mgr) = _makeService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+
+      await svc.queueRemoveFromContinueWatching(serverId: ServerId('srv'), itemId: '42');
+
+      final action = await db.getLatestWatchAction('srv:42');
+      expect(action, isNotNull);
+      expect(action!.actionType, OfflineActionType.removedFromContinueWatching.id);
+      expect(await svc.getPendingSyncCount(), 1);
+      expect(await svc.pendingContinueWatchingRemovalKeys(), {'srv:42'});
+    });
+
+    test('reconnecting performs the removal and clears the entry', () async {
+      final (svc: svc, db: db, mgr: mgr) = _makeService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+
+      final client = _RecordingMediaClient(serverId: ServerId('srv'), backend: MediaBackend.plex);
+      mgr.debugRegisterClientForTesting(client);
+      await svc.queueRemoveFromContinueWatching(serverId: ServerId('srv'), itemId: '42');
+
+      await svc.syncPendingItems();
+
+      expect(client.removedFromContinueWatching, ['42']);
+      expect(await svc.getPendingSyncCount(), 0);
+      expect(await svc.pendingContinueWatchingRemovalKeys(), isEmpty);
+    });
+
+    test('replaying twice is harmless, because the second round has nothing left to replay', () async {
+      final (svc: svc, db: db, mgr: mgr) = _makeService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+
+      final client = _RecordingMediaClient(serverId: ServerId('srv'), backend: MediaBackend.plex);
+      mgr.debugRegisterClientForTesting(client);
+      await svc.queueRemoveFromContinueWatching(serverId: ServerId('srv'), itemId: '42');
+
+      await svc.syncPendingItems();
+      await svc.syncPendingItems();
+
+      expect(client.removedFromContinueWatching, ['42'], reason: 'one queued removal is one request, not two');
+    });
+
+    test('a server still down keeps the entry without consuming an attempt', () async {
+      final (svc: svc, db: db, mgr: mgr) = _makeService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+
+      await svc.queueRemoveFromContinueWatching(serverId: ServerId('srv'), itemId: '42');
+
+      await svc.syncPendingItems();
+
+      final action = await db.getLatestWatchAction('srv:42');
+      expect(action, isNotNull, reason: 'the suppression survives a failed round');
+      expect(action!.syncAttempts, 0);
+      expect(await svc.pendingContinueWatchingRemovalKeys(), {'srv:42'});
+    });
+
+    test('a backend without the endpoint records the failure instead of removing the entry', () async {
+      final (svc: svc, db: db, mgr: mgr) = _makeService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+
+      final client = _RecordingMediaClient(serverId: ServerId('srv'), backend: MediaBackend.jellyfin)
+        ..refusesContinueWatchingRemoval = true;
+      mgr.debugRegisterClientForTesting(client);
+      await svc.queueRemoveFromContinueWatching(serverId: ServerId('srv'), itemId: '42');
+
+      await svc.syncPendingItems();
+
+      final action = await db.getLatestWatchAction('srv:42');
+      expect(action!.syncAttempts, 1);
+      expect(action.lastError, isNotNull);
+    });
+
+    test('a still-queued removal is re-announced, so the card stays gone after a restart', () async {
+      // DiscoverProvider's on-deck suppression is in memory and rebuilds empty
+      // on launch; the queue row is what remembers. Without the announcement
+      // the user would find a dismissed card back with the write still owed.
+      final (svc: svc, db: db, mgr: mgr) = _makeService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+
+      final seen = <WatchStateEvent>[];
+      final subscription = WatchStateNotifier().stream.listen(seen.add);
+      addTearDown(subscription.cancel);
+
+      await svc.queueRemoveFromContinueWatching(serverId: ServerId('srv'), itemId: '42');
+      await svc.syncPendingItems();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        seen.where((e) => e.changeType == WatchStateChangeType.removedFromContinueWatching).map((e) => e.globalKey),
+        contains('srv:42'),
+      );
+    });
+
+    test('a removal that landed is not re-announced', () async {
+      final (svc: svc, db: db, mgr: mgr) = _makeService();
+      addTearDown(() async {
+        svc.dispose();
+        mgr.dispose();
+        await db.close();
+      });
+
+      final client = _RecordingMediaClient(serverId: ServerId('srv'), backend: MediaBackend.plex);
+      mgr.debugRegisterClientForTesting(client);
+      final seen = <WatchStateEvent>[];
+      final subscription = WatchStateNotifier().stream.listen(seen.add);
+      addTearDown(subscription.cancel);
+
+      await svc.queueRemoveFromContinueWatching(serverId: ServerId('srv'), itemId: '42');
+      await svc.syncPendingItems();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(seen.where((e) => e.changeType == WatchStateChangeType.removedFromContinueWatching), isEmpty);
+    });
+
+    test('the persisted action id round-trips, so an old row still parses', () {
+      expect(
+        OfflineActionType.fromId(OfflineActionType.removedFromContinueWatching.id),
+        OfflineActionType.removedFromContinueWatching,
+      );
+      expect(OfflineActionType.removedFromContinueWatching.id, 'removeFromContinueWatching');
+    });
+  });
 
   group('queueProgressUpdate', () {
     test('persists a progress row with shouldMarkWatched=false below threshold', () async {

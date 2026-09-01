@@ -14,6 +14,7 @@ import '../media/media_kind.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../services/unified_catalog/catalog_service.dart';
 import '../services/unified_catalog/source_cursor.dart';
+import '../services/unified_catalog/source_preference_store.dart';
 import '../services/unified_catalog/unified_catalog_query.dart';
 import '../services/unified_catalog/unified_catalog_snapshot.dart';
 import '../utils/global_key_utils.dart';
@@ -66,6 +67,12 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
   UnifiedCatalogLoadState _loadState = UnifiedCatalogLoadState.initial;
   bool _isLoadingMore = false;
   Set<String> _lastSeenLibraryKeys = const {};
+
+  /// The profile's remembered source choices, re-read on every restart and
+  /// handed to the merge for hoofdstuk 13.2's tier 4. Held here rather than
+  /// inside the service because the service is built once and then reused
+  /// across query changes, while the choices keep being made.
+  Set<String> _rememberedSourceKeys = const {};
 
   /// The caller's source restriction; see [setQuery]. Held across reconciles so
   /// a server coming online under an active "only this server" filter is
@@ -164,6 +171,7 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
   }
 
   Future<void> _restart() async {
+    _rememberedSourceKeys = await SourcePreferenceStore.readAllForActiveScope();
     final eligible = _eligibleLibraries();
     _lastSeenLibraryKeys = _libraryKeys(eligible);
     final service = _service;
@@ -172,6 +180,7 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
         query: _query,
         libraries: eligible,
         clientFor: _multiServer.serverManager.getClient,
+        preferredSourceKeys: () => _rememberedSourceKeys,
       );
     } else {
       service.updateQuery(query: _query, libraries: eligible);

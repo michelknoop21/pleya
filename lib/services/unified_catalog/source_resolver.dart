@@ -127,6 +127,57 @@ typedef EligibleSourceServer = ({
   bool hasAuthError,
 });
 
+/// Builds the [EligibleSourceServer] list a [SourceAllResolver] resolves over,
+/// from the active profile's topology rather than from the clients that
+/// happen to be instantiated (A19).
+///
+/// The denominator question is "which servers should have answered", and
+/// `MultiServerManager.serverIds` cannot answer it: it is sourced from the
+/// live client map, so a server the profile expects but never managed to
+/// build a client for — never reached, rejected at connect, still racing its
+/// connections — is simply absent. Absent from the list means absent from
+/// [SourceCoverageState.expectedServerIds], which means coverage reports
+/// *complete* while one of the profile's servers was never asked anything.
+/// That is the one lie the type exists to prevent.
+///
+/// So [expectedServerIds] is the authority — `MultiServerProvider`'s own
+/// profile-scoped expectation, the same set `authErrorServerIds` already
+/// filters on, written by `ActiveProfileBinder`. A server in it with no
+/// client is reported with `client: null, online: false`, and lands in
+/// coverage as unchecked instead of vanishing.
+///
+/// [visibleServerIds] is unioned in rather than intersected: it is already
+/// visibility-filtered, so it can only *add* a live server the expectation
+/// has not caught up with (a connection added inline, mid-bind), never
+/// re-admit one the profile hides. Server visibility itself closes upstream
+/// — a server hidden from the active profile appears in neither set — which
+/// is hoofdstuk 1.1 point 2's rule, applied where it already lives instead of
+/// re-derived here.
+///
+/// A server with no client has no known backend either. It is reported as
+/// [MediaBackend.plex] so it stays identity-eligible and therefore counted:
+/// "we do not know, and it never answered" has to read as a gap, not as an
+/// exemption.
+List<EligibleSourceServer> eligibleSourceServers({
+  required Iterable<String> expectedServerIds,
+  required Iterable<String> visibleServerIds,
+  required MediaServerClient? Function(ServerId serverId) clientFor,
+  required bool Function(ServerId serverId) isOnline,
+  required Set<String> authErrorServerIds,
+}) {
+  final ids = <String>{...expectedServerIds, ...visibleServerIds};
+  return [
+    for (final id in ids)
+      (
+        serverId: ServerId(id),
+        backend: clientFor(ServerId(id))?.backend ?? MediaBackend.plex,
+        client: clientFor(ServerId(id)),
+        online: isOnline(ServerId(id)),
+        hasAuthError: authErrorServerIds.contains(id),
+      ),
+  ];
+}
+
 /// Result of [SourceAllResolver.resolveAllSourcesForGroup]: every concrete
 /// item found across every eligible server, plus how much of the expected
 /// server set was actually reached.

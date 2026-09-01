@@ -34,6 +34,8 @@ import 'source_cursor.dart';
 import 'unified_catalog_query.dart';
 import 'unified_catalog_snapshot.dart';
 
+Set<String> _noRememberedSources() => const {};
+
 class UnifiedCatalogService {
   UnifiedCatalogService({
     required UnifiedCatalogQuery query,
@@ -43,7 +45,9 @@ class UnifiedCatalogService {
     this.groupsPerPage = 20,
     this.maxConcurrentFetches = 4,
     this.maxRawItemsPerLoadMore = 500,
-  }) : _clientFor = clientFor {
+    Set<String> Function()? preferredSourceKeys,
+  }) : _clientFor = clientFor,
+       _preferredSourceKeys = preferredSourceKeys ?? _noRememberedSources {
     _reset(query: query, libraries: libraries);
   }
 
@@ -59,6 +63,17 @@ class UnifiedCatalogService {
 
   /// hoofdstuk 12.6: bounded concurrent library-page fetches.
   final int maxConcurrentFetches;
+
+  /// The profile's remembered source choices (hoofdstuk 14.8), as a flat set
+  /// of source keys. Passed straight through to [groupUnifiedMediaSources],
+  /// where it reaches hoofdstuk 13.2's tier 4 and nothing else — see that
+  /// function's own doc.
+  ///
+  /// A supplier rather than a value because this service outlives any number
+  /// of [updateQuery]/[refresh] rounds and its owner re-reads the store on
+  /// each restart; a captured set would freeze the choices made before the
+  /// first page ever loaded.
+  final Set<String> Function() _preferredSourceKeys;
 
   /// Safety ceiling on how many raw items one [loadMore] call will pop
   /// before returning regardless of whether [groupsPerPage] new groups were
@@ -328,7 +343,7 @@ class UnifiedCatalogService {
       }
       candidates.add(GroupingCandidate(source: UnifiedMediaSource.fromItem(item), evidence: evidence[i]));
     }
-    _groups = groupUnifiedMediaSources(candidates);
+    _groups = groupUnifiedMediaSources(candidates, preferredSourceKeys: _preferredSourceKeys());
   }
 
   String _scopeOf(MediaItem item) => (canonicalIdentityOf(item) ?? CanonicalMediaIdentity.opaque()).granularity.name;

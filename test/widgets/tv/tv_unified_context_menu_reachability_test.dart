@@ -263,4 +263,50 @@ void main() {
       }
     });
   });
+  // G10: the message the fan-out ends on. Hoofdstuk 13.4 point 5 fixes both
+  // halves of it — the denominator and the retry clause — and both were wrong
+  // before fase 9: the count read only the reachable sources, and the retry
+  // clause was shown for actions that queue nothing.
+  group('the outcome message tells the truth about what landed', () {
+    test('a single write that worked says nothing at all', () {
+      expect(unifiedActionOutcomeMessage(done: 1, total: 1, queued: 0), isNull);
+    });
+
+    test('everything landing on several sources is a tally', () {
+      expect(unifiedActionOutcomeMessage(done: 3, total: 3, queued: 0), t.tvContextMenu.doneOnAll(count: 3));
+    });
+
+    test('two of three, with the third queued, promises the retry', () {
+      expect(
+        unifiedActionOutcomeMessage(done: 2, total: 3, queued: 1),
+        t.tvContextMenu.doneOnSome(done: 2, total: 3),
+      );
+      expect(t.tvContextMenu.doneOnSome(done: 2, total: 3), contains('3'));
+    });
+
+    test('two of three with nothing queued drops the retry clause', () {
+      // The promise "the rest will be retried" may only appear when a queue
+      // entry exists. An action that queues nothing must not borrow it.
+      final message = unifiedActionOutcomeMessage(done: 2, total: 3, queued: 0);
+
+      expect(message, t.tvContextMenu.doneOnSomeNoRetry(done: 2, total: 3));
+      expect(message, isNot(t.tvContextMenu.doneOnSome(done: 2, total: 3)));
+      expect(message, isNot(contains(t.tvContextMenu.doneOnSome(done: 2, total: 3).split('. ').last)));
+    });
+
+    test('a removal held on every membership reads as held, not as failed', () {
+      // Nothing was written, but the user's intent is safely recorded and the
+      // card is gone. Reporting a failure here would be the opposite of what
+      // happened.
+      expect(
+        unifiedActionOutcomeMessage(done: 0, total: 2, queued: 2),
+        t.tvContextMenu.doneOnSome(done: 0, total: 2),
+      );
+    });
+
+    test('nothing landed and nothing held is a plain failure', () {
+      expect(unifiedActionOutcomeMessage(done: 0, total: 2, queued: 0), t.tvContextMenu.failed);
+    });
+  });
+
 }

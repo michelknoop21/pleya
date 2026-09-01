@@ -347,6 +347,43 @@ void main() {
     expect(provider.onDeck.map((i) => i.id), ['ep-2']);
   });
 
+  test('G10: a removed row does not come back while the server still lists it', () async {
+    // Hoofdstuk 13.4 point 6, and the case the queue exists for: a membership
+    // whose removal is still queued keeps being listed by its server until
+    // the replay lands. Dropping the row without suppressing it would put the
+    // card back on the very next refresh.
+    aggregation.onDeckResult = () => [_item('ep-1'), _item('ep-2')];
+    await provider.load();
+
+    WatchStateNotifier().notifyRemovedFromContinueWatching(item: _item('ep-1'));
+    await pumpEventQueue();
+    expect(provider.onDeck.map((i) => i.id), ['ep-2']);
+
+    // The server has not processed the removal yet and still returns it.
+    await provider.refreshContinueWatching();
+    await pumpEventQueue();
+
+    expect(provider.onDeck.map((i) => i.id), ['ep-2']);
+  });
+
+  test('G10: the suppression lifts once the server stops listing the row', () async {
+    aggregation.onDeckResult = () => [_item('ep-1'), _item('ep-2')];
+    await provider.load();
+
+    WatchStateNotifier().notifyRemovedFromContinueWatching(item: _item('ep-1'));
+    await pumpEventQueue();
+
+    // The removal landed server-side, so the row is gone from the answer …
+    aggregation.onDeckResult = () => [_item('ep-2')];
+    await provider.refreshContinueWatching();
+
+    // … and a genuine rewatch afterwards must be able to bring it back.
+    aggregation.onDeckResult = () => [_item('ep-1'), _item('ep-2')];
+    await provider.refreshContinueWatching();
+
+    expect(provider.onDeck.map((i) => i.id), ['ep-1', 'ep-2']);
+  });
+
   test('watched movie leaves the row immediately and a stale refetch cannot bring it back', () async {
     final movie = _item('movie-1', kind: MediaKind.movie);
     // The refetch keeps returning the movie (scrobble race on the server).

@@ -1984,6 +1984,7 @@
     "noUsableSource": "No source is currently reachable, so this cannot be changed right now.",
     "doneOnAll": "Done on all ${count} sources",
     "doneOnSome": "Done on ${done} of ${total} sources. The rest will be retried when they are back online.",
+    "doneOnSomeNoRetry": "Done on ${done} of ${total} sources.",
     "failed": "That did not work"
   }
 }
