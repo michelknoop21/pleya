@@ -30,13 +30,27 @@ class _MatchingClient implements MediaServerClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-MediaItem _item(String serverId, {String id = 'item-1'}) => MediaItem(
+MediaItem _item(String serverId, {String id = 'item-1', String? libraryId}) => MediaItem(
   id: id,
   backend: MediaBackend.plex,
   kind: MediaKind.movie,
   title: 'Sintel',
   year: 2010,
   serverId: serverId,
+  libraryId: libraryId,
+);
+
+/// The shape Plex's *title-fallback* branch of `findAllByIdentity` produces:
+/// a library id, and no server id at all, because `_candidatesWithGuids` maps
+/// with `PlexMappers.mediaItemFromJson(raw)` and passes none. Any filter that
+/// keys on `item.serverId` fails open on exactly this shape.
+MediaItem _unstampedItem({required String libraryId, String id = 'item-1'}) => MediaItem(
+  id: id,
+  backend: MediaBackend.plex,
+  kind: MediaKind.movie,
+  title: 'Sintel',
+  year: 2010,
+  libraryId: libraryId,
 );
 
 const _identity = MediaIdentity(guid: 'plex://movie/abc', title: 'Sintel', year: 2010, kind: MediaKind.movie);
@@ -72,8 +86,14 @@ void main() {
 
   tearDown(() async => db.close());
 
-  SourceAllResolver resolverFor(List<EligibleSourceServer> servers) =>
-      SourceAllResolver(profileId: 'profile-1', serversFor: () => servers, cache: cache, now: () => clock);
+  SourceAllResolver resolverFor(List<EligibleSourceServer> servers, {Set<String> hidden = const {}}) =>
+      SourceAllResolver(
+        profileId: 'profile-1',
+        serversFor: () => servers,
+        hiddenLibraryKeysFor: () => hidden,
+        cache: cache,
+        now: () => clock,
+      );
 
   group('coverage', () {
     test('the same film on three servers yields three concrete sources', () async {
@@ -242,6 +262,232 @@ void main() {
       ).resolveAllSourcesForGroup(_identity);
 
       expect((otherProfile.client! as _MatchingClient).lookups, 1);
+    });
+  });
+
+  /// B8's resolverhelft. The card can say "1 bron" honestly and the resolver
+  /// then add a hidden library as a second picker row — the search half of the
+  /// same row is closed in `DataAggregationService`, this is the other side.
+  ///
+  /// Every case here filters *before* the answer is kept, so the seven-day
+  /// positive cache can never serve a hidden source back.
+  group('hidden libraries', () {
+    test('A: a hidden second copy drops out, the visible one stays', () async {
+      final result = await resolverFor(
+        [
+          _server('s1', matches: [_item('s1', libraryId: 'lib-visible')]),
+          _server('s2', matches: [_item('s2', libraryId: 'lib-hidden')]),
+        ],
+        hidden: {'s2:lib-hidden'},
+      ).resolveAllSourcesForGroup(_identity);
+
+      expect(result.items.map((i) => i.serverId), ['s1']);
+      expect(
+        result.coverage.isComplete,
+        isTrue,
+        reason: 's2 was asked and answered; its answer was filtered, which is not a coverage gap',
+      );
+    });
+
+    test('B: a title only a hidden library holds resolves to no source at all', () async {
+      final result = await resolverFor(
+        [
+          _server('s1', matches: [_item('s1', libraryId: 'lib-hidden')]),
+        ],
+        hidden: {'s1:lib-hidden'},
+      ).resolveAllSourcesForGroup(_identity);
+
+      expect(result.items, isEmpty);
+    });
+
+    test('B: two hidden libraries on one server both drop, a third visible one survives', () async {
+      final result = await resolverFor(
+        [
+          _server(
+            's1',
+            matches: [
+              _item('s1', id: 'a', libraryId: 'lib-a'),
+              _item('s1', id: 'b', libraryId: 'lib-b'),
+              _item('s1', id: 'c', libraryId: 'lib-c'),
+            ],
+          ),
+        ],
+        hidden: {'s1:lib-a', 's1:lib-c'},
+      ).resolveAllSourcesForGroup(_identity);
+
+      expect(result.items.map((i) => i.id), ['b']);
+    });
+
+    test('a hidden key only bites on its own server', () async {
+      final result = await resolverFor(
+        [
+          _server('s1', matches: [_item('s1', libraryId: 'lib-1')]),
+          _server('s2', matches: [_item('s2', libraryId: 'lib-1')]),
+        ],
+        hidden: {'s2:lib-1'},
+      ).resolveAllSourcesForGroup(_identity);
+
+      expect(
+        result.items.map((i) => i.serverId),
+        ['s1'],
+        reason: 'two servers can both call a library "lib-1"; the key names one of them',
+      );
+    });
+
+    test('an item with a library id but no server id is still filtered', () async {
+      final result = await resolverFor(
+        [
+          _server('s1', matches: [_unstampedItem(libraryId: 'lib-hidden')]),
+        ],
+        hidden: {'s1:lib-hidden'},
+      ).resolveAllSourcesForGroup(_identity);
+
+      expect(
+        result.items,
+        isEmpty,
+        reason:
+            "Plex's title-fallback branch stamps no server id, so the answering "
+            'server must supply it — filtering on item.serverId would fail open here',
+      );
+    });
+
+    test('G: an item in no library at all is kept, whatever is hidden', () async {
+      final result = await resolverFor(
+        [
+          _server('s1', matches: [_item('s1')]),
+        ],
+        hidden: {'s1:lib-hidden', 's1:lib-other'},
+      ).resolveAllSourcesForGroup(_identity);
+
+      expect(
+        result.items.map((i) => i.serverId),
+        ['s1'],
+        reason: 'a Plex Discover hit belongs to no library, so no hidden key can name it',
+      );
+    });
+
+    test('H: with nothing hidden the answer is exactly what it was', () async {
+      final result = await resolverFor([
+        _server('s1', matches: [_item('s1', libraryId: 'lib-1')]),
+        _server('s2', matches: [_item('s2', libraryId: 'lib-2')]),
+      ]).resolveAllSourcesForGroup(_identity);
+
+      expect(result.items.map((i) => i.serverId), unorderedEquals(['s1', 's2']));
+      expect(result.coverage.isComplete, isTrue);
+    });
+
+    test('D: hiding a library after a warm positive does not serve the cached source', () async {
+      await resolverFor([
+        _server('s1', matches: [_item('s1', libraryId: 'lib-hidden')]),
+      ]).resolveAllSourcesForGroup(_identity);
+
+      final afterHide = _server('s1', matches: [_item('s1', libraryId: 'lib-hidden')]);
+      final result = await resolverFor([afterHide], hidden: {'s1:lib-hidden'}).resolveAllSourcesForGroup(_identity);
+
+      expect(result.items, isEmpty, reason: 'the seven-day row was written under the visible fingerprint');
+      expect((afterHide.client! as _MatchingClient).lookups, 1, reason: 'the hidden fingerprint is a different row');
+    });
+
+    test('D: a warm negative written while hidden is not served once visible again', () async {
+      await resolverFor(
+        [
+          _server('s1', matches: [_item('s1', libraryId: 'lib-x')]),
+        ],
+        hidden: {'s1:lib-x'},
+      ).resolveAllSourcesForGroup(_identity);
+
+      final afterUnhide = _server('s1', matches: [_item('s1', libraryId: 'lib-x')]);
+      final result = await resolverFor([afterUnhide]).resolveAllSourcesForGroup(_identity);
+
+      expect(result.items.map((i) => i.serverId), ['s1']);
+    });
+
+    test('E: unhiding lands back on the row the visible resolve already wrote', () async {
+      final first = _server('s1', matches: [_item('s1', libraryId: 'lib-x')]);
+      await resolverFor([first]).resolveAllSourcesForGroup(_identity);
+
+      await resolverFor(
+        [
+          _server('s1', matches: [_item('s1', libraryId: 'lib-x')]),
+        ],
+        hidden: {'s1:lib-x'},
+      ).resolveAllSourcesForGroup(_identity);
+
+      final back = _server('s1', matches: [_item('s1', libraryId: 'lib-x')]);
+      final result = await resolverFor([back]).resolveAllSourcesForGroup(_identity);
+
+      expect(result.items.map((i) => i.serverId), ['s1'], reason: 'the source comes back when the library does');
+      expect((back.client! as _MatchingClient).lookups, 0, reason: 'and it comes back off the row it was written to');
+    });
+
+    test('F: two visibility sets on one profile never share a row', () async {
+      await resolverFor(
+        [
+          _server(
+            's1',
+            matches: [_item('s1', id: 'a', libraryId: 'lib-a')],
+          ),
+        ],
+        hidden: {'s1:lib-b'},
+      ).resolveAllSourcesForGroup(_identity);
+
+      final other = _server(
+        's1',
+        matches: [_item('s1', id: 'a', libraryId: 'lib-a')],
+      );
+      final result = await resolverFor([other], hidden: {'s1:lib-a'}).resolveAllSourcesForGroup(_identity);
+
+      expect(result.items, isEmpty);
+      expect((other.client! as _MatchingClient).lookups, 1);
+    });
+
+    test('F: the same hidden set in a different order is the same row', () async {
+      await resolverFor(
+        [
+          _server('s1', matches: [_item('s1', libraryId: 'lib-keep')]),
+        ],
+        hidden: {'s1:lib-a', 's1:lib-b', 's1:lib-c'},
+      ).resolveAllSourcesForGroup(_identity);
+
+      final warm = _server('s1', matches: [_item('s1', libraryId: 'lib-keep')]);
+      await resolverFor([warm], hidden: {'s1:lib-c', 's1:lib-a', 's1:lib-b'}).resolveAllSourcesForGroup(_identity);
+
+      expect(
+        (warm.client! as _MatchingClient).lookups,
+        0,
+        reason: 'the fingerprint depends on the set, not on iteration order',
+      );
+    });
+
+    test('F: two profiles with different visibility do not share a row', () async {
+      await resolverFor([
+        _server('s1', matches: [_item('s1', libraryId: 'lib-x')]),
+      ]).resolveAllSourcesForGroup(_identity);
+
+      final otherProfile = _server('s1', matches: [_item('s1', libraryId: 'lib-x')]);
+      final result = await SourceAllResolver(
+        profileId: 'profile-2',
+        serversFor: () => [otherProfile],
+        hiddenLibraryKeysFor: () => {'s1:lib-x'},
+        cache: cache,
+        now: () => clock,
+      ).resolveAllSourcesForGroup(_identity);
+
+      expect(result.items, isEmpty);
+      expect((otherProfile.client! as _MatchingClient).lookups, 1);
+    });
+
+    test('a resolver given no visibility context behaves as it did before', () async {
+      final result = await SourceAllResolver(
+        profileId: 'profile-1',
+        serversFor: () => [
+          _server('s1', matches: [_item('s1', libraryId: 'lib-1')]),
+        ],
+        cache: cache,
+        now: () => clock,
+      ).resolveAllSourcesForGroup(_identity);
+
+      expect(result.items.map((i) => i.serverId), ['s1']);
     });
   });
 

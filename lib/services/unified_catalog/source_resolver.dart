@@ -14,6 +14,9 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 
 import '../../media/ids.dart';
 import '../../media/media_backend.dart';
@@ -22,6 +25,7 @@ import '../../media/media_item.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/source_coverage_state.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/global_key_utils.dart';
 import '../api_cache.dart';
 
 /// The minimal per-server shape [fanOutFindAllByIdentity] needs: enough to
@@ -68,6 +72,34 @@ Future<void> fanOutFindAllByIdentity({
     );
     if (onBatch(results)) return;
   }
+}
+
+/// Drops the matches [serverId] returned that live in a library the active
+/// profile has hidden (hoofdstuk 22/31.13: a hidden library may not leak into
+/// any surface).
+///
+/// The server is the one that **answered**, not the one stamped on the item,
+/// and that difference is the whole point. `DataAggregationService`'s
+/// `filterHiddenLibraryItems` reads `item.serverId` because its items come off
+/// paths that stamp one; the identity fan-out does not. Plex's
+/// `findAllByIdentity` has two branches, and only the guid branch runs its
+/// results through `_tagMetadata`. The title fallback maps candidates with
+/// `PlexMappers.mediaItemFromJson(raw)` and passes no server id at all, so
+/// those items carry a `libraryId` and a null `serverId` — an item-stamped
+/// filter would fail open on exactly the branch a guid-less identity takes.
+/// A client only ever answers with its own items, so the answering id is the
+/// authoritative one and no branch can dodge the check.
+///
+/// Fail-open stays exactly where hoofdstuk 22 put it: an item with no
+/// `libraryId` is in no library, so no hidden key can name it. That is the
+/// only case that survives — a missing server id no longer is one.
+List<MediaItem> visibleMatchesFromServer(List<MediaItem> matches, ServerId serverId, Set<String> hiddenLibraryKeys) {
+  if (hiddenLibraryKeys.isEmpty) return matches;
+  return matches.where((item) {
+    final libraryId = item.libraryId;
+    if (libraryId == null) return true;
+    return !hiddenLibraryKeys.contains(buildGlobalKey(serverId, libraryId));
+  }).toList();
 }
 
 /// Which backends can answer a catalogue-identity lookup at all.
@@ -119,6 +151,7 @@ class SourceAllResolver {
     required this.profileId,
     required this.serversFor,
     required this.cache,
+    this.hiddenLibraryKeysFor,
     this.maxConcurrent = 4,
     this.now,
   });
@@ -128,10 +161,28 @@ class SourceAllResolver {
   final String profileId;
 
   /// Every server of the active profile eligible to answer, in a
-  /// deterministic order. Already visibility-filtered by the caller — a
-  /// server hidden from the active profile must never appear here (hoofdstuk
-  /// 1.1 point 2: visibility closes before the unified fan-out).
+  /// deterministic order. Already **server**-visibility-filtered by the
+  /// caller — a server hidden from the active profile must never appear here
+  /// (hoofdstuk 1.1 point 2: visibility closes before the unified fan-out).
+  /// Library visibility is a separate matter and closes here, via
+  /// [hiddenLibraryKeysFor].
   final List<EligibleSourceServer> Function() serversFor;
+
+  /// Every library the active profile has hidden, as `serverId:libraryId`
+  /// global keys. Read per resolve like [serversFor], not captured once — a
+  /// resolver is built once per profile and outlives any number of visibility
+  /// changes.
+  ///
+  /// Server visibility is closed by the caller before [serversFor] ever
+  /// returns a server; **library** visibility cannot be, because a hidden
+  /// library sits inside a visible server that must still be asked for its
+  /// other libraries. So it closes here instead, and the two halves of
+  /// hoofdstuk 1.1 point 2 meet: no hidden server is asked, and nothing a
+  /// visible server returns out of a hidden library survives.
+  ///
+  /// Omitting it keeps the pre-fase-9 behaviour of no library filtering, which
+  /// is correct only for a caller that genuinely has no visibility context.
+  final Set<String> Function()? hiddenLibraryKeysFor;
 
   final ApiCache cache;
 
@@ -175,8 +226,14 @@ class SourceAllResolver {
     final eligible = servers.where((s) => isIdentityEligibleBackend(s.backend)).toList();
     final expectedIds = {for (final s in eligible) s.serverId.toString()};
 
+    // Read once and thread it through the whole resolve. Reading it again at
+    // write time would let a hide that lands mid-flight store filtered items
+    // under the fingerprint of the set that was *not* used to filter them.
+    final hiddenLibraryKeys = hiddenLibraryKeysFor?.call() ?? const <String>{};
+    final visibility = _visibilityFingerprint(hiddenLibraryKeys);
+
     final cacheKey = _identityCacheKey(identity);
-    final cached = await _readCache(cacheKey, eligible, expectedIds);
+    final cached = await _readCache(cacheKey, visibility, eligible, expectedIds);
     if (cached != null) return cached;
 
     final items = <MediaItem>[];
@@ -197,7 +254,10 @@ class SourceAllResolver {
           final id = result.serverId.toString();
           if (result.ok) {
             checked.add(id);
-            items.addAll(result.matches);
+            // Before the result is kept, and therefore before it can be
+            // cached: a filter behind the cache would be undone by the next
+            // warm hit for up to [positiveTtl].
+            items.addAll(visibleMatchesFromServer(result.matches, result.serverId, hiddenLibraryKeys));
           } else {
             uncheckedReasons[id] = UncheckedSourceReason.lookupFailed;
           }
@@ -224,7 +284,7 @@ class SourceAllResolver {
 
     // A cancelled run asked fewer servers than it was going to; caching that
     // would freeze a deliberately partial answer for the full positive TTL.
-    if (!cancelled) await _writeCache(cacheKey, items: items, coverage: coverage);
+    if (!cancelled) await _writeCache(cacheKey, visibility, items: items, coverage: coverage);
     return (items: items, coverage: coverage);
   }
 
@@ -235,16 +295,27 @@ class SourceAllResolver {
   /// "no sources" on a title one of them now has.
   Future<void> invalidate() async => cache.deleteForServer(cacheServerId);
 
-  String _endpointFor(String key) => 'match/$profileId/$key';
+  /// Cache rows are addressed by profile **and** by which libraries that
+  /// profile has hidden. Both are context the answer depends on: a resolve run
+  /// with a library hidden holds fewer sources than the same resolve run
+  /// without it, so serving one where the other was asked for is exactly the
+  /// leak this key exists to prevent — in both directions. Hiding a library
+  /// therefore makes the old row unreachable rather than stale, and unhiding
+  /// it lands back on the row the earlier visible resolve already wrote.
+  ///
+  /// Rows under a fingerprint nobody asks for any more age out on the normal
+  /// TTLs; [invalidate] still drops the whole namespace at once.
+  String _endpointFor(String key, String visibility) => 'match/$profileId/$visibility/$key';
 
   Future<GroupSourceResolution?> _readCache(
     String key,
+    String visibility,
     List<EligibleSourceServer> eligible,
     Set<String> expectedIds,
   ) async {
     final Map<String, dynamic>? row;
     try {
-      row = await cache.get(cacheServerId, _endpointFor(key));
+      row = await cache.get(cacheServerId, _endpointFor(key, visibility));
     } catch (e) {
       appLogger.d('Source-all-resolver cache read failed', error: e);
       return null;
@@ -298,13 +369,18 @@ class SourceAllResolver {
     return (items: const <MediaItem>[], coverage: SourceCoverageState.complete(expectedIds));
   }
 
-  Future<void> _writeCache(String key, {required List<MediaItem> items, required SourceCoverageState coverage}) async {
+  Future<void> _writeCache(
+    String key,
+    String visibility, {
+    required List<MediaItem> items,
+    required SourceCoverageState coverage,
+  }) async {
     // An incomplete negative says nothing durable: the server that did not
     // answer may be exactly the one holding the title.
     if (items.isEmpty && !coverage.isComplete) return;
 
     try {
-      await cache.put(cacheServerId, _endpointFor(key), {
+      await cache.put(cacheServerId, _endpointFor(key, visibility), {
         'checkedAtMs': _now.millisecondsSinceEpoch,
         if (items.isNotEmpty) ...{
           'items': [for (final item in items) item.toJson()],
@@ -316,6 +392,23 @@ class SourceAllResolver {
       appLogger.d('Source-all-resolver cache write failed', error: e);
     }
   }
+}
+
+/// Deterministic, order-free digest of the hidden-library set, short enough to
+/// sit in a cache key.
+///
+/// A digest rather than the set itself: `hiddenLibraryKeys` is unordered and
+/// unbounded, so joining it raw would give two orderings of the same set two
+/// different rows, and a profile that hides forty libraries a key longer than
+/// the identity it is keying. Sorting first makes the digest depend on the set
+/// and not on iteration order; `sha1` matches the key-derivation the codebase
+/// already uses for artwork storage keys.
+String _visibilityFingerprint(Set<String> hiddenLibraryKeys) {
+  if (hiddenLibraryKeys.isEmpty) return 'v0';
+  final sorted = hiddenLibraryKeys.toList()..sort();
+  // The separator is a character no `serverId:libraryId` key can contain, so
+  // {"a:b", "c"} and {"a", "b:c"} cannot digest to the same string.
+  return 'v${sha1.convert(utf8.encode(sorted.join('\u0000')))}'.substring(0, 17);
 }
 
 UncheckedSourceReason _reasonFromName(String? name) =>

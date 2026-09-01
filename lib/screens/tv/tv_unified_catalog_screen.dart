@@ -46,6 +46,7 @@ import '../../navigation/main_screen_scope.dart';
 import '../../navigation/tv/tv_navigation_coordinator.dart';
 import 'tv_root_shell.dart';
 import '../../profiles/active_profile_provider.dart';
+import '../../providers/hidden_libraries_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/unified_catalog_provider.dart';
 import '../../services/api_cache.dart';
@@ -368,6 +369,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     if (_resolver != null && _resolverProfileId == profileId) return _resolver;
     _resolverProfileId = profileId;
     final manager = multiServer.serverManager;
+    final hiddenLibraries = context.read<HiddenLibrariesProvider>();
     return _resolver = SourceAllResolver(
       profileId: profileId,
       serversFor: () => [
@@ -381,6 +383,12 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
               hasAuthError: manager.authErrorServerIds.contains(serverId),
             ),
       ],
+      // Library visibility, read live: the resolver is cached per profile and
+      // must see a hide that lands after it was built. Server visibility is
+      // already closed by the `isServerVisible` guard above; this closes the
+      // other half, so a hidden library on a visible server cannot come back
+      // as a picker row.
+      hiddenLibraryKeysFor: () => hiddenLibraries.hiddenLibraryKeys,
       cache: ApiCache.forBackend(MediaBackend.plex),
     );
   }

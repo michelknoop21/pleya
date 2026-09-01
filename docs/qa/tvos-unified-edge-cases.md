@@ -110,7 +110,7 @@ niet geraakt".
 
 | Werkpakket | Rijen |
 | --- | --- |
-| WP1 — hidden-library lekken | B8 |
+| WP1 — hidden-library lekken ✅ gesloten | B8 |
 | WP2 — contextmenu + write-scope | G12, G13 |
 | WP3 — auth-status, Mijn Pleya, deep links | I9, I10, I14 |
 | WP4 — all-source verwijderen uit Verder kijken | G10, G11 |
@@ -210,7 +210,7 @@ sources, gedeeltelijk mislukt).
 | B5 | Movies-only profiel | | open |
 | B6 | Mixed/shared Plex library | | open |
 | B7 | Verborgen library als enige bron | test/providers/unified_catalog_provider_test.dart (`server.hidden excludes a library from the merge, matching eligibleCatalogLibraries`, `a hidden-library change after starting reconciles and reloads with the library excluded`); test/services/unified_catalog/source_cursor_test.dart (`excludes a library the user hid, even though its server is visible`) | covered |
-| B8 | Verborgen library als tweede duplicate bron | zoekhelft bewezen: test/services/data_aggregation_bridge_test.dart (`searchAcrossServers applies hidden-library visibility`, negen tests). Resolverhelft nog open — zie de noot onder deze tabel | open |
+| B8 | Verborgen library als tweede duplicate bron | zoekhelft: test/services/data_aggregation_bridge_test.dart (`searchAcrossServers applies hidden-library visibility`, negen tests). Resolverhelft: test/services/unified_catalog/source_resolver_test.dart (groep `hidden libraries`, veertien tests — A/B `a hidden second copy drops out, the visible one stays` en `a title only a hidden library holds resolves to no source at all`, D `hiding a library after a warm positive does not serve the cached source`, E `unhiding lands back on the row the visible resolve already wrote`, F `two visibility sets on one profile never share a row`, G `an item in no library at all is kept, whatever is hidden`, H `with nothing hidden the answer is exactly what it was`); C via de pickernaad in test/screens/tv/tv_unified_activation_hidden_library_test.dart (`a duplicate in a hidden library never becomes a picker row`) | covered |
 | B9 | Library wordt tijdens gebruik verborgen | test/providers/unified_catalog_provider_test.dart (`a hidden-library change after starting reconciles and reloads with the library excluded`) | covered |
 | B10 | Library wordt verwijderd | | open |
 | B11 | Library heeft geen items | | open |
@@ -220,7 +220,7 @@ sources, gedeeltelijk mislukt).
 | B15 | Item verhuist tussen libraries | | open |
 
 
-**B8 is halverwege, en dat is met opzet niet `covered`.** Fase 9 heeft de zoekhelft gesloten:
+**B8 had twee helften, en fase 9 heeft ze allebei gesloten.** Eerst de zoekhelft:
 `DataAggregationService.searchAcrossServers` was de enige aggregatie-ingang zonder
 `hiddenLibraryKeys` — servers werden door `_clientsFor` uitgesloten, libraries door niemand — en
 filtert nu vóór ranking en trimmen, met een gedeelde `filterHiddenLibraryItems` die de drie
@@ -229,13 +229,43 @@ gevallen; zonder de filter gaan er zeven van rood, en de twee die groen blijven 
 fail-open-controles (een item zonder `libraryId` — een Plex Discover-hit uit `includeExternalMedia`
 bijvoorbeeld — zit in geen enkele library, dus geen verborgen sleutel kan hem noemen).
 
-Wat nog open staat is de **resolverhelft**, en die is bevestigd aanwezig:
-`SourceAllResolver.findAllByIdentity` (`lib/services/unified_catalog/source_resolver.dart`) kent
-`hiddenLibraryKeys` niet en leest `libraryId` nergens, dus hij vraagt elke bereikbare server serverbreed
-om matches. Het scenario van deze rij is daarmee nog steeds bereikbaar langs de andere kant: de kaart
-zegt terecht "1 bron", en even later voegt de resolver de verborgen bibliotheek alsnog als pickerrij
-toe. Let bij het repareren op de cache — het antwoord wordt zeven dagen bewaard, dus een filter die
-ná de cache zit lost het niet op.
+De **resolverhelft** is daarna gesloten, en die zat inderdaad open zoals hierboven beschreven: de
+kaart zei terecht "1 bron" en even later voegde `SourceAllResolver` de verborgen bibliotheek alsnog
+als pickerrij toe. `hiddenLibraryKeysFor` is nu een tweede live callback naast `serversFor`, en het
+filter zit in `onBatch`, dus vóór het antwoord bewaard wordt: een filter ná de cache zou zeven dagen
+lang teruggedraaid worden door de eerstvolgende warme hit.
+
+Twee dingen bleken bij het repareren anders te liggen dan de noot hierboven aannam.
+
+**Het bestaande `filterHiddenLibraryItems` kon hier niet hergebruikt worden.** Die leest
+`item.serverId`, en de identity-fan-out levert items waar die niet op staat. Plex'
+`findAllByIdentity` heeft twee takken en alleen de guid-tak loopt via `_tagMetadata`, dat de
+serverId erop zet; de titel-fallback mapt met `PlexMappers.mediaItemFromJson(raw)` en geeft
+er geen mee (`plex_client.dart`, `_candidatesWithGuids`). Die items dragen dus wél een `libraryId`
+en géén `serverId`, en een filter op `item.serverId` zou fail-open gaan op precies de tak die een
+identity zonder guid neemt. `visibleMatchesFromServer` gebruikt daarom de server die *antwoordde* —
+een client geeft alleen zijn eigen items terug, dus dat is de gezaghebbende id. De fail-open blijft
+staan waar hoofdstuk 22 hem zette, maar alleen nog voor een item zonder `libraryId`; een ontbrekende
+serverId is geen fail-open-grond meer. `an item with a library id but no server id is still filtered`
+bewaakt dat.
+
+**De cachesleutel moest de zichtbaarheid meedragen.** Zonder dat lost het filter alleen de koude
+resolve op: een rij die geschreven is toen de bibliotheek nog zichtbaar was, wordt daarna gewoon
+warm teruggegeven. De sleutel is `match/<profiel>/<vingerafdruk>/<identity>`, waarbij de
+vingerafdruk een sha1 over de gesorteerde verborgen sleutels is — gesorteerd, zodat twee volgordes
+van dezelfde verzameling dezelfde rij zijn, en een digest in plaats van de verzameling zelf, zodat
+een profiel met veertig verborgen bibliotheken geen sleutel krijgt die langer is dan de identity die
+hij indexeert. De verzameling wordt één keer per resolve gelezen en doorgegeven, niet opnieuw bij het
+schrijven: anders kan een hide die halverwege landt gefilterde items opslaan onder de vingerafdruk
+van de verzameling waarmee ze *niet* gefilterd zijn. Verbergen maakt de oude rij daarmee
+onbereikbaar in plaats van muf, en zichtbaar maken landt terug op de rij die de eerdere zichtbare
+resolve al schreef — geen extra invalidatiehaak nodig, en `invalidate()` blijft de hele namespace
+wissen.
+
+Negatieve controles, beide takken los uitgezet: zonder het filter gaan er negen rood, zonder de
+vingerafdruk drie (`D: hiding a library after a warm positive…`, `D: a warm negative written while
+hidden…`, `F: two visibility sets on one profile never share a row`). Beide helften dragen dus
+gewicht.
 
 
 ## C. Identitycases

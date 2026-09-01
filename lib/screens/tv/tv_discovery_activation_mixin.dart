@@ -26,6 +26,7 @@ import '../../media/media_backend.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_route_context.dart';
 import '../../profiles/active_profile_provider.dart';
+import '../../providers/hidden_libraries_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../services/api_cache.dart';
 import '../../services/unified_catalog/source_resolver.dart';
@@ -85,6 +86,7 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
     if (_resolver != null && _resolverProfileId == profileId) return _resolver;
     _resolverProfileId = profileId;
     final manager = multiServer.serverManager;
+    final hiddenLibraries = context.read<HiddenLibrariesProvider>();
     return _resolver = SourceAllResolver(
       profileId: profileId,
       serversFor: () => [
@@ -98,6 +100,12 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
               hasAuthError: manager.authErrorServerIds.contains(serverId),
             ),
       ],
+      // Library visibility, read live: the resolver is cached per profile and
+      // must see a hide that lands after it was built. Server visibility is
+      // already closed by the `isServerVisible` guard above; this closes the
+      // other half, so a hidden library on a visible server cannot come back
+      // as a picker row.
+      hiddenLibraryKeysFor: () => hiddenLibraries.hiddenLibraryKeys,
       cache: ApiCache.forBackend(MediaBackend.plex),
     );
   }
