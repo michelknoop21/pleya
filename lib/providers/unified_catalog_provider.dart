@@ -260,6 +260,13 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
     _libraries.removeListener(_onDependenciesChanged);
     _hiddenLibraries.removeListener(_onDependenciesChanged);
     _multiServer.removeOnlineServersListener(_onOnlineServersChanged);
+    // E12/hoofdstuk 22: a profile switch "annuleert requests" — this
+    // provider is profile-scoped (its `KeyedSubtree` disposes it on switch),
+    // so a page fetch still in flight for the profile the user just left
+    // must stop rather than keep running against a server nobody is
+    // watching anymore. Aborting is enough; nothing here can land in this
+    // object's state again once it is disposed.
+    _service?.cancelInFlight();
     super.dispose();
   }
 }

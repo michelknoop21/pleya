@@ -30,6 +30,21 @@ class _FakeLibraryClient implements MediaServerClient {
   final Map<String, Completer<void>> gate = {};
   final List<({String libraryId, int offset, int limit})> calls = [];
 
+  /// E8: a lying/inconsistent `totalCount`, independent of what
+  /// [itemsByLibrary] actually holds — this is the field a real backend's
+  /// count can drift on while the concrete pages stay honest.
+  final Map<String, int Function(int callNumber)> totalCountOverride = {};
+  final Map<String, int> _callCount = {};
+
+  /// E8's other pathological case: a backend that answers with the exact
+  /// same page every time, ignoring the offset it was given.
+  final Set<String> repeatsFirstPageForever = {};
+  final Map<String, List<MediaItem>> _lastServedPage = {};
+
+  /// E12: the [AbortController] most recently handed to a call still in
+  /// flight, so a test can assert `cancelInFlight()` actually triggered it.
+  AbortController? lastAbortController;
+
   @override
   Future<LibraryPage<MediaItem>> fetchLibraryPagedContent(
     String libraryId, {
@@ -38,15 +53,27 @@ class _FakeLibraryClient implements MediaServerClient {
     AbortController? abort,
   }) async {
     calls.add((libraryId: libraryId, offset: query.offset, limit: query.limit));
+    lastAbortController = abort;
     final wait = gate.remove(libraryId);
     if (wait != null) await wait.future;
     final err = throwOnce.remove(libraryId);
     if (err != null) throw err;
 
     final all = itemsByLibrary[libraryId] ?? const <MediaItem>[];
-    final end = (query.offset + query.limit).clamp(0, all.length);
-    final slice = query.offset >= all.length ? const <MediaItem>[] : all.sublist(query.offset, end);
-    return LibraryPage<MediaItem>(items: slice, totalCount: all.length, offset: query.offset);
+    List<MediaItem> slice;
+    if (repeatsFirstPageForever.contains(libraryId) && _lastServedPage.containsKey(libraryId)) {
+      slice = _lastServedPage[libraryId]!;
+    } else {
+      final end = (query.offset + query.limit).clamp(0, all.length);
+      slice = query.offset >= all.length ? const <MediaItem>[] : all.sublist(query.offset, end);
+      if (repeatsFirstPageForever.contains(libraryId)) _lastServedPage[libraryId] = slice;
+    }
+
+    final callNumber = (_callCount[libraryId] ?? 0) + 1;
+    _callCount[libraryId] = callNumber;
+    final total = totalCountOverride[libraryId]?.call(callNumber) ?? all.length;
+
+    return LibraryPage<MediaItem>(items: slice, totalCount: total, offset: query.offset);
   }
 
   @override
@@ -57,17 +84,25 @@ class _FakeLibraryClient implements MediaServerClient {
       throw UnimplementedError('_FakeLibraryClient: ${invocation.memberName}');
 }
 
-MediaItem _movie(String id, {required String title, required String serverId, String? guid, int? addedAt, int? year}) =>
-    MediaItem(
-      id: id,
-      backend: MediaBackend.plex,
-      kind: MediaKind.movie,
-      title: title,
-      serverId: serverId,
-      guid: guid,
-      addedAt: addedAt,
-      year: year,
-    );
+MediaItem _movie(
+  String id, {
+  required String title,
+  required String serverId,
+  String? guid,
+  int? addedAt,
+  int? year,
+  int? lastViewedAt,
+}) => MediaItem(
+  id: id,
+  backend: MediaBackend.plex,
+  kind: MediaKind.movie,
+  title: title,
+  serverId: serverId,
+  guid: guid,
+  addedAt: addedAt,
+  year: year,
+  lastViewedAt: lastViewedAt,
+);
 
 CatalogLibrary _library(String serverId, String libraryId) => (
   serverId: ServerId(serverId),
@@ -437,6 +472,387 @@ void main() {
 
         final group = service.snapshot.groups.single;
         expect(group.watchState.representativeSourceKey, 's1:b1');
+      });
+    });
+
+    group('E12: cancelInFlight (hoofdstuk 22, profile switch)', () {
+      test('aborts every cursor\'s outstanding fetch', () async {
+        final gate = Completer<void>();
+        final client = _FakeLibraryClient(itemsByLibrary: {'A': [_movie('a1', title: 'Alpha', serverId: 's1')]})
+          ..gate['A'] = gate;
+
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A')],
+          clientFor: (_) => client,
+        );
+        final pending = service.loadMore(); // stuck on the gate
+
+        service.cancelInFlight();
+
+        expect(client.lastAbortController?.isAborted, isTrue);
+        gate.complete();
+        await pending;
+      });
+
+      test('is safe to call with nothing in flight', () async {
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: const [],
+          clientFor: (_) => null,
+        );
+
+        expect(service.cancelInFlight, returnsNormally);
+      });
+
+      test('does not change loadMore\'s outward exhaustion/error accounting', () async {
+        // cancelInFlight is a teardown-only call, not a second `_reset` — it
+        // must not, for example, bump the generation and quietly turn a
+        // legitimate response into a "superseded" no-op for the very call
+        // that is already resolving with the gate below.
+        final client = _FakeLibraryClient(itemsByLibrary: {'A': [_movie('a1', title: 'Alpha', serverId: 's1')]});
+
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A')],
+          clientFor: (_) => client,
+        );
+
+        service.cancelInFlight(); // nothing was in flight yet — must be a no-op
+        final snapshot = await service.loadMore();
+
+        expect(snapshot.groups, hasLength(1));
+      });
+    });
+
+    group('E5: a slow source does not block the fast ones (hoofdstuk 12.6)', () {
+      test('a fast library\'s items appear without waiting out a slow sibling', () async {
+        final fast = _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [_movie('a1', title: 'Alpha', serverId: 's1'), _movie('a2', title: 'Bravo', serverId: 's1')],
+          },
+        );
+        final slow = _FakeLibraryClient(itemsByLibrary: {'B': [_movie('b1', title: 'Charlie', serverId: 's2')]})
+          ..gate['B'] = Completer<void>(); // never released in this test — genuinely stuck
+
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A'), _library('s2', 'B')],
+          clientFor: (id) => id.value == 's1' ? fast : slow,
+          groupsPerPage: 20,
+          progressiveLoadingGrace: const Duration(milliseconds: 10),
+        );
+        addTearDown(() => slow.gate['B']?.complete());
+
+        final stopwatch = Stopwatch()..start();
+        final snapshot = await service.loadMore();
+        stopwatch.stop();
+
+        expect(
+          snapshot.groups.map((g) => g.representativeSource.item.title),
+          containsAll(['Alpha', 'Bravo']),
+          reason: 'the fast library\'s own two items must not wait on the stuck one',
+        );
+        expect(
+          stopwatch.elapsed,
+          lessThan(const Duration(seconds: 1)),
+          reason: 'bounded by progressiveLoadingGrace, not the slow fetch actually resolving',
+        );
+      });
+
+      test('the slow source is not abandoned — its answer merges in on a later call', () async {
+        final fast = _FakeLibraryClient(itemsByLibrary: {'A': [_movie('a1', title: 'Alpha', serverId: 's1')]});
+        final gate = Completer<void>();
+        final slow = _FakeLibraryClient(itemsByLibrary: {'B': [_movie('b1', title: 'Charlie', serverId: 's2')]})
+          ..gate['B'] = gate;
+
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A'), _library('s2', 'B')],
+          clientFor: (id) => id.value == 's1' ? fast : slow,
+          groupsPerPage: 20,
+          progressiveLoadingGrace: const Duration(milliseconds: 10),
+        );
+
+        final first = await service.loadMore();
+        expect(first.groups.map((g) => g.representativeSource.item.title), ['Alpha']);
+        expect(first.isComplete, isFalse, reason: 'B has not answered yet, so this is not the whole catalogue');
+
+        gate.complete();
+        // Give the still-running fetch a chance to actually land before the
+        // next loadMore() call looks for it.
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        final second = await service.loadMore();
+
+        expect(
+          second.groups.map((g) => g.representativeSource.item.title),
+          containsAll(['Alpha', 'Charlie']),
+          reason: 'B is in-place merged once it answers, with no extra fetch needed to notice it',
+        );
+        expect(second.isComplete, isTrue);
+      });
+
+      test('a cursor still in flight past the grace period is never asked for the same page twice', () async {
+        final gate = Completer<void>();
+        final slow = _FakeLibraryClient(itemsByLibrary: {'A': [_movie('a1', title: 'Alpha', serverId: 's1')]})
+          ..gate['A'] = gate;
+
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A')],
+          clientFor: (_) => slow,
+          groupsPerPage: 20,
+          progressiveLoadingGrace: const Duration(milliseconds: 10),
+        );
+
+        // Two rounds inside one loadMore() call both find A already in
+        // flight and not buffered — a naive re-check could fire a second,
+        // redundant request for the same page while the first is still out.
+        final result = await service.loadMore();
+        expect(result.groups, isEmpty);
+        expect(slow.calls, hasLength(1), reason: 'still in flight must exclude the cursor, not invite a duplicate ask');
+
+        gate.complete();
+      });
+    });
+
+    group('E10: a group\'s sort position follows the aggregate rule, not pop order', () {
+      // Hoofdstuk 12.4: "Toegevoegd: hoogste addedAt van deelnemende
+      // bronnen" / "Recent bekeken: meest recente geldige watch-state". Both
+      // duplicates are available in the same round here (no gating), so this
+      // is the case the k-way merge's own comparator decides directly: the
+      // position a group lands at is the position of whichever member the
+      // configured sort field ranks first, which is exactly the aggregate
+      // rule when both members are visible to the comparator at once.
+      test('addedAt descending: the group sorts on the higher of the two, not whichever server answered first', () async {
+        // Server A alone would sort Bravo before Alpha (its own addedAt is
+        // higher for Bravo); the duplicate on server B carries a materially
+        // higher addedAt for Alpha, so the merged Alpha card must still lead.
+        final serverA = _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [
+              _movie('a-bravo', title: 'Bravo', serverId: 's1', addedAt: 2000, guid: 'plex://movie/bravo'),
+              _movie('a-alpha', title: 'Alpha', serverId: 's1', addedAt: 1000, guid: 'plex://movie/alpha'),
+            ],
+          },
+        );
+        final serverB = _FakeLibraryClient(
+          itemsByLibrary: {
+            'B': [_movie('b-alpha', title: 'Alpha', serverId: 's2', addedAt: 5000, guid: 'plex://movie/alpha')],
+          },
+        );
+
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(
+            kind: MediaKind.movie,
+            sortField: UnifiedCatalogSortField.addedAt,
+            sortDirection: LibrarySortDirection.descending,
+          ),
+          libraries: [_library('s1', 'A'), _library('s2', 'B')],
+          clientFor: (id) => id.value == 's1' ? serverA : serverB, // both fetch in the same first round
+          pageSize: 50,
+          groupsPerPage: 20,
+        );
+
+        final snapshot = await service.loadMore();
+
+        expect(
+          snapshot.groups.map((g) => g.representativeSource.item.title),
+          ['Alpha', 'Bravo'],
+          reason: 'the duplicate\'s higher addedAt must win the position, not server A\'s own internal order',
+        );
+        expect(snapshot.groups.first.sources, hasLength(2));
+      });
+
+      test('recentlyWatched descending: the group sorts on the most recently watched of its sources', () async {
+        final serverA = _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [
+              _movie('a-bravo', title: 'Bravo', serverId: 's1', lastViewedAt: 5000, guid: 'plex://movie/bravo'),
+              _movie('a-alpha', title: 'Alpha', serverId: 's1', lastViewedAt: 1000, guid: 'plex://movie/alpha'),
+            ],
+          },
+        );
+        final serverB = _FakeLibraryClient(
+          itemsByLibrary: {
+            'B': [_movie('b-alpha', title: 'Alpha', serverId: 's2', lastViewedAt: 9000, guid: 'plex://movie/alpha')],
+          },
+        );
+
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(
+            kind: MediaKind.movie,
+            sortField: UnifiedCatalogSortField.recentlyWatched,
+            sortDirection: LibrarySortDirection.descending,
+          ),
+          libraries: [_library('s1', 'A'), _library('s2', 'B')],
+          clientFor: (id) => id.value == 's1' ? serverA : serverB,
+          pageSize: 50,
+          groupsPerPage: 20,
+        );
+
+        final snapshot = await service.loadMore();
+
+        expect(snapshot.groups.map((g) => g.representativeSource.item.title), ['Alpha', 'Bravo']);
+      });
+
+      test('a tie on the sort field itself falls back to the stable group id', () async {
+        // 12.4's own fallback tie-break. Two genuinely different titles that
+        // happen to share an addedAt must still land in a deterministic,
+        // repeatable order rather than whichever the merge race favoured.
+        final client = _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [
+              _movie('a-zulu', title: 'Zulu', serverId: 's1', addedAt: 1000),
+              _movie('a-alpha', title: 'Alpha', serverId: 's1', addedAt: 1000),
+            ],
+          },
+        );
+
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie, sortDirection: LibrarySortDirection.descending),
+          libraries: [_library('s1', 'A')],
+          clientFor: (_) => client,
+          pageSize: 50,
+          groupsPerPage: 20,
+        );
+
+        final first = (await service.loadMore()).groups.map((g) => g.groupId).toList();
+
+        final again = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie, sortDirection: LibrarySortDirection.descending),
+          libraries: [_library('s1', 'A')],
+          clientFor: (_) => client,
+          pageSize: 50,
+          groupsPerPage: 20,
+        );
+        final second = (await again.loadMore()).groups.map((g) => g.groupId).toList();
+
+        expect(second, first, reason: 'a genuine tie must resolve the same way every time');
+      });
+    });
+
+    group('E8: totalCount is advisory, never sole exhaustion authority', () {
+      test('a total that shrinks mid-session never drops a not-yet-fetched item', () async {
+        // 5 real items over pageSize 2. The reported total starts honest and
+        // then shrinks to 3 on the second call — a raw `offset >= total`
+        // check would call this exhausted after only 4 items.
+        final client = _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [for (var i = 0; i < 5; i++) _movie('a$i', title: 'Film $i', serverId: 's1')],
+          },
+        )..totalCountOverride['A'] = (call) => call == 1 ? 5 : 3;
+
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A')],
+          clientFor: (_) => client,
+          pageSize: 2,
+          groupsPerPage: 20,
+        );
+
+        await service.loadMore();
+
+        expect(service.snapshot.groups.map((g) => g.representativeSource.item.id), ['a0', 'a1', 'a2', 'a3', 'a4']);
+        expect(service.isComplete, isTrue);
+      });
+
+      test('a total that grows mid-session still terminates on the short final page', () async {
+        // The total starts at 2 (as if that were the whole library) and
+        // grows to 5 once the caller has already fetched further — the
+        // short/empty-page signal must be what actually ends this, not a
+        // total that happened to look satisfied early.
+        final client = _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [for (var i = 0; i < 5; i++) _movie('a$i', title: 'Film $i', serverId: 's1')],
+          },
+        )..totalCountOverride['A'] = (call) => call == 1 ? 2 : 5;
+
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A')],
+          clientFor: (_) => client,
+          pageSize: 2,
+          groupsPerPage: 20,
+        );
+
+        await service.loadMore();
+
+        expect(service.snapshot.groups, hasLength(5));
+        expect(service.isComplete, isTrue);
+      });
+
+      test('an empty final page ends the cursor regardless of what the total claims', () async {
+        final client = _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [_movie('a0', title: 'Alpha', serverId: 's1'), _movie('a1', title: 'Bravo', serverId: 's1')],
+          },
+          // A total that overclaims forever — only the empty page can end this.
+        )..totalCountOverride['A'] = (_) => 999;
+
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A')],
+          clientFor: (_) => client,
+          pageSize: 2,
+          groupsPerPage: 20,
+        );
+
+        await service.loadMore();
+
+        expect(service.isComplete, isTrue);
+        expect(service.snapshot.groups, hasLength(2));
+      });
+
+      test('a repeated identical page marks the cursor exhausted instead of looping', () async {
+        final client = _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [_movie('a0', title: 'Alpha', serverId: 's1'), _movie('a1', title: 'Bravo', serverId: 's1')],
+          },
+        )
+          ..repeatsFirstPageForever.add('A')
+          ..totalCountOverride['A'] = (_) => 999; // never honest, never short either
+
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A')],
+          clientFor: (_) => client,
+          pageSize: 2,
+          groupsPerPage: 20,
+          maxRawItemsPerLoadMore: 40,
+        );
+
+        await service.loadMore();
+
+        expect(service.isComplete, isTrue, reason: 'a repeating page must not spin forever');
+        expect(service.snapshot.groups, hasLength(2), reason: 'the repeated items are the same two, not duplicated');
+        expect(client.calls.length, lessThan(5), reason: 'detected on the very next fetch, not after many retries');
+      });
+
+      test('no premature exhaustion: a genuinely large library still delivers every page', () async {
+        // The negative control for all of the above: normal offset paging,
+        // an honest total, must still terminate correctly and deliver
+        // everything — none of the new guards may fire on ordinary data.
+        final client = _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [for (var i = 0; i < 11; i++) _movie('a$i', title: 'Film $i', serverId: 's1')],
+          },
+        );
+
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A')],
+          clientFor: (_) => client,
+          pageSize: 3,
+          groupsPerPage: 20,
+        );
+
+        while (!service.isComplete) {
+          await service.loadMore();
+        }
+
+        expect(service.snapshot.groups, hasLength(11));
+        expect(service.snapshot.groups.map((g) => g.representativeSource.item.id), [for (var i = 0; i < 11; i++) 'a$i']);
       });
     });
 

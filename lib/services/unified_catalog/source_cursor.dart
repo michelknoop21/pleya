@@ -84,15 +84,38 @@ class UnifiedSourceCursor {
   /// page it most recently fetched.
   final List<MediaItem> buffer = [];
 
-  /// True once this library has reported every item it has — [offset] has
-  /// reached its last known [sourceTotal]. A cursor never fetches again once
-  /// this is set.
+  /// True once this library has reported every item it has. A cursor never
+  /// fetches again once this is set.
+  ///
+  /// Decided from the concrete page protocol (E8) — an empty page, a page
+  /// shorter than requested, or [lastFetchedItemKeys] catching a stalled
+  /// offset — never from [sourceTotal] alone.
   bool exhausted = false;
 
   /// The library's own reported total, once a page has answered. Null before
   /// the first successful fetch — hoofdstuk 12's DoD forbids claiming an
   /// exact catalog total before every cursor has reported one.
+  ///
+  /// **Advisory only (E8).** A backend's `totalCount` can rise, fall or be
+  /// briefly inconsistent while a library changes underneath the merge —
+  /// nothing here treats it as ground truth. It still feeds progress copy and
+  /// diagnostics; [exhausted] is decided from the concrete page protocol
+  /// instead (see [UnifiedCatalogService]'s own fetch loop): an empty page, a
+  /// short page, or [lastFetchedItemKeys] catching a page that never actually
+  /// advanced.
   int? sourceTotal;
+
+  /// The `globalKey`s [UnifiedCatalogService] fetched on this cursor's most
+  /// recent successful page, in order — E8's no-progress guard.
+  ///
+  /// Offset paging assumes the server honours the offset it was given.
+  /// `sourceTotal` lying was one way that assumption could go wrong;
+  /// `offset` being silently ignored is the other, and it does not show up as
+  /// an empty or short page — the backend keeps answering with a full page,
+  /// just always the *same* one. Comparing this against the next page's own
+  /// keys is what turns that into a page nobody can silently loop on forever,
+  /// without needing `sourceTotal` at all.
+  List<String>? lastFetchedItemKeys;
 
   /// The most recent fetch failure, if any. Cleared on the next successful
   /// fetch. A cursor with a [lastError] is retried on the *next*

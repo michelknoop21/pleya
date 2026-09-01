@@ -5,6 +5,8 @@
 /// consumer has opted in.
 library;
 
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/library_query.dart';
@@ -55,6 +57,9 @@ class _FakeLibraryClient implements MediaServerClient {
     AbortController? abort,
   }) async {
     fetchCalls++;
+    lastAbortController = abort;
+    final wait = gate;
+    if (wait != null) await wait.future;
     final all = itemsByLibrary[libraryId] ?? const <MediaItem>[];
     final end = (query.offset + query.limit).clamp(0, all.length);
     final slice = query.offset >= all.length ? const <MediaItem>[] : all.sublist(query.offset, end);
@@ -69,6 +74,11 @@ class _FakeLibraryClient implements MediaServerClient {
 
   @override
   Future<MediaItem?> fetchItem(String id) async => fetchItemResult?.call(id);
+
+  /// E12: gates the *next* [fetchLibraryPagedContent] call so a test can
+  /// dispose the provider while a request is still outstanding.
+  Completer<void>? gate;
+  AbortController? lastAbortController;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -237,6 +247,49 @@ void main() {
       provider.snapshot.groups.map((g) => g.representativeSource.item.title),
       containsAll(['Alien', 'Dune', 'Silo']),
     );
+  });
+
+  group('E12: dispose cancels a request still in flight (hoofdstuk 22)', () {
+    // A separate scoped provider in every test here, exactly like the
+    // existing "dispose removes dependency listeners" test below — the
+    // shared `tearDown` above always disposes `provider` once for every
+    // test in this file, so a test that means to dispose *and inspect* the
+    // effects needs its own instance to avoid double-disposing the shared
+    // one (Flutter's ChangeNotifier asserts on that in debug mode).
+    test('a fetch outstanding at dispose is aborted', () async {
+      final scoped = UnifiedCatalogProvider(
+        multiServer: multiServer,
+        libraries: libraries,
+        hiddenLibraries: hiddenLibraries,
+        kind: MediaKind.movie,
+      );
+      client.gate = Completer<void>();
+      final pending = scoped.ensureStarted();
+      // Let the fetch actually start (past the async SourcePreferenceStore
+      // read `_restart` does before touching the service) and hit the gate,
+      // before disposing while it is genuinely in flight.
+      while (client.fetchCalls == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      scoped.dispose();
+
+      expect(client.lastAbortController?.isAborted, isTrue);
+      client.gate!.complete();
+      await pending;
+    });
+
+    test('disposing with nothing in flight is harmless', () async {
+      final scoped = UnifiedCatalogProvider(
+        multiServer: multiServer,
+        libraries: libraries,
+        hiddenLibraries: hiddenLibraries,
+        kind: MediaKind.movie,
+      );
+      await scoped.ensureStarted();
+
+      expect(scoped.dispose, returnsNormally);
+    });
   });
 
   group('I19: refreshItem re-reads one source in place', () {
