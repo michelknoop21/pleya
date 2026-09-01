@@ -97,6 +97,7 @@ import '../widgets/pressable.dart';
 import 'libraries/state_messages.dart';
 import '../widgets/state_view.dart';
 import '../widgets/overlay_sheet.dart';
+import '../widgets/overlay_sheet_geometry.dart';
 import '../widgets/placeholder_container.dart';
 import '../mixins/watch_state_aware.dart';
 import '../mixins/deletion_aware.dart';
@@ -114,6 +115,7 @@ import '../widgets/focusable_tab_chip.dart';
 import '../widgets/hub_section.dart';
 import '../widgets/ios_status_bar_tap_scroll_to_top.dart';
 import '../widgets/loading_indicator_box.dart';
+import '../widgets/tv/tv_media_source_picker.dart';
 import '../widgets/tv_browse_rail.dart';
 import '../widgets/tv_spotlight_background.dart';
 import '../utils/error_message_utils.dart';
@@ -251,6 +253,13 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   MediaWatchStats? _watchStats;
   MediaItem? _onDeckEpisode;
   bool _isLoadingMetadata = true;
+
+  /// F19/A14: the metadata fetch itself threw (network/server error), as
+  /// distinct from succeeding with a fallback. [_loadFullMetadata]'s "no
+  /// client" branch (the server is simply gone) is not this — that keeps its
+  /// own existing silent-fallback behaviour, hoofdstuk 21.8's territory, not
+  /// 21.7's "detail load faalt voor die source".
+  bool _metadataLoadFailed = false;
   List<MediaItem>? _extras;
   List<MediaHub> _relatedHubs = [];
   List<GlobalKey<HubSectionState>> _relatedHubKeys = [];
@@ -265,6 +274,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0);
   bool _suppressBackAfterPop = false;
   final FocusNode _loadingFocusNode = FocusNode(debugLabel: 'MediaDetailLoading');
+  final FocusNode _loadFailedFocusNode = FocusNode(debugLabel: 'MediaDetailLoadFailed');
   bool _tvDetailRevealed = false;
   bool _tvDetailRevealScheduled = false;
   bool _hasLoadedSeasons = false;
@@ -807,6 +817,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     WidgetsBinding.instance.removeObserver(this);
     _routeObserver?.unsubscribe(this);
     _loadingFocusNode.dispose();
+    _loadFailedFocusNode.dispose();
     _scrollController.dispose();
     _scrollOffset.dispose();
     _extrasScrollController.dispose();
@@ -1311,6 +1322,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   Future<void> _loadFullMetadata() async {
     setState(() {
       _isLoadingMetadata = true;
+      _metadataLoadFailed = false;
       _hasLoadedExtras = false;
       _hasLoadedRelatedHubs = false;
     });
@@ -1414,10 +1426,15 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       setState(() {
         _fullMetadata = _metadata;
         _isLoadingMetadata = false;
+        // F19/A14, hoofdstuk 21.7: the fallback above stays exactly as it
+        // was — "bestaande foutafhandeling" — this flag only adds the
+        // explicit recovery offer on top of it, when there is one to offer.
+        _metadataLoadFailed = true;
         _hasLoadedExtras = true;
         _hasLoadedRelatedHubs = true;
       });
       _closeSelectTrace(note: 'fetch-failed');
+      _offerAlternativeSourceAfterDetailLoadFailure();
 
       if (_metadata.isShow) {
         unawaited(_loadSeasons());
@@ -1427,6 +1444,40 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         unawaited(_fetchAllEpisodes());
       }
     }
+  }
+
+  /// F19/A14: "detail load faalt voor die source, en er bestaat minimaal één
+  /// andere usable source in dezelfde group" → explicit "Andere bron kiezen",
+  /// via [widget.onChangeSource] — the exact hoofdstuk 15 "[ Wijzigen ]"
+  /// callback the picker already reaches through, never a silent switch and
+  /// never a second picker of our own.
+  ///
+  /// [widget.onChangeSource] is only ever non-null when this route was opened
+  /// through the unified TV activation path with more than one source
+  /// (`UnifiedMediaRouteContext.hasAlternativeSources`) — the same gate
+  /// hoofdstuk 15's always-visible source chip already uses. No alternative
+  /// means nothing to offer here; hoofdstuk 21.7 leaves that case to the
+  /// existing offline/auth/not-found handling, unchanged by this method.
+  void _offerAlternativeSourceAfterDetailLoadFailure() {
+    final onChangeSource = widget.onChangeSource;
+    if (onChangeSource == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_metadataLoadFailed) return;
+      unawaited(
+        OverlaySheetController.showAdaptive<void>(
+          context,
+          presentation: OverlaySheetPresentation.panel,
+          builder: (sheetContext) => TvPlaybackFailureAlternative(
+            title: t.sourcePicker.detailLoadFailedTitle,
+            onChooseAnother: () {
+              OverlaySheetController.closeAdaptive(sheetContext, null);
+              unawaited(onChangeSource(context));
+            },
+            onClose: () => OverlaySheetController.closeAdaptive(sheetContext, null),
+          ),
+        ),
+      );
+    });
   }
 
   Future<void> _loadSeasons() async {

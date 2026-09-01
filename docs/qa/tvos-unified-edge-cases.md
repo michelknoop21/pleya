@@ -94,7 +94,11 @@ niet geraakt".
 
 **Uitkomst over de 83 open rijen: 4 hardware, 2 debt, 1 onopgelost, 76 fase-9-owned.**
 
-### Buiten fase 9 (7 rijen)
+**F19 is inmiddels opgelost.** Was klasse C (onopgelost productbesluit) tot de reconciliation van
+1 september 2026 hoofdstuk 21.7 als authority vaststelde — zie de noot onder register F en de rij
+zelf. Geen aparte klasse meer nodig.
+
+### Buiten fase 9 (6 rijen)
 
 | # | Klasse | Reden |
 | --- | --- | --- |
@@ -104,7 +108,6 @@ niet geraakt".
 | J9 | A | Of de 160 ms-transitie onder Reduce Motion kort genoeg is, idem. |
 | I21 | B | Geregistreerde fase-5-debt: 7.4 en 10.6 noemen de Play/Pause-snelkoppeling "mag", en de zichtbare knop blijft de primaire route. Vervalt als fase-9-code het catalogusheaderpad wijzigt. |
 | I24 | B | Geregistreerde integration-test debt: schakel 2 loopt door `MainScreen`, dat geen enkele test monteert. Geen productiebug (statisch nagelopen). Vervalt als fase-9-code `_focusSidebar` of de nav-nodes raakt. |
-| F19 | C | Hoofdstuk 15 legt geen gedrag vast voor een falende detailroute. Niet zelf invullen. |
 
 ### Fase-9-owned (76 rijen), met het werkpakket dat ze sluit
 
@@ -264,7 +267,7 @@ Visueel bewijs: `test/goldens/tv_shell_auth_attention.png` en `tv_shell_auth_my_
 | A11 | Server komt laat online | test/providers/unified_catalog_provider_test.dart (`a late server coming online reconciles the eligible library set`) | covered |
 | A12 | Server valt weg tijdens paging | | open |
 | A13 | Server valt weg in source picker | test/services/unified_catalog/unified_activation_coordinator_test.dart (`focus after a source stops being usable`, vijf tests); test/widgets/tv/tv_media_source_picker_test.dart (`F11: the focused source going offline moves focus to the nearest usable row`) | covered |
-| A14 | Server valt weg tijdens detail load | | open |
+| A14 | Server valt weg tijdens detail load | test/screens/media_detail_screen_test.dart (groep `F19/A14: detail load failure offers an alternative source`, vijf tests) — deelt precies dezelfde bindende regel als F19, hoofdstuk 21.7 | covered |
 | A15 | Server valt weg tijdens playerstart | | open |
 | A16 | Server wordt verwijderd | | open |
 | A17 | Server wordt hernoemd | | open |
@@ -442,7 +445,7 @@ en `test/services/unified_grouping_service_test.dart`).
 | F16 | Last-used source offline | ACT (`F16: an offline remembered source falls back…`), PREF en PICK (`F16: an offline remembered source is not focused and is not marked`) | covered |
 | F17 | Cancel | test/diagnostics/select_trace_test.dart (`a picker cancel that opened nothing is ordinary, not an anomaly`) en PICK (`Menu closes the picker, activates nothing, and restores the exact CTA`) | covered |
 | F18 | Playerstart faalt | ACT (`F18: playback failure offers an alternative but never takes it`, vijf tests) en PICK (`offers a choice and a way out, and takes neither by itself`) plus GOLD (`playback failure alternative`) | covered |
-| F19 | Detailroute faalt | gedrag nog niet vastgelegd in hoofdstuk 15 — niet zelf ingevuld, zie de regel bovenaan dit bestand | open |
+| F19 | Detailroute faalt | test/screens/media_detail_screen_test.dart (groep `F19/A14: detail load failure offers an alternative source`, vijf tests: expliciete 'Andere bron kiezen' bij alternatieven, sluiten laat de pagina bruikbaar, geen paneel zonder alternatief, geen paneel bij één bron, geen paneel bij een geslaagde load) — hoofdstuk 21.7 is nu authority (zie de instructie boven dit bestand). `_loadFullMetadata`'s catch-tak viel al stil terug op de meegegeven metadata (`bestaande foutafhandeling`, ongewijzigd); nieuw is `_offerAlternativeSourceAfterDetailLoadFailure`, die alleen vuurt wanneer `widget.onChangeSource` niet-null is — dezelfde poort als hoofdstuk 15's altijd-zichtbare bronregel — en `TvPlaybackFailureAlternative` hergebruikt (nu met een parametriseerbare titel) in plaats van een tweede paneel te bouwen | covered |
 | F20 | Terugkeer behoudt focus | PICK (`Menu closes the picker, activates nothing, and restores the exact CTA`) — de overlay geeft de focus terug aan exact de node die hem had | covered |
 | F21 | Voorkeursserver kiest zelf (14.8a) | ACT (`preferred server (profile default)` elf tests + `the preferred server is global to the profile, not per title` acht tests, incl. de A-t/m-G-tabel uit 14.8a), test/services/unified_catalog/preferred_server_store_test.dart (elf tests, incl. de sleutelvorm) en PICK (`the preferred server can be set from here`, `explicit source selection bypasses the global preference`) | covered |
 

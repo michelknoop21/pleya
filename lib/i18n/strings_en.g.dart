@@ -5225,6 +5225,9 @@ class TranslationsSourcePickerEn {
 	/// en: 'This source could not be played.'
 	String get playbackFailedTitle => 'This source could not be played.';
 
+	/// en: 'This title could not be loaded.'
+	String get detailLoadFailedTitle => 'This title could not be loaded.';
+
 	/// en: 'Choose another source'
 	String get chooseAnotherSource => 'Choose another source';
 
@@ -8091,6 +8094,7 @@ extension on Translations {
 			'sourcePicker.sourceLabel' => ({required Object source}) => 'Source: ${source}',
 			'sourcePicker.change' => 'Change',
 			'sourcePicker.playbackFailedTitle' => 'This source could not be played.',
+			'sourcePicker.detailLoadFailedTitle' => 'This title could not be loaded.',
 			'sourcePicker.chooseAnotherSource' => 'Choose another source',
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Source ${index} of ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Preferred server',

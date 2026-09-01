@@ -557,10 +557,21 @@ class _Footer extends StatelessWidget {
 /// progress kan hebben". Nothing here switches source; [onChooseAnother] hands
 /// the decision back to the user by reopening the picker.
 class TvPlaybackFailureAlternative extends StatelessWidget {
-  const TvPlaybackFailureAlternative({super.key, required this.onChooseAnother, required this.onClose});
+  const TvPlaybackFailureAlternative({
+    super.key,
+    required this.onChooseAnother,
+    required this.onClose,
+    String? title,
+  }) : _title = title;
 
   final VoidCallback onChooseAnother;
   final VoidCallback onClose;
+
+  /// Defaults to hoofdstuk 14.6's playback-failure wording. F19/A14 reuse
+  /// this exact panel for a failed *detail* load with a different title —
+  /// same shape, same two actions, because the recovery is identical:
+  /// another source, or give up and close.
+  final String? _title;
 
   @override
   Widget build(BuildContext context) {
@@ -598,7 +609,7 @@ class TvPlaybackFailureAlternative extends StatelessWidget {
                 SizedBox(width: 14 * scale),
                 Expanded(
                   child: Text(
-                    t.sourcePicker.playbackFailedTitle,
+                    _title ?? t.sourcePicker.playbackFailedTitle,
                     style: TextStyle(
                       color: mono.text,
                       fontSize: TvSourcePickerLayout.titleFontSize * scale,
