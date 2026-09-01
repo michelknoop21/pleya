@@ -536,6 +536,72 @@ void main() {
       expect(row.groups, hasLength(2));
     });
 
+    group('D9: absolute vs season/episode numbering', () {
+      // Pleya builds no absolute-numbering translator (hoofdstuk 11.8's own
+      // binding text, restated by fase 9): the ordinal each backend reports
+      // is compared literally, never converted between absolute, aired or
+      // DVD numbering. Without a strong id a genuine mismatch is therefore
+      // read as two different episodes — false negative over false merge —
+      // and a strong id overrides it regardless, because that is real
+      // identity evidence, not a numbering guess.
+      test('the same episode numbered differently on two servers stays two cards without a strong id', () async {
+        // The classic absolute-numbering collision: server A reports this as
+        // S02E04 (aired order); server B reports the identical file as
+        // "episode 24" with no season split (an absolute-numbered library).
+        // Neither side carries a guid or an external id here, so there is
+        // nothing but the ordinal to go on — and it disagrees.
+        final onDeck = [
+          _episode('a-e4', serverId: 'a', season: 2, episode: 4),
+          _episode('b-e24', serverId: 'b', season: 1, episode: 24, serverName: 'Absolute Numbered Server'),
+        ];
+
+        final row = await _service().projectContinueWatching(onDeck, title: 'Continue Watching');
+
+        expect(row.groups, hasLength(2), reason: 'no translation is attempted, so a real mismatch reads as two rows');
+      });
+
+      test('a shared strong episode guid still merges despite the numbering disagreeing', () async {
+        // Same shape, but now both sides agree on the one thing that is
+        // real identity evidence: the concrete episode's own guid. D3's
+        // rule — a strong id is authoritative — holds even though the
+        // ordinals it is attached to disagree.
+        final onDeck = [
+          _episode('a-e4', serverId: 'a', season: 2, episode: 4, guid: 'plex://episode/5d9c08'),
+          _episode(
+            'b-e24',
+            serverId: 'b',
+            season: 1,
+            episode: 24,
+            guid: 'plex://episode/5d9c08',
+            serverName: 'Absolute Numbered Server',
+          ),
+        ];
+
+        final row = await _service().projectContinueWatching(onDeck, title: 'Continue Watching');
+
+        expect(row.groups, hasLength(1));
+        expect(row.groups.single.sources.map((s) => s.item.id), ['a-e4', 'b-e24']);
+      });
+
+      test('a shared series-wide id narrowed by disagreeing ordinals does not merge either', () async {
+        // The weaker D4 path (series id + ordinal) is exactly as strict:
+        // both sides resolve the same series tmdb, but the ordinal the id
+        // gets narrowed by differs, so the resulting tokens are for two
+        // different buckets and never even compete to merge.
+        final onDeck = [
+          _episode('a-e4', serverId: 'a', season: 2, episode: 4),
+          _episode('b-e24', serverId: 'b', season: 1, episode: 24, serverName: 'Absolute Numbered Server'),
+        ];
+        final service = _service(
+          ids: {'a:show-1': const ExternalIds(tmdb: 95396), 'b:show-1': const ExternalIds(tmdb: 95396)},
+        );
+
+        final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
+
+        expect(row.groups, hasLength(2));
+      });
+    });
+
     test('F: distinct episodes with no external ids at all stay distinct', () async {
       final onDeck = [
         _episode('a-e4', serverId: 'a', season: 2, episode: 4),
