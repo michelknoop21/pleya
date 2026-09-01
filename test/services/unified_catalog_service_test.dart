@@ -12,9 +12,11 @@ import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_library.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/services/unified_catalog/catalog_service.dart';
 import 'package:pleya/services/unified_catalog/source_cursor.dart';
+import 'package:pleya/services/unified_catalog/unified_catalog_snapshot.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_query.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
@@ -475,6 +477,97 @@ void main() {
       });
     });
 
+    group('B6: a mixed library splits correctly by catalog', () {
+      // This fake, unlike the plain _FakeLibraryClient above, actually
+      // narrows by query.kind — mimicking what PlexLibraryQueryTranslator's
+      // `type=` and JellyfinLibraryQueryTranslator's `IncludeItemTypes`
+      // already do server-side (both separately tested in
+      // library_query_translator_test.dart). The point proven here is the
+      // seam: eligibleCatalogLibraries() admits the mixed library, and the
+      // service's per-query kind then does the real per-item split, so one
+      // physical library correctly becomes zero, one or two logical rows
+      // depending which catalog is asking.
+      test('a movie and a show in one mixed library each surface under their own catalog only', () async {
+        final movie = _movie('m1', title: 'Alpha', serverId: 's1');
+        final show = MediaItem(
+          id: 's1',
+          backend: MediaBackend.plex,
+          kind: MediaKind.show,
+          title: 'Bravo',
+          serverId: 's1',
+        );
+        final client = _KindFilteringLibraryClient(itemsByLibrary: {
+          'mixed': [movie, show],
+        });
+        final eligibleForFilms = eligibleCatalogLibraries(
+          libraries: [
+            MediaLibrary(id: 'mixed', backend: MediaBackend.plex, title: 'Mixed', kind: MediaKind.unknown, serverId: 's1'),
+          ],
+          kind: MediaKind.movie,
+          isServerVisible: (_) => true,
+          hiddenLibraryKeys: const {},
+        );
+        final eligibleForSeries = eligibleCatalogLibraries(
+          libraries: [
+            MediaLibrary(id: 'mixed', backend: MediaBackend.plex, title: 'Mixed', kind: MediaKind.unknown, serverId: 's1'),
+          ],
+          kind: MediaKind.show,
+          isServerVisible: (_) => true,
+          hiddenLibraryKeys: const {},
+        );
+
+        final filmsService = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: eligibleForFilms,
+          clientFor: (_) => client,
+        );
+        final seriesService = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.show),
+          libraries: eligibleForSeries,
+          clientFor: (_) => client,
+        );
+
+        final filmsSnapshot = await filmsService.loadMore();
+        final seriesSnapshot = await seriesService.loadMore();
+
+        expect(filmsSnapshot.groups.map((g) => g.representativeSource.item.title), ['Alpha']);
+        expect(seriesSnapshot.groups.map((g) => g.representativeSource.item.title), ['Bravo']);
+      });
+
+      test('a library holding neither kind answers empty for both, rather than guessing', () {
+        final client = _KindFilteringLibraryClient(
+          itemsByLibrary: {
+            'mixed': [
+              MediaItem(id: 'p1', backend: MediaBackend.plex, kind: MediaKind.photo, title: 'A Photo', serverId: 's1'),
+            ],
+          },
+        );
+
+        Future<UnifiedCatalogSnapshot> snapshotFor(MediaKind kind) {
+          final eligible = eligibleCatalogLibraries(
+            libraries: [
+              MediaLibrary(id: 'mixed', backend: MediaBackend.plex, title: 'Mixed', kind: MediaKind.unknown, serverId: 's1'),
+            ],
+            kind: kind,
+            isServerVisible: (_) => true,
+            hiddenLibraryKeys: const {},
+          );
+          return UnifiedCatalogService(
+            query: UnifiedCatalogQuery(kind: kind),
+            libraries: eligible,
+            clientFor: (_) => client,
+          ).loadMore();
+        }
+
+        expect(
+          Future.wait([snapshotFor(MediaKind.movie), snapshotFor(MediaKind.show)]).then(
+            (snapshots) => snapshots.every((s) => s.groups.isEmpty),
+          ),
+          completion(isTrue),
+        );
+      });
+    });
+
     group('E12: cancelInFlight (hoofdstuk 22, profile switch)', () {
       test('aborts every cursor\'s outstanding fetch', () async {
         final gate = Completer<void>();
@@ -892,4 +985,37 @@ void main() {
       expect(service.query.kind, MediaKind.show);
     });
   });
+}
+
+
+/// A fake that actually narrows its answer by `query.kind`, unlike
+/// `_FakeLibraryClient` above — the shape a mixed library's own server-side
+/// filter (Plex `type=`, Jellyfin `IncludeItemTypes`) produces. Only the
+/// per-library item pool and the kind filter matter for B6's tests; paging,
+/// gating and error injection are `_FakeLibraryClient`'s job.
+class _KindFilteringLibraryClient implements MediaServerClient {
+  _KindFilteringLibraryClient({this.itemsByLibrary = const {}});
+
+  final Map<String, List<MediaItem>> itemsByLibrary;
+
+  @override
+  Future<LibraryPage<MediaItem>> fetchLibraryPagedContent(
+    String libraryId, {
+    required LibraryQuery query,
+    MediaKind? libraryKind,
+    AbortController? abort,
+  }) async {
+    final all = (itemsByLibrary[libraryId] ?? const <MediaItem>[])
+        .where((item) => query.kind == null || item.kind == query.kind)
+        .toList();
+    final end = (query.offset + query.limit).clamp(0, all.length);
+    final slice = query.offset >= all.length ? const <MediaItem>[] : all.sublist(query.offset, end);
+    return LibraryPage<MediaItem>(items: slice, totalCount: all.length, offset: query.offset);
+  }
+
+  @override
+  Future<ExternalIds> fetchExternalIds(String itemId) async => const ExternalIds();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

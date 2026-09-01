@@ -33,6 +33,77 @@ void main() {
       expect(result.map((l) => l.libraryId), ['movies']);
     });
 
+    // B6: a mixed/unknown-kind library has no single global MediaKind, so it
+    // may never be excluded from a catalog by one — the per-request server
+    // filter (Plex `type=`, Jellyfin `IncludeItemTypes`) does the real,
+    // item-level classification once the library is admitted.
+    group('B6: mixed libraries', () {
+      test('a library reporting MediaKind.unknown is eligible for the Films query', () {
+        final result = eligibleCatalogLibraries(
+          libraries: [_library('mixed', serverId: 's1', kind: MediaKind.unknown)],
+          kind: MediaKind.movie,
+          isServerVisible: (_) => true,
+          hiddenLibraryKeys: const {},
+        );
+
+        expect(result.map((l) => l.libraryId), ['mixed']);
+      });
+
+      test('the same mixed library is also eligible for the Series query', () {
+        final result = eligibleCatalogLibraries(
+          libraries: [_library('mixed', serverId: 's1', kind: MediaKind.unknown)],
+          kind: MediaKind.show,
+          isServerVisible: (_) => true,
+          hiddenLibraryKeys: const {},
+        );
+
+        expect(result.map((l) => l.libraryId), ['mixed']);
+      });
+
+      test('a concrete non-matching kind is still excluded — only unknown gets this treatment', () {
+        // The negative control: B6 is not "widen every query to every
+        // library". A music library reporting `artist` has a real, known
+        // kind, and that kind is not movie — excluding it is correct.
+        final result = eligibleCatalogLibraries(
+          libraries: [_library('music', serverId: 's1', kind: MediaKind.artist)],
+          kind: MediaKind.movie,
+          isServerVisible: (_) => true,
+          hiddenLibraryKeys: const {},
+        );
+
+        expect(result, isEmpty);
+      });
+
+      test('a mixed library still respects server and library visibility', () {
+        final result = eligibleCatalogLibraries(
+          libraries: [
+            _library('mixed-hidden-server', serverId: 'hidden', kind: MediaKind.unknown),
+            _library('mixed-visible', serverId: 'visible', kind: MediaKind.unknown),
+          ],
+          kind: MediaKind.movie,
+          isServerVisible: (id) => id.value == 'visible',
+          hiddenLibraryKeys: const {},
+        );
+
+        expect(result.map((l) => l.libraryId), ['mixed-visible']);
+      });
+
+      test('a movie library and a mixed library both count for the Films query', () {
+        final result = eligibleCatalogLibraries(
+          libraries: [
+            _library('movies', serverId: 's1', kind: MediaKind.movie),
+            _library('mixed', serverId: 's1', kind: MediaKind.unknown),
+            _library('shows', serverId: 's1', kind: MediaKind.show),
+          ],
+          kind: MediaKind.movie,
+          isServerVisible: (_) => true,
+          hiddenLibraryKeys: const {},
+        );
+
+        expect(result.map((l) => l.libraryId), ['movies', 'mixed']);
+      });
+    });
+
     test('excludes a library on a server the active profile has hidden', () {
       final result = eligibleCatalogLibraries(
         libraries: [

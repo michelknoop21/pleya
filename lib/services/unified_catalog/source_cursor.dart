@@ -37,6 +37,23 @@ typedef CatalogLibrary = ({
 /// [CatalogLibrary] — hoofdstuk 31 rule 13 forbids counting a hidden library
 /// at all, not just hiding it after the fact.
 ///
+/// **B6: a mixed library has no single global [MediaKind], so it may not be
+/// excluded from either catalog by one.** [MediaLibrary.kind] reads
+/// [MediaKind.unknown] for exactly this case — Jellyfin's own "Mixed
+/// content" `CollectionType`, or a Plex section this codebase's own
+/// [MediaKind.fromString] does not recognise — and such a library is
+/// therefore eligible for *every* [kind], never excluded by this check.
+/// That is safe, not a guess: [UnifiedCatalogService] always asks each
+/// participating library for one concrete [kind] on the wire (Plex's
+/// `type=`, Jellyfin's `IncludeItemTypes`), so the server itself does the
+/// item-level classification a mixed library needs — a movie surfaces only
+/// under the Films query, a show only under Series, and a genre this library
+/// holds neither of (music, photos) simply answers empty rather than
+/// guessed. A concrete, *non-matching* kind (a music library's `artist`, when
+/// [kind] is `movie`) is excluded exactly as before — only [MediaKind.unknown]
+/// gets this treatment, because only it means "we cannot say", not "we can
+/// say, and it is something else."
+///
 /// Pure and headless on purpose: this is the k-way merge engine's own input,
 /// not the reactive `LibrariesProvider`/`MultiServerProvider` wiring that
 /// `unified_catalog_provider.dart` (also fase 3) does. Every input here is a
@@ -50,7 +67,7 @@ List<CatalogLibrary> eligibleCatalogLibraries({
 }) {
   final result = <CatalogLibrary>[];
   for (final library in libraries) {
-    if (library.kind != kind) continue;
+    if (library.kind != kind && library.kind != MediaKind.unknown) continue;
     final rawServerId = library.serverId;
     if (rawServerId == null || rawServerId.isEmpty) continue;
     final serverId = ServerId(rawServerId);
