@@ -121,7 +121,7 @@ zelf. Geen aparte klasse meer nodig.
 | WP7 — profielwissel en serverlevenscyclus | A16, A17, A18, A19, E12 |
 | WP8 — volgende aflevering | D11 |
 | WP10 — Live TV-melding | A20 |
-| WP11 — resterende registerrijen | A1, A3, A4, A5, A12, B4, B5, B6, B10, B11, B12, B13, B14, B15, D2, D8, D9, D10, D12, D13, E1, E2, E5, E6, E7, E8, E10, E13, E14, E15, G1, G2, G3, G4, G5, G6, G7, G8, G14, H9, H10, H11, H20, I16, I17, I18, J3, J6, J7, J10, J11, J12, J13, J14, J15 |
+| WP11 — resterende registerrijen | A1, A3, A4, A5, A12, B4, B5, B6, B10, B11, B12, B13, B14, B15, D2, D8, D9, D10, D12, D13, E1, E2, E5, E6, E7, E8, E10, E13, E14, E15, G1, G2, G3, G4, G5, G6, G7, G8, G14, H9, H10, H11, H20, I16, I17, I18, J3, J6, J7, J11, J12, J13, J14, J15 |
 
 Drie aantekeningen bij die verdeling:
 
@@ -738,7 +738,7 @@ worden staan óók nog in de `IndexedStack`, zodat er twee exemplaren tegelijk g
 | J7 | RTL | test/widgets/tv/tv_unified_media_grid_test.dart (`builds under a right-to-left directionality without breaking`) bewijst dat het raster onder een omgekeerde `Directionality` bouwt, de kaarten vindt en zijn prefetch nog steeds start. Dat is een guard, geen RTL-acceptatie: geen van de zestien locales van Pleya is rechts-naar-links, dus er valt vandaag geen beeld te keuren dat een gebruiker kan bereiken | open |
 | J8 | VoiceOver | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A. test/widgets/tv/tv_media_source_picker_test.dart (`a row announces its position and everything it actually shows`) en test/widgets/tv/tv_unified_media_card_semantics_test.dart leggen de semantics van een source row en van een catalogkaart vast — inclusief dat de kaart één node aanbiedt en niet titel en jaar dubbel uitspreekt — maar niet wat VoiceOver ervan maakt | open |
 | J9 | Reduce Motion | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A | open |
-| J10 | Light theme | | open |
+| J10 | Light theme | `FocusTheme.focusDecoration`/`shapeFocusRing` kregen een dark separator-shadow (`FocusTheme.contrastSeparatorShadows`) naast de witte ring, precies wanneer `FocusTheme.needsContrastSeparator` — `MonoTokens.isLight` — waar is; de ring zelf blijft wit, hoofdstuk 8's regel dat wit de enige TV-focusidentiteit is verandert niet. test/focus/focus_theme_contrast_separator_test.dart (9 tests: `needsContrastSeparator` per palet, `contrastSeparatorShadows` gebruikt de eigen inktkleur van het thema en is een strakke lijn geen zachte glow, `focusDecoration`/`shapeFocusRing` dragen de separator precies op focused+light en nergens anders) plus het verplichte golden op de light surface: test/goldens/focus_contrast_separator_golden_test.dart (`a focused white pill stays visually distinct on a light/white surface`, `the same scene on the dark palette needs no separator, and gets none`) — geschilderd rechtstreeks vanaf de decoratiefuncties, niet via `FocusableWrapper`, zodat een falende golden ondubbelzinnig naar deze laag wijst | covered |
 | J11 | OLED theme | | open |
 | J12 | Focusglow bij eerste/laatste card | | open |
 | J13 | Panel met veel sources | | open |
