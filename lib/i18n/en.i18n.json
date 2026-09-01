@@ -1942,7 +1942,8 @@
     }
   },
   "tvNavigation": {
-    "activeDestination": "current section"
+    "activeDestination": "current section",
+    "attentionRequired": "needs attention"
   },
   "tvMyPleya": {
     "groupContent": "My content",

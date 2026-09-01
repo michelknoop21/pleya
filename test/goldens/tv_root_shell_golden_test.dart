@@ -285,6 +285,25 @@ void main() {
       await shoot(tester, 'tv_shell_home_active');
     });
 
+    // WP3 / hoofdstuk 18.4. The acceptance is what is *absent*: no red strip
+    // over the content, no giant warning, no CTA competing with the page. What
+    // is present is one small amber dot on the destination that leads to the
+    // fix. Compare against `tv_shell_home_active` above — same picture, same
+    // geometry, one mark.
+    testWidgets('an expired session marks Mijn Pleya and leaves the page alone', (tester) async {
+      await boot(hasLiveTv: false);
+      manager.debugRegisterClientForTesting(_AuthErroredClient('nas', 'NAS'), online: false);
+      manager.debugMarkAuthErrorForTesting(ServerId('nas'));
+      await shoot(tester, 'tv_shell_auth_attention');
+    });
+
+    testWidgets('and Mijn Pleya itself names the server that needs it', (tester) async {
+      await boot(hasLiveTv: false, active: TvDestinationId.myPleya);
+      manager.debugRegisterClientForTesting(_AuthErroredClient('nas', 'NAS'), online: false);
+      manager.debugMarkAuthErrorForTesting(ServerId('nas'));
+      await shoot(tester, 'tv_shell_auth_my_pleya');
+    });
+
     testWidgets('Films active, with Live TV in the bar', (tester) async {
       await boot(hasLiveTv: true, active: TvDestinationId.movies);
       await shoot(tester, 'tv_shell_live_tv_present');
@@ -600,4 +619,31 @@ class _EmptyProfileConnectionRegistry extends ProfileConnectionRegistry {
 
   @override
   Stream<List<ProfileConnection>> watchAll() => Stream.value(const []);
+}
+
+/// A server whose token was rejected: enough of a client for the registry to
+/// name it, and nothing else. Auth-error state is set explicitly through
+/// `debugMarkAuthErrorForTesting` rather than by letting a health sweep run,
+/// so the picture is of one known state and not of a race.
+class _AuthErroredClient implements MediaServerClient {
+  _AuthErroredClient(String id, this._name) : serverId = ServerId(id);
+
+  @override
+  final ServerId serverId;
+  final String _name;
+
+  @override
+  String? get serverName => _name;
+
+  @override
+  MediaBackend get backend => MediaBackend.plex;
+
+  @override
+  ServerCapabilities get capabilities => ServerCapabilities.plex;
+
+  @override
+  Future<HealthStatus> checkHealth() async => HealthStatus.authError;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

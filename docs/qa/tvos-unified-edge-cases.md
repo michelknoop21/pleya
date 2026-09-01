@@ -112,7 +112,7 @@ niet geraakt".
 | --- | --- |
 | WP1 — hidden-library lekken ✅ gesloten | B8 |
 | WP2 — contextmenu + write-scope ✅ gesloten | G12, G13 |
-| WP3 — auth-status, Mijn Pleya, deep links | I9, I10, I14 |
+| WP3 — auth-status ✅, Mijn Pleya en deep links (I9, I10, I14) nog open | I9, I10, I14 |
 | WP4 — all-source verwijderen uit Verder kijken | G10, G11 |
 | WP6 — playbackreturn en detailfouten | A14, A15, D14, D15, I19, I20 |
 | WP7 — profielwissel en serverlevenscyclus | A16, A17, A18, A19, E12 |
@@ -197,6 +197,55 @@ en horen bij WP4. Dat is de grens: WP2 vertelt de waarheid over de bronnen die h
 WP4 onthoudt ze.
 
 Rijen die hierop wachtten: **G12** en **G13**, beide nu `covered`.
+
+
+### WP3 — de permanente TV-banner is weg, de deep-linkhelft niet
+
+Gebouwd op 1 september 2026. **Let op de tweedeling:** WP3 draagt in de tabel hierboven de rijen
+I9, I10 en I14, en die gaan over Back en overlays — niet over auth. Wat hier gesloten is, is het
+*defect*: `AuthErrorBanner` werd op regel 1168 van `main_screen.dart` onvoorwaardelijk gemonteerd,
+dus ook op TV, waar hij als permanente volle-breedte rode strook boven Home, Films, Series en Search
+stond. Hoofdstuk 18.4 verbiedt dat met zoveel woorden en schrijft het alternatief voor: "Een klein
+statuspunt bij Mijn Pleya mag aandacht vragen, maar mag geen permanente grote rode melding over
+content leggen." I9, I10 en I14 blijven `open` en zijn het resterende WP3-werk.
+
+**Twee regels productie.** De mount krijgt `if (!_isTvShell)`, en `TvTopNavigation` krijgt een
+`needsAttention`-vlag die op de Mijn Pleya-bestemming een amberen punt tekent. Meer was het niet,
+omdat de rest er al stond: `MultiServerProvider.authErrorServerIds` scheidt 401/403 al van offline,
+`TvMyPleyaScreen` toont de regel "Sessie verlopen voor NAS" al (met een commentaarregel die naar
+18.4 verwijst), en `TvMyPleyaSection.servers` → `TvServersScreen` is de bestaande beheerroute. Geen
+nieuwe server-managementarchitectuur, geen nieuw scherm, geen nieuwe heuristiek.
+
+**Waarom het punt een overlay is en geen extra kind in de rij.** Een `Stack` meet zich naar zijn
+grootste niet-gepositioneerde kind, en dat is de pill; het punt hangt eraan met `Positioned` en
+`Clip.none`. Een extra box in de `Row` zou elke bestemming ernaast verschuiven op het moment dat een
+token verloopt, en hoofdstuk 7.2 gaat er nu juist over dat de balk niet onder de afstandsbediening
+vandaan beweegt. Het bewijs is dubbel: een test die de rechthoek van elke bestemming vóór en ná het
+omklappen vergelijkt, en het feit dat `flutter test --update-goldens` geen enkele bestaande golden
+herschreef — `tv_shell_home_active.png` is byte-identiek gebleven.
+
+**Amber, niet rood.** Hoofdstuk 14.7 houdt die twee overal in deze rewrite uit elkaar: een verlopen
+sessie is iets dat je vanaf de bank oplost, een kapotte server niet. De testfinder matcht daarom op
+de kleur en niet op het widgettype, zodat een punt dat naar rood afdrijft rood gaat in plaats van
+stilletjes door te glippen.
+
+**De semantiek moest apart.** De inhoud van een navigatie-item zit in een `ExcludeSemantics` (anders
+leest VoiceOver het label twee keer), dus het punt kan geen eigen semantische node dragen. De tekst
+hangt aan `FocusableWrapper.semanticLabel`, en een aparte negatieve controle bewijst dat die regel
+zelfstandig draagt.
+
+Zeventien tests. Drie negatieve controles, los per onderdeel: de guard weghalen maakt er dertien
+rood, het punt weghalen vier, de semantiekregel weghalen één. De eerste controle vond bovendien een
+echt gat in de eerste opzet — de vier "geen rode strook"-tests monteerden alleen `TvRootShell`,
+terwijl de banner erboven in `MainScreen` hangt, dus ze bleven groen mét verwijderde guard. De
+harness monteert nu dezelfde `Column` die `MainScreen` bouwt, guard en al.
+
+Non-TV is ongewijzigd: `AuthErrorBanner` zelf is niet aangeraakt, zijn eigen tests in
+`test/widgets/auth_error_banner_test.dart` staan er nog, en twee tests pinnen de mountconditie in
+beide richtingen vast via `TvDetectionService.debugSetAppleTVOverride`.
+
+Visueel bewijs: `test/goldens/tv_shell_auth_attention.png` en `tv_shell_auth_my_pleya.png`.
+
 
 ## A. Server- en topologycases
 

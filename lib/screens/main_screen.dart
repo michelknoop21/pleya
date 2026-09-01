@@ -1165,7 +1165,16 @@ class _MainScreenState extends State<MainScreen>
   Widget _buildTickerAwareStack() {
     return Column(
       children: [
-        const AuthErrorBanner(),
+        // Hoofdstuk 18.4: on TV a rejected token may not put a permanent
+        // full-width red strip over Home, Films, Series and Search. The 10-foot
+        // surface says it once, small, on the destination that can actually fix
+        // it — the attention dot on Mijn Pleya (`TvTopNavigation`), leading to
+        // the Servers screen that names the concrete server.
+        //
+        // Every other form factor keeps the banner exactly as it was: on a
+        // phone or a desktop window the top strip is a reasonable place for it,
+        // and it is the only affordance those layouts have.
+        if (!_isTvShell) const AuthErrorBanner(),
         Expanded(
           child: IndexedStack(
             index: _currentIndex,

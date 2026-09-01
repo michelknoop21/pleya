@@ -5300,6 +5300,9 @@ class TranslationsTvNavigationEn {
 
 	/// en: 'current section'
 	String get activeDestination => 'current section';
+
+	/// en: 'needs attention'
+	String get attentionRequired => 'needs attention';
 }
 
 // Path: tvMyPleya
@@ -8146,6 +8149,7 @@ extension on Translations {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
 			'unifiedCatalog.home.featured' => 'Featured',
 			'tvNavigation.activeDestination' => 'current section',
+			'tvNavigation.attentionRequired' => 'needs attention',
 			'tvMyPleya.groupContent' => 'My content',
 			'tvMyPleya.groupSources' => 'Libraries and sources',
 			'tvMyPleya.groupPleya' => 'Pleya',
