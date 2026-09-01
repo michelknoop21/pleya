@@ -64,6 +64,12 @@ class _FakeLibraryClient implements MediaServerClient {
   @override
   Future<ExternalIds> fetchExternalIds(String itemId) async => const ExternalIds();
 
+  /// Set to make [fetchItem] return a specific item, for I19's refresh test.
+  MediaItem? Function(String id)? fetchItemResult;
+
+  @override
+  Future<MediaItem?> fetchItem(String id) async => fetchItemResult?.call(id);
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -231,6 +237,74 @@ void main() {
       provider.snapshot.groups.map((g) => g.representativeSource.item.title),
       containsAll(['Alien', 'Dune', 'Silo']),
     );
+  });
+
+  group('I19: refreshItem re-reads one source in place', () {
+    test('a fresh fetch updates the group without re-paging', () async {
+      await provider.ensureStarted();
+      final before = provider.snapshot.groups.singleWhere((g) => g.groupId.contains('a1') || g.sources.any((s) => s.item.id == 'a1'));
+      expect(before.watchState.hasActiveProgress, isFalse);
+
+      client.fetchItemResult = (id) => _movie('a1', title: 'Alien', serverId: 's1').copyWith(
+        viewOffsetMs: 60000,
+        durationMs: 6000000,
+        lastViewedAt: 1756000000,
+      );
+      final fetchCallsBefore = client.fetchCalls;
+
+      final applied = await provider.refreshItem(
+        's1:a1',
+        () => client.fetchItem('a1'),
+      );
+
+      expect(applied, isTrue);
+      expect(client.fetchCalls, fetchCallsBefore, reason: 'the fetch itself is the caller\'s job, not a second page load');
+      final after = provider.snapshot.groups.singleWhere((g) => g.sources.any((s) => s.item.id == 'a1'));
+      expect(after.watchState.hasActiveProgress, isTrue);
+      expect(after.sources.singleWhere((s) => s.item.id == 'a1').item.viewOffsetMs, 60000);
+    });
+
+    test('an item this merge never popped changes nothing and reports false', () async {
+      await provider.ensureStarted();
+
+      final applied = await provider.refreshItem(
+        's1:not-in-this-merge',
+        () async => _movie('not-in-this-merge', title: 'Elsewhere', serverId: 's1'),
+      );
+
+      expect(applied, isFalse);
+    });
+
+    test('a null fetch result is a no-op', () async {
+      await provider.ensureStarted();
+
+      final applied = await provider.refreshItem('s1:a1', () async => null);
+
+      expect(applied, isFalse);
+    });
+
+    test('before ensureStarted there is no merge to update, so it is a no-op', () async {
+      final applied = await provider.refreshItem('s1:a1', () async => _movie('a1', title: 'Alien', serverId: 's1'));
+
+      expect(applied, isFalse);
+    });
+
+    test('notifies listeners exactly when the update actually lands', () async {
+      await provider.ensureStarted();
+      var notifications = 0;
+      provider.addListener(() => notifications++);
+
+      final noop = await provider.refreshItem('s1:absent', () async => null);
+      expect(noop, isFalse);
+      expect(notifications, 0);
+
+      final applied = await provider.refreshItem(
+        's1:a1',
+        () async => _movie('a1', title: 'Alien', serverId: 's1').copyWith(viewOffsetMs: 1000, durationMs: 6000000),
+      );
+      expect(applied, isTrue);
+      expect(notifications, 1);
+    });
   });
 
   test('dispose removes dependency listeners — no reconciliation after teardown', () async {

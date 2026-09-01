@@ -13,6 +13,7 @@
 /// inventing a placeholder value fase 2 would have to redesign anyway.
 library;
 
+import '../media_item.dart';
 import 'canonical_media_identity.dart';
 import 'unified_media_source.dart';
 import 'unified_watch_state.dart';
@@ -48,6 +49,40 @@ class UnifiedMediaGroup {
   }
 
   UnifiedMediaSource get representativeSource => sources.firstWhere((s) => s.sourceKey == representativeSourceKey);
+
+  /// This group with one membership's [MediaItem] re-read, and the watch state
+  /// recomputed from it.
+  ///
+  /// The incremental half of hoofdstuk 13.2: a write or a return from the
+  /// player changes *state* on one concrete source, not identity, so re-paging
+  /// the whole catalogue to see a checkmark appear would throw away every
+  /// loaded page, the scroll position and the focused card to redraw one tick.
+  ///
+  /// [groupId], [identity] and [representativeSourceKey] are deliberately kept.
+  /// The first two cannot have changed — a watch count is not identity
+  /// evidence — and re-running 4.7's ranking on a fresh fetch could move the
+  /// representative, which is a card rearranging itself while the viewer looks
+  /// at it as a side effect of having watched something.
+  ///
+  /// Returns `this` unchanged when [item] names no membership of this group.
+  UnifiedMediaGroup withUpdatedSourceItem(MediaItem item, {String? preferredSourceKey}) {
+    final key = item.globalKey;
+    if (!sources.any((s) => s.sourceKey == key)) return this;
+    final updated = [
+      for (final source in sources)
+        if (source.sourceKey == key) source.withItem(item) else source,
+    ];
+    return UnifiedMediaGroup(
+      groupId: groupId,
+      identity: identity,
+      sources: updated,
+      representativeSourceKey: representativeSourceKey,
+      watchState: selectRepresentativeWatchState(
+        {for (final s in updated) s.sourceKey: s.item},
+        preferredSourceKey: preferredSourceKey,
+      ),
+    );
+  }
 
   bool get hasMultipleSources => sources.length > 1;
 

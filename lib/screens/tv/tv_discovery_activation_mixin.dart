@@ -18,6 +18,8 @@
 /// discovery never surfaced is not visible from either page's own fetch.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -27,6 +29,7 @@ import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_route_context.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../providers/hidden_libraries_provider.dart';
+import '../../providers/discover_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/offline_mode_provider.dart';
 import '../../services/api_cache.dart';
@@ -76,6 +79,13 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
         resolver: _sourceResolver(multiServer),
         onManageServers: onManageServers,
       ),
+      // I19: the existing post-edit refresh path — `DiscoverProvider.updateItem`
+      // re-fetches one item and swaps it into on-deck/hubs, then notifies —
+      // is exactly the incremental refresh a player return needs. No second
+      // eventbus: `TvHomeProjectionProvider` and `TvDiscoveryLandingProvider`
+      // already re-project on every `DiscoverProvider` notification, so the
+      // one call here is what reaches Home, both landings and Search alike.
+      onPlaybackReturned: (item) => unawaited(context.read<DiscoverProvider>().updateItem(item.id)),
     );
   }
 

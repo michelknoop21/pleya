@@ -137,6 +137,43 @@ class UnifiedCatalogService {
   void updateQuery({required UnifiedCatalogQuery query, required List<CatalogLibrary> libraries}) =>
       _reset(query: query, libraries: libraries);
 
+  /// Re-reads one concrete membership's state in place (I19, and every write
+  /// that lands on a card the grid is already showing).
+  ///
+  /// This is the incremental counterpart to [refresh]: identity is untouched,
+  /// so no page is refetched, no cursor moves and no group is re-resolved.
+  /// [updated] must be a fresh fetch of an item this merge already popped —
+  /// matched on `globalKey`, so a stale or foreign item simply finds nothing
+  /// and this returns false.
+  ///
+  /// Both the popped history and the built groups are updated. Missing the
+  /// history is the subtle half: [_recomputeGroups] rebuilds every group from
+  /// it on the next page, so an update applied only to [_groups] would be
+  /// silently reverted the moment the user scrolled.
+  bool applyUpdatedSourceItem(MediaItem updated) {
+    final key = updated.globalKey;
+    var found = false;
+    for (var i = 0; i < _poppedItems.length; i++) {
+      if (_poppedItems[i].globalKey == key) {
+        _poppedItems[i] = updated;
+        found = true;
+      }
+    }
+    if (!found) return false;
+    final preferred = _preferredSourceKeys();
+    _groups = [
+      for (final group in _groups)
+        group.withUpdatedSourceItem(
+          updated,
+          preferredSourceKey: group.sources
+              .map((s) => s.sourceKey)
+              .where(preferred.contains)
+              .firstOrNull,
+        ),
+    ];
+    return true;
+  }
+
   /// Re-runs the same query from scratch — the sanctioned way to apply a
   /// reorder hoofdstuk 12.5 defers ("na scroll-idle of volgende refresh"): a
   /// full refresh re-derives every group's true sort key from a clean slate

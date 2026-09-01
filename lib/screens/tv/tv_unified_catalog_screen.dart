@@ -355,6 +355,18 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         resolver: _sourceResolver(multiServer),
         onManageServers: widget.onManageServers,
       ),
+      // I19: player return re-reads the concrete item that played and folds
+      // it back into its group in place — no re-page, no lost scroll
+      // position, no card that jumps under the cursor. `refreshItem` is a
+      // no-op when the merge never popped this item (the shape every existing
+      // callback already tolerates).
+      onPlaybackReturned: (item) => unawaited(
+        widget.catalog.refreshItem(item.globalKey, () async {
+          final serverId = item.serverId;
+          if (serverId == null) return null;
+          return context.read<MultiServerProvider>().getClientForServer(ServerId(serverId))?.fetchItem(item.id);
+        }),
+      ),
     );
   }
 

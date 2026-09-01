@@ -298,6 +298,148 @@ void main() {
       },
     );
 
+    group('I19: applyUpdatedSourceItem', () {
+      test('re-reads one item in place without touching the cursors', () async {
+        final client = _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [_movie('a1', title: 'Alpha', serverId: 's1'), _movie('a2', title: 'Bravo', serverId: 's1')],
+          },
+        );
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A')],
+          clientFor: (_) => client,
+        );
+        await service.loadMore();
+        final callsBefore = client.calls.length;
+
+        final updated = MediaItem(
+          id: 'a1',
+          backend: MediaBackend.plex,
+          kind: MediaKind.movie,
+          title: 'Alpha',
+          serverId: 's1',
+          viewOffsetMs: 60000,
+          durationMs: 6000000,
+          lastViewedAt: 1756000000,
+        );
+        final applied = service.applyUpdatedSourceItem(updated);
+
+        expect(applied, isTrue);
+        expect(client.calls.length, callsBefore, reason: 'no page is refetched for a state-only update');
+        final group = service.snapshot.groups.singleWhere((g) => g.sources.any((s) => s.item.id == 'a1'));
+        expect(group.watchState.hasActiveProgress, isTrue);
+      });
+
+      test('an item this merge never popped changes nothing', () async {
+        final client = _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [_movie('a1', title: 'Alpha', serverId: 's1')],
+          },
+        );
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A')],
+          clientFor: (_) => client,
+        );
+        await service.loadMore();
+
+        final applied = service.applyUpdatedSourceItem(
+          MediaItem(id: 'elsewhere', backend: MediaBackend.plex, kind: MediaKind.movie, serverId: 's1'),
+        );
+
+        expect(applied, isFalse);
+      });
+
+      test('the update survives a later refresh, not just the current snapshot', () async {
+        // The subtle failure this guards: `_recomputeGroups` rebuilds every
+        // group from `_poppedItems` on the next page, so an update applied
+        // only to the already-built groups would be silently reverted the
+        // moment paging continued.
+        final client = _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [
+              _movie('a1', title: 'Alpha', serverId: 's1'),
+              _movie('a2', title: 'Bravo', serverId: 's1'),
+              _movie('a3', title: 'Charlie', serverId: 's1'),
+            ],
+          },
+        );
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A')],
+          clientFor: (_) => client,
+          pageSize: 1,
+          groupsPerPage: 1,
+        );
+        await service.loadMore();
+        service.applyUpdatedSourceItem(
+          MediaItem(
+            id: 'a1',
+            backend: MediaBackend.plex,
+            kind: MediaKind.movie,
+            title: 'Alpha',
+            serverId: 's1',
+            viewOffsetMs: 60000,
+            durationMs: 6000000,
+          ),
+        );
+
+        await service.loadMore();
+
+        final group = service.snapshot.groups.singleWhere((g) => g.sources.any((s) => s.item.id == 'a1'));
+        expect(group.watchState.hasActiveProgress, isTrue);
+      });
+
+      test('the preference snapshot at the time of the call reaches tier 4', () async {
+        final client = _FakeLibraryClient(
+          itemsByLibrary: {
+            'A': [_movie('a1', title: 'Alpha', serverId: 's1', guid: 'plex://movie/alpha')],
+            'B': [_movie('b1', title: 'Alpha', serverId: 's1', guid: 'plex://movie/alpha')],
+          },
+        );
+        var preferred = <String>{};
+        final service = UnifiedCatalogService(
+          query: const UnifiedCatalogQuery(kind: MediaKind.movie),
+          libraries: [_library('s1', 'A'), _library('s1', 'B')],
+          clientFor: (_) => client,
+          preferredSourceKeys: () => preferred,
+        );
+        await service.loadMore();
+        preferred = {'s1:b1'};
+
+        service.applyUpdatedSourceItem(
+          MediaItem(
+            id: 'a1',
+            backend: MediaBackend.plex,
+            kind: MediaKind.movie,
+            title: 'Alpha',
+            serverId: 's1',
+            guid: 'plex://movie/alpha',
+            viewOffsetMs: 20000,
+            durationMs: 6000000,
+            lastViewedAt: 1756000000,
+          ),
+        );
+        service.applyUpdatedSourceItem(
+          MediaItem(
+            id: 'b1',
+            backend: MediaBackend.plex,
+            kind: MediaKind.movie,
+            title: 'Alpha',
+            serverId: 's1',
+            guid: 'plex://movie/alpha',
+            viewOffsetMs: 20000,
+            durationMs: 6000000,
+            lastViewedAt: 1756000000,
+          ),
+        );
+
+        final group = service.snapshot.groups.single;
+        expect(group.watchState.representativeSourceKey, 's1:b1');
+      });
+    });
+
     test('a stale in-flight fetch from before a query change never lands in the new state', () async {
       final client = _FakeLibraryClient(
         itemsByLibrary: {
