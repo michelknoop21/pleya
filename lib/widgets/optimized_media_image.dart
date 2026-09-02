@@ -46,7 +46,12 @@ class OptimizedMediaImage extends StatelessWidget {
   final Duration fadeInDuration;
   final bool enableTranscoding;
   final String? cacheKey;
-  final Alignment alignment;
+
+  /// [AlignmentGeometry], not [Alignment]: artwork that hugs the edge its
+  /// text column starts on has to follow the ambient directionality
+  /// (hoofdstuk 25, "RTL"). Every sink below is an [Image], which takes the
+  /// geometry and resolves it itself.
+  final AlignmentGeometry alignment;
   final IconData? fallbackIcon;
   final ImageType imageType;
   final String? localFilePath;
@@ -89,7 +94,7 @@ class OptimizedMediaImage extends StatelessWidget {
     Duration fadeInDuration,
     bool enableTranscoding,
     String? cacheKey,
-    Alignment alignment,
+    AlignmentGeometry alignment,
     IconData? fallbackIcon,
     ImageType imageType,
     String? localFilePath,
@@ -110,7 +115,7 @@ class OptimizedMediaImage extends StatelessWidget {
     Duration fadeInDuration = const Duration(milliseconds: 300),
     bool enableTranscoding = true,
     String? cacheKey,
-    Alignment alignment = Alignment.center,
+    AlignmentGeometry alignment = Alignment.center,
     IconData? fallbackIcon,
     String? localFilePath,
     String? blurHash,
@@ -148,7 +153,7 @@ class OptimizedMediaImage extends StatelessWidget {
     Duration fadeInDuration = const Duration(milliseconds: 300),
     bool enableTranscoding = true,
     String? cacheKey,
-    Alignment alignment = Alignment.center,
+    AlignmentGeometry alignment = Alignment.center,
     IconData? fallbackIcon,
     String? localFilePath,
     String? blurHash,
@@ -186,7 +191,7 @@ class OptimizedMediaImage extends StatelessWidget {
     Duration fadeInDuration = const Duration(milliseconds: 300),
     bool enableTranscoding = true,
     String? cacheKey,
-    Alignment alignment = Alignment.center,
+    AlignmentGeometry alignment = Alignment.center,
     String? localFilePath,
   }) : this._(
          key: key,

@@ -367,7 +367,11 @@ extension _VideoPlayerPlaybackStartMethods on VideoPlayerScreenState {
       _notePlaybackInitFailed();
       if (mounted) {
         _hasFirstFrame.value = true; // Hide spinner on error
-        showErrorSnackBar(context, e.message);
+        if (e is PlaybackFileUnavailableException) {
+          noticeController.show(noticeForPlaybackFailureKind(PlaybackFailureKind.fileUnavailable));
+        } else {
+          showErrorSnackBar(context, e.message);
+        }
       }
     } catch (e, st) {
       appLogger.e('Failed to start playback', error: e, stackTrace: st);

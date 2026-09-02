@@ -821,6 +821,8 @@
     "genericErrorTitle": "Something went wrong",
     "authFailedTitle": "Sign-in failed",
     "playbackStoppedTitle": "Playback stopped",
+    "playbackFileUnavailableTitle": "File not available",
+    "playbackFileUnavailableBody": "The server can't reach the video file. Check that the drive or folder it's on is still connected.",
     "playbackSegmentUnavailableBody": "This part of the video isn't available right now",
     "playbackConnectionLostBody": "Lost connection to the server",
     "playbackCodecUnsupportedBody": "This file's format isn't supported on this device",
@@ -1864,6 +1866,7 @@
     "sourceLabel": "Source: ${source}",
     "change": "Change",
     "playbackFailedTitle": "This source could not be played.",
+    "detailLoadFailedTitle": "This title could not be loaded.",
     "chooseAnotherSource": "Choose another source",
     "rowSemantics": "Source ${index} of ${count}: ${description}",
     "preferredServer": "Preferred server",
@@ -1942,7 +1945,8 @@
     }
   },
   "tvNavigation": {
-    "activeDestination": "current section"
+    "activeDestination": "current section",
+    "attentionRequired": "needs attention"
   },
   "tvMyPleya": {
     "groupContent": "My content",
@@ -1971,5 +1975,14 @@
       "tile": "${title}. ${subtitle}",
       "tileWithCount": "${title}. ${subtitle}. ${count}"
     }
+  },
+  "tvContextMenu": {
+    "title": "Actions",
+    "menuSemantics": "Action ${index} of ${count}: ${label}",
+    "noUsableSource": "No source is currently reachable, so this cannot be changed right now.",
+    "doneOnAll": "Done on all ${count} sources",
+    "doneOnSome": "Done on ${done} of ${total} sources. The rest will be retried when they are back online.",
+    "doneOnSomeNoRetry": "Done on ${done} of ${total} sources.",
+    "failed": "That did not work"
   }
 }

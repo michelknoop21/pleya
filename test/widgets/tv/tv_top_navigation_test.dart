@@ -8,6 +8,8 @@
 /// as a failure rather than a silent pass.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -19,7 +21,9 @@ import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/navigation/tv/tv_destination.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
+import 'package:pleya/widgets/pleya_wordmark.dart';
 import 'package:pleya/widgets/tv/tv_top_navigation.dart';
+import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
 void main() {
   late FocusMemoryTracker nodes;
@@ -50,10 +54,28 @@ void main() {
     required List<TvDestinationId> destinations,
     required TvDestinationId active,
     Locale? locale,
+    double? textScaleFactor,
+    // Every existing test in this file runs the dark palette, which is where
+    // the bar has always been rendered. The J18 group below needs the light one.
+    bool dark = true,
+    bool oled = false,
+    bool needsAttention = false,
+    TextDirection? directionality,
   }) async {
     tester.view.physicalSize = const Size(1280, 720);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
+    if (textScaleFactor != null) {
+      // Not a manually-inserted `MediaQuery`/`Builder` override: that combined
+      // with this bar's own `ValueListenableBuilder`s produced a genuine
+      // infinite rebuild loop (a real Flutter stack overflow, reproduced and
+      // isolated separately — nothing to do with this bar's own code). Setting
+      // the platform dispatcher's test value is the supported seam and flows
+      // through the app's own root MediaQuery exactly like a real OS setting
+      // would, with none of that risk.
+      tester.platformDispatcher.textScaleFactorTestValue = textScaleFactor;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    }
 
     destinationsIn = ValueNotifier(destinations);
     activeIn = ValueNotifier(active);
@@ -65,22 +87,26 @@ void main() {
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           locale: locale,
-          theme: monoTheme(dark: true),
+          theme: monoTheme(dark: dark, oled: oled),
           home: InputModeTracker(
             child: Scaffold(
               body: ValueListenableBuilder<List<TvDestinationId>>(
                 valueListenable: destinationsIn,
                 builder: (context, destinations, _) => ValueListenableBuilder<TvDestinationId>(
                   valueListenable: activeIn,
-                  builder: (context, active, _) => TvTopNavigation(
-                    destinations: destinations,
-                    active: active,
-                    nodes: nodes,
-                    onSelect: selected.add,
-                    onFocusDestination: ringMoves.add,
-                    onNavigateDown: () => downCalls++,
-                    onOpenProfiles: () => profileCalls++,
-                  ),
+                  builder: (context, active, _) {
+                    final bar = TvTopNavigation(
+                      destinations: destinations,
+                      active: active,
+                      nodes: nodes,
+                      needsAttention: needsAttention,
+                      onSelect: selected.add,
+                      onFocusDestination: ringMoves.add,
+                      onNavigateDown: () => downCalls++,
+                      onOpenProfiles: () => profileCalls++,
+                    );
+                    return directionality == null ? bar : Directionality(textDirection: directionality, child: bar);
+                  },
                 ),
               ),
             ),
@@ -107,6 +133,38 @@ void main() {
   // Composition (hoofdstuk 33's shared shell)
   // ---------------------------------------------------------------------------
 
+  group('the attention dot', () {
+    Rect dotRect(WidgetTester tester) =>
+        tester.getRect(find.descendant(of: find.byType(TvTopNavigation), matching: find.byType(Container)).last);
+
+    testWidgets('sits on the trailing corner of the pill in both directions', (tester) async {
+      // `Positioned(right:)` is a physical edge: the bar mirrors under RTL and
+      // the dot would stay on the physical right, i.e. the leading corner. The
+      // same physical-versus-directional mismatch DEC-072 fixed for the hero
+      // CTAs, and the one thing about this bar an RTL sweep would have caught.
+      await pump(
+        tester,
+        destinations: withoutLiveTv(),
+        active: TvDestinationId.home,
+        needsAttention: true,
+        directionality: TextDirection.ltr,
+      );
+      final pill = tester.getRect(find.byKey(const ValueKey('tvNav_myPleya')));
+      final ltrDot = dotRect(tester);
+      expect(ltrDot.center.dx, greaterThan(pill.center.dx), reason: 'LTR: trailing is the right corner');
+
+      await pump(
+        tester,
+        destinations: withoutLiveTv(),
+        active: TvDestinationId.home,
+        needsAttention: true,
+        directionality: TextDirection.rtl,
+      );
+      final rtlPill = tester.getRect(find.byKey(const ValueKey('tvNav_myPleya')));
+      expect(dotRect(tester).center.dx, lessThan(rtlPill.center.dx), reason: 'RTL: trailing is the left corner');
+    });
+  });
+
   group('composition', () {
     testWidgets('draws the decided destination order, with Series before Films', (tester) async {
       await pump(tester, destinations: withoutLiveTv(), active: TvDestinationId.home);
@@ -132,8 +190,7 @@ void main() {
     testWidgets('the wordmark stands at the far right and is not a focus stop', (tester) async {
       await pump(tester, destinations: withoutLiveTv(), active: TvDestinationId.home);
 
-      final image = tester.widget<Image>(find.byType(Image));
-      expect((image.image as AssetImage).assetName, 'assets/branding/pleya_wordmark.png');
+      expect(find.byType(PleyaWordmark), findsOneWidget);
       // Branding, not a destination. Counted rather than probed: the bar holds
       // exactly one focus stop per destination plus the profile chip, so a
       // focusable wordmark would show up here as an extra — and it would
@@ -336,6 +393,98 @@ void main() {
         expect(text.maxLines, 1, reason: 'a wrapped destination would change the height of the whole bar');
       }
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('J6: a large system text scale keeps the bar one row high and does not overflow', (tester) async {
+      await pump(tester, destinations: withLiveTv(), active: TvDestinationId.home);
+      final baseline = tester.getSize(find.byType(TvTopNavigation));
+
+      await pump(tester, destinations: withLiveTv(), active: TvDestinationId.home, textScaleFactor: 1.5);
+
+      expect(
+        tester.getSize(find.byType(TvTopNavigation)).height,
+        baseline.height,
+        reason: 'hoofdstuk 25: "Topnav mag niet buiten beeld lopen"',
+      );
+      for (final text in tester.widgetList<Text>(find.byType(Text))) {
+        expect(text.maxLines, 1, reason: 'a wrapped destination at 1.5x scale would change the height of the bar');
+      }
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('J18: the wordmark ink follows the surface it sits on', () {
+    Finder layer(String asset) => find.byWidgetPredicate(
+      (w) => w is Image && w.image is AssetImage && (w.image as AssetImage).assetName == asset,
+      description: asset,
+    );
+
+    Image letteringOf(WidgetTester tester) => tester.widget<Image>(layer(PleyaWordmark.letteringAsset));
+
+    Image markOf(WidgetTester tester) => tester.widget<Image>(layer(PleyaWordmark.markAsset));
+
+    /// WCAG relative luminance, so the assertion is about legibility rather
+    /// than about which constant happened to be written down.
+    double luminance(Color c) {
+      double channel(double v) => v <= 0.04045 ? v / 12.92 : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+      return 0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b);
+    }
+
+    double contrast(Color a, Color b) {
+      final (la, lb) = (luminance(a), luminance(b));
+      final (hi, lo) = la > lb ? (la, lb) : (lb, la);
+      return (hi + 0.05) / (lo + 0.05);
+    }
+
+    for (final (name, dark, oled) in const [('light', false, false), ('dark', true, false), ('OLED', true, true)]) {
+      testWidgets('on $name the lettering takes the theme ink and the mark never does', (tester) async {
+        // One composition path for every palette — the light/dark fork this
+        // group used to assert is gone with the brand refresh ([DEC-074]).
+        await pump(tester, destinations: withoutLiveTv(), active: TvDestinationId.home, dark: dark, oled: oled);
+
+        final tk = Theme.of(tester.element(find.byType(TvTopNavigation))).extension<MonoTokens>()!;
+        expect(letteringOf(tester).color, tk.text);
+        expect(letteringOf(tester).colorBlendMode, BlendMode.srcIn);
+        // Hoofdstuk 8.2 keeps Pleya red for brand details, so the mark is the
+        // half that must never be retinted — on any palette.
+        expect(markOf(tester).color, isNull, reason: 'the brand layer was tinted on $name');
+      });
+    }
+
+    testWidgets('the ink the lettering gets actually reads on the ground it sits on', (tester) async {
+      // The assertion that encodes J18 itself rather than the shape of its fix.
+      // An equality check against `tk.text` would still pass if someone later
+      // hardcoded a pale constant, or if the token drifted.
+      await pump(tester, destinations: withoutLiveTv(), active: TvDestinationId.home, dark: false);
+
+      final tk = Theme.of(tester.element(find.byType(TvTopNavigation))).extension<MonoTokens>()!;
+      // The same expression `TvRootShell` paints under the bar.
+      final ground = Color.alphaBlend(tk.text.withValues(alpha: TvCatalogLayout.pageLift), tk.bg);
+
+      expect(
+        contrast(letteringOf(tester).color!, ground),
+        greaterThan(4.5),
+        reason: 'the wordmark was invisible at 1,12:1 before this fix; it must not go back',
+      );
+    });
+
+    testWidgets('the lockup is sized by height, never by the canvas width', (tester) async {
+      // The canvas grew when the lockup started being composed from the current
+      // mark. A caller that pinned a width would have squashed or cropped it.
+      await pump(tester, destinations: withoutLiveTv(), active: TvDestinationId.home, dark: false);
+
+      for (final asset in PleyaWordmark.assets) {
+        final image = tester.widget<Image>(layer(asset));
+        expect(image.width, isNull, reason: '$asset is pinned to a width');
+        expect(image.height, isNotNull);
+        expect(image.fit, BoxFit.contain);
+      }
+    });
+
+    testWidgets('two layers are still not a focus stop', (tester) async {
+      await pump(tester, destinations: withoutLiveTv(), active: TvDestinationId.home, dark: false);
+
+      expect(find.byType(FocusableWrapper), findsNWidgets(withoutLiveTv().length + 1));
     });
   });
 }

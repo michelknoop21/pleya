@@ -60,6 +60,8 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/screens/tv/tv_my_pleya_navigator.dart';
+import 'package:pleya/screens/tv/tv_my_pleya_sections.dart';
 import 'package:pleya/widgets/tv/tv_discovery_rail.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_card.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
@@ -240,6 +242,34 @@ class _ShellHostState extends State<_ShellHost> {
       ),
     );
     _focusContent();
+  }
+
+  /// `MainScreen._openTvMyPleyaSection`, inlined: Mijn Pleya stays the active
+  /// destination and the section rides in as a nested route on top of it.
+  /// [restoredFocusKeys] records what `_popTvNestedRoute` would hand back to
+  /// the hub.
+  final restoredFocusKeys = <String>[];
+
+  void openSection(TvMyPleyaSection section, Widget child) {
+    widget.coordinator.activate(TvDestinationId.myPleya);
+    widget.coordinator.pushNested(
+      TvDestinationId.myPleya,
+      TvNestedRoute(id: 'tvMyPleya_${section.name}', restoreFocusKey: section.tileFocusKey, builder: (_) => child),
+    );
+    setState(() {});
+  }
+
+  /// `MainScreen._popTvNestedRoute`: pop, then put the remote back on the tile
+  /// the section was opened from rather than at the top of the hub.
+  bool popSection() {
+    final popped = widget.coordinator.popNested();
+    if (popped == null) return false;
+    final key = popped.restoreFocusKey;
+    if (key != null && widget.coordinator.active == TvDestinationId.myPleya) {
+      restoredFocusKeys.add(key);
+    }
+    setState(() {});
+    return true;
   }
 
   /// `MainScreen._selectTvDestination`: activate, then put the remote back in
@@ -634,5 +664,66 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(TvUnifiedMediaCard), findsWidgets);
     expect(focusedCardGroupId(tester), isNotNull, reason: 'the remote must land on a card, not on nothing');
+  });
+
+  group('I20: coming back from Settings', () {
+    testWidgets('the section rides on Mijn Pleya and Back puts the remote on its tile', (tester) async {
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final coordinator = TvNavigationCoordinator();
+      addTearDown(coordinator.dispose);
+      final hostKey = GlobalKey<_ShellHostState>();
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: monoTheme(dark: true),
+            home: InputModeTracker(
+              child: _ShellHost(key: hostKey, coordinator: coordinator),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      hostKey.currentState!.openSection(TvMyPleyaSection.settings, const Center(child: Text('settings section')));
+      await tester.pumpAndSettle();
+
+      // Settings is *not* a root destination: the bar still says Mijn Pleya,
+      // which is what makes Back mean "close the section" rather than "go up
+      // to the bar" (hoofdstuk 7.5 step 2).
+      expect(find.text('settings section'), findsOneWidget);
+      expect(coordinator.active, TvDestinationId.myPleya);
+      expect(coordinator.activeCanPop, isTrue);
+
+      expect(hostKey.currentState!.popSection(), isTrue);
+      await tester.pumpAndSettle();
+
+      expect(find.text('settings section'), findsNothing);
+      expect(
+        coordinator.active,
+        TvDestinationId.myPleya,
+        reason: 'the destination never changed, so there is nothing to restore but the focus',
+      );
+      expect(coordinator.activeCanPop, isFalse);
+      expect(
+        hostKey.currentState!.restoredFocusKeys,
+        [TvMyPleyaSection.settings.tileFocusKey],
+        reason: 'the remote lands back on the tile the section was opened from, not at the top of the hub',
+      );
+    });
+
+    testWidgets('the production route carries the tile the shell restores to', (tester) async {
+      // The shell test above supplies its own route; this pins the real one so
+      // the two halves cannot drift apart.
+      final route = tvMyPleyaNestedRoute(TvMyPleyaSection.settings);
+
+      expect(route.id, 'tvMyPleya_settings');
+      expect(route.restoreFocusKey, TvMyPleyaSection.settings.tileFocusKey);
+      expect(route.screenKey, isNotNull, reason: 'without a key the shell cannot ask the section to take focus');
+    });
   });
 }

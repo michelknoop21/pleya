@@ -108,6 +108,57 @@ void main() {
     });
   });
 
+  group('NoticeController repeat folding', () {
+    // Three identical "Playback stopped" cards stacked in a column was the
+    // reported bug: an error never auto-dismisses, so every repeat past the
+    // dedupe window used to open a new card under the one still standing.
+    test('a persistent error folds into the standing one past the dedupe window', () {
+      fakeAsync((async) {
+        final controller = NoticeController();
+        for (var i = 0; i < 3; i++) {
+          controller.show(const Notice(level: NoticeLevel.error, title: 'Playback stopped', groupKey: 'playback:x'));
+          async.elapse(NoticeController.dedupeWindow * 2);
+        }
+        expect(controller.visible, hasLength(1));
+        expect(controller.visible.single.count, 3);
+      });
+    });
+
+    test('a timed notice past the dedupe window is a new card, not a fold', () {
+      fakeAsync((async) {
+        final controller = NoticeController();
+        controller.show(const Notice(level: NoticeLevel.warning, title: 'Retrying', groupKey: 'retry'));
+        async.elapse(NoticeController.dedupeWindow * 2);
+        controller.show(const Notice(level: NoticeLevel.warning, title: 'Retrying', groupKey: 'retry'));
+        expect(controller.visible, hasLength(1));
+        expect(controller.visible.single.count, 1);
+      });
+    });
+  });
+
+  group('NoticeController dismissWhere', () {
+    test('clears only the notices whose group matches', () {
+      final controller = NoticeController();
+      controller.show(const Notice(level: NoticeLevel.error, title: 'Stopped', groupKey: 'playback:unknown'));
+      controller.show(const Notice(level: NoticeLevel.error, title: 'Gone', groupKey: 'playback:fileUnavailable'));
+      controller.show(const Notice(level: NoticeLevel.error, title: 'Offline', groupKey: 'connection:server'));
+
+      controller.dismissWhere((notice) => notice.groupKey.startsWith('playback:'));
+
+      expect(controller.visible, hasLength(1));
+      expect(controller.visible.single.notice.groupKey, 'connection:server');
+    });
+
+    test('clears queued notices too, so nothing is promoted afterwards', () {
+      final controller = NoticeController();
+      for (var i = 0; i < NoticeController.maxVisible + 2; i++) {
+        controller.show(Notice(level: NoticeLevel.error, title: 'Stopped $i', groupKey: 'playback:$i'));
+      }
+      controller.dismissWhere((notice) => notice.groupKey.startsWith('playback:'));
+      expect(controller.visible, isEmpty);
+    });
+  });
+
   group('NoticeController queue', () {
     test('at most 3 notices are visible at once; the rest queue', () {
       final controller = NoticeController();

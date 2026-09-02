@@ -246,6 +246,48 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
   Future<void> _activate(UnifiedMediaGroup group) =>
       activateDiscoveryGroup(group, onManageServers: widget.onManageServers);
 
+  /// Hoofdstuk 23's menu on a Home row.
+  ///
+  /// [isInContinueWatching] is passed per row rather than derived from the
+  /// group, because it is a fact about *where the card is*: the same title can
+  /// sit in Verder kijken and in a recommendation row on one screen, and
+  /// "Verwijder uit Verder kijken" only means something on the first.
+  Future<void> _openContextMenu(UnifiedMediaGroup group, {required bool isInContinueWatching}) =>
+      openDiscoveryContextMenu(
+        group,
+        isInContinueWatching: isInContinueWatching,
+        onChanged: () => _refreshGroupSources(group),
+      );
+
+  /// Refreshes every source [group] carries after a hoofdstuk-23 write landed.
+  ///
+  /// **Not "the projection recomputes on its own" — that is true of Continue
+  /// Watching alone, and this menu opens on every row, not only that one.**
+  /// `DiscoverProvider._onWatchStateChanged` reacts to every
+  /// [WatchStateEvent] and calls `refreshContinueWatching()`, whose own doc
+  /// says it "never refetches hubs" — by design, it is a background poll of
+  /// one row, not a general invalidation. A markeer bekeken/onbekeken done
+  /// from a Top Picks or Recently Released card is exactly the case that
+  /// misses: `_hubs` stays the list that was already there, so
+  /// [TvHomeProjectionProvider]'s own change guard (element-identity
+  /// `listEquals`) never fires and that card's watched badge — read straight
+  /// off the projected `group.watchState`, hoofdstuk 12's groups carry no
+  /// live patch of their own — is stale until the next full [DiscoverProvider.load].
+  ///
+  /// [DiscoverProvider.updateItem] is the same incremental refresh I19 already
+  /// gives a playback return (`activateDiscoveryGroup`'s `onPlaybackReturned`):
+  /// refetch one item, swap it into on-deck/hubs by id, notify. Looping every
+  /// source rather than only the representative one is deliberate — "Alle
+  /// bronnen" writes every membership, so every membership's card (a title can
+  /// appear once per server it is on) needs the same refresh, not just the one
+  /// the group happens to display first.
+  void _refreshGroupSources(UnifiedMediaGroup group) {
+    final discover = context.read<DiscoverProvider>();
+    for (final source in group.sources) {
+      unawaited(discover.updateItem(source.item.id, serverId: source.item.serverId));
+    }
+  }
+
   Future<void> _activateHero(
     UnifiedMediaGroup group, {
     required UnifiedActivationIntent intent,
@@ -306,6 +348,10 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
     final discover = context.watch<DiscoverProvider>();
     final layout = context.watch<HomeLayoutProvider?>();
     final rows = _rows(projection, layout);
+    // Read off the projection's own row rather than matched against a slug
+    // literal: the slug is a parameter of `projectContinueWatching`, so a
+    // literal here would be a second definition that can drift from it.
+    final continueWatchingHubId = projection.continueWatching?.hubId;
 
     // Hoofdstuk 9.7: an empty `heroGroups` for the films Home is *currently*
     // showing is an answer; an empty one because the projection has not yet
@@ -404,6 +450,8 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
                           initialFocusedGroupId: _focusedGroupIdByRowId[rows[i].hubId],
                           onFocusedGroupChanged: (id) => _focusedGroupIdByRowId[rows[i].hubId] = id,
                           onActivate: _activate,
+                          onContextMenu: (group) =>
+                              _openContextMenu(group, isInContinueWatching: rows[i].hubId == continueWatchingHubId),
                           onNavigateUp: i == 0 && heroGroups.isNotEmpty ? _focusHeroFromFirstRow : null,
                         ),
                       ),

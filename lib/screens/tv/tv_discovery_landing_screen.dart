@@ -228,6 +228,7 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
                     clientFor: (serverId) =>
                         context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),
                     onActivate: (group) => _activate(group),
+                    onContextMenu: openDiscoveryContextMenu,
                     // UP out of the first rail returns to the header action, so
                     // the two are a pair rather than a one-way trip. Rails below
                     // keep the rail-to-rail default.

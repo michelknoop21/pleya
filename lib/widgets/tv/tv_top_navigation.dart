@@ -25,12 +25,15 @@ library;
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../pleya_wordmark.dart';
+
 import '../../focus/focus_memory_tracker.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
 import '../../navigation/tv/tv_destination.dart';
 import '../../profiles/profile.dart';
 import '../../profiles/profile_avatar.dart';
+import '../../theme/mono_theme.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import 'tv_unified_layout.dart';
@@ -43,6 +46,7 @@ class TvTopNavigation extends StatelessWidget {
     required this.nodes,
     required this.onSelect,
     required this.onFocusDestination,
+    this.needsAttention = false,
     required this.onNavigateDown,
     required this.onOpenProfiles,
     this.profile,
@@ -63,6 +67,16 @@ class TvTopNavigation extends StatelessWidget {
   /// Reports the ring moving. Distinct from [onSelect] on purpose: the ring
   /// moving must not change the page.
   final ValueChanged<TvDestinationId> onFocusDestination;
+
+  /// Whether something under Mijn Pleya is waiting on the user — today, a
+  /// server whose token was rejected.
+  ///
+  /// Deliberately one boolean and not a count or a list. Hoofdstuk 18.4 allows
+  /// "een klein statuspunt bij Mijn Pleya" and forbids "een permanente grote
+  /// rode melding over content"; a number on the bar would start down the road
+  /// the second half rules out, and the concrete servers already have a place
+  /// to be named — the Servers screen this destination leads to.
+  final bool needsAttention;
 
   /// Down from any bar item goes into the current destination's content
   /// (hoofdstuk 7.2).
@@ -132,6 +146,9 @@ class TvTopNavigation extends StatelessWidget {
                     isActive: destinations[i] == active,
                     node: nodes.get(destinations[i].focusKey, debugLabel: destinations[i].focusKey),
                     scale: scale,
+                    // Hoofdstuk 18.4: the dot rides the destination that owns
+                    // the resolution route, and only that one.
+                    needsAttention: destinations[i] == TvDestinationId.myPleya && needsAttention,
                     onSelect: () => onSelect(destinations[i]),
                     onFocused: () => onFocusDestination(destinations[i]),
                     onNavigateDown: onNavigateDown,
@@ -151,12 +168,12 @@ class TvTopNavigation extends StatelessWidget {
               // rightward walk. It is hidden from semantics for the same
               // reason — "Pleya" read out after the last destination tells a
               // VoiceOver user nothing about where they are.
+              // The lettering follows the theme ink; the mark keeps its own
+              // colours. See [PleyaWordmark] and [DEC-074].
               child: ExcludeSemantics(
-                child: Image.asset(
-                  'assets/branding/pleya_wordmark.png',
+                child: PleyaWordmark(
                   height: TvTopNavLayout.wordmarkHeight * scale,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.medium,
+                  letteringColor: tokens(context).text,
                 ),
               ),
             ),
@@ -185,6 +202,7 @@ class _NavItem extends StatelessWidget {
     super.key,
     required this.destination,
     required this.isActive,
+    required this.needsAttention,
     required this.node,
     required this.scale,
     required this.onSelect,
@@ -196,6 +214,7 @@ class _NavItem extends StatelessWidget {
 
   final TvDestinationId destination;
   final bool isActive;
+  final bool needsAttention;
   final FocusNode node;
   final double scale;
   final VoidCallback onSelect;
@@ -226,44 +245,89 @@ class _NavItem extends StatelessWidget {
       // Active and focused are separate facts, so they are announced
       // separately: the ring is focus and this word is the page you are on.
       // Without it VoiceOver would say the same thing on all six items.
-      semanticLabel: isActive ? '${destination.label}, ${t.tvNavigation.activeDestination}' : destination.label,
+      // Everything below is inside an `ExcludeSemantics`, so the dot cannot
+      // carry a node of its own — it has to be said here or not at all. A
+      // silent red mark is exactly the kind of state a screen-reader user is
+      // left to guess at.
+      semanticLabel: [
+        destination.label,
+        if (isActive) t.tvNavigation.activeDestination,
+        if (needsAttention) t.tvNavigation.attentionRequired,
+      ].join(', '),
       // The label above already names the destination. Leaving the glyph and
       // the pill's own Text in the tree as well would merge a second copy into
       // the same node, and VoiceOver would read "Films, current section, Films".
       child: ExcludeSemantics(
         child: Padding(
           padding: EdgeInsets.all(TvTopNavLayout.focusRingGap * scale),
-          child: AnimatedContainer(
-            duration: TvTopNavLayout.focusDuration,
-            curve: Curves.easeOut,
-            decoration: ShapeDecoration(shape: shape, color: isActive ? tk.text : Colors.transparent),
-            padding: EdgeInsets.symmetric(
-              horizontal: destination.isCompact
-                  ? TvTopNavLayout.pillPaddingVertical * scale
-                  : TvTopNavLayout.pillPaddingHorizontal * scale,
-              vertical: TvTopNavLayout.pillPaddingVertical * scale,
-            ),
-            child: destination.isCompact
-                ? Icon(
-                    Symbols.search_rounded,
-                    size: TvTopNavLayout.searchIconSize * scale,
-                    color: isActive ? tk.bg : tk.text.withValues(alpha: TvTopNavLayout.inactiveInk),
-                  )
-                : Text(
-                    destination.label,
-                    maxLines: 1,
-                    // Long locales shrink inside the pill rather than truncating
-                    // or wrapping (hoofdstuk 25): a clipped destination is a
-                    // destination you cannot identify, and a second line would
-                    // change the height of the whole bar.
-                    overflow: TextOverflow.clip,
-                    softWrap: false,
-                    style: TextStyle(
-                      fontSize: TvTopNavLayout.itemFontSize * scale,
-                      fontWeight: FontWeight.w500,
-                      color: isActive ? tk.bg : tk.text.withValues(alpha: TvTopNavLayout.inactiveInk),
+          // The dot is an overlay, and `clipBehavior: none` lets it sit just
+          // outside the pill. A `Stack` sizes to its largest non-positioned
+          // child, and the pill is the only one of those, so the bar's
+          // geometry is identical with the dot and without it — which is the
+          // whole requirement: a token expiring must not move Films and Series
+          // sideways under the remote.
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AnimatedContainer(
+                duration: TvTopNavLayout.focusDuration,
+                curve: Curves.easeOut,
+                decoration: ShapeDecoration(shape: shape, color: isActive ? tk.text : Colors.transparent),
+                padding: EdgeInsets.symmetric(
+                  horizontal: destination.isCompact
+                      ? TvTopNavLayout.pillPaddingVertical * scale
+                      : TvTopNavLayout.pillPaddingHorizontal * scale,
+                  vertical: TvTopNavLayout.pillPaddingVertical * scale,
+                ),
+                child: destination.isCompact
+                    ? Icon(
+                        Symbols.search_rounded,
+                        size: TvTopNavLayout.searchIconSize * scale,
+                        color: isActive ? tk.bg : tk.text.withValues(alpha: TvTopNavLayout.inactiveInk),
+                      )
+                    : Text(
+                        destination.label,
+                        maxLines: 1,
+                        // Long locales shrink inside the pill rather than truncating
+                        // or wrapping (hoofdstuk 25): a clipped destination is a
+                        // destination you cannot identify, and a second line would
+                        // change the height of the whole bar.
+                        overflow: TextOverflow.clip,
+                        softWrap: false,
+                        style: TextStyle(
+                          fontSize: TvTopNavLayout.itemFontSize * scale,
+                          fontWeight: FontWeight.w500,
+                          color: isActive ? tk.bg : tk.text.withValues(alpha: TvTopNavLayout.inactiveInk),
+                        ),
+                      ),
+              ),
+              if (needsAttention)
+                // Directional, not physical: `right` would keep the dot on the
+                // physical right of the pill while the bar itself mirrors, so
+                // under RTL it would sit on the wrong corner. Same mismatch
+                // DEC-072 fixed for the hero CTAs.
+                PositionedDirectional(
+                  top: -TvTopNavLayout.attentionDotInset * scale,
+                  end: -TvTopNavLayout.attentionDotInset * scale,
+                  child: Container(
+                    width: TvTopNavLayout.attentionDotSize * scale,
+                    height: TvTopNavLayout.attentionDotSize * scale,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      // Amber, not the brand red. Hoofdstuk 14.7 keeps the two
+                      // apart everywhere else in this rewrite for the same
+                      // reason: an expired session is something the viewer can
+                      // fix from the couch, and amber is what the source picker
+                      // and Mijn Pleya already use to say so. Red here would
+                      // read as breakage.
+                      color: kAccentAlt,
+                      // A hairline of the bar's own ground, so the dot stays
+                      // legible where it overlaps the white active pill.
+                      border: Border.all(color: tk.bg, width: 1),
                     ),
                   ),
+                ),
+            ],
           ),
         ),
       ),

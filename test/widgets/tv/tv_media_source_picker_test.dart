@@ -847,4 +847,23 @@ void main() {
       expect(chosen?.serverId.value, 'attic');
     });
   });
+
+  group('J13: a panel with many sources', () {
+    testWidgets('twenty sources render without overflowing, and every one is reachable by D-pad', (tester) async {
+      final sources = [for (var i = 0; i < 20; i++) _source('server$i', id: 'i$i', serverName: 'Server $i')];
+
+      await _pumpPicker(tester, sources: sources, focusedSourceKey: sources.first.sourceKey);
+
+      expect(tester.takeException(), isNull, reason: 'a plain Column here would overflow long before twenty rows');
+      expect(_focusedRowLabel(tester), 'Server 0');
+
+      // Walk all the way down with the remote, the way a real viewer would.
+      for (var i = 0; i < 19; i++) {
+        await _press(tester, LogicalKeyboardKey.arrowDown);
+      }
+
+      expect(tester.takeException(), isNull);
+      expect(_focusedRowLabel(tester), 'Server 19', reason: 'the last row must actually be reachable, not clipped');
+    });
+  });
 }

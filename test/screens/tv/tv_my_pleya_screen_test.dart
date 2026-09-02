@@ -23,7 +23,12 @@ import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/providers/seerr_provider.dart';
+import 'package:pleya/providers/watchlist_provider.dart';
 import 'package:provider/provider.dart';
+
+import '../../test_helpers/golden.dart';
+import '../../test_helpers/tv_my_pleya_conditions.dart';
 
 void main() {
   // ---------------------------------------------------------------------------
@@ -141,15 +146,32 @@ void main() {
       TvDetectionService.debugSetAppleTVOverride(null);
     });
 
-    Future<void> pump(WidgetTester tester) async {
-      tester.view.physicalSize = const Size(1280, 720);
+    Future<void> pump(WidgetTester tester, {bool full = false, Size size = const Size(1280, 720)}) async {
+      tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
+
+      // Hoofdstuk 18.3's conditional tiles, all switched on. Off by default so
+      // every existing test in this group keeps the short hub it was written
+      // against.
+      WatchlistProvider? watchlist;
+      SeerrProvider? seerr;
+      if (full) {
+        manager.debugRegisterClientForTesting(OnlinePlexClientDouble('nas', 'NAS'));
+        watchlist = StockedWatchlistDouble();
+        addTearDown(watchlist.dispose);
+        seerr = ConfiguredSeerrDouble();
+        addTearDown(seerr.dispose);
+      }
 
       await tester.pumpWidget(
         TranslationProvider(
           child: MultiProvider(
-            providers: [ChangeNotifierProvider<MultiServerProvider>.value(value: servers)],
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
+              if (watchlist != null) ChangeNotifierProvider<WatchlistProvider>.value(value: watchlist),
+              if (seerr != null) ChangeNotifierProvider<SeerrProvider>.value(value: seerr),
+            ],
             child: MaterialApp(
               debugShowCheckedModeBanner: false,
               theme: monoTheme(dark: true),
@@ -279,6 +301,45 @@ void main() {
 
       await press(tester, LogicalKeyboardKey.arrowLeft);
       expect(focusedLabel(), TvMyPleyaSection.watchTogether.tileFocusKey);
+    });
+
+    // Hoofdstuk 18.3 allows every conditional tile at once, and that page is
+    // taller than the frame — `tv_shell_my_pleya_full.png` pictures it running
+    // off the bottom. Every test above it runs the short hub, which fits, so
+    // nothing until now walked a hub that scrolls.
+    //
+    // The risk that introduces is hoofdstuk 32's: a function that moved out of
+    // the sidebar into Mijn Pleya has to stay reachable. A tile below the fold
+    // that the remote cannot bring into view is exactly that function going
+    // missing, and it would not show up in a picture of the first frame.
+    testWidgets('on the full hub the last tile is still reachable, and scrolls into view', (tester) async {
+      // The tvOS logical canvas (DEC-028), which is what an Apple TV actually
+      // renders and what `tv_shell_my_pleya_full.png` is captured at. At this
+      // group's default 1280x720 the full hub still fits, so the scenario only
+      // exists at the real size.
+      await pump(tester, full: true, size: kTvGoldenSurfaceSize);
+
+      ScrollableState scroller() => tester.state<ScrollableState>(find.byType(Scrollable).first);
+
+      // The page really does overflow — otherwise this test proves nothing.
+      expect(
+        scroller().position.maxScrollExtent,
+        greaterThan(0.0),
+        reason: 'the full hub must not fit the frame, or this is not the scenario it claims to be',
+      );
+
+      final before = scroller().position.pixels;
+      state(tester).focusKey('tvMyPleya_logout');
+      await tester.pumpAndSettle();
+
+      expect(focusedLabel(), 'tvMyPleya_logout');
+      expect(
+        scroller().position.pixels,
+        greaterThan(before),
+        reason: 'focusing a tile below the fold has to bring it into view',
+      );
+      // And it is genuinely on screen, not merely focused off-screen.
+      expect(tester.getRect(find.text(t.common.logout)).bottom, lessThanOrEqualTo(kTvGoldenSurfaceSize.height));
     });
 
     testWidgets('a menu tile announces its title and what it is for', (tester) async {

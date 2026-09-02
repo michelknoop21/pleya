@@ -172,11 +172,11 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
   /// Unified recommendation hubs (Top Picks, recently added series,
   /// redactional/backend rows), in `DiscoverProvider.hubs`' own order.
   ///
-  /// No production consumer until fase 8, and that is recorded rather than
-  /// assumed: `docs/tvos-unified-fase6-home-rows-deviation.md` moves "geen
-  /// duplicate titel in één Home-rij" to the phase that replaces
-  /// `tv_browse_rail.dart` with `tv_content_feed`/`tv_content_row`, and names
-  /// this getter and [continueWatching] as the data source those read.
+  /// Read by `TvContentFeed._rows` since fase 8, which is the phase
+  /// `docs/tvos-unified-fase6-home-rows-deviation.md` moved "geen duplicate
+  /// titel in één Home-rij" to — the one that replaced `tv_browse_rail.dart`
+  /// with `tv_content_feed`/`tv_content_row`, and that named this getter and
+  /// [continueWatching] as the data source those read.
   List<UnifiedMediaHub> get hubs => _hubs;
 
   /// The projected "Recently Released" row — the same films the hero is built

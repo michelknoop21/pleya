@@ -46,8 +46,13 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/pleya_wordmark.dart';
 import 'package:pleya/widgets/tv/tv_content_feed.dart';
 import 'package:pleya/widgets/tv/tv_discovery_rail.dart';
+import 'package:pleya/widgets/tv/tv_expandable_media_tile.dart';
+import 'package:pleya/widgets/tv/tv_hero_billboard_card.dart';
+import 'package:pleya/widgets/tv/tv_hero_billboard_carousel.dart';
+import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/golden.dart';
@@ -71,6 +76,7 @@ MediaItem _film(
   String serverId = 'nas',
   MediaBackend backend = MediaBackend.plex,
   String? summary,
+  bool posterOnly = false,
 }) {
   final artwork = TvDiscoveryArtwork.indexOfMood(mood);
   return MediaItem(
@@ -86,7 +92,10 @@ MediaItem _film(
     serverId: serverId,
     serverName: serverId,
     thumbPath: TvDiscoveryArtwork.pathFor(artwork),
-    artPath: TvDiscoveryArtwork.widePathFor(artwork),
+    // Hoofdstuk 9.4 "Alleen poster": no wide art at all, so `tvHeroArtFor`
+    // resolves to [TvHeroArtKind.posterFill] rather than cover-cropping a 2:3
+    // poster across a 2.465:1 card.
+    artPath: posterOnly ? null : TvDiscoveryArtwork.widePathFor(artwork),
   );
 }
 
@@ -213,6 +222,12 @@ void main() {
     List<MediaHub> hubs = const [],
     Set<String>? succeeded,
     Locale? locale,
+    bool dark = true,
+    // Hoofdstuk 29's `reduce-motion` scenario. Passed as a `MediaQuery`
+    // override rather than an accessibility-feature flag because that is the
+    // value `reduceMotion()` and the carousel's `_canRotate` actually read.
+    bool disableAnimations = false,
+    List<({MediaBackend backend, String id, String name})> servers = _servers,
   }) async {
     resetSharedPreferencesForTest();
     SettingsService.resetForTesting();
@@ -221,7 +236,7 @@ void main() {
     LocaleSettings.setLocaleSync(AppLocale.en);
 
     final manager = MultiServerManager();
-    for (final server in _servers) {
+    for (final server in servers) {
       manager.debugRegisterClientForTesting(_FakeClient(serverId: server.id, backend: server.backend));
     }
     final aggregation = _FakeAggregation(manager)
@@ -262,7 +277,7 @@ void main() {
     addTearDown(contentScope.dispose);
 
     setGoldenSurfaceSize(tester);
-    final theme = monoTheme(dark: true);
+    final theme = monoTheme(dark: dark);
     await tester.pumpWidget(
       MultiProvider(
         providers: [
@@ -275,6 +290,10 @@ void main() {
             debugShowCheckedModeBanner: false,
             theme: theme,
             locale: locale,
+            builder: disableAnimations
+                ? (context, child) =>
+                      MediaQuery(data: MediaQuery.of(context).copyWith(disableAnimations: true), child: child!)
+                : null,
             home: Scaffold(
               backgroundColor: theme.extension<MonoTokens>()!.bg,
               body: InputModeTracker(
@@ -302,13 +321,12 @@ void main() {
       ),
     );
     // The wordmark is an `Image.asset` and decoding is asynchronous; without
-    // this it lands in the slower pictures and misses the faster ones.
-    await tester.runAsync(
-      () => precacheImage(
-        const AssetImage('assets/branding/pleya_wordmark.png'),
-        tester.element(find.byType(TvRootShell)),
-      ),
-    );
+    // this it lands in the slower pictures and misses the faster ones. Both
+    // layers, and named by the widget rather than by string, so a renamed asset
+    // cannot leave this precache silently pointing at nothing.
+    for (final asset in PleyaWordmark.assets) {
+      await tester.runAsync(() => precacheImage(AssetImage(asset), tester.element(find.byType(TvRootShell))));
+    }
     await tester.pumpAndSettle();
   }
 
@@ -319,6 +337,11 @@ void main() {
       .map((f) => f.focusNode)
       .whereType<FocusNode>()
       .firstWhere((n) => n.debugLabel == label);
+
+  /// The title the billboard is currently showing, read the way
+  /// `tv_hero_billboard_carousel_test.dart` reads it.
+  String heroTitle(WidgetTester tester) =>
+      heroTitleFor(tester.widget<TvHeroBillboardCard>(find.byType(TvHeroBillboardCard)).group);
 
   Future<void> shoot(WidgetTester tester, String name) =>
       expectMatchesGolden(find.byType(MaterialApp), 'tv_home_production_$name');
@@ -424,6 +447,126 @@ void main() {
     // Continue Watching title rather than collapsing.
     await boot(tester, onDeck: continueWatching(), hubs: recommendationHubs());
     await shoot(tester, 'fallback_hero');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Hoofdstuk 29's remaining automatable Home scenarios. Each of these has
+  // behavioural proof elsewhere; what was missing was the deterministic
+  // picture hoofdstuk 29 asks every scenario for.
+  // ---------------------------------------------------------------------------
+
+  // `tvos.home.unified.single-server`, and deliberately **not** a golden.
+  //
+  // Captured as a picture it came out byte-identical to `default`, for a
+  // reason worth writing down rather than working around: every title in this
+  // fixture lives on `nas`, so the second registered server contributes no
+  // items and nothing on the page is drawn from provenance. A golden that
+  // cannot differ cannot fail, and this file already carries one lesson of
+  // that kind (see the long-titles test below).
+  //
+  // What is worth asserting is the thing that would actually break: a lone
+  // source must never present itself as several.
+  testWidgets('Home with a single server behind it offers no multi-source affordance', (tester) async {
+    await boot(
+      tester,
+      latestMovies: recentFilms(),
+      onDeck: continueWatching(),
+      hubs: recommendationHubs(),
+      servers: const [(id: 'nas', name: 'NAS', backend: MediaBackend.plex)],
+    );
+    expect(find.byType(TvContentFeed), findsOneWidget);
+    expect(find.byType(TvDiscoveryRail), findsWidgets);
+    expect(find.byType(TvSourceCountBadge), findsNothing, reason: 'one server cannot produce a multi-source group');
+  });
+
+  // `tvos.home.unified.light`. Hoofdstuk 8.2's light surface under the whole
+  // composition, not just under the billboard: `tv_hero_billboard_light_theme`
+  // pictures the hero card alone, so the bar, the row labels and the card
+  // footers on a light ground were never rendered together.
+  testWidgets('Home on the light palette', (tester) async {
+    await boot(
+      tester,
+      latestMovies: recentFilms(),
+      onDeck: continueWatching(),
+      hubs: recommendationHubs(),
+      dark: false,
+    );
+    // Mechanism before picture, the way the other light-theme goldens in this
+    // suite do it: the bar must be drawing the split lockup here, not the
+    // undivided file whose white letters this palette swallows (J18).
+    final tk = Theme.of(tester.element(find.byType(TvRootShell))).extension<MonoTokens>()!;
+    expect(tk.isLight, isTrue);
+    expect(
+      tester
+          .widgetList<Image>(find.byType(Image))
+          .where((i) => i.image is AssetImage && (i.image as AssetImage).assetName == PleyaWordmark.letteringAsset)
+          .single
+          .color,
+      tk.text,
+      reason: 'the tinted lettering layer is what makes the wordmark readable on light',
+    );
+    await shoot(tester, 'light');
+  });
+
+  // `tvos.home.unified.reduce-motion`, and deliberately not a golden either —
+  // for the opposite reason to the one above. Settled and at rest, Reduce
+  // Motion is *supposed* to change nothing about the composition, so its
+  // picture is byte-identical to `default` by design. The regression it has to
+  // catch is a timer, and a still frame cannot see one.
+  //
+  // So this makes the pair of assertions a picture cannot: the billboard
+  // stands still when motion is suppressed and moves when it is not, from the
+  // same fixture with autoplay left on in both runs.
+  testWidgets('Home under Reduce Motion keeps the billboard still, and moves it otherwise', (tester) async {
+    Future<String?> slideAfterAnAdvanceWindow({required bool disableAnimations}) async {
+      await boot(
+        tester,
+        latestMovies: recentFilms(),
+        onDeck: continueWatching(),
+        hubs: recommendationHubs(),
+        disableAnimations: disableAnimations,
+      );
+      expect(
+        tester.widget<TvHeroBillboardCarousel>(find.byType(TvHeroBillboardCarousel)).autoplayEnabled,
+        isTrue,
+        reason: 'autoplay is on in both runs; Reduce Motion is what stops it, not the caller',
+      );
+      // Past a full auto-advance window, so a carousel that rotates has had
+      // every chance to.
+      await tester.pump(TvHomeLayout.heroAutoAdvance + const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      return heroTitle(tester);
+    }
+
+    final still = await slideAfterAnAdvanceWindow(disableAnimations: true);
+    final moved = await slideAfterAnAdvanceWindow(disableAnimations: false);
+
+    expect(still, isNotNull);
+    expect(still, recentFilms().first.title, reason: 'Reduce Motion must leave the billboard on its first slide');
+    expect(moved, isNot(still), reason: 'without Reduce Motion the same window must advance it');
+  });
+
+  // `tvos.home.unified.poster-fallback`. Hoofdstuk 9.4 "Alleen poster": the
+  // poster sharp at its own 2:3 over a blurred, darkened wash of itself.
+  // `tv_hero_artwork_test.dart` proves the *kind* resolves to `posterFill`;
+  // this is the only place that shows what that draws.
+  testWidgets('Home with a hero that has only a poster', (tester) async {
+    await boot(
+      tester,
+      latestMovies: [
+        _film(
+          'poster-only',
+          title: 'The Cartographer',
+          mood: TvDiscoveryMood.coldNoir,
+          releasedAt: '2024-08-01',
+          posterOnly: true,
+        ),
+        ...recentFilms(),
+      ],
+      onDeck: continueWatching(),
+      hubs: recommendationHubs(),
+    );
+    await shoot(tester, 'poster_fallback');
   });
 
   testWidgets('Home with a source that did not answer', (tester) async {

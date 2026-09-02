@@ -14,6 +14,8 @@
 /// ([TvNestedRoute]) rather than as a second `Navigator`.
 library;
 
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/screens/main_screen.dart';
 
@@ -44,16 +46,20 @@ void main() {
   });
 
   group('the tvOS Menu hand-off', () {
-    bool shouldPass({bool isSidebarFocused = true, bool isCurrentTabRoot = true, bool isOverlaySheetOpen = false}) =>
-        shouldPassTvosMenuToSystem(
-          isAppleTV: true,
-          isShowingProfileSelection: false,
-          isOverlaySheetOpen: isOverlaySheetOpen,
-          isRouteCurrent: true,
-          isSidebarFocused: isSidebarFocused,
-          hasVisibleTabs: true,
-          isCurrentTabRoot: isCurrentTabRoot,
-        );
+    bool shouldPass({
+      bool isSidebarFocused = true,
+      bool isCurrentTabRoot = true,
+      bool isOverlaySheetOpen = false,
+      bool isShowingProfileSelection = false,
+    }) => shouldPassTvosMenuToSystem(
+      isAppleTV: true,
+      isShowingProfileSelection: isShowingProfileSelection,
+      isOverlaySheetOpen: isOverlaySheetOpen,
+      isRouteCurrent: true,
+      isSidebarFocused: isSidebarFocused,
+      hasVisibleTabs: true,
+      isCurrentTabRoot: isCurrentTabRoot,
+    );
 
     test('Menu reaches the system only from the root destination with the bar focused', () {
       // The fase-7 shell feeds the same predicate: "sidebar focused" is the top
@@ -75,6 +81,45 @@ void main() {
 
     test('an open overlay keeps Menu for the app', () {
       expect(shouldPass(isOverlaySheetOpen: true), isFalse);
+    });
+
+    test('I9: the profile picker keeps Menu for the app', () {
+      // The picker is pushed on the *root* navigator, so this screen's route
+      // observer (the profile navigator's) never reports it. `MainScreen`
+      // brackets the visit itself — `_openProfilesFromShell` — and this is
+      // the term that bracket feeds. Without it Menu would still be handed to
+      // UIKit from exactly the state the profile chip is pressed in (bar
+      // focused, tab root), and the first Menu press would leave the app
+      // instead of closing the picker.
+      expect(shouldPass(isShowingProfileSelection: true), isFalse);
+    });
+
+    test('I9: the TV shell never opens the profile picker without the Menu bracket', () {
+      // The predicate above is only worth as much as the thing that feeds it.
+      // `AccountUiActions.openProfiles` pushes on the root navigator, which no
+      // observer here reports, so a call site that skips
+      // `_openProfilesFromShell` silently reintroduces the defect with no test
+      // failing. Guarding the call site is the only place that catches it.
+      final source = File('lib/screens/main_screen.dart').readAsStringSync();
+      final calls = RegExp(r'AccountUiActions\.openProfiles\(').allMatches(source).length;
+
+      expect(
+        calls,
+        1,
+        reason:
+            'main_screen.dart must reach the profile picker through _openProfilesFromShell(), '
+            'which lowers the tvOS Menu passthrough for the duration of the visit — so the only '
+            'direct call allowed is the one inside that helper. Calling '
+            'AccountUiActions.openProfiles from a callback leaves Menu with UIKit.',
+      );
+      // ...and that one call is the helper's own.
+      final helper = RegExp(
+        r'Future<void> _openProfilesFromShell\(\) async \{[\s\S]*?\n  \}',
+      ).firstMatch(source)?.group(0);
+      expect(helper, isNotNull, reason: '_openProfilesFromShell must exist');
+      expect(helper, contains('AccountUiActions.openProfiles(context)'));
+      expect(helper, contains('_setTvosMenuPassthrough(false)'));
+      expect(helper, contains('_updateTvosMenuPassthrough()'));
     });
   });
 }

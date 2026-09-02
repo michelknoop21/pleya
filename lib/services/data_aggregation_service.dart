@@ -19,6 +19,27 @@ typedef OnDeckAggregationResult = ({List<MediaItem> items, Set<String> succeeded
 typedef HubAggregationResult = ({List<MediaHub> hubs, Set<String> succeededServerIds});
 typedef SearchAggregationResult = ({List<MediaItem> items, Set<String> succeededServerIds});
 
+/// Drops items that live in a library the active profile has hidden.
+///
+/// Hoofdstuk 22/31.13 of docs/tvos-unified-experience.md: a hidden library may
+/// not leak into any surface, and the filter belongs **before** grouping,
+/// ranking or capping — not after. Filtering afterwards would let hidden items
+/// consume the result budget, and on the unified path it would have to prune
+/// [UnifiedMediaGroup.sources], which asserts it is never a subset.
+///
+/// Fail-open on an unknown library is deliberate and matches every caller: an
+/// item the backend returns without a `libraryId` (a Plex Discover hit from
+/// `includeExternalMedia`, say) is not in any library, so no hidden key can
+/// name it.
+List<MediaItem> filterHiddenLibraryItems(List<MediaItem> items, Set<String>? hiddenLibraryKeys) {
+  if (hiddenLibraryKeys == null || hiddenLibraryKeys.isEmpty) return items;
+  return items.where((item) {
+    if (item.libraryId == null || item.serverId == null) return true;
+    final globalKey = buildGlobalKey(ServerId(item.serverId!), item.libraryId!);
+    return !hiddenLibraryKeys.contains(globalKey);
+  }).toList();
+}
+
 /// Cross-server aggregation: fans calls out to every online client and
 /// merges the results. Single-server operations now go through the
 /// [MediaServerClient] interface directly (resolved via
@@ -113,14 +134,7 @@ class DataAggregationService {
     final allOnDeck = results.expand((result) => result.items).toList();
 
     // Filter out items from hidden libraries
-    List<MediaItem> filteredOnDeck = allOnDeck;
-    if (hiddenLibraryKeys != null && hiddenLibraryKeys.isNotEmpty) {
-      filteredOnDeck = allOnDeck.where((item) {
-        if (item.libraryId == null || item.serverId == null) return true;
-        final globalKey = buildGlobalKey(ServerId(item.serverId!), item.libraryId!);
-        return !hiddenLibraryKeys.contains(globalKey);
-      }).toList();
-    }
+    List<MediaItem> filteredOnDeck = filterHiddenLibraryItems(allOnDeck, hiddenLibraryKeys);
 
     // Watched movies without active progress don't belong in Continue
     // Watching — some servers keep them in the hub while scrobble processing
@@ -183,13 +197,7 @@ class DataAggregationService {
     var candidates = results.expand((result) => result.items).toList();
 
     // Filter out items from hidden libraries.
-    if (hiddenLibraryKeys != null && hiddenLibraryKeys.isNotEmpty) {
-      candidates = candidates.where((item) {
-        if (item.libraryId == null || item.serverId == null) return true;
-        final globalKey = buildGlobalKey(ServerId(item.serverId!), item.libraryId!);
-        return !hiddenLibraryKeys.contains(globalKey);
-      }).toList();
-    }
+    candidates = filterHiddenLibraryItems(candidates, hiddenLibraryKeys);
 
     // Hard films-only: no series, no series fallback.
     candidates = candidates.where((item) => item.kind == MediaKind.movie).toList();
@@ -256,13 +264,7 @@ class DataAggregationService {
 
     var candidates = results.expand((result) => result.items).toList();
 
-    if (hiddenLibraryKeys != null && hiddenLibraryKeys.isNotEmpty) {
-      candidates = candidates.where((item) {
-        if (item.libraryId == null || item.serverId == null) return true;
-        final globalKey = buildGlobalKey(ServerId(item.serverId!), item.libraryId!);
-        return !hiddenLibraryKeys.contains(globalKey);
-      }).toList();
-    }
+    candidates = filterHiddenLibraryItems(candidates, hiddenLibraryKeys);
 
     // Defensive: a backend that ignores the series-level filter must not leak
     // episodes into a shows row.
@@ -538,7 +540,14 @@ class DataAggregationService {
   /// Per-server failures are contained (that server just contributes nothing),
   /// but the caller needs to tell "every server failed" apart from "nobody has
   /// a match" — otherwise a dead connection renders as a plain "no results".
-  Future<SearchAggregationResult> searchAcrossServers(String query, {int? limit}) async {
+  ///
+  /// [hiddenLibraryKeys] are `serverId:libraryId` keys the active profile has
+  /// hidden; matching results are dropped before ranking.
+  Future<SearchAggregationResult> searchAcrossServers(
+    String query, {
+    int? limit,
+    Set<String>? hiddenLibraryKeys,
+  }) async {
     if (query.trim().isEmpty) {
       return (items: const <MediaItem>[], succeededServerIds: const <String>{});
     }
@@ -570,7 +579,13 @@ class DataAggregationService {
       for (final entry in perServer)
         if (entry.serverId != null) entry.serverId!,
     };
-    final allResults = perServer.expand((entry) => entry.items).toList();
+    // Visibility before ranking (hoofdstuk 22/31.13). Search was the only
+    // aggregation entry point without this filter: servers were excluded by
+    // _clientsFor, libraries by nobody. Filtering here rather than in a caller
+    // keeps hidden items from consuming the result budget, and keeps the TV
+    // path honest — searchProjection groups what it is handed, and
+    // UnifiedMediaGroup.sources asserts it is never a subset.
+    final allResults = filterHiddenLibraryItems(perServer.expand((entry) => entry.items).toList(), hiddenLibraryKeys);
     final result = rankMediaSearchResults(allResults, query, limit: resultLimit);
 
     appLogger.i('Found ${result.length} search results across ${succeededServerIds.length} servers');

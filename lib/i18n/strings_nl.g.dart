@@ -1005,6 +1005,8 @@ class _TranslationsNoticesNl extends TranslationsNoticesEn {
 	@override String get genericErrorTitle => 'Er ging iets mis';
 	@override String get authFailedTitle => 'Aanmelden mislukt';
 	@override String get playbackStoppedTitle => 'Afspelen gestopt';
+	@override String get playbackFileUnavailableTitle => 'Bestand niet beschikbaar';
+	@override String get playbackFileUnavailableBody => 'De server kan niet bij het videobestand. Kijk of de schijf of map waar het op staat nog aangesloten is.';
 	@override String get playbackSegmentUnavailableBody => 'Dit deel van de video is nu niet beschikbaar';
 	@override String get playbackConnectionLostBody => 'Verbinding met de server verloren';
 	@override String get playbackCodecUnsupportedBody => 'Dit bestandsformaat wordt niet ondersteund op dit toestel';
@@ -3378,6 +3380,8 @@ extension on TranslationsNl {
 			'notices.genericErrorTitle' => 'Er ging iets mis',
 			'notices.authFailedTitle' => 'Aanmelden mislukt',
 			'notices.playbackStoppedTitle' => 'Afspelen gestopt',
+			'notices.playbackFileUnavailableTitle' => 'Bestand niet beschikbaar',
+			'notices.playbackFileUnavailableBody' => 'De server kan niet bij het videobestand. Kijk of de schijf of map waar het op staat nog aangesloten is.',
 			'notices.playbackSegmentUnavailableBody' => 'Dit deel van de video is nu niet beschikbaar',
 			'notices.playbackConnectionLostBody' => 'Verbinding met de server verloren',
 			'notices.playbackCodecUnsupportedBody' => 'Dit bestandsformaat wordt niet ondersteund op dit toestel',
@@ -3679,10 +3683,10 @@ extension on TranslationsNl {
 			'watchTogether.sessionCodeCopied' => 'Sessiecode gekopieerd naar klembord',
 			'watchTogether.relayUnreachable' => 'Relay-server onbereikbaar. ISP-blokkering kan Watch Together verhinderen.',
 			'watchTogether.reconnectingToHost' => 'Opnieuw verbinden met host...',
-			'watchTogether.currentPlayback' => 'Huidige weergave',
-			'watchTogether.joinCurrentPlayback' => 'Deelnemen aan huidige weergave',
 			_ => null,
 		} ?? switch (path) {
+			'watchTogether.currentPlayback' => 'Huidige weergave',
+			'watchTogether.joinCurrentPlayback' => 'Deelnemen aan huidige weergave',
 			'watchTogether.joinCurrentPlaybackDescription' => 'Ga terug naar wat de host nu kijkt',
 			'watchTogether.failedToOpenCurrentPlayback' => 'Huidige weergave kon niet worden geopend',
 			'watchTogether.participantJoined' => ({required Object name}) => '${name} is toegetreden',
@@ -4193,10 +4197,10 @@ extension on TranslationsNl {
 			'seerr.requestedBy' => ({required Object name}) => 'Aangevraagd door ${name}',
 			'seerr.searchPlaceholder' => 'Zoek een film of serie om aan te vragen',
 			'seerr.byStreamingService' => 'Per streamingdienst',
-			'seerr.showAll' => 'Alles tonen',
-			'seerr.fourK' => 'In 4K aanvragen',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.showAll' => 'Alles tonen',
+			'seerr.fourK' => 'In 4K aanvragen',
 			'seerr.fourKBadge' => '4K',
 			'seerr.percentMatch' => ({required Object percent}) => '${percent}% match',
 			'seerr.quotaRemaining' => ({required Object remaining, required Object limit}) => 'Nog ${remaining} van ${limit} aanvragen',

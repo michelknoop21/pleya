@@ -63,6 +63,7 @@ class TvUnifiedMediaGrid extends StatefulWidget {
     super.key,
     required this.groups,
     required this.onActivate,
+    this.onContextMenu,
     required this.hasMore,
     required this.isLoadingMore,
     required this.onLoadMore,
@@ -81,6 +82,11 @@ class TvUnifiedMediaGrid extends StatefulWidget {
   /// Hands one group to the fase-4 activation coordinator. The grid never
   /// chooses a source and never navigates.
   final ValueChanged<UnifiedMediaGroup> onActivate;
+
+  /// Hoofdstuk 23's menu on a long Select or the context-menu key. Null on a
+  /// surface with no actions to offer, which keeps the gesture unarmed rather
+  /// than opening an empty panel.
+  final ValueChanged<UnifiedMediaGroup>? onContextMenu;
 
   final bool hasMore;
   final bool isLoadingMore;
@@ -339,6 +345,7 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       clientFor: widget.clientFor,
       focusNode: _nodeFor(group),
       onSelect: () => widget.onActivate(group),
+      onContextMenu: widget.onContextMenu == null ? null : () => widget.onContextMenu!(group),
       onFocusChange: (hasFocus) {
         if (!hasFocus) return;
         _focusedGroupId = group.groupId;

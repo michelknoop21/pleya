@@ -1165,7 +1165,16 @@ class _MainScreenState extends State<MainScreen>
   Widget _buildTickerAwareStack() {
     return Column(
       children: [
-        const AuthErrorBanner(),
+        // Hoofdstuk 18.4: on TV a rejected token may not put a permanent
+        // full-width red strip over Home, Films, Series and Search. The 10-foot
+        // surface says it once, small, on the destination that can actually fix
+        // it — the attention dot on Mijn Pleya (`TvTopNavigation`), leading to
+        // the Servers screen that names the concrete server.
+        //
+        // Every other form factor keeps the banner exactly as it was: on a
+        // phone or a desktop window the top strip is a reasonable place for it,
+        // and it is the only affordance those layouts have.
+        if (!_isTvShell) const AuthErrorBanner(),
         Expanded(
           child: IndexedStack(
             index: _currentIndex,
@@ -1228,7 +1237,7 @@ class _MainScreenState extends State<MainScreen>
                     key: _tvMyPleyaKey,
                     onExitUp: _focusSidebar,
                     onOpenSection: _openTvMyPleyaSection,
-                    onSwitchProfile: () => AccountUiActions.openProfiles(context),
+                    onSwitchProfile: () => unawaited(_openProfilesFromShell()),
                     onSignOut: () => unawaited(AccountUiActions.logout(context)),
                   )
                 : MyPleyaScreen(key: _myPleyaKey, onOpenTab: _selectTab),
@@ -1514,6 +1523,25 @@ class _MainScreenState extends State<MainScreen>
   void _updateTvosMenuPassthrough() {
     if (!mounted) return;
     _setTvosMenuPassthrough(_shouldPassTvosMenuToSystem);
+  }
+
+  /// Opens the management profile picker with the same Menu bracket the
+  /// launch gate already uses (`_promptForInitialProfileSelection`).
+  ///
+  /// [AccountUiActions.openProfiles] pushes on the **root** navigator, and
+  /// this screen's route observer watches the *profile* navigator, so
+  /// `didPushNext` never fires for it — nothing else would lower the
+  /// passthrough. The chip is pressed from exactly the state that raised it
+  /// (bar focused, tab root), so without this the picker opens with Menu
+  /// still handed to UIKit and the first Menu press leaves the app instead of
+  /// closing the picker.
+  Future<void> _openProfilesFromShell() async {
+    _isShowingProfileSelection = true;
+    _setTvosMenuPassthrough(false);
+    await AccountUiActions.openProfiles(context);
+    if (!mounted) return;
+    _isShowingProfileSelection = false;
+    _updateTvosMenuPassthrough();
   }
 
   /// Suppress stray back events after a child route pops.
@@ -2191,7 +2219,7 @@ class _MainScreenState extends State<MainScreen>
       onSelectDestination: _selectTvDestination,
       onFocusContent: _focusContent,
       onFocusNav: _focusSidebar,
-      onOpenProfiles: () => AccountUiActions.openProfiles(context),
+      onOpenProfiles: () => unawaited(_openProfilesFromShell()),
       onOverlaySheetOpenChanged: _handleOverlaySheetOpenChanged,
       onKeyEvent: _handleTvShellKey,
       selectLibrary: _selectLibrary,

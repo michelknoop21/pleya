@@ -18,6 +18,8 @@
 /// discovery never surfaced is not visible from either page's own fetch.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -26,10 +28,14 @@ import '../../media/media_backend.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_route_context.dart';
 import '../../profiles/active_profile_provider.dart';
+import '../../providers/hidden_libraries_provider.dart';
+import '../../providers/discover_provider.dart';
 import '../../providers/multi_server_provider.dart';
+import '../../providers/offline_mode_provider.dart';
 import '../../services/api_cache.dart';
 import '../../services/unified_catalog/source_resolver.dart';
 import 'tv_media_source_picker_route.dart';
+import 'tv_unified_context_menu.dart';
 import 'tv_unified_activation.dart';
 
 mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
@@ -73,31 +79,73 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
         resolver: _sourceResolver(multiServer),
         onManageServers: onManageServers,
       ),
+      // I19: the existing post-edit refresh path — `DiscoverProvider.updateItem`
+      // re-fetches one item and swaps it into on-deck/hubs, then notifies —
+      // is exactly the incremental refresh a player return needs. No second
+      // eventbus: `TvHomeProjectionProvider` and `TvDiscoveryLandingProvider`
+      // already re-project on every `DiscoverProvider` notification, so the
+      // one call here is what reaches Home, both landings and Search alike.
+      onPlaybackReturned: (item) =>
+          unawaited(context.read<DiscoverProvider>().updateItem(item.id, serverId: item.serverId)),
     );
   }
 
   /// The hoofdstuk 12.8 fan-out, built once per profile — same caching
   /// rationale as the fase-5 catalog's own resolver: rebuilding it per
   /// activation would throw away its positive/negative cache between titles.
+  /// The hoofdstuk 23 context menu for [group], on the same live health read
+  /// activation uses.
+  ///
+  /// It sits next to [activateDiscoveryGroup] rather than in the menu file
+  /// because the two share exactly one thing — "what does the world look like
+  /// right now" — and that is worth having in one place per surface. What the
+  /// menu then *does* with that is entirely its own.
+  Future<void> openDiscoveryContextMenu(
+    UnifiedMediaGroup group, {
+    bool isInContinueWatching = false,
+    VoidCallback? onChanged,
+  }) async {
+    final manager = context.read<MultiServerProvider>().serverManager;
+    final health = unifiedServerHealth(
+      isOnline: manager.isServerOnline,
+      authErrorServerIds: manager.authErrorServerIds,
+    );
+    await showTvUnifiedContextMenu(
+      context,
+      group: group,
+      availabilityFor: (source) => unifiedSourceAvailability(source, health),
+      isInContinueWatching: isInContinueWatching,
+      isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
+      onChanged: onChanged,
+    );
+  }
+
   SourceAllResolver? _sourceResolver(MultiServerProvider multiServer) {
     final profileId = context.read<ActiveProfileProvider>().activeId;
     if (profileId == null) return null;
     if (_resolver != null && _resolverProfileId == profileId) return _resolver;
     _resolverProfileId = profileId;
     final manager = multiServer.serverManager;
+    final hiddenLibraries = context.read<HiddenLibrariesProvider>();
     return _resolver = SourceAllResolver(
       profileId: profileId,
-      serversFor: () => [
-        for (final serverId in manager.serverIds)
-          if (manager.isServerVisible(ServerId(serverId)))
-            (
-              serverId: ServerId(serverId),
-              backend: manager.getClient(ServerId(serverId))?.backend ?? MediaBackend.plex,
-              client: manager.getClient(ServerId(serverId)),
-              online: manager.isServerOnline(ServerId(serverId)),
-              hasAuthError: manager.authErrorServerIds.contains(serverId),
-            ),
-      ],
+      // A19: the denominator is the profile's topology, not the live client
+      // map. `eligibleSourceServers` documents why an expected server without
+      // a client has to stay in the list instead of quietly leaving coverage
+      // complete.
+      serversFor: () => eligibleSourceServers(
+        expectedServerIds: multiServer.expectedServerIds,
+        visibleServerIds: multiServer.serverIds,
+        clientFor: manager.getClient,
+        isOnline: manager.isServerOnline,
+        authErrorServerIds: manager.authErrorServerIds,
+      ),
+      // Library visibility, read live: the resolver is cached per profile and
+      // must see a hide that lands after it was built. Server visibility is
+      // already closed by the `isServerVisible` guard above; this closes the
+      // other half, so a hidden library on a visible server cannot come back
+      // as a picker row.
+      hiddenLibraryKeysFor: () => hiddenLibraries.hiddenLibraryKeys,
       cache: ApiCache.forBackend(MediaBackend.plex),
     );
   }

@@ -777,6 +777,8 @@
     "genericErrorTitle": "Er ging iets mis",
     "authFailedTitle": "Aanmelden mislukt",
     "playbackStoppedTitle": "Afspelen gestopt",
+    "playbackFileUnavailableTitle": "Bestand niet beschikbaar",
+    "playbackFileUnavailableBody": "De server kan niet bij het videobestand. Kijk of de schijf of map waar het op staat nog aangesloten is.",
     "playbackSegmentUnavailableBody": "Dit deel van de video is nu niet beschikbaar",
     "playbackConnectionLostBody": "Verbinding met de server verloren",
     "playbackCodecUnsupportedBody": "Dit bestandsformaat wordt niet ondersteund op dit toestel",

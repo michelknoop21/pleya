@@ -156,6 +156,48 @@ void main() {
     expect(find.text(t.common.retry), findsOneWidget);
     expect(find.text(t.messages.noProfilesAvailable), findsNothing);
   });
+
+  group('I9: Back in the profile picker', () {
+    testWidgets('the management picker leaves on Back', (tester) async {
+      final harness = await _Harness.create(
+        profiles: [Profile.local(id: 'local-owner', displayName: 'Owner', createdAt: DateTime(2026, 1, 1))],
+      );
+      final navigatorKey = GlobalKey<NavigatorState>();
+
+      await tester.pumpWidget(harness.buildPushed(navigatorKey: navigatorKey));
+      await tester.pumpAndSettle();
+
+      navigatorKey.currentState!.push(MaterialPageRoute<void>(builder: (_) => const ProfileSwitchScreen()));
+      await tester.pumpAndSettle();
+      expect(find.text('beneath'), findsNothing);
+
+      // The picker installs no back handler of its own; FocusedScrollScaffold
+      // falls through to handleBackKeyNavigation, which pops.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.text('beneath'), findsOneWidget, reason: 'Back leaves the picker rather than trapping the viewer');
+    });
+
+    testWidgets('the launch gate cannot be dismissed by Back', (tester) async {
+      final harness = await _Harness.create(
+        profiles: [Profile.local(id: 'local-owner', displayName: 'Owner', createdAt: DateTime(2026, 1, 1))],
+      );
+
+      await tester.pumpWidget(harness.build(requireSelection: true));
+      await tester.pumpAndSettle();
+      expect(find.text(t.screens.whoIsWatching), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(t.screens.whoIsWatching),
+        findsOneWidget,
+        reason: 'a gate that Back could dismiss would let someone past the profile choice',
+      );
+    });
+  });
 }
 
 /// Wiring shared by every picker test: an in-memory database, fake registries,
@@ -237,6 +279,29 @@ class _Harness {
         child: MaterialApp(
           theme: monoTheme(dark: true),
           home: ProfileSwitchScreen(requireSelection: requireSelection),
+        ),
+      ),
+    );
+  }
+
+  /// The picker on top of something else, which is how the TV shell reaches
+  /// it (I9): `AccountUiActions.openProfiles` pushes on the root navigator.
+  /// The default [build] makes it the home route, where a Back has nothing to
+  /// pop and so proves nothing about leaving.
+  Widget buildPushed({required GlobalKey<NavigatorState> navigatorKey}) {
+    return TranslationProvider(
+      child: MultiProvider(
+        providers: [
+          Provider<ProfileRegistry>.value(value: profiles),
+          Provider<ProfileConnectionRegistry>.value(value: profileConnections),
+          Provider<ConnectionRegistry>.value(value: connections),
+          Provider<PlexHomeService>.value(value: plexHome),
+          ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfile),
+        ],
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          theme: monoTheme(dark: true),
+          home: const Scaffold(body: Center(child: Text('beneath'))),
         ),
       ),
     );

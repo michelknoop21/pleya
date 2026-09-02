@@ -19,6 +19,33 @@ class FocusTheme {
     return Colors.white;
   }
 
+  /// J10: whether this surface needs [contrastSeparatorShadows] alongside the
+  /// white ring.
+  ///
+  /// Hoofdstuk 8's binding rule is that white stays the one TV focus
+  /// identity everywhere — a bare `MonoTheme` maps `surface` to pure white on
+  /// the light palette (`mono_theme.dart`), so a white ring painted there has
+  /// almost no contrast against the card underneath it, and none at all
+  /// against an already-white pill. The fix is not a second focus color: it
+  /// is a dark separator that runs *alongside* the ring, so the ring itself
+  /// never has to stop being white to stay visible.
+  static bool needsContrastSeparator(BuildContext context) =>
+      Theme.of(context).extension<MonoTokens>()?.isLight ?? false;
+
+  /// The dark separator itself — a tight, low-blur shadow hugging the ring's
+  /// own edge, in [MonoTokens.text] (the theme's own ink color, already
+  /// near-black on the light palette; never a new brand color). Two shadows
+  /// at increasing radius read as one crisp dark line rather than a soft
+  /// halo, which is what actually separates a white ring from a white card —
+  /// a soft glow would just look like white bleeding into white.
+  static List<BoxShadow> contrastSeparatorShadows(BuildContext context) {
+    final ink = Theme.of(context).extension<MonoTokens>()?.text ?? Colors.black;
+    return [
+      BoxShadow(color: ink.withValues(alpha: 0.55), blurRadius: 0, spreadRadius: 0.5),
+      BoxShadow(color: ink.withValues(alpha: 0.28), blurRadius: 1.5, spreadRadius: 0),
+    ];
+  }
+
   static Duration getAnimationDuration(BuildContext context) {
     // Reduced tier: snap focus transitions (scale/border/glow) instead of
     // animating — each animation frame re-rasterizes the focused card.
@@ -35,6 +62,7 @@ class FocusTheme {
     BoxShape shape = BoxShape.rectangle,
   }) {
     final focusColor = color ?? getFocusBorderColor(context);
+    final separator = isFocused && needsContrastSeparator(context);
 
     return BoxDecoration(
       shape: shape,
@@ -47,6 +75,9 @@ class FocusTheme {
         width: focusBorderWidth,
         strokeAlign: borderStrokeAlign,
       ),
+      // J10: a dark separator alongside the white ring, only where the
+      // surface itself needs it — see [needsContrastSeparator].
+      boxShadow: separator ? contrastSeparatorShadows(context) : null,
     );
   }
 
@@ -95,6 +126,7 @@ class FocusTheme {
     Color? color,
   }) {
     final focusColor = color ?? getFocusBorderColor(context);
+    final separator = isFocused && needsContrastSeparator(context);
     return ShapeDecoration(
       shape: shape.copyWith(
         side: BorderSide(
@@ -103,6 +135,8 @@ class FocusTheme {
           strokeAlign: BorderSide.strokeAlignOutside,
         ),
       ),
+      // J10: see [focusDecoration]'s own note on the same shadows.
+      shadows: separator ? contrastSeparatorShadows(context) : null,
     );
   }
 

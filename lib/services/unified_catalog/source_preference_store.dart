@@ -83,6 +83,35 @@ class SourcePreferenceStore {
     }
   }
 
+  /// Every remembered `sourceKey` belonging to the active profile scope, as a
+  /// flat set.
+  ///
+  /// Flat on purpose: a source key is `serverId:itemId` and therefore globally
+  /// unique, so a consumer that only needs "is this source the remembered one"
+  /// — hoofdstuk 13.2's tier 4 in `grouping_service.dart` — can answer it with
+  /// a set membership test and never has to reconstruct a bucket key for a
+  /// group it is in the middle of building. [read] stays the entry point for
+  /// the per-title question the source picker asks.
+  ///
+  /// A snapshot, not a stream: the caller re-reads it when it restarts a merge.
+  /// A choice remembered mid-session lands on the next refresh, which is the
+  /// same deferral hoofdstuk 12.5 already applies to reorders.
+  static Future<Set<String>> readAllForActiveScope() async {
+    try {
+      final storage = await StorageService.getInstance();
+      final scope = storage.activeUserScope() ?? '';
+      final settings = await SettingsService.getInstance();
+      final stored = settings.read(SettingsService.unifiedSourcePreferences);
+      return {
+        for (final entry in stored.entries)
+          if (keyBelongsToScope(entry.key, scope) && entry.value.sourceKey.isNotEmpty) entry.value.sourceKey,
+      };
+    } catch (e) {
+      appLogger.w('Failed to read remembered source choices', error: e);
+      return const {};
+    }
+  }
+
   /// Records that the user picked [sourceKey] for [identity].
   ///
   /// A no-op for an identity with no [preferenceKeyFor] — see there.

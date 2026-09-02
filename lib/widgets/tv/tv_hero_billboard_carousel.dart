@@ -354,73 +354,109 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
     );
   }
 
+  /// The neighbour [step] places along the rendered CTA order, as a navigation
+  /// callback. Falling off either end is the carousel's own edge: hoofdstuk 25
+  /// keeps the slide tied to the visual direction, so LEFT off the leftmost
+  /// pill is the previous slide and RIGHT off the rightmost one the next, in
+  /// both directionalities.
+  VoidCallback _stepFrom(List<FocusNode> rendered, FocusNode from, int step) {
+    final at = rendered.indexOf(from) + step;
+    if (at < 0 || at >= rendered.length) return () => _move(step);
+    final node = rendered[at];
+    return () => node.requestFocus();
+  }
+
+  /// The two CTAs, with LEFT and RIGHT wired to the geometry the [Row] actually
+  /// renders rather than to the order this list is written in.
+  ///
+  /// A `Row` mirrors its children under an RTL [Directionality] — that *is*
+  /// hoofdstuk 25's "CTA-volgorde logisch spiegelen" — so `Meer info` ends up
+  /// physically left of `Afspelen`. Wiring Afspelen's RIGHT to Meer info by
+  /// list position would then throw the focus backwards across the screen,
+  /// which on a remote reads as broken. The directionality that positions the
+  /// pills is therefore the single authority for their traversal, so the layout
+  /// and the D-pad cannot drift apart again.
+  ///
+  /// Nothing else moves: the pills keep their order, their labels, their
+  /// semantics and their actions — only which physical arrow reaches which one.
   Widget _actions(BuildContext context, UnifiedMediaGroup group, double scale) {
     final resume = resumeFractionFor(group);
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FocusableButton(
-          focusNode: _playFocus,
-          autoScroll: false,
-          // The pill paints its own focus (it inverts), so the wrapper must not
-          // also draw a ring around it.
-          mode: FocusIndicatorMode.delegated,
-          // 33.1 binds a *white* Afspelen capsule at rest, and the shared
-          // button's unfocused 60% dim would render it grey until focused —
-          // a state the north star does not have. The pill draws its own focus
-          // (the ring on its reserved band, and the secondary's inversion), so
-          // it owns the whole treatment.
-          dimWhenUnfocused: false,
-          onPressed: () => _activate(intent: UnifiedActivationIntent.play, playDirectly: true),
-          onNavigateDown: widget.onNavigateDown,
-          onNavigateUp: widget.onNavigateUp,
-          onNavigateLeft: () => _move(-1),
-          onNavigateRight: () => _infoFocus.requestFocus(),
-          onBack: widget.onBack,
-          child: _HeroPill(
-            focusNode: _playFocus,
-            icon: Symbols.play_arrow_rounded,
-            label: resume != null ? t.common.resume : t.common.play,
-            scale: scale,
-            primary: true,
-            progress: resume,
-            onGainedFocus: () {
-              _lastCtaWasInfo = false;
-              _noteInteraction();
-            },
-          ),
-        ),
-        SizedBox(width: TvHomeLayout.heroActionGap * scale),
-        FocusableButton(
-          focusNode: _infoFocus,
-          autoScroll: false,
-          mode: FocusIndicatorMode.delegated,
-          // 33.1 binds a *white* Afspelen capsule at rest, and the shared
-          // button's unfocused 60% dim would render it grey until focused —
-          // a state the north star does not have. The pill draws its own focus
-          // (the ring on its reserved band, and the secondary's inversion), so
-          // it owns the whole treatment.
-          dimWhenUnfocused: false,
-          onPressed: () => _activate(intent: UnifiedActivationIntent.details, playDirectly: false),
-          onNavigateDown: widget.onNavigateDown,
-          onNavigateUp: widget.onNavigateUp,
-          onNavigateLeft: () => _playFocus.requestFocus(),
-          onNavigateRight: () => _move(1),
-          onBack: widget.onBack,
-          child: _HeroPill(
-            focusNode: _infoFocus,
-            icon: Symbols.info_rounded,
-            label: t.mediaMenu.viewDetails,
-            scale: scale,
-            primary: false,
-            onGainedFocus: () {
-              _lastCtaWasInfo = true;
-              _noteInteraction();
-            },
-          ),
-        ),
-      ],
+    // Read inside the row's own subtree, not the carousel's, so the authority
+    // stays whatever directionality the pills are actually laid out under.
+    return Builder(
+      builder: (context) {
+        // Left to right on screen, once the row has resolved its own order.
+        final rendered = Directionality.of(context) == TextDirection.rtl
+            ? [_infoFocus, _playFocus]
+            : [_playFocus, _infoFocus];
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FocusableButton(
+              focusNode: _playFocus,
+              autoScroll: false,
+              // The pill paints its own focus (it inverts), so the wrapper must not
+              // also draw a ring around it.
+              mode: FocusIndicatorMode.delegated,
+              // 33.1 binds a *white* Afspelen capsule at rest, and the shared
+              // button's unfocused 60% dim would render it grey until focused —
+              // a state the north star does not have. The pill draws its own focus
+              // (the ring on its reserved band, and the secondary's inversion), so
+              // it owns the whole treatment.
+              dimWhenUnfocused: false,
+              onPressed: () => _activate(intent: UnifiedActivationIntent.play, playDirectly: true),
+              onNavigateDown: widget.onNavigateDown,
+              onNavigateUp: widget.onNavigateUp,
+              onNavigateLeft: _stepFrom(rendered, _playFocus, -1),
+              onNavigateRight: _stepFrom(rendered, _playFocus, 1),
+              onBack: widget.onBack,
+              child: _HeroPill(
+                focusNode: _playFocus,
+                icon: Symbols.play_arrow_rounded,
+                label: resume != null ? t.common.resume : t.common.play,
+                scale: scale,
+                primary: true,
+                progress: resume,
+                onGainedFocus: () {
+                  _lastCtaWasInfo = false;
+                  _noteInteraction();
+                },
+              ),
+            ),
+            SizedBox(width: TvHomeLayout.heroActionGap * scale),
+            FocusableButton(
+              focusNode: _infoFocus,
+              autoScroll: false,
+              mode: FocusIndicatorMode.delegated,
+              // 33.1 binds a *white* Afspelen capsule at rest, and the shared
+              // button's unfocused 60% dim would render it grey until focused —
+              // a state the north star does not have. The pill draws its own focus
+              // (the ring on its reserved band, and the secondary's inversion), so
+              // it owns the whole treatment.
+              dimWhenUnfocused: false,
+              onPressed: () => _activate(intent: UnifiedActivationIntent.details, playDirectly: false),
+              onNavigateDown: widget.onNavigateDown,
+              onNavigateUp: widget.onNavigateUp,
+              onNavigateLeft: _stepFrom(rendered, _infoFocus, -1),
+              onNavigateRight: _stepFrom(rendered, _infoFocus, 1),
+              onBack: widget.onBack,
+              child: _HeroPill(
+                focusNode: _infoFocus,
+                icon: Symbols.info_rounded,
+                label: t.mediaMenu.viewDetails,
+                scale: scale,
+                primary: false,
+                onGainedFocus: () {
+                  _lastCtaWasInfo = true;
+                  _noteInteraction();
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -239,7 +239,7 @@ class OfflineWatchProgress extends Table {
   /// Global key (serverId:ratingKey) for easy lookup
   TextColumn get globalKey => text()();
 
-  /// Type of action: 'progress', 'watched', 'unwatched'
+  /// Type of action: see [OfflineActionType.id] for the stable value set
   TextColumn get actionType => text()();
 
   /// Current playback position in milliseconds (for 'progress' actions)

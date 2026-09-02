@@ -10,10 +10,12 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../services/unified_catalog/catalog_service.dart';
 import '../services/unified_catalog/source_cursor.dart';
+import '../services/unified_catalog/source_preference_store.dart';
 import '../services/unified_catalog/unified_catalog_query.dart';
 import '../services/unified_catalog/unified_catalog_snapshot.dart';
 import '../utils/global_key_utils.dart';
@@ -66,6 +68,12 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
   UnifiedCatalogLoadState _loadState = UnifiedCatalogLoadState.initial;
   bool _isLoadingMore = false;
   Set<String> _lastSeenLibraryKeys = const {};
+
+  /// The profile's remembered source choices, re-read on every restart and
+  /// handed to the merge for hoofdstuk 13.2's tier 4. Held here rather than
+  /// inside the service because the service is built once and then reused
+  /// across query changes, while the choices keep being made.
+  Set<String> _rememberedSourceKeys = const {};
 
   /// The caller's source restriction; see [setQuery]. Held across reconciles so
   /// a server coming online under an active "only this server" filter is
@@ -144,6 +152,30 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
   /// reorder path, and the pull-to-refresh / explicit-retry entry point.
   Future<void> refresh() => _restart();
 
+  /// Re-reads one concrete item and folds it back into whichever group holds
+  /// it, without re-paging (I19).
+  ///
+  /// [fetchItem] does the network call only when a service is running and the
+  /// item is actually part of this merge — a lazy supplier rather than a
+  /// pre-fetched [MediaItem], so a catalog nobody has opened yet, or one whose
+  /// merge never popped this item, costs nothing. Returns whether the update
+  /// landed; a caller that gets false has nothing to redraw here and should
+  /// fall back to whatever its own surface already does for "unknown to this
+  /// provider" (a hero pool, a different projection).
+  Future<bool> refreshItem(String globalKey, Future<MediaItem?> Function() fetchItem) async {
+    final service = _service;
+    if (service == null) return false;
+    if (!service.snapshot.groups.any((g) => g.sources.any((s) => s.sourceKey == globalKey))) return false;
+    final updated = await fetchItem();
+    if (updated == null || isDisposed) return false;
+    final applied = service.applyUpdatedSourceItem(updated);
+    if (applied) {
+      _snapshot = service.snapshot;
+      safeNotifyListeners();
+    }
+    return applied;
+  }
+
   /// Applies a new sort/filter/kind, replacing the in-flight merge entirely
   /// (hoofdstuk 12.7: abandons every outstanding fetch via generation IDs).
   ///
@@ -172,13 +204,23 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
         query: _query,
         libraries: eligible,
         clientFor: _multiServer.serverManager.getClient,
+        preferredSourceKeys: () => _rememberedSourceKeys,
       );
     } else {
       service.updateQuery(query: _query, libraries: eligible);
     }
+    // isInitialLoading must flip true synchronously with this call — a
+    // caller checking it right after `ensureStarted()`/`refresh()` (before
+    // awaiting) relies on that, matching every other transient-state provider
+    // in this codebase. So the preference read, which needs a await, happens
+    // after this point rather than before it.
     _loadState = UnifiedCatalogLoadState.loading;
     safeNotifyListeners();
     try {
+      // Re-read on every restart rather than once at construction: the
+      // choices keep being made while this provider lives, and a snapshot
+      // frozen at construction would never see a later one (I19/tier 4).
+      _rememberedSourceKeys = await SourcePreferenceStore.readAllForActiveScope();
       _snapshot = await _service!.loadMore();
       _loadState = UnifiedCatalogLoadState.loaded;
     } catch (_) {
@@ -218,6 +260,13 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
     _libraries.removeListener(_onDependenciesChanged);
     _hiddenLibraries.removeListener(_onDependenciesChanged);
     _multiServer.removeOnlineServersListener(_onOnlineServersChanged);
+    // E12/hoofdstuk 22: a profile switch "annuleert requests" — this
+    // provider is profile-scoped (its `KeyedSubtree` disposes it on switch),
+    // so a page fetch still in flight for the profile the user just left
+    // must stop rather than keep running against a server nobody is
+    // watching anymore. Aborting is enough; nothing here can land in this
+    // object's state again once it is disposed.
+    _service?.cancelInFlight();
     super.dispose();
   }
 }

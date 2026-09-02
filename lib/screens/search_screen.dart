@@ -27,6 +27,7 @@ import '../media/ids.dart';
 import '../providers/multi_server_provider.dart';
 import '../services/unified_catalog/search_projection.dart';
 import '../utils/external_ids_fetcher.dart';
+import '../utils/provider_extensions.dart';
 
 import '../services/apple_tv_native_text_entry.dart';
 import '../services/settings_service.dart';
@@ -149,6 +150,9 @@ class _SearchScreenState extends State<SearchScreen>
     _history = SettingsService.instance.read(SettingsService.searchHistory);
     FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
     _nativeEntryUnavailable = PlatformDetector.isAppleTV() && AppleTvNativeTextEntry.instance.isUnavailable;
+    // Warm the visibility set so the first query already filters against the
+    // persisted value rather than an empty placeholder.
+    unawaited(context.hiddenLibraries.ensureInitialized());
     if (PlatformDetector.isTV()) {
       unawaited(
         SpeechSearchService.instance.isSupported().then((supported) {
@@ -359,7 +363,21 @@ class _SearchScreenState extends State<SearchScreen>
         throw const _NoServersAvailable();
       }
 
-      final aggregated = await multiServerProvider.aggregationService.searchAcrossServers(query);
+      // Hidden libraries are a hard visibility boundary (hoofdstuk 22), and
+      // search is a fan-out like any other — a title in a hidden library must
+      // not surface here, nor become a source under a unified TV group.
+      //
+      // Read synchronously rather than awaiting `ensureInitialized()`. The
+      // provider starts loading when the profile session mounts and initState
+      // warms it again here, both long before a query can be typed and
+      // submitted. Awaiting on this path instead would put an async gap
+      // between the keystroke and the fan-out, and it broke the screen's own
+      // tests by moving the client call a microtask later than the harness
+      // expects — a real signal that this is not the place for it.
+      final aggregated = await multiServerProvider.aggregationService.searchAcrossServers(
+        query,
+        hiddenLibraryKeys: context.hiddenLibraries.hiddenLibraryKeys,
+      );
       if (!mounted || isStale()) return;
       // Not one server answered → this is a connection failure, not an empty
       // library. Reporting it as "no results" is what made a dead network look
@@ -765,6 +783,7 @@ class _SearchScreenState extends State<SearchScreen>
               groups: groups,
               clientFor: (serverId) => multiServer.serverManager.getClient(ServerId(serverId)),
               onActivate: (group) => activateDiscoveryGroup(group, onManageServers: widget.onManageServers),
+              onContextMenu: openDiscoveryContextMenu,
             ),
           ),
         ),

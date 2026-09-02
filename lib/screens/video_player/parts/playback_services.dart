@@ -32,10 +32,17 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
     );
   }
 
+  /// Drops any playback-failure card still on screen. A picture that plays
+  /// contradicts every one of them, and on a tv nobody clicks a card away.
+  void _clearPlaybackFailureNotices() {
+    noticeController.dismissWhere((notice) => notice.groupKey.startsWith(playbackNoticeGroupPrefix));
+  }
+
   Future<void> _markFirstFrameReady(Player currentPlayer, SettingsService settingsService) async {
     if (!mounted || player != currentPlayer || _hasFirstFrame.value) return;
 
     _hasFirstFrame.value = true;
+    _clearPlaybackFailureNotices();
     unawaited(Sentry.addBreadcrumb(Breadcrumb(message: 'First frame ready', category: 'player')));
 
     if (Platform.isAndroid && settingsService.read(SettingsService.matchContentFrameRate)) {
@@ -124,9 +131,13 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
 
     _playbackRestartSubscription = currentPlayer.streams.playbackRestart.listen((_) async {
       if (!mounted || player != currentPlayer) return;
-      _lastLogError = null;
+      _recentLogErrors.clear();
       _sawServer500 = false;
       _live.fallbackLevel = 0;
+      // A video that plays makes every earlier playback failure moot, so the
+      // cards a failed attempt left behind go now instead of standing over
+      // the picture (they are timed too, but a tv should not wait for that).
+      _clearPlaybackFailureNotices();
       final markFirstFrameReady = _markFirstFrameReady(currentPlayer, settingsService);
       _trackManager?.onPlaybackRestart();
       await markFirstFrameReady;

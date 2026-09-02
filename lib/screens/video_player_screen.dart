@@ -1458,8 +1458,23 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     }
   }
 
-  String? _lastLogError;
+  /// The last few error-level lines mpv logged for the current source, oldest
+  /// first. One line is not enough to say what happened: for a file that is
+  /// gone ffmpeg logs the `404` and mpv then logs a generic "Failed to open",
+  /// and only the last line used to survive, which is how a missing disk
+  /// became a bare "Playback stopped".
+  final List<String> _recentLogErrors = [];
+  static const int _recentLogErrorLimit = 4;
   bool _sawServer500 = false;
+
+  /// The recent error lines joined for classification, or null when mpv
+  /// logged nothing at error level for this source.
+  String? get _lastLogError => _recentLogErrors.isEmpty ? null : _recentLogErrors.join('\n');
+
+  void _rememberLogError(String line) {
+    _recentLogErrors.add(line);
+    if (_recentLogErrors.length > _recentLogErrorLimit) _recentLogErrors.removeAt(0);
+  }
 
   static final RegExp _server500Pattern = RegExp(r'\b(?:HTTP error |Response code: )500\b');
 

@@ -25,7 +25,7 @@ import 'mixins/mounted_set_state_mixin.dart';
 import 'profiles/plex_home_service.dart';
 import 'screens/auth_screen.dart';
 import 'widgets/intro_splash.dart';
-import 'widgets/pleya_logo.dart';
+import 'widgets/pleya_wordmark.dart';
 import 'screens/profile/pin_entry_dialog.dart';
 import 'screens/profile/profile_switch_screen.dart';
 import 'services/storage_service.dart';
@@ -1065,12 +1065,7 @@ class SetupScreen extends StatefulWidget {
   State<SetupScreen> createState() => _SetupScreenState();
 }
 
-class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin, SingleTickerProviderStateMixin {
-  /// Drives the slow red glow pulse behind the splash logo mark.
-  late final AnimationController _glowController = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 3),
-  )..repeat(reverse: true);
+class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
   String _statusMessage = '';
   bool _enteringOffline = false;
 
@@ -1343,7 +1338,6 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin, Si
 
   @override
   void dispose() {
-    _glowController.dispose();
     _statusSub?.cancel();
     _connectProgressSub?.cancel();
     super.dispose();
@@ -1403,74 +1397,17 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin, Si
     );
   }
 
-  /// Pulsing red glow behind the logo mark, per the app-intro mockup.
-  Widget _buildLogoMark() {
-    return SizedBox(
-      width: 230,
-      height: 230,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          AnimatedBuilder(
-            animation: _glowController,
-            builder: (context, child) {
-              final t = Curves.easeInOut.transform(_glowController.value);
-              return Opacity(
-                opacity: 0.5 + 0.5 * t,
-                child: Transform.scale(scale: 0.92 + 0.13 * t, child: child),
-              );
-            },
-            child: const DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [Color(0x66E5140F), Color(0x00E5140F)], stops: [0, 0.68]),
-              ),
-              child: SizedBox(width: 230, height: 230),
-            ),
-          ),
-          const PleyaLogo(size: 132),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      // Dark brand background with a faint red radial from the top — the
-      // splash always renders dark regardless of theme; the logo is designed
-      // for dark.
-      decoration: const BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment(0, -1.1),
-          radius: 1.3,
-          colors: [Color(0xFF26100D), Color(0xFF0A0808)],
-        ),
-      ),
+    // The same ground and the same lockup the ident plays on top of, so when
+    // the ident dissolves what is underneath is the same picture plus the
+    // progress line — a seam that used to be a warm radial, a lone P and a
+    // second tagline spec ([DEC-074]). Always dark, whatever the theme.
+    return ColoredBox(
+      color: identGround(context),
       child: Stack(
         children: [
-          Center(
-            child: Column(
-              mainAxisSize: .min,
-              children: [
-                _buildLogoMark(),
-                const SizedBox(height: 18),
-                ShaderMask(
-                  shaderCallback: (r) =>
-                      const LinearGradient(colors: [Colors.white, Color(0xFFF2D9CD)]).createShader(r),
-                  child: const Text(
-                    'PLEYA',
-                    style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: .w800, letterSpacing: 11),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'YOUR MEDIA. YOUR WAY.',
-                  style: TextStyle(fontSize: 11, letterSpacing: 3.4, color: Colors.white.withValues(alpha: 0.4)),
-                ),
-              ],
-            ),
-          ),
+          const Center(child: PleyaBrandLockup(height: kIdentLockupHeight)),
           Positioned(
             left: 0,
             right: 0,

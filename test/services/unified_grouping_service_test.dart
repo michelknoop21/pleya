@@ -531,5 +531,199 @@ void main() {
 
       expect(groups, hasLength(2));
     });
+
+    // The tier-4 parameter is only worth having if it actually reaches
+    // hoofdstuk 13.2 from here — before fase 9 it was declared on
+    // selectRepresentativeWatchState and passed by nobody.
+    test('a remembered source key reaches the watch state as its tier-4 tie-break', () {
+      MediaItem copy(String serverId) => MediaItem(
+        id: 'sintel',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Sintel',
+        year: 2010,
+        guid: 'plex://movie/sintel',
+        serverId: serverId,
+        serverName: serverId,
+        durationMs: 90 * 60 * 1000,
+        viewOffsetMs: 20 * 60 * 1000,
+        lastViewedAt: 1756000000,
+      );
+
+      final candidates = [_candidateFromItem(copy('server-a')), _candidateFromItem(copy('server-b'))];
+
+      final withoutPreference = groupUnifiedMediaSources(candidates);
+      final withPreference = groupUnifiedMediaSources(candidates, preferredSourceKeys: {'server-b:sintel'});
+
+      expect(withoutPreference.single.sources, hasLength(2));
+      expect(withoutPreference.single.watchState.representativeSourceKey, 'server-a:sintel');
+      expect(withPreference.single.watchState.representativeSourceKey, 'server-b:sintel');
+    });
+
+    test('a remembered source key never outranks an earlier tier', () {
+      MediaItem copy(String serverId, {required int lastViewedAt}) => MediaItem(
+        id: 'sintel',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Sintel',
+        year: 2010,
+        guid: 'plex://movie/sintel',
+        serverId: serverId,
+        serverName: serverId,
+        durationMs: 90 * 60 * 1000,
+        viewOffsetMs: 20 * 60 * 1000,
+        lastViewedAt: lastViewedAt,
+      );
+
+      final groups = groupUnifiedMediaSources(
+        [
+          _candidateFromItem(copy('server-a', lastViewedAt: 1756000000)),
+          _candidateFromItem(copy('server-b', lastViewedAt: 1756086400)),
+        ],
+        preferredSourceKeys: {'server-a:sintel'},
+      );
+
+      expect(groups.single.watchState.representativeSourceKey, 'server-b:sintel');
+    });
+
+    // B14/B15/E15: the same concrete membership handed in twice is one
+    // membership, not two. The boundary sits before any identity work, so
+    // these tests read the source count on the card rather than the group
+    // count alone — "2 bronnen" for one file is the failure that hurts.
+    group('concrete-source dedup (B14/B15/E15)', () {
+      MediaItem plexFilm({required String id, String title = 'Arrival', int year = 2016, String? libraryId}) =>
+          MediaItem(
+            id: id,
+            backend: MediaBackend.plex,
+            kind: MediaKind.movie,
+            title: title,
+            year: year,
+            serverId: 'server-a',
+            serverName: 'A',
+            libraryId: libraryId,
+          );
+
+      test('E15: the same source returned twice inside one page is one membership', () {
+        final item = plexFilm(id: 'a-arrival');
+
+        final groups = groupUnifiedMediaSources([_candidateFromItem(item), _candidateFromItem(item)]);
+
+        expect(groups, hasLength(1));
+        expect(groups.single.sources, hasLength(1), reason: 'one file must never read as two bronnen');
+      });
+
+      test('B14: an item the backend repeats on a later page does not become a second card', () {
+        final page1 = [plexFilm(id: 'a-arrival'), plexFilm(id: 'a-dune', title: 'Dune', year: 2021)];
+        // The second page repeats the first page's opening item, as a backend
+        // whose offset paging shifted underneath the reader does.
+        final page2 = [plexFilm(id: 'a-arrival'), plexFilm(id: 'a-sicario', title: 'Sicario', year: 2015)];
+
+        final groups = groupUnifiedMediaSources([
+          for (final item in [...page1, ...page2]) _candidateFromItem(item),
+        ]);
+
+        expect(groups.map((g) => g.sources.single.item.id), ['a-arrival', 'a-dune', 'a-sicario']);
+      });
+
+      test('B14: the repeat never moves the card off the position its first sighting won', () {
+        final first = plexFilm(id: 'a-arrival');
+        final second = plexFilm(id: 'a-dune', title: 'Dune', year: 2021);
+
+        final groups = groupUnifiedMediaSources([
+          _candidateFromItem(first),
+          _candidateFromItem(second),
+          _candidateFromItem(first),
+        ]);
+
+        expect(groups.map((g) => g.sources.single.item.id), ['a-arrival', 'a-dune']);
+      });
+
+      test('E15: a page replayed after a retry adds nothing', () {
+        final page = [plexFilm(id: 'a-arrival'), plexFilm(id: 'a-dune', title: 'Dune', year: 2021)];
+
+        final once = groupUnifiedMediaSources([for (final item in page) _candidateFromItem(item)]);
+        final twice = groupUnifiedMediaSources([
+          for (final item in [...page, ...page]) _candidateFromItem(item),
+        ]);
+
+        expect(twice.map((g) => g.groupId), once.map((g) => g.groupId));
+        expect(twice.map((g) => g.sources.length), once.map((g) => g.sources.length));
+      });
+
+      test('B15: an item reported under two libraries is one membership, keeping the first library', () {
+        // Same server, same item id, different libraryId — a title that moved
+        // while the merge was reading. sourceKey is serverId:id, so both
+        // sightings are the same concrete membership.
+        final inOldLibrary = plexFilm(id: 'a-arrival', libraryId: 'lib-films');
+        final inNewLibrary = plexFilm(id: 'a-arrival', libraryId: 'lib-4k');
+
+        final groups = groupUnifiedMediaSources([_candidateFromItem(inOldLibrary), _candidateFromItem(inNewLibrary)]);
+
+        expect(groups, hasLength(1));
+        expect(groups.single.sources, hasLength(1));
+        expect(groups.single.sources.single.libraryId, 'lib-films');
+      });
+
+      test('a duplicate sourceKey never trips C19 into refusing a genuine weak merge', () {
+        // Without the boundary this is exactly the C19 shape — server-a
+        // contributing two candidates to one bucket — and server-a would stop
+        // merging with server-b at all. It is not ambiguity: it is one film
+        // counted twice.
+        final serverA = plexFilm(id: 'a-indie', title: 'Local Indie Film', year: 2019);
+        final serverB = MediaItem(
+          id: 'b-indie',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Local Indie Film',
+          year: 2019,
+          serverId: 'server-b',
+          serverName: 'B',
+        );
+
+        final groups = groupUnifiedMediaSources([
+          _candidateFromItem(serverA),
+          _candidateFromItem(serverA),
+          _candidateFromItem(serverB),
+        ]);
+
+        expect(groups, hasLength(1));
+        expect(groups.single.sources.map((s) => s.sourceKey), ['server-a:a-indie', 'server-b:b-indie']);
+      });
+
+      test('genuinely different sourceKeys for one title stay two memberships', () {
+        // The negative control: dedup is concrete-membership only. Two real
+        // copies of one film on two servers must still be one card carrying
+        // two sources.
+        final serverA = plexFilm(id: 'a-indie', title: 'Local Indie Film', year: 2019);
+        final serverB = MediaItem(
+          id: 'b-indie',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Local Indie Film',
+          year: 2019,
+          serverId: 'server-b',
+          serverName: 'B',
+        );
+
+        final groups = groupUnifiedMediaSources([_candidateFromItem(serverA), _candidateFromItem(serverB)]);
+
+        expect(groups, hasLength(1));
+        expect(groups.single.sources, hasLength(2));
+      });
+
+      test('two real editions on one server are still two memberships, not a duplicate', () {
+        // Second negative control, at the place the rule is easiest to
+        // over-apply: same server, same title, same year, different item ids.
+        final theatrical = plexFilm(id: 'a-collision-theatrical', title: 'Collision', year: 2020);
+        final directors = plexFilm(id: 'a-collision-directors', title: 'Collision', year: 2020);
+
+        final groups = groupUnifiedMediaSources([_candidateFromItem(theatrical), _candidateFromItem(directors)]);
+
+        expect(
+          groups.expand((g) => g.sources).map((s) => s.sourceKey),
+          containsAll(['server-a:a-collision-theatrical', 'server-a:a-collision-directors']),
+        );
+      });
+    });
   });
 }

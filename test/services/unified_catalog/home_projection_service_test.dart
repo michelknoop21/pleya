@@ -59,6 +59,33 @@ MediaItem _episode(
   serverName: serverName,
 );
 
+/// A show-level item (as opposed to [_episode], one concrete episode).
+/// [childCount] is the season count a source reports; [leafCount]/
+/// [viewedLeafCount] are its total/watched episode counts.
+MediaItem _show({
+  required String id,
+  required String serverId,
+  String title = 'Severance',
+  int? year = 2022,
+  String? guid,
+  int? childCount,
+  int? leafCount,
+  int? viewedLeafCount,
+  String serverName = 'Plex Familie',
+}) => MediaItem(
+  id: id,
+  backend: MediaBackend.plex,
+  kind: MediaKind.show,
+  title: title,
+  year: year,
+  guid: guid,
+  childCount: childCount,
+  leafCount: leafCount,
+  viewedLeafCount: viewedLeafCount,
+  serverId: serverId,
+  serverName: serverName,
+);
+
 MediaHub _hub({
   required String id,
   String? identifier,
@@ -536,6 +563,72 @@ void main() {
       expect(row.groups, hasLength(2));
     });
 
+    group('D9: absolute vs season/episode numbering', () {
+      // Pleya builds no absolute-numbering translator (hoofdstuk 11.8's own
+      // binding text, restated by fase 9): the ordinal each backend reports
+      // is compared literally, never converted between absolute, aired or
+      // DVD numbering. Without a strong id a genuine mismatch is therefore
+      // read as two different episodes — false negative over false merge —
+      // and a strong id overrides it regardless, because that is real
+      // identity evidence, not a numbering guess.
+      test('the same episode numbered differently on two servers stays two cards without a strong id', () async {
+        // The classic absolute-numbering collision: server A reports this as
+        // S02E04 (aired order); server B reports the identical file as
+        // "episode 24" with no season split (an absolute-numbered library).
+        // Neither side carries a guid or an external id here, so there is
+        // nothing but the ordinal to go on — and it disagrees.
+        final onDeck = [
+          _episode('a-e4', serverId: 'a', season: 2, episode: 4),
+          _episode('b-e24', serverId: 'b', season: 1, episode: 24, serverName: 'Absolute Numbered Server'),
+        ];
+
+        final row = await _service().projectContinueWatching(onDeck, title: 'Continue Watching');
+
+        expect(row.groups, hasLength(2), reason: 'no translation is attempted, so a real mismatch reads as two rows');
+      });
+
+      test('a shared strong episode guid still merges despite the numbering disagreeing', () async {
+        // Same shape, but now both sides agree on the one thing that is
+        // real identity evidence: the concrete episode's own guid. D3's
+        // rule — a strong id is authoritative — holds even though the
+        // ordinals it is attached to disagree.
+        final onDeck = [
+          _episode('a-e4', serverId: 'a', season: 2, episode: 4, guid: 'plex://episode/5d9c08'),
+          _episode(
+            'b-e24',
+            serverId: 'b',
+            season: 1,
+            episode: 24,
+            guid: 'plex://episode/5d9c08',
+            serverName: 'Absolute Numbered Server',
+          ),
+        ];
+
+        final row = await _service().projectContinueWatching(onDeck, title: 'Continue Watching');
+
+        expect(row.groups, hasLength(1));
+        expect(row.groups.single.sources.map((s) => s.item.id), ['a-e4', 'b-e24']);
+      });
+
+      test('a shared series-wide id narrowed by disagreeing ordinals does not merge either', () async {
+        // The weaker D4 path (series id + ordinal) is exactly as strict:
+        // both sides resolve the same series tmdb, but the ordinal the id
+        // gets narrowed by differs, so the resulting tokens are for two
+        // different buckets and never even compete to merge.
+        final onDeck = [
+          _episode('a-e4', serverId: 'a', season: 2, episode: 4),
+          _episode('b-e24', serverId: 'b', season: 1, episode: 24, serverName: 'Absolute Numbered Server'),
+        ];
+        final service = _service(
+          ids: {'a:show-1': const ExternalIds(tmdb: 95396), 'b:show-1': const ExternalIds(tmdb: 95396)},
+        );
+
+        final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
+
+        expect(row.groups, hasLength(2));
+      });
+    });
+
     test('F: distinct episodes with no external ids at all stay distinct', () async {
       final onDeck = [
         _episode('a-e4', serverId: 'a', season: 2, episode: 4),
@@ -567,6 +660,81 @@ void main() {
 
       expect(row.groups, hasLength(2));
       expect(fetchLog, isEmpty, reason: 'no exact-episode bucket means no series-wide id is even fetched');
+    });
+
+    test('G14: the same season/episode of two different series never share a card', () async {
+      // The failure this guards is the worst one Continue Watching can make:
+      // your position in Severance showing up as your position in Andor
+      // because both happen to be S02E04. The ordinals match exactly; only
+      // the show identity separates them, and it has to be enough.
+      final onDeck = [
+        _episode('a-sev-e4', serverId: 'a', show: 'Severance', showId: 'show-1', season: 2, episode: 4),
+        _episode('b-andor-e4', serverId: 'b', show: 'Andor', showId: 'show-2', season: 2, episode: 4),
+      ];
+      final service = _service(
+        ids: {'a:show-1': const ExternalIds(tmdb: 95396), 'b:show-2': const ExternalIds(tmdb: 83867)},
+      );
+
+      final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(2));
+      expect({for (final g in row.groups) g.groupId}, hasLength(2));
+      expect(
+        {for (final g in row.groups) g.representativeSource.item.grandparentTitle: g.sources.length},
+        {'Severance': 1, 'Andor': 1},
+        reason: 'neither card may borrow the other series\' source',
+      );
+    });
+
+    test('G14: two series with no external ids at all still never merge on ordinals', () async {
+      // Same shape with the identity evidence removed, because "they did not
+      // merge" is only worth something when a merge was actually available.
+      final onDeck = [
+        _episode('a-sev-e4', serverId: 'a', show: 'Severance', showId: 'show-1', season: 2, episode: 4),
+        _episode('b-andor-e4', serverId: 'b', show: 'Andor', showId: 'show-2', season: 2, episode: 4),
+      ];
+
+      final row = await _service().projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(2));
+    });
+
+    test('G14: one series\' progress stays on its own card when the other is further along', () async {
+      // The watch-state half: hoofdstuk 13.2 only ever chooses among a
+      // group's own sources, so a neighbouring series cannot donate a
+      // position no matter how much further into its episode it is.
+      final onDeck = [
+        _episode(
+          'a-sev-e4',
+          serverId: 'a',
+          show: 'Severance',
+          showId: 'show-1',
+          season: 2,
+          episode: 4,
+          viewOffsetMs: 60000,
+          lastViewedAt: 300,
+        ),
+        _episode(
+          'b-andor-e4',
+          serverId: 'b',
+          show: 'Andor',
+          showId: 'show-2',
+          season: 2,
+          episode: 4,
+          viewOffsetMs: 2000000,
+          lastViewedAt: 900,
+        ),
+      ];
+
+      final row = await _service().projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(
+        {
+          for (final g in row.groups)
+            g.representativeSource.item.grandparentTitle!: g.representativeSource.item.viewOffsetMs,
+        },
+        {'Severance': 60000, 'Andor': 2000000},
+      );
     });
 
     test('J: the exact-episode identity leaves progress, ordering and the activation source alone', () async {
@@ -663,6 +831,107 @@ void main() {
 
       expect(row.isEmpty, isTrue);
       expect(row.kind, UnifiedHubKind.other);
+    });
+  });
+
+  group('WP11: series/show cases (existing-proof-first)', () {
+    test('D2: sources reporting different season coverage for the same show still merge into one card', () async {
+      // Identity keys a show on title/year/external id — never on how many
+      // seasons a source happens to report. A library that has only caught
+      // up to season 2 must not fork into a second card next to the one that
+      // already has season 3.
+      final hubs = [
+        _hub(
+          id: 'x',
+          identifier: 'home.recentshows',
+          serverId: 'a',
+          type: 'show',
+          items: [_show(id: 'sev-a', serverId: 'a', childCount: 2)],
+        ),
+        _hub(
+          id: 'y',
+          identifier: 'home.recentshows',
+          serverId: 'b',
+          type: 'show',
+          items: [_show(id: 'sev-b', serverId: 'b', childCount: 3)],
+        ),
+      ];
+
+      final rows = await _service().projectHubs(hubs);
+
+      expect(rows, hasLength(1), reason: 'shared identifier: one global row, same as any other merged hub');
+      expect(rows.single.groups, hasLength(1), reason: 'season coverage is not identity evidence, so this merges');
+      expect(rows.single.groups.single.sources, hasLength(2));
+    });
+
+    test('D8: a combined double episode on one server only matches the first half on a server that split it', () async {
+      // No absolute-numbering translator exists (D9's own rule): a server
+      // that stores "episode 4" as a combined double-length file for what
+      // another server splits into 4 and 5 can only literally match on the
+      // ordinal both sides agree on. Server B's own episode 5 is then a
+      // genuinely unmatched, single-source card — a false negative, not the
+      // false merge hoofdstuk 11.8 forbids.
+      final onDeck = [
+        _episode('a-double', serverId: 'a', season: 2, episode: 4),
+        _episode('b-e4', serverId: 'b', season: 2, episode: 4, serverName: 'Splits Episodes'),
+        _episode('b-e5', serverId: 'b', season: 2, episode: 5, serverName: 'Splits Episodes'),
+      ];
+      // The same series-wide id both sides agree on — exactly what test C
+      // needs for a matching ordinal to merge at all; the point of this test
+      // is what the *ordinal* mismatch (double vs split) does once that
+      // evidence exists, not identity resolution from a bare title match.
+      final service = _service(
+        ids: {'a:show-1': const ExternalIds(tmdb: 95396), 'b:show-1': const ExternalIds(tmdb: 95396)},
+      );
+
+      final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(2));
+      final byOrdinal = {
+        for (final g in row.groups) g.representativeSource.item.index: g.sources.map((s) => s.item.id).toSet(),
+      };
+      expect(byOrdinal, {
+        4: {'a-double', 'b-e4'},
+        5: {'b-e5'},
+      });
+    });
+
+    test('D13: a show\'s watched-episode count stays with its representative source, never blended', () async {
+      // Hoofdstuk 13.1: "Per source bewaren: … viewCount" — the same
+      // source-bound rule G7/G4/G5 already apply to progress and runtime
+      // applies here too. Server A has watched 8 of 10 episodes; server B's
+      // copy (added later, or synced less often) shows only 3 of 10. The
+      // merged card shows one source's real count, never a sum or an
+      // average of the two.
+      final hubs = [
+        _hub(
+          id: 'x',
+          identifier: 'home.recentshows',
+          serverId: 'a',
+          type: 'show',
+          items: [_show(id: 'sev-a', serverId: 'a', leafCount: 10, viewedLeafCount: 8)],
+        ),
+        _hub(
+          id: 'y',
+          identifier: 'home.recentshows',
+          serverId: 'b',
+          type: 'show',
+          items: [_show(id: 'sev-b', serverId: 'b', leafCount: 10, viewedLeafCount: 3)],
+        ),
+      ];
+
+      final rows = await _service().projectHubs(hubs);
+
+      expect(rows, hasLength(1));
+      expect(rows.single.groups, hasLength(1));
+      final group = rows.single.groups.single;
+      expect(group.sources, hasLength(2), reason: 'both memberships are kept — nothing here drops a source');
+      final representativeCount = group.representativeSource.item.viewedLeafCount;
+      expect(
+        [8, 3],
+        contains(representativeCount),
+        reason: 'the shown count is one real source\'s own number, not blended (e.g. not 11 or 5.5)',
+      );
     });
   });
 }

@@ -185,10 +185,14 @@ class _CountingImporter implements TautulliHistoryImporter {
 }
 
 class _FakeClient implements MediaServerClient {
+  _FakeClient({this.id = 'server_1'});
+
+  final String id;
   MediaItem? itemResult;
+  final List<String> fetchedIds = [];
 
   @override
-  ServerId get serverId => ServerId('server_1');
+  ServerId get serverId => ServerId(id);
 
   @override
   String? get serverName => 'Server';
@@ -200,7 +204,10 @@ class _FakeClient implements MediaServerClient {
   ServerCapabilities get capabilities => ServerCapabilities.plex;
 
   @override
-  Future<MediaItem?> fetchItem(String id, {bool useCache = true}) async => itemResult;
+  Future<MediaItem?> fetchItem(String id, {bool useCache = true}) async {
+    fetchedIds.add(id);
+    return itemResult;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -230,6 +237,35 @@ void main() {
     hiddenLibraries = HiddenLibrariesProvider();
     libraries = LibrariesProvider();
     provider = DiscoverProvider(multiServer, hiddenLibraries, libraries, isProfileBinding: () => isBinding);
+  });
+
+  test('updateItem refetches from the server that owns the item, not the first id match', () async {
+    // A backend item id is unique per server: two Plex servers both number
+    // their rating keys from 1. Resolving the owner by scanning for a bare id
+    // match picks whichever list holds that id first, so finishing a film on
+    // one server refetched an unrelated title from the other and swapped it
+    // into the row — wrong title, wrong artwork, wrong route on the next
+    // Select.
+    final other = _FakeClient(id: 'server_2');
+    multiServer.serverManager.debugRegisterClientForTesting(other);
+    client.itemResult = _item('12345', serverId: 'server_1').copyWith(title: 'the right film, refreshed');
+    other.itemResult = _item('12345', serverId: 'server_2').copyWith(title: 'an unrelated film');
+
+    // server_2's copy is listed first, so a bare-id scan resolves to it.
+    aggregation.onDeckResult = () => [
+      _item('12345', serverId: 'server_2').copyWith(title: 'an unrelated film'),
+      _item('12345', serverId: 'server_1').copyWith(title: 'the right film'),
+    ];
+    await provider.load();
+
+    await provider.updateItem('12345', serverId: 'server_1');
+
+    expect(client.fetchedIds, ['12345'], reason: 'the owning server is the one asked');
+    expect(other.fetchedIds, isEmpty, reason: 'the other server holds a different title under the same id');
+    expect(provider.onDeck.map((i) => (i.serverId, i.title)), [
+      ('server_2', 'an unrelated film'),
+      ('server_1', 'the right film, refreshed'),
+    ]);
   });
 
   tearDown(() {
@@ -345,6 +381,43 @@ void main() {
 
     expect(sawImmediateRemoval, isTrue);
     expect(provider.onDeck.map((i) => i.id), ['ep-2']);
+  });
+
+  test('G10: a removed row does not come back while the server still lists it', () async {
+    // Hoofdstuk 13.4 point 6, and the case the queue exists for: a membership
+    // whose removal is still queued keeps being listed by its server until
+    // the replay lands. Dropping the row without suppressing it would put the
+    // card back on the very next refresh.
+    aggregation.onDeckResult = () => [_item('ep-1'), _item('ep-2')];
+    await provider.load();
+
+    WatchStateNotifier().notifyRemovedFromContinueWatching(item: _item('ep-1'));
+    await pumpEventQueue();
+    expect(provider.onDeck.map((i) => i.id), ['ep-2']);
+
+    // The server has not processed the removal yet and still returns it.
+    await provider.refreshContinueWatching();
+    await pumpEventQueue();
+
+    expect(provider.onDeck.map((i) => i.id), ['ep-2']);
+  });
+
+  test('G10: the suppression lifts once the server stops listing the row', () async {
+    aggregation.onDeckResult = () => [_item('ep-1'), _item('ep-2')];
+    await provider.load();
+
+    WatchStateNotifier().notifyRemovedFromContinueWatching(item: _item('ep-1'));
+    await pumpEventQueue();
+
+    // The removal landed server-side, so the row is gone from the answer …
+    aggregation.onDeckResult = () => [_item('ep-2')];
+    await provider.refreshContinueWatching();
+
+    // … and a genuine rewatch afterwards must be able to bring it back.
+    aggregation.onDeckResult = () => [_item('ep-1'), _item('ep-2')];
+    await provider.refreshContinueWatching();
+
+    expect(provider.onDeck.map((i) => i.id), ['ep-1', 'ep-2']);
   });
 
   test('watched movie leaves the row immediately and a stale refetch cannot bring it back', () async {

@@ -91,6 +91,30 @@ void main() {
       expect(second.items.last.title, 'Film 20');
     });
 
+    test('a library that pages smaller than the window still fills it', () async {
+      // The walk used to stop after ten pages whatever they held, so a server
+      // that answers four at a time returned forty items for a fifty-item
+      // window while its cursor still pointed at more. One layer up a short
+      // page *is* the end-of-library signal (E8), so the rest of the library
+      // silently never appeared and the catalogue reported itself complete.
+      final small = PleyaFakeServer(pageSizeCap: 4);
+      small.addLibrary(id: 'lib-big', title: 'Groot', kind: 'movies', itemCount: 120);
+      for (var i = 1; i <= 120; i++) {
+        small.addItem(
+          id: 'big-${i.toString().padLeft(3, '0')}',
+          kind: 'movie',
+          title: 'Film ${i.toString().padLeft(3, '0')}',
+          libraryId: 'lib-big',
+        );
+      }
+      client = await connected(small);
+
+      final page = await client.fetchLibraryPagedContent('lib-big', query: const LibraryQuery(limit: 50));
+
+      expect(page.items, hasLength(50), reason: 'the window is filled, not truncated at the walk bound');
+      expect(page.items.map((i) => i.id).toSet(), hasLength(50), reason: 'and without repeating a page');
+    });
+
     test('a resumed page reuses the stored cursor instead of walking again', () async {
       client = await connected(server);
       await client.fetchLibraryPagedContent('lib-films', query: const LibraryQuery(limit: 10));

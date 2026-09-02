@@ -52,11 +52,14 @@ import 'package:pleya/screens/search_screen.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/providers/unified_catalogs.dart';
+import 'package:pleya/providers/watchlist_provider.dart';
 import 'package:pleya/screens/tv/tv_movies_screen.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_sections.dart';
 import 'package:pleya/screens/tv/tv_root_shell.dart';
+import 'package:pleya/widgets/pleya_wordmark.dart';
 import 'package:pleya/widgets/tv/tv_top_navigation.dart';
 import 'package:pleya/screens/tv/tv_series_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
@@ -72,6 +75,7 @@ import 'package:pleya/utils/platform_detector.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/golden.dart';
+import '../test_helpers/tv_my_pleya_conditions.dart';
 import '../test_helpers/prefs.dart';
 
 /// One library that answers immediately, so the catalog pictures have real
@@ -191,7 +195,11 @@ void main() {
   /// with the design.
   Future<void> precacheWordmark(WidgetTester tester) async {
     final element = tester.element(find.byType(TvTopNavigation));
-    await tester.runAsync(() => precacheImage(const AssetImage('assets/branding/pleya_wordmark.png'), element));
+    // Both layers, and named by the widget rather than by string, so a renamed
+    // asset cannot leave this precache silently pointing at nothing.
+    for (final asset in PleyaWordmark.assets) {
+      await tester.runAsync(() => precacheImage(AssetImage(asset), element));
+    }
     await tester.pumpAndSettle();
   }
 
@@ -280,9 +288,75 @@ void main() {
       await expectMatchesGolden(find.byType(TvRootShell), 'tv_shell_my_pleya_focused');
     });
 
+    // `tvos.my-pleya.full` (hoofdstuk 29). The picture above is the hub with
+    // every conditional tile switched *off* — no watchlist, no Seerr, no
+    // Plex source, and Downloads never on an Apple TV — so it renders two
+    // groups. Hoofdstuk 18.3 says all of those can be present at once, and
+    // that is the taller page: a third group above the two, and a fourth tile
+    // in the sources row.
+    //
+    // `buildTvMyPleyaGroups` already proves *which* tiles appear per condition
+    // (`tv_my_pleya_screen_test.dart`). What only a render can answer is
+    // whether the page still fits its own frame once they all do.
+    testWidgets('Mijn Pleya with every conditional tile present', (tester) async {
+      await boot(hasLiveTv: false, active: TvDestinationId.myPleya);
+      // A Plex source that is actually online, so hoofdstuk 18.3's Server
+      // Activities tile appears rather than being assumed.
+      manager.debugRegisterClientForTesting(OnlinePlexClientDouble('nas', 'NAS'));
+      final watchlist = StockedWatchlistDouble();
+      addTearDown(watchlist.dispose);
+      final seerr = ConfiguredSeerrDouble();
+      addTearDown(seerr.dispose);
+
+      setGoldenSurfaceSize(tester);
+      await tester.pumpWidget(
+        shell(
+          hub(),
+          withProviders: (child) => MultiProvider(
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
+              ChangeNotifierProvider<WatchlistProvider>.value(value: watchlist),
+              ChangeNotifierProvider<SeerrProvider>.value(value: seerr),
+            ],
+            child: child,
+          ),
+        ),
+      );
+      await precacheWordmark(tester);
+      await tester.pumpAndSettle();
+
+      // The assertion the picture cannot make on its own: this really is the
+      // full hub, so a future change that silently drops a tile fails here
+      // rather than quietly redrawing the golden.
+      expect(find.text(t.watchlist.title), findsOneWidget);
+      expect(find.text(t.seerr.title), findsOneWidget);
+      expect(find.text(t.navigation.downloads), findsNothing, reason: 'hoofdstuk 18.3: never on an Apple TV');
+
+      await expectMatchesGolden(find.byType(TvRootShell), 'tv_shell_my_pleya_full');
+    });
+
     testWidgets('Home active', (tester) async {
       await boot(hasLiveTv: false);
       await shoot(tester, 'tv_shell_home_active');
+    });
+
+    // WP3 / hoofdstuk 18.4. The acceptance is what is *absent*: no red strip
+    // over the content, no giant warning, no CTA competing with the page. What
+    // is present is one small amber dot on the destination that leads to the
+    // fix. Compare against `tv_shell_home_active` above — same picture, same
+    // geometry, one mark.
+    testWidgets('an expired session marks Mijn Pleya and leaves the page alone', (tester) async {
+      await boot(hasLiveTv: false);
+      manager.debugRegisterClientForTesting(_AuthErroredClient('nas', 'NAS'), online: false);
+      manager.debugMarkAuthErrorForTesting(ServerId('nas'));
+      await shoot(tester, 'tv_shell_auth_attention');
+    });
+
+    testWidgets('and Mijn Pleya itself names the server that needs it', (tester) async {
+      await boot(hasLiveTv: false, active: TvDestinationId.myPleya);
+      manager.debugRegisterClientForTesting(_AuthErroredClient('nas', 'NAS'), online: false);
+      manager.debugMarkAuthErrorForTesting(ServerId('nas'));
+      await shoot(tester, 'tv_shell_auth_my_pleya');
     });
 
     testWidgets('Films active, with Live TV in the bar', (tester) async {
@@ -503,7 +577,15 @@ void main() {
       await tester.pumpWidget(
         shell(
           const SearchScreen(),
-          withProviders: (child) => ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer, child: child),
+          // SearchScreen resolves hidden-library visibility, which the
+          // profile session supplies in production.
+          withProviders: (child) => MultiProvider(
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
+              ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hidden),
+            ],
+            child: child,
+          ),
         ),
       );
       await precacheWordmark(tester);
@@ -592,4 +674,31 @@ class _EmptyProfileConnectionRegistry extends ProfileConnectionRegistry {
 
   @override
   Stream<List<ProfileConnection>> watchAll() => Stream.value(const []);
+}
+
+/// A server whose token was rejected: enough of a client for the registry to
+/// name it, and nothing else. Auth-error state is set explicitly through
+/// `debugMarkAuthErrorForTesting` rather than by letting a health sweep run,
+/// so the picture is of one known state and not of a race.
+class _AuthErroredClient implements MediaServerClient {
+  _AuthErroredClient(String id, this._name) : serverId = ServerId(id);
+
+  @override
+  final ServerId serverId;
+  final String _name;
+
+  @override
+  String? get serverName => _name;
+
+  @override
+  MediaBackend get backend => MediaBackend.plex;
+
+  @override
+  ServerCapabilities get capabilities => ServerCapabilities.plex;
+
+  @override
+  Future<HealthStatus> checkHealth() async => HealthStatus.authError;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

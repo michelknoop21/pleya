@@ -46,7 +46,9 @@ import '../../navigation/main_screen_scope.dart';
 import '../../navigation/tv/tv_navigation_coordinator.dart';
 import 'tv_root_shell.dart';
 import '../../profiles/active_profile_provider.dart';
+import '../../providers/hidden_libraries_provider.dart';
 import '../../providers/multi_server_provider.dart';
+import '../../providers/offline_mode_provider.dart';
 import '../../providers/unified_catalog_provider.dart';
 import '../../services/api_cache.dart';
 import '../../services/unified_catalog/source_resolver.dart';
@@ -65,6 +67,7 @@ import '../../widgets/tv/tv_unified_media_card.dart';
 import '../../widgets/tv/tv_unified_media_grid.dart';
 import 'tv_media_source_picker_route.dart';
 import 'tv_unified_activation.dart';
+import 'tv_unified_context_menu.dart';
 
 /// Which header action UP from the grid returns to (hoofdstuk 7.4 read
 /// together with 7.6's focus memory).
@@ -352,6 +355,37 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         resolver: _sourceResolver(multiServer),
         onManageServers: widget.onManageServers,
       ),
+      // I19: player return re-reads the concrete item that played and folds
+      // it back into its group in place — no re-page, no lost scroll
+      // position, no card that jumps under the cursor. `refreshItem` is a
+      // no-op when the merge never popped this item (the shape every existing
+      // callback already tolerates).
+      onPlaybackReturned: (item) => unawaited(
+        widget.catalog.refreshItem(item.globalKey, () async {
+          final serverId = item.serverId;
+          if (serverId == null) return null;
+          return context.read<MultiServerProvider>().getClientForServer(ServerId(serverId))?.fetchItem(item.id);
+        }),
+      ),
+    );
+  }
+
+  /// Hoofdstuk 23's menu, on the same live health read [_activate] uses.
+  ///
+  /// `isInContinueWatching` stays false: the complete catalogus is a library
+  /// wall, and "Verwijder uit Verder kijken" on a card that is not in Verder
+  /// kijken is an action with nothing to act on.
+  Future<void> _openContextMenu(UnifiedMediaGroup group) async {
+    final manager = context.read<MultiServerProvider>().serverManager;
+    final health = unifiedServerHealth(
+      isOnline: manager.isServerOnline,
+      authErrorServerIds: manager.authErrorServerIds,
+    );
+    await showTvUnifiedContextMenu(
+      context,
+      group: group,
+      availabilityFor: (source) => unifiedSourceAvailability(source, health),
+      isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
     );
   }
 
@@ -368,19 +402,26 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     if (_resolver != null && _resolverProfileId == profileId) return _resolver;
     _resolverProfileId = profileId;
     final manager = multiServer.serverManager;
+    final hiddenLibraries = context.read<HiddenLibrariesProvider>();
     return _resolver = SourceAllResolver(
       profileId: profileId,
-      serversFor: () => [
-        for (final serverId in manager.serverIds)
-          if (manager.isServerVisible(ServerId(serverId)))
-            (
-              serverId: ServerId(serverId),
-              backend: manager.getClient(ServerId(serverId))?.backend ?? MediaBackend.plex,
-              client: manager.getClient(ServerId(serverId)),
-              online: manager.isServerOnline(ServerId(serverId)),
-              hasAuthError: manager.authErrorServerIds.contains(serverId),
-            ),
-      ],
+      // A19: the denominator is the profile's topology, not the live client
+      // map. `eligibleSourceServers` documents why an expected server without
+      // a client has to stay in the list instead of quietly leaving coverage
+      // complete.
+      serversFor: () => eligibleSourceServers(
+        expectedServerIds: multiServer.expectedServerIds,
+        visibleServerIds: multiServer.serverIds,
+        clientFor: manager.getClient,
+        isOnline: manager.isServerOnline,
+        authErrorServerIds: manager.authErrorServerIds,
+      ),
+      // Library visibility, read live: the resolver is cached per profile and
+      // must see a hide that lands after it was built. Server visibility is
+      // already closed by the `isServerVisible` guard above; this closes the
+      // other half, so a hidden library on a visible server cannot come back
+      // as a picker row.
+      hiddenLibraryKeysFor: () => hiddenLibraries.hiddenLibraryKeys,
       cache: ApiCache.forBackend(MediaBackend.plex),
     );
   }
@@ -582,6 +623,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       isLoadingMore: catalog.isLoadingMore,
       onLoadMore: catalog.loadMore,
       onActivate: _activate,
+      onContextMenu: _openContextMenu,
       onExitTop: _focusHeader,
       onExitLeft: _focusSidebar,
       clientFor: (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId)),

@@ -327,7 +327,7 @@ Vastgesteld op 2026-08-30. Elke fase heeft nu een **rol**, niet alleen een filel
 | 7 | **Unified TV Shell** — sidebar eruit, horizontale topnav, root focus/back, Mijn Pleya | |
 | 8 | **Home Experience** — rounded featured carousel (5–8), autoplay/pause-lifecycle, CW- en Voor jou-carousels, cinematic ambient, finale Home-compositie | |
 | 9 | Integratie van discovery/catalog/shell + accessibility/edge cases | |
-| 10A | Finale automatische harding | |
+| 10A | Finale automatische harding | **afgerond 2026-09-01** |
 | Final | Fysieke Apple TV-acceptatie | |
 
 **De architectonische scheiding die dit oplevert:**

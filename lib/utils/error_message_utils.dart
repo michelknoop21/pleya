@@ -182,9 +182,27 @@ Notice noticeForError(Object error, {String? context, String? serverName, VoidCa
 /// notice's [Notice.reportCode].
 Notice noticeForPlaybackFailure(String rawMessage, {VoidCallback? onRetry}) {
   final code = logNoticeError('playback', rawMessage);
-  final kind = classifyPlaybackFailure(rawMessage);
+  return noticeForPlaybackFailureKind(classifyPlaybackFailure(rawMessage), reportCode: code, onRetry: onRetry);
+}
+
+/// Builds the [Notice] for a playback failure whose [kind] is already known,
+/// e.g. a Plex item whose `checkFiles=1` flags say the file is gone before
+/// mpv ever opened it. [reportCode] is the code the caller logged; without
+/// one, a line is logged here so "Details" still has something to point at.
+///
+/// Every playback notice is bounded in time, unlike other errors. The player
+/// has already left the screen by the time it shows, so there is nothing to
+/// act on, and a card that stays until it is clicked away is a card that is
+/// still standing over the next video on a tv where nobody clicks.
+Notice noticeForPlaybackFailureKind(PlaybackFailureKind kind, {String? reportCode, VoidCallback? onRetry}) {
+  final code = reportCode ?? logNoticeError('playback', kind.name);
   final (primary, secondary) = _noticeActions(onRetry: onRetry);
+  final title = switch (kind) {
+    PlaybackFailureKind.fileUnavailable => t.notices.playbackFileUnavailableTitle,
+    _ => t.notices.playbackStoppedTitle,
+  };
   final body = switch (kind) {
+    PlaybackFailureKind.fileUnavailable => t.notices.playbackFileUnavailableBody,
     PlaybackFailureKind.segmentUnavailable => t.notices.playbackSegmentUnavailableBody,
     PlaybackFailureKind.connectionLost => t.notices.playbackConnectionLostBody,
     PlaybackFailureKind.codecUnsupported => t.notices.playbackCodecUnsupportedBody,
@@ -193,14 +211,24 @@ Notice noticeForPlaybackFailure(String rawMessage, {VoidCallback? onRetry}) {
   };
   return Notice(
     level: NoticeLevel.error,
-    title: t.notices.playbackStoppedTitle,
+    title: title,
     body: body,
     primary: primary,
     secondary: secondary,
     reportCode: code,
-    groupKey: 'playback:${kind.name}',
+    groupKey: '$playbackNoticeGroupPrefix${kind.name}',
+    durationOverride: playbackNoticeDuration,
   );
 }
+
+/// Every playback failure notice shares this [Notice.groupKey] prefix, so the
+/// player can clear whatever is still standing once a video does play.
+const String playbackNoticeGroupPrefix = 'playback:';
+
+/// How long a playback failure stays on screen. Long enough to read two
+/// sentences on a tv across the room, short enough not to outlive the next
+/// thing the user starts.
+const Duration playbackNoticeDuration = Duration(seconds: 12);
 
 /// Builds a [Notice] for a failed play/shuffle launch. Deliberately doesn't
 /// go through [noticeForError]: [actionLabel] is a verb ("Play", "Shuffle"),

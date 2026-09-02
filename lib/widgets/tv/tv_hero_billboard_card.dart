@@ -118,10 +118,17 @@ class TvHeroBillboardCard extends StatelessWidget {
   /// this only ever bites on a fallback billboard.
   final bool hideSpoilers;
 
-  /// 33.2: "Focusverlies op de hero dooft zijn tekst". The carousel drives
-  /// this to zero once a content row holds the focus, so the billboard reads
-  /// as the picture it has become rather than as a second, competing block of
-  /// type under the row the viewer is actually reading.
+  /// 33.2: "Focusverlies op de hero dooft zijn tekst". Set to zero once a
+  /// content row holds the focus, so the billboard reads as the picture it
+  /// has become rather than as a second, competing block of type under the
+  /// row the viewer is actually reading.
+  ///
+  /// Not this card's own decision, nor the carousel's either — [_rowHasFocus]
+  /// is state `TvContentFeed` owns (the library doc's "two independent state
+  /// machines"), which the carousel only forwards unchanged as this
+  /// parameter. Naming the carousel here would be exactly the kind of
+  /// misattributed "who decides this" this file otherwise guards against for
+  /// activation (see the class doc's "Presentation only").
   final double textOpacity;
 
   @override
@@ -155,8 +162,22 @@ class TvHeroBillboardCard extends StatelessWidget {
               // than one diagonal, so the right half of the artwork — where the
               // subject is — keeps its own colour untouched (fase-8 brief §5:
               // "natuurlijke kleur; geen globale grading").
-              _ReadingScrim(color: tk.bg),
-              _BottomScrim(color: tk.bg),
+              //
+              // H20: the wash itself is [MonoTokens.artworkScrim] (`tk.bg`), but
+              // its *strength* has to fork on theme too — `artworkScrimAlpha`'s
+              // own doc: a light-theme veil is white, so it brightens the
+              // artwork under the text instead of dimming it, and needs to wash
+              // harder before releasing the image. `light:` is `dark:` plus the
+              // same kind of boost `discover_screen.dart`'s hero scrim already
+              // applies for the identical reason.
+              _ReadingScrim(
+                color: tk.artworkScrim,
+                alpha: tk.artworkScrimAlpha(dark: TvHomeLayout.heroScrimAlpha, light: 0.94),
+              ),
+              _BottomScrim(
+                color: tk.artworkScrim,
+                alpha: tk.artworkScrimAlpha(dark: TvHomeLayout.heroScrimBottomAlpha, light: 0.62),
+              ),
               Positioned(
                 left: TvHomeLayout.heroContentInset * scale,
                 bottom: TvHomeLayout.heroContentBottom * scale,
@@ -204,9 +225,14 @@ class TvHeroBillboardCard extends StatelessWidget {
 /// the card, taking the bottom-right corner with it. A product of the two
 /// ramps is the shape 33.1 actually specifies.
 class _ReadingScrim extends StatelessWidget {
-  const _ReadingScrim({required this.color});
+  const _ReadingScrim({required this.color, required this.alpha});
 
   final Color color;
+
+  /// Already theme-resolved by the caller (`MonoTokens.artworkScrimAlpha`) —
+  /// this widget never reads [MonoTokens] itself, so it cannot silently drift
+  /// back to a single hardcoded strength for both themes (H20).
+  final double alpha;
 
   @override
   Widget build(BuildContext context) {
@@ -221,11 +247,17 @@ class _ReadingScrim extends StatelessWidget {
         blendMode: BlendMode.dstIn,
         child: DecoratedBox(
           decoration: BoxDecoration(
+            // Directional, not physical: the wash exists to make the text
+            // column readable, so it has to start on the same edge that column
+            // starts on. Under an RTL directionality a left-pinned ramp would
+            // sit opposite the type it is there for (hoofdstuk 25, "RTL":
+            // "tekstkolom en scrim spiegelen"). `DecoratedBox` resolves the
+            // geometry against the ambient direction, so nothing else changes.
             gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
+              begin: AlignmentDirectional.centerStart,
+              end: AlignmentDirectional.centerEnd,
               colors: [
-                color.withValues(alpha: TvHomeLayout.heroScrimAlpha),
+                color.withValues(alpha: alpha),
                 Colors.transparent,
               ],
               stops: const [0, TvHomeLayout.heroScrimHorizontalStop],
@@ -240,9 +272,13 @@ class _ReadingScrim extends StatelessWidget {
 /// The card's lower edge, melted into the page. Weak on purpose — it carries no
 /// type, and at reading strength it took the bottom-right corner with it.
 class _BottomScrim extends StatelessWidget {
-  const _BottomScrim({required this.color});
+  const _BottomScrim({required this.color, required this.alpha});
 
   final Color color;
+
+  /// See [_ReadingScrim.alpha] — same reason, same theme-resolved-by-caller
+  /// contract.
+  final double alpha;
 
   @override
   Widget build(BuildContext context) {
@@ -253,7 +289,7 @@ class _BottomScrim extends StatelessWidget {
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
             colors: [
-              color.withValues(alpha: TvHomeLayout.heroScrimBottomAlpha),
+              color.withValues(alpha: alpha),
               Colors.transparent,
             ],
             stops: const [0, TvHomeLayout.heroScrimBottomStop],
@@ -308,7 +344,10 @@ class _HeroText extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: tokens.text.withValues(alpha: TvHomeLayout.inkSecondary),
+                // H20: dimmed ink reads as secondary on dark artwork but washed
+                // out on light — `onArtworkInk`'s own doc — so light keeps more
+                // ink than dark rather than sharing one alpha.
+                color: tokens.onArtworkInk(dark: TvHomeLayout.inkSecondary, light: 0.92),
                 fontSize: TvHomeLayout.heroMetaFontSize * scale,
                 height: TvHomeLayout.heroLineHeight,
               ),
@@ -329,7 +368,8 @@ class _HeroText extends StatelessWidget {
                     maxLines: TvHomeLayout.heroSynopsisMaxLines,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: tokens.text.withValues(alpha: TvHomeLayout.inkTertiary),
+                      // H20: see the meta line's own note just above.
+                      color: tokens.onArtworkInk(dark: TvHomeLayout.inkTertiary, light: 0.84),
                       fontSize: TvHomeLayout.heroSynopsisFontSize * scale,
                       height: TvHomeLayout.heroLineHeight,
                     ),
@@ -354,7 +394,7 @@ class _HeroText extends StatelessWidget {
       return SizedBox(
         height: band,
         child: Align(
-          alignment: Alignment.bottomLeft,
+          alignment: AlignmentDirectional.bottomStart,
           child: OptimizedMediaImage(
             client: client,
             imagePath: logo,
@@ -363,7 +403,7 @@ class _HeroText extends StatelessWidget {
             // Contain, never cover: a clearlogo cropped to fill its box is a
             // mangled wordmark, and the box is deliberately larger than most.
             fit: BoxFit.contain,
-            alignment: Alignment.bottomLeft,
+            alignment: AlignmentDirectional.bottomStart,
             imageType: ImageType.logo,
             fadeInDuration: Duration.zero,
             placeholder: (context, _) => const SizedBox.shrink(),
@@ -379,7 +419,7 @@ class _HeroText extends StatelessWidget {
     return SizedBox(
       height: band,
       child: Align(
-        alignment: Alignment.bottomLeft,
+        alignment: AlignmentDirectional.bottomStart,
         child: Text(
           heroTitleFor(group),
           maxLines: TvHomeLayout.heroTitleMaxLines,

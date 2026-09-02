@@ -11,9 +11,15 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
     if (error is UnsupportedDiscException) {
       return error.kind == DiscKind.dvd ? t.messages.dvdNotSupported : t.messages.discNotSupported;
     }
+    // Plex said so before mpv opened anything: the flags from checkFiles=1
+    // are the diagnosis, there is no log line to classify.
+    if (error is PlaybackFileUnavailableException) {
+      return t.notices.playbackFileUnavailableBody;
+    }
     final redacted = LogRedactionManager.redact(raw);
     logNoticeError('playback-init', redacted);
     return switch (classifyPlaybackFailure(redacted)) {
+      PlaybackFailureKind.fileUnavailable => t.notices.playbackFileUnavailableBody,
       PlaybackFailureKind.segmentUnavailable => t.notices.playbackSegmentUnavailableBody,
       PlaybackFailureKind.connectionLost => t.notices.playbackConnectionLostBody,
       PlaybackFailureKind.codecUnsupported => t.notices.playbackCodecUnsupportedBody,
@@ -56,7 +62,7 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
     }
     if (log.level == PlayerLogLevel.error || log.level == PlayerLogLevel.fatal) {
       appLogger.e('[Player LOG ERROR] [${log.prefix}] ${log.text}');
-      _lastLogError = _redactPlayerError(log.text.trim());
+      _rememberLogError(_redactPlayerError(log.text.trim()));
     }
   }
 

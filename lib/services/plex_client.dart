@@ -3399,6 +3399,13 @@ class PlexClient
       if (!data.hasValidVideoUrl) {
         throw PlaybackException(t.messages.fileInfoNotAvailable);
       }
+      // checkFiles=1 already told us the file is not there (unmounted disk,
+      // offline share, moved file). Opening the URL anyway only produces a
+      // 404 that mpv cannot explain; say what is wrong instead.
+      if (!data.hasPlayableVersion) {
+        appLogger.w('Plex reports no accessible file for ${options.metadata.id}; refusing to open the stream');
+        throw PlaybackFileUnavailableException(t.notices.playbackFileUnavailableBody);
+      }
 
       final wantTranscode = !options.qualityPreset.isOriginal;
       if (wantTranscode && options.sessionIdentifier != null && options.transcodeSessionId != null) {

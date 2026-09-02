@@ -81,6 +81,12 @@ void main() {
       if (!entity.readAsStringSync().contains(needle)) continue;
       final normalized = entity.path.replaceAll('\\', '/');
       if (normalized == 'lib/widgets/pleya_logo.dart') continue;
+      // The one other consumer, by decision rather than by accident: the
+      // backend badge draws the same generated P as a *source glyph* tinted to
+      // its line's ink, and [DEC-076] puts the boundary at the widget, not the
+      // asset — `PleyaLogo` is the brand mark and gets no colour parameter.
+      // The badge honours the no-clip/no-fill contract above on its own.
+      if (normalized == 'lib/widgets/backend_badge.dart') continue;
       offenders.add(normalized);
     }
     expect(offenders, isEmpty, reason: 'these files reference the raw asset instead of using PleyaLogo: $offenders');

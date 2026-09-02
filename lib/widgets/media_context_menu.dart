@@ -20,6 +20,8 @@ import '../services/plex_client.dart';
 import '../services/media_list_playback_launcher.dart';
 import '../services/offline_watch_sync_service.dart';
 import '../services/playlist_items_loader.dart';
+import '../services/rating_actions.dart';
+import '../services/unified_action_outcome.dart';
 import '../services/watch_actions.dart';
 import '../models/transcode_quality_preset.dart';
 import '../utils/download_version_utils.dart';
@@ -104,6 +106,18 @@ class MediaContextMenu extends StatefulWidget {
   final bool isInContinueWatching;
   final String? collectionId; // The collection ID if displaying within a collection
 
+  /// Every membership of this title, as `serverId:itemId` keys, when the
+  /// surface that built this menu happens to know them.
+  ///
+  /// Null everywhere today, and a null means exactly one thing: rate the source
+  /// we have. This menu is opened from source-bound lists (a library, a
+  /// collection, a playlist, Continue Watching) that hold no group, and
+  /// resolving one here would fire an identity query at every eligible server
+  /// on a long-press, to answer a question the user did not ask. DEC-075's
+  /// fan-out is on the same seam either way: a unified phone surface lights it
+  /// up by passing one list.
+  final List<String>? siblingSourceKeys;
+
   const MediaContextMenu({
     super.key,
     required this.item,
@@ -115,6 +129,7 @@ class MediaContextMenu extends StatefulWidget {
     required this.child,
     this.isInContinueWatching = false,
     this.collectionId,
+    this.siblingSourceKeys,
   });
 
   @override
@@ -626,14 +641,18 @@ class MediaContextMenuState extends State<MediaContextMenu> {
 
         case 'rate':
           if (context.mounted) {
-            try {
-              final client = _getMediaClientForItem();
-              await _showRatingSheet(context, mediaItem!, client);
-            } catch (e) {
-              if (context.mounted) {
-                showErrorSnackBar(context, friendlyError(e));
-              }
+            // Strictly this item's server, never `getMediaClientWithFallback`.
+            // That helper falls back to the first online server, and a Plex
+            // rating key is a per-server integer: with this item's server gone,
+            // a fallback writes the rating onto whatever unrelated title holds
+            // that key elsewhere. Invisible, permanent, and not what anybody
+            // asked for.
+            final client = context.tryGetMediaClientForServer(serverIdOrNull(mediaItem!.serverId));
+            if (client == null) {
+              showErrorSnackBar(context, t.errors.noClientAvailable);
+              break;
             }
+            await _showRatingSheet(context, mediaItem, client);
           }
           break;
 
@@ -1142,12 +1161,27 @@ class MediaContextMenuState extends State<MediaContextMenu> {
   }
 
   Future<void> _showRatingSheet(BuildContext context, MediaItem item, MediaServerClient client) async {
+    final siblings = widget.siblingSourceKeys;
+    final mirror = siblings == null || siblings.length < 2
+        ? null
+        : RatingMirror.fromSourceKeys(context, sourceKeys: siblings, originSourceKey: item.globalKey);
+
     await OverlaySheetController.showAdaptive(
       context,
       showDragHandle: true,
-      builder: (context) =>
-          RatingBottomSheet(item: item, serverClient: client, onServerRatingChanged: (_) => _notifyRefresh(item.id)),
+      builder: (context) => RatingBottomSheet(
+        item: item,
+        serverClient: client,
+        onServerRatingChanged: (_) => _notifyRefresh(item.id),
+        onServerRatingWritten: mirror?.write,
+      ),
     );
+
+    if (mirror == null) return;
+    await mirror.settled;
+    if (!mounted || mirror.doneCount >= mirror.intendedTargetCount) return;
+    final message = unifiedActionOutcomeMessage(done: mirror.doneCount, total: mirror.intendedTargetCount, queued: 0);
+    if (message != null) showAppSnackBar(this.context, message);
   }
 
   Future<void> _handleRemoveFromCollection(BuildContext context, MediaItem item) async {

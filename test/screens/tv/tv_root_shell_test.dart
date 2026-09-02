@@ -19,6 +19,7 @@ import 'package:pleya/navigation/tv/tv_destination.dart';
 import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/screens/tv/tv_root_shell.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/widgets/side_navigation_rail.dart';
 import 'package:pleya/widgets/tv/tv_top_navigation.dart';
 
@@ -48,7 +49,12 @@ void main() {
     contentScope.dispose();
   });
 
-  Future<void> pump(WidgetTester tester, {Widget? content, VoidCallback? onFocusNav}) async {
+  Future<void> pump(
+    WidgetTester tester, {
+    Widget? content,
+    VoidCallback? onFocusNav,
+    ValueChanged<bool>? onOverlaySheetOpenChanged,
+  }) async {
     tester.view.physicalSize = const Size(1280, 720);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -70,7 +76,7 @@ void main() {
               onFocusContent: ({bool restorePreviousFocus = true}) => contentFocusCalls++,
               onFocusNav: onFocusNav ?? () => navFocusCalls++,
               onOpenProfiles: () {},
-              onOverlaySheetOpenChanged: (_) {},
+              onOverlaySheetOpenChanged: onOverlaySheetOpenChanged ?? (_) {},
               onKeyEvent: (_) => KeyEventResult.ignored,
               selectLibrary: null,
               openSettings: null,
@@ -186,6 +192,82 @@ void main() {
       await tester.pump();
 
       expect(selected, [TvDestinationId.series]);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // I14: an open overlay owns the remote (hoofdstuk 7.5 step 1)
+  // ---------------------------------------------------------------------------
+
+  group('I14: switching tab while an overlay is open', () {
+    /// Content that opens a sheet on demand, through the same
+    /// [OverlaySheetController] every production overlay uses.
+    Widget sheetOpener() => Builder(
+      builder: (context) => Center(
+        child: ElevatedButton(
+          onPressed: () => OverlaySheetController.of(context).show<void>(
+            builder: (_) => const SizedBox(height: 120, child: Center(child: Text('SHEET'))),
+          ),
+          child: const Text('open sheet'),
+        ),
+      ),
+    );
+
+    Future<void> openSheet(WidgetTester tester) async {
+      await tester.tap(find.text('open sheet'));
+      await tester.pumpAndSettle();
+      expect(find.text('SHEET'), findsOneWidget);
+    }
+
+    testWidgets('Select goes to the sheet, never to the bar underneath', (tester) async {
+      final open = <bool>[];
+      await pump(tester, content: sheetOpener(), onOverlaySheetOpenChanged: open.add);
+      await openSheet(tester);
+      expect(open.last, isTrue, reason: 'the shell is told, so it can stand down');
+
+      final before = coordinator.active;
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      expect(
+        selected,
+        isEmpty,
+        reason: 'the sheet owns the remote while it is up: no destination is activated behind it',
+      );
+      expect(coordinator.active, before);
+      expect(find.text('SHEET'), findsOneWidget);
+    });
+
+    testWidgets('arrow keys do not walk the bar underneath it', (tester) async {
+      await pump(tester, content: sheetOpener());
+      await openSheet(tester);
+
+      final before = coordinator.focusedDestination;
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+
+      expect(coordinator.focusedDestination, before, reason: 'traversal is confined to the sheet\'s own focus scope');
+      expect(selected, isEmpty);
+    });
+
+    testWidgets('Back closes the sheet and leaves the destination alone', (tester) async {
+      final open = <bool>[];
+      await pump(tester, content: sheetOpener(), onOverlaySheetOpenChanged: open.add);
+      await openSheet(tester);
+
+      final before = coordinator.active;
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+
+      expect(find.text('SHEET'), findsNothing);
+      expect(open.last, isFalse);
+      expect(
+        coordinator.active,
+        before,
+        reason: 'one press does one thing: it closed the sheet, it did not also leave the destination',
+      );
+      expect(selected, isEmpty);
     });
   });
 

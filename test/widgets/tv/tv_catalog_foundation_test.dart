@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/focus/dpad_navigator.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -508,6 +509,73 @@ void main() {
       final labels = {for (final sort in UnifiedCatalogSort.values) sortLabel(sort)};
       expect(labels, hasLength(UnifiedCatalogSort.values.length), reason: 'no two sorts may read the same');
       expect(labels.any((l) => l.trim().isEmpty), isFalse);
+    });
+  });
+
+  group('J15: selected versus focused on a sort/filter option row', () {
+    // TvCatalogOptionRow's own doc: "selected and focused are independent:
+    // the base says whether this is the answer, the sheen says whether this is
+    // where the remote is, and a row carrying both has to read as both." The
+    // checkmark is the part of that signal a widget test can see without
+    // reading pixels — it must survive a focus change, in both directions.
+    bool hasCheckmark(WidgetTester tester, String label) => tester
+        .widgetList(
+          find.descendant(
+            of: find.ancestor(of: find.text(label), matching: find.byType(TvCatalogOptionRow)),
+            matching: find.byIcon(Symbols.check_rounded),
+          ),
+        )
+        .isNotEmpty;
+
+    // The row's own `Focus` node (FocusableWrapper wraps one per row) —
+    // needed so the arrow-down press below is proven to have actually moved
+    // focus, not just left both rows' checkmarks unchanged because nothing
+    // happened at all.
+    bool rowHasFocus(WidgetTester tester, String label) => tester
+        .widget<Focus>(find.ancestor(of: find.text(label), matching: find.byType(Focus)).first)
+        .focusNode!
+        .hasPrimaryFocus;
+
+    testWidgets('the selected row keeps its checkmark after focus moves away from it', (tester) async {
+      await tester.pumpWidget(
+        _shell(
+          (context) => ElevatedButton(
+            autofocus: true,
+            onPressed: () => showTvCatalogSortPanel(context, selected: UnifiedCatalogSort.titleAsc),
+            child: const Text('open'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      expect(
+        hasCheckmark(tester, sortLabel(UnifiedCatalogSort.titleAsc)),
+        isTrue,
+        reason: 'the selected row starts focused too — both signals present at once',
+      );
+      expect(hasCheckmark(tester, sortLabel(UnifiedCatalogSort.titleDesc)), isFalse);
+
+      // Move the remote off the selected row, onto a plain, unselected one.
+      await _press(tester, LogicalKeyboardKey.arrowDown);
+
+      expect(
+        rowHasFocus(tester, sortLabel(UnifiedCatalogSort.titleDesc)),
+        isTrue,
+        reason: 'the press has to have actually moved focus, or the checkmark assertions below prove nothing',
+      );
+
+      expect(
+        hasCheckmark(tester, sortLabel(UnifiedCatalogSort.titleAsc)),
+        isTrue,
+        reason: 'losing focus must not read as losing the selection',
+      );
+      expect(
+        hasCheckmark(tester, sortLabel(UnifiedCatalogSort.titleDesc)),
+        isFalse,
+        reason: 'gaining focus must not read as gaining a selection nobody chose',
+      );
     });
   });
 }

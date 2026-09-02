@@ -1,19 +1,57 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../focus/dpad_navigator.dart';
 import '../services/device_performance.dart';
 import '../utils/platform_detector.dart';
+import 'pleya_wordmark.dart';
 
-/// Plays the Pleya startup intro (red wordmark zoom-in + sheen) once
-/// per app process, then reveals [child]. Tap to skip. Honors reduced-motion
-/// and the reduced performance tier by skipping the animation entirely.
+/// The Pleya ident: plays once per app process on the first cold-start build,
+/// then reveals [child]. Select, Enter, Escape, Space or a tap skips it.
+///
+/// ## What it is, and what it deliberately is not
+///
+/// The lockup settles in on [identGround], holds, and dissolves into the page
+/// underneath — which is the same colour, so the hand-off is a dissolve into
+/// the app rather than a step from black. Every duration and curve is one the
+/// TV shell already uses: the settle is the focus curve, the fades are the
+/// hero crossfade ("reads as a dissolve rather than a transition").
+///
+/// The version this replaced was a self-described Netflix-style ident — a
+/// rotating fan of red light beams, a 5x slam with overshoot, a sheen sweep, a
+/// rectangular red glow — on pure black, with a tagline at a spec of its own.
+/// Chapter 31 #10 forbids the first outright, chapter 8.4/24.1 rule out the
+/// continuous scaling, and chapter 34 keeps red off area fills. None of that
+/// register exists anywhere in the frozen north star, so none of it is here.
+///
+/// The lockup is the same [PleyaBrandLockup] the boot splash draws underneath,
+/// at the proportions the asset generator gives the Top Shelf ([DEC-074]).
 class IntroGate extends StatefulWidget {
-  final Widget child;
   const IntroGate({super.key, required this.child});
+
+  final Widget child;
 
   /// Ensures the intro plays only on the first cold-start build.
   static bool _played = false;
+
+  /// Lets a test see the ident more than once per process.
+  @visibleForTesting
+  static void debugResetForTesting() => _played = false;
+
+  /// The whole run.
+  static const Duration duration = Duration(milliseconds: 1800);
+
+  /// The lockup settling in — the hero crossfade, so it reads as a dissolve.
+  static const Duration fadeIn = Duration(milliseconds: 460);
+
+  /// The tagline follows the mark rather than arriving with it.
+  static const Duration taglineDelay = Duration(milliseconds: 300);
+
+  /// The dissolve into the page. Same length as the way in.
+  static const Duration fadeOut = Duration(milliseconds: 460);
+
+  /// A skip fast-forwards the remainder rather than cutting.
+  static const Duration skip = Duration(milliseconds: 250);
 
   @override
   State<IntroGate> createState() => _IntroGateState();
@@ -22,6 +60,7 @@ class IntroGate extends StatefulWidget {
 class _IntroGateState extends State<IntroGate> with SingleTickerProviderStateMixin {
   late final bool _skip;
   late final AnimationController _controller;
+  bool _precached = false;
 
   @override
   void initState() {
@@ -29,28 +68,67 @@ class _IntroGateState extends State<IntroGate> with SingleTickerProviderStateMix
     // The custom tvOS engine reports reduceMotion=true before accessibility
     // features are populated, which wrongly skipped the intro on Apple TV.
     // tvOS has no per-app reduce-motion toggle we need to honor here, and the
-    // splash is brief + tap-to-skip, so ignore the flag on Apple TV.
+    // ident is brief and skippable, so ignore the flag on Apple TV.
     final reduceMotion =
         !PlatformDetector.isAppleTV() && WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.reduceMotion;
     _skip = IntroGate._played || reduceMotion || DevicePerformance.isReduced;
     IntroGate._played = true;
 
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 2800));
+    _controller = AnimationController(vsync: this, duration: IntroGate.duration);
     if (_skip) {
       _controller.value = 1;
     } else {
+      // A remote has no tap. The handler is global for exactly as long as the
+      // ident is on screen, and it consumes the press so the page underneath
+      // does not also act on it.
+      HardwareKeyboard.instance.addHandler(_onKey);
+      _controller.addStatusListener(_onStatus);
       _controller.forward();
     }
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_skip || _precached) return;
+    _precached = true;
+    // Asset decoding is asynchronous. Without this the first frames of the
+    // settle can show the ground with nothing on it.
+    for (final asset in PleyaWordmark.assets) {
+      precacheImage(AssetImage(asset), context);
+    }
+  }
+
+  void _onStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) HardwareKeyboard.instance.removeHandler(_onKey);
+  }
+
+  bool _onKey(KeyEvent event) {
+    // Once the run has reached its end the overlay is gone, whatever the
+    // controller's status says about the exact last frame; the remote is the
+    // page's again from that moment.
+    if (_controller.value >= 1) return false;
+    if (event is! KeyDownEvent) return false;
+    final key = event.logicalKey;
+    final skips =
+        key.isSelectKey ||
+        key == LogicalKeyboardKey.escape ||
+        key == LogicalKeyboardKey.space ||
+        key == LogicalKeyboardKey.enter;
+    if (!skips) return false;
+    _skipIntro();
+    return true;
+  }
+
+  @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onKey);
     _controller.dispose();
     super.dispose();
   }
 
   void _skipIntro() {
-    if (_controller.isAnimating) _controller.animateTo(1, duration: const Duration(milliseconds: 250));
+    if (_controller.isAnimating) _controller.animateTo(1, duration: IntroGate.skip);
   }
 
   @override
@@ -64,18 +142,10 @@ class _IntroGateState extends State<IntroGate> with SingleTickerProviderStateMix
             builder: (context, _) {
               final t = _controller.value;
               if (t >= 1) return const SizedBox.shrink();
-              // Fade the whole overlay out over the last 12%.
-              final overlayOpacity = t < 0.88 ? 1.0 : (1 - (t - 0.88) / 0.12).clamp(0.0, 1.0);
               return Positioned.fill(
-                child: Opacity(
-                  opacity: overlayOpacity,
-                  child: GestureDetector(
-                    onTap: _skipIntro,
-                    child: ColoredBox(
-                      color: Colors.black,
-                      child: Center(child: _IntroMark(progress: t)),
-                    ),
-                  ),
+                child: GestureDetector(
+                  onTap: _skipIntro,
+                  child: _IntroFrame(progress: t, ground: identGround(context)),
                 ),
               );
             },
@@ -85,153 +155,43 @@ class _IntroGateState extends State<IntroGate> with SingleTickerProviderStateMix
   }
 }
 
-class _IntroMark extends StatelessWidget {
+/// One frame of the ident at [progress] in `[0, 1)`.
+class _IntroFrame extends StatelessWidget {
+  const _IntroFrame({required this.progress, required this.ground});
+
   final double progress;
-  const _IntroMark({required this.progress});
+  final Color ground;
 
   @override
   Widget build(BuildContext context) {
-    final t = progress;
+    final ms = progress * IntroGate.duration.inMilliseconds;
 
-    // Slam-in: 5x → 1x with a slight overshoot punch in the first ~45%,
-    // then a slow cinematic push (1 → 1.08) toward the viewer until the end.
-    final slamT = (t / 0.45).clamp(0.0, 1.0);
-    final slam = 5.0 - 4.0 * Curves.easeOutBack.transform(slamT);
-    final push = 1.0 + 0.08 * Curves.easeIn.transform(((t - 0.45) / 0.55).clamp(0.0, 1.0));
-    final scale = slam * push;
-    final markOpacity = (t / 0.12).clamp(0.0, 1.0);
+    // In: opacity and a settle from 0.96, on the focus curve. The app's
+    // largest scale anywhere is the 1.05 focus lift; the ident stays under it.
+    final inT = Curves.easeOutCubic.transform((ms / IntroGate.fadeIn.inMilliseconds).clamp(0.0, 1.0));
+    final tagT = Curves.easeOut.transform(
+      ((ms - IntroGate.taglineDelay.inMilliseconds) / IntroGate.fadeIn.inMilliseconds).clamp(0.0, 1.0),
+    );
+    // Out: the whole overlay dissolves, ground included, so what is left is
+    // the page — which is the same colour, so only the lockup is seen to go.
+    final outStart = IntroGate.duration.inMilliseconds - IntroGate.fadeOut.inMilliseconds;
+    final outT = Curves.easeInOut.transform(((ms - outStart) / IntroGate.fadeOut.inMilliseconds).clamp(0.0, 1.0));
 
-    // Glow burst: spikes right after the slam lands, then settles to an ember.
-    final burstT = ((t - 0.32) / 0.28).clamp(0.0, 1.0);
-    final burst = math.sin(burstT * math.pi); // 0 → 1 → 0
-    final glowAlpha = 0.20 + 0.55 * burst;
-    final glowRadius = 60.0 + 90.0 * burst;
-
-    // Sheen sweep left→right just after the burst.
-    final sheenT = ((t - 0.42) / 0.34).clamp(0.0, 1.0);
-
-    // Tagline: fades in late, letter-spacing expands as it appears.
-    final tagT = Curves.easeOut.transform(((t - 0.55) / 0.3).clamp(0.0, 1.0));
-
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Rotating fan of red light beams behind the mark (Netflix-style ident).
-        Positioned.fill(
-          child: CustomPaint(painter: _LightRaysPainter(progress: t)),
-        ),
-        Transform.scale(
-          scale: scale,
+    return Opacity(
+      key: const ValueKey('introOverlay'),
+      opacity: 1 - outT,
+      child: ColoredBox(
+        color: ground,
+        child: Center(
           child: Opacity(
-            opacity: markOpacity,
-            child: ShaderMask(
-              blendMode: BlendMode.srcATop,
-              shaderCallback: (rect) {
-                final dx = (sheenT * 2 - 0.5) * rect.width;
-                return LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [Colors.transparent, Colors.white.withValues(alpha: 0.95), Colors.transparent],
-                  stops: const [0.3, 0.5, 0.7],
-                  transform: GradientTranslation(dx, 0),
-                ).createShader(rect);
-              },
-              // The "Pleya" wordmark lockup — the thick-P mark IS the word's P —
-              // with the tagline below and a pulsing red glow behind it.
-              child: Column(
-                mainAxisSize: .min,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFE5140F).withValues(alpha: glowAlpha),
-                          blurRadius: glowRadius,
-                          spreadRadius: 8 + 18 * burst,
-                        ),
-                      ],
-                    ),
-                    child: Image.asset(
-                      'assets/branding/pleya_wordmark.png',
-                      width: 340,
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.medium,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Opacity(
-                    opacity: tagT,
-                    child: Text(
-                      'YOUR MEDIA. YOUR WAY.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        letterSpacing: 1.8 + 1.8 * tagT,
-                        color: Colors.white.withValues(alpha: 0.55 * tagT),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            opacity: inT,
+            child: Transform.scale(
+              scale: 0.96 + 0.04 * inT,
+              child: PleyaBrandLockup(height: kIdentLockupHeight, taglineOpacity: tagT),
             ),
           ),
         ),
-      ],
+      ),
     );
   }
-}
-
-/// Fan of red light beams radiating from the mark: they bloom out with the
-/// glow burst, slowly rotate, and die off before the overlay fades.
-class _LightRaysPainter extends CustomPainter {
-  final double progress;
-  const _LightRaysPainter({required this.progress});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final raysT = ((progress - 0.30) / 0.55).clamp(0.0, 1.0);
-    if (raysT <= 0 || raysT >= 1) return;
-    final intensity = math.sin(raysT * math.pi); // bloom in, die out
-
-    final center = size.center(Offset.zero);
-    final maxLen = size.longestSide * (0.35 + 0.45 * Curves.easeOut.transform(raysT));
-    final rotation = raysT * 0.35; // slow drift
-    const rayCount = 14;
-
-    for (var i = 0; i < rayCount; i++) {
-      final angle = rotation + i * (2 * math.pi / rayCount);
-      // Alternate long/short beams for a less mechanical look.
-      final len = maxLen * (i.isEven ? 1.0 : 0.65);
-      final width = i.isEven ? 0.030 : 0.018; // half-width in radians
-      final alpha = intensity * (i.isEven ? 0.10 : 0.06);
-
-      final paint = Paint()
-        ..shader = RadialGradient(
-          colors: [
-            const Color(0xFFE5140F).withValues(alpha: alpha),
-            Colors.transparent,
-          ],
-          stops: const [0.0, 1.0],
-        ).createShader(Rect.fromCircle(center: center, radius: len));
-
-      final path = Path()
-        ..moveTo(center.dx, center.dy)
-        ..lineTo(center.dx + len * math.cos(angle - width), center.dy + len * math.sin(angle - width))
-        ..lineTo(center.dx + len * math.cos(angle + width), center.dy + len * math.sin(angle + width))
-        ..close();
-      canvas.drawPath(path, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_LightRaysPainter oldDelegate) => oldDelegate.progress != progress;
-}
-
-/// Horizontal shader translation for the intro sheen sweep.
-class GradientTranslation extends GradientTransform {
-  final double dx;
-  final double dy;
-  const GradientTranslation(this.dx, this.dy);
-
-  @override
-  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) => Matrix4.translationValues(dx, dy, 0);
 }

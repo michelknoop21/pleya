@@ -288,8 +288,19 @@ ondersteund; libraries tonen/verbergen en ordenen.
 
 Lezen mag gegroepeerd worden. Mutaties mogen nooit per ongeluk de representatieve artworkbron raken.
 Afspelen: gekozen bron. Details: gekozen bron. Metadata-refresh: gekozen library. Verwijderen:
-gekozen bron. Markeer bekeken: gekozen bron, of expliciet Alle bronnen. Verwijder uit Verder kijken:
-expliciet logisch groepscontract, beschreven in hoofdstuk 13.
+gekozen bron. Markeer bekeken en onbekeken: alle bronnen (hoofdstuk 13.5, DEC-071). Rate: alle
+bronnen (hoofdstuk 13.8, DEC-075); een bron die op dat moment onbereikbaar is wordt gemeld, niet
+vastgehouden, want een cijfer heeft geen wachtrij. Verwijder uit Verder kijken: expliciet logisch
+groepscontract, beschreven in hoofdstuk 13.
+
+Het onderscheid dat deze paragraaf maakt is niet "brongebonden versus groepsbreed" maar "per ongeluk
+versus expliciet". Een groepsactie die in hoofdstuk 13 als zodanig is vastgelegd is geen uitzondering
+op de regel hierboven; wat de regel verbiedt is dat een schrijfactie zonder contract op één bron
+landt omdat die toevallig de representatieve was.
+
+> Gewijzigd door [DEC-071](DECISIONS.md#dec-071) en [DEC-075](DECISIONS.md#dec-075). Tot 1 september
+> 2026 stond hier "Markeer bekeken: gekozen bron, of expliciet Alle bronnen", en Rate stond er als
+> brongebonden actie in hoofdstuk 23.
 
 ### 4.7 Geen willekeur op basis van responssnelheid
 
@@ -990,10 +1001,57 @@ De tekst verwijst naar de logische titel, dus het gedrag moet ook logisch zijn:
 
 ### 13.5 Markeer bekeken en onbekeken
 
-In een globaal contextmenu: Markeer als bekeken, daarna bronkeuze — één concrete bron, of "Alle
-bronnen", expliciet. Geen impliciete mutatie van alle bronnen. Mislukte subset resulteert in een
-partial-resultmelding. In de geavanceerde libraryweergave blijft de actie rechtstreeks die library
-betreffen.
+In een globaal contextmenu: Markeer als bekeken geldt **altijd voor alle bronnen van de titel**. Er
+wordt geen bronkeuze gevraagd. Bekeken is bekeken: kijkstatus is de ene eigenschap die dit product al
+over bronnen heen samenvoegt (één `UnifiedWatchState` per groep, één vinkje op de kaart, G4/G5 die
+hem uit alle memberships samen afleiden), dus een schrijfactie die per server vraagt, vraagt naar een
+onderscheid dat de rest van de app niet maakt. Hetzelfde geldt voor Markeer als onbekeken.
+
+Een bron die op dat moment niet bereikbaar is wordt **vastgehouden, niet overgeslagen**: de bestaande
+kijkstatuswachtrij krijgt een `watched`/`unwatched`-rij en de reconnect-sync schrijft hem alsnog weg.
+Dat is wat de belofte waarmaakt in plaats van hem stilletjes te breken. De partial-resultmelding
+blijft bestaan voor wat écht mislukte (een server die antwoordde en weigerde), met de eerlijke noemer
+van hoofdstuk 13.4 punt 5.
+
+In de geavanceerde libraryweergave blijft de actie rechtstreeks die library betreffen.
+
+> Gewijzigd door [DEC-071](DECISIONS.md#dec-071). Tot 1 september 2026 luidde dit hoofdstuk
+> "daarna bronkeuze — één concrete bron, of 'Alle bronnen', expliciet. Geen impliciete mutatie van
+> alle bronnen." Zie de DEC voor waarom dat is omgedraaid.
+
+### 13.8 Rate
+
+Waarderen geldt **voor alle bronnen van de titel**, vanaf elk oppervlak waar je kunt waarderen. Er
+wordt geen bronkeuze gevraagd. Een cijfer beschrijft de film, niet het bestand: dezelfde titel met
+een 7 op de ene server en niets op de andere is geen keuze die iemand maakte, het is welke kaart hij
+toevallig opende.
+
+De waarderingssheet blijft aan één bron gebonden, want die bron bepaalt wat er getekend wordt
+(sterren of duimpjes) en welke servernaam onder "Opgeslagen" staat. Dat is geen scope-keuze: de
+schrijfactie gaat er hoe dan ook overal heen. Op TV, waar nog niets gebonden is, kiest het menu bij
+voorkeur een bron die een getal bewaart. Op de detailpagina blijft het de bron van de pagina zelf,
+want de chip, de "Bron: …"-regel en de sheet horen over dezelfde server te praten (hoofdstuk 4.1 en
+15).
+
+**Onbereikbaar wordt gemeld, niet vastgehouden.** Anders dan bij 13.4 en 13.5 is er geen wachtrij om
+in te vallen: de offline-wachtrij kent alleen progress, watched, unwatched en de Verder
+kijken-verwijdering, en geen van die rijen draagt een waarde. Een membership die niet bereikbaar is
+telt dus mee in de noemer en verder niet: "Gelukt op 1 van 2 bronnen", zonder de retry-belofte die
+13.4 punt 5 wél mag doen. De melding komt één keer, nadat de sheet dicht is, en alleen als er iets
+miste.
+
+**De afbeelding naar een binaire backend is lossy, en dat werkt door.** Jellyfin kent alleen
+like/dislike, dus 7/10 wordt daar een like. Wordt die like later vanaf een Jellyfin-gebonden sheet
+aangetikt, dan schrijft die 10.0, en die 10 reist mee naar de Plex-kopie over de 7 heen. Een gemengde
+groep schuift daardoor richting 10 of 0 bij elke bewerking vanaf een binaire bron. Bewust
+geaccepteerd, met de voorkeur voor een numerieke bron op TV als demping; een merge-regel die dit
+tegenhoudt is een eigen productbesluit.
+
+**Wat hier nog niet staat.** Er is geen samengevoegd cijfer in de interface. De groep draagt geen
+ratingtegenhanger van `UnifiedWatchState`, dus de detailchip toont het cijfer van de bron waar die
+pagina aan gebonden is. Het cijfer staat overal, het wordt nergens samengevoegd getoond.
+
+> Toegevoegd door [DEC-075](DECISIONS.md#dec-075).
 
 ### 13.6 Verwijderen van media
 
@@ -1457,15 +1515,22 @@ signed artwork-URL's of credentials worden in unified snapshots opgeslagen.
 
 **Veilige groepsacties:** Afspelen/Hervatten (via source picker); Meer info (via source picker);
 Toevoegen aan Kijklijst; Verwijderen uit Kijklijst; Verwijder uit Verder kijken (volgens het
-all-contributing-sources-contract); Bron wijzigen.
+all-contributing-sources-contract); Markeer bekeken en Markeer onbekeken (volgens hoofdstuk 13.5);
+Rate (geldt voor alle bronnen; wat onbereikbaar is wordt gemeld, hoofdstuk 13.8); Bron wijzigen.
 
-**Acties die bronkeuze vereisen:** Markeer bekeken; Markeer onbekeken; Rate; Download (waar
-ondersteund); toevoegen aan serverplaylist; verwijderen van servercontent; metadata bewerken.
+**Acties die bronkeuze vereisen:** Download (waar ondersteund); toevoegen aan serverplaylist;
+verwijderen van servercontent; metadata bewerken.
 
 **Acties die alleen in Bibliotheken thuishoren:** scan library; analyseer; prullenbak leegmaken;
 metadata-refresh op hele library; folder browsing; collectionbeheer; playlistbeheer.
 
 Een destructive action mag nooit rechtstreeks op `representativeSource` worden uitgevoerd.
+
+> Gewijzigd door [DEC-071](DECISIONS.md#dec-071) en [DEC-075](DECISIONS.md#dec-075). Markeer
+> bekeken/onbekeken en Rate stonden hierboven onder "Acties die bronkeuze vereisen"; ze zijn
+> groepsacties geworden met een expliciet contract in hoofdstuk 13.5 en 13.8. De zin hierboven is
+> daardoor niet zwakker geworden maar zwaarder: er wordt nu geen enkele vraag meer gesteld die een
+> verkeerd antwoord op kan vangen.
 
 ---
 
@@ -1527,6 +1592,15 @@ horizontaal scrollende primaire topnav.**
 Tekstkolom en scrim spiegelen; CTA-volgorde logisch spiegelen; artworkpixel zelf niet spiegelen;
 source metadata alignment aanpassen; links/rechts voor de carousel blijft gekoppeld aan de visuele
 richting.
+
+**Focus volgt de geometrie, niet de logische volgorde** ([DEC-072](DECISIONS.md#dec-072), 1 september
+2026). D-pad Links en Rechts verplaatsen de focus naar de focusbare control die na layout visueel
+links respectievelijk rechts ligt — ook onder RTL, en dus ook wanneer de CTA-volgorde hierboven net
+gespiegeld is. Semantics en focus zijn twee contracten: de lees- en semantische volgorde mag
+spiegelen, de richtingstoetsen niet, want een afstandsbediening wijst naar wat de kijker ziet liggen.
+Dit gaat uitsluitend over traversal tussen focusbare CTA-controls; de carouselrichting, slidevolgorde,
+artworkrichting, autoplay en CTA-semantiek blijven ongewijzigd, en de rand van de rij blijft de plek
+waar de carousel het overneemt.
 
 ### Contrast
 
@@ -1960,6 +2034,63 @@ nulmeting; oude TV-homepad verwijderen; debugflag verwijderen; tijdelijke compat
 verwijderen; release notes en DEC bijwerken.
 
 De oude en nieuwe TV-shell blijven dus niet permanent naast elkaar bestaan.
+
+#### Fase 10A — afgerond op 1 september 2026
+
+Fase 10 valt uiteen in **10A** (de automatiseerbare helft) en **Final** (de fysieke
+Apple TV-acceptatie), zoals de fasetabel van
+[docs/tvos-netflix-ia-plan.md](tvos-netflix-ia-plan.md) §14 hem al benoemt. 10A is gesloten op
+automatisch bewijs; het **Runtimebewijs**-blok hierboven en de interne TestFlight horen bij Final en
+zijn niet vooruitgehaald.
+
+Wat 10A heeft opgeleverd:
+
+- **De ontwikkelpoort is weg.** `DevFlags.tvUnifiedExperience` en zijn rij in de Debug-sectie van
+  Instellingen zijn verwijderd, en `lib/config/` daarmee ook — het was het enige bestand erin. De
+  poort was op dat moment al dood: niets buiten die instellingenrij las hem nog, want `MainScreen`
+  kiest de TV-shell onvoorwaardelijk op een TV. Daarmee is hoofdstuk 32's regel "de oude TV-shell en
+  ontwikkelpoort zijn vóór productie verwijderd" waar, en het stopcriterium van hoofdstuk 30
+  ("releasebuild bevat nog een eindgebruikersschakelaar tussen beide shells") kan niet meer worden
+  gehaald.
+- **Eén rootnavigatie-autoriteit, nu bewaakt.** `test/architecture/tv_shell_single_authority_test.dart`
+  legt vast dat er geen poort terugkomt, dat Instellingen geen schakelaar tussen de shells aanbiedt,
+  en dat `MainScreen` de TV-tak vóór de zijbalktak beslist — met een negatieve controle die vastlegt
+  dát die twee takken elkaar nog overlappen, zodat de volgorde-assertie niet stilzwijgend tandeloos
+  kan worden.
+- **Het oude TV-homepad was al verdwenen** in fase 8 (`_tvRailRevealed`, `TvSpotlightBackground`, de
+  gedebouncede spotlight) en is nagelopen in plaats van opnieuw verwijderd. `tv_browse_rail.dart`
+  blijft staan: dat is geen Home-pad meer, maar de rail die de detailpagina en het Recommended-tabblad
+  gebruiken.
+- **Hoofdstuk 29's automatiseerbare helft is dichtgelopen.** Vier scenario's hadden nog geen
+  deterministische uitvoer: `home.unified.light`, `home.unified.poster-fallback`,
+  `home.unified.single-server` en `home.unified.reduce-motion`, plus `my-pleya.full`. De eerste twee
+  en `my-pleya.full` zijn goldens geworden; de laatste twee bewust **geen** — hun render kwam
+  byte-identiek uit de bus met `home.unified.default`, en dit document eist bewijs, geen plaatje dat
+  niet kan falen. Die twee zijn assertie geworden die dat wél kan.
+- **Eén nieuwe registerrij, J18**, uit precies dat eerste lichte Home-beeld: het witte woordmerk
+  verdwijnt op het lichte palet. Klasse C, want de remedie is een merkbeslissing die geen hoofdstuk
+  vastlegt. Zie [docs/qa/tvos-unified-edge-cases.md](qa/tvos-unified-edge-cases.md).
+
+Wat 10A **niet** heeft gedaan, en waarom niet: geen fysieke of simulatoracceptatie (Final), geen
+visuele art direction (hoofdstuk 33 blijft bevroren), geen herwerk van fase 9, en J14 en J18 zijn niet
+zelf ingevuld.
+
+#### Fase 10A — hardeningsachterstand (open)
+
+Eén punt dat bij het sluiten van fase 9 is gevonden en daar bewust **niet** is opgelost, omdat het
+bundel- en repositoryhardening is en geen resterend productgedrag.
+
+- **Broninvoer van de merkgenerator zit in de runtime-assetboom.** `pubspec.yaml` bundelt
+  `assets/branding/` als map, dus alles erin gaat mee in elke Flutter-build. Drie bestanden daarin
+  worden nergens getekend: `pleya_lettering.png` (~0,7 MB) en `pleya_mark.png` (~1,3 MB) zijn
+  generatorinvoer, en `pleya_wordmark.png` (~0,6 MB) bestaat voor consumenten buiten de app, zoals de
+  site. Samen zo'n 2,6 MB die op iedere target meereist zonder ooit gelezen te worden.
+  [DEC-076](../DECISIONS.md#dec-076) benoemt dat voor de mark al en laat het bewust staan.
+  Bij het oppakken: de broninvoer uit de runtime-assetboom halen (bijvoorbeeld naar
+  `tools/branding/sources/`), de generator meeverhuizen, en **bewijzen** dat de gebouwde bundel ze
+  niet meer bevat. Voorwaarde: geen enkele visuele uitvoer verandert — de gegenereerde assets blijven
+  pixel voor pixel gelijk, wat met `gen_brand_assets.py` te controleren is omdat die alleen schrijft
+  als de tekening verandert ([DEC-079](../DECISIONS.md#dec-079)).
 
 ---
 

@@ -34,6 +34,8 @@ import 'source_cursor.dart';
 import 'unified_catalog_query.dart';
 import 'unified_catalog_snapshot.dart';
 
+Set<String> _noRememberedSources() => const {};
+
 class UnifiedCatalogService {
   UnifiedCatalogService({
     required UnifiedCatalogQuery query,
@@ -43,7 +45,10 @@ class UnifiedCatalogService {
     this.groupsPerPage = 20,
     this.maxConcurrentFetches = 4,
     this.maxRawItemsPerLoadMore = 500,
-  }) : _clientFor = clientFor {
+    this.progressiveLoadingGrace = const Duration(seconds: 2),
+    Set<String> Function()? preferredSourceKeys,
+  }) : _clientFor = clientFor,
+       _preferredSourceKeys = preferredSourceKeys ?? _noRememberedSources {
     _reset(query: query, libraries: libraries);
   }
 
@@ -59,6 +64,26 @@ class UnifiedCatalogService {
 
   /// hoofdstuk 12.6: bounded concurrent library-page fetches.
   final int maxConcurrentFetches;
+
+  /// E5/hoofdstuk 12.6's bound on how long one [_fillBuffers] wave waits for
+  /// every cursor it launched before moving on with whatever has already
+  /// settled — distinct from, and much shorter than,
+  /// [MediaServerTimeouts.unifiedCatalogLibraryPage], which still governs how
+  /// long a single fetch itself is allowed to run. Two seconds is generous
+  /// for a healthy server's own page latency and short enough that a
+  /// genuinely slow outlier cannot make a scrolling grid visibly stall.
+  final Duration progressiveLoadingGrace;
+
+  /// The profile's remembered source choices (hoofdstuk 14.8), as a flat set
+  /// of source keys. Passed straight through to [groupUnifiedMediaSources],
+  /// where it reaches hoofdstuk 13.2's tier 4 and nothing else — see that
+  /// function's own doc.
+  ///
+  /// A supplier rather than a value because this service outlives any number
+  /// of [updateQuery]/[refresh] rounds and its owner re-reads the store on
+  /// each restart; a captured set would freeze the choices made before the
+  /// first page ever loaded.
+  final Set<String> Function() _preferredSourceKeys;
 
   /// Safety ceiling on how many raw items one [loadMore] call will pop
   /// before returning regardless of whether [groupsPerPage] new groups were
@@ -122,6 +147,58 @@ class UnifiedCatalogService {
   void updateQuery({required UnifiedCatalogQuery query, required List<CatalogLibrary> libraries}) =>
       _reset(query: query, libraries: libraries);
 
+  /// Re-reads one concrete membership's state in place (I19, and every write
+  /// that lands on a card the grid is already showing).
+  ///
+  /// This is the incremental counterpart to [refresh]: identity is untouched,
+  /// so no page is refetched, no cursor moves and no group is re-resolved.
+  /// [updated] must be a fresh fetch of an item this merge already popped —
+  /// matched on `globalKey`, so a stale or foreign item simply finds nothing
+  /// and this returns false.
+  ///
+  /// Both the popped history and the built groups are updated. Missing the
+  /// history is the subtle half: [_recomputeGroups] rebuilds every group from
+  /// it on the next page, so an update applied only to [_groups] would be
+  /// silently reverted the moment the user scrolled.
+  bool applyUpdatedSourceItem(MediaItem updated) {
+    final key = updated.globalKey;
+    var found = false;
+    for (var i = 0; i < _poppedItems.length; i++) {
+      if (_poppedItems[i].globalKey == key) {
+        _poppedItems[i] = updated;
+        found = true;
+      }
+    }
+    if (!found) return false;
+    final preferred = _preferredSourceKeys();
+    _groups = [
+      for (final group in _groups)
+        group.withUpdatedSourceItem(
+          updated,
+          preferredSourceKey: group.sources.map((s) => s.sourceKey).where(preferred.contains).firstOrNull,
+        ),
+    ];
+    return true;
+  }
+
+  /// Aborts every cursor's in-flight fetch without resetting any other
+  /// state (E12, hoofdstuk 22's profile-switch contract: "annuleert
+  /// requests"). The owner (`UnifiedCatalogProvider.dispose`) calls this
+  /// right before this service becomes unreachable, so a page fetch already
+  /// in flight for a profile the user just left does not keep running
+  /// against a server nobody is looking at anymore.
+  ///
+  /// Deliberately not [_reset]: that also bumps [_generation] and clears
+  /// every cursor, which only matters to a service someone is still going to
+  /// call [loadMore] on. This service is being torn down, not restarted —
+  /// there is no next call to protect from a stale response, only a live
+  /// request to actually stop.
+  void cancelInFlight() {
+    for (final cursor in _cursors) {
+      cursor.inFlight?.abort();
+    }
+  }
+
   /// Re-runs the same query from scratch — the sanctioned way to apply a
   /// reorder hoofdstuk 12.5 defers ("na scroll-idle of volgende refresh"): a
   /// full refresh re-derives every group's true sort key from a clean slate
@@ -179,7 +256,25 @@ class UnifiedCatalogService {
         poppedThisCall++;
       }
 
-      if (poppedThisBatch == 0) break; // nothing buffered anywhere this round — stuck until a retry
+      if (poppedThisBatch == 0) {
+        // Nothing buffered anywhere. [progressiveLoadingGrace] bounds the wait
+        // for results that have *already arrived* (E5), and normally that is
+        // exactly right: return with what there is, merge the slow library in
+        // on a later call. The exception is having produced *nothing at all*,
+        // ever — then the caller gets an empty snapshot that is not
+        // `isComplete`, and hoofdstuk 29 renders that as the full-page "deze
+        // bibliotheek is leeg" over a library that is merely slow. Nothing
+        // clears it either: the grid that calls `onLoadMore` is only built
+        // once there are groups, and the library set has not changed so no
+        // restart follows. So in that one case, wait for the fetch that is
+        // still running — being slow is not being empty. E5 is untouched:
+        // the moment one item exists to show, this does not wait.
+        if (_poppedItems.isEmpty && await _awaitPendingFetches(myGeneration, failedThisCall)) {
+          if (myGeneration != _generation) return snapshot;
+          continue;
+        }
+        break; // genuinely nothing left in flight — stuck until a retry
+      }
 
       await _recomputeGroups();
       if (myGeneration != _generation) return snapshot;
@@ -188,24 +283,95 @@ class UnifiedCatalogService {
     return snapshot;
   }
 
+  /// Launches a bounded wave of fetchable cursors' next pages and waits for
+  /// the wave, capped at [progressiveLoadingGrace] (E5, hoofdstuk 12.6: "een
+  /// langzame server blokkeert niet de eerste gezonde resultaten").
+  ///
+  /// Waiting for the *whole* wave — not just the first to answer — is not
+  /// negotiable: hoofdstuk 12.2's k-way merge orders items by comparing each
+  /// cursor's currently-buffered head, so popping while a same-speed sibling's
+  /// buffer is still empty would trivially "win" every comparison for the one
+  /// cursor that happens to answer first, silently breaking the "globally
+  /// title-ordered stream" guarantee for the ordinary case where every
+  /// library answers within the same fraction of a second. [Future.any]
+  /// looked like the obvious fix and was tried first; it broke exactly that
+  /// guarantee, because two libraries an event loop happens to settle a tick
+  /// apart are not "one of them is slow" — E5 is specifically about the
+  /// outlier that is *actually* slow.
+  ///
+  /// [progressiveLoadingGrace] is that distinction, and a bound on this
+  /// method's *wait*, not on the request itself:
+  /// [MediaServerTimeouts.unifiedCatalogLibraryPage] still governs how long a
+  /// single fetch is allowed to run before it is treated as failed. A cursor
+  /// still in flight when the grace period elapses is not abandoned — this
+  /// returns with whatever settled, [_fetchOnePage] keeps mutating its
+  /// `buffer` in the background regardless of whether anything is still
+  /// awaiting it, [isFetchable] excludes an in-flight cursor from being asked
+  /// again, and the very next [_fillBuffers] call — later in this same
+  /// [loadMore], or a follow-up call — pops it exactly like any other
+  /// cursor's data once it lands. That is hoofdstuk 12.6's "wordt in-place
+  /// gemerged": nothing here treats a late answer as a special case, because
+  /// [loadMore]'s existing exhausted/buffered checks already are the merge.
   Future<void> _fillBuffers(int myGeneration, Set<UnifiedSourceCursor> failedThisCall) async {
     final toFetch = _cursors.where((c) => c.isFetchable && !c.hasBufferedItem && !failedThisCall.contains(c)).toList();
-    for (var i = 0; i < toFetch.length; i += maxConcurrentFetches) {
-      final batch = toFetch.skip(i).take(maxConcurrentFetches);
-      await Future.wait(batch.map((cursor) => _fetchOnePage(cursor, myGeneration)));
+    for (var i = 0; i < toFetch.length;) {
+      // Room is measured against what is *actually* running, not against the
+      // slice this loop is on. The grace period means a wave can be left in
+      // flight when the next slice starts, so advancing by a fixed
+      // [maxConcurrentFetches] each time let the number of open requests grow
+      // with every round — the bound hoofdstuk 12.6 asks for stopped being one.
+      final room = maxConcurrentFetches - _cursors.where((c) => c.fetchInFlight).length;
+      if (room <= 0) return; // at the ceiling: the rest waits for the next round
+      final batch = toFetch.skip(i).take(room).toList();
+      i += batch.length;
+      final futures = [for (final cursor in batch) cursor.pending = _fetchOnePage(cursor, myGeneration)];
+      // `.timeout` bounds only this *wait* — it never cancels the underlying
+      // fetches, so a wave that is still running when the grace elapses
+      // keeps completing normally in the background.
+      await Future.wait(futures).timeout(progressiveLoadingGrace, onTimeout: () => const <void>[]);
       if (myGeneration != _generation) return;
       // A cursor that just failed must not be retried again within this same
       // call — that would silently mask the failure this round should
       // surface in UnifiedCatalogSnapshot.failedLibraryIds; it gets a real
       // retry on the *next* loadMore() call instead (hoofdstuk 12.6). A
-      // cursor that succeeded is deliberately NOT blocked here: it may have
-      // just drained a page-worth of items into an already-empty buffer, and
-      // hoofdstuk 12.3 requires the merge to keep pulling further pages from
-      // it within this same call until groupsPerPage is reached.
+      // cursor that succeeded, or is still in flight past the grace period,
+      // is deliberately left alone: draining a page into an already-empty
+      // buffer must not stop this same call from asking it for its next page
+      // too (hoofdstuk 12.3), and a still-running fetch is exactly the case
+      // [progressiveLoadingGrace] exists to not wait out.
       for (final cursor in batch) {
-        if (cursor.lastError != null) failedThisCall.add(cursor);
+        if (!cursor.fetchInFlight && cursor.lastError != null) failedThisCall.add(cursor);
       }
     }
+  }
+
+  /// Waits for whatever page fetches are still running, and reports whether
+  /// there was anything to wait for.
+  ///
+  /// Only [loadMore] calls this, and only when the merge has produced nothing
+  /// at all this round: an empty catalog and a slow one are indistinguishable
+  /// from the buffers alone, and telling them apart is the difference between
+  /// a grid that fills in a moment and a permanent empty state. Every fetch is
+  /// already bounded by [MediaServerTimeouts.unifiedCatalogLibraryPage], so
+  /// this cannot wait longer than one page fetch is allowed to take.
+  Future<bool> _awaitPendingFetches(int myGeneration, Set<UnifiedSourceCursor> failedThisCall) async {
+    final waited = [
+      for (final cursor in _cursors)
+        if (cursor.fetchInFlight && cursor.pending != null) cursor,
+    ];
+    if (waited.isEmpty) return false;
+    await Future.wait([for (final cursor in waited) cursor.pending!]);
+    if (myGeneration != _generation) return false;
+    // The same bookkeeping [_fillBuffers] does after its own wave, and for
+    // the same reason: a cursor that has now failed must not be asked again
+    // inside this call. Without this the retry would re-ask a library whose
+    // page fetch just timed out — a second request for the page still
+    // notionally out there, and a failure this round should surface rather
+    // than mask.
+    for (final cursor in waited) {
+      if (!cursor.fetchInFlight && cursor.lastError != null) failedThisCall.add(cursor);
+    }
+    return true;
   }
 
   Future<void> _fetchOnePage(UnifiedSourceCursor cursor, int myGeneration) async {
@@ -238,12 +404,40 @@ class UnifiedCatalogService {
           );
       if (myGeneration != _generation) return; // superseded while in flight — discard
 
+      // E8: totalCount is advisory and never the sole authority for
+      // exhaustion — it can rise, fall or be briefly inconsistent while a
+      // library changes underneath the merge, and a raw `offset >=
+      // totalCount` check would let a shrinking total call a still-unfinished
+      // library done, or let a growing one keep a genuinely finished library
+      // fetching forever. Termination comes from the concrete page protocol
+      // instead: an empty page, a short one, or the no-progress guard below
+      // catching an offset the backend silently never advanced past.
+      final requestedKeys = [for (final item in page.items) item.globalKey];
+      final isStalledPage = requestedKeys.isNotEmpty && _sameKeys(requestedKeys, cursor.lastFetchedItemKeys);
+      if (isStalledPage) {
+        // The backend answered with exactly the same page as last time —
+        // the offset it was given had no effect. Nothing here decides that
+        // by counting requests; it decides it the moment repetition is
+        // actually observed, so a library that pages normally for a million
+        // items is never penalised for it.
+        appLogger.w(
+          'Unified catalog: ${cursor.libraryGlobalKey} returned an unchanged page at offset ${cursor.offset}; '
+          'treating the library as exhausted rather than looping.',
+        );
+        cursor.sourceTotal = page.totalCount;
+        cursor.lastError = null;
+        cursor.exhausted = true;
+        _everSucceeded = true;
+        return;
+      }
+
       cursor.buffer.addAll(page.items);
       cursor.offset += page.items.length;
       cursor.sourceTotal = page.totalCount;
+      cursor.lastFetchedItemKeys = requestedKeys;
       cursor.lastError = null;
       _everSucceeded = true;
-      if (page.items.isEmpty || cursor.offset >= page.totalCount) cursor.exhausted = true;
+      if (page.items.isEmpty || page.items.length < pageSize) cursor.exhausted = true;
     } catch (e, st) {
       if (myGeneration != _generation) return;
       appLogger.d('Unified catalog page fetch failed for ${cursor.libraryGlobalKey}', error: e, stackTrace: st);
@@ -252,6 +446,7 @@ class UnifiedCatalogService {
       if (myGeneration == _generation) {
         cursor.fetchInFlight = false;
         cursor.inFlight = null;
+        cursor.pending = null;
       }
     }
   }
@@ -328,7 +523,20 @@ class UnifiedCatalogService {
       }
       candidates.add(GroupingCandidate(source: UnifiedMediaSource.fromItem(item), evidence: evidence[i]));
     }
-    _groups = groupUnifiedMediaSources(candidates);
+    _groups = groupUnifiedMediaSources(candidates, preferredSourceKeys: _preferredSourceKeys());
+  }
+
+  /// Whether [a] and [b] name exactly the same items in the same order —
+  /// E8's no-progress guard. Order matters: a backend that is genuinely
+  /// paging returns a *different slice*, not a re-shuffled one, so comparing
+  /// order as well as membership keeps a coincidental content overlap between
+  /// two real, different pages from ever reading as a stall.
+  bool _sameKeys(List<String> a, List<String>? b) {
+    if (b == null || a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   String _scopeOf(MediaItem item) => (canonicalIdentityOf(item) ?? CanonicalMediaIdentity.opaque()).granularity.name;

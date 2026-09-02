@@ -28,7 +28,14 @@ import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
 import '../test_helpers/prefs.dart';
 
-MediaItem _film(String id, String title, {String serverId = 'nas'}) => MediaItem(
+MediaItem _film(
+  String id,
+  String title, {
+  String serverId = 'nas',
+  int? viewOffsetMs,
+  int? viewCount,
+  int? lastViewedAt,
+}) => MediaItem(
   id: id,
   backend: MediaBackend.plex,
   kind: MediaKind.movie,
@@ -37,6 +44,27 @@ MediaItem _film(String id, String title, {String serverId = 'nas'}) => MediaItem
   summary: '$title has a synopsis long enough to fill the hero block.',
   genres: const ['Drama'],
   durationMs: 100 * 60 * 1000,
+  viewOffsetMs: viewOffsetMs,
+  viewCount: viewCount,
+  lastViewedAt: lastViewedAt,
+  serverId: serverId,
+  serverName: serverId,
+);
+
+/// An unwatched-episode fallback billboard (H9) — the one shape
+/// [TvHeroBillboardCard.hideSpoilers] actually bites on, per its own doc.
+MediaItem _episode(String id, String title, {String serverId = 'nas'}) => MediaItem(
+  id: id,
+  backend: MediaBackend.plex,
+  kind: MediaKind.episode,
+  title: 'Episode 1',
+  grandparentTitle: title,
+  grandparentId: 'show-$id',
+  parentIndex: 1,
+  index: 1,
+  year: 2024,
+  summary: 'A spoiler-laden recap of what just happened in $title.',
+  durationMs: 45 * 60 * 1000,
   serverId: serverId,
   serverName: serverId,
 );
@@ -57,6 +85,19 @@ UnifiedMediaGroup _group(String id, String title, {List<String> servers = const 
   );
 }
 
+/// [_group] built from a single, caller-supplied item — for H9/H10/H11,
+/// which need control over watch-state fields [_group] doesn't expose.
+UnifiedMediaGroup _groupFromItem(String id, MediaItem item) {
+  final source = UnifiedMediaSource.fromItem(item);
+  return UnifiedMediaGroup(
+    groupId: id,
+    identity: canonicalIdentityOf(item) ?? CanonicalMediaIdentity.opaque(),
+    sources: [source],
+    representativeSourceKey: source.sourceKey,
+    watchState: selectRepresentativeWatchState({source.sourceKey: item}),
+  );
+}
+
 typedef _Activation = ({UnifiedMediaGroup group, UnifiedActivationIntent intent, bool playDirectly});
 
 void main() {
@@ -72,6 +113,7 @@ void main() {
     List<UnifiedMediaGroup> groups, {
     bool autoplayEnabled = true,
     bool reduceMotion = false,
+    bool hideSpoilers = false,
     GlobalKey<TvHeroBillboardCarouselState>? key,
     VoidCallback? onNavigateDown,
     VoidCallback? onNavigateUp,
@@ -95,6 +137,7 @@ void main() {
                       groups: groups,
                       size: size,
                       autoplayEnabled: autoplayEnabled,
+                      hideSpoilers: hideSpoilers,
                       onActivate: (group, {required intent, required playDirectly}) =>
                           calls.add((group: group, intent: intent, playDirectly: playDirectly)),
                       onNavigateDown: onNavigateDown,
@@ -451,6 +494,52 @@ void main() {
       );
       await tester.pump();
       expect(shownTitle(tester), 'Third');
+    });
+  });
+
+  group('WP11: H9/H10/H11 — spoilers and watch-state on the billboard', () {
+    testWidgets('H9: hideSpoilers suppresses the synopsis of an unwatched-episode fallback billboard', (tester) async {
+      final group = _groupFromItem('g1', _episode('e1', 'Severance'));
+
+      await pump(tester, [group], hideSpoilers: true);
+
+      expect(
+        find.text('A spoiler-laden recap of what just happened in Severance.'),
+        findsNothing,
+        reason: 'hideSpoilers must suppress the summary for an unwatched episode',
+      );
+    });
+
+    testWidgets('H9: the same episode shows its synopsis when hideSpoilers is off', (tester) async {
+      final group = _groupFromItem('g1', _episode('e1', 'Severance'));
+
+      await pump(tester, [group]);
+
+      expect(find.text('A spoiler-laden recap of what just happened in Severance.'), findsOneWidget);
+    });
+
+    testWidgets('H10: a watched title still reads "Play", not "Resume", and carries no progress', (tester) async {
+      final group = _groupFromItem('g1', _film('m1', 'Dune', viewCount: 1, lastViewedAt: 1700000000));
+      expect(group.watchState.isWatched, isTrue, reason: 'the fixture must actually land in the watched state');
+      expect(group.watchState.hasActiveProgress, isFalse);
+
+      await pump(tester, [group]);
+
+      expect(find.text(t.common.play), findsOneWidget);
+      expect(find.text(t.common.resume), findsNothing, reason: 'a finished title restarts, it does not resume');
+    });
+
+    testWidgets('H11: an in-progress title reads "Resume", matching its own offset/duration fraction', (tester) async {
+      // 40 of 100 minutes — resumeFractionFor reads this straight off the
+      // item, so this fixture also pins what fraction the pill's progress
+      // bar should carry.
+      final group = _groupFromItem('g1', _film('m1', 'Dune', viewOffsetMs: 40 * 60 * 1000, lastViewedAt: 1700000000));
+      expect(group.watchState.hasActiveProgress, isTrue, reason: 'the fixture must actually land in progress');
+
+      await pump(tester, [group]);
+
+      expect(find.text(t.common.resume), findsOneWidget);
+      expect(find.text(t.common.play), findsNothing);
     });
   });
 }

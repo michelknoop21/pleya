@@ -99,6 +99,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsUnifiedCatalogEn unifiedCatalog = TranslationsUnifiedCatalogEn.internal(_root);
 	late final TranslationsTvNavigationEn tvNavigation = TranslationsTvNavigationEn.internal(_root);
 	late final TranslationsTvMyPleyaEn tvMyPleya = TranslationsTvMyPleyaEn.internal(_root);
+	late final TranslationsTvContextMenuEn tvContextMenu = TranslationsTvContextMenuEn.internal(_root);
 }
 
 // Path: states
@@ -2498,6 +2499,12 @@ class TranslationsNoticesEn {
 
 	/// en: 'Playback stopped'
 	String get playbackStoppedTitle => 'Playback stopped';
+
+	/// en: 'File not available'
+	String get playbackFileUnavailableTitle => 'File not available';
+
+	/// en: 'The server can't reach the video file. Check that the drive or folder it's on is still connected.'
+	String get playbackFileUnavailableBody => 'The server can\'t reach the video file. Check that the drive or folder it\'s on is still connected.';
 
 	/// en: 'This part of the video isn't available right now'
 	String get playbackSegmentUnavailableBody => 'This part of the video isn\'t available right now';
@@ -5224,6 +5231,9 @@ class TranslationsSourcePickerEn {
 	/// en: 'This source could not be played.'
 	String get playbackFailedTitle => 'This source could not be played.';
 
+	/// en: 'This title could not be loaded.'
+	String get detailLoadFailedTitle => 'This title could not be loaded.';
+
 	/// en: 'Choose another source'
 	String get chooseAnotherSource => 'Choose another source';
 
@@ -5299,6 +5309,9 @@ class TranslationsTvNavigationEn {
 
 	/// en: 'current section'
 	String get activeDestination => 'current section';
+
+	/// en: 'needs attention'
+	String get attentionRequired => 'needs attention';
 }
 
 // Path: tvMyPleya
@@ -5376,6 +5389,36 @@ class TranslationsTvMyPleyaEn {
 	String get logoutSubtitle => 'Sign out on this device';
 
 	late final TranslationsTvMyPleyaSemanticsEn semantics = TranslationsTvMyPleyaSemanticsEn.internal(_root);
+}
+
+// Path: tvContextMenu
+class TranslationsTvContextMenuEn {
+	TranslationsTvContextMenuEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Actions'
+	String get title => 'Actions';
+
+	/// en: 'Action ${index} of ${count}: ${label}'
+	String menuSemantics({required Object index, required Object count, required Object label}) => 'Action ${index} of ${count}: ${label}';
+
+	/// en: 'No source is currently reachable, so this cannot be changed right now.'
+	String get noUsableSource => 'No source is currently reachable, so this cannot be changed right now.';
+
+	/// en: 'Done on all ${count} sources'
+	String doneOnAll({required Object count}) => 'Done on all ${count} sources';
+
+	/// en: 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.'
+	String doneOnSome({required Object done, required Object total}) => 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.';
+
+	/// en: 'Done on ${done} of ${total} sources.'
+	String doneOnSomeNoRetry({required Object done, required Object total}) => 'Done on ${done} of ${total} sources.';
+
+	/// en: 'That did not work'
+	String get failed => 'That did not work';
 }
 
 // Path: search.filters
@@ -7094,6 +7137,8 @@ extension on Translations {
 			'notices.genericErrorTitle' => 'Something went wrong',
 			'notices.authFailedTitle' => 'Sign-in failed',
 			'notices.playbackStoppedTitle' => 'Playback stopped',
+			'notices.playbackFileUnavailableTitle' => 'File not available',
+			'notices.playbackFileUnavailableBody' => 'The server can\'t reach the video file. Check that the drive or folder it\'s on is still connected.',
 			'notices.playbackSegmentUnavailableBody' => 'This part of the video isn\'t available right now',
 			'notices.playbackConnectionLostBody' => 'Lost connection to the server',
 			'notices.playbackCodecUnsupportedBody' => 'This file\'s format isn\'t supported on this device',
@@ -7351,10 +7396,10 @@ extension on Translations {
 			'playlists.errorDeleting' => 'Failed to delete playlist',
 			'playlists.errorLoading' => 'Failed to load playlists',
 			'playlists.errorAdding' => 'Failed to add to playlist',
-			'playlists.errorReordering' => 'Failed to reorder playlist item',
-			'playlists.errorRemoving' => 'Failed to remove from playlist',
 			_ => null,
 		} ?? switch (path) {
+			'playlists.errorReordering' => 'Failed to reorder playlist item',
+			'playlists.errorRemoving' => 'Failed to remove from playlist',
 			'watchTogether.title' => 'Watch Together',
 			'watchTogether.description' => 'Watch content in sync with friends and family',
 			'watchTogether.createSession' => 'Create Session',
@@ -7865,10 +7910,10 @@ extension on Translations {
 			'tautulli.errorModeMismatch' => 'Tautulli rejected this token, and it looks like your permanent API key rather than a device token. Switch to API key above, or register a device in Tautulli and paste that token.',
 			'tautulli.errorUrlRequired' => 'Enter the address of your Tautulli server.',
 			'tautulli.errorTokenRequired' => 'Enter a token.',
-			'tautulli.errorNotTautulli' => 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.',
-			'tautulli.errorServer' => ({required Object code}) => 'Tautulli reported a server error (HTTP ${code}).',
 			_ => null,
 		} ?? switch (path) {
+			'tautulli.errorNotTautulli' => 'Something answered at that address, but it was not Tautulli. Check the address and the base path, and whether a login page sits in front of it.',
+			'tautulli.errorServer' => ({required Object code}) => 'Tautulli reported a server error (HTTP ${code}).',
 			'tautulli.errorGeneric' => 'Connecting failed.',
 			'nowWatching.title' => 'Now watching',
 			'nowWatching.tooltip' => 'See who is watching now',
@@ -8042,6 +8087,7 @@ extension on Translations {
 			'sourcePicker.sourceLabel' => ({required Object source}) => 'Source: ${source}',
 			'sourcePicker.change' => 'Change',
 			'sourcePicker.playbackFailedTitle' => 'This source could not be played.',
+			'sourcePicker.detailLoadFailedTitle' => 'This title could not be loaded.',
 			'sourcePicker.chooseAnotherSource' => 'Choose another source',
 			'sourcePicker.rowSemantics' => ({required Object index, required Object count, required Object description}) => 'Source ${index} of ${count}: ${description}',
 			'sourcePicker.preferredServer' => 'Preferred server',
@@ -8103,6 +8149,7 @@ extension on Translations {
 			'unifiedCatalog.discovery.semantics.viewAllSeries' => 'View all series, opens the complete catalog',
 			'unifiedCatalog.home.featured' => 'Featured',
 			'tvNavigation.activeDestination' => 'current section',
+			'tvNavigation.attentionRequired' => 'needs attention',
 			'tvMyPleya.groupContent' => 'My content',
 			'tvMyPleya.groupSources' => 'Libraries and sources',
 			'tvMyPleya.groupPleya' => 'Pleya',
@@ -8127,6 +8174,13 @@ extension on Translations {
 			'tvMyPleya.logoutSubtitle' => 'Sign out on this device',
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
+			'tvContextMenu.title' => 'Actions',
+			'tvContextMenu.menuSemantics' => ({required Object index, required Object count, required Object label}) => 'Action ${index} of ${count}: ${label}',
+			'tvContextMenu.noUsableSource' => 'No source is currently reachable, so this cannot be changed right now.',
+			'tvContextMenu.doneOnAll' => ({required Object count}) => 'Done on all ${count} sources',
+			'tvContextMenu.doneOnSome' => ({required Object done, required Object total}) => 'Done on ${done} of ${total} sources. The rest will be retried when they are back online.',
+			'tvContextMenu.doneOnSomeNoRetry' => ({required Object done, required Object total}) => 'Done on ${done} of ${total} sources.',
+			'tvContextMenu.failed' => 'That did not work',
 			_ => null,
 		};
 	}

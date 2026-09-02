@@ -29,8 +29,14 @@ class GroupingCandidate {
 /// still allows that group to *exist*, it just never grows a second source.
 const _neverMergedBackends = {MediaBackend.local, MediaBackend.pleyaServer};
 
-/// Groups [candidates] into [UnifiedMediaGroup]s. Every candidate ends up in
-/// exactly one group — grouping never drops a source (hoofdstuk 4.2/11.5).
+/// Groups [candidates] into [UnifiedMediaGroup]s. Every *distinct concrete
+/// source* ends up in exactly one group — grouping never drops a membership
+/// (hoofdstuk 4.2/11.5).
+///
+/// A repeated [UnifiedMediaSource.sourceKey] is not a second membership, it
+/// is the same one handed in twice, so the first occurrence wins and every
+/// later one is dropped before any identity work happens — see
+/// [_deduplicateBySourceKey].
 ///
 /// Two candidates merge when either:
 /// - they share an identical strong [IdentityToken] (hoofdstuk 11.3/11.5), or
@@ -54,10 +60,25 @@ const _neverMergedBackends = {MediaBackend.local, MediaBackend.pleyaServer};
 /// compatibility shim needs to keep it that way (see the section comment
 /// there for why).
 ///
-/// Order is preserves: a group appears at the position of the first
-/// candidate (in [candidates] order) that belongs to it.
-List<UnifiedMediaGroup> groupUnifiedMediaSources(List<GroupingCandidate> candidates, {bool allowWeakFallback = true}) {
-  if (candidates.isEmpty) return const [];
+/// [preferredSourceKeys] carries the profile's remembered source choices
+/// (hoofdstuk 14.8) as a flat set of `UnifiedMediaSource.sourceKey`s. A source
+/// key is `serverId:itemId` and therefore globally unique, so one flat set
+/// serves every group without a per-identity lookup and cannot misfire onto
+/// another title. It reaches hoofdstuk 13.2's **tier 4** and nothing else: the
+/// last deterministic tie-break between sources every earlier tier judged
+/// equal. It deliberately does not touch [selectRepresentativeSource] —
+/// hoofdstuk 4.7's ranking is a different question, and a write never follows
+/// either of them (WP2).
+///
+/// Order is preserved: a group appears at the position of the first
+/// candidate (in [rawCandidates] order) that belongs to it.
+List<UnifiedMediaGroup> groupUnifiedMediaSources(
+  List<GroupingCandidate> rawCandidates, {
+  bool allowWeakFallback = true,
+  Set<String> preferredSourceKeys = const {},
+}) {
+  if (rawCandidates.isEmpty) return const [];
+  final candidates = _deduplicateBySourceKey(rawCandidates);
 
   final poolable = <int>[];
   final groupAtIndex = <int, UnifiedMediaGroup>{};
@@ -73,7 +94,7 @@ List<UnifiedMediaGroup> groupUnifiedMediaSources(List<GroupingCandidate> candida
   if (poolable.isNotEmpty) {
     final components = _unionFind(candidates, poolable, allowWeakFallback: allowWeakFallback);
     for (final members in components) {
-      groupAtIndex.addAll(_finalizeComponent(members, candidates));
+      groupAtIndex.addAll(_finalizeComponent(members, candidates, preferredSourceKeys));
     }
   }
 
@@ -83,6 +104,38 @@ List<UnifiedMediaGroup> groupUnifiedMediaSources(List<GroupingCandidate> candida
     if (group != null) ordered.add(group);
   }
   return ordered;
+}
+
+/// Concrete-source dedup, run before any identity work (B14/B15/E15).
+///
+/// One concrete membership may take part in one aggregation or paging result
+/// exactly once. A backend that repeats an item across two pages, returns the
+/// same row twice inside one page, replays a page after a retry, or reports an
+/// item that moved between libraries all hand the same
+/// [UnifiedMediaSource.sourceKey] in more than once — and none of those is a
+/// second copy of the title. Letting them through would inflate the source
+/// count on a card ("2 bronnen" for one file), draw two cards where the weak
+/// fallback declines to merge them, and — worst — trip hoofdstuk 11.6's C19
+/// guard, which reads a server contributing two candidates to one bucket as
+/// genuine ambiguity and then refuses to merge that server with anyone.
+///
+/// This is deliberately *not* media-identity dedup: two genuinely different
+/// sourceKeys stay two memberships even when they are obviously the same film,
+/// because deciding that is [groupUnifiedMediaSources]' job and it has the
+/// evidence to do it properly. The rule here is narrower and purely
+/// mechanical — same concrete membership, keep the first.
+///
+/// The first occurrence wins, so the order contract above is unaffected: a
+/// group still appears at the position of the first candidate that belongs to
+/// it, and a later repeat can never move it.
+List<GroupingCandidate> _deduplicateBySourceKey(List<GroupingCandidate> candidates) {
+  final seen = <String>{};
+  final kept = <GroupingCandidate>[];
+  for (final candidate in candidates) {
+    if (!seen.add(candidate.source.sourceKey)) continue;
+    kept.add(candidate);
+  }
+  return kept.length == candidates.length ? candidates : kept;
 }
 
 /// Union-find restricted to [indices] into [candidates] (already filtered to
@@ -180,14 +233,18 @@ bool _hasConflictingToken(Set<IdentityToken> a, Set<IdentityToken> b) {
 /// bunching every fallback singleton at the first member's position silently
 /// pushes any unrelated candidate that happens to sit between two
 /// conflicting members past the whole split group.
-Map<int, UnifiedMediaGroup> _finalizeComponent(List<int> members, List<GroupingCandidate> candidates) {
+Map<int, UnifiedMediaGroup> _finalizeComponent(
+  List<int> members,
+  List<GroupingCandidate> candidates,
+  Set<String> preferredSourceKeys,
+) {
   if (members.length == 1) {
     return {members.single: _buildSingleSourceGroup(candidates[members.single])};
   }
   if (_componentHasNamespaceConflict(members, candidates)) {
     return {for (final i in members) i: _buildSingleSourceGroup(candidates[i])};
   }
-  return {members.first: _buildMergedGroup(members, candidates)};
+  return {members.first: _buildMergedGroup(members, candidates, preferredSourceKeys)};
 }
 
 /// Hoofdstuk 11.5: a component reached only through transitive strong-token
@@ -218,18 +275,34 @@ UnifiedMediaGroup _buildSingleSourceGroup(GroupingCandidate candidate) {
   );
 }
 
-UnifiedMediaGroup _buildMergedGroup(List<int> members, List<GroupingCandidate> candidates) {
+UnifiedMediaGroup _buildMergedGroup(
+  List<int> members,
+  List<GroupingCandidate> candidates,
+  Set<String> preferredSourceKeys,
+) {
   final ordered = [for (final i in members) candidates[i]];
   final sources = [for (final c in ordered) c.source];
   final representativeKey = selectRepresentativeSource(sources);
   final representativeIdentity = ordered.firstWhere((c) => c.source.sourceKey == representativeKey).evidence.identity;
   final fallbackKey = (sources.map((s) => s.sourceKey).toList()..sort()).join('|');
+  // At most one of a group's own sources can be the remembered one; a set
+  // spanning the whole profile is scanned against this group's members, never
+  // the other way round.
+  String? preferredHere;
+  for (final source in sources) {
+    if (preferredSourceKeys.contains(source.sourceKey)) {
+      preferredHere = source.sourceKey;
+      break;
+    }
+  }
   return UnifiedMediaGroup(
     groupId: _deterministicGroupId([for (final c in ordered) c.evidence], fallbackKey: fallbackKey),
     identity: representativeIdentity,
     sources: sources,
     representativeSourceKey: representativeKey,
-    watchState: selectRepresentativeWatchState({for (final s in sources) s.sourceKey: s.item}),
+    watchState: selectRepresentativeWatchState({
+      for (final s in sources) s.sourceKey: s.item,
+    }, preferredSourceKey: preferredHere),
   );
 }
 

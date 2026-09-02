@@ -23,6 +23,8 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
 
+import '../../test_helpers/golden.dart';
+
 /// A self-contained artwork URL, so `getOptimizedImageUrl` needs no client to
 /// size it and the fixtures stay honest about where the URLs come from.
 UnifiedMediaGroup _group(int index) {
@@ -52,8 +54,9 @@ void main() {
   /// Records what the grid asked to warm, instead of hitting the network.
   final warmed = <String>[];
 
-  Future<void> pumpGrid(WidgetTester tester, {required int count}) async {
+  Future<void> pumpGrid(WidgetTester tester, {required int count, Size? surfaceSize}) async {
     warmed.clear();
+    if (surfaceSize != null) setGoldenSurfaceSize(tester, size: surfaceSize);
     await tester.pumpWidget(
       TranslationProvider(
         child: MaterialApp(
@@ -232,5 +235,90 @@ void main() {
     Focus.of(tester.element(find.text('Title 0'))).requestFocus();
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
+  });
+
+  group('I18: a focused card that disappears (hoofdstuk 7.6)', () {
+    Widget gridOf(List<int> indexes, {VoidCallback? onExitTop}) => TranslationProvider(
+      child: MaterialApp(
+        theme: monoTheme(dark: true),
+        home: InputModeTracker(
+          child: Scaffold(
+            body: TvUnifiedMediaGrid(
+              groups: [for (final i in indexes) _group(i)],
+              onActivate: (_) {},
+              hasMore: false,
+              isLoadingMore: false,
+              onLoadMore: () {},
+              onExitTop: onExitTop,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    testWidgets('focus moves to the next surviving neighbour, not nowhere', (tester) async {
+      await tester.pumpWidget(gridOf([0, 1, 2, 3]));
+      await tester.pumpAndSettle();
+      Focus.of(tester.element(find.text('Title 1'))).requestFocus();
+      await tester.pumpAndSettle();
+      expect(Focus.of(tester.element(find.text('Title 1'))).hasPrimaryFocus, isTrue);
+
+      // A filter/removal drops card 1 out from under the focus.
+      await tester.pumpWidget(gridOf([0, 2, 3]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Title 1'), findsNothing, reason: 'the card is really gone');
+      expect(
+        Focus.of(tester.element(find.text('Title 2'))).hasPrimaryFocus,
+        isTrue,
+        reason: 'the card that was next after the removed one, forward-first per _nearestSurvivor',
+      );
+    });
+
+    testWidgets('focus moves to the nearest remaining neighbour when the forward side is also gone', (tester) async {
+      await tester.pumpWidget(gridOf([0, 1, 2, 3]));
+      await tester.pumpAndSettle();
+      Focus.of(tester.element(find.text('Title 2'))).requestFocus();
+      await tester.pumpAndSettle();
+
+      // Everything after the focused card is gone too — only a card before it survives.
+      await tester.pumpWidget(gridOf([0, 1]));
+      await tester.pumpAndSettle();
+
+      expect(
+        Focus.of(tester.element(find.text('Title 1'))).hasPrimaryFocus,
+        isTrue,
+        reason: 'nothing forward survived, so the nearest neighbour behind it gets the focus',
+      );
+    });
+
+    testWidgets('nothing survives the change: focus goes back up to the controls, not into the void', (tester) async {
+      var exitedTop = 0;
+      await tester.pumpWidget(gridOf([0, 1], onExitTop: () => exitedTop++));
+      await tester.pumpAndSettle();
+      Focus.of(tester.element(find.text('Title 0'))).requestFocus();
+      await tester.pumpAndSettle();
+
+      // A filter change that empties the grid entirely.
+      await tester.pumpWidget(gridOf(const [], onExitTop: () => exitedTop++));
+      await tester.pumpAndSettle();
+
+      expect(exitedTop, 1, reason: 'nothing left to focus, so control goes back to whatever can still act');
+    });
+  });
+
+  testWidgets('J3: the grid renders and focuses without overflow at the lowest supported TV surface', (tester) async {
+    // 918 logical px is TvLayoutConstants.scaleForHeight's own floor (0.85x
+    // of the 1080p canvas) — nothing on a real TV output scales the UI
+    // smaller than this. 1280 wide keeps a plausible (720p-ish) aspect
+    // rather than testing an unrealistically narrow sliver at that height.
+    await pumpGrid(tester, count: 24, surfaceSize: const Size(1280, 918));
+
+    expect(tester.takeException(), isNull, reason: 'the grid itself must lay out cleanly at the floor scale');
+
+    Focus.of(tester.element(find.text('Title 0'))).requestFocus();
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull, reason: 'focusing (which widens a card) must not overflow at the floor');
   });
 }

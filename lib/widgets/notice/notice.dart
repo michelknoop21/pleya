@@ -51,11 +51,14 @@ class Notice {
 
   final String groupKey;
 
-  /// Overrides the level-derived duration. Exists only for
+  /// Overrides the level-derived duration. Exists for
   /// `snackbar_helper.dart`'s compatibility facade, which must honor a small
   /// number of pre-existing callers with timing-sensitive durations (e.g.
-  /// the "press back again to exit" window). New call sites should not set
-  /// this — let [level] decide.
+  /// the "press back again to exit" window), and for playback failures,
+  /// which are errors that are over by the time they show: the player has
+  /// already closed, so they get a bounded stay instead of waiting to be
+  /// clicked away (see `noticeForPlaybackFailureKind`). Other new call sites
+  /// should not set this — let [level] decide.
   final Duration? durationOverride;
 
   const Notice({

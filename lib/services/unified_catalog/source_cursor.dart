@@ -37,6 +37,23 @@ typedef CatalogLibrary = ({
 /// [CatalogLibrary] — hoofdstuk 31 rule 13 forbids counting a hidden library
 /// at all, not just hiding it after the fact.
 ///
+/// **B6: a mixed library has no single global [MediaKind], so it may not be
+/// excluded from either catalog by one.** [MediaLibrary.kind] reads
+/// [MediaKind.unknown] for exactly this case — Jellyfin's own "Mixed
+/// content" `CollectionType`, or a Plex section this codebase's own
+/// [MediaKind.fromString] does not recognise — and such a library is
+/// therefore eligible for *every* [kind], never excluded by this check.
+/// That is safe, not a guess: [UnifiedCatalogService] always asks each
+/// participating library for one concrete [kind] on the wire (Plex's
+/// `type=`, Jellyfin's `IncludeItemTypes`), so the server itself does the
+/// item-level classification a mixed library needs — a movie surfaces only
+/// under the Films query, a show only under Series, and a genre this library
+/// holds neither of (music, photos) simply answers empty rather than
+/// guessed. A concrete, *non-matching* kind (a music library's `artist`, when
+/// [kind] is `movie`) is excluded exactly as before — only [MediaKind.unknown]
+/// gets this treatment, because only it means "we cannot say", not "we can
+/// say, and it is something else."
+///
 /// Pure and headless on purpose: this is the k-way merge engine's own input,
 /// not the reactive `LibrariesProvider`/`MultiServerProvider` wiring that
 /// `unified_catalog_provider.dart` (also fase 3) does. Every input here is a
@@ -50,7 +67,7 @@ List<CatalogLibrary> eligibleCatalogLibraries({
 }) {
   final result = <CatalogLibrary>[];
   for (final library in libraries) {
-    if (library.kind != kind) continue;
+    if (library.kind != kind && library.kind != MediaKind.unknown) continue;
     final rawServerId = library.serverId;
     if (rawServerId == null || rawServerId.isEmpty) continue;
     final serverId = ServerId(rawServerId);
@@ -84,15 +101,38 @@ class UnifiedSourceCursor {
   /// page it most recently fetched.
   final List<MediaItem> buffer = [];
 
-  /// True once this library has reported every item it has — [offset] has
-  /// reached its last known [sourceTotal]. A cursor never fetches again once
-  /// this is set.
+  /// True once this library has reported every item it has. A cursor never
+  /// fetches again once this is set.
+  ///
+  /// Decided from the concrete page protocol (E8) — an empty page, a page
+  /// shorter than requested, or [lastFetchedItemKeys] catching a stalled
+  /// offset — never from [sourceTotal] alone.
   bool exhausted = false;
 
   /// The library's own reported total, once a page has answered. Null before
   /// the first successful fetch — hoofdstuk 12's DoD forbids claiming an
   /// exact catalog total before every cursor has reported one.
+  ///
+  /// **Advisory only (E8).** A backend's `totalCount` can rise, fall or be
+  /// briefly inconsistent while a library changes underneath the merge —
+  /// nothing here treats it as ground truth. It still feeds progress copy and
+  /// diagnostics; [exhausted] is decided from the concrete page protocol
+  /// instead (see [UnifiedCatalogService]'s own fetch loop): an empty page, a
+  /// short page, or [lastFetchedItemKeys] catching a page that never actually
+  /// advanced.
   int? sourceTotal;
+
+  /// The `globalKey`s [UnifiedCatalogService] fetched on this cursor's most
+  /// recent successful page, in order — E8's no-progress guard.
+  ///
+  /// Offset paging assumes the server honours the offset it was given.
+  /// `sourceTotal` lying was one way that assumption could go wrong;
+  /// `offset` being silently ignored is the other, and it does not show up as
+  /// an empty or short page — the backend keeps answering with a full page,
+  /// just always the *same* one. Comparing this against the next page's own
+  /// keys is what turns that into a page nobody can silently loop on forever,
+  /// without needing `sourceTotal` at all.
+  List<String>? lastFetchedItemKeys;
 
   /// The most recent fetch failure, if any. Cleared on the next successful
   /// fetch. A cursor with a [lastError] is retried on the *next*
@@ -105,6 +145,12 @@ class UnifiedSourceCursor {
   /// `UnifiedCatalogService` never dispatches two concurrent fetches for the
   /// same library.
   bool fetchInFlight = false;
+
+  /// The in-flight fetch itself, so a caller that has *nothing else to show*
+  /// can wait for it rather than reporting an empty catalog over a library
+  /// that is merely slow. [fetchInFlight] stays the authority on whether
+  /// anything is running; this is only how to await it.
+  Future<void>? pending;
 
   /// Cancels this cursor's in-flight fetch, if any (hoofdstuk 12.7: a
   /// query/filter change abandons old requests via generation IDs and abort

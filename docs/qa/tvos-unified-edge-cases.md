@@ -9,13 +9,18 @@ het afvinkbare register; het architectuurdocument houdt alleen de regels en de c
 - Een nieuw ontdekte situatie zonder expliciet gedrag is een releaseblocker: eerst het gedrag
   vastleggen (in het architectuurdocument of een DEC), dan pas hier een rij toevoegen of aanpassen.
 - Status is één van: `open` (nog geen test), `covered` (test bestaat en is groen — vul de
-  vindplaats in), `n.v.t.` (met reden, nooit stilzwijgend geschrapt).
+  vindplaats in), `n.v.t.` (met reden, nooit stilzwijgend geschrapt), of — voor een rij die het
+  hoofdstuk "Fase-9-classificatie van de open rijen" hieronder een klasse gaf — de klasse zelf
+  (`klasse A`/`klasse B`/`klasse C`, eventueel met een korte reden erbij zoals `open (coverage debt)`
+  bij I24). Die klasse ís de status voor zo'n rij, geen aparte waarde ernaast.
 - Categorieën volgen geen vaste fase-toewijzing behalve waar het architectuurdocument dat expliciet
   zegt (register C is minimaal vereist in fase 1, zie hoofdstuk 27). Een fase mag een deelverzameling
   afvinken; het register als geheel sluit pas bij de laatste fase die het raakt.
 - Rijen worden nooit verwijderd. Een geschrapt scenario gaat naar `n.v.t.` met een korte reden.
 
-Bijgewerkt: 2026-08-31 (fase 6 afgerond). Aangemaakt in fase 0. Fase 1 (unified identity foundation) dekt register C
+Bijgewerkt: 2026-09-02 (na de fase-9-eindaudit: 180 van de 189 rijen `covered`; de negen die
+overblijven zijn de geclassificeerde: vijf hardwarerijen, drie geregistreerde debts — I21, I24 en het
+nieuwe B16 — en J14). Aangemaakt in fase 0. Fase 1 (unified identity foundation) dekt register C
 (C1-C24) volledig af — zie de vindplaatsen in de tabel hieronder. De overige categorieën blijven
 `open` tot de fase die ze raakt.
 
@@ -70,30 +75,290 @@ vallen en die pas na 10A afgetekend kunnen worden:
   native gedrag om te bewijzen — maar dat de nieuwe rootgrens op echte hardware op dezelfde plek
   ligt, is wel een runtimewaarneming.
 
+## Fase-9-classificatie van de open rijen
+
+Vastgesteld op 1 september 2026, aan het begin van fase 9. Fase 9 is de laatste **functionele** fase
+vóór 10A-hardening. Daarom geldt voor iedere nog niet-`covered` rij:
+
+> **DEFAULT OWNER = FASE 9**, als en alleen als de rij automatiseerbaar is, productmatig voldoende
+> gedefinieerd is, functioneel gedrag betreft, en niet al een expliciete andere owner of
+> defer-status heeft.
+
+Een rij mag alleen buiten fase 9 blijven met een van deze vier concrete redenen:
+
+| Klasse | Betekenis |
+| --- | --- |
+| **A. Hardware-only** | Alleen op een echt toestel vast te stellen → eindacceptatie na 10A. |
+| **B. Accepted registered debt** | Eerder expliciet geaccepteerd, en alleen zolang fase-9-code die seam niet wijzigt. |
+| **C. Unresolved product decision** | Gedrag nog niet vastgelegd. Niet zelf invullen. |
+| **D. Explicit later owner** | Alleen wanneer dit document of een DEC werkelijk een latere fase noemt. |
+
+Er is bewust **geen numerieke scope-cap**. Omdat er na fase 9 geen functionele fase meer komt, mag
+er geen verzameling gewone functionele edge cases overblijven met als enige reden "die hebben we
+niet geraakt".
+
+**Uitkomst over de 83 open rijen: 4 hardware, 2 debt, 1 onopgelost, 76 fase-9-owned.** Tijdens fase 9
+zelf kwam I17 daar als vijfde hardware-rij bij (zie de noot eronder) — de 76 fase-9-owned rijen worden
+er zo 75. J7 stond daarnaast korte tijd als zesde hardware-achtige rij genoteerd; die
+herclassificatie is teruggedraaid toen bleek dat twee van zijn vijf clausules werkelijk stuk waren —
+zie de noot eronder — dus het blijven er 75.
+
+**Stand bij het sluiten van fase 9: alle 75 fase-9-owned rijen zijn gesloten.** Wat openstaat is precies
+de tabel hieronder: vijf rijen die alleen op echte hardware vast te stellen zijn, twee geregistreerde
+debts, en één onopgelost productcontract. Zes van die sluitingen bleken geen bewijsgat maar een
+gedragsgat — A18, D11, I9, de F19/A14-layoutfout, en de twee RTL-clausules van J7 — en die staan met
+hun fix in de rijen zelf.
+
+Dit register is het samengevoegde resultaat van twee sessies die fase 9 parallel hebben gesloten. Waar
+ze uiteenliepen is dat in de rijen zelf te lezen: D11's server-lokale episodecache en J7's twee
+gespiegelde clausules zijn allebei echte bugs die de andere sessie niet vond, en J7's
+klasse-A-herclassificatie is teruggedraaid omdat een `Directionality`-override die clausules wél kan
+keuren.
+
+**F19 is inmiddels opgelost.** Was klasse C (onopgelost productbesluit) tot de reconciliation van
+1 september 2026 hoofdstuk 21.7 als authority vaststelde — zie de noot onder register F en de rij
+zelf. Geen aparte klasse meer nodig.
+
+**J14 is tijdens fase 9 klasse C geworden.** De existing-proof-first-audit vond geen enkel hoofdstuk,
+DEC of stuk productiecode dat "een panelsectie" definieert — laat staan welk panel de rij bedoelt of
+wat een lege sectie zou moeten tonen. Dat is geen aantoonbare bestaande correctheid om een test tegen
+te schrijven, en ook geen bug: het is een geval waar sectie 7 van de reconciliation-instructie zelf om
+vraagt — "kom terug bij een écht nieuw, niet-gedefinieerd productcontract" — dus die rij is hier
+geclassificeerd in plaats van zelf ingevuld. Verplaatst van WP11 naar hier; blijft in het register
+staan als `open`/klasse C tot er een productantwoord is.
+
+**J7 was tijdens fase 9 klasse A, en is dat na herbeoordeling niet.** De eerste lezing was dat RTL-acceptatie zonder rechts-naar-links locale niet vast te stellen is, zoals J2/J4/J8/J9 zonder toestel. Dat gaat niet op: hoofdstuk 25 somt vijf concrete clausules op, en vier daarvan zijn met een `Directionality`-override in een widgettest te keuren, zonder locale en zonder toestel. Bij het schrijven van die tests bleken er twee werkelijk stuk — het leesscrim en het titelblok stonden hardgecodeerd op links — dus de klasse-A-lezing verklaarde een echte bug tot niet-vaststelbaar. Het onderscheid dat overblijft: de clausules zijn nu bewezen, een visuele sweep over een echte RTL-locale blijft onmogelijk zolang Pleya er geen verscheept, maar dát is niet wat deze rij vraagt.
+
+**I17 is tijdens fase 9 alsnog klasse A geworden.** De existing-proof-first-audit van WP11 vond geen
+`PopScope`/`WillPopScope` of enige andere back-button-interceptie onder `lib/screens/tv/` of
+`lib/navigation/` — TV-schermen routeren terug via het eigen remote-focussysteem
+(`onBack`-callbacks), niet via Android's hardware-backdispatcher. Dat is geen gat om dicht te testen:
+of de Android-systeemknop het juiste doet op die stack is precies de klasse waar J2/J4/J8/J9 al onder
+vallen, en alleen op een echt Android TV-toestel vast te stellen. Verplaatst van WP11 naar hier in
+plaats van als losse open rij te laten staan.
+
+### Buiten fase 9 (9 rijen)
+
+| # | Klasse | Reden |
+| --- | --- | --- |
+| J2 | A | 4K-output is alleen op een echte Apple TV vast te stellen. |
+| J4 | A | Overscan idem. |
+| J8 | A | Of VoiceOver het onderscheid hóórbaar maakt, idem. |
+| J9 | A | Of de 160 ms-transitie onder Reduce Motion kort genoeg is, idem. |
+| I17 | A | De Android TV-hardware-terugknop is alleen op een echt toestel vast te stellen — zie de noot hierboven. |
+| I21 | B | Geregistreerde fase-5-debt: 7.4 en 10.6 noemen de Play/Pause-snelkoppeling "mag", en de zichtbare knop blijft de primaire route. Vervalt als fase-9-code het catalogusheaderpad wijzigt. |
+| I24 | B | Geregistreerde integration-test debt: schakel 2 loopt door `MainScreen`, dat geen enkele test monteert. Geen productiebug (statisch nagelopen). Vervalt als fase-9-code `_focusSidebar` of de nav-nodes raakt. |
+| J14 | C | Onopgelost productcontract: geen enkel hoofdstuk of DEC definieert "een panelsectie" — zie de noot hierboven en de rij zelf verderop in dit register. |
+
+Fase 10A voegt daar één rij aan toe, langs dezelfde regel en om dezelfde reden:
+
+| # | Klasse | Reden |
+| --- | --- | --- |
+| J18 | C | Onopgelost productcontract: hoe de tweekleurige merklockup op het lichte thema hoort te worden getekend ligt in geen enkel hoofdstuk, DEC of north-starbeeld vast — zie de noot onder register J. **Opgelost op 2 september 2026, zie hieronder.** |
+
+**J18 is opgelost op 2 september 2026.** Het ontbrekende productbesluit is genomen en staat als
+[DEC-074](../DECISIONS.md#dec-074): **op het lichte thema volgen de letters de themakleur en blijft de
+P-mark merkrood.** De rij verderop in dit register is daarmee `covered`; de klasse-C-regel hierboven
+blijft staan als vastlegging van hoe de rij ontstaan is.
+
+Bij dat werk kwam er één rij bij, langs dezelfde regel als altijd — eerst het gedrag geclassificeerd,
+en juist omdat het níet vastligt is het klasse C en geen fix:
+
+| # | Klasse | Reden |
+| --- | --- | --- |
+| J19 | C | Onopgelost productcontract: `backend_badge.dart` tekent de Pleya-mark ongetint terwijl de Plex- en Jellyfin-buren wél de inktkleur krijgen. Een consistentievraag, geen leesbaarheidsbug — zie de rij zelf. **Opgelost op 2 september 2026, zie hieronder.** |
+
+**J19 is opgelost op 2 september 2026, dezelfde dag waarop hij ontstond.** Het ontbrekende productbesluit is
+genomen en staat als [DEC-076](../DECISIONS.md#dec-076): **een backend-badge is een bronglyph en
+neemt de inkt van zijn regel; het merkrood blijft bij `PleyaLogo` en het lockup.** De rij verderop in
+dit register is daarmee `covered`; de klasse-C-regel hierboven blijft staan als vastlegging van hoe
+de rij ontstaan is.
+
+Bij dat werk kwam er géén rij bij. Wat er wél bij kwam is een gebrek in dezelfde drie regels dat geen
+productbesluit vraagt en dus geen registerrij is: de badge tekende de handgemaakte bron
+`pleya_mark.png`, waarvan de P ongecentreerd op zijn eigen kanvas staat en het niet vult, in plaats
+van het gegenereerde `pleya_logo.png`. Dat is meegenomen en staat in de rij zelf.
+
+### Fase-9-owned (75 rijen), met het werkpakket dat ze sluit
+
+75, niet 76: dat is het aantal na de I17-verschuiving hierboven ("de 76 fase-9-owned rijen worden er
+zo 75"). De tabel eronder groepeert alleen de rijen die dit register in een genoemd werkpakket
+onderbracht — WP5 en WP9 zijn nooit toegekend en bestaan dus niet; de nummering is niet doorlopend.
+Rijen die individueel fase-9-werk bleven zonder eigen werkpakket (I18, J7 — zie de eerste aantekening
+eronder) tellen wél mee in de 75, maar staan niet als tabelrij.
+
+| Werkpakket | Rijen |
+| --- | --- |
+| WP1 — hidden-library lekken ✅ gesloten | B8 |
+| WP2 — contextmenu + write-scope ✅ gesloten | G12, G13 |
+| WP3 — auth-status ✅, Mijn Pleya en deep links (I9, I10, I14) nog open | I9, I10, I14 |
+| WP4 — all-source verwijderen uit Verder kijken ✅ gesloten | G10, G11 |
+| WP6 — playbackreturn en detailfouten | A14, A15, D14, D15, I19, I20 |
+| WP7 — profielwissel en serverlevenscyclus | A16, A17, A18, A19, E12 |
+| WP8 — volgende aflevering | D11 |
+| WP10 — Live TV-melding ✅ gesloten | A20 |
+| WP11 — resterende registerrijen ✅ gesloten (J11 was de laatste) | J11 |
+
+Vier aantekeningen bij die verdeling:
+
+- **I18 en J7 zijn half bewezen, niet onbewezen, en blijven daarom open fase-9-werk zonder eigen
+  werkpakket.** I18's topnav-helft en J7's rasterhelft staan er; wat ontbreekt is het griditem-geval
+  respectievelijk de RTL-sweep over de fase-6/7/8-oppervlakken. Een half bewezen rij hoort geen
+  `covered` te heten, en "WP11 ✅ gesloten" hierboven gaat alleen over WP11's eigen backloglijst — het
+  betekent niet dat elke nog openstaande fase-9-rij dicht is.
+- **J3, J6, J10, J11, J12, J13, J14, J15 zijn wél automatiseerbaar** en horen daarom niet bij de
+  vijf hardwarerijen. `monoTheme({dark, oled})` maakt de themavarianten goedkoop, en een kleinere
+  logische surface is een `binding.window`-instelling, geen toestel.
+- **G1–G8 hangen aan één functie**, `selectRepresentativeWatchState`. Bij het openen van fase 9 week
+  die op drie punten af van hoofdstuk 13.2; de G-groep is tijdens fase 9 zelf herschreven om te
+  conformeren (zie hun eigen rijen verderop), dus er is geen deviation proposal meer nodig — deze
+  aantekening stond eerder nog op "gaat als deviation proposal mee", wat na de herschrijving niet meer
+  klopte.
+- **A15-A18, D11, D14, I9, I14 en I20 staan nog op `open` binnen WP3/WP6/WP7/WP8.** Die
+  werkpakketten zijn dus, anders dan WP1/WP2/WP4/WP10/WP11, nog niet gesloten — zie de einduitkomst
+  verderop in dit document voor het volledige overzicht van wat na fase 9 nog openstaat.
+
+### WP2 — contextmenu-bereikbaarheid: gebouwd
+
+Vastgesteld op 1 september 2026, gebouwd dezelfde dag. De bevinding was bevestigd in code: **geen
+enkele fase-6/7/8-TV-kaart had een contextmenu.** `grep` op `onLongPress`, `enableLongPress`, `isContextMenuKey`,
+`MediaContextMenu` en `showContextMenu` over `lib/widgets/tv/` en `lib/screens/tv/` geeft nul hits.
+Markeer bekeken/onbekeken, rate, verwijder uit Verder kijken en Kijklijst zijn daarmee onbereikbaar
+vanaf Home, de Films- en Series-landings, de complete catalogus en TV-Search. De legacy-oppervlakken
+(`tv_browse_rail.dart:937`, `hub_section.dart:574`) hebben hem wél — dit is dus een regressie van de
+rewrite, geen ontbrekende functie.
+
+**De naad is bekend en klein.** Beide unified tegels wrappen al in `FocusableWrapper`:
+`tv_expandable_media_tile.dart:126` (Home-rijen, beide landings, TV-Search) en
+`tv_unified_media_card.dart:114` (complete catalogus). `FocusableWrapper` draagt het
+TV-contextmenucontract al — `onLongPress` vuurt op `key.isContextMenuKey` en op een lange Select,
+met `SelectKeyUpSuppressor.suppressSelectUntilKeyUp()` ertegen. Er is dus geen nieuwe gesture nodig,
+alleen een `onContextMenu`-callback op die twee tegels en een menu dat hem invult.
+
+**Het write-scopecontract is beslist** (hoofdstuk 13.4, 13.5, 13.8 en 23, plus DEC-020): **elke
+actie geldt voor alle memberships van de titel, en geen enkele vraagt om een bron.**
+
+Daar is het in twee stappen op uitgekomen. WP2 leverde drie semantieken: `logical`,
+`sourceSpecific` en een `sourceSpecificWithAllSources` met een expliciete "Alle bronnen"-rij voor
+markeer bekeken/onbekeken. [DEC-071](../DECISIONS.md#dec-071) maakte die twee acties `logical`,
+waarmee de derde variant zijn enige gebruiker verloor en met de hele keten eronder verdween.
+[DEC-075](../DECISIONS.md#dec-075) deed daarna hetzelfde met `rate`, de laatste actie die nog vroeg,
+en toen was `sourceSpecific` zelf over: een enum met één waarde is een switch die altijd dezelfde
+kant op gaat, dus ook die is weg, samen met `ApplyActionToSource`, `AskForActionScope` en de picker.
+
+De harde regel eronder is niet zwakker geworden maar zwaarder: een write kiest **nooit**
+stilzwijgend `representativeSource` of de preferred server. Die twee zijn
+activation/playback-conveniences; een verkeerd gelande write is onzichtbaar en permanent. Dat wordt
+nu door de vorm afgedwongen in plaats van door discipline — er is één doeltype, het draagt een
+lijst, en de lijst is elke membership. Een implementatie die naar `representativeSource` grijpt
+levert een lijst van één, en dat is precies wat de negatieve controles zoeken.
+
+**Wat er staat.** Drie lagen, elk met één verantwoordelijkheid:
+
+| Laag | Bestand | Wat het beslist |
+| --- | --- | --- |
+| doel | `lib/screens/tv/tv_unified_context_actions.dart` | welke bronnen een actie raakt, en welke daarvan nu bereikbaar zijn |
+| menu | `lib/screens/tv/tv_unified_context_menu.dart` | welke acties dit oppervlak aanbiedt, en de dispatch |
+| rijen | `lib/widgets/tv/tv_source_row.dart` | de presentatie, gedeeld met de playbackpicker |
+
+Die laatste was een extractie voor de scope-picker: `_SourceList` en `_SourceRow` zaten privé in
+`tv_media_source_picker.dart` en zijn er ongewijzigd uit gelicht, met `TvSourceRowDescriptor` als
+naad in plaats van `UnifiedMediaSource`. De picker die er de tweede consument van was bestaat niet
+meer; de extractie is blijven staan omdat de playbackpicker er zelf op draait.
+
+**De onthouden playbackkeuze blijft buiten de schrijfkant.** `rankSources` krijgt in
+`resolveUnifiedActionTarget` bewust geen `preferredSourceKey`. Dat is geen dode voorzorg meer nu er
+niets meer gevraagd wordt: `sources.first` is de membership waar de waarderingssheet aan bindt, dus
+hij bepaalt of er sterren of duimpjes staan en welke servernaam onder "Opgeslagen" verschijnt. Een
+preferred-tier vooraan zou de zichtbare helft van een schrijfactie op een bron zetten die de
+gebruiker nooit koos. `the candidate list carries no preferred-source tier` bewaakt dat.
+
+**De hero heeft bewust geen menu.** Hoofdstuk 7.3 somt het heromodel uitputtend op — Afspelen en Meer
+info, met links/rechts gebonden aan het wisselen van slide — en kent daar geen contextmenu. Een lange
+Select op een CTA die "start dit nu" betekent is een nieuw gebaar op een knop, geen kaartactie. Niet
+toegevoegd, dus, en niet om symmetrie.
+
+**Wat er níét in zat, en waarom.** `_applyToSources` meldde een gedeeltelijke mislukking eerlijk
+(`doneOnSome`) in plaats van te rollbacken, wat 13.4 punt 5 en 13.5's "mislukte subset" vragen. De
+lokale suppressie en het opnieuw uitvoeren bij reconnect — 13.4 punten 3 en 4 — waren **G10 en G11**
+en hoorden bij WP4. Dat was de grens: WP2 vertelde de waarheid over de bronnen die het niet bereikte,
+WP4 onthoudt ze. **WP4 is inmiddels gebouwd** — zie de noot onder register G.
+
+Rijen die hierop wachtten: **G12** en **G13**, beide nu `covered`.
+
+
+### WP3 — de permanente TV-banner is weg, de deep-linkhelft niet
+
+Gebouwd op 1 september 2026. **Let op de tweedeling:** WP3 draagt in de tabel hierboven de rijen
+I9, I10 en I14, en die gaan over Back en overlays — niet over auth. Wat hier gesloten is, is het
+*defect*: `AuthErrorBanner` werd op regel 1168 van `main_screen.dart` onvoorwaardelijk gemonteerd,
+dus ook op TV, waar hij als permanente volle-breedte rode strook boven Home, Films, Series en Search
+stond. Hoofdstuk 18.4 verbiedt dat met zoveel woorden en schrijft het alternatief voor: "Een klein
+statuspunt bij Mijn Pleya mag aandacht vragen, maar mag geen permanente grote rode melding over
+content leggen." I9, I10 en I14 blijven `open` en zijn het resterende WP3-werk.
+
+**Twee regels productie.** De mount krijgt `if (!_isTvShell)`, en `TvTopNavigation` krijgt een
+`needsAttention`-vlag die op de Mijn Pleya-bestemming een amberen punt tekent. Meer was het niet,
+omdat de rest er al stond: `MultiServerProvider.authErrorServerIds` scheidt 401/403 al van offline,
+`TvMyPleyaScreen` toont de regel "Sessie verlopen voor NAS" al (met een commentaarregel die naar
+18.4 verwijst), en `TvMyPleyaSection.servers` → `TvServersScreen` is de bestaande beheerroute. Geen
+nieuwe server-managementarchitectuur, geen nieuw scherm, geen nieuwe heuristiek.
+
+**Waarom het punt een overlay is en geen extra kind in de rij.** Een `Stack` meet zich naar zijn
+grootste niet-gepositioneerde kind, en dat is de pill; het punt hangt eraan met `Positioned` en
+`Clip.none`. Een extra box in de `Row` zou elke bestemming ernaast verschuiven op het moment dat een
+token verloopt, en hoofdstuk 7.2 gaat er nu juist over dat de balk niet onder de afstandsbediening
+vandaan beweegt. Het bewijs is dubbel: een test die de rechthoek van elke bestemming vóór en ná het
+omklappen vergelijkt, en het feit dat `flutter test --update-goldens` geen enkele bestaande golden
+herschreef — `tv_shell_home_active.png` is byte-identiek gebleven.
+
+**Amber, niet rood.** Hoofdstuk 14.7 houdt die twee overal in deze rewrite uit elkaar: een verlopen
+sessie is iets dat je vanaf de bank oplost, een kapotte server niet. De testfinder matcht daarom op
+de kleur en niet op het widgettype, zodat een punt dat naar rood afdrijft rood gaat in plaats van
+stilletjes door te glippen.
+
+**De semantiek moest apart.** De inhoud van een navigatie-item zit in een `ExcludeSemantics` (anders
+leest VoiceOver het label twee keer), dus het punt kan geen eigen semantische node dragen. De tekst
+hangt aan `FocusableWrapper.semanticLabel`, en een aparte negatieve controle bewijst dat die regel
+zelfstandig draagt.
+
+Zeventien tests. Drie negatieve controles, los per onderdeel: de guard weghalen maakt er dertien
+rood, het punt weghalen vier, de semantiekregel weghalen één. De eerste controle vond bovendien een
+echt gat in de eerste opzet — de vier "geen rode strook"-tests monteerden alleen `TvRootShell`,
+terwijl de banner erboven in `MainScreen` hangt, dus ze bleven groen mét verwijderde guard. De
+harness monteert nu dezelfde `Column` die `MainScreen` bouwt, guard en al.
+
+Non-TV is ongewijzigd: `AuthErrorBanner` zelf is niet aangeraakt, zijn eigen tests in
+`test/widgets/auth_error_banner_test.dart` staan er nog, en twee tests pinnen de mountconditie in
+beide richtingen vast via `TvDetectionService.debugSetAppleTVOverride`.
+
+Visueel bewijs: `test/goldens/tv_shell_auth_attention.png` en `tv_shell_auth_my_pleya.png`.
+
+
 ## A. Server- en topologycases
 
 | # | Case | Test | Status |
 |---|---|---|---|
-| A1 | Geen servers geconfigureerd | | open |
+| A1 | Geen servers geconfigureerd | test/services/unified_catalog_service_test.dart (groep `WP11: server/library topology`, `A1: zero libraries never claims initialLoadFailed — nothing failed, there is nothing`) — een lege librarylijst is meteen `isComplete` en nooit `initialLoadFailed`, dat laatste is voor libraries die wél antwoordden en faalden | covered |
 | A2 | Eén Plex-server | test/providers/unified_catalog_provider_test.dart (`ensureStarted loads the first page and settles into the snapshot`) — één Plex-client, één library, en de snapshot die de grid tekent | covered |
-| A3 | Eén Jellyfin-server | | open |
-| A4 | Eén Pleya Server | | open |
-| A5 | Plex plus Jellyfin | | open |
+| A3 | Eén Jellyfin-server | test/services/unified_catalog_service_test.dart (`A3: a Jellyfin-only library set merges the same as a Plex-only one`) — de merge-engine vertakt nergens op `MediaBackend`, dus dit bewijst het letterlijk in plaats van het aan te nemen | covered |
+| A4 | Eén Pleya Server | test/services/unified_catalog_service_test.dart (`A4: a Pleya Server-only library set merges the same as any other backend`) — PS-4 is vrijgegeven en `MediaBackend.pleyaServer` bestaat, dus deze rij was uitvoerbaar, alleen nog niet uitgevoerd | covered |
+| A5 | Plex plus Jellyfin | test/services/unified_catalog_service_test.dart (`A5: Plex and Jellyfin libraries merge into one stream together`) — één globaal geordende stream over beide backends | covered |
 | A6 | Drie of meer servers | test/services/unified_catalog_service_test.dart (`merges two libraries into one globally title-ordered stream, collapsing a shared duplicate`, drie servers in één merge); test/services/unified_catalog/source_resolver_test.dart (`the same film on three servers yields three concrete sources`) | covered |
 | A7 | Twee servers met dezelfde displaynaam | test/services/unified_catalog/unified_activation_coordinator_test.dart (`F12: duplicate server names fall through to server id, then item id`); test/widgets/tv/tv_media_source_picker_test.dart (`F12: two servers with one name stay tellable apart by their library`) | covered |
 | A8 | Eén server offline bij twee online servers | test/services/unified_catalog_service_test.dart (`one library erroring leaves the healthy results in place, and is retried on the next call`); test/services/unified_catalog/source_resolver_test.dart (`an offline expected server makes coverage incomplete`); test/goldens/tv_unified_catalog_golden_test.dart (`films, complete with one library missing`) voor de melding onder de grid | covered |
 | A9 | Eén server met auth-error | test/services/unified_catalog/source_resolver_test.dart (`an auth-errored server is distinguished from a plain offline one`); test/services/unified_catalog/unified_activation_coordinator_test.dart (`F7: an auth error outranks offline…`); test/widgets/tv/tv_media_source_picker_test.dart (`F7: an auth error says something else than an offline server`) | covered |
 | A10 | Alle servers offline | test/services/unified_catalog_service_test.dart (`every library failing on the very first round reports initialLoadFailed`); test/goldens/tv_unified_catalog_states_golden_test.dart (`films, nothing answered`) | covered |
 | A11 | Server komt laat online | test/providers/unified_catalog_provider_test.dart (`a late server coming online reconciles the eligible library set`) | covered |
-| A12 | Server valt weg tijdens paging | | open |
+| A12 | Server valt weg tijdens paging | test/services/unified_catalog_service_test.dart (`A12: a library that fails after already contributing a page keeps what it gave, and is retried`) — anders dan A8 (die faalt vóór de eerste pagina) faalt deze server ná een geslaagde eerste pagina; die pagina blijft staan en de volgende `loadMore()` herprobeert dezelfde generieke foutafhandeling | covered |
 | A13 | Server valt weg in source picker | test/services/unified_catalog/unified_activation_coordinator_test.dart (`focus after a source stops being usable`, vijf tests); test/widgets/tv/tv_media_source_picker_test.dart (`F11: the focused source going offline moves focus to the nearest usable row`) | covered |
-| A14 | Server valt weg tijdens detail load | | open |
-| A15 | Server valt weg tijdens playerstart | | open |
-| A16 | Server wordt verwijderd | | open |
-| A17 | Server wordt hernoemd | | open |
-| A18 | Server wordt opnieuw toegevoegd met ander ID | | open |
-| A19 | Profiel verwacht server die nog geen live client heeft | | open |
-| A20 | Live TV-capability komt laat binnen | | open |
+| A14 | Server valt weg tijdens detail load | test/screens/media_detail_screen_test.dart (groep `F19/A14: detail load failure offers an alternative source`, vijf tests) plus de tweede schakel in groep `D14` (`F19/A14: the failure panel is the other door to the same switch`) — deelt precies dezelfde bindende regel als F19, hoofdstuk 21.7 | covered |
+| A15 | Server valt weg tijdens playerstart | test/services/unified_catalog/unified_activation_coordinator_test.dart (groep `A15: the server that vanished during the start takes its whole shelf with it`, drie tests) — deelt F18's bindende regel; het verschil is *wanneer* beschikbaarheid gelezen wordt. `evaluatePlaybackFailure` herstempelt elke bron via `availabilityFor` op het moment van falen, dus een server die tijdens de start wegviel neemt élke bron die hij draagt uit het aanbod, niet alleen de bron die faalde, en bij niets bereikbaars verschijnt er geen paneel. De widgethelft is F18's `offers a choice and a way out, and takes neither by itself`; A15 verandert het paneel niet, alleen óf het verschijnt. Kanttekening: `unifiedServerHealth` neemt `authErrorServerIds` als momentopname mee terwijl `isOnline` live is, dus een auth-fout die tijdens het spelen ontstaat leest hier terug als offline — dezelfde alternatievenlijst, alleen een ander label | covered |
+| A16 | Server wordt verwijderd | test/services/unified_catalog/unified_activation_coordinator_test.dart (`A16: a preferred server removed from the profile does not apply`); test/services/unified_catalog/source_resolver_test.dart (`A16: a hit naming a server that left the profile is revalidated, not trusted`); test/providers/unified_catalog_provider_test.dart (`A16: a server removed from the profile takes its titles with it`), plus de al bestaande runtimehelft test/profiles/profile_connection_cleanup_test.dart (`an unreachable Plex server is gone from the runtime, and its banner with it`) — elke lezer van een verdwenen server-id valt door: de onthouden bronsleutel matcht niets, de voorkeursserver vindt geen bron, de warme cache-hit wordt geherwaardeerd en de catalogus herprojecteert zonder zijn titels. Kanttekening, geen bug: tussen het verwijderen en het landen van de rebind noemt `expectedServerIds` de server nog, dus dekking meldt hem één ronde lang als niet-gecontroleerd — dat is A19's bewuste veilige kant | covered |
+| A17 | Server wordt hernoemd | test/services/unified_catalog/unified_activation_coordinator_test.dart (`A17: a rename moves a row, and moves nothing else`, `A17: renaming reorders the picker without changing what is in it`) — identiteit is altijd het `serverId`: `sourceKey` is `serverId:itemId`, en `PreferredServerStore` legt in zijn eigen documentatie vast dat een voorkeur die een naam volgde stilletjes naar een andere machine zou wijzen. De naam heeft precies één functie voorbij weergave: hoofdstuk 4.7's tiebreaker, die doorvalt naar het id — hernoemen kan dus een rij verplaatsen, en verder niets. De weergegeven naam is item-gestempeld en ververst bij de volgende merge, dezelfde uitgestelde zichtbaarheid die 12.5 al voor herordening kent | covered |
+| A18 | Server wordt opnieuw toegevoegd met ander ID | test/services/unified_catalog/unified_activation_coordinator_test.dart (groep `A16/A17/A18`, drie A18-tests: de onthouden sleutel van vóór de re-add noemt niets meer, de staande voorkeur overleeft de id-wissel niet dus de gebruiker wordt gevraagd, en opnieuw instellen op het nieuwe id werkt gewoon); test/services/unified_catalog/source_resolver_test.dart (`A18: a complete negative is not replayed over a server the profile has since added`, `A18: a negative still stands over a narrower profile than it was cached for`) — **gedragsgat, niet alleen bewijsgat**: een compleet negatief antwoord droeg geen serverset, zodat `_readCache` het herspeelde als `complete(expectedIds)` over de servers van *vandaag* en dus beweerde dat een net toegevoegde server niets heeft zonder hem ooit gevraagd te hebben. Negatieven dragen nu hun `checkedServerIds`, en een verbrede verwachting gooit de rij weg en herresolvet; rijen van vóór deze fix hebben geen ids en vallen er net zo uit, dus de migratie heelt zichzelf | covered |
+| A19 | Profiel verwacht server die nog geen live client heeft | test/services/unified_catalog/source_resolver_test.dart (groep `A19: expected-server denominator`, negen tests: geen client, online maar geen antwoord, auth-error, niet-verwacht-en-niet-zichtbaar, zichtbaar-maar-nog-niet-verwacht, alles beantwoord, en de onbekende backend die tóch meetelt), plus de bronbewaker `every SourceAllResolver in lib/ takes its server list from eligibleSourceServers` die de twee aanroeppunten aan `eligibleSourceServers` bindt | covered |
+| A20 | Live TV-capability komt laat binnen | test/navigation/tv/tv_live_tv_capability_test.dart (`a fresh sighting is visible and gets stored`, `a sighting that is already remembered is visible and does not trigger a redundant write`) voor het besluit; test/screens/tv/tv_root_shell_test.dart (`appears and disappears without disturbing its neighbours`) en test/widgets/tv/tv_top_navigation_test.dart (`a Live TV slot appearing does not replace the focus node of an existing item`) voor de balk die er al stond toen de capability binnenkwam | covered |
 
 ## B. Librarycases
 
@@ -102,18 +367,68 @@ vallen en die pas na 10A afgetekend kunnen worden:
 | B1 | Eén movie library | test/providers/unified_catalog_provider_test.dart (`ensureStarted loads the first page and settles into the snapshot`); test/services/unified_catalog/source_cursor_test.dart (`restricts to the requested kind`) | covered |
 | B2 | Meerdere movie libraries op dezelfde server | test/services/unified_catalog_service_test.dart (`paging target is a group count: it stops at groupsPerPage new groups, not a raw item count`) — twee libraries op één server, allebei in de merge | covered |
 | B3 | Movie libraries op meerdere servers | test/services/unified_catalog_service_test.dart (`merges two libraries into one globally title-ordered stream, collapsing a shared duplicate`) | covered |
-| B4 | Series-only profiel | | open |
-| B5 | Movies-only profiel | | open |
-| B6 | Mixed/shared Plex library | | open |
+| B4 | Series-only profiel | test/services/unified_catalog/source_cursor_test.dart (`B4: a series-only profile has no movie libraries, and a Films query answers empty rather than guessing`) — `eligibleCatalogLibraries`'s kindfilter was alleen getest met beide kinds aanwezig; dit dwingt het nul-resultaat af | covered |
+| B5 | Movies-only profiel | test/services/unified_catalog/source_cursor_test.dart (`B5: a movies-only profile has no show libraries, and a Series query answers empty the same way`) | covered |
+| B6 | Mixed/shared Plex library | test/services/unified_catalog/source_cursor_test.dart (groep `B6: mixed libraries`, vijf tests: een `MediaKind.unknown`-library telt mee voor Films, telt mee voor Series, een concreet niet-matchend kind blijft uitgesloten, zichtbaarheid blijft gelden, en een gewone en een gemengde library tellen samen mee) en test/services/unified_catalog_service_test.dart (groep `B6: a mixed library splits correctly by catalog`, twee tests: één fysieke gemengde library levert een film alleen onder Films en een serie alleen onder Series, en een library met geen van beide typen antwoordt voor allebei leeg in plaats van te gokken) — `eligibleCatalogLibraries` sloot een library met `kind == unknown` voorheen overal uit; nu telt hij voor elke catalogus mee en doet de bestaande per-request serverfilter (Plex `type=`, Jellyfin `IncludeItemTypes`, allebei al elders getest) de echte item-level classificatie. **Die belofte geldt niet op elke backend** — zie B16, dat het restant vastlegt | covered |
 | B7 | Verborgen library als enige bron | test/providers/unified_catalog_provider_test.dart (`server.hidden excludes a library from the merge, matching eligibleCatalogLibraries`, `a hidden-library change after starting reconciles and reloads with the library excluded`); test/services/unified_catalog/source_cursor_test.dart (`excludes a library the user hid, even though its server is visible`) | covered |
-| B8 | Verborgen library als tweede duplicate bron | | open |
+| B8 | Verborgen library als tweede duplicate bron | zoekhelft: test/services/data_aggregation_bridge_test.dart (`searchAcrossServers applies hidden-library visibility`, negen tests). Resolverhelft: test/services/unified_catalog/source_resolver_test.dart (groep `hidden libraries`, veertien tests — A/B `a hidden second copy drops out, the visible one stays` en `a title only a hidden library holds resolves to no source at all`, D `hiding a library after a warm positive does not serve the cached source`, E `unhiding lands back on the row the visible resolve already wrote`, F `two visibility sets on one profile never share a row`, G `an item in no library at all is kept, whatever is hidden`, H `with nothing hidden the answer is exactly what it was`); C via de pickernaad in test/screens/tv/tv_unified_activation_hidden_library_test.dart (`a duplicate in a hidden library never becomes a picker row`) | covered |
 | B9 | Library wordt tijdens gebruik verborgen | test/providers/unified_catalog_provider_test.dart (`a hidden-library change after starting reconciles and reloads with the library excluded`) | covered |
-| B10 | Library wordt verwijderd | | open |
-| B11 | Library heeft geen items | | open |
-| B12 | Library fetch geeft timeout | | open |
-| B13 | Library antwoordt met lege pagina vóór total bereikt | | open |
-| B14 | Backend herhaalt item op twee pagina's | | open |
-| B15 | Item verhuist tussen libraries | | open |
+| B10 | Library wordt verwijderd | test/providers/unified_catalog_provider_test.dart (`B10: a library deleted server-side reconciles the same way a hidden one does`) — `LibrariesProvider.debugSetLibraries` die het setje laat *krimpen* in plaats van groeien (A11's spiegelbeeld); dezelfde reconciliatie die B9 al voor verbergen bewees | covered |
+| B11 | Library heeft geen items | test/services/unified_catalog_service_test.dart (`B11: a legitimately empty library sits quietly alongside a populated one`) — leeg is geen fout, `failedLibraryIds` blijft leeg | covered |
+| B12 | Library fetch geeft timeout | test/services/unified_catalog_service_test.dart (`B12: a timeout is handled exactly like any other transient fetch failure`) — een `TimeoutException` valt in dezelfde generieke catch als elke andere fout uit A8/A12, aantoonbaar in plaats van aangenomen | covered |
+| B13 | Library antwoordt met lege pagina vóór total bereikt | test/services/unified_catalog_service_test.dart (groep `E8: totalCount is advisory, never sole exhaustion authority`, `an empty final page ends the cursor regardless of what the total claims`) — een `totalCount` die voor altijd 999 blijft claimen wordt genegeerd zodra de pagina zelf leeg komt; dezelfde E8-exhaustielogica die B13 nodig heeft, hergebruikt in plaats van apart getest | covered |
+| B14 | Backend herhaalt item op twee pagina's | test/services/unified_catalog_service_test.dart (`B14: an item the backend repeats on the next page does not become a second card`) door de echte pagingmotor; test/services/unified_grouping_service_test.dart (groep `concrete-source dedup (B14/B15/E15)`: `B14: an item the backend repeats on a later page does not become a second card`, `B14: the repeat never moves the card off the position its first sighting won`) | covered |
+| B16 | Gemengde library op een backend die niet op de wire filtert | Lokale map: `test/services/local_folder_ordering_test.dart` (`a library page honours the kind the query asked for`) — `_applyFilters` leest `query.kind` nu, want daar ís geen wire en die regel *is* het filter. **Pleya Server niet:** `browse.dart` stuurt alleen `sort` mee, en `query.kind` bereikt de wire niet. Zolang die server geen librarykind noemt dat deze build niet kent terwijl de items er wél classificeerbaar zijn, is er niets te zien; gebeurt dat wel, dan toont Series de films van die map en andersom. Niet opgelost omdat het protocol bevroren is (PS-5) en client-side filteren de offsetrekening breekt: de cursorledger telt in serverposities en de beller in teruggegeven items, en filteren laat die twee uit elkaar lopen. De fix is de ledger per kind sleutelen en in gefilterde posities laten tellen — een aparte wijziging met eigen bewijs, geen regel erbij | open (coverage debt) |
+| B15 | Item verhuist tussen libraries | test/services/unified_grouping_service_test.dart (`B15: an item reported under two libraries is one membership, keeping the first library`) — `sourceKey` is `serverId:id`, dus beide waarnemingen zijn dezelfde concrete membership en de eerste wint | covered |
+
+
+**B8 had twee helften, en fase 9 heeft ze allebei gesloten.** Eerst de zoekhelft:
+`DataAggregationService.searchAcrossServers` was de enige aggregatie-ingang zonder
+`hiddenLibraryKeys` — servers werden door `_clientsFor` uitgesloten, libraries door niemand — en
+filtert nu vóór ranking en trimmen, met een gedeelde `filterHiddenLibraryItems` die de drie
+gedupliceerde inline-predicaten in on-deck, latest movies en hubs vervangt. Negen tests dekken de
+gevallen; zonder de filter gaan er zeven van rood, en de twee die groen blijven zijn de
+fail-open-controles (een item zonder `libraryId` — een Plex Discover-hit uit `includeExternalMedia`
+bijvoorbeeld — zit in geen enkele library, dus geen verborgen sleutel kan hem noemen).
+
+De **resolverhelft** is daarna gesloten, en die zat inderdaad open zoals hierboven beschreven: de
+kaart zei terecht "1 bron" en even later voegde `SourceAllResolver` de verborgen bibliotheek alsnog
+als pickerrij toe. `hiddenLibraryKeysFor` is nu een tweede live callback naast `serversFor`, en het
+filter zit in `onBatch`, dus vóór het antwoord bewaard wordt: een filter ná de cache zou zeven dagen
+lang teruggedraaid worden door de eerstvolgende warme hit.
+
+Twee dingen bleken bij het repareren anders te liggen dan de noot hierboven aannam.
+
+**Het bestaande `filterHiddenLibraryItems` kon hier niet hergebruikt worden.** Die leest
+`item.serverId`, en de identity-fan-out levert items waar die niet op staat. Plex'
+`findAllByIdentity` heeft twee takken en alleen de guid-tak loopt via `_tagMetadata`, dat de
+serverId erop zet; de titel-fallback mapt met `PlexMappers.mediaItemFromJson(raw)` en geeft
+er geen mee (`plex_client.dart`, `_candidatesWithGuids`). Die items dragen dus wél een `libraryId`
+en géén `serverId`, en een filter op `item.serverId` zou fail-open gaan op precies de tak die een
+identity zonder guid neemt. `visibleMatchesFromServer` gebruikt daarom de server die *antwoordde* —
+een client geeft alleen zijn eigen items terug, dus dat is de gezaghebbende id. De fail-open blijft
+staan waar hoofdstuk 22 hem zette, maar alleen nog voor een item zonder `libraryId`; een ontbrekende
+serverId is geen fail-open-grond meer. `an item with a library id but no server id is still filtered`
+bewaakt dat.
+
+**De cachesleutel moest de zichtbaarheid meedragen.** Zonder dat lost het filter alleen de koude
+resolve op: een rij die geschreven is toen de bibliotheek nog zichtbaar was, wordt daarna gewoon
+warm teruggegeven. De sleutel is `match/<profiel>/<vingerafdruk>/<identity>`, waarbij de
+vingerafdruk een sha1 over de gesorteerde verborgen sleutels is — gesorteerd, zodat twee volgordes
+van dezelfde verzameling dezelfde rij zijn, en een digest in plaats van de verzameling zelf, zodat
+een profiel met veertig verborgen bibliotheken geen sleutel krijgt die langer is dan de identity die
+hij indexeert. De verzameling wordt één keer per resolve gelezen en doorgegeven, niet opnieuw bij het
+schrijven: anders kan een hide die halverwege landt gefilterde items opslaan onder de vingerafdruk
+van de verzameling waarmee ze *niet* gefilterd zijn. Verbergen maakt de oude rij daarmee
+onbereikbaar in plaats van muf, en zichtbaar maken landt terug op de rij die de eerdere zichtbare
+resolve al schreef — geen extra invalidatiehaak nodig, en `invalidate()` blijft de hele namespace
+wissen.
+
+Negatieve controles, beide takken los uitgezet: zonder het filter gaan er negen rood, zonder de
+vingerafdruk drie (`D: hiding a library after a warm positive…`, `D: a warm negative written while
+hidden…`, `F: two visibility sets on one profile never share a row`). Beide helften dragen dus
+gewicht.
+
 
 ## C. Identitycases
 
@@ -152,40 +467,40 @@ en `test/services/unified_grouping_service_test.dart`).
 | # | Case | Test | Status |
 |---|---|---|---|
 | D1 | Zelfde serie op twee servers | test/providers/tv_discovery_landing_provider_test.dart (`D1: the same episode of one series on two servers is one card carrying both sources`, `D1: two episodes of one series on two servers stay two cards`) — beide helften van de rij, door de productieprovider heen; test/services/unified_catalog/home_projection_service_test.dart (`C: the same episode on two servers is one card, and its sources stay the concrete episodes`, `A/E: two episodes of one series stay two cards, on one shared series-wide id`, `B: two seasons of one series stay two cards`) voor dezelfde regel op serviceniveau. In alle vijf krijgen beide rijen dezelfde serie-brede tmdb/tvdb, dus geen ervan slaagt doordat de externe ids leeg waren | covered |
-| D2 | Verschillende seizoensdekking | | open |
+| D2 | Verschillende seizoensdekking | test/services/unified_catalog/home_projection_service_test.dart (`D2: sources reporting different season coverage for the same show still merge into one card`) — identiteit sleutelt op titel/jaar/extern id, nooit op `childCount`; een bron die tot seizoen 2 zit forkt niet naast een die al seizoen 3 heeft | covered |
 | D3 | Zelfde episode met sterke ID | test/services/unified_catalog/identity_resolver_test.dart (`D3: an episode guid is exact-episode evidence and contributes on its own`); test/services/unified_catalog/home_projection_service_test.dart (`D: two servers reporting the same strong episode guid merge without any external id`, `D/E: a strong episode guid never merges two different episodes of one series`) | covered |
 | D4 | Zelfde episode via serie-ID plus S/E | test/services/unified_catalog/identity_resolver_test.dart (`D4: a series-wide external id becomes exact-episode evidence, not series evidence`, `E: two episodes forced into one bucket still get different tokens from one series id`); test/services/data_aggregation_bridge_test.dart (`getOnDeckFromAllServers hides the same episode listed twice under one stable show id`, `getOnDeckFromAllServers keeps two different episodes of one show under one stable show id`) — de upstream-dedup, die vóór elke Home-projectie draait | covered |
 | D5 | Specials seizoen 0 | test/media/canonical_media_identity_test.dart (`D5: season 0 (specials) is a real, distinct, bucketable season index`) | covered |
 | D6 | Ontbrekend seizoennummer | test/media/canonical_media_identity_test.dart (`D6/D7: a missing season or episode index makes the episode bucket unusable`, `D6: an episode missing its season index has no bucketable identity`); test/services/unified_catalog/identity_resolver_test.dart (`D6/D7: an episode with no usable ordinal has no bucket at all, so it never buys a series id`) voor de Verder kijken-helft | covered |
 | D7 | Ontbrekend afleveringsnummer | test/media/canonical_media_identity_test.dart (`D6/D7: a missing season or episode index makes the episode bucket unusable`); test/services/unified_catalog/identity_resolver_test.dart (`D6/D7: an episode with no usable ordinal has no bucket at all, so it never buys a series id`), plus test/services/unified_catalog/home_projection_service_test.dart (`G: episodes with no usable season or episode index never merge on their series alone`) | covered |
-| D8 | Double episode | | open |
-| D9 | Absolute numbering versus season numbering | | open |
-| D10 | Eén bron loopt één aflevering achter | | open |
-| D11 | Next Episode alleen op andere bron | | open |
-| D12 | Verschillende editions/runtimes van aflevering | | open |
-| D13 | Show watched count verschilt | | open |
-| D14 | Bronwissel op open seriesdetail | | open |
-| D15 | Nieuwe episode verschijnt terwijl details openstaat | | open |
+| D8 | Double episode | test/services/unified_catalog/home_projection_service_test.dart (`D8: a combined double episode on one server only matches the first half on a server that split it`) — geen absolute-numbering-vertaler (D9's eigen regel): een gecombineerde dubbelaflevering "4" matcht letterlijk alleen bron B's eigen "4", en B's losse "5" blijft een echte, ongekoppelde eenbrons-kaart | covered |
+| D9 | Absolute numbering versus season numbering | test/services/unified_catalog/home_projection_service_test.dart (groep `D9: absolute vs season/episode numbering`, drie tests: een echte nummeringsbotsing zonder sterk ID blijft twee kaarten, een gedeeld episode-guid merget ondanks de botsende nummering, en een gedeeld series-ID met botsende ordinal-narrowing merget ook niet) — bleek al correct: `continueWatchingOrdinal` vergelijkt seizoen/aflevering letterlijk zoals elke bron ze rapporteert, bouwt geen vertaling tussen nummeringsschema's, en een botsende ordinal geeft een andere bucketsleutel die nooit met de andere concurreert; een sterk ID blijft daarnaast leidend ongeacht de presentatie. Bewijsgat, geen gedragsgat | covered |
+| D10 | Eén bron loopt één aflevering achter | test/providers/tv_discovery_landing_provider_test.dart (`D1: two episodes of one series on two servers stay two cards`) — server_1 op S02E04, server_2 al op S02E05, beide met dezelfde series-tmdb; blijven twee Verder-kijken-kaarten in plaats van één geblende positie. Andere provider (fase-6 landing, niet fase-8 Home) maar dezelfde `HomeProjectionService`/identity-pipeline; existing-proof-first citeert het bestaande bewijs in plaats van het te dupliceren | covered |
+| D11 | Next Episode alleen op andere bron | test/services/episode_navigation_service_test.dart (drie tests) — hoofdstuk 15's bindende zin is het verbod, niet het aanbod: de queue wordt uit precies één client gebouwd (`metadata.serverId`), dus een volgende aflevering die alleen elders bestaat levert géén next op en de andere server wordt niet eens bevraagd. **Gedragsgat gevonden en gedicht**: de per-sessie episodecache stond op de kale `grandparentId`, en dat id is server-lokaal — twee servers die hun show hetzelfde noemen lieten de ene lijst voor de andere playback antwoorden. Alleen de cachesleutel is server-gescoped; de contextsleutel blijft het kale serie-id omdat `JellyfinSequentialLauncher` hem in die vorm schrijft en de playlistbescherming daartegen vergelijkt. Het optionele half van 15 ('de volgende aflevering staat op NAS, overschakelen?') is met *kan* verleend en bewust niet gebouwd — er bestaat nergens een i18n-sleutel voor | covered |
+| D12 | Verschillende editions/runtimes van aflevering | test/media/unified/unified_watch_state_test.dart (`D12: the gate is kind-agnostic — an extended-cut episode is exactly as incompatible as a film`) — G7's poort leest alleen `durationMs`, geen `MediaKind`; dezelfde garantie die G7 al voor films bewijst, nu expliciet met een episode-fixture | covered |
+| D13 | Show watched count verschilt | test/services/unified_catalog/home_projection_service_test.dart (`D13: a show's watched-episode count stays with its representative source, never blended`) — hoofdstuk 13.1's "per source bewaren: … viewCount" geldt onveranderd voor een show's `viewedLeafCount`: de getoonde telling is één echte bron, nooit een som of gemiddelde | covered |
+| D14 | Bronwissel op open seriesdetail | test/screens/media_detail_screen_test.dart (groep `D14: switching source on an open series detail`, drie tests) — gedreven door de echte `activateUnifiedMediaGroup`, zodat `onChangeSource` de productiesluiting `_changeSourceFromDetail` is en geen stub. Beide deuren van hoofdstuk 15 zijn gedekt: de altijd-zichtbare `[ Wijzigen ]`-chip en het foutpaneel. De route wordt **vervangen, niet gestapeld** (precies één pop en één push, geteld door een `NavigatorObserver`), de pagina leest daarna de gekozen bron, en de keuze wordt onthouden voor latere Play. Opnieuw dezelfde bron kiezen is de negatieve controle: geen pop, geen push | covered |
+| D15 | Nieuwe episode verschijnt terwijl details openstaat | test/screens/media_detail_screen_test.dart (`refreshAfterPlayback reveals a server-side episode without a season jump or spinner`, `revalidation grows the request past an exact page boundary (200 -> 201)`, `app resume revalidates the visible episodes, with a cooldown against repeat probes`) — het open detailscherm neemt de nieuwe aflevering op zonder van seizoen te springen, zonder spinner en zonder de tweede probe die een resume anders uitlokt | covered |
 
 ## E. Paginationcases
 
 | # | Case | Test | Status |
 |---|---|---|---|
-| E1 | Bronnen met verschillende page sizes | | open |
-| E2 | Eén bron veel groter dan de andere | | open |
+| E1 | Bronnen met verschillende page sizes | test/services/unified_catalog_service_test.dart (`E1: a source that answers shorter than the requested pageSize exhausts on its own, mid-merge`) — de `page.items.length < pageSize`-tak was alleen impliciet meegelift in fixtures met kleine libraries, nooit expliciet bewezen naast een bron die wél een volle pagina geeft | covered |
+| E2 | Eén bron veel groter dan de andere | test/services/unified_catalog_service_test.dart (`E2: one source far larger than the other does not starve or block it`) — een library van 1 item naast één van 500 | covered |
 | E3 | Veel duplicates waardoor één fetchronde weinig groups oplevert | test/services/unified_catalog_service_test.dart (`paging target is a group count: it stops at groupsPerPage new groups, not a raw item count`) — vier ruwe items voor twee groups | covered |
 | E4 | Duplicate verschijnt pas veel pagina's later | test/services/unified_catalog_service_test.dart (`a duplicate arriving many pages later merges into the existing group instead of creating a new one`) | covered |
-| E5 | Eén bron is veel trager | | open |
-| E6 | Eén bron faalt na eerdere succesvolle pagina's | | open |
-| E7 | Total ontbreekt | | open |
-| E8 | Total verandert tijdens paging | | open |
+| E5 | Eén bron is veel trager | test/services/unified_catalog_service_test.dart (groep `E5: a slow source does not block the fast ones (hoofdstuk 12.6)`, drie tests: het snelle antwoord verschijnt binnen `progressiveLoadingGrace` zonder op de vastzittende bron te wachten, de late bron merget in-place zodra hij landt, en een cursor die de gratieperiode overleeft wordt nooit dubbel bevraagd) — `_fillBuffers` wachtte eerst voluit op `Future.wait` per golf, wat een globaal gesorteerde merge nodig heeft; een `Future.any`-poging brak die garantie zelfs bij gelijksnelle bronnen, dus de oplossing is een tijdslimiet op de golf zelf, niet op het individuele verzoek | covered |
+| E6 | Eén bron faalt na eerdere succesvolle pagina's | test/services/unified_catalog_service_test.dart (`A12: a library that fails after already contributing a page keeps what it gave, and is retried`) — dezelfde gebeurtenis als A12, alleen vanuit de pagineermotor bekeken in plaats van vanuit de servertopologie; anders dan A8 (fout vóór de eerste pagina) faalt deze bron ná een geslaagde pagina | covered |
+| E7 | Total ontbreekt | test/services/unified_catalog_service_test.dart (groep `E8: totalCount is advisory, never sole exhaustion authority`) — `LibraryPage.totalCount` is non-nullable, dus een backend zonder een echt total valt al vóór deze laag terug op een schatting (`pleya_server_client/parts/browse.dart`'s `estimate ?? (offset + items.length)`); "ontbrekend" en "onjuist" bereiken de merge-engine als hetzelfde ding, en E8 bewijst al dat geen van beide de exhaustie beslist | covered |
+| E8 | Total verandert tijdens paging | test/services/unified_catalog_service_test.dart (groep `E8: totalCount is advisory, never sole exhaustion authority`, zes tests: krimpende total, groeiende total, lege eindpagina, herhaalde identieke pagina, en de negatieve controle dat een gewone grote bibliotheek nog steeds alles aflevert) — exhaustion komt nu uit het concrete paginaprotocol (lege of korte pagina, of het no-progress-vangnet), nooit meer uit `offset >= totalCount` | covered |
 | E9 | Sort key ontbreekt | test/services/unified_catalog/unified_catalog_query_test.dart (`release-date sort sinks a dateless item to the end regardless of direction`, `addedAt sort sinks a missing value to the end`, `recentlyWatched sort compares lastViewedAt, missing sinks to the end`) | covered |
-| E10 | Sort key verschilt tussen duplicate sources | | open |
+| E10 | Sort key verschilt tussen duplicate sources | test/services/unified_catalog_service_test.dart (groep `E10: a group's sort position follows the aggregate rule, not pop order`, drie tests: addedAt-aflopend kiest de hoogste van de twee bronnen, recentlyWatched-aflopend idem, en een echte gelijkstand valt terug op de stabiele group-ID) — bleek al correct: zolang beide bronnen in dezelfde ronde gebufferd zijn kiest de k-way-merge-comparator zelf al de juiste positie, dit was een bewijsgat, geen gedragsgat | covered |
 | E11 | Query verandert met requests in flight | test/services/unified_catalog_service_test.dart (`a stale in-flight fetch from before a query change never lands in the new state`) | covered |
-| E12 | Profiel wisselt met requests in flight | | open |
-| E13 | Filter verwijdert de gefocuste group | | open |
-| E14 | Late merge zou zichtbare sortpositie wijzigen | | open |
-| E15 | Bron geeft dezelfde source twee keer terug | | open |
+| E12 | Profiel wisselt met requests in flight | test/services/unified_catalog_service_test.dart (groep `E12: cancelInFlight (hoofdstuk 22, profile switch)`, drie tests) en test/providers/unified_catalog_provider_test.dart (groep `E12: dispose cancels a request still in flight`, twee tests) — `UnifiedCatalogProvider.dispose()` riep voorheen nooit iets aan op de onderliggende service, dus een lopend verzoek voor het verlaten profiel bleef gewoon doorlopen; `UnifiedCatalogService.cancelInFlight()` is nu de nette stopzet die hoofdstuk 22's "annuleert requests" waarmaakt | covered |
+| E13 | Filter verwijdert de gefocuste group | test/screens/tv/tv_unified_catalog_screen_focus_test.dart (`E13: choosing a sort returns focus to the Sort action, never to a grid card`) — structureel onbereikbaar zoals beschreven vanaf een filter-/sortactie zelf: `_updatePreferences` wordt alleen aangeroepen vanuit een headeractie of de "Wis filters"-lege-staatknop, nooit vanaf een gridkaart, dus focus staat nooit op een group die die specifieke mutatie kan wegvegen. Bewezen is de garantie die hoofdstuk 7.6 wél geeft: de actie die het paneel opende krijgt de focus terug, over het echte scherm, niet de losse header+grid-compositie die de goldens gebruiken. De letterlijke case — een gefocust item verdwijnt terwijl de focus erop staat — is wél bereikbaar (een server die offline gaat, een item dat van de server verdwijnt) en dat scenario staat apart bewezen op het rasterniveau zelf: test/widgets/tv/tv_unified_media_grid_test.dart (groep `I18: a focused card that disappears (hoofdstuk 7.6)`, `focus moves to the next surviving neighbour, not nowhere`, `focus moves to the nearest remaining neighbour when the forward side is also gone`, `nothing survives the change: focus goes back up to the controls, not into the void`) | covered |
+| E14 | Late merge zou zichtbare sortpositie wijzigen | test/services/unified_catalog_service_test.dart (`E14: a duplicate arriving on a later page never moves its group past ones already placed ahead of it`) — een duplicate met een addedAt dat, herwogen, de kaart naar de voorkant zou sturen, komt pas op een derde pagina binnen en verplaatst niets; E10 bewijst het spiegelgeval (beide bronnen in dezelfde ronde) waar de positie wél de juiste blend toont, omdat er dan nog niets vastligt | covered |
+| E15 | Bron geeft dezelfde source twee keer terug | test/services/unified_grouping_service_test.dart (`E15: the same source returned twice inside one page is one membership`, `E15: a page replayed after a retry adds nothing`, `a duplicate sourceKey never trips C19 into refusing a genuine weak merge`), met twee negatieve controles die bewijzen dat het concrete-source-dedup is en geen media-identity-dedup | covered |
 
 ## F. Source-pickercases
 
@@ -216,7 +531,7 @@ en `test/services/unified_grouping_service_test.dart`).
 | F16 | Last-used source offline | ACT (`F16: an offline remembered source falls back…`), PREF en PICK (`F16: an offline remembered source is not focused and is not marked`) | covered |
 | F17 | Cancel | test/diagnostics/select_trace_test.dart (`a picker cancel that opened nothing is ordinary, not an anomaly`) en PICK (`Menu closes the picker, activates nothing, and restores the exact CTA`) | covered |
 | F18 | Playerstart faalt | ACT (`F18: playback failure offers an alternative but never takes it`, vijf tests) en PICK (`offers a choice and a way out, and takes neither by itself`) plus GOLD (`playback failure alternative`) | covered |
-| F19 | Detailroute faalt | gedrag nog niet vastgelegd in hoofdstuk 15 — niet zelf ingevuld, zie de regel bovenaan dit bestand | open |
+| F19 | Detailroute faalt | test/screens/media_detail_screen_test.dart (groep `F19/A14: detail load failure offers an alternative source`, vijf tests: expliciete 'Andere bron kiezen' bij alternatieven, sluiten laat de pagina bruikbaar, geen paneel zonder alternatief, geen paneel bij één bron, geen paneel bij een geslaagde load) — hoofdstuk 21.7 is nu authority (zie de instructie boven dit bestand). `_loadFullMetadata`'s catch-tak viel al stil terug op de meegegeven metadata (`bestaande foutafhandeling`, ongewijzigd); nieuw is `_offerAlternativeSourceAfterDetailLoadFailure`, die alleen vuurt wanneer `widget.onChangeSource` niet-null is — dezelfde poort als hoofdstuk 15's altijd-zichtbare bronregel — en `TvPlaybackFailureAlternative` hergebruikt (nu met een parametriseerbare titel) in plaats van een tweede paneel te bouwen. De contractflow is in twee lagen bewezen, niet in één: **(A)** detailfout → aanbod → callback, de vijf tests hierboven, en **(B)** picker → alternatieve bron → detailroute, test/screens/media_detail_screen_test.dart (`F19/A14: the failure panel is the other door to the same switch`, en dezelfde schakel via de `[ Wijzigen ]`-chip in groep `D14`). Laag B draait door de echte `activateUnifiedMediaGroup`, zodat de productiesluiting `_changeSourceFromDetail` wordt uitgevoerd in plaats van een teststub: de route wordt vervangen (één pop, één push), de pagina leest daarna de gekozen bron en het foutpaneel staat niet meer achter de goede pagina | covered |
 | F20 | Terugkeer behoudt focus | PICK (`Menu closes the picker, activates nothing, and restores the exact CTA`) — de overlay geeft de focus terug aan exact de node die hem had | covered |
 | F21 | Voorkeursserver kiest zelf (14.8a) | ACT (`preferred server (profile default)` elf tests + `the preferred server is global to the profile, not per title` acht tests, incl. de A-t/m-G-tabel uit 14.8a), test/services/unified_catalog/preferred_server_store_test.dart (elf tests, incl. de sleutelvorm) en PICK (`the preferred server can be set from here`, `explicit source selection bypasses the global preference`) | covered |
 
@@ -224,20 +539,91 @@ en `test/services/unified_grouping_service_test.dart`).
 
 | # | Case | Test | Status |
 |---|---|---|---|
-| G1 | Eén actieve progress | | open |
-| G2 | Twee verschillende progressposities | | open |
-| G3 | Oudere bron heeft hogere progress | | open |
-| G4 | Nieuwere bron is watched | | open |
-| G5 | Clock skew | | open |
-| G6 | Geen timestamps | | open |
-| G7 | Verschillende runtimes | | open |
-| G8 | Scrobble race | | open |
+| G1 | Eén actieve progress | test/media/unified/unified_watch_state_test.dart (`G1: one source with active progress speaks for the group`) | covered |
+| G2 | Twee verschillende progressposities | test/media/unified/unified_watch_state_test.dart (`G2: two different positions are decided by the newer reliable timestamp`) | covered |
+| G3 | Oudere bron heeft hogere progress | test/media/unified/unified_watch_state_test.dart (`G3: an older source with higher progress does not outrank a newer one`) — 13.2's openingszin, expliciet getest | covered |
+| G4 | Nieuwere bron is watched | test/media/unified/unified_watch_state_test.dart (`G4: a demonstrably newer watched state beats older active progress` en het spiegelgeval `G4: a stale watched bit does not bury a position the viewer is sitting at`) — tier 2 sluit dit af vóór tier 3 erbij komt | covered |
+| G5 | Clock skew | test/media/unified/unified_watch_state_test.dart (`G5: a difference inside the reliability margin does not order the sources`, `G5: one second past the margin the newer source is believed`, `G5: the margin is the one WatchStateStore already uses`) — de marge is `watchStateReliabilityMargin`, dezelfde 30 seconden als `WatchStateStore.serverWinsMargin` | covered |
+| G6 | Geen timestamps | test/media/unified/unified_watch_state_test.dart (`G6: with no timestamps anywhere the progress tiers decide`, `G6: a source with no timestamp loses to one that has any`, `G6: no timestamps and no progress is still deterministic`) | covered |
+| G7 | Verschillende runtimes | test/media/unified/unified_watch_state_test.dart (groep `G7: runtime compatibility gate`, zeven tests: PAL-tolerantie, extended cut, de hogere ruwe offset die niet wint, actieve progress die niet geprojecteerd wordt, recency die wél blijft gelden, onbekende runtime, en één incompatibel paar dat de hele groep brongebonden maakt) | covered |
+| G8 | Scrobble race | test/media/unified/unified_watch_state_test.dart (`G8: a scrobble race lands inside the margin and is not resolved by the clock`) — twee servers die dezelfde kijkbeurt seconden na elkaar noteren vallen binnen de marge, dus de klok beslist niet en de kaart flikkert niet tussen twee kopieën | covered |
 | G9 | Playback return met null route result | test/utils/media_navigation_helper_test.dart (`onPlaybackReturned fires when the player pops null`, `onRefresh alone does not fire when the player pops null`) — `handlePlaybackReturn` is puur en heeft geen visueel deel | covered |
-| G10 | Remove Continue gedeeltelijk mislukt | | open |
-| G11 | Offline suppressie wordt later gereplayed | | open |
-| G12 | Mark watched op één source | | open |
-| G13 | Mark watched op alle sources gedeeltelijk mislukt | | open |
-| G14 | Episodeprogress op verkeerde serie mag niet mergen | | open |
+| G10 | Remove Continue gedeeltelijk mislukt | test/screens/tv/tv_unified_context_actions_test.dart (groep `G10: the intended target count`, vijf tests: de onbereikbare membership blijft in de noemer, `unknown` telt mee, auth-error nooit, geen andere actie stelt uit, alles online stelt niets uit) plus `a removal with nothing online is deferred, not refused`; test/widgets/tv/tv_unified_context_menu_reachability_test.dart (groep `the outcome message tells the truth about what landed`, zes tests, inclusief de negatieve controle dat de retry-belofte wegvalt zonder wachtrij-entry); test/providers/discover_provider_test.dart (`G10: a removed row does not come back while the server still lists it`, `G10: the suppression lifts once the server stops listing the row`) | covered |
+| G11 | Offline suppressie wordt later gereplayed | test/services/offline_watch_sync_service_test.dart (groep `G11: remove from Continue Watching replays on reconnect`, acht tests: de wachtrij-entry, de replay die hem opruimt, idempotentie, de server die nog plat ligt, de backend zonder endpoint, de her-aankondiging na herstart, geen her-aankondiging na een geslaagde replay, en de id-round-trip); test/exceptions/media_server_write_retry_test.dart (zeven tests over wat wél en niet in de wachtrij mag) | covered |
+| G12 | Mark watched op één source | test/screens/tv/tv_unified_context_actions_test.dart (`a single usable source is written to without a question (14.6)`, nu geparametriseerd over élke actie, plus `an unreachable membership is held rather than dropped` en `an offline source is written later, not written off`) — herschreven onder [DEC-071](../DECISIONS.md#dec-071) en opnieuw onder [DEC-075](../DECISIONS.md#dec-075): één bereikbare bron is nog steeds geen vraag, maar dat is nu een lijst van lengte één in plaats van een uitzondering, en er is geen actie meer waarvoor het níét geldt. De pickertest die hier stond is met de picker zelf verwijderd | covered |
+| G13 | Mark watched op alle sources gedeeltelijk mislukt | test/screens/tv/tv_unified_context_actions_test.dart (`marking watched never asks, it takes every membership (DEC-071)`, `an offline source is written later, not written off`, `a logical action still skips an unreachable membership` voor de partial-semantiek, en `no action asks which source a write lands on (DEC-071, DEC-075)` dat de eigenschap nu over álle acties aftelt); de melding zelf komt uit `_applyToSources` in lib/screens/tv/tv_unified_context_menu.dart, die per bron telt en `doneOnSome` toont in plaats van te rollbacken, met test/services/unified_action_outcome_test.dart als bewijs voor de zin zelf. Onder DEC-071 wordt er niet meer gevraagd: een onbereikbare bron gaat de kijkstatuswachtrij in en wordt bij reconnect alsnog geschreven. Onder [DEC-075](../DECISIONS.md#dec-075) geldt dat ook voor rate, met dit verschil dat rate geen wachtrij heeft: `an unreachable membership stays in a rating's denominator` legt vast dat zo'n membership in `unreachableSources` belandt, meetelt in de noemer en geen retry belooft | covered |
+| G14 | Episodeprogress op verkeerde serie mag niet mergen | test/services/unified_catalog/home_projection_service_test.dart (`G14: the same season/episode of two different series never share a card`, `G14: two series with no external ids at all still never merge on ordinals`, `G14: one series' progress stays on its own card when the other is further along`) — dezelfde S02E04 op twee series blijft twee kaarten, met en zonder externe ids, en 13.2 kiest alleen uit de eigen bronnen van een groep | covered |
+
+**Contextmenu op een hub-rij liet zijn eigen kaart stil staan.** Gevonden bij de
+commentaar-versus-code-audit van `tv_content_feed.dart` (fase 9, taak "misleidende comments"), niet
+bij een vooraf gevlagde registerrij — het commentaar zelf was het eerste bewijs: `_openContextMenu`
+gaf `onChanged: null` mee met de motivering "de projectie rekent zelf al opnieuw vanaf de
+watch-state-events die de writes al zenden, dus een rij hoeft niet twee keer verteld te worden". Dat
+klopt voor Verder kijken — `DiscoverProvider._onWatchStateChanged` draait `refreshContinueWatching()`
+op elk event — maar dat commentaar staat op de menu-opening voor **elke** rij, en dezelfde
+`refreshContinueWatching()` zegt in zijn eigen doc-comment expliciet "nooit opnieuw hubs ophalen".
+Markeer bekeken/onbekeken vanaf een Top Picks- of Recently Released-kaart raakte dus precies het gat:
+`_hubs` bleef de al aanwezige lijst, `TvHomeProjectionProvider`'s eigen change-guard
+(`listEquals`, element-identiteit) vuurde niet, en de kaart die de gebruiker net aansprak — zijn
+`watchState.isWatched` komt rechtstreeks uit de geprojecteerde groep, geen live patch-laag — bleef de
+oude staat tonen tot de volgende volledige `load()`. Het commentaar was niet zomaar onnauwkeurig; het
+beschreef een garantie die voor de meeste rijen op dit scherm niet bestond.
+
+De reparatie geeft `onChanged` een echte callback: `_refreshGroupSources` roept
+`DiscoverProvider.updateItem` voor elke bron in de groep, dezelfde incrementele refresh die I19 al aan
+een playbackreturn geeft. test/screens/tv/tv_content_feed_test.dart (groep "hoofdstuk 23's menu
+reageert op elke rij, niet alleen Verder kijken", `marking a hub-row title watched updates that exact
+card`) drijft het echte pad — lange Select opent het menu, "Markeer als bekeken" kiezen schrijft naar
+de fake client — en bewijst zowel de write (`markWatchedCalls`) als de refetch (`fetchItemCalls`) als
+het zichtbare effect (`watchState.isWatched` na de herprojectie); zonder de fix faalt precies de
+refetch-assertie, negatief gecontroleerd door de fix tijdelijk terug te draaien. Het tweede
+commentaar dat de audit meenam — `tv_hero_billboard_card.dart`'s `textOpacity`-doc, die "de carousel"
+crediteerde voor een waarde die feitelijk `TvContentFeed` bepaalt en de carousel alleen doorgeeft —
+was code die al klopte; alleen het commentaar is gecorrigeerd, zonder test.
+
+**WP4 — verwijderen uit Verder kijken onthoudt nu wat het niet bereikte.** Gebouwd in fase 9. Twee
+dingen waren stuk, en het tweede was het ergste.
+
+De **noemer** telde alleen de bereikbare bronnen. `resolveUnifiedActionTarget` gaf voor een logische
+actie `ApplyActionToAllSources(usable)`, dus een titel op drie servers waarvan er één plat lag
+meldde "klaar op alle 2". Hoofdstuk 13.4 punt 5 schrijft letterlijk "Verwijderd op 2 van 3 bronnen"
+voor, en die 3 telt een membership mee dat nooit online was. `ApplyActionToAllSources` draagt daarom
+nu ook `deferredSources`, met `intendedTargetCount` als de eerlijke noemer.
+
+En de melding beloofde een herkansing die niet bestond. `doneOnSome` eindigt op "The rest will be
+retried when they are back online", terwijl er nergens een wachtrij-entry werd aangemaakt. Dat is de
+duurste soort onwaarheid in dit register: de gebruiker doet niets meer, want het is toegezegd.
+
+De reparatie is één actie breed, met opzet. `UnifiedGroupAction.queuesUnreachableMemberships` is
+alleen waar voor verwijder-uit-Verder-kijken, omdat 13.4 als enige actiecontract *beide* helften van
+een uitstel vastlegde — punt 3 bewaart, punt 4 speelt af. De kijklijstacties blijven offline helemaal
+weg (DEC-020).
+
+**Bijgewerkt door [DEC-071](../DECISIONS.md#dec-071):** markeer bekeken/onbekeken hoort er nu ook bij.
+Toen "bekeken is bekeken" de regel werd, werd een schrijfactie die stopt bij de servers die toevallig
+aanstonden geen halve nakoming maar een stille schending, en de kijkstatuswachtrij droeg `watched`- en
+`unwatched`-rijen al met een replay die G11 aantoont. `doneOnSomeNoRetry` blijft over voor wat écht
+mislukte op een server die antwoordde en weigerde.
+
+De wachtrij-entry **is** de lokale suppressie. Geen tweede mechanisme ernaast: de rij overleeft een
+herstart, staat op dezelfde `serverId:itemId` als de on-deck-lijst, en verdwijnt precies wanneer de
+write landt. `OfflineActionType.removedFromContinueWatching` vroeg geen driftmigratie —
+`actionType` is een kale tekstkolom zonder constraint — maar wél een replaytak in `_syncAction`, en
+dat is het onderdeel dat je stil kwijtraakt: een rij waarvan niemand het type afhandelt wordt netjes
+opgeruimd zonder ooit iets te doen.
+
+Twee dingen worden **niet** in de wachtrij gezet, en dat is de kern van punt 7 van het
+lifecycle-contract: een `authError`-bron (opnieuw verbinden logt niemand in) en een backend die het
+endpoint helemaal niet heeft — Jellyfins `removeFromContinueWatching` gooit `UnsupportedError`.
+`isRetryableServerWriteFailure` is die scheidslijn, met de veilige richting expliciet gekozen: bij
+twijfel wél in de wachtrij, want een kansloze rij loopt tegen `maxSyncAttempts` aan, terwijl een
+weggegooide rij een write is waarvan de gebruiker te horen kreeg dat hij onthouden was.
+
+Ten slotte: `DiscoverProvider` *onderdrukte* een verwijderde rij niet, hij haalde hem alleen weg.
+Zolang de replay nog niet geland is blijft de server de titel noemen, dus de kaart kwam bij de
+eerstvolgende verversing terug — hoofdstuk 13.4 punt 6. Hij gaat nu in dezelfde zelfopruimende
+`_suppressedOnDeckKeys` als een uitgekeken film, en `_reannouncePendingContinueWatchingRemovals`
+herstelt die verzameling na een herstart uit de wachtrij.
 
 ## H. Herocases
 
@@ -251,9 +637,9 @@ en `test/services/unified_grouping_service_test.dart`).
 | H6 | Geen artwork | test/widgets/tv_hero_artwork_test.dart (`a title with no artwork at all resolves to nothing, not to a stand-in`) plus `_EmptyHeroArt`'s themagradiënt | covered |
 | H7 | Lange titel | test/goldens/tv_home_production_golden_test.dart (`Home with long titles and prose`) — titel, metaregel en synopsis kappen af binnen hun gereserveerde hoogtes; de knoppenrij staat op exact dezelfde plaats als in `Home at rest` | covered |
 | H8 | Geen synopsis | `tv_hero_billboard_card.dart` reserveert de synopsisband ook zonder tekst, dus een titel zonder samenvatting verplaatst de CTA-rij niet | covered |
-| H9 | Spoilers verbergen | | open |
-| H10 | Watched titel | | open |
-| H11 | In-progress titel | | open |
+| H9 | Spoilers verbergen | test/widgets/tv_hero_billboard_carousel_test.dart (`H9: hideSpoilers suppresses the synopsis of an unwatched-episode fallback billboard`, `H9: the same episode shows its synopsis when hideSpoilers is off`) — de enige vorm waar `hideSpoilers` op bijt, per de eigen doc van `TvHeroBillboardCard` | covered |
+| H10 | Watched titel | test/widgets/tv_hero_billboard_carousel_test.dart (`H10: a watched title still reads "Play", not "Resume", and carries no progress`) — `resumeFractionFor` geeft null zodra er geen actieve progress is, dus een afgeronde titel herstart in plaats van te hervatten | covered |
+| H11 | In-progress titel | test/widgets/tv_hero_billboard_carousel_test.dart (`H11: an in-progress title reads "Resume", matching its own offset/duration fraction`) | covered |
 | H12 | Meerdere bronnen | test/screens/discover_screen_tv_hero_test.dart (`a mergeable duplicate becomes one slide carrying both sources`, `two concrete copies of one recent film are one hero slide, not two`) — één slide per logische titel, met beide bronnen erin, gereden door het echte `DiscoverScreen`; de tweede test legt ook vast dat een titel waarvan de identiteit niet te bewijzen is één bron houdt in plaats van er stilzwijgend een bij te verzinnen | covered |
 | H13 | Source valt weg | test/screens/tv/tv_content_feed_test.dart (`a row whose sources did not all answer says so, and still shows what it has`) — de projectie markeert partial, de rij toont wat er is; de hero verliest een slide pas als de logische groep zelf verdwijnt, en volgt dan zijn groep en niet zijn index (test/widgets/tv_hero_billboard_carousel_test.dart, `the carousel follows its group, not its index, when the list shortens`) | covered |
 | H14 | Hero-data komt laat | test/screens/tv/tv_content_feed_test.dart — `TvContentFeed` onderscheidt "nog niet geprojecteerd" van "authoritatief leeg" via `hasProjectedHero` + `projectedLatestMovies`, en reserveert in het eerste geval de billboardruimte (hoofdstuk 9.7) in plaats van een fallback te tonen die een tel later omklapt | covered |
@@ -262,7 +648,7 @@ en `test/services/unified_grouping_service_test.dart`).
 | H17 | Auto-rotation tijdens focus | test/widgets/tv_hero_billboard_carousel_test.dart (`an interaction pauses the rotation for the inactivity window`) en test/screens/tv/tv_content_feed_test.dart (`a focused content row holds the rotation and fades the hero text`) — zie [DEC-070](../DECISIONS.md#dec-070) punt 1 voor waarom 9.6's lijst niet letterlijk kan gelden | covered |
 | H18 | App gaat background | test/widgets/tv_hero_billboard_carousel_test.dart (`autoplayEnabled false stops the rotation, and restoring it resumes deterministically`) en test/screens/tv/tv_content_feed_test.dart (`leaving the destination stops the rotation, and returning resumes it`) — `TvContentFeed` observeert de lifecycle en vouwt hem samen met de overige pauzeredenen in één vlag | covered |
 | H19 | Reduce Motion | test/widgets/tv_hero_billboard_carousel_test.dart (`reduced motion stops the rotation but not the remote`) — geen automatische wissel, handmatige navigatie blijft werken; hardwarebevestiging blijft J9 | covered |
-| H20 | Light theme | | open |
+| H20 | Light theme | `tv_hero_billboard_card.dart` las `TvHomeLayout.heroScrimAlpha`/`inkSecondary`/`inkTertiary` rechtstreeks — één sterkte voor beide thema's, terwijl `MonoTokens.artworkScrimAlpha`/`onArtworkInk` precies hiervoor bestaan (het scrim is op light een wit vlak dat artwork juist *ophelderd* in plaats van dimt). Fix laat de wash en inkt harder werken op light, `dark:` blijft byte-identiek aan de oude waarde. test/goldens/tv_hero_billboard_theme_golden_test.dart (`the reading scrim and ink wash harder on a light surface than on dark`, `the same scene on the dark palette keeps its existing, unboosted strength`) bewijst het mechanisme zowel via de golden als via een directe assertie op `artworkScrimAlpha`/`onArtworkInk`; alle 71 bestaande goldens (waaronder de hero-eigen) blijven pixel-exact ongewijzigd op het dark thema | covered |
 | H21 | Artworkrequest faalt | `tv_hero_artwork.dart` geeft `_EmptyHeroArt` als zowel `placeholder` als `errorWidget` mee, dus een mislukte request valt terug op de themagradiënt in plaats van op een lege of kapotte laag | covered |
 
 ## I. Navigatiecases
@@ -277,18 +663,18 @@ en `test/services/unified_grouping_service_test.dart`).
 | I6 | Topnav Back naar systeem | test/screens/tv/tv_back_chain_test.dart (`step 5: the top navigation at the root defers to the system contract`, `Menu reaches the system only from the root destination with the bar focused`) — het bestaande `shouldPassTvosMenuToSystem`-predicaat, ongewijzigd van vorm; wat de engine daarna met de press doet is hardware (DEC-019) | covered |
 | I7 | Source picker Back | test/widgets/tv/tv_media_source_picker_test.dart (`Menu closes the picker, activates nothing, and restores the exact CTA`) | covered |
 | I8 | Nested Mijn Pleya Back | test/screens/tv/tv_back_chain_test.dart (`step 2 comes first`, `step 2 beats the focus test, wherever the remote happens to be`) en test/navigation/tv/tv_navigation_coordinator_test.dart (de nested-routegroep) en test/screens/tv/tv_root_shell_test.dart (`popping brings the destination back`) | covered |
-| I9 | Profile picker Back | | open |
-| I10 | Native keyboard Back | | open |
+| I9 | Profile picker Back | test/screens/profile/profile_switch_screen_test.dart (groep `I9: Back in the profile picker`, twee tests: de beheerspicker verlaat op Back, de startpoort niet) en test/screens/tv/tv_back_chain_test.dart (`I9: the profile picker keeps Menu for the app`, `I9: the TV shell never opens the profile picker without the Menu bracket`) — **gedragsgat gevonden en gedicht** aan de tvOS-kant: `AccountUiActions.openProfiles` pusht op de *root*-navigator, die dit scherm niet observeert, dus niets herberekende de Menu-passthrough en de eerste Menu-druk verliet de app in plaats van de picker te sluiten. Beide TV-aanroeppunten gaan nu door `_openProfilesFromShell`, dat het bezoek omsluit zoals de startpoort al deed; een broncontrole bewaakt het aanroeppunt | covered |
+| I10 | Native keyboard Back | test/services/apple_tv_native_text_entry_key_gate_test.dart (`a back key that reaches Dart is consumed without a platform call`, `real key events are blocked while the native keyboard owns the remote`, `the session ends after a submit`) — een Back die de gate bereikt betekent dat de native hook faalde, en wordt geconsumeerd in plaats van doorgegeven aan de backketen; de native helft (UIKit sluit zijn eigen toetsenbord) is de simulatorregressie `scripts/tvos_sim.sh check-keyboard`, zie [DEC-019](../DECISIONS.md#dec-019) | covered |
 | I11 | Live TV-item verschijnt | test/widgets/tv/tv_top_navigation_test.dart (`a Live TV slot appearing does not replace the focus node of an existing item`) en test/screens/tv/tv_root_shell_test.dart (`appears and disappears without disturbing its neighbours`) — het nieuwe item krijgt een eigen stabiele id, en de buren houden hun focusnode én hun volgorde | covered |
 | I12 | Live TV-item verdwijnt | test/screens/tv/tv_root_shell_test.dart (`losing it while it is open moves the viewer to Home`) en test/navigation/tv/tv_live_tv_capability_test.dart (`a transient outage does not retire a remembered capability`) — een tijdelijke storing laat het item staan, alleen een sluitende meting haalt het weg (DEC-069) | covered |
 | I13 | Actieve destination opnieuw selecteren | test/navigation/tv/tv_navigation_coordinator_test.dart (activate op de reeds actieve bestemming geeft `false` en notificeert niet, dus geen rebuild en geen refetch — hoofdstuk 7.2) | covered |
-| I14 | Tab wisselen met overlay open | | open |
+| I14 | Tab wisselen met overlay open | test/screens/tv/tv_root_shell_test.dart (groep `I14: switching tab while an overlay is open`, drie tests) — een open sheet bezit de afstandsbediening: Select en de pijlen gaan naar de sheet, de bestemming eronder verandert niet, en Back sluit de sheet zonder óók de bestemming te verlaten. Vastgelegd is het contract dat werkelijk geldt (de focus blijft in de sheet-scope), niet de focus-trap die `_fallbackKeyHandler`'s commentaar belooft: een druk die ná een programmatische focusverplaatsing naar de balk komt activeert die balk wél. Niet bereikbaar in productie — niets verplaatst de focus uit een open sheet — dus genoteerd in plaats van gedrag veranderd. Niet-remote bestemmingswissels (companion remote, deeplink, wegvallende Live TV) laten de sheet staan; geen hoofdstuk of DEC zegt wat daar zou moeten gebeuren | covered |
 | I15 | Select KeyUp na focusverplaatsing | test/focus/focusable_wrapper_select_test.dart (`key-up landing on a wrapper that never saw the key-down fires nothing`); test/focus/dpad_navigator_suppressor_test.dart (`armed suppressor eats the in-flight select key-up and clears`) | covered |
-| I16 | Trackpad swipe versus D-pad | | open |
-| I17 | Android TV back | | open |
-| I18 | Focused item verdwijnt | test/navigation/tv/tv_navigation_coordinator_test.dart (Live TV verdwijnt terwijl het alleen de focusring droeg: de ring verhuist in plaats van naar een verdwenen bestemming te wijzen). Alleen bewezen voor de topnav; het griditem-geval blijft open | open |
-| I19 | Return uit player | | open |
-| I20 | Return uit settings | | open |
+| I16 | Trackpad swipe versus D-pad | test/services/apple_tv_remote_touch_service_test.dart (`synthetic swipe followed by matching native arrow down and up moves once`, `synthetic swipe also suppresses a native arrow on the other axis`, `native directional press claims the gesture and mutes the accumulator`, `native-only directional press still passes through`, `native arrow after the grace expires passes through again`) — één gebaar wordt nooit twee stappen, welk pad hem ook eerst claimt, en een kale D-pad-druk blijft ongemoeid | covered |
+| I17 | Android TV back | zie "Buiten fase 9" — geen back-button-interceptie onder `lib/screens/tv/`/`lib/navigation/`, TV-schermen routeren terug via het eigen remote-focussysteem; of Android's hardware-terugknop het juiste doet op die stack is alleen op een echt toestel vast te stellen | klasse A |
+| I18 | Focused item verdwijnt | test/navigation/tv/tv_navigation_coordinator_test.dart (topnav-helft, ongewijzigd) plus nu ook het griditem-geval: test/widgets/tv/tv_unified_media_grid_test.dart (groep `I18: a focused card that disappears (hoofdstuk 7.6)`, drie tests: focus verhuist naar de eerstvolgende overlevende buur vóórwaarts, naar de dichtstbijzijnde buur wanneer vóórwaarts niets overleeft, en terug naar de headercontrols wanneer er niets overleeft) — `_reconcileNodes`/`_nearestSurvivor` bestonden al, alleen de test ontbrak | covered |
+| I19 | Return uit player | test/media/unified/unified_media_group_test.dart (`withUpdatedSourceItem`, vijf tests) en test/services/unified_catalog_service_test.dart (groep `I19: applyUpdatedSourceItem`, vier tests) voor de kaartherberekening; test/providers/unified_catalog_provider_test.dart (groep `I19: refreshItem re-reads one source in place`, vijf tests) voor de reactieve laag — de complete catalogus krijgt `onPlaybackReturned` dat één item herleest en in zijn groep terugzet, zonder opnieuw te pagen. Home, beide landings en TV-Search delen `TvDiscoveryActivationMixin.activateDiscoveryGroup`, en die roept nu `DiscoverProvider.updateItem` — het bestaande post-edit-verversingspad, geen tweede eventbus — zodat `TvHomeProjectionProvider` en `TvDiscoveryLandingProvider` op dezelfde `DiscoverProvider`-notificatie herprojecteren. Focus verplaatst niet: geen van beide paden pusht of routeert, dus er is niets terug te herstellen | covered |
+| I20 | Return uit settings | test/screens/tv/tv_destination_restoration_test.dart (groep `I20: coming back from Settings`, twee tests) — Instellingen is op TV geen bestemming maar een geneste route op Mijn Pleya, dus de balk beweegt niet en er valt niets te herstellen behalve de focus: poppen zet de afstandsbediening terug op de tegel waar de sectie vanaf openging, via `restoreFocusKey`. De tweede test pint de productieroute `tvMyPleyaNestedRoute(settings)` vast zodat de shell-helft en de routehelft niet uit elkaar kunnen lopen. Een verversing bij terugkeer is niet nodig en bestaat bewust niet: elke instelling die een TV-oppervlak ziet komt binnen via een `ChangeNotifier` waar dat oppervlak al naar luistert — hetzelfde argument dat I19 maakt. Settings-subpagina's zijn gewone pushes op de profielnavigator, back-keten stap 3 | covered |
 | I21 | Filters bereiken vanaf diep in het grid | gedrag ligt vast in hoofdstuk 7.4 en 10.6, maar de snelkoppeling is niet gebouwd — zie de noot onder deze tabel | open |
 | I22 | Terugkeren op dezelfde kaart binnen een bestemming | test/screens/tv/tv_destination_restoration_test.dart (`All movies`/`All series comes back to the card and the scroll region it was left on`, `the Films landing comes back to the rail tile it was left on`) — binnenkomen vanaf de balk landt op de primaire focus van het scherm (hoofdstuk 7.1/7.4), en DOWN daaruit landt op de kaart waar de kijker stond; de catalogus leest die kaart uit `TvNavigationCoordinator.contentFocusFor`, de landing uit zijn eigen rails | covered |
 | I23 | Bestemming wisselen met een geneste route open | test/screens/tv/tv_root_shell_test.dart (`belongs to its own destination and does not follow the viewer elsewhere`) bewijst dat de route bij zijn eigen bestemming blijft; test/screens/tv/tv_destination_restoration_test.dart (`coming back does not restart the merge that is already loaded`, plus de twee restauratierijen hierboven) bewijst dat terugkeren de geladen pagina's, de scrollpositie en de gefocuste kaart houdt | covered |
@@ -463,27 +849,152 @@ worden staan óók nog in de `IndexedStack`, zodat er twee exemplaren tegelijk g
 |---|---|---|---|
 | J1 | 1080p | test/goldens/tv_unified_catalog_golden_test.dart (`films, default state`, `series, default state`) en test/goldens/tv_unified_catalog_states_golden_test.dart — elke catalogusgolden rendert op het DEC-028-canvas, 1920x1080 gedeeld door 1,85 | covered |
 | J2 | 4K-output | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A | open |
-| J3 | Laagste ondersteunde TV-surface | | open |
+| J3 | Laagste ondersteunde TV-surface | test/utils/layout_constants_test.dart (groep `J3: TvLayoutConstants.scaleForHeight floors at the lowest supported TV surface`, twee tests: 918px — 0,85x van het 1080p-canvas — is de vloer en niets eronder zakt verder, en net boven de vloer schaalt nog gewoon evenredig) plus test/widgets/tv/tv_unified_media_grid_test.dart (`J3: the grid renders and focuses without overflow at the lowest supported TV surface`) — het echte grid rendert en focust zonder overflow op 1280×918 | covered |
 | J4 | Overscan | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A | open |
 | J5 | Lange vertaling | test/goldens/tv_unified_catalog_golden_test.dart (`films, labels at the length a long locale produces`, `films, long titles`) — de labels hebben de lengte van de Duitse strings; een echt omgeschakelde locale is in `flutter test` niet te renderen, want elke niet-basislocale is deferred. Fase 7 voegt de topnav toe: test/widgets/tv/tv_top_navigation_test.dart (`a long locale keeps every destination on one line and the bar one row high`) en test/goldens/tv_shell_long_locale.png | covered |
-| J6 | Grote tekst | | open |
-| J7 | RTL | test/widgets/tv/tv_unified_media_grid_test.dart (`builds under a right-to-left directionality without breaking`) bewijst dat het raster onder een omgekeerde `Directionality` bouwt, de kaarten vindt en zijn prefetch nog steeds start. Dat is een guard, geen RTL-acceptatie: geen van de zestien locales van Pleya is rechts-naar-links, dus er valt vandaag geen beeld te keuren dat een gebruiker kan bereiken | open |
+| J6 | Grote tekst | test/widgets/tv/tv_top_navigation_test.dart (`J6: a large system text scale keeps the bar one row high and does not overflow`) — 1,5x tekstschaal, dezelfde balkhoogte en geen enkele destination die naar een tweede regel wrapt, exact hoofdstuk 25's "Topnav mag niet buiten beeld lopen". `tester.platformDispatcher.textScaleFactorTestValue`, niet een handmatig ingevoegde `MediaQuery`/`Builder`-override — die combinatie met deze balk's eigen `ValueListenableBuilder`s bleek een echte, reproduceerbare oneindige rebuild-lus (stack overflow), losstaand geïsoleerd en niets met de balk zelf te maken | covered |
+| J7 | RTL | test/widgets/tv/tv_rtl_contract_test.dart (groep `J7: the hero under a right-to-left directionality`, zes tests, één per clausule van hoofdstuk 25 plus de scrim apart) — **twee van de vijf clausules waren stuk**, en dat is de reden dat deze rij géén klasse A is: het leesscrim was een hardgecodeerde links-naar-rechts-ramp en het titelblok een fysieke `bottomLeft`, dus onder RTL zou de wash aan de overkant liggen van de tekst waarvoor hij bestaat en het titelblok 149px uit het spiegelbeeld schuiven. Dat is met een `Directionality`-override in een widgettest vast te stellen en vraagt geen toestel en geen locale — anders dan J2/J4/J8/J9, waar het instrument zelf ontbreekt. Beide zijn nu directioneel (`OptimizedMediaImage.alignment` is daarvoor verbreed naar `AlignmentGeometry`, wat elke sink al accepteerde). De andere drie clausules — CTA-volgorde, ongespiegeld artwork, en de carousel die aan de visuele richting gekoppeld blijft — klopten al en zijn vastgelegd. Elke test rendert beide richtingen en vergelijkt: een assertie die alleen het RTL-beeld leest onderscheidt "gespiegeld" niet van "in allebei hetzelfde, en fout". Alle goldens bleven byte-identiek, want onder LTR lost directioneel naar exact hetzelfde op. Het oude rastergarantietje (`builds under a right-to-left directionality without breaking`) staat er nog. Wat híer wél buiten bereik blijft is een echte locale-sweep, en dat is ook niet wat deze rij vraagt | covered |
 | J8 | VoiceOver | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A. test/widgets/tv/tv_media_source_picker_test.dart (`a row announces its position and everything it actually shows`) en test/widgets/tv/tv_unified_media_card_semantics_test.dart leggen de semantics van een source row en van een catalogkaart vast — inclusief dat de kaart één node aanbiedt en niet titel en jaar dubbel uitspreekt — maar niet wat VoiceOver ervan maakt | open |
 | J9 | Reduce Motion | alleen op echte hardware vast te stellen; uitgesteld tot de eindacceptatie na fase 10A | open |
-| J10 | Light theme | | open |
-| J11 | OLED theme | | open |
-| J12 | Focusglow bij eerste/laatste card | | open |
-| J13 | Panel met veel sources | | open |
-| J14 | Lege panelsecties | | open |
-| J15 | Selected versus focused | | open |
+| J10 | Light theme | `FocusTheme.focusDecoration`/`shapeFocusRing` kregen een dark separator-shadow (`FocusTheme.contrastSeparatorShadows`) naast de witte ring, precies wanneer `FocusTheme.needsContrastSeparator` — `MonoTokens.isLight` — waar is; de ring zelf blijft wit, hoofdstuk 8's regel dat wit de enige TV-focusidentiteit is verandert niet. test/focus/focus_theme_contrast_separator_test.dart (9 tests: `needsContrastSeparator` per palet, `contrastSeparatorShadows` gebruikt de eigen inktkleur van het thema en is een strakke lijn geen zachte glow, `focusDecoration`/`shapeFocusRing` dragen de separator precies op focused+light en nergens anders) plus het verplichte golden op de light surface: test/goldens/focus_contrast_separator_golden_test.dart (`a focused white pill stays visually distinct on a light/white surface`, `the same scene on the dark palette needs no separator, and gets none`) — geschilderd rechtstreeks vanaf de decoratiefuncties, niet via `FocusableWrapper`, zodat een falende golden ondubbelzinnig naar deze laag wijst | covered |
+| J11 | OLED theme | test/goldens/tv_hero_billboard_theme_golden_test.dart (`J11: OLED only changes bg to pure black — surface, text and ink stay identical to dark`) — `mono_theme.dart`'s eigen tokentabel bewezen: `bg` gaat van `#141414` naar zuiver `#000000` en `surface` stapt één trede mee (`#1F1F1F` → `#141414`), maar `surfaceElevated`, `outline`, `text` en `textMuted` zijn byte-identiek aan dark, en `isLight` blijft `false` zodat het H20-lichtthemapad niet per ongeluk meeloopt. Gerenderd op dezelfde felgele plaatsvervangende artwork als H20 zodat een regressie in `artworkScrimAlpha`/`onArtworkInk` onder OLED evengoed zichtbaar zou zijn: test/goldens/tv_hero_billboard_oled_theme.png | covered |
+| J12 | Focusglow bij eerste/laatste card | N.v.t. voor de unified-oppervlakken. `FocusableWrapper.useFocusGlow` (die `FocusGlowOverlay` naar de root-Overlay tilt, precies om de eerste/laatste-card-occlusie uit issue #1231 op te lossen) staat standaard uit, en geen enkele fase-5/6/8-kaart (`TvExpandableMediaTile`, `TvUnifiedMediaCard`) zet hem aan — beide draaien op `FocusIndicatorMode.delegated` zonder glow. `grep -rn "useFocusGlow" lib/` buiten `focusable_wrapper.dart`/`focus_builders.dart` zelf heeft precies twee treffers — `tv_browse_rail.dart` (`useFocusGlow: fullCardLayout`) en `focusable_media_card.dart` (`useFocusGlow: widget.fullBleedImage`) — allebei legacy pre-fase-8 code, buiten de scope van dit register. Geen hoofdstuk van docs/tvos-unified-experience.md noemt een focusgloed-vereiste. Een test tegen de unified kaarten zou dus niets echts bewijzen — dit is een bevinding over de scope, geen bewijsgat | covered |
+| J13 | Panel met veel sources | test/widgets/tv/tv_media_source_picker_test.dart (groep `J13: a panel with many sources`, `twenty sources render without overflowing, and every one is reachable by D-pad`) — `TvSourceRowList` draait al op een echte `ListView.separated`/`ScrollController`, alleen ongetest; twintig bronnen renderen zonder overflow en de laatste rij is met de afstandsbediening bereikbaar | covered |
+| J14 | Lege panelsecties | klasse C — geen enkel hoofdstuk of DEC definieert wat "een panelsectie" is, laat staan welk panel, dus ook niet wat een lege sectie zou moeten tonen; de existing-proof-first-audit vond nergens in de TV-panelen een sectieconcept voorbij `sectionGap`-witruimte (destijds gecontroleerd in `tv_action_scope_picker.dart` en `tv_unified_context_menu.dart`; de eerste is met DEC-075 verwijderd). Niet zelf ingevuld — zie hoofdstuk "Fase-9-classificatie van de open rijen" | klasse C |
+| J15 | Selected versus focused | test/widgets/tv/tv_catalog_foundation_test.dart (groep `J15: selected versus focused on a sort/filter option row`, `the selected row keeps its checkmark after focus moves away from it`) — `TvCatalogOptionRow` was al gebouwd met drie onafhankelijke lagen (base fill voor selected, additieve sheen voor focus, plus een vinkje) precies om de DEC-053-val te vermijden; de test bewijst dat het vinkje blijft staan als focus weggaat en niet meeloopt naar een rij die alleen focus krijgt | covered |
 | J16 | Focus verandert de layout niet | test/widgets/tv/tv_unified_media_grid_test.dart (`focus moves nothing but the focused card`) — het raster is een `Column` van `Row`s en een `Row` is zo hoog als zijn hoogste kind, dus een kaart die bij focus groeit tilt zijn hele rij op en duwt de rijen eronder omlaag terwijl de gebruiker ernaar kijkt. De test legt alle negenendertig andere kaarten vast vóór en na de focus. Toegevoegd in fase 5; het gedrag zelf staat in hoofdstuk 10.2b ("ruimtelijk stabiel") | covered |
+| J17 | D-pad LEFT/RIGHT tussen de hero-CTA's onder een gespiegelde volgorde | test/widgets/tv/tv_rtl_contract_test.dart (groep `J17: D-pad LEFT/RIGHT across the hero CTAs follows the rendered geometry`, zeven tests) — het productbesluit dat hier ontbrak is genomen op 1 september 2026: **spatial D-pad navigation volgt de gerenderde geometrie, niet de logische actievolgorde**. Semantics en focus zijn twee contracten; hoofdstuk 25 laat de leesvolgorde en de CTA-compositie spiegelen, maar Links betekent op een afstandsbediening de knop die je links ziet liggen. De `Row` in `tv_hero_billboard_carousel.dart` spiegelde zijn kinderen al (dat *is* clausule 2), maar `onNavigateRight` op Afspelen sprong naar Meer info op lijstpositie, dus onder RTL wandelde Rechts de focus naar links over het scherm. `_actions` leest nu de `Directionality` in de subtree van de rij zelf en leidt daar de linker- en rechterbuur uit af (`_stepFrom`), zodat er één autoriteit is voor plaatsing én traversal in plaats van twee tabellen die opnieuw uit elkaar kunnen lopen. De carouselclausule verandert niet mee: Links van de linkerrand blijft de vorige slide en Rechts van de rechterrand de volgende, in beide richtingen — clausule 5 meet dat nu vanaf de CTA op de *rand* in plaats van vanaf een vaste knop, want de rand is een positie en geen knop. Bewezen met een echte `Directionality`-override, geen locale nodig; en tegen de verkeerde soort fix afgedekt: twee tests leggen vast dat de labels aan hun eigen control gebonden blijven en dat Afspelen nog steeds `play` activeert en Meer info `details`, zodat een oplossing die de focusnodes verwisselt in plaats van de bedrading niet groen kan worden. Negatieve controle gedraaid: met de oude lijstvolgorde terug vallen precies de twee RTL-traversaltests, de dead-end-test en de RTL-helft van clausule 5 om, terwijl beide LTR-tests groen blijven. Alle goldens bleven byte-identiek | covered |
+| J18 | Merklockup op het lichte thema | test/widgets/tv/tv_top_navigation_test.dart (groep `J18: the wordmark on the light theme`, vijf tests) plus test/assets/brand_wordmark_layers_test.dart (vier assetinvarianten) en het hertekende test/goldens/tv_home_production_light.png — het beeld dat het gebrek vastlegde, legt nu de oplossing vast. De "PLEYA"-letters in `assets/branding/pleya_wordmark.png` zijn wit en de topnav tekende dat bestand ongewijzigd op de themakleur, dus op het lichte palet stonden ze op 1,12:1 tegen een grond van #F2F2F3 en bleef alleen de rode P over. Opgelost langs [DEC-074](../DECISIONS.md#dec-074): `gen_brand_assets.py` splitst de bron in twee lagen op hetzelfde kanvas, en op licht tekent de balk de mark ongetint plus de letters op `MonoTokens.text` (16,88:1). Donker en OLED tekenen onverminderd het onverdeelde bestand, dus alle drieëntwintig donkere goldens bleven byte-identiek — dat is de hele reden dat de vork er is en niet één pad voor alles. Twee dingen maken deze rij falsifieerbaar in plaats van cosmetisch: de assertie meet **contrast** tegen de grond die `TvRootShell` eronder schildert, niet gelijkheid aan een constante, dus een latere hardgecodeerde bleke kleur valt er ook door; en de negatieve controle is gedraaid — met `_Wordmark` teruggezet op het onverdeelde bestand vallen precies de twee lichte tests om terwijl de eenentwintig andere groen blijven. De assetinvarianten dekken de faalwijze af die geen enkele widgettest ziet: de bron heeft een alpha-bbox van (0,1,1424,659) op een kanvas van 1452x659, dus een laag die op zijn eigen bbox gecropt wordt krijgt een andere aspect ratio, onder `BoxFit.contain` een andere breedte, en dan schuift het lockup uit elkaar **Bij datzelfde beeld bleek de P in de bron een oudere tekening dan `pleya_mark.png`** — dichte binnenvorm, flauwe rode lijnen — en omdat `lockup()` uit die bron werd opgebouwd droegen het tvOS-app-icoon, de drie Top Shelf-beelden, de Android TV-banner en het OG-beeld diezelfde oude P, terwijl de overige iconen de huidige droegen. Het lockup wordt nu samengesteld uit `pleya_mark.png` plus de belettering, dus de mark bestaat nog op één plek, en `test/assets/brand_wordmark_layers_test.dart` bewaakt dat hij niet opnieuw wegdrijft — negatieve controle gedraaid: met de oude P valt die assertie om op een gemiddelde kanaalafwijking van 19,7 tegen een drempel van 12, en de controle op de open binnenvorm valt apart om. Daarmee verviel ook de licht/donker-vork, die alleen bestond om de donkere goldens byte-identiek te houden: de merkverversing verandert ze toch, dus er is nu één compositiepad voor elk palet. | covered |
+| J19 | Backend-badge van de Pleya-bron volgt de inktkleur niet | test/widgets/backend_badge_test.dart (achttien tests) plus test/assets/brand_logo_asset_test.dart (drie assetinvarianten) en test/goldens/backend_badge_set_dark.png / _light.png — de vraag die deze rij openhield (houdt een merkmark in een rij backend-badges zijn merkkleur, of voegt hij zich naar de inkt?) is beantwoord in [DEC-076](../DECISIONS.md#dec-076): een badge hier is een bronglyph en neemt de inkt van zijn regel, terwijl het merkrood bij `PleyaLogo` en het lockup blijft. `side_navigation_rail.dart` draagt allebei die regels in één scherm. De tint gaat door `BlendMode.srcIn`, zodat de alpha die `MediaCard`'s metadataregel meegeeft (60%) overeind blijft. Twee dingen maken de rij falsifieerbaar in plaats van cosmetisch: de widgettests lopen over `MediaBackend.values` in plaats van over de Pleya-tak, dus een vijfde backend zonder tint valt hier ook om; en de negatieve controle is gedraaid — met de oude tak terug vallen precies de vijf Pleya-tests en allebei de goldens om terwijl de dertien van de andere drie backends groen blijven. In dezelfde drie regels zat een tweede gebrek dat geen productbesluit vraagt: de badge tekende de handgemaakte bron `pleya_mark.png`, met een alpha-bbox van (39, 128, 931, 938) op een kanvas van 1024x1024, dus 87% van de breedte, 79% van de hoogte en een midden dat 27 pixels naar links en 22 pixels omlaag ligt, naast twee SVG's die hun viewBox vullen. Hij tekent nu het gegenereerde, gecentreerde `pleya_logo.png`. Dat is precies de faalwijze die geen widgettest ziet — `tester.getSize` geeft de doos terug die de `Image` kreeg, niet wat hij erin tekent, en die assertie bleef in de negatieve controle dan ook groen — dus de invarianten staan op de bytes. De post-merge gate haalde er nog twee dingen uit. De bronbewaker in `pleya_logo_test.dart` eiste dat alleen `PleyaLogo` het assetpad noemt en stond daardoor rood; hij kent de badge nu bij naam als tweede tekenaar met het besluit erbij (`61952a6`), zodat een derde rauwe callsite nog steeds omvalt. En de badge stond op `Image`'s standaard `BoxFit.scaleDown`, die verkleint maar nooit vergroot: boven de 512 pixels van het asset zou de P stoppen met groeien terwijl de twee SVG's hun doos wel bleven vullen. Staat nu op `BoxFit.contain`, met een test op maat 600 die de doos-test niet kan vangen, plus twee tests die de andere kant van de grens vastleggen: de badge deelt zijn cachesleutel met `PleyaLogo`, en `PleyaLogo` tekent ongetint | covered |
+**De CTA-traversal onder een gespiegelde CTA-volgorde — opgelost op 1 september 2026.** Dit stond
+hier als losse bevinding en niet als rij, omdat hoofdstuk 25 twee dingen bindt die onder RTL uit
+elkaar lopen: de CTA-*volgorde* spiegelt logisch, maar links/rechts voor de *carousel* blijft aan de
+visuele richting gekoppeld. De focusverplaatsing tússen die twee knoppen noemde het hoofdstuk niet,
+en die liep op lijstpositie: `onNavigateRight` op Afspelen sprong naar Meer info, dus zodra de
+volgorde spiegelde landde Rechts op een knop die visueel links stond.
+
+Het ontbrekende productbesluit is genomen: **spatial D-pad navigation volgt de gerenderde geometrie,
+niet de logische actievolgorde.** Semantics en focus zijn verschillende contracten — RTL mag
+tekstalignment, leesvolgorde en de CTA-compositie spiegelen, maar Links en Rechts blijven op een
+afstandsbediening de knop die daar fysiek ligt. Daarmee is de keten ook niet meer inconsistent, want
+de carousel blijft precies staan waar hij stond: Links van de linkerrand is de vorige slide, Rechts
+van de rechterrand de volgende, in beide richtingen. Alleen *welke* knop op die rand ligt verschilt,
+en dat volgde altijd al uit de layout.
+
+De bevinding is daarmee een gewone rij geworden — J17, hierboven, `covered`.
+
+
+**J18 is tijdens fase 10A ontstaan, uit het eerste lichte Home-beeld.** Hoofdstuk 29 vraagt om
+`tvos.home.unified.light` en die render bestond nog niet: `tv_hero_billboard_light_theme.png` toont
+het billboard los, niet de balk erboven. Zodra de hele compositie op het lichte palet stond was het
+zichtbaar — het woordmerk rechtsboven verdwijnt.
+
+Het is een echt en bereikbaar geval. Het lichte thema is een gewone gebruikersinstelling
+(`ThemeProvider.materialThemeMode`) zonder TV-uitzondering, en onder `system` volgt het bovendien de
+appearance van het toestel, dus een Apple TV kan hier komen zonder dat iemand iets bijzonders doet.
+
+Waarom er hier geen fix onder staat. Hoofdstuk 8.2 zegt "licht thema krijgt ... donkere tekst", maar
+het woordmerk is geen tekst: het is één PNG met twee kleuren erin — witte letters plus de rode
+P-mark, die volgens datzelfde hoofdstuk juist rood blijft als branddetail. Er is geen `ColorFilter`
+die het ene hertint en het andere niet, dus elke oplossing is een merkbeslissing: een tweede asset
+met donkere letters, alleen de mark op licht, of een andere behandeling van de lockup. Geen enkel
+hoofdstuk, DEC of north-starbeeld dekt dat af — alle acht referentiebeelden van hoofdstuk 33 zijn
+donker. Dat is exact de klasse waarin J14 al zit, en de regel bovenaan dit register schrijft voor dat
+zo'n geval eerst een vastgelegd gedrag krijgt en pas daarna een fix. Fase 10A is bovendien harding
+zonder visuele art direction, dus de keuze hoort niet in deze fase gemaakt te worden.
+
+**En dat is precies zo gegaan.** Het besluit is een dag later genomen en staat als
+[DEC-074](../DECISIONS.md#dec-074). De zin hierboven dat geen enkele `ColorFilter` het ene hertint
+zonder het andere te pakken klopt nog steeds — hij is niet weerlegd maar omzeild: de splitsing zit nu
+in het *asset*, niet in een filter. `gen_brand_assets.py` schrijft twee lagen uit dezelfde handgemaakte
+bron, allebei op het volledige bronkanvas met de andere helft leeg, zodat ze in één rect getekend
+samen exact het origineel zijn. Op licht tekent de balk de mark ongetint en de letters op
+`MonoTokens.text`; op donker en OLED verandert er niets. De rij is `covered`.
 
 ## Totaal
 
 181 cases: A20, B15, C24, D15, E15, F21, G14, H21, I20, J16. Nul `covered` bij aanmaak (fase 0).
 F21 kwam er in fase 4 bij, samen met het gedrag dat hij beschrijft (hoofdstuk 14.8a). J16 kwam er bij
 het sluiten van fase 5 bij, langs dezelfde regel: het gedrag stond al vast in hoofdstuk 10.2b, de
-situatie — een focus die de rij eronder verschuift — was alleen nog niet als rij benoemd.
+situatie — een focus die de rij eronder verschuift — was alleen nog niet als rij benoemd. I21 tot en
+met I24 kwamen er in fase 7 bij. J17 is de laatste, bij het sluiten van fase 9, en langs diezelfde
+regel: eerst het ontbrekende gedrag vastgelegd (de noot onder register J), daarna pas de rij. Dat
+brengt het register op 186. J18 is er in fase 10A bij gekomen, langs diezelfde regel — eerst het
+gedrag geclassificeerd, en juist omdat het níet vastligt is de rij klasse C en geen fix — wat het
+register op 187 brengt. J19 is er op 2 september 2026 bij gekomen, bij het oplossen van J18, wat het
+op 188 brengt.
+
+Stand bij het sluiten van fase 9 (2 september 2026, na de eindaudit): **180 `covered` en 9
+niet-`covered`**, op een register van 189. Dit is de eindstand van de fase; de regels hieronder zijn
+de tussenstanden in omgekeerde volgorde en blijven staan omdat ze de weg ernaartoe vastleggen. Wat
+overblijft is uitsluitend geclassificeerd werk, geen gewone functionele of bewijsrij:
+
+- **vijf hardware (klasse A):** J2 (4K-output), J4 (overscan), J8 (VoiceOver), J9 (Reduce Motion) en
+  I17 (de Android TV-hardwareterugknop). Ze horen bij de eindacceptatie na fase 10A, niet bij de gate
+  van deze fase.
+- **drie geregistreerde debts (klasse B):** I21 en I24, allebei met hun vervalvoorwaarde in de rij
+  zelf — fase-9-code heeft het catalogusheaderpad, `_focusSidebar` noch de nav-nodes geraakt, dus
+  geen van beide is vervallen — plus **B16**, dat uit de eindaudit komt: de lokale-mapclient filtert
+  nu wél op `query.kind`, de Pleya Server-client niet, en dat laatste is niet op te lossen zonder
+  aan de cursorledger te rekenen terwijl het protocol bevroren is.
+- **één onopgelost productcontract (klasse C):** J14. Er is geen hoofdstuk en geen DEC die definieert
+  wat "een panelsectie" is, dus er is ook geen gedrag om tegen te testen. Blijft `open`; niet
+  stilzwijgend geherclassificeerd en niet `covered` gemaakt.
+
+Per categorie is dat A 20 van 20, B 15 van 16, C 24 van 24, D 15 van 15, E 15 van 15, F 21 van 21,
+G 14 van 14, H 21 van 21, I 21 van 24 en J 14 van 19.
+
+**De eindaudit heeft acht defecten opgeleverd die wél zijn opgelost**, alle acht in code die fase 9
+zelf heeft geschreven of aangeraakt, en alle acht met een test die vóór de fix omvalt: een catalogus
+die "leeg" meldde zodra elke bibliotheek trager was dan de genadeperiode; `updateItem` dat op een
+tweede server de verkeerde titel ophaalde omdat het op een kale item-id zocht; een auth-foute
+membership die uit álle drie de emmers viel en de teller dus "klaar op alle 1" liet zeggen; dezelfde
+membership die "geen bruikbare bron" kreeg in plaats van "opnieuw aanmelden"; de G7-poort die op de
+hele groep werd gelezen in plaats van op de overlevers; een cijferdoel op een backend zonder
+`userRating` dat uit de noemer viel; een korte pagina van de Pleya Server-client die als "bibliotheek
+uit" werd gelezen terwijl de cursor nog verder wees; en een concurrencyplafond dat per ronde
+opnieuw begon te tellen. Twee bevindingen zijn *geen* defect gebleken: dat een trage bibliotheek
+achteraan aansluit is precies wat E14 vastlegt, en de aanraking van `Positioned` in de topnav is
+alsnog richtinggevoelig gemaakt. Eén bevinding blijft staan zonder fix en zonder rij, omdat de fix
+erger was dan de kwaal: `search_screen.dart` leest de verborgen-bibliothekenset synchroon, en
+`ensureInitialized()` afwachten hangt de zoekactie op zodra opslag niet antwoordt — het venster is
+smal (de provider laadt bij het monteren van de profielsessie en `initState` warmt hem nog eens) en
+de auteur heeft die keuze daar expliciet beargumenteerd.
+
+Stand na de J19-fix (2 september 2026): **180 `covered` en 8 niet-`covered`**, op een register van
+188. J19 is dezelfde dag nog gesloten langs [DEC-076](../DECISIONS.md#dec-076) — de badge is een
+bronglyph en neemt de inkt van zijn regel — waarmee het aantal onopgeloste productcontracten weer op
+één komt. Open blijven: vijf hardware (J2, J4, J8, J9, I17), twee geregistreerde debts (I21, I24) en
+één onopgelost productcontract (J14). Per categorie is dat A 20 van 20, B 15 van 15, C 24 van 24,
+D 15 van 15, E 15 van 15, F 21 van 21, G 14 van 14, H 21 van 21, I 21 van 24 en J 14 van 19.
+
+Tijdens hetzelfde etmaal zijn er twee gebreken gesloten die geen registerrij hebben, omdat ze uit
+gebruikersmeldingen kwamen en niet uit een edge case in dit register: een onbereikbaar mediabestand
+dat als "Afspelen gestopt" zonder uitleg aankwam, en afspeelmeldingen die bleven staan en stapelden.
+Ze staan als [DEC-078](../DECISIONS.md#dec-078) en zijn hier genoteerd als *additional regression
+fixes* binnen fase 9, niet als registerrijen: ze raken de speler en het meldingsysteem, niet de
+unified TV-oppervlakken die dit register aftelt. Ze verschuiven dus geen enkele telling hierboven.
+
+Stand na de J18-fix (2 september 2026): **179 `covered` en 9 niet-`covered`**, op een register van
+188. J18 is van klasse C naar `covered` gegaan langs [DEC-074](../DECISIONS.md#dec-074), en J19 is er
+bij dat werk bij gekomen — de Pleya-backendbadge die als enige tak van zijn `switch` de inktkleur
+negeert. Netto blijft het aantal openstaande rijen dus gelijk: vijf hardware (J2, J4, J8, J9, I17),
+twee geregistreerde debts (I21, I24) en twee onopgeloste productcontracten (J14, J19). Per categorie
+is dat A 20 van 20, B 15 van 15, C 24 van 24, D 15 van 15, E 15 van 15, F 21 van 21, G 14 van 14,
+H 21 van 21, I 21 van 24 en J 13 van 19.
+
+Stand na fase 10A: **178 `covered` en 9 niet-`covered`**, op een register van 187. J18 is de enige
+rij die 10A eraan toevoegt — een tweede onopgelost productcontract, ontstaan uit het eerste lichte
+Home-beeld (zie de noot onder register J). Fase 10A heeft geen rij van `open` naar `covered`
+verplaatst en dat is de bedoeling: het was hardingswerk op een register dat fase 9 al had gesloten,
+geen tweede inhaalronde. Per categorie is dat A 20 van 20, B 15 van 15, C 24 van 24, D 15 van 15,
+E 15 van 15, F 21 van 21, G 14 van 14, H 21 van 21, I 21 van 24 en J 12 van 18.
+
+Stand na fase 9: **178 `covered` en 8 niet-`covered`** — vijf hardware (J2, J4, J8, J9, I17), twee
+geregistreerde debt (I21, I24) en één onopgelost productcontract (J14). Per categorie is dat A 20 van
+20, B 15 van 15, C 24 van 24, D 15 van 15, E 15 van 15, F 21 van 21, G 14 van 14, H 21 van 21, I 21
+van 24 en J 12 van 17. Er staat geen bevinding meer zonder rij: de CTA-traversal onder een
+gespiegelde CTA-volgorde is J17 geworden.
 
 Stand na fase 6: 73 `covered` en 108 `open`. Fase 5 sloot op 70/111; fase 6 voegt D1, H12 en H15
 toe. Per categorie is dat A 8 van 20, B 5 van 15, C 24 van 24, D 4 van 15, E 4 van 15, F 20 van 21,

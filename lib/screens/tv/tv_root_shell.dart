@@ -36,7 +36,9 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/multi_server_provider.dart';
 import '../../focus/focus_memory_tracker.dart';
 import '../../navigation/main_screen_scope.dart';
 import '../../navigation/tv/tv_destination.dart';
@@ -197,6 +199,19 @@ class TvRootShell extends StatelessWidget {
                           onFocusDestination: coordinator.focusDestination,
                           onNavigateDown: () => onFocusContent(restorePreviousFocus: true),
                           onOpenProfiles: onOpenProfiles,
+                          // Hoofdstuk 18.4. Read here rather than passed down
+                          // from `MainScreen` so the bar is the only thing that
+                          // rebuilds when a token expires, and read through a
+                          // selector on the *auth* flag specifically: a server
+                          // merely going offline is not something the viewer
+                          // can act on, and marking it would train them to
+                          // ignore the dot that means they can.
+                          // Nullable: this shell is also mounted in tests and
+                          // in early startup frames that have no registry yet,
+                          // and "no provider" is not "attention required".
+                          needsAttention: context.select<MultiServerProvider?, bool>(
+                            (p) => p?.hasAuthErrorServers ?? false,
+                          ),
                         ),
                       ),
                     ),

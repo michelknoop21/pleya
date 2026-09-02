@@ -518,6 +518,145 @@ void main() {
     });
   });
 
+  // A15 shares F18's binding rule — the differing input is *when* availability
+  // is read. A server that vanished between activation and the failed start is
+  // still stamped `online` on every source it carries, so the alternatives may
+  // only be derived from a live re-read, never from the stamp.
+  group('A15: the server that vanished during the start takes its whole shelf with it', () {
+    test('every source on the vanished server drops out, not just the one that failed', () {
+      final options = _coordinator.evaluatePlaybackFailure(
+        sources: [
+          _source('nas', id: 'i1'),
+          _source('nas', id: 'i2'),
+          _source('attic', id: 'i1'),
+        ],
+        failedSourceKey: 'nas:i1',
+        availabilityFor: (s) => s.serverId.value == 'nas' ? SourceAvailability.offline : SourceAvailability.online,
+      );
+
+      expect(
+        options.alternatives.map((s) => s.sourceKey),
+        ['attic:i1'],
+        reason: 'the sibling on the dead server cannot be an alternative either',
+      );
+    });
+
+    test('a stamp taken before the start does not survive the server going away', () {
+      // Both sources were stamped online when the group was activated.
+      final options = _coordinator.evaluatePlaybackFailure(
+        sources: [_source('nas'), _source('attic')],
+        failedSourceKey: 'nas:i1',
+        availabilityFor: (_) => SourceAvailability.offline,
+      );
+
+      expect(
+        options.hasAlternatives,
+        isFalse,
+        reason: 'offering the last known-good copy of a server that is gone is the offer that fails twice',
+      );
+    });
+
+    test('the whole profile going away offers nothing at all', () {
+      final options = _coordinator.evaluatePlaybackFailure(
+        sources: [_source('nas'), _source('attic'), _source('shed')],
+        failedSourceKey: 'nas:i1',
+        availabilityFor: (_) => SourceAvailability.offline,
+      );
+
+      expect(options.alternatives, isEmpty);
+      expect(options.hasAlternatives, isFalse);
+    });
+  });
+
+  // A16/A17/A18 are three ways a server id can stop meaning what it meant.
+  // Identity is always the id; the name is display plus one documented sort
+  // tiebreaker, and a key naming a server that is not in the group simply
+  // never matches.
+  group('A16/A17/A18: a server that left, was renamed, or came back under a new id', () {
+    test('A16: a preferred server removed from the profile does not apply', () {
+      final decision = _coordinator.decide(
+        group: _group([_source('nas'), _source('attic')]),
+        intent: UnifiedActivationIntent.play,
+        availabilityFor: _stamped,
+        preferredServerId: 'removed',
+      );
+
+      expect(
+        decision,
+        isA<ShowSourcePicker>(),
+        reason: 'a default naming a server that is no longer here answers nothing, so the user is asked',
+      );
+    });
+
+    test('A17: a rename moves a row, and moves nothing else', () {
+      UnifiedActivationDecision decideWith(String atticName) => _coordinator.decide(
+        group: _group([_source('nas', serverName: 'NAS'), _source('attic', serverName: atticName)]),
+        intent: UnifiedActivationIntent.play,
+        availabilityFor: _stamped,
+        preferredServerId: 'attic',
+      );
+
+      final before = decideWith('Zolder') as ActivateSourceDirectly;
+      final after = decideWith('Kelder') as ActivateSourceDirectly;
+
+      expect(before.source.serverId.value, 'attic');
+      expect(after.source.serverId.value, 'attic', reason: 'the preference followed the machine, not the label on it');
+    });
+
+    test('A17: renaming reorders the picker without changing what is in it', () {
+      List<String> keysFor(String atticName) => rankSources([
+        _source('nas', serverName: 'NAS'),
+        _source('attic', serverName: atticName),
+      ]).map((s) => s.sourceKey).toList();
+
+      // 'Aardkelder' sorts before 'NAS', 'Zolder' after — the documented
+      // hoofdstuk 4.7 tiebreaker, which falls through to the id.
+      expect(keysFor('Zolder'), ['nas:i1', 'attic:i1']);
+      expect(keysFor('Aardkelder'), ['attic:i1', 'nas:i1']);
+      expect(keysFor('Zolder').toSet(), keysFor('Aardkelder').toSet());
+    });
+
+    test('A18: the remembered key from before the re-add names nothing here', () {
+      final decision =
+          _coordinator.decide(
+                group: _group([_source('server-9'), _source('attic')]),
+                intent: UnifiedActivationIntent.details,
+                availabilityFor: _stamped,
+                preferredSourceKey: 'server-1:i1',
+              )
+              as ShowSourcePicker;
+
+      expect(decision.preferredSourceKey, isNull);
+      expect(decision.initialFocusSourceKey, isNotNull);
+    });
+
+    test('A18: the standing default does not survive an id change, so the user is asked', () {
+      final decision = _coordinator.decide(
+        group: _group([_source('server-9'), _source('attic')]),
+        intent: UnifiedActivationIntent.play,
+        availabilityFor: _stamped,
+        preferredServerId: 'server-1',
+      );
+
+      expect(
+        decision,
+        isA<ShowSourcePicker>(),
+        reason: 'nothing here can know server-9 is the same machine server-1 was',
+      );
+    });
+
+    test('A18: re-setting the preference on the new id works normally', () {
+      final decision = _coordinator.decide(
+        group: _group([_source('server-9'), _source('attic')]),
+        intent: UnifiedActivationIntent.play,
+        availabilityFor: _stamped,
+        preferredServerId: 'server-9',
+      );
+
+      expect((decision as ActivateSourceDirectly).source.serverId.value, 'server-9');
+    });
+  });
+
   group('route context', () {
     test('a source switch replaces the chosen key and keeps everything else', () {
       final context = UnifiedMediaRouteContext(

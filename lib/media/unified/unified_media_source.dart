@@ -74,6 +74,30 @@ class UnifiedMediaSource {
     availability: availability,
   );
 
+  /// This source with a re-read [item], keeping every identity fact the
+  /// grouping already established.
+  ///
+  /// The only sanctioned use is refreshing *state* on a membership Pleya
+  /// already resolved — watch progress, view count — after a write or a
+  /// return from the player. [sourceKey], [serverId] and [backend] are not
+  /// re-derived: they are what the group is built on, and a swap that changed
+  /// them would silently move a membership from one group to another without
+  /// the identity pipeline ever being consulted.
+  UnifiedMediaSource withItem(MediaItem item) {
+    assert(item.globalKey == sourceKey, 'withItem may only re-read the same concrete membership');
+    return UnifiedMediaSource(
+      sourceKey: sourceKey,
+      item: item,
+      serverId: serverId,
+      serverName: serverName,
+      backend: backend,
+      libraryId: libraryId,
+      libraryTitle: libraryTitle,
+      externalIds: externalIds,
+      availability: availability,
+    );
+  }
+
   /// Builds a source from a concrete [item] plus whatever [externalIds] were
   /// collected for it. [item] must carry a [MediaItem.serverId] — a source
   /// with no server cannot later be addressed for playback or details

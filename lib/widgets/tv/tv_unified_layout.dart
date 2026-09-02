@@ -826,6 +826,19 @@ class TvTopNavLayout {
   /// The compact Search control.
   static const double searchIconSize = 17;
 
+  /// Hoofdstuk 18.4's "klein statuspunt bij Mijn Pleya".
+  ///
+  /// Drawn as an overlay on the destination, never as another child in the
+  /// row: an extra box would move every destination beside it the moment a
+  /// server's token expired, and hoofdstuk 7.2's whole point about the bar is
+  /// that it does not move under the remote. Sized against the label rather
+  /// than the pill so it reads as a mark on the word, not as a second control.
+  static const double attentionDotSize = 7;
+
+  /// How far the dot's centre sits above and right of the pill's own corner.
+  /// Outside the pill, so the active state's white fill never swallows it.
+  static const double attentionDotInset = 1;
+
   /// The profile chip at the far left.
   static const double profileChipSize = 28;
 

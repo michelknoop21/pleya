@@ -117,6 +117,7 @@ class TvDiscoveryRail extends StatefulWidget {
     required this.title,
     required this.groups,
     required this.onActivate,
+    this.onContextMenu,
     this.clientFor,
     this.isPartial = false,
     this.autofocus = false,
@@ -134,6 +135,11 @@ class TvDiscoveryRail extends StatefulWidget {
   final List<UnifiedMediaGroup> groups;
 
   final ValueChanged<UnifiedMediaGroup> onActivate;
+
+  /// Hoofdstuk 23's menu on a long Select or the context-menu key. Null on a
+  /// surface with no actions to offer, which keeps the gesture unarmed rather
+  /// than opening an empty panel.
+  final ValueChanged<UnifiedMediaGroup>? onContextMenu;
   final MediaServerClient? Function(String serverId)? clientFor;
 
   /// One or more sources that should have contributed did not answer. The rail
@@ -307,6 +313,7 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
             focusNode: _nodeFor(group.groupId),
             autofocus: widget.autofocus && index == 0,
             onSelect: () => widget.onActivate(group),
+            onContextMenu: widget.onContextMenu == null ? null : () => widget.onContextMenu!(group),
             semanticLabel:
                 '${semanticLabelFor(group)}, '
                 '${t.unifiedCatalog.discovery.semantics.position(position: index + 1, count: widget.groups.length)}',
