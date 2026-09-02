@@ -91,6 +91,8 @@ class TvExpandableMediaTile extends StatefulWidget {
     this.onNavigateDown,
     this.onNavigateLeft,
     this.onNavigateRight,
+    this.automationId,
+    this.automationInstance,
   });
 
   final UnifiedMediaGroup group;
@@ -117,6 +119,15 @@ class TvExpandableMediaTile extends StatefulWidget {
   final VoidCallback? onNavigateLeft;
   final VoidCallback? onNavigateRight;
 
+  /// Pleya Verify addressing. Passed straight to [FocusableWrapper], which
+  /// already owns the registration — so instrumenting a tile costs no extra
+  /// widget in the tree, and the measured rect is the wrapper's own box, which
+  /// is the artwork *plus* [TvDiscoveryLayout.cardFocusRingGap] on every side.
+  /// That is deliberate: a scenario asking whether a focus ring is clipped has
+  /// to be measuring the ring, not the picture inside it.
+  final String? automationId;
+  final String? automationInstance;
+
   @override
   State<TvExpandableMediaTile> createState() => _TvExpandableMediaTileState();
 }
@@ -133,6 +144,9 @@ class _TvExpandableMediaTileState extends State<TvExpandableMediaTile> {
     return FocusableWrapper(
       focusNode: widget.focusNode,
       autofocus: widget.autofocus,
+      automationId: widget.automationId,
+      automationInstance: widget.automationInstance,
+      automationRole: 'grid.item',
       onSelect: widget.onSelect,
       onLongPress: widget.onContextMenu,
       enableLongPress: widget.onContextMenu != null,
@@ -269,9 +283,35 @@ class _TileArtwork extends StatelessWidget {
     );
   }
 
+  /// Height of the artwork box in either branch — constant by construction,
+  /// which is the whole rule this widget keeps.
+  double get _artworkHeight => TvDiscoveryLayout.cardHeight * scale;
+
+  /// The request size handed to [OptimizedMediaImage], *not* the laid-out size.
+  ///
+  /// Both branches state their final, focused-state dimensions explicitly. The
+  /// tile's own width is an [AnimatedContainer] target, so without this the
+  /// image falls into `OptimizedMediaImage`'s `LayoutBuilder` branch and reads
+  /// the width *mid-tween*: `MediaImageHelper` buckets transcode dimensions in
+  /// steps of 40 device px, TV DPR is at least 2.0, so every ~20 logical pixels
+  /// of the 200 ms expansion is a different URL, a different cache key, a
+  /// different disk lookup and, on a miss, a different download. On the
+  /// canonical canvas that is roughly fifteen requests per focus move.
+  ///
+  /// The poster branch was already URL-stable, but only by accident:
+  /// `ImageType.poster` computes `min(targetWidth, targetHeight * 2/3)` and the
+  /// height is constant, so the height term pins it. Stating the size there too
+  /// makes the invariant explicit instead of incidental, and takes the
+  /// per-frame `LayoutBuilder` rebuild out of the tween as well.
+  ///
+  /// Layout is untouched: the parent `Stack` is `StackFit.expand`, so these
+  /// numbers never fight the tween — they only decide which bytes are asked
+  /// for. Geometry stays fixed height, animating width, neighbours sliding.
   Widget _poster(MediaServerClient? client, MediaItem item) => OptimizedMediaImage.poster(
     client: client,
     imagePath: discoveryPosterPath(item),
+    width: TvDiscoveryLayout.posterWidth(scale),
+    height: _artworkHeight,
     fit: BoxFit.cover,
     fallbackIcon: item.kind == MediaKind.show ? Symbols.live_tv_rounded : Symbols.movie_rounded,
   );
@@ -282,30 +322,53 @@ class _TileArtwork extends StatelessWidget {
   /// library whose backdrops were never fetched, a film that has none — the
   /// choice is between cropping a 2:3 poster into 16:9, which throws away most
   /// of the image and is the "extreme crop" hoofdstuk 22 rules out, and
-  /// building a frame around the poster instead. This builds the frame: the
-  /// poster blurred and darkened to fill the width, the poster itself drawn
-  /// whole and centred on top. The colour still comes from the artwork
-  /// (hoofdstuk 23), nothing is cropped away, and the tile keeps the one width
-  /// the rail's geometry depends on.
+  /// building a frame around the poster instead. This builds the frame
+  /// ([_posterFrame]): the colour still comes from the artwork (hoofdstuk 23),
+  /// nothing is cropped away, and the tile keeps the one width the rail's
+  /// geometry depends on.
   Widget _wide(MediaServerClient? client, MediaItem item) {
     final widePath = discoveryWideArtPath(item);
     if (widePath != null) {
       return OptimizedMediaImage(
         client: client,
         imagePath: widePath,
+        width: TvDiscoveryLayout.wideWidth(scale),
+        height: _artworkHeight,
         fit: BoxFit.cover,
         imageType: item.kind == MediaKind.episode ? ImageType.thumb : ImageType.art,
         fallbackIcon: Symbols.movie_rounded,
+        // The poster frame, not a grey box, while the wide artwork loads (P8).
+        //
+        // The wide variant is a *different asset* from the poster the tile was
+        // just showing, so focus arriving before the prefetcher has warmed it
+        // meant the picture the viewer was looking at was replaced by an empty
+        // surface for as long as the fetch took — on the one tile they had just
+        // chosen. Warming ahead makes that rare; this makes it impossible.
+        // It is the same composition the no-wide-artwork branch below draws, so
+        // there is one answer to "16:9 box, only a 2:3 picture" rather than two.
+        placeholder: (context, _) => _posterFrame(client, item),
       );
     }
+    return _posterFrame(client, item);
+  }
 
+  /// A 16:9 frame built around a 2:3 poster: the poster blurred and darkened to
+  /// fill the width, the poster itself drawn whole and centred on top.
+  Widget _posterFrame(MediaServerClient? client, MediaItem item) {
     final poster = discoveryPosterPath(item);
     return Stack(
       fit: StackFit.expand,
       children: [
         ImageFiltered(
           imageFilter: ui.ImageFilter.blur(sigmaX: 18 * scale, sigmaY: 18 * scale, tileMode: TileMode.clamp),
-          child: OptimizedMediaImage.poster(client: client, imagePath: poster, fit: BoxFit.cover, fallbackIcon: null),
+          child: OptimizedMediaImage.poster(
+            client: client,
+            imagePath: poster,
+            width: TvDiscoveryLayout.wideWidth(scale),
+            height: _artworkHeight,
+            fit: BoxFit.cover,
+            fallbackIcon: null,
+          ),
         ),
         ColoredBox(color: Colors.black.withValues(alpha: 0.45)),
         Center(
@@ -314,6 +377,8 @@ class _TileArtwork extends StatelessWidget {
             child: OptimizedMediaImage.poster(
               client: client,
               imagePath: poster,
+              width: TvDiscoveryLayout.posterWidth(scale),
+              height: _artworkHeight,
               fit: BoxFit.cover,
               fallbackIcon: item.kind == MediaKind.show ? Symbols.live_tv_rounded : Symbols.movie_rounded,
             ),

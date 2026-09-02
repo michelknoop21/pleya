@@ -211,19 +211,39 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
   /// guaranteed. The viewer reads this as the billboard coming back with the
   /// focus, not as a jump — and under reduced motion an instant change is the
   /// right answer anyway.
+  ///
+  /// **The scroll comes first, in both branches.** The earlier version tried
+  /// `focusLastCta()` before restoring the offset and returned as soon as it
+  /// succeeded. That reads as "the hero is still here, nothing to scroll" and
+  /// it is not: a `ListView` keeps building for a whole `cacheExtent` past the
+  /// viewport, `canRequestFocus` is true for a mounted-but-offscreen node, and
+  /// a bare `requestFocus()` provokes no `ensureVisible` of its own — only the
+  /// traversal policy does that, and this is not traversal. So on the ordinary
+  /// case, one row down and straight back up, the CTA took the focus while the
+  /// billboard was entirely off the top of the screen, and `jumpTo(0)` on the
+  /// line below was skipped. The next press then left for the top navigation
+  /// and the hero was unreachable from below — the exact dead end this method
+  /// exists to close. The doc that defended the early return only reasoned
+  /// about the *disposed* hero, which is the other half of the same case.
   void _focusHeroFromFirstRow() {
-    if (_heroKey.currentState?.focusLastCta() ?? false) return;
     if (!_hasHero) {
       widget.onNavigateUp?.call();
       return;
     }
     if (_scroll.hasClients && _scroll.offset > 0) _scroll.jumpTo(0);
+    if (_heroKey.currentState?.focusLastCta() ?? false) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (_heroKey.currentState?.focusLastCta() ?? false) return;
       widget.onNavigateUp?.call();
     });
   }
+
+  /// The feed's scroll offset, so a test can prove the hero is back *in view*
+  /// and not merely focused — the two came apart, and only the second was ever
+  /// asserted.
+  @visibleForTesting
+  double get scrollOffset => _scroll.hasClients ? _scroll.offset : 0;
 
   /// Every hoofdstuk 9.6 pause condition this widget owns, in one place.
   ///
@@ -453,6 +473,7 @@ class TvContentFeedState extends State<TvContentFeed> with TvDiscoveryActivation
                           onContextMenu: (group) =>
                               _openContextMenu(group, isInContinueWatching: rows[i].hubId == continueWatchingHubId),
                           onNavigateUp: i == 0 && heroGroups.isNotEmpty ? _focusHeroFromFirstRow : null,
+                          automationRailIndex: i,
                         ),
                       ),
                     ],

@@ -36,6 +36,7 @@ import '../../providers/tv_discovery_landing_provider.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../widgets/tv/tv_discovery_rail.dart';
+import '../../widgets/tv/tv_discovery_safe_area.dart';
 import '../../widgets/tv/tv_panel_primitives.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import '../../widgets/tv/tv_view_all_action.dart';
@@ -143,7 +144,8 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
         // to disappear is artwork, and a scrim painted over it would have to
         // match the page colour exactly — which it cannot, since the page has
         // its own vertical lift.
-        return ShaderMask(
+        final safeArea = TvDiscoverySafeArea.maybe(context);
+        final page = ShaderMask(
           shaderCallback: (bounds) => LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
@@ -155,7 +157,11 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
             controller: _scrollController,
             padding: EdgeInsets.only(
               top: TvCatalogLayout.topSafeInset * scale,
-              bottom: TvCatalogLayout.topSafeInset * scale,
+              // The bottom edge is the one that carries the last readable line
+              // and, once the viewer is on the final rail, its focus ring — so
+              // it pays the wider band (P12, see
+              // [TvCatalogLayout.bottomSafeInset]).
+              bottom: TvCatalogLayout.bottomSafeInset * scale,
             ),
             children: [
               // DEC-068: the catalog action lives beside the page title, and is
@@ -222,6 +228,7 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
                     ),
                     title: rails[i].title,
                     groups: rails[i].groups,
+                    automationRailIndex: i,
                     isPartial: rails[i].isPartial,
                     initialFocusedGroupId: _focusedGroupIdByHubId[rails[i].hubId],
                     onFocusedGroupChanged: (groupId) => _focusedGroupIdByHubId[rails[i].hubId] = groupId,
@@ -239,6 +246,11 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
             ],
           ),
         );
+        // The safe-area probe is measured, never drawn — see
+        // [TvDiscoverySafeArea]. `maybe` returns null in an ordinary build, so
+        // the Stack is not built either.
+        if (safeArea == null) return page;
+        return Stack(children: [page, safeArea]);
       },
     );
   }

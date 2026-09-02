@@ -26,6 +26,8 @@ library;
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
+
 import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
 
@@ -162,6 +164,30 @@ class TvCatalogLayout {
   /// Hoofdstuk 8.1's vertical breathing room above the header, as a reference
   /// measurement: no text and no focus ring inside the outer 56 px.
   static const double topSafeInset = 56;
+
+  /// The same band at the *bottom* edge, where 56 turned out to be a floor
+  /// rather than a margin (P12).
+  ///
+  /// 56 reference px is 5.2% of the reference height, and ~5% per edge is what
+  /// a consumer set overscans — so a page laid out to exactly 56 puts its last
+  /// readable line and the bottom row's focus ring precisely *on* the band
+  /// rather than clear of it, and a set that overscans a little more than
+  /// nominal eats them. That is not a rule this changes: hoofdstuk 8.1 states a
+  /// minimum ("geen tekst of focusring binnen de buitenste 56 pixels"), and 81
+  /// keeps well inside it.
+  ///
+  /// 81 is 7.5% of the 1080 reference height, the upper end of consumer
+  /// overscan, so the bottom edge clears the worst case instead of matching the
+  /// nominal one. The top keeps [topSafeInset]: there the page heading pays the
+  /// margin and the first thing under it is a heading, not the last line of the
+  /// page, and its focus headroom is budgeted separately in
+  /// [TvCatalogGrid.focusRingHeadroom].
+  ///
+  /// This is a straight increase in clearance, so it only pays off where the
+  /// page has the room to give — which is what DEC-087's shorter rails
+  /// deliver. Doing it alone would have pushed content up without giving any
+  /// of it back.
+  static const double bottomSafeInset = 81;
 
   /// Page heading, hoofdstuk 8.3's "paginaheading Films/Series 38–44" divided
   /// by the [TvLayoutConstants.scaleForHeight] clamp: 27 renders at ~23 logical
@@ -463,13 +489,15 @@ class TvCatalogGrid {
   final double inset;
 
   /// Room under the last row, so nothing the user needs to read — or the focus
-  /// ring — ends up in hoofdstuk 8.1's outer 56 reference pixels.
+  /// ring — ends up in the overscan band at the bottom edge.
   ///
   /// Two parts. The safe margin itself converts like every other box
   /// measurement here, as a fraction of the viewport: on a 16:9 surface
-  /// `56/1080` of the height is exactly `56/1920` of the width, so the vertical
-  /// margin falls out of the same reference the horizontal one uses. On top of
-  /// that comes the room a focused card needs to grow into, because
+  /// `x/1080` of the height is exactly `x/1920` of the width, so the vertical
+  /// margin falls out of the same reference the horizontal one uses. It reads
+  /// [TvCatalogLayout.bottomSafeInset], not `topSafeInset`: see there for why
+  /// the two edges no longer share one number. On top of that comes the room a
+  /// focused card needs to grow into, because
   /// [FocusTheme.fullCardFocusScale] enlarges it about its centre and the bottom
   /// row has nothing below it to grow into — and directional traversal scrolls
   /// with `keepVisibleAtEnd`, so without this the ring lands flush against the
@@ -554,7 +582,7 @@ class TvCatalogGrid {
       cardWidth: cardWidth,
       gutter: gutter,
       inset: inset,
-      bottomSafeInset: width * (TvCatalogLayout.topSafeInset / _referenceWidth) + focusGrowth,
+      bottomSafeInset: width * (TvCatalogLayout.bottomSafeInset / _referenceWidth) + focusGrowth,
       focusRingHeadroom: focusGrowth,
     );
   }
@@ -618,14 +646,32 @@ class TvDiscoveryLayout {
   ///
   /// The number is the whole difference between a discovery rail and a bigger
   /// catalog row, so it is worth stating what it buys on the canonical
-  /// 1038×584 canvas (scale 0.85): 270 renders the tile band 229.5 tall, the
-  /// focused 16:9 frame ~408 wide — about 40% of the usable content width —
-  /// and a 2:3 neighbour ~153 wide, which leaves room for roughly *three*
-  /// neighbours beside the focused item. That is the Netflix TV composition
-  /// the reference screenshots show. The first build used 172, which put six
-  /// neighbours on screen and made the landing read as a slightly larger
-  /// catalog grid — the exact impression the phase exists to avoid.
-  static const double cardHeight = 270;
+  /// 1038×584 canvas (scale 0.85, usable rail width 964.9 — see
+  /// [railUsableWidth]). At rest a tile occupies [posterWidth] plus its two
+  /// focus-ring gaps, and the pitch between two tiles adds [itemGap]:
+  ///
+  /// | cardHeight | poster | wide | at rest | beside the focused tile |
+  /// |---|---|---|---|---|
+  /// | 270 | 153.0 | 408.0 | 5 full + 89 px | 3 full, focused 42.3% |
+  /// | 240 | 136.0 | 362.7 | 6 full + 16 px | 3 full, focused 37.6% |
+  /// | **220** | **124.7** | **332.4** | **6 full + 84 px** | **4 full, focused 34.5%** |
+  /// | 200 | 113.3 | 302.2 | 7 full + 17 px | 4 full, focused 31.3% |
+  ///
+  /// 220 is the value DEC-087 fixes, and it supersedes 33.2's absolute band
+  /// numbers and 33.3's "focused 16:9 ≈ 40%, three neighbours". The reasoning
+  /// is that both halves of the density requirement have to hold at once: six
+  /// full tiles at rest *with* a visibly partial seventh, so the row reads as
+  /// running off the page rather than as ending, and four full neighbours
+  /// beside the focused tile, so the expansion is a change of emphasis rather
+  /// than a takeover of the row. 270 met neither (five at rest, three
+  /// neighbours, and the focused frame taking 42% of the band); 200 met the
+  /// second at the cost of a seventh full tile at rest, which is the catalog
+  /// grid impression this surface exists to avoid.
+  ///
+  /// The knock-on is deliberate: one rail drops from 374.8 to ≈332 logical
+  /// pixels, 57% of the canonical canvas instead of 64%, which is the vertical
+  /// room [TvCatalogGrid.bottomSafeInset] and the hero return path both needed.
+  static const double cardHeight = 220;
   static const double posterAspectRatio = 2 / 3;
   static const double wideAspectRatio = 16 / 9;
   static const double cardRadius = 10;
@@ -701,6 +747,39 @@ class TvDiscoveryLayout {
 
   static double posterWidth(double scale) => cardHeight * scale * posterAspectRatio;
   static double wideWidth(double scale) => cardHeight * scale * wideAspectRatio;
+
+  /// The box a tile actually lays out: its artwork plus the focus-ring gap on
+  /// both sides, which `TvExpandableMediaTile` pads itself by.
+  ///
+  /// Density, the rail's scroll arithmetic and the layout test all have to
+  /// agree on this, and before DEC-087 each of them re-derived it from
+  /// [posterWidth] and [cardFocusRingGap] by hand.
+  static double tileWidth(double scale, {required bool focused}) =>
+      (focused ? wideWidth(scale) : posterWidth(scale)) + cardFocusRingGap * scale * 2;
+
+  /// Distance from one resting tile's left edge to the next one's.
+  static double railPitch(double scale) => tileWidth(scale, focused: false) + itemGap * scale;
+
+  /// The rail list's own leading inset: the page inset minus the gap the tile
+  /// pads itself by, so the first tile's *artwork* lines up with the heading
+  /// above it rather than sitting a ring-gap further right.
+  static double railLeadInset(double scale) => math.max(0.0, pageInset * scale - cardFocusRingGap * scale);
+
+  /// Width a rail has for tiles on a viewport [width].
+  static double railUsableWidth(double width, double scale) => math.max(0.0, width - railLeadInset(scale) * 2);
+
+  /// How many tiles [usableWidth] shows in full, laid out at rest.
+  ///
+  /// The last tile carries no trailing gap, so the run of `n` tiles is
+  /// `(n - 1) * railPitch + tileWidth`. Used by the density test and by
+  /// nothing in production — the rail itself never counts tiles, it scrolls.
+  @visibleForTesting
+  static int fullTilesAtRest(double usableWidth, double scale) {
+    final pitch = railPitch(scale);
+    final tile = tileWidth(scale, focused: false);
+    if (pitch <= 0 || usableWidth < tile) return 0;
+    return 1 + ((usableWidth - tile) / pitch).floor();
+  }
 
   /// The "Alle films ▸ Alles bekijken" section action that closes a landing
   /// (hoofdstuk 10.2a, DEC-064 punt 3). A full-width row rather than a text

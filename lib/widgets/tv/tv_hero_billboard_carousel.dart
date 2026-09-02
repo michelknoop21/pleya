@@ -57,6 +57,8 @@ import '../../focus/focus_theme.dart';
 import '../../focus/focusable_button.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../focus/input_mode_tracker.dart';
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
@@ -319,37 +321,53 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
     final item = group.representativeSource.item;
     final client = widget.clientFor?.call(item.serverId ?? '');
 
-    return Semantics(
-      container: true,
-      label: widget.groups.length > 1
-          ? '${t.unifiedCatalog.home.featured}: ${heroTitleFor(group)}, '
-                '${t.unifiedCatalog.discovery.semantics.position(position: _index + 1, count: widget.groups.length)}'
-          : '${t.unifiedCatalog.home.featured}: ${heroTitleFor(group)}',
-      child: Stack(
-        children: [
-          TvHeroBillboardCard(
-            group: group,
-            size: widget.size,
-            client: client,
-            hideSpoilers: widget.hideSpoilers,
-            textOpacity: widget.textOpacity,
-            artwork: AnimatedSwitcher(
-              duration: reduceMotion(context, TvHomeLayout.heroCrossfade),
-              // Both layers on screen at once during the fade, the outgoing one
-              // underneath: the default `AnimatedSwitcher` layout stacks them,
-              // which is exactly the dissolve 33.1 asks for and not the
-              // fade-to-background-and-back a `SizeTransition` would give.
-              child: TvHeroArtwork(key: ValueKey(group.groupId), item: item, size: widget.size, client: client),
+    return AutomationNode(
+      // The existing `discover.hero` id, adopted on TV.
+      //
+      // It was registered only in `DiscoverScreen._buildHeroSectionSliver`,
+      // whose own comment reads "TV runs through _buildTvContent, so this
+      // section is phone/tablet/desktop" — so `/v1/ui_tree` on tvOS reported
+      // the nav and the rails and nothing of the hero, on the platform where
+      // the hero *is* the landing. `tvos.sidebar.collapse` records that gap in
+      // its own comments; `tvos.home.hero-return` is the scenario that needs it
+      // closed, because "the billboard came back into view" is a statement
+      // about a rect. No new id: the same one, on the second surface that draws
+      // the thing it names.
+      id: AutomationIds.discoverHero,
+      role: 'hero',
+      label: heroTitleFor(group),
+      child: Semantics(
+        container: true,
+        label: widget.groups.length > 1
+            ? '${t.unifiedCatalog.home.featured}: ${heroTitleFor(group)}, '
+                  '${t.unifiedCatalog.discovery.semantics.position(position: _index + 1, count: widget.groups.length)}'
+            : '${t.unifiedCatalog.home.featured}: ${heroTitleFor(group)}',
+        child: Stack(
+          children: [
+            TvHeroBillboardCard(
+              group: group,
+              size: widget.size,
+              client: client,
+              hideSpoilers: widget.hideSpoilers,
+              textOpacity: widget.textOpacity,
+              artwork: AnimatedSwitcher(
+                duration: reduceMotion(context, TvHomeLayout.heroCrossfade),
+                // Both layers on screen at once during the fade, the outgoing one
+                // underneath: the default `AnimatedSwitcher` layout stacks them,
+                // which is exactly the dissolve 33.1 asks for and not the
+                // fade-to-background-and-back a `SizeTransition` would give.
+                child: TvHeroArtwork(key: ValueKey(group.groupId), item: item, size: widget.size, client: client),
+              ),
+              actions: _actions(context, group, scale),
             ),
-            actions: _actions(context, group, scale),
-          ),
-          if (_showIndicator && widget.groups.length > 1)
-            Positioned(
-              right: (TvHomeLayout.heroContentInset * scale),
-              bottom: (TvHomeLayout.heroContentBottom * scale),
-              child: _SegmentIndicator(count: widget.groups.length, active: _index, scale: scale),
-            ),
-        ],
+            if (_showIndicator && widget.groups.length > 1)
+              Positioned(
+                right: (TvHomeLayout.heroContentInset * scale),
+                bottom: (TvHomeLayout.heroContentBottom * scale),
+                child: _SegmentIndicator(count: widget.groups.length, active: _index, scale: scale),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -394,35 +412,45 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            FocusableButton(
+            // `discover.hero.play` on the TV pill, the same id the
+            // phone/desktop hero's play button already carries. Given the
+            // carousel's own `_playFocus`, so a scenario can assert both where
+            // the pill is and whether the remote is on it — which is the whole
+            // of `tvos.home.hero-return`'s second half.
+            AutomationNode(
+              id: AutomationIds.discoverHeroPlay,
+              role: 'button',
               focusNode: _playFocus,
-              autoScroll: false,
-              // The pill paints its own focus (it inverts), so the wrapper must not
-              // also draw a ring around it.
-              mode: FocusIndicatorMode.delegated,
-              // 33.1 binds a *white* Afspelen capsule at rest, and the shared
-              // button's unfocused 60% dim would render it grey until focused —
-              // a state the north star does not have. The pill draws its own focus
-              // (the ring on its reserved band, and the secondary's inversion), so
-              // it owns the whole treatment.
-              dimWhenUnfocused: false,
-              onPressed: () => _activate(intent: UnifiedActivationIntent.play, playDirectly: true),
-              onNavigateDown: widget.onNavigateDown,
-              onNavigateUp: widget.onNavigateUp,
-              onNavigateLeft: _stepFrom(rendered, _playFocus, -1),
-              onNavigateRight: _stepFrom(rendered, _playFocus, 1),
-              onBack: widget.onBack,
-              child: _HeroPill(
+              child: FocusableButton(
                 focusNode: _playFocus,
-                icon: Symbols.play_arrow_rounded,
-                label: resume != null ? t.common.resume : t.common.play,
-                scale: scale,
-                primary: true,
-                progress: resume,
-                onGainedFocus: () {
-                  _lastCtaWasInfo = false;
-                  _noteInteraction();
-                },
+                autoScroll: false,
+                // The pill paints its own focus (it inverts), so the wrapper must not
+                // also draw a ring around it.
+                mode: FocusIndicatorMode.delegated,
+                // 33.1 binds a *white* Afspelen capsule at rest, and the shared
+                // button's unfocused 60% dim would render it grey until focused —
+                // a state the north star does not have. The pill draws its own focus
+                // (the ring on its reserved band, and the secondary's inversion), so
+                // it owns the whole treatment.
+                dimWhenUnfocused: false,
+                onPressed: () => _activate(intent: UnifiedActivationIntent.play, playDirectly: true),
+                onNavigateDown: widget.onNavigateDown,
+                onNavigateUp: widget.onNavigateUp,
+                onNavigateLeft: _stepFrom(rendered, _playFocus, -1),
+                onNavigateRight: _stepFrom(rendered, _playFocus, 1),
+                onBack: widget.onBack,
+                child: _HeroPill(
+                  focusNode: _playFocus,
+                  icon: Symbols.play_arrow_rounded,
+                  label: resume != null ? t.common.resume : t.common.play,
+                  scale: scale,
+                  primary: true,
+                  progress: resume,
+                  onGainedFocus: () {
+                    _lastCtaWasInfo = false;
+                    _noteInteraction();
+                  },
+                ),
               ),
             ),
             SizedBox(width: TvHomeLayout.heroActionGap * scale),

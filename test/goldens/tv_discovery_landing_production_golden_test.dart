@@ -254,11 +254,7 @@ void main() {
 
   Future<void> settle(WidgetTester tester) async {
     await discover.load();
-    landing = TvDiscoveryLandingProvider(
-      discover: discover,
-      multiServer: multiServer,
-      continueWatchingTitle: 'Continue Watching',
-    );
+    landing = TvDiscoveryLandingProvider(discover: discover, multiServer: multiServer);
     addTearDown(landing.dispose);
     // Microtask-only yield — see tv_discovery_landing_provider_test.dart's
     // own note on why `Future.delayed` hangs a `testWidgets` binding.

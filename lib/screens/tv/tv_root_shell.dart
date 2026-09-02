@@ -42,6 +42,7 @@ import '../../providers/multi_server_provider.dart';
 import '../../focus/focus_memory_tracker.dart';
 import '../../navigation/main_screen_scope.dart';
 import '../../navigation/tv/tv_destination.dart';
+import '../../navigation/tv/tv_content_focus_authority.dart';
 import '../../navigation/tv/tv_navigation_coordinator.dart';
 import '../../profiles/profile.dart';
 import '../../theme/mono_tokens.dart';
@@ -53,6 +54,7 @@ class TvRootShell extends StatelessWidget {
   const TvRootShell({
     super.key,
     required this.coordinator,
+    required this.contentFocus,
     required this.navNodes,
     required this.navFocusScope,
     required this.contentFocusScope,
@@ -70,6 +72,11 @@ class TvRootShell extends StatelessWidget {
   });
 
   final TvNavigationCoordinator coordinator;
+
+  /// The single content-focus authority (P2). Handed down so the content
+  /// screens under this shell can read it off [MainScreenFocusScope] instead
+  /// of each keeping a guard of their own.
+  final TvContentFocusAuthority contentFocus;
 
   /// Owned by `MainScreen`, not by the bar: a rebuild of the bar must not
   /// dispose the node that currently holds the remote's focus.
@@ -183,6 +190,7 @@ class TvRootShell extends StatelessWidget {
                 viewportWidth: constraints.maxWidth,
                 selectLibrary: selectLibrary,
                 openSettings: openSettings,
+                tvContentFocus: contentFocus,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -197,6 +205,11 @@ class TvRootShell extends StatelessWidget {
                           profile: profile,
                           onSelect: onSelectDestination,
                           onFocusDestination: coordinator.focusDestination,
+                          // DOWN out of the bar is the one press that means
+                          // "put me in the content"; `_focusContent` arms the
+                          // intent, and whatever can satisfy it consumes it —
+                          // now if the destination is ready, later if it is
+                          // still waiting on a server (P2).
                           onNavigateDown: () => onFocusContent(restorePreviousFocus: true),
                           onOpenProfiles: onOpenProfiles,
                           // Hoofdstuk 18.4. Read here rather than passed down
@@ -238,10 +251,26 @@ class TvRootShell extends StatelessWidget {
                                 children: [
                                   // Offstage rather than removed, for the reason
                                   // above; `TickerMode` stops its animations from
-                                  // running behind the route on top of it.
-                                  Offstage(
-                                    offstage: nested != null,
-                                    child: TickerMode(enabled: nested == null, child: screens!),
+                                  // running behind the route on top of it, and
+                                  // `ExcludeFocus` keeps it out of the focus
+                                  // tree.
+                                  //
+                                  // `Offstage` alone removes hit-testing and
+                                  // painting, not focusability — so with a
+                                  // nested route open, the destination root
+                                  // underneath stayed a full set of focusable
+                                  // widgets in the same scope as the route on
+                                  // top of it. That is the second half of P5:
+                                  // the first is `IndexedStack` in
+                                  // `MainScreen._buildTickerAwareStack`, and a
+                                  // fix in only one of the two still leaves a
+                                  // reachable invisible screen.
+                                  ExcludeFocus(
+                                    excluding: nested != null,
+                                    child: Offstage(
+                                      offstage: nested != null,
+                                      child: TickerMode(enabled: nested == null, child: screens!),
+                                    ),
                                   ),
                                   if (nested != null) Builder(builder: nested.builder),
                                 ],

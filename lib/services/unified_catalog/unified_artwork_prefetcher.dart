@@ -39,6 +39,23 @@
 ///    that are actually on screen;
 /// 3. a URL that has been dispatched once is not dispatched again, remembered
 ///    in a bounded LRU of [maxRememberedUrls] entries.
+///
+/// ## Two variants, one budget
+///
+/// A discovery rail draws a 2:3 poster at rest and a 16:9 frame under focus,
+/// and those are *different assets*, not two crops of one. Warming only the
+/// poster left the picture the viewer had just chosen to be fetched at the
+/// moment they chose it. So a caller may name a second variant
+/// ([UnifiedArtworkVariant]) and this warms both.
+///
+/// The three bounds above still hold **across** the two, which is the point.
+/// One [_pending] queue, one [_inFlight] counter, one [maxConcurrent]: a second
+/// prefetcher instance beside the first would give two independent budgets of
+/// three that together can occupy all six permits `image_cache_service.dart`
+/// grants globally, and starve exactly the tile on screen. The wide variant
+/// gets its own, much shorter, [UnifiedArtworkVariant.lookaheadItems] instead —
+/// it is the expensive one and only the neighbours the remote can reach in the
+/// next second or two are worth holding.
 library;
 
 import 'dart:collection';
@@ -46,6 +63,7 @@ import 'dart:collection';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../media/media_item.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../utils/media_image_helper.dart';
@@ -64,6 +82,46 @@ typedef UnifiedArtworkClientResolver = MediaServerClient? Function(String server
 /// already uses for its grid. A test injects its own and asserts which
 /// requests would have been warmed, in what order.
 typedef UnifiedArtworkPrecache = Future<void> Function(ArtworkPrefetchRequest request, BuildContext context);
+
+/// Picks the artwork path for one variant off a concrete item — `thumbPath` for
+/// the catalog poster, `discoveryPosterPath`/`discoveryWideArtPath` for a
+/// discovery rail. Returning null means "this item has no such artwork", which
+/// is a normal answer.
+typedef UnifiedArtworkPathResolver = String? Function(MediaItem item);
+
+/// Picks the [ImageType] for one variant. Per item rather than per variant
+/// because an episode's wide still is an [ImageType.thumb] while a film's
+/// backdrop is an [ImageType.art], and they bucket to different sizes.
+typedef UnifiedArtworkImageTypeResolver = ImageType Function(MediaItem item);
+
+/// A second artwork the same window should warm, beside the primary one.
+///
+/// The *size* is not here: it is per call, like [UnifiedArtworkPrefetcher.prefetchAround]'s
+/// `posterSize`, because a caller's layout scale is only known once it has a
+/// viewport. It has to be the size the widget will actually request with, or
+/// the warmed entry lands in a different transcode bucket and the widget never
+/// finds it.
+@immutable
+class UnifiedArtworkVariant {
+  const UnifiedArtworkVariant({
+    required this.pathOf,
+    required this.imageTypeOf,
+    this.lookaheadItems = defaultWideLookaheadItems,
+  });
+
+  /// Four, against the poster's twelve.
+  ///
+  /// A wide frame is roughly 2.7 times the pixels of a poster and only ever one
+  /// of them is on screen, so the whole reason to warm it is the *next* couple
+  /// of Left/Right presses — not a screenful. Twelve here would put the bytes
+  /// of a dozen backdrops in the air for artwork the viewer will most likely
+  /// never expand, on hardware with a weak radio and 1 GB of RAM.
+  static const int defaultWideLookaheadItems = 4;
+
+  final UnifiedArtworkPathResolver pathOf;
+  final UnifiedArtworkImageTypeResolver imageTypeOf;
+  final int lookaheadItems;
+}
 
 /// One poster the prefetcher decided to warm.
 ///
@@ -110,6 +168,9 @@ class UnifiedArtworkPrefetcher {
     this.lookaheadItems = defaultLookaheadItems,
     this.maxConcurrent = defaultMaxConcurrent,
     this.maxRememberedUrls = defaultMaxRememberedUrls,
+    this.primaryPathOf = _thumbPathOf,
+    this.primaryImageTypeOf = _alwaysPoster,
+    this.secondary,
   }) : _precache = precache ?? _precacheThroughFlutter;
 
   /// How many cards beyond each edge of the viewport get warmed.
@@ -144,6 +205,19 @@ class UnifiedArtworkPrefetcher {
   /// card take, so one resolver serves all three.
   final UnifiedArtworkClientResolver clientFor;
 
+  /// Which path and which [ImageType] the *primary* variant is.
+  ///
+  /// Defaulted to the catalog grid's own answer — `item.thumbPath` as an
+  /// [ImageType.poster] — so every existing call site keeps byte-identical
+  /// behaviour without naming either. A discovery rail overrides them, because
+  /// an episode tile there shows its show's poster rather than its own still.
+  final UnifiedArtworkPathResolver primaryPathOf;
+  final UnifiedArtworkImageTypeResolver primaryImageTypeOf;
+
+  /// A second artwork to warm in the same window, or null for one variant only
+  /// — which is exactly today's behaviour, and what the grid keeps.
+  final UnifiedArtworkVariant? secondary;
+
   final UnifiedArtworkPrecache _precache;
 
   final int lookaheadItems;
@@ -170,6 +244,7 @@ class UnifiedArtworkPrefetcher {
   int? _lastFirst;
   int? _lastLast;
   Size? _lastPosterSize;
+  Size? _lastSecondarySize;
 
   /// Queues the posters around the visible range and starts warming them.
   ///
@@ -197,6 +272,7 @@ class UnifiedArtworkPrefetcher {
     required int firstVisibleIndex,
     required int lastVisibleIndex,
     required Size posterSize,
+    Size? secondarySize,
   }) {
     if (_disposed || groups.isEmpty) return;
     if (!posterSize.width.isFinite || !posterSize.height.isFinite) return;
@@ -205,13 +281,15 @@ class UnifiedArtworkPrefetcher {
     if (identical(groups, _lastGroups) &&
         firstVisibleIndex == _lastFirst &&
         lastVisibleIndex == _lastLast &&
-        posterSize == _lastPosterSize) {
+        posterSize == _lastPosterSize &&
+        secondarySize == _lastSecondarySize) {
       return;
     }
     _lastGroups = groups;
     _lastFirst = firstVisibleIndex;
     _lastLast = lastVisibleIndex;
     _lastPosterSize = posterSize;
+    _lastSecondarySize = secondarySize;
 
     final last = groups.length - 1;
     final first = firstVisibleIndex.clamp(0, last);
@@ -222,12 +300,29 @@ class UnifiedArtworkPrefetcher {
     _pending.clear();
     _pendingUrls.clear();
 
+    // The focused/visible range's *second* variant goes first, ahead of even
+    // the primary lookahead: on a discovery rail that is the artwork the tile
+    // the remote is standing on is about to draw, and everything else is
+    // speculation about where it goes next.
+    final wide = secondary;
+    if (wide != null && secondarySize != null && secondarySize.width > 0 && secondarySize.height > 0) {
+      final wideFirst = (first - wide.lookaheadItems).clamp(0, last);
+      final wideEnd = (visibleEnd + wide.lookaheadItems).clamp(0, last);
+      for (final index in _warmOrder(first: first, visibleEnd: visibleEnd, lastIndex: last)) {
+        if (index < wideFirst || index > wideEnd) continue;
+        _enqueue(
+          groups[index],
+          secondarySize,
+          devicePixelRatio,
+          context,
+          pathOf: wide.pathOf,
+          typeOf: wide.imageTypeOf,
+        );
+      }
+    }
+
     for (final index in _warmOrder(first: first, visibleEnd: visibleEnd, lastIndex: last)) {
-      if (_pending.length >= maxWindowItems) break;
-      final request = _buildRequest(groups[index], posterSize, devicePixelRatio);
-      if (request == null) continue;
-      if (_requested.contains(request.url) || !_pendingUrls.add(request.url)) continue;
-      _pending.add(_PendingPrefetch(request, context));
+      _enqueue(groups[index], posterSize, devicePixelRatio, context, pathOf: primaryPathOf, typeOf: primaryImageTypeOf);
     }
 
     _pump();
@@ -253,13 +348,38 @@ class UnifiedArtworkPrefetcher {
     }
   }
 
+  /// Queues one variant of one group, unless the window is already full, the
+  /// item has no such artwork, or that exact URL is already queued or
+  /// dispatched.
+  void _enqueue(
+    UnifiedMediaGroup group,
+    Size size,
+    double devicePixelRatio,
+    BuildContext context, {
+    required UnifiedArtworkPathResolver pathOf,
+    required UnifiedArtworkImageTypeResolver typeOf,
+  }) {
+    if (_pending.length >= maxWindowItems) return;
+    final request = _buildRequest(group, size, devicePixelRatio, pathOf: pathOf, typeOf: typeOf);
+    if (request == null) return;
+    if (_requested.contains(request.url) || !_pendingUrls.add(request.url)) return;
+    _pending.add(_PendingPrefetch(request, context));
+  }
+
   /// The request for one group, or null when there is nothing to warm: no
   /// artwork on the representative source, no client to sign a relative path
   /// with (an offline or unbound server), or a resolver that threw.
-  ArtworkPrefetchRequest? _buildRequest(UnifiedMediaGroup group, Size posterSize, double devicePixelRatio) {
+  ArtworkPrefetchRequest? _buildRequest(
+    UnifiedMediaGroup group,
+    Size posterSize,
+    double devicePixelRatio, {
+    required UnifiedArtworkPathResolver pathOf,
+    required UnifiedArtworkImageTypeResolver typeOf,
+  }) {
     final source = group.representativeSource;
-    final thumbPath = source.item.thumbPath;
+    final thumbPath = pathOf(source.item);
     if (thumbPath == null || thumbPath.isEmpty) return null;
+    final imageType = typeOf(source.item);
 
     MediaServerClient? client;
     try {
@@ -280,7 +400,7 @@ class UnifiedArtworkPrefetcher {
         maxWidth: posterSize.width,
         maxHeight: posterSize.height,
         devicePixelRatio: devicePixelRatio,
-        imageType: ImageType.poster,
+        imageType: imageType,
       );
     } catch (_) {
       // A URL that cannot be signed is a poster we do not warm, not a crash.
@@ -293,7 +413,7 @@ class UnifiedArtworkPrefetcher {
     final (_, memHeight) = MediaImageHelper.getMemCacheDimensions(
       displayWidth: scaledWidth.isFinite && scaledWidth > 0 ? scaledWidth.round() : 0,
       displayHeight: scaledHeight.isFinite && scaledHeight > 0 ? scaledHeight.round() : 0,
-      imageType: ImageType.poster,
+      imageType: imageType,
     );
 
     // The image widget's own key, not a copy of it: a warmed entry stored
@@ -371,6 +491,7 @@ class UnifiedArtworkPrefetcher {
     _lastFirst = null;
     _lastLast = null;
     _lastPosterSize = null;
+    _lastSecondarySize = null;
   }
 
   @visibleForTesting
@@ -385,6 +506,10 @@ class UnifiedArtworkPrefetcher {
 
 /// The default seam: Flutter's own [precacheImage], on the context the caller
 /// handed to [UnifiedArtworkPrefetcher.prefetchAround].
+String? _thumbPathOf(MediaItem item) => item.thumbPath;
+
+ImageType _alwaysPoster(MediaItem item) => ImageType.poster;
+
 Future<void> _precacheThroughFlutter(ArtworkPrefetchRequest request, BuildContext context) =>
     // onError swallows: a poster that 404s while scrolling is a missing
     // poster, not a FlutterError dumped to the console for every tile.

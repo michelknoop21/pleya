@@ -22,9 +22,12 @@ import '../widgets/state_view.dart';
 import '../widgets/watchlist_card.dart';
 import '../widgets/watchlist_item_sheet.dart';
 import '../widgets/watchlist_sort_sheet.dart';
+import '../mixins/refreshable.dart';
+import '../navigation/main_screen_scope.dart';
 import '../utils/grid_size_calculator.dart';
 import '../utils/layout_constants.dart';
 import '../utils/platform_detector.dart';
+import '../widgets/tv/tv_unified_layout.dart';
 
 /// Which slice of the kijklijst is on screen.
 enum WatchlistFilter { all, movies, shows, available }
@@ -45,10 +48,53 @@ class WatchlistScreen extends StatefulWidget {
   State<WatchlistScreen> createState() => _WatchlistScreenState();
 }
 
-class _WatchlistScreenState extends State<WatchlistScreen> {
+class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableTab {
   bool _requestedLoad = false;
   WatchlistFilter _filter = WatchlistFilter.all;
   WatchlistSort _sort = WatchlistSort.recentlyAdded;
+
+  /// Focus nodes by [WatchlistEntry.key], never by index — the same rule
+  /// `TvUnifiedMediaGrid` states and for the same reason. The list is re-sorted
+  /// on a sort change, re-filtered on a filter change and re-fetched on a
+  /// reload; position 12 is a different title after any of those, and a node
+  /// held by position would hand the focus to whatever slid into the slot.
+  ///
+  /// Before this the cards got no node at all: `WatchlistCard` accepted one and
+  /// the call site passed none, so there was nothing to focus programmatically
+  /// and nothing for the shell to restore to.
+  final Map<String, FocusNode> _nodes = {};
+
+  /// The card the remote is on, so a re-sort or an availability sweep knows
+  /// where the viewer was standing.
+  String? _focusedKey;
+
+  /// `isPlayable` per entry as of the last build.
+  ///
+  /// A lookup finishing flips a card from [WatchlistUnavailableCard] to
+  /// [FocusableMediaCard] — two different widget types, so the old element is
+  /// unmounted and a new one mounted in the same pass. The [FocusNode] survives
+  /// that (it is owned here, not by the card), but the `Focus` widget that held
+  /// it does not, and a detached node does not get its focus back on its own.
+  /// So the flip is detected and the focus re-requested after the frame. This
+  /// is the case the report described as "the list resolves and the remote is
+  /// suddenly nowhere".
+  final Map<String, bool> _playable = {};
+
+  /// The first filter chip, which is this screen's header: UP out of the first
+  /// grid row lands here, and so does a DOWN out of the bar on an empty list.
+  final FocusNode _filterBarFocus = FocusNode(debugLabel: 'watchlistFilterBar');
+
+  /// The entries of the last build, in display order.
+  List<WatchlistEntry> _entries = const [];
+
+  @override
+  void dispose() {
+    _filterBarFocus.dispose();
+    for (final node in _nodes.values) {
+      node.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -142,12 +188,81 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     if (requested == true && mounted) showSuccessSnackBar(context, t.seerr.requestSuccess);
   }
 
+  // ------------------------------------------------------------------ focus
+
+  FocusNode _nodeFor(String key) => _nodes.putIfAbsent(key, () => FocusNode(debugLabel: 'watchlistCard_$key'));
+
+  /// Drops nodes for entries that are gone, and re-requests the focus for an
+  /// entry whose card branch flipped under it.
+  ///
+  /// Called from `build`, because this screen's list is not a widget property:
+  /// it is derived from the provider, the filter and the sort on every build.
+  void _reconcile(List<WatchlistEntry> entries, WatchlistProvider? provider) {
+    final live = {for (final entry in entries) entry.key};
+    for (final key in _nodes.keys.where((k) => !live.contains(k)).toList()) {
+      _nodes.remove(key)?.dispose();
+      _playable.remove(key);
+    }
+
+    String? flipped;
+    for (final entry in entries) {
+      final playable = provider?.isPlayable(entry) ?? false;
+      final previous = _playable[entry.key];
+      _playable[entry.key] = playable;
+      if (previous != null && previous != playable && entry.key == _focusedKey) flipped = entry.key;
+    }
+    if (flipped == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final node = _nodes[flipped];
+      // Only if nothing else has claimed the focus in the meantime: the viewer
+      // may have moved on, and a lookup finishing is never a reason to pull
+      // them back.
+      if (node != null && node.canRequestFocus && !node.hasFocus) node.requestFocus();
+    });
+  }
+
+  /// DOWN out of the top navigation (hoofdstuk 7.1).
+  ///
+  /// The card the viewer was on, then the first card, then the header. The last
+  /// fallback matters more than it looks: an empty or still-loading kijklijst
+  /// with nothing focusable strands the remote entirely, because on tvOS the
+  /// engine claims every press before UIKit's responder chain sees it.
+  @override
+  void focusActiveTabIfReady() {
+    if (!mounted) return;
+    final remembered = _focusedKey;
+    final node = (remembered == null ? null : _nodes[remembered]) ?? _nodes[_entries.firstOrNull?.key];
+    if (node != null && node.canRequestFocus) {
+      node.requestFocus();
+      return;
+    }
+    if (_filterBarFocus.canRequestFocus) _filterBarFocus.requestFocus();
+  }
+
+  /// UP out of the first grid row: this screen's header is its filter bar.
+  void _focusHeader() {
+    if (_filterBarFocus.canRequestFocus) _filterBarFocus.requestFocus();
+  }
+
+  /// LEFT off the first column. On the TV shell that is the top navigation —
+  /// see `TvRootShell` on why the coordinator's "sidebar" vocabulary is reused.
+  void _exitLeft() => MainScreenFocusScope.of(context, listen: false)?.focusSidebar();
+
+  void _focusIndex(int index) {
+    if (index < 0 || index >= _entries.length) return;
+    final node = _nodes[_entries[index].key];
+    if (node != null && node.canRequestFocus) node.requestFocus();
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<WatchlistProvider?>();
     final isOffline = context.watch<OfflineModeProvider?>()?.isOffline ?? false;
     final all = provider == null ? const <WatchlistEntry>[] : _sorted(provider);
     final entries = _applyFilter(all);
+    _entries = entries;
+    _reconcile(entries, provider);
 
     return Scaffold(
       body: CustomScrollView(
@@ -158,6 +273,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
           CustomAppBar(title: Text(t.watchlist.title), automaticallyImplyLeading: false),
           SliverToBoxAdapter(
             child: _FilterBar(
+              firstChipFocusNode: _filterBarFocus,
               filter: _filter,
               // Availability needs live servers, so offline the filter is not
               // a slower answer but a wrong one. Sorting has no such problem
@@ -205,6 +321,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   static int _titleLinesFor(double width) => ScreenBreakpoints.isDesktopOrLarger(width) ? 1 : 2;
 
   Widget _buildGrid(WatchlistProvider provider, List<WatchlistEntry> entries) {
+    if (PlatformDetector.isTV()) return _buildTvGrid(provider, entries);
     // The bottom bar is the shell's, not this screen's, so the room it takes
     // comes from the padding the shell leaves behind rather than from a number
     // typed in here.
@@ -283,16 +400,101 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
       ),
     );
   }
+
+  /// The kijklijst on TV, on the shared TV portrait geometry (P5/P6).
+  ///
+  /// Deliberately **not** the discovery rail's expandable tile: a rail is a
+  /// curated row you walk along, and a kijklijst of three hundred titles is a
+  /// wall you scroll — which is what [TvCatalogGrid] is for. What it does share
+  /// with every other TV surface is the geometry. Column count, card width,
+  /// gutter and page inset all come from [TvCatalogGrid.forWidth], so a poster
+  /// here is the size a poster is on Films and Series.
+  ///
+  /// It replaces `MediaGridGeometry` + `GridSizeCalculator` on this platform
+  /// only. Those are driven by `SettingsService.libraryDensity` — a preference
+  /// that means something on a desktop window someone resizes and nothing on a
+  /// fixed 10-foot panel — and they are why this grid's cards were a different
+  /// size from everything around them. The non-TV branch above is untouched;
+  /// the other seven `MediaGridGeometry` call sites are not this round's.
+  ///
+  /// Traversal is wired, not inferred, for the reason `TvUnifiedMediaGrid`'s
+  /// library doc gives: the delegate is lazy, so Flutter's directional policy
+  /// can walk into an unbuilt row and land nowhere, and UP out of the *first*
+  /// row has to reach the header while UP anywhere else stays in the grid.
+  Widget _buildTvGrid(WatchlistProvider provider, List<WatchlistEntry> entries) {
+    final scale = TvLayoutConstants.scaleOf(context);
+    final grid = TvCatalogGrid.forWidth(MediaQuery.sizeOf(context).width, scale: scale);
+    final cellHeight = MediaCardGridLayout.cardHeightFor(context, grid.cardWidth, titleLines: 1);
+
+    return SliverPadding(
+      // Same three insets the catalog grid pays, and for the same reasons: the
+      // page margin on the sides, room above for the half of a focused card's
+      // growth that goes upward, and the wider bottom band of P12 below.
+      padding: EdgeInsets.fromLTRB(grid.inset, grid.focusRingHeadroom, grid.inset, grid.bottomSafeInset),
+      sliver: SliverGrid(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: grid.columns,
+          mainAxisSpacing: grid.gutter,
+          crossAxisSpacing: grid.gutter,
+          childAspectRatio: grid.cardWidth / cellHeight,
+        ),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final entry = entries[index];
+          // Viewport-driven, exactly as on the other platforms: a card asks for
+          // its own row as it is built, so a 300-title list never fans out 300
+          // lookups on open.
+          if (entry.availability == WatchlistAvailability.unknown) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) provider.resolveAvailability(entry);
+            });
+          }
+          final column = index % grid.columns;
+          final isFirstRow = index < grid.columns;
+          return Focus(
+            // Not a focusable of its own — `canRequestFocus: false` — only a
+            // place to hear that the card inside gained the focus, whichever of
+            // the two branches drew it.
+            canRequestFocus: false,
+            skipTraversal: true,
+            onFocusChange: (has) {
+              if (has) _focusedKey = entry.key;
+            },
+            child: WatchlistCard(
+              // Stable across a re-sort, a filter change and an availability
+              // flip — the same identity the focus node is keyed on.
+              key: ValueKey(entry.key),
+              entry: entry,
+              isPlayable: provider.isPlayable(entry),
+              onTap: () => _openSheet(provider, entry),
+              width: grid.cardWidth,
+              focusNode: _nodeFor(entry.key),
+              onNavigateUp: isFirstRow ? _focusHeader : () => _focusIndex(index - grid.columns),
+              onNavigateDown: index + grid.columns >= entries.length ? null : () => _focusIndex(index + grid.columns),
+              onNavigateLeft: column == 0 ? _exitLeft : () => _focusIndex(index - 1),
+              onNavigateRight: column == grid.columns - 1 || index + 1 >= entries.length
+                  ? null
+                  : () => _focusIndex(index + 1),
+            ),
+          );
+        }, childCount: entries.length),
+      ),
+    );
+  }
 }
 
 class _FilterBar extends StatefulWidget {
   const _FilterBar({
+    required this.firstChipFocusNode,
     required this.filter,
     required this.showAvailable,
     required this.onChanged,
     required this.sort,
     required this.onSortPressed,
   });
+
+  /// Owned by the screen: it is this page's header, and UP out of the first
+  /// grid row has to be able to reach it from outside this widget.
+  final FocusNode firstChipFocusNode;
 
   final WatchlistFilter filter;
   final bool showAvailable;
@@ -385,6 +587,7 @@ class _FilterBarState extends State<_FilterBar> {
                       padding: const EdgeInsets.only(right: 8),
                       child: FocusableFilterChip(
                         key: _chipKeys[value],
+                        focusNode: value == options.first.$1 ? widget.firstChipFocusNode : null,
                         label: label,
                         selected: widget.filter == value,
                         onPressed: () => widget.onChanged(value),

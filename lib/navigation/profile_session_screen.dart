@@ -359,7 +359,6 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                 create: (context) => TvDiscoveryLandingProvider(
                   discover: context.read<DiscoverProvider>(),
                   multiServer: context.read<MultiServerProvider>(),
-                  continueWatchingTitle: t.discover.continueWatching,
                 ),
                 lazy: true,
               ),

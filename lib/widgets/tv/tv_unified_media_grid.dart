@@ -206,6 +206,44 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
     );
   }
 
+  /// How close to the end of the loaded pages the focus has to get before the
+  /// next page is asked for, in grid rows.
+  ///
+  /// Two, measured in rows rather than in cards because the column count is
+  /// 5–7 depending on the panel: two rows is one D-pad press of warning at
+  /// the slowest, and it is what turns "press DOWN, wait, then the row
+  /// appears" into "the row is already there".
+  static const int loadMoreRowThreshold = 2;
+
+  /// Asks for the next page once the focus is within [loadMoreRowThreshold]
+  /// rows of the end (P11).
+  ///
+  /// The trigger used to be DOWN on the last row and nothing else — no scroll
+  /// listener, no threshold, no background prefetch — so the viewer had to
+  /// navigate into the end of the loaded set and then wait, every page, which
+  /// is exactly the stall that was reported.
+  ///
+  /// Focus rather than scroll offset, for the reason [_warmAround] gives: on
+  /// this platform focus *is* the cursor. And it is a threshold rather than a
+  /// replacement of the DOWN trigger — that one still stands, one row further
+  /// down, for the case where `hasMore` only became true after the focus had
+  /// already settled at the bottom.
+  ///
+  /// Nothing else is touched, and nothing else needs to be. Appending without
+  /// disturbing focus is already handled (nodes keyed on `groupId`, `ValueKey`
+  /// per card, `_reconcileNodes`), duplicate requests are already refused a
+  /// layer down by the catalog service's per-cursor bookkeeping, and
+  /// end-of-library already runs through `isComplete`.
+  void _maybeLoadMore(int index) {
+    if (!widget.hasMore || widget.isLoadingMore) return;
+    final grid = _grid;
+    if (grid == null || grid.columns <= 0 || widget.groups.isEmpty) return;
+    final rows = (widget.groups.length / grid.columns).ceil();
+    final row = index ~/ grid.columns;
+    if (rows - row > loadMoreRowThreshold) return;
+    widget.onLoadMore();
+  }
+
   /// Focuses the first card, for the header's DOWN exit (hoofdstuk 7.4: "Down
   /// vanaf header gaat naar het laatst gefocuste griditem").
   ///
@@ -351,10 +389,12 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
         _focusedGroupId = group.groupId;
         widget.onFocusedGroupChanged?.call(group.groupId);
         _warmAround(index);
+        _maybeLoadMore(index);
       },
       onNavigateUp: isFirstRow ? widget.onExitTop : null,
-      // DOWN on the last row is what asks for the next page. It fires the load
-      // and keeps focus exactly where it is: hoofdstuk 28 forbids a reflow, and
+      // DOWN on the last row is the *backstop*, not the trigger any more — see
+      // [_maybeLoadMore], which fires two rows earlier. It fires the load and
+      // keeps focus exactly where it is: hoofdstuk 28 forbids a reflow, and
       // moving focus to a card that does not exist yet is the reset this whole
       // widget is built to avoid.
       onNavigateDown: isLastRow && widget.hasMore && !widget.isLoadingMore ? widget.onLoadMore : null,

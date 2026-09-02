@@ -611,7 +611,7 @@ eigen constraint-gebaseerde geometry.
 
 ### 9.5 Featured selectie
 
-> **Geamendeerd op 31 augustus 2026 — [DEC-067](DECISIONS.md#dec-067).** De kandidaatketen hieronder
+> **Geamendeerd op 31 augustus 2026, [DEC-067](DECISIONS.md#dec-067).** De kandidaatketen hieronder
 > beschreef Top Picks, recent toegevoegde series en hubs als vulling zodra er "te weinig" recente
 > films waren. Dat is vervangen door de bindende regel eronder: recente films zijn de exclusieve
 > bron zolang de gededupliceerde pool niet leeg is. Behandel de oude formulering niet opnieuw als
@@ -653,12 +653,12 @@ contentrij focus heeft; een overlay open is; een source picker open is; de app n
 niet op scrollpositie nul staat. Na echte inactiviteit mag de carousel hervatten. Handmatige
 navigatie met links/rechts reset de timer.
 
-> **Uitvoering, fase 8 — [DEC-070](DECISIONS.md#dec-070) punt 1.** De pauzelijst hierboven en de
+> **Uitvoering, fase 8, [DEC-070](DECISIONS.md#dec-070) punt 1.** De pauzelijst hierboven en de
 > eerste zin kunnen niet allebei letterlijk gelden: hoofdstuk 7.1 legt de rustfocus van Home op een
 > hero-CTA, dus "een hero-CTA focus heeft" zou de rotatie permanent uitzetten. De laatste zin is de
 > doorslag: een interactie stopt de rotatie en start een inactiviteitsvenster van dezelfde acht
 > seconden, en pas daarna hervat hij. De overige toestanden blijven onvoorwaardelijke pauzes. Focus
-> op de topnavigatie is er géén — die staat buiten de feed, en een kijker die op de balk staat
+> op de topnavigatie is er géén, die staat buiten de feed, en een kijker die op de balk staat
 > terwijl het billboard doorloopt is het geval dat deze alinea beschrijft. Onder Reduce Motion
 > roteert de carousel helemaal niet.
 
@@ -681,10 +681,10 @@ gereserveerde ruimte gecontroleerd weg.
 
 ## 10. Films en Series
 
-> **Geamendeerd op 30 augustus 2026 — [DEC-064](DECISIONS.md#dec-064).** Films en Series zijn
+> **Geamendeerd op 30 augustus 2026, [DEC-064](DECISIONS.md#dec-064).** Films en Series zijn
 > **twee niveaus**, geen één pagina. De oorspronkelijke 10.2 beschreef Films/Series als één
 > gridpagina; dat is nu uitsluitend het tweede niveau. Behandel de oude formulering niet
-> opnieuw als blocker — zie 10.2a/10.2b.
+> opnieuw als blocker, zie 10.2a/10.2b.
 
 ### 10.1 Doel
 
@@ -703,7 +703,7 @@ is geen expanderende discovery-rail. Die scheiding is hard.
 
 ### 10.2a Landing — discovery (fase 6)
 
-> **Geamendeerd op 31 augustus 2026 — [DEC-068](DECISIONS.md#dec-068).** De route naar de complete
+> **Geamendeerd op 31 augustus 2026, [DEC-068](DECISIONS.md#dec-068).** De route naar de complete
 > catalogus staat niet meer als rij onderaan de pagina, maar als compacte actie **naast de
 > paginatitel**, en is de enige launcher op de landing. De schets hieronder is bijgewerkt.
 
@@ -1016,7 +1016,7 @@ van hoofdstuk 13.4 punt 5.
 In de geavanceerde libraryweergave blijft de actie rechtstreeks die library betreffen.
 
 > Gewijzigd door [DEC-071](DECISIONS.md#dec-071). Tot 1 september 2026 luidde dit hoofdstuk
-> "daarna bronkeuze — één concrete bron, of 'Alle bronnen', expliciet. Geen impliciete mutatie van
+> "daarna bronkeuze, één concrete bron, of 'Alle bronnen', expliciet. Geen impliciete mutatie van
 > alle bronnen." Zie de DEC voor waarom dat is omgedraaid.
 
 ### 13.8 Rate
@@ -1845,11 +1845,11 @@ projectiearchitectuur naast deze zijn, en die scheiding is precies waarom deze f
 resultaatgroep; mobile/desktop blijven functioneel; Films- en Series-landing tonen row-based
 discovery met minimale chrome; de complete catalogus is remote-first bereikbaar vanaf beide landings.
 
-> **Geamendeerd op 31 augustus 2026 — [roadmap deviation proposal](tvos-unified-fase6-home-rows-deviation.md),
+> **Geamendeerd op 31 augustus 2026, [roadmap deviation proposal](tvos-unified-fase6-home-rows-deviation.md),
 > goedgekeurd.** "Geen duplicate titel in één **Home**-rij" stond hier en is verplaatst naar fase 8.
 > De Home-rijen worden getekend door `tv_browse_rail.dart`, dat fase 8 hoe dan ook vervangt door
 > `tv_content_feed.dart`/`tv_content_row.dart`; die widget nu op de projectielaag zetten zou focus,
-> scroll, long-press, contextmenu en activatie herbouwen in code die één fase later verdwijnt — exact
+> scroll, long-press, contextmenu en activatie herbouwen in code die één fase later verdwijnt, exact
 > het argument waarop de rowfocus-deferral al is geaccepteerd. De eis is verplaatst, niet geschrapt.
 > Tot fase 8 kan één titel die op twee servers onder verschillende guids bestaat twee kaarten in één
 > Home-rij innemen; dat is bestaand gedrag van vóór fase 6, nu met een datum eronder.
@@ -2275,6 +2275,15 @@ sectiekop peekt onderaan. Focusverlies op de hero dooft zijn tekst; de topnav bl
 
 **CODE IS LEIDEND VOOR:** `TvDiscoveryLayout` (band, breedtes, metablok); `FocusTheme`.
 
+> **Afwijking, [DEC-087] (2026-09-02).** De drie absolute maten in de BINDEND-alinea hierboven
+> (band 400, gefocust 16:9 op 711, 2:3-buren op 267) zijn superseded. `TvDiscoveryLayout.cardHeight`
+> staat op 220, waarmee de band 200,5 logische pixels is, de gefocuste 16:9-kaart 332,4 en een
+> 2:3-buur 124,7 op het canonieke 1038×584-canvas. De *verhoudingen* die deze referentie eigenlijk
+> vastlegt veranderen niet: één hoogte, twee breedtes, buren die opzij schuiven, niets onder de rail
+> dat beweegt. Wat verandert is hoeveel van de pagina één rij opeet (57% in plaats van 64%) en dat
+> is precies waar deze referentie ("de volgende sectiekop peekt onderaan") om vraagt.
+> `test/widgets/tv/tv_discovery_density_test.dart` meet het.
+
 ### 33.3 03-films-landing.jpg
 
 ![Films landing](assets/tvos-unified/northstar/03-films-landing.jpg)
@@ -2296,6 +2305,21 @@ voor jou", "Omdat je … gekeken hebt", …) — nooit verzonnen raillabels.
 
 **CODE IS LEIDEND VOOR:** `TvDiscoveryLayout`; de hub-projectie en rijvolgorde.
 
+> **Afwijking 1, [DEC-087] (2026-09-02).** "band 400, focused 16:9 ≈40% van de contentbreedte,
+> **drie** volle 2:3-buren + partial vierde" is superseded: de gefocuste kaart is ~34,5% van de
+> bruikbare railbreedte met **vier** volle buren, en in ruststand staan er zes volle kaarten met een
+> duidelijk zichtbare zevende (~84 px). De reden is dat beide helften van de dichtheidseis
+> tegelijk moeten kloppen. Bij 270 haalde de ruststand er vijf en nam de gefocuste kaart 42% van de
+> band: "bijna de helft", zoals de melding het noemde. Bij 200 zouden er zeven volle kaarten in
+> ruststand staan, en dat is precies de catalogusgrid-indruk waar dit oppervlak tegen bestaat.
+>
+> **Afwijking 2, [DEC-086] (2026-09-02).** "CW eerst wanneer gevuld" geldt niet meer voor deze
+> landing. `TvDiscoveryLandingProvider` projecteert Verder kijken niet langer; Home is de enige
+> eigenaar. De railvolgorde is nu de canonieke providervolgorde zonder die eerste rij. Naast de
+> herhaling die gemeld werd zat er een tweede, zwaardere reden onder: de CW-rij was nooit
+> kind-gesplitst, dus de Films-landing opende met halfgekeken afleveringen en de Series-landing met
+> films, het omgekeerde van wat de klassedoc van diezelfde provider belooft.
+
 ### 33.4 04-series-landing.jpg
 
 ![Series landing](assets/tvos-unified/northstar/04-series-landing.jpg)
@@ -2311,6 +2335,19 @@ Films-compositie met alleen andere labels.
 **NIET BINDEND:** titels/artwork.
 
 **CODE IS LEIDEND VOOR:** episode-still-resolutie via de bestaande clients; `TvDiscoveryLayout`.
+
+> **Afwijking 1, [DEC-086] (2026-09-02).** "zelfde systeem als 33.3 **met CW bovenaan**" is
+> superseded, om de reden die onder 33.3 staat. De Series-landing opent met een aanbevelingsrij.
+> Verder kijken bestaat nog steeds, met dezelfde episode-still-resolutie en dezelfde
+> exacte-aflevering-identiteit; het staat op Home.
+>
+> **Afwijking 2, [DEC-087] (2026-09-02).** Het canonieke metadataformaat
+> `S2 E4 · 18 min resterend · jaar · genre · 2 bronnen` verliest zijn laatste deel en wint er voor
+> een film één: het bronnenaantal staat al als `TvSourceCountBadge` op de kaart erboven, in dezelfde
+> oogopslag, en een regel van deze grootte kan vier feiten dragen voordat hij als databaseregel gaat
+> lezen. Een film krijgt in plaats daarvan zijn speelduur, wat het enige feit was dat de regel niet
+> had. Hoofdstuk 13's eis dat een titel met meerdere bronnen dat zegt is ongewijzigd: de capsule
+> zegt het.
 
 ### 33.5 05-alle-films.jpg
 

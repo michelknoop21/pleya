@@ -78,6 +78,15 @@ ids:
   - id: discover.hero.play
     role: button
     instanceable: false
+  - id: discover.rail
+    role: rail
+    instanceable: true
+  - id: discover.rail.item
+    role: grid.item
+    instanceable: true
+  - id: discover.safe_area
+    role: region
+    instanceable: false
   - id: media-detail.episode-list
     role: list
     instanceable: false

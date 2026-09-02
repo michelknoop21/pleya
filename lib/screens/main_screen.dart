@@ -14,6 +14,7 @@ import '../navigation/main_screen_scope.dart';
 import '../services/account_ui_actions.dart';
 import '../navigation/tv/tv_destination.dart';
 import '../navigation/tv/tv_live_tv_capability.dart';
+import '../navigation/tv/tv_content_focus_authority.dart';
 import '../navigation/tv/tv_navigation_coordinator.dart';
 import 'tv/tv_movies_screen.dart';
 import 'tv/tv_series_screen.dart';
@@ -329,6 +330,38 @@ MainBackDecision mainBackKeyDecision({
   return MainBackDecision.armExitPrompt;
 }
 
+/// The destination stack every shell hosts: one child painted, the rest laid
+/// out behind it, and — the part that is not free — none of the rest reachable.
+///
+/// `IndexedStack` keeps its offscreen children mounted, which is the whole
+/// reason it is used: a destination switch must not cost a rebuild of a
+/// provider graph, a scroll position or a set of focus nodes (hoofdstuk 24).
+/// What it does *not* do is take them out of the focus tree. `TickerMode`
+/// silences their animations and nothing silenced their focusables, so the app
+/// held a complete second copy of every destination — its cards, its chips, its
+/// retry buttons — all focusable, all invisible, in the same scope as the one on
+/// screen. A programmatic focus or one traversal step could land on any of them,
+/// and the remote then moved something nobody could see (P5). Eleven other
+/// places in this repo already pair the two; this was the one that did not.
+///
+/// Top-level and `@visibleForTesting` so the guard can be driven as the
+/// production composition rather than as a copy of it — the same reason
+/// [mainScreenSideNavigationContentLayout] is.
+@visibleForTesting
+Widget mainScreenDestinationStack({required List<Widget> screens, required int currentIndex}) {
+  return IndexedStack(
+    index: currentIndex,
+    clipBehavior: Clip.none,
+    children: [
+      for (var i = 0; i < screens.length; i++)
+        ExcludeFocus(
+          excluding: i != currentIndex,
+          child: TickerMode(enabled: i == currentIndex, child: screens[i]),
+        ),
+    ],
+  );
+}
+
 class MainScreen extends StatefulWidget {
   final bool isOfflineMode;
 
@@ -412,12 +445,26 @@ class _MainScreenState extends State<MainScreen>
   /// every time a server came online.
   final TvNavigationCoordinator _tvNav = TvNavigationCoordinator();
 
+  /// The one thing on this shell allowed to say "the remote belongs in the
+  /// content now" (P2). See [TvContentFocusAuthority] for the three paths this
+  /// replaces and the contract it keeps.
+  final TvContentFocusAuthority _tvContentFocus = TvContentFocusAuthority();
+
   /// The bar's focus nodes. Owned here rather than by [TvTopNavigation] so a
   /// rebuild of the bar cannot dispose the node the remote is standing on —
   /// the same ownership rule the rail follows.
   final FocusMemoryTracker _tvNavNodes = FocusMemoryTracker(debugLabelPrefix: 'tvNav');
 
   final GlobalKey<TvMyPleyaScreenState> _tvMyPleyaKey = GlobalKey();
+
+  /// Reaches the `WatchlistScreen` inside Mijn Pleya ▸ Kijklijst.
+  ///
+  /// A *second* key beside [_watchlistKey], not a reuse of it, for the same
+  /// reason [_tvLibrariesKey] is: the screens list still builds its own
+  /// `WatchlistScreen` behind the `IndexedStack`, and one `GlobalKey` cannot be
+  /// on two mounted widgets. The offstage one is the copy `ExcludeFocus` in
+  /// [_buildTickerAwareStack] now keeps out of the focus tree (P5).
+  final GlobalKey<State<WatchlistScreen>> _tvWatchlistKey = GlobalKey();
 
   /// Reaches the `LibrariesScreen` inside Mijn Pleya ▸ Bibliotheken, so the
   /// hoofdstuk 6.4 adapter can call the same `loadLibraryByKey` the rail's
@@ -531,6 +578,20 @@ class _MainScreenState extends State<MainScreen>
       _tvNav.syncToTab(_currentTab);
       _syncTvDestinations();
       unawaited(_loadTvLiveTvCapability());
+      // A cold start lands on the bar, with the startup destination lit — the
+      // same place a destination switch leaves the remote (P2).
+      //
+      // There was no initial focus request on TV at all before this. The remote
+      // ended up wherever `DiscoverScreen`'s initial-load post-frame put it,
+      // and that path is now allowed to move focus only against an armed
+      // intent — so without this the first frame would have no primary focus,
+      // which on tvOS is not "nothing highlighted" but "the D-pad does
+      // nothing": the engine claims every press before UIKit sees it (see
+      // CLAUDE.md's engine-swizzle gotcha), and a tree with no focused node
+      // swallows them.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focusSidebar();
+      });
     }
     _lastOnlineTabId = _isOffline ? null : NavigationTabId.discover;
     _autoSwitchedToDownloads = _isOffline && _currentTab == NavigationTabId.downloads;
@@ -1188,13 +1249,7 @@ class _MainScreenState extends State<MainScreen>
         // and it is the only affordance those layouts have.
         if (!_isTvShell) const AuthErrorBanner(),
         Expanded(
-          child: IndexedStack(
-            index: _currentIndex,
-            clipBehavior: Clip.none,
-            children: [
-              for (var i = 0; i < _screens.length; i++) TickerMode(enabled: i == _currentIndex, child: _screens[i]),
-            ],
-          ),
+          child: mainScreenDestinationStack(screens: _screens, currentIndex: _currentIndex),
         ),
       ],
     );
@@ -1443,6 +1498,12 @@ class _MainScreenState extends State<MainScreen>
     // none of them should have to know which shell they are in — see
     // [TvRootShell]'s note on the reused vocabulary.
     if (_isTvShell) {
+      // The remote is going back to the bar, so a content-focus intent that has
+      // not been satisfied yet is void. Without this, a DOWN pressed while the
+      // first server was still answering would still be honoured a second later
+      // — pulling the viewer out of the bar they had deliberately walked back
+      // to (P2).
+      _tvContentFocus.cancel();
       _focus.focusSidebar(
         focusActiveItem: () {
           if (!mounted) return;
@@ -1467,6 +1528,14 @@ class _MainScreenState extends State<MainScreen>
   }
 
   void _focusContent({bool restorePreviousFocus = true}) {
+    // Arming happens here rather than at each call site, because *every* way
+    // the focus is deliberately moved into content goes through this method —
+    // DOWN out of the bar, a re-select of the active destination, a nested
+    // route opening. A screen that cannot satisfy it yet leaves it armed, and
+    // consumes it when its content finally lands (P2).
+    if (_isTvShell) {
+      _tvContentFocus.arm(restorePreviousFocus ? TvContentFocusIntent.restore : TvContentFocusIntent.primary);
+    }
     _focus.focusContent(
       restorePreviousFocus: restorePreviousFocus,
       focusDefault: () {
@@ -1861,8 +1930,18 @@ class _MainScreenState extends State<MainScreen>
       if (newState case final TabVisibilityAware aware) {
         aware.onTabShown();
       }
-      if (newState case final FocusableTab focusable) {
-        focusable.focusActiveTabIfReady();
+      // Not on the TV shell. There, moving the focus is the shell's decision
+      // and nobody else's (P2): activating a destination in the bar leaves the
+      // remote in the bar, and this line was the third of the three paths that
+      // disagreed about that. Every TV route that *should* move the focus —
+      // DOWN out of the bar, a re-select, opening a Mijn Pleya section or a
+      // nested route — calls `_focusContent` explicitly, which arms the one
+      // authority. On the rail and bottom-bar shells the old behaviour is
+      // exactly right and is untouched.
+      if (!_isTvShell) {
+        if (newState case final FocusableTab focusable) {
+          focusable.focusActiveTabIfReady();
+        }
       }
     }
 
@@ -1888,7 +1967,10 @@ class _MainScreenState extends State<MainScreen>
   /// switch to — so the open is deferred by a frame rather than dropped.
   void _openTvMyPleyaSection(TvMyPleyaSection section) {
     _selectTab(NavigationTabId.myPleya);
-    _tvNav.pushNested(TvDestinationId.myPleya, tvMyPleyaNestedRoute(section, librariesKey: _tvLibrariesKey));
+    _tvNav.pushNested(
+      TvDestinationId.myPleya,
+      tvMyPleyaNestedRoute(section, librariesKey: _tvLibrariesKey, watchlistKey: _tvWatchlistKey),
+    );
     _focusContent(restorePreviousFocus: false);
   }
 
@@ -2234,6 +2316,7 @@ class _MainScreenState extends State<MainScreen>
   Widget _buildTvShell(BuildContext context) {
     return TvRootShell(
       coordinator: _tvNav,
+      contentFocus: _tvContentFocus,
       navNodes: _tvNavNodes,
       navFocusScope: _sidebarFocusScope,
       contentFocusScope: _contentFocusScope,
@@ -2267,6 +2350,16 @@ class _MainScreenState extends State<MainScreen>
   /// Re-selecting the destination you are already on restores the position you
   /// had inside it instead of resetting to the top, and starts no refresh
   /// (hoofdstuk 7.2) — [_selectTab] already returns early for an unchanged tab.
+  /// Two different presses, and they were being treated as one.
+  ///
+  /// Select on the destination you are **already on** is hoofdstuk 7.2's
+  /// "restore where I was", and it keeps calling `_focusContent`. Select on
+  /// **another** destination is a change of what is on screen, not a request to
+  /// go stand in it: the viewer is walking the bar, the page behind it changes,
+  /// and the remote stays where the ring is. Focusing the content there was the
+  /// first of the three paths P2 is about, and it is the one the report opened
+  /// with — choosing Home dropped the remote onto the billboard's Afspelen pill
+  /// before the viewer had asked for anything.
   void _selectTvDestination(TvDestinationId destination) {
     final wasActive = _tvNav.active == destination && _currentTab == destination.tab;
     _tvNav.activate(destination);
@@ -2275,8 +2368,13 @@ class _MainScreenState extends State<MainScreen>
     // network refresh. Hoofdstuk 7.2 is explicit that Select on the destination
     // you are already on "start geen automatische netwerkrefresh", so the guard
     // is here rather than being wished for downstream.
+    // The rule itself lives on the authority, not here — see
+    // [TvContentFocusAuthority.onDestinationSelected]. This method's job is to
+    // change the page; where the remote belongs afterwards is one decision with
+    // one owner.
+    final intent = _tvContentFocus.onDestinationSelected(wasActive: wasActive);
     if (!wasActive) _selectTab(destination.tab);
-    _focusContent(restorePreviousFocus: wasActive);
+    if (intent != null) _focusContent(restorePreviousFocus: true);
   }
 
   /// Recomputes the bar and, when the active destination just disappeared,

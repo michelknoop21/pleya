@@ -229,6 +229,27 @@ class OptimizedMediaImage extends StatelessWidget {
   @visibleForTesting
   static Widget Function(BuildContext context, String? imagePath)? debugImageBuilder;
 
+  /// Reports the artwork URL this widget resolved, straight after
+  /// [MediaImageHelper.getOptimizedImageUrl] and before any provider or
+  /// network work.
+  ///
+  /// A separate seam from [debugImageBuilder], and it has to be: that one
+  /// returns from the *first line* of [build], so a test that installs it never
+  /// reaches the sizing pipeline at all. Every discovery widget test goes
+  /// through `test/test_helpers/tv_discovery_artwork.dart`, which installs
+  /// exactly that — which is why "does a focus transition churn through a
+  /// bucket of URLs" (P4) was not assertable at the widget level before.
+  ///
+  /// Assert the number of **distinct** URLs, never the number of calls: a
+  /// widget that rebuilds five times and resolves the same stable URL five
+  /// times is correct, and counting calls would make the guard fail on
+  /// unrelated rebuild changes.
+  ///
+  /// Null in production; nothing in `lib/` ever assigns it. A test that sets it
+  /// clears it in `tearDown` — this is process-global state.
+  @visibleForTesting
+  static void Function(String url)? debugResolvedUrlObserver;
+
   /// The disk cache key for [imageUrl].
   ///
   /// Public because anything that *warms* the cache has to produce a key that
@@ -336,6 +357,8 @@ class OptimizedMediaImage extends StatelessWidget {
     if (imageUrl.isEmpty) {
       return _buildFallback(context);
     }
+
+    debugResolvedUrlObserver?.call(imageUrl);
 
     final scaledWidth = effectiveWidth * devicePixelRatio;
     final scaledHeight = effectiveHeight * devicePixelRatio;

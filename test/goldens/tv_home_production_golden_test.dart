@@ -19,6 +19,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:pleya/navigation/tv/tv_content_focus_authority.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -299,6 +300,7 @@ void main() {
               body: InputModeTracker(
                 child: TvRootShell(
                   coordinator: coordinator,
+                  contentFocus: TvContentFocusAuthority(),
                   navNodes: navNodes,
                   navFocusScope: navScope,
                   contentFocusScope: contentScope,

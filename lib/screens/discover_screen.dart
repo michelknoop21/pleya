@@ -409,7 +409,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         _initialLoadComplete = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
-          _tvFeedKey.currentState?.focusPrimary();
+          // Only against an intent the viewer actually armed (P2). Content
+          // arriving is not a request: a DOWN pressed before the first server
+          // answered is, and it is still armed here, so this is where it gets
+          // satisfied. Without the guard this fired on every cold Home
+          // regardless of where the remote had walked to in the meantime —
+          // which is the report's first complaint, seen from the far end.
+          if (_consumeTvContentFocusIntent()) _tvFeedKey.currentState?.focusPrimary();
         });
       } else if (PlatformDetector.isTV() && !_isLoading && !_areHubsLoading) {
         // Genuinely empty account (no hero, no on-deck, no other hub) — the
@@ -421,7 +427,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         _initialLoadComplete = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          _focusTopActions();
+          if (_consumeTvContentFocusIntent()) _focusTopActions();
         });
       } else if (!PlatformDetector.isTV() && _latestMovies.isNotEmpty) {
         _initialLoadComplete = true;
@@ -679,10 +685,31 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (PlatformDetector.isTV()) {
       // Hoofdstuk 7.1/7.3: DOWN out of the top navigation lands on the hero's
       // Afspelen pill, and on the first row only when there is no hero.
-      _tvFeedKey.currentState?.focusPrimary();
+      //
+      // The intent is consumed only when this actually placed the focus. On a
+      // cold Home there is no hero and no row yet, `focusPrimary` reports
+      // false, and leaving the intent armed is what lets the load path above
+      // finish the job the viewer's DOWN started (P2).
+      if (_tvFeedKey.currentState?.focusPrimary() ?? false) {
+        MainScreenFocusScope.of(context, listen: false)?.tvContentFocus?.consume();
+      }
       return;
     }
     _focusTopBoundary();
+  }
+
+  /// Takes the shell's pending content-focus intent, if there is one.
+  ///
+  /// Null scope (a standalone mount: a golden, a focus test, the rail shell)
+  /// means there is no authority to answer to, and the pre-fase-7 behaviour —
+  /// content that lands claims the focus — is the right one there: nothing
+  /// else on those surfaces would.
+  bool _consumeTvContentFocusIntent() {
+    final scope = MainScreenFocusScope.of(context, listen: false);
+    if (scope == null) return true;
+    final authority = scope.tvContentFocus;
+    if (authority == null) return true;
+    return authority.consume() != null;
   }
 
   // Helper method to calculate visible dot range (max 5 dots)

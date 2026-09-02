@@ -30,6 +30,7 @@ import '../pleya_wordmark.dart';
 import '../../focus/focus_memory_tracker.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
+import '../../automation/automation_ids.dart';
 import '../../navigation/tv/tv_destination.dart';
 import '../../profiles/profile.dart';
 import '../../profiles/profile_avatar.dart';
@@ -231,6 +232,18 @@ class _NavItem extends StatelessWidget {
     return FocusableWrapper(
       focusNode: node,
       onSelect: onSelect,
+      // `nav.<tab>`, the same ids the rail's own items carry — this bar is the
+      // TV shell's navigation, so it answers to the same addresses. No new id
+      // and no extra widget: `FocusableWrapper` already owns the registration.
+      //
+      // The bar had none at all, which is why nothing could state where the
+      // focus was after a destination was activated — precisely the fact P2 is
+      // about. `state.active` is the destination's own white-capsule flag, so a
+      // scenario can tell "Films is the page you are on" from "Films is where
+      // the ring is" without inferring either from a screenshot.
+      automationId: AutomationIds.navTab(destination.tab),
+      automationRole: 'nav',
+      automationState: () => {'active': isActive},
       onFocusChange: (focused) {
         if (focused) onFocused();
       },

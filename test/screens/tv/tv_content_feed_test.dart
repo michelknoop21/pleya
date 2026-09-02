@@ -651,6 +651,82 @@ void main() {
     });
   });
 
+  group('P1: the hero comes back into view, not just back into the focus tree', () {
+    /// The feed's own scroll offset. Exposed by `TvContentFeedState` for this
+    /// assertion specifically — the defect satisfied "a hero CTA is focused"
+    /// while failing "the hero is on screen", so a test that checked only the
+    /// first would have stayed green through the whole bug.
+    double offset(WidgetTester tester) => tester.state<TvContentFeedState>(find.byType(TvContentFeed)).scrollOffset;
+
+    Future<void> bootTallFeed(WidgetTester tester) => boot(
+      tester,
+      latestMovies: twoRecentFilms(),
+      hubs: [
+        _hub('top-picks', 'Top Picks', [_film('tp1', title: 'Quarry Road'), _film('tp2', title: 'Arcade Midnight')]),
+        _hub('hidden-gems', 'Hidden Gems', [_film('hg1', title: 'Wintering'), _film('hg2', title: 'Salt Flats')]),
+        _hub('for-you', 'For You', [_film('fy1', title: 'Longline'), _film('fy2', title: 'Nightjar')]),
+      ],
+    );
+
+    testWidgets('UP from the first row restores the scroll position and the CTA together', (tester) async {
+      await bootTallFeed(tester);
+
+      heroNode(tester, 'tvHeroPlay').requestFocus();
+      await tester.pump();
+      expect(offset(tester), 0, reason: 'the feed opens at the top');
+
+      // DOWN into the first row. One rail is ~57% of the canvas, so focusing it
+      // scrolls the billboard off the top — which is the state UP has to
+      // recover from, and the reason this is asserted rather than assumed.
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(
+        offset(tester),
+        greaterThan(0),
+        reason: 'if the feed never scrolled, this test is not exercising the case it exists for',
+      );
+
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+
+      expect(offset(tester), 0, reason: 'the billboard is back on screen, not merely back in the focus tree');
+      expect(FocusManager.instance.primaryFocus?.debugLabel, anyOf('tvHeroPlay', 'tvHeroMoreInfo'));
+    });
+
+    testWidgets('and does it again on the second round trip', (tester) async {
+      // The early return only fired while the carousel was still mounted, which
+      // is exactly the *second* visit: the first UP may have found it disposed
+      // and taken the post-frame path by luck.
+      await bootTallFeed(tester);
+      heroNode(tester, 'tvHeroPlay').requestFocus();
+      await tester.pump();
+
+      for (var round = 0; round < 2; round++) {
+        await press(tester, LogicalKeyboardKey.arrowDown);
+        await tester.pumpAndSettle();
+        await press(tester, LogicalKeyboardKey.arrowUp);
+        await tester.pumpAndSettle();
+        expect(offset(tester), 0, reason: 'round $round left the hero off screen');
+        expect(FocusManager.instance.primaryFocus?.debugLabel, anyOf('tvHeroPlay', 'tvHeroMoreInfo'));
+      }
+    });
+
+    testWidgets('UP returns to the CTA the viewer last used, not always to Afspelen', (tester) async {
+      // Hoofdstuk 7.3's actual wording. Restoring the scroll first must not cost
+      // the "last used" half of it.
+      await bootTallFeed(tester);
+      heroNode(tester, 'tvHeroMoreInfo').requestFocus();
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+
+      expect(offset(tester), 0);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroMoreInfo');
+    });
+  });
+
   group('restoration (hoofdstuk 7.6 / fase-8 brief §19)', () {
     testWidgets('the feed returns the remote to the card it left, by group id', (tester) async {
       await boot(

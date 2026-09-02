@@ -1593,3 +1593,99 @@ De required-candidate `portable`-gate en de uitgevoerde iOS/tvOS Verify-scenario
 
 **Consequences:** Pleya Verify Core 1.0 is hiermee compleet: deterministic fixture-backed scenario's, drie platformdrivers (macOS/iOS-sim/tvOS-sim), UI-boom/focus/events/geometrie-assertions, autoritatieve compositor-screenshots als visuele waarheid, complete evidencebundels, false-PASS-verdediging (Fase 12), CLI, MCP-laag (Fase 13), CI-orkestratie (Fase 14), fail-closed control-plane-auth, bounded execution, en redactie-/securityhardening (dit besluit). Bekende, niet-blokkerende grenzen: macOS-hosted-buildsigning in CI, `tvos.library.filters` (DEFERRED voor G13, [DEC-080](#dec-080-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)), en tvOS-D-pad-navigatie binnen het systeemtoetsenbord (niet simuleerbaar, zie CONTRIBUTING.md). Geen nieuwe featurescope geopend; een volgende sessie die verder wil dan Core 1.0 begint bij een expliciet nieuw besluit, niet bij het stilzwijgend heropenen van Fase 1 t/m 15.
 
+
+## DEC-086: Verder kijken staat alleen op Home; de Films- en Series-landing tonen het niet
+
+**Date:** 2026-09-02
+**Status:** accepted
+
+**Context:** `TvDiscoveryLandingProvider` zette een Continue Watching-rij vooraan op zowel de Films-
+als de Series-landing, en 33.3 en 33.4 leggen dat allebei BINDEND vast ("CW eerst wanneer gevuld",
+"zelfde systeem als 33.3 met CW bovenaan"). Op een echte Apple TV levert dat dezelfde rij op drie
+pagina's op, en hij duwt op elke landing de rij weg waar die pagina voor bestaat.
+
+Bij het weghalen bleek er een tweede, zwaardere reden onder te zitten die in de melding niet stond.
+De rij was **niet kind-gesplitst**. Hij werd één keer geprojecteerd over de volledige
+`DiscoverProvider.onDeck` en aan beide landingen voorgeplakt, terwijl de hubs ernaast wél in
+`movieBackendHubs`/`seriesBackendHubs` werden gesorteerd. De Films-landing opende dus met
+halfgekeken afleveringen en de Series-landing met films, precies wat de klassedoc van diezelfde
+provider uitsluit ("split by [MediaKind] so a Films landing never shows a show and vice versa").
+Dat is een zelfstandig defect, en het maakt "de rij hoort hier niet" een sterker argument dan
+alleen herhaling.
+
+**Decision:** Alle CW-plumbing is uit `TvDiscoveryLandingProvider` verwijderd: het
+`continueWatchingTitle`-constructorargument, het veld, de `projectContinueWatching`-aanroep, de
+`Future.wait`-positie, de `_withContinueWatching`-wrapper en de CW-tak van `hubById`. `movieRails`
+is `_movieHubs` en `seriesRails` is `_seriesHubs`. `TvHomeProjectionProvider.continueWatching` is
+de enige eigenaar van die rij, en dat was hij op Home al.
+
+Dit overrulet 33.3 en 33.4; beide referenties hebben een afwijkingsnotitie gekregen.
+
+De projectiecontracten die aan die rij hangen (hoofdstuk 11.8's exacte-aflevering-identiteit,
+hoofdstuk 13.1's per-bron watch state, hoofdstuk 21.4's partial-gedrag) zijn niet vervallen maar
+verhuisd: `test/providers/tv_discovery_landing_provider_test.dart` draait diezelfde groep nu tegen
+`TvHomeProjectionProvider`. Ze staan nog in dat bestand omdat ze op de on-deck-fixtures daarvan
+gebouwd zijn; wat ze beweren is ongewijzigd.
+
+**Consequences:** De eerste rij van een landing is een aanbevelingsrij. Traversal is nagelopen en
+niet aangenomen: rails zijn op `hubId` gesleuteld, niet op index, en
+`test/screens/tv/tv_discovery_landing_screen_test.dart` bewijst dat ↑ vanaf de eerste rail nog
+steeds op de paginakop uitkomt. Home is ongewijzigd. Registerrij B21 in
+`docs/qa/tvos-unified-edge-cases.md`.
+
+## DEC-087: TV-discovery-dichtheid, `cardHeight` 220 en een kortere metaregel
+
+**Date:** 2026-09-02
+**Status:** accepted
+
+**Context:** Op een echte Apple TV vulde één discovery-rij 64% van het scherm, stonden er in
+ruststand vijf volle kaarten, en nam de gefocuste 16:9-kaart 42,3% van de bruikbare railbreedte met
+drie volle buren ernaast. `TvDiscoveryLayout.cardHeight` (270) is de enige knop; al het andere is
+daarvan afgeleid, want de gefocuste kaart is per constructie exact 2,67 posterbreedtes.
+
+Doorgerekend op het canonieke canvas (1038×584, `scaleOf` klemt op 0,85, bruikbare railbreedte
+964,9):
+
+| cardHeight | poster | wide | ruststand | naast de gefocuste kaart |
+|---|---|---|---|---|
+| 270 | 153,0 | 408,0 | 5 vol + 89 px | 3 vol, gefocust 42,3% |
+| 240 | 136,0 | 362,7 | 6 vol + 16 px | 3 vol, gefocust 37,6% |
+| **220** | **124,7** | **332,4** | **6 vol + 84 px** | **4 vol, gefocust 34,5%** |
+| 200 | 113,3 | 302,2 | 7 vol + 17 px | 4 vol, gefocust 31,3% |
+
+**Decision:** `cardHeight` staat op **220**. Beide helften van de dichtheidseis moeten tegelijk
+kloppen: zes volle kaarten in ruststand *met* een zichtbaar gedeeltelijke zevende, zodat de rij
+leest als doorlopend in plaats van eindigend, en vier volle buren naast de gefocuste kaart, zodat de
+expansie een klemtoonverschuiving is en geen overname van de rij. 240 haalt de eerste helft met 16
+px peek (niet te onderscheiden van een clipping-fout) en houdt drie buren. 200 haalt de tweede
+helft en zet er in ruststand zeven neer, wat de catalogusgrid-indruk is waar dit oppervlak tegen
+bestaat.
+
+Twee dingen horen bij dezelfde beslissing, omdat ze dezelfde verticale ruimte betreffen:
+
+- **De metaregel wordt korter.** Het bronnenaantal gaat eruit (de kaart erboven draagt daar een
+  `TvSourceCountBadge` voor, in dezelfde oogopslag) en een film krijgt zijn speelduur, het enige
+  feit dat de regel niet had en dat een kijker vóór een avond wél weegt. Een aflevering krijgt die
+  niet: zijn resterende tijd beantwoordt dezelfde vraag beter.
+- **De onderrand krijgt de teruggewonnen ruimte.** `TvCatalogLayout.bottomSafeInset` is nieuw en
+  staat op 81 referentiepixels, 7,5% van de referentiehoogte, tegen `topSafeInset`'s 56. Hoofdstuk
+  8.1 noemt een *minimum* ("geen tekst of focusring binnen de buitenste 56 pixels"), en 56 is 5,2%
+  van de hoogte, ongeveer precies de overscanband die een consumentenset opeet. Een pagina die op
+  56 uitkomt zet zijn laatste leesbare regel en de focusring van de onderste rij dus *op* die band
+  in plaats van erbuiten. Dit is een strengere marge, geen afwijking van 8.1, en hij is alleen
+  betaalbaar omdat de rijen korter zijn.
+
+Dit supersedet 33.2 (band 400 / gefocust 711 / buren 267), 33.3 (gefocust ≈40%, drie buren) en
+33.4 (het metadataformaat inclusief bronnenaantal). Alle drie de referenties hebben een
+afwijkingsnotitie gekregen.
+
+**Consequences:** Eén rij zakt van 374,8 naar ≈332 logische pixels. `test/widgets/tv/tv_discovery_density_test.dart`
+telt de kaarten op het canonieke canvas in beide toestanden in plaats van de constante te asserten.
+Een test op `cardHeight == 220` zou groen blijven nadat iemand `itemGap` of `pageInset` veranderde
+en de zevende kaart stilletjes kwijtraakte. `tvos.discovery.density` bewijst dezelfde compositie op
+een echte build, voor zover het transportcontract dat kan: `insideViewport` heeft geen negatie, dus
+"zes vol en een zevende ernaast" is wat een scenario kan zeggen en "de zevende is niet helemaal
+zichtbaar" niet. Kijklijst en Aanvragen draaiden op een ander maatsysteem (`MediaGridGeometry` +
+`GridSizeCalculator`, gestuurd door `SettingsService.libraryDensity`) en zijn op TV op de gedeelde
+`TvCatalogGrid`-geometrie gezet; de zeven andere `MediaGridGeometry`-call-sites en alle niet-TV-paden
+zijn ongemoeid. Registerrij B22.

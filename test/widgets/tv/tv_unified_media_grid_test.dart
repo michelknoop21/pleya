@@ -21,6 +21,7 @@ import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
 
 import '../../test_helpers/golden.dart';
@@ -54,7 +55,14 @@ void main() {
   /// Records what the grid asked to warm, instead of hitting the network.
   final warmed = <String>[];
 
-  Future<void> pumpGrid(WidgetTester tester, {required int count, Size? surfaceSize}) async {
+  Future<void> pumpGrid(
+    WidgetTester tester, {
+    required int count,
+    Size? surfaceSize,
+    bool hasMore = false,
+    bool isLoadingMore = false,
+    VoidCallback? onLoadMore,
+  }) async {
     warmed.clear();
     if (surfaceSize != null) setGoldenSurfaceSize(tester, size: surfaceSize);
     await tester.pumpWidget(
@@ -66,9 +74,9 @@ void main() {
               body: TvUnifiedMediaGrid(
                 groups: [for (var i = 0; i < count; i++) _group(i)],
                 onActivate: (_) {},
-                hasMore: false,
-                isLoadingMore: false,
-                onLoadMore: () {},
+                hasMore: hasMore,
+                isLoadingMore: isLoadingMore,
+                onLoadMore: onLoadMore ?? () {},
                 precache: (request, context) async => warmed.add(request.groupId),
               ),
             ),
@@ -78,6 +86,11 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  /// The column count the grid actually resolved, so a test can name a row
+  /// rather than guess an index — five to seven depending on the surface.
+  int columnsOf(WidgetTester tester) =>
+      TvCatalogGrid.forWidth(tester.view.physicalSize.width / tester.view.devicePixelRatio, scale: 1.0).columns;
 
   testWidgets('nothing is warmed until the user is somewhere', (tester) async {
     await pumpGrid(tester, count: 40);
@@ -235,6 +248,73 @@ void main() {
     Focus.of(tester.element(find.text('Title 0'))).requestFocus();
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
+  });
+
+  // ---------------------------------------------------------------------------
+  // P11: the next page is asked for before the viewer reaches the end
+  // ---------------------------------------------------------------------------
+
+  group('P11: paging', () {
+    testWidgets('the focus crossing into the last rows asks for the next page', (tester) async {
+      // The old trigger was DOWN on the last row and nothing else: no scroll
+      // listener, no threshold, no background prefetch. The viewer had to
+      // navigate into the end of what was loaded and *then* wait, on every
+      // page — which is the stall that was reported.
+      var loads = 0;
+      await pumpGrid(tester, count: 40, hasMore: true, onLoadMore: () => loads++);
+      final columns = columnsOf(tester);
+
+      Focus.of(tester.element(find.text('Title 0'))).requestFocus();
+      await tester.pumpAndSettle();
+      expect(loads, 0, reason: 'the top of the grid is nowhere near the end');
+
+      // Two rows short of the end, which is the threshold.
+      final rows = (40 / columns).ceil();
+      final target = (rows - TvUnifiedMediaGridState.loadMoreRowThreshold) * columns;
+      Focus.of(tester.element(find.text('Title $target'))).requestFocus();
+      await tester.pumpAndSettle();
+      expect(loads, greaterThan(0), reason: 'the page is requested while there is still a row to walk');
+    });
+
+    testWidgets('and it does so without moving the focus', (tester) async {
+      // Hoofdstuk 28 forbids a reflow, and moving focus to a card that does not
+      // exist yet is the reset this whole widget is built to avoid.
+      var loads = 0;
+      await pumpGrid(tester, count: 40, hasMore: true, onLoadMore: () => loads++);
+      final columns = columnsOf(tester);
+      final rows = (40 / columns).ceil();
+      final target = (rows - 1) * columns;
+
+      Focus.of(tester.element(find.text('Title $target'))).requestFocus();
+      await tester.pumpAndSettle();
+
+      expect(loads, greaterThan(0));
+      expect(Focus.of(tester.element(find.text('Title $target'))).hasFocus, isTrue);
+    });
+
+    testWidgets('a load already in flight is not asked for again', (tester) async {
+      var loads = 0;
+      await pumpGrid(tester, count: 40, hasMore: true, isLoadingMore: true, onLoadMore: () => loads++);
+      final columns = columnsOf(tester);
+      final rows = (40 / columns).ceil();
+
+      Focus.of(tester.element(find.text('Title ${(rows - 1) * columns}'))).requestFocus();
+      await tester.pumpAndSettle();
+
+      expect(loads, 0, reason: 'the duplicate-request guard a layer down should never have to earn its keep here');
+    });
+
+    testWidgets('the end of a complete library asks for nothing at all', (tester) async {
+      var loads = 0;
+      await pumpGrid(tester, count: 40, onLoadMore: () => loads++);
+      final columns = columnsOf(tester);
+      final rows = (40 / columns).ceil();
+
+      Focus.of(tester.element(find.text('Title ${(rows - 1) * columns}'))).requestFocus();
+      await tester.pumpAndSettle();
+
+      expect(loads, 0, reason: '`hasMore` false means there is no page to fetch, whatever the focus does');
+    });
   });
 
   group('I18: a focused card that disappears (hoofdstuk 7.6)', () {

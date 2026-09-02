@@ -61,12 +61,17 @@ class _FakeAggregationService extends DataAggregationService {
 
   List<MediaHub> Function() hubsResult = () => const [];
 
+  /// Resumable titles. Empty by default and settable per test, so a landing can
+  /// be pumped against a *full* Continue Watching list — which is the only way
+  /// "the landing does not show one" (DEC-086) means anything.
+  List<MediaItem> Function() onDeckResult = () => const [];
+
   @override
   Future<OnDeckAggregationResult> getOnDeckFromAllServers({
     int? limit,
     Set<String>? hiddenLibraryKeys,
     Set<String>? serverIds,
-  }) async => (items: const <MediaItem>[], succeededServerIds: serverIds ?? const {'server_1'});
+  }) async => (items: onDeckResult(), succeededServerIds: serverIds ?? const {'server_1'});
 
   @override
   Future<HubAggregationResult> getHubsFromAllServers({
@@ -149,11 +154,7 @@ void main() {
     ];
     await discover.load();
 
-    final landing = TvDiscoveryLandingProvider(
-      discover: discover,
-      multiServer: multiServer,
-      continueWatchingTitle: 'Continue Watching',
-    );
+    final landing = TvDiscoveryLandingProvider(discover: discover, multiServer: multiServer);
     addTearDown(landing.dispose);
     // A microtask-only yield, not `Future.delayed` — under `testWidgets`'s
     // automated binding a real `Timer` never fires without an explicit
@@ -339,6 +340,37 @@ void main() {
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvDiscoveryViewAll', reason: 'and UP comes straight back');
   });
 
+  testWidgets('DEC-086: the first rail is a recommendation row, even with a full on-deck', (tester) async {
+    // What the viewer sees, as opposed to what the provider returns: with two
+    // resumable titles waiting, the landing's first heading is still Recently
+    // Added, and "Verder kijken" appears nowhere on the page. Home is the one
+    // surface that carries it.
+    await pumpLanding(tester, onDeck: [_movie('cw1', 'The Long Harbour'), _movie('cw2', 'Kite Street')]);
+
+    expect(find.text(t.discover.continueWatching), findsNothing);
+    final headings = tester.widgetList<TvDiscoveryRail>(find.byType(TvDiscoveryRail)).map((r) => r.title).toList();
+    expect(headings, isNotEmpty, reason: 'sanity: the landing has rails at all');
+    expect(headings.first, isNot(t.discover.continueWatching));
+  });
+
+  testWidgets('UP from the first rail still reaches the page header after the row moved', (tester) async {
+    // The traversal the removal could have broken: the first rail used to be
+    // Continue Watching and is now whatever the projection put first, and UP
+    // out of it has to keep landing on the header rather than on the top
+    // navigation. Rails are keyed on `hubId`, not on index, so this is a
+    // property to prove rather than to assume.
+    await pumpLanding(tester, onDeck: [_movie('cw1', 'The Long Harbour')]);
+
+    final rails = tester.stateList<TvDiscoveryRailState>(find.byType(TvDiscoveryRail)).toList();
+    expect(rails.first.focusCurrent(), isTrue);
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('tvDiscoveryTile_'));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvDiscoveryViewAll');
+  });
+
   testWidgets('the landing carries no filter or sort chrome', (tester) async {
     await pumpLanding(tester);
 
@@ -357,7 +389,12 @@ void main() {
 
 /// Mounts the landing with two movie rails, settled — the shape the DEC-068
 /// header tests need and the existing restoration test builds inline.
-Future<void> pumpLanding(WidgetTester tester, {String? title, String? allTitle}) async {
+Future<void> pumpLanding(
+  WidgetTester tester, {
+  String? title,
+  String? allTitle,
+  List<MediaItem> onDeck = const [],
+}) async {
   resetSharedPreferencesForTest();
   SettingsService.resetForTesting();
   await SettingsService.getInstance();
@@ -373,6 +410,7 @@ Future<void> pumpLanding(WidgetTester tester, {String? title, String? allTitle})
   addTearDown(hiddenLibraries.dispose);
   addTearDown(multiServer.dispose);
 
+  aggregation.onDeckResult = () => onDeck;
   aggregation.hubsResult = () => [
     MediaHub(
       id: 'recently-added-movies',
@@ -397,11 +435,7 @@ Future<void> pumpLanding(WidgetTester tester, {String? title, String? allTitle})
   ];
   await discover.load();
 
-  final landing = TvDiscoveryLandingProvider(
-    discover: discover,
-    multiServer: multiServer,
-    continueWatchingTitle: 'Continue Watching',
-  );
+  final landing = TvDiscoveryLandingProvider(discover: discover, multiServer: multiServer);
   addTearDown(landing.dispose);
   for (var i = 0; i < 50 && landing.isProjecting; i++) {
     await Future<void>.value();

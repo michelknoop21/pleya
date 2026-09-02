@@ -57,6 +57,7 @@ class TvContentRow extends StatelessWidget {
     this.initialFocusedGroupId,
     this.onFocusedGroupChanged,
     this.onNavigateUp,
+    this.automationRailIndex,
   });
 
   /// A projected Home row: Continue Watching, or one of
@@ -82,6 +83,9 @@ class TvContentRow extends StatelessWidget {
   /// below it keep the rail-to-rail default.
   final VoidCallback? onNavigateUp;
 
+  /// This row's position in the feed, for Pleya Verify addressing only.
+  final int? automationRailIndex;
+
   /// The row's full vertical extent — heading, tile band, metadata block —
   /// constant by construction, so which tile holds the focus can never move
   /// the rows underneath it.
@@ -100,6 +104,7 @@ class TvContentRow extends StatelessWidget {
       onActivate: onActivate,
       onContextMenu: onContextMenu,
       onNavigateUp: onNavigateUp,
+      automationRailIndex: automationRailIndex,
     );
   }
 }

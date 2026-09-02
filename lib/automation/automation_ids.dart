@@ -42,6 +42,31 @@ class AutomationIds {
   /// The hero's smart-play button.
   static const String discoverHeroPlay = 'discover.hero.play';
 
+  /// One discovery rail's tile band, on a Films/Series landing or the TV Home
+  /// feed. Instanceable: suffixed `[<railIndex>]`, top to bottom.
+  ///
+  /// The band alone, not the whole section: the heading above it and the
+  /// metadata block below it are not what a tile is measured against.
+  static const String discoverRail = 'discover.rail';
+
+  /// One tile in [discoverRail]. Instanceable: suffixed
+  /// `[<railIndex>.<tileIndex>]`, so a scenario can name a tile without the
+  /// rails having to share a global counter.
+  ///
+  /// Its bounds are the tile's artwork *plus* its focus-ring gap on every side
+  /// — see `TvExpandableMediaTile.automationId` for why that distinction is the
+  /// whole point for an overscan assertion.
+  static const String discoverRailItem = 'discover.rail.item';
+
+  /// The inner title-safe rect of a discovery landing: the box that is left
+  /// once the page has paid its own insets.
+  ///
+  /// Registered *inside* the padding, deliberately. Wrapping the page's outer
+  /// `Padding` instead would give this node the whole viewport as its rect,
+  /// which makes `notClipped` against it true for anything on screen and the
+  /// overscan assertion worthless.
+  static const String discoverSafeArea = 'discover.safe_area';
+
   /// The episode list on the media-detail screen (single-season-direct and
   /// per-season-pager paths both render through the same widget).
   static const String mediaDetailEpisodeList = 'media-detail.episode-list';
@@ -55,7 +80,13 @@ class AutomationIds {
   /// Base ids a scenario may address as `id[instance]` — see
   /// `pleya_verify/automation_ids.yaml`'s `instanceable` field and the Pleya
   /// Verify plan's instance-ID semantics (Fase 5).
-  static const Set<String> instanceableIds = {sidebarLibraryRow, libraryGridItem, mediaDetailEpisodeListItem};
+  static const Set<String> instanceableIds = {
+    sidebarLibraryRow,
+    libraryGridItem,
+    mediaDetailEpisodeListItem,
+    discoverRail,
+    discoverRailItem,
+  };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
   /// and the source `pleya_verify/automation_ids.yaml` is generated from
@@ -78,6 +109,9 @@ class AutomationIds {
     {'id': libraryFilterSort, 'role': 'filter', 'instanceable': false},
     {'id': discoverHero, 'role': 'hero', 'instanceable': false},
     {'id': discoverHeroPlay, 'role': 'button', 'instanceable': false},
+    {'id': discoverRail, 'role': 'rail', 'instanceable': true},
+    {'id': discoverRailItem, 'role': 'grid.item', 'instanceable': true},
+    {'id': discoverSafeArea, 'role': 'region', 'instanceable': false},
     {'id': mediaDetailEpisodeList, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailEpisodeListItem, 'role': 'list.item', 'instanceable': true},
     {'id': playerSurface, 'role': 'surface', 'instanceable': false},

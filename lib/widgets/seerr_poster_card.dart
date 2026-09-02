@@ -112,7 +112,17 @@ const double seerrGridFocusTopPad = 14;
 /// recommendations row all render identical cards. Tapping is left to the
 /// caller (usually: open [SeerrMediaDetailScreen]).
 class SeerrPosterCard extends StatelessWidget {
-  const SeerrPosterCard({super.key, required this.media, required this.onTap, this.width, this.focusNode});
+  const SeerrPosterCard({
+    super.key,
+    required this.media,
+    required this.onTap,
+    this.width,
+    this.focusNode,
+    this.onNavigateUp,
+    this.onNavigateDown,
+    this.onNavigateLeft,
+    this.onNavigateRight,
+  });
 
   final SeerrMedia media;
   final VoidCallback onTap;
@@ -124,6 +134,19 @@ class SeerrPosterCard extends StatelessWidget {
   /// the first result card).
   final FocusNode? focusNode;
 
+  /// Explicit D-pad exits (P7).
+  ///
+  /// The card had none, so a remote at the left edge of the results grid had
+  /// no guaranteed way back to the top navigation: it fell through to Flutter's
+  /// geometric traversal, which on a page whose only other focusables are above
+  /// the grid is a guess. The grid wires LEFT off the first column and UP out of
+  /// the first row; everything else stays with the default policy, which inside
+  /// a uniform grid is right.
+  final VoidCallback? onNavigateUp;
+  final VoidCallback? onNavigateDown;
+  final VoidCallback? onNavigateLeft;
+  final VoidCallback? onNavigateRight;
+
   @override
   Widget build(BuildContext context) {
     final t = tokens(context);
@@ -132,6 +155,10 @@ class SeerrPosterCard extends StatelessWidget {
     return FocusableWrapper(
       onSelect: onTap,
       focusNode: focusNode,
+      onNavigateUp: onNavigateUp,
+      onNavigateDown: onNavigateDown,
+      onNavigateLeft: onNavigateLeft,
+      onNavigateRight: onNavigateRight,
       borderRadius: t.radiusSm,
       mode: FocusIndicatorMode.delegated,
       semanticLabel: media.title,

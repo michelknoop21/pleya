@@ -42,6 +42,10 @@ class WatchlistCard extends StatelessWidget {
     required this.width,
     this.titleLines = 1,
     this.focusNode,
+    this.onNavigateUp,
+    this.onNavigateDown,
+    this.onNavigateLeft,
+    this.onNavigateRight,
   });
 
   final WatchlistEntry entry;
@@ -58,6 +62,17 @@ class WatchlistCard extends StatelessWidget {
   final double width;
 
   final FocusNode? focusNode;
+
+  /// Explicit D-pad exits, wired by the grid.
+  ///
+  /// Both branches take them, which is the point: whether a title happens to
+  /// be playable right now decides which widget draws it, and it must not
+  /// decide whether the remote can move off it. An availability lookup landing
+  /// mid-row used to swap a wired card for an unwired one under the focus.
+  final VoidCallback? onNavigateUp;
+  final VoidCallback? onNavigateDown;
+  final VoidCallback? onNavigateLeft;
+  final VoidCallback? onNavigateRight;
 
   /// Lines the title may use. The grid reserves the same number in its cell
   /// height, so a wrapped title never makes one card taller than its
@@ -78,6 +93,10 @@ class WatchlistCard extends StatelessWidget {
             height: MediaCardGridLayout.posterHeightFor(width),
             focusNode: focusNode,
             gridTitleLines: titleLines,
+            onNavigateUp: onNavigateUp,
+            onNavigateDown: onNavigateDown,
+            onNavigateLeft: onNavigateLeft,
+            onNavigateRight: onNavigateRight,
           )
         : WatchlistUnavailableCard(
             entry: entry,
@@ -85,6 +104,10 @@ class WatchlistCard extends StatelessWidget {
             width: width,
             focusNode: focusNode,
             titleLines: titleLines,
+            onNavigateUp: onNavigateUp,
+            onNavigateDown: onNavigateDown,
+            onNavigateLeft: onNavigateLeft,
+            onNavigateRight: onNavigateRight,
           );
 
     // A tight cell overrides this with the identical value; outside a grid it
@@ -119,6 +142,10 @@ class WatchlistUnavailableCard extends StatelessWidget {
     required this.width,
     this.titleLines = 1,
     this.focusNode,
+    this.onNavigateUp,
+    this.onNavigateDown,
+    this.onNavigateLeft,
+    this.onNavigateRight,
   });
 
   final WatchlistEntry entry;
@@ -129,6 +156,12 @@ class WatchlistUnavailableCard extends StatelessWidget {
   final double width;
 
   final FocusNode? focusNode;
+
+  /// Explicit D-pad exits — see [WatchlistCard.onNavigateUp].
+  final VoidCallback? onNavigateUp;
+  final VoidCallback? onNavigateDown;
+  final VoidCallback? onNavigateLeft;
+  final VoidCallback? onNavigateRight;
 
   /// How many lines the title may use. The grid reserves the same number in
   /// its cell height, so a wrapped title never makes one card taller than its
@@ -162,6 +195,10 @@ class WatchlistUnavailableCard extends StatelessWidget {
     return FocusableWrapper(
       onSelect: onTap,
       focusNode: focusNode,
+      onNavigateUp: onNavigateUp,
+      onNavigateDown: onNavigateDown,
+      onNavigateLeft: onNavigateLeft,
+      onNavigateRight: onNavigateRight,
       borderRadius: tk.radiusSm,
       mode: FocusIndicatorMode.delegated,
       semanticLabel: entry.item.title,

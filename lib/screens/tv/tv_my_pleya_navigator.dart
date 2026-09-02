@@ -47,29 +47,43 @@ import 'tv_servers_screen.dart';
 /// feature here; it gives the rail rows and settings sub-pages of hoofdstuk
 /// 18.2 a place on TV. [TvNestedRoute.restoreFocusKey] is the tile itself, so
 /// popping puts the remote back where it was (hoofdstuk 7.6).
-TvNestedRoute tvMyPleyaNestedRoute(TvMyPleyaSection section, {GlobalKey? librariesKey}) => TvNestedRoute(
-  id: 'tvMyPleya_${section.name}',
-  restoreFocusKey: section.tileFocusKey,
-  // Without a key the shell has nothing to ask where the focus belongs, and a
-  // section opened on a remote with no focused element is a section you cannot
-  // use. Bibliotheken reuses the key the hoofdstuk 6.4 adapter already needs,
-  // so both reach the same `State`.
-  screenKey: section == TvMyPleyaSection.libraries ? librariesKey : GlobalKey(debugLabel: 'tvMyPleya_${section.name}'),
-  builder: (context) => switch (section) {
-    TvMyPleyaSection.watchlist => const WatchlistScreen(),
-    TvMyPleyaSection.requests => const SeerrDiscoverScreen(),
-    TvMyPleyaSection.downloads => const DownloadsScreen(),
-    // Keyed so the hoofdstuk 6.4 adapter can reach the same `loadLibraryByKey`
-    // the rail's library rows have always called.
-    // Keyed by the route's own `screenKey`, which for this section *is*
-    // `librariesKey`; a second key here would leave one of them resolving to
-    // nothing.
-    TvMyPleyaSection.libraries => LibrariesScreen(key: librariesKey),
-    TvMyPleyaSection.servers => const TvServersScreen(),
-    TvMyPleyaSection.activity => const NowWatchingScreen(),
-    TvMyPleyaSection.watchTogether => const WatchTogetherScreen(),
-    TvMyPleyaSection.settings => const SettingsScreen(),
-    TvMyPleyaSection.logs => const LogsScreen(),
-    TvMyPleyaSection.about => const AboutScreen(),
-  },
-);
+TvNestedRoute tvMyPleyaNestedRoute(TvMyPleyaSection section, {GlobalKey? librariesKey, GlobalKey? watchlistKey}) =>
+    TvNestedRoute(
+      id: 'tvMyPleya_${section.name}',
+      restoreFocusKey: section.tileFocusKey,
+      // Without a key the shell has nothing to ask where the focus belongs, and
+      // a section opened on a remote with no focused element is a section you
+      // cannot use. Bibliotheken reuses the key the hoofdstuk 6.4 adapter
+      // already needs; Kijklijst reuses `MainScreen`'s own `_watchlistKey`, for
+      // the same reason and because the route and the screens list have to
+      // resolve to one `State`.
+      //
+      // The route *did* make a fresh `GlobalKey` here for every section — but
+      // it made it for the route, and handed it to nothing: only Bibliotheken's
+      // `builder` passed a key down to its screen. So `screenKey.currentState`
+      // was permanently null for Kijklijst, which is the first of P5's four
+      // stacked causes, and exactly what the comment above already warned
+      // about.
+      screenKey: switch (section) {
+        TvMyPleyaSection.libraries => librariesKey,
+        TvMyPleyaSection.watchlist => watchlistKey,
+        _ => GlobalKey(debugLabel: 'tvMyPleya_${section.name}'),
+      },
+      builder: (context) => switch (section) {
+        TvMyPleyaSection.watchlist => WatchlistScreen(key: watchlistKey),
+        TvMyPleyaSection.requests => const SeerrDiscoverScreen(),
+        TvMyPleyaSection.downloads => const DownloadsScreen(),
+        // Keyed so the hoofdstuk 6.4 adapter can reach the same
+        // `loadLibraryByKey` the rail's library rows have always called.
+        // Keyed by the route's own `screenKey`, which for this section *is*
+        // `librariesKey`; a second key here would leave one of them resolving
+        // to nothing.
+        TvMyPleyaSection.libraries => LibrariesScreen(key: librariesKey),
+        TvMyPleyaSection.servers => const TvServersScreen(),
+        TvMyPleyaSection.activity => const NowWatchingScreen(),
+        TvMyPleyaSection.watchTogether => const WatchTogetherScreen(),
+        TvMyPleyaSection.settings => const SettingsScreen(),
+        TvMyPleyaSection.logs => const LogsScreen(),
+        TvMyPleyaSection.about => const AboutScreen(),
+      },
+    );

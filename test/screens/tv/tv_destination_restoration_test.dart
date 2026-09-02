@@ -25,6 +25,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:pleya/navigation/tv/tv_content_focus_authority.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/focus_memory_tracker.dart';
@@ -301,6 +302,7 @@ class _ShellHostState extends State<_ShellHost> {
   @override
   Widget build(BuildContext context) => TvRootShell(
     coordinator: widget.coordinator,
+    contentFocus: TvContentFocusAuthority(),
     navNodes: _navNodes,
     navFocusScope: _navScope,
     contentFocusScope: _contentScope,
@@ -568,11 +570,7 @@ void main() {
       _hub('top-picks-movies', 'Top Picks', ['m4', 'm5']),
     ];
     await discover.load();
-    final landing = TvDiscoveryLandingProvider(
-      discover: discover,
-      multiServer: multiServer,
-      continueWatchingTitle: 'Continue Watching',
-    );
+    final landing = TvDiscoveryLandingProvider(discover: discover, multiServer: multiServer);
     addTearDown(() {
       landing.dispose();
       discover.dispose();

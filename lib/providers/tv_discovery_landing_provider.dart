@@ -34,22 +34,16 @@ import 'discover_provider.dart';
 import 'multi_server_provider.dart';
 
 class TvDiscoveryLandingProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
-  TvDiscoveryLandingProvider({
-    required DiscoverProvider discover,
-    required MultiServerProvider multiServer,
-    required String continueWatchingTitle,
-  }) : _discover = discover,
-       _continueWatchingTitle = continueWatchingTitle,
-       _service = HomeProjectionService(fetchExternalIds: externalIdsFetcherFor(multiServer)) {
+  TvDiscoveryLandingProvider({required DiscoverProvider discover, required MultiServerProvider multiServer})
+    : _discover = discover,
+      _service = HomeProjectionService(fetchExternalIds: externalIdsFetcherFor(multiServer)) {
     _discover.addListener(_onDiscoverChanged);
     _onDiscoverChanged();
   }
 
   final DiscoverProvider _discover;
-  final String _continueWatchingTitle;
   final HomeProjectionService _service;
 
-  UnifiedMediaHub? _continueWatching;
   List<UnifiedMediaHub> _movieHubs = const [];
   List<UnifiedMediaHub> _seriesHubs = const [];
 
@@ -61,19 +55,34 @@ class TvDiscoveryLandingProvider extends ChangeNotifier with DisposableChangeNot
   bool _projecting = false;
   bool _projectionPending = false;
 
-  /// Films landing rows: Continue Watching first (when non-empty), then every
-  /// projected movie-kind row, in the order `DiscoverProvider` produced them.
-  List<UnifiedMediaHub> get movieRails => _withContinueWatching(_movieHubs);
+  /// Films landing rows: every projected movie-kind row, in the order
+  /// `DiscoverProvider` produced them.
+  ///
+  /// **No Continue Watching row, on either landing (DEC-086).** Home owns it,
+  /// through [TvHomeProjectionProvider.continueWatching], and it is the only
+  /// surface that does.
+  ///
+  /// Two separate reasons, and the second is why this is a fix rather than a
+  /// preference. The first is the one that was reported: Verder kijken repeated
+  /// at the top of Films and of Series is the same row three times on three
+  /// pages, and it pushes the row each landing actually exists for below the
+  /// fold. The second was found while removing it — the row was never
+  /// kind-split. It was projected once over the whole of `DiscoverProvider.onDeck`
+  /// and prepended to both landings, while the hubs beside it *were* sorted into
+  /// movie and series. So the Films landing led with half-watched episodes and
+  /// the Series landing with films, which is precisely what this class's own
+  /// doc rules out ("split by [MediaKind] so a Films landing never shows a show
+  /// and vice versa").
+  ///
+  /// This supersedes 33.3 and 33.4's "Continue Watching first when non-empty",
+  /// which both bind for these two landings. The first row of a landing is a
+  /// recommendation row now.
+  List<UnifiedMediaHub> get movieRails => _movieHubs;
 
   /// Series landing rows, same shape.
-  List<UnifiedMediaHub> get seriesRails => _withContinueWatching(_seriesHubs);
+  List<UnifiedMediaHub> get seriesRails => _seriesHubs;
 
   List<UnifiedMediaHub> get _bothKinds => [..._movieHubs, ..._seriesHubs];
-
-  List<UnifiedMediaHub> _withContinueWatching(List<UnifiedMediaHub> kindHubs) {
-    final cw = _continueWatching;
-    return cw == null ? kindHubs : [cw, ...kindHubs];
-  }
 
   bool get isProjecting => _projecting;
 
@@ -108,17 +117,13 @@ class TvDiscoveryLandingProvider extends ChangeNotifier with DisposableChangeNot
         }
       }
 
-      final onDeck = _discover.onDeck;
       final results = await Future.wait([
-        _service.projectContinueWatching(onDeck, title: _continueWatchingTitle, failedServerIds: failedServerIds),
         _service.projectHubs(movieBackendHubs, failedServerIds: failedServerIds),
         _service.projectHubs(seriesBackendHubs, failedServerIds: failedServerIds),
       ]);
 
-      final continueWatching = results[0] as UnifiedMediaHub;
-      _continueWatching = continueWatching.isEmpty ? null : continueWatching;
-      _movieHubs = results[1] as List<UnifiedMediaHub>;
-      _seriesHubs = results[2] as List<UnifiedMediaHub>;
+      _movieHubs = results[0];
+      _seriesHubs = results[1];
       safeNotifyListeners();
     } catch (error, stackTrace) {
       appLogger.e('TvDiscoveryLandingProvider: projection failed', error: error, stackTrace: stackTrace);
@@ -138,8 +143,6 @@ class TvDiscoveryLandingProvider extends ChangeNotifier with DisposableChangeNot
     for (final hub in _bothKinds) {
       if (hub.hubId == hubId) return hub;
     }
-    final cw = _continueWatching;
-    if (cw != null && cw.hubId == hubId) return cw;
     return null;
   }
 

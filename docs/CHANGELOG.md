@@ -4,6 +4,96 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-02] De UX/focus-herstelronde: twaalf gemelde gebreken, en drie meldingen die niet klopten
+
+Twaalf punten van een echte Apple TV, plus één bevinding die er zelf bij kwam. Wat volgt is geen
+lijst van fixes maar van oorzaken; de fixes staan in de code en het bewijs in
+`docs/qa/tvos-unified-edge-cases.md` (B18 t/m B29). Twee besluiten: [DEC-086] (Verder kijken staat
+alleen op Home) en [DEC-087] (dichtheid, `cardHeight` 220, kortere metaregel, ruimere onderrand).
+Beide superseden BINDEND-tekst in 33.2, 33.3 en 33.4; die drie referenties hebben een
+afwijkingsnotitie gekregen.
+
+**Het billboard kwam terug in de focusboom, niet in beeld.** `_focusHeroFromFirstRow` probeerde de
+CTA te focussen vóór het herstellen van de scrollpositie, en keerde terug zodra dat lukte. Dat lukt
+terwijl de carousel nog binnen `cacheExtent` gemonteerd is, dus volledig buiten beeld: een
+gemonteerde offscreen node meldt `canRequestFocus: true`, en een kale `requestFocus()` lokt geen
+`ensureVisible` uit; alleen de traversal policy doet dat, en dit ís geen traversal. De `jumpTo(0)`
+een regel lager werd overgeslagen, de volgende druk vertrok naar de topnav, en het billboard was van
+onderaf onbereikbaar, precies de traversal die 7.3 voorschrijft. De doc die de vroege return
+verdedigde redeneerde alleen over de *gedisposede* hero, wat de andere helft van hetzelfde geval is.
+
+**Drie code-paden hadden allemaal een mening over waar de afstandsbediening hoort.** `_selectTab`
+riep `focusActiveTabIfReady` aan bij elke tabwissel, `_selectTvDestination` riep onvoorwaardelijk
+`_focusContent` aan, en `DiscoverScreen`'s initial-load-postframe riep `focusPrimary()` aan zodra er
+íets binnenkwam. Elk op zich verdedigbaar; samen onvoorspelbaar. Er is nu één
+`TvContentFocusAuthority` met een consume-once-intent, en content die binnenkomt is geen verzoek.
+Een koude start legt de focus voortaan expliciet op de balk. Vóór deze ronde deed niets dat, en
+viel de uitkomst toe aan welk pad toevallig als laatste vuurde.
+
+**Verder kijken stond op drie pagina's, en op twee ervan met de verkeerde inhoud.** Dat tweede is
+niet gemeld en is de zwaardere helft: de rij werd één keer geprojecteerd over de volledige on-deck en
+aan beide landingen voorgeplakt, terwijl de hubs ernaast wél op kind gesorteerd werden. De
+Films-landing opende dus met halfgekeken afleveringen.
+
+**De focusanimatie stotterde omdat de tegel per frame een ander plaatje vroeg.** De breedte is een
+`AnimatedContainer`-target, de afbeelding kreeg geen expliciete maat, dus `OptimizedMediaImage` viel
+in zijn `LayoutBuilder`-tak en las de meebewegende breedte. `MediaImageHelper` bucket per 40
+device-pixels en TV-DPR is minimaal 2.0: negen verschillende URL's, cachekeys en disk-lookups per
+focuswissel, gemeten. Beide takken geven nu hun eindmaat expliciet mee. De postertak was al stabiel,
+maar bij toeval: `min(w, h·2/3)` komt bij constante hoogte op de hoogteterm uit. Dat is nu een
+expliciete invariant. Dit was niet testbaar met de bestaande seam: `debugImageBuilder` keert terug op
+de eerste regel van `build`, en elke discovery-widgettest installeert die. Er is een tweede seam
+bijgekomen die ná `getOptimizedImageUrl` vuurt, en de test telt *distinct* URL's, geen calls.
+
+**De Kijklijst had vier gestapelde redenen om niet te werken.** De route maakte een `GlobalKey` en
+gaf hem aan niets door; het scherm implementeerde `FocusableTab` niet; de kaart accepteerde `key` en
+`focusNode` en de call-site gaf geen van beide mee; en zowel de `IndexedStack` in `MainScreen` als de
+`Offstage`-tak in `TvRootShell` hield een complete tweede, onzichtbare kopie van elk scherm
+focusbaar in dezelfde scope. `Offstage` en `IndexedStack` halen paint en hit-testing weg, nooit
+focusbaarheid; elf andere plekken in deze repo koppelen ze daarom aan een `ExcludeFocus`.
+
+**De gefocuste kaart liep van de rail af.** De rail heeft geen eigen `ensureVisible`, en Flutter's
+traversal policy kan er geen leveren: die meet de tegel op het moment dat focus landt, dus nog op
+posterbreedte, waarna hij naar 2,67 keer die breedte groeit. `FocusableWrapper._scrollIntoView` zoekt
+een *verticale* scrollable en een rail is horizontaal. De scroll rekent nu uit de layouttokens, niet
+uit render boxes, en houdt de page inset aan beide kanten aan.
+
+**Paginering begon pas aan het einde.** Eén regel was de hele trigger: DOWN op de laatste rij. Geen
+scroll-listener, geen drempel, geen achtergrondprefetch. De drempel ligt nu op focus, twee gridrijen voor
+het einde, zonder de focus te verplaatsen. Op TV *is* focus de cursor.
+
+**Wide artwork werd opgehaald op het moment dat je het nodig had.** De prefetcher kende alleen
+posters. Hij warmt nu een tweede variant op één wachtrij, één in-flight-teller en één plafond: twee
+losse prefetchers van drie zouden samen de zes globale permits kunnen bezetten en precies de tegel
+op het scherm uithongeren. Eigendom ligt bij de rail-state, niet bij `itemBuilder`. En de garantie
+is geen wedloop: de wide-tak draagt het posterframe als placeholder, dus er is geen lege beat, ook
+niet als de prefetch nog loopt.
+
+**`tvContextMenu.menuSemantics` stond in zestien talen en werd nergens aangeroepen.** Het paneel
+bevatte geen enkele `Semantics(`; de enige toegankelijkheidsuitvoer van een actierij was de kale
+naam. VoiceOver kon dus niet zeggen of "Markeer als bekeken" de eerste van twee was of de derde van
+zeven.
+
+### Drie meldingen die niet klopten
+
+- **Aanvragen heeft geen eigen `Scaffold`/`SliverAppBar` meer.** `505e8cc` en `f8c7d47` hebben dat
+  al opgelost; het is niet opnieuw opgelost. Wat er wél stond zijn vier kleinere resten, waaronder
+  twee inbox-knoppen waarvan er één onbereikbaar was.
+- **"De laatste tegel heeft geen trailing ruimte om in uit te klappen" is onwaar.** De expansie is
+  een `AnimatedContainer` *binnen* de scrollable, dus hij vergroot de content zelf, en
+  `maxScrollExtent` komt op de pixel uit waar de reveal hem wil hebben. De trailing padding daarvoor
+  is geschreven, getest, en weer verwijderd toen de negatieve controle ervan groen bleef.
+- **Bij P4 churnt alleen de wide-tak**, niet beide, om de reden hierboven.
+
+### Pleya Verify
+
+Vier scenario's erbij (`tvos.home.hero-return`, `tvos.nav.destination-select`,
+`tvos.discovery.density`, `tvos.discovery.overscan`), drie nieuwe ID's (`discover.rail`,
+`discover.rail.item`, `discover.safe_area`) en twee bestaande ID's die nu ook op tvOS geregistreerd
+worden (`discover.hero`, `discover.hero.play` op de TV-carousel; `nav.<tab>` op de topbalk, die er
+geen enkele had). `discover.safe_area` staat *binnen* de insets: eromheen zou zijn rect de hele
+viewport zijn en elke overscan-assertie waardeloos maken. Hier alleen gevalideerd, niet gedraaid.
+
 ## [2026-09-02] De eindaudit van fase 9, en de acht dingen die eronder lagen
 
 Eén strikt lezende audit over `ee72260..HEAD`, tegen de DoD, het register en de DEC's. Acht

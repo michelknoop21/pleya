@@ -170,9 +170,23 @@ class TvCatalogOptionRow extends StatefulWidget {
     this.onNavigateDown,
     this.onNavigateLeft,
     this.onNavigateRight,
+    this.semanticLabel,
   });
 
   final String label;
+
+  /// What a screen reader announces instead of [label].
+  ///
+  /// Optional, and defaulting to [label] on purpose: this row is shared by the
+  /// sort panel, the filter panel and the hoofdstuk-23 context menu, and only
+  /// the last of those needs to say anything else. The context menu passes the
+  /// action's position and the count with it (J8) — VoiceOver on tvOS does not
+  /// announce a row's place inside a `ListView.separated` on its own, so
+  /// "Markeer als bekeken" gave a listener no idea whether there were two more
+  /// actions below it or twelve. The other two call sites are unchanged, and
+  /// deliberately: a sort option's position among the sort options is not
+  /// information, its label is.
+  final String? semanticLabel;
 
   /// A quieter second line — the server a library belongs to, for instance.
   final String? secondary;
@@ -226,7 +240,7 @@ class _TvCatalogOptionRowState extends State<TvCatalogOptionRow> {
       onNavigateRight: widget.onNavigateRight,
       borderRadius: TvSourcePickerLayout.rowRadius * scale,
       disableScale: true,
-      semanticLabel: label,
+      semanticLabel: widget.semanticLabel ?? label,
       child: AnimatedContainer(
         duration: mono.fast,
         constraints: BoxConstraints(minHeight: TvCatalogLayout.optionRowMinHeight * scale),

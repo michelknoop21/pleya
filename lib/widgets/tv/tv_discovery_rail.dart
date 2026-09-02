@@ -43,13 +43,19 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_item.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
+import '../../focus/focus_theme.dart';
+import '../../services/unified_catalog/unified_artwork_prefetcher.dart';
 import '../../theme/mono_tokens.dart';
+import '../../utils/formatters.dart';
 import '../../utils/layout_constants.dart';
+import '../../utils/media_image_helper.dart' show ImageType;
 import 'tv_expandable_media_tile.dart';
 import 'tv_section_header.dart';
 import 'tv_unified_layout.dart';
@@ -69,11 +75,26 @@ typedef DiscoveryContext = ({String title, String context, String? synopsis});
 ///
 /// Ordered by what a viewer standing three metres away actually needs to decide
 /// whether to press play, most specific first. For an episode that is where in
-/// the show they are and how much is left; for a film it is the year and what
-/// kind of film it is. The source count is last and only when there is more
-/// than one — hoofdstuk 13 — and no server or library name appears at any
-/// position, because on a unified surface that is a detail of *storage*, not of
-/// the title (hoofdstuk 26).
+/// the show they are and how much is left; for a film it is the year, what kind
+/// of film it is, and how long it runs. No server or library name appears at
+/// any position, because on a unified surface that is a detail of *storage*,
+/// not of the title (hoofdstuk 26).
+///
+/// **The source count is not here (P10).** It used to be the last part, and it
+/// was the one piece of the line that repeated something already on screen: the
+/// tile above carries a [TvSourceCountBadge] with the same number, in the same
+/// glance. A line at this size can hold four facts before it starts reading as
+/// a database row, and spending one of them on a duplicate is the worst trade
+/// available. Hoofdstuk 13's requirement that a multi-source title says so is
+/// unchanged — the badge is what says it.
+///
+/// **A film gains its runtime.** It is the fact a viewer actually weighs before
+/// committing an evening, and it was the one thing the line did not have. An
+/// episode does not get it: its own place in that line is already the remaining
+/// time, which is the same question answered better.
+///
+/// This supersedes 33.4's metadata format, which binds genre plus source count
+/// literally.
 DiscoveryContext discoveryContextFor(UnifiedMediaGroup group) {
   final item = group.representativeSource.item;
   final isEpisode = item.kind == MediaKind.episode;
@@ -84,11 +105,24 @@ DiscoveryContext discoveryContextFor(UnifiedMediaGroup group) {
     ?_remainingLabel(group, item),
     if (item.year != null) '${item.year}',
     if (item.genres != null && item.genres!.isNotEmpty) item.genres!.first,
-    if (group.hasMultipleSources) t.unifiedCatalog.sources(count: group.sources.length),
+    if (!isEpisode) ?_runtimeLabel(group, item),
   ];
 
   final summary = item.summary?.trim();
   return (title: title, context: parts.join(' · '), synopsis: summary == null || summary.isEmpty ? null : summary);
+}
+
+/// "1h 42m", but only for a title that is not already showing what is left of
+/// it and that actually reported a duration.
+///
+/// A resumable film shows `_remainingLabel` instead: "42 min left" and
+/// "1h 42m" side by side is two numbers about the same clock, and the first is
+/// the one that answers the question.
+String? _runtimeLabel(UnifiedMediaGroup group, MediaItem item) {
+  if (_remainingLabel(group, item) != null) return null;
+  final duration = item.durationMs;
+  if (duration == null || duration <= 0) return null;
+  return formatDurationTextual(duration);
 }
 
 String? _episodeLabel(MediaItem item) {
@@ -125,6 +159,8 @@ class TvDiscoveryRail extends StatefulWidget {
     this.onFocusedGroupChanged,
     this.onNavigateUp,
     this.onNavigateDown,
+    this.automationRailIndex,
+    this.precache,
   });
 
   final String title;
@@ -157,6 +193,18 @@ class TvDiscoveryRail extends StatefulWidget {
   final VoidCallback? onNavigateUp;
   final VoidCallback? onNavigateDown;
 
+  /// This rail's position on the page, for Pleya Verify addressing only. Null
+  /// leaves the rail and its tiles unregistered, which is what a standalone
+  /// mount (a golden, a focus test) wants — and what a release build gets
+  /// anyway, since `AutomationNode` is a pass-through when `!kPleyaVerify`.
+  final int? automationRailIndex;
+
+  /// Replaces the artwork warm-up call. Null in production; a test injects its
+  /// own to assert *which* artwork a focus move warms, without a network. Same
+  /// seam and same reasoning as [TvUnifiedMediaGrid.precache].
+  @visibleForTesting
+  final UnifiedArtworkPrecache? precache;
+
   @override
   State<TvDiscoveryRail> createState() => TvDiscoveryRailState();
 }
@@ -166,10 +214,47 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   final _scroll = ScrollController();
   late final ValueNotifier<UnifiedMediaGroup?> _focused;
 
+  /// The scale of the last build, so the post-frame warm-up has one without a
+  /// `BuildContext` lookup on a widget that may already be gone.
+  double _scale = 1;
+
+  /// Artwork warm-up for this rail, owned here rather than started from
+  /// `itemBuilder` (P8).
+  ///
+  /// The builder runs per item, per frame, during a scroll — starting a
+  /// prefetch from inside it means the queue is rebuilt many times a frame from
+  /// whichever item happened to be built last, which is not a window. This
+  /// state object knows the whole row and where the focus is on it, so warming
+  /// happens at exactly two moments: once after the first frame for the tiles a
+  /// viewer can already see, and again on every focus gain, around the tile
+  /// they moved to.
+  late final UnifiedArtworkPrefetcher _prefetcher = UnifiedArtworkPrefetcher(
+    clientFor: (serverId) => widget.clientFor?.call(serverId),
+    precache: widget.precache,
+    // The rail draws a *show's* poster for an episode tile, not the episode's
+    // own still — see `discoveryPosterPath`. Warming `item.thumbPath` (the
+    // service's default, and the right answer for the catalog grid) would warm
+    // an image no discovery tile ever draws.
+    primaryPathOf: discoveryPosterPath,
+    secondary: UnifiedArtworkVariant(
+      pathOf: discoveryWideArtPath,
+      imageTypeOf: (item) => item.kind == MediaKind.episode ? ImageType.thumb : ImageType.art,
+    ),
+  );
+
   @override
   void initState() {
     super.initState();
     _focused = ValueNotifier(_restoredOrFirst());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // The tiles the row opens on. `_warmAround(0)` rather than "the visible
+      // range": the rail is a `ListView.builder`, so what is built *is* roughly
+      // what is visible, and the prefetcher adds its own margin either side.
+      final focused = _focused.value;
+      final index = focused == null ? 0 : widget.groups.indexWhere((g) => g.groupId == focused.groupId);
+      _warmAround(index < 0 ? 0 : index);
+    });
   }
 
   @override
@@ -197,12 +282,85 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
 
   @override
   void dispose() {
+    _prefetcher.dispose();
     for (final node in _nodes.values) {
       node.dispose();
     }
     _scroll.dispose();
     _focused.dispose();
     super.dispose();
+  }
+
+  /// Warms the artwork around [index], both variants, on one budget.
+  ///
+  /// The window is a screenful either side of the tile in question; the
+  /// prefetcher clamps it and adds its own margins, and holds the wide variant
+  /// to four items on each side.
+  void _warmAround(int index) {
+    if (!mounted || widget.groups.isEmpty) return;
+    final scale = _scale;
+    final height = TvDiscoveryLayout.cardHeight * scale;
+    final poster = Size(TvDiscoveryLayout.posterWidth(scale), height);
+    if (poster.width <= 0 || poster.height <= 0) return;
+    final clamped = index.clamp(0, widget.groups.length - 1);
+    _prefetcher.prefetchAround(
+      context: context,
+      groups: widget.groups,
+      firstVisibleIndex: clamped,
+      lastVisibleIndex: clamped,
+      posterSize: poster,
+      secondarySize: Size(TvDiscoveryLayout.wideWidth(scale), height),
+    );
+  }
+
+  /// Scrolls the band so the tile at [index] is fully visible **at its focused
+  /// width**, inside the page inset on both sides (P9).
+  ///
+  /// Flutter's own directional traversal does scroll a focused item into view,
+  /// and that is exactly the problem: it measures the tile at the instant focus
+  /// lands, which is still its *resting* 2:3 width, and the tile then grows to
+  /// 2.67 times that. `FocusableWrapper._scrollIntoView` cannot help either —
+  /// it looks for the nearest *vertical* scrollable and a rail is horizontal.
+  /// So the arithmetic is done here, from the layout tokens rather than from
+  /// render boxes: every tile before the focused one is at rest, so the focused
+  /// tile's left edge is `lead + index * pitch` and its right edge is that plus
+  /// the focused width. No measurement mid-tween, and therefore no dependence
+  /// on which frame this runs on.
+  ///
+  /// The [TvDiscoveryLayout.railLeadInset] margin is kept on both sides while
+  /// scrolled, not just at offset 0: the band is as wide as the screen, so a
+  /// tile flush against the viewport edge is a focus ring inside the overscan
+  /// band (hoofdstuk 8.1). That is the same rect `tvos.discovery.overscan`
+  /// asserts against `discover.safe_area`.
+  void _revealFocused(int index, double scale) {
+    if (!_scroll.hasClients) return;
+    final position = _scroll.position;
+    if (!position.hasContentDimensions || !position.hasViewportDimension) return;
+    final viewport = position.viewportDimension;
+    if (viewport <= 0) return;
+
+    final lead = TvDiscoveryLayout.railLeadInset(scale);
+    final start = lead + index * TvDiscoveryLayout.railPitch(scale);
+    final end = start + TvDiscoveryLayout.tileWidth(scale, focused: true);
+
+    var target = position.pixels;
+    if (end > target + viewport - lead) target = end - viewport + lead;
+    // Second, and deliberately after: when the expanded tile is wider than the
+    // band can show (a narrow window, a test viewport) the left edge is the one
+    // that has to win, or the viewer is looking at the tail of a tile whose
+    // start they cannot see.
+    if (start < target + lead) target = start - lead;
+    target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
+    if ((target - position.pixels).abs() < 0.5) return;
+
+    final duration = reduceMotion(context, FocusTheme.getAnimationDuration(context));
+    if (duration == Duration.zero) {
+      _scroll.jumpTo(target);
+      return;
+    }
+    // The same curve and duration the tile expands on, so the two read as one
+    // movement rather than as a scroll chasing a resize.
+    _scroll.animateTo(target, duration: duration, curve: Curves.easeOutCubic);
   }
 
   FocusNode _nodeFor(String groupId) =>
@@ -232,6 +390,7 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   @override
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
+    _scale = scale;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,7 +412,17 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
           ),
         ),
         SizedBox(height: TvDiscoveryLayout.sectionHeaderGap * scale),
-        SizedBox(height: TvDiscoveryLayout.railBandHeight(scale), child: _band(scale)),
+        // The band, not the whole section: `discover.rail`'s bounds are what a
+        // scenario measures a tile against, so it has to be the box the tiles
+        // are actually laid out in — not the heading and the metadata block as
+        // well. Pass-through when `!kPleyaVerify`.
+        AutomationNode(
+          id: widget.automationRailIndex == null ? null : AutomationIds.discoverRail,
+          instance: widget.automationRailIndex?.toString(),
+          role: 'rail',
+          label: widget.title,
+          child: SizedBox(height: TvDiscoveryLayout.railBandHeight(scale), child: _band(scale)),
+        ),
         SizedBox(height: TvDiscoveryLayout.railMetaGap * scale),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: TvDiscoveryLayout.pageInset * scale),
@@ -289,12 +458,22 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     // The tile pads itself by its focus-ring gap, so the list's own padding is
     // the page inset minus that — otherwise the first tile's artwork sits
     // further right than the heading above it and the column stops lining up.
-    final tileInset = TvDiscoveryLayout.cardFocusRingGap * scale;
-    final lead = (TvDiscoveryLayout.pageInset * scale - tileInset).clamp(0.0, double.infinity);
+    final lead = TvDiscoveryLayout.railLeadInset(scale);
 
     return ListView.builder(
       controller: _scroll,
       scrollDirection: Axis.horizontal,
+      // The page inset on both sides, and nothing more.
+      //
+      // The report's diagnosis of P9 had a second half — "the last tile has no
+      // trailing room to expand into" — and it does not hold. A tile's
+      // expansion is an `AnimatedContainer` inside the scrollable, so growing
+      // it grows the content: `maxScrollExtent` comes out exactly at the offset
+      // [_revealFocused] wants for the last tile, to the pixel. Reserving
+      // `wideWidth - posterWidth` here as well was written, tested, and removed
+      // when the negative control for it stayed green — it would have parked
+      // ~208 logical pixels of empty band past the end of every row for no
+      // reason. The half of P9 that is real is the scroll, below.
       padding: EdgeInsets.symmetric(horizontal: lead),
       // Lazy by construction: only the tiles the viewport can reach are built,
       // so a rail of forty groups costs the images of the six on screen
@@ -312,6 +491,11 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
             clientFor: widget.clientFor,
             focusNode: _nodeFor(group.groupId),
             autofocus: widget.autofocus && index == 0,
+            // Instance is `<railIndex>.<tileIndex>` so one scenario can address
+            // "the third tile of the second rail" without the rails having to
+            // agree on a global counter.
+            automationId: AutomationIds.discoverRailItem,
+            automationInstance: widget.automationRailIndex == null ? null : '${widget.automationRailIndex}.$index',
             onSelect: () => widget.onActivate(group),
             onContextMenu: widget.onContextMenu == null ? null : () => widget.onContextMenu!(group),
             semanticLabel:
@@ -326,6 +510,8 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
               if (!focused) return;
               _focused.value = group;
               widget.onFocusedGroupChanged?.call(group.groupId);
+              _revealFocused(index, scale);
+              _warmAround(index);
             },
             onNavigateUp: widget.onNavigateUp,
             onNavigateDown: widget.onNavigateDown,

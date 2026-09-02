@@ -16,6 +16,7 @@ import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/services/unified_catalog/unified_artwork_prefetcher.dart';
+import 'package:pleya/utils/media_image_helper.dart' show ImageType;
 import 'package:pleya/widgets/optimized_media_image.dart';
 
 /// A Jellyfin-shaped self-contained artwork URL. `getOptimizedImageUrl` sizes
@@ -99,6 +100,39 @@ Future<BuildContext> _context(WidgetTester tester, {double devicePixelRatio = 2.
 }
 
 const Size _poster = Size(200, 300);
+const Size _wide = Size(340, 190);
+
+/// A group carrying *both* artworks — the discovery case, where the 2:3 poster
+/// and the 16:9 frame are different assets and not two crops of one.
+UnifiedMediaGroup _groupWithWide(int index) {
+  final item = MediaItem(
+    id: 'i$index',
+    backend: MediaBackend.jellyfin,
+    kind: MediaKind.movie,
+    title: 'Title $index',
+    thumbPath: _thumb(index),
+    artPath: 'https://jf.test/Items/$index/Images/Backdrop?api_key=secret',
+    serverId: 's1',
+    serverName: 's1',
+  );
+  final source = UnifiedMediaSource.fromItem(item);
+  return UnifiedMediaGroup(
+    groupId: 'g$index',
+    identity: CanonicalMediaIdentity.movie(title: 'Title $index', year: 2010),
+    sources: [source],
+    representativeSourceKey: source.sourceKey,
+    watchState: UnifiedWatchState(representativeSourceKey: source.sourceKey),
+  );
+}
+
+List<UnifiedMediaGroup> _wideGroups(int count) => [for (var i = 0; i < count; i++) _groupWithWide(i)];
+
+UnifiedArtworkVariant _backdropVariant({int lookaheadItems = UnifiedArtworkVariant.defaultWideLookaheadItems}) =>
+    UnifiedArtworkVariant(
+      pathOf: (item) => item.artPath,
+      imageTypeOf: (_) => ImageType.art,
+      lookaheadItems: lookaheadItems,
+    );
 
 void main() {
   group('window', () {
@@ -493,6 +527,199 @@ void main() {
       expect(precache.requests.length, 2);
       expect(prefetcher.pendingCount, 0);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // P8: a second variant, on the same budget
+  // ---------------------------------------------------------------------------
+
+  group('a second variant', () {
+    testWidgets('is not warmed at all unless a caller asks for one', (tester) async {
+      // The whole compatibility claim: the catalog grid's call site and every
+      // test above it must behave byte-for-byte as before.
+      final context = await _context(tester);
+      final precache = _RecordingPrecache();
+      final prefetcher = UnifiedArtworkPrefetcher(clientFor: (_) => null, precache: precache.call, maxConcurrent: 64);
+      addTearDown(prefetcher.dispose);
+
+      prefetcher.prefetchAround(
+        context: context,
+        groups: _wideGroups(10),
+        firstVisibleIndex: 0,
+        lastVisibleIndex: 2,
+        posterSize: _poster,
+        // A size but no variant: nothing to warm it with.
+        secondarySize: _wide,
+      );
+      await tester.pump();
+
+      expect(precache.requests.every((r) => r.url.contains('Primary')), isTrue);
+    });
+
+    testWidgets('warms both assets for the visible range, on one queue', (tester) async {
+      final context = await _context(tester);
+      final precache = _RecordingPrecache();
+      final prefetcher = UnifiedArtworkPrefetcher(
+        clientFor: (_) => null,
+        precache: precache.call,
+        maxConcurrent: 64,
+        secondary: _backdropVariant(),
+      );
+      addTearDown(prefetcher.dispose);
+
+      prefetcher.prefetchAround(
+        context: context,
+        groups: _wideGroups(20),
+        firstVisibleIndex: 5,
+        lastVisibleIndex: 5,
+        posterSize: _poster,
+        secondarySize: _wide,
+      );
+      await tester.pump();
+
+      final backdrops = precache.requests.where((r) => r.url.contains('Backdrop')).toList();
+      final posters = precache.requests.where((r) => r.url.contains('Primary')).toList();
+      expect(backdrops, isNotEmpty);
+      expect(posters, isNotEmpty);
+      // The focused item's wide frame goes out before the poster lookahead:
+      // it is the artwork the tile is about to draw, and everything else is a
+      // guess about where the remote goes next.
+      expect(precache.requests.first.url, contains('Backdrop'));
+      expect(precache.requests.first.groupId, 'g5');
+    });
+
+    testWidgets('holds the wide variant to four items either side, against the posters twelve', (tester) async {
+      final context = await _context(tester);
+      final precache = _RecordingPrecache();
+      final prefetcher = UnifiedArtworkPrefetcher(
+        clientFor: (_) => null,
+        precache: precache.call,
+        maxConcurrent: 64,
+        secondary: _backdropVariant(),
+      );
+      addTearDown(prefetcher.dispose);
+
+      prefetcher.prefetchAround(
+        context: context,
+        groups: _wideGroups(60),
+        firstVisibleIndex: 30,
+        lastVisibleIndex: 30,
+        posterSize: _poster,
+        secondarySize: _wide,
+      );
+      await tester.pump();
+
+      int indexOf(ArtworkPrefetchRequest r) => int.parse(r.groupId.substring(1));
+      final wide = precache.requests.where((r) => r.url.contains('Backdrop')).map(indexOf).toSet();
+      final poster = precache.requests.where((r) => r.url.contains('Primary')).map(indexOf).toSet();
+
+      expect(wide, {26, 27, 28, 29, 30, 31, 32, 33, 34});
+      expect(
+        poster.length,
+        greaterThan(wide.length),
+        reason: 'a 16:9 frame is ~2.7x the pixels of a poster and only one is ever on screen',
+      );
+      expect(poster, contains(42), reason: 'posters keep their twelve');
+      expect(wide, isNot(contains(42)));
+    });
+
+    testWidgets('shares one in-flight budget rather than opening a second one', (tester) async {
+      // The failure mode this rules out: two prefetchers of three each, which
+      // together can occupy all six permits `image_cache_service.dart` grants
+      // artwork globally and starve the tile actually on screen.
+      final context = await _context(tester);
+      final precache = _RecordingPrecache(park: true);
+      final prefetcher = UnifiedArtworkPrefetcher(
+        clientFor: (_) => null,
+        precache: precache.call,
+        secondary: _backdropVariant(),
+      );
+      addTearDown(prefetcher.dispose);
+
+      prefetcher.prefetchAround(
+        context: context,
+        groups: _wideGroups(40),
+        firstVisibleIndex: 10,
+        lastVisibleIndex: 14,
+        posterSize: _poster,
+        secondarySize: _wide,
+      );
+      await tester.pump();
+
+      expect(prefetcher.inFlightCount, UnifiedArtworkPrefetcher.defaultMaxConcurrent);
+      expect(
+        precache.requests,
+        hasLength(UnifiedArtworkPrefetcher.defaultMaxConcurrent),
+        reason: 'three in the air across *both* variants, not three each',
+      );
+      expect(UnifiedArtworkPrefetcher.defaultMaxConcurrent, lessThan(6), reason: 'and still under the global limit');
+
+      for (final completer in precache.completers) {
+        completer.complete();
+      }
+      await tester.pump();
+      expect(precache.requests.length, greaterThan(UnifiedArtworkPrefetcher.defaultMaxConcurrent));
+    });
+
+    testWidgets('the LRU is not quietly enlarged to pay for the second variant', (tester) async {
+      // Doubling the remembered-URL budget would have been the easy answer and
+      // there is no evidence it is needed: falling off the end of the LRU costs
+      // at most one repeat request, which the disk cache answers.
+      expect(UnifiedArtworkPrefetcher.defaultMaxRememberedUrls, 512);
+    });
+
+    testWidgets('an item with no wide artwork is skipped, not padded with its poster', (tester) async {
+      final context = await _context(tester);
+      final precache = _RecordingPrecache();
+      final prefetcher = UnifiedArtworkPrefetcher(
+        clientFor: (_) => null,
+        precache: precache.call,
+        maxConcurrent: 64,
+        secondary: _backdropVariant(),
+      );
+      addTearDown(prefetcher.dispose);
+
+      // `_group` carries a poster and no `artPath`.
+      prefetcher.prefetchAround(
+        context: context,
+        groups: _groups(5),
+        firstVisibleIndex: 0,
+        lastVisibleIndex: 4,
+        posterSize: _poster,
+        secondarySize: _wide,
+      );
+      await tester.pump();
+
+      expect(precache.requests.every((r) => r.url.contains('Primary')), isTrue);
+      expect(precache.groupIds.toSet(), hasLength(5), reason: 'the posters still all go out');
+    });
+
+    testWidgets('the two variants land on different URLs, so neither shadows the other', (tester) async {
+      final context = await _context(tester);
+      final precache = _RecordingPrecache();
+      final prefetcher = UnifiedArtworkPrefetcher(
+        clientFor: (_) => null,
+        precache: precache.call,
+        maxConcurrent: 64,
+        secondary: _backdropVariant(),
+      );
+      addTearDown(prefetcher.dispose);
+
+      prefetcher.prefetchAround(
+        context: context,
+        groups: _wideGroups(3),
+        firstVisibleIndex: 1,
+        lastVisibleIndex: 1,
+        posterSize: _poster,
+        secondarySize: _wide,
+      );
+      await tester.pump();
+
+      final forG1 = precache.requests.where((r) => r.groupId == 'g1').toList();
+      expect(forG1, hasLength(2));
+      expect(forG1.map((r) => r.url).toSet(), hasLength(2));
+      expect(forG1.map((r) => r.cacheKey).toSet(), hasLength(2), reason: 'one cache entry each, or one overwrites');
     });
   });
 

@@ -1,0 +1,51 @@
+name: tvos.nav.destination-select
+target: tvos-sim
+# P2: activating a destination in the top bar changes the page and leaves the
+# remote in the bar. Going into the content is a separate, deliberate press.
+#
+# What this replaces: three independent paths moved the focus into TV content —
+# `_selectTab`'s `focusActiveTabIfReady`, `_selectTvDestination`'s unconditional
+# `_focusContent`, and `DiscoverScreen`'s initial-load post-frame. Together they
+# meant choosing Home dropped the remote straight onto the billboard's Afspelen
+# pill, and a cold Home did it again a moment later when the first server
+# answered. There is one authority now (`TvContentFocusAuthority`), and content
+# arriving is not a request.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  # A cold start now lands on the bar, with the startup destination lit. That is
+  # itself part of P2: before this there was no initial focus request on TV at
+  # all, and where the remote ended up was whichever of the three paths happened
+  # to fire last.
+  - assert: {id: nav.discover, focused: true, state: {active: true}}
+  - snapshot: nav-cold-start
+
+  # Walk to Films. Moving the ring along the bar changes nothing else — the page
+  # behind it stays Home.
+  - press: right
+  - settle: 800
+  - assert: {id: nav.movies, focused: true}
+  - assert: {id: nav.discover, state: {active: true}}
+
+  # Select. Films becomes the active destination and **the bar keeps the ring**.
+  # `active` moving to Films is what proves the page changed; `focused` staying
+  # on the same node is what proves the remote did not.
+  - press: select
+  - settle: 2000
+  - assert: {id: nav.movies, focused: true, state: {active: true}}
+  - assert: {id: nav.discover, state: {active: false}}
+  - snapshot: nav-films-selected
+
+  # Only now does the remote enter the page — and the landing's own contract
+  # takes over from there (hoofdstuk 7.1: down from the bar lands on the page
+  # header, down again on the first rail).
+  - press: down
+  - settle: 1200
+  - assert: {id: nav.movies, focused: false, state: {active: true}}
+  - snapshot: nav-content-entered

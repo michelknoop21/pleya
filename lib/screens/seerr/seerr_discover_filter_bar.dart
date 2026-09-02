@@ -148,6 +148,12 @@ class _SeerrDiscoverFilterBarState extends State<SeerrDiscoverFilterBar> {
 
     return LibraryHeaderBar(
       padding: EdgeInsets.only(left: _inset, right: _inset),
+      // Off on TV, which is what the flag's own doc comment says it is for
+      // ("Off for the TV backdrop, where a rule would cut across the artwork").
+      // This call site never set it, so it took the `true` default and drew a
+      // full-width rule that exists on no other TV screen — `libraries_screen`
+      // passes `false` here for the same reason (P7).
+      showDivider: !PlatformDetector.isTV(),
       tabs: [
         for (var i = 0; i < _segmentTypes.length; i++)
           FocusableTabChip(

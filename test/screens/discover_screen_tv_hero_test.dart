@@ -45,6 +45,7 @@ import 'package:pleya/providers/home_layout_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/tv_home_projection_provider.dart';
+import 'package:pleya/navigation/tv/tv_content_focus_authority.dart';
 import 'package:pleya/screens/discover_screen.dart';
 import 'package:pleya/screens/main_screen.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
@@ -304,6 +305,46 @@ void main() {
     // `TvContentFeed`) only on TV, so the phone hero stays `latestMovies`.
     expect(find.byType(PageView), findsOneWidget);
   });
+
+  group('P2: one content-focus authority', _p2Tests);
+}
+
+/// P2, at the far end: content landing is not a request for the focus.
+///
+/// This is the third of the three paths the round removes — `DiscoverScreen`'s
+/// initial-load post-frame, which called `focusPrimary()` as soon as anything
+/// arrived, guarded only by `mounted` and `ModalRoute.isCurrent`. On a cold
+/// Home that fired seconds after the viewer had walked somewhere else in the
+/// bar, and it is why fixing `_selectTvDestination` alone would not have been
+/// enough.
+///
+/// Both directions are asserted, because only asserting the guard would go
+/// green on a screen that had simply stopped focusing anything at all.
+void _p2Tests() {
+  testWidgets('content arriving on its own does not take the focus', (tester) async {
+    final authority = TvContentFocusAuthority();
+    await _pumpTvHero(tester, {
+      'nas': [_movie('a', title: 'Arrival', guid: 'plex://movie/a')],
+    }, contentFocus: authority);
+
+    expect(find.byType(TvHeroBillboardCarousel), findsOneWidget, reason: 'the content did land');
+    expect(
+      _heroPlayNode(tester).hasFocus,
+      isFalse,
+      reason: 'nobody asked for the content, so the billboard does not claim the remote',
+    );
+    expect(authority.hasPendingIntent, isFalse);
+  });
+
+  testWidgets('an armed intent is what lets late content claim the focus', (tester) async {
+    final authority = TvContentFocusAuthority()..arm(TvContentFocusIntent.primary);
+    await _pumpTvHero(tester, {
+      'nas': [_movie('a', title: 'Arrival', guid: 'plex://movie/a')],
+    }, contentFocus: authority);
+
+    expect(_heroPlayNode(tester).hasFocus, isTrue, reason: 'the DOWN pressed before the load is honoured now');
+    expect(authority.hasPendingIntent, isFalse, reason: 'and consumed exactly once');
+  });
 }
 
 String? _spotlightTitle(WidgetTester tester) => _spotlightItem(tester)?.title;
@@ -362,6 +403,7 @@ Future<_TvHeroHarness> _pumpTvHero(
   Map<String, List<MediaItem>> recentlyAdded, {
   List<MediaHub> hubs = const [],
   bool tv = true,
+  TvContentFocusAuthority? contentFocus,
 }) async {
   final settings = await SettingsService.getInstance();
   await settings.write(SettingsService.libraryDensity, LibraryDensity.max);
@@ -461,6 +503,7 @@ Future<_TvHeroHarness> _pumpTvHero(
             foregroundLeft: 120.0,
             foregroundWidth: foregroundWidth,
             viewportWidth: 1280,
+            tvContentFocus: contentFocus,
             child: Align(
               alignment: Alignment.centerLeft,
               child: SizedBox(width: foregroundWidth, height: 720, child: const DiscoverScreen()),

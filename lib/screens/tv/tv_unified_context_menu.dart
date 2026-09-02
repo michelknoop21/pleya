@@ -477,6 +477,18 @@ class _ActionMenuPanel extends StatelessWidget {
                 itemBuilder: (context, index) => TvCatalogOptionRow(
                   key: ValueKey(actions[index]),
                   label: labelForUnifiedGroupAction(actions[index]),
+                  // `tvContextMenu.menuSemantics` — "Action 3 of 7: Mark as
+                  // watched". Translated into sixteen locales and, until now,
+                  // called from nowhere: this panel contained no `Semantics(`
+                  // at all and the row's only accessibility output was the bare
+                  // action name. Both `index` and `actions.length` are already
+                  // in scope here, which is why the composition belongs at the
+                  // call site rather than inside the shared row.
+                  semanticLabel: t.tvContextMenu.menuSemantics(
+                    index: index + 1,
+                    count: actions.length,
+                    label: labelForUnifiedGroupAction(actions[index]),
+                  ),
                   // Nothing here is a setting, so nothing is "the current
                   // answer". A selected tint on an action row would read as
                   // "this one is already on".

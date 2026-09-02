@@ -1,8 +1,20 @@
 /// Fase 6 (hoofdstuk 10.2a of docs/tvos-unified-experience.md, [DEC-064]):
 /// `TvDiscoveryLandingProvider` re-projects whatever `DiscoverProvider`
-/// already fetched, split by [MediaKind] so a Films landing never shows a
-/// show hub and vice versa, with one shared, unfiltered Continue Watching row
-/// prepended to both.
+/// already fetched, split by [MediaKind] so a Films landing never shows a show
+/// hub and vice versa.
+///
+/// **No Continue Watching row, on either landing (DEC-086).** The landings used
+/// to prepend one and this file used to prove it; the assertions now run the
+/// other way round, and the Continue Watching *projection* contracts they
+/// carried moved onto [TvHomeProjectionProvider], which owns that row and is
+/// now the only thing that does.
+///
+/// Those contracts stayed in this file rather than moving to
+/// `tv_home_projection_provider_test.dart` because they are built on this
+/// file's on-deck fixtures — the fake aggregation service, the external-id
+/// resolving clients, the episode builder — and re-homing them would have meant
+/// either duplicating all of that or moving it, neither of which is a change
+/// this round is making. What they assert is unchanged.
 library;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +30,7 @@ import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/tv_discovery_landing_provider.dart';
+import 'package:pleya/providers/tv_home_projection_provider.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -156,6 +169,13 @@ Future<void> _settle(TvDiscoveryLandingProvider provider) async {
   }
 }
 
+/// The same poll for Home's projection.
+Future<void> _settleHome(TvHomeProjectionProvider provider) async {
+  for (var i = 0; i < 50 && provider.isProjecting; i++) {
+    await Future<void>.value();
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -185,11 +205,19 @@ void main() {
     multiServer.dispose();
   });
 
-  TvDiscoveryLandingProvider makeLanding() => TvDiscoveryLandingProvider(
-    discover: discover,
-    multiServer: multiServer,
-    continueWatchingTitle: 'Continue Watching',
-  );
+  TvDiscoveryLandingProvider makeLanding() => TvDiscoveryLandingProvider(discover: discover, multiServer: multiServer);
+
+  /// Home's projection — the only owner of Continue Watching after DEC-086.
+  TvHomeProjectionProvider makeHome() {
+    final home = TvHomeProjectionProvider(
+      discover: discover,
+      multiServer: multiServer,
+      continueWatchingTitle: 'Continue Watching',
+      latestMoviesTitle: 'Recently Released',
+    );
+    addTearDown(home.dispose);
+    return home;
+  }
 
   test('splits backend hubs into movie and series rows by hub type, dropping mixed rows', () async {
     aggregation.hubsResult = () => [
@@ -224,7 +252,7 @@ void main() {
     expect(landing.seriesRails.single.groups.single.representativeSource.item.title, 'Kite Street');
   });
 
-  test('one shared, unfiltered Continue Watching row leads both landings', () async {
+  test('DEC-086: neither landing carries a Continue Watching row, however full on-deck is', () async {
     aggregation.onDeckResult = () => [
       _movie('cw-movie', title: 'The Long Harbour'),
       _episode('cw-ep', showTitle: 'Harbourlight'),
@@ -235,6 +263,11 @@ void main() {
         type: 'movie',
         items: [_movie('m1', title: 'Quarry Road')],
       ),
+      _hub(
+        'recently-added-shows',
+        type: 'show',
+        items: [_show('s1', title: 'Kite Street')],
+      ),
     ];
     await discover.load();
 
@@ -242,17 +275,38 @@ void main() {
     addTearDown(landing.dispose);
     await _settle(landing);
 
-    expect(landing.movieRails.first.title, 'Continue Watching');
-    expect(landing.movieRails.first.groups, hasLength(2));
-    expect(landing.seriesRails.first.title, 'Continue Watching');
-    expect(landing.seriesRails.first.groups, hasLength(2));
-
-    // And it is the *same* projected row object on both landings, not two
-    // independent re-projections of the same on-deck list.
-    expect(identical(landing.movieRails.first, landing.seriesRails.first), isTrue);
+    // The first row of a landing is a recommendation row now, on both kinds.
+    expect(landing.movieRails.map((r) => r.title), isNot(contains('Continue Watching')));
+    expect(landing.seriesRails.map((r) => r.title), isNot(contains('Continue Watching')));
+    expect(landing.movieRails, hasLength(1));
+    expect(landing.movieRails.single.hubId, contains('recently-added-movies'));
+    expect(landing.seriesRails, hasLength(1));
+    expect(landing.seriesRails.single.hubId, contains('recently-added-shows'));
   });
 
-  test('an empty Continue Watching projection is dropped rather than shown as an empty rail', () async {
+  test('DEC-086: Home still has it, over the very same on-deck list', () async {
+    // The half that makes the removal a relocation rather than a loss. If this
+    // ever goes red the row has not moved to Home, it has disappeared.
+    aggregation.onDeckResult = () => [
+      _movie('cw-movie', title: 'The Long Harbour'),
+      _episode('cw-ep', showTitle: 'Harbourlight'),
+    ];
+    await discover.load();
+
+    final home = makeHome();
+    await _settleHome(home);
+
+    expect(home.continueWatching, isNotNull);
+    expect(home.continueWatching!.groups, hasLength(2));
+  });
+
+  test('the landing never showed an episode on Films, which is why the row had to go', () async {
+    // The defect found while removing it: the row was projected once over the
+    // *whole* of `DiscoverProvider.onDeck` and prepended to both landings,
+    // while the hubs beside it were kind-split. So the Films landing led with
+    // half-watched episodes and the Series landing with films — the exact thing
+    // this provider's own doc rules out.
+    aggregation.onDeckResult = () => [_episode('cw-ep', showTitle: 'Harbourlight')];
     aggregation.hubsResult = () => [
       _hub(
         'recently-added-movies',
@@ -266,8 +320,11 @@ void main() {
     addTearDown(landing.dispose);
     await _settle(landing);
 
-    expect(landing.movieRails, hasLength(1));
-    expect(landing.movieRails.single.title, isNot('Continue Watching'));
+    final kinds = {
+      for (final rail in landing.movieRails)
+        for (final group in rail.groups) group.representativeSource.item.kind,
+    };
+    expect(kinds, isNot(contains(MediaKind.episode)), reason: 'a Films landing shows films');
   });
 
   test('a server that stayed online but never answered marks global rows partial', () async {
@@ -296,7 +353,7 @@ void main() {
     expect(landing.movieRails.single.groups, hasLength(1));
   });
 
-  test('hubById finds a row across both landings, including the shared Continue Watching row', () async {
+  test('hubById finds a row across both landings', () async {
     aggregation.onDeckResult = () => [_movie('cw-movie', title: 'The Long Harbour')];
     aggregation.hubsResult = () => [
       _hub(
@@ -318,18 +375,17 @@ void main() {
 
     final movieHub = landing.movieRails.last;
     final seriesHub = landing.seriesRails.last;
-    final cwHub = landing.movieRails.first;
 
     expect(landing.hubById(movieHub.hubId), same(movieHub));
     expect(landing.hubById(seriesHub.hubId), same(seriesHub));
-    expect(landing.hubById(cwHub.hubId), same(cwHub));
     expect(landing.hubById('hub:nonexistent'), isNull);
   });
 
   // Fase-6 Continue Watching proof (hoofdstuk 13.3, 21.4). The service-level
   // contracts live in `test/services/unified_catalog/home_projection_service_test.dart`;
-  // these drive the production provider that Home and both landings read.
-  group('Continue Watching, through the production provider', () {
+  // these drive the production provider that owns the row — which after DEC-086
+  // is `TvHomeProjectionProvider`, and only that.
+  group('Continue Watching, through the provider that owns it', () {
     /// A second (or first) online server whose show ids resolve to real
     /// external ids — the evidence Continue Watching merges on.
     void registerServerWithShowIds(String serverId, Map<String, ExternalIds> showIds) {
@@ -351,11 +407,10 @@ void main() {
       ];
       await discover.load();
 
-      final landing = makeLanding();
-      addTearDown(landing.dispose);
-      await _settle(landing);
+      final home = makeHome();
+      await _settleHome(home);
 
-      final cw = landing.movieRails.first;
+      final cw = home.continueWatching!;
       expect(cw.title, 'Continue Watching');
       expect(cw.groups, hasLength(1), reason: 'one episode, one card');
       final sources = cw.groups.single.sources;
@@ -377,11 +432,10 @@ void main() {
       ];
       await discover.load();
 
-      final landing = makeLanding();
-      addTearDown(landing.dispose);
-      await _settle(landing);
+      final home = makeHome();
+      await _settleHome(home);
 
-      final cw = landing.movieRails.first;
+      final cw = home.continueWatching!;
       expect(cw.groups, hasLength(2), reason: 'S02E04 and S02E05 are two Continue Watching entries');
       expect(
         {for (final g in cw.groups) (g.representativeSource.item.parentIndex, g.representativeSource.item.index)},
@@ -400,11 +454,10 @@ void main() {
       ];
       await discover.load();
 
-      final landing = makeLanding();
-      addTearDown(landing.dispose);
-      await _settle(landing);
+      final home = makeHome();
+      await _settleHome(home);
 
-      expect(landing.movieRails.first.groups, hasLength(2));
+      expect(home.continueWatching!.groups, hasLength(2));
     });
 
     test('every source keeps its own watch state — the card never averages them away', () async {
@@ -433,11 +486,10 @@ void main() {
       ];
       await discover.load();
 
-      final landing = makeLanding();
-      addTearDown(landing.dispose);
-      await _settle(landing);
+      final home = makeHome();
+      await _settleHome(home);
 
-      final group = landing.movieRails.first.groups.single;
+      final group = home.continueWatching!.groups.single;
       final offsets = {for (final s in group.sources) s.item.serverId!: s.item.viewOffsetMs};
       expect(offsets, {'server_1': 100, 'server_2': 800});
     });
@@ -450,11 +502,10 @@ void main() {
       aggregation.succeededServerIds = {'server_1'};
       await discover.load();
 
-      final landing = makeLanding();
-      addTearDown(landing.dispose);
-      await _settle(landing);
+      final home = makeHome();
+      await _settleHome(home);
 
-      final cw = landing.movieRails.first;
+      final cw = home.continueWatching!;
       expect(cw.title, 'Continue Watching');
       expect(cw.groups, hasLength(1));
       expect(cw.isPartial, isTrue);
@@ -473,11 +524,10 @@ void main() {
       aggregation.succeededServerIds = {'server_1'};
       await discover.load();
 
-      final landing = makeLanding();
-      addTearDown(landing.dispose);
-      await _settle(landing);
+      final home = makeHome();
+      await _settleHome(home);
 
-      final groups = landing.movieRails.first.groups;
+      final groups = home.continueWatching!.groups;
       expect(groups, hasLength(2));
       for (final group in groups) {
         for (final source in group.sources) {
@@ -503,13 +553,10 @@ void main() {
       aggregation.onDeckResult = () => [_episode('ep-a', showTitle: 'Harbourlight', serverId: 'server_1')];
       await discover.load();
 
-      final landing = makeLanding();
-      addTearDown(landing.dispose);
-      await _settle(landing);
+      final home = makeHome();
+      await _settleHome(home);
 
-      final sources = [
-        for (final group in landing.movieRails.first.groups) ...group.sources.map((s) => s.item.serverId),
-      ];
+      final sources = [for (final group in home.continueWatching!.groups) ...group.sources.map((s) => s.item.serverId)];
       expect(sources, ['server_1'], reason: 'server_2 is online but contributed nothing, so it appears nowhere');
     });
   });
