@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/database/app_database.dart';
+import 'package:pleya/focus/dpad_navigator.dart';
+import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -15,9 +17,7 @@ import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
-import 'package:pleya/focus/dpad_navigator.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
-import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/source_availability.dart';
 import 'package:pleya/media/unified/source_coverage_state.dart';
@@ -1767,6 +1767,205 @@ void main() {
     });
   });
 
+  group('back/menu suppression after a child route pops', () {
+    // Non-AppleTV only: handleBackKeyAction's AppleTV branch fires onBack on
+    // KeyDownEvent and swallows every KeyUpEvent unconditionally regardless
+    // of origin (see its own doc comment and BackKeySuppressorObserver's),
+    // so the orphaned-KeyUp race these tests exercise cannot happen there —
+    // this suite runs as "phone", matching pumpPhoneDetail's pattern.
+    MediaItem buildMovie() => MediaItem(
+      id: 'movie_1',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.movie,
+      title: 'Back Suppression Movie',
+    );
+
+    Future<NavigatorState> pumpDetailUnderPushableRoot(
+      WidgetTester tester, {
+      required MediaItem movie,
+      required RouteObserver<PageRoute<dynamic>> routeObserver,
+      required NavigatorObserver popObserver,
+    }) async {
+      TvDetectionService.debugSetAppleTVOverride(false);
+      await SettingsService.getInstance();
+
+      // The phone/non-TV build reaches a Consumer<DownloadProvider> that the
+      // TV build (this file's other, default-AppleTV tests) never does —
+      // pumpPhoneDetail's own provider stack, trimmed to what a plain movie
+      // with no serverId needs.
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      PlexApiCache.initialize(db);
+      JellyfinApiCache.initialize(db);
+      final downloadManager = DownloadManagerService(
+        database: db,
+        storageService: DownloadStorageService.instance,
+        clientResolver: (serverId, {clientScopeId}) => null,
+      );
+      downloadManager.recoveryFuture = Future<void>.value();
+      final downloadProvider = DownloadProvider.forTesting(downloadManager: downloadManager, database: db);
+      await downloadProvider.ensureInitialized();
+      final manager = MultiServerManager();
+      final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+      final watchStateStore = WatchStateStore();
+      addTearDown(() async {
+        watchStateStore.dispose();
+        downloadProvider.dispose();
+        downloadManager.dispose();
+        multiServerProvider.dispose();
+        await db.close();
+      });
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
+              ChangeNotifierProvider<DownloadProvider>.value(value: downloadProvider),
+              ChangeNotifierProvider<WatchStateStore>.value(value: watchStateStore),
+            ],
+            // BackKeyPressTracker only learns a back key is physically down
+            // through InputModeTracker's global HardwareKeyboard handler — the
+            // same wiring production has above MaterialApp in main.dart.
+            // Without it here, tester.sendKeyDownEvent/sendKeyUpEvent would
+            // still reach Focus.onKeyEvent handlers via the focus tree, but
+            // the tracker these tests are exercising would never move off its
+            // initial state.
+            child: InputModeTracker(
+              child: MaterialApp(
+                builder: withNoticeLayer(),
+                theme: monoTheme(dark: true),
+                navigatorObservers: [routeObserver, popObserver],
+                home: const Scaffold(body: Center(child: Text('root'))),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      unawaited(
+        navigator.push(
+          MaterialPageRoute<void>(
+            settings: const RouteSettings(name: 'detail'),
+            builder: (_) => withProfileNavigationScope(
+              routeObserver: routeObserver,
+              child: MediaDetailScreen(metadata: movie),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // A plain movie has no initial-focus target on phone layout
+      // (_scheduleInitialMobileDetailFocus only ever targets a show's season
+      // tabs or episode rows), so nothing holds focus here otherwise —
+      // dispatched key events would have nowhere to bubble from and
+      // Focus(onKeyEvent: _handleMediaDetailBackKey) would never see them.
+      // The root screen behind media-detail has its own Scaffold too, so this
+      // must resolve against media-detail's specifically, not the first match.
+      final detailScaffold = find.descendant(of: find.byType(MediaDetailScreen), matching: find.byType(Scaffold));
+      Focus.of(tester.element(detailScaffold)).requestFocus();
+      await tester.pump();
+
+      return navigator;
+    }
+
+    testWidgets('a stray KeyUp from the press that closed the player does not also pop media-detail', (tester) async {
+      addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+      final routeObserver = RouteObserver<PageRoute<dynamic>>();
+      final popObserver = _RecordingPopObserver();
+      final navigator = await pumpDetailUnderPushableRoot(
+        tester,
+        movie: buildMovie(),
+        routeObserver: routeObserver,
+        popObserver: popObserver,
+      );
+
+      expect(find.text('Back Suppression Movie'), findsOneWidget);
+
+      // Stand-in for the video player, pushed on top of media-detail.
+      unawaited(
+        navigator.push(
+          MaterialPageRoute<void>(
+            settings: const RouteSettings(name: 'player'),
+            builder: (_) => const SizedBox(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // The press that is about to close the player is still physically
+      // down at the moment of pop (its KeyUp hasn't been dispatched yet) —
+      // InputModeTracker records that globally, same as it would for the
+      // real KeyDownEvent that triggered this pop.
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+      expect(BackKeyPressTracker.isBackKeyDown, isTrue);
+      navigator.pop();
+      // One pump: enough for the pop's own transition (and focus returning
+      // to media-detail) to settle, but not enough for didPopNext's window
+      // to clear — that needs a *second* addPostFrameCallback, chained from
+      // inside the one this first pump runs.
+      await tester.pump();
+
+      // That same press's KeyUp now arrives on the newly-visible media-detail
+      // screen, orphaned. It must not be treated as a fresh back press.
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+
+      expect(popObserver.popped, ['player']);
+      expect(find.text('Back Suppression Movie'), findsOneWidget);
+    });
+
+    testWidgets('a fresh Menu press right after an automatic player return pops media-detail immediately', (
+      tester,
+    ) async {
+      addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+      final routeObserver = RouteObserver<PageRoute<dynamic>>();
+      final popObserver = _RecordingPopObserver();
+      final navigator = await pumpDetailUnderPushableRoot(
+        tester,
+        movie: buildMovie(),
+        routeObserver: routeObserver,
+        popObserver: popObserver,
+      );
+
+      unawaited(
+        navigator.push(
+          MaterialPageRoute<void>(
+            settings: const RouteSettings(name: 'player'),
+            builder: (_) => const SizedBox(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // Playback reaches its own end and pops itself — no back key involved,
+      // so nothing should arm any suppression at all.
+      expect(BackKeyPressTracker.isBackKeyDown, isFalse);
+      navigator.pop();
+      await tester.pump();
+      await tester.pump();
+
+      expect(popObserver.popped, ['player']);
+      expect(find.text('Back Suppression Movie'), findsOneWidget);
+
+      // The user's own, brand-new Menu press right after landing back on the
+      // detail screen must work on the first try, not be eaten by leftover
+      // suppression from the automatic return above.
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      await tester.pump();
+
+      expect(popObserver.popped, ['player', 'detail']);
+      expect(find.text('Back Suppression Movie'), findsNothing);
+    });
+  });
+
   group('watchlist action button', () {
     testWidgets('flips to Remove on the store, without asking the sources again', (tester) async {
       await SettingsService.getInstance();
@@ -1904,6 +2103,18 @@ class _CountingWatchlistSource implements WatchlistSource {
 
   @override
   Future<bool?> contains(MediaItem item) async => null;
+}
+
+/// Records the `settings.name` of every route this observer sees popped, in
+/// order — lets a test assert exactly which route closed and how many times,
+/// rather than inferring it from what's left on screen.
+class _RecordingPopObserver extends NavigatorObserver {
+  final List<String?> popped = [];
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    popped.add(route.settings.name);
+  }
 }
 
 /// Never answers `fetchItemWithOnDeck`, standing in for the flaky-network case.

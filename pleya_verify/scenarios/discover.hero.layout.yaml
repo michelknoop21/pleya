@@ -1,0 +1,28 @@
+name: discover.hero.layout
+target: ios-sim
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  # screen.discover readiness is per *load pass*, and there are two: an empty
+  # one that runs before the fixture session is bound (app log: "Fetched 0
+  # latest movies") and the real one after it ("Fetched 3"). The screen goes
+  # ready at the end of the first, so asserting the hero straight after
+  # wait_until races the second pass. Wait for the hero itself — the node the
+  # assertion is about — instead of inferring it from the screen.
+  - wait_until: {id: discover.hero, timeout: 15000}
+  # IntroGate's cold-start splash overlay (~2.8s) paints on top of an
+  # already-ready DiscoverScreen — it has no automation id, so no
+  # wait_until can see it finish; settle past it before measuring.
+  - settle: 3500
+  # The layout properties, not just "it exists". The hero has to be on
+  # screen, and its play button has to be big enough to actually hit — the
+  # regression this catches is a hero that renders off-viewport or a control
+  # that shrinks below the tap minimum, neither of which changes any
+  # widget-test assertion.
+  - assert: {id: discover.hero, insideViewport: true}
+  - assert: {id: discover.hero.play, insideViewport: true, minimumTapTarget: 44}
+  - snapshot: discover-hero

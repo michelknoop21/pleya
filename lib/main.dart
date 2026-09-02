@@ -10,6 +10,9 @@ import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:provider/provider.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'automation/automation_bootstrap.dart';
+import 'automation/automation_overlay.dart';
+import 'automation/pleya_verify.dart';
 import 'connection/connection.dart';
 import 'connection/connection_bootstrap.dart';
 import 'connection/connection_registry.dart';
@@ -122,13 +125,20 @@ Future<void> main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
   // Build the semantics tree in debug so Maestro/UI automation can locate
   // widgets by text. Zero cost in release builds.
-  if (kDebugMode) binding.ensureSemantics();
+  // Also under kPleyaVerify (a release-mode build) so the
+  // Semantics(identifier:) values FocusableWrapper adds land as a real
+  // accessibilityIdentifier/resource-id, addressable via idb/XCUITest.
+  if (kDebugMode || kPleyaVerify) binding.ensureSemantics();
   _installZeroOffsetPointerGuard(); // Workaround for iPadOS 26.1+ modal dismissal bug
 
   // On tvOS, Flutter's generated plugin registrant doesn't run (no tvOS
   // target in Flutter's tool), so register platform stores manually for
   // the plugins we use.
   _registerTvosPlatformPlugins();
+
+  // No-op unless built with --dart-define=PLEYA_VERIFY=true (see
+  // lib/automation/pleya_verify.dart).
+  unawaited(AutomationBootstrap.start());
 
   if (_enableSentry && _sentryDsn.isNotEmpty) {
     final packageInfo = await PackageInfo.fromPlatform();
@@ -279,7 +289,11 @@ Future<void> _bootstrapApp() async {
     return const ColoredBox(color: Color(0xFF000000));
   };
 
-  runApp(MainApp(settings: settings, storage: storage));
+  runApp(
+    AutomationOverlay(
+      child: MainApp(settings: settings, storage: storage),
+    ),
+  );
 }
 
 Breadcrumb? _beforeBreadcrumb(Breadcrumb? breadcrumb, Hint _) {

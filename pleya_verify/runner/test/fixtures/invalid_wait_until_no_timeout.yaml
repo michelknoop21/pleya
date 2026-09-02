@@ -1,0 +1,6 @@
+name: fixture.invalid_wait_until_no_timeout
+target: macos
+setup:
+  - reset_app
+steps:
+  - wait_until: {event: focus.changed}

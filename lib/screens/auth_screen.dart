@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
+import '../automation/automation_navigation_hooks.dart';
+import '../automation/pleya_verify.dart';
 import '../connection/connection.dart';
 import '../connection/connection_registry.dart';
 import '../mixins/controller_disposer_mixin.dart';
@@ -54,6 +56,9 @@ class _AuthScreenState extends State<AuthScreen> {
   void initState() {
     super.initState();
     unawaited(_initVerifyService());
+    if (kPleyaVerify) {
+      AutomationNavigationHooks.instance.registerFirstProfileHandoff(_handoffToFirstProfile);
+    }
   }
 
   Future<void> _initVerifyService() async {
@@ -65,8 +70,20 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _verifyOnlyService = svc);
   }
 
+  /// `POST /v1/signin`'s tail after it creates the very first profile —
+  /// the same push a real user's successful `_connectToPleyaServer`/
+  /// `_connectToJellyfin` triggers once they're back here from the add-
+  /// server screen. See `AutomationNavigationHooks.handoffToFirstProfile`.
+  void _handoffToFirstProfile() {
+    if (!mounted) return;
+    unawaited(Navigator.pushReplacement(context, fadeRoute(const ProfileSessionScreen())));
+  }
+
   @override
   void dispose() {
+    if (kPleyaVerify) {
+      AutomationNavigationHooks.instance.unregisterFirstProfileHandoff(_handoffToFirstProfile);
+    }
     _verifyOnlyService?.dispose();
     super.dispose();
   }

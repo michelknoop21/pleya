@@ -1,0 +1,6 @@
+name: fixture.invalid_tap_on_tvos
+target: tvos-sim
+setup:
+  - reset_app
+steps:
+  - tap: {x: 100, y: 200}

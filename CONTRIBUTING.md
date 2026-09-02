@@ -75,6 +75,24 @@ daar roepen de workflows dezelfde scripts rechtstreeks aan. Draai je bewust zond
 zijn `scripts/ci_checks.sh` vóór een commit en `scripts/gen_release_notes.sh` vóór een push je
 eigen verantwoordelijkheid.
 
+## Pleya Verify (end-to-end verification)
+
+`pleya_verify/` drives real scenarios against a real macOS/iOS-simulator/tvOS-simulator build over
+a fixed transport contract, and saves an evidence bundle (screenshots, UI tree, focus trace, logs)
+per run. It is the layer that proves a UI/focus change actually works end to end, on top of
+`flutter test` and the `scripts/tvos_sim.sh` tool the next section covers.
+
+```bash
+cd pleya_verify/runner
+dart run bin/verify.dart list scenarios --json
+dart run bin/verify.dart run ../scenarios/<name>.yaml --json
+```
+
+See [`pleya_verify/README.md`](pleya_verify/README.md) for the full command reference,
+[`docs/architecture/pleya-verify.md`](docs/architecture/pleya-verify.md) for the design, and
+[`docs/testing/pleya-verify-for-agents.md`](docs/testing/pleya-verify-for-agents.md) for how to
+write a scenario and what to do when one fails.
+
 ## tvOS testen in de simulator
 
 `scripts/tvos_sim.sh` draait de app in de tvOS-simulator en bedient hem, zodat
@@ -99,7 +117,8 @@ scripts/tvos_sim.sh check-keyboard  # regressietest: Menu sluit het toetsenbord
 Punten die anders tijd kosten:
 
 - **Installeer `idb` voor invoer**:
-  `brew trust facebook/fb && brew install idb-companion && pip install fb-idb`.
+  `brew install facebook/fb/idb` (metapackage uit de `facebook/fb`-tap, haalt
+  zowel de `idb`-cli als `idb_companion` binnen).
   idb injecteert HID-events rechtstreeks in de simulator: geen venster nodig,
   het werkt met een vergrendeld scherm en het pikt je focus niet af, dus je kunt
   gewoon doorwerken terwijl een test loopt. Zonder idb valt het script terug op

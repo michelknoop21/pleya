@@ -379,6 +379,53 @@ referentiebeelden zijn donker. Registerrij **J18**, klasse C, naast J14.
 Register staat daarmee op 178 van 187 `covered`. Fase 10A heeft geen enkele rij van `open` naar
 `covered` bewogen, en dat hoort ook zo: fase 9 had het register al gesloten, dit was harding erop.
 Wat openblijft is vijf hardwarerijen, twee geregistreerde debts en twee onopgeloste productcontracten.
+## [2026-08-29] Pleya Verify: de reviewbevindingen na Fase 10 dicht
+
+Twee onafhankelijke adversariële reviews over de branch-diff vonden elf defecten. De zwaarste zes
+hangen aan één faalvorm, en het is de ergste die dit gereedschap kan hebben: stil groen op bewijs uit
+de verkeerde app. `runScenario` riep `terminate()` alleen aan na een gelukte `launch()`, dus een
+health-check die afliep liet het net gestarte proces draaien; de drivers praatten daarna
+hardgecodeerd tegen `127.0.0.1:47317` terwijl `AutomationServer` bij een bezette basispoort doorloopt
+tot 47326. Het achtergebleven proces beantwoordt `/v1/health` overtuigend, en de run rapporteert PASS.
+Precies dat gebeurde in Fase 10 en moest met de hand getraceerd worden.
+
+De app publiceerde de oplossing al zonder dat iemand hem gebruikte: `AutomationServer.start()` schrijft
+`<tmpdir>/pleya-verify/instance.json` met poort en pid. De drivers wissen dat bestand nu vóór de
+launch en wachten erop, wat een verouderde lezing structureel onmogelijk maakt in plaats van
+onwaarschijnlijk, en `/v1/health` moet daarna dezelfde poort én een boottijd ná deze launch melden.
+Wijkt er iets af, dan faalt de launch met die reden erbij; terugvallen op de basispoort doet hij
+nooit. macOS heeft de boot-logregel als tweede kanaal, de simulators lezen het bestand uit hun
+datacontainer. De opgeloste instantie staat in het manifest, zodat een bundel kan antwoorden op de
+vraag welke app hem geproduceerd heeft.
+
+Onderweg bleek de aanname over redactie niet te kloppen. `redact()` was wel getest en nergens
+aangeroepen, maar hem alsnog over een geëncodeerde JSON-regel halen maakt het erger, niet beter:
+`X-Plex-Token=[^&#\s]+` heeft geen reden om bij een aanhalingsteken te stoppen en at de afsluitende
+`"}` mee, terwijl `"Authorization":"Bearer …"` juist door geen enkel patroon werd geraakt. Er is nu
+een `redactJson` die de gedecodeerde structuur doorloopt, elke string apart redigeert en een waarde
+weggooit zodra de *sleutel* een credential noemt.
+
+Verder: de bundle-id-herschrijving in alle drie de drivers controleert nu exitcodes én leest de
+identiteit terug, want een geslaagd `plutil`-commando bewijst niet dat het bundel de geïsoleerde
+identiteit draagt en die identiteit ís de hele isolatiegarantie. De transport-client heeft een
+deadline per request (een opgehangen app is de regressieklasse waarvoor dit bestaat, hij mag niet de
+runner gijzelen) en gooit op 401/403/404/405 zoals zijn eigen doc al beloofde. Bewust niet op 400 en
+409, want `/v1/signin` en `/v1/input/key` antwoorden daarmee inhoudelijk.
+
+App-kant: `AutomationNode` en `AutomationScreen` registreerden de closure die ze op mount-moment
+hadden. Aanroepers bouwen die inline over hun eigen velden, dus na een rebuild bleef `/v1/ui_tree` de
+navigatiestand van vóór de tabwissel melden en `/v1/screens` een scherm dat allang klaar was als
+"loading". Ze registreren nu een indirectie, hetzelfde patroon dat `contextGetter` er een regel boven
+al gebruikte. Het achtervoegsel bij dubbele automation-ids telt per id in plaats van over alle ids
+samen, want `a, a, b, b, a` leverde twee keer `#4` op.
+
+Twee dingen zitten buiten de runner. Seeden riep de volledige `reset()` van de fixture-server aan en
+wiste daarmee ook de credentials, waardoor `sign_in` gevolgd door `seed` de net gemaakte sessie
+sloopte en elke volgende stap faalde met een melding die nergens naar de seed wees; er is nu een
+`resetCatalog()` die alleen de catalogus leegt. En `PLEYA_VERIFY` werd in `xcode_appletv.sh` uit de
+omliggende shell gelezen zonder dat iets hem voor een release terugzette: een device-releasebuild met
+de vlag aan wordt nu geweigerd, en `testflight_release.sh` zet zijn eigen omgeving dicht in plaats van
+op de aanroeper te vertrouwen.
 
 ## [2026-08-22] De twee PS-4-bevindingen dicht, en de releasenotes blijven staan
 

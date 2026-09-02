@@ -9,6 +9,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../automation/automation_route_observer.dart';
 import '../focus/key_event_utils.dart';
 import '../media/ids.dart';
 import '../media/media_server_client.dart';
@@ -459,7 +460,7 @@ class _ProfileSessionNavigator extends StatefulWidget {
 class _ProfileSessionNavigatorState extends State<_ProfileSessionNavigator> {
   final _navigatorKey = GlobalKey<NavigatorState>();
   final _mainScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
-  final _routeObserver = RouteObserver<PageRoute<dynamic>>();
+  final _routeObserver = AutomationRouteObserver();
 
   @override
   void initState() {

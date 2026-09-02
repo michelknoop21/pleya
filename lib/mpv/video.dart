@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../automation/automation_ids.dart';
+import '../automation/automation_node.dart';
 import 'player/player.dart';
 import 'player/video_rect_support.dart';
 
@@ -92,17 +94,21 @@ class _VideoState extends State<Video> {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: _hasFirstFrame ? Colors.transparent : widget.backgroundColor,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Video rendering area
-          _buildVideoSurface(),
+    return AutomationNode(
+      id: AutomationIds.playerSurface,
+      role: 'surface',
+      child: ColoredBox(
+        color: _hasFirstFrame ? Colors.transparent : widget.backgroundColor,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Video rendering area
+            _buildVideoSurface(),
 
-          // Controls overlay
-          if (widget.controls != null) widget.controls!(context),
-        ],
+            // Controls overlay
+            if (widget.controls != null) widget.controls!(context),
+          ],
+        ),
       ),
     );
   }
